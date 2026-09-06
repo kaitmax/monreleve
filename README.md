@@ -1,0 +1,141 @@
+# frontalier
+
+A French-language product for cross-border workers who live in France and work in Switzerland. It answers one expensive question — *how many telework days do I have left before the 40 % fiscal threshold and the 49,9 % social-security threshold?* — and produces the document that proves the answer: the **Relevé annuel de télétravail**, an audit-defensible PDF in which every recorded day carries a server-assigned timestamp and its provenance.
+
+One backend, two clients:
+
+| Client | Role | Stack |
+|---|---|---|
+| **Web** (`web/`) | Public, anonymous acquisition surface: calculator, LAMal/CMU comparator, guides, alert list, app landing page. No signed-in area. | Next.js 15, TypeScript strict, Sass + CSS tokens, MDX |
+| **Backend** (inside `web/`) | API `/api/v1`, database, dossier computation, PDF, jobs. Authority for timestamps and the document. | Prisma + PostgreSQL, Auth.js (magic link), pg-boss, FCM, Playwright/Chromium for PDF |
+| **Android** (`android/`) | The app: daily logging (manual, or location detection that *proposes* and the user confirms), calendar, dossier, exports. | Kotlin, Jetpack Compose, Room, WorkManager |
+
+iOS is designed (see `prompts/design-frontier/`) but is **not** in the launch scope.
+
+---
+
+## Read these, in this order
+
+| # | File | What it is |
+|---|---|---|
+| 1 | **`SPEC-frontalier-web.md`** (v2.2) | The product and technical specification. Normative. §2 lists every decision D1–D40 with its rationale; §7 is the calculation engine; §8 the data model; §13 the detection model; §20 the boundaries (Always / Ask first / Never); §21 the success criteria. |
+| 2 | **`DESIGN-SYSTEM.md`** | Frontier Work v1.0 as adapted for this product. §1 is the token block; §2 the product overrides that bind every UI task (no map, no live location, tier in words, four screens, manual mode is a peer). |
+| 3 | **`tasks/plan.md`** | Phases, checkpoints, human gates, risks, Definition of Done, and the three disciplines (Execution, Test, UI). |
+| 4 | **`tasks/todo.md`** | The 45 tasks — FW1–FW29 (web + backend) and AN1–AN15 (Android) — each with acceptance criteria, verification commands, dependencies, files, scope. |
+| 5 | `docs/regulatory-sources.md` | Primary sources for every constant in the engine. Created in FW3; frozen at Checkpoint A. |
+| 6 | `prompts/design-frontier/FD1–FD13` | The design prompts (Claude Design) for every screen. Reference for what a screen must contain; the spec wins on any conflict. |
+| — | `relay/` | Session prompts for Claude Code, one per task, plus the phase runbooks. |
+
+If any of files 1–4 is missing, stop and say so before writing code.
+
+---
+
+## How work happens here
+
+This repository is built by Claude Code in **one task per session**, driven by prompts in `relay/`. The rules below are the standing protocol; they are restated at the top of every session prompt and are not optional.
+
+**1. One task per session.** The task is named in the prompt (e.g. `FW1`). Nothing outside it is touched. Anything noticed outside scope goes in the report under *NOTICED BUT NOT TOUCHING*.
+
+**2. Increments.** Each task is executed as ordered increments — implement → test → verify → commit → push. The project builds and existing tests pass after **every** increment. Never more than ~100 lines uncommitted.
+
+**3. Test-first.** New behaviour gets its failing test before the code (RED), then the minimum to pass (GREEN), then refactor with tests green. Bug and bounce fixes start with a reproduction test that fails before the fix and passes after — both runs shown in the report.
+
+**4. Commit only on green. No exceptions.** A commit happens only when `typecheck`, `lint`, `test`, and `build` all pass on the increment. If an increment cannot reach green, it is not committed: revert or stash, and report the blocker. **A red commit is a bounce.**
+
+**5. Commit format.** `FW<N>: <increment title>` / `AN<N>: <increment title>`. Push after every increment; the push output goes in the report.
+
+**6. Simplicity and scope.** The naive, obviously-correct version first. No abstraction before the third use. No cleanup of adjacent code.
+
+**7. Questions.** Anything on the spec §20 *Ask first* list, or any ambiguity: pause the increment, ask the operator, and record the ruling **verbatim** in the report. Never decide unilaterally, never deviate silently.
+
+**8. Report.** Each session ends by writing `REPORT-<task>.txt` at the repo root (pure ASCII, committed, pushed): summary, environment, per-increment evidence (files, trimmed command output, commit hash), proofs required by the task, deviations, noticed-but-not-touching, questions, push proof. The session is not done until the report exists.
+
+**9. Definition of Done** (`tasks/plan.md`) applies to every task on top of its own acceptance criteria: lint clean, typecheck clean, tests green, build clean, budgets green, strings only in `lib/fr` / `fr/`, tokens only, UI states (loading / empty / error) present, `/dev/composants` entry and screenshot baseline for any UI change.
+
+**10. Design tokens are law.** No raw hex, radius, or spacing outside `DESIGN-SYSTEM.md`. Lint enforces it on both clients from FW1 / AN1 onward.
+
+Pure ASCII applies to relay prompts and reports, **not** to code — source files contain accented French where the product requires it.
+
+---
+
+## Non-negotiables to carry in your head
+
+- **The engine reproduces the Geneva tax administration's worked examples exactly**, including their rounding (39,16 % and 4,16 %). Fixtures live in `fixtures/geneva-cases.json` and are consumed by both the TypeScript and the Kotlin engine. If a fixture fails, nothing ships.
+- **Timestamps are server-assigned.** No API path accepts a client `recordedAt`. The audit table `EntryEvent` is append-only.
+- **The app never records a day by itself.** Detection proposes; the user's tap creates the entry.
+- **No coordinate is ever stored, logged, or transmitted.** Country is determined on-device against a bundled border polygon and the fix is discarded. The API rejects any payload carrying one.
+- **Manual mode is a peer.** Identical dossier, no nagging, no "recommandé".
+- **No map, no live location, no movement timeline, anywhere.**
+- **Never claim more than the record supports.** *Déclaré, enregistré, horodaté* — never *certifié, attesté, conforme*.
+- **French only**, one locale, no i18n abstraction.
+
+---
+
+## Stack quick reference
+
+**Web / backend** — Node 22, pnpm ≥ 9.
+
+```
+pnpm install
+pnpm dev            # http://localhost:3000
+pnpm build          # Next.js production build
+pnpm typecheck      # tsc --noEmit, strict + noUncheckedIndexedAccess
+pnpm lint           # eslint (boundaries, jsx-no-literals) + stylelint (tokens only)
+pnpm test           # vitest — unit + property
+pnpm test:e2e       # playwright
+pnpm test:visual    # screenshot baselines
+pnpm test:a11y      # jest-axe
+pnpm size           # first-load JS budget: public routes <= 100 KB gzip
+pnpm lighthouse     # LCP < 2.5 s slow 4G on the calculator
+pnpm prisma migrate dev / pnpm db:seed
+```
+
+Workbench: `/dev/composants` — every component, every state. No Storybook.
+
+**Android** — Kotlin, Compose, minSdk 26, JDK 17.
+
+```
+./gradlew assembleDebug ktlintCheck detekt
+./gradlew test                       # unit + Kotest property (engine conformance)
+./gradlew connectedDebugAndroidTest  # Compose UI tests
+./gradlew verifyPaparazziDebug       # screenshot baselines
+./gradlew bundleRelease
+```
+
+**Shared** — `fixtures/geneva-cases.json`: both CIs consume this one file; a divergence on any case fails both builds.
+
+---
+
+## Repository layout
+
+```
+frontalier/
+  README.md  SPEC-frontalier-web.md  DESIGN-SYSTEM.md
+  tasks/          plan.md  todo.md
+  relay/          PHASE-<n>.md runbooks, FW<N>.txt / AN<N>.txt session prompts
+  prompts/        design-frontier/  (FD1–FD13)   design/ (superseded Carbon series, kept for history)
+  fixtures/       geneva-cases.json            (created FW4, frozen Checkpoint A)
+  docs/           regulatory-sources.md  detection-model.md  deploy.md  perf-spike.md  release-audit-*.md
+  web/            Next.js app + backend         (see SPEC §5)
+  android/        Kotlin/Compose app            (see SPEC §5)
+```
+
+---
+
+## Where we are
+
+**Pre-code. Phase 1 (Foundation) starts with FW1.** See `relay/PHASE-1.md` for the runbook and `relay/FW1.txt` for the first session prompt.
+
+Human gates that no task may pass on its own:
+
+| Gate | When | What |
+|---|---|---|
+| Fixtures freeze | Checkpoint A | Every constant verified against admin.ch / AFC / impots.gouv.fr |
+| Indexing | Checkpoint C | Domain chosen; keyword difficulty checked; slugs are permanent |
+| Detection accuracy | Checkpoint G | Two-stage measurement against a threshold written down beforehand |
+| Reviewer sign-off | Checkpoint E | Expert-reviewed cases incl. one residence-1983 canton |
+| Play Store | Checkpoint E | Background-location justification accepted; data safety form matches spec §13 |
+
+---
+
+*Working name: frontalier. Wordmark and domain are open questions (spec §22).*

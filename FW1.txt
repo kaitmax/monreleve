@@ -1,0 +1,289 @@
+FW1 SESSION PROMPT - frontalier
+Paste this entire prompt as the first message of a fresh Claude Code
+session, opened at the repository root.
+
+====================================================================
+PRE-STEP RULINGS
+====================================================================
+None. FW1 is the first task of the project. (In later prompts this
+section carries every prior ruling verbatim.)
+
+====================================================================
+CONTEXT
+====================================================================
+Project: frontalier - a French-language product for cross-border
+workers living in France and employed in Switzerland. One backend,
+two clients: a public Next.js web site and an Android app. This task
+is on the web side.
+
+You are executing task FW1 ONLY, as defined in tasks/todo.md.
+Read first, in this order:
+  - README.md                 (how work happens here - the protocol)
+  - SPEC-frontalier-web.md    sections 3, 4, 5, 6, 17, 20
+  - DESIGN-SYSTEM.md          section 1 (tokens) and section 4
+  - tasks/plan.md             Definition of Done and the three
+                              disciplines
+  - tasks/todo.md             FW1
+  - relay/PHASE-1.md          the gate rule
+
+If README.md, SPEC-frontalier-web.md, DESIGN-SYSTEM.md, tasks/plan.md
+or tasks/todo.md is missing: STOP, scaffold nothing, report it.
+
+====================================================================
+STANDING PROTOCOL (identical in every FW / AN prompt)
+====================================================================
+1. SESSION SCOPE. This session implements FW1 and nothing else. Do
+   not start FW2. Do not "prepare" future tasks.
+
+2. INCREMENT CYCLE. Work in the ordered increments below. For each:
+   implement -> test -> verify -> commit -> push, then move on. The
+   project must build and existing tests must pass after EVERY
+   increment. Never accumulate more than ~100 lines uncommitted.
+
+3. COMMIT ONLY ON GREEN. A commit happens only when pnpm typecheck,
+   pnpm lint, pnpm test and pnpm build all pass on the increment. If
+   an increment cannot reach green, do not commit it: revert or
+   stash, and report the blocker. A red commit is a bounce.
+
+4. COMMITS. One logical change per commit. Message format:
+   "FW1: <increment title>". Push after each increment and capture
+   the push output for the report.
+
+5. SIMPLICITY FIRST. The naive, obviously-correct version. No
+   abstraction before the third use case demands it. No config
+   machinery for a single consumer.
+
+6. TEST-FIRST. New behavior: failing test before the code (RED),
+   minimum to pass (GREEN), refactor with tests green. A test that
+   passes on its first run proves nothing - for pivotal tests, show
+   the failing run in the report. Bug and bounce fixes: reproduction
+   test that FAILS before the fix and PASSES after. Assert outcomes,
+   never internal call sequences. Prefer real implementations; mock
+   only at fixed boundaries (email, push, external network, the
+   clock via injection). Use the repo's own scripts; focused runs in
+   the loop, the full suite once before the report. Never re-run a
+   command on unchanged code for reassurance.
+
+7. UI DISCIPLINE. DESIGN-SYSTEM.md is the design system: Inter with
+   tabular numerals, the token radii {4,8,12,14,16,20,24,999}, the
+   listed colours, Lucide icons, no shadows on cards. Every radius,
+   colour and spacing is a token. Composition over configuration;
+   split any component past ~200 lines; every screen ships loading,
+   empty and error states; semantic elements first; one h1 per page.
+   French strings live only in lib/fr.
+
+8. SCOPE DISCIPLINE. Touch only what FW1 requires. Do not clean up,
+   refactor, or "improve while you are here". Anything noticed
+   outside scope goes in the report under NOTICED BUT NOT TOUCHING.
+
+9. QUESTIONS. On any spec ambiguity or anything on the spec section
+   20 "Ask first" list: PAUSE the increment, ask the operator, and
+   record the ruling VERBATIM in the report. Never decide
+   unilaterally. Never deviate silently.
+
+10. EXIT ARTIFACT. End by writing REPORT-FW1.txt at the repo root,
+    committed and pushed, in the format at the bottom of this prompt.
+    The session is not done until the report exists with its push
+    proof.
+
+Pure ASCII applies to relay prompts and reports, NOT to code. Source
+files may contain accented French where the product requires it.
+
+====================================================================
+ENVIRONMENT PRECONDITIONS (verify first, report versions)
+====================================================================
+- Node 22.x and pnpm >= 9. Record exact versions.
+- Git remote configured and pushable (git remote -v).
+- The repo contains the documents listed above plus git
+  housekeeping and, at most, prompts/ and relay/. If substantive
+  code already exists under web/ or android/: STOP and report.
+
+====================================================================
+TASK FW1 - SCAFFOLD, GUARDRAILS, CI (web)
+====================================================================
+Objective (tasks/todo.md): initialise the Next.js 15 App Router
+project under web/ with TypeScript strict, pnpm, the Frontier Work
+token layer as Sass + CSS custom properties, self-hosted Inter
+(variable, tabular numerals enabled), lucide-react, and the lint
+guardrails that make the spec's boundaries mechanical; plus test
+harnesses, the web size budget, the /dev/composants workbench stub,
+and CI.
+
+Acceptance criteria (restated; the report must prove each):
+AC1. pnpm build and pnpm dev run; the token layer compiles to CSS
+     custom properties; Inter served same-origin (latin + latin-ext)
+     with tabular numerals verified on a rendered figure.
+AC2. Each guardrail demonstrably fails lint/CI on a planted
+     violation - raw hex, raw radius or spacing off the token set,
+     React import in lib/ui/core, inline French string in JSX -
+     proofs captured, violations removed. The history contains only
+     clean states.
+AC3. pnpm size runs with the web budget configured (public routes
+     <= 100 KB gzipped first-load JS) even though routes are near
+     empty.
+
+TDD note for this task: FW1 is configuration, the one case where
+behavior-level TDD does not apply. Its RED steps are the planted
+violations in increment 3 and the smoke tests in increment 4 (run
+each once against a deliberately wrong expectation to confirm it can
+fail, then fix the expectation). Behavior-level RED/GREEN is
+mandatory from FW3 onward.
+
+--------------------------------------------------------------------
+INCREMENT 1 - Next.js scaffold and module skeleton
+--------------------------------------------------------------------
+- Under web/: Next.js 15, App Router, TypeScript, pnpm. tsconfig:
+  strict true, noUncheckedIndexedAccess true.
+- Skeleton per SPEC section 5: app/ at web root, plus placeholder
+  modules so the guardrails have targets:
+    lib/calc-engine/index.ts    (export {} placeholder)
+    lib/ui/core/index.ts
+    lib/ui/react/index.ts
+    lib/fr/index.ts             (export const APP_NAME = 'frontalier')
+- Minimal root layout and a minimal / page (plain text, no styling).
+- Scripts wired: dev, build, start, typecheck, lint (default config
+  until increment 3).
+- Verify: pnpm typecheck && pnpm build.
+- Commit: "FW1: scaffold Next.js 15 App Router, strict TS, module
+  skeleton". Push.
+
+--------------------------------------------------------------------
+INCREMENT 2 - Token layer and Inter
+--------------------------------------------------------------------
+- lib/ui/core/styles/tokens.scss: every value from DESIGN-SYSTEM.md
+  section 1 as Sass variables AND as CSS custom properties on :root
+  (colour.*, space.*, radius.*, type.*). Nothing outside this file
+  declares a raw colour, radius or spacing.
+- lib/ui/core/styles/global.scss: reset, canvas #F7F8FA via the
+  token, base type, imported from the root layout. Sass configured
+  in Next.
+- Inter: @fontsource-variable/inter, subsets latin + latin-ext,
+  self-hosted, preloaded. A utility class or mixin enabling
+  font-feature-settings: "tnum" for figures.
+- Verify: pnpm build. Then prove: render / (next start + curl or the
+  build output) and grep output and .next assets for
+  "fonts.googleapis" and "gstatic" - both absent; the font file
+  resolves under the app's own origin. Render one figure with the
+  tabular class and confirm the feature setting in computed style
+  (Playwright arrives in increment 4; a note that this check is
+  completed then is acceptable).
+- Commit: "FW1: Frontier token layer, global styles, self-hosted
+  Inter". Push.
+
+--------------------------------------------------------------------
+INCREMENT 3 - Lint guardrails (the heart of FW1)
+--------------------------------------------------------------------
+ESLint flat config with per-directory overrides:
+  (a) lib/calc-engine/**: the engine imports NOTHING outside its own
+      directory - no-restricted-imports (or import plugin equivalent)
+      forbidding all bare module imports and any lib/* or app/* path.
+      Relative imports inside lib/calc-engine remain allowed.
+  (b) lib/ui/core/**: forbid react, react-dom, and any UI component
+      library. Pure TS + SCSS only.
+  (c) app/** and lib/ui/react/**: react/jsx-no-literals so user-facing
+      strings cannot be written inline - they are imported from
+      lib/fr. Technical attributes (className, data-*, aria via
+      imported strings) must not be blocked.
+stylelint with stylelint-declaration-strict-value on: color,
+background-color, border-color, fill, stroke, border-radius,
+font-size, margin, padding, gap (and their longhands). Only Sass
+$tokens / var(--token) / keywords are accepted; raw hex and raw px
+literals are rejected.
+
+PROOF SEQUENCE (output goes in the report, never in the history):
+  1. Plant four violations in scratch locations:
+     - a raw hex colour in a .scss file,
+     - a raw border-radius: 10px in a .scss file,
+     - import React from 'react' inside lib/ui/core/,
+     - a literal French string inside a JSX element under app/.
+  2. Run pnpm lint. Capture the four failures (trimmed output).
+  3. Remove all four. Run pnpm lint clean.
+- Commit (clean state only): "FW1: ESLint boundary rules and
+  stylelint token guardrails". Push.
+
+--------------------------------------------------------------------
+INCREMENT 4 - Test harnesses
+--------------------------------------------------------------------
+- Vitest configured; one smoke unit test importing the
+  lib/calc-engine placeholder (proves path aliases + TS config).
+- Playwright configured; one smoke e2e: / responds 200, renders the
+  APP_NAME string from lib/fr, and a figure element with the tabular
+  class has font-feature-settings containing "tnum" in computed
+  style (completing AC1).
+- Run each test once against a deliberately wrong expectation to
+  confirm it can fail; capture; fix the expectation.
+- Scripts: test, test:e2e.
+- Verify: pnpm test && pnpm test:e2e.
+- Commit: "FW1: Vitest and Playwright harnesses with smoke tests".
+  Push.
+
+--------------------------------------------------------------------
+INCREMENT 5 - Size budget, Lighthouse stub, workbench
+--------------------------------------------------------------------
+- scripts/check-budgets.mjs: after next build, compute gzipped
+  first-load JS per route from the Next build manifests
+  (.next/app-build-manifest.json + chunk files, gzip via node:zlib),
+  plus the total font payload. Budget: every public route
+  <= 100 KB. Exit non-zero on breach; print a per-route table. Wire
+  as pnpm size.
+- Lighthouse CI config stub (lhci collect against /, minimal
+  assertions - the LCP gate tightens at FW11). Script: pnpm
+  lighthouse.
+- app/dev/composants/page.tsx stub: plain page titled from lib/fr
+  ("Composants - workbench"), robots noindex metadata.
+- Verify: pnpm build && pnpm size (record the measured numbers).
+- Commit: "FW1: size budget script, Lighthouse stub, workbench stub".
+  Push.
+
+--------------------------------------------------------------------
+INCREMENT 6 - CI workflow
+--------------------------------------------------------------------
+- GitHub Actions workflow: Node 22, pnpm with frozen lockfile, steps
+  in order: typecheck, lint, test, build, size. No database service
+  yet (Postgres joins CI at FW14). e2e in CI only if browser install
+  cost is reasonable; if skipped, say so under DEVIATIONS with the
+  plan to add it by FW11.
+- Verify: workflow parses; if the remote runs Actions, confirm the
+  first run is green and reference it in the report.
+- Commit: "FW1: CI workflow - typecheck, lint, test, build, size".
+  Push.
+
+====================================================================
+OUT OF SCOPE FOR FW1 (do not touch)
+====================================================================
+- No engine logic (FW3), no spike page (FW2), no components beyond
+  the stubs named above (FW8-FW9).
+- No Prisma, no database, no auth, no analytics script, no MDX.
+- No French copy beyond APP_NAME and the workbench title in lib/fr.
+- No git hooks / husky unless it is a one-liner; prefer CI
+  enforcement for now.
+- Nothing under android/.
+
+====================================================================
+FINAL VERIFICATION (before writing the report)
+====================================================================
+pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm size
+All green in one run on the final commit. Do not re-run commands on
+unchanged code for reassurance.
+
+====================================================================
+REPORT FORMAT - REPORT-FW1.txt (pure ASCII, committed and pushed)
+====================================================================
+SUMMARY            3-6 lines: what exists now that did not before.
+ENVIRONMENT        node -v, pnpm -v, OS, next version installed.
+INCREMENTS         For each of the six: files created/changed, key
+                   commands with trimmed output, commit hash, push
+                   confirmation.
+GUARDRAIL PROOFS   The four planted-violation lint failures (trimmed)
+                   and the clean run after removal.
+HARNESS PROOFS     Each smoke test shown failing once against a wrong
+                   expectation, then passing.
+BUDGET NUMBERS     Per-route first-load gzip and font payload from
+                   pnpm size.
+DEVIATIONS         Every departure from spec or prompt, with reason.
+NOTICED BUT NOT TOUCHING   Out-of-scope observations, if any.
+QUESTIONS FOR THE OPERATOR Open questions needing a ruling, if any.
+PUSH PROOF         git log --oneline for the session's commits and
+                   the final git push output.
+
+END OF FW1 PROMPT
