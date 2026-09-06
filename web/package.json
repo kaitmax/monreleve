@@ -2,6 +2,7 @@
   "name": "frontalier-web",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "fonts": "node scripts/copy-fonts.mjs",
     "dev": "node scripts/copy-fonts.mjs && next dev",
