@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: web
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # No version here on purpose: package.json carries packageManager, and
+      # passing both makes the action fail with "multiple versions specified".
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      # The order is the Definition of Done: cheapest signal first, and the
+      # budget gate last because it needs the build output.
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm build
+
+      # SPEC section 17: "A budget not enforced in CI is a budget that
+      # silently disappears." Deliberately blocking. It is currently RED - the
+      # Next 15 + React 19 baseline exceeds the 100 KiB public budget before
+      # any feature code exists. See REPORT-FW1.txt; raising the budget is an
+      # ask-first item and is not decided here.
+      - run: pnpm size
+
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: web/playwright-report/
+          retention-days: 7
