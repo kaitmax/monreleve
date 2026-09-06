@@ -26,3 +26,6 @@ yarn-error.log*
 .env
 .env.*
 !.env.example
+
+# generated: font subsets copied out of @fontsource-variable/inter
+web/public/fonts/

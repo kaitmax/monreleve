@@ -1,0 +1,362 @@
+// web/lib/ui/core/styles/tokens.scss
+//
+// The single source of visual truth for the web client.
+// Every value below is transcribed from DESIGN-SYSTEM.md section 1 (Frontier
+// Work v1.0, frontalier adaptation). Nothing outside this file may declare a
+// raw colour, radius, spacing or type value - stylelint enforces it.
+//
+// Values are exposed twice: as Sass variables (compile time, for mixins and
+// generated stylesheets) and as CSS custom properties on :root (runtime, for
+// components and for the PDF print route).
+
+// ---------------------------------------------------------------------------
+// COLOUR - light. Light ships first (DESIGN-SYSTEM.md section 2).
+// ---------------------------------------------------------------------------
+$colour-canvas: #f7f8fa;
+$colour-surface: #ffffff;
+
+$colour-text-primary: #111827;
+$colour-text-secondary: #667085;
+$colour-text-tertiary: #98a2b3;
+$colour-text-disabled: #c4c8d0;
+
+$colour-border-default: #e4e7ec;
+$colour-border-strong: #d0d5dd;
+
+$colour-brand: #173b63;
+
+$colour-france: #315fa8;
+$colour-france-soft: #eaf1fb;
+$colour-france-text: #244a82;
+
+$colour-switzerland: #d84b4b;
+$colour-switzerland-soft: #fcecec;
+$colour-switzerland-text: #a93636;
+
+$colour-success: #15803d;
+$colour-success-soft: #eaf7ee;
+$colour-warning: #b7791f;
+$colour-warning-soft: #fff7e6;
+$colour-error: #c53030;
+$colour-error-soft: #fdecec;
+$colour-info: #2563eb;
+$colour-info-soft: #edf4ff;
+
+// ---------------------------------------------------------------------------
+// COLOUR - dark. Recorded from DESIGN-SYSTEM.md section 1 so the values live
+// in one place. Deliberately NOT emitted as custom properties and never
+// applied: light ships first (DESIGN-SYSTEM.md section 2), SPEC section 1
+// lists "no dark theme" as a non-goal, and shipping it is an ask-first item
+// (SPEC section 20).
+// ---------------------------------------------------------------------------
+$colour-dark-canvas: #0b0f14;
+$colour-dark-surface: #111827;
+$colour-dark-elevated: #18202c;
+$colour-dark-border: #273244;
+$colour-dark-text-primary: #f9fafb;
+$colour-dark-text-secondary: #98a2b3;
+$colour-dark-brand: #6ea1d7;
+$colour-dark-france: #6b93d6;
+$colour-dark-switzerland: #e97878;
+
+// ---------------------------------------------------------------------------
+// SPACING - 4 px base.
+// ---------------------------------------------------------------------------
+$space-1: 4px;
+$space-2: 8px;
+$space-3: 12px;
+$space-4: 16px;
+$space-5: 20px;
+$space-6: 24px;
+$space-7: 28px;
+$space-8: 32px;
+$space-10: 40px;
+$space-12: 48px;
+$space-16: 64px;
+$space-20: 80px;
+
+// ---------------------------------------------------------------------------
+// RADIUS - tokens only, never arbitrary.
+// The named scale plus the semantic radii the token block calls out. 14 px
+// (large primary button) is part of the permitted set per DESIGN-SYSTEM.md
+// section 4 and SPEC D37: {4, 8, 12, 14, 16, 20, 24, 999}.
+// ---------------------------------------------------------------------------
+$radius-xs: 4px;
+$radius-sm: 8px;
+$radius-md: 12px;
+$radius-lg: 16px;
+$radius-xl: 20px;
+$radius-2xl: 24px;
+$radius-pill: 999px;
+
+$radius-button: $radius-md;
+$radius-button-large: 14px;
+$radius-input: $radius-md;
+$radius-badge: $radius-sm;
+$radius-card: $radius-lg;
+$radius-card-status: $radius-xl;
+$radius-sheet: $radius-2xl;
+$radius-skeleton: $radius-sm;
+$radius-toast: $radius-md;
+
+// The token block specifies the checkbox at 6 px, which is outside the closed
+// radius set of D37. Recorded verbatim; flagged for the operator in the report.
+$radius-checkbox: 6px;
+
+// ---------------------------------------------------------------------------
+// TYPE - Inter everywhere. Weights 400/500/600/700 only.
+// ---------------------------------------------------------------------------
+$font-family-base: "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", roboto, sans-serif;
+
+$type-display-size: 48px;
+$type-display-line: 56px;
+$type-display-weight: 600;
+
+$type-h1-size: 32px;
+$type-h1-line: 40px;
+$type-h1-weight: 700;
+
+$type-h2-size: 24px;
+$type-h2-line: 32px;
+$type-h2-weight: 700;
+
+$type-h3-size: 20px;
+$type-h3-line: 28px;
+$type-h3-weight: 600;
+
+$type-body-l-size: 17px;
+$type-body-l-line: 26px;
+$type-body-l-weight: 400;
+
+$type-body-size: 15px;
+$type-body-line: 22px;
+$type-body-weight: 400;
+
+$type-body-m-size: 15px;
+$type-body-m-line: 22px;
+$type-body-m-weight: 500;
+
+$type-caption-size: 13px;
+$type-caption-line: 18px;
+$type-caption-weight: 400;
+
+$type-micro-size: 11px;
+$type-micro-line: 14px;
+$type-micro-weight: 500;
+
+$weight-regular: 400;
+$weight-medium: 500;
+$weight-semibold: 600;
+$weight-bold: 700;
+
+// ---------------------------------------------------------------------------
+// ICONS - Lucide.
+// ---------------------------------------------------------------------------
+$icon-size-sm: 16px;
+$icon-size-default: 20px;
+$icon-size-lg: 24px;
+$icon-stroke: 1.75px;
+
+// ---------------------------------------------------------------------------
+// LAYOUT
+// ---------------------------------------------------------------------------
+$layout-gutter-mobile: 20px;
+$layout-gutter-desktop: 32px;
+$layout-content-max: 1440px;
+
+// ---------------------------------------------------------------------------
+// COMPONENT METRICS stated in the token block.
+// ---------------------------------------------------------------------------
+$size-button-height: 48px;
+$size-button-large-height: 56px;
+$size-button-text-height: 40px;
+$size-button-min-width: 120px;
+$size-icon-button: 44px;
+$size-spinner: 20px;
+
+$size-input-height: 48px;
+$size-input-padding-x: 14px;
+$size-input-label-gap: 6px;
+$size-input-border: 1px;
+$size-input-border-focus: 2px;
+
+$size-card-padding: 16px;
+$size-card-status-padding: 24px;
+$size-card-border: 1px;
+
+$size-sheet-grip-width: 36px;
+$size-sheet-grip-height: 4px;
+$size-sheet-option-min: 52px;
+
+$size-bottom-nav-height: 80px;
+$size-offline-banner: 36px;
+$size-toast-min-width: 320px;
+$size-toast-max-width: 420px;
+
+$size-progress-height: 8px;
+$size-confidence-height: 6px;
+
+$size-radio: 22px;
+$size-radio-inner: 10px;
+$size-checkbox: 22px;
+$size-switch-width: 52px;
+$size-switch-height: 32px;
+$size-switch-thumb: 24px;
+
+$size-touch-target-web: 44px;
+$size-touch-target-android: 48px;
+
+// ---------------------------------------------------------------------------
+// MOTION - no bounce, no parallax.
+// ---------------------------------------------------------------------------
+$motion-standard: 200ms;
+$motion-enter: 250ms;
+$motion-sheet: 300ms;
+$motion-number: 300ms;
+
+// ---------------------------------------------------------------------------
+// Runtime surface.
+// ---------------------------------------------------------------------------
+:root {
+  // colour
+  --colour-canvas: #{$colour-canvas};
+  --colour-surface: #{$colour-surface};
+  --colour-text-primary: #{$colour-text-primary};
+  --colour-text-secondary: #{$colour-text-secondary};
+  --colour-text-tertiary: #{$colour-text-tertiary};
+  --colour-text-disabled: #{$colour-text-disabled};
+  --colour-border-default: #{$colour-border-default};
+  --colour-border-strong: #{$colour-border-strong};
+  --colour-brand: #{$colour-brand};
+  --colour-france: #{$colour-france};
+  --colour-france-soft: #{$colour-france-soft};
+  --colour-france-text: #{$colour-france-text};
+  --colour-switzerland: #{$colour-switzerland};
+  --colour-switzerland-soft: #{$colour-switzerland-soft};
+  --colour-switzerland-text: #{$colour-switzerland-text};
+  --colour-success: #{$colour-success};
+  --colour-success-soft: #{$colour-success-soft};
+  --colour-warning: #{$colour-warning};
+  --colour-warning-soft: #{$colour-warning-soft};
+  --colour-error: #{$colour-error};
+  --colour-error-soft: #{$colour-error-soft};
+  --colour-info: #{$colour-info};
+  --colour-info-soft: #{$colour-info-soft};
+
+  // space
+  --space-1: #{$space-1};
+  --space-2: #{$space-2};
+  --space-3: #{$space-3};
+  --space-4: #{$space-4};
+  --space-5: #{$space-5};
+  --space-6: #{$space-6};
+  --space-7: #{$space-7};
+  --space-8: #{$space-8};
+  --space-10: #{$space-10};
+  --space-12: #{$space-12};
+  --space-16: #{$space-16};
+  --space-20: #{$space-20};
+
+  // radius
+  --radius-xs: #{$radius-xs};
+  --radius-sm: #{$radius-sm};
+  --radius-md: #{$radius-md};
+  --radius-lg: #{$radius-lg};
+  --radius-xl: #{$radius-xl};
+  --radius-2xl: #{$radius-2xl};
+  --radius-pill: #{$radius-pill};
+  --radius-button: #{$radius-button};
+  --radius-button-large: #{$radius-button-large};
+  --radius-input: #{$radius-input};
+  --radius-badge: #{$radius-badge};
+  --radius-card: #{$radius-card};
+  --radius-card-status: #{$radius-card-status};
+  --radius-sheet: #{$radius-sheet};
+  --radius-skeleton: #{$radius-skeleton};
+  --radius-toast: #{$radius-toast};
+  --radius-checkbox: #{$radius-checkbox};
+
+  // type
+  --type-family: #{$font-family-base};
+  --type-display-size: #{$type-display-size};
+  --type-display-line: #{$type-display-line};
+  --type-display-weight: #{$type-display-weight};
+  --type-h1-size: #{$type-h1-size};
+  --type-h1-line: #{$type-h1-line};
+  --type-h1-weight: #{$type-h1-weight};
+  --type-h2-size: #{$type-h2-size};
+  --type-h2-line: #{$type-h2-line};
+  --type-h2-weight: #{$type-h2-weight};
+  --type-h3-size: #{$type-h3-size};
+  --type-h3-line: #{$type-h3-line};
+  --type-h3-weight: #{$type-h3-weight};
+  --type-body-l-size: #{$type-body-l-size};
+  --type-body-l-line: #{$type-body-l-line};
+  --type-body-l-weight: #{$type-body-l-weight};
+  --type-body-size: #{$type-body-size};
+  --type-body-line: #{$type-body-line};
+  --type-body-weight: #{$type-body-weight};
+  --type-body-m-size: #{$type-body-m-size};
+  --type-body-m-line: #{$type-body-m-line};
+  --type-body-m-weight: #{$type-body-m-weight};
+  --type-caption-size: #{$type-caption-size};
+  --type-caption-line: #{$type-caption-line};
+  --type-caption-weight: #{$type-caption-weight};
+  --type-micro-size: #{$type-micro-size};
+  --type-micro-line: #{$type-micro-line};
+  --type-micro-weight: #{$type-micro-weight};
+  --weight-regular: #{$weight-regular};
+  --weight-medium: #{$weight-medium};
+  --weight-semibold: #{$weight-semibold};
+  --weight-bold: #{$weight-bold};
+
+  // icons
+  --icon-size-sm: #{$icon-size-sm};
+  --icon-size-default: #{$icon-size-default};
+  --icon-size-lg: #{$icon-size-lg};
+  --icon-stroke: #{$icon-stroke};
+
+  // layout
+  --layout-gutter-mobile: #{$layout-gutter-mobile};
+  --layout-gutter-desktop: #{$layout-gutter-desktop};
+  --layout-content-max: #{$layout-content-max};
+
+  // component metrics
+  --size-button-height: #{$size-button-height};
+  --size-button-large-height: #{$size-button-large-height};
+  --size-button-text-height: #{$size-button-text-height};
+  --size-button-min-width: #{$size-button-min-width};
+  --size-icon-button: #{$size-icon-button};
+  --size-spinner: #{$size-spinner};
+  --size-input-height: #{$size-input-height};
+  --size-input-padding-x: #{$size-input-padding-x};
+  --size-input-label-gap: #{$size-input-label-gap};
+  --size-input-border: #{$size-input-border};
+  --size-input-border-focus: #{$size-input-border-focus};
+  --size-card-padding: #{$size-card-padding};
+  --size-card-status-padding: #{$size-card-status-padding};
+  --size-card-border: #{$size-card-border};
+  --size-sheet-grip-width: #{$size-sheet-grip-width};
+  --size-sheet-grip-height: #{$size-sheet-grip-height};
+  --size-sheet-option-min: #{$size-sheet-option-min};
+  --size-bottom-nav-height: #{$size-bottom-nav-height};
+  --size-offline-banner: #{$size-offline-banner};
+  --size-toast-min-width: #{$size-toast-min-width};
+  --size-toast-max-width: #{$size-toast-max-width};
+  --size-progress-height: #{$size-progress-height};
+  --size-confidence-height: #{$size-confidence-height};
+  --size-radio: #{$size-radio};
+  --size-radio-inner: #{$size-radio-inner};
+  --size-checkbox: #{$size-checkbox};
+  --size-switch-width: #{$size-switch-width};
+  --size-switch-height: #{$size-switch-height};
+  --size-switch-thumb: #{$size-switch-thumb};
+  --size-touch-target-web: #{$size-touch-target-web};
+  --size-touch-target-android: #{$size-touch-target-android};
+
+  // motion
+  --motion-standard: #{$motion-standard};
+  --motion-enter: #{$motion-enter};
+  --motion-sheet: #{$motion-sheet};
+  --motion-number: #{$motion-number};
+}

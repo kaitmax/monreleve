@@ -1,0 +1,9 @@
+# web/pnpm-workspace.yaml
+# Not a workspace: this repository is a single package (SPEC D1). pnpm 11 reads
+# its project settings from this file, and it is the only reason it exists.
+#
+# @parcel/watcher is an optional native dependency of sass, used only by
+# `sass --watch`. Next compiles our SCSS, so the binary is never needed and its
+# install script is declined deliberately rather than left unanswered.
+allowBuilds:
+  "@parcel/watcher": false

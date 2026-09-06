@@ -1,0 +1,41 @@
+// web/lib/ui/core/styles/global.scss
+//
+// Reset and document defaults. Canvas is grey and cards are white
+// (DESIGN-SYSTEM.md section 4); every value here comes from a token.
+
+@use "tokens";
+@use "fonts";
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--colour-canvas);
+  color: var(--colour-text-primary);
+  font-family: var(--type-family);
+  font-size: var(--type-body-size);
+  font-weight: var(--weight-regular);
+  line-height: var(--type-body-line);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+p,
+figure {
+  margin: 0;
+}
+
+// Utility: tabular figures. Applied to any element carrying numbers.
+.u-tnum {
+  @include fonts.tabular-figures;
+}
