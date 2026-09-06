@@ -1,0 +1,57 @@
+{
+  "extends": ["stylelint-config-standard-scss"],
+  "plugins": ["stylelint-declaration-strict-value"],
+  "rules": {
+    "scale-unlimited/declaration-strict-value": [
+      [
+        "/color$/",
+        "fill",
+        "stroke",
+        "/radius$/",
+        "font-size",
+        "/^margin/",
+        "/^padding/",
+        "/gap$/",
+        "/width$/",
+        "box-shadow"
+      ],
+      {
+        "expandShorthand": true,
+        "ignoreFunctions": false,
+        "ignoreValues": [
+          "0",
+          "auto",
+          "none",
+          "inherit",
+          "initial",
+          "unset",
+          "revert",
+          "currentColor",
+          "transparent",
+          "thin",
+          "medium",
+          "thick",
+          "100%",
+          "/^var\\(--/",
+          "/^calc\\(/",
+          "/^clamp\\(/",
+          "/^min\\(/",
+          "/^max\\(/"
+        ],
+        "disableFix": true,
+        "message": "Use a design token: ${property} may not carry the raw value \"${value}\". Tokens live in lib/ui/core/styles/tokens.scss (DESIGN-SYSTEM.md section 1)."
+      }
+    ],
+    "scss/comment-no-empty": null
+  },
+  "overrides": [
+    {
+      "files": ["lib/ui/core/styles/tokens.scss"],
+      "comment": "The one file allowed to carry raw values: it is the transcription of DESIGN-SYSTEM.md section 1 and is diffed against it, so hex is kept at the length the design document writes.",
+      "rules": {
+        "scale-unlimited/declaration-strict-value": null,
+        "color-hex-length": null
+      }
+    }
+  ]
+}

@@ -14,25 +14,19 @@
 // ---------------------------------------------------------------------------
 $colour-canvas: #f7f8fa;
 $colour-surface: #ffffff;
-
 $colour-text-primary: #111827;
 $colour-text-secondary: #667085;
 $colour-text-tertiary: #98a2b3;
 $colour-text-disabled: #c4c8d0;
-
 $colour-border-default: #e4e7ec;
 $colour-border-strong: #d0d5dd;
-
 $colour-brand: #173b63;
-
 $colour-france: #315fa8;
 $colour-france-soft: #eaf1fb;
 $colour-france-text: #244a82;
-
 $colour-switzerland: #d84b4b;
 $colour-switzerland-soft: #fcecec;
 $colour-switzerland-text: #a93636;
-
 $colour-success: #15803d;
 $colour-success-soft: #eaf7ee;
 $colour-warning: #b7791f;
@@ -88,7 +82,6 @@ $radius-lg: 16px;
 $radius-xl: 20px;
 $radius-2xl: 24px;
 $radius-pill: 999px;
-
 $radius-button: $radius-md;
 $radius-button-large: 14px;
 $radius-input: $radius-md;
@@ -107,43 +100,33 @@ $radius-checkbox: 6px;
 // TYPE - Inter everywhere. Weights 400/500/600/700 only.
 // ---------------------------------------------------------------------------
 $font-family-base: "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", roboto, sans-serif;
-
 $type-display-size: 48px;
 $type-display-line: 56px;
 $type-display-weight: 600;
-
 $type-h1-size: 32px;
 $type-h1-line: 40px;
 $type-h1-weight: 700;
-
 $type-h2-size: 24px;
 $type-h2-line: 32px;
 $type-h2-weight: 700;
-
 $type-h3-size: 20px;
 $type-h3-line: 28px;
 $type-h3-weight: 600;
-
 $type-body-l-size: 17px;
 $type-body-l-line: 26px;
 $type-body-l-weight: 400;
-
 $type-body-size: 15px;
 $type-body-line: 22px;
 $type-body-weight: 400;
-
 $type-body-m-size: 15px;
 $type-body-m-line: 22px;
 $type-body-m-weight: 500;
-
 $type-caption-size: 13px;
 $type-caption-line: 18px;
 $type-caption-weight: 400;
-
 $type-micro-size: 11px;
 $type-micro-line: 14px;
 $type-micro-weight: 500;
-
 $weight-regular: 400;
 $weight-medium: 500;
 $weight-semibold: 600;
@@ -173,36 +156,29 @@ $size-button-text-height: 40px;
 $size-button-min-width: 120px;
 $size-icon-button: 44px;
 $size-spinner: 20px;
-
 $size-input-height: 48px;
 $size-input-padding-x: 14px;
 $size-input-label-gap: 6px;
 $size-input-border: 1px;
 $size-input-border-focus: 2px;
-
 $size-card-padding: 16px;
 $size-card-status-padding: 24px;
 $size-card-border: 1px;
-
 $size-sheet-grip-width: 36px;
 $size-sheet-grip-height: 4px;
 $size-sheet-option-min: 52px;
-
 $size-bottom-nav-height: 80px;
 $size-offline-banner: 36px;
 $size-toast-min-width: 320px;
 $size-toast-max-width: 420px;
-
 $size-progress-height: 8px;
 $size-confidence-height: 6px;
-
 $size-radio: 22px;
 $size-radio-inner: 10px;
 $size-checkbox: 22px;
 $size-switch-width: 52px;
 $size-switch-height: 32px;
 $size-switch-thumb: 24px;
-
 $size-touch-target-web: 44px;
 $size-touch-target-android: 48px;
 
