@@ -11,13 +11,13 @@
 export const SPIKE = {
   title: 'Spike - mesure du poids de page',
   intro:
-    'Cette page assemble un jeu representatif de composants pour mesurer le ' +
-    'poids reel du premier chargement. Elle ne fait pas partie du site public.',
+    'Cette page assemble un jeu représentatif de composants pour mesurer le ' +
+    'poids réel du premier chargement. Elle ne fait pas partie du site public.',
 
   nav: {
     calculateur: 'Calculateur', // TODO-COPY
     guides: 'Guides', // TODO-COPY
-    releve: 'Releve annuel', // TODO-COPY
+    releve: 'Relevé annuel', // TODO-COPY
     application: 'Application', // TODO-COPY
     cta: 'Calculer mes jours',
   },
@@ -25,28 +25,28 @@ export const SPIKE = {
   form: {
     legend: 'Situation',
     canton: 'Canton de travail',
-    cantonOptions: ['Geneve', 'Vaud', 'Valais', 'Neuchatel', 'Jura'],
-    teleworkDays: 'Jours de teletravail',
+    cantonOptions: ['Genève', 'Vaud', 'Valais', 'Neuchâtel', 'Jura'],
+    teleworkDays: 'Jours de télétravail',
     decrease: 'Diminuer',
     increase: 'Augmenter',
     contract: 'Temps de travail',
     fullTime: 'Temps plein',
     partTime: 'Temps partiel',
-    details: 'Details du calcul',
+    details: 'Détails du calcul',
     detailsBody:
-      'Le taux declarable est calcule sur les jours ouvres de l annee, hors ' +
-      'absences. Les jours de mission suivent une regle distincte.',
+      'Le taux déclarable est calculé sur les jours ouvrés de l’année, hors ' +
+      'absences. Les jours de mission suivent une règle distincte.',
   },
 
   table: {
-    caption: 'Recapitulatif mensuel',
+    caption: 'Récapitulatif mensuel',
     month: 'Mois',
-    worked: 'Jours travailles',
-    telework: 'Teletravail',
+    worked: 'Jours travaillés',
+    telework: 'Télétravail',
     rate: 'Taux',
     rows: [
       { month: 'Janvier', worked: '21', telework: '8', rate: '38,1 %' },
-      { month: 'Fevrier', worked: '20', telework: '7', rate: '35,0 %' },
+      { month: 'Février', worked: '20', telework: '7', rate: '35,0 %' },
       { month: 'Mars', worked: '22', telework: '9', rate: '40,9 %' },
       { month: 'Avril', worked: '20', telework: '6', rate: '30,0 %' },
       { month: 'Mai', worked: '21', telework: '8', rate: '38,1 %' },
@@ -55,13 +55,13 @@ export const SPIKE = {
   },
 
   banner: {
-    title: 'Seuil de 40 % approche',
-    body: 'Il reste 4 jours de teletravail avant le seuil fiscal.', // TODO-COPY
+    title: 'Seuil de 40 % approché',
+    body: 'Il reste 4 jours de télétravail avant le seuil fiscal.', // TODO-COPY
   },
 
   panel: {
-    title: 'Modifier la journee',
-    body: 'Choisissez le type de journee enregistre.', // TODO-COPY
+    title: 'Modifier la journée',
+    body: 'Choisissez le type de journée enregistré.', // TODO-COPY
     confirm: 'Enregistrer',
     cancel: 'Annuler',
   },

@@ -136,9 +136,9 @@ from the root layout so the spike route carries it too:
 
 | Island icons | raw bytes | gzip bytes |
 |---|---|---|
-| 12 (`Check, ChevronDown, Download, Minus, Plus, X` + 6 server-side) | 358 034 | 105 595 |
-| 11 (`Download` removed) | 357 807 | 105 526 |
-| **delta** | **−227** | **−69** |
+| 12 (`Check, ChevronDown, Download, Minus, Plus, X` + 6 server-side) | 358 075 | 105 624 |
+| 11 (`Download` removed) | 357 848 | 105 554 |
+| **delta** | **−227** | **−70** |
 
 **AC3, tree-shaking: PASS.** The bundle shrinks measurably when a single icon
 import is removed, which is what per-icon tree-shaking looks like: 227 raw
@@ -147,7 +147,12 @@ compresses to 69 bytes because icon path data is highly repetitive. If
 `lucide-react` were being pulled in whole, removing one of 12 icons would move
 nothing.
 
-The corollary is the useful one for FW8 onward: at about 69 gzip bytes per
+The measurement was taken twice, before and after the spike copy gained its
+French accents, and the raw delta was −227 bytes both times: the icon's cost
+is independent of the surrounding content, which is what makes it a clean
+tree-shake signal.
+
+The corollary is the useful one for FW8 onward: at about 70 gzip bytes per
 icon, the 22.5 KiB of Gate B headroom left after the representative set is
 worth roughly 330 further icons. Icons are not a budget risk on this project,
 and no icon-by-icon import discipline needs inventing.
