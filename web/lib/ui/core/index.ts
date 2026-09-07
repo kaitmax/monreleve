@@ -15,4 +15,6 @@ export type { LucideIconName, StatusVisual } from './zone-tokens';
 export { formatDays, formatPercent, formatSignedDays } from './format/number';
 export type { SignedDays } from './format/number';
 
-export { formatDate, formatDateTime, DATE_TIME_ZONE, DATE_ZONE } from './format/date';
+// DATE_ZONE is gone with ruling R28: formatDate takes an ISO YYYY-MM-DD
+// string, which carries no instant, so there is no zone to name.
+export { formatDate, formatDateTime, DATE_TIME_ZONE } from './format/date';

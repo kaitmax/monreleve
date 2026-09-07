@@ -54,10 +54,10 @@ const CASES = [
   ['formatDays(240)', formatDays(240), '240'],
   ['formatDays(96.5)', formatDays(96.5), `96${COMMA}5`],
   ['formatSignedDays(-12.5).text', formatSignedDays(-12.5).text, `12${COMMA}5`],
-  ['formatDate(2026-12-18Z)', formatDate(new Date('2026-12-18T00:00:00Z')), '18.12.2026'],
+  ['formatDate(2026-12-18)', formatDate('2026-12-18'), '18.12.2026'],
   [
     'formatDateTime(2027-06-18T16:03Z)',
-    formatDateTime(new Date('2027-06-18T16:03:00Z')),
+    formatDateTime('2027-06-18T16:03:00Z'),
     `18.06.2027 ${A_GRAVE} 18:03`,
   ],
 ];
