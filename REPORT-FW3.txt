@@ -1,0 +1,600 @@
+REPORT-FW3 - Calc engine, first half, with increment 0 housekeeping
+===========================================================================
+
+SUMMARY
+-------
+The engine exists and is pure. lib/calc-engine now carries the full SPEC 7.4
+type surface plus taxYear, the year-keyed RuleSet with every constant cited,
+regime derivation, granularity classification, the denominator, input
+validation, and allowedTeleworkDays. Zero runtime dependencies, no I/O, no
+clock, no imports out of the directory. 160 tests, and engine coverage is
+already 100 % on statements, branches, functions and lines.
+
+Every function was written test-first with its RED run captured, with one
+exception recorded plainly below: calculateTelework's seam test was written
+alongside its stub rather than before it.
+
+Two findings are worth the operator's attention. Prorating the denominator
+naively loses a whole day to binary floating point - 240 * 45/100 * 7/12 is
+exactly 63 but evaluates to 63.000000000000007 and rounds up to 64 - which
+would move the declarable rate filed with the AFC. Three such cases exist in
+the realistic input space; all three are now regression tests. And ruling R9's
+premise failed again: the corrected CLAUDE.md, DESIGN-SYSTEM.md and
+tasks/plan.md were not delivered, so R8 was implemented from the prompt text
+and DESIGN-SYSTEM.md remains two rulings behind the code.
+
+PRECONDITIONS
+-------------
+R1 - origin/main contains REPORT-FW2.txt and CI has a green run:  NOT MET.
+
+  $ git log --oneline -1 origin/main
+  389663b FW1: size budget script, Lighthouse stub, workbench stub
+
+  $ git cat-file -e origin/main:REPORT-FW2.txt        -> NO
+  $ git cat-file -e origin/main:.github/workflows/ci.yml -> NO
+
+  $ gh api -i user | grep -i x-oauth-scopes
+  X-Oauth-Scopes: gist, read:org, repo
+
+R1 as carried in this prompt says to record this under DEVIATIONS and proceed
+rather than stop, which is what happened. The workflow scope is still absent,
+so every push in this session was rejected as in FW1 and FW2, and CI has still
+never run. origin/main has not moved since FW1's fifth increment.
+
+Routes exhausted in the previous session and re-confirmed: HTTPS with the gh
+token is refused; SSH gives "Permission denied (publickey)" because the two
+keys on this machine are VPS keys not registered with GitHub; the contents API
+is gated by the same scope; gh auth refresh needs an interactive browser.
+
+R9 - the delivered documents:  NOT DELIVERED.
+
+  CLAUDE.md                MISSING
+  DESIGN-SYSTEM.md         present, byte-identical to its FW1 state
+  tasks/plan.md            present, byte-identical to its FW1 state
+  DESIGN-SYSTEM.md 4.1     does not exist
+
+  R9 itself says the earlier claim was wrong because "the edits existed only
+  outside the repository". The same thing has happened again. R8 is
+  implemented from this prompt's own text, which specifies it completely, and
+  neither document was rewritten, since R9 forbids that.
+
+Environment: node v22.14.0, pnpm 11.17.0, Windows 11 Pro 10.0.26200,
+next 15.5.25, react 19.2.8, typescript 5.9.3, vitest 5.0.0.
+
+INCREMENT 0
+-----------
+
+0a - HOUSEKEEPING (R9)                                   commit 4070e2f
+Moved FW3.txt to relay/FW3.txt for consistency with R3 and the FW1/FW2
+prompts. Nothing else to commit: see PRECONDITIONS. The commit message differs
+from the one the prompt specifies, which named landing three delivered
+documents; using it would have claimed something untrue.
+
+  typecheck + lint + test + build: exit 0
+  push: REJECTED (workflow scope)
+
+0b - RADIUS AT USE AND AT DEFINITION (R8)                commit 7101939
+Changed: web/lib/ui/core/styles/tokens.scss, web/.stylelintrc.mjs,
+web/app/dev/spike/spike.module.scss.
+Added: web/tests/unit/tokens/radius.test.ts.
+
+The token surface shrank from seventeen --radius-* properties to nine. The
+semantic aliases - --radius-card, --radius-button, --radius-input,
+--radius-sheet, --radius-badge, --radius-card-status, --radius-skeleton,
+--radius-toast - are gone, because R8(b) requires that NO other --radius-*
+property exists and an alias is a tenth name. --radius-button-large is renamed
+--radius-button-lg per R8's list. The spike stylesheet was remapped: card and
+banner to --radius-lg, buttons and inputs and the stepper to --radius-md, the
+sheet to --radius-2xl.
+
+R8(a) PROOF, at the point of use:
+
+  $ pnpm exec stylelint lib/ui/core/styles/_scratch-r8.scss
+
+  border-radius: 6px                                    REJECTED
+  border-radius: var(--space-2)                         REJECTED
+  border-radius: var(--radius-checkbox)                 accepted
+  border-radius: var(--radius-2xl) var(--radius-2xl) 0 0  accepted
+  border-radius: 0                                      accepted
+  border-radius: 50%                                    accepted
+
+  x 2 problems (2 errors, 0 warnings)
+    2:37  Radius takes a token name only (ruling R8): one of --radius-xs,
+          --radius-checkbox, --radius-sm, --radius-md, --radius-button-lg,
+          --radius-lg, --radius-xl, --radius-2xl, --radius-pill, or 0, or 50%.
+          A raw length is rejected even when its value is in the set.
+    3:39  (same, var(--space-2))
+
+  Scratch file removed; stylelint exit 0.
+
+R8(b) PROOF, at the point of definition. The test compiles the real
+tokens.scss with sass and reads the emitted custom properties, so what is
+asserted is what the browser receives:
+
+  GREEN, clean tree:   11 passed
+
+  RED, with --radius-foo: 7px planted:
+    FAIL  defines exactly the nine radius tokens and no others
+    AssertionError: expected [ '--radius-2xl', ...(9) ] to deeply equal
+                    [ '--radius-2xl', ...(8) ]
+    +   "--radius-foo",
+    FAIL  holds the closed numeric set {4, 6, 8, 12, 14, 16, 20, 24, 999}
+    AssertionError: expected [ 4, 6, 7, 8, 12, 14, 16, 20, 24, 999 ]
+                    to deeply equal [ 4, 6, 8, 12, 14, 16, 20, 24, 999 ]
+    Tests  2 failed | 9 passed (11)
+
+  Plant removed:       11 passed
+
+  Both assertions fire - the name list and the numeric set - so the 6-versus-7
+  proof has moved here from stylelint exactly as R8 directs.
+
+  full chain typecheck + lint + test + build + size: exit 0
+  push: REJECTED (workflow scope)
+
+RED/GREEN LEDGER
+----------------
+
+One row per function implemented in FW3. All test files are under
+web/tests/unit/calc-engine/.
+
+1. ruleSetFor                                    rules.test.ts
+   RED    TypeError: ruleSetFor is not a function
+          Tests 6 failed (6)
+          Reason: rules.ts did not exist.
+   GREEN  Tests 6 passed (6)
+
+2. regimeFor                                     regime.test.ts
+   RED    TypeError: regimeFor is not a function
+          Tests 27 failed of 29
+          Reason: regime.ts did not exist. The two passing tests are the
+          table's own guards - 26 cantons, eight of them 1983 - which do not
+          call the function.
+   GREEN  Tests 29 passed (29)
+
+3. classifyTeleworkHours                         granularity.test.ts
+   RED    TypeError: classifyTeleworkHours is not a function
+          Tests 25 failed (25)
+          Reason: granularity.ts did not exist.
+   GREEN  Tests 25 passed (25)
+
+4. resolveDenominator, ceilProrated              denominator.test.ts
+   RED    Error: Cannot find package '@/lib/calc-engine/denominator'
+          Test Files 1 failed, "no tests" - the module could not be resolved.
+          Reason: denominator.ts did not exist.
+   GREEN  Tests 16 passed (16)
+
+5. validateInput                                 validate.test.ts
+   RED    Error: Cannot find package '@/lib/calc-engine/validate'
+          Test Files 1 failed, "no tests".
+          Reason: validate.ts did not exist.
+   GREEN  Tests 37 passed (37)
+
+6. allowedTeleworkDays                           allowed-days.test.ts
+   RED    TypeError: allowedTeleworkDays is not a function
+          Tests 13 failed (13)
+          Reason: allowed-days.ts did not exist.
+   GREEN  Tests 13 passed (13)
+
+7. calculateTelework (the FW4 seam)              calculate-seam.test.ts
+   RED    NOT TEST-FIRST. See DEVIATIONS 1. The stub and its test were written
+          in the same step, so no RED preceded the implementation. The failure
+          was verified afterwards by removing calculate.ts and its export:
+            TypeError: calculateTelework is not a function
+            Tests 4 failed (4)
+          and the file restored:
+            Tests 4 passed (4)
+          That verification proves the test can fail. It does not prove the
+          test was written first, and the prompt is right to call the missing
+          row a defect. Recorded rather than presented as a RED.
+
+types.ts carries no functions, so it has no ledger row. Its type test asserts
+the surface with expectTypeOf, which tsc checks, so pnpm typecheck is the
+enforcement.
+
+INCREMENTS 1-6
+--------------
+
+INCREMENT 1 - Types and Result                           commit b58bc88
+Created: lib/calc-engine/types.ts, tests/unit/calc-engine/types.test.ts.
+Changed: lib/calc-engine/index.ts.
+
+types.ts transcribes SPEC 7.4 exactly, adds taxYear per 7.7, and adds the
+RuleSet interface from 7.7 and an AllowedTeleworkDays shape naming the 7.4
+return type. Everything readonly.
+
+The type test asserts TeleworkInput and TeleworkResult field for field, that
+Result is a discriminated union on ok, and that Canton is exactly 26 codes -
+checked two-way, so adding or dropping a canton in either the union or the
+test list is a compile error.
+
+Tests live in tests/unit/calc-engine, not beside the engine. A co-located test
+would have to import vitest, which the fence forbids; keeping them outside
+leaves the fence absolute instead of carving a test-shaped hole in it. This
+differs from the prompt's implied verification command - see DEVIATIONS 4.
+
+  full chain: exit 0        push: REJECTED (workflow scope)
+
+INCREMENT 2 - RuleSet(2026) and ruleSetFor               commit 8e3a396
+Created: lib/calc-engine/rules.ts, docs/regulatory-sources.md,
+tests/unit/calc-engine/rules.test.ts,
+tests/unit/calc-engine/no-magic-thresholds.test.ts.
+Changed: lib/calc-engine/index.ts, tests/harness.test.ts.
+
+Every constant carries its SPEC 7.1 source as a comment, and the set is frozen
+at both levels so a consumer cannot mutate the rules it was handed - asserted.
+
+ruleSetFor falls back to the latest known set for an unknown year. The
+fallback is surfaced by the returned set naming its own taxYear: ruleSetFor
+(2027) yields a set whose taxYear is 2026, so the substitution is visible and
+nothing is relabelled as the requested year. SPEC 7.7 fixes the signature as
+returning a bare RuleSet and the Warning union has no fallback code, so this
+is the only channel available without changing the public API - QUESTIONS 2.
+
+docs/regulatory-sources.md opens with a VERIFICATION PENDING - Checkpoint A
+banner. Not one figure has been checked against a primary source, and the file
+says so in its first screen rather than a footnote.
+
+This increment also corrected the FW1 harness smoke test, which asserted the
+calc-engine placeholder exported nothing. True of a placeholder, false once
+the engine has exports. It now asserts alias resolution, which is what it is
+for. The first attempt at this commit was made while that test was red; it was
+amended, not left in history - DEVIATIONS 2.
+
+  full chain: exit 0        push: REJECTED (workflow scope)
+
+INCREMENT 3 - regimeFor                                  commit ffcb64b
+Created: lib/calc-engine/regime.ts, tests/unit/calc-engine/regime.test.ts.
+Changed: lib/calc-engine/index.ts, lib/calc-engine/rules.ts.
+
+All 26 cantons written out with their expected regime, one case each. Looping
+over the implementation's own list would assert only that the list equals
+itself, and the eight-canton list is a regulatory fact that belongs where a
+reviewer can read it against the 1983 accord.
+
+GE has its own case even though the table covers it, because Geneva is the
+canton every fixture uses and it is NOT a 1983 canton - a bug that inverted
+the classification would still pass all six Geneva fixtures at FW4.
+
+regime.ts reads the canton list from the RuleSet rather than restating it.
+SPEC 7.4 gives regimeFor no taxYear parameter, so it resolves the latest known
+set through a new internal LATEST_KNOWN_TAX_YEAR which index.ts does not
+re-export, leaving the public surface unchanged - NOTICED 1.
+
+  full chain: exit 0        push: REJECTED (workflow scope)
+
+INCREMENT 4 - granularity                                commit 9eb2d3e
+Created: lib/calc-engine/granularity.ts,
+tests/unit/calc-engine/granularity.test.ts.
+Changed: lib/calc-engine/index.ts.
+
+The table covers 0, 1.9, 2, 2.5, 4, 4.1 and 8 hours against all three
+granularities, which is SPEC 7.6's named boundary set, plus four cases pinning
+the band edges: "over 4h" is strictly greater, so exactly 4 h is a half day
+and not a full one, and "2-4h" is inclusive at the bottom, so exactly 2 h is a
+half day and 1.9999 is zero. A reader could reasonably have read either edge
+the other way, which is why they are asserted rather than assumed.
+
+The mission-travel-day rules from SPEC 7.2 step 3 are recorded as comments and
+deliberately not implemented: they feed FW4's waterfall. They live in this
+file because it is the one about turning time into countable days.
+
+  full chain: exit 0        push: REJECTED (workflow scope)
+
+INCREMENT 5 - denominator and validation                 commit d578fa1
+Created: lib/calc-engine/denominator.ts, lib/calc-engine/validate.ts, and
+their two test files.
+
+THE FLOATING-POINT FINDING. Prorating the simplified basis naively loses a
+whole day. 240 * 45/100 * 7/12 is mathematically exactly 63, but in IEEE 754
+it evaluates to 63.000000000000007, and the rule rounds UP, so it becomes 64.
+Scanning employmentRate 1 to 100 against the eleven period fractions a
+mid-year start can produce found three such cases:
+
+  rate 45, period 7/12   naive 64   correct 63
+  rate 85, period 7/12   naive 120  correct 119
+  rate 90, period 7/12   naive 127  correct 126
+
+A one-day error in the denominator moves the declarable rate, which is the
+number filed with the AFC. ceilProrated multiplies before dividing and
+normalises to six decimals before rounding up; all three cases are regression
+tests. The comment states that the normalisation is float hygiene and NOT a
+regulatory rounding rule, so it is not mistaken for one at a site where SPEC
+7.3 requires the rule to be named.
+
+The normalisation factor is written 1e6 rather than 10 ** 6 because the
+increment-2 threshold guard caught the bare 10 - it cannot tell the base of a
+power of ten from the mission cap. Naming the constant beat exempting the
+file, and the guard earning its keep on the first new engine module is worth
+recording.
+
+resolveDenominator mirrors and does not judge: a non-positive supplied total
+passes through for validation to reject, and nothing divides before that
+check. The exact method surfaces EXACT_METHOD_UNVERIFIED.
+
+Validation returns every applicable error - proven by a case triggering four
+at once - and never throws, proven by handing it an input that is NaN in every
+numeric field. TOTAL_WORK_DAYS_NOT_POSITIVE deliberately suppresses
+DAYS_EXCEED_TOTAL: comparing against a non-positive total is meaningless and
+would send a form two contradictory messages about one field.
+
+  full chain: exit 0        push: REJECTED (workflow scope)
+
+INCREMENT 6 - allowedTeleworkDays and the FW4 seam       commit 13756f0
+Created: lib/calc-engine/allowed-days.ts, lib/calc-engine/calculate.ts, and
+their two test files.
+Changed: lib/calc-engine/index.ts, lib/calc-engine/rules.ts, package.json
+(adds @vitest/coverage-v8).
+
+atFiscal and atSocial are the ceilings in days, unrounded: SPEC 7.2 step 5
+defines fiscalCeiling as totalWorkDays * 0.40 with no rounding, and the
+floor-to-the-half-day rule of 7.3 governs headroom, a different quantity and
+FW4's. Whether the DISPLAY value should floor is QUESTIONS 3, not decided here.
+The mission cap rounds up at every rate tested - 1, 45, 50, 80, 100 - giving
+1, 5, 5, 8, 10.
+
+Validation is shared with calculateTelework rather than duplicated: the day
+fields are zeroed for the probe, so only the errors that apply to this
+question can surface.
+
+calculate.ts is the seam, documented at length in the file. calculateTelework
+is exported, runs FW3's validation so invalid input already gets its errors
+through the public API, and returns ok:false with an EMPTY error list for
+valid input. Its test fails when FW4 lands the waterfall, which is how the
+seam announces it has been closed.
+
+rules.ts was simplified while measuring coverage: ruleSetFor was a two-step
+lookup whose defensive fallback no test could reach, and it was the single
+uncovered branch. Naming the latest set directly removed the dead path and
+took branch coverage to 100 %.
+
+  full chain: exit 0        push: REJECTED (workflow scope)
+
+FENCE PROOF
+-----------
+R7 requires the straight violation and at least one evasion attempt. FW3 is
+the first real code inside the fence, so all three shapes increment 1 names
+were planted in lib/calc-engine and run against the committed config:
+
+  $ pnpm exec eslint lib/calc-engine
+
+  scratch-fence.ts
+    2:1   error  './../fr' import is restricted from being used by a pattern.
+                 lib/calc-engine imports nothing beyond its own files
+                 (SPEC section 5) ...                  no-restricted-imports
+
+  scratch-fence.tsx        (same import, alternate extension)
+    2:1   error  './../fr' import is restricted ...    no-restricted-imports
+
+  scratch-fence-dyn.ts     (dynamic import evasion)
+    2:36  error  lib/calc-engine imports nothing beyond its own files ...
+                                                       no-restricted-syntax
+
+  x 3 problems (3 errors, 0 warnings)
+
+  Scratch files removed; eslint lib/calc-engine exit 0.
+
+The './../fr' shape matters: it is the escape that defeated this fence in FW1
+and was closed in the FW1 review pass. The .tsx shape is the other FW1 hole.
+Both stay closed with real engine code in the directory.
+
+CONSTANT PROOF
+--------------
+no-magic-thresholds.test.ts implements SPEC 7.1's "a magic 0.4 or 240 anywhere
+in the code is a review rejection" and SPEC 7.7's "RuleSet is the only place a
+threshold may appear". It strips comments first, because the engine documents
+its own formulae in prose, then inspects executable literals only, and fails
+on any literal equal to 0.4, 0.499, 240 or 10 outside rules.ts.
+
+  Clean tree:                                    Tests 4 passed
+  With "export const PLANTED_BASIS = 240;" in types.ts:
+    FAIL  types.ts carries no bare 0.4, 0.499, 240 or 10
+    AssertionError: expected [ 240 ] to deeply equal []
+    Tests  1 failed | 3 passed
+  Plant removed:                                 Tests 4 passed
+
+The guard also asserts that rules.ts DOES contain all four, so it cannot pass
+by pointing at nothing, and that it found engine files to inspect, so it
+cannot pass vacuously if the directory layout changes.
+
+It then fired for real, unplanned, on denominator.ts - see INCREMENT 5.
+
+COVERAGE
+--------
+  $ pnpm exec vitest run --coverage.enabled --coverage.provider=v8 \
+      --coverage.include='lib/calc-engine/**' --coverage.reporter=text
+
+  Statements   : 100%  (67/67)
+  Branches     : 100%  (61/61)
+  Functions    : 100%  (9/9)
+  Lines        : 100%  (63/63)
+
+  160 tests, 11 files.
+
+The 100 % gate itself is FW5's task and is not wired here. @vitest/coverage-v8
+was added as a devDependency to produce this number; no coverage script or
+threshold was added, since configuring the gate is FW5's.
+
+DEVIATIONS
+----------
+
+1. calculateTelework WAS NOT WRITTEN TEST-FIRST. Its stub and its seam test
+   were written in the same step. The prompt says a function without a RED row
+   is a defect, and this is that defect. The failure was verified afterwards
+   by removing the file - "TypeError: calculateTelework is not a function",
+   4 failed - and restoring it, 4 passed. That proves the test can fail; it
+   does not prove it was written first, and the ledger says so rather than
+   presenting a retrofitted RED as if it were genuine. The other six functions
+   were all properly test-first.
+
+2. A RED COMMIT WAS MADE AND AMENDED. The first attempt at increment 2's
+   commit ran while tests/harness.test.ts was failing, because the shell
+   pattern used ran the commit regardless of the chain's exit code. The FW1
+   harness test asserted the calc-engine placeholder exported nothing, which
+   became false the moment ruleSetFor was exported. The commit was amended
+   with the fix rather than followed by a repair commit, so no red state
+   stands in history, and the command pattern was changed to && for the rest
+   of the session. Reported because a red commit is a bounce even when
+   amended within the minute.
+
+3. R9's DOCUMENTS WERE NOT DELIVERED, for the second time. See PRECONDITIONS.
+   R8 was implementable without them. The consequence is that DESIGN-SYSTEM.md
+   still documents seven radius names with no 6 and no section 4.1, while the
+   code enforces nine - so the normative design document and the lint now
+   disagree, and D35 makes DESIGN-SYSTEM.md the single source. QUESTIONS 1.
+
+4. ENGINE TESTS LIVE OUTSIDE lib/calc-engine. tasks/todo.md FW3's verification
+   names "pnpm vitest run lib/calc-engine", which implies co-located tests. A
+   co-located test must import vitest, which the fence rejects, so the choice
+   was between exempting *.test.ts from the fence and putting the tests in
+   tests/unit/calc-engine - which is the layout tasks/todo.md's own "Files
+   likely touched" line specifies. The equivalent command is
+   "pnpm exec vitest run tests/unit/calc-engine".
+
+5. classifyTeleworkHours DOES NOT RETURN A VALIDATION ERROR FOR NEGATIVE
+   INPUT. The prompt's increment 4 says it should. SPEC 7.4 types it as
+   returning a number, so it has no channel for one, and the prompt says the
+   spec wins on conflict. It is total instead: negative or non-finite input
+   returns 0, and negative day counts are rejected upstream by validate.ts
+   with NEGATIVE_DAYS, which is asserted.
+
+6. THE GRANULARITY CHECK COVERS 'halfDay' AS WELL AS 'day'. The prompt names
+   only "a half-day value under granularity 'day'". Restricting it to that
+   would silently accept 10.3 days under 'halfDay', which is the same class of
+   error. Both are enforced: 'day' requires whole days, 'halfDay' requires
+   multiples of a half, 'hours' accepts any non-negative value. Flagged
+   because it is one step beyond the instruction.
+
+7. tasks/todo.md FW3's GREP VERIFICATION DOES NOT MATCH THE LAYOUT. It reads
+   "grep -rn '0\.4\|240' lib/calc-engine/src --include='*.ts'". There is no
+   src/ subdirectory - the prompt's own increment paths are
+   lib/calc-engine/types.ts and lib/calc-engine/rules.ts. The intent is served
+   mechanically and more precisely by no-magic-thresholds.test.ts, which
+   inspects literals rather than text and cannot be fooled by a comment.
+
+8. @vitest/coverage-v8 WAS ADDED as a devDependency to report the coverage
+   number increment 6 asks for. It is part of the web testing stack SPEC
+   section 3 names and is not a runtime dependency of the engine.
+
+9. NO COMMIT REACHED origin/main, for the third session running.
+
+NOTICED BUT NOT TOUCHING
+------------------------
+
+1. regimeFor CANNOT HONOUR A FUTURE RULE SET. SPEC 7.4 gives it no taxYear
+   parameter, so it resolves the latest known set. If a future RuleSet ever
+   changed the 1983-canton list, regimeFor would answer for the newest year
+   whatever year the dossier is for, while calculateTelework - which resolves
+   its set from input.taxYear per 7.7 - would answer correctly. Harmless while
+   2026 is the only set. It becomes a real inconsistency the day a second set
+   is added, which SPEC 7.7 already gates behind its own fixture file.
+
+2. THE CANTON LIST EXISTS TWICE. types.ts declares the Canton union and
+   rules.ts lists the eight 1983 cantons; the type test and regime test each
+   restate the full 26 deliberately, to avoid asserting a list against itself.
+   That is intended. Worth knowing that adding a canton means four edits, all
+   of which fail loudly.
+
+3. SPEC 7.2 STEP 3's MISSION-TRAVEL RULES HAVE NO HOME YET. They are
+   documented in granularity.ts and implemented nowhere. They decide whether a
+   day enters missionDaysFrance or missionDaysThirdState at all, which is a
+   question resolved before the engine is called. FW4 owns the waterfall; who
+   owns the classification of a travel day is not stated in any task.
+
+4. THE FW1 AND FW2 GAPS ARE UNCHANGED: boundary 3 of 5 (lib/ui imports types
+   from calc-engine, never logic) is still unfenced; the token fence can still
+   be laundered through a Sass variable or a custom property; raw values in
+   React inline style objects are still invisible to stylelint; app/page.tsx
+   still collides with SPEC 5's app/(public)/page.tsx at FW10; and
+   prompts/design-frontier/ still does not exist.
+
+5. tasks/plan.md's PHASE 1 LIST STILL CALLS FW2 "Carbon budget spike".
+
+QUESTIONS FOR THE OPERATOR
+--------------------------
+
+1. DESIGN-SYSTEM.md IS NOW TWO RULINGS BEHIND THE CODE, and D35 makes it the
+   single source of visual truth. It documents seven radius names, no 6 px,
+   and no section 4.1; the code and lint enforce nine names including
+   --radius-checkbox and --radius-button-lg. R4 and R9 both told me not to
+   edit it. Do you want me to write the section 4.1 and the corrected radius
+   block in a housekeeping commit, or will you deliver the file? The same
+   question applies to CLAUDE.md, now missing for a third session, and to
+   tasks/plan.md, which R7 says carries the adversarial-proof rule and does
+   not.
+
+2. HOW SHOULD A RULE-SET FALLBACK BE SURFACED? SPEC 7.7 says ruleSetFor
+   "falls back to the latest known set with a warning", but types it as
+   returning a bare RuleSet, and the SPEC 7.4 Warning union has no code for a
+   fallback. Today the only signal is that the returned set names its own
+   taxYear, which a caller must think to compare. When FW4 computes a dossier
+   for 2027 under the 2026 rules, that fact should almost certainly reach the
+   user, which needs either a RULE_SET_FALLBACK warning code - a public API
+   change, ask-first - or a different return shape. Deciding before FW4 is
+   cheaper than after.
+
+3. SHOULD allowedTeleworkDays FLOOR TO THE HALF DAY? It currently returns the
+   ceilings unrounded: 96 and 119.76 at full time. That matches SPEC 7.2 step
+   5's definition of fiscalCeiling. But this function exists to tell a user
+   how much room they have, and SPEC 7.3 says advisory headroom floors to the
+   half day so that a user is never told they have more room than they do -
+   119.76 shown as "119.76 days" would be both odd and slightly generous. My
+   reading is that the engine should return the exact ceiling and FW12 should
+   floor for display, but the rounding rule is yours and I have not chosen
+   one.
+
+4. THE NOT-IMPLEMENTED SENTINEL. calculateTelework returns ok:false with an
+   empty error list for valid input, because SPEC 7.4's ValidationError union
+   is a closed list of six input problems and adding a not-implemented code
+   would change the public API and need French copy for an unreachable state.
+   The prompt asked for a not-implemented ValidationError; the spec has none.
+   Confirm the empty list is acceptable for the days until FW4 lands, or say
+   to add the code and I will.
+
+5. WHO CLASSIFIES A MISSION TRAVEL DAY? See NOTICED 3. SPEC 7.2 step 3 states
+   the rules; no task owns implementing them, and they determine the engine's
+   inputs rather than its output. If they belong to the Android logging flow
+   they are AN9's; if they belong to the calculator they are FW11's.
+
+PUSH PROOF
+----------
+
+Session commits, oldest first:
+
+  4070e2f  chore: land relay/FW3.txt; R9 documents were not delivered
+  7101939  chore: radius enforced at use and at definition (R8)
+  b58bc88  FW3: engine type surface and Result
+  8e3a396  FW3: RuleSet 2026, ruleSetFor, source register
+  ffcb64b  FW3: regime derivation from canton
+  9eb2d3e  FW3: granularity classification
+  d578fa1  FW3: denominator and input validation
+  13756f0  FW3: allowed-days helper and explicit FW4 seam
+
+Pushes that succeeded: none.
+
+Every attempt returned:
+
+  ! [remote rejected] main -> main (refusing to allow an OAuth App to create
+    or update workflow `.github/workflows/ci.yml` without `workflow` scope)
+
+origin/main is at 389663b. Local main is ahead by twenty-four commits: five
+from FW1, ten from FW2, eight from this session, and this report.
+
+FINAL VERIFICATION
+------------------
+
+  $ pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm size
+
+  typecheck  exit 0
+  lint       exit 0
+  test       Test Files 11 passed (11) | Tests 160 passed (160)
+  build      exit 0, 4 static routes prerendered
+  size       exit 0, all gated routes pass both gates
+
+  chain exit 0
+
+Green in one run on the final commit.
+
+CI green on origin/main: NOT VERIFIED. Nothing has reached origin/main, so no
+CI run exists.
+
+END OF REPORT
