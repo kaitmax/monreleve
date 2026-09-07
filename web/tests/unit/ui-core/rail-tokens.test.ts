@@ -73,16 +73,25 @@ describe('the rail geometry constants mirror real tokens', () => {
     expect(H2_SIZE).toBe(pixels(defined['--type-h2-size'] ?? ''));
   });
 
-  it('records that TICK_WIDTH has no token, rather than pretending it does', () => {
-    // 1.5 px is not in the spacing scale and no token carries it: it comes
-    // from the FW7 brief, and a design brief elsewhere draws 2 px. Asserting
-    // the ABSENCE keeps that honest - if a token for it ever appears, this
-    // test fails and the constant should become a mirror like the two above.
-    const spacingValues = Object.entries(defined)
-      .filter(([name]) => name.startsWith('--space-'))
-      .map(([, value]) => pixels(value));
+  it('TICK_WIDTH equals --size-tick', () => {
+    // This was an ABSENCE assertion for two increments. 1,5 px belonged to no
+    // token family, so rather than borrow one that meant something else the
+    // test pinned that it was NOT in the spacing scale and said so out loud -
+    // "if a token for it ever appears, this test fails and the constant
+    // should become a mirror". R46 made it 2 px and R62 added --size-tick, so
+    // it has done its job and becomes a mirror like the others.
+    expect(TICK_WIDTH).toBe(pixels(defined['--size-tick'] ?? ''));
+  });
 
-    expect(spacingValues).not.toContain(TICK_WIDTH);
-    expect(TICK_WIDTH).toBe(2);
+  it('the new size family carries the documented values (R62)', () => {
+    // Added because three components had otherwise borrowed a token that
+    // meant something else. Pinned so the values cannot drift from
+    // DESIGN-SYSTEM.md section 1, the way radius.test.ts pins the radius set.
+    expect(pixels(defined['--size-icon-sm'] ?? '')).toBe(16);
+    expect(pixels(defined['--size-icon'] ?? '')).toBe(20);
+    expect(pixels(defined['--size-icon-lg'] ?? '')).toBe(24);
+    expect(pixels(defined['--size-dot'] ?? '')).toBe(6);
+    expect(pixels(defined['--size-dot-lg'] ?? '')).toBe(8);
+    expect(pixels(defined['--size-tick'] ?? '')).toBe(2);
   });
 });

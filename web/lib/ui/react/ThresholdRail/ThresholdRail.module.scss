@@ -5,13 +5,9 @@
 // names are camelCase because a CSS Module is addressed as styles.legendItem
 // from TypeScript.
 //
-// THE DOT IS 8 px, NOT THE 6 px THE BRIEF ASKS FOR. No spacing token carries
-// 6: the scale runs 4, 8, 12, 16. Three 6 px tokens exist -
-// --radius-checkbox, --size-input-label-gap and --size-confidence-height -
-// and borrowing any of them would be a semantic alias of exactly the kind
-// DESIGN-SYSTEM.md section 4.1 removed from the radius scale ("an alias is a
-// tenth name"). Adding a token is an ask-first item, so the deviation is
-// recorded in REPORT-FW8.txt instead of invented here. Two pixels.
+// The dot is 6 px, which is what the brief asked for. It was 8 px for one
+// increment because no token carried 6 and the three that did meant other
+// things; ruling R62 added --size-dot and the deviation is closed.
 
 .root {
   display: flex;
@@ -57,7 +53,7 @@
 
 .dot {
   flex: none;
-  width: var(--space-2);
-  height: var(--space-2);
+  width: var(--size-dot);
+  height: var(--size-dot);
   border-radius: 50%;
 }

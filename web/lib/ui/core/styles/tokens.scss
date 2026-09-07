@@ -173,6 +173,17 @@ $size-toast-min-width: 320px;
 $size-toast-max-width: 420px;
 $size-progress-height: 8px;
 $size-confidence-height: 6px;
+
+// Ruling R62. Three components had reached for a token that meant something
+// else - a spinner's size for a chip icon, a spacing step for a legend dot -
+// because no family named these. Aliasing is what DESIGN-SYSTEM.md section
+// 4.1 removed from the radius scale, so the names are added instead.
+$size-icon-sm: 16px;
+$size-icon: 20px;
+$size-icon-lg: 24px;
+$size-dot: 6px;
+$size-dot-lg: 8px;
+$size-tick: 2px;
 $size-radio: 22px;
 $size-radio-inner: 10px;
 $size-checkbox: 22px;
@@ -317,6 +328,12 @@ $motion-toast-max: 5000ms;
   --size-toast-max-width: #{$size-toast-max-width};
   --size-progress-height: #{$size-progress-height};
   --size-confidence-height: #{$size-confidence-height};
+  --size-icon-sm: #{$size-icon-sm};
+  --size-icon: #{$size-icon};
+  --size-icon-lg: #{$size-icon-lg};
+  --size-dot: #{$size-dot};
+  --size-dot-lg: #{$size-dot-lg};
+  --size-tick: #{$size-tick};
   --size-radio: #{$size-radio};
   --size-radio-inner: #{$size-radio-inner};
   --size-checkbox: #{$size-checkbox};

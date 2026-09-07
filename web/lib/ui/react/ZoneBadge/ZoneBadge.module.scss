@@ -32,17 +32,12 @@
   line-height: var(--type-body-m-line);
 }
 
-// NO ICON-SIZE TOKEN EXISTS. The --size-* family names buttons, inputs,
-// switches and a spinner; none of them means "the size of an icon inside a
-// chip". --size-spinner is 20 px and would fit, but borrowing it is the
-// semantic aliasing DESIGN-SYSTEM.md section 4.1 removed from the radius
-// scale. --space-5 is the same 20 px from a family that at least means a
-// measurement. Recorded in REPORT-FW8.txt beside TICK_WIDTH's 1,5 px and the
-// legend dot's 6 px - three instances of the same gap.
+// --size-icon exists as of ruling R62, which added the family this had been
+// borrowing --space-5 for.
 .icon {
   display: inline-flex;
-  width: var(--space-5);
-  height: var(--space-5);
+  width: var(--size-icon);
+  height: var(--size-icon);
 }
 
 .explanation {

@@ -18,6 +18,8 @@ TYPE: Display 48/56 600 (large statistics only) · H1 32/40 700 · H2 24/32 700 
 
 SPACING: 4 px base. 4 · 8 · 12 · 16 · 20 · 24 · 28 · 32 · 40 · 48 · 64 · 80. Screen horizontal padding 20 px (mobile), 32 px (desktop, max content 1440).
 
+SIZES — icons, dots and tick marks (ruling R62): `icon-sm` 16 · `icon` 20 · `icon-lg` 24 · `dot` 6 · `dot-lg` 8 · `tick` 2. Added because three components had otherwise borrowed a token that meant something else — a spinner's height for a chip icon, a spacing step for a legend dot — and a semantic alias is exactly what §4.1 removed from the radius scale. Sizes that a component measures in code (the rail's geometry) mirror these by test rather than referencing them, because an SVG geometry attribute resolves `var()` to zero when no cascade is present.
+
 RADIUS — a closed set of nine token names, never arbitrary (see §4.1):
   xs 4 · checkbox 6 · sm 8 · md 12 · button-lg 14 · lg 16 · xl 20 · 2xl 24 · pill 999.
   Component mapping (this is where it lives; there are no CSS aliases): Buttons and inputs md · Large primary button button-lg · Small badge sm · Checkbox checkbox · Card lg · Large status card xl · Bottom sheet 2xl (top corners) · Skeleton sm · Toast md · Chips/progress/confidence bars pill.
