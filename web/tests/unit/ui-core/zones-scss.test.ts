@@ -28,7 +28,7 @@ import { join } from 'node:path';
 import stylelint from 'stylelint';
 import { compileString } from 'sass';
 import { describe, expect, it } from 'vitest';
-import { STATUS_VISUAL, ZONE_BAND_TOKEN } from '@/lib/ui/core/zone-tokens';
+import { ZONE_BAND_TOKEN } from '@/lib/ui/core/zone-tokens';
 import { renderZonesScss } from '../../../scripts/generate-zones-scss.mjs';
 
 const STYLES = join(process.cwd(), 'lib', 'ui', 'core', 'styles');
@@ -38,7 +38,7 @@ const TARGET = join(STYLES, '_zones.scss');
 const TARGET_FOR_GIT = 'lib/ui/core/styles/_zones.scss';
 
 const onDisk = () => readFileSync(TARGET);
-const expected = () => Buffer.from(renderZonesScss(ZONE_BAND_TOKEN, STATUS_VISUAL), 'utf8');
+const expected = () => Buffer.from(renderZonesScss(ZONE_BAND_TOKEN), 'utf8');
 
 /**
  * The file with its `//` comments removed.
@@ -136,22 +136,31 @@ describe('_zones.scss carries token references and never a colour', () => {
 });
 
 describe('_zones.scss covers the mapping completely and reaches the browser', () => {
-  it('emits one class per Zone and one per Status', () => {
+  it('emits one class per Zone and nothing at all for Status (R31)', () => {
     const text = onDisk().toString('utf8');
 
     for (const zone of Object.keys(ZONE_BAND_TOKEN)) {
       expect(text).toContain(`.zone-${zone} {`);
     }
-    for (const status of Object.keys(STATUS_VISUAL)) {
-      expect(text).toContain(`.status-${status} {`);
-    }
 
-    // ...and no more than that, so a stale class left behind by a renamed
-    // Status cannot linger.
+    // R31. Status styling belongs to FW8, whose badge is a .tsx with a
+    // COLOCATED CSS MODULE - and a module addresses its classes as styles.x,
+    // so its selectors are camelCase while this global partial is kebab-case
+    // (.stylelintrc.mjs enforces both). A global .status-mission-exposure is
+    // therefore not consumable there: it would be dead CSS that still had to
+    // be kept in step with the mapping. The badge reads the token NAMES from
+    // zones.ts in TypeScript instead, which is the single source either way.
+    //
+    // Scanned with comments stripped: the generated header explains this very
+    // ruling and names ".status-mission-exposure" in prose, so checking the
+    // raw text finds the explanation and fails. Second time this file has hit
+    // that - the var() check above strips comments for the same reason.
+    expect(declarations()).not.toMatch(/\.status-/);
+
+    // ...and no more than the three, so a stale class left behind by a
+    // renamed Zone cannot linger.
     const classes = [...text.matchAll(/^\.([a-z-]+) \{/gm)].map((match) => match[1]);
-    expect(classes.length).toBe(
-      Object.keys(ZONE_BAND_TOKEN).length + Object.keys(STATUS_VISUAL).length,
-    );
+    expect(classes.length).toBe(Object.keys(ZONE_BAND_TOKEN).length);
   });
 
   it('is reachable from global.scss, so the classes actually ship', () => {
@@ -166,9 +175,6 @@ describe('_zones.scss covers the mapping completely and reaches the browser', ()
 
     for (const zone of Object.keys(ZONE_BAND_TOKEN)) {
       expect(css).toContain(`.zone-${zone}`);
-    }
-    for (const status of Object.keys(STATUS_VISUAL)) {
-      expect(css).toContain(`.status-${status}`);
     }
   });
 });

@@ -6,9 +6,4 @@
 // rendering logic in the test would be the very duplication the generated
 // file exists to prevent.
 
-import type { StatusVisual } from '../lib/ui/core/zone-tokens';
-
-export function renderZonesScss(
-  bandTokens: Readonly<Record<string, string>>,
-  statusVisuals: Readonly<Record<string, StatusVisual>>,
-): string;
+export function renderZonesScss(bandTokens: Readonly<Record<string, string>>): string;

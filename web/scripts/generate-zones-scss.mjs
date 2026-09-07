@@ -50,17 +50,21 @@ const HEADER = `// web/lib/ui/core/styles/_zones.scss
 // zones:check\` fails if this file and that module disagree, and runs on
 // prebuild and in CI.
 //
-// Every class assigns CUSTOM PROPERTIES and no visual declarations. That is
-// deliberate: the mapping is a token mapping, not a component style. FW7's
-// rail fills with var(--zone-colour) and FW8's badge - a CSS module, where
-// class names are camelCase and a global kebab-case class is not consumable
-// as styles.x - reads var(--status-colour). Emitting finished component
-// styles here would fix their styling architecture one and two tasks early.
+// Every class assigns a CUSTOM PROPERTY and no visual declarations. The
+// mapping is a token mapping, not a component style: FW7's rail fills with
+// var(--zone-colour), and emitting a finished component style here would fix
+// the rail's styling architecture from the wrong file.
 //
-// SPEC 6.2: the rail is coloured by ZONE and the badge by STATUS. Colouring
-// the rail by Status is a review rejection, which is why these are two
-// separate class families over two separate custom properties, and never one
-// family keyed on a name that appears in both unions.
+// ZONE ONLY, per ruling R31. Status styling belongs to FW8, whose badge is a
+// .tsx with a colocated CSS MODULE - module selectors are camelCase because
+// they are addressed as styles.x, while this global partial is kebab-case, so
+// a global .status-mission-exposure could not be consumed there at all. It
+// would be dead CSS that still had to be kept in step with the mapping. The
+// badge reads the token NAMES from zones.ts in TypeScript, which is the same
+// single source (SPEC 20) by a shorter route.
+//
+// SPEC 6.2: the rail is coloured by ZONE and never by Status - that is a
+// review rejection - which is why this file knows only about Zone.
 `;
 
 /**
@@ -72,21 +76,11 @@ const HEADER = `// web/lib/ui/core/styles/_zones.scss
  * choose freely here because every rule sets custom properties on a distinct
  * class, so no two rules can interact through the cascade.
  */
-export function renderZonesScss(bandTokens, statusVisuals) {
+export function renderZonesScss(bandTokens) {
   const blocks = [];
 
   for (const zone of Object.keys(bandTokens).sort()) {
     blocks.push(`.zone-${zone} {\n  --zone-colour: var(${bandTokens[zone]});\n}`);
-  }
-
-  for (const status of Object.keys(statusVisuals).sort()) {
-    const { colourToken, softColourToken } = statusVisuals[status];
-    blocks.push(
-      `.status-${status} {\n` +
-        `  --status-colour: var(${colourToken});\n` +
-        `  --status-colour-soft: var(${softColourToken});\n` +
-        `}`,
-    );
   }
 
   // Trailing newline, and exactly one. stylelint-config-standard-scss
@@ -95,11 +89,11 @@ export function renderZonesScss(bandTokens, statusVisuals) {
 }
 
 async function expected() {
-  const { STATUS_VISUAL, ZONE_BAND_TOKEN } = await import(
+  const { ZONE_BAND_TOKEN } = await import(
     `file://${SOURCE_MODULE.replace(/\\/g, '/')}`
   );
 
-  return renderZonesScss(ZONE_BAND_TOKEN, STATUS_VISUAL);
+  return renderZonesScss(ZONE_BAND_TOKEN);
 }
 
 async function main() {
