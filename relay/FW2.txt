@@ -1,0 +1,232 @@
+FW2 SESSION PROMPT - frontalier
+Paste this entire prompt as the first message of a fresh Claude Code
+session, opened at the repository root.
+
+====================================================================
+PRE-STEP RULINGS (from the FW1 report, 07.09.2026 - apply verbatim)
+====================================================================
+R1. FW1 is ACCEPTED, conditional on the five local commits and
+    REPORT-FW1.txt reaching origin/main and CI having run. The
+    operator runs the token refresh and push; you verify at the start
+    of this session that origin/main contains REPORT-FW1.txt. If it
+    does not: STOP and report.
+
+R2. BUDGET. The 100 KB public budget was set against an older
+    framework baseline and is not achievable on Next 15 + React 19
+    (bare page measured at 100.6 KB). New rule, replacing spec
+    section 17's web row:
+      - GATE A: total first-load JS per public route <= 125 KB gzip.
+      - GATE B: feature delta <= 25 KB, where feature delta = route
+        total minus FRAMEWORK_BASELINE_KB.
+      - FRAMEWORK_BASELINE_KB is a constant in
+        web/scripts/check-budgets.mjs, set to the measured bare-page
+        value from FW1 (100.6), annotated with the Next and React
+        versions and the date. It may be re-measured only on a
+        framework upgrade, in its own commit titled "chore: re-baseline
+        framework floor".
+      - Fonts and CSS are reported in their own lines and NEVER
+        counted against a JS gate.
+    pnpm size must be green after this change on the current tree.
+
+R3. REPO LAYOUT. plan.md and todo.md move to tasks/ (git mv), where
+    every prompt and README.md already point. Root CLAUDE.md (new
+    file, provided by the operator alongside this prompt) is committed
+    at the repo root.
+
+R4. RADIUS 6. The checkbox radius of 6 (Frontier section 38) is added
+    to the token set. The web token layer gains --radius-checkbox: 6px;
+    the stylelint allow-list and any documented set now read
+    {4, 6, 8, 12, 14, 16, 20, 24, 999}. DESIGN-SYSTEM.md and the spec
+    have been updated by the operator; do not edit them.
+
+R5. DARK-MODE TOKENS stay, inert. They are defined but nothing wires
+    prefers-color-scheme or a theme switch. Add a one-line comment
+    above the dark block: "Defined per DESIGN-SYSTEM.md D39; not
+    wired; light ships first." Nothing else.
+
+R6. PARENT CLAUDE.md. The frontalier repository must not live inside
+    the Tizi workspace tree. The operator relocates it to a sibling
+    directory before this session. If, at session start, any
+    CLAUDE.md above the repo root is visible to you, note it under
+    DEVIATIONS and follow this repository's CLAUDE.md and README.md
+    exclusively.
+
+R7. GUARDRAIL PROOFS ARE ADVERSARIAL from now on. Any lint fence
+    proof must include the straight violation AND at least one
+    evasion attempt (path trick, alternate extension, re-export,
+    dynamic import). This is now in tasks/plan.md Test Discipline.
+
+====================================================================
+CONTEXT
+====================================================================
+Project: frontalier. You are executing task FW2 ONLY, as defined in
+tasks/todo.md, preceded by a housekeeping increment 0 that applies
+R2-R5. Read first: README.md, CLAUDE.md, SPEC-frontalier-web.md
+sections 3, 6, 17, 20, DESIGN-SYSTEM.md section 1, tasks/plan.md,
+tasks/todo.md FW2, relay/PHASE-1.md, and REPORT-FW1.txt in full.
+
+====================================================================
+STANDING PROTOCOL (identical in every FW / AN prompt)
+====================================================================
+1. SESSION SCOPE. This session implements increment 0 and FW2, and
+   nothing else. Do not start FW3.
+2. INCREMENT CYCLE. implement -> test -> verify -> commit -> push,
+   per increment. Build and existing tests green after EVERY
+   increment. Never more than ~100 lines uncommitted.
+3. COMMIT ONLY ON GREEN. pnpm typecheck, lint, test, build all green
+   on the increment or no commit. A red commit is a bounce.
+4. COMMITS. "FW2: <increment title>"; housekeeping uses
+   "chore: <title>". Push after each increment; capture the output.
+5. SIMPLICITY FIRST. Naive, obviously-correct version. No abstraction
+   before the third use.
+6. TEST-FIRST. RED before GREEN for behavior; reproduction test before
+   any fix; outcomes not call sequences; real implementations over
+   mocks; repo scripts; no re-runs on unchanged code.
+7. UI DISCIPLINE. DESIGN-SYSTEM.md tokens only (radius set now
+   includes 6); Inter with tabular numerals; Lucide; no shadows on
+   cards; French strings only in lib/fr.
+8. SCOPE DISCIPLINE. Touch only what increment 0 and FW2 require.
+   Out-of-scope observations go under NOTICED BUT NOT TOUCHING.
+9. QUESTIONS. Spec section 20 "Ask first" items or any ambiguity:
+   PAUSE, ask the operator, record the ruling VERBATIM.
+10. EXIT ARTIFACT. REPORT-FW2.txt at the repo root, committed and
+    pushed, in the format at the bottom. Not done until it exists.
+Pure ASCII for prompts and reports; code may contain accented French.
+
+====================================================================
+PRECONDITIONS (verify first, report)
+====================================================================
+- origin/main contains REPORT-FW1.txt and the CI workflow (R1).
+- Node 22, pnpm >= 9; record versions.
+- The repo root contains CLAUDE.md (R3). No CLAUDE.md is visible
+  above the repo root (R6). Report either way.
+
+====================================================================
+INCREMENT 0 - HOUSEKEEPING (rulings R2-R5), one commit per ruling
+====================================================================
+0a. git mv plan.md tasks/plan.md; git mv todo.md tasks/todo.md; add
+    CLAUDE.md at root. Verify README.md and relay/ references resolve.
+    Commit: "chore: move plan and todo into tasks/, add CLAUDE.md".
+0b. Budget script per R2: add FRAMEWORK_BASELINE_KB with annotation;
+    implement GATE A (<= 125 total) and GATE B (<= 25 delta); print
+    per-route table with columns route | js total | delta | css |
+    fonts | verdict; JS gates never include css or fonts. Run pnpm
+    size: must be GREEN on the current tree. Paste the table in the
+    report. Commit: "chore: budget gates per ruling R2 - total and
+    feature delta over recorded framework baseline".
+0c. Radius 6 per R4: token --radius-checkbox: 6px; stylelint allow-
+    list updated. Prove by planting border-radius: 6px (accepted) and
+    border-radius: 7px (rejected); capture; remove the 7px plant.
+    Commit: "chore: add checkbox radius token (6) per ruling R4".
+0d. Dark-mode comment per R5. Commit: "chore: annotate inert dark-mode
+    tokens per ruling R5".
+After 0a-0d: pnpm typecheck && pnpm lint && pnpm test && pnpm build
+&& pnpm size all green. CI must be green on origin/main before FW2
+work begins; if it is not, fix within increment 0 and report.
+
+====================================================================
+TASK FW2 - BUNDLE BUDGET SPIKE (fail fast)
+====================================================================
+Objective (tasks/todo.md): build one throwaway-but-kept page under
+/dev/spike assembling a representative set of OUR components - a
+header with nav, a form with a select and a number input with
+stepper, an accordion, a table, a bottom-sheet-style panel, a banner
+- plus the Inter variable font and a dozen distinct Lucide icons, and
+measure real gzipped first-load JS and the font payload. Subset and
+preload the font. Record everything in docs/perf-spike.md and reach
+a go / escalate decision against the R2 gates.
+
+The components built here are SPIKE QUALITY: minimal, unstyled beyond
+tokens, no tests beyond a render smoke, and they live under
+app/dev/spike/. They are NOT the lib/ui components of FW8-FW9 and
+must not be imported from anywhere else. A lint rule or a comment
+header stating this is required.
+
+Acceptance criteria (restated; the report must prove each):
+AC1. Measured first-load gzip for /dev/spike recorded with the exact
+     import list, alongside the bare / route, in docs/perf-spike.md.
+AC2. FRAMEWORK_BASELINE_KB recorded with versions and date; both
+     gates enforced; pnpm size GREEN on the spike page - or an
+     escalation written down with the two or three concrete options
+     and their measured effect.
+AC3. Tree-shaking verified: removing one Lucide icon import
+     measurably shrinks the bundle (before/after numbers); the font
+     subset is under 60 KB and reported separately from JS.
+
+--------------------------------------------------------------------
+INCREMENT 1 - Spike page skeleton and measurement harness
+--------------------------------------------------------------------
+- app/dev/spike/page.tsx with noindex metadata, rendering a header
+  and one paragraph from lib/fr. Extend pnpm size to list /dev/spike.
+- Record the numbers for / and /dev/spike at this point (near-empty)
+  in docs/perf-spike.md as the first row.
+- Commit: "FW2: spike page skeleton and measurement rows". Push.
+
+--------------------------------------------------------------------
+INCREMENT 2 - Representative component set
+--------------------------------------------------------------------
+- Add to the spike page, in this order, using tokens only: header
+  with four nav links and a primary button; a form card with a
+  select, a number input with minus/plus steppers, two radios, an
+  accordion row; a table with six rows and hairline rules; a banner
+  with a 4 px accent; a panel styled like a bottom sheet (static,
+  radius 24 top); twelve distinct Lucide icons across these.
+- Measure. Record the second row in docs/perf-spike.md with the
+  import list.
+- Commit: "FW2: representative component set on the spike page".
+  Push.
+
+--------------------------------------------------------------------
+INCREMENT 3 - Font subset, preload, and Lucide tree-shake proof
+--------------------------------------------------------------------
+- Ensure Inter is served as a subset (latin + latin-ext only), woff2,
+  preloaded, with tnum available. Measure the font payload; record.
+- Tree-shake proof: remove one Lucide icon import, rebuild, record
+  the delta; restore it.
+- Commit: "FW2: font subset and tree-shake evidence". Push.
+
+--------------------------------------------------------------------
+INCREMENT 4 - Decision
+--------------------------------------------------------------------
+- docs/perf-spike.md: final table (route | js total | delta over
+  baseline | css | fonts), the gate results, and a decision:
+    GO      - both gates green with the representative set, or
+    ESCALATE - which gate fails, by how much, and 2-3 concrete
+               options with measured effect (e.g. static Inter
+               weights instead of variable; dropping a component
+               class; deferring an island). No option may propose
+               raising a gate - that is the operator's call (spec
+               section 20).
+- Commit: "FW2: perf spike decision recorded". Push.
+
+====================================================================
+OUT OF SCOPE FOR FW2
+====================================================================
+- No lib/ui components (FW8-FW9), no engine code (FW3), no Prisma,
+  no auth, no MDX, no analytics.
+- No change to any gate value. Escalate instead.
+- Nothing under android/.
+
+====================================================================
+FINAL VERIFICATION
+====================================================================
+pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm size
+Green in one run on the final commit. CI green on origin/main.
+
+====================================================================
+REPORT FORMAT - REPORT-FW2.txt (pure ASCII, committed and pushed)
+====================================================================
+SUMMARY
+PRECONDITIONS        R1 verified; CLAUDE.md visibility per R6.
+INCREMENT 0          One block per ruling R2-R5: files, proof output,
+                     commit hash, push confirmation. The pnpm size
+                     table after 0b.
+INCREMENTS 1-4       Files, trimmed commands, commit hash, push.
+MEASUREMENTS         The final docs/perf-spike.md table, verbatim.
+DECISION             GO or ESCALATE, with options if escalating.
+DEVIATIONS
+NOTICED BUT NOT TOUCHING
+QUESTIONS FOR THE OPERATOR
+PUSH PROOF           git log --oneline for the session; final push.
+
+END OF FW2 PROMPT
