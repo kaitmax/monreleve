@@ -3,3 +3,6 @@
 
 export { ThresholdRail } from './ThresholdRail/ThresholdRail';
 export type { ThresholdRailProps } from './ThresholdRail/ThresholdRail';
+
+export { ZoneBadge } from './ZoneBadge/ZoneBadge';
+export type { ZoneBadgeProps } from './ZoneBadge/ZoneBadge';

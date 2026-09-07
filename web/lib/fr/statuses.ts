@@ -24,7 +24,11 @@
 
 export const STATUS_COPY = {
   compliant: {
-    label: 'Dans les limites',
+    // RULING R41. "Dans les limites" described staying under a boundary and
+    // named neither consequence; the other three labels each state one -
+    // where you are taxed, where you are insured. "Sous les deux seuils"
+    // makes the compliant state parallel to them: under BOTH.
+    label: 'Sous les deux seuils',
     explanation:
       'Votre taux de télétravail déclarable reste sous le plafond fiscal.',
   },
