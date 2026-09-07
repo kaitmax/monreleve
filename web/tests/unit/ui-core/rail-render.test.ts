@@ -312,12 +312,12 @@ describe('the social variant (increment 3)', () => {
   const social = (patch: Partial<RailData> = {}): string =>
     render({ variant: 'social', width: 0, ...patch });
 
-  it('is 1200 x 630 with the rail at 60 % of the width, centred', () => {
+  it('is 1200 x 630 with the rail at 80 % of the width, centred (R48)', () => {
     const geometry = railGeometry(data({ variant: 'social', width: 0 }), RULES);
 
     expect(social()).toContain(`width="${SOCIAL_WIDTH}" height="${SOCIAL_HEIGHT}"`);
-    expect(geometry.track.width).toBe(SOCIAL_WIDTH * 0.6);
-    expect(geometry.track.x).toBe((SOCIAL_WIDTH - SOCIAL_WIDTH * 0.6) / 2);
+    expect(geometry.track.width).toBe(SOCIAL_WIDTH * 0.8);
+    expect(geometry.track.x).toBe((SOCIAL_WIDTH - SOCIAL_WIDTH * 0.8) / 2);
   });
 
   it('paints the canvas background, because it owns its whole surface', () => {
@@ -353,12 +353,39 @@ describe('the social variant (increment 3)', () => {
     expect(a).toBe(b);
   });
 
-  it('paints no fill and no band colour', () => {
+  it('paints the three bands and no per-result fill (R48)', () => {
+    // R48 gives the card weight with the one thing that IS generic: the zones
+    // themselves. All three colours appear, each exactly once, as static
+    // segments tiling the track - and none of them depends on the rate.
     const svg = social();
 
     for (const token of ['--colour-success', '--colour-warning', '--colour-error']) {
-      expect(svg).not.toContain(token);
+      expect(svg.split(`var(${token})`).length - 1).toBe(1);
     }
+  });
+
+  it('left-anchors everything to the rail, including the product name (R48)', () => {
+    const svg = social();
+    const geometry = railGeometry(data({ variant: 'social', width: 0 }), RULES);
+
+    expect(svg).toContain(`<text x="${geometry.track.x}" y="${geometry.productNameBaselineY}" text-anchor="start"`);
+    expect(svg).not.toContain('text-anchor="middle"');
+  });
+
+  it('sets the social tick labels at Body, not Caption (R48)', () => {
+    // Caption 13 is right beside Body text in a UI and far too small on a
+    // 1200 x 630 raster seen as a thumbnail.
+    const svg = social();
+
+    // Located by walking the text nodes rather than by regex: the token
+    // names contain parentheses, which a hand-built RegExp turns into
+    // capture groups - the assertion then matches nothing and reads as a
+    // product defect rather than a test defect.
+    const tickLabelNode = (markup: string): string =>
+      markup.split('<text').find((node) => node.includes(`>${pct('40')}<`)) ?? '';
+
+    expect(tickLabelNode(svg)).toContain('var(--type-body-size)');
+    expect(tickLabelNode(render())).toContain('var(--type-caption-size)');
   });
 
   it('names neither a rate nor a zone in its accessible name (R44)', () => {

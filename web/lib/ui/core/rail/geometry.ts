@@ -41,6 +41,18 @@ import type { Zone, ZoneThresholds } from '../zones';
 /** SPEC 6.3's 8 px track. Mirrors --size-progress-height. */
 export const TRACK_HEIGHT = 8;
 
+/**
+ * The social card's track, ruling R48. A DOCUMENTED EXCEPTION to
+ * DESIGN-SYSTEM.md's "progress bars, never taller than 8".
+ *
+ * That rule governs a progress bar inside a UI, where 8 px sits correctly
+ * against Body text. The social variant is not UI: it is a 1200 x 630 raster
+ * that will be seen as a thumbnail in a feed, where an 8 px bar is a hairline
+ * and effectively invisible. Doubling it is the exception, it applies to this
+ * variant ONLY, and no other variant may read this constant.
+ */
+export const SOCIAL_TRACK_HEIGHT = 16;
+
 /** SPEC 6.3's "protruding 4 px above and below". Mirrors --space-1. */
 export const TICK_PROTRUSION = 4;
 
@@ -68,12 +80,15 @@ export const COMPACT_MIN_WIDTH = 200;
 export const SOCIAL_WIDTH = 1200;
 export const SOCIAL_HEIGHT = 630;
 
-/** The social card's rail spans 60 % of the card and is centred. */
-const SOCIAL_RAIL_FRACTION = 0.6;
+/** R48: the social card's rail spans 80 % of the card and is centred. */
+const SOCIAL_RAIL_FRACTION = 0.8;
 
 /** Micro 11/14 for the band names, Caption 13/18 for the tick labels. */
 const BAND_NAME_LINE = 14;
 const LABEL_LINE = 18;
+
+/** R48: Body 15/22 for the social card's tick labels. */
+const SOCIAL_LABEL_LINE = 22;
 
 /** Caption 13/18 for the rate. R44 removed the Display-size social rate. */
 const RATE_LINE_INLINE = 18;
@@ -94,6 +109,8 @@ const PRODUCT_NAME_LINE = 32;
 export const CAPTION_SIZE = 13;
 export const MICRO_SIZE = 11;
 export const H2_SIZE = 24;
+/** R48: the social card's tick labels are Body, not Caption. */
+export const BODY_SIZE = 15;
 
 /** One --space-1 between each stacked row. */
 const ROW_GAP = 4;
@@ -141,6 +158,23 @@ export interface RailBandRow {
   readonly y: number;
 }
 
+/**
+ * One coloured segment of the track, ruling R48.
+ *
+ * The social card fills its whole track with the three BANDS rather than with
+ * a rate: success up to the fiscal ceiling, warning between the ceilings,
+ * error above the social one. Nothing per-result is encoded - there is no
+ * rate on that card - and the bands ARE the zones, so this does not breach
+ * "coloured by Zone, positioned by rate": there is no position to take.
+ *
+ * Empty for every other variant, which fills from 0 to the rate instead.
+ */
+export interface RailBandSegment {
+  readonly zone: Zone;
+  readonly x: number;
+  readonly width: number;
+}
+
 export interface RailTick {
   /** The ceiling this tick marks, as a percentage. From the RuleSet. */
   readonly percentage: number;
@@ -186,6 +220,8 @@ export interface RailGeometry {
    * the pairs removes the indexing instead of testing an impossible case.
    */
   readonly bandNameRows: readonly RailBandRow[];
+  /** R48: the three static band fills. Social only; empty elsewhere. */
+  readonly bandSegments: readonly RailBandSegment[];
   /** R44: the social card shows no rate, so this is unused there. */
   readonly rateShown: boolean;
   readonly rateBaselineY: number;
@@ -238,6 +274,10 @@ export function railGeometry(data: RailData, thresholds: ZoneThresholds): RailGe
   const bandNamesShown = social;
   const productNameShown = social;
   const rateShown = !social;
+  // R48: the social card doubles its track and sets its tick labels at Body.
+  const trackHeight = social ? SOCIAL_TRACK_HEIGHT : TRACK_HEIGHT;
+  const labelSize = social ? BODY_SIZE : CAPTION_SIZE;
+  const labelLine = social ? SOCIAL_LABEL_LINE : LABEL_LINE;
 
   // ROWS, top to bottom: product name (social only), the rate, the band
   // names, the bar with its protrusions, the tick labels.
@@ -251,8 +291,8 @@ export function railGeometry(data: RailData, thresholds: ZoneThresholds): RailGe
   // taken there.
   const productNameRow = productNameShown ? PRODUCT_NAME_LINE + ROW_GAP : 0;
   const rateRow = rateShown ? RATE_LINE_INLINE + ROW_GAP : 0;
-  const barRow = TRACK_HEIGHT + TICK_PROTRUSION * 2;
-  const labelRow = ROW_GAP + LABEL_LINE;
+  const barRow = trackHeight + TICK_PROTRUSION * 2;
+  const labelRow = ROW_GAP + labelLine;
   // The band-name stack sits BELOW the tick labels on the social card.
   const bandNameBlock = bandNamesShown ? ROW_GAP + BAND_ORDER.length * BAND_NAME_LINE : 0;
   const stackHeight = productNameRow + rateRow + barRow + labelRow + bandNameBlock;
@@ -263,7 +303,7 @@ export function railGeometry(data: RailData, thresholds: ZoneThresholds): RailGe
   const stackTop = social ? round((SOCIAL_HEIGHT - stackHeight) / 2) : 0;
 
   const trackY = round(stackTop + productNameRow + rateRow + TICK_PROTRUSION);
-  const rx = TRACK_HEIGHT / 2;
+  const rx = trackHeight / 2;
 
   const fillFraction = clamp(data.percentage, 0, PERCENT) / PERCENT;
   const clampedFill = data.percentage < 0 || data.percentage > PERCENT;
@@ -272,7 +312,7 @@ export function railGeometry(data: RailData, thresholds: ZoneThresholds): RailGe
     x: trackX,
     y: trackY,
     width: trackWidth,
-    height: TRACK_HEIGHT,
+    height: trackHeight,
     rx,
   };
 
@@ -280,11 +320,11 @@ export function railGeometry(data: RailData, thresholds: ZoneThresholds): RailGe
     x: trackX,
     y: trackY,
     width: round(trackWidth * fillFraction),
-    height: TRACK_HEIGHT,
+    height: trackHeight,
     rx,
   };
 
-  const labelBaselineY = round(trackY + TRACK_HEIGHT + TICK_PROTRUSION + ROW_GAP + CAPTION_SIZE);
+  const labelBaselineY = round(trackY + trackHeight + TICK_PROTRUSION + ROW_GAP + labelSize);
 
   const tickAt = (ceilingFraction: number, anchor: 'start' | 'end'): RailTick => {
     const percentage = ceilingFraction * PERCENT;
@@ -295,7 +335,7 @@ export function railGeometry(data: RailData, thresholds: ZoneThresholds): RailGe
       x: round(centre - TICK_WIDTH / 2),
       y: round(trackY - TICK_PROTRUSION),
       width: TICK_WIDTH,
-      height: TRACK_HEIGHT + TICK_PROTRUSION * 2,
+      height: trackHeight + TICK_PROTRUSION * 2,
       // R39: the anchor sits ON the tick and the text runs away from the
       // other label. Left-anchoring both collides below about 420 px of
       // track, which is every phone.
@@ -316,6 +356,19 @@ export function railGeometry(data: RailData, thresholds: ZoneThresholds): RailGe
     clampedWidth,
     bandNamesShown,
     bandNameX: trackX,
+    // R48. Derived from the THRESHOLDS alone - never from percentage or zone -
+    // so the social card stays byte-identical whatever result it is handed.
+    bandSegments: social
+      ? [
+          { zone: 'compliant' as const, from: 0, to: thresholds.fiscalCeiling },
+          { zone: 'fiscal-exposure' as const, from: thresholds.fiscalCeiling, to: thresholds.socialCeiling },
+          { zone: 'social-switch' as const, from: thresholds.socialCeiling, to: 1 },
+        ].map(({ zone, from, to }) => ({
+          zone,
+          x: round(trackX + trackWidth * from),
+          width: round(trackWidth * (to - from)),
+        }))
+      : [],
     bandNameRows: bandNamesShown
       ? BAND_ORDER.map((zone, index) => ({
           zone,

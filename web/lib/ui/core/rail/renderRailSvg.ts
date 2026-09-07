@@ -171,11 +171,14 @@ export function renderRailSvg(data: RailData, thresholds: ZoneThresholds): strin
       : '',
 
     // The product name, social only (SPEC 6.3: "carries the product name").
+    // Left-anchored to the RAIL's left edge, per R48: once the band-name stack
+    // beneath is left-anchored, a centred title is the only thing on the card
+    // not aligned to anything, and the inconsistency reads as an accident.
     geometry.productNameShown
       ? text(
-          geometry.svgWidth / 2,
+          geometry.track.x,
           geometry.productNameBaselineY,
-          'middle',
+          'start',
           typeStyle('h2', '--colour-text-primary'),
           APP_NAME,
         )
@@ -202,6 +205,27 @@ export function renderRailSvg(data: RailData, thresholds: ZoneThresholds): strin
     // cannot imply a position it does not know.
     unavailable || generic ? '' : rect(geometry.fill, `fill: var(${ZONE_BAND_TOKEN[data.zone]})`),
 
+    // R48: the social card fills its whole track with the three BANDS instead
+    // of with a rate. Nothing per-result is encoded - there is no rate on that
+    // card - and the bands are the zones, so this is not "colouring the rail
+    // by Status" nor positioning it by a result. It is the product's message:
+    // here are the two thresholds. Without it the card is an empty grey bar on
+    // a 1200 x 630 field, which is compliant and says nothing.
+    geometry.bandSegments
+      .map((segment) =>
+        rect(
+          {
+            x: segment.x,
+            y: geometry.track.y,
+            width: segment.width,
+            height: geometry.track.height,
+            rx: 0,
+          },
+          `fill: var(${ZONE_BAND_TOKEN[segment.zone]})`,
+        ),
+      )
+      .join(''),
+
     // The two ticks, and their labels anchored outward (R39).
     ...geometry.ticks.map((tick) => rect({ ...tick, rx: 0 }, 'fill: var(--colour-text-primary)')),
     ...geometry.ticks.map((tick) =>
@@ -209,7 +233,8 @@ export function renderRailSvg(data: RailData, thresholds: ZoneThresholds): strin
         tick.labelX,
         tick.labelY,
         tick.labelAnchor === 'end' ? 'end' : 'start',
-        typeStyle('caption', '--colour-text-secondary'),
+        // R48: Body on the social card, Caption everywhere else.
+        typeStyle(generic ? 'body' : 'caption', '--colour-text-secondary'),
         tickLabel(tick),
       ),
     ),

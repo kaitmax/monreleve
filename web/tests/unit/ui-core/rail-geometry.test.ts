@@ -40,6 +40,7 @@ import { ruleSetFor } from '@/lib/calc-engine';
 import {
   COMPACT_MIN_WIDTH,
   SOCIAL_HEIGHT,
+  SOCIAL_TRACK_HEIGHT,
   SOCIAL_WIDTH,
   TICK_PROTRUSION,
   TICK_WIDTH,
@@ -228,14 +229,63 @@ describe('the variants', () => {
     expect(wide.clampedWidth).toBe(false);
   });
 
-  it('social is 1200 x 630 with the rail at 60 % of the width, centred', () => {
+  it('social is 1200 x 630 with the rail at 80 % of the width, centred (R48)', () => {
     const g = railGeometry(inline({ variant: 'social', width: 0 }), RULES);
 
     expect(g.svgWidth).toBe(SOCIAL_WIDTH);
     expect(g.svgHeight).toBe(SOCIAL_HEIGHT);
-    expect(g.track.width).toBe(SOCIAL_WIDTH * 0.6);
-    expect(g.track.x).toBe((SOCIAL_WIDTH - SOCIAL_WIDTH * 0.6) / 2);
+    expect(g.track.width).toBe(SOCIAL_WIDTH * 0.8);
+    expect(g.track.x).toBe((SOCIAL_WIDTH - SOCIAL_WIDTH * 0.8) / 2);
     expect(g.bandNamesShown).toBe(true);
+  });
+
+  it('doubles the social track height, and only there (R48)', () => {
+    // A documented exception to "progress bars, never taller than 8": that
+    // rule governs a bar inside a UI, and the social card is a raster seen at
+    // thumbnail size, where 8 px is a hairline.
+    const social = railGeometry(inline({ variant: 'social', width: 0 }), RULES);
+
+    expect(social.track.height).toBe(SOCIAL_TRACK_HEIGHT);
+    expect(social.track.rx).toBe(SOCIAL_TRACK_HEIGHT / 2);
+    expect(railGeometry(inline(), RULES).track.height).toBe(TRACK_HEIGHT);
+    expect(railGeometry(inline({ variant: 'compact', width: 300 }), RULES).track.height).toBe(
+      TRACK_HEIGHT,
+    );
+  });
+
+  it('divides the social track into three band segments (R48)', () => {
+    const g = railGeometry(inline({ variant: 'social', width: 0 }), RULES);
+
+    expect(g.bandSegments.map((s) => s.zone)).toEqual([
+      'compliant',
+      'fiscal-exposure',
+      'social-switch',
+    ]);
+    // They tile the track exactly: no gap, no overlap, no overhang.
+    const total = g.bandSegments.reduce((sum, s) => sum + s.width, 0);
+    expect(total).toBeCloseTo(g.track.width, 3);
+    expect(g.bandSegments[0]!.x).toBe(g.track.x);
+    for (let i = 1; i < g.bandSegments.length; i++) {
+      const previous = g.bandSegments[i - 1]!;
+      expect(g.bandSegments[i]!.x).toBeCloseTo(previous.x + previous.width, 3);
+    }
+  });
+
+  it('derives the segments from the RuleSet, not from constants (R48)', () => {
+    // The same requirement as the ticks: a rule set that moves a ceiling must
+    // move the boundary between the coloured bands.
+    const shifted = railGeometry(inline({ variant: 'social', width: 0 }), {
+      fiscalCeiling: 0.5,
+      socialCeiling: 0.6,
+    });
+
+    expect(shifted.bandSegments[0]!.width).toBeCloseTo(shifted.track.width * 0.5, 3);
+    expect(shifted.bandSegments[1]!.width).toBeCloseTo(shifted.track.width * 0.1, 3);
+  });
+
+  it('gives no band segments to inline or compact', () => {
+    expect(railGeometry(inline(), RULES).bandSegments).toEqual([]);
+    expect(railGeometry(inline({ variant: 'compact', width: 300 }), RULES).bandSegments).toEqual([]);
   });
 
   it('derives a total height that leaves room for ticks and labels', () => {
