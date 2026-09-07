@@ -1,9 +1,18 @@
 // web/scripts/check-budgets.mjs
 //
-// First-load JS budget, measured from the Next build manifests (SPEC section
-// 17). "A budget not enforced in CI is a budget that silently disappears."
+// First-load JS budget, measured from the Next build manifests. "A budget not
+// enforced in CI is a budget that silently disappears." (SPEC section 17.)
 //
-// Three measurement decisions, made explicit because each one moves the number
+// Two gates, per operator ruling R2 of 07.09.2026, which replaces the web row
+// of SPEC section 17. The single 100 KB total was set against an older
+// framework baseline and is not achievable on Next 15 + React 19, where a bare
+// page already measures 100.6 KiB. Splitting the gate separates the floor we
+// cannot control from the weight we add:
+//
+//   GATE A  total first-load JS per public route  <= 125 KiB gzip
+//   GATE B  feature delta over the framework floor <= 25 KiB gzip
+//
+// Four measurement decisions, made explicit because each one moves the number
 // across the gate on a page containing one h1:
 //
 //  1. A route's first load is its own entry UNIONED with every ancestor
@@ -33,11 +42,28 @@ const FONT_DIR = join(WEB_ROOT, 'public', 'fonts');
 
 const KIB = 1024;
 
-// SPEC section 17. Public routes are the acquisition surface: calculator,
-// comparator, guides, home, legal. /dev/** is noindex, is out of the sitemap
-// and is not part of that surface, so it is measured and printed but not
-// gated - FW2 deliberately builds a component-heavy page there.
-const PUBLIC_BUDGET_BYTES = 100 * KIB;
+// THE FRAMEWORK FLOOR.
+//
+// Measured first-load JS of a bare route - one h1 and one figure, no feature
+// code - on:
+//     next 15.5.25, react 19.2.8, react-dom 19.2.8
+//     measured 07.09.2026 in FW1 (see REPORT-FW1.txt, BUDGET NUMBERS)
+//     103028 bytes gzip level 9 = 100.6 KiB
+//     of which framework chunk 54.2 kB and app-router runtime 46.5 kB
+//
+// Neither chunk is reducible by configuration. This constant is the datum for
+// GATE B, so it must not drift silently: re-measure it ONLY on a framework
+// upgrade, in its own commit titled "chore: re-baseline framework floor"
+// (ruling R2).
+const FRAMEWORK_BASELINE_KIB = 100.6;
+
+// Public routes are the acquisition surface: calculator, comparator, guides,
+// home, legal. /dev/** is noindex, out of the sitemap and not part of that
+// surface, so it is measured and printed but not gated - FW2 deliberately
+// builds a component-heavy page there.
+const GATE_A_TOTAL_BYTES = 125 * KIB;
+const GATE_B_DELTA_BYTES = 25 * KIB;
+const BASELINE_BYTES = Math.round(FRAMEWORK_BASELINE_KIB * KIB);
 
 // Segment-aware, so a real public route whose first segment merely starts with
 // "dev" - /devis, /developpement - is not silently excused from the gate.
@@ -76,14 +102,23 @@ async function measure(files) {
   return { raw, gzip };
 }
 
+// The latin subset is the only face a French page fetches; latin-ext is gated
+// behind its unicode-range. Both are reported, neither is gated.
+const PRELOADED_SUBSET = 'inter-latin-wght-normal.woff2';
+
 async function fontPayload() {
   try {
     const files = await readdir(FONT_DIR);
     let bytes = 0;
-    for (const file of files) bytes += (await stat(join(FONT_DIR, file))).size;
-    return { count: files.length, bytes };
+    let preloadedBytes = 0;
+    for (const file of files) {
+      const size = (await stat(join(FONT_DIR, file))).size;
+      bytes += size;
+      if (file === PRELOADED_SUBSET) preloadedBytes = size;
+    }
+    return { count: files.length, bytes, preloadedBytes };
   } catch {
-    return { count: 0, bytes: 0 };
+    return { count: 0, bytes: 0, preloadedBytes: 0 };
   }
 }
 
@@ -129,57 +164,91 @@ if (rows.length === 0) {
   process.exit(1);
 }
 
-const breaches = rows.filter((row) => row.gated && row.gzip > PUBLIC_BUDGET_BYTES);
+const fonts = await fontPayload();
+
+// The only face a French page actually fetches. The latin-ext subset is gated
+// behind its unicode-range and is not requested on our pages.
+const preloadedFontBytes = fonts.preloadedBytes;
+
+for (const row of rows) {
+  row.delta = row.gzip - BASELINE_BYTES;
+  row.failsA = row.gated && row.gzip > GATE_A_TOTAL_BYTES;
+  row.failsB = row.gated && row.delta > GATE_B_DELTA_BYTES;
+}
+
+const breaches = rows.filter((row) => row.failsA || row.failsB);
 
 console.log('');
-console.log(`First-load JS per route  (budget: ${kib(PUBLIC_BUDGET_BYTES)} KiB gzip on public routes)`);
+console.log('First-load JS per route (gzip level 9). Ruling R2 gates:');
+console.log(`  GATE A  total <= ${kib(GATE_A_TOTAL_BYTES)} KiB`);
+console.log(
+  `  GATE B  delta <= ${kib(GATE_B_DELTA_BYTES)} KiB over the ${FRAMEWORK_BASELINE_KIB} KiB framework floor`,
+);
 console.log('');
 console.log(
   'route'.padEnd(22) +
-    'bucket'.padEnd(9) +
-    'js'.padStart(4) +
-    'raw KiB'.padStart(10) +
-    'gzip KiB'.padStart(10) +
-    'css KiB'.padStart(9) +
-    '  status',
+    'bucket'.padEnd(8) +
+    'js total'.padStart(9) +
+    'delta'.padStart(8) +
+    'css'.padStart(7) +
+    'fonts'.padStart(7) +
+    '  verdict',
 );
-console.log('-'.repeat(79));
+console.log('-'.repeat(82));
 
 for (const row of rows) {
-  const status = !row.gated
+  const verdict = !row.gated
     ? 'not gated'
-    : row.gzip > PUBLIC_BUDGET_BYTES
-      ? `OVER by ${kib(row.gzip - PUBLIC_BUDGET_BYTES)} KiB`
-      : `ok (${kib(PUBLIC_BUDGET_BYTES - row.gzip)} KiB spare)`;
+    : row.failsA && row.failsB
+      ? `FAIL A by ${kib(row.gzip - GATE_A_TOTAL_BYTES)} and B by ${kib(row.delta - GATE_B_DELTA_BYTES)}`
+      : row.failsA
+        ? `FAIL GATE A by ${kib(row.gzip - GATE_A_TOTAL_BYTES)} KiB`
+        : row.failsB
+          ? `FAIL GATE B by ${kib(row.delta - GATE_B_DELTA_BYTES)} KiB`
+          : `pass (A ${kib(GATE_A_TOTAL_BYTES - row.gzip)} spare, B ${kib(GATE_B_DELTA_BYTES - row.delta)} spare)`;
 
   console.log(
     row.route.padEnd(22) +
-      (row.gated ? 'public' : 'dev').padEnd(9) +
-      String(row.files).padStart(4) +
-      kib(row.raw).padStart(10) +
-      kib(row.gzip).padStart(10) +
-      kib(row.css).padStart(9) +
+      (row.gated ? 'public' : 'dev').padEnd(8) +
+      kib(row.gzip).padStart(9) +
+      kib(row.delta).padStart(8) +
+      kib(row.css).padStart(7) +
+      kib(preloadedFontBytes).padStart(7) +
       '  ' +
-      status,
+      verdict,
   );
 }
 
-const fonts = await fontPayload();
-console.log('-'.repeat(79));
-console.log('css is measured but not gated: the SPEC section 17 budget is first-load JS');
+console.log('-'.repeat(82));
+// Ruling R2: fonts and CSS get their own lines and are NEVER counted against
+// a JS gate. They are in the table for visibility only.
+console.log('css   reported, never gated: it is not JS.');
 console.log(
-  `polyfills (nomodule, excluded from the gate): ${kib(polyfills.gzip)} KiB gzip / ${kib(polyfills.raw)} KiB raw`,
+  `fonts reported, never gated: ${kib(preloadedFontBytes)} KiB preloaded (latin subset), ` +
+    `${kib(fonts.bytes)} KiB across ${fonts.count} file(s) on disk. woff2 is already compressed.`,
 );
-console.log(`font payload: ${fonts.count} file(s), ${kib(fonts.bytes)} KiB on disk (woff2 is already compressed)`);
+console.log(
+  `polyfills excluded: ${kib(polyfills.gzip)} KiB gzip / ${kib(polyfills.raw)} KiB raw, served nomodule.`,
+);
+console.log(
+  `framework floor: ${FRAMEWORK_BASELINE_KIB} KiB, measured on next 15.5.25 / react 19.2.8, 07.09.2026.`,
+);
 console.log('');
 
 if (breaches.length > 0) {
   for (const row of breaches) {
-    console.error(
-      `BUDGET BREACH  ${row.route}: ${kib(row.gzip)} KiB gzip exceeds the ${kib(PUBLIC_BUDGET_BYTES)} KiB public budget (SPEC section 17).`,
-    );
+    if (row.failsA) {
+      console.error(
+        `GATE A BREACH  ${row.route}: ${kib(row.gzip)} KiB total exceeds ${kib(GATE_A_TOTAL_BYTES)} KiB (ruling R2).`,
+      );
+    }
+    if (row.failsB) {
+      console.error(
+        `GATE B BREACH  ${row.route}: ${kib(row.delta)} KiB of feature code exceeds ${kib(GATE_B_DELTA_BYTES)} KiB over the framework floor (ruling R2).`,
+      );
+    }
   }
   process.exit(1);
 }
 
-console.log('All gated routes are within budget.');
+console.log('All gated routes pass both gates.');
