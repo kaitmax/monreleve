@@ -10,8 +10,10 @@
 // It is a separate file from declarable-rate.ts on purpose (SPEC 7.3): the
 // rules conflict by design and must not be accidentally unified.
 
-/** Tenths of a percent: 1 decimal place. */
-const TENTHS_OF_A_PERCENT = 1_000;
+/**
+ * Tenths of a percent: 1 decimal place. Exponential notation per ruling R17.
+ */
+const TENTHS_OF_A_PERCENT = 1e3;
 
 /**
  * Ten tenths to the unit. Written 1e1 rather than 10 for the same reason

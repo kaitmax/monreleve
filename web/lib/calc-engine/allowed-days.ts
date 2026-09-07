@@ -18,7 +18,7 @@
 // each names its own rule at its own site: floor-to-the-half-day here (via
 // headroom.ts), ceil in denominator.ts, truncate in declarable-rate.ts.
 
-import { ceilProrated, resolveDenominator } from './denominator';
+import { missionCapFor, resolveDenominator } from './denominator';
 import { floorToHalfDay } from './headroom';
 import { ruleSetFor } from './rules';
 import { validateInput } from './validate';
@@ -63,8 +63,14 @@ export function allowedTeleworkDays(
       // floor to the half-day - advisory, never overstate (R12)
       atFiscal: floorToHalfDay(totalWorkDays * rules.fiscalCeiling),
       atSocial: floorToHalfDay(totalWorkDays * rules.socialCeiling),
-      // ceil - favours the user (SPEC 7.2 step 4)
-      missionCap: ceilProrated(rules.missionCapDays, input.employmentRate, input.periodFraction),
+      // ceil - favours the user (SPEC 7.2 step 4); period-only under the
+      // exact method (PROVISIONAL, ruling R19)
+      missionCap: missionCapFor(
+        input.denominator,
+        input.employmentRate,
+        input.periodFraction,
+        rules,
+      ),
     },
   };
 }

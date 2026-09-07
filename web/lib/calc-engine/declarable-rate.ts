@@ -12,8 +12,14 @@
 // in raw-rate.ts. SPEC 7.3 requires that separation so the rules cannot be
 // accidentally unified, since they conflict on purpose.
 
-/** Percentage points kept: 2 decimals means hundredths of a percent. */
-const HUNDREDTHS_OF_A_PERCENT = 10_000;
+/**
+ * Percentage points kept: 2 decimals means hundredths of a percent.
+ * Exponential notation per ruling R17.
+ */
+const HUNDREDTHS_OF_A_PERCENT = 1e4;
+
+/** Hundredths back to whole percentage points. */
+const HUNDREDTHS_PER_PERCENT = 1e2;
 
 /**
  * The rate filed with the AFC, as a percentage, truncated to 2 decimals.
@@ -42,5 +48,5 @@ export function declarableRateFor(
     (daysCountedAgainstCeiling * HUNDREDTHS_OF_A_PERCENT) / totalWorkDays,
   );
 
-  return hundredths / 100;
+  return hundredths / HUNDREDTHS_PER_PERCENT;
 }

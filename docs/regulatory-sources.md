@@ -67,6 +67,53 @@ the consequence is not. Under `source`, French tax falls on the excess days.
 Under `residence-1983`, the frontalier status itself is at risk. The engine
 reports which regime applies; the wording lives in `lib/fr`.
 
+## CHECKPOINT A — VERIFICATION REQUIRED
+
+Everything below must be resolved before the fixtures freeze. Items marked
+**INTERPRETATION** are not source questions at all — they are readings this
+codebase adopted in the absence of a source, and they go to the named expert
+reviewer rather than to a website.
+
+- ☐ **A1_REQUIRED — when should it fire? (INTERPRETATION, ruling R18.)** The
+  sources say only that the 49,9 % ceiling is *conditional on a valid A1*, and
+  SPEC §7.4 lists the warning code with no condition attached. The engine
+  emits it whenever any day is counted against the ceiling, on the reading
+  that holding an A1 is a **standing obligation to state** rather than a
+  threshold to detect. Over-warning is the safe direction for a signal that
+  drives copy and no arithmetic. The site carries a `PROVISIONAL` marker
+  (`web/lib/calc-engine/warnings.ts`). *Question for the reviewer: is there a
+  telework share below which no A1 is required, and if so what is it?*
+
+- ☐ **Mission-cap proration under the exact method (INTERPRETATION, ruling
+  R19.)** No source addresses how the 10-day sub-cap prorates when the
+  employer supplies an exact annual total rather than using the 240-day
+  basis. The engine prorates by `periodFraction` **only** under `exact`, and
+  by both factors under `simplified240`, reasoning that an exact total is the
+  days actually worked and so already embodies the working-time rate —
+  prorating by `employmentRate` again would count the same reduction twice and
+  quietly cost a part-timer mission days. Documented in
+  `fixtures/denominator-cases.json` under `missionCapCases`; the site carries
+  a `PROVISIONAL` marker. `EXACT_METHOD_UNVERIFIED` already fires on this
+  path. *Question for the reviewer: is the cap prorated against the
+  employer's own total, or against a full-time year?*
+
+- ☐ **Truncation versus rounding of the declarable rate.** The engine
+  truncates to 2 decimals because the AFC publishes 39,16 % for 94/240 and
+  4,16 % for 10/240, where rounding gives 39,17 and 4,17. SPEC §7.3 states
+  that matching the authority beats being conservative, and `tasks/plan.md`
+  records that invariant 7 inverts if the rule is rounding. *Confirm against
+  the AFC publication that truncation is the filing rule and not an artefact
+  of how the worked examples were printed.*
+
+- ☐ **The interpretative agreement of 29 April 2026 is held second-hand.** It
+  is the source for the mission sub-cap sitting *inside* the 40 % rather than
+  beside it — which changes every result in the engine — and it reached this
+  spec through an advisory summary, not the text. *Obtain the agreement
+  itself.*
+
+Every constant in the table above also carries its own unchecked box in the
+*Verified* column, and none may be ticked from an advisory source.
+
 ## What is deliberately not here
 
 - **The Geneva worked examples.** They arrive at FW4 as

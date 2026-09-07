@@ -24,7 +24,7 @@
 //   raw-rate.ts          round up to 1 dp         display
 //   headroom.ts          floor to the half-day    advisory
 
-import { ceilProrated, resolveDenominator } from './denominator';
+import { missionCapFor, resolveDenominator } from './denominator';
 import { declarableRateFor } from './declarable-rate';
 import { headroomFor } from './headroom';
 import { rawRateFor } from './raw-rate';
@@ -51,13 +51,15 @@ export function calculateTelework(
   );
   const { totalWorkDays } = denominator;
 
-  // ceil - favours the user (SPEC 7.2 step 4). Prorates like the simplified
-  // basis. Computed here rather than inside the waterfall so the waterfall
-  // stays pure day arithmetic with no rounding of its own.
-  const missionCap = ceilProrated(
-    rules.missionCapDays,
+  // ceil - favours the user (SPEC 7.2 step 4). Prorates by both factors under
+  // the simplified basis and by the period only under the exact method
+  // (PROVISIONAL, ruling R19). Computed here rather than inside the waterfall
+  // so the waterfall stays pure day arithmetic with no rounding of its own.
+  const missionCap = missionCapFor(
+    input.denominator,
     input.employmentRate,
     input.periodFraction,
+    rules,
   );
 
   const waterfall = runWaterfall(

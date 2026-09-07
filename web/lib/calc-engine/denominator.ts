@@ -27,6 +27,16 @@ export interface DenominatorOutcome {
 const NORMALISE_FACTOR = 1e6;
 
 /**
+ * Percent to fraction. Written 1e2 rather than 100 per ruling R17: powers of
+ * ten are scaling factors and are written in exponential notation, which also
+ * keeps them clear of the bare-threshold guard.
+ */
+const PERCENT = 1e2;
+
+/** A rate of 100 %, used where a factor must be neutral. */
+const FULL_RATE = 1e2;
+
+/**
  * Prorates a basis in days by employment rate and period, rounding UP.
  *
  * ceil - the simplified basis and the mission cap both round up
@@ -49,9 +59,39 @@ export function ceilProrated(
   employmentRate: number,
   periodFraction: number,
 ): number {
-  const prorated = (basisDays * employmentRate * periodFraction) / 100;
+  const prorated = (basisDays * employmentRate * periodFraction) / PERCENT;
 
   return Math.ceil(Math.round(prorated * NORMALISE_FACTOR) / NORMALISE_FACTOR);
+}
+
+/**
+ * The mission sub-cap, prorated and rounded UP (SPEC 7.2 step 4).
+ *
+ * ceil - favours the user (amicable agreement of 30 June 2023)
+ *
+ * PROVISIONAL (ruling R19) - an interpretation, not a source. It goes to the
+ * reviewer at Checkpoint A and is listed in docs/regulatory-sources.md.
+ *
+ * Under 'simplified240' the cap prorates by BOTH employmentRate and
+ * periodFraction, because the 240-day basis is a full-time figure that has not
+ * yet been reduced.
+ *
+ * Under 'exact' it prorates by periodFraction ONLY. The employer's supplied
+ * total is the actual number of days worked, so it already embodies the
+ * working-time rate; prorating the cap by employmentRate as well would count
+ * the same reduction twice and would quietly cost a part-timer mission days.
+ * The period is a fact about the calendar rather than the rate, so it still
+ * applies. EXACT_METHOD_UNVERIFIED already fires on this path.
+ */
+export function missionCapFor(
+  method: DenominatorMethod,
+  employmentRate: number,
+  periodFraction: number,
+  rules: RuleSet,
+): number {
+  const rateFactor = method.kind === 'exact' ? FULL_RATE : employmentRate;
+
+  return ceilProrated(rules.missionCapDays, rateFactor, periodFraction);
 }
 
 /**
