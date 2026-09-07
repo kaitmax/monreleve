@@ -10,6 +10,7 @@
 // deliberately not exported until it exists.
 
 export { ruleSetFor } from './rules';
+export { regimeFor } from './regime';
 
 export type {
   AllowedTeleworkDays,

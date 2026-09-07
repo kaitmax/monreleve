@@ -74,7 +74,12 @@ const RULES_2026: RuleSet = Object.freeze({
  */
 const RULE_SETS: ReadonlyMap<number, RuleSet> = new Map([[RULES_2026.taxYear, RULES_2026]]);
 
-const LATEST_KNOWN_YEAR = Math.max(...RULE_SETS.keys());
+/**
+ * The newest year with its own rule set. Internal: index.ts does not
+ * re-export it, so it is not part of the public surface. Used by helpers
+ * whose SPEC 7.4 signature takes no taxYear.
+ */
+export const LATEST_KNOWN_TAX_YEAR = Math.max(...RULE_SETS.keys());
 
 /**
  * Resolves the rule set for a tax year, falling back to the latest known set
@@ -88,7 +93,7 @@ export function ruleSetFor(taxYear: number): RuleSet {
   const exact = RULE_SETS.get(taxYear);
   if (exact !== undefined) return exact;
 
-  const latest = RULE_SETS.get(LATEST_KNOWN_YEAR);
+  const latest = RULE_SETS.get(LATEST_KNOWN_TAX_YEAR);
   // Unreachable while RULE_SETS is non-empty; kept so the function is total
   // and never throws (SPEC section 7).
   return latest ?? RULES_2026;
