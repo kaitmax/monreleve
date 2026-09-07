@@ -105,4 +105,49 @@ route's first-load JS is Next and React, and essentially none of it is ours.
 That is why ruling R2's split into a floor and a delta measures the right
 thing: Gate B is the only number this team can move.
 
-<!-- Row 3 and the tree-shake evidence are added by increment 3. -->
+### Row 3 — font payload and Lucide tree-shaking
+
+**Fonts.** Inter is self-hosted, woff2, two subsets and no others, preloaded
+from the root layout so the spike route carries it too:
+
+| File | Bytes | KiB | Fetched on a French page |
+|---|---|---|---|
+| `inter-latin-wght-normal.woff2` | 48 256 | 47.1 | yes, preloaded |
+| `inter-latin-ext-wght-normal.woff2` | 85 068 | 83.1 | no — gated by `unicode-range` |
+| total on disk | 133 324 | 130.2 | — |
+
+- **AC3, font subset under 60 KB: PASS.** The subset a page actually fetches
+  is 48 256 bytes = 47.1 KiB = 48.3 kB, against a 60 KB criterion. It passes
+  on either reading of KB.
+- Cyrillic, Greek and Vietnamese subsets: **0 files** anywhere in `.next` or
+  `public`. Nothing imports the package's `index.css` or `wght.css`, so they
+  cannot be pulled in by accident.
+- Preload present on `/dev/spike`, with `crossorigin` — fonts are fetched in
+  CORS mode and a preload without it downloads the file twice:
+  `<link rel="preload" href="/fonts/inter-latin-wght-normal.woff2" as="font"
+  type="font/woff2" crossorigin="anonymous"/>`
+- `tnum` reaches the built CSS (7 occurrences) and the spike's table and
+  stepper both carry tabular figures.
+- woff2 is already compressed, so these are on-disk bytes. Per ruling R2 they
+  are reported and never counted against a JS gate.
+
+**Lucide tree-shaking.** One icon import removed from the client island
+(`Download`), rebuilt, measured, restored:
+
+| Island icons | raw bytes | gzip bytes |
+|---|---|---|
+| 12 (`Check, ChevronDown, Download, Minus, Plus, X` + 6 server-side) | 358 034 | 105 595 |
+| 11 (`Download` removed) | 357 807 | 105 526 |
+| **delta** | **−227** | **−69** |
+
+**AC3, tree-shaking: PASS.** The bundle shrinks measurably when a single icon
+import is removed, which is what per-icon tree-shaking looks like: 227 raw
+bytes is about the size of one Lucide SVG path plus its wrapper, and it
+compresses to 69 bytes because icon path data is highly repetitive. If
+`lucide-react` were being pulled in whole, removing one of 12 icons would move
+nothing.
+
+The corollary is the useful one for FW8 onward: at about 69 gzip bytes per
+icon, the 22.5 KiB of Gate B headroom left after the representative set is
+worth roughly 330 further icons. Icons are not a budget risk on this project,
+and no icon-by-icon import discipline needs inventing.
