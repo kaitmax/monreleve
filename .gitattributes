@@ -1,0 +1,26 @@
+# Line endings are pinned here, not left to the machine.
+#
+# core.autocrlf is enabled system-wide on the Windows workstation this repo is
+# developed on, and there was no .gitattributes, so every commit printed "LF
+# will be replaced by CRLF" and a fresh clone checked text files out with CRLF
+# while CI (ubuntu) checked the same bytes out with LF. Verified by cloning to
+# a temporary directory: `git ls-files --eol` reported `i/lf w/crlf` there,
+# against `w/lf` in this older checkout, which merely predates the change.
+#
+# That matters from FW6 on, because lib/ui/core/styles/_zones.scss is
+# GENERATED and compared BYTE FOR BYTE against the generator's output. An EOL
+# that varies by machine would make that comparison fail on a fresh Windows
+# clone and pass in CI - and the reflexive fix, normalising line endings
+# before comparing, permanently blinds the check to the EOL-only and
+# trailing-newline-only edits it exists to catch. Pinning LF lets the
+# comparison stay exact, which is the only form that detects every hand edit.
+#
+# The generator writes "\n" and never os.EOL, for the same reason.
+* text=auto eol=lf
+
+# Belt and braces: text=auto already detects these as binary, but naming them
+# means a corrupted heuristic cannot mangle an image.
+*.png binary
+*.jpg binary
+*.woff2 binary
+*.pmtiles binary

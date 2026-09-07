@@ -36,6 +36,17 @@ jobs:
       # The order is the Definition of Done: cheapest signal first.
       - run: pnpm typecheck
       - run: pnpm lint
+
+      # lib/ui/core/styles/_zones.scss is generated from zone-tokens.ts and
+      # must not be hand-edited (SPEC section 20: "keep zones.ts the single
+      # source"). --check compares byte for byte and never writes.
+      #
+      # It runs here as well as on prebuild so a drift reports as its own
+      # named failure rather than as a test failure three steps later. Both
+      # sit BEFORE pnpm build, which is the ordering that matters: if the
+      # build regenerated the file, a hand edit would be overwritten before
+      # anything could see it and no later check could ever fail.
+      - run: pnpm zones:check
       # Ruling R22: the coverage run is a strict superset of pnpm test, so CI
       # runs it alone. pnpm test stays the local loop command, where the
       # faster uninstrumented run is worth having.
@@ -50,12 +61,15 @@ jobs:
       - run: pnpm test:e2e
 
       # SPEC section 17: "A budget not enforced in CI is a budget that
-      # silently disappears." Deliberately blocking - and deliberately last.
-      # It is currently RED: the Next 15 + React 19 baseline exceeds the
-      # 100 KiB public budget before any feature code exists. A blocking red
-      # step placed earlier would abort the job and mean CI never produced an
-      # e2e signal at all. See REPORT-FW1.txt; raising the budget is an
-      # ask-first item and is not decided here.
+      # silently disappears." Deliberately blocking - and deliberately last,
+      # from when it was expected to be red.
+      #
+      # It is GREEN, and has been since FW2. Ruling R2 replaced the single
+      # 100 KiB gate this comment used to describe with two: GATE A, 125 KiB
+      # on first-load JS, and GATE B, a 25 KiB per-route delta. The stale
+      # wording mattered because FW6's final verification runs the whole chain
+      # and a reader trusting it would either record a false deviation or wave
+      # through a genuine regression as expected. See REPORT-FW2.txt.
       - run: pnpm size
 
       - uses: actions/upload-artifact@v4

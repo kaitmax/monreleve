@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1774 887" width="1774" height="887">
+  <defs>
+    <linearGradient id="leftBlue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0B63E8"/>
+      <stop offset="55%" stop-color="#0756D6"/>
+      <stop offset="100%" stop-color="#0A45B7"/>
+    </linearGradient>
+
+    <linearGradient id="rightGray" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#344155"/>
+      <stop offset="55%" stop-color="#647085"/>
+      <stop offset="100%" stop-color="#8A94A4"/>
+    </linearGradient>
+
+    <linearGradient id="frBlue" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#0757D9"/>
+      <stop offset="100%" stop-color="#0A43B5"/>
+    </linearGradient>
+
+    <linearGradient id="frRed" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#F62D3F"/>
+      <stop offset="100%" stop-color="#FF3B4A"/>
+    </linearGradient>
+
+    <clipPath id="pillarClip">
+      <path d="M849 199
+               L876 199
+               Q889 200 900 208
+               L935 232
+               Q955 247 955 274
+               L955 578
+               Q955 606 935 623
+               L900 650
+               Q887 660 872 660
+               L849 660
+               Q833 660 820 650
+               L795 631
+               Q774 615 774 585
+               L774 274
+               Q774 247 795 231
+               L825 209
+               Q837 199 849 199 Z"/>
+    </clipPath>
+  </defs>
+
+  <!-- Left crossing ribbon -->
+  <path d="M351 642
+           C332 643 315 630 310 610
+           C306 591 315 574 331 563
+           L590 381
+           C650 339 702 337 755 365
+           L813 398
+           L774 470
+           L719 438
+           C684 418 657 420 625 442
+           L370 628
+           C364 634 358 640 351 642 Z"
+        fill="url(#leftBlue)"/>
+
+  <!-- Right crossing ribbon -->
+  <path d="M916 398
+           L974 365
+           C1027 337 1079 339 1139 381
+           L1398 563
+           C1415 575 1423 592 1419 611
+           C1415 630 1398 643 1378 642
+           C1371 641 1365 637 1359 632
+           L1104 442
+           C1072 420 1045 418 1010 438
+           L955 470
+           Z"
+        fill="url(#rightGray)"/>
+
+  <!-- Central French-color pillar -->
+  <g clip-path="url(#pillarClip)">
+    <rect x="774" y="190" width="181" height="480" fill="#FFFFFF"/>
+    <rect x="774" y="190" width="74" height="480" fill="url(#frBlue)"/>
+    <rect x="894" y="190" width="61" height="480" fill="url(#frRed)"/>
+  </g>
+
+  <!-- Subtle clean highlight on white center -->
+  <rect x="848" y="199" width="6" height="461" fill="#FFFFFF" opacity="0.96"/>
+</svg>
