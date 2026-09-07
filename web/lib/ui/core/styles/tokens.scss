@@ -70,10 +70,12 @@ $space-16: 64px;
 $space-20: 80px;
 
 // ---------------------------------------------------------------------------
-// RADIUS - tokens only, never arbitrary.
-// The named scale plus the semantic radii the token block calls out. 14 px
-// (large primary button) is part of the permitted set per DESIGN-SYSTEM.md
-// section 4 and SPEC D37: {4, 8, 12, 14, 16, 20, 24, 999}.
+// RADIUS - a closed set, never arbitrary.
+// The named scale plus the semantic radii the token block calls out. The
+// permitted set is {4, 6, 8, 12, 14, 16, 20, 24, 999}: 14 px is the large
+// primary button (DESIGN-SYSTEM.md section 4, SPEC D37) and 6 px is the
+// checkbox, added by operator ruling R4 of 07.09.2026. Enforced in
+// .stylelintrc.mjs, which reads the set literally.
 // ---------------------------------------------------------------------------
 $radius-xs: 4px;
 $radius-sm: 8px;
@@ -92,8 +94,7 @@ $radius-sheet: $radius-2xl;
 $radius-skeleton: $radius-sm;
 $radius-toast: $radius-md;
 
-// The token block specifies the checkbox at 6 px, which is outside the closed
-// radius set of D37. Recorded verbatim; flagged for the operator in the report.
+// Checkbox, 6 px. Part of the set per ruling R4.
 $radius-checkbox: 6px;
 
 // ---------------------------------------------------------------------------
