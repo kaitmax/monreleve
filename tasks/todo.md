@@ -120,7 +120,7 @@ Every task also clears the project-wide Definition of Done and the Execution, Te
 **Verification:**
 - [ ] Tests pass: `pnpm vitest run lib/ui/core`
 - [ ] Build succeeds: `pnpm build` (generation step runs)
-- [ ] Manual check: run tests under Node 20 and Node 22 — identical formatter output
+- [ ] Manual check: run tests under Node 22 and Node 24 — identical formatter output
 
 **Dependencies:** FW1
 **Files likely touched:** `lib/ui/core/zones.ts`, `lib/ui/core/format/{number,date}.ts`, `scripts/generate-zones-scss.ts`, `lib/ui/core/styles/_zones.scss`, tests

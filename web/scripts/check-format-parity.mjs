@@ -1,19 +1,17 @@
 // web/scripts/check-format-parity.mjs
 //
 // SPEC section 21 ship criterion: formatPercent and formatDays render "the
-// same codepoints, identical on Node 20 and 22". SPEC section 19 repeats it.
+// same codepoints, identical on Node 22 and 24". SPEC section 19 repeats it.
 //
-// WHY THIS EXISTS INSTEAD OF A SECOND VITEST LANE. vitest 5 declares
-// engines "^22.12.0 || ^24.0.0 || >=26.0.0" - Node 20 is excluded outright,
-// not merely untested - so the formatter SUITE cannot run there at all. This
-// script is the parity check with the test runner taken out of it: no
-// imports, no node_modules, no TypeScript. It runs the compiled formatters
-// and asserts codepoints, so it executes on any Node that has Intl.
+// WHY THIS EXISTS. Ruling R27 put the Node floor at 22, so this is no
+// longer a workaround for vitest excluding Node 20 - it is the check that
+// the SUPPORTED versions agree with each other. What moves a separator
+// codepoint is an ICU or CLDR change, and those ship with a Node major, so
+// 22 against 24 is the comparison that matters.
 //
-// It does NOT replace the suite. It checks the one property the suite cannot
-// check on Node 20 - that the bytes are the same there - and the full suite
-// still runs on the supported versions. Recorded in REPORT-FW6.txt with the
-// three options for closing the gap properly, which need an operator ruling.
+// The value of having no imports, no node_modules and no TypeScript is that
+// a leg cannot go red for a toolchain reason: if it fails, the formatters
+// really do disagree.
 //
 // USAGE: node scripts/check-format-parity.mjs <dir-of-compiled-js>
 //

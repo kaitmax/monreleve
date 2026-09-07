@@ -80,20 +80,23 @@ jobs:
           retention-days: 7
 
   # SPEC sections 19 and 21 make it a ship criterion that formatPercent and
-  # formatDays render the same codepoints "on Node 20 and 22".
+  # formatDays render the same codepoints "on Node 22 and 24".
   #
-  # This cannot be a matrix over the `web` job above. vitest 5 declares
-  # engines "^22.12.0 || ^24.0.0 || >=26.0.0", so Node 20 is excluded
-  # outright and the suite cannot run there at all - see REPORT-FW6.txt,
-  # which sets out the three ways to close that properly and asks for a
-  # ruling. A matrix over `web` would also run build, playwright install,
-  # e2e and size on every leg, collide on the playwright-report artifact
-  # name, and duplicate the required-check name for branch protection.
+  # Ruling R27 put the Node floor at 22. Node 20 left maintenance in April
+  # 2026, before this ships, so the lane FW6 built to work around vitest's
+  # exclusion of Node 20 now has a better job: keeping 22 and 24 honest
+  # against ICU and CLDR drift, which is what actually moves a separator
+  # codepoint.
   #
-  # So parity is its own pair of small jobs: compile the two formatter
-  # modules to plain JavaScript once, then run a dependency-free codepoint
-  # check on each Node. The matrix legs install NOTHING, which is what lets
-  # Node 20 participate.
+  # It stays its own pair of jobs rather than a matrix over `web`: a matrix
+  # there would run build, playwright install, e2e and size on every leg,
+  # collide on the playwright-report artifact name (upload-artifact@v4 fails
+  # on a duplicate), and duplicate the required-check name for branch
+  # protection.
+  #
+  # Compile the two formatter modules to plain JavaScript once, then run a
+  # dependency-free codepoint check on each Node. The matrix legs install
+  # NOTHING, so a leg cannot go red for a toolchain reason.
   format-parity-build:
     name: format parity (compile)
     runs-on: ubuntu-latest
@@ -128,7 +131,7 @@ jobs:
       # whether a difference is one version's or several.
       fail-fast: false
       matrix:
-        node: [20, 22, 24]
+        node: [22, 24]
 
     steps:
       - uses: actions/checkout@v4

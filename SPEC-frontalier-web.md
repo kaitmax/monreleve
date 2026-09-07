@@ -980,7 +980,7 @@ Coolify on the OVH VPS, alongside the existing sites — **never touch saharades
 
 **Engine** — §7.6: Geneva fixtures (ship-blocking), 100% coverage, eight property invariants × 10,000 cases, no snapshots.
 
-**UI** — unit tests on every component; formatters exhaustively including 0, negatives, half-days, and **codepoint assertions** on separators, identical across Node 20/22; `renderRailSvg` byte-identical between Node and browser for the same input; visual baselines for every rail variant × zone, all four badge states, and the 200px thumbnail; snapshots allowed here.
+**UI** — unit tests on every component; formatters exhaustively including 0, negatives, half-days, and **codepoint assertions** on separators, identical across Node 22/24; `renderRailSvg` byte-identical between Node and browser for the same input; visual baselines for every rail variant × zone, all four badge states, and the 200px thumbnail; snapshots allowed here.
 
 **Params** — round-trip property test; malformed, missing, and hostile values; exhaustiveness tests: every `ValidationError` and every `Status` has French copy — a test enumerates each union and fails on any gap.
 
@@ -1028,7 +1028,7 @@ Coolify on the OVH VPS, alongside the existing sites — **never touch saharades
 - [ ] 100% statement and branch coverage on `lib/calc-engine`; all eight property invariants pass × 10,000 cases; zero runtime deps; median execution < 0.1 ms
 - [ ] Param round-trip property test passes over 10,000 inputs
 - [ ] `renderRailSvg` byte-identical Node vs browser; all rail/badge baselines pass; 200px thumbnail legible to a human reviewer
-- [ ] `formatPercent(34.6)` → `"34,6 %"` with U+00A0 and `formatDays(1234.5)` → `"1 234,5"` with U+202F, asserted by codepoint, identical on Node 20 and 22
+- [ ] `formatPercent(34.6)` → `"34,6 %"` with U+00A0 and `formatDays(1234.5)` → `"1 234,5"` with U+202F, asserted by codepoint, identical on Node 22 and 24
 - [ ] Zero raw hex, radius, or spacing literal outside the token set in web `src/` and Android `ui/`; zero React imports in `lib/ui/core`; all lint-enforced
 - [ ] Rail parity: the Compose rail and the web SVG rail match pixel-for-pixel at the same width in screenshot tests
 - [ ] Budgets in §17 green in CI; LCP < 2.5s slow 4G on the calculator; zero third-party requests; zero cookies on public routes
