@@ -1,0 +1,584 @@
+REPORT-FW7.txt
+renderRailSvg. Session of 07.09.2026.
+Pure ASCII by convention.
+
+
+================================================================================
+SUMMARY
+================================================================================
+
+FW7 is complete, and so is the precondition that had been open since FW1.
+
+THE PUSH WENT THROUGH. origin/main was at 389663b, an FW1 commit, for six
+sessions. It is now current, CI has run for the first time in this project's
+history, and it is green on all four jobs. R1 is discharged. What that bought
+in the first sixty seconds is in PRECONDITIONS, and it was a real defect.
+
+Increment 0, six ruling commits (R27-R34), then a seventh for R38 and an
+eighth for R42/R43 as those rulings arrived:
+
+  31c2985  Node floor is 22 (R27)
+  b11c516  a calendar day is an ISO string, never a Date (R28)
+  2d778cc  the timestamp is one unbreakable token (R29)
+  4c8eb43  _zones.scss emits Zone band classes only (R31)
+  b900ca6  ceilings are inclusive on the compliant side (R32)
+  1f47899  scripts are .mjs, and todo.md's own commands now run (R34)
+  0f7ef9e  remove the generated _zones.scss and its generator (R38)
+  2bd68d9  name the guard's demonstrated bypass at the fence (R43, R42)
+
+FW7 proper:
+
+  06e387b  rail geometry
+  6d2a676  ci: point pnpm/action-setup at web/package.json
+  a7e3aaf  XML escaping, and a DOM fence for lib/ui/core
+  802b9be  renderRailSvg, inline variant
+  a5c55f0  compact and social rail variants
+  dd993d2  unavailable state and edge clamping (R33)
+  c808d63  Node and browser render identical bytes
+
+State at the end: 660 unit tests across 33 files, 8 e2e tests, 100 % statement
+and branch coverage on BOTH lib/calc-engine and lib/ui/core, build green, size
+green on both R2 gates.
+
+Two findings are worth the operator's time before anything else. First, the
+DOM fence around lib/ui/core did not exist: a file using document,
+XMLSerializer and window linted clean, and so did four different ways of
+importing out of the directory to reach them. Second, R32's boundary flip was
+verified against the fixtures rather than taken on trust, and a critic's claim
+that it left 80 disagreements turned out to be a mislabelled count - the 80
+are real, but they are label clashes at one decimal, which R40 dissolves.
+
+
+================================================================================
+PRECONDITIONS
+================================================================================
+
+R1 IS DISCHARGED. `gh auth refresh -h github.com -s workflow` emitted a device
+code, the operator approved it, and the token went from
+
+  'gist', 'read:org', 'repo'   to   'gist', 'read:org', 'repo', 'workflow'
+
+after which the push succeeded:
+
+  389663b..06e387b  main -> main
+
+The blocker was never repository permission. Every one of the 59 commits
+touched .github/workflows/, and GitHub refuses an OAuth app that lacks the
+workflow scope regardless of branch, so there was no partial path. The
+fine-grained PAT could not have helped either: it is valid, but
+kaitmax/Frontalier is not among its eight selected repositories, and a
+fine-grained token returns 404 rather than 403 for a repository outside its
+list. SSH would have sidestepped the restriction entirely - it applies to
+OAuth apps, not keys - but the only keys on this machine are two VPS deploy
+keys and GitHub rejects both.
+
+WHAT THE FIRST CI RUN FOUND, IN 45 SECONDS. It failed in both jobs before
+installing anything:
+
+  Error: No pnpm version is specified.
+  Please specify it by one of the following ways:
+    - in the GitHub Action config with the key "version"
+    - in the package.json with the key "packageManager"
+
+pnpm/action-setup resolves package_json_file from the REPOSITORY ROOT.
+`defaults.run.working-directory: web` governs `run:` steps only and does not
+touch action inputs, and this repository has no root package.json by design
+(SPEC D1: one package, no workspace). So the action looked for ./package.json,
+found nothing, and never reached packageManager.
+
+FW1's comment beside that step was right about why no version is passed inline
+and wrong about the path being unnecessary. It could not have been found by
+reading - the workflow had never run. Fixed in all three occurrences,
+including property-sweep.yml, which carries the same defect and had also never
+run. Commit 6d2a676.
+
+CI IS NOW GREEN on all four jobs:
+
+  web                      2m11s   typecheck, lint, coverage, build,
+                                   playwright install, e2e, size
+  format parity (compile)    30s
+  format parity (node 22)     7s
+  format parity (node 24)    10s
+
+That run validated FW2 through FW7 and rulings R2-R43 for the first time. Two
+things it exercised that had never been exercised anywhere: `pnpm test:e2e`
+(which I had flagged in REPORT-FW6.txt as the likeliest surprise, because the
+tabular-proof figure moved to formatDays in FW6), and the parity lane on two
+Node majors.
+
+One non-blocking annotation, recorded rather than fixed: actions/checkout@v4,
+actions/setup-node@v4, actions/upload-artifact@v4 and pnpm/action-setup@v4 all
+target Node 20, which GitHub is deprecating and currently force-runs on Node
+24. They will need a major bump; it is not urgent and it is not FW7's scope.
+
+
+================================================================================
+INCREMENT 0
+================================================================================
+
+R27 - NODE FLOOR IS 22. web/package.json had NO engines field at all, so
+nothing declared the floor the code already assumed; it is now ">=22.12". SPEC
+sections 19 and 21 read "Node 22 and 24", as does todo.md's manual-check row.
+CI's parity matrix goes from [20, 22, 24] to [22, 24].
+
+The lane's PURPOSE changed with the floor, so its rationale is rewritten
+rather than renumbered. FW6 built it to work around vitest 5 excluding Node 20
+outright; with the floor at 22 it instead keeps the two SUPPORTED versions
+honest against ICU and CLDR drift, which is what actually moves a separator
+codepoint - those ship with a Node major. Commit 31c2985.
+
+R28 - A CALENDAR DAY IS AN ISO STRING. formatDate(isoDay: string) and
+formatDateTime(iso: string); the Date overloads are gone and DATE_ZONE with
+them.
+
+This DELETES a defect rather than guarding one. A Date is an instant, and
+reading an instant's calendar fields means choosing a zone; FW6 measured the
+consequence, where an unpinned formatter was right in the dev checkout AND
+right in CI (both non-western) and a day wrong for every user west of
+Greenwich. A YYYY-MM-DD string carries no instant, so formatDate now touches
+no zone, no Intl and no Date arithmetic. The four child-process TZ tests are
+kept, but for formatDate they no longer prove anything - they demonstrate
+there is nothing left to prove.
+
+VALIDATION IS ONE ROUND TRIP, because a NaN check is not enough. Measured: new
+Date does not reject an impossible day, it ROLLS IT OVER.
+'2026-02-30T00:00:00.000Z' parses to 2026-03-02, and '2026-02-29' - 2026 is
+not a leap year - parses to 2026-03-01. A NaN check alone would have printed
+"30.02.2026" on a filing. Rebuilding the canonical ISO day from the parsed
+fields and requiring equality with the input rejects that, and in the same
+comparison rejects a timestamp, a one-digit day, a two-digit year and a
+Swiss-formatted string. 2028-02-29 is accepted.
+
+THE TYPE TEST IS THE ONLY THING THAT CATCHES THE REGRESSION. Planting
+`formatDate(isoDay: string | Date)` leaves all 31 runtime tests GREEN and
+fails only at the type level, two ways: the @ts-expect-error on a Date call
+becomes "unused", and Parameters<typeof formatDate> stops equalling
+[isoDay: string]. Commit b11c516.
+
+R29 - U+00A0 ON BOTH SIDES OF THE A-GRAVE. RED first: "expected 32 to be 160",
+U+0020 against U+00A0. The two are indistinguishable on screen, so the
+assertion is on the codepoints of the whole string at once, all eighteen.
+Commit 2d778cc.
+
+R31 - ZONE CLASSES ONLY. The generator dropped its four .status-* rules and
+its statusVisuals parameter; the file went from 1677 to 1406 bytes. RED first
+on both the byte comparison and the new Zone-only assertion - and then the new
+assertion failed AGAIN, on the generated file's own header, which explains the
+ruling and names ".status-mission-exposure" in prose. Scanned with comments
+stripped now; the second time that file has needed it. A file that documents
+its own rules contains the strings its rules forbid. Commit 4c8eb43.
+
+R32 - CEILINGS INCLUSIVE ON THE COMPLIANT SIDE. zoneFor's two comparisons go
+from >= to >. RED first, four failures seen before the flip:
+
+  expected 'fiscal-exposure' to be 'compliant'      (40.00)
+  expected 'social-switch' to be 'fiscal-exposure'  (49.90)
+  expected 'fiscal-exposure' to be 'compliant'      (Geneva case b)
+  expected 'social-switch' to be 'fiscal-exposure'  (49.9 agreement)
+
+I CHECKED THE FIXTURE RATHER THAN TAKING IT. Geneva case b is teleworkDays 91
+with 8 mission days: declarableRate exactly 40, regimeApplies TRUE, 237 of 240
+days taxed in Switzerland. Case d is the same at 94/12. The old boundary
+painted those rails AMBER while a ship-blocking fixture said the regime
+applies - the rail contradicting the fixture, which is the strongest form the
+argument can take. At the social ceiling the old reading disagreed with the
+ENGINE instead: SOCIAL_CEILING_EXCEEDED fires only once remainingToSocial goes
+negative, and at exactly 49.9 it is zero.
+
+A SIDE EFFECT WORTH RECORDING: SPEC 6.2's own named oddity - "mission-exposure
+sits on the green band with a warning badge" - is now true of Geneva case b as
+well as case c. Under the old boundary the spec's illustration failed on its
+own fixture.
+
+THE ANTI-HARDENING ROWS MOVED, AND MOVED TO THE DANGEROUS SIDE. Under >= the
+integer-hundredths rewrite rounded 39.999 UP into exposure, inventing a
+breach. Under > it rounds 40.001 DOWN into compliant, because
+Math.round(4000.1) is 4000 and 4000 is not > 4000 - understating a real
+breach, which is worse. Tests now pin 40.001 and 49.901 alongside 39.999 and
+49.8999. Commit b900ca6.
+
+R34 - SCRIPTS ARE .mjs. No .ts script existed to rename; web/scripts/ holds
+.mjs files and one .d.mts declaration. The substance was the document:
+todo.md's FW6 row named scripts/generate-zones-scss.ts, which was never the
+filename. The .d.mts is not a violation and its header now says so -
+TypeScript finds the types for ./x.mjs by looking for x.d.mts specifically, so
+renaming it would silently drop the declaration.
+
+Also fixed under R9: todo.md's FW6 and FW7 verification rows both read
+`pnpm vitest run lib/ui/core`, which matches NO FILES - vitest treats a
+positional argument as a path-substring filter and every suite lives under
+tests/, so the run reports "No test files found" and exits 1. A verification
+step that could only ever be quoted as passed. Now
+`pnpm vitest run tests/unit/ui-core`, which runs 6 files and 133 tests.
+Commit 1f47899.
+
+R38 - REMOVE _zones.scss AND ITS GENERATOR. Zero consumers was the answer.
+Deleted: the generator, its .d.mts, the SCSS, the nine-test stale-check suite,
+the zones:generate / zones:check / prebuild scripts, the CI step, the @use in
+global.scss, and pnpm-workspace.yaml's enablePrePostScripts pin, which existed
+only because prebuild carried the check.
+
+A side effect worth having: the critic measured `pnpm test:coverage` - the
+command CI runs - intermittently failing because that suite's stylelint call
+timed out at 5000 ms. The flake went with the file. That is a bonus and not
+the reason; R38 was proven on its own merits first.
+
+SPEC section 20's Always entry said "generate _zones.scss" and now names
+zone-tokens.ts. todo.md's FW6 AC2 is marked SUPERSEDED rather than failed: it
+was built, and proven to catch four classes of hand edit including EOL-only,
+before the consumer it was built for was ruled away. Commit 0f7ef9e.
+
+R42 / R43 - TICK_WIDTH stays at 1,5 px and joins a Checkpoint A design-token
+list in tasks/plan.md, which did not exist, so this creates it beside the
+closed radius set. The guard's demonstrated bypass is named AT the fence.
+Commit 2bd68d9. Details under NOTICED and DEVIATIONS.
+
+R41 IS RECORDED AND NOT APPLIED. STATUS_COPY.compliant.label becomes "Sous les
+deux seuils" at FW8, where the badge lives; the ruling is that task's
+authorisation. Not touched here, because the rail is the Zone axis and the
+chip is the Status axis.
+
+
+================================================================================
+RED/GREEN LEDGER
+================================================================================
+
+Every guard proven by planting the wrong implementation. Counts are failing
+tests out of the suite named.
+
+INCREMENT 0
+
+  integer-hundredths "hardening" of zoneFor      1   39.999 row
+  non-finite guard removed from zoneFor          3   NaN, +Inf, -Inf
+  statusFor without the !regimeApplies guard     2   940 sweep disagreements
+  walk reverted to non-recursive                 1   nested files invisible
+  bare 40 planted in format/number.ts            1
+  bare 10 planted in format/number.ts            1
+  formatDate(isoDay: string | Date)              0 runtime, 2 TYPE errors
+  R29 spacing, before the fix                    1   expected 32 to be 160
+  R31 Zone-only, before the generator changed    2   bytes + status assertion
+  R32 boundary flip, before >                    4   listed above
+
+FW7
+
+  TRACK_HEIGHT drifted from its token            1   expected 10 to be 8
+  escapeXml ordering: '<' replaced before '&'    5
+  DOM fence, before it existed                   0   document/XMLSerializer/
+                                                     window all CLEAN
+  globalThis.document                            0   CLEAN before the selector
+  import('../../dom-helper')                     0   CLEAN before the selector
+  import('@/lib/whatever')                       0   CLEAN before the selector
+  import(someVariable)                           0   CLEAN before the selector
+
+The four zeroes are the point of that block: every rule in the lib/ui/core
+fence was import-based, and the DOM needs no import.
+
+MY OWN MISTAKES, both caught by tests rather than by review:
+
+  rail-render expectations typed with U+0020     4   failed against output
+                                                     that was CORRECT
+  tick-label baseline at y=78 in a 78-tall SVG   -   found by reading the
+                                                     first render; the comma
+                                                     of "49,9 %" was clipped
+
+
+================================================================================
+PARITY PROOF
+================================================================================
+
+e2e/rail-parity.spec.ts, run against a production build in Chromium.
+
+  MATRIX SIZE      21 cases
+  DIFFERENCES      0
+
+The matrix: every variant x zone (9), plus the rates that carry a formatting
+decision - 0, the Geneva 4,16 and 39,16, both ceilings exactly, a repeating
+fraction 66,666666666, 100, and both clamping cases (-5 and 140) - plus a
+width of 317 chosen so every derived coordinate is a long fraction, plus the
+200 px thumbnail width.
+
+THE COMPARISON IS ON THE RETURN VALUE, and the suite DEMONSTRATES why rather
+than asserting it. A fourth test puts the same string through innerHTML and
+reads outerHTML back: the U+00A0 returns as the six-character entity &nbsp;,
+so a round-trip comparison would have measured the browser's re-serialiser
+against Node's generator.
+
+WHAT THIS TEST CANNOT DO, recorded in the spec itself. It cannot catch a
+reordering of the geometry's arithmetic, because both sides run the same
+source. Measured: 376 * (49.9 / 100) is "187.624" and 376 * 49.9 / 100 is
+"187.62399999999997" - four bytes apart, and this suite passes with either.
+That hazard is closed in geometry.ts by rounding every coordinate to three
+decimals, which makes the arithmetic order irrelevant to the output. Claiming
+the parity test covered it would have left the real gap uncovered.
+
+Two guards on the guard: the matrix size is pinned so it cannot be trimmed to
+make a failure go away, and one test requires two different inputs to produce
+different strings in the browser, so a page that echoed a fixture - or a
+harness that silently compared Node against Node - would fail.
+
+
+================================================================================
+NO-HEX PROOF
+================================================================================
+
+Nothing in this repository can see inside a TypeScript template string.
+stylelint reads .scss and never .ts; eslint carries no colour, size or radius
+rule; the threshold guard strips template literals whole. SPEC section 21
+claims "zero raw hex, radius, or spacing literal outside the token set in web
+src/ ... all lint-enforced", and for lib/ui/core/rail that claim was false.
+The tests make it true:
+
+  no hex               /#[0-9a-f]{3,8}\b/i asserted absent from all three
+                       zone renders
+  no raw px            every style="" attribute asserted free of \d+px
+  var() resolves       every var(--name) the SVG emits, looked up in the
+                       COMPILED tokens.scss
+  tabular figures      asserted on every <text> node, both properties
+
+The var() check is the load-bearing one. An undefined custom property does not
+render as nothing - measured in this repo's Chromium, it renders BLACK for a
+fill and 16 px for a font-size, silently, and identically for all three zones.
+Nine screenshot baselines could therefore pass with every rail the same black
+bar. The visual suite carries a second, independent check of the same thing:
+it reads the computed fill of all three zones from the live page and requires
+them to differ and not to be rgb(0, 0, 0).
+
+WHY GEOMETRY IS NUMBERS WHILE COLOUR AND TYPE ARE TOKENS. Measured, with and
+without a cascade:
+
+                                  with cascade      standalone
+  fill: var(--colour-success)     rgb(21,128,61)    black
+  font-size: var(--type-...)      13px              16px
+  height: var(--size-...)         8px               0px - TRACK VANISHES
+  rx: var(--radius-pill)          999px             auto
+
+Colour degrading to black is wrong and visible. Geometry via var() makes the
+rail disappear with no error, on a document filed with an administration. So
+the geometry constants are numbers - and CHECKED MIRRORS rather than hardcoded
+values: rail-tokens.test.ts compiles tokens.scss and asserts TRACK_HEIGHT
+equals --size-progress-height, TICK_PROTRUSION equals --space-1, and the four
+font sizes used for baselines equal their --type-*-size tokens. Drifting
+TRACK_HEIGHT to 10 fails with "expected 10 to be 8".
+
+rx is derived as TRACK_HEIGHT / 2, so no radius literal is written at all: a
+pill on an 8 px bar IS half its height. That also dissolved the rx=4 versus
+--radius-pill question without needing a ruling.
+
+
+================================================================================
+R33 PROOF
+================================================================================
+
+  zoneFor not reached      STRUCTURAL, not a spy
+  colour variable absent   all three band tokens asserted absent
+
+"Never calls zoneFor" is asserted by reading the module's own source and
+requiring that zoneFor appears neither in its imports nor as a call anywhere.
+That is stronger than the spy the relay asked for: a spy proves the function
+was not called for one input, the source proves it cannot be called for any.
+It is available because RailData carries the Zone in - the rail MAPS rather
+than decides.
+
+R33's instruction was incomplete, and the report should say so plainly. It
+named only zoneFor as the call to skip. All three of zoneFor, railGeometry and
+formatPercent reject a non-finite value, each deliberately, so a rail that
+guarded only zoneFor would still have thrown one call later. The branch
+bypasses all three, which is why the geometry is computed from a substituted 0
+rather than from the real value.
+
+The state renders a WORD - "Taux indisponible", with an accessible name saying
+the same - and carries no band colour at all, asserted against
+--colour-success, --colour-warning and --colour-error. The track, the ticks
+and the band names still draw: without them the rail is a blank box, which
+reads as a broken layout rather than an unknown value, and the ceilings are
+still where they are.
+
+Clamping bounds the geometry and never the label: -5 draws an empty rail
+labelled "-5,00 %" and 140 draws a full one labelled "140,00 %". The relay
+wrote those examples at one decimal; R40 has since made the rate two.
+
+
+================================================================================
+BASELINES
+================================================================================
+
+Ten files, generated and compared ONLY inside
+mcr.microsoft.com/playwright:v1.63.0-noble (ruling R37). 11 visual tests pass
+in COMPARE mode, which is the run that matters - a generate run proves
+nothing.
+
+  web/tests/visual/baselines/
+    rail-inline-compliant.png          4964 bytes
+    rail-inline-fiscal-exposure.png    4940
+    rail-inline-social-switch.png      4710
+    rail-compact-compliant.png         2929
+    rail-compact-fiscal-exposure.png   2901
+    rail-compact-social-switch.png     2671
+    rail-social-compliant.png         15461
+    rail-social-fiscal-exposure.png   14991
+    rail-social-social-switch.png     14268
+    rail-inline-200px.png              5707
+
+  docs/review/rail-200px.png           5707   byte-identical copy
+  docs/review/README.md                       states the question
+
+WHY THE CONTAINER. Playwright's default template carries the platform, so a
+baseline written here lands at rail-inline-compliant-chromium-win32.png while
+ubuntu looks for -chromium-linux.png. The failure is a MISSING FILE, not a
+diff: CI writes it and fails, then the next run PASSES by comparing that file
+against itself. Green, proving nothing. Pinning the container removes the
+variable rather than tuning a tolerance, which is what lets the config drop
+{platform} and keep one baseline set for every machine.
+
+The screenshots are taken IN A PAGE, through the real cascade. A rail
+rasterised without the token layer renders a black bar in 16 px Times,
+identically for all three zones, so nine baselines taken that way would all
+pass. An eleventh test guards it independently of any image: it reads the
+computed fill of the three zones off the live page and requires them to differ
+and not to be rgb(0, 0, 0).
+
+HUMAN REVIEW IS PENDING, and this is the formal request. I did look at the
+artifact, and the two halves of what it shows point in opposite directions.
+
+  THE TICK QUESTION LOOKS ANSWERED. At 200 px the two ticks and their labels
+  "40 %" and "49,9 %" are legible and clearly separated. R39's outward
+  anchoring is doing exactly what it was ruled for. A human should confirm it,
+  because that is the question the artifact exists for.
+
+  THE BAND NAMES ARE A DEFECT, and they dominate the image. At 200 px
+  "Imposition Suisse", "Imposition France" and "Sécurité sociale France"
+  overlap into an illegible run. At the 376 px DEFAULT the first two still
+  touch, rendering as "SuisseImposition". This is not a thumbnail-only
+  problem, and it is not fixable inside FW7: a pure string generator has no
+  font metrics, so avoiding the collision requires a product decision. Open
+  question Q2.
+
+
+================================================================================
+DEVIATIONS
+================================================================================
+
+1. renderRailSvg TAKES A SECOND PARAMETER (R35, ruled). SPEC 6.3's stated
+   signature is renderRailSvg(data: RailData): string, and it cannot place a
+   tick: the positions are 40 and 49.9, SPEC 7.7 makes RuleSet the only place
+   a threshold may appear, and the guard rejects both literals in
+   lib/ui/core. RailData itself is unchanged. The spec's signature is amended
+   per the ruling.
+
+   Worth knowing: the guard would NOT have caught the alternative. It strips
+   template literals whole, so `${w * 40 / 1e2}` inside a backtick passes
+   while `const FISCAL_TICK = 40` fails. Relying on that would have put the
+   product's two load-bearing numbers in lib/ui/core behind a regex. Named at
+   the fence under R43.
+
+2. THE RATE LABEL HAS ITS OWN ROW, making the inline rail four rows tall. It
+   cannot share with the band names, which are centred over their bands, nor
+   with the tick labels, which R39 anchors outward from the ceilings. Every
+   other placement collides at some width.
+
+3. THE FIRST RENDER CLIPPED ITS DESCENDERS. The tick-label baseline sat at
+   y = 78 in a 78-tall SVG. Baselines now sit at rowTop + the step's font
+   size, and those four sizes became checked mirrors alongside the track
+   height.
+
+4. TICK_WIDTH IS 1,5 px WITH NO TOKEN (R42, ruled). SPEC 6.3 states a
+   protrusion but no thickness; the FW7 brief says 1,5 and
+   FD1-calculateur-desktop.md draws 2. rail-tokens.test.ts asserts its ABSENCE
+   from the spacing scale, so if a token ever appears the test fails and the
+   constant must become a mirror.
+
+5. THE DOM FENCE AND THE ESCAPING WERE NOT IN THE INCREMENT LIST. Both were
+   asked for in the ruling message and both turned out to be necessary rather
+   than precautionary; the fence found four open indirect routes.
+
+6. A /dev/ ROUTE WAS ADDED FOR EACH OF INCREMENTS 5 AND 6 - rail-parity, which
+   renders nothing and exposes the function, and rail-gallery, which renders
+   the nine combinations. /dev/** is excluded from the size gate by segment
+   and app/dev/composants is the precedent.
+
+7. THE GALLERY USES dangerouslySetInnerHTML, which todo.md reserves for FW8's
+   ThresholdRail. That reservation is about the product component; this is a
+   dev harness rendering a string the suite has already proved is escaped.
+
+8. CI GAINED A `visual` JOB running IN the Playwright container, so it calls
+   playwright directly rather than `pnpm test:visual`, which shells out to
+   docker and would be docker-in-docker inside it.
+
+
+================================================================================
+NOTICED BUT NOT TOUCHING
+================================================================================
+
+- TWO PRE-EXISTING LINT WARNINGS in benchmark.test.ts and
+  verification-trace.test.ts: "Unused eslint-disable directive". Both predate
+  this session, in files FW7 did not touch. lint exits 0.
+
+- THE PINNED GITHUB ACTIONS TARGET NODE 20 and are being force-run on Node 24
+  with a deprecation annotation on every job. A major bump is owed.
+
+- SPEC SECTION 6.6 DOES NOT EXIST. Section 6 runs 6.1 to 6.5. Both the spec
+  itself (line 896) and relay/FW7.txt cite 6.6 as the authority for the OG
+  card being generic; the rule is real but lives at 6.3, line 296.
+
+- app/ STILL HAS NO COVERAGE GATE. It now holds three dev routes and one
+  placeholder page.
+
+- THE 30 % AND 38 % IN-BAND ALERTS (D36, DESIGN-SYSTEM.md section 2) are not
+  in the rail and are not statuses. They are banners, which are React, so
+  FW8-FW9.
+
+
+================================================================================
+QUESTIONS FOR THE OPERATOR
+================================================================================
+
+Q1. THE SOCIAL CARD SHIPS A PERCENTAGE WITHOUT A BADGE. SPEC section 20 Never
+    includes "ship a percentage without its status badge". The social variant
+    renders the rate at Display, and the badge is a React component that does
+    not exist until FW8, so on the OG card there is nothing to pair it with.
+    Three readings, and I have shipped the first: (a) the rail's band names
+    and tick labels ARE the words that keep it from being colour-alone, which
+    is what section 16 actually requires; (b) the OG card should carry no
+    number at all, since SPEC 6.3 says it is generic and never per-result -
+    which would also settle it structurally; (c) FW15 pairs it with a rendered
+    badge when the OG route lands. If (b), the change is small and now is the
+    cheapest time.
+
+Q2. THE BAND NAMES COLLIDE, AND IT IS VISIBLE IN THE COMMITTED BASELINE. This
+    is the one I would most like ruled, because it is a defect at the DEFAULT
+    width and not merely in the thumbnail.
+
+    Measured at Micro 11/500: "Imposition Suisse" 52,5 px, "Imposition France"
+    93,7 px, "Sécurité sociale France" 122,9 px, against band centres at 20 %,
+    45 % and 75 % of the track. Confirmed by eye in the baselines: at 200 px
+    the three run together illegibly; at 376 px the first two touch and read
+    as "SuisseImposition".
+
+    R39 fixed exactly this class of problem for the TICK labels by anchoring
+    them outward. The band names have the same problem and no ruling, and they
+    cannot be fixed the same way - they are centred over BANDS, not anchored
+    to points, and a string generator has no font metrics to measure them
+    with.
+
+    Three options, and I have shipped none of them: truncate to fit the band;
+    drop them below some width, which is what compact already does at every
+    width; or stack them on separate lines. The second is the smallest change
+    and matches an existing precedent.
+
+Q3. THE 200 PX ARTIFACT IS FOR EYES, and this is the formal request: the
+    file is docs/review/rail-200px.png. The question is whether two ticks
+    9,9 percentage points apart - 19,8 px at that width - are distinguishable
+    at a Facebook-thumbnail size. No test can answer it.
+
+Q4. TICK_WIDTH 1,5 px versus FD1's 2 px (R42 says 1,5 stays, not blocking).
+    Noting only that at 200 px the two ticks rendered visibly differently from
+    each other at 1,5 px - one a symmetric grey pair, the other asymmetric -
+    because 1,5 does not align to the device pixel grid. 2 px would not have
+    that problem. Purely a rendering observation for the Checkpoint A review.
+
+
+================================================================================
+PUSH PROOF
+================================================================================
+
+PUSH_PROOF_PLACEHOLDER
