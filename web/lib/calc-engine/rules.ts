@@ -75,11 +75,19 @@ const RULES_2026: RuleSet = Object.freeze({
 const RULE_SETS: ReadonlyMap<number, RuleSet> = new Map([[RULES_2026.taxYear, RULES_2026]]);
 
 /**
+ * The newest set, named directly rather than looked up. A lookup would be
+ * typed RuleSet | undefined and need a defensive fallback that no test can
+ * reach, which shows up as an uncovered branch against the 100 % engine
+ * coverage gate. Update this line when a newer year is added.
+ */
+const LATEST_KNOWN_RULES: RuleSet = RULES_2026;
+
+/**
  * The newest year with its own rule set. Internal: index.ts does not
  * re-export it, so it is not part of the public surface. Used by helpers
  * whose SPEC 7.4 signature takes no taxYear.
  */
-export const LATEST_KNOWN_TAX_YEAR = Math.max(...RULE_SETS.keys());
+export const LATEST_KNOWN_TAX_YEAR = LATEST_KNOWN_RULES.taxYear;
 
 /**
  * Resolves the rule set for a tax year, falling back to the latest known set
@@ -88,13 +96,10 @@ export const LATEST_KNOWN_TAX_YEAR = Math.max(...RULE_SETS.keys());
  * The fallback is surfaced by the returned set naming its own taxYear: a
  * caller passing 2027 gets a set whose taxYear is 2026, so the substitution is
  * visible rather than silent. Nothing is relabelled as the requested year.
+ *
+ * Total by construction, so it never throws (SPEC section 7). Both sides of
+ * the fallback are reachable and tested.
  */
 export function ruleSetFor(taxYear: number): RuleSet {
-  const exact = RULE_SETS.get(taxYear);
-  if (exact !== undefined) return exact;
-
-  const latest = RULE_SETS.get(LATEST_KNOWN_TAX_YEAR);
-  // Unreachable while RULE_SETS is non-empty; kept so the function is total
-  // and never throws (SPEC section 7).
-  return latest ?? RULES_2026;
+  return RULE_SETS.get(taxYear) ?? LATEST_KNOWN_RULES;
 }

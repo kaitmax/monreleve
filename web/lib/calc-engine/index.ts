@@ -6,12 +6,15 @@
 //
 // FW3 delivers the type surface, the RuleSet, regime derivation, granularity,
 // the denominator, validation and allowedTeleworkDays. calculateTelework -
-// the waterfall, the rates, the headroom and the warnings - is FW4's, and is
-// deliberately not exported until it exists.
+// the waterfall, the rates, the headroom and the warnings - is FW4's.
+// calculateTelework is exported and validates, but does not compute: see
+// calculate.ts for why, and for the sentinel FW4 deletes.
 
 export { ruleSetFor } from './rules';
 export { regimeFor } from './regime';
 export { classifyTeleworkHours } from './granularity';
+export { allowedTeleworkDays } from './allowed-days';
+export { calculateTelework } from './calculate';
 
 export type {
   AllowedTeleworkDays,
