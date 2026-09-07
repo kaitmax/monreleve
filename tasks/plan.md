@@ -104,6 +104,7 @@ The spec (§6, §16) owns the visual system; this section adds the engineering s
 - [ ] All six Geneva fixtures exact (39,16 % / 4,16 %); 100% engine coverage; 8 invariants × 10k cases
 - [ ] Spike numbers recorded; budgets confirmed reachable (or escalation decided)
 - [ ] Visual baselines + a11y green for all nine components; 200px rail thumbnail human-approved
+- [ ] **Design-token gaps** — values in real use that no token carries, reviewed together with the closed radius set (`DESIGN-SYSTEM.md` §4.1). Open: the rail's `TICK_WIDTH` 1,5 px (R42) — SPEC §6.3 states a tick protrusion but no tick thickness, the FW7 brief says 1,5 px and `FD1-calculateur-desktop.md` draws 2 px. Not blocking; `tests/unit/ui-core/rail-tokens.test.ts` asserts its *absence* from the spacing scale so the gap fails loudly if a token is ever added without updating the constant.
 - [ ] **HUMAN GATE — fixtures frozen:** constants verified against admin.ch / AFC / impots.gouv.fr; `docs/regulatory-sources.md` dated
 
 ### Phase 2 — Calculator slice (deployable public MVP at checkpoint)

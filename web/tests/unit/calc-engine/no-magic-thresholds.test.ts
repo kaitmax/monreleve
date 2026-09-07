@@ -49,6 +49,31 @@ const FORBIDDEN = [0.4, 0.499, 240, 10];
 const FORBIDDEN_PERCENT_FORMS = [40, 49.9];
 
 /**
+ * KNOWN BYPASS, recorded here under ruling R43 because it has been
+ * DEMONSTRATED rather than merely imagined: this guard cannot see a number
+ * inside a template literal.
+ *
+ * The strip below removes each backticked run whole, INCLUDING its ${...}
+ * interpolations. Measured in FW7:
+ *
+ *   const FISCAL_TICK = 40;                  -> CAUGHT
+ *   const svg = `<rect x="${w * 40 / 1e2}"/>`;  -> NOT CAUGHT
+ *   `${formatPercent(49.9, 1)}`                 -> NOT CAUGHT
+ *
+ * So a module that builds markup - which is exactly what lib/ui/core/rail is
+ * - can carry both ceilings in plain sight and this file will stay green.
+ *
+ * FW7 does NOT rely on that hole: railGeometry takes ZoneThresholds as a
+ * parameter (R35), so the ceilings arrive from the RuleSet and no literal is
+ * written. But the next person to reach for this guard as the enforcement
+ * behind something load-bearing needs to see the gap before they lean on it,
+ * not after.
+ *
+ * Closing it is possible - strip only the literal chunks of a template and
+ * keep the interpolations - and is deliberately NOT done here: R43 asked for
+ * the bypass to be named at the fence, and narrowing the strip would change
+ * what this file accepts in files that currently pass.
+ *
  * Comments are stripped first: the engine documents its own formulae, so
  * "ceil(240 * rate/100)" appears legitimately in prose and must not trip the
  * check. Only executable literals are inspected.
