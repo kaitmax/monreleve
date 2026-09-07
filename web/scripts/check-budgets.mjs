@@ -197,8 +197,16 @@ console.log(
 console.log('-'.repeat(82));
 
 for (const row of rows) {
+  // An ungated route still gets its gate arithmetic printed. /dev/spike is
+  // the whole point of FW2: the gates do not block on it, but the spike has
+  // to be able to answer "would a representative public page fit?".
+  const wouldPass =
+    row.gzip <= GATE_A_TOTAL_BYTES && row.delta <= GATE_B_DELTA_BYTES
+      ? `would pass (A ${kib(GATE_A_TOTAL_BYTES - row.gzip)} spare, B ${kib(GATE_B_DELTA_BYTES - row.delta)} spare)`
+      : `WOULD FAIL ${row.gzip > GATE_A_TOTAL_BYTES ? 'A' : ''}${row.gzip > GATE_A_TOTAL_BYTES && row.delta > GATE_B_DELTA_BYTES ? '+' : ''}${row.delta > GATE_B_DELTA_BYTES ? 'B' : ''}`;
+
   const verdict = !row.gated
-    ? 'not gated'
+    ? `not gated - ${wouldPass}`
     : row.failsA && row.failsB
       ? `FAIL A by ${kib(row.gzip - GATE_A_TOTAL_BYTES)} and B by ${kib(row.delta - GATE_B_DELTA_BYTES)}`
       : row.failsA

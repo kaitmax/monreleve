@@ -33,6 +33,13 @@ const UI_LIBRARIES = [
   'antd',
 ];
 
+const SPIKE_MESSAGE =
+  'app/dev/spike is the FW2 bundle spike: throwaway markup that exists to be ' +
+  'weighed, not reused. The component library is lib/ui/react (FW8-FW9).';
+
+// Every way of naming the spike directory from outside it.
+const SPIKE_PATHS = ['@/app/dev/spike', '@/app/dev/spike/*', '**/dev/spike', '**/dev/spike/*'];
+
 export default tseslint.config(
   {
     ignores: ['.next/**', 'node_modules/**', 'public/**', 'next-env.d.ts'],
@@ -106,7 +113,12 @@ export default tseslint.config(
     rules: {
       'no-restricted-imports': [
         'error',
-        { patterns: [{ group: UI_LIBRARIES, message: CORE_MESSAGE }] },
+        {
+          patterns: [
+            { group: UI_LIBRARIES, message: CORE_MESSAGE },
+            { group: SPIKE_PATHS, message: SPIKE_MESSAGE },
+          ],
+        },
       ],
       'no-restricted-syntax': [
         'error',
@@ -116,8 +128,42 @@ export default tseslint.config(
           message: CORE_MESSAGE,
         },
         {
+          selector: 'ImportExpression[source.value=/dev\\/spike/]',
+          message: SPIKE_MESSAGE,
+        },
+        {
           selector: 'CallExpression[callee.name="require"]',
           message: CORE_MESSAGE,
+        },
+      ],
+    },
+  },
+
+  // The spike is quarantined. This block deliberately targets file sets that
+  // carry no other no-restricted-imports rule: flat config replaces a rule
+  // rather than merging it, so putting this on lib/** would silently delete
+  // the engine fence above. lib/calc-engine already rejects every
+  // non-relative import, and lib/ui/core carries SPIKE_PATHS in its own
+  // group, so coverage is complete without that risk.
+  {
+    files: [
+      'app/**/*.{ts,tsx}',
+      'lib/ui/react/**/*.{ts,tsx}',
+      'lib/fr/**/*.ts',
+      'tests/**/*.ts',
+      'e2e/**/*.ts',
+    ],
+    ignores: ['app/dev/spike/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        { patterns: [{ group: SPIKE_PATHS, message: SPIKE_MESSAGE }] },
+      ],
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'ImportExpression[source.value=/dev\\/spike/]',
+          message: SPIKE_MESSAGE,
         },
       ],
     },
