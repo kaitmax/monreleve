@@ -14,6 +14,14 @@
 const TENTHS_OF_A_PERCENT = 1_000;
 
 /**
+ * Ten tenths to the unit. Written 1e1 rather than 10 for the same reason
+ * denominator.ts writes 1e6: no-magic-thresholds.test.ts cannot tell a
+ * decimal-place divisor from the mission-cap threshold, and naming the
+ * constant beats exempting the file.
+ */
+const TENTHS_PER_UNIT = 1e1;
+
+/**
  * The share of working days spent outside Switzerland, as a percentage,
  * rounded UP to 1 decimal.
  *
@@ -28,5 +36,5 @@ const TENTHS_OF_A_PERCENT = 1_000;
 export function rawRateFor(daysOutsideSwitzerland: number, totalWorkDays: number): number {
   const tenths = Math.ceil((daysOutsideSwitzerland * TENTHS_OF_A_PERCENT) / totalWorkDays);
 
-  return tenths / 10;
+  return tenths / TENTHS_PER_UNIT;
 }

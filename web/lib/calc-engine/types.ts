@@ -88,7 +88,15 @@ export type Warning =
   | { readonly code: 'SOCIAL_CEILING_EXCEEDED' }
   | { readonly code: 'A1_REQUIRED' }
   | { readonly code: 'FRONTALIER_STATUS_AT_RISK' } // residence-1983 only
-  | { readonly code: 'EXACT_METHOD_UNVERIFIED' }; // user-supplied denominator
+  | { readonly code: 'EXACT_METHOD_UNVERIFIED' } // user-supplied denominator
+  // Ruling R11: ruleSetFor falls back to the latest known set for an unknown
+  // year, and the substitution must reach the user rather than being implied
+  // by a taxYear a caller has to think to compare.
+  | {
+      readonly code: 'RULE_SET_FALLBACK';
+      readonly requestedYear: number;
+      readonly appliedYear: number;
+    };
 
 export type ValidationError =
   | { readonly code: 'RATE_OUT_OF_RANGE' }
