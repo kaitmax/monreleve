@@ -3,15 +3,23 @@
 // SPEC section 7.4. "How much room is there?", answerable before the user has
 // entered a single day, so the calculator can show the allowance up front.
 //
-// atFiscal and atSocial are the ceilings themselves, in days, unrounded:
-// SPEC 7.2 step 5 defines fiscalCeiling as totalWorkDays * 0.40 with no
-// rounding, and the floor-to-the-half-day rule of SPEC 7.3 governs HEADROOM
-// (step 6), which is a different quantity and belongs to FW4.
+// atFiscal and atSocial FLOOR to the half-day, per ruling R12. FW3 returned
+// them unrounded, on the reading that SPEC 7.2 step 5 defines fiscalCeiling
+// without rounding. R12 overrides that: this function answers "how many days
+// may I take", so it is advisory and must never overstate, which is the same
+// rule as headroom. 119.76 was wrong for atSocial at a 240-day denominator;
+// 119.5 is right. The exact unrounded ceiling stays available as
+// fiscalCeilingDays on TeleworkResult.
 //
-// missionCap rounds UP - SPEC 7.2 step 4, the one rule that favours the user
-// (amicable agreement of 30 June 2023).
+// missionCap still rounds UP - SPEC 7.2 step 4, the one rule that favours the
+// user (amicable agreement of 30 June 2023).
+//
+// Three rounding behaviours therefore meet in this file's neighbourhood, and
+// each names its own rule at its own site: floor-to-the-half-day here (via
+// headroom.ts), ceil in denominator.ts, truncate in declarable-rate.ts.
 
 import { ceilProrated, resolveDenominator } from './denominator';
+import { floorToHalfDay } from './headroom';
 import { ruleSetFor } from './rules';
 import { validateInput } from './validate';
 import type {
@@ -52,8 +60,9 @@ export function allowedTeleworkDays(
   return {
     ok: true,
     value: {
-      atFiscal: totalWorkDays * rules.fiscalCeiling,
-      atSocial: totalWorkDays * rules.socialCeiling,
+      // floor to the half-day - advisory, never overstate (R12)
+      atFiscal: floorToHalfDay(totalWorkDays * rules.fiscalCeiling),
+      atSocial: floorToHalfDay(totalWorkDays * rules.socialCeiling),
       // ceil - favours the user (SPEC 7.2 step 4)
       missionCap: ceilProrated(rules.missionCapDays, input.employmentRate, input.periodFraction),
     },

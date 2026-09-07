@@ -4,10 +4,10 @@
 // without being told anything about days already taken, so the calculator can
 // show the allowance before the user has entered a single day.
 //
-// atFiscal and atSocial are the ceilings themselves, in days, unrounded -
-// SPEC 7.2 step 5 defines fiscalCeiling as totalWorkDays * 0.40 with no
-// rounding, and the floor-to-the-half-day rule in 7.3 applies to HEADROOM
-// (step 6), which is FW4's. The mission cap rounds UP (step 4).
+// atFiscal and atSocial FLOOR to the half-day (ruling R12): this function is
+// advisory - it answers "how many days may I take" - so it must never
+// overstate. FW3 returned them unrounded; R12 overrode that. The mission cap
+// still rounds UP (SPEC 7.2 step 4).
 
 import { describe, expect, it } from 'vitest';
 import { allowedTeleworkDays } from '@/lib/calc-engine';
@@ -36,8 +36,9 @@ describe('allowedTeleworkDays (SPEC 7.4)', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
-    expect(result.value.atFiscal).toBe(96); // 240 * 0.40
-    expect(result.value.atSocial).toBeCloseTo(119.76, 10); // 240 * 0.499
+    expect(result.value.atFiscal).toBe(96); // 240 * 0.40, already a whole day
+    // R12: floored to the half-day. 240 * 0.499 = 119.76 -> 119.5.
+    expect(result.value.atSocial).toBe(119.5);
     expect(result.value.missionCap).toBe(10);
   });
 
@@ -89,7 +90,8 @@ describe('allowedTeleworkDays (SPEC 7.4)', () => {
     if (!result.ok) return;
 
     expect(result.value.atFiscal).toBe(80); // 200 * 0.40
-    expect(result.value.atSocial).toBeCloseTo(99.8, 10);
+    // R12: 200 * 0.499 = 99.8 -> floored to 99.5.
+    expect(result.value.atSocial).toBe(99.5);
   });
 
   it('always leaves more social room than fiscal room', () => {
