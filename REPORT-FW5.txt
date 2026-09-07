@@ -1,0 +1,593 @@
+REPORT-FW5 - Property tests, shared fixtures, coverage gate
+===========================================================================
+
+SUMMARY
+-------
+The engine is closed. Eight invariants hold over 10 000 generated cases each,
+the coverage gate is at 100/100/100/100 and proven to fail below it, no
+snapshot can enter the module, and the three shared fixture files are frozen
+for AN2. 401 tests across 23 files. Median calculateTelework is 0,01330 ms,
+about seven times inside the 0,1 ms budget.
+
+Every invariant is paired with a deliberately broken variant that fast-check
+must falsify, and those pairings are permanent rather than one-off RED runs.
+That is the difference between a property suite and decoration: a property
+that has never failed might be vacuous, or the generator might never reach the
+region where it could break, and neither shows up as a red test.
+
+Two things are worth the operator's attention. First, a correction to my own
+FW4 report: it said the rate defect was "wrong in 36 of 125750 pairs", pairing
+a count measured to denominator 400 with a pair total measured to 500. The
+honest figures are 36 of 80 600, or 72 of 125 750 - and the fixture now uses
+the complete 72. Second, and more useful, FW4 implied the fix was integer
+arithmetic versus one float form. There are two float forms and they fail on
+different sets: multiply-first, which is exactly what R10's hygiene rule
+prescribes for the proration, is wrong in 72; the more natural divide-first is
+wrong in 172. So "multiply before dividing" is correct for the proration and
+INSUFFICIENT for the rates, and the fixture, the test and the engine comments
+now all say so.
+
+The engine is code-complete and frozen pending Checkpoint A. What is proven,
+what is proven only against itself, and what is not proven at all are now
+written down where an operator will read them, because a green 100 % badge
+invites conflating the three.
+
+PRECONDITIONS
+-------------
+R1 - nothing has reached origin/main and CI has never run. Fifth session.
+
+  $ git log --oneline -1 origin/main
+  389663b FW1: size budget script, Lighthouse stub, workbench stub
+
+  $ git cat-file -e origin/main:REPORT-FW4.txt   -> NO
+  $ gh api -i user | grep -i x-oauth-scopes
+  X-Oauth-Scopes: gist, read:org, repo
+
+The workflow scope is still absent. Routes previously exhausted and unchanged:
+HTTPS with the gh token, SSH (the two keys present are VPS keys not registered
+with GitHub), the contents API, and gh auth refresh, which needs an
+interactive browser this session does not have.
+
+Environment: node v22.14.0, pnpm 11.17.0, Windows 11 Pro 10.0.26200,
+vitest 5.0.0, fast-check 4.9.0, @vitest/coverage-v8 5.0.0.
+
+RED/GREEN LEDGER
+----------------
+
+Eight invariants, each with the break that falsifies it and the counterexample
+fast-check produced. Every break is a plausible mistake rather than a
+contrived one - the shape of error someone would actually write.
+
+The RED here is stronger than a one-off run: each pairing is a PERMANENT test
+of the form "expect this break to be falsified", so the suite is green only
+when the engine is right AND the property still has teeth. A break that
+stopped being detected would fail the suite.
+
+  1  swissTaxedDays + frenchTaxedDays === totalWorkDays
+     BREAK   swissTaxedDays = total - missionDaysTotal, omitting + credited.
+             The likeliest slip in the regime-applies branch.
+     RED     Property failed after 1 test
+             AssertionError: expected 238 to be 240
+     GREEN   10 000 cases pass.
+
+  2  declarableRate <= 40 whenever regimeApplies
+     BREAK   budget = missionCap, dropping the min() with headroom.
+     RED     Property failed after 1 test
+             Counterexample: employmentRate 4, periodFraction 1/3,
+             simplified240, teleworkDays 1, missionDaysFrance 2
+             AssertionError: expected 50 to be less than or equal to 40
+     GREEN   10 000 cases pass.
+     NOTE    My first choice of break did NOT work, and the file records why:
+             rounding the rate up instead of truncating cannot push it past
+             40, because the numerator is already capped at the ceiling and
+             ceil(4000)/100 is exactly 40. The only way past the ceiling is
+             to credit more mission days than the headroom allows - which is
+             the same break invariant 3 catches. Invariants 2 and 3 guard one
+             mistake from opposite ends.
+
+  3  creditedMissionDays <= missionCap AND <= fiscalCeilingDays - teleworkDays
+     BREAK   the same headroom-ignoring budget.
+     RED     Property failed after 47 tests
+             Counterexample: employmentRate 26, periodFraction 1/12,
+             exact totalWorkDays 125, granularity hours,
+             teleworkDays 90.75, missionDaysFrance 32.5,
+             missionDaysThirdState 1.25
+             AssertionError: expected 10 to be less than or equal to 5.25
+     GREEN   10 000 cases pass.
+
+  4  remainingToSocial >= remainingToFiscal, always
+     BREAK   the two ceilings swapped - the copy-paste mistake.
+     RED     Property failed after 2 tests
+             Counterexample: employmentRate 95, periodFraction 7/12,
+             exact totalWorkDays 120, teleworkDays 76,
+             missionDaysFrance 40, missionDaysThirdState 2
+             AssertionError: expected -28 to be greater than or equal to -16.5
+     GREEN   10 000 cases pass, plus a second property asserting it holds for
+             NEGATIVE headroom specifically, which is where a clamp would
+             break it.
+
+  5  increasing teleworkDays never decreases rawRate
+     BREAK   rawRate built from swissTaxedDays instead of days outside
+             Switzerland - the inversion. As telework rises the headroom
+             shrinks, fewer missions are credited, swissTaxedDays FALLS, and
+             a rate built on it falls with it.
+     RED     falsified (permanent test asserts it).
+     GREEN   10 000 cases pass.
+
+  6  declarableRate <= rawRate
+     BREAK   a rawRate that forgets the mission days. rawRate is the share of
+             days spent OUTSIDE Switzerland, so omitting them makes it
+             smaller than the declarable rate whenever a mission day is
+             credited.
+     RED     falsified (permanent test asserts it).
+     GREEN   10 000 cases pass.
+
+  7  declarableRate is never above the exact unrounded value
+     BREAK   rounding to nearest instead of truncating. 39,1666 rounds to
+             39,17, above the exact value - the whole reason SPEC 7.3
+             specifies truncation.
+     RED     falsified (permanent test asserts it).
+     GREEN   10 000 cases pass, and a SECOND property asserts the other side:
+             it loses less than one hundredth. A "truncation" that discarded
+             more than the last digit would satisfy "never above" alone.
+     NOTE    This invariant is only provable because of R16. Truncation can
+             be checked against the exact unrounded value only if that value
+             is computed on integers; comparing two floats would be comparing
+             the defect against itself.
+
+  8  swapping France and third-state never increases creditedMissionDays
+     BREAK   imputing against the raw France input instead of the credited
+             amount: budget - missionDaysFrance rather than
+             budget - creditedFrance. When France alone exceeds the budget
+             the subtraction goes negative and eats into the third-state
+             credit, making the result asymmetric.
+     RED     falsified (permanent test asserts it).
+     GREEN   10 000 cases pass, and a stronger property is pinned alongside:
+             swapping leaves the credit IDENTICAL, not merely no larger,
+             because the credit is min(missionTotal, budget) and that is
+             symmetric. What the France-before-third-state order decides is
+             which days are credited and therefore who collects the tax on
+             the rest - never how many.
+
+BEHAVIOURS, not properties, implemented this session:
+
+  missionCapFor (ruling R19)                     mission-cap.test.ts
+     RED     TypeError: missionCapFor is not a function - 10 failed. The
+             pre-ruling behaviour was captured beside it: an exact total of
+             200 days at employmentRate 50 returned a cap of 5, double
+             counting the part-time reduction the employer's own total
+             already embodies.
+     GREEN   10 passed, plus 5 shared fixture cases.
+
+GUARDS AGAINST A VACUOUS SUITE. Three properties exist only to stop the
+others proving less than they claim:
+
+  - the generator produces only inputs the engine accepts, over 10 000 cases;
+  - its REACH is asserted: a test collects what 2 000 runs actually produced
+    and fails unless all three granularities, both denominator methods, both
+    regime outcomes, part-time rates, mid-year periods and the unknown-tax-
+    year fallback all appear. AC1 names those dimensions, and a generator
+    that quietly stopped reaching one would leave the suite green and hollow;
+  - the two rates are asserted to actually DISAGREE on some generated input,
+    so neither is dead code, and each rate function is asserted to agree with
+    the wired result for the same numerator, so the pipeline cannot diverge
+    from the units it is built from.
+
+FIXTURE LEDGER
+--------------
+
+fixtures/rate-cases.json - 72 cases, ruling R16.
+
+  RED, the suite run against the multiply-first float form:
+
+    Tests 43 failed | 2 passed (74)
+      AssertionError: rate-23-125: expected 18.4 to be 18.39
+      AssertionError: rate-46-125: expected 36.8 to be 36.79
+      AssertionError: rate-51-125: expected 40.8 to be 40.79
+      AssertionError: rate-87-125: expected 69.6 to be 69.59
+      AssertionError: rate-92-125: expected 73.6 to be 73.59
+
+  GREEN, the shipped integer form:
+
+    Tests 78 passed (78)
+
+The 18.39 failure is the one the ruling is named for. 23/125 is exactly
+18,4 %; the float form yields 18,39; truncation rounds toward zero so the
+error is biased downward and never cancels, on the number filed with the AFC.
+
+Both anti-examples are kept in the test file as documented forbidden shapes,
+and a PERMANENT test asserts they still get every case wrong. If that ever
+passes, either the fixture has been emptied or floating point has changed.
+
+Three further properties of the set, each asserted:
+
+  - the float form UNDERSTATES in every one of the 72 cases, never overstates;
+  - it is wrong by exactly one hundredth every time;
+  - the divide-first form is wrong on a different and larger set, so nobody
+    concludes the fix is "multiply before dividing".
+
+Reachability, recorded in the file: every disagreement has a denominator that
+is a multiple of 125, because n/125 lands on an exact tenth of a percent and
+exact tenths are what binary cannot hold. Denominator 125 is reachable on the
+simplified basis at employmentRate 52. 250, 375 and 500 are reachable only
+through the exact method - which is the path that already carries
+EXACT_METHOD_UNVERIFIED.
+
+The other two fixture files still pass: 5 denominator cases including the
+three float cases from R10, and 4 mission-cap cases added by R19.
+
+RULINGS APPLIED
+---------------
+
+R16 - integer arithmetic for rates, with shared fixtures.
+  fixtures/rate-cases.json created with all 72 disagreements, a `contract`
+  field naming the Kotlin engine, and a field explaining why normalisation is
+  not enough. Read by the test, never transcribed. See FIXTURE LEDGER.
+
+R17 - powers of ten in exponential notation.
+  Converted: HUNDREDTHS_OF_A_PERCENT to 1e4, TENTHS_OF_A_PERCENT to 1e3, the
+  percent divisors named PERCENT and HUNDREDTHS_PER_PERCENT at 1e2.
+  TENTHS_PER_UNIT was already 1e1 and NORMALISE_FACTOR already 1e6.
+
+  The guard now strips exponential literals EXPLICITLY. Before this it
+  ignored them only by accident, because \b\d+\b happens not to match inside
+  "1e6"; the exemption is now intentional and survives a change to the
+  literal regex. Proof in GATE PROOFS.
+
+  validate.ts's MAX_EMPLOYMENT_RATE stays 100. R17 is headed "scaling
+  factors"; that constant is a domain bound from the spec's "employmentRate
+  1-100", not a factor for shifting a decimal point, and the guard does not
+  forbid 100 in any case. Flagged rather than silently converted.
+
+R18 - A1_REQUIRED stays provisional.
+  The PROVISIONAL marker was already at the site from FW4. What was missing
+  was the operator-facing record, so docs/regulatory-sources.md now carries it
+  as a named item in the CHECKPOINT A - VERIFICATION REQUIRED list, phrased as
+  a question for the reviewer: "is there a telework share below which no A1 is
+  required, and if so what is it?" No numeric trigger was invented.
+
+R19 - mission-cap proration under the exact method.
+  RED first, then implemented as ruled: periodFraction only under `exact`,
+  both factors under `simplified240`. missionCapFor is now the single
+  computation and BOTH call sites go through it - calculateTelework and
+  allowedTeleworkDays - so they cannot drift apart. PROVISIONAL marker at the
+  site, four cases in fixtures/denominator-cases.json under missionCapCases,
+  and a named item in the verification list.
+
+  Worth recording: no existing test broke. Every exact-method test in FW3 and
+  FW4 happened to use employmentRate 100, where the two readings agree. The
+  interpretation only bites for a part-timer, which is exactly why it went
+  unnoticed until it was written down.
+
+R20 - declared red is permitted narrowly. Not needed this session: no
+  increment carried a knowingly-red test. The fixture RED in increment 1 was
+  produced by running the suite against an anti-example function, not by
+  committing a red suite, so the ordering rule and green-after-every-increment
+  did not conflict here.
+
+R21 - shared RED via module resolution. Not needed: every function
+  implemented this session has its own RED.
+
+GATE PROOFS
+-----------
+
+1. THE COVERAGE GATE BITES.
+
+  vitest.config.ts sets statements, branches, functions and lines to 100 for
+  lib/calc-engine only. Scoping it to the engine keeps it a number someone can
+  act on rather than an average diluted by app/ and lib/ui, which get their own
+  gates when they have behaviour to cover.
+
+  Planted an unreachable branch in granularity.ts:
+
+    $ pnpm test:coverage
+    File            | % Stmts | % Branch | % Funcs | % Lines | Uncovered
+     granularity.ts |    92.3 |    93.33 |     100 |     100 | 55
+    ERROR: Coverage for statements (99.15%) does not meet global threshold (100%)
+    ERROR: Coverage for branches (98.79%) does not meet global threshold (100%)
+    EXIT 1
+
+  Reverted:
+
+    Statements   : 100%  (117/117)
+    Branches     : 100%  (81/81)
+    Functions    : 100%  (16/16)
+    Lines        : 100%  (113/113)
+    EXIT 0
+
+  Wired into CI as a blocking step, before build.
+
+2. THE SNAPSHOT GUARD FIRES.
+
+  It is a test rather than a CI-only grep, so it runs wherever the suite runs.
+  It covers BOTH lib/calc-engine and tests/unit/calc-engine - which the plan's
+  wording does not make obvious, but the engine's tests live outside the
+  engine because the import fence forbids them inside it, so the tests
+  directory is where a snapshot could actually appear.
+
+  Planted a toMatchSnapshot in a test file:
+
+    FAIL  no snapshot tests in the engine (SPEC 7.6) > no file uses toMatchSnapshot
+    AssertionError: expected [ Array(1) ] to deeply equal []
+    +   ".../tests/unit/calc-engine/__planted-snapshot.test.ts"
+    Tests 1 failed | 4 passed (5)
+
+  Plant and the generated __snapshots__ directory removed:
+
+    Tests 5 passed (5)
+
+  It excludes itself from its own scan, and the file says why: it holds the
+  forbidden matcher names as string literals in CODE rather than comments, so
+  comment-stripping does not hide them and it would otherwise report itself as
+  the sole offender - the kind of failure that gets a guard deleted rather
+  than fixed. It also checks for .snap files and __snapshots__ directories,
+  not only for the matcher names.
+
+3. THE THRESHOLD GUARD, NARROWED PER R17.
+
+    planted "export const P240 = 240;"   ->  Tests 1 failed   (fires)
+    planted "export const P10  = 10;"    ->  Tests 1 failed   (fires)
+    planted "export const PE6  = 1e6;"   ->  Tests 15 passed  (ignored)
+
+  So 10 stays guarded as the mission cap while every scaling factor written
+  in exponential notation passes, which is the whole point of R17.
+
+BENCHMARK
+---------
+
+  $ pnpm exec vitest run tests/unit/calc-engine/benchmark.test.ts
+
+    calculateTelework over 2000 calls across 10 representative inputs:
+      median 0.01330 ms
+      mean   0.02001 ms
+      p95    0.02930 ms
+      budget 0.1 ms (informational at this stage)
+
+  Median is roughly 7,5x inside the budget; even p95 is 3,4x inside it.
+
+The input set spans the branches deliberately, because they differ in cost and
+timing only the happy path would flatter the median:
+
+  1  Geneva case c shape, the cap binding
+  2  regime lost (144 telework days)
+  3  headroom binding (Geneva case b shape)
+  4  missions only, no telework
+  5  the exact method, which skips the proration
+  6  part-time mid-year, 45 % over 7/12
+  7  half-day granularity with fractional counts
+  8  a 1983 canton with the regime lost
+  9  the rule-set fallback path, taxYear 2027
+ 10  an invalid input, which returns before any arithmetic
+
+It MEASURES and REPORTS; it does not assert a duration. A timing assertion in
+a unit suite is a flake waiting for a busy runner, and the prompt is explicit
+that the budget is informational at this stage. What is asserted is that the
+measurement ran with the expected sample count and that nine of the ten inputs
+produce a result while the tenth is rejected - so the number above cannot be
+stale or fabricated.
+
+DEPENDENCY PROOF
+----------------
+
+fast-check is a devDependency and does not enter the runtime graph.
+
+  package.json dependencies:
+    @fontsource-variable/inter, lucide-react, next, react, react-dom
+  fast-check in dependencies:     false
+  fast-check in devDependencies:  true
+
+  occurrences of "fast-check" in .next/static - the bundles actually served:
+    0
+
+  occurrences anywhere under .next: 4 files, all under .next/cache -
+    .next/cache/.tsbuildinfo
+    .next/cache/webpack/client-production/10.pack
+    .next/cache/webpack/server-production/19.pack
+    .next/cache/webpack/server-production/index.pack
+
+  These are build metadata, not output. The .tsbuildinfo mention exists only
+  because tsc type-checks the test files that import it.
+
+  lib/calc-engine non-relative imports: 0
+
+The last line is the structural guarantee behind the other three: the engine
+fence rejects every non-relative import, so fast-check could not reach the
+engine even if someone tried. The report states all four rather than the
+convenient one, because "not in dependencies" alone would not have ruled out a
+transitive path.
+
+ENGINE STATUS
+-------------
+
+Written into docs/regulatory-sources.md at the top of the file, in full. Its
+purpose is to stop three things being conflated now that the suite is green,
+because a 100 % badge invites exactly that.
+
+PROVEN AGAINST AN EXTERNAL AUTHORITY. The six Geneva cases, and only those.
+They are the sole claims in the engine that an outside party stated and we
+merely reproduce, and they were shown failing before the waterfall existed.
+
+  WITH A CAVEAT THAT MATTERS: the table was transcribed from
+  SPEC-frontalier-web.md 7.5, not from the AFC publication. Until someone
+  opens the publication, this is proof that the engine matches the SPEC'S
+  TRANSCRIPTION of the authority - not the authority.
+
+PROVEN INTERNALLY, BY PROPERTY. Eight invariants over 10 000 cases each, each
+paired with a falsifiable break. These prove the engine is SELF-CONSISTENT:
+days are never lost or double counted, the credit never exceeds either limit,
+truncation never overstates. They cannot prove any of it is the right rule,
+and the section says so in those words.
+
+  Plus two arithmetic guards: denominator-cases.json and rate-cases.json pin
+  defects that exist only because of binary floating point.
+
+NOT VERIFIED AT ALL. All seven constants in RuleSet(2026). The two PROVISIONAL
+interpretations. Whether truncation is the filing rule or an artefact of how
+the worked examples were printed. And the interpretative agreement of 29 April
+2026, held second-hand - singled out because it is the source for the mission
+sub-cap sitting INSIDE the 40 % rather than beside it, and that single reading
+changes every result the engine produces.
+
+THE THREE FIXTURE FILES are recorded as frozen at Checkpoint A and consumed by
+AN2, with the reason they are language-neutral: periods are exact ratios
+because a decimal transcription of 7/12 parses to a different double and would
+fail to reproduce the defect it exists to pin.
+
+DEVIATIONS
+----------
+
+1. TWO CORRECTIONS TO REPORT-FW4.txt, both mine, both in increment 1's commit
+   body. The count was a conflation: "36 of 125750" paired a
+   denominators-to-400 disagreement count with a denominators-to-500 pair
+   total. Correct: 36 of 80 600, or 72 of 125 750. And FW4 implied the fix was
+   integer arithmetic versus one float form, when there are two that fail on
+   different sets - multiply-first wrong in 72, divide-first wrong in 172.
+   That matters because multiply-first is what R10 prescribes for the
+   proration, so a reader could reasonably conclude the hygiene rule covers
+   the rates. It does not.
+
+2. CI NOW RUNS THE TEST SUITE TWICE. `pnpm test` and then `pnpm test:coverage`
+   execute the same 23 files, and the eight 10 000-case property suites are
+   the dominant cost of both. The prompt asked for the gate wired into CI as a
+   blocking step, which it is; whether the uninstrumented run should be
+   dropped is QUESTIONS 1. Not changed unilaterally, because `pnpm test` is
+   named in the project-wide Definition of Done.
+
+3. THE PROPERTY REDS ARE PERMANENT TESTS, NOT ONLY CAPTURED RUNS. The prompt
+   asks for a RED row per property. Each broken variant is additionally kept
+   as a live test asserting that fast-check falsifies it, so the RED cannot
+   silently stop being red. The counterexamples in the ledger were captured
+   from real runs; four of the eight are quoted with their generated input,
+   and the other four are recorded as "falsified" because their permanent
+   test asserts it rather than printing it.
+
+4. INVARIANT 2's FIRST BREAK DID NOT WORK. Rounding up cannot exceed the
+   ceiling, because the numerator is already capped and ceil(4000)/100 is 40.
+   Recorded as a finding in the test file rather than quietly replaced,
+   because the reason is instructive: invariants 2 and 3 turn out to guard one
+   mistake from opposite ends.
+
+5. THE BENCHMARK ASSERTS NO DURATION, by design. See BENCHMARK.
+
+6. R19 BROKE NO EXISTING TEST. Every exact-method test in FW3 and FW4 used
+   employmentRate 100, where the two readings agree, so a behaviour change
+   that matters for every part-timer was invisible to the suite until the
+   interpretation was written down. Recorded because it is a coverage lesson,
+   not a code one: 100 % line and branch coverage did not imply the case was
+   covered.
+
+7. NO COMMIT REACHED origin/main, for the fifth session running.
+
+NOTICED BUT NOT TOUCHING
+------------------------
+
+1. tasks/todo.md FW5's verification says `pnpm vitest run lib/calc-engine
+   --coverage`. The engine's tests are in tests/unit/calc-engine, because the
+   import fence forbids importing vitest inside lib/calc-engine. The
+   equivalent is `pnpm test:coverage`, which is what CI runs.
+
+2. THE PROPERTY SEED IS FIXED at 20260907, so every run explores the same
+   10 000 cases. That makes failures reproducible, which is what the prompt
+   asked for, and it also means CI will never discover a case the seed does
+   not reach. QUESTIONS 3.
+
+3. reviewer-cases.ts DOES NOT EXIST. Out of scope by name - it waits for
+   Checkpoint A and a named reviewer.
+
+4. THE FW1-FW4 GAPS ARE UNCHANGED: boundary 3 of 5 (lib/ui imports types from
+   calc-engine, never logic) is unfenced; the token fence can be laundered
+   through a Sass variable or a custom property; raw values in React inline
+   style objects are invisible to stylelint; app/page.tsx collides with SPEC
+   5's app/(public)/page.tsx at FW10; prompts/design-frontier/ does not exist;
+   and regimeFor still cannot honour a future rule set.
+
+5. THE ENGINE IS NOW 14 MODULES AND 401 TESTS. Nothing is wrong with that, but
+   FW6 starts lib/ui/core and the same coverage discipline is not yet wired
+   there. vitest.config.ts scopes coverage to lib/calc-engine deliberately;
+   FW6 will need its own decision about what gate lib/ui/core carries.
+
+QUESTIONS FOR THE OPERATOR
+--------------------------
+
+1. SHOULD CI DROP THE UNINSTRUMENTED TEST RUN? It now runs `pnpm test` and
+   `pnpm test:coverage` back to back over the same 23 files, and the eight
+   10 000-case property suites dominate both. `test:coverage` runs every test
+   the plain run does, so the second pass buys only the small chance that v8
+   instrumentation itself changes behaviour. Dropping `pnpm test` roughly
+   halves the slowest part of CI. I did not do it because `pnpm test` is named
+   in the project-wide Definition of Done in tasks/plan.md, and editing that
+   is not FW5's.
+
+2. WHO OPENS THE AFC PUBLICATION? The Checkpoint A list has the seven
+   constants each with an unchecked box, but the six Geneva cases themselves
+   were transcribed from SPEC 7.5 rather than from the AFC. The ENGINE STATUS
+   section says so plainly. It is worth being explicit that the fixture TABLE
+   needs verifying too, not only the constants - if a published figure was
+   mistyped into the spec, every test in this project would agree with the
+   mistake and nothing would notice.
+
+3. SHOULD THE PROPERTY SEED ROTATE IN CI? Fixed at 20260907, every run
+   explores the same 10 000 cases: reproducible, and blind to anything the
+   seed does not reach. The usual arrangement is a random seed in CI with the
+   failing seed printed on failure, keeping the fixed seed locally. That
+   trades reproducibility for reach, and it means CI can fail on a case that
+   passed yesterday - which is either exactly what you want from a property
+   suite or a nuisance, depending on how the team reads a red build. My
+   inclination is to rotate, but it is a policy choice.
+
+4. THE 29 APRIL 2026 INTERPRETATIVE AGREEMENT is the highest-leverage
+   unverified item in the project and I want to name it once more. It is the
+   source for the mission sub-cap sitting INSIDE the 40 % rather than beside
+   it. If it sits beside instead, every Geneva case, every property and the
+   whole waterfall are wrong together, and consistently - which is the worst
+   failure mode available, because nothing in the suite would show it. It is
+   held second-hand, through an advisory summary.
+
+PUSH PROOF
+----------
+
+Session commits, oldest first:
+
+  438936b  FW5: shared rate fixtures for the integer-arithmetic rule (R16)
+  075ef8f  FW5: exponential scaling, provisional markers, exact-method cap
+           proration (R17-R19)
+  c8360a6  FW5: property invariants 1-4
+  2deba79  FW5: property invariants 5-8
+  b84448c  FW5: coverage gate, snapshot guard, engine benchmark
+  d7b2381  FW5: Checkpoint A verification list and engine status
+
+Pushes that succeeded: none.
+
+Every attempt returned:
+
+  ! [remote rejected] main -> main (refusing to allow an OAuth App to create
+    or update workflow `.github/workflows/ci.yml` without `workflow` scope)
+
+origin/main is at 389663b. Local main is ahead by thirty-nine commits: five
+from FW1, ten from FW2, nine from FW3, eight from FW4, six from this session,
+and this report.
+
+FINAL VERIFICATION
+------------------
+
+  $ pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm size
+
+  typecheck  exit 0
+  lint       exit 0
+  test       Test Files 23 passed (23) | Tests 401 passed (401)
+  build      exit 0, 4 static routes prerendered
+  size       exit 0, all gated routes pass both gates
+
+  chain exit 0
+
+  $ pnpm test:coverage
+  Statements 100% (117/117), Branches 100% (81/81),
+  Functions 100% (16/16), Lines 100% (113/113)
+  exit 0
+
+All six Geneva cases, all five denominator cases, all four mission-cap cases
+and all 72 rate cases pass.
+
+CI green on origin/main: NOT VERIFIED. Nothing has reached origin/main.
+
+END OF REPORT
