@@ -1,0 +1,256 @@
+FW7 SESSION PROMPT - frontalier
+Paste this entire prompt as the first message of a fresh Claude Code
+session, opened at the repository root.
+
+====================================================================
+PRE-STEP RULINGS (apply verbatim)
+====================================================================
+R1 (carried). FW1-FW6 accepted. Fifty commits have not reached
+   origin/main; CI, the weekly sweep and the parity lane have never
+   executed. Record under DEVIATIONS. Non-blocking for code; blocking
+   for any claim that CI is green.
+
+R2, R7, R8, R10-R13, R15-R26 (carried, unchanged). The engine is
+   closed.
+
+R9 (route). You own document edits. Increment 0 lists them exactly.
+
+R27 (new - Node floor). Option (a): the Node floor is 22. Node 20
+   left maintenance in April 2026. The parity lane keeps 22 and 24
+   and drops 20. SPEC sections 19 and 21 say "identical on Node 22
+   and 24". package.json engines reflects >=22.12.
+
+R28 (new - calendar days are strings). A calendar day is an ISO
+   YYYY-MM-DD string end to end - column, API, formatter. A Date
+   object never represents a day. Instants are ISO timestamps
+   rendered in Europe/Paris. formatDate's signature takes the ISO
+   day string; if it currently accepts a Date, that overload is
+   removed.
+
+R29 (new). formatDateTime renders "18.06.2027" U+00A0 a-grave U+00A0
+   "18:03" - no-break space on both sides of the a-grave so the
+   timestamp is one unbreakable token. Codepoint assertion.
+
+R30 (new). Fourth status icon confirmed: circle-x for regime-lost,
+   octagon-alert for social-switch. Two legal consequences, two
+   glyphs, and the label differs, so never colour-alone.
+
+R31 (new). _zones.scss emits ONLY the three Zone band classes.
+   Status styling is FW8's; the badge reads its token names from
+   zones.ts in TypeScript. Remove the Status custom-property
+   assignments from the generator.
+
+R32 (new - ceiling boundaries). Ceilings are inclusive on the
+   compliant side: compliant for rate <= 40; fiscal-exposure for
+   40 < rate <= 49.9; social-switch for rate > 49.9. Geneva case b is
+   exactly 40.00 with the regime applying; the engine's
+   SOCIAL_CEILING_EXCEEDED fires only when remainingToSocial is
+   negative. Zone and Status now agree at every value. zoneFor's
+   boundary tests flip: 40.00 compliant, 40.01 fiscal-exposure, 49.90
+   fiscal-exposure, 49.91 social-switch. statusFor is re-checked
+   against the same boundaries. Tick marks stay at 40 and 49.9. Add
+   to docs/regulatory-sources.md's Checkpoint A list: whether the
+   social ceiling is legally "<= 49.9" or "< 50" - under two-decimal
+   truncation 49.99 falls on opposite sides.
+
+R33 (new - non-finite rates). zoneFor keeps THROWING on a non-finite
+   rate: it is a programming error and must be loud. The rail (this
+   task) and the badge (FW8) guard the call and render an explicit
+   "indisponible" state - never a colour, never a blank page.
+
+R34 (new). Repository scripts are .mjs. todo.md amended.
+
+====================================================================
+CONTEXT
+====================================================================
+Project: frontalier. You are executing task FW7 ONLY: renderRailSvg,
+the product's signature element, as a pure string generator in
+lib/ui/core so that the browser, the PDF and the OG image render the
+same bytes. Design: DESIGN-SYSTEM.md section 3 (FrontierProgress
+mapping) and SPEC section 6.3 - an 8 px pill track, fill in the band
+colour, two tick markers at 40 and 49.9 protruding 4 px above and
+below, tabular labels; variants inline, compact, social.
+
+Read first: CLAUDE.md, README.md, SPEC sections 6.2, 6.3, 6.4, 20;
+DESIGN-SYSTEM.md sections 1, 3, 4; tasks/todo.md FW7; REPORT-FW6.txt
+in full.
+
+====================================================================
+STANDING PROTOCOL (identical in every FW / AN prompt)
+====================================================================
+1. SESSION SCOPE. Increment 0 and FW7 only. Do not start FW8.
+2. INCREMENT CYCLE. Green after EVERY increment; R20 does not apply.
+3. COMMIT ONLY ON GREEN, chained with && (R15).
+4. COMMITS. "FW7: <increment title>"; "chore: <title>" for R27-R34.
+5. SIMPLICITY FIRST. The rail is a string template over a handful of
+   computed numbers. No SVG library, no DOM, no virtual DOM.
+6. TEST-FIRST with a RED row per behaviour.
+7. PURITY OF lib/ui/core. No react, no DOM, no import from
+   lib/calc-engine's implementation - types only. The generator must
+   run unchanged in Node and in a browser.
+8. UI DISCIPLINE. Colours are token names resolved through the FW1
+   layer; the SVG carries CSS custom properties, never hex. Labels
+   go through the FW6 formatters. French only, from lib/fr.
+9. QUESTIONS. Pause and ask.
+10. EXIT ARTIFACT. REPORT-FW7.txt, committed and pushed.
+
+====================================================================
+INCREMENT 0 - HOUSEKEEPING (R27-R34), one commit per ruling
+====================================================================
+0a. R27: engines >=22.12; parity lane 22/24; SPEC 19 and 21 wording;
+    remove any Node 20 references in CI.
+0b. R28: formatDate takes the ISO day string only; tests updated; a
+    type test asserts no Date overload exists.
+0c. R29: U+00A0 both sides of the a-grave; codepoint assertion.
+0d. R31: generator emits Zone classes only; regenerate; stale check
+    green.
+0e. R32: zoneFor and statusFor boundaries flipped per the ruling,
+    RED first (the old tests fail, the new ones pass); Checkpoint A
+    line added to docs/regulatory-sources.md; SPEC 6.2 wording
+    updated to state the inclusive boundaries.
+0f. R34: any .ts script under scripts/ renamed to .mjs; todo.md
+    amended.
+Each commit green. Report the diffs.
+
+====================================================================
+TASK FW7 - renderRailSvg
+====================================================================
+Acceptance criteria (restated; the report must prove each):
+AC1. Byte-identical output for the same RailData in Node and in a
+     browser (Playwright evaluates the function in page context and
+     the strings are compared).
+AC2. Screenshot baselines for every variant x zone (3 x 3 = 9), plus
+     a 200 px-wide render of the inline variant kept as the
+     thumbnail-legibility artifact for human review at Checkpoint A.
+AC3. Out-of-range and non-finite inputs: percentages below 0 or
+     above 100 clamp VISUALLY at the track's edges while the label
+     shows the true value; a non-finite percentage renders the
+     explicit "indisponible" state (R33) - no fill, no colour, the
+     word from lib/fr.
+
+--------------------------------------------------------------------
+INCREMENT 1 - RailData and geometry (no SVG yet)
+--------------------------------------------------------------------
+- lib/ui/core/rail/geometry.ts: pure functions from RailData to the
+  numbers the template needs - track x/y/width, fill width, the two
+  tick x positions (40 and 49.9 as fractions of the track width),
+  label anchors, and the variant dimensions:
+    inline   width from RailData, track height 8, ticks +-4,
+             labels below at Caption 13/18
+    compact  as inline without the band names, minimum width 200
+    social   1200 x 630, the rail centred, product name and rate
+             above it, band names present
+- RailData per SPEC 6.3: percentage, zone, width, height, variant.
+  height is the TRACK height and is 8 for every variant; total
+  height including ticks and labels is derived and exposed.
+- RED first: geometry tests at 0, 34.58, 40, 49.9, 60, 100, and the
+  clamping cases -5 and 140 (fill clamps to 0 and 100; label value
+  untouched).
+- Commit: "FW7: rail geometry". Push.
+
+--------------------------------------------------------------------
+INCREMENT 2 - renderRailSvg, inline variant
+--------------------------------------------------------------------
+- lib/ui/core/rail/renderRailSvg.ts returns an SVG string: track
+  (rx = 4 for the 8 px pill), fill in the band colour as a CSS
+  custom property (var(--colour-success) etc. - never hex), two
+  1.5 px tick rects at 40 and 49.9 spanning track +- 4, tick labels
+  "40 %" and "49,9 %" via formatPercent with tabular numerals
+  (font-variant-numeric: tabular-nums in the SVG's style), band
+  names above in Micro 11/14 secondary, and the percentage label.
+- Every text node comes from lib/fr or from a formatter; no literal
+  French in the template.
+- Accessibility: role="img" and an aria-label built from lib/fr
+  naming the rate and the zone in words.
+- RED first: assertions on the presence and position of the two
+  ticks, the fill width for 34.58, the band colour variable per
+  zone, and the absence of any hex literal in the output.
+- Commit: "FW7: renderRailSvg inline variant". Push.
+
+--------------------------------------------------------------------
+INCREMENT 3 - compact and social variants
+--------------------------------------------------------------------
+- compact: no band names, minimum width 200 enforced (narrower
+  input is treated as 200 and reported via the geometry).
+- social: 1200 x 630, background canvas token, product name from
+  lib/fr at H2, the percentage at Display, the rail centred at 60%
+  of the width, band names present. This is the OG image source and
+  is generic per SPEC 6.6 - the function does not know whose rate it
+  is and takes no personal data.
+- RED first per variant.
+- Commit: "FW7: compact and social rail variants". Push.
+
+--------------------------------------------------------------------
+INCREMENT 4 - R33 state and clamping
+--------------------------------------------------------------------
+- Non-finite percentage: the function does NOT call zoneFor; it
+  renders the track with no fill, no band colour, and the word
+  "indisponible" (from lib/fr) as the label, with an aria-label that
+  says the rate is unavailable. A test asserts zoneFor is not reached
+  (spy or structural) and that the output contains no colour
+  variable.
+- Clamping: -5 renders fill width 0 with label "-5,0 %"; 140 renders
+  full fill with label "140,0 %". The label is the truth; the
+  geometry is bounded.
+- Commit: "FW7: unavailable state and edge clamping (R33)". Push.
+
+--------------------------------------------------------------------
+INCREMENT 5 - Node/browser byte parity
+--------------------------------------------------------------------
+- A Playwright test loads a page that exposes renderRailSvg (via the
+  built bundle or a dev route under /dev/), evaluates it in page
+  context for a matrix of RailData, and compares each string
+  byte-for-byte with the Node result computed in the test runner.
+- Any difference is a failure; there must be none. If Intl-dependent
+  formatting differs between environments, that is a formatter
+  defect and is reported, not patched in the rail.
+- Commit: "FW7: Node and browser render identical bytes". Push.
+
+--------------------------------------------------------------------
+INCREMENT 6 - screenshot baselines and the 200 px artifact
+--------------------------------------------------------------------
+- Playwright screenshots of the nine variant x zone combinations
+  rendered at natural size, plus the inline variant at 200 px wide,
+  committed as baselines under tests/visual/baselines/rail/.
+- The 200 px PNG is additionally copied to docs/review/rail-200px.png
+  for the Checkpoint A human review; the report states that a human
+  must confirm the two ticks are distinguishable at that width.
+- Commit: "FW7: rail screenshot baselines and 200 px review
+  artifact". Push.
+
+====================================================================
+OUT OF SCOPE FOR FW7
+====================================================================
+- The React ThresholdRail wrapper and the badge - FW8.
+- The OG image route - FW15 consumes the social variant.
+- The PDF - FW25.
+- Any engine change. Any verification field.
+
+====================================================================
+FINAL VERIFICATION
+====================================================================
+pnpm typecheck && pnpm lint && pnpm test && pnpm test:e2e && pnpm
+test:visual && pnpm build && pnpm size
+Green in one run.
+
+====================================================================
+REPORT FORMAT - REPORT-FW7.txt (pure ASCII, committed and pushed)
+====================================================================
+SUMMARY
+PRECONDITIONS      origin/main and CI status per R1.
+INCREMENT 0        R27-R34, one block each: diff, proof, commit, push.
+RED/GREEN LEDGER   One row per behaviour.
+PARITY PROOF       The Node vs browser byte comparison: matrix size,
+                   zero differences.
+NO-HEX PROOF       The assertion that no hex literal appears in any
+                   rendered SVG.
+R33 PROOF          zoneFor not reached on non-finite input; output
+                   has no colour variable.
+BASELINES          The nine files plus the 200 px artifact, with a
+                   note that human review is pending.
+DEVIATIONS
+NOTICED BUT NOT TOUCHING
+QUESTIONS FOR THE OPERATOR
+PUSH PROOF
+
+END OF FW7 PROMPT
