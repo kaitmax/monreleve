@@ -37,6 +37,11 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm test
+
+      # SPEC 7.6: 100% statement and branch coverage on lib/calc-engine is
+      # "not an aspiration". Blocking, and proven to bite - an unreachable
+      # branch takes it to 98.79% and fails the step.
+      - run: pnpm test:coverage
       - run: pnpm build
 
       - run: pnpm exec playwright install --with-deps chromium
