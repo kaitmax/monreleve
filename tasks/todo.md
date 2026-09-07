@@ -118,12 +118,12 @@ Every task also clears the project-wide Definition of Done and the Execution, Te
 - [ ] Status exhaustiveness test fails on any missing label/icon/explanation
 
 **Verification:**
-- [ ] Tests pass: `pnpm vitest run lib/ui/core`
+- [ ] Tests pass: `pnpm vitest run tests/unit/ui-core`
 - [ ] Build succeeds: `pnpm build` (generation step runs)
 - [ ] Manual check: run tests under Node 22 and Node 24 — identical formatter output
 
 **Dependencies:** FW1
-**Files likely touched:** `lib/ui/core/zones.ts`, `lib/ui/core/format/{number,date}.ts`, `scripts/generate-zones-scss.ts`, `lib/ui/core/styles/_zones.scss`, tests
+**Files likely touched:** `lib/ui/core/zones.ts`, `lib/ui/core/format/{number,date}.ts`, `scripts/generate-zones-scss.mjs`, `lib/ui/core/styles/_zones.scss`, tests
 **Estimated scope:** M
 
 ---
@@ -138,7 +138,7 @@ Every task also clears the project-wide Definition of Done and the Execution, Te
 - [ ] Negative/over-100 percentages clamp visually at the rail's edges without lying numerically (label still shows the true value)
 
 **Verification:**
-- [ ] Tests pass: `pnpm vitest run lib/ui/core && pnpm test:visual`
+- [ ] Tests pass: `pnpm vitest run tests/unit/ui-core && pnpm test:visual`
 - [ ] Build succeeds: `pnpm typecheck`
 - [ ] Manual check: open the 200px baseline — thresholds distinguishable at thumbnail size
 
