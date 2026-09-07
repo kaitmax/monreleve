@@ -14,7 +14,10 @@
         12
       ],
       "expectedTotalWorkDays": 63,
-      "naiveWrongResult": 64
+      "naiveWrongResult": 64,
+      "source_url": "",
+      "verified_by": "",
+      "verified_on": ""
     },
     {
       "id": "float-85-7-12",
@@ -26,7 +29,10 @@
         12
       ],
       "expectedTotalWorkDays": 119,
-      "naiveWrongResult": 120
+      "naiveWrongResult": 120,
+      "source_url": "",
+      "verified_by": "",
+      "verified_on": ""
     },
     {
       "id": "float-90-7-12",
@@ -38,7 +44,10 @@
         12
       ],
       "expectedTotalWorkDays": 126,
-      "naiveWrongResult": 127
+      "naiveWrongResult": 127,
+      "source_url": "",
+      "verified_by": "",
+      "verified_on": ""
     },
     {
       "id": "exact-100-full-year",
@@ -50,7 +59,10 @@
         1
       ],
       "expectedTotalWorkDays": 240,
-      "naiveWrongResult": null
+      "naiveWrongResult": null,
+      "source_url": "",
+      "verified_by": "",
+      "verified_on": ""
     },
     {
       "id": "fractional-1-full-year",
@@ -62,7 +74,10 @@
         1
       ],
       "expectedTotalWorkDays": 3,
-      "naiveWrongResult": null
+      "naiveWrongResult": null,
+      "source_url": "",
+      "verified_by": "",
+      "verified_on": ""
     }
   ],
   "missionCapNote": "PROVISIONAL (ruling R19), an interpretation and not a source. The 10-day mission sub-cap prorates for part-time and partial years, rounded up (SPEC 7.2 step 4). What no source addresses is how it prorates when the employer supplies an EXACT annual total. Interim reading: an exact total is the actual number of days worked and therefore already embodies the working-time rate, so prorating the cap by employmentRate as well would count the same reduction twice and quietly cost a part-timer mission days. Under exact the cap prorates by periodFraction ONLY; under simplified240 by both, because the 240-day basis is a full-time figure not yet reduced. Goes to the reviewer at Checkpoint A. EXACT_METHOD_UNVERIFIED already fires on this path.",
@@ -77,7 +92,10 @@
         1
       ],
       "expectedMissionCap": 5,
-      "note": "Both factors apply: the 240-day basis is full-time and has not been reduced."
+      "note": "Both factors apply: the 240-day basis is full-time and has not been reduced.",
+      "source_url": "",
+      "verified_by": "",
+      "verified_on": ""
     },
     {
       "id": "cap-exact-50-full",
@@ -90,7 +108,10 @@
         1
       ],
       "expectedMissionCap": 10,
-      "note": "PROVISIONAL. The rate is ignored: the 200-day total already embodies it. Before ruling R19 this returned 5."
+      "note": "PROVISIONAL. The rate is ignored: the 200-day total already embodies it. Before ruling R19 this returned 5.",
+      "source_url": "",
+      "verified_by": "",
+      "verified_on": ""
     },
     {
       "id": "cap-exact-50-half-year",
@@ -103,7 +124,10 @@
         2
       ],
       "expectedMissionCap": 5,
-      "note": "PROVISIONAL. The period still applies - a mid-year start is a fact about the calendar, not about the rate."
+      "note": "PROVISIONAL. The period still applies - a mid-year start is a fact about the calendar, not about the rate.",
+      "source_url": "",
+      "verified_by": "",
+      "verified_on": ""
     },
     {
       "id": "cap-agree-at-full-time",
@@ -116,7 +140,11 @@
         1
       ],
       "expectedMissionCap": 10,
-      "note": "The two readings diverge only for a part-timer, which is why this went unnoticed until the interpretation was written down."
+      "note": "The two readings diverge only for a part-timer, which is why this went unnoticed until the interpretation was written down.",
+      "source_url": "",
+      "verified_by": "",
+      "verified_on": ""
     }
-  ]
+  ],
+  "verificationTrace": "Ruling R23. Every case carries source_url, verified_by and verified_on. They are EMPTY until the operator fills them at Checkpoint A against the primary source, and a case with empty fields is therefore VISIBLY unverified rather than silently assumed. The tests tolerate the fields and deliberately do NOT require them to be filled: making a green suite depend on verification would create pressure to fill them with something."
 }
