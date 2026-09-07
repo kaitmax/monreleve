@@ -1,0 +1,83 @@
+{
+  "$comment": "THE MOST VALUABLE FILE IN THIS REPOSITORY. If any case fails, nothing ships (SPEC 7.5). Language-neutral on purpose: the TypeScript engine consumes it now and the Kotlin port consumes it at AN2, and a divergence on any case fails both builds (D20). Never edit an expected value to make code pass - a fixture that will not pass is a question for the operator, never a code change.",
+  "source": "Worked examples published by the Administration fiscale cantonale (AFC), Geneva, for the avenant of 27 June 2023 in force 1 January 2026. VERIFICATION PENDING - Checkpoint A: transcribed from SPEC-frontalier-web.md section 7.5 and not yet checked against the AFC publication itself.",
+  "taxYear": 2026,
+  "commonInput": {
+    "$comment": "All six cases are full-time, full-year, Geneva, whole days, on the simplified 240-day basis, so totalWorkDays is 240 and fiscalCeilingDays is 96.",
+    "taxYear": 2026,
+    "canton": "GE",
+    "employmentRate": 100,
+    "periodFraction": 1,
+    "denominator": { "kind": "simplified240" },
+    "granularity": "day"
+  },
+  "missionSplitNote": "The published cases give a single mission total (MT). The engine takes missionDaysFrance and missionDaysThirdState separately, because France missions are imputed before third-state ones and the two are collected differently (SPEC 7.2 step 5). Every case below places the whole total in missionDaysFrance, which is the ordinary situation for a French-resident frontalier and reproduces the published Swiss/France split exactly. A case exercising the imputation ORDER is a unit test, not a fixture, since the AFC published no such example.",
+  "cases": [
+    {
+      "id": "a",
+      "note": "Comfortably inside the ceiling. No missions, so nothing competes for the allowance and every working day is taxed in Switzerland.",
+      "input": { "teleworkDays": 72, "missionDaysFrance": 0, "missionDaysThirdState": 0 },
+      "expected": {
+        "swissTaxedDays": 240,
+        "frenchTaxedDays": 0,
+        "declarableRate": 30.0,
+        "regimeApplies": true
+      }
+    },
+    {
+      "id": "b",
+      "note": "Headroom binds before the cap. 96 - 91 = 5 days of room against a 10-day cap, so only 5 of the 8 mission days can be credited and 3 are taxed in France. Lands exactly on 40.00.",
+      "input": { "teleworkDays": 91, "missionDaysFrance": 8, "missionDaysThirdState": 0 },
+      "expected": {
+        "swissTaxedDays": 237,
+        "frenchTaxedDays": 3,
+        "declarableRate": 40.0,
+        "regimeApplies": true
+      }
+    },
+    {
+      "id": "c",
+      "note": "THE TRUNCATION CASE. The cap binds: 12 days of room but only 10 may be credited, so 94/240 = 39.1666... The AFC publishes 39.16, so the engine truncates to 2 dp. Rounding would give 39.17 and would not match the filing. This is also the case where the two rates differ most visibly - 39.16 declarable against 45.0 of days actually spent outside Switzerland.",
+      "input": { "teleworkDays": 84, "missionDaysFrance": 24, "missionDaysThirdState": 0 },
+      "expected": {
+        "swissTaxedDays": 226,
+        "frenchTaxedDays": 14,
+        "declarableRate": 39.16,
+        "regimeApplies": true
+      }
+    },
+    {
+      "id": "d",
+      "note": "Headroom binds hard: 2 days of room, so 2 of 12 mission days are credited and 10 are taxed in France. Lands exactly on 40.00 from the other direction to case b.",
+      "input": { "teleworkDays": 94, "missionDaysFrance": 12, "missionDaysThirdState": 0 },
+      "expected": {
+        "swissTaxedDays": 230,
+        "frenchTaxedDays": 10,
+        "declarableRate": 40.0,
+        "regimeApplies": true
+      }
+    },
+    {
+      "id": "e",
+      "note": "THE REGIME-LOST CASE. Telework alone (144) exceeds the ceiling (96), so the regime does not apply and mission days are EXCLUDED from the declared rate: 144/240 = 60.00, not 149/240. The missions are still taxed in France - frenchTaxedDays is 149 - which is the detail SPEC 7.2 step 5 warns is easy to get wrong. Folding them into the rate would misstate the AFC filing.",
+      "input": { "teleworkDays": 144, "missionDaysFrance": 5, "missionDaysThirdState": 0 },
+      "expected": {
+        "swissTaxedDays": 91,
+        "frenchTaxedDays": 149,
+        "declarableRate": 60.0,
+        "regimeApplies": false
+      }
+    },
+    {
+      "id": "special",
+      "note": "THE SECOND TRUNCATION CASE, and missions only. No telework at all, so the full 10-day cap is creditable out of 30 mission days: 10/240 = 4.1666... The AFC publishes 4.16. Proves the truncation rule is not an artefact of case c.",
+      "input": { "teleworkDays": 0, "missionDaysFrance": 30, "missionDaysThirdState": 0 },
+      "expected": {
+        "swissTaxedDays": 220,
+        "frenchTaxedDays": 20,
+        "declarableRate": 4.16,
+        "regimeApplies": true
+      }
+    }
+  ]
+}

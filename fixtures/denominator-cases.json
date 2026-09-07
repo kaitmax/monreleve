@@ -1,0 +1,53 @@
+{
+  "$comment": "These cases exist ONLY because of binary floating point, and they are shared rather than TypeScript-only because the Kotlin port at AN2 shares the defect and must share the guard (ruling R10). Evaluated naively as 240 * (rate/100) * (7/12), employmentRate 45 yields 63.000000000000007 instead of exactly 63 - and the simplified basis rounds UP, so the error survives rounding and becomes a whole extra day of denominator. A one-day error here moves declarableRate, which is the number filed with the AFC.",
+  "rule": "totalWorkDays = ceil(simplifiedBasisDays * employmentRate/100 * periodFraction). Multiply before dividing, and normalise before rounding. The normalisation is float hygiene and NOT a regulatory rounding rule.",
+  "source": "Derived from circular no. 45 of 12 June 2019, point 7.5.1 (the 240-day basis) plus the proration rule. The three cases below were found by scanning employmentRate 1-100 against the period fractions a mid-year start can produce; they are the only ones in that space that diverge.",
+  "periodFractionNote": "The period is given as an exact ratio, never as a decimal. 7/12 written as 0.5833333333333333 parses to a DIFFERENT double from 7/12 computed, which would make the fixture fail to reproduce the very defect it exists to pin. Both languages must compute the division themselves.",
+  "cases": [
+    {
+      "id": "float-45-7-12",
+      "note": "The case that motivated the rule. Naive evaluation gives 63.000000000000007, which ceils to 64.",
+      "simplifiedBasisDays": 240,
+      "employmentRate": 45,
+      "periodFractionRatio": [7, 12],
+      "expectedTotalWorkDays": 63,
+      "naiveWrongResult": 64
+    },
+    {
+      "id": "float-85-7-12",
+      "note": "Same shape at a different rate.",
+      "simplifiedBasisDays": 240,
+      "employmentRate": 85,
+      "periodFractionRatio": [7, 12],
+      "expectedTotalWorkDays": 119,
+      "naiveWrongResult": 120
+    },
+    {
+      "id": "float-90-7-12",
+      "note": "Same shape at a different rate.",
+      "simplifiedBasisDays": 240,
+      "employmentRate": 90,
+      "periodFractionRatio": [7, 12],
+      "expectedTotalWorkDays": 126,
+      "naiveWrongResult": 127
+    },
+    {
+      "id": "exact-100-full-year",
+      "note": "Control. Full time, full year, no rounding involved - if this ever fails, the basis itself has changed.",
+      "simplifiedBasisDays": 240,
+      "employmentRate": 100,
+      "periodFractionRatio": [1, 1],
+      "expectedTotalWorkDays": 240,
+      "naiveWrongResult": null
+    },
+    {
+      "id": "fractional-1-full-year",
+      "note": "Control. 240 * 0.01 = 2.4 rounds UP to 3: a partial day of entitlement is still a working day of denominator.",
+      "simplifiedBasisDays": 240,
+      "employmentRate": 1,
+      "periodFractionRatio": [1, 1],
+      "expectedTotalWorkDays": 3,
+      "naiveWrongResult": null
+    }
+  ]
+}
