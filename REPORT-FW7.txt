@@ -446,7 +446,7 @@ artifact, and the two halves of what it shows point in opposite directions.
   because that is the question the artifact exists for.
 
   THE BAND NAMES ARE A DEFECT, and they dominate the image. At 200 px
-  "Imposition Suisse", "Imposition France" and "Sécurité sociale France"
+  "Imposition Suisse", "Imposition France" and "Securite sociale France"
   overlap into an illegible run. At the 376 px DEFAULT the first two still
   touch, rendering as "SuisseImposition". This is not a thumbnail-only
   problem, and it is not fixable inside FW7: a pure string generator has no
@@ -549,7 +549,7 @@ Q2. THE BAND NAMES COLLIDE, AND IT IS VISIBLE IN THE COMMITTED BASELINE. This
     width and not merely in the thumbnail.
 
     Measured at Micro 11/500: "Imposition Suisse" 52,5 px, "Imposition France"
-    93,7 px, "Sécurité sociale France" 122,9 px, against band centres at 20 %,
+    93,7 px, "Securite sociale France" 122,9 px, against band centres at 20 %,
     45 % and 75 % of the track. Confirmed by eye in the baselines: at 200 px
     the three run together illegibly; at 376 px the first two touch and read
     as "SuisseImposition".
@@ -581,4 +581,23 @@ Q4. TICK_WIDTH 1,5 px versus FD1's 2 px (R42 says 1,5 stays, not blocking).
 PUSH PROOF
 ================================================================================
 
-PUSH_PROOF_PLACEHOLDER
+PUSHED. The first FW7 push cleared R1 after six sessions:
+
+  389663b..06e387b  main -> main      (59 commits, the whole FW1-FW7 history)
+  6d2a676..5ea8cb6  main -> main      (this session's remainder)
+
+  origin/main   5ea8cb6ed7f4dd2ff9749139369afd7f115c1c23
+  local main    5ea8cb6ed7f4dd2ff9749139369afd7f115c1c23
+  ahead by      0
+
+The unblock, recorded because the diagnosis took three wrong turns first:
+`gh auth refresh -h github.com -s workflow` emits a one-time device code and
+polls while the operator approves it in a browser. The scope went from
+'gist', 'read:org', 'repo' to '... , workflow' and the push went through
+unchanged. Neither the fine-grained PAT (valid, but the repository is not in
+its selected list, so 404 rather than 403) nor SSH (only VPS deploy keys on
+this machine) was a route.
+
+CI ran on every push. The first was RED for a reason that had nothing to do
+with the code and could not have been found without pushing - see
+PRECONDITIONS. Every run since is green.
