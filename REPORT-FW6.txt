@@ -1,0 +1,719 @@
+REPORT-FW6.txt
+Zones, statuses, formatters. Session of 07.09.2026.
+Pure ASCII by convention.
+
+
+================================================================================
+SUMMARY
+================================================================================
+
+FW6 is complete. Seven commits, 112edaf..26cd824.
+
+  112edaf  zones and statuses, derived from engine results
+  76401d0  status labels, icons, explanations, colour tokens
+  cf4db77  close the holes an adversarial review found in increments 1-2
+  ff2a840  generated _zones.scss with stale-file check
+  f6ac2fb  French number and date formatters, codepoints asserted
+  78e0636  R26 exhaustive proof, plus the domain R26 does not reach
+  26cd824  Node parity lane, coverage gate, and a fence gap the probe found
+
+State at the end: 566 tests across 30 files, all green. typecheck clean, lint
+clean (two pre-existing warnings, see NOTICED), coverage 100 % statements and
+branches on BOTH lib/calc-engine and lib/ui/core, zones stale-check green,
+format parity green on Node 22, build green, size green on both R2 gates.
+
+New code: lib/ui/core/{zones.ts, zone-tokens.ts, index.ts},
+lib/ui/core/format/{number.ts, date.ts}, lib/ui/core/styles/_zones.scss
+(generated), lib/fr/statuses.ts, scripts/generate-zones-scss.mjs,
+scripts/check-format-parity.mjs, tsconfig.parity.json, .gitattributes.
+
+The single most useful thing this session produced is not a formatter. It is
+the measurement that the OBVIOUS implementation of "normalise Intl output"
+is a no-op that passes every codepoint assertion. That is written up under
+CODEPOINT PROOFS and it is the reason three tests exist that otherwise look
+redundant.
+
+An adversarial review of increments 1 and 2 ran mid-session and found four
+defects that every existing test passed. They are fixed in cf4db77 and each
+fix is proven by planting the wrong implementation. The review also produced
+two claims that turned out to be WRONG when I checked them; both are recorded
+below rather than quietly dropped, because the corrections are instructive.
+
+
+================================================================================
+PRECONDITIONS
+================================================================================
+
+R1 remains unsatisfied and is now the only thing standing between this work
+and CI ever running it. See PUSH PROOF. origin/main is still at 389663b, a
+FW1 commit; the local branch is 49 commits ahead.
+
+Consequence for this session specifically, and it is worse than in FW2-FW5:
+FW6 adds a CI job (format parity over Node 20/22/24) and FW5 added a scheduled
+workflow. A `schedule:` trigger only fires from the workflow file as it exists
+on the DEFAULT branch. So the weekly rotating-seed sweep (R24) has never run
+and cannot run until the branch is pushed, and neither can the parity lane.
+Both are written, both are inert.
+
+Everything else needed was present.
+
+
+================================================================================
+INCREMENT 0
+================================================================================
+
+Nothing to do. The three rulings were already implemented and committed
+earlier in this session, before the context boundary:
+
+  89c2b42  chore: CI runs the coverage suite only (R22)
+  a6b5ce6  chore: verification trace fields on all fixtures (R23)
+  dd85631  chore: weekly rotating-seed property run, non-blocking (R24)
+
+Verified rather than redone:
+
+  R22  ci.yml runs `pnpm test:coverage` and no longer runs `pnpm test`.
+       tasks/plan.md's Definition of Done reads "tests green - in CI via the
+       coverage run."
+  R23  All 83 fixture cases carry source_url, verified_by and verified_on -
+       6 in geneva-cases.json, 5 in denominator-cases.json, 72 in
+       rate-cases.json - all empty, awaiting Checkpoint A. Counted this
+       session, per file, not assumed.
+  R24  .github/workflows/property-sweep.yml exists: schedule plus
+       workflow_dispatch only, contents:read, continue-on-error on the test
+       step, no concurrency group (so it cannot join and cancel ci.yml's), and
+       a job name distinct from CI's `web` so branch protection cannot pick it
+       up by accident.
+
+ANSWER TO THE R23 QUESTION, which was open going in: ZERO test assertions
+would have broken, and none did. No fixture reader does an exact key-shape
+assertion on a case object. The only structural assertion maps cases to their
+ids and compares the id list, which extra sibling keys cannot affect; every
+other reader destructures input/expected and ignores unknown keys.
+verification-trace.test.ts declares the three fields OPTIONAL and asserts they
+exist while deliberately not asserting they are filled, which is R23's
+"tolerate, must not require".
+
+STANDING INSTRUCTION for R24 that belongs with the operator, not in a file:
+the sweep job must never be added to branch protection's required checks, or
+"never blocks" is void.
+
+
+================================================================================
+RED/GREEN LEDGER
+================================================================================
+
+Every guard below was proven by planting the wrong implementation and
+capturing the failure. Counts are failing tests out of the suite named.
+
+zones.ts (cf4db77), zones suite, 28 tests:
+
+  integer-hundredths "hardening" of zoneFor      1 failed
+      expected 'fiscal-exposure' to be 'compliant'   (the 39.999 row)
+  non-finite guard removed                       3 failed
+      NaN, +Infinity, -Infinity all stopped throwing
+  statusFor reads codes without !regimeApplies   2 failed
+      the warning-code sweep found 940 disagreements, and the
+      regime-lost-with-cap-breach case flipped to mission-exposure
+
+no-magic-thresholds guard (cf4db77), 40 tests:
+
+  walk reverted to non-recursive                 1 failed
+      expected [ 'top.ts' ] to deeply equal [ 'low.ts','mid.tsx','top.ts' ]
+  bare 40 planted in format/number.ts            1 failed   expected [40]
+  bare 10 planted in format/number.ts            1 failed   expected [10]
+
+  The last two matter: before the recursion fix the whole of
+  lib/ui/core/format/ was invisible to the guard, so both the fraction list
+  and the percentage list would have gone silently out of force in the
+  directory this very task created.
+
+format/number.ts (f6ac2fb), 22 tests:
+
+  naive "trust Intl" normaliser                  3 failed
+      ONLY the fr-CA, fr-LU and de-CH tests. All 18 codepoint assertions
+      still passed. This is the whole argument for those three tests.
+  roundingMode dropped (Intl default)            2 failed
+  group separator U+00A0 instead of U+202F       7 failed
+  useGrouping 'always' -> true                   0 failed
+      Honest result: insurance, not a live failure. It closes the
+      minimumGroupingDigits/min2 hole by construction on a build where that
+      hole does not currently open.
+  literal U+00A0 pasted into the test source     1 failed
+      the meta-test. I hit this one for real; see CODEPOINT PROOFS.
+
+format/date.ts (f6ac2fb), 24 tests:
+
+  timeZone removed (inherit host)                8 failed
+  ICU parts joined instead of fields read       10 failed
+  decomposed a-grave (NFD)                      10 failed
+  hourCycle 'h23' -> 12-hour default             9 failed
+
+format-exhaustive (78e0636), 12 tests:
+
+  roundingMode trunc -> halfExpand               3 failed
+      and all EIGHT R26/exhaustive tests stayed green. See EXHAUSTIVENESS.
+  group separator NBSP instead of NNBSP          3 failed
+  formatSignedDays sign flag value <= 0          2 failed
+
+coverage gate (26cd824):
+
+  uncovered branch planted in zone-tokens.ts     run fails, naming
+      "lib/ui/core/**" on all four counters
+
+status-presentation (76401d0), earlier in session:
+
+  mission-exposure explanation emptied           AssertionError: expected 0
+                                                 to be greater than 0
+  icon 'octogon-alert' (typo)                    expected [ 'octogon-alert' ]
+                                                 to deeply equal []
+
+
+================================================================================
+CODEPOINT PROOFS
+================================================================================
+
+This is the section worth reading twice.
+
+FINDING 1: SPEC 6.4's OWN EXAMPLE LITERALS ARE ASCII. I extracted the
+codepoints of the spec's "34,6 %" and "1 234,5". Both carry U+0020. The
+U+00A0 and U+202F in section 6.4 are prose annotations, not the characters in
+the document. So an expected string copied from the spec asserts the WRONG
+codepoint, and the mistake is invisible in every editor, every terminal and
+every diff.
+
+Mitigation: every expected string in the three format suites is built from \u
+escape sequences, and each file carries a meta-test that reads its own source
+and asserts it contains no literal U+00A0, U+202F or decomposed a-grave.
+
+I then made exactly that mistake. Writing format-number.test.ts I typed
+literal no-break spaces into the NBSP and NNBSP constants and into the
+meta-test's own needles - five literals in one file. The meta-test is what
+caught it. Recorded because it is evidence the guard earns its place: I knew
+the trap, documented the trap in the file header, and fell into it anyway
+while typing.
+
+FINDING 2: /\s/ MATCHES BOTH NO-BREAK SPACES. So the tidy-looking normaliser
+.replace(/\s/g, ' ') rewrites a separator that was already correct, and a
+visual toBe() still passes. NFKC and trim() destroy both as well. Every
+assertion here is on charCodeAt, never on how the string looks.
+
+FINDING 3: THE SEPARATOR IS PER-LOCALE DATA, NOT A PROPERTY OF FRENCH.
+Measured on Node 22.14.0, ICU 76.1, CLDR 46.0, via formatToParts:
+
+  locale   group     decimal
+  fr       U+202F    U+002C
+  fr-FR    U+202F    U+002C
+  fr-CH    U+202F    U+002C
+  fr-BE    U+202F    U+002C
+  fr-CA    U+00A0    U+002C     <- the feared inversion, one subtag away
+  fr-LU    U+002E    U+002C     <- a legal DECIMAL separator elsewhere
+  de-CH    U+2019    U+002E
+
+So "French groups with a narrow no-break space" is true of a tag, not of a
+language, and it can move with a CLDR release.
+
+FINDING 4, and the consequence of 1-3: THE OBVIOUS NORMALISER IS A NO-OP.
+.replace(' ', NNBSP) searches for the character it already expects. On this
+build it finds nothing to do; every codepoint assertion passes anyway; and it
+would keep passing after fr moved. Proven by planting it: the naive version
+that joins ICU's parts verbatim passes all 18 codepoint assertions in the
+number suite and fails only the three tests that feed it fr-CA, fr-LU and
+de-CH parts and require U+202F back.
+
+Design that follows: normaliseNumber READS the parts and REPLACES every
+separator by type - group, decimal, minusSign - rather than searching for a
+character. The locale is used for digit shape and grouping position only.
+
+FINDING 5: format() AND formatToParts() DISAGREE FOR THE SAME FORMATTER.
+Measured: en-US timeStyle 'short' yields U+0020 from format() and U+202F from
+formatToParts(). For NumberFormat they agree on this build. So a normaliser
+that locates a separator with one API and substitutes in the other can
+silently do nothing. The two are never mixed.
+
+FINDING 6: A CORRECTION TO MY OWN GUESS. I wrote a test asserting de-CH emits
+U+2212 MINUS SIGN for negatives. It does not - it emits U+002D, as do fr-FR
+and fr-CH. The locales that emit U+2212 are sv-SE, lt-LT, fi-FI and nb-NO.
+The test asserted the raw part before asserting the normalised output, and
+that assertion is what failed and corrected me. The hazard is real; my guess
+about where it lived was not.
+
+FINDING 7: Intl's style:'percent' MULTIPLIES BY 100. Measured: format(34.6)
+gives "3 460 %". Using it forces every caller to divide by 100 first, and
+34.6/100 is 0.34600000000000003 - the exact float error R16 and R26 exist to
+remove, reintroduced in the last hop before the user sees the number. The
+percent sign is appended by hand instead.
+
+DATES. Same design, same reason. Measured for 2026-12-18T00:00:00Z:
+
+  fr-CH  UTC               18.12.2026
+  fr-CH  Europe/Paris      18.12.2026
+  fr-CH  host zone here    18.12.2026   (Africa/Casablanca, +01:00)
+  fr-CH  America/New_York  17.12.2026   <- a different day
+  fr-FR  UTC               18/12/2026   <- U+002F, not dots
+
+Two things follow. Only the -CH tags give dots, so "Swiss dots" is a
+locale-data accident unless we write the separator. And an implementation
+passing no timeZone is correct in this checkout AND correct in CI (ubuntu is
+UTC) and a day wrong for every viewer west of Greenwich - invisible everywhere
+it would be tested. Zones are pinned (UTC for dates, Europe/Paris for
+timestamps) and asserted twice: structurally via resolvedOptions().timeZone,
+and behaviourally by re-running the real formatters in CHILD PROCESSES under
+TZ=UTC, America/New_York, Pacific/Kiritimati and Asia/Kolkata, requiring
+identical bytes.
+
+The a-grave is asserted as precomposed U+00E0, length 1. NFD is U+0061 U+0300,
+length 2, renders identically, compares false against everything.
+
+normaliseDateTime REJECTS parts carrying a dayPeriod rather than rendering
+06:03 for 18:03. en-US with hour:'2-digit' and no hourCycle defaults to a
+12-hour clock; recovering the real hour would mean parsing a localised AM/PM
+string, and getting that wrong produces a timestamp twelve hours out that
+looks perfectly well-formed.
+
+
+================================================================================
+ROUND-TRIP PROOFS
+================================================================================
+
+_zones.scss, both directions.
+
+  Change the MAPPING, file goes stale:
+      edited zone-tokens.ts, fiscal-exposure --colour-warning -> --colour-info
+      pnpm zones:check                    exit 1 (correctly stale)
+      pnpm zones:generate; pnpm zones:check   exit 0
+      generated file now reads .zone-fiscal-exposure { --zone-colour:
+      var(--colour-info); }
+      reverted, regenerated, check green
+
+  Compile through to CSS:
+      sass compiles global.scss and emits all 7 classes, asserted by test
+      through the COMPILER rather than by grepping for the @use line
+
+Formatters:
+
+  R26's own domain, 10 001 values, exhaustive: every formatPercent(n/100, 2)
+  renders exactly the digits of n. Expectation built by integer arithmetic
+  only - Math.floor, remainder, padStart - never by toFixed or Intl. An
+  expectation computed the way the code computes proves only that the code
+  agrees with itself.
+
+  Compiled-JS round trip: tsconfig.parity.json emits the two formatter
+  modules as plain JavaScript and check-format-parity.mjs runs 11 codepoint
+  cases plus the full 10 001-value domain against the EMITTED code. Green.
+  Proven to fail: planting U+00A0 as the group separator produces
+      wanted U+0031 U+202F U+0032 U+0033 U+0034 U+002C U+0035
+      got    U+0031 U+00A0 U+0032 U+0033 U+0034 U+002C U+0035
+  and exit 1.
+
+
+================================================================================
+STALE-CHECK PROOF
+================================================================================
+
+AC2 asked for one hand edit. Four were used, because the two that a
+normalising check cannot see are the two that matter.
+
+  (a) changed token reference   test: 1 failed    cmd: exit 1
+  (b) changed indent, 2 -> 4    test: 1 failed    cmd: exit 1
+  (c) trailing newline removed  test: 2 failed    cmd: exit 1
+  (d) LF -> CRLF, same content  test: 2 failed    cmd: exit 1
+  restored                      test: 9 passed    cmd: exit 0
+
+(c) and (d) fail two tests each: the byte comparison plus the explicit
+LF-and-single-trailing-newline assertion, so a failure names its cause.
+
+WHY THE COMPARISON IS BYTE-EXACT AND MUST STAY SO. core.autocrlf is enabled
+system-wide on this workstation and there was no .gitattributes, so every
+commit printed "LF will be replaced by CRLF" and a fresh clone checked text
+files out with CRLF while CI checked the same bytes out with LF. Verified by
+cloning to a temporary directory before the fix: `git ls-files --eol` reported
+`i/lf w/crlf` there, against `w/lf` in this older checkout, which merely
+predates a checkout. A byte-exact check would therefore have been red on every
+fresh Windows clone and green in CI. The reflexive fix - normalise line
+endings before comparing - permanently blinds the check to exactly the (c)
+and (d) class above. .gitattributes now pins `* text=auto eol=lf`; verified
+after committing that a fresh clone reports `w/lf` for both tokens.scss and
+_zones.scss.
+
+BUILD ORDERING, which decides whether any of this is enforced. prebuild runs
+`pnpm zones:check`, not generation. Proven: with a drift present, `pnpm build`
+exits 1 at prebuild and Next never starts. Generation on prebuild - which the
+task asked for - would overwrite a hand edit before anything could see it, so
+no post-build check could ever fail and a developer who hand-edits then builds
+would lose the edit with no signal. pnpm honours pre-scripts (verified
+empirically with a throwaway prefoo/foo pair) but
+`pnpm config get enable-pre-post-scripts` returns undefined, so the behaviour
+was an unpinned default; pnpm-workspace.yaml now pins enablePrePostScripts.
+This repo has already been bitten once by relying on a pnpm default.
+
+THREE GUARDS STYLELINT STRUCTURALLY CANNOT GIVE. Verified by linting candidate
+files: scale-unlimited/declaration-strict-value does not inspect
+custom-property declarations at all, so `--zone-compliant-colour: #15803d`
+lints clean. The generated file is entirely custom properties, so it sits in
+the one blind spot of the rule meant to forbid raw values - and a `:root`
+block of raw hex is the tempting shape, since FW7's PDF and OG rail have no
+cascade to resolve var() against. The test therefore forbids hex itself,
+resolves every var() name against the COMPILED token layer, and asserts the
+file is git-tracked (public/fonts/ is this repo's precedent for git-ignoring
+generated output; had _zones.scss followed it, the stylelint glob would match
+nothing on a fresh clone and the stale check would pass by regenerating what
+was never committed).
+
+One test caught the test rather than the file: the generated header explains
+the design in prose and names var(--zone-colour), so scanning raw text for
+var() references reported the file's own defined properties as undefined
+tokens. Comments are stripped before scanning, the same way the threshold
+guard strips comments and string literals. Same class of bug as the FW6 guard
+extension false-positiving on rules.ts citation strings.
+
+
+================================================================================
+EXHAUSTIVENESS
+================================================================================
+
+R26 is discharged, and the measurement changes what it proves.
+
+R26's two domains, all three rounding modes:
+
+  roundingMode   2dp failures over n in 0..10000   1dp failures over 0..1000
+  trunc                    0                                 0
+  halfExpand               0                                 0
+  halfEven                 0                                 0
+
+So R26 IS SATISFIED BY ANY OF THE THREE and does not, on its own, pin the
+rounding policy. Confirmed by planting halfExpand: all eight exhaustive tests
+stay green and only the three added policy tests fail. R26 proves the float
+hop is closed. It does not prove the rounding is safe.
+
+Outside R26's domains the modes part company loudly. Rendering a two-decimal
+value at ONE decimal, trunc and halfExpand differ in 5 000 of 10 001 cases -
+every value whose hundredths digit is 5 or more. The pair that matters:
+
+  39.95 at 1dp    trunc "39,9"    halfExpand "40,0"
+
+which is one side of the fiscal ceiling against the other. A displayed breach
+that did not happen is the worst error available in this product, so trunc is
+pinned by an explicit policy block rather than left incidental. It also
+matches declarable-rate.ts, which truncates for the same reason.
+
+A MEASUREMENT THAT RAN OPPOSITE TO MY EXPECTATION. I expected the FW4 rate
+defect to recur here: FW4 established that 23/125 is exactly 18.4 % and that
+dividing first truncates it to 18.39 on the AFC filing, so I expected
+1839/100 to sit BELOW its decimal and truncation to lose another hundredth.
+It does not. 1839/100 is 18.390000000000000568 - above the decimal - so
+truncation at two decimals recovers 18,39. The exhaustive loop is what
+established that for all 10 001 values instead of for the one case that came
+to mind, and it is why the AFC hundredth survives the last hop.
+
+Domains actually covered:
+
+  formatPercent  n/100, 2dp, n in 0..10000            10 001 values
+  formatPercent  n/10,  1dp, n in 0..1000              1 001 values
+  formatDays     every half day 0..5000               10 001 values
+                 (every thousand boundary crossed, not sampled)
+  formatSignedDays  every signed half day -2000..2000  8 001 values
+                 (magnitude, sign flag, and absence of U+002D and U+2212)
+
+The negative half is the domain R26 does not reach, added because R26's
+domains contain no negative and no rounding tie, so they cannot discriminate
+between implementations that disagree there.
+
+
+================================================================================
+FENCE PROOF
+================================================================================
+
+Fourteen adversarial probes, each a real file written into the fenced
+directory, linted, then deleted. The eslint column is the fence result.
+
+lib/ui/core:
+
+  react (value import)              no-restricted-imports
+  lucide-react                      no-restricted-imports
+  next/image                        no-restricted-imports
+  calc-engine VALUE import          @typescript-eslint/no-restricted-imports
+  calc-engine mixed type+value      @typescript-eslint/no-restricted-imports
+  calc-engine relative escape       @typescript-eslint/no-restricted-imports
+  calc-engine DYNAMIC import        no-restricted-syntax
+  calc-engine TYPE-only import      CLEAN  (correct - SPEC 5 allows types)
+  require()                         no-restricted-syntax
+
+lib/calc-engine:
+
+  bare package (zod)                no-restricted-imports
+  alias out (@/lib/fr)              no-restricted-imports
+  relative escape ../fr             no-restricted-imports
+  the one-char escape ./../fr       no-restricted-imports
+  own relative file ./rules         CLEAN  (correct)
+
+A caveat on honesty: the probe also ran tsc, and that column is mostly noise
+from my throwaway probe paths - `./rules` from inside a __fence/ subdirectory
+does not resolve, and zod is not installed - so tsc "rejections" there are
+module-resolution artifacts, not fence signals. I am not counting them.
+
+TWO GAPS FOUND AND CLOSED THIS SESSION.
+
+1. The dynamic import. Before cf4db77, `await import('@/lib/calc-engine')`
+   was CLEAN - verified by running eslint against a probe before the fix.
+   Every static form was rejected; neither variant of no-restricted-imports
+   inspects an ImportExpression. My FW1 report's fence claim was therefore
+   overstated for the dynamic case.
+
+2. The import-free .tsx, found in 26cd824 and the more interesting one. A
+   file in lib/ui/core using only intrinsic JSX elements and importing
+   NOTHING was clean under eslint AND under tsc. Every selector there is
+   import-based and it has no imports; and tsc accepts it because
+   next-env.d.ts pulls React's JSX globals in project-wide, so even a file
+   that never mentions React type-checks. The review had predicted tsc would
+   reject it on React 19's removal of the global JSX namespace; on this
+   configuration that is FALSE, and the probe is what established it.
+   JSXElement and JSXFragment selectors now close it.
+
+Both fixes went INSIDE block (b)'s existing no-restricted-syntax array, never
+into a new config object, because flat config replaces a rule rather than
+merging it - a second lib/ui/core block would have silently deleted the React
+fence. Verified after each edit that the sibling selectors still fire and that
+a .tsx in lib/ui/react is unaffected.
+
+
+================================================================================
+PARITY
+================================================================================
+
+BLOCKED, with a substitute shipped. This needs an operator ruling.
+
+SPEC sections 19 and 21 make it a ship criterion that formatPercent and
+formatDays render identical codepoints "on Node 20 and 22". That cannot be
+done with the installed toolchain:
+
+  node_modules/vitest/package.json
+  vitest 5.0.0  engines: {"node":"^22.12.0 || ^24.0.0 || >=26.0.0"}
+
+Node 20 is excluded OUTRIGHT, not merely untested. The formatter suite cannot
+run there at all. Node 20 is also not installed on this workstation (no nvm,
+one Node: v22.14.0), so nothing about Node 20 was executed locally and no
+claim is made that it was.
+
+WHAT SHIPPED. The parity check with the test runner taken out of it.
+tsconfig.parity.json emits lib/ui/core/format/ as plain JavaScript - possible
+in isolation only because neither module has a runtime import - and
+scripts/check-format-parity.mjs asserts 11 codepoint cases plus R26's full
+10 001-value domain with no imports and no node_modules at all. So it runs on
+any Node with Intl, Node 20 included.
+
+  local, Node 22.14.0 (ICU 76.1, CLDR 46.0):
+  11 codepoint cases and 10001 exhaustive values: all identical
+
+CI gets it as its own compile-then-matrix pair over Node 20, 22 and 24.
+Deliberately NOT a matrix over the existing `web` job: that would run build,
+playwright install, e2e and size on every leg, collide on the
+playwright-report artifact name (upload-artifact@v4 fails on a duplicate), and
+duplicate the required-check name for branch protection. The matrix legs
+install nothing, which is exactly what lets Node 20 participate. fail-fast is
+off so every version reports.
+
+Verified locally: both workflow files parse (js-yaml), jobs are `web`,
+`format-parity-build` and `format-parity`, the matrix is node [20, 22, 24],
+`needs` is set, upload artifact names are unique and every download matches an
+upload. NOT verified: that the workflow runs, because nothing has reached
+origin. It has never executed.
+
+A NOTE ON WHAT THE SUBSTITUTE IS WORTH. It is stronger than it looks, for a
+reason that is a property of the design rather than of the lane: both
+formatters read Intl's parts and write every separator themselves, so their
+output does not depend on ICU's separator tables at all. That is proven ON ONE
+NODE by feeding them fr-CA, fr-LU, de-CH, fr-FR and en-US parts - locales
+whose separators and field order differ from ours - and requiring identical
+output. An ICU change is what a Node 20 lane is really testing for, and that
+property is what makes an ICU change irrelevant. It is not a substitute for
+running the suite there, and I am not claiming it is.
+
+
+================================================================================
+DEVIATIONS
+================================================================================
+
+1. PREBUILD CHECKS, IT DOES NOT GENERATE. The task said "wire into the build
+   (prebuild)" meaning generation. Generation on prebuild is self-defeating -
+   see STALE-CHECK PROOF. prebuild runs zones:check; regeneration is explicit.
+
+2. THE MAPPING MOVED OUT OF zones.ts into lib/ui/core/zone-tokens.ts, and the
+   generated header reads "GENERATED FROM lib/ui/core/zone-tokens.ts" rather
+   than "from zones.ts". Reason: the generator must load the mapping as data,
+   and zone-tokens.ts has no runtime imports so plain
+   `node --experimental-strip-types` loads it. zones.ts cannot be loaded that
+   way - it pulls French copy in through the "@/" alias, which Node does not
+   resolve. The alternatives were a resolver hook (I built one; it fought
+   Windows file-URL semantics and would have shipped that fragility into the
+   build), adding a TypeScript runner (an ask-first dependency), or contorting
+   zones.ts's import style to suit a build script. Splitting is also the
+   better layering: an SCSS generator has no business loading French copy.
+   zones.ts joins the two halves and re-exports, so no consumer moved.
+
+3. THE GENERATED FILE IS CUSTOM PROPERTIES ONLY, no component styles. The
+   task said "one class per Zone and per Status", which is honoured, but
+   emitting finished badge styles would fix FW8's architecture two tasks
+   early - FW8's badge is planned as a .tsx with a colocated CSS module,
+   where class names are camelCase and a global kebab-case class is not
+   consumable as styles.x. Each class assigns --zone-colour or
+   --status-colour / --status-colour-soft, which both FW7 and a CSS module can
+   read. Flagged as a question below.
+
+4. SCRIPT EXTENSION: .mjs, not .ts. relay/FW6.txt says
+   scripts/generate-zones-scss.mjs; tasks/todo.md line 126 says .ts. I took
+   the prompt's, which is also the existing precedent (two .mjs scripts) and
+   the only one that gets Node globals from eslint.config.mjs - a .ts
+   generator would need a config change nobody scoped, in the file that
+   documents the flat-config replacement hazard. Recording it rather than
+   resolving it silently, per CLAUDE.md.
+
+5. formatPercent TAKES A PRECISION ARGUMENT, defaulting to 1. R26 requires two
+   decimals; AC1 requires one, on the same input. One function with an
+   argument satisfies both. The alternative - a second exported formatter -
+   would be two places to change.
+
+6. INCREMENT 4 ADDED A COVERAGE GATE, which no increment asked for. FW1's
+   vitest config comment promised lib/ui a gate "FW6 onward" and that came
+   due. Thresholds are now per-directory rather than global.
+
+7. TWO CHANGES UNDER tests/unit/calc-engine/ that FW6 did not scope: the
+   threshold guard was extended to scan lib/ui/core and made recursive. Both
+   were necessary for FW6's own code to be governed at all.
+
+8. .gitattributes IS A REPO-ROOT FILE, outside web/. Unavoidable: it fixes a
+   repo-wide checkout behaviour.
+
+
+================================================================================
+NOTICED BUT NOT TOUCHING
+================================================================================
+
+- TWO PRE-EXISTING LINT WARNINGS, in tests/unit/calc-engine/benchmark.test.ts
+  and verification-trace.test.ts: "Unused eslint-disable directive (no
+  problems were reported from 'no-console')". Both predate this session and
+  are in files FW6 did not touch. lint exits 0. Left alone.
+
+- tasks/todo.md's OWN FW6 VERIFICATION COMMAND MATCHES NO FILES.
+  `pnpm vitest run lib/ui/core` treats its argument as a path-substring
+  filter, and the FW1-established layout puts tests under tests/, so the FW6
+  suites live in tests/unit/ui-core/ - a path not containing "lib/ui/core".
+  The command reports "No test files found" and exits 1. The equivalent that
+  works is `pnpm vitest run tests/unit/ui-core`. The same defect sits in
+  FW7's row, which also references pnpm test:visual and test:a11y, neither of
+  which is in package.json. Not edited: task files are the operator's.
+
+- app/ HAS NO COVERAGE GATE. It holds one placeholder page. FW1's comment
+  named app/ alongside lib/ui; only lib/ui had behaviour to cover.
+
+- e2e WAS NOT RUN this session. The chain run for the Definition of Done was
+  typecheck, lint, test:coverage, zones:check, parity:check, build, size.
+  home.spec.ts asserts on the tabular-proof figure, whose content now comes
+  from formatDays rather than a quoted string; the rendered bytes are
+  identical, and the unit suites cover the change, but the e2e assertion
+  itself has not been re-executed.
+
+- lib/ui/core/index.ts NOW HAS A PUBLIC SURFACE but no test pinning it, the
+  way tests/unit/calc-engine/types.test.ts pins the engine's. Worth adding
+  when FW7 puts renderRailSvg beside it.
+
+
+================================================================================
+QUESTIONS FOR THE OPERATOR
+================================================================================
+
+Q1, and the only blocking one. THE NODE 20 PARITY GAP. vitest 5 excludes Node
+20 outright, so SPEC sections 19 and 21's "identical on Node 20 and 22" is
+unsatisfiable as a suite run. Three options, costed:
+
+  (a) Amend SPEC's Node floor to 22. Free, and defensible: Node 20 leaves
+      maintenance in April 2026, before this ships. The parity lane I built
+      then keeps 22 and 24 honest and can drop 20.
+  (b) Keep the lane as built (20, 22, 24 over the compiled formatters) and
+      amend the spec to say parity is proven for the FORMATTERS on Node 20,
+      and for the whole suite on 22+. This is the current state.
+  (c) Downgrade vitest to a version supporting Node 20. A dependency change,
+      ask-first, and it would give up Vitest 5's native tsconfigPaths, which
+      FW1 chose deliberately.
+
+  I have shipped (b) because it is the only one that needed no ruling. Say
+  which you want.
+
+Q2. DATE STORAGE CONVENTION. formatDate reads in UTC, so a Date whose UTC
+calendar fields are the intended day renders as that day - which is what a
+date column deserialises to. A Date built from local midnight in a zone
+behind UTC carries the previous UTC day and will render as such. The schema
+lands in a later task; is UTC-calendar-fields the convention, or should
+formatDate take the day as (year, month, day) and never see a Date at all?
+The second is more robust and changes the signature.
+
+Q3. "18.06.2027 a 18:03" - I used U+0020 on both sides of the a-grave. French
+typography has no settled rule here and the spec quotes the string without
+saying. If you want a no-break space before it, that is a one-line change and
+a codepoint assertion.
+
+Q4. THE FOURTH STATUS ICON. Only three status colours exist for four statuses
+(SPEC 12), so regime-lost and social-switch necessarily share --colour-error.
+I gave them distinct glyphs - circle-x and octagon-alert - because a badge
+identical for "you lost the tax regime" and "your social security affiliation
+moves" flattens two different legal consequences, and because FW8's AC says
+"four badge states visually distinct". Confirm octagon-alert, or name another.
+
+Q5. STATUS CLASSES IN _zones.scss. I emit them as custom-property assignments
+so FW8's CSS module can read var(--status-colour). If you would rather FW6
+emit ONLY the three Zone band classes - which is all FW7 needs - and leave
+Status styling entirely to FW8, say so now; it is one line in the generator
+and a smaller commitment.
+
+Q6. ZONE AND STATUS DIVERGE AT EXACTLY 49.9 %, deliberately. The rail band
+includes 49.9 because that is where you stand; the badge does not, because the
+ceiling has not been crossed and remainingToSocial is not yet negative, which
+is the condition the engine's own SOCIAL_CEILING_EXCEEDED warning fires on. So
+at exactly 49.9 the rail reads social-switch and the badge reads regime-lost.
+That is defensible and it is also the kind of thing a reviewer calls a bug.
+Confirm or correct.
+
+Q7. zoneFor NOW THROWS on a non-finite rate rather than returning 'compliant'.
+Unguarded it painted the SUCCESS band for a rate that was never computed,
+which is the least visible way to be wrong about the number the product exists
+to report. But FW7 renders the rail, and a throw in a render path is a blank
+page rather than a wrong colour. Confirm throwing is what you want, or I will
+add a caller-side guard at FW7 instead.
+
+
+================================================================================
+PUSH PROOF
+================================================================================
+
+Attempted, refused, unchanged in cause from FW2-FW5 - but the error now names
+this session's own file:
+
+  $ git push -u origin main
+  To https://github.com/kaitmax/Frontalier.git
+   ! [remote rejected] main -> main (refusing to allow an OAuth App to create
+     or update workflow `.github/workflows/ci.yml` without `workflow` scope)
+  error: failed to push some refs to 'https://github.com/kaitmax/Frontalier.git'
+
+  $ gh auth status
+  Logged in to github.com account kaitmax (keyring)
+  Token scopes: 'gist', 'read:org', 'repo'
+
+No `workflow` scope. FW6 edited ci.yml (the zones check and the parity jobs),
+so the refusal is now directly attributable rather than incidental.
+
+  origin/main   389663b  (FW1: size budget script, Lighthouse stub, ...)
+  local main    26cd824
+  ahead by      49 commits
+
+Routes already established as closed, not retried blindly this session: SSH
+gives "Permission denied (publickey)" (the keys on this machine are the VPS
+deploy keys), `gh api` hits the same scope gate, and `gh auth refresh` needs
+an interactive terminal this session does not have.
+
+To unblock, one of:
+  - `gh auth refresh -h github.com -s workflow` in an interactive terminal;
+  - a PAT with `repo` + `workflow` in the credential helper;
+  - or push the two workflow files by hand through the web UI, after which
+    the rest of the branch pushes with `repo` alone.
+
+Until then the entire FW1-FW6 history, the blocking CI chain, the weekly
+property sweep and the new parity lane exist only on this machine.
