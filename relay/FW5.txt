@@ -1,0 +1,254 @@
+FW5 SESSION PROMPT - frontalier
+Paste this entire prompt as the first message of a fresh Claude Code
+session, opened at the repository root.
+
+====================================================================
+PRE-STEP RULINGS (apply verbatim)
+====================================================================
+R1 (carried). FW1-FW4 accepted. Nothing has reached origin/main and
+   CI has never run. Record the state at session start under
+   DEVIATIONS. Non-blocking, but it remains the only open item from
+   four accepted tasks.
+
+R2, R7, R8, R10, R11, R12, R13, R15 (carried, unchanged).
+
+R14 (closed). Recorded as a no-op: NOT_IMPLEMENTED never existed
+   because FW3 used an empty error list rather than change the public
+   union. The assertion that keeps it a no-op is the right outcome.
+
+R16 (new - integer arithmetic, normative, spec 7.3). Rates are
+   computed on the integral numerator and denominator, never on a
+   pre-computed percentage. Truncation rounds toward zero, so the
+   error is biased downward and never cancels - on the number filed
+   with the AFC. Cases go in **fixtures/rate-cases.json**, shared
+   with the Kotlin engine (R3 below).
+
+R17 (new - scaling factors). Powers of ten are written in
+   exponential notation: 1e1, 1e2, 1e6, never a bare 10 or 100. The
+   bare-threshold guard ignores 1e\\d+ and keeps 10 guarded as the
+   mission cap. Convert any remaining bare divisor.
+
+R18 (new - A1_REQUIRED stays provisional). The sources say only that
+   the 49,9 % ceiling is conditional on a valid A1. Keep the standing
+   obligation - over-warning is the safe direction for a copy-only
+   signal - keep the PROVISIONAL marker at the site, and add it as a
+   named line in docs/regulatory-sources.md under the Checkpoint A
+   verification list. Do not invent a numeric trigger.
+
+R19 (new - mission-cap proration under the exact method). When the
+   employer supplies an exact annual total, that total already
+   embodies the working-time rate, so prorating the 10-day cap by
+   employmentRate as well would double-count. Pending verification:
+   under `exact`, prorate the cap by periodFraction ONLY; under
+   `simplified240`, by both factors. Mark PROVISIONAL at the site,
+   add a fixture documenting the interim, and note that
+   EXACT_METHOD_UNVERIFIED already fires on this path. This is an
+   interpretation, not a source: it goes to the reviewer.
+
+R20 (new - declared red is permitted, narrowly). "Green after every
+   increment" and "fixtures fail before the code" genuinely conflict;
+   the ordering rule wins. A task may carry a knowingly-red test
+   across increments provided the commit body names which test is red
+   and why, lint/typecheck/build stay green, and the redness is that
+   increment's stated deliverable. Nothing else may be red. Your
+   handling in FW4 was correct and is now the rule.
+
+R21 (new). Two functions sharing a single RED via a module-resolution
+   failure is acceptable when the failure is per-file, but the ledger
+   must say so explicitly rather than implying two independent RED
+   runs. Your FW4 ledger did this correctly.
+
+====================================================================
+CONTEXT
+====================================================================
+Project: frontalier. You are executing task FW5 ONLY. FW5 closes the
+engine: property tests over the invariants, the shared rate fixtures
+from R16, the R17/R18/R19 follow-ups, and the coverage gate that
+makes all of it CI-blocking. After FW5 the engine is frozen pending
+Checkpoint A's regulatory verification.
+
+Read first: CLAUDE.md, README.md, SPEC-frontalier-web.md section 7 in
+full (7.3 and 7.6 especially), section 20, section 21, tasks/plan.md
+Test Discipline, tasks/todo.md FW5, REPORT-FW4.txt.
+
+====================================================================
+STANDING PROTOCOL (identical in every FW / AN prompt)
+====================================================================
+1. SESSION SCOPE. FW5 only. Do not start FW6.
+2. INCREMENT CYCLE. implement -> test -> verify -> commit -> push.
+   Green after EVERY increment, except where R20 applies and is
+   declared.
+3. COMMIT ONLY ON GREEN, chained with && (R15).
+4. COMMITS. "FW5: <increment title>". Push after each; capture output.
+5. SIMPLICITY FIRST.
+6. TEST-FIRST with a RED row per behaviour. For a property test, RED
+   means: the property, run against a deliberately broken variant of
+   the function (or against the pre-fix code where a fix is
+   involved), fails and names the falsifying case. A property that
+   has never failed has not been tested.
+7. ENGINE PURITY. Zero runtime deps in lib/calc-engine. fast-check
+   is a devDependency only - confirm it does not enter the runtime
+   graph and say so in the report.
+8. SCOPE DISCIPLINE.
+9. QUESTIONS. Any regulatory ambiguity: PAUSE, ask, record verbatim.
+10. EXIT ARTIFACT. REPORT-FW5.txt, committed and pushed.
+
+====================================================================
+TASK FW5 - PROPERTY TESTS, SHARED FIXTURES, COVERAGE GATE
+====================================================================
+Acceptance criteria (restated; the report must prove each):
+AC1. All eight invariants from spec 7.6 pass over 10 000 generated
+     cases each, with generators covering part-time, mid-year
+     periods, the exact method, and all three granularities.
+AC2. lib/calc-engine coverage is 100% on statements, branches,
+     functions and lines, and CI FAILS below it - proven by
+     temporarily lowering the threshold or adding an unreachable
+     branch, capturing the failure, then reverting.
+AC3. Median calculateTelework execution under 0,1 ms, measured and
+     recorded. No snapshot test exists in the module - proven by a
+     grep in CI.
+
+--------------------------------------------------------------------
+INCREMENT 1 - fixtures/rate-cases.json (R16, shared)
+--------------------------------------------------------------------
+- The file carries the integer-arithmetic cases: 23/125, 51/125,
+  97/125, and every pair your FW4 scan found where the float form
+  and the integer form disagree - with the numerator, denominator,
+  expected declarableRate, and a `why` field naming the float value
+  that would have been produced.
+- A `contract` header field stating that both the TypeScript and the
+  Kotlin engine must consume this file and that a divergence fails
+  both builds (AN2 will read it).
+- The test READS the file; no case is transcribed into TypeScript.
+- RED: run the suite against a float-form variant of the rate
+  function (keep it in the test file as a documented anti-example,
+  or stub it) and capture the failures naming 18.39; then confirm
+  the shipped integer form passes.
+- Commit: "FW5: shared rate fixtures for the integer-arithmetic rule
+  (R16)". Push.
+
+--------------------------------------------------------------------
+INCREMENT 2 - R17, R18, R19 follow-ups
+--------------------------------------------------------------------
+- R17: convert remaining bare powers of ten to exponential notation;
+  narrow the threshold guard to ignore 1e\\d+; prove the guard still
+  fires on a planted bare 240 and on a bare 10, and no longer fires
+  on 1e6. Adversarial per R7.
+- R18: PROVISIONAL marker at the A1_REQUIRED site if not already
+  there; add the named line to docs/regulatory-sources.md under a
+  "CHECKPOINT A - VERIFICATION REQUIRED" list.
+- R19: implement the exact-method cap proration as ruled
+  (periodFraction only under `exact`); RED first with a test that
+  fails on the current double-prorating behaviour; add the fixture
+  documenting the interim; PROVISIONAL marker; add the line to the
+  same verification list.
+- Commit: "FW5: exponential scaling, provisional markers, exact-method
+  cap proration (R17-R19)". Push.
+
+--------------------------------------------------------------------
+INCREMENT 3 - property tests, invariants 1-4
+--------------------------------------------------------------------
+fast-check, 10 000 runs each, seeded and reproducible:
+  1. swissTaxedDays + frenchTaxedDays === totalWorkDays
+  2. declarableRate <= 40 whenever regimeApplies is true
+  3. creditedMissionDays <= missionCap AND <= fiscalCeilingDays -
+     teleworkDays
+  4. remainingToSocial >= remainingToFiscal, always
+- Generators: employmentRate 1-100, periodFraction in (0,1], both
+  denominator methods, all three granularities, day counts that
+  respect the granularity, both regimes.
+- Per property, capture a RED run against a broken variant that
+  names the falsifying case, then the GREEN run.
+- Commit: "FW5: property invariants 1-4". Push.
+
+--------------------------------------------------------------------
+INCREMENT 4 - property tests, invariants 5-8
+--------------------------------------------------------------------
+  5. increasing teleworkDays never decreases rawRate (monotonic)
+  6. declarableRate <= rawRate
+  7. declarableRate is never above the exact unrounded value
+     (truncation holds) - note that R16's integer form is what makes
+     this provable
+  8. swapping France and third-state mission days never increases
+     creditedMissionDays
+- Same RED/GREEN treatment.
+- Commit: "FW5: property invariants 5-8". Push.
+
+--------------------------------------------------------------------
+INCREMENT 5 - coverage gate, no-snapshot guard, benchmark
+--------------------------------------------------------------------
+- Vitest coverage thresholds for lib/calc-engine at 100/100/100/100,
+  wired into CI as a blocking step.
+- Prove the gate bites: add an unreachable branch (or lower a
+  threshold), capture the CI/local failure, revert.
+- CI grep asserting no toMatchSnapshot / toMatchInlineSnapshot exists
+  under lib/calc-engine; prove it fires on a planted snapshot, then
+  clean.
+- Micro-benchmark: median calculateTelework over a representative
+  input set; record the number in the report. If it exceeds 0,1 ms,
+  report it rather than optimising - the budget is informational at
+  this stage.
+- Confirm fast-check is dev-only and absent from the runtime graph.
+- Commit: "FW5: coverage gate, snapshot guard, engine benchmark".
+  Push.
+
+--------------------------------------------------------------------
+INCREMENT 6 - engine freeze note
+--------------------------------------------------------------------
+- docs/regulatory-sources.md: finish the "CHECKPOINT A - VERIFICATION
+  REQUIRED" list. It must name, at minimum: every constant in
+  RuleSet(2026) with its citation and an unchecked box; the two
+  PROVISIONAL interpretations (R18 A1 trigger, R19 exact-method cap
+  proration); the truncation-versus-rounding question for the
+  declarable rate; and the 29 April 2026 interpretative agreement,
+  which is held second-hand.
+- A short ENGINE STATUS section at the top of that file: what is
+  proven by fixtures, what is proven by property, what is unverified
+  against primary sources, and the statement that
+  fixtures/geneva-cases.json, denominator-cases.json and
+  rate-cases.json are frozen at Checkpoint A and consumed by AN2.
+- Commit: "FW5: Checkpoint A verification list and engine status".
+  Push.
+
+====================================================================
+OUT OF SCOPE FOR FW5
+====================================================================
+- reviewer-cases.ts - Checkpoint A, after a named reviewer exists.
+- Any verification of a constant against admin.ch, the AFC or
+  impots.gouv.fr: that is the operator's Checkpoint A work, not a
+  code task. List the questions; do not answer them.
+- ui/core, formatters, the rail - FW6-FW7.
+- Anything under android/.
+
+====================================================================
+FINAL VERIFICATION
+====================================================================
+pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm size
+Green in one run on the final commit, with coverage at 100/100/100/100
+for lib/calc-engine and all three fixture files passing.
+
+====================================================================
+REPORT FORMAT - REPORT-FW5.txt (pure ASCII, committed and pushed)
+====================================================================
+SUMMARY
+PRECONDITIONS        origin/main and CI status per R1.
+RED/GREEN LEDGER     One row per property and per behaviour: what was
+                     broken to produce RED, the falsifying case it
+                     named, then GREEN. A property with no RED row is
+                     a defect.
+FIXTURE LEDGER       rate-cases.json: the float-form failures naming
+                     18.39, then the integer form passing.
+RULINGS APPLIED      R16-R19 each with its proof.
+GATE PROOFS          Coverage gate biting, then reverted; snapshot
+                     guard firing, then clean; threshold guard
+                     firing on 240 and 10 and ignoring 1e6.
+BENCHMARK            Median calculateTelework, with the input set.
+DEPENDENCY PROOF     fast-check absent from the runtime graph.
+ENGINE STATUS        The section as written into
+                     docs/regulatory-sources.md.
+DEVIATIONS
+NOTICED BUT NOT TOUCHING
+QUESTIONS FOR THE OPERATOR
+PUSH PROOF           git log --oneline for the session; final push.
+
+END OF FW5 PROMPT

@@ -1,0 +1,660 @@
+{
+  "$comment": "Rate conformance cases for ruling R16. These exist ONLY because of binary floating point, and they are shared rather than TypeScript-only because the Kotlin engine at AN2 shares the defect and must share the guard.",
+  "contract": "BOTH the TypeScript engine and the Kotlin engine MUST consume this file. A divergence on any case fails both builds (D20). Never edit an expected value to make code pass: a case that will not pass is a question for the operator, never a code change.",
+  "rule": "declarableRate = floor(numerator * 1e4 / denominator) / 1e2, computed on the INTEGRAL numerator and denominator - never on a pre-computed percentage. Truncation rounds toward zero, so the error is biased downward and never cancels, on the number filed with the AFC.",
+  "whyNormalisationIsNotEnough": "The 1e6-style normalisation that fixes the proration in denominator-cases.json is useless here. 18.4 has no exact IEEE 754 representation, so normalising ~18.4 and then multiplying by 1e2 to reach hundredths reintroduces the same error. Only integer arithmetic works.",
+  "scan": "Found by comparing the float form against exact integer arithmetic for every numerator against every denominator from 1 to 500: 72 disagreements in 125750 pairs. Every one has a denominator that is a multiple of 125, because n/125 lands on an exact tenth of a percent and exact tenths are the values binary cannot hold.",
+  "reachability": "Denominator 125 is reachable on the simplified basis at employmentRate 52. Denominators 250, 375 and 500 are reachable only through the exact method, where an employer supplies the annual total directly - which is precisely the path that already carries EXACT_METHOD_UNVERIFIED.",
+  "caseCount": 72,
+  "cases": [
+    {
+      "id": "rate-23-125",
+      "numerator": 23,
+      "denominator": 125,
+      "expectedDeclarableRate": 18.4,
+      "floatFormWouldGive": 18.39,
+      "why": "Exactly 18.4 %. Computing the percentage as a float and truncating gives 18.39, understating the filed rate by 0.01.",
+      "reachableVia": "simplified240 at employmentRate 52"
+    },
+    {
+      "id": "rate-41-125",
+      "numerator": 41,
+      "denominator": 125,
+      "expectedDeclarableRate": 32.8,
+      "floatFormWouldGive": 32.79,
+      "why": "Exactly 32.8 %. Computing the percentage as a float and truncating gives 32.79, understating the filed rate by 0.01.",
+      "reachableVia": "simplified240 at employmentRate 52"
+    },
+    {
+      "id": "rate-46-125",
+      "numerator": 46,
+      "denominator": 125,
+      "expectedDeclarableRate": 36.8,
+      "floatFormWouldGive": 36.79,
+      "why": "Exactly 36.8 %. Computing the percentage as a float and truncating gives 36.79, understating the filed rate by 0.01.",
+      "reachableVia": "simplified240 at employmentRate 52"
+    },
+    {
+      "id": "rate-51-125",
+      "numerator": 51,
+      "denominator": 125,
+      "expectedDeclarableRate": 40.8,
+      "floatFormWouldGive": 40.79,
+      "why": "Exactly 40.8 %. Computing the percentage as a float and truncating gives 40.79, understating the filed rate by 0.01.",
+      "reachableVia": "simplified240 at employmentRate 52"
+    },
+    {
+      "id": "rate-82-125",
+      "numerator": 82,
+      "denominator": 125,
+      "expectedDeclarableRate": 65.6,
+      "floatFormWouldGive": 65.59,
+      "why": "Exactly 65.6 %. Computing the percentage as a float and truncating gives 65.59, understating the filed rate by 0.01.",
+      "reachableVia": "simplified240 at employmentRate 52"
+    },
+    {
+      "id": "rate-87-125",
+      "numerator": 87,
+      "denominator": 125,
+      "expectedDeclarableRate": 69.6,
+      "floatFormWouldGive": 69.59,
+      "why": "Exactly 69.6 %. Computing the percentage as a float and truncating gives 69.59, understating the filed rate by 0.01.",
+      "reachableVia": "simplified240 at employmentRate 52"
+    },
+    {
+      "id": "rate-92-125",
+      "numerator": 92,
+      "denominator": 125,
+      "expectedDeclarableRate": 73.6,
+      "floatFormWouldGive": 73.59,
+      "why": "Exactly 73.6 %. Computing the percentage as a float and truncating gives 73.59, understating the filed rate by 0.01.",
+      "reachableVia": "simplified240 at employmentRate 52"
+    },
+    {
+      "id": "rate-97-125",
+      "numerator": 97,
+      "denominator": 125,
+      "expectedDeclarableRate": 77.6,
+      "floatFormWouldGive": 77.59,
+      "why": "Exactly 77.6 %. Computing the percentage as a float and truncating gives 77.59, understating the filed rate by 0.01.",
+      "reachableVia": "simplified240 at employmentRate 52"
+    },
+    {
+      "id": "rate-102-125",
+      "numerator": 102,
+      "denominator": 125,
+      "expectedDeclarableRate": 81.6,
+      "floatFormWouldGive": 81.59,
+      "why": "Exactly 81.6 %. Computing the percentage as a float and truncating gives 81.59, understating the filed rate by 0.01.",
+      "reachableVia": "simplified240 at employmentRate 52"
+    },
+    {
+      "id": "rate-23-250",
+      "numerator": 23,
+      "denominator": 250,
+      "expectedDeclarableRate": 9.2,
+      "floatFormWouldGive": 9.19,
+      "why": "Exactly 9.2 %. Computing the percentage as a float and truncating gives 9.19, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 250 days)"
+    },
+    {
+      "id": "rate-41-250",
+      "numerator": 41,
+      "denominator": 250,
+      "expectedDeclarableRate": 16.4,
+      "floatFormWouldGive": 16.39,
+      "why": "Exactly 16.4 %. Computing the percentage as a float and truncating gives 16.39, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 250 days)"
+    },
+    {
+      "id": "rate-46-250",
+      "numerator": 46,
+      "denominator": 250,
+      "expectedDeclarableRate": 18.4,
+      "floatFormWouldGive": 18.39,
+      "why": "Exactly 18.4 %. Computing the percentage as a float and truncating gives 18.39, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 250 days)"
+    },
+    {
+      "id": "rate-51-250",
+      "numerator": 51,
+      "denominator": 250,
+      "expectedDeclarableRate": 20.4,
+      "floatFormWouldGive": 20.39,
+      "why": "Exactly 20.4 %. Computing the percentage as a float and truncating gives 20.39, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 250 days)"
+    },
+    {
+      "id": "rate-82-250",
+      "numerator": 82,
+      "denominator": 250,
+      "expectedDeclarableRate": 32.8,
+      "floatFormWouldGive": 32.79,
+      "why": "Exactly 32.8 %. Computing the percentage as a float and truncating gives 32.79, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 250 days)"
+    },
+    {
+      "id": "rate-87-250",
+      "numerator": 87,
+      "denominator": 250,
+      "expectedDeclarableRate": 34.8,
+      "floatFormWouldGive": 34.79,
+      "why": "Exactly 34.8 %. Computing the percentage as a float and truncating gives 34.79, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 250 days)"
+    },
+    {
+      "id": "rate-92-250",
+      "numerator": 92,
+      "denominator": 250,
+      "expectedDeclarableRate": 36.8,
+      "floatFormWouldGive": 36.79,
+      "why": "Exactly 36.8 %. Computing the percentage as a float and truncating gives 36.79, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 250 days)"
+    },
+    {
+      "id": "rate-97-250",
+      "numerator": 97,
+      "denominator": 250,
+      "expectedDeclarableRate": 38.8,
+      "floatFormWouldGive": 38.79,
+      "why": "Exactly 38.8 %. Computing the percentage as a float and truncating gives 38.79, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 250 days)"
+    },
+    {
+      "id": "rate-102-250",
+      "numerator": 102,
+      "denominator": 250,
+      "expectedDeclarableRate": 40.8,
+      "floatFormWouldGive": 40.79,
+      "why": "Exactly 40.8 %. Computing the percentage as a float and truncating gives 40.79, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 250 days)"
+    },
+    {
+      "id": "rate-164-250",
+      "numerator": 164,
+      "denominator": 250,
+      "expectedDeclarableRate": 65.6,
+      "floatFormWouldGive": 65.59,
+      "why": "Exactly 65.6 %. Computing the percentage as a float and truncating gives 65.59, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 250 days)"
+    },
+    {
+      "id": "rate-169-250",
+      "numerator": 169,
+      "denominator": 250,
+      "expectedDeclarableRate": 67.6,
+      "floatFormWouldGive": 67.59,
+      "why": "Exactly 67.6 %. Computing the percentage as a float and truncating gives 67.59, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 250 days)"
+    },
+    {
+      "id": "rate-174-250",
+      "numerator": 174,
+      "denominator": 250,
+      "expectedDeclarableRate": 69.6,
+      "floatFormWouldGive": 69.59,
+      "why": "Exactly 69.6 %. Computing the percentage as a float and truncating gives 69.59, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 250 days)"
+    },
+    {
+      "id": "rate-179-250",
+      "numerator": 179,
+      "denominator": 250,
+      "expectedDeclarableRate": 71.6,
+      "floatFormWouldGive": 71.59,
+      "why": "Exactly 71.6 %. Computing the percentage as a float and truncating gives 71.59, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 250 days)"
+    },
+    {
+      "id": "rate-184-250",
+      "numerator": 184,
+      "denominator": 250,
+      "expectedDeclarableRate": 73.6,
+      "floatFormWouldGive": 73.59,
+      "why": "Exactly 73.6 %. Computing the percentage as a float and truncating gives 73.59, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 250 days)"
+    },
+    {
+      "id": "rate-189-250",
+      "numerator": 189,
+      "denominator": 250,
+      "expectedDeclarableRate": 75.6,
+      "floatFormWouldGive": 75.59,
+      "why": "Exactly 75.6 %. Computing the percentage as a float and truncating gives 75.59, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 250 days)"
+    },
+    {
+      "id": "rate-194-250",
+      "numerator": 194,
+      "denominator": 250,
+      "expectedDeclarableRate": 77.6,
+      "floatFormWouldGive": 77.59,
+      "why": "Exactly 77.6 %. Computing the percentage as a float and truncating gives 77.59, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 250 days)"
+    },
+    {
+      "id": "rate-199-250",
+      "numerator": 199,
+      "denominator": 250,
+      "expectedDeclarableRate": 79.6,
+      "floatFormWouldGive": 79.59,
+      "why": "Exactly 79.6 %. Computing the percentage as a float and truncating gives 79.59, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 250 days)"
+    },
+    {
+      "id": "rate-204-250",
+      "numerator": 204,
+      "denominator": 250,
+      "expectedDeclarableRate": 81.6,
+      "floatFormWouldGive": 81.59,
+      "why": "Exactly 81.6 %. Computing the percentage as a float and truncating gives 81.59, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 250 days)"
+    },
+    {
+      "id": "rate-69-375",
+      "numerator": 69,
+      "denominator": 375,
+      "expectedDeclarableRate": 18.4,
+      "floatFormWouldGive": 18.39,
+      "why": "Exactly 18.4 %. Computing the percentage as a float and truncating gives 18.39, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 375 days)"
+    },
+    {
+      "id": "rate-123-375",
+      "numerator": 123,
+      "denominator": 375,
+      "expectedDeclarableRate": 32.8,
+      "floatFormWouldGive": 32.79,
+      "why": "Exactly 32.8 %. Computing the percentage as a float and truncating gives 32.79, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 375 days)"
+    },
+    {
+      "id": "rate-138-375",
+      "numerator": 138,
+      "denominator": 375,
+      "expectedDeclarableRate": 36.8,
+      "floatFormWouldGive": 36.79,
+      "why": "Exactly 36.8 %. Computing the percentage as a float and truncating gives 36.79, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 375 days)"
+    },
+    {
+      "id": "rate-153-375",
+      "numerator": 153,
+      "denominator": 375,
+      "expectedDeclarableRate": 40.8,
+      "floatFormWouldGive": 40.79,
+      "why": "Exactly 40.8 %. Computing the percentage as a float and truncating gives 40.79, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 375 days)"
+    },
+    {
+      "id": "rate-246-375",
+      "numerator": 246,
+      "denominator": 375,
+      "expectedDeclarableRate": 65.6,
+      "floatFormWouldGive": 65.59,
+      "why": "Exactly 65.6 %. Computing the percentage as a float and truncating gives 65.59, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 375 days)"
+    },
+    {
+      "id": "rate-261-375",
+      "numerator": 261,
+      "denominator": 375,
+      "expectedDeclarableRate": 69.6,
+      "floatFormWouldGive": 69.59,
+      "why": "Exactly 69.6 %. Computing the percentage as a float and truncating gives 69.59, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 375 days)"
+    },
+    {
+      "id": "rate-276-375",
+      "numerator": 276,
+      "denominator": 375,
+      "expectedDeclarableRate": 73.6,
+      "floatFormWouldGive": 73.59,
+      "why": "Exactly 73.6 %. Computing the percentage as a float and truncating gives 73.59, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 375 days)"
+    },
+    {
+      "id": "rate-291-375",
+      "numerator": 291,
+      "denominator": 375,
+      "expectedDeclarableRate": 77.6,
+      "floatFormWouldGive": 77.59,
+      "why": "Exactly 77.6 %. Computing the percentage as a float and truncating gives 77.59, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 375 days)"
+    },
+    {
+      "id": "rate-306-375",
+      "numerator": 306,
+      "denominator": 375,
+      "expectedDeclarableRate": 81.6,
+      "floatFormWouldGive": 81.59,
+      "why": "Exactly 81.6 %. Computing the percentage as a float and truncating gives 81.59, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 375 days)"
+    },
+    {
+      "id": "rate-23-500",
+      "numerator": 23,
+      "denominator": 500,
+      "expectedDeclarableRate": 4.6,
+      "floatFormWouldGive": 4.59,
+      "why": "Exactly 4.6 %. Computing the percentage as a float and truncating gives 4.59, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 500 days)"
+    },
+    {
+      "id": "rate-41-500",
+      "numerator": 41,
+      "denominator": 500,
+      "expectedDeclarableRate": 8.2,
+      "floatFormWouldGive": 8.19,
+      "why": "Exactly 8.2 %. Computing the percentage as a float and truncating gives 8.19, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 500 days)"
+    },
+    {
+      "id": "rate-46-500",
+      "numerator": 46,
+      "denominator": 500,
+      "expectedDeclarableRate": 9.2,
+      "floatFormWouldGive": 9.19,
+      "why": "Exactly 9.2 %. Computing the percentage as a float and truncating gives 9.19, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 500 days)"
+    },
+    {
+      "id": "rate-51-500",
+      "numerator": 51,
+      "denominator": 500,
+      "expectedDeclarableRate": 10.2,
+      "floatFormWouldGive": 10.19,
+      "why": "Exactly 10.2 %. Computing the percentage as a float and truncating gives 10.19, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 500 days)"
+    },
+    {
+      "id": "rate-82-500",
+      "numerator": 82,
+      "denominator": 500,
+      "expectedDeclarableRate": 16.4,
+      "floatFormWouldGive": 16.39,
+      "why": "Exactly 16.4 %. Computing the percentage as a float and truncating gives 16.39, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 500 days)"
+    },
+    {
+      "id": "rate-87-500",
+      "numerator": 87,
+      "denominator": 500,
+      "expectedDeclarableRate": 17.4,
+      "floatFormWouldGive": 17.39,
+      "why": "Exactly 17.4 %. Computing the percentage as a float and truncating gives 17.39, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 500 days)"
+    },
+    {
+      "id": "rate-92-500",
+      "numerator": 92,
+      "denominator": 500,
+      "expectedDeclarableRate": 18.4,
+      "floatFormWouldGive": 18.39,
+      "why": "Exactly 18.4 %. Computing the percentage as a float and truncating gives 18.39, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 500 days)"
+    },
+    {
+      "id": "rate-97-500",
+      "numerator": 97,
+      "denominator": 500,
+      "expectedDeclarableRate": 19.4,
+      "floatFormWouldGive": 19.39,
+      "why": "Exactly 19.4 %. Computing the percentage as a float and truncating gives 19.39, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 500 days)"
+    },
+    {
+      "id": "rate-102-500",
+      "numerator": 102,
+      "denominator": 500,
+      "expectedDeclarableRate": 20.4,
+      "floatFormWouldGive": 20.39,
+      "why": "Exactly 20.4 %. Computing the percentage as a float and truncating gives 20.39, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 500 days)"
+    },
+    {
+      "id": "rate-164-500",
+      "numerator": 164,
+      "denominator": 500,
+      "expectedDeclarableRate": 32.8,
+      "floatFormWouldGive": 32.79,
+      "why": "Exactly 32.8 %. Computing the percentage as a float and truncating gives 32.79, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 500 days)"
+    },
+    {
+      "id": "rate-169-500",
+      "numerator": 169,
+      "denominator": 500,
+      "expectedDeclarableRate": 33.8,
+      "floatFormWouldGive": 33.79,
+      "why": "Exactly 33.8 %. Computing the percentage as a float and truncating gives 33.79, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 500 days)"
+    },
+    {
+      "id": "rate-174-500",
+      "numerator": 174,
+      "denominator": 500,
+      "expectedDeclarableRate": 34.8,
+      "floatFormWouldGive": 34.79,
+      "why": "Exactly 34.8 %. Computing the percentage as a float and truncating gives 34.79, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 500 days)"
+    },
+    {
+      "id": "rate-179-500",
+      "numerator": 179,
+      "denominator": 500,
+      "expectedDeclarableRate": 35.8,
+      "floatFormWouldGive": 35.79,
+      "why": "Exactly 35.8 %. Computing the percentage as a float and truncating gives 35.79, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 500 days)"
+    },
+    {
+      "id": "rate-184-500",
+      "numerator": 184,
+      "denominator": 500,
+      "expectedDeclarableRate": 36.8,
+      "floatFormWouldGive": 36.79,
+      "why": "Exactly 36.8 %. Computing the percentage as a float and truncating gives 36.79, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 500 days)"
+    },
+    {
+      "id": "rate-189-500",
+      "numerator": 189,
+      "denominator": 500,
+      "expectedDeclarableRate": 37.8,
+      "floatFormWouldGive": 37.79,
+      "why": "Exactly 37.8 %. Computing the percentage as a float and truncating gives 37.79, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 500 days)"
+    },
+    {
+      "id": "rate-194-500",
+      "numerator": 194,
+      "denominator": 500,
+      "expectedDeclarableRate": 38.8,
+      "floatFormWouldGive": 38.79,
+      "why": "Exactly 38.8 %. Computing the percentage as a float and truncating gives 38.79, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 500 days)"
+    },
+    {
+      "id": "rate-199-500",
+      "numerator": 199,
+      "denominator": 500,
+      "expectedDeclarableRate": 39.8,
+      "floatFormWouldGive": 39.79,
+      "why": "Exactly 39.8 %. Computing the percentage as a float and truncating gives 39.79, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 500 days)"
+    },
+    {
+      "id": "rate-204-500",
+      "numerator": 204,
+      "denominator": 500,
+      "expectedDeclarableRate": 40.8,
+      "floatFormWouldGive": 40.79,
+      "why": "Exactly 40.8 %. Computing the percentage as a float and truncating gives 40.79, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 500 days)"
+    },
+    {
+      "id": "rate-323-500",
+      "numerator": 323,
+      "denominator": 500,
+      "expectedDeclarableRate": 64.6,
+      "floatFormWouldGive": 64.59,
+      "why": "Exactly 64.6 %. Computing the percentage as a float and truncating gives 64.59, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 500 days)"
+    },
+    {
+      "id": "rate-328-500",
+      "numerator": 328,
+      "denominator": 500,
+      "expectedDeclarableRate": 65.6,
+      "floatFormWouldGive": 65.59,
+      "why": "Exactly 65.6 %. Computing the percentage as a float and truncating gives 65.59, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 500 days)"
+    },
+    {
+      "id": "rate-333-500",
+      "numerator": 333,
+      "denominator": 500,
+      "expectedDeclarableRate": 66.6,
+      "floatFormWouldGive": 66.59,
+      "why": "Exactly 66.6 %. Computing the percentage as a float and truncating gives 66.59, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 500 days)"
+    },
+    {
+      "id": "rate-338-500",
+      "numerator": 338,
+      "denominator": 500,
+      "expectedDeclarableRate": 67.6,
+      "floatFormWouldGive": 67.59,
+      "why": "Exactly 67.6 %. Computing the percentage as a float and truncating gives 67.59, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 500 days)"
+    },
+    {
+      "id": "rate-343-500",
+      "numerator": 343,
+      "denominator": 500,
+      "expectedDeclarableRate": 68.6,
+      "floatFormWouldGive": 68.59,
+      "why": "Exactly 68.6 %. Computing the percentage as a float and truncating gives 68.59, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 500 days)"
+    },
+    {
+      "id": "rate-348-500",
+      "numerator": 348,
+      "denominator": 500,
+      "expectedDeclarableRate": 69.6,
+      "floatFormWouldGive": 69.59,
+      "why": "Exactly 69.6 %. Computing the percentage as a float and truncating gives 69.59, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 500 days)"
+    },
+    {
+      "id": "rate-353-500",
+      "numerator": 353,
+      "denominator": 500,
+      "expectedDeclarableRate": 70.6,
+      "floatFormWouldGive": 70.59,
+      "why": "Exactly 70.6 %. Computing the percentage as a float and truncating gives 70.59, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 500 days)"
+    },
+    {
+      "id": "rate-358-500",
+      "numerator": 358,
+      "denominator": 500,
+      "expectedDeclarableRate": 71.6,
+      "floatFormWouldGive": 71.59,
+      "why": "Exactly 71.6 %. Computing the percentage as a float and truncating gives 71.59, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 500 days)"
+    },
+    {
+      "id": "rate-363-500",
+      "numerator": 363,
+      "denominator": 500,
+      "expectedDeclarableRate": 72.6,
+      "floatFormWouldGive": 72.59,
+      "why": "Exactly 72.6 %. Computing the percentage as a float and truncating gives 72.59, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 500 days)"
+    },
+    {
+      "id": "rate-368-500",
+      "numerator": 368,
+      "denominator": 500,
+      "expectedDeclarableRate": 73.6,
+      "floatFormWouldGive": 73.59,
+      "why": "Exactly 73.6 %. Computing the percentage as a float and truncating gives 73.59, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 500 days)"
+    },
+    {
+      "id": "rate-373-500",
+      "numerator": 373,
+      "denominator": 500,
+      "expectedDeclarableRate": 74.6,
+      "floatFormWouldGive": 74.59,
+      "why": "Exactly 74.6 %. Computing the percentage as a float and truncating gives 74.59, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 500 days)"
+    },
+    {
+      "id": "rate-378-500",
+      "numerator": 378,
+      "denominator": 500,
+      "expectedDeclarableRate": 75.6,
+      "floatFormWouldGive": 75.59,
+      "why": "Exactly 75.6 %. Computing the percentage as a float and truncating gives 75.59, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 500 days)"
+    },
+    {
+      "id": "rate-383-500",
+      "numerator": 383,
+      "denominator": 500,
+      "expectedDeclarableRate": 76.6,
+      "floatFormWouldGive": 76.59,
+      "why": "Exactly 76.6 %. Computing the percentage as a float and truncating gives 76.59, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 500 days)"
+    },
+    {
+      "id": "rate-388-500",
+      "numerator": 388,
+      "denominator": 500,
+      "expectedDeclarableRate": 77.6,
+      "floatFormWouldGive": 77.59,
+      "why": "Exactly 77.6 %. Computing the percentage as a float and truncating gives 77.59, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 500 days)"
+    },
+    {
+      "id": "rate-393-500",
+      "numerator": 393,
+      "denominator": 500,
+      "expectedDeclarableRate": 78.6,
+      "floatFormWouldGive": 78.59,
+      "why": "Exactly 78.6 %. Computing the percentage as a float and truncating gives 78.59, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 500 days)"
+    },
+    {
+      "id": "rate-398-500",
+      "numerator": 398,
+      "denominator": 500,
+      "expectedDeclarableRate": 79.6,
+      "floatFormWouldGive": 79.59,
+      "why": "Exactly 79.6 %. Computing the percentage as a float and truncating gives 79.59, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 500 days)"
+    },
+    {
+      "id": "rate-403-500",
+      "numerator": 403,
+      "denominator": 500,
+      "expectedDeclarableRate": 80.6,
+      "floatFormWouldGive": 80.59,
+      "why": "Exactly 80.6 %. Computing the percentage as a float and truncating gives 80.59, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 500 days)"
+    },
+    {
+      "id": "rate-408-500",
+      "numerator": 408,
+      "denominator": 500,
+      "expectedDeclarableRate": 81.6,
+      "floatFormWouldGive": 81.59,
+      "why": "Exactly 81.6 %. Computing the percentage as a float and truncating gives 81.59, understating the filed rate by 0.01.",
+      "reachableVia": "exact method only (an employer-supplied total of 500 days)"
+    }
+  ],
+  "floatFormRecorded": "The floatFormWouldGive field records the MULTIPLY-FIRST float form, (numerator * 1e2) / denominator then truncated. That is the better naive attempt - it is what ruling R10 prescribes for the proration - and it is still wrong in these 72 cases. The more natural divide-first form, (numerator / denominator) * 1e2, is wrong in 172 of the same 125750 pairs. The lesson is that no float form is safe, not that one of them is."
+}
