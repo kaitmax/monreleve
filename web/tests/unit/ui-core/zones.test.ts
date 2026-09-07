@@ -45,16 +45,28 @@ describe('zoneFor - the rail bands (SPEC 6.2)', () => {
     expect(zoneFor(39.16, RULES)).toBe('compliant');
   });
 
-  it('treats exactly 40.00 as fiscal-exposure, and 39.99 as compliant', () => {
-    // The band is 0-40, so 40 is the start of the next one. Stated in the
-    // FW6 prompt and asserted on both sides here.
-    expect(zoneFor(39.99, RULES)).toBe('compliant');
-    expect(zoneFor(40, RULES)).toBe('fiscal-exposure');
+  it('treats exactly 40.00 as COMPLIANT, and 40.01 as fiscal-exposure (R32)', () => {
+    // RULING R32: the ceilings are inclusive on the COMPLIANT side. A rate of
+    // exactly 40.00 is compliant with zero headroom, not exposed.
+    //
+    // The fixtures are why. Geneva case b is teleworkDays 91 with 8 mission
+    // days: declarableRate exactly 40, regimeApplies TRUE, 237 of 240 days
+    // taxed in Switzerland. The old boundary painted that rail AMBER while
+    // the fixture said the regime applies - the rail contradicting the
+    // ship-blocking fixture. Case d is the same at 94/12.
+    expect(zoneFor(40, RULES)).toBe('compliant');
+    expect(zoneFor(40.01, RULES)).toBe('fiscal-exposure');
   });
 
-  it('treats exactly 49.90 as social-switch, and 49.89 as fiscal-exposure', () => {
+  it('treats exactly 49.90 as fiscal-exposure, and 49.91 as social-switch (R32)', () => {
+    // The same rule at the social ceiling, and here it removes a
+    // disagreement rather than a contradiction: the engine's
+    // SOCIAL_CEILING_EXCEEDED fires only when remainingToSocial goes
+    // NEGATIVE, so at exactly 49.9 the engine says the ceiling is not
+    // exceeded. The old band said social-switch anyway.
     expect(zoneFor(49.89, RULES)).toBe('fiscal-exposure');
-    expect(zoneFor(49.9, RULES)).toBe('social-switch');
+    expect(zoneFor(49.9, RULES)).toBe('fiscal-exposure');
+    expect(zoneFor(49.91, RULES)).toBe('social-switch');
   });
 
   it('places anything above on the social band', () => {
@@ -167,21 +179,30 @@ describe('the Zone and Status of one result are independent (SPEC 6.2)', () => {
     expect(zoneFor(result.declarableRate, RULES)).toBe('compliant');
   });
 
-  it('mission-exposure can also sit on the fiscal-exposure band - Geneva case b', () => {
-    // Exactly 40.00: the badge is still about the missions, the band has
-    // moved. Recorded so nobody "fixes" the pairing above into a rule.
+  it('mission-exposure sits on the COMPLIANT band at exactly 40.00 too - Geneva case b (R32)', () => {
+    // Exactly 40.00 with the regime applying. Under R32 the band is green and
+    // the badge is amber, which is the SAME pairing SPEC 6.2 calls out - so
+    // the spec's own named oddity is now true of the fixture as well as of
+    // case c, where before the rail contradicted it.
     const result = resultOf({ teleworkDays: 91, missionDaysFrance: 8 });
 
     expect(result.declarableRate).toBe(40);
+    expect(result.regimeApplies).toBe(true);
     expect(statusFor(result)).toBe('mission-exposure');
-    expect(zoneFor(result.declarableRate, RULES)).toBe('fiscal-exposure');
+    expect(zoneFor(result.declarableRate, RULES)).toBe('compliant');
   });
 
-  it('diverges at exactly 49.9: the band is social, the badge is not', () => {
-    // The band is a POSITION and includes 49.9. The badge is a CONSEQUENCE
-    // and the ceiling is only exceeded ABOVE 49.9 - which is also when the
-    // engine's SOCIAL_CEILING_EXCEEDED warning fires. The badge agrees with
-    // the warning; the rail shows where you stand. See the report.
+  it('agrees at exactly 49.9: neither the band nor the badge claims a breach (R32)', () => {
+    // This used to be the one deliberate DISAGREEMENT, and R32 removed it.
+    // The engine is the arbiter: SOCIAL_CEILING_EXCEEDED fires only when
+    // remainingToSocial goes negative, and at exactly 49.9 it is zero, so the
+    // engine says the ceiling is not exceeded. The rail now says the same.
+    //
+    // The badge reads regime-lost rather than compliant because the regime
+    // really has gone - 49.9 % of telework is far past the fiscal ceiling -
+    // and that is not a disagreement: Zone is POSITION and Status is
+    // CONSEQUENCE. What matters is that neither of them now claims a SOCIAL
+    // breach that has not happened.
     const result = resultOf({
       denominator: { kind: 'exact', totalWorkDays: 1000 },
       teleworkDays: 499,
@@ -193,7 +214,7 @@ describe('the Zone and Status of one result are independent (SPEC 6.2)', () => {
       'SOCIAL_CEILING_EXCEEDED',
     );
 
-    expect(zoneFor(result.declarableRate, RULES)).toBe('social-switch');
+    expect(zoneFor(result.declarableRate, RULES)).toBe('fiscal-exposure');
     expect(statusFor(result)).toBe('regime-lost');
   });
 
@@ -222,11 +243,18 @@ describe('zoneFor compares exactly, and must not be "hardened" into rounding', (
     expect(RULES.socialCeiling * 100).toBe(49.9);
   });
 
-  it('keeps a rate finer than a hundredth below the line below the line', () => {
+  it('keeps a rate finer than a hundredth on the right side of the line', () => {
     // The rows that separate the exact comparison from an integer-hundredths
-    // one. Under Math.round(rate * 1e2) >= Math.round(ceiling * 1e4) these
-    // both move up a band while every boundary row above still passes, so
-    // without these two the refactor is invisible.
+    // one. Under R32's strict > the discriminating cases MOVED, and moved to
+    // the more dangerous side: with Math.round(rate * 1e2) > Math.round(
+    // ceiling * 1e4), round(4000.1) is 4000, which is not > 4000, so 40.001 -
+    // a rate genuinely PAST the fiscal ceiling - would be reported compliant.
+    // The rounded form now understates a breach instead of inventing one,
+    // which is worse, so these rows matter more than they did in FW6.
+    expect(zoneFor(40.001, RULES)).toBe('fiscal-exposure');
+    expect(zoneFor(49.901, RULES)).toBe('social-switch');
+
+    // ...and the other side still holds.
     expect(zoneFor(39.999, RULES)).toBe('compliant');
     expect(zoneFor(49.8999, RULES)).toBe('fiscal-exposure');
   });

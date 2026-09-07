@@ -182,6 +182,20 @@ reviewer rather than to a website.
   the AFC publication that truncation is the filing rule and not an artefact
   of how the worked examples were printed.*
 
+- ☐ **Is the social ceiling legally "≤ 49,9 %" or "< 50 %"? (INTERPRETATION,
+  ruling R32.)** The sources quote 49,9 %, and the engine and the rail both
+  now read the ceilings as inclusive on the compliant side — a rate must
+  *exceed* 49,9 to be a breach. That settles 49,90 itself, but it does not
+  settle what the figure 49,9 *is*. If it is a legal maximum of 49,9 %, then
+  49,99 % is a breach. If 49,9 % is instead shorthand for "below 50 %", then
+  49,99 % is not. The two readings put the same declarable rate on opposite
+  sides of the social threshold, and the rate arrives at two decimals by
+  truncation (`declarable-rate.ts`), so 49,99 is a value the engine really can
+  produce. Nothing in the code chooses between them today because
+  `socialCeiling` is stored as `0.499` and compared directly. *Question for
+  the reviewer: is 49,9 % the maximum permitted share, or a rounded statement
+  of a "strictly under 50 %" rule?*
+
 - ☐ **The interpretative agreement of 29 April 2026 is held second-hand.** It
   is the source for the mission sub-cap sitting *inside* the 40 % rather than
   beside it — which changes every result in the engine — and it reached this

@@ -269,7 +269,9 @@ Warning colour as text: `#B7791F` on white is borderline at small sizes. Warning
 
 ### 6.2 Zones and statuses are different things
 
-Unchanged from v1 and independent of the design system. The **rail shows position** — three regulatory bands, 0–40 / 40–49.9 / ≥ 49.9, coloured success / warning / error. The **badge shows status** — four states, one of which (`mission-exposure`) sits on the green band with a warning badge.
+Unchanged from v1 and independent of the design system. The **rail shows position** — three regulatory bands, coloured success / warning / error and **inclusive on the compliant side** (ruling R32): `compliant` for rate ≤ 40, `fiscal-exposure` for 40 < rate ≤ 49.9, `social-switch` for rate > 49.9. A rate must *exceed* a ceiling to leave its band. The **badge shows status** — four states, one of which (`mission-exposure`) sits on the green band with a warning badge.
+
+The inclusive reading is forced by the fixtures and by the engine, and the earlier "0–40 / 40–49.9 / ≥ 49.9" wording was sloppy about it. Geneva case b (91 telework days, 8 mission days) has `declarableRate` exactly 40 with `regimeApplies` true and 237 of 240 days taxed in Switzerland; case d is the same at 94/12. Reading 40 as `fiscal-exposure` painted those rails amber while a ship-blocking fixture said the regime applies. At the social ceiling the exclusive reading disagreed with the engine instead: `SOCIAL_CEILING_EXCEEDED` fires only once `remainingToSocial` goes negative, so at exactly 49.9 the engine reports no breach. Tick marks stay at 40 and 49.9.
 
 ```ts
 export type Zone   = 'compliant' | 'fiscal-exposure' | 'social-switch';

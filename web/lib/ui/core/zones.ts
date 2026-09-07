@@ -2,8 +2,10 @@
 //
 // SPEC 6.2. "Zones and statuses are different things."
 //
-//   Zone   - the RAIL. Where you stand. Three regulatory bands,
-//            0-40 / 40-49.9 / >= 49.9, coloured success / warning / error.
+//   Zone   - the RAIL. Where you stand. Three regulatory bands, coloured
+//            success / warning / error, and INCLUSIVE ON THE COMPLIANT SIDE
+//            per ruling R32: compliant for rate <= 40, fiscal-exposure for
+//            40 < rate <= 49.9, social-switch for rate > 49.9.
 //   Status - the BADGE. What it means. Four states, one of which
 //            (mission-exposure) sits on the GREEN band with a warning badge.
 //
@@ -81,21 +83,32 @@ export const STATUS_PRESENTATION: Record<Status, StatusPresentation> = Object.fr
  * ceilings are scaled here, once, and a test asserts a rate of 30 is
  * compliant against the real RuleSet.
  *
- * Boundaries are inclusive at the bottom of each higher band: exactly 40.00 is
- * fiscal-exposure and exactly 49.90 is social-switch, because the bands are
- * written 0-40 / 40-49.9 / >= 49.9 and a position exactly on a line is on the
- * line, not below it.
+ * BOUNDARIES ARE INCLUSIVE ON THE COMPLIANT SIDE (ruling R32): exactly 40.00
+ * is COMPLIANT, with zero headroom, and exactly 49.90 is fiscal-exposure. A
+ * rate has to EXCEED a ceiling to leave its band, which is why both
+ * comparisons below are strict.
+ *
+ * The fixtures forced this. Geneva case b is teleworkDays 91 with 8 mission
+ * days: declarableRate exactly 40, regimeApplies TRUE, 237 of 240 days taxed
+ * in Switzerland - and case d is the same at 94/12. Reading 40 as
+ * fiscal-exposure painted those rails amber while the ship-blocking fixture
+ * said the regime applies, so the rail contradicted the fixture. At the social
+ * ceiling the same reading disagreed with the ENGINE: SOCIAL_CEILING_EXCEEDED
+ * fires only once remainingToSocial goes negative, so at exactly 49.9 the
+ * engine says the ceiling is not exceeded while the old band said it was.
  *
  * THE COMPARISON IS EXACT AND MUST NOT BE ROUNDED. Both scalings are exact in
  * IEEE 754 - 0.4 * 1e2 is 40 and 0.499 * 1e2 is 49.9, verified by test - so
  * there is nothing here to harden. Rewriting these as integer hundredths
- * (Math.round(rate * 1e2) >= Math.round(ceiling * 1e4)) looks safer and is
- * not: it rounds 39.999 up into fiscal-exposure and 49.895 up into
- * social-switch, reporting a breach that has not happened. declarableRate is
- * always n/100 today, but zoneFor is exported and FW7 animates the rail, so
- * finer rates will reach it. Tests pin 39.999 and 49.8999 for that reason.
+ * (Math.round(rate * 1e2) > Math.round(ceiling * 1e4)) looks safer and is
+ * not, and under R32's strict > it fails in the DANGEROUS direction:
+ * Math.round(40.001 * 1e2) is 4000, which is not > 4000, so a rate genuinely
+ * past the fiscal ceiling would be reported compliant. Understating a breach
+ * is worse than inventing one. declarableRate is always n/100 today, but
+ * zoneFor is exported and FW7 animates the rail, so finer rates will reach
+ * it. Tests pin 40.001, 49.901, 39.999 and 49.8999 for that reason.
  *
- * Throws on a non-finite rate. Every `>=` against NaN is false, so the
+ * Throws on a non-finite rate. Every `>` against NaN is false, so the
  * unguarded function would fall through and return 'compliant' - painting the
  * success band for a rate that was never computed. That failure is invisible,
  * and it is the one SPEC section 20 cares most about, so it is loud instead.
@@ -107,8 +120,8 @@ export function zoneFor(declarableRate: number, thresholds: ZoneThresholds): Zon
     throw new RangeError(`zoneFor needs a finite percentage, received ${declarableRate}`);
   }
 
-  if (declarableRate >= thresholds.socialCeiling * PERCENT) return 'social-switch';
-  if (declarableRate >= thresholds.fiscalCeiling * PERCENT) return 'fiscal-exposure';
+  if (declarableRate > thresholds.socialCeiling * PERCENT) return 'social-switch';
+  if (declarableRate > thresholds.fiscalCeiling * PERCENT) return 'fiscal-exposure';
 
   return 'compliant';
 }
@@ -129,9 +142,12 @@ export function zoneFor(declarableRate: number, thresholds: ZoneThresholds): Zon
  * SOCIAL_CEILING_EXCEEDED warning fires on. The badge and the warnings
  * therefore cannot disagree.
  *
- * Note this is deliberately STRICTER than the rail at exactly 49.9 %: the band
- * includes 49.9 because that is where you stand, the badge does not because
- * the ceiling has not been crossed. See REPORT-FW6.txt.
+ * Under ruling R32 this NO LONGER disagrees with the rail at exactly 49.9 %.
+ * Both now treat a ceiling as crossed only when it is exceeded, so neither
+ * the band nor the badge can claim a social breach the engine does not report.
+ * They still differ in KIND - Zone is position, Status is consequence, so
+ * regime-lost on the fiscal-exposure band is normal - but they no longer
+ * contradict each other about whether a threshold was passed.
  */
 export function statusFor(result: TeleworkResult): Status {
   if (result.remainingToSocial < 0) return 'social-switch';
