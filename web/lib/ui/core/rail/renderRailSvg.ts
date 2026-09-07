@@ -33,6 +33,7 @@ import { escapeXml } from './xml';
 import { ZONE_BAND_TOKEN } from '../zone-tokens';
 import { formatPercent } from '../format/number';
 import { ZONE_BAND_NAME, railAriaLabel } from '@/lib/fr/rail';
+import { APP_NAME } from '@/lib/fr';
 import type { RailData, RailGeometry, RailTick } from './geometry';
 import type { Zone, ZoneThresholds } from '../zones';
 
@@ -108,16 +109,41 @@ export function renderRailSvg(data: RailData, thresholds: ZoneThresholds): strin
   const geometry = railGeometry(data, thresholds);
   const rate = formatPercent(geometry.percentage, RATE_DECIMALS);
 
+  // The social card is a standalone image: it is the only variant that owns
+  // its whole surface, so it paints a background and centres its text. The
+  // other two are embedded in a page that already has one.
+  const social = data.variant === 'social';
+
   const parts = [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${geometry.svgWidth}" height="${geometry.svgHeight}" viewBox="0 0 ${geometry.svgWidth} ${geometry.svgHeight}" role="img" aria-label="${escapeXml(railAriaLabel(rate, data.zone))}">`,
+
+    // SPEC 6.1: the canvas is grey. No shadow anywhere - SPEC 20's v2 bullet
+    // and 6.1 both forbid one on a card.
+    social
+      ? rect(
+          { x: 0, y: 0, width: geometry.svgWidth, height: geometry.svgHeight, rx: 0 },
+          'fill: var(--colour-canvas)',
+        )
+      : '',
+
+    // The product name, social only (SPEC 6.3: "carries the product name").
+    geometry.productNameShown
+      ? text(
+          geometry.svgWidth / 2,
+          geometry.productNameBaselineY,
+          'middle',
+          typeStyle('h2', '--colour-text-primary'),
+          APP_NAME,
+        )
+      : '',
 
     // The rate, on its own row. SPEC 16: the zone is never colour-only, and
     // this is one of the two words that carry it when the colour is lost.
     text(
-      geometry.track.x,
+      social ? geometry.svgWidth / 2 : geometry.track.x,
       geometry.rateBaselineY,
-      'start',
-      typeStyle('caption', '--colour-text-primary'),
+      social ? 'middle' : 'start',
+      typeStyle(social ? 'display' : 'caption', '--colour-text-primary'),
       rate,
     ),
 

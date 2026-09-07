@@ -21,9 +21,15 @@ import { join } from 'node:path';
 import { compileString } from 'sass';
 import { describe, expect, it } from 'vitest';
 import { ruleSetFor } from '@/lib/calc-engine';
+import { APP_NAME } from '@/lib/fr';
 import { ZONE_BAND_NAME } from '@/lib/fr/rail';
 import { renderRailSvg } from '@/lib/ui/core/rail/renderRailSvg';
-import { railGeometry } from '@/lib/ui/core/rail/geometry';
+import {
+  COMPACT_MIN_WIDTH,
+  SOCIAL_HEIGHT,
+  SOCIAL_WIDTH,
+  railGeometry,
+} from '@/lib/ui/core/rail/geometry';
 import type { RailData } from '@/lib/ui/core/rail/geometry';
 import type { Zone } from '@/lib/ui/core/zones';
 
@@ -259,5 +265,81 @@ describe('compact drops the band names (the other half of the branch)', () => {
     }
     expect(compact).toContain('role="img"');
     expect(compact).toContain(`>${pct('40')}<`);
+  });
+});
+
+describe('the compact variant (increment 3)', () => {
+  it('enforces the 200 px minimum and reports it through the geometry', () => {
+    const narrow = render({ variant: 'compact', width: 120 });
+    const geometry = railGeometry(data({ variant: 'compact', width: 120 }), RULES);
+
+    expect(geometry.clampedWidth).toBe(true);
+    expect(geometry.svgWidth).toBe(COMPACT_MIN_WIDTH);
+    expect(narrow).toContain(`width="${COMPACT_MIN_WIDTH}"`);
+  });
+
+  it('keeps its tick labels and its rate, so the zone is never colour-alone', () => {
+    // SPEC 16: "Zone/status is never colour-only - icon + text label on every
+    // surface". compact drops the band NAMES, so the tick labels and the rate
+    // are the only words left carrying it. Losing them too would leave the
+    // band meaning nothing without colour.
+    const compact = render({ variant: 'compact', width: 300 });
+
+    expect(compact).toContain(`>${pct('40')}<`);
+    expect(compact).toContain(`>${pct('49,9')}<`);
+    expect(compact).toContain(`>${pct('39,16')}<`);
+  });
+
+  it('paints no background - it is embedded, not standalone', () => {
+    expect(render({ variant: 'compact', width: 300 })).not.toContain('--colour-canvas');
+  });
+});
+
+describe('the social variant (increment 3)', () => {
+  const social = (patch: Partial<RailData> = {}): string =>
+    render({ variant: 'social', width: 0, ...patch });
+
+  it('is 1200 x 630 with the rail at 60 % of the width, centred', () => {
+    const geometry = railGeometry(data({ variant: 'social', width: 0 }), RULES);
+
+    expect(social()).toContain(`width="${SOCIAL_WIDTH}" height="${SOCIAL_HEIGHT}"`);
+    expect(geometry.track.width).toBe(SOCIAL_WIDTH * 0.6);
+    expect(geometry.track.x).toBe((SOCIAL_WIDTH - SOCIAL_WIDTH * 0.6) / 2);
+  });
+
+  it('paints the canvas background, because it owns its whole surface', () => {
+    expect(social()).toContain('fill: var(--colour-canvas)');
+  });
+
+  it('carries the product name from lib/fr', () => {
+    // SPEC 6.3: "The social variant is 1200 x 630 and carries the product
+    // name."
+    expect(social()).toContain(`>${APP_NAME}<`);
+    expect(social()).toContain('var(--type-h2-size)');
+  });
+
+  it('sets the rate at Display and the band names are present', () => {
+    expect(social()).toContain('var(--type-display-size)');
+    for (const name of Object.values(ZONE_BAND_NAME)) {
+      expect(social()).toContain(`>${name}<`);
+    }
+  });
+
+  it('takes no personal data - the interface has nowhere to put any', () => {
+    // SPEC 6.3: "The OG card is generic, never per-result." renderRailSvg is
+    // a pure function of RailData, and RailData has exactly five fields: a
+    // number, a Zone, two numbers and a variant. There is no name, no email,
+    // no date - so no identifier can reach the card through this function.
+    // FW15 must still pass a constant rate; that is the route's guarantee,
+    // not this one's.
+    const fields = Object.keys(data()).sort();
+
+    expect(fields).toEqual(['height', 'percentage', 'variant', 'width', 'zone']);
+  });
+
+  it('carries no shadow', () => {
+    // SPEC 6.1 and SPEC 20's v2 bullet both forbid a shadow on a card.
+    expect(social()).not.toContain('filter');
+    expect(social()).not.toContain('drop-shadow');
   });
 });
