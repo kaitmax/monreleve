@@ -9,7 +9,12 @@ import { APP_NAME } from '@/lib/fr';
 
 describe('unit harness', () => {
   it('resolves the tsconfig path alias into lib/calc-engine', () => {
-    expect(Object.keys(calcEngine)).toEqual([]);
+    // Asserts the alias resolves, not what the module contains: the engine's
+    // export list grows with every FW3-FW5 increment, and pinning it here
+    // would make this harness test fail for reasons that are not about the
+    // harness. What the engine exports is asserted in tests/unit/calc-engine.
+    expect(calcEngine).toBeTypeOf('object');
+    expect(calcEngine).not.toBeNull();
   });
 
   it('loads lib/fr through the same alias', () => {

@@ -9,6 +9,8 @@
 // the waterfall, the rates, the headroom and the warnings - is FW4's, and is
 // deliberately not exported until it exists.
 
+export { ruleSetFor } from './rules';
+
 export type {
   AllowedTeleworkDays,
   Canton,

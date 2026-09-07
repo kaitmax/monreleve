@@ -1,0 +1,95 @@
+// web/lib/calc-engine/rules.ts
+//
+// THE ONLY PLACE A THRESHOLD MAY APPEAR (SPEC section 7.7). A bare 0.4 or 240
+// anywhere else in the engine is a review rejection, and
+// tests/unit/calc-engine/no-magic-thresholds.test.ts enforces that
+// mechanically.
+//
+// Every constant carries its source per SPEC section 7.1. The primary
+// references, with fetch dates, live in docs/regulatory-sources.md.
+//
+// VERIFICATION PENDING. These figures were drafted from advisory sources.
+// They must be checked against admin.ch, the AFC and impots.gouv.fr before
+// the Geneva fixtures are frozen at Checkpoint A. Changing any of them is an
+// ask-first item (SPEC section 20).
+
+import type { Canton, RuleSet } from './types';
+
+/**
+ * The eight cantons under the 11 April 1983 accord, where the frontalier
+ * status itself is at risk on breach rather than only the tax treatment.
+ * Source: amicable agreement on the 11 April 1983 accord.
+ */
+const RESIDENCE_1983_CANTONS: readonly Canton[] = Object.freeze([
+  'BE',
+  'SO',
+  'BS',
+  'BL',
+  'VD',
+  'VS',
+  'NE',
+  'JU',
+] as const);
+
+const RULES_2026: RuleSet = Object.freeze({
+  taxYear: 2026,
+
+  // 40 % of annual working time (art. 10).
+  // Source: avenant of 27 June 2023, in force 1 January 2026.
+  fiscalCeiling: 0.4,
+
+  // 49.9 %, conditional on a valid A1.
+  // Source: EU framework agreement; art. 16 of regulation 883/2004.
+  socialCeiling: 0.499,
+
+  // 10 days per year, INSIDE the 40 %. Prorated for part-time and partial
+  // years, rounded up - the one rule that favours the user.
+  // Source: same avenant; interpretative agreement 29 April 2026;
+  // proration per the amicable agreement of 30 June 2023.
+  missionCapDays: 10,
+
+  // 240 days per year at full time. Absorbs leave, holidays and sickness, so
+  // there is no calendar arithmetic and no holiday table.
+  // Source: circular no. 45 of 12 June 2019, point 7.5.1.
+  simplifiedBasisDays: 240,
+
+  residence1983Cantons: RESIDENCE_1983_CANTONS,
+
+  sources: Object.freeze([
+    'Fiscal ceiling 40% of annual working time (art. 10) - avenant of 27 June 2023, in force 1 January 2026',
+    'Mission sub-cap 10 days/year inside the 40% - same avenant; interpretative agreement 29 April 2026',
+    'Mission cap proration, proportional and rounded up - amicable agreement of 30 June 2023',
+    'Social ceiling 49.9%, conditional on a valid A1 - EU framework agreement, art. 16 reg. 883/2004',
+    'Simplified denominator 240 days/year full-time - circular no. 45 of 12 June 2019, pt 7.5.1',
+    'Day classification, over 4h = 1 day and 2-4h = half day - circular no. 45, pt 7.5.1',
+    'Same 40% ceiling in 1983-accord cantons, frontalier status preserved - amicable agreement on the 11 April 1983 accord',
+  ] as const),
+} as const);
+
+/**
+ * Every known rule set, keyed by tax year. 2026 is the only set at launch.
+ *
+ * Adding a year requires a new fixture file for that year, sourced and
+ * reviewed, before it can become the default (SPEC section 7.7).
+ */
+const RULE_SETS: ReadonlyMap<number, RuleSet> = new Map([[RULES_2026.taxYear, RULES_2026]]);
+
+const LATEST_KNOWN_YEAR = Math.max(...RULE_SETS.keys());
+
+/**
+ * Resolves the rule set for a tax year, falling back to the latest known set
+ * for an unknown year.
+ *
+ * The fallback is surfaced by the returned set naming its own taxYear: a
+ * caller passing 2027 gets a set whose taxYear is 2026, so the substitution is
+ * visible rather than silent. Nothing is relabelled as the requested year.
+ */
+export function ruleSetFor(taxYear: number): RuleSet {
+  const exact = RULE_SETS.get(taxYear);
+  if (exact !== undefined) return exact;
+
+  const latest = RULE_SETS.get(LATEST_KNOWN_YEAR);
+  // Unreachable while RULE_SETS is non-empty; kept so the function is total
+  // and never throws (SPEC section 7).
+  return latest ?? RULES_2026;
+}
