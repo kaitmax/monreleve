@@ -1,10 +1,36 @@
 // web/app/dev/spike/spike.module.scss
-// SPIKE QUALITY - see page.tsx. Tokens only, no shadows on cards.
+// SPIKE QUALITY - see page.tsx. Tokens only. Grey canvas, white cards, 1 px
+// borders, no shadows (DESIGN-SYSTEM.md section 4).
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--layout-gutter-desktop);
+  border-bottom: var(--size-card-border) solid var(--colour-border-default);
+  background-color: var(--colour-surface);
+}
+
+.nav {
+  display: flex;
+  gap: var(--space-6);
+}
+
+.navItem {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--colour-text-primary);
+  font-size: var(--type-body-m-size);
+  font-weight: var(--type-body-m-weight);
+  line-height: var(--type-body-m-line);
+}
 
 .page {
   max-width: var(--layout-content-max);
   margin: 0 auto;
-  padding: var(--space-5);
+  padding: var(--space-6) var(--layout-gutter-desktop);
 }
 
 .title {
@@ -19,4 +45,254 @@
   color: var(--colour-text-secondary);
   font-size: var(--type-body-l-size);
   line-height: var(--type-body-l-line);
+}
+
+// Buttons
+
+.primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-width: var(--size-button-min-width);
+  height: var(--size-button-height);
+  padding: 0 var(--space-5);
+  border: 0;
+  border-radius: var(--radius-button);
+  background-color: var(--colour-brand);
+  color: var(--colour-surface);
+  font-size: var(--type-body-m-size);
+  font-weight: var(--type-body-m-weight);
+}
+
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-width: var(--size-button-min-width);
+  height: var(--size-button-height);
+  padding: 0 var(--space-5);
+  border: var(--size-card-border) solid var(--colour-border-strong);
+  border-radius: var(--radius-button);
+  background-color: var(--colour-surface);
+  color: var(--colour-text-primary);
+  font-size: var(--type-body-m-size);
+  font-weight: var(--type-body-m-weight);
+}
+
+// Form card
+
+.card {
+  margin: var(--space-6) 0 0;
+  padding: var(--space-4);
+  border: var(--size-card-border) solid var(--colour-border-default);
+  border-radius: var(--radius-card);
+  background-color: var(--colour-surface);
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  line-height: var(--type-h3-line);
+}
+
+.field {
+  display: block;
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.label {
+  display: block;
+  margin-bottom: var(--size-input-label-gap);
+  color: var(--colour-text-secondary);
+  font-size: var(--type-caption-size);
+  font-weight: var(--weight-medium);
+  line-height: var(--type-caption-line);
+}
+
+.select {
+  width: 100%;
+  height: var(--size-input-height);
+  padding: 0 var(--size-input-padding-x);
+  border: var(--size-input-border) solid var(--colour-border-strong);
+  border-radius: var(--radius-input);
+  background-color: var(--colour-surface);
+  color: var(--colour-text-primary);
+  font-size: var(--type-body-size);
+}
+
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.stepperButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--size-icon-button);
+  height: var(--size-icon-button);
+  border: var(--size-input-border) solid var(--colour-border-strong);
+  border-radius: var(--radius-button);
+  background-color: var(--colour-surface);
+  color: var(--colour-text-primary);
+}
+
+.stepperValue {
+  min-width: var(--space-12);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  text-align: center;
+}
+
+.radioRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--size-touch-target-web);
+  font-size: var(--type-body-size);
+}
+
+// Accordion
+
+.accordion {
+  margin: var(--space-4) 0 0;
+  border-top: var(--size-card-border) solid var(--colour-border-default);
+}
+
+.accordionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: var(--size-touch-target-web);
+  padding: 0;
+  border: 0;
+  background-color: transparent;
+  color: var(--colour-text-primary);
+  font-size: var(--type-body-m-size);
+  font-weight: var(--type-body-m-weight);
+  text-align: left;
+}
+
+.chevron {
+  transition: transform var(--motion-standard);
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+  transition: transform var(--motion-standard);
+}
+
+.accordionBody {
+  margin: 0 0 var(--space-3);
+  color: var(--colour-text-secondary);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+}
+
+// Banner - 4 px accent, surface fill, text primary (DESIGN-SYSTEM section 3)
+
+.banner {
+  display: flex;
+  gap: var(--space-3);
+  margin: var(--space-6) 0 0;
+  padding: var(--space-4);
+  border: var(--size-card-border) solid var(--colour-border-default);
+  border-left: var(--space-1) solid var(--colour-warning);
+  border-radius: var(--radius-card);
+  background-color: var(--colour-warning-soft);
+  color: var(--colour-text-primary);
+}
+
+.bannerTitle {
+  margin: 0;
+  font-size: var(--type-body-m-size);
+  font-weight: var(--type-body-m-weight);
+  line-height: var(--type-body-m-line);
+}
+
+.bannerBody {
+  margin: var(--space-1) 0 0;
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+}
+
+// Table - hairline rules
+
+.table {
+  width: 100%;
+  margin: var(--space-6) 0 0;
+  border-collapse: collapse;
+  font-size: var(--type-body-size);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+.caption {
+  margin-bottom: var(--space-3);
+  color: var(--colour-text-secondary);
+  font-size: var(--type-caption-size);
+  text-align: left;
+}
+
+.table th,
+.table td {
+  padding: var(--space-3) var(--space-2);
+  border-bottom: var(--size-card-border) solid var(--colour-border-default);
+  text-align: right;
+}
+
+.table th[scope="col"],
+.table th[scope="row"] {
+  color: var(--colour-text-secondary);
+  font-weight: var(--weight-medium);
+  text-align: left;
+}
+
+// Sheet-style panel - static, radius 24 on the top corners only
+
+.sheet {
+  margin: var(--space-5) 0 0;
+  padding: var(--space-6);
+  border: var(--size-card-border) solid var(--colour-border-default);
+  border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+  background-color: var(--colour-surface);
+}
+
+.sheetGrip {
+  width: var(--size-sheet-grip-width);
+  height: var(--size-sheet-grip-height);
+  margin: 0 auto var(--space-4);
+  border-radius: var(--radius-pill);
+  background-color: var(--colour-border-strong);
+}
+
+.sheetBody {
+  margin: var(--space-2) 0 var(--space-5);
+  color: var(--colour-text-secondary);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+}
+
+.sheetActions {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.notice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-6) 0 0;
+  color: var(--colour-text-secondary);
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-line);
 }

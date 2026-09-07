@@ -84,6 +84,19 @@ export default {
   },
   overrides: [
     {
+      // CSS Modules are addressed as `styles.cardTitle` from TypeScript, so
+      // their class names are camelCase. Kebab-case would force
+      // styles['card-title'] at every use site. Global stylesheets keep the
+      // preset's kebab-case rule.
+      files: ['**/*.module.scss'],
+      rules: {
+        'selector-class-pattern': [
+          '^[a-z][a-zA-Z0-9]*$',
+          { message: 'CSS Module class selectors are camelCase.' },
+        ],
+      },
+    },
+    {
       // The one file allowed to carry raw values: it is the transcription of
       // DESIGN-SYSTEM.md section 1 and is diffed against it, so hex is kept at
       // the length the design document writes.
