@@ -1,0 +1,242 @@
+FW8 SESSION PROMPT - frontalier
+Paste this entire prompt as the first message of a fresh Claude Code
+session, opened at the repository root.
+
+====================================================================
+PRE-STEP RULINGS (apply verbatim)
+====================================================================
+R1 (DISCHARGED). origin/main is current and CI is green on all four
+   jobs. From now on "CI green on origin/main" is a real
+   precondition: verify it at session start and report the run.
+
+R2, R7, R8, R10-R13, R15-R21, R22-R26, R27-R41, R43 (carried).
+   R9: you own document edits.
+
+R41 (carried, now in scope). STATUS_COPY.compliant.label becomes
+   "Sous les deux seuils". This ruling is FW8's authorization for
+   that user-facing string change.
+
+R42 (SUPERSEDED by R46).
+
+R44 (new - the social variant is generic). SPEC 6.6: the OG card is
+   generic, never per-result. The social variant therefore carries
+   the product name, the rail, its ticks and tick labels - and NO
+   rate. Remove the Display-size percentage from the social variant.
+   The FW7 prompt was wrong to ask for it.
+
+R45 (new - band names leave the geometry). Centring words over
+   bands cannot work: "Imposition France" at 93,7 px sits over a band
+   that is 9,9 % of the track. In inline and compact the SVG carries
+   NO band names; the React wrapper renders them as an HTML legend
+   beneath the rail. In social they appear as a left-anchored
+   vertical stack below the rail - three lines, no centring. The
+   aria-label continues to name the zone in words in every variant.
+
+R46 (new - tick width). TICK_WIDTH is 2 px. 1,5 px cannot sit on the
+   device pixel grid and the two ticks rendered asymmetrically. Still
+   no token; the absence assertion stays.
+
+R47 (new - the PAT). Not a code ruling: the personal access token
+   pasted earlier in this environment must be revoked by the operator.
+   Confirm in the report whether gh auth status shows the device-flow
+   credential only.
+
+====================================================================
+CONTEXT
+====================================================================
+Project: frontalier. You are executing task FW8 ONLY: the first React
+components, in lib/ui/react - the five that render a TeleworkResult.
+Increment 0 applies R44-R46 to the rail. This is the first task under
+the UI Discipline (tasks/plan.md) in full: composition over
+configuration, three states per component where a state exists,
+tokens only, every string from lib/fr, a /dev/composants entry and a
+screenshot baseline for every state, jest-axe zero.
+
+Read first: CLAUDE.md, README.md, SPEC sections 6, 9.3 (result panel
+order), 16, 20; DESIGN-SYSTEM.md sections 1, 2, 3 (component
+mapping) and 4; tasks/plan.md UI Discipline; tasks/todo.md FW8;
+prompts/design-frontier/FD1 and FD3 (the visual reference - the spec
+wins on conflict); REPORT-FW7.txt in full.
+
+====================================================================
+STANDING PROTOCOL (identical in every FW / AN prompt)
+====================================================================
+1. SESSION SCOPE. Increment 0 and FW8 only. Do not start FW9.
+2. INCREMENT CYCLE. Green after EVERY increment.
+3. COMMIT ONLY ON GREEN, chained with && (R15).
+4. COMMITS. "FW8: <increment title>"; "chore: <title>" for R44-R46.
+5. SIMPLICITY FIRST. Five small components. No component library, no
+   context, no state beyond what a stateless render needs. A
+   component past ~200 lines is split.
+6. TEST-FIRST with a RED row per behaviour; React Testing Library
+   asserts on rendered text, roles and attributes, never on
+   implementation.
+7. lib/ui/react may import lib/ui/core and TYPES from
+   lib/calc-engine. It computes nothing: every number arrives
+   formatted or is formatted through lib/ui/core. The only
+   dangerouslySetInnerHTML in the codebase is ThresholdRail's SVG
+   injection, and it is fed only by renderRailSvg over validated
+   numbers - a comment says so, and a test asserts no other
+   occurrence exists.
+8. UI DISCIPLINE. Tokens only via the FW1 layer and CSS Modules
+   (Sass); Inter with tabular numerals on every figure; Lucide via
+   lucide-react by the icon NAMES from zones.ts; French only via
+   lib/fr; loading / empty / error states where the component has
+   them; semantic elements; contentDescription equivalents via
+   aria-label where an icon carries meaning.
+9. QUESTIONS. Pause and ask.
+10. EXIT ARTIFACT. REPORT-FW8.txt, committed and pushed.
+
+====================================================================
+INCREMENT 0 - RAIL CORRECTIONS (R44, R45, R46)
+====================================================================
+0a. R46: TICK_WIDTH 2; baselines regenerated in the container; the
+    absence assertion unchanged.
+0b. R45: remove band names from inline and compact; social renders
+    them as a left-anchored vertical stack below the rail; geometry
+    and render tests updated RED-first; baselines regenerated; the
+    200 px artifact regenerated and docs/review/README.md updated to
+    say the band-name collision is resolved by removal, so the
+    reviewer looks only at the ticks.
+0c. R44: remove the rate from the social variant; a test asserts the
+    social output contains no percentage other than the two tick
+    labels; RailData for social no longer needs percentage - decide
+    whether it becomes optional for that variant or the field is
+    ignored, state which, and keep the type honest.
+0d. R47: confirm gh auth status; report.
+Commit each. Report the diffs and the regenerated baselines.
+
+====================================================================
+TASK FW8 - RESULT COMPONENTS
+====================================================================
+Acceptance criteria (restated; the report must prove each):
+AC1. All five components render all their states in /dev/composants;
+     the four badge states are visually distinct with icon + label;
+     zero jest-axe violations across every state.
+AC2. The contrast audit passes across every foreground/background
+     token pair in use; a planted warning-colour-as-body-text case
+     fails it (then removed).
+AC3. RateDisplay shows no numeric jitter: font-feature-settings
+     includes "tnum", asserted via computed style in Playwright.
+
+--------------------------------------------------------------------
+INCREMENT 1 - ThresholdRail (wrapper + legend + guard)
+--------------------------------------------------------------------
+- lib/ui/react/ThresholdRail/ThresholdRail.tsx + .module.scss +
+  .test.tsx. Props: percentage, zone, thresholds (R35 - from the
+  caller's RuleSet), variant ('inline' | 'compact'), width. Renders
+  renderRailSvg via dangerouslySetInnerHTML (the sole permitted
+  site), then - for inline - the HTML legend per R45: three items,
+  each a 6 px dot in the band token colour plus the band name from
+  lib/fr, laid out inline with wrapping allowed, Micro 11/500
+  secondary.
+- R33 guard: a non-finite percentage renders the "indisponible"
+  state - the rail's own unavailable rendering plus an aria-live
+  polite message from lib/fr - and never calls zoneFor.
+- RED first: legend present for inline and absent for compact; dot
+  colours are token variables; the guard path; the aria-label.
+- Commit: "FW8: ThresholdRail wrapper with HTML legend and guard".
+  Push.
+
+--------------------------------------------------------------------
+INCREMENT 2 - ZoneBadge
+--------------------------------------------------------------------
+- Props: status. Renders the Frontier status chip: pill, soft
+  background token, Lucide icon by name from zones.ts (circle-check,
+  triangle-alert, circle-x, octagon-alert per R30), label Body-M in
+  the status colour, and the one-line explanation beneath in
+  secondary. Apply R41: compliant reads "Sous les deux seuils".
+- The mission-exposure badge is warning-coloured; a test asserts it
+  renders correctly when paired with a compliant Zone (Geneva c).
+- Warning text rule: the label inside the chip may use the warning
+  colour at 15/500 on its soft fill; the explanation is primary text.
+  A test asserts the explanation's colour token is text-primary.
+- RED first for the four states and the exhaustiveness of icon names.
+- Commit: "FW8: ZoneBadge, four statuses". Push.
+
+--------------------------------------------------------------------
+INCREMENT 3 - RateDisplay
+--------------------------------------------------------------------
+- Props: declarableRate, zone, and optional rawRate. Display 48/56
+  600 with tabular numerals, coloured by the band token; caption
+  "Taux a declarer a l'AFC" from lib/fr. When rawRate is provided and
+  differs, the secondary rate block per SPEC 9.3: H3 20/28 secondary,
+  caption "Part de jours hors de Suisse", and the explanatory
+  sentence from lib/fr.
+- Warning-band rate at Display size uses the warning colour (the
+  one permitted large-text use); a test asserts the token.
+- Playwright: computed style includes font-feature-settings with
+  "tnum" (AC3).
+- Commit: "FW8: RateDisplay with the two-rate variant". Push.
+
+--------------------------------------------------------------------
+INCREMENT 4 - MetricTile and LegalNote
+--------------------------------------------------------------------
+- MetricTile: label Caption secondary, figure H2 24/32 700 tabular;
+  a `negative` variant where the label is replaced by the
+  "au-dessus" phrasing from lib/fr and the figure is error-coloured -
+  the component receives the absolute value and a flag (from
+  formatSignedDays), never a minus sign.
+- LegalNote: Caption tertiary above a 1 px rule, text from lib/fr.
+- RED first.
+- Commit: "FW8: MetricTile and LegalNote". Push.
+
+--------------------------------------------------------------------
+INCREMENT 5 - /dev/composants, baselines, contrast audit
+--------------------------------------------------------------------
+- /dev/composants renders every component in every state, grouped,
+  with the state named in text beside it (from lib/fr - the
+  workbench is French too).
+- Playwright screenshot baselines per component per state, in the
+  container (R37).
+- Contrast audit: a test iterates every fg/bg token pair used by the
+  five components and asserts WCAG AA; plant warning colour as body
+  text, capture the failure, remove.
+- jest-axe over every state: zero violations.
+- Commit: "FW8: workbench entries, baselines, contrast audit". Push.
+
+--------------------------------------------------------------------
+INCREMENT 6 - single innerHTML proof and size
+--------------------------------------------------------------------
+- A test (or lint) asserts exactly one dangerouslySetInnerHTML exists
+  in the repository, in ThresholdRail, with the comment naming its
+  input as renderRailSvg over validated numbers.
+- pnpm size with /dev/composants included: record the delta over the
+  baseline and confirm GATE B holds for the public route set (the
+  workbench itself is not a public route; report it separately).
+- Commit: "FW8: innerHTML uniqueness proof and size record". Push.
+
+====================================================================
+OUT OF SCOPE FOR FW8
+====================================================================
+- FieldGroup, DataGrid, Container, PublicShell - FW9.
+- Any page or route other than /dev/composants.
+- The OG image route - FW15. The PDF - FW25.
+- Any engine change.
+
+====================================================================
+FINAL VERIFICATION
+====================================================================
+pnpm typecheck && pnpm lint && pnpm test && pnpm test:e2e && pnpm
+test:visual && pnpm test:a11y && pnpm build && pnpm size
+Green in one run; CI green on origin/main after the final push.
+
+====================================================================
+REPORT FORMAT - REPORT-FW8.txt (pure ASCII, committed and pushed)
+====================================================================
+SUMMARY
+PRECONDITIONS       origin/main current; CI run URL and status.
+INCREMENT 0         R44-R47 with diffs, proofs, regenerated baselines.
+RED/GREEN LEDGER    One row per behaviour.
+STATES MATRIX       Component x state, each with its baseline file
+                    and its axe result.
+CONTRAST AUDIT      Pairs checked; the planted failure; clean run.
+TNUM PROOF          The computed-style assertion output.
+INNERHTML PROOF     The uniqueness assertion.
+SIZE                Public-route table and the workbench separately.
+DEVIATIONS
+NOTICED BUT NOT TOUCHING
+QUESTIONS FOR THE OPERATOR
+PUSH PROOF
+
+END OF FW8 PROMPT
