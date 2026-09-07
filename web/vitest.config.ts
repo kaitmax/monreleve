@@ -9,7 +9,10 @@ export default defineConfig({
     tsconfigPaths: true,
   },
   test: {
-    include: ['tests/**/*.test.ts', 'lib/**/*.test.ts'],
+    // .tsx as well as .ts: FW8's component tests are .test.tsx, and a glob
+    // ending in .test.ts does not match them. The failure mode is the quiet
+    // one - `pnpm test` still exits 0 while asserting nothing.
+    include: ['tests/**/*.test.{ts,tsx}', 'lib/**/*.test.{ts,tsx}'],
     exclude: ['e2e/**', 'node_modules/**', '.next/**'],
     environment: 'node',
 

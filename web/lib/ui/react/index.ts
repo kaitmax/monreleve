@@ -1,4 +1,5 @@
 // web/lib/ui/react/index.ts
 // The React component library (FW8, FW9).
 
-export {};
+export { ThresholdRail } from './ThresholdRail/ThresholdRail';
+export type { ThresholdRailProps } from './ThresholdRail/ThresholdRail';

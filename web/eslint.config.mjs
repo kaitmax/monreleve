@@ -324,6 +324,14 @@ export default tseslint.config(
         'error',
         { noStrings: true, ignoreProps: true, allowedStrings: [] },
       ],
+
+      // Every injection site must be DECLARED. The product has exactly one -
+      // ThresholdRail, whose input is renderRailSvg over validated numbers,
+      // escaped by lib/ui/core/rail/xml.ts - and the two in the dev gallery
+      // are a screenshot harness. Turning the rule on means a new site is an
+      // error rather than something a reviewer has to notice, and it makes
+      // each existing one carry its justification at the line.
+      'react/no-danger': 'error',
     },
   },
 );

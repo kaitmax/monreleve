@@ -51,6 +51,7 @@ export default function RailGalleryPage() {
             key={`${variant}-${zone}`}
             data-testid={`rail-${variant}-${zone}`}
             style={{ display: 'inline-block' }}
+            // eslint-disable-next-line react/no-danger -- dev harness, not product
             dangerouslySetInnerHTML={{
               __html: renderRailSvg(
                 { percentage: RATE[zone], zone, width: 376, height: 8, variant },
@@ -66,6 +67,7 @@ export default function RailGalleryPage() {
       <div
         data-testid="rail-inline-200px"
         style={{ display: 'inline-block' }}
+        // eslint-disable-next-line react/no-danger -- dev harness, not product
         dangerouslySetInnerHTML={{
           __html: renderRailSvg(
             { percentage: 34.58, zone: 'compliant', width: 200, height: 8, variant: 'inline' },

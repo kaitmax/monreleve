@@ -1,0 +1,23 @@
+{
+  // web/lib/ui/react/tsconfig.json
+  //
+  // ONE setting, for ONE reason: the JSX transform.
+  //
+  // The root tsconfig sets "jsx": "preserve", which is correct for Next - it
+  // leaves JSX for the bundler - and Next ACTIVELY REWRITES that field back
+  // to "preserve" on every build, so it cannot simply be changed. Measured:
+  // setting it to "react-jsx" at the root made the component tests pass and
+  // `next build` silently reset it.
+  //
+  // vitest's transform (oxc) reads the NEAREST tsconfig to the file it is
+  // compiling, so this one governs lib/ui/react and nothing else. Without it
+  // every .tsx here fails to parse with "Unexpected JSX expression"; the root
+  // build is untouched because Next never looks at this file.
+  //
+  // The alternative was @vitejs/plugin-react, which is a dependency and
+  // therefore ask-first.
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx"
+  }
+}

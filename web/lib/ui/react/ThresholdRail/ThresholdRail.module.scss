@@ -1,0 +1,63 @@
+// web/lib/ui/react/ThresholdRail/ThresholdRail.module.scss
+//
+// Tokens only. stylelint enforces it for every property in the strict-value
+// list - colour, spacing, font-size, width, height, radius - and the class
+// names are camelCase because a CSS Module is addressed as styles.legendItem
+// from TypeScript.
+//
+// THE DOT IS 8 px, NOT THE 6 px THE BRIEF ASKS FOR. No spacing token carries
+// 6: the scale runs 4, 8, 12, 16. Three 6 px tokens exist -
+// --radius-checkbox, --size-input-label-gap and --size-confidence-height -
+// and borrowing any of them would be a semantic alias of exactly the kind
+// DESIGN-SYSTEM.md section 4.1 removed from the radius scale ("an alias is a
+// tenth name"). Adding a token is an ask-first item, so the deviation is
+// recorded in REPORT-FW8.txt instead of invented here. Two pixels.
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+// The SVG sizes itself from its own width and height attributes; this only
+// stops it acquiring the inline-element baseline gap.
+.svg {
+  display: block;
+  line-height: 0;
+}
+
+.unavailable {
+  margin: 0;
+  color: var(--colour-text-secondary);
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-line);
+}
+
+// Wrapping is deliberate: these are the words that could not fit inside the
+// SVG, and at a narrow width they must be allowed to run onto a second line
+// rather than collide the way the centred version did.
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--colour-text-secondary);
+  font-size: var(--type-micro-size);
+  font-weight: var(--type-micro-weight);
+  line-height: var(--type-micro-line);
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.dot {
+  flex: none;
+  width: var(--space-2);
+  height: var(--space-2);
+  border-radius: 50%;
+}
