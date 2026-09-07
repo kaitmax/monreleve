@@ -71,6 +71,14 @@ export function railAriaLabel(
 }
 
 /**
+ * The social card's accessible name. It names NO rate and NO zone, because
+ * ruling R44 makes that card generic - it illustrates where the thresholds
+ * sit, it does not report anyone's result. No figures either, per the rule
+ * this file already follows.
+ */
+export const RAIL_SOCIAL_ARIA = 'Illustration des deux seuils de télétravail déclarable.';
+
+/**
  * Ruling R33's third state. Not a colour and not an empty rail - a word.
  *
  * A statement rather than the bare adjective, so the text half of

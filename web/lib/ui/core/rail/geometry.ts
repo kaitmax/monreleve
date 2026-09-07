@@ -45,11 +45,21 @@ export const TRACK_HEIGHT = 8;
 export const TICK_PROTRUSION = 4;
 
 /**
- * The tick's own thickness. Not a token and not in SPEC 6.3 - it comes from
- * the FW7 brief. A design brief elsewhere draws 2 px; recorded in the report
- * as a discrepancy rather than silently picked.
+ * The tick's own thickness. Not a token, and not in SPEC 6.3, which states a
+ * protrusion but no thickness.
+ *
+ * RULING R46 set it to 2, superseding R42's 1,5. The deciding evidence was
+ * the device pixel grid rather than the design briefs: at 1,5 px the two
+ * ticks rendered ASYMMETRICALLY FROM EACH OTHER in the 200 px baseline - one
+ * a symmetric grey pair at alpha 192, the other alpha 243 then 141 - because
+ * a 1,5 px rect lands on a half-pixel wherever its centre falls. Two marks
+ * that are supposed to be identical looking different is a defect in the one
+ * element that has to read as authoritative. 2 px sits on the grid.
+ *
+ * Still no token, and rail-tokens.test.ts still asserts its ABSENCE from the
+ * spacing scale, so the gap stays visible.
  */
-export const TICK_WIDTH = 1.5;
+export const TICK_WIDTH = 2;
 
 /** The compact variant is unreadable narrower than this. */
 export const COMPACT_MIN_WIDTH = 200;
@@ -65,9 +75,8 @@ const SOCIAL_RAIL_FRACTION = 0.6;
 const BAND_NAME_LINE = 14;
 const LABEL_LINE = 18;
 
-/** Caption 13/18 for the rate on a rail, Display 48/56 on the social card. */
+/** Caption 13/18 for the rate. R44 removed the Display-size social rate. */
 const RATE_LINE_INLINE = 18;
-const RATE_LINE_SOCIAL = 56;
 
 /** H2 24/32 for the product name, social card only. */
 const PRODUCT_NAME_LINE = 32;
@@ -84,17 +93,33 @@ const PRODUCT_NAME_LINE = 32;
  */
 export const CAPTION_SIZE = 13;
 export const MICRO_SIZE = 11;
-export const DISPLAY_SIZE = 48;
 export const H2_SIZE = 24;
 
 /** One --space-1 between each stacked row. */
 const ROW_GAP = 4;
 
+/** Top to bottom, the order the bands appear in and are stacked in. */
+const BAND_ORDER: readonly Zone[] = ['compliant', 'fiscal-exposure', 'social-switch'];
+
 /** Fraction to percentage, and the rounding scale, in exponential form (R17). */
 const PERCENT = 1e2;
 const ROUND_SCALE = 1e3;
 
-/** SPEC 6.3's RailData, unchanged. R35 passes thresholds separately. */
+/**
+ * SPEC 6.3's RailData, unchanged. R35 passes thresholds separately.
+ *
+ * FOR THE SOCIAL VARIANT, percentage AND zone ARE IGNORED - ruling R44. That
+ * card is generic and never per-result, so it carries no rate, no fill and no
+ * band colour, and there is nothing for either field to affect.
+ *
+ * They are ignored rather than made optional, and the reason is that the
+ * alternative is worse. Marking them optional would split RailData into a
+ * union, change the shape SPEC 6.3 states, and push a discriminated check into
+ * every caller - to express something the caller does not need to know. The
+ * honest guarantee is not a type here, it is a TEST: rail-render.test.ts
+ * renders social twice with wildly different rates and zones and requires the
+ * two strings to be byte-identical. A comment can rot; that cannot.
+ */
 export interface RailData {
   readonly percentage: number;
   readonly zone: Zone;
@@ -109,6 +134,11 @@ export interface RailRect {
   readonly width: number;
   readonly height: number;
   readonly rx: number;
+}
+
+export interface RailBandRow {
+  readonly zone: Zone;
+  readonly y: number;
 }
 
 export interface RailTick {
@@ -137,8 +167,27 @@ export interface RailGeometry {
   readonly clampedFill: boolean;
   /** True when a compact request narrower than the minimum was widened. */
   readonly clampedWidth: boolean;
+  /**
+   * RULING R45: only the social card carries band names inside the SVG, and
+   * there they are a LEFT-ANCHORED VERTICAL STACK below the rail - one line
+   * each, no centring. inline and compact carry none at all; the React
+   * wrapper renders them as an HTML legend, where a font can measure them.
+   */
   readonly bandNamesShown: boolean;
-  readonly bandNameBaselineY: number;
+  readonly bandNameX: number;
+  /**
+   * One row per band, top to bottom, already PAIRED with its Zone. Empty
+   * unless bandNamesShown.
+   *
+   * Paired here rather than zipped in the renderer on purpose: two parallel
+   * arrays joined by index need an undefined check under
+   * noUncheckedIndexedAccess, and that check is unreachable - which shows up
+   * immediately as a branch lib/ui/core's 100 % gate cannot cover. Emitting
+   * the pairs removes the indexing instead of testing an impossible case.
+   */
+  readonly bandNameRows: readonly RailBandRow[];
+  /** R44: the social card shows no rate, so this is unused there. */
+  readonly rateShown: boolean;
   readonly rateBaselineY: number;
   /** The social card names the product; the other variants do not. */
   readonly productNameShown: boolean;
@@ -184,8 +233,11 @@ export function railGeometry(data: RailData, thresholds: ZoneThresholds): RailGe
   const trackWidth = round(social ? svgWidth * SOCIAL_RAIL_FRACTION : svgWidth);
   const trackX = round(social ? (svgWidth - trackWidth) / 2 : 0);
 
-  const bandNamesShown = !compact;
+  // R45: band names live in the SVG only on the social card. R44: the rate
+  // appears everywhere EXCEPT the social card, which must stay generic.
+  const bandNamesShown = social;
   const productNameShown = social;
+  const rateShown = !social;
 
   // ROWS, top to bottom: product name (social only), the rate, the band
   // names, the bar with its protrusions, the tick labels.
@@ -198,19 +250,19 @@ export function railGeometry(data: RailData, thresholds: ZoneThresholds): RailGe
   // a defect the baselines would only catch if a baseline happened to be
   // taken there.
   const productNameRow = productNameShown ? PRODUCT_NAME_LINE + ROW_GAP : 0;
-  const rateLine = social ? RATE_LINE_SOCIAL : RATE_LINE_INLINE;
-  const rateRow = rateLine + ROW_GAP;
-  const bandNameRow = bandNamesShown ? BAND_NAME_LINE + ROW_GAP : 0;
+  const rateRow = rateShown ? RATE_LINE_INLINE + ROW_GAP : 0;
   const barRow = TRACK_HEIGHT + TICK_PROTRUSION * 2;
   const labelRow = ROW_GAP + LABEL_LINE;
-  const stackHeight = productNameRow + rateRow + bandNameRow + barRow + labelRow;
+  // The band-name stack sits BELOW the tick labels on the social card.
+  const bandNameBlock = bandNamesShown ? ROW_GAP + BAND_ORDER.length * BAND_NAME_LINE : 0;
+  const stackHeight = productNameRow + rateRow + barRow + labelRow + bandNameBlock;
 
   const svgHeight = social ? SOCIAL_HEIGHT : stackHeight;
   // On the social card the whole stack is centred vertically; elsewhere it
   // starts at the top.
   const stackTop = social ? round((SOCIAL_HEIGHT - stackHeight) / 2) : 0;
 
-  const trackY = round(stackTop + productNameRow + rateRow + bandNameRow + TICK_PROTRUSION);
+  const trackY = round(stackTop + productNameRow + rateRow + TICK_PROTRUSION);
   const rx = TRACK_HEIGHT / 2;
 
   const fillFraction = clamp(data.percentage, 0, PERCENT) / PERCENT;
@@ -263,8 +315,15 @@ export function railGeometry(data: RailData, thresholds: ZoneThresholds): RailGe
     clampedFill,
     clampedWidth,
     bandNamesShown,
-    bandNameBaselineY: round(stackTop + productNameRow + rateRow + MICRO_SIZE),
-    rateBaselineY: round(stackTop + productNameRow + (social ? DISPLAY_SIZE : CAPTION_SIZE)),
+    bandNameX: trackX,
+    bandNameRows: bandNamesShown
+      ? BAND_ORDER.map((zone, index) => ({
+          zone,
+          y: round(labelBaselineY + ROW_GAP + MICRO_SIZE + index * BAND_NAME_LINE),
+        }))
+      : [],
+    rateShown,
+    rateBaselineY: round(stackTop + productNameRow + CAPTION_SIZE),
     productNameShown,
     productNameBaselineY: round(stackTop + H2_SIZE),
   };

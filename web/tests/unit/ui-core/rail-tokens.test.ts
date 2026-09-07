@@ -19,7 +19,6 @@ import { compileString } from 'sass';
 import { describe, expect, it } from 'vitest';
 import {
   CAPTION_SIZE,
-  DISPLAY_SIZE,
   H2_SIZE,
   MICRO_SIZE,
   TICK_PROTRUSION,
@@ -71,7 +70,6 @@ describe('the rail geometry constants mirror real tokens', () => {
     // exactly like the track height.
     expect(CAPTION_SIZE).toBe(pixels(defined['--type-caption-size'] ?? ''));
     expect(MICRO_SIZE).toBe(pixels(defined['--type-micro-size'] ?? ''));
-    expect(DISPLAY_SIZE).toBe(pixels(defined['--type-display-size'] ?? ''));
     expect(H2_SIZE).toBe(pixels(defined['--type-h2-size'] ?? ''));
   });
 
@@ -85,6 +83,6 @@ describe('the rail geometry constants mirror real tokens', () => {
       .map(([, value]) => pixels(value));
 
     expect(spacingValues).not.toContain(TICK_WIDTH);
-    expect(TICK_WIDTH).toBe(1.5);
+    expect(TICK_WIDTH).toBe(2);
   });
 });

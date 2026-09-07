@@ -185,11 +185,32 @@ describe('clamping bounds the geometry and never the label (AC3)', () => {
 });
 
 describe('the variants', () => {
-  it('inline carries band names and takes its width from RailData', () => {
+  it('inline takes its width from RailData and carries NO band names (R45)', () => {
+    // R45 moved them out of the SVG entirely for inline and compact: the
+    // React wrapper renders them as an HTML legend, where a font can measure
+    // and wrap them. Centring them here could not work - "Imposition France"
+    // is 93,7 px over a band 9,9 % of the track wide.
     const g = railGeometry(inline({ width: 500 }), RULES);
 
     expect(g.svgWidth).toBe(500);
+    expect(g.bandNamesShown).toBe(false);
+    expect(g.bandNameRows).toEqual([]);
+  });
+
+  it('social keeps them, as a left-anchored stack below the rail (R45)', () => {
+    const g = railGeometry(inline({ variant: 'social', width: 0 }), RULES);
+
     expect(g.bandNamesShown).toBe(true);
+    expect(g.bandNameRows.map((row) => row.zone)).toEqual([
+      'compliant',
+      'fiscal-exposure',
+      'social-switch',
+    ]);
+    // Below the tick labels, one line apart, all at the same left edge.
+    expect(g.bandNameX).toBe(g.track.x);
+    const ys = g.bandNameRows.map((row) => row.y);
+    expect(Math.min(...ys)).toBeGreaterThan(g.ticks[0].labelY);
+    expect(ys[1]! - ys[0]!).toBe(ys[2]! - ys[1]!);
   });
 
   it('compact drops the band names and enforces a 200 px minimum', () => {
@@ -219,14 +240,25 @@ describe('the variants', () => {
 
   it('derives a total height that leaves room for ticks and labels', () => {
     // SPEC 6.3's comment says "track height 8; total including ticks 16", but
-    // 16 accounts for the bar and its protrusions only - not the labels below
-    // or the band names above. The total is derived and exposed rather than
+    // 16 accounts for the bar and its protrusions only - not the rate above
+    // or the labels below. The total is derived and exposed rather than
     // assumed.
-    const withNames = railGeometry(inline(), RULES);
-    const withoutNames = railGeometry(inline({ variant: 'compact', width: 400 }), RULES);
+    const g = railGeometry(inline(), RULES);
 
-    expect(withNames.svgHeight).toBeGreaterThan(TRACK_HEIGHT + TICK_PROTRUSION * 2);
-    expect(withNames.svgHeight).toBeGreaterThan(withoutNames.svgHeight);
+    expect(g.svgHeight).toBeGreaterThan(TRACK_HEIGHT + TICK_PROTRUSION * 2);
+    expect(g.ticks[0].labelY).toBeLessThan(g.svgHeight);
+  });
+
+  it('makes inline and compact the same SHAPE after R45', () => {
+    // Worth pinning, because it is a consequence rather than a goal: once the
+    // band names left the SVG, the only thing separating the two variants is
+    // the 200 px minimum. Their visible difference now lives in the React
+    // wrapper, which draws the legend for inline only.
+    const a = railGeometry(inline({ width: 400 }), RULES);
+    const b = railGeometry(inline({ variant: 'compact', width: 400 }), RULES);
+
+    expect(b.svgHeight).toBe(a.svgHeight);
+    expect(b.track).toEqual(a.track);
   });
 });
 

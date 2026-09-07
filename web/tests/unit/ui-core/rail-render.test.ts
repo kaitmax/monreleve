@@ -163,11 +163,24 @@ describe('colour comes from the Zone, never from a Status', () => {
 });
 
 describe('the band names come from lib/fr and are parallel (R36)', () => {
-  it('renders all three', () => {
-    const svg = render();
+  it('are absent from inline and compact entirely (R45)', () => {
+    for (const variant of ['inline', 'compact'] as const) {
+      const svg = render({ variant, width: 376 });
+      for (const name of Object.values(ZONE_BAND_NAME)) {
+        expect(svg).not.toContain(`>${name}<`);
+      }
+    }
+  });
+
+  it('appear on social as a left-anchored stack (R45)', () => {
+    const svg = render({ variant: 'social', width: 0 });
 
     for (const name of Object.values(ZONE_BAND_NAME)) {
       expect(svg).toContain(`>${name}<`);
+    }
+    // No centring anywhere in the stack.
+    for (const name of Object.values(ZONE_BAND_NAME)) {
+      expect(svg).not.toMatch(new RegExp(`text-anchor="middle"[^>]*>${name}<`));
     }
   });
 
@@ -318,11 +331,38 @@ describe('the social variant (increment 3)', () => {
     expect(social()).toContain('var(--type-h2-size)');
   });
 
-  it('sets the rate at Display and the band names are present', () => {
-    expect(social()).toContain('var(--type-display-size)');
-    for (const name of Object.values(ZONE_BAND_NAME)) {
-      expect(social()).toContain(`>${name}<`);
+  it('carries NO rate at all (R44)', () => {
+    // SPEC 6.3: the OG card is generic, never per-result. A rate is a result.
+    // The only percentages left are the two tick labels, which mark where the
+    // ceilings are and say nothing about anyone.
+    const svg = social();
+    const percentages = [...svg.matchAll(/>([^<]*%)</g)].map((m) => m[1]);
+
+    expect(percentages).toEqual([`${pct('40')}`, `${pct('49,9')}`]);
+    expect(svg).not.toContain('var(--type-display-size)');
+  });
+
+  it('is BYTE-IDENTICAL whatever rate and zone it is given (R44)', () => {
+    // The structural form of "generic, never per-result". A comment saying
+    // the fields are ignored can rot; this cannot. If any per-result value
+    // ever reaches the card - a rate, a fill width, a band colour, a word in
+    // the accessible name - these two strings diverge.
+    const a = render({ variant: 'social', width: 0, percentage: 4.16, zone: 'compliant' });
+    const b = render({ variant: 'social', width: 0, percentage: 97.5, zone: 'social-switch' });
+
+    expect(a).toBe(b);
+  });
+
+  it('paints no fill and no band colour', () => {
+    const svg = social();
+
+    for (const token of ['--colour-success', '--colour-warning', '--colour-error']) {
+      expect(svg).not.toContain(token);
     }
+  });
+
+  it('names neither a rate nor a zone in its accessible name (R44)', () => {
+    expect(social()).toContain('aria-label="Illustration des deux seuils');
   });
 
   it('takes no personal data - the interface has nowhere to put any', () => {

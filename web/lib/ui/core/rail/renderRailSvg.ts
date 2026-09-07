@@ -33,6 +33,7 @@ import { escapeXml } from './xml';
 import { ZONE_BAND_TOKEN } from '../zone-tokens';
 import { formatPercent } from '../format/number';
 import {
+  RAIL_SOCIAL_ARIA,
   RAIL_UNAVAILABLE_ARIA,
   RAIL_UNAVAILABLE_LABEL,
   ZONE_BAND_NAME,
@@ -40,7 +41,7 @@ import {
 } from '@/lib/fr/rail';
 import { APP_NAME } from '@/lib/fr';
 import type { RailData, RailGeometry, RailTick } from './geometry';
-import type { Zone, ZoneThresholds } from '../zones';
+import type { ZoneThresholds } from '../zones';
 
 /** R40: the rate is declarableRate at its native two decimals. */
 const RATE_DECIMALS = 2;
@@ -75,26 +76,30 @@ const rect = (r: { x: number; y: number; width: number; height: number; rx: numb
 const tickLabel = (tick: RailTick): string =>
   formatPercent(tick.percentage, Number.isInteger(tick.percentage) ? 0 : 1);
 
-/** The three band names, each centred over the middle of its own band. */
-function bandNames(geometry: RailGeometry, thresholds: ZoneThresholds): string {
-  const fiscal = thresholds.fiscalCeiling;
-  const social = thresholds.socialCeiling;
-  const { x, width } = geometry.track;
-  const centreOf = (from: number, to: number): number =>
-    Math.round((x + width * ((from + to) / 2)) * 1e3) / 1e3;
-
-  const bands: ReadonlyArray<readonly [Zone, number]> = [
-    ['compliant', centreOf(0, fiscal)],
-    ['fiscal-exposure', centreOf(fiscal, social)],
-    ['social-switch', centreOf(social, 1)],
-  ];
-
-  return bands
-    .map(([zone, centre]) =>
+/**
+ * The three band names as a LEFT-ANCHORED VERTICAL STACK below the rail.
+ *
+ * RULING R45, and the reason is arithmetic rather than taste. Centred over
+ * their bands they cannot fit: "Imposition France" measures 93,7 px at Micro
+ * 11/500 and sits over a band that is 9,9 % of the track, so it would need
+ * about 950 px of rail before it stopped colliding with its neighbours. No
+ * threshold and no truncation rescues that - the middle band is simply
+ * narrower than its own name at every realistic width. Measured in the FW7
+ * baselines: illegible at 200 px, and touching at the 376 px default.
+ *
+ * So they leave the geometry. Only the social card, which has room, keeps
+ * them inside the SVG, and there they are stacked one per line at a fixed
+ * left edge - no centring, and therefore no font metrics needed. inline and
+ * compact carry none at all; ThresholdRail renders them as an HTML legend,
+ * where a real layout engine can measure and wrap them.
+ */
+function bandNames(geometry: RailGeometry): string {
+  return geometry.bandNameRows
+    .map(({ zone, y }) =>
       text(
-        centre,
-        geometry.bandNameBaselineY,
-        'middle',
+        geometry.bandNameX,
+        y,
+        'start',
         typeStyle('micro', '--colour-text-secondary'),
         ZONE_BAND_NAME[zone],
       ),
@@ -134,13 +139,27 @@ export function renderRailSvg(data: RailData, thresholds: ZoneThresholds): strin
     ? RAIL_UNAVAILABLE_LABEL
     : formatPercent(geometry.percentage, RATE_DECIMALS);
 
+  // R44: the social card is GENERIC - it illustrates where the thresholds
+  // sit and reports nobody's result. So it carries no rate, no fill and no
+  // band colour, and its accessible name names neither a rate nor a zone.
+  // Anything else would put the caller's result on a card the spec says is
+  // never per-result. A test asserts the social output is byte-identical
+  // across different percentages and zones, which is the guarantee rather
+  // than this comment.
+  const generic = data.variant === 'social';
+  const ariaLabel = generic
+    ? RAIL_SOCIAL_ARIA
+    : unavailable
+      ? RAIL_UNAVAILABLE_ARIA
+      : railAriaLabel(rate, data.zone);
+
   // The social card is a standalone image: it is the only variant that owns
   // its whole surface, so it paints a background and centres its text. The
   // other two are embedded in a page that already has one.
   const social = data.variant === 'social';
 
   const parts = [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${geometry.svgWidth}" height="${geometry.svgHeight}" viewBox="0 0 ${geometry.svgWidth} ${geometry.svgHeight}" role="img" aria-label="${escapeXml(unavailable ? RAIL_UNAVAILABLE_ARIA : railAriaLabel(rate, data.zone))}">`,
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${geometry.svgWidth}" height="${geometry.svgHeight}" viewBox="0 0 ${geometry.svgWidth} ${geometry.svgHeight}" role="img" aria-label="${escapeXml(ariaLabel)}">`,
 
     // SPEC 6.1: the canvas is grey. No shadow anywhere - SPEC 20's v2 bullet
     // and 6.1 both forbid one on a card.
@@ -162,17 +181,16 @@ export function renderRailSvg(data: RailData, thresholds: ZoneThresholds): strin
         )
       : '',
 
-    // The rate, on its own row. SPEC 16: the zone is never colour-only, and
-    // this is one of the two words that carry it when the colour is lost.
-    text(
-      social ? geometry.svgWidth / 2 : geometry.track.x,
-      geometry.rateBaselineY,
-      social ? 'middle' : 'start',
-      typeStyle(social ? 'display' : 'caption', '--colour-text-primary'),
-      rate,
-    ),
-
-    geometry.bandNamesShown ? bandNames(geometry, thresholds) : '',
+    // The rate, on its own row - everywhere but the social card (R44).
+    geometry.rateShown
+      ? text(
+          geometry.track.x,
+          geometry.rateBaselineY,
+          'start',
+          typeStyle('caption', '--colour-text-primary'),
+          rate,
+        )
+      : '',
 
     // The track. No token names the rail's track colour; the design brief
     // draws #E4E7EC, which IS --colour-border-default, so the token is used
@@ -182,7 +200,7 @@ export function renderRailSvg(data: RailData, thresholds: ZoneThresholds): strin
     // The fill, in the band colour, keyed by ZONE. Omitted entirely when the
     // rate is unavailable: no fill and NO BAND COLOUR ANYWHERE, so the rail
     // cannot imply a position it does not know.
-    unavailable ? '' : rect(geometry.fill, `fill: var(${ZONE_BAND_TOKEN[data.zone]})`),
+    unavailable || generic ? '' : rect(geometry.fill, `fill: var(${ZONE_BAND_TOKEN[data.zone]})`),
 
     // The two ticks, and their labels anchored outward (R39).
     ...geometry.ticks.map((tick) => rect({ ...tick, rx: 0 }, 'fill: var(--colour-text-primary)')),
@@ -195,6 +213,9 @@ export function renderRailSvg(data: RailData, thresholds: ZoneThresholds): strin
         tickLabel(tick),
       ),
     ),
+
+    // R45: the band-name stack, social only, below everything else.
+    geometry.bandNamesShown ? bandNames(geometry) : '',
 
     '</svg>',
   ];
