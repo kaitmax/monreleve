@@ -15,7 +15,34 @@ export default defineConfig({
     baseURL: BASE_URL,
     trace: 'on-first-retry',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  // RULING R37: screenshot baselines are generated and compared ONLY inside
+  // the Playwright Linux container (pnpm test:visual / test:visual:update).
+  // Baselines produced against a Windows or macOS font stack and compared on
+  // Linux CI are a permanent source of false red - and the failure is not a
+  // diff but a MISSING FILE, because Playwright's default template carries
+  // the platform: resolved live here, a baseline lands at
+  // rail-inline-compliant-chromium-win32.png, which ubuntu never looks for.
+  //
+  // Because the container is the only place they are made or read, the
+  // template below deliberately drops {platform}: one baseline set serves
+  // everyone, which is only safe BECAUSE of R37.
+  snapshotPathTemplate: '{testDir}/../tests/visual/baselines/{arg}{ext}',
+
+  projects: [
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+      testIgnore: '**/*.visual.spec.ts',
+    },
+    {
+      // Not part of `pnpm test:e2e`: these must never run outside the
+      // container, where they would either write a platform-specific
+      // baseline or fail against one.
+      name: 'visual',
+      use: { ...devices['Desktop Chrome'] },
+      testMatch: '**/*.visual.spec.ts',
+    },
+  ],
   // The e2e suite runs against a production build, not the dev server: the
   // font payload, the chunking and the CSS output all differ.
   webServer: {

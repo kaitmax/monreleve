@@ -77,6 +77,54 @@ jobs:
           path: web/playwright-report/
           retention-days: 7
 
+  # Screenshot baselines, ruling R37: generated and compared ONLY inside the
+  # Playwright Linux container, so one baseline set serves every machine.
+  #
+  # The JOB runs in that container (`container:` below), which is why the step
+  # calls playwright directly instead of `pnpm test:visual` - that script
+  # shells out to `docker run`, and inside the container it would be
+  # docker-in-docker. Same image, same browser, same fonts, reached two ways.
+  #
+  # The image tag is pinned to the installed @playwright/test version. A
+  # container whose browser differs from the one the baselines were made
+  # against reintroduces exactly the drift R37 removes, so this tag and
+  # web/package.json must move together.
+  #
+  # Its own job rather than a step in `web`: it builds and starts the app
+  # again, and a font or rendering failure here should not be reported as the
+  # unit suite going red.
+  visual:
+    name: rail visual baselines
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      # Chromium needs more than Docker's default 64 MB /dev/shm.
+      options: --ipc=host
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright test --project=visual
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ failure() }}
+        with:
+          name: visual-diff
+          path: web/test-results/
+          retention-days: 7
+
   # SPEC sections 19 and 21 make it a ship criterion that formatPercent and
   # formatDays render the same codepoints "on Node 22 and 24".
   #
