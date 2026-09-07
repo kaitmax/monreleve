@@ -151,3 +151,84 @@ The corollary is the useful one for FW8 onward: at about 69 gzip bytes per
 icon, the 22.5 KiB of Gate B headroom left after the representative set is
 worth roughly 330 further icons. Icons are not a budget risk on this project,
 and no icon-by-icon import discipline needs inventing.
+
+## Final table
+
+Verbatim from `pnpm size` on the final commit:
+
+```
+First-load JS per route (gzip level 9). Ruling R2 gates:
+  GATE A  total <= 125.0 KiB
+  GATE B  delta <= 25.0 KiB over the 100.6 KiB framework floor
+
+route                 bucket   js total   delta    css  fonts  verdict
+----------------------------------------------------------------------------------
+/                     public      100.6     0.0    1.5   47.1  pass (A 24.4 spare, B 25.0 spare)
+/_not-found           public      101.5     0.9    1.5   47.1  pass (A 23.5 spare, B 24.1 spare)
+/dev/composants       dev         100.6     0.0    1.5   47.1  not gated - would pass (A 24.4 spare, B 25.0 spare)
+/dev/spike            dev         103.1     2.5    2.8   47.1  not gated - would pass (A 21.9 spare, B 22.5 spare)
+----------------------------------------------------------------------------------
+css   reported, never gated: it is not JS.
+fonts reported, never gated: 47.1 KiB preloaded (latin subset), 130.2 KiB across 2 file(s) on disk. woff2 is already compressed.
+polyfills excluded: 38.6 KiB gzip / 110.0 KiB raw, served nomodule.
+framework floor: 100.6 KiB, measured on next 15.5.25 / react 19.2.8, 07.09.2026.
+
+All gated routes pass both gates.
+```
+
+## Decision: GO
+
+Both gates pass with the representative component set in place, with room to
+spare. `pnpm size` is green.
+
+| | Gate A (total ≤ 125.0) | Gate B (delta ≤ 25.0) |
+|---|---|---|
+| representative page | 103.1, **21.9 KiB spare** | 2.5, **22.5 KiB spare** |
+
+Nothing needs escalating and no gate needs changing. The component vocabulary
+this project has chosen — Sass tokens, CSS Modules, `lucide-react`, Inter
+variable, one interactive island per page — fits inside the budget with about
+88 % of the allowance unused.
+
+### What the 22.5 KiB still has to cover
+
+The spike deliberately measured presentation only. Still to land on a public
+route, with a guess at each:
+
+| Arriving in | What | Expectation |
+|---|---|---|
+| FW3–FW5 | `lib/calc-engine` — pure TS, zero runtime deps | small, single-digit KiB |
+| FW6–FW7 | zones, French formatters, `renderRailSvg` | small; `Intl` is a platform API |
+| FW8–FW9 | the real components replacing this spike's markup | comparable to the 2.5 KiB measured here |
+| FW13 | URL params codec | under 1 KiB |
+| FW15 | JSON-LD, Umami — a same-origin script, not bundle JS | no first-load JS |
+
+The engine is the only unknown of any size, and it is pure TypeScript with no
+dependencies by spec. On the evidence here, a calculator route landing around
+108–112 KiB total is the realistic expectation, well inside Gate A.
+
+### Two observations for the operator, neither requiring action
+
+1. **Gate A binds before Gate B today, by 0.6 KiB.** Gate A caps the total at
+   125.0; Gate B caps it at 100.6 + 25.0 = 125.6. So as configured, Gate B
+   cannot fail without Gate A having failed first. This is not a defect in the
+   ruling — the two gates measure different things and diverge the moment the
+   floor moves. If a framework upgrade lowered the floor to, say, 90 KiB, Gate
+   B would become the binding gate at 115 KiB and would correctly stop us from
+   spending the windfall. It is worth knowing which gate is live, and today it
+   is A.
+2. **`/_not-found` carries 0.9 KiB of delta that is not ours.** It is Next's
+   built-in 404. Nothing in our code affects it, and it passes both gates
+   comfortably, but it will always show a non-zero delta.
+
+### What this spike does not prove
+
+- **LCP.** Gate A is a byte budget. The `< 2.5 s` slow-4G requirement is a
+  separate Lighthouse gate that tightens at FW11. The FW1 baseline run
+  measured LCP 0.6 s on desktop preset, which is not the same test.
+- **Behaviour.** The island's stepper, accordion and panel were built to be
+  weighed. They have no tests beyond the build's own prerender, and they are
+  not the components FW8–FW9 will ship.
+- **Multiple islands.** One island per route was measured. A route with three
+  independent islands pays more React boundary overhead, though not more
+  React.
