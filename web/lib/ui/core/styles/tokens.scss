@@ -154,6 +154,7 @@ $size-button-height: 48px;
 $size-button-large-height: 56px;
 $size-button-text-height: 40px;
 $size-button-min-width: 120px;
+$size-button-border: 1px;
 $size-icon-button: 44px;
 $size-spinner: 20px;
 $size-input-height: 48px;
@@ -189,6 +190,8 @@ $motion-standard: 200ms;
 $motion-enter: 250ms;
 $motion-sheet: 300ms;
 $motion-number: 300ms;
+$motion-toast-min: 3000ms;
+$motion-toast-max: 5000ms;
 
 // ---------------------------------------------------------------------------
 // Runtime surface.
@@ -302,6 +305,7 @@ $motion-number: 300ms;
   --size-button-large-height: #{$size-button-large-height};
   --size-button-text-height: #{$size-button-text-height};
   --size-button-min-width: #{$size-button-min-width};
+  --size-button-border: #{$size-button-border};
   --size-icon-button: #{$size-icon-button};
   --size-spinner: #{$size-spinner};
   --size-input-height: #{$size-input-height};
@@ -335,4 +339,6 @@ $motion-number: 300ms;
   --motion-enter: #{$motion-enter};
   --motion-sheet: #{$motion-sheet};
   --motion-number: #{$motion-number};
+  --motion-toast-min: #{$motion-toast-min};
+  --motion-toast-max: #{$motion-toast-max};
 }

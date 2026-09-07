@@ -13,6 +13,10 @@
 }
 
 html {
+  // WebKit implements only the prefixed property; unprefixed alone is inert on
+  // iOS Safari, which is most of this audience.
+  /* stylelint-disable-next-line property-no-vendor-prefix */
+  -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
 }
 

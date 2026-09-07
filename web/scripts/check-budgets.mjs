@@ -18,6 +18,9 @@
 //     polyfills-*.js with `nomodule`, so no browser that supports ES modules
 //     ever downloads it, and Next's own "First Load JS" column excludes it.
 //     The figure is printed so the choice is visible rather than implied.
+//  4. Only .js is counted. The manifests also list the route's stylesheet, and
+//     the budget in SPEC section 17 is first-load JS. Next filters the same
+//     way. CSS is measured and printed on its own row instead.
 
 import { gzipSync } from 'node:zlib';
 import { readFile, readdir, stat } from 'node:fs/promises';
@@ -35,7 +38,18 @@ const KIB = 1024;
 // and is not part of that surface, so it is measured and printed but not
 // gated - FW2 deliberately builds a component-heavy page there.
 const PUBLIC_BUDGET_BYTES = 100 * KIB;
-const isGated = (route) => !route.startsWith('/dev');
+
+// Segment-aware, so a real public route whose first segment merely starts with
+// "dev" - /devis, /developpement - is not silently excused from the gate.
+const isGated = (route) => route !== '/dev' && !route.startsWith('/dev/');
+
+// Next emits route-group segments in the manifest keys and strips them only in
+// memory. app/(public)/page.tsx arrives at FW10 and must print as "/".
+const normaliseRoute = (route) =>
+  route
+    .split('/')
+    .filter((segment) => !(segment.startsWith('(') && segment.endsWith(')')))
+    .join('/') || '/';
 
 const kib = (bytes) => (bytes / KIB).toFixed(1);
 
@@ -88,19 +102,32 @@ const rows = [];
 for (const entry of allEntries) {
   if (!entry.endsWith('/page')) continue;
 
-  const route = entry.slice(0, -'/page'.length) || '/';
-  const files = [
+  const route = normaliseRoute(entry.slice(0, -'/page'.length) || '/');
+  const all = [
     ...new Set([
       ...rootMainFiles,
       ...entriesForRoute(entry, allEntries).flatMap((e) => appManifest.pages[e] ?? []),
     ]),
   ];
+  const scripts = all.filter((file) => file.endsWith('.js'));
+  const styles = all.filter((file) => file.endsWith('.css'));
 
-  const { raw, gzip } = await measure(files);
-  rows.push({ route, files: files.length, raw, gzip, gated: isGated(route) });
+  const { raw, gzip } = await measure(scripts);
+  const css = await measure(styles);
+  rows.push({ route, files: scripts.length, raw, gzip, css: css.gzip, gated: isGated(route) });
 }
 
 rows.sort((a, b) => a.route.localeCompare(b.route));
+
+// A gate that passes when it measured nothing is the failure mode SPEC
+// section 17 warns about. The realistic trigger is a Next upgrade changing the
+// manifest key shape the "/page" filter depends on.
+if (rows.length === 0) {
+  console.error(
+    'No route entries found in .next/app-build-manifest.json - the budget gate measured nothing.',
+  );
+  process.exit(1);
+}
 
 const breaches = rows.filter((row) => row.gated && row.gzip > PUBLIC_BUDGET_BYTES);
 
@@ -110,12 +137,13 @@ console.log('');
 console.log(
   'route'.padEnd(22) +
     'bucket'.padEnd(9) +
-    'files'.padStart(6) +
+    'js'.padStart(4) +
     'raw KiB'.padStart(10) +
     'gzip KiB'.padStart(10) +
+    'css KiB'.padStart(9) +
     '  status',
 );
-console.log('-'.repeat(70));
+console.log('-'.repeat(79));
 
 for (const row of rows) {
   const status = !row.gated
@@ -127,16 +155,18 @@ for (const row of rows) {
   console.log(
     row.route.padEnd(22) +
       (row.gated ? 'public' : 'dev').padEnd(9) +
-      String(row.files).padStart(6) +
+      String(row.files).padStart(4) +
       kib(row.raw).padStart(10) +
       kib(row.gzip).padStart(10) +
+      kib(row.css).padStart(9) +
       '  ' +
       status,
   );
 }
 
 const fonts = await fontPayload();
-console.log('-'.repeat(70));
+console.log('-'.repeat(79));
+console.log('css is measured but not gated: the SPEC section 17 budget is first-load JS');
 console.log(
   `polyfills (nomodule, excluded from the gate): ${kib(polyfills.gzip)} KiB gzip / ${kib(polyfills.raw)} KiB raw`,
 );

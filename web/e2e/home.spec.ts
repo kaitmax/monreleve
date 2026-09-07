@@ -35,6 +35,26 @@ test('figures are set in tabular numerals', async ({ page }) => {
   expect(fontFamily).toContain('Inter Variable');
 });
 
+test('the Inter subset is actually served and loaded, not just declared', async ({
+  page,
+}) => {
+  // getComputedStyle returns the declared stack whether or not the woff2 ever
+  // arrived, so the assertions above pass even if /fonts/ 404s. public/fonts
+  // is generated output rebuilt by a script on every clone, so this is the
+  // check that would catch it disappearing.
+  const responses: { url: string; status: number }[] = [];
+  page.on('response', (r) => responses.push({ url: r.url(), status: r.status() }));
+
+  await page.goto('/');
+  await page.evaluate(() => document.fonts.ready);
+
+  const loaded = await page.evaluate(() => document.fonts.check('1em "Inter Variable"'));
+  expect(loaded).toBe(true);
+
+  const font = responses.find((r) => r.url.endsWith('/fonts/inter-latin-wght-normal.woff2'));
+  expect(font?.status).toBe(200);
+});
+
 test('a public route makes no third-party request and sets no cookie', async ({
   page,
   context,

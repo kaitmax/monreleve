@@ -13,6 +13,15 @@
         "/^padding/",
         "/gap$/",
         "/width$/",
+        "/height$/",
+        "line-height",
+        "letter-spacing",
+        "flex-basis",
+        "/^inset/",
+        "top",
+        "right",
+        "bottom",
+        "left",
         "box-shadow"
       ],
       {
@@ -32,11 +41,7 @@
           "medium",
           "thick",
           "100%",
-          "/^var\\(--/",
-          "/^calc\\(/",
-          "/^clamp\\(/",
-          "/^min\\(/",
-          "/^max\\(/"
+          "/^var\\(--/"
         ],
         "disableFix": true,
         "message": "Use a design token: ${property} may not carry the raw value \"${value}\". Tokens live in lib/ui/core/styles/tokens.scss (DESIGN-SYSTEM.md section 1)."

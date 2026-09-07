@@ -61,18 +61,32 @@ export default tseslint.config(
   // '*' also restricts './types', which would make the engine's own files
   // unimportable.
   {
-    files: ['lib/calc-engine/**/*.ts'],
+    files: ['lib/calc-engine/**/*.{ts,tsx,mts,cts}'],
     rules: {
       'no-restricted-imports': [
         'error',
-        { patterns: [{ regex: '^(?!\\./)', message: ENGINE_MESSAGE }] },
+        {
+          patterns: [
+            // Anything that is not a relative path.
+            { regex: '^(?!\\./)', message: ENGINE_MESSAGE },
+            // ...and any path that walks upward out of the directory. The
+            // first pattern alone is defeated by './../fr', which is a
+            // one-character escape that resolves identically under Node, the
+            // bundler and tsc.
+            { regex: '(^|/)\\.\\.(/|$)', message: ENGINE_MESSAGE },
+          ],
+        },
       ],
-      // no-restricted-imports only sees static import declarations. These two
+      // no-restricted-imports only sees static import declarations. These
       // close the dynamic-import and require() holes.
       'no-restricted-syntax': [
         'error',
         {
           selector: 'ImportExpression[source.value=/^(?!\\.\\/)/]',
+          message: ENGINE_MESSAGE,
+        },
+        {
+          selector: 'ImportExpression[source.value=/(^|\\/)\\.\\.(\\/|$)/]',
           message: ENGINE_MESSAGE,
         },
         {
@@ -85,7 +99,10 @@ export default tseslint.config(
 
   // (b) lib/ui/core bans React and every component library.
   {
-    files: ['lib/ui/core/**/*.ts'],
+    // Every TypeScript extension, not just .ts: a React component accidentally
+    // written here would carry .tsx, which is exactly the shape the fence
+    // exists to stop.
+    files: ['lib/ui/core/**/*.{ts,tsx,mts,cts}'],
     rules: {
       'no-restricted-imports': [
         'error',

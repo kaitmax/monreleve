@@ -33,22 +33,23 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      # The order is the Definition of Done: cheapest signal first, and the
-      # budget gate last because it needs the build output.
+      # The order is the Definition of Done: cheapest signal first.
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm test
       - run: pnpm build
 
-      # SPEC section 17: "A budget not enforced in CI is a budget that
-      # silently disappears." Deliberately blocking. It is currently RED - the
-      # Next 15 + React 19 baseline exceeds the 100 KiB public budget before
-      # any feature code exists. See REPORT-FW1.txt; raising the budget is an
-      # ask-first item and is not decided here.
-      - run: pnpm size
-
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
+
+      # SPEC section 17: "A budget not enforced in CI is a budget that
+      # silently disappears." Deliberately blocking - and deliberately last.
+      # It is currently RED: the Next 15 + React 19 baseline exceeds the
+      # 100 KiB public budget before any feature code exists. A blocking red
+      # step placed earlier would abort the job and mean CI never produced an
+      # e2e signal at all. See REPORT-FW1.txt; raising the budget is an
+      # ask-first item and is not decided here.
+      - run: pnpm size
 
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
