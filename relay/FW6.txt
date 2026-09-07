@@ -1,0 +1,247 @@
+FW6 SESSION PROMPT - frontalier
+Paste this entire prompt as the first message of a fresh Claude Code
+session, opened at the repository root.
+
+====================================================================
+PRE-STEP RULINGS (apply verbatim)
+====================================================================
+R1 (carried). FW1-FW5 accepted. Nothing has reached origin/main; CI
+   has never run. Record under DEVIATIONS. Non-blocking.
+
+R2, R7, R8, R10, R11, R12, R13, R15, R16, R17, R18, R19, R20, R21
+   (carried, unchanged). The engine is CLOSED: no file under
+   lib/calc-engine changes in this task except as R23 requires.
+
+R22 (new - CI test run). CI runs pnpm test:coverage only; the
+   uninstrumented pnpm test is removed from CI and remains the local
+   loop command. Update the Definition of Done wording in
+   tasks/plan.md to "tests green - in CI via the coverage run".
+
+R23 (new - verification trace on fixtures). Every case in
+   fixtures/geneva-cases.json, denominator-cases.json and
+   rate-cases.json gains three fields: source_url, verified_by,
+   verified_on - all EMPTY strings now. The operator fills them at
+   Checkpoint A. A fixture with empty verification fields is visibly
+   unverified. The fixture test must tolerate the fields and must
+   NOT require them to be filled. This is the only permitted change
+   under lib/calc-engine's tests and fixtures/.
+
+R24 (new - property seeds). The blocking CI path keeps the fixed
+   seed 20260907. Add a scheduled weekly GitHub Actions job that runs
+   each property at 10x the case count with a date-derived seed,
+   REPORTS (job summary + artifact) and NEVER blocks. Any falsifying
+   case it finds is promoted to a fixed regression test in the next
+   task; the job's summary must say so.
+
+R25 (new - carried to Checkpoint A, no code action). The 29 April
+   2026 interpretative agreement is confirmed as the top item of the
+   Checkpoint A verification list. Its reading is isolated in the
+   waterfall's budget = min(missionCap, headroom) with a named test.
+   Nothing to do here except confirm that isolation still holds when
+   you read the code.
+
+R26 (new - the last float hop). The engine returns declarableRate as
+   a number. formatPercent must prove by EXHAUSTIVE test that for
+   every integer n in 0..10000, formatPercent(n / 100) renders
+   exactly the digits of n with two decimals - and the same for
+   rawRate's one decimal over n in 0..1000. This closes R16's
+   "integers until the final formatted output" without changing the
+   engine's public API.
+
+====================================================================
+CONTEXT
+====================================================================
+Project: frontalier. You are executing task FW6 ONLY: lib/ui/core -
+the single-source zones module, the build step that generates
+_zones.scss from it, and the French formatters. This is the first
+task that produces user-visible output, so the design system now
+binds: DESIGN-SYSTEM.md section 1 tokens, and the status colours are
+Frontier's success / warning / error.
+
+Read first: CLAUDE.md, README.md, SPEC-frontalier-web.md sections 5,
+6 (all of it - 6.2 zones and statuses, 6.4 formatting), 20;
+DESIGN-SYSTEM.md sections 1, 2 and 4; tasks/plan.md; tasks/todo.md
+FW6; REPORT-FW5.txt.
+
+====================================================================
+STANDING PROTOCOL (identical in every FW / AN prompt)
+====================================================================
+1. SESSION SCOPE. FW6 only. Do not start FW7 (the rail).
+2. INCREMENT CYCLE. implement -> test -> verify -> commit -> push.
+   Green after EVERY increment (R20 does not apply here - nothing in
+   FW6 has an ordering rule that requires a red suite).
+3. COMMIT ONLY ON GREEN, chained with && (R15).
+4. COMMITS. "FW6: <increment title>"; "chore: <title>" for R22-R24.
+5. SIMPLICITY FIRST.
+6. TEST-FIRST with a RED row per behaviour.
+7. PURITY OF lib/ui/core. No react, no component library, no import
+   from app/ or lib/calc-engine's implementation - TYPES only, via
+   import type. lib/ui computes nothing; it formats and it maps.
+   Re-prove the FW1 fence adversarially (R7) now that real code
+   lives inside it.
+8. UI DISCIPLINE. Tokens only - every colour in zones.ts is a
+   DESIGN-SYSTEM.md token name resolving to its hex, never a bare
+   hex. Every string in lib/fr.
+9. QUESTIONS. Pause and ask on any ambiguity.
+10. EXIT ARTIFACT. REPORT-FW6.txt, committed and pushed.
+
+====================================================================
+INCREMENT 0 - HOUSEKEEPING (R22, R23, R24)
+====================================================================
+0a. R22: CI workflow runs test:coverage only; plan.md DoD wording
+    updated. Commit: "chore: CI runs the coverage suite only (R22)".
+0b. R23: the three verification fields added to every fixture case,
+    empty; fixture tests tolerate them. Commit: "chore: verification
+    trace fields on all fixtures, empty until Checkpoint A (R23)".
+0c. R24: weekly non-blocking property job with a date-derived seed
+    and 10x cases; job summary states the promotion rule. Commit:
+    "chore: weekly rotating-seed property run, non-blocking (R24)".
+Chain green after each.
+
+====================================================================
+TASK FW6 - ZONES, GENERATED SCSS, FRENCH FORMATTERS
+====================================================================
+Acceptance criteria (restated; the report must prove each):
+AC1. formatPercent(34.6) === "34,6\\u00A0%" and formatDays(1234.5) ===
+     "1\\u202F234,5" asserted BY CODEPOINT; formatDate("2026-12-18")
+     === "18.12.2026"; cases for 0, negatives, half-days, and the R26
+     exhaustive round-trips.
+AC2. _zones.scss is generated from zones.ts by a build script and
+     never hand-edited; a stale-file check fails CI when they
+     diverge - proven by editing the SCSS by hand, capturing the
+     failure, regenerating.
+AC3. A Status exhaustiveness test fails on any missing French label,
+     Lucide icon name, or one-line explanation - proven by removing
+     one and capturing.
+
+--------------------------------------------------------------------
+INCREMENT 1 - zones.ts (types + mapping, no colours yet)
+--------------------------------------------------------------------
+- lib/ui/core/zones.ts: Zone ('compliant' | 'fiscal-exposure' |
+  'social-switch') and Status ('compliant' | 'mission-exposure' |
+  'regime-lost' | 'social-switch') as TYPES imported from the engine
+  where the engine defines them, otherwise declared here and
+  cross-asserted equal to the engine's by a type test.
+- zoneFor(declarableRate: number): Zone - the three bands 0-40,
+  40-49.9, >= 49.9, with the boundaries tested on both sides (40.00
+  is fiscal-exposure; 39.99 is compliant; 49.90 is social-switch).
+- statusFor(result: TeleworkResult): Status - derived from the
+  engine's regimeApplies, warnings and declarableRate, per spec 6.2.
+  In particular: mission-exposure is a Status whose Zone is
+  'compliant' (Geneva case c). A test asserts that pairing.
+- RED first for zoneFor and statusFor.
+- Commit: "FW6: zones and statuses, derived from engine results".
+  Push.
+
+--------------------------------------------------------------------
+INCREMENT 2 - status copy and tokens
+--------------------------------------------------------------------
+- For each Status: a French label, a Lucide icon NAME (as a string:
+  'circle-check', 'triangle-alert', 'circle-x'), a one-line French
+  explanation, and a colour TOKEN name (success / warning / error)
+  with its soft-background token. The French lives in lib/fr;
+  zones.ts references it. No bare hex anywhere in lib/ui/core -
+  tokens resolve via the FW1 token layer.
+- Zone -> band colour token: compliant -> success, fiscal-exposure ->
+  warning, social-switch -> error.
+- Exhaustiveness test: enumerate the Status union and assert every
+  member has all four properties; RED by removing one.
+- Commit: "FW6: status labels, icons, explanations, colour tokens".
+  Push.
+
+--------------------------------------------------------------------
+INCREMENT 3 - _zones.scss generation and stale check
+--------------------------------------------------------------------
+- scripts/generate-zones-scss.mjs reads zones.ts's exported mapping
+  (via a tiny build or ts-node/tsx execution - keep it simple) and
+  writes lib/ui/core/styles/_zones.scss with one class per Zone and
+  per Status carrying the token references. Header comment: GENERATED
+  FROM zones.ts - DO NOT EDIT.
+- Wire into the build (prebuild) and add a CI check that regenerates
+  to a temp file and diffs; a difference fails.
+- Proof: hand-edit the SCSS, run the check, capture the failure,
+  regenerate, clean.
+- Commit: "FW6: generated _zones.scss with stale-file check". Push.
+
+--------------------------------------------------------------------
+INCREMENT 4 - formatters, codepoint-exact
+--------------------------------------------------------------------
+- lib/ui/core/format/number.ts: formatPercent (comma decimal,
+  U+00A0 before %), formatDays (U+202F thousands grouping, comma
+  decimal, half-days shown as ",5", whole numbers without decimals),
+  formatSignedDays for negative headroom ("12 jours au-dessus" is the
+  UI's business; the formatter returns the absolute value and a sign
+  flag - it does not render a minus).
+- lib/ui/core/format/date.ts: formatDate to Swiss dot notation from
+  an ISO date string; formatDateTime "18.06.2027 \u00E0 18:03" (a-grave, U+00E0) from an ISO
+  timestamp in Europe/Paris.
+- Intl output is NORMALISED, never trusted: call Intl, then
+  explicitly replace group and decimal separators with the required
+  codepoints. Tests assert codepoints via charCodeAt, not visual
+  equality.
+- RED first for each formatter.
+- Commit: "FW6: French formatters with codepoint-exact separators".
+  Push.
+
+--------------------------------------------------------------------
+INCREMENT 5 - R26 exhaustive round-trips
+--------------------------------------------------------------------
+- For n in 0..10000: formatPercent(n / 100) must render the digits of
+  n with exactly two decimals (e.g. 1833 -> "18,33 %"; 4000 ->
+  "40,00 %"; 5 -> "0,05 %"). For n in 0..1000: the one-decimal form
+  used for rawRate (e.g. 450 -> "45,0 %").
+- These are exhaustive loops, not property tests - 10 001 and 1 001
+  cases, deterministic.
+- RED: run them against a naive toFixed-based implementation first
+  and capture whichever cases fail (there may be none at these
+  magnitudes - if so, say so, and the exhaustive test still stands as
+  the guard).
+- Commit: "FW6: exhaustive round-trip proofs for the last float hop
+  (R26)". Push.
+
+--------------------------------------------------------------------
+INCREMENT 6 - Node parity and fence proof
+--------------------------------------------------------------------
+- Run the formatter suite under Node 20 and Node 22 (nvm or the CI
+  matrix) and record identical output; add the Node 20 lane to CI if
+  absent.
+- Re-prove the lib/ui/core fence adversarially: a react import, an
+  import from lib/calc-engine's implementation (not type), a .tsx
+  file. Capture, remove.
+- Commit: "FW6: Node 20/22 parity and fence proof". Push.
+
+====================================================================
+OUT OF SCOPE FOR FW6
+====================================================================
+- renderRailSvg - FW7.
+- Any React component - FW8/FW9.
+- Any change under lib/calc-engine except R23's fixture fields.
+- Filling any verification field - Checkpoint A, operator.
+
+====================================================================
+FINAL VERIFICATION
+====================================================================
+pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm size
+Green in one run; the zones stale-check and the fixture suites
+included.
+
+====================================================================
+REPORT FORMAT - REPORT-FW6.txt (pure ASCII, committed and pushed)
+====================================================================
+SUMMARY
+PRECONDITIONS      origin/main and CI status per R1.
+INCREMENT 0        R22, R23, R24 each with proof, commit, push.
+RED/GREEN LEDGER   One row per behaviour.
+CODEPOINT PROOFS   The charCodeAt assertions for U+00A0 and U+202F.
+ROUND-TRIP PROOFS  R26: counts run, any failing cases of the naive
+                   form, then the shipped form passing all.
+STALE-CHECK PROOF  Hand-edit failing, regeneration passing.
+EXHAUSTIVENESS     The Status test failing on a removed property.
+FENCE PROOF        The adversarial rejections.
+PARITY             Node 20 vs 22 identical output.
+DEVIATIONS
+NOTICED BUT NOT TOUCHING
+QUESTIONS FOR THE OPERATOR
+PUSH PROOF
+
+END OF FW6 PROMPT

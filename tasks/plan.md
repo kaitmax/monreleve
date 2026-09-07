@@ -43,7 +43,7 @@ The plan is dependency-ordered and vertically sliced. Three properties are prese
 
 ## Definition of Done (project-wide — every task clears this before it counts)
 
-- `pnpm typecheck`, `pnpm lint`, `pnpm test` green; `pnpm build` clean.
+- `pnpm typecheck`, `pnpm lint` green; tests green — **in CI via the coverage run** (`pnpm test:coverage`, which is a strict superset of `pnpm test`; the uninstrumented run stays the local loop command, ruling R22); `pnpm build` clean.
 - No raw hex, no arbitrary spacing, no React in `lib/ui/core`, no strings outside `lib/fr` (all lint-enforced — a violation fails CI, not review).
 - New/changed UI has a `/dev/composants` entry, a visual baseline, zero jest-axe violations, its loading/empty/error states implemented, and a keyboard path.
 - Budgets (`pnpm size`) still green.

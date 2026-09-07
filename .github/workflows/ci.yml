@@ -36,8 +36,10 @@ jobs:
       # The order is the Definition of Done: cheapest signal first.
       - run: pnpm typecheck
       - run: pnpm lint
-      - run: pnpm test
-
+      # Ruling R22: the coverage run is a strict superset of pnpm test, so CI
+      # runs it alone. pnpm test stays the local loop command, where the
+      # faster uninstrumented run is worth having.
+      #
       # SPEC 7.6: 100% statement and branch coverage on lib/calc-engine is
       # "not an aspiration". Blocking, and proven to bite - an unreachable
       # branch takes it to 98.79% and fails the step.
