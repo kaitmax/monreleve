@@ -11,6 +11,7 @@
 
 export { ruleSetFor } from './rules';
 export { regimeFor } from './regime';
+export { classifyTeleworkHours } from './granularity';
 
 export type {
   AllowedTeleworkDays,
