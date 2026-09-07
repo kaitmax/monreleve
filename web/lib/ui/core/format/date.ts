@@ -44,6 +44,15 @@ const AT = '\u00E0';
 const TIME_SEPARATOR = ':';
 
 /**
+ * U+00A0 NO-BREAK SPACE, on BOTH sides of the a-grave (ruling R29), so the
+ * timestamp is one unbreakable token. A plain space lets a narrow column
+ * break "18.06.2027" away from "18:03" and leave a reader holding half a
+ * timestamp - on a document whose whole purpose is that every recorded day
+ * carries a server-assigned time.
+ */
+const AT_SPACE = '\u00A0';
+
+/**
  * Used for NOTHING that reaches the output. Every field is requested
  * numerically and every separator is written above, so this could be any tag
  * - the property the tests pin by feeding normaliseDate parts from fr-FR and
@@ -121,7 +130,7 @@ export function normaliseDate(parts: readonly Intl.DateTimeFormatPart[]): string
   return `${day}${DATE_SEPARATOR}${month}${DATE_SEPARATOR}${year}`;
 }
 
-/** Assemble "dd.mm.yyyy a hh:mm" from date-and-time parts. */
+/** Assemble "dd.mm.yyyy a hh:mm" from date-and-time parts, a-grave bound by U+00A0 (R29). */
 export function normaliseDateTime(parts: readonly Intl.DateTimeFormatPart[]): string {
   // A dayPeriod means the parts came from a 12-hour formatter, where the hour
   // field reads 06 for 18:00 and the meaning lives in a separate localised
@@ -138,7 +147,7 @@ export function normaliseDateTime(parts: readonly Intl.DateTimeFormatPart[]): st
   const hour = fieldOf(parts, 'hour');
   const minute = fieldOf(parts, 'minute');
 
-  return `${normaliseDate(parts)} ${AT} ${hour}${TIME_SEPARATOR}${minute}`;
+  return `${normaliseDate(parts)}${AT_SPACE}${AT}${AT_SPACE}${hour}${TIME_SEPARATOR}${minute}`;
 }
 
 /**

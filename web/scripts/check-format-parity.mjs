@@ -58,7 +58,7 @@ const CASES = [
   [
     'formatDateTime(2027-06-18T16:03Z)',
     formatDateTime('2027-06-18T16:03:00Z'),
-    `18.06.2027 ${A_GRAVE} 18:03`,
+    `18.06.2027${NBSP}${A_GRAVE}${NBSP}18:03`,
   ],
 ];
 

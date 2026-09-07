@@ -43,6 +43,9 @@ import {
 /** U+00E0 LATIN SMALL LETTER A WITH GRAVE, precomposed (NFC). */
 const A_GRAVE = '\u00E0';
 
+/** U+00A0 NO-BREAK SPACE, either side of the a-grave (R29). */
+const NBSP = '\u00A0';
+
 const codepoints = (text: string): string[] =>
   [...text].map((char) => `U+${char.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')}`);
 
@@ -142,7 +145,7 @@ describe('formatDate refuses anything that is not a calendar day', () => {
 
 describe('formatDateTime renders an instant in a pinned zone', () => {
   it('renders the SPEC example', () => {
-    expect(formatDateTime(JUNE_EVENING)).toBe(`18.06.2027 ${A_GRAVE} 18:03`);
+    expect(formatDateTime(JUNE_EVENING)).toBe(`18.06.2027${NBSP}${A_GRAVE}${NBSP}18:03`);
   });
 
   it('uses a precomposed a-grave, not a combining sequence', () => {
@@ -159,6 +162,27 @@ describe('formatDateTime renders an instant in a pinned zone', () => {
     expect(rendered.normalize('NFC')).toBe(rendered);
   });
 
+it('binds the timestamp into one unbreakable token with U+00A0 (R29)', () => {
+    // R29. A no-break space on BOTH sides of the a-grave, so a narrow column
+    // can never break "18.06.2027" away from "18:03" and leave a reader
+    // holding half a timestamp. U+0020 and U+00A0 are indistinguishable on
+    // screen, so only the codepoint separates a correct render from a wrong
+    // one - asserted here for the whole string at once.
+    const rendered = formatDateTime(JUNE_EVENING);
+    const index = rendered.indexOf(A_GRAVE);
+
+    expect(rendered.charCodeAt(index - 1)).toBe(0x00a0);
+    expect(rendered.charCodeAt(index + 1)).toBe(0x00a0);
+    expect(rendered.charCodeAt(index - 1)).not.toBe(0x0020);
+    expect(rendered.charCodeAt(index + 1)).not.toBe(0x0020);
+    expect(codepoints(rendered)).toEqual([
+      'U+0031', 'U+0038', 'U+002E', 'U+0030', 'U+0036', 'U+002E',
+      'U+0032', 'U+0030', 'U+0032', 'U+0037',
+      'U+00A0', 'U+00E0', 'U+00A0',
+      'U+0031', 'U+0038', 'U+003A', 'U+0030', 'U+0033',
+    ]);
+  });
+
   it('separates the time with a colon', () => {
     const rendered = formatDateTime(JUNE_EVENING);
 
@@ -168,7 +192,7 @@ describe('formatDateTime renders an instant in a pinned zone', () => {
 
   it('renders 24-hour time with no meridiem', () => {
     expect(formatDateTime(JUNE_EVENING)).toContain('18:03');
-    expect(formatDateTime('2027-06-18T02:07:00Z')).toBe(`18.06.2027 ${A_GRAVE} 04:07`);
+    expect(formatDateTime('2027-06-18T02:07:00Z')).toBe(`18.06.2027${NBSP}${A_GRAVE}${NBSP}04:07`);
     expect(formatDateTime(JUNE_EVENING)).not.toMatch(/PM|AM/i);
   });
 
@@ -185,8 +209,8 @@ describe('formatDateTime renders an instant in a pinned zone', () => {
   it('honours an explicit zone, which is how we know the zone is real', () => {
     // If the zone argument did nothing, the default could be wrong and every
     // other test here would still pass.
-    expect(formatDateTime(JUNE_EVENING, 'UTC')).toBe(`18.06.2027 ${A_GRAVE} 16:03`);
-    expect(formatDateTime(JUNE_EVENING, 'Asia/Kolkata')).toBe(`18.06.2027 ${A_GRAVE} 21:33`);
+    expect(formatDateTime(JUNE_EVENING, 'UTC')).toBe(`18.06.2027${NBSP}${A_GRAVE}${NBSP}16:03`);
+    expect(formatDateTime(JUNE_EVENING, 'Asia/Kolkata')).toBe(`18.06.2027${NBSP}${A_GRAVE}${NBSP}21:33`);
   });
 
   it('rejects a timestamp it cannot read', () => {
@@ -223,7 +247,7 @@ describe('the output does not depend on the ambient time zone', () => {
       { cwd: process.cwd(), env: { ...process.env, TZ: timeZone }, encoding: 'utf8' },
     );
 
-  const EXPECTED = `18.12.2026|18.06.2027 ${A_GRAVE} 18:03`;
+  const EXPECTED = `18.12.2026|18.06.2027${NBSP}${A_GRAVE}${NBSP}18:03`;
 
   for (const timeZone of ['UTC', 'America/New_York', 'Pacific/Kiritimati', 'Asia/Kolkata']) {
     it(`renders identically under TZ=${timeZone}`, () => {
@@ -273,7 +297,7 @@ describe('assembly does not depend on what ICU hands us', () => {
       hourCycle: 'h23',
     });
 
-    expect(normaliseDateTime(parts)).toBe(`18.06.2027 ${A_GRAVE} 18:03`);
+    expect(normaliseDateTime(parts)).toBe(`18.06.2027${NBSP}${A_GRAVE}${NBSP}18:03`);
   });
 
   it('refuses parts from a 12-hour formatter rather than rendering 06:03', () => {
