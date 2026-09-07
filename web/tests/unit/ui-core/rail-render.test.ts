@@ -343,3 +343,82 @@ describe('the social variant (increment 3)', () => {
     expect(social()).not.toContain('drop-shadow');
   });
 });
+
+describe('the unavailable state (R33)', () => {
+  const BAND_TOKENS = ['--colour-success', '--colour-warning', '--colour-error'];
+
+  for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+    it(`renders a word rather than throwing for ${String(bad)}`, () => {
+      // The calculation layer is deliberately loud about a non-finite rate:
+      // zoneFor throws, railGeometry throws, formatPercent throws. The RAIL
+      // is a render path, where a throw is a blank page on a document that
+      // reports a tax position. This is the third state.
+      expect(() => render({ percentage: bad })).not.toThrow();
+      expect(render({ percentage: bad })).toContain('>Taux indisponible<');
+    });
+  }
+
+  it('says so in the accessible name too', () => {
+    expect(render({ percentage: Number.NaN })).toContain(
+      'aria-label="Taux de télétravail déclarable indisponible."',
+    );
+  });
+
+  it('carries NO band colour at all', () => {
+    // The point of the state. A rail with a colour implies a position, and
+    // the whole reason it is unavailable is that the position is unknown.
+    const svg = render({ percentage: Number.NaN });
+
+    for (const token of BAND_TOKENS) {
+      expect(svg).not.toContain(token);
+    }
+  });
+
+  it('still draws the track, the ticks and the band names', () => {
+    // Absent, the rail would be a blank box - which reads as a broken layout
+    // rather than as an unknown value. The ceilings are still where they are.
+    const svg = render({ percentage: Number.NaN });
+
+    expect(svg).toContain('fill: var(--colour-border-default)');
+    expect(svg).toContain(`>${pct('40')}<`);
+    expect(svg).toContain(`>${pct('49,9')}<`);
+  });
+
+  it('never calls zoneFor - asserted structurally, from the source', () => {
+    // The relay asks for a spy. The stronger form is available here: the rail
+    // MAPS rather than decides, because RailData carries the Zone in, so
+    // zoneFor is not imported at all. A spy could only prove it was not
+    // called on one input; this proves it cannot be called on any.
+    const source = readFileSync(
+      join(process.cwd(), 'lib', 'ui', 'core', 'rail', 'renderRailSvg.ts'),
+      'utf8',
+    );
+    const imports = source.slice(0, source.indexOf('const RATE_DECIMALS'));
+
+    expect(imports).not.toContain('zoneFor');
+    expect(source).not.toMatch(/\bzoneFor\s*\(/);
+  });
+});
+
+describe('clamping bounds the geometry and never the label (AC3)', () => {
+  it('draws an empty rail for a negative rate, labelled with the real value', () => {
+    const svg = render({ percentage: -5 });
+
+    expect(svg).toContain(`>${pct('-5,00')}<`);
+    expect(svg).toContain('width="0"');
+  });
+
+  it('draws a full rail above 100, labelled with the real value', () => {
+    const svg = render({ percentage: 140, width: 376 });
+
+    expect(svg).toContain(`>${pct('140,00')}<`);
+    // The fill reaches the full track width and no further.
+    expect(svg).toContain('width="376" height="8" rx="4" style="fill: var(--colour-success)"');
+  });
+
+  it('reports the clamp through the geometry, so a caller can say so', () => {
+    expect(railGeometry(data({ percentage: -5 }), RULES).clampedFill).toBe(true);
+    expect(railGeometry(data({ percentage: 140 }), RULES).clampedFill).toBe(true);
+    expect(railGeometry(data({ percentage: 39.16 }), RULES).clampedFill).toBe(false);
+  });
+});

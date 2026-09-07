@@ -32,7 +32,12 @@ import { railGeometry } from './geometry';
 import { escapeXml } from './xml';
 import { ZONE_BAND_TOKEN } from '../zone-tokens';
 import { formatPercent } from '../format/number';
-import { ZONE_BAND_NAME, railAriaLabel } from '@/lib/fr/rail';
+import {
+  RAIL_UNAVAILABLE_ARIA,
+  RAIL_UNAVAILABLE_LABEL,
+  ZONE_BAND_NAME,
+  railAriaLabel,
+} from '@/lib/fr/rail';
 import { APP_NAME } from '@/lib/fr';
 import type { RailData, RailGeometry, RailTick } from './geometry';
 import type { Zone, ZoneThresholds } from '../zones';
@@ -106,8 +111,28 @@ function bandNames(geometry: RailGeometry, thresholds: ZoneThresholds): string {
  * itself is unchanged.
  */
 export function renderRailSvg(data: RailData, thresholds: ZoneThresholds): string {
-  const geometry = railGeometry(data, thresholds);
-  const rate = formatPercent(geometry.percentage, RATE_DECIMALS);
+  // RULING R33, and it has to come first. A non-finite rate is a programming
+  // error and the calculation layer makes it loud - zoneFor throws, and so do
+  // railGeometry and formatPercent, all three deliberately. But the RAIL is a
+  // render path, and a thrown error there is a blank page where a tax
+  // position should be. So this is the third state: not a colour, not an
+  // empty track, a WORD.
+  //
+  // The relay named only zoneFor as the call to skip. That is incomplete:
+  // formatPercent rejects a non-finite value too ("NaN %" on a filing
+  // document is worse than a crash), and railGeometry rejects it before
+  // either. All three are bypassed, which is why the geometry below is
+  // computed from a substituted 0 rather than from the real value.
+  //
+  // Note renderRailSvg never calls zoneFor at all - RailData carries the Zone
+  // in, so the rail maps rather than decides. A test asserts that
+  // structurally, by reading this module's imports.
+  const unavailable = !Number.isFinite(data.percentage);
+
+  const geometry = railGeometry(unavailable ? { ...data, percentage: 0 } : data, thresholds);
+  const rate = unavailable
+    ? RAIL_UNAVAILABLE_LABEL
+    : formatPercent(geometry.percentage, RATE_DECIMALS);
 
   // The social card is a standalone image: it is the only variant that owns
   // its whole surface, so it paints a background and centres its text. The
@@ -115,7 +140,7 @@ export function renderRailSvg(data: RailData, thresholds: ZoneThresholds): strin
   const social = data.variant === 'social';
 
   const parts = [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${geometry.svgWidth}" height="${geometry.svgHeight}" viewBox="0 0 ${geometry.svgWidth} ${geometry.svgHeight}" role="img" aria-label="${escapeXml(railAriaLabel(rate, data.zone))}">`,
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${geometry.svgWidth}" height="${geometry.svgHeight}" viewBox="0 0 ${geometry.svgWidth} ${geometry.svgHeight}" role="img" aria-label="${escapeXml(unavailable ? RAIL_UNAVAILABLE_ARIA : railAriaLabel(rate, data.zone))}">`,
 
     // SPEC 6.1: the canvas is grey. No shadow anywhere - SPEC 20's v2 bullet
     // and 6.1 both forbid one on a card.
@@ -154,8 +179,10 @@ export function renderRailSvg(data: RailData, thresholds: ZoneThresholds): strin
     // rather than the hex.
     rect(geometry.track, 'fill: var(--colour-border-default)'),
 
-    // The fill, in the band colour, keyed by ZONE.
-    rect(geometry.fill, `fill: var(${ZONE_BAND_TOKEN[data.zone]})`),
+    // The fill, in the band colour, keyed by ZONE. Omitted entirely when the
+    // rate is unavailable: no fill and NO BAND COLOUR ANYWHERE, so the rail
+    // cannot imply a position it does not know.
+    unavailable ? '' : rect(geometry.fill, `fill: var(${ZONE_BAND_TOKEN[data.zone]})`),
 
     // The two ticks, and their labels anchored outward (R39).
     ...geometry.ticks.map((tick) => rect({ ...tick, rx: 0 }, 'fill: var(--colour-text-primary)')),
