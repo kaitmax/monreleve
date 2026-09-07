@@ -208,3 +208,119 @@ describe('the Zone and Status of one result are independent (SPEC 6.2)', () => {
     expect(statusFor(result)).toBe('social-switch');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Added after an adversarial review of increments 1-2. Each block below exists
+// because a wrong implementation passed everything above it.
+// ---------------------------------------------------------------------------
+
+describe('zoneFor compares exactly, and must not be "hardened" into rounding', () => {
+  it('scales both ceilings without float error', () => {
+    // The premise of the exact comparison. If either of these were inexact,
+    // rounding would be the right fix; they are not, so it is not.
+    expect(RULES.fiscalCeiling * 100).toBe(40);
+    expect(RULES.socialCeiling * 100).toBe(49.9);
+  });
+
+  it('keeps a rate finer than a hundredth below the line below the line', () => {
+    // The rows that separate the exact comparison from an integer-hundredths
+    // one. Under Math.round(rate * 1e2) >= Math.round(ceiling * 1e4) these
+    // both move up a band while every boundary row above still passes, so
+    // without these two the refactor is invisible.
+    expect(zoneFor(39.999, RULES)).toBe('compliant');
+    expect(zoneFor(49.8999, RULES)).toBe('fiscal-exposure');
+  });
+});
+
+describe('zoneFor refuses a rate that is not a number', () => {
+  // Unguarded, every >= against NaN is false and the function returns
+  // 'compliant' - the success band, for a rate that was never computed.
+  for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+    it(`throws on ${String(bad)} rather than painting the success band`, () => {
+      expect(() => zoneFor(bad, RULES)).toThrow(RangeError);
+    });
+  }
+
+  it('still accepts the ordinary range', () => {
+    expect(() => zoneFor(0, RULES)).not.toThrow();
+    expect(() => zoneFor(100, RULES)).not.toThrow();
+  });
+});
+
+describe('the badge agrees with the engine own warnings, across a sweep', () => {
+  // statusFor reads two DERIVED numbers - remainingToSocial (floored) and
+  // frenchTaxedDays - while the banners rendered beside the badge come from
+  // result.warnings. Nothing tied the two together, so a change to
+  // headroom.ts's flooring or to the waterfall's budget line could drift the
+  // badge away from the banner list with no test going red. This is that tie.
+
+  /** The same four states, decided only by the engine's warning codes. */
+  function statusFromWarnings(result: TeleworkResult): string {
+    const codes = new Set(result.warnings.map((warning) => warning.code));
+
+    if (codes.has('SOCIAL_CEILING_EXCEEDED')) return 'social-switch';
+    if (!result.regimeApplies) return 'regime-lost';
+    if (codes.has('MISSION_CAP_EXCEEDED') || codes.has('MISSIONS_EXCEED_HEADROOM')) {
+      return 'mission-exposure';
+    }
+
+    return 'compliant';
+  }
+
+  const sweep: TeleworkResult[] = [];
+  for (let telework = 0; telework <= 240; telework += 0.5) {
+    for (let missions = 0; missions <= 20; missions += 0.5) {
+      const outcome = calculateTelework({
+        ...BASE,
+        granularity: 'halfDay',
+        teleworkDays: telework,
+        missionDaysFrance: missions,
+      });
+      if (outcome.ok) sweep.push(outcome.value);
+    }
+  }
+
+  it('sweeps a meaningful number of results', () => {
+    expect(sweep.length).toBeGreaterThan(10_000);
+  });
+
+  it('reaches all four states, so the agreement below is not vacuous', () => {
+    expect(new Set(sweep.map(statusFor)).size).toBe(4);
+  });
+
+  it('agrees with the warning codes on every swept result', () => {
+    const disagreements = sweep
+      .filter((result) => statusFor(result) !== statusFromWarnings(result))
+      .map((result) => ({
+        declarableRate: result.declarableRate,
+        frenchTaxedDays: result.frenchTaxedDays,
+        badge: statusFor(result),
+        fromWarnings: statusFromWarnings(result),
+      }));
+
+    expect(disagreements).toEqual([]);
+  });
+});
+
+describe('regime lost AND missions over the cap - the precedence the fixtures cannot reach', () => {
+  // Every regime-lost fixture keeps missions at or under the 10-day cap, so
+  // MISSION_CAP_EXCEEDED never co-occurs with regimeApplies false in the
+  // fixture file. warnings.ts emits MISSION_CAP_EXCEEDED unconditionally and
+  // suppresses only MISSIONS_EXCEED_HEADROOM once the regime is lost, so the
+  // pair is reachable - and an implementation that read mission exposure
+  // straight from the codes, without statusFor's !regimeApplies guard, would
+  // label this mission-exposure and still pass all six fixtures.
+  const result = resultOf({ teleworkDays: 100, missionDaysFrance: 12 });
+
+  it('really does breach the cap with the regime already gone', () => {
+    expect(result.regimeApplies).toBe(false);
+    expect(result.warnings.map((warning) => warning.code)).toContain('MISSION_CAP_EXCEEDED');
+    // ...and NOT past the social ceiling, or the case would test precedence
+    // over social-switch instead, which is a different test.
+    expect(result.remainingToSocial).toBeGreaterThanOrEqual(0);
+  });
+
+  it('is regime-lost, not mission-exposure', () => {
+    expect(statusFor(result)).toBe('regime-lost');
+  });
+});

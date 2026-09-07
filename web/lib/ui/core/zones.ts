@@ -121,8 +121,28 @@ export const ZONE_BAND_TOKEN: Record<Zone, string> = {
  * fiscal-exposure and exactly 49.90 is social-switch, because the bands are
  * written 0-40 / 40-49.9 / >= 49.9 and a position exactly on a line is on the
  * line, not below it.
+ *
+ * THE COMPARISON IS EXACT AND MUST NOT BE ROUNDED. Both scalings are exact in
+ * IEEE 754 - 0.4 * 1e2 is 40 and 0.499 * 1e2 is 49.9, verified by test - so
+ * there is nothing here to harden. Rewriting these as integer hundredths
+ * (Math.round(rate * 1e2) >= Math.round(ceiling * 1e4)) looks safer and is
+ * not: it rounds 39.999 up into fiscal-exposure and 49.895 up into
+ * social-switch, reporting a breach that has not happened. declarableRate is
+ * always n/100 today, but zoneFor is exported and FW7 animates the rail, so
+ * finer rates will reach it. Tests pin 39.999 and 49.8999 for that reason.
+ *
+ * Throws on a non-finite rate. Every `>=` against NaN is false, so the
+ * unguarded function would fall through and return 'compliant' - painting the
+ * success band for a rate that was never computed. That failure is invisible,
+ * and it is the one SPEC section 20 cares most about, so it is loud instead.
+ * The engine cannot produce NaN here (validate rejects non-finite input); a
+ * parsed query parameter or an absent field can.
  */
 export function zoneFor(declarableRate: number, thresholds: ZoneThresholds): Zone {
+  if (!Number.isFinite(declarableRate)) {
+    throw new RangeError(`zoneFor needs a finite percentage, received ${declarableRate}`);
+  }
+
   if (declarableRate >= thresholds.socialCeiling * PERCENT) return 'social-switch';
   if (declarableRate >= thresholds.fiscalCeiling * PERCENT) return 'fiscal-exposure';
 

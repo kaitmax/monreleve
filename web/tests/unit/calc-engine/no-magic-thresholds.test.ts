@@ -6,8 +6,9 @@
 //
 // rules.ts is the one exempt file - it is where the constants live.
 
-import { readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdtempSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { basename, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const ENGINE_DIR = join(process.cwd(), 'lib', 'calc-engine');
@@ -23,7 +24,13 @@ const UI_CORE_DIR = join(process.cwd(), 'lib', 'ui', 'core');
 
 const SCANNED_DIRS = [ENGINE_DIR, UI_CORE_DIR];
 
-const EXEMPT = new Set(['rules.ts']);
+/**
+ * Scoped to a path rather than a basename. With the recursive walk below, a
+ * bare 'rules.ts' would exempt any file of that name anywhere under either
+ * tree - a lib/ui/core/rules.ts would inherit the engine's exemption for
+ * free. Only the one real home of the constants is exempt.
+ */
+const EXEMPT = new Set([join(ENGINE_DIR, 'rules.ts')]);
 
 /**
  * The RuleSet values, in the units RuleSet stores them. A literal equal to one
@@ -76,20 +83,52 @@ function offendingLiterals(source: string): number[] {
   return literals.map(Number).filter((value) => FORBIDDEN.includes(value));
 }
 
-/** Every scanned source file, as a full path, minus the exempt one. */
+/**
+ * Every scanned source file, as a full path, minus the exempt one.
+ *
+ * RECURSIVE, deliberately. Until FW6 this read one directory level, which was
+ * true of the engine (flat) and false of lib/ui/core the moment FW6 added
+ * lib/ui/core/format/{number,date}.ts - the guard would have stopped applying
+ * halfway through the task that extended it here, and both the fraction list
+ * and the percentage list would have gone quietly out of force in the one
+ * directory most likely to write a bare 40. The vacuity test below is not
+ * enough on its own to catch that: it only requires one file per scanned
+ * directory, which the top-level files already satisfied.
+ */
+function walk(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true, recursive: true })
+    .filter((entry) => entry.isFile() && /\.(ts|tsx)$/.test(entry.name))
+    .map((entry) => join(entry.parentPath, entry.name));
+}
+
 function scannedFiles(): string[] {
-  return SCANNED_DIRS.flatMap((dir) =>
-    readdirSync(dir, { withFileTypes: true })
-      .filter((entry) => entry.isFile())
-      .filter((entry) => /\.(ts|tsx)$/.test(entry.name) && !EXEMPT.has(entry.name))
-      .map((entry) => join(dir, entry.name)),
-  );
+  return SCANNED_DIRS.flatMap(walk).filter((path) => !EXEMPT.has(path));
 }
 
 /** Last three path segments, so a test name reads lib/ui/core/zones.ts. */
 const label = (file: string) => file.split(/[\\/]/).slice(-3).join('/');
 
 describe('no bare threshold literals outside rules.ts', () => {
+  it('descends into subdirectories - guarding the guard', () => {
+    // Proven against a tree built here rather than against the repo, because
+    // both scanned directories are currently flat: a non-recursive walk
+    // would pass every other test in this file today and go silently out of
+    // force the moment a subdirectory appears. lib/ui/core/format/ is the
+    // one FW6 adds.
+    const root = mkdtempSync(join(tmpdir(), 'threshold-walk-'));
+    mkdirSync(join(root, 'nested', 'deeper'), { recursive: true });
+    writeFileSync(join(root, 'top.ts'), 'export const a = 1;');
+    writeFileSync(join(root, 'nested', 'mid.tsx'), 'export const b = 2;');
+    writeFileSync(join(root, 'nested', 'deeper', 'low.ts'), 'export const c = 3;');
+    writeFileSync(join(root, 'nested', 'ignored.scss'), 'a { color: red; }');
+
+    expect(walk(root).map((file) => basename(file)).sort()).toEqual([
+      'low.ts',
+      'mid.tsx',
+      'top.ts',
+    ]);
+  });
+
   it('finds files to inspect in every scanned directory, so the guard cannot pass vacuously', () => {
     expect(scannedFiles().length).toBeGreaterThan(0);
     for (const dir of SCANNED_DIRS) {

@@ -158,3 +158,47 @@ describe('mission-exposure is the warning badge on the green band', () => {
     expect(ZONE_BAND_TOKEN.compliant).toBe('--colour-success');
   });
 });
+
+describe('the four statuses are actually distinguishable', () => {
+  // A presence-only check is satisfied by a record where regime-lost and
+  // social-switch carry identical copy, icon and colour - which is exactly
+  // where the design system runs out of guidance, since SPEC 12 caps the
+  // palette at three status tokens for four statuses. So colour ALONE cannot
+  // separate them, and SPEC 12's monochrome-photocopy requirement plus
+  // DESIGN-SYSTEM.md's "status is never colour alone" mean the label, the
+  // explanation and the glyph each have to do it on their own.
+  const unique = (values: readonly string[]) => new Set(values).size;
+
+  it('gives every status its own label', () => {
+    expect(unique(ALL_STATUSES.map((s) => STATUS_PRESENTATION[s].label))).toBe(
+      ALL_STATUSES.length,
+    );
+  });
+
+  it('gives every status its own explanation', () => {
+    expect(unique(ALL_STATUSES.map((s) => STATUS_PRESENTATION[s].explanation))).toBe(
+      ALL_STATUSES.length,
+    );
+  });
+
+  it('gives every status its own icon', () => {
+    // regime-lost and social-switch share --colour-error because only three
+    // status colours exist. They must NOT also share a glyph: a badge that
+    // looks identical for "you lost the tax regime" and "your social security
+    // affiliation moves" flattens two different legal consequences into one
+    // picture, and it makes FW8's "four badge states visually distinct"
+    // unachievable by anything but the label.
+    expect(unique(ALL_STATUSES.map((s) => STATUS_PRESENTATION[s].icon))).toBe(
+      ALL_STATUSES.length,
+    );
+  });
+
+  it('keeps the zone map and the status map as two separate objects', () => {
+    // SPEC 6.2: the rail is coloured by Zone, never by Status. 'compliant'
+    // and 'social-switch' are members of BOTH unions, so a single record
+    // keyed on the bare literal would conflate the two axes and TypeScript
+    // would not complain - the key types overlap.
+    expect(ZONE_BAND_TOKEN).not.toBe(STATUS_PRESENTATION);
+    expect(Object.keys(ZONE_BAND_TOKEN)).not.toEqual(Object.keys(STATUS_PRESENTATION));
+  });
+});

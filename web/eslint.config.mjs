@@ -158,6 +158,21 @@ export default tseslint.config(
           selector: 'ImportExpression[source.value=/dev\\/spike/]',
           message: SPIKE_MESSAGE,
         },
+        // The engine fence's dynamic half. @typescript-eslint's
+        // no-restricted-imports above rejects every STATIC value import of
+        // the engine, but neither variant of that rule inspects an
+        // ImportExpression, so `await import('@/lib/calc-engine')` was clean
+        // - verified by running eslint against a probe file before this
+        // selector existed. allowTypeImports has no analogue to worry about
+        // here: a dynamic import is always a value import.
+        //
+        // It sits in THIS array rather than a new config object because flat
+        // config replaces a rule instead of merging it - a second
+        // lib/ui/core block would silently delete the React fence above.
+        {
+          selector: 'ImportExpression[source.value=/calc-engine/]',
+          message: ENGINE_TYPES_ONLY_MESSAGE,
+        },
         {
           selector: 'CallExpression[callee.name="require"]',
           message: CORE_MESSAGE,
