@@ -23,7 +23,15 @@ jobs:
 
       # No version here on purpose: package.json carries packageManager, and
       # passing both makes the action fail with "multiple versions specified".
+      # package_json_file is resolved from the REPOSITORY ROOT, not from the
+      # job's working-directory - defaults.run only governs `run:` steps, not
+      # action inputs. This repo has no root package.json (SPEC D1: one
+      # package, no workspace), so without this path the action reports "No
+      # pnpm version is specified" and the job dies before installing.
+      # Found by the first CI run that ever executed, after R1 was cleared.
       - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
 
       - uses: actions/setup-node@v4
         with:
@@ -96,7 +104,15 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      # package_json_file is resolved from the REPOSITORY ROOT, not from the
+      # job's working-directory - defaults.run only governs `run:` steps, not
+      # action inputs. This repo has no root package.json (SPEC D1: one
+      # package, no workspace), so without this path the action reports "No
+      # pnpm version is specified" and the job dies before installing.
+      # Found by the first CI run that ever executed, after R1 was cleared.
       - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
       - uses: actions/setup-node@v4
         with:
           node-version: 22
