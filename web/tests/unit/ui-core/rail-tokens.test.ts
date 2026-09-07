@@ -17,7 +17,15 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { compileString } from 'sass';
 import { describe, expect, it } from 'vitest';
-import { TICK_PROTRUSION, TICK_WIDTH, TRACK_HEIGHT } from '@/lib/ui/core/rail/geometry';
+import {
+  CAPTION_SIZE,
+  DISPLAY_SIZE,
+  H2_SIZE,
+  MICRO_SIZE,
+  TICK_PROTRUSION,
+  TICK_WIDTH,
+  TRACK_HEIGHT,
+} from '@/lib/ui/core/rail/geometry';
 
 /** Every custom property the compiled token layer actually defines. */
 function tokens(): Record<string, string> {
@@ -54,6 +62,17 @@ describe('the rail geometry constants mirror real tokens', () => {
   it('TICK_PROTRUSION equals --space-1', () => {
     // SPEC 6.3's "protruding 4 px above and below".
     expect(TICK_PROTRUSION).toBe(pixels(defined['--space-1'] ?? ''));
+  });
+
+  it('every font size used for a baseline mirrors its type token', () => {
+    // The rail places a baseline at rowTop + the step's SIZE, so these four
+    // numbers are geometry even though they are type values - and a var()
+    // cannot be used, because the baseline is arithmetic. Mirrored, therefore,
+    // exactly like the track height.
+    expect(CAPTION_SIZE).toBe(pixels(defined['--type-caption-size'] ?? ''));
+    expect(MICRO_SIZE).toBe(pixels(defined['--type-micro-size'] ?? ''));
+    expect(DISPLAY_SIZE).toBe(pixels(defined['--type-display-size'] ?? ''));
+    expect(H2_SIZE).toBe(pixels(defined['--type-h2-size'] ?? ''));
   });
 
   it('records that TICK_WIDTH has no token, rather than pretending it does', () => {

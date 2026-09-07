@@ -1,6 +1,7 @@
 // web/lib/ui/core/index.ts
 // Pure TypeScript + SCSS. React is forbidden here (SPEC section 5).
-// renderRailSvg arrives in FW7.
+// The rail: a pure string generator, shared by the browser, the PDF and the
+// OG image (SPEC 6.3, D2).
 
 export { statusFor, zoneFor, STATUS_PRESENTATION } from './zones';
 export type { Status, StatusPresentation, Zone, ZoneThresholds } from './zones';
@@ -18,3 +19,7 @@ export type { SignedDays } from './format/number';
 // DATE_ZONE is gone with ruling R28: formatDate takes an ISO YYYY-MM-DD
 // string, which carries no instant, so there is no zone to name.
 export { formatDate, formatDateTime, DATE_TIME_ZONE } from './format/date';
+
+export { renderRailSvg } from './rail/renderRailSvg';
+export { railGeometry, COMPACT_MIN_WIDTH, SOCIAL_HEIGHT, SOCIAL_WIDTH } from './rail/geometry';
+export type { RailData, RailGeometry, RailTick } from './rail/geometry';

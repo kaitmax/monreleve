@@ -65,6 +65,28 @@ const SOCIAL_RAIL_FRACTION = 0.6;
 const BAND_NAME_LINE = 14;
 const LABEL_LINE = 18;
 
+/** Caption 13/18 for the rate on a rail, Display 48/56 on the social card. */
+const RATE_LINE_INLINE = 18;
+const RATE_LINE_SOCIAL = 56;
+
+/** H2 24/32 for the product name, social card only. */
+const PRODUCT_NAME_LINE = 32;
+
+/**
+ * The font SIZES of those same steps, mirrored from --type-*-size and proved
+ * equal to them in rail-tokens.test.ts.
+ *
+ * A baseline is placed at rowTop + size rather than at the row's bottom edge.
+ * Putting it at the bottom is the obvious arithmetic and it clips every
+ * descender: the first render had the tick-label baseline at y = 78 in a
+ * 78-tall SVG, so the comma of "49,9 %" was cut off. Using the size as the
+ * ascent over-allocates slightly, which is the safe direction.
+ */
+export const CAPTION_SIZE = 13;
+export const MICRO_SIZE = 11;
+export const DISPLAY_SIZE = 48;
+export const H2_SIZE = 24;
+
 /** One --space-1 between each stacked row. */
 const ROW_GAP = 4;
 
@@ -118,6 +140,9 @@ export interface RailGeometry {
   readonly bandNamesShown: boolean;
   readonly bandNameBaselineY: number;
   readonly rateBaselineY: number;
+  /** The social card names the product; the other variants do not. */
+  readonly productNameShown: boolean;
+  readonly productNameBaselineY: number;
 }
 
 /** Three decimals, so the arithmetic order cannot change the bytes. */
@@ -160,20 +185,32 @@ export function railGeometry(data: RailData, thresholds: ZoneThresholds): RailGe
   const trackX = round(social ? (svgWidth - trackWidth) / 2 : 0);
 
   const bandNamesShown = !compact;
+  const productNameShown = social;
 
-  // Rows, top to bottom: band names, the bar with its protrusions, the tick
-  // labels. The bar's own row is TRACK_HEIGHT plus a protrusion each side.
+  // ROWS, top to bottom: product name (social only), the rate, the band
+  // names, the bar with its protrusions, the tick labels.
+  //
+  // The rate gets a row of its own rather than sharing one. It cannot go
+  // beside the band names, which are centred over their bands and already
+  // span most of the width, and it cannot go beside the tick labels, which
+  // R39 anchors outward from 40 % and 49.9 % of the track. Every other
+  // placement collides at some width, and a label that overlaps at 320 px is
+  // a defect the baselines would only catch if a baseline happened to be
+  // taken there.
+  const productNameRow = productNameShown ? PRODUCT_NAME_LINE + ROW_GAP : 0;
+  const rateLine = social ? RATE_LINE_SOCIAL : RATE_LINE_INLINE;
+  const rateRow = rateLine + ROW_GAP;
   const bandNameRow = bandNamesShown ? BAND_NAME_LINE + ROW_GAP : 0;
   const barRow = TRACK_HEIGHT + TICK_PROTRUSION * 2;
   const labelRow = ROW_GAP + LABEL_LINE;
-  const stackHeight = bandNameRow + barRow + labelRow;
+  const stackHeight = productNameRow + rateRow + bandNameRow + barRow + labelRow;
 
   const svgHeight = social ? SOCIAL_HEIGHT : stackHeight;
   // On the social card the whole stack is centred vertically; elsewhere it
   // starts at the top.
   const stackTop = social ? round((SOCIAL_HEIGHT - stackHeight) / 2) : 0;
 
-  const trackY = round(stackTop + bandNameRow + TICK_PROTRUSION);
+  const trackY = round(stackTop + productNameRow + rateRow + bandNameRow + TICK_PROTRUSION);
   const rx = TRACK_HEIGHT / 2;
 
   const fillFraction = clamp(data.percentage, 0, PERCENT) / PERCENT;
@@ -195,7 +232,7 @@ export function railGeometry(data: RailData, thresholds: ZoneThresholds): RailGe
     rx,
   };
 
-  const labelBaselineY = round(trackY + TRACK_HEIGHT + TICK_PROTRUSION + ROW_GAP + LABEL_LINE);
+  const labelBaselineY = round(trackY + TRACK_HEIGHT + TICK_PROTRUSION + ROW_GAP + CAPTION_SIZE);
 
   const tickAt = (ceilingFraction: number, anchor: 'start' | 'end'): RailTick => {
     const percentage = ceilingFraction * PERCENT;
@@ -226,7 +263,9 @@ export function railGeometry(data: RailData, thresholds: ZoneThresholds): RailGe
     clampedFill,
     clampedWidth,
     bandNamesShown,
-    bandNameBaselineY: round(stackTop + BAND_NAME_LINE),
-    rateBaselineY: labelBaselineY,
+    bandNameBaselineY: round(stackTop + productNameRow + rateRow + MICRO_SIZE),
+    rateBaselineY: round(stackTop + productNameRow + (social ? DISPLAY_SIZE : CAPTION_SIZE)),
+    productNameShown,
+    productNameBaselineY: round(stackTop + H2_SIZE),
   };
 }
