@@ -1,0 +1,117 @@
+name: property sweep (rotating seed, non-blocking)
+
+# Ruling R24. The blocking CI path keeps the fixed seed 20260907, because a
+# blocking check must be reproducible: a rotating seed that goes red at 3 a.m.
+# on a case nobody can reproduce trains people to re-run rather than read.
+#
+# This job is the other half of that trade. It runs each property at 10x the
+# case count with a date-derived seed, REPORTS to the job summary and an
+# artifact, and NEVER blocks anything. Any falsifying case it finds is
+# promoted to a fixed regression test in the next task - the summary says so,
+# so whoever reads it knows what to do without looking up the ruling.
+
+on:
+  schedule:
+    # Mondays at 04:17 UTC. Off the hour on purpose: the top of the hour is
+    # when every scheduled job on GitHub queues at once.
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: 'Override the date-derived seed (blank = derive from today)'
+        required: false
+        default: ''
+      runs:
+        description: 'Cases per property'
+        required: false
+        default: '100000'
+
+permissions:
+  contents: read
+
+jobs:
+  sweep:
+    name: rotating-seed property sweep
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Derive the seed
+        id: seed
+        run: |
+          if [ -n "${{ inputs.seed }}" ]; then
+            SEED="${{ inputs.seed }}"
+          else
+            SEED="$(date -u +%Y%m%d)"
+          fi
+          RUNS="${{ inputs.runs || '100000' }}"
+          echo "PROPERTY_SEED=$SEED" >> "$GITHUB_ENV"
+          echo "PROPERTY_RUNS=$RUNS" >> "$GITHUB_ENV"
+          echo "seed=$SEED" >> "$GITHUB_OUTPUT"
+          echo "runs=$RUNS" >> "$GITHUB_OUTPUT"
+
+      # continue-on-error so the artifact upload and the summary always run.
+      # A falsifying case must be REPORTED, and a job that aborted before
+      # writing its summary would report nothing.
+      - name: Run the property suites
+        id: sweep
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          pnpm exec vitest run tests/unit/calc-engine/properties-1-4.test.ts \
+            tests/unit/calc-engine/properties-5-8.test.ts \
+            2>&1 | tee ../property-sweep.log
+
+      - name: Write the job summary
+        if: ${{ !cancelled() }}
+        run: |
+          {
+            echo "## Rotating-seed property sweep"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| seed | \`${{ steps.seed.outputs.seed }}\` (date-derived; the blocking path uses the fixed \`20260907\`) |"
+            echo "| cases per property | \`${{ steps.seed.outputs.runs }}\` |"
+            echo "| outcome | **${{ steps.sweep.outcome == 'success' && 'no counterexample found' || 'FALSIFIED - see below' }}** |"
+            echo
+            if [ "${{ steps.sweep.outcome }}" != "success" ]; then
+              echo "### A property was falsified"
+              echo
+              echo "**This job does not block, and it is not a build failure.** What it means:"
+              echo
+              echo "1. fast-check found an input the engine mishandles that the fixed seed never reaches."
+              echo "2. The counterexample below is the deliverable. Copy it."
+              echo "3. Ruling R24: promote it to a **fixed regression test** in the next task -"
+              echo "   a named case with the literal input, not a seed change. Seeds rotate;"
+              echo "   regression tests do not."
+              echo
+              echo '```'
+              grep -A4 -E "Property failed|Counterexample" ../property-sweep.log | head -60 || true
+              echo '```'
+            else
+              echo "No counterexample at this seed. The suite has now been"
+              echo "exercised over $(( ${{ steps.seed.outputs.runs }} * 8 )) generated cases"
+              echo "beyond the ones the blocking path covers."
+            fi
+            echo
+            echo "Full log in the \`property-sweep-log\` artifact."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: property-sweep-log
+          path: property-sweep.log
+          retention-days: 30

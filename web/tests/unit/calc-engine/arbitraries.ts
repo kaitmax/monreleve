@@ -113,8 +113,37 @@ export const validInputArb: fc.Arbitrary<TeleworkInput> = fc
     };
   });
 
-/** Runs enough cases to satisfy AC1, seeded so a failure is reproducible. */
-export const RUN_CONFIG = { numRuns: 10_000, seed: 20260907 } as const;
+/**
+ * The blocking path: 10 000 cases at a FIXED seed (ruling R24).
+ *
+ * Reproducibility is the point. A rotating seed on a blocking check goes red
+ * at 3 a.m. on a case nobody can reproduce, which trains people to re-run
+ * rather than read. The rotating sweep lives in its own weekly workflow,
+ * reports, and never blocks; anything it falsifies is promoted to a fixed
+ * regression test in the next task.
+ *
+ * Both values are overridable by environment variable so that one suite
+ * serves both paths - there is no second copy of the properties to drift.
+ */
+const FIXED_SEED = 20260907;
+const FIXED_RUNS = 10_000;
 
-/** Fewer runs, for the deliberately-broken variants that must be falsified. */
-export const FALSIFY_CONFIG = { numRuns: 2_000, seed: 20260907 } as const;
+function fromEnv(name: string, fallback: number): number {
+  const raw = Number(process.env[name]);
+
+  return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : fallback;
+}
+
+export const PROPERTY_RUNS = fromEnv('PROPERTY_RUNS', FIXED_RUNS);
+export const PROPERTY_SEED = fromEnv('PROPERTY_SEED', FIXED_SEED);
+export const IS_ROTATING_SWEEP =
+  PROPERTY_SEED !== FIXED_SEED || PROPERTY_RUNS !== FIXED_RUNS;
+
+export const RUN_CONFIG = { numRuns: PROPERTY_RUNS, seed: PROPERTY_SEED } as const;
+
+/**
+ * Fewer runs, for the deliberately-broken variants that must be falsified.
+ * Deliberately NOT scaled by the sweep: these must fail fast, and running a
+ * known-broken variant 100 000 times proves nothing the first failure did not.
+ */
+export const FALSIFY_CONFIG = { numRuns: 2_000, seed: FIXED_SEED } as const;
