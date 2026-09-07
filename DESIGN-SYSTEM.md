@@ -18,8 +18,9 @@ TYPE: Display 48/56 600 (large statistics only) · H1 32/40 700 · H2 24/32 700 
 
 SPACING: 4 px base. 4 · 8 · 12 · 16 · 20 · 24 · 28 · 32 · 40 · 48 · 64 · 80. Screen horizontal padding 20 px (mobile), 32 px (desktop, max content 1440).
 
-RADIUS (tokens only, never arbitrary): xs 4 · sm 8 · md 12 · lg 16 · xl 20 · 2xl 24 · pill 999.
-  Buttons 12 · Large primary button 14 · Inputs 12 · Small badge 8 · Card 16 · Large status card 20 · Bottom sheet 24 (top corners) · Chips/progress/confidence bars 999.
+RADIUS — a closed set of nine token names, never arbitrary (see §4.1):
+  xs 4 · checkbox 6 · sm 8 · md 12 · button-lg 14 · lg 16 · xl 20 · 2xl 24 · pill 999.
+  Component mapping (this is where it lives; there are no CSS aliases): Buttons and inputs md · Large primary button button-lg · Small badge sm · Checkbox checkbox · Card lg · Large status card xl · Bottom sheet 2xl (top corners) · Skeleton sm · Toast md · Chips/progress/confidence bars pill.
 
 COLOUR — LIGHT:
   Background primary (canvas) #F7F8FA · Surface / card #FFFFFF
@@ -108,6 +109,20 @@ These are the only places where the adopted system is constrained by a spec deci
 - **Android** uses Compose `MaterialTheme` **wrapped in `FrontierTheme`** (Frontier §73). Material components are now permitted, themed to these tokens; the former blanket ban on `RoundedCornerShape` becomes a rule that **every radius must be a token** (a lint check rejects any `.dp` radius not in {4, 8, 12, 14, 16, 20, 24, 999}).
 
 ---
+
+## 4.1 How the radius rule is enforced (ruling R8)
+
+The radius scale is closed at both ends, by two independent checks. One alone is not enough: token-name enforcement without a definition check lets a tenth token be invented, and a numeric-set check without use-site enforcement lets a raw length that happens to be in the set past.
+
+**At the point of use — token names only.** `border-radius` and its longhands accept `var(--radius-*)` drawn from the nine names above, plus `0` and `50%` (circles). Enforced by stylelint (`declaration-property-value-allowed-list`).
+
+- A raw length is rejected **even when its value is in the set**: `border-radius: 6px` fails, and `var(--radius-checkbox)` is how you say six.
+- A `var()` from another token family is rejected: `border-radius: var(--space-2)` fails.
+- Multi-value corners compose token names: the bottom sheet is `border-radius: var(--radius-2xl) var(--radius-2xl) 0 0`.
+
+**At the point of definition — the closed numeric set.** A unit test compiles `lib/ui/core/styles/tokens.scss` and asserts that exactly the nine `--radius-*` properties exist, that each equals its documented value (4, 6, 8, 12, 14, 16, 20, 24, 999 px), and that **no other `--radius-*` property exists**. Adding `--radius-foo: 7px` fails both the name assertion and the numeric-set assertion.
+
+**Consequence: the semantic aliases were removed.** `--radius-card`, `--radius-button`, `--radius-input`, `--radius-sheet`, `--radius-badge`, `--radius-card-status`, `--radius-skeleton` and `--radius-toast` no longer exist, because an alias is a tenth name and the definition check counts names, not values. `--radius-button-large` is now `--radius-button-lg`. The component-to-token mapping that those aliases used to carry lives in the §1 token block instead — a document a designer reads, rather than a CSS file only a build reads.
 
 ## 5. What did not change
 

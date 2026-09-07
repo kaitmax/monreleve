@@ -1,0 +1,316 @@
+FW4 SESSION PROMPT - frontalier
+Paste this entire prompt as the first message of a fresh Claude Code
+session, opened at the repository root.
+
+====================================================================
+PRE-STEP RULINGS (apply verbatim)
+====================================================================
+R1 (carried). FW1, FW2 and FW3 are accepted. The commits and reports
+   still have not reached origin/main and CI has never run. Record
+   the state at session start under DEVIATIONS. Non-blocking.
+
+R2 (carried). Budget: GATE A total <= 125 KiB per public route;
+   GATE B feature delta <= 25 KiB over FRAMEWORK_BASELINE_KB. Fonts
+   and CSS reported separately, never counted against a JS gate.
+
+R7 (carried). Guardrail proofs are adversarial.
+
+R8 (carried). Radius enforced at the point of use (token names only)
+   and at the point of definition (the closed set of nine names).
+   The loss of the semantic aliases is accepted: the component-to-
+   token mapping lives in DESIGN-SYSTEM.md section 1, not in CSS
+   aliases.
+
+R9 (SUPERSEDED - this is the fix). The corrected documents were not
+   delivered, twice. Routing them through the operator has failed
+   twice, so the route changes: **you now own the edits.** In
+   increment 0 you update DESIGN-SYSTEM.md and tasks/plan.md
+   yourself, to the exact content specified in increment 0 below, and
+   you write CLAUDE.md from the content specified there. These are
+   the only documents you may edit, and only as specified. Report the
+   diffs.
+
+R10 (new - float hygiene, now normative, spec 7.2 step 2). The
+   proration must multiply before dividing and normalise before
+   rounding. The three live cases - employmentRate 45, 85 and 90 at a
+   7/12 period - move into **fixtures/denominator-cases.json**, a
+   shared, language-neutral file consumed by the TypeScript engine
+   now and the Kotlin engine at AN2; a divergence fails both builds.
+   The comment at the site states that the normalisation is float
+   hygiene and NOT a regulatory rounding rule.
+
+R11 (new - how the rule-set fallback surfaces). `ruleSetFor` returns
+   a bare RuleSet; every RuleSet carries its own taxYear.
+   `calculateTelework` compares input.taxYear with ruleSet.taxYear
+   and, when they differ, emits a new warning
+   `RULE_SET_FALLBACK { requestedYear, appliedYear }`. No extra
+   return type, no silent substitution.
+
+R12 (new - allowedTeleworkDays rounds). `atFiscal` and `atSocial`
+   **floor to the half-day** - the same rule as advisory headroom,
+   because the function answers "how many days may I take" and must
+   never overstate. `missionCap` still **ceils**. `119.76` is
+   therefore wrong for `atSocial`; `119.5` is right. The exact
+   ceiling in days stays available internally as `fiscalCeilingDays`
+   on TeleworkResult. Three rounding behaviours now coexist: each
+   site names its own rule in a comment.
+
+R13 (new - who owns mission travel-day classification). Not the
+   engine: the engine receives already-classified day counts and can
+   never know how a day was spent. Ownership is assigned to copy -
+   FW11 carries one line in the mission helper text, FW17's mission
+   guide carries the full rules from spec 7.2 step 3. In this task
+   they stay comments in the engine, marked informative.
+
+R14 (new). The `NOT_IMPLEMENTED` sentinel is temporary and dies in
+   this task: `calculateTelework` is implemented here, so the code is
+   removed from ValidationError and a test asserts the union no
+   longer contains it.
+
+R15 (new). Verification chains use `&&`, never `;`. A chain must
+   short-circuit so a failing check cannot be followed by a commit.
+
+====================================================================
+CONTEXT
+====================================================================
+Project: frontalier. You are executing task FW4 ONLY, preceded by
+increment 0 (R9's document fix). FW4 is the most consequential task
+in the project: it is the arithmetic that a French tax filing rests
+on, and its correctness is defined by the Geneva tax administration's
+published worked examples.
+
+Read first: CLAUDE.md if present, README.md, SPEC-frontalier-web.md
+section 7 in full - 7.2 (the waterfall), 7.3 (rounding), 7.4 (the
+API), 7.5 (the fixtures), 7.6 (testing) - plus sections 20 and 21,
+tasks/plan.md, tasks/todo.md FW4, and REPORT-FW3.txt.
+
+====================================================================
+THE ORDERING RULE THAT DEFINES THIS TASK
+====================================================================
+**The fixtures are written first and shown FAILING before any
+waterfall code exists.** This is not a preference. A snapshot of
+whatever the code happens to do would bless a wrong reading of the
+40% rule and then defend it against correction, which is why spec 7.6
+forbids snapshot tests in this module entirely.
+
+Concretely: increment 1 writes fixtures/geneva-cases.json and the
+test that reads it, runs it against FW3's stub, and captures six
+failures. Only then does increment 2 begin. A report whose ledger
+shows the fixtures passing on their first run is a bounced task.
+
+====================================================================
+STANDING PROTOCOL (identical in every FW / AN prompt)
+====================================================================
+1. SESSION SCOPE. Increment 0 and FW4 only. Do not start FW5 (the
+   property tests and the coverage gate).
+2. INCREMENT CYCLE. implement -> test -> verify -> commit -> push.
+   Green after EVERY increment. Never more than ~100 lines
+   uncommitted.
+3. COMMIT ONLY ON GREEN, chained with && (R15). A red commit is a
+   bounce.
+4. COMMITS. "FW4: <increment title>"; housekeeping "chore: <title>".
+   Push after each; capture output.
+5. SIMPLICITY FIRST. The waterfall is written as the spec states it,
+   in the spec's order, with the spec's names. No clever
+   restructuring, no early extraction.
+6. TEST-FIRST, RED CAPTURED PER FUNCTION. Same ledger requirement as
+   FW3, and this time with no exceptions: the report has one row per
+   function with its RED output and the reason it failed.
+7. ENGINE PURITY. Zero runtime deps, no I/O, no clock, no imports
+   outside lib/calc-engine. Never throws. No snapshot tests in this
+   module.
+8. SCOPE DISCIPLINE. Out-of-scope observations under NOTICED BUT NOT
+   TOUCHING.
+9. QUESTIONS. Any regulatory ambiguity: PAUSE, ask, record verbatim.
+   If a fixture cannot be made to pass without changing a rule, that
+   is a question, never a code change.
+10. EXIT ARTIFACT. REPORT-FW4.txt, committed and pushed.
+
+====================================================================
+INCREMENT 0 - DOCUMENT FIX (R9), you own these edits
+====================================================================
+0a. CLAUDE.md at the repo root, if absent. Content: a warning that
+    any CLAUDE.md in a parent directory belongs to a different
+    project (a Morocco travel platform with next-intl and
+    messages/{fr,en}.json) and must be ignored entirely, since this
+    project is single-locale French with no i18n abstraction; the
+    reading order README.md -> SPEC-frontalier-web.md -> DESIGN-
+    SYSTEM.md -> tasks/plan.md -> tasks/todo.md -> relay/<TASK>.txt;
+    and the never-relaxed rules: one task per session, commit only on
+    green, test-first, tokens only, French strings only in lib/fr,
+    engine reproduces the Geneva fixtures, timestamps server-assigned,
+    the app never records a day by itself, no coordinate ever stored
+    or sent, no map or live location, spec section 20 Ask-first
+    items stop and ask, every session ends with a report.
+0b. DESIGN-SYSTEM.md: bring it level with the code it is meant to be
+    the source of. (i) The radius line in the section 1 token block
+    becomes the nine names with their values: xs 4, checkbox 6, sm 8,
+    md 12, button-lg 14, lg 16, xl 20, 2xl 24, pill 999. (ii) Add a
+    section 4.1, "How the radius rule is enforced (ruling R8)",
+    stating both checks - token names only at the point of use
+    (var(--radius-*) from the nine, plus 0 and 50%; a raw length
+    rejected even when its value is in the set; multi-value corners
+    compose token names) and the closed numeric set at the point of
+    definition (a unit test asserts the nine names, their values, and
+    that no other --radius-* property exists) - and recording that
+    the semantic aliases were removed as a consequence, with the
+    component mapping living in section 1.
+0c. tasks/plan.md, Test Discipline: add the adversarial-proof rule
+    (a fence proof includes the straight violation and at least one
+    evasion - path trick, alternate extension, re-export, dynamic
+    import), the && chaining rule (R15), and the float-hygiene rule
+    (R10: multiply before dividing, normalise before rounding,
+    comment the site as float hygiene, put float-only cases in shared
+    fixtures because the Kotlin port shares the defect).
+    Commit: "chore: bring design system and plan level with the code
+    (R9)". Push. Report the diffs.
+
+====================================================================
+TASK FW4 - WATERFALL, RATES, HEADROOM, WARNINGS, FIXTURES
+====================================================================
+Acceptance criteria (restated; the report must prove each):
+AC1. All six Geneva cases reproduce exactly - a 30.00, b 40.00
+     (237/3), c 39.16 (226/14), d 40.00 (230/10), e 60.00 (91/149),
+     special 4.16 (220/20) - and were shown FAILING before the
+     waterfall existed.
+AC2. The three rounding behaviours live in separate files, each site
+     commented with its own rule: truncate to 2 dp for
+     declarableRate (must match the AFC filing), floor to the
+     half-day for advisory headroom and for allowedTeleworkDays
+     (R12), ceil for the mission cap.
+AC3. Boundary tests at exactly 40.0% and 49.9%; mission cap ceils at
+     rates 1 / 50 / 80 / 100; when telework alone exceeds 40%,
+     mission days are excluded from declarableRate.
+
+--------------------------------------------------------------------
+INCREMENT 1 - FIXTURES FIRST, RED CAPTURED
+--------------------------------------------------------------------
+- fixtures/geneva-cases.json at the repo root: the six cases from
+  spec 7.5, all on totalWorkDays 240, taxYear 2026, each with its
+  inputs and its four expected outputs (swissTaxedDays,
+  frenchTaxedDays, declarableRate, regimeApplies), plus a `source`
+  string naming the Geneva publication and a `note` where the case
+  illustrates something specific.
+- fixtures/denominator-cases.json (R10): the three float cases -
+  employmentRate 45, 85, 90 at periodFraction 7/12 - with the
+  expected denominator, and a comment field stating that these exist
+  because naive evaluation yields 63.000000000000007.
+- A test that READS both files (never a copy of their contents in
+  TypeScript) and asserts each case.
+- Run it. Capture SIX failures from the Geneva file with their
+  reasons, and the three denominator cases passing (FW3 already
+  fixed that path - if they fail, stop and report).
+- Commit: "FW4: Geneva and denominator fixtures, failing". Push.
+  This commit is green in the sense that lint, typecheck and build
+  pass; the fixture test is expected red and its redness is the
+  deliverable. State that in the commit body.
+
+--------------------------------------------------------------------
+INCREMENT 2 - THE WATERFALL
+--------------------------------------------------------------------
+- lib/calc-engine/waterfall.ts, exactly as spec 7.2 step 5: the
+  regime-lost branch first (telework alone above the fiscal ceiling
+  -> declarableRate excludes missions, frenchTaxedDays includes them,
+  regimeApplies false); otherwise headroom, budget = min(missionCap,
+  headroom), **France missions imputed before third-state**, credited
+  missions, and the four outputs.
+- The two details the spec calls out as easy to get wrong get a
+  named test each: missions excluded from the declared rate when
+  telework alone exceeds 40%, and the France-before-third-state
+  imputation order changing frenchTaxedDays composition.
+- Commit: "FW4: the mission-imputation waterfall". Push.
+
+--------------------------------------------------------------------
+INCREMENT 3 - RATES
+--------------------------------------------------------------------
+- declarable-rate.ts: declarableRate TRUNCATES to 2 dp - Geneva
+  publishes 39.16 for 94/240 and 4.16 for 10/240, and rounding would
+  give 39.17 and 4.17. rawRate rounds UP to 1 dp. The two live in
+  separate files so they cannot be accidentally unified; each carries
+  the comment naming its rule.
+- Tests at the two published values plus a case where the two rates
+  differ materially (Geneva c: 39.16 declarable against 45.0 raw).
+- Commit: "FW4: declarable rate (truncated) and raw rate". Push.
+
+--------------------------------------------------------------------
+INCREMENT 4 - HEADROOM AND THE ADVISORY RULE
+--------------------------------------------------------------------
+- headroom.ts: remainingToFiscal and remainingToSocial floor to the
+  half-day, negatives REPORTED not clamped ("6 jours au-dessus"
+  beats "0 restants").
+- Apply R12: allowedTeleworkDays now floors atFiscal and atSocial to
+  the half-day; missionCap still ceils. Update FW3's tests for the
+  new expectation and state in the report that this is a ruled
+  change, not a regression.
+- Commit: "FW4: headroom, and advisory flooring per R12". Push.
+
+--------------------------------------------------------------------
+INCREMENT 5 - WARNINGS AND calculateTelework
+--------------------------------------------------------------------
+- warnings.ts emitting all eight codes: FISCAL_CEILING_EXCEEDED,
+  MISSION_CAP_EXCEEDED, MISSIONS_EXCEED_HEADROOM,
+  SOCIAL_CEILING_EXCEEDED, A1_REQUIRED, FRONTALIER_STATUS_AT_RISK
+  (residence-1983 only), EXACT_METHOD_UNVERIFIED, and
+  RULE_SET_FALLBACK (R11).
+- calculateTelework wires validation -> ruleSet -> denominator ->
+  granularity -> waterfall -> rates -> headroom -> warnings, and
+  emits RULE_SET_FALLBACK when input.taxYear differs from
+  ruleSet.taxYear.
+- Remove NOT_IMPLEMENTED from ValidationError (R14) and add the test
+  asserting the union no longer contains it.
+- Run the fixture test: all six Geneva cases must now pass. Capture
+  the GREEN run beside increment 1's RED.
+- Commit: "FW4: warnings and calculateTelework - Geneva fixtures
+  green". Push.
+
+--------------------------------------------------------------------
+INCREMENT 6 - BOUNDARIES
+--------------------------------------------------------------------
+- Tests at exactly 40.0% and exactly 49.9% (both sides of each);
+  mission cap ceiling at rates 1 / 50 / 80 / 100; a residence-1983
+  canton breaching the ceiling emitting FRONTALIER_STATUS_AT_RISK; a
+  part-time mid-year start combining proration and the cap.
+- Record engine coverage (the gate is FW5; report the number).
+- Commit: "FW4: threshold and proration boundary tests". Push.
+
+====================================================================
+OUT OF SCOPE FOR FW4
+====================================================================
+- Property tests and the 100% coverage gate - FW5.
+- reviewer-cases - Checkpoint A and the named reviewer.
+- Any UI, formatter, route, Prisma, or anything under android/.
+- Any change to a published constant or a rounding rule. If a fixture
+  will not pass, that is a question.
+
+====================================================================
+FINAL VERIFICATION
+====================================================================
+pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm size
+Green in one run on the final commit, with all six Geneva cases and
+all three denominator cases passing.
+
+====================================================================
+REPORT FORMAT - REPORT-FW4.txt (pure ASCII, committed and pushed)
+====================================================================
+SUMMARY
+PRECONDITIONS       origin/main and CI status per R1.
+INCREMENT 0         The three document diffs, commit, push.
+FIXTURE LEDGER      The six Geneva cases: the RED run from increment
+                    1 with each failure's reason, and the GREEN run
+                    from increment 5, side by side. Then the three
+                    denominator cases.
+RED/GREEN LEDGER    One row per function: function | test file | RED
+                    output | GREEN output.
+INCREMENTS 1-6      Files, trimmed commands, commit hash, push.
+ROUNDING SITES      Every rounding site with the file, the line, and
+                    the rule its comment names - so a reader can see
+                    the three behaviours are separated.
+RULED CHANGES       R12's change to allowedTeleworkDays, and R14's
+                    removal of NOT_IMPLEMENTED.
+COVERAGE            Current lib/calc-engine coverage, as a number.
+DEVIATIONS
+NOTICED BUT NOT TOUCHING
+QUESTIONS FOR THE OPERATOR
+PUSH PROOF          git log --oneline for the session; final push.
+
+END OF FW4 PROMPT

@@ -1,0 +1,68 @@
+# CLAUDE.md — frontalier
+
+A French-language product for cross-border workers who live in France and work in Switzerland. It answers one expensive question — how many telework days are left before the 40 % fiscal threshold and the 49,9 % social-security threshold — and produces the **Relevé annuel de télétravail**, an audit-defensible PDF in which every recorded day carries a server-assigned timestamp and its provenance.
+
+One backend, two clients: a public Next.js site (`web/`) and an Android app (`android/`).
+
+---
+
+## Ignore any CLAUDE.md above this directory
+
+If a `CLAUDE.md` exists in a parent directory, **it belongs to a different project** — a Morocco trekking/desert travel platform, with `next-intl`, `messages/{fr,en}.json`, a `wa.me` handoff, agency approval flows and commission maths. None of it applies here, and following it would actively break this product:
+
+| That project says | This project requires |
+|---|---|
+| `messages/{fr,en}.json` for user-facing strings | `lib/fr` only — single-locale French, **no i18n abstraction** (SPEC §1 non-goals) |
+| `app/[locale]/…` route groups | no locale segment; one locale by design |
+| agencies, trips, leads, commission | none of these concepts exist |
+
+Read it as belonging to a neighbour, not as instructions. This file and `README.md` are the authority for this repository.
+
+---
+
+## Reading order
+
+1. `README.md` — how work happens here, the standing protocol
+2. `SPEC-frontalier-web.md` — normative. §2 the decisions D1–D40, §7 the calculation engine, §8 the data model, §13 detection, §20 the boundaries, §21 success criteria
+3. `DESIGN-SYSTEM.md` — the token block (§1), the product overrides (§2), radius enforcement (§4.1)
+4. `tasks/plan.md` — phases, checkpoints, Definition of Done, the Execution / Test / UI disciplines
+5. `tasks/todo.md` — the 45 tasks, FW1–FW29 and AN1–AN15, each with acceptance criteria
+6. `relay/<TASK>.txt` — the session prompt for the one task you are doing, carrying every prior ruling verbatim
+
+Anything not covered by those: **ask**. Never invent a product decision.
+
+---
+
+## Rules that are never relaxed
+
+- **One task per session.** The prompt names it. Nothing outside it is touched; out-of-scope observations go in the report under *NOTICED BUT NOT TOUCHING*.
+- **Commit only on green.** `pnpm typecheck && pnpm lint && pnpm test && pnpm build` all pass on the increment, chained with `&&` so a failure cannot be followed by a commit. A red commit is a bounce.
+- **Test-first.** New behaviour gets its failing test before the code, and the report shows the RED run with the reason it failed. A test that passed on its first run is evidence of nothing.
+- **Design tokens only.** No raw hex, radius, spacing or type value outside `lib/ui/core/styles/tokens.scss`. Radius is a closed set of nine token names (`DESIGN-SYSTEM.md` §4.1).
+- **French strings only in `lib/fr`.** Never inline in JSX; `react/jsx-no-literals` enforces it.
+- **The engine reproduces the Geneva fixtures exactly**, including their rounding — 39,16 % and 4,16 %. If a fixture fails, nothing ships, and a fixture that will not pass is a **question**, never a code change.
+- **Timestamps are server-assigned.** No API path accepts a client `recordedAt`. `EntryEvent` is append-only.
+- **The app never records a day by itself.** Detection proposes; the user's tap creates the entry.
+- **No coordinate is ever stored, logged or transmitted.** Country is determined on-device against a bundled border polygon and the fix is discarded. The API rejects any payload carrying one.
+- **No map, no live location dot, no movement timeline**, anywhere.
+- **Never claim more than the record supports.** *Déclaré, enregistré, horodaté* — never *certifié, attesté, conforme*.
+- **SPEC §20 "Ask first" items stop and ask.** Any runtime dependency in `calc-engine`; any change to a constant, a rounding rule or the engine's public API; adding a token outside `DESIGN-SYSTEM.md`; raising a size budget; any third-party script. Record the ruling verbatim in the report.
+- **Every session ends with a report.** `REPORT-<TASK>.txt` at the repo root, pure ASCII, committed and pushed, in the format the session prompt specifies. The session is not done until it exists.
+
+---
+
+## Commands
+
+All from `web/`. There is no root `package.json` and no pnpm workspace (SPEC D1).
+
+```
+pnpm install
+pnpm dev · pnpm build · pnpm start
+pnpm typecheck · pnpm lint          # eslint + stylelint
+pnpm test · pnpm test:e2e
+pnpm size · pnpm lighthouse
+```
+
+Engine tests: `pnpm exec vitest run tests/unit/calc-engine`. They live outside `lib/calc-engine` because the engine fence forbids every non-relative import inside it, and a co-located test would have to import `vitest`.
+
+Budgets (R2): GATE A total first-load JS ≤ 125 KiB per public route; GATE B feature delta ≤ 25 KiB over the recorded framework baseline. Fonts and CSS are reported separately and never counted against a JS gate.
