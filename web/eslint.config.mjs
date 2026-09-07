@@ -147,11 +147,87 @@ export default tseslint.config(
           ],
         },
       ],
+      // The DOM itself, not just the packages that wrap it.
+      //
+      // Found by probing in FW7: a file here using document.createElementNS,
+      // new XMLSerializer() and window.innerWidth linted CLEAN. Every rule in
+      // this block was import-based, and the DOM needs no import - it is
+      // ambient, and `globals: globals.browser` is applied to lib/** at the
+      // top of this file, so the identifiers are declared and no-undef says
+      // nothing.
+      //
+      // The rail is the module with a real reason to reach for it: XML
+      // escaping and serialisation. XMLSerializer would produce different
+      // bytes in Node and the browser - destroying the byte-identity SPEC 19
+      // and 21 require - and would give the PDF path no escaping at all,
+      // because it does not exist in Node.
+      'no-restricted-globals': [
+        'error',
+        ...[
+          'document',
+          'window',
+          'navigator',
+          'location',
+          'history',
+          'localStorage',
+          'sessionStorage',
+          'XMLSerializer',
+          'DOMParser',
+          'getComputedStyle',
+          'requestAnimationFrame',
+          'HTMLElement',
+          'SVGElement',
+          'Element',
+          'Node',
+        ].map((name) => ({ name, message: CORE_MESSAGE })),
+      ],
+
       'no-restricted-syntax': [
         'error',
         {
           selector:
             'ImportExpression[source.value=/^(react|react-dom|lucide-react|next|@carbon|@mui|antd)/]',
+          message: CORE_MESSAGE,
+        },
+        // globalThis.document is a MEMBER EXPRESSION, so no-restricted-globals
+        // - which matches bare identifiers resolving to the global scope -
+        // does not see it. Probed and confirmed in FW7. Same for
+        // globalThis['document'].
+        {
+          selector:
+            'MemberExpression[object.name="globalThis"][property.name=/^(document|window|navigator|location|history|localStorage|sessionStorage|XMLSerializer|DOMParser)$/]',
+          message: CORE_MESSAGE,
+        },
+        {
+          selector: 'MemberExpression[object.name="globalThis"][computed=true]',
+          message: CORE_MESSAGE,
+        },
+        // A dynamic import that LEAVES this directory, which is how the DOM
+        // gets in indirectly. Probed in FW7 before these three existed:
+        // import('../../dom-helper'), import('@/lib/whatever') and
+        // import(someVariable) were all CLEAN, so every rule above could be
+        // satisfied by a module that simply imported its way out.
+        //
+        // A './' import that stays inside is deliberately still allowed: the
+        // module it reaches is under lib/ui/core and is fenced by this very
+        // block, so it cannot hold the DOM either. The fence is the
+        // directory, not the file.
+        //
+        // Same negative-lookahead shape as the engine fence, and for the same
+        // reason: a group of '*' would also forbid './types', and gitignore
+        // semantics cannot express "everything except a path that stays here".
+        {
+          selector: 'ImportExpression[source.value=/^(?!\\.\\/)/]',
+          message: CORE_MESSAGE,
+        },
+        {
+          selector: 'ImportExpression[source.value=/(^|\\/)\\.\\.(\\/|$)/]',
+          message: CORE_MESSAGE,
+        },
+        // A computed specifier cannot be checked at all, so it is refused
+        // rather than guessed at.
+        {
+          selector: 'ImportExpression[source.type!="Literal"]',
           message: CORE_MESSAGE,
         },
         {
