@@ -33,6 +33,12 @@ const UI_LIBRARIES = [
   'antd',
 ];
 
+const ENGINE_TYPES_ONLY_MESSAGE =
+  'lib/ui/core may import TYPES from lib/calc-engine and nothing else ' +
+  '(SPEC section 5): "lib/ui imports types from calc-engine, never logic; it ' +
+  'computes nothing." Use `import type`. If you need a threshold, take it as ' +
+  'a parameter - SPEC 7.7 makes RuleSet the only place a threshold may appear.';
+
 const SPIKE_MESSAGE =
   'app/dev/spike is the FW2 bundle spike: throwaway markup that exists to be ' +
   'weighed, not reused. The component library is lib/ui/react (FW8-FW9).';
@@ -117,6 +123,27 @@ export default tseslint.config(
           patterns: [
             { group: UI_LIBRARIES, message: CORE_MESSAGE },
             { group: SPIKE_PATHS, message: SPIKE_MESSAGE },
+          ],
+        },
+      ],
+
+      // SPEC section 5, boundary 3 of 5: "lib/ui imports TYPES from
+      // calc-engine, never logic; it computes nothing." Until FW6 there was
+      // no code here to violate it and no rule to stop it; zones.ts is the
+      // first file to import from the engine, so the fence lands with it.
+      //
+      // This is the typescript-eslint variant specifically, because only it
+      // understands allowTypeImports. `import type { RuleSet }` passes;
+      // `import { ruleSetFor }` does not.
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@/lib/calc-engine', '@/lib/calc-engine/*', '**/calc-engine', '**/calc-engine/*'],
+              allowTypeImports: true,
+              message: ENGINE_TYPES_ONLY_MESSAGE,
+            },
           ],
         },
       ],
