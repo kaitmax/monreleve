@@ -17,6 +17,7 @@
 // place a threshold may appear - a copy of 40 or 49.9 here would be a second
 // source of truth for the numbers the whole product turns on.
 
+import { STATUS_COPY } from '@/lib/fr/statuses';
 import type { RuleSet, TeleworkResult } from '@/lib/calc-engine';
 
 /** The rail's three regulatory bands. */
@@ -33,6 +34,77 @@ export type ZoneThresholds = Pick<RuleSet, 'fiscalCeiling' | 'socialCeiling'>;
 
 /** Fraction to percentage. RuleSet ceilings are fractions; rates are percent. */
 const PERCENT = 1e2;
+
+/**
+ * A Lucide icon name in kebab-case, which is the form DESIGN-SYSTEM.md and the
+ * Android port both use. lucide-react keys its icons in PascalCase, so the
+ * React layer converts at FW8; a test asserts every name here resolves to a
+ * real Lucide icon, because a typo renders an empty badge rather than an
+ * error.
+ */
+export type LucideIconName = string;
+
+/**
+ * Everything a badge needs. SPEC 6.2: "Every status carries icon + label +
+ * one-line explanation, identical on web, Android, and PDF." DESIGN-SYSTEM.md
+ * section 1: "STATUS IS NEVER COLOUR ALONE: colour + icon + text, always."
+ */
+export interface StatusPresentation {
+  readonly label: string;
+  readonly explanation: string;
+  readonly icon: LucideIconName;
+  /** A DESIGN-SYSTEM.md token name. Never a hex - this module has no colours. */
+  readonly colourToken: string;
+  readonly softColourToken: string;
+}
+
+export const STATUS_PRESENTATION: Record<Status, StatusPresentation> = {
+  compliant: {
+    ...STATUS_COPY.compliant,
+    icon: 'circle-check',
+    colourToken: '--colour-success',
+    softColourToken: '--colour-success-soft',
+  },
+
+  // The warning badge on the green band (SPEC 6.2). Success here would make
+  // the badge agree with the rail and the exposure invisible.
+  'mission-exposure': {
+    ...STATUS_COPY['mission-exposure'],
+    icon: 'triangle-alert',
+    colourToken: '--colour-warning',
+    softColourToken: '--colour-warning-soft',
+  },
+
+  'regime-lost': {
+    ...STATUS_COPY['regime-lost'],
+    icon: 'circle-x',
+    colourToken: '--colour-error',
+    softColourToken: '--colour-error-soft',
+  },
+
+  // Distinct icon from regime-lost, deliberately. Both are error-coloured, and
+  // a badge that looks identical for "you lost the tax regime" and "your
+  // social security affiliation moves" would flatten two different legal
+  // consequences into one picture. Raised in the report as a design choice.
+  'social-switch': {
+    ...STATUS_COPY['social-switch'],
+    icon: 'octagon-alert',
+    colourToken: '--colour-error',
+    softColourToken: '--colour-error-soft',
+  },
+};
+
+/**
+ * Zone to band colour (SPEC 6.2): the three bands are coloured success /
+ * warning / error. The rail is coloured by ZONE and never by Status - that is
+ * a review rejection - which is why this map is keyed by Zone and lives apart
+ * from STATUS_PRESENTATION.
+ */
+export const ZONE_BAND_TOKEN: Record<Zone, string> = {
+  compliant: '--colour-success',
+  'fiscal-exposure': '--colour-warning',
+  'social-switch': '--colour-error',
+};
 
 /**
  * Which band a declarable rate falls in.
