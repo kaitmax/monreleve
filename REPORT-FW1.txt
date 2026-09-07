@@ -5,7 +5,7 @@ SUMMARY
 -------
 The web client now exists. web/ is a Next.js 15 App Router project on React 19
 with TypeScript strict and noUncheckedIndexedAccess, the Frontier Work token
-layer compiled from DESIGN-SYSTEM.md section 1 into 126 CSS custom properties,
+layer compiled from DESIGN-SYSTEM.md section 1 into 129 CSS custom properties,
 and Inter self-hosted from @fontsource-variable/inter with tabular numerals
 proven in a real browser.
 
@@ -18,13 +18,17 @@ would otherwise have let it through silently.
 Vitest and Playwright harnesses run, a first-load JS budget script measures
 every route from the Next build manifests, a Lighthouse CI stub runs, the
 /dev/composants workbench stub is noindex, and a GitHub Actions workflow runs
-typecheck, lint, test, build, size and e2e.
+typecheck, lint, test, build, e2e and size.
 
-Two things did not land clean and both need an operator ruling. The 100 KB
-public budget is exceeded by the empty scaffold (102.1 KiB gzip on / with one
-h1 on the page), so pnpm size is red by design rather than by defect. And the
-final commit could not be pushed: the GitHub token in use lacks the workflow
-OAuth scope, so .github/workflows/ci.yml is rejected by the remote.
+A review pass over the finished work found four defects in it, all now fixed
+and re-proven; REVIEW PASS below records what they were, because two of them
+were guardrails this report previously claimed were closed and were not.
+
+Two things still need an operator ruling. The 100 KB public budget is exceeded
+by the empty scaffold, though only by 628 bytes, so pnpm size is red by design
+rather than by defect. And the last commits cannot be pushed: the GitHub token
+in use lacks the workflow OAuth scope, so .github/workflows/ci.yml is rejected
+by the remote.
 
 ENVIRONMENT
 -----------
@@ -53,6 +57,9 @@ All pnpm commands run from web/. There is no root package.json and no pnpm
 workspace: SPEC D1 is explicit that this is a single package and that the
 module boundaries are lint rules, not workspace packages.
 
+Throughout INCREMENTS, web/pnpm-lock.yaml is omitted from the file lists as
+generated output; it changes in every commit that adds a dependency.
+
 INCREMENTS
 ----------
 
@@ -60,7 +67,7 @@ INCREMENT 1 - Next.js scaffold and module skeleton      commit 0fcdce7
 Created: .gitignore, web/package.json, web/tsconfig.json, web/next.config.ts,
 web/eslint.config.mjs, web/next-env.d.ts, web/app/layout.tsx, web/app/page.tsx,
 web/lib/calc-engine/index.ts, web/lib/ui/core/index.ts,
-web/lib/ui/react/index.ts, web/lib/fr/index.ts, web/pnpm-lock.yaml.
+web/lib/ui/react/index.ts, web/lib/fr/index.ts.
 
   $ pnpm typecheck
   $ tsc --noEmit
@@ -70,6 +77,29 @@ web/lib/ui/react/index.ts, web/lib/fr/index.ts, web/pnpm-lock.yaml.
   Route (app)                    Size  First Load JS
   /                             125 B         102 kB
   /_not-found                   992 B         103 kB
+
+AC1 also requires pnpm dev to run. Captured against the final package.json,
+after the "type": "module" change:
+
+  $ pnpm dev
+  $ node scripts/copy-fonts.mjs && next dev
+  fonts: 2 subsets copied to public/fonts (133324 bytes)
+     - Next.js 15.5.25
+     - Local:        http://localhost:3000
+   * Starting...
+   * Ready in 8.8s
+   * Compiling / ...
+   * Compiled / in 14.1s (540 modules)
+   GET / 200 in 16229ms
+
+  GET / (dev server) -> HTTP 200
+  stylesheet: /_next/static/css/app/layout.css
+  --colour-canvas: #f7f8fa
+  /fonts/inter-latin-wght-normal.woff2 -> HTTP 200 bytes=48256
+  googleapis/gstatic occurrences in dev HTML: 0
+
+That matters because dev compiles the SCSS by a different path from build, and
+serves the font from public/ rather than from the build output. Both work.
 
 tsconfig sets strict true and noUncheckedIndexedAccess true. next-env.d.ts is
 committed rather than ignored so that pnpm typecheck works on a fresh clone
@@ -81,27 +111,30 @@ before any build has run; that ordering is what CI uses. Verified by deleting
 INCREMENT 2 - Token layer and Inter                     commit 7c64110
 Created: web/lib/ui/core/styles/tokens.scss, .../fonts.scss, .../global.scss,
 web/scripts/copy-fonts.mjs, web/pnpm-workspace.yaml.
-Changed: app/layout.tsx, app/page.tsx, lib/fr/index.ts, package.json,
-eslint.config.mjs, .gitignore.
+Changed: app/layout.tsx, app/page.tsx, lib/fr/index.ts, package.json (adds the
+fonts script and wires it ahead of dev and build), eslint.config.mjs,
+.gitignore.
 
-tokens.scss transcribes every value in DESIGN-SYSTEM.md section 1 as Sass
-variables and emits them on :root. Proof that the layer compiles to custom
-properties:
+tokens.scss transcribes the values in DESIGN-SYSTEM.md section 1 as Sass
+variables and emits them on :root. Five separate greps over the built
+stylesheet, collapsed here into one block:
 
-  $ grep -o -- "--colour-canvas:[^;]*;" <built css>
+  $ grep -o -- "--<token>:[^;]*;" <built css>
   --colour-canvas:#f7f8fa;
   --colour-brand:#173b63;
   --space-5:20px;
   --radius-card:16px;
   --type-body-size:15px;
 
-  custom properties emitted on :root: 126
+  custom properties emitted on :root: 129
 
 Inter is copied out of @fontsource-variable/inter into public/fonts by
 scripts/copy-fonts.mjs, which runs ahead of dev and build. Two subsets only,
 latin and latin-ext, with the upstream unicode-range transcribed verbatim; the
 latin range carries U+00A0 and U+202F, the two separators SPEC section 6.4
-depends on. public/fonts is generated output and is git-ignored.
+depends on. public/fonts is generated output and is git-ignored. Nothing
+imports the package's index.css or wght.css, so no cyrillic, greek or
+vietnamese subset can be pulled in.
 
 Third-party font scan over the whole build output:
 
@@ -129,16 +162,22 @@ crossorigin is present deliberately: fonts are fetched in CORS mode, and a
 preload without it primes a cache entry the font fetch cannot reuse, which
 downloads the file twice.
 
-The tabular-numeral half of AC1 is completed in increment 4, as the task
-permits.
+next/font/google is used nowhere. It would pass the grep above - it inlines the
+font at build time and serves it from /_next/static - while still making the
+build itself request Google, which is the posture SPEC section 3 rejects on
+GDPR grounds.
 
   push: 0fcdce7..7c64110  main -> main
 
 INCREMENT 3 - Lint guardrails                           commit 6854d35
-Created: web/.stylelintrc.json. Changed: eslint.config.mjs, next.config.ts,
-package.json, tokens.scss and global.scss (stylelint --fix formatting).
+Created: web/.stylelintrc.json.
+Changed: eslint.config.mjs, next.config.ts (eslint.ignoreDuringBuilds),
+package.json (lint now runs both linters), tokens.scss and global.scss.
 
-pnpm lint now runs both linters:
+The global.scss change was not purely cosmetic and is corrected in the review
+pass: stylelint --fix rewrote -webkit-text-size-adjust to the unprefixed
+property, which WebKit does not implement. See REVIEW PASS.
+
   "lint": "eslint . && stylelint \"{app,lib}/**/*.scss\""
 
 Full proof output is in GUARDRAIL PROOFS below.
@@ -148,6 +187,7 @@ Full proof output is in GUARDRAIL PROOFS below.
 INCREMENT 4 - Test harnesses                            commit f750e88
 Created: web/vitest.config.ts, web/playwright.config.ts,
 web/tests/harness.test.ts, web/e2e/home.spec.ts.
+Changed: package.json (test, test:e2e).
 
   $ pnpm test
    Test Files  1 passed (1)
@@ -159,13 +199,15 @@ web/tests/harness.test.ts, web/e2e/home.spec.ts.
    ok 3 a public route makes no third-party request and sets no cookie (1.2s)
    3 passed (1.2m)
 
-Both RED runs are in HARNESS PROOFS below.
+A fourth spec was added in the review pass. Both RED runs are in HARNESS
+PROOFS below.
 
   push: 6854d35..f750e88  main -> main
 
 INCREMENT 5 - Size budget, Lighthouse stub, workbench   commit 389663b
 Created: web/scripts/check-budgets.mjs, web/lighthouserc.json,
 web/app/dev/composants/page.tsx.
+Changed: package.json (size, lighthouse).
 
   $ pnpm typecheck   exit 0
   $ pnpm lint        exit 0
@@ -194,11 +236,11 @@ Created: .github/workflows/ci.yml.
 
 ubuntu-latest, Node 22, pnpm via pnpm/action-setup reading the packageManager
 field, pnpm install --frozen-lockfile, then typecheck, lint, test, build,
-size, then chromium install and e2e, then the Playwright report as an
-artifact. No database service; Postgres joins CI at FW14.
+chromium install, e2e, and the budget gate last, then the Playwright report as
+an artifact. No database service; Postgres joins CI at FW14.
 
   $ pnpm dlx js-yaml .github/workflows/ci.yml
-  ci.yml parses as valid YAML
+  (parses; the command prints the parsed document, and exits 0)
 
   push: REJECTED
   ! [remote rejected] main -> main (refusing to allow an OAuth App to create
@@ -209,10 +251,78 @@ OPERATOR item 1.
 
 FOLLOW-UP COMMIT - ESM package declaration              commit b4392de
 web/package.json gains "type": "module", removing a Vite warning that
-vitest.config.ts contained ESM syntax in a file loaded as CommonJS. The
-warning appeared on every test run and in the final verification output.
-typecheck, lint, test, build, size and the full e2e suite were re-run after
-the change; all behave identically.
+vitest.config.ts contained ESM syntax in a file loaded as CommonJS.
+
+REPORT COMMIT                                           commit 4f8634a
+The first version of this report.
+
+REVIEW PASS
+-----------
+
+The finished work was audited against AC1-AC3, the Definition of Done and this
+report's own claims before the session was called done. Four defects were
+found in FW1's own output, and all four are fixed in commit 910c109. Two
+of them were guardrails the first version of this report asserted were closed.
+
+1. THE ENGINE FENCE WAS DEFEATED BY "./../fr". The pattern was a single
+   negative lookahead, ^(?!\./), which restricts anything not starting with a
+   relative marker. Prefixing an escape with "./" satisfies it:
+   import { APP_NAME } from './../fr' passed lint clean, as did './x/../../fr'
+   and the dynamic form. That is a one-character bypass of the boundary the
+   Kotlin port depends on, and the previous report claimed "../ escapes all
+   fail". Fixed by adding a second restricted pattern, (^|/)\.\.(/|$), and the
+   matching ImportExpression selector.
+
+2. BOTH IMPORT FENCES WERE SCOPED TO *.ts, NOT *.tsx. The overrides globbed
+   lib/calc-engine/**/*.ts and lib/ui/core/**/*.ts. FW1.txt increment 3 says
+   lib/ui/core/**; the narrowing was mine. A React component accidentally
+   written in lib/ui/core carries the .tsx extension, which is the realistic
+   shape of exactly the violation AC2 plants - and it passed lint, typecheck
+   and build. Fixed by globbing {ts,tsx,mts,cts}.
+
+3. THE BUDGET SCRIPT COUNTED CSS AGAINST A JS BUDGET. It summed every file in
+   the manifest entry with no extension filter, so the route stylesheet was
+   inside a column headed "first-load JS" and gated against a budget SPEC
+   section 17 defines as JS. This inflated the number the escalation in
+   QUESTION 2 rests on: / was reported at 102.1 KiB, and the correct JS-only
+   figure is 100.6 KiB. The breach is real either way, but it is 628 bytes,
+   not 2.1 KiB. Fixed; CSS is now measured and printed on its own column,
+   ungated.
+
+4. pnpm dev WAS NEVER RUN. AC1's first clause is "pnpm build and pnpm dev
+   run". Only build was ever executed or evidenced. Fixed by running it and
+   capturing the transcript, now in INCREMENT 1.
+
+Six smaller corrections were made at the same time:
+
+  - global.scss: -webkit-text-size-adjust restored. The increment-3 stylelint
+    --fix had rewritten it to the unprefixed property, which WebKit alone does
+    not implement, so the declaration was inert on iOS Safari - most of this
+    audience. Recorded then as "formatting"; it was behavioural.
+  - check-budgets.mjs: the dev-bucket test was a substring test, so a future
+    public route named /devis or /developpement would have been silently
+    excused from the gate. It is now segment-aware. Route-group segments are
+    also stripped, so FW10's app/(public)/page.tsx will print as "/" rather
+    than "/(public)".
+  - check-budgets.mjs: it exited 0 with "All gated routes are within budget"
+    when it measured zero routes. It now fails loudly instead.
+  - package.json: the abandoned pnpm.ignoredBuiltDependencies block was still
+    present alongside the pnpm-workspace.yaml setting that actually works.
+    Two live sources of truth for one setting; the dead one is removed.
+  - playwright.config.ts: reporter was 'list', which writes no
+    playwright-report/ directory, so CI's upload-artifact step would have
+    uploaded nothing on every run. The html reporter is added.
+  - .stylelintrc.json: line-height, height, inset, top/right/bottom/left,
+    flex-basis and letter-spacing added to the property list - tokens.scss
+    already defines tokens for those values - and /^calc\(/ removed from
+    ignoreValues, which had let calc(13px + 1px) through on a fenced property.
+  - tokens.scss: $motion-toast-min/max (DESIGN-SYSTEM section 1 "TOAST ...
+    3-5 s") and $size-button-border (secondary button "1 px border") were
+    missing from an otherwise complete transcription. Added, taking the
+    custom-property count from 126 to 129.
+  - .github/workflows/ci.yml: pnpm size moved after e2e. It is knowingly red,
+    and a blocking red step ahead of e2e meant CI would never have produced an
+    e2e signal at all.
 
 GUARDRAIL PROOFS
 ----------------
@@ -238,6 +348,7 @@ both are invoked by the single pnpm lint command.
 
   lib/ui/core/styles/_scratch-violation.scss
     3:3   x  Use a design token: color may not carry the raw value "#ff0000".
+    3:10  x  Expected "#ff0000" to be "#f00"                  (color-hex-length)
     4:3   x  Use a design token: border-radius may not carry the raw value "10px".
 
   x 3 problems (3 errors, 0 warnings)
@@ -249,69 +360,87 @@ After removing all four:
     none
 
 The history contains only clean states: no commit in this session contains a
-planted violation.
+planted violation. Verified with git log --all --diff-filter=A --name-only
+filtered for scratch/violation/tmp (no hits), git show --stat on every commit,
+and git reflog for dropped or amended commits (none).
 
 ADDITIONAL FENCE VERIFICATION. A planted static import proves a rule fires; it
-does not prove the fence has no hole. Each shape below was run against the
-committed configuration. Nine behaviours, seven that must fail and two that
-must pass:
+does not prove the fence has no hole. Every shape below was run against the
+committed configuration. Items marked (R) were added by the review pass and are
+the two that were previously broken.
 
-  lib/calc-engine/scratch-engine.ts
-    import Decimal from 'decimal.js'    FAILS  no-restricted-imports
-    import { APP_NAME } from '../fr'    FAILS  no-restricted-imports
-    import fs from 'node:fs'            FAILS  no-restricted-imports
-    await import('react')               FAILS  no-restricted-syntax
-    import { ok } from './scratch-ok'   PASSES (relative, as required)
+  lib/calc-engine
+    import Decimal from 'decimal.js'       FAILS  no-restricted-imports
+    import { APP_NAME } from '../fr'       FAILS  no-restricted-imports
+    import { X } from './../fr'        (R) FAILS  no-restricted-imports
+    import { X } from './x/../../fr'   (R) FAILS  no-restricted-imports
+    import fs from 'node:fs'               FAILS  no-restricted-imports
+    await import('react')                  FAILS  no-restricted-syntax
+    await import('./../fr')            (R) FAILS  no-restricted-syntax
+    decimal.js import in a .tsx file   (R) FAILS  no-restricted-imports
+    import { ok } from './nested/thing'    PASSES (relative, as required)
 
-  lib/ui/core/scratch-dyn.ts
-    await import('react')               FAILS  no-restricted-syntax
+  lib/ui/core
+    import React from 'react'              FAILS  no-restricted-imports
+    export * from 'react'                  FAILS  no-restricted-imports
+    import type { ReactNode } from 'react' FAILS  no-restricted-imports
+    await import('react')                  FAILS  no-restricted-syntax
+    React import in a .tsx file        (R) FAILS  no-restricted-imports
 
-  app/scratch-jsx.tsx
-    <p>{'Bonjour'}</p>                  FAILS  react/jsx-no-literals
-    <p>{`Bonjour ${nom}`}</p>           FAILS  react/jsx-no-literals
+  app/**
+    <p>Bonjour ...</p>                     FAILS  react/jsx-no-literals
+    <p>{'Bonjour'}</p>                     FAILS  react/jsx-no-literals
+    <p>{`Bonjour ${nom}`}</p>              FAILS  react/jsx-no-literals
     <div className="card" data-zone="fiscal" lang="fr">   PASSES
-
-  x 7 problems (7 errors, 0 warnings)
 
 Three of those shapes would have defeated a naively configured fence:
 
   - A glob group of '*' on lib/calc-engine also restricts './types', which
-    would make the engine's own seven FW3 files unimportable. The rule uses a
-    negative-lookahead regex instead, so relative imports pass and bare
-    packages, node: builtins, aliases and ../ escapes all fail.
+    would make the engine's own seven FW3 files unimportable. The rule uses
+    negative-lookahead regexes instead, so relative imports pass while bare
+    packages, node: builtins, aliases and every upward walk fail.
   - no-restricted-imports never sees a dynamic import() or a require(), so the
     React ban in lib/ui/core - the fence AC2 actually plants a violation for -
     was defeatable by rewriting one line. no-restricted-syntax closes it.
   - react/jsx-no-literals defaults to noStrings:false, whose canonical fix is
     to wrap the string in braces, which then passes. noStrings:true is set.
 
-stylelint, same treatment. Six must-fail shapes and six must-pass:
+stylelint, same treatment.
 
-  .must-fail
-    border: 1px solid #e4e7ec         FAILS (twice: #e4e7ec and 1px)
-    background-color: rgb(247 248 250) FAILS
-    border-top-left-radius: 10px      FAILS
-    padding-left: 13px                FAILS
-    box-shadow: 0 1px 3px rgb(...)    FAILS
-    gap: 7px                          FAILS
+  $ pnpm exec stylelint <scratch>.scss --config .stylelintrc.json
 
-  .must-pass
-    margin: 0                          passes
-    padding: var(--space-4)            passes
-    background-color: var(--colour-surface)  passes
-    border-radius: var(--radius-card)  passes
-    gap: var(--space-2)                passes
-    font-size: var(--type-body-size)   passes
+  border: 1px solid #e4e7ec          FAILS (twice: #e4e7ec and 1px)
+  background-color: rgb(247 248 250) FAILS
+  border-top-left-radius: 10px       FAILS
+  padding-left: 13px                 FAILS
+  box-shadow: 0 1px 3px rgb(...)     FAILS
+  gap: 7px                           FAILS
 
-  x 8 problems (8 errors, 0 warnings)
+  x 7 problems (7 errors, 0 warnings)
 
-The shorthand and the function form matter: stylelint-declaration-strict-value
+  margin: 0                                passes
+  padding: var(--space-4)                  passes
+  background-color: var(--colour-surface)  passes
+  border-radius: var(--radius-card)        passes
+  gap: var(--space-2)                      passes
+  font-size: var(--type-body-size)         passes
+
+Spacing is rejected both off the 4 px scale and on it. AC2 names "raw radius or
+spacing off the token set"; the fence is stricter than that, because a raw
+value is rejected even when the number is a legal one:
+
+  padding: 16px      FAILS  (must be var(--space-4))
+  margin-top: 20px   FAILS  (must be var(--space-5))
+  margin: 13px       FAILS
+  gap: 7px           FAILS
+
+The shorthand and the function forms matter: stylelint-declaration-strict-value
 matches property names literally and defaults ignoreFunctions to true, so
 "border: 1px solid #E4E7EC" and "rgb(247 248 250)" both sail past a default
 configuration - and "border: 1px solid #E4E7EC" is exactly how
 DESIGN-SYSTEM.md section 1 writes the card. expandShorthand is on,
-ignoreFunctions is off, and the property list uses regex forms so longhands
-are covered.
+ignoreFunctions is off, and the property list uses regex forms so longhands are
+covered.
 
 Two further checks on the fence itself:
 
@@ -346,7 +475,7 @@ the "@" alias and returned its real (empty) export list.
   Test Files  1 passed (1)
        Tests  2 passed (2)
 
-E2E, run once against a deliberately wrong expectation:
+E2E tabular test, run once against a deliberately wrong expectation:
 
   $ pnpm test:e2e
   x  [chromium] figures are set in tabular numerals (1.0s)
@@ -358,17 +487,32 @@ E2E, run once against a deliberately wrong expectation:
 The received value is the proof for the second half of AC1: computed
 font-feature-settings on the figure is "tnum".
 
-  $ pnpm test:e2e   (expectation corrected)
-  ok 1 / responds 200 and renders the product name from lib/fr
-  ok 2 figures are set in tabular numerals
-  ok 3 a public route makes no third-party request and sets no cookie
-  3 passed (1.2m)
-
 The tabular test asserts font-feature-settings AND font-variant-numeric. The
 two properties are independent - setting font-variant-numeric leaves computed
 font-feature-settings at "normal" - and only the first is what AC1 asks about,
 so asserting the modern property alone would leave the OpenType feature
 unverified.
+
+E2E font-loading test, added in the review pass. Computed style returns the
+declared font stack whether or not the woff2 ever arrived, so the three
+assertions above pass even if /fonts/ 404s - and public/fonts is git-ignored
+output rebuilt by a script on every clone. Its RED run, produced by pointing
+the @font-face at a missing file:
+
+  $ pnpm test:e2e --grep "actually served"
+  x  [chromium] the Inter subset is actually served and loaded, not just declared
+     Error: expect(received).toBe(expected)
+     Expected: true
+     Received: false
+     > 52 |   expect(loaded).toBe(true);
+  1 failed
+
+  $ pnpm test:e2e   (fonts.scss restored)
+  ok 1 / responds 200 and renders the product name from lib/fr
+  ok 2 figures are set in tabular numerals
+  ok 3 the Inter subset is actually served and loaded, not just declared
+  ok 4 a public route makes no third-party request and sets no cookie
+  4 passed (1.2m)
 
 BUDGET NUMBERS
 --------------
@@ -377,23 +521,30 @@ BUDGET NUMBERS
 
   First-load JS per route  (budget: 100.0 KiB gzip on public routes)
 
-  route                 bucket    files   raw KiB  gzip KiB  status
-  ----------------------------------------------------------------------
-  /                     public        7     346.8     102.1  OVER by 2.1 KiB
-  /_not-found           public        7     349.3     102.9  OVER by 2.9 KiB
-  /dev/composants       dev           7     346.8     102.1  not gated
-  ----------------------------------------------------------------------
+  route                 bucket     js   raw KiB  gzip KiB  css KiB  status
+  -------------------------------------------------------------------------------
+  /                     public      6     342.8     100.6      1.5  OVER by 0.6 KiB
+  /_not-found           public      6     345.2     101.5      1.5  OVER by 1.5 KiB
+  /dev/composants       dev         6     342.8     100.6      1.5  not gated
+  -------------------------------------------------------------------------------
+  css is measured but not gated: the SPEC section 17 budget is first-load JS
   polyfills (nomodule, excluded from the gate): 38.6 KiB gzip / 110.0 KiB raw
   font payload: 2 file(s), 130.2 KiB on disk (woff2 is already compressed)
 
-  BUDGET BREACH  /: 102.1 KiB gzip exceeds the 100.0 KiB public budget.
-  BUDGET BREACH  /_not-found: 102.9 KiB gzip exceeds the 100.0 KiB public budget.
+  BUDGET BREACH  /: 100.6 KiB gzip exceeds the 100.0 KiB public budget.
+  BUDGET BREACH  /_not-found: 101.5 KiB gzip exceeds the 100.0 KiB public budget.
   exit 1
 
+Exact figures for /, measured rather than back-computed from the display value:
+6 JS files, 350991 bytes raw, 103028 bytes gzip level 9. The budget read as
+KiB is 102400 bytes, so the breach is 628 bytes.
+
 Font payload detail: inter-latin-wght-normal.woff2 is 48256 bytes (47.1 KiB)
-and is the only file a French page fetches; inter-latin-ext-wght-normal.woff2
-is 85068 bytes (83.1 KiB) and is gated behind its unicode-range. FW2's "font
-subset under 60 KB" criterion is met by the latin subset at 47.1 KiB.
+and is the only file a French page fetches - confirmed from the Lighthouse
+network trace, which shows the latin file requested and the latin-ext file not.
+inter-latin-ext-wght-normal.woff2 is 85068 bytes (83.1 KiB) and is gated behind
+its unicode-range. FW2's "font subset under 60 KB" criterion is met by the
+latin subset at 47.1 KiB.
 
 Method, stated because each choice moves the number across the gate on a page
 containing one h1:
@@ -402,29 +553,34 @@ containing one h1:
      ancestor layout entry. app-build-manifest.json keeps "/page" and
      "/layout" as separate keys and the page entry does not list the layout
      chunk, so reading "/page" alone under-reports every route.
-  2. Each file is gzipped separately at level 9 and the sizes summed.
+  2. Only .js is counted. The manifests also list the route stylesheet, and
+     SPEC section 17 budgets first-load JS. CSS is measured and printed in its
+     own column.
+  3. Each file is gzipped separately at level 9 and the sizes summed.
      Gzipping the concatenated buffer reports about 1 KB less than the browser
      receives, because the browser gets each file compressed independently.
-  3. Polyfills are measured but excluded from the gate. Next serves
+  4. Polyfills are measured but excluded from the gate. Next serves
      polyfills-*.js with nomodule, so no browser supporting ES modules
      downloads it, and Next's own First Load JS column excludes it too.
-  4. /dev/** is measured and printed but not gated. It is noindex, out of the
-     sitemap, and not part of the acquisition surface that SPEC section 17
-     budgets; FW2 deliberately builds a component-heavy page there.
+  5. /dev/** is measured and printed but not gated, on a segment-aware test.
+     It is noindex, out of the sitemap, and not part of the acquisition
+     surface SPEC section 17 budgets; FW2 deliberately builds a
+     component-heavy page there.
 
 Cross-check against an independent oracle. Next's own build output reports
-First Load JS of 103 kB for /, against this script's 102.1 KiB (104550 bytes,
-i.e. 104.5 kB). The two agree to within about 1.5 kB, the difference being the
-layout chunk this script includes and Next's rounding. Both are over budget.
+First Load JS of 103 kB for /. This script measures 103028 bytes, i.e. 103.0
+kB. They agree exactly. (Before the review pass, when CSS was still being
+counted, the two disagreed by 1.6 kB and this report attributed the gap to the
+layout chunk; the layout chunk is 169 bytes and the stylesheet was 1483.)
 
-THE BUDGET IS UNREACHABLE AS SPECIFIED. The page being measured contains one
-h1 and one figure. 102.1 KiB is the Next 15 App Router plus React 19 baseline:
-the framework chunk is 54.2 kB gzip and the app-router runtime chunk is
-46.5 kB gzip, and neither is reducible by configuration. There is no feature
-code in the bundle at all. This is the FW2 escalation arriving one task early,
-and PHASE-1.md routes exactly this case back to the operator. Raising a size
-budget is on the SPEC section 20 Ask-first list, so the budget has been left at
-the spec value and pnpm size is red. See QUESTIONS FOR THE OPERATOR item 2.
+THE BUDGET IS EXCEEDED, BY 628 BYTES. The page being measured contains one h1
+and one figure. 100.6 KiB is the Next 15 App Router plus React 19 baseline: the
+framework chunk is 54.2 kB gzip and the app-router runtime chunk is 46.5 kB
+gzip, and neither is reducible by configuration. There is no feature code in
+the bundle at all. This is the FW2 escalation arriving one task early, and
+PHASE-1.md routes exactly this case back to the operator. Raising a size budget
+is on the SPEC section 20 Ask-first list, so the budget has been left at the
+spec value and pnpm size is red. See QUESTIONS FOR THE OPERATOR item 2.
 
 DEVIATIONS
 ----------
@@ -481,9 +637,11 @@ DEVIATIONS
    declined (ERR_PNPM_IGNORED_BUILDS on @parcel/watcher, an optional native
    dependency of sass used only by sass --watch). pnpm 11 reads that setting
    only from pnpm-workspace.yaml; .npmrc and the package.json pnpm field were
-   both tried and ignored. The file contains one allowBuilds entry declining
-   the build, and no packages key, so this remains a single package per D1. It
-   would otherwise have broken CI as well.
+   both tried and did not work. The file contains one allowBuilds entry
+   declining the build, and no packages key, so this remains a single package
+   per D1. It would otherwise have broken CI as well. The abandoned
+   package.json block was left behind by mistake in 7c64110 and is removed in
+   the review-pass commit, so there is now one source of truth.
 
 10. DARK-MODE TOKENS ARE RECORDED BUT INERT. Increment 2 says tokens.scss
     carries every value from DESIGN-SYSTEM.md section 1, and the dark palette
@@ -491,17 +649,18 @@ DEVIATIONS
     as custom properties and never applied, so no dark theme ships. See
     QUESTIONS FOR THE OPERATOR item 4.
 
-11. FOLLOW-UP COMMIT AFTER INCREMENT 6. b4392de adds "type": "module" to
-    web/package.json to remove a Vite warning. It is a seventh commit rather
-    than part of an increment because the warning only became visible in the
-    final verification run.
+11. TWO COMMITS FOLLOW INCREMENT 6. b4392de adds "type": "module" to
+    web/package.json, and the review-pass commit fixes the four defects in
+    REVIEW PASS. Neither is part of an increment because both arose from
+    checking the finished work rather than from building it.
 
-12. THIS REPORT CARRIES ONE SECTION BEYOND THE TEN SPECIFIED. FW1.txt names
+12. THIS REPORT CARRIES TWO SECTIONS BEYOND THE TEN SPECIFIED. FW1.txt names
     SUMMARY, ENVIRONMENT, INCREMENTS, GUARDRAIL PROOFS, HARNESS PROOFS, BUDGET
     NUMBERS, DEVIATIONS, NOTICED BUT NOT TOUCHING, QUESTIONS FOR THE OPERATOR
-    and PUSH PROOF. All ten are present and unrenamed. FINAL VERIFICATION is
-    added at the end because the prompt requires that chain to be run and none
-    of the ten is its obvious home.
+    and PUSH PROOF. All ten are present and unrenamed. REVIEW PASS and FINAL
+    VERIFICATION are added because the prompt requires that verification chain
+    to be run, and because a session that found defects in its own output
+    should say so where an operator will see it.
 
 NOTICED BUT NOT TOUCHING
 ------------------------
@@ -524,7 +683,8 @@ NOTICED BUT NOT TOUCHING
    resolving to the same path and fails the build, so FW10 must relocate or
    delete app/page.tsx rather than simply adding the route group. Flagging it
    because the failure surfaces as an opaque Next build error, not as a spec
-   conflict.
+   conflict. The budget script already normalises route-group segments, so it
+   is ready for that move.
 
 3. USER-FACING PROPS ARE NOT FENCED. react/jsx-no-literals is configured with
    ignoreProps:true, as FW1.txt requires, so className, data-* and lang stay
@@ -536,12 +696,31 @@ NOTICED BUT NOT TOUCHING
    object, not JSX, so jsx-no-literals never visits it. The workbench title is
    imported from lib/fr by convention, not by enforcement.
 
-5. todo.md FW2 is still titled "Carbon budget spike" in tasks/plan.md and its
+5. THE TOKEN FENCE CAN BE LAUNDERED THROUGH A SASS VARIABLE OR A CUSTOM
+   PROPERTY. stylelint-declaration-strict-value inspects the value side of a
+   matched property only. Writing $card-border: #e4e7ec in some other .scss
+   and then using $card-border passes, because the declaration that created it
+   is never checked, and a --my-token: 13px declaration matches none of the
+   configured property patterns. So "nothing outside tokens.scss declares a raw
+   colour, radius or spacing" is enforced for direct declarations but not for
+   indirect ones. Closing it means forbidding $-variable and custom-property
+   declarations outside tokens.scss, which is a rule FW1 was not asked for.
+   Worth deciding before FW6 writes the first generated stylesheet.
+
+6. RAW VALUES IN REACT INLINE style={{...}} OBJECTS ARE NOT FENCED. stylelint
+   only sees .scss, and no ESLint rule covers the style prop, so
+   style={{ color: '#ff0000', padding: '13px' }} passes everything. The fix
+   would be react/forbid-dom-props on the style prop, which is a decision about
+   how components are allowed to be written, not an implementation detail.
+   Related: the lint glob is {app,lib}/**/*.scss, so a .css file, or a
+   stylesheet outside app/ and lib/, would not be linted.
+
+7. todo.md FW2 is still titled "Carbon budget spike" in tasks/plan.md and its
    description still refers to Carbon tree-shaking, but SPEC v2.2 and
    DESIGN-SYSTEM.md replaced Carbon with Frontier Work v1.0 on 03.09.2026.
    relay/PHASE-1.md already calls it "Bundle budget spike". Stale wording only.
 
-6. next-env.d.ts references ./.next/types/routes.d.ts, which is build-generated
+8. next-env.d.ts references ./.next/types/routes.d.ts, which is build-generated
    and git-ignored. tsc tolerates the missing reference (verified: exit 0 with
    .next deleted), so typecheck-before-build works. If that ever changes,
    next typegen exists in 15.5 and would run ahead of typecheck.
@@ -551,9 +730,9 @@ QUESTIONS FOR THE OPERATOR
 
 1. GITHUB TOKEN SCOPE - blocks the final push. The token authenticating this
    repository has scopes gist, read:org, repo. Creating or updating
-   .github/workflows/ci.yml requires the workflow scope, so commits 6b07f79 and
-   b4392de and this report cannot be pushed. Granting it takes one command in
-   an interactive terminal:
+   .github/workflows/ci.yml requires the workflow scope, so the CI commit and
+   everything after it cannot be pushed. Granting it takes one command in an
+   interactive terminal:
 
      gh auth refresh -h github.com -s workflow
 
@@ -563,17 +742,20 @@ QUESTIONS FOR THE OPERATOR
    the contents API, and rewriting history to hide the workflow commit would
    misreport the session.
 
-2. THE 100 KB PUBLIC BUDGET IS UNREACHABLE - needs a ruling before FW2.
-   Measured: 102.1 KiB gzip first-load JS on /, on a page containing one h1 and
-   one figure. Next's own build output agrees (103 kB). The whole of it is the
-   Next 15 App Router plus React 19 baseline: framework chunk 54.2 kB gzip,
-   app-router runtime 46.5 kB gzip. No feature code is in the bundle.
+2. THE 100 KB PUBLIC BUDGET IS EXCEEDED BY 628 BYTES - needs a ruling before
+   FW2. Measured: 100.6 KiB gzip first-load JS on /, against a 100.0 KiB
+   budget, on a page containing one h1 and one figure. Next's own build output
+   agrees exactly (103.0 kB both ways). The whole of it is the Next 15 App
+   Router plus React 19 baseline: framework chunk 54.2 kB gzip, app-router
+   runtime 46.5 kB gzip. No feature code is in the bundle.
 
    Raising a size budget is on the Ask-first list, so I have not touched it.
    pnpm size and the CI size step are red. The options, as I see them:
 
-     a. Raise the public budget to a number the baseline can meet (roughly
-        110-120 KiB leaves headroom for the calculator).
+     a. Raise the public budget to a number the baseline can meet. Note the
+        margin is now 628 bytes, so even 101 KiB clears today - but it would
+        leave essentially no headroom for the calculator, so a number chosen
+        deliberately (110-120 KiB) is better than one chosen to go green.
      b. Keep 100 KB and change the delivery model for public routes so the
         React runtime is not shipped at all - a real architectural decision
         that would want deciding before FW10, not after.
@@ -584,7 +766,7 @@ QUESTIONS FOR THE OPERATOR
    yours to rule on. Whatever is decided should be recorded verbatim in the
    FW2 prompt's pre-step.
 
-   Also worth noting: /_not-found is Next's built-in 404 and measures 102.9
+   Also worth noting: /_not-found is Next's built-in 404 and measures 101.5
    KiB. It counts as a public route under any reading, and nothing in our code
    affects its size.
 
@@ -595,12 +777,13 @@ QUESTIONS FOR THE OPERATOR
    did not move them because that is outside FW1's scope, but it is cheap
    housekeeping and doing it before FW2 avoids repeating the question.
 
-4. TWO TOKEN VALUES CONFLICT WITH THE CLOSED RADIUS SET.
+4. ONE TOKEN VALUE CONFLICTS WITH THE CLOSED RADIUS SET.
    DESIGN-SYSTEM.md section 1 specifies the checkbox at radius 6, but D37 and
    DESIGN-SYSTEM.md section 4 define the permitted set as {4, 8, 12, 14, 16,
    20, 24, 999}, which contains no 6. It is recorded as $radius-checkbox: 6px
    and flagged in the file. Should 6 join the set, should the checkbox move to
-   4 or 8, or is the Android lint set the only place the closed set applies?
+   4 or 8, or is the closed set only binding on Android? (14 is a legitimate
+   member and is present; only 6 is anomalous.)
    Separately: should the dark-mode values stay in tokens.scss as inert Sass
    variables, or be removed until the dark theme is actually scheduled? The
    prompt says "every value from section 1"; the spec says light ships first
@@ -612,7 +795,9 @@ QUESTIONS FOR THE OPERATOR
    box-shadow cannot be written without one. Adding a colour token is an
    Ask-first item, so no shadow tokens were emitted. Nothing in FW1 uses a
    shadow and cards have none by design, so this blocks nothing until a
-   floating or modal surface appears.
+   floating or modal surface appears. This is now the only known gap in the
+   section-1 transcription: the toast duration and the secondary-button border
+   that were also missing have been added.
 
 PUSH PROOF
 ----------
@@ -626,6 +811,8 @@ Session commits, oldest first:
   389663b  FW1: size budget script, Lighthouse stub, workbench stub
   6b07f79  FW1: CI workflow - typecheck, lint, test, build, size
   b4392de  FW1: declare web/ as an ES module package
+  4f8634a  FW1: session report
+  910c109  FW1: close guardrail and budget-measurement gaps found in review
 
 Pushes that succeeded:
 
@@ -642,7 +829,8 @@ Push that was rejected, and every commit from 6b07f79 onward with it:
   error: failed to push some refs to 'https://github.com/kaitmax/Frontalier.git'
 
 origin/main is at 389663b. Local main is ahead by the CI commit, the ESM
-commit and this report. See QUESTIONS FOR THE OPERATOR item 1.
+commit, this report and the review-pass fixes. See QUESTIONS FOR THE OPERATOR
+item 1.
 
 FINAL VERIFICATION
 ------------------
@@ -657,8 +845,12 @@ FINAL VERIFICATION
 
   chain exit 1
 
-Four of the five are green in one run. The fifth is red because the budget it
-enforces cannot be met by an empty Next 15 application, which is a finding
-about the budget rather than about this task's work, and is item 2 above.
+  $ pnpm test:e2e
+  4 passed (1.2m)
+
+Four of the five commands in the chain are green in one run. The fifth is red
+because the budget it enforces cannot be met by an empty Next 15 application,
+which is a finding about the budget rather than about this task's work, and is
+QUESTIONS item 2.
 
 END OF REPORT
