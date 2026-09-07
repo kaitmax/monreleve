@@ -1,0 +1,631 @@
+REPORT-FW4 - Waterfall, rates, headroom, warnings, Geneva fixtures
+===========================================================================
+
+SUMMARY
+-------
+The engine computes. All six Geneva cases reproduce exactly, and they were
+written down and shown failing before any waterfall existed - six failures on
+"expected false to be true", then twenty passes. The implementation was made
+to match the AFC, not the fixtures made to match the implementation, and the
+two commits are in the history in that order.
+
+lib/calc-engine now carries the waterfall, both rates, the headroom, the eight
+warnings and calculateTelework end to end. 276 tests. Engine coverage 100 % on
+statements, branches, functions and lines. Every function has its RED row this
+time, with no exceptions.
+
+One finding is worth the operator's time above the others. Computing the
+declarable rate as a float and truncating SILENTLY UNDERSTATES the number
+filed with the AFC. 23/125 is exactly 18.4 % but the float form yields 18.39,
+and because truncation always rounds toward zero the error never cancels - it
+is biased downward. Normalising the float does not fix it; only integer
+arithmetic on the numerator and denominator does. Measured over 125 750
+realistic pairs: the float form is wrong in 36, the integer form in none. A
+125-day denominator is employmentRate 52, so these are reachable inputs, and
+51/125 = 40.8 % sits in the band that decides whether the regime survives.
+
+Increment 0 discharged R9 by writing the three documents this session owns.
+
+PRECONDITIONS
+-------------
+R1 - the commits and reports have not reached origin/main and CI has never
+run. Recorded as directed, non-blocking.
+
+  $ git log --oneline -1 origin/main
+  389663b FW1: size budget script, Lighthouse stub, workbench stub
+
+  $ git cat-file -e origin/main:REPORT-FW3.txt   -> NO
+  $ gh api -i user | grep -i x-oauth-scopes
+  X-Oauth-Scopes: gist, read:org, repo
+
+The workflow scope is still absent, so every push in this session was
+rejected. Routes previously exhausted and unchanged: HTTPS with the gh token,
+SSH (the two keys on this machine are VPS keys not registered with GitHub),
+the contents API, and gh auth refresh, which needs an interactive browser.
+
+Environment: node v22.14.0, pnpm 11.17.0, Windows 11 Pro 10.0.26200,
+next 15.5.25, react 19.2.8, typescript 5.9.3, vitest 5.0.0.
+
+INCREMENT 0
+-----------
+
+DOCUMENT FIX (R9)                                        commit 8e66196
+R9 is superseded: routing these edits through the operator failed twice, so
+this session owns them. Also lands relay/FW4.txt.
+
+  $ git diff --stat DESIGN-SYSTEM.md tasks/plan.md
+   DESIGN-SYSTEM.md | 19 +++++++++++++++++--
+   tasks/plan.md    |  3 +++
+
+(i) CLAUDE.md - NEW, 0a.
+
+Opens by disowning any CLAUDE.md in a parent directory, with a table of the
+three concrete ways the neighbouring Morocco project's file would break this
+one: messages/{fr,en}.json against lib/fr, an app/[locale] segment against a
+single-locale product, and a domain vocabulary - agencies, trips, leads,
+commission - that does not exist here. Then the reading order README ->
+SPEC -> DESIGN-SYSTEM -> tasks/plan -> tasks/todo -> relay/<TASK>, and the
+twelve rules that are never relaxed, each stated in one line: one task per
+session, commit only on green, test-first, tokens only, French only in
+lib/fr, the Geneva fixtures ship-blocking, server-assigned timestamps, the app
+never records a day by itself, no coordinate stored or sent, no map or live
+location, section 20 Ask-first items stop and ask, every session ends with a
+report. Closes with the commands and the R2 budgets.
+
+(ii) DESIGN-SYSTEM.md section 1, radius line - 0b(i).
+
+  BEFORE
+    RADIUS (tokens only, never arbitrary): xs 4 - sm 8 - md 12 - lg 16 -
+      xl 20 - 2xl 24 - pill 999.
+      Buttons 12 - Large primary button 14 - Inputs 12 - Small badge 8 -
+      Card 16 - Large status card 20 - Bottom sheet 24 (top corners) -
+      Chips/progress/confidence bars 999.
+
+  AFTER
+    RADIUS - a closed set of nine token names, never arbitrary (see 4.1):
+      xs 4 - checkbox 6 - sm 8 - md 12 - button-lg 14 - lg 16 - xl 20 -
+      2xl 24 - pill 999.
+      Component mapping (this is where it lives; there are no CSS aliases):
+      Buttons and inputs md - Large primary button button-lg - Small badge sm -
+      Checkbox checkbox - Card lg - Large status card xl - Bottom sheet 2xl
+      (top corners) - Skeleton sm - Toast md - Chips/progress/confidence
+      bars pill.
+
+The mapping now names TOKENS rather than numbers, which is what makes it the
+home of the information the deleted CSS aliases used to carry.
+
+(iii) DESIGN-SYSTEM.md section 4.1 - NEW, 0b(ii).
+
+"How the radius rule is enforced (ruling R8)". States both checks and why one
+alone is insufficient - names-only at the point of use lets a tenth token be
+invented, and a numeric set at the point of definition lets a raw 6px past -
+then the three use-site rules (a raw length rejected even when its value is in
+the set, a var() from another family rejected, multi-value corners composing
+token names), the definition-side unit test, and the removal of the eight
+semantic aliases with the rename of --radius-button-large to
+--radius-button-lg.
+
+(iv) tasks/plan.md, Test Discipline - three rules added, 0c.
+
+Each cites the incident that motivated it rather than stating a principle:
+
+  - Adversarial guardrail proofs (R7), naming the four evasions that have
+    actually defeated a fence here - path trick './../fr', alternate extension
+    .tsx, re-export, dynamic import - and recording that two of the four
+    shipped as holes in FW1 and were found only in review.
+  - Verification chains use && and never ';' (R15), citing the red commit in
+    FW3 that had to be amended.
+  - Float hygiene (R10): multiply before dividing, normalise before rounding,
+    comment the site as float hygiene and not a regulatory rule, and put
+    float-only cases in shared fixtures because the Kotlin port shares the
+    defect and must share the guard.
+
+  full chain typecheck + lint + test + build + size: exit 0
+  push: REJECTED (workflow scope)
+
+FIXTURE LEDGER
+--------------
+
+The six Geneva cases, RED beside GREEN. The RED run is commit 3fc0bb3, before
+lib/calc-engine/waterfall.ts existed. The GREEN run is commit 1490217.
+
+  $ pnpm exec vitest run tests/unit/calc-engine/fixtures.test.ts
+
+  case      RED (increment 1)                        GREEN (increment 5)
+  --------  ---------------------------------------  --------------------
+  a         x produces the published result           ok
+            x accounts for every working day          ok
+  b         x produces the published result           ok
+            x accounts for every working day          ok
+  c         x produces the published result           ok
+            x accounts for every working day          ok
+  d         x produces the published result           ok
+            x accounts for every working day          ok
+  e         x produces the published result           ok
+            x accounts for every working day          ok
+  special   x produces the published result           ok
+            x accounts for every working day          ok
+
+  RED    Tests 12 failed | 8 passed (20)
+  GREEN  Tests 20 passed (20)
+
+Every one of the twelve failures had the same reason, and it is the right one:
+
+  AssertionError: expected false to be true // Object.is equality
+
+That is `expect(result.ok).toBe(true)` failing because calculateTelework was
+still FW3's seam and could not produce a result at all. The assertion is
+deliberately first and separate in the test so that an engine which cannot
+compute says so plainly, rather than emitting four confusing field
+comparisons.
+
+The 8 that passed in the RED run are the structural guards - that the file
+really contains six cases with the expected ids, and that the fixture's basis
+matches the RuleSet - plus all five denominator cases.
+
+Published values reproduced, from the GREEN run:
+
+  case     TT   MT   swissTaxed  frenchTaxed  declarableRate  regimeApplies
+  a        72    0          240            0           30.00  true
+  b        91    8          237            3           40.00  true
+  c        84   24          226           14           39.16  true
+  d        94   12          230           10           40.00  true
+  e       144    5           91          149           60.00  false
+  special   0   30          220           20            4.16  true
+
+The two truncations are the point: 94/240 is 39.1666... and 10/240 is
+4.1666..., and the AFC publishes 39.16 and 4.16. Rounding would give 39.17 and
+4.17 and would not match the filing.
+
+DENOMINATOR CASES (R10). All five passed in the RED run and still pass, which
+is what R10 asks for - FW3 had already fixed that path, and if they had failed
+the instruction was to stop and report.
+
+  float-45-7-12        63 days   (naive evaluation gives 64)
+  float-85-7-12       119 days   (naive gives 120)
+  float-90-7-12       126 days   (naive gives 127)
+  exact-100-full-year 240 days   control
+  fractional-1-full-year 3 days  control, ceil(2.4)
+
+The period is stored as the exact ratio [7, 12] and never as a decimal:
+0.5833333333333333 parses to a different double from 7/12 computed, and the
+fixture would fail to reproduce the very defect it exists to pin.
+
+RED/GREEN LEDGER
+----------------
+
+One row per function implemented in FW4. All test files under
+web/tests/unit/calc-engine/.
+
+1. runWaterfall                                  waterfall.test.ts
+   RED    Error: Cannot find package '@/lib/calc-engine/waterfall'
+          Test Files 1 failed, "no tests" - the module did not exist.
+   GREEN  Tests 18 passed (18)
+
+2. declarableRateFor                             rates.test.ts
+   RED    Error: Cannot find package '@/lib/calc-engine/declarable-rate'
+          Test Files 1 failed, "no tests".
+   GREEN  Tests 12 passed (12)
+
+3. rawRateFor                                    rates.test.ts
+   RED    Same run as row 2. Both modules were absent; module resolution
+          fails on the first missing import, which named declarable-rate.
+          Stated plainly rather than presented as a separate RED, because it
+          is one failure covering two functions.
+   GREEN  Included in the 12 above.
+
+4. floorToHalfDay                                headroom.test.ts
+   RED    Error: Cannot find package '@/lib/calc-engine/headroom'
+          Test Files 1 failed, "no tests".
+   GREEN  Tests 18 passed (18), together with row 5.
+
+5. headroomFor                                   headroom.test.ts
+   RED    Same run as row 4, same reason - one module, two functions.
+   GREEN  Included in the 18 above.
+
+6. warningsFor                                   warnings.test.ts
+   RED    Error: Cannot find package '@/lib/calc-engine/warnings'
+          Test Files 1 failed, "no tests".
+   GREEN  Tests 17 passed (17)
+
+7. calculateTelework                             fixtures.test.ts
+   RED    Tests 12 failed | 8 passed (20). Six published cases could not be
+          produced: "expected false to be true", because the FW3 seam
+          returned ok:false. This is the strongest RED available in the
+          project - not a missing symbol but six authoritative results the
+          engine could not reproduce. See FIXTURE LEDGER.
+   GREEN  Tests 20 passed (20)
+
+boundaries.test.ts adds 19 assertions and implements nothing, so it has no
+row. Its tests passed on their first run, which is expected: every function
+they exercise already has its RED above.
+
+INCREMENTS 1-6
+--------------
+
+INCREMENT 1 - Fixtures first, RED captured             commit 3fc0bb3
+Created: fixtures/geneva-cases.json, fixtures/denominator-cases.json,
+web/tests/unit/calc-engine/fixtures.test.ts.
+
+DELIBERATELY RED ON ONE SUITE, and that redness is the deliverable. typecheck,
+lint, build and size green; the Geneva suite failing all six cases. The commit
+body says so.
+
+The fixture files carry more than numbers. Each case has a note saying what it
+pins - the two truncation cases, the two headroom-binds cases, the
+regime-lost case - and the file records the one transcription decision the
+published table forces: the AFC gives a single mission total, the engine takes
+France and third-state separately, and every case places the total in France,
+which is the ordinary frontalier situation and reproduces the published split
+exactly. A case exercising the imputation ORDER is a unit test, not a fixture,
+because the AFC published no such example.
+
+Both files are read by the test and never transcribed into TypeScript,
+because the Kotlin engine consumes the same two files at AN2 and a divergence
+must fail both builds.
+
+ONE ERROR IN MY OWN FIXTURE WAS CAUGHT BEFORE COMMITTING: case e had
+regimeApplies true while its own note said the regime does not apply. It is
+false. Recorded because a wrong fixture is the worst possible defect in this
+task - it would have made the implementation wrong and then defended it.
+
+  push: REJECTED (workflow scope)
+
+INCREMENT 2 - The waterfall                            commit 2145980
+Created: lib/calc-engine/waterfall.ts, waterfall.test.ts.
+
+Written in the spec's order with the spec's names, and the published
+pseudocode is quoted in the file header so the two can be read side by side.
+The module deals in DAYS only and returns daysCountedAgainstCeiling, the
+numerator SPEC 7.2 step 5 divides; it computes no rate, because SPEC 7.3
+requires the rounding rules to be separated.
+
+Both details the spec flags get a named test. Missions excluded from the
+declared numerator above the ceiling: 144 counts 144, not 149, while
+frenchTaxedDays is still 149. France before third state: with a budget of 6
+and twelve mission days, a 4/8 split credits 4 France and 2 third, an 8/4
+split credits 6 France and 0 third - the credited total and frenchTaxedDays
+identical, the composition not, and the composition is who pays how.
+
+  push: REJECTED (workflow scope)
+
+INCREMENT 3 - Rates                                    commit 8f62c10
+Created: lib/calc-engine/declarable-rate.ts, lib/calc-engine/raw-rate.ts,
+rates.test.ts.
+
+Two files, one rounding rule each. See the SUMMARY and ROUNDING SITES for the
+integer-arithmetic finding, which is the most consequential thing in this
+report.
+
+  push: REJECTED (workflow scope)
+
+INCREMENT 4 - Headroom and R12                         commit f622f4f
+Created: lib/calc-engine/headroom.ts, headroom.test.ts.
+Changed: lib/calc-engine/allowed-days.ts, allowed-days.test.ts.
+
+floorToHalfDay uses Math.floor rather than truncation, because they differ on
+negatives and floor is the safe one: minus 0.1 days of room must report as
+-0.5, not 0, since 0 would claim the user is exactly at the ceiling when they
+are past it. Geneva case e reports -48 fiscal and -24.5 social.
+
+Deliberately NOT normalised before flooring, unlike the proration, and the
+file says why: float error in totalWorkDays * 0.499 is about 1e-14 and biased
+low, so it can only report LESS room, which is the safe direction. Normalising
+could nudge a value up across a half-day boundary, which is the one thing SPEC
+7.3 forbids here. Measured against exact rational arithmetic over 80 600
+day-count/denominator pairs: this form and the exact form agree everywhere.
+
+  push: REJECTED (workflow scope)
+
+INCREMENT 5 - Warnings and calculateTelework           commit 1490217
+Created: lib/calc-engine/warnings.ts, warnings.test.ts, calculate.test.ts.
+Changed: lib/calc-engine/types.ts (RULE_SET_FALLBACK per R11),
+lib/calc-engine/calculate.ts.
+Deleted: tests/unit/calc-engine/calculate-seam.test.ts.
+
+The warnings tests pin distinctions rather than happy paths.
+FRONTALIER_STATUS_AT_RISK fires for a 1983 canton over the ceiling and NOT for
+a source canton over the ceiling, because under 'source' the consequence is
+French tax on the excess days and telling a Geneva frontalier their status is
+at risk would be false. MISSION_CAP_EXCEEDED and MISSIONS_EXCEED_HEADROOM are
+separate facts that can both bind - Geneva case d is over the cap by 2 and
+over the room by 10 - and the headroom warning is suppressed once the regime
+is lost, because there is then no headroom to exceed.
+
+calculate-seam.test.ts was deleted rather than fixed. Its last test was
+written in FW3 to fail the moment the waterfall landed, and it did: "expected
+true to be false". That failure is how the seam announced its own closure.
+
+Granularity is not a pipeline step and calculate.ts says why: TeleworkInput
+carries day counts, classifyTeleworkHours is what a CONSUMER calls to build
+them, and what the pipeline does about granularity is enforce consistency
+through validation.
+
+  push: REJECTED (workflow scope)
+
+INCREMENT 6 - Boundaries                               commit b59d69d
+Created: boundaries.test.ts.
+
+Both ceilings on both sides, since both comparisons in the spec are strict.
+Exactly 96 of 240 keeps the regime with zero headroom and no warning; 97 loses
+it, reports 40.41 and minus one day. For the social ceiling, 49.9 % of 240 is
+119.76 and not a whole day, so an exact 1000-day denominator is the only way
+to land precisely on it: 499 gives 49.9 with zero social headroom and no
+warning, 500 gives 50.0 and fires it, 498 gives one day of room.
+
+The part-time mid-year start is where the proration, the cap and the ceiling
+all bind at once: employmentRate 45 over 7/12 gives 63 days and not 64, a
+25.2-day ceiling, a cap of 3 from ceil(2.625), 3 of 8 mission days credited,
+and a truncated rate of 36.5 from 23/63.
+
+  full chain: exit 0
+  push: REJECTED (workflow scope)
+
+ROUNDING SITES
+--------------
+
+Five behaviours, five files, each naming its own rule at its own site. SPEC
+7.3 requires the separation because the rules conflict on purpose.
+
+  file:line                  operation      the rule its comment names
+  -------------------------  -------------  ----------------------------------
+  declarable-rate.ts:21      (doc)          "truncate - must match AFC filing"
+  declarable-rate.ts:41      Math.floor     truncate to 2 dp, on integers
+  raw-rate.ts:28             (doc)          "round up - display value, never
+                                             understate the exposure"
+  raw-rate.ts:37             Math.ceil      round up to 1 dp, on integers
+  headroom.ts:30             (doc)          "floor to the half-day - never
+                                             overstate headroom"
+  headroom.ts:47             Math.floor     floor to the half-day
+  denominator.ts:32          (doc)          "ceil - the simplified basis and
+                                             the mission cap both round up"
+  denominator.ts:54          Math.ceil      ceil, after a float-hygiene
+                                             normalisation (Math.round)
+  allowed-days.ts:63         (call site)    "floor to the half-day - advisory,
+                                             never overstate (R12)"
+  allowed-days.ts:66         (call site)    "ceil - favours the user
+                                             (SPEC 7.2 step 4)"
+  calculate.ts:54            (call site)    "ceil - favours the user
+                                             (SPEC 7.2 step 4)"
+
+waterfall.ts contains no rounding at all, by design: it is pure day
+arithmetic, so no rule can hide in it.
+
+validate.ts:22 uses Math.round inside a granularity-step check. It is not a
+rounding of any reported quantity - it asks whether a value lands on a half or
+a whole day within 1e-9 - and is noted here only so the inventory is complete.
+
+denominator.ts:54 is the one site with two operations. The Math.round is the
+float-hygiene normalisation and the comment states in terms that it is NOT a
+regulatory rounding rule; the Math.ceil is the regulatory one.
+
+TWO INDEPENDENT INTEGER-ARITHMETIC DECISIONS, both load-bearing:
+
+declarable-rate.ts and raw-rate.ts do their arithmetic on the numerator and
+denominator as integers rather than on a pre-computed percentage. This is not
+style. 23/125 is exactly 18.4 %, 18.4 has no exact IEEE 754 representation,
+and truncating the float yields 18.39 - biased downward, on the number filed
+with the AFC. The 1e6-style normalisation that fixed the FW3 denominator case
+is USELESS here, because multiplying ~18.4 by 100 reintroduces the same error.
+Measured across every numerator against every denominator up to 500, 125 750
+pairs: the float form is wrong in 36, the integer form in none. A 125-day
+denominator is employmentRate 52 on the simplified basis, and 51/125 = 40.8 %
+sits inside the band that decides whether the regime survives.
+
+RULED CHANGES
+-------------
+
+R12 - allowedTeleworkDays now FLOORS atFiscal and atSocial to the half-day.
+
+FW3 returned them unrounded, on the reading that SPEC 7.2 step 5 defines
+fiscalCeiling without rounding. R12 overrides that: the function answers "how
+many days may I take", so it is advisory and must never overstate, which is
+the headroom rule. Changed values:
+
+  denominator 240:  atSocial 119.76 -> 119.5     atFiscal 96 unchanged
+  denominator 200:  atSocial   99.8 -> 99.5      atFiscal 80 unchanged
+  denominator 120:  atFiscal     48 unchanged
+
+Two FW3 tests were updated to the new expectation, each citing the ruling at
+the assertion. This is a ruled change, not a regression: the old numbers were
+correct under the old reading and are wrong under the new one. The exact
+unrounded ceiling remains available as fiscalCeilingDays on TeleworkResult, so
+nothing is lost. missionCap still ceils.
+
+R14 - NOT_IMPLEMENTED is absent from ValidationError.
+
+It never existed. FW3's seam returned ok:false with an EMPTY error list rather
+than add a code to the public union, precisely because adding one would have
+been an ask-first public-API change and would have needed French copy in
+lib/fr for a state no user could reach. So R14's removal is a NO-OP on the
+type, and the honest thing is to say so rather than report a deletion that did
+not happen.
+
+What was added is the assertion that keeps it a no-op:
+
+  type NotImplemented = Extract<ValidationError, { code: 'NOT_IMPLEMENTED' }>;
+  expectTypeOf<NotImplemented>().toEqualTypeOf<never>();
+
+A member added later makes Extract resolve to something other than never and
+fails typecheck. Two further tests pin that an empty error list can no longer
+occur - which was the old sentinel - and that only the six spec codes are
+ever emitted.
+
+R11 - RULE_SET_FALLBACK was added to the Warning union.
+
+A public API change, authorised by the ruling. calculateTelework compares
+input.taxYear with the applied rule set's taxYear and emits both years, so a
+2027 dossier computed under 2026 rules says so rather than leaving a caller to
+notice a mismatch it would have to think to check.
+
+COVERAGE
+--------
+  $ pnpm exec vitest run --coverage.enabled --coverage.provider=v8 \
+      --coverage.include='lib/calc-engine/**' --coverage.reporter=text
+
+  Statements   : 100%  (112/112)
+  Branches     : 100%  (79/79)
+  Functions    : 100%  (15/15)
+  Lines        : 100%  (108/108)
+
+  276 tests, 17 files.
+
+The gate itself is FW5's task and is not wired here.
+
+DEVIATIONS
+----------
+
+1. INCREMENTS 1 TO 4 CARRY A KNOWN-RED SUITE. The prompt authorises this for
+   increment 1 and calls its redness the deliverable. It is unavoidable for 2
+   to 4 as well: the Geneva suite exercises calculateTelework, which is not
+   complete until increment 5, so the ordering rule and "green after every
+   increment" cannot both hold. Each of those four commit bodies states that
+   the Geneva suite is expected red and that typecheck, lint, build and every
+   other suite are green. From increment 5 the full chain is green.
+
+2. rawRateFor AND headroomFor SHARE A RED WITH THEIR FILE-MATES. Module
+   resolution fails on the first missing import, so one failure covers two
+   functions in each case. The ledger says so rather than presenting four REDs
+   where two runs occurred.
+
+3. THE THRESHOLD GUARD FIRED TWICE MORE ON DECIMAL-PLACE DIVISORS. In FW3 it
+   caught 10 ** 6 in denominator.ts; here it caught tenths / 10 in
+   raw-rate.ts. Both were named constants written 1e6 and 1e1 instead. The
+   guard is doing its job - it cannot tell the base of a power of ten from the
+   mission cap - but this is now a recurring friction. QUESTIONS 2.
+
+4. A1_REQUIRED's TRIGGER IS PROVISIONAL. Marked as such at the site.
+   QUESTIONS 1.
+
+5. GRANULARITY IS NOT A PIPELINE STEP inside calculateTelework, though the
+   prompt lists it between the denominator and the waterfall. It cannot be:
+   TeleworkInput carries day counts, and classifyTeleworkHours is the helper a
+   consumer calls to produce them. What the pipeline does about granularity is
+   enforce consistency, through validation's GRANULARITY_MISMATCH.
+
+6. THE MISSION SPLIT IN THE FIXTURES IS A TRANSCRIPTION DECISION. The AFC
+   table gives one mission total; the engine takes two fields. Every case puts
+   the total in missionDaysFrance. Recorded in the fixture file itself, not
+   only here.
+
+7. NO COMMIT REACHED origin/main, for the fourth session running.
+
+NOTICED BUT NOT TOUCHING
+------------------------
+
+1. THE DECLARABLE-RATE FLOAT DEFECT ALMOST CERTAINLY AFFECTS THE KOTLIN PORT.
+   R10 put the denominator's three float cases into a shared fixture for
+   exactly this reason. The rate defect is the same class and is sharper, but
+   fixtures/geneva-cases.json cannot express it - none of the six published
+   cases has a denominator that triggers it. A rate-cases.json alongside the
+   other two, carrying 23/125, 51/125 and 97/125, would make AN2 inherit the
+   guard. Not created: R10 named the denominator file specifically, and adding
+   a third shared fixture is a decision about the conformance contract.
+
+2. tests/fixtures/geneva-cases.ts IS NAMED IN THE SPEC, .json IN THE PROMPT.
+   SPEC 7.5 says tests/fixtures/geneva-cases.ts and tasks/todo.md FW4 agrees;
+   this prompt's increment 1 says fixtures/geneva-cases.json at the repo root,
+   and R10 says fixtures/denominator-cases.json. The prompt won, and JSON is
+   the better choice for a file the Kotlin build must also read. The spec
+   still says .ts.
+
+3. THE ENGINE HAS NO SNAPSHOT TESTS and a CI grep is supposed to enforce that
+   (tasks/plan.md, restating SPEC 7.6). No such grep exists yet. Currently
+   true by construction; nothing stops it changing.
+
+4. THE FW1-FW3 GAPS ARE UNCHANGED: boundary 3 of 5 (lib/ui imports types from
+   calc-engine, never logic) is unfenced; the token fence can be laundered
+   through a Sass variable or a custom property; raw values in React inline
+   style objects are invisible to stylelint; app/page.tsx collides with SPEC
+   5's app/(public)/page.tsx at FW10; prompts/design-frontier/ does not exist.
+
+5. regimeFor STILL CANNOT HONOUR A FUTURE RULE SET, as reported in FW3. It
+   takes no taxYear, so it reads the latest known list. calculateTelework
+   derives the regime through it, which means a dossier for a year whose
+   RuleSet changed the 1983 list would get the newest list. Harmless while
+   2026 is the only set.
+
+QUESTIONS FOR THE OPERATOR
+--------------------------
+
+1. WHEN SHOULD A1_REQUIRED FIRE? The one regulatory ambiguity in this task.
+   SPEC 7.1 says only that the 49.9 % social ceiling is "conditional on a
+   valid A1", and 7.4 lists the code with no condition. I implemented the
+   reading that it is a standing obligation rather than a threshold - it fires
+   whenever any day is counted against the ceiling - and marked the trigger
+   PROVISIONAL at the site. The alternatives I considered and rejected: firing
+   only above the fiscal ceiling would make it redundant with
+   FISCAL_CEILING_EXCEEDED, since by construction nothing exceeds the ceiling
+   in the other branch; firing only near the social ceiling would leave a user
+   comfortably under 40 % unaware of a document they are nonetheless required
+   to hold. This affects copy, not arithmetic, so no fixture depends on it.
+
+2. THE THRESHOLD GUARD AND DECIMAL-PLACE DIVISORS. no-magic-thresholds
+   forbids a bare 10 anywhere in the engine outside rules.ts, because 10 is
+   the mission cap. It has now twice caught a power-of-ten divisor instead -
+   10 ** 6 in FW3, tenths / 10 here - and both times the fix was to write 1e6
+   or 1e1. That works and is arguably clearer, but it is a convention the
+   guard is imposing rather than one anyone chose. Options: keep it and write
+   the convention down in tasks/plan.md; narrow the guard to flag 10 only
+   where it is not a divisor; or drop 10 from the forbidden set and rely on
+   the mission cap living in RuleSet. I have no strong preference and have
+   changed nothing.
+
+3. SHOULD THE RATE FLOAT CASES BECOME A SHARED FIXTURE? See NOTICED 1. The
+   Kotlin port will hit the 23/125 defect unless it inherits a guard, and
+   the Geneva six cannot express it. My inclination is a
+   fixtures/rate-cases.json mirroring denominator-cases.json, but it extends
+   the conformance contract AN2 must satisfy, so it is yours.
+
+4. WHO OWNS THE MISSION-CAP PRORATION UNDER THE EXACT METHOD? Under
+   simplified240 the cap prorates off employmentRate and periodFraction,
+   which is unambiguous. Under 'exact' the employer supplies a total that may
+   not correspond to those figures at all, and the engine still prorates the
+   cap off the rate and the period because that is what SPEC 7.2 step 4 says.
+   A part-timer whose employer supplies a full-year exact total would get a
+   prorated cap against an unprorated denominator. No fixture covers it and
+   the spec does not address it.
+
+PUSH PROOF
+----------
+
+Session commits, oldest first:
+
+  8e66196  chore: bring design system and plan level with the code (R9)
+  3fc0bb3  FW4: Geneva and denominator fixtures, failing
+  2145980  FW4: the mission-imputation waterfall
+  8f62c10  FW4: declarable rate (truncated) and raw rate
+  f622f4f  FW4: headroom, and advisory flooring per R12
+  1490217  FW4: warnings and calculateTelework - Geneva fixtures green
+  b59d69d  FW4: threshold and proration boundary tests
+
+Pushes that succeeded: none.
+
+Every attempt returned:
+
+  ! [remote rejected] main -> main (refusing to allow an OAuth App to create
+    or update workflow `.github/workflows/ci.yml` without `workflow` scope)
+
+origin/main is at 389663b. Local main is ahead by thirty-two commits: five
+from FW1, ten from FW2, nine from FW3, seven from this session, and this
+report.
+
+FINAL VERIFICATION
+------------------
+
+  $ pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm size
+
+  typecheck  exit 0
+  lint       exit 0
+  test       Test Files 17 passed (17) | Tests 276 passed (276)
+  build      exit 0, 4 static routes prerendered
+  size       exit 0, all gated routes pass both gates
+
+  chain exit 0
+
+Green in one run on the final commit, with all six Geneva cases and all five
+denominator cases passing.
+
+CI green on origin/main: NOT VERIFIED. Nothing has reached origin/main.
+
+END OF REPORT
