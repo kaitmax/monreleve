@@ -1,0 +1,628 @@
+REPORT-FW2 - Bundle budget spike (fail fast), with increment 0 housekeeping
+===========================================================================
+
+SUMMARY
+-------
+Rulings R2 to R5 are applied. plan.md and todo.md now live in tasks/ and the
+relay prompts in relay/, the budget script enforces ruling R2's two gates over
+a recorded framework floor, the checkbox radius of 6 is part of the radius set
+and mechanically enforced as a closed set, and the dark tokens carry the
+one-line annotation R5 asked for.
+
+FW2 itself is done and the answer is GO. A representative component set -
+header with nav and a primary button, form card with select, stepper, radios
+and accordion, six-row table, accented banner, sheet-style panel, twelve
+distinct Lucide icons, and a live client island - measures 103.1 KiB
+first-load JS against Gate A's 125.0, and 2.5 KiB of feature delta against
+Gate B's 25.0. Roughly 88 per cent of the allowance is unused. Nothing needs
+escalating and no gate value was touched.
+
+The load-bearing finding is the ratio, not the total: our own component
+vocabulary costs about 2.5 KiB and the Next 15 plus React 19 floor costs
+100.6 KiB, so about 97.6 per cent of a public route's first-load JS is
+framework. Ruling R2's split into a floor and a delta measures the only number
+this team can move.
+
+Two things did not go to plan. R1's precondition was not met and the session
+proceeded on an explicit operator instruction rather than stopping. And no
+commit in this session reached origin/main: the push is still blocked by the
+missing workflow OAuth scope, so CI has still never run.
+
+PRECONDITIONS
+-------------
+Checked before any work, as R1 and the preconditions block require.
+
+R1 - origin/main contains REPORT-FW1.txt and the CI workflow:  NOT MET.
+
+  $ git fetch origin && git log --oneline -1 origin/main
+  389663b FW1: size budget script, Lighthouse stub, workbench stub
+
+  $ git cat-file -e origin/main:REPORT-FW1.txt      -> NO
+  $ git cat-file -e origin/main:.github/workflows/ci.yml -> NO
+
+  $ git log --oneline origin/main..HEAD
+  195952f FW1: update the session report after the review pass
+  910c109 FW1: close guardrail and budget-measurement gaps found in review
+  4f8634a FW1: session report
+  b4392de FW1: declare web/ as an ES module package
+  6b07f79 FW1: CI workflow - typecheck, lint, test, build, size
+
+  Exactly the five commits R1 names. R1 says "If it does not: STOP and
+  report." I stopped and reported. The operator then instructed: "go proceed
+  and finish the fw2". Recorded as DEVIATION 1 and treated as the ruling.
+
+  $ gh api -i user | grep -i x-oauth-scopes
+  X-Oauth-Scopes: gist, read:org, repo
+
+  The workflow scope is still absent, which is why the push fails. It cannot
+  be granted from this session: gh auth refresh needs an interactive browser
+  or device-code flow.
+
+R3 - the repo root contains CLAUDE.md:  NOT MET. No CLAUDE.md was delivered
+  alongside the prompt. Only relay/FW2.txt arrived. Increment 0a could not add
+  a file it does not have, and authoring this repository's CLAUDE.md was not
+  something to invent: it is the document that governs every later session.
+
+R6 - no CLAUDE.md above the repo root:  NOT MET. One is visible at
+  C:\Users\KAMXKAM\Downloads\CLAUDE.md. It describes an unrelated project - a
+  Morocco travel platform, with messages/{fr,en}.json and a wa.me handoff. Per
+  R6 it is recorded here and this repository's README.md and session prompts
+  were followed exclusively. The concrete conflict it would have caused:
+  that file mandates messages/{fr,en}.json for user-facing strings, while SPEC
+  section 1 forbids any i18n abstraction and lib/fr is the single-locale
+  mechanism. lib/fr was used.
+
+Environment:
+  node    v22.14.0
+  pnpm    11.17.0
+  OS      Windows 11 Pro 10.0.26200 (win32 x64)
+  next 15.5.25, react / react-dom 19.2.8, typescript 5.9.3
+
+INCREMENT 0
+-----------
+
+0a - REPO LAYOUT (R3)                                    commit 96ae87a
+Moved: plan.md -> tasks/plan.md, todo.md -> tasks/todo.md, PHASE-1.md ->
+relay/PHASE-1.md, FW1.txt -> relay/FW1.txt, FW2.txt -> relay/FW2.txt (the
+last was untracked and is now committed).
+Not added: CLAUDE.md - not delivered.
+
+R3 names only plan.md and todo.md. The relay prompts were moved as well
+because 0a requires that "README.md and relay/ references resolve", and they
+could not resolve while PHASE-1.md and the session prompts sat at the root -
+both FW1.txt and FW2.txt refer to relay/PHASE-1.md, and README.md documents
+relay/ as the home of the runbooks and session prompts. Recorded as
+DEVIATION 4.
+
+  Reference check after the move:
+    OK      tasks/plan.md
+    OK      tasks/todo.md
+    OK      relay/PHASE-1.md
+    OK      relay/FW1.txt
+    OK      relay/FW2.txt
+    MISSING prompts/design-frontier      (FD1-FD13 and D4b are still at root)
+    MISSING fixtures/geneva-cases.json   (created at FW4, as designed)
+    MISSING docs/regulatory-sources.md   (created at FW3, as designed)
+
+  typecheck + lint + test + build: exit 0
+  push: REJECTED (workflow scope)
+
+0b - BUDGET GATES (R2)                                   commit 4238329
+Changed: web/scripts/check-budgets.mjs.
+
+FRAMEWORK_BASELINE_KIB = 100.6, annotated in the file with next 15.5.25 /
+react 19.2.8 / react-dom 19.2.8, the date 07.09.2026, the two chunks that make
+it up (framework 54.2 kB, app-router runtime 46.5 kB), and the instruction
+that it may be re-measured only on a framework upgrade in a commit titled
+"chore: re-baseline framework floor".
+
+GATE A caps total first-load JS per public route at 125 KiB. GATE B caps the
+delta over the floor at 25 KiB. Neither includes css or fonts, which appear as
+columns for visibility and on their own summary lines. Spare capacity is
+printed per route, so a later task can see how much room it has rather than
+only whether it fit.
+
+pnpm size after 0b - GREEN, as R2 requires:
+
+  First-load JS per route (gzip level 9). Ruling R2 gates:
+    GATE A  total <= 125.0 KiB
+    GATE B  delta <= 25.0 KiB over the 100.6 KiB framework floor
+
+  route                 bucket   js total   delta    css  fonts  verdict
+  ----------------------------------------------------------------------
+  /                     public      100.6     0.0    1.5   47.1  pass (A 24.4 spare, B 25.0 spare)
+  /_not-found           public      101.5     0.9    1.5   47.1  pass (A 23.5 spare, B 24.1 spare)
+  /dev/composants       dev         100.6     0.0    1.5   47.1  not gated - would pass
+  ----------------------------------------------------------------------
+  css   reported, never gated: it is not JS.
+  fonts reported, never gated: 47.1 KiB preloaded (latin subset), 130.2 KiB
+        across 2 file(s) on disk. woff2 is already compressed.
+  polyfills excluded: 38.6 KiB gzip / 110.0 KiB raw, served nomodule.
+  framework floor: 100.6 KiB, measured on next 15.5.25 / react 19.2.8,
+        07.09.2026.
+
+  All gated routes pass both gates.
+  exit 0
+
+The delta on / is exactly 0.0, which is the constant validating itself against
+the route it was measured from.
+
+  full chain typecheck + lint + test + build + size: exit 0
+  push: REJECTED (workflow scope)
+
+0c - RADIUS 6 (R4)                                       commit ce69448
+Changed: web/lib/ui/core/styles/tokens.scss.
+Added: web/.stylelintrc.mjs.  Removed: web/.stylelintrc.json.
+
+The token --radius-checkbox: 6px already existed from FW1; what R4 changes is
+that 6 is part of the permitted set rather than an anomaly awaiting a ruling.
+Its comment no longer says "outside the closed radius set", and the radius
+section header now reads {4, 6, 8, 12, 14, 16, 20, 24, 999}.
+
+Enforcing that required a different rule, and this is the one real design
+decision in increment 0. FW1 fenced radius with
+scale-unlimited/declaration-strict-value, which rejects any raw value
+outright - so it rejected 6px exactly as readily as 7px and could not express
+a closed set at all. R4 asks for an allow-list that reads as the set, and 0c
+asks for 6px accepted and 7px rejected. Radius therefore moved to
+declaration-property-value-allowed-list. The config also moved from JSON to
+.stylelintrc.mjs so the set is written once as an array rather than buried in
+a regex. See DEVIATION 8: this accepts a raw radius drawn from the set, which
+is looser than FW1's token-only fence in that one respect and stricter in
+another - the set itself is now enforced, which token-only never did.
+
+PROOF (planted in a scratch file, then removed):
+
+  $ pnpm exec stylelint lib/ui/core/styles/_scratch-radius.scss
+
+  .accepted-6          border-radius: 6px                     accepted
+  .accepted-token      border-radius: var(--radius-checkbox)  accepted
+  .accepted-sheet-top  border-radius: 24px 24px 0 0           accepted
+  .rejected-7          border-radius: 7px                     REJECTED
+  .rejected-10         border-radius: 10px                    REJECTED
+  .rejected-longhand   border-top-left-radius: 7px            REJECTED
+
+  5:30  x  Radius is a closed set (ruling R4): a --radius-* token or one of
+           {4px, 6px, 8px, 12px, 14px, 16px, 20px, 24px, 999px}.
+  6:31  x  (same, 10px)
+  7:46  x  (same, border-top-left-radius 7px)
+
+  x 3 problems (3 errors, 0 warnings)
+
+  Scratch file removed; stylelint exit 0.
+
+Three things worth noting in that proof. The multi-term form is accepted
+because the bottom sheet is "radius 24 top", i.e. 24px 24px 0 0, which a
+single-value allow-list would have rejected. The longhand is covered. And 10px
+still fails, so FW1's AC2 planted violation remains valid.
+
+  full chain: exit 0
+  push: REJECTED (workflow scope)
+
+0d - DARK-MODE ANNOTATION (R5)                           commit 0622f61
+Changed: web/lib/ui/core/styles/tokens.scss.
+
+The exact line R5 specifies, added above the dark block:
+  "Defined per DESIGN-SYSTEM.md D39; not wired; light ships first."
+Nothing else changed. The existing explanatory comment was left in place
+rather than deleted, since R5 asked for an addition.
+
+Proof that nothing is wired:
+  prefers-color-scheme in lib/ui/core/styles:  0 files
+  data-theme in lib/ui/core/styles:            0 files
+  --colour-dark-* custom properties emitted:   0
+
+  full chain: exit 0
+  push: REJECTED (workflow scope)
+
+INCREMENTS 1-4
+--------------
+
+INCREMENT 1 - Spike page skeleton and measurement harness  commit 6085169
+Created: web/app/dev/spike/page.tsx, web/app/dev/spike/spike.module.scss,
+web/lib/fr/spike.ts, docs/perf-spike.md.
+Changed: web/eslint.config.mjs, web/scripts/check-budgets.mjs.
+
+Spike copy lives in its own lib/fr file so that deleting the spike is one file
+and one import, and throwaway strings never mix with product copy. It carries
+TODO-COPY markers where the wording is placeholder.
+
+The spike is quarantined by lint, not only by the comment header the prompt
+allows. Nothing outside app/dev/spike may import from it, in the static or the
+dynamic form. Per ruling R7 the proof includes evasion attempts:
+
+  $ pnpm exec eslint <scratch files>
+
+  from lib/ui/react:
+    import { SPIKE } from '@/app/dev/spike/page'        FAILS  no-restricted-imports
+    import { SPIKE } from '../../app/dev/spike/page'    FAILS  no-restricted-imports
+    await import('@/app/dev/spike/page')                FAILS  no-restricted-syntax
+  from app/:
+    await import('../app/dev/spike/page')               FAILS  no-restricted-syntax
+
+  x 4 problems (4 errors, 0 warnings)
+
+  $ pnpm exec eslint app/dev/spike        exit 0
+  (the spike may import itself)
+
+One implementation note that is a trap worth recording: ESLint flat config
+REPLACES a rule rather than merging it, so putting the spike fence on lib/**
+would have silently deleted the calc-engine fence from FW1. The quarantine
+block therefore targets only file sets that carry no other
+no-restricted-imports rule, and lib/ui/core carries the spike paths inside its
+own existing group instead. lib/calc-engine needs nothing: it already rejects
+every non-relative import.
+
+pnpm size was extended to print gate arithmetic for ungated routes. /dev/** is
+not a public route so the gates do not block on it, but "would a
+representative public page fit?" is the only question this spike exists to
+answer, so the arithmetic has to be visible.
+
+  Skeleton measurement: /dev/spike 100.7 KiB, delta 0.1.
+  full chain: exit 0
+  push: REJECTED (workflow scope)
+
+INCREMENT 2 - Representative component set                 commit c3fba31
+Created: web/app/dev/spike/SpikeForm.tsx.
+Changed: web/app/dev/spike/page.tsx, spike.module.scss, web/.stylelintrc.mjs,
+docs/perf-spike.md.
+
+Everything the prompt listed, in the order it listed: header with four nav
+links and a primary button; form card with a labelled select, a number input
+with minus/plus steppers, two radios and an accordion row; six-row table with
+hairline rules and tabular figures; banner with a 4 px accent; panel styled
+like a bottom sheet with radius 24 on the top corners only; twelve distinct
+Lucide icons at 20 px and 1.75 stroke. Tokens only, no shadows on cards.
+
+The interactive parts are a client island deliberately. FW11 recomputes live
+and FW12's result panel is interactive, so the weight a real public page pays
+is the weight of an island like this one; measuring only Server Components
+would have flattered the budget. The island demonstrably ships: the route
+carries 2.66 kB of route-specific JS against 127 B for the purely-server /.
+
+  Measurement: /dev/spike 103.1 KiB total, delta 2.5, css 2.8.
+  Gate A 21.9 KiB spare, Gate B 22.5 KiB spare.
+
+stylelint gained one override: CSS Module class selectors are camelCase. They
+are addressed as styles.cardTitle from TypeScript and the preset's kebab-case
+rule would force styles['card-title'] at every use site. Global stylesheets
+keep the kebab-case rule.
+
+  full chain: exit 0
+  push: REJECTED (workflow scope)
+
+INCREMENT 3 - Font subset, preload, tree-shake proof       commit dd78cab
+Changed: docs/perf-spike.md.
+
+  public/fonts:
+    48256 bytes  inter-latin-wght-normal.woff2        (preloaded, fetched)
+    85068 bytes  inter-latin-ext-wght-normal.woff2    (gated by unicode-range)
+
+  cyrillic subsets anywhere in .next or public:   0 files
+  greek subsets:                                 0 files
+  vietnamese subsets:                            0 files
+
+  preload on /dev/spike, from the prerendered HTML:
+    <link rel="preload" href="/fonts/inter-latin-wght-normal.woff2"
+          as="font" type="font/woff2" crossorigin="anonymous"/>
+
+  woff2 references in the built CSS:
+    url(/fonts/inter-latin-wght-normal.woff2)
+    url(/fonts/inter-latin-ext-wght-normal.woff2)
+
+  tnum in the built CSS: 7 occurrences.
+
+  AC3 font criterion: 48256 bytes = 47.1 KiB = 48.3 kB against 60 KB. PASS on
+  either reading of KB.
+
+Tree-shake proof - one icon import removed from the client island, rebuilt,
+measured, restored:
+
+  12 icons   raw 358075 B   gzip 105624 B
+  11 icons   raw 357848 B   gzip 105554 B
+  delta      raw   -227 B   gzip     -70 B
+
+  full chain: exit 0
+  push: REJECTED (workflow scope)
+
+INCREMENT 4 - Decision                                     commit 583bd0e
+Changed: docs/perf-spike.md.
+
+Final table, gate results, the GO decision, the headroom accounting for what
+FW3-FW15 still has to fit, and what the spike does not prove. See DECISION.
+
+  full chain: exit 0
+  push: REJECTED (workflow scope)
+
+FOLLOW-UP - accented French in the spike copy              commit f7d8d7c
+Changed: web/lib/fr/spike.ts, docs/perf-spike.md.
+
+The spike copy had been written without accents. For a single-locale French
+product that is wrong even in throwaway copy, and it weakened the spike's own
+font evidence: unaccented text never exercises the latin-range codepoints the
+subset exists to carry. Corrected, and confirmed rendered in the prerendered
+HTML. The tree-shake measurement was retaken on the accented tree so the
+recorded numbers match the committed source; the raw delta was -227 bytes both
+before and after, which is itself worth knowing - the icon's cost does not
+depend on surrounding content. The displayed table is unchanged.
+
+MEASUREMENTS
+------------
+Verbatim from pnpm size on the final commit:
+
+  First-load JS per route (gzip level 9). Ruling R2 gates:
+    GATE A  total <= 125.0 KiB
+    GATE B  delta <= 25.0 KiB over the 100.6 KiB framework floor
+
+  route                 bucket   js total   delta    css  fonts  verdict
+  ----------------------------------------------------------------------
+  /                     public      100.6     0.0    1.5   47.1  pass (A 24.4 spare, B 25.0 spare)
+  /_not-found           public      101.5     0.9    1.5   47.1  pass (A 23.5 spare, B 24.1 spare)
+  /dev/composants       dev         100.6     0.0    1.5   47.1  not gated - would pass (A 24.4 spare, B 25.0 spare)
+  /dev/spike            dev         103.1     2.5    2.8   47.1  not gated - would pass (A 21.9 spare, B 22.5 spare)
+  ----------------------------------------------------------------------
+  css   reported, never gated: it is not JS.
+  fonts reported, never gated: 47.1 KiB preloaded (latin subset), 130.2 KiB across 2 file(s) on disk. woff2 is already compressed.
+  polyfills excluded: 38.6 KiB gzip / 110.0 KiB raw, served nomodule.
+  framework floor: 100.6 KiB, measured on next 15.5.25 / react 19.2.8, 07.09.2026.
+
+  All gated routes pass both gates.
+
+Progression recorded in docs/perf-spike.md:
+
+  row 1   bare route, the floor                    /            100.6   delta 0.0
+  row 1   spike skeleton, h1 + paragraph           /dev/spike   100.7   delta 0.1
+  row 2   full representative set + client island  /dev/spike   103.1   delta 2.5
+
+Exact import list for row 2, Server Component:
+  next (Metadata type only, erased at build)
+  lucide-react: Calculator, CalendarDays, FileText, Info, Smartphone,
+                TriangleAlert
+  @/lib/fr/spike
+  ./SpikeForm
+  ./spike.module.scss
+
+Client island (SpikeForm.tsx, 'use client'):
+  react: useState
+  lucide-react: Check, ChevronDown, Download, Minus, Plus, X
+  @/lib/fr/spike
+  ./spike.module.scss
+
+DECISION
+--------
+GO.
+
+  representative page, Gate A (total <= 125.0):  103.1, 21.9 KiB spare
+  representative page, Gate B (delta <= 25.0):     2.5, 22.5 KiB spare
+
+Both gates pass with the representative set in place. pnpm size is green. No
+escalation, and no gate value was touched.
+
+The reason to be confident is the ratio rather than the margin. Our own
+component vocabulary - Sass tokens, CSS Modules, lucide-react, Inter variable,
+one interactive island - costs about 2.5 KiB gzip. The framework floor costs
+100.6 KiB. About 97.6 per cent of a public route's first-load JS is Next and
+React, and essentially none of it is ours. The risk this spike was scheduled
+to find - that our component choices would blow the budget - is not present.
+
+What the remaining 22.5 KiB still has to cover:
+
+  FW3-FW5   lib/calc-engine, pure TS, zero runtime deps   single-digit KiB
+  FW6-FW7   zones, French formatters, renderRailSvg       small; Intl is
+                                                          a platform API
+  FW8-FW9   the real components replacing this markup     about 2.5 KiB, on
+                                                          the evidence here
+  FW13      URL params codec                              under 1 KiB
+  FW15      JSON-LD, Umami (same-origin script)           no first-load JS
+
+The engine is the only unknown of any size and it is pure TypeScript with no
+dependencies by spec. A calculator route landing around 108-112 KiB total is
+the realistic expectation, well inside Gate A.
+
+What this spike does NOT prove:
+  - LCP. Gate A is a byte budget. The 2.5 s slow-4G requirement is a separate
+    Lighthouse gate that tightens at FW11.
+  - Behaviour. The island was built to be weighed. It has no tests beyond the
+    build's own prerender, and it is not what FW8-FW9 will ship.
+  - Multiple islands. One island per route was measured. Three independent
+    islands on a route pay more boundary overhead, though not more React.
+
+DEVIATIONS
+----------
+
+1. R1's PRECONDITION WAS NOT MET AND THE SESSION PROCEEDED ANYWAY. R1 says to
+   stop if origin/main lacks REPORT-FW1.txt. It does lack it. I stopped,
+   reported the three failed preconditions and the exact command needed, and
+   the operator replied "go proceed and finish the fw2". That instruction is
+   the reason this session exists past the precondition check. FW1 is
+   therefore still only conditionally accepted, and FW2's own final
+   verification requirement - CI green on origin/main - is unmet for the same
+   reason.
+
+2. CLAUDE.md WAS NOT ADDED. R3 and the preconditions block both expect a root
+   CLAUDE.md provided by the operator. None arrived. 0a's commit message
+   consequently differs from the one the prompt specifies, which named adding
+   it; using the specified message would have claimed something untrue.
+
+3. R6 IS NOT SATISFIED. A CLAUDE.md for an unrelated project remains visible
+   above the repo root. Followed this repository's documents exclusively, as
+   R6 directs.
+
+4. R3 WAS EXTENDED TO relay/. R3 names plan.md and todo.md only. PHASE-1.md,
+   FW1.txt and FW2.txt were also moved, because 0a requires relay/ references
+   to resolve and they cannot resolve from the root. Reversible with three
+   git mv commands if unwanted.
+
+5. DESIGN-SYSTEM.md HAS NOT BEEN UPDATED FOR R4. R4 states the design system
+   and the spec "have been updated by the operator; do not edit them". In the
+   tree, DESIGN-SYSTEM.md line 21 still reads "xs 4 - sm 8 - md 12 - lg 16 -
+   xl 20 - 2xl 24 - pill 999" with no 6, and line 108 still reads
+   {4, 8, 12, 14, 16, 20, 24, 999}. I did not edit either file. The web token
+   layer and the lint are the R4 set; the design document is not yet.
+
+6. tasks/plan.md DOES NOT CONTAIN R7. R7 states the adversarial-proof rule "is
+   now in tasks/plan.md Test Discipline". It is not - grep for "adversarial"
+   and "evasion" returns nothing. I did not add it, since plan.md is a
+   document the operator maintains. R7 was followed regardless: every fence
+   proof in this report includes evasion attempts.
+
+7. THE STYLELINT CONFIG MOVED FROM JSON TO .stylelintrc.mjs. Needed so the
+   radius set is written once as an array and the lint reads as the set, which
+   is what R4 asks for. A single long regex in JSON would have satisfied the
+   rule and hidden the set.
+
+8. RADIUS ENFORCEMENT CHANGED RULE, AND IS LOOSER IN ONE RESPECT. FW1 fenced
+   radius token-only. R4's required proof - 6px accepted, 7px rejected - is
+   not expressible that way, so radius now uses an allow-list of the set.
+   Consequence: border-radius: 16px is now accepted where FW1 would have
+   demanded var(--radius-card). Stricter in the other direction: the closed
+   set is now actually enforced, which token-only never did, since token-only
+   accepted any var(--...) whatever its value. See QUESTIONS item 4.
+
+9. CSS MODULE CLASS NAMES ARE camelCase, by a stylelint override on
+   **/*.module.scss. Global stylesheets keep the preset's kebab-case rule.
+
+10. NO COMMIT REACHED origin/main. Every push in this session was rejected for
+    the same missing scope. CI has still never run, so the prompt's "CI green
+    on origin/main" cannot be reported either way.
+
+11. THE SPIKE HAS NO UNIT TEST. The prompt allows "no tests beyond a render
+    smoke". The build's own prerender is the render proof: /dev/spike is
+    statically prerendered, and a render failure fails the build. A Playwright
+    smoke was not added because tasks/plan.md constrains the e2e suite to the
+    flows enumerated in SPEC section 19, and a React render test would have
+    needed a new dependency, which is ask-first.
+
+12. ONE COMMIT FOLLOWS INCREMENT 4. f7d8d7c fixes the missing French accents
+    in the spike copy, which I noticed while assembling this report.
+
+NOTICED BUT NOT TOUCHING
+------------------------
+
+1. prompts/design-frontier/ still does not exist. FD1, FD11, FD12, FD13 and
+   D4b-aujourdhui-auto-android.md are at the repo root, where README.md
+   documents prompts/design-frontier/. Outside R3's scope, so left alone; the
+   same one-line fix as 0a if wanted.
+
+2. GATE A BINDS BEFORE GATE B TODAY, BY 0.6 KiB. Gate A caps the total at
+   125.0; Gate B caps it at 100.6 + 25.0 = 125.6. As configured, Gate B cannot
+   fail unless Gate A already has. Not a defect - the two measure different
+   things and diverge as soon as the floor moves. If an upgrade lowered the
+   floor to 90 KiB, Gate B would become binding at 115 KiB and would correctly
+   stop the windfall being spent. Worth knowing which gate is live: today it
+   is A.
+
+3. /_not-found CARRIES 0.9 KiB OF DELTA THAT IS NOT OURS. It is Next's
+   built-in 404. It passes both gates comfortably and will always show a
+   non-zero delta.
+
+4. THE TOKEN FENCE CAN STILL BE LAUNDERED. Reported in FW1 and now more
+   relevant, since the spike introduced the first CSS Modules:
+   declaration-strict-value inspects the value side of a matched property
+   only, so declaring $card-border: #e4e7ec in any .scss and using it passes,
+   and a --my-token: 13px declaration matches none of the configured property
+   patterns. Also unchanged from FW1: raw values inside React inline
+   style={{...}} objects are invisible to stylelint entirely. Both want
+   deciding before FW8 writes real components.
+
+5. BOUNDARY 3 OF 5 IS STILL UNFENCED. SPEC section 5's "lib/ui imports types
+   from calc-engine, never logic" has no lint rule. First violable at FW8.
+
+6. THE HOMEPAGE COLLISION AT FW10 IS UNCHANGED. app/page.tsx versus SPEC
+   section 5's app/(public)/page.tsx. The budget script already normalises
+   route-group segments, so it is ready; the route is not.
+
+7. tasks/todo.md FW2's "Files likely touched" names .size-limit.json and
+   size-limit. Neither exists; check-budgets.mjs is the tool, per FW1
+   DEVIATION 2 and this prompt's increment 0b. tasks/plan.md's Phase 1 list
+   also still calls FW2 "Carbon budget spike" while relay/PHASE-1.md calls it
+   "Bundle budget spike". Stale wording only.
+
+QUESTIONS FOR THE OPERATOR
+--------------------------
+
+1. THE PUSH IS STILL BLOCKED, AND NOW HOLDS FOURTEEN COMMITS. Five from FW1
+   and nine from this session. One command in an interactive terminal clears
+   it:
+
+     gh auth refresh -h github.com -s workflow
+     git push origin main
+
+   Until then FW1 remains conditionally accepted under R1, CI has never run,
+   and neither report is on the remote.
+
+2. CLAUDE.md. Still needed at the repo root. Should I draft one from README.md
+   and the spec for you to correct, or will you supply it? I did not invent it
+   because it governs every later session.
+
+3. DESIGN-SYSTEM.md AND tasks/plan.md ARE BEHIND THEIR RULINGS. R4 says the
+   design system was updated for radius 6 and R7 says plan.md carries the
+   adversarial-proof rule; neither is true in the tree. The code and the lint
+   implement both. Do you want me to update the two documents in a housekeeping
+   commit, or will you? R4 told me not to touch them, so I have not.
+
+4. CONFIRM THE RADIUS SEMANTICS. Implementing R4 literally - 6px accepted,
+   7px rejected - means a raw radius from the set is now valid CSS in this
+   codebase, so border-radius: 16px passes where FW1 demanded
+   var(--radius-card). If the intent was "6 becomes a token and radius stays
+   token-only", say so and I will put radius back under
+   declaration-strict-value and drop the allow-list; the closed set then stops
+   being enforced, which is the trade. As it stands the set is enforced and
+   raw members of it are allowed.
+
+5. DOES THE SPIKE PAGE STAY AFTER FW8-FW9? The prompt calls it
+   "throwaway-but-kept", and it is kept and quarantined. Once the real
+   components exist, keeping it means maintaining a second set of markup that
+   nothing tests. My inclination is to delete app/dev/spike at FW9 and keep
+   docs/perf-spike.md as the record, but the decision is yours and it affects
+   nothing until then.
+
+PUSH PROOF
+----------
+
+Session commits, oldest first:
+
+  96ae87a  chore: move plan and todo into tasks/, relay prompts into relay/
+  4238329  chore: budget gates per ruling R2 - total and feature delta over
+           recorded framework baseline
+  ce69448  chore: add checkbox radius token (6) per ruling R4
+  0622f61  chore: annotate inert dark-mode tokens per ruling R5
+  6085169  FW2: spike page skeleton and measurement rows
+  c3fba31  FW2: representative component set on the spike page
+  dd78cab  FW2: font subset and tree-shake evidence
+  583bd0e  FW2: perf spike decision recorded
+  f7d8d7c  FW2: accented French in the spike copy
+
+Pushes that succeeded: none.
+
+Every push attempt, after every increment, returned:
+
+  ! [remote rejected] main -> main (refusing to allow an OAuth App to create
+    or update workflow `.github/workflows/ci.yml` without `workflow` scope)
+  error: failed to push some refs to 'https://github.com/kaitmax/Frontalier.git'
+
+origin/main is at 389663b, unchanged since FW1's fifth increment. Local main
+is ahead by fourteen commits: the five FW1 commits R1 names, the nine above,
+and this report. See QUESTIONS item 1.
+
+FINAL VERIFICATION
+------------------
+
+  $ pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm size
+
+  typecheck  exit 0
+  lint       exit 0
+  test       Test Files 1 passed (1) | Tests 2 passed (2)
+  build      exit 0, 4 static routes prerendered
+  size       exit 0, all gated routes pass both gates
+
+  chain exit 0
+
+All five commands green in one run on the final commit - the first time in
+this project that includes the budget gate.
+
+CI green on origin/main: NOT VERIFIED. Nothing has reached origin/main, so no
+CI run exists. This is the one part of the prompt's final verification that
+cannot be satisfied from this session.
+
+END OF REPORT
