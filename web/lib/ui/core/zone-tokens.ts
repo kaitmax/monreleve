@@ -3,16 +3,20 @@
 // The Zone -> band colour and Status -> badge visual mappings, and nothing
 // else.
 //
-// WHY THIS IS A SEPARATE FILE. It has no runtime imports, so
-// scripts/generate-zones-scss.mjs can load it directly under
-// `node --experimental-strip-types` and read the mappings as data. The import
-// below is type-only and is erased before Node ever sees the file. zones.ts
-// cannot be loaded that way: it pulls French copy in from lib/fr through the
-// "@/" alias, which Node does not resolve, and adding a resolver hook or a
-// TypeScript runner to the build to work around that would be tooling bought
-// to solve a problem the layering should not have. An SCSS generator has no
-// business loading French copy. So the design-token mapping is data with no
-// dependencies, here, and zones.ts joins it to copy for the badge.
+// THE SINGLE SOURCE for the Zone mapping (ruling R38). The rail reads
+// ZONE_BAND_TOKEN directly; the badge reads STATUS_VISUAL. There is no
+// generated stylesheet any more - _zones.scss existed to carry this mapping
+// into CSS, gained no consumer, and was removed rather than kept alive by its
+// own stale-check.
+//
+// WHY IT IS STILL A SEPARATE FILE FROM zones.ts. It has no runtime imports at
+// all: the import below is type-only and erased at build time. That began as
+// a mechanical requirement - the deleted generator loaded this file under
+// `node --experimental-strip-types`, which zones.ts cannot support because it
+// pulls French copy through the "@/" alias - and it survives the generator
+// because dependency-free data is the right shape for the thing every other
+// layer joins onto: the rail, the badge, and the Compose port (D20) which
+// must transcribe these pairs and nothing else.
 //
 // SPEC 6.2: TWO MAPS, NEVER ONE. The rail is coloured by Zone and the badge
 // by Status - colouring the rail by Status is a review rejection. 'compliant'

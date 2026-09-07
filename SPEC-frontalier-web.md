@@ -1004,7 +1004,7 @@ Coolify on the OVH VPS, alongside the existing sites — **never touch saharades
 
 **Always:**
 - Run the full test suite before any commit touching `lib/calc-engine`; cite a primary source for any new constant or rule; add a fixture whenever an interpretation is clarified; name the rounding rule at every rounding site; emit `EXACT_METHOD_UNVERIFIED` for user-supplied denominators.
-- Reference `DESIGN-SYSTEM.md` tokens; render status as colour **plus** icon **plus** text; route every number through `format/`; keep `zones.ts` the single source and generate `_zones.scss`; normalise `Intl` separators explicitly; add a visual baseline with any component change.
+- Reference `DESIGN-SYSTEM.md` tokens; render status as colour **plus** icon **plus** text; route every number through `format/`; keep `zone-tokens.ts` the single source for the Zone mapping (the generated `_zones.scss` was removed by R38 once it had no consumer); normalise `Intl` separators explicitly; add a visual baseline with any component change.
 - Show the result before asking for anything; keep every user-facing string in `lib/fr`; canonical + `noindex` on param URLs; show both rates when they differ.
 - Assign entry timestamps on the server; append an `EntryEvent` for every write; show the original entry timestamp wherever an entry is edited; carry « saisie tardive » into the dossier.
 

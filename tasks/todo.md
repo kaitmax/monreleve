@@ -114,7 +114,7 @@ Every task also clears the project-wide Definition of Done and the Execution, Te
 
 **Acceptance criteria:**
 - [ ] `formatPercent(34.6) === "34,6\u00A0%"` and `formatDays(1234.5) === "1\u202F234,5"` asserted **by codepoint**; `formatDate("2026-12-18") === "18.12.2026"`; cases for 0, negatives, half-days
-- [ ] `_zones.scss` is generated (build script), never hand-edited — a stale-file check fails CI if `zones.ts` and the SCSS diverge
+- [x] ~~`_zones.scss` is generated (build script), never hand-edited — a stale-file check fails CI if `zones.ts` and the SCSS diverge~~ — **SUPERSEDED by ruling R38.** Built and proven in FW6 (four hand-edit classes caught, including EOL-only), then removed in FW7: once R31 reduced the file to three Zone classes and the rail was ruled to fill from `ZONE_BAND_TOKEN` directly, the generated stylesheet had no consumer. A generated file whose only reader is its own stale-check is abstraction before use. `zone-tokens.ts` is the single source; if a CSS consumer ever appears, the generator returns with it.
 - [ ] Status exhaustiveness test fails on any missing label/icon/explanation
 
 **Verification:**
@@ -123,7 +123,7 @@ Every task also clears the project-wide Definition of Done and the Execution, Te
 - [ ] Manual check: run tests under Node 22 and Node 24 — identical formatter output
 
 **Dependencies:** FW1
-**Files likely touched:** `lib/ui/core/zones.ts`, `lib/ui/core/format/{number,date}.ts`, `scripts/generate-zones-scss.mjs`, `lib/ui/core/styles/_zones.scss`, tests
+**Files likely touched:** `lib/ui/core/zones.ts`, `lib/ui/core/zone-tokens.ts`, `lib/ui/core/format/{number,date}.ts`, tests
 **Estimated scope:** M
 
 ---

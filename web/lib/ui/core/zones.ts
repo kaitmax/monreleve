@@ -25,8 +25,8 @@ import type { StatusVisual } from './zone-tokens';
 import type { RuleSet, TeleworkResult } from '@/lib/calc-engine';
 
 // Re-exported so consumers keep one import site for the whole mapping. The
-// definitions live in zone-tokens.ts because that file has no runtime imports
-// and can therefore be loaded by the _zones.scss generator; see its header.
+// definitions live in zone-tokens.ts, which is the single source for the Zone
+// mapping (ruling R38) and has no runtime imports; see its header.
 export { STATUS_VISUAL, ZONE_BAND_TOKEN } from './zone-tokens';
 export type { LucideIconName, StatusVisual } from './zone-tokens';
 

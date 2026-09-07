@@ -7,15 +7,14 @@
 # a temporary directory: `git ls-files --eol` reported `i/lf w/crlf` there,
 # against `w/lf` in this older checkout, which merely predates the change.
 #
-# That matters from FW6 on, because lib/ui/core/styles/_zones.scss is
-# GENERATED and compared BYTE FOR BYTE against the generator's output. An EOL
-# that varies by machine would make that comparison fail on a fresh Windows
-# clone and pass in CI - and the reflexive fix, normalising line endings
-# before comparing, permanently blinds the check to the EOL-only and
-# trailing-newline-only edits it exists to catch. Pinning LF lets the
-# comparison stay exact, which is the only form that detects every hand edit.
-#
-# The generator writes "\n" and never os.EOL, for the same reason.
+# It mattered first for a generated SCSS file compared byte for byte, removed
+# by ruling R38 once it had no consumer. It still matters, and for the same
+# reason: FW7 compares generated SVG strings byte for byte across Node and the
+# browser, and commits Playwright screenshot baselines. An EOL that varies by
+# machine breaks a byte comparison in one direction and hides a real drift in
+# the other, and the reflexive fix - normalising before comparing - blinds the
+# check to exactly the EOL-only and trailing-newline-only edits it exists to
+# catch. Pinning LF keeps every such comparison exact.
 * text=auto eol=lf
 
 # Belt and braces: text=auto already detects these as binary, but naming them

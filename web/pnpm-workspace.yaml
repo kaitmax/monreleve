@@ -7,12 +7,3 @@
 # install script is declined deliberately rather than left unanswered.
 allowBuilds:
   "@parcel/watcher": false
-
-# The stale check for the generated _zones.scss runs as `prebuild`, so whether
-# pnpm honours pre/post scripts decides whether the build is guarded at all.
-# pnpm 11 does honour them, but `pnpm config get enable-pre-post-scripts`
-# returns undefined - the behaviour is an unpinned default, and this repo has
-# already been bitten once by relying on one (the allowBuilds map above exists
-# because pnpm 11 moved where install settings are read from). Pinned, so a
-# future default cannot quietly disarm the check.
-enablePrePostScripts: true
