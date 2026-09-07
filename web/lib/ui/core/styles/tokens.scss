@@ -79,25 +79,21 @@ $space-20: 80px;
 // checkbox, added by operator ruling R4 of 07.09.2026. Enforced in
 // .stylelintrc.mjs, which reads the set literally.
 // ---------------------------------------------------------------------------
+// Exactly nine names, and no more. Ruling R8 makes this closed at both ends:
+// stylelint accepts only these token NAMES at the point of use, and
+// tests/unit/tokens/radius.test.ts asserts these nine properties exist with
+// these values and that no other --radius-* property does. Semantic aliases
+// (--radius-card, --radius-button, --radius-sheet ...) were removed for that
+// reason: an alias is a tenth name.
 $radius-xs: 4px;
+$radius-checkbox: 6px;
 $radius-sm: 8px;
 $radius-md: 12px;
+$radius-button-lg: 14px;
 $radius-lg: 16px;
 $radius-xl: 20px;
 $radius-2xl: 24px;
 $radius-pill: 999px;
-$radius-button: $radius-md;
-$radius-button-large: 14px;
-$radius-input: $radius-md;
-$radius-badge: $radius-sm;
-$radius-card: $radius-lg;
-$radius-card-status: $radius-xl;
-$radius-sheet: $radius-2xl;
-$radius-skeleton: $radius-sm;
-$radius-toast: $radius-md;
-
-// Checkbox, 6 px. Part of the set per ruling R4.
-$radius-checkbox: 6px;
 
 // ---------------------------------------------------------------------------
 // TYPE - Inter everywhere. Weights 400/500/600/700 only.
@@ -240,23 +236,16 @@ $motion-toast-max: 5000ms;
   --space-20: #{$space-20};
 
   // radius
+  // Nine names, closed set (ruling R8).
   --radius-xs: #{$radius-xs};
+  --radius-checkbox: #{$radius-checkbox};
   --radius-sm: #{$radius-sm};
   --radius-md: #{$radius-md};
+  --radius-button-lg: #{$radius-button-lg};
   --radius-lg: #{$radius-lg};
   --radius-xl: #{$radius-xl};
   --radius-2xl: #{$radius-2xl};
   --radius-pill: #{$radius-pill};
-  --radius-button: #{$radius-button};
-  --radius-button-large: #{$radius-button-large};
-  --radius-input: #{$radius-input};
-  --radius-badge: #{$radius-badge};
-  --radius-card: #{$radius-card};
-  --radius-card-status: #{$radius-card-status};
-  --radius-sheet: #{$radius-sheet};
-  --radius-skeleton: #{$radius-skeleton};
-  --radius-toast: #{$radius-toast};
-  --radius-checkbox: #{$radius-checkbox};
 
   // type
   --type-family: #{$font-family-base};
