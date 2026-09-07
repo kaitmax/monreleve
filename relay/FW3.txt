@@ -1,0 +1,279 @@
+FW3 SESSION PROMPT - frontalier
+Paste this entire prompt as the first message of a fresh Claude Code
+session, opened at the repository root.
+
+====================================================================
+PRE-STEP RULINGS (apply verbatim)
+====================================================================
+R1 (carried, FW1). FW1 and FW2 are accepted, still conditional on the
+   commits reaching origin/main and CI having run there. Verify at
+   session start that origin/main contains REPORT-FW2.txt and that
+   the CI workflow has a green run. If not, record it under
+   DEVIATIONS and proceed - this no longer blocks work, but it stays
+   open until it is true.
+
+R2 (carried, FW2). Budget: GATE A total first-load JS <= 125 KiB per
+   public route; GATE B feature delta <= 25 KiB over
+   FRAMEWORK_BASELINE_KB. Fonts and CSS are reported separately and
+   never counted against a JS gate. No gate value changes without
+   the operator.
+
+R7 (carried, FW1). Guardrail proofs are adversarial: the straight
+   violation AND at least one evasion attempt (path trick, alternate
+   extension, re-export, dynamic import).
+
+R8 (new, FW2 - radius semantics). Both properties are required:
+   (a) AT THE POINT OF USE, token names only. border-radius accepts
+       var(--radius-xs | --radius-checkbox | --radius-sm |
+       --radius-md | --radius-button-lg | --radius-lg | --radius-xl |
+       --radius-2xl | --radius-pill), plus 0 and 50%. A raw length is
+       rejected even when its value is in the set (6px fails), and a
+       var() from another family is rejected (var(--space-2) fails).
+       Multi-value corners compose token names:
+       var(--radius-2xl) var(--radius-2xl) 0 0.
+   (b) AT THE POINT OF DEFINITION, the closed numeric set. A unit
+       test reads the token layer and asserts the nine --radius-*
+       properties exist, each equals its documented value
+       (4, 6, 8, 12, 14, 16, 20, 24, 999 px), and NO other --radius-*
+       property exists.
+   The 6-versus-7 proof moves from stylelint to the token test.
+   DESIGN-SYSTEM.md section 4.1 now documents this.
+
+R9 (new). The operator's earlier claim that DESIGN-SYSTEM.md and
+   tasks/plan.md had been updated for R4 and R7 was wrong: the edits
+   existed only outside the repository. The corrected
+   DESIGN-SYSTEM.md, tasks/plan.md and CLAUDE.md are delivered with
+   this prompt. Increment 0 commits them as received. Do not rewrite
+   them; if a delivered document contradicts this prompt, STOP and
+   ask.
+
+====================================================================
+CONTEXT
+====================================================================
+Project: frontalier. You are executing task FW3 ONLY, preceded by a
+short housekeeping increment 0 (R8, R9). FW3 is the FIRST behavioural
+task in the project, so test-first is mandatory and enforced by the
+report format.
+
+Read first: CLAUDE.md, README.md, SPEC-frontalier-web.md sections 5,
+7 (all of it, including 7.7), 20, 21, tasks/plan.md (Test Discipline),
+tasks/todo.md FW3, relay/PHASE-1.md, and REPORT-FW2.txt.
+
+====================================================================
+STANDING PROTOCOL (identical in every FW / AN prompt)
+====================================================================
+1. SESSION SCOPE. Increment 0 and FW3 only. Do not start FW4. In
+   particular: do NOT write the waterfall, the declarable rate, the
+   headroom, the warnings, or the Geneva fixtures - those are FW4,
+   and FW4 requires the fixtures to be written BEFORE that code
+   exists.
+2. INCREMENT CYCLE. implement -> test -> verify -> commit -> push.
+   Build and existing tests green after EVERY increment. Never more
+   than ~100 lines uncommitted.
+3. COMMIT ONLY ON GREEN. typecheck, lint, test, build all green on
+   the increment or no commit. A red commit is a bounce.
+4. COMMITS. "FW3: <increment title>"; housekeeping "chore: <title>".
+   Push after each increment; capture the output.
+5. SIMPLICITY FIRST. Naive, obviously-correct version. No abstraction
+   before the third use case demands it.
+6. TEST-FIRST, AND IT IS THE POINT OF THIS TASK. Every function in
+   this increment set gets its failing test before its
+   implementation. The report must show, per function, the RED run
+   (test exists, implementation absent or stubbed, test fails for the
+   right reason) and then the GREEN run. A test that passed on its
+   first run is evidence of nothing and must be redone.
+7. ENGINE PURITY. lib/calc-engine has zero runtime dependencies, no
+   I/O, no clock, no imports outside its own directory. Invalid input
+   returns a Result, never throws. The fence from FW1 must still
+   hold - re-prove it adversarially (R7) since this task is the first
+   real code inside the fence.
+8. SCOPE DISCIPLINE. Out-of-scope observations go under NOTICED BUT
+   NOT TOUCHING.
+9. QUESTIONS. Any regulatory ambiguity, any change to a constant, a
+   rounding rule or the public API: PAUSE, ask, record verbatim.
+   Guessing a tax rule is the one failure this project cannot absorb.
+10. EXIT ARTIFACT. REPORT-FW3.txt at the repo root, committed and
+    pushed, in the format at the bottom.
+Pure ASCII for prompts and reports; code may contain accented French.
+
+====================================================================
+INCREMENT 0 - HOUSEKEEPING (R8, R9)
+====================================================================
+0a. Commit the delivered CLAUDE.md, DESIGN-SYSTEM.md and
+    tasks/plan.md as received.
+    Commit: "chore: land delivered CLAUDE.md and corrected design
+    system and plan (R9)".
+0b. Radius per R8: restore token-name-only enforcement for
+    border-radius in stylelint with the closed name list plus 0 and
+    50%; add the token-definition unit test asserting the nine
+    --radius-* names, their values, and the absence of any other
+    --radius-* property.
+    Proofs to capture: border-radius: 6px REJECTED; border-radius:
+    var(--space-2) REJECTED; border-radius: var(--radius-checkbox)
+    ACCEPTED; multi-value var(--radius-2xl) var(--radius-2xl) 0 0
+    ACCEPTED; and the token test failing when --radius-foo: 7px is
+    added, then passing once removed.
+    Commit: "chore: radius enforced at use and at definition (R8)".
+After 0a-0b the full chain is green.
+
+====================================================================
+TASK FW3 - CALC ENGINE, FIRST HALF
+====================================================================
+Objective (tasks/todo.md): the pure engine's type surface, validation,
+regime derivation, denominator, granularity classification, and the
+year-keyed RuleSet. Zero runtime deps, no I/O, no clock.
+
+Authority: SPEC section 7 is normative, in particular 7.1 (the source
+table), 7.2 steps 1-3, 7.4 (the exact type surface) and 7.7 (rule
+versioning). Where this prompt and the spec differ, the spec wins and
+you report the difference.
+
+Acceptance criteria (restated; the report must prove each):
+AC1. The type surface compiles exactly as spec 7.4, with the addition
+     of taxYear on TeleworkInput per 7.7. regimeFor and
+     classifyTeleworkHours are exported and unit-tested at 1.9 h,
+     2 h, 4 h and 4.1 h.
+AC2. The simplified-240 denominator is correct at employmentRate
+     1 / 50 / 80 / 100 and for mid-year periodFraction; a
+     totalWorkDays of 0 or less returns a validation error and never
+     divides.
+AC3. No magic numbers: every threshold and constant lives in
+     RuleSet(2026) with its citation; ruleSetFor(2027) falls back to
+     the latest known set and surfaces that fact; docs/
+     regulatory-sources.md is started with a dated entry per
+     constant.
+
+--------------------------------------------------------------------
+INCREMENT 1 - Types and Result (no logic)
+--------------------------------------------------------------------
+- lib/calc-engine/types.ts: Canton (26 codes), Regime, Granularity,
+  DenominatorMethod, TeleworkInput (incl. readonly taxYear: number),
+  TeleworkResult, Warning, ValidationError, Result<T, E> - exactly as
+  spec 7.4, all readonly.
+- lib/calc-engine/index.ts re-exports the public surface. Function
+  declarations may be stubs that return a not-implemented
+  ValidationError; they must not throw.
+- A type-level test (expectTypeOf or equivalent) asserting the shape
+  of TeleworkInput and TeleworkResult, and that Result is a
+  discriminated union.
+- Re-prove the engine fence adversarially (R7): plant
+  import { APP_NAME } from './../fr' AND the same import in a .tsx
+  file inside lib/calc-engine, and a dynamic import(); capture all
+  three rejections; remove them.
+- Verify: pnpm typecheck && pnpm lint && pnpm test.
+- Commit: "FW3: engine type surface and Result". Push.
+
+--------------------------------------------------------------------
+INCREMENT 2 - RuleSet(2026) and ruleSetFor
+--------------------------------------------------------------------
+- RED first: tests asserting ruleSetFor(2026) returns fiscalCeiling
+  0.40, socialCeiling 0.499, missionCapDays 10,
+  simplifiedBasisDays 240, and the eight residence-1983 cantons
+  (BE, SO, BS, BL, VD, VS, NE, JU); that ruleSetFor(2027) falls back
+  to the 2026 set and reports the fallback; that no other module
+  contains a bare 0.4, 0.499, 10 or 240.
+- Then lib/calc-engine/rules.ts. Each constant carries a comment
+  naming its source per spec 7.1.
+- docs/regulatory-sources.md: one dated entry per constant with its
+  primary reference, and an explicit "VERIFICATION PENDING - Checkpoint
+  A" banner at the top, since the sources have not yet been checked
+  against admin.ch, the AFC and impots.gouv.fr.
+- Include a repository check (test or lint) that fails on a bare
+  0.4 / 0.499 / 240 / 10 threshold literal anywhere in
+  lib/calc-engine outside rules.ts. Prove it fires, then clean.
+- Commit: "FW3: RuleSet 2026, ruleSetFor, source register". Push.
+
+--------------------------------------------------------------------
+INCREMENT 3 - regimeFor
+--------------------------------------------------------------------
+- RED first: a test enumerating all 26 cantons and asserting
+  'residence-1983' for exactly the eight, 'source' for the other
+  eighteen - table-driven, one case per canton, no loop over a copy
+  of the implementation's own list.
+- Then lib/calc-engine/regime.ts, reading the canton list from the
+  RuleSet.
+- Commit: "FW3: regime derivation from canton". Push.
+
+--------------------------------------------------------------------
+INCREMENT 4 - granularity
+--------------------------------------------------------------------
+- RED first: classifyTeleworkHours at 0, 1.9, 2, 2.5, 4, 4.1, 8 for
+  each of 'day', 'halfDay', 'hours'; boundary behaviour stated
+  explicitly - >4 h is a full day, 2 h to 4 h inclusive is a half
+  day, under 2 h is zero under 'halfDay'; 'day' is 1 above 4 h and 0
+  otherwise; 'hours' counts every hour. Negative input returns a
+  validation error.
+- Then lib/calc-engine/granularity.ts.
+- The mission-travel-day rules from spec 7.2 step 3 are documented as
+  comments here but NOT implemented - they belong to FW4's waterfall.
+- Commit: "FW3: granularity classification". Push.
+
+--------------------------------------------------------------------
+INCREMENT 5 - denominator and validation
+--------------------------------------------------------------------
+- RED first, denominator: simplified240 = ceil(240 * rate/100 *
+  periodFraction) at rate 1 / 50 / 80 / 100 and periodFraction 1,
+  0.5 and a mid-year value; exact = the user-supplied total,
+  unchanged, and it must surface EXACT_METHOD_UNVERIFIED.
+- RED first, validation: employmentRate outside 1-100 ->
+  RATE_OUT_OF_RANGE; periodFraction outside (0,1] ->
+  PERIOD_OUT_OF_RANGE; any negative day count -> NEGATIVE_DAYS with
+  its field; a half-day value under granularity 'day' ->
+  GRANULARITY_MISMATCH with its field; totalWorkDays <= 0 ->
+  TOTAL_WORK_DAYS_NOT_POSITIVE and NO division anywhere; days
+  exceeding the total -> DAYS_EXCEED_TOTAL. Validation returns all
+  applicable errors, not just the first.
+- Then denominator.ts and validate.ts.
+- Commit: "FW3: denominator and input validation". Push.
+
+--------------------------------------------------------------------
+INCREMENT 6 - allowedTeleworkDays and the seam to FW4
+--------------------------------------------------------------------
+- RED first: allowedTeleworkDays returns atFiscal, atSocial and
+  missionCap for a given canton, rate, period and denominator -
+  ceilings in days, mission cap rounded UP - without needing any
+  telework or mission input.
+- calculateTelework remains a stub returning a not-implemented
+  ValidationError, with a comment naming FW4 as its owner. A test
+  asserts it returns that error rather than throwing, so the seam is
+  explicit rather than accidental.
+- Verify the full chain, then coverage for lib/calc-engine and record
+  it (the 100% gate itself is FW5's task; report the current number).
+- Commit: "FW3: allowed-days helper and explicit FW4 seam". Push.
+
+====================================================================
+OUT OF SCOPE FOR FW3
+====================================================================
+- The waterfall, declarableRate, rawRate, headroom, warnings, and
+  fixtures/geneva-cases.json - all FW4.
+- Property tests and the coverage gate - FW5.
+- Any UI, any Prisma, any route, anything under android/.
+- Any change to a threshold, a rounding rule, or the public API
+  beyond adding taxYear per spec 7.7.
+
+====================================================================
+FINAL VERIFICATION
+====================================================================
+pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm size
+Green in one run on the final commit.
+
+====================================================================
+REPORT FORMAT - REPORT-FW3.txt (pure ASCII, committed and pushed)
+====================================================================
+SUMMARY
+PRECONDITIONS        origin/main and CI status per R1.
+INCREMENT 0          R8 and R9 proofs, commit hashes, push.
+RED/GREEN LEDGER     One row per function implemented in FW3:
+                     function | test file | RED run output (trimmed,
+                     with the reason it failed) | GREEN run output.
+                     A function without a RED row is a defect.
+INCREMENTS 1-6       Files, trimmed commands, commit hash, push.
+FENCE PROOF          The three adversarial engine-fence rejections.
+CONSTANT PROOF       The bare-threshold check firing, then clean.
+COVERAGE             Current lib/calc-engine coverage, as a number.
+DEVIATIONS
+NOTICED BUT NOT TOUCHING
+QUESTIONS FOR THE OPERATOR
+PUSH PROOF           git log --oneline for the session; final push.
+
+END OF FW3 PROMPT
