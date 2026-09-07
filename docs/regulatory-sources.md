@@ -20,7 +20,84 @@ does not belong in the engine.
 >
 > Until then, treat every number below as **provisional**.
 
-Drafted 07.09.2026, in FW3.
+Drafted 07.09.2026, in FW3. Engine status added 07.09.2026, in FW5.
+
+---
+
+## ENGINE STATUS
+
+The engine is code-complete as of FW5 and **frozen pending Checkpoint A**.
+What follows is the honest division between what is proven, what is proven
+only against itself, and what is not proven at all — because those three are
+easy to conflate once a test suite is green.
+
+### Proven against an external authority
+
+The six worked examples published by the Geneva tax administration, in
+`fixtures/geneva-cases.json`. They are the only claims in this engine that an
+outside party has stated and we merely reproduce:
+
+| Case | Telework | Missions | Swiss | France | Rate |
+|---|---|---|---|---|---|
+| a | 72 | 0 | 240 | 0 | 30,00 % |
+| b | 91 | 8 | 237 | 3 | 40,00 % |
+| c | 84 | 24 | 226 | 14 | **39,16 %** |
+| d | 94 | 12 | 230 | 10 | 40,00 % |
+| e | 144 | 5 | 91 | 149 | 60,00 % |
+| special | 0 | 30 | 220 | 20 | **4,16 %** |
+
+The two bold values are the reason the engine truncates rather than rounds.
+The cases were written down and shown **failing** before any waterfall
+existed, so the arithmetic was made to match the AFC and not the reverse.
+
+**Caveat, and it matters:** the table itself was transcribed from
+`SPEC-frontalier-web.md` §7.5, not from the AFC publication. Until someone
+opens the publication, this is proof that the engine matches the *spec's
+transcription* of the authority.
+
+### Proven internally, by property
+
+Eight invariants from SPEC §7.6, each over 10 000 generated cases spanning
+part-time rates, mid-year periods, both denominator methods and all three
+granularities. Each is paired with a deliberately broken variant that
+`fast-check` must falsify, so a property cannot pass by being vacuous.
+
+These prove the engine is **self-consistent** — days are never lost or double
+counted, the credit never exceeds either limit, truncation never overstates.
+They cannot prove any of it is the *right* rule.
+
+Two further guards: `fixtures/denominator-cases.json` and
+`fixtures/rate-cases.json` pin arithmetic defects that exist only because of
+binary floating point. They protect against a class of silent one-day and
+one-hundredth errors, and the rate file protects the number filed with the
+AFC specifically.
+
+### Not verified at all
+
+- **Every constant** in `RuleSet(2026)`. All seven were drafted from advisory
+  sources. See the table below and the verification list.
+- **Two interpretations** the codebase adopted where no source speaks: the
+  `A1_REQUIRED` trigger and the mission-cap proration under the exact method.
+  Both carry `PROVISIONAL` markers in the code.
+- **Whether truncation is the filing rule** or an artefact of how the worked
+  examples were printed.
+- **The interpretative agreement of 29 April 2026**, held second-hand, which
+  is the source for the mission sub-cap sitting *inside* the 40 % rather than
+  beside it — and that single reading changes every result the engine
+  produces.
+
+### The three fixture files
+
+`fixtures/geneva-cases.json`, `fixtures/denominator-cases.json` and
+`fixtures/rate-cases.json` are **frozen at Checkpoint A** and are consumed by
+the Kotlin engine at AN2 as well as by the TypeScript engine now. A divergence
+on any case fails both builds (D20). They are language-neutral for that
+reason: periods are exact ratios rather than decimals, because a decimal
+transcription of 7/12 parses to a different double and would fail to reproduce
+the very defect it pins.
+
+Never edit an expected value to make code pass. A case that will not pass is a
+question for the operator.
 
 ---
 
