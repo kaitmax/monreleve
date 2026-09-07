@@ -247,3 +247,27 @@ describe('the test file itself', () => {
     expect(source).not.toContain('\u202F');
   });
 });
+
+describe('a minus sign is normalised too', () => {
+  it('turns U+2212 MINUS SIGN into U+002D HYPHEN-MINUS', () => {
+    // Measured on this build: the French and Swiss tags all emit U+002D, but
+    // sv-SE, lt-LT, fi-FI and nb-NO emit U+2212 MINUS SIGN. Two characters
+    // that look alike, sort differently and break a string comparison
+    // silently - so normaliseNumber pins one rather than passing through
+    // whatever the locale supplies. (I first wrote this test against de-CH,
+    // assuming the Swiss tag would be the odd one out; it is not. The
+    // assertion on the raw part below is what caught that.)
+    //
+    // formatSignedDays never emits a sign at all, but normaliseNumber is the
+    // shared seam and has to be total.
+    const parts = new Intl.NumberFormat('sv-SE', {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    }).formatToParts(-1234.5);
+
+    const sign = parts.find((part) => part.type === 'minusSign')?.value ?? '';
+    expect(sign.charCodeAt(0)).toBe(0x2212);
+    expect(normaliseNumber(parts)).toBe(`-1${NNBSP}234${COMMA}5`);
+    expect(normaliseNumber(parts).charCodeAt(0)).toBe(0x002d);
+  });
+});

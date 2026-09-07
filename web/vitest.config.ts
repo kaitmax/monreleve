@@ -15,21 +15,36 @@ export default defineConfig({
 
     coverage: {
       provider: 'v8',
-      // The engine only. SPEC 7.6 requires 100 % here and nowhere else yet;
-      // lib/ui and app/ get their own gates when they have behaviour to
-      // cover (FW6 onward). Measuring everything would dilute this one into
-      // an average nobody can act on.
-      include: ['lib/calc-engine/**'],
+      // The engine, and from FW6 lib/ui/core - which is the commitment this
+      // block's previous comment made ("lib/ui and app/ get their own gates
+      // when they have behaviour to cover (FW6 onward)"), come due now that
+      // zones.ts and the formatters exist. app/ still has none: it holds one
+      // placeholder page.
+      include: ['lib/calc-engine/**', 'lib/ui/core/**'],
       reporter: ['text'],
 
+      // PER-DIRECTORY, not global. A single global threshold over both trees
+      // would let a gap in one be paid for by the other, which is exactly
+      // the average SPEC 7.6 refuses. Each directory answers for itself.
+      //
       // SPEC 7.6: "100% statement and branch coverage - not an aspiration."
-      // A drop below any of these fails the run, and CI runs it as a
-      // blocking step.
+      // That is stated for lib/calc-engine. lib/ui/core is held to the same
+      // bar because it reaches it today, measured, and because the alternative
+      // is choosing an arbitrary number below it. FW7 adds renderRailSvg here
+      // and inherits the gate.
       thresholds: {
-        statements: 100,
-        branches: 100,
-        functions: 100,
-        lines: 100,
+        'lib/calc-engine/**': {
+          statements: 100,
+          branches: 100,
+          functions: 100,
+          lines: 100,
+        },
+        'lib/ui/core/**': {
+          statements: 100,
+          branches: 100,
+          functions: 100,
+          lines: 100,
+        },
       },
     },
   },

@@ -7,6 +7,8 @@
     "fonts": "node scripts/copy-fonts.mjs",
     "zones:generate": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/generate-zones-scss.mjs",
     "zones:check": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/generate-zones-scss.mjs --check",
+    "parity:build": "tsc -p tsconfig.parity.json",
+    "parity:check": "pnpm parity:build && node scripts/check-format-parity.mjs dist-parity",
     "prebuild": "pnpm zones:check",
     "dev": "node scripts/copy-fonts.mjs && next dev",
     "build": "node scripts/copy-fonts.mjs && next build",

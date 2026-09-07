@@ -259,3 +259,22 @@ describe('the test file itself', () => {
     expect(source).not.toContain('a\u0300');
   });
 });
+
+describe('missing fields are refused rather than rendered as undefined', () => {
+  it('throws when the parts carry no day, month or year', () => {
+    // A time-only formatter. Without the guard the assembly would splice
+    // `undefined` into the string and render "undefined.undefined.undefined",
+    // which looks like a bug report rather than a date - but only after it
+    // shipped.
+    const timeOnly = new Intl.DateTimeFormat('fr-CH', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+      timeZone: 'UTC',
+    }).formatToParts(JUNE_EVENING);
+
+    expect(timeOnly.some((part) => part.type === 'day')).toBe(false);
+    expect(() => normaliseDate(timeOnly)).toThrow(RangeError);
+    expect(() => normaliseDateTime(timeOnly)).toThrow(RangeError);
+  });
+});

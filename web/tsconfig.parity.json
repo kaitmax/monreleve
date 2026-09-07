@@ -1,0 +1,26 @@
+{
+  // web/tsconfig.parity.json
+  //
+  // Emits lib/ui/core/format/ as plain JavaScript, so the codepoint parity
+  // check can run on a Node that vitest refuses to install on. vitest 5
+  // declares engines "^22.12.0 || ^24.0.0 || >=26.0.0", which excludes the
+  // Node 20 that SPEC sections 19 and 21 name as a ship criterion.
+  //
+  // It extends the real tsconfig rather than restating flags, so the emitted
+  // JavaScript is compiled under the same strictness as everything else -
+  // notably "lib": ["esnext"], without which useGrouping: 'always' and
+  // roundingMode do not type-check at all.
+  //
+  // Only the two formatter modules are listed. Both have no runtime imports,
+  // which is what makes compiling them in isolation sufficient.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "dist-parity",
+    "rootDir": "lib/ui/core/format",
+    "declaration": false,
+    "incremental": false,
+    "plugins": []
+  },
+  "include": ["lib/ui/core/format/**/*.ts"]
+}

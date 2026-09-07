@@ -177,6 +177,26 @@ export default tseslint.config(
           selector: 'CallExpression[callee.name="require"]',
           message: CORE_MESSAGE,
         },
+        // JSX itself, not just the imports that usually come with it.
+        //
+        // Found by adversarially probing this fence in FW6: a .tsx file here
+        // that uses only intrinsic elements and imports NOTHING was clean
+        // under both eslint and tsc. Every import-based selector above misses
+        // it because it has no imports, and tsc accepts it because
+        // next-env.d.ts pulls React's JSX globals in project-wide, so the
+        // namespace is available even to a file that never mentions React.
+        //
+        // A component is exactly what must not live here: lib/ui/core renders
+        // into the browser, the PDF and the OG image, so it has to stay
+        // DOM-free (SPEC section 5). The component library is lib/ui/react.
+        {
+          selector: 'JSXElement',
+          message: CORE_MESSAGE,
+        },
+        {
+          selector: 'JSXFragment',
+          message: CORE_MESSAGE,
+        },
       ],
     },
   },

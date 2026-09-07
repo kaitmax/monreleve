@@ -29,3 +29,8 @@ yarn-error.log*
 
 # generated: font subsets copied out of @fontsource-variable/inter
 web/public/fonts/
+
+# generated: plain-JS copy of lib/ui/core/format/, compiled by
+# tsconfig.parity.json so the codepoint parity check can run on a Node that
+# vitest refuses to install on. Build output, never committed.
+web/dist-parity/

@@ -78,3 +78,69 @@ jobs:
           name: playwright-report
           path: web/playwright-report/
           retention-days: 7
+
+  # SPEC sections 19 and 21 make it a ship criterion that formatPercent and
+  # formatDays render the same codepoints "on Node 20 and 22".
+  #
+  # This cannot be a matrix over the `web` job above. vitest 5 declares
+  # engines "^22.12.0 || ^24.0.0 || >=26.0.0", so Node 20 is excluded
+  # outright and the suite cannot run there at all - see REPORT-FW6.txt,
+  # which sets out the three ways to close that properly and asks for a
+  # ruling. A matrix over `web` would also run build, playwright install,
+  # e2e and size on every leg, collide on the playwright-report artifact
+  # name, and duplicate the required-check name for branch protection.
+  #
+  # So parity is its own pair of small jobs: compile the two formatter
+  # modules to plain JavaScript once, then run a dependency-free codepoint
+  # check on each Node. The matrix legs install NOTHING, which is what lets
+  # Node 20 participate.
+  format-parity-build:
+    name: format parity (compile)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm parity:build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: format-parity-dist
+          path: web/dist-parity/
+          retention-days: 1
+
+  format-parity:
+    name: format parity (node ${{ matrix.node }})
+    needs: format-parity-build
+    runs-on: ubuntu-latest
+    strategy:
+      # Every version reports. Stopping at the first failure would hide
+      # whether a difference is one version's or several.
+      fail-fast: false
+      matrix:
+        node: [20, 22, 24]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: format-parity-dist
+          path: web/dist-parity
+
+      - run: node scripts/check-format-parity.mjs dist-parity
+        working-directory: web
