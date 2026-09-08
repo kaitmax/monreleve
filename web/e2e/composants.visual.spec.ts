@@ -10,13 +10,21 @@
 // passes on the next run by comparing that file against itself, which is a
 // green that means nothing.
 //
-// THE RAIL IS NOT HERE. e2e/rail.visual.spec.ts already holds ten baselines
-// over the full variant x zone matrix, taken in the container against
+// THE RAIL'S VARIANT x ZONE MATRIX IS NOT HERE. e2e/rail.visual.spec.ts
+// already holds ten baselines over it, taken in the container against
 // app/dev/rail-gallery, including the `social` variant the workbench has no
 // reason to show. Re-baselining the same pixels from a second page would
 // double the maintenance and halve the meaning of a diff - two files to
-// update, and a reviewer left asking which one is the contract. The rail
-// appears on the workbench for the axe sweep and for human review.
+// update, and a reviewer left asking which one is the contract.
+//
+// ONE RAIL STATE IS HERE, and it is the exception that proves the split:
+// rail-unavailable. R33's state renders no rail at all - a sentence and a
+// live region instead - and app/dev/rail-gallery never showed it, because
+// that page is a matrix of variants and zones and "no rate" is neither. So
+// it was the one state of eighteen with no baseline anywhere, found by
+// building the states matrix for the report rather than by any test. It has
+// the most to get visually wrong of any state in the set: it is the only one
+// whose failure mode is looking exactly like a correct rail at zero.
 //
 // Taken through the real cascade, in a page, for the reason the rail spec
 // records: the colours and type are var() references, and an undefined custom
@@ -26,10 +34,12 @@
 
 import { expect, test } from '@playwright/test';
 
-// The four components whose screenshot contract lives on this page, each with
-// every state the workbench renders. The ids are the contract with
-// app/dev/composants/page.tsx.
+// Every state whose screenshot contract lives on this page: the four
+// components the workbench owns outright, plus the one rail state
+// rail-gallery does not render. The ids are the contract with
+// app/dev/composants/page.tsx, so renaming one is a test change.
 const SPECIMENS = [
+  'rail-unavailable',
   'badge-compliant',
   'badge-mission',
   'badge-regime',
