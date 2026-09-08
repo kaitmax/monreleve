@@ -139,3 +139,18 @@ test('/api/health reports ok when the process is not marked as serving', async (
   expect(body.reasons).toEqual([]);
   expect(body.runtime).toBe(false);
 });
+
+test('/api/ready is 200 and ready when the process is not marked as serving', async ({
+  request,
+}) => {
+  // The counter-direction for ruling R83. Readiness must NOT fail in a local
+  // build or in CI - that is the same mistake the NODE_ENV guard made, one
+  // endpoint over, and it would block the pipeline for a condition that
+  // publishes nothing.
+  const response = await request.get('/api/ready');
+  const body = (await response.json()) as { ready: boolean; checks: { ok: boolean }[] };
+
+  expect(response.status()).toBe(200);
+  expect(body.ready).toBe(true);
+  expect(body.checks.every((check) => check.ok)).toBe(true);
+});

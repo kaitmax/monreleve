@@ -16,9 +16,14 @@
 // outage. The sitemap refuses because publishing it would be WRONG; this
 // reports because the site is up and honest about what is missing.
 //
-// Whether Coolify should treat degraded as a failing check is FW28's decision,
-// not this file's, and it is written up as a question rather than assumed -
-// there is a real argument that a deploy should not go live degraded.
+// I raised the consequence of that as a question - a deploy could go live
+// degraded, because an orchestrator sees a healthy container - and RULING R83
+// answered it by splitting the concern rather than changing this endpoint:
+// /api/ready returns 503 while degraded and FW28 points Coolify's deploy
+// check there. This one stays 200 on purpose, because an orchestrator
+// RESTARTS what fails liveness, and a restart cannot supply a missing
+// environment variable - it would loop while the previous version stayed
+// down. See lib/content/readiness.ts.
 //
 // R53 disallows /api/* in robots.txt, so this is never crawled.
 

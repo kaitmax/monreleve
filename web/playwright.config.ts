@@ -38,7 +38,14 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-      testIgnore: '**/*.visual.spec.ts',
+      // BOTH patterns, and the root-level testIgnore above is NOT inherited:
+      // a project's testIgnore REPLACES the top-level value rather than merging
+      // with it. With only the visual pattern here, this project collected
+      // guard.runtime.spec.ts and ran the R81 guard against a correctly
+      // configured server, where it asserts the opposite of what is true.
+      // Exactly the ESLint flat-config trap - a narrower scope silently
+      // deleting a broader rule - one config file over.
+      testIgnore: ['**/*.visual.spec.ts', '**/*.runtime.spec.ts'],
     },
     {
       // Not part of `pnpm test:e2e`: these must never run outside the

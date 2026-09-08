@@ -90,14 +90,38 @@ build — which publishes nothing. An earlier version did exactly that and broke
 `pnpm build`, which is part of the Definition of Done.
 
 With the marker set and the origin unset, a *serving* process returns **503**
-from `/sitemap.xml`, reports **`degraded`** from `/api/health`, and **omits
-canonicals**. Each is the safe failure rather than the quiet one: a sitemap of
-localhost URLs is well-formed XML that indexes nothing and trips no other gate,
-and a canonical pointing at localhost is worse than no canonical at all,
-because a crawler treats it as an *instruction* rather than as an absence.
+from `/sitemap.xml`, reports **`degraded`** from `/api/health`, refuses
+readiness with **503** from `/api/ready`, and **omits canonicals**. Each is the
+safe failure rather than the quiet one: a sitemap of localhost URLs is
+well-formed XML that indexes nothing and trips no other gate, and a canonical
+pointing at localhost is worse than no canonical at all, because a crawler
+treats it as an *instruction* rather than as an absence.
+
+### Liveness and readiness are different endpoints (ruling R83)
+
+| Endpoint | Meaning | Degraded origin | Who reads it |
+|---|---|---|---|
+| `/api/health` | **Liveness** — the process is answering | **200**, `status: "degraded"`, reasons in the body | a restart policy |
+| `/api/ready` | **Readiness** — send traffic to this version | **503**, the failing check named | FW28's Coolify *deploy* health check |
+
+The split is not pedantry. Health returning 200 while degraded means a deploy
+could go live with no sitemap and no canonicals, because the orchestrator sees
+a healthy container. The obvious fix — make health 503 — is worse than the
+problem: an orchestrator **restarts** what fails liveness, and a restart cannot
+supply a missing environment variable, so the container would loop while the
+previous version stayed down. Failing *readiness* stops the deploy and leaves
+the running version serving, which is the outcome anyone would want.
+
+`/api/ready` reports a **list of named checks**, passing ones included, because
+a deploy log that shows which checks ran is what makes it possible to notice
+one silently ceasing to be evaluated. The database check joins it when there is
+a database; it is deliberately not stubbed until then.
 
 The site still serves — degraded is not broken. Build-time fallback stays, so
-`pnpm build` and CI need no environment. Proof: `pnpm test:runtime`.
+`pnpm build` and CI need no environment, and `/api/ready` answers **200** there
+(a readiness check that failed in CI would block the pipeline for a condition
+that publishes nothing). Proof: `pnpm test:runtime` for the degraded direction,
+`pnpm test:e2e` for the healthy one.
 
 ```
 pnpm install

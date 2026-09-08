@@ -19,10 +19,19 @@
   border-bottom: var(--size-rule) solid var(--colour-border-default);
 }
 
+// THE GAP IS THE COMPRESSIBLE THING, and 8 px at the base is not a
+// preference. FD2 designs the header at 390 and says the layout "must also
+// hold at 360 px"; SPEC 16 requires no sideways scroll at 320, which is a
+// width no brief draws. At 320 the row - 44 px tap target, wordmark, and a
+// CTA that must stay outside the menu (FD2:32, "always visible") - was 3 px
+// too wide, so the page scrolled sideways. Everything FD2 states a number
+// for is left exactly as stated: the 20 px mark, 17/600 name, 40 px compact
+// button, 20 px gutter. The gap is the one metric no brief specifies, so it
+// is the one that gives. Desktop restores 12 px in the media query.
 .bar {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-2);
   height: var(--size-header-height-mobile);
   max-width: var(--layout-public);
   margin: 0 auto;
@@ -172,6 +181,7 @@
 @media (width >= bp.$breakpoint-md) {
   .bar {
     height: var(--size-header-height);
+    gap: var(--space-3);
     padding: 0 var(--layout-gutter-desktop);
   }
 

@@ -201,4 +201,29 @@ test.describe('no horizontal scroll at the narrowest supported width', () => {
 
     expect(overflow, 'the page scrolls horizontally at 320 px').toBeLessThanOrEqual(0);
   });
+
+  test('at 360 px the header CTA still clears the gutter, per FD2', async ({ page }) => {
+    // FD2:7 states the constraint the briefs actually make: the layout "must
+    // also hold at 360 px, so nothing sits within 8 px of a gutter". Nothing
+    // was checking it, and the header is where it bites - a 44 px tap target,
+    // a wordmark and an always-visible CTA on one 56 px row.
+    //
+    // BOTH WIDTHS ARE ASSERTED because they are different claims. 320 is
+    // SPEC 16's and asks only that the page not scroll sideways; 360 is FD2's
+    // and asks for breathing room. Fixing the 320 overflow by compressing the
+    // row could have eaten the 360 margin, and only this test would notice.
+    await page.setViewportSize({ width: 360, height: 800 });
+    await page.goto('/');
+    await page.evaluate(() => document.fonts.ready);
+
+    const clearance = await page.evaluate(() => {
+      const cta = document.querySelector('header a[class*="cta"]');
+
+      if (cta === null) throw new Error('no header CTA to measure');
+
+      return document.documentElement.clientWidth - cta.getBoundingClientRect().right;
+    });
+
+    expect(clearance, 'the header CTA sits inside FD2 8 px gutter margin').toBeGreaterThanOrEqual(8);
+  });
 });

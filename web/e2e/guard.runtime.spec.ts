@@ -117,3 +117,59 @@ test('the site still SERVES - degraded is not broken', async ({ page }) => {
   await expect(page.getByRole('banner')).toBeVisible();
   await expect(page.getByRole('contentinfo')).toBeVisible();
 });
+
+// ---------------------------------------------------------------------------
+// RULING R83: liveness and readiness under the SAME conditions, which is the
+// only way the split can be shown to be real. Asserting them in separate
+// tests would leave the pair unproven - the point is that one endpoint says
+// 200 and the other says 503 about the identical process at the identical
+// moment.
+// ---------------------------------------------------------------------------
+
+test('liveness stays 200 while readiness refuses - the same process, the same moment', async ({
+  request,
+}) => {
+  const [health, ready] = await Promise.all([
+    request.get('/api/health'),
+    request.get('/api/ready'),
+  ]);
+
+  // Liveness: the process is alive, and an orchestrator must not restart it.
+  // A restart cannot supply a missing environment variable, so a liveness
+  // check that failed here would crash-loop while the previous version
+  // stayed down.
+  expect(health.status()).toBe(200);
+  expect(((await health.json()) as { status: string }).status).toBe('degraded');
+
+  // Readiness: do not send this version live. Failing here stops a deploy and
+  // leaves the running version serving.
+  expect(ready.status()).toBe(503);
+});
+
+test('/api/ready names the failing check and the variable to set', async ({ request }) => {
+  const response = await request.get('/api/ready');
+  const body = (await response.json()) as {
+    ready: boolean;
+    checks: { name: string; ok: boolean; detail?: string }[];
+  };
+
+  expect(body.ready).toBe(false);
+
+  const failed = body.checks.filter((check) => !check.ok);
+
+  expect(failed).toHaveLength(1);
+  expect(failed[0]?.name).toBe('site-origin');
+  expect(failed[0]?.detail).toContain('NEXT_PUBLIC_SITE_URL');
+
+  // Reports the passing checks too - a deploy log listing which checks RAN is
+  // what makes it possible to notice one silently ceasing to be evaluated.
+  expect(body.checks.length).toBeGreaterThanOrEqual(failed.length);
+});
+
+test('the readiness refusal is not cached', async ({ request }) => {
+  // A cached 503 would survive the fix and fail the next deploy for a reason
+  // that no longer exists.
+  const response = await request.get('/api/ready');
+
+  expect(response.headers()['cache-control']).toContain('no-store');
+});
