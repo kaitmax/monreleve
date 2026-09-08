@@ -1,4 +1,748 @@
 REPORT-FW9.txt
+FieldGroup, DataGrid, Container - and a second stop, at increment 4.
+Sessions of 08.09.2026 (first run, stopped at increment 3) and the resume.
+Pure ASCII by convention. French copy is transliterated where quoted.
+
+The report of the FIRST run is preserved verbatim as an appendix at the end of
+this file, titled "FIRST RUN - STOPPED". Nothing in it has been edited.
+
+
+================================================================================
+SUMMARY
+================================================================================
+
+FW9 IS STILL NOT COMPLETE, and it stops one increment later than last time -
+at 4 rather than 3. R64 cleared the width conflict and Container is built. The
+new stop is the same SHAPE as the old one and it needs four values the operator
+has to authorise.
+
+DELIVERED THIS RUN, all green, all pushed:
+
+  def0c0e  FW9: rulings R64-R67 - layout tokens, type-level exhaustiveness,
+           textContent assertions, brief relocation           [increment 0]
+  a10d548  FW9: Container                                     [increment 3]
+  e777001  FW9: R66 sweep, round two - what the adversarial audit found
+  cea4d2f  FW9: the contrast audit was about to block a correct component
+
+DELIVERED IN THE FIRST RUN, unchanged:
+
+  eb7cf27  FieldGroup and the ValidationError copy map         [increment 1]
+  6c4b6ec  DataGrid                                            [increment 2]
+  bbdc06f  workbench, baselines and axe for the two components that exist
+  45b9216  Checkpoint A machine checks recorded
+
+NOT STARTED, blocked on Q1 below:
+
+  increment 4   PublicShell header
+  increment 5   PublicShell footer and the R51 date
+  increment 6   the remaining workbench entries, baselines, keyboard path,
+                and the Checkpoint A re-run
+
+THE STOP, in one paragraph. The header needs a breakpoint, a header height, a
+mobile header height and a compact CTA height. None of the four has a token,
+stylelint and CLAUDE.md both forbid the raw values, and adding a token is a
+SPEC section 20 ask-first item - which CLAUDE.md lists under "Rules that are
+never relaxed" and which this resume prompt explicitly does not relax. On top
+of that, two of the four values are in conflict: the prompt says the header is
+64 px and FD2 - the mobile brief the operator supplied WITH this resume, which
+did not exist when the first report was written - says 56 px with a compact
+40 px CTA.
+
+WHAT IS DIFFERENT FROM LAST TIME, and it is the point of this run. The blockers
+were found by a PRE-FLIGHT INVENTORY of increments 4 to 6 before a line of them
+was written, not by hitting them mid-increment. Six agents read the three relay
+prompts, the SPEC, the design system and the FD briefs in parallel and reported
+twenty-nine candidate blockers across FW9, FW10 and FW11; I verified the
+load-bearing ones against the files myself. Two findings from that pass were
+defects in work already committed, and both are now fixed:
+
+  the contrast audit would have blocked a CORRECT component. Its derived half
+  measured every colour rule against the two page surfaces, so the header's
+  "brand fill, white label" CTA came out at 1,00:1 against a 4,5 gate.
+
+  R66's sweep was less clean than I reported. The ruling had NO ENFORCEMENT,
+  a comment in DataGrid claimed something false, and two Playwright
+  normalisers were stacking in a visual spec.
+
+THREE THINGS I GOT WRONG, ALL FOUND AND ALL CORRECTED HERE.
+
+  1. R64's premise was false BECAUSE OF ME. The ruling removes
+     $layout-content-max "it has no consumer". It had one -
+     app/dev/spike/spike.module.scss read it - and the claim came from my own
+     REPORT-FW9 NOTICED item 2, written without checking.
+
+  2. I described Testing Library's normaliser as touching both sides of a
+     comparison. It touches only the DOM side. Measured.
+
+  3. My R66 sweep concluded the repository was clean apart from two
+     already-fixed assertions. It was not.
+
+
+================================================================================
+PRECONDITIONS
+================================================================================
+
+THE RESUME PROMPT LISTS FIVE PRECONDITIONS. FOUR WERE FALSE AND ONE FILE HAS
+NEVER EXISTED.
+
+  relay/FW9.txt                 ABSENT - was at the repo root, untracked
+  relay/FW10.txt                ABSENT - same
+  relay/FW11.txt                ABSENT - same
+  relay/CHAIN-FW9-FW11.txt      ABSENT - and never committed, see below
+  prompts/design-frontier/FD2-calculateur-mobile.md
+                                ABSENT - was at the repo root, untracked
+
+The four misplaced files were landed in this run: the three relay prompts moved
+into relay/ and were committed, and FD2 moved into prompts/design-frontier/
+under R67 with the other four briefs. So four of the five preconditions are now
+true rather than worked around.
+
+relay/CHAIN-FW9-FW11.txt IS DIFFERENT: it has never existed. Not on disk, and
+`git log --all --diff-filter=A` over the whole history returns nothing matching
+"chain". The C1-C8 chain rules it carries reached this project only in a chat
+message, which has since been compacted out of context.
+
+WHAT THAT BLOCKS, precisely, because it is less than it sounds. Each relay
+prompt carries its own R0 handover check and its own report format, so FW9,
+FW10 and FW11 are each executable from their own file. What is NOT available is
+C1, C3, C5, C6, C7 and the required shape of REPORT-CHAIN.txt, which C8 calls
+for. I have not invented them. If the chain is to be closed formally, that file
+is needed; if it is lost, the three per-task reports are the record.
+
+R1 - CI green on origin/main. Green on every pushed commit of this run, all
+four jobs each (web, rail visual baselines, format parity compile, format
+parity node 22 and 24):
+
+  a10d548  success  https://github.com/kaitmax/Frontalier/actions/runs/34201296032
+  e777001  success  https://github.com/kaitmax/Frontalier/actions/runs/34202458806
+  cea4d2f  success  https://github.com/kaitmax/Frontalier/actions/runs/34203139707
+
+def0c0e has no run of its own: it was pushed together with a10d548, and
+Actions runs against the head of a push rather than each commit in it. It was
+green locally on the full chain before the push. Same granularity note as the
+first run's R62/R63 commits.
+
+R48 - the social rail variant. Already applied in FW8 increment 0, commit
+  e0ea34d. Confirmed, not owed.
+
+R49 - baseline-only increments may be combined. Not used this run: no increment
+  regenerated a baseline.
+
+R50 / R54 - Checkpoint A sequencing. CORRECTION TO THE FIRST REPORT, which said
+  R50 blocks FW11. It does not: relay/FW11.txt:20 opens "R54 (new - supersedes
+  R50's FW11 clause)", and R54 builds the calculator HIDDEN - noindex and
+  excluded from the sitemap - while LAST_REGULATORY_REVIEW is null. FW11 is
+  blocked, but by its dependency chain rather than by the gate.
+
+R51 - the review date. STILL NOT IMPLEMENTED: it lives in increment 5.
+  lib/content/regulatory.ts does not exist. Nothing renders a date, so the
+  invariant R51 protects is not currently violable - but it is not enforced
+  either, and that gap must close before any footer ships.
+
+
+================================================================================
+RULINGS R64 TO R67 - INCREMENT 0
+================================================================================
+
+R64 - LAYOUT TOKENS, AND A CORRECTION I OWE.
+
+Added --layout-public 1200, --layout-narrow 720, --layout-article 680, each
+carrying at its definition the brief that specifies it. DESIGN-SYSTEM.md
+section 1 gains the LAYOUT WIDTHS clause in the operator's words, and the old
+"max content 1440" is gone from the SPACING line - that clause is what stopped
+the first run.
+
+tests/unit/tokens/layout.test.ts pins the three values, their ORDERING
+(article < narrow < public: a prose measure wider than the calculator column
+would put the most text on the widest line), and the ABSENCE of
+--layout-content-max. A second assertion catches 1440 reappearing under another
+name, which is the easy accident when a build breaks and the value is still
+wanted. RED first: "expected NaN to be 1200", "expected '1440px' to be
+undefined".
+
+THE RULING'S PREMISE WAS WRONG AND IT WAS MY FAULT. R64 removes
+$layout-content-max on the grounds that it "has no consumer". It had one:
+
+  web/app/dev/spike/spike.module.scss:31   max-width: var(--layout-content-max);
+
+That premise came from REPORT-FW9.txt's NOTICED item 2 - "Nothing in the
+codebase reads it" - a claim I made without checking. The ruling's INTENT is
+unaffected, so the token is removed as instructed and the spike now reads
+--layout-public, which is what a public-page-shell spike was always
+approximating. Recorded at the call site rather than quietly patched.
+
+Note the shape of the near-miss: removing a custom property does not break a
+build. `var(--gone)` is still valid CSS; the declaration just becomes invalid
+at compute time and the element silently loses its max-width. stylelint does
+not catch it and neither does tsc.
+
+R65 - THE TYPE TEST IS NOW THE PROOF.
+
+tests/unit/fr/errors.types.ts carries two @ts-expect-error assertions: that
+ERROR_COPY cannot satisfy a Record over the union plus a seventh member, and
+that errorMessage refuses an unknown code at the call site.
+
+A @ts-expect-error is an assertion precisely because it fails in BOTH
+directions. Falsified by widening ERROR_COPY to Record<string, string> - the
+exact change that would let a code ship with no copy:
+
+  tests/unit/fr/errors.types.ts(62,3): error TS2578: Unused '@ts-expect-error'
+  directive.
+
+It is NOT a .test.ts file: there is nothing to run, and naming it .test.ts
+would make vitest fail it for containing no tests, which reads as the guard
+working when it is not. A deleted type test leaves no red run, so
+errors.test.ts asserts the file exists and still carries both directives.
+
+That guard needed a correction of its own. Counting the bare string
+"@ts-expect-error" gives FIVE, because the file's header explains the mechanism
+at length. It counts comment lines that START with the directive. A test whose
+number moves when someone edits prose is a test nobody will trust.
+
+R66 - textContent, NEVER A TEXT QUERY. The line is in tasks/plan.md's Test
+Discipline with both failure modes. The sweep is reported in its own section
+below, because the first version of it was wrong.
+
+R67 - the four tracked FD briefs moved with git mv, so their history follows
+them; FD2, supplied untracked, moved and was added. prompts/design-frontier/
+now holds FD1, FD2, FD11, FD12 and FD13.
+
+
+================================================================================
+INCREMENT 3 - CONTAINER
+================================================================================
+
+Three named widths against R64's three tokens, and no fourth by any route.
+
+"NO ARBITRARY WIDTHS ACCEPTED - the prop is a union, and a test asserts no
+other value compiles." That clause cannot be tested at runtime: there is no
+value you can pass to show that a DIFFERENT value would have been refused. A
+runtime test could only show an invalid width is ignored, which is a weaker
+claim and would still let <Container width="1337px"> compile and ship.
+
+So the assertion is a type, by R65's mechanism. Container.types.ts carries
+three directives:
+
+  '1337px'              an arbitrary length - what a caller reaches for
+  'content'             a plausible NAME - the old $layout-content-max, and
+                        more dangerous than the first because it looks like it
+                        belongs
+  a value typed string  the one a caller actually hits, from a route param or
+                        a prop threaded through a wrapper. The two literals
+                        would be rejected by a widened union too; only this
+                        proves the prop is not assignable FROM string.
+
+Falsified by widening the union to `string`: all three become TS2578 and the
+build fails.
+
+The stylesheet is guarded too. The test COUNTS the max-width rules and requires
+every one to name a --layout-* width, so a fourth is caught even when it uses a
+token rather than a raw value. Falsified by appending a data-width="wide" rule:
+"expected 4 to be 3".
+
+TWO ENVIRONMENT LESSONS, both R61.
+
+  The widths are asserted as TOKEN NAMES, not pixels. jsdom computes no layout
+  and resolves no custom property - getComputedStyle returns the literal
+  "var(--layout-public)". The numbers are pinned centrally against the compiled
+  token layer; what the component owes is reaching for the right token.
+
+  Reading the stylesheet needed an explicit path, NOT new URL(...,
+  import.meta.url). Under jsdom import.meta.url is an http:// URL and
+  readFileSync rejects it with "The URL must be of scheme file". The FW8
+  component tests use the URL form safely because they run in NODE; this file
+  needs jsdom for render(). Invisible until it throws.
+
+Container emits a plain div, not a landmark: it is layout, and a landmark here
+would fight the page that already has one.
+
+ONE GAP RECORDED AT THE SITE, not a blocker for increment 3 and a blocker for
+increment 4: the media query uses a raw 768. See Q1.
+
+
+================================================================================
+THE R66 SWEEP - AND WHY THE FIRST VERSION OF IT WAS WRONG
+================================================================================
+
+My first sweep concluded: only two files use Testing Library queries, the two
+formatted-number assertions were already fixed, no normalising matcher exists
+anywhere, and all lib/fr copy is codepoint-clean. An adversarial audit refuted
+three parts of that.
+
+THE MECHANISM, MEASURED - and it corrects me. I had assumed the normaliser
+touches both sides of a comparison. It touches only the DOM side:
+
+  DOM U+00A0  vs  matcher ASCII space  ->  MATCHES, silently
+  DOM U+202F  vs  matcher U+202F       ->  NO MATCH, loud red against
+                                           correct content
+
+Both directions are bad and the asymmetry is what makes one silent. This is
+live, not hypothetical: correct French typography puts U+00A0 before a colon,
+lib/fr/errors.ts already ends a sentence with one, and every copy file is
+marked TODO-COPY. When copy review lands, a text query on that sentence goes
+red against CORRECT copy - and the obvious repair, retyping the constant with
+an ordinary space, lands exactly on the silent row.
+
+FINDING 1 - R66 HAD NO ENFORCEMENT. My claim that no normalising matcher exists
+was true of USAGE and false of AVAILABILITY: @testing-library/jest-dom is in
+package.json, installed, imported by nothing, and its whole normalising set -
+toHaveTextContent, toHaveValue, toHaveDisplayValue, toHaveAccessibleName,
+toHaveAccessibleDescription - was one import away with nothing stopping it.
+Now fenced by no-restricted-imports carrying the measured reason.
+
+The fence went into the EXISTING spike-quarantine block, not a new one: flat
+config replaces a rule rather than merging it, so a second block for the same
+files would have silently deleted the spike fence. Verified both still bite.
+
+FINDING 2 - A COMMENT THAT CLAIMED SOMETHING FALSE. DataGrid's header said "a
+cell is rendered exactly as given, U+202F and all". It was not: the assertion
+compares formatDays output against formatDays output, so changing
+GROUP_SEPARATOR moves both sides together. Proven by changing it to an ordinary
+space:
+
+  the old tautological assertion   1 passed   (silently green)
+  the new codepoint assertion      FAILED     expected 32 to be 8239
+
+The claim is now true rather than softened. What it pins differs from what
+format-number.test.ts pins: not the formatter, but that the component does not
+sanitise or re-encode on the way through.
+
+FINDING 3 - TWO NORMALISERS STACKING IN PLAYWRIGHT.
+e2e/composants.visual.spec.ts read innerText() and then trim(): innerText is
+the BROWSER-rendered text, and trim() strips U+00A0 and U+202F because both are
+Unicode Space_Separator. A stray no-break space either side of the figure was
+silently removed. Now textContent, compared exactly.
+
+ALSO CONVERTED, while green rather than later under a red run: every prose text
+query in FieldGroup and DataGrid now reads textContent. FieldGroup's use the
+helper and error IDS, so one assertion proves the wiring and the text at once.
+getByLabelText STAYS - proving htmlFor/id association is the one thing only a
+label query can do - with an exact label-text assertion beside it.
+
+AND A REGISTRY, R66's missing half: nothing recorded which whitespace
+codepoints the copy contains. tests/unit/fr/copy-codepoints.test.ts scans
+lib/fr for eight watched codepoints and holds the current set. It is NOT a ban -
+U+00A0 is correct French and the product will want it - it fails when the set
+CHANGES, so introducing one is a deliberate edit whose failure message says
+what else to fix. Falsified by planting a no-break space before the colon in
+errors.ts, exactly as a reviewer will.
+
+
+================================================================================
+THE CONTRAST AUDIT WAS ABOUT TO BLOCK A CORRECT COMPONENT
+================================================================================
+
+Found by the pre-flight inventory, before a line of PublicShell was written.
+
+The audit's derived half walks every component stylesheet, takes each block
+that sets a colour, and measures it against BOTH page surfaces at the gate its
+font-size implies. Right for text on the page; wrong for anything painting its
+own background. The header CTA is "brand fill, white label", so its rule sets
+colour: var(--colour-surface) over background: var(--colour-brand). Measured
+with a probe stylesheet carrying exactly that rule:
+
+  __Probe .cta: --colour-surface on --colour-surface is 1.00:1, below 4.5:1
+  __Probe .cta: --colour-surface on --colour-canvas is 1.06:1, below 4.5:1
+
+White on white, against a 4,5 gate, on the element with the highest contrast in
+the product.
+
+WHY THAT IS WORSE THAN A FALSE RED. The natural response mid-increment is to
+add the CTA to the exemption list beside .chip and .icon - and that removes the
+header's only text from the audit permanently. An audit that fires on correct
+work teaches people to exempt things, which is how it stops covering what is
+worth covering.
+
+Fixed: a rule declaring its own background is audited against THAT, once;
+anything else keeps both surfaces. A test asserts BOTH BRANCHES are exercised,
+because if every rule declared a background SURFACES would never be checked,
+and if none did the new branch would be dead code that looks alive. 87 tests
+with the probe, 86 without.
+
+That test needed its own correction: its first version asserted a declared
+background is never one of the page surfaces, and failed on FieldGroup's input,
+which sets background: var(--colour-surface) and is correct.
+
+
+================================================================================
+RED/GREEN LEDGER
+================================================================================
+
+BEHAVIOUR                          RED OBSERVED                        RESULT
+--------------------------------------------------------------------------------
+the three layout widths exist      "expected NaN to be 1200"           green
+they order article<narrow<public   "expected NaN to be less than NaN"  green
+--layout-content-max is GONE       "expected '1440px' to be           green
+                                   undefined"
+1440 under another name            same run                            green
+ERROR_COPY is exhaustive AND       TS2578 Unused '@ts-expect-error'    green
+tight (R65)                        after widening to Record<string>
+errorMessage refuses a bad code    same                                green
+the type proof stays alive         "expected [ '  // @ts-expect-       green
+                                   error' ] to have a length of 2"
+Container renders its children     "Failed to resolve import"          green
+each width is a distinct variant   written before the component        green
+the union refuses an arbitrary     TS2578 x3 after widening the        green
+length, a plausible name, and      union to `string`
+a string
+no fourth max-width rule           "expected 4 to be 3"                green
+the sheet uses all three tokens    written before the stylesheet       green
+jest-dom cannot be imported        "'@testing-library/jest-dom/       green
+                                   vitest' import is restricted"
+the spike fence still bites        verified in the same run            green
+the U+202F separator survives      "expected 32 to be 8239" after      green
+DataGrid                           changing GROUP_SEPARATOR
+lib/fr copy codepoints on record   "U+00A0 NO-BREAK SPACE near        green
+                                   'negative :'" after planting one
+a self-painted background is       "1.00:1, below 4.5:1" with a       green
+audited against itself             white-on-brand probe
+both audit branches are live       "no rule declares its own          green
+                                   background" (first version failed
+                                   on FieldGroup's input, correctly)
+
+
+================================================================================
+STATES MATRIX
+================================================================================
+
+Twenty-five states across seven components, unchanged from the first run: every
+one still passes axe, and the 29 container baselines still compare clean.
+
+Container has NO STATES ENTRY AND NO BASELINE, deliberately. It renders a div
+with a max-width and no visible surface of its own - there is nothing to
+screenshot that is not its child - and its three variants are asserted by the
+data attribute and by the stylesheet's token mapping. It joins the workbench in
+increment 6, wrapping a visible specimen, which is when a baseline means
+something.
+
+PublicShell header       NOT BUILT - blocked on Q1
+PublicShell footer       NOT BUILT - blocked on Q1
+
+29 baseline files, 27 distinct, all container-generated (R37) and verified in
+COMPARE mode - 32 passed - never from the update run.
+
+
+================================================================================
+KEYBOARD PATH
+================================================================================
+
+NOT REACHED. The 360 px header test belongs to increment 6 and tests the
+PublicShell built in increment 4.
+
+Two things worth recording now, because they will shape it:
+
+  @testing-library/user-event IS NOT A DEPENDENCY, and fireEvent cannot
+  simulate Tab traversal at all. Adding one is ask-first. The way through that
+  needs no ruling: fireEvent for keyDown Escape, click and activeElement in the
+  unit test, and the real Tab path in the 360 px Playwright test - which is
+  where the prompt puts AC2's proof anyway.
+
+  THE VISUAL PROJECT HAS ONE VIEWPORT. Every existing baseline is an element
+  screenshot in a single desktop viewport, and an element screenshot does not
+  change what a viewport media query resolves to. "The mobile header with the
+  menu open" cannot be captured by adding an id to the SPECIMENS list; it needs
+  a test.describe with test.use({ viewport: { width: 360, height: 800 } })
+  inside the visual spec, generated in the container.
+
+
+================================================================================
+EXHAUSTIVENESS - AC1
+================================================================================
+
+Unchanged from the first run and now proved by a type rather than by a
+narrative. See R65 above. The planted seventh code fails typecheck twice; the
+runtime suite stays green; the mechanism is written down in
+tests/unit/fr/errors.types.ts and kept alive by a test.
+
+
+================================================================================
+R51 PROOF
+================================================================================
+
+NOT REACHED. lib/content/regulatory.ts belongs to increment 5.
+
+
+================================================================================
+CHECKPOINT A
+================================================================================
+
+docs/checkpoint-a.md records all eight machine checks as passing, and IT IS NOW
+A PREMATURE RECORD. It was written over seven components; tasks/plan.md's
+Checkpoint A requires "visual baselines + a11y green for all NINE". Row 5,
+"every component baseline green | 29 baselines", is true-but-incomplete in a
+way a reader cannot see.
+
+Increment 6 must RE-RUN every machine check against the nine-component library
+and REVISE that file rather than appending to it - the counts, the states
+matrix, and plan.md's design-token-gaps line, which should gain the header
+height, the breakpoint, the hairline and the label type pair.
+
+Not revised in this run, because revising a record of nine components while two
+of them do not exist would replace a premature record with a false one.
+
+The machine checks themselves are unchanged and still green; the coverage gate
+was re-proved to bite on lib/ui/core in the first run.
+
+
+================================================================================
+DEVIATIONS
+================================================================================
+
+1. CONTAINER'S MEDIA QUERY USES A RAW 768. Recorded at the site. It is
+   permissible under the letter of the rules - CLAUDE.md's token clause names
+   "hex, radius, spacing or type", and stylelint does not police media query
+   conditions - but it is an untokenised design value and increment 4 needs the
+   same number. See Q1.
+
+2. CONTAINER TAKES children AS A PLAIN SLOT, unlike FieldGroup's function.
+   FieldGroup needs to hand the caller attributes the control must carry;
+   Container has nothing to hand over, so a function child would be ceremony.
+
+3. THE FOOTER'S DISCLAIMER COLOUR IS ALREADY DECIDED, though increment 5 has
+   not run. FD11:93 and FD2 both set the disclaimer and review-date lines in
+   #98A2B3 - tertiary - which measures 2,58:1 on white and fails both bars.
+   R58 has ruled on exactly this once already, moving LegalNote off tertiary,
+   and the audit pins the measurement as a named test. So the footer's Caption
+   lines will be secondary and the briefs' tertiary is a recorded deviation
+   rather than an open question.
+
+4. WHICH DISCLAIMER THE FOOTER CARRIES IS ALSO DECIDED, by the prompt's own
+   precedence rule. SPEC 9.1:650 says the footer carries $legal-01 -
+   LEGAL_COPY.standing, the sentence LegalNote renders. FD11:93 prints a
+   different, shorter sentence. FW9's reading instruction is "the spec wins on
+   conflict", so $legal-01 it is, and the FD text is a deviation.
+
+5. tasks/todo.md:173 STILL DEFINED CONTAINER as a "12-column desktop grid, max
+   1440, 32 px padding". R64 replaced both halves and DESIGN-SYSTEM.md was
+   updated with it; todo.md was not, so the task list asked for a grid no other
+   document mentions and a width the ruling removed. Corrected.
+
+
+================================================================================
+NOTICED BUT NOT TOUCHING
+================================================================================
+
+1. frontier-logo-symbol.svg AT THE REPOSITORY ROOT IS A TRAP. It is a
+   full-colour gradient mark using three linearGradients including a red/blue
+   pair that reads as a French flag, and its hexes are outside the token set.
+   Every one of those properties is on the FD briefs' "never draw" list -
+   never a gradient, never a flag. The prompt is right to ask for "a
+   placeholder geometric mark as a tiny inline SVG"; a file named like a logo,
+   sitting in the repository root, is the obvious thing for a future session to
+   reach for. It should be deleted or moved out of the way.
+
+2. SPEC 16 REQUIRES 320 px WITH NO HORIZONTAL SCROLL and the prompt only tests
+   360. Different claims, and only one is in the prompt. Worth adding a cheap
+   scrollWidth assertion at 320 in the same Playwright file when increment 6
+   lands, so SPEC 16 is satisfied by something rather than by nobody.
+
+3. SPEC 9.2:657's HEADER DIAGRAM STILL SHOWS "Connexion", which increment 4
+   explicitly forbids ("No Connexion", D14: there is no signup). Stale spec
+   text that contradicts the prompt; the prompt is newer and R53 agrees with
+   it, but the diagram should be corrected so the next reader is not misled.
+
+4. TWO DEAD eslint-disable DIRECTIVES, unchanged. benchmark.test.ts:81 and
+   verification-trace.test.ts:83 disable no-console for a rule enabled nowhere.
+   The finding underneath is that console output in tests is unfenced.
+
+5. THE H1 TYPE TOKEN IS 32/40 AND THREE BRIEFS ASK FOR 40/48. FD11:14, FD12:20
+   and FD13:16 all specify a 40/48/700 hero or article head. Nothing in FW9
+   needs it; FW10's legal pages and 404 should use the existing 32/40 so the
+   gap is not closed by accident, and FW16/FW20 will need a ruling.
+
+6. UPPERCASE TRACKING, 0.04 em, HAS NO TOKEN. FD11:72 and FD13:46 both specify
+   "Caption 13/18 500 uppercase tracking 0.04 em" for eyebrow labels, and
+   stylelint puts letter-spacing in the strict-value list, so a raw 0.04em is
+   rejected mechanically. Nothing in FW9 needs an eyebrow.
+
+
+================================================================================
+QUESTIONS FOR THE OPERATOR
+================================================================================
+
+Q1. FOUR COMPONENT METRICS THE HEADER NEEDS, AND ONE CONFLICT AMONG THEM.
+    BLOCKING - increments 4, 5 and 6 cannot start.
+
+    (a) A BREAKPOINT. The prompt says "Mobile (< 768)" and 768 appears nowhere
+        else - not in tokens.scss, not in DESIGN-SYSTEM.md, not in SPEC.
+        tasks/plan.md:89 gives device baselines (360x800, 390x844, 430x932,
+        desktop 1280 min) but no switch point.
+
+        It CANNOT be a custom property: a media query condition cannot read
+        var(). It has to be a Sass variable in tokens.scss, @use'd relatively.
+        Container already needs it and currently carries a raw 768.
+
+        RECOMMENDED: $breakpoint-md: 768px, exported as a Sass variable only,
+        with a note in DESIGN-SYSTEM.md that breakpoints are Sass-only and why.
+
+    (b) A HEADER HEIGHT, 64 px. The prompt, FD1:24 and FD11:24 all agree on 64,
+        and no token carries it as a height. $space-16 is 64px, but reaching
+        for a spacing step as a component height is the precise pattern R62 was
+        issued to stop. The COMPONENT METRICS block already holds
+        $size-input-height, $size-card-*, $size-bottom-nav-height - a web
+        header belongs there.
+
+        RECOMMENDED: $size-header-height: 64px.
+
+    (c) AND HERE IS THE CONFLICT. FD2 - which you supplied with this resume and
+        which did NOT exist when the first report was written - specifies a
+        DIFFERENT mobile header:
+
+          FD2:28   "Header - 56 px"
+          FD2:31   "primary brand button, compact 40 h"
+
+        while the prompt says "Header 64 px" and describes the mobile header
+        only as "hamburger at the left, the CTA stays visible outside the menu".
+
+        So: does the header shrink to 56 below the breakpoint, or stay 64? And
+        does the CTA shrink to 40, or stay at the 48 primary height?
+
+        I have NOT chosen. The natural reading is that FD1/FD11 are the desktop
+        briefs and FD2 is the mobile one, so 64 desktop and 56 mobile is a
+        refinement the prompt did not spell out rather than a contradiction -
+        but that reading adds two more tokens ($size-header-height-mobile 56,
+        $size-button-compact-height 40), and 56 and 40 both have near-misses
+        that are aliases of something else ($size-button-large-height 56 is a
+        BUTTON's height; $size-button-text-height 40 is the TEXT button's).
+        Guessing wrong here bakes the wrong geometry into a baseline.
+
+        RECOMMENDED: confirm 64 desktop / 56 mobile, and authorise
+        $size-header-height 64, $size-header-height-mobile 56,
+        $size-button-compact-height 40.
+
+Q2. A HAIRLINE TOKEN - carried from the first run, now with SIX call sites.
+    RateDisplay's divider, LegalNote's rule, DataGrid's header and body rules,
+    and the header's bottom border and footer's top rule. No token means
+    HAIRLINE; the three that carry 1 px are named for a card, an input and a
+    button. All alias --size-card-border with the alias recorded at each site.
+    Six is well past the two that produced R62. --size-rule, or keep the alias?
+
+Q3. A LABEL TYPE PAIR - carried, now with two more sites. DESIGN-SYSTEM.md
+    specifies the input label as 13/500; the scale pairs 13 with weight 400 and
+    weight 500 with 15. FieldGroup composes across families. The wordmark is
+    17/600 (Body-L size, semibold weight, while Body-L's weight is 400) and the
+    legal pages' definition-list labels would be a third. --type-label-*, or
+    keep composing?
+
+Q4. R66'S WORDING. It says "Testing Library text queries", but Playwright's
+    toHaveText normalises BOTH sides and e2e/home.spec.ts already uses it.
+    Nothing is at risk there today - APP_NAME is one ASCII word - but it is the
+    pattern the next task will copy. Should the ruling read "any normalising
+    text API"?
+
+Q5. relay/CHAIN-FW9-FW11.txt DOES NOT EXIST and never has. C1-C8 are
+    unavailable, including C8's REPORT-CHAIN.txt format. Should the file be
+    supplied, or are the three per-task reports the record?
+
+Q6. THE PAT, R47 - STILL OPEN, STILL YOURS. Live at the last check (HTTP 200 on
+    /user), and no session since can re-check it: the value is not in context
+    and a token that needs revoking should not be pasted a second time. It
+    never reached this repository - 0 matches across all 87 commits at the time
+    of the first report, no credential helper, no extraheader, plain https
+    remote. Please revoke it.
+
+Q7. THE NEGATIVE TILE LABEL - carried. Replacing MetricTile's label with "Jours
+    au-dessus du seuil" loses WHICH threshold was passed, and SPEC 9.3 stands
+    two negative-capable tiles side by side.
+
+Q8. R60'S SCOPE - carried. I read "app/(public)/" as "app/ except the dev
+    routes", because the directory does not exist and the literal reading makes
+    the app half of the rule vacuous.
+
+Q9. THE SUITE FLOOR'S MAINTENANCE - carried. Raised on every increment that
+    changes the count, now 52 files / 922 tests. Tight, but a mechanical edit
+    in most commits. Once per session instead?
+
+
+================================================================================
+DOWNSTREAM - FW10 AND FW11
+================================================================================
+
+Both remain blocked, and neither is blocked by anything new.
+
+FW10 cannot start: its R0 stops on a question marked blocking FW10 or a
+deviation changing PublicShell or Container. Container now EXISTS, which is
+progress, but PublicShell does not, and FW10's first task is
+app/(public)/layout.tsx wrapping children in PublicShell. The
+preconditions-only REPORT-FW10.txt stands.
+
+The pre-flight inventory also read FW10 and FW11 in full and reported their
+blockers, which are recorded here so the work is not repeated:
+
+  FW10   an absolute site origin for metadataBase, the sitemap's absolute URLs
+         and robots.txt - the domain is an open question gated at Checkpoint C.
+         RECOMMENDED: read it from one constant or NEXT_PUBLIC_SITE_URL
+         defaulting to http://localhost:3000, documented as provisional, so
+         Checkpoint C changes one line.
+
+         Also: R52's [A COMPLETER] test must assert a COUNT per page keyed to
+         the empty constants that page consumes, not merely that a placeholder
+         appears somewhere; and test:a11y's glob covers
+         lib/ui/react/accessibility.test.tsx only, so page-level axe states
+         need either a widened glob or a lib file importing from app/.
+
+  FW11   blocked by its dependency chain rather than by the Checkpoint A gate,
+         which R54 discharges. Three of R54's four mechanisms live in files
+         that do not exist: lib/content/regulatory.ts (FW9 inc 5),
+         lib/content/routes.ts, app/sitemap.ts and app/robots.ts (FW10 inc 5),
+         plus Container 'narrow' - which now exists - and PublicShell.
+
+
+================================================================================
+FINAL VERIFICATION
+================================================================================
+
+Green in one chained run:
+
+  pnpm typecheck && pnpm lint && pnpm test && pnpm test:e2e &&
+  pnpm test:visual && pnpm test:a11y && pnpm build && pnpm size
+
+  tsc --noEmit                        clean
+  eslint . && stylelint               0 errors (2 pre-existing warnings)
+  vitest run                          52 files, 922 tests passed
+  playwright --project=chromium       10 passed
+  playwright --project=visual         32 passed (in the container)
+  vitest run accessibility            26 passed, 25 states
+  next build                          compiled successfully
+  check-budgets.mjs                   all gated routes pass both gates
+
+Coverage: lib/calc-engine and lib/ui/core at 100 % statements, branches,
+functions and lines, per-directory, never averaged.
+
+Suite floor: 52 files / 922 tests, four glob canaries collected.
+
+
+================================================================================
+PUSH PROOF
+================================================================================
+
+origin/main at cea4d2f, pushed, tree clean.
+
+  git log --oneline -6
+  cea4d2f FW9: the contrast audit was about to block a correct component
+  e777001 FW9: R66 sweep, round two - what the adversarial audit found
+  a10d548 FW9: Container
+  def0c0e FW9: rulings R64-R67 - layout tokens, type-level exhaustiveness, ...
+  e3007b2 FW10: preconditions-only report - the task did not start
+  9f3ee72 FW9: session report - and the stop at increment 3
+
+
+================================================================================
+================================================================================
+APPENDIX - FIRST RUN, STOPPED
+================================================================================
+================================================================================
+
+What follows is REPORT-FW9.txt exactly as it stood at commit 9f3ee72, when the
+first run stopped at increment 3 on the 1200-versus-1440 conflict that R64 has
+since settled. It is preserved unedited so the history of the stop is not
+erased. Where it contradicts the report above, the report above is current -
+in particular its claim that R50 blocks FW11 (superseded by R54, see
+PRECONDITIONS), its NOTICED item 2 asserting $layout-content-max has no
+consumer (false, see R64 above), and its account of the R66 sweep (incomplete,
+see THE R66 SWEEP above).
+
+REPORT-FW9.txt
 FieldGroup, DataGrid - and a stop. Session of 08.09.2026.
 Pure ASCII by convention. French copy is transliterated where quoted.
 
