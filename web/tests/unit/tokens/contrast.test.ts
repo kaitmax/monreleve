@@ -349,6 +349,34 @@ function paintedRules(): Painted[] {
 describe('every colour rule in the five stylesheets, at the bar its size implies', () => {
   const rules = paintedRules();
 
+  it('discovers EVERY component directory, not just the ones it can name', () => {
+    // The discovery filter keeps directories holding a <Name>.module.scss,
+    // which means a directory WITHOUT one is silently skipped rather than
+    // reported. That is the same shape of hole as the hardcoded list it
+    // replaced: a component whose styles live in a differently-named file
+    // would never be audited and nothing would say so.
+    //
+    // So every directory must either be discovered or be listed here with a
+    // reason. STYLE_FREE is expected to stay empty; it exists so that the day
+    // a component genuinely has no stylesheet, saying so is a deliberate edit
+    // rather than an absence nobody notices.
+    const STYLE_FREE: readonly string[] = [];
+
+    const directories = readdirSync(join(root, 'lib', 'ui', 'react'), { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .sort();
+
+    const undiscovered = directories.filter(
+      (name) => !COMPONENTS.includes(name) && !STYLE_FREE.includes(name),
+    );
+
+    expect(
+      undiscovered,
+      `component directories with no <Name>.module.scss, so never audited: ${undiscovered.join(', ')}`,
+    ).toEqual([]);
+  });
+
   it('found colour rules at all, so nothing below passes vacuously', () => {
     // The component list is read from disk, so it can silently become empty
     // or lose an entry. Both are asserted before anything depends on it.

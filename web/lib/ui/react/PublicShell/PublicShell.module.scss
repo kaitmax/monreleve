@@ -1,0 +1,191 @@
+// web/lib/ui/react/PublicShell/PublicShell.module.scss
+//
+// Tokens only; camelCase class names for CSS Module addressing.
+//
+// @use "breakpoints", NOT "tokens". The partial emits no CSS; tokens.scss
+// emits the whole :root block, which measured 4 386 bytes duplicated into a
+// single component's stylesheet (ruling R68, and the reason the breakpoint
+// lives in its own file).
+//
+// MOBILE-FIRST. The base rules are the phone - 56 px tall, hamburger shown,
+// desktop nav hidden - and the desktop overrides arrive in one media query.
+// Written the other way round, a 360 px screen renders the desktop bar until
+// the query matches.
+
+@use "../../core/styles/breakpoints" as bp;
+
+.header {
+  background: var(--colour-surface);
+  border-bottom: var(--size-rule) solid var(--colour-border-default);
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: var(--size-header-height-mobile);
+  max-width: var(--layout-public);
+  margin: 0 auto;
+  padding: 0 var(--layout-gutter-mobile);
+}
+
+// A 44 px tap target, which SPEC 16 and FD2 both require of everything
+// tappable. The glyph inside is --size-icon-lg; the button is bigger than the
+// glyph on purpose.
+.menuButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--size-icon-button);
+  height: var(--size-icon-button);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--colour-text-primary);
+}
+
+.menuButton svg {
+  width: var(--size-icon-lg);
+  height: var(--size-icon-lg);
+}
+
+.home {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--colour-text-primary);
+  text-decoration: none;
+}
+
+.mark {
+  display: inline-flex;
+  width: var(--size-icon);
+  height: var(--size-icon);
+}
+
+// Its own R70 pair - 17/26/600 - rather than Body-L's size with a weight
+// Body-L does not have.
+.name {
+  font-size: var(--type-wordmark-size);
+  font-weight: var(--type-wordmark-weight);
+  line-height: var(--type-wordmark-line);
+}
+
+// Hidden below the breakpoint: the mobile panel carries these links instead.
+// display: none rather than visibility, because a nav that is merely invisible
+// is still reachable by Tab, which is the keyboard trap this component's tests
+// are mostly about.
+.nav {
+  display: none;
+}
+
+.navList {
+  display: flex;
+  gap: var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.navItem {
+  position: relative;
+}
+
+.navLink {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--colour-text-primary);
+  font-family: inherit;
+  font-size: var(--type-body-m-size);
+  font-weight: var(--type-body-m-weight);
+  line-height: var(--type-body-m-line);
+  text-decoration: none;
+}
+
+.submenu {
+  position: absolute;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: var(--space-2) 0 0;
+  padding: var(--space-4);
+  border: var(--size-rule) solid var(--colour-border-default);
+  border-radius: var(--radius-md);
+  background: var(--colour-surface);
+  list-style: none;
+  white-space: nowrap;
+}
+
+// The single primary action. Brand fill, white label (DESIGN-SYSTEM.md
+// section 1) - and this rule is the one that made the contrast audit resolve
+// EFFECTIVE backgrounds under ruling R76: measured against the page surfaces
+// it read as white on white, 1,00:1, and would have failed a correct
+// component. It paints its own background, so the audit now measures against
+// that.
+//
+// Compact 40 px below the breakpoint (FD2:31), the full 48 above.
+.cta {
+  display: inline-flex;
+  align-items: center;
+  height: var(--size-button-compact-height);
+  margin-left: auto;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--colour-brand);
+  color: var(--colour-surface);
+  font-size: var(--type-body-m-size);
+  font-weight: var(--type-body-m-weight);
+  line-height: var(--type-body-m-line);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.mobilePanel {
+  padding: var(--space-4) var(--layout-gutter-mobile) var(--space-6);
+  border-top: var(--size-rule) solid var(--colour-border-default);
+  background: var(--colour-surface);
+}
+
+.mobileList {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// 44 px per row, so every link in the panel is a legal tap target.
+.mobileLink {
+  display: flex;
+  align-items: center;
+  min-height: var(--size-icon-button);
+  color: var(--colour-text-primary);
+  font-size: var(--type-body-l-size);
+  font-weight: var(--type-body-l-weight);
+  line-height: var(--type-body-l-line);
+  text-decoration: none;
+}
+
+@media (width >= bp.$breakpoint-md) {
+  .bar {
+    height: var(--size-header-height);
+    padding: 0 var(--layout-gutter-desktop);
+  }
+
+  // The nav appears and the hamburger goes away. The panel cannot be open at
+  // this width because the trigger that opens it is not rendered.
+  .menuButton {
+    display: none;
+  }
+
+  .nav {
+    display: block;
+  }
+
+  .cta {
+    height: var(--size-button-height);
+  }
+}
