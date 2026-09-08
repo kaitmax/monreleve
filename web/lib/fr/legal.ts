@@ -34,9 +34,9 @@ export const LEGAL_COPY = {
  * writes it, and ruling R84's test counts occurrences of THIS constant - so a
  * second copy anywhere would make a page full of gaps report zero.
  *
- * UNACCENTED, exactly as the prompt writes it twice. Correct French would be
- * [À COMPLÉTER]; the prompt's relay files are pure ASCII by mandate, so its
- * spelling is not evidence either way. Changing it is this one line, and the
- * question is in the report rather than decided here.
+ * ACCENTED, per ruling R90: "correct French. It's user-facing; the relay's
+ * ASCII mandate is about prompts, not product copy." The relay files could not
+ * have spelled it this way even if they meant to, so their spelling was never
+ * evidence - which is why FW10 asked rather than guessed.
  */
-export const LEGAL_PLACEHOLDER = '[A COMPLETER]';
+export const LEGAL_PLACEHOLDER = '[À COMPLÉTER]';

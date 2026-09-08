@@ -92,7 +92,8 @@ describe('the render helper', () => {
     // A second copy of the string would be a second thing to change, and the
     // page test counts occurrences OF THE lib/fr ONE - so a drifted copy would
     // read as zero placeholders on a page full of them.
-    expect(LEGAL_PLACEHOLDER).toContain('COMPLETER');
+    expect(LEGAL_PLACEHOLDER).toContain('COMPLÉTER');
+    expect(LEGAL_PLACEHOLDER).toBe('[À COMPLÉTER]');
     expect(entityValue(LEGAL_ENTITY, 'address')).toBe(LEGAL_PLACEHOLDER);
   });
 

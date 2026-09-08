@@ -172,3 +172,53 @@ test.describe('canonical and hreflang on every public page', () => {
     await expect(page.locator('link[rel="canonical"]')).toHaveCount(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// RULING R95: the vocabulary check reads METADATA too - title, description, OG
+// fields - not just rendered text. "Conforme au RGPD in a meta description is
+// a certification claim to a crawler."
+//
+// HOW THIS RULING CAME ABOUT, since it is worth not repeating: FW10 probed the
+// existing check by putting exactly that string into a meta description and
+// expected it to go red. It stayed green. The check read the DOM, and a meta
+// description is not in the DOM - it is the string a search engine quotes back
+// to a reader, which is arguably the worst place of the three to claim
+// compliance.
+//
+// THE HEAD, NOT THE METADATA OBJECTS. Asserting on lib/fr constants would miss
+// anything Next assembles - a title composed through the layout's template, an
+// og:description derived from a description, a JSON-LD block (FW15). Reading
+// the rendered head catches all of it whatever produced it, which is the only
+// version of this check that stays true as more metadata arrives.
+// ---------------------------------------------------------------------------
+
+const FORBIDDEN = ['certifi', 'attest', 'conforme'];
+
+test.describe('SPEC section 20 vocabulary, in the head as well as the body', () => {
+  for (const route of liveRoutes()) {
+    test(`${route.path} claims no certification in its metadata`, async ({ page }) => {
+      await page.goto(route.path);
+
+      const head = (await page.locator('head').innerHTML()).toLowerCase();
+
+      // Non-vacuous: the head must actually contain the metadata being judged.
+      expect(head).toContain('<title>');
+
+      for (const word of FORBIDDEN) {
+        expect(head, `"${word}" appears in the head of ${route.path}`).not.toContain(word);
+      }
+    });
+  }
+
+  test('and the same words are absent from the rendered body', async ({ page }) => {
+    // The half that already existed, kept here so the pair is visible in one
+    // place: declare, enregistre, horodate - never certifie, atteste, conforme.
+    await page.goto('/cgu');
+
+    const body = (await page.locator('body').innerText()).toLowerCase();
+
+    for (const word of FORBIDDEN) {
+      expect(body, word).not.toContain(word);
+    }
+  });
+});

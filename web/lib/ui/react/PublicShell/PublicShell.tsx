@@ -5,6 +5,19 @@
 // The public header, and the shell its children sit in. FW9 increment 4;
 // increment 5 adds the footer beneath the same children slot.
 //
+// PLAIN <a href> THROUGHOUT, NEVER next/link - RULING R87, and the reason is
+// recorded here because this is the file someone would change.
+//
+// Public routes are statically rendered and hold no client state, so a
+// client-side transition would buy nothing a browser navigation does not
+// already give. next/link would add prefetch JavaScript to every page for
+// transitions nobody asked for, which is a GATE B cost on the acquisition
+// surface - and it would PREFETCH HIDDEN ROUTES, which is the worse half: the
+// calculator is deliberately invisible until the Checkpoint A gate is recorded
+// (R54), and a prefetching nav would fetch it anyway.
+//
+// tests/unit/meta/no-next-link.test.ts pins the absence.
+//
 // 'use client' AND WHY IT IS UNAVOIDABLE HERE. Two disclosures hold state -
 // the Calculateurs menu and the mobile panel - and both must close on Escape
 // and return focus, which needs a ref and a key handler. This is the
@@ -31,6 +44,7 @@
 
 import { Menu, X } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
+import { ctaHrefIfLive } from '@/lib/content/routes';
 import { APP_NAME } from '@/lib/fr';
 import { LAST_REGULATORY_REVIEW, reviewNotice } from '@/lib/content/regulatory';
 import { LEGAL_COPY } from '@/lib/fr/legal';
@@ -104,6 +118,13 @@ function NavItem({ entry }: { readonly entry: NavEntry }) {
   );
 }
 
+/**
+ * RULING R85's answer for this render. Module scope, because it depends only
+ * on the route registry - not on props, not on state - and computing it per
+ * render would suggest otherwise.
+ */
+const ctaHref = ctaHrefIfLive(SHELL_COPY.ctaHref);
+
 export function PublicShell({ children }: PublicShellProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuTrigger = useRef<HTMLButtonElement>(null);
@@ -149,10 +170,18 @@ export function PublicShell({ children }: PublicShellProps) {
             </ul>
           </nav>
 
-          {/* OUTSIDE the panel below, on every viewport. */}
-          <a className={styles.cta} href={SHELL_COPY.ctaHref}>
-            {SHELL_COPY.cta}
-          </a>
+          {/* OUTSIDE the panel below, on every viewport - and rendered ONLY
+              when its target exists (ruling R85). /application is SPEC 9.1's
+              page and no task builds it, so until then this button would have
+              been a prominent link to a 404 on every public page. An absent
+              button is a smaller failure than a broken one, and the decision
+              is the registry's rather than a thing to remember: marking the
+              route live turns it back on with no code change here. */}
+          {ctaHref === null ? null : (
+            <a className={styles.cta} href={ctaHref}>
+              {SHELL_COPY.cta}
+            </a>
+          )}
         </div>
 
         {menuOpen ? (

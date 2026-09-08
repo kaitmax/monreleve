@@ -33,6 +33,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { APP_NAME } from '@/lib/fr';
 import { LAST_REGULATORY_REVIEW, reviewNotice } from '@/lib/content/regulatory';
 import { LEGAL_COPY } from '@/lib/fr/legal';
+import { ctaHrefIfLive } from '@/lib/content/routes';
 import { FOOTER_COLUMNS, SHELL_COPY, SHELL_NAV } from '@/lib/fr/shell';
 import type { NavLink } from '@/lib/fr/shell';
 import { text } from '@/tests/support/markup';
@@ -161,15 +162,48 @@ describe('the nav', () => {
     }
   });
 
-  it('has exactly ONE primary action, and it is not a signup', () => {
+  it('offers no signup and no Connexion, whatever else it renders', () => {
     // D14: there is no signup and no signed-in web area, so "Connexion" would
     // be an entry point to nothing. SPEC 9.2's diagram still shows one.
     renderShell();
 
-    const cta = screen.getAllByRole('link', { name: SHELL_COPY.cta });
-
-    expect(cta[0]?.getAttribute('href')).toBe(SHELL_COPY.ctaHref);
     expect(screen.queryByText(/connexion/i)).toBeNull();
+    expect(screen.queryByText(/inscription/i)).toBeNull();
+  });
+
+  it('renders the primary CTA if and only if its target is live (R85)', () => {
+    // THE ASSERTION IS CONDITIONAL ON PURPOSE, and it is the wiring test
+    // rather than the decision test. ctaHrefIfLive is proved in BOTH
+    // directions against synthetic route lists in
+    // tests/unit/content/cta-gate.test.ts; what cannot be proved there is that
+    // this component actually consults it. What cannot be proved HERE is both
+    // branches, because the registry is a module constant and jsdom cannot
+    // change it without mocking - which would prove things about the mock.
+    //
+    // Written this way it is correct in either state and needs no edit the day
+    // /application ships: it fails if the shell renders a button to a planned
+    // route, and it fails if the shell hides a button whose target is live.
+    renderShell();
+
+    const expected = ctaHrefIfLive(SHELL_COPY.ctaHref);
+    const cta = screen.queryAllByRole('link', { name: SHELL_COPY.cta });
+
+    if (expected === null) {
+      expect(cta, 'a CTA is rendered although its target is not live').toHaveLength(0);
+    } else {
+      expect(cta.length).toBeGreaterThan(0);
+      expect(cta[0]?.getAttribute('href')).toBe(expected);
+    }
+  });
+
+  it('is hidden TODAY, and for the stated reason', () => {
+    // The state above, pinned, so "no CTA" cannot quietly become "the CTA
+    // broke". If this fails because /application went live, delete it and the
+    // conditional above starts exercising the other branch.
+    renderShell();
+
+    expect(ctaHrefIfLive(SHELL_COPY.ctaHref)).toBeNull();
+    expect(screen.queryAllByRole('link', { name: SHELL_COPY.cta })).toHaveLength(0);
   });
 });
 
@@ -262,11 +296,21 @@ describe('the mobile menu', () => {
     fireEvent.click(trigger());
 
     const panel = container.querySelector('[data-mobile-panel]');
-    const cta = screen.getAllByRole('link', { name: SHELL_COPY.cta })[0];
+    const cta = screen.queryAllByRole('link', { name: SHELL_COPY.cta })[0];
 
     expect(panel).not.toBeNull();
-    expect(cta).toBeDefined();
-    expect(panel?.contains(cta ?? null)).toBe(false);
+
+    // UNEXERCISED WHILE R85 HIDES THE CTA, and this asserts WHY rather than
+    // passing quietly. A test that simply found no CTA and moved on would look
+    // identical to one where the CTA had been moved inside the panel - the
+    // exact regression this test exists to catch. So: either there is a CTA
+    // and it is outside the panel, or there is none AND the reason is that its
+    // target is not live.
+    if (cta === undefined) {
+      expect(ctaHrefIfLive(SHELL_COPY.ctaHref), 'no CTA, and not because of R85').toBeNull();
+    } else {
+      expect(panel?.contains(cta)).toBe(false);
+    }
   });
 
   it('carries every nav destination inside the panel', () => {

@@ -12,6 +12,8 @@
 // DECLARATION exists; this asserts the browser applied it.
 
 import { expect, test } from '@playwright/test';
+import { ctaHrefIfLive } from '../lib/content/routes';
+import { SHELL_COPY } from '../lib/fr/shell';
 
 // #B7791F, the warning token, as Chromium serialises a computed colour.
 const WARNING_RGB = 'rgb(183, 121, 31)';
@@ -95,14 +97,26 @@ test.describe('the mobile header keyboard path (AC2)', () => {
 
   const shell = (page: import('@playwright/test').Page) => page.getByTestId('shell-desktop');
 
-  test('Tab reaches the trigger and the CTA without opening the menu', async ({ page }) => {
+  test('Tab reaches the trigger, and the CTA when there is one', async ({ page }) => {
     // The CTA is OUTSIDE the panel, so it must be reachable while the menu is
     // shut. That is the requirement most easily lost in a mobile layout.
+    //
+    // RULING R85 MADE THE BUTTON CONDITIONAL, so the assertion is too: while
+    // /application is only planned the header renders no CTA at all, and a
+    // test that simply stopped looking for it would be indistinguishable from
+    // one where the CTA had fallen inside the mobile panel - the exact
+    // regression this test exists to catch. So the absence is asserted
+    // together with its REASON.
     const trigger = shell(page).getByRole('button', { name: 'Ouvrir le menu' });
     const cta = shell(page).getByRole('link', { name: 'Suivre mes jours' });
 
     await expect(trigger).toBeVisible();
-    await expect(cta).toBeVisible();
+
+    if (ctaHrefIfLive(SHELL_COPY.ctaHref) === null) {
+      await expect(cta).toHaveCount(0);
+    } else {
+      await expect(cta).toBeVisible();
+    }
 
     await trigger.focus();
     await expect(trigger).toBeFocused();
@@ -120,7 +134,12 @@ test.describe('the mobile header keyboard path (AC2)', () => {
       );
     }
 
-    expect(reached.join(' | ')).toContain('Suivre mes jours');
+    // The wordmark is always in the path; the CTA only when it exists.
+    expect(reached.join(' | ')).toContain('frontalier');
+
+    if (ctaHrefIfLive(SHELL_COPY.ctaHref) !== null) {
+      expect(reached.join(' | ')).toContain('Suivre mes jours');
+    }
   });
 
   test('the collapsed desktop nav is NOT in the tab order', async ({ page }) => {
@@ -202,7 +221,7 @@ test.describe('no horizontal scroll at the narrowest supported width', () => {
     expect(overflow, 'the page scrolls horizontally at 320 px').toBeLessThanOrEqual(0);
   });
 
-  test('at 360 px the header CTA still clears the gutter, per FD2', async ({ page }) => {
+  test('at 360 px the header row still clears the gutter, per FD2', async ({ page }) => {
     // FD2:7 states the constraint the briefs actually make: the layout "must
     // also hold at 360 px, so nothing sits within 8 px of a gutter". Nothing
     // was checking it, and the header is where it bites - a 44 px tap target,
@@ -216,14 +235,28 @@ test.describe('no horizontal scroll at the narrowest supported width', () => {
     await page.goto('/');
     await page.evaluate(() => document.fonts.ready);
 
+    // MEASURED ON THE LAST THING IN THE ROW, whatever that is. R85 removed the
+    // CTA while /application is planned, and FD2's claim is about the ROW, not
+    // about one button: nothing may sit within 8 px of the gutter. So this
+    // measures the rightmost element of the header bar - the CTA when it is
+    // there, the wordmark when it is not - which keeps the assertion true in
+    // both states instead of deleting a constraint the brief actually makes.
     const clearance = await page.evaluate(() => {
-      const cta = document.querySelector('header a[class*="cta"]');
+      const bar = document.querySelector('header > div');
 
-      if (cta === null) throw new Error('no header CTA to measure');
+      if (bar === null) throw new Error('no header bar to measure');
 
-      return document.documentElement.clientWidth - cta.getBoundingClientRect().right;
+      const children = [...bar.children];
+
+      if (children.length === 0) throw new Error('the header bar is empty');
+
+      const rightmost = children
+        .map((child) => child.getBoundingClientRect().right)
+        .reduce((a, b) => Math.max(a, b), 0);
+
+      return document.documentElement.clientWidth - rightmost;
     });
 
-    expect(clearance, 'the header CTA sits inside FD2 8 px gutter margin').toBeGreaterThanOrEqual(8);
+    expect(clearance, 'the header row sits inside FD2 8 px gutter margin').toBeGreaterThanOrEqual(8);
   });
 });

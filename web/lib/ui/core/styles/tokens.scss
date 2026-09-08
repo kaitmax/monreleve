@@ -148,6 +148,38 @@ $type-label-weight: 500;
 $type-wordmark-size: 17px;
 $type-wordmark-line: 26px;
 $type-wordmark-weight: 600;
+
+// TWO MORE, rulings R88 and R89, and both are ADDITIONS rather than edits.
+//
+// hero 40/48/700 (R88). FD11:14, FD12:20 and FD13:16 all specify 40/48/700
+// for a page hero or an article head, and the scale's H1 is 32/40/700. The
+// tempting fix was to change H1; it would have silently restyled every h1 in
+// the product, including the three legal pages and the 404, none of which is
+// a hero. So H1 stays the default and a caller opts into hero. A test asserts
+// BOTH - that hero is 40/48 and that H1 is still 32/40 - because "applied by
+// editing H1" and "applied by adding hero" are indistinguishable from the
+// hero side alone.
+$type-hero-size: 40px;
+$type-hero-line: 48px;
+$type-hero-weight: 700;
+
+// eyebrow 13/18/500 + tracking (R89). FD11:72 and FD13:46: "Caption 13/18 500
+// uppercase tracking 0.04 em". The numbers are identical to label's, and the
+// name is still its own - R68's rule, "distinct names even where values
+// coincide". The role is what differs, and the tracking is the half that
+// proves it: label has none, and an eyebrow that wanted 12 px would otherwise
+// restyle every input label in the product.
+//
+// text-transform is not tokenised: it is a property with two useful values,
+// not a scale.
+$type-eyebrow-size: 13px;
+$type-eyebrow-line: 18px;
+$type-eyebrow-weight: 500;
+
+// THE ONLY TRACKING TOKEN, and it exists because stylelint puts
+// letter-spacing in its strict-value list - a raw 0.04em is rejected
+// mechanically, which is what produced R89 rather than a shrug.
+$tracking-eyebrow: 0.04em;
 $weight-regular: 400;
 $weight-medium: 500;
 $weight-semibold: 600;
@@ -377,6 +409,13 @@ $motion-toast-max: 5000ms;
   --type-wordmark-size: #{$type-wordmark-size};
   --type-wordmark-line: #{$type-wordmark-line};
   --type-wordmark-weight: #{$type-wordmark-weight};
+  --type-hero-size: #{$type-hero-size};
+  --type-hero-line: #{$type-hero-line};
+  --type-hero-weight: #{$type-hero-weight};
+  --type-eyebrow-size: #{$type-eyebrow-size};
+  --type-eyebrow-line: #{$type-eyebrow-line};
+  --type-eyebrow-weight: #{$type-eyebrow-weight};
+  --tracking-eyebrow: #{$tracking-eyebrow};
   --weight-regular: #{$weight-regular};
   --weight-medium: #{$weight-medium};
   --weight-semibold: #{$weight-semibold};

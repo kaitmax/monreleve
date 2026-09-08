@@ -166,6 +166,40 @@ export function isRegistered(path: string): boolean {
   return PUBLIC_ROUTES.some((route) => route.path === path);
 }
 
+/**
+ * Whether a path is a page that EXISTS, not merely one that is declared.
+ *
+ * Takes the routes as an argument so both answers are testable. The registry
+ * is a module constant, so a decision that read it directly would have exactly
+ * one reachable branch - whichever the repository happens to be in - and the
+ * other would go unproven until someone looked at a page.
+ */
+export function isLive(path: string, routes: readonly PublicRoute[] = PUBLIC_ROUTES): boolean {
+  return routes.some((route) => route.path === path && route.status === 'live');
+}
+
+/**
+ * RULING R85: "the header CTA renders only when its target is live in the
+ * registry. A CTA to a planned route renders nothing."
+ *
+ * Returns the href, or NULL when the target does not exist yet. null rather
+ * than an empty string on purpose: an empty href resolves to the current page,
+ * so a button that "led nowhere" would quietly reload whatever the reader was
+ * looking at. null is a value a component can branch on.
+ *
+ * WHAT THIS PREVENTS, concretely. /application is SPEC 9.1's page and the
+ * target of the product's single primary CTA, and no task in tasks/todo.md
+ * builds it - so until FW20b exists, every public page carried a prominent
+ * button leading to a 404. An absent button is a smaller failure than a broken
+ * one, and this makes the choice mechanical rather than a thing to remember.
+ */
+export function ctaHrefIfLive(
+  href: string,
+  routes: readonly PublicRoute[] = PUBLIC_ROUTES,
+): string | null {
+  return isLive(href, routes) ? href : null;
+}
+
 /** The routes that exist. */
 export function liveRoutes(): readonly PublicRoute[] {
   return PUBLIC_ROUTES.filter((route) => route.status === 'live');

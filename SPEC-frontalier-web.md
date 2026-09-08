@@ -654,10 +654,12 @@ Public routes at launch: `/`, `/calculateur-teletravail-frontalier`, `/calculate
 Header (white, 1 px bottom border), four items maximum:
 
 ```
-[Logo]  Calculateurs ▾   Guides   Le relevé   Tarifs        Connexion  [Suivre mes jours]
+[Logo]  Calculateurs ▾   Guides   Le relevé   Tarifs                   [Suivre mes jours]
 ```
 
 `Calculateurs ▾` is a menu with two children. `Suivre mes jours` is the single primary CTA → `/application`. On mobile, collapse into a hamburger; the CTA stays visible outside it.
+
+*Two corrections to the diagram above, made after the header shipped.* **No `Connexion`:** D14 deleted the signed-in web area, so it would be an entry point to nothing — the diagram carried it from v1. **The CTA renders only when `/application` exists** (ruling R85): while the route is `planned` in `lib/content/routes.ts` the button is absent rather than pointing at a 404, and marking the route live turns it back on with no code change. So the header ships today as four nav items and no button.
 
 Footer: full sitemap in four columns (Outils / Guides / Le produit / Légal) — the crawler-facing link density lives here — plus disclaimer and review date.
 
@@ -893,8 +895,8 @@ One daily reminder, exactly one: FCM, scheduled by pg-boss at the user's chosen 
 - Target query for the calculator: *calcul télétravail frontalier 40%* and near variants. **Confirm keyword difficulty before freezing slugs — slugs are permanent.** Same check for the pillar ("télétravail frontalier 40%" vs the broader "frontalier télétravail").
 - `<title>`/description name the 40% threshold and the year. JSON-LD: `WebApplication` on both tools, `FAQPage` on the calculator's inline FAQ (the 40 vs 49.9 confusion; do missions count; do sick days count).
 - `hreflang="fr-FR"`, self-referencing canonicals. Do not add `fr-CH` without genuinely different Swiss-resident content.
-- `sitemap.xml`: public routes only. `robots.txt`: disallow `/app/`, `/connexion`, `/inscription`, `/dev/`.
-- Trailing slashes: pick one, enforce with 301 — inconsistency splits link equity.
+- `sitemap.xml`: public routes only, and only routes that EXIST — a sitemap listing planned URLs tells a crawler the pages are there. `robots.txt`: disallow `/dev/`, `/api/`, `/releve/print` (ruling R53). *This line used to name `/app/`, `/connexion` and `/inscription`; D14 deleted the signed-in web area, so disallowing them would describe a site that is not there.*
+- Trailing slashes: pick one and enforce it — inconsistency splits link equity. Chosen: **no trailing slash**, `trailingSlash: false`. The redirect from the slashed form is the **308** Next emits for slash normalisation, not a 301 (ruling R93): 308 is the permanent redirect that also preserves the method, search engines document the two as equivalent, and no configuration produces a literal 301 — it would have to come from the reverse proxy, which is a cost with no benefit.
 - Generic OG card via `opengraph-image.tsx`; per-result cards rejected (§6.6).
 
 ---
@@ -988,7 +990,7 @@ Coolify on the OVH VPS, alongside the existing sites — **never touch saharades
 
 **E2E (Playwright)**
 - Calculator: three fields → result; **Geneva case (c) through the UI displaying `39,16 %` and `45,0 %`**; accordion + missions → status change; param URL pre-fills and matches; email submit leaves the result visible; 320px, no horizontal scroll, targets ≥ 48px.
-- Auth: magic-link round trip; `/inscription` pre-filled from calculator localStorage.
+- Auth: magic-link round trip, and the Android App Link callback. *There is no `/inscription` to pre-fill: D14 deleted the signed-in web area, and the calculator hands off to the app through install-referrer parameters (§10) rather than through a web signup form.*
 - Tracker: log today → confirmation row with server timestamp; edit via calendar modal → original timestamp still displayed, `EntryEvent` appended; backfill 8+ days → « saisie tardive » tag; **offline log → reconnect → entry syncs with both timestamps** (Playwright offline mode).
 - Dossier: monthly table matches engine output for a seeded year; evidence annex rows carry timestamps and late flags; PDF route returns A4 with the rail; CSV columns exact.
 - Account: full export contains every entry and event; deletion removes all rows.

@@ -46,9 +46,19 @@ const render = (props: {
 
 describe('the declarable rate is the primary figure', () => {
   it('renders it through formatPercent, never as its own string', () => {
+    // FORMATTER-RELATIVE ON PURPOSE, and now with the precision the component
+    // asks for. What this assertion owes is "the number came from the
+    // formatter rather than being hand-built here"; the PRECISION is pinned
+    // literally in its own describe block below.
+    //
+    // The pairing is the lesson. When this assertion passed formatPercent one
+    // argument it agreed with a component that also passed one argument, and
+    // the two agreed on the wrong answer for three tasks - a declarable rate
+    // of 39.16 rendered "39,1 %". A formatter-relative assertion cannot see a
+    // wrong argument, so it needs a literal beside it.
     const html = render({ declarableRate: GENEVA_C.declarable, zone: 'compliant' });
 
-    expect(html).toContain(formatPercent(GENEVA_C.declarable));
+    expect(html).toContain(formatPercent(GENEVA_C.declarable, 2));
   });
 
   it('labels it with the AFC caption from lib/fr', () => {
@@ -109,8 +119,10 @@ describe('the second rate appears only when it differs (SPEC 9.3)', () => {
       rawRate: GENEVA_C.raw,
     });
 
-    expect(html).toContain(formatPercent(GENEVA_C.declarable));
-    expect(html).toContain(formatPercent(GENEVA_C.raw));
+    // Two rates, two precisions: the filed figure at 2 dp, the share of days
+    // at 1. See the precision block below and SPEC 7.3.
+    expect(html).toContain(formatPercent(GENEVA_C.declarable, 2));
+    expect(html).toContain(formatPercent(GENEVA_C.raw, 1));
     // ...and the zone is still the compliant band, because declarableRate is
     // what positions the rail. The exposure is visible without recolouring.
     expect(html).toContain('--colour-success');
@@ -140,5 +152,73 @@ describe('the stylesheet carries what markup cannot show (R61)', () => {
     // BOTH sizes, so it is not a text colour anywhere in this product.
     expect(scss).toContain('var(--colour-text-secondary)');
     expect(scss).not.toContain('var(--colour-text-tertiary)');
+  });
+});
+
+describe('the precision each rate is rendered at (SPEC 7.3)', () => {
+  // THE DEFECT THIS PINS, found while gathering FW11's inputs. formatPercent's
+  // signature is formatPercent(value, decimals = 1), and this component called
+  // it with ONE argument for both rates. So a declarable rate of 39.16 - the
+  // figure SPEC 7.3 says "must match the employer's filing" - rendered as
+  // "39,1 %", silently dropping the second decimal. The formatter is pinned to
+  // roundingMode 'trunc', so it truncated rather than rounded; either way a
+  // digit that the filing depends on did not reach the page.
+  //
+  // The component's own header comment has described this figure as "39,16 %"
+  // since FW8. The intent was right and the call lost it, which is exactly the
+  // kind of defect a formatter-relative assertion cannot see: the old test
+  // asserted formatPercent(39.16), so it agreed with whatever the call
+  // produced. Both assertions below are therefore LITERAL. They restate the
+  // formatter on purpose, because what is being pinned is not "the formatter
+  // works" but "this component asks it for the right number of digits".
+  //
+  // SPEC 7.3, verbatim: "The declarable rate truncates to 2 decimals. Geneva
+  // publishes 39.16% for 94/240 (39.1666...) and 4.16% for 10/240; rounding
+  // would give 39.17% and 4.17%. The engine reproduces truncation because this
+  // number must match the employer's filing."
+
+  it('renders the declarable rate at TWO decimals', () => {
+    const html = render({ declarableRate: GENEVA_C.declarable, zone: 'compliant' });
+
+    expect(html).toContain('39,16');
+    expect(html).not.toContain('39,1 ');
+  });
+
+  it('renders the raw rate at ONE decimal', () => {
+    // R26's second domain: "the same for rawRate's one decimal over n in
+    // 0...1 000". The raw rate is a share of days, not a filed figure, and a
+    // second decimal there would imply a precision the day count does not
+    // have.
+    const html = render({
+      declarableRate: GENEVA_C.declarable,
+      zone: 'compliant',
+      rawRate: GENEVA_C.raw,
+    });
+
+    expect(html).toContain('45,0');
+    expect(html).not.toContain('45,00');
+  });
+
+  it('truncates rather than rounds, on the digit that decides a threshold', () => {
+    // 39.999 at two decimals is 39,99 under truncation and 40,00 under
+    // half-expand - one side of the fiscal ceiling against the other. This is
+    // the case R26's header measured and the reason the formatter pins trunc.
+    const html = render({ declarableRate: 39.999, zone: 'compliant' });
+
+    expect(html).toContain('39,99');
+    expect(html).not.toContain('40,00');
+  });
+
+  it('keeps both rates distinguishable when they differ only in the second decimal', () => {
+    // The failure mode of the OLD behaviour, stated as a test: at one decimal,
+    // 39.16 and 39.24 both render "39,2" once rounded or "39,1"/"39,2" once
+    // truncated - two different filed figures that look identical or swap
+    // order. At two decimals they cannot collide.
+    const first = render({ declarableRate: 39.16, zone: 'compliant' });
+    const second = render({ declarableRate: 39.24, zone: 'compliant' });
+
+    expect(first).not.toBe(second);
+    expect(first).toContain('39,16');
+    expect(second).toContain('39,24');
   });
 });

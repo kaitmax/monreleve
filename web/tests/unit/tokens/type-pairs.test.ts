@@ -1,7 +1,12 @@
 // web/tests/unit/tokens/type-pairs.test.ts
 //
-// RULING R70: `label` 13/18/500 and `wordmark` 17/26/600 join the type scale,
+// RULINGS R70, R88 and R89: four product-specific type pairs join the scale,
 // and "no cross-family composing".
+//
+//   label     13/18/500              R70
+//   wordmark  17/26/600              R70
+//   hero      40/48/700              R88
+//   eyebrow   13/18/500 + tracking   R89
 //
 // WHY THEY WERE NEEDED. The scale pairs each size with one weight - 13 with
 // 400 (Caption), 15 with 500 (Body-M), 17 with 400 (Body-L) - and two places
@@ -74,11 +79,59 @@ describe('the two new type pairs (R70)', () => {
     expect(number(TOKENS['--type-wordmark-weight'])).toBe(600);
   });
 
+  it('carries hero at 40/48/700 (R88)', () => {
+    // FD11:14, FD12:20 and FD13:16 all specify 40/48/700 for a page hero or an
+    // article head. H1 stays 32/40/700 as the default, so this is a pair a
+    // caller opts into rather than the new heading size - which is why it
+    // needed a name of its own instead of moving --type-h1-*.
+    expect(pixels(TOKENS['--type-hero-size'])).toBe(40);
+    expect(pixels(TOKENS['--type-hero-line'])).toBe(48);
+    expect(number(TOKENS['--type-hero-weight'])).toBe(700);
+  });
+
+  it('leaves h1 alone at 32/40/700, because hero is an addition (R88)', () => {
+    // The failure this catches: "adding" hero by editing h1, which would
+    // silently restyle every h1 in the product including the legal pages and
+    // the 404. Both must be true at once for R88 to have been applied rather
+    // than misread.
+    expect(pixels(TOKENS['--type-h1-size'])).toBe(32);
+    expect(pixels(TOKENS['--type-h1-line'])).toBe(40);
+    expect(pixels(TOKENS['--type-hero-size'])).not.toBe(pixels(TOKENS['--type-h1-size']));
+  });
+
+  it('carries eyebrow at 13/18/500 with its own tracking (R89)', () => {
+    // FD11:72 and FD13:46: "Caption 13/18 500 uppercase tracking 0.04 em".
+    expect(pixels(TOKENS['--type-eyebrow-size'])).toBe(13);
+    expect(pixels(TOKENS['--type-eyebrow-line'])).toBe(18);
+    expect(number(TOKENS['--type-eyebrow-weight'])).toBe(500);
+    expect(TOKENS['--tracking-eyebrow']).toBe('0.04em');
+  });
+
+  it('gives eyebrow its own name even though its numbers equal label (R68)', () => {
+    // R68: "Distinct names even where values coincide with other tokens." The
+    // values are identical to label's; the ROLE is not, and the tracking is
+    // the half that differs. A shared token would mean restyling every input
+    // label the day an eyebrow wants 12 px.
+    expect(pixels(TOKENS['--type-eyebrow-size'])).toBe(pixels(TOKENS['--type-label-size']));
+    expect(number(TOKENS['--type-eyebrow-weight'])).toBe(number(TOKENS['--type-label-weight']));
+
+    // And the distinction is real, not nominal: label has no tracking.
+    expect(TOKENS['--tracking-label']).toBeUndefined();
+  });
+
+  it('has exactly one tracking token, so 0,04 em cannot be typed raw', () => {
+    // stylelint puts letter-spacing in its strict-value list, which is what
+    // made a raw 0.04em impossible and produced ruling R89 in the first place.
+    const tracking = Object.keys(TOKENS).filter((name) => name.startsWith('--tracking-'));
+
+    expect(tracking).toEqual(['--tracking-eyebrow']);
+  });
+
   it('is a COMPLETE pair each - size, line and weight', () => {
     // A half-declared family is worse than none: the missing third is what
     // sends the next author back to another family to fill the gap, which is
     // the composing R70 forbids.
-    for (const step of ['label', 'wordmark']) {
+    for (const step of ['label', 'wordmark', 'hero', 'eyebrow']) {
       for (const part of ['size', 'line', 'weight']) {
         expect(TOKENS[`--type-${step}-${part}`], `--type-${step}-${part} missing`).toBeDefined();
       }
