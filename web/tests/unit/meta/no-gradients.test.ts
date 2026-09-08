@@ -30,7 +30,7 @@
 // record of a decision, and a record that failed the build would simply be
 // deleted - which would lose the reason along with the file.
 
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -45,8 +45,12 @@ const GRADIENT = /<(linearGradient|radialGradient)\b/i;
 
 const norm = (path: string): string => relative(root, path).split(sep).join('/');
 
+const scanned: string[] = [];
+
 function sources(): string[] {
   const found: string[] = [];
+
+  scanned.length = 0;
 
   const walk = (dir: string): void => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -58,9 +62,39 @@ function sources(): string[] {
     }
   };
 
-  for (const dir of ROOTS) walk(join(root, dir));
+  for (const dir of ROOTS) {
+    const path = join(root, dir);
+
+    // A MISSING ROOT IS SKIPPED, AND THIS KEPT CI RED FOR FIVE COMMITS.
+    // web/public is NOT tracked by git - scripts/copy-fonts.mjs creates it and
+    // puts two woff2 files in it - so in a clean checkout it does not exist
+    // until something builds. readdirSync then threw ENOENT while the module
+    // was being evaluated, so the file reported "0 test" and the whole run
+    // failed to load. Locally it passed every time, because a build had
+    // already made the directory.
+    //
+    // Skipping is right rather than merely convenient: the roots are a
+    // statement about where SVGs may live, and one of them is generated. What
+    // would be wrong is skipping SILENTLY, so scannedRoots() is asserted
+    // below - app and lib must always be walked, and they are the only roots
+    // that hold committed SVG markup.
+    if (!existsSync(path)) continue;
+
+    scanned.push(dir);
+    walk(path);
+  }
 
   return found;
+}
+
+/**
+ * Which roots the last sources() call actually walked.
+ *
+ * Exists so that "a root was skipped" is a visible fact rather than a silent
+ * one - the same reason the contrast audit asserts its own discovery.
+ */
+export function scannedRoots(): readonly string[] {
+  return [...scanned];
 }
 
 /** Files that actually contain SVG markup, file or inline. */
@@ -75,13 +109,23 @@ describe('no SVG in the product uses a gradient (R82)', () => {
 
   it('found the SVGs it expects to have found', () => {
     // Without this the assertion below passes by scanning nothing - and it
-    // WOULD scan nothing if it looked only for .svg files, because this
-    // product has none. Both known inline SVGs are named.
+    // would have scanned nothing when this test was written, because the
+    // product then had no .svg FILES at all and both its SVGs were inline.
+    // app/icon.svg is the first standalone one (FW10 increment 6, the favicon
+    // 404), and it is named here so the scan is proved to reach files as well
+    // as inline markup.
     const files = svgs.map((entry) => entry.file);
 
     expect(files).toContain('lib/ui/react/PublicShell/Wordmark.tsx');
     expect(files).toContain('lib/ui/core/rail/renderRailSvg.ts');
-    expect(svgs.length).toBeGreaterThanOrEqual(2);
+    expect(files).toContain('app/icon.svg');
+    expect(svgs.length).toBeGreaterThanOrEqual(3);
+
+    // The two roots that hold committed SVG markup must have been walked. A
+    // skipped root is legitimate only for the generated one; a skipped app/ or
+    // lib/ would make everything above pass over a shrinking scan.
+    expect(scannedRoots()).toContain('app');
+    expect(scannedRoots()).toContain('lib');
   });
 
   it('carries no linearGradient or radialGradient anywhere', () => {

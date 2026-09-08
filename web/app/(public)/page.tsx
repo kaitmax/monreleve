@@ -17,8 +17,17 @@
 // workbench is a dev route, and the claim worth holding is about a PUBLIC
 // page. FW20 should keep an equivalent assertion when it replaces this file.
 
+import type { Metadata } from 'next';
 import { HOME_COPY } from '@/lib/fr';
 import { formatDays } from '@/lib/ui/core/format/number';
+
+// The title stays the layout's default - the bare product name for "/" -
+// while the description is this page's own. A site-wide default description
+// would apply to any page that forgot one, which is how every page ends up
+// with the same snippet in a search result.
+export const metadata: Metadata = {
+  description: HOME_COPY.description,
+};
 
 // Through formatDays rather than quoted. lib/fr used to carry the rendered
 // string with a hand-typed U+202F in it, which made a second producer of the

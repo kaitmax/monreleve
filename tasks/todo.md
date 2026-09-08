@@ -196,12 +196,12 @@ Every task also clears the project-wide Definition of Done and the Execution, Te
 
 ## FW10: Public layout + legal pages + robots/sitemap skeleton
 
-**Description:** Wire `(public)/layout.tsx` around `PublicShell`; ship `/mentions-legales`, `/confidentialite` (nLPD + GDPR: names the data collected, retention, export/deletion rights), `/cgu` (must state: record-keeping tool, **not tax advice**); `robots.ts` disallowing `/app/`, `/connexion`, `/inscription`, `/dev/`; `sitemap.ts` public-routes-only; trailing-slash policy enforced with 301; `hreflang="fr-FR"` + self-canonicals in the root metadata.
+**Description:** Wire `(public)/layout.tsx` around `PublicShell`; ship `/mentions-legales`, `/confidentialite` (nLPD + GDPR: names the data collected, retention, export/deletion rights), `/cgu` (must state: record-keeping tool, **not tax advice**); `robots.ts` disallowing **`/dev/`, `/api/`, `/releve/print`** — this clause used to name `/app/`, `/connexion`, `/inscription`, `/dev/`, which **ruling R53 superseded**: D14 deleted the signed-in web area, so three of those four paths do not exist and disallowing them would describe a site that is not there (SPEC §14 still carries the old list and is stale on this point); the public-routes-only sitemap, generated from the single route registry in `lib/content/routes.ts` that the shell's nav and footer are checked against, and served from **`app/sitemap.xml/route.ts` rather than `app/sitemap.ts`** because **ruling R81** requires it to return 503 when a serving process has no configured origin and the `sitemap.ts` convention cannot express a status code; trailing-slash policy enforced (`trailingSlash: false`, and the redirect Next emits is a **308**, not a 301 — see REPORT-FW10.txt); `hreflang="fr-FR"` + self-canonicals, omitted entirely rather than pointed at localhost when no origin is configured (R81).
 
 **Acceptance criteria:**
-- [ ] Three legal pages live with real French content stubs (placeholders marked `TODO-LEGAL` where entity details are pending)
-- [ ] `robots.txt` and `sitemap.xml` render correctly; `/dev/*` and `/app/*` absent from the sitemap
-- [ ] Trailing-slash 301 verified both directions
+- [ ] Three legal pages live with real French content stubs (entity details pending as the visible `[A COMPLETER]` placeholder from `lib/fr/legal.ts`, collected in `lib/content/legal-entity.ts` — **ruling R52** replaced this line's `TODO-LEGAL`, which would have been a code marker rather than something a reader of the page can see, and **R84** makes the count exact: the rendered placeholders equal the number of empty constants that page consumes)
+- [ ] `robots.txt` and `sitemap.xml` render correctly; `/dev/*` absent from the sitemap, and so is every route the registry marks `planned` — a sitemap of 404s tells a crawler the pages exist (`/app/*` does not exist to be absent, per R53)
+- [ ] Trailing-slash redirect verified both directions (308, the permanent redirect Next emits for slash normalisation; a literal 301 would have to come from the reverse proxy)
 
 **Verification:**
 - [ ] Tests pass: `pnpm test:e2e -g "routing"`

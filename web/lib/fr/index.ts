@@ -19,6 +19,21 @@ export const WORKBENCH_TITLE = 'Composants — workbench';
 
 export const HOME_COPY = {
   heading: 'Combien de jours de télétravail vous reste-t-il ?',
+
+  /**
+   * The meta description, and it was MISSING until the increment 6 Lighthouse
+   * run said so - SEO 91, "Document does not have a meta description", on the
+   * one page the whole SEO strategy points at. The three legal pages each had
+   * one; the home page, which FW20 rewrites, had none, and nothing would have
+   * noticed.
+   *
+   * SPEC 14 wants the 40 % threshold named in the description. It is.
+   */
+  description:
+    'Calculez votre part de télétravail annuelle et les jours qui vous ' +
+    'restent avant les seuils de 40 % et 49,9 %, puis tenez le registre ' +
+    'horodaté de vos journées.',
+
   intro:
     'frontalier calcule votre part de télétravail annuelle et le nombre de jours ' +
     "qu'il vous reste avant les deux seuils qui comptent : celui de l'imposition " +

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+  <!--
+    web/app/icon.svg
+
+    THE TAB ICON. It exists because the increment 6 Lighthouse run found a 404
+    on /favicon.ico on every page load - "Browser errors were logged to the
+    console", best-practices 96. Every browser requests that path unprompted,
+    so the product was answering 404 to a request it makes itself.
+
+    THE SAME GEOMETRY AS Wordmark.tsx, deliberately: ruling R82 rejected the
+    full-colour logo file and said the placeholder geometric mark stays, so
+    this is that mark rather than a second one. Two marks would be exactly the
+    drift R82 exists to prevent.
+
+    stroke="currentColor" RATHER THAN A HEX. A raw colour outside tokens.scss
+    is forbidden and a standalone file cannot read a custom property;
+    currentColor resolves to the initial colour, black, which needs no token
+    and states no palette decision. The day the mark is designed, this file and
+    Wordmark.tsx change together.
+
+    THE COMMENT SITS INSIDE THE ROOT ELEMENT, and width/height are explicit,
+    because Next's metadata image loader could parse neither otherwise -
+    `next build` failed with "is not a valid image file" when this comment was
+    above the <svg> tag. Measured, not guessed.
+
+    No gradient, per R82; tests/unit/meta/no-gradients.test.ts names this file.
+  -->
+  <path d="M10 2v16"/>
+  <path d="M3 7h5"/>
+  <path d="M12 13h5"/>
+</svg>
