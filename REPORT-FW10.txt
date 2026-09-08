@@ -200,7 +200,7 @@ ROBOTS
 SITEMAP
   200, content-type xml. The <loc> set equals exactly the registry's live
   routes: /, /cgu, /confidentialite, /mentions-legales.
-  Every planned route asserted ABSENT - there are 18 of them, so the
+  Every planned route asserted ABSENT - there are 16 of them, so the
   assertion is not vacuous.
   And every URL the sitemap lists is FETCHED and required to answer 200,
   which is what makes "live" mean something rather than being a

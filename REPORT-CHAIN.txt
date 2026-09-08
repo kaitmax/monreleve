@@ -1,0 +1,266 @@
+REPORT-CHAIN.txt
+The FW9 -> FW10 -> FW11 chain. Closed at FW10. Session of 08.09.2026.
+Pure ASCII by convention.
+
+R72: "The three per-task reports are the record; REPORT-CHAIN.txt adds the
+consolidated question list only." So this file does not restate the work. It
+says where the chain stopped, why, and it carries every open question in one
+place so none of them has to be recovered from three long files.
+
+
+================================================================================
+WHERE THE CHAIN GOT TO
+================================================================================
+
+  FW9   COMPLETE.   Container, PublicShell, the workbench entries, baselines,
+                     the keyboard path. Reached after two stops - increment 3
+                     on the Container widths (answered by R64 and R64
+                     corrected) and increment 4 on four component metrics
+                     (answered by R68). REPORT-FW9.txt, with both stopped
+                     runs preserved as appendices.
+
+  FW10  COMPLETE.   Six increments, eight code commits. The public layout,
+                     three legal pages, the 404, the route registry, robots,
+                     the sitemap, one URL per page, canonicals, page
+                     baselines, page accessibility, the size and Lighthouse
+                     record. Rulings R81, R82, R83 and R84 applied.
+                     REPORT-FW10.txt, with the earlier PRECONDITIONS-ONLY
+                     run preserved as an appendix.
+                     CI green: run 34253054987 on d8cc0c1.
+
+  FW11  NOT STARTED. Blocked by R50. See below.
+
+
+================================================================================
+WHY FW11 DID NOT START
+================================================================================
+
+The FW10 prompt requires its report to end with this sentence, verbatim, and
+it is not decoration:
+
+  FW11 MUST NOT START UNTIL THE CHECKPOINT A HUMAN GATE IS RECORDED IN
+  docs/regulatory-sources.md (R50).
+
+THE GATE IS NOT RECORDED. Checked, rather than assumed:
+
+  - docs/regulatory-sources.md still carries its banner, unchanged:
+      "VERIFICATION PENDING - Checkpoint A"
+      "Nothing in this file has been checked against a primary source yet."
+    And the banner states its own removal condition: "This banner comes off
+    only at the Checkpoint A human gate, when docs/regulatory-sources.md is
+    dated and signed and fixtures/geneva-cases.json is published for the
+    Kotlin port."
+
+  - Every row's Verified column reads "pending". Zero of them are filled in.
+    The file's own rule: "none may be ticked from an advisory source."
+
+  - The engine agrees, out loud, on every test run:
+      "VERIFICATION TRACE: 87 of 87 fixture cases are unverified (all of them
+       - Checkpoint A has not run)."
+
+  - docs/regulatory-sources.md is unmodified by this session. Its own header
+    dates it to FW3 with an FW5 addition.
+
+SO THE STOP IS NOT A JUDGEMENT CALL. FW11 is the calculator form: the first
+surface that shows a user a number produced by the engine. R50 exists because
+a provisional constant behind a form is a different thing from a provisional
+constant in a test - the first one gets believed. Nothing in this chain, this
+session, or my own convenience relaxes it, and I did not start FW11 or write
+any part of it, hidden or otherwise.
+
+WHAT WOULD UNBLOCK IT: docs/regulatory-sources.md dated, signed, and its
+Verified column filled in from primary sources - admin.ch, the AFC, and
+impots.gouv.fr - with URLs and fetch dates, and fixtures/geneva-cases.json
+published. That is a human's work by construction; it is the one gate in this
+plan that no session can do for you.
+
+A NOTE ON R54, so it is not lost: FW11 was to be built HIDDEN. That
+instruction is untouched and still applies whenever FW11 runs. Nothing was
+built, so nothing was hidden or exposed.
+
+
+================================================================================
+THE CHAIN FILE ITSELF
+================================================================================
+
+relay/CHAIN-FW9-FW11.txt HAS NEVER EXISTED. Three sessions have now looked for
+it - against the working tree and against the full git history, both times
+finding nothing. R72 states it was supplied with the second resume; it was
+not.
+
+The chain still ran, because the operative content was restated in the prompts
+themselves: C2 (the order: FW9, then FW10, then FW11), C4 (carry every open
+question) and C8 (this file) were all quoted in the resume text. C1, C3, C5,
+C6 and C7 remain unknown, and I have NOT invented them. If any of them
+required something of this chain, it did not happen, and this paragraph is the
+only warning of that.
+
+
+================================================================================
+CONSOLIDATED QUESTION LIST - C4
+================================================================================
+
+Twelve open. Numbered fresh here, with the origin of each in brackets. Nothing
+is paraphrased into agreement: the carried ones keep their own wording.
+
+--------------------------------------------------------------------------------
+BLOCKING THE NEXT TASK
+--------------------------------------------------------------------------------
+
+C-1. THE CHECKPOINT A HUMAN GATE. [R50, FW10 last line]
+     Not a question so much as the answer FW11 is waiting for. See above for
+     exactly what "recorded" requires and why no session can do it.
+
+--------------------------------------------------------------------------------
+DECISIONS THAT SHOULD NOT WAIT
+--------------------------------------------------------------------------------
+
+C-2. /application HAS NO TASK, AND IT IS THE PRODUCT'S ONLY CTA. [FW10 Q1]
+     SPEC 9.1 lists it as a launch route; SPEC 9.2 and the FW9 prompt make
+     "Suivre mes jours" the single primary CTA pointing at it. tasks/todo.md
+     FW20 builds /releve-annuel, /tarifs, /sources and /a-propos and stops.
+     No task builds /application, so the one call to action on every public
+     page points at a 404 and nothing is scheduled to change that. Recorded
+     in lib/content/routes.ts as UNASSIGNED, with a test pinning the gap at
+     exactly one route. Which task takes it - a new one, or FW20 widened?
+
+C-3. THE THREE SLUGS. [FW10 Q2]
+     I corrected the shell to SPEC 9.1, 9.5, 9.6 and 9.7:
+       /comparateur-lamal-cmu     -> /calculateur-lamal-cmu
+       /releve                    -> /releve-annuel
+       /guides/seuil-40-pourcent  -> /guides/teletravail-frontalier-40-pourcent
+     SPEC is normative and SPEC 14 says slugs are permanent once published.
+     If you wanted the other spellings, say so NOW: three lines today, a 301
+     forever later.
+
+C-4. next/link OR PLAIN ANCHORS. [FW10 Q6]
+     PublicShell uses <a href> throughout and nothing in SPEC,
+     DESIGN-SYSTEM.md or any comment records why. FW11 is the task that adds
+     a form and links out to the guides, so this wants deciding before FW11
+     rather than after.
+
+C-5. THE PAT - R47. STILL OPEN, STILL YOURS. [FW9 Q2, carried verbatim]
+     Live at the last check (HTTP 200 on /user). No session since can
+     re-check it: the value is not in context and a token that needs revoking
+     should not be pasted a second time. It never reached this repository - 0
+     matches across the whole history, no credential helper, plain https
+     remote. Please revoke it.
+
+--------------------------------------------------------------------------------
+DESIGN VALUES THE NEXT TASKS WILL NEED
+--------------------------------------------------------------------------------
+
+C-6. AN H1 40/48 PAIRING. [FW9 Q4, carried]
+     FD11:14, FD12:20 and FD13:16 all specify 40/48/700 for a hero or an
+     article head; the token is 32/40/700. FW10's legal pages and the 404
+     used the existing token, so the gap is still not closed by accident.
+     FW16 and FW20 will need it.
+
+C-7. UPPERCASE TRACKING, 0,04 em. [FW9 Q5, carried]
+     FD11:72 and FD13:46 both specify "Caption 13/18 500 uppercase tracking
+     0.04 em" for eyebrow labels, and stylelint puts letter-spacing in the
+     strict-value list so a raw 0.04em is rejected mechanically. Nothing in
+     FW9 or FW10 needed an eyebrow. R77 does NOT cover this: it is a
+     type/tracking value, not a component metric.
+
+--------------------------------------------------------------------------------
+COPY AND WORDING
+--------------------------------------------------------------------------------
+
+C-8. THE PLACEHOLDER'S ACCENTS. [FW10 Q3]
+     "[A COMPLETER]" as the prompt writes it, or with the accents correct
+     French would use? One constant in lib/fr/legal.ts. Not decided here
+     because it is user-facing copy and the relay files are ASCII by mandate,
+     so the prompt's spelling is not evidence either way.
+
+C-9. FRENCH TYPOGRAPHY - U+00A0 BEFORE COLONS AND SEMICOLONS. [FW10 Q5]
+     Four new copy files carry ordinary spaces.
+     tests/unit/fr/copy-codepoints.test.ts is a registry that fails when the
+     whitespace codepoint SET changes, so introducing the no-break space is a
+     deliberate edit with an audit of every assertion that compares against
+     those strings - the right mechanism, but somebody has to schedule the
+     pass. FW29, the release audit, is the natural home. Confirm or name a
+     task.
+
+--------------------------------------------------------------------------------
+DOCUMENTS THAT CONTRADICT THE CODE
+--------------------------------------------------------------------------------
+
+C-10. TWO STALE SPEC LINES, which is what R53's sweep actually found. [FW10 Q7]
+      Nothing in the code or config references /app, /connexion or
+      /inscription. These two do:
+        SPEC 14  "robots.txt: disallow /app/, /connexion, /inscription,
+                  /dev/."
+        SPEC 19  "Auth: magic-link round trip; /inscription pre-filled from
+                  calculator localStorage."
+      Both withdrawn by D14. Reported rather than edited, because SPEC is
+      your document. D14 and SPEC 10 themselves obviously stay.
+
+C-11. SPEC 9.2:657's STALE HEADER DIAGRAM. [FW9 Q7, carried verbatim]
+      Correct it, or confirm the prompt and R53 supersede it and the diagram
+      stays as historical.
+
+C-12. THE 301 THAT CANNOT BE A 301. [FW10 Q4]
+      Next emits 308 for trailing-slash normalisation and `permanent: true`
+      emits 308 as well; a literal 301 would have to come from the reverse
+      proxy. 308 is the permanent redirect that also preserves the method,
+      and search engines document the two as equivalent. Recommendation:
+      leave it and delete the word "301" from the plan. Or say so and I will
+      add the proxy rule to FW28.
+
+
+================================================================================
+ANSWERED DURING THE CHAIN
+================================================================================
+
+Recorded so they stop being carried:
+
+  FW9 Q1  Container widths, 1200 vs 1440   -> R64, R64 (corrected).
+          DESIGN-SYSTEM.md section 1 corrected in FW9.
+  FW9 Q3  frontier-logo-symbol.svg          -> R82. Moved to
+          docs/brand/rejected/ with a note; a test now forbids a gradient in
+          any SVG under app/, lib/ or public/.
+  FW9 Q6  an absolute site origin           -> R81. NEXT_PUBLIC_SITE_URL, the
+          localhost fallback, the FRONTALIER_RUNTIME marker, and the refusal
+          behaviour - proved against a real server by pnpm test:runtime.
+  FW8 Q2  a hairline token                  -> R69. --size-rule.
+  FW8 Q3  a label type token                -> R70. label 13/18/500 and
+          wordmark 17/26/600.
+  FW10    health returning 200 while
+          degraded lets a deploy go live    -> R83. /api/ready, 503 while
+          degraded, and FW28 points Coolify's deploy check there.
+  FW10    how exact the placeholder test
+          should be                          -> R84. The rendered count equals
+          the number of empty constants the page consumes.
+
+
+================================================================================
+STATE OF THE REPOSITORY AT THE CLOSE OF THE CHAIN
+================================================================================
+
+  branch          main, pushed
+  suite           65 files, 1143 tests, all green
+  coverage        100% statements, branches, functions, lines on the gated
+                  trees (lib/calc-engine, lib/ui/core)
+  e2e             41; visual 48; a11y 43; runtime guard 9
+  size            every gated public route passes GATE A and GATE B, largest
+                  feature delta 5,8 KiB of the 25 KiB allowance
+  lighthouse      100 / 100 / 100 / 100 on /
+  suite floor     65 files, 1143 tests (raised once, at report time, R75)
+  tokens added    none, in the whole of FW10
+  CI              green - run 34253054987 on d8cc0c1
+
+  public routes live      /  /mentions-legales  /confidentialite  /cgu
+                          plus the 404, robots.txt and sitemap.xml
+  public routes declared  20 in lib/content/routes.ts - 4 live, 16 planned,
+                          and every planned one correctly absent from the
+                          sitemap
+  engine                  frozen pending Checkpoint A, untouched by this
+                          chain
+
+
+================================================================================
+LAST LINE
+================================================================================
+
+FW11 MUST NOT START UNTIL THE CHECKPOINT A HUMAN GATE IS RECORDED IN docs/regulatory-sources.md (R50).
