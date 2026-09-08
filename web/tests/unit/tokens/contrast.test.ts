@@ -28,7 +28,7 @@
 // audit would only ever check what someone remembered to add - which is the
 // same silent-coverage failure ruling R63 addresses for the test globs.
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { compileString } from 'sass';
 import { describe, expect, it } from 'vitest';
@@ -204,7 +204,22 @@ describe('the rulings the audit produced, pinned as measurements', () => {
 // Planting warning as body text now fails with its measured ratio.
 // ---------------------------------------------------------------------------
 
-const COMPONENTS = ['LegalNote', 'MetricTile', 'RateDisplay', 'ThresholdRail', 'ZoneBadge'];
+/**
+ * READ FROM THE DIRECTORY, not written out. A hardcoded list was the first
+ * version's second mistake: the first was auditing tokens without their
+ * sizes, and this is the same shape of error one level up - a new component
+ * ships, nobody adds it here, and the audit keeps passing while covering a
+ * shrinking fraction of the product. FW9 added four components in one task,
+ * which is exactly when a list like that goes stale.
+ *
+ * Every directory under lib/ui/react holding a <Name>.module.scss is a
+ * component, and every one of them is audited.
+ */
+const COMPONENTS = readdirSync(join(root, 'lib', 'ui', 'react'), { withFileTypes: true })
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => entry.name)
+  .filter((name) => existsSync(join(root, 'lib', 'ui', 'react', name, `${name}.module.scss`)))
+  .sort();
 
 /** WCAG: 24 px, or 18,66 px at bold. 600 is not bold - see the header. */
 const BOLD = 700;
@@ -272,6 +287,11 @@ describe('every colour rule in the five stylesheets, at the bar its size implies
   const rules = paintedRules();
 
   it('found colour rules at all, so nothing below passes vacuously', () => {
+    // The component list is read from disk, so it can silently become empty
+    // or lose an entry. Both are asserted before anything depends on it.
+    expect(COMPONENTS.length).toBeGreaterThanOrEqual(5);
+    expect(COMPONENTS).toContain('ZoneBadge');
+
     // Five components, each painting at least a label and a figure.
     expect(rules.length).toBeGreaterThanOrEqual(8);
     expect(rules.map((rule) => rule.fg)).toContain('--colour-text-secondary');

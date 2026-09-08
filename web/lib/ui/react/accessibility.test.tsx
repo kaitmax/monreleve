@@ -25,8 +25,8 @@
 // structure passes a beautifully coloured div soup; structure without contrast
 // passes a correctly marked-up page nobody can read.
 
-import { render } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { cleanup, render } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
 import { axe } from 'vitest-axe';
 import * as matchers from 'vitest-axe/matchers';
 import { ruleSetFor } from '@/lib/calc-engine';
@@ -39,6 +39,15 @@ import { ThresholdRail } from './ThresholdRail/ThresholdRail';
 import { ZoneBadge } from './ZoneBadge/ZoneBadge';
 
 expect.extend(matchers);
+
+// Testing Library registers its own cleanup only when a global afterEach
+// exists, which needs vitest globals - not set in this repo, on purpose. Without
+// this, all eighteen renders ACCUMULATE in one jsdom document, and the rules
+// axe evaluates against the DOCUMENT rather than the container - duplicate ids
+// above all - are being asked about a page that never exists. It passed either
+// way; it now passes for the right reason. Found while building FieldGroup,
+// whose queries failed loudly against a component the markup proved correct.
+afterEach(cleanup);
 
 const RULES = ruleSetFor(2026);
 const THRESHOLDS = {

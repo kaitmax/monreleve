@@ -1,0 +1,95 @@
+// web/lib/ui/react/FieldGroup/FieldGroup.module.scss
+//
+// Tokens only; camelCase class names for CSS Module addressing.
+//
+// THE CONTROL IS STYLED FROM HERE VIA A DATA ATTRIBUTE, not by a class the
+// caller has to remember. DESIGN-SYSTEM.md section 1 gives inputs a 1 px
+// border and a 2 px error border, and the error state has to reach a control
+// this component does not render. `[data-invalid]` is the seam: FieldGroup
+// puts the attribute on, the caller spreads it, and the rule below finds it
+// whatever element it landed on.
+//
+// THE LABEL IS 13/500, WHICH NO SINGLE TOKEN CARRIES. DESIGN-SYSTEM.md
+// section 1 specifies it - "label 13/500 6 px above" - but the type scale
+// pairs 13 with weight 400 (Caption) and weight 500 with 15 (Body M). So the
+// size comes from one family and the weight from another, which is the
+// composition ruling R62 was issued about in its other form. Recorded at the
+// site and carried into the report as a question rather than settled here:
+// adding a --type-label-* family is a SPEC 20 ask-first item.
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-input-label-gap);
+}
+
+.label {
+  color: var(--colour-text-primary);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-body-m-weight);
+  line-height: var(--type-caption-line);
+}
+
+// The control the caller rendered. Descendant selectors rather than a class,
+// because the element is theirs - input, select and textarea are the three
+// that carry a border in this design.
+.root input,
+.root select,
+.root textarea {
+  height: var(--size-input-height);
+  padding: 0 var(--size-input-padding-x);
+  border: var(--size-input-border) solid var(--colour-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--colour-surface);
+  color: var(--colour-text-primary);
+  font-family: inherit;
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+}
+
+// 2 px, per DESIGN-SYSTEM.md section 1. The width changes rather than only
+// the colour, so the state survives a monochrome print and a colour-blind
+// reader - the same reasoning SPEC 16 applies to status.
+.root input[data-invalid],
+.root select[data-invalid],
+.root textarea[data-invalid] {
+  border-width: var(--size-input-border-focus);
+  border-color: var(--colour-error);
+}
+
+.root input:focus-visible,
+.root select:focus-visible,
+.root textarea:focus-visible {
+  border-width: var(--size-input-border-focus);
+  border-color: var(--colour-brand);
+  outline: none;
+}
+
+.helper {
+  margin: 0;
+  color: var(--colour-text-secondary);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  line-height: var(--type-caption-line);
+}
+
+// The MESSAGE is text-primary and the ICON carries the colour - the same
+// split ruling R57 made for the ZoneBadge chip, and for the same reason: an
+// error message is the text a reader most needs to be able to read.
+.error {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  margin: 0;
+  color: var(--colour-text-primary);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  line-height: var(--type-caption-line);
+}
+
+.errorIcon {
+  flex: none;
+  width: var(--size-icon-sm);
+  height: var(--size-icon-sm);
+  color: var(--colour-error);
+}
