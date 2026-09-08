@@ -30,8 +30,11 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { axe } from 'vitest-axe';
 import * as matchers from 'vitest-axe/matchers';
 import { ruleSetFor } from '@/lib/calc-engine';
-import { formatSignedDays } from '@/lib/ui/core';
+import { errorMessage } from '@/lib/fr/errors';
+import { formatDays, formatSignedDays } from '@/lib/ui/core';
 import type { Status, Zone } from '@/lib/ui/core';
+import { DataGrid } from './DataGrid/DataGrid';
+import { FieldGroup } from './FieldGroup/FieldGroup';
 import { LegalNote } from './LegalNote/LegalNote';
 import { MetricTile } from './MetricTile/MetricTile';
 import { RateDisplay } from './RateDisplay/RateDisplay';
@@ -69,6 +72,26 @@ const RATE: Record<Zone, number> = {
 };
 
 const RAIL_WIDTH = 376;
+
+const HELPER = 'Journees entieres uniquement.';
+const FIELD_ERROR = errorMessage({ code: 'NEGATIVE_DAYS', field: 'teleworkDays' });
+
+const FIELD = (id: string, props: { helper?: string; error?: string } = {}) => (
+  <FieldGroup id={id} label="Jours de teletravail" {...props}>
+    {(control) => <input type="number" {...control} />}
+  </FieldGroup>
+);
+
+const GRID_CAPTION = 'Jours declares par mois';
+const GRID_COLUMNS = [
+  { key: 'month', header: 'Mois' },
+  { key: 'days', header: 'Jours', numeric: true },
+];
+const GRID_ROWS = [
+  { key: 'jan', cells: { month: 'Janvier', days: formatDays(12.5) } },
+  { key: 'feb', cells: { month: 'Fevrier', days: formatDays(1234.5) } },
+];
+const GRID_TOTAL = { key: 'total', cells: { month: 'Total', days: formatDays(1247) } };
 
 interface State {
   readonly name: string;
@@ -126,15 +149,31 @@ const STATES: readonly State[] = [
     node: <MetricTile label="Jours restants" days={formatSignedDays(-6)} />,
   },
   { name: 'LegalNote', node: <LegalNote /> },
+
+  // FieldGroup. The error states are the ones with something to get wrong:
+  // aria-describedby pointing at an element that must exist, and a live
+  // region that must not be present when there is nothing to announce.
+  { name: 'FieldGroup plain', node: FIELD('wb-a') },
+  { name: 'FieldGroup helper', node: FIELD('wb-b', { helper: HELPER }) },
+  { name: 'FieldGroup error', node: FIELD('wb-c', { error: FIELD_ERROR }) },
+  { name: 'FieldGroup helper and error', node: FIELD('wb-d', { helper: HELPER, error: FIELD_ERROR }) },
+
+  // DataGrid. The empty state matters here: a table whose only row is a
+  // colspan message is the shape most likely to break header association.
+  { name: 'DataGrid populated', node: <DataGrid caption={GRID_CAPTION} columns={GRID_COLUMNS} rows={GRID_ROWS} /> },
+  { name: 'DataGrid empty', node: <DataGrid caption={GRID_CAPTION} columns={GRID_COLUMNS} rows={[]} /> },
+  { name: 'DataGrid with total', node: <DataGrid caption={GRID_CAPTION} columns={GRID_COLUMNS} rows={GRID_ROWS} total={GRID_TOTAL} /> },
 ];
 
 describe('every state of every component is free of axe violations (AC1)', () => {
   it('covers all five components, so a green run means what it says', () => {
-    // Without this the loop below could pass by shrinking. Eighteen states:
-    // seven rail, four badge, four rate, two metric, one legal.
-    expect(STATES).toHaveLength(18);
+    // Without this the loop below could pass by shrinking. Twenty-five states:
+    // seven rail, four badge, four rate, two metric, one legal, four field,
+    // three grid.
+    expect(STATES).toHaveLength(25);
 
-    for (const component of ['ThresholdRail', 'ZoneBadge', 'RateDisplay', 'MetricTile', 'LegalNote']) {
+    const NAMES = ['ThresholdRail', 'ZoneBadge', 'RateDisplay', 'MetricTile', 'LegalNote', 'FieldGroup', 'DataGrid'];
+    for (const component of NAMES) {
       expect(STATES.some((state) => state.name.startsWith(component))).toBe(true);
     }
   });

@@ -51,6 +51,13 @@ const SPECIMENS = [
   'metric-positive',
   'metric-negative',
   'legal-standing',
+  'field-plain',
+  'field-helper',
+  'field-error',
+  'field-both',
+  'grid-populated',
+  'grid-empty',
+  'grid-total',
 ] as const;
 
 test.beforeEach(async ({ page }) => {

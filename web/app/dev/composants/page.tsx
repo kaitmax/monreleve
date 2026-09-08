@@ -24,8 +24,11 @@
 import type { Metadata } from 'next';
 import { ruleSetFor } from '@/lib/calc-engine';
 import { WORKBENCH_TITLE } from '@/lib/fr';
+import { errorMessage } from '@/lib/fr/errors';
 import { WORKBENCH } from '@/lib/fr/workbench';
-import { formatSignedDays } from '@/lib/ui/core';
+import { formatDays, formatSignedDays } from '@/lib/ui/core';
+import { DataGrid } from '@/lib/ui/react/DataGrid/DataGrid';
+import { FieldGroup } from '@/lib/ui/react/FieldGroup/FieldGroup';
 import { LegalNote } from '@/lib/ui/react/LegalNote/LegalNote';
 import { MetricTile } from '@/lib/ui/react/MetricTile/MetricTile';
 import { RateDisplay } from '@/lib/ui/react/RateDisplay/RateDisplay';
@@ -52,6 +55,24 @@ const RATE = { compliant: 34.58, exposure: 45.2, social: 60 };
 const GENEVA_C = { declarable: 39.16, raw: 45 };
 
 const RAIL_WIDTH = 376;
+
+// Already through lib/ui/core/format: DataGrid renders strings and formats
+// nothing (FW9 protocol item 7).
+const GRID_COLUMNS = [
+  { key: 'month', header: WORKBENCH.grid.month },
+  { key: 'days', header: WORKBENCH.grid.days, numeric: true },
+];
+const GRID_ROWS = [
+  { key: 'jan', cells: { month: WORKBENCH.grid.january, days: formatDays(12.5) } },
+  { key: 'feb', cells: { month: WORKBENCH.grid.february, days: formatDays(1234.5) } },
+  { key: 'mar', cells: { month: WORKBENCH.grid.march, days: formatDays(3) } },
+];
+const GRID_TOTAL = {
+  key: 'total',
+  cells: { month: WORKBENCH.grid.total, days: formatDays(1250) },
+};
+
+const FIELD_ERROR = errorMessage({ code: 'NEGATIVE_DAYS', field: 'teleworkDays' });
 
 function Specimen({
   id,
@@ -206,6 +227,68 @@ export default function WorkbenchPage() {
         <div className={styles.specimens}>
           <Specimen id="legal-standing" caption={WORKBENCH.legal.standing}>
             <LegalNote />
+          </Specimen>
+        </div>
+      </section>
+
+      <section className={styles.section}>
+        <h2>{WORKBENCH.field.title}</h2>
+        <div className={styles.specimens}>
+          <Specimen id="field-plain" caption={WORKBENCH.field.plain}>
+            <FieldGroup id="wb-plain" label={WORKBENCH.field.label}>
+              {(control) => <input type="number" {...control} />}
+            </FieldGroup>
+          </Specimen>
+          <Specimen id="field-helper" caption={WORKBENCH.field.helper}>
+            <FieldGroup
+              id="wb-helper"
+              label={WORKBENCH.field.label}
+              helper={WORKBENCH.field.helperText}
+            >
+              {(control) => <input type="number" {...control} />}
+            </FieldGroup>
+          </Specimen>
+          {/* The message comes from errorMessage, so the workbench shows the
+              real copy a form would show rather than a sample sentence. */}
+          <Specimen id="field-error" caption={WORKBENCH.field.error}>
+            <FieldGroup id="wb-error" label={WORKBENCH.field.label} error={FIELD_ERROR}>
+              {(control) => <input type="number" {...control} />}
+            </FieldGroup>
+          </Specimen>
+          <Specimen id="field-both" caption={WORKBENCH.field.both}>
+            <FieldGroup
+              id="wb-both"
+              label={WORKBENCH.field.label}
+              helper={WORKBENCH.field.helperText}
+              error={FIELD_ERROR}
+            >
+              {(control) => <input type="number" {...control} />}
+            </FieldGroup>
+          </Specimen>
+        </div>
+      </section>
+
+      <section className={styles.section}>
+        <h2>{WORKBENCH.grid.title}</h2>
+        <div className={styles.specimens}>
+          <Specimen id="grid-populated" caption={WORKBENCH.grid.populated}>
+            <DataGrid
+              caption={WORKBENCH.grid.caption}
+              columns={GRID_COLUMNS}
+              rows={GRID_ROWS}
+            />
+          </Specimen>
+          {/* Never a blank table: one row spanning every column. */}
+          <Specimen id="grid-empty" caption={WORKBENCH.grid.empty}>
+            <DataGrid caption={WORKBENCH.grid.caption} columns={GRID_COLUMNS} rows={[]} />
+          </Specimen>
+          <Specimen id="grid-total" caption={WORKBENCH.grid.withTotal}>
+            <DataGrid
+              caption={WORKBENCH.grid.caption}
+              columns={GRID_COLUMNS}
+              rows={GRID_ROWS}
+              total={GRID_TOTAL}
+            />
           </Specimen>
         </div>
       </section>

@@ -53,6 +53,30 @@ export const WORKBENCH = {
     label: 'Jours restants',
   },
 
+  field: {
+    title: 'FieldGroup',
+    plain: 'Champ simple',
+    helper: 'Avec texte d aide',
+    error: 'En erreur',
+    both: 'Aide et erreur',
+    label: 'Jours de télétravail',
+    helperText: 'Journées entières uniquement.',
+  },
+
+  grid: {
+    title: 'DataGrid',
+    populated: 'Avec données',
+    empty: 'Sans données',
+    withTotal: 'Avec ligne de total',
+    caption: 'Jours déclarés par mois',
+    month: 'Mois',
+    days: 'Jours',
+    total: 'Total',
+    january: 'Janvier',
+    february: 'Février',
+    march: 'Mars',
+  },
+
   legal: {
     title: 'LegalNote',
     standing: 'Mention légale permanente',
