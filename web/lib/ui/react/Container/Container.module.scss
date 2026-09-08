@@ -1,0 +1,43 @@
+// web/lib/ui/react/Container/Container.module.scss
+//
+// Tokens only. The three max-widths are ruling R64's three layout tokens and
+// nothing else - "Container maps its union to these three tokens and nothing
+// else". A fourth max-width rule, or one naming a different token, would be a
+// fourth width by the back door; Container.test.tsx counts the rules and
+// checks every one of them names a --layout-* width.
+//
+// MOBILE-FIRST, so the base rule carries the 20 px gutter and the 32 px
+// desktop gutter arrives in a media query. Written the other way round, a
+// narrow viewport would get 32 px until the query matched, which on a 360 px
+// screen costs 64 px of a 360 px width.
+//
+// The breakpoint is 768, matching PublicShell's mobile threshold in increment
+// 4. It is a raw value because no token carries a breakpoint - stylelint does
+// not police media queries, so this is not a rule evasion, but it IS a gap:
+// raised in the report as a question rather than tokenised here, since adding
+// a token is a SPEC 20 ask-first item.
+
+.root {
+  margin: 0 auto;
+  padding-right: var(--layout-gutter-mobile);
+  padding-left: var(--layout-gutter-mobile);
+}
+
+.root[data-width="public"] {
+  max-width: var(--layout-public);
+}
+
+.root[data-width="narrow"] {
+  max-width: var(--layout-narrow);
+}
+
+.root[data-width="article"] {
+  max-width: var(--layout-article);
+}
+
+@media (width >= 768px) {
+  .root {
+    padding-right: var(--layout-gutter-desktop);
+    padding-left: var(--layout-gutter-desktop);
+  }
+}
