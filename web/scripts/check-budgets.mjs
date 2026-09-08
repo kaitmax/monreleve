@@ -88,6 +88,20 @@ function entriesForRoute(pageEntry, allEntries) {
     const layout = candidate === '/' ? '/layout' : `${candidate}/layout`;
     if (allEntries.includes(layout)) layouts.push(layout);
   }
+  // THE ROOT 404 IS TWO MANIFEST ENTRIES, and measuring only one of them
+  // under-reported it by the whole shell. Next emits "/_not-found/page" for
+  // the internal catch-all route AND "/not-found" for the component in
+  // app/not-found.tsx; the component's chunks are on the second, and only the
+  // first ends in "/page", so the loop below never saw them. Before this, the
+  // 404 reported 100.8 KiB with a 0.2 KiB feature delta while actually
+  // shipping PublicShell - a route passing its gate on a number that was not
+  // its payload, which is worse than a breach because nothing looks wrong.
+  //
+  // Found by comparing chunk counts: /_not-found/page had 5, /not-found 7.
+  if (pageEntry === '/_not-found/page' && allEntries.includes('/not-found')) {
+    return [...layouts, pageEntry, '/not-found'];
+  }
+
   return [...layouts, pageEntry];
 }
 

@@ -30,3 +30,29 @@ export const HOME_COPY = {
  * default is the bare product name for the home route.
  */
 export const TITLE_TEMPLATE = `%s — ${APP_NAME}`;
+
+// ---------------------------------------------------------------------------
+// THE 404 (FW10 increment 4).
+//
+// NO "OUPS", no apology and no illustration - the prompt is explicit, and it
+// is right: a reader who mistyped an address wants the way out, not a joke
+// about it. One sentence saying what happened, and two links that go
+// somewhere useful.
+//
+// It says "peut-etre" because the page genuinely does not know which of the
+// two happened, and guessing would be the same overclaiming this product
+// avoids everywhere else.
+//
+// TODO-COPY: realistic French, not reviewed.
+// ---------------------------------------------------------------------------
+
+export const NOT_FOUND_COPY = {
+  heading: "Cette page n'existe pas",
+  body:
+    'Le lien que vous avez suivi est peut-être ancien, ou son adresse ' +
+    'comporte une erreur.',
+  calculator: 'Aller au calculateur',
+  calculatorHref: '/calculateur-teletravail-frontalier',
+  home: "Revenir à l'accueil",
+  homeHref: '/',
+} as const;

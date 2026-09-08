@@ -226,6 +226,50 @@ const COMPONENTS = readdirSync(join(root, 'lib', 'ui', 'react'), { withFileTypes
   .filter((name) => existsSync(join(root, 'lib', 'ui', 'react', name, `${name}.module.scss`)))
   .sort();
 
+/**
+ * THE PAGE STYLESHEETS ARE AUDITED TOO, and they were not before.
+ *
+ * The audit read lib/ui/react and nothing else, which was right when app/ held
+ * one placeholder page and no colour. FW10 gave app/ three legal pages and a
+ * 404, and the 404 paints its links --colour-brand on the page surface. That
+ * is exactly the pairing this audit exists to measure, and it would have gone
+ * unmeasured - a coverage hole of the same shape as the hardcoded component
+ * list that the discovery above replaced.
+ *
+ * SCOPE IS R74's READING OF R60: app/ except app/dev/. The workbench is a dev
+ * harness whose whole job is to show every state at once, including ones no
+ * page composes.
+ */
+function pageSheets(directory: string): string[] {
+  return readdirSync(join(root, directory), { withFileTypes: true }).flatMap((entry) => {
+    const path = `${directory}/${entry.name}`;
+
+    if (entry.isDirectory()) return path === 'app/dev' ? [] : pageSheets(path);
+
+    return entry.name.endsWith('.module.scss') ? [path] : [];
+  });
+}
+
+const PAGE_SHEETS = pageSheets('app').sort();
+
+interface Sheet {
+  /** What the failure message names. */
+  readonly label: string;
+  /** Repo-relative path. */
+  readonly path: string;
+}
+
+const SHEETS: readonly Sheet[] = [
+  ...COMPONENTS.map((name) => ({
+    label: name,
+    path: `lib/ui/react/${name}/${name}.module.scss`,
+  })),
+  ...PAGE_SHEETS.map((path) => ({
+    label: path.slice('app/'.length).replace('.module.scss', ''),
+    path,
+  })),
+];
+
 /** WCAG: 24 px, or 18,66 px at bold. 600 is not bold - see the header. */
 const BOLD = 700;
 const LARGE_PX = 24;
@@ -291,9 +335,8 @@ const ANCESTOR_BACKGROUND: Record<string, readonly string[]> = {
 function paintedRules(): Painted[] {
   const found: Painted[] = [];
 
-  for (const name of COMPONENTS) {
-    const sheet = join(root, 'lib', 'ui', 'react', name, `${name}.module.scss`);
-    const source = readFileSync(sheet, 'utf8');
+  for (const { label: name, path } of SHEETS) {
+    const source = readFileSync(join(root, path), 'utf8');
 
     // Block-level, because the gate depends on the font-size DECLARED BESIDE
     // the colour. Splitting on the closing brace is enough here: these files
@@ -386,6 +429,27 @@ describe('every colour rule in the five stylesheets, at the bar its size implies
     // Five components, each painting at least a label and a figure.
     expect(rules.length).toBeGreaterThanOrEqual(8);
     expect(rules.map((rule) => rule.fg)).toContain('--colour-text-secondary');
+  });
+
+  it('discovered the page stylesheets, not only the components', () => {
+    // The widening to app/ is worth nothing if the walk returns an empty list:
+    // every assertion below would still pass, over components alone, exactly
+    // as it did before. So the discovery is asserted, and so is the fact that
+    // a rule from a PAGE reached the audit.
+    expect(PAGE_SHEETS.length).toBeGreaterThanOrEqual(2);
+    expect(PAGE_SHEETS).toContain('app/not-found.module.scss');
+    expect(SHEETS.length).toBe(COMPONENTS.length + PAGE_SHEETS.length);
+
+    const fromPages = rules.filter((rule) => rule.where.startsWith('not-found'));
+
+    expect(fromPages.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('skips app/dev, which shows states no page composes', () => {
+    // R74's reading of R60's scope: app/ except app/dev/. The workbench exists
+    // to show every state at once and is not a claim about any page.
+    expect(PAGE_SHEETS.filter((path) => path.startsWith('app/dev'))).toEqual([]);
+    expect(existsSync(join(root, 'app', 'dev', 'composants', 'page.module.scss'))).toBe(true);
   });
 
   // A rule that paints its own background is audited against THAT, once.

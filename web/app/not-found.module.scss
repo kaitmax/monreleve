@@ -1,0 +1,54 @@
+@use "../lib/ui/core/styles/breakpoints" as bp;
+
+// web/app/not-found.module.scss
+//
+// Tokens only. LEFT-ALIGNED, which is the whole visual instruction: a centred
+// 404 with a big glyph is the convention and it is the wrong one here. This
+// page is read, not admired - a reader who mistyped an address is looking for
+// the way out, and centred text is harder to scan for it.
+//
+// No illustration, so there is nothing to size.
+
+.page {
+  padding-top: var(--space-16);
+  padding-bottom: var(--space-20);
+}
+
+.title {
+  margin: 0 0 var(--space-4);
+  font-size: var(--type-h1-size);
+  font-weight: var(--type-h1-weight);
+  line-height: var(--type-h1-line);
+}
+
+.body {
+  margin: 0 0 var(--space-8);
+  font-size: var(--type-body-l-size);
+  font-weight: var(--type-body-l-weight);
+  line-height: var(--type-body-l-line);
+}
+
+// A column below the breakpoint: two links side by side on a 320 px screen
+// either wrap mid-label or squeeze the 44 px tap target the links rely on.
+.links {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--size-icon-button);
+  color: var(--colour-brand);
+  font-size: var(--type-body-l-size);
+  font-weight: var(--type-body-l-weight);
+  line-height: var(--type-body-l-line);
+}
+
+@media (width >= bp.$breakpoint-md) {
+  .links {
+    flex-direction: row;
+    gap: var(--space-6);
+  }
+}
