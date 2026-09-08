@@ -90,3 +90,62 @@ export function siteOrigin(): string {
   // form - a duplicate-content problem rather than a cosmetic one.
   return `${parsed.protocol}//${parsed.host}`;
 }
+
+// ---------------------------------------------------------------------------
+// RULING R81 - A PRODUCTION SERVER NEVER SERVES A FALLBACK ORIGIN
+// ---------------------------------------------------------------------------
+//
+// This is the control the first version of this file tried and failed to
+// build. The risk was always real - a published sitemap of localhost URLs is
+// well-formed, indexes nothing, and trips no other gate - and the mistake was
+// the trigger: NODE_ENV=production is set by `next build`, so guarding on it
+// broke every local build for a condition that publishes nothing.
+//
+// R81 supplies the signal that was missing: FRONTALIER_RUNTIME=1, set by
+// FW28's Dockerfile. It marks "this process is SERVING", which is exactly the
+// distinction NODE_ENV could not make. Build-time fallback stays, so
+// `pnpm build` and CI are untouched.
+
+/** True in a container that is serving. Set by FW28's Dockerfile, never locally. */
+export function isRuntime(): boolean {
+  return process.env.FRONTALIER_RUNTIME === '1';
+}
+
+/** True when no origin was configured and the localhost stand-in is in play. */
+export function isProvisionalOrigin(): boolean {
+  return siteOrigin() === PROVISIONAL_ORIGIN;
+}
+
+/**
+ * The condition R81 names: a serving process with no configured origin.
+ *
+ * Everything that would otherwise publish a localhost URL keys off THIS rather
+ * than off isProvisionalOrigin alone, so a developer running `pnpm build` and
+ * `pnpm start` locally still gets a working site.
+ */
+export function servingWithoutOrigin(): boolean {
+  return isRuntime() && isProvisionalOrigin();
+}
+
+/**
+ * Why canonicals key off isProvisionalOrigin and NOT servingWithoutOrigin,
+ * which looks inconsistent and is not.
+ *
+ * Next evaluates `metadata` for a statically prerendered route at BUILD time
+ * and bakes the result into the HTML. A canonical therefore cannot react to a
+ * runtime marker at all - by the time FRONTALIER_RUNTIME is visible, the tag
+ * has already been written. Forcing the route dynamic to make it react would
+ * trade static delivery for a tag, on a site whose whole delivery model is
+ * static.
+ *
+ * So the canonical is omitted whenever the origin it would be built from is
+ * the stand-in, which is the condition that actually matters: a canonical
+ * pointing at localhost is worse than no canonical, because a crawler treats
+ * it as an instruction rather than as an absence.
+ *
+ * The two per-request surfaces - /sitemap.xml and /api/health - can and do
+ * read the runtime marker, because a route handler runs per request.
+ */
+export function canonicalsAvailable(): boolean {
+  return !isProvisionalOrigin();
+}

@@ -5,6 +5,12 @@ const BASE_URL = 'http://localhost:3000';
 
 export default defineConfig({
   testDir: './e2e',
+  // The R81 runtime-guard suite is excluded here and run by
+  // playwright.runtime.config.ts, which starts a server with
+  // FRONTALIER_RUNTIME=1 and no origin. Collected by this config it would
+  // run against a correctly configured server and assert the opposite of
+  // what is true.
+  testIgnore: '**/*.runtime.spec.ts',
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,

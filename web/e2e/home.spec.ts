@@ -108,3 +108,34 @@ test('a public route makes no third-party request and sets no cookie', async ({
   expect(foreignRequests).toEqual([]);
   expect(await context.cookies()).toEqual([]);
 });
+
+// ---------------------------------------------------------------------------
+// The OTHER direction of ruling R81, and it is not optional: a guard that
+// always refused would pass every assertion in guard.runtime.spec.ts. This
+// suite runs WITHOUT FRONTALIER_RUNTIME, which is the ordinary case, so it is
+// where "the guard stays quiet" can be proved for free.
+// ---------------------------------------------------------------------------
+
+test('/sitemap.xml is served normally when the process is not marked as serving', async ({
+  request,
+}) => {
+  const response = await request.get('/sitemap.xml');
+
+  expect(response.status()).toBe(200);
+  expect(response.headers()['content-type']).toContain('xml');
+
+  const body = await response.text();
+
+  expect(body).toContain('<urlset');
+  expect(body).toContain('<loc>');
+});
+
+test('/api/health reports ok when the process is not marked as serving', async ({ request }) => {
+  const response = await request.get('/api/health');
+  const body = (await response.json()) as { status: string; reasons: string[]; runtime: boolean };
+
+  expect(response.status()).toBe(200);
+  expect(body.status).toBe('ok');
+  expect(body.reasons).toEqual([]);
+  expect(body.runtime).toBe(false);
+});

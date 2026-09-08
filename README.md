@@ -75,6 +75,30 @@ Pure ASCII applies to relay prompts and reports, **not** to code — source file
 
 **Web / backend** — Node 22, pnpm ≥ 9.
 
+### Environment (ruling R81)
+
+Nothing is required to run locally. Two variables matter in a container:
+
+| Variable | Local | Container | What it does |
+|---|---|---|---|
+| `NEXT_PUBLIC_SITE_URL` | unset | **required** | The absolute site origin, scheme and no trailing slash. Unset falls back to `http://localhost:3000`, which reads as *undecided* rather than as a claim — the domain is an open question gated at Checkpoint C. A malformed value (a bare hostname, a path, a non-http scheme) throws rather than silently producing relative URLs. |
+| `FRONTALIER_RUNTIME` | unset | **`1`** | Marks *this process is serving*. Set only by FW28's runner stage. |
+
+Together they close a gap that `NODE_ENV` cannot. `next build` sets
+`NODE_ENV=production` too, so a guard keyed on it fires during every local
+build — which publishes nothing. An earlier version did exactly that and broke
+`pnpm build`, which is part of the Definition of Done.
+
+With the marker set and the origin unset, a *serving* process returns **503**
+from `/sitemap.xml`, reports **`degraded`** from `/api/health`, and **omits
+canonicals**. Each is the safe failure rather than the quiet one: a sitemap of
+localhost URLs is well-formed XML that indexes nothing and trips no other gate,
+and a canonical pointing at localhost is worse than no canonical at all,
+because a crawler treats it as an *instruction* rather than as an absence.
+
+The site still serves — degraded is not broken. Build-time fallback stays, so
+`pnpm build` and CI need no environment. Proof: `pnpm test:runtime`.
+
 ```
 pnpm install
 pnpm dev            # http://localhost:3000

@@ -27,7 +27,7 @@
 
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
-import { siteOrigin } from '@/lib/content/site';
+import { canonicalsAvailable, siteOrigin } from '@/lib/content/site';
 import { APP_NAME, TITLE_TEMPLATE } from '@/lib/fr';
 import { PublicShell } from '@/lib/ui/react/PublicShell/PublicShell';
 
@@ -39,18 +39,32 @@ export const metadata: Metadata = {
     default: APP_NAME,
     template: TITLE_TEMPLATE,
   },
-  alternates: {
-    // Relative, so Next derives it per route against metadataBase. A literal
-    // canonical here would point every public page at the home page, which is
-    // the single most damaging SEO mistake available on a content site.
-    canonical: './',
-    languages: {
-      // One locale by design (SPEC section 1 non-goals: no i18n). It is
-      // declared rather than omitted so a crawler is told, instead of
-      // guessing from the copy.
-      'fr-FR': './',
-    },
-  },
+  // RULING R81: OMITTED ENTIRELY while the origin is the localhost
+  // stand-in. A canonical pointing at localhost is worse than no canonical,
+  // because a crawler treats it as an INSTRUCTION rather than as an absence -
+  // it would be told the real page lives at an address it cannot reach.
+  //
+  // It keys off the origin rather than the runtime marker, and that is not an
+  // inconsistency: Next bakes a route's metadata at BUILD time when the route
+  // is statically prerendered, so by the time FRONTALIER_RUNTIME is visible
+  // this tag has
+  // already been written. See lib/content/site.ts.
+  ...(canonicalsAvailable()
+    ? {
+        alternates: {
+          // Relative, so Next derives it per route against metadataBase. A
+          // literal canonical here would point every public page at the home
+          // page - the most damaging SEO mistake available on a content site.
+          canonical: './',
+          languages: {
+            // One locale by design (SPEC section 1 non-goals: no i18n).
+            // Declared rather than omitted so a crawler is told rather than
+            // guessing from the copy.
+            'fr-FR': './',
+          },
+        },
+      }
+    : {}),
 };
 
 export default function PublicLayout({ children }: { children: ReactNode }) {

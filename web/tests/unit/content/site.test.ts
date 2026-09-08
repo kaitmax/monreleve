@@ -25,7 +25,14 @@
 // is not closed here and is written up as a question.
 
 import { afterEach, describe, expect, it } from 'vitest';
-import { PROVISIONAL_ORIGIN, siteOrigin } from '@/lib/content/site';
+import {
+  PROVISIONAL_ORIGIN,
+  canonicalsAvailable,
+  isProvisionalOrigin,
+  isRuntime,
+  servingWithoutOrigin,
+  siteOrigin,
+} from '@/lib/content/site';
 
 const ENV = process.env.NEXT_PUBLIC_SITE_URL;
 
@@ -112,5 +119,97 @@ describe('a configured origin is validated, not trusted', () => {
 
     expect(message).toContain('NEXT_PUBLIC_SITE_URL');
     expect(message).toContain('scheme');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// RULING R81. The runtime marker is the signal the first version of this
+// module lacked: NODE_ENV=production is set by `next build`, so it could not
+// tell "serving" from "building on a laptop". FRONTALIER_RUNTIME=1 can.
+// ---------------------------------------------------------------------------
+
+describe('the runtime marker (R81)', () => {
+  afterEach(() => {
+    delete process.env.FRONTALIER_RUNTIME;
+  });
+
+  it('is off unless explicitly 1', () => {
+    // Not "any truthy value": an accidental FRONTALIER_RUNTIME=0 or =false
+    // must not switch on a guard that returns 503s.
+    for (const value of ['0', 'false', '', 'yes', 'true']) {
+      process.env.FRONTALIER_RUNTIME = value;
+
+      expect(isRuntime(), value).toBe(false);
+    }
+
+    process.env.FRONTALIER_RUNTIME = '1';
+    expect(isRuntime()).toBe(true);
+  });
+
+  it('reports the provisional origin as provisional', () => {
+    delete process.env.NEXT_PUBLIC_SITE_URL;
+    expect(isProvisionalOrigin()).toBe(true);
+
+    process.env.NEXT_PUBLIC_SITE_URL = 'https://frontalier.fr';
+    expect(isProvisionalOrigin()).toBe(false);
+  });
+});
+
+describe('servingWithoutOrigin is the condition R81 names', () => {
+  afterEach(() => {
+    delete process.env.FRONTALIER_RUNTIME;
+  });
+
+  it('is true only when BOTH hold - serving, and no origin configured', () => {
+    // The whole point of the pairing. Either alone is a normal state:
+    // building without an origin is every local build, and serving WITH one
+    // is production working correctly.
+    delete process.env.NEXT_PUBLIC_SITE_URL;
+
+    delete process.env.FRONTALIER_RUNTIME;
+    expect(servingWithoutOrigin(), 'building, no origin').toBe(false);
+
+    process.env.FRONTALIER_RUNTIME = '1';
+    expect(servingWithoutOrigin(), 'serving, no origin').toBe(true);
+
+    process.env.NEXT_PUBLIC_SITE_URL = 'https://frontalier.fr';
+    expect(servingWithoutOrigin(), 'serving, with origin').toBe(false);
+
+    delete process.env.FRONTALIER_RUNTIME;
+    expect(servingWithoutOrigin(), 'building, with origin').toBe(false);
+  });
+
+  it('leaves the BUILD-TIME fallback intact, which R81 requires explicitly', () => {
+    // The failure the first design caused: `pnpm build` is part of this
+    // project's Definition of Done, and guarding on NODE_ENV broke it.
+    delete process.env.NEXT_PUBLIC_SITE_URL;
+    delete process.env.FRONTALIER_RUNTIME;
+
+    expect(() => siteOrigin()).not.toThrow();
+    expect(siteOrigin()).toBe(PROVISIONAL_ORIGIN);
+  });
+});
+
+describe('canonicals key off the origin, not the marker - and that is deliberate', () => {
+  afterEach(() => {
+    delete process.env.FRONTALIER_RUNTIME;
+  });
+
+  it('are unavailable whenever the origin is the stand-in, marker or not', () => {
+    // Next bakes `metadata` for a statically prerendered route at BUILD time,
+    // so a canonical cannot react to a runtime marker - by the time the
+    // marker is visible the tag is already written. Omitting on the
+    // PROVISIONAL condition is what actually protects a reader: a canonical
+    // pointing at localhost is worse than no canonical, because a crawler
+    // treats it as an instruction rather than as an absence.
+    delete process.env.NEXT_PUBLIC_SITE_URL;
+
+    expect(canonicalsAvailable()).toBe(false);
+
+    process.env.FRONTALIER_RUNTIME = '1';
+    expect(canonicalsAvailable(), 'the marker must not change this').toBe(false);
+
+    process.env.NEXT_PUBLIC_SITE_URL = 'https://frontalier.fr';
+    expect(canonicalsAvailable()).toBe(true);
   });
 });
