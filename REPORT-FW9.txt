@@ -1,0 +1,571 @@
+REPORT-FW9.txt
+FieldGroup, DataGrid - and a stop. Session of 08.09.2026.
+Pure ASCII by convention. French copy is transliterated where quoted.
+
+
+================================================================================
+SUMMARY
+================================================================================
+
+FW9 IS NOT COMPLETE. It stopped at increment 3 on a question the operator has
+to answer, and the stop is the report's main content.
+
+Delivered, green, pushed:
+
+  eb7cf27  FW9: FieldGroup and the ValidationError copy map      [increment 1]
+  6c4b6ec  FW9: DataGrid                                         [increment 2]
+  bbdc06f  FW9: workbench, baselines and axe for the two
+           components that exist                       [part of increment 6]
+  45b9216  FW9: Checkpoint A machine checks recorded    [part of increment 6]
+
+Not started, blocked on Q1 below:
+
+  increment 3   Container
+  increment 4   PublicShell header
+  increment 5   PublicShell footer and the R51 date
+
+THE BLOCK, in one paragraph. Container is defined by three named widths -
+'public' 1200, 'article' 680, 'narrow' 720. No token carries any of them, so
+building it needs three new tokens, and SPEC section 20 makes adding a token an
+ask-first item. That alone would be a question. What makes it a STOP is that
+the value conflicts with a spec file: DESIGN-SYSTEM.md section 1 says "Screen
+horizontal padding 20 px (mobile), 32 px (desktop, max content 1440)", and
+tokens.scss transcribes it as $layout-content-max: 1440px, while FD1, FD11 and
+FD13 all say "Desktop side padding 32, content max width 1200, centred". Both
+sentences describe the content maximum with the same 32 px desktop padding and
+they give different numbers. CLAUDE.md: "If the task conflicts with a spec
+file, STOP and ask - do not resolve it yourself."
+
+Increments 4 and 5 need the same 1200 for the header and footer content width,
+so one answer unblocks all three.
+
+WHAT WAS DONE INSTEAD OF STOPPING DEAD. Everything in FW9 that does not depend
+on that answer was finished: both buildable components, their workbench
+entries, their container baselines, their axe coverage, and the Checkpoint A
+machine checks, which are pure verification and touch no width at all. The
+tree is clean and every commit is green.
+
+TWO FINDINGS FROM THIS SESSION THAT ARE WORTH MORE THAN THE COMPONENTS.
+
+  AC1 is enforced by tsc and NOT by the test suite. Planting a seventh
+  ValidationError code failed typecheck twice and left the unit suite green at
+  11 passed. A CI that ran only pnpm test would ship a code with no copy.
+
+  Two DataGrid tests would have passed for the wrong reason, both from the
+  same cause: Testing Library's default normaliser treats U+202F - the narrow
+  no-break space formatDays uses - as whitespace. One failed loudly against a
+  correct table; the other was GREEN and asserting nothing.
+
+
+================================================================================
+PRECONDITIONS
+================================================================================
+
+R0 - FW8's report read in full, and evaluated for blockers.
+
+  Questions marked as blocking FW9:            NONE
+  Deviations changing a component FW9 depends on: NONE that change an API
+
+  The judgement, stated because R0 asks for one. REPORT-FW8.txt carries two
+  deviations that touch components FW9 composes - LegalNote is secondary
+  rather than tertiary (R58), and the ZoneBadge label is text-primary rather
+  than the warning colour (R57). Both are OPERATOR RULINGS that postdate the
+  FW8 prompt, both change paint rather than an API, and FW9 composes these
+  components rather than restyling them. Read as "any change at all", R0
+  would be a guaranteed stop and its "otherwise proceed" branch would be
+  unreachable, which cannot be the intent. Proceeded, and all five FW8
+  questions are carried forward verbatim below.
+
+R1 - CI green on origin/main.
+
+  6c4b6ec  success  https://github.com/kaitmax/Frontalier/actions/runs/34178061515
+  bbdc06f  success  https://github.com/kaitmax/Frontalier/actions/runs/34179098409
+  45b9216  success  https://github.com/kaitmax/Frontalier/actions/runs/34179268150
+
+  All four jobs green on each: web, rail visual baselines, format parity
+  (compile), format parity (node 22 and 24).
+
+R48 - the social rail variant. ALREADY APPLIED, in FW8 increment 0, commit
+  e0ea34d: three static band fills, track 16 px as a documented exception,
+  80 % of the canvas, everything left-anchored, tick labels at Body 15, no
+  rate and no fill by rate. Confirmed, not owed.
+
+R49 - baseline-only increments may be combined. Used once: bbdc06f carries the
+  workbench entries, the seven new baselines and the axe extension together.
+
+R50 - Checkpoint A sequencing. The machine checks are run and recorded in
+  docs/checkpoint-a.md. The human gate is open and listed there as twelve
+  unchecked boxes.
+
+R51 - the review date. NOT IMPLEMENTED: it lives in increment 5, which is
+  blocked. lib/content/regulatory.ts does not exist yet. Nothing renders a
+  date, so nothing can render one that has not happened - the invariant R51
+  protects is not currently violable, but it is also not yet enforced.
+
+
+================================================================================
+THE BLOCKING QUESTION - Q1, AND FW9 CANNOT FINISH WITHOUT IT
+================================================================================
+
+WHAT CONTAINER NEEDS. Three named widths, from the FW9 prompt:
+
+  'public'   max 1200, padding 32 desktop / 20 mobile
+  'article'  680, the prose measure
+  'narrow'   720, the calculator column
+
+WHERE THOSE NUMBERS COME FROM. All three are real design decisions, already
+made, in the FD briefs - which are at the REPOSITORY ROOT, not at
+prompts/design-frontier/ where the FW9 prompt says to look:
+
+  FD1-calculateur-desktop.md:15   "Desktop side padding 32, content max width
+                                   1200, centred."
+  FD1:41, :46, :67, :97, :103     the 720 px column, five times
+  FD11-accueil-desktop.md:15      "content max width 1200, centred"
+  FD13-guide-article-desktop.md:23 "cap the prose block at 680 px"
+
+So the values are not invented by me or by the prompt.
+
+THE CONFLICT.
+
+  DESIGN-SYSTEM.md:19   "SPACING: 4 px base. ... Screen horizontal padding
+                         20 px (mobile), 32 px (desktop, max content 1440)."
+  tokens.scss:147       $layout-content-max: 1440px;
+
+  FD1:15 / FD11:15 / FD13:17
+                        "Desktop side padding 32, content max width 1200,
+                         centred."
+
+Both describe the content maximum. Both pair it with 32 px desktop padding.
+They differ by 240 px. This is not a nesting - one is not the shell and the
+other the column - because both sentences use the same words for the same
+thing.
+
+WHY I DID NOT RESOLVE IT MYSELF. Three rules point the same way.
+
+  CLAUDE.md   "If the task conflicts with a spec file, STOP and ask - do not
+              resolve it yourself. If a decision is missing, ask; never invent
+              product decisions."
+  SPEC 20     adding a token outside DESIGN-SYSTEM.md is ask-first. Three
+              tokens are needed and none of the three values is in
+              DESIGN-SYSTEM.md.
+  stylelint   independently refuses it. max-width matches the strict-value
+              list, so max-width: 1200px is rejected mechanically. There is no
+              way to write Container that does not either add tokens or defeat
+              the token rule.
+
+WHAT I WOULD DO, IF YOU WANT A RECOMMENDATION RATHER THAN A CHOICE.
+
+  Keep $layout-content-max: 1440px as the OUTER shell bound it already is -
+  nothing currently uses it, so nothing breaks - and add three layout tokens
+  transcribing the FD briefs:
+
+    --layout-public   1200px
+    --layout-narrow    720px
+    --layout-article   680px
+
+  Then correct DESIGN-SYSTEM.md section 1 to say 1200 rather than 1440, since
+  three FD briefs and every mockup agree on 1200 and only that one clause does
+  not. That makes tokens.scss a faithful transcription again, which is what
+  its own stylelint override says it is.
+
+  I have NOT done any of this. It is four product decisions - three values and
+  a correction to the design document - and none of them is mine to make.
+
+WHAT UNBLOCKS WHAT. One answer releases increments 3, 4 and 5, and with them
+the rest of increment 6 (the two remaining components' workbench entries,
+their baselines, and the 360 px keyboard-path test). AC2 and the KEYBOARD PATH
+and R51 PROOF sections of this report are empty for the same single reason.
+
+
+================================================================================
+RED/GREEN LEDGER
+================================================================================
+
+BEHAVIOUR                          RED OBSERVED                        RESULT
+--------------------------------------------------------------------------------
+every ValidationError code has     tsc: TS2741 missing key, AND        green
+copy (AC1)                         TS2322 not assignable to never,
+                                   from a planted seventh code
+the CODES array tracks the copy    "expected [...] to deeply equal     green
+map                                [...]" after dropping a code
+field-bearing codes interpolate    written before the copy existed     green
+copy names no threshold figure     written before the copy existed     green
+copy uses no forbidden vocabulary  written before the copy existed     green
+FieldGroup label is attached       "Failed to resolve import"          green
+describedby names helper           six tests red against a CORRECT     green
+describedby names error            component - see DEVIATIONS 1
+describedby names BOTH, in order   same                                green
+aria-invalid and data-invalid      same                                green
+error announced as an alert        same                                green
+two fields do not collide          same                                green
+DataGrid is a real table           written before the component        green
+scope="col" on every header        written before the component        green
+cells rendered exactly as given    written before the component        green
+empty state, never a blank table   2 tests red after forcing           green
+                                   empty=false
+empty state spans every column     same                                green
+total lives in tfoot               structural; see DEVIATIONS 2        green
+total's first cell is a row header "marks its first cell as a ROW      green
+                                   header" red after dropping scope
+numeric cells flagged              red after dropping data-numeric     green
+caption hideable, not removable    written before the component        green
+coverage gate covers ui/core       "ERROR: Coverage for functions      green
+                                   (97.22%) does not meet
+                                   lib/ui/core/** threshold (100%)"
+
+
+================================================================================
+STATES MATRIX
+================================================================================
+
+Twenty-five states across seven components. Every one has an axe result. The
+five FW8 components' baselines are unchanged from REPORT-FW8.txt.
+
+COMPONENT / STATE            BASELINE FILE                          AXE
+--------------------------------------------------------------------------------
+FieldGroup
+  plain                      composants-field-plain.png             pass
+  with helper                composants-field-helper.png            pass
+  in error                   composants-field-error.png             pass
+  helper and error           composants-field-both.png              pass
+DataGrid
+  populated                  composants-grid-populated.png          pass
+  empty                      composants-grid-empty.png              pass
+  with total row             composants-grid-total.png              pass
+
+Container                    NOT BUILT - blocked on Q1
+PublicShell header           NOT BUILT - blocked on Q1
+PublicShell footer           NOT BUILT - blocked on Q1
+
+FW8's eighteen states carry forward unchanged and all still pass axe.
+
+29 baseline files, 27 distinct, all generated in the Playwright Linux
+container (R37) and verified in COMPARE mode - 32 passed - never trusted from
+the update run. The two duplicates are R44's three byte-identical
+rail-social-* files, which are identical on purpose and explained in
+REPORT-FW8.txt.
+
+The error specimen renders the REAL message, from
+errorMessage({ code: 'NEGATIVE_DAYS', field: 'teleworkDays' }), rather than a
+sample sentence - so the copy is under visual review together with the
+component that carries it.
+
+
+================================================================================
+KEYBOARD PATH
+================================================================================
+
+NOT REACHED. The 360 px header test belongs to increment 6 and tests the
+PublicShell built in increment 4, which is blocked on Q1.
+
+
+================================================================================
+EXHAUSTIVENESS - AC1
+================================================================================
+
+THE PLANTED CODE. A seventh member added to the engine's ValidationError
+union, with no copy written for it:
+
+  lib/fr/errors.ts(65,14): error TS2741: Property 'PLANTED_FOR_AC1' is missing
+    in type '{ RATE_OUT_OF_RANGE: string; ... }' but required in type
+    'Record<"RATE_OUT_OF_RANGE" | ... | "PLANTED_FOR_AC1", string>'.
+  lib/fr/errors.ts(112,13): error TS2322: Type '{ readonly code:
+    "PLANTED_FOR_AC1"; }' is not assignable to type 'never'.
+
+Two failures from one plant, by design: ERROR_COPY is Record<Code, string>, so
+a missing key and an extra key are both errors, and errorMessage's switch ends
+in a `never` assignment as an independent second guard.
+
+THE PART WORTH RECORDING. With the code planted, the unit suite stayed GREEN
+at 11 passed. AC1 says "adding a code without copy fails CI" - it does, but it
+fails at `pnpm typecheck`, not at `pnpm test`. A pipeline that ran only the
+tests would ship a form that renders an empty error and blocks the user with
+no explanation. CI runs typecheck first, so the criterion holds; the mechanism
+is not the one a reader would assume.
+
+A COMMENT CORRECTED RATHER THAN LEFT TO MISLEAD. The test file originally
+claimed its CODES array was a second compile-time guard. It is not:
+`readonly Code[]` accepts a SUBSET, so an added code compiles fine and only a
+removed or renamed one fails. What actually guards it is the runtime
+comparison against ERROR_COPY's keys - verified by dropping a code from the
+array and watching that test fail. The comment now says which is which.
+
+Removed; clean run: 11 passed.
+
+
+================================================================================
+R51 PROOF
+================================================================================
+
+NOT REACHED. lib/content/regulatory.ts belongs to increment 5, blocked on Q1.
+
+The invariant R51 protects is not currently violable, because nothing renders
+a review date at all - but it is also not yet enforced, and it must be before
+any footer ships. Recorded so the gap is not mistaken for compliance.
+
+
+================================================================================
+CHECKPOINT A
+================================================================================
+
+Written in full to docs/checkpoint-a.md. Summarised here.
+
+MACHINE CHECKS - all eight pass:
+
+  1  six Geneva cases exact, 39,16 % and 4,16 %   20 tests
+  2  denominator and rate fixtures                94 tests
+  3  100 % on calc-engine and ui/core             285/285 stmts, 173/173
+                                                  branches, 51/51 funcs
+  4  the eight invariants                         25 tests, fast-check
+  5  every component baseline                     29 files, 32 passed in the
+                                                  container
+  6  contrast audit                               86 tests, from compiled
+                                                  tokens
+  7  innerHTML uniqueness                          6 tests
+  8  the 200 px legibility artifact               present, 2 822 bytes
+
+EACH WAS PROVEN CAPABLE OF FAILING, and docs/checkpoint-a.md carries that as
+its own section. The new falsification is coverage: an uncalled export planted
+in lib/ui/core/format/number.ts produced
+
+  ERROR: Coverage for functions (97.22%) does not meet "lib/ui/core/**"
+  threshold (100%)
+
+naming the directory - which is what proves the gate is not passing on
+lib/calc-engine alone while ui/core rides along on the average. Per-directory
+thresholds, never averaged.
+
+INVESTIGATED AND CLEARED, worth recording because it looks exactly like a
+hole. The coverage text reporter prints an EMPTY per-file table - header,
+separator, separator, nothing between - which reads precisely like an include
+matching no files and a 100 % threshold passing vacuously. It is not: the
+summary beneath reports 285 statements and 173 branches, and the planted
+export moved both. A reporter quirk. Now on the record so the next reader does
+not have to re-derive it.
+
+HUMAN GATE - twelve unchecked boxes, seven constants and five open questions,
+NONE verified. Two are flagged as the ones that move the most:
+
+  truncation vs rounding    tasks/plan.md records that INVARIANT 7 INVERTS if
+                            the rule is rounding. If truncation turns out to
+                            be an artefact of how the AFC printed its worked
+                            examples rather than the filing rule, the fixtures
+                            change and Checkpoint A reopens.
+  the 49,9 % reading        a legal maximum of 49,9 % and a shorthand for
+                            "strictly under 50 %" put the SAME declarable rate
+                            on opposite sides of the social threshold, and
+                            truncation to two decimals means 49,99 is a value
+                            the engine really produces.
+
+Per R50: FW10 may proceed with the gate open; FW11 may not start until it is
+recorded.
+
+
+================================================================================
+DEVIATIONS
+================================================================================
+
+1. FIELDGROUP TAKES A FUNCTION AS children. The prompt says "the control slot
+   (children - composition, not a props bag)". A plain slot cannot be wired:
+   FieldGroup would have to reach into an element it does not own via
+   cloneElement and assume the child accepts aria-describedby, which is
+   untypeable and silently wrong for a fragment or a wrapped child. A props
+   bag would fix the control to <input>. Documenting the contract would make
+   the guarantee a convention, which is what the component exists to replace.
+   The function hands the caller exactly the attributes the control must
+   carry - props going TO the caller rather than coming from it, which is the
+   direction that makes them provable. Every test asserts on the real <input>
+   the caller rendered.
+
+   Six of those tests failed on their first run against a component the markup
+   dump proved CORRECT. Testing Library registers its own afterEach cleanup
+   only when a global afterEach exists, which needs vitest globals: true - not
+   set in this repo, on purpose. Without an explicit afterEach(cleanup) every
+   render accumulates in one jsdom document and screen queries search a page
+   holding several copies. The same fix was applied to FW8's axe sweep, where
+   all eighteen states were accumulating: it passed either way, but the rules
+   axe evaluates against the DOCUMENT rather than the container - duplicate
+   ids above all - were being asked about a page that never exists.
+
+2. TWO DATAGRID TESTS WOULD HAVE PASSED FOR THE WRONG REASON, same cause.
+   Testing Library's default normaliser collapses whitespace, and U+202F - the
+   narrow no-break space formatDays uses as a group separator - is whitespace
+   to that regex. So getByText(formatDays(1247)) searches for "1<U+202F>247"
+   while the DOM text has been normalised to "1 247" with an ordinary space.
+
+   One failed loudly against a correct table, and a codepoint dump showed the
+   cell was exactly right - 31 202f 32 34 37 on both sides. The worse half was
+   GREEN: "the total row is absent unless given" used queryByText for the same
+   string and expected null, which it would return whether or not a footer
+   existed. Both now read textContent, which is stricter than the query helper
+   rather than looser - had the first matched, it would have matched EITHER
+   separator, hiding the exact thing SPEC 19 pins.
+
+3. THE ERROR MESSAGE IS text-primary AND THE ICON CARRIES THE COLOUR. The
+   prompt already asks for this ("a 13 px error message in text-primary with a
+   Lucide circle-alert 16 in the error colour"); recorded only because it is
+   the same split R57 made for the ZoneBadge chip, and the consistency is
+   deliberate rather than coincidental.
+
+4. .u-visually-hidden ADDED TO global.scss, joining .u-tnum. Needed by
+   DataGrid's caption and by PublicShell. Its three 1 px values are EXEMPTED
+   from the token rule with a stylelint disable and a reason at the line,
+   rather than tokenised: they are the mechanics of a known idiom - the
+   element must stay rendered and non-empty to remain in the accessibility
+   tree - and a --size-visually-hidden token would put a number in the design
+   system that no designer chose and no design could change.
+
+5. THE FD BRIEFS ARE AT THE REPOSITORY ROOT, not at prompts/design-frontier/
+   where the FW9 prompt says to read them. FD1, FD11, FD12 and FD13 exist;
+   FD2 does not. Found by looking, since the prompt's path returns nothing.
+   Recorded because a future prompt using the same path will find nothing and
+   may conclude the briefs do not exist.
+
+6. THE CONTRAST AUDIT'S COMPONENT LIST NOW READS THE DIRECTORY. It named five
+   components by hand, and FW9 adds four - the same shape of staleness as the
+   audit's original token-without-size bug, one level up. It picked up
+   FieldGroup and DataGrid by itself, 68 tests to 86, with no edit. Guarded so
+   it cannot silently become empty.
+
+7. pnpm test:a11y WAS ADDED IN FW8 and is used here. Noted because the FW9
+   final-verification chain names it and it did not exist when FW8's prompt
+   named it either.
+
+
+================================================================================
+NOTICED BUT NOT TOUCHING
+================================================================================
+
+1. TWO DEAD eslint-disable DIRECTIVES, unchanged from FW8.
+   benchmark.test.ts:81 and verification-trace.test.ts:83 disable no-console
+   for a rule that is not enabled anywhere. They surface as warnings on every
+   lint run. The finding underneath is not the noise: console output in tests
+   is unfenced, and two files believe otherwise.
+
+2. $layout-content-max: 1440px HAS NO CONSUMER. Nothing in the codebase reads
+   it. That is why the recommendation under Q1 can leave it alone without
+   breaking anything - but a token nothing uses is also a token nobody
+   notices is wrong.
+
+3. THE INPUT STYLES LIVE IN FieldGroup.module.scss, reached by descendant
+   selectors on input, select and textarea. That is correct while FieldGroup
+   is the only thing rendering a control, and it will be wrong the moment a
+   control appears outside one. FW11 is where that happens.
+
+4. FieldGroup's LABEL IS 13/500 AND NO SINGLE TOKEN CARRIES IT. See Q3.
+
+5. THE WORKBENCH IS APPROACHING THE SIZE WHERE IT SHOULD BE SPLIT. Twenty-five
+   specimens on one page, and four components still to come. It is a dev route
+   and not gated, so this is legibility rather than budget.
+
+
+================================================================================
+QUESTIONS FOR THE OPERATOR
+================================================================================
+
+Q1. THE CONTAINER WIDTHS, AND THE 1200 / 1440 CONFLICT. BLOCKING - increments
+    3, 4 and 5 of FW9 cannot start without an answer. Stated in full in its
+    own section above. In short: DESIGN-SYSTEM.md section 1 says max content
+    1440 and tokens.scss transcribes it; FD1, FD11 and FD13 all say content
+    max width 1200. Container needs 1200, 720 and 680, none of which has a
+    token, and adding one is a SPEC 20 ask-first item.
+
+    My recommendation, not applied: add --layout-public 1200, --layout-narrow
+    720, --layout-article 680; leave $layout-content-max 1440 as the outer
+    shell bound, which nothing currently reads; and correct DESIGN-SYSTEM.md
+    section 1 to 1200, since three briefs and every mockup agree and only that
+    clause does not.
+
+Q2. A HAIRLINE TOKEN - carried from REPORT-FW8.txt Q2, and now with FOUR call
+    sites rather than two. RateDisplay's divider, LegalNote's rule, and
+    DataGrid's header and body rules all draw 1 px, and no token means
+    HAIRLINE; the three that carry 1 px are named for a card, an input and a
+    button. All four alias --size-card-border with the alias recorded at the
+    site. Four call sites is well past the two that produced R62.
+    --size-rule, or leave the alias?
+
+Q3. A LABEL TYPE TOKEN. DESIGN-SYSTEM.md section 1 specifies the input label
+    as 13/500, and the type scale pairs 13 with weight 400 (Caption) and
+    weight 500 with 15 (Body M). FieldGroup therefore takes its size from one
+    family and its weight from another. It does not block - it is implemented
+    and recorded at the site - but it is the same shape as Q2: a value the
+    design document names and no token carries. --type-label-*, or keep the
+    composition?
+
+CARRIED FORWARD VERBATIM FROM REPORT-FW8.txt, all still open:
+
+Q4 (was FW8 Q1). THE PAT, R47 - AND THIS ONE NEEDS YOU.
+
+    At the last check the pasted token was NOT revoked: it returned HTTP 200
+    on /user. R47 asked me to confirm it returns 401 afterwards.
+
+    I CANNOT RE-CHECK IT. The session was compacted and the token value is no
+    longer in context. I will not ask you to paste it again - a token that
+    needs revoking should not be pasted a second time.
+
+    What I could verify, and did:
+
+      tracked files      no ghp_ / github_pat_ / ghs_ / gho_ pattern
+      history blobs      all 87 commits scanned, 0 matches
+      git config         no credential helper, no extraheader, no insteadOf
+      remote             plain https, no credential embedded in the URL
+
+    So the token never reached this repository. But it was live at the last
+    check, and only you can confirm it is dead. GitHub -> Settings ->
+    Developer settings -> Personal access tokens.
+
+Q5 (was FW8 Q3). THE NEGATIVE TILE LABEL. Replacing MetricTile's label with
+    "Jours au-dessus du seuil" loses WHICH threshold was passed, and SPEC 9.3
+    stands two negative-capable tiles beside each other. Per-threshold
+    phrasing composed by the caller, or one generic phrase?
+
+Q6 (was FW8 Q4). R60'S SCOPE. I read "app/(public)/" as "app/ except the dev
+    routes", because the directory does not exist and the literal reading
+    makes the app half of the rule vacuous. Confirm, or hold it literally.
+
+Q7 (was FW8 Q5). THE SUITE FLOOR'S MAINTENANCE. Raised on every increment
+    that changes the count - now 49 files / 898 tests. Tight, but a mechanical
+    edit in most commits. Once per session instead?
+
+
+================================================================================
+FINAL VERIFICATION
+================================================================================
+
+Green in one chained run, on the partial task:
+
+  pnpm typecheck && pnpm lint && pnpm test && pnpm test:e2e &&
+  pnpm test:visual && pnpm test:a11y && pnpm build && pnpm size
+
+  tsc --noEmit                        clean
+  eslint . && stylelint               0 errors (2 pre-existing warnings)
+  vitest run                          49 files, 898 tests passed
+  playwright --project=chromium       10 passed
+  playwright --project=visual         32 passed (in the container)
+  vitest run accessibility            26 passed, 25 states
+  next build                          compiled successfully
+  check-budgets.mjs                   all gated routes pass both gates
+
+Coverage: lib/calc-engine and lib/ui/core at 100 % statements, branches,
+functions and lines, per-directory, never averaged. 285/285 statements,
+173/173 branches, 51/51 functions, 273/273 lines.
+
+Suite floor: 49 files / 898 tests, four glob canaries collected.
+
+
+================================================================================
+PUSH PROOF
+================================================================================
+
+origin/main at 45b9216, pushed, tree clean apart from the untracked relay
+files FW10.txt and FW11.txt, which are yours and not mine to commit.
+
+  git log --oneline -5
+  45b9216 FW9: Checkpoint A machine checks recorded
+  bbdc06f FW9: workbench, baselines and axe for the two components that exist
+  6c4b6ec FW9: DataGrid
+  eb7cf27 FW9: FieldGroup and the ValidationError copy map
+  6b428b8 FW8: session report
+
+
+END OF REPORT-FW9.txt
