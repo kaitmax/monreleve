@@ -1,0 +1,81 @@
+// web/lib/ui/react/RateDisplay/RateDisplay.module.scss
+//
+// Tokens only; camelCase class names because a CSS Module is addressed as
+// styles.rawRate from TypeScript.
+//
+// The band colour is NOT set here. It arrives as an inline custom property
+// from the component, because it is keyed by Zone and zone-tokens.ts is the
+// single source of that mapping (ruling R38). Writing the three cases into
+// this file would be a second copy, in a stylesheet nothing type-checks
+// against the Zone union.
+//
+// RULING R58: secondary, never tertiary. Measured from the real tokens,
+// #98A2B3 is 2,42:1 on the canvas and 2,58:1 on a card, which fails AA at
+// BOTH the normal and the large-text bar. It is not a text colour in this
+// product; it survives only as a hairline.
+
+@use "../../core/styles/fonts";
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+// RULING R57's one exception. #B7791F is 3,43:1 on the canvas - below the 4,5
+// AA needs for normal text, which is why the ZoneBadge label is text-primary.
+// At Display 48/600 this is LARGE text, where the bar is 3:1, so the warning
+// band's rate may carry the band colour here and nowhere smaller.
+.rate {
+  margin: 0;
+  font-size: var(--type-display-size);
+  font-weight: var(--type-display-weight);
+  line-height: var(--type-display-line);
+
+  @include fonts.tabular-figures;
+}
+
+.caption {
+  margin: 0;
+  color: var(--colour-text-secondary);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  line-height: var(--type-caption-line);
+}
+
+// Present only when the two rates differ (SPEC 9.3). The rule above it is the
+// separation; a second card would overstate how distinct the two figures are,
+// when the second is a qualification of the first.
+.secondary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+
+  // --size-card-border, not a rule of its own: no token means HAIRLINE, and
+  // the three that carry 1px are named for a card, an input and a button.
+  // This is the semantic aliasing ruling R62 was issued about, and LegalNote
+  // in the next increment needs the same 1px rule - two call sites, which is
+  // how R62 started. Raised in the report as a QUESTION rather than settled
+  // here: adding a token is a SPEC 20 ask-first item.
+  border-top: var(--size-card-border) solid var(--colour-border-default);
+}
+
+.rawRate {
+  margin: 0;
+  color: var(--colour-text-secondary);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  line-height: var(--type-h3-line);
+
+  @include fonts.tabular-figures;
+}
+
+.divergence {
+  margin: 0;
+  color: var(--colour-text-primary);
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  line-height: var(--type-body-line);
+}

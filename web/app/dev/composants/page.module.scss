@@ -1,0 +1,45 @@
+// web/app/dev/composants/page.module.scss
+// Workbench layout only. Tokens, like everywhere else.
+
+.page {
+  padding: var(--space-6);
+}
+
+.intro {
+  margin: 0 0 var(--space-6);
+  color: var(--colour-text-secondary);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+}
+
+.section {
+  margin-bottom: var(--space-8);
+}
+
+.specimens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+}
+
+// A card, per DESIGN-SYSTEM.md section 4: white on the grey canvas, 1 px
+// border, radius 16, no shadow.
+.specimen {
+  // 1 1 auto rather than a pixel basis: a minimum width would need a token
+  // that does not exist, and inventing one for a developer page is a SPEC 20
+  // ask-first item spent on the least important surface in the product.
+  flex: 1 1 auto;
+  margin: 0;
+  padding: var(--space-4);
+  border: var(--size-card-border) solid var(--colour-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--colour-surface);
+}
+
+.caption {
+  margin-bottom: var(--space-3);
+  color: var(--colour-text-secondary);
+  font-size: var(--type-micro-size);
+  font-weight: var(--type-micro-weight);
+  line-height: var(--type-micro-line);
+}
