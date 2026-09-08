@@ -83,7 +83,14 @@ describe('exactly one injection site in the product (R60 scope)', () => {
     // covering nothing at all.
     expect(scanned.length).toBeGreaterThan(10);
     expect(scanned.map(norm)).toContain('lib/ui/react/ThresholdRail/ThresholdRail.tsx');
-    expect(scanned.map(norm)).toContain('app/page.tsx');
+
+    // app/(public)/page.tsx, not app/page.tsx: FW10 increment 1 moved the home
+    // route into the (public) group, and a route group cannot coexist with a
+    // file claiming the same URL. This assertion caught the move, which is
+    // what a non-vacuity check is for - it names a file it expects to have
+    // scanned, so the scan silently covering less is a failure rather than a
+    // smaller number nobody compares.
+    expect(scanned.map(norm)).toContain('app/(public)/page.tsx');
   });
 
   it('finds it once, and only in ThresholdRail', () => {

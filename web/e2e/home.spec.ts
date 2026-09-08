@@ -3,15 +3,51 @@
 // browser can prove: that Inter is reaching the page with tabular numerals on.
 
 import { expect, test } from '@playwright/test';
-import { APP_NAME } from '../lib/fr';
+import { HOME_COPY } from '../lib/fr';
+import { SHELL_COPY } from '../lib/fr/shell';
 
 const ORIGIN = 'http://localhost:3000';
 
-test('/ responds 200 and renders the product name from lib/fr', async ({ page }) => {
+test('/ responds 200 and renders its heading from lib/fr', async ({ page }) => {
   const response = await page.goto('/');
 
   expect(response?.status()).toBe(200);
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText(APP_NAME);
+
+  // The heading is the PAGE's, not the product name: PublicShell emits no
+  // h1 on purpose, so there is exactly one and the page owns it. This
+  // assertion used to expect APP_NAME, which was true only while the home
+  // page was a placeholder with the product name as its heading.
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(HOME_COPY.heading);
+});
+
+test('/ is wrapped in the public shell, header and footer both', async ({ page }) => {
+  await page.goto('/');
+
+  await expect(page.getByRole('banner')).toBeVisible();
+  await expect(page.getByRole('contentinfo')).toBeVisible();
+  await expect(page.getByRole('navigation', { name: SHELL_COPY.navLabel })).toBeAttached();
+});
+
+test('the footer says a review has not happened yet (R51)', async ({ page }) => {
+  // The whole point of R51, asserted on a real public page: while
+  // LAST_REGULATORY_REVIEW is null the footer must carry the in-progress
+  // sentence and NO date. A dd.mm.yyyy here would be the most damaging
+  // string on the site - the claim a reader would most reasonably rely on,
+  // and false.
+  await page.goto('/');
+
+  const footer = page.getByRole('contentinfo');
+
+  await expect(footer).toContainText(SHELL_COPY.reviewPending);
+  await expect(footer).not.toContainText(/[0-9]{2}[.][0-9]{2}[.][0-9]{4}/);
+});
+
+test('exactly one h1 on the page', async ({ page }) => {
+  // PublicShell must not add one. Two h1s is the kind of thing that looks
+  // fine and quietly breaks a document outline.
+  await page.goto('/');
+
+  await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
 });
 
 test('figures are set in tabular numerals', async ({ page }) => {
