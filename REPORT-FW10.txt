@@ -1,4 +1,790 @@
 REPORT-FW10.txt
+FW10 COMPLETE. Six increments, eight commits. Session of 08.09.2026.
+Pure ASCII by convention, so French copy is transliterated where quoted.
+
+The text of the earlier PRECONDITIONS-ONLY run is preserved at the end of this
+file as an appendix rather than deleted: it is the record of why FW10 did not
+start the first time, and R0's stop was correct when it was taken.
+
+
+================================================================================
+SUMMARY
+================================================================================
+
+The public shell now wraps a real public surface. Three legal pages, a 404, a
+route registry that every public URL comes from, robots, a sitemap that lists
+only pages that exist, one URL per page, and a self-referencing canonical on
+each one. Rulings R81, R82, R83 and R84 were applied on the way through.
+
+WHAT THE TASK PRODUCED
+  app/(public)/layout.tsx           the shell, metadataBase, canonicals
+  app/(public)/page.tsx             placeholder home (FW20 replaces it)
+  /mentions-legales                 7 entity constants, each rendered once
+  /confidentialite                  nLPD + RGPD, every claim traced to SPEC
+  /cgu                              the "not tax advice" sentence, verbatim
+  app/not-found.tsx                 404 inside the shell, real 404 status
+  app/robots.ts                     R53's three prefixes, from the registry
+  app/sitemap.xml/route.ts          live routes only, R81's 503 preserved
+  app/icon.svg                      the tab icon, and why it now exists
+  lib/content/legal-entity.ts       R52's nine constants, all empty
+  lib/content/routes.ts             the single source for every public URL
+  lib/content/readiness.ts          R83's readiness checks
+  app/api/ready/route.ts            503 while degraded
+  lib/fr/{legal,mentions-legales,confidentialite,cgu}.ts   all the words
+
+WHAT WENT WRONG AND WAS FIXED, because this is the part worth reading:
+
+  1. CI HAD BEEN RED FOR FIVE COMMITS and I did not know until I looked.
+     tests/unit/meta/no-gradients.test.ts walked web/public, which is NOT
+     tracked by git - scripts/copy-fonts.mjs creates it - so in a clean
+     checkout readdirSync threw while the module was evaluating, the file
+     reported "0 test", and the run failed. It passed locally every single
+     time, because a build had already made the directory. Introduced by me in
+     f38e480 (R82). Fixed, and PROVED by moving public/ aside and re-running.
+  2. A project-level testIgnore in playwright.config.ts REPLACED the top-level
+     one instead of merging, so pnpm test:e2e was collecting the R81 runtime
+     guard and running it against a correctly configured server. The ESLint
+     flat-config trap, one config file over.
+  3. The public header scrolled sideways by 3 px at 320 px, introduced when
+     increment 1 wrapped / in PublicShell.
+  4. pnpm size under-reported the 404 by the entire shell - 100,8 KiB with a
+     0,2 KiB feature delta on a route that ships PublicShell.
+  5. The contrast audit read lib/ui/react only, so the 404's brand-coloured
+     links would never have been measured.
+  6. A compliance claim in a META DESCRIPTION slipped past the vocabulary
+     check, because that check read rendered text and a meta description is
+     not in the DOM.
+
+Items 1, 2, 4, 5 and 6 are all the same species: a green that was not
+measuring what it appeared to measure. None of them would have failed
+visibly.
+
+
+================================================================================
+PRECONDITIONS - R0
+================================================================================
+
+REPORT-FW8.txt and REPORT-FW9.txt read in full.
+
+R0's stop condition, verbatim: "If either contains a question marked as
+blocking FW10, or a DEVIATION that changes PublicShell or Container, STOP with
+a PRECONDITIONS-only report."
+
+  - REPORT-FW9.txt's BLOCKING question (Q1, the Container widths and the
+    1200/1440 conflict) was ANSWERED by R64 and R64 (corrected). Container
+    exists, built in FW9 increment 3.
+  - PublicShell exists, built in FW9 increments 4 and 5.
+  - No remaining FW8 or FW9 question is marked blocking. The open ones are
+    carried below verbatim.
+
+So the stop condition is not met on this run and FW10 proceeded.
+
+CI AT THE START OF THIS SESSION
+  cf0d815  "FW9: workbench entries, baselines, keyboard path" - GREEN
+           https://github.com/kaitmax/Frontalier/actions
+
+CI DURING THIS SESSION - RED, AND I MISSED IT FOR FIVE PUSHES
+  f38e480  https://github.com/kaitmax/Frontalier/actions/runs/34234914432  FAIL
+  044ee49  https://github.com/kaitmax/Frontalier/actions/runs/34241350948  FAIL
+  b568656  https://github.com/kaitmax/Frontalier/actions/runs/34242504367  FAIL
+  795fc91  https://github.com/kaitmax/Frontalier/actions/runs/34245074872  FAIL
+  64c33fc  https://github.com/kaitmax/Frontalier/actions/runs/34248866027  FAIL
+
+  Every one of them failed in the same step, "Run pnpm test:coverage", with
+  the same cause: tests/unit/meta/no-gradients.test.ts collecting 0 tests.
+  See DEVIATIONS and the ledger. The fix is in the final commit of this
+  session; my local gate did not run pnpm test:coverage, which is the step CI
+  runs, and it now does.
+
+
+================================================================================
+RED/GREEN LEDGER
+================================================================================
+
+Every new behaviour got a failing test first. Where the first RED was a
+resolution or parse failure rather than an assertion failure - which proves
+only that a file is missing - the assertion was proved separately BY MUTATION,
+because a test that has only ever passed is evidence of nothing.
+
+R83 - READINESS
+  RED    tests/unit/content/readiness.test.ts
+         "Failed to resolve import @/lib/content/readiness"
+  GREEN  6 tests. Then e2e/guard.runtime.spec.ts added three, including one
+         that reads /api/health and /api/ready in the SAME request pair -
+         200 degraded and 503 about the identical process at the identical
+         moment, which is the only way the split can be shown to be real.
+
+R84 - THE PLACEHOLDER CENSUS
+  RED    tests/unit/pages/mentions-legales.test.tsx
+         first: "Unexpected JSX expression" - the file lacked the
+         // @vitest-environment jsdom docblock that every other .tsx test
+         here carries; then "Failed to resolve import
+         @/app/(public)/mentions-legales/MentionsLegalesContent"
+  GREEN  17 tests.
+  MUTATION PROOF, because neither RED was an assertion:
+    naming legalName a second time in the prose      -> 2 tests RED
+    dropping registrationNumber from the page while
+    still declaring it in MENTIONS_LEGALES_FIELDS    -> 3 tests RED
+  So the count catches a LEAK and an OMISSION, which is what makes it a
+  census rather than a smoke test.
+
+/confidentialite
+  RED    "Failed to resolve import @/app/(public)/confidentialite/..."
+  GREEN  29 tests.
+  MUTATION PROOF of the factual pins:
+    polygone -> trace                        -> RED
+    "bout de 30 jours" -> "quelques semaines" -> RED
+    "service conforme au RGPD" in the META
+    DESCRIPTION                              -> GREEN, A REAL HOLE
+  The third probe found a defect instead of confirming a guard. The
+  vocabulary check read rendered text; a meta description is not in the DOM
+  and goes straight into a search result. It now walks the whole copy module -
+  strings, arrays, nested objects - and carries its own canary: a test asserts
+  the walker really finds a claim buried in a nested list, since otherwise it
+  would pass on any object whose shape it silently skipped. Re-probed: RED.
+
+/cgu
+  RED    "Failed to resolve import @/app/(public)/cgu/CguContent"
+  GREEN  21 tests, including the "not tax advice" sentence asserted VERBATIM.
+
+THE ROUTE REGISTRY
+  RED    "Failed to resolve import @/lib/content/routes"
+  GREEN  15 tests - and the first green run FAILED four of them, because the
+         shell's hrefs did not match SPEC. That is the registry doing its job
+         on its first day. See ROUTING PROOFS.
+
+THE 404
+  GREEN  5 Playwright tests: the 404 STATUS (not a soft 404), the landmarks,
+         one h1, exactly two links scoped to main, computed text-align, and
+         the absence of an illustration or an "oups".
+
+PAGE ACCESSIBILITY
+  GREEN  13 tests, pages composed INSIDE the shell.
+  MUTATION PROOF: turning one h2 into an h4 on /cgu -> 4 RED, both the axe
+  assertion and the heading-order one.
+
+THE WIDENED CONTRAST AUDIT
+  GREEN  111 tests, up from 107 - the 404's links, measured on both page
+         surfaces.
+  MUTATION PROOF: repainting those links with --colour-text-tertiary
+  (2,58:1) -> 2 RED. Measured: #173b63 on #ffffff is 11,40:1.
+
+THE CI BUG
+  RED    reproduced locally by moving web/public aside, which is the CI
+         condition: the suite reported "0 test" and exited 1.
+  GREEN  4 tests with public/ absent, and 4 with it present.
+
+SUITE
+  65 files, 1143 tests, all passing, twice - pnpm test and pnpm test:coverage.
+  Coverage on the gated trees: statements 100% (285/285), branches 100%
+  (173/173), functions 100% (51/51), lines 100% (273/273).
+  Suite floor raised once, at report time per R75: 56/1005 -> 65/1143.
+
+
+================================================================================
+ROUTING PROOFS
+================================================================================
+
+All from e2e/routing.spec.ts unless noted, against a real `next start`.
+
+ROBOTS
+  200. "Allow: /" plus "Disallow: /api/", "Disallow: /dev/",
+  "Disallow: /releve/print" - exactly R53's three, taken from
+  lib/content/routes.ts so they cannot drift from the sitemap's exclusion.
+  Asserted BOTH ways: the three are present, and /app/, /connexion and
+  /inscription are absent, because D14 deleted the signed-in web area and
+  disallowing those would describe a site that is not there.
+  "Sitemap: https://frontalier.example/sitemap.xml" - absolute, because a
+  relative sitemap path in robots.txt is ignored by crawlers.
+
+SITEMAP
+  200, content-type xml. The <loc> set equals exactly the registry's live
+  routes: /, /cgu, /confidentialite, /mentions-legales.
+  Every planned route asserted ABSENT - there are 18 of them, so the
+  assertion is not vacuous.
+  And every URL the sitemap lists is FETCHED and required to answer 200,
+  which is what makes "live" mean something rather than being a
+  hand-maintained adjective.
+  lastmod omitted deliberately: a build timestamp on every URL claims
+  everything changed on every deploy.
+
+TRAILING SLASH - BOTH DIRECTIONS
+  GET /cgu/  -> 308, Location: /cgu
+  GET /cgu   -> 200
+  GET /mentions-legales/ followed -> lands on /mentions-legales
+  The second direction matters: a configuration that redirected both ways
+  would satisfy the first assertion and serve nothing.
+  DEVIATION on the status code - see DEVIATIONS.
+
+CANONICAL AND HREFLANG - A LOOP OVER THE REGISTRY
+  Every live route carries exactly one rel=canonical and exactly one
+  rel=alternate hreflang="fr-FR", both self-referencing:
+    /                  https://frontalier.example
+    /mentions-legales  https://frontalier.example/mentions-legales
+    /confidentialite   https://frontalier.example/confidentialite
+    /cgu               https://frontalier.example/cgu
+  The root's is the bare origin with no trailing slash, which is how Next
+  resolves the layout's relative "./" - and it is not a defect: RFC 3986
+  6.2.3 makes an empty path equivalent to "/". The sitemap writes the slashed
+  form, so the two differ by one character on one route and mean the same URL.
+  Recorded in the test rather than papered over with per-page canonical
+  machinery that would put every path in two places.
+  THE 404 CARRIES NO CANONICAL, asserted - a canonical on an error page tells
+  a crawler the URL is legitimate.
+
+  THE ORIGIN HAD TO BE SUPPLIED FOR ANY OF THIS TO EXIST. R81 omits canonical
+  and hreflang entirely when the origin is the localhost stand-in, so a build
+  without one cannot prove the machinery works. playwright.config.ts now sets
+  NEXT_PUBLIC_SITE_URL=https://frontalier.example for the e2e build. .example
+  is reserved by RFC 2606, can never resolve, and cannot be mistaken for the
+  real domain, which is still gated at Checkpoint C. The runtime-guard suite
+  deliberately leaves it UNSET, which is how both directions are proved.
+
+ZERO COOKIES, ZERO THIRD PARTY
+  e2e/home.spec.ts: a public route makes no third-party request and sets no
+  cookie. Still green with the pages, the icon and the registry added.
+
+R81 AND R83, AGAINST A DELIBERATELY BROKEN SERVER
+  pnpm test:runtime, 9 tests, FRONTALIER_RUNTIME=1 and no origin:
+    /sitemap.xml   503, names NEXT_PUBLIC_SITE_URL and R81, no <urlset>,
+                   no leaked localhost URL, cache-control: no-store
+    /api/health    200 with status "degraded", origin reported as null
+    /api/ready     503, the failing check named "site-origin", no-store
+    the pair       read together: 200 and 503, same process, same moment
+    /              still serves 200 with header, h1 and footer
+    the head       contains no localhost URL at all, and no canonical
+  Counter-direction in e2e/home.spec.ts: without the marker, /api/health is
+  "ok" and /api/ready is 200 with ready: true. A guard that always refused
+  would have passed every assertion in the runtime suite.
+
+THREE SLUGS THE REGISTRY CAUGHT ON ITS FIRST RUN
+  FW9's shell shipped three hrefs that SPEC does not name. The registry's
+  cross-check test failed on all three the first time it ran:
+    /comparateur-lamal-cmu      -> /calculateur-lamal-cmu     SPEC 9.1, 9.6
+    /releve                     -> /releve-annuel             SPEC 9.1, 9.7
+    /guides/seuil-40-pourcent   -> /guides/teletravail-frontalier-40-pourcent
+                                                              SPEC 9.5
+  Corrected in lib/fr/shell.ts and pinned as ABSENCES in the test so they
+  cannot return by copy-paste from an old report. SPEC 14 says slugs are
+  permanent once published and renaming needs "a 301 forever"; nothing is
+  published, so this was the last cheap moment. SPEC 9.6 spells the
+  comparator's slug "calculateur" on purpose - the slug carries the search
+  term, the label carries the meaning, and the label still reads
+  "Comparateur LAMal / CMU".
+  /cgu was linked from nothing at all. It is a SPEC 9.1 launch route and SPEC
+  9.2 wants the footer to carry the full sitemap; it is now in the Legal
+  column, which is why three shell baselines were regenerated.
+
+
+================================================================================
+R52 PROOF
+================================================================================
+
+RENDERED WHILE EMPTY, ABSENT WHEN COMPLETE, AND EXACT IN BETWEEN (R84).
+
+lib/content/legal-entity.ts ships nine constants, every one an empty string. A
+default of "frontalier SAS" would be a claim about a company that does not
+exist, on the page where a reader is most entitled to rely on it - and it
+would be INVISIBLE, because a plausible name reads as filled in. Whitespace
+counts as missing: a single space satisfies a length check and prints as
+nothing, which is the exact failure R52 exists to prevent.
+
+Each page declares the constants it consumes, and each is rendered exactly
+once. That is a constraint on the prose, not an accident: the sections after
+an identity block say "l'editeur" rather than repeating the name, which is
+ordinary legal French and also what keeps the count meaningful.
+
+  /mentions-legales  7  legalName legalForm address registrationNumber
+                        contactEmail hostingProvider hostingAddress
+  /confidentialite   6  dataController address dpoContact contactEmail
+                        hostingProvider hostingAddress
+  /cgu               3  legalName address contactEmail
+
+  dataController and dpoContact are absent from mentions legales on purpose -
+  they belong to the privacy notice, and the publication director is named as
+  "the legal representative of the editor", which needs no constant and avoids
+  conflating two different legal roles. legalName and legalForm are absent
+  from the privacy notice for the mirror reason.
+
+MEASURED IN THE PRERENDERED HTML, not only in jsdom:
+  .next/server/app/mentions-legales.html   7 placeholders in the markup
+  .next/server/app/confidentialite.html    6 placeholders in the markup
+  (the same counts appear again in the embedded RSC payload, which is data
+  rather than rendered DOM - worth knowing before anyone greps the file and
+  reports double)
+
+THE TEST IS ONE SHARED HELPER, tests/unit/pages/placeholder-census.tsx, not a
+transcription per page: three copies of the same count would drift, and the
+one that drifted would be the page nobody reread. Per page it asserts
+  - the declaration names only real entity fields, each once, enough of them
+  - all empty   -> exactly N placeholders
+  - all filled  -> exactly 0
+  - for EACH declared field, everything else filled -> exactly 1
+  - every filled value actually appears, so a page that printed nothing at
+    all could not score zero and pass
+The per-field sweep is what makes the declaration honest: without it, a
+declaration could name a value the page never prints, or the prose could
+repeat one, and the all-empty total would still add up by accident.
+
+A NOTE ON THE PAGE ITSELF: while anything is open, each page renders one
+sentence saying that unfilled mentions appear in brackets and will be
+completed before public service. It describes the placeholder without
+reproducing the string, which would have added to the count. It disappears
+when isComplete() is true.
+
+The ten new page baselines contain the placeholders deliberately. Filling the
+constants in IS a visual change, and the diff will be the record of it.
+
+
+================================================================================
+CONTENT NOTE - THE CONFIDENTIALITE CLAIMS AND WHAT MUST KEEP EACH TRUE
+================================================================================
+
+Most of what the privacy notice describes does not exist yet, so
+lib/fr/confidentialite.ts opens with the mapping. Reproduced here because the
+report is the record:
+
+  FW14  Alerts - double opt-in, the stored consent date, the unsubscribe link
+        in every send, and the 30-day purge of unconfirmed rows
+        (SPEC 8, AlertSubscriber.confirmedAt).
+  FW15  The audience measurement as described: self-hosted, cookieless,
+        same-origin, aggregate (SPEC 15).
+  FW21  The field list under "ce que l'application enregistre" IS SPEC 8's
+        User and Entry models. A column added there makes this page wrong
+        until it is added here too.
+  FW22  Passwordless sign-in by emailed link (SPEC 10, D6/D23), and Device.
+  FW23  Server-assigned timestamps, the append-only EntryEvent trail, and the
+        API refusing any payload carrying a coordinate - which FW23 covers
+        with a test that posts one and expects a 400.
+  FW26  The JSON + CSV export, and the deletion that removes the user, the
+        entries, the events, the devices and the phone's local data
+        (D11, SPEC 11.5).
+  FW27  The notification token, and FCM being the only third-party SDK.
+  FW28  The host, named through the R52 constants, and the error reports
+        scrubbed of email addresses and entry payloads (D32).
+  AN*   The on-device polygon, the discarded fix, the per-day tally
+        (SPEC 13.1, D18), and that no tier writes an entry (D16).
+
+THE PAGE AWARDS ITSELF NO VERDICT. It states what the service does and names
+the two texts that grant the reader their rights; it never says "conforme".
+A notice cannot certify itself, and the products that try are the ones nobody
+believes. Asserted, across the whole copy module rather than only the rendered
+text - see the ledger.
+
+Tests pin the FACTS, not the sentences - "coordonn", "30 jours", "polygone",
+"refuse", "deplacement", "lieu", "export"/"json"/"csv", "rgpd", "lpd",
+"cnil", "cookie" - so the prose can be rewritten freely and only fails by
+dropping a fact. SPEC 13.1's hard rule is asserted in three other places
+already; this is the assertion that the PAGE SAYING SO does not quietly
+disappear.
+
+One deliberate addition beyond the prompt's list: a paragraph on audience
+measurement. The prompt names the email address and the app's data; a page
+view is also a collection, SPEC 15 specifies exactly how it is done, and a
+privacy notice that omitted it would be incomplete in the reader's favour of
+the wrong party.
+
+================================================================================
+TOKENS ADDED
+================================================================================
+
+NONE. Not one token was added in FW10.
+
+R64's three layout tokens and R68's four component metrics were added in FW9
+and carried the whole task. R77's self-service clause was available and never
+needed: every measurement these six increments required already existed. The
+one new colour pairing - the 404's links - reuses --colour-brand on the page
+surface and is now measured by the audit at 11,40:1.
+
+The two type pairs R70 added in FW9 both earned their keep here: `label`
+13/18/500 on every definition-list term across the three legal pages, and
+`wordmark` 17/26/600 in the header of all of them.
+
+
+================================================================================
+SIZE
+================================================================================
+
+route                 bucket   js total   delta    css  fonts  verdict
+----------------------------------------------------------------------------------
+/                     public      106.1     5.5    4.4   47.1  pass (A 18.9 spare, B 19.5 spare)
+/_not-found           public      106.4     5.8    4.4   47.1  pass (A 18.6 spare, B 19.2 spare)
+/cgu                  public      106.3     5.7    4.4   47.1  pass (A 18.7 spare, B 19.3 spare)
+/confidentialite      public      106.3     5.7    4.4   47.1  pass (A 18.7 spare, B 19.3 spare)
+/mentions-legales     public      106.3     5.7    4.4   47.1  pass (A 18.7 spare, B 19.3 spare)
+----------------------------------------------------------------------------------
+/dev/composants       dev         106.7     6.1    4.4   47.1  not gated - would pass
+/dev/rail-gallery     dev         100.7     0.1    1.6   47.1  not gated - would pass
+/dev/rail-parity      dev         103.0     2.4    1.6   47.1  not gated - would pass
+/dev/spike            dev         103.3     2.7    2.9   47.1  not gated - would pass
+
+GATE A - total first-load JS per public route <= 125 KiB gzip: PASS, every
+gated route, with at least 18,6 KiB of headroom.
+GATE B - feature delta <= 25 KiB over the recorded framework floor (100,6 KiB,
+next 15.5.25 / react 19.2.8): PASS, largest delta 5,8 KiB.
+
+The three legal pages and the 404 all land within 0,2 KiB of each other,
+which is the shell plus a stylesheet - correct, because none of them ships a
+line of client JavaScript of its own. CSS and fonts are reported and never
+gated; the nomodule polyfill bundle is excluded.
+
+/_not-found's number is 5,6 KiB higher than the last report's. That is not a
+regression, it is the first honest measurement of it - see DEVIATIONS.
+
+LIGHTHOUSE ON / - desktop preset, 1 run, lighthouse 12.6.1
+  performance     100
+  accessibility   100
+  best-practices  100
+  seo             100
+  first-contentful-paint   0,3 s
+  largest-contentful-paint 0,6 s
+  total-blocking-time      10 ms
+  cumulative-layout-shift  0
+  speed-index              0,4 s
+
+  THE FIRST RUN SCORED 96 AND 91, AND BOTH DEDUCTIONS WERE REAL.
+    best-practices 96  "Browser errors were logged to the console" - a 404 on
+                       /favicon.ico on every single page load. Every browser
+                       requests that path unprompted, so the product was
+                       answering 404 to a request it makes itself. Fixed with
+                       app/icon.svg.
+    seo 91             "Document does not have a meta description" - on the one
+                       page the whole SEO strategy points at. The three legal
+                       pages each had one; the home page had none, and nothing
+                       would have noticed. Fixed, and it names the 40 %
+                       threshold as SPEC 14 asks.
+  The audits still listed as imperfect after the fix are non-scoring
+  diagnostics: the nomodule legacy bundle Next emits, the render-blocking
+  stylesheet, and DOM size. None affects a category score.
+
+APP/ICON.SVG, since adding an asset is the kind of thing that should be
+justified rather than noticed later: it is the SAME geometry as Wordmark.tsx,
+because R82 rejected the full-colour logo file and said the placeholder
+geometric mark stays - two marks would be exactly the drift R82 exists to
+prevent. It uses stroke="currentColor" rather than a hex, which matters: a raw
+colour outside tokens.scss is forbidden and a standalone file cannot read a
+custom property, while currentColor resolves to the initial colour and states
+no palette decision. tests/unit/meta/no-gradients.test.ts now names the file.
+`next build` first REJECTED it - "is not a valid image file" - because Next's
+metadata image loader could not parse an SVG whose first bytes are a comment;
+the comment moved inside the root element and width/height became explicit.
+Measured, not guessed.
+
+
+================================================================================
+DEVIATIONS
+================================================================================
+
+D1. THE TRAILING-SLASH REDIRECT IS 308, NOT 301.
+    The prompt says "trailingSlash false with 301 from the slashed form". Next
+    emits 308 for slash normalisation, and `permanent: true` in a redirects()
+    rule emits 308 as well - there is no configuration that produces a literal
+    301; it would have to come from the reverse proxy. 308 is the permanent
+    redirect that additionally preserves the request method, and search
+    engines treat the two identically. The Playwright assertion accepts either
+    and carries the explanation. Say the word if you want the 301 forced at
+    the proxy in FW28 and I will add it to that task.
+
+D2. THE SITEMAP IS app/sitemap.xml/route.ts, NOT app/sitemap.ts.
+    Carried from the R81 work rather than new. The `sitemap.ts` convention
+    returns a data structure that Next serialises; there is no way to return a
+    status code from it, so R81's 503 is not expressible. Same URL, by a
+    mechanism that can refuse.
+
+D3. THE PLACEHOLDER IS "[A COMPLETER]", UNACCENTED.
+    Exactly as the prompt writes it, twice. Correct French would be
+    [A COMPLETER] with its accents; the relay files are pure ASCII by mandate,
+    so the prompt's spelling is not evidence either way. It is one constant in
+    lib/fr/legal.ts. Question below.
+
+D4. THE LEGAL PROSE USES ORDINARY SPACES BEFORE COLONS AND SEMICOLONS.
+    Correct French typography wants U+00A0 there. tests/unit/fr/copy-
+    codepoints.test.ts is a registry of which whitespace codepoints the copy
+    contains and fails when the SET CHANGES, precisely so introducing one is a
+    deliberate edit with an audit of the assertions that compare against that
+    string. I did not spend FW10's budget on a typography pass across four new
+    copy files; the registry is the mechanism that will make it deliberate.
+    The headings-plus-paragraphs structure avoids most in-sentence colons.
+
+D5. TWO NESTED tsconfig.json FILES ADDED, app/ and tests/.
+    Each sets only "jsx": "react-jsx". Not a dependency, not a token, not a
+    budget - and the mechanism was already established and measured in
+    lib/ui/react/tsconfig.json: the root must stay "preserve" because Next
+    rewrites that field on every build, and oxc reads the nearest tsconfig to
+    the file it compiles. Rendering a page component in a unit test made oxc
+    compile .tsx under app/ and tests/ for the first time, and without these
+    it fails to PARSE rather than fails an assertion. pnpm typecheck and next
+    build are untouched: tsc is invoked with the root config and does not
+    consult nested ones.
+
+D6. THE CONTRAST AUDIT'S SCOPE WIDENED TO app/, EXCEPT app/dev/.
+    R76 fixed how the audit resolves a background and said no exemption list
+    exists; it did not fix which files it reads, and it read lib/ui/react only.
+    That was right when app/ held one placeholder page and no colour. The 404
+    paints its links --colour-brand on the page surface - exactly the pairing
+    the audit exists to measure - and it would have gone unmeasured. Scope
+    matches R74's reading of R60. The discovery is asserted so the widening
+    cannot silently find nothing.
+
+D7. pnpm size NOW MEASURES THE REAL 404.
+    The root 404 is TWO manifest entries - /_not-found/page for the internal
+    catch-all and /not-found for the component in app/not-found.tsx - and only
+    the first ends in "/page", so the loop never saw the component's chunks. It
+    reported 100,8 KiB with a 0,2 KiB feature delta on a route that ships
+    PublicShell: a route passing its gate on a number that was not its
+    payload, which is worse than a breach because nothing looks wrong. Found
+    by comparing chunk counts, 5 against 7.
+
+D8. pnpm test:coverage ADDED TO MY LOCAL GATE.
+    CI runs it; I was running pnpm test. They agreed on every prior task, and
+    the day they disagreed I pushed five red commits without knowing. The gate
+    is now the same set of commands CI runs.
+
+D9. ONE STYLESHEET FOR THE THREE LEGAL PAGES.
+    app/(public)/legal.module.scss rather than one module per route. They are
+    the same document at three lengths - a prose measure, one heading level, a
+    definition list, bullets - and two copies of those rules are two things to
+    keep in step. The per-page file created in increment 2 was moved with
+    git mv in increment 3 rather than copied.
+
+D10. tasks/todo.md's FW10 ENTRY RECONCILED WITH LATER RULINGS.
+    Its description still named the pre-R53 disallow list, `TODO-LEGAL`
+    instead of R52's visible placeholder, `sitemap.ts`, and a 301. A future
+    session reading it would have implemented the stale set. Edited in the
+    style FW9 already established there ("this clause used to say..."), with
+    each superseding ruling named. Acceptance-criteria checkboxes left
+    UNTICKED, matching every completed task in that file: the reports are the
+    record.
+
+
+================================================================================
+NOTICED BUT NOT TOUCHING
+================================================================================
+
+N1. THE DESKTOP HEADER'S WORDMARK-TO-NAV GAP IS 12 px and reads as cramped -
+    "frontalier Calculateurs" scans as one run of text in the new page
+    baselines. It is FW9's value at desktop and my base-gap change did not
+    alter it (only the mobile baselines moved in that increment, which is the
+    proof). Changing it would move an approved baseline for a reason no brief
+    asked for. Look at web/tests/visual/baselines/page-mentions-legales-
+    desktop.png and tell me if you want it wider.
+
+N2. EVERY NAV AND FOOTER LINK EXCEPT THE LEGAL ONES IS A 404 TODAY.
+    /calculateur-teletravail-frontalier, /calculateur-lamal-cmu, /guides,
+    /guides/teletravail-frontalier-40-pourcent, /releve-annuel, /application,
+    /tarifs, /sources. That is the state FW9 shipped and FW11 onward resolve,
+    and the sitemap correctly lists none of them. Mentioned because a header
+    full of dead links is a bad first impression if anything is ever shown to
+    a third party before Phase 2 lands.
+
+N3. Container.module.scss's HEADER COMMENT IS NOW WRONG. It says the
+    breakpoint "is a raw value because no token carries a breakpoint... raised
+    in the report as a question rather than tokenised here". R68 answered that
+    and the file uses bp.$breakpoint-md. A comment that records an open
+    question which has been closed is a trap for the next session. Two lines,
+    comment only, and it is FW9's file - say the word.
+
+N4. THE SHELL USES PLAIN <a href> THROUGHOUT, never next/link, and nothing in
+    SPEC, DESIGN-SYSTEM.md or any comment records why. The 404 follows the
+    convention rather than inventing a second one. It is a real decision -
+    prefetching, client-side transitions and the JS budget all turn on it -
+    and it should be written down before FW11 adds a form.
+
+N5. TWO STALE SPEC LINES, which is what R53's sweep actually found. Nothing in
+    the code or config references /app, /connexion or /inscription:
+      SPEC 14  "robots.txt: disallow /app/, /connexion, /inscription, /dev/."
+      SPEC 19  "Auth: magic-link round trip; /inscription pre-filled from
+                calculator localStorage."
+    Both were withdrawn by D14. Reported rather than edited: SPEC is your
+    document. D14 and SPEC 10 themselves must obviously stay.
+
+N6. THE TWO UNUSED eslint-disable DIRECTIVES in
+    tests/unit/calc-engine/{benchmark,verification-trace}.test.ts have warned
+    on every lint run of this task and several before it. Warnings, not
+    errors, so nothing blocks - but a permanent warning trains everyone to
+    scroll past the warning block, which is where a real one will appear.
+
+N7. /application IS THE PRODUCT'S ONLY CTA AND NO TASK BUILDS IT. In the
+    registry as UNASSIGNED, with a test pinning the gap at exactly one route.
+    Question below.
+
+================================================================================
+QUESTIONS FOR THE OPERATOR
+================================================================================
+
+TWO ANSWERED SINCE FW9, recorded so the list does not carry them forever:
+  FW9 Q3, frontier-logo-symbol.svg  ->  R82. Moved to docs/brand/rejected/
+      with a note, and a test now forbids a gradient in any SVG under app/,
+      lib/ or public/.
+  FW9 Q6, an absolute site origin   ->  R81. NEXT_PUBLIC_SITE_URL, the
+      localhost fallback, the runtime marker, and the refusal behaviour.
+
+--------------------------------------------------------------------------------
+NEW, FROM FW10
+--------------------------------------------------------------------------------
+
+Q1. /application HAS NO TASK, AND IT IS THE PRODUCT'S ONLY CTA.
+    SPEC 9.1 lists it as a launch route and describes it in full. SPEC 9.2 and
+    the FW9 prompt both make "Suivre mes jours" the single primary CTA
+    pointing at it. tasks/todo.md FW20 builds /releve-annuel, /tarifs,
+    /sources and /a-propos and stops; no task anywhere builds /application. So
+    the one call to action on every public page currently points at a 404, and
+    nothing is scheduled to change that. It is in lib/content/routes.ts as
+    UNASSIGNED and a test asserts the gap is exactly one route wide, so it
+    cannot grow quietly. Which task takes it - a new one, or FW20 widened?
+
+Q2. THE THREE SLUGS. I corrected the shell to SPEC 9.1, 9.6, 9.7 and 9.5
+    (/calculateur-lamal-cmu, /releve-annuel,
+    /guides/teletravail-frontalier-40-pourcent), because SPEC is normative and
+    SPEC 14 says slugs are permanent once published. If you actually wanted
+    /comparateur-lamal-cmu or /releve, say so NOW: it is three lines in
+    lib/fr/shell.ts plus a SPEC edit today, and a 301 forever later.
+
+Q3. THE PLACEHOLDER'S ACCENTS. "[A COMPLETER]" as the prompt writes it, or
+    "[A COMPLETER]" with the accents that correct French would use? One
+    constant, lib/fr/legal.ts. I did not decide it because it is user-facing
+    copy and the relay files are ASCII by mandate, so the prompt's spelling
+    proves nothing either way.
+
+Q4. THE 301. Next cannot emit one for slash normalisation - see D1. Do you
+    want it forced at the Coolify proxy in FW28, or is 308 fine? 308 is what
+    every modern framework emits and Google documents them as equivalent, so
+    my recommendation is to leave it and delete the word "301" from the plan.
+
+Q5. FRENCH TYPOGRAPHY - U+00A0 BEFORE COLONS AND SEMICOLONS. Four new copy
+    files now carry ordinary spaces (D4). The codepoint registry makes
+    introducing the no-break space a deliberate edit with an audit attached,
+    which is the right mechanism, but somebody has to schedule the pass. FW29
+    is the release audit and would be the natural home. Confirm, or name a
+    task.
+
+Q6. next/link OR PLAIN ANCHORS (N4). The shell uses <a href> everywhere and
+    nothing records why. FW11 adds a form and the calculator links to the
+    guides; this should be decided before then, not after.
+
+Q7. THE TWO STALE SPEC LINES (N5), 14 and 19. Edit them, or confirm D14 and
+    R53 supersede them and they stay as historical.
+
+--------------------------------------------------------------------------------
+CARRIED FROM FW9, VERBATIM
+--------------------------------------------------------------------------------
+
+Q8 (was FW9 Q1). relay/CHAIN-FW9-FW11.txt STILL DOES NOT EXIST. Third session
+    now. It has never been in the tree and never in the history - checked
+    again this run. R72 says it is supplied with the resume; it is not. I
+    proceeded because R72, C4 and C8's requirements are stated in the prompts
+    themselves, so the operative content was available - but C1, C3, C5, C6
+    and C7 remain unknown and I have not invented them. Supply the file, or
+    confirm the three per-task reports plus REPORT-CHAIN.txt's consolidated
+    question list are the record.
+
+Q9 (was FW9 Q2). THE PAT, R47 - STILL OPEN, STILL YOURS. Live at the last
+    check (HTTP 200 on /user). No session since can re-check it: the value is
+    not in context and a token that needs revoking should not be pasted a
+    second time. It never reached this repository - 0 matches across the whole
+    history, no credential helper, plain https remote. Please revoke it.
+
+Q10 (was FW9 Q4). AN H1 40/48 PAIRING. FD11:14, FD12:20 and FD13:16 all
+    specify 40/48/700 for a hero or an article head; the token is 32/40/700.
+    FW10's legal pages and the 404 used the existing token, as that question
+    predicted, so the gap is still not closed by accident. FW16/FW20 will
+    need it.
+
+Q11 (was FW9 Q5). UPPERCASE TRACKING, 0,04 em. FD11:72 and FD13:46 both
+    specify "Caption 13/18 500 uppercase tracking 0.04 em" for eyebrow
+    labels, and stylelint puts letter-spacing in the strict-value list so a
+    raw 0.04em is rejected mechanically. Nothing in FW10 needed an eyebrow
+    either. R77 does NOT cover this: it is a type/tracking value, not a
+    component metric.
+
+Q12 (was FW9 Q7). SPEC 9.2:657's STALE HEADER DIAGRAM. Correct it, or confirm
+    the prompt and R53 supersede it and the diagram stays as historical.
+
+
+================================================================================
+PUSH PROOF
+================================================================================
+
+Eight code commits, all on origin/main, in order:
+
+  e4e8d0d  FW10: public layout, metadata base, placeholder home
+  f38e480  FW10: rulings R81 and R82 - the runtime origin guard, and the
+           rejected mark
+  819c301  FW10: liveness and readiness split, and the 320 px header fix
+  044ee49  FW10: legal-entity constants and mentions legales
+  b568656  FW10: politique de confidentialite
+  795fc91  FW10: CGU and the 404 page
+  64c33fc  FW10: robots, sitemap from the route registry, trailing slash,
+           canonicals
+  d8cc0c1  FW10: page baselines, a11y, size record - and the bug that kept
+           CI red
+  (this report is committed on top, documentation only)
+
+CI ON THE FINAL CODE COMMIT - GREEN.
+  d8cc0c1  https://github.com/kaitmax/Frontalier/actions/runs/34253054987
+           conclusion: success. All five jobs - web, rail visual baselines,
+           format parity (compile, node 22, node 24).
+
+Verified BEFORE this report was written, which is why the URL is here and
+not a promise. This report is the only thing committed after it, and it
+changes no code.
+
+Five of those eight were pushed while CI was red, for the reason in
+PRECONDITIONS and D8, and I did not discover it until I checked the run list
+at report time. The code in each was green against every gate I was running;
+the gate was missing the one command CI uses. That is the honest version: not
+"CI was flaky", not "the failure was unrelated" - I introduced the bug in
+f38e480 and shipped past it five times because my local check could not see
+it.
+
+
+
+================================================================================
+FINAL VERIFICATION
+================================================================================
+
+Green in ONE chained run, so a failure could not be followed by anything:
+
+  pnpm typecheck && pnpm lint && pnpm test && pnpm test:coverage &&
+  pnpm test:e2e && pnpm test:visual && pnpm test:a11y && pnpm build &&
+  pnpm size
+
+  typecheck       tsc --noEmit, clean
+  lint            eslint + stylelint, 0 errors, 2 pre-existing warnings (N6)
+  test            65 files, 1143 tests
+  test:coverage   65 files, 1143 tests; 100% statements (285/285),
+                  branches (173/173), functions (51/51), lines (273/273)
+  test:e2e        41 passed
+  test:visual     48 passed, in the container (R37)
+  test:a11y       2 files, 43 tests
+  build           compiled successfully
+  size            all gated routes pass both gates
+
+  Separately, because they need their own server or their own environment:
+  pnpm test:runtime  9 passed (R81 and R83 against a deliberately broken
+                     configuration)
+  pnpm test:floor    65 files collected, 4 canaries present
+  pnpm lighthouse    100 / 100 / 100 / 100
+
+
+################################################################################
+#                                                                              #
+#  APPENDIX - FIRST RUN, PRECONDITIONS ONLY                                    #
+#                                                                              #
+#  The text below is the report of the earlier run, preserved unchanged.        #
+#  FW10 did not start that time and R0 prescribed exactly that outcome: the     #
+#  question REPORT-FW9.txt marked BLOCKING had stopped FW9 at increment 3, so   #
+#  neither Container nor PublicShell existed and the public layout had nothing  #
+#  to wrap. R64 and R64 (corrected) then answered it, FW9 completed, and this   #
+#  session ran FW10 through all six increments.                                 #
+#                                                                              #
+#  Kept rather than deleted because the stop was correct when it was taken,     #
+#  and a report that quietly replaced it would erase the reason.                #
+#                                                                              #
+################################################################################
+
+
+REPORT-FW10.txt
 PRECONDITIONS ONLY. FW10 did not start. Session of 08.09.2026.
 Pure ASCII by convention.
 
@@ -160,3 +946,14 @@ and test:a11y's glob, which covers only lib/ui/react/accessibility.test.tsx and
 so does not reach page-level axe states.
 
 None of those is why FW10 has not started. Q1 is.
+
+################################################################################
+#  END OF APPENDIX                                                             #
+################################################################################
+
+
+================================================================================
+LAST LINE
+================================================================================
+
+FW11 MUST NOT START UNTIL THE CHECKPOINT A HUMAN GATE IS RECORDED IN docs/regulatory-sources.md (R50).
