@@ -1,0 +1,39 @@
+// web/lib/ui/react/MetricTile/MetricTile.module.scss
+// Tokens only; camelCase class names for CSS Module addressing.
+
+@use "../../core/styles/fonts";
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+// RULING R58: secondary, never tertiary. #98A2B3 is 2,42:1 on the canvas and
+// fails AA at both the normal and the large-text bar; it is not a text colour
+// in this product.
+.label {
+  margin: 0;
+  color: var(--colour-text-secondary);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  line-height: var(--type-caption-line);
+}
+
+.figure {
+  margin: 0;
+  color: var(--colour-text-primary);
+  font-size: var(--type-h2-size);
+  font-weight: var(--type-h2-weight);
+  line-height: var(--type-h2-line);
+
+  @include fonts.tabular-figures;
+}
+
+// Six days OVER, not minus six days (SPEC 7.2 step 6). The colour is the
+// second half of a statement whose first half is the replaced label; neither
+// carries the meaning alone, which is what keeps this off the colour-only
+// list in SPEC section 16.
+.figure[data-negative="true"] {
+  color: var(--colour-error);
+}

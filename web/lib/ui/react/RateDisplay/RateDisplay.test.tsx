@@ -32,21 +32,11 @@ import { describe, expect, it } from 'vitest';
 import { formatPercent } from '@/lib/ui/core';
 import type { Zone } from '@/lib/ui/core';
 import { RATE_COPY } from '@/lib/fr/rates';
+import { text } from '@/tests/support/markup';
 import { RateDisplay } from './RateDisplay';
 
 // Geneva case (c), the fixture the whole two-rate rule exists for.
 const GENEVA_C = { declarable: 39.16, raw: 45 };
-
-// renderToStaticMarkup escapes, correctly, so "Taux a declarer a l'AFC"
-// reaches the markup as "l&#x27;AFC" and a containment check against the
-// French string fails on a component that is doing exactly the right thing.
-// Found by this suite going red on its first run for that reason.
-//
-// Decoding is the honest fix rather than escaping the EXPECTATION: what is
-// owed is the text a reader sees, and pinning the entity would make the test
-// restate React serialisation instead of the copy in lib/fr.
-const text = (html: string): string =>
-  html.replace(/&#x27;/g, String.fromCharCode(39)).replace(/&quot;/g, String.fromCharCode(34));
 
 const render = (props: {
   declarableRate: number;
