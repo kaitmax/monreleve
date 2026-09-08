@@ -16,12 +16,18 @@
 // is the honest answer: the resource exists and cannot be produced correctly
 // right now. Crawlers retry a 503; they act on a 200.
 //
-// THE CONTENT IS DELIBERATELY MINIMAL HERE. FW10 increment 5 builds the route
-// registry in lib/content/routes.ts that feeds this, robots.txt and the
-// footer alike - "one source for every public URL". This increment owes the
-// REFUSAL, not the list, and listing routes by hand now would create the
-// second source of truth increment 5 exists to prevent.
+// THE LIST COMES FROM THE REGISTRY (increment 5). lib/content/routes.ts is
+// the single source for every public URL: this document, robots.txt's
+// disallow list, and the hrefs the shell's nav and footer render are all
+// checked against it.
+//
+// ONLY `live` ROUTES ARE LISTED, and that is not caution. Thirteen URLs of
+// which nine are 404s is worse than four: it tells a crawler the pages exist,
+// it is well-formed XML, and no other gate objects - the same failure mode as
+// the localhost sitemap above, one level up. A route joins this document when
+// its page ships.
 
+import { liveRoutes } from '@/lib/content/routes';
 import { servingWithoutOrigin, siteOrigin } from '@/lib/content/site';
 
 /**
@@ -52,14 +58,20 @@ export function GET(): Response {
 
   const origin = siteOrigin();
 
-  // FW10 increment 5 replaces this with the route registry. Only "/" is
-  // listed, because it is the only public route that exists today and a
-  // hand-written list would be the second source increment 5 removes.
-  const urls = ['/'];
+  // lastmod is deliberately absent. A build timestamp on every URL says "all
+  // of these changed just now" on every deploy, which is a claim a crawler
+  // learns to discount; a real one needs a content date the registry does not
+  // carry yet. The sitemap protocol makes it optional, and omitting it is
+  // honest.
   const body = [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
-    ...urls.map((path) => `  <url><loc>${origin}${path}</loc></url>`),
+    ...liveRoutes().map(
+      (route) =>
+        `  <url><loc>${origin}${route.path}</loc>` +
+        `<changefreq>${route.changeFrequency}</changefreq>` +
+        `<priority>${route.priority.toFixed(1)}</priority></url>`,
+    ),
     '</urlset>',
     '',
   ].join('\n');

@@ -74,11 +74,11 @@ export const SHELL_NAV: readonly NavEntry[] = [
     label: 'Calculateurs',
     children: [
       { label: 'Calculateur de télétravail', href: '/calculateur-teletravail-frontalier' },
-      { label: 'Comparateur LAMal / CMU', href: '/comparateur-lamal-cmu' },
+      { label: 'Comparateur LAMal / CMU', href: '/calculateur-lamal-cmu' },
     ],
   },
   { label: 'Guides', href: '/guides' },
-  { label: 'Le relevé', href: '/releve' },
+  { label: 'Le relevé', href: '/releve-annuel' },
   { label: 'Tarifs', href: '/tarifs' },
 ];
 
@@ -110,20 +110,20 @@ export const FOOTER_COLUMNS: readonly FooterColumn[] = [
     heading: 'Outils',
     links: [
       { label: 'Calculateur de télétravail', href: '/calculateur-teletravail-frontalier' },
-      { label: 'Comparateur LAMal / CMU', href: '/comparateur-lamal-cmu' },
+      { label: 'Comparateur LAMal / CMU', href: '/calculateur-lamal-cmu' },
     ],
   },
   {
     heading: 'Guides',
     links: [
       { label: 'Tous les guides', href: '/guides' },
-      { label: 'Le seuil de 40 %', href: '/guides/seuil-40-pourcent' },
+      { label: 'Le seuil de 40 %', href: '/guides/teletravail-frontalier-40-pourcent' },
     ],
   },
   {
     heading: 'Le produit',
     links: [
-      { label: 'Le relevé', href: '/releve' },
+      { label: 'Le relevé', href: '/releve-annuel' },
       { label: "L'application", href: '/application' },
       { label: 'Tarifs', href: '/tarifs' },
     ],
@@ -133,6 +133,7 @@ export const FOOTER_COLUMNS: readonly FooterColumn[] = [
     links: [
       { label: 'Mentions légales', href: '/mentions-legales' },
       { label: 'Confidentialité', href: '/confidentialite' },
+      { label: "Conditions d'utilisation", href: '/cgu' },
       { label: 'Sources', href: '/sources' },
     ],
   },

@@ -63,5 +63,17 @@ export default defineConfig({
     url: BASE_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 240_000,
+    // A SITE ORIGIN, BECAUSE OTHERWISE THERE ARE NO CANONICALS TO ASSERT.
+    // Ruling R81 omits canonical and hreflang tags entirely when the origin is
+    // the localhost stand-in - a canonical pointing at localhost is an
+    // INSTRUCTION to a crawler, and absence is the safer failure. Correct, and
+    // it means a build with no origin cannot prove the canonical machinery
+    // works at all. So this suite supplies one.
+    //
+    // .example is reserved by RFC 2606 for exactly this: it can never resolve
+    // and cannot be mistaken for the real domain, which is still an open
+    // question gated at Checkpoint C. The runtime-guard suite deliberately
+    // leaves it UNSET, which is how both directions get proved.
+    env: { NEXT_PUBLIC_SITE_URL: 'https://frontalier.example' },
   },
 });
