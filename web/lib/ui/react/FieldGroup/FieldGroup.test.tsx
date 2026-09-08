@@ -30,6 +30,7 @@
 
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
+import { errorMessage } from '@/lib/fr/errors';
 import { FieldGroup } from './FieldGroup';
 
 // EXPLICIT, because it does not happen by itself here. Testing Library
@@ -43,7 +44,20 @@ afterEach(cleanup);
 
 const LABEL = 'Jours de télétravail';
 const HELPER = 'Journées entières uniquement.';
-const ERROR = 'Cette valeur ne peut pas être négative : les jours de télétravail.';
+
+// RULING R66's sweep found this. ERROR used to be a hardcoded copy of the
+// sentence errorMessage produces, which is a second source of truth: the test
+// would keep passing after lib/fr's wording changed, and - the reason it falls
+// under R66 rather than beside it - a drift in WHICH SPACE CHARACTER the copy
+// uses would be invisible, because the getByText assertions below normalise
+// U+00A0 and U+202F to an ordinary space. French typography puts U+00A0 before
+// a colon, and this sentence has one.
+//
+// Sourced from the real function, so the test now moves with the copy. The
+// assertions on it stay Testing Library queries because it is PROSE, not a
+// formatted number - R66 governs numbers - but sourcing it removes the only
+// place a codepoint drift could have hidden.
+const ERROR = errorMessage({ code: 'NEGATIVE_DAYS', field: 'teleworkDays' });
 
 function renderField(props: { helper?: string; error?: string } = {}) {
   return render(

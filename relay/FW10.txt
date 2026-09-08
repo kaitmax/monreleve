@@ -1,0 +1,225 @@
+FW10 SESSION PROMPT - frontalier
+Paste this entire prompt as the first message of a fresh Claude Code
+session, opened at the repository root.
+
+====================================================================
+PRE-STEP RULINGS (apply verbatim)
+====================================================================
+R0 (this session runs without the operator's FW8 and FW9 verdicts).
+   Read REPORT-FW8.txt and REPORT-FW9.txt in full first. If either
+   contains a question marked as blocking FW10, or a DEVIATION that
+   changes PublicShell or Container, STOP with a PRECONDITIONS-only
+   report. Otherwise carry every open question forward verbatim and
+   proceed. FW8 and FW9 are provisionally accepted for building on;
+   the operator's verdicts may bounce.
+
+R1 (discharged). CI green on origin/main: verify, record the URL.
+
+R2, R7, R8, R10-R13, R15-R41, R43-R51 (carried).
+
+R50 (carried, decisive here). Checkpoint A's human gate is PENDING.
+   FW10 may proceed because nothing in it depends on a regulatory
+   constant. FW11 may NOT start after this task until the operator
+   records the gate. Say so in the report's last line.
+
+R51 (carried). The footer's review date reads
+   LAST_REGULATORY_REVIEW; it is null and renders "Verification
+   reglementaire en cours". Do not set it.
+
+R52 (new - legal pages carry placeholders honestly). The legal
+   entity, its address, the data controller, and the hosting details
+   are open (SPEC 22, question 14). The three legal pages are written
+   in full French with every entity-specific value as a visible
+   [A COMPLETER] placeholder collected in ONE constant module,
+   lib/content/legal-entity.ts, so the operator fills it once. A test
+   asserts the pages render no "[A COMPLETER]" once every constant is
+   non-empty, and DOES render it while any is empty - the placeholder
+   is never hidden.
+
+R53 (new - v2 route set). There is no signed-in web area (D14).
+   robots.txt disallows /dev/, /api/, and /releve/print. There is no
+   /app, /connexion or /inscription to disallow - if any reference to
+   them survives in a config or comment, remove it and note it.
+
+====================================================================
+CONTEXT
+====================================================================
+Project: frontalier. You are executing task FW10 ONLY - the first
+task of Phase 2: the public layout around PublicShell, the three
+legal pages, and the routing skeleton (robots, sitemap, trailing
+slash, hreflang, canonicals). No calculator, no guides - the shell
+that everything public will sit in, plus the pages a tax-adjacent
+site legally cannot ship without.
+
+Read first: CLAUDE.md, README.md, SPEC sections 9.1, 9.2, 9.7, 14,
+20; DESIGN-SYSTEM.md sections 1 and 4; tasks/plan.md; tasks/todo.md
+FW10; REPORT-FW9.txt in full.
+
+====================================================================
+STANDING PROTOCOL (identical in every FW / AN prompt)
+====================================================================
+1. SESSION SCOPE. FW10 only. Do not start FW11.
+2. INCREMENT CYCLE. Green after EVERY increment.
+3. COMMIT ONLY ON GREEN, chained with && (R15).
+4. COMMITS. "FW10: <increment title>".
+5. SIMPLICITY FIRST. Static pages. No CMS, no MDX yet (FW16), no
+   i18n abstraction (D14, CLAUDE.md).
+6. TEST-FIRST with a RED row per behaviour; routing behaviour is
+   tested in Playwright against the built app.
+7. Public routes are static: no cookie, no client state, no fetch.
+   A network-trace test asserts zero cookies and zero third-party
+   requests on every route this task adds.
+8. UI DISCIPLINE. Tokens only; French only via lib/fr and
+   lib/content; one <h1> per page; Container 'article' for the legal
+   prose; loading states do not apply to static pages, but a 404
+   page does - see increment 4.
+9. QUESTIONS. Operator offline: a blocking question stops the task
+   cleanly with a report; a non-blocking one is carried forward.
+10. EXIT ARTIFACT. REPORT-FW10.txt, committed and pushed.
+
+====================================================================
+TASK FW10 - PUBLIC LAYOUT, LEGAL PAGES, ROUTING SKELETON
+====================================================================
+Acceptance criteria (restated; the report must prove each):
+AC1. Three legal pages live with real French content and every
+     entity value as a visible placeholder from
+     lib/content/legal-entity.ts (R52); /cgu states explicitly that
+     the product is a record-keeping tool and not tax advice.
+AC2. robots.txt and sitemap.xml render correctly; /dev/*, /api/*
+     and /releve/print are absent from the sitemap and disallowed
+     (R53).
+AC3. Trailing-slash policy enforced with a 301 in both directions;
+     hreflang fr-FR and a self-referencing canonical on every public
+     page; zero cookies and zero third-party requests on every route.
+
+--------------------------------------------------------------------
+INCREMENT 1 - (public) layout and metadata base
+--------------------------------------------------------------------
+- web/app/(public)/layout.tsx wrapping children in PublicShell;
+  root metadata: lang="fr", hreflang fr-FR via alternates, canonical
+  derived from the route, default title template from lib/fr, no
+  third-party script, no analytics yet (FW15).
+- The home route / renders a minimal placeholder page - one h1 from
+  lib/fr and one paragraph - so the shell is visible; the real
+  homepage is FW20.
+- Playwright: / renders header, footer, h1; the footer shows
+  "Verification reglementaire en cours" (R51); zero cookies; zero
+  third-party requests.
+- Commit: "FW10: public layout, metadata base, placeholder home".
+  Push.
+
+--------------------------------------------------------------------
+INCREMENT 2 - legal-entity constants and /mentions-legales
+--------------------------------------------------------------------
+- lib/content/legal-entity.ts: legalName, legalForm, address,
+  registrationNumber, dataController, dpoContact, hostingProvider,
+  hostingAddress, contactEmail - each typed string, each initially
+  "" - plus a helper isComplete() and a render helper that returns
+  the value or the lib/fr placeholder "[A COMPLETER]".
+- /mentions-legales: editor identity, publication director, hosting,
+  intellectual property, applicable law - full French prose using
+  the helpers. Container 'article', one h1, Body-L prose measure.
+- Tests: page renders the placeholder while constants are empty;
+  with a test-time complete set, renders none (R52).
+- Commit: "FW10: legal-entity constants and mentions legales". Push.
+
+--------------------------------------------------------------------
+INCREMENT 3 - /confidentialite
+--------------------------------------------------------------------
+- nLPD + GDPR notice in full French: what is collected on the web
+  (an email address, only when given, for the alert list) and in the
+  app (email, canton, rate, day records, timestamps); what is NEVER
+  collected (no coordinates, no movement history - SPEC 13); legal
+  bases; retention (unconfirmed alert signups purged after 30 days;
+  account data until deletion); the rights and how to exercise them
+  (in-app export and deletion, email contact); the data controller
+  and DPO via the R52 helpers; no cookies on the public site, and the
+  statement that the app talks only to our own API and FCM.
+- Every factual claim here must be TRUE of the code as it exists or
+  is specified; where a feature is not yet built (alert list, app),
+  the notice describes the specified behaviour and a code comment
+  lists the tasks that must keep it true (FW14, FW23, FW26).
+- Commit: "FW10: politique de confidentialite". Push.
+
+--------------------------------------------------------------------
+INCREMENT 4 - /cgu and the 404 page
+--------------------------------------------------------------------
+- /cgu: the service described as a record-keeping and formatting
+  tool; the explicit sentence that it does not constitute tax advice
+  and does not engage the employer or any administration; the user's
+  responsibility for the accuracy of declared days; the free-in-2027
+  statement; account deletion; applicable law and jurisdiction via
+  the R52 helpers. A test asserts the "not tax advice" sentence is
+  present verbatim from lib/fr.
+- app/not-found.tsx: a French 404 inside PublicShell - one h1, one
+  sentence, two links (calculator, home) - left-aligned text, no
+  illustration, no "oups". Playwright asserts the 404 status and the
+  shell.
+- Commit: "FW10: CGU and the 404 page". Push.
+
+--------------------------------------------------------------------
+INCREMENT 5 - robots, sitemap, trailing slash, canonicals
+--------------------------------------------------------------------
+- app/robots.ts: allow all, disallow /dev/, /api/, /releve/print;
+  sitemap reference.
+- app/sitemap.ts: public routes only, generated from a single route
+  registry in lib/content/routes.ts that also feeds the footer
+  sitemap and PublicShell's nav - one source for every public URL.
+- Trailing slash: pick no-trailing-slash; next.config enforces
+  trailingSlash false with 301 from the slashed form; Playwright
+  asserts both directions.
+- Canonical and hreflang asserted present on every public page in a
+  Playwright loop over the registry.
+- R53: grep the repository for /app, /connexion, /inscription in
+  config and comments; remove; note.
+- Commit: "FW10: robots, sitemap from the route registry, trailing
+  slash, canonicals". Push.
+
+--------------------------------------------------------------------
+INCREMENT 6 - baselines, a11y, size, and the Phase 2 note
+--------------------------------------------------------------------
+- Baselines for the three legal pages and the 404 at desktop and
+  360 (container, R37); jest-axe zero; Lighthouse on / recorded.
+- pnpm size: the public route table; GATE A and GATE B green.
+- Report last line, verbatim: "FW11 MUST NOT START UNTIL THE
+  CHECKPOINT A HUMAN GATE IS RECORDED IN docs/regulatory-sources.md
+  (R50)."
+- Commit: "FW10: page baselines, a11y, size record". Push.
+
+====================================================================
+OUT OF SCOPE FOR FW10
+====================================================================
+- The calculator (FW11) - gated by R50.
+- Guides, MDX, the alert list, analytics, OG - later tasks.
+- Filling any legal-entity constant - the operator.
+- Any engine change.
+
+====================================================================
+FINAL VERIFICATION
+====================================================================
+pnpm typecheck && pnpm lint && pnpm test && pnpm test:e2e && pnpm
+test:visual && pnpm test:a11y && pnpm build && pnpm size
+Green in one run; CI green on origin/main after the final push.
+
+====================================================================
+REPORT FORMAT - REPORT-FW10.txt (pure ASCII, committed and pushed)
+====================================================================
+SUMMARY
+PRECONDITIONS       R0: FW8 and FW9 reports read, blocking items;
+                    CI run URL and status.
+RED/GREEN LEDGER
+ROUTING PROOFS      robots, sitemap, 301 both directions, canonical
+                    and hreflang loop, zero cookies / third-party.
+R52 PROOF           Placeholder rendered while empty; absent when
+                    complete.
+CONTENT NOTE        The confidentialite claims and the tasks that
+                    must keep each true.
+SIZE                Public route table.
+DEVIATIONS
+NOTICED BUT NOT TOUCHING
+QUESTIONS FOR THE OPERATOR   Including every open FW8/FW9 question,
+                    carried verbatim.
+PUSH PROOF
+LAST LINE           The R50 sentence, verbatim.
+
+END OF FW10 PROMPT

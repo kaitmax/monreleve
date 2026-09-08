@@ -16,7 +16,9 @@ Personality: trustworthy, calm, precise, private, minimal. Reference: Apple + Li
 FONT: Inter everywhere (web + Android; Roboto only as system fallback). All figures, percentages, dates and timestamps use Inter with TABULAR NUMERALS (tnum) so columns align.
 TYPE: Display 48/56 600 (large statistics only) · H1 32/40 700 · H2 24/32 700 · H3 20/28 600 · Body-L 17/26 400 · Body 15/22 400 · Body-M 15/22 500 · Caption 13/18 400 · Micro 11/14 500 (sparingly). Weights 400/500/600/700 only.
 
-SPACING: 4 px base. 4 · 8 · 12 · 16 · 20 · 24 · 28 · 32 · 40 · 48 · 64 · 80. Screen horizontal padding 20 px (mobile), 32 px (desktop, max content 1440).
+SPACING: 4 px base. 4 · 8 · 12 · 16 · 20 · 24 · 28 · 32 · 40 · 48 · 64 · 80. Screen horizontal padding 20 px (mobile), 32 px (desktop).
+
+LAYOUT WIDTHS (ruling R64): Desktop padding 32; public content max 1200. 1440 is Frontier's dashboard bound, reserved, not tokenised until a consumer exists. The three named widths are `public` 1200 · `narrow` 720 (the calculator column) · `article` 680 (the prose measure, ~70 characters per line). `Container` maps its `'public' | 'narrow' | 'article'` union to these three tokens and nothing else — there is no arbitrary-width escape. Issued after FW9 stopped at Container: this clause used to read "max content 1440", which contradicted FD1, FD11 and FD13 all specifying 1200, and the conflict was not mine to resolve.
 
 SIZES — icons, dots and tick marks (ruling R62): `icon-sm` 16 · `icon` 20 · `icon-lg` 24 · `dot` 6 · `dot-lg` 8 · `tick` 2. Added because three components had otherwise borrowed a token that meant something else — a spinner's height for a chip icon, a spacing step for a legend dot — and a semantic alias is exactly what §4.1 removed from the radius scale. Sizes that a component measures in code (the rail's geometry) mirror these by test rather than referencing them, because an SVG geometry attribute resolves `var()` to zero when no cascade is present.
 

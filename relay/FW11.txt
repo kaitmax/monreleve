@@ -1,0 +1,236 @@
+FW11 SESSION PROMPT - frontalier
+Paste this entire prompt as the first message of a fresh Claude Code
+session, opened at the repository root - or reach it through
+relay/CHAIN-FW9-FW11.txt.
+
+====================================================================
+PRE-STEP RULINGS (apply verbatim)
+====================================================================
+R0 (this session runs without the operator's FW8-FW10 verdicts).
+   Read REPORT-FW8.txt, REPORT-FW9.txt and REPORT-FW10.txt in full.
+   If any contains a question marked as blocking FW11, or a DEVIATION
+   that changes FieldGroup, Container, PublicShell, RateDisplay or
+   the engine's public API, STOP with a PRECONDITIONS-only report.
+   Otherwise carry every open question forward verbatim and proceed.
+
+R1 (discharged). CI green on origin/main: verify, record the URL.
+
+R2, R7, R8, R10-R13, R15-R41, R43-R49, R51-R53 (carried).
+
+R54 (new - supersedes R50's FW11 clause). The Checkpoint A human
+   gate governs SHIPPING the calculator, not BUILDING it: the UI reads
+   every constant from RuleSet, so a corrected constant changes no UI
+   code. FW11 may therefore be built now, under one condition - the
+   calculator route is INVISIBLE TO THE PUBLIC until the gate is
+   recorded. Mechanism: the same constant that drives the footer
+   (LAST_REGULATORY_REVIEW, R51). While it is null, the calculator
+   page emits robots noindex, is excluded from sitemap.xml, and is
+   absent from PublicShell's nav and footer links. When the operator
+   sets the date, all three flip with no code change. A test asserts
+   both states. The report's last line states that the calculator is
+   built and hidden pending the gate.
+
+R55 (new - taxYear on the public calculator). The calculator
+   computes for the current calendar year in Europe/Paris and shows
+   it in the form's heading ("Annee 2026"). If RULE_SET_FALLBACK
+   fires, the warning is shown as a banner from lib/fr - it is
+   expected to be silent while 2026 is the only rule set.
+
+====================================================================
+CONTEXT
+====================================================================
+Project: frontalier. You are executing task FW11 ONLY: the
+calculator FORM at /calculateur-teletravail-frontalier - three visible
+fields, the always-visible mission question, the collapsed advanced
+accordion, live recomputation with no debounce, server-rendered
+explanatory content so the page is meaningful without JavaScript, and
+a minimal provisional result (the rate only) so the form is testable
+end to end. The full result panel is FW12; URL parameters are FW13;
+email capture is FW14.
+
+Read first: CLAUDE.md, README.md, SPEC sections 7.4 (input types),
+9.3 (the form, verbatim helper text), 16, 20; DESIGN-SYSTEM.md
+sections 1 and 2; tasks/todo.md FW11; prompts/design-frontier/FD1 and
+FD2 (visual reference; the spec wins); the three preceding reports.
+
+====================================================================
+STANDING PROTOCOL (identical in every FW / AN prompt)
+====================================================================
+1. SESSION SCOPE. FW11 only. Do not start FW12.
+2. INCREMENT CYCLE. Green after EVERY increment.
+3. COMMIT ONLY ON GREEN, chained with && (R15).
+4. COMMITS. "FW11: <increment title>".
+5. SIMPLICITY FIRST. One client island holding form state in
+   useState. No form library, no schema library on the client - the
+   engine's validate IS the validation, and its Result feeds
+   FieldGroup. No context, no store.
+6. TEST-FIRST with a RED row per behaviour.
+7. The page is a server component rendering the explanatory content
+   and the form island; the island imports the engine and lib/ui.
+   Recompute on every input event - the engine runs in ~0.01 ms;
+   a debounce only adds perceived lag.
+8. UI DISCIPLINE. Tokens; Inter tabular; Lucide; every string from
+   lib/fr; FieldGroup for every field; aria-live="polite" on the
+   result region; one h1; Container 'narrow'.
+9. QUESTIONS. Operator offline: blocking stops the task cleanly;
+   non-blocking carries forward.
+10. EXIT ARTIFACT. REPORT-FW11.txt, committed and pushed.
+
+====================================================================
+TASK FW11 - THE CALCULATOR FORM
+====================================================================
+Acceptance criteria (restated; the report must prove each):
+AC1. Three fields -> live result; leave and sick days are NOT asked
+     under simplified240; every accordion field alters the result
+     correctly (missions, exact method with total, decompte, debut
+     d'activite -> periodFraction).
+AC2. Validation errors render via FieldGroup in French from lib/fr
+     (2 px error border + 13 px message); no inline strings; R13's
+     one-line mission travel-day guidance is present in the mission
+     helper text.
+AC3. With JavaScript disabled the page shows the full explanatory
+     copy, the form, and no result - never a blank shell; and the R54
+     gate hides the route from robots, sitemap and nav while
+     LAST_REGULATORY_REVIEW is null.
+
+--------------------------------------------------------------------
+INCREMENT 1 - route, server shell, gate (R54)
+--------------------------------------------------------------------
+- app/(public)/calculateur-teletravail-frontalier/page.tsx: server
+  component, Container 'narrow', h1 "Calculateur de teletravail
+  frontalier" and the intro paragraph from lib/fr, then a slot for
+  the island, then the explanatory section (what the 40 % and 49,9 %
+  thresholds are, in three short paragraphs from lib/fr - this is
+  the content that makes the page meaningful without JavaScript).
+- R54 gate: generateMetadata reads LAST_REGULATORY_REVIEW; null ->
+  robots noindex; the route registry (FW10) marks the calculator as
+  gated so sitemap and nav exclude it while null. Tests for both
+  states by mocking the constant.
+- R55: taxYear resolved server-side from the Europe/Paris date and
+  passed to the island; shown in a Caption above the form.
+- Playwright with JavaScript disabled: h1, intro, explanatory copy
+  present; no result region rendered.
+- Commit: "FW11: calculator route, server shell, gate (R54)". Push.
+
+--------------------------------------------------------------------
+INCREMENT 2 - the three visible fields
+--------------------------------------------------------------------
+- The island component CalculatorForm: state = a TeleworkInput with
+  defaults (canton undefined until chosen, employmentRate 100,
+  teleworkDays 0, missions 0/0, denominator simplified240,
+  granularity 'day', periodFraction 1, taxYear from props).
+- Field 1 canton: a native <select> styled to tokens, 26 cantons
+  from a lib/fr canton-name map, placeholder option "Selectionnez
+  votre canton", helper from SPEC 9.3.
+- Field 2 taux d'activite: number input step 5, min 1, max 100,
+  with minus/plus stepper buttons (44 x 44) that respect step and
+  bounds; helper from SPEC 9.3.
+- Field 3 jours de teletravail: number input step 0.5, min 0, with
+  the same stepper; helper from SPEC 9.3.
+- Every field wrapped in FieldGroup; the engine's validate runs on
+  every change and its ValidationErrors map to the fields by
+  `field`; unrelated fields show no error.
+- RED first per field, including stepper bounds and the
+  GRANULARITY_MISMATCH case (0.5 under 'day' is a mismatch - the
+  step 0.5 is allowed because the default decompte for the public
+  form is 'halfDay'? NO: SPEC 9.3 says step 0.5 on the visible field;
+  resolve by making the public form's default granularity 'halfDay',
+  and state this in the report as the interpretation taken).
+- Commit: "FW11: the three visible fields". Push.
+
+--------------------------------------------------------------------
+INCREMENT 3 - the mission question and the accordion
+--------------------------------------------------------------------
+- Always-visible line: "Avez-vous effectue des missions hors de
+  Suisse cette annee ?" with two radios Non (default) / Oui; helper
+  "Les jours de mission sont comptes a l'interieur des 40 %, et non
+  en plus." plus R13's line in the mission fields' helper: a travel
+  day with no work performed, or worked mostly in Switzerland, is not
+  counted - full rules in the guide (link text only; the guide is
+  FW17).
+- Choosing Oui reveals the two mission fields (France / pays tiers,
+  step 0.5) inline, above the accordion; Non hides them and resets
+  them to 0.
+- Accordion "Options avancees" (collapsed, disclosure button with
+  aria-expanded): methode de calcul (radio simplified240 / exact +
+  a total field shown only for exact) with the verbatim helper text
+  from SPEC 9.3; decompte (day / halfDay / hours); debut d'activite
+  (a date input, ISO string per R28, converted to periodFraction as
+  the remaining fraction of the calendar year - the conversion lives
+  in lib/ui/core as a pure function with tests at 1 Jan, 1 Jul,
+  31 Dec, and leap years).
+- RED first: reveal/hide, reset-on-Non, exact total field
+  visibility, periodFraction conversion.
+- Commit: "FW11: mission question and advanced options". Push.
+
+--------------------------------------------------------------------
+INCREMENT 4 - live computation and the provisional result
+--------------------------------------------------------------------
+- On every valid input, calculateTelework runs and the result is held
+  in state; on invalid input the previous result is kept and errors
+  are shown - the result region never shows a stale number as
+  current: it renders a "Corrigez les champs" note from lib/fr while
+  errors exist.
+- Provisional result region (FW12 replaces it): RateDisplay with the
+  declarable rate and zone, inside a card, aria-live="polite". If
+  RULE_SET_FALLBACK is present, a banner from lib/fr (R55).
+- The "Calculer" primary button is present for users who expect one
+  (FD1) but the result is already live; the button scrolls to and
+  focuses the result region. A test asserts the result updates
+  without pressing it.
+- RED first; the Geneva case (c) inputs through the form must show
+  "39,16 %" - this is the end-to-end seam FW12 completes with the two
+  rates.
+- Commit: "FW11: live computation and provisional result". Push.
+
+--------------------------------------------------------------------
+INCREMENT 5 - a11y, no-JS, baselines, size
+--------------------------------------------------------------------
+- jest-axe zero across empty, filled, error, and revealed states.
+- Playwright: keyboard path through every control including the
+  accordion and steppers; the JS-disabled assertion (AC3); the R54
+  gate assertions.
+- Baselines at desktop 1440 and mobile 390 in the container (R37):
+  empty, filled (Geneva c), error.
+- pnpm size: the calculator route must satisfy GATE A and GATE B;
+  record the feature delta - this is the first real island and the
+  number FW2 predicted.
+- Commit: "FW11: a11y, no-JS proof, baselines, size record". Push.
+
+====================================================================
+OUT OF SCOPE FOR FW11
+====================================================================
+- The full result panel (badge, rail, tiles, warnings, links) - FW12.
+- URL parameters and share - FW13. Email capture - FW14. Analytics,
+  OG, JSON-LD - FW15.
+- Setting LAST_REGULATORY_REVIEW - the operator.
+- Any engine change.
+
+====================================================================
+FINAL VERIFICATION
+====================================================================
+pnpm typecheck && pnpm lint && pnpm test && pnpm test:e2e && pnpm
+test:visual && pnpm test:a11y && pnpm build && pnpm size
+Green in one run; CI green on origin/main after the final push.
+
+====================================================================
+REPORT FORMAT - REPORT-FW11.txt (pure ASCII, committed and pushed)
+====================================================================
+SUMMARY
+PRECONDITIONS       R0: reports read, blocking items; CI URL/status.
+RED/GREEN LEDGER
+GATE PROOF          R54 both states: noindex + excluded while null;
+                    indexable + listed when set.
+NO-JS PROOF         The JavaScript-disabled Playwright output.
+GENEVA C PROOF      The form-driven 39,16 % assertion.
+INTERPRETATIONS     The public form's default granularity, and any
+                    other reading taken.
+SIZE                Public route table with the calculator's delta.
+DEVIATIONS
+NOTICED BUT NOT TOUCHING
+QUESTIONS FOR THE OPERATOR   Including every carried question.
+PUSH PROOF
+LAST LINE           "The calculator is built and hidden pending the
+                    Checkpoint A human gate (R54)."
+
+END OF FW11 PROMPT

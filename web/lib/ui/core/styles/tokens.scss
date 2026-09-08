@@ -144,7 +144,22 @@ $icon-stroke: 1.75px;
 // ---------------------------------------------------------------------------
 $layout-gutter-mobile: 20px;
 $layout-gutter-desktop: 32px;
-$layout-content-max: 1440px;
+
+// The three named content widths, ruling R64. Container maps its union to
+// these and to nothing else.
+//
+//   public   FD1:15, FD11:15, FD13:17 - "content max width 1200, centred"
+//   narrow   FD1:41, :46, :67, :97, :103 - the calculator column
+//   article  FD13:23 - "cap the prose block at 680 px", the ~70ch measure
+//
+// 1440 IS DELIBERATELY ABSENT. $layout-content-max carried it and is removed:
+// R64 reserves 1440 as Frontier's dashboard bound and leaves it untokenised
+// until a consumer exists. tests/unit/tokens/layout.test.ts holds the absence,
+// because nothing else would notice its return - and a fourth width would give
+// Container an option no design brief asks for.
+$layout-public: 1200px;
+$layout-narrow: 720px;
+$layout-article: 680px;
 
 // ---------------------------------------------------------------------------
 // COMPONENT METRICS stated in the token block.
@@ -301,7 +316,9 @@ $motion-toast-max: 5000ms;
   // layout
   --layout-gutter-mobile: #{$layout-gutter-mobile};
   --layout-gutter-desktop: #{$layout-gutter-desktop};
-  --layout-content-max: #{$layout-content-max};
+  --layout-public: #{$layout-public};
+  --layout-narrow: #{$layout-narrow};
+  --layout-article: #{$layout-article};
 
   // component metrics
   --size-button-height: #{$size-button-height};

@@ -27,11 +27,15 @@
 // The RED for AC1 is recorded in REPORT-FW9.txt: a seventh code planted in
 // the engine's union fails `pnpm typecheck` before any test runs.
 
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { TeleworkInput, ValidationError } from '@/lib/calc-engine';
 import { ERROR_COPY, FIELD_NAMES, errorMessage } from '@/lib/fr/errors';
 
 type Code = ValidationError['code'];
+
+const root = process.cwd();
 
 // Every code, written out. This is NOT the enumeration the test relies on -
 // ERROR_COPY's own type is.
@@ -138,6 +142,44 @@ describe('the two field-bearing codes interpolate the field', () => {
         expect(message, `${code} mentions ${field}`).not.toContain(FIELD_NAMES[field]);
       }
     }
+  });
+});
+
+// RULING R65. AC1 is enforced by tsc, and the proof lives in
+// tests/unit/fr/errors.types.ts as two @ts-expect-error assertions. A type
+// test that is deleted leaves NO TRACE - there is no red run, only a
+// criterion silently unenforced - so this block keeps it alive.
+//
+// It reads the file rather than importing it, because importing a
+// type-only module would be erased and prove nothing about its contents.
+describe('the type-level exhaustiveness proof is still there (R65)', () => {
+  const proof = join(root, 'tests', 'unit', 'fr', 'errors.types.ts');
+
+  it('exists', () => {
+    expect(existsSync(proof), 'tests/unit/fr/errors.types.ts is missing').toBe(true);
+  });
+
+  it('still carries both @ts-expect-error assertions', () => {
+    const source = readFileSync(proof, 'utf8');
+
+    // DIRECTIVES, not mentions. Counting the bare string gives five, because
+    // that file's header explains the mechanism at length - and a test whose
+    // number moves when someone edits a comment is a test nobody will trust.
+    // A directive is a comment line that STARTS with it; prose about it does
+    // not. Found by writing the loose version first and getting 5.
+    const directives = source.match(/^[ \t]*\/\/ @ts-expect-error/gm) ?? [];
+
+    // Two, not one: the first guards the DATA (ERROR_COPY is exhaustive and
+    // tight), the second guards the FUNCTION (errorMessage refuses an
+    // unknown code at the call site).
+    expect(directives).toHaveLength(2);
+  });
+
+  it('is not collected by the test globs, so it cannot pass by running', () => {
+    // Its value is entirely in "pnpm typecheck". Were it named .test.ts,
+    // vitest would collect a file with no tests and fail for that reason
+    // instead - which would read as the guard working when it is not.
+    expect(proof.endsWith('.types.ts')).toBe(true);
   });
 });
 

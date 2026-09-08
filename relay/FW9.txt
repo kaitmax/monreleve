@@ -1,0 +1,232 @@
+FW9 SESSION PROMPT - frontalier
+Paste this entire prompt as the first message of a fresh Claude Code
+session, opened at the repository root.
+
+====================================================================
+PRE-STEP RULINGS (apply verbatim)
+====================================================================
+R0 (this session runs without the operator's FW8 verdict). The
+   operator is offline. Before anything else, read REPORT-FW8.txt in
+   full. If it contains a question marked as blocking FW9, or a
+   DEVIATION that changes a component FW9 depends on (ThresholdRail,
+   ZoneBadge, RateDisplay, MetricTile, LegalNote), STOP and write
+   REPORT-FW9.txt with only a PRECONDITIONS section explaining why.
+   Otherwise carry every open FW8 question forward verbatim into
+   this report's QUESTIONS section and proceed. FW8 is provisionally
+   accepted for the purpose of building on it; the operator's verdict
+   comes later and may bounce.
+
+R1 (discharged). CI green on origin/main is a real precondition:
+   verify the latest run and record its URL.
+
+R2, R7, R8, R10-R13, R15-R41, R43-R47 (carried).
+
+R48 (new, from FW8 increment 0). The social rail variant shows the
+   three bands as static fills (success / warning / error), track
+   16 px (documented exception - it is a rasterised image, not a UI
+   progress bar), spanning 80 % of the canvas, everything
+   left-anchored to the rail's left edge, tick labels at Body 15. No
+   rate, no fill by rate. If FW8 already applied this, confirm; if
+   not, it is FW8's owing, not yours - note it and proceed.
+
+R49 (new). Increments that differ only in regenerated screenshot
+   baselines may be combined into one green commit, with every
+   ruling applied named in the commit body.
+
+R50 (new - Checkpoint A sequencing). Checkpoint A has two parts.
+   The MACHINE checks (fixtures exact, 100 % coverage, invariants,
+   baselines, contrast) are verified by you at the end of this task
+   and recorded. The HUMAN gate (regulatory verification of every
+   constant against primary sources) is PENDING and is the operator's
+   work. FW10 may proceed with the human gate open because it touches
+   nothing that depends on a constant. FW11 (the calculator) may NOT
+   start until the human gate is recorded in
+   docs/regulatory-sources.md.
+
+R51 (new - the "verifie le" date must not lie). The footer's
+   regulatory-review date comes from a single constant
+   LAST_REGULATORY_REVIEW: string | null (ISO day, R28) in
+   lib/content/regulatory.ts. Until the Checkpoint A human gate is
+   recorded that constant is null and the footer renders the lib/fr
+   variant "Verification reglementaire en cours" - it never shows a
+   date that has not happened. When the operator records the gate,
+   the constant is set and the footer switches to "Derniere
+   verification reglementaire : dd.mm.yyyy" via formatDate.
+
+====================================================================
+CONTEXT
+====================================================================
+Project: frontalier. You are executing task FW9 ONLY: the structural
+React components - FieldGroup, DataGrid, Container, PublicShell - and
+the Checkpoint A machine checks that close Phase 1.
+
+Read first: CLAUDE.md, README.md, SPEC sections 6, 9.1, 9.2, 16, 20;
+DESIGN-SYSTEM.md sections 1, 2, 3, 4; tasks/plan.md UI Discipline and
+Checkpoint A; tasks/todo.md FW9; prompts/design-frontier/FD1, FD2,
+FD11 (header and footer reference - the spec wins on conflict);
+REPORT-FW8.txt in full.
+
+====================================================================
+STANDING PROTOCOL (identical in every FW / AN prompt)
+====================================================================
+1. SESSION SCOPE. FW9 only. Do not start FW10.
+2. INCREMENT CYCLE. Green after EVERY increment.
+3. COMMIT ONLY ON GREEN, chained with && (R15).
+4. COMMITS. "FW9: <increment title>".
+5. SIMPLICITY FIRST. Four components. A component past ~200 lines is
+   split. No context, no store.
+6. TEST-FIRST with a RED row per behaviour; Testing Library asserts
+   on roles, text and attributes.
+7. lib/ui/react imports lib/ui/core and TYPES from lib/calc-engine.
+   It computes nothing. The single dangerouslySetInnerHTML remains
+   ThresholdRail's; the uniqueness test from FW8 must still pass.
+8. UI DISCIPLINE. Tokens only; Inter with tabular numerals on
+   figures; Lucide by name; French only via lib/fr; loading / empty /
+   error states where a state exists; semantic elements; one h1 per
+   page is the PAGE's job, but PublicShell must not emit one.
+9. QUESTIONS. Pause and ask - but the operator is offline, so a
+   question that blocks an increment stops the task at that
+   increment with a clean tree and a report; a question that does
+   not block is carried forward.
+10. EXIT ARTIFACT. REPORT-FW9.txt, committed and pushed.
+
+====================================================================
+TASK FW9 - FIELDGROUP, DATAGRID, CONTAINER, PUBLICSHELL
+====================================================================
+Acceptance criteria (restated; the report must prove each):
+AC1. Exhaustiveness test: every ValidationError code maps to French
+     copy in lib/fr; adding a code without copy fails CI - proven by
+     planting a code, capturing, removing.
+AC2. PublicShell keyboard path complete including the mobile menu;
+     the CTA visible at 360 px outside the menu; zero jest-axe
+     violations.
+AC3. All four components in /dev/composants with baselines (in the
+     container, R37); Checkpoint A machine checks recorded.
+
+--------------------------------------------------------------------
+INCREMENT 1 - FieldGroup
+--------------------------------------------------------------------
+- lib/ui/react/FieldGroup/: label (13/500), the control slot
+  (children - composition, not a props bag), helper text (Caption
+  secondary), and the error state: 2 px error border on the control
+  via a data attribute the control styles against, and a 13 px error
+  message in text-primary with a Lucide circle-alert 16 in the error
+  colour. aria-describedby wires helper and error to the control;
+  aria-invalid on error.
+- lib/fr/errors.ts: one French message per ValidationError code.
+  Field-bearing codes (NEGATIVE_DAYS, GRANULARITY_MISMATCH) interpolate
+  the field's French label from a lib/fr field-name map.
+- Exhaustiveness test enumerating the ValidationError union from the
+  engine's types (via a type-level trick or a runtime list the types
+  are asserted against); RED by planting a code.
+- Commit: "FW9: FieldGroup and the ValidationError copy map". Push.
+
+--------------------------------------------------------------------
+INCREMENT 2 - DataGrid
+--------------------------------------------------------------------
+- Props: columns (header label, alignment, whether numeric), rows,
+  optional total row, optional caption (visually hidden or shown).
+  Semantic table markup - <table>, <thead>, <th scope>, <caption>.
+  Hairline rules only, no zebra, no header shading, no sort
+  affordance; numeric cells right-aligned with tabular numerals.
+- Empty state: a row spanning all columns with the lib/fr empty text;
+  never a blank table.
+- Commit: "FW9: DataGrid". Push.
+
+--------------------------------------------------------------------
+INCREMENT 3 - Container
+--------------------------------------------------------------------
+- Named widths: 'public' (max 1200, padding 32 desktop / 20 mobile),
+  'article' (the 680 px prose measure), 'narrow' (720 px, the
+  calculator column). No arbitrary widths accepted - the prop is a
+  union, and a test asserts no other value compiles.
+- Commit: "FW9: Container". Push.
+
+--------------------------------------------------------------------
+INCREMENT 4 - PublicShell: header
+--------------------------------------------------------------------
+- Header 64 px, white, 1 px bottom border. Left: the wordmark - a
+  placeholder geometric mark as a tiny inline SVG (no logo design,
+  the name is an open question in SPEC 22) plus APP_NAME from lib/fr.
+  Nav: four items from lib/fr - Calculateurs (a disclosure menu with
+  two children), Guides, Le releve, Tarifs. Right: primary brand
+  button "Suivre mes jours" linking to /application (D14: there is no
+  signup). No Connexion.
+- Mobile (< 768): hamburger (Lucide menu, 44 x 44) at the left, the
+  CTA stays visible outside the menu, nav items inside a disclosure
+  panel. Keyboard: Tab reaches every item, Escape closes the panel,
+  focus returns to the trigger.
+- The header emits <header> and <nav aria-label>; it must not emit
+  an <h1>.
+- Commit: "FW9: PublicShell header". Push.
+
+--------------------------------------------------------------------
+INCREMENT 5 - PublicShell: footer and the R51 date
+--------------------------------------------------------------------
+- Footer: white, 1 px top rule, four columns from a lib/fr sitemap
+  structure (Outils / Guides / Le produit / Legal), then the
+  disclaimer line and the review-date line per R51 - reading
+  LAST_REGULATORY_REVIEW; null renders "Verification reglementaire en
+  cours", a date renders via formatDate. Both branches tested.
+- Mobile: four stacked sections, 44 px link targets.
+- lib/content/regulatory.ts created with the constant set to null and
+  a comment pointing at the Checkpoint A gate.
+- Commit: "FW9: PublicShell footer with the honest review date (R51)".
+  Push.
+
+--------------------------------------------------------------------
+INCREMENT 6 - workbench, baselines, a11y, and Checkpoint A checks
+--------------------------------------------------------------------
+- /dev/composants entries for all four components in every state,
+  including the mobile header with the menu open.
+- Baselines in the container (R37); jest-axe zero across states;
+  the Playwright keyboard-path test for the header at 360 px.
+- CHECKPOINT A MACHINE CHECKS - run and record in the report, each
+  with its evidence: all six Geneva cases exact; denominator and
+  rate fixtures passing; 100 % coverage on lib/calc-engine and
+  lib/ui/core; eight invariants; every component baseline green;
+  contrast audit green; the innerHTML uniqueness test green; the
+  200 px artifact present. Then write docs/checkpoint-a.md: the
+  machine checks as a ticked list with dates and CI run URLs, and
+  the HUMAN GATE section listing every item from
+  docs/regulatory-sources.md's verification list as UNVERIFIED with
+  an empty "verified by / on" for the operator to fill.
+- Commit: "FW9: workbench entries, baselines, Checkpoint A machine
+  checks recorded". Push.
+
+====================================================================
+OUT OF SCOPE FOR FW9
+====================================================================
+- Any page or route other than /dev/composants - FW10 begins pages.
+- The legal pages' content - FW10.
+- Setting LAST_REGULATORY_REVIEW to a date - the operator, at the
+  human gate.
+- Any engine change.
+
+====================================================================
+FINAL VERIFICATION
+====================================================================
+pnpm typecheck && pnpm lint && pnpm test && pnpm test:e2e && pnpm
+test:visual && pnpm test:a11y && pnpm build && pnpm size
+Green in one run; CI green on origin/main after the final push.
+
+====================================================================
+REPORT FORMAT - REPORT-FW9.txt (pure ASCII, committed and pushed)
+====================================================================
+SUMMARY
+PRECONDITIONS       R0: FW8 report read, blocking items (none / list);
+                    CI run URL and status.
+RED/GREEN LEDGER
+STATES MATRIX       Component x state, baseline file, axe result.
+KEYBOARD PATH       The 360 px header test output.
+EXHAUSTIVENESS      The planted-code failure, then clean.
+R51 PROOF           Both footer branches rendered.
+CHECKPOINT A        The machine-check list with evidence; the human
+                    gate list, all UNVERIFIED.
+DEVIATIONS
+NOTICED BUT NOT TOUCHING
+QUESTIONS FOR THE OPERATOR   Including every open FW8 question,
+                    carried verbatim.
+PUSH PROOF
+
+END OF FW9 PROMPT

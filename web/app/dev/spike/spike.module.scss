@@ -28,7 +28,15 @@
 }
 
 .page {
-  max-width: var(--layout-content-max);
+  // Was --layout-content-max, which ruling R64 removed. The spike is a public
+  // page shell being weighed for bundle size, so --layout-public is what it
+  // was always approximating.
+  //
+  // THIS CALL SITE IS WHY R64'S PREMISE WAS WRONG. The ruling says the removed
+  // token "has no consumer"; that came from REPORT-FW9.txt's NOTICED item 2,
+  // which asserted nothing read it. This line read it. Recorded rather than
+  // quietly patched, because the ruling was taken on a fact I got wrong.
+  max-width: var(--layout-public);
   margin: 0 auto;
   padding: var(--space-6) var(--layout-gutter-desktop);
 }
