@@ -233,6 +233,23 @@ interface Painted {
   readonly where: string;
   readonly fg: string;
   readonly gate: number;
+  /**
+   * The background DECLARED IN THE SAME BLOCK, when there is one.
+   *
+   * Without this the audit was wrong about any element that paints its own
+   * background - and it would have blocked the PublicShell header before a
+   * line of it was written. The CTA is "brand fill, white label", so its
+   * rule sets colour: var(--colour-surface) over background:
+   * var(--colour-brand). Audited against the two page surfaces, that
+   * measures white on white - 1,00:1 - and fails a 4,5 gate on a component
+   * that is not merely fine but has the highest contrast in the product.
+   *
+   * Measured before the fix, with a probe stylesheet: "--colour-surface on
+   * --colour-surface is 1.00:1, below 4.5:1". A green audit that fails on
+   * correct work is worse than no audit, because the fix people reach for
+   * is an exemption.
+   */
+  readonly bg: string | undefined;
 }
 
 /**
@@ -263,6 +280,12 @@ function paintedRules(): Painted[] {
 
       if (NOT_ON_A_SURFACE.some((skip) => selector.startsWith(skip))) continue;
 
+      // The background declared in this same block, if any. Either shorthand,
+      // and only a token is usable - a gradient or an image has no single
+      // colour to take a ratio against, and stylelint forbids a raw colour
+      // here regardless.
+      const declared = /background(?:-color)?:\s*var\((--colour-[a-z-]+)\)/.exec(block)?.[1];
+
       const size = pixels(/font-size:\s*var\((--type-[a-z0-9-]+)\)/.exec(block)?.[1]);
       const weight = pixels(/font-weight:\s*var\((--type-[a-z0-9-]+)\)/.exec(block)?.[1]);
 
@@ -276,6 +299,7 @@ function paintedRules(): Painted[] {
         where: `${name} ${selector}`,
         fg: colour[1],
         gate: large ? LARGE_TEXT : NORMAL_TEXT,
+        bg: declared,
       });
     }
   }
@@ -297,16 +321,52 @@ describe('every colour rule in the five stylesheets, at the bar its size implies
     expect(rules.map((rule) => rule.fg)).toContain('--colour-text-secondary');
   });
 
-  for (const surface of SURFACES) {
-    for (const rule of rules) {
-      it(`${rule.where} (${rule.fg}) on ${surface} clears ${rule.gate}:1`, () => {
-        const ratio = contrast(rule.fg, surface);
+  // A rule that paints its own background is audited against THAT, once.
+  // Anything else is audited against both page surfaces, because it could sit
+  // on either.
+  //
+  // This distinction is not a refinement, it is a correctness fix, and it was
+  // found by inventorying the work still to come rather than by a failing
+  // build: PublicShell's CTA is "brand fill, white label", and the version of
+  // this audit without it measured white on white and reported 1,00:1 against
+  // a 4,5 gate. It would have blocked a correct component, and the natural
+  // response to that - adding the CTA to an exemption list - would have
+  // removed the highest-contrast element in the product from the audit
+  // entirely, which is the opposite of what an exemption should ever buy.
+  for (const rule of rules) {
+    const backgrounds = rule.bg === undefined ? SURFACES : [rule.bg];
+
+    for (const background of backgrounds) {
+      it(`${rule.where} (${rule.fg}) on ${background} clears ${rule.gate}:1`, () => {
+        const ratio = contrast(rule.fg, background);
 
         expect(
           ratio,
-          `${rule.where}: ${rule.fg} on ${surface} is ${ratio.toFixed(2)}:1, below ${rule.gate}:1`,
+          `${rule.where}: ${rule.fg} on ${background} is ${ratio.toFixed(2)}:1, below ${rule.gate}:1`,
         ).toBeGreaterThanOrEqual(rule.gate);
       });
     }
   }
+
+  it('exercises BOTH branches, so neither is dead code that looks alive', () => {
+    // The mechanism, asserted rather than left implicit in the loop above: if
+    // every rule declared a background, SURFACES would never be exercised; if
+    // none did, the self-painted branch would be dead and the audit would
+    // silently be back to its old, wrong behaviour the next time a component
+    // paints a fill.
+    const painted = rules.filter((rule) => rule.bg !== undefined);
+    const inherited = rules.filter((rule) => rule.bg === undefined);
+
+    expect(painted.length, 'no rule declares its own background').toBeGreaterThan(0);
+    expect(inherited.length, 'every rule declares a background').toBeGreaterThan(0);
+
+    // A DECLARED background may perfectly well BE one of the page surfaces -
+    // FieldGroup's input sets background: var(--colour-surface), which is
+    // correct. The first version of this test asserted the opposite and
+    // failed on that rule. What matters is not which colour it is, but that
+    // the audit uses the declared one INSTEAD OF guessing both.
+    for (const rule of painted) {
+      expect(rule.bg, `${rule.where} declared a background`).toMatch(/^--colour-/);
+    }
+  });
 });
