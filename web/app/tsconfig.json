@@ -1,0 +1,23 @@
+{
+  // web/app/tsconfig.json
+  //
+  // THE SAME ONE SETTING, FOR THE SAME ONE REASON as lib/ui/react/tsconfig.json,
+  // whose comment carries the full explanation: the root sets "jsx": "preserve"
+  // because that is correct for Next, Next rewrites the field back to
+  // "preserve" on every build so it cannot be changed there, and vitest's
+  // transform (oxc) reads the NEAREST tsconfig to the file it is compiling.
+  //
+  // WHY app/ NEEDS ONE NOW. FW10 gave a page a component that takes a prop -
+  // MentionsLegalesContent, so ruling R84's placeholder count can be proved
+  // with a filled entity as well as an empty one - and a unit test that
+  // renders it makes oxc compile a .tsx file under app/ for the first time.
+  // Without this file it fails to parse with "Unexpected JSX expression".
+  //
+  // `pnpm typecheck` and `next build` are untouched: tsc is invoked with the
+  // root config and does not consult nested ones, so app/ still type-checks
+  // and builds under "preserve".
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx"
+  }
+}

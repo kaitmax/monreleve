@@ -21,3 +21,22 @@ export const LEGAL_COPY = {
     "document ne constitue pas un conseil fiscal et n'engage ni " +
     "l'administration française ni l'administration suisse.",
 } as const;
+
+/**
+ * RULING R52: what a legal page prints where an entity value is still open.
+ *
+ * IT IS DELIBERATELY UGLY. Square brackets and capitals, so that a reader who
+ * lands on the page before the company is registered sees an obvious gap
+ * rather than a plausible-looking blank, and so that a screenshot of the page
+ * shows the operator what is left to do.
+ *
+ * ONE STRING, ONE PLACE. The pages never write it, the entity module never
+ * writes it, and ruling R84's test counts occurrences of THIS constant - so a
+ * second copy anywhere would make a page full of gaps report zero.
+ *
+ * UNACCENTED, exactly as the prompt writes it twice. Correct French would be
+ * [À COMPLÉTER]; the prompt's relay files are pure ASCII by mandate, so its
+ * spelling is not evidence either way. Changing it is this one line, and the
+ * question is in the report rather than decided here.
+ */
+export const LEGAL_PLACEHOLDER = '[A COMPLETER]';

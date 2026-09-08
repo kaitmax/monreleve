@@ -1,0 +1,75 @@
+// web/app/(public)/mentions-legales/mentions-legales.module.scss
+//
+// Tokens only. The prose measure is Container's `article` width - 680 px,
+// FD13:23, about 70 characters a line - so nothing here sets a width.
+//
+// BODY-L FOR THE PROSE, not the default Body. global.scss sets the document to
+// --type-body-size (15/22), which is the interface size; a page a reader
+// actually reads a paragraph of gets 17/26. FD13 sets article prose at Body-L
+// and the prompt asks for it by name.
+//
+// The definition-list terms use ruling R70's `label` pair, 13/18/500, which is
+// the role that pair was added for.
+//
+// NO COLOUR IS DECLARED. Every element inherits the document's text colour, so
+// this page introduces no new foreground-on-background pairing and needs no
+// entry in the contrast audit. A grey note would have looked more designed and
+// said less.
+
+.page {
+  padding-top: var(--space-10);
+  padding-bottom: var(--space-16);
+}
+
+.title {
+  margin: 0 0 var(--space-4);
+  font-size: var(--type-h1-size);
+  font-weight: var(--type-h1-weight);
+  line-height: var(--type-h1-line);
+}
+
+.lead,
+.prose,
+.pending,
+.value {
+  font-size: var(--type-body-l-size);
+  font-weight: var(--type-body-l-weight);
+  line-height: var(--type-body-l-line);
+}
+
+.lead {
+  margin: 0 0 var(--space-6);
+}
+
+.pending {
+  margin: 0 0 var(--space-6);
+}
+
+.prose {
+  margin: 0 0 var(--space-4);
+}
+
+.heading {
+  margin: var(--space-10) 0 var(--space-4);
+  font-size: var(--type-h2-size);
+  font-weight: var(--type-h2-weight);
+  line-height: var(--type-h2-line);
+}
+
+.list {
+  margin: 0;
+}
+
+.row {
+  margin-bottom: var(--space-4);
+}
+
+.term {
+  font-size: var(--type-label-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-label-line);
+}
+
+.value {
+  margin: 0;
+}

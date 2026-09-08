@@ -1,0 +1,16 @@
+{
+  // web/tests/tsconfig.json
+  //
+  // The JSX transform for tests that render a component from outside
+  // lib/ui/react - see lib/ui/react/tsconfig.json for the whole story, and
+  // app/tsconfig.json for the other half of it.
+  //
+  // Component tests co-located under lib/ui/react are governed by the tsconfig
+  // there. tests/unit/pages/*.test.tsx are not, and before this file they
+  // failed to parse rather than failing an assertion, which is the confusing
+  // kind of red.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx"
+  }
+}
