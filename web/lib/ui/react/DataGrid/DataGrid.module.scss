@@ -1,0 +1,76 @@
+// web/lib/ui/react/DataGrid/DataGrid.module.scss
+//
+// Tokens only; camelCase class names for CSS Module addressing.
+//
+// HAIRLINE RULES ONLY - no zebra, no header shading, no sort affordance.
+// DESIGN-SYSTEM.md section 4 prefers borders to fills, and a sort control
+// would be a promise this component does not keep: a column that looks
+// sortable and is not is worse than one that plainly is not.
+//
+// --size-card-border for the rules, the same alias RateDisplay and LegalNote
+// record: no token means HAIRLINE, and the three that carry 1 px are named
+// for a card, an input and a button. Third and fourth call sites now.
+// Carried into the report as a question.
+
+@use "../../core/styles/fonts";
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--colour-text-primary);
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  line-height: var(--type-body-line);
+}
+
+.caption {
+  margin-bottom: var(--space-3);
+  color: var(--colour-text-secondary);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  line-height: var(--type-caption-line);
+  text-align: left;
+}
+
+.header {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: var(--size-card-border) solid var(--colour-border-strong);
+  color: var(--colour-text-secondary);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-body-m-weight);
+  line-height: var(--type-caption-line);
+  text-align: left;
+}
+
+.cell {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: var(--size-card-border) solid var(--colour-border-default);
+}
+
+// The empty state's one row. Centred because it is a message rather than a
+// datum, and it would otherwise sit under the first column's heading looking
+// like a value for it.
+.empty {
+  padding: var(--space-6) var(--space-3);
+  color: var(--colour-text-secondary);
+  text-align: center;
+}
+
+.totalHeader,
+.totalCell {
+  padding: var(--space-2) var(--space-3);
+  border-top: var(--size-input-border-focus) solid var(--colour-border-strong);
+  font-weight: var(--type-body-m-weight);
+  text-align: left;
+}
+
+// Right-aligned AND tabular, which is one decision rather than two: the
+// alignment is what makes a column of figures comparable down its length, and
+// tabular figures are what stop the digits shifting as the values change.
+.header[data-numeric="true"],
+.cell[data-numeric="true"],
+.totalCell[data-numeric="true"] {
+  text-align: right;
+
+  @include fonts.tabular-figures;
+}

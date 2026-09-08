@@ -43,3 +43,31 @@ figure {
 .u-tnum {
   @include fonts.tabular-figures;
 }
+
+// Utility: visually hidden, still in the accessibility tree. Needed wherever
+// a name must exist for assistive technology and be absent on screen - a
+// DataGrid caption the page already titles, a nav's label, a skip link.
+//
+// display: none and visibility: hidden both remove the element from the
+// accessibility tree, which is the opposite of the intent. This is the
+// clip-path incantation, which leaves it rendered at 1px and unreadable.
+.u-visually-hidden {
+  position: absolute;
+  overflow: hidden;
+
+  // THE THREE LENGTHS BELOW ARE NOT DESIGN VALUES, which is why they are
+  // exempted rather than tokenised. They are the mechanics of a known idiom:
+  // the element must stay rendered and non-empty to remain in the
+  // accessibility tree, and 1px with a -1px pull is the smallest footprint
+  // that achieves it. A --size-visually-hidden token would put a number in
+  // the design system that no designer chose and no design could change.
+  /* stylelint-disable scale-unlimited/declaration-strict-value */
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  /* stylelint-enable scale-unlimited/declaration-strict-value */
+  padding: 0;
+  white-space: nowrap;
+  clip-path: inset(50%);
+  border: 0;
+}
