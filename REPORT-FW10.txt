@@ -1,0 +1,122 @@
+REPORT-FW10.txt
+PRECONDITIONS ONLY. FW10 did not start. Session of 08.09.2026.
+Pure ASCII by convention.
+
+
+================================================================================
+PRECONDITIONS
+================================================================================
+
+FW10 DID NOT START. Its own R0 prescribes this report and this outcome:
+
+  "Read REPORT-FW8.txt and REPORT-FW9.txt in full first. If either contains a
+   question marked as blocking FW10, or a DEVIATION that changes PublicShell
+   or Container, STOP with a PRECONDITIONS-only report."
+
+Both reports were read in full. The stop condition is met, and by a stronger
+route than the one R0 anticipates.
+
+R0 guards against PublicShell or Container having CHANGED. Neither exists.
+REPORT-FW9.txt Q1 is marked BLOCKING and stopped FW9 at increment 3, which is
+where Container is built; increments 4 and 5, which build PublicShell's header
+and footer, never began either. FW10's first task is
+
+  web/app/(public)/layout.tsx wrapping children in PublicShell
+
+and its legal pages are specified as "Container 'article'". A layout cannot
+wrap a component that has not been written, and no part of FW10 can proceed
+around it: PublicShell is the public layout, and every page in this task sits
+inside it.
+
+--------------------------------------------------------------------------------
+THE BLOCKING QUESTION, RESTATED SO THIS FILE STANDS ALONE
+--------------------------------------------------------------------------------
+
+Container is defined by three named widths - 'public' 1200, 'article' 680,
+'narrow' 720. No token carries any of them. Adding one is a SPEC section 20
+ask-first item, and stylelint refuses the alternative independently, since
+max-width matches its strict-value list. So Container cannot be written
+without either adding tokens or defeating the token rule.
+
+That alone would be a question carried forward. What makes it a stop is that
+the value conflicts with a spec file:
+
+  DESIGN-SYSTEM.md:19   "Screen horizontal padding 20 px (mobile), 32 px
+                         (desktop, max content 1440)."
+  tokens.scss:147       $layout-content-max: 1440px;
+
+  FD1:15, FD11:15, FD13:17
+                        "Desktop side padding 32, content max width 1200,
+                         centred."
+
+Both sentences describe the content maximum, both pair it with 32 px desktop
+padding, and they differ by 240 px.
+
+  CLAUDE.md   "If the task conflicts with a spec file, STOP and ask - do not
+               resolve it yourself. If a decision is missing, ask; never
+               invent product decisions."
+
+The recommendation - three layout tokens transcribing the FD briefs, and a
+correction to DESIGN-SYSTEM.md section 1 - is written out in REPORT-FW9.txt
+under Q1. It is not applied. It is four product decisions and none of them is
+mine to take.
+
+--------------------------------------------------------------------------------
+STATE OF THE REPOSITORY
+--------------------------------------------------------------------------------
+
+origin/main at 9f3ee72. Tree clean apart from the untracked relay prompts
+FW9.txt, FW10.txt and FW11.txt, which are the operator's files.
+
+CI green on every FW9 commit, all four jobs (web, rail visual baselines,
+format parity compile, format parity node 22 and 24):
+
+  6c4b6ec  https://github.com/kaitmax/Frontalier/actions/runs/34178061515
+  bbdc06f  https://github.com/kaitmax/Frontalier/actions/runs/34179098409
+  45b9216  https://github.com/kaitmax/Frontalier/actions/runs/34179268150
+
+Last full verification, green in one chained run, exit 0:
+
+  typecheck, lint, 49 files / 898 tests, 10 e2e, 32 visual in the container,
+  26 axe across 25 states, build, both R2 size gates.
+
+--------------------------------------------------------------------------------
+WHAT IS READY THE MOMENT Q1 IS ANSWERED
+--------------------------------------------------------------------------------
+
+Nothing else blocks FW10. Everything it composes, apart from the two unbuilt
+components, exists and is green:
+
+  FieldGroup, DataGrid            built, tested, baselined, axe-clean
+  the five FW8 components         unchanged and still green
+  lib/fr/errors.ts                every ValidationError code has copy,
+                                  enforced by tsc
+  the contrast audit              reads the component directory, so it will
+                                  pick up Container and PublicShell without
+                                  an edit
+  the suite floor                 49 files / 898 tests, four glob canaries
+  Checkpoint A machine checks     all eight recorded in docs/checkpoint-a.md
+
+R52's legal-entity placeholders, R53's route set and robots rules, and the
+sitemap-as-one-source requirement are untouched and unaffected by Q1 - but
+they are page work, and every page in FW10 sits inside PublicShell.
+
+--------------------------------------------------------------------------------
+OPEN QUESTIONS
+--------------------------------------------------------------------------------
+
+Carried forward in full: REPORT-FW9.txt Q1 to Q7. Q1 is the blocker. Q4, the
+PAT from ruling R47, still needs the operator - the token was live at the last
+check and no session since can re-check it, because the value is no longer in
+context and a token that needs revoking should not be pasted a second time.
+
+--------------------------------------------------------------------------------
+R50, THE LAST LINE THIS REPORT IS REQUIRED TO CARRY
+--------------------------------------------------------------------------------
+
+Checkpoint A's human gate is PENDING. FW11 may NOT start until the operator
+records it in docs/regulatory-sources.md - and, independently of that gate,
+FW11 could not start now in any case, because FW10 has not run.
+
+
+END OF REPORT-FW10.txt
