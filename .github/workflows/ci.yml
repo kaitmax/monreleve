@@ -41,6 +41,11 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # Ruling R63, the cheap half: `vitest list` collects WITHOUT executing,
+      # so a broken include glob is reported here in seconds rather than after
+      # the suite, and it names the canary file that stopped being collected.
+      - run: pnpm test:floor
+
       # The order is the Definition of Done: cheapest signal first.
       - run: pnpm typecheck
       - run: pnpm lint
@@ -53,6 +58,16 @@ jobs:
       # "not an aspiration". Blocking, and proven to bite - an unreachable
       # branch takes it to 98.79% and fails the step.
       - run: pnpm test:coverage
+
+      # Ruling R63, the sharp half. The run above emits a JSON report as a
+      # second reporter, so the RUNTIME test count is free here. It catches
+      # what `vitest list` structurally cannot: a parametrised block whose
+      # fixture array was emptied keeps its call site, so the static count is
+      # unchanged while the tests are gone. Measured - emptying ZoneBadge's
+      # status list left `list` at 426 call sites and took the real run from
+      # 711 tests to 699.
+      - run: pnpm test:floor -- --report test-results/vitest.json
+
       - run: pnpm build
 
       - run: pnpm exec playwright install --with-deps chromium

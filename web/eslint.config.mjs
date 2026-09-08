@@ -288,8 +288,14 @@ export default tseslint.config(
       'app/**/*.{ts,tsx}',
       'lib/ui/react/**/*.{ts,tsx}',
       'lib/fr/**/*.ts',
-      'tests/**/*.ts',
-      'e2e/**/*.ts',
+      // .tsx as well as .ts, for the same reason ruling R63 gives about
+      // vitest's include globs: a glob ending in .ts matches NEITHER of the
+      // two extensions a .tsx file could be linted under, and the failure is
+      // silent - eslint reports no error for a file it was never given. This
+      // directory now holds a .tsx canary, so the hole was real rather than
+      // theoretical.
+      'tests/**/*.{ts,tsx}',
+      'e2e/**/*.{ts,tsx}',
     ],
     ignores: ['app/dev/spike/**'],
     rules: {
