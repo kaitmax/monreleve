@@ -1,0 +1,751 @@
+REPORT-FW8.txt
+The component library: five components, the workbench, the audits.
+Session of 07-08.09.2026.
+Pure ASCII by convention. French copy is transliterated where quoted.
+
+
+================================================================================
+SUMMARY
+================================================================================
+
+FW8 is complete. Five components, eighteen states, twenty-two screenshot
+baselines, zero axe violations, a contrast audit that computes its own numbers
+from the compiled tokens, and one dangerouslySetInnerHTML with a test that
+says so.
+
+Ten commits, all green, all pushed, CI green on each:
+
+  d23b391  rail corrections (R44, R45, R46) and the PAT check (R47)   [inc 0]
+  e0ea34d  the social card carries the zones themselves (R48)         [inc 0]
+  4128064  ThresholdRail wrapper with HTML legend and guard           [inc 1]
+  a681771  ZoneBadge, four statuses (R41, R56, R57)                   [inc 2]
+  0d10e61  a size token family for icons, dots and ticks (R62)
+  2902916  canaries and a floor for the silent-suite failure (R63)
+  dbff67c  RateDisplay with the two-rate variant                      [inc 3]
+  8765142  MetricTile and LegalNote                                   [inc 4]
+  5e603cc  workbench entries, baselines, contrast audit               [inc 5]
+  4b0a182  innerHTML uniqueness proof and size record                 [inc 6]
+  70d122c  a baseline for the one state that had none, and test:a11y
+
+THE THREE THINGS WORTH THE OPERATOR'S ATTENTION, ahead of the detail.
+
+1. THE CONTRAST AUDIT'S FIRST VERSION WAS WRONG, and the prompt's own required
+   falsification is what caught it. Increment 5 says "plant warning colour as
+   body text, capture the failure, remove". Planted, all 49 tests stayed
+   GREEN. The check asked only WHICH tokens a component paints, and
+   --colour-warning was already in the table - legitimately, as a Display
+   figure and as a rail fill. A colour that is legal at 48 px is not thereby
+   legal at 13 px, and nothing noticed the difference. Rebuilt to derive each
+   gate from the font-size declared beside the colour; the same plant now
+   fails at 3,43:1, and the same colour at Display still passes. Detail under
+   CONTRAST AUDIT.
+
+2. TWO STATES HAD NO SCREENSHOT BASELINE, and neither was found by a test.
+   The rail's unavailable state (R33) fell between rail-gallery, which is a
+   matrix of variants and zones where "no rate" is neither, and the workbench
+   spec, which excluded rail specimens because rail-gallery covered the
+   matrix. It was found by building the STATES MATRIX section of this report.
+   Now covered. Detail under STATES MATRIX.
+
+3. R47 - I CANNOT RE-CHECK THE TOKEN, and it was live at the last check. See
+   QUESTIONS FOR THE OPERATOR. This one needs an action from you.
+
+Two rulings were implemented as their own increments before the component
+work resumed, because both changed things the components were about to use:
+R62's size token family and R63's glob canaries.
+
+
+================================================================================
+PRECONDITIONS
+================================================================================
+
+origin/main current at 70d122c. CI green on every FW8 commit:
+
+  4b0a182  https://github.com/kaitmax/Frontalier/actions/runs/34175135281
+  5e603cc  https://github.com/kaitmax/Frontalier/actions/runs/34174925925
+  8765142  https://github.com/kaitmax/Frontalier/actions/runs/34173354371
+  dbff67c  https://github.com/kaitmax/Frontalier/actions/runs/34173077995
+  a681771  https://github.com/kaitmax/Frontalier/actions/runs/34171338464
+  4128064  https://github.com/kaitmax/Frontalier/actions/runs/34170657000
+
+All four jobs green on each: web, rail visual baselines, format parity
+(compile), format parity (node 22 and 24).
+
+Note on granularity: GitHub Actions runs against the head of a push, so
+0d10e61 (R62) and 2902916 (R63) are covered by dbff67c's run rather than
+having runs of their own. They were both green locally on the full chain
+before the push.
+
+
+================================================================================
+INCREMENT 0 - R44 TO R48
+================================================================================
+
+Carried out across two commits before increment 1.
+
+R46 - TICK_WIDTH 1,5 -> 2. RED first: "expected 1.5 to be 2". The deciding
+evidence was the device pixel grid rather than either design brief: at 1,5 px
+the two ticks rendered ASYMMETRICALLY FROM EACH OTHER in the 200 px baseline,
+one a symmetric grey pair and the other lopsided, because a 1,5 px rect lands
+on a half-pixel wherever its centre falls. Two marks meant to read as
+identical looking different is a defect in the one element that has to read
+as authoritative.
+
+R45 - band names leave the SVG. Centring them over their bands cannot work at
+any realistic width: "Imposition France" measures 93,7 px at Micro 11/500
+over a band that is 9,9 % of the track, so it needs roughly 950 px of rail
+before it stops colliding. inline and compact now carry none; social keeps
+them as a left-anchored stack below the rail. A consequence with its own
+test: inline and compact emit IDENTICAL SVG, the band names having been the
+only thing separating them.
+
+R44 - the social card carries no rate, no fill and no band colour, because a
+fill length IS the rate. On the operator's question - optional field or
+ignored field: IGNORED, guaranteed by a test rather than a type. Making
+percentage optional would split RailData into a union, change the shape SPEC
+6.3 states, and push a discriminated check into every caller to express
+something the caller does not need to know. rail-render.test.ts instead
+renders social twice, with 4,16 %/compliant and 97,5 %/social-switch, and
+requires the two strings to be BYTE-IDENTICAL.
+
+R48 - the social card carries the zones themselves: three static band fills
+derived from the thresholds alone, so R44's byte-identity survives untouched.
+SOCIAL_TRACK_HEIGHT 16 is a documented exception at the site to
+DESIGN-SYSTEM.md's "never taller than 8", scoped to that variant and
+asserted; the other two are tested to keep TRACK_HEIGHT.
+
+R47 - the PAT. gh auth status showed only the device-flow credential (gho_,
+scopes gist, read:org, repo, workflow). The pasted token was NOT revoked at
+that point: it still returned HTTP 200 on /user. Reported, not used again.
+See QUESTIONS FOR THE OPERATOR - this is now blocked on you.
+
+Coverage caught a real defect during increment 0: pairing the band rows by
+index needed an undefined check that is unreachable, which lib/ui/core's
+100 % branch gate cannot cover. The geometry now emits zone-and-baseline
+PAIRS so the renderer does no indexed access at all, and the refactor was
+verified byte-identical before the baselines were trusted.
+
+
+================================================================================
+R62 AND R63 - TWO RULINGS AS THEIR OWN INCREMENTS
+================================================================================
+
+R62 - THE SIZE TOKEN FAMILY. --size-icon-sm 16, --size-icon 20, --size-icon-lg
+24, --size-dot 6, --size-dot-lg 8, --size-tick 2, with the line added to
+DESIGN-SYSTEM.md section 1 under R9.
+
+The evidence for needing it was three increments of this session: the rail's
+TICK_WIDTH, ThresholdRail's legend dot and ZoneBadge's chip icon each reached
+for a token that meant something else. --size-spinner is 20 px and would have
+fitted the chip icon; --radius-checkbox is 6 px and would have fitted the dot.
+Borrowing either is exactly the semantic aliasing DESIGN-SYSTEM.md 4.1 removed
+from the radius scale.
+
+All three call sites close. The most satisfying is TICK_WIDTH: for two
+increments its test pinned that 1,5 px was in NO token family and said so out
+loud, ending "if a token for it ever appears, this test fails and the constant
+should become a mirror". It appeared, and it did. The legend dot goes back to
+the 6 px the brief asked for, having been 8 for one increment because no token
+carried 6.
+
+A distinction the document now carries: sizes a component measures in CODE -
+the rail's geometry - mirror these BY TEST rather than referencing them,
+because an SVG geometry attribute resolves var() to ZERO when no cascade is
+present and the track vanishes silently.
+
+R63 - THE SILENT-SUITE FAILURE. A vitest include glob that stops matching
+removes its files from the run, every assertion they carried stops being
+checked, and pnpm test still exits 0.
+
+This repo had already met the near miss: FW8's component tests are .test.tsx
+and the glob then ended in .test.ts, which matches neither. It was caught only
+because those tests were NEW and someone was waiting to see them run.
+
+Detection has to come from OUTSIDE the run, because a file that did not run
+cannot fail:
+
+  4 canaries    tests/ and lib/, .ts and .tsx, one per (directory, extension)
+                pair. Each asserts only that it was collected from that
+                directory with that extension. The .tsx pair holds no JSX
+                deliberately, so it can fail for exactly one reason.
+  meta test     reads the config MODULE, not its text, and requires a canary
+                for every pair, so the scheme extends itself.
+  floor script  requires vitest to have collected every canary, and holds
+                counts that may only go up.
+
+TWO SOURCES, BECAUSE THEY SEE DIFFERENT THINGS. vitest list is a STATIC
+collector - measured, not assumed: it renders ZoneBadge's looped block as
+"... > status > renders the label" with the loop variable unresolved, and
+counts 11 call sites where 21 tests run. Cheap enough to run before the suite
+and right for "did the glob match this FILE", but blind to a parametrised
+block whose fixture array was emptied. So the file floor and the canaries come
+from list; the TEST floor is read from a real run's JSON report, which CI gets
+free as a second reporter.
+
+The three falsifications, each run and each red:
+
+  glob drops tsx    floor names both .tsx canaries as uncollected, 36 files
+                    against a floor of 40. The suite under that same broken
+                    config reported "676 passed" - ZoneBadge and ThresholdRail
+                    simply gone, green but for the meta test.
+  canary deleted    meta test red, naming the missing path
+  fixture emptied   list unchanged at 426 call sites; the runtime report fell
+                    711 -> 699 and the floor caught it. This is the case that
+                    justifies --report existing at all.
+
+Also widened the eslint spike-quarantine block from tests/**/*.ts to
+tests/**/*.{ts,tsx} (and e2e likewise) - the identical silent-miss defect one
+layer over, no longer theoretical now that tests/ holds a .tsx file.
+
+
+================================================================================
+RED/GREEN LEDGER
+================================================================================
+
+One row per behaviour. Every RED was observed before the GREEN except where
+the row says otherwise.
+
+BEHAVIOUR                          RED OBSERVED                        RESULT
+--------------------------------------------------------------------------------
+TICK_WIDTH mirrors --size-tick     "expected 2 to be 1.5" after        green
+                                   planting $size-tick: 3px
+size family carries the values     same plant, second test             green
+glob canary, tests/ and lib/       floor: "exists but vitest did not   green
+                                   collect it", 36 files vs floor 40
+glob canary registry               "lib\__glob-canary.test.tsx is      green
+                                   missing"
+runtime test floor                 "ran 699 tests, floor is 711"       green
+RateDisplay module exists          "Cannot find package"               green
+declarable rate through            first run red on a CORRECT          green
+formatPercent                      component - see DEVIATIONS
+second rate only when it differs   written before the component        green
+band colour by Zone                written before the component        green
+tabular figures declared           written before the component        green
+tnum computed in Chromium          "Expected substring: tnum /         green
+                                   Received string: normal"
+warning at Display, computed       written before the component        green
+MetricTile emits no minus sign     'not to contain "-6"' after         green
+                                   planting a sign
+label replaced when negative       "to contain 'Jours au-dessus du     green
+                                   seuil'" after removing the swap
+LegalNote copy from lib/fr         "Cannot find package"; then red     green
+                                   on a correct component - see
+                                   DEVIATIONS
+LegalNote is secondary (R58)       "to contain                         green
+                                   var(--colour-text-secondary)"
+                                   after switching to tertiary
+contrast: every pair clears        "--colour-warning on               green
+its gate                           --colour-canvas is 3.43:1, below
+                                   4.5:1"
+contrast: derived per rule         DID NOT FAIL on the first           green
+                                   version - see SUMMARY item 1
+axe: eighteen states               "Images must have alternative       green
+                                   text (image-alt)" on both
+                                   MetricTile states
+axe: state count                   "expected ... length of 17 but      green
+                                   got 18" - caught my own
+                                   arithmetic, not a product bug
+one innerHTML in scope             planted on app/page.tsx, two        green
+                                   tests red naming the file
+every site justified               "unjustified injection sites:       green
+                                   app/dev/rail-gallery/page.tsx:55,
+                                   :71"
+no minus sign in laid-out text     failed on a CORRECT page - the      green
+                                   test was wrong, see DEVIATIONS
+
+
+================================================================================
+STATES MATRIX
+================================================================================
+
+Eighteen states. Every one has an axe result and a screenshot baseline.
+
+COMPONENT / STATE            BASELINE FILE                          AXE
+--------------------------------------------------------------------------------
+ThresholdRail
+  inline compliant           rail-inline-compliant.png              pass
+  inline fiscal-exposure     rail-inline-fiscal-exposure.png        pass
+  inline social-switch       rail-inline-social-switch.png          pass
+  compact compliant          rail-compact-compliant.png             pass
+  compact fiscal-exposure    rail-compact-fiscal-exposure.png       pass
+  compact social-switch      rail-compact-social-switch.png         pass
+  unavailable (R33)          composants-rail-unavailable.png        pass
+ZoneBadge
+  compliant                  composants-badge-compliant.png         pass
+  mission-exposure           composants-badge-mission.png           pass
+  regime-lost                composants-badge-regime.png            pass
+  social-switch              composants-badge-social.png            pass
+RateDisplay
+  compliant band             composants-rate-compliant.png          pass
+  fiscal-exposure band       composants-rate-exposure.png           pass
+  social-switch band         composants-rate-social.png             pass
+  two rates, Geneva (c)      composants-rate-divergent.png          pass
+MetricTile
+  positive                   composants-metric-positive.png         pass
+  negative                   composants-metric-negative.png         pass
+LegalNote
+  standing                   composants-legal-standing.png          pass
+
+Not workbench states, held in rail-gallery for the OG image and for review:
+rail-social-compliant.png, rail-social-fiscal-exposure.png,
+rail-social-social-switch.png, rail-inline-200px.png.
+
+22 baseline files, all generated in the Playwright Linux container (R37) and
+all verified in COMPARE mode - 25 passed - never trusted from the update run,
+which writes and then passes against what it just wrote.
+
+WHERE THE BASELINE COVERAGE HAD A HOLE. The unavailable rail was the one state
+of eighteen with no baseline anywhere. app/dev/rail-gallery is a matrix of
+variants and zones, and "no rate" is neither, so it never appeared there; the
+workbench spec then excluded rail specimens on the reasonable ground that
+rail-gallery covered the matrix. Between two sensible decisions, one state
+fell through - and the one with the most to get visually wrong, since its
+failure mode is looking exactly like a correct rail at zero, which SPEC 6.3
+calls the wrong reading. Found while writing this section, not by any test.
+
+WHAT HASHING THE SET SAYS, recorded because both halves look like defects and
+neither is:
+
+  22 files, 20 distinct images.
+
+  The three rail-social-* files are BYTE-IDENTICAL. That is R44 visible in
+  pixels: the social card carries nothing per-result, so the three zones must
+  render the same image. The unit test asserting byte-identity is the primary
+  proof; three identical screenshots are an independent second one through a
+  real browser. They are kept as three rather than collapsed to one because
+  if a per-result value ever leaks onto that card, exactly ONE changes and
+  the diff names which zone leaked.
+
+  The inline and compact pairs are NOT byte-identical, although renderRailSvg
+  returns the identical string for both at 376 px - measured directly, not
+  assumed. Same dimensions, and the compliant pair is even the same byte
+  length. The difference is antialiasing from where each element lands on the
+  page, since they flow as inline-blocks at different offsets. Stable across
+  runs, so the comparison holds.
+
+AXE: eighteen states, zero violations, jsdom via vitest-axe.
+
+What that green does NOT cover is stated in the file itself: jsdom has no
+layout, so axe's colour-contrast rules return INCOMPLETE rather than passing.
+The run prints "Not implemented: HTMLCanvasElement's getContext()" once per
+state, which is axe trying to sample pixels and being unable to. Contrast is
+answered by the audit instead. The two halves are complementary and neither
+is sufficient: contrast without structure passes beautifully coloured div
+soup, structure without contrast passes correctly marked-up text nobody can
+read.
+
+Proven to bite: an <img> with no alt planted in MetricTile turns both its
+states red with "Images must have alternative text (image-alt)". A first
+attempt at falsifying, with aria-labelledby pointing at a missing id, did NOT
+fail - so the matcher itself was probed separately against a known-bad node
+before being trusted. That probe is why the green here is believable.
+
+A live check the baselines cannot make: the four badge chips must show THREE
+distinct fills, not four. SPEC section 12 caps the palette at three status
+colours for four statuses, so regime-lost and social-switch necessarily share
+--colour-error; the fourth axis is the glyph, asserted distinct by path data.
+
+
+================================================================================
+CONTRAST AUDIT
+================================================================================
+
+tests/unit/tokens/contrast.test.ts. Ratios computed from the COMPILED tokens -
+tokens.scss is compiled in the test, the way radius.test.ts does it - so the
+audit and the palette cannot drift. A hardcoded table of hex would be a second
+copy of the palette that keeps passing after the palette changes.
+
+R59'S TWO GATES: 4,5:1 normal text, 3,0:1 large text and non-text. One gate
+would be wrong in both directions. At 4,5 everywhere the Display rate in the
+warning band fails, and it is 48 px, which nobody has trouble reading. At 3,0
+everywhere the ZoneBadge label passes at 15 px, where the same colour
+genuinely is hard to read.
+
+Where WCAG is ambiguous the audit takes the stricter branch. WCAG says "bold"
+without naming a weight; the conventional reading is 700, so the H3 second
+rate at 20/600 is held to 4,5 rather than argued into the large-text gate. It
+clears 4,5 anyway.
+
+68 assertions in two blocks.
+
+THE HAND TABLE covers the pairs whose background is not a surface, or whose
+foreground arrives dynamically: the badge label on each of the three soft
+fills, each status icon on its own fill, each band colour at Display, the rail
+fill and ticks, the legend, the captions. The Zone and Status rows expand from
+ZONE_BAND_TOKEN and STATUS_VISUAL, so adding a fourth zone adds its rows.
+
+THE DERIVED BLOCK is the answer to the audit's own first failure. Every block
+in the five stylesheets that sets a colour is paired with the font-size and
+weight declared BESIDE it, and audited at the bar those imply, against both
+--colour-canvas and --colour-surface.
+
+THE PLANTED FAILURE, which is the part the prompt asked for and the part that
+found the bug:
+
+  (a) --colour-warning planted as LegalNote's body text, FIRST VERSION:
+
+      Tests  49 passed (49)
+
+      It did not fail. The check at the time asked only WHICH tokens a
+      component paints, and warning was already in the table, legitimately, as
+      a Display figure and a rail fill. Size was not part of the claim.
+
+  (b) the same plant, after the rebuild:
+
+      FAIL  LegalNote .note (--colour-warning) on --colour-canvas clears 4.5:1
+      AssertionError: LegalNote .note: --colour-warning on --colour-canvas is
+      3.43:1, below 4.5:1
+      FAIL  LegalNote .note (--colour-warning) on --colour-surface clears 4.5:1
+      ... is 3.64:1, below 4.5:1
+      Tests  2 failed | 66 passed (68)
+
+  (c) --colour-warning planted on .rate instead, at Display 48/600:
+
+      Tests  70 passed (70)
+
+      Legal there, and the audit says so. That is two gates working rather
+      than one gate being lenient.
+
+  (d) removed; clean run:
+
+      Tests  68 passed (68)
+
+TWO RULINGS PINNED AS MEASUREMENTS rather than as comments, so that if either
+stops being true the ruling gets revisited instead of silently outliving its
+reason:
+
+  R57  --colour-warning is 3,42:1 on its own soft fill and 3,43:1 on the
+       canvas - below 4,5 - and 3,43 is above 3,0. Both halves asserted,
+       because the ruling is a distinction, not a preference.
+  R58  --colour-text-tertiary is 2,42:1 on the canvas and 2,58:1 on a card,
+       failing at BOTH bars. It is not a text colour in this product; it
+       survives only as a hairline.
+
+RECORDED AS PAINTED BUT NOT AUDITED AS A FOREGROUND, with reasons, rather
+than quietly omitted:
+
+  --colour-border-default  the rail's unfilled track and the specimen card
+                           borders. 1,15:1 on the canvas, which clears
+                           nothing. WCAG 1.4.11 covers parts of a graphic
+                           REQUIRED to understand the content; the track is
+                           the absence of fill, and the reading is carried by
+                           the fill and the two ticks, both audited.
+  --colour-canvas          used as a fill behind text, not as a foreground.
+                           It appears in the table as a background.
+
+
+================================================================================
+TNUM PROOF - AC3
+================================================================================
+
+Asserted in both environments, per R61.
+
+The unit test reads the DECLARATION from the stylesheet: the shared
+fonts.tabular-figures mixin must appear at least twice, once for each rate.
+jsdom could not do better - it returns the literal declaration text.
+
+Playwright reads the COMPUTED value in Chromium, which is the only place the
+claim is real:
+
+  const applied = await paragraphs.nth(index).evaluate((node) => {
+    const style = getComputedStyle(node);
+    return { features: style.fontFeatureSettings,
+             variant:  style.fontVariantNumeric };
+  });
+  expect(applied.features).toContain('tnum');
+  expect(applied.variant).toContain('tabular-nums');
+
+Both rates in the divergent specimen: index 0, the Display figure, and index
+2, the H3 beneath it. The second is the one a careless implementation misses,
+because it is added later and inherits nothing.
+
+  ok 2 [chromium] > every figure is set in tabular numerals (AC3) (1.1s)
+
+Falsified by removing the mixin:
+
+  Expected substring: "tnum"
+  Received string:    "normal"
+
+The same file also asserts R57's exception in the environment that can answer
+it - the computed colour of the warning-band rate is rgb(183, 121, 31), AND
+its computed size and weight still clear WCAG's large-text threshold. The
+second half matters: the exception is only sound while that holds, and
+shrinking the Display token would otherwise turn it into a violation with
+nothing to notice.
+
+  ok 1 [chromium] > the warning band carries its colour at Display size,
+                    and only there (R57) (1.1s)
+
+
+================================================================================
+INNERHTML PROOF
+================================================================================
+
+tests/unit/meta/inner-html.test.ts. Six assertions.
+
+R60's scope is lib/ and app/(public)/. app/(public)/ DOES NOT EXIST yet - the
+public routes today are app/layout.tsx and app/page.tsx at the root - so it is
+read as "lib/, and app/ except the dev routes". That covers what exists now
+and picks up app/(public)/ the day it appears. Read literally as a path that
+does not exist, the app half of the rule would be vacuous, which is the
+opposite of what a scope is for. Flagged under QUESTIONS in case you want the
+literal reading instead.
+
+  one site        exactly one in scope, and it is
+                  lib/ui/react/ThresholdRail/ThresholdRail.tsx
+  the comment     the sentences naming renderRailSvg's return value,
+                  "validated numbers" and xml.ts must be present
+  no string prop  the props interface must contain no ": string"
+  not vacuous     the walk must find >10 files and must include both
+                  ThresholdRail and app/page.tsx
+
+The comment and the prop check are there because the COUNT alone would not
+carry the reason. The injection is acceptable for one specific reason - the
+input is a pure function over a number, a Zone, two ceilings, a variant and a
+width, with every text node escaped by xml.ts, and there is no prop through
+which a caller-supplied string could arrive. None of that is visible at a
+second call site written six months later by someone who saw this one and
+copied it, which is how a sanctioned exception becomes a pattern.
+
+app/dev/rail-gallery stays outside the scope but NOT outside review: a second
+test requires every occurrence in the WHOLE repository, dev included, to carry
+an eslint-disable naming a reason after "--". A bare directive silences the
+rule without recording why. So every site in the repository is covered by one
+test or the other.
+
+Falsified both ways:
+
+  planted on app/page.tsx:
+    FAIL  finds it once, and only in ThresholdRail
+    +     "file": "app/page.tsx",
+    FAIL  counts the two known sites and no others
+
+  reason stripped from the gallery's directive:
+    FAIL  carries an eslint-disable with a written reason
+    unjustified injection sites: app/dev/rail-gallery/page.tsx:55,
+    app/dev/rail-gallery/page.tsx:71
+
+
+================================================================================
+SIZE
+================================================================================
+
+Framework floor 100,6 KiB, measured on next 15.5.25 / react 19.2.8.
+GATE A total first-load JS <= 125 KiB. GATE B delta <= 25 KiB over the floor.
+
+PUBLIC ROUTES - both gated, both pass:
+
+  route          js total   delta   css    fonts   verdict
+  /              100,7 KiB   +0,1   1,5    47,1    pass (A 24,3, B 24,9 spare)
+  /_not-found    101,5 KiB   +0,9   1,5    47,1    pass (A 23,5, B 24,1 spare)
+
+THE WORKBENCH, REPORTED SEPARATELY because it is not a public route and is
+excluded from the gates by segment:
+
+  /dev/composants  101,9 KiB  +1,3   2,6    47,1   not gated - would pass
+
+That +1,3 KiB is the whole component library measured on the one page that
+renders all of it: five components, lucide-react, eighteen states. It would
+pass both gates if it were public, with 23,1 and 23,7 KiB of spare.
+
+Other dev routes, for continuity: /dev/rail-gallery 100,7 (+0,1),
+/dev/rail-parity 102,7 (+2,1), /dev/spike 103,3 (+2,7).
+
+CSS is reported and never gated - it is not JS. Fonts are 47,1 KiB preloaded
+(latin subset), 130,2 KiB across 2 files on disk; woff2 is already compressed.
+Polyfills excluded at 38,6 KiB gzip, served nomodule.
+
+
+================================================================================
+DEVIATIONS
+================================================================================
+
+1. LEGALNOTE IS SECONDARY, NOT TERTIARY. The prompt says "Caption tertiary".
+   Ruling R58 says secondary, and the measurement agrees: #98A2B3 is 2,42:1
+   on the canvas and 2,58:1 on a card, failing AA at both bars. Setting the
+   legal disclaimer, of all text, in the one colour nobody can read would be
+   a poor joke. Implemented as R58.
+
+2. THE ZONEBADGE LABEL IS TEXT-PRIMARY, NOT THE WARNING COLOUR. The prompt
+   allows "the label inside the chip may use the warning colour at 15/500 on
+   its soft fill". Ruling R57 overrides it, and the measurement is why: that
+   pair is 3,42:1, and the same increment's AC2 demands a passing contrast
+   audit. The warning colour survives where it is legal - the icon, and the
+   Display rate.
+
+3. THE DIVERGENCE SENTENCE CARRIES NO NUMBER. SPEC 9.3 phrases the
+   explanatory line as naming the 10-DAY CAP. The cap belongs to the year's
+   RuleSet (SPEC 7.7), and a threshold written into copy is a second source
+   of truth that goes stale in silence - the sentence would still say ten
+   after the rule changed, and nothing would fail. "Le plafond annuel" says
+   the same thing and cannot drift. Same rule statuses.ts already carries.
+
+4. AXE RUNS VIA vitest-axe, NOT jest-axe. The prompt says jest-axe; vitest-axe
+   was already installed under R56 and is the same axe-core with a vitest
+   matcher. Reading it as the intent rather than the letter.
+
+5. THE RAIL'S VARIANT x ZONE BASELINES ARE NOT DUPLICATED ON THE WORKBENCH.
+   The prompt asks for a baseline per component per state. rail-gallery
+   already holds ten over that matrix, taken in the same container. A second
+   set would double the maintenance and halve the meaning of a diff - two
+   files to update and a reviewer asking which is the contract. The one rail
+   state rail-gallery does NOT cover, unavailable, is on the workbench.
+
+6. THE MINUS-SIGN E2E TEST WAS WRONG ON ITS FIRST RUN, and the page was
+   right. Read over the whole specimen it failed because the replacement
+   label "Jours au-dessus du seuil" contains a hyphen - as does any compound
+   French word. The claim was never "this card contains no hyphen"; it is
+   "the number carries no sign". Scoped to the figure.
+
+7. TWO TESTS WENT RED ON THEIR FIRST RUN AGAINST CORRECT COMPONENTS, both for
+   the same reason: renderToStaticMarkup escapes, so "l'AFC" reaches the
+   markup as "l&#x27;AFC" and a containment check against the French string
+   in lib/fr fails. Decoded in the test rather than escaping the expectation -
+   what a component owes is the text a READER sees. The helper moved to
+   tests/support/markup.ts on the second occurrence. It decodes &amp; LAST,
+   deliberately: decoding it first would turn "&amp;#x27;", a literal
+   ampersand a component correctly escaped, into an apostrophe and invent
+   text nobody rendered.
+
+8. pnpm test:a11y DID NOT EXIST. The prompt's final verification names it.
+   Added as "vitest run lib/ui/react/accessibility", so the command the
+   prompt specifies is the command that runs.
+
+9. types/vitest-axe.d.ts ADDED. vitest-axe 0.1.0 ships a "namespace Vi"
+   augmentation, which was the augmentation point up to vitest 2; vitest 5
+   uses "interface Matchers<R, T>" from the vitest module. The runtime half
+   always worked - only tsc complained. The type parameters are copied
+   verbatim because TypeScript requires a merged interface to declare
+   identical ones.
+
+
+================================================================================
+NOTICED BUT NOT TOUCHING
+================================================================================
+
+1. TWO DEAD eslint-disable DIRECTIVES, pre-existing. benchmark.test.ts:81 and
+   verification-trace.test.ts:83 both carry "eslint-disable-next-line
+   no-console" for a rule that is NOT ENABLED anywhere. They surface as
+   warnings on every lint run - exit code 0, so nothing blocks. The finding
+   underneath is not the noise: console output in tests is currently
+   unfenced, and two files believe otherwise. Confirmed pre-existing by
+   running eslint against HEAD's config before my changes.
+
+2. THE NEGATIVE METRIC LABEL LOSES WHICH THRESHOLD WAS PASSED. SPEC 9.3
+   stands four tiles side by side, two of which can go negative - "avant
+   40 %" and "avant 49,9 %". Replacing the label with "Jours au-dessus du
+   seuil" means two adjacent tiles could carry the same words while
+   describing different ceilings. FW12 may need a per-threshold phrasing.
+   Raised under QUESTIONS.
+
+3. THE RAIL TRACK IS 1,15:1 AGAINST THE CANVAS. #E4E7EC on #F7F8FA. Recorded
+   in the audit with its reasoning rather than omitted: it is the absence of
+   fill, and the reading is carried by the fill and the ticks. If you want it
+   to clear 3:1 it needs a different token, which is an ask-first item.
+
+4. THE WORKBENCH SPECIMEN CARDS USE flex: 1 1 auto. A pixel minimum width
+   would need a token that does not exist, and inventing one for a developer
+   page is a SPEC 20 ask-first item spent on the least important surface in
+   the product.
+
+5. app/(public)/ DOES NOT EXIST. Mentioned here as well as under INNERHTML
+   PROOF because more than one ruling may come to name it.
+
+
+================================================================================
+QUESTIONS FOR THE OPERATOR
+================================================================================
+
+Q1. THE PAT, R47 - AND THIS ONE NEEDS YOU.
+
+    At the last check the pasted token was NOT revoked: it returned HTTP 200
+    on /user. R47 asked me to confirm it returns 401 afterwards.
+
+    I CANNOT RE-CHECK IT. This session was compacted, and the token value is
+    no longer in my context. I will not ask you to paste it again - a token
+    that needs revoking should not be pasted a second time.
+
+    What I could verify, and did:
+
+      tracked files      no ghp_ / github_pat_ / ghs_ / gho_ pattern
+      history blobs      all 87 commits scanned, 0 matches
+      git config         no credential helper, no extraheader, no insteadOf
+      remote             plain https, no credential embedded in the URL
+
+    So the token never reached this repository. But it was live at the last
+    check, and only you can confirm it is dead. GitHub -> Settings ->
+    Developer settings -> Personal access tokens.
+
+Q2. A HAIRLINE TOKEN, following R62's precedent. Two components now draw a
+    1 px rule - RateDisplay's divider between the two rates, and LegalNote's
+    rule above the disclaimer - and no token means HAIRLINE. The three that
+    carry 1 px are named for a card, an input and a button. Both currently
+    use --size-card-border with the alias recorded at the site.
+
+    Two call sites is exactly how R62 began. Adding a token is a SPEC 20
+    ask-first item, so it is asked rather than done. --size-rule, or leave
+    the alias?
+
+Q3. THE NEGATIVE TILE LABEL. See NOTICED item 2. Should MetricTile keep the
+    threshold in the negative phrasing - "Jours au-dessus du seuil de 40 %",
+    composed by the caller from the RuleSet, the way the positive labels are
+    - or is one generic phrase right, on the grounds that the tiles sit in a
+    fixed order and the reader knows which is which?
+
+Q4. R60'S SCOPE. I read "app/(public)/" as "app/ except the dev routes",
+    because the directory does not exist and the literal reading makes the
+    app half of the rule vacuous. Confirm, or tell me to hold it literally
+    until app/(public)/ exists.
+
+Q5. THE SUITE FLOOR'S MAINTENANCE. I raised it on every increment that
+    changed the count - it now sits at 46 files / 831 tests. That keeps the
+    guard tight but puts a mechanical edit in most commits. The alternative
+    is raising it once per session. Which do you want?
+
+
+================================================================================
+FINAL VERIFICATION
+================================================================================
+
+Green in one chained run, so no failure could be followed by a pass:
+
+  pnpm typecheck && pnpm lint && pnpm test && pnpm test:e2e &&
+  pnpm test:visual && pnpm test:a11y && pnpm build && pnpm size
+
+  tsc --noEmit                        clean
+  eslint . && stylelint               0 errors (2 pre-existing warnings)
+  vitest run                          46 files, 831 tests passed
+  playwright --project=chromium       10 passed
+  playwright --project=visual         25 passed (in the container)
+  vitest run accessibility            19 passed
+  next build                          compiled successfully
+  check-budgets.mjs                   all gated routes pass both gates
+
+  CHAIN EXIT: 0
+
+Coverage gates hold: lib/calc-engine and lib/ui/core at 100 % statements,
+branches, functions and lines, per-directory, never averaged.
+
+
+================================================================================
+PUSH PROOF
+================================================================================
+
+origin/main at 70d122c, pushed. CI URLs listed under PRECONDITIONS; the run
+for the final commit is linked from the repository's Actions tab.
+
+  git log --oneline -11
+  70d122c FW8: a baseline for the one state that had none, and test:a11y
+  4b0a182 FW8: innerHTML uniqueness proof and size record
+  5e603cc FW8: workbench entries, baselines, contrast audit
+  8765142 FW8: MetricTile and LegalNote
+  dbff67c FW8: RateDisplay with the two-rate variant
+  2902916 test: canaries and a floor for the silent-suite failure (R63)
+  0d10e61 chore: a size token family for icons, dots and ticks (R62)
+  a681771 FW8: ZoneBadge, four statuses (R41, R56, R57)
+  4128064 FW8: ThresholdRail wrapper with HTML legend and guard
+  e0ea34d chore: the social card carries the zones themselves (R48)
+  d23b391 chore: rail corrections (R44, R45, R46) and the PAT check (R47)
+
+
+END OF REPORT-FW8.txt
