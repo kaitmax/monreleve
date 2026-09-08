@@ -1,4 +1,9 @@
-// web/app/(public)/mentions-legales/mentions-legales.module.scss
+// web/app/(public)/legal.module.scss
+//
+// ONE STYLESHEET FOR THE THREE LEGAL PAGES. They are the same document at
+// three lengths - a prose measure, one heading level, a definition list and
+// bullets - so two copies of these rules would be two things to keep in step,
+// and the one that drifted would be the page nobody reread.
 //
 // Tokens only. The prose measure is Container's `article` width - 680 px,
 // FD13:23, about 70 characters a line - so nothing here sets a width.
@@ -72,4 +77,20 @@
 
 .value {
   margin: 0;
+}
+
+// LISTS. list-style-position: inside would pull the marker into the measure
+// and make a wrapped bullet hang under its own dot; outside keeps the text
+// block aligned with the paragraphs above it, which is what a reader compares
+// it against.
+.bullets {
+  margin: 0 0 var(--space-4);
+  padding-left: var(--space-5);
+}
+
+.bullet {
+  margin-bottom: var(--space-3);
+  font-size: var(--type-body-l-size);
+  font-weight: var(--type-body-l-weight);
+  line-height: var(--type-body-l-line);
 }

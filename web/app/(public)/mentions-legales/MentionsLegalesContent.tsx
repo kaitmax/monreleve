@@ -28,7 +28,7 @@ import {
 } from '@/lib/content/legal-entity';
 import { LEGAL_ENTITY_TERMS, MENTIONS_LEGALES_COPY as COPY } from '@/lib/fr/mentions-legales';
 import { Container } from '@/lib/ui/react/Container/Container';
-import styles from './mentions-legales.module.scss';
+import styles from '../legal.module.scss';
 
 /** The identity block, in the order a reader looks for them. */
 const EDITOR_FIELDS = [
