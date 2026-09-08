@@ -189,3 +189,88 @@
     height: var(--size-button-height);
   }
 }
+
+// ---------------------------------------------------------------------------
+// THE FOOTER
+// ---------------------------------------------------------------------------
+
+.footer {
+  background: var(--colour-surface);
+  border-top: var(--size-rule) solid var(--colour-border-default);
+}
+
+.footerInner {
+  max-width: var(--layout-public);
+  margin: 0 auto;
+  padding: var(--space-12) var(--layout-gutter-mobile);
+}
+
+// Mobile-first: four STACKED sections, which is what the prompt asks for
+// below the breakpoint. The four-column grid arrives with the media query.
+.columns {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.columnHeading {
+  margin: 0 0 var(--space-3);
+  color: var(--colour-text-primary);
+  font-size: var(--type-label-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-label-line);
+}
+
+.columnList {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// 44 px rows, so every footer link is a legal tap target on a phone - SPEC 16
+// and FD2 both require it of anything tappable, and a footer full of 20 px
+// rows is the classic place that rule is forgotten.
+.footerLink {
+  display: flex;
+  align-items: center;
+  min-height: var(--size-icon-button);
+  color: var(--colour-text-secondary);
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  line-height: var(--type-body-line);
+  text-decoration: none;
+}
+
+// SECONDARY, NOT TERTIARY, and this is ruling R58 applied a second time.
+// FD11:93 and FD2 both set these two lines in #98A2B3 - which is
+// --colour-text-tertiary, 2,58:1 on white, failing BOTH the 4,5 and the 3,0
+// bar. R58 already moved LegalNote off tertiary for exactly that reason and
+// the contrast audit pins the measurement as a named test. Setting the legal
+// disclaimer and the review date - the two lines a reader most needs to be
+// able to read - in the one colour nobody can read would be a poor joke.
+.disclaimer,
+.review {
+  margin: var(--space-8) 0 0;
+  color: var(--colour-text-secondary);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  line-height: var(--type-caption-line);
+}
+
+.review {
+  margin-top: var(--space-2);
+}
+
+@media (width >= bp.$breakpoint-md) {
+  .footerInner {
+    padding: var(--space-16) var(--layout-gutter-desktop);
+  }
+
+  .columns {
+    flex-direction: row;
+    justify-content: space-between;
+    gap: var(--space-10);
+  }
+}

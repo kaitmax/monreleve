@@ -28,10 +28,14 @@
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { APP_NAME } from '@/lib/fr';
-import { SHELL_COPY, SHELL_NAV } from '@/lib/fr/shell';
+import { LAST_REGULATORY_REVIEW, reviewNotice } from '@/lib/content/regulatory';
+import { LEGAL_COPY } from '@/lib/fr/legal';
+import { FOOTER_COLUMNS, SHELL_COPY, SHELL_NAV } from '@/lib/fr/shell';
+import type { NavLink } from '@/lib/fr/shell';
+import { text } from '@/tests/support/markup';
 import { PublicShell } from './PublicShell';
 
 // Testing Library registers cleanup only under vitest globals, which this repo
@@ -43,10 +47,20 @@ const CHILD = 'Contenu de la page';
 
 const renderShell = () => render(<PublicShell>{CHILD}</PublicShell>);
 
-/** Every leaf destination the nav offers, disclosure children included. */
-const LEAVES = SHELL_NAV.flatMap((entry) =>
-  entry.children !== undefined ? [...entry.children] : entry.href !== undefined ? [entry] : [],
-);
+/**
+ * Every leaf destination the nav offers, disclosure children included.
+ *
+ * A NavEntry is NOT a NavLink - its href is optional, because a disclosure
+ * has none - so the entries that do have one are rebuilt as links rather than
+ * passed through. Spreading them straight in typechecks as
+ * `NavLink[] | NavEntry[]` and fails, which is the type doing its job: a
+ * disclosure has no destination and must not be treated as if it had.
+ */
+const LEAVES: readonly NavLink[] = SHELL_NAV.flatMap((entry) => {
+  if (entry.children !== undefined) return [...entry.children];
+
+  return entry.href === undefined ? [] : [{ label: entry.label, href: entry.href }];
+});
 
 describe('the landmarks', () => {
   it('emits a header and a named nav', () => {
@@ -178,15 +192,22 @@ describe('the Calculateurs disclosure', () => {
   });
 
   it('reveals its children only when expanded', () => {
+    // SCOPED TO THE HEADER NAV, and it has to be: the footer links to the same
+    // destinations by design - a test asserts that overlap below - so a
+    // document-wide query finds the footer's copy of this label while the
+    // disclosure is still collapsed. The first version of this test did
+    // exactly that and failed the moment the footer landed, against a
+    // correct component.
     renderShell();
 
     const child = SHELL_NAV[0]?.children?.[0]?.label ?? '';
+    const nav = () => screen.getByRole('navigation', { name: SHELL_COPY.navLabel });
 
-    expect(screen.queryByRole('link', { name: child })).toBeNull();
+    expect(within(nav()).queryByRole('link', { name: child })).toBeNull();
 
     fireEvent.click(disclosure());
 
-    expect(screen.getByRole('link', { name: child })).toBeDefined();
+    expect(within(nav()).getByRole('link', { name: child })).toBeDefined();
   });
 
   it('closes on Escape and RETURNS FOCUS to the trigger', () => {
@@ -300,5 +321,126 @@ describe('the stylesheet carries what jsdom cannot (R61)', () => {
     // 1,00:1 before the fix.
     expect(scss).toContain('var(--colour-brand)');
     expect(scss).toContain('var(--colour-surface)');
+  });
+});
+
+describe('the footer', () => {
+  it('is a landmark with its own named nav', () => {
+    // Two navs on one page need two names, or a screen reader's landmark list
+    // offers "navigation" twice with no way to tell them apart.
+    renderShell();
+
+    expect(screen.getByRole('contentinfo')).toBeDefined();
+    expect(screen.getByRole('navigation', { name: SHELL_COPY.footerNavLabel })).toBeDefined();
+  });
+
+  it('renders the four columns from lib/fr', () => {
+    renderShell();
+
+    const footer = screen.getByRole('contentinfo');
+
+    expect(FOOTER_COLUMNS).toHaveLength(4);
+    for (const column of FOOTER_COLUMNS) {
+      expect(within(footer).getByText(column.heading)).toBeDefined();
+    }
+  });
+
+  it('links every destination it declares', () => {
+    renderShell();
+
+    const footer = screen.getByRole('contentinfo');
+
+    for (const column of FOOTER_COLUMNS) {
+      for (const link of column.links) {
+        const found = within(footer).getAllByRole('link', { name: link.label });
+
+        expect(found[0]?.getAttribute('href'), link.label).toBe(link.href);
+      }
+    }
+  });
+
+  it('agrees with the header on where a shared label goes', () => {
+    // The footer and the nav both link to the calculator and the guides. Two
+    // hand-maintained lists WILL drift, and the drift is silent - a footer
+    // pointing at a moved route looks fine and 404s. FW10 increment 5 makes
+    // lib/content/routes.ts the one source for every public URL; until then
+    // this is what holds the two together.
+    const navHrefs = new Map<string, string>();
+
+    for (const entry of SHELL_NAV) {
+      for (const leaf of entry.children ?? (entry.href !== undefined ? [entry] : [])) {
+        if (leaf.href !== undefined) navHrefs.set(leaf.label, leaf.href);
+      }
+    }
+
+    const shared: string[] = [];
+
+    for (const column of FOOTER_COLUMNS) {
+      for (const link of column.links) {
+        const inNav = navHrefs.get(link.label);
+
+        if (inNav !== undefined) {
+          shared.push(link.label);
+          expect(link.href, `${link.label} differs between the nav and the footer`).toBe(inNav);
+        }
+      }
+    }
+
+    // Without this the loop above passes by finding no shared labels at all,
+    // which is the vacuous-green shape ruling R63 exists to catch.
+    expect(shared.length, 'the nav and the footer share no label').toBeGreaterThan(0);
+  });
+
+  it('carries the SAME disclaimer LegalNote renders, not a second wording', () => {
+    // SPEC 9.1:650 puts $legal-01 in the footer; FD11:93 prints a shorter
+    // sentence. The prompt's rule is that the spec wins on conflict, and one
+    // wording means one promise - a second, softer disclaimer in the footer
+    // would be the one a reader quotes back.
+    renderShell();
+
+    expect(text(screen.getByRole('contentinfo').textContent ?? '')).toContain(
+      LEGAL_COPY.standing,
+    );
+  });
+});
+
+describe('the review date never lies (R51)', () => {
+  it('renders the in-progress sentence while the gate is unrecorded', () => {
+    renderShell();
+
+    const footer = screen.getByRole('contentinfo');
+
+    expect(within(footer).getByText(SHELL_COPY.reviewPending)).toBeDefined();
+  });
+
+  it('shows NO date anywhere, because none has happened', () => {
+    // The reader-facing half. docs/checkpoint-a.md holds twelve unchecked
+    // boxes; until they are ticked a dd.mm.yyyy in this footer would be the
+    // most damaging string on the site - the claim most reasonably relied on,
+    // and false.
+    renderShell();
+
+    expect(screen.getByRole('contentinfo').textContent ?? '').not.toMatch(
+      /\d{2}\.\d{2}\.\d{4}/,
+    );
+  });
+
+  it('reads THE CONSTANT, with no prop to override it', () => {
+    // Structural, and it is the guarantee rather than a detail: a `review`
+    // prop would be exactly the channel through which a date that has not
+    // happened could reach the page. Comments stripped, for the reason
+    // MetricTile's equivalent records.
+    const source = readFileSync(join(DIR, 'PublicShell.tsx'), 'utf8');
+    const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+
+    expect(code).toContain('reviewNotice(LAST_REGULATORY_REVIEW)');
+    expect(code).not.toMatch(/readonly review/);
+
+    // And the rendered output must equal what the pure function returns for
+    // the real constant - so the two cannot diverge.
+    renderShell();
+    expect(screen.getByRole('contentinfo').textContent ?? '').toContain(
+      reviewNotice(LAST_REGULATORY_REVIEW),
+    );
   });
 });

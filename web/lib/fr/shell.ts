@@ -43,6 +43,27 @@ export const SHELL_COPY = {
   menuOpen: 'Ouvrir le menu',
   menuClose: 'Fermer le menu',
 
+  /** <footer> is a landmark too, and two navs need two names. */
+  footerNavLabel: 'Navigation de pied de page',
+
+  /**
+   * RULING R51. Shown while LAST_REGULATORY_REVIEW is null, which is until
+   * the operator records the Checkpoint A human gate. It carries NO DIGITS,
+   * asserted by test: any number in this sentence could be misread as the
+   * date it exists to avoid printing.
+   */
+  reviewPending: 'Vérification réglementaire en cours',
+
+  /**
+   * Shown once a review is recorded. Takes the date ALREADY FORMATTED by
+   * formatDate - Swiss dots, from an ISO day (R28) - because assembling a
+   * date here would be a second answer to how this product writes one.
+   *
+   * It names what the date means: "29.04.2026" alone in a footer is
+   * ambiguous between published, updated and reviewed.
+   */
+  reviewDone: (date: string): string => `Dernière vérification réglementaire : ${date}`,
+
   /** The single primary action. D14: it leads to the app, not to a signup. */
   cta: 'Suivre mes jours',
   ctaHref: '/application',
@@ -59,4 +80,60 @@ export const SHELL_NAV: readonly NavEntry[] = [
   { label: 'Guides', href: '/guides' },
   { label: 'Le relevé', href: '/releve' },
   { label: 'Tarifs', href: '/tarifs' },
+];
+
+// ---------------------------------------------------------------------------
+// THE FOOTER
+// ---------------------------------------------------------------------------
+//
+// WHICH DISCLAIMER, decided by the prompt's own precedence rule rather than by
+// preference. SPEC 9.1:650 says the footer carries "the standing disclaimer in
+// $legal-01" - which is LEGAL_COPY.standing, the four-clause sentence LegalNote
+// renders. FD11:93 prints a different, much shorter line. FW9's reading
+// instruction is "the spec wins on conflict", so the footer reuses $legal-01
+// and the briefs' shorter sentence is recorded as a deviation. It also means
+// the disclaimer has ONE home: a second wording would be a second promise.
+//
+// THE SITEMAP IS DATA HERE AND WILL MOVE. FW10 increment 5 builds
+// lib/content/routes.ts as "one source for every public URL", feeding the
+// sitemap, robots and this footer alike. Until then these four columns are the
+// only declaration, and the hrefs must match SHELL_NAV's - a test asserts the
+// overlap rather than trusting it.
+
+export interface FooterColumn {
+  readonly heading: string;
+  readonly links: readonly NavLink[];
+}
+
+export const FOOTER_COLUMNS: readonly FooterColumn[] = [
+  {
+    heading: 'Outils',
+    links: [
+      { label: 'Calculateur de télétravail', href: '/calculateur-teletravail-frontalier' },
+      { label: 'Comparateur LAMal / CMU', href: '/comparateur-lamal-cmu' },
+    ],
+  },
+  {
+    heading: 'Guides',
+    links: [
+      { label: 'Tous les guides', href: '/guides' },
+      { label: 'Le seuil de 40 %', href: '/guides/seuil-40-pourcent' },
+    ],
+  },
+  {
+    heading: 'Le produit',
+    links: [
+      { label: 'Le relevé', href: '/releve' },
+      { label: "L'application", href: '/application' },
+      { label: 'Tarifs', href: '/tarifs' },
+    ],
+  },
+  {
+    heading: 'Légal',
+    links: [
+      { label: 'Mentions légales', href: '/mentions-legales' },
+      { label: 'Confidentialité', href: '/confidentialite' },
+      { label: 'Sources', href: '/sources' },
+    ],
+  },
 ];

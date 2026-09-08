@@ -32,7 +32,9 @@
 import { Menu, X } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 import { APP_NAME } from '@/lib/fr';
-import { SHELL_COPY, SHELL_NAV } from '@/lib/fr/shell';
+import { LAST_REGULATORY_REVIEW, reviewNotice } from '@/lib/content/regulatory';
+import { LEGAL_COPY } from '@/lib/fr/legal';
+import { FOOTER_COLUMNS, SHELL_COPY, SHELL_NAV } from '@/lib/fr/shell';
 import type { NavEntry } from '@/lib/fr/shell';
 import styles from './PublicShell.module.scss';
 import { Wordmark } from './Wordmark';
@@ -188,6 +190,39 @@ export function PublicShell({ children }: PublicShellProps) {
       </header>
 
       {children}
+
+      <footer className={styles.footer}>
+        <div className={styles.footerInner}>
+          <nav className={styles.columns} aria-label={SHELL_COPY.footerNavLabel}>
+            {FOOTER_COLUMNS.map((column) => (
+              <div className={styles.column} key={column.heading}>
+                <h2 className={styles.columnHeading}>{column.heading}</h2>
+                <ul className={styles.columnList}>
+                  {column.links.map((link) => (
+                    <li key={link.href}>
+                      <a className={styles.footerLink} href={link.href}>
+                        {link.label}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </nav>
+
+          {/* THE SAME sentence LegalNote renders. SPEC 9.1:650 puts
+              $legal-01 in the footer, and FD11 prints a shorter line -
+              the prompt says the spec wins on conflict, and one wording
+              means one promise. */}
+          <p className={styles.disclaimer}>{LEGAL_COPY.standing}</p>
+
+          {/* RULING R51. The constant, and nothing a caller chose: there is
+              no prop here on purpose, because a prop would be the channel
+              through which a date that has not happened could reach the
+              page. Null renders the in-progress sentence. */}
+          <p className={styles.review}>{reviewNotice(LAST_REGULATORY_REVIEW)}</p>
+        </div>
+      </footer>
     </>
   );
 }
