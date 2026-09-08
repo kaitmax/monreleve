@@ -4,12 +4,11 @@
 .note {
   margin: 0;
 
-  // --size-card-border, the same alias RateDisplay records: no token means
-  // HAIRLINE, and the three that carry 1px are named for a card, an input and
-  // a button. Second call site, which is how ruling R62 began. Raised in the
-  // report as a question - adding a token is a SPEC 20 ask-first item.
+  // --size-rule, ruling R69. This was the second site aliasing
+  // --size-card-border for a hairline; six of them accumulated before the
+  // ruling landed, which is how R62 began too.
   padding-top: var(--space-4);
-  border-top: var(--size-card-border) solid var(--colour-border-default);
+  border-top: var(--size-rule) solid var(--colour-border-default);
 
   // RULING R58 over the prompt's "Caption tertiary". Measured: tertiary is
   // 2,42:1 on the canvas and fails AA at both sizes. Secondary is 4,68:1.

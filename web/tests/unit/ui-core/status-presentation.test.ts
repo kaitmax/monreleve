@@ -12,7 +12,7 @@
 // icon name that does not exist in lucide-react.
 
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { compileString } from 'sass';
 import { icons } from 'lucide-react';
 import { describe, expect, expectTypeOf, it } from 'vitest';
@@ -32,7 +32,11 @@ const ALL_ZONES = ['compliant', 'fiscal-exposure', 'social-switch'] as const;
 /** Every custom property the compiled token layer actually defines. */
 function tokenNames(): Set<string> {
   const tokens = join(process.cwd(), 'lib', 'ui', 'core', 'styles', 'tokens.scss');
-  const { css } = compileString(readFileSync(tokens, 'utf8'));
+  const { css } = compileString(readFileSync(tokens, 'utf8'), {
+    // loadPaths: tokens.scss @forwards _breakpoints.scss since R68, and
+    // compileString cannot resolve that without a path.
+    loadPaths: [dirname(tokens)],
+  });
 
   return new Set([...css.matchAll(/(--[a-z0-9-]+)\s*:/g)].map((match) => match[1] ?? ''));
 }

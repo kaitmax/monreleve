@@ -13,12 +13,13 @@
 // a pattern. So the count is pinned, and a second site is a failing test
 // rather than something a reviewer has to notice.
 //
-// RULING R60 SETS THE SCOPE: lib/ and app/(public)/. app/(public)/ does not
-// exist yet - the public routes today are app/layout.tsx and app/page.tsx at
-// the root - so the scope is read as "lib/, and app/ except the dev routes",
-// which covers what exists now and picks up app/(public)/ on the day it
-// appears. Reading it literally as a path that does not exist would make the
-// app half of the rule vacuous, which is the opposite of what a scope is for.
+// RULING R60 SETS THE SCOPE, AND R74 CONFIRMS THE READING: lib/, and app/
+// except app/dev/. R60 named app/(public)/, which does not exist yet - the
+// public routes today are app/layout.tsx and app/page.tsx at the root - so
+// this was implemented as "app/ except the dev routes" and carried to the
+// operator as a question. R74 confirmed it, so the reading is no longer an
+// interpretation: a literal app/(public)/ would have made the app half of the
+// rule vacuous until FW10 created the directory.
 //
 // app/dev/rail-gallery is deliberately outside it: a screenshot harness
 // rendering a string this suite has already proved is escaped, not product

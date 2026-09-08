@@ -25,7 +25,7 @@
 // one is expected to stay an absence rather than to graduate into a mirror.
 
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { compileString } from 'sass';
 import { describe, expect, it } from 'vitest';
 
@@ -34,7 +34,12 @@ const root = process.cwd();
 /** Every custom property the compiled token layer actually defines. */
 function tokens(): Record<string, string> {
   const source = join(root, 'lib', 'ui', 'core', 'styles', 'tokens.scss');
-  const { css } = compileString(readFileSync(source, 'utf8'));
+  const { css } = compileString(readFileSync(source, 'utf8'), {
+    // loadPaths, because tokens.scss now @forwards _breakpoints.scss and
+    // compileString cannot resolve a relative load without one. Compiling it
+    // with no load path only worked while the file had no dependencies.
+    loadPaths: [dirname(source)],
+  });
   const found: Record<string, string> = {};
 
   for (const match of css.matchAll(/(--[a-z0-9-]+)\s*:\s*([^;}]+)/g)) {

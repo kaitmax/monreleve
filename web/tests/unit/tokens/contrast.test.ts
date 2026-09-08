@@ -29,7 +29,7 @@
 // same silent-coverage failure ruling R63 addresses for the test globs.
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { compileString } from 'sass';
 import { describe, expect, it } from 'vitest';
 import { STATUS_VISUAL, ZONE_BAND_TOKEN } from '@/lib/ui/core';
@@ -43,7 +43,12 @@ const NON_TEXT = 3;
 /** Every custom property the compiled token layer actually defines. */
 function tokens(): Record<string, string> {
   const source = join(root, 'lib', 'ui', 'core', 'styles', 'tokens.scss');
-  const { css } = compileString(readFileSync(source, 'utf8'));
+  const { css } = compileString(readFileSync(source, 'utf8'), {
+    // loadPaths, because tokens.scss now @forwards _breakpoints.scss and
+    // compileString cannot resolve a relative load without one. Compiling it
+    // with no load path only worked while the file had no dependencies.
+    loadPaths: [dirname(source)],
+  });
   const found: Record<string, string> = {};
 
   for (const match of css.matchAll(/(--[a-z0-9-]+)\s*:\s*([^;}]+)/g)) {
@@ -250,15 +255,38 @@ interface Painted {
    * is an exemption.
    */
   readonly bg: string | undefined;
+  /** Every background this rule is audited against, per ruling R76. */
+  readonly backgrounds: readonly string[];
+  readonly resolvedFrom: 'own' | 'ancestor' | 'page';
 }
 
 /**
- * Selectors whose background is NOT one of the two surfaces. They sit on a
- * status soft fill, which the hand table audits against the right background;
- * auditing them against the canvas as well would report a failure that no
- * reader can see.
+ * The EFFECTIVE background for selectors whose ancestor paints one that this
+ * stylesheet cannot see - ruling R76: "resolves the EFFECTIVE background, the
+ * nearest self-painted ancestor, never the page surface. No exemption list
+ * exists."
+ *
+ * THIS REPLACED AN EXEMPTION LIST, and the difference is the whole point. The
+ * previous version held `['.chip', '.icon']` and SKIPPED those rules, on the
+ * ground that the hand table audits them against the right background. That
+ * reasoning was true and the mechanism was still wrong: a skip is invisible
+ * once written, so the day someone adds a third rule inside the chip it is
+ * exempt too, silently, and nobody re-reads the comment explaining why.
+ *
+ * Redirecting instead of skipping means every rule is audited, just against
+ * the correct background. ZoneBadge's chip takes its fill inline from
+ * STATUS_VISUAL - keyed by Status, so the stylesheet genuinely cannot know it -
+ * and `.icon` inherits that same fill from the chip, which is what "nearest
+ * self-painted ancestor" resolves to. Four statuses, so four backgrounds each.
+ *
+ * An entry here ADDS assertions. A test below asserts that no rule is dropped,
+ * so this cannot decay back into an exemption list by another name.
  */
-const NOT_ON_A_SURFACE = ['.chip', '.icon'];
+const ANCESTOR_BACKGROUND: Record<string, readonly string[]> = {
+  // The chip paints itself from STATUS_VISUAL; the icon sits inside it.
+  '.chip': Object.values(STATUS_VISUAL).map((visual) => visual.softColourToken),
+  '.icon': Object.values(STATUS_VISUAL).map((visual) => visual.softColourToken),
+};
 
 function paintedRules(): Painted[] {
   const found: Painted[] = [];
@@ -278,7 +306,7 @@ function paintedRules(): Painted[] {
 
       const selector = block.slice(0, block.indexOf('{')).trim().split(/\s+/).pop() ?? '';
 
-      if (NOT_ON_A_SURFACE.some((skip) => selector.startsWith(skip))) continue;
+      // No `continue` here any more, and that is R76: nothing is skipped.
 
       // The background declared in this same block, if any. Either shorthand,
       // and only a token is usable - a gradient or an image has no single
@@ -295,11 +323,22 @@ function paintedRules(): Painted[] {
         size !== undefined &&
         (size >= LARGE_PX || (size >= LARGE_BOLD_PX && (weight ?? 0) >= BOLD));
 
+      // The effective background, in the order R76 specifies: what this rule
+      // paints itself, else what its nearest self-painted ancestor paints,
+      // else the page - which is the only case where "either surface" is the
+      // honest answer, because the component genuinely could sit on both.
+      const inherited = ANCESTOR_BACKGROUND[selector];
+      const backgrounds =
+        declared !== undefined ? [declared] : (inherited ?? SURFACES);
+
       found.push({
         where: `${name} ${selector}`,
         fg: colour[1],
         gate: large ? LARGE_TEXT : NORMAL_TEXT,
         bg: declared,
+        backgrounds,
+        resolvedFrom:
+          declared !== undefined ? 'own' : inherited !== undefined ? 'ancestor' : 'page',
       });
     }
   }
@@ -334,9 +373,7 @@ describe('every colour rule in the five stylesheets, at the bar its size implies
   // removed the highest-contrast element in the product from the audit
   // entirely, which is the opposite of what an exemption should ever buy.
   for (const rule of rules) {
-    const backgrounds = rule.bg === undefined ? SURFACES : [rule.bg];
-
-    for (const background of backgrounds) {
+    for (const background of rule.backgrounds) {
       it(`${rule.where} (${rule.fg}) on ${background} clears ${rule.gate}:1`, () => {
         const ratio = contrast(rule.fg, background);
 
@@ -348,25 +385,45 @@ describe('every colour rule in the five stylesheets, at the bar its size implies
     }
   }
 
-  it('exercises BOTH branches, so neither is dead code that looks alive', () => {
-    // The mechanism, asserted rather than left implicit in the loop above: if
-    // every rule declared a background, SURFACES would never be exercised; if
-    // none did, the self-painted branch would be dead and the audit would
-    // silently be back to its old, wrong behaviour the next time a component
-    // paints a fill.
-    const painted = rules.filter((rule) => rule.bg !== undefined);
-    const inherited = rules.filter((rule) => rule.bg === undefined);
+  it('resolves every rule to a background, and SKIPS NOTHING (R76)', () => {
+    // The guard against the exemption list coming back. R76: "resolves the
+    // EFFECTIVE background - the nearest self-painted ancestor - never the
+    // page surface. No exemption list exists."
+    //
+    // Before R76 this scan held ['.chip', '.icon'] and `continue`d past them.
+    // The reasoning was sound - the hand table covers those pairs - but a skip
+    // is invisible once written, so a third rule added inside the chip would
+    // have been exempt too, silently. Redirecting keeps every rule audited.
+    for (const rule of rules) {
+      expect(
+        rule.backgrounds.length,
+        `${rule.where} resolved to no background at all`,
+      ).toBeGreaterThan(0);
 
-    expect(painted.length, 'no rule declares its own background').toBeGreaterThan(0);
-    expect(inherited.length, 'every rule declares a background').toBeGreaterThan(0);
-
-    // A DECLARED background may perfectly well BE one of the page surfaces -
-    // FieldGroup's input sets background: var(--colour-surface), which is
-    // correct. The first version of this test asserted the opposite and
-    // failed on that rule. What matters is not which colour it is, but that
-    // the audit uses the declared one INSTEAD OF guessing both.
-    for (const rule of painted) {
-      expect(rule.bg, `${rule.where} declared a background`).toMatch(/^--colour-/);
+      for (const background of rule.backgrounds) {
+        expect(background, `${rule.where} -> ${background}`).toMatch(/^--colour-/);
+      }
     }
+  });
+
+  it('exercises all THREE resolutions, so none is dead code that looks alive', () => {
+    // own      the rule paints its own background - PublicShell's CTA, and
+    //          FieldGroup's input, which correctly declares --colour-surface
+    // ancestor the nearest self-painted ancestor paints it, and this
+    //          stylesheet cannot see it - ZoneBadge's chip takes its fill
+    //          inline from STATUS_VISUAL, and .icon inherits it
+    // page     nothing above paints one, so the component could sit on either
+    //          surface and both are audited
+    //
+    // If any of the three were empty, that branch would be untested and the
+    // audit would silently revert to its old behaviour the next time a
+    // component used it.
+    const counted = { own: 0, ancestor: 0, page: 0 };
+
+    for (const rule of rules) counted[rule.resolvedFrom] += 1;
+
+    expect(counted.own, 'no rule paints its own background').toBeGreaterThan(0);
+    expect(counted.ancestor, 'no rule inherits an ancestor background').toBeGreaterThan(0);
+    expect(counted.page, 'no rule falls through to the page surfaces').toBeGreaterThan(0);
   });
 });

@@ -10,7 +10,7 @@
 // stray value fails here.
 
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { compileString } from 'sass';
 import { describe, expect, it } from 'vitest';
 
@@ -30,7 +30,12 @@ const EXPECTED_RADIUS = {
 } as const;
 
 function compiledCustomProperties(): Map<string, string> {
-  const { css } = compileString(readFileSync(TOKENS, 'utf8'), { loadPaths: [] });
+  // loadPaths is no longer empty: tokens.scss @forwards _breakpoints.scss
+  // since ruling R68, and compileString cannot resolve that without a path.
+  // The empty array was correct only while the file had no dependencies -
+  // and it read as a deliberate "this file loads nothing", which is exactly
+  // the assumption that broke. Every token test needed the same change.
+  const { css } = compileString(readFileSync(TOKENS, 'utf8'), { loadPaths: [dirname(TOKENS)] });
   const found = new Map<string, string>();
   for (const match of css.matchAll(/(--[a-z0-9-]+)\s*:\s*([^;}]+)/g)) {
     const name = match[1];

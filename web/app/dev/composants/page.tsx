@@ -25,8 +25,9 @@ import type { Metadata } from 'next';
 import { ruleSetFor } from '@/lib/calc-engine';
 import { WORKBENCH_TITLE } from '@/lib/fr';
 import { errorMessage } from '@/lib/fr/errors';
+import { METRIC_COPY } from '@/lib/fr/metrics';
 import { WORKBENCH } from '@/lib/fr/workbench';
-import { formatDays, formatSignedDays } from '@/lib/ui/core';
+import { formatDays, formatPercent, formatSignedDays } from '@/lib/ui/core';
 import { DataGrid } from '@/lib/ui/react/DataGrid/DataGrid';
 import { FieldGroup } from '@/lib/ui/react/FieldGroup/FieldGroup';
 import { LegalNote } from '@/lib/ui/react/LegalNote/LegalNote';
@@ -73,6 +74,12 @@ const GRID_TOTAL = {
 };
 
 const FIELD_ERROR = errorMessage({ code: 'NEGATIVE_DAYS', field: 'teleworkDays' });
+
+// RULING R73: both tile labels name their ceiling, and the ceiling is
+// formatted from the RuleSet rather than written as a literal. This is what a
+// caller is expected to do - MetricTile owns no copy.
+const FISCAL = formatPercent(RULES.fiscalCeiling * 100);
+const SOCIAL = formatPercent(RULES.socialCeiling * 100);
 
 function Specimen({
   id,
@@ -213,11 +220,19 @@ export default function WorkbenchPage() {
         <h2>{WORKBENCH.metric.title}</h2>
         <div className={styles.specimens}>
           <Specimen id="metric-positive" caption={WORKBENCH.metric.positive}>
-            <MetricTile label={WORKBENCH.metric.label} days={formatSignedDays(12.5)} />
+            <MetricTile
+              label={METRIC_COPY.remaining(FISCAL)}
+              overLabel={METRIC_COPY.over(FISCAL)}
+              days={formatSignedDays(12.5)}
+            />
           </Specimen>
           {/* SPEC 7.2 step 6: six days OVER, never a minus sign. */}
           <Specimen id="metric-negative" caption={WORKBENCH.metric.negative}>
-            <MetricTile label={WORKBENCH.metric.label} days={formatSignedDays(-6)} />
+            <MetricTile
+              label={METRIC_COPY.remaining(SOCIAL)}
+              overLabel={METRIC_COPY.over(SOCIAL)}
+              days={formatSignedDays(-6)}
+            />
           </Specimen>
         </div>
       </section>

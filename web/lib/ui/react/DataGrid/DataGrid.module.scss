@@ -7,10 +7,10 @@
 // would be a promise this component does not keep: a column that looks
 // sortable and is not is worse than one that plainly is not.
 //
-// --size-card-border for the rules, the same alias RateDisplay and LegalNote
-// record: no token means HAIRLINE, and the three that carry 1 px are named
-// for a card, an input and a button. Third and fourth call sites now.
-// Carried into the report as a question.
+// --size-rule for the hairlines, ruling R69. These were the third and fourth
+// sites aliasing --size-card-border for something that is not a card border;
+// a rule between two rows of a table and the edge of a card are different
+// decisions that happen to be the same pixel today.
 
 @use "../../core/styles/fonts";
 
@@ -32,19 +32,22 @@
   text-align: left;
 }
 
+// A column header is a LABEL - 13/18/500 - and used to be composed here out of
+// Caption's size and Body-M's weight. Ruling R70 gave that pairing its own
+// name, and the R70 test found this site: I had only noticed FieldGroup's.
 .header {
   padding: var(--space-2) var(--space-3);
-  border-bottom: var(--size-card-border) solid var(--colour-border-strong);
+  border-bottom: var(--size-rule) solid var(--colour-border-strong);
   color: var(--colour-text-secondary);
-  font-size: var(--type-caption-size);
-  font-weight: var(--type-body-m-weight);
-  line-height: var(--type-caption-line);
+  font-size: var(--type-label-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-label-line);
   text-align: left;
 }
 
 .cell {
   padding: var(--space-2) var(--space-3);
-  border-bottom: var(--size-card-border) solid var(--colour-border-default);
+  border-bottom: var(--size-rule) solid var(--colour-border-default);
 }
 
 // The empty state's one row. Centred because it is a message rather than a

@@ -17,7 +17,7 @@
 // a defect, and identically for all three zones.
 
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { compileString } from 'sass';
 import { describe, expect, it } from 'vitest';
 import { ruleSetFor } from '@/lib/calc-engine';
@@ -62,7 +62,11 @@ const render = (patch: Partial<RailData> = {}): string => renderRailSvg(data(pat
 /** Every custom property the compiled token layer defines. */
 function definedTokens(): Set<string> {
   const source = join(process.cwd(), 'lib', 'ui', 'core', 'styles', 'tokens.scss');
-  const { css } = compileString(readFileSync(source, 'utf8'));
+  const { css } = compileString(readFileSync(source, 'utf8'), {
+    // loadPaths: tokens.scss @forwards _breakpoints.scss since R68, and
+    // compileString cannot resolve that without a path.
+    loadPaths: [dirname(source)],
+  });
 
   return new Set([...css.matchAll(/(--[a-z0-9-]+)\s*:/g)].map((m) => m[1] ?? ''));
 }

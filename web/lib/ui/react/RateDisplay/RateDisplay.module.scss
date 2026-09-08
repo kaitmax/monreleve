@@ -53,13 +53,11 @@
   margin-top: var(--space-4);
   padding-top: var(--space-4);
 
-  // --size-card-border, not a rule of its own: no token means HAIRLINE, and
-  // the three that carry 1px are named for a card, an input and a button.
-  // This is the semantic aliasing ruling R62 was issued about, and LegalNote
-  // in the next increment needs the same 1px rule - two call sites, which is
-  // how R62 started. Raised in the report as a QUESTION rather than settled
-  // here: adding a token is a SPEC 20 ask-first item.
-  border-top: var(--size-card-border) solid var(--colour-border-default);
+  // --size-rule, ruling R69. This was the FIRST site to reach for
+  // --size-card-border as a hairline, and the comment here predicted the
+  // rest: "LegalNote in the next increment needs the same 1px rule - two
+  // call sites, which is how R62 started." It reached six.
+  border-top: var(--size-rule) solid var(--colour-border-default);
 }
 
 .rawRate {

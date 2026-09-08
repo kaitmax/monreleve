@@ -31,7 +31,8 @@ import { axe } from 'vitest-axe';
 import * as matchers from 'vitest-axe/matchers';
 import { ruleSetFor } from '@/lib/calc-engine';
 import { errorMessage } from '@/lib/fr/errors';
-import { formatDays, formatSignedDays } from '@/lib/ui/core';
+import { METRIC_COPY } from '@/lib/fr/metrics';
+import { formatDays, formatPercent, formatSignedDays } from '@/lib/ui/core';
 import type { Status, Zone } from '@/lib/ui/core';
 import { DataGrid } from './DataGrid/DataGrid';
 import { FieldGroup } from './FieldGroup/FieldGroup';
@@ -74,6 +75,11 @@ const RATE: Record<Zone, number> = {
 const RAIL_WIDTH = 376;
 
 const HELPER = 'Journees entieres uniquement.';
+
+// R73: both tile labels come from the caller and name their ceiling.
+const TILE_THRESHOLD = formatPercent(RULES.fiscalCeiling * 100);
+const TILE_LABEL = METRIC_COPY.remaining(TILE_THRESHOLD);
+const TILE_OVER = METRIC_COPY.over(TILE_THRESHOLD);
 const FIELD_ERROR = errorMessage({ code: 'NEGATIVE_DAYS', field: 'teleworkDays' });
 
 const FIELD = (id: string, props: { helper?: string; error?: string } = {}) => (
@@ -142,11 +148,11 @@ const STATES: readonly State[] = [
   },
   {
     name: 'MetricTile positive',
-    node: <MetricTile label="Jours restants" days={formatSignedDays(12.5)} />,
+    node: <MetricTile label={TILE_LABEL} overLabel={TILE_OVER} days={formatSignedDays(12.5)} />,
   },
   {
     name: 'MetricTile negative',
-    node: <MetricTile label="Jours restants" days={formatSignedDays(-6)} />,
+    node: <MetricTile label={TILE_LABEL} overLabel={TILE_OVER} days={formatSignedDays(-6)} />,
   },
   { name: 'LegalNote', node: <LegalNote /> },
 

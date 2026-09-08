@@ -1,0 +1,28 @@
+// web/lib/ui/core/styles/_breakpoints.scss
+//
+// The breakpoints, and NOTHING ELSE. This file emits no CSS.
+//
+// WHY IT IS SEPARATE FROM tokens.scss, measured rather than assumed. Ruling
+// R68 authorises $breakpoint-md in the token layer, and a breakpoint cannot be
+// a custom property - a media query condition is evaluated before and outside
+// any element, so `@media (width >= var(--bp))` never matches. So consumers
+// have to reach a SASS variable, which means `@use`.
+//
+// `@use "tokens"` from a CSS Module emits that module's CSS as well as its
+// variables. Compiled directly, Container.module.scss with `@use "tokens"`
+// produced a full :root block and 4 386 bytes - the entire token layer,
+// duplicated into one component's stylesheet, and again into every other
+// component that needed the breakpoint.
+//
+// A partial holding only variable declarations emits nothing, so this is the
+// file components @use. tokens.scss @forwards it, so the VALUE still has one
+// home and `@use "tokens" as t; t.$breakpoint-md` also resolves - which is
+// what R68's "in the COMPONENT METRICS block" asks for.
+//
+// tests/unit/tokens/component-metrics.test.ts asserts the value, asserts no
+// --breakpoint-* custom property is emitted, and asserts this file emits no
+// CSS at all.
+
+// 768: the FW9 prompt's mobile switch ("Mobile (< 768)"). FD2 is the brief
+// below it, FD1 and FD11 above.
+$breakpoint-md: 768px;

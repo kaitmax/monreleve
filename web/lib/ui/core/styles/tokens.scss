@@ -126,6 +126,28 @@ $type-caption-weight: 400;
 $type-micro-size: 11px;
 $type-micro-line: 14px;
 $type-micro-weight: 500;
+
+// TWO PAIRINGS THE SCALE DID NOT OFFER, ruling R70.
+//
+// The scale gives each size one weight - 13 with 400 (Caption), 15 with 500
+// (Body-M), 17 with 400 (Body-L) - and two elements want a pairing that is not
+// on that list. Before R70 they were COMPOSED across families: FieldGroup's
+// label took Caption's size and Body-M's weight.
+//
+// That is not merely untidy. It means a change to Body-M's weight silently
+// restyles every label in the product, and the two halves of one decision sit
+// on different lines where nobody reviewing the label sees both.
+//
+// label     13/18/500  DESIGN-SYSTEM.md:38, "label 13/500 6 px above";
+//                      Frontier section 19.
+// wordmark  17/26/600  product-specific, one element - the header wordmark.
+//                      Body-L's size with a semibold weight Body-L lacks.
+$type-label-size: 13px;
+$type-label-line: 18px;
+$type-label-weight: 500;
+$type-wordmark-size: 17px;
+$type-wordmark-line: 26px;
+$type-wordmark-weight: 600;
 $weight-regular: 400;
 $weight-medium: 500;
 $weight-semibold: 600;
@@ -179,6 +201,53 @@ $size-input-border-focus: 2px;
 $size-card-padding: 16px;
 $size-card-status-padding: 24px;
 $size-card-border: 1px;
+
+// THE WEB HEADER, ruling R68. FD1:24 and FD11:24 (the desktop briefs) give 64;
+// FD2:28 (the mobile brief) gives 56, with FD2:31's CTA at a compact 40.
+//
+// DISTINCT NAMES EVEN WHERE THE VALUES COINCIDE, which is R68's own wording.
+// 56 is also $size-button-large-height and 40 is also $size-button-text-height,
+// and borrowing either would couple the header to a button: change the large
+// button to 60 and the mobile header follows it silently. That is the alias
+// abuse R62 was issued about, one layer up.
+$size-header-height: 64px;
+$size-header-height-mobile: 56px;
+$size-button-compact-height: 40px;
+
+// A HAIRLINE, ruling R69. Four product sites were aliasing $size-card-border
+// for something that is not a card border - RateDisplay's divider,
+// LegalNote's rule, and DataGrid's header and body rules - and the header's
+// bottom border and the footer's top rule would have made six. A card border
+// and a rule between two table rows are different decisions that happen to be
+// the same pixel today.
+$size-rule: 1px;
+
+// ---------------------------------------------------------------------------
+// BREAKPOINTS - SASS ONLY, and this is a mechanism constraint rather than a
+// preference (ruling R68).
+//
+// A media query CONDITION cannot read a custom property. `var()` is resolved
+// per element at compute time, and a media query is evaluated before and
+// outside any element, so `@media (width >= var(--breakpoint-md))` does not
+// merely look odd - it never matches. Emitting a --breakpoint-* custom
+// property would therefore publish something that looks available and fails
+// silently at the one place anyone would reach for it.
+//
+// So it stays a Sass variable and is NOT mirrored below.
+//
+// IT LIVES IN _breakpoints.scss AND IS FORWARDED FROM HERE, which is a size
+// decision measured rather than guessed. Consumers need @use to reach a Sass
+// variable, and `@use "tokens"` emits this file s CSS too: compiled directly,
+// Container.module.scss with `@use "tokens"` produced a full :root block and
+// 4 386 bytes - the whole token layer duplicated into one component, and again
+// into every other component that needed the breakpoint. A partial holding
+// only variables emits nothing.
+//
+// The value therefore has one home, components @use "breakpoints", and
+// `@use "tokens" as t; t.$breakpoint-md` still resolves through the forward.
+// ---------------------------------------------------------------------------
+@forward "breakpoints";
+
 $size-sheet-grip-width: 36px;
 $size-sheet-grip-height: 4px;
 $size-sheet-option-min: 52px;
@@ -302,6 +371,12 @@ $motion-toast-max: 5000ms;
   --type-micro-size: #{$type-micro-size};
   --type-micro-line: #{$type-micro-line};
   --type-micro-weight: #{$type-micro-weight};
+  --type-label-size: #{$type-label-size};
+  --type-label-line: #{$type-label-line};
+  --type-label-weight: #{$type-label-weight};
+  --type-wordmark-size: #{$type-wordmark-size};
+  --type-wordmark-line: #{$type-wordmark-line};
+  --type-wordmark-weight: #{$type-wordmark-weight};
   --weight-regular: #{$weight-regular};
   --weight-medium: #{$weight-medium};
   --weight-semibold: #{$weight-semibold};
@@ -336,6 +411,13 @@ $motion-toast-max: 5000ms;
   --size-card-padding: #{$size-card-padding};
   --size-card-status-padding: #{$size-card-status-padding};
   --size-card-border: #{$size-card-border};
+  --size-header-height: #{$size-header-height};
+  --size-header-height-mobile: #{$size-header-height-mobile};
+  --size-button-compact-height: #{$size-button-compact-height};
+  --size-rule: #{$size-rule};
+
+  // $breakpoint-md is deliberately NOT mirrored here. See the BREAKPOINTS
+  // block above: a media query condition cannot read var().
   --size-sheet-grip-width: #{$size-sheet-grip-width};
   --size-sheet-grip-height: #{$size-sheet-grip-height};
   --size-sheet-option-min: #{$size-sheet-option-min};

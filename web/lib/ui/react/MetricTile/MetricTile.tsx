@@ -20,26 +20,44 @@
 // Status colours are inline because they are keyed by a union that
 // zone-tokens.ts owns; this is a binary variant, so the markup carries the
 // state and the stylesheet carries the paint.
+//
+// RULING R73 - IT OWNS NO COPY. Both labels arrive from the caller, which is
+// the only layer holding the year's RuleSet. It used to substitute a constant
+// of its own on a negative - "Jours au-dessus du seuil" - which reads fine in
+// isolation and is wrong in place: SPEC 9.3 stands two negative-capable tiles
+// side by side, so both would have carried identical words about different
+// ceilings and a reader could not tell which limit had been passed.
+//
+// BOTH LABELS ARE REQUIRED, not one required and one optional. SPEC 7.2 step 6
+// makes "a negative figure never appears under a remaining label" a product
+// invariant, and an optional over-label would let a caller ship exactly that
+// by omission. The type is what forbids it - the same reasoning as Container's
+// closed union and FieldGroup's render prop.
 
 import type { SignedDays } from '@/lib/ui/core';
-import { METRIC_COPY } from '@/lib/fr/metrics';
 import styles from './MetricTile.module.scss';
 
 export interface MetricTileProps {
   /**
-   * The ordinary label. A prop rather than a lib/fr constant because two of
-   * SPEC 9.3's four tiles name a threshold, and a threshold belongs to the
-   * year's RuleSet (SPEC 7.7) - never to copy, where it would go stale in
-   * silence.
+   * The ordinary label, naming its ceiling. Built by the caller from
+   * METRIC_COPY.remaining and a formatPercent of the RuleSet value: a
+   * threshold belongs to the rules (SPEC 7.7), never to copy, where it goes
+   * stale in silence after a rule change with nothing failing.
    */
   readonly label: string;
+  /**
+   * Shown INSTEAD of the ordinary label when the headroom is negative, and
+   * naming the same ceiling - METRIC_COPY.over of the same formatted
+   * threshold. Required; see the module comment.
+   */
+  readonly overLabel: string;
   readonly days: SignedDays;
 }
 
-export function MetricTile({ label, days }: MetricTileProps) {
+export function MetricTile({ label, overLabel, days }: MetricTileProps) {
   return (
     <div className={styles.root}>
-      <p className={styles.label}>{days.negative ? METRIC_COPY.over : label}</p>
+      <p className={styles.label}>{days.negative ? overLabel : label}</p>
       <p className={styles.figure} data-negative={days.negative}>
         {days.text}
       </p>

@@ -9,13 +9,11 @@
 // puts the attribute on, the caller spreads it, and the rule below finds it
 // whatever element it landed on.
 //
-// THE LABEL IS 13/500, WHICH NO SINGLE TOKEN CARRIES. DESIGN-SYSTEM.md
-// section 1 specifies it - "label 13/500 6 px above" - but the type scale
-// pairs 13 with weight 400 (Caption) and weight 500 with 15 (Body M). So the
-// size comes from one family and the weight from another, which is the
-// composition ruling R62 was issued about in its other form. Recorded at the
-// site and carried into the report as a question rather than settled here:
-// adding a --type-label-* family is a SPEC 20 ask-first item.
+// THE LABEL IS 13/500 AND NOW HAS ITS OWN PAIR, ruling R70. It used to take
+// its size from Caption and its weight from Body-M, recorded here as a gap
+// across two increments. Composing like that meant a change to Body-M would
+// silently restyle every label in the product, and the two halves of one
+// decision sat on different lines where a reviewer sees only one.
 
 .root {
   display: flex;
@@ -25,9 +23,9 @@
 
 .label {
   color: var(--colour-text-primary);
-  font-size: var(--type-caption-size);
-  font-weight: var(--type-body-m-weight);
-  line-height: var(--type-caption-line);
+  font-size: var(--type-label-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-label-line);
 }
 
 // The control the caller rendered. Descendant selectors rather than a class,

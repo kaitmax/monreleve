@@ -46,11 +46,13 @@ export const WORKBENCH = {
     divergent: 'Deux taux — Genève cas (c)',
   },
 
+  // No label here: ruling R73 moved both tile labels to the caller, which
+  // composes them from the RuleSet so they name their ceiling. The workbench
+  // is that caller and uses METRIC_COPY directly.
   metric: {
     title: 'MetricTile',
     positive: 'Marge positive',
     negative: 'Marge dépassée',
-    label: 'Jours restants',
   },
 
   field: {
