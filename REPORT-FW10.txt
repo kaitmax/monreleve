@@ -120,3 +120,43 @@ FW11 could not start now in any case, because FW10 has not run.
 
 
 END OF REPORT-FW10.txt
+
+
+================================================================================
+ADDENDUM - after FW9's resume run (08.09.2026, at d07f329)
+================================================================================
+
+ONE SENTENCE ABOVE HAS BECOME FALSE. This report says "R0 guards against
+PublicShell or Container having CHANGED. Neither exists." CONTAINER NOW EXISTS,
+built in FW9's resume run at commit a10d548 against ruling R64's three layout
+tokens, with a type-level proof that its union refuses any other width.
+
+THE CONCLUSION IS UNCHANGED. FW10's first task is
+web/app/(public)/layout.tsx wrapping children in PublicShell, and PublicShell
+still does not exist: FW9 stopped at increment 4 on four component metrics that
+have no tokens - a breakpoint, a header height, a mobile header height and a
+compact CTA height - two of which are in conflict between the FW9 prompt and
+FD2. That is REPORT-FW9.txt Q1, and it is marked blocking.
+
+So FW10 still stops at R0, one dependency short rather than two.
+
+WHAT FW9'S RESUME RUN DELIVERED THAT FW10 WILL USE:
+
+  Container                    three named widths, no fourth by any route
+  --layout-article 680         the legal pages' prose measure
+  --layout-public 1200         the shell width
+  the contrast audit, fixed    it no longer measures a self-painted background
+                               against the page, so a brand-filled button with
+                               a white label passes instead of reporting 1,00:1
+  the jest-dom fence           R66 is now machine-checked rather than
+                               remembered
+
+FW10'S OWN BLOCKERS, inventoried in FW9's resume run and recorded in
+REPORT-FW9.txt's DOWNSTREAM section so the reading is not repeated: an absolute
+site origin for metadataBase, the sitemap and robots.txt, which is an open
+question gated at Checkpoint C; R52's placeholder test needing a per-page COUNT
+keyed to the constants each page consumes rather than a bare presence check;
+and test:a11y's glob, which covers only lib/ui/react/accessibility.test.tsx and
+so does not reach page-level axe states.
+
+None of those is why FW10 has not started. Q1 is.
