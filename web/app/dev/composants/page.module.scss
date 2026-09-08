@@ -43,3 +43,22 @@
   font-weight: var(--type-micro-weight);
   line-height: var(--type-micro-line);
 }
+
+// Stacked, for specimens whose whole point is their width. Three Containers
+// in the flex row above would each be squeezed to a third of the page and the
+// difference between 1200, 720 and 680 would be invisible.
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.sample {
+  margin: 0;
+  padding: var(--space-4) 0;
+  border: var(--size-rule) dashed var(--colour-border-strong);
+  color: var(--colour-text-secondary);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+  text-align: center;
+}

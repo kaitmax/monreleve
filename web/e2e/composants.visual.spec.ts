@@ -58,6 +58,10 @@ const SPECIMENS = [
   'grid-populated',
   'grid-empty',
   'grid-total',
+  'container-public',
+  'container-narrow',
+  'container-article',
+  'shell-desktop',
 ] as const;
 
 test.beforeEach(async ({ page }) => {
@@ -137,4 +141,43 @@ test('the negative metric shows no minus sign in the rendered text', async ({ pa
   expect(rendered).not.toContain(String.fromCharCode(45));
   expect(rendered).not.toContain(String.fromCharCode(0x2212));
   expect(rendered).toBe('6');
+});
+
+// ---------------------------------------------------------------------------
+// THE MOBILE HEADER, MENU OPEN - the one state increment 6 owes that cannot be
+// captured by adding an id to the list above.
+//
+// Every other baseline here is an ELEMENT screenshot taken in the visual
+// project's single desktop viewport, and an element screenshot does not change
+// what a VIEWPORT media query resolves to: the header would render its desktop
+// bar however tightly the element was cropped. So this block overrides the
+// viewport, which is the only thing that moves a media query.
+//
+// 360 x 800 is tasks/plan.md's reference device and is below the 768
+// breakpoint, so this is the 56 px header with the hamburger - and with the
+// panel open, which is the state a desktop review never sees.
+// ---------------------------------------------------------------------------
+
+test.describe('the mobile header', () => {
+  test.use({ viewport: { width: 360, height: 800 } });
+
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/dev/composants');
+    await page.evaluate(() => document.fonts.ready);
+  });
+
+  test('collapsed', async ({ page }) => {
+    await expect(page.getByTestId('shell-desktop')).toHaveScreenshot('composants-shell-mobile.png');
+  });
+
+  test('menu open', async ({ page }) => {
+    const shell = page.getByTestId('shell-desktop');
+
+    await shell.getByRole('button', { name: 'Ouvrir le menu' }).click();
+
+    // The panel must be in the shot, so wait for it rather than trusting the
+    // click to have settled before the capture.
+    await expect(shell.locator('[data-mobile-panel]')).toBeVisible();
+    await expect(shell).toHaveScreenshot('composants-shell-mobile-open.png');
+  });
 });

@@ -16,7 +16,15 @@ and every one of them still be built on a misread of the avenant. What the
 machine checks establish is that the code agrees with the fixtures — not that
 the fixtures agree with the law.
 
-Recorded 08.09.2026, at `bbdc06f`.
+Recorded 08.09.2026 at `bbdc06f`; **REVISED 08.09.2026** at the end of FW9,
+over the NINE-component library.
+
+WHY THE FIRST RECORD HAD TO BE REVISED RATHER THAN APPENDED TO. It was
+written when seven components existed, and `tasks/plan.md` requires "visual
+baselines + a11y green for all NINE". Every row was true and row 5 was
+true-but-incomplete in a way a reader could not see: "29 baselines" over
+seven components reads exactly like "29 baselines" over nine. Appending a
+note would have left the misleading number in the table.
 
 ---
 
@@ -26,17 +34,28 @@ Recorded 08.09.2026, at `bbdc06f`.
 |---|---|---|---|
 | 1 | All six Geneva cases exact, including 39,16 % and 4,16 % | ☑ pass | `tests/unit/calc-engine/fixtures.test.ts` — 20 tests |
 | 2 | Denominator and rate fixtures | ☑ pass | `denominator.test.ts` + `rate-fixtures.test.ts` — 94 tests |
-| 3 | 100 % coverage on `lib/calc-engine` and `lib/ui/core` | ☑ pass | 285/285 statements, 173/173 branches, 51/51 functions, 273/273 lines; per-directory thresholds, never averaged |
+| 3 | 100 % coverage on `lib/calc-engine` and `lib/ui/core` | ☑ pass | 285/285 statements, 173/173 branches, 51/51 functions; per-directory thresholds, never averaged. Unchanged: FW9 added no code to either directory |
 | 4 | The eight invariants | ☑ pass | `properties-1-4.test.ts` + `properties-5-8.test.ts` — 25 tests, fast-check |
-| 5 | Every component baseline green | ☑ pass | 29 baselines, 27 distinct; `pnpm test:visual` — 32 passed, in the container (R37) |
-| 6 | Contrast audit green | ☑ pass | `tests/unit/tokens/contrast.test.ts` — 86 tests, computed from the compiled tokens |
+| 5 | Every component baseline green, **all nine components** | ☑ pass | 35 baselines, 33 distinct; `pnpm test:visual` — 38 passed, in the container (R37), verified in COMPARE mode |
+| 6 | Contrast audit green | ☑ pass | `tests/unit/tokens/contrast.test.ts` — 107 assertions, computed from the compiled tokens, resolving each rule's EFFECTIVE background (R76) |
 | 7 | `dangerouslySetInnerHTML` uniqueness | ☑ pass | `tests/unit/meta/inner-html.test.ts` — 6 tests |
 | 8 | The 200 px thumbnail-legibility artifact present | ☑ pass | `web/tests/visual/baselines/rail-inline-200px.png`, 2 822 bytes |
 
-CI on `origin/main`:
+CI on `origin/main`: green through `fb59c3a`
+(https://github.com/kaitmax/Frontalier/actions/runs/34204083340).
 
-- `bbdc06f` https://github.com/kaitmax/Frontalier/actions/runs/34179098409
-- `6c4b6ec` https://github.com/kaitmax/Frontalier/actions/runs/34178061515
+TWO COMMITS IN BETWEEN WERE RED, and the reason belongs in this record
+rather than only in a session report. Ruling R73 lengthened the metric tile
+labels - "Jours restants" became "Jours restants avant 40,0 %" - so the
+content-sized specimen cards grew from 570 px to 605 px and two baselines no
+longer matched. The increment that changed the copy was gated with typecheck,
+lint, unit tests and build, but NOT `pnpm test:visual`, and rendered-text
+width is only caught there. `135ea8c` and `1dcccf1` are red for that reason
+and nothing else; the regenerated baselines land with this revision.
+
+THE LESSON IS A RULE, not a note: a change to any string that reaches the
+screen invalidates a baseline, so the visual run is part of green for that
+increment. A copy edit is a visual change.
 
 ### Each check was proven to be capable of failing
 
@@ -58,7 +77,7 @@ at least once, deliberately, and the failure observed:
   two tests by name; stripping the written reason from the dev harness's
   eslint directive fails a third.
 - **The suite itself.** `scripts/check-suite-floor.mjs` (ruling R63) holds the
-  floor at 49 files / 898 tests and requires four glob canaries to have been
+  floor at 56 files / 1 005 tests and requires four glob canaries to have been
   collected. Without it, an include glob that stopped matching would remove
   tests from the run while `pnpm test` still exited zero — measured: a broken
   glob dropped the suite to 676 passing and stayed green.
@@ -125,7 +144,13 @@ really can produce.
 **FW10 may proceed** with the human gate open (ruling R50): it touches nothing
 that depends on a constant.
 
-**FW11, the calculator, may not start** until this gate is recorded. It is the
-surface that turns a constant into an answer a user acts on, and shipping it
+**FW11 IS NO LONGER GATED ON THIS, and that is a correction to the first
+version of this file.** It said the calculator may not start until the gate
+is recorded, following R50. Ruling R54 supersedes R50's FW11 clause: the
+calculator is built HIDDEN - noindex and excluded from the sitemap - while
+`LAST_REGULATORY_REVIEW` is null, so the work can proceed without any
+unverified number reaching a reader. What the gate still blocks is
+PUBLISHING it. It is the surface that turns a constant into an answer a user
+acts on, and shipping it
 against unverified constants would put a number in front of a cross-border
 worker that no one has checked against the law.

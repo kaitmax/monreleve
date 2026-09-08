@@ -28,10 +28,12 @@ import { errorMessage } from '@/lib/fr/errors';
 import { METRIC_COPY } from '@/lib/fr/metrics';
 import { WORKBENCH } from '@/lib/fr/workbench';
 import { formatDays, formatPercent, formatSignedDays } from '@/lib/ui/core';
+import { Container } from '@/lib/ui/react/Container/Container';
 import { DataGrid } from '@/lib/ui/react/DataGrid/DataGrid';
 import { FieldGroup } from '@/lib/ui/react/FieldGroup/FieldGroup';
 import { LegalNote } from '@/lib/ui/react/LegalNote/LegalNote';
 import { MetricTile } from '@/lib/ui/react/MetricTile/MetricTile';
+import { PublicShell } from '@/lib/ui/react/PublicShell/PublicShell';
 import { RateDisplay } from '@/lib/ui/react/RateDisplay/RateDisplay';
 import { ThresholdRail } from '@/lib/ui/react/ThresholdRail/ThresholdRail';
 import { ZoneBadge } from '@/lib/ui/react/ZoneBadge/ZoneBadge';
@@ -304,6 +306,45 @@ export default function WorkbenchPage() {
               rows={GRID_ROWS}
               total={GRID_TOTAL}
             />
+          </Specimen>
+        </div>
+      </section>
+      <section className={styles.section}>
+        <h2>{WORKBENCH.container.title}</h2>
+        {/* Stacked rather than in the specimens row: three widths side by
+            side in a flex row would each be squeezed to a third of the page
+            and the whole point - how wide each one is - would be invisible. */}
+        <div className={styles.stack}>
+          <Specimen id="container-public" caption={WORKBENCH.container.public}>
+            <Container width="public">
+              <p className={styles.sample}>{WORKBENCH.container.sample}</p>
+            </Container>
+          </Specimen>
+          <Specimen id="container-narrow" caption={WORKBENCH.container.narrow}>
+            <Container width="narrow">
+              <p className={styles.sample}>{WORKBENCH.container.sample}</p>
+            </Container>
+          </Specimen>
+          <Specimen id="container-article" caption={WORKBENCH.container.article}>
+            <Container width="article">
+              <p className={styles.sample}>{WORKBENCH.container.sample}</p>
+            </Container>
+          </Specimen>
+        </div>
+      </section>
+
+      <section className={styles.section}>
+        <h2>{WORKBENCH.shell.title}</h2>
+        {/* The shell renders its own header and footer, so the specimen is
+            the whole thing rather than a part of it. The MOBILE header with
+            the menu open is captured by the visual spec at a 360 px
+            viewport - an element screenshot cannot change what a viewport
+            media query resolves to. */}
+        <div className={styles.stack}>
+          <Specimen id="shell-desktop" caption={WORKBENCH.shell.desktop}>
+            <PublicShell>
+              <p className={styles.sample}>{WORKBENCH.container.sample}</p>
+            </PublicShell>
           </Specimen>
         </div>
       </section>

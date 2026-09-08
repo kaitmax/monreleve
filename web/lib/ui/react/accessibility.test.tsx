@@ -34,10 +34,12 @@ import { errorMessage } from '@/lib/fr/errors';
 import { METRIC_COPY } from '@/lib/fr/metrics';
 import { formatDays, formatPercent, formatSignedDays } from '@/lib/ui/core';
 import type { Status, Zone } from '@/lib/ui/core';
+import { Container } from './Container/Container';
 import { DataGrid } from './DataGrid/DataGrid';
 import { FieldGroup } from './FieldGroup/FieldGroup';
 import { LegalNote } from './LegalNote/LegalNote';
 import { MetricTile } from './MetricTile/MetricTile';
+import { PublicShell } from './PublicShell/PublicShell';
 import { RateDisplay } from './RateDisplay/RateDisplay';
 import { ThresholdRail } from './ThresholdRail/ThresholdRail';
 import { ZoneBadge } from './ZoneBadge/ZoneBadge';
@@ -73,6 +75,8 @@ const RATE: Record<Zone, number> = {
 };
 
 const RAIL_WIDTH = 376;
+
+const CONTENT = 'Contenu de la page';
 
 const HELPER = 'Journees entieres uniquement.';
 
@@ -169,16 +173,30 @@ const STATES: readonly State[] = [
   { name: 'DataGrid populated', node: <DataGrid caption={GRID_CAPTION} columns={GRID_COLUMNS} rows={GRID_ROWS} /> },
   { name: 'DataGrid empty', node: <DataGrid caption={GRID_CAPTION} columns={GRID_COLUMNS} rows={[]} /> },
   { name: 'DataGrid with total', node: <DataGrid caption={GRID_CAPTION} columns={GRID_COLUMNS} rows={GRID_ROWS} total={GRID_TOTAL} /> },
+
+  // Container. Three widths, and nothing visible of its own - but a wrapper
+  // that emitted a landmark or an unlabelled region would show up here.
+  ...(['public', 'narrow', 'article'] as const).map((width) => ({
+    name: `Container ${width}`,
+    node: <Container width={width}>{CONTENT}</Container>,
+  })),
+
+  // PublicShell. The state with the most to get wrong in the whole set: two
+  // named navs, a banner and a contentinfo on one page, a disclosure that
+  // must report its own state, and an icon button whose only name is an
+  // aria-label. The menu-open variant is included because a panel is exactly
+  // where duplicate ids and orphaned aria references appear.
+  { name: 'PublicShell collapsed', node: <PublicShell>{CONTENT}</PublicShell> },
 ];
 
 describe('every state of every component is free of axe violations (AC1)', () => {
   it('covers all five components, so a green run means what it says', () => {
-    // Without this the loop below could pass by shrinking. Twenty-five states:
+    // Without this the loop below could pass by shrinking. Twenty-nine states:
     // seven rail, four badge, four rate, two metric, one legal, four field,
-    // three grid.
-    expect(STATES).toHaveLength(25);
+    // three grid, three container, one shell.
+    expect(STATES).toHaveLength(29);
 
-    const NAMES = ['ThresholdRail', 'ZoneBadge', 'RateDisplay', 'MetricTile', 'LegalNote', 'FieldGroup', 'DataGrid'];
+    const NAMES = ['ThresholdRail', 'ZoneBadge', 'RateDisplay', 'MetricTile', 'LegalNote', 'FieldGroup', 'DataGrid', 'Container', 'PublicShell'];
     for (const component of NAMES) {
       expect(STATES.some((state) => state.name.startsWith(component))).toBe(true);
     }

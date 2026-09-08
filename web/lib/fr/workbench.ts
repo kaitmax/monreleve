@@ -79,6 +79,19 @@ export const WORKBENCH = {
     march: 'Mars',
   },
 
+  container: {
+    title: 'Container',
+    public: 'Largeur publique - 1200',
+    narrow: 'Colonne calculateur - 720',
+    article: 'Mesure de lecture - 680',
+    sample: 'Contenu de démonstration',
+  },
+
+  shell: {
+    title: 'PublicShell',
+    desktop: 'En-tête et pied de page',
+  },
+
   legal: {
     title: 'LegalNote',
     standing: 'Mention légale permanente',
