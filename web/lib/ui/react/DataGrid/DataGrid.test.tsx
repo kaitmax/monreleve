@@ -95,6 +95,30 @@ describe('it renders cells exactly as given', () => {
     expect(rendered).toContain(formatDays(1234.5));
   });
 
+  it('preserves the narrow no-break space, asserted BY CODEPOINT', () => {
+    // THE ASSERTION ABOVE DOES NOT PROVE THIS, and the file header used to
+    // claim it did. `toContain(formatDays(1234.5))` compares formatDays output
+    // against formatDays output: change GROUP_SEPARATOR in
+    // lib/ui/core/format/number.ts from U+202F to an ordinary space and BOTH
+    // sides move together, leaving the test green. It proves pass-through, not
+    // the byte. Found by an adversarial audit of ruling R66's sweep.
+    //
+    // The separator IS pinned centrally, in format-number.test.ts - but that
+    // pins the FORMATTER. What this pins is that the component does not
+    // sanitise, trim or re-encode it on the way through, which is a separate
+    // claim and the one SPEC 19 needs from a document a tax office reads.
+    render(<DataGrid caption={CAPTION} columns={COLUMNS} rows={ROWS} />);
+
+    const numeric = screen
+      .getAllByRole('cell')
+      .filter((cell) => cell.getAttribute('data-numeric') === 'true');
+    const text = numeric[1]?.textContent ?? '';
+
+    // formatDays(1234.5) is 1 <U+202F> 2 3 4 , 5
+    expect(text.charCodeAt(1)).toBe(0x202f);
+    expect(text.charCodeAt(1)).not.toBe(0x0020);
+  });
+
   it('keeps a cell missing from a row empty rather than rendering undefined', () => {
     // A row that does not carry every key is a caller mistake, but rendering
     // the string "undefined" into a document a tax office reads is worse than
@@ -111,11 +135,18 @@ describe('it renders cells exactly as given', () => {
 });
 
 describe('the empty state', () => {
-  it('is never a blank table', () => {
+  it('is never a blank table, and the sentence is compared exactly', () => {
     // A header row floating over nothing reads as a loading failure.
+    //
+    // textContent rather than getByText (R66). The sentence is prose today,
+    // but it is marked TODO-COPY in lib/fr/grid.ts, and correct French
+    // typography would put U+00A0 before a colon or inside guillemets if the
+    // wording gains either. A text query normalises the DOM side only, so it
+    // would then either go red against correct copy or - after the obvious
+    // repair - match either codepoint silently.
     render(<DataGrid caption={CAPTION} columns={COLUMNS} rows={[]} />);
 
-    expect(screen.getByText(GRID_COPY.empty)).toBeDefined();
+    expect(screen.getByRole('cell').textContent).toBe(GRID_COPY.empty);
   });
 
   it('spans every column, so the message is not squeezed into the first', () => {

@@ -49,9 +49,19 @@ const HELPER = 'Journées entières uniquement.';
 // sentence errorMessage produces, which is a second source of truth: the test
 // would keep passing after lib/fr's wording changed, and - the reason it falls
 // under R66 rather than beside it - a drift in WHICH SPACE CHARACTER the copy
-// uses would be invisible, because the getByText assertions below normalise
-// U+00A0 and U+202F to an ordinary space. French typography puts U+00A0 before
-// a colon, and this sentence has one.
+// uses would be invisible. MEASURED, because the asymmetry is the point and
+// the obvious guess about it is wrong: Testing Library normalises only the
+// DOM side, never the matcher. So
+//
+//   DOM U+00A0  vs  matcher ASCII space  ->  MATCHES, silently
+//   DOM U+202F  vs  matcher U+202F       ->  NO MATCH, loud red
+//
+// Both are bad, and the second is worse than it looks: correct French
+// typography puts U+00A0 before a colon, and this sentence HAS one. When copy
+// review lands, a getByText on it goes red against CORRECT copy - and the
+// obvious repair, retyping the constant with an ASCII space, lands exactly on
+// the silent row above. So the assertions below read textContent by id
+// instead, while they are green rather than later under a red run.
 //
 // Sourced from the real function, so the test now moves with the copy. The
 // assertions on it stay Testing Library queries because it is PROSE, not a
@@ -84,6 +94,15 @@ describe('the label is attached to the control', () => {
 
     expect(control().getAttribute('id')).toBe('telework-days');
   });
+
+  it('renders the label text exactly', () => {
+    // getByLabelText above STAYS, because proving the htmlFor/id association
+    // is the one thing only a label query can do. But it compares through the
+    // normaliser, so the text itself is asserted here, exactly.
+    const { container } = renderField();
+
+    expect(container.querySelector('label')?.textContent).toBe(LABEL);
+  });
 });
 
 describe('a field with neither helper nor error', () => {
@@ -110,10 +129,12 @@ describe('a field with neither helper nor error', () => {
 });
 
 describe('a field with helper text', () => {
-  it('shows it', () => {
+  it('shows it, compared exactly rather than through a text query', () => {
     renderField({ helper: HELPER });
 
-    expect(screen.getByText(HELPER)).toBeDefined();
+    // By id, so this proves the wiring AND the text in one assertion, with
+    // no normalisation between the copy and the DOM.
+    expect(document.getElementById('telework-days-helper')?.textContent).toBe(HELPER);
   });
 
   it('points aria-describedby at it', () => {
@@ -130,10 +151,10 @@ describe('a field with helper text', () => {
 });
 
 describe('a field in its error state', () => {
-  it('shows the message', () => {
+  it('shows the message, compared exactly rather than through a text query', () => {
     renderField({ error: ERROR });
 
-    expect(screen.getByText(ERROR)).toBeDefined();
+    expect(document.getElementById('telework-days-error')?.textContent).toBe(ERROR);
   });
 
   it('announces it as an alert', () => {
@@ -188,11 +209,11 @@ describe('a field with BOTH helper and error', () => {
     expect(texts[1]).toContain(ERROR);
   });
 
-  it('keeps both visible', () => {
+  it('keeps both visible, both compared exactly', () => {
     renderField({ helper: HELPER, error: ERROR });
 
-    expect(screen.getByText(HELPER)).toBeDefined();
-    expect(screen.getByText(ERROR)).toBeDefined();
+    expect(document.getElementById('telework-days-helper')?.textContent).toBe(HELPER);
+    expect(document.getElementById('telework-days-error')?.textContent).toBe(ERROR);
   });
 });
 

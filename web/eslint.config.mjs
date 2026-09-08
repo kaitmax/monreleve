@@ -39,6 +39,17 @@ const ENGINE_TYPES_ONLY_MESSAGE =
   'computes nothing." Use `import type`. If you need a threshold, take it as ' +
   'a parameter - SPEC 7.7 makes RuleSet the only place a threshold may appear.';
 
+const JEST_DOM_MESSAGE =
+  'RULING R66: @testing-library/jest-dom is not imported in this repo, and ' +
+  'must not be. Its matchers NORMALISE whitespace - toHaveTextContent, ' +
+  'toHaveValue, toHaveDisplayValue, toHaveAccessibleName, ' +
+  'toHaveAccessibleDescription - and U+202F (formatDays group separator) ' +
+  'and U+00A0 (formatPercent) are whitespace to that regex. Measured: DOM ' +
+  'with U+00A0 MATCHES a matcher written with an ASCII space, silently. ' +
+  'Assert formatted values with textContent and compare exactly. If you ' +
+  'need a jest-dom matcher that does not touch text, add it here by name ' +
+  'with a reason.';
+
 const SPIKE_MESSAGE =
   'app/dev/spike is the FW2 bundle spike: throwaway markup that exists to be ' +
   'weighed, not reused. The component library is lib/ui/react (FW8-FW9).';
@@ -301,7 +312,19 @@ export default tseslint.config(
     rules: {
       'no-restricted-imports': [
         'error',
-        { patterns: [{ group: SPIKE_PATHS, message: SPIKE_MESSAGE }] },
+        {
+          patterns: [
+            { group: SPIKE_PATHS, message: SPIKE_MESSAGE },
+            // RULING R66. Added to THIS block rather than a new one: flat
+            // config REPLACES a rule instead of merging it, so a second
+            // block for these same files would silently delete the spike
+            // fence above. The config already carries that warning twice.
+            {
+              group: ['@testing-library/jest-dom', '@testing-library/jest-dom/*'],
+              message: JEST_DOM_MESSAGE,
+            },
+          ],
+        },
       ],
       'no-restricted-syntax': [
         'error',

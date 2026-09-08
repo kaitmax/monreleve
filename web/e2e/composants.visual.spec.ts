@@ -124,9 +124,17 @@ test('the negative metric shows no minus sign in the rendered text', async ({ pa
 
   await expect(figure).toBeVisible();
 
-  const rendered = await figure.innerText();
+  // textContent, NOT innerText, and NOT trim() - ruling R66 applied to
+  // Playwright. Two normalisers were stacking here: innerText returns the
+  // BROWSER-rendered text, which collapses collapsible whitespace and injects
+  // newlines at block boundaries, and String.trim() strips U+00A0 and U+202F
+  // because both are Unicode Space_Separator. A stray no-break space on
+  // either side of the figure was silently removed and the assertion still
+  // passed. Harmless while the value is a bare 6; interior the moment this
+  // specimen carries a four-figure day count.
+  const rendered = (await figure.evaluate((node) => node.textContent)) ?? String();
 
   expect(rendered).not.toContain(String.fromCharCode(45));
   expect(rendered).not.toContain(String.fromCharCode(0x2212));
-  expect(rendered.trim()).toBe('6');
+  expect(rendered).toBe('6');
 });
