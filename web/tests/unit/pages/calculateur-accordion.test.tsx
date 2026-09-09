@@ -96,16 +96,18 @@ describe('the mission question, always visible (SPEC 9.3)', () => {
     setUp();
     fireEvent.click(radio(FORM.missions.yes));
 
-    expect(field(FORM.missions.france.label).valueAsNumber).toBe(0);
-    expect(field(FORM.missions.thirdState.label).valueAsNumber).toBe(0);
+    expect(field(FORM.missions.france.label).value).toBe('0');
+    expect(field(FORM.missions.thirdState.label).value).toBe('0');
   });
 
-  it('gives both mission fields the half-day step', () => {
+  it('gives both mission fields the same decimal text input (R109)', () => {
     setUp();
     fireEvent.click(radio(FORM.missions.yes));
 
-    expect(field(FORM.missions.france.label).getAttribute('step')).toBe('0.5');
-    expect(field(FORM.missions.thirdState.label).getAttribute('step')).toBe('0.5');
+    for (const label of [FORM.missions.france.label, FORM.missions.thirdState.label]) {
+      expect(field(label).getAttribute('type'), label).toBe('text');
+      expect(field(label).getAttribute('inputMode'), label).toBe('decimal');
+    }
   });
 
   it('carries ruling R13 in the mission helper (AC2)', () => {
@@ -142,8 +144,8 @@ describe('answering Non again clears what was entered', () => {
     fireEvent.click(radio(FORM.missions.no));
     fireEvent.click(radio(FORM.missions.yes));
 
-    expect(field(FORM.missions.france.label).valueAsNumber).toBe(0);
-    expect(field(FORM.missions.thirdState.label).valueAsNumber).toBe(0);
+    expect(field(FORM.missions.france.label).value).toBe('0');
+    expect(field(FORM.missions.thirdState.label).value).toBe('0');
   });
 
   it('and the cleared days are really out of the calculation', () => {

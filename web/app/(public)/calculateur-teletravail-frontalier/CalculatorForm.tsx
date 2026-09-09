@@ -92,17 +92,21 @@ const DAYS = { step: 0.5, min: 0 } as const;
 const DEFAULT_GRANULARITY: Granularity = 'halfDay';
 
 /**
- * NUMERIC_FIELD_NOTE - a decimal comma, and an open question.
+ * A decimal comma. RULING R109, which settled FW11's Q11.
  *
- * A French user writes "83,5". SPEC 9.3 specifies `type="number"`, and a
- * number input in every major browser treats a comma as invalid: the value
- * arrives here as the empty string and the digits the user typed appear to
- * vanish. Normalising the comma here costs one line and fixes the cases where
- * the value does reach us; it CANNOT fix the browser discarding it first.
+ * A French user writes "83,5". type="number" treats a comma as invalid, so
+ * the value arrived here as the EMPTY STRING and the digits appeared to
+ * vanish as they were typed - the calculator looking broken to exactly the
+ * audience it is for. Reproduced in jsdom before the fix: the field read the
+ * empty string after typing "83,5".
  *
- * The fix would be type="text" with inputMode="decimal", which contradicts
- * SPEC 9.3, and R86 says SPEC wins. So the spec is followed, the normalisation
- * is kept for the cases it helps, and the report carries the question.
+ * R109: type="text" with inputMode="decimal", both separators accepted,
+ * normalised to the period INTERNALLY ONLY. SPEC 9.3 corrected under R9.
+ *
+ * "Internally only" is the part a naive fix gets wrong. Rewriting the comma
+ * to a period in state would move the caret and fight the user mid-number, so
+ * the field shows what was typed and the period exists only in the value
+ * handed to the engine.
  */
 function parseNumeric(raw: string): number {
   const trimmed = raw.trim();
@@ -472,13 +476,19 @@ export function CalculatorForm({ taxYear }: CalculatorFormProps) {
           >
             <Minus size={ICON} strokeWidth={STROKE} aria-hidden="true" />
           </button>
+          {/*
+            NO step, min OR max ATTRIBUTE. All three are inert on a text
+            input, so rendering them would read as a bound the browser was
+            enforcing while nothing was. The real bounds are the stepper's
+            clamp below and the engine's own validation, both tested.
+
+            config still carries them: the stepper arithmetic needs them.
+          */}
           <input
             {...control}
-            type="number"
+            type="text"
+            inputMode="decimal"
             className={styles.number}
-            step={config.step}
-            min={config.min}
-            {...(config.max === null ? {} : { max: config.max })}
             value={state[config.stateKey]}
             onChange={(event) => {
               set(config.stateKey, event.target.value);
@@ -698,10 +708,9 @@ export function CalculatorForm({ taxYear }: CalculatorFormProps) {
                   {(control) => (
                     <input
                       {...control}
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       className={styles.number}
-                      step={DAYS.step}
-                      min={DAYS.min}
                       value={state.exactTotal}
                       onChange={(event) => {
                         set('exactTotal', event.target.value);

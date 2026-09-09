@@ -12,8 +12,8 @@
 // only a filled-in form can show: the vertical rhythm of a stack of
 // FieldGroups, a stepper's buttons sitting flush with the field between them,
 // a revealed block's left rule, the 2 px error border and the 13 px message
-// under it, and a 48/56 rate in the card below. Not one of those is visible in
-// an empty form.
+// under it, and the rate in the card below. Not one of those is visible in an
+// empty form.
 //
 // THE WIDTHS ARE 1440 AND 390, which the FW11 prompt names. THEY DIFFER FROM
 // pages.visual.spec.ts, which uses 1280 and 360 - the plan's reference Android
@@ -79,45 +79,40 @@ for (const { width, label } of [
 
         await state.reach(page);
 
-        // The chevron rotates over 200 ms and the reveal has no transition of
-        // its own; animations are disabled explicitly rather than relying on
-        // the default, so a future config change cannot make these flaky
-        // without saying so.
+        // animations disabled explicitly rather than by relying on the
+        // default, so a future config change cannot make these flaky without
+        // saying so. The chevron rotates over 200 ms.
         //
-        // maxDiffPixels, AND EXACTLY WHY - because a tolerance on a visual
-        // baseline is a hole unless the number is argued for.
+        // THE SELECT IS PAINTED WITHOUT ITS LABEL, and the alternative I
+        // shipped first is recorded because withdrawing it is the lesson.
         //
-        // CI failed calculateur-vide-desktop.png at 497 differing pixels,
-        // three times including both retries, so deterministically. The
-        // differences sat in ONE box, x 437-622 by y 411-422: the closed
-        // select's placeholder text, "Selectionnez votre canton". Same image
-        // dimensions, so nothing had moved or reflowed. Measured magnitude:
-        // 476 of them above a channel delta of 128, peak 238 - glyph-level
-        // movement, not antialiasing.
+        // CI rejected calculateur-vide-desktop.png at 497 differing pixels,
+        // deterministically, every one of them inside the closed canton
+        // select's label. Identical image dimensions; peak channel delta 238,
+        // so glyph movement rather than antialiasing. Chromium paints a
+        // closed select's label through the platform theme, and that path is
+        // not reproducible between this machine's container and CI's.
         //
-        // WHAT RULES OUT A FONT PROBLEM: every other run of Inter on the page
-        // matched to ZERO pixels, across the five other calculator shots and
-        // all 48 component and page baselines. Only the native control's text
-        // differs. Chromium paints a closed select's label through the
-        // platform theme rather than the page's text pipeline, and sub-pixel
-        // advances accumulate along a run - which is also why the short
-        // "Geneve" in the filled and error shots matches exactly and this
-        // 25-character placeholder does not.
+        // I FIRST ANSWERED WITH maxDiffPixels: 600 and wrote that it "cannot
+        // hide a real regression". It hid one within the hour. Ruling R109
+        // turned five number inputs into text inputs, removing their
+        // spinners, and ALL SIX baselines silently declined to regenerate
+        // because each change came in under the allowance - measured by
+        // setting the tolerance to zero, at which point all six failed. A
+        // tolerance on a whole image cannot tell the one unstable element
+        // from everything else in the frame.
         //
-        // 600 is the measured 497 plus headroom, and it is 0.019% of a
-        // 1440x2141 image. It cannot hide a real regression: the missing
-        // field spacing this suite caught during increment 5 moved thousands
-        // of pixels, a colour change moves an entire element, and anything
-        // that reflows the page changes the image DIMENSIONS, which fails
-        // regardless of this number.
-        //
-        // SCOPED TO THIS SPEC. The component and page baselines stay at zero
-        // tolerance; they contain no native form controls, and nothing has
-        // ever asked them for one.
+        // So the CAUSE goes rather than the symptom being tolerated:
+        // e2e/visual-select.css paints select text transparent for the
+        // duration of the shot. Zero tolerance everywhere, the box still
+        // compared - border, width, height, position - and the label's text
+        // asserted where a
+        // string belongs - all 26 options, their French names and their
+        // collation order, in tests/unit/pages/calculateur-form.test.tsx.
         await expect(page).toHaveScreenshot(`calculateur-${state.id}-${label}.png`, {
           fullPage: true,
           animations: 'disabled',
-          maxDiffPixels: 600,
+          stylePath: 'e2e/visual-select.css',
         });
       });
     }

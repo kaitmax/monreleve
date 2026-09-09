@@ -42,9 +42,11 @@ import { errorMessage } from '@/lib/fr/errors';
 // config for all 74 test files to save a few characters in one, so this
 // follows the convention every other test in the repo already uses.
 //
-// valueAsNumber rather than value on the number inputs: value is the raw
-// string the control holds, and asserting '0.5' would pass against a
-// field that had stopped parsing.
+// RULING R109 MADE THESE TEXT INPUTS, so value - the string the control
+// holds - is the only reader, and it is also the right one: R109 requires the
+// field to SHOW WHAT WAS TYPED, comma and all. valueAsNumber returns NaN on a
+// text input, which would have made every one of these assertions vacuous
+// rather than red, so they are converted rather than left to rot.
 
 afterEach(cleanup);
 
@@ -160,22 +162,37 @@ describe('field 2: the employment rate', () => {
   it('defaults to 100, a full-time contract', () => {
     setUp();
 
-    expect(rateInput().valueAsNumber).toBe(100);
+    expect(rateInput().value).toBe('100');
   });
 
-  it('carries step 5 and the range the engine accepts', () => {
+  it('is a text input in decimal mode, not a number input (R109)', () => {
+    // R109: type="number" DISCARDS the comma a French user types - the value
+    // arrives as the empty string and the digits appear to vanish as they are
+    // entered. inputMode="decimal" keeps the numeric keypad on a phone
+    // without handing the browser the right to reject the separator.
     setUp();
 
-    expect(rateInput().getAttribute('step')).toBe('5');
-    expect(rateInput().getAttribute('min')).toBe('1');
-    expect(rateInput().getAttribute('max')).toBe('100');
+    expect(rateInput().getAttribute('type')).toBe('text');
+    expect(rateInput().getAttribute('inputMode')).toBe('decimal');
+  });
+
+  it('does not carry step, min or max, which a text input ignores', () => {
+    // Asserted as an ABSENCE on purpose. Those three attributes are inert on
+    // a text input, so leaving them would read as a bound the browser was
+    // enforcing when nothing is. The bounds live in the stepper's clamp and
+    // in the engine's RATE_OUT_OF_RANGE, both of which are tested.
+    setUp();
+
+    for (const attribute of ['step', 'min', 'max']) {
+      expect(rateInput().hasAttribute(attribute), attribute).toBe(false);
+    }
   });
 
   it('takes a typed value', () => {
     setUp();
     type(rateInput(), '80');
 
-    expect(rateInput().valueAsNumber).toBe(80);
+    expect(rateInput().value).toBe('80');
   });
 });
 
@@ -183,15 +200,14 @@ describe('field 3: telework days already taken', () => {
   it('defaults to 0', () => {
     setUp();
 
-    expect(daysInput().valueAsNumber).toBe(0);
+    expect(daysInput().value).toBe('0');
   });
 
-  it('carries step 0.5 and no upper bound, which the engine supplies', () => {
+  it('is also a text input in decimal mode (R109)', () => {
     setUp();
 
-    expect(daysInput().getAttribute('step')).toBe('0.5');
-    expect(daysInput().getAttribute('min')).toBe('0');
-    expect(daysInput().hasAttribute('max')).toBe(false);
+    expect(daysInput().getAttribute('type')).toBe('text');
+    expect(daysInput().getAttribute('inputMode')).toBe('decimal');
   });
 
   it('does not ask for leave or sick days at all (SPEC 9.3)', () => {
@@ -210,18 +226,18 @@ describe('the steppers', () => {
     setUp();
     fireEvent.click(screen.getByRole('button', { name: FORM.rate.decrease }));
 
-    expect(rateInput().valueAsNumber).toBe(95);
+    expect(rateInput().value).toBe('95');
 
     fireEvent.click(screen.getByRole('button', { name: FORM.rate.increase }));
 
-    expect(rateInput().valueAsNumber).toBe(100);
+    expect(rateInput().value).toBe('100');
   });
 
   it('will not step the rate above its maximum', () => {
     setUp();
     fireEvent.click(screen.getByRole('button', { name: FORM.rate.increase }));
 
-    expect(rateInput().valueAsNumber).toBe(100);
+    expect(rateInput().value).toBe('100');
   });
 
   it('clamps to the minimum rather than stepping past it', () => {
@@ -231,21 +247,21 @@ describe('the steppers', () => {
 
     // 3 - 5 would be -2, which is not a rate. The minimum is 1, not 0: a
     // contract at nothing per cent is not a contract.
-    expect(rateInput().valueAsNumber).toBe(1);
+    expect(rateInput().value).toBe('1');
   });
 
   it('steps the day field by the half-day', () => {
     setUp();
     fireEvent.click(screen.getByRole('button', { name: FORM.days.increase }));
 
-    expect(daysInput().valueAsNumber).toBe(0.5);
+    expect(daysInput().value).toBe('0.5');
   });
 
   it('will not step the day field below zero', () => {
     setUp();
     fireEvent.click(screen.getByRole('button', { name: FORM.days.decrease }));
 
-    expect(daysInput().valueAsNumber).toBe(0);
+    expect(daysInput().value).toBe('0');
   });
 
   it('uses buttons, so neither one submits the form', () => {
@@ -361,5 +377,86 @@ describe('the default granularity, inferred from step 0.5', () => {
     const mismatch = errorMessage({ code: 'GRANULARITY_MISMATCH', field: 'teleworkDays' });
 
     expect(renderedText()).toContain(mismatch);
+  });
+});
+
+describe('ruling R109: a French decimal comma', () => {
+  // THE DEFECT R109 CORRECTS, and it was FW11's Q11. A French user writes
+  // "83,5". type="number" treats a comma as invalid input: the value arrives
+  // as the empty string, so the digits appear to vanish as they are typed and
+  // the calculator looks broken to exactly the audience it is for.
+  //
+  // R109's answer: type="text" with inputMode="decimal", accepting both
+  // separators and normalising to the period internally, WITH the field
+  // showing what was typed. That last clause is the part a naive fix gets
+  // wrong - rewriting the comma to a period as the user types moves the caret
+  // and fights them mid-number.
+  //
+  // 83.5 of the 240-day basis is 34.79166..., truncated to 34,79 % for the
+  // AFC. Both spellings must reach that.
+
+  const NBSP = String.fromCharCode(0x00a0);
+  const RATE_FOR_83_5 = `34,79${NBSP}%`;
+
+  it('accepts a comma and computes from it', () => {
+    setUp();
+    chooseCanton();
+    type(daysInput(), '83,5');
+
+    expect(renderedText()).toContain(RATE_FOR_83_5);
+  });
+
+  it('accepts a period and computes the same answer', () => {
+    setUp();
+    chooseCanton();
+    type(daysInput(), '83.5');
+
+    expect(renderedText()).toContain(RATE_FOR_83_5);
+  });
+
+  it('shows what was typed, comma included', () => {
+    setUp();
+    chooseCanton();
+    type(daysInput(), '83,5');
+
+    // NOT normalised on screen. The value the user sees is the value they
+    // entered; the period exists only inside the engine call.
+    expect(daysInput().value).toBe('83,5');
+  });
+
+  it('shows a typed period as a period', () => {
+    setUp();
+    chooseCanton();
+    type(daysInput(), '83.5');
+
+    expect(daysInput().value).toBe('83.5');
+  });
+
+  it('takes a comma in the rate too', () => {
+    // Non-vacuity across fields: R109 is about number inputs, not about one
+    // of them. A rate of 87,5 % on the 240-day basis gives a total of 210.
+    setUp();
+    chooseCanton();
+    type(rateInput(), '87,5');
+    type(daysInput(), '211');
+
+    expect(renderedText()).toContain(errorMessage({ code: 'DAYS_EXCEED_TOTAL' }));
+
+    type(daysInput(), '210');
+
+    expect(renderedText()).not.toContain(errorMessage({ code: 'DAYS_EXCEED_TOTAL' }));
+  });
+
+  it('still rejects text that is not a number at all', () => {
+    // The cost of leaving the browser out of it: a text input accepts
+    // anything, so the engine has to be the one that refuses. "abc" parses to
+    // NaN, which validate reports against the field.
+    setUp();
+    chooseCanton();
+    type(daysInput(), 'abc');
+
+    expect(renderedText()).toContain(
+      errorMessage({ code: 'NEGATIVE_DAYS', field: 'teleworkDays' }),
+    );
   });
 });

@@ -676,8 +676,19 @@ Visible:
 | Field | Pattern | Default | Why visible |
 |---|---|---|---|
 | Canton de travail | select | — | Determines the regime; changes the explanation |
-| Taux d'activité (%) | number input, step 5 | 100 | Scales ceiling and mission cap |
-| Jours de télétravail déjà pris | number input, step 0.5 | — | The number they came to enter |
+| Taux d'activité (%) | text input, `inputMode="decimal"`, stepped by 5 | 100 | Scales ceiling and mission cap |
+| Jours de télétravail déjà pris | text input, `inputMode="decimal"`, stepped by 0.5 | — | The number they came to enter |
+
+**Corrected by ruling R109 (09.09.2026).** These two fields, and the three
+numeric fields in the accordion, were specified as `type="number"`. A number
+input treats a decimal comma as invalid: the value arrives as the empty
+string, so a French user typing `83,5` watches the digits vanish as they are
+entered. They are `type="text"` with `inputMode="decimal"` — which keeps the
+numeric keypad on a phone — accepting both the comma and the period and
+normalising to the period internally only, so the field shows what was
+typed. The step values remain: they are the increments of the stepper
+buttons, which are ours rather than the browser’s. Bounds are enforced by
+those steppers and by the engine, never by an inert attribute.
 
 Under the simplified 240-day basis, **paid leave and sick days are not asked at all** — the 240 already absorbs them. That is a real UX win the regulation hands us and why three fields suffice.
 

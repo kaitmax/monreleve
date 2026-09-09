@@ -1,0 +1,39 @@
+/* web/e2e/visual-select.css
+ *
+ * Injected only while a calculator screenshot is taken. It is not part of the
+ * product and never reaches a user.
+ *
+ * WHAT IT SOLVES. CI rejected calculateur-vide-desktop.png at 497 differing
+ * pixels, deterministically, all of them inside the closed canton select's
+ * label - "Selectionnez votre canton" - with identical image dimensions and a
+ * peak channel delta of 238, so glyph movement rather than antialiasing.
+ * Chromium paints a closed select's label through the platform theme rather
+ * than the page's text pipeline, and that path is not reproducible between
+ * this machine's container run and CI's.
+ *
+ * WHY NOT A TOLERANCE, which is what I tried first and had to withdraw. A
+ * maxDiffPixels of 600 made the whole image insensitive, and it immediately
+ * hid something real: ruling R109 changed five fields from number inputs to
+ * text inputs, removing their spinners, and ALL SIX baselines silently failed
+ * to regenerate because each change came in under the allowance. Measured by
+ * setting the tolerance to zero, at which point all six failed. A tolerance
+ * on a whole image cannot distinguish the one element that is unstable from
+ * everything else in the frame.
+ *
+ * WHAT IT COSTS, precisely: these baselines do not record the select's label
+ * text. They still record its box - border, width, height, background and
+ * position. Whether the dropdown arrow survives is NOT claimed here: color
+ * hid it, -webkit-text-fill-color may not, and I did not verify which. An
+ * unverified claim in a comment is how the first version of this file came to
+ * say something false.
+ * The text is asserted exhaustively elsewhere - tests/unit/pages/
+ * calculateur-form.test.tsx checks all 26 options, their values, their French
+ * names and their collation order in one pass - so nothing goes unchecked,
+ * it is simply checked where a string belongs rather than in a picture.
+ */
+
+select {
+  /* text-fill-color rather than color: color also paints the dropdown arrow,
+   * so it hid the arrow as well. This narrows it to the glyph fill. */
+  -webkit-text-fill-color: transparent !important;
+}
