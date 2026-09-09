@@ -35,13 +35,14 @@
 
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { ChevronDown, Minus, Plus } from 'lucide-react';
 import {
   type Canton,
   type DenominatorMethod,
   type Granularity,
   type TeleworkInput,
+  type TeleworkResult,
   type ValidationError,
   calculateTelework,
   ruleSetFor,
@@ -50,10 +51,16 @@ import { CALCULATEUR_COPY } from '@/lib/fr/calculateur';
 import { CANTONS_BY_NAME } from '@/lib/fr/cantons';
 import { errorMessage } from '@/lib/fr/errors';
 import { FieldGroup } from '@/lib/ui/react/FieldGroup/FieldGroup';
-import { formatDays, formatPercent, remainingYearFraction } from '@/lib/ui/core';
+import { formatDays, formatPercent, remainingYearFraction, zoneFor } from '@/lib/ui/core';
+import { RateDisplay } from '@/lib/ui/react/RateDisplay/RateDisplay';
 import styles from './CalculatorForm.module.scss';
 
 const COPY = CALCULATEUR_COPY.form;
+const RESULT = CALCULATEUR_COPY.result;
+
+/** The live region's id. The Calculer button moves focus here. */
+const RESULT_ID = 'resultat';
+const RESULT_TITLE_ID = 'resultat-titre';
 
 const ICON = 20;
 const STROKE = 1.75;
@@ -153,6 +160,9 @@ interface FormState {
 }
 
 const NO_DAYS = String(DAYS.min);
+
+/** One shared empty array, so "no errors" is referentially stable. */
+const NO_ERRORS: readonly ValidationError[] = [];
 
 const INITIAL: FormState = {
   canton: '',
@@ -311,13 +321,40 @@ export function CalculatorForm({ taxYear }: CalculatorFormProps) {
     };
   }, [state, taxYear]);
 
-  const errors = useMemo<readonly ValidationError[]>(() => {
-    if (input === null) return [];
+  /**
+   * The engine's answer, kept whole.
+   *
+   * ONE CALL, NOT TWO. The errors and the result are the two branches of the
+   * same Result, so computing them separately would run the engine twice per
+   * keystroke and - worse - could show a result and an error that came from
+   * different inputs if the memo dependencies ever drifted apart.
+   */
+  const outcome = useMemo(
+    () => (input === null ? null : calculateTelework(input)),
+    [input],
+  );
 
-    const outcome = calculateTelework(input);
+  const errors: readonly ValidationError[] =
+    outcome !== null && !outcome.ok ? outcome.error : NO_ERRORS;
 
-    return outcome.ok ? [] : outcome.error;
-  }, [input]);
+  const result: TeleworkResult | null = outcome !== null && outcome.ok ? outcome.value : null;
+
+  /**
+   * THE PREVIOUS RESULT IS DELIBERATELY NOT RETAINED, which departs from the
+   * increment's wording and is recorded in the report.
+   *
+   * The prompt asks for the last result to be held in state while the input
+   * is invalid. In the same breath it forbids the only thing such a value
+   * could be used for: "the result region never shows a stale number as
+   * current". So a retained result would be state nothing reads - and unused
+   * state on a live region is how a stale number eventually gets rendered by
+   * somebody who finds it there and assumes it is meant to be shown.
+   *
+   * FW12's panel may genuinely need it, to avoid tearing down a rail and four
+   * tiles on every keystroke. It can add it then, with something that reads
+   * it.
+   */
+  const resultRegion = useRef<HTMLDivElement | null>(null);
 
   /**
    * Which fields are on screen right now.
@@ -435,9 +472,12 @@ export function CalculatorForm({ taxYear }: CalculatorFormProps) {
     </FieldGroup>
   );
 
+  const fallback = result?.warnings.find((warning) => warning.code === 'RULE_SET_FALLBACK');
+
   return (
-    <fieldset className={styles.card}>
-      <legend className={styles.legend}>{COPY.legend}</legend>
+    <>
+      <fieldset className={styles.card}>
+        <legend className={styles.legend}>{COPY.legend}</legend>
 
       <FieldGroup
         id="canton"
@@ -669,17 +709,120 @@ export function CalculatorForm({ taxYear }: CalculatorFormProps) {
         )}
       </div>
 
-      {unplaced.length === 0 ? null : (
-        <div className={styles.otherErrors}>
-          <p className={styles.otherErrorsLabel}>{COPY.otherErrorsLabel}</p>
-          <ul className={styles.otherErrorsList}>
-            {unplaced.map((error) => (
-              <li key={error.code}>{errorMessage(error)}</li>
-            ))}
-          </ul>
+        {unplaced.length === 0 ? null : (
+          <div className={styles.otherErrors}>
+            <p className={styles.otherErrorsLabel}>{COPY.otherErrorsLabel}</p>
+            <ul className={styles.otherErrorsList}>
+              {unplaced.map((error) => (
+                <li key={error.code}>{errorMessage(error)}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/*
+          FD1 PUTS A PRIMARY BUTTON HERE and the result is already live, so
+          this one navigates rather than computes: it scrolls the result into
+          view and takes focus there. A form full of numbers with no button at
+          all reads as unfinished, and a button that recomputed what is
+          already computed would be a lie about how the page works.
+
+          type="button". A submit would reload the page on Enter and lose
+          everything typed, which on a form with no persistence is the worst
+          available outcome.
+        */}
+        <button
+          type="button"
+          className={styles.calculate}
+          onClick={() => {
+            const region = resultRegion.current;
+
+            if (region === null) return;
+
+            // Guarded rather than called: jsdom implements no layout and has
+            // no scrollIntoView, so an unguarded call turns every test that
+            // presses this button into a TypeError.
+            if (typeof region.scrollIntoView === 'function') {
+              region.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+
+            region.focus();
+          }}
+        >
+          {RESULT.calculate}
+        </button>
+      </fieldset>
+
+      {/*
+        THE PROVISIONAL RESULT. FW12 replaces the inside of this region with
+        the full panel; the region itself - id, live politeness, focus target -
+        is what increment 4 establishes.
+
+        aria-live SITS ON THE INNER DIV, not on the section, so the heading is
+        not re-announced every time a digit changes. The section is named by
+        that heading through aria-labelledby instead.
+
+        POLITE, not assertive. The rate changes on every keystroke by design,
+        and an assertive region would interrupt the screen reader mid-word on
+        each one.
+      */}
+      <section className={styles.resultCard} aria-labelledby={RESULT_TITLE_ID}>
+        <h2 className={styles.resultHeading} id={RESULT_TITLE_ID}>
+          {RESULT.heading}
+        </h2>
+
+        <div
+          className={styles.resultLive}
+          id={RESULT_ID}
+          ref={resultRegion}
+          aria-live="polite"
+          tabIndex={-1}
+        >
+          {input === null ? (
+            <p className={styles.resultNote}>{RESULT.empty}</p>
+          ) : result === null ? (
+            /*
+              result === null IS EXACTLY "the input is invalid", and this
+              condition used to read `errors.length > 0 || result === null`.
+              A mutation probe removed the first clause and NOT ONE TEST
+              CHANGED - because calculateTelework returns a Result, so a
+              result and an error can never both exist. The clause was dead.
+
+              Which is worth stating rather than deleting quietly: the
+              increment asks that "the result region never shows a stale
+              number as current", and that guarantee comes from the engine's
+              return type, not from a check in the UI. There is no code path
+              here that could render a number belonging to earlier input,
+              because no such number is ever in hand.
+            */
+            <p className={styles.resultNote}>{RESULT.stale}</p>
+          ) : (
+            <>
+              {fallback === undefined ? null : (
+                <div className={styles.fallback}>
+                  <p className={styles.fallbackLead}>{RESULT.fallbackLead}</p>
+                  <p className={styles.fallbackBody}>
+                    {RESULT.fallback(fallback.requestedYear, fallback.appliedYear)}
+                  </p>
+                </div>
+              )}
+
+              {/*
+                THE DECLARABLE RATE ONLY. SPEC 9.3 requires both rates and
+                names 45,0 % for Geneva case (c), but the prompt makes this
+                "the end-to-end seam FW12 completes with the two rates" - so
+                rawRate is not passed, and RateDisplay renders the secondary
+                figure only when it is.
+              */}
+              <RateDisplay
+                declarableRate={result.declarableRate}
+                zone={zoneFor(result.declarableRate, rules)}
+              />
+            </>
+          )}
         </div>
-      )}
-    </fieldset>
+      </section>
+    </>
   );
 }
 

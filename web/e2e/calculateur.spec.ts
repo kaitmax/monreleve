@@ -76,13 +76,43 @@ test.describe('with JavaScript disabled (AC3)', () => {
     expect(main).toContain(CALCULATEUR_COPY.yearCaption(YEAR));
   });
 
-  test('renders NO result region', async ({ page }) => {
-    // AC3's third clause. An empty aria-live region would announce nothing on
-    // every navigation, and a result area with no result reads as broken
-    // rather than as not-yet-calculated.
+  test('renders the form, so the page is not a wall of prose', async ({ page }) => {
+    // AC3's second clause: "the page shows the full explanatory copy, THE
+    // FORM, and no result". With scripting off the island never hydrates, but
+    // it is a Server Component render first - so the controls are in the
+    // served HTML and a user can at least see what the tool asks for.
     await page.goto(CALCULATOR_PATH);
 
-    expect(await page.locator('[aria-live]').count()).toBe(0);
+    for (const label of [
+      CALCULATEUR_COPY.form.canton.label,
+      CALCULATEUR_COPY.form.rate.label,
+      CALCULATEUR_COPY.form.days.label,
+    ]) {
+      await expect(page.getByText(label, { exact: true }), label).toBeVisible();
+    }
+  });
+
+  test('renders NO result, only the invitation to start one', async ({ page }) => {
+    // AC3's third clause, and it CHANGED SHAPE at increment 4. This asserted
+    // that no aria-live region existed at all, which was right when there was
+    // no form: an empty live region announces nothing on every navigation.
+    //
+    // Now the region has a job, so the requirement is the one AC3 actually
+    // states - no RESULT - and the region says why rather than sitting empty.
+    // Scoped to the region because the explanatory copy below it legitimately
+    // contains the ceiling as a percentage.
+    await page.goto(CALCULATOR_PATH);
+
+    const region = page.locator('[aria-live]');
+
+    await expect(region).toHaveCount(1);
+
+    // textContent, not toHaveText: the note is compared by codepoint and
+    // Playwright's text matchers normalise both sides (R66/R71).
+    const text = (await region.textContent()) ?? '';
+
+    expect(text).toBe(CALCULATEUR_COPY.result.empty);
+    expect(text).not.toContain('%');
   });
 
   test('the shell is still there, so the page is navigable', async ({ page }) => {

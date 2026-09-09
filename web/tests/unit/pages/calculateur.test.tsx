@@ -78,20 +78,39 @@ describe('the shell that survives without JavaScript (AC3)', () => {
     expect(text).toContain(CALCULATEUR_COPY.missions(FISCAL));
   });
 
-  it('gives the explanation a heading, one level below the h1', () => {
+  it('skips no heading level below the h1', () => {
+    // WAS "exactly one h2", which was true of increment 1 and stopped being
+    // true when increment 4's result region brought its own heading. Counting
+    // headings was never the rule anyway - the rule is that the outline has
+    // no gap, because a screen-reader user navigating by heading loses the
+    // structure at the first skipped level. This states that instead, and
+    // survives the next section.
     const { container } = render(<CalculateurPage />);
+    const levels = [...container.querySelectorAll('h1, h2, h3, h4, h5, h6')].map((heading) =>
+      Number(heading.tagName.slice(1)),
+    );
 
-    expect(container.querySelectorAll('h2')).toHaveLength(1);
-    expect(container.querySelectorAll('h3')).toHaveLength(0);
+    expect(levels.length).toBeGreaterThan(1);
+    expect(levels[0]).toBe(1);
+    expect([...new Set(levels)].sort()).toEqual([1, 2]);
   });
 
-  it('renders NO result region yet, because there is nothing to show', () => {
-    // AC3: with JavaScript disabled the page shows the copy and the form and
-    // NO result. In increment 1 there is not even a form, and an empty live
-    // region would announce nothing to a screen reader on every navigation.
+  it('renders a result region holding no number until there is input', () => {
+    // WAS "no result region at all", which was right for increment 1 - there
+    // was not even a form then, and an empty live region announces nothing on
+    // every navigation. Increment 4 gives the region a purpose, so the
+    // assertion moves to the thing AC3 actually cares about: the page must
+    // show no RESULT before anybody has typed, whether or not JavaScript ran.
     const { container } = render(<CalculateurPage />);
+    const live = container.querySelectorAll('[aria-live]');
 
-    expect(container.querySelectorAll('[aria-live]')).toHaveLength(0);
+    expect(live).toHaveLength(1);
+    expect(live[0]?.getAttribute('aria-live')).toBe('polite');
+    expect(live[0]?.textContent).toBe(CALCULATEUR_COPY.result.empty);
+
+    // No rate, and not even a percent sign: the region is prose until the
+    // engine has something to say.
+    expect(live[0]?.textContent).not.toContain('%');
   });
 });
 

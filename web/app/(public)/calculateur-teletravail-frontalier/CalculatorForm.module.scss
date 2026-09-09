@@ -185,3 +185,86 @@
 .date {
   width: 100%;
 }
+
+// ---------------------------------------------------------------------------
+// INCREMENT 4: the Calculer button and the provisional result region.
+// ---------------------------------------------------------------------------
+
+// The primary action, matching the shape FD1 draws and the spike measured.
+// It navigates rather than computes - see the comment at its call site.
+.calculate {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: center;
+  min-width: var(--size-button-min-width);
+  height: var(--size-button-height);
+  margin-top: var(--space-6);
+  padding: 0 var(--space-5);
+  border: 0;
+  border-radius: var(--radius-md);
+  background-color: var(--colour-brand);
+  color: var(--colour-surface);
+  font-family: inherit;
+  font-size: var(--type-body-m-size);
+  font-weight: var(--type-body-m-weight);
+  cursor: pointer;
+}
+
+// BELOW the form and never replacing it: SPEC 9.3 says users iterate, so the
+// numbers they are adjusting stay on screen while the answer changes.
+.resultCard {
+  margin: 0 0 var(--space-8);
+  padding: var(--space-6);
+  border: var(--size-input-border) solid var(--colour-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--colour-surface);
+}
+
+.resultHeading {
+  margin: 0 0 var(--space-4);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  line-height: var(--type-h3-line);
+}
+
+// The live region. No outline on focus removal here - it is focusable only so
+// the button can move focus to it, and it keeps the default ring when it does.
+.resultLive {
+  display: block;
+}
+
+// The empty and the corrigez notes. Secondary text, not error red: neither is
+// a mistake the user has made.
+.resultNote {
+  margin: 0;
+  color: var(--colour-text-secondary);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+}
+
+// RULING R11 and R55's banner. Warning colouring, because a calculation
+// performed under a different year's rules is a caveat on the number above it
+// rather than a failure.
+.fallback {
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-left: var(--size-input-border-focus) solid var(--colour-warning);
+  border-radius: var(--radius-sm);
+  background: var(--colour-warning-soft);
+}
+
+.fallbackLead {
+  margin: 0 0 var(--space-1);
+  color: var(--colour-text-primary);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-caption-line);
+}
+
+.fallbackBody {
+  margin: 0;
+  color: var(--colour-text-primary);
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-line);
+}
