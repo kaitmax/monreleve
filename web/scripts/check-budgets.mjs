@@ -147,6 +147,28 @@ const allEntries = Object.keys(appManifest.pages);
 const rootMainFiles = buildManifest.rootMainFiles ?? [];
 const polyfills = await measure(buildManifest.polyfillFiles ?? []);
 
+/**
+ * One route's measurement, and the SHAPE IS DECLARED because ruling R107 put
+ * this file under checkJs. The gate arithmetic below adds delta, failsA and
+ * failsB after the fact; without this typedef TypeScript infers the object
+ * from its literal and reports 21 errors for adding a property to it.
+ *
+ * Declaring it is better than silencing it: the three computed fields are the
+ * ones the verdict column depends on, and nothing until now said so.
+ *
+ * @typedef {object} BudgetRow
+ * @property {string} route
+ * @property {number} files
+ * @property {number} raw
+ * @property {number} gzip
+ * @property {number} css
+ * @property {boolean} gated
+ * @property {number} [delta]   over the framework baseline; set below
+ * @property {boolean} [failsA] gated and over GATE A; set below
+ * @property {boolean} [failsB] gated and over GATE B; set below
+ */
+
+/** @type {BudgetRow[]} */
 const rows = [];
 for (const entry of allEntries) {
   if (!entry.endsWith('/page')) continue;

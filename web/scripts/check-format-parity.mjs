@@ -37,8 +37,30 @@ const named = (text) =>
 const dir = resolve(process.argv[2] ?? 'dist-parity');
 const load = (file) => import(pathToFileURL(join(dir, file)).href);
 
-const { formatDays, formatPercent, formatSignedDays } = await load('number.js');
-const { formatDate, formatDateTime } = await load('date.js');
+/**
+ * THE TYPED BOUNDARY - RULING R107, and the half that does the work.
+ *
+ * checkJs alone would NOT have caught the defect that started this. load()
+ * is a dynamic import of a COMPUTED path, which TypeScript types as any, so
+ * formatPercent was any and any arity was legal - which is precisely how
+ * formatPercent(100) survived R97's "compile error, not convention" and
+ * failed CI for eight commits.
+ *
+ * These annotations point at the SOURCE modules, so the signatures flow from
+ * the declarations, while the runtime still imports the BUILT output from
+ * dist-parity. That split is the point of a parity check: the types come from
+ * one place and the bytes under test from another, on whichever Node version
+ * is running.
+ */
+
+/** @type {typeof import('../lib/ui/core/format/number')} */
+const numberFormat = await load('number.js');
+
+/** @type {typeof import('../lib/ui/core/format/date')} */
+const dateFormat = await load('date.js');
+
+const { formatDays, formatPercent, formatSignedDays } = numberFormat;
+const { formatDate, formatDateTime } = dateFormat;
 
 /**
  * SPEC 6.4's two examples plus the cases that carry a codepoint decision.

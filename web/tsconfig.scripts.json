@@ -1,0 +1,36 @@
+{
+  // RULING R107: a type-enforced rule needs a companion check for uncompiled
+  // files. This is that check for scripts/*.mjs, which tsc --noEmit never saw
+  // because tsconfig.json includes only .ts and .tsx.
+  //
+  // WHY THIS EXISTS: R97 made formatPercent's precision required and enforced
+  // it as a compile error. scripts/check-format-parity.mjs called it with one
+  // argument, was never compiled, and CI failed for eight commits.
+  //
+  // WHAT IT IS NOT: an attempt to fully type six build scripts. strict and
+  // noImplicitAny are off deliberately - an untyped local in a script that
+  // shells out to docker is not a defect, and turning them on would produce a
+  // wall of findings that has nothing to do with the rule this enforces. What
+  // IS checked is every call into typed product code: arity, argument types,
+  // and property access on an imported module.
+  //
+  // AND THE ANNOTATION IS THE OTHER HALF. checkJs alone would NOT have caught
+  // the defect: check-format-parity.mjs loads the compiled output through a
+  // dynamic import of a COMPUTED path, which TypeScript types as any, so the
+  // formatters were any and any arity was legal. That file now carries a JSDoc
+  // @type at the boundary, pointing at the SOURCE module, so the types flow
+  // from the declaration while the runtime still loads the built artifact -
+  // which is the whole point of a parity check.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "strict": false,
+    "noImplicitAny": false,
+    "noUncheckedIndexedAccess": false,
+    "types": ["node"]
+  },
+  "include": ["scripts/**/*.mjs"],
+  "exclude": ["node_modules"]
+}
