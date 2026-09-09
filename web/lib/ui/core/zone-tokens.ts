@@ -38,7 +38,25 @@ import type { Status, Zone } from './zones';
  * a real Lucide icon, because a typo renders an empty badge rather than an
  * error.
  */
-export type LucideIconName = string;
+/**
+ * The Lucide icons this product actually uses, as a union.
+ *
+ * WAS `string`, which gave no safety at all - a mistyped name compiled and
+ * rendered nothing, so FW6 predicted a TEST would catch it and FW8 wrote one.
+ * That test still exists and still checks these names against lucide-react,
+ * which is the half a type cannot do.
+ *
+ * NARROWED WHEN THE BADGE STOPPED USING A RUNTIME LOOKUP. ZoneBadge imported
+ * the whole icon library as a namespace and indexed it by this string, which
+ * defeated tree-shaking and cost 207 KiB the moment the badge reached a gated
+ * route (R2, FW12). The fix is four named imports in a static map, and that
+ * map can only be exhaustive if this is a union rather than string - so the
+ * bundling fix and the stronger type are the same edit.
+ *
+ * Adding a status now needs an icon HERE and an import in ZoneBadge, both
+ * checked by tsc.
+ */
+export type LucideIconName = 'circle-check' | 'triangle-alert' | 'circle-x' | 'octagon-alert';
 
 /** The presentation half of a badge: what it looks like, with no words. */
 export interface StatusVisual {

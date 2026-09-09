@@ -1,0 +1,118 @@
+@use "../../../lib/ui/core/styles/breakpoints" as bp;
+
+// web/app/(public)/calculateur-teletravail-frontalier/ResultPanel.module.scss
+//
+// Tokens only. The panel is a card below the form and never replaces it -
+// SPEC 9.3: "Below the form, never replacing it - users iterate."
+
+.panel {
+  margin: 0 0 var(--space-8);
+  padding: var(--space-6);
+  border: var(--size-input-border) solid var(--colour-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--colour-surface);
+}
+
+.heading {
+  margin: 0 0 var(--space-4);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  line-height: var(--type-h3-line);
+}
+
+.badge {
+  margin-bottom: var(--space-4);
+}
+
+.rail {
+  margin: var(--space-4) 0;
+}
+
+// Two across at the measure, one across on a phone. The tiles carry numbers a
+// reader compares, so a single column at narrow widths keeps them in one
+// scanning line rather than side by side and cramped.
+.tiles {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: 1fr;
+  margin-bottom: var(--space-6);
+}
+
+// THE ONE BREAKPOINT THERE IS. $breakpoint-md is the only breakpoint the
+// token layer authorises (R68) and it lives in a SASS partial rather than a
+// custom property, because a media condition is evaluated outside any element
+// and var() never resolves there. My first version wrote a raw 480px, which is
+// both a value outside the token layer and a second breakpoint nobody decided.
+@media (width >= bp.$breakpoint-md) {
+  .tiles {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.warnings {
+  margin-bottom: var(--space-6);
+}
+
+.warningsHeading {
+  margin: 0 0 var(--space-3);
+  font-size: var(--type-body-l-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-body-l-line);
+}
+
+.warningList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// Warning colouring on the RULE, not on the text: the heading and body are
+// text-primary, which is ruling R57's split - the status colour fails the
+// 4,5:1 bar as normal text and passes as a border.
+.warning {
+  margin-bottom: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-left: var(--size-input-border-focus) solid var(--colour-warning);
+  border-radius: var(--radius-sm);
+  background: var(--colour-warning-soft);
+}
+
+.warningHeading {
+  margin: 0 0 var(--space-1);
+  color: var(--colour-text-primary);
+  font-size: var(--type-body-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-body-line);
+}
+
+.warningBody {
+  margin: 0;
+  color: var(--colour-text-primary);
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-line);
+}
+
+.legal {
+  margin-bottom: var(--space-4);
+}
+
+.linkAnchor {
+  display: inline-flex;
+  gap: var(--space-1);
+  align-items: center;
+  min-height: var(--size-touch-target-web);
+  color: var(--colour-brand);
+  font-size: var(--type-body-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-body-line);
+}
+
+// Shown instead of the anchor while the destination is a planned route (R85).
+// Secondary text, no affordance: it must not look clickable, because it is
+// not.
+.linkPending {
+  margin: 0;
+  color: var(--colour-text-secondary);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+}

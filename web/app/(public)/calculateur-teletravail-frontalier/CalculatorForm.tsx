@@ -35,7 +35,7 @@
 
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ChevronDown, Minus, Plus } from 'lucide-react';
 import {
   type Canton,
@@ -53,8 +53,8 @@ import { PROVISIONAL_COPY } from '@/lib/fr/provisional';
 import { CANTONS_BY_NAME } from '@/lib/fr/cantons';
 import { errorMessage } from '@/lib/fr/errors';
 import { FieldGroup } from '@/lib/ui/react/FieldGroup/FieldGroup';
-import { formatDays, formatPercent, remainingYearFraction, zoneFor } from '@/lib/ui/core';
-import { RateDisplay } from '@/lib/ui/react/RateDisplay/RateDisplay';
+import { formatDays, formatPercent, remainingYearFraction } from '@/lib/ui/core';
+import { ResultPanel } from './ResultPanel';
 import styles from './CalculatorForm.module.scss';
 
 const COPY = CALCULATEUR_COPY.form;
@@ -372,22 +372,6 @@ export function CalculatorForm({ taxYear }: CalculatorFormProps) {
 
   const result: TeleworkResult | null = outcome !== null && outcome.ok ? outcome.value : null;
 
-  /**
-   * THE PREVIOUS RESULT IS DELIBERATELY NOT RETAINED, which departs from the
-   * increment's wording and is recorded in the report.
-   *
-   * The prompt asks for the last result to be held in state while the input
-   * is invalid. In the same breath it forbids the only thing such a value
-   * could be used for: "the result region never shows a stale number as
-   * current". So a retained result would be state nothing reads - and unused
-   * state on a live region is how a stale number eventually gets rendered by
-   * somebody who finds it there and assumes it is meant to be shown.
-   *
-   * FW12's panel may genuinely need it, to avoid tearing down a rail and four
-   * tiles on every keystroke. It can add it then, with something that reads
-   * it.
-   */
-  const resultRegion = useRef<HTMLDivElement | null>(null);
 
   /**
    * Which fields are on screen right now.
@@ -796,7 +780,14 @@ export function CalculatorForm({ taxYear }: CalculatorFormProps) {
           type="button"
           className={styles.calculate}
           onClick={() => {
-            const region = resultRegion.current;
+            /*
+              BY ID, NOT BY REF, since increment 1. The live region is
+              rendered by the island while there is nothing to show and by
+              ResultPanel once there is, so a ref attached in one branch is
+              null in the other - and the button would silently stop moving
+              focus exactly when there was finally a result to move it to.
+            */
+            const region = document.getElementById(RESULT_ID);
 
             if (region === null) return;
 
@@ -815,97 +806,80 @@ export function CalculatorForm({ taxYear }: CalculatorFormProps) {
       </fieldset>
 
       {/*
-        THE PROVISIONAL RESULT. FW12 replaces the inside of this region with
-        the full panel; the region itself - id, live politeness, focus target -
-        is what increment 4 establishes.
+        THE RESULT AREA, and it is rendered by TWO components depending on
+        state.
 
-        aria-live SITS ON THE INNER DIV, not on the section, so the heading is
-        not re-announced every time a digit changes. The section is named by
-        that heading through aria-labelledby instead.
+        ResultPanel needs a TeleworkResult - it computes nothing and has
+        nothing to render without one - so while the input is incomplete or
+        invalid the island keeps a region of its own with the same id, live
+        politeness and focus target. The alternative was a panel that accepts
+        a null result and branches internally, which would put the empty
+        state inside a component whose whole contract is "receives a result".
 
-        POLITE, not assertive. The rate changes on every keystroke by design,
-        and an assertive region would interrupt the screen reader mid-word on
-        each one.
+        R110's notice sits ABOVE both, because it is about the INPUT rather
+        than the result: it is right while the numbers are still invalid.
+        Increment 5 moves it inside the panel and gives it the /sources link.
       */}
-      <section className={styles.resultCard} aria-labelledby={RESULT_TITLE_ID}>
-        <h2 className={styles.resultHeading} id={RESULT_TITLE_ID}>
-          {RESULT.heading}
-        </h2>
-
-        <div
-          className={styles.resultLive}
-          id={RESULT_ID}
-          ref={resultRegion}
-          aria-live="polite"
-          tabIndex={-1}
-        >
-          {/*
-            THE PROVISIONAL NOTICE SITS ABOVE THE NUMBER, and before the
-            branch below, so it shows whether or not the input currently
-            validates. R110: it renders when the INPUT touches a pending
-            reading, which is true of a half-finished form too.
-          */}
-          {provisional.length === 0 ? null : (
-            <div className={styles.provisional}>
-              <p className={styles.provisionalLead}>{PROVISIONAL_COPY.lead}</p>
-              <ul className={styles.provisionalList}>
-                {provisional.map((id) => (
-                  <li key={id}>
-                    <span className={styles.provisionalName}>
-                      {PROVISIONAL_COPY.items[id].interpretation}
-                    </span>
-                    {PROVISIONAL_COPY.items[id].body}
-                  </li>
-                ))}
-              </ul>
-              <p className={styles.provisionalPending}>{PROVISIONAL_COPY.pending}</p>
-            </div>
-          )}
-
-          {input === null ? (
-            <p className={styles.resultNote}>{RESULT.empty}</p>
-          ) : result === null ? (
-            /*
-              result === null IS EXACTLY "the input is invalid", and this
-              condition used to read `errors.length > 0 || result === null`.
-              A mutation probe removed the first clause and NOT ONE TEST
-              CHANGED - because calculateTelework returns a Result, so a
-              result and an error can never both exist. The clause was dead.
-
-              Which is worth stating rather than deleting quietly: the
-              increment asks that "the result region never shows a stale
-              number as current", and that guarantee comes from the engine's
-              return type, not from a check in the UI. There is no code path
-              here that could render a number belonging to earlier input,
-              because no such number is ever in hand.
-            */
-            <p className={styles.resultNote}>{RESULT.stale}</p>
-          ) : (
-            <>
-              {fallback === undefined ? null : (
-                <div className={styles.fallback}>
-                  <p className={styles.fallbackLead}>{RESULT.fallbackLead}</p>
-                  <p className={styles.fallbackBody}>
-                    {RESULT.fallback(fallback.requestedYear, fallback.appliedYear)}
-                  </p>
-                </div>
-              )}
-
-              {/*
-                THE DECLARABLE RATE ONLY. SPEC 9.3 requires both rates and
-                names 45,0 % for Geneva case (c), but the prompt makes this
-                "the end-to-end seam FW12 completes with the two rates" - so
-                rawRate is not passed, and RateDisplay renders the secondary
-                figure only when it is.
-              */}
-              <RateDisplay
-                declarableRate={result.declarableRate}
-                zone={zoneFor(result.declarableRate, rules)}
-              />
-            </>
-          )}
+      {provisional.length === 0 ? null : (
+        <div className={styles.provisional}>
+          <p className={styles.provisionalLead}>{PROVISIONAL_COPY.lead}</p>
+          <ul className={styles.provisionalList}>
+            {provisional.map((id) => (
+              <li key={id}>
+                <span className={styles.provisionalName}>
+                  {PROVISIONAL_COPY.items[id].interpretation}
+                </span>
+                {PROVISIONAL_COPY.items[id].body}
+              </li>
+            ))}
+          </ul>
+          <p className={styles.provisionalPending}>{PROVISIONAL_COPY.pending}</p>
         </div>
-      </section>
+      )}
+
+      {/*
+        RULE_SET_FALLBACK stays here rather than in the panel's warning list
+        until increment 4, because its message names the requested and applied
+        years and the panel's warning copy is static strings. See the note
+        beside WARNING_ORDER in ResultPanel.tsx.
+      */}
+      {fallback === undefined ? null : (
+        <div className={styles.fallback}>
+          <p className={styles.fallbackLead}>{RESULT.fallbackLead}</p>
+          <p className={styles.fallbackBody}>
+            {RESULT.fallback(fallback.requestedYear, fallback.appliedYear)}
+          </p>
+        </div>
+      )}
+
+      {input === null || result === null ? (
+        <section className={styles.resultCard} aria-labelledby={RESULT_TITLE_ID}>
+          <h2 className={styles.resultHeading} id={RESULT_TITLE_ID}>
+            {RESULT.heading}
+          </h2>
+
+          <div
+            className={styles.resultLive}
+            id={RESULT_ID}
+            aria-live="polite"
+            tabIndex={-1}
+          >
+            {/*
+              result === null IS EXACTLY "the input is invalid". A mutation
+              probe in FW11 removed an `errors.length > 0 ||` clause from this
+              condition and NOT ONE TEST CHANGED - calculateTelework returns a
+              Result, so a result and an error can never coexist. The "never
+              show a stale number" guarantee comes from the engine's return
+              type, not from a check here.
+            */}
+            <p className={styles.resultNote}>
+              {input === null ? RESULT.empty : RESULT.stale}
+            </p>
+          </div>
+        </section>
+      ) : (
+        <ResultPanel input={input} result={result} thresholds={rules} />
+      )}
     </>
   );
 }

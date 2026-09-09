@@ -21,39 +21,46 @@
 // rejection, and because mission-exposure is precisely the case where the two
 // axes disagree: a warning badge on a green rail.
 
-import * as icons from 'lucide-react';
+import { CircleCheck, CircleX, OctagonAlert, TriangleAlert } from 'lucide-react';
+import type { ComponentType } from 'react';
 import { STATUS_PRESENTATION } from '@/lib/ui/core';
-import type { Status } from '@/lib/ui/core';
+import type { LucideIconName, Status } from '@/lib/ui/core';
 import styles from './ZoneBadge.module.scss';
 
 export interface ZoneBadgeProps {
   readonly status: Status;
 }
 
-/** 'circle-check' -> 'CircleCheck', which is how lucide-react keys its icons. */
-const toPascal = (kebab: string): string =>
-  kebab
-    .split('-')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join('');
-
 /**
- * The kebab-to-Pascal conversion zone-tokens.ts predicted at FW6: "lucide-
- * react keys its icons in PascalCase, so the React layer converts at FW8; a
- * test asserts every name here resolves to a real Lucide icon, because a typo
- * renders an empty badge rather than an error." That test already exists in
- * tests/unit/ui-core/status-presentation.test.ts, so a name that does not
- * resolve fails there before it can render nothing here.
+ * The four icons, imported BY NAME. RULING R2, and this cost 207 KiB.
+ *
+ * This was `import * as icons from 'lucide-react'` with a kebab-to-Pascal
+ * lookup at render time - the arrangement zone-tokens.ts predicted at FW6 and
+ * which a test guarded for typos. It works, and it defeats tree-shaking
+ * completely: a namespace import of an icon library pulls in every icon,
+ * because a bundler cannot know which key a runtime string will select.
+ *
+ * IT HID FOR FOUR TASKS because ZoneBadge only ever rendered on
+ * /dev/composants, which check-budgets.mjs reports as "not gated". FW12 put
+ * it on the calculator, and GATE A went from 116,3 KiB to 323,1 - a breach
+ * of 198 KiB against a 125 KiB ceiling. The budget gate caught, on its first
+ * exposure, a defect that had been latent since FW8.
+ *
+ * A STATIC MAP, so the bundler sees four named imports and nothing else. It
+ * is keyed by LucideIconName, so a name added to STATUS_VISUAL without an
+ * import here is a compile error - a stronger guarantee than the string
+ * lookup had, since that one could only be checked by a test at runtime.
  */
-function iconFor(name: string) {
-  const registry = icons as unknown as Record<string, React.ComponentType<{ className?: string }>>;
-
-  return registry[toPascal(name)];
-}
+const ICONS = {
+  'circle-check': CircleCheck,
+  'triangle-alert': TriangleAlert,
+  'circle-x': CircleX,
+  'octagon-alert': OctagonAlert,
+} satisfies Record<LucideIconName, ComponentType>;
 
 export function ZoneBadge({ status }: ZoneBadgeProps) {
   const { label, explanation, icon, colourToken, softColourToken } = STATUS_PRESENTATION[status];
-  const Icon = iconFor(icon);
+  const Icon = ICONS[icon];
 
   return (
     <div className={styles.root}>
@@ -65,11 +72,15 @@ export function ZoneBadge({ status }: ZoneBadgeProps) {
         {/* The glyph is decorative: the label beside it says the same thing
             in words, and SPEC 16 requires the words. Announcing both would
             read the status twice. */}
-        {Icon ? (
-          <span className={styles.icon} style={{ color: `var(${colourToken})` }} aria-hidden="true">
-            <Icon />
-          </span>
-        ) : null}
+        {/*
+          NO LONGER CONDITIONAL. The old lookup could return undefined for a
+          mistyped name, so the render had to cope; ICONS is exhaustive over
+          LucideIconName, so there is no absent case to handle and a missing
+          entry cannot compile.
+        */}
+        <span className={styles.icon} style={{ color: `var(${colourToken})` }} aria-hidden="true">
+          <Icon />
+        </span>
         {label}
       </span>
       <p className={styles.explanation}>{explanation}</p>
