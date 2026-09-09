@@ -29,7 +29,6 @@
 import { readFileSync } from 'node:fs';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { formatPercent } from '@/lib/ui/core';
 import type { Zone } from '@/lib/ui/core';
 import { RATE_COPY } from '@/lib/fr/rates';
 import { text } from '@/tests/support/markup';
@@ -37,6 +36,25 @@ import { RateDisplay } from './RateDisplay';
 
 // Geneva case (c), the fixture the whole two-rate rule exists for.
 const GENEVA_C = { declarable: 39.16, raw: 45 };
+// RULING R96: FORMATTED REGULATORY FIGURES ARE ASSERTED AGAINST LITERAL
+// STRINGS BY CODEPOINT, never against a formatter call.
+//
+// WHY, in one sentence: an assertion built from the formatter agrees with the
+// formatter, so it cannot see a wrong ARGUMENT. That is not hypothetical -
+// RateDisplay rendered the declarable rate at one decimal for three tasks
+// while expect(html).toContain(formatPercent(39.16)) stayed green, because
+// both sides passed the same wrong precision.
+//
+// The escapes are written out rather than pasted as invisible characters, so
+// the separator is readable in source and a plain space cannot be typed here
+// by accident. Every value below was MEASURED from the formatter, not derived.
+
+/** formatPercent(39.16, 2) - the filed figure, SPEC 7.3. */
+const DECLARABLE_RATE = '39,16 %';
+
+/** formatPercent(45, 1) - the share of days, R26's second domain. */
+const RAW_RATE = '45,0 %';
+
 
 const render = (props: {
   declarableRate: number;
@@ -58,7 +76,7 @@ describe('the declarable rate is the primary figure', () => {
     // wrong argument, so it needs a literal beside it.
     const html = render({ declarableRate: GENEVA_C.declarable, zone: 'compliant' });
 
-    expect(html).toContain(formatPercent(GENEVA_C.declarable, 2));
+    expect(html).toContain(DECLARABLE_RATE);
   });
 
   it('labels it with the AFC caption from lib/fr', () => {
@@ -107,7 +125,7 @@ describe('the second rate appears only when it differs (SPEC 9.3)', () => {
       rawRate: GENEVA_C.raw,
     });
 
-    expect(html).toContain(formatPercent(GENEVA_C.raw));
+    expect(html).toContain(RAW_RATE);
     expect(text(html)).toContain(RATE_COPY.rawCaption);
     expect(text(html)).toContain(RATE_COPY.divergence);
   });
@@ -121,8 +139,8 @@ describe('the second rate appears only when it differs (SPEC 9.3)', () => {
 
     // Two rates, two precisions: the filed figure at 2 dp, the share of days
     // at 1. See the precision block below and SPEC 7.3.
-    expect(html).toContain(formatPercent(GENEVA_C.declarable, 2));
-    expect(html).toContain(formatPercent(GENEVA_C.raw, 1));
+    expect(html).toContain(DECLARABLE_RATE);
+    expect(html).toContain(RAW_RATE);
     // ...and the zone is still the compliant band, because declarableRate is
     // what positions the rail. The exposure is visible without recolouring.
     expect(html).toContain('--colour-success');
@@ -180,8 +198,8 @@ describe('the precision each rate is rendered at (SPEC 7.3)', () => {
   it('renders the declarable rate at TWO decimals', () => {
     const html = render({ declarableRate: GENEVA_C.declarable, zone: 'compliant' });
 
-    expect(html).toContain('39,16');
-    expect(html).not.toContain('39,1 ');
+    expect(html).toContain(DECLARABLE_RATE);
+    expect(html).not.toContain('39,1 %');
   });
 
   it('renders the raw rate at ONE decimal', () => {
@@ -195,8 +213,8 @@ describe('the precision each rate is rendered at (SPEC 7.3)', () => {
       rawRate: GENEVA_C.raw,
     });
 
-    expect(html).toContain('45,0');
-    expect(html).not.toContain('45,00');
+    expect(html).toContain(RAW_RATE);
+    expect(html).not.toContain('45,00 %');
   });
 
   it('truncates rather than rounds, on the digit that decides a threshold', () => {
@@ -205,8 +223,8 @@ describe('the precision each rate is rendered at (SPEC 7.3)', () => {
     // the case R26's header measured and the reason the formatter pins trunc.
     const html = render({ declarableRate: 39.999, zone: 'compliant' });
 
-    expect(html).toContain('39,99');
-    expect(html).not.toContain('40,00');
+    expect(html).toContain('39,99 %');
+    expect(html).not.toContain('40,00 %');
   });
 
   it('keeps both rates distinguishable when they differ only in the second decimal', () => {
@@ -218,7 +236,7 @@ describe('the precision each rate is rendered at (SPEC 7.3)', () => {
     const second = render({ declarableRate: 39.24, zone: 'compliant' });
 
     expect(first).not.toBe(second);
-    expect(first).toContain('39,16');
-    expect(second).toContain('39,24');
+    expect(first).toContain(DECLARABLE_RATE);
+    expect(second).toContain('39,24 %');
   });
 });

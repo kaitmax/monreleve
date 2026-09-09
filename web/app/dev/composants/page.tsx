@@ -80,8 +80,11 @@ const FIELD_ERROR = errorMessage({ code: 'NEGATIVE_DAYS', field: 'teleworkDays' 
 // RULING R73: both tile labels name their ceiling, and the ceiling is
 // formatted from the RuleSet rather than written as a literal. This is what a
 // caller is expected to do - MetricTile owns no copy.
-const FISCAL = formatPercent(RULES.fiscalCeiling * 100);
-const SOCIAL = formatPercent(RULES.socialCeiling * 100);
+// One decimal, stated rather than defaulted (R97): these render "40,0 %"
+// and "49,9 %". Whether a whole threshold should read "40 %" instead is an
+// open question and deliberately not decided here.
+const FISCAL = formatPercent(RULES.fiscalCeiling * 100, 1);
+const SOCIAL = formatPercent(RULES.socialCeiling * 100, 1);
 
 function Specimen({
   id,

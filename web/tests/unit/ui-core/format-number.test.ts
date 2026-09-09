@@ -1,6 +1,6 @@
 // web/tests/unit/ui-core/format-number.test.ts
 //
-// SPEC 6.4: formatPercent(34.6) -> "34,6 %" (U+00A0), formatDays(1234.5) ->
+// SPEC 6.4: formatPercent(34.6, 1) -> "34,6 %" (U+00A0), formatDays(1234.5) ->
 // "1 234,5" (U+202F). "Intl output normalised, codepoints asserted, every
 // number through format/." SPEC 20 Never: "trust Intl codepoints
 // unnormalised."
@@ -29,7 +29,8 @@
 //    fr-LU formatters directly: it must return U+202F from separators that
 //    are not U+202F.
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
@@ -51,14 +52,14 @@ const codepoints = (text: string): string[] =>
 
 describe('formatPercent', () => {
   it('renders SPEC 6.4 example exactly', () => {
-    expect(formatPercent(34.6)).toBe(`34${COMMA}6${NBSP}%`);
+    expect(formatPercent(34.6, 1)).toBe(`34${COMMA}6${NBSP}%`);
   });
 
   it('separates figure from percent sign with U+00A0, not a plain space', () => {
     // The assertion that a pasted expected string cannot make. U+0020 and
     // U+00A0 are indistinguishable on screen; only the codepoint separates
     // them, and only U+00A0 stops "34,6" and "%" being split across a line.
-    const rendered = formatPercent(34.6);
+    const rendered = formatPercent(34.6, 1);
     const spaceIndex = rendered.length - 2;
 
     expect(rendered.charCodeAt(spaceIndex)).toBe(0x00a0);
@@ -75,23 +76,30 @@ describe('formatPercent', () => {
   });
 
   it('uses a comma for the decimal separator', () => {
-    expect(formatPercent(34.6).charCodeAt(2)).toBe(0x002c);
+    expect(formatPercent(34.6, 1).charCodeAt(2)).toBe(0x002c);
   });
 
   it('keeps a trailing zero at the requested precision', () => {
     // SPEC 9.3 displays "45,0 %". A percentage that drops its decimal reads
     // as a different precision than the one the engine computed.
-    expect(formatPercent(45)).toBe(`45${COMMA}0${NBSP}%`);
-    expect(formatPercent(40)).toBe(`40${COMMA}0${NBSP}%`);
+    expect(formatPercent(45, 1)).toBe(`45${COMMA}0${NBSP}%`);
+    expect(formatPercent(40, 1)).toBe(`40${COMMA}0${NBSP}%`);
   });
 
-  it('takes a precision, defaulting to one decimal', () => {
-    // Ruling R26 requires two decimals for declarableRate while AC1's
-    // formatPercent(34.6) -> "34,6 %" is one, on the same input. One
+  it('takes a REQUIRED precision, and renders exactly what it is asked for', () => {
+    // Ruling R26 requires two decimals for declarableRate while SPEC 6.4's
+    // formatPercent(34.6, 1) -> "34,6 %" is one, on the same input. One
     // function with a precision argument satisfies both; a second exported
     // formatter for the other precision would be two places to change.
+    //
+    // THE PRECISION USED TO DEFAULT TO 1, and ruling R97 removed the default
+    // after that default put a wrong number on a page: RateDisplay called
+    // formatPercent(declarableRate) with one argument, so 39.16 - the figure
+    // SPEC 7.3 says must match the employer's filing - rendered "39,1 %".
+    // The two lines below are the same input at both precisions, which is
+    // exactly the ambiguity a default resolved silently and wrongly.
     expect(formatPercent(39.16, 2)).toBe(`39${COMMA}16${NBSP}%`);
-    expect(formatPercent(39.16)).toBe(`39${COMMA}1${NBSP}%`);
+    expect(formatPercent(39.16, 1)).toBe(`39${COMMA}1${NBSP}%`);
   });
 
   it('truncates rather than rounding up, so a rate cannot cross a ceiling', () => {
@@ -100,7 +108,7 @@ describe('formatPercent', () => {
     // it. trunc renders "39,9". This matches declarable-rate.ts, which
     // truncates for the same reason, and it means the formatter can never
     // invent a breach.
-    expect(formatPercent(39.95)).toBe(`39${COMMA}9${NBSP}%`);
+    expect(formatPercent(39.95, 1)).toBe(`39${COMMA}9${NBSP}%`);
     expect(formatPercent(39.99, 1)).toBe(`39${COMMA}9${NBSP}%`);
     expect(formatPercent(49.89, 1)).toBe(`49${COMMA}8${NBSP}%`);
   });
@@ -110,14 +118,14 @@ describe('formatPercent', () => {
     // Using it forces callers to divide by 100 first, and 34.6/100 is
     // 0.34600000000000003 - the exact float error R16 and R26 exist to
     // remove, reintroduced in the last hop.
-    expect(formatPercent(34.6)).not.toContain('3 460');
-    expect(formatPercent(100)).toBe(`100${COMMA}0${NBSP}%`);
+    expect(formatPercent(34.6, 1)).not.toContain('3 460');
+    expect(formatPercent(100, 1)).toBe(`100${COMMA}0${NBSP}%`);
   });
 
   it('rejects a non-finite value', () => {
     // "NaN %" on a filing document is worse than a crash.
-    expect(() => formatPercent(Number.NaN)).toThrow(RangeError);
-    expect(() => formatPercent(Number.POSITIVE_INFINITY)).toThrow(RangeError);
+    expect(() => formatPercent(Number.NaN, 1)).toThrow(RangeError);
+    expect(() => formatPercent(Number.POSITIVE_INFINITY, 1)).toThrow(RangeError);
   });
 });
 
@@ -269,5 +277,47 @@ describe('a minus sign is normalised too', () => {
     expect(sign.charCodeAt(0)).toBe(0x2212);
     expect(normaliseNumber(parts)).toBe(`-1${NNBSP}234${COMMA}5`);
     expect(normaliseNumber(parts).charCodeAt(0)).toBe(0x002d);
+  });
+});
+
+describe('the precision is required at type level (R97)', () => {
+  // A @ts-expect-error assertion only asserts anything while the file
+  // containing it is still compiled. Delete number.types.ts and every claim it
+  // makes disappears in perfect silence - tsc has nothing to complain about,
+  // and no test fails. So the file's EXISTENCE and its directive count are
+  // pinned here, which is the same guard tests/unit/fr/errors.test.ts puts on
+  // errors.types.ts.
+  const proof = join(process.cwd(), 'lib', 'ui', 'core', 'format', 'number.types.ts');
+
+  it('the type proof file exists', () => {
+    expect(existsSync(proof), 'lib/ui/core/format/number.types.ts is missing').toBe(true);
+  });
+
+  it('still carries both @ts-expect-error assertions', () => {
+    // Counted as DIRECTIVES - anchored to the start of a line - not as
+    // mentions. An earlier guard elsewhere in this repo counted the substring
+    // and reported five where there were two, because the file's own header
+    // prose named it three times.
+    const source = readFileSync(proof, 'utf8');
+    const directives = source
+      .split('\n')
+      .filter((line) => line.trimStart().startsWith('// @ts-expect-error'));
+
+    expect(directives).toHaveLength(2);
+  });
+
+  it('proves the requirement rather than suppressing it', () => {
+    // The directives must sit above CALLS to formatPercent, not above
+    // anything else that happens to error - otherwise the file would compile
+    // green while asserting nothing about this function.
+    const source = readFileSync(proof, 'utf8');
+
+    expect(source).toContain('formatPercent(39.16);');
+
+    // 12, not 40: number.types.ts lives under lib/ui/core, where R73's guard
+    // forbids a bare threshold. The arity is what is being asserted, so the
+    // value is free - and the first draft used 40, which that guard caught.
+    expect(source).toContain('formatPercent(12);');
+    expect(source).toContain("import { formatPercent } from './number';");
   });
 });

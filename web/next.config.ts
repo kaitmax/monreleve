@@ -23,6 +23,17 @@ const nextConfig: NextConfig = {
   // as a deviation; the Playwright assertion accepts either and says so.
   trailingSlash: false,
 
+  // RULING R98: a baseline is valid only from an ISOLATED build. The visual
+  // runner sets this to a unique directory per run, so a container's build can
+  // never be the one another process is reading or writing. Unset everywhere
+  // else, which is every ordinary build.
+  //
+  // Belt and braces with the anonymous volume scripts/visual.mjs already
+  // mounts over .next: the volume is that script's implementation detail,
+  // while distDir travels with the build itself and survives a future
+  // simplification of the docker invocation.
+  ...(process.env.NEXT_DIST_DIR === undefined ? {} : { distDir: process.env.NEXT_DIST_DIR }),
+
   // Linting is `pnpm lint` (eslint + stylelint) and a blocking CI step of its
   // own. Next's built-in pass would run ESLint a second time, with a different
   // configuration surface, and is deprecated in 15.5. One authority, not two.

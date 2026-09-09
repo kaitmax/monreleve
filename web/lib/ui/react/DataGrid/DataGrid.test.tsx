@@ -26,6 +26,25 @@ import { GRID_COPY } from '@/lib/fr/grid';
 import { DataGrid } from './DataGrid';
 import type { DataGridColumn, DataGridRow } from './DataGrid';
 
+// RULING R96: FORMATTED REGULATORY FIGURES ARE ASSERTED AGAINST LITERAL
+// STRINGS BY CODEPOINT, never against a formatter call.
+//
+// WHY, in one sentence: an assertion built from the formatter agrees with the
+// formatter, so it cannot see a wrong ARGUMENT. That is not hypothetical -
+// RateDisplay rendered the declarable rate at one decimal for three tasks
+// while expect(html).toContain(formatPercent(39.16)) stayed green, because
+// both sides passed the same wrong precision.
+//
+// The escapes are written out rather than pasted as invisible characters, so
+// the separator is readable in source and a plain space cannot be typed here
+// by accident. Every value below was MEASURED from the formatter, not derived.
+
+/** formatDays(1234.5) - U+202F NARROW NO-BREAK SPACE groups the thousands. */
+const DAYS_1234_5 = '1 234,5';
+
+/** formatDays(1247) - the total row. */
+const DAYS_1247 = '1 247';
+
 // Testing Library registers cleanup only under vitest globals, which this
 // repo does not set. See FieldGroup.test.tsx.
 afterEach(cleanup);
@@ -92,7 +111,7 @@ describe('it renders cells exactly as given', () => {
     const cells = screen.getAllByRole('cell');
     const rendered = cells.map((cell) => cell.textContent);
 
-    expect(rendered).toContain(formatDays(1234.5));
+    expect(rendered).toContain(DAYS_1234_5);
   });
 
   it('preserves the narrow no-break space, asserted BY CODEPOINT', () => {
@@ -195,7 +214,7 @@ describe('the optional total row', () => {
     // hiding the exact thing SPEC 19 pins.
     const cells = [...(foot?.querySelectorAll('td') ?? [])].map((cell) => cell.textContent);
 
-    expect(cells).toContain(formatDays(1247));
+    expect(cells).toContain(DAYS_1247);
   });
 
   it('marks its first cell as a ROW header', () => {

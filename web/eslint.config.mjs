@@ -59,7 +59,17 @@ const SPIKE_PATHS = ['@/app/dev/spike', '@/app/dev/spike/*', '**/dev/spike', '**
 
 export default tseslint.config(
   {
-    ignores: ['.next/**', 'node_modules/**', 'public/**', 'next-env.d.ts'],
+    // '.next-visual-*' is R98's per-run build directory. It should never
+    // exist on a workstation - the container builds into a volume - but a
+    // local NEXT_DIST_DIR would put one here, and linting a generated build
+    // tree produces thousands of errors from files nobody wrote.
+    ignores: [
+      '.next/**',
+      '.next-visual-*/**',
+      'node_modules/**',
+      'public/**',
+      'next-env.d.ts',
+    ],
   },
 
   js.configs.recommended,

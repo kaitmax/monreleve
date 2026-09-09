@@ -4,6 +4,9 @@ node_modules/
 
 # next.js
 .next/
+# R98: the visual runner builds into a unique dist dir per run. Those are
+# created inside the container, but a local NEXT_DIST_DIR would land one here.
+.next-visual-*/
 out/
 build/
 

@@ -1,5 +1,25 @@
 // web/vitest.config.ts
+import { cpus } from 'node:os';
 import { defineConfig } from 'vitest/config';
+
+/**
+ * RULING R99: "gate commands run with a worker cap (half the cores) so they
+ * cannot be starved."
+ *
+ * WHAT HAPPENED WITHOUT IT. pnpm test:clean-tree was run immediately after a
+ * Playwright container finished. Vitest spawned one fork per test file - 67 of
+ * them - against a machine still winding a container down. One exhaustive
+ * property test timed out at 5 s having taken 5 177 ms, and THREE workers
+ * never started at all ("Timeout waiting for worker to respond"). The run
+ * reported a failure that had nothing to do with the code, and a failure of
+ * that shape is worse than a slow suite: it teaches whoever sees it that red
+ * sometimes means nothing.
+ *
+ * HALF THE CORES, not a fixed number, because this runs on a laptop and in CI
+ * and the right cap is a fraction of what is there. Minimum one, so a
+ * single-core runner still works.
+ */
+const WORKER_CAP = Math.max(1, Math.floor(cpus().length / 2));
 
 export default defineConfig({
   resolve: {
@@ -9,6 +29,10 @@ export default defineConfig({
     tsconfigPaths: true,
   },
   test: {
+    // R99. Applied to EVERY run rather than only the gate commands: a cap that
+    // holds sometimes is a cap nobody can rely on, and the failure it prevents
+    // is a false red, which costs more than the seconds it adds.
+    maxWorkers: WORKER_CAP,
     // .tsx as well as .ts: FW8's component tests are .test.tsx, and a glob
     // ending in .test.ts does not match them. The failure mode is the quiet
     // one - `pnpm test` still exits 0 while asserting nothing.
@@ -24,6 +48,29 @@ export default defineConfig({
       // zones.ts and the formatters exist. app/ still has none: it holds one
       // placeholder page.
       include: ['lib/calc-engine/**', 'lib/ui/core/**'],
+
+      // TYPE-PROOF FILES ARE COMPILED, NOT EXECUTED, so there is nothing in
+      // them to cover. lib/ui/core/format/number.types.ts asserts - through a
+      // ts-expect-error directive, ruling R65 - that formatPercent's precision
+      // is required (R97). Its statements never run in a test and never
+      // should: the compiler is the assertion.
+      //
+      // (Written without the at-sign deliberately. A comment line BEGINNING
+      // with the at-sign form IS a directive to tsc whatever the sentence
+      // around it means, and this one earned a TS2578 on its first run -
+      // prose about a mechanism invoking the mechanism, for the second time
+      // this session after a no-break space typed into a comment about
+      // no-break spaces.)
+      //
+      // Counting them pushed lib/ui/core from 100% to 97,1% and would leave
+      // exactly two ways out, both bad: write a test that imports the file
+      // only to satisfy a number, or delete the proof. Excluding them keeps
+      // the 100% bar meaningful for code that actually runs.
+      //
+      // They are not unguarded: tsc compiles them on every typecheck, and
+      // tests/unit/ui-core/format-number.test.ts asserts this one still
+      // exists and still carries both directives.
+      exclude: ['**/*.types.ts'],
       reporter: ['text'],
 
       // PER-DIRECTORY, not global. A single global threshold over both trees

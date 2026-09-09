@@ -121,13 +121,26 @@ function digits(value: number, minimumFractionDigits: number, maximumFractionDig
 /**
  * A percentage, in French, with the mandated U+00A0 before the sign.
  *
- * Precision defaults to one decimal, which is SPEC 6.4's own example
- * (formatPercent(34.6) -> "34,6 %") and SPEC 9.3's display rate. Ruling R26
- * requires two decimals for declarableRate, the figure that goes to the AFC,
- * on what can be the same input - so precision is an argument rather than
- * two exported functions, which would be two places to change.
+ * PRECISION IS REQUIRED - RULING R97, and the default it replaces cost this
+ * product a wrong number on a page. `decimals` used to default to 1, which is
+ * SPEC 6.4's own example (formatPercent(34.6) -> "34,6 %"). RateDisplay then
+ * called it with one argument for BOTH rates, so the declarable rate - the
+ * figure SPEC 7.3 says "must match the employer's filing" - rendered 39.16 as
+ * "39,1 %". The formatter is pinned to trunc, so the digit was not rounded
+ * away, it was cut off.
+ *
+ * A default is a decision nobody makes at the call site. Every caller now
+ * states the precision it means, and forgetting is a COMPILE ERROR rather than
+ * a plausible-looking number:
+ *
+ *   declarable rate   2   SPEC 7.3, the filed figure
+ *   raw rate          1   R26's second domain, a share of days
+ *   threshold labels  0 or 1, depending on whether the value is whole
+ *
+ * number.types.ts asserts the requirement at type level (ruling R65), so
+ * widening it back to a default fails the build rather than passing silently.
  */
-export function formatPercent(value: number, decimals = 1): string {
+export function formatPercent(value: number, decimals: number): string {
   requireFinite(value, 'formatPercent');
 
   return `${digits(value, decimals, decimals)}${PERCENT_SPACE}%`;

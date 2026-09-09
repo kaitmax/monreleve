@@ -35,16 +35,39 @@ import { join } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { ruleSetFor } from '@/lib/calc-engine';
-import { formatDays, formatPercent, formatSignedDays } from '@/lib/ui/core';
+import { formatPercent, formatSignedDays } from '@/lib/ui/core';
 import { METRIC_COPY } from '@/lib/fr/metrics';
 import { MetricTile } from './MetricTile';
 
 // Composed the way a caller must: the threshold comes from the RuleSet and
 // goes through formatPercent, never a literal (R73). ruleSetFor(2026) gives
 // fiscalCeiling 0.4, so this reads "40,0 %".
-const THRESHOLD = formatPercent(ruleSetFor(2026).fiscalCeiling * 100);
+const THRESHOLD = formatPercent(ruleSetFor(2026).fiscalCeiling * 100, 1);
 const LABEL = METRIC_COPY.remaining(THRESHOLD);
 const OVER_LABEL = METRIC_COPY.over(THRESHOLD);
+// RULING R96: FORMATTED REGULATORY FIGURES ARE ASSERTED AGAINST LITERAL
+// STRINGS BY CODEPOINT, never against a formatter call.
+//
+// WHY, in one sentence: an assertion built from the formatter agrees with the
+// formatter, so it cannot see a wrong ARGUMENT. That is not hypothetical -
+// RateDisplay rendered the declarable rate at one decimal for three tasks
+// while expect(html).toContain(formatPercent(39.16)) stayed green, because
+// both sides passed the same wrong precision.
+//
+// The escapes are written out rather than pasted as invisible characters, so
+// the separator is readable in source and a plain space cannot be typed here
+// by accident. Every value below was MEASURED from the formatter, not derived.
+
+/** formatDays(1234.5) - U+202F groups the thousands. */
+const DAYS_1234_5 = '1 234,5';
+
+/**
+ * formatDays(6) - a single digit, so there is no separator to pin. The force
+ * of the assertions using it comes from the ABSENCES beside them: no U+002D
+ * and no U+2212, which is what the negative tile exists to guarantee.
+ */
+const DAYS_6 = '6';
+
 
 const render = (value: number, label = LABEL, overLabel = OVER_LABEL): string =>
   renderToStaticMarkup(
@@ -60,7 +83,7 @@ describe('a tile in its ordinary state', () => {
     // Not as its own formatting: SPEC 6.4 puts every number through format/,
     // and a component that re-rendered the number would be a second place
     // where the separator could go wrong.
-    expect(render(1234.5)).toContain(formatDays(1234.5));
+    expect(render(1234.5)).toContain(DAYS_1234_5);
   });
 
   it('is not marked negative, so the variant cannot be styled onto it', () => {
@@ -84,8 +107,8 @@ describe('a tile whose headroom has gone negative', () => {
     // The defect R73 fixes. Two negative-capable tiles sit side by side in
     // SPEC 9.3, and the old component substituted one generic sentence for
     // both - so a reader could not tell the 40 % tile from the 49,9 % one.
-    const fiscal = formatPercent(ruleSetFor(2026).fiscalCeiling * 100);
-    const social = formatPercent(ruleSetFor(2026).socialCeiling * 100);
+    const fiscal = formatPercent(ruleSetFor(2026).fiscalCeiling * 100, 1);
+    const social = formatPercent(ruleSetFor(2026).socialCeiling * 100, 1);
 
     expect(render(-6, LABEL, METRIC_COPY.over(fiscal))).toContain(fiscal);
     expect(render(-6, LABEL, METRIC_COPY.over(social))).toContain(social);
@@ -125,7 +148,7 @@ describe('a tile whose headroom has gone negative', () => {
     // rather than as the fact that a limit has been passed.
     const html = render(-6);
 
-    expect(html).toContain(formatDays(6));
+    expect(html).toContain(DAYS_6);
     expect(html).not.toContain(String.fromCharCode(45) + '6');
     expect(html).not.toContain(String.fromCharCode(0x2212));
   });
@@ -136,8 +159,8 @@ describe('a tile whose headroom has gone negative', () => {
     const over = render(-6);
     const under = render(6);
 
-    expect(over).toContain(formatDays(6));
-    expect(under).toContain(formatDays(6));
+    expect(over).toContain(DAYS_6);
+    expect(under).toContain(DAYS_6);
   });
 });
 

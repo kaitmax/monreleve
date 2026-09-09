@@ -81,7 +81,7 @@ const CONTENT = 'Contenu de la page';
 const HELPER = 'Journees entieres uniquement.';
 
 // R73: both tile labels come from the caller and name their ceiling.
-const TILE_THRESHOLD = formatPercent(RULES.fiscalCeiling * 100);
+const TILE_THRESHOLD = formatPercent(RULES.fiscalCeiling * 100, 1);
 const TILE_LABEL = METRIC_COPY.remaining(TILE_THRESHOLD);
 const TILE_OVER = METRIC_COPY.over(TILE_THRESHOLD);
 const FIELD_ERROR = errorMessage({ code: 'NEGATIVE_DAYS', field: 'teleworkDays' });
