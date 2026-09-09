@@ -164,5 +164,89 @@ export const CALCULATEUR_COPY = {
      * instead of being swallowed.
      */
     otherErrorsLabel: 'À corriger avant le calcul',
+
+    /**
+     * THE MISSION QUESTION (increment 3), and it is visible rather than
+     * hidden for a reason SPEC 9.3 states outright: "Mission days materially
+     * change the result, and a user with missions who never opens the
+     * accordion gets a silently wrong answer." One line, two radios. "Non"
+     * costs a user without missions a single line of reading.
+     *
+     * The question is SPEC's own sentence. The helper is the prompt's, with
+     * the ceiling turned into an argument - a helper reading "40 %" would be
+     * a fourth place that number lives and the one nobody would think to
+     * update (R73).
+     */
+    missions: {
+      question: `Avez-vous effectué des missions hors de Suisse cette année${n("?")}`,
+      helper: (fiscal: string): string =>
+        `Les jours de mission sont comptés à l'intérieur des ${fiscal}, et non ` +
+        `en plus.`,
+      no: 'Non',
+      yes: 'Oui',
+
+      /**
+       * RULING R13, in one line, in the mission fields' own helper (AC2).
+       *
+       * THE GUIDE IS NAMED, NOT LINKED. SPEC 9.5 puts the full rules at
+       * /guides/jours-de-mission-hors-suisse, which is FW17 - so a link here
+       * would promise a 404 from a helper, and R85's principle is that a
+       * target renders only when it is live. Naming it tells the reader the
+       * rules exist and are written down somewhere, which is true.
+       */
+      fieldHelper:
+        "Un jour de trajet sans travail effectué, ou travaillé " +
+        "majoritairement en Suisse, n'est pas compté. Les règles complètes " +
+        'figurent dans le guide des missions.',
+
+      france: { label: 'Jours de mission en France' },
+      thirdState: { label: 'Jours de mission dans un pays tiers' },
+    },
+
+    advanced: {
+      summary: 'Options avancées',
+    },
+
+    method: {
+      label: 'Méthode de calcul',
+
+      /**
+       * SPEC 9.3 GIVES THIS VERBATIM and calls it "also advice nobody else
+       * gives", so the wording is not touched. The one change is that the
+       * basis arrives as an argument instead of as the digits SPEC prints:
+       * the number is RuleSet.simplifiedBasisDays, and copy holding its own
+       * copy of it is the staleness R73 forbids. Every other character is
+       * SPEC's.
+       */
+      helper: (basisDays: string): string =>
+        `Par défaut, nous utilisons la base simplifiée de ${basisDays} jours ` +
+        `par an (circulaire n° 45). Votre employeur peut utiliser un décompte ` +
+        `exact — demandez-lui laquelle s'applique, la méthode doit être la ` +
+        `même pour tout le personnel.`,
+
+      simplified: 'Base simplifiée',
+      exact: 'Décompte exact',
+      totalLabel: 'Nombre total de jours travaillés',
+      totalHelper:
+        'Le chiffre que votre employeur applique à tout le personnel.',
+    },
+
+    decompte: {
+      label: 'Décompte',
+      day: 'Journées entières',
+      halfDay: 'Demi-journées',
+      hours: 'Heures',
+      helper:
+        'La plus petite unité que votre employeur enregistre. Les heures ' +
+        'sont converties en journées avant le calcul.',
+    },
+
+    start: {
+      label: "Début d'activité en cours d'année",
+      helper:
+        "Laissez vide si vous avez travaillé toute l'année. Une année " +
+        'incomplète réduit le plafond annuel et le quota de missions dans la ' +
+        'même proportion.',
+    },
   },
 } as const;

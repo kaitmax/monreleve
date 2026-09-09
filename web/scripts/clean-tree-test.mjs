@@ -69,8 +69,26 @@ try {
 if (status === 0) {
   console.log('\nclean-tree check passed: no test depends on a generated directory.');
 } else {
+  // SAYS WHAT HAPPENED, NOT WHAT CAUSED IT. The first version of this
+  // asserted "a test read a path that does not exist" - which is R94's
+  // reason for the check and the usual cause, but not something this script
+  // can know. It cost real time once: a test that had merely grown slow
+  // enough to hit vitest's 5 s timeout under the worker cap failed here, and
+  // the message sent me hunting a filesystem dependency that was not there.
+  // A check naming a cause it has not established misdirects whoever reads
+  // it.
   console.error(
-    '\nclean-tree check FAILED. A test read a path that does not exist in a fresh checkout - which is what CI has. See ruling R94.',
+    [
+      '',
+      'clean-tree check FAILED: the suite passed normally and failed with the',
+      'generated directories moved aside. The failure output above says which',
+      'test and why - read it before assuming a cause.',
+      '',
+      'The usual cause is ruling R94: a test reading a path that exists in',
+      'this checkout but not in a fresh one, which is what CI has. A timeout',
+      'or a worker error is NOT that - it means the run differed in timing',
+      'rather than in the tree.',
+    ].join('\n'),
   );
 }
 

@@ -20,6 +20,10 @@ export type { SignedDays } from './format/number';
 // string, which carries no instant, so there is no zone to name.
 export { formatDate, formatDateTime, DATE_TIME_ZONE } from './format/date';
 
+// FW11 increment 3: a start-of-activity date becomes periodFraction. Pure,
+// no clock, no zone (R28) - see period.ts for why it is not in the engine.
+export { remainingYearFraction } from './period';
+
 export { renderRailSvg } from './rail/renderRailSvg';
 export { railGeometry, COMPACT_MIN_WIDTH, SOCIAL_HEIGHT, SOCIAL_WIDTH } from './rail/geometry';
 export type { RailData, RailGeometry, RailTick } from './rail/geometry';

@@ -32,7 +32,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { CalculatorForm } from '@/app/(public)/calculateur-teletravail-frontalier/CalculatorForm';
 import type { Canton } from '@/lib/calc-engine';
 import { CALCULATEUR_COPY } from '@/lib/fr/calculateur';
-import { CANTON_NAMES } from '@/lib/fr/cantons';
+import { CANTONS_BY_NAME, CANTON_NAMES } from '@/lib/fr/cantons';
 import { errorMessage } from '@/lib/fr/errors';
 
 // PLAIN DOM ASSERTIONS, NOT jest-dom. @testing-library/jest-dom is a
@@ -87,20 +87,42 @@ const type = (field: HTMLInputElement, value: string) => {
 const renderedText = (): string => document.body.textContent ?? '';
 
 describe('field 1: the canton', () => {
-  it('offers all 26 cantons, each named in French', () => {
-    setUp();
+  it('offers all 26 cantons, named in French, ordered by name', () => {
+    // ONE PASS OVER THE OPTIONS, and the first version of this was 26
+    // separate getByRole({ name }) calls. That takes 5.7 SECONDS: a name
+    // query computes the accessible name of every candidate element, so 26
+    // lookups across 27 options is quadratic. It passed the ordinary run at
+    // just under the 5 s timeout and FAILED under the worker cap, where the
+    // clean-tree run then blamed a missing path (ruling R94) for what was
+    // actually a slow test.
+    //
+    // Reading the options once is both faster and a stronger claim: this
+    // asserts the exact list AND its order, where the loop asserted only
+    // that each name existed somewhere.
+    const { container } = setUp();
+    const options = [...container.querySelectorAll('option')];
 
-    const codes = Object.keys(CANTON_NAMES) as readonly Canton[];
+    // The placeholder leads, and is not one of the 26.
+    expect(options[0]?.value).toBe('');
 
-    // Non-vacuous: the map itself must really hold 26, or the loop below
-    // would assert nothing while passing.
-    expect(codes).toHaveLength(26);
+    const offered = options.slice(1).map((option) => [option.value, option.textContent]);
 
-    for (const code of codes) {
-      const option = screen.getByRole('option', { name: CANTON_NAMES[code] });
+    expect(offered).toHaveLength(26);
+    expect(offered).toEqual(CANTONS_BY_NAME.map(([code, name]) => [code, name]));
+  });
 
-      expect(option.getAttribute('value'), code).toBe(code);
-    }
+  it('sorts by the French name, not by the code or the codepoint', () => {
+    // The property the collator buys, asserted where it can actually break.
+    // By CODE the first three are AG, AI, AR - Argovie, Appenzell, Appenzell -
+    // which reads as shuffled. By CODEPOINT every accented name lands after
+    // Zurich, so Bale would follow Zoug. Neither mistake is visible in the
+    // list assertion above, which compares against the same sorted constant.
+    const names = CANTONS_BY_NAME.map(([, name]) => name);
+    const bale = names.indexOf(CANTON_NAMES.BL);
+
+    expect(names.indexOf(CANTON_NAMES.AG)).toBeLessThan(bale);
+    expect(bale).toBeLessThan(names.indexOf(CANTON_NAMES.BE));
+    expect(bale).toBeLessThan(names.indexOf(CANTON_NAMES.ZG));
   });
 
   it('starts on the placeholder, because no canton is a sane default', () => {

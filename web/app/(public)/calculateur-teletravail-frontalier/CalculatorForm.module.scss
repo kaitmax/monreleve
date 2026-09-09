@@ -93,3 +93,95 @@
   font-size: var(--type-caption-size);
   line-height: var(--type-caption-line);
 }
+
+// ---------------------------------------------------------------------------
+// INCREMENT 3: the mission question, the radio groups, the disclosure.
+// ---------------------------------------------------------------------------
+
+// A radio group. Nested inside the card's own fieldset, which is legal and is
+// what a group of choices inside a form section is for.
+.group {
+  margin: 0 0 var(--space-5);
+  padding: 0;
+  border: none;
+}
+
+.groupLegend {
+  padding: 0;
+  color: var(--colour-text-primary);
+  font-size: var(--type-label-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-label-line);
+}
+
+.groupHelper {
+  margin: var(--space-1) 0 var(--space-2);
+  color: var(--colour-text-secondary);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  line-height: var(--type-caption-line);
+}
+
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+// The whole row is the target, not just the dot - the label wraps the input,
+// so a tap anywhere on the word selects it. min-height keeps that row at the
+// touch target even though the radio itself is 22 px.
+.choice {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  min-height: var(--size-touch-target-web);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+  cursor: pointer;
+}
+
+// The mission fields, revealed by "Oui". Indented so the relationship to the
+// question above is visible without a second heading.
+.revealed {
+  margin-bottom: var(--space-5);
+  padding-left: var(--space-4);
+  border-left: var(--size-input-border-focus) solid var(--colour-border-default);
+}
+
+.disclosure {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  min-height: var(--size-touch-target-web);
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--colour-text-primary);
+  font-family: inherit;
+  font-size: var(--type-body-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-body-line);
+  cursor: pointer;
+}
+
+.chevron {
+  transition: transform var(--motion-standard);
+}
+
+// Rotated, not swapped for a second icon: one element means the transition has
+// something to animate, and no icon can go missing from the other state.
+.chevronOpen {
+  transform: rotate(180deg);
+  transition: transform var(--motion-standard);
+}
+
+.advanced {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: var(--size-input-border) solid var(--colour-border-default);
+}
+
+.date {
+  width: 100%;
+}
