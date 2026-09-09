@@ -146,27 +146,46 @@ process.stdout.write(
 );
 
 /**
- * tsconfig.json AS IT STANDS BEFORE THE CONTAINER TOUCHES IT.
+ * THE FILES NEXT OWNS, AS THEY STAND BEFORE THE CONTAINER TOUCHES THEM.
  *
  * R98's per-run distDir has a side effect the ruling did not anticipate. On
- * every build Next APPENDS that directory's generated route types to the
- * `include` array of the repo's real tsconfig.json - the file is on the bind
- * mount, and Next treats keeping it current as a courtesy.
+ * every build Next rewrites the two typescript files it considers its own to
+ * point at that directory, because they sit on the bind mount and Next treats
+ * keeping them current as a courtesy. The distDir is deleted when the run
+ * ends; the edits are not.
  *
- * The directory is deleted when the run ends. The entry is not. Eight had
- * accumulated by FW11, each pointing at nothing, and the list could only grow:
- * one per visual run, forever, in a file that goes into every commit. It also
- * left `git status` dirty after every run, which is the noise that hides a
- * real change.
+ * THE TWO FAIL DIFFERENTLY, and the second is much worse:
  *
- * So the file is snapshotted here and restored in the finally below. The other
- * half of this is tests/unit/meta/tsconfig-accretion.test.ts, which is what
- * would SEE the restore breaking - a crash between these two points, or a
- * future Next that writes somewhere else, would otherwise resume accreting
- * with no symptom beyond a diff nobody reads.
+ *   tsconfig.json   APPENDS a glob to `include`. Eight had accumulated by
+ *                   FW11, each pointing at nothing. Dead globs are harmless
+ *                   in themselves; the cost was a list that could only grow,
+ *                   in a file that goes into every commit, and a `git status`
+ *                   never clean after a visual run - the noise that hides a
+ *                   real change.
+ *
+ *   next-env.d.ts   REPLACES the reference to ./.next/types/routes.d.ts. Not
+ *                   an addition - the live path is GONE, so the generated
+ *                   route types resolve to a directory that no longer exists.
+ *
+ * AND `tsc --noEmit` EXITS 0 EITHER WAY, measured with the dead reference
+ * actually committed. A missing /// <reference path> target is not an error,
+ * so the whole gate stayed green. This restore is the only thing standing
+ * between a visual run and a repository that has quietly stopped
+ * typechecking its own route types.
+ *
+ * ONLY tsconfig.json WAS COVERED AT FIRST, and next-env.d.ts was committed
+ * with a dead reference one commit later. A guard written for one instance
+ * of a class catches one instance of a class - hence a list rather than a
+ * constant. The other half is tests/unit/meta/distdir-leaks.test.ts, which
+ * is what would SEE this break: a crash between snapshot and restore, or a
+ * future Next that writes to a third file, leaves no other symptom.
  */
-const TSCONFIG = resolve(WEB, 'tsconfig.json');
-const tsconfigBefore = readFileSync(TSCONFIG, 'utf8');
+const OWNED_BY_NEXT = ['tsconfig.json', 'next-env.d.ts'];
+const snapshots = OWNED_BY_NEXT.map((file) => {
+  const path = resolve(WEB, file);
+
+  return { file, path, before: readFileSync(path, 'utf8') };
+});
 
 try {
   execFileSync(
@@ -225,18 +244,20 @@ try {
   // execFileSync already streamed the failure; adding a stack would bury it.
   process.exitCode = 1;
 } finally {
-  // The snapshot goes back BEFORE anything else in here, because the mount
+  // The snapshots go back BEFORE anything else in here, because the mount
   // point check below can set a failure exit code and return, and a run that
   // failed is exactly the run whose leftovers nobody goes looking for.
   //
   // Reported rather than restored in silence: if Next stops doing this, or
   // starts doing it somewhere new, the absence or presence of this line is the
   // only cheap way to notice.
-  if (readFileSync(TSCONFIG, 'utf8') !== tsconfigBefore) {
-    writeFileSync(TSCONFIG, tsconfigBefore);
-    process.stdout.write(
-      `tsconfig.json restored: next had added ${DIST_DIR} to its include.${NEWLINE}`,
-    );
+  for (const snapshot of snapshots) {
+    if (readFileSync(snapshot.path, 'utf8') !== snapshot.before) {
+      writeFileSync(snapshot.path, snapshot.before);
+      process.stdout.write(
+        `${snapshot.file} restored: next had pointed it at ${DIST_DIR}.${NEWLINE}`,
+      );
+    }
   }
 
   // THE MOUNT POINT, AND WHAT ITS CONTENTS MEAN.
