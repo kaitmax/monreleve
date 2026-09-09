@@ -45,10 +45,22 @@ const { formatDate, formatDateTime } = await load('date.js');
  * Every expectation is assembled from the constants above.
  */
 const CASES = [
-  ['formatPercent(34.6)', formatPercent(34.6), `34${COMMA}6${NBSP}%`],
+  // RULING R97 MADE THE PRECISION REQUIRED, and these two calls are why CI
+  // went red for eight commits while every local gate was green. This file is
+  // .mjs, so tsc never sees it: R97 was enforced as a compile error and a
+  // compile error cannot reach a script that is not compiled.
+  //
+  // 34.6 PASSED BY ACCIDENT, which is the more interesting half. With
+  // decimals undefined, Intl.NumberFormat falls back to at most three
+  // fraction digits and renders "34,6 %" anyway - the right answer from a
+  // broken call. formatPercent(100) rendered "100 %" against an expectation
+  // of "100,0 %" and failed. One bug, one visible symptom.
+  //
+  // SPEC 6.4's own example is formatPercent(34.6) -> 34,6 %, at one decimal.
+  ['formatPercent(34.6, 1)', formatPercent(34.6, 1), `34${COMMA}6${NBSP}%`],
   ['formatPercent(39.16, 2)', formatPercent(39.16, 2), `39${COMMA}16${NBSP}%`],
   ['formatPercent(39.95, 1) truncates', formatPercent(39.95, 1), `39${COMMA}9${NBSP}%`],
-  ['formatPercent(100)', formatPercent(100), `100${COMMA}0${NBSP}%`],
+  ['formatPercent(100, 1)', formatPercent(100, 1), `100${COMMA}0${NBSP}%`],
   ['formatDays(1234.5)', formatDays(1234.5), `1${NNBSP}234${COMMA}5`],
   ['formatDays(1000)', formatDays(1000), `1${NNBSP}000`],
   ['formatDays(240)', formatDays(240), '240'],
