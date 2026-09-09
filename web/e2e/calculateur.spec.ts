@@ -174,3 +174,201 @@ test.describe('ruling R54: the gate, in the state it is actually in', () => {
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// FW11 INCREMENT 5: the keyboard path through every control.
+//
+// WHY THIS IS AN E2E TEST AND NOT A UNIT TEST. Tab order is a browser
+// behaviour: it comes from document order, from tabindex, from whether an
+// element is rendered at all, and - for a radio group - from the roving
+// tabindex the browser applies so that a group is one stop and the arrows move
+// inside it. jsdom implements none of that, so a unit test asserting a tab
+// sequence would be asserting a fiction.
+//
+// THE SEQUENCE IS COLLECTED, NOT PRESCRIBED one press at a time. Asserting
+// "the third Tab lands on the day field" breaks every time a field is added
+// and says nothing about what a user experiences. What matters is that every
+// control IS reachable, that the three parts of a stepper come in the order
+// they are drawn, and that a collapsed accordion contributes NOTHING - which
+// is the one that would actually go wrong.
+// ---------------------------------------------------------------------------
+
+/**
+ * How the focused element identifies itself, in order of usefulness.
+ *
+ * A FUNCTION, NOT A STRING, and the string version cost a red run worth
+ * recording. page.evaluate accepts a string and evaluates it as an
+ * EXPRESSION - so a string containing "() => { ... }" evaluates to a function
+ * object, which Playwright then serialises to undefined. Every assertion
+ * compared its expected value against undefined and the failure looked like a
+ * focus bug rather than a harness one.
+ *
+ * Declared at module scope with no closure over anything, which is what lets
+ * Playwright stringify it into the page.
+ */
+function focusProbe(): string {
+  const el = document.activeElement;
+
+  if (el === null) return 'none';
+
+  const aria = el.getAttribute('aria-label');
+
+  if (aria !== null && aria !== '') return `aria:${aria}`;
+  if (el.id !== '') return `id:${el.id}`;
+
+  const text = (el.textContent ?? '').trim();
+
+  if (text !== '') return `text:${text}`;
+
+  return el.tagName.toLowerCase();
+}
+
+test.describe('the keyboard path (increment 5)', () => {
+  /** Tab `count` times from the top of the document, recording each stop. */
+  const walk = async (page: import('@playwright/test').Page, count: number) => {
+    await page.locator('body').click({ position: { x: 1, y: 1 } });
+    await page.evaluate(() => {
+      (document.activeElement as HTMLElement | null)?.blur();
+    });
+
+    const stops: string[] = [];
+
+    for (let index = 0; index < count; index += 1) {
+      await page.keyboard.press('Tab');
+      stops.push(await page.evaluate(focusProbe));
+    }
+
+    return stops;
+  };
+
+  test('reaches every visible control', async ({ page }) => {
+    await page.goto(CALCULATOR_PATH);
+
+    const stops = await walk(page, 24);
+
+    for (const expected of [
+      'id:canton',
+      `aria:${CALCULATEUR_COPY.form.rate.decrease}`,
+      'id:taux-activite',
+      `aria:${CALCULATEUR_COPY.form.rate.increase}`,
+      `aria:${CALCULATEUR_COPY.form.days.decrease}`,
+      'id:jours-teletravail',
+      `aria:${CALCULATEUR_COPY.form.days.increase}`,
+      `text:${CALCULATEUR_COPY.form.advanced.summary}`,
+      `text:${CALCULATEUR_COPY.result.calculate}`,
+    ]) {
+      expect(stops, expected).toContain(expected);
+    }
+  });
+
+  test('tabs through a stepper in the order it is DRAWN, not merely declared', async ({
+    page,
+  }) => {
+    // MEASURED ON SCREEN, and the first version of this was not. It compared
+    // tab positions only, which is DOM order - so a probe adding
+    // flex-direction: row-reverse left it green while the buttons had swapped
+    // sides. That is the whole defect the test was named for: a keyboard user
+    // tabbing left-to-right through controls drawn right-to-left, WCAG 1.3.2.
+    //
+    // So the tab sequence is compared against the horizontal positions. Only
+    // together do the two say anything: either alone is satisfied by the
+    // arrangement the other forbids.
+    await page.goto(CALCULATOR_PATH);
+
+    const stops = await walk(page, 24);
+    const controls = [
+      { key: `aria:${CALCULATEUR_COPY.form.days.decrease}`, locator: page.getByRole('button', { name: CALCULATEUR_COPY.form.days.decrease }) },
+      { key: 'id:jours-teletravail', locator: page.locator('#jours-teletravail') },
+      { key: `aria:${CALCULATEUR_COPY.form.days.increase}`, locator: page.getByRole('button', { name: CALCULATEUR_COPY.form.days.increase }) },
+    ];
+
+    const tabOrder = controls.map((control) => stops.indexOf(control.key));
+
+    // Every one reachable, or the comparison below is between -1s.
+    expect(tabOrder.every((index) => index >= 0), `tab stops: ${stops.join(' | ')}`).toBe(true);
+
+    const positions: number[] = [];
+
+    for (const control of controls) {
+      const box = await control.locator.boundingBox();
+
+      expect(box, control.key).not.toBeNull();
+      positions.push(box?.x ?? 0);
+    }
+
+    // Sorting by tab order and by position must give the same sequence. This
+    // is a single-locale left-to-right product (SPEC 1), so left-to-right is
+    // the reading order and not an assumption about the user.
+    const byTab = [...controls.keys()].sort((a, b) => (tabOrder[a] ?? 0) - (tabOrder[b] ?? 0));
+    const byPosition = [...controls.keys()].sort((a, b) => (positions[a] ?? 0) - (positions[b] ?? 0));
+
+    expect(byTab, `tab ${byTab.join('')} vs screen ${byPosition.join('')}`).toEqual(byPosition);
+  });
+
+  test('a collapsed accordion is not in the tab order at all', async ({ page }) => {
+    // THE ONE THAT WOULD ACTUALLY GO WRONG. Hidden with display:none, or with
+    // hidden on a wrapper, a control can still be focusable in some
+    // combinations - so a keyboard user tabs into a panel they cannot see and
+    // focus disappears. The island renders nothing at all instead, and this is
+    // what says so.
+    await page.goto(CALCULATOR_PATH);
+
+    const stops = await walk(page, 24);
+
+    expect(stops).not.toContain('id:debut-activite');
+    expect(stops.filter((stop) => stop.startsWith('text:Journ'))).toEqual([]);
+  });
+
+  test('opens the accordion from the keyboard and then reaches inside it', async ({ page }) => {
+    await page.goto(CALCULATOR_PATH);
+
+    const disclosure = page.getByRole('button', {
+      name: CALCULATEUR_COPY.form.advanced.summary,
+    });
+
+    await disclosure.focus();
+    await page.keyboard.press('Enter');
+
+    await expect(disclosure).toHaveAttribute('aria-expanded', 'true');
+
+    const stops = await walk(page, 30);
+
+    expect(stops).toContain('id:debut-activite');
+  });
+
+  test('operates a stepper with the keyboard', async ({ page }) => {
+    await page.goto(CALCULATOR_PATH);
+
+    const plus = page.getByRole('button', { name: CALCULATEUR_COPY.form.days.increase });
+
+    await plus.focus();
+    await page.keyboard.press('Enter');
+
+    expect(await page.locator('#jours-teletravail').inputValue()).toBe('0.5');
+  });
+
+  test('reveals the mission fields with the arrow keys', async ({ page }) => {
+    // A radio group is ONE tab stop and the arrows move within it. Tabbing to
+    // "Oui" directly is not how anybody reaches it.
+    await page.goto(CALCULATOR_PATH);
+
+    await page.getByRole('radio', { name: CALCULATEUR_COPY.form.missions.no }).focus();
+    await page.keyboard.press('ArrowRight');
+
+    await expect(
+      page.getByRole('radio', { name: CALCULATEUR_COPY.form.missions.yes },
+    )).toBeChecked();
+    await expect(page.locator('#missions-france')).toBeVisible();
+  });
+
+  test('the Calculer button hands focus to the result', async ({ page }) => {
+    await page.goto(CALCULATOR_PATH);
+
+    const button = page.getByRole('button', { name: CALCULATEUR_COPY.result.calculate });
+
+    await button.focus();
+    await page.keyboard.press('Enter');
+
+    expect(await page.evaluate(focusProbe)).toBe('id:resultat');
+  });
+});

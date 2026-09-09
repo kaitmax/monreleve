@@ -334,8 +334,35 @@ export function CalculatorForm({ taxYear }: CalculatorFormProps) {
     [input],
   );
 
-  const errors: readonly ValidationError[] =
+  const reported: readonly ValidationError[] =
     outcome !== null && !outcome.ok ? outcome.error : NO_ERRORS;
+
+  /**
+   * The engine's errors, minus the one that is only ever a restatement.
+   *
+   * FOUND IN A BASELINE, not by a test. Increment 5's error screenshot showed
+   * the rate field correctly marked "Le taux d'activite doit etre compris
+   * entre 1 et 100" and, in the form-level list under it, "Le nombre de jours
+   * travailles dans la periode doit etre superieur a zero". Two messages for
+   * one mistake, and the second one names a quantity the user has never seen.
+   *
+   * THE ENGINE IS RIGHT TO SEND BOTH. validate.ts resolves the denominator
+   * from the rate it was given, so a rate of 0 makes ceil(basis x 0 x period)
+   * zero and TOTAL_WORK_DAYS_NOT_POSITIVE is simply true. Choosing which of
+   * two true statements a person should read is the form's job, not the
+   * engine's - and it is the form that knows the total is not a field here.
+   *
+   * SUPPRESSED ONLY WHEN IT IS DERIVED, which under the simplified basis is
+   * always: with a rate of at least 1 and a period above 0 the total is the
+   * ceiling of a positive number, so it is at least 1 and the error cannot
+   * arise on its own. Under the EXACT method the user supplies the number,
+   * nothing else explains it, and hiding it would leave a form that refuses
+   * to calculate and says nothing about why.
+   */
+  const errors: readonly ValidationError[] =
+    state.method === 'exact'
+      ? reported
+      : reported.filter((error) => error.code !== 'TOTAL_WORK_DAYS_NOT_POSITIVE');
 
   const result: TeleworkResult | null = outcome !== null && outcome.ok ? outcome.value : null;
 
@@ -479,235 +506,247 @@ export function CalculatorForm({ taxYear }: CalculatorFormProps) {
       <fieldset className={styles.card}>
         <legend className={styles.legend}>{COPY.legend}</legend>
 
-      <FieldGroup
-        id="canton"
-        label={COPY.canton.label}
-        helper={COPY.canton.helper}
-        error={errorFor('canton')}
-      >
-        {(control) => (
-          <select
-            {...control}
-            className={styles.select}
-            value={state.canton}
-            onChange={(event) => {
-              set('canton', event.target.value as Canton | '');
-            }}
-          >
-            <option value="">{COPY.canton.placeholder}</option>
-            {CANTONS_BY_NAME.map(([code, name]) => (
-              <option key={code} value={code}>
-                {name}
-              </option>
-            ))}
-          </select>
-        )}
-      </FieldGroup>
-
-      {numericField({
-        id: 'taux-activite',
-        stateKey: 'employmentRate',
-        field: 'employmentRate',
-        label: COPY.rate.label,
-        helper: COPY.rate.helper,
-        decrease: COPY.rate.decrease,
-        increase: COPY.rate.increase,
-        step: RATE.step,
-        min: RATE.min,
-        max: RATE.max,
-      })}
-
-      {numericField({
-        id: 'jours-teletravail',
-        stateKey: 'teleworkDays',
-        field: 'teleworkDays',
-        label: COPY.days.label,
-        helper: COPY.days.helper,
-        decrease: COPY.days.decrease,
-        increase: COPY.days.increase,
-        step: DAYS.step,
-        min: DAYS.min,
-        max: null,
-      })}
-
-      {/*
-        THE MISSION QUESTION, above the accordion and never inside it. SPEC
-        9.3's one exception to progressive disclosure, because a user with
-        missions who never opens the accordion gets a silently wrong answer.
-      */}
-      <RadioGroup
-        name="missions"
-        legend={COPY.missions.question}
-        helper={COPY.missions.helper(fiscalCeiling(taxYear))}
-        value={state.hasMissions ? COPY.missions.yes : COPY.missions.no}
-        options={[
-          { value: COPY.missions.no, label: COPY.missions.no },
-          { value: COPY.missions.yes, label: COPY.missions.yes },
-        ]}
-        onChange={(value) => {
-          const yes = value === COPY.missions.yes;
-
-          // RESET ON "Non", not merely hide. A hidden field keeps its value
-          // and keeps feeding the calculation, so answering Oui, typing 12
-          // and thinking better of it would compute from 12 mission days the
-          // user can no longer see - the exact "silently wrong answer" this
-          // question exists to prevent, reintroduced by the reveal.
-          setState((current) => ({
-            ...current,
-            hasMissions: yes,
-            missionDaysFrance: yes ? current.missionDaysFrance : NO_DAYS,
-            missionDaysThirdState: yes ? current.missionDaysThirdState : NO_DAYS,
-          }));
-        }}
-      />
-
-      {!state.hasMissions ? null : (
-        <div className={styles.revealed}>
-          {numericField({
-            id: 'missions-france',
-            stateKey: 'missionDaysFrance',
-            field: 'missionDaysFrance',
-            label: COPY.missions.france.label,
-            helper: COPY.missions.fieldHelper,
-            decrease: COPY.days.decrease,
-            increase: COPY.days.increase,
-            step: DAYS.step,
-            min: DAYS.min,
-            max: null,
-          })}
-          {numericField({
-            id: 'missions-pays-tiers',
-            stateKey: 'missionDaysThirdState',
-            field: 'missionDaysThirdState',
-            label: COPY.missions.thirdState.label,
-            helper: COPY.missions.fieldHelper,
-            decrease: COPY.days.decrease,
-            increase: COPY.days.increase,
-            step: DAYS.step,
-            min: DAYS.min,
-            max: null,
-          })}
-        </div>
-      )}
-
-      <button
-        type="button"
-        className={styles.disclosure}
-        aria-expanded={advancedOpen}
-        aria-controls="options-avancees"
-        onClick={() => {
-          setAdvancedOpen((open) => !open);
-        }}
-      >
-        <ChevronDown
-          size={ICON}
-          strokeWidth={STROKE}
-          aria-hidden="true"
-          className={advancedOpen ? styles.chevronOpen : styles.chevron}
-        />
-        <span>{COPY.advanced.summary}</span>
-      </button>
-
-      {/*
-        HIDDEN BY NOT BEING RENDERED, rather than by display:none. A control
-        inside a display:none block is still in the accessibility tree in some
-        combinations and still focusable in others, so a keyboard user would
-        tab into a collapsed accordion. Increment 5's keyboard path asserts
-        this.
-      */}
-      <div id="options-avancees">
-        {!advancedOpen ? null : (
-          <div className={styles.advanced}>
-            <RadioGroup
-              name="methode"
-              legend={COPY.method.label}
-              helper={COPY.method.helper(formatDays(rules.simplifiedBasisDays))}
-              value={state.method}
-              options={[
-                { value: 'simplified240', label: COPY.method.simplified },
-                { value: 'exact', label: COPY.method.exact },
-              ]}
-              onChange={(value) => {
-                const exact = value === 'exact';
-
-                // PREFILLED FROM THE RULE SET when the exact method is
-                // chosen, and this is an interpretation the report records.
-                // SPEC 9.3 says the user supplies the total; an empty field
-                // reaches the engine as NaN, which it reports as "cannot be
-                // negative" - a wrong message about a field nobody has typed
-                // in yet. The simplified basis is the number the calculation
-                // was already using, so starting there states the default
-                // rather than inventing one.
-                setState((current) => ({
-                  ...current,
-                  method: exact ? 'exact' : 'simplified240',
-                  exactTotal:
-                    exact && current.exactTotal === ''
-                      ? String(rules.simplifiedBasisDays)
-                      : current.exactTotal,
-                }));
+        <FieldGroup
+          id="canton"
+          label={COPY.canton.label}
+          helper={COPY.canton.helper}
+          error={errorFor('canton')}
+        >
+          {(control) => (
+            <select
+              {...control}
+              className={styles.select}
+              value={state.canton}
+              onChange={(event) => {
+                set('canton', event.target.value as Canton | '');
               }}
-            />
+            >
+              <option value="">{COPY.canton.placeholder}</option>
+              {CANTONS_BY_NAME.map(([code, name]) => (
+                <option key={code} value={code}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          )}
+        </FieldGroup>
 
-            {state.method !== 'exact' ? null : (
+        {numericField({
+          id: 'taux-activite',
+          stateKey: 'employmentRate',
+          field: 'employmentRate',
+          label: COPY.rate.label,
+          helper: COPY.rate.helper,
+          decrease: COPY.rate.decrease,
+          increase: COPY.rate.increase,
+          step: RATE.step,
+          min: RATE.min,
+          max: RATE.max,
+        })}
+
+        {numericField({
+          id: 'jours-teletravail',
+          stateKey: 'teleworkDays',
+          field: 'teleworkDays',
+          label: COPY.days.label,
+          helper: COPY.days.helper,
+          decrease: COPY.days.decrease,
+          increase: COPY.days.increase,
+          step: DAYS.step,
+          min: DAYS.min,
+          max: null,
+        })}
+
+        {/*
+          THE MISSION QUESTION, above the accordion and never inside it. SPEC
+          9.3's one exception to progressive disclosure, because a user with
+          missions who never opens the accordion gets a silently wrong answer.
+        */}
+        <RadioGroup
+          name="missions"
+          legend={COPY.missions.question}
+          helper={COPY.missions.helper(fiscalCeiling(taxYear))}
+          value={state.hasMissions ? COPY.missions.yes : COPY.missions.no}
+          options={[
+            { value: COPY.missions.no, label: COPY.missions.no },
+            { value: COPY.missions.yes, label: COPY.missions.yes },
+          ]}
+          onChange={(value) => {
+            const yes = value === COPY.missions.yes;
+
+            // RESET ON "Non", not merely hide. A hidden field keeps its value
+            // and keeps feeding the calculation, so answering Oui, typing 12
+            // and thinking better of it would compute from 12 mission days the
+            // user can no longer see - the exact "silently wrong answer" this
+            // question exists to prevent, reintroduced by the reveal.
+            setState((current) => ({
+              ...current,
+              hasMissions: yes,
+              missionDaysFrance: yes ? current.missionDaysFrance : NO_DAYS,
+              missionDaysThirdState: yes ? current.missionDaysThirdState : NO_DAYS,
+            }));
+          }}
+        />
+
+        {!state.hasMissions ? null : (
+          <div className={styles.revealed}>
+            {numericField({
+              id: 'missions-france',
+              stateKey: 'missionDaysFrance',
+              field: 'missionDaysFrance',
+              label: COPY.missions.france.label,
+              helper: COPY.missions.fieldHelper,
+              decrease: COPY.days.decrease,
+              increase: COPY.days.increase,
+              step: DAYS.step,
+              min: DAYS.min,
+              max: null,
+            })}
+            {numericField({
+              id: 'missions-pays-tiers',
+              stateKey: 'missionDaysThirdState',
+              field: 'missionDaysThirdState',
+              label: COPY.missions.thirdState.label,
+              helper: COPY.missions.fieldHelper,
+              decrease: COPY.days.decrease,
+              increase: COPY.days.increase,
+              step: DAYS.step,
+              min: DAYS.min,
+              max: null,
+            })}
+          </div>
+        )}
+
+        <button
+          type="button"
+          className={styles.disclosure}
+          aria-expanded={advancedOpen}
+          aria-controls="options-avancees"
+          onClick={() => {
+            setAdvancedOpen((open) => !open);
+          }}
+        >
+          <ChevronDown
+            size={ICON}
+            strokeWidth={STROKE}
+            aria-hidden="true"
+            className={advancedOpen ? styles.chevronOpen : styles.chevron}
+          />
+          <span>{COPY.advanced.summary}</span>
+        </button>
+
+        {/*
+          NOT RENDERED WHEN CLOSED, and the first version of this comment
+          overclaimed why. It said a display:none control "is still focusable",
+          which a probe disproved: hiding this panel with the hidden attribute
+          instead kept the keyboard test green, because hidden implies
+          display:none and display:none really does take descendants out of the
+          tab order.
+
+          So the honest reason is narrower. Not rendering cannot be got wrong,
+          where hiding can: visibility, opacity, height 0 and aria-hidden alone
+          all leave a focusable control behind, and each is one careless edit
+          away from the correct version. There is also no state to keep in sync
+          - no aria-hidden to toggle, nothing to remember to untoggle.
+
+          Increment 5's keyboard path asserts that a closed accordion
+          contributes no tab stops, which is the property that matters. It does
+          NOT distinguish this implementation from a correct display:none one,
+          and the probe is why that is stated rather than assumed.
+        */}
+        <div id="options-avancees">
+          {!advancedOpen ? null : (
+            <div className={styles.advanced}>
+              <RadioGroup
+                name="methode"
+                legend={COPY.method.label}
+                helper={COPY.method.helper(formatDays(rules.simplifiedBasisDays))}
+                value={state.method}
+                options={[
+                  { value: 'simplified240', label: COPY.method.simplified },
+                  { value: 'exact', label: COPY.method.exact },
+                ]}
+                onChange={(value) => {
+                  const exact = value === 'exact';
+
+                  // PREFILLED FROM THE RULE SET when the exact method is
+                  // chosen, and this is an interpretation the report records.
+                  // SPEC 9.3 says the user supplies the total; an empty field
+                  // reaches the engine as NaN, which it reports as "cannot be
+                  // negative" - a wrong message about a field nobody has typed
+                  // in yet. The simplified basis is the number the calculation
+                  // was already using, so starting there states the default
+                  // rather than inventing one.
+                  setState((current) => ({
+                    ...current,
+                    method: exact ? 'exact' : 'simplified240',
+                    exactTotal:
+                      exact && current.exactTotal === ''
+                        ? String(rules.simplifiedBasisDays)
+                        : current.exactTotal,
+                  }));
+                }}
+              />
+
+              {state.method !== 'exact' ? null : (
+                <FieldGroup
+                  id="total-jours"
+                  label={COPY.method.totalLabel}
+                  helper={COPY.method.totalHelper}
+                  error={errorFor('exactTotal')}
+                >
+                  {(control) => (
+                    <input
+                      {...control}
+                      type="number"
+                      className={styles.number}
+                      step={DAYS.step}
+                      min={DAYS.min}
+                      value={state.exactTotal}
+                      onChange={(event) => {
+                        set('exactTotal', event.target.value);
+                      }}
+                    />
+                  )}
+                </FieldGroup>
+              )}
+
+              <RadioGroup
+                name="decompte"
+                legend={COPY.decompte.label}
+                helper={COPY.decompte.helper}
+                value={state.granularity}
+                options={[
+                  { value: 'day', label: COPY.decompte.day },
+                  { value: 'halfDay', label: COPY.decompte.halfDay },
+                  { value: 'hours', label: COPY.decompte.hours },
+                ]}
+                onChange={(value) => {
+                  set('granularity', value as Granularity);
+                }}
+              />
+
               <FieldGroup
-                id="total-jours"
-                label={COPY.method.totalLabel}
-                helper={COPY.method.totalHelper}
-                error={errorFor('exactTotal')}
+                id="debut-activite"
+                label={COPY.start.label}
+                helper={COPY.start.helper}
+                error={errorFor('startDay')}
               >
                 {(control) => (
                   <input
                     {...control}
-                    type="number"
-                    className={styles.number}
-                    step={DAYS.step}
-                    min={DAYS.min}
-                    value={state.exactTotal}
+                    type="date"
+                    className={styles.date}
+                    value={state.startDay}
                     onChange={(event) => {
-                      set('exactTotal', event.target.value);
+                      set('startDay', event.target.value);
                     }}
                   />
                 )}
               </FieldGroup>
-            )}
-
-            <RadioGroup
-              name="decompte"
-              legend={COPY.decompte.label}
-              helper={COPY.decompte.helper}
-              value={state.granularity}
-              options={[
-                { value: 'day', label: COPY.decompte.day },
-                { value: 'halfDay', label: COPY.decompte.halfDay },
-                { value: 'hours', label: COPY.decompte.hours },
-              ]}
-              onChange={(value) => {
-                set('granularity', value as Granularity);
-              }}
-            />
-
-            <FieldGroup
-              id="debut-activite"
-              label={COPY.start.label}
-              helper={COPY.start.helper}
-              error={errorFor('startDay')}
-            >
-              {(control) => (
-                <input
-                  {...control}
-                  type="date"
-                  className={styles.date}
-                  value={state.startDay}
-                  onChange={(event) => {
-                    set('startDay', event.target.value);
-                  }}
-                />
-              )}
-            </FieldGroup>
-          </div>
-        )}
-      </div>
+            </div>
+          )}
+        </div>
 
         {unplaced.length === 0 ? null : (
           <div className={styles.otherErrors}>

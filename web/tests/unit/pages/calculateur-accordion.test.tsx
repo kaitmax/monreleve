@@ -387,3 +387,61 @@ describe('an error whose field is hidden still reaches the user', () => {
     expect(renderedText()).not.toContain(FORM.otherErrorsLabel);
   });
 });
+
+describe('a derived error is not reported as a second mistake', () => {
+  // FOUND IN A BASELINE, not by a test. Increment 5's error-state screenshot
+  // showed the rate field correctly marked with "Le taux d'activité doit être
+  // compris entre 1 et 100" AND, in the form-level list below it, "Le nombre
+  // de jours travaillés dans la période doit être supérieur à zéro". Two
+  // messages, one mistake.
+  //
+  // WHY THE ENGINE SENDS BOTH, correctly: validate.ts resolves the
+  // denominator from the rate it was given, so a rate of 0 makes
+  // ceil(basis x 0 x period) = 0 and TOTAL_WORK_DAYS_NOT_POSITIVE is true.
+  // The engine is reporting what it found; deciding which of two true
+  // statements a person should read is the form's job.
+  //
+  // AND UNDER THE SIMPLIFIED BASIS IT IS ALWAYS DERIVED. With a rate of at
+  // least 1 and a period above 0 the total is ceil of a positive number, so it
+  // is at least 1 - the error cannot arise on its own. Under the exact method
+  // it can and does, because the user supplies the number.
+
+  it('hides the derived total error when the rate is what is wrong', () => {
+    setUp();
+    chooseCanton();
+    type(field(FORM.rate.label), '0');
+
+    expect(renderedText()).toContain(errorMessage({ code: 'RATE_OUT_OF_RANGE' }));
+    expect(renderedText()).not.toContain(
+      errorMessage({ code: 'TOTAL_WORK_DAYS_NOT_POSITIVE' }),
+    );
+    expect(renderedText()).not.toContain(FORM.otherErrorsLabel);
+  });
+
+  it('hides it when the start date is what is wrong', () => {
+    // The other derived route: a period of 0 makes the total 0 too.
+    setUp();
+    chooseCanton();
+    openAdvanced();
+    type(field(FORM.start.label), '2027-03-01');
+
+    expect(renderedText()).toContain(errorMessage({ code: 'PERIOD_OUT_OF_RANGE' }));
+    expect(renderedText()).not.toContain(
+      errorMessage({ code: 'TOTAL_WORK_DAYS_NOT_POSITIVE' }),
+    );
+  });
+
+  it('still shows it under the exact method, where the user typed it', () => {
+    // Non-vacuity, and the reason the suppression is scoped rather than
+    // blanket: here the number IS the user's, nothing else explains it, and
+    // suppressing it would leave a form that refuses to calculate in silence.
+    setUp();
+    chooseCanton();
+    openAdvanced();
+    fireEvent.click(radio(FORM.method.exact));
+    type(field(FORM.method.totalLabel), '0');
+
+    expect(renderedText()).toContain(errorMessage({ code: 'TOTAL_WORK_DAYS_NOT_POSITIVE' }));
+    expect(field(FORM.method.totalLabel).getAttribute('aria-invalid')).toBe('true');
+  });
+});
