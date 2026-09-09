@@ -844,3 +844,26 @@ pattern deserves the custom control.
 Local verification with the tolerance in place: pnpm test:visual, 54 passed,
 baselines byte-identical and untouched. Only CI can confirm the fix, which is
 the same limitation FINDING 1 records for the ICU matrix.
+
+--------------------------------------------------------------------------------
+CI, CONFIRMED GREEN - FINAL STATE
+--------------------------------------------------------------------------------
+eaa5b78, all five jobs:
+
+  success  web
+  success  rail visual baselines
+  success  format parity (compile)
+  success  format parity (node 22)
+  success  format parity (node 24)
+
+  https://github.com/kaitmax/Frontalier/actions/runs/34370504603
+
+HEAD and origin/main are eaa5b78. Twelve commits, 5506219..eaa5b78.
+
+Both remaining CI-only risks are now discharged by an actual run rather than
+by argument: the ICU matrix that FINDING 1 could not exercise locally, and the
+baseline tolerance the postscript could only verify here.
+
+================================================================================
+END OF REPORT-FW11.txt
+================================================================================
