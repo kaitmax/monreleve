@@ -22,6 +22,7 @@
 
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import { complianceClaims } from '@/tests/support/vocabulary';
 import {
   CONFIDENTIALITE_FIELDS,
   ConfidentialiteContent,
@@ -146,9 +147,10 @@ describe('the public site collects nothing by default', () => {
 
 describe('the vocabulary SPEC section 20 forbids', () => {
   it('never claims the record is certified, attested or compliant', () => {
-    for (const banned of ['certifi', 'attest', 'conforme']) {
-      expect(pageText(), banned).not.toContain(banned);
-    }
+    // Through the shared guard, which distinguishes the CLAIM from the
+    // document noun - "un certificat A1" is legitimate, "certifie" is not.
+    // See tests/support/vocabulary.ts.
+    expect(complianceClaims(pageText())).toEqual([]);
   });
 });
 

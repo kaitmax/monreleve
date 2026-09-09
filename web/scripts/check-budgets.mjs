@@ -198,9 +198,18 @@ console.log(`  GATE A  total <= ${kib(GATE_A_TOTAL_BYTES)} KiB`);
 console.log(
   `  GATE B  delta <= ${kib(GATE_B_DELTA_BYTES)} KiB over the ${FRAMEWORK_BASELINE_KIB} KiB framework floor`,
 );
+// THE ROUTE COLUMN IS MEASURED, NOT GUESSED. It was a hard-coded 22, and
+// FW11's /calculateur-teletravail-frontalier is 35 characters: the name ran
+// straight into the bucket column and printed
+// "/calculateur-teletravail-frontalierpublic". This table IS the size record
+// that goes into a session report, so a row nobody can read is a bad record,
+// and the next long route would have done it again.
+const ROUTE_COL = Math.max(22, ...rows.map((row) => row.route.length)) + 2;
+const TABLE_WIDTH = ROUTE_COL + 8 + 9 + 8 + 7 + 7 + 2 + 40;
+
 console.log('');
 console.log(
-  'route'.padEnd(22) +
+  'route'.padEnd(ROUTE_COL) +
     'bucket'.padEnd(8) +
     'js total'.padStart(9) +
     'delta'.padStart(8) +
@@ -208,7 +217,7 @@ console.log(
     'fonts'.padStart(7) +
     '  verdict',
 );
-console.log('-'.repeat(82));
+console.log('-'.repeat(TABLE_WIDTH));
 
 for (const row of rows) {
   // An ungated route still gets its gate arithmetic printed. /dev/spike is
@@ -230,7 +239,7 @@ for (const row of rows) {
           : `pass (A ${kib(GATE_A_TOTAL_BYTES - row.gzip)} spare, B ${kib(GATE_B_DELTA_BYTES - row.delta)} spare)`;
 
   console.log(
-    row.route.padEnd(22) +
+    row.route.padEnd(ROUTE_COL) +
       (row.gated ? 'public' : 'dev').padEnd(8) +
       kib(row.gzip).padStart(9) +
       kib(row.delta).padStart(8) +
@@ -241,7 +250,7 @@ for (const row of rows) {
   );
 }
 
-console.log('-'.repeat(82));
+console.log('-'.repeat(TABLE_WIDTH));
 // Ruling R2: fonts and CSS get their own lines and are NEVER counted against
 // a JS gate. They are in the table for visibility only.
 console.log('css   reported, never gated: it is not JS.');

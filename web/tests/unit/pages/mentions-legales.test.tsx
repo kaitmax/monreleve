@@ -24,6 +24,7 @@
 
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import { complianceClaims } from '@/tests/support/vocabulary';
 import {
   MENTIONS_LEGALES_FIELDS,
   MentionsLegalesContent,
@@ -75,9 +76,9 @@ describe('the vocabulary SPEC section 20 forbids', () => {
     const { container } = render(<MentionsLegalesContent entity={FILLED_ENTITY} />);
     const text = (container.textContent ?? '').toLowerCase();
 
-    for (const banned of ['certifi', 'attest', 'conforme']) {
-      expect(text, banned).not.toContain(banned);
-    }
+    // Through the shared guard - see tests/support/vocabulary.ts for why a
+    // substring match was wrong.
+    expect(complianceClaims(text)).toEqual([]);
   });
 });
 

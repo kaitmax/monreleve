@@ -18,6 +18,7 @@
 
 import { expect, test } from '@playwright/test';
 import { NON_INDEXED, PUBLIC_ROUTES, liveRoutes } from '../lib/content/routes';
+import { complianceClaims } from '../tests/support/vocabulary';
 
 const ORIGIN = 'https://frontalier.example';
 
@@ -150,14 +151,27 @@ test.describe('canonical and hreflang on every public page', () => {
     test(`${route.path} carries a self-referencing canonical and fr-FR`, async ({ page }) => {
       await page.goto(route.path);
 
-      const canonical = page.locator('link[rel="canonical"]');
+      // SCOPED TO head, AND THAT SCOPING IS THE ASSERTION. The unscoped
+      // version of this line passed for the calculator while its canonical sat
+      // in the BODY: Next streams the head of a dynamically rendered route and
+      // emitted the metadata after the closing head tag - measured on a
+      // production build at byte 7921 against a </head> at byte 1115. Google
+      // ignores rel=canonical outside <head>, so the tag was present, correct,
+      // and discarded.
+      //
+      // A canonical that is silently ignored is worse than an absent one: it
+      // reads as done in every review of the source. The page is statically
+      // rendered now (see its revalidate export) and this is the line that
+      // keeps it that way.
+      const canonical = page.locator('head > link[rel="canonical"]');
 
       await expect(canonical).toHaveCount(1);
       expect(await canonical.getAttribute('href')).toBe(canonicalFor(route.path));
 
       // SPEC 14: hreflang="fr-FR", self-referencing. One locale by design, so
       // this is a statement about the language rather than a switcher.
-      const alternate = page.locator('link[rel="alternate"][hreflang="fr-FR"]');
+      // head-scoped for the same reason as the canonical above.
+      const alternate = page.locator('head > link[rel="alternate"][hreflang="fr-FR"]');
 
       await expect(alternate).toHaveCount(1);
       expect(await alternate.getAttribute('href')).toBe(canonicalFor(route.path));
@@ -169,6 +183,9 @@ test.describe('canonical and hreflang on every public page', () => {
     // which is the opposite of what a 404 means.
     await page.goto('/cette-page-nexiste-pas');
 
+    // Deliberately UNSCOPED here, and the asymmetry is intentional: the
+    // assertion is that no canonical exists anywhere in the document, which is
+    // strictly stronger than none in the head.
     await expect(page.locator('link[rel="canonical"]')).toHaveCount(0);
   });
 });
@@ -192,21 +209,41 @@ test.describe('canonical and hreflang on every public page', () => {
 // version of this check that stays true as more metadata arrives.
 // ---------------------------------------------------------------------------
 
-const FORBIDDEN = ['certifi', 'attest', 'conforme'];
+// THE SHARED GUARD, and it replaced a substring list that was wrong. That
+// list banned 'certifi' outright and so failed the calculator's explanatory
+// copy for saying "un certificat A1 en cours de validite" - the name of a
+// document SPEC 7.1 itself uses. 'attest' would likewise have forbidden
+// SPEC 9.5's launch guide at /guides/attestation-employeur-teletravail.
+//
+// tests/support/vocabulary.ts separates the CLAIM from the document noun and
+// carries its own two-directional test.
 
 test.describe('SPEC section 20 vocabulary, in the head as well as the body', () => {
   for (const route of liveRoutes()) {
     test(`${route.path} claims no certification in its metadata`, async ({ page }) => {
       await page.goto(route.path);
 
+      // WAIT FOR THE TITLE BEFORE READING THE HEAD. Next STREAMS the head of a
+      // dynamically rendered route, so innerHTML() taken straight after goto()
+      // can return the first chunk only - stylesheets, scripts, the icon - and
+      // none of the metadata this test exists to judge. It happened: the
+      // calculator failed here under a loaded parallel run and passed when run
+      // alone, which is the shape of a race rather than a defect.
+      //
+      // toHaveCount auto-retries, so this waits rather than sleeping. And the
+      // non-vacuity assertion below is what caught the race in the first
+      // place: without it the scan would have run over an empty string and
+      // reported no claims, which is a false pass.
+      await expect(page.locator('head > title')).toHaveCount(1);
+
       const head = (await page.locator('head').innerHTML()).toLowerCase();
 
       // Non-vacuous: the head must actually contain the metadata being judged.
       expect(head).toContain('<title>');
 
-      for (const word of FORBIDDEN) {
-        expect(head, `"${word}" appears in the head of ${route.path}`).not.toContain(word);
-      }
+      const claims = complianceClaims(head);
+
+      expect(claims, `${route.path} head claims: ${claims.join(', ')}`).toEqual([]);
     });
   }
 
@@ -216,9 +253,8 @@ test.describe('SPEC section 20 vocabulary, in the head as well as the body', () 
     await page.goto('/cgu');
 
     const body = (await page.locator('body').innerText()).toLowerCase();
+    const claims = complianceClaims(body);
 
-    for (const word of FORBIDDEN) {
-      expect(body, word).not.toContain(word);
-    }
+    expect(claims, `/cgu body claims: ${claims.join(', ')}`).toEqual([]);
   });
 });

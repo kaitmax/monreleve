@@ -128,9 +128,19 @@ describe('the sitemap lists what exists and nothing else', () => {
     expect([...sitemapPaths()].sort()).toEqual([...liveRoutes().map((r) => r.path)].sort());
   });
 
-  it('lists the four routes that exist today', () => {
+  it('lists the five routes that exist and may be seen today', () => {
+    // FOUR UNTIL FW11, five now. The calculator joined when its page was
+    // built AND the Checkpoint A review was recorded - two independent
+    // conditions, both of which had to be true. While the review was null the
+    // page could exist and stay out of this list, which is ruling R54 and is
+    // asserted directly in tests/unit/content/regulatory-gate.test.ts.
+    //
+    // Hardcoded on purpose: deriving it from the registry would make the
+    // assertion agree with whatever the registry says, which is the thing
+    // being checked.
     expect([...sitemapPaths()].sort()).toEqual([
       '/',
+      '/calculateur-teletravail-frontalier',
       '/cgu',
       '/confidentialite',
       '/mentions-legales',

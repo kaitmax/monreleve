@@ -23,6 +23,7 @@
 // both went red - see REPORT-FW10.txt.
 
 import { cleanup, render } from '@testing-library/react';
+import { complianceClaims } from '@/tests/support/vocabulary';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
@@ -135,9 +136,7 @@ export function expectNoComplianceClaims(copy: object): void {
 
   const walk = (value: unknown, path: string): void => {
     if (typeof value === 'string') {
-      for (const banned of ['certifi', 'attest', 'conforme']) {
-        if (value.toLowerCase().includes(banned)) offenders.push(`${path}: ${banned}`);
-      }
+      for (const claim of complianceClaims(value)) offenders.push(`${path}: ${claim}`);
 
       return;
     }

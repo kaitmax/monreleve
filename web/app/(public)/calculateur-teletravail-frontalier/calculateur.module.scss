@@ -1,0 +1,61 @@
+// web/app/(public)/calculateur-teletravail-frontalier/calculateur.module.scss
+//
+// Tokens only. The measure is Container's `narrow` - 720 px, FD1:45's form
+// column - so nothing here sets a width.
+//
+// NOT the legal pages' stylesheet. They share app/(public)/legal.module.scss
+// because they are the same document at three lengths; this page is a
+// different shape (a form column with prose beneath it) and sharing would mean
+// one file serving two layouts, which is how a change to one silently moves
+// the other.
+//
+// NO COLOUR IS DECLARED. Everything inherits the document's text colour, so
+// this page introduces no foreground-on-background pairing and needs no entry
+// in the contrast audit - which as of FW10 scans app/ as well as lib/ui/react.
+
+.page {
+  padding-top: var(--space-16);
+  padding-bottom: var(--space-20);
+}
+
+.title {
+  margin: 0 0 var(--space-3);
+  font-size: var(--type-h1-size);
+  font-weight: var(--type-h1-weight);
+  line-height: var(--type-h1-line);
+}
+
+// FD1:43 sets the intro at Body-L, 12 px below the heading.
+.lead {
+  margin: 0 0 var(--space-6);
+  font-size: var(--type-body-l-size);
+  font-weight: var(--type-body-l-weight);
+  line-height: var(--type-body-l-line);
+}
+
+// RULING R55's year, as a Caption above the form. Caption rather than the
+// label pair: this is a statement about the page, not a label for a control.
+.year {
+  margin: 0 0 var(--space-6);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  line-height: var(--type-caption-line);
+}
+
+.explanation {
+  margin-top: var(--space-12);
+}
+
+.heading {
+  margin: 0 0 var(--space-4);
+  font-size: var(--type-h2-size);
+  font-weight: var(--type-h2-weight);
+  line-height: var(--type-h2-line);
+}
+
+.prose {
+  margin: 0 0 var(--space-4);
+  font-size: var(--type-body-l-size);
+  font-weight: var(--type-body-l-weight);
+  line-height: var(--type-body-l-line);
+}

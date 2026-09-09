@@ -44,7 +44,7 @@
 
 import { Menu, X } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
-import { ctaHrefIfLive } from '@/lib/content/routes';
+import { ctaHrefIfLive, visibleFooterColumns, visibleNav } from '@/lib/content/routes';
 import { APP_NAME } from '@/lib/fr';
 import { LAST_REGULATORY_REVIEW, reviewNotice } from '@/lib/content/regulatory';
 import { LEGAL_COPY } from '@/lib/fr/legal';
@@ -125,6 +125,20 @@ function NavItem({ entry }: { readonly entry: NavEntry }) {
  */
 const ctaHref = ctaHrefIfLive(SHELL_COPY.ctaHref);
 
+/**
+ * RULING R54's third surface, computed at module scope for the same reason
+ * ctaHref is: it depends only on the route registry and the review constant.
+ *
+ * While the Checkpoint A review is null, a gated route is absent from the nav
+ * and the footer - not merely noindex. Being linked from every page while
+ * asking not to be indexed is how a page gets indexed anyway. The review was
+ * recorded on 09.09.2026, so nothing is filtered today; the closed branch is
+ * proved directly in tests/unit/content/regulatory-gate.test.ts rather than
+ * through this component, because the constant cannot be varied from here.
+ */
+const NAV = visibleNav(SHELL_NAV);
+const FOOTER = visibleFooterColumns(FOOTER_COLUMNS);
+
 export function PublicShell({ children }: PublicShellProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuTrigger = useRef<HTMLButtonElement>(null);
@@ -164,7 +178,7 @@ export function PublicShell({ children }: PublicShellProps) {
 
           <nav className={styles.nav} aria-label={SHELL_COPY.navLabel}>
             <ul className={styles.navList}>
-              {SHELL_NAV.map((entry) => (
+              {NAV.map((entry) => (
                 <NavItem key={entry.label} entry={entry} />
               ))}
             </ul>
@@ -196,7 +210,7 @@ export function PublicShell({ children }: PublicShellProps) {
                 disclosure is expanded here rather than nested: on a phone a
                 menu inside a menu is two taps to reach a link. */}
             <ul className={styles.mobileList}>
-              {SHELL_NAV.flatMap((entry) =>
+              {NAV.flatMap((entry) =>
                 entry.children !== undefined
                   ? entry.children.map((child) => (
                       <li key={child.href}>
@@ -223,7 +237,7 @@ export function PublicShell({ children }: PublicShellProps) {
       <footer className={styles.footer}>
         <div className={styles.footerInner}>
           <nav className={styles.columns} aria-label={SHELL_COPY.footerNavLabel}>
-            {FOOTER_COLUMNS.map((column) => (
+            {FOOTER.map((column) => (
               <div className={styles.column} key={column.heading}>
                 <h2 className={styles.columnHeading}>{column.heading}</h2>
                 <ul className={styles.columnList}>
