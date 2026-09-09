@@ -28,8 +28,14 @@
  * say something false.
  * The text is asserted exhaustively elsewhere - tests/unit/pages/
  * calculateur-form.test.tsx checks all 26 options, their values, their French
- * names and their collation order in one pass - so nothing goes unchecked,
- * it is simply checked where a string belongs rather than in a picture.
+ * names and their collation order in one pass, AND - under ruling R112 - the
+ * text the control actually displays: the chosen canton by name, a different
+ * one when a different canton is chosen, and the placeholder before anything
+ * is. That last string is the one whose pixels differed.
+ *
+ * R112 states the rule this follows: anything removed from one verification
+ * layer is NAMED and picked up by another. The naming is this comment; the
+ * picking up is that describe block.
  */
 
 select {

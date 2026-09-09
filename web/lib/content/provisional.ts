@@ -20,8 +20,14 @@
 // P2 HAS NO TRIGGER, deliberately. The 49,9 versus under-50 edge under
 // two-decimal truncation is a property of the threshold band rather than of any
 // input combination - every calculation near the social ceiling touches it and
-// none touches it more than another. R110 publishes it on /sources instead,
-// which is FW20's route.
+// none touches it more than another.
+//
+// WHICH IS WHY THE TWO SETS BELOW ARE RELATED BY A TYPE (ruling R113). P2 was
+// designed with no input trigger and its only disclosure pointed at a route
+// that did not exist, while the calculator went live - so for a while the
+// product depended on a reading a user had no way to read about. The subset
+// direction makes that unrepresentable rather than merely unlikely: a reading
+// that can fire a notice MUST be published, and tsc says so.
 
 import type { TeleworkInput } from '@/lib/calc-engine';
 
@@ -35,6 +41,30 @@ import type { TeleworkInput } from '@/lib/calc-engine';
 export const PROVISIONAL_IDS = ['P1', 'P3'] as const;
 
 export type ProvisionalId = (typeof PROVISIONAL_IDS)[number];
+
+/**
+ * Every pending reading /sources publishes, trigger or no trigger.
+ *
+ * A SUPERSET OF THE ABOVE, and the satisfies clause is the enforcement: a
+ * reading that can fire a notice but is not published fails to compile. That
+ * is ruling R113 expressed as a type rather than as a habit - the alternative
+ * is remembering, and the last time that was the mechanism P2 went undisclosed
+ * on an indexed page.
+ */
+export const PUBLISHED_PROVISIONAL_IDS = ['P1', 'P2', 'P3'] as const;
+
+export type PublishedProvisionalId = (typeof PUBLISHED_PROVISIONAL_IDS)[number];
+
+/**
+ * The subset check, at compile time.
+ *
+ * If PROVISIONAL_IDS ever gains an id that PUBLISHED_PROVISIONAL_IDS lacks,
+ * this assignment is the error. It costs one unused type and buys the one
+ * property R113 is about.
+ */
+type EveryTriggerIsPublished = ProvisionalId extends PublishedProvisionalId ? true : never;
+
+export const TRIGGERS_ARE_ALL_PUBLISHED: EveryTriggerIsPublished = true;
 
 /** A full-time contract, in the units employmentRate uses. */
 const FULL_TIME = 100;

@@ -163,6 +163,17 @@ export const CALCULATEUR_COPY = {
      * which is worse than an ugly one, so anything unmapped surfaces here
      * instead of being swallowed.
      */
+    /**
+     * THE DISCLOSURE PATH, ruling R113. P2 has no input trigger, so a link
+     * that is ALWAYS present is the only way a reader reaches it - which is
+     * why this belongs in the legal note rather than in the provisional
+     * notice, which by design appears only sometimes.
+     */
+    sourcesLink: {
+      text: 'Sources et vérifications',
+      href: '/sources',
+    },
+
     otherErrorsLabel: 'À corriger avant le calcul',
 
     /**

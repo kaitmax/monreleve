@@ -30,7 +30,12 @@
 
 import { describe, expect, it } from 'vitest';
 import type { TeleworkInput } from '@/lib/calc-engine';
-import { PROVISIONAL_IDS, provisionalFor } from '@/lib/content/provisional';
+import {
+  PROVISIONAL_IDS,
+  PUBLISHED_PROVISIONAL_IDS,
+  provisionalFor,
+} from '@/lib/content/provisional';
+import { SOURCES_COPY } from '@/lib/fr/sources';
 
 /** A full-time, full-year, simplified-basis input: the common path. */
 const BASE: TeleworkInput = {
@@ -137,5 +142,48 @@ describe('the id list', () => {
     // Non-vacuity for every loop above, and the place a fourth pending
     // reading would have to be added deliberately.
     expect([...PROVISIONAL_IDS]).toEqual(['P1', 'P3']);
+  });
+});
+
+describe('ruling R113: every provisional reading has a disclosure surface', () => {
+  // THE HOLE THIS CLOSES, in the operator's own words: "I designed P2 with no
+  // input trigger and then pointed its only disclosure at a planned route,
+  // while the calculator went live."
+  //
+  // So the two sets are declared separately and RELATED BY A TYPE. Every
+  // reading that can fire a notice must also be published; a reading may be
+  // published without firing (P2, which is a property of the threshold band
+  // rather than of any input combination). The subset direction is the one
+  // that matters: it makes "a trigger with nowhere to read about it"
+  // unrepresentable rather than merely unlikely.
+
+  it('publishes every reading that can trigger a notice', () => {
+    for (const id of PROVISIONAL_IDS) {
+      expect(PUBLISHED_PROVISIONAL_IDS, id).toContain(id);
+    }
+  });
+
+  it('publishes all three, including the one with no trigger', () => {
+    expect([...PUBLISHED_PROVISIONAL_IDS]).toEqual(['P1', 'P2', 'P3']);
+  });
+
+  it('records P2 as published without a trigger, which is deliberate', () => {
+    // Not an omission. The 49,9 versus under-50 edge under two-decimal
+    // truncation is a property of the band, so every calculation near the
+    // social ceiling touches it and none touches it more than another. That
+    // is exactly why it needs a persistent disclosure rather than a
+    // conditional one.
+    expect([...PUBLISHED_PROVISIONAL_IDS]).toContain('P2');
+    expect([...PROVISIONAL_IDS]).not.toContain('P2');
+  });
+
+  it('leaves no published reading without French copy', () => {
+    for (const id of PUBLISHED_PROVISIONAL_IDS) {
+      const item = SOURCES_COPY.provisional[id];
+
+      expect(item, id).toBeDefined();
+      expect(item.heading.length, id).toBeGreaterThan(5);
+      expect(item.body.length, id).toBeGreaterThan(40);
+    }
   });
 });

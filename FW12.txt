@@ -1,0 +1,230 @@
+FW12 SESSION PROMPT - frontalier
+Paste this entire prompt as the first message of a fresh Claude Code
+session, opened at the repository root.
+
+====================================================================
+PRE-STEP RULINGS (apply verbatim)
+====================================================================
+R1 (discharged). CI green on origin/main: verify, record the run URL.
+
+R2, R7-R8, R10-R13, R15-R41, R43-R110 (carried). The engine is closed.
+   R9: you own document edits.
+
+CHECKPOINT A IS OPEN. LAST_REGULATORY_REVIEW = 2026-09-09. Six Geneva
+   cases, truncation, the 240-day basis, the 10-day cap inside the
+   40%, the cap's round-up, mission exclusion above 40%, and the
+   travel-day table are all TRANSCRIPTION VERIFIED against ge.ch
+   (19.05.2026) and admin.ch. Three items remain PROVISIONAL pending
+   legal review: P1 France-before-third-state imputation order,
+   P2 the 49,9-versus-under-50 edge, P3 exact-method cap proration.
+
+R111 (new - refines R106). The gate derivation is TOTAL but
+   distributed across four recorded commands: pnpm gate, pnpm
+   test:e2e, pnpm test:visual (container), pnpm test:a11y. The test
+   asserts every CI workflow step maps to exactly ONE of the four and
+   that NO step is unmapped. Docker stays out of pnpm gate.
+
+R112 (new). The native <select> stays - a custom listbox costs JS
+   against GATE B, re-implements keyboard and screen-reader
+   behaviour, and is worse on phones. General rule: ANYTHING REMOVED
+   FROM ONE VERIFICATION LAYER IS NAMED AND PICKED UP BY ANOTHER. The
+   selected canton's text left pixel comparison, so a DOM test
+   asserts it explicitly. Audit for other such gaps and list them.
+
+R113 (new). A PROVISIONAL INTERPRETATION WITH NO INPUT TRIGGER NEEDS
+   A LIVE DISCLOSURE SURFACE BEFORE THE AFFECTED PAGE IS INDEXED.
+   /sources ships as increment 0 of this task, minimal. FW20 expands
+   it later rather than creating it.
+
+R114 (new). A VISUAL BASELINE RUNS AT ZERO TOLERANCE. When a diff is
+   environmental, the CAUSE is removed - never allowanced, never
+   masked. Your stylePath fix is the pattern.
+
+R47. Still open, still the operator's.
+
+====================================================================
+CONTEXT
+====================================================================
+Project: frontalier. You are executing task FW12 ONLY: the calculator's
+full result panel, replacing FW11's provisional rate-only region. This
+is the surface a frontalier reads to decide something with money
+attached, and every component it needs already exists from FW8.
+
+Read first: CLAUDE.md, README.md, SPEC sections 6.2, 6.5, 7.4, 9.3
+(the result panel order, verbatim), 16, 20; DESIGN-SYSTEM.md sections
+1 and 2; docs/regulatory-sources.md (the Checkpoint A result);
+tasks/todo.md FW12; prompts/design-frontier/FD1 and FD3 (visual
+reference; SPEC wins); REPORT-FW11.txt in full.
+
+====================================================================
+STANDING PROTOCOL (identical in every FW / AN prompt)
+====================================================================
+1. SESSION SCOPE. Increment 0 and FW12 only. Do not start FW13.
+2. INCREMENT CYCLE. Green after EVERY increment.
+3. COMMIT ONLY ON GREEN, chained with && (R15). R78: anything
+   touching lib/fr or markup gates on test:visual too.
+4. COMMITS. "FW12: <increment title>"; "chore: <title>" for R111-R114.
+5. SIMPLICITY FIRST. The panel composes FW8's components. No new
+   component unless SPEC 9.3 names something FW8 does not provide -
+   and if it does, say so before building it.
+6. TEST-FIRST with a RED row per behaviour. R96: regulatory figures
+   asserted against codepoint literals, never a formatter call.
+7. The panel computes NOTHING. It receives a TeleworkResult and
+   renders it. Zone and Status come from lib/ui/core.
+8. UI DISCIPLINE. Tokens; Inter tabular; Lucide; French only from
+   lib/fr; aria-live polite on the region; loading/empty/error where
+   a state exists; R110's notice is input-specific, never global.
+9. QUESTIONS. Pause and ask.
+10. EXIT ARTIFACT. REPORT-FW12.txt, committed and pushed.
+
+====================================================================
+INCREMENT 0 - /sources, minimal (R113), and R111/R112/R114
+====================================================================
+0a. /sources, live in the route registry, in the sitemap, linked from
+    the calculator's LegalNote and from the footer. Content, all from
+    lib/content and lib/fr:
+      - a one-paragraph statement of what the page is for;
+      - the VERIFIED table: rule, value, source name, source URL,
+        verification date (from the Checkpoint A result);
+      - an OPEN QUESTIONS section listing P1, P2 and P3 in plain
+        French - what is uncertain, what the app currently does, and
+        that expert review is pending;
+      - the review date via LAST_REGULATORY_REVIEW (R51).
+    It is a static server page. One h1. Container 'article'.
+0b. R111: the four-command totality test; prove it by removing a
+    workflow step's counterpart from gate and capturing the failure.
+0c. R112: the canton DOM assertion; plus the audit list of anything
+    else that left one verification layer without being picked up by
+    another.
+0d. R114: assert zero tolerance is configured for every visual
+    comparison; no maxDiffPixels, no mask, anywhere.
+Commits per letter; R49 applies.
+
+====================================================================
+TASK FW12 - THE RESULT PANEL
+====================================================================
+Acceptance criteria (restated; the report must prove each):
+AC1. Geneva case (c) through the UI displays BOTH rates - "39,16 %"
+     labelled as the AFC figure and "45,0 %" labelled as the share of
+     days outside Switzerland - with the explanatory sentence, all
+     asserted against codepoint literals.
+AC2. Every engine Warning code produces its French banner, and every
+     Status maps to its contextual link - both exhaustiveness-tested
+     over the unions.
+AC3. R110's provisional notice renders ONLY on its two triggers
+     (P1: both mission fields > 0; P3: exact method with rate < 100 or
+     periodFraction < 1) and is absent on the common path.
+
+--------------------------------------------------------------------
+INCREMENT 1 - the panel shell and order
+--------------------------------------------------------------------
+- A ResultPanel component in app/(public)/calculateur.../, not in
+  lib/ui/react - it is page-specific composition, not a reusable
+  component. Props: the TeleworkResult, the RuleSet thresholds, and
+  the input (for R110's triggers).
+- SPEC 9.3's order exactly: ZoneBadge, RateDisplay, ThresholdRail,
+  four MetricTiles, warnings, LegalNote, one contextual link. Email
+  capture and share are FW13/FW14 - leave their slots empty.
+- Replaces FW11's provisional region; the aria-live region moves here.
+- RED first on the ORDER: a test asserting the DOM sequence, so a
+  later refactor cannot silently reorder a panel whose order is
+  specified.
+- Commit: "FW12: result panel shell in SPEC 9.3 order". Push.
+
+--------------------------------------------------------------------
+INCREMENT 2 - the two rates
+--------------------------------------------------------------------
+- RateDisplay with declarableRate (2 dp, R40) and, when rawRate
+  differs, the secondary block with "Part de jours hors de Suisse"
+  (1 dp) and the explanatory sentence from lib/fr: mission days above
+  the 10-day cap leave the telework regime, so they do not count in
+  the declared rate but remain taxable in France.
+- RED first: Geneva case (c) through the controls shows both, by
+  codepoint literal.
+- Commit: "FW12: the two-rate display". Push.
+
+--------------------------------------------------------------------
+INCREMENT 3 - tiles and negative headroom
+--------------------------------------------------------------------
+- Four MetricTiles: remaining before 40 %, remaining before 49,9 %,
+  Swiss-taxed days, French-taxed days. Values from the engine, never
+  recomputed.
+- Negative headroom uses MetricTile's negative variant with R73's
+  label naming the threshold from the RuleSet, and formatSignedDays -
+  no minus sign, error colour.
+- RED first: Geneva case (e) shows two negative tiles with correct
+  labels and values.
+- Commit: "FW12: metric tiles including negative headroom". Push.
+
+--------------------------------------------------------------------
+INCREMENT 4 - warnings and contextual links
+--------------------------------------------------------------------
+- One banner per Warning, in a stable order (define it and test it).
+  All eight codes have French copy, including RULE_SET_FALLBACK and
+  the A1 code with its new >= 25 % trigger from the Checkpoint A
+  correction.
+- Exactly one contextual link, by Status, per SPEC 9.3's table.
+  Exhaustiveness tests over both unions - a new code or status
+  without copy fails, type-level per R65 where possible.
+- Commit: "FW12: warning banners and the contextual link". Push.
+
+--------------------------------------------------------------------
+INCREMENT 5 - R110's provisional notice
+--------------------------------------------------------------------
+- The notice: a banner (info, not warning - this is a disclosure, not
+  a problem) rendering only on its two triggers, naming which
+  interpretation is provisional in plain French, stating that expert
+  review is pending, and linking to /sources.
+- RED first for both triggers and for absence on the common path.
+- Commit: "FW12: input-specific provisional notice (R110)". Push.
+
+--------------------------------------------------------------------
+INCREMENT 6 - a11y, baselines, size
+--------------------------------------------------------------------
+- jest-axe zero across every panel state including all four statuses
+  and both notice triggers.
+- Playwright: the aria-live announcement on recalculation; keyboard
+  reachability of the contextual link.
+- Baselines at 1440 and 390 in the container, zero tolerance (R114),
+  for: compliant, mission-exposure (Geneva c), regime-lost,
+  social-switch, and one with the provisional notice.
+- pnpm size: the calculator route against GATE A and GATE B. FW11
+  left 9,3 KiB of GATE A headroom; report the panel's cost and the
+  remainder. If GATE A would be exceeded, STOP and report - do not
+  raise a gate.
+- Commit: "FW12: a11y, baselines, size record". Push.
+
+====================================================================
+OUT OF SCOPE FOR FW12
+====================================================================
+- URL parameters and share - FW13. Email capture - FW14. Analytics,
+  OG, JSON-LD - FW15.
+- Expanding /sources beyond increment 0's minimum - FW20.
+- Any engine change. Filling a verified_by legal-review field.
+
+====================================================================
+FINAL VERIFICATION
+====================================================================
+pnpm gate && pnpm test:e2e && pnpm test:visual && pnpm test:a11y
+Green in one run; CI green on origin/main after the final push.
+
+====================================================================
+REPORT FORMAT - REPORT-FW12.txt (pure ASCII, committed and pushed)
+====================================================================
+SUMMARY
+PRECONDITIONS      CI run URL and status.
+INCREMENT 0        /sources content, R111 totality proof, R112 audit
+                   list, R114 assertion.
+RED/GREEN LEDGER
+AC1 PROOF          Both rates by codepoint literal.
+EXHAUSTIVENESS     Warning and Status unions.
+R110 PROOF         Both triggers and the absence case.
+STATES MATRIX      Panel state x baseline file x axe result.
+SIZE               Route total, panel cost, GATE A remainder.
+TOKENS ADDED       (R77)
+DEVIATIONS
+NOTICED BUT NOT TOUCHING
+QUESTIONS FOR THE OPERATOR
+PUSH PROOF
+
+END OF FW12 PROMPT

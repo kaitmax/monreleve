@@ -1,28 +1,42 @@
 // web/tests/unit/meta/gate-covers-ci.test.ts
 //
-// RULING R106: THE GATE IS DERIVED FROM THE WORKFLOW. A test parses
-// .github/workflows/ci.yml and asserts every job step is covered locally.
+// RULINGS R106 and R111: THE GATE IS DERIVED FROM THE WORKFLOW. A test parses
+// .github/workflows/ci.yml and asserts every job step is run locally.
 // "Divergence is a test failure, not a report claim."
 //
-// WHY THIS EXISTS, and it is not hypothetical. R94 says "the local gate is the
-// CI command", and FW11's report asserted that it was. It was not: CI also
-// runs pnpm parity:check on two Node majors and pnpm gate did not, so CI
-// failed on eight consecutive commits while every local gate ran green. The
-// claim was in a report, where nothing can check it. It is now in a test.
+// WHY THIS EXISTS, and it is not hypothetical. R94 said "the local gate is the
+// CI command", and FW11's report ASSERTED that it was. It was not: CI also ran
+// pnpm parity:check on two Node majors and pnpm gate did not, so CI failed on
+// eight consecutive commits while every local gate ran green. The claim lived
+// in a report, where nothing can check it. It lives in a test now.
 //
-// COVERED BY THE RECORDED LOCAL COMMAND SET, not by pnpm gate alone - which is
-// a deliberate reading of R106 and is stated rather than assumed. The visual
-// job needs Docker, and folding it into pnpm gate would make the ordinary
-// gate unrunnable without a container. So the set is the four commands every
-// report already quotes - gate, test:visual, test:a11y, test:clean-tree - and
-// LOCAL_ENTRY_POINTS below is asserted to be exactly those four, so widening
-// it is a deliberate edit rather than a way to make this test pass.
+// R111 REFINES THE PROPERTY, and the refinement is the interesting part.
+// Single-command coverage was the wrong target: putting the container inside
+// pnpm gate would make the primary loop command slow enough that people route
+// around it, "and a gate people skip is worse than a gate with a documented
+// seam". So the derivation is TOTAL BUT DISTRIBUTED across four recorded
+// commands, and two things are asserted:
+//
+//   TOTALITY     every workflow check step maps to one of the four. No step
+//                unmapped - that is the property the eight-commit failure
+//                broke.
+//   EXCLUSIVITY  each step maps to EXACTLY one. Two owners means nobody can
+//                say which command is responsible for a step, and a step with
+//                two owners is one deletion away from having none.
+//
+// EXCLUSIVITY COST A CHANGE TO gate, recorded because it is a real one. gate
+// used to chain pnpm test:e2e, so that step had two owners. e2e builds the app
+// and starts a server, which is the same "slow enough to route around"
+// argument R111 makes about Docker - so it comes out of gate and stands as its
+// own recorded command. The local sequence is five commands now, not four; the
+// fifth is test:clean-tree, which has no CI step at all and is therefore not a
+// mapping target. See the block at the bottom for why.
 //
 // NO YAML PARSER. None is installed and adding a dependency is an ask-first
 // item under SPEC 20, so the run steps are read with a line scanner. That is
 // only safe with the non-vacuity assertion below: a workflow reformatted into
 // block scalars would make a naive scanner find NOTHING and report every step
-// covered, which is the exact failure shape ruling R63 exists to catch.
+// mapped, which is the exact failure shape ruling R63 exists to catch.
 
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -61,13 +75,14 @@ function readTsconfig(file: string): {
 }
 
 /**
- * The commands a session is expected to run before committing.
+ * R111's four. Every CI check step maps to exactly one of these.
  *
- * Asserted to be exactly this list further down. Adding one here is how a new
- * kind of check becomes locally required; it is not a way to silence a
- * failure, because the assertion names them.
+ * Asserted to be exactly this list further down, so widening it is a
+ * deliberate edit rather than a way to make a failure go away.
  */
-const LOCAL_ENTRY_POINTS = ['gate', 'test:visual', 'test:a11y', 'test:clean-tree'] as const;
+const MAPPING_TARGETS = ['gate', 'test:e2e', 'test:visual', 'test:a11y'] as const;
+
+type MappingTarget = (typeof MAPPING_TARGETS)[number];
 
 /**
  * Workflow steps that set the environment up rather than check anything.
@@ -82,18 +97,20 @@ const SETUP_STEPS: readonly string[] = [
 
 /** Every `- run:` command in the workflow, in order. */
 function workflowSteps(): readonly string[] {
+  const NEWLINE = String.fromCharCode(10);
+
   return readFileSync(WORKFLOW, 'utf8')
-    .split('\n')
+    .split(NEWLINE)
     .map((line) => line.trim())
     .filter((line) => line.startsWith('- run:'))
     .map((line) => line.slice('- run:'.length).trim())
     .filter((command) => command !== '' && !command.startsWith('|'));
 }
 
-/** Script names reachable from the entry points, following `pnpm <name>`. */
-function reachableScripts(): ReadonlySet<string> {
+/** Script names reachable from one command, following `pnpm <name>` chains. */
+function reachableFrom(entry: string): ReadonlySet<string> {
   const found = new Set<string>();
-  const queue = [...LOCAL_ENTRY_POINTS] as string[];
+  const queue = [entry];
 
   while (queue.length > 0) {
     const name = queue.pop();
@@ -106,7 +123,6 @@ function reachableScripts(): ReadonlySet<string> {
 
     found.add(name);
 
-    // `pnpm <name>` inside a script chain, which is how gate composes.
     for (const match of command.matchAll(/pnpm ([\w:-]+)/g)) {
       const referenced = match[1];
 
@@ -120,18 +136,19 @@ function reachableScripts(): ReadonlySet<string> {
 }
 
 /**
- * Everything the local command set actually executes, as text.
+ * Everything one command actually executes, as text.
  *
- * The script bodies are included, not only the package.json commands, because
- * one local command reaches CI's work indirectly: pnpm test:visual runs
+ * The script BODIES are included, not only the package.json commands, because
+ * one target reaches CI's work indirectly: pnpm test:visual runs
  * scripts/visual.mjs, which runs `pnpm exec playwright test --project=visual`
  * INSIDE the container - the same string CI runs directly. Without the file
- * contents this test would report the visual job uncovered and be wrong.
+ * contents this test would call the visual job unmapped and be wrong.
  */
-function localCorpus(): string {
+function corpusOf(entry: string): string {
+  const NEWLINE = String.fromCharCode(10);
   const parts: string[] = [];
 
-  for (const name of reachableScripts()) {
+  for (const name of reachableFrom(entry)) {
     const command = PACKAGE.scripts[name] ?? '';
 
     parts.push(command);
@@ -141,24 +158,31 @@ function localCorpus(): string {
     }
   }
 
-  return parts.join('\n');
+  return parts.join(NEWLINE);
 }
 
-/** Is this workflow step run by something in the local set? */
-function isCovered(step: string): boolean {
-  const scripts = reachableScripts();
+/**
+ * Which of the four run this step. DERIVED, never declared.
+ *
+ * A hand-written map from step to owner would be the same kind of unchecked
+ * claim as the report sentence this test replaces: it would say what somebody
+ * believed rather than what the scripts do.
+ */
+function ownersOf(step: string): readonly MappingTarget[] {
   const asScript = /^pnpm ([\w:-]+)/.exec(step);
   const name = asScript?.[1];
 
-  // `pnpm test:floor -- --report ...` is the same script with other
-  // arguments, so the name is what matters, not the whole line.
-  if (name !== undefined && PACKAGE.scripts[name] !== undefined) {
-    return scripts.has(name);
-  }
+  return MAPPING_TARGETS.filter((target) => {
+    // `pnpm test:floor -- --report ...` is the same script with other
+    // arguments, so the name is what matters, not the whole line.
+    if (name !== undefined && PACKAGE.scripts[name] !== undefined) {
+      return reachableFrom(target).has(name);
+    }
 
-  // Anything else - `pnpm exec ...`, a bare `node ...` - has to appear
-  // verbatim in something the local set runs.
-  return localCorpus().includes(step);
+    // Anything else - `pnpm exec ...`, a bare `node ...` - has to appear
+    // verbatim in something the target runs.
+    return corpusOf(target).includes(step);
+  });
 }
 
 describe('the workflow was parsed at all', () => {
@@ -170,42 +194,61 @@ describe('the workflow was parsed at all', () => {
     expect(steps).toContain('pnpm parity:build');
   });
 
-  it('knows the four local entry points, and only those', () => {
-    expect([...LOCAL_ENTRY_POINTS]).toEqual([
-      'gate',
-      'test:visual',
-      'test:a11y',
-      'test:clean-tree',
-    ]);
-    for (const name of LOCAL_ENTRY_POINTS) {
+  it('knows R111 four mapping targets, and only those', () => {
+    expect([...MAPPING_TARGETS]).toEqual(['gate', 'test:e2e', 'test:visual', 'test:a11y']);
+    for (const name of MAPPING_TARGETS) {
       expect(PACKAGE.scripts[name], name).toBeDefined();
     }
   });
 
-  it('reaches the scripts the entry points compose', () => {
-    const scripts = reachableScripts();
+  it('follows the chains inside a target', () => {
+    // gate composes several scripts. If the chain stopped being followed this
+    // test would call every step unmapped, which fails loudly rather than
+    // quietly - but the assertion is here so the reason is visible.
+    const gate = reachableFrom('gate');
 
-    // gate composes eight of these; if the chain stopped being followed this
-    // test would pass every coverage assertion by finding nothing.
-    expect(scripts.has('typecheck')).toBe(true);
-    expect(scripts.has('parity:check')).toBe(true);
-    expect(scripts.has('parity:build')).toBe(true);
-    expect(scripts.size).toBeGreaterThanOrEqual(10);
+    expect(gate.has('typecheck')).toBe(true);
+    expect(gate.has('parity:check')).toBe(true);
+    expect(gate.has('parity:build')).toBe(true);
+    expect(gate.size).toBeGreaterThanOrEqual(7);
   });
 });
 
-describe('every CI check step is run locally too (R106)', () => {
+describe('TOTALITY - every CI check step is run locally (R106)', () => {
   const steps = workflowSteps().filter((step) => !SETUP_STEPS.includes(step));
 
   it('has check steps left after the setup ones are removed', () => {
     expect(steps.length).toBeGreaterThanOrEqual(9);
   });
 
-  it.each(steps)('%s', (step) => {
+  it.each(steps)('%s is mapped', (step) => {
     expect(
-      isCovered(step),
-      `CI runs "${step}" and no local command does. Add it to one of: ${LOCAL_ENTRY_POINTS.join(', ')}.`,
-    ).toBe(true);
+      ownersOf(step).length,
+      `CI runs "${step}" and none of ${MAPPING_TARGETS.join(', ')} does.`,
+    ).toBeGreaterThan(0);
+  });
+});
+
+describe('EXCLUSIVITY - each step has exactly one owner (R111)', () => {
+  const steps = workflowSteps().filter((step) => !SETUP_STEPS.includes(step));
+
+  it.each(steps)('%s has one owner', (step) => {
+    const owners = ownersOf(step);
+
+    expect(
+      owners.length,
+      `"${step}" is run by ${owners.length} of the four (${owners.join(', ')}). ` +
+        'Two owners means nobody can say which command is responsible, and a ' +
+        'step with two owners is one deletion away from having none.',
+    ).toBe(1);
+  });
+
+  it('distributes the steps across more than one target', () => {
+    // Otherwise "exactly one owner" would be satisfied by a single command
+    // running everything, which is the arrangement R111 rejects.
+    const owners = new Set(steps.flatMap((step) => ownersOf(step)));
+
+    expect(owners.size).toBeGreaterThanOrEqual(3);
   });
 });
 
@@ -224,6 +267,18 @@ describe('the setup exemptions are honest', () => {
     for (const exempt of SETUP_STEPS) {
       expect(exempt, exempt).toMatch(/install/);
     }
+  });
+});
+
+describe('test:clean-tree is local-only, and that is deliberate', () => {
+  it('exists, and is not one of the four', () => {
+    // R94's discipline: run the suite with the generated directories moved
+    // aside, because CI has a fresh checkout. There is no CI STEP for it - CI
+    // IS a fresh checkout, so the check would be tautological there - which is
+    // why it is not a mapping target, and why saying so here is better than
+    // leaving somebody to wonder whether it was forgotten.
+    expect(PACKAGE.scripts['test:clean-tree']).toBeDefined();
+    expect([...MAPPING_TARGETS]).not.toContain('test:clean-tree');
   });
 });
 

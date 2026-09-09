@@ -183,7 +183,12 @@ export const PUBLIC_ROUTES: readonly PublicRoute[] = [
   },
   { path: '/releve-annuel', status: 'planned', task: 'FW20', changeFrequency: 'monthly', priority: 0.8 },
   { path: '/tarifs', status: 'planned', task: 'FW20', changeFrequency: 'monthly', priority: 0.6 },
-  { path: '/sources', status: 'planned', task: 'FW20', changeFrequency: 'monthly', priority: 0.5 },
+  // LIVE AT FW12 INCREMENT 0, not FW20 (ruling R113). P2 - the 49,9 edge -
+  // has no input trigger by design, so this page is its ONLY disclosure, and
+  // the calculator was indexed before it existed. The footer had also linked
+  // here since FW10 while the route was planned, so every public page carried
+  // a link to a 404.
+  { path: '/sources', status: 'live', task: 'FW12', changeFrequency: 'monthly', priority: 0.5 },
   { path: '/a-propos', status: 'planned', task: 'FW20', changeFrequency: 'yearly', priority: 0.4 },
   { path: '/alertes', status: 'planned', task: 'FW14', changeFrequency: 'monthly', priority: 0.5 },
 ];

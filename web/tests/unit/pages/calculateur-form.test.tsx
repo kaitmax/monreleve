@@ -460,3 +460,59 @@ describe('ruling R109: a French decimal comma', () => {
     );
   });
 });
+
+describe('ruling R112: what left the pixel layer is picked up here', () => {
+  // THE PRINCIPLE, which generalises past this case: anything removed from one
+  // verification layer is NAMED and picked up by another.
+  //
+  // e2e/visual-select.css paints the native select's label transparent for the
+  // duration of a screenshot, because Chromium draws a closed select's text
+  // through the platform theme and that path is not reproducible between a
+  // local container and CI's. The box is still compared; the TEXT is not.
+  //
+  // So the text is asserted here, explicitly, rather than left to the option
+  // list further up. That list proves all 26 options exist in the right order;
+  // it says nothing about what the CONTROL displays once one is chosen, which
+  // is precisely the pixels that stopped being compared.
+
+  it('displays the chosen canton by name, not by code', () => {
+    setUp();
+    chooseCanton('GE');
+
+    const selected = cantonSelect().selectedOptions[0];
+
+    expect(selected?.textContent).toBe(CANTON_NAMES.GE);
+  });
+
+  it('displays a different canton when a different one is chosen', () => {
+    // Non-vacuity: an implementation that always rendered the same label would
+    // satisfy the assertion above.
+    setUp();
+    chooseCanton('VD');
+
+    expect(cantonSelect().selectedOptions[0]?.textContent).toBe(CANTON_NAMES.VD);
+    expect(CANTON_NAMES.VD).not.toBe(CANTON_NAMES.GE);
+  });
+
+  it('displays the placeholder before anything is chosen', () => {
+    // THE EXACT STRING WHOSE PIXELS DIFFERED IN CI - "Selectionnez votre
+    // canton", 497 pixels of glyph movement in the desktop empty-state
+    // baseline. It is no longer compared as an image, so it is compared as
+    // text.
+    setUp();
+
+    expect(cantonSelect().selectedOptions[0]?.textContent).toBe(FORM.canton.placeholder);
+  });
+
+  it('keeps the accented characters that made the glyphs environmental', () => {
+    // Genève and Bâle-Campagne carry the accents; asserting them by codepoint
+    // here is what the picture used to do.
+    setUp();
+    chooseCanton('BL');
+
+    const shown = cantonSelect().selectedOptions[0]?.textContent ?? '';
+
+    expect(shown).toBe(CANTON_NAMES.BL);
+    expect(shown).toContain(String.fromCharCode(0x00e2));
+  });
+});

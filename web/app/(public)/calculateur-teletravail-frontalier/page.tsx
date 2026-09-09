@@ -40,6 +40,7 @@ import { currentTaxYear } from '@/lib/content/tax-year';
 import { CALCULATEUR_COPY as COPY } from '@/lib/fr/calculateur';
 import { formatPercent } from '@/lib/ui/core';
 import { Container } from '@/lib/ui/react/Container/Container';
+import { LegalNote } from '@/lib/ui/react/LegalNote/LegalNote';
 import { CalculatorForm } from './CalculatorForm';
 import styles from './calculateur.module.scss';
 
@@ -141,6 +142,27 @@ export default function CalculateurPage() {
           nothing between the static shell and the hydrated form.
         */}
         <CalculatorForm taxYear={year} />
+
+      {/*
+          THE STANDING LEGAL NOTE, and it carries the link to /sources.
+          RULING R113.
+
+          UNCONDITIONAL, which is the whole reason it is here rather than in
+          the provisional notice. P2 - the 49,9 versus under-50 edge - has no
+          input trigger by design, so the conditional notice never names it; a
+          reader can only reach it through something present whatever they
+          type. A disclosure that appears only sometimes cannot carry an
+          interpretation that has no condition.
+
+          SERVER-RENDERED, above the explanation, so it is in the HTML with
+          scripting off too - the same reason the explanatory copy is.
+        */}
+        <div className={styles.legal}>
+          <LegalNote />
+          <p className={styles.sources}>
+            <a href={COPY.form.sourcesLink.href}>{COPY.form.sourcesLink.text}</a>
+          </p>
+        </div>
 
         <section className={styles.explanation}>
           <h2 className={styles.heading}>{COPY.explanationHeading}</h2>

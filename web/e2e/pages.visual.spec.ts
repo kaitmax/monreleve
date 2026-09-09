@@ -41,6 +41,11 @@ const PAGES = [
   { id: 'mentions-legales', path: '/mentions-legales' },
   { id: 'confidentialite', path: '/confidentialite' },
   { id: 'cgu', path: '/cgu' },
+  // /sources joined at FW12 increment 0 (R113). A deliberate edit, as this
+  // list's own comment requires - and worth one: it is the page that
+  // discloses P1, P2 and P3, so a silent change to it is a silent change to
+  // what the product admits it does not know.
+  { id: 'sources', path: '/sources' },
   { id: '404', path: '/cette-page-nexiste-pas' },
 ] as const;
 

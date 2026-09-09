@@ -1,0 +1,182 @@
+// web/app/(public)/sources/sources.module.scss
+//
+// Tokens only. The measure is Container's `article` - this is a document to be
+// read, like the legal pages - but it is NOT their stylesheet: they share one
+// because they are the same document at three lengths, and this page is a
+// table plus three prose sections.
+
+.page {
+  padding-top: var(--space-16);
+  padding-bottom: var(--space-20);
+}
+
+.title {
+  margin: 0 0 var(--space-3);
+  font-size: var(--type-h1-size);
+  font-weight: var(--type-h1-weight);
+  line-height: var(--type-h1-line);
+}
+
+.lead {
+  margin: 0 0 var(--space-4);
+  font-size: var(--type-body-l-size);
+  font-weight: var(--type-body-l-weight);
+  line-height: var(--type-body-l-line);
+}
+
+.reviewed {
+  margin: 0 0 var(--space-8);
+  color: var(--colour-text-secondary);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  line-height: var(--type-caption-line);
+}
+
+.section {
+  margin-bottom: var(--space-12);
+}
+
+.heading {
+  margin: 0 0 var(--space-4);
+  font-size: var(--type-h2-size);
+  font-weight: var(--type-h2-weight);
+  line-height: var(--type-h2-line);
+}
+
+.prose {
+  margin: 0 0 var(--space-4);
+  font-size: var(--type-body-l-size);
+  font-weight: var(--type-body-l-weight);
+  line-height: var(--type-body-l-line);
+}
+
+// THE TABLE SCROLLS INSIDE ITSELF, never the page. Four columns of French
+// prose do not fit 320 px, and a document that scrolls sideways is the defect
+// SPEC 16 forbids - measured at 320, 360 and 390 in FW10 when the header did
+// exactly that.
+.tableScroll {
+  overflow-x: auto;
+  margin-bottom: var(--space-4);
+}
+
+// NO MIN-WIDTH, and this took two measurements to get right. Setting it to
+// --layout-article (680) fixed the 360 case and broke desktop: the article
+// container is 616 px wide, so the table overflowed by 64 px and clipped the
+// Etat column on a screen with room to spare. Measured, not eyeballed.
+//
+// The three nowrap columns below already force the intrinsic width past a
+// narrow viewport, so .tableScroll scrolls exactly where it is needed and
+// nowhere else: 0 px of page overflow at 320, 360, 390 and 1440, with the
+// table scrolling inside its own container only below the measure.
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+  text-align: left;
+
+  th,
+  td {
+    padding: var(--space-3) var(--space-4) var(--space-3) 0;
+    border-bottom: var(--size-input-border) solid var(--colour-border-default);
+    vertical-align: top;
+  }
+
+  thead th {
+    color: var(--colour-text-secondary);
+    font-size: var(--type-caption-size);
+    font-weight: var(--type-label-weight);
+    line-height: var(--type-caption-line);
+    white-space: nowrap;
+  }
+}
+
+// The row header carries the rule, so it is the widest column and the only one
+// allowed to wrap freely.
+// No min-width: adding a layout token would need a ruling under
+// DESIGN-SYSTEM 4, and the table does not need one - width:100% plus the
+// nowrap on the other three columns already gives this one the remainder.
+.ruleCell {
+  font-weight: var(--type-body-weight);
+}
+
+// TABULAR FIGURES on the values, so a column of numbers lines up. The same
+// reason the calculator's fields use them.
+.valueCell {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+// nowrap, NOT overflow-wrap. The first version let the hostname break
+// anywhere, and the baseline showed "www.admin.c" on one line and "h" on the
+// next - a URL broken mid-word reads as a typo. These hostnames are short;
+// the table scrolls inside .tableScroll at narrow widths, so nothing is lost
+// by keeping each one whole.
+.sourceLink {
+  color: var(--colour-brand);
+  white-space: nowrap;
+}
+
+// STATUS IS NEVER COLOUR ALONE (DESIGN-SYSTEM 1): both states carry their own
+// word - Transcrit, En attente - and reading this table in monochrome loses
+// nothing.
+//
+// THE WORD IS text-primary ON A SOFT FILL, not the status colour, and the
+// contrast audit is why. The first version coloured the text with
+// --colour-warning, which measures 3,43:1 on the canvas and 3,64:1 on the
+// surface - below the 4,5 bar for text this size, and the audit failed it.
+//
+// That is ruling R57 exactly, already settled for ZoneBadge: "the label is
+// text-primary on the soft fill, not the status colour ... the icon keeps the
+// status colour, where the non-text bar applies." The same shape is used here
+// rather than a new one, and the audit already covers text-primary on both
+// soft fills for every status.
+.statusOk,
+.statusPending {
+  display: inline-block;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-xs);
+  color: var(--colour-text-primary);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-caption-line);
+  white-space: nowrap;
+}
+
+.statusOk {
+  background: var(--colour-success-soft);
+}
+
+.statusPending {
+  background: var(--colour-warning-soft);
+}
+
+.note {
+  margin: 0 0 var(--space-2);
+  color: var(--colour-text-secondary);
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-line);
+}
+
+.readings {
+  margin: 0;
+}
+
+.reading {
+  margin-bottom: var(--space-6);
+  padding-left: var(--space-4);
+  border-left: var(--size-input-border-focus) solid var(--colour-info);
+}
+
+.readingHeading {
+  margin: 0 0 var(--space-1);
+  font-size: var(--type-body-l-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-body-l-line);
+}
+
+.readingBody {
+  margin: 0;
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+}

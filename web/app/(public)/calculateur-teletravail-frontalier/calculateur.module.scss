@@ -59,3 +59,20 @@
   font-weight: var(--type-body-l-weight);
   line-height: var(--type-body-l-line);
 }
+
+// RULING R113: the standing legal note and the link to /sources. Above the
+// explanation so it sits with the result rather than after the prose, and
+// unconditional - see the comment at its call site for why that matters.
+.legal {
+  margin-bottom: var(--space-8);
+}
+
+.sources {
+  margin: var(--space-2) 0 0;
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-line);
+
+  a {
+    color: var(--colour-brand);
+  }
+}

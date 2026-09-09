@@ -23,6 +23,7 @@ import { LAST_REGULATORY_REVIEW } from '@/lib/content/regulatory';
 import { CALCULATOR_PATH, gateRobotsDirective } from '@/lib/content/routes';
 import { currentTaxYear } from '@/lib/content/tax-year';
 import { CALCULATEUR_COPY } from '@/lib/fr/calculateur';
+import { LEGAL_COPY } from '@/lib/fr/legal';
 import { formatPercent } from '@/lib/ui/core';
 
 afterEach(cleanup);
@@ -184,5 +185,41 @@ describe('ruling R54: the metadata gate', () => {
 
   it('is the route the registry gates', () => {
     expect(CALCULATOR_PATH).toBe('/calculateur-teletravail-frontalier');
+  });
+});
+
+describe('ruling R113: the always-present path to /sources', () => {
+  // WHY THIS IS IN THE LEGAL NOTE and not in the provisional notice. P2 - the
+  // 49,9 versus under-50 edge - has NO input trigger by design, so the
+  // conditional notice never mentions it. A reader can only reach it through
+  // something that is on the page whatever they type.
+  //
+  // The operator's own account of the hole: "I designed P2 with no input
+  // trigger and then pointed its only disclosure at a planned route, while the
+  // calculator went live."
+
+  it('links to /sources from the standing legal note', () => {
+    const { container } = render(<CalculateurPage />);
+    const link = [...container.querySelectorAll('a')].find(
+      (anchor) => anchor.getAttribute('href') === CALCULATEUR_COPY.form.sourcesLink.href,
+    );
+
+    expect(link, 'no link to /sources on the calculator').toBeDefined();
+    expect(link?.textContent).toBe(CALCULATEUR_COPY.form.sourcesLink.text);
+  });
+
+  it('carries the standing disclaimer beside it (SPEC 9.3 item 6)', () => {
+    const { container } = render(<CalculateurPage />);
+
+    expect(container.textContent).toContain(LEGAL_COPY.standing);
+  });
+
+  it('shows the note whether or not anything has been typed', () => {
+    // The whole point: unconditional. A conditional disclosure cannot carry
+    // an interpretation that has no condition.
+    const { container } = render(<CalculateurPage />);
+
+    expect(container.textContent).not.toContain(CALCULATEUR_COPY.result.stale);
+    expect(container.textContent).toContain(CALCULATEUR_COPY.form.sourcesLink.text);
   });
 });
