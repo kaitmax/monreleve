@@ -1,0 +1,95 @@
+// web/app/(public)/calculateur-teletravail-frontalier/CalculatorForm.module.scss
+//
+// The form card. Tokens only - stylelint's declaration-strict-value enforces
+// it, and the radius is one of the nine names DESIGN-SYSTEM.md 4.1 allows.
+//
+// SPEC 9.3: "Single form inside a white card (radius 16)". So --radius-lg,
+// which IS 16 px; the number is not written here.
+//
+// WHAT THIS FILE DELIBERATELY DOES NOT STYLE: the controls. FieldGroup already
+// dresses `.root input, .root select, .root textarea` - height, padding,
+// border, radius, the 2 px error border and the focus ring. Those are
+// descendant selectors at specificity 0,2,0; a class here is 0,1,0 and loses.
+// Declaring a border on .select would therefore be a line that reads as
+// styling and does nothing, which is worse than no line at all. Only
+// properties FieldGroup leaves alone appear below.
+
+.card {
+  margin: 0 0 var(--space-8);
+  padding: var(--space-6);
+  border: var(--size-input-border) solid var(--colour-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--colour-surface);
+}
+
+// A fieldset's legend, not a heading: the page already has its h1 and the
+// explanatory h2, and a third level here would claim an outline position this
+// block does not hold.
+.legend {
+  padding: 0;
+  font-size: var(--type-body-l-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-body-l-line);
+}
+
+// A select sizes itself to its widest option otherwise, which makes the field
+// jump when a long canton name is chosen.
+.select {
+  width: 100%;
+}
+
+// TABULAR FIGURES on a number the user watches change - UI discipline, and the
+// reason is that proportional digits shift the value sideways as it steps.
+.number {
+  width: 100%;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.stepper {
+  display: flex;
+  gap: var(--space-2);
+  align-items: stretch;
+}
+
+// THE TOUCH TARGET FROM ITS TOKEN. --size-touch-target-web is 44, the web
+// minimum in DESIGN-SYSTEM 1; the Android target is 48 and has its own name.
+// The height matches the input's 48 instead, so the row lines up - 44 x 48
+// clears the minimum in both directions, where a square 44 would leave the
+// buttons short of the field beside them.
+.step {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--size-touch-target-web);
+  min-width: var(--size-touch-target-web);
+  height: var(--size-input-height);
+  border: var(--size-input-border) solid var(--colour-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--colour-surface);
+  color: var(--colour-text-primary);
+  cursor: pointer;
+}
+
+// The home for a validation error belonging to no visible field. Same colour
+// and weight as a field-level error, because it says the same kind of thing.
+.otherErrors {
+  margin-top: var(--space-4);
+}
+
+.otherErrorsLabel {
+  margin: 0 0 var(--space-1);
+  color: var(--colour-error);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-caption-line);
+}
+
+.otherErrorsList {
+  margin: 0;
+  padding-left: var(--space-5);
+  color: var(--colour-error);
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-line);
+}

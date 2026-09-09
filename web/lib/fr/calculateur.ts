@@ -95,4 +95,74 @@ export const CALCULATEUR_COPY = {
     `Combien de jours de télétravail vous reste-t-il avant le seuil de ` +
     `${fiscal}${n("?")} Calcul gratuit et immédiat pour l'année ${year}, sans ` +
     `inscription.`,
+
+  /**
+   * THE FORM (increment 2). SPEC 9.3 names the three visible fields and gives
+   * their reason for being visible; it does NOT give their helper text, and
+   * that gap is recorded as an interpretation in the report rather than
+   * papered over. The "Why visible" column is rationale addressed to whoever
+   * builds the form - "Determines the regime", "Scales ceiling and mission
+   * cap", "The number they came to enter" - and the last of those is plainly
+   * not something to say to a user.
+   *
+   * So each helper below states the CONSEQUENCE of the field in the terms
+   * SPEC 7 already uses, and names no figure: a threshold written here would
+   * be a second source of truth that goes stale in silence (R73). The one
+   * verbatim string SPEC does supply - the method helper - arrives with the
+   * accordion in increment 3.
+   *
+   * LABELS ARE SPEC 9.3's OWN, character for character, because they are the
+   * one part it does specify.
+   */
+  form: {
+    legend: 'Votre situation',
+
+    canton: {
+      label: 'Canton de travail',
+      placeholder: 'Sélectionnez votre canton',
+      helper:
+        'Le canton détermine le régime applicable et ce que coûte un ' +
+        'dépassement.',
+    },
+
+    rate: {
+      label: "Taux d'activité (%)",
+      helper:
+        'Un temps partiel réduit dans la même proportion le plafond annuel ' +
+        'et le quota de jours de mission.',
+      decrease: "Diminuer le taux d'activité",
+      increase: "Augmenter le taux d'activité",
+    },
+
+    days: {
+      label: 'Jours de télétravail déjà pris',
+      /**
+       * The one real UX gift the regulation makes, and SPEC 9.3 says so in
+       * its own words: "paid leave and sick days are not asked at all - the
+       * 240 already absorbs them. That is a real UX win the regulation hands
+       * us and why three fields suffice." Worth telling the user, because a
+       * frontalier who has been counting working days will otherwise wonder
+       * where to put them.
+       */
+      helper:
+        'Comptez uniquement vos journées de télétravail' +
+        n(":") +
+        ' les congés payés et les jours de maladie ne sont pas à déclarer ' +
+        'ici, la base annuelle les absorbe déjà.',
+      decrease: 'Retirer une demi-journée',
+      increase: 'Ajouter une demi-journée',
+    },
+
+    /**
+     * Where a validation error goes when it belongs to no visible field.
+     *
+     * Every code the engine can return has a home - see fieldFor in
+     * CalculatorForm.tsx - but "has a home" is a claim that has to survive
+     * the accordion arriving in increment 3 and the engine gaining a code
+     * later. An error with nowhere to render is an error the user never sees,
+     * which is worse than an ugly one, so anything unmapped surfaces here
+     * instead of being swallowed.
+     */
+    otherErrorsLabel: 'À corriger avant le calcul',
+  },
 } as const;

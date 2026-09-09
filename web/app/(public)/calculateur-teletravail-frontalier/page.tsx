@@ -40,6 +40,7 @@ import { currentTaxYear } from '@/lib/content/tax-year';
 import { CALCULATEUR_COPY as COPY } from '@/lib/fr/calculateur';
 import { formatPercent } from '@/lib/ui/core';
 import { Container } from '@/lib/ui/react/Container/Container';
+import { CalculatorForm } from './CalculatorForm';
 import styles from './calculateur.module.scss';
 
 /**
@@ -128,12 +129,18 @@ export default function CalculateurPage() {
         <p className={styles.year}>{COPY.yearCaption(year)}</p>
 
         {/*
-          THE ISLAND GOES HERE, in increment 2: CalculatorForm, taking taxYear
-          as a prop from the resolution above. Nothing is rendered in its place
-          on purpose - a disabled or empty form would be a worse answer than
-          none, and AC3's no-JavaScript assertion is about the explanatory
-          content below rather than about a form that cannot compute.
+          THE ISLAND. taxYear comes from the resolution above rather than from
+          a clock inside the island: a client-side new Date() reads the
+          VIEWER's timezone, so a frontalier travelling would see a different
+          year from the one their filing belongs to, and the first render would
+          disagree with the server's for anybody east of Paris.
+
+          It renders inside the server page with no wrapper and no Suspense
+          boundary. The form has nothing to wait for - the engine is
+          synchronous and bundled - so a fallback would only add a flash of
+          nothing between the static shell and the hydrated form.
         */}
+        <CalculatorForm taxYear={year} />
 
         <section className={styles.explanation}>
           <h2 className={styles.heading}>{COPY.explanationHeading}</h2>
