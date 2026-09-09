@@ -1,0 +1,789 @@
+================================================================================
+REPORT-FW11.txt - THE CALCULATOR FORM
+================================================================================
+COMPLETE. Session of 09.09.2026. Ten commits, 5506219..a66d698, all pushed.
+
+Pure ASCII by mandate, so French copy quoted below is transliterated: where
+this file writes "teletravail" or "Annee" the product writes them with their
+accents, and where it writes "40 %" the product puts a U+00A0 before the sign.
+Anywhere a codepoint is the point, it is spelled out.
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+/calculateur-teletravail-frontalier exists and computes. Three visible fields,
+the always-visible mission question, the collapsed advanced accordion, live
+recomputation with no debounce, server-rendered explanatory copy so the page is
+meaningful without JavaScript, and a provisional result showing the declarable
+rate. SPEC 9.3's end-to-end gate passes: Geneva case (c) entered through the
+controls displays 39,16 %.
+
+THE PAGE IS NOT HIDDEN. The prompt's last line, and R54's mechanism, assume
+LAST_REGULATORY_REVIEW is still null. Checkpoint A was recorded during this
+session (commit 952c290, the operator's pasted result), the constant is
+"2026-09-09", and all three surfaces flipped with no code change: the route is
+indexable, it is in sitemap.xml, and it is in the nav and the footer. The
+mandated last line is therefore false as written and is handled under
+DEVIATIONS and LAST LINE below.
+
+SIX FINDINGS worth more than the feature, four of them about signals that were
+not measuring what they appeared to:
+
+  1. CI HAD BEEN RED FOR EIGHT COMMITS and my local gate could not see it.
+  2. force-dynamic put the page's title and canonical OUTSIDE <head>.
+  3. R98's per-run distDir was rewriting two committed files on every run.
+  4. Two defects were found by LOOKING at baselines that 1383 tests passed.
+  5. A mutation probe that reddened NOTHING exposed a guard against an
+     impossible state.
+  6. R63's suite floor had drifted 8 files and 110 tests below reality.
+
+--------------------------------------------------------------------------------
+PRECONDITIONS
+--------------------------------------------------------------------------------
+R0. REPORT-FW8.txt (751 lines), REPORT-FW9.txt (1945) and REPORT-FW10.txt (959)
+    read in full.
+
+    - No question in any of the three is marked as blocking FW11. FW9's Q1,
+      which blocked FW10, was discharged by R64/R65 before FW10 shipped.
+    - No DEVIATION in any of them changes FieldGroup, Container, PublicShell,
+      RateDisplay or the engine's public API. FW9 changed Container's widths
+      under R64, which is prior to and consistent with this task's use of
+      width="narrow".
+    - The stop condition is not met. FW11 proceeded.
+    - Every open question is carried verbatim under QUESTIONS below, with the
+      ones R85-R95 answered marked as closed.
+
+R1. CI ON origin/main. Recorded as it happened rather than as it should have:
+
+    CI WAS RED THE WHOLE SESSION AND I DID NOT LOOK UNTIL THE END. Eight
+    consecutive commits failed, starting at a5ced1f - the commit that carried
+    R96-R99 - and including all six of this session's feature commits. Every
+    local gate ran green throughout, because the gate did not contain the job
+    that was failing. Full account under FINDING 1.
+
+    Green after the fix:
+      https://github.com/kaitmax/Frontalier/actions/runs/34367214565
+      a66d698, workflow CI, conclusion success.
+
+--------------------------------------------------------------------------------
+RED/GREEN LEDGER
+--------------------------------------------------------------------------------
+Every increment's first run, with the reason it failed. A test that passed on
+its first run is evidence of nothing, so where a test could not be made to
+fail before the code existed, it was probed by MUTATION afterwards and the
+probe is recorded with it.
+
+INCREMENT 0 - the French typography pass (R91). Commit 5506219.
+  RED: the codepoint registry asserted lib/fr contained NONE of the watched
+       codepoints. The pass introduces 39 U+00A0, so the registry went red by
+       construction, which is the shape R91 asked for.
+  GREEN: the assertion was replaced by a stronger one - only U+00A0 is
+       present, there are exactly 39, per file, and EVERY ONE sits immediately
+       before one of : ; ? ! %. A stray no-break space mid-sentence now fails,
+       which the old form could never have caught.
+
+INCREMENT 1 - route, server shell, gate (R54). Commit 86c93ed.
+  RED: tests/unit/pages/calculateur.test.tsx could not resolve
+       @/app/(public)/calculateur-teletravail-frontalier/page - the route did
+       not exist.
+  RED (second, and the real finding): with the page built, the R95 head scan
+       failed on it. Three causes in sequence, each hiding the next:
+         (a) reuseExistingServer had substituted my dev server, which has no
+             configured origin, so the canonical was absent for a reason that
+             had nothing to do with the page;
+         (b) the vocabulary guard was over-broad - it banned the substring
+             "certifi" and so forbade "un certificat A1 en cours de validite",
+             the name of a document SPEC 7.1 itself uses;
+         (c) force-dynamic. See FINDING 2.
+  GREEN: 72 files / 1253 tests, then 74 / 1288 after the guard was rebuilt.
+
+INCREMENT 2 - the three visible fields. Commit 3ab0872.
+  RED: "Failed to resolve import @/lib/fr/cantons" - the copy did not exist.
+  RED (second): 2 of 25 failed once the island existed, and NOT for the
+       reason they appeared to. NEGATIVE_DAYS and GRANULARITY_MISMATCH end in
+       U+00A0 before their colon; getByText normalises the DOM side ONLY, so
+       those matchers matched nothing while the form rendered them perfectly.
+       The failure printed two identical-looking strings. Ruling R66, third
+       occurrence this session.
+  GREEN: 25 passed. All six message assertions converted to textContent - not
+       only the two that failed, because the four without a no-break space
+       were passing by accident.
+  PROBES: granularity halfDay -> day reddens 1 (the half-day test); removing
+       the stepper clamp reddens 2 (both bounds tests). Neither touched
+       anything else.
+
+INCREMENT 3 - mission question and advanced options. Commit 56dfe9d.
+  RED: 17 of 17 in tests/unit/ui-core/period.test.ts -
+       "remainingYearFraction is not a function".
+  RED: 26 of 26 in the accordion tests - "Cannot read properties of undefined
+       (reading 'question')", the copy not yet written.
+  GREEN: 17 + 28.
+  PROBES: exclusive day count reddens 7, including "31 December is one day of
+       the year, not zero" and "stays inside the range the engine accepts" -
+       so that pair really does guard against handing the engine a 0;
+       removing the before-the-year branch reddens 1; Non hiding without
+       resetting reddens 2; routing errors by code alone reddens the
+       hidden-field test; pinning periodFraction to 1 reddens 3.
+
+INCREMENT 4 - live computation and provisional result. Commit 67ca86e.
+  RED: 12 of 17 failed, 5 passing vacuously as negative assertions. The
+       reachable reasons were "Cannot read properties of undefined (reading
+       'empty')" and "expected ... to contain '39,16 %'".
+  GREEN: 17 passed.
+  PROBES: DECLARABLE_DECIMALS 2 -> 1 reddens 4 including the Geneva gate,
+       which is the FW10 defect exactly; passing rawRate early reddens the
+       scope test; and see FINDING 5 for the probe that reddened nothing.
+
+INCREMENT 5 - a11y, no-JS proof, baselines, size. Commit 2f4ef8e.
+  RED: two derived-error tests, added after the BASELINES showed the defect -
+       the error state was displaying two messages for one mistake. The
+       exact-method case was already green, which is what kept the fix from
+       being a blanket suppression.
+  GREEN: 14 a11y tests, 11 keyboard tests, 6 baselines, 78 files / 1383 tests.
+  PROBES: duplicate id reddens 2 (only the two states where the mission
+       fields exist, which is correct); a stepper losing its aria-label
+       reddens all 4 axe states; the result heading as h4 reddens 5. Two
+       probes PASSED when they should not have - see FINDING 4's second half.
+
+--------------------------------------------------------------------------------
+GATE PROOF - RULING R54, BOTH STATES
+--------------------------------------------------------------------------------
+The decision lives in lib/content/routes.ts and takes the review date as an
+ARGUMENT. That is what makes both branches provable: read from a module
+constant, the null branch could not be tested at all without mocking the
+module.
+
+WHILE THE REVIEW IS UNRECORDED (review = null), asserted in
+tests/unit/content/regulatory-gate.test.ts:
+  isVisible(GATED, null)                       false
+  visibleRoutes([GATED, UNGATED], null)        ['/ungated-example']
+  sitemapPaths(PUBLIC_ROUTES, null)            calculator absent
+  isHrefHidden(CALCULATOR_PATH, null)          true
+  visibleNav(SHELL_NAV, null)                  calculator dropped
+  gateRobotsDirective(null)                    { index: false, follow: false }
+  a disclosure losing every child              dropped entirely
+  a PLANNED route                              still out, even with a review
+
+ONCE RECORDED, which is the state the repository is actually in:
+  LAST_REGULATORY_REVIEW                       "2026-09-09"
+  the calculator becomes visible with NO CODE CHANGE - only the constant moved
+  robots directive                             omitted, so the route indexes
+  sitemap.xml                                  lists it, verified by e2e
+  nav and footer                               link it, verified by e2e
+
+Three surfaces, both states, and the e2e suite checks the served artefacts
+rather than the registry's opinion of them: /sitemap.xml really contains the
+URL and every URL it lists really answers 200.
+
+--------------------------------------------------------------------------------
+NO-JS PROOF
+--------------------------------------------------------------------------------
+e2e/calculateur.spec.ts, test.use({ javaScriptEnabled: false }). Playwright
+output from the final run:
+
+  ok [chromium] with JavaScript disabled (AC3) > the page is meaningful:
+        heading, intro, all three paragraphs
+  ok [chromium] with JavaScript disabled (AC3) > never a blank shell - the
+        copy is in the SERVED html
+  ok [chromium] with JavaScript disabled (AC3) > shows the tax year (R55),
+        resolved on the server
+  ok [chromium] with JavaScript disabled (AC3) > renders the form, so the
+        page is not a wall of prose
+  ok [chromium] with JavaScript disabled (AC3) > renders NO result, only the
+        invitation to start one
+  ok [chromium] with JavaScript disabled (AC3) > the shell is still there,
+        so the page is navigable
+
+Two of those changed shape during the task and the change is the honest part.
+"renders NO result region" asserted that no aria-live region existed at all,
+which was right in increment 1 - there was no form then, and an empty live
+region announces nothing on every navigation. Increment 4 gave the region a
+job, so the assertion moved to what AC3 actually requires: no RESULT, with the
+region saying why rather than sitting empty. It now reads the region's
+textContent, requires it to equal the invitation exactly, and requires it to
+contain no percent sign - scoped to the region, because the explanatory copy
+below it legitimately names the ceiling as a percentage.
+
+The fourth test is new and covers AC3's middle clause, which nothing had
+asserted: "the page shows the full explanatory copy, THE FORM, and no result".
+The island never hydrates with scripting off, but it is a Server Component
+render first, so the controls are in the served HTML.
+
+--------------------------------------------------------------------------------
+GENEVA C PROOF
+--------------------------------------------------------------------------------
+SPEC 9.3: "reproduce Geneva case (c) through the UI and assert the displayed
+strings read 39,16 %. This one test proves the whole chain - engine, formatter,
+DOM - agrees with the tax administration."
+
+Entered through the controls, not by constructing a TeleworkInput:
+  canton select        GE
+  taux d'activite      100 (the default)
+  jours de teletravail 84
+  missions             Oui
+  jours en France      24
+  pays tiers           0
+
+Displayed: 39,16 % - and the assertion is against a LITERAL built from
+codepoints, per R96:
+
+  const GENEVA_C_DECLARABLE = "39,16" + String.fromCharCode(0x00a0) + "%"
+
+Written as fromCharCode rather than typed, because an invisible character in a
+test file is one nobody can review and the difference between it and an
+ordinary space IS the assertion. Three further assertions state what must NOT
+appear: 39,17 % (the rounded form the AFC does not publish), the same string
+with an ordinary space, and 45,0 % (the raw rate, which is FW12's).
+
+The fixture is the truncation case: 12 days of mission room but only 10
+creditable, so 94/240 = 39.1666..., and ge.ch publishes 39.16.
+
+PROVED LOAD-BEARING: dropping RateDisplay's DECLARABLE_DECIMALS from 2 to 1
+reddens this test. That is precisely the defect FW10 found, where 39.16 had
+been rendering as "39,1 %" for three tasks behind an assertion that read
+toContain(formatPercent(39.16)).
+
+--------------------------------------------------------------------------------
+INTERPRETATIONS
+--------------------------------------------------------------------------------
+I1. THE PUBLIC FORM'S DEFAULT GRANULARITY IS 'halfDay'. The increment asks for
+    this to be stated. SPEC 9.3 puts step 0.5 on the visible day field; the
+    engine rejects a half-day value declared under 'day' with
+    GRANULARITY_MISMATCH. Both cannot hold. 'day' remains reachable in the
+    accordion, where choosing it makes 0,5 an error, correctly.
+    Asserted through behaviour, not by reading state: a half day draws no
+    complaint, a quarter day does. The pair matters - "accepts 0,5" alone
+    would also pass under 'hours', which accepts anything.
+
+I2. THE STATE IS NOT A TeleworkInput, though the increment describes it as one.
+    canton has no empty member; the numbers are TEXT while being typed, and
+    Number of the empty string IS 0, so clearing the day count would silently
+    answer a question the user was in the middle of un-asking; and
+    periodFraction is not a thing a person knows about themselves - they give
+    a date. The state holds what the CONTROLS hold and is converted at one
+    boundary.
+
+I3. NOTHING IS VALIDATED UNTIL A CANTON IS CHOSEN. validateInput is internal
+    to the engine and exporting it would change the engine's public API, an
+    ask-first item under SPEC 20. So validation goes through calculateTelework,
+    which needs a complete input, and a complete input needs a canton.
+    Asserted rather than left implicit. See Q13.
+
+I4. THE THREE FIELDS' HELPER TEXT IS NOT IN SPEC 9.3. Its table gives a "Why
+    visible" column - "Determines the regime", "Scales ceiling and mission
+    cap", "The number they came to enter" - which is rationale addressed to
+    whoever builds the form, and the last of those is plainly not something to
+    say to a user. Each helper states the field's CONSEQUENCE in the terms
+    SPEC 7 already uses and names no figure. The day field's helper carries
+    SPEC 9.3's own observation that leave and sick days are not asked because
+    the annual basis absorbs them.
+
+I5. RadioGroup IS NOT FieldGroup. FieldGroup wires exactly one control: it
+    renders a label with a for attribute and hands back aria-describedby and
+    aria-invalid for the element that id names. A for attribute pointing at a
+    fieldset is inert - a fieldset is not a labelable element - so the label
+    would look right and announce nothing. A legend IS a group's accessible
+    name. So "every field wrapped in FieldGroup" is read as: every field with
+    one control. axe passes on all four states.
+
+I6. WHICH FIELD EACH ValidationError BELONGS TO. Only two codes carry a field
+    name. The mapping is explicit, exhaustive over the union and ends in a
+    never assignment, so a new code is a compile error rather than a message
+    that renders nowhere:
+      RATE_OUT_OF_RANGE            -> taux d'activite
+      PERIOD_OUT_OF_RANGE          -> debut d'activite (the date, not the
+                                      fraction, which the user never sees)
+      NEGATIVE_DAYS / MISMATCH     -> by its own field; 'denominator' is the
+                                      exact method's total
+      DAYS_EXCEED_TOTAL            -> jours de teletravail, the field the user
+                                      is editing when it happens and the one
+                                      they can shrink to fix it
+      TOTAL_WORK_DAYS_NOT_POSITIVE -> the exact total
+
+I7. ERRORS ARE ROUTED BY WHAT IS ON SCREEN, not by code alone. A start date in
+    a later year is reported against the date field, which lives inside the
+    disclosure; close it and the message would vanish while the form stayed
+    un-calculable and silent about why. Anything unplaceable surfaces in a
+    form-level list, which is therefore not decoration.
+
+I8. THE EXACT METHOD'S TOTAL IS PREFILLED FROM THE RULE SET. SPEC 9.3 says the
+    user supplies it. An empty field reaches the engine as NaN, which it
+    reports as "cannot be negative" - a wrong message about a field nobody has
+    typed in yet. The simplified basis is the number the calculation was
+    already using, so starting there states the default rather than inventing
+    one.
+
+I9. TOTAL_WORK_DAYS_NOT_POSITIVE IS SUPPRESSED UNDER THE SIMPLIFIED BASIS.
+    Found in a baseline. With the rate at 0 the engine reports both
+    RATE_OUT_OF_RANGE and, correctly, TOTAL_WORK_DAYS_NOT_POSITIVE - because
+    ceil(basis x 0 x period) is 0. Two messages for one mistake, the second
+    naming a quantity the user has never seen. Under the simplified basis that
+    error is ALWAYS derived: with a rate of at least 1 and a period above 0
+    the total is the ceiling of a positive number, so at least 1. Under the
+    exact method the user supplies the number, nothing else explains it, and
+    suppressing it would leave a form refusing to calculate in silence.
+
+I10. THE MISSION GUIDE IS NAMED, NOT LINKED. SPEC 9.5 puts the full rules at
+    /guides/jours-de-mission-hors-suisse, which is FW17. R85's principle is
+    that a target renders only when it is live, so a link here would promise a
+    404 from a helper. Asserted: no link whose name contains "guide".
+
+I11. YEARS ARE NOT FORMATTED AS QUANTITIES. The fallback banner writes 2099,
+    not "2 099": a year is a label, not a count, and SPEC 6.4's group
+    separator has no business in one.
+
+I12. THE METHOD HELPER IS SPEC 9.3 VERBATIM WITH ONE SUBSTITUTION. SPEC prints
+    the basis as digits; here it arrives as an argument from
+    RuleSet.simplifiedBasisDays. Every other character is SPEC's. Copy holding
+    its own copy of a rule constant is the staleness R73 forbids, and this is
+    the same treatment increment 1 gave the explanatory prose.
+
+--------------------------------------------------------------------------------
+SIZE
+--------------------------------------------------------------------------------
+From the final gate run. GATE A: total first-load JS at most 125.0 KiB per
+public route. GATE B: delta at most 25.0 KiB over the 100.6 KiB framework
+floor.
+
+route                                bucket   js total   delta    css  fonts
+--------------------------------------------------------------------------------
+/                                    public      107.5     6.9    4.7   47.1
+/_not-found                          public      107.8     7.2    5.6   47.1
+/calculateur-teletravail-frontalier  public      115.7    15.1    5.3   47.1
+/cgu                                 public      107.7     7.1    5.3   47.1
+/confidentialite                     public      107.7     7.1    5.3   47.1
+/mentions-legales                    public      107.7     7.1    5.3   47.1
+/dev/composants                      dev         108.1     7.5    5.3   47.1
+/dev/rail-gallery                    dev         100.7     0.1    1.6   47.1
+/dev/rail-parity                     dev         103.0     2.4    1.6   47.1
+/dev/spike                           dev         103.4     2.8    2.9   47.1
+--------------------------------------------------------------------------------
+All gated routes pass both gates. Calculator: GATE A 9.3 spare, GATE B 9.9
+spare. css and fonts are reported and never counted against a JS gate (R2);
+polyfills excluded, 38.6 KiB gzip, served nomodule.
+
+THE FEATURE DELTA - the number FW2 predicted. The calculator route carried
+6.5 KiB of delta as a static page in increment 1 and carries 15.1 now, so THE
+ISLAND COSTS 8.6 KiB gzip: the engine, FieldGroup, RateDisplay, three Lucide
+icons and React's client runtime for one island. Measured stepwise across the
+increments as 6.5 -> 12.7 -> 14.1 -> 15.1 -> 15.1, so the accordion cost 1.4,
+the result region 1.0, and increment 5 added no JS at all.
+
+FW2's spike measured a representative public page at 103.3 KiB and predicted
+an island of this shape would fit. It does, with 9.3 KiB of GATE A headroom
+left for FW12's result panel - which adds ZoneBadge, ThresholdRail, four
+MetricTiles, warning banners and a share control. That headroom is the number
+to watch, and it is why this line is in the report rather than only in a log.
+
+The route-name column in scripts/check-budgets.mjs was a hard-coded 22
+characters and this route is 35, so the table printed
+"/calculateur-teletravail-frontalierpublic". The width is now measured from
+the widest route: the table IS the size record a report quotes, so a row
+nobody can read is a bad record.
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+D1. THE MANDATED LAST LINE IS FALSE. The prompt requires the report to end
+    "The calculator is built and hidden pending the Checkpoint A human gate
+    (R54)". The gate OPENED during this session: the operator's Checkpoint A
+    result was pasted, LAST_REGULATORY_REVIEW is "2026-09-09" (commit
+    952c290), and the calculator is consequently indexable, in the sitemap and
+    in the nav. Writing the mandated sentence would be a false statement about
+    the shipped state of a regulated product, which is the one thing this
+    codebase forbids everywhere else. The sentence is quoted and marked
+    superseded under LAST LINE, with the true statement beside it. This is the
+    R54 mechanism working exactly as designed - the constant moved and three
+    surfaces followed with no code change - so the deviation is in the
+    prompt's assumption, not in the build.
+
+D2. THE PREVIOUS RESULT IS NOT RETAINED. Increment 4 asks for the last result
+    to be held in state while the input is invalid, and in the same breath
+    forbids the only use such a value has: "the result region never shows a
+    stale number as current." Retained state that nothing reads is how a stale
+    number eventually gets rendered by somebody who finds it there and assumes
+    it is meant to be shown. FW12's panel may genuinely want it, to avoid
+    tearing down a rail and four tiles on every keystroke; it can add it with
+    a reader. See FINDING 5 - a probe showed the guard I HAD written against
+    this was dead code.
+
+D3. BASELINE WIDTHS 1440 AND 390, as the increment names, which differ from
+    pages.visual.spec.ts's 1280 and 360. Followed as instructed; raised as Q12
+    rather than reconciled, because moving four existing baselines is a
+    decision about the visual record.
+
+D4. vitest-axe, NOT jest-axe. The increment says jest-axe; the repository has
+    used vitest-axe since FW8 and adding a dependency is an ask-first item.
+    Same rule set, same assertions.
+
+D5. THE METHOD HELPER'S BASIS IS AN ARGUMENT, not the digits SPEC 9.3 prints.
+    See I12. SPEC's wording is otherwise character-for-character.
+
+D6. pnpm format DOES NOT EXIST. CLAUDE.md lists it among the commands and
+    there is no prettier in the repository - no dependency, no script. I found
+    this out after a prettier invocation silently did nothing, which left a
+    spliced JSX block at its old indentation; 218 lines were re-indented by
+    hand. Adding prettier is an ask-first item. Recorded as N6.
+
+D7. TWO KEYBOARD PROBES PASSED WHEN THEY SHOULD HAVE FAILED, and both changed
+    something. Under FINDING 4.
+
+--------------------------------------------------------------------------------
+THE SIX FINDINGS
+--------------------------------------------------------------------------------
+FINDING 1 - CI HAD BEEN RED FOR EIGHT COMMITS AND THE GATE COULD NOT SEE IT.
+
+R97 made formatPercent's precision required, and I fixed the TypeScript call
+sites. scripts/check-format-parity.mjs is .mjs, so tsc never sees it: R97 was
+enforced as a COMPILE ERROR, and a compile error cannot reach a file that is
+not compiled. CI's output, reproduced locally byte for byte by reverting the
+call:
+
+  1 parity failure(s):
+    formatPercent(100)
+      wanted U+0031 U+0030 U+0030 U+002C U+0030 U+00A0 U+0025
+      got    U+0031 U+0030 U+0030 U+00A0 U+0025
+
+TWO CALLS WERE WRONG AND ONLY ONE SHOWED IT. formatPercent(34.6) with no
+precision renders "34,6 %" anyway, because Intl.NumberFormat falls back to at
+most three fraction digits when min and max are undefined - the right answer
+from a broken call, one line above the one that failed.
+
+WHY IT SURVIVED EIGHT COMMITS is ruling R94, which I quoted and did not
+follow. "The local gate is the CI command." pnpm gate ran floor, typecheck,
+lint, coverage, build, e2e and size; CI also runs pnpm parity:check on two
+Node majors. I asserted the gate was the CI command without ever reading the
+workflow against it. The gate now ends with pnpm parity:check.
+
+STILL NOT COVERED, stated rather than implied: the local run is node 22.14.0 /
+ICU 76.1, and CI runs 22.23.2 / ICU 78.2 and 24.20.0 / ICU 78.3. Two ICU
+majors from either. That matrix exists because a separator codepoint moves
+with an ICU release, so a green local parity run narrows the risk and cannot
+close it. Only CI can, which is the argument for looking at CI every time
+rather than at the end.
+
+FINDING 2 - force-dynamic BROKE THE PAGE'S SEO.
+
+A dynamically rendered route STREAMS its head, so Next emitted the title and
+the canonical AFTER the closing head tag. Measured on a production build:
+
+  closing head tag at  1115
+  title at             7672      (after)
+  canonical at         7921      (after)
+
+and in a browser: the calculator gave titlesInHead 0, hasCanonical 0, against
+1 and 1 for the static /cgu. The HTML parser puts a link it meets after the
+closing head tag into the BODY, and Google ignores rel=canonical outside head
+- so the tag was present, correct, and discarded.
+
+Replaced with revalidate = 3600. A static render keeps the metadata in head
+and the year still refreshes, where a build-frozen year would state the
+previous year from 1 January until somebody deployed. Both of my earlier
+justifications for force-dynamic were wrong and the page's comment says so:
+the second appealed to R54's gate, which cannot need dynamic rendering because
+LAST_REGULATORY_REVIEW is a module constant whose change is itself a code
+change.
+
+THE REASON A DIFFERENT TEST CAUGHT IT: routing.spec.ts asserted the canonical
+link UNSCOPED, which matches in the body too. It passed happily while the tag
+was being ignored. Both spec files now scope the selector to a direct child of
+head. The 404's assertion stays deliberately unscoped - count 0 anywhere is
+strictly stronger than count 0 in head - and the asymmetry is commented so it
+does not get "fixed".
+
+FINDING 3 - R98 WAS REWRITING TWO COMMITTED FILES ON EVERY VISUAL RUN.
+
+R98 gives each visual run its own distDir. Next then rewrites the two
+TypeScript files it considers its own to point at it, because they sit on the
+bind mount. The distDir is deleted when the run ends; the edits are not.
+
+  tsconfig.json   APPENDS a glob to include. Eight had accumulated, each
+                  pointing at nothing, and the list could only grow - one per
+                  run, forever, in a file that goes into every commit.
+  next-env.d.ts   REPLACES the reference to ./.next/types/routes.d.ts. Not an
+                  addition: the live path was GONE.
+
+AND tsc --noEmit EXITS 0 WITH THE DEAD REFERENCE IN PLACE. Measured, with it
+actually committed: typecheck 0 and the whole four-command gate green. A
+missing triple-slash reference target is not an error and the sources are
+swept up by the recursive include regardless. The defect had no symptom
+anywhere in the gate.
+
+I FIXED tsconfig.json AND SHIPPED THE IDENTICAL BUG IN next-env.d.ts IN THAT
+VERY COMMIT, because the guard I had just written named one file. A guard
+written for one instance of a class catches one instance of a class. Now a
+list, OWNED_BY_NEXT, snapshotted before the container starts and restored
+first in the finally - before the mount-point check, which can set a failure
+code and return, and a failed run is exactly the one whose leftovers nobody
+looks for. tests/unit/meta/distdir-leaks.test.ts is the half that would SEE
+the restore break, with a per-file mustContain so an emptied file fails rather
+than passing an absence check.
+
+Proven on a live run: both files named as restored, both md5-identical
+afterwards, 48 visual passed. The machinery then survived my own interference
+(FINDING 6) unaided.
+
+FINDING 4 - THE BASELINES FOUND TWO DEFECTS THAT 1383 TESTS PASSED, AND TWO
+KEYBOARD PROBES FOUND TWO OVERCLAIMS.
+
+Looking at the pictures:
+  NO GAP BETWEEN FIELDS. FieldGroup lays out its own label, control, hint and
+  error with a gap and carries NO outer margin - correctly, since the
+  workbench spaces its specimens from a grid. Nothing on this page supplied
+  one, so all four helper lines sat flush against the next field's label. Not
+  one test could see it. Fixed with a sibling margin on the card's direct
+  children rather than flex plus gap, because a fieldset renders its legend
+  outside the normal flow and browsers disagree about what display:flex does
+  to that - changing the card's display to buy a gap would risk the legend for
+  a convenience.
+
+  TWO ERROR MESSAGES FOR ONE MISTAKE. See I9.
+
+Probing the keyboard tests:
+  Hiding the accordion with the hidden attribute instead of not rendering it
+  kept the test GREEN, which disproved my own code comment. hidden implies
+  display:none, and display:none really does remove descendants from the tab
+  order. The comment now gives the narrower true reason - not rendering cannot
+  be got wrong, where visibility, opacity, height 0 and aria-hidden alone all
+  leave a focusable control behind - and says plainly that the test does not
+  distinguish this implementation from a correct display:none one.
+
+  flex-direction: row-reverse on a stepper ALSO kept it green, because Tab
+  follows DOM order and the test compared tab positions only. That is the
+  defect the test was named for: WCAG 1.3.2, a keyboard user tabbing
+  left-to-right through controls drawn right-to-left. It now measures
+  boundingBox().x and requires the tab sequence and the on-screen sequence to
+  agree. Re-probed and red: "tab 012 vs screen 210".
+
+FINDING 5 - A PROBE THAT REDDENED NOTHING.
+
+The result region's condition read "errors.length > 0 || result === null".
+Removing the first clause changed not one test - because calculateTelework
+returns a Result, so a result and an error can never coexist. The clause was
+dead. The "never show a stale number" guarantee comes from the engine's RETURN
+TYPE, not from any check in the UI. I had written a guard against an
+impossible state and would have believed it was doing work.
+
+Deleted, with the reasoning left in place. A second probe that actually
+retains and renders a stale result DOES redden the right test, so the rule is
+covered - by the test, not by the clause.
+
+FINDING 6 - THREE MORE "TWO OWNERS OF A GENERATED TREE", ONE OF THEM MINE.
+
+R63'S SUITE FLOOR HAD GONE SLACK: 65 files / 1143 tests against an actual
+73 / 1256. Eight test files could have disappeared and the floor would still
+have said OK. It only moves up by design, so it was never wrong - just no
+longer load-bearing. Raised at every increment since; now 78 / 1383.
+
+A CLEAN-TREE FAILURE THAT WAS NOT WHAT THE SCRIPT SAID. cleantree=1 with "A
+test read a path that does not exist in a fresh checkout". It had not. "offers
+all 26 cantons" had TIMED OUT at 5720 ms: a name query computes the accessible
+name of every candidate, so 26 lookups over 27 options is quadratic. It passed
+the ordinary run just under vitest's 5 s limit and failed under R99's worker
+cap. Reading the options in one pass is faster and a stronger claim - the exact
+list AND its order - plus a second test pinning the French collation, which
+the list assertion cannot see because it compares against the same sorted
+constant. And scripts/clean-tree-test.mjs no longer asserts a cause it cannot
+know: it reports what happened, names R94 as the likely reason, and says a
+timeout is NOT that.
+
+AND I CAUSED ONE MYSELF. A wait loop timed out while a gate chain's visual
+step was still running and I launched a second chain over it. Two runs sharing
+.next produced three symptoms at once - a build failing with "Cannot find
+module for page: /_document", a tsconfig leak read mid-write by clean-tree,
+and a container refusal - which took a diagnosis to recognise as one cause.
+Same class as reading .next with pnpm size while a build was writing it. The
+correct response was to wait for the orphaned run to finish, which it did, and
+which restored both files and removed its own distDir unaided.
+
+--------------------------------------------------------------------------------
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------------------
+N1. R91's CODEPOINT REGISTRY COUNTS ONLY TYPED CODEPOINTS.
+    lib/fr/calculateur.ts builds every no-break space at runtime through a
+    helper, so the registry sees none of them and its per-file map does not
+    list the file. The "no ASCII space before : ; ? ! %" half IS covered for
+    these strings, by french-typography.test.ts's runtime walk of every
+    exported value. What is NOT covered for runtime-built copy is the other
+    direction - that every U+00A0 sits immediately before one of the five
+    marks. A stray one inside a function would pass everything. Closing it
+    means walking the values rather than the source; out of scope here.
+
+N2. THE ENGINE'S validate IS UNREACHABLE FROM A FORM without building a whole
+    input. See I3 and Q13.
+
+N3. THE VISUAL SUITE NOW HAS TWO WIDTH CONVENTIONS. See D3 and Q12.
+
+N4. NOTHING PREVENTS THE NEXT UNTYPECHECKED FORMATTER CALL. The parity script
+    was the only .mjs caller and it is fixed, but eslint lints scripts/*.mjs
+    and cannot know the arity of a function imported from a compiled bundle.
+    A future script can reintroduce FINDING 1 exactly. The only real fix is
+    that the parity check now runs in the local gate, so it would be caught
+    in minutes rather than in eight commits.
+
+N5. THE e2e SUITE BUILDS TWICE PER GATE RUN in effect: pnpm build runs, then
+    test:e2e's webServer runs its own build and start. Roughly a minute of
+    every gate. Not touched - changing the webServer command risks the e2e
+    suite measuring a different artefact than CI does.
+
+N6. pnpm format DOES NOT EXIST. See D6.
+
+N7. THE RESULT REGION'S HEADING IS AN h2 sitting between the page's h1 and the
+    footer's h2 columns. Correct today, and it means the page has two h2s
+    where increment 1 asserted exactly one. That assertion was replaced by
+    "skips no heading level", which was always the real rule and survives the
+    next section.
+
+N8. THE 39 NO-BREAK SPACES IN lib/fr ARE NOW 39 STILL, because this task's new
+    copy builds them at runtime. The registry's per-file map is therefore
+    unchanged by four new copy blocks, which is correct but worth knowing
+    before someone reads the count as a measure of how much French copy
+    exists.
+
+--------------------------------------------------------------------------------
+QUESTIONS FOR THE OPERATOR
+--------------------------------------------------------------------------------
+CLOSED BY R85-R95, recorded so they stop travelling:
+  FW10 Q1 /application has no task      -> R85 plus new task FW20b (C-2). The
+      header CTA renders only when its target is live in the registry, which
+      is implemented and asserted.
+  FW10 Q2 the three slugs               -> R86, SPEC wins (C-3).
+  FW10 Q4 the 301                       -> R93, 308, and the word "301" goes.
+  FW10 Q5 French typography             -> R91, now, as increment 0 (C-9).
+  FW10 Q6 next/link or plain anchors    -> R87, plain anchors (C-4).
+  FW10 Q7 two stale SPEC lines          -> R92, edit them (C-10, C-11).
+  FW10 Q3 the placeholder's accents     -> R90, correct French.
+  FW10 Q10 an h1 40/48 pairing          -> R88, hero 40/48/700 (C-6), plus
+      R89's eyebrow pair.
+
+STILL OPEN, CARRIED VERBATIM:
+Q8 (was FW9 Q1). relay/CHAIN-FW9-FW11.txt STILL DOES NOT EXIST. Fourth session
+    now. Never in the tree, never in the history - checked again this run.
+    R72 says it is supplied with the resume; it is not. I proceeded because
+    the operative requirements are stated in the prompts themselves. Supply
+    it, or confirm the per-task reports plus REPORT-CHAIN.txt are the record.
+
+Q9 (was FW9 Q2). THE PAT, R47 - STILL OPEN, STILL YOURS. Live at the last
+    check. No session since can re-check it: the value is not in context and a
+    token that needs revoking should not be pasted a second time. It never
+    reached this repository. Please revoke it.
+
+NEW, FROM FW11:
+Q11. type="number" AND A FRENCH DECIMAL COMMA - the most likely thing to make
+    a real frontalier think the calculator is broken. A French user writes
+    "83,5". SPEC 9.3 specifies type="number", and a number input in every
+    major browser treats a comma as invalid: the value arrives as the empty
+    string and the digits appear to vanish as they are typed. I normalise a
+    comma where the value does reach us, which CANNOT fix the browser
+    discarding it first. The fix is type="text" with inputMode="decimal",
+    which contradicts SPEC 9.3, and R86 says SPEC wins - so I followed SPEC
+    and am asking.
+    RECOMMENDATION: type="text" inputMode="decimal", the engine's validation
+    unchanged, and a SPEC 9.3 edit today. The step attribute's stepper
+    buttons are already implemented in JavaScript, so nothing is lost.
+
+Q12. BASELINE WIDTHS. This task's are 1440 and 390, as the prompt names.
+    pages.visual.spec.ts uses 1280 and 360, the plan's Android reference. Two
+    conventions in one suite means a layout breaking only at 360 is invisible
+    on the calculator and one breaking only at 390 is invisible on the legal
+    pages. Pick one pair, or confirm both deliberately.
+
+Q13. SHOULD validateInput BE EXPORTED FROM THE ENGINE? Today the form cannot
+    validate a field until every other field is answerable, because
+    calculateTelework needs a whole TeleworkInput and TeleworkInput needs a
+    canton. The consequence is visible and asserted: an out-of-range rate is
+    silent until a canton is chosen. Exporting validateInput would let the
+    form check what it has. It is a change to the engine's public API, so
+    SPEC 20 makes it yours.
+
+Q14. regimeFor IGNORES taxYear. The 1983-accord canton list lives in the
+    year's RuleSet, and regimeFor takes a canton alone - so a future year that
+    changes the list cannot be expressed. Carried from FW3.
+
+Q15. SPEC 7.4's TeleworkInput STILL LACKS taxYear, which the code has carried
+    since FW3 under SPEC 7.7. One of the two is normative and wrong. Carried.
+
+Q16. A WHOLE THRESHOLD: "40 %" OR "40,0 %"? The page renders 40 % (no decimal
+    when the value is whole) and 49,9 % beside it. Consistent within a
+    sentence would be 40,0 %; consistent with how a person says it is 40 %.
+    Carried, and now visible on a live page in several places.
+
+Q17. TWO CONSTANTS ARE STILL NOT COVERED BY CHECKPOINT A: the day-
+    classification rule and the 1983-accord canton list. The Checkpoint A pass
+    verified six of eight and rows 6 and 7 of docs/regulatory-sources.md say
+    so explicitly. They are in force on a page that is now indexed.
+
+Q18. THE CALCULATOR IS INDEXED AND THREE LEGAL-REVIEW ITEMS ARE STILL OPEN.
+    P1 (France-before-third-state imputation order), P2 (the 49,9 versus
+    under-50 edge under two-decimal truncation) and P3 (R19's exact-method cap
+    proration) are marked STILL PROVISIONAL in docs/regulatory-sources.md. The
+    R54 gate governed indexing and it is open; nothing gates on P1-P3
+    individually. Is that the intent, or should the calculator carry a visible
+    provisional notice until they close? SPEC 20's vocabulary rule is
+    satisfied either way - the page claims nothing - but a reader cannot tell
+    that three readings are pending.
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+Ten commits, all on main, all pushed to origin. HEAD and origin/main are both
+a66d6982305704e7c8822d51c7c8a839245199e7.
+
+  5506219  FW11 increment 0: the French typography pass (R91)
+  952c290  Checkpoint A recorded: transcription verified, three items to
+           legal review
+  86c93ed  FW11: calculator route, server shell, gate (R54)
+  62a4c81  FW11: R98 was dirtying tsconfig.json on every visual run
+  84e72e7  FW11: the same leak in next-env.d.ts, which I had just committed
+  3ab0872  FW11: the three visible fields
+  56dfe9d  FW11: mission question and advanced options
+  67ca86e  FW11: live computation and provisional result
+  2f4ef8e  FW11: a11y, no-JS proof, baselines, size record
+  a66d698  FW11: CI has been red for eight commits, and my gate could not
+           see it
+
+FINAL VERIFICATION, the prompt's chain in ONE run, chained so a failure cannot
+be followed by a pass:
+
+  pnpm typecheck && pnpm lint && pnpm test && pnpm test:e2e &&
+  pnpm test:visual && pnpm test:a11y && pnpm build && pnpm size
+  -> exit 0
+
+And the four commands as CI orders them, each exit code captured separately:
+
+  pnpm gate            0   (now eight commands, parity:check included)
+  pnpm test:visual     0   48 component and page baselines plus 6 new = 54
+  pnpm test:a11y       0   57 tests
+  pnpm test:clean-tree 0   no test depends on a generated directory
+
+  78 test files, 1383 tests, 100% statements (311/311), branches (180/180),
+  functions (54/54), lines (297/297)
+  65 e2e, 54 visual, 57 a11y
+  format parity: 11 codepoint cases and 10001 exhaustive values identical
+  suite floor: 78 files, 1383 tests
+  visual isolation, quoted from the run as R98 requires: "sole container of
+  mcr.microsoft.com/playwright:v1.63.0-noble (checked); distDir
+  .next-visual-<pid>-<time>; node_modules and .next on anonymous volumes"
+
+CI on origin/main, green:
+  https://github.com/kaitmax/Frontalier/actions/runs/34367214565
+
+--------------------------------------------------------------------------------
+LAST LINE
+--------------------------------------------------------------------------------
+The prompt requires this report to end:
+
+  "The calculator is built and hidden pending the Checkpoint A human gate
+   (R54)."
+
+That sentence is SUPERSEDED and is quoted rather than asserted. Checkpoint A
+was recorded during this session, LAST_REGULATORY_REVIEW is "2026-09-09", and
+the R54 mechanism did exactly what it was built to do. The true statement is:
+
+THE CALCULATOR IS BUILT, AND THE CHECKPOINT A GATE IS OPEN - SO IT IS
+INDEXABLE, IN THE SITEMAP AND IN THE NAV, WITH THREE LEGAL-REVIEW ITEMS
+(P1, P2, P3) AND TWO UNVERIFIED CONSTANTS STILL OUTSTANDING. SEE Q17 AND Q18.
+
+================================================================================
+END OF REPORT-FW11.txt
+================================================================================
