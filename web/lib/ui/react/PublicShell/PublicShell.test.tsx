@@ -34,6 +34,7 @@ import { APP_NAME } from '@/lib/fr';
 import { LAST_REGULATORY_REVIEW, reviewNotice } from '@/lib/content/regulatory';
 import { LEGAL_COPY } from '@/lib/fr/legal';
 import { ctaHrefIfLive } from '@/lib/content/routes';
+import { formatDate } from '@/lib/ui/core';
 import { FOOTER_COLUMNS, SHELL_COPY, SHELL_NAV } from '@/lib/fr/shell';
 import type { NavLink } from '@/lib/fr/shell';
 import { text } from '@/tests/support/markup';
@@ -449,24 +450,58 @@ describe('the footer', () => {
 });
 
 describe('the review date never lies (R51)', () => {
-  it('renders the in-progress sentence while the gate is unrecorded', () => {
+  // CHECKPOINT A RAN ON 09.09.2026, so the next two assertions inverted.
+  // They are not deleted, because the property R51 protects is not "the
+  // footer says pending" - it is that the footer says whatever is TRUE.
+  // Before the gate that meant no date; after it, the date. Both are
+  // asserted against the constant rather than a literal, so neither can
+  // drift from it.
+  //
+  // The null branch is still covered where it belongs: reviewNotice is a
+  // pure function and tests/unit/content/regulatory.test.ts exercises both
+  // of its branches directly. That is why R51 built it that way, and it is
+  // why this inversion costs no coverage.
+
+  it('renders the recorded date, now that the gate has been recorded', () => {
+    // BY textContent, NOT getByText - and this test went red the first time
+    // for exactly the reason R66 exists. reviewNotice's sentence now carries a
+    // U+00A0 before its colon (the FW11 typography pass), getByText normalises
+    // the DOM side and not the matcher, so the two never met. The failure
+    // printed two strings that were identical on screen:
+    //
+    //   Unable to find an element with the text: Derniere verification
+    //   reglementaire : 09.09.2026 (normalized from 'Derniere verification
+    //   reglementaire : 09.09.2026')
+    //
+    // Measured behaviour, written down an hour before this test was written,
+    // and still walked into. textContent preserves the codepoint.
     renderShell();
 
-    const footer = screen.getByRole('contentinfo');
+    const footer = screen.getByRole('contentinfo').textContent ?? '';
 
-    expect(within(footer).getByText(SHELL_COPY.reviewPending)).toBeDefined();
+    expect(LAST_REGULATORY_REVIEW).not.toBeNull();
+    expect(footer).toContain(reviewNotice(LAST_REGULATORY_REVIEW));
   });
 
-  it('shows NO date anywhere, because none has happened', () => {
-    // The reader-facing half. docs/checkpoint-a.md holds twelve unchecked
-    // boxes; until they are ticked a dd.mm.yyyy in this footer would be the
-    // most damaging string on the site - the claim most reasonably relied on,
-    // and false.
+  it('no longer shows the in-progress sentence', () => {
+    // Safe as a text query: reviewPending carries no punctuation the
+    // typography pass touches, so there is no codepoint to disagree about.
     renderShell();
 
-    expect(screen.getByRole('contentinfo').textContent ?? '').not.toMatch(
-      /\d{2}\.\d{2}\.\d{4}/,
-    );
+    expect(screen.queryByText(SHELL_COPY.reviewPending)).toBeNull();
+  });
+
+  it('shows a date, and it is the constant formatted rather than a literal', () => {
+    // The reader-facing half, inverted. Before the gate a dd.mm.yyyy here
+    // would have been the most damaging string on the site - the claim most
+    // reasonably relied on, and false. Now its ABSENCE would be the wrong
+    // answer, and a hand-typed date would be a second source of truth.
+    renderShell();
+
+    const footer = screen.getByRole('contentinfo').textContent ?? '';
+
+    expect(footer).toMatch(/\d{2}\.\d{2}\.\d{4}/);
+    expect(footer).toContain(formatDate(LAST_REGULATORY_REVIEW ?? ''));
   });
 
   it('reads THE CONSTANT, with no prop to override it', () => {

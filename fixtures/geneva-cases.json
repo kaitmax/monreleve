@@ -1,6 +1,6 @@
 {
   "$comment": "THE MOST VALUABLE FILE IN THIS REPOSITORY. If any case fails, nothing ships (SPEC 7.5). Language-neutral on purpose: the TypeScript engine consumes it now and the Kotlin port consumes it at AN2, and a divergence on any case fails both builds (D20). Never edit an expected value to make code pass - a fixture that will not pass is a question for the operator, never a code change.",
-  "source": "Worked examples published by the Administration fiscale cantonale (AFC), Geneva, for the avenant of 27 June 2023 in force 1 January 2026. VERIFICATION PENDING - Checkpoint A: transcribed from SPEC-frontalier-web.md section 7.5 and not yet checked against the AFC publication itself.",
+  "source": "Worked examples published by the Administration fiscale cantonale (AFC), Geneva, for the avenant of 27 June 2023 in force 1 January 2026. VERIFIED 09.09.2026 against https://www.ge.ch/imposition-du-teletravail-personnes-frontalieres/regles-missions-temporaires-etranger (page updated 19.05.2026): all six cases exact on inputs and on all four outputs. Legal review still pending - see P1-P3 in docs/regulatory-sources.md.",
   "taxYear": 2026,
   "commonInput": {
     "$comment": "All six cases are full-time, full-year, Geneva, whole days, on the simplified 240-day basis, so totalWorkDays is 240 and fiscalCeilingDays is 96.",
@@ -29,9 +29,9 @@
         "declarableRate": 30,
         "regimeApplies": true
       },
-      "source_url": "",
-      "verified_by": "",
-      "verified_on": ""
+      "source_url": "https://www.ge.ch/imposition-du-teletravail-personnes-frontalieres/regles-missions-temporaires-etranger",
+      "verified_by": "transcription: Claude via ge.ch; legal review pending",
+      "verified_on": "2026-09-09"
     },
     {
       "id": "b",
@@ -47,9 +47,9 @@
         "declarableRate": 40,
         "regimeApplies": true
       },
-      "source_url": "",
-      "verified_by": "",
-      "verified_on": ""
+      "source_url": "https://www.ge.ch/imposition-du-teletravail-personnes-frontalieres/regles-missions-temporaires-etranger",
+      "verified_by": "transcription: Claude via ge.ch; legal review pending",
+      "verified_on": "2026-09-09"
     },
     {
       "id": "c",
@@ -65,9 +65,9 @@
         "declarableRate": 39.16,
         "regimeApplies": true
       },
-      "source_url": "",
-      "verified_by": "",
-      "verified_on": ""
+      "source_url": "https://www.ge.ch/imposition-du-teletravail-personnes-frontalieres/regles-missions-temporaires-etranger",
+      "verified_by": "transcription: Claude via ge.ch; legal review pending",
+      "verified_on": "2026-09-09"
     },
     {
       "id": "d",
@@ -83,9 +83,9 @@
         "declarableRate": 40,
         "regimeApplies": true
       },
-      "source_url": "",
-      "verified_by": "",
-      "verified_on": ""
+      "source_url": "https://www.ge.ch/imposition-du-teletravail-personnes-frontalieres/regles-missions-temporaires-etranger",
+      "verified_by": "transcription: Claude via ge.ch; legal review pending",
+      "verified_on": "2026-09-09"
     },
     {
       "id": "e",
@@ -101,9 +101,9 @@
         "declarableRate": 60,
         "regimeApplies": false
       },
-      "source_url": "",
-      "verified_by": "",
-      "verified_on": ""
+      "source_url": "https://www.ge.ch/imposition-du-teletravail-personnes-frontalieres/regles-missions-temporaires-etranger",
+      "verified_by": "transcription: Claude via ge.ch; legal review pending",
+      "verified_on": "2026-09-09"
     },
     {
       "id": "special",
@@ -119,10 +119,10 @@
         "declarableRate": 4.16,
         "regimeApplies": true
       },
-      "source_url": "",
-      "verified_by": "",
-      "verified_on": ""
+      "source_url": "https://www.ge.ch/imposition-du-teletravail-personnes-frontalieres/regles-missions-temporaires-etranger",
+      "verified_by": "transcription: Claude via ge.ch; legal review pending",
+      "verified_on": "2026-09-09"
     }
   ],
-  "verificationTrace": "Ruling R23. Every case carries source_url, verified_by and verified_on. They are EMPTY until the operator fills them at Checkpoint A against the primary source, and a case with empty fields is therefore VISIBLY unverified rather than silently assumed. The tests tolerate the fields and deliberately do NOT require them to be filled: making a green suite depend on verification would create pressure to fill them with something."
+  "verificationTrace": "Ruling R23, FILLED AT CHECKPOINT A on 2026-09-09. Each case was checked individually against the worked examples published at the source_url below (page updated 19.05.2026): all six match on their inputs AND on all four outputs. This is the strongest verification of the three fixture files - these are published figures, compared case by case. What is NOT established is legal review: three interpretations remain open (P1-P3 in docs/regulatory-sources.md), and P1 in particular means no published case splits France from a third state, so the imputation ORDER is still unsourced."
 }

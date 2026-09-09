@@ -29,11 +29,37 @@ import { SHELL_COPY } from '@/lib/fr/shell';
 import { formatDate } from '@/lib/ui/core';
 
 describe('the constant itself', () => {
-  it('is null until the operator records the Checkpoint A human gate', () => {
-    // Not a placeholder date, not an empty string, not today. The gate is
-    // twelve unchecked boxes in docs/checkpoint-a.md, and none of them is
-    // ticked - so there is no date to show and the type says so.
-    expect(LAST_REGULATORY_REVIEW).toBeNull();
+  it('carries the Checkpoint A date, recorded 09.09.2026', () => {
+    // IT WAS null FOR SEVEN TASKS, and the assertion that said so was correct
+    // every one of them: not a placeholder, not an empty string, not today.
+    // The gate ran on 09.09.2026 and this is the one place the date enters
+    // the product.
+    //
+    // AN ISO DAY (R28), not a formatted one. formatDate turns it into Swiss
+    // dots at the edge; storing "09.09.2026" here would make the constant
+    // presentational and unparseable.
+    expect(LAST_REGULATORY_REVIEW).toBe('2026-09-09');
+  });
+
+  it('is a real day, not a plausible-looking string', () => {
+    // A date the engine cannot parse would render as "Invalid Date" in the
+    // footer - a worse failure than the pending sentence it replaced, because
+    // it looks like a bug rather than an honest absence.
+    const parsed = new Date(`${LAST_REGULATORY_REVIEW ?? ''}T00:00:00Z`);
+
+    expect(Number.isNaN(parsed.getTime())).toBe(false);
+    expect(parsed.getUTCFullYear()).toBe(2026);
+    expect(parsed.getUTCMonth()).toBe(8);
+    expect(parsed.getUTCDate()).toBe(9);
+  });
+
+  it('is not in the future, which would be a claim about work not done', () => {
+    // The direction that matters. A future date would assert a verification
+    // that has not happened - the exact failure the null state existed to
+    // prevent, arriving by a different route.
+    const recorded = new Date(`${LAST_REGULATORY_REVIEW ?? ''}T00:00:00Z`).getTime();
+
+    expect(recorded).toBeLessThanOrEqual(Date.now());
   });
 });
 

@@ -42,10 +42,25 @@ const RULES_2026: RuleSet = Object.freeze({
   // Source: EU framework agreement; art. 16 of regulation 883/2004.
   socialCeiling: 0.499,
 
+  // 25 %: the bottom of the EU framework agreement's band. The agreement
+  // applies from 25 % telework in the state of residence up to (but not
+  // including) 50 %. BELOW 25 %, article 13 of regulation (EC) 883/2004
+  // governs instead, and the framework agreement's A1 is not the instrument
+  // in question - which is why a warning that fired on any counted day named
+  // the wrong document for a third of its audience.
+  //
+  // Verified at Checkpoint A, 09.09.2026, against bsv.admin.ch/fr/teletravail.
+  a1ThresholdRate: 0.25,
+
   // 10 days per year, INSIDE the 40 %. Prorated for part-time and partial
   // years, rounded up - the one rule that favours the user.
-  // Source: same avenant; interpretative agreement 29 April 2026;
-  // proration per the amicable agreement of 30 June 2023.
+  //
+  // Source: same avenant. The interpretation is the AMICABLE AGREEMENT OF
+  // 30 JUNE 2023, which ge.ch cites. The "interpretative agreement of
+  // 29 April 2026" this comment named before Checkpoint A WAS NOT FOUND in
+  // any primary source and has been deleted here, in SPEC 7.1 and in
+  // docs/regulatory-sources.md. The rule is unchanged; only the citation was
+  // wrong.
   missionCapDays: 10,
 
   // 240 days per year at full time. Absorbs leave, holidays and sickness, so
@@ -57,7 +72,8 @@ const RULES_2026: RuleSet = Object.freeze({
 
   sources: Object.freeze([
     'Fiscal ceiling 40% of annual working time (art. 10) - avenant of 27 June 2023, in force 1 January 2026',
-    'Mission sub-cap 10 days/year inside the 40% - same avenant; interpretative agreement 29 April 2026',
+    'Mission sub-cap 10 days/year inside the 40% - same avenant; amicable agreement of 30 June 2023. The "interpretative agreement 29 April 2026" cited here before Checkpoint A does not exist',
+    'A1 threshold 25% - EU framework agreement on cross-border telework, applying from 25% to under 50%; below 25%, art. 13 reg. (EC) 883/2004 governs. Verified 09.09.2026 against bsv.admin.ch/fr/teletravail',
     'Mission cap proration, proportional and rounded up - amicable agreement of 30 June 2023',
     'Social ceiling 49.9%, conditional on a valid A1 - EU framework agreement, art. 16 reg. 883/2004',
     'Simplified denominator 240 days/year full-time - circular no. 45 of 12 June 2019, pt 7.5.1',

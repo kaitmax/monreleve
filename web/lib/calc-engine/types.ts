@@ -119,6 +119,16 @@ export interface RuleSet {
   readonly taxYear: number;
   readonly fiscalCeiling: number;
   readonly socialCeiling: number;
+  /**
+   * The telework share at which the EU framework agreement - and so the A1 it
+   * rests on - begins to apply. 0.25, added at Checkpoint A (09.09.2026),
+   * which replaced A1_REQUIRED's provisional standing-obligation trigger.
+   *
+   * SPEC 7.7: "RuleSet is the only place a threshold may appear." So it lives
+   * here rather than as a constant in warnings.ts, for the same reason 0.4
+   * does.
+   */
+  readonly a1ThresholdRate: number;
   readonly missionCapDays: number;
   readonly simplifiedBasisDays: number;
   readonly residence1983Cantons: readonly Canton[];

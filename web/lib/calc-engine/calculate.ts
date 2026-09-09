@@ -100,6 +100,10 @@ export function calculateTelework(
           regime,
           regimeApplies: waterfall.regimeApplies,
           daysCountedAgainstCeiling: waterfall.daysCountedAgainstCeiling,
+          // The input's own telework days, not the waterfall's counted total:
+          // A1_REQUIRED asks about work in the state of residence, which
+          // excludes credited mission days. See warnings.ts.
+          teleworkDays: input.teleworkDays,
           headroomDays: waterfall.headroomDays,
           missionDaysTotal,
           missionCap,

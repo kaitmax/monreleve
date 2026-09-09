@@ -4,21 +4,30 @@ Every constant in `web/lib/calc-engine/rules.ts` is listed here with its
 primary reference. One entry per constant. If a figure is not in this file, it
 does not belong in the engine.
 
-> ## VERIFICATION PENDING — Checkpoint A
+> ## TRANSCRIPTION VERIFIED 09.09.2026 against primary sources. LEGAL REVIEW PENDING — three items below.
 >
-> **Nothing in this file has been checked against a primary source yet.** The
-> figures below were drafted from the advisory sources that `SPEC-frontalier-web.md`
-> §7.1 was itself written from. Before the Geneva fixtures are frozen, every
-> row must be verified against **admin.ch**, the **AFC** (Administration
-> fiscale cantonale, Genève) and **impots.gouv.fr**, and its *Verified* column
-> filled in with the URL and the fetch date.
+> The Checkpoint A pass of **09.09.2026** checked these figures against the
+> primary sources rather than the advisory ones SPEC §7.1 was drafted from.
+> What that pass establishes, and what it does not:
 >
-> SPEC §7.1 is explicit about why: *"advisory sources are how this spec was
-> drafted, not how the engine ships."* This banner comes off only at the
-> Checkpoint A human gate, when `docs/regulatory-sources.md` is dated and
-> signed and `fixtures/geneva-cases.json` is published for the Kotlin port.
+> **VERIFIED — the transcription is correct.** Every row ticked below was read
+> off the primary source named beside it. The six Geneva worked examples match
+> on their inputs and on all four outputs. Truncation to two decimals is
+> confirmed rather than inferred.
 >
-> Until then, treat every number below as **provisional**.
+> **NOT ESTABLISHED — legal review.** Transcribing a published figure
+> correctly is not a lawyer confirming that the product's *reading* of it is
+> right. Three interpretations remain open under *STILL PROVISIONAL* below,
+> and each goes to the named expert reviewer.
+>
+> **TWO ROWS THIS PASS DID NOT COVER,** recorded here rather than left to be
+> discovered: the day-classification rule (over 4 h / 2–4 h) and the
+> 1983-accord canton list. Neither appears in the 09.09.2026 verification, so
+> both keep an unchecked box. No Geneva fixture reaches either — the published
+> cases count days rather than hours, and Genève is a `source` canton.
+>
+> `LAST_REGULATORY_REVIEW` is now `"2026-09-09"` (R51), so the footer carries a
+> real date and the calculator's R54 gate is open.
 
 Drafted 07.09.2026, in FW3. Engine status added 07.09.2026, in FW5.
 
@@ -26,7 +35,7 @@ Drafted 07.09.2026, in FW3. Engine status added 07.09.2026, in FW5.
 
 ## ENGINE STATUS
 
-The engine is code-complete as of FW5 and **frozen pending Checkpoint A**.
+The engine is code-complete as of FW5. **Checkpoint A ran on 09.09.2026**: the transcription is verified and three interpretations remain open (P1-P3 below). The fixtures are frozen.
 What follows is the honest division between what is proven, what is proven
 only against itself, and what is not proven at all — because those three are
 easy to conflate once a test suite is green.
@@ -105,13 +114,14 @@ question for the operator.
 
 | # | Constant | Value | Rule | Primary source (to verify) | Verified |
 |---|---|---|---|---|---|
-| 1 | `fiscalCeiling` | `0.4` | 40 % of annual working time (art. 10) | Avenant of 27 June 2023 to the France–Switzerland double-taxation convention, in force 1 January 2026 | ☐ pending |
-| 2 | `missionCapDays` | `10` | 10 days/year of mission, **inside** the 40 % | Same avenant; interpretative agreement of 29 April 2026 | ☐ pending |
-| 3 | *(proration rule)* | — | Mission cap prorated for part-time and partial years, **rounded up** | Amicable agreement of 30 June 2023 | ☐ pending |
-| 4 | `socialCeiling` | `0.499` | 49.9 %, conditional on a valid A1 certificate | EU framework agreement on telework; art. 16 of regulation (EC) 883/2004 | ☐ pending |
-| 5 | `simplifiedBasisDays` | `240` | 240 working days/year at full time | Circular no. 45 of 12 June 2019, point 7.5.1 | ☐ pending |
-| 6 | *(day classification)* | — | Over 4 h = 1 day; 2–4 h = ½ day | Circular no. 45 of 12 June 2019, point 7.5.1 | ☐ pending |
-| 7 | `residence1983Cantons` | BE, SO, BS, BL, VD, VS, NE, JU | Same 40 % ceiling; frontalier **status** itself at risk on breach | Amicable agreement on the accord of 11 April 1983 | ☐ pending |
+| 1 | `fiscalCeiling` | `0.4` | 40 % of annual working time (art. 10) | Avenant **signed 27.06.2023, in force 24.07.2025, applicable from 01.01.2026** — three distinct dates; admin.ch communiqué msg-id-96063, economie.gouv.fr, Sénat l24-480 | ☑ transcription: ge.ch/admin.ch, 09.09.2026 — legal review pending |
+| 2 | `missionCapDays` | `10` | 10 days/year of mission, **inside** the 40 % | Same avenant; ge.ch, *"double limite annuelle"*. **The "interpretative agreement of 29 April 2026" cited here until 09.09.2026 was not found in any primary source and is deleted (R9)** — the interpretation is the amicable agreement of 30 June 2023 | ☑ transcription: ge.ch/admin.ch, 09.09.2026 — legal review pending |
+| 3 | *(proration rule)* | — | Mission cap prorated for part-time and partial years, **rounded up** | ge.ch, citing the amicable agreement of 30 June 2023 | ☑ transcription: ge.ch/admin.ch, 09.09.2026 — legal review pending |
+| 4 | `socialCeiling` | `0.499` | 49.9 %, conditional on a valid A1 | bsv.admin.ch/fr/teletravail: *"jusqu'à 50% (au maximum 49.9%)"*. The legal text is *less than 50%*; 49,9 is the published maximum. The band stays **> 49,9**, which over-warns between 49,9 and 50 — the safe direction. See **P2** | ☑ transcription: ge.ch/admin.ch, 09.09.2026 — legal review pending |
+| 5 | `simplifiedBasisDays` | `240` | 240 working days/year at full time | Circular no. 45 of 12 June 2019, point 7.5.1; used in all six ge.ch worked examples | ☑ transcription: ge.ch/admin.ch, 09.09.2026 — legal review pending |
+| 6 | *(day classification)* | — | Over 4 h = 1 day; 2–4 h = ½ day | Circular no. 45 of 12 June 2019, point 7.5.1 | ☐ **pending — NOT covered by the 09.09.2026 pass.** The published cases count days, not hours, so no fixture reaches it |
+| 7 | `residence1983Cantons` | BE, SO, BS, BL, VD, VS, NE, JU | Same 40 % ceiling; frontalier **status** itself at risk on breach | Amicable agreement on the accord of 11 April 1983 | ☐ **pending — NOT covered by the 09.09.2026 pass.** Genève is a `source` canton, so no published example reaches this list |
+| 8 | `a1ThresholdRate` | `0.25` | The telework share from which the EU framework agreement — and so its A1 — applies; below it **art. 13 of reg. (EC) 883/2004** governs instead | bsv.admin.ch/fr/teletravail. **Added at Checkpoint A**, replacing the provisional reading that fired `A1_REQUIRED` on any counted day at all | ☑ transcription: ge.ch/admin.ch, 09.09.2026 — legal review pending |
 
 ## Notes per entry
 
@@ -144,66 +154,84 @@ the consequence is not. Under `source`, French tax falls on the excess days.
 Under `residence-1983`, the frontalier status itself is at risk. The engine
 reports which regime applies; the wording lives in `lib/fr`.
 
-## CHECKPOINT A — VERIFICATION REQUIRED
+## CHECKPOINT A — RESULT, 09.09.2026
 
-Everything below must be resolved before the fixtures freeze. Items marked
-**INTERPRETATION** are not source questions at all — they are readings this
-codebase adopted in the absence of a source, and they go to the named expert
-reviewer rather than to a website.
+The pass read the primary sources and recorded what they say. It did **not**
+obtain a legal opinion, and the distinction is the point of this section:
+six of eight constants are now verified transcriptions, and three
+interpretations remain open.
 
-- ☐ **A1_REQUIRED — when should it fire? (INTERPRETATION, ruling R18.)** The
-  sources say only that the 49,9 % ceiling is *conditional on a valid A1*, and
-  SPEC §7.4 lists the warning code with no condition attached. The engine
-  emits it whenever any day is counted against the ceiling, on the reading
-  that holding an A1 is a **standing obligation to state** rather than a
-  threshold to detect. Over-warning is the safe direction for a signal that
-  drives copy and no arithmetic. The site carries a `PROVISIONAL` marker
-  (`web/lib/calc-engine/warnings.ts`). *Question for the reviewer: is there a
-  telework share below which no A1 is required, and if so what is it?*
+### Verified beyond the constants table
 
-- ☐ **Mission-cap proration under the exact method (INTERPRETATION, ruling
-  R19.)** No source addresses how the 10-day sub-cap prorates when the
-  employer supplies an exact annual total rather than using the 240-day
-  basis. The engine prorates by `periodFraction` **only** under `exact`, and
-  by both factors under `simplified240`, reasoning that an exact total is the
-  days actually worked and so already embodies the working-time rate —
-  prorating by `employmentRate` again would count the same reduction twice and
-  quietly cost a part-timer mission days. Documented in
-  `fixtures/denominator-cases.json` under `missionCapCases`; the site carries
-  a `PROVISIONAL` marker. `EXACT_METHOD_UNVERIFIED` already fires on this
-  path. *Question for the reviewer: is the cap prorated against the
-  employer's own total, or against a full-time year?*
+These are not `RuleSet` fields, so they have no row above, but each is a
+sourced regulatory fact the engine depends on.
 
-- ☐ **Truncation versus rounding of the declarable rate.** The engine
-  truncates to 2 decimals because the AFC publishes 39,16 % for 94/240 and
-  4,16 % for 10/240, where rounding gives 39,17 and 4,17. SPEC §7.3 states
-  that matching the authority beats being conservative, and `tasks/plan.md`
-  records that invariant 7 inverts if the rule is rounding. *Confirm against
-  the AFC publication that truncation is the filing rule and not an artefact
-  of how the worked examples were printed.*
+- ☑ **The six Geneva worked examples.** https://www.ge.ch/imposition-du-teletravail-personnes-frontalieres/regles-missions-temporaires-etranger, updated 19.05.2026. All six
+  match on their inputs **and on all four outputs**. This is the assertion
+  SPEC §7.5 rests on: *"If any fails, nothing ships."*
+- ☑ **Truncation to two decimals — confirmed, not inferred.** The same page
+  publishes **39,16 %** for 94/240 and **4,16 %** for 10/240. Rounding would
+  give 39,17 and 4,17. This closes SPEC §22 question 4, and invariant 7
+  stands as written.
+- ☑ **Missions are excluded when telework alone already exceeds 40 %.** Same
+  page, case (e), an explicit sentence.
+- ☑ **Mission travel-day rules.** Same page, FAQ table — matches SPEC §7.2
+  step 3 exactly. A travel day with no work performed, or worked mostly in
+  Switzerland, is not counted.
 
-- ☐ **Is the social ceiling legally "≤ 49,9 %" or "< 50 %"? (INTERPRETATION,
-  ruling R32.)** The sources quote 49,9 %, and the engine and the rail both
-  now read the ceilings as inclusive on the compliant side — a rate must
-  *exceed* 49,9 to be a breach. That settles 49,90 itself, but it does not
-  settle what the figure 49,9 *is*. If it is a legal maximum of 49,9 %, then
-  49,99 % is a breach. If 49,9 % is instead shorthand for "below 50 %", then
-  49,99 % is not. The two readings put the same declarable rate on opposite
-  sides of the social threshold, and the rate arrives at two decimals by
-  truncation (`declarable-rate.ts`), so 49,99 is a value the engine really can
-  produce. Nothing in the code chooses between them today because
-  `socialCeiling` is stored as `0.499` and compared directly. *Question for
-  the reviewer: is 49,9 % the maximum permitted share, or a rounded statement
-  of a "strictly under 50 %" rule?*
+### STILL PROVISIONAL — LEGAL REVIEW REQUIRED (3 items, was 5)
 
-- ☐ **The interpretative agreement of 29 April 2026 is held second-hand.** It
-  is the source for the mission sub-cap sitting *inside* the 40 % rather than
-  beside it — which changes every result in the engine — and it reached this
-  spec through an advisory summary, not the text. *Obtain the agreement
-  itself.*
+Each of these is a **reading** this codebase adopted where no source speaks.
+They go to the named expert reviewer, not to a website.
 
-Every constant in the table above also carries its own unchecked box in the
-*Verified* column, and none may be ticked from an advisory source.
+- ☐ **P1 — the France-before-third-state imputation ORDER.** ge.ch treats
+  *"France ou un autre État"* as a single pool in all six published cases and
+  never orders them. Our waterfall imputes France first, on no primary
+  source. **Harmless in the fixtures** — no published case splits the two —
+  **and real for a user who does.** This is what survives of the deleted
+  "29 April 2026 interpretative agreement": the citation was wrong, but the
+  question it was supposed to answer is still open.
+
+- ☐ **P2 — the 49,9 versus < 50 edge under two-decimal truncation.**
+  49,95 % is legally below 50 and above the published 49,9, so the product
+  **over-warns** between the two. The band stays `> 49,9` because
+  over-warning is the safe direction for a signal that drives copy and no
+  arithmetic — and truncation really can produce 49,99, so this is a value
+  the engine reaches rather than a hypothetical. *Confirm that over-warning
+  is acceptable.* (Was ruling R32.)
+
+- ☐ **P3 — mission-cap proration under the exact method (ruling R19).**
+  ge.ch prorates for part-time **and** partial year but does not address an
+  employer-supplied exact total. The interim reading stands: prorate by
+  `periodFraction` only under `exact`, and by both factors under
+  `simplified240`, because an exact total is the days actually worked and so
+  already embodies the working-time rate — prorating by `employmentRate`
+  again would count the same reduction twice and quietly cost a part-timer
+  mission days. `EXACT_METHOD_UNVERIFIED` fires on this path, and the site
+  keeps its `PROVISIONAL` marker.
+
+### Resolved by this pass
+
+- **A1_REQUIRED's trigger** (was ruling R18, PROVISIONAL). It fired whenever
+  any day was counted against the ceiling — a standing obligation the product
+  announced rather than a threshold it detected. The framework agreement
+  applies **from 25 %** telework to under 50 %; below 25 %, art. 13 of
+  reg. (EC) 883/2004 governs and the A1 is not the instrument in question.
+  Now `a1ThresholdRate` (row 8) and the `PROVISIONAL` marker is off.
+
+  *Concretely:* Geneva case `special` has 0 telework days and 30 mission days
+  in France, 10 of them credited. The old trigger fired A1_REQUIRED on it —
+  telling a frontalier who never teleworked to hold a document for a rule
+  that does not govern them. It no longer does.
+
+- **The "interpretative agreement of 29 April 2026" does not exist.** No
+  primary source names it. Deleted from this file, from SPEC §7.1, from
+  SPEC §22 and from `rules.ts`. The rule it was cited for is unchanged.
+
+- **Truncation versus rounding.** See above; confirmed.
+
+Rows 6 and 7 of the constants table were **not reached** by this pass and
+keep their unchecked boxes. Neither is exercised by a Geneva fixture.
 
 ## What is deliberately not here
 

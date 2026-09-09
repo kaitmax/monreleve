@@ -14,6 +14,13 @@ export interface WarningContext {
   readonly regime: Regime;
   readonly regimeApplies: boolean;
   readonly daysCountedAgainstCeiling: number;
+  /**
+   * input.teleworkDays. Distinct from daysCountedAgainstCeiling, which also
+   * carries credited mission days: the framework agreement behind A1_REQUIRED
+   * is about work performed in the state of RESIDENCE, and a mission day in a
+   * third state is not that.
+   */
+  readonly teleworkDays: number;
   /** fiscalCeiling - teleworkDays. Zero when the regime is already lost. */
   readonly headroomDays: number;
   readonly missionDaysTotal: number;
@@ -75,17 +82,30 @@ export function warningsFor(context: WarningContext, rules: RuleSet): readonly W
     warnings.push({ code: 'SOCIAL_CEILING_EXCEEDED' });
   }
 
-  // PROVISIONAL TRIGGER - see REPORT-FW4.txt, QUESTIONS.
+  // THE A1 THRESHOLD, settled at Checkpoint A on 09.09.2026. The marker that
+  // stood here said PROVISIONAL and it was: SPEC 7.1 stated only that the
+  // 49.9 % social ceiling is "conditional on a valid A1" and named no
+  // condition, so this fired whenever ANY day was counted against the ceiling
+  // - a standing obligation the product announced rather than a threshold it
+  // detected.
   //
-  // SPEC 7.1 says only that the 49.9 % social ceiling is "conditional on a
-  // valid A1", and 7.4 lists the code without a condition. The whole regime
-  // the engine models presupposes an A1, so this fires whenever any day is
-  // counted against the ceiling: a standing obligation the product should
-  // state rather than a threshold it should detect. The alternative readings
-  // - only above the fiscal ceiling, or only near the social one - would
-  // leave a user who is comfortably under 40 % unaware of a document they
-  // are nonetheless required to hold. The operator's ruling replaces this.
-  if (context.daysCountedAgainstCeiling > 0) {
+  // The verification pass answered it from bsv.admin.ch: the EU framework
+  // agreement on cross-border telework applies FROM 25 % telework in the
+  // state of residence up to (but not including) 50 %. Below 25 %, article 13
+  // of regulation (EC) 883/2004 governs and the framework agreement's A1 is
+  // not the instrument in question - so the old trigger named the wrong
+  // document for every user under a quarter telework.
+  //
+  // TELEWORK DAYS, NOT daysCountedAgainstCeiling. The fiscal ceiling counts
+  // telework plus credited missions; this is about work in the state of
+  // residence, and a mission day in a third state is neither. The social
+  // ceiling check above still uses daysCountedAgainstCeiling, which is a
+  // different question and unchanged.
+  //
+  // INCLUSIVE at 25 %: the agreement applies "from" 25 %. totalWorkDays is
+  // guaranteed positive by validation (TOTAL_WORK_DAYS_NOT_POSITIVE), so the
+  // division is safe here.
+  if (context.teleworkDays / context.totalWorkDays >= rules.a1ThresholdRate) {
     warnings.push({ code: 'A1_REQUIRED' });
   }
 

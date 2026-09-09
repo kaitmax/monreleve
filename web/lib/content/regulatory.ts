@@ -32,11 +32,24 @@ import { formatDate } from '@/lib/ui/core';
  * The day the regulatory constants were last verified against primary
  * sources, or null if that has not happened.
  *
- * DO NOT set this to a placeholder, to today, or to the date the code was
- * written. null is not a gap to be filled in - it is the accurate answer
- * until docs/checkpoint-a.md's human gate is recorded.
+ * SET AT CHECKPOINT A, 09.09.2026. It was null through FW3-FW10 and the
+ * warning against filling it in stands for whoever reads this next: DO NOT
+ * set it to a placeholder, to today, or to the date the code was written.
+ * null was the accurate answer for seven tasks and the footer said so.
+ *
+ * WHAT THIS DATE MEANS, precisely, because it drives two visible things. It
+ * means the figures in docs/regulatory-sources.md were read off their primary
+ * sources on 09.09.2026 - a verified TRANSCRIPTION. It does NOT mean a lawyer
+ * has confirmed the product's reading of them; three interpretations are still
+ * open (P1, P2, P3 in that file).
+ *
+ * Setting it does two things at once:
+ *   R51  the footer stops saying "Verification reglementaire en cours" and
+ *        carries the date instead.
+ *   R54  the calculator's gate opens - the route may be indexed, listed in
+ *        the sitemap and linked from the nav.
  */
-export const LAST_REGULATORY_REVIEW: string | null = null;
+export const LAST_REGULATORY_REVIEW: string | null = '2026-09-09';
 
 /**
  * The footer's review line.

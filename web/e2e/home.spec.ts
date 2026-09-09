@@ -3,8 +3,10 @@
 // browser can prove: that Inter is reaching the page with tabular numerals on.
 
 import { expect, test } from '@playwright/test';
+import { LAST_REGULATORY_REVIEW, reviewNotice } from '../lib/content/regulatory';
 import { HOME_COPY } from '../lib/fr';
 import { SHELL_COPY } from '../lib/fr/shell';
+import { formatDate } from '../lib/ui/core';
 
 const ORIGIN = 'http://localhost:3000';
 
@@ -43,18 +45,28 @@ test('/ is wrapped in the public shell, header and footer both', async ({ page }
   await expect(page.getByRole('navigation', { name: SHELL_COPY.navLabel })).toBeAttached();
 });
 
-test('the footer says a review has not happened yet (R51)', async ({ page }) => {
-  // The whole point of R51, asserted on a real public page: while
-  // LAST_REGULATORY_REVIEW is null the footer must carry the in-progress
-  // sentence and NO date. A dd.mm.yyyy here would be the most damaging
-  // string on the site - the claim a reader would most reasonably rely on,
-  // and false.
+test('the footer carries the recorded review date (R51)', async ({ page }) => {
+  // INVERTED AT CHECKPOINT A, 09.09.2026, and deliberately not deleted. R51
+  // does not say "the footer says pending" - it says the footer must never
+  // claim a verification that has not happened. Before the gate that meant the
+  // in-progress sentence and no date; after it, the date and no sentence. The
+  // assertion reads the constant, so it cannot drift from it.
+  //
+  // BY textContent, NOT toContainText. reviewNotice now carries a U+00A0
+  // before its colon (the FW11 typography pass), and Playwright normalises
+  // whitespace on BOTH sides of its text matchers - measured in a real
+  // browser - so toContainText would pass whether the codepoint were there or
+  // not. Ruling R71: assert on textContent by codepoint.
   await page.goto('/');
 
-  const footer = page.getByRole('contentinfo');
+  const footer = (await page.getByRole('contentinfo').textContent()) ?? '';
 
-  await expect(footer).toContainText(SHELL_COPY.reviewPending);
-  await expect(footer).not.toContainText(/[0-9]{2}[.][0-9]{2}[.][0-9]{4}/);
+  expect(LAST_REGULATORY_REVIEW).not.toBeNull();
+  expect(footer).toContain(reviewNotice(LAST_REGULATORY_REVIEW));
+  expect(footer).toContain(formatDate(LAST_REGULATORY_REVIEW ?? ''));
+
+  // And the sentence it replaced is gone, so the page cannot say both.
+  expect(footer).not.toContain(SHELL_COPY.reviewPending);
 });
 
 test('exactly one h1 on the page', async ({ page }) => {

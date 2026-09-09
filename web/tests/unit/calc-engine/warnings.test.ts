@@ -3,6 +3,8 @@
 // SPEC 7.4's Warning union, plus RULE_SET_FALLBACK from ruling R11. Eight
 // codes. A warning is not an error: the result is still computed and returned.
 
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { warningsFor } from '@/lib/calc-engine/warnings';
 import { ruleSetFor } from '@/lib/calc-engine';
@@ -17,6 +19,7 @@ const at = (overrides: {
   regime?: 'source' | 'residence-1983';
   regimeApplies?: boolean;
   daysCountedAgainstCeiling?: number;
+  teleworkDays?: number;
   headroomDays?: number;
   missionDaysTotal?: number;
   missionCap?: number;
@@ -29,6 +32,11 @@ const at = (overrides: {
       regime: overrides.regime ?? 'source',
       regimeApplies: overrides.regimeApplies ?? true,
       daysCountedAgainstCeiling: overrides.daysCountedAgainstCeiling ?? 72,
+      // Defaulted to the same 72 as the ceiling count, which is 30 % of the
+      // 240-day default and therefore inside the framework agreement's band.
+      // That keeps A1_REQUIRED firing for every case that does not care about
+      // it, exactly as it did under the old standing-obligation trigger.
+      teleworkDays: overrides.teleworkDays ?? 72,
       headroomDays: overrides.headroomDays ?? 24,
       missionDaysTotal: overrides.missionDaysTotal ?? 0,
       missionCap: overrides.missionCap ?? 10,
@@ -161,12 +169,74 @@ describe('warningsFor - pass-through and fallback', () => {
   });
 });
 
-describe('warningsFor - A1_REQUIRED', () => {
-  it('fires whenever any day is counted against the ceiling', () => {
-    expect(codes(at({ daysCountedAgainstCeiling: 1 }))).toContain('A1_REQUIRED');
+describe('warningsFor - A1_REQUIRED, at the 25 % threshold', () => {
+  // CHECKPOINT A REPLACED THIS TRIGGER, and the old one was a reading rather
+  // than a rule. It fired whenever ANY day was counted against the ceiling -
+  // a standing obligation the product stated rather than a threshold it
+  // detected - because SPEC 7.1 said only that the social ceiling is
+  // "conditional on a valid A1" and named no condition. REPORT-FW4.txt raised
+  // it; R18 carried it as a standing obligation; the verification pass of
+  // 09.09.2026 answered it from the source.
+  //
+  // THE RULE: the EU framework agreement on cross-border telework applies
+  // from 25 % telework in the state of residence up to (but not including)
+  // 50 %. Below 25 %, article 13 of regulation (EC) 883/2004 governs instead
+  // and the framework agreement's A1 is not the instrument in question.
+  //
+  // TELEWORK DAYS, NOT DAYS COUNTED AGAINST THE CEILING, and the difference
+  // is substantive rather than pedantic. The fiscal ceiling counts telework
+  // PLUS credited mission days; the framework agreement is about work
+  // performed in the state of RESIDENCE. A mission day in a third state is
+  // neither, so including it would fire the warning on facts the agreement
+  // does not address. The social ceiling check above still uses
+  // daysCountedAgainstCeiling - that is a different question and unchanged.
+
+  it('fires at exactly 25 %, the bottom of the band', () => {
+    // The boundary is INCLUSIVE: the agreement applies "from 25 %".
+    expect(codes(at({ teleworkDays: 60, totalWorkDays: 240 }))).toContain('A1_REQUIRED');
   });
 
-  it('stays quiet when nothing is counted', () => {
-    expect(codes(at({ daysCountedAgainstCeiling: 0 }))).not.toContain('A1_REQUIRED');
+  it('stays quiet just below 25 %', () => {
+    // 59,5/240 is 24,79 %. Article 13 governs here, not the framework
+    // agreement, so naming the A1 would point at the wrong instrument.
+    expect(codes(at({ teleworkDays: 59.5, totalWorkDays: 240 }))).not.toContain('A1_REQUIRED');
+  });
+
+  it('fires well inside the band', () => {
+    expect(codes(at({ teleworkDays: 94, totalWorkDays: 240 }))).toContain('A1_REQUIRED');
+  });
+
+  it('stays quiet when there is no telework at all', () => {
+    expect(codes(at({ teleworkDays: 0, totalWorkDays: 240 }))).not.toContain('A1_REQUIRED');
+  });
+
+  it('ignores mission days, which the agreement does not address', () => {
+    // 24 telework days of 240 is 10 %, below the threshold. Adding 40 mission
+    // days would push days-counted-against-the-ceiling to 26,7 % and the OLD
+    // trigger would have fired. Work in a third state is not telework in the
+    // state of residence.
+    const codesWith = codes(
+      at({ teleworkDays: 24, missionDaysTotal: 40, daysCountedAgainstCeiling: 64, totalWorkDays: 240 }),
+    );
+
+    expect(codesWith).not.toContain('A1_REQUIRED');
+  });
+
+  it('reads the threshold from the RuleSet rather than a literal', () => {
+    // SPEC 7.7: "RuleSet is the only place a threshold may appear." A bare
+    // 0.25 in warnings.ts would be a review rejection like a bare 0.4.
+    const rules = ruleSetFor(2026);
+
+    expect(rules.a1ThresholdRate).toBe(0.25);
+  });
+
+  it('is no longer marked PROVISIONAL', () => {
+    // The marker came off at Checkpoint A. If it is still in the source, the
+    // trigger is still a reading and this test is a lie.
+    const source = readFileSync(join(process.cwd(), 'lib', 'calc-engine', 'warnings.ts'), 'utf8');
+    const a1Block = source.slice(source.indexOf('A1_REQUIRED') - 1800);
+
+    expect(a1Block).not.toContain('PROVISIONAL TRIGGER');
+    expect(a1Block).toContain('a1ThresholdRate');
   });
 });

@@ -36,10 +36,12 @@
     ".next-visual-1412-mttf5fwp/types/**/*.ts",
     ".next-visual-14376-mtttncgf/types/**/*.ts",
     ".next-visual-17364-mttea3lh/types/**/*.ts",
+    ".next-visual-2140-mttw4daq/types/**/*.ts",
+    ".next-visual-5316-mttumjv1/types/**/*.ts",
     ".next-visual-9028-mttex1qe/types/**/*.ts",
     ".next/types/**/*.ts",
     "next-env.d.ts",
-    ".next-visual-5316-mttumjv1/types/**/*.ts"
+    ".next-visual-9516-mttwj28h/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

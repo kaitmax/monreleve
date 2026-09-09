@@ -317,10 +317,11 @@ Pure TypeScript, zero runtime dependencies, no I/O, no clock access, no React. I
 
 | Rule | Value | Source |
 |---|---|---|
-| Fiscal ceiling | 40% of annual working time (art. 10) | Avenant of 27 June 2023, in force 1 Jan 2026 |
-| Mission sub-cap | 10 days/year, **inside** the 40% | Same avenant; interpretative agreement 29 April 2026 |
+| Fiscal ceiling | 40% of annual working time (art. 10) | Avenant **signed 27.06.2023, in force 24.07.2025, applicable from 01.01.2026** — three distinct dates, verified 09.09.2026 (admin.ch communiqué msg-id-96063; economie.gouv.fr; Sénat l24-480) |
+| Mission sub-cap | 10 days/year, **inside** the 40% | Same avenant; **amicable agreement of 30 June 2023**. *The "interpretative agreement 29 April 2026" named here until 09.09.2026 was NOT FOUND in any primary source and is deleted (R9). The rule is unchanged — only the citation was wrong.* |
 | Mission cap proration | Proportional for part-time and partial years, **rounded up** | Amicable agreement 30 June 2023 |
-| Social ceiling | 49.9%, conditional on a valid A1 | EU framework agreement, art. 16 reg. 883/2004 |
+| Social ceiling | 49.9%, conditional on a valid A1 | EU framework agreement, art. 16 reg. 883/2004. bsv.admin.ch/fr/teletravail publishes "jusqu'à 50% (au maximum 49.9%)"; the legal text says *less than 50%*. The band stays **> 49,9** — it over-warns between 49,9 and 50, which is the safe direction (P2 below) |
+| **A1 requirement threshold** | **25%** — the framework agreement applies from 25% telework to under 50% | Below 25%, **art. 13 of reg. (EC) 883/2004** governs instead, so the A1 is not the instrument in question. Verified 09.09.2026 against bsv.admin.ch/fr/teletravail. *Replaces the provisional standing-obligation reading that fired `A1_REQUIRED` on any counted day* |
 | Simplified denominator | 240 days/year full-time | Circular no. 45 of 12 June 2019, pt 7.5.1 |
 | Day classification | >4h = 1 day; 2–4h = ½ day | Circular no. 45, pt 7.5.1 |
 | Same 40% ceiling in 1983-accord cantons | Yes — frontalier status preserved | Amicable agreement on the 11 April 1983 accord |
@@ -514,6 +515,7 @@ export interface RuleSet {
   readonly taxYear: number;              // 2026
   readonly fiscalCeiling: number;        // 0.40
   readonly socialCeiling: number;        // 0.499
+  readonly a1ThresholdRate: number;      // 0.25 - added at Checkpoint A
   readonly missionCapDays: number;       // 10
   readonly simplifiedBasisDays: number;  // 240
   readonly residence1983Cantons: readonly Canton[];
@@ -1071,8 +1073,8 @@ Merged from all six documents, deduplicated, ordered by lethality.
 
 1. **Is the employer's attestation sufficient?** *The one that can kill the product.* From 2026 Swiss employers must certify each frontalier's telework percentage; if they reliably hand over a clean signed document, the employee has no reason to keep their own. Ask 10 frontaliers what their employer actually issued for 2026 — before more is built on top.
 2. **Is the pain felt or anticipated?** Search frontalier groups for anyone already reassessed or audited. Zero hits means selling insurance against an invisible risk.
-3. **The 29 April 2026 interpretative agreement** — held second-hand. Read the PDF and confirm the waterfall order before the fixtures are frozen.
-4. **Truncation vs rounding of the declarable rate.** Both Geneva examples are consistent with truncation, which is strong but not conclusive. Confirm with the AFC or the reviewer; if it is rounding, invariant 7 inverts.
+3. ~~**The 29 April 2026 interpretative agreement**~~ — **RESOLVED 09.09.2026, and it does not exist.** No primary source names it; the mission-days interpretation is the **amicable agreement of 30 June 2023**, which ge.ch cites. The rule was always right and the citation was always wrong. *The waterfall-order half of this question survives it and is now provisional item P1 in `docs/regulatory-sources.md`: ge.ch treats "France ou un autre État" as one pool across all six published cases and never orders them, so our France-before-third-state imputation has no primary source. Harmless in the fixtures, real for a user who splits.*
+4. ~~**Truncation vs rounding of the declarable rate.**~~ **RESOLVED 09.09.2026: truncation, confirmed rather than inferred.** ge.ch publishes 39,16% for 94/240 and 4,16% for 10/240 on the same page — both of which rounding would render 39,17% and 4,17%. Invariant 7 stands as written.
 5. **Who is the named expert reviewer**, and what do they want — fee, revenue share, referral flow? A tax-adjacent product with no expert name attached is a liability; `/a-propos` depends on the answer.
 6. **Does the timestamp column need tamper-evidence** (hash chain, third-party timestamping) to hold up, or is a server-side receipt enough? Legal weight — ask the reviewer. The append-only `EntryEvent` table is designed so a hash chain can be added without a migration.
 7. **Under `granularity: 'hours'`, what is the denominator unit?** Presumably annual contractual hours, not 240 days; if the combinations are mutually exclusive, validation should reject rather than compute something meaningless.
