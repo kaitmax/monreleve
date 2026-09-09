@@ -45,7 +45,7 @@
 // reintroduce exactly the drift this exists to remove.
 
 import { execFileSync } from 'node:child_process';
-import { existsSync, readdirSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -145,6 +145,29 @@ process.stdout.write(
   ].join(NEWLINE),
 );
 
+/**
+ * tsconfig.json AS IT STANDS BEFORE THE CONTAINER TOUCHES IT.
+ *
+ * R98's per-run distDir has a side effect the ruling did not anticipate. On
+ * every build Next APPENDS that directory's generated route types to the
+ * `include` array of the repo's real tsconfig.json - the file is on the bind
+ * mount, and Next treats keeping it current as a courtesy.
+ *
+ * The directory is deleted when the run ends. The entry is not. Eight had
+ * accumulated by FW11, each pointing at nothing, and the list could only grow:
+ * one per visual run, forever, in a file that goes into every commit. It also
+ * left `git status` dirty after every run, which is the noise that hides a
+ * real change.
+ *
+ * So the file is snapshotted here and restored in the finally below. The other
+ * half of this is tests/unit/meta/tsconfig-accretion.test.ts, which is what
+ * would SEE the restore breaking - a crash between these two points, or a
+ * future Next that writes somewhere else, would otherwise resume accreting
+ * with no symptom beyond a diff nobody reads.
+ */
+const TSCONFIG = resolve(WEB, 'tsconfig.json');
+const tsconfigBefore = readFileSync(TSCONFIG, 'utf8');
+
 try {
   execFileSync(
     'docker',
@@ -202,6 +225,20 @@ try {
   // execFileSync already streamed the failure; adding a stack would bury it.
   process.exitCode = 1;
 } finally {
+  // The snapshot goes back BEFORE anything else in here, because the mount
+  // point check below can set a failure exit code and return, and a run that
+  // failed is exactly the run whose leftovers nobody goes looking for.
+  //
+  // Reported rather than restored in silence: if Next stops doing this, or
+  // starts doing it somewhere new, the absence or presence of this line is the
+  // only cheap way to notice.
+  if (readFileSync(TSCONFIG, 'utf8') !== tsconfigBefore) {
+    writeFileSync(TSCONFIG, tsconfigBefore);
+    process.stdout.write(
+      `tsconfig.json restored: next had added ${DIST_DIR} to its include.${NEWLINE}`,
+    );
+  }
+
   // THE MOUNT POINT, AND WHAT ITS CONTENTS MEAN.
   //
   // Docker materialises the anonymous volume's mount point inside the bind
