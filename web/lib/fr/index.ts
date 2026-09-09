@@ -18,7 +18,7 @@ export const WORKBENCH_TITLE = 'Composants — workbench';
 // ---------------------------------------------------------------------------
 
 export const HOME_COPY = {
-  heading: 'Combien de jours de télétravail vous reste-t-il ?',
+  heading: 'Combien de jours de télétravail vous reste-t-il ?',
 
   /**
    * The meta description, and it was MISSING until the increment 6 Lighthouse
@@ -31,12 +31,12 @@ export const HOME_COPY = {
    */
   description:
     'Calculez votre part de télétravail annuelle et les jours qui vous ' +
-    'restent avant les seuils de 40 % et 49,9 %, puis tenez le registre ' +
+    'restent avant les seuils de 40 % et 49,9 %, puis tenez le registre ' +
     'horodaté de vos journées.',
 
   intro:
     'frontalier calcule votre part de télétravail annuelle et le nombre de jours ' +
-    "qu'il vous reste avant les deux seuils qui comptent : celui de l'imposition " +
+    "qu'il vous reste avant les deux seuils qui comptent : celui de l'imposition " +
     'et celui de la sécurité sociale.',
 } as const;
 

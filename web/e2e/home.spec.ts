@@ -17,7 +17,22 @@ test('/ responds 200 and renders its heading from lib/fr', async ({ page }) => {
   // h1 on purpose, so there is exactly one and the page owns it. This
   // assertion used to expect APP_NAME, which was true only while the home
   // page was a placeholder with the product name as its heading.
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText(HOME_COPY.heading);
+  // BY textContent, NOT toHaveText - ruling R71, and the heading is now a
+  // reason rather than a precaution. FW11's typography pass (R91) put a U+00A0
+  // before its question mark, and toHaveText cannot see the difference:
+  // MEASURED in a real browser, it matches a matcher containing U+00A0 AND one
+  // containing an ordinary space against the same DOM, because it normalises
+  // both sides. So it would keep passing on the day the no-break space
+  // silently became a space again, which is the only failure worth catching
+  // here.
+  //
+  // textContent keeps the codepoint - also measured - so this compares the
+  // exact string, and the constant on the other side carries it too.
+  expect(await page.getByRole('heading', { level: 1 }).textContent()).toBe(HOME_COPY.heading);
+
+  // And the codepoint itself, named, so a reader of a failure knows what to
+  // look for. U+00A0 is indistinguishable from a space on screen and in a diff.
+  expect(HOME_COPY.heading).toContain(String.fromCharCode(0x00a0));
 });
 
 test('/ is wrapped in the public shell, header and footer both', async ({ page }) => {

@@ -63,11 +63,30 @@ export default tseslint.config(
     // exist on a workstation - the container builds into a volume - but a
     // local NEXT_DIST_DIR would put one here, and linting a generated build
     // tree produces thousands of errors from files nobody wrote.
+    // EVERY GENERATED DIRECTORY, and the list is deliberately exhaustive
+    // rather than minimal. All of these are gitignored, but eslint 9's flat
+    // config does not read .gitignore - so a directory can be invisible to git
+    // and fully visible to the linter, which is how playwright-report/ came to
+    // contribute 6 000-odd errors from Playwright's own bundled report JS.
+    //
+    // The failure only appears on the SECOND gate run in a session: pnpm gate
+    // lints before it runs e2e, so on a clean tree the report does not exist
+    // yet. That is the worst kind of latency - it passes for whoever adds it
+    // and fails for whoever runs it twice.
+    //
+    // Third instance of this shape here: web/public threw ENOENT in a test
+    // walker because git does not track it, and .next-visual-* leaked a build
+    // tree into the repository. A generated path reaching a tool that should
+    // not see it is a class, not an incident.
     ignores: [
       '.next/**',
       '.next-visual-*/**',
       'node_modules/**',
       'public/**',
+      'playwright-report/**',
+      'test-results/**',
+      '.lighthouseci/**',
+      'dist-parity/**',
       'next-env.d.ts',
     ],
   },

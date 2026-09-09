@@ -92,23 +92,102 @@ describe('the whitespace codepoints in French copy are on the record (R66)', () 
     expect(files).toContain('errors.ts');
   });
 
-  it('contains none of the watched codepoints, and that is the CURRENT state rather than a rule', () => {
-    // WHEN THIS FAILS, IT IS PROBABLY NOT A BUG. A no-break space before a
-    // colon is correct French. What the failure means is that R66's hazard has
-    // become live for whichever string gained it, so:
-    //
-    //   1. add the codepoint to this test's expectation, deliberately;
-    //   2. find every assertion that compares against that string, and make
-    //      sure it reads textContent and compares exactly - a Testing Library
-    //      text query, jest-dom's toHaveTextContent, Playwright's toHaveText
-    //      or innerText will all either go red against correct copy or match
-    //      either codepoint silently;
-    //   3. say so in the session report.
-    //
-    // The eslint fence on @testing-library/jest-dom covers one route in; the
-    // others are conventions, and this is what makes them visible.
-    const summary = occurrences.map((o) => `${o.file}: ${o.codepoint} near "${o.context}"`);
+  // ---------------------------------------------------------------------
+  // THE SET CHANGED, DELIBERATELY, IN FW11 INCREMENT 0 (ruling R91).
+  //
+  // This block used to assert that lib/fr contained NONE of the watched
+  // codepoints, with instructions for the day that stopped being true. That
+  // day is now: the typography pass put a U+00A0 before every colon,
+  // semicolon, question mark, exclamation mark and percent sign in the copy -
+  // 39 of them across seven files - because with an ordinary space a narrow
+  // column can break the line between the last word and its punctuation.
+  //
+  // The three steps that comment prescribed were followed:
+  //
+  //   1. THE EXPECTATION IS UPDATED HERE, and it is stronger than the one it
+  //      replaces. "The set has not changed" is a weak claim; what follows
+  //      asserts that the only watched codepoint present is U+00A0, that
+  //      there are exactly 39, and that EVERY ONE sits immediately before one
+  //      of the five marks. A stray no-break space in the middle of a
+  //      sentence now fails, which the old form could never have caught.
+  //
+  //   2. EVERY ASSERTION AGAINST AN AFFECTED STRING WAS SWEPT, and the
+  //      matching behaviour was MEASURED rather than assumed, because the
+  //      original comment's account of it was not quite right:
+  //
+  //        getByRole({ name })   exact on codepoints, BOTH sides. DOM nbsp
+  //                              matches a matcher with nbsp and nothing
+  //                              else. This is why the footer link test kept
+  //                              passing.
+  //        getByText             normalises the DOM side ONLY. A matcher with
+  //                              nbsp does NOT match nbsp copy; a matcher
+  //                              with a plain space DOES. The asymmetry R66
+  //                              describes lives here.
+  //        Playwright toHaveText normalises BOTH sides, so it matches either
+  //                              matcher against either DOM. It cannot see a
+  //                              codepoint at all - which is why R71 forbids
+  //                              it for anything whose codepoint matters.
+  //        textContent/innerText keep U+00A0 in both Testing Library and
+  //                              Playwright. These are the correct tools.
+  //
+  //   3. Said so in the report.
+  //
+  // U+202F is still expected to be ABSENT from lib/fr: the narrow no-break
+  // space is the FORMATTER's group separator, not copy. A hand-typed one here
+  // would be a second producer of the codepoint SPEC 6.4 mandates.
+  // ---------------------------------------------------------------------
+
+  it('contains U+00A0 and no other watched codepoint', () => {
+    const others = occurrences.filter((o) => !o.codepoint.startsWith('U+00A0'));
+    const summary = others.map((o) => `${o.file}: ${o.codepoint} near "${o.context}"`);
 
     expect(summary, summary.join(' | ')).toEqual([]);
+  });
+
+  it('carries exactly the 39 the typography pass put there', () => {
+    // A count, so that a no-break space arriving or disappearing is a
+    // deliberate edit here rather than a silent one. Per file, because a
+    // total alone would let one move between files unnoticed.
+    const perFile: Record<string, number> = {};
+
+    for (const one of occurrences) perFile[one.file] = (perFile[one.file] ?? 0) + 1;
+
+    expect(perFile).toEqual({
+      'lib/fr/cgu.ts': 7,
+      'lib/fr/confidentialite.ts': 15,
+      'lib/fr/errors.ts': 2,
+      'lib/fr/index.ts': 4,
+      'lib/fr/shell.ts': 2,
+      'lib/fr/spike.ts': 7,
+      'lib/fr/statuses.ts': 2,
+    });
+    expect(occurrences).toHaveLength(39);
+  });
+
+  it('puts every one of them immediately before : ; ? ! or %', () => {
+    // THE ASSERTION THE OLD FORM COULD NOT MAKE. "The set has not changed"
+    // says nothing about WHERE the codepoints are, so a no-break space in the
+    // middle of a sentence - which breaks nothing visually and defeats
+    // wrapping for no reason - would have passed. This is the rule R91 states,
+    // checked.
+    const MARKS = [':', ';', '?', '!', '%'];
+    const NBSP = String.fromCharCode(0x00a0);
+    const misplaced: string[] = [];
+
+    for (const name of readdirSync(DIR).filter((f) => f.endsWith('.ts'))) {
+      const source = readFileSync(join(DIR, name), 'utf8');
+
+      [...source].forEach((character, index) => {
+        if (character !== NBSP) return;
+
+        const next = source[index + 1] ?? '';
+
+        if (!MARKS.includes(next)) {
+          misplaced.push(`lib/fr/${name}: U+00A0 before "${next}" near "${source.slice(Math.max(0, index - 24), index + 4)}"`);
+        }
+      });
+    }
+
+    expect(misplaced, misplaced.join(' | ')).toEqual([]);
   });
 });

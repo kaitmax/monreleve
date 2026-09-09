@@ -62,7 +62,20 @@ export const SHELL_COPY = {
    * It names what the date means: "29.04.2026" alone in a footer is
    * ambiguous between published, updated and reviewed.
    */
-  reviewDone: (date: string): string => `Dernière vérification réglementaire : ${date}`,
+  // CONCATENATION, NOT A TEMPLATE LITERAL, and the reason is a lint rule
+  // rather than taste. eslint's no-irregular-whitespace has skipStrings: true
+  // by default but skipTemplates: FALSE, so the mandated U+00A0 before the
+  // colon is legal in an ordinary string and an error inside a backtick one.
+  // FW11's typography pass hit exactly that here - the only template literal
+  // in lib/fr that gained a no-break space.
+  //
+  // Concatenating keeps the raw codepoint in the source, which matters: the
+  // copy-codepoints registry counts characters in the FILE, so writing it as
+  // a \u00A0 escape instead would make the source scan miss it while the
+  // runtime value stayed correct - a registry that under-reports is worse
+  // than none.
+  reviewDone: (date: string): string =>
+    'Dernière vérification réglementaire : ' + date,
 
   /** The single primary action. D14: it leads to the app, not to a signup. */
   cta: 'Suivre mes jours',
@@ -117,7 +130,7 @@ export const FOOTER_COLUMNS: readonly FooterColumn[] = [
     heading: 'Guides',
     links: [
       { label: 'Tous les guides', href: '/guides' },
-      { label: 'Le seuil de 40 %', href: '/guides/teletravail-frontalier-40-pourcent' },
+      { label: 'Le seuil de 40 %', href: '/guides/teletravail-frontalier-40-pourcent' },
     ],
   },
   {

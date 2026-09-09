@@ -42,12 +42,12 @@ export const STATUS_COPY = {
   'regime-lost': {
     label: 'Régime non applicable',
     explanation:
-      'Le télétravail seul dépasse le plafond fiscal : le régime frontalier ne s’applique plus.',
+      'Le télétravail seul dépasse le plafond fiscal : le régime frontalier ne s’applique plus.',
   },
 
   'social-switch': {
     label: 'Bascule de sécurité sociale',
     explanation:
-      'Le seuil de sécurité sociale est dépassé : votre affiliation peut basculer en France.',
+      'Le seuil de sécurité sociale est dépassé : votre affiliation peut basculer en France.',
   },
 } as const;

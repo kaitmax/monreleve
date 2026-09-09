@@ -70,13 +70,13 @@ export const ERROR_COPY: Record<Code, string> = {
 
   // Completed with the field name. "Ne peut pas être négatif" alone would
   // leave the user hunting a form for whichever number is below zero.
-  NEGATIVE_DAYS: 'Cette valeur ne peut pas être négative :',
+  NEGATIVE_DAYS: 'Cette valeur ne peut pas être négative :',
 
   // Half-days declared under a whole-day granularity, which is the case
   // calculate.ts names. The sentence says what to do, not merely what is
   // wrong.
   GRANULARITY_MISMATCH:
-    'Cette valeur comporte une demi-journée alors que le décompte est en journées entières :',
+    'Cette valeur comporte une demi-journée alors que le décompte est en journées entières :',
 
   DAYS_EXCEED_TOTAL:
     'Le total des jours déclarés dépasse le nombre de jours travaillés dans la période.',

@@ -37,7 +37,7 @@ export const CGU_COPY = {
     'service.',
 
   publisherHeading: 'Éditeur',
-  publisherLead: 'Le service est édité par :',
+  publisherLead: 'Le service est édité par :',
 
   objectHeading: 'Objet du service',
   object: [
@@ -74,11 +74,11 @@ export const CGU_COPY = {
   responsibilityHeading: 'Vos déclarations, votre responsabilité',
   responsibility: [
     "L'exactitude des journées que vous déclarez vous incombe. Le service " +
-      'enregistre ce que vous déclarez et la date à laquelle il le reçoit ; ' +
+      'enregistre ce que vous déclarez et la date à laquelle il le reçoit ; ' +
       'il ne vérifie pas que la déclaration correspond à la réalité, et il ' +
       'ne peut pas le faire.',
     'En mode automatique, une détection vous propose une journée. La ' +
-      'proposition ne vaut pas déclaration : rien ne devient une journée ' +
+      'proposition ne vaut pas déclaration : rien ne devient une journée ' +
       "enregistrée avant que vous ne l'ayez validée, et vous restez libre de " +
       'la corriger.',
     'Un enregistrement tardif reste possible et il est signalé comme tel sur ' +
@@ -102,7 +102,7 @@ export const CGU_COPY = {
     'La suppression efface votre compte, vos journées déclarées, leur ' +
       'historique, vos appareils enregistrés et les données conservées sur ' +
       'votre téléphone. Elle est définitive, et le relevé annuel ne peut plus ' +
-      'être reproduit ensuite : exportez vos données avant de supprimer si ' +
+      'être reproduit ensuite : exportez vos données avant de supprimer si ' +
       'vous souhaitez les garder.',
   ],
 
@@ -111,15 +111,15 @@ export const CGU_COPY = {
     "Le service peut être interrompu pour maintenance ou pour une raison " +
     "technique. Les journées que vous déclarez hors connexion sont " +
     "conservées sur votre téléphone et transmises dès que la connexion " +
-    "revient ; l'horodatage retenu est alors celui de la réception par le " +
+    "revient ; l'horodatage retenu est alors celui de la réception par le " +
     'serveur, et le relevé indique les deux dates.',
 
   lawHeading: 'Droit applicable et juridiction',
   lawLead:
     'Ces conditions sont soumises au droit français. À défaut de résolution ' +
     "amiable, le litige relève des tribunaux du ressort du siège social de " +
-    "l'éditeur :",
+    "l'éditeur :",
 
   contactHeading: 'Contact',
-  contactLead: 'Pour toute question relative à ces conditions :',
+  contactLead: 'Pour toute question relative à ces conditions :',
 } as const;

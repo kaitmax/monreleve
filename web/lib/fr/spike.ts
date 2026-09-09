@@ -45,17 +45,17 @@ export const SPIKE = {
     telework: 'Télétravail',
     rate: 'Taux',
     rows: [
-      { month: 'Janvier', worked: '21', telework: '8', rate: '38,1 %' },
-      { month: 'Février', worked: '20', telework: '7', rate: '35,0 %' },
-      { month: 'Mars', worked: '22', telework: '9', rate: '40,9 %' },
-      { month: 'Avril', worked: '20', telework: '6', rate: '30,0 %' },
-      { month: 'Mai', worked: '21', telework: '8', rate: '38,1 %' },
-      { month: 'Juin', worked: '21', telework: '7', rate: '33,3 %' },
+      { month: 'Janvier', worked: '21', telework: '8', rate: '38,1 %' },
+      { month: 'Février', worked: '20', telework: '7', rate: '35,0 %' },
+      { month: 'Mars', worked: '22', telework: '9', rate: '40,9 %' },
+      { month: 'Avril', worked: '20', telework: '6', rate: '30,0 %' },
+      { month: 'Mai', worked: '21', telework: '8', rate: '38,1 %' },
+      { month: 'Juin', worked: '21', telework: '7', rate: '33,3 %' },
     ],
   },
 
   banner: {
-    title: 'Seuil de 40 % approché',
+    title: 'Seuil de 40 % approché',
     body: 'Il reste 4 jours de télétravail avant le seuil fiscal.', // TODO-COPY
   },
 

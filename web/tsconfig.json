@@ -32,11 +32,14 @@
   "include": [
     "**/*.ts",
     "**/*.tsx",
+    ".next-visual-11288-mttu83j5/types/**/*.ts",
+    ".next-visual-1412-mttf5fwp/types/**/*.ts",
+    ".next-visual-14376-mtttncgf/types/**/*.ts",
     ".next-visual-17364-mttea3lh/types/**/*.ts",
     ".next-visual-9028-mttex1qe/types/**/*.ts",
     ".next/types/**/*.ts",
     "next-env.d.ts",
-    ".next-visual-1412-mttf5fwp/types/**/*.ts"
+    ".next-visual-5316-mttumjv1/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

@@ -90,23 +90,23 @@ export const CONFIDENTIALITE_COPY = {
   appHeading: "Ce que l'application enregistre",
   appIntro:
     "L'application Android tient le registre de vos journées. Elle " +
-    'enregistre, pour votre compte et pour lui seul :',
+    'enregistre, pour votre compte et pour lui seul :',
   app: [
     'votre adresse e-mail, qui sert aussi à vous connecter, par un lien ' +
-      'envoyé par message et sans mot de passe ;',
+      'envoyé par message et sans mot de passe ;',
     "votre canton de travail, votre taux d'activité, votre méthode de " +
-      "décompte et votre date de début d'activité ;",
+      "décompte et votre date de début d'activité ;",
     'pour chaque journée déclarée, la date, sa nature (Suisse, domicile, ' +
       'mission, absence), la portion (journée entière ou demi-journée) et le ' +
-      "motif s'il s'agit d'une absence ;",
+      "motif s'il s'agit d'une absence ;",
     "l'origine de chaque journée, à savoir une saisie à la main, une " +
       'proposition acceptée ou une proposition corrigée, ainsi que ce qui ' +
-      "avait été proposé lorsque vous l'avez corrigée ;",
+      "avait été proposé lorsque vous l'avez corrigée ;",
     "les horodatages, c'est-à-dire la date et l'heure auxquelles le serveur " +
       'a reçu chaque déclaration. Ils sont assignés par le serveur et jamais ' +
-      "par votre téléphone : c'est ce qui donne sa valeur au relevé annuel ;",
+      "par votre téléphone : c'est ce qui donne sa valeur au relevé annuel ;",
     "l'historique des modifications, en ajout seul. Une correction ajoute " +
-      "une ligne, elle n'en efface aucune ;",
+      "une ligne, elle n'en efface aucune ;",
     'si vous activez le rappel quotidien, un jeton de notification propre à ' +
       'votre appareil.',
   ],
@@ -114,13 +114,13 @@ export const CONFIDENTIALITE_COPY = {
     "L'application ne communique qu'avec notre propre interface de " +
     'programmation et avec le service de notification de Google (FCM), ' +
     'utilisé uniquement pour acheminer le rappel que vous avez demandé. ' +
-    "Aucun autre service tiers n'y est intégré : ni régie publicitaire, ni " +
+    "Aucun autre service tiers n'y est intégré : ni régie publicitaire, ni " +
     'outil de mesure tiers, ni identifiant publicitaire.',
 
   neverHeading: "Ce qui n'est jamais enregistré",
   never: [
     'Aucune coordonnée géographique. Ni latitude, ni longitude, ni altitude, ' +
-      'ni vitesse : jamais enregistrée, jamais transmise, jamais ' +
+      'ni vitesse : jamais enregistrée, jamais transmise, jamais ' +
       'journalisée.',
     'Si vous choisissez le mode automatique, la position est utilisée sur ' +
       'votre appareil uniquement. Chaque relevé de position est comparé à un ' +
@@ -133,10 +133,10 @@ export const CONFIDENTIALITE_COPY = {
     'Notre interface de programmation refuse toute déclaration contenant ' +
       'une latitude, une longitude, une précision, une altitude, une vitesse ' +
       'ou un nom de fournisseur de position. Ce refus est vérifié par un test ' +
-      "automatique : la garantie n'est pas seulement annoncée, elle est " +
+      "automatique : la garantie n'est pas seulement annoncée, elle est " +
       'empêchée techniquement.',
     "Et l'application n'enregistre jamais une journée d'elle-même. Une " +
-      'détection vous propose une journée ; seule votre validation ' +
+      'détection vous propose une journée ; seule votre validation ' +
       "l'enregistre.",
   ],
 
@@ -159,7 +159,7 @@ export const CONFIDENTIALITE_COPY = {
       "jusqu'à la suppression de votre compte, que vous pouvez demander à " +
       "tout moment depuis l'application.",
     "L'historique des modifications est conservé aussi longtemps que le " +
-      "compte : c'est lui qui permet de montrer quand chaque journée a été " +
+      "compte : c'est lui qui permet de montrer quand chaque journée a été " +
       'déclarée, et le relevé perdrait sa valeur sans lui.',
     'Les rapports techniques que le service produit en cas de panne sont ' +
       'débarrassés des adresses e-mail et du contenu des déclarations avant ' +
@@ -169,7 +169,7 @@ export const CONFIDENTIALITE_COPY = {
   hostingHeading: 'Hébergement et prestataires',
   hosting:
     'Les données sont hébergées chez le prestataire indiqué ci-dessous. Deux ' +
-    'autres prestataires interviennent de façon limitée : Resend, pour ' +
+    'autres prestataires interviennent de façon limitée : Resend, pour ' +
     "l'envoi des messages, et le service de notification de Google (FCM), " +
     'pour acheminer le rappel quotidien vers votre appareil.',
 
@@ -192,6 +192,6 @@ export const CONFIDENTIALITE_COPY = {
   complaintHeading: 'Réclamation',
   complaint:
     "Si une réponse ne vous satisfait pas, vous pouvez saisir l'autorité de " +
-    'contrôle : la CNIL en France, ou le Préposé fédéral à la protection des ' +
+    'contrôle : la CNIL en France, ou le Préposé fédéral à la protection des ' +
     'données et à la transparence en Suisse.',
 } as const;
