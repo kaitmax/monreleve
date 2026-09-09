@@ -295,3 +295,50 @@
   font-size: var(--type-caption-size);
   line-height: var(--type-caption-line);
 }
+
+// ---------------------------------------------------------------------------
+// RULING R110: the input-specific provisional notice.
+//
+// INFO, NOT WARNING. --colour-warning is what the rule-set fallback uses, and
+// that one says the calculation ran under a different year's rules. This says
+// a reading is awaiting review, which is a weaker claim about a correct
+// number - so it takes the info colouring and sits above the rate rather than
+// interrupting it.
+// ---------------------------------------------------------------------------
+
+.provisional {
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-left: var(--size-input-border-focus) solid var(--colour-info);
+  border-radius: var(--radius-sm);
+  background: var(--colour-info-soft);
+}
+
+.provisionalLead {
+  margin: 0 0 var(--space-1);
+  color: var(--colour-text-primary);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-caption-line);
+}
+
+.provisionalList {
+  margin: 0 0 var(--space-2);
+  padding-left: var(--space-5);
+  color: var(--colour-text-primary);
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-line);
+}
+
+// The interpretation is named in the same weight as the lead, so a reader can
+// see WHICH reading is pending without reading the sentence.
+.provisionalName {
+  font-weight: var(--type-label-weight);
+}
+
+.provisionalPending {
+  margin: 0;
+  color: var(--colour-text-secondary);
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-line);
+}

@@ -47,7 +47,9 @@ import {
   calculateTelework,
   ruleSetFor,
 } from '@/lib/calc-engine';
+import { provisionalFor } from '@/lib/content/provisional';
 import { CALCULATEUR_COPY } from '@/lib/fr/calculateur';
+import { PROVISIONAL_COPY } from '@/lib/fr/provisional';
 import { CANTONS_BY_NAME } from '@/lib/fr/cantons';
 import { errorMessage } from '@/lib/fr/errors';
 import { FieldGroup } from '@/lib/ui/react/FieldGroup/FieldGroup';
@@ -511,6 +513,17 @@ export function CalculatorForm({ taxYear }: CalculatorFormProps) {
 
   const fallback = result?.warnings.find((warning) => warning.code === 'RULE_SET_FALLBACK');
 
+  /**
+   * RULING R110: which pending readings THIS input depends on.
+   *
+   * Derived from the input rather than from the result, so it is right while
+   * the numbers are still invalid: the reading the user's configuration
+   * depends on does not become relevant only once the form validates. It is
+   * also why this reads the input and not result.warnings - the engine has no
+   * opinion about which of its rules are settled.
+   */
+  const provisional = input === null ? [] : provisionalFor(input);
+
   return (
     <>
       <fieldset className={styles.card}>
@@ -826,6 +839,29 @@ export function CalculatorForm({ taxYear }: CalculatorFormProps) {
           aria-live="polite"
           tabIndex={-1}
         >
+          {/*
+            THE PROVISIONAL NOTICE SITS ABOVE THE NUMBER, and before the
+            branch below, so it shows whether or not the input currently
+            validates. R110: it renders when the INPUT touches a pending
+            reading, which is true of a half-finished form too.
+          */}
+          {provisional.length === 0 ? null : (
+            <div className={styles.provisional}>
+              <p className={styles.provisionalLead}>{PROVISIONAL_COPY.lead}</p>
+              <ul className={styles.provisionalList}>
+                {provisional.map((id) => (
+                  <li key={id}>
+                    <span className={styles.provisionalName}>
+                      {PROVISIONAL_COPY.items[id].interpretation}
+                    </span>
+                    {PROVISIONAL_COPY.items[id].body}
+                  </li>
+                ))}
+              </ul>
+              <p className={styles.provisionalPending}>{PROVISIONAL_COPY.pending}</p>
+            </div>
+          )}
+
           {input === null ? (
             <p className={styles.resultNote}>{RESULT.empty}</p>
           ) : result === null ? (

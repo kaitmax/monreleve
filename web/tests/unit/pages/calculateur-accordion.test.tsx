@@ -32,7 +32,9 @@ import { CalculatorForm } from '@/app/(public)/calculateur-teletravail-frontalie
 import { ruleSetFor } from '@/lib/calc-engine';
 import { CALCULATEUR_COPY } from '@/lib/fr/calculateur';
 import { errorMessage } from '@/lib/fr/errors';
+import { PROVISIONAL_COPY } from '@/lib/fr/provisional';
 import { formatDays, formatPercent } from '@/lib/ui/core';
+import { complianceClaims } from '@/tests/support/vocabulary';
 
 afterEach(cleanup);
 
@@ -445,5 +447,82 @@ describe('a derived error is not reported as a second mistake', () => {
 
     expect(renderedText()).toContain(errorMessage({ code: 'TOTAL_WORK_DAYS_NOT_POSITIVE' }));
     expect(field(FORM.method.totalLabel).getAttribute('aria-invalid')).toBe('true');
+  });
+});
+
+describe('ruling R110: the provisional notice, through the form', () => {
+  // The trigger logic has its own tests in tests/unit/content/provisional.
+  // These assert the other half: that the form actually reaches those states
+  // and renders the copy, and that the reference case does NOT.
+
+  it('is absent on Geneva case (c), the reference calculation', () => {
+    // 24 mission days in France and none in a third state. The imputation
+    // order cannot matter with one place to impute from, so the product's own
+    // verified fixture must show no caveat.
+    setUp();
+    chooseCanton();
+    type(field(FORM.days.label), '84');
+    fireEvent.click(radio(FORM.missions.yes));
+    type(field(FORM.missions.france.label), '24');
+
+    expect(renderedText()).not.toContain(PROVISIONAL_COPY.lead);
+  });
+
+  it('appears with P1 named once missions exist in both places', () => {
+    setUp();
+    chooseCanton();
+    fireEvent.click(radio(FORM.missions.yes));
+    type(field(FORM.missions.france.label), '6');
+    type(field(FORM.missions.thirdState.label), '4');
+
+    expect(renderedText()).toContain(PROVISIONAL_COPY.lead);
+    expect(renderedText()).toContain(PROVISIONAL_COPY.items.P1.interpretation);
+    expect(renderedText()).toContain(PROVISIONAL_COPY.items.P1.body);
+  });
+
+  it('appears with P3 named for the exact method at part time', () => {
+    setUp();
+    chooseCanton();
+    type(field(FORM.rate.label), '80');
+    openAdvanced();
+    fireEvent.click(radio(FORM.method.exact));
+
+    expect(renderedText()).toContain(PROVISIONAL_COPY.items.P3.interpretation);
+    expect(renderedText()).toContain(PROVISIONAL_COPY.items.P3.body);
+  });
+
+  it('says review is pending, which is the point of naming it', () => {
+    setUp();
+    chooseCanton();
+    fireEvent.click(radio(FORM.missions.yes));
+    type(field(FORM.missions.france.label), '6');
+    type(field(FORM.missions.thirdState.label), '4');
+
+    expect(renderedText()).toContain(PROVISIONAL_COPY.pending);
+  });
+
+  it('goes away again when the input stops touching it', () => {
+    setUp();
+    chooseCanton();
+    fireEvent.click(radio(FORM.missions.yes));
+    type(field(FORM.missions.france.label), '6');
+    type(field(FORM.missions.thirdState.label), '4');
+
+    expect(renderedText()).toContain(PROVISIONAL_COPY.lead);
+
+    type(field(FORM.missions.thirdState.label), '0');
+
+    expect(renderedText()).not.toContain(PROVISIONAL_COPY.lead);
+  });
+
+  it('claims nothing about compliance (SPEC 20)', () => {
+    // The copy most likely to reach for a forbidden word - it is about a
+    // reading of a rule - so the vocabulary guard is pointed at it directly.
+    expect(complianceClaims(PROVISIONAL_COPY.lead)).toEqual([]);
+    expect(complianceClaims(PROVISIONAL_COPY.pending)).toEqual([]);
+    for (const item of Object.values(PROVISIONAL_COPY.items)) {
+      expect(complianceClaims(item.interpretation), item.interpretation).toEqual([]);
+      expect(complianceClaims(item.body), item.interpretation).toEqual([]);
+    }
   });
 });
