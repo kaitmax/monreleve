@@ -52,8 +52,33 @@ export type SourceId = (typeof SOURCE_IDS)[number];
  */
 export type SourceStatus = 'transcribed' | 'pending';
 
-export interface SourceEntry {
+/**
+ * The single pass that produced the transcriptions: the Checkpoint A result.
+ *
+ * Per-row in the TYPE rather than a page-level constant, because the next pass
+ * will not re-check everything and a shared constant would then be a lie about
+ * the rows it skipped.
+ */
+export const CHECKPOINT_A = '2026-09-09';
+
+/**
+ * One row, and A PENDING ROW CANNOT CARRY A DATE.
+ *
+ * The first version of this interface had verifiedOn on every row, and I set
+ * it to CHECKPOINT_A for all eight - including the two the pass could not
+ * reach. That is a verification date on an unverified row: precisely the quiet
+ * overclaim this page exists to prevent, on the page that exists to prevent
+ * it.
+ *
+ * A union rather than an optional field, so the wrong combination does not
+ * compile. 'pending' has no date because there is no date; 'transcribed'
+ * requires one because a transcription without a date says nothing about
+ * whether the source has moved since.
+ */
+export type SourceEntry = {
   readonly id: SourceId;
+  /** The publisher, as a reader would name it. */
+  readonly sourceName: string;
   /**
    * Which RuleSet constant this row publishes, if any.
    *
@@ -61,8 +86,10 @@ export interface SourceEntry {
    */
   readonly ruleSetKey?: keyof RuleSet;
   readonly url: string;
-  readonly status: SourceStatus;
-}
+} & (
+  | { readonly status: 'transcribed'; readonly verifiedOn: string }
+  | { readonly status: 'pending' }
+);
 
 /**
  * The eight rows, with their primary source and their state.
@@ -76,46 +103,60 @@ export interface SourceEntry {
 export const SOURCE_ENTRIES: readonly SourceEntry[] = [
   {
     id: 'fiscalCeiling',
+    sourceName: 'admin.ch',
+    verifiedOn: CHECKPOINT_A,
     ruleSetKey: 'fiscalCeiling',
     url: 'https://www.admin.ch/gov/fr/accueil/documentation/communiques.msg-id-96063.html',
     status: 'transcribed',
   },
   {
     id: 'missionCapDays',
+    sourceName: 'ge.ch',
+    verifiedOn: CHECKPOINT_A,
     ruleSetKey: 'missionCapDays',
     url: 'https://www.ge.ch/imposition-du-teletravail-personnes-frontalieres/regles-missions-temporaires-etranger',
     status: 'transcribed',
   },
   {
     id: 'missionCapProration',
+    sourceName: 'ge.ch',
+    verifiedOn: CHECKPOINT_A,
     url: 'https://www.ge.ch/imposition-du-teletravail-personnes-frontalieres/regles-missions-temporaires-etranger',
     status: 'transcribed',
   },
   {
     id: 'socialCeiling',
+    sourceName: 'bsv.admin.ch',
+    verifiedOn: CHECKPOINT_A,
     ruleSetKey: 'socialCeiling',
     url: 'https://www.bsv.admin.ch/bsv/fr/home/assurances-sociales/int/teletravail.html',
     status: 'transcribed',
   },
   {
     id: 'simplifiedBasisDays',
+    sourceName: 'ge.ch',
+    verifiedOn: CHECKPOINT_A,
     ruleSetKey: 'simplifiedBasisDays',
     url: 'https://www.ge.ch/imposition-du-teletravail-personnes-frontalieres/regles-missions-temporaires-etranger',
     status: 'transcribed',
   },
   {
     id: 'dayClassification',
+    sourceName: 'ge.ch',
     url: 'https://www.ge.ch/imposition-du-teletravail-personnes-frontalieres/regles-missions-temporaires-etranger',
     status: 'pending',
   },
   {
     id: 'residence1983Cantons',
+    sourceName: 'ge.ch',
     ruleSetKey: 'residence1983Cantons',
     url: 'https://www.ge.ch/imposition-du-teletravail-personnes-frontalieres/regles-missions-temporaires-etranger',
     status: 'pending',
   },
   {
     id: 'a1ThresholdRate',
+    sourceName: 'bsv.admin.ch',
+    verifiedOn: CHECKPOINT_A,
     ruleSetKey: 'a1ThresholdRate',
     url: 'https://www.bsv.admin.ch/bsv/fr/home/assurances-sociales/int/teletravail.html',
     status: 'transcribed',

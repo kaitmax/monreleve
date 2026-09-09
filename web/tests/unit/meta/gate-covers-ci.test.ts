@@ -333,3 +333,86 @@ describe('the uncompiled scripts are type-checked (R107)', () => {
     expect(source).toContain("@type {typeof import('../lib/ui/core/format/date')}");
   });
 });
+
+// ---------------------------------------------------------------------------
+// THE REVERSE DIRECTION, found by ruling R112's audit.
+//
+// R106 and R111 assert CI -> local: every workflow step is run by one of the
+// four. Nothing asserted local -> CI, and the audit found what fell through
+// it: `pnpm test:runtime` exists, runs ruling R81's runtime guard against a
+// deliberately misconfigured server, and is invoked by NOTHING - not the
+// workflow, not gate, not the recorded five. Those wiring assertions - the
+// sitemap refusing with 503, the canonical omitted, the health route
+// reachable - have not run since FW10 wrote them.
+//
+// R112's rule is the general form: anything removed from one verification
+// layer is NAMED and picked up by another. A check command nobody runs is the
+// same failure with the layers swapped, so every check script must now be
+// accounted for: run by CI, or listed here with the reason it is not.
+// ---------------------------------------------------------------------------
+
+/**
+ * Check commands that deliberately do not run in CI, and why.
+ *
+ * A REASON EACH, because the list is the only thing standing between "local
+ * on purpose" and "forgotten". Both entries are real: one would be
+ * tautological in CI, the other is an open question rather than a decision.
+ */
+const LOCAL_ONLY: Record<string, string> = {
+  test:
+    'The fast inner-loop form. CI runs test:coverage, which is a strict ' +
+    'superset - the same suite plus the 100% thresholds - so a pass here that ' +
+    'failed there is impossible.',
+  'test:visual:update':
+    'Writes baselines rather than checking them. Running it in CI would mean ' +
+    'CI deciding what the product looks like, which is the whole failure ' +
+    'ruling R114 forbids in its other form.',
+  'test:clean-tree':
+    'CI is already a fresh checkout, so moving the generated directories ' +
+    'aside there would assert nothing (R94).',
+  'test:runtime':
+    'Needs a server started in a deliberately broken configuration - no ' +
+    'NEXT_PUBLIC_SITE_URL - which the CI job would have to set up on its own. ' +
+    'NOT a decision: raised as a question, because R81 wiring that nothing ' +
+    'runs is a guard in name only.',
+};
+
+describe('every check command is accounted for (R112, reverse direction)', () => {
+  /** Scripts that look like a check rather than a build step or a helper. */
+  const checkScripts = Object.keys(PACKAGE.scripts).filter((name) =>
+    /^(test|lint|typecheck|size|parity)/.test(name),
+  );
+
+  it('finds the check scripts, so nothing below passes vacuously', () => {
+    expect(checkScripts.length).toBeGreaterThanOrEqual(8);
+    expect(checkScripts).toContain('test:runtime');
+  });
+
+  it.each(checkScripts)('%s is run by CI or listed as local-only', (name) => {
+    const inCi = MAPPING_TARGETS.some((target) => reachableFrom(target).has(name));
+    const declared = Object.prototype.hasOwnProperty.call(LOCAL_ONLY, name);
+
+    expect(
+      inCi || declared,
+      `"pnpm ${name}" is run by no CI-mapped command and is not declared ` +
+        'local-only. Either add it to CI, or add it to LOCAL_ONLY with the ' +
+        'reason - a check nobody runs is a guard in name only.',
+    ).toBe(true);
+  });
+
+  it('gives every local-only entry a reason worth reading', () => {
+    for (const [name, reason] of Object.entries(LOCAL_ONLY)) {
+      expect(PACKAGE.scripts[name], `${name} is listed but does not exist`).toBeDefined();
+      expect(reason.length, name).toBeGreaterThan(40);
+    }
+  });
+
+  it('does not excuse anything that IS run by CI', () => {
+    // A stale entry here would quietly permit a command to leave CI later.
+    for (const name of Object.keys(LOCAL_ONLY)) {
+      const inCi = MAPPING_TARGETS.some((target) => reachableFrom(target).has(name));
+
+      expect(inCi, `${name} is declared local-only but CI runs it`).toBe(false);
+    }
+  });
+});

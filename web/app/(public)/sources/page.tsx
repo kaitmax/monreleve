@@ -22,11 +22,15 @@
 // place where being stale would be worst - the whole subject of the page is
 // where the numbers come from.
 //
-// STATIC, like the legal pages: no revalidate and no dynamic. Nothing here
-// depends on the request, and the year the table is built for comes from the
-// same Europe/Paris resolver the calculator uses (R55), so a build-time year
-// would state the wrong one from 1 January until somebody deployed - hence
-// revalidate rather than a fully static render.
+// STATICALLY RENDERED WITH AN HOURLY REVALIDATE, not fully static, and the
+// prompt's "static server page" is met in the sense that matters: the render
+// happens at build or revalidate time, never per request, so the metadata
+// lands inside <head> - which is the defect FW11 measured on the calculator
+// when force-dynamic streamed the head and Google discarded the canonical.
+//
+// Not FULLY static because the table is built for a tax year resolved from
+// the Europe/Paris date (R55). Frozen at build time it would state the
+// previous year from 1 January until somebody deployed.
 
 import type { Metadata } from 'next';
 import { ruleSetFor } from '@/lib/calc-engine';
@@ -106,11 +110,12 @@ export default function SourcesPage() {
           <h2 className={styles.heading}>{COPY.tableHeading}</h2>
 
           {/*
-            A real table, because this is tabular data: eight rows against four
-            columns, and a screen reader should be able to say "Source
+            A real table, because this is tabular data: eight rows against
+            five columns, and a screen reader should be able to say "Source
             primaire, ge.ch" rather than read a stack of divs. It scrolls
             inside its own container at narrow widths rather than making the
-            page scroll sideways.
+            page scroll sideways - measured at 320, 360, 390, 1280 and 1440,
+            with 0 px of PAGE overflow at every one.
           */}
           <div className={styles.tableScroll}>
             <table className={styles.table}>
@@ -119,6 +124,7 @@ export default function SourcesPage() {
                   <th scope="col">{COPY.columns.rule}</th>
                   <th scope="col">{COPY.columns.value}</th>
                   <th scope="col">{COPY.columns.source}</th>
+                  <th scope="col">{COPY.columns.verifiedOn}</th>
                   <th scope="col">{COPY.columns.status}</th>
                 </tr>
               </thead>
@@ -141,8 +147,21 @@ export default function SourcesPage() {
                         rel="noreferrer"
                         target="_blank"
                       >
-                        {new URL(entry.url).hostname}
+                        {entry.sourceName}
                       </a>
+                    </td>
+                    {/*
+                      A DATE ONLY WHERE THERE IS ONE. The type makes a pending
+                      row unable to carry one at all - see lib/content/
+                      sources.ts, where an earlier version of this table gave
+                      all eight rows the Checkpoint A date including the two
+                      the pass never reached. An em dash rather than an empty
+                      cell, because an empty cell in a verification table
+                      reads as data somebody forgot rather than as an absence
+                      that is the point.
+                    */}
+                    <td className={styles.valueCell}>
+                      {entry.status === 'transcribed' ? formatDate(entry.verifiedOn) : COPY.notRead}
                     </td>
                     <td>
                       <span

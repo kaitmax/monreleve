@@ -58,6 +58,7 @@ export const SOURCES_COPY = {
     rule: 'Règle',
     value: 'Valeur appliquée',
     source: 'Source primaire',
+    verifiedOn: 'Relevé le',
     status: 'État',
   },
 
@@ -104,6 +105,15 @@ export const SOURCES_COPY = {
       "Part de télétravail à partir de laquelle l'accord-cadre européen " +
       "s'applique",
   } satisfies Record<SourceId, string>,
+
+  /**
+   * Shown in the date column of a row that was never read.
+   *
+   * An em dash rather than an empty cell: an empty cell in a verification
+   * table reads as data somebody forgot, and these two absences are the
+   * point rather than an oversight.
+   */
+  notRead: String.fromCharCode(0x2014),
 
   /** Rows that state a rule rather than hold a number. */
   noValue: 'règle, sans valeur chiffrée',

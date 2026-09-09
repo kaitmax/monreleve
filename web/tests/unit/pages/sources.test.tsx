@@ -23,7 +23,7 @@ import SourcesPage, { generateMetadata } from '@/app/(public)/sources/page';
 import { ruleSetFor } from '@/lib/calc-engine';
 import { PUBLISHED_PROVISIONAL_IDS } from '@/lib/content/provisional';
 import { LAST_REGULATORY_REVIEW } from '@/lib/content/regulatory';
-import { SOURCE_ENTRIES, SOURCE_IDS } from '@/lib/content/sources';
+import { CHECKPOINT_A, SOURCE_ENTRIES, SOURCE_IDS } from '@/lib/content/sources';
 import { currentTaxYear } from '@/lib/content/tax-year';
 import { SOURCES_COPY } from '@/lib/fr/sources';
 import { PublicShell } from '@/lib/ui/react/PublicShell/PublicShell';
@@ -212,7 +212,41 @@ describe('the assembled page', () => {
     const { container } = render(<SourcesPage />);
 
     expect(container.querySelectorAll('table')).toHaveLength(1);
-    expect(container.querySelectorAll('th[scope="col"]')).toHaveLength(4);
+    expect(container.querySelectorAll('th[scope="col"]')).toHaveLength(5);
     expect(container.querySelectorAll('th[scope="row"]')).toHaveLength(8);
+  });
+});
+
+describe('the verification date column', () => {
+  it('dates every transcribed row', () => {
+    const text = pageText();
+    const transcribed = SOURCE_ENTRIES.filter((entry) => entry.status === 'transcribed');
+
+    expect(transcribed).toHaveLength(6);
+    expect(text).toContain(formatDate(CHECKPOINT_A));
+  });
+
+  it('leaves the two unreached rows undated, not dated', () => {
+    // THE OVERCLAIM THIS PREVENTS, and I shipped it for one commit: every row
+    // carried the Checkpoint A date, including the two the pass never
+    // reached. A verification date on an unverified row, on the page that
+    // exists to stop exactly that.
+    //
+    // The type now makes it impossible - lib/content/sources.ts models a
+    // pending row without a date field at all, and adding one is TS2353 - so
+    // this asserts the RENDERED consequence: an em dash where there is no
+    // date.
+    const pending = SOURCE_ENTRIES.filter((entry) => entry.status === 'pending');
+
+    expect(pending).toHaveLength(2);
+    expect(pageText()).toContain(SOURCES_COPY.notRead);
+  });
+
+  it('names the publisher rather than showing a bare hostname', () => {
+    const text = pageText();
+
+    for (const entry of SOURCE_ENTRIES) {
+      expect(text, entry.id).toContain(entry.sourceName);
+    }
   });
 });
