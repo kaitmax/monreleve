@@ -867,3 +867,269 @@ baseline tolerance the postscript could only verify here.
 ================================================================================
 END OF REPORT-FW11.txt
 ================================================================================
+
+================================================================================
+ADDENDUM - FW12 PRE-STEP RULINGS R106-R110, APPLIED
+================================================================================
+Received after this report was first pushed, headed "paste before relay/FW12.txt
+when it is written".
+
+SCOPE, STATED FIRST. relay/FW12.txt DOES NOT EXIST - checked, the relay
+directory holds FW1 through FW11 and PHASE-1.md. So FW12 itself is not started:
+no result panel, no ZoneBadge, no ThresholdRail, no MetricTiles, no warning
+banners, no share control. What IS applied is the four rulings that correct
+behaviour already shipped on an indexed page, three of which answer questions
+this report raised. Parking a live defect until a prompt exists would be the
+wrong call; starting the next task without one would also be. Five commits,
+96c76fc..faa2e50.
+
+--------------------------------------------------------------------------------
+R106 - THE GATE IS DERIVED FROM THE WORKFLOW
+--------------------------------------------------------------------------------
+tests/unit/meta/gate-covers-ci.test.ts parses .github/workflows/ci.yml and
+asserts every check step is run locally. R94 said "the local gate is the CI
+command" and this report ASSERTED that it was - a claim in a report, where
+nothing can check it. It is a test now.
+
+PROVEN BY REMOVAL, as the ruling requires:
+
+  gate without pnpm parity:check -> 3 failures, naming both uncovered steps:
+    CI runs "pnpm parity:build" and no local command does. Add it to one
+    of: gate, test:visual, test:a11y, test:clean-tree.
+    CI runs "node scripts/check-format-parity.mjs dist-parity" and no local
+    command does. ...
+  gate without pnpm size        -> 1 failure naming pnpm size.
+
+The first of those IS the eight-commit defect, reproduced from the config
+alone with no build and no network.
+
+ONE READING STATED RATHER THAN ASSUMED. R106 says "appears in pnpm gate"; the
+test asserts coverage by the four RECORDED local commands instead, because the
+visual job needs Docker and folding it into pnpm gate would make the ordinary
+gate unrunnable without a container. LOCAL_ENTRY_POINTS is asserted to be
+exactly gate, test:visual, test:a11y and test:clean-tree, so widening the set
+is a deliberate edit and not a way to make the test pass.
+
+No YAML parser is installed and adding a dependency is ask-first, so the steps
+are read with a line scanner. That is safe only because of the non-vacuity
+assertion: a workflow reformatted into block scalars would make a naive
+scanner find NOTHING and report every step covered - R63's failure shape
+exactly.
+
+--------------------------------------------------------------------------------
+R107 - A TYPE-ENFORCED RULE NEEDS A COMPANION CHECK
+--------------------------------------------------------------------------------
+tsconfig.scripts.json brings scripts/**/*.mjs under checkJs, run by pnpm
+typecheck so CI's existing step picks it up rather than needing a new one.
+
+AND checkJs ALONE WOULD NOT HAVE CAUGHT THE DEFECT. check-format-parity.mjs
+loads the built output through a dynamic import of a COMPUTED path;
+TypeScript types that as any, so every formatter was any and any arity was
+legal. That is precisely how formatPercent(100) survived a rule enforced as "a
+compile error, not convention". The file now carries a JSDoc @type at that
+boundary pointing at the SOURCE module, so signatures flow from the
+declaration while the runtime still loads dist-parity - which is the point of
+a parity check: types from one place, bytes under test from another.
+
+PROVEN: reintroducing the call gives
+  scripts/check-format-parity.mjs(85,26): error TS2554: Expected 2 arguments,
+  but got 1
+and pnpm typecheck exits 1.
+
+check-budgets.mjs gained a BudgetRow typedef rather than a suppression.
+checkJs reported 21 errors there, all one cause: the gate arithmetic adds
+delta, failsA and failsB to an inferred object literal. Declaring the shape is
+better than silencing it - those three computed fields are what the verdict
+column depends on and nothing said so. strict and noImplicitAny are off in
+that project deliberately: the goal is calls into typed product code, not
+fully typing six build scripts, and turning them on produced a wall of
+findings unrelated to the rule.
+
+THE AUDIT R107 ASKS FOR - every type-enforced rule, and its reach:
+
+  rule                                        site                reach out
+  ------------------------------------------- ------------------- ---------
+  CANTON_NAMES Record<Canton, string>         lib/fr/cantons.ts   none
+  FIELD_NAMES Record<keyof TeleworkInput,...>  lib/fr/errors.ts    none
+  ERROR_COPY Record<Code, string>             lib/fr/errors.ts    none
+  errorMessage never-switch                   lib/fr/errors.ts    none
+  PROVISIONAL_COPY satisfies Record<...>      lib/fr/provisional  none
+  fieldFor never-switch                       CalculatorForm.tsx  none
+  formatter signatures (R97's precision)      lib/ui/core/format  ESCAPED
+
+Exactly one rule ever left tsc's graph, through exactly one file, and only via
+that dynamic import. The other six are consumed only by .ts and .tsx, which
+tsconfig.json already includes. The two createRequire calls in the scripts
+target package manifests rather than product code. Nothing else in the
+repository consumes a type-enforced rule from outside the compiler's view.
+
+Four drift guards, because the config is now the thing load-bearing: the
+include is asserted to be a glob and not a file list, checkJs is asserted on,
+typecheck is asserted to run the project, and both JSDoc boundaries are
+asserted present - without them checkJs is checking any again.
+
+--------------------------------------------------------------------------------
+R108 - A MANDATED SENTENCE THAT HAS BECOME FALSE IS NEVER WRITTEN
+--------------------------------------------------------------------------------
+Nothing to build; it formalises how this report's LAST LINE was handled, which
+stands unchanged.
+
+IT ALSO REACHES CODE COMMENTS, and it was needed twice within the hour of
+being issued - both times against something I had written:
+
+  1. e2e/calculateur.visual.spec.ts claimed a maxDiffPixels tolerance "cannot
+     hide a real regression". It hid one. Quoted, superseded and replaced -
+     see the correction below.
+  2. The same file claimed the select's dropdown arrow was still compared.
+     color: transparent hid it; -webkit-text-fill-color may not, and I had not
+     verified which. The comment now declines to claim it at all.
+
+An unverified claim in a comment is how the first version of that file came to
+say something false, and R108's discipline is the one that catches it.
+
+--------------------------------------------------------------------------------
+CORRECTION: THE POSTSCRIPT'S TOLERANCE IS SUPERSEDED
+--------------------------------------------------------------------------------
+The POSTSCRIPT above says calculateur.visual.spec.ts carries
+maxDiffPixels: 600 and that "it cannot hide a real regression". BOTH THE
+MECHANISM AND THE CLAIM ARE WITHDRAWN.
+
+WHAT HAPPENED. R109 turned five number inputs into text inputs, removing every
+spinner - a deliberate, wholesale change to the form's appearance. All six
+baselines silently declined to regenerate, because --update-snapshots only
+rewrites a baseline whose comparison FAILS and every change came in under the
+600-pixel allowance. Noticed because git status showed no baseline changed when
+all six should have; measured by setting the tolerance to zero, at which point
+all six failed.
+
+So the estimate in the postscript - that a real change would move thousands of
+pixels - was wrong about this change, which moved a few hundred across six
+images and was entirely real.
+
+WHAT REPLACED IT. e2e/visual-select.css paints select text transparent for the
+duration of the shot, injected through stylePath. Zero tolerance is restored
+on all six. The cause is removed rather than the symptom tolerated, and the
+cost is bounded and describable: these baselines no longer record the select's
+LABEL TEXT. They still record its box - border, width, height, position. The
+text is asserted where a string belongs, exhaustively: all 26 options, their
+French names and their collation order, in one pass in
+tests/unit/pages/calculateur-form.test.tsx.
+
+Q19 in the postscript asked whether a tolerance or a mask was the better
+trade. Neither was: the answer was to stop comparing the one thing that is not
+reproducible, and keep comparing everything else exactly. Q19 is withdrawn and
+replaced by Q21 below.
+
+--------------------------------------------------------------------------------
+R109 - NUMBER INPUTS
+--------------------------------------------------------------------------------
+All five numeric fields are type="text" with inputMode="decimal", accepting
+both separators and normalising to the period internally only. The field shows
+what was typed: rewriting the comma in state would move the caret and fight
+the user mid-number.
+
+The defect was reproduced before the fix - after typing "83,5" the field read
+the EMPTY STRING - and the tests are the ones the ruling names: "83,5" and
+"83.5" both compute 34,79 % of the 240-day basis, each field shows the
+separator that was typed, a comma works in the rate too, and "abc" is refused
+by the engine, which is now the only thing refusing it.
+
+step, min and max are gone rather than left inert on a text input, where they
+would read as a bound the browser was enforcing while nothing was.
+
+SPEC 9.3 corrected under R9, with the reason recorded in the spec beside the
+table so the next reader does not reintroduce type="number" from the old row.
+
+--------------------------------------------------------------------------------
+R110 - PROVISIONAL NOTICE, INPUT-SPECIFIC
+--------------------------------------------------------------------------------
+lib/content/provisional.ts holds the triggers, exactly as the ruling states
+them; lib/fr/provisional.ts holds the copy, which names the reading and says
+review is pending and stops.
+
+  P1  missionDaysFrance > 0 AND missionDaysThirdState > 0
+  P3  exact method AND (employmentRate < 100 OR periodFraction < 1)
+
+Geneva case (c) - the fixture the engine is verified against - has 24 mission
+days in France and none elsewhere, so the product's own reference calculation
+carries NO caveat. That is asserted, twice: in the trigger's unit tests and
+through the form.
+
+Derived from the INPUT and not from the result, so it is right while the
+numbers are still invalid: the reading a configuration depends on does not
+become relevant only once the form validates.
+
+IN lib/content RATHER THAN THE ENGINE because verification STATUS is editorial
+state - it belongs beside LAST_REGULATORY_REVIEW, changes when a lawyer
+answers rather than when code changes, and putting it in the engine would mean
+the engine importing its own provenance.
+
+Four probes: P1's AND becoming OR reddens 3 unit tests and 2 form tests, one
+of them being Geneva case (c) starting to fire; P3 losing its full-time guard
+reddens 1; the notice never rendering reddens 4. Both directions covered.
+
+/sources IS NOT BUILT. R110's last clause - "/sources publishes P1, P2 and P3
+with their status" - cannot be done here: the route registry has it as
+status: 'planned', task: 'FW20'. Carried as Q22. P2 has no input trigger by
+R110's own design, so /sources is currently the ONLY place it would be
+disclosed, and that place does not exist yet.
+
+--------------------------------------------------------------------------------
+R47 - CARRIED, STILL THE OPERATOR'S
+--------------------------------------------------------------------------------
+The PAT. Unchanged from Q9: live at the last check, never in this repository,
+and not re-checkable from a session that does not hold the value. Please
+revoke it.
+
+--------------------------------------------------------------------------------
+NEW QUESTIONS FROM THE ADDENDUM
+--------------------------------------------------------------------------------
+Q20. R106'S SCOPE. The test asserts CI coverage by the four recorded commands
+    rather than by pnpm gate alone, because the visual job needs Docker.
+    Confirm that reading, or say that pnpm gate should require a container -
+    in which case gate becomes unrunnable on a machine without Docker and the
+    four-command convention in every report so far collapses into one.
+
+Q21. THE VISUAL SELECT. Its label text is no longer compared in the six
+    calculator baselines, because Chromium's native control text is not
+    reproducible between my container and CI's. The box still is. The
+    alternatives are a custom listbox - a design decision and considerably
+    more code - or accepting the gap. My recommendation is the gap as
+    committed, revisited if a second native control ever needs the same
+    treatment: two would be a pattern, and a pattern deserves the custom
+    control.
+
+Q22. /sources AND P1-P3. R110 requires /sources to publish all three with
+    their status. It is FW20's route. Until it exists, P2 is disclosed
+    NOWHERE - it has no input trigger by design, and the calculator is
+    indexed. Bring /sources forward, or accept that the 49,9 versus under-50
+    edge is undisclosed until FW20.
+
+Q23. APOSTROPHE STYLE IN lib/fr. R91's codepoint registry watches whitespace
+    and invisible-format characters but not U+2019, so apostrophe style drifts
+    silently: spike.ts and statuses.ts each carry one curly apostrophe against
+    straight ones everywhere else. Mine is normalised to the dominant style
+    and the other two are untouched as out of scope. One rule, and the
+    registry could enforce it in a line - but which rule is a copy decision.
+
+--------------------------------------------------------------------------------
+ADDENDUM VERIFICATION
+--------------------------------------------------------------------------------
+Five commits, all pushed:
+
+  96c76fc  R109: a French decimal comma, and the tolerance I had to withdraw
+  e728664  R110: the provisional notice, triggered by the input and nothing else
+  faa2e50  R106 and R107: the gate is derived from the workflow, and type
+           rules now reach the files tsc never compiled
+
+The four commands after each, exit 0 every time. Final state:
+
+  80 test files, 1437 tests, 100% statements, branches, functions and lines
+  65 e2e, 54 visual, 57 a11y
+  format parity: 11 codepoint cases and 10001 exhaustive values identical
+  suite floor: 80 files, 1437 tests
+  All gated routes pass GATE A and GATE B
+
+================================================================================
+END OF ADDENDUM
+================================================================================
