@@ -44,6 +44,7 @@ import {
 import CalculateurPage from '@/app/(public)/calculateur-teletravail-frontalier/page';
 import { CALCULATEUR_COPY } from '@/lib/fr/calculateur';
 import { LEGAL_COPY } from '@/lib/fr/legal';
+import { CANTONS_BY_NAME } from '@/lib/fr/cantons';
 import { RESULT_COPY, WARNING_CODES, warningEntry } from '@/lib/fr/result';
 import { PublicShell } from '@/lib/ui/react/PublicShell/PublicShell';
 import { type Status } from '@/lib/ui/core';
@@ -404,5 +405,89 @@ describe('the standing disclaimer is said once, not twice (increment 6)', () => 
     );
 
     expect(links).toHaveLength(1);
+  });
+});
+
+describe('the copy cannot out-claim the engine (R125)', () => {
+  // RULING R125, and the shape of the defect is worth more than the fix.
+  //
+  // THE ENGINE GUARDED THIS CLAIM AND THE COPY LEAKED IT ANYWAY.
+  // warnings.ts has carried this for four tasks:
+  //
+  //   // Only under the 1983 accord is the status itself at risk. Telling a
+  //   // Geneva frontalier their status is at risk would simply be false.
+  //   if (context.regime === 'residence-1983') {
+  //     warnings.push({ code: 'FRONTALIER_STATUS_AT_RISK' });
+  //   }
+  //
+  // So the engine emits the status warning for eight cantons and withholds it
+  // for the other eighteen, on purpose, with the reason written down. And
+  // FISCAL_CEILING_EXCEEDED's body said "dans les cantons relevant de
+  // l'accord de 1983, le statut de frontalier lui-meme est en jeu" to
+  // everyone - which put back, in prose, exactly the false statement the
+  // engine had gone out of its way not to make.
+  //
+  // The operator's ruling: "Telling a source-taxed reader their frontalier
+  // status is at risk is false: under the source regime a breach taxes the
+  // excess days in France, and only the 1983-accord cantons put the status
+  // itself in question."
+  //
+  // SO THE PROPERTY IS CROSS-LAYER, and neither layer can be checked alone: a
+  // phrase the engine restricts to a regime must not appear in copy rendered
+  // for any other regime. Asserted over the whole canton list rather than one
+  // example, because the failure is per-canton and there are twenty-six.
+  const CANTONS = CANTONS_BY_NAME.map(([code]) => code);
+
+  const STATUS_PHRASE = 'statut de frontalier';
+
+  const breachIn = (canton: TeleworkInput['canton']): TeleworkResult =>
+    resultFor({ ...BASE, canton, teleworkDays: 110, missionDaysFrance: 0 });
+
+  it('emits the status warning for the 1983 cantons and no others', () => {
+    const rules = ruleSetFor(TAX_YEAR);
+    const emitting = CANTONS.filter((canton) =>
+      breachIn(canton).warnings.some((w) => w.code === 'FRONTALIER_STATUS_AT_RISK'),
+    );
+
+    expect([...emitting].sort()).toEqual([...rules.residence1983Cantons].sort());
+    expect(emitting.length).toBeGreaterThan(0);
+    expect(emitting.length).toBeLessThan(CANTONS.length);
+  });
+
+  it('never renders the phrase for a canton the engine withheld it from', () => {
+    // THE ASSERTION THAT WOULD HAVE CAUGHT THE DEFECT. It reads the rendered
+    // panel, so it covers every warning body at once rather than the one that
+    // happened to be wrong.
+    const rules = ruleSetFor(TAX_YEAR);
+
+    for (const canton of CANTONS) {
+      const result = breachIn(canton);
+      const container = panelWith(result.warnings, { ...BASE, canton, teleworkDays: 110 });
+      const text = container.querySelector('[data-panel="warnings"]')?.textContent ?? '';
+      const isNineteenEightyThree = rules.residence1983Cantons.includes(canton);
+
+      expect(text.includes(STATUS_PHRASE), `${canton} (1983: ${String(isNineteenEightyThree)})`).toBe(
+        isNineteenEightyThree,
+      );
+
+      cleanup();
+    }
+  });
+
+  it('says something about the breach in both regimes', () => {
+    // Non-vacuity: the source-canton body must be a DIFFERENT sentence, not a
+    // shorter one that dropped the consequence. Both name where the excess
+    // days are taxed.
+    for (const canton of ['GE', 'BE'] as const) {
+      const container = panelWith(breachIn(canton).warnings, {
+        ...BASE,
+        canton,
+        teleworkDays: 110,
+      });
+      const text = container.querySelector('[data-panel="warnings"]')?.textContent ?? '';
+
+      expect(text, canton).toContain('imposables en France');
+      cleanup();
+    }
   });
 });

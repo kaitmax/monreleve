@@ -233,6 +233,47 @@ They go to the named expert reviewer, not to a website.
 Rows 6 and 7 of the constants table were **not reached** by this pass and
 keep their unchecked boxes. Neither is exercised by a Geneva fixture.
 
+## COPY ITEMS FOR THE REVIEWER
+
+Wording the reviewer must confirm, kept separate from the readings above
+because these are not open questions about the RULES. The arithmetic is
+settled and sourced; what needs a second pair of eyes is what the product
+SAYS about it. Ruling R125.
+
+- [ ] **The fiscal-breach banner now reads differently per regime.** FW12,
+  ruling R125.
+
+  `FISCAL_CEILING_EXCEEDED` used to end with *"dans les cantons relevant de
+  l'accord de 1983, le statut de frontalier lui-même est en jeu"* for every
+  reader. Under the source regime that is **false**: a breach taxes the
+  excess days in France and the status itself is not in question. Only the
+  eight `residence1983Cantons` put the status at stake.
+
+  **The engine had this right and the copy leaked it anyway.** `warnings.ts`
+  emits `FRONTALIER_STATUS_AT_RISK` only for `residence-1983`, with the
+  reason written beside the guard: *"Only under the 1983 accord is the status
+  itself at risk. Telling a Geneva frontalier their status is at risk would
+  simply be false."* The banner body put that same false statement back in
+  prose — and for the eight cantons where it IS true, it repeated what the
+  dedicated warning says one line below.
+
+  So the body now branches on the regime the engine already carries. Two
+  sentences, both naming where the excess days are taxed; only the 1983 one
+  names the status. SPEC §7.2 step 1 is **confirmed, not reinterpreted** —
+  *"the ceiling is the same under both regimes, the consequence is not"* is
+  exactly this distinction, and the engine comment already cited it.
+
+  *What the reviewer is asked:* whether the two French sentences state the
+  consequence correctly for their regime. **Not** whether the distinction
+  exists — Checkpoint A settled that, and `residence1983Cantons` is row 7 of
+  the constants table.
+
+  Asserted cross-layer in `tests/unit/pages/result-panel-warnings.test.tsx`:
+  over all twenty-six cantons, the phrase *"statut de frontalier"* appears in
+  the rendered panel exactly when the engine emitted the status warning. A
+  phrase the engine restricts to one regime cannot appear in copy rendered
+  for another.
+
 ## What is deliberately not here
 
 - **The Geneva worked examples.** They arrive at FW4 as

@@ -195,6 +195,31 @@ const AUDIT: readonly Pair[] = [
   ...on('rail unavailable text', '--colour-text-secondary', NORMAL_TEXT),
 ];
 
+/**
+ * A ratio as a failure message should state it. RULING R121.
+ *
+ * WHY toFixed(2) HAD TO GO, and it is the smallest change in this file with
+ * the largest reason. --colour-text-secondary on --colour-info-soft measures
+ * 4.497455631974162, which FAILS the 4,5 bar - and printed to two decimals it
+ * reads:
+ *
+ *   "--colour-text-secondary on --colour-info-soft is 4.50:1, below 4.5:1"
+ *
+ * A number that looks like a pass, in a sentence saying it failed. A reader
+ * hunting that message finds an apparent contradiction and the obvious
+ * conclusion is a rounding quirk in the gate rather than a defect in the
+ * product - which is the "would pass" problem of R115 wearing a different
+ * costume: a gate whose OUTPUT reassures about something its VERDICT
+ * condemns.
+ *
+ * So four decimals, and the raw double after it. The comparison itself was
+ * always on the unrounded value; what changes is that the report now agrees
+ * with the verdict.
+ */
+function describeRatio(ratio: number): string {
+  return `${ratio.toFixed(4)}:1 (unrounded ${String(ratio)})`;
+}
+
 describe('every foreground the five components paint clears its gate (AC2)', () => {
   it('compiled the token layer, so nothing below passes vacuously', () => {
     expect(Object.keys(TOKENS).length).toBeGreaterThan(0);
@@ -207,10 +232,47 @@ describe('every foreground the five components paint clears its gate (AC2)', () 
 
       expect(
         ratio,
-        `${pair.fg} on ${pair.bg} is ${ratio.toFixed(2)}:1, below ${pair.gate}:1`,
+        `${pair.fg} on ${pair.bg} is ${describeRatio(ratio)}, below ${pair.gate}:1`,
       ).toBeGreaterThanOrEqual(pair.gate);
     });
   }
+});
+
+describe('the report never looks like a pass when the verdict is a fail (R121)', () => {
+  // THE MEASUREMENT THAT PRODUCED THE RULING, used as the test case. The
+  // pairing is real: it is what R110's notice shipped with from FW11 until
+  // FW12 increment 6.
+  const NEAR_MISS = 4.497455631974162;
+
+  it('does not round a failing ratio up to the bar', () => {
+    const described = describeRatio(NEAR_MISS);
+
+    expect(described).not.toContain('4.50:1');
+    expect(described).toContain('4.4975');
+  });
+
+  it('carries the raw double, so the verdict can be rechecked by hand', () => {
+    expect(describeRatio(NEAR_MISS)).toContain('4.497455631974162');
+  });
+
+  it('is the ratio the tokens actually produce, not a literal typed here', () => {
+    // Non-vacuity: NEAR_MISS has to BE the product's number, or this whole
+    // block is a test of a constant.
+    expect(contrast('--colour-text-secondary', '--colour-info-soft')).toBe(NEAR_MISS);
+    expect(NEAR_MISS).toBeLessThan(NORMAL_TEXT);
+    expect(Number(NEAR_MISS.toFixed(2))).toBe(NORMAL_TEXT);
+  });
+
+  it('still reads correctly for a comfortable pass', () => {
+    // The formatter is used on every message, not only failures, so it must
+    // not make a healthy ratio look marginal. text-primary on the warning
+    // fill is the warning banners' pairing, and it clears the bar by a wide
+    // margin.
+    const comfortable = contrast('--colour-text-primary', '--colour-warning-soft');
+
+    expect(comfortable).toBeGreaterThan(16);
+    expect(describeRatio(comfortable)).toContain('16.6');
+  });
 });
 
 describe('the rulings the audit produced, pinned as measurements', () => {
@@ -369,7 +431,74 @@ interface Painted {
   readonly bg: string | undefined;
   /** Every background this rule is audited against, per ruling R76. */
   readonly backgrounds: readonly string[];
-  readonly resolvedFrom: 'own' | 'ancestor' | 'page';
+  readonly resolvedFrom: 'own' | 'ancestor' | 'nested' | 'page';
+}
+
+/**
+ * The fills a stylesheet paints, by selector. RULING R121.
+ *
+ * R76 EXTENDED PAST PAGE SURFACES, and this is the part that was missing.
+ * R76 resolved "the nearest self-painted ancestor" through a hand-written map,
+ * which covered the one case that needed it - ZoneBadge's chip, whose fill is
+ * inline from STATUS_VISUAL and genuinely invisible to CSS. Every OTHER
+ * component whose container paints a fill in its own stylesheet fell through
+ * to the two page surfaces, because nobody had added it to the map.
+ *
+ * SEVEN RULES WERE BEING MEASURED AGAINST A BACKGROUND THEY DO NOT SIT ON:
+ *
+ *   .provisionalLead, .provisionalList, .provisionalLink, .provisionalPending
+ *                          inside .provisional  (--colour-info-soft)
+ *   .warningHeading, .warningBody
+ *                          inside .warning      (--colour-warning-soft)
+ *   .footerLink            inside .footer       (--colour-surface)
+ *
+ * The two warning-banner rules were the whole of FW12's warning list and had
+ * never been measured against the fill they sit on at all. They pass - 16,64:1
+ * - so this found no second defect; it found that a pass was luck. The four
+ * provisional rules are the pairing that DID fail, at 4,4975:1, and it took a
+ * hand-written entry to catch it.
+ *
+ * DERIVED FROM THE STYLESHEET RATHER THAN LISTED, because a list is what was
+ * wrong: it covered what someone remembered. CSS Modules in this repo name a
+ * container and its parts by prefix - `.provisional` and `.provisionalLead` -
+ * which is a convention stylelint's camelCase rule already enforces, so the
+ * containment is readable from the source. The LONGEST matching prefix wins,
+ * so a fill nested inside another fill resolves to the inner one.
+ */
+function fillsBySelector(source: string): ReadonlyMap<string, string> {
+  const fills = new Map<string, string>();
+
+  for (const block of source.split('}')) {
+    const selector = block.slice(0, block.indexOf('{')).trim().split(/\s+/).pop() ?? '';
+
+    if (!selector.startsWith('.')) continue;
+
+    const fill = /background(?:-color)?:\s*var\((--colour-[a-z-]+)\)/.exec(block)?.[1];
+
+    if (fill !== undefined) fills.set(selector, fill);
+  }
+
+  return fills;
+}
+
+/** The fill of the nearest prefix-matching container, if any. */
+function nestedFill(
+  selector: string,
+  fills: ReadonlyMap<string, string>,
+): string | undefined {
+  let best: string | undefined;
+  let bestLength = 0;
+
+  for (const [container, fill] of fills) {
+    if (container === selector || !selector.startsWith(container)) continue;
+
+    if (container.length > bestLength) {
+      best = fill;
+      bestLength = container.length;
+    }
+  }
+
+  return best;
 }
 
 /**
@@ -405,6 +534,7 @@ function paintedRules(): Painted[] {
 
   for (const { label: name, path } of SHEETS) {
     const source = readFileSync(join(root, path), 'utf8');
+    const fills = fillsBySelector(source);
 
     // Block-level, because the gate depends on the font-size DECLARED BESIDE
     // the colour. Splitting on the closing brace is enough here: these files
@@ -439,8 +569,17 @@ function paintedRules(): Painted[] {
       // else the page - which is the only case where "either surface" is the
       // honest answer, because the component genuinely could sit on both.
       const inherited = ANCESTOR_BACKGROUND[selector];
+      const nested = nestedFill(selector, fills);
+
+      // FOUR RESOLUTIONS, IN ORDER OF HOW DIRECTLY THEY ARE KNOWN. What the
+      // rule paints itself; then a fill this stylesheet cannot see, declared
+      // by hand; then a fill a prefix-matching container in this same
+      // stylesheet paints (R121); then the page, which is the only case where
+      // "either surface" is the honest answer.
       const backgrounds =
-        declared !== undefined ? [declared] : (inherited ?? SURFACES);
+        declared !== undefined
+          ? [declared]
+          : (inherited ?? (nested !== undefined ? [nested] : SURFACES));
 
       found.push({
         where: `${name} ${selector}`,
@@ -449,7 +588,13 @@ function paintedRules(): Painted[] {
         bg: declared,
         backgrounds,
         resolvedFrom:
-          declared !== undefined ? 'own' : inherited !== undefined ? 'ancestor' : 'page',
+          declared !== undefined
+            ? 'own'
+            : inherited !== undefined
+              ? 'ancestor'
+              : nested !== undefined
+                ? 'nested'
+                : 'page',
       });
     }
   }
@@ -539,7 +684,8 @@ describe('every colour rule in the five stylesheets, at the bar its size implies
 
         expect(
           ratio,
-          `${rule.where}: ${rule.fg} on ${background} is ${ratio.toFixed(2)}:1, below ${rule.gate}:1`,
+          `${rule.where}: ${rule.fg} on ${background} (resolved from ` +
+            `${rule.resolvedFrom}) is ${describeRatio(ratio)}, below ${rule.gate}:1`,
         ).toBeGreaterThanOrEqual(rule.gate);
       });
     }
@@ -566,24 +712,67 @@ describe('every colour rule in the five stylesheets, at the bar its size implies
     }
   });
 
-  it('exercises all THREE resolutions, so none is dead code that looks alive', () => {
+  it('exercises all FOUR resolutions, so none is dead code that looks alive', () => {
     // own      the rule paints its own background - PublicShell's CTA, and
     //          FieldGroup's input, which correctly declares --colour-surface
-    // ancestor the nearest self-painted ancestor paints it, and this
-    //          stylesheet cannot see it - ZoneBadge's chip takes its fill
-    //          inline from STATUS_VISUAL, and .icon inherits it
+    // ancestor a fill this stylesheet cannot see, declared by hand -
+    //          ZoneBadge's chip takes its fill inline from STATUS_VISUAL,
+    //          keyed by Status, and .icon inherits it
+    // nested   a prefix-matching container in this same stylesheet paints it
+    //          (R121) - .provisionalLead inside .provisional, .warningBody
+    //          inside .warning
     // page     nothing above paints one, so the component could sit on either
     //          surface and both are audited
     //
-    // If any of the three were empty, that branch would be untested and the
+    // If any of the four were empty, that branch would be untested and the
     // audit would silently revert to its old behaviour the next time a
     // component used it.
-    const counted = { own: 0, ancestor: 0, page: 0 };
+    const counted = { own: 0, ancestor: 0, nested: 0, page: 0 };
 
     for (const rule of rules) counted[rule.resolvedFrom] += 1;
 
     expect(counted.own, 'no rule paints its own background').toBeGreaterThan(0);
     expect(counted.ancestor, 'no rule inherits an ancestor background').toBeGreaterThan(0);
+    expect(counted.nested, 'no rule resolved to a container fill (R121)').toBeGreaterThan(0);
     expect(counted.page, 'no rule falls through to the page surfaces').toBeGreaterThan(0);
+  });
+
+  it('resolves the seven container-nested rules R121 was written for', () => {
+    // NAMED, not counted. These are the rules that were being measured
+    // against the page surfaces while sitting on a fill, and naming them is
+    // what makes a future change visible: a rule that stops resolving to its
+    // container - because a class was renamed out of the prefix convention,
+    // say - drops back to the page surfaces silently, and silence is how this
+    // hole existed in the first place.
+    const nested = rules
+      .filter((rule) => rule.resolvedFrom === 'nested')
+      .map((rule) => `${rule.where} -> ${rule.backgrounds.join('/')}`)
+      .sort();
+
+    expect(nested).toEqual([
+      'PublicShell .footerLink -> --colour-surface',
+      '(public)/calculateur-teletravail-frontalier/CalculatorForm .provisionalLead -> --colour-info-soft',
+      '(public)/calculateur-teletravail-frontalier/CalculatorForm .provisionalLink -> --colour-info-soft',
+      '(public)/calculateur-teletravail-frontalier/CalculatorForm .provisionalList -> --colour-info-soft',
+      '(public)/calculateur-teletravail-frontalier/CalculatorForm .provisionalPending -> --colour-info-soft',
+      '(public)/calculateur-teletravail-frontalier/ResultPanel .warningBody -> --colour-warning-soft',
+      '(public)/calculateur-teletravail-frontalier/ResultPanel .warningHeading -> --colour-warning-soft',
+    ].sort());
+  });
+
+  it('measures the warning banners against the fill they sit on', () => {
+    // THE COVERAGE THIS RULING ADDED, stated as the pairing rather than as a
+    // count. FW12's eight warning banners paint text-primary on a
+    // warning-soft fill and were audited against the canvas and the surface -
+    // neither of which is behind them. They pass at 16,64:1, so R121 found no
+    // second defect here; it found that the pass was luck.
+    const ratio = contrast('--colour-text-primary', '--colour-warning-soft');
+
+    expect(ratio).toBeGreaterThanOrEqual(NORMAL_TEXT);
+
+    const banner = rules.find((rule) => rule.where.endsWith('.warningBody'));
+
+    expect(banner?.backgrounds).toEqual(['--colour-warning-soft']);
+    expect(banner?.resolvedFrom).toBe('nested');
   });
 });
