@@ -157,6 +157,54 @@ jobs:
   #
   # Compile the two formatter modules to plain JavaScript once, then run a
   # dependency-free codepoint check on each Node. The matrix legs install
+  # RULING R118: the runtime guard runs in CI.
+  #
+  # pnpm test:runtime proves ruling R81's PRODUCTION behaviour - that
+  # /sitemap.xml refuses with 503 rather than publishing localhost URLs, that
+  # no canonical is emitted with no origin configured, and that the health
+  # route answers where FW28 will point Coolify. It existed from FW10 and was
+  # invoked by NOTHING: excluded from both Playwright projects by design,
+  # holding its own config, named by no workflow and by no local command. The
+  # FW12 audit found it. "A guard that hasn't run since FW10 is a guard we
+  # don't have."
+  #
+  # ITS OWN JOB because it needs a server in a deliberately BROKEN
+  # configuration - FRONTALIER_RUNTIME=1 with NEXT_PUBLIC_SITE_URL unset -
+  # and every other suite needs one that works. playwright.runtime.config.ts
+  # starts that server itself on port 3101 and sets both variables there
+  # rather than trusting the ambient environment, so this job is install plus
+  # one command.
+  runtime-guard:
+    name: runtime guard (R81)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - uses: actions/checkout@v4
+      # package_json_file resolves from the REPOSITORY ROOT, not from the
+      # job's working-directory - see the note on format-parity-build.
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:runtime
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ failure() }}
+        with:
+          name: runtime-guard-report
+          path: web/test-results/
+          retention-days: 7
+
   # NOTHING, so a leg cannot go red for a toolchain reason.
   format-parity-build:
     name: format parity (compile)

@@ -59,15 +59,55 @@ const FRAMEWORK_BASELINE_KIB = 100.6;
 
 // Public routes are the acquisition surface: calculator, comparator, guides,
 // home, legal. /dev/** is noindex, out of the sitemap and not part of that
-// surface, so it is measured and printed but not gated - FW2 deliberately
-// builds a component-heavy page there.
+// surface, so it is not held to the public budget.
 const GATE_A_TOTAL_BYTES = 125 * KIB;
 const GATE_B_DELTA_BYTES = 25 * KIB;
 const BASELINE_BYTES = Math.round(FRAMEWORK_BASELINE_KIB * KIB);
 
+/**
+ * GATE W - THE WORKBENCH, ruling R117.
+ *
+ * /dev/composants renders every component in every state, so it is the route
+ * where a client-bundle regression in the component library should surface
+ * first. It had no ceiling at all until now; it has one.
+ *
+ * AND IT WOULD NOT HAVE CAUGHT THE DEFECT THAT PROMPTED IT. Measured, not
+ * assumed. Restoring ZoneBadge's namespace import and runtime string index:
+ *
+ *   /calculateur-teletravail-frontalier   323,1 KiB   FAIL A by 198,1
+ *   /dev/composants                       108,4 KiB   W 32,2 spare
+ *
+ * The workbench is a SERVER component. It renders ZoneBadge on the server, so
+ * the icon library never entered its client bundle and its number never moved.
+ * The calculator's badge sits inside CalculatorForm, which is 'use client', so
+ * there the whole library shipped to the browser.
+ *
+ * SO THE REAL SHAPE OF THE HOLE is narrower and worse than "the workbench was
+ * ungated": a component can be free on every server-rendered page and cost
+ * 200 KiB the first time it enters a client island, and nothing measures that
+ * until some task puts it in one. R117 closes a hole; it does not close this
+ * hole. What would: a /dev route that renders the library INSIDE a client
+ * island, gated. That is a new route and a decision, so it is reported as a
+ * question rather than built here.
+ *
+ * ON THE DELTA, NOT THE TOTAL, because the workbench legitimately grows: every
+ * task adds components to it, and a total ceiling would have to be raised
+ * routinely, which is how a ceiling stops meaning anything. The delta is the
+ * workbench's own feature code - 7,7 KiB today - so 40 KiB allows it to grow
+ * fivefold while still catching a large regression.
+ *
+ * NOT GATE A. This is not a public-route budget and must never be read as one;
+ * the workbench is allowed to be heavier than any page a user visits.
+ */
+const GATE_W_DELTA_BYTES = 40 * KIB;
+const WORKBENCH_ROUTE = '/dev/composants';
+
 // Segment-aware, so a real public route whose first segment merely starts with
 // "dev" - /devis, /developpement - is not silently excused from the gate.
 const isGated = (route) => route !== '/dev' && !route.startsWith('/dev/');
+
+/** R117: the workbench has its own ceiling rather than none. */
+const isWorkbench = (route) => route === WORKBENCH_ROUTE;
 
 // Next emits route-group segments in the manifest keys and strips them only in
 // memory. app/(public)/page.tsx arrives at FW10 and must print as "/".
@@ -166,6 +206,7 @@ const polyfills = await measure(buildManifest.polyfillFiles ?? []);
  * @property {number} [delta]   over the framework baseline; set below
  * @property {boolean} [failsA] gated and over GATE A; set below
  * @property {boolean} [failsB] gated and over GATE B; set below
+ * @property {boolean} [failsW] the workbench, over GATE W (R117); set below
  */
 
 /** @type {BudgetRow[]} */
@@ -210,9 +251,10 @@ for (const row of rows) {
   row.delta = row.gzip - BASELINE_BYTES;
   row.failsA = row.gated && row.gzip > GATE_A_TOTAL_BYTES;
   row.failsB = row.gated && row.delta > GATE_B_DELTA_BYTES;
+  row.failsW = isWorkbench(row.route) && row.delta > GATE_W_DELTA_BYTES;
 }
 
-const breaches = rows.filter((row) => row.failsA || row.failsB);
+const breaches = rows.filter((row) => row.failsA || row.failsB || row.failsW);
 
 console.log('');
 console.log('First-load JS per route (gzip level 9). Ruling R2 gates:');
@@ -242,17 +284,24 @@ console.log(
 console.log('-'.repeat(TABLE_WIDTH));
 
 for (const row of rows) {
-  // An ungated route still gets its gate arithmetic printed. /dev/spike is
-  // the whole point of FW2: the gates do not block on it, but the spike has
-  // to be able to answer "would a representative public page fit?".
-  const wouldPass =
-    row.gzip <= GATE_A_TOTAL_BYTES && row.delta <= GATE_B_DELTA_BYTES
-      ? `would pass (A ${kib(GATE_A_TOTAL_BYTES - row.gzip)} spare, B ${kib(GATE_B_DELTA_BYTES - row.delta)} spare)`
-      : `WOULD FAIL ${row.gzip > GATE_A_TOTAL_BYTES ? 'A' : ''}${row.gzip > GATE_A_TOTAL_BYTES && row.delta > GATE_B_DELTA_BYTES ? '+' : ''}${row.delta > GATE_B_DELTA_BYTES ? 'B' : ''}`;
+  /*
+    RULING R115: AN UNGATED ROUTE REPORTS ITS NUMBER, NEVER A VERDICT.
 
-  const verdict = !row.gated
-    ? `not gated - ${wouldPass}`
-    : row.failsA && row.failsB
+    This column used to print "not gated - would pass (A 16.9 spare, ...)" for
+    /dev/**, which is a reassuring sentence about a thing that was not judged.
+    It is how 207 KiB of accidentally-bundled icons sat on the workbench for
+    four tasks past this very script: the row said "would pass" every run,
+    because it was measured against gates it was never subject to.
+
+    A number and the word "ungated". Nothing that reads as a pass.
+  */
+  const verdict = isWorkbench(row.route)
+    ? row.failsW
+      ? `FAIL GATE W by ${kib(row.delta - GATE_W_DELTA_BYTES)} KiB`
+      : `workbench (W ${kib(GATE_W_DELTA_BYTES - row.delta)} spare)`
+    : !row.gated
+      ? 'ungated'
+      : row.failsA && row.failsB
       ? `FAIL A by ${kib(row.gzip - GATE_A_TOTAL_BYTES)} and B by ${kib(row.delta - GATE_B_DELTA_BYTES)}`
       : row.failsA
         ? `FAIL GATE A by ${kib(row.gzip - GATE_A_TOTAL_BYTES)} KiB`
@@ -298,6 +347,11 @@ if (breaches.length > 0) {
     if (row.failsB) {
       console.error(
         `GATE B BREACH  ${row.route}: ${kib(row.delta)} KiB of feature code exceeds ${kib(GATE_B_DELTA_BYTES)} KiB over the framework floor (ruling R2).`,
+      );
+    }
+    if (row.failsW) {
+      console.error(
+        `GATE W BREACH  ${row.route}: ${kib(row.delta)} KiB of feature code exceeds ${kib(GATE_W_DELTA_BYTES)} KiB over the framework floor (ruling R117).`,
       );
     }
   }

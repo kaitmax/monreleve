@@ -80,7 +80,13 @@ function readTsconfig(file: string): {
  * Asserted to be exactly this list further down, so widening it is a
  * deliberate edit rather than a way to make a failure go away.
  */
-const MAPPING_TARGETS = ['gate', 'test:e2e', 'test:visual', 'test:a11y'] as const;
+const MAPPING_TARGETS = [
+  'gate',
+  'test:e2e',
+  'test:visual',
+  'test:a11y',
+  'test:runtime',
+] as const;
 
 type MappingTarget = (typeof MAPPING_TARGETS)[number];
 
@@ -194,8 +200,19 @@ describe('the workflow was parsed at all', () => {
     expect(steps).toContain('pnpm parity:build');
   });
 
-  it('knows R111 four mapping targets, and only those', () => {
-    expect([...MAPPING_TARGETS]).toEqual(['gate', 'test:e2e', 'test:visual', 'test:a11y']);
+  it('knows the mapping targets, and only those', () => {
+    // FIVE, NOT FOUR, since ruling R118. R111 named four; the FW12 audit then
+    // found that pnpm test:runtime - R81's production wiring - was run by
+    // nothing at all, and R118 put it in CI rather than letting it stay
+    // declared local-only. "Declaring it local-only would have left it un-run
+    // in exactly the way it already was."
+    expect([...MAPPING_TARGETS]).toEqual([
+      'gate',
+      'test:e2e',
+      'test:visual',
+      'test:a11y',
+      'test:runtime',
+    ]);
     for (const name of MAPPING_TARGETS) {
       expect(PACKAGE.scripts[name], name).toBeDefined();
     }
@@ -354,9 +371,12 @@ describe('the uncompiled scripts are type-checked (R107)', () => {
 /**
  * Check commands that deliberately do not run in CI, and why.
  *
- * A REASON EACH, because the list is the only thing standing between "local
- * on purpose" and "forgotten". Both entries are real: one would be
- * tautological in CI, the other is an open question rather than a decision.
+ * test:runtime WAS HERE and is not any more. It was listed with the reason
+ * "needs a server in a deliberately broken configuration", which was true and
+ * was not a reason - ruling R118: "a guard that hasn't run since FW10 is a
+ * guard we don't have", and the config starts that server itself, so the job
+ * is install plus one command. Declaring it local-only would have left it
+ * un-run in exactly the way it already was.
  */
 const LOCAL_ONLY: Record<string, string> = {
   test:
@@ -370,11 +390,6 @@ const LOCAL_ONLY: Record<string, string> = {
   'test:clean-tree':
     'CI is already a fresh checkout, so moving the generated directories ' +
     'aside there would assert nothing (R94).',
-  'test:runtime':
-    'Needs a server started in a deliberately broken configuration - no ' +
-    'NEXT_PUBLIC_SITE_URL - which the CI job would have to set up on its own. ' +
-    'NOT a decision: raised as a question, because R81 wiring that nothing ' +
-    'runs is a guard in name only.',
 };
 
 describe('every check command is accounted for (R112, reverse direction)', () => {

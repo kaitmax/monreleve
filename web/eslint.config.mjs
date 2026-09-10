@@ -50,12 +50,48 @@ const JEST_DOM_MESSAGE =
   'need a jest-dom matcher that does not touch text, add it here by name ' +
   'with a reason.';
 
+const NAMESPACE_IMPORT_MESSAGE =
+  'Import the names you use (ruling R116). A namespace import from a package ' +
+  'with per-export entry points is what allows a runtime lookup, and a runtime ' +
+  'lookup defeats tree-shaking: ZoneBadge shipped the whole lucide-react ' +
+  'library, 207 KiB, for four tasks. node: builtins are exempt.';
+
 const SPIKE_MESSAGE =
   'app/dev/spike is the FW2 bundle spike: throwaway markup that exists to be ' +
   'weighed, not reused. The component library is lib/ui/react (FW8-FW9).';
 
 // Every way of naming the spike directory from outside it.
 const SPIKE_PATHS = ['@/app/dev/spike', '@/app/dev/spike/*', '**/dev/spike', '**/dev/spike/*'];
+
+/**
+ * RULING R116, as a SHARED ENTRY rather than one block's rule.
+ *
+ * A flat-config block that sets `no-restricted-syntax` REPLACES the value from
+ * every earlier block rather than merging with it. Declaring R116 once in the
+ * app/lib block therefore did nothing for lib/ui/react, lib/ui/core or
+ * lib/calc-engine: --print-config showed ZoneBadge's effective rule was the
+ * SPIKE selector alone, and the namespace import lint-passed.
+ *
+ * THIRD OCCURRENCE OF THIS TRAP IN THIS REPOSITORY. The eslint `ignores` key
+ * behaves the same way (FW10), and so does a Playwright project's
+ * `testIgnore` (FW10, where the chromium project silently stopped running the
+ * runtime guard). A narrower scope deleting a broader rule is invisible in a
+ * diff and green in every run.
+ *
+ * So it is spread into every array, and
+ * tests/unit/meta/eslint-namespace-rule.test.ts asserts the EFFECTIVE config
+ * for a file in each product directory - which is the only thing that could
+ * have caught this.
+ */
+const SPIKE_IMPORT_RULE = {
+  selector: 'ImportExpression[source.value=/dev\\/spike/]',
+  message: SPIKE_MESSAGE,
+};
+
+const NAMESPACE_IMPORT_RULE = {
+  selector: 'ImportDeclaration[source.value!=/^node:/] > ImportNamespaceSpecifier',
+  message: NAMESPACE_IMPORT_MESSAGE,
+};
 
 export default tseslint.config(
   {
@@ -104,6 +140,28 @@ export default tseslint.config(
   {
     files: ['app/**/*.{ts,tsx}', 'lib/**/*.{ts,tsx}'],
     languageOptions: { globals: globals.browser },
+    rules: {
+      // RULING R116: no namespace import from a package with per-export entry
+      // points. This cost 207 KiB.
+      //
+      // ZoneBadge did `import * as icons from 'lucide-react'` and then looked
+      // the component up by a runtime string. The namespace import alone is
+      // tree-shakeable - measured: static destructuring from it still shakes -
+      // but it is what MAKES the runtime index possible, and the runtime index
+      // is what a bundler cannot resolve. So it shipped every icon in the
+      // library.
+      //
+      // The rule forbids the SHAPE rather than the mechanism, because the
+      // mechanism is undetectable by lint: no rule can tell an index by a
+      // literal from an index by a variable that happens to hold one. Removing
+      // the namespace binding removes the possibility.
+      //
+      // node: builtins are exempt. They have no per-export entry points, and
+      // `import * as fs from 'node:fs'` is the idiom rather than an accident.
+      // Test files are a separate config block and unaffected: vitest-axe's
+      // matcher bag is consumed wholesale by expect.extend and never bundled.
+      'no-restricted-syntax': ['error', NAMESPACE_IMPORT_RULE],
+    },
   },
 
   // (a) Engine purity. The engine is ported to Kotlin (D20) and must stay
@@ -134,6 +192,7 @@ export default tseslint.config(
       // close the dynamic-import and require() holes.
       'no-restricted-syntax': [
         'error',
+        NAMESPACE_IMPORT_RULE,
         {
           selector: 'ImportExpression[source.value=/^(?!\\.\\/)/]',
           message: ENGINE_MESSAGE,
@@ -224,6 +283,7 @@ export default tseslint.config(
 
       'no-restricted-syntax': [
         'error',
+        NAMESPACE_IMPORT_RULE,
         {
           selector:
             'ImportExpression[source.value=/^(react|react-dom|lucide-react|next|@carbon|@mui|antd)/]',
@@ -270,10 +330,7 @@ export default tseslint.config(
           selector: 'ImportExpression[source.type!="Literal"]',
           message: CORE_MESSAGE,
         },
-        {
-          selector: 'ImportExpression[source.value=/dev\\/spike/]',
-          message: SPIKE_MESSAGE,
-        },
+        SPIKE_IMPORT_RULE,
         // The engine fence's dynamic half. @typescript-eslint's
         // no-restricted-imports above rejects every STATIC value import of
         // the engine, but neither variant of that rule inspects an
@@ -357,10 +414,8 @@ export default tseslint.config(
       ],
       'no-restricted-syntax': [
         'error',
-        {
-          selector: 'ImportExpression[source.value=/dev\\/spike/]',
-          message: SPIKE_MESSAGE,
-        },
+        NAMESPACE_IMPORT_RULE,
+        SPIKE_IMPORT_RULE,
       ],
     },
   },
@@ -390,6 +445,28 @@ export default tseslint.config(
       // error rather than something a reviewer has to notice, and it makes
       // each existing one carry its justification at the line.
       'react/no-danger': 'error',
+    },
+  },
+
+  // ---------------------------------------------------------------------
+  // RULING R116 IS ABOUT BUNDLE SIZE, so it applies to code that ships.
+  //
+  // Test files are never bundled, and two namespace imports in them are
+  // correct: vitest-axe exports a BAG of matchers consumed wholesale by
+  // expect.extend, and tests/harness.test.ts imports the engine's barrel
+  // precisely to assert its public surface. Both were in the R116 sweep and
+  // both were classified as legitimate before the rule was written; the rule
+  // then flagged them, which made it over-broad rather than them wrong.
+  //
+  // LAST, AND SETTING THE WHOLE ARRAY, because a flat-config block replaces
+  // the rule rather than merging - the same semantics that made R116 silently
+  // inert in three directories. So the selectors test files DO still need are
+  // listed explicitly: importing the FW2 spike is as wrong in a test as
+  // anywhere else.
+  {
+    files: ['**/*.test.{ts,tsx}', 'tests/**/*.{ts,tsx}', 'e2e/**/*.ts'],
+    rules: {
+      'no-restricted-syntax': ['error', SPIKE_IMPORT_RULE],
     },
   },
 );
