@@ -1,0 +1,779 @@
+================================================================================
+REPORT-FW12.txt - THE RESULT PANEL
+================================================================================
+COMPLETE. Session of 10.09.2026. Nine commits, bd66959..e255647, all pushed.
+
+Pure ASCII by mandate, so French copy quoted below is transliterated: where
+this file writes "teletravail" or "A savoir" the product writes them with their
+accents, and where it writes "40 %" the product puts a U+00A0 before the sign.
+Anywhere a codepoint is the point, it is spelled out.
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+The calculator has a result panel. Seven slots in SPEC 9.3's order - status
+badge, both rates, the threshold rail, four metric tiles, the warning banners,
+the standing legal note, one contextual link - composed from FW8's library,
+computing nothing. /sources shipped first, at increment 0, because it is P2's
+only disclosure surface and the calculator was already indexed.
+
+All three acceptance criteria are proved below. AC1: Geneva case (c) entered
+through the controls displays 39,16 % and 45,0 % with the explanatory sentence,
+asserted against codepoint literals. AC2: all eight Warning codes and all four
+Status values, exhaustive at compile time in both directions. AC3: R110's
+notice on both triggers, absent on the common path, and now carrying a link to
+the specific reading it names.
+
+TEN FINDINGS, and eight of them are about signals that were not measuring what
+they appeared to. Six were found by probing something that had just gone green.
+
+  1. `import * as icons` shipped the entire Lucide library - 207 KiB - into
+     the calculator's client island. The gate printed "not gated - would
+     pass" for the only route that rendered it, for four tasks.
+  2. R117, written to close that hole, does not close it. Measured.
+  3. R116, written to forbid the import, was SILENTLY INERT when first
+     written. Third occurrence in this repo of the same flat-config trap.
+  4. `pnpm test:runtime` was invoked by nothing. Its assertions had not
+     executed since FW10 wrote them.
+  5. A mutation probe PASSED against the tile tests: the panel could
+     recompute a value the engine had already given it and no fixture could
+     tell the difference.
+  6. The R73 tile assertion was vacuous - it passed against exactly the
+     hardcoded threshold R73 exists to forbid.
+  7. R91's source scan read TypeScript as French. lib/fr gained its first
+     ternary in this task and four correct lines became offences.
+  8. A CONTRAST DEFECT SHIPPING SINCE FW11: 4,4975:1, which prints as 4.50
+     and fails the 4,5 bar. The audit could not see it.
+  9. A DUPLICATED LEGAL DISCLAIMER, found by looking at a baseline while
+     1633 tests passed.
+ 10. Axe does not flag an ARIA reference to a missing element - the exact
+     defect the a11y file's own header names as its target.
+
+Nothing was added to the design system. No engine file was touched.
+
+--------------------------------------------------------------------------------
+PRECONDITIONS
+--------------------------------------------------------------------------------
+R0. REPORT-FW11.txt read in full, including the R106-R110 addendum.
+
+    - No question in it is marked as blocking FW12. R47 is open and is the
+      operator's, not a code question; it is carried verbatim below.
+    - No DEVIATION in it changes the engine's public API, FW8's components or
+      the design tokens. FW11's two-component result area is the thing this
+      task builds on and is described under INCREMENT 1 below.
+    - The stop condition is not met. FW12 proceeded.
+
+R1. CI ON origin/main. Green for every pushed commit of this session:
+
+      bd66959  34392646316  success   increment 0
+      7b406db  34395443943  success   R114 / R112 audit
+      e350ba5  34400039109  success   increment 1
+      4adb125  34455713750  success   R115-R118
+      fd3ac72  34457874705  success   increment 2
+      792776c  34460167406  success   increment 3
+      ad0ebfb  34462785365  success   increment 4
+      1472916  34465559957  success   increment 5
+      e255647  34472399503  success   increment 6
+
+    https://github.com/kaitmax/Frontalier/actions/runs/34472399503 is the run
+    for the final feature commit. The report commit's own run is the last, and
+    is named under PUSH PROOF.
+
+    CI now has FIVE jobs, not four. R118: `pnpm test:runtime` joined as
+    `runtime guard (R81)` - install, `playwright install --with-deps chromium`,
+    the suite, and the report as an artifact on failure. It is the fifth
+    recorded command, and the reason it had to be is finding 4.
+
+R2. THE RECORDED COMMANDS ARE NOW FIVE. gate, test:e2e, test:visual,
+    test:a11y, test:runtime - plus test:clean-tree, which is local-only with a
+    recorded reason. Every increment below was green on all six before its
+    commit.
+
+--------------------------------------------------------------------------------
+INCREMENT 0 - /sources, and R111 / R112 / R114
+--------------------------------------------------------------------------------
+0a. /sources CONTENT. Live in the route registry, in the sitemap, linked from
+    the footer and from the calculator. One h1, Container 'article', a static
+    server page with revalidate = 3600 - not fully static, because the table
+    is built for a tax year resolved from the Europe/Paris date (R55) and a
+    build-time freeze would state the previous year from 1 January until
+    somebody deployed.
+
+    - A one-paragraph statement of what the page is for.
+    - The constants table: rule, value, source name, source URL, verification
+      date, state. Eight rows. Every value from ruleSetFor(year), never from
+      copy (R73) - a page whose subject is where the numbers come from is the
+      worst possible place to keep a second copy of them.
+    - P1, P2 and P3 in plain French: what is uncertain, what the app does
+      today, and that expert review is pending.
+    - The review date via LAST_REGULATORY_REVIEW (R51).
+
+    IT ALSO FIXED A LIVE 404. PublicShell's footer has linked /sources since
+    FW10 while the route was `status: 'planned'`, so every public page on the
+    site carried a link to nothing.
+
+    THE HOLE R113 NAMES IS NOW CLOSED IN THE TYPE. PROVISIONAL_IDS (can fire a
+    notice) and PUBLISHED_PROVISIONAL_IDS (published on /sources) are separate
+    constants related by a conditional type, so a reading that can trigger
+    without being published fails to compile. The copy is keyed by the
+    published union, so it cannot be added without a paragraph either.
+
+    ONE DEFECT I MADE AND THE TYPE CAUGHT: I set verifiedOn to the Checkpoint A
+    date on all eight rows, including the two the pass never reached - a
+    verification date on an unverified row, on the page that exists to prevent
+    exactly that. SourceEntry is now a union: 'transcribed' carries a date,
+    'pending' has no such field, so the wrong combination is TS2353.
+
+0b. R111 - THE FOUR-COMMAND TOTALITY TEST, and it became five under R118.
+    tests/unit/meta/gate-covers-ci.test.ts asserts a bijection between the CI
+    workflow's steps and the recorded commands, in BOTH directions:
+
+      TOTALITY     every CI step maps to one of the recorded commands
+      EXCLUSIVITY  no recorded command is missing from CI unless it is in
+                   LOCAL_ONLY with a reason
+
+    PROVED BY REMOVAL. Deleting `pnpm size` from the gate script while the
+    workflow still ran it failed with the mapping error naming the step. The
+    reverse - adding a check script that nothing runs - failed too, which is
+    finding 4 below.
+
+0c. R112 - THE AUDIT, and it found a guard nobody runs.
+
+    The canton DOM assertion: FW11 removed a slow getByRole loop and replaced
+    it with a one-pass querySelectorAll. What that gave up was the ACCESSIBLE
+    NAME of each option; what picked it up is the same file asserting all 26
+    option texts and their collation order as strings.
+
+    THE AUDIT LIST - everything else that had left one verification layer:
+
+      test:runtime      Invoked by NOTHING. See finding 4. Now CI job five.
+      the dead guard    An `errors.length > 0 ||` clause in the island's
+                        result condition that no mutation could redden,
+                        because calculateTelework returns a Result and a
+                        result and an error cannot coexist. Removed; the
+                        guarantee comes from the engine's return type.
+      test              Not in CI: CI runs test:coverage, a strict superset.
+      test:visual:update Not in CI: it WRITES baselines, and CI deciding what
+                        the product looks like is R114's failure in another
+                        costume.
+
+    Two more were added to the audit by this session and are recorded with
+    their increments: the R55 fallback tests, which moved from the island's
+    banner into the panel's warning list rather than being deleted (increment
+    4), and calculateur.test.tsx's standing-disclaimer assertion, which moved
+    from the page to the assembled document and now counts one occurrence
+    instead of asking for presence (increment 6).
+
+0d. R114 - ZERO TOLERANCE, ASSERTED. tests/unit/meta/visual-zero-tolerance.
+    test.ts asserts that no visual comparison anywhere - in any spec or in
+    playwright.config.ts - carries maxDiffPixels, maxDiffPixelRatio,
+    threshold, mask or maskColor. Comment lines are stripped before judging,
+    because these files discuss the withdrawn tolerance at length and the
+    prose explaining why it is gone must not be what fails the test.
+
+    Probed both hatches: reintroducing maxDiffPixels: 600 fails with the R114
+    message, and a mask fails the same way. stylePath is explicitly still
+    allowed and asserted PRESENT, so the rule cannot push the next
+    environmental diff back toward a tolerance.
+
+--------------------------------------------------------------------------------
+RED/GREEN LEDGER
+--------------------------------------------------------------------------------
+Every increment's first run, with the reason it failed. A test that passed on
+its first run is evidence of nothing, so where a test could not be made to fail
+before the code existed, it was probed by MUTATION afterwards and every probe
+is recorded with the count of tests it reddened.
+
+INCREMENT 1 - the panel shell and order. Commit e350ba5.
+  RED: result-panel-order.test.tsx could not resolve ./ResultPanel.
+  RED (second): with the component built, the order test failed because the
+       shell rendered the rail before the rate.
+  PROBES: moving the rail above the rate reddens 2; moving the legal note
+       above the tiles reddens 3, including the dedicated assertion that a
+       disclaimer cannot sit above what it disclaims.
+
+INCREMENT 2 - the two rates. Commit fd3ac72.
+  RED: calculateur-result.test.tsx asserted the raw rate was ABSENT - FW11's
+       deliberate inversion, with a note that a failure there would be FW12
+       arriving early rather than a defect. FW12 arrived, so the assertion
+       inverted rather than being deleted; the pair is the record that the
+       scope changed on purpose.
+  GREEN: both rates by codepoint literal, plus the divergence sentence and the
+       non-vacuity case where the two agree and the second figure is absent.
+
+INCREMENT 3 - tiles and negative headroom. Commit 792776c.
+  NO RED WAS AVAILABLE, and this report does not claim one. The tile markup
+       shipped with increment 1's shell - I wrote it there, with a comment
+       deferring the ASSERTIONS to increment 3 - so all seventeen assertions
+       passed on their first execution. The prompt's "RED first: Geneva case
+       (e) shows two negative tiles" could not be produced without deleting
+       working code to re-add it, which is theatre. R108: the sentence is not
+       written. The mutation probes are the entire evidence, and two of them
+       found real holes.
+
+  PROBES:
+    M1  clamp the fiscal headroom to zero (the clamped zero SPEC 7.2 step 6
+        forbids)                                              reddens 7
+    M2  overLabel replaced by label - a red figure under a
+        "Jours restants" heading, colour without words         reddens 4
+    M3  the Swiss count moved ahead of the fiscal headroom      reddens 11
+    M4  `240 - result.frenchTaxedDays` for the Swiss count      PASSED -> 1
+    M5  the threshold hardcoded into the label                  PASSED -> 1
+    M6  one negative state computed for the pair and both
+        tiles painted from it                                  reddens 2
+    M7  input.teleworkDays for the French count                 reddens 1
+
+  M4 PASSED, AND THAT WAS A DEFECT IN THE TEST. Every fixture used the
+       simplified 240-day denominator over a whole year, and there
+       swissTaxedDays IS exactly 240 minus frenchTaxedDays - so an assertion
+       written to forbid recomputation was comparing two expressions that
+       happen to agree on the only inputs it tried. Added EXACT_METHOD: 200
+       exact work days, 90 telework days, where swiss is 110 and 240 - french
+       is 150. M4 now reddens. SPEC 7.3's exact method is the engine's other
+       denominator, the form does not offer it yet, and the panel renders a
+       TeleworkResult rather than a form state, so the tile has to be right
+       for both.
+
+  M5 PASSED, AND THE R73 ASSERTION WAS VACUOUS. It read
+       toContain("40 %") against the real RuleSet, which a label hardcoded to
+       "Jours restants avant 40 %" satisfies - precisely the defect R73
+       exists to prevent. It now renders with an invented pair of ceilings,
+       35 % and 60 %, that no year's rules can produce, and asserts the
+       labels follow. The real figures keep a separate assertion, because the
+       invented pair alone would pass against a formatter that dropped a
+       decimal.
+
+  ALSO ADDED, both because a probe showed the fixtures were too kind:
+    GENEVA_MIXED  110 days: fiscal -14, social +9,5. Both-negative and
+                  both-positive fixtures pass against a panel that computed
+                  one state for the pair; this one does not. It is also the
+                  ordinary shape of the bad news this product delivers - the
+                  fiscal ceiling is the one people cross first.
+    the SPEC 16 biconditional  across four fixtures, a tile marked
+                  data-negative carries the "au-dessus" label and one not
+                  marked carries "restants". A red figure under a "restants"
+                  label is invisible to any assertion that looks at one of
+                  the two.
+
+INCREMENT 4 - warnings and the contextual link. Commit ad0ebfb.
+  RED: result-panel-warnings.test.tsx could not import WARNING_CODES or
+       warningEntry - "TypeError: Cannot read properties of undefined
+       (reading 'map')" at the fixture that builds one warning per code.
+
+  PROBES:
+    N1  RULE_SET_FALLBACK dropped from the order - the state
+        increment 3 actually shipped in            reddens 6, and 1 tsc error
+    N2  the order reversed                                     reddens 2
+    N3  the engine's emission order used instead                reddens 2
+    N4  the applied year dropped from the fallback sentence      reddens 1
+    N5  the regime ignored: the 1983 sentence for everyone       reddens 2
+    N6  the body paragraph dropped from every banner             reddens 4
+    N7  a case removed from the switch                reddens 1, and 2 tsc
+    N8  two codes sharing a heading                              reddens 1
+    N9  "le quota de 10 jours" written into the copy             reddens 1
+    N9b "40 % de votre temps" written into the copy              reddens 1
+
+INCREMENT 5 - R110's provisional notice. Commit 1472916.
+  RED: 12 of 13 - readingAnchor did not exist, the notice carried no marker
+       attribute and no link. The one that passed was an absence assertion on
+       the common path, which is recorded as passing trivially.
+
+  WHAT THIS INCREMENT DOES NOT CLAIM. FW11 already shipped the notice: both
+       triggers, the absence on Geneva case (c), the "review is pending"
+       sentence and the vocabulary guard were green in calculateur-accordion.
+       test.tsx before increment 5 began. The prompt asks for "RED first for
+       both triggers and for absence on the common path"; those tests exist,
+       they pass, and restaging them here to manufacture a red run would be
+       theatre. R108 again: the sentence is not written, and the tests stay
+       where they are.
+
+  PROBES:
+    Q1  the link hardcoded to the first reading's anchor         reddens 2
+    Q2  the link points at the page, losing the reading          reddens 3
+    Q3  the anchor removed from /sources: the href goes nowhere  reddens 3
+    Q4  the anchor a constant rather than a function of the id   reddens 1
+    Q5  the notice made conditional on a result                  reddens 1
+    Q6  the marker attribute dropped                             reddens 8
+    Q7  the link labelled with the path                          reddens 1
+    contrast  --colour-text-tertiary planted on the new link     reddens 2
+              at a measured 2,42:1
+
+INCREMENT 6 - a11y, baselines, size. Commit e255647.
+  RED: the standing-disclaimer count found TWO occurrences inside <main> with
+       a result and ONE without. See finding 9.
+
+  PROBES:
+    aria-labelledby="no-such-id" on the warning list      PASSED - finding 10
+    a link with no text inside the panel                       reddens 7
+    the panel's own aria-labelledby broken, after the new
+        dangling-reference guard was added                      reddens 7
+    ResultPanel given a key that changes with the rate,
+        forcing a remount of the live region                    reddens 1
+        (and leaves its non-vacuity partner green, which is
+        the point of having both)
+
+--------------------------------------------------------------------------------
+AC1 PROOF - both rates, by codepoint literal
+--------------------------------------------------------------------------------
+tests/unit/pages/calculateur-result.test.tsx. The expected strings are built
+from explicit codepoints, per R96: "formatted regulatory figures are asserted
+against LITERAL STRINGS BY CODEPOINT, never against a formatter call."
+
+  const NBSP = String.fromCharCode(0x00a0);
+  const GENEVA_C_DECLARABLE = `39,16${NBSP}%`;
+  const GENEVA_C_RAW        = `45,0${NBSP}%`;
+
+Entered through the CONTROLS, not by constructing a TeleworkInput: the canton
+select, the mission reveal and the string-to-number boundary are part of what
+the gate is proving.
+
+  displays 39,16 % - the string the AFC publishes            PASS
+  does not round to 39,17 %                                  PASS
+  shows BOTH rates, which is AC1                             PASS
+  labels which rate is which                                 PASS
+  explains why they differ (SPEC 9.3)                        PASS
+  shows no second rate when the two agree                    PASS
+  is not an ordinary space before the percent sign            PASS
+
+The last two are the ones that make the others mean something. 72 telework
+days and no missions gives 30,00 % on both rates, and the secondary figure and
+the divergence sentence are both ABSENT - so "shows both rates" is not a page
+that always shows two numbers. And `not.toContain('39,16 %')` with an ordinary
+space is the half of R96 that no normalising matcher can make: Testing Library
+and Playwright would both accept either character.
+
+94/240 is 39.1666..., the AFC publishes 39.16, and truncation rather than
+rounding is what makes the displayed figure match the filing.
+
+--------------------------------------------------------------------------------
+EXHAUSTIVENESS - the Warning and Status unions
+--------------------------------------------------------------------------------
+WARNINGS. Three mechanisms, and two of them are compile-time.
+
+  1. warningEntry is a SWITCH over Warning['code'] whose default branch
+     assigns the narrowed value to `never`. A ninth code is a compile error.
+
+     WHY A SWITCH AND NOT A RECORD, since every other exhaustive map in this
+     repo is a Record: four of the eight codes carry data, and a
+     Record<Code, (payload) => string> cannot be CALLED without a cast.
+     TypeScript will not correlate an index access with an argument
+     distributed from the same union member, so `copy[w.code](w)` resolves the
+     value to a union of function types and demands an intersection of their
+     parameters. A switch on the discriminant narrows both sides at once,
+     which is what a discriminant is for. The alternative was `as` on a
+     boundary whose entire purpose is type safety.
+
+  2. WARNING_CODES is a const tuple checked in BOTH directions:
+
+       type EveryListedCodeExists = (typeof WARNING_CODES)[number] extends
+         WarningCode ? true : never;
+       type EveryCodeIsListed = WarningCode extends
+         (typeof WARNING_CODES)[number] ? true : never;
+       export const CODES_ARE_EXHAUSTIVE:
+         [EveryListedCodeExists, EveryCodeIsListed] = [true, true];
+
+     A one-way check is the trap: `satisfies readonly WarningCode[]` alone
+     accepts a list of three codes, and the exhaustiveness this file
+     advertises would be a list that happened to be complete the day it was
+     written.
+
+  3. WARNING_ORDER, in the panel, is checked against the union the same way:
+
+       type EveryCodeHasAPosition = Warning['code'] extends
+         (typeof WARNING_ORDER)[number] ? true : never;
+
+     THE ARRAY'S LENGTH SAYS NOTHING ABOUT COVERAGE, and this is the gap the
+     increment closed. The list shipped with seven of the eight codes in it
+     and read as complete. The missing one was RULE_SET_FALLBACK, and a code
+     with no position renders NO banner - silence, from a panel whose whole
+     job is to say what the numbers mean. `satisfies` catches a typo in a
+     code; this catches an omission, which is the direction that failed.
+
+  Runtime, over WARNING_CODES: one banner per code; a non-empty heading and a
+  body over 20 characters each; eight distinct headings; and no threshold
+  figure in any heading or body (no "%", and no standalone 40, 49 or 10).
+
+STATUS. `links` is declared `satisfies Record<Status, {text, href}>`, so a
+fifth status is a compile error. Runtime: each of the four has non-empty text
+and a root-relative href; no two statuses share a text or an href; and the
+panel renders exactly one child in the link slot. The four texts being four
+distinct strings is what makes the per-status assertions in the a11y suite
+mean "only this state contains it".
+
+RULE_SET_FALLBACK's GAP IS CLOSED. Its message names the requested and the
+applied year, which is why it could not join a list of static strings. The
+island's separate banner is gone - two banners for one warning in two visual
+languages is the failure mode of that move - and R112 is why its two R55 tests
+moved into the panel's path with a third added asserting exactly one banner
+exists.
+
+ONE BODY NOW READS ITS PAYLOAD. FISCAL_CEILING_EXCEEDED named the 1983 clause
+unconditionally: it told every reader in a source-taxed canton that their
+frontalier status might be at stake when it is not, and told the readers where
+it IS exactly what FRONTALIER_STATUS_AT_RISK says one line below. It now
+branches on `warning.regime`, which the engine has always carried.
+
+--------------------------------------------------------------------------------
+R110 PROOF - both triggers and the absence case
+--------------------------------------------------------------------------------
+P1 - THE IMPUTATION ORDER. Fires when missionDaysFrance > 0 AND
+missionDaysThirdState > 0. With days in only one place the order cannot
+matter, which is why both counts must be positive rather than either.
+  through the form: canton GE, 40 days, 6 in France, 4 in a third state
+  asserts: the lead, P1's interpretation, P1's body, the pending sentence,
+           and one link to /sources#lecture-P1
+
+P3 - THE EXACT METHOD'S CAP PRORATION (R19). Fires when the denominator is
+'exact' AND (employmentRate < 100 OR periodFraction < 1). With a full-time
+contract over a whole year there is nothing to prorate.
+  through the form: canton GE, 40 days, rate 80, advanced open, exact method
+  asserts: P3's interpretation and body, and one link to /sources#lecture-P3
+
+THE ABSENCE CASE. Geneva case (c) - 24 mission days in France and none in a
+third state - shows NO notice and no /sources# link at all. The product's own
+reference calculation, the one the engine is verified against, carries no
+caveat. P2 has no input trigger by design, so the notice never names it and
+the unconditional link on the page is its route.
+
+BOTH FRAGMENTS EXIST. The anchor comes from readingAnchor(id) in lib/content,
+called by the page that renders the id and by the notice that links to it -
+two string literals in two files agreeing today is a broken link the day one is
+edited. And their existence is asserted against the sources page itself rather
+than against a shared constant: a deep link to an id nothing renders is R85's
+failure in miniature, a promise the page does not keep. All three published
+readings have an anchor, including P2, which no notice ever links to.
+
+IN A REAL BROWSER: tab to the link, press Enter, wait for the URL to end
+/sources#lecture-P1, and assert #lecture-P1 is visible.
+
+THE NOTICE DID NOT MOVE INTO THE PANEL, which the prompt's increment 5 line
+describes. It is derived from the INPUT and the panel renders only when there
+is a RESULT. A reader who has just typed a rate of 0 has no result and is
+exactly the reader who should still be told which reading their configuration
+depends on, because they are about to correct the number and act on the
+answer. Rendering it in both branches would have meant two call sites for one
+banner - what increment 4 had just removed. Probe Q5 makes the decision a
+failing test rather than a comment.
+
+--------------------------------------------------------------------------------
+STATES MATRIX - panel state x baseline x axe
+--------------------------------------------------------------------------------
+Nine axe states: four of the FORM from FW11, five of the PANEL from increment
+6. All nine also pass the heading-outline check, the duplicate-id check and the
+new dangling-ARIA-reference check. Baselines at 1440 (desktop) and 390
+(mobile), zero tolerance (R114), regenerated and then verified by a second
+comparing run.
+
+  state                baseline file                          axe
+  ------------------------------------------------------------------------
+  empty                calculateur-vide-{desktop,mobile}      0 violations
+  mission-exposure     calculateur-rempli-{desktop,mobile}    0 violations
+   (Geneva case (c))
+  error                calculateur-erreur-{desktop,mobile}    0 violations
+  revealed             none - see below                       0 violations
+  compliant            calculateur-panneau-conforme-*         0 violations
+  regime-lost          calculateur-panneau-regime-perdu-*     0 violations
+  social-switch        calculateur-panneau-bascule-sociale-*  0 violations
+  notice-P1            calculateur-panneau-avis-provisoire-*  0 violations
+  notice-P3            (the same pair - both readings fire)   0 violations
+
+  eight new baseline files; six existing calculateur baselines regenerated
+  for the disclaimer removal, which changes every state of that page.
+
+'rempli' IS mission-exposure and is not duplicated under a second name: the
+record would be two identical pictures whose captions disagreed. 'revealed'
+has no baseline - it is a state of the FORM, its layout is covered by
+'erreur' and 'panneau-avis-provisoire', both of which open the accordion, and
+adding a picture that duplicates existing ones is a record nobody re-reads.
+notice-P1 and notice-P3 share one picture deliberately: two entries in that
+list is where the bullet spacing and the link's line-wrapping are visible.
+
+EVERY BASELINE IS CONFIRMED TO BE OF THE STATE IT IS NAMED FOR before it is
+photographed. The contextual link is chosen by Status, so it identifies the
+state in one string; MUST_SHOW maps each state id to the string that must be
+on screen. Four new states reached by filling fields is four chances to
+photograph the wrong one - `page.fill` on a missing field throws, but a field
+that exists and does not change the STATUS fails silently - and
+--update-snapshots would then accept the picture and the record would be wrong
+in the one place nobody re-reads. This file's own header states the rule and
+the first draft broke it.
+
+WHAT THE PICTURES SHOW THAT NO ASSERTION DOES. Seven stacked slots having room
+for each other: a rail 376 px wide inside a 390 px viewport, four tiles that
+wrap to one column on mobile and a 2x2 grid on desktop, three banners with a
+heading each, and two tiles whose figures turn red and whose labels get LONGER
+at exactly the moment there is bad news to fit.
+
+WHAT AXE CANNOT SEE, so the zero is not read as more than it is: jsdom has no
+layout, so colour-contrast comes back INCOMPLETE and every size is
+unmeasurable. Contrast is answered by tests/unit/tokens/contrast.test.ts - 159
+pairs, including the notice's five - and the 44 px touch targets by the token
+assertion in calculateur-form.test.tsx.
+
+TWO PLAYWRIGHT PROPERTIES jsdom CANNOT REACH:
+
+  1. THE LIVE REGION SURVIVES A RECALCULATION AS THE SAME ELEMENT. A polite
+     region announces a CHANGE to its contents; if the element carrying
+     aria-live is unmounted and a new one mounted in its place, there is no
+     change to announce and screen readers say nothing. The island keeps the
+     id, the politeness and the focus target across both branches for exactly
+     this reason. Asserted by stamping the node and looking for the stamp
+     after the numbers change, with a non-vacuity partner asserting the
+     CONTENTS did move.
+  2. KEYBOARD REACHABILITY of R110's notice link, followed by Enter, landing
+     on a visible #lecture-P1.
+
+--------------------------------------------------------------------------------
+SIZE
+--------------------------------------------------------------------------------
+From the final gate run. GATE A: total first-load JS at most 125.0 KiB per
+public route. GATE B: delta at most 25.0 KiB over the 100.6 KiB framework
+floor.
+
+route                                bucket   js total   delta    css  fonts
+--------------------------------------------------------------------------------
+/                                    public      107.6     7.0    5.0   47.1
+/_not-found                          public      107.9     7.3    5.8   47.1
+/calculateur-teletravail-frontalier  public      118.8    18.2    5.5   47.1
+/cgu                                 public      107.8     7.2    5.8   47.1
+/confidentialite                     public      107.8     7.2    5.8   47.1
+/mentions-legales                    public      107.8     7.2    5.8   47.1
+/sources                             public      107.9     7.3    6.2   47.1
+/dev/composants                      dev         108.1     7.5    5.5   47.1
+/dev/rail-gallery                    dev         100.7     0.1    1.6   47.1
+/dev/rail-parity                     dev         103.1     2.5    1.6   47.1
+/dev/spike                           dev         103.3     2.7    2.9   47.1
+--------------------------------------------------------------------------------
+All gated routes pass both gates. Calculator: GATE A 6.2 spare, GATE B 6.8
+spare. css and fonts reported and never counted against a JS gate (R2);
+polyfills excluded, 38.6 KiB gzip.
+
+THE PANEL COST 2.5 KiB; THE TASK COST 3.1. Two different numbers, and the
+distinction matters.
+
+  115.7  FW11's final figure, with 9.3 KiB of GATE A headroom
+  116.3  after increment 0 and the 207 KiB fix, before any panel
+  118.8  now
+
+So the panel itself - seven slots, a second rate, four tiles, eight banners,
+one contextual link and a notice with three links - is 116.3 -> 118.8, or
+2.5 KiB. The other 0.6 KiB is increment 0: /sources, the provisional module
+and their copy, which reach the calculator through shared chunks. It is that
+cheap because it is COMPOSITION: every component was already in the bundle,
+and what six increments added is arrangement plus lib/fr copy, which
+compresses well.
+
+REPORTED AFTER EVERY INCREMENT, as instructed. The figures for increments 1
+and 2 are quoted from their own commit messages, where they were recorded at
+the time; 3 to 6 are from this session's runs.
+
+  after increment 1   118.8   6.2 spare   (116.3 -> 118.8, the whole shell)
+  after increment 2   118.8   6.2 spare   (unchanged - the second rate is
+                                          copy and a component already built)
+  after increment 3   118.8   6.2 spare   (unchanged - the tile markup had
+                                          shipped with the shell)
+  after increment 4   118.7   6.3 spare   (-0.1: the island's fallback banner
+                                          and its copy left with it)
+  after increment 5   118.8   6.2 spare   (+0.1: readingAnchor and the links)
+  after increment 6   118.8   6.2 spare   (unchanged - tests and baselines)
+
+GATE A WAS NEVER AT RISK, and increment 4 moved the number DOWN. No gate was
+raised and none needed to be. /dev/composants is 108.1, 32.5 KiB inside GATE
+W's 40 KiB delta.
+
+WITHOUT THE 207 KiB FIX the route would be 323.1 KiB - GATE A failed by
+198.1. That measurement is in the R117 commit.
+
+--------------------------------------------------------------------------------
+TOKENS ADDED (R77)
+--------------------------------------------------------------------------------
+NONE. tokens.scss and DESIGN-SYSTEM.md are byte-identical to their state
+before bd66959.
+
+Every measurement six increments of composition needed already existed. The
+one new colour PAIRING - --colour-brand underlined on --colour-info-soft, the
+notice's link to /sources - reuses an existing token on an existing fill and is
+now measured by the audit at the 4,5 bar. R77's self-service clause was
+available and not needed.
+
+The pairing that did NOT already hold is finding 8, and the fix was to use a
+token that clears the bar rather than to add or change one.
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+D1. INCREMENT 3 HAD NO RED RUN, and the prompt asks for one. The tile markup
+    shipped with increment 1's shell, so the assertions passed on their first
+    execution. Producing a red run would have meant deleting working code in
+    order to re-add it. The mutation probes are recorded instead, and two of
+    them found real defects in the tests - which is more than a staged red run
+    would have produced. R108: the mandated sentence is not written.
+
+D2. R110's NOTICE DID NOT MOVE INTO THE PANEL. Full reasoning under R110
+    PROOF. In short: it is input-derived, the panel is result-only, and moving
+    it would have silenced it for every invalid input. The decision is
+    asserted by probe Q5.
+
+D3. ResultPanelProps STILL DECLARES `input`, WHICH NOTHING READS. The prompt
+    specifies the prop "for R110's triggers" and D2 is why there are no
+    triggers here. Kept rather than removed, because the prompt names it
+    explicitly and moving the notice was my decision, not the prompt's -
+    deleting the prop would quietly erase the instruction it came from. The
+    comment now says this plainly instead of claiming the notice arrives in
+    increment 5. Raised as Q30.
+
+D4. THE PROMPT'S KEYBOARD ASSERTION FOR THE CONTEXTUAL LINK CANNOT BE MADE.
+    All four of SPEC 9.3's destinations are `status: 'planned'`, so R85
+    renders the link as TEXT and there is no tab stop in that slot. Writing
+    "the contextual link is keyboard reachable" would be writing a false
+    sentence. The reachability that exists is asserted on the notice's link,
+    and the absence is recorded as a passing test that says why - because a
+    comment in a spec file is not in the run's output. It becomes a real tab
+    stop the day FW17 ships the first guide, with no edit to the panel.
+
+D5. A PAGE-LEVEL LegalNote WAS REMOVED, and it was mine from increment 0.
+    Finding 9. SPEC 9.3's panel note and SPEC 9.1's footer note both stay, a
+    screen apart; the mid-page third copy went, and the /sources link it was
+    carrying stayed exactly where it was. The standing sentence is still in
+    the served HTML with scripting off, from the footer, which is a server
+    component too.
+
+D6. R91's SOURCE SCAN WAS NARROWED, from whole lines to the quoted spans of a
+    line. Finding 7. Nothing is given up: the rule governs French text, French
+    text lives in string literals, and the runtime walk still reads every
+    exported value whole. The extractor has nine tests of its own, including
+    two offences planted inside strings on lines full of syntax, and the one
+    shape it cannot follow - a template spanning two lines - is asserted
+    absent from lib/fr.
+
+D7. THE BASELINE WIDTHS ARE STILL 1440 AND 390 while pages.visual.spec.ts uses
+    1280 and 360. Carried forward from FW11 unchanged and still raised rather
+    than reconciled unilaterally: moving baselines is a decision about the
+    visual record. Q24.
+
+--------------------------------------------------------------------------------
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------------------
+N1. TWO ESLINT WARNINGS, PRE-EXISTING. tests/unit/calc-engine/benchmark.test.ts
+    line 81 and verification-trace.test.ts line 83 carry
+    `eslint-disable-next-line no-console` directives that report nothing.
+    Verified pre-existing by stashing every change in this session and running
+    eslint on the two files unchanged. They are warnings, the gate is green,
+    and both files are engine tests outside FW12's scope. `eslint --fix`
+    removes them.
+
+N2. THE TWO CONSTANTS OUTSIDE CHECKPOINT A. missionCapProration and
+    dayClassification are `status: 'pending'` on /sources - marked En attente,
+    with no verification date, because the pass reached no published example
+    for either. They are disclosed rather than resolved, and resolving them is
+    a regulatory question.
+
+N3. THE ISLAND AND THE PANEL BOTH RENDER A REGION WITH id="resultat". They are
+    mutually exclusive branches of one ternary, so the id is never duplicated
+    - asserted in every one of the nine states by the duplicate-id check. It
+    is worth knowing that the guarantee is the ternary and not a coincidence.
+
+N4. formatSignedDays IS CALLED ON TWO COUNTS THAT CANNOT BE NEGATIVE.
+    swissTaxedDays and frenchTaxedDays are counts of days, so their overLabel
+    is the same string as their label on purpose. A dedicated test says that
+    choice is safe across three fixtures rather than leaving it as a case
+    nobody thought about.
+
+N5. THE WORKBENCH RENDERS THE COMPONENT LIBRARY ON THE SERVER. That is why
+    GATE W would not have caught the 207 KiB defect, and it is the subject of
+    Q28.
+
+--------------------------------------------------------------------------------
+QUESTIONS FOR THE OPERATOR
+--------------------------------------------------------------------------------
+CARRIED, STILL OPEN:
+
+R47. The GitHub PAT. Still open, still the operator's: it must be revoked by
+     the operator and never pasted again. Nothing in this session needed it;
+     every push used the existing local credential.
+
+Q23. APOSTROPHE STYLE IN lib/fr. The copy uses the ASCII apostrophe (U+0027)
+     throughout. French typography prefers U+2019. It is a single sweep with a
+     codepoint-registry assertion behind it, and it would touch every copy
+     module and every test that compares those strings - so it is a decision
+     about the record, not a detail. Unchanged in FW12.
+
+Q24. THE BASELINE WIDTH SPLIT. 1440/390 on the calculator, 1280/360 on the
+     legal pages and /sources. Both pairs are defensible - 390 is the current
+     iPhone width, 360 the plan's reference Android - and having two in one
+     suite is not: a layout that breaks only at 360 is invisible on the
+     calculator. Ten calculator baselines now use 1440/390, so reconciling
+     costs more than it did in FW11.
+
+Q28. WHAT WOULD ACTUALLY CLOSE THE 207 KiB CLASS. A component can be free on
+     every server-rendered page and cost 200 KiB the first time it enters a
+     client island, and nothing measures that until some task puts it in one.
+     GATE W does not close it, measured. What would: a /dev route rendering
+     the library INSIDE a client island, gated. That is a new route and a
+     decision about what /dev is for, so it is a question rather than
+     something I built.
+
+Q29. /sources EXPANSION IS FW20. Increment 0 shipped the minimum that closes
+     R113's hole. The page has one h1, eight table rows, three readings and a
+     review date; it has no per-rule permalinks, no change history and no
+     citation of the specific paragraph inside each source document.
+
+NEW:
+
+Q30. THE UNUSED `input` PROP. D3. Three options: remove it (cleanest code,
+     erases the prompt's instruction), keep it as it is (documented, unread),
+     or move the notice into the panel after all and accept that it goes
+     silent while the input is invalid. I have kept it and documented it, and
+     the third option is the one I would argue against.
+
+Q31. TWO COPIES OF THE STANDING DISCLAIMER ARE STILL ON THE PAGE, one in the
+     panel (SPEC 9.3 item 6) and one in the footer (SPEC 9.1 $legal-01). Both
+     are specified, and they are a screen apart, so I kept both. If one
+     should go, the panel's is the one SPEC 9.3 names explicitly and the
+     footer's is the one that survives with scripting off - so it is not
+     obvious to me which, and it affects every page rather than this one.
+
+Q32. THE FISCAL BREACH NOW HAS TWO BODIES, one per regime. This is a copy
+     decision I made to remove a duplication with FRONTALIER_STATUS_AT_RISK
+     and to stop telling source-taxed readers their status was at stake. Both
+     sentences are TODO-COPY and unreviewed, like the rest of lib/fr, but
+     this one changes what the product ASSERTS to a class of user rather than
+     how it words it.
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+Nine commits on main, bd66959..e255647, every one pushed to
+github.com/kaitmax/Frontalier and green in CI:
+
+  bd66959  FW12 increment 0: /sources ships, and R111-R112 refine what R106
+           asserts
+  7b406db  chore: R114 zero tolerance, and R112's audit found a dead guard
+  e350ba5  FW12: result panel shell in SPEC 9.3 order
+  4adb125  chore: R115-R118, and R117 does not close the hole it was written
+           for
+  fd3ac72  FW12: the two-rate display
+  792776c  FW12: metric tiles including negative headroom
+  ad0ebfb  FW12: warning banners and the contextual link
+  1472916  FW12: input-specific provisional notice (R110)
+  e255647  FW12: a11y, baselines, size record
+
+This report is the tenth commit. It also carries one source change: the
+comment on ResultPanelProps.input, which claimed the notice arrived there in
+increment 5 and had stopped being true (D3). The gate was re-run with it in
+place - 1664 tests - so the report commit is green on its own contents and not
+only on the commit before it.
+
+FINAL VERIFICATION, all six commands in sequence on e255647:
+
+  pnpm gate           1664 tests, typecheck, lint, coverage, build, size,
+                      parity   PASS
+  pnpm test:e2e       73 passed                                       PASS
+  pnpm test:visual    64 passed, zero tolerance                       PASS
+  pnpm test:a11y      83 passed                                       PASS
+  pnpm test:runtime   9 passed                                        PASS
+  pnpm test:clean-tree                                                PASS
+
+================================================================================
+END OF REPORT-FW12.txt
+================================================================================

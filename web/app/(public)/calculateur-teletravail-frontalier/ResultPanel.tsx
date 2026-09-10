@@ -118,7 +118,25 @@ export interface ResultPanelProps {
   readonly result: TeleworkResult;
   /** The year's ceilings, for the rail and the tile labels (R35, R73). */
   readonly thresholds: ZoneThresholds;
-  /** Carried for ruling R110's input-specific notice, added in increment 5. */
+  /**
+   * THE INPUT, AND NOTHING IN THIS COMPONENT READS IT. Said plainly rather
+   * than left as a comment that has stopped being true.
+   *
+   * The FW12 prompt specifies this prop "for R110's triggers", and increment
+   * 5 concluded the notice does not belong here: it is derived from the
+   * INPUT, this panel renders only when there is a RESULT, and a reader whose
+   * numbers are invalid - who has no result - is exactly the reader who
+   * should still be told which pending reading their configuration depends
+   * on. So the notice stayed in the island, one call site above a region
+   * whose contents change underneath it, and the prop it was going to feed
+   * has no reader.
+   *
+   * KEPT RATHER THAN REMOVED because the prompt names it explicitly and
+   * moving the notice was my decision, not the prompt's; deleting the prop
+   * would quietly erase the instruction it came from. Raised as a question
+   * instead. What is NOT kept is the old comment, which said the notice was
+   * "added in increment 5" here.
+   */
   readonly input: TeleworkInput;
 }
 
