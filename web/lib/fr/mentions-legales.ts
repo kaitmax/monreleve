@@ -34,11 +34,11 @@ export const LEGAL_ENTITY_TERMS: Readonly<Record<LegalEntityField, string>> = {
   legalName: 'Dénomination sociale',
   legalForm: 'Forme juridique',
   address: 'Siège social',
-  registrationNumber: "Numéro d'immatriculation",
+  registrationNumber: "Numéro d’immatriculation",
   dataController: 'Responsable du traitement',
   dpoContact: 'Délégué à la protection des données',
   hostingProvider: 'Hébergeur',
-  hostingAddress: "Adresse de l'hébergeur",
+  hostingAddress: "Adresse de l’hébergeur",
   contactEmail: 'Adresse de contact',
 };
 
@@ -51,12 +51,12 @@ export const MENTIONS_LEGALES_COPY = {
    * badly served by marketing copy.
    */
   description:
-    "Identité de l'éditeur du site frontalier, hébergement, propriété " +
+    "Identité de l’éditeur du site frontalier, hébergement, propriété " +
     'intellectuelle et droit applicable.',
 
   intro:
-    "Les informations ci-dessous identifient l'éditeur du site frontalier et " +
-    "son hébergeur, comme l'exige la réglementation applicable aux services " +
+    "Les informations ci-dessous identifient l’éditeur du site frontalier et " +
+    "son hébergeur, comme l’exige la réglementation applicable aux services " +
     'de communication au public en ligne.',
 
   /**
@@ -73,23 +73,23 @@ export const MENTIONS_LEGALES_COPY = {
 
   directorHeading: 'Directeur de la publication',
   director:
-    "Le directeur de la publication est le représentant légal de l'éditeur.",
+    "Le directeur de la publication est le représentant légal de l’éditeur.",
 
   hostingHeading: 'Hébergement',
   hosting:
-    "L'hébergeur assure le stockage technique du service. Il n'intervient ni " +
+    "L’hébergeur assure le stockage technique du service. Il n’intervient ni " +
     'dans le contenu publié ni dans les calculs présentés.',
 
   propertyHeading: 'Propriété intellectuelle',
   property:
     "Les textes, les éléments graphiques et le code de ce site sont la " +
-    "propriété de l'éditeur ou sont utilisés avec l'autorisation de leurs " +
+    "propriété de l’éditeur ou sont utilisés avec l’autorisation de leurs " +
     'titulaires. Toute reproduction ou représentation, totale ou partielle, ' +
     'faite sans autorisation écrite préalable est interdite.',
   propertySources:
     "Les seuils et les règles de calcul présentés reposent sur des textes " +
     "officiels français et suisses, qui ne sont la propriété de personne et " +
-    "que l'éditeur ne fait que mettre en œuvre.",
+    "que l’éditeur ne fait que mettre en œuvre.",
 
   lawHeading: 'Droit applicable',
   law:

@@ -76,34 +76,34 @@ export const SOURCES_COPY = {
 
   statusNote:
     'Transcrit signifie que la valeur a été relevée sur la source primaire et ' +
-    "qu'elle correspond. Cela ne signifie pas qu'un avis juridique a validé " +
+    "qu’elle correspond. Cela ne signifie pas qu’un avis juridique a validé " +
     'la lecture retenue.',
 
   pendingNote:
-    "Deux règles n'ont pu être atteintes par aucun exemple publié" +
+    "Deux règles n’ont pu être atteintes par aucun exemple publié" +
     n(':') +
     ' le découpage des journées, parce que les cas publiés comptent des ' +
-    "journées et non des heures, et la liste des cantons relevant de l'accord " +
+    "journées et non des heures, et la liste des cantons relevant de l’accord " +
     'de 1983, parce que Genève relève du régime de la source.',
 
   /** One line per row of SOURCE_ENTRIES. Keyed, so tsc refuses a gap. */
   rules: {
     fiscalCeiling: "Plafond fiscal annuel de télétravail, en part du temps de travail",
     missionCapDays: 'Quota annuel de jours de mission hors de Suisse, compté à ' +
-      "l'intérieur du plafond fiscal",
+      "l’intérieur du plafond fiscal",
     missionCapProration:
       'Réduction du quota de missions pour un temps partiel ou une année ' +
       'incomplète, arrondie vers le haut',
     socialCeiling:
-      "Plafond d'affiliation à la sécurité sociale, sous réserve d'un " +
+      "Plafond d’affiliation à la sécurité sociale, sous réserve d’un " +
       'certificat A1 en cours de validité',
     simplifiedBasisDays: 'Base simplifiée de jours travaillés par an, à temps plein',
     dayClassification: 'Conversion des heures en journées et demi-journées',
-    residence1983Cantons: "Cantons relevant de l'accord de 1983, où le statut de " +
+    residence1983Cantons: "Cantons relevant de l’accord de 1983, où le statut de " +
       'frontalier lui-même est en jeu',
     a1ThresholdRate:
-      "Part de télétravail à partir de laquelle l'accord-cadre européen " +
-      "s'applique",
+      "Part de télétravail à partir de laquelle l’accord-cadre européen " +
+      "s’applique",
   } satisfies Record<SourceId, string>,
 
   /**
@@ -118,11 +118,11 @@ export const SOURCES_COPY = {
   /** Rows that state a rule rather than hold a number. */
   noValue: 'règle, sans valeur chiffrée',
 
-  provisionalHeading: "Trois lectures en attente d'un avis expert",
+  provisionalHeading: "Trois lectures en attente d’un avis expert",
 
   provisionalIntro:
     'Sur ces trois points, aucune source ne tranche. Le calculateur a retenu ' +
-    "une lecture, indiquée ci-dessous, et elle attend la validation d'un " +
+    "une lecture, indiquée ci-dessous, et elle attend la validation d’un " +
     'expert. Le résultat peut évoluer si la lecture retenue change.',
 
   /**
@@ -134,20 +134,20 @@ export const SOURCES_COPY = {
    */
   provisional: {
     P1: {
-      heading: "L'ordre d'imputation des jours de mission",
+      heading: "L’ordre d’imputation des jours de mission",
       body:
         'Quand des jours de mission concernent à la fois la France et un pays ' +
         'tiers, le calculateur impute la France en premier. Les cas publiés ' +
-        "traitent les deux comme un seul ensemble et ne donnent pas d'ordre. " +
+        "traitent les deux comme un seul ensemble et ne donnent pas d’ordre. " +
         'Sans effet sur les cas de référence, où les missions ne concernent ' +
-        "qu'un seul pays, et réel pour qui répartit les deux.",
+        "qu’un seul pays, et réel pour qui répartit les deux.",
     },
     P2: {
       heading: 'Le bord du plafond social, entre 49,9 et 50',
       body:
         'Le plafond publié est de 49,9 tandis que le texte parle de moins de ' +
         '50. Le calculateur signale le dépassement au-delà de 49,9, ce qui ' +
-        "avertit un peu trop tôt dans cet intervalle. C'est le sens prudent " +
+        "avertit un peu trop tôt dans cet intervalle. C’est le sens prudent " +
         'pour un signal qui déclenche un texte et aucun calcul, et la ' +
         'troncature à deux décimales atteint réellement ces valeurs.',
     },
@@ -155,10 +155,10 @@ export const SOURCES_COPY = {
       heading: 'La réduction du quota de missions au décompte exact',
       body:
         'Les cas publiés réduisent le quota pour un temps partiel et pour une ' +
-        "année incomplète, mais ne traitent pas le cas d'un total fourni par " +
-        "l'employeur. Le calculateur réduit alors selon la seule fraction " +
-        "d'année, parce qu'un total exact correspond aux jours réellement " +
-        "travaillés et intègre donc déjà le taux d'activité.",
+        "année incomplète, mais ne traitent pas le cas d’un total fourni par " +
+        "l’employeur. Le calculateur réduit alors selon la seule fraction " +
+        "d’année, parce qu’un total exact correspond aux jours réellement " +
+        "travaillés et intègre donc déjà le taux d’activité.",
     },
   } satisfies Record<PublishedProvisionalId, ProvisionalEntry>,
 
@@ -166,7 +166,7 @@ export const SOURCES_COPY = {
   fixturesHeading: 'Les cas de référence',
 
   fixtures:
-    "Le moteur de calcul reproduit six cas publiés par l'administration " +
-    "fiscale genevoise, y compris leur arrondi. Un écart sur l'un de ces cas " +
+    "Le moteur de calcul reproduit six cas publiés par l’administration " +
+    "fiscale genevoise, y compris leur arrondi. Un écart sur l’un de ces cas " +
     'empêche toute mise en production.',
 } as const;

@@ -40,7 +40,7 @@ export const CALCULATEUR_COPY = {
    */
   intro: (fiscal: string, social: string): string =>
     `Estimez votre pourcentage de télétravail annuel et le nombre de jours ` +
-    `qu'il vous reste avant les seuils de ${fiscal} et ${social}.`,
+    `qu’il vous reste avant les seuils de ${fiscal} et ${social}.`,
 
   /**
    * RULING R55: the year the calculation applies to, shown above the form.
@@ -58,9 +58,9 @@ export const CALCULATEUR_COPY = {
   fiscal: (fiscal: string): string =>
     `Le premier seuil est fiscal. Tant que votre télétravail reste sous ` +
     `${fiscal} de votre temps de travail annuel, votre salaire continue ` +
-    `d'être imposé en Suisse. Au-delà, les jours excédentaires deviennent ` +
-    `imposables en France${n(";")} dans les cantons relevant de l'accord de 1983, ` +
-    `c'est le statut de frontalier lui-même qui est en jeu.`,
+    `d’être imposé en Suisse. Au-delà, les jours excédentaires deviennent ` +
+    `imposables en France${n(";")} dans les cantons relevant de l’accord de 1983, ` +
+    `c’est le statut de frontalier lui-même qui est en jeu.`,
 
   /**
    * Paragraph two: the social ceiling. A different rule, a different
@@ -70,8 +70,8 @@ export const CALCULATEUR_COPY = {
     `Le second est social, et il ne se confond pas avec le premier${n(":")} il ` +
     `décide de votre affiliation à la sécurité sociale, non de votre ` +
     `imposition. Il se situe à ${social}, et au-delà votre affiliation peut ` +
-    `basculer en France. À partir d'un quart de télétravail, l'accord-cadre ` +
-    `européen s'applique et suppose un certificat A1 en cours de validité.`,
+    `basculer en France. À partir d’un quart de télétravail, l’accord-cadre ` +
+    `européen s’applique et suppose un certificat A1 en cours de validité.`,
 
   /**
    * Paragraph three: missions, which are the trap. They sit INSIDE the
@@ -80,10 +80,10 @@ export const CALCULATEUR_COPY = {
    * always visible rather than hiding it in the accordion.
    */
   missions: (fiscal: string): string =>
-    `Les jours de mission hors de Suisse comptent à l'intérieur de ces ` +
-    `${fiscal}, et non en plus. Un quota annuel s'y ajoute, réduit ` +
+    `Les jours de mission hors de Suisse comptent à l’intérieur de ces ` +
+    `${fiscal}, et non en plus. Un quota annuel s’y ajoute, réduit ` +
     `proportionnellement si vous travaillez à temps partiel ou si votre ` +
-    `année est incomplète. C'est la raison pour laquelle la question des ` +
+    `année est incomplète. C’est la raison pour laquelle la question des ` +
     `missions est posée avant les options avancées.`,
 
   /**
@@ -93,7 +93,7 @@ export const CALCULATEUR_COPY = {
    */
   description: (fiscal: string, year: number): string =>
     `Combien de jours de télétravail vous reste-t-il avant le seuil de ` +
-    `${fiscal}${n("?")} Calcul gratuit et immédiat pour l'année ${year}, sans ` +
+    `${fiscal}${n("?")} Calcul gratuit et immédiat pour l’année ${year}, sans ` +
     `inscription.`,
 
   /**
@@ -126,12 +126,12 @@ export const CALCULATEUR_COPY = {
     },
 
     rate: {
-      label: "Taux d'activité (%)",
+      label: "Taux d’activité (%)",
       helper:
         'Un temps partiel réduit dans la même proportion le plafond annuel ' +
         'et le quota de jours de mission.',
-      decrease: "Diminuer le taux d'activité",
-      increase: "Augmenter le taux d'activité",
+      decrease: "Diminuer le taux d’activité",
+      increase: "Augmenter le taux d’activité",
     },
 
     days: {
@@ -191,7 +191,7 @@ export const CALCULATEUR_COPY = {
     missions: {
       question: `Avez-vous effectué des missions hors de Suisse cette année${n("?")}`,
       helper: (fiscal: string): string =>
-        `Les jours de mission sont comptés à l'intérieur des ${fiscal}, et non ` +
+        `Les jours de mission sont comptés à l’intérieur des ${fiscal}, et non ` +
         `en plus.`,
       no: 'Non',
       yes: 'Oui',
@@ -207,7 +207,7 @@ export const CALCULATEUR_COPY = {
        */
       fieldHelper:
         "Un jour de trajet sans travail effectué, ou travaillé " +
-        "majoritairement en Suisse, n'est pas compté. Les règles complètes " +
+        "majoritairement en Suisse, n’est pas compté. Les règles complètes " +
         'figurent dans le guide des missions.',
 
       france: { label: 'Jours de mission en France' },
@@ -232,7 +232,7 @@ export const CALCULATEUR_COPY = {
       helper: (basisDays: string): string =>
         `Par défaut, nous utilisons la base simplifiée de ${basisDays} jours ` +
         `par an (circulaire n° 45). Votre employeur peut utiliser un décompte ` +
-        `exact — demandez-lui laquelle s'applique, la méthode doit être la ` +
+        `exact — demandez-lui laquelle s’applique, la méthode doit être la ` +
         `même pour tout le personnel.`,
 
       simplified: 'Base simplifiée',
@@ -253,9 +253,9 @@ export const CALCULATEUR_COPY = {
     },
 
     start: {
-      label: "Début d'activité en cours d'année",
+      label: "Début d’activité en cours d’année",
       helper:
-        "Laissez vide si vous avez travaillé toute l'année. Une année " +
+        "Laissez vide si vous avez travaillé toute l’année. Une année " +
         'incomplète réduit le plafond annuel et le quota de missions dans la ' +
         'même proportion.',
     },

@@ -15,11 +15,41 @@
   gap: var(--space-2);
 }
 
-// The SVG sizes itself from its own width and height attributes; this only
-// stops it acquiring the inline-element baseline gap.
+// THE SVG SHRINKS WHEN THERE IS LESS ROOM THAN ITS WIDTH ATTRIBUTE, and
+// before ruling R127 it could not.
+//
+// It sized itself from its width and height attributes alone, and an SVG
+// with a viewBox and no max-width cannot go below them. So the panel's rail
+// slot at a 390 dp viewport is 300 px, the SVG stayed 376, and THE PAGE
+// SCROLLED SIDEWAYS - by 31 px at 390, 61 px at 360, and 101 px at 320,
+// which is SPEC section 16's stated floor.
+//
+// R127's 360 dp overflow check found it. Eight baselines taken at 390 could
+// not, and the reason is worth keeping: `fullPage: true` WIDENS the image to
+// include the overflow, so an overflowing page photographs as a complete
+// layout on a 421 px canvas instead of a broken one. The evidence was in the
+// image dimensions.
+//
+// SCALING RATHER THAN SCROLLING, because the rail IS a scale. A container
+// with overflow-x would put the 49,9 % tick off the screen at 320, and a
+// threshold rail whose second threshold cannot be seen has lost its subject.
+// The whole rail stays visible and gets smaller.
+//
+// WHAT IT COSTS, MEASURED AGAINST R46. That ruling took the tick from 1,5 px
+// to 2 px because 1,5 cannot sit on the device pixel grid, and a uniformly
+// scaled 2 px tick is 1,60 px at 320. That is NOT the defect R46 fixed: that
+// one was the two ticks rendering asymmetrically FROM EACH OTHER - one a
+// symmetric grey pair, the other lopsided - and a uniform scale moves both
+// identically. It is a loss of crispness, it applies only below 376 px of
+// available width, and it is raised as a question rather than settled here.
 .svg {
   display: block;
   line-height: 0;
+
+  svg {
+    max-width: 100%;
+    height: auto;
+  }
 }
 
 .unavailable {

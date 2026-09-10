@@ -36,7 +36,7 @@ export const HOME_COPY = {
 
   intro:
     'frontalier calcule votre part de télétravail annuelle et le nombre de jours ' +
-    "qu'il vous reste avant les deux seuils qui comptent : celui de l'imposition " +
+    "qu’il vous reste avant les deux seuils qui comptent : celui de l’imposition " +
     'et celui de la sécurité sociale.',
 } as const;
 
@@ -62,12 +62,12 @@ export const TITLE_TEMPLATE = `%s — ${APP_NAME}`;
 // ---------------------------------------------------------------------------
 
 export const NOT_FOUND_COPY = {
-  heading: "Cette page n'existe pas",
+  heading: "Cette page n’existe pas",
   body:
     'Le lien que vous avez suivi est peut-être ancien, ou son adresse ' +
     'comporte une erreur.',
   calculator: 'Aller au calculateur',
   calculatorHref: '/calculateur-teletravail-frontalier',
-  home: "Revenir à l'accueil",
+  home: "Revenir à l’accueil",
   homeHref: '/',
 } as const;

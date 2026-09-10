@@ -164,7 +164,7 @@ export function warningEntry(warning: Warning): WarningEntry {
         // grouping formatter renders 2099 as "2 099" with SPEC 6.4's U+202F -
         // a year is a label, not a count. Interpolated raw, deliberately.
         body:
-          `Aucune règle n'est encore publiée pour ${warning.requestedYear}${n(':')} le ` +
+          `Aucune règle n’est encore publiée pour ${warning.requestedYear}${n(':')} le ` +
           `calcul applique celles de ${warning.appliedYear}.`,
       };
 
@@ -182,7 +182,7 @@ export function warningEntry(warning: Warning): WarningEntry {
               'et votre canton est un canton où le dépassement met en cause ' +
               'le statut de frontalier lui-même.'
             : 'Les jours au-delà du plafond deviennent imposables en ' +
-              "France. L'imposition à la source suisse ne couvre plus ces " +
+              "France. L’imposition à la source suisse ne couvre plus ces " +
               'journées.',
       };
 
@@ -208,7 +208,7 @@ export function warningEntry(warning: Warning): WarningEntry {
         heading: 'Seuil de sécurité sociale dépassé',
         body:
           'Votre affiliation à la sécurité sociale peut basculer en France. ' +
-          "Ce seuil est distinct du seuil fiscal et n'a pas les mêmes " +
+          "Ce seuil est distinct du seuil fiscal et n’a pas les mêmes " +
           'conséquences.',
       };
 
@@ -218,8 +218,8 @@ export function warningEntry(warning: Warning): WarningEntry {
         // The Checkpoint A correction: the accord applies from a quarter of
         // telework, not from any counted day at all.
         body:
-          "À partir d'un quart de télétravail, l'accord-cadre européen " +
-          "s'applique et suppose un certificat A1 en cours de validité, " +
+          "À partir d’un quart de télétravail, l’accord-cadre européen " +
+          "s’applique et suppose un certificat A1 en cours de validité, " +
           'délivré à la demande de votre employeur.',
       };
 
@@ -227,9 +227,9 @@ export function warningEntry(warning: Warning): WarningEntry {
       return {
         heading: 'Statut de frontalier en jeu',
         body:
-          "Votre canton relève de l'accord de 1983, où un dépassement du " +
+          "Votre canton relève de l’accord de 1983, où un dépassement du " +
           'plafond met en cause le statut de frontalier et non seulement ' +
-          "l'imposition des jours excédentaires.",
+          "l’imposition des jours excédentaires.",
       };
 
     case 'EXACT_METHOD_UNVERIFIED':
@@ -237,7 +237,7 @@ export function warningEntry(warning: Warning): WarningEntry {
         heading: 'Décompte exact fourni',
         body:
           'Le calcul utilise le nombre total de jours que vous avez saisi. Ce ' +
-          "chiffre vient de votre employeur et n'a pas été vérifié.",
+          "chiffre vient de votre employeur et n’a pas été vérifié.",
       };
 
     default: {

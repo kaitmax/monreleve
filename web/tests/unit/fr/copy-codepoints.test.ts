@@ -33,6 +33,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { isComment, quotedSpans } from '@/tests/support/quoted-spans';
 
 const DIR = join(process.cwd(), 'lib', 'fr');
 
@@ -189,5 +190,129 @@ describe('the whitespace codepoints in French copy are on the record (R66)', () 
     }
 
     expect(misplaced, misplaced.join(' | ')).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// RULING R126: THE APOSTROPHE. U+2019, not U+0027.
+//
+// French typography sets an elision with U+2019 RIGHT SINGLE QUOTATION MARK.
+// The ASCII apostrophe is a typewriter compromise, and in French copy it is
+// wrong in the same way a hyphen is wrong for a dash: it renders as a straight
+// vertical tick where the typeface has a shaped comma-form glyph, and the
+// difference is visible at body size.
+//
+// WHY IT COULD NOT BE A SIMPLE BAN, which is what makes this a registry entry
+// rather than a lint rule. U+0027 is also the STRING DELIMITER this codebase
+// uses everywhere, so "no U+0027 in lib/fr" is unsatisfiable, and a count is
+// meaningless - it would move with every refactor of the quoting. The only
+// position where the two characters are confusable is BETWEEN TWO LETTERS,
+// which is exactly where French elision happens and exactly where a delimiter
+// never appears. So the assertion is positional.
+//
+// SAME REASONING AS R91, which is the operator's: "one sweep, registry-backed,
+// and it gets cheaper the earlier it happens." 139 elisions across 12 files
+// today; every copy file is TODO-COPY, so a reviewer will add more.
+// ---------------------------------------------------------------------------
+
+const RIGHT_SINGLE = String.fromCharCode(0x2019);
+const ASCII_APOSTROPHE = String.fromCharCode(0x27);
+
+/** Elisions, by file, counted inside quoted spans on non-comment lines. */
+function apostrophes(character: string): Map<string, number> {
+  const counted = new Map<string, number>();
+
+  for (const name of readdirSync(DIR).filter((f) => f.endsWith('.ts'))) {
+    const lines = readFileSync(join(DIR, name), 'utf8').split('\n');
+    let found = 0;
+
+    for (const line of lines) {
+      if (isComment(line)) continue;
+
+      for (const span of quotedSpans(line)) {
+        for (let index = 1; index < span.length - 1; index += 1) {
+          const before = span[index - 1] ?? '';
+          const after = span[index + 1] ?? '';
+
+          if (
+            span[index] === character &&
+            /\p{L}/u.test(before) &&
+            /\p{L}/u.test(after)
+          ) {
+            found += 1;
+          }
+        }
+      }
+    }
+
+    if (found > 0) counted.set(name, found);
+  }
+
+  return counted;
+}
+
+describe('the apostrophe in French copy is U+2019 (R126)', () => {
+  it('uses the typographic apostrophe, and there are a lot of them', () => {
+    const typographic = apostrophes(RIGHT_SINGLE);
+    const total = [...typographic.values()].reduce((sum, n) => sum + n, 0);
+
+    // Non-vacuity first: a broken scanner would report none of either
+    // character and the absence assertion below would pass forever.
+    expect(total, 'no typographic apostrophe found at all').toBeGreaterThan(100);
+    expect(typographic.size).toBeGreaterThan(8);
+  });
+
+  it('uses NO ascii apostrophe between two letters, anywhere', () => {
+    // THE POSITIONAL RULE. Between letters is the elision position; a string
+    // delimiter is never there. So this can be an absence assertion while
+    // U+0027 remains legal - and necessary - as a delimiter on the same line.
+    const straight = apostrophes(ASCII_APOSTROPHE);
+    const report = [...straight.entries()].map(([file, n]) => `${file}: ${n}`);
+
+    expect(
+      report,
+      `ASCII apostrophes in an elision position (R126 wants U+2019):\n${report.join('\n')}`,
+    ).toEqual([]);
+  });
+
+  it('still uses U+0027 as a delimiter, which is why the rule is positional', () => {
+    // Stated so that nobody "completes" R126 by sweeping the delimiters too.
+    // Every file here opens strings with it.
+    const source = readFileSync(join(DIR, 'shell.ts'), 'utf8');
+
+    expect(source).toContain(`${ASCII_APOSTROPHE}/application${ASCII_APOSTROPHE}`);
+  });
+
+  it('and the detector would actually catch one', () => {
+    // Both directions on a synthetic line, because the assertion above is an
+    // absence and its scanner is the only thing standing behind it.
+    const swept = `  label: "L${RIGHT_SINGLE}application",`;
+    const straightLine = `  label: "L${ASCII_APOSTROPHE}application",`;
+
+    const count = (line: string, character: string): number => {
+      let found = 0;
+
+      for (const span of quotedSpans(line)) {
+        for (let index = 1; index < span.length - 1; index += 1) {
+          if (
+            span[index] === character &&
+            /\p{L}/u.test(span[index - 1] ?? '') &&
+            /\p{L}/u.test(span[index + 1] ?? '')
+          ) {
+            found += 1;
+          }
+        }
+      }
+
+      return found;
+    };
+
+    expect(count(straightLine, ASCII_APOSTROPHE)).toBe(1);
+    expect(count(swept, ASCII_APOSTROPHE)).toBe(0);
+    expect(count(swept, RIGHT_SINGLE)).toBe(1);
+
+    // And a delimiter beside a colon is not an elision - the case that made
+    // the naive count six too high when the sweep was measured.
+    expect(count(`  x: n(${ASCII_APOSTROPHE}:${ASCII_APOSTROPHE}),`, ASCII_APOSTROPHE)).toBe(0);
   });
 });

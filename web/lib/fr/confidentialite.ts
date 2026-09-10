@@ -80,74 +80,74 @@ export const CONFIDENTIALITE_COPY = {
       'confirmation vous est alors envoyé, la date de votre accord est ' +
       'enregistrée, et chaque message contient un lien de désinscription en ' +
       'un clic.',
-    "La mesure d'audience est auto-hébergée, sans cookie et sans " +
+    "La mesure d’audience est auto-hébergée, sans cookie et sans " +
       'identifiant publicitaire. Elle compte les pages consultées et ' +
       'quelques actions agrégées, comme le fait de lancer un calcul. Elle ne ' +
       'permet pas de vous reconnaître, et aucune donnée ne part vers un ' +
       'tiers.',
   ],
 
-  appHeading: "Ce que l'application enregistre",
+  appHeading: "Ce que l’application enregistre",
   appIntro:
-    "L'application Android tient le registre de vos journées. Elle " +
+    "L’application Android tient le registre de vos journées. Elle " +
     'enregistre, pour votre compte et pour lui seul :',
   app: [
     'votre adresse e-mail, qui sert aussi à vous connecter, par un lien ' +
       'envoyé par message et sans mot de passe ;',
-    "votre canton de travail, votre taux d'activité, votre méthode de " +
-      "décompte et votre date de début d'activité ;",
+    "votre canton de travail, votre taux d’activité, votre méthode de " +
+      "décompte et votre date de début d’activité ;",
     'pour chaque journée déclarée, la date, sa nature (Suisse, domicile, ' +
       'mission, absence), la portion (journée entière ou demi-journée) et le ' +
-      "motif s'il s'agit d'une absence ;",
-    "l'origine de chaque journée, à savoir une saisie à la main, une " +
+      "motif s’il s’agit d’une absence ;",
+    "l’origine de chaque journée, à savoir une saisie à la main, une " +
       'proposition acceptée ou une proposition corrigée, ainsi que ce qui ' +
-      "avait été proposé lorsque vous l'avez corrigée ;",
-    "les horodatages, c'est-à-dire la date et l'heure auxquelles le serveur " +
+      "avait été proposé lorsque vous l’avez corrigée ;",
+    "les horodatages, c’est-à-dire la date et l’heure auxquelles le serveur " +
       'a reçu chaque déclaration. Ils sont assignés par le serveur et jamais ' +
-      "par votre téléphone : c'est ce qui donne sa valeur au relevé annuel ;",
-    "l'historique des modifications, en ajout seul. Une correction ajoute " +
-      "une ligne, elle n'en efface aucune ;",
+      "par votre téléphone : c’est ce qui donne sa valeur au relevé annuel ;",
+    "l’historique des modifications, en ajout seul. Une correction ajoute " +
+      "une ligne, elle n’en efface aucune ;",
     'si vous activez le rappel quotidien, un jeton de notification propre à ' +
       'votre appareil.',
   ],
   appThirdParty:
-    "L'application ne communique qu'avec notre propre interface de " +
+    "L’application ne communique qu’avec notre propre interface de " +
     'programmation et avec le service de notification de Google (FCM), ' +
     'utilisé uniquement pour acheminer le rappel que vous avez demandé. ' +
-    "Aucun autre service tiers n'y est intégré : ni régie publicitaire, ni " +
+    "Aucun autre service tiers n’y est intégré : ni régie publicitaire, ni " +
     'outil de mesure tiers, ni identifiant publicitaire.',
 
-  neverHeading: "Ce qui n'est jamais enregistré",
+  neverHeading: "Ce qui n’est jamais enregistré",
   never: [
     'Aucune coordonnée géographique. Ni latitude, ni longitude, ni altitude, ' +
       'ni vitesse : jamais enregistrée, jamais transmise, jamais ' +
       'journalisée.',
     'Si vous choisissez le mode automatique, la position est utilisée sur ' +
       'votre appareil uniquement. Chaque relevé de position est comparé à un ' +
-      "polygone des frontières suisses embarqué dans l'application, puis " +
+      "polygone des frontières suisses embarqué dans l’application, puis " +
       'abandonné immédiatement. Seul un cumul de minutes par journée est ' +
       'conservé, sans aucune position.',
     'Aucun historique de déplacement, aucun nom de lieu, aucune adresse ' +
-      "d'employeur, aucune carte et aucune chronologie de vos trajets. Il n'y " +
+      "d’employeur, aucune carte et aucune chronologie de vos trajets. Il n’y " +
       'a rien de tel à produire si cela vous était demandé un jour.',
     'Notre interface de programmation refuse toute déclaration contenant ' +
       'une latitude, une longitude, une précision, une altitude, une vitesse ' +
       'ou un nom de fournisseur de position. Ce refus est vérifié par un test ' +
-      "automatique : la garantie n'est pas seulement annoncée, elle est " +
+      "automatique : la garantie n’est pas seulement annoncée, elle est " +
       'empêchée techniquement.',
-    "Et l'application n'enregistre jamais une journée d'elle-même. Une " +
+    "Et l’application n’enregistre jamais une journée d’elle-même. Une " +
       'détection vous propose une journée ; seule votre validation ' +
-      "l'enregistre.",
+      "l’enregistre.",
   ],
 
   basisHeading: 'Bases légales',
   basis: [
-    "L'exécution du service que vous demandez, pour votre compte, vos " +
+    "L’exécution du service que vous demandez, pour votre compte, vos " +
       'journées déclarées, les horodatages et le relevé annuel.',
     'Votre consentement, pour les alertes par e-mail, pour le rappel ' +
       'quotidien et pour le mode automatique. Chacun se retire séparément et ' +
-      "à tout moment, dans les paramètres de l'application.",
-    "Notre intérêt légitime, pour la mesure d'audience agrégée décrite plus " +
+      "à tout moment, dans les paramètres de l’application.",
+    "Notre intérêt légitime, pour la mesure d’audience agrégée décrite plus " +
       'haut et pour la correction des erreurs techniques du service.',
   ],
 
@@ -156,42 +156,42 @@ export const CONFIDENTIALITE_COPY = {
     'Une inscription aux alertes qui reste non confirmée est supprimée au ' +
       'bout de 30 jours.',
     'Les données de votre compte et vos journées déclarées sont conservées ' +
-      "jusqu'à la suppression de votre compte, que vous pouvez demander à " +
-      "tout moment depuis l'application.",
-    "L'historique des modifications est conservé aussi longtemps que le " +
-      "compte : c'est lui qui permet de montrer quand chaque journée a été " +
+      "jusqu’à la suppression de votre compte, que vous pouvez demander à " +
+      "tout moment depuis l’application.",
+    "L’historique des modifications est conservé aussi longtemps que le " +
+      "compte : c’est lui qui permet de montrer quand chaque journée a été " +
       'déclarée, et le relevé perdrait sa valeur sans lui.',
     'Les rapports techniques que le service produit en cas de panne sont ' +
       'débarrassés des adresses e-mail et du contenu des déclarations avant ' +
-      "d'être enregistrés.",
+      "d’être enregistrés.",
   ],
 
   hostingHeading: 'Hébergement et prestataires',
   hosting:
     'Les données sont hébergées chez le prestataire indiqué ci-dessous. Deux ' +
     'autres prestataires interviennent de façon limitée : Resend, pour ' +
-    "l'envoi des messages, et le service de notification de Google (FCM), " +
+    "l’envoi des messages, et le service de notification de Google (FCM), " +
     'pour acheminer le rappel quotidien vers votre appareil.',
 
   rightsHeading: 'Vos droits',
   rightsIntro:
-    "Vous pouvez à tout moment demander l'accès à vos données, leur " +
+    "Vous pouvez à tout moment demander l’accès à vos données, leur " +
     'rectification, leur effacement, leur portabilité, la limitation de leur ' +
-    "traitement, ou retirer un consentement que vous avez donné. Vous n'avez " +
+    "traitement, ou retirer un consentement que vous avez donné. Vous n’avez " +
     'pas à motiver votre demande.',
   rights: [
-    "Dans l'application, Exporter mes données produit un fichier JSON et un " +
+    "Dans l’application, Exporter mes données produit un fichier JSON et un " +
       'fichier CSV contenant vos journées, leur origine et leurs horodatages.',
-    "Dans l'application, Supprimer mon compte efface votre compte, vos " +
+    "Dans l’application, Supprimer mon compte efface votre compte, vos " +
       'journées, leur historique, vos appareils enregistrés et les données ' +
       'conservées sur votre téléphone. Cette opération est définitive, et le ' +
       'relevé annuel ne peut plus être reproduit ensuite.',
-    "Vous pouvez aussi écrire à l'adresse de contact indiquée plus haut.",
+    "Vous pouvez aussi écrire à l’adresse de contact indiquée plus haut.",
   ],
 
   complaintHeading: 'Réclamation',
   complaint:
-    "Si une réponse ne vous satisfait pas, vous pouvez saisir l'autorité de " +
+    "Si une réponse ne vous satisfait pas, vous pouvez saisir l’autorité de " +
     'contrôle : la CNIL en France, ou le Préposé fédéral à la protection des ' +
     'données et à la transparence en Suisse.',
 } as const;

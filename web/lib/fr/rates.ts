@@ -26,7 +26,7 @@ export const RATE_COPY = {
    * its caption names the authority it is declared to rather than describing
    * the arithmetic.
    */
-  declarableCaption: "Taux à déclarer à l'AFC",
+  declarableCaption: "Taux à déclarer à l’AFC",
 
   /**
    * The secondary figure. Deliberately NOT "taux réel" or "taux brut": both

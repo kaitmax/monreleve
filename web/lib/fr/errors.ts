@@ -46,9 +46,9 @@ type Code = ValidationError['code'];
  * which is why each carries its article.
  */
 export const FIELD_NAMES: Record<keyof TeleworkInput, string> = {
-  taxYear: "l'année fiscale",
+  taxYear: "l’année fiscale",
   canton: 'le canton',
-  employmentRate: "le taux d'activité",
+  employmentRate: "le taux d’activité",
   periodFraction: 'la fraction de période',
   denominator: 'la méthode de calcul',
   granularity: 'la granularité',
@@ -63,7 +63,7 @@ export const FIELD_NAMES: Record<keyof TeleworkInput, string> = {
  * begins.
  */
 export const ERROR_COPY: Record<Code, string> = {
-  RATE_OUT_OF_RANGE: "Le taux d'activité doit être compris entre 1 et 100.",
+  RATE_OUT_OF_RANGE: "Le taux d’activité doit être compris entre 1 et 100.",
 
   PERIOD_OUT_OF_RANGE:
     'La fraction de période doit être supérieure à 0 et ne peut pas dépasser une année entière.',

@@ -1,6 +1,6 @@
 // web/e2e/pages.visual.spec.ts
 //
-// FW10 increment 6: a baseline per public page, at desktop and at 360.
+// FW10 increment 6: a baseline per public page, at desktop and mobile.
 //
 // RUNS ONLY IN THE CONTAINER (ruling R37), like every other visual spec here -
 // see e2e/composants.visual.spec.ts for why a baseline made against one font
@@ -50,7 +50,7 @@ const PAGES = [
 ] as const;
 
 test.describe('desktop', () => {
-  test.use({ viewport: { width: 1280, height: 900 } });
+  test.use({ viewport: { width: 1440, height: 900 } });
 
   for (const { id, path } of PAGES) {
     test(id, async ({ page }) => {
@@ -64,17 +64,24 @@ test.describe('desktop', () => {
   }
 });
 
-test.describe('360', () => {
-  // plan.md's reference device width, and the one FD2 requires the layout to
-  // hold at.
-  test.use({ viewport: { width: 360, height: 800 } });
+test.describe('mobile', () => {
+  // RULING R127: 1440 AND 390 EVERYWHERE. This suite used 1280 and 360 while
+  // the calculator used 1440 and 390, and two defensible pairs in one suite
+  // is worse than either: a layout that broke only at 360 was invisible on
+  // the calculator, and one that broke only at 390 was invisible here.
+  //
+  // 390 is the current iPhone width. What replaces the 360 coverage is not a
+  // third baseline set but the overflow check in e2e/narrow.spec.ts, which
+  // measures every public route at 360 dp - cheap, and it catches the narrow
+  // case without twelve more pictures to keep.
+  test.use({ viewport: { width: 390, height: 800 } });
 
   for (const { id, path } of PAGES) {
     test(id, async ({ page }) => {
       await page.goto(path);
       await page.evaluate(() => document.fonts.ready);
 
-      await expect(page).toHaveScreenshot(`page-${id}-360.png`, { fullPage: true });
+      await expect(page).toHaveScreenshot(`page-${id}-mobile.png`, { fullPage: true });
     });
   }
 });

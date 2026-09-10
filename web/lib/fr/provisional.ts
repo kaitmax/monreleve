@@ -52,16 +52,16 @@ export const PROVISIONAL_COPY = {
 
   /** Said once, whichever readings are involved. */
   pending:
-    "Cette lecture attend la validation d'un expert. Le calcul suit les cas " +
-    "publiés par l'administration fiscale, et votre résultat peut évoluer si " +
+    "Cette lecture attend la validation d’un expert. Le calcul suit les cas " +
+    "publiés par l’administration fiscale, et votre résultat peut évoluer si " +
     'la lecture retenue change.',
 
   items: {
     P1: {
-      interpretation: "l'ordre d'imputation des jours de mission",
+      interpretation: "l’ordre d’imputation des jours de mission",
       body:
         'Vos jours de mission concernent à la fois la France et un pays ' +
-        "tiers. Le calcul impute d'abord les jours en France sur le quota " +
+        "tiers. Le calcul impute d’abord les jours en France sur le quota " +
         'annuel, puis ceux du pays tiers. Cet ordre détermine la part de ' +
         'chacun qui reste dans le régime.',
     },

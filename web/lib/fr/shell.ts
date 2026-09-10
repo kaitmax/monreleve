@@ -137,7 +137,7 @@ export const FOOTER_COLUMNS: readonly FooterColumn[] = [
     heading: 'Le produit',
     links: [
       { label: 'Le relevé', href: '/releve-annuel' },
-      { label: "L'application", href: '/application' },
+      { label: "L’application", href: '/application' },
       { label: 'Tarifs', href: '/tarifs' },
     ],
   },
@@ -146,7 +146,7 @@ export const FOOTER_COLUMNS: readonly FooterColumn[] = [
     links: [
       { label: 'Mentions légales', href: '/mentions-legales' },
       { label: 'Confidentialité', href: '/confidentialite' },
-      { label: "Conditions d'utilisation", href: '/cgu' },
+      { label: "Conditions d’utilisation", href: '/cgu' },
       { label: 'Sources', href: '/sources' },
     ],
   },

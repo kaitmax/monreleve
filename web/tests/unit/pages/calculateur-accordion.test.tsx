@@ -296,7 +296,7 @@ describe('decompte', () => {
   });
 });
 
-describe("debut d'activite becomes periodFraction", () => {
+describe('the start-date field becomes periodFraction', () => {
   it('is a date input, so the value is an ISO day (R28)', () => {
     setUp();
     openAdvanced();

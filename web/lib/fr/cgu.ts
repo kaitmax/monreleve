@@ -20,15 +20,15 @@
 // TODO-COPY: realistic French, not reviewed by counsel.
 
 export const CGU_COPY = {
-  title: "Conditions générales d'utilisation",
+  title: "Conditions générales d’utilisation",
 
   description:
     'Ce que frontalier fait, ce dont vous restez responsable, le tarif, la ' +
     'suppression du compte et le droit applicable.',
 
   intro:
-    "Ces conditions régissent l'utilisation du site frontalier et de " +
-    "l'application qui lui est associée. En les utilisant, vous les acceptez. " +
+    "Ces conditions régissent l’utilisation du site frontalier et de " +
+    "l’application qui lui est associée. En les utilisant, vous les acceptez. " +
     "La version applicable est celle publiée sur cette page.",
 
   pending:
@@ -50,7 +50,7 @@ export const CGU_COPY = {
       'seuils applicables. Ce calcul est une estimation indicative.',
   ],
 
-  notHeading: "Ce que le service n'est pas",
+  notHeading: "Ce que le service n’est pas",
 
   /**
    * THE SENTENCE. Asserted verbatim by tests/unit/pages/cgu.test.tsx, and the
@@ -58,13 +58,13 @@ export const CGU_COPY = {
    */
   notTaxAdvice:
     "Le service ne constitue pas un conseil fiscal, juridique ou social. Il " +
-    "n'engage ni votre employeur, ni l'administration française, ni " +
-    "l'administration suisse, ni aucune autre administration.",
+    "n’engage ni votre employeur, ni l’administration française, ni " +
+    "l’administration suisse, ni aucune autre administration.",
 
   notMore: [
-    "Aucune réponse donnée par le service ne préjuge de la position qu'une " +
+    "Aucune réponse donnée par le service ne préjuge de la position qu’une " +
       'administration retiendra. Pour une situation particulière, adressez-' +
-      "vous à un professionnel ou à l'administration concernée.",
+      "vous à un professionnel ou à l’administration concernée.",
     'Le relevé annuel est un document que vous produisez à partir de vos ' +
       'propres déclarations. Sa valeur vient de ce qui y est écrit et de la ' +
       'date à laquelle chaque journée a été enregistrée, non de son ' +
@@ -73,13 +73,13 @@ export const CGU_COPY = {
 
   responsibilityHeading: 'Vos déclarations, votre responsabilité',
   responsibility: [
-    "L'exactitude des journées que vous déclarez vous incombe. Le service " +
+    "L’exactitude des journées que vous déclarez vous incombe. Le service " +
       'enregistre ce que vous déclarez et la date à laquelle il le reçoit ; ' +
       'il ne vérifie pas que la déclaration correspond à la réalité, et il ' +
       'ne peut pas le faire.',
     'En mode automatique, une détection vous propose une journée. La ' +
       'proposition ne vaut pas déclaration : rien ne devient une journée ' +
-      "enregistrée avant que vous ne l'ayez validée, et vous restez libre de " +
+      "enregistrée avant que vous ne l’ayez validée, et vous restez libre de " +
       'la corriger.',
     'Un enregistrement tardif reste possible et il est signalé comme tel sur ' +
       'le relevé. Cette mention existe pour être honnête sur la qualité du ' +
@@ -91,13 +91,13 @@ export const CGU_COPY = {
     "Le service est gratuit en 2027, sans limitation de fonctionnalité et " +
       'sans engagement.',
     "Il devient payant à partir de 2028. Le tarif sera annoncé avant son " +
-      "entrée en vigueur, et vous resterez libre d'exporter vos données et de " +
+      "entrée en vigueur, et vous resterez libre d’exporter vos données et de " +
       'supprimer votre compte sans rien payer.',
   ],
 
   deletionHeading: 'Suppression du compte',
   deletion: [
-    "Vous pouvez supprimer votre compte à tout moment depuis l'application, " +
+    "Vous pouvez supprimer votre compte à tout moment depuis l’application, " +
       'sans avoir à motiver votre demande.',
     'La suppression efface votre compte, vos journées déclarées, leur ' +
       'historique, vos appareils enregistrés et les données conservées sur ' +
@@ -111,14 +111,14 @@ export const CGU_COPY = {
     "Le service peut être interrompu pour maintenance ou pour une raison " +
     "technique. Les journées que vous déclarez hors connexion sont " +
     "conservées sur votre téléphone et transmises dès que la connexion " +
-    "revient ; l'horodatage retenu est alors celui de la réception par le " +
+    "revient ; l’horodatage retenu est alors celui de la réception par le " +
     'serveur, et le relevé indique les deux dates.',
 
   lawHeading: 'Droit applicable et juridiction',
   lawLead:
     'Ces conditions sont soumises au droit français. À défaut de résolution ' +
     "amiable, le litige relève des tribunaux du ressort du siège social de " +
-    "l'éditeur :",
+    "l’éditeur :",
 
   contactHeading: 'Contact',
   contactLead: 'Pour toute question relative à ces conditions :',

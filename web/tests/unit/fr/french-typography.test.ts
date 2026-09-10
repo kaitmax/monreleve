@@ -38,6 +38,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { isComment, quotedSpans } from '@/tests/support/quoted-spans';
 
 const DIR = join(process.cwd(), 'lib', 'fr');
 
@@ -147,83 +148,11 @@ describe('no shipped French string puts an ASCII space before : ; ? ! % (R91)', 
 // SCAN 2 - template literals inside functions, which the walk cannot reach
 // ---------------------------------------------------------------------------
 
-/** A full-line comment in this codebase's style. */
-const isComment = (line: string): boolean => {
-  const trimmed = line.trim();
-
-  return trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*');
-};
-
-/**
- * The QUOTED CONTENT of one source line, and nothing else.
- *
- * THE SCAN USED TO READ WHOLE LINES, and this file's own header said what
- * would happen: "a source scan alone has to decide what is a comment and what
- * is a string, and it gets that wrong eventually." It did, on TypeScript
- * punctuation rather than on prose. FW12 put the first conditional type and
- * the first ternary into lib/fr -
- *
- *   type EveryCodeIsListed = WarningCode extends (typeof CODES)[number] ? ... : never;
- *   warning.regime === 'residence-1983' ? 'Les jours...' : 'Les jours...'
- *
- * - and ` ? `, ` : ` in an operator position are four reported offences in
- * correct code. A rule about French sentences was reading a language whose
- * syntax uses two of the five marks.
- *
- * NOTHING IS GIVEN UP BY NARROWING IT. The rule governs French text, French
- * text lives in string literals, and the runtime walk above still reads every
- * exported value whole. What this scan adds is the strings a walk cannot
- * reach - the insides of functions - and those are still read, now without
- * the syntax around them.
- *
- * PER LINE, NOT PER FILE, deliberately. Tracking quote state across a whole
- * file means one apostrophe in a trailing comment - "the panel's own order" -
- * opens a span that swallows every line until the next quote, and the failure
- * is silent under-reporting. Per line, a stray quote costs at most that line,
- * and the multi-line-template case it cannot handle is asserted absent below.
- */
-function quotedSpans(line: string): string[] {
-  const QUOTES = ["'", '"', '`'];
-  const spans: string[] = [];
-  let open: string | null = null;
-  let buffer = '';
-
-  for (let index = 0; index < line.length; index += 1) {
-    const character = line[index] ?? '';
-
-    if (open === null) {
-      if (QUOTES.includes(character)) {
-        open = character;
-        buffer = '';
-      }
-
-      continue;
-    }
-
-    if (character === '\\') {
-      // An escape consumes the next character, so \' does not close a span.
-      buffer += character + (line[index + 1] ?? '');
-      index += 1;
-      continue;
-    }
-
-    if (character === open) {
-      spans.push(buffer);
-      open = null;
-      continue;
-    }
-
-    buffer += character;
-  }
-
-  // An unterminated span is either a template continued on the next line -
-  // which the assertion below forbids in lib/fr - or a quote inside a
-  // trailing comment. Scanning what was collected is the safe direction: it
-  // can only add candidates, never hide one.
-  if (open !== null) spans.push(buffer);
-
-  return spans;
-}
+// isComment and quotedSpans MOVED TO tests/support/quoted-spans.ts in FW12
+// under ruling R126, because copy-codepoints.test.ts needs the same scanner
+// to tell a French apostrophe from a string delimiter. A second hand-written
+// copy of a scanner whose failure mode is silent under-reporting is the shape
+// of hole this project keeps finding. The nine tests below still exercise it.
 
 describe('the source, for the strings a runtime walk cannot see', () => {
   const scanned: { file: string; line: number; text: string }[] = [];

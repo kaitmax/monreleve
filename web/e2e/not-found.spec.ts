@@ -15,6 +15,7 @@
 // return 404, and only an assertion on the landmarks would notice.
 
 import { expect, test } from '@playwright/test';
+import { NOT_FOUND_COPY } from '../lib/fr';
 
 test('an unknown URL answers 404, not 200', async ({ page }) => {
   const response = await page.goto('/cette-page-nexiste-pas');
@@ -40,8 +41,19 @@ test('it has one h1 and two ways out', async ({ page }) => {
   // Scoped to main: the shell's header and footer carry links of their own,
   // and an unscoped count would pass on a page whose own links were gone.
   await expect(main.getByRole('link')).toHaveCount(2);
-  await expect(main.getByRole('link', { name: 'Aller au calculateur', exact: true })).toBeVisible();
-  await expect(main.getByRole('link', { name: "Revenir à l'accueil", exact: true })).toBeVisible();
+  // FROM THE COPY CONSTANT, NOT A LITERAL, AND R126 IS WHY. These two read
+  // as hand-typed French until the apostrophe sweep moved the copy to
+  // U+2019 and this assertion went red against correct copy - the only
+  // breakage in 1722 tests, because every other assertion imports its
+  // string. A literal here is a second copy of the words, and the second
+  // copy is always the one that goes stale.
+  //
+  // getByRole matches an accessible name EXACTLY ON CODEPOINTS, both sides
+  // (R66), so it is the one matcher where a typographic apostrophe cannot
+  // be normalised away. That is what makes the constant necessary rather
+  // than merely tidy.
+  await expect(main.getByRole('link', { name: NOT_FOUND_COPY.calculator, exact: true })).toBeVisible();
+  await expect(main.getByRole('link', { name: NOT_FOUND_COPY.home, exact: true })).toBeVisible();
 });
 
 test('it does not apologise or illustrate', async ({ page }) => {

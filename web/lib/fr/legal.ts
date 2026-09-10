@@ -18,8 +18,8 @@ export const LEGAL_COPY = {
   standing:
     'Estimation fournie à titre indicatif, sur la base des jours que vous ' +
     'avez déclarés. Chaque jour enregistré est horodaté par le service. Ce ' +
-    "document ne constitue pas un conseil fiscal et n'engage ni " +
-    "l'administration française ni l'administration suisse.",
+    "document ne constitue pas un conseil fiscal et n’engage ni " +
+    "l’administration française ni l’administration suisse.",
 } as const;
 
 /**
