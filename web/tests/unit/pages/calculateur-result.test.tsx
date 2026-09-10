@@ -33,6 +33,7 @@ import { CalculatorForm } from '@/app/(public)/calculateur-teletravail-frontalie
 import { CALCULATEUR_COPY } from '@/lib/fr/calculateur';
 import { RATE_COPY } from '@/lib/fr/rates';
 import { errorMessage } from '@/lib/fr/errors';
+import { warningEntry } from '@/lib/fr/result';
 
 afterEach(cleanup);
 
@@ -282,6 +283,24 @@ describe('while the input is invalid', () => {
 });
 
 describe('ruling R55: the rule-set fallback banner', () => {
+  // WHERE THIS BANNER LIVES CHANGED IN FW12 INCREMENT 4, and these two tests
+  // moved with it rather than being deleted.
+  //
+  // It used to be a block of the island's own, above the result card, because
+  // its sentence names two years and the panel's warning copy was static
+  // strings. warningEntry now takes the warning, so RULE_SET_FALLBACK is an
+  // ordinary member of the panel's warning list - first in it, because it
+  // qualifies every figure below.
+  //
+  // What these two keep asserting is the part the panel's own test cannot:
+  // that the banner appears THROUGH THE FORM, from a taxYear prop, with the
+  // engine emitting the warning rather than a test substituting one.
+  const FALLBACK = warningEntry({
+    code: 'RULE_SET_FALLBACK',
+    requestedYear: 2099,
+    appliedYear: 2026,
+  });
+
   it('is silent for a year that has its own rules', () => {
     // R55: "expected to be silent while 2026 is the only rule set." Asserted
     // so that the banner appearing one day is a visible change rather than a
@@ -289,7 +308,7 @@ describe('ruling R55: the rule-set fallback banner', () => {
     setUp();
     enterGenevaCaseC();
 
-    expect(renderedText()).not.toContain(RESULT.fallbackLead);
+    expect(renderedText()).not.toContain(FALLBACK.heading);
   });
 
   it('says which year was asked for and which was applied', () => {
@@ -301,7 +320,23 @@ describe('ruling R55: the rule-set fallback banner', () => {
     setUp(2099);
     enterGenevaCaseC();
 
-    expect(renderedText()).toContain(RESULT.fallbackLead);
+    expect(renderedText()).toContain(FALLBACK.heading);
+    expect(renderedText()).toContain(FALLBACK.body);
     expect(renderedText()).toContain('2099');
+  });
+
+  it('appears inside the panel’s warning list, not beside it', () => {
+    // The move itself, asserted. Two banners for one warning - the island's
+    // and the panel's - is the failure mode of this kind of change, and it
+    // renders as a page that says the same thing twice in two visual
+    // languages.
+    setUp(2099);
+    enterGenevaCaseC();
+
+    const banners = document.querySelectorAll('[data-warning="RULE_SET_FALLBACK"]');
+    const occurrences = renderedText().split(FALLBACK.heading).length - 1;
+
+    expect(banners).toHaveLength(1);
+    expect(occurrences).toBe(1);
   });
 });

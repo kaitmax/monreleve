@@ -154,9 +154,82 @@ const isComment = (line: string): boolean => {
   return trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*');
 };
 
+/**
+ * The QUOTED CONTENT of one source line, and nothing else.
+ *
+ * THE SCAN USED TO READ WHOLE LINES, and this file's own header said what
+ * would happen: "a source scan alone has to decide what is a comment and what
+ * is a string, and it gets that wrong eventually." It did, on TypeScript
+ * punctuation rather than on prose. FW12 put the first conditional type and
+ * the first ternary into lib/fr -
+ *
+ *   type EveryCodeIsListed = WarningCode extends (typeof CODES)[number] ? ... : never;
+ *   warning.regime === 'residence-1983' ? 'Les jours...' : 'Les jours...'
+ *
+ * - and ` ? `, ` : ` in an operator position are four reported offences in
+ * correct code. A rule about French sentences was reading a language whose
+ * syntax uses two of the five marks.
+ *
+ * NOTHING IS GIVEN UP BY NARROWING IT. The rule governs French text, French
+ * text lives in string literals, and the runtime walk above still reads every
+ * exported value whole. What this scan adds is the strings a walk cannot
+ * reach - the insides of functions - and those are still read, now without
+ * the syntax around them.
+ *
+ * PER LINE, NOT PER FILE, deliberately. Tracking quote state across a whole
+ * file means one apostrophe in a trailing comment - "the panel's own order" -
+ * opens a span that swallows every line until the next quote, and the failure
+ * is silent under-reporting. Per line, a stray quote costs at most that line,
+ * and the multi-line-template case it cannot handle is asserted absent below.
+ */
+function quotedSpans(line: string): string[] {
+  const QUOTES = ["'", '"', '`'];
+  const spans: string[] = [];
+  let open: string | null = null;
+  let buffer = '';
+
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index] ?? '';
+
+    if (open === null) {
+      if (QUOTES.includes(character)) {
+        open = character;
+        buffer = '';
+      }
+
+      continue;
+    }
+
+    if (character === '\\') {
+      // An escape consumes the next character, so \' does not close a span.
+      buffer += character + (line[index + 1] ?? '');
+      index += 1;
+      continue;
+    }
+
+    if (character === open) {
+      spans.push(buffer);
+      open = null;
+      continue;
+    }
+
+    buffer += character;
+  }
+
+  // An unterminated span is either a template continued on the next line -
+  // which the assertion below forbids in lib/fr - or a quote inside a
+  // trailing comment. Scanning what was collected is the safe direction: it
+  // can only add candidates, never hide one.
+  if (open !== null) spans.push(buffer);
+
+  return spans;
+}
+
 describe('the source, for the strings a runtime walk cannot see', () => {
   const scanned: { file: string; line: number; text: string }[] = [];
   let commentLines = 0;
+  let quotedLines = 0;
+  let unbalancedTemplates = 0;
 
   for (const file of FILES) {
     const lines = readFileSync(join(DIR, file), 'utf8').split('\n');
@@ -168,9 +241,33 @@ describe('the source, for the strings a runtime walk cannot see', () => {
         return;
       }
 
-      if (offences(line).length > 0) scanned.push({ file, line: index + 1, text: line.trim() });
+      if ((line.match(/`/gu) ?? []).length % 2 === 1) unbalancedTemplates += 1;
+
+      const spans = quotedSpans(line);
+
+      if (spans.length > 0) quotedLines += 1;
+
+      if (spans.some((span) => offences(span).length > 0)) {
+        scanned.push({ file, line: index + 1, text: line.trim() });
+      }
     });
   }
+
+  it('reads the quoted text on a useful number of lines', () => {
+    // NON-VACUITY FOR THE NARROWING. An extractor that returned nothing would
+    // make the assertion below pass forever, which is the failure mode of
+    // every absence assertion and the reason the detector has its own test.
+    expect(quotedLines).toBeGreaterThan(150);
+  });
+
+  it('has no template literal spanning two lines, which the extractor cannot follow', () => {
+    // The one shape a per-line extractor gets wrong: a template opened on one
+    // line and closed on another leaves its middle lines unquoted and
+    // unscanned. There are none in lib/fr today - the copy is written as
+    // concatenated single-line strings - and this is what makes the first one
+    // a failure here rather than a silent hole.
+    expect(unbalancedTemplates).toBe(0);
+  });
 
   it('skipped the comment prose rather than reporting it', () => {
     // lib/fr is heavily commented, and several comments discuss this very rule
@@ -184,5 +281,58 @@ describe('the source, for the strings a runtime walk cannot see', () => {
     const report = scanned.map((hit) => `${hit.file}:${hit.line}  ${hit.text}`);
 
     expect(report, report.join('\n')).toEqual([]);
+  });
+
+  describe('and the extractor reads strings rather than syntax', () => {
+    // THE SAME DISCIPLINE THE DETECTOR HAS. An absence assertion built on a
+    // broken extractor passes forever, and narrowing a scan is exactly the
+    // change that can do that quietly - so both directions, on the shapes
+    // that actually occur in lib/fr.
+
+    it('reads a single-quoted string', () => {
+      expect(quotedSpans("  body: 'reste 40 %',")).toEqual(['reste 40 %']);
+    });
+
+    it('reads both halves of a concatenation', () => {
+      expect(quotedSpans("  'un mot ' + 'deux :',")).toEqual(['un mot ', 'deux :']);
+    });
+
+    it('reads a template and its interpolation', () => {
+      expect(quotedSpans('  `pour ${year} : le calcul`,')).toEqual(['pour ${year} : le calcul']);
+    });
+
+    it('ignores a conditional type, which is what broke the whole-line scan', () => {
+      const line = '  type Every = Code extends (typeof CODES)[number] ? true : never;';
+
+      expect(quotedSpans(line)).toEqual([]);
+      expect(offences(line).length).toBeGreaterThan(0);
+    });
+
+    it('ignores a ternary but keeps the strings inside it', () => {
+      const line = "  regime === 'residence-1983' ? 'le statut' : 'les jours',";
+
+      expect(quotedSpans(line)).toEqual(['residence-1983', 'le statut', 'les jours']);
+    });
+
+    it('still catches an offence inside a string on a line full of syntax', () => {
+      // The direction that matters. Narrowing must not let a real offence
+      // through because it sits next to an operator.
+      const line = "  const x = ok ? 'il reste 3 jours :' : 'rien';";
+      const found = quotedSpans(line).flatMap((span) => offences(span));
+
+      expect(found).toHaveLength(1);
+    });
+
+    it('does not let an escaped quote close a span early', () => {
+      const line = "  'l\\'accord de 1983 :',";
+
+      expect(quotedSpans(line).flatMap((span) => offences(span))).toHaveLength(1);
+    });
+
+    it('reads an apostrophe inside a double-quoted string as text', () => {
+      // The codebase's own convention: a string containing an apostrophe is
+      // written with double quotes. The apostrophe must not open a span.
+      expect(quotedSpans('  "n\'a pas ete verifie :",')).toEqual(["n'a pas ete verifie :"]);
+    });
   });
 });

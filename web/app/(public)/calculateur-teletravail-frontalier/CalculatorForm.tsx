@@ -495,8 +495,6 @@ export function CalculatorForm({ taxYear }: CalculatorFormProps) {
     </FieldGroup>
   );
 
-  const fallback = result?.warnings.find((warning) => warning.code === 'RULE_SET_FALLBACK');
-
   /**
    * RULING R110: which pending readings THIS input depends on.
    *
@@ -834,21 +832,6 @@ export function CalculatorForm({ taxYear }: CalculatorFormProps) {
             ))}
           </ul>
           <p className={styles.provisionalPending}>{PROVISIONAL_COPY.pending}</p>
-        </div>
-      )}
-
-      {/*
-        RULE_SET_FALLBACK stays here rather than in the panel's warning list
-        until increment 4, because its message names the requested and applied
-        years and the panel's warning copy is static strings. See the note
-        beside WARNING_ORDER in ResultPanel.tsx.
-      */}
-      {fallback === undefined ? null : (
-        <div className={styles.fallback}>
-          <p className={styles.fallbackLead}>{RESULT.fallbackLead}</p>
-          <p className={styles.fallbackBody}>
-            {RESULT.fallback(fallback.requestedYear, fallback.appliedYear)}
-          </p>
         </div>
       )}
 

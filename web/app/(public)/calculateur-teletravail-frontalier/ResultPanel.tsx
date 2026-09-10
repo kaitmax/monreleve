@@ -28,7 +28,7 @@ import {
   type Warning,
 } from '@/lib/calc-engine';
 import { ctaHrefIfLive } from '@/lib/content/routes';
-import { RESULT_COPY as COPY } from '@/lib/fr/result';
+import { RESULT_COPY as COPY, warningEntry } from '@/lib/fr/result';
 import {
   type ZoneThresholds,
   formatPercent,
@@ -70,10 +70,23 @@ function ceiling(fraction: number): string {
  *
  * INDEPENDENT OF THE ENGINE'S EMISSION ORDER, deliberately. warnings.ts pushes
  * them in the order its checks happen to run, which is an implementation
- * detail; a reader needs the most consequential first. Increment 4 tests this
- * list against the union so a new code cannot be added without a position.
+ * detail; a reader needs the most consequential first. The panel's own order
+ * is a claim about what to deal with first, so it is declared here and
+ * asserted against the union - a code with no position renders no banner at
+ * all, which is silence rather than a visible defect.
+ *
+ * RULE_SET_FALLBACK IS FIRST. It is not a consequence of the numbers, it is a
+ * statement about which rules produced them, so it conditions how every line
+ * below it should be read. R11: "the substitution must reach the user rather
+ * than being implied by a taxYear a caller has to think to compare."
+ *
+ * Then the two breaches, fiscal before social, because the fiscal ceiling is
+ * the one that moves taxable income and, in a 1983 canton, the status; then
+ * the mission-day codes, which are the usual cause of a breach; then the two
+ * disclosures, which are true regardless of the figures.
  */
-const WARNING_ORDER: readonly Warning['code'][] = [
+const WARNING_ORDER = [
+  'RULE_SET_FALLBACK',
   'FISCAL_CEILING_EXCEEDED',
   'FRONTALIER_STATUS_AT_RISK',
   'SOCIAL_CEILING_EXCEEDED',
@@ -81,22 +94,25 @@ const WARNING_ORDER: readonly Warning['code'][] = [
   'MISSIONS_EXCEED_HEADROOM',
   'A1_REQUIRED',
   'EXACT_METHOD_UNVERIFIED',
-];
+] as const satisfies readonly Warning['code'][];
 
 /**
- * RULE_SET_FALLBACK IS NOT IN THAT LIST YET, and the reason is a real
- * limitation rather than an oversight.
+ * Every code has a position, checked at compile time.
  *
- * Its message has to name the year that was asked for and the year that was
- * applied - "aucune regle publiee pour 2099, le calcul applique celles de
- * 2026" - and WARNING_COPY's bodies are static strings. Giving them parameters
- * is increment 4's work, so until then the island keeps rendering the banner
- * it already had, which does carry the years. Two banners for one warning
- * would be worse than one in the wrong place.
+ * THE ARRAY'S LENGTH SAYS NOTHING ABOUT COVERAGE. This list shipped with
+ * seven of the eight codes in it and read as complete; the missing one was
+ * RULE_SET_FALLBACK, and a code with no position renders no banner rather
+ * than a broken one. `satisfies` above catches a typo in a code; this catches
+ * an omission, which is the direction that failed.
  *
- * Asserted rather than remembered: increment 4's exhaustiveness test compares
- * WARNING_ORDER against the union and will fail on this gap.
+ * The same shape as provisional.ts's TRIGGERS_ARE_ALL_PUBLISHED: one unused
+ * type and one exported constant, for a property no test has to remember.
  */
+type EveryCodeHasAPosition = Warning['code'] extends (typeof WARNING_ORDER)[number]
+  ? true
+  : never;
+
+export const ORDER_COVERS_EVERY_CODE: EveryCodeHasAPosition = true;
 
 export interface ResultPanelProps {
   readonly result: TeleworkResult;
@@ -112,6 +128,16 @@ export function ResultPanel({ result, thresholds }: ResultPanelProps) {
   const fiscal = ceiling(thresholds.fiscalCeiling);
   const social = ceiling(thresholds.socialCeiling);
 
+  /**
+   * The engine's warnings, in the panel's order.
+   *
+   * A FILTER PER CODE RATHER THAN A SORT, so a code with no position in
+   * WARNING_ORDER is dropped rather than sorted to one end - and it CANNOT
+   * be dropped, because ORDER_COVERS_EVERY_CODE makes an omission a compile
+   * error. It also does not deduplicate: the engine emits each code at most
+   * once, and a panel that silently collapsed two banners would be hiding a
+   * defect in the engine instead of showing it.
+   */
   const ordered = WARNING_ORDER.flatMap((code) =>
     result.warnings.filter((warning) => warning.code === code),
   );
@@ -207,14 +233,25 @@ export function ResultPanel({ result, thresholds }: ResultPanelProps) {
           <>
             <h3 className={styles.warningsHeading}>{COPY.warningsHeading}</h3>
             <ul className={styles.warningList}>
-              {ordered.map((warning) => (
-                <li className={styles.warning} key={warning.code}>
-                  <p className={styles.warningHeading}>
-                    {COPY.warnings[warning.code].heading}
-                  </p>
-                  <p className={styles.warningBody}>{COPY.warnings[warning.code].body}</p>
-                </li>
-              ))}
+              {ordered.map((warning, position) => {
+                const entry = warningEntry(warning);
+
+                return (
+                  <li
+                    className={styles.warning}
+                    // The engine emits each code at most once, so the code is
+                    // the identity. The position is appended because the
+                    // panel does NOT deduplicate - see the note on `ordered` -
+                    // and two banners with one key is a React warning that
+                    // would be the reader's problem rather than the engine's.
+                    key={`${warning.code}-${position}`}
+                    data-warning={warning.code}
+                  >
+                    <p className={styles.warningHeading}>{entry.heading}</p>
+                    <p className={styles.warningBody}>{entry.body}</p>
+                  </li>
+                );
+              })}
             </ul>
           </>
         )}

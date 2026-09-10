@@ -291,24 +291,5 @@ export const CALCULATEUR_COPY = {
      */
     calculate: 'Calculer',
 
-    /**
-     * RULING R11 and R55: ruleSetFor falls back to the latest known set for
-     * an unknown year, and the substitution has to REACH THE USER. A
-     * calculation quietly performed under last year's rules is the kind of
-     * wrong that looks right.
-     *
-     * The lead is a constant so a test can look for the banner without
-     * knowing the years; the sentence carries them.
-     */
-    fallbackLead: 'Règles non encore publiées',
-
-    /**
-     * THE YEARS ARE NOT FORMATTED AS QUANTITIES. formatDays or any grouping
-     * formatter would render 2099 as "2 099" - a year is a label, not a
-     * count, and SPEC 6.4's group separator has no business in one.
-     */
-    fallback: (requestedYear: number, appliedYear: number): string =>
-      `Aucune règle n'est encore publiée pour ${requestedYear}${n(":")} le ` +
-      `calcul applique celles de ${appliedYear}.`,
   },
 } as const;
