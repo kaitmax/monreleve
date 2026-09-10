@@ -892,7 +892,7 @@ export function CalculatorForm({ taxYear }: CalculatorFormProps) {
           </div>
         </section>
       ) : (
-        <ResultPanel input={input} result={result} thresholds={rules} />
+        <ResultPanel result={result} thresholds={rules} />
       )}
     </>
   );

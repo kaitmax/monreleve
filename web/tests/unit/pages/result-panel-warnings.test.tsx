@@ -89,11 +89,7 @@ const ALL_WARNINGS: readonly Warning[] = WARNING_CODES.map((code) => SAMPLE[code
 
 const panelWith = (warnings: readonly Warning[], input: TeleworkInput = BASE) => {
   const { container } = render(
-    <ResultPanel
-      input={input}
-      result={{ ...resultFor(input), warnings }}
-      thresholds={RULES}
-    />,
+    <ResultPanel result={{ ...resultFor(input), warnings }} thresholds={RULES} />,
   );
 
   return container;

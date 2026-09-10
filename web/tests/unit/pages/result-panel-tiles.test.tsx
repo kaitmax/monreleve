@@ -98,7 +98,7 @@ const resultFor = (input: TeleworkInput) => {
 
 const tilesOf = (input: TeleworkInput, thresholds: ZoneThresholds = RULES) => {
   const { container } = render(
-    <ResultPanel input={input} result={resultFor(input)} thresholds={thresholds} />,
+    <ResultPanel result={resultFor(input)} thresholds={thresholds} />,
   );
   const slot = container.querySelector('[data-panel="tiles"]');
 

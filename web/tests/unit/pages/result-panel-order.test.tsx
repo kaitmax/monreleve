@@ -56,7 +56,7 @@ const resultFor = (input: TeleworkInput) => {
 };
 
 const panelFor = (input: TeleworkInput = GENEVA_C) =>
-  render(<ResultPanel input={input} result={resultFor(input)} thresholds={RULES} />);
+  render(<ResultPanel result={resultFor(input)} thresholds={RULES} />);
 
 /** The slots in document order. */
 const slotOrder = (container: HTMLElement): readonly string[] =>
@@ -143,7 +143,7 @@ describe('the panel computes nothing (standing protocol 7)', () => {
     // against the tax administration.
     const result = resultFor(GENEVA_C);
     const { container } = render(
-      <ResultPanel input={GENEVA_C} result={result} thresholds={RULES} />,
+      <ResultPanel result={result} thresholds={RULES} />,
     );
 
     expect(result.declarableRate).toBe(39.16);
@@ -154,7 +154,7 @@ describe('the panel computes nothing (standing protocol 7)', () => {
     // R35 for the rail, R73 everywhere else: the ceilings arrive as props so
     // a rule change moves the panel with it.
     const { container } = render(
-      <ResultPanel input={GENEVA_C} result={resultFor(GENEVA_C)} thresholds={RULES} />,
+      <ResultPanel result={resultFor(GENEVA_C)} thresholds={RULES} />,
     );
 
     expect(container.querySelector('[data-panel="rail"]')).not.toBeNull();
