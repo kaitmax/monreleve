@@ -40,7 +40,6 @@ import { currentTaxYear } from '@/lib/content/tax-year';
 import { CALCULATEUR_COPY as COPY } from '@/lib/fr/calculateur';
 import { formatPercent } from '@/lib/ui/core';
 import { Container } from '@/lib/ui/react/Container/Container';
-import { LegalNote } from '@/lib/ui/react/LegalNote/LegalNote';
 import { CalculatorForm } from './CalculatorForm';
 import styles from './calculateur.module.scss';
 
@@ -144,8 +143,7 @@ export default function CalculateurPage() {
         <CalculatorForm taxYear={year} />
 
       {/*
-          THE STANDING LEGAL NOTE, and it carries the link to /sources.
-          RULING R113.
+          THE UNCONDITIONAL LINK TO /sources. RULING R113.
 
           UNCONDITIONAL, which is the whole reason it is here rather than in
           the provisional notice. P2 - the 49,9 versus under-50 edge - has no
@@ -156,13 +154,22 @@ export default function CalculateurPage() {
 
           SERVER-RENDERED, above the explanation, so it is in the HTML with
           scripting off too - the same reason the explanatory copy is.
+
+          THE LegalNote THAT USED TO SIT HERE IS GONE, and a baseline is why.
+          calculateur-panneau-regime-perdu-mobile.png showed the standing
+          sentence twice about 60 px apart: this copy, and the panel rendering
+          SPEC 9.3 slot 6 once there is a result. 1633 tests passed - every
+          assertion asked whether the note was PRESENT, and it was, twice.
+
+          SPEC 9.3 puts a legal note in the panel and SPEC 9.1 puts -01
+          in the footer; both stay, a screen apart. This copy was mine, added
+          in increment 0 for a job the LINK does on its own - and the sentence
+          is still in the served HTML with scripting off, from the footer,
+          which is a server component too.
         */}
-        <div className={styles.legal}>
-          <LegalNote />
-          <p className={styles.sources}>
-            <a href={COPY.form.sourcesLink.href}>{COPY.form.sourcesLink.text}</a>
-          </p>
-        </div>
+        <p className={styles.sources}>
+          <a href={COPY.form.sourcesLink.href}>{COPY.form.sourcesLink.text}</a>
+        </p>
 
         <section className={styles.explanation}>
           <h2 className={styles.heading}>{COPY.explanationHeading}</h2>

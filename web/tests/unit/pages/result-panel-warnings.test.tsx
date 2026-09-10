@@ -31,7 +31,7 @@
 // field here is a real engine result and only `warnings` is substituted - the
 // panel is a renderer of warning lists, and the list is what is under test.
 
-import { cleanup, render } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ResultPanel } from '@/app/(public)/calculateur-teletravail-frontalier/ResultPanel';
 import {
@@ -41,7 +41,11 @@ import {
   calculateTelework,
   ruleSetFor,
 } from '@/lib/calc-engine';
+import CalculateurPage from '@/app/(public)/calculateur-teletravail-frontalier/page';
+import { CALCULATEUR_COPY } from '@/lib/fr/calculateur';
+import { LEGAL_COPY } from '@/lib/fr/legal';
 import { RESULT_COPY, WARNING_CODES, warningEntry } from '@/lib/fr/result';
+import { PublicShell } from '@/lib/ui/react/PublicShell/PublicShell';
 import { type Status } from '@/lib/ui/core';
 
 afterEach(cleanup);
@@ -313,5 +317,96 @@ describe('exactly one contextual link, chosen by status (SPEC 9.3)', () => {
     const slot = panelWith(ALL_WARNINGS).querySelector('[data-panel="link"]');
 
     expect(slot?.children).toHaveLength(1);
+  });
+});
+
+describe('the standing disclaimer is said once, not twice (increment 6)', () => {
+  // FOUND BY LOOKING AT A BASELINE, which is the second time that has been
+  // the finding mechanism on this page.
+  //
+  // calculateur-panneau-regime-perdu-mobile.png shows the sentence
+  // "Estimation fournie a titre indicatif..." twice, about 60 px apart: once
+  // as the panel's slot 6 (SPEC 9.3's order) and once as the page-level note
+  // increment 0 put above the /sources link. 1633 tests passed. Every
+  // assertion about the legal note asked whether it was PRESENT, and it was -
+  // twice.
+  //
+  // WHY IT HAPPENED. Increment 0 needed an UNCONDITIONAL, server-rendered
+  // disclosure surface: P2 has no input trigger, so a reader must be able to
+  // reach /sources whatever they type and with scripting off. The panel's
+  // note is inside the client island and only exists once there is a result,
+  // so it cannot serve that purpose - and increment 1 then added the panel's
+  // own note from SPEC 9.3's order without either noticing the other.
+  //
+  // WHAT IS KEPT. SPEC 9.3 puts a legal note in the panel and SPEC 9.1 puts
+  // $legal-01 in the footer; both stay, and they are a screen apart. What
+  // goes is the copy I added mid-page, whose actual job - the /sources link -
+  // stays exactly where it was. The sentence itself is still in the served
+  // HTML with scripting off, from the footer, which is a server component.
+  const STANDING = LEGAL_COPY.standing;
+
+  const occurrences = (text: string, needle: string): number =>
+    text.split(needle).length - 1;
+
+  it('says it once inside main when there is a result', () => {
+    const { container } = render(
+      <PublicShell>
+        <CalculateurPage />
+      </PublicShell>,
+    );
+
+    fireEvent.change(screen.getByLabelText(CALCULATEUR_COPY.form.canton.label), {
+      target: { value: 'GE' },
+    });
+    fireEvent.change(screen.getByLabelText(CALCULATEUR_COPY.form.days.label), {
+      target: { value: '110' },
+    });
+
+    const main = container.querySelector('main');
+
+    expect(main).not.toBeNull();
+    expect(main?.textContent ?? '').toContain(STANDING);
+    expect(occurrences(main?.textContent ?? '', STANDING)).toBe(1);
+  });
+
+  it('and once inside main when there is not', () => {
+    // The empty state has no panel, so the one occurrence has to be the
+    // panel's absence rather than the page-level copy still being there.
+    const { container } = render(
+      <PublicShell>
+        <CalculateurPage />
+      </PublicShell>,
+    );
+
+    const main = container.querySelector('main');
+
+    expect(occurrences(main?.textContent ?? '', STANDING)).toBe(0);
+  });
+
+  it('keeps the footer copy, which is SPEC 9.1 and not the panel', () => {
+    // Non-vacuity in the other direction: scoping to main must not be a way
+    // of counting one of two copies. The footer's is outside main, on every
+    // page, and stays.
+    const { container } = render(
+      <PublicShell>
+        <CalculateurPage />
+      </PublicShell>,
+    );
+
+    const footer = container.querySelector('footer');
+
+    expect(occurrences(footer?.textContent ?? '', STANDING)).toBe(1);
+  });
+
+  it('keeps the /sources link the mid-page note was carrying', () => {
+    // THE PART THAT MUST SURVIVE THE REMOVAL. R113: P2 has no input trigger,
+    // so its only disclosure is /sources, and the link to it has to be
+    // unconditional and in the server HTML.
+    const { container } = render(<CalculateurPage />);
+    const links = [...container.querySelectorAll('a')].filter(
+      (link) => link.getAttribute('href') === '/sources',
+    );
+
+    expect(links).toHaveLength(1);
   });
 });

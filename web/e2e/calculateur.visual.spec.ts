@@ -27,6 +27,8 @@
 import { expect, test } from '@playwright/test';
 import { CALCULATEUR_COPY } from '../lib/fr/calculateur';
 import { CALCULATOR_PATH } from '../lib/content/routes';
+import { PROVISIONAL_COPY } from '../lib/fr/provisional';
+import { RESULT_COPY } from '../lib/fr/result';
 
 /**
  * Geneva case (c), driven through the controls.
@@ -61,7 +63,97 @@ const STATES = [
       await page.fill('#taux-activite', '0');
     },
   },
+
+  // -------------------------------------------------------------------------
+  // FW12 increment 6: THE PANEL, once per status, plus the notice.
+  //
+  // 'rempli' above is already mission-exposure - Geneva case (c) - so it is
+  // not repeated here under a second name; the record would be two identical
+  // pictures whose captions disagreed. What follows is the three statuses it
+  // does not show and the one banner that is not a status at all.
+  //
+  // WHY THESE ARE PICTURES AND NOT MORE ASSERTIONS. Every string, order and
+  // attribute in the panel is asserted in tests/unit/pages/result-panel-*;
+  // what no assertion covers is whether seven stacked slots have room for
+  // each other - a rail 376 px wide inside a 390 px viewport, four tiles that
+  // must wrap rather than shrink, three banners with a heading each, and two
+  // tiles whose figures turn red and whose labels get LONGER at exactly the
+  // moment there is bad news to fit.
+  // -------------------------------------------------------------------------
+  {
+    id: 'panneau-conforme',
+    // 72 days of 240: 30 %, under both ceilings. One banner (A1), positive
+    // headroom in both tiles, and the compliant badge.
+    reach: async (page: import('@playwright/test').Page) => {
+      await page.selectOption('#canton', 'GE');
+      await page.fill('#jours-teletravail', '72');
+    },
+  },
+  {
+    id: 'panneau-regime-perdu',
+    // 110 days: 45,83 %, past the fiscal ceiling and short of the social one.
+    // THE MIXED CASE, and the one worth a picture: the first tile is red with
+    // an "au-dessus" label while the second is black with a "restants" one,
+    // side by side, and they must not read as a formatting inconsistency.
+    reach: async (page: import('@playwright/test').Page) => {
+      await page.selectOption('#canton', 'GE');
+      await page.fill('#jours-teletravail', '110');
+    },
+  },
+  {
+    id: 'panneau-bascule-sociale',
+    // 144 days plus 5 mission days: 60 %, past both. Two red tiles, three
+    // banners, and the heaviest the panel ever gets.
+    reach: async (page: import('@playwright/test').Page) => {
+      await page.selectOption('#canton', 'GE');
+      await page.fill('#jours-teletravail', '144');
+      await page.getByRole('radio', { name: CALCULATEUR_COPY.form.missions.yes }).check();
+      await page.fill('#missions-france', '5');
+    },
+  },
+  {
+    id: 'panneau-avis-provisoire',
+    // R110's notice above a compliant panel: the info fill, the reading named
+    // in bold inside the sentence, and the link to /sources. Both P1 and P3
+    // at once, because two entries in that list is where the bullet spacing
+    // and the link's line-wrapping are actually visible.
+    reach: async (page: import('@playwright/test').Page) => {
+      await page.selectOption('#canton', 'GE');
+      await page.fill('#jours-teletravail', '40');
+      await page.fill('#taux-activite', '80');
+      await page.getByRole('radio', { name: CALCULATEUR_COPY.form.missions.yes }).check();
+      await page.fill('#missions-france', '6');
+      await page.fill('#missions-pays-tiers', '4');
+      await page.getByRole('button', { name: CALCULATEUR_COPY.form.advanced.summary }).click();
+      await page.getByRole('radio', { name: CALCULATEUR_COPY.form.method.exact }).check();
+      await page.fill('#total-jours', '200');
+    },
+  },
 ] as const;
+
+/**
+ * What each panel state must actually be showing before it is photographed.
+ *
+ * THE HEADER OF THIS FILE STATES THE RULE AND THE FIRST DRAFT BROKE IT: "a
+ * baseline showing a rate that no test has checked would be a record of
+ * whatever the page happened to do." Four new states reached by filling
+ * fields is four chances to photograph the wrong one - a mistyped id fills
+ * nothing, and `page.fill` on a field that does not exist throws, but a field
+ * that exists and does not change the STATUS fails silently and produces a
+ * picture named for a status it does not show. `--update-snapshots` would
+ * then accept it, and the record would be wrong in the one place nobody
+ * re-reads.
+ *
+ * The contextual link is chosen by Status, so it identifies the state in one
+ * string. Keyed by id, and every panel state must have an entry.
+ */
+const MUST_SHOW: Readonly<Record<string, string>> = {
+  'panneau-conforme': RESULT_COPY.links.compliant.text,
+  'panneau-regime-perdu': RESULT_COPY.links['regime-lost'].text,
+  'panneau-bascule-sociale': RESULT_COPY.links['social-switch'].text,
+  'panneau-avis-provisoire': PROVISIONAL_COPY.readMore,
+  rempli: RESULT_COPY.links['mission-exposure'].text,
+};
 
 for (const { width, label } of [
   { width: 1440, label: 'desktop' },
@@ -78,6 +170,13 @@ for (const { width, label } of [
         await page.evaluate(() => document.fonts.ready);
 
         await state.reach(page);
+
+        // THE STATE IS CONFIRMED BEFORE IT IS PHOTOGRAPHED. See MUST_SHOW.
+        const expected = MUST_SHOW[state.id];
+
+        if (expected !== undefined) {
+          await expect(page.locator('main')).toContainText(expected);
+        }
 
         // animations disabled explicitly rather than by relying on the
         // default, so a future config change cannot make these flaky without

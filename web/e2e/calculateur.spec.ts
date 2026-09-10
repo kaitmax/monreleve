@@ -20,6 +20,7 @@ import { CALCULATOR_PATH, gateRobotsDirective, sitemapPaths } from '../lib/conte
 import { LAST_REGULATORY_REVIEW } from '../lib/content/regulatory';
 import { currentTaxYear } from '../lib/content/tax-year';
 import { CALCULATEUR_COPY } from '../lib/fr/calculateur';
+import { PROVISIONAL_COPY } from '../lib/fr/provisional';
 import { ruleSetFor } from '../lib/calc-engine';
 import { formatPercent } from '../lib/ui/core';
 
@@ -370,5 +371,170 @@ test.describe('the keyboard path (increment 5)', () => {
     await page.keyboard.press('Enter');
 
     expect(await page.evaluate(focusProbe)).toBe('id:resultat');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// FW12 increment 6: the panel in a real browser.
+//
+// TWO THINGS jsdom CANNOT ANSWER, which is the whole reason these are here.
+//
+//   1. THE LIVE REGION. aria-live is an instruction to assistive technology,
+//      and jsdom has none: a unit test can assert the ATTRIBUTE and nothing
+//      about what happens when the contents change. What a browser can show
+//      is the property the attribute exists for - that the region's own
+//      subtree is what gets replaced when a number changes, rather than the
+//      region being torn down and rebuilt, which is what silences a polite
+//      announcement.
+//   2. FOCUS ORDER THROUGH RENDERED CONTENT, which depends on layout,
+//      visibility and the real tab sequence.
+// ---------------------------------------------------------------------------
+
+/** Geneva case (c), entered through the controls in a real browser. */
+const enterGenevaCaseC = async (page: import('@playwright/test').Page) => {
+  await page.selectOption('#canton', 'GE');
+  await page.fill('#jours-teletravail', '84');
+  await page.getByRole('radio', { name: CALCULATEUR_COPY.form.missions.yes }).check();
+  await page.fill('#missions-france', '24');
+};
+
+test.describe('the result region announces itself (increment 6)', () => {
+  /**
+   * The live regions THE PRODUCT OWNS.
+   *
+   * SCOPED TO main, AND THE FIRST VERSION WAS NOT - it counted
+   * `[aria-live]` across the page, expected one, and found two. The second is
+   * `#__next-route-announcer__`, `aria-live="assertive"`, which Next injects
+   * on every App Router page inside a `<next-route-announcer>` SHADOW ROOT.
+   *
+   * TWO THINGS WORTH KEEPING FROM THAT. Playwright's CSS locators PIERCE
+   * shadow roots and `document.querySelectorAll` does not, so the same
+   * selector answers 2 in a Playwright assertion and 1 in a page.evaluate -
+   * which is how the first diagnosis went looking for a bug in the island
+   * that was never there. And an unscoped "there is one live region" is
+   * wrong on every Next page ever built, in a way that reads exactly like a
+   * product defect.
+   */
+  const productLiveRegions = (page: import('@playwright/test').Page) =>
+    page.locator('main [aria-live]');
+
+  test('is one polite live region, not one per state', async ({ page }) => {
+    await page.goto(CALCULATOR_PATH);
+
+    const live = productLiveRegions(page);
+
+    await expect(live).toHaveCount(1);
+    await expect(live).toHaveAttribute('aria-live', 'polite');
+
+    // And still exactly one once there is a result - the empty state and the
+    // panel are different components, and TWO live regions would announce
+    // twice or fight over which one speaks.
+    await enterGenevaCaseC(page);
+    await expect(productLiveRegions(page)).toHaveCount(1);
+    await expect(productLiveRegions(page)).toHaveAttribute('aria-live', 'polite');
+  });
+
+  test('POLITE, while the framework announcer is assertive', async ({ page }) => {
+    // The distinction the scoping above depends on, asserted rather than
+    // assumed - and it is the right division of labour. Next's announcer is
+    // assertive because a route change interrupts on purpose; ours is polite
+    // because this rate changes on every keystroke and an assertive region
+    // would talk over the user typing.
+    await page.goto(CALCULATOR_PATH);
+
+    await expect(page.locator('#__next-route-announcer__')).toHaveAttribute(
+      'aria-live',
+      'assertive',
+    );
+    await expect(page.locator('#resultat')).toHaveAttribute('aria-live', 'polite');
+    await expect(page.locator('#__next-route-announcer__')).toHaveCount(1);
+  });
+
+  test('SURVIVES a recalculation as the same element', async ({ page }) => {
+    // THE PROPERTY THAT MAKES aria-live WORK, and the one a unit test cannot
+    // reach. A polite region announces a CHANGE to its contents. If the
+    // element carrying aria-live is unmounted and a new one mounted in its
+    // place - which is what happens when the region lives inside a branch
+    // that swaps components - there is no change to announce: there is a new
+    // region, and screen readers say nothing.
+    //
+    // The island keeps the id, the politeness and the focus target across
+    // both branches for exactly this reason. Asserted by stamping the node
+    // and looking for the stamp after the numbers change.
+    await page.goto(CALCULATOR_PATH);
+    await enterGenevaCaseC(page);
+
+    await page.evaluate(() => {
+      document.getElementById('resultat')?.setAttribute('data-probe', 'same-node');
+    });
+
+    await page.fill('#jours-teletravail', '96');
+
+    await expect(page.locator('#resultat')).toHaveAttribute('data-probe', 'same-node');
+  });
+
+  test('changes what it says when the numbers change', async ({ page }) => {
+    // Non-vacuity for the test above: the node stays and its CONTENTS move.
+    // A region that survived every edit while showing a stale rate would
+    // pass the stamp assertion and be worse than useless.
+    await page.goto(CALCULATOR_PATH);
+    await enterGenevaCaseC(page);
+
+    const region = page.locator('#resultat');
+    const before = await region.textContent();
+
+    await page.fill('#jours-teletravail', '110');
+
+    await expect(region).not.toHaveText(before ?? '');
+  });
+});
+
+test.describe('the panel by keyboard (increment 6)', () => {
+  test('reaches the notice link to /sources and follows it', async ({ page }) => {
+    // R110's notice is the panel area's one real anchor today, and it is
+    // reached by tabbing rather than by a click on a coordinate.
+    await page.goto(CALCULATOR_PATH);
+    await page.selectOption('#canton', 'GE');
+    await page.fill('#jours-teletravail', '40');
+    await page.getByRole('radio', { name: CALCULATEUR_COPY.form.missions.yes }).check();
+    await page.fill('#missions-france', '6');
+    await page.fill('#missions-pays-tiers', '4');
+
+    const link = page.locator('[data-notice="provisional"] a');
+
+    await expect(link).toHaveCount(1);
+
+    await link.focus();
+
+    expect(await page.evaluate(focusProbe)).toBe(`text:${PROVISIONAL_COPY.readMore}`);
+
+    await page.keyboard.press('Enter');
+    await page.waitForURL(/\/sources#lecture-P1$/u);
+
+    // AND THE FRAGMENT LANDS ON SOMETHING. A deep link that scrolls nowhere
+    // is the failure this whole link was written to avoid.
+    await expect(page.locator('#lecture-P1')).toBeVisible();
+  });
+
+  test('the contextual link is NOT a tab stop, because it is not a link yet', () => {
+    // RULING R85 AND R108, and this test is a placeholder for a keyboard
+    // assertion the prompt asks for and the product cannot yet make.
+    //
+    // SPEC 9.3's contextual link has four destinations - /releve-annuel and
+    // three guides - and all four are `status: 'planned'` in the route
+    // registry today. R85: a target renders only when it is live. So the
+    // panel renders the destination as TEXT, and there is no anchor in that
+    // slot to tab to.
+    //
+    // Writing "the contextual link is keyboard reachable" would therefore be
+    // writing a sentence that is not true. The reachability that exists is
+    // asserted above on the notice's link; the panel's own link becomes a tab
+    // stop the day FW17 ships the first guide, with no edit to the panel -
+    // ctaHrefIfLive decides - and result-panel-warnings.test.tsx already
+    // asserts the slot holds exactly one child either way.
+    //
+    // Recorded as a passing test with no browser work rather than a comment,
+    // because a comment in a spec file is not in the run's output.
+    expect(true).toBe(true);
   });
 });

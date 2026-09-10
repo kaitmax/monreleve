@@ -24,6 +24,7 @@ import { CALCULATOR_PATH, gateRobotsDirective } from '@/lib/content/routes';
 import { currentTaxYear } from '@/lib/content/tax-year';
 import { CALCULATEUR_COPY } from '@/lib/fr/calculateur';
 import { LEGAL_COPY } from '@/lib/fr/legal';
+import { PublicShell } from '@/lib/ui/react/PublicShell/PublicShell';
 import { formatPercent } from '@/lib/ui/core';
 
 afterEach(cleanup);
@@ -208,10 +209,39 @@ describe('ruling R113: the always-present path to /sources', () => {
     expect(link?.textContent).toBe(CALCULATEUR_COPY.form.sourcesLink.text);
   });
 
-  it('carries the standing disclaimer beside it (SPEC 9.3 item 6)', () => {
+  it('carries the standing disclaimer, now from the footer (SPEC 9.1)', () => {
+    // THIS TEST MOVED IN FW12 INCREMENT 6, and R112 is why it moved rather
+    // than being deleted.
+    //
+    // It used to render the page ALONE and find the sentence in a LegalNote
+    // sitting above this link. A baseline showed that note printing the same
+    // paragraph twice about 60 px apart - the page's copy and SPEC 9.3 slot 6
+    // in the panel - so the page's copy went. The PROPERTY it was asserting is
+    // unchanged and still true: the standing disclaimer is on this page
+    // whatever the reader types and with scripting off. It now comes from
+    // PublicShell's footer, which is a server component, so the assertion
+    // moves to the assembled document.
+    //
+    // ONCE, not merely present. "Present" is what passed while there were two.
+    const { container } = render(
+      <PublicShell>
+        <CalculateurPage />
+      </PublicShell>,
+    );
+    const text = container.textContent ?? '';
+
+    expect(text).toContain(LEGAL_COPY.standing);
+    expect(text.split(LEGAL_COPY.standing).length - 1).toBe(1);
+  });
+
+  it('and the panel adds SPEC 9.3 item 6 only once there is a result', () => {
+    // The other half of the same fact, so the count above cannot be satisfied
+    // by the panel's copy going missing altogether. With no result there is
+    // one occurrence, the footer's; the panel's note is inside the island and
+    // arrives with the numbers.
     const { container } = render(<CalculateurPage />);
 
-    expect(container.textContent).toContain(LEGAL_COPY.standing);
+    expect(container.textContent).not.toContain(LEGAL_COPY.standing);
   });
 
   it('shows the note whether or not anything has been typed', () => {

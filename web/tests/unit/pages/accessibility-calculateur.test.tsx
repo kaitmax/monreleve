@@ -35,7 +35,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { axe } from 'vitest-axe';
 import * as matchers from 'vitest-axe/matchers';
 import CalculateurPage from '@/app/(public)/calculateur-teletravail-frontalier/page';
+import { readingAnchor } from '@/lib/content/provisional';
 import { CALCULATEUR_COPY } from '@/lib/fr/calculateur';
+import { RESULT_COPY } from '@/lib/fr/result';
 import { PublicShell } from '@/lib/ui/react/PublicShell/PublicShell';
 
 expect.extend(matchers);
@@ -96,18 +98,86 @@ const STATES: ReadonlyArray<{ readonly name: string; readonly reach: () => void 
       pick(FORM.method.exact);
     },
   },
+
+  // ---------------------------------------------------------------------
+  // FW12 increment 6: the RESULT PANEL's own states.
+  //
+  // The four above are states of the FORM, and FW11's panel was a rate and
+  // a placeholder. The panel now assembles seven slots whose contents
+  // differ by status - a badge with a different icon, a rail with a
+  // different fill, two tiles that swap their labels, between zero and
+  // three banners, and a contextual link that changes destination - so
+  // "the calculator has no axe violations" needed re-establishing over the
+  // states the panel can be in rather than the states the form can.
+  //
+  // 'filled' above IS mission-exposure (Geneva case (c)); it keeps its
+  // name because other assertions in this file reach for it by index.
+  // ---------------------------------------------------------------------
+  {
+    name: 'compliant - under both ceilings, no banner but the A1 one',
+    reach: () => {
+      setValue(FORM.canton.label, 'GE');
+      setValue(FORM.days.label, '72');
+    },
+  },
+  {
+    name: 'regime-lost - past the fiscal ceiling, one tile negative',
+    reach: () => {
+      setValue(FORM.canton.label, 'GE');
+      setValue(FORM.days.label, '110');
+    },
+  },
+  {
+    name: 'social-switch - past both, two tiles negative and three banners',
+    reach: () => {
+      setValue(FORM.canton.label, 'GE');
+      setValue(FORM.days.label, '144');
+      pick(FORM.missions.yes);
+      setValue(FORM.missions.france.label, '5');
+    },
+  },
+  {
+    name: 'notice-P1 - the imputation order, with its link to /sources',
+    reach: () => {
+      setValue(FORM.canton.label, 'GE');
+      setValue(FORM.days.label, '40');
+      pick(FORM.missions.yes);
+      setValue(FORM.missions.france.label, '6');
+      setValue(FORM.missions.thirdState.label, '4');
+    },
+  },
+  {
+    name: 'notice-P3 - the exact method at part time',
+    reach: () => {
+      setValue(FORM.canton.label, 'GE');
+      setValue(FORM.days.label, '40');
+      setValue(FORM.rate.label, '80');
+      click(FORM.advanced.summary);
+      pick(FORM.method.exact);
+    },
+  },
 ];
 
 describe('the calculator has no axe violations in any state', () => {
-  it('covers the four states the increment names', () => {
+  it('covers the states the two increments name', () => {
     // Without this the loop could pass by shrinking to nothing - the same
     // vacuous-pass shape ruling R63 exists to catch.
-    expect(STATES).toHaveLength(4);
+    //
+    // FOUR FORM STATES FROM FW11, FIVE PANEL STATES FROM FW12 INCREMENT 6.
+    // 'filled' is mission-exposure, so the four statuses are covered by
+    // filled + compliant + regime-lost + social-switch and the two notice
+    // triggers by the last two.
+    expect(STATES).toHaveLength(9);
     expect(STATES.map((state) => state.name.split(' ')[0])).toEqual([
       'empty',
       'filled',
       'error',
       'revealed',
+      'compliant',
+      'regime-lost',
+      'social-switch',
+      'notice-P1',
+      'notice-P3',
     ]);
   });
 
@@ -150,6 +220,84 @@ describe('the calculator has no axe violations in any state', () => {
 
     expect(screen.getByLabelText(FORM.method.totalLabel)).toBeDefined();
   });
+
+  it('reached each PANEL state too, each by something only it contains', () => {
+    // THE SAME PROBLEM, ONE LEVEL UP AND WORSE. Five more states were added
+    // in increment 6 and axe passes on any of them; five `reach` functions
+    // that all silently produced the compliant panel would read as five
+    // states covered. Each is identified by the one thing that distinguishes
+    // it - the contextual link is chosen by Status, so three of the four
+    // statuses name themselves, and the notices name their reading in a
+    // fragment.
+    const probes: ReadonlyArray<{ readonly index: number; readonly find: () => void }> = [
+      {
+        index: 4,
+        find: () => {
+          expect(document.body.textContent).toContain(RESULT_COPY.links.compliant.text);
+        },
+      },
+      {
+        index: 5,
+        find: () => {
+          expect(document.body.textContent).toContain(RESULT_COPY.links['regime-lost'].text);
+        },
+      },
+      {
+        index: 6,
+        find: () => {
+          expect(document.body.textContent).toContain(RESULT_COPY.links['social-switch'].text);
+        },
+      },
+      {
+        index: 7,
+        find: () => {
+          expect(
+            document.querySelector(`a[href="/sources#${readingAnchor('P1')}"]`),
+          ).not.toBeNull();
+        },
+      },
+      {
+        index: 8,
+        find: () => {
+          expect(
+            document.querySelector(`a[href="/sources#${readingAnchor('P3')}"]`),
+          ).not.toBeNull();
+        },
+      },
+    ];
+
+    expect(probes).toHaveLength(STATES.length - 4);
+
+    for (const probe of probes) {
+      mount();
+      STATES[probe.index]?.reach();
+      probe.find();
+      cleanup();
+    }
+  });
+
+  it('shows a different contextual link in each status, not the same one', () => {
+    // NON-VACUITY FOR THE THREE ABOVE. If the panel rendered one status's
+    // link regardless, each assertion would still pass in whichever state
+    // matched it - so the four texts are checked to be four different
+    // strings, which is what makes "only it contains" true.
+    const texts = [
+      RESULT_COPY.links.compliant.text,
+      RESULT_COPY.links['mission-exposure'].text,
+      RESULT_COPY.links['regime-lost'].text,
+      RESULT_COPY.links['social-switch'].text,
+    ];
+
+    expect(new Set(texts).size).toBe(4);
+
+    // And mission-exposure's own link really is on the 'filled' state, which
+    // is the one status not covered by the probes above.
+    mount();
+    STATES[1]?.reach();
+
+    expect(document.body.textContent).toContain(RESULT_COPY.links['mission-exposure'].text);
+    expect(document.body.textContent).not.toContain(RESULT_COPY.links.compliant.text);
+  });
 });
 
 describe('the assembled document, in every state', () => {
@@ -177,6 +325,58 @@ describe('the assembled document, in every state', () => {
 
         expect(current - previous, `h${previous} followed by h${current}`).toBeLessThanOrEqual(1);
       }
+    });
+  }
+});
+
+describe('every ARIA reference points at something that exists, in any state', () => {
+  // FOUND BY A MUTATION PROBE THAT PASSED. Planting
+  // aria-labelledby="no-such-id" on the panel's warning list left all 31
+  // tests green: axe's default set in this harness does not flag an ARIA
+  // reference to a missing element. A link with no text it catches
+  // immediately - that probe reddened seven states - so the panel IS being
+  // scanned, and this is a hole in the rule set rather than in the coverage.
+  //
+  // WHICH IS THE DEFECT THIS FILE'S OWN HEADER NAMES: "an aria-controls
+  // pointing at a node that is only sometimes rendered". The accordion's
+  // button controls a region that unmounts, every FieldGroup describes its
+  // control by an error node that exists only while invalid, and the panel
+  // labels itself by a heading id. All of those are references across a
+  // conditional boundary, and a stale one is silence in a screen reader and
+  // nothing at all on screen.
+  const REFERENCING = ['aria-labelledby', 'aria-describedby', 'aria-controls', 'aria-details'];
+
+  for (const state of STATES) {
+    it(state.name, () => {
+      const { container } = mount();
+
+      state.reach();
+
+      const present = new Set(
+        [...container.querySelectorAll('[id]')].map((element) => element.id),
+      );
+      const dangling: string[] = [];
+      let references = 0;
+
+      for (const attribute of REFERENCING) {
+        for (const element of container.querySelectorAll(`[${attribute}]`)) {
+          // The attributes are ID LISTS, space separated, and a single
+          // missing entry in a list of three is the interesting case.
+          for (const id of (element.getAttribute(attribute) ?? '').split(' ')) {
+            if (id === '') continue;
+
+            references += 1;
+
+            if (!present.has(id)) dangling.push(`${attribute}="${id}"`);
+          }
+        }
+      }
+
+      expect(dangling, `dangling: ${dangling.join(', ')}`).toEqual([]);
+
+      // Non-vacuity: this page has these attributes, so a selector that
+      // stopped matching cannot pass as a clean bill of health.
+      expect(references, 'no ARIA references found at all').toBeGreaterThan(2);
     });
   }
 });
