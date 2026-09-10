@@ -66,6 +66,25 @@ type EveryTriggerIsPublished = ProvisionalId extends PublishedProvisionalId ? tr
 
 export const TRIGGERS_ARE_ALL_PUBLISHED: EveryTriggerIsPublished = true;
 
+/**
+ * Where /sources renders one reading, so a notice can link to THAT reading.
+ *
+ * THE FRAGMENT IS THE WHOLE POINT OF THE LINK. R110's notice already knows
+ * which of the three readings the user's own input depends on; sending them to
+ * a page with three and letting them find it discards the one piece of
+ * information the notice has. So the anchor is derived from the id here, in
+ * lib/content, and both the page that renders it and the notice that links to
+ * it call this - a fragment agreed by two string literals in two files is a
+ * broken link the day one of them is edited.
+ *
+ * PREFIXED, because a bare "P1" is a plausible id for something else on a
+ * page that also lists eight constants, and an id collision resolves to
+ * whichever element comes first.
+ */
+export function readingAnchor(id: PublishedProvisionalId): string {
+  return `lecture-${id}`;
+}
+
 /** A full-time contract, in the units employmentRate uses. */
 const FULL_TIME = 100;
 

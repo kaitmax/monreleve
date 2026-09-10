@@ -122,6 +122,47 @@ const AUDIT: readonly Pair[] = [
   ]),
   ...on('badge explanation', '--colour-text-primary', NORMAL_TEXT),
 
+  // R110's PROVISIONAL NOTICE, and it is here because the derived half below
+  // cannot reach it. That scan pairs every colour rule against the two PAGE
+  // surfaces, which is right for text sitting on the page - but this notice
+  // paints itself --colour-info-soft and its three text rules sit on THAT.
+  // The derived scan reported the link as brand-on-canvas and brand-on-
+  // surface, both of which pass and neither of which is where the link is.
+  //
+  // The same shape as the ZoneBadge entries above: a component with a fill of
+  // its own needs its own pairing, by hand, because the surface it makes is
+  // not one of the two the scan knows about.
+  {
+    what: 'provisional notice lead on the info fill',
+    fg: '--colour-text-primary',
+    bg: '--colour-info-soft',
+    gate: NORMAL_TEXT,
+  },
+  {
+    what: 'provisional notice body on the info fill',
+    fg: '--colour-text-primary',
+    bg: '--colour-info-soft',
+    gate: NORMAL_TEXT,
+  },
+  {
+    what: 'provisional notice pending sentence on the info fill',
+    fg: '--colour-text-primary',
+    bg: '--colour-info-soft',
+    gate: NORMAL_TEXT,
+  },
+  {
+    what: 'provisional notice /sources link on the info fill',
+    fg: '--colour-brand',
+    bg: '--colour-info-soft',
+    gate: NORMAL_TEXT,
+  },
+  {
+    what: 'provisional notice left border against the fill it sits on',
+    fg: '--colour-info',
+    bg: '--colour-info-soft',
+    gate: NON_TEXT,
+  },
+
   // RateDisplay. The band colour at Display 48/600 is R57's one exception:
   // large text, so the 3,0 bar. Every other figure on this component is
   // normal text.
@@ -183,6 +224,33 @@ describe('the rulings the audit produced, pinned as measurements', () => {
     expect(onFill).toBeLessThan(NORMAL_TEXT);
     expect(onCanvas).toBeLessThan(NORMAL_TEXT);
     expect(onCanvas).toBeGreaterThanOrEqual(LARGE_TEXT);
+  });
+
+  it('secondary does not clear the bar on the info fill, which is why R57 applies there', () => {
+    // THE MEASUREMENT THAT PRODUCED THE FIX, recorded so the fix cannot be
+    // undone by someone who thinks the sentence looks heavy.
+    //
+    // R110's notice shipped in FW11 with its closing sentence in
+    // --colour-text-secondary, which is the correct choice on a page surface
+    // and 4,4975:1 on the fill the notice paints itself. It PRINTS as 4.50 at
+    // two decimals, which is how a number that fails looks like one that
+    // passes. Nothing caught it: the audit's derived half pairs every colour
+    // rule against the two page surfaces, and this text does not sit on
+    // either.
+    //
+    // Asserted as a FAILURE rather than fixed and forgotten, the same way R58
+    // records tertiary below. The three text rules in that notice are
+    // text-primary now (R57's pattern: text-primary on a soft fill).
+    const onInfoFill = contrast('--colour-text-secondary', '--colour-info-soft');
+
+    expect(onInfoFill).toBeLessThan(NORMAL_TEXT);
+    expect(onInfoFill).toBeGreaterThan(4.4);
+
+    // And it passes on both page surfaces, which is why it is a legitimate
+    // token everywhere else and why this was invisible.
+    for (const surface of SURFACES) {
+      expect(contrast('--colour-text-secondary', surface)).toBeGreaterThanOrEqual(NORMAL_TEXT);
+    }
   });
 
   it('R58: tertiary fails at BOTH bars, so it is not a text colour', () => {

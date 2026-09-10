@@ -47,7 +47,7 @@ import {
   calculateTelework,
   ruleSetFor,
 } from '@/lib/calc-engine';
-import { provisionalFor } from '@/lib/content/provisional';
+import { provisionalFor, readingAnchor } from '@/lib/content/provisional';
 import { CALCULATEUR_COPY } from '@/lib/fr/calculateur';
 import { PROVISIONAL_COPY } from '@/lib/fr/provisional';
 import { CANTONS_BY_NAME } from '@/lib/fr/cantons';
@@ -814,12 +814,30 @@ export function CalculatorForm({ taxYear }: CalculatorFormProps) {
         a null result and branches internally, which would put the empty
         state inside a component whose whole contract is "receives a result".
 
-        R110's notice sits ABOVE both, because it is about the INPUT rather
-        than the result: it is right while the numbers are still invalid.
-        Increment 5 moves it inside the panel and gives it the /sources link.
+        R110's NOTICE SITS ABOVE BOTH, AND STAYED HERE IN INCREMENT 5.
+
+        The plan was to move it inside the panel. It is not there, and the
+        reason is the sentence two paragraphs up: the notice is derived from
+        the INPUT, the panel renders only when there is a RESULT, and those
+        two are not the same states. A reader who has just typed a rate of 0
+        has no result and is being shown an error - and is exactly the reader
+        who should still be told that their mission-day configuration depends
+        on a reading awaiting review, because they are about to correct the
+        number and act on the answer.
+
+        Moving it in would have silenced it for every invalid input, which is
+        a regression dressed as tidiness. Rendering it in BOTH branches would
+        have meant two call sites for one banner - the failure increment 4
+        just removed for RULE_SET_FALLBACK. One call site, above a region
+        whose contents change underneath it, is both.
+
+        What increment 5 actually adds is the DESTINATION: a link per named
+        reading to that reading on /sources. provisional-notice.test.tsx
+        asserts the survives-invalid-input property directly, so this
+        decision is a failing test if anyone moves it later.
       */}
       {provisional.length === 0 ? null : (
-        <div className={styles.provisional}>
+        <div className={styles.provisional} data-notice="provisional">
           <p className={styles.provisionalLead}>{PROVISIONAL_COPY.lead}</p>
           <ul className={styles.provisionalList}>
             {provisional.map((id) => (
@@ -827,7 +845,20 @@ export function CalculatorForm({ taxYear }: CalculatorFormProps) {
                 <span className={styles.provisionalName}>
                   {PROVISIONAL_COPY.items[id].interpretation}
                 </span>
-                {PROVISIONAL_COPY.items[id].body}
+                {PROVISIONAL_COPY.items[id].body}{' '}
+                {/*
+                  ONE LINK PER READING, to that reading. The notice knows
+                  which of the three the input touches, so sending the reader
+                  to a page listing three would throw that away. A plain
+                  anchor per R87, and no target - it is our own page.
+
+                  /sources IS LIVE (increment 0), which is why this is an
+                  anchor and not ctaHrefIfLive's pending text. It is also the
+                  route whose absence was the hole R113 was written about.
+                */}
+                <a className={styles.provisionalLink} href={`/sources#${readingAnchor(id)}`}>
+                  {PROVISIONAL_COPY.readMore}
+                </a>
               </li>
             ))}
           </ul>

@@ -34,7 +34,7 @@
 
 import type { Metadata } from 'next';
 import { ruleSetFor } from '@/lib/calc-engine';
-import { PUBLISHED_PROVISIONAL_IDS } from '@/lib/content/provisional';
+import { PUBLISHED_PROVISIONAL_IDS, readingAnchor } from '@/lib/content/provisional';
 import { LAST_REGULATORY_REVIEW } from '@/lib/content/regulatory';
 import { SOURCE_ENTRIES } from '@/lib/content/sources';
 import { currentTaxYear } from '@/lib/content/tax-year';
@@ -188,7 +188,13 @@ export default function SourcesPage() {
 
           <dl className={styles.readings}>
             {PUBLISHED_PROVISIONAL_IDS.map((id) => (
-              <div className={styles.reading} key={id}>
+              // THE ANCHOR R110's NOTICE LANDS ON. Derived from the id by
+              // lib/content rather than written here, because the notice
+              // builds the same fragment from the same function - two string
+              // literals in two files agreeing today is a broken link the day
+              // one of them is edited, and a fragment that matches nothing
+              // fails silently by scrolling nowhere.
+              <div className={styles.reading} id={readingAnchor(id)} key={id}>
                 <dt className={styles.readingHeading}>{COPY.provisional[id].heading}</dt>
                 <dd className={styles.readingBody}>{COPY.provisional[id].body}</dd>
               </div>

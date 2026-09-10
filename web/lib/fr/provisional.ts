@@ -38,6 +38,18 @@ export const PROVISIONAL_COPY = {
    */
   lead: 'Une lecture encore soumise à validation',
 
+  /**
+   * The link out, and it says what is at the other end.
+   *
+   * NOT "EN SAVOIR PLUS" AND NOT THE PATH. SPEC 16 wants a link whose
+   * accessible name says where it goes, and a reader who has just been told
+   * that a reading of the rules is unsettled wants to know what they will
+   * find: the reading itself, its source, and what is pending about it.
+   * "/sources" is a path, which is a fact about the site rather than about
+   * the destination.
+   */
+  readMore: 'Lire cette lecture et sa source',
+
   /** Said once, whichever readings are involved. */
   pending:
     "Cette lecture attend la validation d'un expert. Le calcul suit les cas " +
