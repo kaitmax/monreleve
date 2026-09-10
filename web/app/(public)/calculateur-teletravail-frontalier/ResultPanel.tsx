@@ -136,9 +136,26 @@ export function ResultPanel({ result, thresholds }: ResultPanelProps) {
         <ZoneBadge status={status} />
       </div>
 
-      {/* 2. THE RATE. Increment 2 adds the second rate and its sentence. */}
+      {/*
+        2. BOTH RATES. SPEC 9.3's two-rate problem, and AC1.
+
+        "In Geneva case (c) the rates differ sharply: 39,16 % declarable
+        against 45,0 % of days actually outside Switzerland. Showing only the
+        declarable rate hides real exposure; showing only the raw rate
+        contradicts the payslip."
+
+        rawRate is passed UNCONDITIONALLY and RateDisplay decides. Its prop
+        documentation says so - "worth showing only when it diverges from the
+        declarable rate; the caller may always pass it and this component
+        decides" - so a condition here would be a second opinion about a
+        question FW8 already answered, and the two could disagree.
+      */}
       <div data-panel="rate">
-        <RateDisplay declarableRate={result.declarableRate} zone={zone} />
+        <RateDisplay
+          declarableRate={result.declarableRate}
+          rawRate={result.rawRate}
+          zone={zone}
+        />
       </div>
 
       {/* 3. THE RAIL, which places the rate between the two ceilings. */}

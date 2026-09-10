@@ -31,6 +31,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { CalculatorForm } from '@/app/(public)/calculateur-teletravail-frontalier/CalculatorForm';
 import { CALCULATEUR_COPY } from '@/lib/fr/calculateur';
+import { RATE_COPY } from '@/lib/fr/rates';
 import { errorMessage } from '@/lib/fr/errors';
 
 afterEach(cleanup);
@@ -53,7 +54,7 @@ const NBSP = String.fromCharCode(0x00a0);
 /** Geneva case (c), as the AFC publishes it. Ruling R96: a literal. */
 const GENEVA_C_DECLARABLE = `39,16${NBSP}%`;
 
-/** The raw rate for the same case. FW12 adds it; increment 4 must NOT. */
+/** The raw rate for the same case. FW12 increment 2 displays it (AC1). */
 const GENEVA_C_RAW = `45,0${NBSP}%`;
 
 const setUp = (taxYear: number = TAX_YEAR) =>
@@ -103,16 +104,64 @@ describe('SPEC 9.3 E2E gate: Geneva case (c) through the form', () => {
     expect(renderedText()).not.toContain(`39,17${NBSP}%`);
   });
 
-  it('shows the declarable rate only - the second rate is FW12', () => {
-    // Scope, asserted. SPEC 9.3 requires both rates eventually and names
-    // 45,0 % for this case; the prompt makes increment 4 "the end-to-end seam
-    // FW12 completes with the two rates". If this starts failing because the
-    // raw rate appeared, that is FW12 arriving early rather than a defect -
-    // and this line is where it gets noticed.
+  it('shows BOTH rates, which is AC1 (FW12 increment 2)', () => {
+    // FW11 ASSERTED THE OPPOSITE, deliberately: "shows the declarable rate
+    // only - the second rate is FW12", with a note that a failure there would
+    // be FW12 arriving early rather than a defect. This is FW12 arriving, so
+    // the assertion inverts rather than being deleted - the pair is the record
+    // that the scope changed on purpose.
+    //
+    // SPEC 9.3's two-rate problem: "Showing only the declarable rate hides
+    // real exposure; showing only the raw rate contradicts the payslip."
+    // 39,16 % is what goes to the AFC; 45,0 % is the share of days actually
+    // spent outside Switzerland. Both by codepoint literal (R96).
     setUp();
     enterGenevaCaseC();
 
-    expect(renderedText()).not.toContain(GENEVA_C_RAW);
+    const text = renderedText();
+
+    expect(text).toContain(GENEVA_C_DECLARABLE);
+    expect(text).toContain(GENEVA_C_RAW);
+  });
+
+  it('labels which rate is which', () => {
+    // Two numbers with no labels is worse than one number. The primary names
+    // the authority it is declared to; the secondary describes what it
+    // measures.
+    setUp();
+    enterGenevaCaseC();
+
+    const text = renderedText();
+
+    expect(text).toContain(RATE_COPY.declarableCaption);
+    expect(text).toContain(RATE_COPY.rawCaption);
+  });
+
+  it('explains why they differ (SPEC 9.3)', () => {
+    // "when they differ, an explanatory line states that mission days above
+    // the cap fall outside the telework regime and are taxed in France." Two
+    // figures 6 points apart with no explanation reads as an error in the
+    // tool.
+    setUp();
+    enterGenevaCaseC();
+
+    expect(renderedText()).toContain(RATE_COPY.divergence);
+  });
+
+  it('shows no second rate when the two agree', () => {
+    // NON-VACUITY, and the property SPEC 9.3 actually states: the secondary
+    // figure appears only when it diverges. 72 telework days and no missions
+    // gives 30,00 % on both, and a page that repeated it would invite the
+    // reader to look for a difference.
+    setUp();
+    fireEvent.change(screen.getByLabelText(FORM.canton.label), { target: { value: 'GE' } });
+    type(field(FORM.days.label), '72');
+
+    const text = renderedText();
+
+    expect(text).toContain(`30,00${NBSP}%`);
+    expect(text).not.toContain(RATE_COPY.rawCaption);
+    expect(text).not.toContain(RATE_COPY.divergence);
   });
 
   it('is not an ordinary space before the percent sign', () => {
