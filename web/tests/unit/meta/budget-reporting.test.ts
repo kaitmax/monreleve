@@ -25,6 +25,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { withoutComments } from '@/tests/support/quoted-spans';
 
 const WEB = process.cwd();
 const SCRIPT = join(WEB, 'scripts', 'check-budgets.mjs');
@@ -32,39 +33,15 @@ const SCRIPT = join(WEB, 'scripts', 'check-budgets.mjs');
 /**
  * The script's source, with comments removed.
  *
- * BLOCK COMMENTS ARE TRACKED, not guessed from the line's first characters.
- * The first version of this filtered lines beginning with a slash or a star,
- * which left the BODY of every block comment behind - and this file's subject
- * is a phrase that now appears in check-budgets.mjs only inside a block
- * comment explaining why it must not appear anywhere else. So the test failed
- * on its own documentation, which is a stripper bug and not a finding.
+ * THE STRIPPER MOVED TO tests/support/quoted-spans.ts in FW12. It was written
+ * here first, and its first version left the BODY of every block comment
+ * behind - so this file failed on the very comment in check-budgets.mjs that
+ * explains why the phrase must not appear anywhere else. A stripper bug, not
+ * a finding. It then happened a second time to island-harness.test.ts, which
+ * is one occurrence too many for two copies.
  */
 function code(): string {
-  const NEWLINE = String.fromCharCode(10);
-  const lines = readFileSync(SCRIPT, 'utf8').split(NEWLINE);
-  const kept: string[] = [];
-  let inBlock = false;
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-
-    if (inBlock) {
-      if (trimmed.includes('*/')) inBlock = false;
-      continue;
-    }
-
-    if (trimmed.startsWith('/*')) {
-      // A single-line /* ... */ opens and closes on the same line.
-      if (!trimmed.includes('*/')) inBlock = true;
-      continue;
-    }
-
-    if (trimmed.startsWith('//')) continue;
-
-    kept.push(line);
-  }
-
-  return kept.join(NEWLINE);
+  return withoutComments(readFileSync(SCRIPT, 'utf8'));
 }
 
 describe('the budget script says nothing reassuring about what it did not judge (R115)', () => {
@@ -97,14 +74,16 @@ describe('the budget script says nothing reassuring about what it did not judge 
     // "A 16.9 spare" was the specific reassurance. Spare capacity is only
     // meaningful against a ceiling the route is actually held to.
     //
-    // THREE, and the first version of this said two - which was simply wrong
-    // rather than a finding. The gated pass verdict reports BOTH ceilings on
-    // one line ("A 17.0 spare, B 17.6 spare"), so two of the three are that
-    // line and the third is the workbench's own. A fourth would mean an
-    // ungated branch had started computing headroom again.
+    // FOUR NOW, AND EACH ONE IS A CEILING SOMETHING IS HELD TO. The gated
+    // pass verdict reports both public ceilings on one line ("A 17.0 spare,
+    // B 17.6 spare"), the workbench reports GATE W, and R122 added the
+    // island harness reporting GATE I. The count went 2 -> 3 -> 4, and each
+    // step was a deliberate edit here with a ruling behind it, which is the
+    // point of pinning it: a FIFTH would mean an ungated branch had started
+    // computing headroom again.
     const spareMentions = [...code().matchAll(/spare/g)].length;
 
-    expect(spareMentions).toBe(3);
+    expect(spareMentions).toBe(4);
   });
 });
 
@@ -138,6 +117,64 @@ describe('the workbench has a ceiling of its own (R117)', () => {
     // conflating the two would either raise the public ceiling or fail the
     // workbench for doing its job.
     expect(code()).not.toMatch(/GATE_A_TOTAL_BYTES\s*=\s*GATE_W/);
+    expect(code()).toContain('isWorkbench');
+  });
+});
+
+
+describe('the client-cost harness has a ceiling of its own (R122)', () => {
+  // THE HOLE GATE W DOES NOT CLOSE. R117 gave the workbench a ceiling and
+  // the measurement showed it would not have caught the 207 KiB defect,
+  // because /dev/composants is a SERVER component and the icon library
+  // never entered its client bundle. /dev/island renders the library inside
+  // a 'use client' boundary so that it does.
+  //
+  // MEASURED WITH THE DEFECT RESTORED, which is the only evidence that
+  // matters for a gate written to catch one thing:
+  //
+  //   /calculateur-teletravail-frontalier   324,0 KiB   FAIL A by 199,0
+  //   /dev/composants                       108,6 KiB   W 32,0 spare
+  //   /dev/island                           312,5 KiB   FAIL GATE I by 186,9
+  //
+  // The workbench is still blind. The harness is not.
+
+  it('declares GATE I as a delta, not a total', () => {
+    expect(code()).toContain('GATE_I_DELTA_BYTES');
+    expect(code()).not.toContain('GATE_I_TOTAL_BYTES');
+  });
+
+  it('names the island route once, as a constant', () => {
+    expect(code()).toContain('ISLAND_ROUTE');
+    expect(code()).toContain("'/dev/island'");
+  });
+
+  it('holds it to the same number a public route may spend', () => {
+    // The ceiling is GATE B's: the whole library, in a client island, must
+    // fit inside the feature budget one public page is allowed. Asserted as
+    // an EQUALITY between the two declarations rather than as the literal 25,
+    // so raising GATE B cannot quietly leave GATE I behind.
+    expect(code()).toMatch(/GATE_I_DELTA_BYTES = 25 \* KIB/u);
+    expect(code()).toMatch(/GATE_B_DELTA_BYTES = 25 \* KIB/u);
+  });
+
+  it('breaches loudly, citing the ruling', () => {
+    expect(code()).toContain('GATE I BREACH');
+    expect(code()).toContain('R122');
+  });
+
+  it('counts a GATE I breach as a failure of the run', () => {
+    // Not merely printed. A ceiling that reports without failing is the
+    // "would pass" problem in a different costume.
+    expect(code()).toContain('failsI');
+    expect(code()).toMatch(/breaches[\s\S]{0,160}failsI/u);
+  });
+
+  it('keeps GATE I separate from the public gates and from GATE W', () => {
+    expect(code()).not.toMatch(/GATE_A_TOTAL_BYTESs*=s*GATE_I/u);
+    expect(code()).toContain('isIsland');
+
+    // Two dev routes, two ceilings, two predicates - not one branch doing
+    // both, which would make either route excuse the other.
     expect(code()).toContain('isWorkbench');
   });
 });

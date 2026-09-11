@@ -102,12 +102,44 @@ const BASELINE_BYTES = Math.round(FRAMEWORK_BASELINE_KIB * KIB);
 const GATE_W_DELTA_BYTES = 40 * KIB;
 const WORKBENCH_ROUTE = '/dev/composants';
 
+/**
+ * GATE I - THE CLIENT-COST HARNESS, ruling R122.
+ *
+ * THE HOLE GATE W DOES NOT CLOSE, closed. The comment above states it: a
+ * component can be free on every server-rendered page and cost 200 KiB the
+ * first time it enters a client island, and until now nothing measured that
+ * until some task put it in one. /dev/island renders the whole component
+ * library beneath a 'use client' boundary, so whatever each component drags
+ * into a client bundle is dragged into that route.
+ *
+ * THE CEILING IS GATE B's NUMBER, and deliberately: 25 KiB over the
+ * framework floor is what a PUBLIC route may spend on feature code, so this
+ * says the entire library, in a client island, must fit inside the budget a
+ * single page is allowed. The library is 8,4 KiB there today, which leaves
+ * room to triple while still catching a regression two orders of magnitude
+ * smaller than the one that prompted the ruling.
+ *
+ * ON THE DELTA, like GATE W, because the harness grows with the library.
+ *
+ * WHAT IT COSTS THE PUBLIC ROUTES, measured rather than assumed. Adding this
+ * route moved the calculator from 118,8 KiB to 119,8 and every other public
+ * route by 0,2: Next chunks globally, so a second client entry importing the
+ * same modules regroups what every route loads. GATE A spare on the
+ * calculator went from 6,2 KiB to 5,2. That is a real price for a dev
+ * harness and it is reported as a question, not absorbed quietly.
+ */
+const GATE_I_DELTA_BYTES = 25 * KIB;
+const ISLAND_ROUTE = '/dev/island';
+
 // Segment-aware, so a real public route whose first segment merely starts with
 // "dev" - /devis, /developpement - is not silently excused from the gate.
 const isGated = (route) => route !== '/dev' && !route.startsWith('/dev/');
 
 /** R117: the workbench has its own ceiling rather than none. */
 const isWorkbench = (route) => route === WORKBENCH_ROUTE;
+
+/** R122: the client-cost harness has its own ceiling too. */
+const isIsland = (route) => route === ISLAND_ROUTE;
 
 // Next emits route-group segments in the manifest keys and strips them only in
 // memory. app/(public)/page.tsx arrives at FW10 and must print as "/".
@@ -207,6 +239,7 @@ const polyfills = await measure(buildManifest.polyfillFiles ?? []);
  * @property {boolean} [failsA] gated and over GATE A; set below
  * @property {boolean} [failsB] gated and over GATE B; set below
  * @property {boolean} [failsW] the workbench, over GATE W (R117); set below
+ * @property {boolean} [failsI] the island harness, over GATE I (R122)
  */
 
 /** @type {BudgetRow[]} */
@@ -252,9 +285,12 @@ for (const row of rows) {
   row.failsA = row.gated && row.gzip > GATE_A_TOTAL_BYTES;
   row.failsB = row.gated && row.delta > GATE_B_DELTA_BYTES;
   row.failsW = isWorkbench(row.route) && row.delta > GATE_W_DELTA_BYTES;
+  row.failsI = isIsland(row.route) && row.delta > GATE_I_DELTA_BYTES;
 }
 
-const breaches = rows.filter((row) => row.failsA || row.failsB || row.failsW);
+const breaches = rows.filter(
+  (row) => row.failsA || row.failsB || row.failsW || row.failsI,
+);
 
 console.log('');
 console.log('First-load JS per route (gzip level 9). Ruling R2 gates:');
@@ -295,7 +331,11 @@ for (const row of rows) {
 
     A number and the word "ungated". Nothing that reads as a pass.
   */
-  const verdict = isWorkbench(row.route)
+  const verdict = isIsland(row.route)
+    ? row.failsI
+      ? `FAIL GATE I by ${kib(row.delta - GATE_I_DELTA_BYTES)} KiB`
+      : `island (I ${kib(GATE_I_DELTA_BYTES - row.delta)} spare)`
+    : isWorkbench(row.route)
     ? row.failsW
       ? `FAIL GATE W by ${kib(row.delta - GATE_W_DELTA_BYTES)} KiB`
       : `workbench (W ${kib(GATE_W_DELTA_BYTES - row.delta)} spare)`
@@ -347,6 +387,11 @@ if (breaches.length > 0) {
     if (row.failsB) {
       console.error(
         `GATE B BREACH  ${row.route}: ${kib(row.delta)} KiB of feature code exceeds ${kib(GATE_B_DELTA_BYTES)} KiB over the framework floor (ruling R2).`,
+      );
+    }
+    if (row.failsI) {
+      console.error(
+        `GATE I BREACH  ${row.route}: ${kib(row.delta)} KiB of component-library code inside a client island exceeds ${kib(GATE_I_DELTA_BYTES)} KiB over the framework floor (ruling R122).`,
       );
     }
     if (row.failsW) {

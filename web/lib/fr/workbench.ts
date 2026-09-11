@@ -97,3 +97,45 @@ export const WORKBENCH = {
     standing: 'Mention légale permanente',
   },
 } as const;
+
+/**
+ * RULING R122's client-cost harness, at /dev/island.
+ *
+ * Developer-facing, like WORKBENCH above, and here for the same reason: SPEC
+ * section 5 has no "internal pages" exemption and react/jsx-no-literals would
+ * not accept one.
+ *
+ * DELIBERATELY PLAIN. This page is a measurement, not a specimen sheet - what
+ * a reviewer needs from it is the number in `pnpm size`, so its own words only
+ * have to say what it is and why it is not the workbench.
+ */
+/**
+ * The no-break space French sets before a colon and a semicolon (R91).
+ *
+ * DECLARED HERE BECAUSE THE GUARD CAUGHT ME. The first version of the copy
+ * below wrote "Rendus declenches : 0" and "/dev/composants ; cette page"
+ * with ordinary spaces, and R91's scan failed on both - correctly, and on
+ * copy written by the same session that had just narrowed that scan. The
+ * rule applies to developer-facing strings too; SPEC section 5 has no
+ * exemption and neither does the typography.
+ */
+const NB = String.fromCharCode(0x00a0);
+
+const n = (mark: string): string => `${NB}${mark}`;
+
+export const ISLAND_HARNESS = {
+  title: 'Coût client des composants',
+  purpose:
+    'Toute la bibliothèque rendue dans une île client, pour que GATE I mesure ' +
+    'ce que chaque composant entraîne avec lui. Le banc visuel est ' +
+    `/dev/composants${n(';')} cette page ne sert qu’à la mesure.`,
+  rerender: 'Forcer un rendu',
+  renders: (count: number): string => `Rendus déclenchés${n(':')} ${count}`,
+  tileLabel: 'Jours restants',
+  tileOverLabel: 'Jours au-dessus',
+  gridCaption: 'Tableau de démonstration',
+  gridColumn: 'Colonne',
+  gridCell: 'Cellule',
+  fieldLabel: 'Champ de démonstration',
+  fieldHelper: 'Le texte d’aide du champ.',
+} as const;

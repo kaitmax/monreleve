@@ -90,3 +90,55 @@ export function isComment(line: string): boolean {
 
   return trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*');
 }
+
+/**
+ * A source file with its comments removed, so a test can assert what the CODE
+ * says without failing on the prose that explains it.
+ *
+ * BLOCK COMMENTS ARE TRACKED, not guessed from a line's first characters. The
+ * first version of this - in budget-reporting.test.ts - filtered lines
+ * beginning with a slash or a star, which left the BODY of every block comment
+ * behind. That file's subject is a phrase which now appears in
+ * check-budgets.mjs only inside a block comment explaining why it must not
+ * appear anywhere else, so the test failed on its own documentation. A
+ * stripper bug, not a finding.
+ *
+ * IT HAPPENED A SECOND TIME, which is why this moved here. island-harness's
+ * assertions that the harness contains no `data-testid` and its page carries
+ * no 'use client' both failed against comments that say exactly that, in the
+ * files under test. Two occurrences of one trap in two tasks is enough.
+ */
+export function withoutComments(source: string): string {
+  const NEWLINE = String.fromCharCode(10);
+  const kept: string[] = [];
+  let inBlock = false;
+
+  for (const line of source.split(NEWLINE)) {
+    const trimmed = line.trim();
+
+    if (inBlock) {
+      if (trimmed.includes('*/')) inBlock = false;
+      continue;
+    }
+
+    if (trimmed.startsWith('/*')) {
+      // A single-line /* ... */ opens and closes on the same line.
+      if (!trimmed.includes('*/')) inBlock = true;
+      continue;
+    }
+
+    if (trimmed.startsWith('//')) continue;
+
+    // A trailing // comment on a code line. Only outside a string, which is
+    // what the span scanner is for: a URL contains // and is not a comment.
+    const spans = quotedSpansWithPositions(line);
+    const slashes = line.indexOf('//');
+    const insideSpan =
+      slashes >= 0 &&
+      spans.some((span) => slashes >= span.start && slashes < span.start + span.text.length);
+
+    kept.push(slashes >= 0 && !insideSpan ? line.slice(0, slashes) : line);
+  }
+
+  return kept.join(NEWLINE);
+}
