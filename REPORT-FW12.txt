@@ -777,3 +777,322 @@ FINAL VERIFICATION, all six commands in sequence on e255647:
 ================================================================================
 END OF REPORT-FW12.txt
 ================================================================================
+
+================================================================================
+ADDENDUM - RULINGS R119-R127, APPLIED
+================================================================================
+Session of 11.09.2026, after FW12 was accepted. Four commits,
+fd7291c..7f3cba7, all pushed and all green in CI.
+
+Nine rulings, answering the seven questions REPORT-FW12.txt left open. They are
+recorded here rather than in a report of their own because they are the
+operator's response to FW12's findings and belong beside them.
+
+FOUR OF THE NINE FOUND SOMETHING, and one of those is a live layout defect that
+had been shipping since increment 1.
+
+--------------------------------------------------------------------------------
+R127 - AND THE DEFECT IT FOUND
+--------------------------------------------------------------------------------
+The ruling: baselines at 1440 and 390 everywhere, plus a 360 dp overflow check
+on every public route.
+
+THE CHECK FOUND THE CALCULATOR SCROLLING SIDEWAYS ON EVERY PHONE WIDTH, with a
+result on screen:
+
+  320 dp   101 px of overflow   SPEC section 16's stated floor
+  360 dp    61 px               FD2's reference width
+  390 dp    31 px               THE WIDTH FW12's OWN BASELINES USED
+  414 dp     7 px
+  1440       0
+
+The cause is ThresholdRail's SVG. It sized itself from its width and height
+attributes alone, and an SVG carrying a viewBox with no max-width cannot go
+below them - so at 390 the panel's rail slot is 300 px and the SVG stayed 376.
+
+WHY EIGHT BASELINES AT 390 COULD NOT SEE IT, and this is the part worth
+carrying forward: fullPage WIDENS the capture to include the overflow. An
+overflowing page photographs as a COMPLETE LAYOUT on a wider canvas, not as a
+broken one. The mobile baselines were 421 px images of a 390 px viewport. I
+looked at them in increment 6, described what they showed, and read past the
+dimensions. They are 390 px now, and that number is the record of the fix.
+
+FIXED BY SCALING, NOT SCROLLING. A container with overflow-x would put the
+49,9 % tick off-screen at 320, and a threshold rail whose second threshold
+cannot be seen has lost its subject. Zero overflow at 320/360/390/1440 with the
+whole rail visible.
+
+AGAINST R46, honestly: that ruling took the tick from 1,5 px to 2 px because
+1,5 cannot sit on the device pixel grid, and a uniformly scaled 2 px tick is
+1,60 px at 320. That is NOT the defect R46 fixed - that one was the two ticks
+rendering asymmetrically FROM EACH OTHER, one a symmetric grey pair and the
+other lopsided, and a uniform scale moves both identically. It is a loss of
+crispness below 376 px of available width. Question Q33.
+
+The width reconciliation itself: pages.visual.spec.ts moved off 1280/360, its
+six mobile baselines were renamed, and twelve page baselines were
+re-established at the new widths - so they pass against themselves on their
+first run. What covers the narrow case going forward is the measurement, not a
+third baseline set.
+
+e2e/narrow.spec.ts is REGISTRY-DRIVEN, which is the opposite of what
+pages.visual.spec.ts does and for the opposite reason. That file lists its
+pages by hand because "a NEW baseline always passes - it is written, then
+compared against itself". An overflow check has no self-comparing first state,
+so a route that goes live is covered without anybody remembering to add it.
+
+--------------------------------------------------------------------------------
+R119 AND R124 - COUNTS, NOT PRESENCE
+--------------------------------------------------------------------------------
+tests/unit/pages/singletons.test.tsx counts four spec-named singletons - the
+h1, the standing disclaimer, the contextual link, the primary action - on every
+live public route plus the 404, with the route list checked against the
+registry so a new route cannot go uncounted.
+
+ZERO IS A COUNT TOO. "At most one" is satisfied by a page that renders none, so
+every cell is an exact number: /cgu has no contextual link because it is a legal
+document, and that 0 is asserted. The shell CTA counts 0 while /application is
+planned, asserted as a PAIR - the registry says planned, the DOM shows no anchor
+- so the day it ships this fails and says the count must be reconsidered rather
+than silently becoming 1.
+
+R124: the disclaimer is counted PER REGION, exactly one in the panel and exactly
+one in the footer. Two is the specification. A page-level count of 2 would have
+passed the duplicated version increment 6 removed.
+
+Six probes, all red: the removed LegalNote put back reddens 8; a second h1 in
+the shell 7; a second contextual-link slot 1; a second Calculer button 2; the
+FOOTER disclaimer removed 9, so a count of 0 fails rather than passes; a link
+slot injected into every page 8.
+
+--------------------------------------------------------------------------------
+R120 - AND WHAT THE CONFORMANCE CORPUS SAYS ABOUT ITSELF
+--------------------------------------------------------------------------------
+fixtures/geneva-cases.json carries this comment, written long before the ruling:
+
+  "All six cases are full-time, full-year, Geneva, whole days, on the
+   simplified 240-day basis, so totalWorkDays is 240 and fiscalCeilingDays
+   is 96."
+
+That is a plain statement that four engine outputs are CONSTANT across the
+entire suite SPEC section 7.5 says nothing ships without. An engine returning
+the literals 240, 96 and 10 would pass all six. It is not a defect in the
+fixtures - they reproduce published cases that really are full-time - it is a
+statement about what they can witness, and it was sitting in a comment.
+
+tests/unit/calc-engine/derivation-disagreement.test.ts asserts both halves:
+that some case in an extended corpus distinguishes each of seven derivable
+quantities, AND that the Geneva six genuinely cannot distinguish four of them,
+with the non-vacuity check that the other three ARE Geneva-visible. Probe:
+narrowing the corpus to Geneva alone reddens exactly those four, plus the map
+that names which case carries each property.
+
+Every extended case is reachable through the form - part-time and part-year are
+controls, the exact method is the accordion's third option, half-days the
+public default - asserted, because a corpus of inputs nobody can enter witnesses
+a difference the product cannot produce.
+
+--------------------------------------------------------------------------------
+R121 - SEVEN RULES MEASURED AGAINST THE WRONG BACKGROUND
+--------------------------------------------------------------------------------
+R76 resolved "the nearest self-painted ancestor" through a hand-written map,
+which covered the one case that needed it - ZoneBadge's chip, whose fill is
+inline from STATUS_VISUAL and genuinely invisible to CSS. Every OTHER component
+whose container paints a fill in its own stylesheet fell through to the two page
+surfaces:
+
+  .provisionalLead .provisionalList .provisionalLink .provisionalPending
+       inside .provisional  (--colour-info-soft)
+  .warningHeading .warningBody
+       inside .warning      (--colour-warning-soft)
+  .footerLink
+       inside .footer       (--colour-surface)
+
+THE TWO WARNING-BANNER RULES ARE THE WHOLE OF FW12's WARNING LIST and had never
+been measured against the fill behind them. They pass at 16,64:1, so this found
+no second defect - it found that the pass was luck.
+
+Now derived from the stylesheet by prefix, longest match wins, with the seven
+named in an assertion so a rule that stops resolving to its container is visible
+rather than silently back on the page surfaces. Probed both ways: restoring
+FW12's defect fails through the DERIVED path while the hand-table entry beside
+it passes, because that entry names the fixed colour; the same plant with nested
+resolution disabled produces NO ratio failure at all.
+
+PART TWO: the report no longer looks like a pass when the verdict is a fail.
+toFixed(2) printed 4.497455631974162 as "is 4.50:1, below 4.5:1" - a number that
+looks like a pass inside a sentence saying it failed, which invites the reader to
+conclude the gate has a rounding quirk rather than the product has a defect.
+That is R115's "would pass" in a different costume. Four decimals plus the raw
+double, with the near-miss used as the formatter's own test case and asserted to
+BE the product's number rather than a literal.
+
+--------------------------------------------------------------------------------
+R125 - THE ENGINE GUARDED THE CLAIM AND THE COPY LEAKED IT
+--------------------------------------------------------------------------------
+warnings.ts has emitted FRONTALIER_STATUS_AT_RISK for the eight 1983 cantons
+only since FW4, with the reason beside the guard:
+
+  // Only under the 1983 accord is the status itself at risk. Telling a
+  // Geneva frontalier their status is at risk would simply be false.
+
+And FISCAL_CEILING_EXCEEDED's body said the 1983 sentence to everyone - putting
+back in prose exactly the false statement the engine went out of its way not to
+make, and repeating, for the eight cantons where it IS true, what the dedicated
+warning says one line below.
+
+So the property is CROSS-LAYER and neither layer could be checked alone: a
+phrase the engine restricts to one regime must not appear in copy rendered for
+another. Asserted over all twenty-six cantons rather than one example, because
+the failure is per-canton. Probe: the unconditional body reddens it for the
+eighteen source cantons.
+
+Recorded on the reviewer list as a COPY item under a new heading in
+docs/regulatory-sources.md, separate from P1-P3: the arithmetic is settled and
+sourced, and what needs a second pair of eyes is the two French sentences. SPEC
+section 7.2 step 1 confirmed, not reinterpreted.
+
+--------------------------------------------------------------------------------
+R126 - THE APOSTROPHE
+--------------------------------------------------------------------------------
+139 elisions across 12 lib/fr files now use U+2019. Converted only between two
+letters, which is the elision position and excludes the six nested string
+delimiters a naive count included. Registry-backed in copy-codepoints.test.ts as
+a POSITIONAL rule, because U+0027 is also this codebase's string delimiter, so a
+ban or a count would be meaningless.
+
+IT BROKE ONE ASSERTION IN 1722. e2e/not-found.spec.ts asserted a link's
+accessible name against the literal "Revenir a l'accueil", and getByRole matches
+accessible names exactly on codepoints on BOTH sides (R66), so it went red
+against CORRECT copy. It now reads NOT_FOUND_COPY.
+
+That ratio is the argument for the new guard: no French elision outside lib/fr,
+whichever apostrophe it uses. THE GUARD'S FIRST VERSION WAS WRONG ABOUT ENGLISH
+- matching letter-apostrophe-letter reported "renderRailSvg's return value" as
+duplicated French copy, and every "the engine's" in this project's own prose
+with it. French elision is a closed set of particles, so the detector is that
+set, with six English possessives asserted NOT to match. A guard that cries wolf
+gets an exemption list instead of a fix.
+
+--------------------------------------------------------------------------------
+R122 - /dev/island AND GATE I
+--------------------------------------------------------------------------------
+The hole R117 does not close, closed. A thin server page over a client-island
+harness rendering the whole component library - the same arrangement every
+public page uses, and the one the defect existed in.
+
+MEASURED WITH THE DEFECT RESTORED, which is the only evidence that counts for a
+gate written to catch one thing:
+
+  /calculateur-teletravail-frontalier   324,0 KiB   FAIL A by 199,0
+  /dev/composants                       108,6 KiB   W 32,0 spare
+  /dev/island                           312,5 KiB   FAIL GATE I by 186,9
+
+The workbench is still blind. The harness is not.
+
+GATE I is GATE B's number: 25 KiB over the framework floor is what a PUBLIC
+route may spend on feature code, so the ceiling says the entire library, inside
+a client island, must fit in the budget one page is allowed. It sits at 8,5 KiB
+today. On the delta, like GATE W, because the harness grows with the library.
+
+island-harness.test.ts reads lib/ui/react from disk and asserts every component
+is imported - a harness's failure mode is going stale, and a hardcoded list
+covers what someone remembered. PublicShell is the one exclusion, with its
+reason: already a client component on every public page, so GATE A measures it
+there.
+
+--------------------------------------------------------------------------------
+SIZE
+--------------------------------------------------------------------------------
+  after R119/R120/R123   118.8   6.2 spare   tests and one deletion
+  after R121/R125        118.8   6.2 spare   tests and a doc
+  after R126/R127        118.8   6.2 spare   copy, baselines, the rail fix
+  after R122             119.8   5.2 spare   see below
+
+R122 COST THE CALCULATOR 1.0 KiB AND EVERY OTHER PUBLIC ROUTE 0.2. Measured by
+building with and without the route: Next chunks globally, so a second client
+entry importing the same modules regroups what every route loads. GATE A spare
+went 6,2 -> 5,2 KiB. The ruling said build it and it is built; the price is
+reported rather than absorbed, and Q34 asks whether it is worth paying.
+
+No gate was raised. GATE I was ADDED, which is a new ceiling on a route that had
+none rather than a relaxation of an existing one.
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+D8. THE RAIL NOW SCALES BELOW 376 px, which costs tick crispness at narrow
+    widths. Explained under R127 above and raised as Q33. The alternative - a
+    horizontally scrolling rail - hides the 49,9 % tick at 320, and the
+    alternative to both is leaving every phone scrolling sideways.
+
+D9. TWELVE PAGE BASELINES WERE RE-ESTABLISHED at new widths, so they pass
+    against themselves on their first run. Unavoidable when the widths change,
+    and the 360 dp overflow check is what covers the width they left.
+
+D10. MY OWN CONCURRENCY ERROR, for the fourth time in this project.
+    pnpm test:clean-tree failed once during the R119 verification because I ran
+    the R120 mutation probes - vitest - at the same moment, while clean-tree had
+    public/ stashed. The failure was mine, not the tree's; re-run alone it
+    passed with 1716 tests. Recorded because three previous occurrences are in
+    REPORT-FW11 and this is the fourth: two chains sharing .next, pnpm size
+    reading .next mid-build, a build racing clean-tree's stash, and now a vitest
+    run racing it.
+
+--------------------------------------------------------------------------------
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------------------
+N6. THE TWO ESLINT WARNINGS from REPORT-FW12's N1 are still there, still
+    pre-existing, still in engine test files outside this work's scope.
+
+N7. THE COMMENT-STRIPPER TRAP HAPPENED A SECOND TIME. island-harness asserts the
+    harness contains no data-testid and its page carries no client directive,
+    and both failed against comments in those files saying exactly that - the
+    same trap budget-reporting.test.ts hit in FW12. The stripper and the
+    quoted-span scanner both moved to tests/support and their callers share
+    them; the scanner was about to have a third copy.
+
+--------------------------------------------------------------------------------
+NEW QUESTIONS FROM THE ADDENDUM
+--------------------------------------------------------------------------------
+Q33. THE SCALED RAIL AND R46. Below 376 px of available width the rail scales,
+     so its 2 px ticks render at 1,91 px at 360 and 1,60 at 320. R46 set 2 px
+     because 1,5 could not sit on the pixel grid - but the defect it fixed was
+     ASYMMETRY BETWEEN the two ticks, and a uniform scale preserves that
+     symmetry. If crispness at 320 matters more than a rail that fits, the
+     alternative is passing a smaller width prop from a measured container,
+     which needs client-side measurement in the island.
+
+Q34. WHETHER /dev/island IS WORTH 1 KiB OF THE CALCULATOR'S HEADROOM. It costs
+     1,0 KiB on the calculator and 0,2 on every other public route, for a dev
+     harness. GATE A spare is 5,2 KiB. Reverting it returns the KiB and reopens
+     the hole; keeping it is the ruling as given. A third option exists and is
+     more work: build /dev/** only under an env flag, so the shipped build has
+     no island and CI measures it in a separate build.
+
+Q23, Q24, Q28, Q29, Q30, Q31 and Q32 from REPORT-FW12 are all answered by
+R119-R127 and are closed. R47 is not raised again.
+
+--------------------------------------------------------------------------------
+ADDENDUM VERIFICATION
+--------------------------------------------------------------------------------
+  fd7291c  R119, R120, R123          CI success
+  6041107  R121, R125                CI success
+  97305b9  R126, R127                CI success
+  7f3cba7  R122                      CI success
+
+Final run, all six commands on 7f3cba7:
+
+  pnpm gate           1747 tests                                      PASS
+  pnpm test:e2e       83 passed                                       PASS
+  pnpm test:visual    64 passed, zero tolerance                       PASS
+  pnpm test:a11y      83 passed                                       PASS
+  pnpm test:runtime   9 passed                                        PASS
+  pnpm test:clean-tree                                                PASS
+
+Suite went 1664 -> 1747 tests. /calculateur-teletravail-frontalier 119.8 KiB,
+5.2 KiB of GATE A spare.
+
+================================================================================
+END OF ADDENDUM
+================================================================================
