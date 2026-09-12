@@ -49,6 +49,7 @@ import {
 } from '@/lib/calc-engine';
 import { provisionalFor, readingAnchor } from '@/lib/content/provisional';
 import { decode, encode, isoDayForFraction } from '@/lib/params/codec';
+import { writeHandoff } from '@/lib/params/handoff';
 import { CALCULATEUR_COPY } from '@/lib/fr/calculateur';
 import { PARAM_NOTICE, SHARE_COPY } from '@/lib/fr/params';
 import { PROVISIONAL_COPY } from '@/lib/fr/provisional';
@@ -528,6 +529,22 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
    * a query string in front of a reader who has typed nothing is a URL they
    * did not ask for and cannot un-see.
    */
+  //
+  // AND THE APP HANDOFF RIDES THE SAME TIMER. FW13 increment 5 persists the
+  // scenario for SPEC 10, and localStorage.setItem is SYNCHRONOUS main-thread
+  // work - so putting it on its own debounce would mean two timers writing
+  // the same scenario to two places 400 ms apart, and putting it on no
+  // debounce at all would mean a synchronous write per keystroke. One timer,
+  // two destinations, one moment where the scenario is settled.
+  //
+  // ON A VALID COMPUTATION, WHICH IS NOT THE SAME AS VALID INPUT. `input`
+  // being non-null says the form parsed; `hasResult` says the ENGINE answered.
+  // The URL follows the form either way - a reader sharing a scenario the
+  // engine rejects should still send exactly what they are looking at - but
+  // the handoff is a pre-filled onboarding for another app, and handing it a
+  // scenario that produced no answer would pre-fill a form with a dead end.
+  const hasResult = result !== null;
+
   useEffect(() => {
     if (input === null) return undefined;
 
@@ -537,12 +554,14 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
         query === '' ? window.location.pathname : `?${query}`;
 
       window.history.replaceState(window.history.state, '', next);
+
+      if (hasResult) writeHandoff(input);
     }, URL_DEBOUNCE_MS);
 
     return () => {
       clearTimeout(timer);
     };
-  }, [input]);
+  }, [input, hasResult]);
 
 
 

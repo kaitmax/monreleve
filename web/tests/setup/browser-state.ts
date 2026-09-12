@@ -1,6 +1,6 @@
-// web/tests/setup/address-bar.ts
+// web/tests/setup/browser-state.ts
 //
-// FW13 increment 4: the address bar is now SHARED MUTABLE STATE between tests.
+// FW13: the address bar AND localStorage are now shared mutable state.
 //
 // WHAT HAPPENED. Increment 2 makes the calculator seed itself from
 // window.location.search on mount, and increment 4 makes it write the scenario
@@ -50,4 +50,15 @@ beforeEach(() => {
   // break the very assertion share-controls.test.tsx uses to tell the two
   // apart.
   window.history.replaceState(null, '', CLEAN_URL);
+
+  // AND THE SAME ARGUMENT FOR STORAGE, added by increment 5. The calculator
+  // now writes one localStorage key on a valid computation, and jsdom gives a
+  // test FILE one Storage exactly as it gives it one window - so "the page
+  // writes exactly one key" would be asserted against a store that already
+  // held whatever earlier tests left in it, and "it writes nothing before a
+  // computation" would pass or fail on test ORDER rather than on behaviour.
+  //
+  // storage-handoff.test.tsx asserts this directly, in a test placed after
+  // the ones that write, so the guarantee is measured rather than assumed.
+  window.localStorage.clear();
 });

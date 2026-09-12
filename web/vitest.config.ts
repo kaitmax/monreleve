@@ -40,13 +40,14 @@ export default defineConfig({
     exclude: ['e2e/**', 'node_modules/**', '.next/**'],
     environment: 'node',
 
-    // FW13: every DOM test starts at a bare URL. The calculator seeds from
-    // window.location.search and writes back to it, and jsdom gives a whole
-    // test FILE one window - so without this, one test leaves a scenario in
-    // the address bar and the next one renders it. Nine assertions in
-    // accessibility-calculateur.test.tsx failed exactly that way. The file
-    // itself carries the measurement.
-    setupFiles: ['tests/setup/address-bar.ts'],
+    // FW13: every DOM test starts at a bare URL and an empty store. The
+    // calculator seeds from window.location.search, writes back to it, and
+    // persists one key on a valid computation - and jsdom gives a whole test
+    // FILE one window. Without this, one test leaves a scenario in the
+    // address bar and the next one renders it: nine assertions in
+    // accessibility-calculateur.test.tsx failed exactly that way. The setup
+    // file itself carries the measurement.
+    setupFiles: ['tests/setup/browser-state.ts'],
 
     coverage: {
       provider: 'v8',
