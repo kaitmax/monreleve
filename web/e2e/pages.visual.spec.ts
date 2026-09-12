@@ -28,7 +28,8 @@
 // visible too, which is the width where a long registered name will first
 // cause trouble.
 
-import { expect, test } from '@playwright/test';
+import { test } from '@playwright/test';
+import { expectPageBaseline } from './baseline';
 
 /**
  * The pages with a screenshot contract. Not read from lib/content/routes.ts on
@@ -59,7 +60,7 @@ test.describe('desktop', () => {
       // every page against a fallback stack.
       await page.evaluate(() => document.fonts.ready);
 
-      await expect(page).toHaveScreenshot(`page-${id}-desktop.png`, { fullPage: true });
+      await expectPageBaseline(page, `page-${id}-desktop.png`);
     });
   }
 });
@@ -81,7 +82,7 @@ test.describe('mobile', () => {
       await page.goto(path);
       await page.evaluate(() => document.fonts.ready);
 
-      await expect(page).toHaveScreenshot(`page-${id}-mobile.png`, { fullPage: true });
+      await expectPageBaseline(page, `page-${id}-mobile.png`);
     });
   }
 });

@@ -25,6 +25,7 @@
 // and not a detail.
 
 import { expect, test } from '@playwright/test';
+import { expectPageBaseline } from './baseline';
 import { CALCULATEUR_COPY } from '../lib/fr/calculateur';
 import { CALCULATOR_PATH } from '../lib/content/routes';
 import { PROVISIONAL_COPY } from '../lib/fr/provisional';
@@ -208,8 +209,10 @@ for (const { width, label } of [
         // asserted where a
         // string belongs - all 26 options, their French names and their
         // collation order, in tests/unit/pages/calculateur-form.test.tsx.
-        await expect(page).toHaveScreenshot(`calculateur-${state.id}-${label}.png`, {
-          fullPage: true,
+        // R128: expectPageBaseline asserts the stored width against the
+        // viewport. A fullPage capture widens to include horizontal
+        // overflow, which is how this page shipped 31 px of it at 390.
+        await expectPageBaseline(page, `calculateur-${state.id}-${label}.png`, {
           animations: 'disabled',
           stylePath: 'e2e/visual-select.css',
         });

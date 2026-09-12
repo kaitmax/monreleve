@@ -33,6 +33,7 @@
 // wrong.
 
 import { expect, test } from '@playwright/test';
+import { expectElementBaseline } from './baseline';
 
 // Every state whose screenshot contract lives on this page: the four
 // components the workbench owns outright, plus the one rail state
@@ -73,7 +74,7 @@ test.beforeEach(async ({ page }) => {
 
 for (const specimen of SPECIMENS) {
   test(specimen, async ({ page }) => {
-    await expect(page.getByTestId(specimen)).toHaveScreenshot(`composants-${specimen}.png`);
+    await expectElementBaseline(page.getByTestId(specimen), `composants-${specimen}.png`);
   });
 }
 
@@ -167,7 +168,10 @@ test.describe('the mobile header', () => {
   });
 
   test('collapsed', async ({ page }) => {
-    await expect(page.getByTestId('shell-desktop')).toHaveScreenshot('composants-shell-mobile.png');
+    await expectElementBaseline(
+      page.getByTestId('shell-desktop'),
+      'composants-shell-mobile.png',
+    );
   });
 
   test('menu open', async ({ page }) => {
@@ -178,6 +182,6 @@ test.describe('the mobile header', () => {
     // The panel must be in the shot, so wait for it rather than trusting the
     // click to have settled before the capture.
     await expect(shell.locator('[data-mobile-panel]')).toBeVisible();
-    await expect(shell).toHaveScreenshot('composants-shell-mobile-open.png');
+    await expectElementBaseline(shell, 'composants-shell-mobile-open.png');
   });
 });

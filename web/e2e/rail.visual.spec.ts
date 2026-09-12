@@ -19,6 +19,7 @@
 // nothing. app/layout.tsx loads global.scss, which loads the tokens.
 
 import { expect, test } from '@playwright/test';
+import { expectElementBaseline } from './baseline';
 
 const VARIANTS = ['inline', 'compact', 'social'] as const;
 const ZONES = ['compliant', 'fiscal-exposure', 'social-switch'] as const;
@@ -33,7 +34,8 @@ test.beforeEach(async ({ page }) => {
 for (const variant of VARIANTS) {
   for (const zone of ZONES) {
     test(`${variant} / ${zone}`, async ({ page }) => {
-      await expect(page.getByTestId(`rail-${variant}-${zone}`)).toHaveScreenshot(
+      await expectElementBaseline(
+        page.getByTestId(`rail-${variant}-${zone}`),
         `rail-${variant}-${zone}.png`,
       );
     });
@@ -41,7 +43,10 @@ for (const variant of VARIANTS) {
 }
 
 test('inline at 200 px - the Checkpoint A thumbnail artifact', async ({ page }) => {
-  await expect(page.getByTestId('rail-inline-200px')).toHaveScreenshot('rail-inline-200px.png');
+  await expectElementBaseline(
+    page.getByTestId('rail-inline-200px'),
+    'rail-inline-200px.png',
+  );
 });
 
 test('the zones are visually distinct, not nine identical bars', async ({ page }) => {
