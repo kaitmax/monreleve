@@ -1,0 +1,289 @@
+FW14 SESSION PROMPT - frontalier
+Paste this entire prompt as the first message of a fresh Claude Code
+session, opened at the repository root.
+
+====================================================================
+PRE-STEP RULINGS (apply verbatim)
+====================================================================
+R1 (discharged). CI green on origin/main: verify, record the run URL.
+R2, R7-R8, R10-R13, R15-R131 (carried). The engine is closed.
+   R9: you own document edits.
+
+R132 (new, AMENDED before first use). THE GATE IS SELECTED BY
+   CHANGED PATHS. A script reads git diff --name-only and requires
+   test:e2e and test:visual - NOT test:a11y - when any changed path
+   matches app/**, lib/ui/**, lib/fr/**, **/*.module.scss, or the
+   token layer. CLAUDE.md's definition of green becomes "the gate
+   for the paths you changed"; the selection is printed and recorded
+   in the commit body. Two red commits on main in FW13 are why.
+
+   THE AMENDMENT, recorded at the script as well as here. The first
+   version named test:visual and test:a11y. Measured against the two
+   commits the ruling was written for:
+
+     test:a11y runs three files - lib/ui/react/accessibility.test.tsx,
+     tests/unit/pages/accessibility.test.tsx, and
+     accessibility-calculateur.test.tsx - all matched by pnpm test's
+     globs. A strict subset of a suite already in the chain, so
+     requiring it is ceremony, not coverage.
+
+     test:e2e was missing, and it is the suite that caught half the
+     failure. The jsdom live-region count died inside fdca008, where
+     pnpm test caught it; the two counts in e2e/calculateur.spec.ts
+     survived to CI red and were not fixed until cc8605a.
+
+   A selector that fires correctly and then runs the wrong suites is
+   worse than no selector, because it produces a green that looks
+   path-aware. The printed selection still NAMES a11y, as
+   "a11y: covered by pnpm test", so it reads as considered rather
+   than forgotten and nobody re-adds it in six months.
+
+R133 (new). A HARNESS ASSERTS A POSITIVE SIGNAL, never infers from
+   absence. Any script parsing another tool's output must assert that
+   N tests ran and N >= expected, and fail on a missing count.
+   Fourth instance of this shape. Sweep every such script and list
+   them.
+
+R134 (new). THE var() SCAN IS STANDING: every var() in every
+   stylesheet names a property something defines. Keep it; prove it
+   fires on a planted unknown token.
+
+   0c IS A VERIFICATION, NOT A BUILD. The scan shipped in FW13 as
+   tests/unit/tokens/var-references.test.ts, and its planted-token
+   proof was run there: re-inserting --size-control-height reddens
+   it by name while stylelint stays silent on the same code. Say so
+   in the report; do not rebuild it and do not describe work already
+   done as if this task did it.
+
+R135 (new). A REGENERATED BASELINE REQUIRES A STATED REASON. Any
+   commit using --update-snapshots lists the regenerated files in the
+   report with what changed and why it was expected.
+
+R136 (new). PREFER ZERO JS ON PUBLIC ROUTES. GATE A does not move:
+   4,4 KiB remains on the calculator. Email capture is an HTML form
+   posting to a route handler, not a client island - progressive
+   enhancement, works without JavaScript. A NEW CLIENT ISLAND on a
+   public route now requires justification against the remaining
+   headroom, stated in the report.
+
+R137 (new). ADJACENCY IS ASSERTED AS SEQUENCE OR NOT AT ALL. Where
+   SPEC specifies an order - the result panel, a form's fields, a
+   page's sections - a DOM-sequence test exists. FW12's panel-order
+   test is the pattern; it covered the panel and not the region
+   above it, which is how FW13 shipped a share row above the notice
+   that explains it. Every element there was present, correct and
+   individually tested: what was wrong was the ORDER, and order is a
+   property of the page rather than of anything on it, so no element
+   has anywhere to hang the assertion. Extend the pattern to the
+   calculator page's own section order in increment 5, where the
+   capture card sitting below the result is itself a SPEC 9.3
+   requirement.
+
+R47. Still open, still the operator's.
+
+====================================================================
+CONTEXT
+====================================================================
+Project: frontalier. You are executing task FW14 ONLY: the alert list.
+This is the first task with a DATABASE and the first that handles
+personal data, so the privacy claims already published on
+/confidentialite become code obligations - they were written in FW10
+describing specified behaviour, and this task is where that
+description has to become true.
+
+Read first: CLAUDE.md, README.md, SPEC sections 3 (backend), 8
+(AlertSubscriber), 9.3 (capture placement), 9.7, 15, 20;
+/confidentialite's own text as shipped; tasks/todo.md FW14;
+prompts/design-frontier/FD1 (the capture card); REPORT-FW13.txt.
+
+====================================================================
+STANDING PROTOCOL (identical in every FW / AN prompt)
+====================================================================
+1. SESSION SCOPE. Increment 0 and FW14 only. Do not start FW15.
+2. INCREMENT CYCLE. Green after EVERY increment, with the suites R132
+   selects for the paths touched.
+3. COMMIT ONLY ON GREEN, chained with && (R15).
+4. COMMITS. "FW14: <increment title>"; "chore: <title>" for R132-R136.
+5. SIMPLICITY FIRST. A form, a table, two route handlers, one email.
+   No ORM abstraction layer over Prisma, no queue, no admin UI.
+6. TEST-FIRST with a RED row per behaviour. R96, R119, R120 apply.
+7. PRIVACY IS THE ACCEPTANCE CRITERION, not a caveat. Every claim on
+   /confidentialite about the alert list must be true of this code,
+   and the report maps each claim to the test that holds it.
+8. UI DISCIPLINE. Tokens; French only from lib/fr; the capture card
+   per FD1; the result is NEVER gated behind the form (SPEC 9.3);
+   success and error states are server-rendered, readable without
+   JavaScript, and announced (aria-live) when JavaScript is present.
+9. QUESTIONS. Pause and ask.
+10. EXIT ARTIFACT. REPORT-FW14.txt, committed and pushed.
+
+====================================================================
+INCREMENT 0 - R132 to R136
+====================================================================
+0a. R132 AS AMENDED - test:e2e and test:visual, not test:a11y -
+    path-selected gate + CLAUDE.md wording (R9).
+0b. R133 sweep and the positive-signal assertions.
+0c. R134 var() scan: VERIFY it still stands and that the planted
+    token still reddens it. Shipped in FW13; nothing to build.
+0d. R135 baseline-reason discipline recorded in CLAUDE.md.
+Commits per letter; R49 applies.
+
+====================================================================
+TASK FW14 - THE ALERT LIST
+====================================================================
+Acceptance criteria (restated; the report must prove each):
+AC1. The full double-opt-in loop works against a test inbox:
+     subscribe -> confirmation email -> confirm link -> confirmed;
+     unsubscribe sets unsubscribedAt; re-subscribe after unsubscribe
+     is idempotent and does not resurrect a confirmed row silently.
+AC2. The capture sits BELOW the calculator result and submitting
+     leaves the result visible and unchanged - asserted end to end,
+     with JavaScript disabled as well as enabled.
+AC3. Every /confidentialite claim about the alert list maps to a
+     passing test, listed claim by claim in the report. Unconfirmed
+     rows older than 30 days are purged by a job that is tested, not
+     merely written.
+
+--------------------------------------------------------------------
+INCREMENT 1 - Prisma, the model, CI database
+--------------------------------------------------------------------
+- Prisma + PostgreSQL introduced with the AlertSubscriber model ONLY
+  (SPEC 8): id, email unique, source, confirmedAt, unsubscribedAt,
+  createdAt, plus a confirmation token column - decide its shape
+  (hashed, single-use, expiring) and state the choice.
+- A Postgres service in CI; migrations applied in the pipeline;
+  pnpm db:seed for local work. R132's selection must include the
+  database suites.
+- Email is stored lowercased and trimmed; a test covers the
+  normalisation and the unique constraint's behaviour on a duplicate.
+- Commit: "FW14: Prisma, AlertSubscriber, CI database". Push.
+
+--------------------------------------------------------------------
+INCREMENT 2 - the subscribe route handler, zero JS
+--------------------------------------------------------------------
+- POST /api/alertes as a route handler taking a standard form POST
+  (R136): zod-validated email, a source field (calculateur |
+  alertes | guide), rate limiting by IP, and a redirect back to the
+  originating page with a status the server renders.
+- No client island. Progressive enhancement only.
+- Rejections are French and specific; a duplicate address produces a
+  friendly message, never an error page, and never reveals whether
+  the address was already confirmed (enumeration).
+- RED first per behaviour, including the enumeration property.
+- Commit: "FW14: subscribe handler, form POST, no client JS". Push.
+
+--------------------------------------------------------------------
+INCREMENT 3 - Resend and the confirmation email
+--------------------------------------------------------------------
+- Resend wired; the confirmation email in French from lib/fr, plain
+  and short, with the single-use confirm link and a one-line
+  statement of what the list is for.
+- The email sender is a fixed boundary for tests (a fake outbox in
+  unit and e2e; never a real send in CI).
+- SPF/DKIM are an operator task - note them for FW28 rather than
+  attempting them.
+- Commit: "FW14: Resend confirmation email". Push.
+
+--------------------------------------------------------------------
+INCREMENT 4 - confirm and unsubscribe
+--------------------------------------------------------------------
+- GET /api/alertes/confirm: single-use token, sets confirmedAt,
+  renders a French confirmation page inside PublicShell. An expired
+  or reused token gets its own honest page, not a 404.
+- One-click unsubscribe in every send, and a handler that sets
+  unsubscribedAt and renders its own page. Re-subscribing later
+  starts a fresh double opt-in.
+- RED first: reuse, expiry, unsubscribe, re-subscribe.
+- Commit: "FW14: confirm and unsubscribe". Push.
+
+--------------------------------------------------------------------
+INCREMENT 5 - the capture card on the calculator and /alertes
+--------------------------------------------------------------------
+- The capture card per FD1, BELOW the result panel (SPEC 9.3 item 8),
+  server-rendered, with its success and error states rendered by the
+  server after redirect and announced via aria-live when scripted.
+- /alertes: the standalone landing for Facebook posts - one h1, the
+  offer in two sentences, the same form, the same handler with
+  source=alertes.
+- AC2 asserted with JavaScript disabled and enabled.
+- R137: a DOM-SEQUENCE test for the calculator page's section order.
+  The capture card below the result is a SPEC 9.3 requirement, and
+  "below" is not a property of the card - it is a property of the
+  page. FW12's result-panel-order test is the pattern.
+
+  IT COMPOSES WITH THAT TEST RATHER THAN OVERLAPPING IT. The panel
+  test asserts a NEGATIVE - "email" and "share" are never panel
+  slots, which forbids the wrong construction - and this asserts a
+  POSITIVE, that they sit at these page-level positions. A slot
+  that should not exist and an order that should are different
+  failures, and neither assertion implies the other.
+
+  IT ALSO LOCKS FW13 RETROACTIVELY. The calculator's section order
+  was fixed BY HAND in FW13 increment 6, after a baseline was
+  cropped and read, with nothing asserting it afterwards. This is
+  the assertion that was missing when it shipped wrong. Name it as
+  such in the report, so the history reads as CLOSED rather than as
+  coincidentally correct.
+- Commit: "FW14: capture card and the /alertes landing". Push.
+
+--------------------------------------------------------------------
+INCREMENT 6 - retention job, privacy map, a11y, baselines, size
+--------------------------------------------------------------------
+- The 30-day purge of unconfirmed rows: written as a script with a
+  test that seeds rows at 29 and 31 days and asserts exactly one is
+  removed. Scheduling is FW27's - say so.
+- THE PRIVACY MAP (AC3): every sentence on /confidentialite about the
+  alert list, each with the test that makes it true. Any sentence
+  without one is either implemented now or corrected on the page -
+  a published claim that is not true of the code is the one outcome
+  this task may not produce.
+- jest-axe across form, success, error, confirm and unsubscribe
+  pages; baselines at 1440/390, zero tolerance, dimensions asserted.
+- pnpm size: the calculator route must still pass GATE A and GATE B.
+  R136: if the capture cost any client JS, justify it or remove it.
+- Commit: "FW14: retention job, privacy map, a11y, baselines, size".
+  Push.
+
+====================================================================
+OUT OF SCOPE FOR FW14
+====================================================================
+- Scheduling the purge - FW27. Auth - FW22. Any other model.
+- OG, JSON-LD, analytics - FW15.
+- Sending a real alert email to anybody.
+- Any engine change.
+
+====================================================================
+FINAL VERIFICATION
+====================================================================
+pnpm gate && pnpm test:e2e && pnpm test:visual && pnpm test:a11y &&
+pnpm test:runtime
+Green in one run; CI green on origin/main after the final push.
+
+====================================================================
+REPORT FORMAT - REPORT-FW14.txt (pure ASCII, committed and pushed)
+====================================================================
+SUMMARY
+PRECONDITIONS     CI run URL and status.
+INCREMENT 0       R132-R136 each with its proof; the R133 sweep list.
+                  R132's amendment and why. R134 stated as a
+                  verification of FW13 work, not as new work.
+SECTION ORDER     R137: the sequence asserted, and where; that it
+                  composes with the panel test rather than
+                  repeating it; and that it closes FW13's
+                  hand-fixed order rather than leaving it
+                  coincidentally correct.
+RED/GREEN LEDGER
+OPT-IN LOOP       The full sequence against the test inbox.
+PRIVACY MAP       Claim by claim, with its test. (AC3)
+NO-JS PROOF       AC2 with JavaScript disabled.
+ENUMERATION       The duplicate-address property.
+SIZE              Route total, GATE A remainder, any client JS added
+                  and its justification (R136).
+BASELINES         Regenerated files with reasons (R135).
+TOKENS ADDED      (R77)
+DEVIATIONS
+NOTICED BUT NOT TOUCHING
+QUESTIONS FOR THE OPERATOR
+PUSH PROOF
+
+END OF FW14 PROMPT
