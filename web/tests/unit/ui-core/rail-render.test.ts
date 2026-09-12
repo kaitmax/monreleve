@@ -108,11 +108,55 @@ describe('the track, the fill and the ticks', () => {
   });
 
   it('draws both ticks at the ceiling positions', () => {
+    // WAS AN ASSERTION ON THE RECT ATTRIBUTES. R130 made the ticks strokes
+    // rather than fills, so the same property - each tick sits at its
+    // ceiling - is now asserted on the line's centre. A rect placed at
+    // `centre - width / 2` and a line drawn at `centre` are the same mark;
+    // what changed is which number the markup carries.
     const geometry = railGeometry(data(), RULES);
+    const svg = render();
 
     for (const tick of geometry.ticks) {
-      expect(render()).toContain(`x="${tick.x}" y="${tick.y}" width="${tick.width}"`);
+      const centre = tick.x + tick.width / 2;
+
+      expect(svg).toContain(`x1="${centre}" y1="${tick.y}" x2="${centre}"`);
+      expect(svg).toContain(`y2="${tick.y + tick.height}"`);
     }
+  });
+
+  it('draws them with a NON-SCALING stroke (R130)', () => {
+    // THE PROPERTY THE RULING IS ABOUT, and it cannot be seen in a
+    // screenshot at 1440 where nothing is scaled. R127 gave the rail
+    // max-width: 100%, so below 376 px of available width the whole SVG
+    // scales through its viewBox - and a 2 px tick became 1,60 px at 320,
+    // off the pixel grid, which is the condition R46 raised it from 1,5 to
+    // 2 px to escape. vector-effect keeps the STROKE at its declared width
+    // in device space while the coordinates still scale.
+    const svg = render();
+    const ticks = [...svg.matchAll(/<line[^>]*>/gu)].map((match) => match[0]);
+
+    expect(ticks.length, 'no tick lines in the rail').toBe(2);
+
+    for (const tick of ticks) {
+      expect(tick).toContain('vector-effect="non-scaling-stroke"');
+      expect(tick).toContain('stroke-width="2"');
+      // Butt caps, or a 2 px round cap would bulge past the bar ends.
+      expect(tick).toContain('stroke-linecap="butt"');
+    }
+  });
+
+  it('no longer draws the ticks as fills, which cannot be held (R130)', () => {
+    // Non-vacuity for the pair above: vector-effect applies to a STROKE, so
+    // a tick that went back to being a filled rect would carry the attribute
+    // harmlessly and scale anyway. The count of rects is what says the
+    // change actually happened - bar, fill and bands remain rects.
+    const svg = render();
+    const fills = [...svg.matchAll(/<rect[^>]*>/gu)].map((match) => match[0]);
+
+    expect(
+      fills.some((node) => node.includes('colour-text-primary')),
+      'a rect is still painted in the tick colour - is a tick still a fill?',
+    ).toBe(false);
   });
 
   it('labels the ticks from the RuleSet, at the precision each needs', () => {

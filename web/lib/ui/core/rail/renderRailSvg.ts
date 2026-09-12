@@ -67,6 +67,39 @@ const rect = (r: { x: number; y: number; width: number; height: number; rx: numb
   `<rect x="${r.x}" y="${r.y}" width="${r.width}" height="${r.height}" rx="${r.rx}" style="${style}"/>`;
 
 /**
+ * A regulatory tick, as a STROKE rather than a filled rectangle. RULING
+ * R130.
+ *
+ * WHY IT CHANGED SHAPE. R127 gave the rail `max-width: 100%` so it stops
+ * overflowing a phone - the whole SVG scales down through its viewBox below
+ * 376 px of available width. Everything inside scales with it, which is
+ * right for the bar and the fill and wrong for the two ticks: a 2 px mark
+ * became 1,91 px at 360 and 1,60 at 320, off the device pixel grid, which
+ * is the exact condition R46 raised the tick from 1,5 px to 2 px to escape.
+ *
+ * vector-effect="non-scaling-stroke" IS THE ONE MECHANISM THAT SEPARATES
+ * THEM. A stroke with it is drawn at its declared width in the FINAL device
+ * space, ignoring every transform above it, while the coordinates that place
+ * it still scale. So the tick stays 2 px at 1440, at 390 and at 320, and it
+ * stays at 40 % of the bar at all three.
+ *
+ * IT HAD TO STOP BEING A RECT TO GET THERE. vector-effect applies to the
+ * STROKE of a shape and these ticks were fills - a filled rect scales like
+ * anything else, and no attribute changes that. A zero-length vertical line
+ * with a 2 px stroke and butt caps draws the identical mark: same x, same y
+ * range, same colour, one primitive across instead of a box.
+ *
+ * TICK_WIDTH IS STILL THE ONE SOURCE. geometry.ts computes x as
+ * centre - TICK_WIDTH / 2 for the rect, so the centre is x + width / 2 and
+ * the stroke width is the rect width. Deriving both from the tick rather
+ * than importing the constant keeps the geometry the only place it lives.
+ */
+const tickStroke = (tick: RailTick, style: string): string =>
+  `<line x1="${tick.x + tick.width / 2}" y1="${tick.y}" x2="${tick.x + tick.width / 2}"` +
+  ` y2="${tick.y + tick.height}" stroke-width="${tick.width}" stroke-linecap="butt"` +
+  ` vector-effect="non-scaling-stroke" style="${style}"/>`;
+
+/**
  * A tick's label. The precision follows the CEILING rather than being fixed:
  * an integer ceiling renders "40 %" and a fractional one "49,9 %", so a rule
  * set that moved a ceiling to 42.5 would label it correctly instead of
@@ -227,7 +260,7 @@ export function renderRailSvg(data: RailData, thresholds: ZoneThresholds): strin
       .join(''),
 
     // The two ticks, and their labels anchored outward (R39).
-    ...geometry.ticks.map((tick) => rect({ ...tick, rx: 0 }, 'fill: var(--colour-text-primary)')),
+    ...geometry.ticks.map((tick) => tickStroke(tick, 'stroke: var(--colour-text-primary)')),
     ...geometry.ticks.map((tick) =>
       text(
         tick.labelX,

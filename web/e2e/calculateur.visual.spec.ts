@@ -25,7 +25,7 @@
 // and not a detail.
 
 import { expect, test } from '@playwright/test';
-import { expectPageBaseline } from './baseline';
+import { expectElementBaseline, expectPageBaseline } from './baseline';
 import { CALCULATEUR_COPY } from '../lib/fr/calculateur';
 import { CALCULATOR_PATH } from '../lib/content/routes';
 import { PROVISIONAL_COPY } from '../lib/fr/provisional';
@@ -220,3 +220,45 @@ for (const { width, label } of [
     }
   });
 }
+
+// ---------------------------------------------------------------------------
+// RULING R130's VISUAL PROOF, at 320 px - SPEC section 16's stated floor.
+//
+// THE ONE WIDTH WHERE THE SCALING IS LARGEST, and therefore the one where a
+// scaling tick is worst. R127 gave the rail max-width: 100%, so at a 320 px
+// viewport the panel column is 230 px against the SVG's natural 376 - a
+// factor of 0,61, which turns a 2 px tick into 1,22 px of drawn width before
+// R130 and leaves it at 2 px after.
+//
+// AN ELEMENT CAPTURE, NOT THE PAGE. The subject is two marks a few pixels
+// wide; a full-page shot at 320 would be four thousand pixels tall and the
+// thing under test would be forty of them. The rail slot is the smallest
+// frame that contains the claim.
+//
+// THIS IS THE THIRD WIDTH IN A SUITE R127 RECONCILED ONTO TWO, and that is
+// deliberate rather than a lapse: 1440 and 390 are the LAYOUT baselines, and
+// at neither of them is the rail scaled at all - 390 gives the slot 300 px,
+// and the difference between a scaled and an unscaled tick there is a tenth
+// of a pixel. A proof of a scaling rule has to be taken where the scaling
+// happens.
+// ---------------------------------------------------------------------------
+test.describe('R130: the rail at 320', () => {
+  test.use({ viewport: { width: 320, height: 800 } });
+
+  test('ticks stay 2 px where the rail is scaled to 0,61', async ({ page }) => {
+    await page.goto(CALCULATOR_PATH);
+    await page.evaluate(() => document.fonts.ready);
+
+    await page.selectOption('#canton', 'GE');
+    await page.fill('#jours-teletravail', '110');
+
+    // The state is confirmed before it is photographed, like every other
+    // baseline in this file.
+    await expect(page.locator('main')).toContainText(RESULT_COPY.links['regime-lost'].text);
+
+    const rail = page.locator('[data-panel="rail"]');
+
+    await expect(rail).toBeVisible();
+    await expectElementBaseline(rail, 'rail-scaled-320.png');
+  });
+});
