@@ -1083,42 +1083,6 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
         asserts the survives-invalid-input property directly, so this
         decision is a failing test if anyone moves it later.
       */}
-      {/*
-        FW13 increment 4: THE SHARE ROW. SPEC 9.4's growth mechanic.
-
-        AFTER THE FORM AND BEFORE THE RESULT, because it shares the
-        SCENARIO rather than the answer: a reader who has just typed their
-        numbers is the one who wants to send them, and putting it below the
-        result would mean scrolling past four tiles and three banners.
-
-        Two SECONDARY buttons per FD1 - 48 h, radius 12, surface fill, 1 px
-        border - because neither is this page’s primary action. That is
-        Calculer, and it is above.
-      */}
-      <div className={styles.share}>
-        <h2 className={styles.shareHeading}>{SHARE_COPY.heading}</h2>
-
-        <div className={styles.shareRow}>
-          <button className={styles.shareButton} onClick={copyLink} type="button">
-            {SHARE_COPY.copy}
-          </button>
-
-          {canShare ? (
-            <button className={styles.shareButton} onClick={shareLink} type="button">
-              {SHARE_COPY.share}
-            </button>
-          ) : null}
-        </div>
-
-        {/*
-          THE CONFIRMATION, AND IT STAYS. Polite, so it does not interrupt a
-          reader mid-sentence, and ordinary text rather than a toast so it is
-          still there when somebody tabs back to it.
-        */}
-        <p aria-live="polite" className={styles.shareStatus} data-share-status>
-          {shareStatus}
-        </p>
-      </div>
 
       {/*
         FW13 increment 2: THE LINK NOTICE. SPEC 9.4: "invalid values fall
@@ -1155,6 +1119,52 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
           </button>
         </div>
       )}
+      {/*
+        FW13 increment 4: THE SHARE ROW. SPEC 9.4's growth mechanic.
+
+        AFTER THE FORM AND ITS NOTICES, BEFORE THE RESULT. It shares the
+        SCENARIO rather than the answer - a reader who has just typed their
+        numbers is the one who wants to send them, and putting it below the
+        result would mean scrolling past four tiles and three banners.
+
+        IT WAS ABOVE THE LINK NOTICE UNTIL A BASELINE WAS LOOKED AT. The
+        order read: form, two share buttons, then "your link was
+        incomplete - you can correct the fields above; the link you share
+        will be up to date". The notice explains why the form in front of
+        the reader looks the way it does, so it belongs against the form;
+        and its last line is advice about sharing, which was arriving
+        AFTER the buttons it is advice about. Nothing failed - every test
+        in this increment passed in both orders, because not one of them
+        asserts what is next to what.
+
+        Two SECONDARY buttons per FD1 - 48 h, radius 12, surface fill, 1 px
+        border - because neither is this page’s primary action. That is
+        Calculer, and it is above.
+      */}
+      <div className={styles.share} data-share>
+        <h2 className={styles.shareHeading}>{SHARE_COPY.heading}</h2>
+
+        <div className={styles.shareRow}>
+          <button className={styles.shareButton} onClick={copyLink} type="button">
+            {SHARE_COPY.copy}
+          </button>
+
+          {canShare ? (
+            <button className={styles.shareButton} onClick={shareLink} type="button">
+              {SHARE_COPY.share}
+            </button>
+          ) : null}
+        </div>
+
+        {/*
+          THE CONFIRMATION, AND IT STAYS. Polite, so it does not interrupt a
+          reader mid-sentence, and ordinary text rather than a toast so it is
+          still there when somebody tabs back to it.
+        */}
+        <p aria-live="polite" className={styles.shareStatus} data-share-status>
+          {shareStatus}
+        </p>
+      </div>
 
       {provisional.length === 0 ? null : (
         <div className={styles.provisional} data-notice="provisional">

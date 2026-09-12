@@ -135,6 +135,60 @@ describe('the URL follows the form, without filling the back stack', () => {
   });
 });
 
+describe('the share row sits where it belongs on the page', () => {
+  it('comes after the link notice and before the answer', async () => {
+    // WHAT NO OTHER TEST IN THIS INCREMENT ASSERTS: what is next to what.
+    //
+    // The share row shipped ABOVE the link notice and every test passed, in
+    // both orders, because each one reaches for its own element by selector
+    // and none of them looks at the sequence. It was found by cropping a
+    // baseline and reading it - the page said: form, two share buttons, then
+    // "your link was incomplete - you can correct the fields above; the link
+    // you share will be up to date". Advice about sharing, arriving after the
+    // buttons it is advice about.
+    //
+    // THE ORDER IS THE CLAIM. The notice explains why the form in front of
+    // the reader looks the way it does, so it belongs against the form. The
+    // share row is what you do once the form is right. The answer is last
+    // because it is the longest thing on the page.
+    window.history.replaceState(
+      null,
+      '',
+      '/calculateur-teletravail-frontalier?canton=GE&tt=84&taux=abc&utm_source=facebook',
+    );
+
+    setUp();
+    await settle();
+
+    const landmarks = [
+      ...document.querySelectorAll('[data-notice="params"], [data-share], #resultat'),
+    ];
+
+    const name = (element: Element): string => {
+      if (element.hasAttribute('data-share')) return 'share';
+
+      return element.getAttribute('data-notice') ?? element.id;
+    };
+
+    expect(landmarks.map(name)).toEqual(['params', 'share', 'resultat']);
+  });
+
+  it('is still present, and still before the answer, without a notice', () => {
+    // NON-VACUITY. The assertion above needs a notice to exist to say
+    // anything about it, and a notice only exists for a damaged link - so
+    // this states the part that holds for every reader, including the
+    // majority who typed their way here and never see a notice at all.
+    setUp();
+
+    const landmarks = [...document.querySelectorAll('[data-share], #resultat')];
+
+    expect(landmarks).toHaveLength(2);
+    expect(landmarks[0]?.hasAttribute('data-share')).toBe(true);
+    expect(landmarks[1]?.id).toBe('resultat');
+    expect(document.querySelector('[data-notice="params"]')).toBeNull();
+  });
+});
+
 describe('the copy control announces, and does not vanish', () => {
   it('copies the current URL', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);

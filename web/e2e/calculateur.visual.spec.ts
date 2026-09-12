@@ -28,6 +28,7 @@ import { expect, test } from '@playwright/test';
 import { expectElementBaseline, expectPageBaseline } from './baseline';
 import { CALCULATEUR_COPY } from '../lib/fr/calculateur';
 import { CALCULATOR_PATH } from '../lib/content/routes';
+import { PARAM_NOTICE } from '../lib/fr/params';
 import { PROVISIONAL_COPY } from '../lib/fr/provisional';
 import { RESULT_COPY } from '../lib/fr/result';
 
@@ -45,7 +46,22 @@ const fillGenevaCaseC = async (page: import('@playwright/test').Page) => {
   await page.fill('#missions-france', '24');
 };
 
-const STATES = [
+/**
+ * A state worth a picture.
+ *
+ * `search` is FW13: two of these states are not reached by using the form
+ * at all but by ARRIVING at a URL somebody else wrote, which is the whole
+ * point of the share mechanic. A state reached by filling fields and a state
+ * reached by opening a link produce different first renders, and only the
+ * second one can show a notice.
+ */
+interface VisualState {
+  readonly id: string;
+  readonly search?: string;
+  readonly reach: (page: import('@playwright/test').Page) => Promise<void>;
+}
+
+const STATES: readonly VisualState[] = [
   {
     id: 'vide',
     reach: async () => undefined,
@@ -130,7 +146,40 @@ const STATES = [
       await page.fill('#total-jours', '200');
     },
   },
-] as const;
+
+  // -------------------------------------------------------------------------
+  // FW13 increment 6: THE TWO STATES A LINK PRODUCES.
+  //
+  // Every state above is reached by filling fields, which is the reader who
+  // typed their way here. The share mechanic makes a second kind of reader -
+  // one who opened a link from a Facebook thread - and their FIRST RENDER is
+  // different from anything above: a form that is already full before they
+  // touched it, or a notice explaining what the platform did to the link on
+  // the way.
+  //
+  // WHAT ONLY A PICTURE ANSWERS. The notice sits above the form and pushes
+  // everything down; it is the only element on this page that renders text
+  // somebody else wrote, and it carries a dismiss control on the same line as
+  // a sentence that wraps differently at 390 than at 1440.
+  // -------------------------------------------------------------------------
+  {
+    id: 'lien-partage',
+    // Geneva case (c) as a LINK. The same scenario as "rempli" above, reached
+    // the other way - so the two baselines are a visual round-trip test: if
+    // decoding a link produced a different form from filling it in, these two
+    // pictures would differ and nothing else in the suite would say so.
+    search: '?canton=GE&tt=84&mfr=24&decompte=dj',
+    reach: async () => undefined,
+  },
+  {
+    id: 'lien-invalide',
+    // What Facebook does to an ampersand, plus a value that cannot be read
+    // and a tracking parameter nobody here recognises: all three notice lines
+    // at once - invalid, ignored, and the advice under them.
+    search: '?canton=GE&tt=84&taux=abc&amp;mfr=24&utm_source=facebook',
+    reach: async () => undefined,
+  },
+];
 
 /**
  * What each panel state must actually be showing before it is photographed.
@@ -154,6 +203,13 @@ const MUST_SHOW: Readonly<Record<string, string>> = {
   'panneau-bascule-sociale': RESULT_COPY.links['social-switch'].text,
   'panneau-avis-provisoire': PROVISIONAL_COPY.readMore,
   rempli: RESULT_COPY.links['mission-exposure'].text,
+
+  // FW13. The shared link must show the SAME contextual link as the state it
+  // reproduces, which is what makes the two pictures comparable; the mangled
+  // one must show the notice, without which it is a photograph of an
+  // ordinary page under a name that claims otherwise.
+  'lien-partage': RESULT_COPY.links['mission-exposure'].text,
+  'lien-invalide': PARAM_NOTICE.lead,
 };
 
 for (const { width, label } of [
@@ -165,7 +221,10 @@ for (const { width, label } of [
 
     for (const state of STATES) {
       test(state.id, async ({ page }) => {
-        await page.goto(CALCULATOR_PATH);
+        // A state with a `search` is ENTERED at that URL rather than
+        // navigated to and then filled: the notice and the prefill are
+        // properties of the first render.
+        await page.goto(`${CALCULATOR_PATH}${state.search ?? ''}`);
         // Fonts before pixels: Inter arriving after the capture would
         // rebaseline the whole page against a fallback stack.
         await page.evaluate(() => document.fonts.ready);

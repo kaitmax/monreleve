@@ -21,7 +21,7 @@ import { LAST_REGULATORY_REVIEW } from '../lib/content/regulatory';
 import { currentTaxYear } from '../lib/content/tax-year';
 import { CALCULATEUR_COPY } from '../lib/fr/calculateur';
 import { PROVISIONAL_COPY } from '../lib/fr/provisional';
-import { PARAM_NOTICE } from '../lib/fr/params';
+import { PARAM_NOTICE, SHARE_COPY } from '../lib/fr/params';
 import { ruleSetFor } from '../lib/calc-engine';
 import { formatPercent } from '../lib/ui/core';
 
@@ -105,9 +105,23 @@ test.describe('with JavaScript disabled (AC3)', () => {
     // contains the ceiling as a percentage.
     await page.goto(CALCULATOR_PATH);
 
-    const region = page.locator('[aria-live]');
+    // TWO REGIONS SINCE FW13, AND BOTH ARE NAMED. This counted every
+    // [aria-live] on the page and expected one; increment 4 added the share
+    // row’s confirmation and it became two. The count is not loosened to a
+    // presence check - two polite regions is a decision, three would be an
+    // accident - so each is identified by what it is.
+    //
+    // Unscoped here on purpose: with scripting off, Next's route announcer
+    // never mounts, so this page really does carry exactly these two.
+    const region = page.locator('#resultat');
+    const shareStatus = page.locator('[data-share-status]');
 
+    await expect(page.locator('[aria-live]')).toHaveCount(2);
     await expect(region).toHaveCount(1);
+    await expect(shareStatus).toHaveCount(1);
+
+    // The share row has announced nothing, because nothing has happened.
+    expect((await shareStatus.textContent()) ?? '').toBe('');
 
     // textContent, not toHaveText: the note is compared by codepoint and
     // Playwright's text matchers normalise both sides (R66/R71).
@@ -419,20 +433,36 @@ test.describe('the result region announces itself (increment 6)', () => {
   const productLiveRegions = (page: import('@playwright/test').Page) =>
     page.locator('main [aria-live]');
 
-  test('is one polite live region, not one per state', async ({ page }) => {
+  test('is one polite live region per job, not one per state', async ({ page }) => {
+    // TWO JOBS SINCE FW13, WHICH IS NOT THE SAME AS ONE PER STATE. The
+    // original defect this guards against is a region that multiplies as the
+    // page changes - a new one per status, each announcing the same rate.
+    // The share confirmation is a second region because it announces a
+    // different EVENT to a different question ("did the copy work?"), and
+    // routing it through the result region would make a screen reader say the
+    // rate again every time somebody copied a link.
+    //
+    // The count still holds the line: it is fixed at two and it does not move
+    // when the state does, which is the property that was worth asserting.
     await page.goto(CALCULATOR_PATH);
 
     const live = productLiveRegions(page);
 
-    await expect(live).toHaveCount(1);
-    await expect(live).toHaveAttribute('aria-live', 'polite');
+    await expect(live).toHaveCount(2);
+    await expect(page.locator('main #resultat')).toHaveAttribute(
+      'aria-live',
+      'polite',
+    );
+    await expect(page.locator('main [data-share-status]')).toHaveAttribute(
+      'aria-live',
+      'polite',
+    );
 
-    // And still exactly one once there is a result - the empty state and the
-    // panel are different components, and TWO live regions would announce
+    // And still exactly two once there is a result - the empty state and the
+    // panel are different components, and a THIRD region would announce
     // twice or fight over which one speaks.
     await enterGenevaCaseC(page);
-    await expect(productLiveRegions(page)).toHaveCount(1);
-    await expect(productLiveRegions(page)).toHaveAttribute('aria-live', 'polite');
+    await expect(productLiveRegions(page)).toHaveCount(2);
   });
 
   test('POLITE, while the framework announcer is assertive', async ({ page }) => {
@@ -704,5 +734,74 @@ test.describe('with JavaScript disabled, a link carries no result (FW13)', () =>
     expect(main).not.toContain(`39,16${NBSP}%`);
     expect(main).toContain(CALCULATEUR_COPY.result.empty);
     expect(main).toContain(CALCULATEUR_COPY.fiscal(FISCAL));
+  });
+});
+
+test.describe('the share controls are reachable by keyboard (FW13)', () => {
+  // WHY THIS IS NOT A JSDOM TEST. Tab does not move focus in jsdom - it
+  // dispatches a keydown and nothing else - so a unit test can assert that a
+  // button is FOCUSABLE by calling .focus() on it, which is a different
+  // claim: an element with tabindex='-1' passes that and can never be
+  // reached by anybody tabbing through the page. A real browser walks the
+  // real tab order, and that is the only place this can be proved.
+
+  test('both buttons appear in the tab order, and Enter works on them', async ({
+    page,
+  }) => {
+    // The native button only exists where navigator.share does, which is a
+    // phone and not a headless desktop Chromium - so the API is installed
+    // before any script on the page runs. addInitScript, not evaluate: the
+    // detection happens in a mount effect, so by the time evaluate could run
+    // the decision is already made.
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'share', {
+        configurable: true,
+        value: async () => undefined,
+      });
+    });
+
+    await page.goto(GENEVA_C_URL);
+
+    const copy = page.getByRole('button', { name: SHARE_COPY.copy });
+    const share = page.getByRole('button', { name: SHARE_COPY.share });
+
+    await expect(copy).toBeVisible();
+    await expect(share).toBeVisible();
+
+    // WALK THE REAL TAB ORDER from the top of the document. The loop is
+    // bounded because an unbounded one on a page with a focus trap does not
+    // fail, it hangs - and a hanging test reports nothing at all.
+    const reached: string[] = [];
+    const LIMIT = 60;
+
+    for (let step = 0; step < LIMIT; step += 1) {
+      await page.keyboard.press('Tab');
+
+      const label = await page.evaluate(() =>
+        (document.activeElement?.textContent ?? '').trim(),
+      );
+
+      reached.push(label);
+
+      if (reached.includes(SHARE_COPY.copy) && reached.includes(SHARE_COPY.share)) {
+        break;
+      }
+    }
+
+    expect(reached, 'tabbing never landed on the copy button').toContain(
+      SHARE_COPY.copy,
+    );
+    expect(reached, 'tabbing never landed on the share button').toContain(
+      SHARE_COPY.share,
+    );
+
+    // AND THE KEY THAT ACTIVATES IT. Reaching a control that does nothing
+    // when pressed is not reachability. Enter on the copy button must
+    // produce the announcement - whichever one, because a headless browser
+    // may refuse the clipboard and SAYING SO is the correct outcome there.
+    await copy.focus();
+    await page.keyboard.press('Enter');
+
+    await expect(page.locator('[data-share-status]')).not.toBeEmpty();
   });
 });

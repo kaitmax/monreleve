@@ -31,23 +31,48 @@
 // answered by tests/unit/tokens/contrast.test.ts.
 
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { axe } from 'vitest-axe';
 import * as matchers from 'vitest-axe/matchers';
 import CalculateurPage from '@/app/(public)/calculateur-teletravail-frontalier/page';
 import { readingAnchor } from '@/lib/content/provisional';
 import { CALCULATEUR_COPY } from '@/lib/fr/calculateur';
 import { RESULT_COPY } from '@/lib/fr/result';
+import { SHARE_COPY } from '@/lib/fr/params';
 import { PublicShell } from '@/lib/ui/react/PublicShell/PublicShell';
 
 expect.extend(matchers);
 
 afterEach(cleanup);
 
+// One state stubs navigator to give the device a share sheet. Left in place
+// it would leak into every test after it in this file - the same shape as
+// the address bar leak FW13 increment 4 found, and the reason
+// tests/setup/browser-state.ts exists.
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
 const FORM = CALCULATEUR_COPY.form;
 const RESULT = CALCULATEUR_COPY.result;
 
 const mount = () => render(<PublicShell>{<CalculateurPage />}</PublicShell>);
+
+/** Land on the page the way a shared link does: URL first, then render. */
+const arriveWith = (search: string) => {
+  window.history.replaceState(
+    null,
+    '',
+    `/calculateur-teletravail-frontalier${search}`,
+  );
+};
+
+/** Mount a state: its `before` runs first, because it shapes the first render. */
+const mountState = (state: PageState) => {
+  state.before?.();
+
+  return mount();
+};
 
 const setValue = (label: string, value: string) => {
   fireEvent.change(screen.getByLabelText(label), { target: { value } });
@@ -62,13 +87,32 @@ const pick = (name: string) => {
 };
 
 /**
- * The four states, each as a step to run after mounting.
+ * A state of this page.
  *
- * Functions rather than pre-rendered nodes because every one of them is
- * reached by USING the form. Constructing the DOM another way would test a
- * shape the product cannot actually get into.
+ * `before` runs BEFORE the mount and `reach` after it, because FW13 added
+ * two states that are not reachable by using the form: a link notice exists
+ * only when the page was ENTERED with a mangled URL, and the native share
+ * button exists only where navigator.share does. Both are conditions of the
+ * first render, and a hook that ran after it would be testing a page the
+ * reader never sees.
  */
-const STATES: ReadonlyArray<{ readonly name: string; readonly reach: () => void }> = [
+interface PageState {
+  readonly name: string;
+  readonly before?: () => void;
+  readonly reach: () => void;
+}
+
+/**
+ * Every state this page can be in, each as steps rather than as markup.
+ *
+ * FUNCTIONS, NOT PRE-RENDERED NODES, because all but two of them are reached
+ * by USING the form. Constructing the DOM another way would test a shape the
+ * product cannot actually get into. The two exceptions carry a `before`: they
+ * are reached by ARRIVING - at a mangled URL, or on a device with a share
+ * sheet - which is a condition of the first render rather than a step after
+ * it.
+ */
+const STATES: ReadonlyArray<PageState> = [
   {
     name: 'empty - nothing chosen yet',
     reach: () => undefined,
@@ -156,6 +200,39 @@ const STATES: ReadonlyArray<{ readonly name: string; readonly reach: () => void 
       pick(FORM.method.exact);
     },
   },
+
+  // ---------------------------------------------------------------------
+  // FW13 increment 6: the two states a URL produces.
+  //
+  // Everything above is reached by USING the form, which is how a reader who
+  // typed their way here gets there. The growth mechanic produces readers who
+  // did not: they opened a link somebody pasted into a Facebook thread, and
+  // the page they meet has an element none of the nine states above contain -
+  // a notice saying which parts of that link did not survive the platform.
+  //
+  // The share row is the other half. Its copy button is always there, and the
+  // native one exists only where navigator.share does - which on a phone is
+  // most readers and in jsdom is nobody, so it needs saying out loud.
+  // ---------------------------------------------------------------------
+  {
+    name: 'link-notice - entered through a mangled URL',
+    before: () => {
+      // The Facebook case: the ampersand came back as an HTML entity, so tt
+      // never arrived and an unknown param named after the entity did.
+      arriveWith('?canton=GE&amp;tt=84&utm_source=facebook');
+    },
+    reach: () => undefined,
+  },
+  {
+    name: 'share-native - the device has a share sheet',
+    before: () => {
+      vi.stubGlobal('navigator', { ...navigator, share: () => Promise.resolve() });
+    },
+    reach: () => {
+      setValue(FORM.canton.label, 'GE');
+      setValue(FORM.days.label, '84');
+    },
+  },
 ];
 
 describe('the calculator has no axe violations in any state', () => {
@@ -167,7 +244,9 @@ describe('the calculator has no axe violations in any state', () => {
     // 'filled' is mission-exposure, so the four statuses are covered by
     // filled + compliant + regime-lost + social-switch and the two notice
     // triggers by the last two.
-    expect(STATES).toHaveLength(9);
+    // FW13 increment 6 appends the two states a URL produces, which no
+    // amount of using the form can reach.
+    expect(STATES).toHaveLength(11);
     expect(STATES.map((state) => state.name.split(' ')[0])).toEqual([
       'empty',
       'filled',
@@ -178,12 +257,14 @@ describe('the calculator has no axe violations in any state', () => {
       'social-switch',
       'notice-P1',
       'notice-P3',
+      'link-notice',
+      'share-native',
     ]);
   });
 
   for (const state of STATES) {
     it(state.name, async () => {
-      const { container } = mount();
+      const { container } = mountState(state);
 
       state.reach();
 
@@ -266,7 +347,12 @@ describe('the calculator has no axe violations in any state', () => {
       },
     ];
 
-    expect(probes).toHaveLength(STATES.length - 4);
+    // TIED TO WHICH STATES, NOT TO HOW MANY. This was STATES.length - 4,
+    // which was five while the panel states were the last five - and FW13
+    // appended two more after them, which that arithmetic would have
+    // demanded probes for. The probes are about the PANEL, so they name the
+    // panel states.
+    expect(probes.map((probe) => probe.index)).toEqual([4, 5, 6, 7, 8]);
 
     for (const probe of probes) {
       mount();
@@ -274,6 +360,40 @@ describe('the calculator has no axe violations in any state', () => {
       probe.find();
       cleanup();
     }
+  });
+
+  it('reached the two URL states too, each by something only it contains', () => {
+    // THE SAME GUARD AS ABOVE, FOR THE STATES FW13 ADDED. axe passes on a page
+    // with no notice exactly as happily as on one with a notice, so a `before`
+    // hook that silently stopped working - a renamed param, a stubbed
+    // navigator that no longer reaches the effect - would turn two green axe
+    // runs into two more copies of the empty state.
+    const linkNotice = STATES[9];
+    const shareNative = STATES[10];
+
+    expect(linkNotice?.name).toContain('link-notice');
+    expect(shareNative?.name).toContain('share-native');
+
+    mountState(linkNotice as PageState);
+    linkNotice?.reach();
+
+    const notice = document.querySelector('[data-notice="params"]');
+
+    expect(notice).not.toBeNull();
+
+    // Named, not merely present: the notice exists to say WHICH parts of the
+    // link did not survive, and "amp;tt" is what the entity mangling leaves.
+    expect(notice?.textContent).toContain('amp;tt');
+    cleanup();
+
+    // And the native button, which jsdom does not have and a phone does.
+    expect(screen.queryByRole('button', { name: SHARE_COPY.share })).toBeNull();
+
+    mountState(shareNative as PageState);
+    shareNative?.reach();
+
+    expect(screen.getByRole('button', { name: SHARE_COPY.share })).toBeTruthy();
+    cleanup();
   });
 
   it('shows a different contextual link in each status, not the same one', () => {
@@ -308,7 +428,7 @@ describe('the assembled document, in every state', () => {
       // shell emits no h1 so the page can, and the result region added an h2
       // in increment 4 which sits between the page's h1 and the footer's own
       // h2 columns.
-      const { container } = mount();
+      const { container } = mountState(state);
 
       state.reach();
 
@@ -348,7 +468,7 @@ describe('every ARIA reference points at something that exists, in any state', (
 
   for (const state of STATES) {
     it(state.name, () => {
-      const { container } = mount();
+      const { container } = mountState(state);
 
       state.reach();
 
@@ -388,7 +508,7 @@ describe('no id is used twice, in any state', () => {
   // labels and two error messages at the same control.
   for (const state of STATES) {
     it(state.name, () => {
-      const { container } = mount();
+      const { container } = mountState(state);
 
       state.reach();
 

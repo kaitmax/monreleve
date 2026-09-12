@@ -26,6 +26,35 @@ const NB = String.fromCharCode(0x00a0);
 /** A punctuation mark with the no-break space French sets before it (R91). */
 const n = (mark: string): string => `${NB}${mark}`;
 
+/**
+ * How much of a param name the notice will print.
+ *
+ * THE NOTICE RENDERS STRINGS A STRANGER CHOSE. It names the params that were
+ * dropped, which is the right call for the reader - somebody who can see that
+ * "taux" did not arrive can retype their rate - and it means the one element
+ * on this page whose content comes from the URL is a list of names nobody
+ * here wrote.
+ *
+ * A ten-kilobyte name does not throw and does not blank the page, so it
+ * clears the bar FW13 sets for hostile input. It would still put an unbroken
+ * ten-kilobyte word on a 360 dp screen, which R127 made a gate - and the
+ * point of printing the name is that the reader can retype it, which nobody
+ * is doing with the 400th character. Twenty-four is longer than every name in
+ * SPEC 9.4 (the longest is "decompte", at eight) and longer than the tracking
+ * parameters that turn up in practice (fbclid, utm_source, gclid), so a real
+ * name is never cut and only an invented one is.
+ */
+export const NOTICE_NAME_MAX = 24;
+
+/** One name, at a length a line can hold. */
+const short = (name: string): string =>
+  name.length <= NOTICE_NAME_MAX
+    ? name
+    : `${name.slice(0, NOTICE_NAME_MAX)}${String.fromCharCode(0x2026)}`;
+
+/** The list as the notice prints it. */
+const list = (names: readonly string[]): string => names.map(short).join(', ');
+
 export const PARAM_NOTICE = {
   /**
    * The heading. INFO, not warning: nothing is broken, and the result below is
@@ -39,14 +68,14 @@ export const PARAM_NOTICE = {
    */
   invalid: (names: readonly string[]): string =>
     `Ces valeurs du lien n${String.fromCharCode(0x2019)}ont pas pu être lues et ont repris leur ` +
-    `valeur par défaut${n(':')} ${names.join(', ')}.`,
+    `valeur par défaut${n(':')} ${list(names)}.`,
 
   /**
    * Params this calculator does not know. Usually a tracking parameter a
    * platform appended, which is harmless and worth saying so.
    */
   ignored: (names: readonly string[]): string =>
-    `Ces paramètres ne sont pas utilisés par le calculateur${n(':')} ${names.join(', ')}.`,
+    `Ces paramètres ne sont pas utilisés par le calculateur${n(':')} ${list(names)}.`,
 
   /** What to do about it, in one line. */
   advice:

@@ -420,9 +420,9 @@
 
 .shareButton {
   min-width: var(--size-button-min-width);
-  height: var(--size-control-height);
+  height: var(--size-button-height);
   padding: 0 var(--space-4);
-  border: var(--size-input-border) solid var(--colour-border);
+  border: var(--size-input-border) solid var(--colour-border-default);
   border-radius: var(--radius-md);
   background: var(--colour-surface);
   color: var(--colour-text-primary);
