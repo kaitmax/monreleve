@@ -34,6 +34,33 @@ const nextConfig: NextConfig = {
   // simplification of the docker invocation.
   ...(process.env.NEXT_DIST_DIR === undefined ? {} : { distDir: process.env.NEXT_DIST_DIR }),
 
+  // RULING R129: /dev/** IS NOT IN THE PRODUCTION BUILD.
+  //
+  // WHY, MEASURED. FW12 added /dev/island, a client-cost harness that renders
+  // the whole component library inside a 'use client' boundary so GATE I can
+  // see what each component drags into a browser bundle. It works - it catches
+  // the 207 KiB regression the workbench provably cannot - and it cost the
+  // CALCULATOR 1,0 KiB and every other public route 0,2. Next chunks globally,
+  // so a second client entry importing the same modules regroups what every
+  // route loads. A dev harness was spending the public budget.
+  //
+  // pageExtensions IS THE MECHANISM because it is the only one that keeps the
+  // files where they are. The dev pages are named `page.dev.tsx`, which Next
+  // treats as a page only when `dev.tsx` is an accepted page extension. With
+  // the flag unset they are ordinary modules that no route resolves to, so
+  // nothing imports them, so nothing they import is in the graph - which is
+  // what "pays nothing" has to mean when the cost was chunk grouping rather
+  // than bytes on a page.
+  //
+  // NOT A SEPARATE APP, NOT A DELETED DIRECTORY. The workbench's baselines and
+  // the parity harness have to keep working, so the same tree builds both ways
+  // and the flag decides. CI runs one dev-enabled build to measure GATE W and
+  // GATE I; the production build ships neither route.
+  pageExtensions:
+    process.env.FRONTALIER_DEV_ROUTES === '1'
+      ? ['tsx', 'ts', 'dev.tsx']
+      : ['tsx', 'ts'],
+
   // Linting is `pnpm lint` (eslint + stylelint) and a blocking CI step of its
   // own. Next's built-in pass would run ESLint a second time, with a different
   // configuration surface, and is deprecated in 15.5. One authority, not two.

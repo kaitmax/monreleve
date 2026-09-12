@@ -74,6 +74,16 @@ export default defineConfig({
     // and cannot be mistaken for the real domain, which is still an open
     // question gated at Checkpoint C. The runtime-guard suite deliberately
     // leaves it UNSET, which is how both directions get proved.
-    env: { NEXT_PUBLIC_SITE_URL: 'https://frontalier.example' },
+    //
+    // RULING R129: THE TEST BUILD KEEPS /dev/**, THE PRODUCTION BUILD DOES
+    // NOT. The workbench baselines, the rail gallery and the parity harness
+    // are all driven through /dev routes, so this suite needs them - and the
+    // shipped build must not have them, because a dev harness in the chunk
+    // graph was costing the calculator 1,6 KiB and every other public route
+    // 0,7. One flag, set here and nowhere a deployment can read it.
+    env: {
+      NEXT_PUBLIC_SITE_URL: 'https://frontalier.example',
+      FRONTALIER_DEV_ROUTES: '1',
+    },
   },
 });

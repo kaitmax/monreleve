@@ -26,7 +26,7 @@ import { withoutComments } from '@/tests/support/quoted-spans';
 const ROOT = process.cwd();
 const LIBRARY = join(ROOT, 'lib', 'ui', 'react');
 const HARNESS = join(ROOT, 'app', 'dev', 'island', 'IslandHarness.tsx');
-const PAGE = join(ROOT, 'app', 'dev', 'island', 'page.tsx');
+const PAGE = join(ROOT, 'app', 'dev', 'island', 'page.dev.tsx');
 
 /** Every directory under lib/ui/react holding a <Name>.tsx component. */
 const COMPONENTS = readdirSync(LIBRARY, { withFileTypes: true })

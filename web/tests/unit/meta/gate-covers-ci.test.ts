@@ -75,10 +75,20 @@ function readTsconfig(file: string): {
 }
 
 /**
- * R111's four. Every CI check step maps to exactly one of these.
+ * R111's recorded commands. Every CI check step maps to exactly one.
  *
  * Asserted to be exactly this list further down, so widening it is a
- * deliberate edit rather than a way to make a failure go away.
+ * deliberate edit rather than a way to make a failure go away. It has been
+ * widened twice, both times by a ruling: R118 added test:runtime, and R129
+ * added size:dev.
+ *
+ * WHY size:dev IS ITS OWN TARGET AND NOT PART OF gate. R129 takes /dev/**
+ * out of the production build, so `pnpm build` has no dev route and
+ * `pnpm size` cannot measure GATE W or GATE I. The measurement needs a
+ * SECOND full build, which is a minute of CI and a minute nobody wants on
+ * every local gate run - so the ruling puts it in CI ("CI runs one
+ * dev-enabled build") and this list records it as a command in its own
+ * right rather than hiding a second build inside the first.
  */
 const MAPPING_TARGETS = [
   'gate',
@@ -86,6 +96,7 @@ const MAPPING_TARGETS = [
   'test:visual',
   'test:a11y',
   'test:runtime',
+  'size:dev',
 ] as const;
 
 type MappingTarget = (typeof MAPPING_TARGETS)[number];
@@ -201,17 +212,27 @@ describe('the workflow was parsed at all', () => {
   });
 
   it('knows the mapping targets, and only those', () => {
-    // FIVE, NOT FOUR, since ruling R118. R111 named four; the FW12 audit then
-    // found that pnpm test:runtime - R81's production wiring - was run by
-    // nothing at all, and R118 put it in CI rather than letting it stay
-    // declared local-only. "Declaring it local-only would have left it un-run
-    // in exactly the way it already was."
+    // SIX NOW, AND EACH WIDENING WAS A RULING.
+    //
+    // R111 named four. R118 added test:runtime after the FW12 audit found
+    // R81's production wiring was run by nothing at all: "Declaring it
+    // local-only would have left it un-run in exactly the way it already
+    // was."
+    //
+    // R129 added size:dev. /dev/** left the production build, so `pnpm size`
+    // has no dev route to measure and GATE W and GATE I need a build of
+    // their own. The alternative was a second build inside `gate`, which
+    // doubles every local run for a number only CI needs.
+    //
+    // The list is pinned so that widening it is an edit here with a reason,
+    // never a way to make a failing mapping go quiet.
     expect([...MAPPING_TARGETS]).toEqual([
       'gate',
       'test:e2e',
       'test:visual',
       'test:a11y',
       'test:runtime',
+      'size:dev',
     ]);
     for (const name of MAPPING_TARGETS) {
       expect(PACKAGE.scripts[name], name).toBeDefined();

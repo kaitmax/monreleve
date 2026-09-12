@@ -36,7 +36,17 @@ const root = process.cwd();
 /** The JSX attribute, not the word. Every comment here mentions it by name. */
 const USE = /dangerouslySetInnerHTML\s*=\s*\{/g;
 
-const SKIP = new Set(['node_modules', '.next', 'dist-parity', 'test-results', 'playwright-report']);
+// R129 adds a second generated build tree. Skipped for the same reason .next
+// is: Next writes .ts files into it, and a census of the SOURCE must not
+// count generated code.
+const SKIP = new Set([
+  'node_modules',
+  '.next',
+  '.next-dev-routes',
+  'dist-parity',
+  'test-results',
+  'playwright-report',
+]);
 
 const norm = (path: string): string => relative(root, path).split(sep).join('/');
 
@@ -165,7 +175,7 @@ describe('every occurrence in the repository is accounted for', () => {
     const all = sitesIn([...sources('lib'), ...sources('app')]);
 
     expect(all.map((site) => site.file).sort()).toEqual([
-      'app/dev/rail-gallery/page.tsx',
+      'app/dev/rail-gallery/page.dev.tsx',
       'lib/ui/react/ThresholdRail/ThresholdRail.tsx',
     ]);
   });

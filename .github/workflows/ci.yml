@@ -85,6 +85,14 @@ jobs:
       # through a genuine regression as expected. See REPORT-FW2.txt.
       - run: pnpm size
 
+      # RULING R129: THE ONE DEV-ENABLED BUILD. /dev/** is out of the
+      # production build above, so GATE W and GATE I have nothing to measure
+      # there - which is the point: a dev harness was costing the calculator
+      # 1,6 KiB of chunk grouping. This builds the same tree with the routes
+      # in, into its own distDir, and judges the two dev ceilings only. The
+      # public rows it prints are NOT the shipped numbers and are not gated.
+      - run: pnpm size:dev
+
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:

@@ -35,9 +35,32 @@ import { gzipSync } from 'node:zlib';
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { DEV_DIST_DIR } from './dev-routes.mjs';
 
 const WEB_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const NEXT_DIR = join(WEB_ROOT, '.next');
+/**
+ * Dev mode: gate the DEV ceilings and report the public rows without
+ * gating them.
+ *
+ * THE PUBLIC NUMBERS IN A DEV BUILD ARE NOT THE SHIPPED NUMBERS, and that
+ * is the whole reason R129 exists: including /dev/** regroups the chunks
+ * every route loads, which cost the calculator 1,6 KiB. Gating GATE A on
+ * this build would hold the product to a figure it does not ship, and
+ * gating it on the production build - where the dev routes are absent -
+ * is what the ordinary run already does. Each build gates what it is for.
+ */
+const DEV_GATES_ONLY = process.argv.includes('--dev');
+
+/**
+ * The build to measure. RULING R129.
+ *
+ * `.next` is the production build - public routes only, since /dev/** is
+ * out of it. The dev-enabled build writes elsewhere and is measured by
+ * passing NEXT_DIST_DIR, so the two never read each other and neither can
+ * be mistaken for the other (R98).
+ */
+const NEXT_DIR = join(WEB_ROOT, process.env.NEXT_DIST_DIR ?? (DEV_GATES_ONLY ? DEV_DIST_DIR : '.next'));
+
 const FONT_DIR = join(WEB_ROOT, 'public', 'fonts');
 
 const KIB = 1024;
@@ -153,7 +176,8 @@ const kib = (bytes) => (bytes / KIB).toFixed(1);
 
 /** Every ancestor layout entry for a page entry, plus the page entry itself. */
 function entriesForRoute(pageEntry, allEntries) {
-  const segments = pageEntry.slice(0, -'/page'.length).split('/').filter(Boolean);
+  const suffix = pageEntry.endsWith('/page.dev') ? '/page.dev' : '/page';
+  const segments = pageEntry.slice(0, -suffix.length).split('/').filter(Boolean);
   const layouts = [];
   for (let depth = 0; depth <= segments.length; depth += 1) {
     const candidate = `/${segments.slice(0, depth).join('/')}`.replace('//', '/');
@@ -245,9 +269,17 @@ const polyfills = await measure(buildManifest.polyfillFiles ?? []);
 /** @type {BudgetRow[]} */
 const rows = [];
 for (const entry of allEntries) {
-  if (!entry.endsWith('/page')) continue;
+  // A PAGE ENTRY IS NOW EITHER SUFFIX. RULING R129 renamed the dev routes to
+  // page.dev.tsx so a production build does not resolve them, and Next keys
+  // the manifest by the file: '/dev/composants/page.dev'. Matching only
+  // "/page" silently dropped all five dev routes from the table - GATE W and
+  // GATE I then passed by having nothing to judge, which reads exactly like
+  // success and is the "would pass" shape R115 exists to prevent.
+  const pageSuffix = ['/page', '/page.dev'].find((suffix) => entry.endsWith(suffix));
 
-  const route = normaliseRoute(entry.slice(0, -'/page'.length) || '/');
+  if (pageSuffix === undefined) continue;
+
+  const route = normaliseRoute(entry.slice(0, -pageSuffix.length) || '/');
   const all = [
     ...new Set([
       ...rootMainFiles,
@@ -282,10 +314,33 @@ const preloadedFontBytes = fonts.preloadedBytes;
 
 for (const row of rows) {
   row.delta = row.gzip - BASELINE_BYTES;
-  row.failsA = row.gated && row.gzip > GATE_A_TOTAL_BYTES;
-  row.failsB = row.gated && row.delta > GATE_B_DELTA_BYTES;
+  // In dev mode the public rows are reported but not judged: see
+  // DEV_GATES_ONLY. In the ordinary run there are no dev rows to judge.
+  row.failsA = !DEV_GATES_ONLY && row.gated && row.gzip > GATE_A_TOTAL_BYTES;
+  row.failsB = !DEV_GATES_ONLY && row.gated && row.delta > GATE_B_DELTA_BYTES;
   row.failsW = isWorkbench(row.route) && row.delta > GATE_W_DELTA_BYTES;
   row.failsI = isIsland(row.route) && row.delta > GATE_I_DELTA_BYTES;
+}
+
+// A DEV RUN THAT FOUND NO DEV ROUTE MEASURED NOTHING. RULING R115.
+//
+// THIS ALREADY HAPPENED, in the commit that introduced it. R129 renamed the
+// dev pages to page.dev.tsx and Next keys the manifest by the file, so every
+// /dev row vanished from the table while the run still printed "GATE W and
+// GATE I pass" - both gates passing because neither had anything to judge.
+// That is the reassuring-sentence-about-an-unjudged-thing shape R115 was
+// written for, reproduced by the ruling that was meant to be routine.
+if (DEV_GATES_ONLY) {
+  const devRows = rows.filter((row) => row.route.startsWith('/dev/'));
+
+  if (devRows.length === 0) {
+    console.error(
+      'GATE W and GATE I measured NOTHING: the dev-enabled build contains no ' +
+        '/dev route. Check FRONTALIER_DEV_ROUTES and the page.dev.tsx naming ' +
+        '(ruling R129).',
+    );
+    process.exit(1);
+  }
 }
 
 const breaches = rows.filter(
@@ -403,4 +458,8 @@ if (breaches.length > 0) {
   process.exit(1);
 }
 
-console.log('All gated routes pass both gates.');
+console.log(
+  DEV_GATES_ONLY
+    ? 'GATE W and GATE I pass. Public rows are shown for reference and are gated on the production build (R129).'
+    : 'All gated routes pass both gates.',
+);

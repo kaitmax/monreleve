@@ -1,0 +1,226 @@
+FW13 SESSION PROMPT - frontalier
+Paste this entire prompt as the first message of a fresh Claude Code
+session, opened at the repository root.
+
+====================================================================
+PRE-STEP RULINGS (apply verbatim)
+====================================================================
+R1 (discharged). CI green on origin/main: verify, record the run URL.
+R2, R7-R8, R10-R13, R15-R127 (carried). The engine is closed.
+   R9: you own document edits.
+
+R128 (new). A BASELINE ASSERTS ITS OWN DIMENSIONS against the
+   viewport: captured width must equal the viewport width. fullPage
+   may extend height, never width. An overflowing page cannot
+   photograph as a complete layout on a wider canvas. Apply to every
+   existing comparison; list any baseline whose stored dimensions
+   disagree with its viewport.
+
+R129 (new). /dev/** IS EXCLUDED FROM THE PRODUCTION BUILD behind an
+   env flag. CI runs one dev-enabled build to measure GATE W and
+   GATE I; the production build ships neither route. Public routes
+   pay nothing for a dev harness. Record the public-route deltas
+   before and after.
+
+R130 (new). RAIL TICKS DO NOT SCALE. vector-effect="non-scaling-
+   stroke" on the tick strokes so they stay 2 px at every width; the
+   bar and the tick POSITIONS scale. Visual proof at 320. R46 was
+   asymmetry between ticks; this is crispness of both.
+
+R131 (new). A COMMAND THAT MUTATES THE WORKING TREE TAKES AN
+   EXCLUSIVE LOCK. clean-tree's stash of public/ is the case; any
+   gate command refuses to start while the lock is held, with a clear
+   message. Fourth concurrency incident - this closes the class for
+   the tree as R98 did for containers and R105 for processes.
+
+R47. Still open, still the operator's.
+
+====================================================================
+CONTEXT
+====================================================================
+Project: frontalier. You are executing task FW13 ONLY: URL parameters
+and share. This is the product's growth mechanic - someone pastes
+their scenario into a frontalier group and others adjust it in place -
+and the parameter names become a PUBLIC CONTRACT the moment a link
+exists in the wild. SPEC 9.4 is normative and its rules are not
+conveniences.
+
+Read first: CLAUDE.md, README.md, SPEC sections 9.3, 9.4 (verbatim),
+14, 20; tasks/todo.md FW13; REPORT-FW12.txt in full including the
+addendum.
+
+====================================================================
+STANDING PROTOCOL (identical in every FW / AN prompt)
+====================================================================
+1. SESSION SCOPE. Increment 0 and FW13 only. Do not start FW14.
+2. INCREMENT CYCLE. Green after EVERY increment. R78: anything
+   touching lib/fr or markup gates on test:visual too.
+3. COMMIT ONLY ON GREEN, chained with && (R15).
+4. COMMITS. "FW13: <increment title>"; "chore: <title>" for R128-R131.
+5. SIMPLICITY FIRST. A codec is two pure functions over a schema. No
+   query-string library, no router state machine.
+6. TEST-FIRST with a RED row per behaviour. R96: regulatory figures
+   asserted against codepoint literals. R119: singletons asserted by
+   count. R120: fixtures must include a case where alternative
+   derivations disagree.
+7. The codec is PURE and lives in lib/params - no React, no window,
+   no Next imports. It maps URLSearchParams to TeleworkInput and back.
+   The page reads params on the server for the initial render.
+8. UI DISCIPLINE. Tokens; French only from lib/fr; the share controls
+   are secondary buttons per FD1; no toast that vanishes - a copy
+   confirmation must be readable by a screen reader (aria-live).
+9. QUESTIONS. Pause and ask.
+10. EXIT ARTIFACT. REPORT-FW13.txt, committed and pushed.
+
+====================================================================
+INCREMENT 0 - R128 to R131
+====================================================================
+0a. R128 dimension assertions across every existing comparison, plus
+    the list of any disagreeing baseline.
+0b. R129 /dev exclusion; the before/after public-route table.
+0c. R130 non-scaling tick strokes; 320 px visual proof.
+0d. R131 the tree lock.
+Commits per letter; R49 applies.
+
+====================================================================
+TASK FW13 - URL PARAMETERS AND SHARE
+====================================================================
+Acceptance criteria (restated; the report must prove each):
+AC1. Round-trip property: for any valid TeleworkInput,
+     decode(encode(input)) equals input - 10 000 generated cases,
+     covering part-time, mid-year, exact method, all granularities,
+     and both mission fields.
+AC2. A param URL pre-fills the form and reproduces the result;
+     unknown params are ignored; an invalid value falls back to the
+     default AND surfaces a dismissible notice - never a blank page,
+     never a 404. An empty "?" behaves exactly as the bare path.
+AC3. noindex and a bare-path canonical are present exactly when
+     params exist, and absent when they do not (R119: asserted by
+     count). No personal data is representable in the schema - proven
+     by a test over the schema's key set.
+
+--------------------------------------------------------------------
+INCREMENT 1 - the schema and the codec
+--------------------------------------------------------------------
+- lib/params/schema.ts: the nine params from SPEC 9.4 exactly -
+  canton, taux, tt, mfr, mtiers, methode, total, decompte, debut -
+  with their types, defaults and the mapping to TeleworkInput fields.
+  A frozen name list with a test asserting the names are EXACTLY
+  those nine, so a rename is a deliberate act with a failing test.
+- lib/params/codec.ts: encode and decode, pure. Omit defaults from
+  the encoded form so a shared URL is short and readable. decode
+  returns the input plus a list of ignored/invalid keys for the
+  notice.
+- RED first per function; then AC1's round-trip property.
+- Commit: "FW13: param schema and pure codec". Push.
+
+--------------------------------------------------------------------
+INCREMENT 2 - server-side pre-fill
+--------------------------------------------------------------------
+- The calculator page reads searchParams on the server, decodes, and
+  passes the initial input to the island - so a shared link renders
+  its result in the first paint, without a client round trip.
+- Invalid or unknown keys produce the dismissible notice from lib/fr,
+  naming what was ignored. The result still renders from the valid
+  remainder.
+- RED first: a Geneva case (c) URL renders 39,16 % server-side,
+  asserted by codepoint literal against the initial HTML (not after
+  hydration).
+- Commit: "FW13: server-side pre-fill from params". Push.
+
+--------------------------------------------------------------------
+INCREMENT 3 - metadata: noindex and canonical
+--------------------------------------------------------------------
+- generateMetadata: when any param is present, robots noindex and a
+  canonical pointing at the bare path; when none, the normal
+  indexable metadata and self-canonical. R54's gate still governs the
+  no-param case.
+- Tests for: bare path, one param, all nine, an empty "?", and an
+  unknown-only param string. Count-asserted (R119).
+- Commit: "FW13: noindex and bare-path canonical for param URLs".
+  Push.
+
+--------------------------------------------------------------------
+INCREMENT 4 - the client sync and the share controls
+--------------------------------------------------------------------
+- As the user edits, the island updates the URL with
+  history.replaceState - never push, so the back button is not filled
+  with keystrokes. Debounce this one (unlike the computation): 400 ms
+  is fine, and say why in a comment - the engine is free, the URL is
+  not.
+- Share row per FD1: two secondary buttons, "Copier le lien" and
+  "Partager". Copy uses the clipboard API with a fallback, and
+  announces success through an aria-live region with text from
+  lib/fr - not a toast that disappears. "Partager" uses
+  navigator.share where available and is ABSENT where it is not
+  (feature detection, not a broken button).
+- RED first: replaceState not pushState (history length unchanged
+  after edits); the copy announcement; the share button's absence
+  without the API.
+- Commit: "FW13: URL sync and share controls". Push.
+
+--------------------------------------------------------------------
+INCREMENT 5 - the localStorage handoff
+--------------------------------------------------------------------
+- On a valid computation, persist the input to localStorage under one
+  versioned key, for FW11's install-referrer handoff to the app
+  (SPEC 10). Nothing reads it yet; a test asserts the shape and that
+  it contains no personal data.
+- This is the ONLY client storage in the product's public surface.
+  A comment says so, and the zero-cookie trace test must still pass -
+  localStorage is not a cookie, but the report states the distinction
+  explicitly so nobody later reads the trace test as covering it.
+- Commit: "FW13: versioned localStorage handoff". Push.
+
+--------------------------------------------------------------------
+INCREMENT 6 - hostile inputs, a11y, baselines, size
+--------------------------------------------------------------------
+- Hostile param tests: HTML-entity-mangled values (&amp;), truncated
+  URLs, repeated keys, absurd magnitudes, a 10 KB param value,
+  unicode in a numeric field. None may throw, blank the page, or
+  produce a result presented as valid.
+- jest-axe across the notice and share states; keyboard reachability
+  of both buttons.
+- Baselines at 1440/390 (R127), zero tolerance (R114), dimensions
+  asserted (R128): a shared-link initial render, and the invalid-param
+  notice.
+- pnpm size: GATE A and GATE B for the calculator route. FW12 left
+  6,2 KiB, R129 returns ~1,0. Report the number after this task.
+- Commit: "FW13: hostile inputs, a11y, baselines, size record". Push.
+
+====================================================================
+OUT OF SCOPE FOR FW13
+====================================================================
+- Email capture - FW14. OG images, JSON-LD, analytics - FW15.
+- Reading the localStorage handoff - the Android app.
+- Any engine change. Any new param name beyond the nine.
+
+====================================================================
+FINAL VERIFICATION
+====================================================================
+pnpm gate && pnpm test:e2e && pnpm test:visual && pnpm test:a11y &&
+pnpm test:runtime
+Green in one run; CI green on origin/main after the final push.
+
+====================================================================
+REPORT FORMAT - REPORT-FW13.txt (pure ASCII, committed and pushed)
+====================================================================
+SUMMARY
+PRECONDITIONS      CI run URL and status.
+INCREMENT 0        R128-R131 each with its proof; the R128 baseline
+                   list; the R129 before/after table.
+RED/GREEN LEDGER
+ROUND-TRIP         AC1: generator coverage and case count.
+SERVER RENDER      The 39,16 % codepoint assertion against initial
+                   HTML.
+METADATA MATRIX    Param state x robots x canonical, count-asserted.
+HOSTILE INPUTS     Each case and its handling.
+STORAGE NOTE       The localStorage/cookie distinction, stated.
+SIZE               Route total and GATE A remainder.
+TOKENS ADDED       (R77)
+DEVIATIONS
+NOTICED BUT NOT TOUCHING
+QUESTIONS FOR THE OPERATOR
+PUSH PROOF
+
+END OF FW13 PROMPT

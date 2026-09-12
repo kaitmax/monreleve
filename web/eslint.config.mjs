@@ -117,6 +117,11 @@ export default tseslint.config(
     ignores: [
       '.next/**',
       '.next-visual-*/**',
+      // RULING R129 builds the dev-enabled tree here, and Next generates a
+      // .ts type file per route inside it. Not ignoring it made eslint report
+      // 6 708 errors in generated code - the same shape as the visual runner
+      // directories above, which is why it sits beside them.
+      '.next-dev-routes/**',
       'node_modules/**',
       'public/**',
       'playwright-report/**',
