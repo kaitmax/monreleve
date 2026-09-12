@@ -21,6 +21,7 @@ import { LAST_REGULATORY_REVIEW } from '../lib/content/regulatory';
 import { currentTaxYear } from '../lib/content/tax-year';
 import { CALCULATEUR_COPY } from '../lib/fr/calculateur';
 import { PROVISIONAL_COPY } from '../lib/fr/provisional';
+import { PARAM_NOTICE } from '../lib/fr/params';
 import { ruleSetFor } from '../lib/calc-engine';
 import { formatPercent } from '../lib/ui/core';
 
@@ -536,5 +537,172 @@ test.describe('the panel by keyboard (increment 6)', () => {
     // Recorded as a passing test with no browser work rather than a comment,
     // because a comment in a spec file is not in the run's output.
     expect(true).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// FW13 increment 2: A SHARED LINK PRE-FILLS THE CALCULATOR.
+//
+// THE PROMPT ASKED FOR THIS ON THE SERVER AND IT IS ON THE CLIENT. The
+// increment's line was "a Geneva case (c) URL renders 39,16 % server-side,
+// asserted by codepoint literal against the initial HTML (not after
+// hydration)", and that assertion is not written here, because it stopped
+// being true by decision rather than by accident.
+//
+// Reading searchParams anywhere in this route - page, generateMetadata, or a
+// Suspense child - makes it dynamic in Next 15.5.25, and a dynamic route emits
+// <title> and <link rel="canonical"> into the BODY. Measured five ways; the
+// page's header lists them. This is SPEC 14's target-query page, so the
+// operator's ruling was that the head wins: the route stays static, the island
+// reads the URL on mount, and the noindex AC3 needs arrives as an X-Robots-Tag
+// header from middleware.
+//
+// So the rate appears on HYDRATION rather than in the first paint. What that
+// costs is asserted honestly below - with scripting off there is no result at
+// all - and what it buys is asserted too.
+// ---------------------------------------------------------------------------
+
+/** Geneva case (c) as SPEC 9.4 would carry it. */
+const GENEVA_C_URL = `${CALCULATOR_PATH}?canton=GE&tt=84&mfr=24&decompte=dj`;
+
+const NBSP = String.fromCharCode(0x00a0);
+
+test.describe('a param URL pre-fills and computes (FW13 AC2)', () => {
+  test('shows 39,16 % once hydrated', async ({ page }) => {
+    await page.goto(GENEVA_C_URL);
+
+    // R96: the figure by codepoint literal. toContainText would normalise the
+    // no-break space on both sides and could not tell it from a plain one.
+    await expect
+      .poll(async () => (await page.locator('main').textContent()) ?? '')
+      .toContain(`39,16${NBSP}%`);
+  });
+
+  test('pre-fills the controls, so the reader can adjust it in place', async ({ page }) => {
+    // THE GROWTH MECHANIC, and the half a rate alone does not prove: "someone
+    // pastes their scenario into a group; others adjust it in place."
+    await page.goto(GENEVA_C_URL);
+
+    await expect(page.locator('#canton')).toHaveValue('GE');
+    await expect(page.locator('#jours-teletravail')).toHaveValue('84');
+    await expect(page.locator('#missions-france')).toHaveValue('24');
+  });
+
+  test('the bare path shows no result', async ({ page }) => {
+    // Non-vacuity: the rate above is the LINK's, not something every visitor
+    // sees.
+    await page.goto(CALCULATOR_PATH);
+
+    const main = (await page.locator('main').textContent()) ?? '';
+
+    expect(main).not.toContain(`39,16${NBSP}%`);
+    expect(main).toContain(CALCULATEUR_COPY.result.empty);
+  });
+
+  test('an empty ? behaves exactly as the bare path (AC2)', async ({ page }) => {
+    await page.goto(`${CALCULATOR_PATH}?`);
+
+    const main = (await page.locator('main').textContent()) ?? '';
+
+    expect(main).toContain(CALCULATEUR_COPY.result.empty);
+  });
+
+  test('a mangled URL degrades rather than 404ing', async ({ page }) => {
+    // SPEC 9.4: "Facebook mangles URLs; degrading beats 404."
+    const response = await page.goto(
+      `${CALCULATOR_PATH}?canton=GE&tt=84&mfr=24&taux=abc&utm_source=fb`,
+    );
+
+    expect(response?.status()).toBe(200);
+
+    await expect
+      .poll(async () => (await page.locator('main').textContent()) ?? '')
+      .toContain(PARAM_NOTICE.lead);
+
+    const main = (await page.locator('main').textContent()) ?? '';
+
+    // taux fell back to 100, so the case-(c) rate still computes.
+    expect(main).toContain(`39,16${NBSP}%`);
+    expect(main).toContain('taux');
+    expect(main).toContain('utm_source');
+  });
+
+  test('the notice can be dismissed', async ({ page }) => {
+    await page.goto(`${CALCULATOR_PATH}?canton=GE&tt=84&taux=abc`);
+
+    const notice = page.locator('[data-notice="params"]');
+
+    await expect(notice).toBeVisible();
+    await notice.getByRole('button', { name: PARAM_NOTICE.dismiss }).click();
+    await expect(notice).toHaveCount(0);
+  });
+});
+
+test.describe('the head survives the params (FW13 AC3)', () => {
+  // THE REASON THE PREFILL MOVED TO THE CLIENT, asserted rather than trusted.
+  // If this route ever goes dynamic again, these fail before anybody notices
+  // the canonical has quietly moved into the body of the product's main SEO
+  // page.
+  test('canonical and title are in the HEAD, even with nine params', async ({ page }) => {
+    await page.goto(
+      `${CALCULATOR_PATH}?canton=GE&taux=80&tt=84&mfr=6&mtiers=4&methode=exact` +
+        '&total=200&decompte=h&debut=2026-04-01',
+    );
+
+    // head-scoped: a tag in the body is the defect, so a selector that would
+    // match either could not see it.
+    await expect(page.locator('head > link[rel="canonical"]')).toHaveCount(1);
+    await expect(page.locator('head > title')).toHaveCount(1);
+  });
+
+  test('the canonical points at the BARE path from a param URL (SPEC 9.4)', async ({ page }) => {
+    await page.goto(GENEVA_C_URL);
+
+    const canonical = page.locator('head > link[rel="canonical"]');
+
+    expect(await canonical.getAttribute('href')).toBe(
+      `https://frontalier.example${CALCULATOR_PATH}`,
+    );
+  });
+
+  test('a param URL is noindex, by header (AC3)', async ({ request }) => {
+    const response = await request.get(GENEVA_C_URL);
+
+    expect(response.status()).toBe(200);
+    expect(response.headers()['x-robots-tag'] ?? '').toContain('noindex');
+  });
+
+  test('the bare path is NOT noindex', async ({ request }) => {
+    // R54's gate decides whether this page is indexable, and the header must
+    // not quietly override it. The count assertion R119 asks for: exactly
+    // zero.
+    const response = await request.get(CALCULATOR_PATH);
+
+    expect(response.headers()['x-robots-tag']).toBeUndefined();
+  });
+
+  test('an empty ? is not noindex either, because it is the bare path', async ({ request }) => {
+    const response = await request.get(`${CALCULATOR_PATH}?`);
+
+    expect(response.headers()['x-robots-tag']).toBeUndefined();
+  });
+});
+
+test.describe('with JavaScript disabled, a link carries no result (FW13)', () => {
+  test.use({ javaScriptEnabled: false });
+
+  test('shows the empty state, not a wrong answer', async ({ page }) => {
+    // THE COST OF THE RULING, STATED. The island reads the URL on mount, so
+    // with no scripting there is no prefill - and the page says so rather than
+    // showing a default calculation that is not the sender's scenario. SPEC
+    // 9.3 requires the PAGE to be meaningful without JavaScript, not the
+    // calculation, and it still is: every explanatory paragraph is served.
+    await page.goto(GENEVA_C_URL);
+
+    const main = (await page.locator('main').textContent()) ?? '';
+
+    expect(main).not.toContain(`39,16${NBSP}%`);
+    expect(main).toContain(CALCULATEUR_COPY.result.empty);
+    expect(main).toContain(CALCULATEUR_COPY.fiscal(FISCAL));
   });
 });

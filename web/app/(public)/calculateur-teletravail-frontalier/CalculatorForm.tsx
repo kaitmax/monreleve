@@ -35,7 +35,7 @@
 
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, Minus, Plus } from 'lucide-react';
 import {
   type Canton,
@@ -48,7 +48,9 @@ import {
   ruleSetFor,
 } from '@/lib/calc-engine';
 import { provisionalFor, readingAnchor } from '@/lib/content/provisional';
+import { decode, isoDayForFraction } from '@/lib/params/codec';
 import { CALCULATEUR_COPY } from '@/lib/fr/calculateur';
+import { PARAM_NOTICE } from '@/lib/fr/params';
 import { PROVISIONAL_COPY } from '@/lib/fr/provisional';
 import { CANTONS_BY_NAME } from '@/lib/fr/cantons';
 import { errorMessage } from '@/lib/fr/errors';
@@ -184,6 +186,39 @@ const INITIAL: FormState = {
 };
 
 /**
+ * A decoded scenario as form state. FW13 increment 2.
+ *
+ * THE STATE IS STRINGS AND THE SCENARIO IS NUMBERS, so this is a conversion
+ * rather than a cast - see the header on FormState for why the controls hold
+ * text. Every field is a direct rendering except the start date, which the
+ * engine holds as a periodFraction: isoDayForFraction recovers the day that
+ * produced it, and returns null for a fraction no date can produce, in which
+ * case the field stays empty and the fraction still applies. The same
+ * function encode uses, so a seeded form re-encodes to the URL it came from.
+ *
+ * hasMissions IS DERIVED rather than carried: SPEC 9.4 has no param for it,
+ * because the answer is visible in the numbers. A link with mission days
+ * reveals the fields; one without leaves them collapsed.
+ */
+function stateFrom(input: TeleworkInput): FormState {
+  const startDay = isoDayForFraction(input.periodFraction, input.taxYear);
+
+  return {
+    canton: input.canton,
+    employmentRate: String(input.employmentRate),
+    teleworkDays: String(input.teleworkDays),
+    hasMissions: input.missionDaysFrance > 0 || input.missionDaysThirdState > 0,
+    missionDaysFrance: String(input.missionDaysFrance),
+    missionDaysThirdState: String(input.missionDaysThirdState),
+    method: input.denominator.kind,
+    exactTotal:
+      input.denominator.kind === 'exact' ? String(input.denominator.totalWorkDays) : '',
+    granularity: input.granularity,
+    startDay: startDay ?? '',
+  };
+}
+
+/**
  * Which field an error belongs to, or null for one that belongs to no control.
  *
  * EXHAUSTIVE OVER THE UNION, ending in a `never` assignment, so a new
@@ -237,6 +272,15 @@ function fieldFor(error: ValidationError): FieldKey | null {
 export interface CalculatorFormProps {
   /** Resolved server-side from the Europe/Paris date (R55). */
   readonly taxYear: number;
+  /**
+   * A scenario to start from, for tests and for a future caller.
+   *
+   * THE URL IS NOT READ THROUGH THIS PROP. The page is static (see its
+   * header), so nothing on the server knows the query string; the island
+   * reads it on mount instead. This stays because a seeded form is worth
+   * being able to construct directly in a test without a browser URL.
+   */
+  readonly initial?: TeleworkInput | null;
 }
 
 interface RadioGroupProps {
@@ -291,8 +335,66 @@ function RadioGroup({ name, legend, helper, options, value, onChange }: RadioGro
   );
 }
 
-export function CalculatorForm({ taxYear }: CalculatorFormProps) {
-  const [state, setState] = useState<FormState>(INITIAL);
+export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps) {
+  // SEEDED ONCE, from the server render. useState's initial value is used on
+  // the first render and ignored afterwards, which is exactly right here: the
+  // URL is where the user STARTED, and from then on the form is the truth and
+  // the URL follows it (increment 4).
+  const [state, setState] = useState<FormState>(
+    initial === null ? INITIAL : stateFrom(initial),
+  );
+
+  // The accordion opens for a link that used it, so the reader can see the
+  // settings their scenario depends on rather than wondering why the numbers
+  // do not match a default calculation.
+  /**
+   * THE SHARED LINK, READ ON MOUNT. FW13 increment 2.
+   *
+   * ON THE CLIENT, because the page is static: reading searchParams on the
+   * server would move this route's canonical out of <head> (measured - see
+   * the page's header), and this is SPEC 14's target-query page.
+   *
+   * window.location.search RATHER THAN useSearchParams, because that hook
+   * forces a Suspense boundary on a static route and returns nothing during
+   * prerender anyway. Reading the location once, after mount, is the same
+   * information with no boundary and no build-time constraint.
+   *
+   * ONCE, NOT ON EVERY CHANGE. The URL is where the reader STARTED; from
+   * mount onwards the form is the truth and the URL follows it (increment
+   * 4). An effect that re-read the location would fight its own writes.
+   */
+  const [link, setLink] = useState<{
+    readonly ignored: readonly string[];
+    readonly invalid: readonly string[];
+  }>({ ignored: [], invalid: [] });
+
+  useEffect(() => {
+    const query = window.location.search;
+
+    if (query === '' || query === '?') return;
+
+    const decoded = decode(new URLSearchParams(query), taxYear);
+
+    if (decoded.input !== null) setState(stateFrom(decoded.input));
+
+    setLink({ ignored: decoded.ignored, invalid: decoded.invalid });
+
+    if (
+      decoded.input !== null &&
+      (decoded.input.denominator.kind === 'exact' || decoded.input.periodFraction < 1)
+    ) {
+      setAdvancedOpen(true);
+    }
+    // Mount only, deliberately: see the comment above. The dependency
+    // array is empty because re-reading the location would fight the writes
+    // increment 4 makes to it.
+  }, []);
+
+  // SPEC 9.4 requires the link notice to be DISMISSIBLE. Dismissed in state
+  // rather than removed from the DOM by the reader's browser, so it comes
+  // back on the next shared link rather than staying hidden for the session.
+  const [noticeDismissed, setNoticeDismissed] = useState(false);
+
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const rules = ruleSetFor(taxYear);
@@ -836,6 +938,42 @@ export function CalculatorForm({ taxYear }: CalculatorFormProps) {
         asserts the survives-invalid-input property directly, so this
         decision is a failing test if anyone moves it later.
       */}
+      {/*
+        FW13 increment 2: THE LINK NOTICE. SPEC 9.4: "invalid values fall
+        back to default and surface a dismissible notice, never a blank page
+        (Facebook mangles URLs; degrading beats 404)."
+
+        ABOVE THE RESULT AND ABOVE THE PROVISIONAL NOTICE, because it is
+        about the LINK rather than about the calculation: a reader who does
+        not know a value was dropped has no reason to check the fields, and
+        the numbers below are a correct answer to the wrong scenario.
+
+        IT RENDERS FROM SERVER-DECODED PROPS, so it is in the first paint
+        with the result it qualifies - not announced a moment later by an
+        effect, which would be the one arrangement worse than silence.
+      */}
+      {noticeDismissed || (link.ignored.length === 0 && link.invalid.length === 0) ? null : (
+        <div className={styles.linkNotice} data-notice="params">
+          <p className={styles.linkNoticeLead}>{PARAM_NOTICE.lead}</p>
+          {link.invalid.length === 0 ? null : (
+            <p className={styles.linkNoticeBody}>{PARAM_NOTICE.invalid(link.invalid)}</p>
+          )}
+          {link.ignored.length === 0 ? null : (
+            <p className={styles.linkNoticeBody}>{PARAM_NOTICE.ignored(link.ignored)}</p>
+          )}
+          <p className={styles.linkNoticeBody}>{PARAM_NOTICE.advice}</p>
+          <button
+            className={styles.linkNoticeDismiss}
+            onClick={() => {
+              setNoticeDismissed(true);
+            }}
+            type="button"
+          >
+            {PARAM_NOTICE.dismiss}
+          </button>
+        </div>
+      )}
+
       {provisional.length === 0 ? null : (
         <div className={styles.provisional} data-notice="provisional">
           <p className={styles.provisionalLead}>{PROVISIONAL_COPY.lead}</p>

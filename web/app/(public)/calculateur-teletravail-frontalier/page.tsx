@@ -113,11 +113,39 @@ export function generateMetadata(): Metadata {
   };
 }
 
+/**
+ * THE PAGE NEVER READS searchParams, AND THAT IS A RULING, NOT AN
+ * OVERSIGHT. FW13 increment 2, decided by the operator after measurement.
+ *
+ * In Next 15.5.25 ANY use of searchParams - in the page OR in
+ * generateMetadata, even isolated behind a Suspense boundary - makes the
+ * route dynamic and emits <title> and <link rel="canonical"> into the
+ * BODY instead of <head>. Five shapes were built and served to measure it:
+ *
+ *   force-dynamic alone .................. head intact
+ *   async page, no searchParams .......... head intact
+ *   page awaits searchParams ............. metadata in body
+ *   generateMetadata awaits it ........... metadata in body
+ *   only a Suspense child awaits it ...... metadata in body
+ *
+ * This is SPEC 14's target-query page, so a canonical a non-rendering
+ * crawler cannot see is not a trade worth making - and AC3's noindex would
+ * have landed in the body too, where it is ignored, which would leave
+ * param URLs indexable while the tests said otherwise.
+ *
+ * So the route stays STATIC. Its self-referencing canonical points at the
+ * bare path from every URL, which is exactly what SPEC 9.4 asks a param
+ * URL to carry; the noindex arrives as an X-Robots-Tag header from
+ * middleware.ts, which needs no head and forces no dynamic render. What
+ * is given up is the server-rendered first paint: the island decodes the
+ * URL on mount, so a shared link shows its result on hydration.
+ */
 export default function CalculateurPage() {
   const year = currentTaxYear();
   const rules = ruleSetFor(year);
   const fiscal = ceiling(rules.fiscalCeiling);
   const social = ceiling(rules.socialCeiling);
+
 
   return (
     <main className={styles.page}>

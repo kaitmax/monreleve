@@ -338,3 +338,50 @@
   font-size: var(--type-caption-size);
   line-height: var(--type-caption-line);
 }
+
+// ---------------------------------------------------------------------------
+// FW13: the link notice. SPEC 9.4's "dismissible notice, never a blank page".
+//
+// WARNING COLOURING, NOT INFO. R110's provisional notice is info because it
+// discloses the status of a rule while the number below it is correct; this
+// one says a value the sender chose did not arrive, so the scenario on screen
+// is not the one they shared. That is a caveat on the numbers themselves.
+//
+// TEXT IS text-primary ON THE SOFT FILL, per R57 - the audit measures
+// --colour-warning at 3,43:1 on the canvas, which is not a text colour here.
+// ---------------------------------------------------------------------------
+
+.linkNotice {
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-left: var(--size-input-border-focus) solid var(--colour-warning);
+  border-radius: var(--radius-sm);
+  background: var(--colour-warning-soft);
+}
+
+.linkNoticeLead {
+  margin: 0 0 var(--space-1);
+  color: var(--colour-text-primary);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-caption-line);
+}
+
+.linkNoticeBody {
+  margin: 0 0 var(--space-1);
+  color: var(--colour-text-primary);
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-line);
+}
+
+.linkNoticeDismiss {
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--colour-brand);
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-line);
+  text-decoration: underline;
+  cursor: pointer;
+}

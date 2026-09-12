@@ -110,6 +110,10 @@ function readTotal(raw: string): number | null {
 /**
  * The ISO day that produced a periodFraction, or null.
  *
+ * EXPORTED because the island needs it too: seeding the date field from a
+ * decoded scenario is the same question encode asks, and two implementations
+ * of an inverse are two chances to disagree about which day a fraction means.
+ *
  * ARITHMETIC RATHER THAN A SEARCH, and the first version was a search: it
  * walked up to 366 days building a Date and calling remainingYearFraction
  * for each. Correct, and it made the 10 000-case property test time out at
@@ -128,7 +132,7 @@ function readTotal(raw: string): number | null {
  * reproduce the fraction exactly, there is no date for it and encode omits
  * `debut` rather than inventing one.
  */
-function dayForFraction(fraction: number, taxYear: number): string | null {
+export function isoDayForFraction(fraction: number, taxYear: number): string | null {
   if (fraction === 1) return null;
 
   const firstOfYear = Date.UTC(taxYear, 0, 1);
@@ -179,7 +183,7 @@ function render(name: ParamName, input: TeleworkInput): string | null {
     }
 
     case 'debut':
-      return dayForFraction(input.periodFraction, input.taxYear);
+      return isoDayForFraction(input.periodFraction, input.taxYear);
 
     default: {
       // Exhaustiveness: a tenth param is a compile error here rather than a

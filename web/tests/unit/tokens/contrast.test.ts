@@ -737,7 +737,7 @@ describe('every colour rule in the five stylesheets, at the bar its size implies
     expect(counted.page, 'no rule falls through to the page surfaces').toBeGreaterThan(0);
   });
 
-  it('resolves the seven container-nested rules R121 was written for', () => {
+  it('resolves every container-nested rule R121 was written for', () => {
     // NAMED, not counted. These are the rules that were being measured
     // against the page surfaces while sitting on a fill, and naming them is
     // what makes a future change visible: a rule that stops resolving to its
@@ -750,6 +750,13 @@ describe('every colour rule in the five stylesheets, at the bar its size implies
       .sort();
 
     expect(nested).toEqual([
+      // FW13 added the link notice, whose three text rules sit on the fill
+      // it paints. They arrived here by FAILING this assertion, which is
+      // what naming the set is for: the derived scan found them without
+      // being told, and the list is the record that somebody looked.
+      '(public)/calculateur-teletravail-frontalier/CalculatorForm .linkNoticeBody -> --colour-warning-soft',
+      '(public)/calculateur-teletravail-frontalier/CalculatorForm .linkNoticeDismiss -> --colour-warning-soft',
+      '(public)/calculateur-teletravail-frontalier/CalculatorForm .linkNoticeLead -> --colour-warning-soft',
       'PublicShell .footerLink -> --colour-surface',
       '(public)/calculateur-teletravail-frontalier/CalculatorForm .provisionalLead -> --colour-info-soft',
       '(public)/calculateur-teletravail-frontalier/CalculatorForm .provisionalLink -> --colour-info-soft',
