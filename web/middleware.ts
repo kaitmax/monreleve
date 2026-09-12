@@ -38,7 +38,17 @@ export function middleware(request: NextRequest): NextResponse {
   // `follow` rather than `none`: the links on a shared calculator page are the
   // same links as on the bare one, and there is no reason to stop a crawler
   // walking to /sources or a guide from here.
-  if (request.nextUrl.search !== '' && request.nextUrl.search !== '?') {
+  //
+  // ONE CONDITION, NOT TWO. The first version also tested `!== "?"`, to make
+  // SPEC 9.4's "? present but empty behaves exactly like the bare path" true.
+  // It is dead code: the URL parser drops a trailing "?" entirely, so
+  // new URL("https://x/p?").search is "" and the second clause can never be
+  // reached. A mutation probe passed with it removed, which is how it was
+  // found - the same dead-guard shape R112's audit turned up in FW12.
+  //
+  // The RULE still holds; it is the parser that holds it, and the test
+  // asserts that rather than this line.
+  if (request.nextUrl.search !== '') {
     response.headers.set(ROBOTS_HEADER, ROBOTS_NOINDEX);
   }
 
