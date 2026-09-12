@@ -1,0 +1,738 @@
+====================================================================
+REPORT-FW13 - URL PARAMETERS AND SHARE
+====================================================================
+
+SUMMARY
+--------------------------------------------------------------------
+SPEC 9.4's nine param names are now a codec, a URL that follows the
+form, a share row, a versioned localStorage handoff for the Android
+app, and a notice for links a platform damaged on the way. Ten
+commits: four for R128-R131, six for the task.
+
+The prompt's framing held up: treating the codec as an API rather
+than a convenience is what produced the round-trip property, and the
+property is what caught two design errors in the schema before any
+of it shipped.
+
+Four things are worth the operator's time, and three of them are
+about signals that were not measuring what they appeared to:
+
+1. A SERVER-SIDE DECODE COSTS THIS ROUTE ITS <head>. Increment 2 was
+   specified to pre-fill on the server. In Next 15.5.25 any use of
+   searchParams - page, generateMetadata, or a Suspense child -
+   makes the route dynamic and emits <title> and <link
+   rel="canonical"> into the BODY. Five arrangements were built and
+   served to establish it was structural. The operator ruled: static
+   page, client decode, noindex by X-Robots-Tag from middleware.
+
+2. THE MUTATION HARNESS LIED BEFORE THE CODE DID. The probe runner
+   passed --reporter=basic, which Vitest 5 removed. Every probe died
+   at startup with ZERO tests run, and the check - "does the output
+   say N failed?" - read that silence as GREEN and reported four
+   surviving mutants. A missing tally is now a hard error.
+
+3. TWO DEFECTS IN MY OWN INCREMENT 4, BOTH FOUND BY LOOKING AT A
+   BASELINE rather than by any assertion. The share row shipped
+   ABOVE the link notice, so the page read: form, two share buttons,
+   then "your link was incomplete - you can correct the fields
+   above; the link you share will be up to date". And the copy
+   button asked for two custom properties that do not exist, so CSS
+   discarded both declarations silently and it rendered at about
+   22 px against FD1's 48, with no border.
+
+4. TWO COMMITS WERE RED IN CI. fdca008 and 2f2cbd2 passed the
+   four-command gate CLAUDE.md defines and failed the full suite:
+   two e2e live-region counts and fourteen visual baselines, both
+   consequences of increment 4 that increment 6 fixed. Stated in
+   DEVIATIONS and raised as Q33; I am not treating it as closed.
+
+
+PRECONDITIONS
+--------------------------------------------------------------------
+CI on origin/main, most recent run for each FW13 commit:
+
+  61a6bc9  R128                            success
+  1f85e16  R129                            success
+  d93c2c2  R130                            success
+  ae6f631  R131                            success
+  ae83bb1  FW13 inc 1 schema + codec       success
+  cb9ef63  FW13 inc 2 pre-fill             success
+  3393a4c  FW13 inc 3 noindex/canonical    success
+  fdca008  FW13 inc 4 URL sync + share     FAILURE
+  2f2cbd2  FW13 inc 5 localStorage         FAILURE
+  cc8605a  FW13 inc 6 hostile/a11y/size    success
+
+HEAD of main is cc8605a and it is green:
+  https://github.com/kaitmax/Frontalier/actions/runs/34698166964
+
+The two failures, named rather than summarised:
+  https://github.com/kaitmax/Frontalier/actions/runs/34695211672
+  https://github.com/kaitmax/Frontalier/actions/runs/34695775446
+
+Both failed the same two ways - job "web" on
+e2e/calculateur.spec.ts's two live-region COUNT assertions, and job
+"rail visual baselines" on every calculator picture at zero
+tolerance. Both causes are the share row: it is a second aria-live
+region, and it changes every calculator page by 98 px. See
+DEVIATIONS.
+
+Local final verification, green in one run on cc8605a:
+  pnpm gate            1940 unit tests, coverage thresholds met,
+                       both size gates, format parity on node 22
+  pnpm test:e2e        96 passed
+  pnpm test:visual     69 passed, zero tolerance
+  pnpm test:a11y       92 passed
+  pnpm test:runtime    9 passed
+
+
+INCREMENT 0 - R128 TO R131
+--------------------------------------------------------------------
+
+R128 - A BASELINE ASSERTS ITS OWN DIMENSIONS.        commit 61a6bc9
+
+  Mechanism: e2e/baseline.ts. expectPageBaseline asserts the stored
+  PNG width equals the live viewport width; expectElementBaseline
+  asserts an element capture is no wider than the viewport it was
+  rendered in. Width is read from the PNG's IHDR rather than from
+  Playwright, so it is the committed file that is judged.
+
+  PROOF. Reverted R127's overflow fix and ran --update-snapshots -
+  the exact scenario the ruling is about. The update rewrote the
+  mobile baselines to 421 px, as it did in FW12, and R128 failed
+  every one by name and number. The pixel comparison cannot catch
+  this: a wider capture IS different pixels, so on a normal run it
+  fails as an ordinary diff and on an update run it is accepted
+  silently. R128 is the assertion that survives an update.
+
+  SECOND MECHANISM, because the first only fires in the container.
+  tests/unit/pages/baseline-dimensions.test.ts reads the committed
+  tree on every gate and reports any disagreeing file by name. Its
+  viewport numbers are parsed OUT OF THE SPECS rather than kept as a
+  second copy, so a spec that stops declaring 1440 or 390 is caught
+  by the census rather than passing quietly.
+
+  R114 IS NOW ENFORCED BY TYPE. The helper's options type accepts
+  animations and stylePath only. Playwright's own type carries
+  maxDiffPixels, maxDiffPixelRatio, threshold and mask - the four
+  hatches R114 forbids - so a tolerance is a compile error rather
+  than something a source scan has to find.
+
+  THE BASELINE LIST R128 ASKS FOR, at the time of the ruling:
+
+    full-page baselines checked        24
+    disagreeing with their viewport     0
+    element baselines checked          37
+    wider than their viewport           0
+
+  All 24 are 1440 or 390 exactly. That is the state R127 left; R128
+  is what keeps it. The list is EMPTY, which is the answer, not an
+  omission.
+
+  AFTER FW13, the count is 28 full-page baselines (four added by
+  increment 6) and the list is still empty - every width is exactly
+  1440 or 390.
+
+R129 - /dev/** LEAVES THE PRODUCTION BUILD.          commit 1f85e16
+
+  Mechanism: next.config.ts sets pageExtensions to ['tsx','ts'] and
+  adds 'dev.tsx' only when FRONTALIER_DEV_ROUTES=1. Dev pages are
+  named page.dev.tsx, so Next resolves them as routes only under the
+  flag, which is set by playwright.config.ts's webServer and by
+  scripts/build-dev-routes.mjs and nowhere a deployment can read.
+  The files stay where they are, so the workbench baselines and the
+  parity harness keep working from the same tree.
+
+  BEFORE/AFTER, measured on one tree, KiB first-load JS:
+
+    route                              before   after   delta
+    /                                   107.8   107.0    -0.8
+    /_not-found                         108.1   107.3    -0.8
+    /calculateur-teletravail-frontalier 119.8   118.2    -1.6
+    /cgu                                108.0   107.3    -0.7
+    /confidentialite                    108.0   107.3    -0.7
+    /mentions-legales                   108.0   107.3    -0.7
+    /sources                            108.1   107.4    -0.7
+
+  GATE A spare on the calculator went 5,2 -> 6,8 KiB. The ruling
+  predicted about 1,0 returned; it is 1,6, and every other public
+  route gains 0,7 - because /dev/island was not the only cost. The
+  workbench, the rail gallery, the parity harness and the spike were
+  in the chunk graph too, and had been since they were written.
+
+  THE FINDING. The rename silently unmeasured both dev gates. Next
+  keys the manifest by file, so each route became
+  '/dev/composants/page.dev', and check-budgets - matching only
+  '/page' - dropped all five from its table and then printed "GATE W
+  and GATE I pass". Two ceilings passing because neither had
+  anything left to judge. The matcher now accepts both suffixes and
+  a vacuity guard exits 1 when the dev table is empty under the
+  flag.
+
+R130 - RAIL TICKS DO NOT SCALE.                      commit d93c2c2
+
+  R127 gave the rail max-width: 100%, which scaled everything inside
+  the viewBox - right for the bar, wrong for the two regulatory
+  ticks. At 320 px the panel column is 230 against the SVG's natural
+  376: a factor of 0,61, drawing a 2 px tick at 1,22 and off the
+  device pixel grid, which is the condition R46 raised the tick to
+  2 px to escape.
+
+  THE TICKS HAD TO STOP BEING FILLS. vector-effect applies to a
+  STROKE; these were filled rects, and no attribute changes how a
+  fill scales. Each tick is now a zero-length vertical line with a
+  2 px butt-capped stroke and vector-effect="non-scaling-stroke".
+
+  PROOF, and it is measured rather than asserted: regenerating the
+  baselines wrote exactly ONE new file. All 64 existing pictures
+  were unchanged, because a 2 px butt line centred at c covers the
+  same pixels as a 2 px rect at c-1. The new one is at 320 px, a
+  third width in a suite R127 reconciled onto two, deliberately - a
+  proof of a scaling rule has to be taken where the scaling is.
+  Removing the attribute changes 3 pixels and fails at zero
+  tolerance; three pixels is exactly what a maxDiffPixels allowance
+  would swallow, which is R114's argument.
+
+  THE FIRST PROBE PASSED, and wrongly: String.replace hit the
+  attribute's occurrence in the doc comment rather than the code.
+
+R131 - THE WORKING TREE TAKES AN EXCLUSIVE LOCK.     commit ae6f631
+
+  Fourth incident of one class:
+    FW11  two command chains sharing .next
+    FW11  pnpm size read .next mid-build
+    FW11  a build raced clean-tree's stash of public/
+    FW12  a vitest run raced clean-tree's stash of public/
+
+  R98 closed this for containers and R105 for processes; neither
+  covers the tree itself. THREE OF THE FOUR FAILED IN A WAY THAT
+  LOOKED LIKE A FINDING - a test failing for exactly the reason it
+  was written to detect, with the real cause invisible.
+
+  scripts/tree-lock.mjs: clean-tree takes the lock across its stash;
+  pnpm size and pnpm build:dev refuse while it is held, naming the
+  holder, its pid, when it was taken, and the command that clears
+  it. A lock is IGNORED when its pid is gone, when the pid is alive
+  but the lock is over twenty minutes old, or when the file is
+  unparseable - a lock that never expires turns one killed run into
+  a repository that refuses every command.
+
+  PROBED IN FOUR STATES. The first two probes were wrong in ways
+  worth recording: a lock written by a process that then exited was
+  correctly ignored, and a lock naming a Git Bash job id rather than
+  a Windows pid was too. Held by a genuinely live process, both
+  readers refuse; named after a dead pid, both proceed; taken and
+  released by a real clean-tree run, the file is gone afterwards.
+
+
+RED/GREEN LEDGER
+--------------------------------------------------------------------
+INC 1  schema and codec
+  RED    tests/unit/params/schema.test.ts could not resolve
+         @/lib/params/schema; then codec.test.ts could not resolve
+         the codec.
+  GREEN  10 000-case round trip, plus a coverage property.
+  TWO CORRECTIONS FOUND BY READING SPEC AGAINST THE CODE:
+    - tt carried a fallback of '0' under a comment saying it had no
+      default. SPEC's default column for that row is empty, so it
+      has none; encode always writes tt, because a link omitting the
+      number the reader came for is not a shared scenario.
+    - dayForFraction walked up to 366 days per call and timed the
+      property out at 5 s - 3,5 million Date constructions - and it
+      runs on every URL update in the browser. Replaced with the
+      exact arithmetic inverse, still converted back and compared so
+      a fraction no date produces returns null.
+
+INC 2  pre-fill from params
+  RED    the pre-filled canton, days and missions, absent.
+  GREEN  after the head measurement below, on the client.
+  The increment as specified could not be delivered; see DEVIATIONS.
+
+INC 3  noindex and canonical
+  RED    four probes: noindex on every URL including the bare path
+         reddens 2 cases; "none" instead of "noindex, follow"
+         reddens 1; a matcher catching every route reddens 1.
+  FOUND BY A PROBE THAT PASSED: the middleware tested
+  `search !== '' && search !== '?'`. The second clause is
+  unreachable - the URL parser drops a trailing "?" entirely - so
+  removing it changed nothing and everything stayed green. One
+  condition now, and the parser fact the rule rests on is asserted
+  in its own test rather than implied by a line that does nothing.
+  Also: the first version passed a plain Request and all six cases
+  failed on "Cannot read properties of undefined". The middleware
+  reads nextUrl, which only NextRequest has.
+
+INC 4  URL sync and share controls
+  RED    replaceState not pushState, by history LENGTH after three
+         edits; the copy announcement; the share button's absence
+         without the API.
+  FOUR PROBES, AND THE HARNESS FAILED FIRST. --reporter=basic no
+  longer exists in Vitest 5, so all four ran zero tests and were
+  reported GREEN by a check looking for the word "failed". After
+  the runner was fixed, two probes still passed and both were holes:
+    - the debounce test advanced NO time before asserting the
+      address bar was empty, so delay=0 passed it: a fake timer has
+      not fired at 0 either. It now advances half the delay, which
+      tells 400 from 0, then the full delay, which tells it from
+      never.
+    - canShare starting at TRUE passed everything, because the mount
+      effect corrects it before Testing Library returns. The missing
+      claim is about the render BEFORE the effect, so it is asserted
+      against renderToStaticMarkup.
+    - the "confirmation STAYS" test advanced 10 s outside act(), so
+      a 3 s clear passed: the timer fired, the state update was
+      never flushed, and the query re-read stale DOM.
+  A THIRD ASSERTION WAS WRONG, not the code: "Partager" must not
+  appear in the server markup - and the row's own heading is
+  "Partager ce calcul". Counted as CONTROLS now, per R119.
+  All four probes red afterwards, each on the test that owns the
+  property.
+
+INC 5  versioned localStorage handoff
+  RED    could not resolve @/lib/params/handoff.
+  FOUR PROBES. Three red at once: an unversioned key, setItem with
+  no try/catch, and navigator.userAgent added to the payload. THE
+  FOURTH SURVIVED - removing the "only on a valid computation" gate
+  changed nothing, because every test in the file was either a valid
+  scenario or an unparsed one. The gate separates a third case: a
+  rate of 150 % is a NUMBER, so the effect runs, and the engine
+  refuses it, so there is no answer to hand over. That state is now
+  tested, and it asserts the asymmetry with it - the URL still
+  follows the form there.
+
+INC 6  hostile inputs, a11y, baselines, size
+  RED    the notice printed all 10 240 characters of an
+         attacker-chosen param name.
+  RED    the var() scan named --size-control-height in
+         CalculatorForm.module.scss.
+  RED    the DOM-order assertion, with the share row above the
+         notice.
+  RED    keyboard reachability, with tabIndex={-1} on the copy
+         button: "tabbing never landed on the copy button".
+  Two e2e live-region counts went red for the increment-4 reason and
+  were fixed by naming both regions rather than loosening to
+  presence.
+
+TOTALS ON cc8605a: 1940 unit, 96 e2e, 69 visual, 9 runtime.
+
+
+ROUND-TRIP (AC1)
+--------------------------------------------------------------------
+decode(encode(input)) equals input over 10 000 generated cases, in
+tests/unit/params/codec.test.ts.
+
+THE GENERATOR'S DOMAIN IS THE DESIGN DECISION. `debut` carries a
+DATE while the engine holds a periodFraction, so the representable
+fractions are the ones remainingYearFraction produces for days of
+the tax year. An arbitrary 0,3333 is a valid TeleworkInput and is
+NOT a shareable scenario - no date produces it, so no URL can carry
+it, and a generator producing one would be asserting that encode
+should invent a date the user never chose. The generator produces
+DATES and derives the fraction, which is what the form does. encode
+omits `debut` when no date reproduces the fraction rather than
+guessing one.
+
+COVERAGE IS ASSERTED, NOT ASSUMED (R120's shape). A second property
+samples the generator and fails unless it produced every one of:
+
+  part-time (employmentRate < 100)            covered
+  mid-year start (periodFraction < 1)         covered
+  the exact method                            covered
+  granularity day                             covered
+  granularity halfDay                         covered
+  granularity hours                           covered
+  both mission fields non-zero at once        covered
+  fractional days (step 0,5)                  covered
+
+Without it the 10 000 cases could all be the ordinary scenario and
+the property would pass loudly.
+
+A THIRD PROPERTY, added in increment 6 over 5 000 generated
+QUERIES rather than inputs: every name decode reports as IGNORED was
+really in the query, every name it reports as INVALID is one of the
+frozen nine, no name is ever both, and no non-finite number ever
+reaches the engine.
+
+
+SERVER RENDER
+--------------------------------------------------------------------
+The codepoint assertion the prompt asks for, in
+e2e/calculateur.spec.ts. NBSP is String.fromCharCode(0x00a0) and the
+comparison is on textContent, never toHaveText, because Playwright's
+text matchers normalise both sides (R66/R71).
+
+  javaScriptEnabled: false, GENEVA_C_URL
+    expect(main).not.toContain(`39,16${NBSP}%`)          passes
+    expect(main).toContain(CALCULATEUR_COPY.result.empty) passes
+    expect(main).toContain(CALCULATEUR_COPY.fiscal(FISCAL)) passes
+
+  hydrated, GENEVA_C_URL
+    expect(main).toContain(`39,16${NBSP}%`)              passes
+    #canton = GE, #jours-teletravail = 84,
+    #missions-france = 24                                 passes
+
+  bare path, hydrated
+    expect(main).not.toContain(`39,16${NBSP}%`)          passes
+
+THE FIRST BLOCK IS THE COST OF THE RULING, STATED RATHER THAN
+HIDDEN. The island reads the URL on mount, so with scripting off
+there is no pre-fill - and the page shows its empty state rather
+than a default calculation that is not the sender's scenario. SPEC
+9.3 requires the PAGE to be meaningful without JavaScript, not the
+calculation, and it still is: every explanatory paragraph and both
+ceilings are served in the initial HTML. The third block is
+non-vacuity: 39,16 % is the LINK's rate, not something every visitor
+sees.
+
+
+METADATA MATRIX
+--------------------------------------------------------------------
+Count-asserted per R119, in tests/unit/pages/param-metadata.test.ts.
+The two halves come from two places, which is the operator's ruling:
+the canonical from static metadata, the noindex from middleware as
+an X-Robots-Tag header.
+
+  URL shape                    X-Robots-Tag  canonical
+  ---------------------------------------------------------------
+  bare path                         0        ./  (the route)
+  "?" empty                         0        ./
+  ?canton=GE                        1        ./
+  all nine params                   1        ./
+  ?utm_source=facebook              1        ./
+  ?canton=GE&tt=abc                 1        ./
+
+  header count on a param URL       exactly 1, not 2
+  table shape                       6 rows, 4 noindex, 2 not
+
+The count is 1 or 0, never a presence check: a presence check passes
+on a page that sets the header twice, and on one that sets it for
+every route including the bare path - which would quietly de-index
+the page the whole SEO strategy rests on. The header itself is
+counted because Headers.append would leave a crawler reading the
+first of two.
+
+THE CANONICAL NEEDS NO CONDITION. The layout declares it RELATIVE -
+canonical: './' - so Next resolves it per ROUTE, and a route has no
+query string. A canonical that cannot carry a query already names
+the bare path from every param URL. Both R81 arms are asserted:
+absent when no origin is configured (a canonical pointing at
+localhost is an instruction to a crawler, and absence is the safer
+failure), relative once there is one. The resolved value is asserted
+in e2e against a nine-param URL, because the resolution is the
+framework's and only a served page shows it.
+
+ROBOTS SAYS "noindex, follow", not "none": the links on a shared
+calculator page are the same links as on the bare one, and there is
+no reason to stop a crawler walking to /sources from here.
+
+
+HOSTILE INPUTS
+--------------------------------------------------------------------
+22 cases in tests/unit/params/hostile-params.test.tsx, each asserted
+three ways - decode does not throw, no non-finite number reaches the
+engine, and the rendered page still shows a form and either an
+answer or the empty state.
+
+  case                         what arrives      handling
+  ----------------------------------------------------------------
+  ?canton=GE&amp;tt=84         amp;tt unknown    ignored, named in
+                                                 the notice; tt
+                                                 missing so no
+                                                 computation
+  double entity mangling       amp;amp;tt        same
+  truncated mid-value          tt=""             invalid, falls
+                                                 back, named
+  truncated mid-name           t=""              ignored, named
+  truncated to nothing         "?"               exactly the bare
+                                                 path (AC2)
+  repeated keys                canton=GE,VD      first wins, which
+                                                 is URLSearchParams
+                                                 .get; deterministic
+  99999999999999999999999      absurd magnitude  refused, default
+  1e308                        exponent          refused, default
+  -84                          negative          refused, default
+  quatre-vingt-quatre          words             refused, default
+  Arabic-Indic digits          U+0668 U+0664     refused, default
+  full-width digits            U+FF18 U+FF14     refused, default
+  84%00                        null byte         refused, default
+  "  84 "                      padding           refused, default
+  canton=ZZ                    unknown canton    refused rather
+                                                 than guessed
+  canton=ge                    lower case        refused; codes are
+                                                 the public contract
+  every value empty            nine empties      all fall back; no
+                                                 canton and no tt,
+                                                 so the empty state
+  utm_source, fbclid           tracking          ignored, named
+  10 KB value                  10 240 chars      refused, default
+  10 KB NAME                   10 240 chars      ignored, and the
+                                                 notice TRUNCATES
+                                                 the name at 24
+  <img onerror> as a NAME      markup            rendered as text;
+                                                 0 img, 0 script
+  <script> as a VALUE          markup            refused; 0 script
+
+NONE THROWS, NONE BLANKS THE PAGE, AND NONE PRODUCES A RESULT
+PRESENTED AS VALID - the third being the dangerous one, because an
+exception is visible and a blank page is visible and a confident
+38,4 % computed from a value the reader never typed is not. The
+result region is asserted to contain no "NaN", no "Infinity" and no
+"undefined" in any of the 22.
+
+THE 24-CHARACTER CAP IS A DECISION I MADE; see Q34. A 10 KB name
+does not throw and does not blank the page, so it clears the
+prompt's bar - and it would still put an unbroken 10 KB word on a
+360 dp screen, which R127 made a gate. 24 is longer than every name
+in SPEC 9.4 (the longest is "decompte", at 8) and longer than the
+tracking parameters that turn up in practice, so a real name is
+never cut.
+
+THE NOTICE IS THE ONE PLACE ON THIS PAGE WHERE A STRANGER CHOOSES
+WHAT APPEARS ON SCREEN. React escapes by default; the test asserts
+the default is still in force, because a dangerouslySetInnerHTML
+added here later would pass every other test in the repository.
+
+
+STORAGE NOTE
+--------------------------------------------------------------------
+THE DISTINCTION, STATED SO NOBODY LATER READS ONE GREEN AS COVERING
+THE OTHER.
+
+e2e/home.spec.ts asserts `await context.cookies()` is empty and no
+third-party request is made (SPEC 17, SPEC D12). That test:
+  - reads COOKIES, not storage;
+  - runs on "/", and never visits the calculator;
+  - would pass unchanged if this page wrote a megabyte of
+    localStorage, and pass unchanged if this page were deleted.
+
+So it does not cover the handoff, and the handoff does not weaken
+it. SPEC D12 still holds and is now also asserted directly at the
+moment of the write: tests/unit/pages/storage-handoff.test.tsx
+checks document.cookie is "" while the key is present.
+
+WHAT IS STORED. One key, frontalier.calculateur.v1, holding
+{"version":1,"params":"<query string>"} - the same nine names the
+URL carries, produced by the same encode(). Written only on a VALID
+COMPUTATION, debounced onto the same 400 ms timer as the URL so
+there is one synchronous write per settled scenario rather than one
+per keystroke. Nothing on the web reads it; SPEC 10's install-
+referrer handoff to the Android app is its reader.
+
+WHY THE DIFFERENCE MATTERS AND IS NOT A LOOPHOLE. A cookie is
+attached to every request to the origin, which makes it a tracking
+mechanism whether or not anybody intended one. This never leaves the
+device until the reader installs an app and that app reads it.
+
+NOTHING PERSONAL IS REPRESENTABLE. The guarantee is structural
+rather than careful: the payload is whatever encode() produces, and
+encode() can only produce the nine names, so there is no field for
+anything else to arrive in. The test asserts it as a WHITELIST -
+only names from PARAM_NAMES may appear, and every value must match
+^[A-Za-z0-9.,-]{1,12}$ - because a blacklist of things we thought of
+is not a guarantee. A probe adding navigator.userAgent to the
+payload reddens it.
+
+setItem THROWS in Safari private mode, with site data disabled, and
+on a full quota - the ordinary case for the in-app browser a social
+link opens in. It is caught and ignored deliberately: the reader did
+not ask for this, nothing they can see is affected, and a notice
+about storage would be the first thing on the page that is about us
+rather than about them.
+
+
+SIZE
+--------------------------------------------------------------------
+After this task, gzip level 9, from pnpm size on cc8605a:
+
+  route                                js total  delta   verdict
+  ----------------------------------------------------------------
+  /                                       107.1    6.5   pass
+  /_not-found                             107.4    6.8   pass
+  /calculateur-teletravail-frontalier     120.6   20.0   pass
+  /cgu                                    107.4    6.8   pass
+  /confidentialite                        107.4    6.8   pass
+  /mentions-legales                       107.4    6.8   pass
+  /sources                                107.4    6.8   pass
+
+  GATE A  total <= 125.0 KiB    calculator remainder 4.4 KiB
+  GATE B  delta <= 25.0 KiB     calculator remainder 5.0 KiB
+
+  framework floor 100.6 KiB, next 15.5.25 / react 19.2.8
+  css 5.8 KiB and fonts 47.1 KiB reported, never gated
+  middleware 34.1 KiB, which is not first-load JS for any route
+  route still prerendered as static
+
+TRAJECTORY. FW12 ended at 119.8 with 5,2 KiB of GATE A spare. R129
+returned 1,6 (the ruling predicted about 1,0), taking it to 118.2
+with 6,8 spare. FW13's six increments spent 2,4 KiB: the codec, the
+notice, the share row, the handoff and the middleware. The
+calculator now has 4.4 KiB of GATE A spare and 5.0 of GATE B.
+
+THAT IS THE TIGHTEST THIS ROUTE HAS BEEN. FW14 adds email capture
+and FW15 adds OG images, JSON-LD and analytics; on this trajectory
+GATE A is reachable within two tasks. Raising a budget is a SPEC 20
+ask-first item, so it is Q35 rather than a plan.
+
+
+TOKENS ADDED (R77)
+--------------------------------------------------------------------
+NONE.
+
+The share row uses --size-button-height, --size-button-min-width,
+--size-input-border, --colour-border-default, --colour-surface,
+--colour-text-primary, --radius-md, --space-2, --space-4, --space-6,
+--type-label-* and --type-caption-*, all of which already existed.
+
+It asked for two that did NOT exist, and that is SUMMARY item 3
+rather than a token request: --size-control-height and
+--colour-border are not tokens, they were typos for
+--size-button-height and --colour-border-default.
+
+
+DEVIATIONS
+--------------------------------------------------------------------
+1. INCREMENT 2 WAS SPECIFIED TO DECODE ON THE SERVER; IT DECODES ON
+   THE CLIENT. The prompt asked for the page to read searchParams
+   and pre-fill server-side, with generateMetadata emitting robots
+   conditionally. In Next 15.5.25 that costs this route its <head>.
+   Five arrangements were built and served:
+
+     force-dynamic alone ................. head intact
+     async page, no searchParams ......... head intact
+     page awaits searchParams ............ metadata in BODY
+     generateMetadata awaits it .......... metadata in BODY
+     only a Suspense child awaits it ..... metadata in BODY
+
+   So it is structural. This is SPEC 14's target-query page, and
+   <title> and <link rel="canonical"> in the body is not a trade I
+   could make alone. ASKED, and the operator ruled: static page,
+   client decode, noindex by X-Robots-Tag from middleware - which
+   Google documents as equivalent to the meta tag, needs no <head>,
+   and does not force a dynamic render. The cost is recorded under
+   SERVER RENDER: with scripting off a link carries no result.
+
+2. TWO COMMITS WERE RED IN CI. fdca008 and 2f2cbd2 each passed
+   `pnpm typecheck && pnpm lint && pnpm test && pnpm build` - the
+   chain CLAUDE.md defines as green - and each failed the full suite
+   on two e2e live-region counts and fourteen visual baselines.
+
+   Both are consequences of the share row, which is a second
+   aria-live region and adds 98 px to every calculator page. I did
+   not run the e2e or visual suites on those increments: they are
+   not in the per-increment chain, and running them takes about five
+   minutes each. Increment 6 found and fixed both, so HEAD is green,
+   but main carried two red commits for roughly an hour.
+
+   I am not recording this as acceptable. The rule says commit only
+   on green, and the definition of green in CLAUDE.md turns out not
+   to cover the two suites a visual, user-facing change is most
+   likely to break. Q33.
+
+3. THE SHARE ROW MOVED AFTER INCREMENT 4 WAS COMMITTED. It shipped
+   between the form and the link notice; increment 6 moved it below
+   the notice. Recorded as a deviation rather than folded into
+   increment 6 silently, because the commit that introduced it
+   claimed a placement rationale that was wrong.
+
+4. FIXTURE AND SPEC UNTOUCHED. No engine change, no constant, no
+   rounding rule, no new param name beyond the nine. The Geneva
+   fixtures still reproduce exactly, 39,16 % and 4,16 %.
+
+
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------
+1. TWO LINT WARNINGS PREDATE THIS TASK.
+   tests/unit/calc-engine/verification-trace.test.ts lines 81 and 83
+   carry eslint-disable directives for no-console that report
+   nothing. 0 errors, so the gate passes. Not mine, not touched.
+
+2. A URL WITH 500 UNKNOWN PARAMS PRINTS 500 NAMES. Each is now
+   capped at 24 characters, so the notice cannot contain one
+   enormous word, but it can still contain a long list. It does not
+   throw, blank the page, or mislead, so it clears the prompt's bar.
+   Capping the COUNT needs new French copy ("and N others"), which
+   is a copy decision. Q34.
+
+3. THE SHARE ROW IS QUIET. Its heading uses the label type scale,
+   so "Partager ce calcul" reads smaller than "Votre resultat"
+   above the panel. That is defensible for a secondary control and
+   it is also the growth mechanic, which is the one thing on this
+   page that decides whether anybody else ever sees it. A design
+   question, not a defect; FW15 owns the growth surface.
+
+4. THE FOCUS-RING DIFFERENCE BETWEEN TWO BASELINES IS A FEATURE I
+   DID NOT PLAN. calculateur-lien-partage and calculateur-rempli are
+   the same scenario reached two ways and differ by 2 285 pixels in
+   two bands, all of them focus rings, because page.fill focuses a
+   field and arriving at a link focuses nothing. Not acted on, but
+   worth knowing that the pair is now a visual round-trip test: if
+   decoding a link ever produced a different form from filling it
+   in, those two pictures would diverge somewhere other than the
+   rings.
+
+5. R47. Not raised. The operator's ruling stands and I have
+   committed not to ask again.
+
+
+QUESTIONS FOR THE OPERATOR
+--------------------------------------------------------------------
+Q33. WHAT COUNTS AS GREEN FOR A COMMIT?
+     CLAUDE.md defines it as typecheck && lint && test && build.
+     This task's increment 4 passed that chain and broke both the
+     e2e suite and every calculator baseline; two commits sat red on
+     main until increment 6. The four-command chain is about 3
+     minutes; adding test:e2e and test:visual takes it to roughly
+     11, per increment, and both need the container.
+     Options as I see them: (a) leave it, and accept that a visual
+     or DOM change can land red and be repaired by the next
+     increment; (b) add both suites to the per-increment chain;
+     (c) add a narrower rule - any increment touching a component
+     that renders on a public route runs test:e2e and test:visual
+     before committing. I would take (c), but this is a cost
+     decision about the session's shape and it is yours.
+
+Q34. SHOULD THE NOTICE CAP THE NUMBER OF NAMES IT LISTS, and if so
+     what does it say instead? Each name is capped at 24 characters
+     now. A link carrying 500 unknown params still prints 500 of
+     them. The copy would need a line like "et 12 autres", which is
+     a French copy decision and lib/fr/params.ts is already marked
+     TODO-COPY, unreviewed.
+
+Q35. GATE A HAS 4.4 KiB LEFT ON THE CALCULATOR. FW14 is email
+     capture and FW15 is OG images, JSON-LD and analytics. Raising a
+     budget is a SPEC 20 ask-first item, so I am not proposing it -
+     but on this trajectory the ceiling is reachable within two
+     tasks, and the choice between raising it, splitting the island,
+     or cutting something is better made before the task that hits
+     it than during.
+
+Q36. THE 24-CHARACTER TRUNCATION AND THE HANDOFF KEY NAME ARE BOTH
+     DECISIONS I MADE WITHOUT ASKING. NOTICE_NAME_MAX = 24 and
+     frontalier.calculateur.v1. The key is a public contract with
+     the Android app the moment AN1 reads it, in the same way the
+     param names are, so if the name should be decided rather than
+     inherited from me, now is cheaper than after an install exists.
+
+
+PUSH PROOF
+--------------------------------------------------------------------
+Branch main, remote https://github.com/kaitmax/Frontalier.git
+
+  61a6bc9  chore: R128 - a baseline asserts its own dimensions
+  1f85e16  chore: R129 - /dev/** leaves the production build
+  d93c2c2  chore: R130 - the rail's ticks stop scaling
+  ae6f631  chore: R131 - the working tree takes an exclusive lock
+  ae83bb1  FW13: param schema and pure codec
+  cb9ef63  FW13: pre-fill from params, on the client, with the head
+           intact
+  3393a4c  FW13: noindex and bare-path canonical for param URLs
+  fdca008  FW13: URL sync and share controls
+  2f2cbd2  FW13: versioned localStorage handoff
+  cc8605a  FW13: hostile inputs, a11y, baselines, size record
+
+  2f2cbd2..cc8605a  main -> main       pushed
+  CI on cc8605a: success
+  https://github.com/kaitmax/Frontalier/actions/runs/34698166964
+
+This report is committed and pushed on top of cc8605a.
+
+END OF REPORT-FW13
