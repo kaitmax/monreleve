@@ -36,6 +36,7 @@ import { readFile, readdir, stat } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEV_DIST_DIR } from './dev-routes.mjs';
+import { refuseIfTreeLocked } from './tree-lock.mjs';
 
 const WEB_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 /**
@@ -64,6 +65,8 @@ const NEXT_DIR = join(WEB_ROOT, process.env.NEXT_DIST_DIR ?? (DEV_GATES_ONLY ? D
 const FONT_DIR = join(WEB_ROOT, 'public', 'fonts');
 
 const KIB = 1024;
+
+refuseIfTreeLocked('pnpm size');
 
 // THE FRAMEWORK FLOOR.
 //

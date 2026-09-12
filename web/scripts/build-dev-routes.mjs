@@ -24,8 +24,11 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DEV_DIST_DIR, DEV_ROUTES_FLAG } from './dev-routes.mjs';
+import { refuseIfTreeLocked } from './tree-lock.mjs';
 
 const WEB_ROOT = process.cwd();
+
+refuseIfTreeLocked('pnpm build:dev');
 
 /** Next's own JS entry, so no shell and no platform-specific shim. */
 const NEXT_BIN = join(WEB_ROOT, 'node_modules', 'next', 'dist', 'bin', 'next');

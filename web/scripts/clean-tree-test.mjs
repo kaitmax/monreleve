@@ -26,6 +26,7 @@ import { existsSync, renameSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { releaseTreeLock, takeTreeLock } from './tree-lock.mjs';
 
 const web = dirname(dirname(fileURLToPath(import.meta.url)));
 const live = join(web, 'public');
@@ -37,6 +38,13 @@ if (existsSync(stashed)) {
   );
   process.exit(1);
 }
+
+// RULING R131. From here until the restore, this checkout is not one that
+// exists in git: public/ is renamed aside. Any other command reading the
+// tree in that window sees a missing directory and fails for a reason that
+// looks exactly like the tree dependency this script exists to detect - it
+// has happened twice, and cost an hour each time.
+takeTreeLock('pnpm test:clean-tree');
 
 const moved = existsSync(live);
 
@@ -64,6 +72,10 @@ try {
 
     console.log('public/ restored.');
   }
+
+  // AFTER the restore, so the lock is never released over a tree that is
+  // still moved aside.
+  releaseTreeLock();
 }
 
 if (status === 0) {
