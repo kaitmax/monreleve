@@ -40,6 +40,14 @@ export default defineConfig({
     exclude: ['e2e/**', 'node_modules/**', '.next/**'],
     environment: 'node',
 
+    // FW13: every DOM test starts at a bare URL. The calculator seeds from
+    // window.location.search and writes back to it, and jsdom gives a whole
+    // test FILE one window - so without this, one test leaves a scenario in
+    // the address bar and the next one renders it. Nine assertions in
+    // accessibility-calculateur.test.tsx failed exactly that way. The file
+    // itself carries the measurement.
+    setupFiles: ['tests/setup/address-bar.ts'],
+
     coverage: {
       provider: 'v8',
       // The engine, and from FW6 lib/ui/core - which is the commitment this

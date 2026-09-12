@@ -103,16 +103,44 @@ describe('the shell that survives without JavaScript (AC3)', () => {
     // every navigation. Increment 4 gives the region a purpose, so the
     // assertion moves to the thing AC3 actually cares about: the page must
     // show no RESULT before anybody has typed, whether or not JavaScript ran.
+    // TWO REGIONS NOW, AND BOTH ARE NAMED. This was a count of ONE, and
+    // FW13 increment 4 added the share row’s confirmation - so the count
+    // caught it, which is what R119 is for. The answer is not to loosen it
+    // to a presence check: two polite regions on one page is a real
+    // decision (a reader who copies a link should not have it announced
+    // through the result region, and a result should not be announced
+    // through the share row), so the assertion names each one and would go
+    // red again on a THIRD that nobody chose.
     const { container } = render(<CalculateurPage />);
-    const live = container.querySelectorAll('[aria-live]');
+    const live = [...container.querySelectorAll('[aria-live]')];
 
-    expect(live).toHaveLength(1);
-    expect(live[0]?.getAttribute('aria-live')).toBe('polite');
-    expect(live[0]?.textContent).toBe(CALCULATEUR_COPY.result.empty);
+    expect(live).toHaveLength(2);
+    expect(live.map((region) => region.getAttribute('aria-live'))).toEqual([
+      'polite',
+      'polite',
+    ]);
+
+    // Identified by what each one is, not by its position: the share
+    // confirmation carries data-share-status, the result carries the id the
+    // skip link and the Calculer button both point at.
+    const shareStatus = container.querySelector('[data-share-status]');
+    const result = container.querySelector('#resultat');
+
+    expect(shareStatus).not.toBeNull();
+    expect(result).not.toBeNull();
+    expect(live).toContain(shareStatus);
+    expect(live).toContain(result);
+
+    // The share row has said nothing yet, so it announces nothing. An empty
+    // live region is silent; a live region with a stale sentence in it is
+    // not.
+    expect(shareStatus?.textContent).toBe('');
+
+    expect(result?.textContent).toBe(CALCULATEUR_COPY.result.empty);
 
     // No rate, and not even a percent sign: the region is prose until the
     // engine has something to say.
-    expect(live[0]?.textContent).not.toContain('%');
+    expect(result?.textContent).not.toContain('%');
   });
 });
 

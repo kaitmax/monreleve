@@ -48,9 +48,9 @@ import {
   ruleSetFor,
 } from '@/lib/calc-engine';
 import { provisionalFor, readingAnchor } from '@/lib/content/provisional';
-import { decode, isoDayForFraction } from '@/lib/params/codec';
+import { decode, encode, isoDayForFraction } from '@/lib/params/codec';
 import { CALCULATEUR_COPY } from '@/lib/fr/calculateur';
-import { PARAM_NOTICE } from '@/lib/fr/params';
+import { PARAM_NOTICE, SHARE_COPY } from '@/lib/fr/params';
 import { PROVISIONAL_COPY } from '@/lib/fr/provisional';
 import { CANTONS_BY_NAME } from '@/lib/fr/cantons';
 import { errorMessage } from '@/lib/fr/errors';
@@ -65,6 +65,15 @@ const RESULT = CALCULATEUR_COPY.result;
 /** The live region's id. The Calculer button moves focus here. */
 const RESULT_ID = 'resultat';
 const RESULT_TITLE_ID = 'resultat-titre';
+
+/**
+ * The URL debounce. FW13 increment 4.
+ *
+ * The prompt names 400 ms and asks why: the ENGINE is free and runs on
+ * every input event, while replaceState is main-thread work against a
+ * string nobody reads between keystrokes.
+ */
+const URL_DEBOUNCE_MS = 400;
 
 const ICON = 20;
 const STROKE = 1.75;
@@ -390,6 +399,33 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
     // increment 4 makes to it.
   }, []);
 
+  /**
+   * navigator.share, DETECTED AFTER MOUNT rather than during render.
+   *
+   * The island is server-rendered before it hydrates and there is no
+   * navigator on the server, so reading it during render would produce
+   * markup that disagrees with the client and React would warn. Detecting in
+   * an effect means the button appears on the devices that have the API and
+   * never exists anywhere else: a button that does nothing when pressed
+   * reads as a broken site rather than as a missing browser feature.
+   */
+  const [canShare, setCanShare] = useState(false);
+
+  useEffect(() => {
+    setCanShare(
+      typeof navigator !== 'undefined' && typeof navigator.share === 'function',
+    );
+  }, []);
+
+  /**
+   * What the share row has just done, as a sentence.
+   *
+   * IT STAYS. The prompt: the copy confirmation must be readable by a screen
+   * reader, and not a toast that vanishes. A timer clearing this would take
+   * the message away from exactly the reader who needs longest to reach it.
+   */
+  const [shareStatus, setShareStatus] = useState('');
+
   // SPEC 9.4 requires the link notice to be DISMISSIBLE. Dismissed in state
   // rather than removed from the DOM by the reader's browser, so it comes
   // back on the next shared link rather than staying hidden for the session.
@@ -473,6 +509,41 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
       : reported.filter((error) => error.code !== 'TOTAL_WORK_DAYS_NOT_POSITIVE');
 
   const result: TeleworkResult | null = outcome !== null && outcome.ok ? outcome.value : null;
+
+  /**
+   * THE ADDRESS BAR FOLLOWS THE FORM. FW13 increment 4.
+   *
+   * replaceState, NEVER pushState. Every input event changes the scenario,
+   * so pushing would add one history entry per KEYSTROKE: a reader who typed
+   * "84" and pressed Back twice would still be on the calculator, and the
+   * third press would take them somewhere they never asked to leave.
+   *
+   * AND THIS IS THE ONE DEBOUNCE IN THE PRODUCT. The engine is not debounced
+   * - SPEC 9.3 says recompute on every input event, and it costs
+   * microseconds. The URL is different: replaceState is main-thread work
+   * against a string nobody reads mid-word, and 400 ms is far below the
+   * pause before anyone reaches for the share button.
+   *
+   * NOT BEFORE THERE IS SOMETHING TO SHARE. A bare path stays bare: putting
+   * a query string in front of a reader who has typed nothing is a URL they
+   * did not ask for and cannot un-see.
+   */
+  useEffect(() => {
+    if (input === null) return undefined;
+
+    const timer = setTimeout(() => {
+      const query = encode(input).toString();
+      const next =
+        query === '' ? window.location.pathname : `?${query}`;
+
+      window.history.replaceState(window.history.state, '', next);
+    }, URL_DEBOUNCE_MS);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [input]);
+
 
 
   /**
@@ -607,6 +678,61 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
    * opinion about which of its rules are settled.
    */
   const provisional = input === null ? [] : provisionalFor(input);
+
+  /**
+   * Copy, with a fallback for browsers without the async clipboard.
+   *
+   * execCommand IS DEPRECATED AND IT IS STILL THE FALLBACK: the modern API
+   * is unavailable in a non-secure context and behind some permissions
+   * policies, which is exactly the in-app browser a Facebook link opens in.
+   * Both paths end in the same announcement.
+   */
+  const copyLink = () => {
+    const url = window.location.href;
+
+    const announce = (ok: boolean) => {
+      setShareStatus(ok ? SHARE_COPY.copied : SHARE_COPY.copyFailed);
+    };
+
+    if (typeof navigator !== 'undefined' && navigator.clipboard !== undefined) {
+      void navigator.clipboard.writeText(url).then(
+        () => {
+          announce(true);
+        },
+        () => {
+          announce(false);
+        },
+      );
+
+      return;
+    }
+
+    const carrier = document.createElement('textarea');
+
+    carrier.value = url;
+    document.body.append(carrier);
+    carrier.select();
+
+    try {
+      announce(document.execCommand('copy'));
+    } catch {
+      announce(false);
+    } finally {
+      carrier.remove();
+    }
+  };
+
+  /** The native sheet. Cancelling it is a choice, not a failure. */
+  const shareLink = () => {
+    void navigator
+      .share({ title: SHARE_COPY.shareTitle, url: window.location.href })
+      .catch((error: unknown) => {
+        const aborted =
+          error instanceof Error && error.name === 'AbortError';
+
+        if (!aborted) setShareStatus(SHARE_COPY.copyFailed);
+      });
+  };
 
   return (
     <>
@@ -938,6 +1064,43 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
         asserts the survives-invalid-input property directly, so this
         decision is a failing test if anyone moves it later.
       */}
+      {/*
+        FW13 increment 4: THE SHARE ROW. SPEC 9.4's growth mechanic.
+
+        AFTER THE FORM AND BEFORE THE RESULT, because it shares the
+        SCENARIO rather than the answer: a reader who has just typed their
+        numbers is the one who wants to send them, and putting it below the
+        result would mean scrolling past four tiles and three banners.
+
+        Two SECONDARY buttons per FD1 - 48 h, radius 12, surface fill, 1 px
+        border - because neither is this page’s primary action. That is
+        Calculer, and it is above.
+      */}
+      <div className={styles.share}>
+        <h2 className={styles.shareHeading}>{SHARE_COPY.heading}</h2>
+
+        <div className={styles.shareRow}>
+          <button className={styles.shareButton} onClick={copyLink} type="button">
+            {SHARE_COPY.copy}
+          </button>
+
+          {canShare ? (
+            <button className={styles.shareButton} onClick={shareLink} type="button">
+              {SHARE_COPY.share}
+            </button>
+          ) : null}
+        </div>
+
+        {/*
+          THE CONFIRMATION, AND IT STAYS. Polite, so it does not interrupt a
+          reader mid-sentence, and ordinary text rather than a toast so it is
+          still there when somebody tabs back to it.
+        */}
+        <p aria-live="polite" className={styles.shareStatus} data-share-status>
+          {shareStatus}
+        </p>
+      </div>
+
       {/*
         FW13 increment 2: THE LINK NOTICE. SPEC 9.4: "invalid values fall
         back to default and surface a dismissible notice, never a blank page

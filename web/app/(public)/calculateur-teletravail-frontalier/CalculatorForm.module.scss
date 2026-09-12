@@ -385,3 +385,62 @@
   text-decoration: underline;
   cursor: pointer;
 }
+
+// ---------------------------------------------------------------------------
+// FW13 increment 4: the share row. SPEC 9.4's growth mechanic.
+//
+// SECONDARY BUTTONS, per DESIGN-SYSTEM.md section 4: "Secondary 48 h, radius
+// 12, surface fill, 1 px border." Neither of these is the page's primary
+// action - that is Calculer, which is brand-filled and sits above - and two
+// filled buttons beside it would make the page argue with itself about what
+// to press.
+//
+// THE ROW WRAPS. At 320 px two 48 h buttons and their labels do not fit on one
+// line, and a button that overflows the measure is the defect R127's check
+// exists to catch.
+// ---------------------------------------------------------------------------
+
+.share {
+  margin: 0 0 var(--space-6);
+}
+
+.shareHeading {
+  margin: 0 0 var(--space-2);
+  color: var(--colour-text-primary);
+  font-size: var(--type-label-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-label-line);
+}
+
+.shareRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.shareButton {
+  min-width: var(--size-button-min-width);
+  height: var(--size-control-height);
+  padding: 0 var(--space-4);
+  border: var(--size-input-border) solid var(--colour-border);
+  border-radius: var(--radius-md);
+  background: var(--colour-surface);
+  color: var(--colour-text-primary);
+  font-size: var(--type-label-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-label-line);
+  cursor: pointer;
+}
+
+// The confirmation. Empty until something has been copied, so it takes no
+// vertical space on a page nobody has shared yet.
+.shareStatus {
+  margin: var(--space-2) 0 0;
+  color: var(--colour-text-primary);
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-line);
+
+  &:empty {
+    margin: 0;
+  }
+}
