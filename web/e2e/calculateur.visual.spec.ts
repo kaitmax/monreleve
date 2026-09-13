@@ -68,6 +68,21 @@ const STATES: readonly VisualState[] = [
     reach: async () => undefined,
   },
   {
+    // THE FAQ OPEN, and it is the only state in this file that exists
+    // because nobody had ever looked at it. FW15 added three collapsed
+    // answers; the closed row appears in every baseline here, and the
+    // ANSWER - its colour, its measure, its spacing under a question that
+    // wraps to two lines at 390 - had never been photographed. R135:
+    // a baseline certifies that nothing changed, and only a person
+    // cropping the image catches something that was wrong from the start.
+    id: 'faq-ouverte',
+    reach: async (page: import('@playwright/test').Page) => {
+      for (const details of await page.locator('[data-faq] details').all()) {
+        await details.locator('summary').click();
+      }
+    },
+  },
+  {
     id: 'rempli',
     reach: fillGenevaCaseC,
   },
