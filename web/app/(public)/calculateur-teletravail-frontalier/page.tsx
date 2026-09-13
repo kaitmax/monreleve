@@ -38,10 +38,12 @@ import { ruleSetFor } from '@/lib/calc-engine';
 import { gateRobotsDirective } from '@/lib/content/routes';
 import { currentTaxYear } from '@/lib/content/tax-year';
 import { CALCULATEUR_COPY as COPY } from '@/lib/fr/calculateur';
-import { formatPercent } from '@/lib/ui/core';
+import { FAQ_COPY } from '@/lib/fr/faq';
+import { formatDays, formatPercent } from '@/lib/ui/core';
 import { Container } from '@/lib/ui/react/Container/Container';
 import { CalculatorForm } from './CalculatorForm';
 import { AlertCapture } from '@/lib/ui/react/AlertCapture/AlertCapture';
+import { Faq } from '@/lib/ui/react/Faq/Faq';
 import styles from './calculateur.module.scss';
 
 /**
@@ -216,12 +218,34 @@ export default function CalculateurPage() {
           <a href={COPY.form.sourcesLink.href}>{COPY.form.sourcesLink.text}</a>
         </p>
 
-        <section className={styles.explanation}>
+        <section className={styles.explanation} data-explanation>
           <h2 className={styles.heading}>{COPY.explanationHeading}</h2>
           <p className={styles.prose}>{COPY.fiscal(fiscal)}</p>
           <p className={styles.prose}>{COPY.social(social)}</p>
           <p className={styles.prose}>{COPY.missions(fiscal)}</p>
         </section>
+
+        {/*
+          THE INLINE FAQ. SPEC 14, FW15 increment 2.
+
+          LAST, AND R137 ASSERTS IT. It elaborates the explanation above -
+          the two thresholds, missions, sick days - so above that prose it
+          would be answering questions the reader has not been given yet. It
+          also stays BELOW the capture card: moving it between them would
+          push the card down behind three collapsed answers.
+
+          Its answers are generated from the same lib/fr source increment 3
+          turns into FAQPage structured data, which is what makes the two
+          impossible to disagree.
+        */}
+        <Faq
+          heading={FAQ_COPY.heading}
+          entries={FAQ_COPY.entries({
+            fiscal,
+            social,
+            basisDays: formatDays(rules.simplifiedBasisDays),
+          })}
+        />
       </Container>
     </main>
   );

@@ -1,0 +1,48 @@
+// web/lib/ui/react/Faq/Faq.module.scss
+// Tokens only; camelCase class names for CSS Module addressing.
+
+.faq {
+  margin-top: var(--space-6);
+}
+
+.heading {
+  margin: 0 0 var(--space-4);
+  color: var(--colour-text-primary);
+  font-size: var(--type-h2-size);
+  font-weight: var(--type-h2-weight);
+  line-height: var(--type-h2-line);
+}
+
+.entry {
+  // --size-rule, ruling R69: a hairline is its own token, not an alias of the
+  // card border.
+  border-top: var(--size-rule) solid var(--colour-border-default);
+
+  &:last-of-type {
+    border-bottom: var(--size-rule) solid var(--colour-border-default);
+  }
+}
+
+.question {
+  // The marker stays. A disclosure with no affordance is a heading that
+  // happens to be clickable, and the platform's triangle rotates on open
+  // without any state of ours.
+  padding: var(--space-4) 0;
+  color: var(--colour-text-primary);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  line-height: var(--type-h3-line);
+  cursor: pointer;
+
+  // The UA default focus ring is deliberate (see DESIGN-SYSTEM). Nothing here
+  // removes it.
+}
+
+.answer {
+  margin: 0;
+  padding-bottom: var(--space-4);
+  color: var(--colour-text-secondary);
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  line-height: var(--type-body-line);
+}

@@ -52,6 +52,13 @@ const COMPONENTS = readdirSync(LIBRARY, { withFileTypes: true })
  * CREATE one, by pulling a server component into client code and reporting
  * a number the product does not pay. R136 is the ruling it exists under:
  * prefer zero JS on public routes, and the capture card has none.
+ *
+ * Faq (FW15) is the same statement as AlertCapture's, and this census is how
+ * it got made rather than assumed: the FAQ is built on native <details>
+ * precisely so that it needs no JavaScript - the answers have to be in the
+ * DOM for a crawler, since increment 3 publishes them as FAQPage structured
+ * data and a claim a reader cannot see is cloaking. A component whose whole
+ * design is "no client cost" is the last thing to put in a client island.
  */
 const MEASURED_ELSEWHERE: ReadonlyArray<readonly [string, string]> = [
   [
@@ -64,6 +71,13 @@ const MEASURED_ELSEWHERE: ReadonlyArray<readonly [string, string]> = [
     'A server component: a plain form with no client JavaScript (R136). ' +
       'Rendering it in a client island would not measure its cost, it would ' +
       'create one.',
+  ],
+  [
+    'Faq',
+    'A server component built on native <details>: no client JavaScript at ' +
+      'all, by design, because the answers must stay in the DOM for a ' +
+      'crawler and a scripting-off reader. Rendering it here would create a ' +
+      'cost the product does not pay.',
   ],
 ];
 
@@ -111,10 +125,26 @@ describe('the island harness imports the whole component library (R122)', () => 
       expect(reason.length, component).toBeGreaterThan(40);
     }
 
+    // THE CAP IS A RATCHET, AND RAISING IT IS THE DELIBERATE EDIT IT IS
+    // MEANT TO BE. Two became three in FW15 for Faq, and the number is worth
+    // watching rather than following: every exclusion is a component GATE I
+    // stops measuring, and a list that grows one reasonable entry at a time
+    // ends as a harness that measures nothing.
+    //
+    // What keeps this honest is that all three entries say the same kind of
+    // thing - the cost lands somewhere else, or including it would invent a
+    // cost - rather than "this one is awkward to render". The day an entry
+    // cannot be written in those terms is the day the harness is wrong, not
+    // the cap.
     expect(
       MEASURED_ELSEWHERE.length,
       'the exclusion list has grown - is the harness still measuring the library?',
-    ).toBeLessThanOrEqual(2);
+    ).toBeLessThanOrEqual(3);
+
+    // AND THE MAJORITY MUST STILL BE MEASURED, which is the assertion the cap
+    // was standing in for: a fixed ceiling says nothing as the library grows,
+    // while this keeps meaning the same thing at any size.
+    expect(MEASURED_ELSEWHERE.length * 2).toBeLessThan(COMPONENTS.length);
   });
 
   it('renders every Status, so a dynamic union index cannot be shaken out', () => {

@@ -51,6 +51,8 @@ const SELECTORS = [
   '[data-notice="provisional"]',
   '#resultat',
   '[data-alert-scenario]',
+  '[data-explanation]',
+  '[data-faq]',
 ] as const;
 
 const NAMES: Readonly<Record<string, string>> = {
@@ -59,6 +61,8 @@ const NAMES: Readonly<Record<string, string>> = {
   '[data-notice="provisional"]': 'provisional notice',
   '#resultat': 'result',
   '[data-alert-scenario]': 'capture card',
+  '[data-explanation]': 'explanation',
+  '[data-faq]': 'FAQ',
 };
 
 function sequence(container: HTMLElement): string[] {
@@ -83,7 +87,32 @@ describe('R137: the calculator page renders its sections in one order', () => {
 
     const order = sequence(container);
 
-    expect(order).toEqual(['share row', 'result', 'capture card']);
+    expect(order).toEqual(['share row', 'result', 'capture card', 'explanation', 'FAQ']);
+  });
+
+  it('puts the FAQ last, after the prose it elaborates (R137, FW15)', () => {
+    // WHY LAST AND NOT HIGHER UP. The FAQ answers questions the explanation
+    // raises - what the two thresholds are, what missions do, what happens to
+    // sick days - so it reads as elaboration rather than as a second
+    // introduction. Placed above the explanation it would answer questions
+    // the reader has not been given yet.
+    //
+    // AND IT IS BELOW THE CAPTURE CARD DELIBERATELY. SPEC 9.3 item 8 puts the
+    // card under everything the island renders; moving the FAQ between them
+    // would push the card down the page behind three collapsed answers, which
+    // is the sort of quiet demotion that only shows up in a conversion
+    // number.
+    const { container } = render(
+      <PublicShell>
+        <CalculateurPage />
+      </PublicShell>,
+    );
+
+    const order = sequence(container);
+
+    expect(order.at(-1)).toBe('FAQ');
+    expect(order.indexOf('explanation')).toBeLessThan(order.indexOf('FAQ'));
+    expect(order.indexOf('capture card')).toBeLessThan(order.indexOf('explanation'));
   });
 
   it('puts the share row after the notice that explains the link', () => {
@@ -108,6 +137,8 @@ describe('R137: the calculator page renders its sections in one order', () => {
       'share row',
       'result',
       'capture card',
+      'explanation',
+      'FAQ',
     ]);
   });
 
@@ -139,6 +170,8 @@ describe('R137: the calculator page renders its sections in one order', () => {
       'provisional notice',
       'result',
       'capture card',
+      'explanation',
+      'FAQ',
     ]);
   });
 

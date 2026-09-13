@@ -27,6 +27,7 @@
 
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import { OG_CARD } from '@/lib/content/og';
 import { canonicalsAvailable, siteOrigin } from '@/lib/content/site';
 import { APP_NAME, TITLE_TEMPLATE } from '@/lib/fr';
 import { PublicShell } from '@/lib/ui/react/PublicShell/PublicShell';
@@ -51,6 +52,58 @@ export const metadata: Metadata = {
   // already been written. See lib/content/site.ts.
   ...(canonicalsAvailable()
     ? {
+        // THE SOCIAL CARD, BEHIND THE SAME GATE AS THE CANONICAL, and it is
+        // the same ruling rather than a resemblance. FW15 increment 1 put the
+        // card at app/opengraph-image.png - Next's file convention, which
+        // emits these tags by itself - and measured what a build with no
+        // configured origin then carried in the head of every public page:
+        //
+        //   <meta property="og:image" content="http://localhost:3000/opengraph-image.png?...">
+        //   <meta name="twitter:image" content="http://localhost:3000/...">
+        //
+        // e2e/guard.runtime.spec.ts caught it. A card URL a crawler cannot
+        // fetch is the same kind of claim as a canonical it cannot follow,
+        // and absence is the safer failure in both cases. The convention has
+        // no conditional form, so the card is a static asset in public/ and
+        // is named here - inside the condition, with the canonical, where
+        // neither can be left outside the gate by accident.
+        //
+        // og:title and og:description are NOT set: Next fills them from each
+        // route's own title and description, which is what a per-page
+        // description is for. Setting them here would give every page the
+        // layout's, which is the failure a site-wide default description
+        // makes.
+        openGraph: {
+          type: 'website',
+          // fr_FR, and one locale by design (SPEC section 1 non-goals).
+          locale: 'fr_FR',
+          siteName: APP_NAME,
+          images: [
+            {
+              url: OG_CARD.path,
+              width: OG_CARD.width,
+              height: OG_CARD.height,
+              alt: OG_CARD.alt,
+              type: OG_CARD.type,
+            },
+          ],
+        },
+
+        twitter: {
+          // The 1,91:1 card. The default 'summary' crops to a square
+          // thumbnail, which cuts both ticks off the rail - the one thing
+          // the picture exists to show.
+          card: 'summary_large_image',
+          images: [
+            {
+              url: OG_CARD.path,
+              width: OG_CARD.width,
+              height: OG_CARD.height,
+              alt: OG_CARD.alt,
+            },
+          ],
+        },
+
         alternates: {
           // Relative, so Next derives it per route against metadataBase. A
           // literal canonical here would point every public page at the home

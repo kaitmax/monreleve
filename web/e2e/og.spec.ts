@@ -97,6 +97,43 @@ test.describe('the social card', () => {
     ).toBe(true);
   });
 
+  test('is named in the head of a public page, absolute and fetchable', async ({
+    page,
+    request,
+  }) => {
+    // THE TAGS ARE DECLARED, NOT CONVENTIONAL, and this is where that shows.
+    // A crawler never reads our metadata objects; it reads these four
+    // attributes, resolved by Next against metadataBase. The unit test asserts
+    // the declaration and cannot assert the resolution.
+    await page.goto('/calculateur-teletravail-frontalier');
+
+    const content = async (selector: string): Promise<string | null> =>
+      page.locator(selector).first().getAttribute('content');
+
+    const image = await content('meta[property="og:image"]');
+
+    expect(image, 'no og:image in the head').not.toBeNull();
+    expect(image).toContain(CARD);
+
+    // ABSOLUTE, because a relative og:image is not resolved by every platform
+    // - and R81 is the other half: with no configured origin these tags are
+    // absent entirely rather than absolute against localhost. The e2e server
+    // configures https://frontalier.example, so here they must be present.
+    expect(image).toMatch(/^https:\/\/frontalier\.example\//);
+
+    expect(await content('meta[name="twitter:card"]')).toBe('summary_large_image');
+    expect(await content('meta[property="og:image:width"]')).toBe(String(SOCIAL_WIDTH));
+    expect(await content('meta[property="og:image:height"]')).toBe(String(SOCIAL_HEIGHT));
+
+    // AND IT RESOLVES TO THE CARD. A well-formed tag naming a 404 is the
+    // failure nobody sees until a link is shared, because every assertion
+    // above passes on a URL that serves nothing.
+    const fetched = await request.get(CARD);
+
+    expect(fetched.status()).toBe(200);
+    expect(fetched.headers()['content-type']).toContain('image/png');
+  });
+
   test('is served as a PNG at the social dimensions', async ({ request }) => {
     const response = await request.get(CARD);
     const bytes = await response.body();
