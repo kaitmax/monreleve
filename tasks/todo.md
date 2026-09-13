@@ -582,6 +582,22 @@ Every task also clears the project-wide Definition of Done and the Execution, Te
 - [ ] Build succeeds: `docker build` in CI
 - [ ] Manual check: Coolify staging deploy green; backup file present after the first nightly run
 
+
+**Added by FW14 — mail deliverability (an operator task, not a code one):**
+`RESEND_API_KEY` joins the env checklist. Without it `lib/alerts/mailer.ts`
+collects confirmation messages in memory and delivers nothing — which is
+correct for tests and development, and in production means the alert list
+accepts subscriptions nobody can confirm. The fallback logs once, loudly,
+for exactly that reason.
+
+**SPF and DKIM for the sending domain.** `EMAIL_FROM` sends from a
+subdomain (`notifications.frontalier.fr`) so that its records can change
+without touching the apex records the rest of the domain relies on. The DNS
+records themselves cannot be created from this repository: FW14 noted them
+here rather than attempting them. Without both, the double opt-in lands in
+spam and the list silently stops growing — a failure that looks like nobody
+being interested.
+
 **Dependencies:** FW25, FW27
 **Files likely touched:** `Dockerfile`, `docker-compose.yml`, `app/api/health/route.ts`, `app/api/ready/route.ts`, `docs/deploy.md`, CI
 **Estimated scope:** M

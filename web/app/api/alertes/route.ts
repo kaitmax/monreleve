@@ -35,6 +35,7 @@ import {
 import { checkRate, clientKey } from '@/lib/alerts/rate-limit';
 import { parseSubscription, type Source } from '@/lib/alerts/subscribe';
 import { recordSubscription } from '@/lib/alerts/record';
+import { sendConfirmation } from '@/lib/alerts/confirmation';
 
 /**
  * Where each source sends the reader back to.
@@ -91,7 +92,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return back(request, RETURN_TO[source], statusForError(parsed.error));
     }
 
-    await recordSubscription(parsed.value);
+    const recorded = await recordSubscription(parsed.value);
+
+    // THE MAIL GOES OUT ONLY WHERE THERE IS SOMETHING TO CONFIRM. A token
+    // is absent for an address already on the list, and sending anyway
+    // would mail somebody a confirmation for a subscription they completed
+    // months ago - which is both confusing and the easiest possible way to
+    // turn this endpoint into a way of mailing strangers on demand.
+    if (recorded.token !== undefined) {
+      // The RESULT IS DELIBERATELY IGNORED for the answer. The row is
+      // written; a mail provider being down does not change what the
+      // reader is told, because "we could not send you a mail" is exactly
+      // the sentence that would distinguish a new address from a confirmed
+      // one and undo the enumeration property.
+      await sendConfirmation(parsed.value.email, recorded.token);
+    }
 
     // ONE STATUS FOR ALL FOUR OUTCOMES. A new address, an unconfirmed one, a
     // confirmed one and a returning one are four different amounts of work
