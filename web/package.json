@@ -15,6 +15,7 @@
     "db:deploy": "node --env-file-if-exists=.env node_modules/prisma/build/index.js migrate deploy && node --env-file-if-exists=.env node_modules/prisma/build/index.js generate",
     "db:reset": "node --env-file-if-exists=.env node_modules/prisma/build/index.js migrate reset --force",
     "db:seed": "node --env-file-if-exists=.env node_modules/prisma/build/index.js db seed",
+    "db:purge": "node --env-file-if-exists=.env scripts/purge-unconfirmed.mjs",
     "test:db": "node --env-file-if-exists=.env node_modules/vitest/vitest.mjs run --config vitest.db.config.ts",
     "build:dev": "node scripts/build-dev-routes.mjs",
     "start": "next start",

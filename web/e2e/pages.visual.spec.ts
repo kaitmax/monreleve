@@ -47,6 +47,29 @@ const PAGES = [
   // discloses P1, P2 and P3, so a silent change to it is a silent change to
   // what the product admits it does not know.
   { id: 'sources', path: '/sources' },
+
+  // FW14: the alert list. The landing a Facebook post points at, and the
+  // three outcome pages a reader reaches from an email - each of which says
+  // something different and needs to be seen to be believed.
+  //
+  // THE SUCCESS AND ERROR STATES OF THE CAPTURE FORM ARE HERE TOO, reached
+  // by the FRAGMENT the handler redirects with. They are the only pages in
+  // this suite whose appearance depends on the URL fragment: :target is what
+  // reveals one message out of six, and a baseline is the only place that
+  // mechanism can be seen working with real CSS.
+  { id: 'alertes', path: '/alertes' },
+  { id: 'alertes-confirmee', path: '/alertes/confirmation/confirmee' },
+  { id: 'alertes-lien-invalide', path: '/alertes/confirmation/invalide' },
+  { id: 'alertes-desinscrit', path: '/alertes/desinscription/ok' },
+  // THE CAPTURE CARD'S TWO STATUS STATES LIVE IN calculateur.visual.spec.ts,
+  // not here, and the reason is a flake this suite produced. They are
+  // captures of the CALCULATOR, and that page needs e2e/visual-select.css -
+  // which paints a closed select's label transparent for the duration of
+  // the shot. Chromium renders that label through the platform theme, which
+  // is not reproducible between machines: FW13 measured it at 497 differing
+  // pixels, and page-capture-erreur-mobile.png reproduced the same 497 here
+  // before failing twice and passing on a retry.
+
   { id: '404', path: '/cette-page-nexiste-pas' },
 ] as const;
 

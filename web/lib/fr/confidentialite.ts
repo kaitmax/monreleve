@@ -144,9 +144,21 @@ export const CONFIDENTIALITE_COPY = {
   basis: [
     "L’exécution du service que vous demandez, pour votre compte, vos " +
       'journées déclarées, les horodatages et le relevé annuel.',
+    // CORRECTED BY FW14, and the correction is AC3 working rather than a
+    // tidy-up. This sentence said every consent is withdrawn "dans les
+    // paramètres de l'application" - true of the daily reminder and of
+    // automatic detection, and NOT TRUE of the alert list, which anybody can
+    // join from the public site without ever installing anything. A reader
+    // who subscribed on the web and wanted out would have been sent looking
+    // for a setting in an app they do not have.
+    //
+    // The list has always been leavable: every message carries a one-click
+    // unsubscribe link (FW14 increment 4). The page now says where.
     'Votre consentement, pour les alertes par e-mail, pour le rappel ' +
       'quotidien et pour le mode automatique. Chacun se retire séparément et ' +
-      "à tout moment, dans les paramètres de l’application.",
+      'à tout moment. Les alertes se retirent par le lien de désinscription ' +
+      'présent dans chaque message, le rappel et le mode automatique dans ' +
+      "les paramètres de l’application.",
     "Notre intérêt légitime, pour la mesure d’audience agrégée décrite plus " +
       'haut et pour la correction des erreurs techniques du service.',
   ],

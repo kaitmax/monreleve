@@ -28,6 +28,7 @@ import { expect, test } from '@playwright/test';
 import { expectElementBaseline, expectPageBaseline } from './baseline';
 import { CALCULATEUR_COPY } from '../lib/fr/calculateur';
 import { CALCULATOR_PATH } from '../lib/content/routes';
+import { ALERTES_COPY } from '../lib/fr/alertes';
 import { PARAM_NOTICE } from '../lib/fr/params';
 import { PROVISIONAL_COPY } from '../lib/fr/provisional';
 import { RESULT_COPY } from '../lib/fr/result';
@@ -172,6 +173,22 @@ const STATES: readonly VisualState[] = [
     reach: async () => undefined,
   },
   {
+    // FW14: the capture card's status, revealed by the FRAGMENT the
+    // subscribe handler redirects with. These two are the only baselines in
+    // the product whose appearance depends on a URL fragment, and they are
+    // the only place the :target mechanism can be seen working against real
+    // CSS - jsdom identity-maps CSS modules, so axe sees all six messages
+    // and the hiding is invisible to it.
+    id: 'capture-succes',
+    search: '#alerte-ok',
+    reach: async () => undefined,
+  },
+  {
+    id: 'capture-erreur',
+    search: '#alerte-adresse-invalide',
+    reach: async () => undefined,
+  },
+  {
     id: 'lien-invalide',
     // What Facebook does to an ampersand, plus a value that cannot be read
     // and a tracking parameter nobody here recognises: all three notice lines
@@ -210,6 +227,11 @@ const MUST_SHOW: Readonly<Record<string, string>> = {
   // ordinary page under a name that claims otherwise.
   'lien-partage': RESULT_COPY.links['mission-exposure'].text,
   'lien-invalide': PARAM_NOTICE.lead,
+
+  // FW14. Without these, a fragment that stopped matching would photograph
+  // an ordinary calculator under a name claiming a status.
+  'capture-succes': ALERTES_COPY.submitted,
+  'capture-erreur': ALERTES_COPY.errors.emailInvalid,
 };
 
 for (const { width, label } of [
