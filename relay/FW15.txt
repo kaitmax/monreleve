@@ -34,6 +34,30 @@ R138 (carried, NOW DUE). The analytics sentence on /confidentialite
    holds it. If any part of the claim cannot be made true, the
    sentence is corrected again rather than the claim quietly widened.
 
+R142 (new, ADDENDUM). ASSERT DETERMINISM SEPARATELY FROM EQUALITY.
+   Before comparing a nine-param request against a bare one, assert
+   that TWO REQUESTS WITH THE SAME INPUT are byte-identical. If that
+   fails, the finding is non-determinism in the card - a font
+   fallback, a timestamp, a randomised value - and it is fixed at the
+   cause, never accommodated by a tolerance or a quarantine. Only
+   once same-input equality holds does the param-versus-bare
+   comparison mean what it claims. Report both assertions separately.
+
+   WHY IT IS A SEPARATE ASSERTION. A byte-equality test that fails
+   for a font fallback teaches whoever meets it to quarantine the
+   test - and a quarantined privacy test is worse than none, because
+   it looks like coverage. Two assertions mean the failure names its
+   own cause: same-input inequality is a rendering defect, and
+   param-versus-bare inequality is a privacy defect. One of those is
+   fixed in the card; the other is fixed in the route.
+
+   FW14's PRECEDENT IS THE REASON THE WORDING IS THIS STRICT. A
+   capture baseline failed at 497 differing pixels and the honest
+   answer was to fix the cause - a select label painted through the
+   platform theme - not to widen a tolerance. FW13 had already tried
+   the other way: maxDiffPixels: 600 hid a real regression within the
+   hour.
+
 R47. Still open, still the operator's.
 
 ====================================================================
@@ -107,11 +131,24 @@ INCREMENT 1 - the OG image route
 - opengraph-image.tsx for the calculator, and a site-wide default.
   It composes renderRailSvg's social variant - the generator already
   exists and is byte-parity tested; do not re-draw the rail.
+- R142 FIRST, AND IT IS A PRECONDITION RATHER THAN A SECOND TEST:
+  request the image TWICE WITH THE SAME INPUT and assert the bytes
+  are identical. Until that holds, the comparison below means
+  nothing - two byte arrays can differ for a reason that has no
+  privacy content at all. A failure here is a rendering defect and
+  is fixed at the cause: a fixed font with no fallback, no
+  timestamp, no randomness. Never a tolerance, never a skip.
+
 - GENERIC: the route takes no searchParams and reads none. A test
   requests it with a full nine-param query string and asserts the
   bytes equal the bare request's. That is AC1's real assertion - the
   privacy property (a user's exposure must not leak into a Facebook
   thread) is enforced by byte equality, not by intent.
+
+  BYTE EQUALITY RATHER THAN "READS NO SEARCHPARAMS", because an
+  assertion about the INPUTS is satisfied by code that reads the
+  query and happens to ignore it today. This one is about the
+  OUTPUT, so it survives a rewrite of how the route is built.
 - Baseline the image itself, zero tolerance, dimensions asserted
   (R128).
 - Commit: "FW15: generic OG image from the social rail variant".
@@ -224,6 +261,10 @@ PRECONDITIONS    CI run URL and status.
 INCREMENT 0      R139 with its reproduced failure, R140's principle
                  and judgement rule, R141.
 RED/GREEN LEDGER
+OG DETERMINISM   R142: two requests with the SAME input, byte-
+                 identical. Reported separately, and before the
+                 comparison below - if this one failed, say so and
+                 say what in the card was non-deterministic.
 OG BYTE EQUALITY The nine-param request against the bare one.
 JSON-LD MAP      Every emitted property and where it is visible on
                  the page.
