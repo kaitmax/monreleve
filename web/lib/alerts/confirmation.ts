@@ -10,9 +10,13 @@
 import { EMAIL_COPY } from '@/lib/fr/emails';
 import { siteOrigin } from '@/lib/content/site';
 import { sendMail } from '@/lib/alerts/mailer';
+import { issueUnsubscribeToken } from '@/lib/alerts/confirm';
 
-/** Where a confirmation link points. The handler is built in increment 4. */
+/** Where a confirmation link points. */
 export const CONFIRM_PATH = '/api/alertes/confirm';
+
+/** Where the one-click unsubscribe in every send points. */
+export const UNSUBSCRIBE_ENDPOINT = '/api/alertes/desinscription';
 
 /**
  * The absolute URL that goes in the email.
@@ -26,7 +30,16 @@ export const CONFIRM_PATH = '/api/alertes/confirm';
  * its indexing.
  */
 export function confirmUrl(token: string): string {
-  const url = new URL(CONFIRM_PATH, siteOrigin());
+  return tokenUrl(CONFIRM_PATH, token);
+}
+
+/** The one-click unsubscribe link that every send carries. */
+export function unsubscribeUrl(token: string): string {
+  return tokenUrl(UNSUBSCRIBE_ENDPOINT, token);
+}
+
+function tokenUrl(path: string, token: string): string {
+  const url = new URL(path, siteOrigin());
 
   url.searchParams.set('token', token);
 
@@ -42,9 +55,17 @@ export function confirmUrl(token: string): string {
  * the one thing that would distinguish a new address from a confirmed one.
  */
 export async function sendConfirmation(email: string, token: string): Promise<boolean> {
+  // A FRESH UNSUBSCRIBE TOKEN PER SEND, because the row keeps only a hash and
+  // nothing can read an existing token back out. The consequence is
+  // deliberate: the newest message's link is the one that works, and the
+  // newest message is the one in front of the reader.
+  const unsubscribeToken = await issueUnsubscribeToken(email);
+
   return sendMail({
     to: email,
     subject: EMAIL_COPY.confirmation.subject,
-    text: EMAIL_COPY.confirmation.lines(confirmUrl(token)).join('\n'),
+    text: EMAIL_COPY.confirmation
+      .lines(confirmUrl(token), unsubscribeUrl(unsubscribeToken))
+      .join('\n'),
   });
 }

@@ -106,9 +106,76 @@ export const ALERTES_COPY = {
    *
    * So the page says the same thing either way - a confirmation email is on
    * its way if it is needed - and the difference is handled silently on the
-   * server. tests/unit/alerts/enumeration.test.ts holds this.
+   * server. tests/db/subscribe-enumeration.test.ts holds this, and
+   * tests/db/subscribe-route.test.ts asserts the four answers are identical.
    */
   submitted:
     `C${APOS}est noté. Si cette adresse doit être confirmée, un message vient ` +
     `de partir${n(';')} ouvrez-le pour terminer votre inscription.`,
+
+  /**
+   * THE CONFIRMATION PAGE, once the link has been opened.
+   *
+   * Three outcomes and three pages, because the reader's next action
+   * differs in each. A page that said "quelque chose s'est mal passé" for
+   * all three would leave somebody whose link simply aged out with no idea
+   * that subscribing again would work.
+   */
+  confirmation: {
+    ok: {
+      heading: `Votre inscription est confirmée`,
+      body:
+        `Vous recevrez un message lorsque les règles du télétravail ` +
+        `frontalier changent. Chaque message contient un lien de ` +
+        `désinscription en un clic.`,
+    },
+    expired: {
+      heading: `Ce lien a expiré`,
+      body:
+        `Les liens de confirmation sont valables sept jours. Le vôtre a ` +
+        `dépassé ce délai${n(';')} inscrivez-vous à nouveau et vous en ` +
+        `recevrez un neuf.`,
+    },
+    unknown: {
+      heading: `Ce lien n${APOS}est plus valable`,
+      /**
+       * ONE PAGE FOR "never existed" AND "already used", deliberately.
+       * Telling them apart would let anybody feed tokens to the endpoint
+       * and learn which were once real, and the reader's next step is the
+       * same either way.
+       */
+      body:
+        `Il a peut-être déjà servi${n(':')} un lien de confirmation ne ` +
+        `fonctionne qu${APOS}une fois. Si vous n${APOS}êtes pas sûr d${APOS}être ` +
+        `inscrit, recommencez${n(';')} vous ne recevrez pas deux fois le ` +
+        `même message.`,
+    },
+  },
+
+  /** The way off the list, and the page that says it worked. */
+  unsubscribe: {
+    /** The line in every send. Short, and it does not argue. */
+    emailLink: `Se désinscrire en un clic`,
+
+    done: {
+      heading: `Vous êtes désinscrit`,
+      /**
+       * NO "are you sure", NO win-back, NO survey. The reader clicked a
+       * link that said it would unsubscribe them in one click, and a page
+       * that then asked them to confirm would have made that untrue.
+       */
+      body:
+        `Nous ne vous écrirons plus. Votre adresse reste enregistrée ` +
+        `uniquement pour ne pas vous réinscrire par erreur${n(';')} vous ` +
+        `pouvez revenir quand vous voulez.`,
+    },
+    unknown: {
+      heading: `Ce lien de désinscription n${APOS}est plus valable`,
+      body:
+        `Utilisez le lien du message le plus récent que vous avez reçu. ` +
+        `Si vous n${APOS}en avez plus, écrivez-nous et nous vous retirerons ` +
+        `de la liste.`,
+    },
+  },
+
 } as const;

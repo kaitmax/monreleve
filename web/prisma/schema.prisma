@@ -69,6 +69,21 @@ model AlertSubscriber {
   /// the link single-use.
   confirmationTokenHash String? @unique
 
+  /// SHA-256 of the one-click unsubscribe token. FW14 increment 4.
+  ///
+  /// A SECOND TOKEN, AND NOT THE CONFIRMATION ONE, because they have
+  /// opposite lifetimes. The confirmation token is single-use and cleared the
+  /// moment it works; an unsubscribe link has to keep working for as long as
+  /// the reader might still have one of our messages in their mailbox - which
+  /// is forever, as far as they are concerned. Reusing the confirmation token
+  /// would mean the unsubscribe link in every mail stops working the moment
+  /// somebody confirms, which is precisely when they start needing it.
+  ///
+  /// NOT CLEARED ON USE either. Clicking unsubscribe twice is not an error and
+  /// must not become one: mail clients prefetch links, people click twice, and
+  /// a second click landing on "lien invalide" reads as a failed unsubscribe.
+  unsubscribeTokenHash String? @unique
+
   /// When that token stops working. Null once confirmed.
   confirmationExpiresAt DateTime?
 

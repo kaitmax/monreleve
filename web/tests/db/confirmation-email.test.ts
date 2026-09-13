@@ -88,9 +88,9 @@ describe('the message that goes out', () => {
     // tests/unit/meta/french-literals.test.ts caught this file retyping
     // "qu’une fois" - which would have been a second place for that sentence
     // to drift from the one readers actually receive.
-    const [singleUse] = EMAIL_COPY.confirmation.lines('https://x/y').filter((line) =>
-      line.includes('sept jours'),
-    );
+    const [singleUse] = EMAIL_COPY.confirmation
+      .lines('https://x/confirm', 'https://x/unsubscribe')
+      .filter((line) => line.includes('sept jours'));
 
     expect(singleUse, 'the copy no longer states the seven days').toBeDefined();
     expect(text).toContain(String(singleUse));

@@ -22,6 +22,11 @@
 //
 // TODO-COPY: realistic French, not reviewed.
 
+import { ALERTES_COPY } from '@/lib/fr/alertes';
+
+/** Written once, in the copy module the pages use (R126). */
+const EMAIL_COPY_UNSUBSCRIBE = ALERTES_COPY.unsubscribe.emailLink;
+
 const APOS = String.fromCharCode(0x2019);
 const NB = String.fromCharCode(0x00a0);
 
@@ -44,7 +49,7 @@ export const EMAIL_COPY = {
      * address and nothing else, and "Bonjour Jean" would be the first lie in
      * a product whose entire value is not overstating what it knows.
      */
-    lines: (confirmUrl: string): readonly string[] => [
+    lines: (confirmUrl: string, unsubscribeUrl: string): readonly string[] => [
       `Bonjour,`,
       ``,
       `Vous avez demandé à être prévenu quand les règles du télétravail ` +
@@ -59,6 +64,13 @@ export const EMAIL_COPY = {
       `Si vous n${APOS}êtes pas à l${APOS}origine de cette demande, ignorez ce ` +
         `message${n(';')} sans confirmation, votre adresse est supprimée au bout ` +
         `de trente jours et vous ne recevrez rien d${APOS}autre.`,
+      ``,
+      // ONE-CLICK UNSUBSCRIBE IN EVERY SEND, including this one. A reader
+      // who has not confirmed can still say "not me, and stop" without
+      // waiting thirty days for the row to lapse - and a message that asks
+      // for consent while offering no way to refuse is asking badly.
+      `${EMAIL_COPY_UNSUBSCRIBE}${n(':')}`,
+      unsubscribeUrl,
     ],
   },
 } as const;

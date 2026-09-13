@@ -85,3 +85,31 @@ export function statusForError(error: string): AlertStatus {
 
   return ALERT_STATUS.form;
 }
+
+/**
+ * The confirmation and unsubscribe outcomes, as PATH SEGMENTS.
+ *
+ * A SEGMENT RATHER THAN A QUERY PARAMETER, and FW13 is why. Reading
+ * searchParams in a page makes the route dynamic in Next 15.5.25, which emits
+ * <title> and <link rel="canonical"> into the BODY instead of the head -
+ * measured five ways in FW13 increment 2. These pages are transactional and
+ * noindex-worthy, so the SEO cost would be nil, but the defect would still be
+ * there for the next person to find and misdiagnose.
+ *
+ * With a segment and generateStaticParams, each outcome is its own statically
+ * rendered page: head intact, cacheable, and an unknown segment is a 404
+ * rather than a page rendering an attacker's string.
+ */
+export const CONFIRM_STATES = {
+  confirmed: 'confirmee',
+  expired: 'expiree',
+  unknown: 'invalide',
+} as const;
+
+export const UNSUBSCRIBE_STATES = {
+  unsubscribed: 'ok',
+  unknown: 'invalide',
+} as const;
+
+export const CONFIRMATION_PATH = '/alertes/confirmation';
+export const UNSUBSCRIBE_PATH = '/alertes/desinscription';
