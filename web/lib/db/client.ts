@@ -47,10 +47,41 @@ const globalForPrisma = globalThis as unknown as {
   frontalierPrisma?: PrismaClient;
 };
 
-export const prisma: PrismaClient =
-  globalForPrisma.frontalierPrisma ??
-  new PrismaClient({ adapter: new PrismaPg({ connectionString: connectionString() }) });
+function create(): PrismaClient {
+  const client =
+    globalForPrisma.frontalierPrisma ??
+    new PrismaClient({ adapter: new PrismaPg({ connectionString: connectionString() }) });
 
-if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.frontalierPrisma = prisma;
+  if (process.env.NODE_ENV !== 'production') {
+    globalForPrisma.frontalierPrisma = client;
+  }
+
+  return client;
 }
+
+/**
+ * BUILT ON FIRST USE, NOT ON IMPORT, and CI is what taught this.
+ *
+ * The first version constructed the client at module scope, so importing this
+ * file read DATABASE_URL and threw without one. `next build` IMPORTS every
+ * route module to collect page data - it does not run the handlers - so the
+ * build died on /api/alertes/confirm in exactly the two CI jobs that have no
+ * database: the visual baselines and the runtime guard. The `web` job has one
+ * and passed, and so did every local run, because .env exists here.
+ *
+ * A build is not a connection. Deferring construction means a machine that
+ * never queries never needs a database, while the first real query still gets
+ * the same error naming the same fix - just at the moment it is actually
+ * needed rather than at the moment the file is read.
+ *
+ * The Proxy exists so that every call site keeps reading `prisma.model.method`
+ * rather than calling an accessor; the indirection is one property lookup and
+ * it is confined to this file.
+ */
+export const prisma: PrismaClient = new Proxy({} as PrismaClient, {
+  get(_target, property, receiver) {
+    const client = create();
+
+    return Reflect.get(client, property, receiver) as unknown;
+  },
+});
