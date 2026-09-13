@@ -35,7 +35,7 @@
 
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, Minus, Plus } from 'lucide-react';
 import {
   type Canton,
@@ -56,7 +56,25 @@ import { PROVISIONAL_COPY } from '@/lib/fr/provisional';
 import { CANTONS_BY_NAME } from '@/lib/fr/cantons';
 import { errorMessage } from '@/lib/fr/errors';
 import { FieldGroup } from '@/lib/ui/react/FieldGroup/FieldGroup';
-import { formatDays, formatPercent, remainingYearFraction } from '@/lib/ui/core';
+import { formatDays, formatPercent, remainingYearFraction, statusFor } from '@/lib/ui/core';
+import {
+  accordionOpened,
+  calculated,
+  missionsDeclared,
+  resultStatus,
+  shareClicked,
+} from '@/lib/analytics/events';
+import { track } from '@/lib/analytics/track';
+
+/**
+ * The advanced panel id, in one place.
+ *
+ * It was a literal in two - aria-controls and the panel - and FW15 added a
+ * third reader when accordion_opened started naming the section. A payload
+ * that drifts from the id it names is a category nobody can join back to
+ * the page.
+ */
+const ADVANCED_SECTION_ID = 'options-avancees';
 import { ResultPanel } from './ResultPanel';
 import styles from './CalculatorForm.module.scss';
 
@@ -535,6 +553,40 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
   const result: TeleworkResult | null = outcome !== null && outcome.ok ? outcome.value : null;
 
   /**
+   * SPEC 15: calculated and result_status.
+   *
+   * WHEN THEY FIRE IS THE WHOLE DESIGN, and the obvious placement is
+   * wrong. SPEC 9.3 recomputes on EVERY input event with no debounce, so
+   * firing here per computation would report dozens of calculations for
+   * one person typing "84" - and SPEC 15 asks calculated for "real usage,
+   * not bounces", a question that answer cannot address.
+   *
+   * So: calculated ONCE per mount, at the first result of any kind, and
+   * result_status on each CHANGE of status. The effect depends on the
+   * status string, so a reader who moves from compliant to social-switch
+   * and back produces three events and a reader who types a rate one digit
+   * at a time produces one.
+   *
+   * NOTHING GOES ANYWHERE TODAY. No collector is installed - see
+   * lib/analytics/track.ts for why - so track() returns immediately. The
+   * call sites exist because WHERE an event fires is the expensive
+   * knowledge, and it is cheaper to encode it beside the code that knows.
+   */
+  const status = result === null ? null : statusFor(result);
+  const everCalculated = useRef(false);
+
+  useEffect(() => {
+    if (status === null) return;
+
+    if (!everCalculated.current) {
+      everCalculated.current = true;
+      track(calculated());
+    }
+
+    track(resultStatus(status));
+  }, [status]);
+
+  /**
    * THE ADDRESS BAR FOLLOWS THE FORM. FW13 increment 4.
    *
    * replaceState, NEVER pushState. Every input event changes the scenario,
@@ -759,6 +811,8 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
    * Both paths end in the same announcement.
    */
   const copyLink = () => {
+    track(shareClicked('copy'));
+
     const url = window.location.href;
 
     const announce = (ok: boolean) => {
@@ -878,6 +932,12 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
           onChange={(value) => {
             const yes = value === COPY.missions.yes;
 
+            // SPEC 15: how common missions actually are. A BOOLEAN, never a
+            // count - how many mission days somebody declared is their
+            // fiscal position, and the question SPEC asks is answered by
+            // the yes.
+            track(missionsDeclared(yes));
+
             // RESET ON "Non", not merely hide. A hidden field keeps its value
             // and keeps feeding the calculation, so answering Oui, typing 12
             // and thinking better of it would compute from 12 mission days the
@@ -925,9 +985,16 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
           type="button"
           className={styles.disclosure}
           aria-expanded={advancedOpen}
-          aria-controls="options-avancees"
+          aria-controls={ADVANCED_SECTION_ID}
           onClick={() => {
-            setAdvancedOpen((open) => !open);
+            setAdvancedOpen((open) => {
+              // SPEC 15 asks whether progressive disclosure WORKS, so the
+              // event is the opening. Firing on close as well would count
+              // one reader twice and make the ratio meaningless.
+              if (!open) track(accordionOpened(ADVANCED_SECTION_ID));
+
+              return !open;
+            });
           }}
         >
           <ChevronDown
@@ -958,7 +1025,7 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
           NOT distinguish this implementation from a correct display:none one,
           and the probe is why that is stated rather than assumed.
         */}
-        <div id="options-avancees">
+        <div id={ADVANCED_SECTION_ID}>
           {!advancedOpen ? null : (
             <div className={styles.advanced}>
               <RadioGroup
