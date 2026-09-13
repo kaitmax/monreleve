@@ -855,4 +855,106 @@ rather than describing work already done as if this task did it.
 
 This report is committed and pushed on top of 9c22ffd.
 
+
+====================================================================
+ADDENDUM - RULINGS R138 TO R141, AND THE ANSWERS TO FW14's QUESTIONS
+====================================================================
+
+Received after this report was pushed. Recorded verbatim so the next
+session carries them, and so that a reader of this report knows how
+its four questions were settled.
+
+R138. A PRIVACY CLAIM IS WRITTEN IN THE TENSE THAT MATCHES THE CODE.
+      Correct the analytics sentence on /confidentialite to the future
+      tense now. FW15 flips it to the present and maps it to its test.
+      A test asserts no present-tense claim on that page lacks a
+      mapping.
+
+R139. gate:clean RUNS ONCE on any increment that adds a dependency,
+      reads a new environment variable, or changes a build or
+      postinstall step. Not every increment.
+
+R140. R132's SELECTOR GAINS lib/params/**, lib/alerts/**,
+      lib/content/**. Principle for future additions: any module whose
+      output reaches rendered HTML selects the browser suites,
+      whatever directory it lives in.
+
+R141. FW27 OWNS RFC 8058 - List-Unsubscribe-Post and a POST
+      unsubscribe endpoint, with the sends. Added to its scope. The
+      interim GET is acceptable because the action is idempotent and
+      reversible.
+
+THE QUESTIONS, ANSWERED:
+
+  Q37  ->  R139. gate:clean, but only on the increments that can
+          break it - a dependency, a new environment variable, a
+          build or postinstall change. Both of FW14's CI-red commits
+          were exactly those: one added Prisma, one read DATABASE_URL
+          at build time.
+  Q38  ->  leave the timing gap, as reported.
+  Q39  ->  R140. The three directories join the selector, and the
+          PRINCIPLE is the durable half: output reaching rendered
+          HTML is what selects, not the directory. That makes the
+          list a consequence rather than something to maintain.
+  Q40  ->  R138. Corrected now, flipped by FW15.
+  Q41  ->  R141. FW27 owns it, with the sends.
+
+Also settled: the status message's focus ring stays the UA default
+until a task needs the token.
+
+--------------------------------------------------------------------
+R138 APPLIED IN THIS SESSION - the only part of these rulings that
+was not deferred to FW15's increment 0.
+--------------------------------------------------------------------
+THE SENTENCE, before:
+
+  "La mesure d'audience est auto-hebergee, sans cookie et sans
+   identifiant publicitaire. Elle compte les pages consultees ...
+   Elle ne permet pas de vous reconnaitre, et aucune donnee ne part
+   vers un tiers."
+
+Present tense throughout, describing analytics that do not exist.
+
+AFTER, leading with what is true today:
+
+  "Le site ne mesure pas encore son audience. Lorsqu'il le fera, la
+   mesure sera auto-hebergee, sans cookie et sans identifiant
+   publicitaire : elle comptera les pages consultees ... ne permettra
+   pas de vous reconnaitre, et aucune donnee ne partira vers un
+   tiers."
+
+That is a STRONGER privacy statement than the one it replaces, and
+it is the one a reader can rely on. The old sentence asked to be
+believed about a mechanism; this one states a fact and then makes a
+promise about the mechanism.
+
+THREE TESTS PIN IT, and the third is the one that matters:
+
+  it says the site does not measure anything YET
+  it makes no present-tense promise about HOW it measures
+  it still describes what it WILL do - non-vacuity, because deleting
+    the sentence satisfies the first two and tells the reader less
+    than the page told them before
+
+PROBED by flipping it back to the present tense, as FW15 will: all
+three redden. So the flip cannot happen quietly - FW15 has to edit
+these tests, which is exactly where it will notice it owes the
+mapping R138 requires.
+
+THE BROADER TEST R138 DESCRIBES - "no present-tense claim on that
+page lacks a mapping" - IS FW15's, and deliberately not built here.
+The page carries many present-tense claims about the ANDROID app,
+whose code is in a different tree and whose tasks are FW22 onward. A
+test written today would need an exemption list covering all of them,
+and that list is a design decision belonging to the task that can
+actually map its own claims.
+
+BASELINES (R135): 2 regenerated,
+  page-confidentialite-desktop.png
+  page-confidentialite-mobile.png
+REASON: the sentence changed length, so the page changed height.
+Exactly two files, which is the whole surface that sentence appears
+on - and the listing named them rather than my reconstructing them
+from git status, which is what R135's mechanism is for.
+
 END OF REPORT-FW14

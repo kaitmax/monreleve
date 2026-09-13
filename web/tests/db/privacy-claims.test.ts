@@ -304,6 +304,37 @@ describe('CLAIM 8: technical reports carry no addresses', () => {
   });
 });
 
+describe('R138: a claim with no code behind it is in the future tense', () => {
+  it('says the site does not measure anything YET', () => {
+    // THE POINT OF THE RULING. A present-tense sentence describing
+    // analytics that do not exist is a published claim nothing enforces -
+    // the same shape as the consent sentence FW14 corrected, and live
+    // today on a page about privacy.
+    expect(CONFIDENTIALITE_COPY.web[2]).toContain('ne mesure pas encore');
+  });
+
+  it('makes no present-tense promise about how it measures', () => {
+    // THE GUARD THAT OUTLIVES THIS TASK. FW15 flips this to the present
+    // and maps it to its test in the same increment; until then, flipping
+    // it fails HERE. So the mapping cannot be forgotten on the way.
+    const claim = CONFIDENTIALITE_COPY.web[2];
+
+    expect(claim).not.toContain('est auto-hébergée');
+    expect(claim).not.toContain('Elle compte les pages');
+    expect(claim).not.toContain('ne part vers un tiers');
+  });
+
+  it('still describes what it WILL do, rather than saying nothing', () => {
+    // Non-vacuity: deleting the sentence would satisfy both assertions
+    // above and tell the reader less than the page told them before.
+    const claim = CONFIDENTIALITE_COPY.web[2];
+
+    expect(claim).toContain('auto-hébergée');
+    expect(claim).toContain('sans cookie');
+    expect(claim).toContain('tiers');
+  });
+});
+
 describe('the map covers the page rather than a chosen part of it', () => {
   it('names every alert-list sentence the page carries', () => {
     // R63, applied to a privacy map. The seven claims above are worth
@@ -321,14 +352,15 @@ describe('the map covers the page rather than a chosen part of it', () => {
     /**
      * Sentences this task does not own, named rather than filtered away.
      *
-     * The analytics claim - self-hosted, cookieless, no third party - is
-     * FW15's to make true, and FW14 neither implements nor contradicts it:
-     * nothing in this task measures anything. It is listed HERE rather than
-     * excluded by a narrower filter, because a filter that quietly stopped
-     * matching it would be indistinguishable from nobody having noticed it.
+     * The analytics claim is FW15's to make true. FW14 found it while
+     * proving the alert-list claims and could not map it to a test, because
+     * there is no code to test - nothing on this site measures anything.
      *
-     * It is still a published claim with no code behind it, which is the
-     * same shape AC3 exists to catch - and it goes in the report as such.
+     * RULING R138 put it in the FUTURE TENSE rather than leaving a
+     * present-tense claim standing with nothing behind it. It is listed
+     * HERE rather than excluded by a narrower filter, because a filter that
+     * quietly stopped matching it would be indistinguishable from nobody
+     * having noticed it.
      */
     const NOT_THIS_TASK = [CONFIDENTIALITE_COPY.web[2]];
 

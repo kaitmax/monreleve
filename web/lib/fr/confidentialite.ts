@@ -80,11 +80,32 @@ export const CONFIDENTIALITE_COPY = {
       'confirmation vous est alors envoyé, la date de votre accord est ' +
       'enregistrée, et chaque message contient un lien de désinscription en ' +
       'un clic.',
-    "La mesure d’audience est auto-hébergée, sans cookie et sans " +
-      'identifiant publicitaire. Elle compte les pages consultées et ' +
-      'quelques actions agrégées, comme le fait de lancer un calcul. Elle ne ' +
-      'permet pas de vous reconnaître, et aucune donnée ne part vers un ' +
-      'tiers.',
+    // RULING R138: A PRIVACY CLAIM IS WRITTEN IN THE TENSE THAT MATCHES THE
+    // CODE. This sentence was in the present tense from FW10 and described
+    // analytics that do not exist: nothing on this site measures anything
+    // today. FW14's privacy map found it while proving the alert-list claims
+    // and could not map it to a test, because there is no code to test.
+    //
+    // The future tense is the honest form until FW15 ships Umami. FW15 flips
+    // it back to the present and maps it to its test in the same increment -
+    // and tests/db/privacy-claims.test.ts pins the tense until then, so the
+    // flip cannot happen without the mapping.
+    //
+    // IT SAYS WHAT IS TRUE TODAY FIRST. "Le site ne mesure pas encore son
+    // audience" is a stronger privacy statement than the one it replaces, and
+    // it is the sentence a reader can actually rely on.
+    // THREE SENTENCES, MIRRORING THE ONE IT REPLACES. The first draft joined
+    // the second and third with a colon, and R91's guard refused it: French
+    // sets a no-break space before ":", and this file writes its strings as
+    // plain literals with no helper for one. Restructuring is the better fix
+    // anyway - the original was three sentences, and the correction should
+    // read like a tense change rather than a rewrite.
+    'Le site ne mesure pas encore son audience. Lorsqu’il le fera, la ' +
+      'mesure sera auto-hébergée, sans cookie et sans identifiant ' +
+      'publicitaire. Elle comptera les pages consultées et quelques ' +
+      'actions agrégées, comme le fait de lancer un calcul. Elle ne ' +
+      'permettra pas de vous reconnaître, et aucune donnée ne partira ' +
+      'vers un tiers.',
   ],
 
   appHeading: "Ce que l’application enregistre",
