@@ -608,10 +608,10 @@ senders above their bulk thresholds outright.
 - [ ] Manual check: Coolify staging deploy green; backup file present after the first nightly run
 
 
-**Added by FW15 — the analytics script has no same-origin source yet:**
+**Added by FW15, settled by FW16's R143 — how the analytics reaches Umami:**
 SPEC 15 asks for Umami, self-hosted, cookieless, with a **same-origin
-script**, and FW15 could not ship one. The blockers are specific, and each
-has a different owner:
+script**, and FW15 could not ship one. The blockers were specific, and are
+recorded because they are what made the ruling necessary:
 
 - **There is no instance.** The tracker script is served by a running Umami
   at `/script.js`, so "proxied or copied at build" both presuppose the
@@ -624,11 +624,35 @@ has a different owner:
   could never be verified against upstream — it would be a third-party
   script with none of the guarantees that usually come with one.
 
-So this task owns the choice as well as the deployment: proxy the instance's
-script through our own origin, or send events from our own code to a
-same-origin endpoint that forwards to Umami. The second needs no third-party
-script at all, which is the stronger reading of SPEC 17, and it is what the
-FW15 event layer is shaped for.
+**RULING R143 SETTLES IT (FW16, answering FW15's Q39): option (c).** Our own
+code POSTs the allow-listed payload to a **same-origin endpoint that forwards
+server-side**. No third-party script in the page, ever — so *zero third-party
+requests* becomes a property of the architecture rather than of a proxy
+configuration somebody has to keep correct.
+
+Committing a copy of Umami's script — the other candidate — is **refused**:
+an unverifiable third-party blob shipped to every reader.
+
+Two conditions come with the ruling, and neither is optional:
+
+- **The endpoint re-validates the key set server-side.** The client's
+  allow-list (`PAYLOAD_KEYS` in `web/lib/analytics/events.ts`) is a contract
+  the browser can be made to break; a payload arriving with a key outside the
+  set is rejected at the server, not forwarded. A privacy guarantee enforced
+  only in code the client runs is a guarantee anybody can edit.
+- **It fails closed.** An unreachable upstream drops the event *silently* and
+  never degrades or delays a page. The event is worth nothing and the page is
+  worth everything; `lib/analytics/track.ts` already takes this position on
+  the client side and the server must take the same one.
+
+FW15 built the event layer for this shape: a collector is **installed** rather
+than looked up, so nothing in the page names a vendor. Wiring option (c) is
+one `setCollector` call and no change to any call site.
+
+- [ ] `POST /api/analytics` (or equivalent), same-origin, forwarding server-side
+- [ ] The key set re-validated against the allow-list at the server
+- [ ] An unreachable upstream drops the event and returns fast
+- [ ] The four unwired events get their surfaces, or a reason each (see REPORT-FW15)
 
 **Until then `/confidentialite` says the site does not measure its audience
 yet** (ruling R138), and `web/e2e/analytics.spec.ts` holds that sentence on

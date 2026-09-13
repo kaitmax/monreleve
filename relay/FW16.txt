@@ -1,0 +1,241 @@
+FW16 SESSION PROMPT - frontalier
+Paste this entire prompt as the first message of a fresh Claude Code
+session, opened at the repository root.
+
+====================================================================
+PRE-STEP RULINGS (apply verbatim)
+====================================================================
+R1 (discharged). CI green on origin/main: verify, record the run URL.
+R2, R7-R8, R10-R13, R15-R142 (carried). The engine is closed.
+   R9: you own document edits.
+
+R143 (new - analytics mechanism, answers Q39). Option (c): our own
+   code POSTs the allow-listed payload to a SAME-ORIGIN endpoint that
+   forwards server-side. No third-party script in the page, ever.
+   Zero third-party requests becomes a property of the architecture
+   rather than of a proxy configuration. Two conditions: the endpoint
+   RE-VALIDATES the key set server-side rather than trusting the
+   client, and it FAILS CLOSED - an unreachable upstream drops the
+   event silently and never degrades or delays a page. Option (b),
+   committing a copy of someone else's script, is refused: an
+   unverifiable third-party blob shipped to every reader.
+   BUILD IN FW28, not here - this task ships no analytics. Record the
+   ruling in tasks/todo.md against FW28 (R9) so it cannot be lost.
+
+R144 (new - answers Q40). R132's selector gains test files
+   themselves: a changed file under e2e/ selects the suite it belongs
+   to (test:e2e, or test:visual for *.visual.spec.ts), and a changed
+   baseline selects test:visual. A test file that changes without its
+   own suite running is the same hole R132 closed from the other
+   side.
+
+R145 (new - answers Q41). THE OG CARD IS A SHIPPED ASSET, not a
+   review artifact. FW28 generates it at deploy time from
+   renderRailSvg; the committed image becomes a review baseline like
+   the others, so a contributor without docker cannot ship a card
+   that disagrees with the rail. Record against FW28 in
+   tasks/todo.md (R9).
+
+R47. Still open, still the operator's.
+
+====================================================================
+CONTEXT
+====================================================================
+Project: frontalier. You are executing task FW16 ONLY: the guides
+INFRASTRUCTURE - the MDX pipeline, the article template, the hub, and
+the mesh link-checker. No guide content: FW17 and FW18 write the
+seven articles. This task builds the thing that will refuse to let
+them be written wrongly.
+
+The mesh is the whole point. SPEC 9.5 states rules that determine
+whether the SEO strategy works at all, and a rule that is only in a
+document is a rule that will be broken in FW18 at 2 a.m. The
+link-checker is this task's most valuable deliverable.
+
+Read first: CLAUDE.md, README.md, SPEC sections 9.5 (verbatim), 14,
+17, 20; DESIGN-SYSTEM.md sections 1 and 4;
+prompts/design-frontier/FD13 (the article template; SPEC wins on
+conflict); tasks/todo.md FW16; REPORT-FW15.txt in full.
+
+====================================================================
+STANDING PROTOCOL (identical in every FW / AN prompt)
+====================================================================
+1. SESSION SCOPE. Increment 0 and FW16 only. Do not start FW17. In
+   particular: write NO guide content beyond the one sample article
+   increment 1 needs, and mark that sample explicitly as a fixture.
+2. INCREMENT CYCLE. Green after EVERY increment, with the suites
+   R132/R140/R144 select.
+3. COMMIT ONLY ON GREEN, chained with && (R15). R139: gate:clean once
+   if a dependency is added - MDX will add several.
+4. COMMITS. "FW16: <increment title>"; "chore: <title>" for
+   R143-R145.
+5. SIMPLICITY FIRST. MDX compiled at build time, no CMS, no client
+   runtime for content. The article template is a server component.
+6. TEST-FIRST with a RED row per behaviour. R96, R119, R120, R137
+   apply. R137 in particular: the article's section order (breadcrumb,
+   h1, metadata chips, rule, TOC, prose, CTA, footer) is a sequence
+   assertion, not a set of presence checks.
+7. ZERO CLIENT JS FOR CONTENT (R136). The TOC's active-item highlight
+   is the only candidate for an island; if it needs one, justify it
+   against GATE A's remainder or ship it without the highlight.
+8. UI DISCIPLINE. Tokens; French only from lib/fr and the MDX
+   frontmatter; one h1 per page; Container 'article' at the 680 px
+   measure; R88's hero pair for the article head.
+9. QUESTIONS. Pause and ask.
+10. EXIT ARTIFACT. REPORT-FW16.txt, committed and pushed.
+
+====================================================================
+INCREMENT 0 - R143, R144, R145
+====================================================================
+0a. R143 recorded against FW28 in tasks/todo.md, with its two
+    conditions. No analytics code in this task.
+0b. R144 selector extension, with a proof that a changed e2e file
+    selects its suite.
+0c. R145 recorded against FW28 in tasks/todo.md.
+Commits per letter; R49 applies.
+
+====================================================================
+TASK FW16 - GUIDES INFRASTRUCTURE
+====================================================================
+Acceptance criteria (restated; the report must prove each):
+AC1. A sample MDX article renders the full template - breadcrumb,
+     h1, the three metadata chips, sticky TOC, prose at the 680 px
+     measure, the component kit, the end CTA card, the sources line,
+     the related-guides list - at 1440 and 390.
+AC2. The mesh link-checker fails on: a cluster missing its pillar
+     backlink, a guide with fewer than two calculator links, a guide
+     absent from the hub, a link to a route not in the registry, and
+     a slug not matching its file name. Each proven by a planted
+     violation, captured, removed.
+AC3. Every article emits FAQPage structured data generated from the
+     SAME source the visible FAQ renders (the FW15 pattern), with the
+     question sets asserted identical.
+
+--------------------------------------------------------------------
+INCREMENT 1 - the MDX pipeline and the frontmatter contract
+--------------------------------------------------------------------
+- MDX at build time. Frontmatter as a TYPED, VALIDATED contract:
+  title, description, slug, cluster ('pillar' | 'cluster' |
+  'canton'), related (slugs), lastReviewed (ISO day, R28), reviewer,
+  faq (question/answer pairs). Zod-validated at build; an invalid
+  frontmatter fails the BUILD, not a test at runtime.
+- One sample article under content/guides/_fixture-*.mdx, named and
+  commented as a fixture, excluded from the registry and the sitemap.
+  It exists to exercise the template and the checker and is deleted
+  or kept as a fixture forever - say which.
+- The slug in frontmatter must equal the file name; a mismatch fails
+  the build (SPEC 14: slugs are permanent).
+- Commit: "FW16: MDX pipeline and validated frontmatter". Push.
+
+--------------------------------------------------------------------
+INCREMENT 2 - the article template
+--------------------------------------------------------------------
+- app/(public)/guides/[slug]/page.tsx, server component, per FD13:
+  breadcrumb; h1 at R88's hero pair; three metadata chips
+  (lastReviewed via formatDate, reviewer, reading time - computed,
+  not authored); a rule; the two-column body at 1440 with the TOC
+  sticky at 280 px and prose capped at 680; single column below.
+- The MDX component map: h2/h3 mapped to tokens, a bordered summary
+  block, DataGrid for comparison tables, the warning banner, the
+  accordion for FAQ, and a link component that VALIDATES its href
+  against the route registry at build time.
+- R137: the section sequence asserted.
+- Commit: "FW16: the article template". Push.
+
+--------------------------------------------------------------------
+INCREMENT 3 - the TOC
+--------------------------------------------------------------------
+- Headings extracted at build from the MDX AST, not by parsing
+  rendered HTML. Anchors are slugified, stable, and asserted stable
+  across a rebuild - an anchor is a URL fragment and people link to
+  them.
+- Sticky at 32 px; the current item marked with a 3 px brand pill on
+  its left edge per FD13. If the active-item highlight requires an
+  island, R136 applies: justify the bytes or ship without it and say
+  so.
+- Commit: "FW16: table of contents from the MDX AST". Push.
+
+--------------------------------------------------------------------
+INCREMENT 4 - THE MESH LINK-CHECKER (this task's core)
+--------------------------------------------------------------------
+- A build-time (or test-time, but blocking) checker encoding SPEC
+  9.5:
+    * pillar links to EVERY cluster; every cluster links back to the
+      pillar - bidirectional, non-negotiable;
+    * cluster-to-cluster links only where declared in `related` on
+      BOTH sides - an undeclared cross-link fails, which is how
+      "forced cross-links dilute the signal" becomes mechanical;
+    * every guide contains at least TWO calculator links - one
+      inline, one in the end CTA - counted by position, not just
+      presence (R119);
+    * every guide appears in the hub;
+    * every internal href resolves to a route in the registry;
+    * every guide links /sources in its footer.
+- The checker reports ALL violations, not the first - a checker that
+  stops at one turns FW18 into a guessing game.
+- AC2's five planted violations, each captured.
+- Commit: "FW16: the mesh link-checker". Push.
+
+--------------------------------------------------------------------
+INCREMENT 5 - the hub and FAQ structured data
+--------------------------------------------------------------------
+- /guides: the hub, listing clusters grouped by pillar, each entry
+  with its title, description and lastReviewed. Generated from the
+  registry - a guide cannot exist and be absent from the hub.
+- FAQPage JSON-LD per article, generated from the frontmatter `faq`
+  that the visible accordion also renders (the FW15 pattern), with
+  the identity assertion.
+- Commit: "FW16: the guides hub and FAQ structured data". Push.
+
+--------------------------------------------------------------------
+INCREMENT 6 - a11y, baselines, size, Lighthouse
+--------------------------------------------------------------------
+- jest-axe across the article (TOC open/closed states, accordion
+  open/closed) and the hub; keyboard path through the TOC and the
+  accordion; the 320 dp overflow check (R127) on both routes.
+- Baselines at 1440/390, zero tolerance, dimensions asserted, reasons
+  recorded.
+- pnpm size for /guides and the sample article; Lighthouse on the
+  article recorded. Content routes should be near the framework
+  floor - if they are not, say why.
+- Commit: "FW16: a11y, baselines, size, Lighthouse". Push.
+
+====================================================================
+OUT OF SCOPE FOR FW16
+====================================================================
+- The seven articles - FW17 and FW18. Write no guide prose beyond
+  the fixture.
+- The LAMal/CMU comparator - FW19. The homepage, /tarifs, /a-propos -
+  FW20. /application - FW20b.
+- Analytics of any kind (R143 defers it to FW28).
+- Any engine change.
+
+====================================================================
+FINAL VERIFICATION
+====================================================================
+pnpm gate && pnpm test:e2e && pnpm test:visual && pnpm test:a11y &&
+pnpm test:runtime
+Green in one run; CI green on origin/main after the final push.
+
+====================================================================
+REPORT FORMAT - REPORT-FW16.txt (pure ASCII, committed and pushed)
+====================================================================
+SUMMARY
+PRECONDITIONS    CI run URL and status.
+INCREMENT 0      R143, R144, R145 each recorded with its proof.
+RED/GREEN LEDGER
+MESH PROOFS      AC2's five planted violations, each with the
+                 checker's output.
+FRONTMATTER      The contract, and the build failure on invalid input.
+ANCHOR STABILITY The rebuild comparison.
+FAQ IDENTITY     Visible questions against the JSON-LD set.
+SEQUENCE         The article's asserted section order (R137).
+SIZE             /guides and the article against the framework floor.
+BASELINES        Regenerated files with reasons (R135).
+TOKENS ADDED     (R77)
+DEVIATIONS
+NOTICED BUT NOT TOUCHING
+QUESTIONS FOR THE OPERATOR
+PUSH PROOF
+
+END OF FW16 PROMPT
