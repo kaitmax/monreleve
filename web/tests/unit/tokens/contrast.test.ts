@@ -616,7 +616,12 @@ describe('every colour rule in the five stylesheets, at the bar its size implies
     // reason. STYLE_FREE is expected to stay empty; it exists so that the day
     // a component genuinely has no stylesheet, saying so is a deliberate edit
     // rather than an absence nobody notices.
-    const STYLE_FREE: readonly string[] = [];
+    // FW15 GAVE THIS ITS FIRST ENTRY, which is what it was written for.
+    // JsonLd renders <script type="application/ld+json"> and nothing else: no
+    // element a reader can see, therefore no colour, no type step and nothing
+    // for a contrast audit to read. A stylesheet there would be a file with
+    // no rules in it.
+    const STYLE_FREE: readonly string[] = ['JsonLd'];
 
     const directories = readdirSync(join(root, 'lib', 'ui', 'react'), { withFileTypes: true })
       .filter((entry) => entry.isDirectory())

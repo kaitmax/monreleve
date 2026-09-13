@@ -38,8 +38,11 @@ const COMPONENTS = readdirSync(LIBRARY, { withFileTypes: true })
 /**
  * Components the harness deliberately does not render, with the reason.
  *
- * NEITHER ENTRY IS AN EXEMPTION FROM MEASUREMENT. Each is a statement about
- * where the cost actually lands, and they are two different statements:
+ * NO ENTRY HERE IS AN EXEMPTION FROM MEASUREMENT. Each is a statement about
+ * where the cost actually lands, and there are two such statements - one
+ * component makes the first, three make the second. Both are checked against
+ * the source by "excludes nothing that would actually cost a client bundle"
+ * below, so neither is a claim a reader has to take on trust:
  *
  * PublicShell is already a client component of its own, so it enters a
  * client bundle on every public page and GATE A counts it there; the
@@ -59,6 +62,12 @@ const COMPONENTS = readdirSync(LIBRARY, { withFileTypes: true })
  * DOM for a crawler, since increment 3 publishes them as FAQPage structured
  * data and a claim a reader cannot see is cloaking. A component whose whole
  * design is "no client cost" is the last thing to put in a client island.
+ *
+ * JsonLd (FW15) renders one <script type="application/ld+json"> and nothing
+ * else - no client behaviour, and no rendered element at all. It is also the
+ * first entry in the contrast audit's STYLE_FREE list, for the same reason
+ * seen from the other side: there is nothing on screen to measure a contrast
+ * ratio against.
  */
 const MEASURED_ELSEWHERE: ReadonlyArray<readonly [string, string]> = [
   [
@@ -79,7 +88,22 @@ const MEASURED_ELSEWHERE: ReadonlyArray<readonly [string, string]> = [
       'crawler and a scripting-off reader. Rendering it here would create a ' +
       'cost the product does not pay.',
   ],
+  [
+    'JsonLd',
+    'A server component that renders one <script type="application/ld+json"> ' +
+      'and nothing else. It has no client behaviour to measure and no ' +
+      'rendered element at all.',
+  ],
 ];
+
+/**
+ * The one exclusion that is client code, and is excluded for the opposite
+ * reason: GATE A already counts it on every public route.
+ *
+ * Named here so the test below can hold BOTH reasons to account - the others
+ * must have no client cost, and this one must genuinely have some.
+ */
+const COUNTED_BY_GATE_A = 'PublicShell';
 
 /** The harness with its comments stripped - see withoutComments. */
 const harnessSource = (): string => withoutComments(readFileSync(HARNESS, 'utf8'));
@@ -125,26 +149,58 @@ describe('the island harness imports the whole component library (R122)', () => 
       expect(reason.length, component).toBeGreaterThan(40);
     }
 
-    // THE CAP IS A RATCHET, AND RAISING IT IS THE DELIBERATE EDIT IT IS
-    // MEANT TO BE. Two became three in FW15 for Faq, and the number is worth
-    // watching rather than following: every exclusion is a component GATE I
-    // stops measuring, and a list that grows one reasonable entry at a time
-    // ends as a harness that measures nothing.
+    // THE CAP WAS TWO, AND FW15 PUSHED IT TO FOUR IN ONE TASK - Faq, then
+    // JsonLd. Raising a ratchet twice in an afternoon is exactly the erosion
+    // it exists to prevent, so the protection moved to where it can actually
+    // hold: the test below, which checks the REASONS rather than counting
+    // them. A number cannot tell "a server component with no client cost"
+    // from "a client component somebody found awkward to render"; reading
+    // the source can.
     //
-    // What keeps this honest is that all three entries say the same kind of
-    // thing - the cost lands somewhere else, or including it would invent a
-    // cost - rather than "this one is awkward to render". The day an entry
-    // cannot be written in those terms is the day the harness is wrong, not
-    // the cap.
+    // The cap stays as a smell detector, and the proportional assertion
+    // beside it keeps meaning the same thing as the library grows, where a
+    // fixed ceiling would not.
     expect(
       MEASURED_ELSEWHERE.length,
       'the exclusion list has grown - is the harness still measuring the library?',
-    ).toBeLessThanOrEqual(3);
+    ).toBeLessThanOrEqual(4);
 
-    // AND THE MAJORITY MUST STILL BE MEASURED, which is the assertion the cap
-    // was standing in for: a fixed ceiling says nothing as the library grows,
-    // while this keeps meaning the same thing at any size.
     expect(MEASURED_ELSEWHERE.length * 2).toBeLessThan(COMPONENTS.length);
+  });
+
+  it('excludes nothing that would actually cost a client bundle', () => {
+    // THE ASSERTION THE COUNT WAS STANDING IN FOR, and the one that makes the
+    // list safe to grow. Every exclusion claims one of two things, and both
+    // are now checked against the source rather than taken on trust:
+    //
+    //   the server components  must contain no 'use client', so GATE I is
+    //                          not being asked to measure a cost that does
+    //                          not exist
+    //   PublicShell            must contain one, because its reason is the
+    //                          opposite - it IS in a client bundle and GATE
+    //                          A counts it there. If it ever stopped being
+    //                          client code, its exclusion would be wrong in
+    //                          the other direction and nothing would say so.
+    //
+    // A client component slipped into this list to dodge the harness fails
+    // here, whatever the cap says.
+    for (const [component] of MEASURED_ELSEWHERE) {
+      const source = readFileSync(
+        join(LIBRARY, component, `${component}.tsx`),
+        'utf8',
+      );
+      const isClient = /^\s*['"]use client['"]/m.test(source);
+
+      if (component === COUNTED_BY_GATE_A) {
+        expect(isClient, `${component} is excluded as client code but is not`).toBe(true);
+        continue;
+      }
+
+      expect(
+        isClient,
+        `${component} is excluded as having no client cost, but it declares 'use client'`,
+      ).toBe(false);
+    }
   });
 
   it('renders every Status, so a dynamic union index cannot be shaken out', () => {

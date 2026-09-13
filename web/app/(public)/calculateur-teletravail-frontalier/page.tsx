@@ -35,7 +35,9 @@
 
 import type { Metadata } from 'next';
 import { ruleSetFor } from '@/lib/calc-engine';
-import { gateRobotsDirective } from '@/lib/content/routes';
+import { faqPageLd, webApplicationLd } from '@/lib/content/jsonld';
+import { CALCULATOR_PATH, gateRobotsDirective } from '@/lib/content/routes';
+import { canonicalsAvailable, siteOrigin } from '@/lib/content/site';
 import { currentTaxYear } from '@/lib/content/tax-year';
 import { CALCULATEUR_COPY as COPY } from '@/lib/fr/calculateur';
 import { FAQ_COPY } from '@/lib/fr/faq';
@@ -44,6 +46,7 @@ import { Container } from '@/lib/ui/react/Container/Container';
 import { CalculatorForm } from './CalculatorForm';
 import { AlertCapture } from '@/lib/ui/react/AlertCapture/AlertCapture';
 import { Faq } from '@/lib/ui/react/Faq/Faq';
+import { JsonLd } from '@/lib/ui/react/JsonLd/JsonLd';
 import styles from './calculateur.module.scss';
 
 /**
@@ -150,8 +153,42 @@ export default function CalculateurPage() {
   const social = ceiling(rules.socialCeiling);
 
 
+  const faqEntries = FAQ_COPY.entries({
+    fiscal,
+    social,
+    basisDays: formatDays(rules.simplifiedBasisDays),
+  });
+
   return (
     <main className={styles.page}>
+      {/*
+        SPEC 14's structured data. Two objects, both built from what this
+        page already renders:
+
+          WebApplication   name is the h1, description is the visible lead -
+                           not the meta description, which a reader never
+                           sees. url only when there is a real origin (R81),
+                           for the same reason the canonical and the card are
+                           conditional.
+          FAQPage          generated from the SAME entries the accordion
+                           below renders, passed as one array rather than
+                           resolved twice. Two resolutions could be given
+                           different arguments and both look right alone.
+
+        Nothing here is a claim the page does not make: no rating, no price,
+        no author. lib/content/jsonld.ts enforces that with an allow-list.
+      */}
+      <JsonLd
+        data={webApplicationLd({
+          name: COPY.title,
+          description: COPY.intro(fiscal, social),
+          ...(canonicalsAvailable()
+            ? { url: `${siteOrigin()}${CALCULATOR_PATH}` }
+            : {}),
+        })}
+      />
+      <JsonLd data={faqPageLd(faqEntries)} />
+
       <Container width="narrow">
         <h1 className={styles.title}>{COPY.title}</h1>
         <p className={styles.lead}>{COPY.intro(fiscal, social)}</p>
@@ -240,11 +277,7 @@ export default function CalculateurPage() {
         */}
         <Faq
           heading={FAQ_COPY.heading}
-          entries={FAQ_COPY.entries({
-            fiscal,
-            social,
-            basisDays: formatDays(rules.simplifiedBasisDays),
-          })}
+          entries={faqEntries}
         />
       </Container>
     </main>
