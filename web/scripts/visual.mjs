@@ -327,6 +327,38 @@ try {
     }
   }
 
+  // R135: A REGENERATED BASELINE REQUIRES A STATED REASON, and the report
+  // has to LIST the files. In FW13 that list was reconstructed afterwards
+  // from git status, which is both a chore and a place to be wrong - and the
+  // point of the ruling is that blind regeneration is what laundered a 22 px
+  // button into the visual record. Printing it here means the report quotes a
+  // list rather than assembling one.
+  //
+  // git rather than mtimes: --update-snapshots rewrites every file it
+  // compares, so mtimes would name all 69. What matters is which came out
+  // DIFFERENT.
+  if (update) {
+    const changed = execFileSync(
+      'git',
+      ['status', '--porcelain', '--', 'tests/visual/baselines'],
+      { cwd: WEB, encoding: 'utf8' },
+    )
+      .split(NEWLINE)
+      .map((line) => line.trim())
+      .filter((line) => line !== '');
+
+    process.stdout.write(
+      [
+        '',
+        changed.length === 0
+          ? 'R135: no baseline changed. Nothing to state a reason for.'
+          : `R135: ${changed.length} baseline(s) regenerated - list these in the report with a reason:`,
+        ...changed.map((line) => `  ${line}`),
+        '',
+      ].join(NEWLINE),
+    );
+  }
+
   const host = resolve(WEB, DIST_DIR);
 
   if (existsSync(host)) {
