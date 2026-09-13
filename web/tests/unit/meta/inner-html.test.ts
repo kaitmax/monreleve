@@ -21,11 +21,17 @@
 // interpretation: a literal app/(public)/ would have made the app half of the
 // rule vacuous until FW10 created the directory.
 //
-// app/dev/rail-gallery is deliberately outside it: a screenshot harness
-// rendering a string this suite has already proved is escaped, not product
-// code. It is not therefore unaccounted for - the last test in this file
-// requires every occurrence in the WHOLE repository, dev included, to carry
-// an eslint-disable with a written reason.
+// app/dev/rail-gallery and app/dev/og are deliberately outside it: screenshot
+// harnesses rendering a string this suite has already proved is escaped, not
+// product code. They are not therefore unaccounted for - the last test in
+// this file requires every occurrence in the WHOLE repository, dev included,
+// to carry an eslint-disable with a written reason.
+//
+// FW15 ADDED THE THIRD SITE, and this census is how it was noticed rather
+// than a thing I remembered to declare. app/dev/og renders the social card
+// that ships as public/opengraph-image.png: the same generator, the same
+// already-escaped string, and one more page whose picture is taken in R37's
+// container. The count below moved from two to three deliberately.
 
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
@@ -169,12 +175,13 @@ describe('every occurrence in the repository is accounted for', () => {
     expect(unjustified, `unjustified injection sites: ${unjustified.join(', ')}`).toEqual([]);
   });
 
-  it('counts the two known sites and no others', () => {
+  it('counts the three known sites and no others', () => {
     // Named rather than merely counted, so that removing one and adding
     // another somewhere else is a failure rather than a wash.
     const all = sitesIn([...sources('lib'), ...sources('app')]);
 
     expect(all.map((site) => site.file).sort()).toEqual([
+      'app/dev/og/page.dev.tsx',
       'app/dev/rail-gallery/page.dev.tsx',
       'lib/ui/react/ThresholdRail/ThresholdRail.tsx',
     ]);

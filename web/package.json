@@ -26,6 +26,7 @@
     "test:runtime": "playwright test --config=playwright.runtime.config.ts",
     "test:visual": "node scripts/visual.mjs",
     "test:visual:update": "node scripts/visual.mjs --update",
+    "og:sync": "node scripts/og-sync.mjs",
     "size": "node scripts/check-budgets.mjs",
     "size:dev": "node scripts/build-dev-routes.mjs && node scripts/check-budgets.mjs --dev",
     "lighthouse": "lhci autorun",
