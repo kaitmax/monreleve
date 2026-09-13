@@ -92,6 +92,54 @@ test.describe('the article template', () => {
     await context.close();
   });
 
+  test('lists every section, and every anchor lands on a heading', async ({ page }) => {
+    // THE FAILURE THIS CATCHES is a table of contents that looks complete
+    // and whose links do nothing - six entries pointing at ids the document
+    // does not carry. It cannot happen while both come from one read, and
+    // this is what proves they still do.
+    const hrefs = await page.locator('[data-toc] a').evaluateAll((nodes) =>
+      nodes.map((node) => node.getAttribute('href') ?? ''),
+    );
+
+    expect(hrefs.length).toBeGreaterThanOrEqual(4);
+
+    for (const href of hrefs) {
+      expect(href.startsWith('#'), href).toBe(true);
+
+      const target = page.locator(`[data-prose] ${href}`);
+
+      await expect(target, `${href} lands on nothing`).toHaveCount(1);
+    }
+  });
+
+  test('the outline is in the same order as the document', async ({ page }) => {
+    // An outline listing the right sections in the wrong order is worse
+    // than none: it tells a reader the article is structured differently
+    // from the way it reads.
+    const outline = await page.locator('[data-toc] a').evaluateAll((nodes) =>
+      nodes.map((node) => (node.getAttribute('href') ?? '').slice(1)),
+    );
+    const document_ = await page
+      .locator('[data-prose] h2, [data-prose] h3')
+      .evaluateAll((nodes) => nodes.map((node) => node.id));
+
+    expect(outline).toEqual(document_);
+  });
+
+  test('the outline needs no JavaScript either', async ({ browser }) => {
+    const context = await browser.newContext({ javaScriptEnabled: false });
+    const page = await context.newPage();
+
+    await page.goto(FIXTURE);
+
+    // R136: the outline is links and CSS. No active-item highlight ships -
+    // see TableOfContents.module.scss for why - so there is nothing here
+    // that a script would have had to turn on.
+    await expect(page.locator('[data-toc] a').first()).toBeVisible();
+
+    await context.close();
+  });
+
   test('is noindex, because the fixture is not content', async ({ page }) => {
     // It is a real route so that tests and baselines can render it, and it
     // must never be indexed. Excluded from the sitemap by publishedGuides();

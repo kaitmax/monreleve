@@ -27,7 +27,9 @@ import { GUIDES_COPY } from '@/lib/fr/guides';
 import { canonicalsAvailable } from '@/lib/content/site';
 import { formatDate } from '@/lib/ui/core';
 import { Container } from '@/lib/ui/react/Container/Container';
+import { TableOfContents } from '@/lib/ui/react/TableOfContents/TableOfContents';
 import { allGuides, guideBySlug, publishedGuides } from '@/lib/guides/registry';
+import { headingsIn } from '@/lib/guides/headings';
 import { mdxComponents } from '@/lib/guides/mdx-components';
 import { readingMinutes } from '@/lib/guides/reading-time';
 import styles from './guide.module.scss';
@@ -85,11 +87,18 @@ export default async function GuidePage({ params }: RouteParams) {
 
   const { frontmatter, body, file } = guide;
 
+  // ONE READ OF THE HEADINGS, USED TWICE. The outline and the ids on the
+  // rendered headings come from the same call, so the table of contents
+  // cannot link an anchor the document does not carry. Taking the outline
+  // from the COMPILED html instead would mean the two agree only if two
+  // passes agree with each other.
+  const headings = headingsIn(body);
+
   // COMPILED HERE, AT BUILD. compileMDX runs inside this server component and
   // the route is statically generated, so the output is HTML in a file.
   const { content } = await compileMDX({
     source: body,
-    components: mdxComponents({ file }),
+    components: mdxComponents({ file, headings }),
     options: { parseFrontmatter: false },
   });
 
@@ -146,7 +155,9 @@ export default async function GuidePage({ params }: RouteParams) {
             contents column is built in increment 3; the grid that holds it
             is here because the prose measure depends on it.
           */}
-          <div className={styles.tocColumn} data-toc-column />
+          <div className={styles.tocColumn} data-toc-column>
+            <TableOfContents label={GUIDES_COPY.tocLabel} headings={headings} />
+          </div>
 
           <div className={styles.prose} data-prose>
             <Container width="article">{content}</Container>

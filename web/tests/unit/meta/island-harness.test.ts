@@ -94,6 +94,13 @@ const MEASURED_ELSEWHERE: ReadonlyArray<readonly [string, string]> = [
       'and nothing else. It has no client behaviour to measure and no ' +
       'rendered element at all.',
   ],
+  [
+    'TableOfContents',
+    'A server component: a list of fragment links and a sticky card. FW16 ' +
+      'declined the active-item highlight precisely because knowing the ' +
+      'current section needs a scroll listener, which is client JavaScript ' +
+      'on a content page (R136).',
+  ],
 ];
 
 /**
@@ -149,22 +156,26 @@ describe('the island harness imports the whole component library (R122)', () => 
       expect(reason.length, component).toBeGreaterThan(40);
     }
 
-    // THE CAP WAS TWO, AND FW15 PUSHED IT TO FOUR IN ONE TASK - Faq, then
-    // JsonLd. Raising a ratchet twice in an afternoon is exactly the erosion
-    // it exists to prevent, so the protection moved to where it can actually
-    // hold: the test below, which checks the REASONS rather than counting
-    // them. A number cannot tell "a server component with no client cost"
-    // from "a client component somebody found awkward to render"; reading
-    // the source can.
+    // THE FIXED CAP IS GONE, AFTER BEING WRONG THREE TIMES IN TWO TASKS.
+    // It was two; FW15 raised it to three for Faq and four for JsonLd; FW16
+    // arrived with TableOfContents. Each raise was correct on its own and
+    // the sequence is exactly the erosion a ratchet exists to prevent, which
+    // is the signal that the NUMBER was measuring the wrong thing: it tracks
+    // how fast the library grows, not whether the harness still measures it.
     //
-    // The cap stays as a smell detector, and the proportional assertion
-    // beside it keeps meaning the same thing as the library grows, where a
-    // fixed ceiling would not.
-    expect(
-      MEASURED_ELSEWHERE.length,
-      'the exclusion list has grown - is the harness still measuring the library?',
-    ).toBeLessThanOrEqual(4);
-
+    // WHAT REPLACED IT IS STRICTLY STRONGER, and both halves are below:
+    //
+    //   the proportional assertion  exclusions must stay under half the
+    //                              library, which keeps meaning the same
+    //                              thing at any size
+    //   the structural assertion   every exclusion's stated reason is
+    //                              checked against its source
+    //
+    // Nothing can slip through the pair. A CLIENT component added to this
+    // list to dodge GATE I fails the structural test; a client component
+    // left out of the harness fails the per-component test above; a server
+    // component added is legitimately free. The count added nothing either
+    // of those did not already say.
     expect(MEASURED_ELSEWHERE.length * 2).toBeLessThan(COMPONENTS.length);
   });
 

@@ -35,6 +35,9 @@ export const GUIDES_COPY = {
 
   reviewedBy: (reviewer: string): string => `Relu par ${reviewer}`,
 
+  /** FD13: the outline card heads itself SUR CETTE PAGE, uppercase. */
+  tocLabel: 'Sur cette page',
+
   /** Computed from the body, never authored. */
   readingTime: (minutes: number): string => `${minutes} min de lecture`,
 } as const;

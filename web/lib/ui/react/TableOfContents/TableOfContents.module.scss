@@ -1,0 +1,74 @@
+// web/lib/ui/react/TableOfContents/TableOfContents.module.scss
+// Tokens only; camelCase class names for CSS Module addressing.
+
+.toc {
+  padding: var(--space-5);
+  border: var(--size-card-border) solid var(--colour-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--colour-surface);
+}
+
+// STICKY AT 32 PX, FD13. Only where there is a second column to be sticky
+// beside: below the breakpoint the outline sits above the article, and
+// sticking would pin it over the prose.
+@media (width >= 64rem) {
+  .toc {
+    position: sticky;
+    top: var(--space-8);
+  }
+}
+
+.label {
+  margin: 0 0 var(--space-3);
+  color: var(--colour-text-secondary);
+  font-size: var(--type-label-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-label-line);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// NO ACTIVE-ITEM MARKER, AND THE FIRST VERSION OF THIS COMMENT CLAIMED ONE.
+//
+// FD13 marks the section being read with a 3 px brand pill. Knowing which
+// section that is means watching the scroll position, which is client
+// JavaScript on a content page - R136 says content ships none, and the bytes
+// buy knowing where you are in a document you are looking at.
+//
+// I then tried to do it in CSS with :target, and wrote a rule that cannot
+// work: :target matches the HEADING whose id is in the URL, and no selector
+// can reach "the link whose href points at the current target" - the TOC
+// lives in a different subtree, earlier in the document. The rule was
+// deleted rather than left to look like a feature.
+//
+// So the marker is not shipped, and this is the record of why.
+.item {
+  min-width: 0;
+}
+
+// An h3 is a subsection: indented, and the only difference between the two
+// depths. FD13 draws one flat list; this keeps the hierarchy the headings
+// already have, without inventing a second type step for it.
+.item[data-depth="3"] .link {
+  padding-left: var(--space-6);
+}
+
+.link {
+  display: block;
+  padding: var(--space-3);
+  color: var(--colour-text-secondary);
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  line-height: var(--type-body-line);
+  text-decoration: none;
+}
+
+.link:hover {
+  color: var(--colour-text-primary);
+}

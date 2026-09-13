@@ -25,6 +25,7 @@
 import type { MDXRemoteProps } from 'next-mdx-remote/rsc';
 import type { ReactNode } from 'react';
 import { DataGrid } from '@/lib/ui/react/DataGrid/DataGrid';
+import type { Heading } from './headings';
 import { assertResolves } from './links';
 import styles from './mdx.module.scss';
 
@@ -37,6 +38,16 @@ import styles from './mdx.module.scss';
  */
 export interface MdxContext {
   readonly file: string;
+
+  /**
+   * The article's outline, from the same read the table of contents uses.
+   *
+   * THE IDS COME FROM HERE RATHER THAN FROM A SECOND SLUGIFY CALL. Both
+   * consumers taking the same array is what makes it impossible for the
+   * outline to link an anchor the document does not carry - the failure
+   * that turns a table of contents into six links that do nothing.
+   */
+  readonly headings: readonly Heading[];
 }
 
 interface LinkProps {
@@ -63,15 +74,27 @@ interface HeadingProps extends BlockProps {
 type ComponentMap = NonNullable<MDXRemoteProps['components']>;
 
 export function mdxComponents(context: MdxContext): ComponentMap {
+  /**
+   * Headings are handed out in document order, which is the order the MDX
+   * compiler renders them in.
+   *
+   * A COUNTER RATHER THAN A TEXT LOOKUP, because two sections may share a
+   * name and headingsIn() has already disambiguated them by POSITION. A
+   * lookup by text would give both the first one's id, which is invalid
+   * HTML and makes the second entry in the outline unreachable.
+   */
+  let next = 0;
+  const idFor = (): string | undefined => context.headings[next++]?.id;
+
   return {
-    h2: ({ children, id }: HeadingProps) => (
-      <h2 className={styles.h2} id={id}>
+    h2: ({ children }: HeadingProps) => (
+      <h2 className={styles.h2} id={idFor()}>
         {children}
       </h2>
     ),
 
-    h3: ({ children, id }: HeadingProps) => (
-      <h3 className={styles.h3} id={id}>
+    h3: ({ children }: HeadingProps) => (
+      <h3 className={styles.h3} id={idFor()}>
         {children}
       </h3>
     ),
