@@ -28,6 +28,7 @@
 // its page ships.
 
 import { liveRoutes } from '@/lib/content/routes';
+import { GUIDES_PATH, publishedGuides } from '@/lib/guides/registry';
 import { servingWithoutOrigin, siteOrigin } from '@/lib/content/site';
 
 /**
@@ -42,6 +43,27 @@ const DEGRADED =
   'process is serving (FRONTALIER_RUNTIME=1), so every URL in this document ' +
   'would point at localhost. Refusing rather than publishing a sitemap that ' +
   'resolves to nothing. Ruling R81.';
+
+/**
+ * THE GUIDES ARE RESOLVED AT MODULE SCOPE, AND A FAILED BUILD IS WHY.
+ *
+ * FW16 increment 1 claimed that an invalid frontmatter fails the build,
+ * planted a bad lastReviewed in the fixture to prove it, and the build
+ * PASSED. `next build` imports a route module to collect page data; it
+ * does not CALL the handler. A registry read inside GET() therefore runs
+ * for the first time when a crawler asks for the sitemap - in production.
+ *
+ * At module scope it runs when the module is imported, which is during
+ * the build and again at server start. So a malformed article stops the
+ * build, and if one ever reached a deploy it would refuse to START rather
+ * than serve 500s to whoever asked first. That is the same preference
+ * R83's readiness split encodes: fail where somebody is watching.
+ *
+ * The cost is that an article edited while a dev server runs is not seen
+ * until it restarts - which is already true of the registry's own
+ * per-process cache, and of MDX compilation.
+ */
+const PUBLISHED = publishedGuides();
 
 export function GET(): Response {
   if (servingWithoutOrigin()) {
@@ -71,6 +93,23 @@ export function GET(): Response {
         `  <url><loc>${origin}${route.path}</loc>` +
         `<changefreq>${route.changeFrequency}</changefreq>` +
         `<priority>${route.priority.toFixed(1)}</priority></url>`,
+    ),
+
+    // THE GUIDES COME FROM THE CONTENT DIRECTORY, not from the route
+    // registry, and that is the point of FW16: an article that exists on
+    // disk is an article the product knows about. A hand-maintained list
+    // would be one entry behind after FW18 and nothing would say so.
+    //
+    // FIXTURES ARE EXCLUDED HERE BY publishedGuides(), which filters the
+    // leading underscore. A fixture in the sitemap would be a crawler
+    // told to index a page that exists to test a template.
+    //
+    // The list is resolved at MODULE SCOPE - see PUBLISHED below.
+    ...PUBLISHED.map(
+      (guide) =>
+        `  <url><loc>${origin}${GUIDES_PATH}/${guide.frontmatter.slug}</loc>` +
+        `<changefreq>monthly</changefreq>` +
+        `<priority>0.7</priority></url>`,
     ),
     '</urlset>',
     '',
