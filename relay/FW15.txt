@@ -1,0 +1,243 @@
+FW15 SESSION PROMPT - frontalier
+Paste this entire prompt as the first message of a fresh Claude Code
+session, opened at the repository root.
+
+====================================================================
+PRE-STEP RULINGS (apply verbatim)
+====================================================================
+R1 (discharged). CI green on origin/main: verify, record the run URL.
+R2, R7-R8, R10-R13, R15-R138 (carried). The engine is closed.
+   R9: you own document edits.
+
+R139 (new). gate:clean RUNS ONCE on any increment that adds a
+   dependency, reads a new environment variable, or changes a build
+   or postinstall step - not on every increment. Both FW14 CI
+   failures were in that set. Build it in increment 0: a scrubbed
+   environment, no .env, node_modules restored from the lockfile.
+
+R140 (new). R132's SELECTOR GAINS lib/params/**, lib/alerts/**,
+   lib/content/**. The durable half is the PRINCIPLE, recorded at the
+   script: any module whose output reaches rendered HTML selects the
+   browser suites, whatever directory it lives in. The directory list
+   is a consequence, not something to remember to extend. State how a
+   future module is judged against it.
+
+R141 (new). FW27 OWNS RFC 8058 - List-Unsubscribe-Post and a POST
+   unsubscribe endpoint, with the sends. Add it to FW27's scope in
+   tasks/todo.md (R9). The interim GET stays; it is idempotent and
+   reversible.
+
+R138 (carried, NOW DUE). The analytics sentence on /confidentialite
+   is in the future tense and pinned by three tests. This task makes
+   it true and flips it to the present - which means editing those
+   three tests deliberately, and mapping the claim to the test that
+   holds it. If any part of the claim cannot be made true, the
+   sentence is corrected again rather than the claim quietly widened.
+
+R47. Still open, still the operator's.
+
+====================================================================
+CONTEXT
+====================================================================
+Project: frontalier. You are executing task FW15 ONLY: the OG image,
+JSON-LD, metadata, and analytics. Three of the four are zero-JS by
+construction (R136); the fourth is one same-origin script. This is
+also the task where a published privacy claim comes due.
+
+Read first: CLAUDE.md, README.md, SPEC sections 6.6 (the OG card is
+generic, never per-result), 9.3, 14, 15 (the event list), 17, 20;
+/confidentialite as shipped; tasks/todo.md FW15; REPORT-FW14.txt in
+full including its addendum.
+
+====================================================================
+STANDING PROTOCOL (identical in every FW / AN prompt)
+====================================================================
+1. SESSION SCOPE. Increment 0 and FW15 only. Do not start FW16.
+2. INCREMENT CYCLE. Green after EVERY increment, with the suites
+   R132/R140 select for the paths touched.
+3. COMMIT ONLY ON GREEN, chained with && (R15).
+4. COMMITS. "FW15: <increment title>"; "chore: <title>" for
+   R139-R141.
+5. SIMPLICITY FIRST. An image route, a script tag, two JSON-LD
+   objects. No analytics abstraction layer, no event bus, no consent
+   library.
+6. TEST-FIRST with a RED row per behaviour. R96 (codepoint
+   literals), R119 (singletons by count), R120 (fixtures must
+   disagree), R137 (adjacency as sequence) all apply.
+7. ZERO THIRD-PARTY REQUESTS REMAINS ABSOLUTE. The network-trace test
+   that has passed since FW1 must still pass on every public route.
+   Umami is self-hosted and same-origin or it does not ship.
+8. UI DISCIPLINE. Tokens; French only from lib/fr; the OG card is
+   GENERIC (R44) - it carries the product name, the rail with its
+   three static bands and its two ticks, and no rate.
+9. QUESTIONS. Pause and ask.
+10. EXIT ARTIFACT. REPORT-FW15.txt, committed and pushed.
+
+====================================================================
+INCREMENT 0 - R139, R140, R141
+====================================================================
+0a. R139 gate:clean - built, and proven by reproducing one of FW14's
+    two failures against it (restore the condition, capture the
+    failure, restore).
+0b. R140 selector extension plus the principle recorded at the
+    script, with the judgement rule for a future module.
+0c. R141 added to FW27's scope in tasks/todo.md.
+Commits per letter; R49 applies.
+
+====================================================================
+TASK FW15 - OG, JSON-LD, METADATA, ANALYTICS
+====================================================================
+Acceptance criteria (restated; the report must prove each):
+AC1. The OG image is 1200x630, byte-identical for every param URL
+     and for the bare path - asserted, not assumed - and contains no
+     rate. It renders the social rail variant per R44/R45/R48: three
+     static bands, two ticks, tick labels at Body 15, product name
+     and the band legend left-anchored, no fill by rate.
+AC2. JSON-LD validates: WebApplication on both calculators, FAQPage
+     on the calculator's inline FAQ. Every fact in the JSON-LD is
+     also visible on the page - a structured-data claim invisible to
+     a reader is cloaking, and a test asserts the correspondence.
+AC3. All events from SPEC 15 fire with correct payloads;
+     result_status carries the Status enum; zero cookies and zero
+     third-party requests on every public route, asserted by trace.
+
+--------------------------------------------------------------------
+INCREMENT 1 - the OG image route
+--------------------------------------------------------------------
+- opengraph-image.tsx for the calculator, and a site-wide default.
+  It composes renderRailSvg's social variant - the generator already
+  exists and is byte-parity tested; do not re-draw the rail.
+- GENERIC: the route takes no searchParams and reads none. A test
+  requests it with a full nine-param query string and asserts the
+  bytes equal the bare request's. That is AC1's real assertion - the
+  privacy property (a user's exposure must not leak into a Facebook
+  thread) is enforced by byte equality, not by intent.
+- Baseline the image itself, zero tolerance, dimensions asserted
+  (R128).
+- Commit: "FW15: generic OG image from the social rail variant".
+  Push.
+
+--------------------------------------------------------------------
+INCREMENT 2 - metadata and the FAQ
+--------------------------------------------------------------------
+- Titles and descriptions per SPEC 14, naming the 40 % threshold and
+  the year, from lib/fr. openGraph and twitter blocks pointing at the
+  image route. The R54 gate and FW13's param-noindex behaviour are
+  untouched - re-assert both, since metadata is where they live.
+- The calculator's inline FAQ, server-rendered, three questions from
+  SPEC 14: the 40-versus-49,9 confusion, whether mission days count,
+  whether sick days count. Real French answers from lib/fr, as an
+  accordion (the component exists).
+- R137: the FAQ's position in the page sequence is asserted.
+- Commit: "FW15: page metadata and the inline FAQ". Push.
+
+--------------------------------------------------------------------
+INCREMENT 3 - JSON-LD
+--------------------------------------------------------------------
+- WebApplication on both calculator routes; FAQPage generated FROM
+  the same lib/fr source the visible FAQ renders, so the two cannot
+  diverge - one source, two consumers, with a test asserting the
+  question set is identical.
+- No claim in the JSON-LD that is not visible on the page: no
+  aggregateRating, no invented price, no author. A test enumerates
+  the emitted properties against an allow-list and fails on a new
+  one.
+- Validate the output against the schema shapes in a unit test; a
+  live validator run is a manual check to record, not a CI
+  dependency.
+- Commit: "FW15: JSON-LD from the visible source". Push.
+
+--------------------------------------------------------------------
+INCREMENT 4 - Umami, same-origin, and R138 coming due
+--------------------------------------------------------------------
+- Self-hosted Umami: the script served from OUR origin (proxied or
+  copied at build), never from a third party. The network-trace test
+  is the gate - if the script cannot be served same-origin in this
+  environment, analytics does not ship this task and R138's sentence
+  is corrected again rather than the claim widened.
+- No cookie. No advertising identifier. No consent banner, because
+  there is nothing to consent to - and that is a property to assert,
+  not a claim to make.
+- R138: flip /confidentialite to the present tense, edit the three
+  pinning tests deliberately, and add the claim-to-test mapping. The
+  report lists each clause of the sentence with the test that holds
+  it: self-hosted (trace), cookieless (trace), no advertising
+  identifier (payload assertion).
+- Commit: "FW15: self-hosted analytics and the privacy claim made
+  true (R138)". Push.
+
+--------------------------------------------------------------------
+INCREMENT 5 - the events
+--------------------------------------------------------------------
+- SPEC 15's list: page_view, calculated, result_status,
+  accordion_opened, missions_declared, email_submitted,
+  share_clicked, contextual_link_clicked, app_cta_clicked.
+- result_status carries the Status enum - the most valuable signal
+  in the product, since it is the closest thing to a test of whether
+  frontaliers are actually near these thresholds. Exhaustiveness-test
+  it over the Status union.
+- No personal data in any payload: a test enumerates every payload
+  key against an allow-list, the same shape as the param schema's
+  key test.
+- Events fire without blocking render and degrade silently when the
+  script is absent (ad blockers): a test asserts the page works with
+  analytics blocked.
+- Commit: "FW15: the event set with an allow-listed payload". Push.
+
+--------------------------------------------------------------------
+INCREMENT 6 - trace, a11y, baselines, size
+--------------------------------------------------------------------
+- The network-trace test extended to every public route including
+  /alertes and the confirm and unsubscribe pages: zero cookies, zero
+  third-party requests, and now the analytics script asserted
+  same-origin.
+- jest-axe across the FAQ's open and closed states; keyboard path
+  through the accordion.
+- Baselines at 1440/390 (R127), zero tolerance (R114), dimensions
+  asserted (R128), regenerations reasoned (R135).
+- pnpm size: GATE A and GATE B for every public route. FW13 left
+  4,4 KiB on the calculator and R129 returned about 1,0. The FAQ is
+  server-rendered and the analytics script is outside the JS budget -
+  report both numbers separately so nobody later reads the script
+  into the gate.
+- Commit: "FW15: trace, a11y, baselines, size record". Push.
+
+====================================================================
+OUT OF SCOPE FOR FW15
+====================================================================
+- Guides and MDX - FW16. /tarifs, /a-propos, the homepage - FW20.
+- Deploying Umami as a service - FW28.
+- Any engine change. Any per-result OG image, ever.
+
+====================================================================
+FINAL VERIFICATION
+====================================================================
+pnpm gate && pnpm test:e2e && pnpm test:visual && pnpm test:a11y &&
+pnpm test:runtime
+Green in one run; CI green on origin/main after the final push.
+
+====================================================================
+REPORT FORMAT - REPORT-FW15.txt (pure ASCII, committed and pushed)
+====================================================================
+SUMMARY
+PRECONDITIONS    CI run URL and status.
+INCREMENT 0      R139 with its reproduced failure, R140's principle
+                 and judgement rule, R141.
+RED/GREEN LEDGER
+OG BYTE EQUALITY The nine-param request against the bare one.
+JSON-LD MAP      Every emitted property and where it is visible on
+                 the page.
+R138 MAPPING     Each clause of the analytics sentence with its test.
+EVENT PAYLOADS   The allow-list and the enumeration test.
+TRACE            Every public route: cookies, third-party requests,
+                 script origin.
+SIZE             JS budget per route, and the analytics script
+                 reported separately.
+BASELINES        Regenerated files with reasons (R135).
+TOKENS ADDED     (R77)
+DEVIATIONS
+NOTICED BUT NOT TOUCHING
+QUESTIONS FOR THE OPERATOR
+PUSH PROOF
+
+END OF FW15 PROMPT
