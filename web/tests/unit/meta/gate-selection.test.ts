@@ -333,11 +333,15 @@ describe('the database layer selects its own suite (FW14)', () => {
 });
 
 describe('the pattern list is the ruling, stated once', () => {
-  it('is exactly the seven names R132 now carries', () => {
+  it('is exactly the eleven names R132 now carries', () => {
     // R63's shape: if a pattern were dropped, every table row above that
     // does not use it would still pass. This pins the list itself.
     expect(SELECTOR_PATTERNS.map((pattern) => pattern.label).sort()).toEqual([
       '**/*.module.scss',
+      'a baseline, which is the record test:visual compares against (R144)',
+      'a runtime spec, which is its own project (R144)',
+      'a spec file, which selects the suite it belongs to (R144)',
+      'a visual spec, which test:e2e deliberately ignores (R144)',
       'app/**',
       'lib/fr/**',
       'lib/ui/**',
@@ -407,5 +411,98 @@ describe('R140: output reaching rendered HTML is what selects, not the directory
 
       expect(suites, path).not.toContain('test:visual');
     }
+  });
+});
+
+describe('R144: a test file selects the suite it belongs to', () => {
+  // WHY THE RULING EXISTS, and it is FW15's own record rather than a
+  // hypothetical. That task added e2e/analytics.spec.ts and the gate ran
+  // the base chain; it then added a visual STATE and two baselines and the
+  // gate ran the base chain again. Both were run by hand and both passed,
+  // so nothing shipped unverified - but a broken spec would not have been
+  // caught, twice in one task.
+  //
+  // IT IS THE SAME HOLE R132 CLOSED FROM THE OTHER SIDE. R132 asks "which
+  // suites does this diff need"; a file that IS a suite needs itself, and
+  // the selector could not see that.
+
+  it('selects test:e2e for a spec, and NOT test:visual', () => {
+    const { suites, matched } = selectSuites(['web/e2e/analytics.spec.ts']);
+
+    expect(suites).toContain('test:e2e');
+    expect(suites).not.toContain('test:visual');
+    expect(matched[0]?.pattern).toBe('a spec file, which selects the suite it belongs to (R144)');
+  });
+
+  it('gives each of its three spec rules a DISTINCT label', () => {
+    // THE BUG THIS CAUGHT, on the first run of the implementation. The
+    // label is the UNION KEY: selectSuites walks SELECTOR_PATTERNS and
+    // adds a pattern's suites when any matched hit carries that pattern's
+    // label. Three rules sharing one label merged their suites, so an
+    // ordinary spec selected test:visual and test:runtime as well - which
+    // would have run the container on every e2e edit and looked like
+    // thoroughness rather than a defect.
+    const labels = SELECTOR_PATTERNS.map((pattern) => pattern.label);
+
+    expect(new Set(labels).size).toBe(labels.length);
+  });
+
+  it('selects test:visual for a visual spec, and NOT test:e2e', () => {
+    // THE DISCRIMINATION THAT MATTERS. A .visual.spec.ts is excluded from
+    // the chromium project by testIgnore, so selecting test:e2e for one
+    // would run a suite that deliberately does not contain it - a green
+    // that measures nothing, which is the shape this repository keeps
+    // finding.
+    const { suites } = selectSuites(['web/e2e/calculateur.visual.spec.ts']);
+
+    expect(suites).toContain('test:visual');
+    expect(suites).not.toContain('test:e2e');
+  });
+
+  it('selects test:runtime for a runtime spec, which is neither', () => {
+    // THE PARENTHETICAL IN R144 NAMES TWO CASES AND THE PRINCIPLE COVERS
+    // THREE: "a changed file under e2e/ selects the suite it belongs to".
+    // guard.runtime.spec.ts belongs to test:runtime - it is excluded from
+    // BOTH other projects by testIgnore - so mapping it to test:e2e would
+    // reproduce the defect one level down.
+    const { suites } = selectSuites(['web/e2e/guard.runtime.spec.ts']);
+
+    expect(suites).toContain('test:runtime');
+    expect(suites).not.toContain('test:e2e');
+    expect(suites).not.toContain('test:visual');
+  });
+
+  it('selects test:visual for a changed baseline', () => {
+    // A baseline is not a test, it is the RECORD a test compares against.
+    // Changing one changes what the suite asserts, which is the same
+    // relationship a spec has to its suite.
+    const { suites, matched } = selectSuites([
+      'web/tests/visual/baselines/calculateur-vide-mobile.png',
+    ]);
+
+    expect(suites).toContain('test:visual');
+    expect(matched[0]?.pattern).toBe('a baseline, which is the record test:visual compares against (R144)');
+  });
+
+  it('leaves a unit test to the base chain, which already runs it', () => {
+    // NON-VACUITY, AND THE BOUNDARY OF THE RULING. tests/unit/** is run by
+    // pnpm test, which is in the base chain of every selection - so a unit
+    // test already selects its own suite and needs no pattern. A rule that
+    // fired here would add a second execution, which is exactly the reason
+    // test:a11y is deliberately not selected.
+    const { suites, matched } = selectSuites(['web/tests/unit/meta/glob-canaries.test.ts']);
+
+    expect(matched).toEqual([]);
+    expect(suites).toEqual([...BASE_SUITES]);
+  });
+
+  it('still selects the database layer for a db test, not the spec rule', () => {
+    // ORDER MATTERS AND THIS PINS IT. tests/db/** was already claimed by
+    // the database pattern; the new rules must not steal it, or a db test
+    // would select a browser suite and stop selecting test:db.
+    const { suites } = selectSuites(['web/tests/db/privacy-claims.test.ts']);
+
+    expect(suites).toContain('test:db');
+    expect(suites).not.toContain('test:e2e');
   });
 });

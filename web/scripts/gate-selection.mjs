@@ -140,6 +140,17 @@ export const BROWSER_SUITES = Object.freeze(['test:e2e', 'test:visual']);
 export const DATABASE_SUITES = Object.freeze(['test:db']);
 
 /**
+ * The R81 guard, which is its own Playwright project and its own config.
+ *
+ * It is not in BROWSER_SUITES and must not be: it runs against a server
+ * started with FRONTALIER_RUNTIME=1 and NO configured origin, so running
+ * it beside the ordinary e2e suite would assert the opposite of what is
+ * true there. R144 needs it as a selectable suite because a changed
+ * *.runtime.spec.ts belongs to it and to nothing else.
+ */
+export const RUNTIME_SUITES = Object.freeze(['test:runtime']);
+
+/**
  * R132's patterns, in the order they are reported.
  *
  * RULING R140 GIVES THE TEST FOR ADDING ONE, and it is the durable half of
@@ -173,6 +184,43 @@ export const DATABASE_SUITES = Object.freeze(['test:db']);
  * and first-match-wins would otherwise label it "lib/ui/**" and lose that.
  */
 export const SELECTOR_PATTERNS = Object.freeze([
+  {
+    // R144, and it comes FIRST because first-match-wins: e2e/**/*.visual
+    // .spec.ts must be judged before any other rule can claim it.
+    //
+    // A .visual.spec.ts is EXCLUDED from the chromium project by
+    // testIgnore, so selecting test:e2e for one would run a suite that
+    // deliberately does not contain it - a green measuring nothing.
+    label: 'a visual spec, which test:e2e deliberately ignores (R144)',
+    suites: ['test:visual'],
+    matches: (path) => path.startsWith('e2e/') && path.endsWith('.visual.spec.ts'),
+  },
+  {
+    // The runtime guard is its own project and its own config, excluded
+    // from both others. R144 names two cases in its parenthetical and
+    // states the principle as "the suite it belongs to"; this is the
+    // third case, judged by that principle rather than added beyond it.
+    label: 'a runtime spec, which is its own project (R144)',
+    suites: RUNTIME_SUITES,
+    matches: (path) => path.startsWith('e2e/') && path.endsWith('.runtime.spec.ts'),
+  },
+  {
+    // Everything else under e2e/ is the ordinary suite - including
+    // e2e/baseline.ts and other helpers, which are not specs but decide
+    // what every spec asserts.
+    label: 'a spec file, which selects the suite it belongs to (R144)',
+    suites: ['test:e2e'],
+    matches: (path) => path.startsWith('e2e/'),
+  },
+  {
+    // A BASELINE IS NOT A TEST, IT IS THE RECORD A TEST COMPARES AGAINST,
+    // and changing one changes what the suite asserts. That is the same
+    // relationship a spec has to its suite, which is why R144 covers
+    // both in one sentence.
+    label: 'a baseline, which is the record test:visual compares against (R144)',
+    suites: ['test:visual'],
+    matches: (path) => path.startsWith('tests/visual/baselines/'),
+  },
   {
     label: 'the token layer (lib/ui/core/styles/**)',
     suites: BROWSER_SUITES,
