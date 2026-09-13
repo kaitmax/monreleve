@@ -314,9 +314,25 @@ describe('R138: a claim with no code behind it is in the future tense', () => {
   });
 
   it('makes no present-tense promise about how it measures', () => {
-    // THE GUARD THAT OUTLIVES THIS TASK. FW15 flips this to the present
-    // and maps it to its test in the same increment; until then, flipping
-    // it fails HERE. So the mapping cannot be forgotten on the way.
+    // THE GUARD THAT OUTLIVES THIS TASK. Whoever flips this to the present
+    // maps it to its test in the same increment; until then, flipping it
+    // fails HERE. So the mapping cannot be forgotten on the way.
+    //
+    // FW15 WAS EXPECTED TO BE THAT TASK AND WAS NOT, which is recorded here
+    // rather than left as a prediction that quietly stopped being true.
+    // SPEC 15 asks for Umami, self-hosted, with a same-origin script, and
+    // FW15 measured that it cannot be served that way yet: there is no
+    // running instance to proxy or copy from (FW28 deploys one), no npm
+    // package to vendor (@umami/browser and umami-browser are both 404,
+    // @umami/node is a server-side client), and committing a copy of a
+    // third-party script is an ask-first item under SPEC 20 that nothing
+    // here could verify against upstream.
+    //
+    // So the claim was not made true, and under R138 that means the
+    // sentence stays rather than the claim widening to meet it. What FW15
+    // added instead is e2e/analytics.spec.ts, which holds the half of the
+    // sentence that IS about today - "ne mesure pas encore" - on every
+    // public route.
     const claim = CONFIDENTIALITE_COPY.web[2];
 
     expect(claim).not.toContain('est auto-hébergée');
@@ -352,15 +368,21 @@ describe('the map covers the page rather than a chosen part of it', () => {
     /**
      * Sentences this task does not own, named rather than filtered away.
      *
-     * The analytics claim is FW15's to make true. FW14 found it while
+     * The analytics claim was FW15's to make true, and FW15 could not: the
+     * measurement is in the R138 block above. FW14 found the sentence while
      * proving the alert-list claims and could not map it to a test, because
-     * there is no code to test - nothing on this site measures anything.
+     * there was no code to test - nothing on this site measures anything.
      *
      * RULING R138 put it in the FUTURE TENSE rather than leaving a
      * present-tense claim standing with nothing behind it. It is listed
      * HERE rather than excluded by a narrower filter, because a filter that
      * quietly stopped matching it would be indistinguishable from nobody
      * having noticed it.
+     *
+     * IT IS NO LONGER UNMAPPED, though. e2e/analytics.spec.ts asserts the
+     * present-tense half of the sentence on every public route: no analytics
+     * script, no cookie, no third-party request. The future-tense half is
+     * still a promise, and stays one until a task ships the measurement.
      */
     const NOT_THIS_TASK = [CONFIDENTIALITE_COPY.web[2]];
 

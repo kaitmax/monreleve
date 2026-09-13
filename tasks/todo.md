@@ -608,6 +608,34 @@ senders above their bulk thresholds outright.
 - [ ] Manual check: Coolify staging deploy green; backup file present after the first nightly run
 
 
+**Added by FW15 — the analytics script has no same-origin source yet:**
+SPEC 15 asks for Umami, self-hosted, cookieless, with a **same-origin
+script**, and FW15 could not ship one. The blockers are specific, and each
+has a different owner:
+
+- **There is no instance.** The tracker script is served by a running Umami
+  at `/script.js`, so "proxied or copied at build" both presuppose the
+  deployment this task performs. FW15 had nothing to point at.
+- **There is no package to vendor.** `@umami/browser` and `umami-browser`
+  are both 404 on the npm registry; `@umami/node` is a server-side client,
+  not a browser tracker. Checked, not assumed.
+- **Committing a copy is an ask-first item.** SPEC §20 makes any
+  third-party script the operator's call, and a scraped copy in `public/`
+  could never be verified against upstream — it would be a third-party
+  script with none of the guarantees that usually come with one.
+
+So this task owns the choice as well as the deployment: proxy the instance's
+script through our own origin, or send events from our own code to a
+same-origin endpoint that forwards to Umami. The second needs no third-party
+script at all, which is the stronger reading of SPEC 17, and it is what the
+FW15 event layer is shaped for.
+
+**Until then `/confidentialite` says the site does not measure its audience
+yet** (ruling R138), and `web/e2e/analytics.spec.ts` holds that sentence on
+every public route: no analytics script, no cookie, no third-party request.
+Shipping the script without changing that sentence fails there — which is
+the point.
+
 **Added by FW14 — mail deliverability (an operator task, not a code one):**
 `RESEND_API_KEY` joins the env checklist. Without it `lib/alerts/mailer.ts`
 collects confirmation messages in memory and delivers nothing — which is
