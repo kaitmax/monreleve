@@ -129,8 +129,14 @@ describe('R132 against the two commits it was written for', () => {
 
     expect(suites).toContain('test:e2e');
     expect(suites).toContain('test:visual');
-    expect(matched.map((hit) => hit.path)).toEqual([
+
+    // TWO PATHS SINCE R140, AND THAT IS THE RULING WORKING. This commit
+    // also changed lib/params/handoff.ts, which produces the localStorage
+    // payload - so under R140 it selects the browser suites on its own
+    // merits rather than only because a component changed beside it.
+    expect(matched.map((hit) => hit.path).sort()).toEqual([
       'web/app/(public)/calculateur-teletravail-frontalier/CalculatorForm.tsx',
+      'web/lib/params/handoff.ts',
     ]);
   });
 
@@ -327,7 +333,7 @@ describe('the database layer selects its own suite (FW14)', () => {
 });
 
 describe('the pattern list is the ruling, stated once', () => {
-  it('is exactly the six names R132 now carries', () => {
+  it('is exactly the seven names R132 now carries', () => {
     // R63's shape: if a pattern were dropped, every table row above that
     // does not use it would still pass. This pins the list itself.
     expect(SELECTOR_PATTERNS.map((pattern) => pattern.label).sort()).toEqual([
@@ -335,6 +341,7 @@ describe('the pattern list is the ruling, stated once', () => {
       'app/**',
       'lib/fr/**',
       'lib/ui/**',
+      'modules whose output reaches rendered HTML (R140)',
       'the database layer (prisma/**, lib/db/**, tests/db/**)',
       'the token layer (lib/ui/core/styles/**)',
     ]);
@@ -345,6 +352,60 @@ describe('the pattern list is the ruling, stated once', () => {
     // change nothing about what runs.
     for (const pattern of SELECTOR_PATTERNS) {
       expect(pattern.suites.length, pattern.label).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('R140: output reaching rendered HTML is what selects, not the directory', () => {
+  // THE RULING'S DURABLE HALF IS THE PRINCIPLE, not the list. FW14 measured
+  // the hole: lib/params/codec.ts decides what the calculator's link notice
+  // says, and on its own it selected neither browser suite. The notice is
+  // asserted by both e2e and visual, so a codec change could have broken both
+  // while the gate reported green - the exact FW13 shape R132 exists to close.
+  //
+  // The three directories below are a CONSEQUENCE of the principle, which is
+  // why the principle is asserted too: a list is something somebody has to
+  // remember to extend, and the next module will not be in it.
+
+  it.each([
+    ['the URL codec, which writes the link notice', 'web/lib/params/codec.ts'],
+    ['the param schema', 'web/lib/params/schema.ts'],
+    ['the alert domain, which the capture card renders', 'web/lib/alerts/status.ts'],
+    ['the subscribe handler helpers', 'web/lib/alerts/subscribe.ts'],
+    ['route content', 'web/lib/content/routes.ts'],
+    ['the alerts path', 'web/lib/content/alertes.ts'],
+  ])('%s selects e2e and visual', (_label, path) => {
+    const suites = suitesFor([path]);
+
+    expect(suites, path).toContain('test:e2e');
+    expect(suites, path).toContain('test:visual');
+  });
+
+  it('closes the hole FW14 measured and reported', () => {
+    // Before R140 this returned the base chain only, and FW14's increment 2
+    // changed this exact file. The browser suites ran anyway - because app/**
+    // changed in the same commit - which is luck, not a gate.
+    const { suites, matched } = selectSuites(['web/lib/params/codec.ts']);
+
+    expect(matched).toHaveLength(1);
+    expect(suites).toEqual([...BASE_SUITES, 'test:e2e', 'test:visual']);
+  });
+
+  it('still selects nothing for a module whose output never reaches HTML', () => {
+    // NON-VACUITY, and the judgement the principle actually asks for. The
+    // engine is pure arithmetic: its output reaches the page THROUGH the
+    // island, which is app/**, and that is what selects. A selector that
+    // fired on every lib/** path would run the container suite on an engine
+    // refactor and teach people to route around it.
+    for (const path of [
+      'web/lib/calc-engine/compute.ts',
+      'web/lib/db/client.ts',
+      'web/scripts/gate-clean.mjs',
+      'relay/FW15.txt',
+    ]) {
+      const suites = suitesFor([path]);
+
+      expect(suites, path).not.toContain('test:visual');
     }
   });
 });

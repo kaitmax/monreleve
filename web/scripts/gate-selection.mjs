@@ -140,8 +140,33 @@ export const BROWSER_SUITES = Object.freeze(['test:e2e', 'test:visual']);
 export const DATABASE_SUITES = Object.freeze(['test:db']);
 
 /**
- * R132's patterns, in the order they are reported: five for what a browser
- * renders, one for the database layer (FW14 increment 1).
+ * R132's patterns, in the order they are reported.
+ *
+ * RULING R140 GIVES THE TEST FOR ADDING ONE, and it is the durable half of
+ * this file: ANY MODULE WHOSE OUTPUT REACHES RENDERED HTML SELECTS THE
+ * BROWSER SUITES, WHATEVER DIRECTORY IT LIVES IN. The list below is a
+ * consequence of that rule, not a thing to remember to extend - because the
+ * next module will not be on anybody's list.
+ *
+ * HOW TO JUDGE A NEW MODULE, in one question: can a change to it alter a
+ * byte that a browser receives, without any file already matched here
+ * changing too? If yes, it belongs.
+ *
+ *   lib/params/**   decides what the link notice SAYS. e2e and visual both
+ *                   assert that notice.                     -> belongs
+ *   lib/alerts/**   the capture card renders its copy and its status
+ *                   vocabulary.                             -> belongs
+ *   lib/content/**  route paths, the sitemap, page content. -> belongs
+ *   lib/calc-engine pure arithmetic. Its output reaches the page THROUGH
+ *                   the island, which is app/** - and that is what
+ *                   selects.                                -> does not
+ *   lib/db/**       nothing it produces is rendered; it selects test:db
+ *                   instead.                                -> does not
+ *
+ * FW14 MEASURED THE HOLE THIS CLOSES AND DID NOT CLOSE IT. Its increment 2
+ * changed lib/params/codec.ts; the browser suites ran only because app/**
+ * changed in the same commit. That is luck, not a gate - and it is the FW13
+ * shape exactly, which is what R132 exists to prevent.
  *
  * The token layer comes first although lib/ui/** already covers it: a change
  * to tokens.scss is worth naming as a token change in the printed selection,
@@ -172,6 +197,18 @@ export const SELECTOR_PATTERNS = Object.freeze([
     label: '**/*.module.scss',
     suites: BROWSER_SUITES,
     matches: (path) => path.endsWith('.module.scss'),
+  },
+  {
+    // R140. Three directories, one reason: each produces something a
+    // browser receives. Grouped under a label that states the reason
+    // rather than the paths, because the printed selection is read by a
+    // person deciding whether the right suites ran.
+    label: 'modules whose output reaches rendered HTML (R140)',
+    suites: BROWSER_SUITES,
+    matches: (path) =>
+      path.startsWith('lib/params/') ||
+      path.startsWith('lib/alerts/') ||
+      path.startsWith('lib/content/'),
   },
   {
     // FW14 increment 1: "R132's selection must include the database
