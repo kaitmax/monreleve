@@ -660,6 +660,29 @@ every public route: no analytics script, no cookie, no third-party request.
 Shipping the script without changing that sentence fails there — which is
 the point.
 
+**Added by FW16's R145 — the OG card is generated at deploy time:**
+FW15 ships `web/public/opengraph-image.png` as a committed asset, rendered
+from `renderRailSvg`'s social variant inside R37's Playwright container and
+copied into place by `web/scripts/og-sync.mjs`. That works, and it has one
+defect this task fixes: **a contributor without docker cannot change the rail
+and ship a card that matches it.** The card would silently keep showing the
+old drawing, and no gate would object — `tests/unit/meta/og-image.test.ts`
+compares the shipped file against the *baseline*, and both would be stale
+together.
+
+So the deploy generates it. The committed image stops being the source and
+**becomes a review baseline like every other**: something a person can look
+at, and something a regeneration must match.
+
+- [ ] The card is rendered at deploy from `renderRailSvg`, not copied from git
+- [ ] The committed PNG is compared against the deploy render; a mismatch fails the deploy
+- [ ] `og-sync.mjs` either becomes that step or is deleted, so there is one producer
+- [ ] A rail change with no card regeneration is caught by the deploy, not by a reader
+
+It stays 1200x630 and generic (R44): per-result cards are rejected by SPEC
+§6.6, and FW15's byte-equality test — a nine-param URL against the bare
+path — must keep passing whatever produces the file.
+
 **Added by FW14 — mail deliverability (an operator task, not a code one):**
 `RESEND_API_KEY` joins the env checklist. Without it `lib/alerts/mailer.ts`
 collects confirmation messages in memory and delivers nothing — which is
