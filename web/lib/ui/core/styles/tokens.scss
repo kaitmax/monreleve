@@ -285,6 +285,14 @@ $size-sheet-grip-height: 4px;
 $size-sheet-option-min: 52px;
 $size-bottom-nav-height: 80px;
 $size-offline-banner: 36px;
+
+// FD13:41, the guides' table-of-contents column. A SIZE token and not a
+// fourth layout width: ruling R64 closed Container's set at three CONTENT
+// measures - public, narrow, article - and this is a component dimension
+// like the header's height, not a measure prose is set to. The operator
+// ruled on it when FW16 found no token carrying 280 (SPEC 20: adding a
+// token is ask-first).
+$size-toc-column: 280px;
 $size-toast-min-width: 320px;
 $size-toast-max-width: 420px;
 $size-progress-height: 8px;
@@ -462,6 +470,7 @@ $motion-toast-max: 5000ms;
   --size-sheet-option-min: #{$size-sheet-option-min};
   --size-bottom-nav-height: #{$size-bottom-nav-height};
   --size-offline-banner: #{$size-offline-banner};
+  --size-toc-column: #{$size-toc-column};
   --size-toast-min-width: #{$size-toast-min-width};
   --size-toast-max-width: #{$size-toast-max-width};
   --size-progress-height: #{$size-progress-height};
