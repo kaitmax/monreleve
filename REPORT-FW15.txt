@@ -1,0 +1,620 @@
+====================================================================
+REPORT-FW15 - OG, JSON-LD, metadata, analytics
+====================================================================
+
+SUMMARY
+--------------------------------------------------------------------
+Four things were asked to ship. Three did. The fourth was measured and
+refused, which the prompt named as an outcome in advance.
+
+  the OG card        SHIPPED, but not the way SPEC 14 names. next/og
+                     cannot render this product's card at all - measured
+                     two ways - so it is rendered by the browser that
+                     already renders every other baseline, in R37's
+                     container, and served as a static asset.
+  metadata + FAQ     SHIPPED. openGraph and twitter behind the same R81
+                     gate as the canonical; three SPEC 14 questions in a
+                     server-rendered <details> accordion.
+  JSON-LD            SHIPPED. WebApplication and FAQPage, every property
+                     on an allow-list, the FAQ generated from the same
+                     lib/fr source the accordion renders.
+  analytics          DID NOT SHIP. No Umami instance exists, no tracker
+                     package exists to vendor, and committing a copy of
+                     a third-party script is an ask-first item. So
+                     /confidentialite keeps saying the site does not
+                     measure its audience yet - and now a test holds
+                     that sentence on every public route.
+
+The event set was still built: SPEC 15's nine events as pure builders
+with an enumerated payload allow-list, five of them wired into the
+calculator, firing into a collector that nothing has installed.
+
+THREE STANDING GUARDS FIRED ON MY OWN CODE, none of them a test written
+for this feature: the dangerouslySetInnerHTML census, the island-harness
+census (twice), and the R81 runtime guard. A fourth - the contrast
+audit - got the first entry in a list that had been empty since it was
+written. Details under RED/GREEN.
+
+PRECONDITIONS
+--------------------------------------------------------------------
+R1 discharged before any work: CI green on origin/main at 16d04c7.
+  run 34763474102 - https://github.com/kaitmax/Frontalier/actions/runs/34763474102
+
+CI after each pushed increment (all conclusion: success):
+  8eba7c3  run 34770755354
+  97e545e  run 34771380093
+  369b6a7  run 34772408971
+  56a17cc  run 34773302808   (final commit)
+
+INCREMENT 0
+--------------------------------------------------------------------
+R139 - gate:clean, built and proven by REPRODUCING BOTH FW14 failures
+rather than the one the ruling asks for, because the two exercise
+different halves of it:
+
+  ef629d5's condition, the Prisma client built at import time
+    -> caught at pnpm build
+    -> "Failed to collect page data for /api/alertes/desinscription",
+       the same message CI produced.
+  da65dfa's condition, no postinstall to generate the client
+    -> caught at pnpm typecheck
+    -> "Module '@prisma/client' has no exported member 'PrismaClient'",
+       again the message CI produced.
+
+Both restored afterwards. It copies what git would hand a fresh clone
+into a temp directory, so .env and node_modules are absent BY
+CONSTRUCTION rather than by a scrub list somebody maintains. It found a
+bug in itself on its first run: it died creating a directory called
+"panneau de r\303 - git quotes any path with a non-ASCII byte, and this
+is a French product where accented paths are the normal case. Fixed with
+git ls-files -z.
+
+R140 - the selector gained lib/params/**, lib/alerts/** and
+lib/content/**, as ONE entry labelled by its reason rather than three
+path lines, because the printed selection is read by a person deciding
+whether the right suites ran.
+
+  THE PRINCIPLE, recorded at the script: ANY MODULE WHOSE OUTPUT REACHES
+  RENDERED HTML SELECTS THE BROWSER SUITES, WHATEVER DIRECTORY IT LIVES
+  IN.
+
+  THE JUDGEMENT RULE for a future module, in one question: can a change
+  to it alter a byte that a browser receives, without any file already
+  matched changing too? If yes, it belongs. Five cases are worked
+  through at the script, including the two that say NO - lib/calc-engine
+  (its output reaches the page THROUGH the island, which is app/** and
+  already selects) and lib/db/** (nothing it produces is rendered).
+
+  IT FIRED FOR REAL TWICE IN THIS TASK, one increment after landing:
+    lib/content/og.ts     -> browser suites (it decides what og:image says)
+    lib/content/jsonld.ts -> browser suites (it decides what a crawler reads)
+  Under the previous selector neither matched anything, and the browser
+  suites would have run only because app/** changed in the same commit.
+  That is the FW13 shape R132 exists to prevent.
+
+R141 - FW27's scope in tasks/todo.md now owns List-Unsubscribe,
+List-Unsubscribe-Post and the POST endpoint they point at. The fact
+recorded there rather than rediscovered: a mailbox provider sends a POST
+with the body List-Unsubscribe=One-Click, follows no redirect, and reads
+the status code, so the POST answers 200 with no body where the GET
+answers 303 to a status page. Somebody reusing the GET handler would
+ship something that looks right and unsubscribes nobody. The interim GET
+stays, and the block says why rather than only that.
+
+RED/GREEN LEDGER
+--------------------------------------------------------------------
+INCREMENT 1 - the OG card
+  RED  tests/unit/meta/og-image.test.ts        4 failed
+       "app/opengraph-image.png is missing", "og-card.png is missing".
+  RED  e2e/og.spec.ts                          2 failed, 1 PASSED
+       AND THE PASS WAS THE FINDING. With no card in the tree, both the
+       bare and the nine-param request returned the SAME 404 page, the
+       buffers compared equal, and the privacy assertion reported green
+       against a product that had no card at all. It now requires 200
+       and image/png from both responses before comparing anything;
+       re-run: 3 failed.
+  GREEN 7 assertions across the two files, plus 3 in the container.
+
+INCREMENT 2 - metadata and the FAQ
+  RED  tests/unit/pages/faq.test.tsx           import error, then 4 failed
+       Two of those four were a TEST defect, not a product one: Testing
+       Library's normalizer collapses whitespace and U+00A0 is whitespace
+       to that regex, so getByText failed on copy that was correct. The
+       tests now compare textContent, which asserts exact codepoints -
+       stronger, for copy whose whole subject is invisible characters.
+  RED  page-section-order.test.tsx             3 failed
+       "[data-explanation]: expected null not to be null".
+  RED  og-metadata.test.ts                     2 failed
+       openGraph and twitter undefined with an origin configured.
+  GUARD tests/unit/meta/inner-html.test.ts fired: the census names every
+       dangerouslySetInnerHTML site in lib/ and app/ and asserted exactly
+       two. The OG harness made three. Updated deliberately, with the
+       reason in the file's header.
+  GREEN 13 assertions; 22 baselines regenerated.
+
+INCREMENT 3 - JSON-LD
+  RED  tests/unit/content/jsonld.test.ts       import error (no module)
+  GREEN 10, then 3 more from the rendered DOM and 3 over HTTP.
+  GUARD the island-harness census fired on JsonLd, and the contrast audit
+       fired too - see GUARDS below.
+  AND THE ALLOW-LIST REMOVED ONE OF MY OWN PROPERTIES on its first
+       application: isAccessibleForFree was emitted and withdrawn,
+       because the only place this product says the calculation is free
+       is the META DESCRIPTION, which a reader never sees.
+
+INCREMENT 4 - analytics
+  No RED: the increment's finding is that nothing could be built. The
+  test added (e2e/analytics.spec.ts) FAILED ON ALL NINE ROUTES on its
+  first run, for a reason worth recording - it filtered the trace by the
+  METADATA origin (frontalier.example) rather than the server the suite
+  hits (localhost:3000), so every request looked foreign.
+  GREEN 10.
+
+INCREMENT 5 - the events
+  RED  tests/unit/analytics/events.test.ts     1 failed
+       AND IT WAS THE TEST THAT WAS WRONG: it serialised whole events and
+       failed on `email_submitted`, which is SPEC 15's own name for the
+       event. Narrowed to payloads, which is what the claim always meant.
+  RED  tests/unit/pages/calculator-events.test.tsx  2 failed
+       wrong copy path (the island aliases COPY to the form block) and
+       #resultat is an id, not a testid.
+  GREEN 20.
+
+INCREMENT 6 - trace, a11y, baselines, size
+  NO RED, AND THAT IS STATED RATHER THAN GLOSSED. These are absence and
+  behaviour assertions that passed on their first run, which is evidence
+  of nothing by itself. What makes them non-vacuous:
+    - the axe tests assert the state they photograph first (0 open, then
+      3 open) so neither can pass against an empty render;
+    - the keyboard test was REWRITTEN because its first version set
+      details.open by hand and would have passed against a component
+      that did nothing. jsdom was probed - false, click, true - and the
+      test now asserts the real activation;
+    - the Enter key is asserted in Chromium instead, because jsdom does
+      not map it.
+  GREEN 6 unit, 3 e2e; 2 baselines added.
+
+GUARDS THAT FIRED ON MY OWN CODE (none written for this feature)
+  inner-html census      2 sites -> 3 (the OG harness)
+  island-harness census  twice: Faq, then JsonLd
+  contrast audit         STYLE_FREE got its first entry ever: JsonLd
+                         renders a <script> and nothing else, so there
+                         is no element to measure a ratio against
+  R81 runtime guard      caught og:image and twitter:image pointing at
+                         http://localhost:3000 - see DEVIATIONS
+
+AND ONE RATCHET WAS RAISED TWICE IN ONE TASK, which is the erosion it
+exists to prevent. The island-harness exclusion list was capped at two;
+Faq made three and JsonLd made four. Rather than raise it a third time
+later, the protection MOVED to where it can hold: a new test reads each
+excluded component's source and requires its stated reason to be true -
+the three server components must contain no 'use client', and PublicShell
+must contain one, because its exclusion is the opposite claim. A client
+component slipped into that list to dodge GATE I now fails whatever the
+cap says.
+
+OG DETERMINISM (R142)
+--------------------------------------------------------------------
+ASSERTED FIRST, IN BOTH HALVES, AND BOTH PASSED.
+
+  in the container   two screenshots of the same card in one page,
+                     byte-identical.
+  over HTTP          two requests for /opengraph-image.png,
+                     byte-identical.
+
+Nothing was non-deterministic, so there is nothing to report about a
+cause. The assertion is not idle: the card is a browser render, and a
+font that had not finished loading is exactly the failure it catches -
+which is why the harness waits on document.fonts.ready before any
+capture.
+
+OG BYTE EQUALITY
+--------------------------------------------------------------------
+A nine-param URL against the bare path, both returning 200 image/png:
+
+  /opengraph-image.png
+  /opengraph-image.png?canton=GE&taux=100&tt=84&mfr=6&mtiers=2
+                       &methode=exact&total=220&decompte=j&debut=2026-03-01
+
+  BYTES IDENTICAL. 11 556 bytes, 1200 x 630, both requests.
+
+The nine names are read from PARAM_NAMES rather than typed, so a tenth
+parameter added to the product arrives at this test instead of being
+remembered. The values are a real shared calculation (R120) rather than
+placeholders.
+
+THE PROPERTY IS NOW STRUCTURAL, which is stronger than the prompt asked
+for: the card is a static asset, so the route CANNOT read a parameter -
+there is no route. The test remains because the assertion is about the
+OUTPUT and survives a rewrite of how the card is produced, including the
+one this task made.
+
+JSON-LD MAP
+--------------------------------------------------------------------
+Every emitted property, and where a reader sees it:
+
+  WebApplication
+    @context, @type          not claims
+    name                     the <h1>
+    description              the visible lead paragraph under it - NOT
+                             the meta description, which a reader never
+                             sees
+    url                      the canonical. Asserted EQUAL to it in e2e,
+                             because the two are written by different
+                             code paths; omitted entirely with no
+                             configured origin (R81)
+    applicationCategory      schema taxonomy for what the page plainly is
+    inLanguage               <html lang="fr"> and the declared hreflang
+
+  FAQPage
+    @context, @type          not claims
+    mainEntity[].name        the three <summary> elements
+    acceptedAnswer.text      the three answer paragraphs, present in the
+                             DOM while closed and served with JavaScript
+                             disabled (asserted in Chromium)
+
+  WITHDRAWN: isAccessibleForFree. See RED/GREEN increment 3.
+  REFUSED BY NAME: aggregateRating, offers, price, author.
+
+The FAQPage is compared against the RENDERED accordion twice - once in
+the DOM, once over HTTP - rather than against the builder's input, which
+is the only way to catch the page handing one consumer a different array
+from the other.
+
+R138 MAPPING
+--------------------------------------------------------------------
+THE SENTENCE DID NOT FLIP, AND THE THREE PINNING TESTS WERE NOT EDITED.
+R138 says that if any part of the claim cannot be made true, the sentence
+is corrected rather than the claim widened. It could not, and the
+sentence FW14 wrote is still exactly true, so there was nothing to
+correct.
+
+What could not be made true, checked rather than assumed:
+
+  proxy a running instance   there is none. FW28 deploys it.
+  copy it at build           presupposes the same instance, and would
+                             make pnpm build depend on the network.
+  vendor an npm package      @umami/browser   404 on the registry
+                             umami-browser    404 on the registry
+                             @umami/node      exists, but is a SERVER-
+                                              side client, not a tracker
+  commit a scraped copy      SPEC 20 makes any third-party script the
+                             operator's call, and it could never be
+                             verified against upstream
+
+Clause by clause, with the test that holds it:
+
+  "ne mesure pas encore son audience"   e2e/analytics.spec.ts, all nine
+                                        public routes: no script that
+                                        looks like measurement, matched
+                                        against src AND inline text for
+                                        thirteen vendor names
+  "sans cookie"                         same spec: context.cookies() is
+                                        empty on every route
+  "aucune donnee ne partira vers un
+   tiers"                               same spec: zero third-party
+                                        requests from a real trace
+  "sera auto-hebergee"                  STILL A PROMISE. No test can hold
+                                        it and none pretends to.
+
+The vendor-name check is the one the other two cannot make: a script
+copied into public/ is first-party by hostname and third-party by every
+meaning that matters to a reader of that page.
+
+EVENT PAYLOADS
+--------------------------------------------------------------------
+THE ALLOW-LIST, enumerated across every builder by a test that requires
+the key set to EQUAL it:
+
+  path      the route, which is in the URL bar anyway
+  status    one of four Status buckets
+  section   which accordion, by its id
+  declared  whether missions were declared - a boolean, not how many
+  source    which surface an action came from, closed list
+  method    how a link was shared, closed list
+  target    which contextual link, by name
+
+WHAT IS NEVER CARRIED: the rate, the day count, the canton, the
+employment rate, the address. `calculated` carries NOTHING AT ALL - that
+somebody ran a calculation is the signal SPEC 15 asks for, and what they
+calculated is theirs.
+
+result_status carries the Status and nothing else. The exhaustiveness
+test reads the union from zones.ts rather than listing it, so a fifth
+status added there would fail here instead of becoming a category that
+silently never appears. A second test requires the four payloads to
+DIFFER, because a builder that ignored its argument would satisfy the
+first (R120).
+
+WIRED (5 of 9), with when they fire:
+  calculated         once per mount, at the first result. Fired per
+                     computation it would report a dozen calculations for
+                     one person typing "84" - SPEC 9.3 recomputes on
+                     every input event with no debounce.
+  result_status      on each CHANGE of status
+  missions_declared  a boolean, at the radio
+  accordion_opened   on OPENING only; closing is not a second opening
+  share_clicked      at the copy path
+
+NOT WIRED (4 of 9), named rather than quietly missing:
+  page_view                needs a client hook on server-rendered pages
+  email_submitted          the capture card is a plain server form with
+                           no JavaScript (R136)
+  contextual_link_clicked  server-rendered anchors
+  app_cta_clicked          /application does not exist (FW20)
+Each would cost client bytes on pages that have no collector to send to.
+
+NO VENDOR IS NAMED IN THE TRANSPORT. A collector is INSTALLED rather
+than looked up, so FW28's choice - proxy Umami's script, or send from our
+own code - changes one function and no call site.
+
+TRACE
+--------------------------------------------------------------------
+e2e/analytics.spec.ts, every live public route plus the two alert status
+pages. Nine routes, each asserting three things:
+
+  route                                  3rd-party  cookies  analytics
+  /                                       0          0        none
+  /calculateur-teletravail-frontalier     0          0        none
+  /alertes                                0          0        none
+  /alertes/confirmation/confirmee         0          0        none
+  /alertes/desinscription/desinscrit      0          0        none
+  /mentions-legales                       0          0        none
+  /confidentialite                        0          0        none
+  /cgu                                    0          0        none
+  /sources                                0          0        none
+
+SCRIPT ORIGIN: there is no analytics script to assert same-origin. The
+assertion is its absence, and it is written so that shipping one fails
+with a message naming the privacy sentence that has to change first.
+
+The route list comes from liveRoutes() rather than a literal, with a
+non-vacuity check (R63) so an empty registry cannot pass nine tests.
+
+SIZE
+--------------------------------------------------------------------
+  route                                bucket  js total  delta  verdict
+  /                                    public   107.1     6.5   A 17.9 spare
+  /_not-found                          public   107.4     6.8   A 17.6 spare
+  /alertes                             public   107.4     6.8   A 17.6 spare
+  /alertes/confirmation/[etat]         public   107.3     6.7   A 17.7 spare
+  /alertes/desinscription/[etat]       public   107.3     6.7   A 17.7 spare
+  /calculateur-teletravail-frontalier  public   121.1    20.5   A 3.9 spare
+  /cgu                                 public   107.3     6.8   A 17.7 spare
+  /confidentialite                     public   107.3     6.8   A 17.7 spare
+  /mentions-legales                    public   107.3     6.8   A 17.7 spare
+  /sources                             public   107.4     6.8   A 17.6 spare
+
+  All gated routes pass GATE A and GATE B.
+  CSS and fonts reported separately and never gated: 47.1 KiB of font
+  preloaded (latin subset), 6.2 KiB of CSS per route.
+
+THE CALCULATOR WENT 120.8 -> 121.1, so FW15 added 0,3 KiB and left 3,9
+KiB of GATE A headroom where FW14 left 4,2.
+
+AND THE FIRST NUMBER I TOOK WAS WRONG, WHICH IS WORTH THE PARAGRAPH.
+Increment 5 measured 122.6 and its commit message reports 1,8 KiB. That
+reading came from running pnpm size after gate:changed - and the gate
+runs test:e2e in between, whose webServer builds and starts the app with
+FRONTALIER_DEV_ROUTES=1. It OVERWRITES .next with a dev-routes build, so
+the figure included /dev/** and their CSS. The table above comes from
+pnpm gate, which builds and measures with nothing in between.
+
+THE GIVEAWAY WAS IN THE BAD OUTPUT AND I READ PAST IT: it listed
+/dev/island, /dev/og and /dev/rail-gallery, which a production build does
+not contain. A number that arrives with four rows that should not exist
+is a number measuring something else.
+
+THE COMMIT MESSAGE FOR 369b6a7 THEREFORE OVERSTATES THE COST by 1,5 KiB.
+It is left as written - history is not rewritten to look better - and
+corrected here, which is the record that counts.
+
+ALL OF THE 0,3 KiB IS THE EVENT LAYER. The FAQ and both JSON-LD objects
+are SERVER-rendered and contributed nothing to any client bundle.
+
+AND THE TWO NUMBERS THE PROMPT ASKED TO SEE SEPARATELY, in the form they
+actually took: there is no analytics script, so nothing sits outside the
+JS budget. The 0,3 KiB is a FIRST-PARTY event layer, which is inside it.
+A vendor script would have been outside. That is the trade, stated so
+nobody reads a future script into this number either.
+BASELINES
+--------------------------------------------------------------------
+24 regenerated or added in two batches, each with one reason (R135).
+
+  22 REGENERATED, increment 2 - all calculateur-*, eleven states at 1440
+  and 390. One reason: the page gained the FAQ section, so every
+  full-page capture of it grew.
+    desktop 1440x2565 -> 1440x2833
+    mobile   390x3763 ->  390x4115
+    WIDTHS UNCHANGED, which is the half that matters under R128: a
+    fullPage capture widens to include horizontal overflow, so an
+    unchanged width is the evidence that three questions introduced none.
+    calculateur-vide-desktop.png was cropped and read.
+
+  2 ADDED, increment 6 - calculateur-faq-ouverte at 1440 and 390. They
+  exist because nobody had ever looked at what they show: every other
+  baseline carries the FAQ CLOSED, and the ANSWER had never been
+  photographed. No existing baseline moved. The mobile capture was
+  cropped and read - markers rotated, answers in secondary at Body, 390
+  px wide, no overflow.
+
+  og-card.png is a third case and is not a review artifact: it IS the
+  shipped card, copied to public/opengraph-image.png by scripts/
+  og-sync.mjs, with a unit test asserting the two are byte-identical on
+  every commit.
+
+TOKENS ADDED (R77)
+--------------------------------------------------------------------
+None. Every value in Faq.module.scss is an existing token: --space-4 and
+--space-6, --size-rule (R69's hairline), --colour-text-primary and
+--colour-text-secondary, the h2/h3/body type steps. No radius was needed.
+
+DEVIATIONS
+--------------------------------------------------------------------
+1. THE OG CARD IS NOT RENDERED BY opengraph-image.tsx, which SPEC 14
+   names and the prompt asked for. It cannot be. Measured, two ways:
+
+     the SVG as a nested <img>   rasterises the SHAPES and silently drops
+                                 every <text>. Bands and ticks painted;
+                                 product name, both tick labels and the
+                                 legend absent. 4784 bytes with a font
+                                 passed to ImageResponse and 4784
+                                 without - resvg has no font database and
+                                 no way to be given one through that API.
+                                 A control naming Arial rendered 960
+                                 bytes of empty grey, same as Noto Sans.
+     the elements inline         refuses: "<text> nodes are not currently
+                                 supported, please convert them to
+                                 <path>".
+
+   An image route would have shipped a coloured bar with no words on it.
+   The alternatives were a second rasteriser - a dependency, a committed
+   font binary (satori and resvg both refuse woff2, the only format
+   public/fonts ships), and a SECOND IMPLEMENTATION of the rail, which is
+   what SPEC 6.3's "one implementation" exists to prevent - or a typeface
+   that is not the product's.
+
+   So the card is rendered by the renderer the product already uses, in
+   R37's container, and served as a static asset at the same URL
+   opengraph-image.tsx would have used. The normative property is
+   unchanged: generic (R44), 1200x630, never per-result.
+
+2. THE CARD IS SERVED FROM public/, NOT app/, and this is a SECOND and
+   independent reason the file convention cannot be used. With the card
+   at app/opengraph-image.png, a build with no configured origin put this
+   in the head of every public page:
+
+     <meta property="og:image" content="http://localhost:3000/opengraph-image.png?56ee358a35a09d24">
+     <meta name="twitter:image" content="http://localhost:3000/...">
+
+   e2e/guard.runtime.spec.ts caught it. R81 carries over from canonicals
+   without modification: a URL a crawler cannot fetch is an INSTRUCTION
+   rather than an absence. The convention has no conditional form, so the
+   tags are declared behind canonicalsAvailable() instead, and a test
+   asserts the file is NOT under app/ and carries the head that made the
+   case.
+
+3. ANALYTICS DID NOT SHIP. See R138 MAPPING. The prompt named this
+   outcome in advance and it is the one the measurement produced.
+
+4. FOUR OF NINE EVENTS ARE NOT WIRED. See EVENT PAYLOADS. AC3's "all
+   events fire with correct payloads" is therefore PARTIALLY met: the
+   payload contract is complete and enumerated, five events fire, four
+   have no surface or would cost bytes on pages with no collector.
+
+5. WebApplication IS ON ONE CALCULATOR, NOT TWO. /calculateur-lamal-cmu
+   is `planned` for FW19 in the registry. The builder takes name,
+   description and url as arguments so FW19 adds a call rather than a
+   second implementation.
+
+6. THE PLACEHOLDER HOME'S DESCRIPTION names the thresholds but not the
+   year. app/(public)/page.tsx says in its own header that it is a
+   placeholder and FW20 builds the real one; adding a year there means
+   converting its static metadata to generateMetadata with revalidate,
+   which is FW20's page to shape. The target-query page - the calculator
+   - names both, and now has a test that says so.
+
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------
+1. R132's SELECTOR HAS A HOLE THIS TASK WALKED INTO TWICE. No pattern
+   covers e2e/** or tests/visual/**, so:
+     - adding e2e/analytics.spec.ts selected no browser suite;
+     - adding a visual STATE and two baselines in increment 6 did not
+       select test:visual.
+   Both were run by hand and both passed, so nothing shipped unverified.
+   It is a different principle from R140's - not "output reaching
+   rendered HTML" but "a file that IS a suite, or IS the record a suite
+   compares against, selects that suite". A ruling, so not self-applied.
+
+2. THE OG CARD URL HAS NO VERSION QUERY. Next's file convention appends
+   a content hash; a static asset does not. Social platforms cache by
+   URL, so a future card change would not propagate until they re-scrape.
+   The card is generic and effectively immutable, and increment 2 chose
+   simplicity over machinery, but a deploy that changes the rail should
+   know this.
+
+3. NextJS LOGS "Internal: NoFallbackError" while serving
+   /alertes/confirmation/confirmee under the e2e server. Every test
+   against that route passes and the page renders; it appears to be an
+   internal fallback probe. Not investigated - it predates this task's
+   changes to that route, which were none.
+
+4. THE FAQ'S QUESTIONS ARE <summary> ELEMENTS, NOT HEADINGS. Some
+   accordion patterns wrap the summary content in an h3 so the questions
+   appear in the heading outline. Axe is clean either way and the
+   keyboard path is the platform's, so this is a review question rather
+   than a defect - raised because a FAQ is exactly where heading
+   navigation earns its keep.
+
+5. pnpm size AFTER pnpm gate:changed MEASURES THE WRONG BUILD, and it
+   cost this report a wrong number before the final run caught it. The
+   gate runs test:e2e, whose webServer is "next build && next start"
+   with FRONTALIER_DEV_ROUTES=1, so .next is left holding a DEV-ROUTES
+   build. Anything reading .next afterwards measures that. See SIZE.
+
+   It is not a defect in either script - each does what it says - but
+   the two are adjacent enough that the trap will be walked into again.
+   A line in the gate's output saying which build .next currently holds
+   would close it. Not added: the gate is R132's, and this is a
+   suggestion rather than a finding about the product.
+
+QUESTIONS FOR THE OPERATOR
+--------------------------------------------------------------------
+Q39. ANALYTICS, WHICH MECHANISM? SPEC 15 says "same-origin script" and
+     SPEC 20 makes any third-party script your call. Three ways to
+     satisfy it, and they are materially different:
+       (a) proxy a deployed Umami's /script.js through our origin
+       (b) commit a copy of that script to public/
+       (c) send events from our own code to a same-origin endpoint that
+           forwards to Umami - no third-party script at all
+     FW15 built the event layer so that (c) needs one function and no
+     call-site changes. (b) is the one I would refuse without a ruling:
+     an unverifiable copy of somebody else's code, shipped to every
+     reader.
+
+Q40. SHOULD R132's SELECTOR COVER e2e/** AND tests/visual/**? See
+     NOTICED 1. Proposed pattern: a changed file under e2e/ selects the
+     suite it belongs to (test:e2e, or test:visual for *.visual.spec.ts),
+     and a changed baseline selects test:visual.
+
+Q41. THE OG CARD'S REGENERATION PATH is docker-only, like every other
+     baseline. That is consistent with R37, but the card is a SHIPPED
+     ASSET rather than a review artifact - a contributor without docker
+     cannot change the rail and ship a matching card. Acceptable, or
+     should FW28 make the card a deploy-time artifact instead?
+
+FINAL VERIFICATION
+--------------------------------------------------------------------
+GREEN IN ONE RUN, chained so a failure could not be followed by the next
+command:
+
+  pnpm gate          115 test files, 2136 tests passed
+                     typecheck, lint, coverage, floor, build
+                     size: all gated routes pass GATE A and GATE B
+                     parity: 11 codepoint cases and 10001 exhaustive
+                             values identical on node v22.14.0
+                             (ICU 76.1, CLDR 46.0)
+  pnpm test:e2e      123 passed
+  pnpm test:visual    86 passed (in the container, sole container
+                     checked per R98; distDir .next-visual-19548)
+  pnpm test:a11y     111 passed across 5 files
+  pnpm test:runtime    9 passed - R81 holds with the tags declared
+
+CI green on origin/main at the final commit 56a17cc:
+  run 34773302808 - https://github.com/kaitmax/Frontalier/actions/runs/34773302808
+
+PUSH PROOF
+--------------------------------------------------------------------
+  0c71e90  chore: R139 - gate:clean, for the question gate:changed cannot ask
+  c0526da  chore: R140 - output reaching rendered HTML selects the browser suites
+  c7d7265  chore: R141 - FW27 owns RFC 8058, and the interim GET is recorded as interim
+  6000893  FW15: generic OG image from the social rail variant
+  50b7f43  FW15: page metadata and the inline FAQ
+  8eba7c3  FW15: JSON-LD from the visible source
+  97e545e  FW15: analytics does not ship, and R138's sentence stays (with a test)
+  369b6a7  FW15: the event set with an allow-listed payload
+  56a17cc  FW15: trace, a11y, baselines, size record
+
+  All pushed to origin/main.
+
+END OF REPORT-FW15
