@@ -245,6 +245,33 @@ describe('R133: a suite that reports nothing must not read as a pass', () => {
     }
   });
 
+  it('fails when the count is below the floor it was given', () => {
+    // "N tests ran" is half of R133; "N >= expected" is the other half, and
+    // it is the half that catches a suite which SHRANK. A spec file that
+    // stops being collected still exits 0 and still prints a number - just a
+    // smaller one - which is exactly how FW8's .test.tsx glob went unnoticed.
+    const counted = readCount('test:visual', '  49 passed (1.2m)\n', 69);
+
+    expect(counted.ran).toBe(49);
+    expect(counted.failure).toContain('49');
+    expect(counted.failure).toContain('69');
+  });
+
+  it('passes at the floor and above it', () => {
+    expect(readCount('test:visual', '  69 passed\n', 69).failure).toBeUndefined();
+    expect(readCount('test:visual', '  70 passed\n', 69).failure).toBeUndefined();
+  });
+
+  it('still requires a count when a floor is given', () => {
+    // A missing count must not be read as "floor not applicable".
+    expect(readCount('test:e2e', 'nothing to see', 96).failure).toContain('R133');
+  });
+
+  it('keeps the >= 1 check when no floor is given', () => {
+    expect(readCount('test:e2e', '  0 passed\n', undefined).failure).toBeDefined();
+    expect(readCount('test:e2e', '  1 passed\n', undefined).failure).toBeUndefined();
+  });
+
   it('counts exactly the three suites that report counts', () => {
     // R63 again: the assertions above would all still pass if a suite were
     // quietly dropped from the map and began being judged on exit code.

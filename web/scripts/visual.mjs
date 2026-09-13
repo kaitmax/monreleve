@@ -49,12 +49,17 @@ import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'no
 import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readCount } from './gate-selection.mjs';
 
 const require = createRequire(import.meta.url);
+
 const { version } = require('@playwright/test/package.json');
 
 const WEB = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const REPO = resolve(WEB, '..');
+
+/** R133 floors, shared with pnpm gate:changed. */
+const floors = JSON.parse(readFileSync(resolve(WEB, 'scripts', 'suite-floor.json'), 'utf8'));
 const IMAGE = `mcr.microsoft.com/playwright:v${version}-noble`;
 
 /** U+000A, named because two escapes in this file collapsed on the way in. */
@@ -127,11 +132,43 @@ const DIST_DIR = `.next-visual-${process.pid}-${Date.now().toString(36)}`;
 // node_modules is NOT mounted: it holds Windows-native binaries here and
 // Linux ones in the container, so the container installs its own. That is the
 // slow part and it is not avoidable - sharing them is what would break.
+/**
+ * Where the container leaves a copy of what Playwright printed.
+ *
+ * R133: A HARNESS ASSERTS A POSITIVE SIGNAL, NEVER INFERS FROM ABSENCE.
+ * This script judged the run by whether execFileSync threw - an exit code
+ * and nothing else - which cannot tell 69 baselines passing from 49 passing
+ * because twenty stopped being collected. Playwright refuses a run that
+ * matches no tests at all, so the empty case was covered; the SHRUNK case
+ * was not, and that is the one that arrives quietly.
+ *
+ * tee rather than capturing on the host, because stdio is 'inherit' and
+ * that is worth keeping: a two-minute container run with no output until
+ * the end is a run people stop trusting. set -o pipefail keeps the exit
+ * code Playwright's rather than tee's.
+ *
+ * test-results/ is git-ignored and inside the bind mount, so the file
+ * written in the container is readable here and committed nowhere.
+ */
+const RUN_LOG = 'test-results/visual-run.txt';
+
 const inContainer = [
+  'set -o pipefail',
   'corepack enable',
   'cd /repo/web',
   'pnpm install --frozen-lockfile',
-  `pnpm exec playwright test --project=visual${update ? ' --update-snapshots' : ''}`,
+  'mkdir -p test-results',
+  // tee to /tmp and copy back AFTERWARDS, which the first version did not do.
+  // Playwright cleans its outputDir - test-results/ - when it starts, so a
+  // tee opened there before the run writes into a deleted inode and the host
+  // finds nothing. The check then fired on a run that had plainly printed
+  // "69 passed". It failed CLOSED, which is the right direction, but it was
+  // still wrong.
+  //
+  // Semicolons rather than && for the tail: the copy has to happen whether
+  // the suite passed or failed, and exit $code puts Playwright's status back
+  // where the && chain expects it.
+  `pnpm exec playwright test --project=visual${update ? ' --update-snapshots' : ''} 2>&1 | tee /tmp/visual-run.txt; code=$?; mkdir -p test-results; cp /tmp/visual-run.txt ${RUN_LOG}; exit $code`,
 ].join(' && ');
 
 process.stdout.write(
@@ -273,6 +310,23 @@ try {
   // Playwright output. It happened once, when this distDir was added without
   // its volume: eslint then reported 6 568 errors from generated files. So it
   // is reported rather than silently cleaned.
+  // R133. Only when the run itself succeeded: a failed run has already
+  // said why, and a second complaint about its count would bury that.
+  if (process.exitCode !== 1) {
+    const logPath = resolve(WEB, RUN_LOG);
+    const printed = existsSync(logPath) ? readFileSync(logPath, 'utf8') : '';
+    const counted = readCount('test:visual', printed, floors.visual);
+
+    if (counted.failure !== undefined) {
+      process.stderr.write(
+        ['', `VISUAL SUITE: ${counted.failure}`, ''].join(NEWLINE),
+      );
+      process.exitCode = 1;
+    } else {
+      process.stdout.write(`visual suite: ${counted.ran} passed${NEWLINE}`);
+    }
+  }
+
   const host = resolve(WEB, DIST_DIR);
 
   if (existsSync(host)) {

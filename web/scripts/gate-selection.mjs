@@ -67,9 +67,20 @@ export const SUITE_COUNTS = Object.freeze({
 /**
  * What a finished suite actually reported.
  *
+ * `floor` is the other half of R133: "N tests ran AND N >= expected". The
+ * first half catches a suite that died; the second catches one that SHRANK,
+ * which is the quieter failure - a spec file that stops being collected still
+ * exits 0 and still prints a number, just a smaller one. That is how FW8's
+ * .test.tsx glob went unnoticed, and scripts/suite-floor.json has held the
+ * line for vitest ever since. The visual and end-to-end suites had no such
+ * floor until this sweep.
+ *
+ * @param {string} suite
+ * @param {string} output
+ * @param {number} [floor] the count below which this is a failure
  * @returns {{counted: boolean, ran?: number, failure?: string}}
  */
-export function readCount(suite, output) {
+export function readCount(suite, output, floor) {
   const pattern = SUITE_COUNTS[suite];
 
   if (pattern === undefined) return { counted: false };
@@ -90,6 +101,18 @@ export function readCount(suite, output) {
 
   if (!Number.isFinite(ran) || ran < 1) {
     return { counted: true, failure: `pnpm ${suite} reported ${found[1]} passed` };
+  }
+
+  if (typeof floor === 'number' && ran < floor) {
+    return {
+      counted: true,
+      ran,
+      failure:
+        `pnpm ${suite} ran ${ran} tests, floor is ${floor}. A count that ` +
+        'dropped ON PURPOSE is a deliberate edit to scripts/suite-floor.json ' +
+        'with the reason in the commit message; a count that dropped by ' +
+        'accident is what this check is for.',
+    };
   }
 
   return { counted: true, ran };

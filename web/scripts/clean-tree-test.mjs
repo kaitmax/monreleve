@@ -61,6 +61,20 @@ try {
   });
 
   status = run.status ?? 1;
+
+  // R133. This judged a run of the WHOLE suite by its exit code alone, and
+  // pnpm test:coverage writes test-results/vitest.json on its way past - so
+  // the strong floor was sitting there unread. A clean-tree run that
+  // collected half the suite would have passed.
+  if (status === 0) {
+    const floor = spawnSync('pnpm', ['test:floor', '--', '--report', 'test-results/vitest.json'], {
+      cwd: web,
+      stdio: 'inherit',
+      shell: process.platform === 'win32',
+    });
+
+    status = floor.status ?? 1;
+  }
 } finally {
   if (moved) {
     renameSync(stashed, live);

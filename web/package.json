@@ -25,7 +25,7 @@
     "test:floor": "node scripts/check-suite-floor.mjs",
     "test:a11y": "vitest run lib/ui/react/accessibility tests/unit/pages/accessibility",
     "test:clean-tree": "node scripts/clean-tree-test.mjs",
-    "gate": "pnpm test:floor && pnpm typecheck && pnpm lint && pnpm test:coverage && pnpm build && pnpm size && pnpm parity:check",
+    "gate": "pnpm test:floor && pnpm typecheck && pnpm lint && pnpm test:coverage && pnpm test:floor -- --report test-results/vitest.json && pnpm build && pnpm size && pnpm parity:check",
     "gate:changed": "node scripts/gate-for-changes.mjs"
   },
   "dependencies": {

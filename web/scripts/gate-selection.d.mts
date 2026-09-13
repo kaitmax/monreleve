@@ -53,4 +53,8 @@ export declare const SUITE_COUNTS: Readonly<Record<string, RegExp>>;
 
 export declare function selectSuites(paths: readonly string[]): Selection;
 export declare function describeSelection(selection: Selection): string;
-export declare function readCount(suite: string, output: string): SuiteCount;
+export declare function readCount(
+  suite: string,
+  output: string,
+  floor?: number,
+): SuiteCount;

@@ -32,11 +32,31 @@
 
 import { spawn } from 'node:child_process';
 import { execFileSync } from 'node:child_process';
-import { dirname, resolve } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describeSelection, readCount, selectSuites } from './gate-selection.mjs';
 
 const web = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
+/**
+ * R133's second half: N >= expected, not merely N > 0.
+ *
+ * The floors live in scripts/suite-floor.json, which already held vitest's
+ * and now holds the other two. Until this sweep the visual and end-to-end
+ * suites had no floor at all: a spec file that stopped being collected
+ * would exit 0 and print a smaller number, and nothing compared that number
+ * to anything.
+ */
+const floors = JSON.parse(
+  readFileSync(join(web, 'scripts', 'suite-floor.json'), 'utf8'),
+);
+
+const FLOOR_FOR = {
+  test: floors.tests,
+  'test:e2e': floors.e2e,
+  'test:visual': floors.visual,
+};
 
 
 function changedPaths() {
@@ -96,7 +116,7 @@ for (const suite of selection.suites) {
     process.exit(1);
   }
 
-  const counted = readCount(suite, output);
+  const counted = readCount(suite, output, FLOOR_FOR[suite]);
 
   if (counted.failure !== undefined) {
     // R133. The FW13 shape exactly: the tool changed, printed nothing this
