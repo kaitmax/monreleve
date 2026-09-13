@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "postinstall": "node node_modules/prisma/build/index.js generate",
     "fonts": "node scripts/copy-fonts.mjs",
     "parity:build": "tsc -p tsconfig.parity.json",
     "parity:check": "pnpm parity:build && node scripts/check-format-parity.mjs dist-parity",

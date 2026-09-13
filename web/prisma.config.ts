@@ -10,18 +10,28 @@
 // separate: `prisma migrate` is a developer tool that needs a URL, and the
 // running application needs a connection pool.
 //
-// env() rather than process.env: Prisma's own helper reads .env the way the
-// CLI does, so `pnpm db:migrate` works without the shell having been set up
-// first.
+// THE DATASOURCE IS CONDITIONAL, and CI is why. `prisma generate` needs the
+// SCHEMA and nothing else - it writes TypeScript, it does not connect - but
+// Prisma's own env() helper throws while the config file is being LOADED, so
+// declaring the datasource unconditionally made `generate` impossible without
+// a database URL. Every job that installs and builds but has no database was
+// then unable to compile: the runtime guard and the visual baselines both
+// failed on "Module '@prisma/client' has no exported member 'PrismaClient'",
+// because the client had never been generated.
+//
+// So the URL is read plainly and the key is present only when there is one to
+// put in it. A migration command run without DATABASE_URL still fails, and
+// says so - it just fails at the point it needs the database rather than at
+// the point the file is read.
 
-import { defineConfig, env } from 'prisma/config';
+import { defineConfig } from 'prisma/config';
+
+const url = process.env.DATABASE_URL;
 
 export default defineConfig({
   schema: 'prisma/schema.prisma',
 
-  datasource: {
-    url: env('DATABASE_URL'),
-  },
+  ...(url === undefined || url === '' ? {} : { datasource: { url } }),
 
   migrations: {
     path: 'prisma/migrations',
