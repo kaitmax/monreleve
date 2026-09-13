@@ -5,5 +5,23 @@
 # @parcel/watcher is an optional native dependency of sass, used only by
 # `sass --watch`. Next compiles our SCSS, so the binary is never needed and its
 # install script is declined deliberately rather than left unanswered.
+#
+# PRISMA'S ARE ALLOWED (FW14), and the reason is worth stating because the
+# failure was not local to Prisma. pnpm 11 refuses to run a dependency's build
+# scripts until they are answered here, and an unanswered script does not fail
+# quietly: with prisma installed and unapproved, every `pnpm run` and every
+# `pnpm exec` died inside pnpm's own dependency-status check - which shells out
+# to `pnpm install` and inherits its exit code - before reaching the tool.
+# `pnpm typecheck` stopped working, and the message was about build scripts.
+#
+# Prisma 7 compiles queries to WASM and has no native engine to download, so
+# the scripts themselves do very little. Answering them is what lets pnpm
+# consider the tree settled.
+#
+# TRUE AND FALSE BOTH MEAN "ANSWERED", which is the point of this file: a
+# dependency whose scripts nobody has decided about is the state pnpm refuses,
+# and both entries here are decisions rather than defaults.
 allowBuilds:
   "@parcel/watcher": false
+  "@prisma/engines": true
+  prisma: true

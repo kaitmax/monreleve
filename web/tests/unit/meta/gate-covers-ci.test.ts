@@ -97,6 +97,8 @@ const MAPPING_TARGETS = [
   'test:a11y',
   'test:runtime',
   'size:dev',
+  'db:deploy',
+  'test:db',
 ] as const;
 
 type MappingTarget = (typeof MAPPING_TARGETS)[number];
@@ -212,7 +214,7 @@ describe('the workflow was parsed at all', () => {
   });
 
   it('knows the mapping targets, and only those', () => {
-    // SIX NOW, AND EACH WIDENING WAS A RULING.
+    // EIGHT NOW, AND EACH WIDENING WAS A RULING OR A TASK THAT NEEDED ONE.
     //
     // R111 named four. R118 added test:runtime after the FW12 audit found
     // R81's production wiring was run by nothing at all: "Declaring it
@@ -224,6 +226,18 @@ describe('the workflow was parsed at all', () => {
     // their own. The alternative was a second build inside `gate`, which
     // doubles every local run for a number only CI needs.
     //
+    // FW14 added db:deploy and test:db. test:db needs a running
+    // PostgreSQL, so it cannot go inside gate without making the primary
+    // loop command depend on a service - which is the road that ends in
+    // somebody mocking the database to get pnpm test green. R132's
+    // selector runs it locally whenever the database layer changes.
+    //
+    // db:deploy is a target rather than a SETUP_STEPS exemption, and the
+    // guard below is why: an exemption has to look like an install, so
+    // that "it only sets things up" can never be claimed for something
+    // that checks. Applying migrations is a real command a developer runs,
+    // and naming it here says so.
+    //
     // The list is pinned so that widening it is an edit here with a reason,
     // never a way to make a failing mapping go quiet.
     expect([...MAPPING_TARGETS]).toEqual([
@@ -233,6 +247,8 @@ describe('the workflow was parsed at all', () => {
       'test:a11y',
       'test:runtime',
       'size:dev',
+      'db:deploy',
+      'test:db',
     ]);
     for (const name of MAPPING_TARGETS) {
       expect(PACKAGE.scripts[name], name).toBeDefined();

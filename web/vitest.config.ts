@@ -37,7 +37,12 @@ export default defineConfig({
     // ending in .test.ts does not match them. The failure mode is the quiet
     // one - `pnpm test` still exits 0 while asserting nothing.
     include: ['tests/**/*.test.{ts,tsx}', 'lib/**/*.test.{ts,tsx}'],
-    exclude: ['e2e/**', 'node_modules/**', '.next/**'],
+    // tests/db/** needs a running PostgreSQL and is run by pnpm test:db
+    // against vitest.db.config.ts. Keeping it out of the primary loop
+    // command is what stops somebody mocking the database to get pnpm test
+    // green on a laptop with no Docker - at which point those tests would
+    // stop asserting what PostgreSQL does, which is all they are for.
+    exclude: ['e2e/**', 'tests/db/**', 'node_modules/**', '.next/**'],
     environment: 'node',
 
     // FW13: every DOM test starts at a bare URL and an empty store. The

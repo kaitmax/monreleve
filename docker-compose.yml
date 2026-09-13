@@ -1,0 +1,43 @@
+# frontalier - the local PostgreSQL for development and for the database tests.
+#
+# FW14 is the first task with a database. SPEC section 3 names Prisma +
+# PostgreSQL; this is the local half of that, and it exists so `pnpm test:db`
+# has something real to run against. The database suite is not mocked: a unique
+# constraint, a case-insensitive duplicate and a 30-day purge are behaviours of
+# PostgreSQL, and asserting them against a fake would assert my model of
+# PostgreSQL rather than PostgreSQL.
+#
+# THE PORT IS NOT 5432, AND THAT IS DELIBERATE. This machine already runs two
+# other projects' database containers on 5434 and 5435, and the default port is
+# the one most likely to be occupied by something a developer cares about.
+# Binding 5436 means starting this can never take a port another project's
+# container is using, and can never be mistaken for one.
+#
+# NO DATA WORTH KEEPING LIVES HERE. The volume is named so a restart keeps the
+# schema, but everything in it is seed data or test rows: `docker compose down
+# -v` is always a safe thing to do.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: frontalier-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: frontalier
+      POSTGRES_PASSWORD: frontalier
+      POSTGRES_DB: frontalier
+    ports:
+      - '5436:5432'
+    volumes:
+      - frontalier-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # Starting the container is not the same as the database accepting
+      # connections, and a migration run against a socket that is not listening
+      # yet fails in a way that reads like a configuration error.
+      test: ['CMD-SHELL', 'pg_isready -U frontalier -d frontalier']
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  frontalier-pgdata:

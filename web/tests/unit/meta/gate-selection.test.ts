@@ -272,15 +272,62 @@ describe('R133: a suite that reports nothing must not read as a pass', () => {
     expect(readCount('test:e2e', '  1 passed\n', undefined).failure).toBeUndefined();
   });
 
-  it('counts exactly the three suites that report counts', () => {
+  it('counts exactly the four suites that report counts', () => {
     // R63 again: the assertions above would all still pass if a suite were
     // quietly dropped from the map and began being judged on exit code.
-    expect(Object.keys(SUITE_COUNTS).sort()).toEqual(['test', 'test:e2e', 'test:visual']);
+    expect(Object.keys(SUITE_COUNTS).sort()).toEqual([
+      'test',
+      'test:db',
+      'test:e2e',
+      'test:visual',
+    ]);
+  });
+});
+
+describe('the database layer selects its own suite (FW14)', () => {
+  it.each([
+    ['the schema', 'web/prisma/schema.prisma'],
+    ['a migration', 'web/prisma/migrations/20260913075645_alert_subscriber/migration.sql'],
+    ['the seed', 'web/prisma/seed.ts'],
+    ['the client', 'web/lib/db/client.ts'],
+    ['a database test', 'web/tests/db/alert-subscriber.test.ts'],
+    ['the prisma config', 'web/prisma.config.ts'],
+    ['the db vitest config', 'web/vitest.db.config.ts'],
+  ])('%s selects test:db', (_label, path) => {
+    expect(suitesFor([path]), path).toContain('test:db');
+  });
+
+  it('does not select test:db for anything else', () => {
+    // NON-VACUITY. test:db needs a running PostgreSQL, so a selector that
+    // asked for it on every change would make the gate unrunnable without
+    // Docker - and the first person to hit that would take it back out.
+    for (const path of ['web/app/page.tsx', 'web/lib/fr/params.ts', 'README.md']) {
+      expect(suitesFor([path]), path).not.toContain('test:db');
+    }
+  });
+
+  it('asks for both groups when a change touches both', () => {
+    const suites = suitesFor(['web/app/api/alertes/route.ts', 'web/lib/db/client.ts']);
+
+    expect(suites).toContain('test:e2e');
+    expect(suites).toContain('test:visual');
+    expect(suites).toContain('test:db');
+  });
+
+  it('orders the selection deterministically, because it goes in a commit', () => {
+    // The same set in a different order every run would be one more thing
+    // nobody can diff.
+    expect(suitesFor(['web/lib/db/client.ts', 'web/app/page.tsx'])).toEqual([
+      ...BASE_SUITES,
+      'test:e2e',
+      'test:visual',
+      'test:db',
+    ]);
   });
 });
 
 describe('the pattern list is the ruling, stated once', () => {
-  it('is exactly the five R132 names', () => {
+  it('is exactly the six names R132 now carries', () => {
     // R63's shape: if a pattern were dropped, every table row above that
     // does not use it would still pass. This pins the list itself.
     expect(SELECTOR_PATTERNS.map((pattern) => pattern.label).sort()).toEqual([
@@ -288,7 +335,16 @@ describe('the pattern list is the ruling, stated once', () => {
       'app/**',
       'lib/fr/**',
       'lib/ui/**',
+      'the database layer (prisma/**, lib/db/**, tests/db/**)',
       'the token layer (lib/ui/core/styles/**)',
     ]);
+  });
+
+  it('gives every pattern a suite to require', () => {
+    // A pattern with no suites would match, be reported as matched, and
+    // change nothing about what runs.
+    for (const pattern of SELECTOR_PATTERNS) {
+      expect(pattern.suites.length, pattern.label).toBeGreaterThan(0);
+    }
   });
 });

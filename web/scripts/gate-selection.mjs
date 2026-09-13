@@ -62,6 +62,8 @@ export const SUITE_COUNTS = Object.freeze({
   // Playwright: "96 passed (1.6m)".
   'test:e2e': /(\d+) passed/,
   'test:visual': /(\d+) passed/,
+  // Also vitest, against its own config.
+  'test:db': /Tests {2}(?:\d+ failed \| )?(\d+) passed/,
 });
 
 /**
@@ -121,11 +123,25 @@ export function readCount(suite, output, floor) {
 /** Always run, whatever changed. The chain CLAUDE.md used to call green. */
 export const BASE_SUITES = Object.freeze(['typecheck', 'lint', 'test', 'build']);
 
-/** Added when any changed path matches. */
-export const SELECTED_SUITES = Object.freeze(['test:e2e', 'test:visual']);
+/** What a change to something the browser renders requires. */
+export const BROWSER_SUITES = Object.freeze(['test:e2e', 'test:visual']);
 
 /**
- * R132's five patterns, in the order they are reported.
+ * What a change to the database layer requires. FW14 increment 1.
+ *
+ * test:db is not in pnpm test and deliberately so: it needs a running
+ * PostgreSQL, and folding it into the primary loop command would make that
+ * command depend on a service. The predictable end of that road is somebody
+ * mocking the database to get pnpm test green, at which point the tests stop
+ * asserting what PostgreSQL does - which is the only reason they exist.
+ *
+ * So it is selected instead, which is exactly what R132 is for.
+ */
+export const DATABASE_SUITES = Object.freeze(['test:db']);
+
+/**
+ * R132's patterns, in the order they are reported: five for what a browser
+ * renders, one for the database layer (FW14 increment 1).
  *
  * The token layer comes first although lib/ui/** already covers it: a change
  * to tokens.scss is worth naming as a token change in the printed selection,
@@ -134,12 +150,42 @@ export const SELECTED_SUITES = Object.freeze(['test:e2e', 'test:visual']);
 export const SELECTOR_PATTERNS = Object.freeze([
   {
     label: 'the token layer (lib/ui/core/styles/**)',
+    suites: BROWSER_SUITES,
     matches: (path) => path.startsWith('lib/ui/core/styles/'),
   },
-  { label: 'app/**', matches: (path) => path.startsWith('app/') },
-  { label: 'lib/ui/**', matches: (path) => path.startsWith('lib/ui/') },
-  { label: 'lib/fr/**', matches: (path) => path.startsWith('lib/fr/') },
-  { label: '**/*.module.scss', matches: (path) => path.endsWith('.module.scss') },
+  {
+    label: 'app/**',
+    suites: BROWSER_SUITES,
+    matches: (path) => path.startsWith('app/'),
+  },
+  {
+    label: 'lib/ui/**',
+    suites: BROWSER_SUITES,
+    matches: (path) => path.startsWith('lib/ui/'),
+  },
+  {
+    label: 'lib/fr/**',
+    suites: BROWSER_SUITES,
+    matches: (path) => path.startsWith('lib/fr/'),
+  },
+  {
+    label: '**/*.module.scss',
+    suites: BROWSER_SUITES,
+    matches: (path) => path.endsWith('.module.scss'),
+  },
+  {
+    // FW14 increment 1: "R132's selection must include the database
+    // suites." One entry rather than five, because the printed selection is
+    // read by a person and "the database layer" says more than a path does.
+    label: 'the database layer (prisma/**, lib/db/**, tests/db/**)',
+    suites: DATABASE_SUITES,
+    matches: (path) =>
+      path.startsWith('prisma/') ||
+      path.startsWith('lib/db/') ||
+      path.startsWith('tests/db/') ||
+      path === 'prisma.config.ts' ||
+      path === 'vitest.db.config.ts',
+  },
 ]);
 
 /**
@@ -168,8 +214,19 @@ export function selectSuites(paths) {
     if (hit !== undefined) matched.push({ path, pattern: hit.label });
   }
 
-  const suites =
-    matched.length > 0 ? [...BASE_SUITES, ...SELECTED_SUITES] : [...BASE_SUITES];
+  // The union, in a fixed order: the base chain, then each group in the
+  // order SELECTOR_PATTERNS declares it. Deterministic because this string
+  // goes into commit bodies, and a selection that reordered itself between
+  // runs would be one more thing nobody can diff.
+  const suites = [...BASE_SUITES];
+
+  for (const pattern of SELECTOR_PATTERNS) {
+    if (!matched.some((hit) => hit.pattern === pattern.label)) continue;
+
+    for (const suite of pattern.suites) {
+      if (!suites.includes(suite)) suites.push(suite);
+    }
+  }
 
   return { suites, matched };
 }

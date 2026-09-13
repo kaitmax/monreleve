@@ -56,6 +56,7 @@ const FLOOR_FOR = {
   test: floors.tests,
   'test:e2e': floors.e2e,
   'test:visual': floors.visual,
+  'test:db': floors.db,
 };
 
 

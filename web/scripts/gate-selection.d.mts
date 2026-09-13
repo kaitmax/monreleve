@@ -21,6 +21,8 @@
 /** A path pattern from R132, with the label used when reporting a match. */
 export interface SelectorPattern {
   readonly label: string;
+  /** The suites a match requires, beyond the base chain. */
+  readonly suites: readonly string[];
   readonly matches: (path: string) => boolean;
 }
 
@@ -47,7 +49,8 @@ export interface SuiteCount {
 }
 
 export declare const BASE_SUITES: readonly string[];
-export declare const SELECTED_SUITES: readonly string[];
+export declare const BROWSER_SUITES: readonly string[];
+export declare const DATABASE_SUITES: readonly string[];
 export declare const SELECTOR_PATTERNS: readonly SelectorPattern[];
 export declare const SUITE_COUNTS: Readonly<Record<string, RegExp>>;
 

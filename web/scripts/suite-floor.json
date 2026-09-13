@@ -2,5 +2,6 @@
   "files": 102,
   "tests": 1974,
   "e2e": 96,
-  "visual": 69
+  "visual": 69,
+  "db": 10
 }

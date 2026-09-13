@@ -1,0 +1,89 @@
+// web/prisma/schema.prisma
+//
+// FW14: the first table. SPEC section 8 defines six models; this task builds
+// ONE of them, because the alert list is the only thing FW14 ships and a
+// schema is a promise about what exists. User, Entry, EntryEvent and Device
+// arrive with the auth and sync tasks that need them (FW22 onward).
+//
+// PERSONAL DATA STARTS HERE, which is why /confidentialite becomes an
+// acceptance criterion rather than a page. Everything this file can hold is
+// described there already - it was written in FW10 against specified
+// behaviour - and FW14 is where the description has to become true of the
+// code.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Prisma 7 removed `url` from the schema: the connection string for
+// migrations lives in prisma.config.ts, and the client is given a driver
+// adapter instead. See lib/db/client.ts.
+datasource db {
+  provider = "postgresql"
+}
+
+/// One address on the regulatory alert list.
+///
+/// SPEC section 8 gives six of these columns. The two confirmation columns are
+/// FW14's, and their shape is a decision the prompt left open - hashed,
+/// single-use, expiring - so it is stated here rather than inferred from the
+/// code:
+///
+/// HASHED. `confirmationTokenHash` holds the SHA-256 of a 32-byte random
+/// token; the token itself exists only in the link that goes out by email and
+/// is never written down. A database copy - a backup, a dump, a support
+/// query - therefore does not let anyone confirm an address they do not
+/// control, which is the whole point of a double opt-in. A plaintext token
+/// column would make the confirmation step decorative against anyone who can
+/// read one row.
+///
+/// SINGLE-USE. Confirming sets `confirmedAt` and NULLs the hash in the same
+/// write. The link stops working the moment it has worked, so a forwarded
+/// message, a mail client that prefetches links, and a browser that replays a
+/// request all fail the second time instead of silently re-confirming.
+///
+/// EXPIRING. `confirmationExpiresAt` is set seven days out. A confirmation
+/// link is a capability to add an address to a mailing list, and one sitting
+/// in an inbox forever is a capability that never lapses. Seven days is long
+/// enough for somebody who subscribed before a week away, and short of the
+/// thirty days after which an unconfirmed row is purged entirely - so between
+/// day seven and day thirty a row exists that can no longer be confirmed, and
+/// that is correct: the reader subscribes again and gets a fresh loop.
+///
+/// EMAIL IS STORED LOWERCASED AND TRIMMED. The unique constraint is on the
+/// stored value, so normalising on the way in is what makes "one address, one
+/// row" true for a reader who typed a capital letter the second time.
+model AlertSubscriber {
+  id String @id @default(cuid())
+
+  /// Lowercased and trimmed before it reaches here. See lib/db/alert-subscriber.ts.
+  email String @unique
+
+  /// Where the subscription came from: calculateur | alertes | guide.
+  /// A string rather than an enum because SPEC section 8 also lists
+  /// 'comparateur', which has no page yet - and an enum would have to be
+  /// migrated the day it does.
+  source String
+
+  /// SHA-256 of the emailed token. Null once confirmed, which is what makes
+  /// the link single-use.
+  confirmationTokenHash String? @unique
+
+  /// When that token stops working. Null once confirmed.
+  confirmationExpiresAt DateTime?
+
+  /// The date of consent. /confidentialite: "la date de votre accord est
+  /// enregistrée".
+  confirmedAt DateTime?
+
+  /// Set by the one-click unsubscribe in every send. The row is kept rather
+  /// than deleted so that re-subscribing is a decision the record can show.
+  unsubscribedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  /// The purge reads this pair: unconfirmed rows older than thirty days.
+  /// /confidentialite: "Une inscription aux alertes qui reste non confirmée
+  /// est supprimée au bout de 30 jours."
+  @@index([confirmedAt, createdAt])
+}

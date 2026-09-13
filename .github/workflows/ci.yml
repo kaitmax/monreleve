@@ -18,6 +18,35 @@ jobs:
       run:
         working-directory: web
 
+    # FW14 is the first task with a database. The database suite is not
+    # mocked - a unique constraint and what it does on a duplicate are
+    # behaviours OF PostgreSQL, and a fake would assert our model of it -
+    # so CI runs a real one.
+    #
+    # 5432 here, 5436 in docker-compose.yml: the runner's port is private to
+    # the job, while a developer's machine already has other projects'
+    # databases on the usual port.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: frontalier
+          POSTGRES_PASSWORD: frontalier
+          POSTGRES_DB: frontalier
+        ports:
+          - 5432:5432
+        # Starting the container is not the same as the database accepting
+        # connections. Without the health check, migrations race the socket
+        # and fail in a way that reads like a configuration error.
+        options: >-
+          --health-cmd "pg_isready -U frontalier -d frontalier"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 20
+
+    env:
+      DATABASE_URL: postgresql://frontalier:frontalier@localhost:5432/frontalier?schema=public
+
     steps:
       - uses: actions/checkout@v4
 
@@ -67,6 +96,17 @@ jobs:
       # status list left `list` at 426 call sites and took the real run from
       # 711 tests to 699.
       - run: pnpm test:floor -- --report test-results/vitest.json
+
+      # FW14. Migrations are applied by the pipeline rather than by the
+      # application at boot: a process that migrates on start will happily
+      # migrate a production database from whatever version happens to be
+      # deployed, and two instances starting together will do it twice.
+      - run: pnpm db:deploy
+
+      # tests/db/** is excluded from pnpm test on purpose - see
+      # vitest.db.config.ts - so it is named here. R132's selector requires
+      # it locally whenever prisma/**, lib/db/** or tests/db/** changes.
+      - run: pnpm test:db
 
       - run: pnpm build
 
