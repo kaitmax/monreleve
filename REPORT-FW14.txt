@@ -1,0 +1,858 @@
+====================================================================
+REPORT-FW14 - THE ALERT LIST
+====================================================================
+
+SUMMARY
+--------------------------------------------------------------------
+The first task with a database and the first that handles personal
+data. Ten commits: four for R132-R135, six for the task, plus two
+fixes CI found.
+
+The acceptance criterion was not the form. It was the privacy map -
+every sentence /confidentialite already publishes about the alert
+list, mapped to a test that makes it true - and that framing is what
+produced the two findings worth the operator's time:
+
+  ONE PUBLISHED CLAIM WAS NOT TRUE OF ANY POSSIBLE CODE. The page
+  said every consent is withdrawn "dans les parametres de
+  l'application". True of the daily reminder and of automatic
+  detection; false for the alert list, which anybody can join from
+  the public site without ever installing anything. A reader who
+  subscribed on the web and wanted out was being sent to look for a
+  setting in an app they do not have. Corrected.
+
+  ONE PUBLISHED CLAIM HAS NOTHING ENFORCING IT AND IS NOT MINE. The
+  analytics sentence - self-hosted, cookieless, no third party - is
+  FW15's. FW14 neither implements nor contradicts it. It is NAMED in
+  the test as unowned rather than filtered out of the scan, because
+  a filter that quietly stopped matching would be indistinguishable
+  from nobody having noticed.
+
+And two things about how the work was checked rather than what was
+built:
+
+  CI CAUGHT TWO DEFECTS NO LOCAL GATE COULD, both with one root -
+  this machine is in a state CI never is. A generated Prisma client
+  that exists here and not on a fresh install; a .env that exists
+  here and not in two of the five jobs. R132 cannot close that
+  class, and this report says so rather than implying otherwise.
+
+  R133's FLOOR CAUGHT A FLAKY VISUAL TEST, which is better than what
+  it was written for. It passed on retry; Playwright counts flaky
+  separately from passed, so the count came in one under the floor.
+  Without it a retry would have swallowed it.
+
+
+PRECONDITIONS
+--------------------------------------------------------------------
+R1 discharged at the start of the session: CI green on origin/main at
+17235f1.
+  https://github.com/kaitmax/Frontalier/actions/runs/34703828666
+
+CI for every FW14 commit:
+
+  be27f4b  R132 path-selected gate           success
+  93b01c3  R133 sweep                        success
+  f1cd7de  R135 baseline reasons             success
+  da65dfa  Prisma, AlertSubscriber, CI db    FAILURE - see DEVIATIONS
+  b037e42  client generated on install       success
+  82d4339  subscribe handler                 success
+  9da6b88  Resend confirmation email         success
+  69e7c13  confirm and unsubscribe           success
+  ffd2ea8  capture card and /alertes         success
+  ef629d5  retention, privacy map, a11y      FAILURE - see DEVIATIONS
+  9c22ffd  client built on first use         success
+
+HEAD of main is 9c22ffd and it is green on all six jobs:
+  https://github.com/kaitmax/Frontalier/actions/runs/34756531448
+
+FINAL VERIFICATION, green in one run on this tree:
+  pnpm gate            2060 tests, both floor checks, both size
+                       gates, format parity on node 22
+  pnpm test:e2e        103 passed
+  pnpm test:visual      81 passed, zero tolerance
+  pnpm test:a11y       105 passed
+  pnpm test:runtime      9 passed
+
+
+INCREMENT 0 - R132 TO R136
+--------------------------------------------------------------------
+
+R132 - THE GATE IS SELECTED BY CHANGED PATHS.        commit be27f4b
+
+  scripts/gate-selection.mjs is pure - paths in, suites out - so the
+  answer is asserted in a unit test rather than inferred from a gate
+  run. scripts/gate-for-changes.mjs talks to git and runs things.
+  pnpm gate:changed is what CLAUDE.md now defines as green.
+
+  IMPLEMENTED AS AMENDED, NOT AS FIRST WRITTEN. The amendment came
+  from measuring the ruling against the two commits it was written
+  for, before applying it:
+
+    test:a11y runs three files - accessibility.test.tsx,
+    accessibility-calculateur.test.tsx and
+    lib/ui/react/accessibility.test.tsx - every one matched by
+    pnpm test's own globs. A strict subset of a suite already in the
+    chain: requiring it is a second execution, not more coverage.
+
+    test:e2e was missing, and it is the suite that caught half the
+    failure. The jsdom live-region count died inside fdca008 where
+    pnpm test caught it; the two counts in e2e/calculateur.spec.ts
+    survived to CI red and were not fixed until cc8605a.
+
+  The operator amended R132 on that measurement. a11y is still NAMED
+  in the printed selection - "covered by pnpm test" - so its absence
+  reads as a decision rather than an omission.
+
+  PROOF: 30 tests, including the real paths of both red commits.
+  fdca008 selects e2e and visual and names the three paths that made
+  them necessary; 2f2cbd2 the same on one path; the relay-prompt move
+  selects neither. That last is the non-vacuity - a selector
+  answering "run everything" satisfies the first two and is worth
+  nothing.
+
+  IT EARNED ITSELF ON ITS FIRST RUN: pnpm test was green and
+  pnpm typecheck was not, because the test imported an untyped .mjs
+  under the strict config. Fixed with a declaration file rather than
+  allowJs - R107 split the script config from the strict one
+  deliberately.
+
+  EXTENDED IN INCREMENT 1 for the database suites, as the prompt
+  requires: prisma/**, lib/db/**, tests/db/**, prisma.config.ts and
+  vitest.db.config.ts select test:db. It fired correctly on its first
+  real use, naming all nine database paths.
+
+R133 - A HARNESS ASSERTS A POSITIVE SIGNAL.          commit 93b01c3
+
+  THE SWEEP, every script that consumes another tool's output or a
+  file walk:
+
+    check-suite-floor.mjs   THE PATTERN, already compliant. GAP: the
+                            local gate never passed --report, so the
+                            runtime count was checked in CI and
+                            nowhere else. pnpm gate now runs it a
+                            second time, after the suite.
+    visual.mjs              WAS EXIT CODE ONLY. Playwright refuses a
+                            run matching no tests, so the empty case
+                            was covered - but 69 baselines passing
+                            and 49 passing were the same green. Now
+                            tees the run and checks the count.
+    clean-tree-test.mjs     WAS EXIT CODE ONLY over a run of the
+                            whole suite, while test:coverage was
+                            writing a JSON report nobody read.
+                            Checked now.
+    check-budgets.mjs       Compliant: guards both tables.
+    check-format-parity.mjs Compliant: 11 codepoint cases and 10001
+                            exhaustive values, and it fails on a
+                            count it cannot produce.
+    gate-for-changes.mjs    Compliant by construction.
+    build-dev-routes.mjs    NO COUNT TO HAVE. next build reports
+    tree-lock.mjs           success by saying nothing; exit code is
+    copy-fonts.mjs          the right signal and the summary says so,
+    dev-routes.mjs          which is the distinction R133 turns on.
+
+  THE FLOORS WERE THE MISSING HALF. "N >= expected", not "N > 0", and
+  two of three suites had no expectation at all. See FLOORS below.
+
+R134 - THE var() SCAN IS STANDING.            VERIFIED, NOT BUILT
+
+  The prompt is explicit that 0c is a verification, and this report
+  does not claim otherwise: the scan and its planted-token proof
+  shipped in FW13. Re-verified here:
+
+    the scan as it stands                    4 passed
+    both FW13 typos planted back             RED, naming
+                                             --size-control-height and
+                                             --colour-border with the
+                                             file
+    stylelint on that same code              CLEAN
+    restored                                 4 passed
+
+  No commit, because nothing was built.
+
+  IT THEN CAUGHT SIX MORE IN INCREMENT 5, in the capture card's own
+  styles: --colour-success-surface, --colour-success-text,
+  --colour-warning-surface, --colour-warning-text,
+  --colour-action-primary and --colour-action-primary-text. None
+  exists. CSS discards an unresolvable declaration silently, so all
+  six would have shipped as no styling at all.
+
+R135 - A REGENERATED BASELINE NEEDS A REASON.        commit f1cd7de
+
+  Recorded in CLAUDE.md as a rule that is never relaxed, and given
+  the cheapest possible mechanism: pnpm test:visual:update now ends by
+  printing which baselines actually came out different, ready to paste
+  into a report. In FW13 that list was reconstructed from git status
+  afterwards, which is a chore and a place to be wrong.
+
+  git rather than mtimes, because --update-snapshots rewrites every
+  file it compares and mtimes would name all 81.
+
+  Verified both ways: an update over an unchanged page prints "no
+  baseline changed", and the non-empty path names the file with its
+  status. It was exercised for real three times in increments 5 and 6.
+
+R136 - PREFER ZERO JS ON PUBLIC ROUTES.       APPLIED, NOT BUILT
+
+  Not a commit of its own: it is a constraint on how increments 2 and
+  5 were built. The capture is an HTML form posting to a route
+  handler, and the SIZE section below is its accounting.
+
+
+SECTION ORDER (R137)
+--------------------------------------------------------------------
+tests/unit/pages/page-section-order.test.tsx asserts the calculator's
+sections in DOCUMENT ORDER, in three arrangements:
+
+  empty                  share row, result, capture card
+  mangled link           link notice, share row, result, capture card
+  result + provisional   share row, provisional notice, result,
+                         capture card
+
+querySelectorAll returns document order; a selector list queried once
+IS the sequence. A fourth test requires every selector to match, so a
+sequence that quietly got shorter fails rather than passing on the
+list it produced.
+
+IT COMPOSES WITH THE PANEL TEST RATHER THAN REPEATING IT.
+result-panel-order.test.tsx asserts a NEGATIVE - 'email' and 'share'
+are never panel SLOTS, forbidding the wrong construction - and this
+asserts a POSITIVE, that they sit at these page-level positions. A
+slot that should not exist and an order that should are different
+failures, and neither implies the other. The panel test's
+"leaves no slot for FW13 and FW14" still passes unchanged: the
+capture card is a page-level sibling, not a slot.
+
+AND IT CLOSES FW13 RETROACTIVELY, which is the part worth recording.
+The share row sat above the notice that explains it; that was fixed
+BY HAND in FW13 increment 6, after a baseline was cropped and read,
+with nothing asserting it afterwards. The order was correct but only
+coincidentally so. This is the assertion that was missing when it
+shipped wrong, and the history now reads as closed.
+
+PROBED: moving the capture card above the island reddens three of the
+five tests.
+
+
+RED/GREEN LEDGER
+--------------------------------------------------------------------
+INC 1  Prisma, AlertSubscriber, CI database
+  RED    tests/db/alert-subscriber.test.ts could not resolve
+         @/lib/db/alert-subscriber.
+  TWO ASSERTIONS CAME OUT DIFFERENT FROM HOW THEY WERE WRITTEN,
+  because the real database was consulted:
+    P2002 through the driver adapter carries no meta.target. It
+    reports the driver's error, which names the INDEX - a better
+    assertion, since this table has two unique indexes and "a unique
+    constraint was violated" does not say which.
+    ORDER BY table_name put "AlertSubscriber" before
+    "_prisma_migrations" under the database's collation. Sorted in JS
+    instead.
+
+INC 2  subscribe handler, form POST, no client JS
+  RED    @/lib/fr/alertes unresolvable; then the enumeration table.
+  THREE PROBES, all red on the right assertions: a confirmed address
+  given its own status (2 red, including the byte-identical one), the
+  handler honouring a `retour` field (the open-redirect test), the
+  rate decision ignored (2 red).
+  AND MY OWN TEST FOUND A DEFECT: an x-forwarded-for of "," is
+  non-empty, so the guard passed, and its first entry is "" - a real
+  Map key, and a silent bucket nobody named. The test asked for a
+  NON-EMPTY key rather than a correct one, which is why it caught it.
+
+INC 3  Resend confirmation email
+  RED    the outbox was empty.
+  TWO PROBES: mailing an address already on the list (1 red);
+  storing the plaintext token instead of its hash (2 red, including
+  the end-to-end one that takes the token out of the delivered link
+  and hashes it).
+  R126's GUARD CAUGHT ME. The first gate run failed pnpm test: the
+  test had retyped "qu'une fois" as a literal instead of importing
+  it. French is written once, and a test that retypes a sentence is a
+  second place for it to drift from the one readers receive.
+
+INC 4  confirm and unsubscribe
+  RED    @/lib/alerts/confirm unresolvable; then ten failures from a
+         stale generated client - see DEVIATIONS 3.
+  THREE PROBES: the token not consumed (3 red), expiry ignored
+  (1 red), unsubscribing twice reporting unknown (1 red).
+
+INC 5  capture card and the /alertes landing
+  RED    the three-way conflict itself - see DEVIATIONS 4 - then the
+         e2e race below.
+  THE E2E CAUGHT A RACE NO UNIT TEST COULD. The island filled the
+  hidden scenario field inside the 400 ms debounce, so a reader who
+  landed on a shared link and submitted quickly posted an EMPTY
+  scenario and lost their result. Moved out of the debounce:
+  replaceState is main-thread work against a URL nobody reads
+  mid-word; setting a hidden input's value is neither.
+  THREE STANDING GUARDS FIRED ON MY OWN CODE: the var() scan (six
+  invented tokens), the singleton census (/alertes had no row), the
+  island harness (R122 - AlertCapture is the first component that
+  must NOT be in it; it is a server component, so rendering it in a
+  client island would not measure a cost, it would create one).
+
+INC 6  retention job, privacy map, a11y, baselines, size
+  RED    @/lib/alerts/purge unresolvable.
+  TWO PROBES on the purge: inverting the comparison (3 red), dropping
+  the confirmed-row guard (1 red).
+  THE FLOOR CAUGHT A FLAKE - see BASELINES.
+  A LITERAL BACKSPACE REACHED A LIVE REGEX - see DEVIATIONS 6.
+
+TOTALS ON 9c22ffd: 2060 unit, 103 e2e, 81 visual, 94 db, 9 runtime.
+
+
+OPT-IN LOOP
+--------------------------------------------------------------------
+The full sequence, against a real PostgreSQL and the fake outbox.
+
+  subscribe        POST /api/alertes, form-encoded, no JavaScript
+                   required. Row created, confirmedAt null.
+  email            one message in the outbox, to that address, with
+                   the confirm link and a one-click unsubscribe link.
+  confirm link     GET /api/alertes/confirm?token=... sets
+                   confirmedAt, NULLs the token hash and its expiry,
+                   issues an unsubscribe token, redirects 303 to
+                   /alertes/confirmation/confirmee.
+  reuse            the same link again -> "unknown". The row is
+                   untouched.
+  expiry           a token past seven days -> "expired", the token is
+                   cleared, confirmedAt stays null.
+  unsubscribe      GET /api/alertes/desinscription?token=... sets
+                   unsubscribedAt, redirects to
+                   /alertes/desinscription/ok. Twice -> the same
+                   answer, because a mail client that prefetches has
+                   already clicked once.
+  re-subscribe     a fresh double opt-in: unsubscribedAt and
+                   confirmedAt cleared, a NEW token issued, and the
+                   address is NOT on the list until it is confirmed
+                   again. The old confirmation token stays dead.
+
+TOKEN SHAPE, the decision the prompt left open:
+  HASHED       SHA-256 of 32 random bytes; the plaintext exists only
+               in the link. A database copy contains no working
+               links.
+  SINGLE-USE   confirming clears the hash in the same write, and the
+               update is conditioned on the hash it read - so two
+               simultaneous clicks confirm once.
+  EXPIRING     seven days. A confirmation link is a capability to add
+               an address to a mailing list, and one sitting in an
+               inbox forever never lapses. Short of the thirty-day
+               purge, so days 8-30 hold a row that can no longer be
+               confirmed - correct: the reader subscribes again.
+
+A SECOND TOKEN FOR UNSUBSCRIBING, because the lifetimes are opposite.
+Confirmation is single-use and cleared the moment it works; an
+unsubscribe link has to keep working for as long as the reader might
+still hold one of our messages. Minted per send, never cleared on use.
+
+
+PRIVACY MAP (AC3)
+--------------------------------------------------------------------
+Every /confidentialite sentence about the alert list, with the test.
+Each claim is asserted TWICE - that the page still says it, and that
+the code still does it - because either half alone rots: the copy
+could be softened until the code satisfies it, which is passing the
+exam by editing the question.
+
+tests/db/privacy-claims.test.ts, 20 assertions over 8 claims.
+
+  1  "ne depose aucun cookie / aucun compte / ne vous identifie pas"
+     -> the subscribe response sets no Set-Cookie
+     -> the row's COLUMN SET is asserted exactly: id, email, source,
+        two confirmation columns, the unsubscribe hash, confirmedAt,
+        unsubscribedAt, createdAt. No name, no IP, no user agent, no
+        identifier - nothing to identify anybody with by accident.
+
+  2  "une adresse est enregistree uniquement si vous la donnez"
+     -> no row exists until a POST carries one, and a REJECTED
+        address writes nothing either, so a typo leaves no record of
+        somebody who never subscribed.
+
+  3  "un lien de confirmation vous est alors envoye"
+     -> the message is in the outbox AND the row is not confirmed.
+        The double opt-in as a property: anything treating an
+        unconfirmed row as a subscriber makes the claim false without
+        changing a word of it.
+
+  4  "la date de votre accord est enregistree"
+     -> confirming stamps confirmedAt.
+
+  5  "chaque message contient un lien de desinscription en un clic"
+     -> the link is in the delivered text, and using it works.
+
+  6  "votre consentement ... se retire a tout moment"
+     -> CORRECTED. See below.
+     -> the list can be left with no account and no app.
+
+  7  "une inscription non confirmee est supprimee au bout de 30 jours"
+     -> the purge removes it, and PURGE_AFTER_DAYS is the same 30.
+
+  8  "les rapports techniques sont debarrasses des adresses e-mail"
+     -> FW14 is the first task that could break this, because it is
+        the first that handles an address. It writes no error
+        reports - GlitchTip is FW28's - but it does LOG: the mailer
+        reports a provider refusal, and a refusal naturally carries
+        the address it refused. A scan over the six alert modules
+        requires no console call to mention an address, a body or a
+        message object. Limits stated: it cannot prove a future call
+        site is safe, only fail when an unsafe one is added.
+
+A NINTH ASSERTION covers the map itself: every sentence on the page
+mentioning an alert, an address or a cookie must be one of the eight,
+or explicitly named as not this task's. Without it, an unnoticed
+sentence is a silence rather than a failure - and it found two.
+
+THE CORRECTION (claim 6). The page said every consent is withdrawn
+"dans les parametres de l'application". True of the daily reminder
+and of automatic detection; FALSE for the alert list, which anybody
+can join from the public site without installing anything. A web
+subscriber wanting out was being sent to look for a setting in an app
+they do not have. The sentence now says the alerts are withdrawn by
+the link in every message, and the app settings govern the other two.
+AC3 permits exactly this - "either implemented now or corrected on
+the page".
+
+THE CLAIM THIS TASK DOES NOT OWN. "La mesure d'audience est
+auto-hebergee, sans cookie et sans identifiant publicitaire" is
+FW15's. FW14 neither implements nor contradicts it. It is named in
+the test as unowned rather than filtered out - a filter that quietly
+stopped matching it would be indistinguishable from nobody having
+noticed. IT IS STILL A PUBLISHED CLAIM WITH NOTHING ENFORCING IT,
+which is the shape AC3 exists to catch, and it is question Q40.
+
+
+NO-JS PROOF (AC2)
+--------------------------------------------------------------------
+e2e, javaScriptEnabled: false, against a real browser:
+
+  the capture form is present and submits
+  a mistyped address shows its French error, revealed by CSS :target
+  a good address shows the success message
+  EXACTLY ONE of the six status messages is displayed - counted from
+  getComputedStyle, not from the markup
+
+And with JavaScript on:
+
+  the card sits BELOW #resultat, asserted as document order
+  submitting leaves 39,16 % on screen, unchanged
+  the URL still carries canton=GE after the redirect
+
+THE MECHANISM IS WHY THE NO-JS ERROR EXISTS AT ALL. The status could
+not be a cookie (SPEC D12), could not be an island (R136), and could
+not be a query parameter rendered server-side without making the
+calculator dynamic and moving <title> and the canonical into the body
+(FW13, measured five ways). A fragment never reaches the server: the
+page stays static, renders all six messages hidden, and :target
+reveals one. The operator chose this over an island-only status -
+which would have left a mistyped address producing no message at all -
+and over accepting a dynamic calculator.
+
+display:none rather than a clip, so the five unshown messages leave
+the ACCESSIBILITY TREE as well as the view.
+
+PROVEN IN A BASELINE, which is the only place it can be: jsdom
+identity-maps CSS modules, so axe sees all six and the hiding is
+invisible to it. calculateur-capture-succes and -erreur differ in
+height (3891 vs 3869 px at 390) because the revealed message wraps
+differently - one message each, the right one, the right surface
+colour.
+
+
+ENUMERATION
+--------------------------------------------------------------------
+Four states - absent, unconfirmed, confirmed, previously unsubscribed
+- take four different amounts of work and produce ONE answer.
+
+If a confirmed address answered differently from a new one, anybody
+could type an address into a public form and learn whether that person
+is on a list about cross-border tax compliance, which says something
+about where they work. Membership is the sensitive fact.
+
+ASSERTED AS A SET, not as a table: the four Location headers are
+collected and the test requires ONE distinct value. Four "contains ok"
+assertions would pass on four different query strings.
+
+The distinction is kept exactly as long as the mailer needs it -
+recordSubscription returns the outcome so increment 3 knows whether
+to send - and thrown away before the response.
+
+CONSEQUENCES ACCEPTED DELIBERATELY: a second subscribe on a confirmed
+address does NOT move confirmedAt and does not rewrite `source`. That
+date records when the READER agreed; moving it because a stranger
+typed their address would make the record say something untrue.
+
+NOT CLOSED: TIMING. A confirmed address does less work than a new one
+- no token, no insert, no send - so an attacker with a stopwatch and
+many samples could still distinguish them. Constant-time work on a
+public endpoint is a real cost against a much weaker attack, and the
+rate limit is what prices the sampling at five per ten minutes per
+client. Question Q38.
+
+
+HOSTILE INPUTS
+--------------------------------------------------------------------
+Carried forward from FW13's corpus for the URL codec, which still
+passes unchanged, plus this task's own:
+
+  empty address, spaces only          -> its own message
+  no @, no domain, no local part,     -> the malformed message, which
+  two @, a space inside                  is DIFFERENT from the empty
+                                         one: "corrigez votre saisie"
+                                         tells somebody who typed
+                                         nothing nothing
+  300 characters                      -> refused (RFC 5321 caps a
+                                         path at 256)
+  a null byte                         -> refused
+  an unknown source                   -> refused, and the value is
+                                         NEVER echoed back: a
+                                         reflected value is how a
+                                         reflected payload starts
+  a missing source                    -> refused rather than guessed
+  retour=, redirect=, next= at the    -> ignored entirely. The target
+  handler                                comes from a closed map on
+                                         the validated source enum
+  a scenario field carrying
+  utm_source, redirect and a 500-     -> only SPEC 9.4's nine names
+  character value                        survive, each capped at 32
+  "???", "%%%", "not a query"         -> 303 to the right page
+
+None throws, none blanks a page, none produces a result presented as
+valid.
+
+
+STORAGE NOTE
+--------------------------------------------------------------------
+Not applicable to FW14 in the FW13 sense - no new client storage. The
+handoff key FW13 added is untouched, and the capture card stores
+nothing in the browser: it is a form, and the only state it has is the
+fragment in the URL, which the browser discards on the next
+navigation.
+
+The DATABASE is new, and SPEC D12's cookie rule is asserted against
+it directly: the subscribe response carries no Set-Cookie, and
+e2e/home.spec.ts's network trace still passes unchanged.
+
+
+SIZE
+--------------------------------------------------------------------
+gzip level 9, from pnpm size on 9c22ffd:
+
+  route                                js total  delta   verdict
+  ----------------------------------------------------------------
+  /                                       107.1    6.5   pass
+  /_not-found                             107.4    6.8   pass
+  /alertes                                107.4    6.8   pass
+  /alertes/confirmation/[etat]            107.3    6.7   pass
+  /alertes/desinscription/[etat]          107.3    6.7   pass
+  /calculateur-teletravail-frontalier     120.8   20.2   pass
+  /cgu                                    107.3    6.7   pass
+  /confidentialite                        107.3    6.7   pass
+  /mentions-legales                       107.3    6.7   pass
+  /sources                                107.4    6.8   pass
+
+  GATE A  <= 125.0 KiB   calculator remainder 4.2 KiB
+  GATE B  <=  25.0 KiB   calculator remainder 4.8 KiB
+  css 6.1 KiB (was 5.8), fonts 47.1 KiB - reported, never gated
+  middleware 34.1 KiB, which is first-load JS for no route
+
+R136's QUESTION, ANSWERED DIRECTLY. The capture card costs NOTHING:
+the three new routes sit at the framework floor, the same as /sources,
+because the card is a server component and a plain form.
+
+THE CALCULATOR GREW 0,2 KiB, from 120.6 to 120.8, and the
+justification R136 asks for is what the bytes buy. Two effects added
+to the island that already hydrates there - not a new island:
+
+  the scenario write   makes AC2 true. Without it, subscribing costs
+                       the reader the calculation they were just
+                       shown.
+  the status focus     makes the status announced. aria-live fires on
+                       CHANGES, and on a fresh page load the message
+                       is simply present, so nothing ever fires;
+                       moving focus is what actually announces it.
+
+GATE A spare went 4,4 -> 4,2 KiB. The trajectory in REPORT-FW13's Q35
+is unchanged and FW15 still has OG images, JSON-LD and analytics to
+land.
+
+
+BASELINES (R135)
+--------------------------------------------------------------------
+REGENERATED, with the reason each time.
+
+Increment 5 - 14 files, every calculator state:
+  calculateur-{vide,rempli,erreur,lien-partage,lien-invalide,
+  panneau-conforme,panneau-regime-perdu,panneau-bascule-sociale,
+  panneau-avis-provisoire}-{desktop,mobile}
+  REASON: the capture card was added below the result panel. Every
+  page grew by EXACTLY 276 px at 1440 and 426 px at 390, with NO
+  width change at either. A uniform delta across all fourteen is what
+  says one block was inserted and nothing reflowed; R128's width
+  assertion says the page still fits its viewport.
+  One was cropped and read: the card renders its heading, intro,
+  labelled field, primary button and helper, and no status is visible
+  - correct, since without a fragment all six are display:none.
+
+Increment 6 - 12 new files:
+  page-alertes-{desktop,mobile}                  the landing
+  page-alertes-confirmee-{desktop,mobile}        confirm, success
+  page-alertes-lien-invalide-{desktop,mobile}    confirm, dead link
+  page-alertes-desinscrit-{desktop,mobile}       unsubscribe, done
+  calculateur-capture-succes-{desktop,mobile}    :target, success
+  calculateur-capture-erreur-{desktop,mobile}    :target, error
+  REASON: new pages and new states, none of which existed before.
+  The last four are the only baselines in the product whose
+  appearance depends on a URL FRAGMENT.
+
+THE FLOOR CAUGHT A FLAKE, and this is the part worth reading.
+
+capture-erreur at 390 failed twice at 497 DIFFERING PIXELS and passed
+on retry #2. Playwright counts a flaky test separately from a passing
+one, so the suite reported 80 where the floor expected 81 - and that
+one-test gap is the only reason it was looked at. A retry would
+otherwise have swallowed it, and it would have sat in CI failing
+intermittently and reading as infrastructure noise.
+
+497 is the number FW13 recorded for Chromium painting a closed
+select's label through the platform theme, which does not reproduce
+between machines. FW13 solved it with e2e/visual-select.css, which
+calculateur.visual.spec.ts applies and pages.visual.spec.ts does not -
+and I had put two CALCULATOR captures in the page suite. Moved, with
+MUST_SHOW entries so a fragment that stopped matching cannot
+photograph an ordinary calculator under a name claiming a status.
+Two consecutive clean runs afterwards, 81 each, no flaky count.
+
+WHAT WAS NOT NEEDED: FW13's first answer to a flaky baseline was
+maxDiffPixels: 600, and that allowance hid a real regression within
+the hour. R114 forbids tolerances. The floor caught this without one.
+
+
+FLOORS
+--------------------------------------------------------------------
+  vitest files    102 -> 106
+  vitest tests   1974 -> 2060
+  e2e              96 -> 103
+  visual           69 ->  81
+  db               10 ->  94
+
+THE db FLOOR WAS 84 BEHIND, and it cost something. A collapsed escape
+made tests/db/privacy-claims.test.ts a parse error; vitest reported
+the file as "(0 test)" and summed the rest, so the tally read "74
+passed" while a 17-test file ran nothing at all. The floor of 10 had
+nothing to say about it.
+
+Same shape as the vitest floor sitting 417 tests behind in increment
+0. A floor that lags far enough stops being a floor, and both of these
+were mine.
+
+
+TOKENS ADDED (R77)
+--------------------------------------------------------------------
+NONE.
+
+The capture card and the outcome pages use --size-button-height,
+--size-button-min-width, --size-input-height, --size-input-padding-x,
+--size-input-border, --colour-border-default, --colour-surface,
+--colour-brand, --colour-text-primary, --colour-text-secondary,
+--colour-success-soft, --colour-warning-soft, --radius-md,
+--radius-lg, --space-2 through --space-10, --type-h1-*, --type-h3-*,
+--type-body-m-* and --type-label-* - all of which already existed.
+
+Six that did NOT exist were caught by R134's scan before they could
+ship as no styling at all. They were mistakes, not requests.
+
+
+DEVIATIONS
+--------------------------------------------------------------------
+1. PRISMA'S "latest" IS A RELEASE CANDIDATE. `pnpm add prisma`
+   installed 8.1.0-dev.6 against @prisma/client 7.10.0 - a prerelease
+   ORM mismatched with a stable client - because the registry's latest
+   tag is 8.0.0-rc.14 and `prev` is the stable line. Both pinned to
+   7.10.0. Shipping an RC of the ORM in a compliance product's first
+   database task is not a trade I could make alone, and the mismatch
+   was an immediate bug.
+
+2. I OVERWROTE A TRACKED FILE WITHOUT LOOKING. Fixing pnpm's build-
+   script policy, I wrote web/pnpm-workspace.yaml as though it did not
+   exist. It did, and it carried a deliberate decision:
+   "@parcel/watcher": false, sass's optional native dependency
+   declined on purpose. Restored and merged; the diff is now purely
+   additive. The lesson is the ordinary one - read before writing,
+   including files you are sure are not there.
+
+   Worth recording alongside it: an UNBUILT dependency broke the whole
+   toolchain, not just Prisma. pnpm 11 refuses build scripts until
+   they are answered, and every `pnpm run` died inside pnpm's own
+   dependency-status check - which shells out to `pnpm install` and
+   inherits its exit code - before reaching the tool. The message was
+   about build scripts; the symptom was that nothing ran.
+
+3. A MIGRATION WITHOUT A REGENERATE LEAVES A STALE CLIENT. Ten tests
+   failed with a Prisma validation error naming a field that exists in
+   the database. `prisma migrate dev` regenerates; the
+   `migrate diff` + `migrate deploy` path this repository needs -
+   because migrate dev refuses a non-interactive shell - does not.
+   db:deploy now chains generate so the two cannot drift.
+
+4. INCREMENT 5's STATUS MECHANISM WAS A THREE-WAY CONFLICT AND WAS
+   ASKED, NOT DECIDED. The increment asks for states rendered by the
+   server; the calculator cannot read searchParams without losing its
+   head; an island-rendered status leaves a no-JS reader with no
+   error. Three options were put with their costs and the operator
+   chose :target CSS. The cost is recorded in NO-JS PROOF.
+
+5. THAT RULING MADE INCREMENT 2's RESERVED PARAM OBSOLETE. `alerte`
+   had been added to lib/params/schema.ts so the link notice would not
+   tell a reader who had just subscribed that their subscription was
+   an unrecognised parameter. With the status in a fragment the server
+   never sees it. Removed, with its four tests: dead code a future
+   reader would think is load-bearing is worse than no code.
+
+6. A LITERAL BACKSPACE REACHED A LIVE REGEX. A word-boundary escape
+   written through a shell arrived as \x08, so the leak-scan's pattern
+   silently became a different pattern that still compiled and still
+   ran. pnpm lint's no-control-regex caught it; NO TEST WOULD HAVE,
+   because the scan found no offenders either way - it was green for
+   the wrong reason. Replaced with plain string checks.
+
+   Fourth symptom of one trap this session: a missed anchor, a parse
+   error, a control character, and a broken split(). Every script
+   since has been written with the file tool rather than a shell
+   heredoc.
+
+7. TWO CI-RED COMMITS, OF A CLASS R132 CANNOT CLOSE. da65dfa and
+   ef629d5. Both passed every suite R132 selected, locally and in the
+   job that has a database; both failed in jobs that do not have one:
+
+     da65dfa  @prisma/client has no exported member 'PrismaClient' -
+              the client is generated by a postinstall, and my tree
+              had one because I had run generate by hand.
+     ef629d5  DATABASE_URL is not set, failing at BUILD - next build
+              IMPORTS every route module to collect page data, and
+              the client was constructed at module scope.
+
+   THE ROOT IS THE SAME AND IT IS NOT ABOUT SUITES: this machine is in
+   a state CI never is. R132 answers "which suites does this diff
+   need", and every suite it selected ran and passed. "It passes here"
+   and "it passes on a clean checkout with no secrets" are different
+   claims. Question Q37.
+
+8. ENGINE, SPEC AND FIXTURES UNTOUCHED. No engine change, no constant,
+   no rounding rule. The Geneva fixtures still reproduce exactly.
+
+
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------
+1. THE TWO LINT WARNINGS STILL PREDATE THIS TASK.
+   tests/unit/calc-engine/verification-trace.test.ts lines 81 and 83
+   carry eslint-disable directives that report nothing. 0 errors, so
+   the gate passes. Not mine, not touched. Third report in a row.
+
+2. A MEASURED HOLE IN R132, NOT CLOSED HERE. lib/params/**,
+   lib/alerts/** and lib/content/** all change what public pages
+   render, and none selects a browser suite:
+
+     lib/params/codec.ts    -> typecheck, lint, test, build
+     lib/alerts/record.ts   -> typecheck, lint, test, build
+     lib/content/alertes.ts -> typecheck, lint, test, build
+
+   lib/params/codec.ts decides what the calculator's link notice says,
+   and both e2e and visual assert that notice. Increment 2 changed it
+   and the browser suites ran only because app/** changed in the same
+   commit. R132 was amended once on a measurement and which paths
+   belong in it is the operator's call; it does not bite the rest of
+   FW14, because every remaining increment touched app/**. Q39.
+
+3. THE STATUS CARRIES A BROWSER-DEFAULT FOCUS RING, visible in the two
+   capture baselines, because the island focuses it to announce it.
+   The product has no global focus style - styling it would mean a new
+   token, which SPEC 20 makes ask-first - so it is left as the UA
+   default and named here rather than changed quietly.
+
+4. THE SEED WRITES FOUR ROWS AND GUARDS ITS HOST. It refuses any
+   database whose hostname is not localhost, because a seed script is
+   a data-writing command with a friendly name and the cost of the
+   wrong database is other people's addresses beside four invented
+   ones. Addresses are @example.com, which RFC 2606 reserves so test
+   data cannot reach a real mailbox.
+
+5. RATE LIMITING IS PER-INSTANCE AND FORGOTTEN ON RESTART. SPEC 3 has
+   no Redis and a row per attempt would make the limiter the load. For
+   a single-VPS deployment that is the whole population, and the
+   failure mode is a limit that is too generous rather than one that
+   locks somebody out. Stated in the file.
+
+
+QUESTIONS FOR THE OPERATOR
+--------------------------------------------------------------------
+Q37. WHAT CLOSES THE CLASS R132 CANNOT? Two commits went red in CI
+     this task, both because my machine has something CI does not - a
+     generated client, a .env. Every selected suite passed both times.
+     Options as I see them: (a) leave it to CI, which is what caught
+     both, at the cost of red on main for the minutes between push and
+     result; (b) a `pnpm gate:clean` that builds in a scrubbed
+     environment - no .env, node_modules restored from the lockfile -
+     which is minutes per increment and would have caught both; (c) a
+     narrower rule: any increment that adds a dependency or reads a
+     new environment variable runs that clean build once. I would take
+     (c). It is a cost decision about the session's shape.
+
+Q38. IS THE ENUMERATION TIMING GAP WORTH CLOSING? The response is
+     byte-identical across all four states; the WORK is not - a
+     confirmed address skips a token, an insert and a send. Constant-
+     time would mean doing that work anyway, on a public endpoint, to
+     defeat an attacker who already needs many samples through a
+     five-per-ten-minutes limit. I have left it and said so.
+
+Q39. DO lib/params/**, lib/alerts/** AND lib/content/** BELONG IN
+     R132's SELECTOR? Measured above: a change to lib/params/codec.ts
+     alone changes the calculator's notice and selects no browser
+     suite. You amended R132 once on a measurement, so I have not
+     extended it on my own.
+
+Q40. THE ANALYTICS CLAIM ON /confidentialite IS PUBLISHED AND
+     UNENFORCED. "La mesure d'audience est auto-hebergee, sans cookie
+     et sans identifiant publicitaire" - FW15's to make true. It is
+     the same shape as the sentence FW14 corrected, and it is live
+     today on a page about privacy. Options: leave it to FW15;
+     correct it now to the future tense; or remove it until the code
+     exists. AC3's rule - a published claim that is not true of the
+     code - arguably already applies to it.
+
+Q41. RFC 8058 ONE-CLICK UNSUBSCRIBE. The unsubscribe endpoint is a
+     GET, so a mail client that prefetches links can unsubscribe
+     somebody who never clicked. Acceptable only because the action is
+     idempotent and reversible. The proper fix is the
+     List-Unsubscribe-Post header and a POST endpoint, which belongs
+     with the alert SENDS - and FW14 does not build those. Naming the
+     task that owns it would stop it being nobody's.
+
+
+PUSH PROOF
+--------------------------------------------------------------------
+Branch main, remote https://github.com/kaitmax/Frontalier.git
+
+  be27f4b  chore: R132 - the gate is selected by changed paths
+  93b01c3  chore: R133 - a harness asserts a positive signal
+  f1cd7de  chore: R135 - a regenerated baseline requires a stated
+           reason
+  da65dfa  FW14: Prisma, AlertSubscriber, CI database
+  b037e42  FW14: generate the Prisma client on install
+  82d4339  FW14: subscribe handler, form POST, no client JS
+  9da6b88  FW14: Resend confirmation email
+  69e7c13  FW14: confirm and unsubscribe
+  ffd2ea8  FW14: capture card and the /alertes landing
+  ef629d5  FW14: retention job, privacy map, a11y, baselines, size
+  9c22ffd  FW14: build the Prisma client on first use, not on import
+
+  ef629d5..9c22ffd  main -> main       pushed
+  CI on 9c22ffd: success, all six jobs
+  https://github.com/kaitmax/Frontalier/actions/runs/34756531448
+
+R134 has no commit: 0c was a verification and this report says so
+rather than describing work already done as if this task did it.
+
+This report is committed and pushed on top of 9c22ffd.
+
+END OF REPORT-FW14
