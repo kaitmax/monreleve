@@ -36,7 +36,9 @@ Anything not covered by those: **ask**. Never invent a product decision.
 ## Rules that are never relaxed
 
 - **One task per session.** The prompt names it. Nothing outside it is touched; out-of-scope observations go in the report under *NOTICED BUT NOT TOUCHING*.
-- **Commit only on green.** `pnpm typecheck && pnpm lint && pnpm test && pnpm build` all pass on the increment, chained with `&&` so a failure cannot be followed by a commit. A red commit is a bounce.
+- **Commit only on green, and green is the gate for the paths you changed (R132).** `pnpm gate:changed` reads `git diff`, prints the suites it selected, and runs them chained so a failure cannot be followed by a commit. `typecheck`, `lint`, `test` and `build` always; **plus `test:e2e` and `test:visual`** when any changed path matches `app/**`, `lib/ui/**`, `lib/fr/**`, `**/*.module.scss`, or the token layer. Paste the printed selection into the commit body. A red commit is a bounce.
+  - This bullet used to name the four-command chain alone, and FW13 put two red commits on main under it: both changed a component, neither ran e2e or the baselines, and both failed CI on exactly those. The selection is made from the diff because the judgement version — *run the visual suite when you think you changed pixels* — is the version that failed.
+  - `test:a11y` is deliberately **not** selected: its three files are a strict subset of `pnpm test`'s globs, so requiring it is a second execution rather than more coverage. The printed selection still names it, so its absence reads as a decision rather than an omission.
 - **Test-first.** New behaviour gets its failing test before the code, and the report shows the RED run with the reason it failed. A test that passed on its first run is evidence of nothing.
 - **Design tokens only.** No raw hex, radius, spacing or type value outside `lib/ui/core/styles/tokens.scss`. Radius is a closed set of nine token names (`DESIGN-SYSTEM.md` §4.1).
 - **French strings only in `lib/fr`.** Never inline in JSX; `react/jsx-no-literals` enforces it.
