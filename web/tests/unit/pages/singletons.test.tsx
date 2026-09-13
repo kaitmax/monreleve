@@ -38,6 +38,7 @@ import ConfidentialitePage from '@/app/(public)/confidentialite/page';
 import HomePage from '@/app/(public)/page';
 import MentionsPage from '@/app/(public)/mentions-legales/page';
 import NotFound from '@/app/not-found';
+import AlertesPage from '@/app/(public)/alertes/page';
 import SourcesPage from '@/app/(public)/sources/page';
 import { PUBLIC_ROUTES, ctaHrefIfLive } from '@/lib/content/routes';
 import { CALCULATEUR_COPY } from '@/lib/fr/calculateur';
@@ -101,6 +102,21 @@ const PAGES: readonly Expected[] = [
     // split matters.
     contextualLinks: 0,
     primaryActions: 1,
+  },
+  {
+    label: '/alertes',
+    render: () => {
+      render(
+        <PublicShell>
+          <AlertesPage />
+        </PublicShell>,
+      );
+    },
+    contextualLinks: 0,
+    // ZERO, and the field name is the reason: this census counts the
+    // CALCULATOR's Calculer button, not any primary-styled control. The
+    // capture form has a submit of its own and it is not that button.
+    primaryActions: 0,
   },
   {
     label: '/sources',

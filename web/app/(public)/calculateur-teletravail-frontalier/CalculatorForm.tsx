@@ -401,6 +401,29 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
   }, []);
 
   /**
+   * ANNOUNCE THE CAPTURE CARD'S STATUS, when there is JavaScript to do it.
+   *
+   * The status is revealed by CSS :target, which needs nothing from here -
+   * that is what makes it readable with scripting off. What CSS cannot do
+   * is tell a screen reader that something appeared: aria-live announces
+   * CHANGES, and on a fresh page load the message is simply present, so no
+   * change ever fires.
+   *
+   * Moving focus is what actually announces it, and it also puts the
+   * keyboard where the reader's attention already is. The element carries
+   * tabIndex={-1} so it can receive focus without joining the tab order.
+   */
+  useEffect(() => {
+    const fragment = window.location.hash.slice(1);
+
+    if (!fragment.startsWith('alerte-')) return;
+
+    const status = document.getElementById(fragment);
+
+    status?.focus();
+  }, []);
+
+  /**
    * navigator.share, DETECTED AFTER MOUNT rather than during render.
    *
    * The island is server-rendered before it hydrates and there is no
@@ -556,12 +579,41 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
       window.history.replaceState(window.history.state, '', next);
 
       if (hasResult) writeHandoff(input);
+
     }, URL_DEBOUNCE_MS);
 
     return () => {
       clearTimeout(timer);
     };
   }, [input, hasResult]);
+
+  /**
+   * AC2: THE CAPTURE CARD POSTS THE SCENARIO WITH IT, so subscribing does
+   * not cost the reader their result.
+   *
+   * NOT DEBOUNCED, AND THE FIRST VERSION WAS - which was a race the e2e
+   * suite caught. Writing the field inside the 400 ms timer meant a reader
+   * who landed on a shared link and submitted quickly posted an EMPTY
+   * scenario, and the redirect returned them to an empty calculator: they
+   * paid for subscribing with the numbers they had just been shown.
+   *
+   * The debounce exists because replaceState is main-thread work against a
+   * URL nobody reads mid-word. Setting a hidden input's value is neither of
+   * those things, so it happens as soon as there is something to write.
+   *
+   * The card is a server-rendered SIBLING of this island - a plain form
+   * with no client JavaScript of its own (R136) - so the field is reached
+   * through the document rather than through a prop. With scripting off it
+   * stays empty, and that is correct: there is no scenario on this page to
+   * lose, because the calculator does not compute without JavaScript.
+   */
+  useEffect(() => {
+    const field = document.querySelector<HTMLInputElement>('[data-alert-scenario]');
+
+    if (field === null) return;
+
+    field.value = input === null ? '' : encode(input).toString();
+  }, [input]);
 
 
 

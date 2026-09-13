@@ -34,27 +34,6 @@ import type { TeleworkInput } from '@/lib/calc-engine';
  * reads canton first and debut last, the way the table does, so two links to
  * the same scenario are the same string.
  */
-/**
- * Parameters this page RECOGNISES but does not read as a scenario.
- *
- * FW14 added one. The subscribe handler has no cookie available (SPEC D12
- * forbids one on a public route) and no client island (R136), so the only
- * way it can tell the reader what happened is to redirect with the status
- * in the URL.
- *
- * Without this list, that status would be an UNKNOWN parameter, and the
- * link notice would greet somebody who had just subscribed with "Ces
- * paramètres ne sont pas utilisés par le calculateur: alerte". A reader
- * would be told their subscription was a mistake in the link.
- *
- * RESERVED IS NOT THE SAME AS FROZEN. SPEC 9.4's nine names are a public
- * contract because they carry a shared scenario; this one carries a
- * one-time answer to a form POST, is never written by encode(), and never
- * survives into a link somebody shares - the URL sync rewrites the address
- * bar from the scenario alone.
- */
-export const RESERVED_PARAM_NAMES = ['alerte'] as const;
-
 export const PARAM_NAMES = [
   'canton',
   'taux',

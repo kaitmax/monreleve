@@ -38,17 +38,32 @@ const COMPONENTS = readdirSync(LIBRARY, { withFileTypes: true })
 /**
  * Components the harness deliberately does not render, with the reason.
  *
- * ONE ENTRY, and it is not an exemption from measurement - it is a statement
- * that something else measures it. PublicShell is already a client component
- * of its own, so it enters a client bundle on every public page and GATE A
- * counts it there; the calculator's 119,8 KiB includes it. Rendering it inside
- * this island would measure it twice and make GATE I's number harder to read.
+ * NEITHER ENTRY IS AN EXEMPTION FROM MEASUREMENT. Each is a statement about
+ * where the cost actually lands, and they are two different statements:
+ *
+ * PublicShell is already a client component of its own, so it enters a
+ * client bundle on every public page and GATE A counts it there; the
+ * calculator's figure includes it. Rendering it inside this island would
+ * measure it twice and make GATE I's number harder to read.
+ *
+ * AlertCapture (FW14) is a SERVER component - a plain form with no
+ * 'use client' anywhere - so it contributes nothing to any client bundle at
+ * all. Putting it in this harness would not measure its cost; it would
+ * CREATE one, by pulling a server component into client code and reporting
+ * a number the product does not pay. R136 is the ruling it exists under:
+ * prefer zero JS on public routes, and the capture card has none.
  */
 const MEASURED_ELSEWHERE: ReadonlyArray<readonly [string, string]> = [
   [
     'PublicShell',
     "Already a 'use client' component, so it is in every public route's " +
       'bundle and GATE A measures it there. Rendering it here would double-count.',
+  ],
+  [
+    'AlertCapture',
+    'A server component: a plain form with no client JavaScript (R136). ' +
+      'Rendering it in a client island would not measure its cost, it would ' +
+      'create one.',
   ],
 ];
 

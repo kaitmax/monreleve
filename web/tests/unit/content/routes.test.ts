@@ -128,13 +128,17 @@ describe('the sitemap lists what exists and nothing else', () => {
     expect([...sitemapPaths()].sort()).toEqual([...liveRoutes().map((r) => r.path)].sort());
   });
 
-  it('lists the six routes that exist and may be seen today', () => {
+  it('lists the seven routes that exist and may be seen today', () => {
     // FOUR UNTIL FW11, five with the calculator, six with /sources. The
     // calculator joined when its page was built AND the Checkpoint A review
     // was recorded - two independent conditions, both of which had to be
     // true. While the review was null the page could exist and stay out of
     // this list, which is ruling R54 and is asserted directly in
     // tests/unit/content/regulatory-gate.test.ts.
+    //
+    // /alertes joined at FW14: the list has a page now, it is the landing a
+    // Facebook post points at, and a route that exists and is not in the
+    // sitemap is a page no crawler is told about.
     //
     // /sources joined at FW12 increment 0 under ruling R113, ahead of the
     // FW20 it was scheduled for: P2 has no input trigger, so that page is its
@@ -148,6 +152,7 @@ describe('the sitemap lists what exists and nothing else', () => {
     // being checked.
     expect([...sitemapPaths()].sort()).toEqual([
       '/',
+      '/alertes',
       '/calculateur-teletravail-frontalier',
       '/cgu',
       '/confidentialite',

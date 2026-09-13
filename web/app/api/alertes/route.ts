@@ -12,11 +12,16 @@
 // redirect, a refresh re-posts the form and a back button offers to; with 303
 // specifically, the follow-up is a GET even though the request was a POST.
 //
-// THE STATUS TRAVELS IN THE URL because it has nowhere else to go. SPEC D12
+// THE STATUS TRAVELS AS A FRAGMENT, and the reasoning is worth following
+// because two earlier answers were wrong. It has nowhere else to go: SPEC D12
 // forbids a cookie on a public route and R136 forbids an island, so there is
-// no store and no fetch. lib/alerts/status.ts carries the vocabulary and
-// explains why `alerte` had to become a RESERVED param name rather than an
-// unknown one.
+// no store and no fetch. A query parameter was the obvious remainder - and
+// rendering it server-side means reading searchParams, which FW13 measured as
+// moving <title> and the canonical into the BODY of this exact route. A
+// fragment never reaches the server at all: the page stays static, renders
+// every status hidden, and CSS :target reveals the one named here. That also
+// makes the error readable with JavaScript off, which an island-rendered
+// status would not have been.
 //
 // THE REDIRECT TARGET IS NEVER THE CLIENT'S. It is derived from the validated
 // `source` enum, not from a form field naming a URL. A handler that redirects
@@ -28,12 +33,13 @@ import { CALCULATOR_PATH } from '@/lib/content/routes';
 import { ALERTES_PATH } from '@/lib/content/alertes';
 import {
   ALERT_STATUS,
-  ALERT_STATUS_PARAM,
+  statusFragment,
   type AlertStatus,
   statusForError,
 } from '@/lib/alerts/status';
 import { checkRate, clientKey } from '@/lib/alerts/rate-limit';
 import { parseSubscription, type Source } from '@/lib/alerts/subscribe';
+import { PARAM_NAMES } from '@/lib/params/schema';
 import { recordSubscription } from '@/lib/alerts/record';
 import { sendConfirmation } from '@/lib/alerts/confirmation';
 
@@ -52,11 +58,61 @@ const RETURN_TO: Readonly<Record<Source, string>> = {
   guide: ALERTES_PATH,
 };
 
-/** The answer: a 303 back to a known page, carrying one status. */
-function back(request: NextRequest, path: string, status: AlertStatus): NextResponse {
+/**
+ * The scenario the reader had on screen, carried back so their result survives.
+ *
+ * AC2: "submitting leaves the result visible and unchanged". The calculator
+ * holds its scenario in the URL, and a redirect that dropped it would return
+ * the reader to an empty calculator - they would have paid for subscribing
+ * with the numbers they had just typed.
+ *
+ * A WHITELIST, NOT A COPY. The value arrives in a form field, which makes it
+ * client-supplied data on its way into a redirect URL. Only SPEC 9.4's nine
+ * frozen names are re-emitted, each capped, so nothing a caller invents can
+ * reach the Location header - and the PATH still comes from the closed map
+ * below, so the origin can never move.
+ */
+function scenarioFrom(form: FormData): URLSearchParams {
+  const raw = form.get('scenario');
+  const kept = new URLSearchParams();
+
+  if (typeof raw !== 'string' || raw === '') return kept;
+
+  const incoming = new URLSearchParams(raw.startsWith('?') ? raw.slice(1) : raw);
+
+  for (const name of PARAM_NAMES) {
+    const value = incoming.get(name);
+
+    if (value !== null && value !== '' && value.length <= MAX_PARAM_LENGTH) {
+      kept.set(name, value);
+    }
+  }
+
+  return kept;
+}
+
+/** Longer than any value SPEC 9.4 can carry; short enough to bound the URL. */
+const MAX_PARAM_LENGTH = 32;
+
+/**
+ * The answer: a 303 back to a known page, with the scenario and one status.
+ *
+ * THE STATUS IS A FRAGMENT. A query parameter would have to be read on the
+ * server to be rendered there, and on this route that costs the <head> - FW13
+ * measured it five ways. A fragment never reaches the server, so the page
+ * stays static, renders every status hidden, and CSS :target reveals the one
+ * named here.
+ */
+function back(
+  request: NextRequest,
+  path: string,
+  status: AlertStatus,
+  scenario: URLSearchParams,
+): NextResponse {
   const url = new URL(path, request.nextUrl.origin);
 
-  url.searchParams.set(ALERT_STATUS_PARAM, status);
+  url.search = scenario.toString();
+  url.hash = statusFragment(status);
 
   return NextResponse.redirect(url, 303);
 }
@@ -69,9 +125,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const rate = checkRate(clientKey(request.headers));
 
   let source: Source = 'calculateur';
+  let scenario = new URLSearchParams();
 
   try {
     const form = await request.formData();
+
+    // Read once, before anything can fail, so every exit carries it.
+    scenario = scenarioFrom(form);
     const parsed = parseSubscription(form);
 
     // The return path needs the source even when the address was rejected,
@@ -85,11 +145,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     if (!rate.allowed) {
-      return back(request, RETURN_TO[source], ALERT_STATUS.rate);
+      return back(request, RETURN_TO[source], ALERT_STATUS.rate, scenario);
     }
 
     if (!parsed.ok) {
-      return back(request, RETURN_TO[source], statusForError(parsed.error));
+      return back(request, RETURN_TO[source], statusForError(parsed.error), scenario);
     }
 
     const recorded = await recordSubscription(parsed.value);
@@ -113,13 +173,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // and one sentence, because the difference between them is exactly what
     // an address-enumeration attack is trying to read. lib/alerts/record.ts
     // keeps the distinction only as long as the mailer needs it.
-    return back(request, RETURN_TO[parsed.value.source], ALERT_STATUS.ok);
+    return back(request, RETURN_TO[parsed.value.source], ALERT_STATUS.ok, scenario);
   } catch {
     // The database refused, the body was not a form, the connection died.
     // The reader did nothing wrong and there is nothing for them to fix, so
     // they get a page that says so - never a stack trace, and never a
     // success message for something that did not happen.
-    return back(request, RETURN_TO[source], ALERT_STATUS.unavailable);
+    return back(request, RETURN_TO[source], ALERT_STATUS.unavailable, scenario);
   }
 }
 

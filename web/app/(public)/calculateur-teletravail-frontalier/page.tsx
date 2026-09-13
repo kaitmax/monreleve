@@ -41,6 +41,7 @@ import { CALCULATEUR_COPY as COPY } from '@/lib/fr/calculateur';
 import { formatPercent } from '@/lib/ui/core';
 import { Container } from '@/lib/ui/react/Container/Container';
 import { CalculatorForm } from './CalculatorForm';
+import { AlertCapture } from '@/lib/ui/react/AlertCapture/AlertCapture';
 import styles from './calculateur.module.scss';
 
 /**
@@ -169,6 +170,22 @@ export default function CalculateurPage() {
           nothing between the static shell and the hydrated form.
         */}
         <CalculatorForm taxYear={year} />
+
+        {/*
+          THE CAPTURE CARD. SPEC 9.3 item 8, FW14 increment 5.
+
+          BELOW EVERYTHING THE ISLAND RENDERS, which is where SPEC 9.3 puts it
+          and where R137 now asserts it stays. The island renders the form,
+          the link notice, the share row and the result panel; this comes
+          after all of them, because the reader's question is "how many days
+          do I have left" and the answer must never be behind an email field.
+          SPEC 9.3: the result is NEVER gated.
+
+          A SERVER COMPONENT INSIDE A STATIC PAGE. It is a plain form posting
+          to /api/alertes - no island, no client JavaScript, nothing against
+          the 4,4 KiB of GATE A headroom (R136).
+        */}
+        <AlertCapture source="calculateur" />
 
       {/*
           THE UNCONDITIONAL LINK TO /sources. RULING R113.

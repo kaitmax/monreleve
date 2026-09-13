@@ -13,7 +13,7 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { NextRequest } from 'next/server';
 import { POST } from '@/app/api/alertes/route';
 import { prisma } from '@/lib/db/client';
-import { ALERT_STATUS, ALERT_STATUS_PARAM } from '@/lib/alerts/status';
+import { ALERT_STATUS, statusFragment } from '@/lib/alerts/status';
 import { resetRateLimit } from '@/lib/alerts/rate-limit';
 import { CALCULATOR_PATH } from '@/lib/content/routes';
 import { ALERTES_PATH } from '@/lib/content/alertes';
@@ -142,9 +142,7 @@ describe('AC1: the answer does not say which of the four cases it was', () => {
     );
 
     expect(response.status).toBe(303);
-    expect(locationOf(response).searchParams.get(ALERT_STATUS_PARAM)).toBe(
-      ALERT_STATUS.ok,
-    );
+    expect(locationOf(response).hash).toBe(`#${statusFragment(ALERT_STATUS.ok)}`);
   });
 
   it('and the four answers are byte-identical to each other', async () => {
@@ -178,7 +176,7 @@ describe('a rejection still lands the reader on their own page', () => {
     const response = await POST(post(fields));
 
     expect(response.status).toBe(303);
-    expect(locationOf(response).searchParams.get(ALERT_STATUS_PARAM)).toBe(expected);
+    expect(locationOf(response).hash).toBe(`#${statusFragment(expected)}`);
   });
 
   it('writes nothing when the address was rejected', async () => {
@@ -204,7 +202,7 @@ describe('the rate limit is enforced by the handler, not just available to it', 
 
     const sixth = await POST(post({ email: 'a6@example.com', source: 'calculateur' }));
 
-    expect(locationOf(sixth).searchParams.get(ALERT_STATUS_PARAM)).toBe(ALERT_STATUS.rate);
+    expect(locationOf(sixth).hash).toBe(`#${statusFragment(ALERT_STATUS.rate)}`);
   });
 
   it('writes nothing for the refused attempt', async () => {
@@ -228,6 +226,82 @@ describe('the rate limit is enforced by the handler, not just available to it', 
       post({ email: 'other@example.com', source: 'calculateur' }, '9.9.9.9'),
     );
 
-    expect(locationOf(other).searchParams.get(ALERT_STATUS_PARAM)).toBe(ALERT_STATUS.ok);
+    expect(locationOf(other).hash).toBe(`#${statusFragment(ALERT_STATUS.ok)}`);
+  });
+});
+
+describe('AC2: the reader keeps their result', () => {
+  const SCENARIO = 'canton=GE&tt=84&mfr=24';
+
+  it('carries the scenario back, so the calculation survives the subscription', async () => {
+    // The calculator holds its scenario in the URL. A redirect that dropped
+    // it would return the reader to an empty calculator - they would have
+    // paid for subscribing with the numbers they had just typed.
+    const response = await POST(
+      post({ email: 'a@example.com', source: 'calculateur', scenario: SCENARIO }),
+    );
+
+    const location = locationOf(response);
+
+    expect(location.searchParams.get('canton')).toBe('GE');
+    expect(location.searchParams.get('tt')).toBe('84');
+    expect(location.searchParams.get('mfr')).toBe('24');
+  });
+
+  it('carries it back on a REJECTION too', async () => {
+    // Losing the result is worse here, not better: the reader has to retype
+    // their scenario AND their address.
+    const response = await POST(
+      post({ email: 'not-an-address', source: 'calculateur', scenario: SCENARIO }),
+    );
+
+    expect(locationOf(response).searchParams.get('canton')).toBe('GE');
+  });
+
+  it('re-emits ONLY the nine frozen names, never what it was handed', async () => {
+    // The scenario arrives in a form field, which makes it client-supplied
+    // data on its way into a Location header. A copy would let a caller add
+    // anything; a whitelist cannot.
+    const response = await POST(
+      post({
+        email: 'a@example.com',
+        source: 'calculateur',
+        scenario: 'canton=GE&tt=84&utm_source=evil&redirect=https://evil.example&alerte=ok',
+      }),
+    );
+
+    const location = locationOf(response);
+
+    expect(location.searchParams.get('canton')).toBe('GE');
+    expect(location.searchParams.get('utm_source')).toBeNull();
+    expect(location.searchParams.get('redirect')).toBeNull();
+    expect(location.searchParams.get('alerte')).toBeNull();
+    expect(String(location)).not.toContain('evil.example');
+  });
+
+  it('drops a value too long to be a scenario value', async () => {
+    const response = await POST(
+      post({
+        email: 'a@example.com',
+        source: 'calculateur',
+        scenario: `canton=GE&tt=${'9'.repeat(500)}`,
+      }),
+    );
+
+    const location = locationOf(response);
+
+    expect(location.searchParams.get('canton')).toBe('GE');
+    expect(location.searchParams.get('tt')).toBeNull();
+  });
+
+  it('survives a scenario field that is not a query string at all', async () => {
+    for (const scenario of ['', '???', '%%%', 'not a query']) {
+      const response = await POST(
+        post({ email: `x${scenario.length}@example.com`, source: 'calculateur', scenario }),
+      );
+
+      expect(response.status).toBe(303);
+      expect(locationOf(response).pathname).toBe(CALCULATOR_PATH);
+    }
   });
 });

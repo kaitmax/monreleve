@@ -31,7 +31,6 @@ import {
   METHOD_CODES,
   type MethodCode,
   PARAM_NAMES,
-  RESERVED_PARAM_NAMES,
   PARAM_SCHEMA,
   type ParamName,
 } from './schema';
@@ -232,16 +231,7 @@ export function decode(params: URLSearchParams, taxYear: number): DecodeResult {
   const ignored: string[] = [];
   const invalid: string[] = [];
 
-  // RESERVED NAMES ARE NOT UNKNOWN ONES. FW14's subscribe handler answers
-  // a form POST by redirecting with a status in the URL - it has no cookie
-  // (SPEC D12) and no island (R136) to put it in. Reported as unknown, that
-  // status would make the link notice tell a reader who had just subscribed
-  // that their subscription was an unrecognised parameter.
-  const reserved = new Set<string>(RESERVED_PARAM_NAMES);
-
   for (const name of params.keys()) {
-    if (reserved.has(name)) continue;
-
     if (!known.has(name) && !ignored.includes(name)) ignored.push(name);
   }
 

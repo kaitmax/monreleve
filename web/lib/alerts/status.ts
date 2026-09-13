@@ -28,8 +28,25 @@
 
 import { ALERTES_COPY } from '@/lib/fr/alertes';
 
-/** The query parameter the handler redirects with. */
-export const ALERT_STATUS_PARAM = 'alerte';
+/**
+ * THE STATUS TRAVELS AS A FRAGMENT, NOT A QUERY PARAMETER.
+ *
+ * A query parameter would have to be read on the server to be rendered
+ * there, and FW13 measured what that costs on this route: any use of
+ * searchParams - page, generateMetadata, or a Suspense child - makes it
+ * dynamic in Next 15.5.25 and emits <title> and <link rel="canonical"> into
+ * the BODY of SPEC 14's target-query page.
+ *
+ * A FRAGMENT NEVER REACHES THE SERVER. So the page stays static, renders
+ * every status message hidden, and CSS :target reveals the one the fragment
+ * names. No JavaScript is required for that, which is what makes the error
+ * case readable for a reader who has none - the alternative was a mistyped
+ * address producing no message at all.
+ *
+ * The operator chose this over an island-only status and over accepting a
+ * dynamic calculator.
+ */
+export const statusFragment = (status: AlertStatus): string => `alerte-${status}`;
 
 export const ALERT_STATUS = {
   /** Accepted. The same value for a new address and one already known. */

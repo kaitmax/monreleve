@@ -22,6 +22,8 @@ import { currentTaxYear } from '../lib/content/tax-year';
 import { CALCULATEUR_COPY } from '../lib/fr/calculateur';
 import { PROVISIONAL_COPY } from '../lib/fr/provisional';
 import { PARAM_NOTICE, SHARE_COPY } from '../lib/fr/params';
+import { ALERTES_COPY } from '../lib/fr/alertes';
+import { ALERTES_PATH } from '../lib/content/alertes';
 import { ruleSetFor } from '../lib/calc-engine';
 import { formatPercent } from '../lib/ui/core';
 
@@ -803,5 +805,100 @@ test.describe('the share controls are reachable by keyboard (FW13)', () => {
     await page.keyboard.press('Enter');
 
     await expect(page.locator('[data-share-status]')).not.toBeEmpty();
+  });
+});
+
+test.describe('AC2: the capture card never costs the reader their result (FW14)', () => {
+  // THE CARD IS A PLAIN FORM (R136). These tests exercise it as a browser
+  // does, because the property is about what a BROWSER does with a form POST
+  // and a 303 - not about what a function returns.
+
+  test('sits below the result, and submitting leaves the result on screen', async ({
+    page,
+  }) => {
+    await page.goto(GENEVA_C_URL);
+
+    // The result is there first. If this ever stops being true the rest of
+    // the test is meaningless, which is why it is asserted rather than
+    // assumed.
+    await expect(page.locator('main')).toContainText(`39,16${NBSP}%`);
+
+    const result = page.locator('#resultat');
+    const card = page.locator('[data-alert-scenario]');
+
+    await expect(card).toHaveCount(1);
+
+    // BELOW, as a property of the page (R137, SPEC 9.3 item 8).
+    const order = await page.evaluate(() => {
+      const nodes = [...document.querySelectorAll('#resultat, [data-alert-scenario]')];
+
+      return nodes.map((node) => (node.id === 'resultat' ? 'result' : 'capture'));
+    });
+
+    expect(order).toEqual(['result', 'capture']);
+
+    await page.getByLabel(ALERTES_COPY.emailLabel).fill('e2e@example.com');
+    await page.getByRole('button', { name: ALERTES_COPY.submit }).click();
+
+    // AND THE RESULT IS STILL THERE, UNCHANGED. The scenario travelled with
+    // the POST and came back in the redirect.
+    await expect(result).toContainText(`39,16${NBSP}%`);
+    await expect(page).toHaveURL(/canton=GE/);
+    await expect(page.locator('#alerte-ok')).toBeVisible();
+  });
+
+  test('shows the error without JavaScript, which is why it is CSS', async ({ browser }) => {
+    // THE CASE THAT DECIDED THE MECHANISM. An island-rendered status would
+    // leave this reader with no message at all: they mistype an address, the
+    // form posts, and the page comes back looking untouched.
+    const context = await browser.newContext({ javaScriptEnabled: false });
+    const page = await context.newPage();
+
+    await page.goto(CALCULATOR_PATH);
+
+    await page.getByLabel(ALERTES_COPY.emailLabel).fill('pas-une-adresse');
+    await page.getByRole('button', { name: ALERTES_COPY.submit }).click();
+
+    // Revealed by :target, with no scripting anywhere.
+    await expect(page.locator('#alerte-adresse-invalide')).toBeVisible();
+    await expect(page.locator('#alerte-ok')).toBeHidden();
+
+    await context.close();
+  });
+
+  test('accepts a subscription without JavaScript', async ({ browser }) => {
+    const context = await browser.newContext({ javaScriptEnabled: false });
+    const page = await context.newPage();
+
+    await page.goto(CALCULATOR_PATH);
+
+    await page.getByLabel(ALERTES_COPY.emailLabel).fill('sans-js@example.com');
+    await page.getByRole('button', { name: ALERTES_COPY.submit }).click();
+
+    await expect(page.locator('#alerte-ok')).toBeVisible();
+
+    // ONE MESSAGE, NOT SIX. Every status is in the DOM; exactly one is shown.
+    const shown = await page.evaluate(
+      () =>
+        [...document.querySelectorAll('[role="status"][id^="alerte-"]')].filter(
+          (node) => getComputedStyle(node).display !== 'none',
+        ).length,
+    );
+
+    expect(shown).toBe(1);
+
+    await context.close();
+  });
+
+  test('the standalone landing takes the same form', async ({ page }) => {
+    await page.goto(ALERTES_PATH);
+
+    await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
+
+    await page.getByLabel(ALERTES_COPY.emailLabel).fill('landing@example.com');
+    await page.getByRole('button', { name: ALERTES_COPY.submit }).click();
+
+    await expect(page).toHaveURL(new RegExp(`${ALERTES_PATH}`));
+    await expect(page.locator('#alerte-ok')).toBeVisible();
   });
 });

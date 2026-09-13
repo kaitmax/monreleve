@@ -28,3 +28,22 @@
   font-size: var(--type-body-size);
   line-height: var(--type-body-line);
 }
+
+.landing {
+  padding: var(--space-10) 0;
+}
+
+.landingHeading {
+  margin: 0 0 var(--space-4);
+  color: var(--colour-text-primary);
+  font-size: var(--type-h1-size);
+  font-weight: var(--type-h1-weight);
+  line-height: var(--type-h1-line);
+}
+
+.landingIntro {
+  margin: 0 0 var(--space-4);
+  color: var(--colour-text-secondary);
+  font-size: var(--type-body-m-size);
+  line-height: var(--type-body-m-line);
+}

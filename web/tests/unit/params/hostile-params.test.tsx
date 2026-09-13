@@ -28,7 +28,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import { CalculatorForm } from '@/app/(public)/calculateur-teletravail-frontalier/CalculatorForm';
 import { CALCULATEUR_COPY } from '@/lib/fr/calculateur';
-import { decode, encode } from '@/lib/params/codec';
+import { decode } from '@/lib/params/codec';
 import { PARAM_NAMES } from '@/lib/params/schema';
 import { NOTICE_NAME_MAX } from '@/lib/fr/params';
 
@@ -209,52 +209,5 @@ describe('the notice prints what a stranger chose, and prints it as text', () =>
     const notice = document.querySelector('[data-notice="params"]')?.textContent ?? '';
 
     expect(notice).toContain('amp;tt');
-  });
-});
-
-describe('the alert status is reserved, not unknown (FW14)', () => {
-  // THE COLLISION FW14 FOUND. The subscribe handler cannot use a cookie
-  // (SPEC D12 forbids one on a public route) and cannot use an island
-  // (R136), so the only way it can tell the reader what happened is to
-  // redirect with the status in the URL. Reported as an unknown parameter,
-  // that status would make this page greet somebody who had just subscribed
-  // with "Ces parametres ne sont pas utilises par le calculateur : alerte".
-
-  it('is neither ignored nor invalid', () => {
-    const { ignored, invalid } = decode(
-      new URLSearchParams('?canton=GE&tt=84&alerte=ok'),
-      TAX_YEAR,
-    );
-
-    expect(ignored).toEqual([]);
-    expect(invalid).toEqual([]);
-  });
-
-  it('shows no notice at all on a link that carries only a status', () => {
-    arriveAt(`${'?canton=GE&tt=84&'}alerte=ok`);
-
-    expect(document.querySelector('[data-notice="params"]')).toBeNull();
-  });
-
-  it('still reports a genuinely unknown parameter beside it', () => {
-    // NON-VACUITY. A codec that stopped reporting unknown names entirely
-    // would satisfy both assertions above and lose the notice the whole of
-    // FW13 increment 2 exists for.
-    const { ignored } = decode(
-      new URLSearchParams('?canton=GE&tt=84&alerte=ok&utm_source=facebook'),
-      TAX_YEAR,
-    );
-
-    expect(ignored).toEqual(['utm_source']);
-  });
-
-  it('is never written into a shared link', () => {
-    // The status answers one form POST. encode() builds links from the
-    // SCENARIO, so a reader who subscribes and then copies the link sends a
-    // calculation, not a stale "you have just subscribed".
-    const { input } = decode(new URLSearchParams('?canton=GE&tt=84&alerte=ok'), TAX_YEAR);
-
-    expect(input).not.toBeNull();
-    expect(encode(input as NonNullable<typeof input>).toString()).not.toContain('alerte');
   });
 });
