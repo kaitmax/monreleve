@@ -27,8 +27,9 @@ import { GUIDES_COPY } from '@/lib/fr/guides';
 import { canonicalsAvailable } from '@/lib/content/site';
 import { formatDate } from '@/lib/ui/core';
 import { Container } from '@/lib/ui/react/Container/Container';
+import { GuideCta } from '@/lib/ui/react/GuideCta/GuideCta';
 import { TableOfContents } from '@/lib/ui/react/TableOfContents/TableOfContents';
-import { allGuides, guideBySlug, publishedGuides } from '@/lib/guides/registry';
+import { GUIDES_PATH, allGuides, guideBySlug, publishedGuides } from '@/lib/guides/registry';
 import { headingsIn } from '@/lib/guides/headings';
 import { mdxComponents } from '@/lib/guides/mdx-components';
 import { readingMinutes } from '@/lib/guides/reading-time';
@@ -93,6 +94,14 @@ export default async function GuidePage({ params }: RouteParams) {
   // from the COMPILED html instead would mean the two agree only if two
   // passes agree with each other.
   const headings = headingsIn(body);
+
+  // FD13's GUIDES LIES list, resolved from the frontmatter's `related`.
+  // A slug naming no article is dropped rather than rendered as a dead
+  // link - and the mesh checker refuses it separately, which is where
+  // that mistake should be reported.
+  const related = frontmatter.related
+    .map((slug) => guideBySlug(slug))
+    .filter((entry): entry is NonNullable<typeof entry> => entry !== undefined);
 
   // COMPILED HERE, AT BUILD. compileMDX runs inside this server component and
   // the route is statically generated, so the output is HTML in a file.
@@ -160,7 +169,53 @@ export default async function GuidePage({ params }: RouteParams) {
           </div>
 
           <div className={styles.prose} data-prose>
-            <Container width="article">{content}</Container>
+            <Container width="article">
+              {/*
+                MARKED, so a test can ask for the ARTICLE's headings rather
+                than every heading in the column. The closing card carries
+                an h2 of its own, and the outline must be compared against
+                what the AUTHOR wrote - which is what the table of contents
+                indexes.
+              */}
+              <div data-article-body>{content}</div>
+
+              {/*
+                SPEC 9.5's second calculator link, and FD13's "this exact
+                card ends every guide". It is the TEMPLATE's - an author
+                supplies the inline one - which is why the mesh checker
+                asks the body for one link rather than two.
+              */}
+              <GuideCta />
+
+              {/*
+                FD13's article footer. SPEC 9.5: "every guide carries a
+                derniere verification date and links /sources in its
+                footer". The date is in the chips at the head; this is the
+                link, and it is the template's rather than each author's
+                so that no guide can ship without it.
+              */}
+              <footer className={styles.footer} data-guide-footer>
+                <p className={styles.sources}>
+                  {GUIDES_COPY.sourcesNote}{' '}
+                  <a href="/sources">{GUIDES_COPY.sourcesLink}</a>
+                </p>
+
+                {related.length === 0 ? null : (
+                  <nav aria-label={GUIDES_COPY.relatedHeading} data-related>
+                    <p className={styles.relatedHeading}>{GUIDES_COPY.relatedHeading}</p>
+                    <ul className={styles.relatedList}>
+                      {related.map((entry) => (
+                        <li key={entry.frontmatter.slug}>
+                          <a href={`${GUIDES_PATH}/${entry.frontmatter.slug}`}>
+                            {entry.frontmatter.title}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </nav>
+                )}
+              </footer>
+            </Container>
           </div>
         </article>
       </Container>

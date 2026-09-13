@@ -101,6 +101,12 @@ const MEASURED_ELSEWHERE: ReadonlyArray<readonly [string, string]> = [
       'current section needs a scroll listener, which is client JavaScript ' +
       'on a content page (R136).',
   ],
+  [
+    'GuideCta',
+    'A server component: a card, a heading and a link, identical on every ' +
+      'guide. It takes no props at all, so there is no interactive surface ' +
+      'and nothing for a client bundle to carry.',
+  ],
 ];
 
 /**
@@ -176,6 +182,15 @@ describe('the island harness imports the whole component library (R122)', () => 
     // left out of the harness fails the per-component test above; a server
     // component added is legitimately free. The count added nothing either
     // of those did not already say.
+    //
+    // AND THE PROPORTIONAL RULE IS NOT DECORATIVE - IT IS CLOSING IN. FW16
+    // takes the list to six of fourteen components, because almost every new
+    // component in this product is a server component: the capture card, the
+    // FAQ, the JSON-LD script, the outline, the closing card. The day
+    // exclusions reach half, GATE I is measuring a minority of the library
+    // and the harness needs rethinking rather than another entry - which is
+    // exactly what this assertion will say, and why it replaced a number
+    // that only tracked how fast the library grew.
     expect(MEASURED_ELSEWHERE.length * 2).toBeLessThan(COMPONENTS.length);
   });
 

@@ -1,0 +1,66 @@
+// web/lib/ui/react/GuideCta/GuideCta.module.scss
+// Tokens only; camelCase class names for CSS Module addressing.
+//
+// FD13's closing card: white, radius 16, padding 32, 48 above, with the icon
+// in a 44 x 44 info-soft square at the top. No shadow - SPEC 20 and FD13 both
+// forbid one on a card.
+
+.cta {
+  margin-top: var(--space-12);
+  padding: var(--space-8);
+  border: var(--size-card-border) solid var(--colour-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--colour-surface);
+}
+
+// FD13: a 44 x 44 square. --size-icon-button is that measurement and is named
+// for a touch target, which this is not - but R69's lesson is that a hairline
+// needed its own name because six sites aliased a card border for it. This is
+// one site. If a second appears, it needs a token rather than a third alias.
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--size-icon-button);
+  height: var(--size-icon-button);
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--colour-info-soft);
+  color: var(--colour-brand);
+}
+
+// An h2 rather than FD13's h3: the article's headings are h2, and a closing
+// card that used h3 would sit at the wrong level in the document outline -
+// a screen reader would read it as a subsection of the last section rather
+// than as a peer of the article's parts.
+.title {
+  margin: 0 0 var(--space-3);
+  color: var(--colour-text-primary);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  line-height: var(--type-h3-line);
+}
+
+.body {
+  margin: 0 0 var(--space-6);
+  color: var(--colour-text-secondary);
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  line-height: var(--type-body-line);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--size-button-height);
+  min-width: var(--size-button-min-width);
+  padding: 0 var(--space-5);
+  border-radius: var(--radius-md);
+  background: var(--colour-brand);
+  color: var(--colour-surface);
+  font-size: var(--type-label-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-label-line);
+  text-decoration: none;
+}

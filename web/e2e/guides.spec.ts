@@ -106,7 +106,7 @@ test.describe('the article template', () => {
     for (const href of hrefs) {
       expect(href.startsWith('#'), href).toBe(true);
 
-      const target = page.locator(`[data-prose] ${href}`);
+      const target = page.locator(`[data-article-body] ${href}`);
 
       await expect(target, `${href} lands on nothing`).toHaveCount(1);
     }
@@ -120,7 +120,7 @@ test.describe('the article template', () => {
       nodes.map((node) => (node.getAttribute('href') ?? '').slice(1)),
     );
     const document_ = await page
-      .locator('[data-prose] h2, [data-prose] h3')
+      .locator('[data-article-body] h2, [data-article-body] h3')
       .evaluateAll((nodes) => nodes.map((node) => node.id));
 
     expect(outline).toEqual(document_);
@@ -138,6 +138,46 @@ test.describe('the article template', () => {
     await expect(page.locator('[data-toc] a').first()).toBeVisible();
 
     await context.close();
+  });
+
+  test('links the calculator twice, inline THEN the end card (SPEC 9.5)', async ({
+    page,
+  }) => {
+    // R119: COUNTED BY POSITION, NOT JUST PRESENCE. Two links to the
+    // calculator somewhere on the page is not the rule - SPEC 9.5 says
+    // "inline at the moment the reader realises they cannot do the math,
+    // and the end Tile". A page with both links inside the closing card
+    // would satisfy a count and fail the reader who needed the tool eight
+    // paragraphs earlier.
+    const positions = await page.evaluate(() => {
+      const links = [...document.querySelectorAll('[data-prose] a')];
+      const cta = document.querySelector('[data-guide-cta]');
+
+      return links
+        .filter((link) => link.getAttribute('href') === '/calculateur-teletravail-frontalier')
+        .map((link) => (cta?.contains(link) === true ? 'end card' : 'inline'));
+    });
+
+    expect(positions).toEqual(['inline', 'end card']);
+  });
+
+  test('ends with the one CTA card every guide ends with', async ({ page }) => {
+    // FD13: "this exact card ends every guide on the site - one CTA, no
+    // variants". One on the page, and the component takes no props that
+    // could make a second one different.
+    await expect(page.locator('[data-guide-cta]')).toHaveCount(1);
+  });
+
+  test('carries the /sources link in its footer (SPEC 9.5)', async ({ page }) => {
+    // Every rule cited in a guide has to reach its source. The link is the
+    // TEMPLATE's rather than each author's, so no guide can ship without
+    // it - which is also why the mesh checker can treat it as a property
+    // of the body and still be honest: an author who omits it is caught,
+    // and the template guarantees the rendered page has one.
+    const footer = page.locator('[data-guide-footer]');
+
+    await expect(footer).toHaveCount(1);
+    await expect(footer.locator('a[href="/sources"]')).toHaveCount(1);
   });
 
   test('is noindex, because the fixture is not content', async ({ page }) => {

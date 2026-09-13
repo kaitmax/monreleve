@@ -40,4 +40,28 @@ export const GUIDES_COPY = {
 
   /** Computed from the body, never authored. */
   readingTime: (minutes: number): string => `${minutes} min de lecture`,
+
+  /**
+   * FD13’s closing card, which ends every guide with no variants.
+   *
+   * IT OFFERS THE CALCULATOR, not the releve. FD13’s own rule says
+   * "exactly two calculator CTAs: the inline card mid-article and the
+   * closing card", while its example copy for that card points at
+   * /releve-annuel. SPEC 9.5 settles it - every guide links a calculator
+   * twice - and /releve-annuel is planned for FW20, so the other reading
+   * would link a page that 404s.
+   */
+  ctaTitle: 'Savoir ou vous en etes, en une minute',
+  ctaBody:
+    'Le calculateur reprend vos jours de teletravail et vous dit combien il ' +
+    'vous en reste avant chaque seuil. Gratuit, sans inscription.',
+  ctaAction: 'Calculer mes jours',
+
+  /** FD13: the article footer, above the related guides. */
+  sourcesNote:
+    'Chaque regle citee sur cette page renvoie a son texte d’origine.',
+  sourcesLink: 'Voir les sources reglementaires',
+
+  /** FD13: GUIDES LIES, the related list. */
+  relatedHeading: 'Guides lies',
 } as const;

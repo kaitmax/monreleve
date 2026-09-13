@@ -125,3 +125,40 @@
     grid-row: 2;
   }
 }
+
+// FD13's article footer: a rule, the sources line, then the related list.
+.footer {
+  margin-top: var(--space-12);
+  padding-top: var(--space-6);
+  border-top: var(--size-rule) solid var(--colour-border-default);
+}
+
+.sources {
+  margin: 0 0 var(--space-6);
+  color: var(--colour-text-secondary);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  line-height: var(--type-caption-line);
+}
+
+.relatedHeading {
+  margin: 0 0 var(--space-3);
+  color: var(--colour-text-secondary);
+  font-size: var(--type-label-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-label-line);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+}
+
+.relatedList {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--colour-brand);
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  line-height: var(--type-body-line);
+}
