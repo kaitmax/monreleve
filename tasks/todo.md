@@ -562,8 +562,33 @@ Every task also clears the project-wide Definition of Done and the Execution, Te
 - [ ] Build succeeds: `pnpm build`
 - [ ] Manual check: real push received on a test device
 
+**Added by FW15 — RFC 8058 one-click unsubscribe (ruling R141):**
+FW27 owns `List-Unsubscribe` and `List-Unsubscribe-Post:
+List-Unsubscribe=One-Click` on every alert message, and the
+`POST /api/alertes/desinscription` endpoint those headers point at. They
+belong with the sends, and FW27 is the task that builds the sends.
+
+**The interim GET stays.** `app/api/alertes/desinscription/route.ts`
+answers `GET` today because the link in a message body is a link, and
+because the action is idempotent and reversible — which is what makes a
+prefetchable GET acceptable for it, as that route's own header explains.
+What a GET cannot be is the one-click target: a mailbox provider sends a
+`POST` with the body `List-Unsubscribe=One-Click`, follows no redirect,
+and reads the status code. So the POST answers **200 with no body**,
+where the GET answers 303 to a status page. There is no browser on the
+other end to redirect.
+
+Not optional, and not cosmetic: a reader who cannot find the unsubscribe
+presses the spam button instead, and that is the signal that ends
+deliverability for the whole list. Gmail and Yahoo require one-click of
+senders above their bulk thresholds outright.
+
+- [ ] Both headers on every alert send, carrying the same unsubscribe token the GET accepts
+- [ ] `POST` with `List-Unsubscribe=One-Click` unsubscribes and returns 200; the row is kept
+- [ ] GET and POST are both idempotent: a second request changes nothing and still succeeds
+
 **Dependencies:** FW23, FW26
-**Files likely touched:** `instrumentation.ts`, `lib/push/**`, `app/api/v1/devices/route.ts`, jobs
+**Files likely touched:** `instrumentation.ts`, `lib/push/**`, `app/api/v1/devices/route.ts`, `app/api/alertes/desinscription/route.ts`, jobs
 **Estimated scope:** M
 
 ---
