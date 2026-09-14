@@ -233,6 +233,52 @@ They go to the named expert reviewer, not to a website.
 Rows 6 and 7 of the constants table were **not reached** by this pass and
 keep their unchecked boxes. Neither is exercised by a Geneva fixture.
 
+### ROWS 6 AND 7 — WHAT THE REVIEWER IS ASKED (added FW17)
+
+Kept separate from P1–P3 above, because those are *readings adopted where no
+source speaks* and these two are the opposite: **a source speaks and nobody
+has opened it.** Conflating the two would blur the distinction this document
+exists to keep.
+
+Both reach a reader in FW17's guides, so each is written there under R146
+case (b) — named as unresolved, linked to `/sources` — rather than stated
+flatly or omitted.
+
+- ☐ **Row 6 — the day classification (over 4 h = 1 day; 2–4 h = ½ day).**
+  *Asked:* open circulaire no. 45 of 12 June 2019, point 7.5.1, and confirm
+  the boundary.
+
+  **Why it is not a formality.** The four-hour line decides whether a day
+  counts once or by half, and that lands directly on the declarable rate —
+  the number filed with the AFC. The published Geneva cases cannot settle it
+  because the authority's own examples work in whole days, so the conversion
+  sits one layer *below* anything Geneva demonstrates.
+
+  **AND THE CALCULATOR'S DEFAULT RESTS ON IT.** `DEFAULT_GRANULARITY` on the
+  public form is `'halfDay'` — an FW11 interpretation, recorded in that
+  increment and in `CalculatorForm.tsx`: SPEC §9.3 puts step 0.5 on the
+  visible day field, and the engine rejects a half-day value declared under
+  granularity `'day'`, so both cannot hold. That default is only meaningful
+  if half-days are a real unit of this rule. **The two move together**: if
+  the reviewer's reading of point 7.5.1 changes the boundary or removes the
+  half-day, the default is re-decided in the same change.
+
+- ☐ **Row 7 — the eight 1983-accord cantons (BE, SO, BS, BL, VD, VS, NE,
+  JU).** *Asked:* confirm the **membership list** against the text of the
+  accord of 11 April 1983.
+
+  **What is NOT asked, and the distinction is the point.** That two regimes
+  exist and carry different consequences is settled — SPEC §7.2 step 1, the
+  R125 copy items above, and the shipped result-panel branch that names the
+  status only for `residence-1983`. What is unverified is *which cantons are
+  in the group*, because Genève is a `source` canton and no published example
+  reaches the list.
+
+  So a guide states the distinction plainly and hedges only the enumeration.
+  A reader in Genève gets the right answer either way; a reader in Jura gets
+  a correct description of the consequence and an honest note that their
+  canton's membership is pending.
+
 ## COPY ITEMS FOR THE REVIEWER
 
 Wording the reviewer must confirm, kept separate from the readings above
