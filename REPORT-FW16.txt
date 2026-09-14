@@ -1,0 +1,524 @@
+====================================================================
+REPORT-FW16 - guides infrastructure
+====================================================================
+
+SUMMARY
+--------------------------------------------------------------------
+FW16 built the thing that will refuse to let FW17 and FW18 write the
+seven articles wrongly. No guide content ships: one fixture, marked as
+one, kept forever.
+
+  the MDX pipeline     frontmatter as a zod contract, validated at BUILD.
+                       A malformed article cannot start a server.
+  the article template one file for seven guides, FD13's sequence
+                       asserted as a sequence (R137), every internal
+                       href resolved at build.
+  the table of contents from the MDX source, one read shared with the
+                       rendered heading ids so the two cannot disagree.
+  THE MESH CHECKER     SPEC 9.5 made mechanical. Seven rules, all
+                       violations reported, five planted and captured.
+  the hub              generated from the registry, so "a guide cannot
+                       exist and be absent from the hub" is a
+                       consequence rather than a rule.
+  FAQPage              from the same array the accordion renders.
+
+THE INCREMENT THAT MATTERED MOST WAS NOT THE ONE I EXPECTED. The mesh
+checker is the prompt's stated core and it works. But the defect this task
+actually caught was found by a PICTURE: the article head sat 100 px left
+of its own prose, at a 616 px measure where FD13 asks for 680, and 2246
+unit tests, 137 e2e assertions and 86 baselines all passed. See DEVIATIONS.
+
+FIVE STANDING GUARDS FIRED ON MY OWN CODE, none written for this feature:
+R126 (an ASCII apostrophe, then French literals in fixtures), R122 (the
+island census, twice), R91 (a space before a colon), the contrast audit (a
+real 2,58:1 failure), and R121's nested-background census. The gate
+refused three increments outright.
+
+PRECONDITIONS
+--------------------------------------------------------------------
+R1 discharged before any work: CI green on origin/main at ba1f8c7.
+  run 34774105275 - https://github.com/kaitmax/Frontalier/actions/runs/34774105275
+
+CI after each pushed increment: success, every one.
+  a8c920f  run 34792917552
+  8d97726  run 34821180235   (final commit)
+
+INCREMENT 0
+--------------------------------------------------------------------
+R143 - ANALYTICS GOES FIRST-PARTY, recorded against FW28 in tasks/todo.md
+with both conditions and the reason each exists:
+
+  re-validate the key set server-side   PAYLOAD_KEYS is a contract the
+                                        BROWSER can be made to break. A
+                                        privacy guarantee enforced only
+                                        in code the client runs is a
+                                        guarantee anybody can edit.
+  fail closed                           an unreachable upstream drops the
+                                        event silently. The event is
+                                        worth nothing; the page is worth
+                                        everything.
+
+The block FW15 left asking the question now states the answer. Option (b)
+- committing a copy of Umami's script - is refused IN WRITING rather than
+merely unchosen. No analytics code ships in this task.
+
+R144 - A TEST FILE SELECTS THE SUITE IT BELONGS TO. Four rules:
+
+  an ordinary spec  -> test:e2e
+  a visual spec     -> test:visual   and NOT test:e2e
+  a runtime spec    -> test:runtime  and neither of the others
+  a baseline        -> test:visual
+
+THE RUNTIME CASE IS THE PRINCIPLE APPLIED, NOT THE RULING EXTENDED. R144
+names two cases in its parenthetical and states the rule as "the suite it
+belongs to"; guard.runtime.spec.ts belongs to test:runtime and is excluded
+from both other projects, so mapping it to test:e2e would reproduce the
+defect one level down.
+
+PROOF, run against the real module:
+
+  an ordinary spec     test:e2e       a spec file, which selects the suite it belongs to
+  a visual spec        test:visual    a visual spec, which test:e2e deliberately ignores
+  the runtime guard    test:runtime   a runtime spec, which is its own project
+  a baseline           test:visual    a baseline, which is the record test:visual compares against
+  a unit test          base chain     (no pattern - pnpm test already runs it)
+  a database test      test:db        the database layer
+
+AND THE IMPLEMENTATION FAILED ON ITS FIRST RUN, worth recording because
+the bug would have read as thoroughness: I gave the three spec rules ONE
+shared label, and THE LABEL IS THE UNION KEY - selectSuites adds a
+pattern's suites when any matched hit carries that pattern's label. An
+ordinary spec therefore selected test:visual and test:runtime as well,
+which would have run the container on every e2e edit. A test now requires
+every label to be distinct.
+
+IT FIRED FOR REAL IN INCREMENT 6, on all four rules at once: one spec, one
+visual spec and six baselines. Under the previous selector those would
+have selected nothing.
+
+R145 - THE OG CARD IS GENERATED AT DEPLOY, recorded against FW28. The
+defect it fixes, stated plainly because FW15 shipped it: a contributor
+without docker cannot change the rail and ship a card that matches it, and
+NO GATE WOULD OBJECT - og-image.test.ts compares the shipped file against
+the baseline, and after a rail change both are stale together. Two files
+agreeing with each other is not evidence when one run produced both.
+
+RED/GREEN LEDGER
+--------------------------------------------------------------------
+INCREMENT 1 - the MDX pipeline
+  RED  THE BUILD PASSED WHEN IT SHOULD HAVE FAILED. I planted
+       lastReviewed: "septembre 2026" in the fixture and pnpm build
+       exited 0. `next build` IMPORTS a route module to collect page
+       data; it does not CALL the handler, and publishedGuides() sat
+       inside GET(). The registry would first have run when a crawler
+       asked for the sitemap. The comment in that file already claimed
+       otherwise - a claim that reads as true and is enforced by nothing.
+  GREEN after moving the read to module scope:
+         Error: Invalid frontmatter in _fixture-modele-article.mdx:
+           lastReviewed: lastReviewed is an ISO day, e.g. 2026-09-09
+         [Error: Failed to collect page data for /sitemap.xml]
+         BUILD EXIT: 1
+       Restored, rebuilt, exit 0.
+  DEVIATION FROM PROTOCOL 6, stated at the time: frontmatter.ts and
+  registry.ts were written before their tests, so those 19 assertions
+  passed on their first run. The build proof above is the increment's
+  real RED and it found something false.
+
+INCREMENT 2 - the article template
+  RED  the link validation, proven by planting one character:
+         [calculez vos jours restants](/calculateur-teletravail-frontaliers)
+         Error: Broken internal link in _fixture-modele-article.mdx:
+           "/calculateur-teletravail-frontaliers" resolves to no route.
+           Check the slug: a link one character off renders perfectly
+           and 404s.
+         Export encountered an error, exiting the build. EXIT 1
+  GUARDS R126 caught "Fil d'Ariane" - an ASCII apostrophe, in the file I
+       had just written a comment about French typography in.
+       THE VAR CENSUS CAUGHT --colour-card, A TOKEN I INVENTED BY
+       ASSUMING: FD13 calls the surface "Card #FFFFFF", the token is
+       --colour-surface. An undefined custom property renders as the
+       initial value - transparent - so the chips and the summary card
+       would have been unstyled in a way that looks deliberate.
+       STYLELINT REFUSED A calc() OVER TWO TOKENS, and was right: the
+       head was aligned by padding-left: calc(toc + gap) with a matching
+       negative margin, which is a third value no token carries, held in
+       agreement by hand in two places.
+  GREEN 25 assertions; the layout became one grid with explicit placement.
+
+INCREMENT 3 - the table of contents
+  RED  A FALSE GREEN, CAUGHT BEFORE IT COUNTED. The TOC e2e was written
+       through a bash heredoc and bash ate the backticks:
+         page.locator(`[data-prose] ${href}`)  ->  page.locator()
+       The suite reported 9 PASSED with the central assertion gutted.
+       Rewritten with a tool that does not reinterpret content.
+  GUARDS R126 again, on French copy literals in heading fixtures - fixed
+       the R96 way, by composing the codepoint rather than typing it.
+       R122 wanted TableOfContents in the island harness.
+  GREEN 12 + 12.
+
+INCREMENT 4 - the mesh checker
+  RED  ITS OWN TEST CAUGHT A DESIGN FLAW. The checker resolved guide
+       links by calling resolves(), which reads the disk, while taking
+       the guide set as a PARAMETER - so a synthetic set could never
+       pass and the valid-set test failed with four violations against a
+       correct mesh. It was asserting against global state while
+       claiming to be a function of its argument.
+  GREEN 13, including all five planted violations.
+
+INCREMENT 5 - the hub and FAQPage
+  RED  THE GATE CAUGHT WHAT PLAYWRIGHT CANNOT: the e2e reported 14
+       PASSED while tsc rejected the same file - two implicit `any`
+       parameters in a page.evaluate callback. A green browser run says
+       nothing about types.
+  GUARDS R91 (a space before a colon), THE CONTRAST AUDIT (.entryDate at
+       2,58:1 - R58 repeating on new code), R121's census (three nested
+       rules to name).
+  GREEN 6 + 14; the gate took three passes.
+
+INCREMENT 6 - a11y, baselines, size
+  RED  A BASELINE CAUGHT A LAYOUT DEFECT EVERY TEST PASSED OVER. See
+       DEVIATIONS 1.
+  GREEN 8 axe/keyboard assertions, 5 narrow-viewport assertions, 6 new
+       baselines, Lighthouse recorded.
+
+MESH PROOFS
+--------------------------------------------------------------------
+Each planted by CONSTRUCTING A GUIDE SET - nothing in content/guides was
+touched - then captured and removed. The checker's verbatim output:
+
+1. a cluster missing its pillar backlink
+   mesh: 1 violation(s) of SPEC 9.5:
+     [cluster-links-pillar] second-cluster does not link back to the
+     pillar. SPEC 9.5 calls the pillar-cluster link bidirectional and
+     non-negotiable.
+
+2. a guide with fewer than two calculator links
+   mesh: 1 violation(s) of SPEC 9.5:
+     [calculator-link-inline] premier-cluster carries no inline link to
+     the calculator. SPEC 9.5 wants two per guide: the end card is the
+     template, the inline one is yours.
+
+3. a guide absent from the hub
+   mesh: 1 violation(s) of SPEC 9.5:
+     [in-hub] second-cluster is not listed on the hub, so nothing links
+     to it from the site.
+
+4. a link to a route not in the registry
+   mesh: 1 violation(s) of SPEC 9.5:
+     [href-resolves] le-pilier links "/guides/pas-un-guide", which
+     resolves to no route. A slug one character off renders perfectly
+     and 404s.
+
+5. an undeclared cross-link between clusters
+   mesh: 1 violation(s) of SPEC 9.5:
+     [undeclared-cross-link] premier-cluster links second-cluster
+     without both sides declaring it in `related`. premier-cluster does
+     not list second-cluster.
+
+   and the valid set, for contrast:
+   mesh: no violations (SPEC 9.5).
+
+TWO FURTHER RULES SPEC STATES are checked and planted too: a pillar that
+does not link EVERY cluster, and a guide that does not link /sources.
+
+IT REPORTS EVERYTHING, NOT THE FIRST. A set with three broken guides
+reports at least six violations across at least three distinct rules, and
+every violation names its guide and carries a sentence somebody can act
+on. A checker that stopped at one would turn FW18 into fix, re-run,
+discover the next - seven articles deep.
+
+THE DECLARED CROSS-LINK IS ACCEPTED, which keeps the rule about the
+DECLARATION rather than about cross-links (R120): a checker refusing every
+cross-link would pass proof 5 and make the mesh unbuildable. The
+one-sided case is planted separately, because an author adding the link
+and the `related` entry to their own article and not the other one is the
+likeliest way to get it wrong.
+
+FRONTMATTER
+--------------------------------------------------------------------
+The contract, zod, validated at build:
+
+  title        non-empty
+  description  non-empty, and long enough to be a meta description
+  slug         lowercase, hyphens and digits only - and EQUAL TO THE FILE
+               NAME (SPEC 14: slugs are permanent; two sources for one
+               identity is how a URL changes under its bookmarks)
+  cluster      'pillar' | 'cluster' | 'canton' - a typo here would
+               silently exempt an article from every mesh rule, since
+               all of them key on it
+  related      slugs
+  lastReviewed ISO day (R28)
+  reviewer     non-empty
+  faq          question/answer pairs, each answer long enough to be one
+
+THE BUILD FAILURE, planted and captured:
+
+  Error: Invalid frontmatter in _fixture-modele-article.mdx:
+    lastReviewed: lastReviewed is an ISO day, e.g. 2026-09-09
+  [Error: Failed to collect page data for /sitemap.xml]
+  BUILD EXIT: 1
+
+THE ERROR NAMES THE FILE, because zod says which FIELD is wrong and
+nothing about which article, and a build failing on "expected string" with
+seven guides in the tree is a hunt.
+
+ANCHOR STABILITY
+--------------------------------------------------------------------
+An anchor is a URL: people link to #comment-le-pourcentage-se-calcule from
+support replies and their own notes, so an anchor that changes is a link
+that breaks silently for everybody who saved it.
+
+THE SLUG RULE IS OURS rather than rehype-slug's, so it cannot move with
+somebody else's minor version. Tested against the cases this subject
+produces - accents, percentages, decimal commas, guillemets.
+
+  'Ce que dit l(U+2019)accord'        -> ce-que-dit-l-accord
+  'Le seuil social de 49,9 %'         -> le-seuil-social-de-49-9
+  'Si vous depassez 40 %'             -> si-vous-depassez-40
+  '  << Les jours de mission >>  '    -> les-jours-de-mission
+
+THE REBUILD COMPARISON: identical source yields identical ids, asserted
+twice in a row AND against a written-out expected list, so the test cannot
+pass by comparing a function to itself. Two headings with the same text
+are disambiguated BY POSITION - a random suffix would move on every
+rebuild, which is the one thing an anchor must never do.
+
+FAQ IDENTITY
+--------------------------------------------------------------------
+One array, two consumers. The accordion a reader opens and the FAQPage a
+crawler reads are built from frontmatter.faq; the id is DERIVED with the
+same slug rule the headings use, because an id in frontmatter would be a
+URL fragment written by hand.
+
+ASSERTED FROM THE SERVED PAGE: the questions and answers are read back out
+of the ld+json script and compared against the rendered <summary> and <p>
+elements. Equal, both lists, on the real HTML.
+
+AND THE PROPERTY IT RESTS ON, asserted separately: every answer is in the
+DOM while the accordion is CLOSED. A collapsed accordion that did not
+render its answers would publish claims nobody can see - cloaking arrived
+at by accident.
+
+An article with no FAQ emits NO FAQPage at all, rather than an empty
+mainEntity.
+
+SEQUENCE (R137)
+--------------------------------------------------------------------
+The article's asserted order, as a sequence and not a set of presence
+checks:
+
+  breadcrumb -> title -> metadata chips -> rule -> prose
+
+AND THE ORDER INSIDE THE CHIP ROW, because FD13 states it as a rule:
+THE VERIFICATION DATE COMES FIRST. "On a subject whose rules change
+annually, when this was last checked matters more than who wrote it."
+
+  Derniere verification : 09.09.2026  |  Relu par FW16  |  2 min de lecture
+
+Asserted twice: in jsdom against a copy of the head markup, in milliseconds
+on every commit; and in e2e against the SERVED HTML, which is what makes
+the copy safe to keep.
+
+SIZE
+--------------------------------------------------------------------
+  framework floor                       100.6 KiB
+  /guides                               103.0 KiB   (+2.4)
+  /guides/[slug]                        104.0 KiB   (+3.4)
+
+CONTENT ROUTES SIT ESSENTIALLY ON THE FLOOR, which is what R136 predicts
+for pages that ship no client JavaScript. The 3,4 KiB is PublicShell -
+a client component GATE A counts on every public route - plus the route's
+own 1,57 KiB of compiled output. No MDX compiler, no highlighter and no
+outline script reaches a browser.
+
+LIGHTHOUSE, desktop preset, one run each:
+
+  /                                perf 100  a11y 100  bp 100  seo 100
+  /guides                          perf 100  a11y 100  bp 100  seo 100
+  /guides/fixture-modele-article   perf 100  a11y 100  bp 100  seo  66
+
+THE 66 IS CORRECT AND NOT A DEFECT. The only failing audit is
+`is-crawlable` - "Page is blocked from indexing" - because the fixture is
+noindex, which is the point of a fixture. A real article will not carry
+that tag. lighthouserc.json now collects all three routes, so FW17
+measures a real guide the same way.
+
+BASELINES
+--------------------------------------------------------------------
+R135: SIX ADDED, none pre-existing moved.
+
+  guides-hub-desktop.png                  1440 x  900
+  guides-hub-mobile.png                    390 x 1362
+  guides-article-desktop.png              1440 x 2579
+  guides-article-mobile.png                390 x 4279
+  guides-article-faq-ouverte-desktop.png  1440 x 2721
+  guides-article-faq-ouverte-mobile.png    390 x 4349
+
+THE REASON: two new routes, at R127's two viewports. The FAQ-open pair is
+the one worth having - FW15 learned on the calculator that the collapsed
+row appears in every baseline while the ANSWER's colour, measure and
+spacing appear in none.
+
+REGENERATED ONCE MORE after the alignment fix, because the first set
+photographed the defect. Cropped and read both times.
+
+THE DIMENSION CENSUS GAINED THE guides- FAMILY.
+baseline-dimensions.test.ts collected only page-* and calculateur-*, so
+six new full-page baselines would have been neither measured nor reported
+as unfamiliar - the silent-gap shape its own comment names.
+
+TOKENS ADDED (R77)
+--------------------------------------------------------------------
+ONE, on the operator's ruling: --size-toc-column: 280px.
+
+FD13 puts the outline column at 280 and no token carried it. SPEC 20 makes
+adding one ask-first and R64 says a missing width is a ruling rather than
+a prop, so it was put to the operator, who ruled: a SIZE token named like
+--size-header-height, because this is a component dimension rather than a
+fourth CONTENT measure. R64's three Container widths stay closed. Recorded
+at the declaration with both reasons.
+
+Everything else in the guides surface uses existing tokens.
+
+DEVIATIONS
+--------------------------------------------------------------------
+1. THE ARTICLE HEAD WAS MISALIGNED WITH ITS OWN PROSE, and a baseline is
+   what caught it.
+
+     head  left 472           prose  left 572, width 616
+     after: both left 472, both width 680
+
+   Container CENTRES its measure and PADS it - right for a page-level
+   column, wrong inside a grid track, where it also cut FD13's 680 px
+   measure to 616. NOTHING IN THE SUITE COULD SEE IT: 2246 unit tests,
+   137 e2e assertions and 86 baselines, every element present, styled and
+   individually correct, because no assertion compared two elements' LEFT
+   EDGES. It took cropping the picture and reading it, which is what
+   CLAUDE.md says about R135 in the operator's own words.
+
+   The grid track is now the measure itself, so one number decides the
+   head's width, the prose's width and their shared left edge. The e2e
+   locks all three plus the 280 px column.
+
+2. THE CLOSING CARD LINKS THE CALCULATOR, NOT /releve-annuel, and FD13
+   contradicts itself here. Its rules say "exactly two calculator CTAs:
+   the inline card mid-article and the closing card"; its example copy
+   for that card says "Decouvrir le releve annuel". SPEC 9.5 settles it -
+   every guide links a calculator twice - and the prompt says SPEC wins.
+   It is also the only reading that works: /releve-annuel is planned for
+   FW20, so the other one links a page that 404s and the mesh checker
+   refuses it.
+
+3. THE CLOSING CARD USES h2 WHERE FD13 SAYS h3. The article's sections
+   are h2; a closing card at h3 would read as a subsection of the last
+   section rather than as a peer. The heading-order assertion in
+   accessibility-guides.test.tsx is what made the choice explicit.
+
+4. /guides STAYS `planned` IN THE ROUTE REGISTRY. The route exists - the
+   breadcrumb points at it and the mesh checker needs a hub - but with
+   zero published guides, listing it in the sitemap would tell a crawler
+   a page exists that says nothing: the registry's own "sitemap of 404s"
+   principle one level down. A test asserts the hub is EMPTY today, so
+   whoever adds the first article gets a failure telling them to flip the
+   flag deliberately.
+
+5. THE WARNING BANNER'S ACCENT USES --size-input-border-focus, which is
+   not what it is for, and this is the SIXTH site to do it - the
+   calculator's three notices, the result panel's and /sources' all draw
+   their left accent from the input focus border. FD13 and
+   DESIGN-SYSTEM.md both say 4 px; that token is 2 px; no accent token
+   exists. Matching the five was right here - a 4 px accent on guides and
+   2 px everywhere else would be an inconsistency I introduced - but this
+   is R69's exact shape. See QUESTIONS.
+
+6. THE FIXED CAP ON THE ISLAND-HARNESS EXCLUSION LIST WAS REMOVED. It
+   was two; FW15 raised it to three and four; FW16 arrived with
+   TableOfContents and GuideCta. Each raise was correct alone and the
+   sequence is the erosion a ratchet exists to prevent - which is the
+   signal that the NUMBER tracked how fast the library grows rather than
+   whether the harness still measures it. Replaced by two strictly
+   stronger assertions: exclusions must stay under half the library, and
+   every exclusion's stated reason is CHECKED AGAINST ITS SOURCE ('use
+   client' present for PublicShell, absent for the five server
+   components). Nothing slips through the pair that the count caught.
+
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------
+1. SIX OF FOURTEEN COMPONENTS ARE NOW EXCLUDED FROM GATE I, because
+   almost every new component in this product is a server component: the
+   capture card, the FAQ, the JSON-LD script, the outline, the closing
+   card. The proportional rule that replaced the fixed cap is no longer
+   decorative - when exclusions reach half, GATE I measures a minority of
+   the library and the harness needs rethinking rather than another
+   entry. It will say so at the right moment.
+
+2. pnpm size AFTER pnpm gate:changed MEASURES THE WRONG BUILD, reported
+   in FW15 and unchanged: the gate runs test:e2e in between, whose
+   webServer rebuilds .next with FRONTALIER_DEV_ROUTES=1.
+
+3. THE HUB HAS NO EMPTY STATE. With no published guides it renders its
+   title and intro and nothing else. That is correct for FW16 and wrong
+   the moment anybody links to it, which is why the route is not in the
+   sitemap. FW17 should give it content in the same increment that makes
+   it live.
+
+4. THE FIXTURE'S READING TIME IS "2 min de lecture" for a short article.
+   The formula is words/200 rounded up; it reads correctly here, and no
+   real guide has exercised it yet.
+
+QUESTIONS FOR THE OPERATOR
+--------------------------------------------------------------------
+Q42. THE NOTICE ACCENT BAR, R69's SHAPE AGAIN. Six sites now draw a
+     left accent with --size-input-border-focus, which is an INPUT token
+     at 2 px. FD13 and DESIGN-SYSTEM.md both specify 4 px for a banner
+     accent. R69 created --size-rule when six sites aliased the card
+     border for a hairline; this is the same census at the same count.
+     Proposed: --size-notice-accent, and a ruling on 2 px (what ships) or
+     4 px (what the design system says). I did not add a token, because
+     SPEC 20 makes it yours.
+
+Q43. THE FIXTURE'S PERMANENCE. It is kept forever and its header says so:
+     if it were deleted once real guides land, every assertion about the
+     TEMPLATE would move onto content a reviewer will rewrite, and a
+     rewrite would then break tests about markup - which is how suites
+     come to be edited to match whatever the page now does. Confirm, or
+     say when it goes.
+
+Q44. LIGHTHOUSE ON A REAL ARTICLE. The config now collects three routes
+     and the fixture scores SEO 66 for being noindex, correctly. Should
+     FW17 assert a Lighthouse floor on the first real guide, or does
+     Lighthouse stay a recorded manual check?
+
+FINAL VERIFICATION
+--------------------------------------------------------------------
+GREEN IN ONE RUN, chained so a failure could not be followed by the next
+command:
+
+  pnpm gate          124 test files, 2255 tests passed
+                     typecheck, lint, coverage, floor, build
+                     size: all gated routes pass GATE A and GATE B
+                     parity: 11 codepoint cases and 10001 exhaustive
+                             values identical on node v22.14.0
+  pnpm test:e2e      142 passed
+  pnpm test:visual    92 passed (in the container, R37)
+  pnpm test:a11y     119 passed across 6 files
+  pnpm test:runtime    9 passed - R81 still holds
+
+CI green on origin/main at the final commit 8d97726:
+  run 34821180235 - https://github.com/kaitmax/Frontalier/actions/runs/34821180235
+
+PUSH PROOF
+--------------------------------------------------------------------
+  37f169a  chore: R143 - analytics goes first-party, and FW28 owns the endpoint
+  6baefb0  chore: R144 - a test file selects the suite it belongs to
+  6fbc2eb  chore: R145 - the OG card is generated at deploy, not copied from git
+  39cadfc  FW16: MDX pipeline and validated frontmatter
+  2e9f178  FW16: the article template
+  c06944d  FW16: table of contents from the MDX AST
+  c0adb24  FW16: the mesh link-checker
+  a8c920f  FW16: the guides hub and FAQ structured data
+  8d97726  FW16: a11y, baselines, size, Lighthouse
+
+  All pushed to origin/main.
+
+END OF REPORT-FW16

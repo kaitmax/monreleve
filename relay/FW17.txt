@@ -1,0 +1,260 @@
+FW17 SESSION PROMPT - frontalier
+Paste this entire prompt as the first message of a fresh Claude Code
+session, opened at the repository root. Run only after FW16 is
+complete and its report is pushed.
+
+====================================================================
+PRE-STEP RULINGS (apply verbatim)
+====================================================================
+R0 (this session runs without the operator's FW16 verdict). Read
+   REPORT-FW16.txt in full first. If it contains a question marked as
+   blocking FW17, or a DEVIATION that changes the MDX pipeline, the
+   frontmatter contract, the article template or the mesh
+   link-checker, STOP and write REPORT-FW17.txt with only a
+   PRECONDITIONS section explaining why. Otherwise carry every open
+   question forward verbatim into this report's QUESTIONS section and
+   proceed. FW16 is provisionally accepted for building on; the
+   operator's verdict comes later and may bounce.
+
+R1 (discharged). CI green on origin/main: verify, record the run URL.
+R2, R7-R8, R10-R13, R15-R145 (carried). The engine is closed.
+   R9: you own document edits.
+
+R146 (new - THE SOURCE RULE, and it governs this task). Every
+   regulatory statement in a guide is either (a) traceable to a line
+   in docs/regulatory-sources.md that is TRANSCRIPTION VERIFIED, or
+   (b) written as an open question naming its uncertainty, or (c) not
+   written. There is no fourth option. A guide is the surface where
+   this product's credibility is either earned or lost, and it is
+   read by people who will act on it.
+   Mechanically: a frontmatter field `claims` lists, per article, each
+   regulatory figure or rule asserted in the prose together with its
+   source key from docs/regulatory-sources.md. A test asserts every
+   key resolves to a VERIFIED row. A claim whose source is PROVISIONAL
+   (P1, P2, P3) may appear ONLY inside prose that names it as
+   unresolved and links /sources.
+
+R147 (new - NO NUMBER IS TYPED TWICE). Every threshold, cap, basis
+   and rate that appears in guide prose comes from RuleSet(2026)
+   through a component or an MDX expression - never typed as a
+   literal in the MDX. A test greps the compiled output for the
+   digit sequences 40, 49,9, 240 and 10 in a regulatory context and
+   fails on a hardcoded one. The 2028 rule change must edit one
+   constant, not seven articles.
+
+R47. Still open, still the operator's.
+
+====================================================================
+CONTEXT
+====================================================================
+Project: frontalier. You are executing task FW17 ONLY: three
+articles - the PILLAR on the 40 % rule, and the clusters on the
+49,9 % social threshold and on mission days. FW18 writes the
+remaining four. FW16 built the pipeline, the template and the mesh
+checker; this task is the first that writes prose a stranger will
+rely on.
+
+What makes these three a set: they are the three the calculator's
+contextual links point at, so until they exist the result panel's
+link (SPEC 9.3 item 7) has nowhere to go for three of four statuses.
+
+Read first: CLAUDE.md, README.md, SPEC sections 9.5 (verbatim), 14,
+20; docs/regulatory-sources.md IN FULL, including the Checkpoint A
+result and the three PROVISIONAL items; prompts/design-frontier/FD13;
+tasks/todo.md FW17; REPORT-FW16.txt.
+
+====================================================================
+STANDING PROTOCOL (identical in every FW / AN prompt)
+====================================================================
+1. SESSION SCOPE. Increment 0 and FW17 only. Do not start FW18. Write
+   exactly three articles.
+2. INCREMENT CYCLE. Green after EVERY increment, with the suites
+   R132/R140/R144 select. Content changes select the browser suites.
+3. COMMIT ONLY ON GREEN, chained with && (R15).
+4. COMMITS. "FW17: <increment title>".
+5. SIMPLICITY FIRST. These are MDX files and frontmatter. If an
+   article needs a component the template does not have, say so
+   before building it - a one-off component in a content task is how
+   a template rots.
+6. TEST-FIRST applies to the MECHANISMS, not the prose: the claims
+   test, the mesh checker, the FAQ identity, the sequence. Prose is
+   reviewed by reading, and the report says what you read for.
+7. FRENCH IS THE PRODUCT HERE. R91's typography guard applies to
+   every string; R126's apostrophe rule applies; the registry will
+   refuse an ASCII space before a colon. Write at the reading level
+   of a competent adult who is not a tax professional: short
+   sentences, no jargon without its definition on first use, no
+   marketing register.
+8. UI DISCIPLINE. Tokens; one h1; Container 'article'; the component
+   kit from FW16 and nothing new.
+9. QUESTIONS. Pause and ask. In particular: any regulatory statement
+   you cannot trace to a VERIFIED row is a question, never a
+   paraphrase of something plausible.
+10. EXIT ARTIFACT. REPORT-FW17.txt, committed and pushed.
+
+====================================================================
+INCREMENT 0 - R146 and R147
+====================================================================
+0a. R146: the `claims` frontmatter field, its zod schema, and the
+    test resolving every key against docs/regulatory-sources.md.
+    Prove it fails on an invented key and on a PROVISIONAL key used
+    outside an open-question block.
+0b. R147: the no-typed-number test over compiled output. Prove it
+    fires on a planted literal in the fixture article.
+Commits per letter; R49 applies.
+
+====================================================================
+TASK FW17 - THE PILLAR AND TWO CLUSTERS
+====================================================================
+Acceptance criteria (restated; the report must prove each):
+AC1. Three articles live at their SPEC 9.5 slugs, each with its
+     `claims` resolving to VERIFIED rows, each carrying lastReviewed
+     and the reviewer field, each with at least two calculator links
+     counted by position.
+AC2. The mesh checker passes with all three present: pillar links
+     both clusters, both clusters link the pillar, the two clusters
+     cross-link each other (they interact - declared on both sides),
+     all three appear in the hub, all three link /sources.
+AC3. The calculator's contextual links now resolve for three of four
+     statuses; the fourth (compliant -> /releve-annuel) remains
+     planned. Asserted against the route registry, and the FW12 link
+     test updated to expect live routes where they are live.
+
+--------------------------------------------------------------------
+INCREMENT 1 - the pillar: teletravail-frontalier-40-pourcent
+--------------------------------------------------------------------
+Structure per FD13, content per docs/regulatory-sources.md:
+ - Lede: two paragraphs. The rule, and the fact that it is annual -
+   a few days too many in November change twelve months.
+ - "En bref" summary block: the five figures, every one from
+   RuleSet (R147).
+ - H2 Ce que dit l'accord: the avenant of 27 June 2023, in force
+   24 July 2025, applicable from 1 January 2026. Name all three
+   dates - the distinction between signature, entry into force and
+   application is exactly the kind of thing a reader gets wrong.
+ - H2 Comment le pourcentage se calcule: the 240-day simplified
+   basis (circulaire 45), and the >4 h / 2-4 h day classification.
+ - The inline calculator CTA, placed where the arithmetic becomes
+   impossible to do mentally.
+ - H2 Les jours de mission: the warning banner - counted INSIDE the
+   40 %, not on top; the 10-day cap; prorated and rounded UP. Link
+   to the mission cluster.
+ - H2 Si vous depassez 40 %: the comparison table, source-taxed
+   cantons versus the eight 1983-accord cantons - excess days taxed
+   in France versus the frontalier status itself in question. This
+   is R125's regime distinction and it is the single most
+   consequential paragraph in the article.
+ - H2 Le seuil social de 49,9 %: two paragraphs, link to that
+   cluster.
+ - H2 Garder une trace datee: the employer attestation certifies a
+   percentage; your own record verifies it and covers mission days
+   the employer may not know.
+ - FAQ: five questions per FD13, in frontmatter.
+ - The end CTA card and the sources line.
+- Commit: "FW17: the pillar article on the 40 % rule". Push.
+
+--------------------------------------------------------------------
+INCREMENT 2 - cluster: seuil-social-49-9-pourcent
+--------------------------------------------------------------------
+ - The second threshold, distinct from the first and with a different
+   consequence: affiliation moves to France.
+ - BOTH READINGS, honestly: the framework agreement's text says less
+   than 50 %; the OFAS publishes 49,9 % as the maximum; this product
+   warns above 49,9 and therefore over-warns between 49,9 and 50.
+   Say so, name it as P2, and link /sources. This is R146 case (b)
+   in practice.
+ - The A1: required under the framework agreement, which applies from
+   25 % telework upward; below 25 % the ordinary rule governs.
+ - Why it is not the same as the fiscal threshold: different
+   instrument, different authority, different consequence.
+ - Cross-link to the mission cluster (they interact) and back to the
+   pillar.
+- Commit: "FW17: the 49,9 % social threshold cluster". Push.
+
+--------------------------------------------------------------------
+INCREMENT 3 - cluster: jours-de-mission-hors-suisse
+--------------------------------------------------------------------
+ - The trap first: inside the 40 %, not beside it.
+ - The 10-day cap; proration for part-time and partial years, rounded
+   up.
+ - THE TRAVEL-DAY TABLE, verbatim from the verified source: no work
+   performed - not counted; work mostly in Switzerland - not counted;
+   work mostly abroad - counted. This is R13's home and the calculator
+   only carries one line of it.
+ - France versus third states: two fields in the calculator because
+   the collection mechanism differs. P1 - the imputation order - is
+   UNRESOLVED: say so plainly, name what the app currently does, and
+   link /sources. R146 case (b).
+ - What happens above the cap, and the interaction with the 40 %
+   ceiling (Geneva case c is the worked example - use its figures,
+   from the fixtures).
+- Commit: "FW17: the mission-days cluster". Push.
+
+--------------------------------------------------------------------
+INCREMENT 4 - mesh, hub, contextual links
+--------------------------------------------------------------------
+- Run the checker with all three present; capture the clean run and
+  the full rule list it verified.
+- The hub lists all three with their lastReviewed dates.
+- Update the route registry: three routes move from planned to live,
+  so they enter the sitemap and the contextual links resolve. The
+  FW12 contextual-link test is updated to expect live targets for
+  mission-exposure, regime-lost and social-switch.
+- Commit: "FW17: mesh green, hub, contextual links resolve". Push.
+
+--------------------------------------------------------------------
+INCREMENT 5 - a11y, baselines, size, Lighthouse, and the read-through
+--------------------------------------------------------------------
+- jest-axe across all three articles and the hub; keyboard path
+  through the TOC and the FAQ accordion; 320 dp overflow (R127).
+- Baselines at 1440/390 for the pillar and one cluster, zero
+  tolerance, dimensions asserted, reasons recorded.
+- pnpm size and Lighthouse for the pillar; content routes near the
+  framework floor.
+- THE READ-THROUGH: read all three articles end to end as a reader
+  would, and report what you read for - at minimum: does every
+  paragraph say something a frontalier can act on; is any sentence
+  a claim you could not source; does the register stay reference
+  rather than marketing; does any figure appear that R147 should
+  have caught. A defect found by reading is worth naming as such,
+  because five automated layers have missed that class twice.
+- Commit: "FW17: a11y, baselines, size, read-through". Push.
+
+====================================================================
+OUT OF SCOPE FOR FW17
+====================================================================
+- The other four guides - FW18. The comparator - FW19. The homepage,
+  /tarifs, /a-propos - FW20. /application - FW20b.
+- Analytics (R143 defers to FW28). The OG card's deploy path (R145).
+- Any engine change. Any new component. Any claim not in
+  docs/regulatory-sources.md.
+
+====================================================================
+FINAL VERIFICATION
+====================================================================
+pnpm gate && pnpm test:e2e && pnpm test:visual && pnpm test:a11y &&
+pnpm test:runtime
+Green in one run; CI green on origin/main after the final push.
+
+====================================================================
+REPORT FORMAT - REPORT-FW17.txt (pure ASCII, committed and pushed)
+====================================================================
+SUMMARY
+PRECONDITIONS    R0: FW16 report read, blocking items; CI URL.
+INCREMENT 0      R146 and R147 with their planted-violation proofs.
+CLAIMS TABLE     Every claim in the three articles, its source key,
+                 and its VERIFIED row - the report's core evidence.
+PROVISIONAL      Where P1 and P2 appear, and the exact sentences that
+                 name them as unresolved.
+MESH             The checker's clean run and the rules verified.
+CONTEXTUAL LINKS Which statuses now resolve; which remain planned.
+READ-THROUGH     What you read for, and anything it found.
+SIZE             Per route against the framework floor.
+BASELINES        Regenerated files with reasons (R135).
+TOKENS ADDED     (R77)
+DEVIATIONS
+NOTICED BUT NOT TOUCHING
+QUESTIONS FOR THE OPERATOR   Including every carried FW16 question.
+PUSH PROOF
+
+END OF FW17 PROMPT
