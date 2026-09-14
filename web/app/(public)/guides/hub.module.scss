@@ -1,0 +1,77 @@
+// web/app/(public)/guides/hub.module.scss
+// Tokens only; camelCase class names for CSS Module addressing.
+
+.page {
+  padding-block: var(--space-16) var(--space-20);
+}
+
+.title {
+  margin: 0 0 var(--space-4);
+  color: var(--colour-text-primary);
+  font-size: var(--type-hero-size);
+  font-weight: var(--type-hero-weight);
+  line-height: var(--type-hero-line);
+}
+
+.intro {
+  margin: 0 0 var(--space-12);
+  color: var(--colour-text-secondary);
+  font-size: var(--type-body-l-size);
+  font-weight: var(--type-body-l-weight);
+  line-height: var(--type-body-l-line);
+}
+
+.group {
+  margin-bottom: var(--space-12);
+}
+
+.groupTitle {
+  margin: 0 0 var(--space-6);
+  color: var(--colour-text-primary);
+  font-size: var(--type-h2-size);
+  font-weight: var(--type-h2-weight);
+  line-height: var(--type-h2-line);
+}
+
+.list {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entry {
+  padding: var(--space-6);
+  border: var(--size-card-border) solid var(--colour-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--colour-surface);
+}
+
+.entryLink {
+  color: var(--colour-text-primary);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  line-height: var(--type-h3-line);
+}
+
+.entryDescription {
+  margin: var(--space-2) 0 var(--space-3);
+  color: var(--colour-text-secondary);
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  line-height: var(--type-body-line);
+}
+
+.entryDate {
+  margin: 0;
+
+  // R58 AGAIN: tertiary is 2,58:1 on a card and fails AA at every size. The
+  // contrast audit caught it here exactly as it caught the legal note in
+  // FW8 - a date is small print, and small print is the copy that most
+  // needs to be readable.
+  color: var(--colour-text-secondary);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  line-height: var(--type-caption-line);
+}

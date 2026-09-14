@@ -769,6 +769,16 @@ describe('every colour rule in the five stylesheets, at the bar its size implies
       '(public)/calculateur-teletravail-frontalier/CalculatorForm .provisionalPending -> --colour-info-soft',
       '(public)/calculateur-teletravail-frontalier/ResultPanel .warningBody -> --colour-warning-soft',
       '(public)/calculateur-teletravail-frontalier/ResultPanel .warningHeading -> --colour-warning-soft',
+
+      // FW16's hub: three text rules inside the card each entry paints. They
+      // arrived the same way the link notice did - by failing this
+      // assertion - and one of them arrived WRONG: .entryDate was
+      // text-tertiary, which is 2,58:1 on a card. R58 made that correction
+      // once already for the legal note, and a review date is the same kind
+      // of copy: small print that most needs to be readable.
+      '(public)/guides/hub .entryDate -> --colour-surface',
+      '(public)/guides/hub .entryDescription -> --colour-surface',
+      '(public)/guides/hub .entryLink -> --colour-surface',
     ].sort());
   });
 

@@ -64,4 +64,28 @@ export const GUIDES_COPY = {
 
   /** FD13: GUIDES LIES, the related list. */
   relatedHeading: 'Guides lies',
+
+  /** The hub. SPEC 14: a description that says what the set is for. */
+  hubDescription:
+    'Les guides de reference sur le teletravail frontalier' +
+    n(':') +
+    ' les deux seuils, ' +
+    'les jours de mission, l’attestation de l’employeur et le droit d’option.',
+  hubIntro:
+    'Chaque guide porte sa date de derniere verification et renvoie aux textes ' +
+    'd’origine. Ils se lisent separement, dans l’ordre qui vous arrange.',
+
+  /**
+   * SPEC 9.5’s three roles, as headings a reader understands - the
+   * frontmatter calls them pillar, cluster and canton because that is what
+   * the MESH calls them, and a reader has never heard of a cluster.
+   */
+  groupTitle: {
+    pillar: 'L’essentiel',
+    cluster: 'Les questions precises',
+    canton: 'Par canton',
+  } as const,
+
+  /** FD13: the article’s FAQ block, before the closing card. */
+  faqHeading: 'Questions frequentes',
 } as const;

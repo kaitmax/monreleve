@@ -180,6 +180,47 @@ test.describe('the article template', () => {
     await expect(footer.locator('a[href="/sources"]')).toHaveCount(1);
   });
 
+  test('publishes exactly the FAQ the accordion renders (SPEC 14)', async ({ page }) => {
+    // FW15 established the rule and this applies it to content: a claim in
+    // structured data that a reader cannot see is cloaking. Both come from
+    // the frontmatter, and this reads them back from the SERVED page - the
+    // only place a disagreement could actually appear.
+    const published = await page.evaluate(() => {
+      interface Question {
+        readonly name: string;
+        readonly acceptedAnswer: { readonly text: string };
+      }
+
+      const script = document.querySelector('script[type="application/ld+json"]');
+      const parsed = JSON.parse(script?.textContent ?? '{}') as {
+        readonly mainEntity?: readonly Question[];
+      };
+
+      return (parsed.mainEntity ?? []).map((question) => ({
+        name: question.name,
+        text: question.acceptedAnswer.text,
+      }));
+    });
+
+    const questions = await page.locator('[data-faq] summary').allTextContents();
+    const answers = await page.locator('[data-faq] details > p').allTextContents();
+
+    expect(questions.length).toBeGreaterThan(0);
+    expect(published.map((entry) => entry.name)).toEqual(questions);
+    expect(published.map((entry) => entry.text)).toEqual(answers);
+  });
+
+  test('keeps every FAQ answer in the DOM while closed', async ({ page }) => {
+    // The property the structured data rests on. A collapsed accordion
+    // that did not render its answers would publish claims nobody can see.
+    await expect(page.locator('[data-faq] details[open]')).toHaveCount(0);
+
+    const answers = await page.locator('[data-faq] details > p').allTextContents();
+
+    expect(answers.length).toBeGreaterThan(0);
+    for (const answer of answers) expect(answer.length).toBeGreaterThan(40);
+  });
+
   test('is noindex, because the fixture is not content', async ({ page }) => {
     // It is a real route so that tests and baselines can render it, and it
     // must never be indexed. Excluded from the sitemap by publishedGuides();

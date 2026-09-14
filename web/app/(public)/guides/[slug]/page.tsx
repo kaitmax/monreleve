@@ -27,10 +27,13 @@ import { GUIDES_COPY } from '@/lib/fr/guides';
 import { canonicalsAvailable } from '@/lib/content/site';
 import { formatDate } from '@/lib/ui/core';
 import { Container } from '@/lib/ui/react/Container/Container';
+import { Faq } from '@/lib/ui/react/Faq/Faq';
 import { GuideCta } from '@/lib/ui/react/GuideCta/GuideCta';
+import { JsonLd } from '@/lib/ui/react/JsonLd/JsonLd';
 import { TableOfContents } from '@/lib/ui/react/TableOfContents/TableOfContents';
 import { GUIDES_PATH, allGuides, guideBySlug, publishedGuides } from '@/lib/guides/registry';
-import { headingsIn } from '@/lib/guides/headings';
+import { faqPageLd } from '@/lib/content/jsonld';
+import { anchorFor, headingsIn } from '@/lib/guides/headings';
 import { mdxComponents } from '@/lib/guides/mdx-components';
 import { readingMinutes } from '@/lib/guides/reading-time';
 import styles from './guide.module.scss';
@@ -99,6 +102,21 @@ export default async function GuidePage({ params }: RouteParams) {
   // A slug naming no article is dropped rather than rendered as a dead
   // link - and the mesh checker refuses it separately, which is where
   // that mistake should be reported.
+  // ONE SOURCE, TWO CONSUMERS - the FW15 pattern, applied to content.
+  //
+  // The accordion a reader opens and the FAQPage a crawler reads are built
+  // from THIS array. A claim in structured data that is not visible on the
+  // page is cloaking; the only way to be sure the two agree is for there
+  // to be one of them.
+  //
+  // The id is derived rather than authored: an author writing ids in
+  // frontmatter would be writing anchors, which are URLs, by hand.
+  const faq = frontmatter.faq.map((entry) => ({
+    id: anchorFor(entry.question),
+    question: entry.question,
+    answer: entry.answer,
+  }));
+
   const related = frontmatter.related
     .map((slug) => guideBySlug(slug))
     .filter((entry): entry is NonNullable<typeof entry> => entry !== undefined);
@@ -113,6 +131,17 @@ export default async function GuidePage({ params }: RouteParams) {
 
   return (
     <main className={styles.page}>
+      {/*
+        SPEC 14: FAQPage on the guides too. Generated from the same array
+        the accordion renders, which is what makes it a description of the
+        page rather than a claim about it (FW15 established the rule and
+        lib/content/jsonld.ts enforces the property allow-list).
+
+        Omitted entirely when an article declares no FAQ - an empty
+        FAQPage is structured data about nothing.
+      */}
+      {faq.length === 0 ? null : <JsonLd data={faqPageLd(faq)} />}
+
       <Container width="public">
         <article className={styles.article}>
           {/* FD13's head, placed in the prose column by the grid. */}
@@ -178,6 +207,15 @@ export default async function GuidePage({ params }: RouteParams) {
                 indexes.
               */}
               <div data-article-body>{content}</div>
+
+              {/*
+                SPEC 14's FAQPage, on the guides as well as the calculator.
+                Rendered before the closing card because it answers the
+                article rather than following it.
+              */}
+              {faq.length === 0 ? null : (
+                <Faq heading={GUIDES_COPY.faqHeading} entries={faq} />
+              )}
 
               {/*
                 SPEC 9.5's second calculator link, and FD13's "this exact
