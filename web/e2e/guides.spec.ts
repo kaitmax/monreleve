@@ -64,16 +64,41 @@ test.describe('the article template', () => {
     expect(size).toBe('24px');
   });
 
-  test('caps the prose at the 680 px measure (FD13, R64)', async ({ page }) => {
-    // ~70 characters per line. The column is wider; the PROSE is not, and the
-    // cap comes from Container 'article' rather than from a width invented
-    // in the guide stylesheet.
-    const width = await page
-      .locator('[data-prose] p')
-      .first()
-      .evaluate((node) => node.getBoundingClientRect().width);
+  test('caps the prose at the 680 px measure and aligns the head to it', async ({
+    page,
+  }) => {
+    // FD13: ~70 characters per line, and "the article head aligned with the
+    // prose column".
+    //
+    // BOTH HALVES ARE ASSERTED BECAUSE A BASELINE CAUGHT THE SECOND ONE
+    // FAILING. The head sat at the column's left edge and the prose 100 px
+    // to its right, because Container centres its measure and pads it -
+    // correct for a page-level column, wrong inside a grid track, where it
+    // also cut the measure to 616 px. Nothing in the suite noticed: every
+    // element was present, styled and individually correct. A person cropped
+    // the picture and read it (R135).
+    //
+    // The grid track is now the measure, so one number decides both.
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.evaluate(() => document.fonts.ready);
 
-    expect(width).toBeLessThanOrEqual(680);
+    const box = async (selector: string): Promise<{ left: number; width: number }> =>
+      page.locator(selector).first().evaluate((node) => {
+        const rect = node.getBoundingClientRect();
+
+        return { left: Math.round(rect.left), width: Math.round(rect.width) };
+      });
+
+    const head = await box('h1');
+    const prose = await box('[data-article-body] p');
+    const toc = await box('[data-toc]');
+
+    expect(prose.width).toBe(680);
+    expect(head.width).toBe(680);
+    expect(head.left, 'the head must start where the prose starts').toBe(prose.left);
+
+    // And the outline column is FD13's 280, from --size-toc-column.
+    expect(toc.width).toBe(280);
   });
 
   test('serves the whole article with JavaScript disabled', async ({ browser }) => {

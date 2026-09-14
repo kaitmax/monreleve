@@ -108,7 +108,15 @@
 
 @media (width >= 64rem) {
   .article {
-    grid-template-columns: var(--size-toc-column) minmax(0, 1fr);
+    // THE SECOND TRACK IS THE PROSE MEASURE ITSELF, and that is the fix for
+    // a defect a baseline showed: the head sat at the column edge while the
+    // prose sat 100 px further right, because Container centres its measure
+    // and pads it. Right for a page-level column, wrong inside a grid
+    // track - it also cut the measure to 616 px, where FD13 asks for 680.
+    //
+    // Capping the TRACK gives the head and the prose one left edge and one
+    // width, from the same token Container would have used.
+    grid-template-columns: var(--size-toc-column) minmax(0, var(--layout-article));
     align-items: start;
   }
 

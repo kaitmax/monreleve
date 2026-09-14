@@ -45,7 +45,11 @@ function pngSize(file: string): { readonly width: number; readonly height: numbe
  * while pages.visual.spec.ts says 360 and both pass. If a spec stops
  * containing the number, the assertion below fails and says so.
  */
-const SPECS = ['e2e/pages.visual.spec.ts', 'e2e/calculateur.visual.spec.ts'];
+const SPECS = [
+  'e2e/pages.visual.spec.ts',
+  'e2e/calculateur.visual.spec.ts',
+  'e2e/guides.visual.spec.ts',
+];
 
 const FAMILY_WIDTH: Readonly<Record<string, number>> = { desktop: 1440, mobile: 390 };
 
@@ -54,7 +58,14 @@ const fullPageBaselines = (): string[] =>
   readdirSync(BASELINES).filter(
     (file) =>
       file.endsWith('.png') &&
-      (file.startsWith('page-') || file.startsWith('calculateur-')),
+      // FW16 ADDED A THIRD FAMILY, and adding it here is the point of the
+      // "names a family for every full-page baseline" assertion below: a
+      // guides-* file left out would not be reported as unfamiliar, it
+      // would simply never be measured - the silent-gap shape this census
+      // exists to close.
+      (file.startsWith('page-') ||
+        file.startsWith('calculateur-') ||
+        file.startsWith('guides-')),
   );
 
 const familyOf = (file: string): string | undefined =>

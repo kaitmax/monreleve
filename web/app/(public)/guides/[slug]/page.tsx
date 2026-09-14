@@ -198,7 +198,7 @@ export default async function GuidePage({ params }: RouteParams) {
           </div>
 
           <div className={styles.prose} data-prose>
-            <Container width="article">
+            <>
               {/*
                 MARKED, so a test can ask for the ARTICLE's headings rather
                 than every heading in the column. The closing card carries
@@ -253,7 +253,7 @@ export default async function GuidePage({ params }: RouteParams) {
                   </nav>
                 )}
               </footer>
-            </Container>
+            </>
           </div>
         </article>
       </Container>
