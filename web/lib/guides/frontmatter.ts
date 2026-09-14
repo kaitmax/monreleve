@@ -22,6 +22,8 @@
 // halves are in scope.
 
 import { z } from 'zod';
+import { PUBLISHED_PROVISIONAL_IDS } from '@/lib/content/provisional';
+import { SOURCE_IDS } from '@/lib/content/sources';
 
 /**
  * SPEC 9.5's three roles. A closed union rather than a string, because the
@@ -35,6 +37,44 @@ export type Cluster = (typeof CLUSTERS)[number];
 
 /** R28: an ISO day, so it sorts and formats without a timezone in sight. */
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * RULING R146: every regulatory statement in a guide is either traceable to
+ * a VERIFIED row, written as an open question naming its uncertainty, or
+ * not written. There is no fourth option.
+ *
+ * THE KEY UNIVERSE IS THE PRODUCT'S OWN REGISTRY, not a list kept here:
+ * the eight source rows of docs/regulatory-sources.md and the three
+ * provisional readings. A claim naming anything else is an invented
+ * citation, which is the worst failure available on this surface - it
+ * reads as sourced.
+ */
+export const CLAIM_KEYS = [...SOURCE_IDS, ...PUBLISHED_PROVISIONAL_IDS] as const;
+
+export type ClaimKey = (typeof CLAIM_KEYS)[number];
+
+/**
+ * One regulatory assertion, and where it comes from.
+ *
+ * `says` IS THE ASSERTION AS THE PROSE MAKES IT, in French, long enough to
+ * be a statement rather than a label. It exists so the report's claims
+ * table can be read beside the article without opening both: a reviewer
+ * checking a citation should not have to guess which sentence it covers.
+ *
+ * `unresolved` IS THE AUTHOR SAYING SO OUT LOUD. A key whose row is
+ * pending, or which is one of P1-P3, may only appear in prose that names
+ * the uncertainty and links /sources - R146 case (b). The flag is checked
+ * against the registry AND against the body, so neither half can drift:
+ * marking a verified row unresolved is its own kind of lie, and a pending
+ * row left unmarked is the lie the ruling exists to stop.
+ */
+const claim = z.object({
+  key: z.enum(CLAIM_KEYS),
+  says: z.string().min(20),
+  unresolved: z.boolean().default(false),
+});
+
+export type Claim = z.infer<typeof claim>;
 
 const faqEntry = z.object({
   question: z.string().min(8),
@@ -71,6 +111,14 @@ export const frontmatterSchema = z.object({
    * they cannot disagree.
    */
   faq: z.array(faqEntry).default([]),
+
+  /**
+   * R146. Empty is allowed and means "this article asserts no regulatory
+   * figure or rule" - true of the fixture, and of nothing FW17 or FW18
+   * write. tests/unit/guides/claims.test.ts is what makes the field
+   * load-bearing rather than decorative.
+   */
+  claims: z.array(claim).default([]),
 });
 
 export type Frontmatter = z.infer<typeof frontmatterSchema>;

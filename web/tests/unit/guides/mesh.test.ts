@@ -39,6 +39,7 @@ const guide = (
     lastReviewed: '2026-09-09',
     reviewer: 'FW16',
     faq: [],
+    claims: [],
   },
   body:
     patch.body ??
