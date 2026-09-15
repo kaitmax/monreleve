@@ -15,8 +15,9 @@
 import { describe, expect, it } from 'vitest';
 import { faqPageLd } from '@/lib/content/jsonld';
 import { anchorFor } from '@/lib/guides/headings';
+import { PUBLIC_ROUTES, isLive, isRegistered } from '@/lib/content/routes';
 import { checkMesh } from '@/lib/guides/mesh';
-import { allGuides, publishedGuides } from '@/lib/guides/registry';
+import { GUIDES_PATH, allGuides, publishedGuides } from '@/lib/guides/registry';
 
 describe('the hub lists exactly the published guides', () => {
   it('takes its entries from the registry, not from a list', () => {
@@ -34,15 +35,66 @@ describe('the hub lists exactly the published guides', () => {
     expect(published.some((file) => file.startsWith('_'))).toBe(false);
   });
 
-  it('is empty today, and that is why /guides is not in the sitemap yet', () => {
-    // STATED RATHER THAN HIDDEN. FW16 ships infrastructure; FW17 and FW18
-    // write the seven articles. An empty hub in the sitemap would tell a
-    // crawler a page exists that says nothing - the "sitemap of 404s"
-    // problem one level down. The route stays `planned` until it has
-    // content, and this assertion is what will fail when it does, so that
-    // whoever adds the first article flips the flag deliberately.
-    expect(publishedGuides().length).toBe(0);
-    expect(allGuides().length).toBeGreaterThan(0);
+  it('has content now, and the pillar is in it', () => {
+    // FW16's ASSERTION WAS "publishedGuides().length is 0", with a comment
+    // saying it existed to fail the day somebody added the first article so
+    // that the sitemap flag got flipped DELIBERATELY. It fired on this one.
+    //
+    // Replaced rather than deleted, and replaced with the same kind of
+    // tripwire one step along: the hub is no longer empty, every article it
+    // lists is a declared route, and /guides is STILL `planned`. FW17's
+    // increment 4 flips the four routes together - hub and three articles -
+    // because a hub in the sitemap whose entries are not is a crawler being
+    // told half a story.
+    expect(publishedGuides().length).toBeGreaterThan(0);
+    expect(allGuides().length).toBeGreaterThan(publishedGuides().length);
+
+    const slugs = publishedGuides().map((guide) => guide.frontmatter.slug);
+
+    expect(slugs).toContain('teletravail-frontalier-40-pourcent');
+  });
+
+  it('lists nothing that is not a declared route', () => {
+    // SPEC 14 makes a guide slug permanent, and lib/content/routes.ts is
+    // where the product's URLs are declared once. An article on disk whose
+    // path is not declared would reach readers through the hub and never
+    // reach the sitemap - live to a person, invisible to a crawler.
+    const undeclared = publishedGuides()
+      .map((guide) => `${GUIDES_PATH}/${guide.frontmatter.slug}`)
+      .filter((path) => !isRegistered(path));
+
+    expect(undeclared, undeclared.join(', ')).toEqual([]);
+  });
+
+  it('keeps /guides out of the sitemap until increment 4 flips it', () => {
+    // THE TRIPWIRE, MOVED. When the flip happens this is what fails, and
+    // whoever does it states why in the same change.
+    expect(isLive(GUIDES_PATH)).toBe(false);
+  });
+
+  it('declares no LIVE guide route without an article behind it', () => {
+    // THE OTHER DIRECTION, AND FW17 FOUND OUT IT WAS MISSING. FW16 built the
+    // sitemap from two lists - the route registry for the product's pages and
+    // the content directory for the articles - and they agreed only while
+    // there were no articles. The first one made them disagree: the pillar
+    // appeared in the sitemap with its route still `planned`, and the moment
+    // that route went live the same URL would have been emitted TWICE, in
+    // valid XML, with nothing to object.
+    //
+    // The sitemap is single-sourced now; this is the assertion that keeps the
+    // two registries honest with each other. A live guide route with no file
+    // is a promised page that 404s - the exact thing the status field exists
+    // to prevent.
+    const published = new Set(publishedGuides().map((guide) => guide.frontmatter.slug));
+
+    const empty = PUBLIC_ROUTES.filter(
+      (route) =>
+        route.status === 'live' &&
+        route.path.startsWith(`${GUIDES_PATH}/`) &&
+        !published.has(route.path.slice(GUIDES_PATH.length + 1)),
+    ).map((route) => route.path);
+
+    expect(empty, `live guide routes with no article: ${empty.join(', ')}`).toEqual([]);
   });
 });
 

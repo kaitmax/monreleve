@@ -65,6 +65,35 @@ const DEGRADED =
  */
 const PUBLISHED = publishedGuides();
 
+/**
+ * THE SLUGS THAT EXIST ON DISK, used as a VETO rather than as a second list.
+ *
+ * FW16 built this document from two sources - liveRoutes() for the product's
+ * pages and publishedGuides() for the articles - and they agreed only while
+ * there were no articles. FW17's first one made them disagree, and the
+ * routing suite caught it: the pillar appeared in the sitemap while its route
+ * was still `planned`. Worse, the moment that route went live the two lists
+ * would have produced the SAME URL TWICE, in valid XML, with nothing to
+ * object.
+ *
+ * SO THERE IS ONE SOURCE OF URLs AGAIN - the route registry, which says of
+ * itself "every public URL, declared once" - and the content directory keeps
+ * the job FW16 gave it, which is deciding whether a guide EXISTS. A declared
+ * guide route that is live but has no article is refused here rather than
+ * published as a 404; an article with no declared route never reaches this
+ * document, and tests/unit/guides/hub.test.ts is what refuses that one.
+ *
+ * Both halves are now asserted rather than agreed by coincidence.
+ */
+const PUBLISHED_SLUGS = new Set(PUBLISHED.map((guide) => guide.frontmatter.slug));
+
+/** True for any non-guide route, and for a guide route whose article exists. */
+function hasContent(path: string): boolean {
+  if (!path.startsWith(`${GUIDES_PATH}/`)) return true;
+
+  return PUBLISHED_SLUGS.has(path.slice(GUIDES_PATH.length + 1));
+}
+
 export function GET(): Response {
   if (servingWithoutOrigin()) {
     return new Response(DEGRADED, {
@@ -88,29 +117,19 @@ export function GET(): Response {
   const body = [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
-    ...liveRoutes().map(
-      (route) =>
-        `  <url><loc>${origin}${route.path}</loc>` +
-        `<changefreq>${route.changeFrequency}</changefreq>` +
-        `<priority>${route.priority.toFixed(1)}</priority></url>`,
-    ),
-
-    // THE GUIDES COME FROM THE CONTENT DIRECTORY, not from the route
-    // registry, and that is the point of FW16: an article that exists on
-    // disk is an article the product knows about. A hand-maintained list
-    // would be one entry behind after FW18 and nothing would say so.
-    //
-    // FIXTURES ARE EXCLUDED HERE BY publishedGuides(), which filters the
-    // leading underscore. A fixture in the sitemap would be a crawler
-    // told to index a page that exists to test a template.
-    //
-    // The list is resolved at MODULE SCOPE - see PUBLISHED below.
-    ...PUBLISHED.map(
-      (guide) =>
-        `  <url><loc>${origin}${GUIDES_PATH}/${guide.frontmatter.slug}</loc>` +
-        `<changefreq>monthly</changefreq>` +
-        `<priority>0.7</priority></url>`,
-    ),
+    // ONE LIST, FILTERED. Every live route, minus any guide route whose
+    // article is not on disk - see PUBLISHED_SLUGS for what that replaced and
+    // why. Fixtures never appear: publishedGuides() drops the leading
+    // underscore, so a fixture slug is not in the veto set and its route is
+    // not declared either.
+    ...liveRoutes()
+      .filter((route) => hasContent(route.path))
+      .map(
+        (route) =>
+          `  <url><loc>${origin}${route.path}</loc>` +
+          `<changefreq>${route.changeFrequency}</changefreq>` +
+          `<priority>${route.priority.toFixed(1)}</priority></url>`,
+      ),
     '</urlset>',
     '',
   ].join('\n');

@@ -1,0 +1,233 @@
+---
+title: "La règle des 40 % de télétravail pour les frontaliers"
+description: "Ce qu’autorise l’avenant à la convention fiscale franco-suisse, comment le pourcentage se calcule, ce que changent les jours de mission, et ce qui arrive en cas de dépassement."
+slug: teletravail-frontalier-40-pourcent
+cluster: pillar
+related: []
+lastReviewed: "2026-09-09"
+reviewer: "l’équipe frontalier"
+faq:
+  - question: "Les jours de congés et de maladie comptent-ils ?"
+    answer: "Non, pas séparément. La base simplifiée prévue par la circulaire n° 45 les absorbe déjà : c’est la raison pour laquelle le calculateur ne vous les demande pas."
+  - question: "Que se passe-t-il si je dépasse de quelques jours seulement ?"
+    answer: "Cela dépend du régime de votre canton. Dans les cantons à imposition à la source, les jours excédentaires deviennent imposables en France. Dans les cantons relevant de l’accord de 1983, c’est le statut de frontalier lui-même qui est remis en cause."
+  - question: "Mon employeur utilise-t-il forcément la base simplifiée ?"
+    answer: "Non. Il peut retenir un décompte exact des jours réellement travaillés. Le choix lui appartient et doit s’appliquer de la même façon à toute l’année ; le calculateur suit celui que vous indiquez."
+  - question: "Le plafond se calcule-t-il sur l’année entière ?"
+    answer: "Oui. Il porte sur le temps de travail annuel, et non sur un mois ou un trimestre. Quelques journées de trop en fin d’année suffisent donc à modifier l’imposition de l’année entière."
+  - question: "Les jours de mission s’ajoutent-ils au plafond de télétravail ?"
+    answer: "Non, et c’est l’erreur la plus fréquente. Ils sont comptés à l’intérieur du plafond fiscal : une journée de mission hors de Suisse réduit d’autant votre droit au télétravail."
+claims:
+  - key: fiscalCeiling
+    says: "Le plafond de télétravail porte sur le temps de travail annuel et non sur un mois isolé ; il est fixé par l’avenant du 27 juin 2023."
+  - key: simplifiedBasisDays
+    says: "La base simplifiée de la circulaire n° 45 absorbe déjà les congés, les jours fériés et la maladie ; l’employeur peut lui préférer un décompte exact, appliqué uniformément."
+  - key: dayClassification
+    unresolved: true
+    says: "Une journée de plus de quatre heures compte pour une journée entière, une journée de deux à quatre heures pour une demi-journée."
+  - key: missionCapDays
+    says: "Les jours de mission hors de Suisse sont comptés à l’intérieur du plafond fiscal et non en plus, sous un plafond annuel qui leur est propre."
+  - key: missionCapProration
+    says: "Le plafond de jours de mission est réduit proportionnellement en cas de temps partiel ou d’année incomplète, et arrondi à l’entier supérieur."
+  - key: residence1983Cantons
+    unresolved: true
+    says: "Sous l’accord de 1983, un dépassement remet en cause le statut de frontalier lui-même ; ailleurs, ce sont les jours excédentaires qui deviennent imposables en France."
+  - key: socialCeiling
+    says: "Un second seuil, distinct du plafond fiscal, fait basculer l’affiliation à la sécurité sociale de la Suisse vers la France."
+---
+
+{/*
+  THE PILLAR. SPEC 9.5's definitive page on the fiscal ceiling, and the article
+  the other six hang off.
+
+  NO FIGURE IS TYPED HERE (R147). Every threshold, cap and basis arrives as an
+  expression resolved from RuleSet at build - {fiscal}, {social}, {basisDays},
+  {missionCap} - and so does the canton list, which is the entry most likely to
+  move: it is row 7 of docs/regulatory-sources.md and a reviewer is being asked
+  about it. The 2028 rule change edits one constant, not seven articles.
+
+  THE HEADINGS NAME THE RULE AND THE PROSE CARRIES THE FIGURE, deliberately.
+  A heading becomes an anchor, an anchor is a URL, and a URL that changes when
+  a threshold changes breaks every saved link into this page - the failure
+  lib/guides/headings.ts exists to prevent. So FD13's "Si vous depassez 40 %"
+  is written "Si vous depassez le plafond" here. R153's asymmetry, visible:
+  figures in the prose, names in the headings and in the FAQ.
+
+  TWO CLAIMS ARE HEDGED AND BOTH HEDGES ARE DELIBERATE (R146 case b): the day
+  classification (row 6) and the 1983-accord canton list (row 7) were not
+  reached by the Checkpoint A pass. Each is named as unresolved at the point it
+  is used, and links /sources. Row 7's hedge covers the MEMBERSHIP of the list
+  ONLY - that the two regimes exist and carry different consequences is
+  settled, and a reader must not be left doubting that half.
+*/}
+
+Depuis le 1er janvier 2026, un frontalier qui réside en France et travaille en
+Suisse peut télétravailler jusqu’à {fiscal} de son temps de travail annuel sans
+que son imposition change. Au-delà, le traitement change, et il ne change pas
+de la même manière selon le canton qui vous emploie.
+
+Ce plafond se calcule sur l’année entière, et non mois par mois. Quelques
+journées de trop en novembre suffisent donc à modifier douze mois d’imposition,
+et c’est ce qui explique pourquoi le suivi compte autant que la règle
+elle-même.
+
+<Encadre titre="En bref">
+
+- Plafond fiscal : {fiscal} du temps de travail annuel
+- Seuil de sécurité sociale : {social}
+- Jours de mission : {missionCap} jours par an, à l’intérieur du plafond fiscal
+- Base de calcul usuelle : {basisDays} jours ouvrés par an
+- Texte de référence : avenant du 27 juin 2023
+
+</Encadre>
+
+## Ce que dit l’accord
+
+L’avenant du 27 juin 2023 à la convention fiscale franco-suisse autorise le
+télétravail dans la limite de {fiscal} du temps de travail annuel sans perte du
+régime frontalier. Trois dates comptent, et elles ne disent pas la même chose :
+l’avenant a été signé le 27 juin 2023, il est entré en vigueur le
+24 juillet 2025, et il s’applique aux revenus à partir du 1er janvier 2026.
+
+La distinction n’est pas de la procédure. L’entrée en vigueur est le moment où
+le texte existe entre les deux États ; l’application est le moment où il
+gouverne votre imposition. C’est la troisième date qui décide de l’année que
+vous avez à suivre.
+
+## Comment le pourcentage se calcule
+
+Le pourcentage rapporte vos jours de télétravail au nombre de jours travaillés
+dans l’année. La plupart des employeurs retiennent la base simplifiée de
+{basisDays} jours ouvrés prévue par la circulaire n° 45, qui absorbe déjà les
+congés, les jours fériés et la maladie : vous n’avez pas à les décompter, et le
+calculateur ne vous les demande pas.
+
+Votre employeur peut aussi retenir un décompte exact des jours réellement
+travaillés. Le choix lui appartient, et il doit s’appliquer de la même façon à
+toute l’année ; le calculateur suit celui que vous indiquez et n’en invente
+aucun.
+
+### Journées entières et demi-journées
+
+Une journée de plus de quatre heures compte pour une journée entière ; une
+journée de deux à quatre heures compte pour une demi-journée. C’est la
+convention que le calculateur applique, et c’est elle qui décide si un
+après-midi travaillé chez vous pèse une demi-journée ou rien du tout.
+
+<Avertissement>
+
+Cette conversion des heures en journées n’a pas encore été vérifiée contre le
+texte de la circulaire n° 45. Les exemples publiés par l’administration
+comptent des journées et non des heures, si bien qu’aucun d’eux ne l’atteint.
+Le détail de ce qui est vérifié et de ce qui ne l’est pas est publié sur la
+page [sources et vérifications](/sources).
+
+</Avertissement>
+
+Entre la base retenue par votre employeur, les demi-journées et les jours de
+mission, le calcul cesse vite d’être faisable de tête :
+[calculez vos jours restants](/calculateur-teletravail-frontalier).
+
+## Les jours de mission
+
+<Avertissement>
+
+**L’erreur la plus fréquente.** Les jours de mission hors de Suisse sont
+comptés à l’intérieur du plafond fiscal, et non en plus. Un plafond de
+{missionCap} jours par an s’y applique, réduit proportionnellement en cas de
+temps partiel ou d’année incomplète.
+
+</Avertissement>
+
+Vos jours de mission et vos jours de télétravail se disputent donc la même
+enveloppe. Une journée passée en mission hors de Suisse ne s’ajoute pas à votre
+droit au télétravail : elle le réduit d’autant. C’est pourquoi, à télétravail
+égal, un frontalier qui voyage pour son employeur n’a pas la même marge qu’un
+frontalier qui ne voyage pas.
+
+La réduction de ce plafond est arrondie à l’entier supérieur. C’est la seule
+règle de ce calcul qui joue systématiquement en votre faveur, et elle vaut
+d’être connue : un mi-temps ne perd pas exactement la moitié de ses jours de
+mission.
+
+## Si vous dépassez le plafond
+
+Le plafond est le même partout ; la conséquence d’un dépassement ne l’est pas.
+Deux régimes coexistent, et c’est le canton de votre employeur qui décide
+duquel vous relevez. C’est la distinction la plus lourde de cette page.
+
+{/*
+  TRANSPOSED FROM FD13, and the reason is measured rather than editorial.
+  FD13 draws this as three columns - a criteria column and one per regime -
+  which at 320 dp is 334 px wide inside a 288 px measure: the page scrolled
+  sideways by 34 px, which R127 refuses. Three columns of French sentences
+  have a min-content width that no styling reduces.
+
+  Transposed, it carries the same two facts in two columns and fits. The row
+  FD13 spends on "Plafond applicable: 40 % / 40 %" is the sentence directly
+  above the table instead, which says it better in prose than a table row
+  repeating one figure twice can.
+*/}
+
+<DataGrid
+  caption="Conséquence d’un dépassement, selon le régime du canton"
+  columns={[
+    { key: "regime", header: "Régime du canton" },
+    { key: "consequence", header: "Conséquence d’un dépassement" },
+  ]}
+  rows={[
+    {
+      key: "source",
+      cells: {
+        regime: "Cantons à imposition à la source",
+        consequence: "Les jours excédentaires deviennent imposables en France",
+      },
+    },
+    {
+      key: "accord",
+      cells: {
+        regime: "Cantons de l’accord de 1983",
+        consequence: "Le statut de frontalier lui-même est remis en cause",
+      },
+    },
+  ]}
+/>
+
+Dans les cantons à imposition à la source, un dépassement ne met pas votre
+statut en question : ce sont les jours excédentaires qui deviennent imposables
+en France. Sous l’accord de 1983, c’est le statut de frontalier lui-même qui
+est en jeu, et ce n’est pas la même conversation avec votre employeur.
+
+<Avertissement>
+
+Les huit cantons que ce site range sous l’accord de 1983 sont les suivants :
+{cantons1983}. Ce qui est établi, c’est que les deux régimes existent et que la
+conséquence d’un dépassement n’y est pas la même. Ce qui ne l’est pas encore,
+c’est la composition exacte de cette liste : elle n’a pas été vérifiée contre
+le texte de l’accord du 11 avril 1983. Si votre canton y figure, vérifiez ce
+point avant d’agir. Voir [sources et vérifications](/sources).
+
+</Avertissement>
+
+## Le seuil social
+
+Un second seuil, distinct et plus élevé, ne concerne pas l’impôt mais la
+sécurité sociale. Au-delà du maximum publié de {social} de télétravail, votre
+affiliation bascule de la Suisse vers la France. Ce n’est pas le même texte, ce
+n’est pas la même autorité, et ce n’est pas la même conséquence.
+
+Les deux seuils ne se franchissent donc pas au même moment : on peut dépasser
+le plafond fiscal tout en restant loin du seuil social. Ils méritent d’être
+suivis ensemble plutôt que l’un pour l’autre.
+
+## Garder une trace datée
+
+Votre pourcentage de télétravail est une donnée déclarée. Un relevé reconstitué
+en décembre, de mémoire, est une affirmation ; un relevé dont chaque journée
+porte sa date d’enregistrement est un document, et la différence se voit
+exactement au moment où on vous demande de justifier.
+
+Votre propre relevé sert aussi à couvrir ce que votre employeur ne voit pas
+toujours. Les jours de mission hors de Suisse comptent à l’intérieur du
+plafond, et ils ne passent pas nécessairement par lui : personne d’autre que
+vous n’est en mesure de les tenir à jour.

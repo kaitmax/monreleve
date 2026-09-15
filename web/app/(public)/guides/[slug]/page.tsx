@@ -25,6 +25,7 @@ import { compileMDX } from 'next-mdx-remote/rsc';
 import { CalendarCheck, Clock, UserCheck } from 'lucide-react';
 import { GUIDES_COPY } from '@/lib/fr/guides';
 import { canonicalsAvailable } from '@/lib/content/site';
+import { currentTaxYear } from '@/lib/content/tax-year';
 import { formatDate } from '@/lib/ui/core';
 import { Container } from '@/lib/ui/react/Container/Container';
 import { Faq } from '@/lib/ui/react/Faq/Faq';
@@ -35,7 +36,9 @@ import { GUIDES_PATH, allGuides, guideBySlug, publishedGuides } from '@/lib/guid
 import { faqPageLd } from '@/lib/content/jsonld';
 import { anchorFor, headingsIn } from '@/lib/guides/headings';
 import { mdxComponents } from '@/lib/guides/mdx-components';
+import { MDX_OPTIONS } from '@/lib/guides/mdx-options';
 import { readingMinutes } from '@/lib/guides/reading-time';
+import { guideScope } from '@/lib/guides/scope';
 import styles from './guide.module.scss';
 
 /** FD13: Lucide at 14 in the chips, 1.75 stroke like everywhere else. */
@@ -123,10 +126,16 @@ export default async function GuidePage({ params }: RouteParams) {
 
   // COMPILED HERE, AT BUILD. compileMDX runs inside this server component and
   // the route is statically generated, so the output is HTML in a file.
+  //
+  // THE SCOPE IS R147's DELIVERY MECHANISM. An article writes {fiscal} and
+  // gets the figure RuleSet carries, formatted the way the rest of the product
+  // formats it - so the 2028 rule change edits one constant rather than seven
+  // articles. lib/guides/mdx-options.ts says why blockJS must be off for that
+  // to work at all, and tests/unit/guides/scope.test.tsx holds the measurement.
   const { content } = await compileMDX({
     source: body,
     components: mdxComponents({ file, headings }),
-    options: { parseFrontmatter: false },
+    options: { ...MDX_OPTIONS, scope: guideScope(currentTaxYear()) },
   });
 
   return (
