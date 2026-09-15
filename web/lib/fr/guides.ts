@@ -31,7 +31,7 @@ export const GUIDES_COPY = {
    * whose rules change annually, WHEN this was last checked matters more than
    * who wrote it".
    */
-  reviewedOn: (date: string): string => `Derniere verification${n(':')} ${date}`,
+  reviewedOn: (date: string): string => `Dernière vérification${n(':')} ${date}`,
 
   reviewedBy: (reviewer: string): string => `Relu par ${reviewer}`,
 
@@ -51,29 +51,29 @@ export const GUIDES_COPY = {
    * twice - and /releve-annuel is planned for FW20, so the other reading
    * would link a page that 404s.
    */
-  ctaTitle: 'Savoir ou vous en etes, en une minute',
+  ctaTitle: 'Savoir où vous en êtes, en une minute',
   ctaBody:
-    'Le calculateur reprend vos jours de teletravail et vous dit combien il ' +
+    'Le calculateur reprend vos jours de télétravail et vous dit combien il ' +
     'vous en reste avant chaque seuil. Gratuit, sans inscription.',
   ctaAction: 'Calculer mes jours',
 
   /** FD13: the article footer, above the related guides. */
   sourcesNote:
-    'Chaque regle citee sur cette page renvoie a son texte d’origine.',
-  sourcesLink: 'Voir les sources reglementaires',
+    'Chaque règle citée sur cette page renvoie à son texte d’origine.',
+  sourcesLink: 'Voir les sources réglementaires',
 
   /** FD13: GUIDES LIES, the related list. */
-  relatedHeading: 'Guides lies',
+  relatedHeading: 'Guides liés',
 
   /** The hub. SPEC 14: a description that says what the set is for. */
   hubDescription:
-    'Les guides de reference sur le teletravail frontalier' +
+    'Les guides de référence sur le télétravail frontalier' +
     n(':') +
     ' les deux seuils, ' +
     'les jours de mission, l’attestation de l’employeur et le droit d’option.',
   hubIntro:
-    'Chaque guide porte sa date de derniere verification et renvoie aux textes ' +
-    'd’origine. Ils se lisent separement, dans l’ordre qui vous arrange.',
+    'Chaque guide porte sa date de dernière vérification et renvoie aux textes ' +
+    'd’origine. Ils se lisent séparément, dans l’ordre qui vous arrange.',
 
   /**
    * SPEC 9.5’s three roles, as headings a reader understands - the
@@ -82,10 +82,10 @@ export const GUIDES_COPY = {
    */
   groupTitle: {
     pillar: 'L’essentiel',
-    cluster: 'Les questions precises',
+    cluster: 'Les questions précises',
     canton: 'Par canton',
   } as const,
 
   /** FD13: the article’s FAQ block, before the closing card. */
-  faqHeading: 'Questions frequentes',
+  faqHeading: 'Questions fréquentes',
 } as const;

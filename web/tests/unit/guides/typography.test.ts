@@ -7,7 +7,7 @@
 // an ASCII space before a colon". It does not, and did not: the guard scans
 // lib/fr/*.ts and nothing else. The FIXTURE PROVES IT - its own title reads
 //
-//   "Article de demonstration : tout ce que le gabarit sait rendre"
+//   "Article de démonstration : tout ce que le gabarit sait rendre"
 //
 // with an ASCII space before the colon, and every suite has been green since
 // FW16. A claim that reads as enforced and is not is the exact shape this

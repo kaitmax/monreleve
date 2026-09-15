@@ -50,7 +50,7 @@ test.describe('the article template', () => {
     const headings = page.locator('h1');
 
     await expect(headings).toHaveCount(1);
-    await expect(headings).toContainText('Article de demonstration');
+    await expect(headings).toContainText('Article de démonstration');
   });
 
   test('carries exactly one standing disclaimer, in the footer (R119, R124)', async ({
