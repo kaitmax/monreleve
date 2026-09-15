@@ -1,0 +1,192 @@
+---
+title: "Les jours de mission hors de Suisse"
+description: "Les missions hors de Suisse sont comptées à l’intérieur du plafond de télétravail, pas en plus : le plafond propre qui s’y applique, les jours de trajet, et ce qui se passe au-dessus."
+slug: jours-de-mission-hors-suisse
+cluster: cluster
+related:
+  - teletravail-frontalier-40-pourcent
+  - seuil-social-49-9-pourcent
+lastReviewed: "2026-09-09"
+reviewer: "l’équipe frontalier"
+faq:
+  - question: "Une mission d’une journée en France compte-t-elle comme du télétravail ?"
+    answer: "Elle ne compte pas comme du télétravail, mais elle compte dans la même enveloppe. Les jours de mission sont imputés à l’intérieur du plafond fiscal, sous un plafond annuel qui leur est propre."
+  - question: "Et si je voyage sans travailler ce jour-là ?"
+    answer: "Un jour de trajet sans travail effectué n’est pas compté. Un jour de trajet où le travail a été fait principalement en Suisse ne l’est pas non plus. C’est le lieu où le travail a effectivement eu lieu qui décide."
+  - question: "Le plafond de mission est-il réduit si je suis à temps partiel ?"
+    answer: "Oui, proportionnellement, et la réduction est arrondie à l’entier supérieur. C’est la seule règle de ce calcul qui joue systématiquement en votre faveur."
+  - question: "Que deviennent les jours de mission au-dessus du plafond ?"
+    answer: "Ils cessent d’être crédités et deviennent imposables en France. Le plafond fiscal, lui, n’est pas dépassé pour autant : les deux limites se vérifient séparément."
+  - question: "Les missions en France et dans un pays tiers comptent-elles pareil ?"
+    answer: "Le calculateur les saisit séparément parce que le mécanisme de recouvrement diffère. L’ordre dans lequel elles s’imputent sur le plafond n’est pas tranché par les textes publiés, et l’article le signale à l’endroit où cela change le résultat."
+claims:
+  - key: missionCapDays
+    says: "Les jours de mission hors de Suisse sont comptés à l’intérieur du plafond fiscal et non en plus, sous un plafond annuel qui leur est propre."
+  - key: missionCapProration
+    says: "Le plafond de jours de mission est réduit proportionnellement en cas de temps partiel ou d’année incomplète, et arrondi à l’entier supérieur."
+  - key: simplifiedBasisDays
+    says: "Le pourcentage rapporte les jours comptés à la base de jours ouvrés retenue par l’employeur, le plus souvent la base simplifiée de la circulaire."
+  - key: fiscalCeiling
+    says: "Le plafond de télétravail porte sur le temps de travail annuel, et les jours de mission crédités s’imputent dessus."
+  - key: P1
+    unresolved: true
+    says: "L’ordre d’imputation entre les jours en France et les jours dans un pays tiers n’est pas tranché par les sources publiées ; le calculateur impute la France en premier."
+---
+
+{/*
+  CLUSTER, on the trap. SPEC 9.5: "missions inside the 40%".
+
+  THE TRAVEL-DAY TABLE IS THE POINT OF THIS ARTICLE. docs/regulatory-sources.md
+  records it as verified against the ge.ch FAQ table on 09.09.2026, and the
+  calculator carries only one line of it - the user enters a count, and the
+  three-way rule that produced that count lives nowhere a reader can see. Here
+  it is, in the same order the source states it.
+
+  IT CITES missionCapDays FOR THE TRAVEL-DAY RULE AND FOR THE WORKED EXAMPLE,
+  which needs saying: neither has a row of its own in the constants table, and
+  both are published on the SAME ge.ch page that row 2 cites as its primary
+  source. The key names the source, and the source covers them. Reported as a
+  gap - a verified fact with no key is a fact an article cannot cite.
+
+  P1 IS R146 CASE (b): named as unresolved at the point it changes the answer,
+  with what the app does stated plainly, linking /sources.
+*/}
+
+L’erreur la plus fréquente sur le télétravail frontalier ne porte pas sur le
+télétravail. Elle porte sur les jours de mission : un déplacement professionnel
+hors de Suisse ne s’ajoute pas à votre droit au télétravail, il se prend
+dessus.
+
+Autrement dit, vos jours de mission et vos jours passés à travailler chez vous
+puisent dans la même enveloppe annuelle. Un frontalier qui se déplace
+régulièrement pour son employeur dispose de moins de télétravail qu’il ne le
+croit, sans que rien ne le lui signale.
+
+<Encadre titre="En bref">
+
+- Où les missions sont comptées : à l’intérieur du plafond fiscal
+- Plafond propre aux missions : {missionCap} jours par an
+- À temps partiel ou sur une année incomplète : réduit, arrondi à l’entier supérieur
+- Base de calcul usuelle : {basisDays} jours ouvrés par an
+- Au-dessus du plafond : les jours cessent d’être crédités
+
+</Encadre>
+
+## Comptés à l’intérieur du plafond, pas en plus
+
+<Avertissement>
+
+Un jour de mission hors de Suisse est imputé sur le plafond de télétravail. Il
+ne s’y ajoute pas. Un plafond annuel de {missionCap} jours s’applique en outre
+aux missions elles-mêmes, de sorte que deux limites se vérifient en même temps
+et que la plus contraignante décide.
+
+</Avertissement>
+
+La conséquence pratique est simple à énoncer et facile à manquer : chaque jour
+de mission crédité est un jour de télétravail en moins. Deux frontaliers qui
+télétravaillent le même nombre de jours n’ont pas la même marge si l’un se
+déplace et l’autre pas.
+
+## Le plafond propre aux missions, et sa réduction
+
+Le plafond de {missionCap} jours vaut pour une année complète à temps plein.
+À temps partiel, ou si votre contrat ne couvre qu’une partie de l’année, il
+est réduit dans la même proportion.
+
+La réduction est arrondie à l’entier supérieur. Un mi-temps ne perd donc pas
+exactement la moitié de ses jours de mission, et l’arrondi va toujours dans
+votre sens - c’est la seule règle de ce calcul dont on puisse le dire.
+
+## Les jours de trajet
+
+Un déplacement occupe souvent plus de journées que la mission elle-même. La
+règle publiée par l’administration distingue trois situations, et elle porte
+sur le travail effectué, pas sur le lieu où vous avez dormi.
+
+<DataGrid
+  caption="Un jour de trajet est-il compté ?"
+  columns={[
+    { key: "situation", header: "Ce que vous avez fait ce jour-là" },
+    { key: "compte", header: "Compté" },
+  ]}
+  rows={[
+    {
+      key: "aucun",
+      cells: { situation: "Aucun travail effectué pendant le trajet", compte: "Non" },
+    },
+    {
+      key: "suisse",
+      cells: { situation: "Travail effectué principalement en Suisse", compte: "Non" },
+    },
+    {
+      key: "etranger",
+      cells: { situation: "Travail effectué principalement hors de Suisse", compte: "Oui" },
+    },
+  ]}
+/>
+
+Le calculateur ne vous pose qu’une question - combien de jours de mission - et
+c’est à vous d’appliquer ce tableau avant de répondre. C’est une raison de plus
+de tenir le décompte au jour le jour plutôt que de le reconstituer en décembre :
+la distinction se perd vite. [Calculez vos jours restants](/calculateur-teletravail-frontalier).
+
+## La France et les pays tiers
+
+Le calculateur saisit séparément les jours de mission effectués en France et
+ceux effectués dans un autre État, parce que le mécanisme de recouvrement n’y
+est pas le même.
+
+<Avertissement>
+
+Ce que les sources publiées ne tranchent pas, c’est l’ordre dans lequel ces
+deux catégories s’imputent sur le plafond annuel. L’administration genevoise
+les traite comme un seul ensemble dans tous ses exemples publiés et n’ordonne
+jamais les deux.
+
+Ce site impute la France en premier. C’est une lecture, pas une règle citée, et
+elle ne change rien tant que vos jours sont tous du même côté - elle change le
+résultat dès qu’ils sont des deux. Cette lecture est enregistrée comme ouverte
+sous la référence P1 et attend une revue juridique : voir
+[sources et vérifications](/sources).
+
+</Avertissement>
+
+Si vos jours de mission se répartissent entre la France et un pays tiers,
+traitez le chiffre du calculateur comme une estimation à confirmer, et non
+comme le nombre à déclarer.
+
+## Au-dessus du plafond
+
+Au-delà du plafond de mission, les jours supplémentaires cessent d’être
+crédités et deviennent imposables en France. Le plafond fiscal, lui, peut très
+bien rester respecté : les deux limites se vérifient séparément, et franchir
+l’une ne signifie pas franchir l’autre.
+
+Un cas chiffré, tiré des exemples que l’administration genevoise publie et que
+le calculateur reproduit exactement. Un frontalier à temps plein déclare
+84 jours de télétravail et 24 jours de mission en France sur l’année.
+
+- Jours de mission crédités : {missionCap}, soit le plafond
+- Jours comptés contre le plafond fiscal : 94 sur une base de {basisDays}
+- Taux déclarable : 39,16 %
+- Jours imposables en France : 14, soit les jours de mission non crédités
+
+Les 14 jours de mission au-delà du plafond ne disparaissent pas : ils changent
+de côté. Et le taux déclarable reste sous le plafond fiscal, ce qui montre bien
+que les deux limites ne se confondent pas.
+
+## Ce qu’il faut en retenir
+
+Tenez le compte de vos missions comme vous tenez celui de votre télétravail,
+et notez pour chaque jour de déplacement où le travail a effectivement eu lieu.
+C’est la donnée que votre employeur n’a pas toujours, et c’est elle qui décide.
+Le reste du calcul est expliqué dans
+[le guide du plafond fiscal](/guides/teletravail-frontalier-40-pourcent).
+
+Une dernière chose, sur la façon dont le calculateur procède : il applique le
+second seuil, celui de la sécurité sociale, aux mêmes jours comptés - jours de
+mission crédités inclus. Un frontalier qui télétravaille peu mais se déplace
+beaucoup s’en approche donc plus vite que son seul télétravail ne le laisse
+croire. Ce que ce second seuil déclenche est expliqué dans
+[le guide du seuil social](/guides/seuil-social-49-9-pourcent).
