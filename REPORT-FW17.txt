@@ -1,0 +1,708 @@
+REPORT-FW17.txt - frontalier
+Task FW17: the pillar and two clusters. Eleven commits, all pushed.
+
+SUMMARY
+--------------------------------------------------------------------
+Three articles exist at their SPEC 9.5 slugs, with 15 declared claims
+resolving to VERIFIED rows or written as open questions; the mesh checker
+reports nothing; four routes moved from planned to live so three of the
+calculator's four contextual links now resolve; and the pillar scores
+100/100/100/100 in Lighthouse.
+
+THE FINDING OF THIS SESSION is that R147's delivery mechanism did not
+work. next-mdx-remote@6 defaults blockJS to TRUE and DELETES every MDX
+expression and every JSX attribute expression. The article template
+passed no option to change that, so an author writing {fiscal} would have
+got nothing at all - and nothing would have failed. The build succeeds,
+the frontmatter parses, the claims resolve, the typed-number scan finds
+no typed figure because there IS none, and the next baseline photographs
+the hole and certifies it forever. The pillar would have shipped reading
+"jusqu'a de son temps de travail annuel". Measured, captured as a RED,
+and kept as a permanent assertion.
+
+Four further defects were found the same way - by checking a claim rather
+than trusting it - and each is recorded in its own section below:
+  - R126's apostrophe rule had never reached content (12 offences);
+  - R147's own exemption hid every JSX attribute, which is where the
+    comparison tables live;
+  - the sitemap had two sources for "which guides are published" that
+    agreed only while there were none, and would have emitted duplicate
+    URLs the moment a guide route went live;
+  - both comparison tables overflowed 320 dp in the shape FD13 draws
+    them (34 px, then 2 px).
+
+PRECONDITIONS
+--------------------------------------------------------------------
+R0. REPORT-FW16.txt read in full. It contains no question marked as
+    blocking FW17 and no DEVIATION changing the MDX pipeline, the
+    frontmatter contract, the article template or the mesh checker. Its
+    three open questions Q42, Q43 and Q44 were answered by the operator
+    before this session as R150, R151 and R152, and all three are
+    discharged here (see TOKENS ADDED, NOTICED BUT NOT TOUCHING and
+    LIGHTHOUSE). Proceeded.
+
+R1. CI green on origin/main before starting, at db80906:
+    run 34988615297
+    https://github.com/kaitmax/Frontalier/actions/runs/34988615297
+    The run for the final FW17 commit is recorded under PUSH PROOF.
+
+INCREMENT 0
+--------------------------------------------------------------------
+0a  9569b5a  R146: the claims field, its schema, and the resolver test
+0b  41ee6cd  R147: no number is typed twice
+0c  de2590f  R153, and what the reviewer is asked about rows 6 and 7
+0d  db80906  French typography in content, and the selector that had
+             to see it
+0e  5181465  R126 and R147 reach what an author actually types
+
+0a-0d are reported in the preceding session's working notes and their
+proofs are in the commit bodies. 0e is new and was found by reading the
+prompt's protocol against the tree:
+
+  R126 NEVER REACHED CONTENT. FW17's protocol item 7 says "R126's
+  apostrophe rule applies". It is enforced on lib/fr/*.ts by
+  tests/unit/fr/copy-codepoints.test.ts and nowhere else, so the fixture
+  elides with the typewriter apostrophe in twelve places - n'est,
+  l'oeil, d'import - and every suite has been green since FW16.
+  RED, before the fix:
+    x uses the typographic apostrophe, and uses it often
+      AssertionError: no typographic apostrophe in any guide:
+      expected 0 to be greater than 5
+    x uses NO ASCII apostrophe in an elision position
+      12 offences, listed by file and context
+  The guard is POSITIONAL, copied from R126's own reasoning: U+0027 is
+  the string delimiter in an MDX file too, so only an apostrophe BETWEEN
+  TWO LETTERS is a defect. Three detector tests prove it fires on an
+  elision, ignores a delimiter, and does not mistake U+2019 for U+0027.
+
+  R147 EXEMPTED THE PLACE IT IS MOST NEEDED. The scan stripped any brace
+  pair before looking - which is every JSX attribute expression as well,
+  and the comparison table is <DataGrid rows={[...]}>, the densest
+  concentration of figures in the pillar. A cell reading '40 %' was
+  invisible to it. Narrowed to a BARE NAME, which cannot carry a digit
+  sequence that means anything. Two new planted cases capture it:
+    typedFigures("rows={[{ cells: { source: '40 %' } }]}")  -> 1 hit
+    typedFigures("rows={[{ cells: { source: fiscal } }]}")  -> none
+  Narrowing it surfaced a second thing: MDX comments were being
+  swallowed by the same accident, and the fixture's English note about
+  "the 40 % rule" became a violation. Comments are now stripped
+  deliberately, with a test that the stripper cannot swallow the prose
+  that follows one.
+
+  R147's title and slug exemption, named and narrow. SPEC 9.5 fixes the
+  slug WITH the figure in it and SPEC 14 makes it permanent, so the
+  figure is frozen there by a stronger rule. The description and the FAQ
+  stay covered - a description carrying "40 %" is the hub entry that goes
+  stale in 2028 with every test green.
+
+INCREMENT 1 - THE MECHANISM R147 DEPENDS ON
+--------------------------------------------------------------------
+Test-first, and the RED is the defect verbatim. lib/guides/mdx-options.ts
+was created carrying the options the template ALREADY passed, the test
+was written against it, and it failed:
+
+  x renders the figure the scope carries, in prose and in a prop
+    AssertionError: expected
+      '<p>Le plafond est de  du temps de travail annuel.</p>
+       <aside><p>Un contenu.</p></aside>'
+      to contain '40 %'
+
+The figure deleted, the sentence closed over the hole, and the JSX
+attribute gone with it - <aside> carries no data-titre at all. Adding
+blockJS: false turned it green. The planted default stays in the file as
+a permanent assertion, because an assertion that the value APPEARS would
+also pass if something else had put it there.
+
+blockDangerousJS is left at its default TRUE, and asserted rather than
+assumed: compiling {process.env.HOME} REFUSES with the global named,
+which during static generation stops the build. That is the better of
+the two failures and it is now pinned.
+
+CLAIMS TABLE
+--------------------------------------------------------------------
+15 claims across three articles. Every key resolves to a row of
+docs/regulatory-sources.md; four are written as open questions under
+R146 case (b). tests/unit/guides/claims.test.ts refuses any other state.
+
+PILLAR - /guides/teletravail-frontalier-40-pourcent
+  key                    row  state        what the prose asserts
+  fiscalCeiling          1    VERIFIED     the ceiling is annual, and the
+                                           avenant of 27.06.2023 sets it
+  simplifiedBasisDays    5    VERIFIED     circulaire 45's basis absorbs
+                                           leave, holidays and sickness;
+                                           an employer may use an exact
+                                           count, applied uniformly
+  dayClassification      6    PENDING (b)  over four hours is a whole day,
+                                           two to four a half
+  missionCapDays         2    VERIFIED     missions count INSIDE the
+                                           ceiling, under their own cap
+  missionCapProration    3    VERIFIED     prorated for part-time and
+                                           partial years, rounded UP
+  residence1983Cantons   7    PENDING (b)  under the 1983 accord the
+                                           STATUS is at risk; elsewhere
+                                           the excess days are taxed in
+                                           France
+  socialCeiling          4    VERIFIED     a second, distinct threshold
+                                           moves social affiliation
+
+SOCIAL CLUSTER - /guides/seuil-social-49-9-pourcent
+  socialCeiling          4    VERIFIED     above the published maximum,
+                                           affiliation moves to France;
+                                           the Swiss attachment is
+                                           conditional on a valid A1
+  a1ThresholdRate        8    VERIFIED     the framework agreement applies
+                                           from a given telework share;
+                                           below it art. 13 of reg. (EC)
+                                           883/2004 governs
+  P2                     -    OPEN (b)     the text says below fifty per
+                                           cent, the authority publishes a
+                                           lower maximum; the product
+                                           takes the lower and warns early
+
+MISSION CLUSTER - /guides/jours-de-mission-hors-suisse
+  missionCapDays         2    VERIFIED     inside the ceiling, not beside
+                                           it, under an annual cap
+  missionCapProration    3    VERIFIED     reduced proportionally, rounded
+                                           UP
+  simplifiedBasisDays    5    VERIFIED     the percentage is counted days
+                                           over the employer's basis
+  fiscalCeiling          1    VERIFIED     credited mission days count
+                                           against the annual ceiling
+  P1                     -    OPEN (b)     the imputation ORDER between
+                                           France and a third state is not
+                                           settled; the site imputes
+                                           France first
+
+Eleven citations of six verified rows; four open questions. Rows 6 and 7
+are the two the 09.09.2026 pass did not reach, and P1/P2 are two of the
+three readings adopted where no source speaks.
+
+A GAP, AND IT SHAPED TWO PARAGRAPHS. The mission cluster's travel-day
+table and its worked example are both recorded as VERIFIED in
+docs/regulatory-sources.md - "Mission travel-day rules. Same page, FAQ
+table" and "The six Geneva worked examples" - and NEITHER HAS A ROW in
+the constants table, so neither has a key in SOURCE_IDS. Under R146 an
+article cannot cite what has no key. Both are published on the SAME ge.ch
+page that row 2 cites as its primary source, so both are declared under
+missionCapDays: the key names the source, and the source covers them.
+That is defensible and it is not the same as having a row. Raised as
+Q47.
+
+PROVISIONAL
+--------------------------------------------------------------------
+P1 - THE IMPUTATION ORDER. In the mission cluster, section "La France et
+les pays tiers", inside an <Avertissement>, at the point where it changes
+the answer:
+
+  "Ce que les sources publiees ne tranchent pas, c'est l'ordre dans
+   lequel ces deux categories s'imputent sur le plafond annuel.
+   L'administration genevoise les traite comme un seul ensemble dans tous
+   ses exemples publies et n'ordonne jamais les deux.
+
+   Ce site impute la France en premier. C'est une lecture, pas une regle
+   citee, et elle ne change rien tant que vos jours sont tous du meme
+   cote - elle change le resultat des qu'ils sont des deux. Cette lecture
+   est enregistree comme ouverte sous la reference P1 et attend une revue
+   juridique : voir [sources et verifications](/sources)."
+
+  followed by, in plain prose:
+  "Si vos jours de mission se repartissent entre la France et un pays
+   tiers, traitez le chiffre du calculateur comme une estimation a
+   confirmer, et non comme le nombre a declarer."
+
+P2 - THE 49,9 VERSUS UNDER-50 EDGE. In the social cluster, in its own
+H2 section "Le chiffre exact, et ce qui reste ouvert":
+
+  "Deux lectures coexistent et le produit retient la plus prudente. Le
+   texte de l'accord-cadre europeen parle d'une part de teletravail
+   inferieure a 50 %. L'autorite suisse, elle, publie un maximum de
+   {social}. Entre les deux, il existe un intervalle etroit ou un
+   frontalier est legalement en dessous de la limite et ou ce site
+   l'avertit quand meme.
+
+   Le produit avertit donc un peu tot plutot qu'un peu tard, parce qu'un
+   avertissement de trop se verifie et qu'un avertissement manquant se
+   decouvre apres coup. Cette lecture est enregistree comme ouverte sous
+   la reference P2 et attend une revue juridique : voir [sources et
+   verifications](/sources)."
+
+ROW 6 - THE DAY CLASSIFICATION, in the pillar, under H3 "Journees
+entieres et demi-journees", presented as the app's operating convention
+exactly as the operator directed:
+
+  "C'est la convention que le calculateur applique, et c'est elle qui
+   decide si un apres-midi travaille chez vous pese une demi-journee ou
+   rien du tout."
+  then, in an <Avertissement>:
+  "Cette conversion des heures en journees n'a pas encore ete verifiee
+   contre le texte de la circulaire n 45. Les exemples publies par
+   l'administration comptent des journees et non des heures, si bien
+   qu'aucun d'eux ne l'atteint. Le detail de ce qui est verifie et de ce
+   qui ne l'est pas est publie sur la page [sources et
+   verifications](/sources)."
+
+ROW 7 - THE CANTON LIST, in the pillar. The hedge covers MEMBERSHIP
+ONLY, as the operator directed; the distinction is stated flatly in the
+paragraph and the table above it:
+
+  "Les huit cantons que ce site range sous l'accord de 1983 sont les
+   suivants : {cantons1983}. Ce qui est etabli, c'est que les deux
+   regimes existent et que la consequence d'un depassement n'y est pas la
+   meme. Ce qui ne l'est pas encore, c'est la composition exacte de cette
+   liste : elle n'a pas ete verifiee contre le texte de l'accord du
+   11 avril 1983. Si votre canton y figure, verifiez ce point avant
+   d'agir. Voir [sources et verifications](/sources)."
+
+The canton names are NOT typed: {cantons1983} resolves from
+RuleSet.residence1983Cantons through lib/fr/cantons.ts. It is the entry a
+review is most likely to change, so a typed list would be the R147 defect
+in its purest form.
+
+MESH
+--------------------------------------------------------------------
+checkMesh(publishedGuides(), hub) returns [] - no violations.
+
+The graph, read from content/guides:
+
+  teletravail-frontalier-40-pourcent  [pillar]
+    -> guides     : jours-de-mission-hors-suisse, seuil-social-49-9-pourcent
+    -> calculator : 1 inline (+1 from the template card)
+    -> /sources   : 2 inline (+1 from the template footer)
+  seuil-social-49-9-pourcent  [cluster]
+    -> guides     : teletravail-frontalier-40-pourcent, jours-de-mission-hors-suisse
+    -> calculator : 1 inline (+1 from the template card)
+    -> /sources   : 1 inline (+1 from the template footer)
+  jours-de-mission-hors-suisse  [cluster]
+    -> guides     : teletravail-frontalier-40-pourcent, seuil-social-49-9-pourcent
+    -> calculator : 1 inline (+1 from the template card)
+    -> /sources   : 1 inline (+1 from the template footer)
+
+The rules the checker verified, each planted and captured in
+tests/unit/guides/mesh.test.ts (13 tests, all passing):
+
+  a correct mesh reports nothing (so every planted failure means
+    something)
+  1. a cluster missing its pillar backlink       cluster-links-pillar
+  2. a guide with too few calculator links       calculator-link-inline
+  3. a guide absent from the hub                 in-hub
+  4. a link to a route not in the registry       href-resolves
+  5. an undeclared cross-link between clusters   undeclared-cross-link
+  6. a pillar that does not link every cluster   pillar-links-every-cluster
+  7. a guide that does not link /sources         links-sources
+  a declared cross-link is ACCEPTED (the rule is about the declaration)
+  a cross-link declared on ONE side only is refused
+  it reports every violation, not the first (three faults -> three)
+  every violation names the guide at fault
+  the real content on disk passes
+
+THE MESH DECIDED THE INCREMENT BOUNDARIES. Adding a cluster obligates the
+pillar immediately, so the pillar's forward links and `related` entries
+landed in increments 2 and 3 rather than waiting for increment 4. That is
+the checker working: the rule is a property of the SET, and the set
+changed.
+
+CONTEXTUAL LINKS
+--------------------------------------------------------------------
+Three of four statuses now resolve to a live route and render an anchor.
+The panel needed no edit: ctaHrefIfLive decides, and the routes moved.
+
+  status             target                                    state
+  mission-exposure   /guides/jours-de-mission-hors-suisse       LIVE
+  regime-lost        /guides/teletravail-frontalier-40-pourcent LIVE
+  social-switch      /guides/seuil-social-49-9-pourcent         LIVE
+  compliant          /releve-annuel                             planned,
+                                                                FW20
+
+Asserted from the rendered DOM in tests/unit/pages/singletons.test.tsx -
+an <a> with the right href for the three, and for `compliant` no anchor
+at all plus the exact pending sentence. "Three of four" is a measurement,
+not a description, and whoever ships /releve-annuel gets one failing test
+pointing at this panel.
+
+READ-THROUGH
+--------------------------------------------------------------------
+All three articles read end to end from the SERVED HTML rather than from
+the MDX, so that every interpolation is visible as a reader meets it.
+
+What I read for:
+  1. does every paragraph say something a frontalier can act on;
+  2. is any sentence a claim I could not trace to a verified row;
+  3. does the register stay reference rather than marketing;
+  4. does any figure appear that R147 should have caught;
+  5. does the French read as French - accents, elisions, dashes,
+     no-break spaces.
+
+WHAT IT FOUND
+
+(a) A FAQ ANSWER OVERSTATED. In the mission cluster: "Que deviennent les
+    jours de mission au-dessus du plafond ?" answered "Le plafond fiscal,
+    lui, n'est pas depasse pour autant". The body says "peut tres bien
+    rester respecte", which is correct; the FAQ asserted that it is NOT
+    exceeded, which is a guarantee the rule does not give. Corrected to
+    "Cela ne veut pas dire que le plafond fiscal est depasse : les deux
+    limites se verifient separement, et franchir l'une ne dit rien de
+    l'autre." Nothing automated could have caught this: both sentences
+    cite the same verified row and neither carries a figure.
+
+(b) TWO KINDS OF DASH ACROSS THREE ARTICLES. The asides used an em dash
+    in some places and a spaced hyphen in others - nine of them. On a
+    reference document that reads as inattention. Normalised to the em
+    dash, comments masked so the English commentary was untouched.
+
+(c) THE BREADCRUMB REPEATS THE H1 VERBATIM. A reader meets
+    "La regle des 40 % de teletravail pour les frontaliers" twice,
+    stacked, before the first sentence. FD13 draws the breadcrumb as
+    `Guides > Regle des 40 %` - a SHORT label. The template renders
+    frontmatter.title as the current crumb, which was invisible while the
+    only article was a fixture. Not fixed: a short label is a new
+    frontmatter field, which is a contract change and FW16's to own.
+    Raised as Q45.
+
+(d) THE CHROME IS UNACCENTED AND THE ARTICLES ARE NOT, and this is the
+    one that matters most. Every string in lib/fr is written without
+    accents, and it now sits directly against fully accented prose:
+
+      "Derniere verification : 09.09.2026"   (the article's first chip)
+      "Questions frequentes"                 (above the FAQ)
+      "Savoir ou vous en etes, en une minute"(the closing card)
+      "Chaque regle citee sur cette page renvoie a son texte d'origine."
+      "Guides lies"
+
+    In French these are not typography, they are spelling: "ou" and "ou"
+    with a grave accent are different words, and so are "des" and "des".
+    On a page whose subject is French tax rules, read by someone deciding
+    whether to trust it, it is the most damaging thing on the surface.
+    NOT FIXED HERE, deliberately: it is every copy file in lib/fr, it
+    changes nearly every baseline in the product, and every one of those
+    files is marked TODO-COPY pending a reviewer. Raised as Q46 with a
+    recommendation that it be one sweep in its own task.
+
+What it did NOT find: no paragraph that says nothing actionable; no
+sentence I could not trace; no marketing register (the closest is the
+closing card, which is the template's and is FD13's own copy); and no
+figure R147 should have caught - every threshold, cap, basis and canton
+name in all three articles arrives from RuleSet.
+
+SIZE
+--------------------------------------------------------------------
+Measured on a clean production build, not on the dev-routes build that
+test:e2e leaves behind.
+
+  route                                 js total  delta   verdict
+  /guides                                  107.4    6.8   pass
+  /guides/[slug]                           108.6    8.0   pass
+  /                                        107.2    6.6   pass
+  /calculateur-teletravail-frontalier      121.1   20.5   pass
+
+  framework floor 100.6 KiB; GATE A 125.0; GATE B 25.0 over the floor.
+
+The content routes sit 6.8 and 8.0 KiB above the framework floor, which
+is what the prompt asks for. All gated routes pass both gates.
+
+LIGHTHOUSE (R152)
+--------------------------------------------------------------------
+A floor, on the first real guide, as ruled. lighthouserc.json now
+collects /, /guides and the pillar, and asserts all four categories at
+minScore 1 as an ERROR.
+
+  route                                      perf  a11y  bp   seo
+  /                                           100   100  100  100
+  /guides                                     100   100  100  100
+  /guides/teletravail-frontalier-40-pourcent  100   100  100  100
+
+MEASURED FIRST, AND THE FIRST MEASUREMENT WAS 63. Run without a
+configured origin the pillar scores SEO 63, and the failing audit is
+exactly one: "is-crawlable - Page is blocked from indexing". That is
+ruling R81 working correctly - with no origin there is no canonical, and
+the article route refuses indexing rather than publish a canonical
+pointing at localhost. A floor measured in that state would sit at 63 for
+a reason that has nothing to do with the article.
+
+So `pnpm lighthouse` now runs scripts/lighthouse.mjs, which builds with
+NEXT_PUBLIC_SITE_URL set to the same RFC 2606 origin the e2e suite uses
+(frontalier.example) and then runs lhci. The build is in the WRAPPER and
+not in startServerCommand, and that is measured too: lhci waits 30
+seconds for the server and a build takes minutes, and the symptom is not
+a timeout but Chrome reporting "prevented page load with an interstitial"
+- which reads like a security failure and sent the first attempt looking
+in the wrong place.
+
+pnpm gate:clean was run for this increment under R139: the lighthouse
+script is a build step and reads an environment variable.
+
+BASELINES (R135)
+--------------------------------------------------------------------
+40 baseline writes across seven groups, touching 28 distinct files; 4 of
+them are new states rather than regenerations. Each group has one reason,
+and each was opened and read.
+
+0e - 4 regenerated
+  guides-article-{desktop,mobile}
+  guides-article-faq-ouverte-{desktop,mobile}
+  Twelve apostrophes in the fixture changed from U+0027 to U+2019, which
+  changes the glyph and reflows the lines carrying them; 1 % of pixels
+  differ. Read: the prose is the same, the head still aligns with the
+  prose column, the outline is unchanged.
+
+1 - 2 regenerated
+  guides-hub-{desktop,mobile}
+  The hub was empty and now lists the pillar under "L'essentiel". Read:
+  the entry renders with title, description and verification date.
+
+2 - 2 regenerated
+  guides-hub-{desktop,mobile}
+  A second article, under a group that rendered nothing before.
+
+3 - 2 regenerated
+  guides-hub-{desktop,mobile}
+  A third article; the first two move down the page.
+
+4 - 8 regenerated
+  calculateur-lien-partage-{desktop,mobile}
+  calculateur-panneau-bascule-sociale-{desktop,mobile}
+  calculateur-panneau-regime-perdu-{desktop,mobile}
+  calculateur-rempli-{desktop,mobile}
+  The contextual link changed from a paragraph reading "<texte> : guide a
+  paraitre" into a real anchor with its chevron, on every state whose
+  status now has a guide. Read the regime-perdu mobile shot: the link is
+  underlined and carries the chevron, the panel's other slots unchanged.
+
+R150 - 18 regenerated
+  calculateur-erreur-{desktop,mobile}
+  calculateur-lien-invalide-{desktop,mobile}
+  calculateur-lien-partage-{desktop,mobile}
+  calculateur-panneau-avis-provisoire-{desktop,mobile}
+  calculateur-panneau-bascule-sociale-{desktop,mobile}
+  calculateur-panneau-conforme-{desktop,mobile}
+  calculateur-panneau-regime-perdu-{desktop,mobile}
+  calculateur-rempli-{desktop,mobile}
+  page-sources-{desktop,mobile}
+  Every notice accent went from 2 px to 4 px. Read the /sources mobile
+  shot: the three reading blocks carry a visibly thicker info-blue bar
+  and nothing else moved. The guides article baselines did NOT change,
+  which is the expected result - the fixture carries no Avertissement.
+
+5 - 4 ADDED (new states, not regenerations)
+  guides-pilier-{desktop,mobile}
+  guides-cluster-missions-{desktop,mobile}
+  The first pictures of the Encadre summary block, the Avertissement
+  banner and a DataGrid comparison table. The fixture exercises the
+  TEMPLATE and contains none of them, so until now no baseline held an
+  image of the half of the kit SPEC 9.5 names. Two articles rather than
+  three: the pillar carries every element once, the mission cluster is
+  the only one with a three-row table and two banners in the same column,
+  and the social cluster is structurally a subset of both. Read the
+  mission cluster desktop shot: the accent is thick, the two-paragraph
+  banners are spaced, the travel-day table has its caption, and both
+  cross-links appear under GUIDES LIES.
+
+TOKENS ADDED (R77)
+--------------------------------------------------------------------
+One, and it is ruling R150 discharged.
+
+  $size-notice-accent / --size-notice-accent   4px
+
+Six sites drew a banner's left accent from --size-input-border-focus -
+the calculator's three notices, the result panel's warning, /sources'
+readings and the guides' Avertissement - while FD1, FD13 and
+DESIGN-SYSTEM.md section 2 all specify 4 px and that token is a 2 px
+INPUT FOCUS RING. Both the value and the name were wrong, and they hid
+each other: six sites agreeing reads as deliberate.
+
+ENFORCED, not merely fixed. tests/unit/tokens/var-references.test.ts now
+refuses any `border-left: var(--size-input-border-focus)` and asserts the
+new token exists, is 4 px, and has exactly six uses. The count is of USES
+rather than files: the calculator form carries three of the six.
+
+TWO SITES DELIBERATELY LEFT ALONE, so that "six" is a decision and not a
+sweep. FieldGroup uses --size-input-border-focus for an input's focus
+ring, which is what the token is for. DataGrid draws a 2 px border-top
+above a tfoot total with it - a third thing, neither an input ring nor a
+notice accent, and R69's shape again at one site. Reported as Q48.
+
+DEVIATIONS
+--------------------------------------------------------------------
+D1. HEADINGS NAME THE RULE WHERE FD13 PUTS THE FIGURE IN THEM. FD13's
+    table of contents reads "Si vous depassez 40 %" and "Le seuil social
+    de 49,9 %". Both are written without the figure here.
+    WHY: a heading becomes an anchor and an anchor is a URL.
+    lib/guides/headings.ts exists for exactly that - "people link to
+    #comment-le-pourcentage-se-calcule from support replies, from forums,
+    from their own notes" - so a heading carrying a threshold produces a
+    URL that breaks for everyone who saved it the day the threshold
+    moves. That is R147's own stated purpose working against FD13's
+    wording, and R147 is the later instruction.
+    R153's asymmetry is therefore visible in the article as the operator
+    asked: figures in the prose, names in the headings and in the FAQ.
+
+D2. FD13's LEDE CONTRADICTS docs/regulatory-sources.md ON A DATE. FD13
+    writes "entre en vigueur le 1er janvier 2026". Row 1 of the document
+    records three distinct dates: signed 27.06.2023, IN FORCE 24.07.2025,
+    APPLICABLE from 01.01.2026. The prompt asks for all three by name.
+    The document wins under R146 and the article names all three, with a
+    paragraph on why the distinction matters.
+
+D3. FD13's FIFTH FAQ QUESTION IS NOT WRITTEN. "Le seuil est-il calcule
+    par employeur ou par personne ?" is not traceable to any verified
+    row, and protocol item 9 says a statement I cannot trace is a
+    question, never a paraphrase of something plausible. Replaced with
+    "Le plafond se calcule-t-il sur l'annee entiere ?", which is row 1.
+    FD13's third question was reworded from "la base de 240 jours" to
+    "la base simplifiee" for R153: a FAQ answer is YAML and cannot
+    interpolate.
+
+D4. BOTH COMPARISON TABLES ARE TRANSPOSED, and this is a measurement.
+    FD13 draws the pillar's as three columns - a criteria column and one
+    per regime. At 320 dp that is 334 px inside a 288 px measure and the
+    page scrolled sideways by 34 px, which R127 refuses; a table's
+    min-content width is its longest words plus its padding and no
+    styling reduces it. The social cluster's three-column form missed by
+    2 px, which is the same defect and easier to wave away. Both are now
+    one row per regime, carrying the same facts. Two of two comparison
+    tables failed in the shape FD13 draws them, which is a template
+    finding rather than two content accidents - raised as Q49.
+
+D5. THE "EN BREF" CARD IS A LIST, NOT FD13's LABEL/VALUE ROWS. FD13 draws
+    five 44 px rows with hairlines between them, label left and value
+    right-aligned. The FW16 kit has no row component and protocol item 8
+    says "the component kit from FW16 and nothing new". Rendered as a
+    list inside the bordered block.
+
+D6. THE INLINE CALCULATOR CTA IS A PROSE LINK, NOT FD13's CARD. Same
+    reason as D5: FD13 draws a white card with a primary button, the kit
+    has no such component, and protocol item 5 says to say so before
+    building one. SPEC 9.5's requirement is a LINK at the moment the
+    reader realises they cannot do the arithmetic, and that is what is
+    there. Raised as Q50.
+
+D7. THE SITEMAP WAS SINGLE-SOURCED. Not a deviation from the prompt but
+    a change beyond the increment's stated scope, so it is named here.
+    FW16 built the sitemap from liveRoutes() PLUS publishedGuides(), and
+    the two agreed only while there were no articles. The first article
+    made them disagree - the pillar reached the sitemap with its route
+    still `planned`, caught by the routing suite - and the moment that
+    route went live the same URL would have been emitted TWICE in valid
+    XML with nothing to object. The registry is now the only source of
+    URLs and the content directory is a veto: a live guide route with no
+    article is refused. Both directions are asserted.
+
+D8. lib/guides/tsconfig.json WAS ADDED. Compiling the real articles in
+    the accessibility test made mdx-components.tsx the first .tsx under
+    lib/guides that a unit test imports, and without a nearest-tsconfig
+    override it fails to PARSE rather than fail an assertion. This is the
+    established pattern in this repository, with the same one setting and
+    the same reason as lib/ui/react/tsconfig.json, app/tsconfig.json and
+    tests/tsconfig.json.
+
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------
+N1. R151 CONFIRMED IN PLACE. The fixture is kept forever and its header
+    says so. It earned that this session: it is what the template's
+    assertions act on, and every one of them would otherwise have moved
+    onto content a reviewer will rewrite.
+
+N2. THE FAQ MARKERS ARE THE BROWSER'S. FD13 asks for a chevron-down 20 at
+    the right of each row; the native <details> triangle renders at the
+    left. That is FW15's decision inherited by FW16 (R136 forbids client
+    JavaScript, and the marker is stylable without it). Not touched.
+
+N3. THE ARTICLE PAGE IS MORE CONSERVATIVE THAN THE REST OF THE SITE UNDER
+    R81. With no configured origin, /guides is indexable and a guide
+    ARTICLE is noindex, because the article route combines "no canonical"
+    and "is a fixture" into one condition. In production with an origin
+    both are indexable, so nothing is wrong today - but the two surfaces
+    answer the same question differently and only one of them says so.
+
+N4. tests/unit/pages/guide-section-order.test.tsx STILL RENDERS A COPY of
+    the head markup. That was necessary while jsdom could not run the
+    article; this session showed compileMDX can be awaited in a test, so
+    the copy could now be replaced by the real thing. Out of scope.
+
+QUESTIONS FOR THE OPERATOR
+--------------------------------------------------------------------
+Carried from FW16 and now discharged: Q42 (R150, done), Q43 (R151,
+confirmed), Q44 (R152, done). No FW16 question remains open.
+
+Q45. THE BREADCRUMB REPEATS THE H1. FD13 draws a short label
+     ("Regle des 40 %"); the template renders the full title, so a reader
+     meets a 46-character title twice before the first sentence. Fixing
+     it means a `breadcrumb` field in the frontmatter contract - short,
+     required, permanent like the slug - which is a contract change I did
+     not make mid-task. Add it in FW18, or accept the repetition?
+
+Q46. THE PRODUCT'S FRENCH HAS NO ACCENTS. Every string in lib/fr is
+     written unaccented, and against the articles it now reads as
+     misspelling rather than as a style: "Derniere verification",
+     "Questions frequentes", "Chaque regle citee". This is the most
+     damaging thing on the guides surface and it is not fixable inside
+     FW17 - it is twelve copy files, it moves nearly every baseline in
+     the product, and each file is TODO-COPY pending a reviewer.
+     Proposed: one sweep, its own task, before any guide is indexed.
+
+Q47. TWO VERIFIED FACTS HAVE NO KEY. The mission travel-day rules and the
+     six Geneva worked examples are both recorded VERIFIED in
+     docs/regulatory-sources.md and neither has a row in the constants
+     table, so neither has an id in SOURCE_IDS - and under R146 an
+     article cannot cite what has no key. Both are declared under
+     missionCapDays because they are published on the same ge.ch page
+     that row 2 cites. Should SOURCE_IDS gain rows for them? It would add
+     rows to /sources, which is why I did not.
+
+Q48. DataGrid's TOTAL RULE IS THE SEVENTH ALIAS. It draws a 2 px
+     border-top above a tfoot total from --size-input-border-focus -
+     neither an input ring nor a notice accent. R69's shape at one site.
+     Its own token, or leave it?
+
+Q49. TWO OF TWO COMPARISON TABLES FAILED AT 320 dp in the shape FD13
+     draws them. Transposing works and reads well, but it is a per-author
+     decision made twice. Should the kit gain a responsive table - a
+     scroll container, or a stacking rule below a breakpoint - before
+     FW18 writes four more articles?
+
+Q50. FD13's INLINE CTA CARD DOES NOT EXIST IN THE KIT. It is drawn as a
+     white card with a line of prose and a primary button; the articles
+     use a prose link instead. SPEC 9.5's requirement is met either way.
+     Build the component in FW18, or is the prose link the answer?
+
+Q51. THE REVIEWER FIELD SAYS "l'equipe frontalier". FD13's placeholder is
+     "[nom du relecteur], expert-comptable" and no expert has reviewed
+     anything - docs/regulatory-sources.md says LEGAL REVIEW PENDING in
+     its first line. So the chip reads "Relu par l'equipe frontalier",
+     which is true and is not what FD13 intends. What should it say until
+     Checkpoint E?
+
+R47. Still open, still the operator's. Not raised.
+
+FINAL VERIFICATION
+--------------------------------------------------------------------
+  pnpm gate:changed   typecheck, lint, test, build, test:e2e, test:visual
+                      test:         2306 passed
+                      test:e2e:      166 passed
+                      test:visual:    96 passed
+  pnpm gate:clean     install, typecheck and build on what git would hand
+                      a fresh clone, with the known secrets stripped
+  pnpm size           all gated routes pass GATE A and GATE B
+  pnpm lighthouse     3 URLs, all four categories at 100, floors asserted
+
+PUSH PROOF
+--------------------------------------------------------------------
+  9569b5a  FW17: R146 - a claim names its source or it is not written
+  41ee6cd  FW17: R147 - no number is typed twice
+  de2590f  FW17: R153, and what the reviewer is asked about rows 6 and 7
+  db80906  FW17: French typography in content, and the selector that had
+           to see it
+  5181465  FW17: R126 and R147 reach what an author actually types
+  8b5d6f3  FW17: the pillar article on the 40 % rule
+  acf2baf  FW17: the 49,9 % social threshold cluster
+  1d498be  FW17: the mission-days cluster
+  151aaca  FW17: mesh green, hub, contextual links resolve
+  3428ef1  FW17: --size-notice-accent, the token R150 asked for
+  f8bba69  FW17: a11y, baselines, size, read-through
+
+  All pushed to origin/main.
+
+CI green on origin/main at f8bba69, the last code commit:
+  run 35022117244
+  https://github.com/kaitmax/Frontalier/actions/runs/35022117244
+
+END OF REPORT-FW17
