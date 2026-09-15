@@ -1,0 +1,317 @@
+FW17b SESSION PROMPT - frontalier
+Paste this entire prompt as the first message of a fresh Claude Code
+session, opened at the repository root. Run after FW17 and BEFORE FW18.
+
+The ordering is not a preference. FW18 writes four more articles whose
+copy would inherit the defect this task fixes, and every baseline FW18
+creates would then have to be regenerated a second time.
+
+====================================================================
+PRE-STEP RULINGS (apply verbatim)
+====================================================================
+R0 (this session runs with the operator's FW17 verdict: ACCEPTED). Read
+   REPORT-FW17.txt in full first, and in particular its READ-THROUGH
+   section, which is what produced this task. Carry every open question
+   forward verbatim into this report's QUESTIONS section.
+
+R1. CI green on origin/main: verify, record the run URL.
+R2, R7-R8, R10-R13, R15-R153 (carried). The engine is closed.
+   R9: you own document edits.
+
+R154 (new - A MECHANISM IS PROVEN TO DELIVER, NOT PROVEN NOT TO FAIL).
+   Every substitution, interpolation or generation step gets a POSITIVE
+   test: a known input produces the known rendered output, asserted
+   against the served HTML. The same shape as R133's positive-signal
+   rule, one layer up.
+   It exists because FW17 found that next-mdx-remote defaults blockJS to
+   TRUE and DELETES every MDX expression. Every guard passed because
+   there was nothing to find: the build succeeded, the claims resolved,
+   and the typed-number scan found no typed figure BECAUSE THE FIGURE HAD
+   BEEN DELETED. The guard verified the absence of the wrong thing rather
+   than the presence of the right one, and the next baseline would have
+   photographed the hole and certified it.
+
+R155 (new - lib/fr IS AUTHORITATIVE AND FULLY ACCENTED). ASCII in a
+   relay prompt is ILLUSTRATIVE, never a source. The prompt's spelling is
+   a transport constraint; any copy taken from one is re-accented before
+   it lands. A guard enforces it: a forbidden-forms list of the
+   unaccented spellings that actually occur, failing on any of them in
+   lib/fr or in content/guides.
+   NOT A FRENCH DICTIONARY - a list of the words this product uses,
+   extended when one appears.
+   This completes the copy-integrity family: R91 typography, R126
+   apostrophes, R153 name-don't-quote, R155 accents. Four guards on one
+   surface, each added after it was breached.
+
+R47. Still open, still the operator's.
+
+====================================================================
+CONTEXT
+====================================================================
+Project: frontalier. You are executing FW17b ONLY: a copy-integrity
+sweep on the French, plus the two smaller findings FW17's read-through
+produced. No new content. No new articles.
+
+WHY IT EXISTS. FW17 shipped three articles in correct, fully accented
+French and they render against chrome that is not: the first chip of
+every article reads "Derniere verification" beside "La regle des 40 % de
+teletravail" set correctly in the title. In French that is spelling, not
+typography - "ou" and the accented form are different words. A product
+that looks like it does not speak the language it is selling in.
+
+THE CAUSE IS KNOWN and it is in the process rather than in the code: the
+relay prompts are pure ASCII because prompts are, and copy was
+transcribed out of them into lib/fr.
+
+--------------------------------------------------------------------
+WHAT IS ALREADY MEASURED - do not re-derive this
+--------------------------------------------------------------------
+The FW17 session measured the blast radius after writing the report, and
+the report's own estimate was WRONG. REPORT-FW17.txt says "twelve copy
+files ... nearly every baseline in the product". The real figure:
+
+  13 occurrences of 10 forms, in ONE file: lib/fr/guides.ts
+
+The other 23 files of lib/fr are correctly accented already - cantons.ts
+has Geneve, Bale and Neuchatel with their accents, and cgu.ts writes
+"journees que vous declarez" correctly. The defect is concentrated in the
+file FW16 wrote, which is the file whose copy came out of a relay prompt.
+That corroborates the diagnosis exactly.
+
+The forms found, all in lib/fr/guides.ts unless noted:
+
+  derniere x2    verification x2   teletravail x2   etes x1
+  regle x1       citee x1          reglementaires x1
+  reference x1   separement x1     frequentes x1
+
+TWO METHODOLOGICAL TRAPS, both hit and both recorded so this session
+does not hit them again:
+
+ 1. A LIST DERIVED BY STRIPPING ACCENTS FROM THE ARTICLES IS WRONG. Run
+    that way, the top three proposals are votre -> the accented form,
+    des -> the accented form, and sur -> the accented form. All three
+    unaccented spellings are CORRECT FRENCH and common. Also correct and
+    proposed: compte, entre, note, passe, donne, demande, compare,
+    tranche, copie, valide, and the verb forms horodate and genevoise.
+    A guard containing any of them is a guard somebody weakens.
+    THE LIST MUST BE CURATED to forms that no correct French word spells
+    that way. The operator's seed - derniere, verification,
+    reglementaire, teletravail, apres, etre, frontaliere, declaration,
+    annee - is the right shape.
+
+ 2. IDENTIFIERS LIVE INSIDE QUOTES TOO. A naive scan of quoted spans
+    flags "/releve-annuel" (a route path), "regime-lost" (a status id),
+    "NEGATIVE_DAYS" (an error code) and "/confidentialite" (a route
+    path). In content/guides it flags the slug and every href, and SPEC
+    14 makes slugs PERMANENT and unaccented.
+    THE DISCRIMINATOR THAT WORKED: prose contains a space. Skipping any
+    span with no space removed every one of those false positives and
+    kept every true one. Use it, or something better, but state which.
+
+Read first: CLAUDE.md, README.md, SPEC sections 9.5 and 20;
+REPORT-FW17.txt; tests/unit/fr/copy-codepoints.test.ts and
+tests/unit/fr/french-typography.test.ts (R91 and R126 - this guard is
+their sibling and shares their scanner); tests/support/quoted-spans.ts.
+
+====================================================================
+STANDING PROTOCOL (identical in every FW / AN prompt)
+====================================================================
+1. SESSION SCOPE. FW17b only. Do not start FW18. Write no new content.
+2. INCREMENT CYCLE. Green after EVERY increment, with the suites
+   R132/R140/R144 select. Copy changes select the browser suites.
+3. COMMIT ONLY ON GREEN, chained with && (R15).
+4. COMMITS. "FW17b: <increment title>".
+5. SIMPLICITY FIRST. This is a spelling sweep and one new guard. If it
+   starts to need a new abstraction, say so before building it.
+6. TEST-FIRST. The guard is written before the spelling is corrected, and
+   the report shows the RED with the forms it found. A guard that passed
+   on its first run against a known-broken file is evidence of nothing.
+7. FRENCH IS THE PRODUCT HERE. Every correction is to CORRECT FRENCH, not
+   to plausible French. Where a word's accent changes its meaning, the
+   meaning decides.
+8. UI DISCIPLINE. Tokens; no new component; no layout change. A string
+   that gets longer may reflow - that is expected and is what the
+   baselines record.
+9. QUESTIONS. Pause and ask. In particular: any string whose correct
+   accentuation you are not sure of is a question, never a guess.
+10. EXIT ARTIFACT. REPORT-FW17b.txt, committed and pushed.
+
+====================================================================
+INCREMENT 0 - R155: THE GUARD, AND THE ACCENTS IT REFUSES
+====================================================================
+One commit, because the guard cannot be committed red and the spelling
+cannot be committed unguarded. The RED goes in the report.
+
+0a. The guard, test-first. tests/unit/fr/accents.test.ts, beside its
+    three siblings.
+    - A CURATED list of forbidden forms. Start from the operator's seed
+      and the ten forms measured above; add only forms that no correct
+      French word spells that way. The list is the test's subject, so it
+      carries its own comment saying why each questionable entry is on
+      it - and why votre, des, sur, compte and entre are NOT.
+    - Scanned over lib/fr/*.ts quoted spans on non-comment lines (reuse
+      tests/support/quoted-spans.ts - a fourth hand-written scanner is
+      the shape this repository keeps finding) AND over
+      content/guides/*.mdx frontmatter and body, with MDX comments
+      stripped as R91's and R147's scans already do.
+    - Identifiers excluded, with the rule stated and tested: a span with
+      no space is not prose. Plant "/releve-annuel", "regime-lost" and
+      "NEGATIVE_DAYS" and assert none is reported.
+    - NON-VACUITY: the detector must be shown to fire. Plant each of at
+      least three forms in a sample string and capture them.
+    RED REQUIRED: run it before correcting anything and paste the run.
+    It must report the 13 occurrences.
+
+0b. The corrections, in lib/fr/guides.ts and anywhere else the guard
+    reports. Correct French, checked word by word. Note that the chip
+    reads "Derniere verification : {date}" and the correct form carries
+    two accents, and that R91's no-break space before the colon is
+    already there and must survive.
+
+0c. THE OTHER DIRECTION, and this is the half that makes it a guard
+    rather than a sweep: assert that lib/fr CONTAINS accented French, by
+    codepoint, in a count that would collapse if somebody "fixed" a
+    failure by removing accents instead of adding them. The same
+    non-vacuity shape as copy-codepoints.test.ts's apostrophe count.
+
+Commit: "FW17b: R155 - lib/fr is authoritative and fully accented".
+
+====================================================================
+INCREMENT 1 - Q45: breadcrumbLabel
+====================================================================
+The operator's answer to Q45 was yes, folded in here rather than done
+piecemeal in FW18.
+
+THE DEFECT, from FW17's read-through: the breadcrumb renders
+frontmatter.title, so a reader meets the full 46-character title twice,
+stacked, before the first sentence. FD13 draws a SHORT label -
+"Guides > Regle des 40 %".
+
+ - A `breadcrumbLabel` field in lib/guides/frontmatter.ts. Required,
+   short (assert a maximum), and permanent in the same sense as the slug
+   - it is part of a URL's presentation even though it is not the URL.
+ - All four articles get one, the fixture included.
+ - The template renders it as the current crumb.
+ - A test that it is NOT equal to the title, on every article. That is
+   the whole point of the field, and a field somebody fills by copying
+   the title is the field not existing.
+ - R147 applies to it as to every other frontmatter field. FD13's own
+   example carries the figure, which is the same collision the title had:
+   decide it the way FW17 decided the title, and say which.
+
+Commit: "FW17b: a breadcrumb that is not the title again".
+
+====================================================================
+INCREMENT 2 - R154: THE AUDIT, AND WHAT IT FOUND
+====================================================================
+R154 says to audit the other mechanisms. FW17's session did the audit and
+FOUR OF THE FIVE ARE CLEAN - do not redo them, confirm and move on:
+
+  claims resolution  CLEAN. The detector is planted and captured in
+                     "R146 refuses what it is for", allGuides() is
+                     asserted non-empty, and /sources renders the actual
+                     RuleSet values with tests/unit/pages/sources.test.tsx
+                     asserting each one appears.
+  FAQ identity       CLEAN. e2e asserts served JSON-LD against the served
+                     accordion AND asserts questions.length > 0 first.
+  rail / zones       CLEAN. rail-render.test.ts asserts known input ->
+                     known bytes, down to width="130.021".
+  sitemap            CLEAN. routes.test.ts holds a HARDCODED expected
+                     list, and e2e compares the served XML to liveRoutes()
+                     and fetches every URL for a 200.
+
+THE ONE THAT IS NOT CLEAN was not on the list, and it is the same shape
+as the blockJS defect:
+
+  THE GUIDES METADATA CHIPS. The chain is
+    frontmatter.lastReviewed -> formatDate -> GUIDES_COPY.reviewedOn
+    -> the rendered chip
+  and NOTHING asserts the chip's rendered text carries the article's
+  date. tests/unit/pages/guide-section-order.test.tsx passes the literal
+  '09.09.2026' into a COPY of the head markup; e2e asserts only that
+  [data-chips] EXISTS and sits in the right position. The same is true of
+  reviewedBy(reviewer) and readingTime(readingMinutes(body)), and of the
+  hub, which builds the same sentence for every entry.
+
+  If the interpolation broke, the chip would read "Derniere verification
+  : " - grammatical, plausible, and every suite green. SPEC 9.5 REQUIRES
+  it: "every guide carries a derniere verification date".
+
+ - Assert, against served HTML, that each article's chip carries that
+   article's own lastReviewed formatted by formatDate - taken from the
+   registry, not written as a literal, so the test cannot agree with a
+   broken renderer.
+ - The same for the reviewer and for the reading time, which must be a
+   positive integer and not zero.
+ - The same for the hub's per-entry date.
+ - Then look for the same shape once more in lib/fr's other
+   argument-taking copy functions and report what you find. R154 is a
+   standing rule now; this increment is where its backlog is worked, not
+   where it ends.
+
+Commit: "FW17b: R154 - the chips are proven to deliver".
+
+====================================================================
+INCREMENT 3 - BASELINES, A11Y, READ-THROUGH
+====================================================================
+- Every baseline the corrections move, regenerated with reasons under
+  R135, each opened and read. EXPECTED BLAST RADIUS, from the measured
+  file list: the guides surface - hub, article, pilier,
+  cluster-missions, article-faq-ouverte at both viewports - plus any
+  page whose footer or shell copy changed. It is roughly a dozen files,
+  NOT the whole set of 91. If it comes out much larger, stop and say so:
+  that means a string changed that this task did not intend to change.
+- pnpm test:a11y and the 320 dp check: a longer accented string can
+  reflow and an accented capital can change a line box.
+- THE READ-THROUGH, again, and this time the thing being read is the
+  CHROME rather than the prose: every chip, every button, every footer
+  line, on an article and on the calculator, read as French. FW17's
+  read-through found this defect precisely because it read the rendered
+  page rather than the source.
+- pnpm size, to confirm nothing moved (it should not - this is text).
+
+Commit: "FW17b: baselines, a11y, read-through".
+
+====================================================================
+OUT OF SCOPE FOR FW17b
+====================================================================
+- Any new article. FW18 writes the remaining four.
+- Any engine change, any new component, any layout change.
+- The remaining FW17 questions: Q47 (two verified facts with no source
+  key), Q48 (DataGrid's total rule), Q49 (a responsive table in the kit),
+  Q50 (FD13's inline CTA card), Q51 (the reviewer's name). Carry them
+  forward; they are FW18's or the operator's.
+- Accents in relay prompts, reports and commit messages. Those stay pure
+  ASCII - that is R155's own point.
+
+====================================================================
+FINAL VERIFICATION
+====================================================================
+pnpm gate:changed && pnpm test:e2e && pnpm test:visual && pnpm test:a11y
+&& pnpm test:runtime
+Green in one run; CI green on origin/main after the final push.
+
+====================================================================
+REPORT FORMAT - REPORT-FW17b.txt (pure ASCII, committed and pushed)
+====================================================================
+SUMMARY
+PRECONDITIONS      R0: FW17 report read; CI URL.
+THE GUARD          R155's forbidden-forms list, why each questionable
+                   entry is on it, and why the correct-French forms are
+                   not. The RED run with the forms it found.
+CORRECTIONS        Every string changed, before and after.
+BREADCRUMB         Q45 discharged: the field, its constraint, and how
+                   R147 was decided for it.
+R154               The audit result restated, and the chips proved to
+                   deliver - with the assertion that now fails if an
+                   interpolation empties.
+BASELINES          Regenerated files with reasons (R135), and the
+                   measured blast radius against the expected one.
+READ-THROUGH       The chrome, read as French.
+SIZE
+DEVIATIONS
+NOTICED BUT NOT TOUCHING
+QUESTIONS FOR THE OPERATOR   Including every carried FW17 question.
+PUSH PROOF
+
+END OF FW17b PROMPT
