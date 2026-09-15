@@ -1,0 +1,165 @@
+---
+title: "Le seuil social de 49,9 % et le certificat A1"
+description: "Le second seuil, celui de la sécurité sociale : ce qu’il déclenche, à partir de quand un certificat A1 entre en jeu, et pourquoi il ne se confond pas avec le plafond fiscal."
+slug: seuil-social-49-9-pourcent
+cluster: cluster
+related:
+  - teletravail-frontalier-40-pourcent
+lastReviewed: "2026-09-09"
+reviewer: "l’équipe frontalier"
+faq:
+  - question: "Le seuil social et le plafond fiscal sont-ils le même chiffre ?"
+    answer: "Non. Ce sont deux seuils distincts, issus de deux textes différents, et le seuil social est le plus élevé des deux. On peut dépasser le plafond fiscal sans approcher le seuil social."
+  - question: "Que se passe-t-il exactement si je franchis le seuil social ?"
+    answer: "Votre affiliation à la sécurité sociale cesse d’être suisse et devient française. Ce n’est pas une question d’impôt : c’est le régime auquel vous cotisez et auprès duquel vous êtes couvert qui change."
+  - question: "Ai-je besoin d’un certificat A1 ?"
+    answer: "À partir du seuil de télétravail où l’accord-cadre européen s’applique, oui : c’est le document qui atteste du maintien de l’affiliation suisse. En dessous de ce seuil, c’est le règlement européen ordinaire qui gouverne, et l’accord-cadre n’est pas l’instrument en question."
+  - question: "Puis-je dépasser le plafond fiscal sans franchir le seuil social ?"
+    answer: "Oui, et c’est le cas le plus fréquent. Le plafond fiscal est le plus bas des deux : on le franchit d’abord. Le calculateur suit les deux seuils séparément pour cette raison."
+  - question: "Le calculateur avertit-il trop tôt près du seuil social ?"
+    answer: "Légèrement, et c’est délibéré. Le texte de l’accord-cadre et le chiffre publié par l’autorité suisse ne disent pas tout à fait la même chose ; le produit retient le plus prudent des deux. La section consacrée à cette lecture l’explique et renvoie aux sources."
+claims:
+  - key: socialCeiling
+    says: "Au-delà du maximum publié par l’autorité suisse, l’affiliation à la sécurité sociale passe de la Suisse à la France ; le maintien suisse est conditionné à un certificat A1 valable."
+  - key: a1ThresholdRate
+    says: "L’accord-cadre européen sur le télétravail s’applique à partir d’une part de télétravail donnée ; en dessous, c’est l’article 13 du règlement (CE) 883/2004 qui gouverne."
+  - key: P2
+    unresolved: true
+    says: "Le texte de l’accord-cadre parle d’une part inférieure à cinquante pour cent tandis que l’autorité publie un maximum plus bas ; le produit retient le maximum publié et avertit donc un peu tôt entre les deux."
+---
+
+{/*
+  CLUSTER, on the second threshold. SPEC 9.5: "49.9% and the A1 certificate".
+
+  P2 IS THE REASON THIS ARTICLE IS DIFFICULT AND IT IS WRITTEN AS R146 CASE
+  (b): named as unresolved, in its own section, linking /sources. The product
+  over-warns between the two readings and says so - a caveat a reader can only
+  act on if they know which direction the error runs.
+
+  NOTE THE ASYMMETRY R153 ASKS TO BE VISIBLE: the prose interpolates {social}
+  and {a1Threshold} from RuleSet, the FAQ - which is YAML and cannot - names
+  the rules instead. The claims field does the same.
+*/}
+
+Un frontalier qui télétravaille suit deux seuils, pas un. Le premier est
+fiscal et décide de l’endroit où vos journées sont imposées. Le second est
+social : il décide du pays dont vous relevez pour la sécurité sociale, et il
+se franchit plus haut.
+
+Ce second seuil est moins connu, et sa conséquence est plus lourde à défaire.
+Un dépassement fiscal se règle en impôt ; un basculement d’affiliation change
+la caisse à laquelle vous cotisez et celle auprès de laquelle vous êtes
+couvert.
+
+<Encadre titre="En bref">
+
+- Seuil de sécurité sociale : {social} de télétravail
+- Conséquence d’un franchissement : l’affiliation passe en France
+- Seuil d’application de l’accord-cadre : {a1Threshold} de télétravail
+- En dessous : article 13 du règlement (CE) 883/2004
+- Plafond fiscal, à ne pas confondre : {fiscal}
+
+</Encadre>
+
+## Ce que change le seuil social
+
+Tant que votre part de télétravail reste sous le seuil, votre affiliation
+reste suisse. Au-delà, elle devient française. Le seuil porte sur la même
+grandeur que le plafond fiscal - la part de votre temps de travail effectuée
+depuis la France - mais il relève d’un autre texte et d’une autre autorité.
+
+Le maintien de l’affiliation suisse au-dessus d’une certaine part de
+télétravail n’est pas automatique : il suppose un certificat A1 en cours de
+validité. C’est ce document qui matérialise, pour votre employeur comme pour
+les caisses, le régime dont vous relevez.
+
+## Le chiffre exact, et ce qui reste ouvert
+
+<Avertissement>
+
+Deux lectures coexistent et le produit retient la plus prudente. Le texte de
+l’accord-cadre européen parle d’une part de télétravail **inférieure à 50 %**.
+L’autorité suisse, elle, publie un **maximum de {social}**. Entre les deux, il
+existe un intervalle étroit où un frontalier est légalement en dessous de la
+limite et où ce site l’avertit quand même.
+
+Le produit avertit donc un peu tôt plutôt qu’un peu tard, parce qu’un
+avertissement de trop se vérifie et qu’un avertissement manquant se découvre
+après coup. Cette lecture est enregistrée comme ouverte sous la référence P2
+et attend une revue juridique : voir [sources et vérifications](/sources).
+
+</Avertissement>
+
+Concrètement, la bande concernée est mince et n’existe que parce que le calcul
+est tronqué à deux décimales. Si votre part de télétravail vous place dedans,
+prenez l’avertissement pour ce qu’il est : le signal qu’il faut vérifier votre
+situation, et non la constatation d’un dépassement.
+
+## Le certificat A1, et à partir de quand il compte
+
+L’accord-cadre européen sur le télétravail transfrontalier ne s’applique pas à
+toutes les situations. Il gouverne à partir d’une part de télétravail de
+{a1Threshold} et jusqu’au seuil social. En dessous de {a1Threshold}, c’est
+l’article 13 du règlement (CE) 883/2004 qui s’applique, et l’A1 délivré au
+titre de l’accord-cadre n’est pas l’instrument en question.
+
+La distinction a des conséquences pratiques. Un frontalier qui télétravaille
+rarement n’a pas à se procurer un document au titre d’un accord qui ne le
+concerne pas ; un frontalier qui télétravaille régulièrement, lui, a intérêt à
+vérifier que le sien est en cours de validité et couvre l’année en question.
+
+## Pourquoi ce n’est pas le plafond fiscal
+
+Ce sont deux règles séparées, et les confondre coûte cher dans les deux sens :
+croire que le plafond fiscal protège l’affiliation, ou croire que le seuil
+social autorise un dépassement fiscal.
+
+{/*
+  TWO COLUMNS, MEASURED. The three-column form - a criteria column and one per
+  seuil - came to 322 px inside a 320 dp viewport, which R127 refuses. Two
+  pixels is still a page that scrolls sideways, and the pillar's table hit the
+  same wall at 34 px. One row per seuil says the same thing and fits.
+*/}
+
+<DataGrid
+  caption="Les deux seuils, et ce que chacun décide"
+  columns={[
+    { key: "seuil", header: "Seuil" },
+    { key: "change", header: "Ce qui change au-delà" },
+  ]}
+  rows={[
+    {
+      key: "fiscal",
+      cells: {
+        seuil: `Plafond fiscal, ${fiscal}`,
+        change: "L’imposition de vos journées",
+      },
+    },
+    {
+      key: "social",
+      cells: {
+        seuil: `Seuil social, ${social}`,
+        change: "Le pays de votre affiliation",
+      },
+    },
+  ]}
+/>
+
+Le plafond fiscal se franchit le premier, puisqu’il est le plus bas. Il est
+donc possible - et courant - d’être au-dessus du premier et loin du second. Le
+détail de ce que le dépassement fiscal entraîne, qui n’est pas le même selon
+le canton, est traité dans
+[le guide du plafond fiscal](/guides/teletravail-frontalier-40-pourcent).
+
+## Ce que le calculateur en fait
+
+Le calculateur suit les deux seuils dans le même calcul et vous dit lequel est
+le plus proche. Il ne remplace ni votre employeur ni votre caisse : il vous
+donne le chiffre que vous pourrez leur opposer, avec la date à laquelle il a
+été établi. [Calculez vos jours restants](/calculateur-teletravail-frontalier).
+
+Une précision qui compte pour ce seuil comme pour l’autre : ce sont les jours
+que le calculateur compte contre le plafond qui entrent dans le calcul, jours
+de mission crédités compris. Un frontalier qui télétravaille peu mais voyage
+beaucoup pour son employeur n’est donc pas dans la situation que son seul
+télétravail laisse croire.

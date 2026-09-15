@@ -102,10 +102,25 @@
   line-height: var(--type-body-line);
 
   // The banner's own paragraphs, which arrive through the MDX map.
+  //
+  // MARGIN BETWEEN THEM, NONE AT THE ENDS - and the first version had
+  // `margin: 0`, which FW17's first real article exposed. FD13 draws this
+  // banner with one paragraph; both of the pillar's hedges need two, because
+  // R146 case (b) asks an article to state the uncertainty AND what the
+  // product does about it. Under `margin: 0` the two ran together into a
+  // single block of amber text with no break, which is unreadable and looks
+  // like a rendering fault.
+  //
+  // Found by opening the page, which is the only thing that finds this class
+  // of defect: every element was individually correct.
   p {
-    margin: 0;
+    margin: 0 0 var(--space-3);
     color: inherit;
     font-size: inherit;
     line-height: inherit;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
   }
 }
