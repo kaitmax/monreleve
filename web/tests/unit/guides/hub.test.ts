@@ -54,6 +54,22 @@ describe('the hub lists exactly the published guides', () => {
     expect(slugs).toContain('teletravail-frontalier-40-pourcent');
   });
 
+  it('gives every article a breadcrumb label that is NOT its title (Q45)', () => {
+    // THE WHOLE POINT OF THE FIELD. FW17's read-through found the breadcrumb
+    // rendering frontmatter.title, so a reader met the full title twice,
+    // stacked, before the first sentence - and FD13 draws a short label.
+    //
+    // A FIELD SOMEBODY FILLS BY COPYING THE TITLE IS THE FIELD NOT EXISTING,
+    // which is why this asserts the difference rather than the presence. The
+    // schema's max(40) enforces "short"; this enforces "not the title".
+    for (const guide of allGuides()) {
+      const { title, breadcrumbLabel, slug } = guide.frontmatter;
+
+      expect(breadcrumbLabel, slug).not.toBe(title);
+      expect(breadcrumbLabel.length, `${slug} label is not shorter`).toBeLessThan(title.length);
+    }
+  });
+
   it('lists nothing that is not a declared route', () => {
     // SPEC 14 makes a guide slug permanent, and lib/content/routes.ts is
     // where the product's URLs are declared once. An article on disk whose

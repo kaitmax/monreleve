@@ -34,6 +34,7 @@ const guide = (
     title: `Un titre pour ${slug}`,
     description: 'Une description assez longue pour passer le contrat de frontmatter.',
     slug,
+    breadcrumbLabel: 'Un guide',
     cluster,
     related: patch.related ?? [],
     lastReviewed: '2026-09-09',

@@ -91,6 +91,7 @@ describe('the slug is the file name (SPEC 14)', () => {
         'title: "Un titre assez long pour passer"',
         'description: "Une description assez longue pour etre utile dans un resultat de recherche."',
         'slug: un-autre-nom',
+        'breadcrumbLabel: "Un guide"',
         'cluster: cluster',
         'lastReviewed: "2026-09-09"',
         'reviewer: "FW16"',

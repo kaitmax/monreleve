@@ -25,6 +25,7 @@ const VALID = {
   description:
     'Une description assez longue pour etre utile dans un resultat de recherche, avec du contexte.',
   slug: 'un-guide-de-demonstration',
+  breadcrumbLabel: 'Un guide',
   cluster: 'cluster',
   related: ['un-autre-guide'],
   lastReviewed: '2026-09-09',

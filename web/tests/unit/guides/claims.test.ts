@@ -152,6 +152,7 @@ describe('R146 refuses what it is for', () => {
     description:
       'Une description assez longue pour passer le contrat de frontmatter sans se plaindre.',
     slug: 'un-article',
+    breadcrumbLabel: 'Un guide',
     cluster: 'cluster' as const,
     related: [],
     lastReviewed: '2026-09-09',

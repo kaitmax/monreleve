@@ -165,7 +165,14 @@ export default async function GuidePage({ params }: RouteParams) {
               <li>
                 <a href="/guides">{GUIDES_COPY.hubTitle}</a>
               </li>
-              <li aria-current="page">{frontmatter.title}</li>
+              {/*
+                THE SHORT LABEL, NOT THE TITLE (Q45). Rendering the title
+                here put it on screen twice, stacked, immediately above the
+                h1 - 46 characters of breadcrumb over the same 46 characters
+                of heading. FD13 draws "Guides > Regle des 40 %", and
+                frontmatter.breadcrumbLabel is capped so it stays a label.
+              */}
+              <li aria-current="page">{frontmatter.breadcrumbLabel}</li>
             </ol>
           </nav>
 

@@ -99,6 +99,24 @@ export const frontmatterSchema = z.object({
    */
   related: z.array(z.string()).default([]),
 
+  /**
+   * FD13's breadcrumb: `Guides > Regle des 40 %`. A SHORT label, not the
+   * title.
+   *
+   * RULING Q45, AND THE DEFECT WAS FOUND BY READING THE PAGE. The template
+   * rendered `title` as the current crumb, so a reader met
+   * "La regle des 40 % de teletravail pour les frontaliers" twice, stacked,
+   * before the first sentence. It was invisible while the only article was a
+   * fixture nobody read.
+   *
+   * REQUIRED, AND CAPPED. Optional would mean falling back to the title,
+   * which is the defect with a default; the cap is what makes it a LABEL. It
+   * is not permanent the way a slug is - SPEC 14 governs URLs and this is
+   * presentation - but it changes what a reader sees in a navigation
+   * landmark, so it is changed deliberately.
+   */
+  breadcrumbLabel: z.string().min(3).max(40),
+
   /** R28, and SPEC 9.5's "derniere verification" date. */
   lastReviewed: z.string().regex(ISO_DAY, 'lastReviewed is an ISO day, e.g. 2026-09-09'),
 
