@@ -25,6 +25,8 @@
 // tests/unit/tokens/contrast.test.ts - which caught a real 2,58:1 defect on
 // this very surface - and the 320 dp overflow by e2e.
 
+import { compileMDX } from 'next-mdx-remote/rsc';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { cleanup, render } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { axe } from 'vitest-axe';
@@ -32,7 +34,11 @@ import * as matchers from 'vitest-axe/matchers';
 import GuidesHubPage from '@/app/(public)/guides/page';
 import { GUIDES_COPY } from '@/lib/fr/guides';
 import { anchorFor, headingsIn } from '@/lib/guides/headings';
-import { allGuides } from '@/lib/guides/registry';
+import { allGuides, publishedGuides } from '@/lib/guides/registry';
+import type { Guide } from '@/lib/guides/registry';
+import { mdxComponents } from '@/lib/guides/mdx-components';
+import { MDX_OPTIONS } from '@/lib/guides/mdx-options';
+import { guideScope } from '@/lib/guides/scope';
 import { Faq } from '@/lib/ui/react/Faq/Faq';
 import { GuideCta } from '@/lib/ui/react/GuideCta/GuideCta';
 import { PublicShell } from '@/lib/ui/react/PublicShell/PublicShell';
@@ -123,6 +129,101 @@ describe('the hub has no axe violations', () => {
     );
 
     expect(await axe(container)).toHaveNoViolations();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// THE REAL ARTICLES, COMPILED. FW17.
+//
+// Everything above renders the article's FURNITURE - outline, FAQ, closing
+// card - because this file was written when the only article was a fixture
+// made of headings, paragraphs and links. FW17's three real guides use the
+// half of the kit that had never been rendered anywhere: the Encadre summary
+// block, the Avertissement banner and a DataGrid comparison table.
+//
+// Those are exactly where the accessibility defects on this surface would be.
+// A table with no accessible name is announced as "table"; an aside with no
+// role is furniture a screen reader walks past; a banner whose text relies on
+// colour alone is unreadable. None of it was covered.
+//
+// AND IT CAN BE COVERED, which FW16 did not know: compileMDX is an async
+// function, not a server component, so a test can await it. The page is what
+// jsdom cannot run. So each article is compiled with the REAL component map
+// and the REAL scope, rendered to HTML, and axed as it will be served.
+// ---------------------------------------------------------------------------
+
+const YEAR = 2026;
+
+/** Every article a reader can reach, compiled as the route compiles it. */
+async function compiledArticle(guide: Guide): Promise<string> {
+  const { content } = await compileMDX({
+    source: guide.body,
+    components: mdxComponents({ file: guide.file, headings: headingsIn(guide.body) }),
+    options: { ...MDX_OPTIONS, scope: guideScope(YEAR) },
+  });
+
+  return renderToStaticMarkup(content);
+}
+
+describe('every published article passes axe as compiled', () => {
+  const published = publishedGuides();
+
+  it('found the three articles, so nothing below passes vacuously', () => {
+    expect(published.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it.each(published.map((guide) => [guide.frontmatter.slug, guide] as const))(
+    '%s',
+    async (_slug, guide) => {
+      const html = await compiledArticle(guide);
+      const container = document.createElement('div');
+
+      // The landmarks the route puts around the body, so a heading level or a
+      // nested landmark is judged in the arrangement a reader meets.
+      container.innerHTML = `<main><article><h1>${guide.frontmatter.title}</h1>${html}</article></main>`;
+      document.body.append(container);
+
+      try {
+        expect(await axe(container)).toHaveNoViolations();
+      } finally {
+        // REMOVED, AND THE FIRST VERSION DID NOT. afterEach(cleanup) unmounts
+        // testing-library renders and knows nothing about a node appended by
+        // hand, so each case left its <main> in the document and the next one
+        // was judged against two. axe reported landmark-no-duplicate-main on
+        // articles two and three - a real rule, a violation this test created.
+        //
+        // Worth keeping the note: a per-case fixture that leaks is how a suite
+        // starts reporting faults that belong to itself, and the first
+        // instinct on reading "more than one main landmark" was to go looking
+        // at the template.
+        container.remove();
+      }
+    },
+  );
+
+  it('actually rendered the kit, so the assertion is about more than prose', async () => {
+    // NON-VACUITY WITH TEETH. If the component map were not applied, the
+    // output would be plain HTML and every assertion above would still pass -
+    // which is the same failure R120 keeps naming. These three markers are
+    // the parts that had never been rendered anywhere before FW17.
+    const all = (await Promise.all(published.map(compiledArticle))).join('');
+
+    expect(all, 'no Encadre rendered').toContain('data-summary');
+    expect(all, 'no Avertissement rendered').toContain('data-warning');
+    expect(all, 'no DataGrid rendered').toContain('<table');
+  });
+
+  it('gives every comparison table an accessible name', async () => {
+    // A <caption> is the table's only name. Without one a screen reader
+    // announces "table" and the reader has to infer what it compares - and
+    // axe does not fail an unnamed table, so this is asserted directly.
+    for (const guide of published) {
+      const html = await compiledArticle(guide);
+      const tables = html.split('<table').length - 1;
+      const captions = html.split('<caption').length - 1;
+
+      expect(captions, `${guide.frontmatter.slug}: ${String(tables)} table(s)`).toBe(tables);
+    }
   });
 });
 

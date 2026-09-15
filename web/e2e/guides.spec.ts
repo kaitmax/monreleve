@@ -288,6 +288,53 @@ test.describe('the article template', () => {
     for (const answer of answers) expect(answer.length).toBeGreaterThan(40);
   });
 
+  test('the outline and the FAQ are both operable by keyboard alone', async ({ page }) => {
+    // ON A REAL ARTICLE, not the fixture: this is about the two controls a
+    // reader without a mouse actually uses, and the pillar is the longest
+    // document the product has.
+    //
+    // R136 MAKES THIS INTERESTING RATHER THAN ROUTINE. The guides ship zero
+    // client JavaScript, so the outline is anchors and the accordion is native
+    // <details>. Both are keyboard-operable BY DEFAULT - which is the whole
+    // argument for using them - and this is what proves the default has not
+    // been overridden by a tabindex, a role, or a click handler that only
+    // answers to a pointer.
+    await page.goto('/guides/teletravail-frontalier-40-pourcent');
+
+    // THE OUTLINE. Focus the first entry directly rather than tabbing from the
+    // top - the number of tab stops before it is the shell's business and
+    // would make this a test of the header.
+    const firstEntry = page.locator('[data-toc] a').first();
+
+    await firstEntry.focus();
+    await expect(firstEntry).toBeFocused();
+
+    const target = (await firstEntry.getAttribute('href')) ?? '';
+
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(new RegExp(`${target}$`));
+
+    // The heading it names is real and on screen, which is the difference
+    // between an outline that works and one that merely has links.
+    await expect(page.locator(`[data-article-body] ${target}`)).toBeInViewport();
+
+    // THE ACCORDION. Space is the key a <summary> answers to, and a closed
+    // answer must open without a pointer.
+    const firstQuestion = page.locator('[data-faq] summary').first();
+
+    await firstQuestion.focus();
+    await expect(firstQuestion).toBeFocused();
+
+    const details = page.locator('[data-faq] details').first();
+
+    expect(await details.evaluate((node: HTMLDetailsElement) => node.open)).toBe(false);
+
+    await page.keyboard.press('Space');
+
+    expect(await details.evaluate((node: HTMLDetailsElement) => node.open)).toBe(true);
+    await expect(details.locator('p').first()).toBeVisible();
+  });
+
   test('is noindex, because the fixture is not content', async ({ page }) => {
     // It is a real route so that tests and baselines can render it, and it
     // must never be indexed. Excluded from the sitemap by publishedGuides();

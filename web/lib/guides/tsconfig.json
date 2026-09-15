@@ -1,0 +1,25 @@
+{
+  // web/lib/guides/tsconfig.json
+  //
+  // THE SAME ONE SETTING, FOR THE SAME ONE REASON as lib/ui/react/tsconfig.json
+  // and app/tsconfig.json, whose comments carry the full story: the root sets
+  // "jsx": "preserve" because that is correct for Next, Next rewrites the
+  // field back to "preserve" on every build so it cannot be changed there, and
+  // vitest's transform reads the NEAREST tsconfig to the file it compiles.
+  //
+  // WHY lib/guides NEEDS ONE NOW. mdx-components.tsx is the MDX component map,
+  // and until FW17 nothing in a unit test imported it - the article's
+  // accessibility was checked by assembling its furniture from lib/ui/react
+  // rather than by compiling the article. FW17 compiles the real articles with
+  // the real map so that the Encadre, the Avertissement and the DataGrid are
+  // axed as they are served, and that makes this the first .tsx under
+  // lib/guides a test reaches. Without this file it fails to PARSE rather than
+  // fail an assertion, which is the confusing kind of red.
+  //
+  // `pnpm typecheck` and `next build` are untouched: tsc is invoked with the
+  // root config and does not consult nested ones.
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx"
+  }
+}

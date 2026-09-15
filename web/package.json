@@ -29,7 +29,7 @@
     "og:sync": "node scripts/og-sync.mjs",
     "size": "node scripts/check-budgets.mjs",
     "size:dev": "node scripts/build-dev-routes.mjs && node scripts/check-budgets.mjs --dev",
-    "lighthouse": "lhci autorun",
+    "lighthouse": "node scripts/lighthouse.mjs",
     "test:coverage": "vitest run --coverage --reporter=default --reporter=json --outputFile.json=test-results/vitest.json",
     "test:floor": "node scripts/check-suite-floor.mjs",
     "test:a11y": "vitest run lib/ui/react/accessibility tests/unit/pages/accessibility",

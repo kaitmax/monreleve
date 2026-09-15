@@ -26,6 +26,21 @@ const NARROW = { width: 320, height: 720 };
 const ROUTES = [
   ['the hub', '/guides'],
   ['the article', '/guides/fixture-modele-article'],
+
+  // THE THREE REAL ARTICLES, FW17, and adding them was not a formality: both
+  // comparison tables failed here the first time they were written. FD13
+  // draws the pillar's as three columns of French sentences, which comes to
+  // 334 px inside a 320 dp viewport and cannot be styled narrower - a table's
+  // min-content width is its longest words plus its padding. The social
+  // cluster's three-column form missed by two pixels, which is the same
+  // defect and easier to wave away.
+  //
+  // The fixture could never have caught it: it contains no table, no summary
+  // block and no banner. This is the R140 shape again - the guard was on the
+  // template, and the CONTENT is what has the fixed widths.
+  ['the pillar', '/guides/teletravail-frontalier-40-pourcent'],
+  ['the social cluster', '/guides/seuil-social-49-9-pourcent'],
+  ['the mission cluster', '/guides/jours-de-mission-hors-suisse'],
 ] as const;
 
 test.use({ viewport: NARROW });

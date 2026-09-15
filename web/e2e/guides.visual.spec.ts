@@ -31,6 +31,21 @@ interface VisualState {
 const STATES: readonly VisualState[] = [
   { id: 'hub', route: '/guides' },
   { id: 'article', route: FIXTURE },
+
+  // THE REAL ARTICLES, FW17. The fixture exercises the TEMPLATE - headings,
+  // paragraphs, links, the outline, the FAQ - and nothing else, because that
+  // is all it contains. It cannot photograph the half of the kit SPEC 9.5
+  // names: the bordered summary block, the warning banner, the comparison
+  // table. Until now no baseline held a picture of any of them.
+  //
+  // TWO ARTICLES RATHER THAN THREE, and the choice is not arbitrary. The
+  // pillar is the longest and carries every element once; the mission cluster
+  // is the only one with a three-row table and two banners in the same
+  // column, which is where spacing between stacked kit blocks shows. The
+  // social cluster is structurally a subset of the two and would be a third
+  // picture of the same decisions.
+  { id: 'pilier', route: '/guides/teletravail-frontalier-40-pourcent' },
+  { id: 'cluster-missions', route: '/guides/jours-de-mission-hors-suisse' },
   {
     // THE STATE NOBODY HAS SEEN. Every other baseline carries the FAQ
     // closed; the answers' colour, measure and spacing have never been

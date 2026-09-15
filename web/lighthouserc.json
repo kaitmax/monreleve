@@ -5,7 +5,7 @@
       "url": [
         "http://localhost:3000/",
         "http://localhost:3000/guides",
-        "http://localhost:3000/guides/fixture-modele-article"
+        "http://localhost:3000/guides/teletravail-frontalier-40-pourcent"
       ],
       "numberOfRuns": 1,
       "settings": {
@@ -14,7 +14,30 @@
     },
     "assert": {
       "assertions": {
-        "categories:accessibility": ["warn", { "minScore": 0.9 }]
+        "categories:performance": [
+          "error",
+          {
+            "minScore": 1
+          }
+        ],
+        "categories:accessibility": [
+          "error",
+          {
+            "minScore": 1
+          }
+        ],
+        "categories:best-practices": [
+          "error",
+          {
+            "minScore": 1
+          }
+        ],
+        "categories:seo": [
+          "error",
+          {
+            "minScore": 1
+          }
+        ]
       }
     },
     "upload": {
