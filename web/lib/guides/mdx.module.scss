@@ -6,6 +6,9 @@
 // decides the measure (ruling R64).
 
 .h2 {
+  // See guide.module.scss .title: a no-break space before a French mark
+  // makes one unbreakable token, and at 320 dp it can exceed the box.
+  overflow-wrap: break-word;
   margin: var(--space-10) 0 var(--space-4);
   color: var(--colour-text-primary);
   font-size: var(--type-h2-size);
@@ -14,6 +17,9 @@
 }
 
 .h3 {
+  // See guide.module.scss .title: a no-break space before a French mark
+  // makes one unbreakable token, and at 320 dp it can exceed the box.
+  overflow-wrap: break-word;
   margin: var(--space-8) 0 var(--space-3);
   color: var(--colour-text-primary);
   font-size: var(--type-h3-size);
@@ -22,6 +28,9 @@
 }
 
 .p {
+  // See guide.module.scss .title: a no-break space before a French mark
+  // makes one unbreakable token, and at 320 dp it can exceed the box.
+  overflow-wrap: break-word;
   margin: 0 0 var(--space-6);
   color: var(--colour-text-primary);
   font-size: var(--type-body-l-size);

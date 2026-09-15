@@ -333,7 +333,7 @@ describe('the database layer selects its own suite (FW14)', () => {
 });
 
 describe('the pattern list is the ruling, stated once', () => {
-  it('is exactly the eleven names R132 now carries', () => {
+  it('is exactly the twelve names R132 now carries', () => {
     // R63's shape: if a pattern were dropped, every table row above that
     // does not use it would still pass. This pins the list itself.
     expect(SELECTOR_PATTERNS.map((pattern) => pattern.label).sort()).toEqual([
@@ -343,6 +343,7 @@ describe('the pattern list is the ruling, stated once', () => {
       'a spec file, which selects the suite it belongs to (R144)',
       'a visual spec, which test:e2e deliberately ignores (R144)',
       'app/**',
+      'guide content, which IS rendered HTML (R140)',
       'lib/fr/**',
       'lib/ui/**',
       'modules whose output reaches rendered HTML (R140)',

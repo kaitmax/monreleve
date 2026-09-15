@@ -251,6 +251,20 @@ export const SELECTOR_PATTERNS = Object.freeze([
     // browser receives. Grouped under a label that states the reason
     // rather than the paths, because the printed selection is read by a
     // person deciding whether the right suites ran.
+    // GUIDE CONTENT IS RENDERED HTML - it is not a module whose OUTPUT
+    // reaches a browser, it is the bytes themselves. R140 asks: can a
+    // change to it alter a byte a browser receives without any file
+    // already matched changing too? An article is nothing but that.
+    //
+    // FW17 found it missing: nine typography fixes in the fixture changed
+    // every rendered page and the gate ran the base chain. FW17 protocol
+    // item 2 states the rule - content changes select the browser suites -
+    // and this is what makes it true.
+    label: 'guide content, which IS rendered HTML (R140)',
+    suites: BROWSER_SUITES,
+    matches: (path) => path.startsWith('content/'),
+  },
+  {
     label: 'modules whose output reaches rendered HTML (R140)',
     suites: BROWSER_SUITES,
     matches: (path) =>

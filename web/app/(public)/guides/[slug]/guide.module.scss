@@ -51,8 +51,22 @@
 
 // R88's hero pair: 40/48/700, one decision rather than a size and a weight
 // composed from different families.
+// THE TITLE MUST TOLERATE AN UNBREAKABLE TOKEN, and FW17 found out why.
+//
+// French sets a NO-BREAK space before a colon, so a title reading
+// "Article de demonstration : tout ce que..." carries one unbreakable
+// 15-character token. At the hero size that is wider than a 320 dp content
+// box, and the page scrolled sideways by 9 px - correct typography
+// colliding with R127.
+//
+// break-word is inert until a token genuinely cannot fit, so ordinary
+// titles are unaffected; when one cannot, a broken word is strictly better
+// than a page that scrolls sideways. The alternative - dropping the
+// no-break space - would fix the layout by writing incorrect French on a
+// page about French tax rules.
 .title {
   margin: 0 0 var(--space-6);
+  overflow-wrap: break-word;
   color: var(--colour-text-primary);
   font-size: var(--type-hero-size);
   font-weight: var(--type-hero-weight);
