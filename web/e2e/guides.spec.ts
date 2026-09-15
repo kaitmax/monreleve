@@ -14,6 +14,7 @@
 // 680 px measure. Those are properties of compiled output.
 
 import { expect, test } from '@playwright/test';
+import { LEGAL_COPY } from '@/lib/fr/legal';
 
 /** The fixture article: the one guide that exists in FW16. */
 const FIXTURE = '/guides/fixture-modele-article';
@@ -50,6 +51,47 @@ test.describe('the article template', () => {
 
     await expect(headings).toHaveCount(1);
     await expect(headings).toContainText('Article de demonstration');
+  });
+
+  test('carries exactly one standing disclaimer, in the footer (R119, R124)', async ({
+    page,
+  }) => {
+    // THE CENSUS CANNOT REACH THIS ROUTE, so it is counted here. The article
+    // page is an async server component that compiles MDX and jsdom runs
+    // neither, so tests/unit/pages/singletons.test.tsx exempts the three
+    // article routes by name and points at this file. An exemption whose
+    // replacement does not exist is a hole, so the replacement exists.
+    //
+    // R124: counted PER REGION. One in the footer, none in main - the
+    // calculator's second copy is in its result panel and a guide has none.
+    // TWO <footer> ELEMENTS ON THIS PAGE, and finding that out is half the
+    // value of running the assertion here rather than in jsdom: the article
+    // template has its own footer - FD13's sources line and related list -
+    // INSIDE <main>, and the shell's is the page footer outside it. A bare
+    // locator('footer') matched both and Playwright refused it. So the shell's
+    // is addressed as the one outside main, which is what "in the footer"
+    // has always meant.
+    //
+    // FROM THE COPY CONSTANT, NOT A LITERAL (R126), and split rather than a
+    // regexp because the sentence carries U+00A0 that would need escaping -
+    // an escaping mistake in a counter reads as a clean bill of health.
+    const counts = await page.evaluate((sentence) => {
+      const occurrences = (haystack: string): number => haystack.split(sentence).length - 1;
+      const main = document.querySelector('main');
+      const pageFooter = [...document.querySelectorAll('footer')].find(
+        (node) => main === null || !main.contains(node),
+      );
+
+      return {
+        footers: document.querySelectorAll('footer').length,
+        inPageFooter: occurrences(pageFooter?.textContent ?? ''),
+        inMain: occurrences(main?.textContent ?? ''),
+      };
+    }, LEGAL_COPY.standing);
+
+    expect(counts.footers, 'the article footer and the page footer').toBe(2);
+    expect(counts.inPageFooter).toBe(1);
+    expect(counts.inMain).toBe(0);
   });
 
   test('compiles MDX headings into the product type scale', async ({ page }) => {

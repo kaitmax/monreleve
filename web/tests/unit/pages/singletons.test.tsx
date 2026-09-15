@@ -35,6 +35,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import CalculateurPage from '@/app/(public)/calculateur-teletravail-frontalier/page';
 import CguPage from '@/app/(public)/cgu/page';
 import ConfidentialitePage from '@/app/(public)/confidentialite/page';
+import GuidesHubPage from '@/app/(public)/guides/page';
 import HomePage from '@/app/(public)/page';
 import MentionsPage from '@/app/(public)/mentions-legales/page';
 import NotFound from '@/app/not-found';
@@ -45,6 +46,7 @@ import { CALCULATEUR_COPY } from '@/lib/fr/calculateur';
 import { LEGAL_COPY } from '@/lib/fr/legal';
 import { RESULT_COPY } from '@/lib/fr/result';
 import { SHELL_COPY } from '@/lib/fr/shell';
+import type { Status } from '@/lib/ui/core';
 import { PublicShell } from '@/lib/ui/react/PublicShell/PublicShell';
 
 afterEach(cleanup);
@@ -167,6 +169,20 @@ const PAGES: readonly Expected[] = [
     primaryActions: 0,
   },
   {
+    label: '/guides',
+    render: () => {
+      render(
+        <PublicShell>
+          <GuidesHubPage />
+        </PublicShell>,
+      );
+    },
+    // A hub is a list of articles. No result panel, and its CTA to the
+    // calculator lives on the articles rather than here.
+    contextualLinks: 0,
+    primaryActions: 0,
+  },
+  {
     label: '404',
     render: () => {
       render(
@@ -180,6 +196,29 @@ const PAGES: readonly Expected[] = [
   },
 ];
 
+/**
+ * THE ROUTES THIS CENSUS CANNOT RENDER, named rather than missing.
+ *
+ * FW17 made three guide articles live and they cannot be counted here: the
+ * article route is an ASYNC server component that compiles MDX, and jsdom
+ * runs neither. That is the same limitation
+ * tests/unit/pages/guide-section-order.test.tsx works around by rendering a
+ * copy of the head markup.
+ *
+ * So they are counted where they CAN be - against served HTML, in
+ * e2e/guides.spec.ts, which asserts the single h1 and the single standing
+ * disclaimer on a real article.
+ *
+ * THE SET IS ASSERTED TO BE EXACTLY THE ARTICLE ROUTES, so FW18's four
+ * further guides land inside a stated exemption rather than widening a hole -
+ * and so that a NON-guide route can never be quietly added to it.
+ */
+const COUNTED_IN_E2E: readonly string[] = [
+  '/guides/teletravail-frontalier-40-pourcent',
+  '/guides/seuil-social-49-9-pourcent',
+  '/guides/jours-de-mission-hors-suisse',
+];
+
 describe('the census covers every live public route (R119)', () => {
   it('has a row for each one, and the 404', () => {
     // WITHOUT THIS THE FILE SHRINKS SILENTLY. A route added to the registry
@@ -189,9 +228,24 @@ describe('the census covers every live public route (R119)', () => {
     const live = PUBLIC_ROUTES.filter((route) => route.status === 'live').map(
       (route) => route.path,
     );
-    const counted = PAGES.map((page) => page.label).filter((label) => label !== '404');
+    const counted = [
+      ...PAGES.map((page) => page.label).filter((label) => label !== '404'),
+      ...COUNTED_IN_E2E,
+    ];
 
     expect([...counted].sort()).toEqual([...live].sort());
+  });
+
+  it('exempts only guide ARTICLES, and only because jsdom cannot run them', () => {
+    // The exemption is a statement about what jsdom can render, not a
+    // convenience. Anything in it that is not an article under /guides/ is a
+    // route somebody stopped counting.
+    const notAnArticle = COUNTED_IN_E2E.filter((path) => !path.startsWith('/guides/'));
+
+    expect(notAnArticle, notAnArticle.join(', ')).toEqual([]);
+
+    // And the hub itself IS counted here - it is a synchronous component.
+    expect(PAGES.map((page) => page.label)).toContain('/guides');
   });
 });
 
@@ -323,6 +377,76 @@ describe('the contextual link: exactly one, by Status (R119)', () => {
 
       cleanup();
     }
+  });
+
+  it('resolves to a real anchor for the three statuses FW17 wrote guides for', () => {
+    // AC3. FW12 shipped this slot rendering TEXT, because all four
+    // destinations were `planned` and R85 refuses an anchor to a route that
+    // does not exist - "an anchor here would promise a 404 from the one place
+    // a reader has just been told something about their own money".
+    //
+    // FW17 built three of the four. The panel needed no edit: ctaHrefIfLive
+    // decides, and the routes moved. This is what proves the decision
+    // actually flipped, from the rendered DOM rather than from the registry
+    // that feeds it - the registry is asserted separately in
+    // tests/unit/guides/hub.test.ts.
+    const STATES: ReadonlyArray<readonly [Status, string, string]> = [
+      ['regime-lost', '110', '0'],
+      ['social-switch', '144', '5'],
+    ];
+
+    for (const [status, days, missions] of STATES) {
+      render(
+        <PublicShell>
+          <CalculateurPage />
+        </PublicShell>,
+      );
+
+      fireEvent.change(screen.getByLabelText(CALCULATEUR_COPY.form.canton.label), {
+        target: { value: 'GE' },
+      });
+      fireEvent.change(screen.getByLabelText(CALCULATEUR_COPY.form.days.label), {
+        target: { value: days },
+      });
+
+      if (missions !== '0') {
+        fireEvent.click(screen.getByRole('radio', { name: CALCULATEUR_COPY.form.missions.yes }));
+        fireEvent.change(screen.getByLabelText(CALCULATEUR_COPY.form.missions.france.label), {
+          target: { value: missions },
+        });
+      }
+
+      const anchor = document.querySelector('[data-panel="link"] a');
+
+      expect(anchor, status).not.toBeNull();
+      expect(anchor?.getAttribute('href'), status).toBe(RESULT_COPY.links[status].href);
+
+      cleanup();
+    }
+  });
+
+  it('still names WITHOUT linking for compliant, whose target is not built', () => {
+    // THE FOURTH, AND IT IS STILL PLANNED. /releve-annuel is FW20's. Asserted
+    // rather than left implicit, so that "three of four resolve" is a
+    // measurement instead of a description - and so that whoever ships
+    // /releve-annuel has one failing test telling them to check this panel.
+    render(
+      <PublicShell>
+        <CalculateurPage />
+      </PublicShell>,
+    );
+
+    fireEvent.change(screen.getByLabelText(CALCULATEUR_COPY.form.canton.label), {
+      target: { value: 'GE' },
+    });
+    fireEvent.change(screen.getByLabelText(CALCULATEUR_COPY.form.days.label), {
+      target: { value: '72' },
+    });
+
+    const slot = document.querySelector('[data-panel="link"]');
+
+    expect(slot?.querySelector('a')).toBeNull();
+    expect(slot?.textContent).toBe(RESULT_COPY.linkPending(RESULT_COPY.links.compliant.text));
   });
 });
 

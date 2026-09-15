@@ -128,7 +128,7 @@ describe('the sitemap lists what exists and nothing else', () => {
     expect([...sitemapPaths()].sort()).toEqual([...liveRoutes().map((r) => r.path)].sort());
   });
 
-  it('lists the seven routes that exist and may be seen today', () => {
+  it('lists the eleven routes that exist and may be seen today', () => {
     // FOUR UNTIL FW11, five with the calculator, six with /sources. The
     // calculator joined when its page was built AND the Checkpoint A review
     // was recorded - two independent conditions, both of which had to be
@@ -147,6 +147,20 @@ describe('the sitemap lists what exists and nothing else', () => {
     // is the same edit that stopped every public page carrying a link to a
     // 404.
     //
+    // THE GUIDES JOINED AT FW17 INCREMENT 4, four at once: the hub and the
+    // three articles SPEC 9.5 names as its launch pillar and clusters. FW16
+    // built the hub and left it planned - "an empty page in the sitemap is
+    // the sitemap-of-404s problem one level down: not a broken link, a page
+    // that tells a crawler nothing" - and the flip waited until it had
+    // content. All four move together because a live hub whose articles are
+    // planned lists a page every link leaves, and live articles under a
+    // planned hub have one way in.
+    //
+    // THE LIST IS ALSO CHECKED AGAINST THE DISK. app/sitemap.xml/route.ts
+    // emits a live guide route only when its article exists in
+    // content/guides, and tests/unit/guides/hub.test.ts refuses a live guide
+    // route with no file - so these four are a claim that is verified twice.
+    //
     // Hardcoded on purpose: deriving it from the registry would make the
     // assertion agree with whatever the registry says, which is the thing
     // being checked.
@@ -156,6 +170,10 @@ describe('the sitemap lists what exists and nothing else', () => {
       '/calculateur-teletravail-frontalier',
       '/cgu',
       '/confidentialite',
+      '/guides',
+      '/guides/jours-de-mission-hors-suisse',
+      '/guides/seuil-social-49-9-pourcent',
+      '/guides/teletravail-frontalier-40-pourcent',
       '/mentions-legales',
       '/sources',
     ]);

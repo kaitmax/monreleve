@@ -122,24 +122,36 @@ export const PUBLIC_ROUTES: readonly PublicRoute[] = [
   },
 
   // ---- guides (SPEC 9.5's launch content, written before release) --------
-  { path: '/guides', status: 'planned', task: 'FW16', changeFrequency: 'weekly', priority: 0.7 },
+  //
+  // FOUR ROUTES FLIPPED TOGETHER IN FW17 INCREMENT 4, and together is the
+  // point. The hub and the three articles it lists become live in one change,
+  // because a hub in the sitemap whose entries are not tells a crawler half a
+  // story, and three articles in the sitemap with no hub leaves them with one
+  // way in. FW16 left /guides planned with the comment "FW17 flips the flag
+  // when the first article lands"; this is that flip.
+  //
+  // THE SITEMAP ALSO CHECKS THE DISK. app/sitemap.xml/route.ts lists a live
+  // guide route only if its article exists in content/guides, and
+  // tests/unit/guides/hub.test.ts refuses a live guide route with no file. So
+  // `live` here is a claim that is checked rather than taken.
+  { path: '/guides', status: 'live', task: 'FW16, content FW17', changeFrequency: 'weekly', priority: 0.7 },
   {
     path: '/guides/teletravail-frontalier-40-pourcent',
-    status: 'planned',
+    status: 'live',
     task: 'FW17',
     changeFrequency: 'monthly',
     priority: 0.8,
   },
   {
     path: '/guides/seuil-social-49-9-pourcent',
-    status: 'planned',
+    status: 'live',
     task: 'FW17',
     changeFrequency: 'monthly',
     priority: 0.7,
   },
   {
     path: '/guides/jours-de-mission-hors-suisse',
-    status: 'planned',
+    status: 'live',
     task: 'FW17',
     changeFrequency: 'monthly',
     priority: 0.7,

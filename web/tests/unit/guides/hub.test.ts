@@ -66,10 +66,20 @@ describe('the hub lists exactly the published guides', () => {
     expect(undeclared, undeclared.join(', ')).toEqual([]);
   });
 
-  it('keeps /guides out of the sitemap until increment 4 flips it', () => {
-    // THE TRIPWIRE, MOVED. When the flip happens this is what fails, and
-    // whoever does it states why in the same change.
-    expect(isLive(GUIDES_PATH)).toBe(false);
+  it('is live, with every article it lists live beside it', () => {
+    // THE TRIPWIRE FIRED AND THIS IS THE DELIBERATE ANSWER. FW16 left /guides
+    // planned so that an empty hub could not reach the sitemap; FW17 gave it
+    // three articles, and the hub and its three entries go live TOGETHER. A
+    // live hub whose articles are planned puts a page in the sitemap whose
+    // every link leaves it; three live articles with a planned hub leaves
+    // them with one way in.
+    expect(isLive(GUIDES_PATH)).toBe(true);
+
+    const notLive = publishedGuides()
+      .map((guide) => `${GUIDES_PATH}/${guide.frontmatter.slug}`)
+      .filter((path) => !isLive(path));
+
+    expect(notLive, `listed on a live hub but not live: ${notLive.join(', ')}`).toEqual([]);
   });
 
   it('declares no LIVE guide route without an article behind it', () => {
