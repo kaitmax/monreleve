@@ -131,6 +131,48 @@ describe('every var() resolves to a token that exists', () => {
     expect(names.filter((name) => !defined.has(name))).toEqual(['--size-control-height']);
   });
 
+  it('draws every notice accent from its own token, not the input one (R150)', () => {
+    // RULING R150, AND THE CENSUS IS THE ENFORCEMENT. Six stylesheets drew a
+    // banner's left accent with --size-input-border-focus - an input focus
+    // ring at 2 px - while FD1, FD13 and DESIGN-SYSTEM.md section 2 all
+    // specify 4 px. Both the value and the name were wrong, and they hid each
+    // other: six sites agreeing looks deliberate.
+    //
+    // THIS IS WHAT STOPS IT COMING BACK. The token exists now; nothing would
+    // stop a seventh notice reaching for the input token again, because the
+    // result renders and stylelint has no opinion. R69's --size-rule has the
+    // same shape and the same problem.
+    const offenders = FILES.filter((file) => {
+      const source = withoutComments(readFileSync(file, 'utf8'));
+
+      return /border-left:\s*var\(\s*--size-input-border-focus/.test(source);
+    });
+
+    expect(
+      offenders,
+      `a left accent drawn from the input focus token (R150):\n${offenders.join('\n')}`,
+    ).toEqual([]);
+
+    // NON-VACUITY: the token exists, it is 4 px, and it is actually used.
+    expect(defined.has('--size-notice-accent')).toBe(true);
+    expect(readFileSync(join('lib', 'ui', 'core', 'styles', 'tokens.scss'), 'utf8')).toContain(
+      '$size-notice-accent: 4px;',
+    );
+
+    // SIX SITES, FOUR FILES - the calculator form carries three of them - so
+    // the count is of USES rather than of files, which is what Q42's census
+    // counted.
+    const uses = FILES.reduce(
+      (total, file) =>
+        total +
+        withoutComments(readFileSync(file, 'utf8')).split('var(--size-notice-accent)').length -
+        1,
+      0,
+    );
+
+    expect(uses, 'the token is defined and nothing uses it').toBe(6);
+  });
+
   it('does not read prose about tokens as a reference to one', () => {
     // The false positive that made the first run of this report two failures
     // for two correct decisions.

@@ -234,6 +234,22 @@ $size-card-padding: 16px;
 $size-card-status-padding: 24px;
 $size-card-border: 1px;
 
+// THE NOTICE ACCENT, ruling R150, and the second token R69's census produced.
+//
+// SIX SITES DREW A LEFT ACCENT WITH --size-input-border-focus: the
+// calculator's three notices, the result panel's warning, /sources' info block
+// and the guides' Avertissement. That token is 2 px and belongs to an INPUT
+// FOCUS RING; FD1, FD13 and DESIGN-SYSTEM.md section 2 all draw a banner
+// accent at 4 px. So the value shipped was wrong AND the name was wrong, and
+// the two hid each other: nothing looked broken because all six agreed.
+//
+// R69 is the same shape one token earlier ("six sites were aliasing the card
+// border for a hairline" -> --size-rule). FW16 reported this census as Q42
+// rather than adding a token, because a new token is SPEC 20's ask-first. The
+// operator ruled: --size-notice-accent, 4 px - the design system's figure
+// rather than the one that shipped.
+$size-notice-accent: 4px;
+
 // THE WEB HEADER, ruling R68. FD1:24 and FD11:24 (the desktop briefs) give 64;
 // FD2:28 (the mobile brief) gives 56, with FD2:31's CTA at a compact 40.
 //
@@ -458,6 +474,7 @@ $motion-toast-max: 5000ms;
   --size-card-padding: #{$size-card-padding};
   --size-card-status-padding: #{$size-card-status-padding};
   --size-card-border: #{$size-card-border};
+  --size-notice-accent: #{$size-notice-accent};
   --size-header-height: #{$size-header-height};
   --size-header-height-mobile: #{$size-header-height-mobile};
   --size-button-compact-height: #{$size-button-compact-height};

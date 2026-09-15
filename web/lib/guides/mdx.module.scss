@@ -79,21 +79,20 @@
 // stays at text-primary, because warning-coloured body copy is the thing
 // nobody can read. R58 made the same correction for the legal note.
 //
-// THE ACCENT USES --size-input-border-focus, WHICH IS NOT WHAT IT IS FOR,
-// and this is the sixth site to do it: the calculator's three notices, the
-// result panel's and /sources' all draw their left accent from the input
-// focus border. FD13 and DESIGN-SYSTEM.md both say 4 px; the token is 2 px;
-// no accent token exists.
+// THE ACCENT NOW HAS ITS OWN TOKEN, ruling R150. FW16 reported this as Q42:
+// six sites - the calculator's three notices, the result panel's, /sources'
+// and this one - drew a left accent from --size-input-border-focus, an INPUT
+// token at 2 px, while FD13 and DESIGN-SYSTEM.md both specify 4 px for a
+// banner accent. The value shipped was wrong and the name was wrong, and the
+// two hid each other because all six agreed.
 //
-// Matching the five is the right call HERE - a 4 px accent on guides and
-// 2 px everywhere else would be an inconsistency I introduced - but the
-// pattern is exactly the one R69 was written for ("six sites were aliasing
-// the card border for a hairline"), and it is reported rather than quietly
-// repeated a sixth time. Adding a token is SPEC 20's ask-first.
+// Adding a token is SPEC 20's ask-first, so FW16 matched the five and
+// reported it rather than repeating it a sixth time quietly. The operator
+// ruled: --size-notice-accent at 4 px, the design system's figure.
 .warning {
   margin: var(--space-6) 0;
   padding: var(--space-4);
-  border-left: var(--size-input-border-focus) solid var(--colour-warning);
+  border-left: var(--size-notice-accent) solid var(--colour-warning);
   border-radius: var(--radius-md);
   background: var(--colour-warning-soft);
   color: var(--colour-text-primary);

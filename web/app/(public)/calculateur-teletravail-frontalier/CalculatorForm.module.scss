@@ -167,7 +167,7 @@
 // question above is visible without a second heading.
 .revealed {
   padding-left: var(--space-4);
-  border-left: var(--size-input-border-focus) solid var(--colour-border-default);
+  border-left: var(--size-notice-accent) solid var(--colour-border-default);
 }
 
 // The two mission fields inside it, and the advanced panel's stack, need the
@@ -285,7 +285,7 @@
 .provisional {
   margin: 0 0 var(--space-4);
   padding: var(--space-3) var(--space-4);
-  border-left: var(--size-input-border-focus) solid var(--colour-info);
+  border-left: var(--size-notice-accent) solid var(--colour-info);
   border-radius: var(--radius-sm);
   background: var(--colour-info-soft);
 }
@@ -354,7 +354,7 @@
 .linkNotice {
   margin: 0 0 var(--space-4);
   padding: var(--space-3) var(--space-4);
-  border-left: var(--size-input-border-focus) solid var(--colour-warning);
+  border-left: var(--size-notice-accent) solid var(--colour-warning);
   border-radius: var(--radius-sm);
   background: var(--colour-warning-soft);
 }
