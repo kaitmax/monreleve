@@ -113,3 +113,83 @@ describe('every guide is written in French typography', () => {
     ).toEqual([]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// RULING R126 REACHES CONTENT, AND IT DID NOT.
+//
+// FW17's protocol says "R126's apostrophe rule applies" to this task's French.
+// It is enforced on lib/fr/*.ts by tests/unit/fr/copy-codepoints.test.ts and
+// nowhere else - so the fixture writes "n'est", "l'oeil", "d'import" with the
+// typewriter apostrophe and every suite has been green since FW16. The same
+// shape as the no-break space above: a rule that reads as enforced, on the one
+// surface where the French is the product.
+//
+// THE RULE IS POSITIONAL, and copied from R126's own reasoning rather than
+// restated: U+0027 is also the string delimiter, in an MDX file as much as in
+// a TypeScript one - `cells={{ seuil: 'x' }}` is a JSX attribute expression
+// and its quotes are code. The only place the two characters are confusable is
+// BETWEEN TWO LETTERS, which is exactly where French elides and exactly where
+// a delimiter never appears.
+// ---------------------------------------------------------------------------
+
+const RIGHT_SINGLE = String.fromCharCode(0x2019);
+const ASCII_APOSTROPHE = String.fromCharCode(0x27);
+
+/** Every elision written with `character`, with its context. */
+function elisions(value: string, character: string): string[] {
+  const found: string[] = [];
+
+  for (let index = 1; index < value.length - 1; index += 1) {
+    const before = value[index - 1] ?? '';
+    const after = value[index + 1] ?? '';
+
+    if (value[index] === character && /\p{L}/u.test(before) && /\p{L}/u.test(after)) {
+      found.push(`"${value.slice(Math.max(0, index - 18), index + 8)}"`);
+    }
+  }
+
+  return found;
+}
+
+describe('the elision detector works, so the absence below means something', () => {
+  it('finds an ASCII apostrophe between two letters', () => {
+    expect(elisions(`Ce n${ASCII_APOSTROPHE}est pas un guide.`, ASCII_APOSTROPHE)).toHaveLength(1);
+  });
+
+  it('ignores one that is not between letters, which is a delimiter', () => {
+    // The position a JSX attribute expression puts it in. Left legal on
+    // purpose: banning it outright would make the component kit unusable
+    // from an article.
+    expect(elisions(`{ key: ${ASCII_APOSTROPHE}seuil${ASCII_APOSTROPHE} }`, ASCII_APOSTROPHE)).toEqual(
+      [],
+    );
+  });
+
+  it('does not mistake the typographic one for it', () => {
+    expect(elisions(`Ce n${RIGHT_SINGLE}est pas un guide.`, ASCII_APOSTROPHE)).toEqual([]);
+  });
+});
+
+describe('every guide elides with U+2019 (R126)', () => {
+  it('uses the typographic apostrophe, and uses it often', () => {
+    // NON-VACUITY FIRST. A broken scanner reports none of either character,
+    // and the absence assertion below then passes forever.
+    const total = allGuides().reduce(
+      (sum, guide) => sum + elisions(textOf(guide), RIGHT_SINGLE).length,
+      0,
+    );
+
+    expect(total, 'no typographic apostrophe in any guide').toBeGreaterThan(5);
+  });
+
+  it('uses NO ASCII apostrophe in an elision position', () => {
+    const found = allGuides().flatMap((guide) =>
+      elisions(textOf(guide), ASCII_APOSTROPHE).map((where) => `${guide.file} ${where}`),
+    );
+
+    expect(
+      found,
+      `French elides with U+2019, not U+0027 (R126).\n${found.join('\n')}`,
+    ).toEqual([]);
+  });
+});

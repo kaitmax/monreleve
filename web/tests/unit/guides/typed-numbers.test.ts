@@ -62,9 +62,73 @@ describe('the figures R147 names are the ones RuleSet carries', () => {
   });
 });
 
-/** The whole file as the author wrote it: frontmatter and body. */
-const sourceOf = (guide: { file: string; body: string; frontmatter: unknown }): string =>
-  `${JSON.stringify(guide.frontmatter)}\n${guide.body}`;
+/**
+ * The file as the author wrote it - minus the two IDENTITY fields.
+ *
+ * R147 SAYS "guide PROSE", AND THE TITLE AND SLUG ARE NOT PROSE. They are
+ * the article's name, and the number in them is not a statement of the rule
+ * but the rule's name in public usage: people search for "la regle des 40 %"
+ * the way they say "the 35-hour week". SPEC 9.5 fixes the slug
+ * (teletravail-frontalier-40-pourcent) and SPEC 14 makes slugs PERMANENT, so
+ * the figure is already frozen there by a stronger rule than this one.
+ *
+ * EVERYTHING ELSE IS COVERED, including the description and the FAQ, because
+ * those render as reader-facing prose: a description carrying "40 %" is the
+ * hub entry that goes stale in 2028 with every test green, which is exactly
+ * what R147 exists to prevent.
+ *
+ * THE LINE IS NARROW AND NAMED rather than a list that grows. If a third
+ * field ever wants an exemption, that is a ruling, not an edit here.
+ */
+const IDENTITY_FIELDS = new Set(['title', 'slug']);
+
+const sourceOf = (guide: { file: string; body: string; frontmatter: unknown }): string => {
+  const prose = Object.fromEntries(
+    Object.entries(guide.frontmatter as Record<string, unknown>).filter(
+      ([field]) => !IDENTITY_FIELDS.has(field),
+    ),
+  );
+
+  return `${JSON.stringify(prose)}\n${guide.body}`;
+};
+
+/**
+ * THE EXEMPTED CONSTRUCTION, AND IT IS NARROW ON PURPOSE.
+ *
+ * Only a bare name is removed before the scan: {fiscal}, {rules.missionCap}.
+ * The first version of this exempted ANY brace pair, `/\{[^}]*\}/g`, which is
+ * every JSX attribute expression in the article as well - and the component
+ * kit is driven entirely by those:
+ *
+ *   <DataGrid rows={[{ key: 'seuil', cells: { source: '40 %' } }]} />
+ *
+ * Under the wide rule that cell is invisible to R147 and the comparison table
+ * - the article's densest concentration of figures - could be typed by hand
+ * with every suite green. The wide rule exempted the place the rule is most
+ * needed.
+ *
+ * A NAME CANNOT CARRY A DIGIT SEQUENCE THAT MEANS ANYTHING, which is what
+ * makes the narrow form safe to remove: `{fiscal}` renders the figure at
+ * build and contains none. Everything else stays in the text and is scanned,
+ * including the inside of every prop.
+ */
+const BARE_NAME = /\{\s*[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*\s*\}/g;
+
+/**
+ * An MDX comment, which the compiler deletes and no reader ever meets.
+ *
+ * STRIPPED, AND THE WIDE RULE WAS HIDING THAT IT HAD TO BE. `{/* ... *\/}` is
+ * itself a brace pair, so the old exemption swallowed every comment block as
+ * a side effect; narrowing it surfaced the fixture's own English note about
+ * "the 40 % rule" as a violation. That note is maintainer commentary in a
+ * file that exists to exercise the template - the figure is not a claim, is
+ * not rendered, and cannot go stale on a reader.
+ *
+ * SAME TREATMENT AS THE TYPOGRAPHY GUARD, which strips them for the same
+ * reason and says so: a comment is not prose. Applied FIRST, so that a
+ * figure inside one cannot be resurrected by the name pass.
+ */
+const MDX_COMMENT = /\{\/\*[\s\S]*?\*\/\}/g;
 
 /**
  * A typed figure, with the line it sits on.
@@ -75,7 +139,7 @@ const sourceOf = (guide: { file: string; body: string; frontmatter: unknown }): 
  * catchable.
  */
 function typedFigures(source: string): string[] {
-  const withoutExpressions = source.replace(/\{[^}]*\}/g, ' ');
+  const withoutExpressions = source.replace(MDX_COMMENT, ' ').replace(BARE_NAME, ' ');
 
   return withoutExpressions
     .split('\n')
@@ -135,6 +199,31 @@ describe('R147 fires on what it is for', () => {
     // Expressions are stripped before the scan precisely so this still fails.
     expect(
       typedFigures('Le plafond {fiscal} vaut 40 % du temps de travail annuel.'),
+    ).toHaveLength(1);
+  });
+
+  it('catches a figure typed inside a JSX attribute expression', () => {
+    // WHERE THE COMPARISON TABLE LIVES. The kit takes its data as props, so
+    // if props were exempt the densest concentration of figures in the
+    // article would be the one place R147 could not see.
+    expect(
+      typedFigures(`  rows={[{ key: 'seuil', cells: { source: '40 %' } }]}`),
+    ).toHaveLength(1);
+  });
+
+  it('still permits a name inside one', () => {
+    // The correct construction, in the place the table actually uses it.
+    expect(typedFigures(`  rows={[{ key: 'seuil', cells: { source: fiscal } }]}`)).toEqual([]);
+  });
+
+  it('ignores an MDX comment, which no reader meets', () => {
+    expect(typedFigures('{/* This note is about the 40 % rule. */}')).toEqual([]);
+  });
+
+  it('still catches prose that FOLLOWS a comment', () => {
+    // The stripper must not swallow the rest of the file: `*\/}` ends it.
+    expect(
+      typedFigures('{/* a note */}\nLe plafond est de 40 % du temps de travail.'),
     ).toHaveLength(1);
   });
 });
