@@ -1,0 +1,112 @@
+REPORT-NIGHT.txt - frontalier
+The night of 15-16 September 2026. Both tasks run, in order, complete.
+
+TASKS
+--------------------------------------------------------------------
+  task   final commit  CI                                        status
+  FW18   e2482db       actions/runs/35048369569   green          COMPLETE
+  FW19   d06d3d3       actions/runs/35049739465   green          COMPLETE
+
+  FW18  three of four guides published; the fourth parked (P2).
+        Six guides live, mesh clean, Lighthouse floor on a new article.
+  FW19  R157 option (3): the comparator is NOT published. The decision
+        was made at increment 1 as R157 requires, before any UI existed,
+        so increments 2-5 had nothing to build.
+
+FW17b also ran earlier in the same sitting, before the night prompt was
+given, and is included here for continuity:
+  FW17b  94ae462      actions/runs/35040096320   green          COMPLETE
+         R155's accent guard, breadcrumbLabel (Q45), and R154's chip
+         proof.
+
+HANDOVER CHECK (C2), run before FW19 was opened
+--------------------------------------------------------------------
+  REPORT-FW18.txt committed and pushed          yes   e2482db
+  git status clean, local main == origin/main   yes
+  CI run for FW18's final push GREEN            yes   35048369569
+  nothing BLOCKING for FW19 in REPORT-FW18.txt  yes
+All four passed; FW19 was opened.
+
+PARKED THIS NIGHT
+--------------------------------------------------------------------
+  P1  the employer attestation is described, never asserted      [FW18]
+  P2  droit-option-lamal-cmu is NOT published                    [FW18]
+  P3  the declaration guide carries no date, form or procedure   [FW18]
+  P4  the LAMal/CMU comparator is NOT published (R157 option 3)  [FW19]
+
+All four are the same decision in four places: where a regulatory fact
+has no verified row, the product says less rather than guessing. P2 and
+P4 are two halves of ONE missing source - the droit d'option window and
+its irrevocability - which blocked a guide and then blocked the
+comparator built on the same subject.
+
+THE ONE THING WORTH READING FIRST
+--------------------------------------------------------------------
+Two of the night's four planned deliverables are blocked by a single
+reviewer question: whether the LAMal/CMU droit d'option window is three
+months and whether the choice is irrevocable. SPEC 22 already lists that
+figure among those "compiled from advisory and news sources", to be
+verified "before the fixtures are frozen"; Checkpoint A never reached it.
+
+It is not a dataset problem, a design decision or an engineering task. It
+is one pass by somebody who can read the primary source. It would unblock
+FW18's droit-option guide immediately, and it is half of what FW19 needs.
+
+OPEN QUESTIONS, BY ORIGIN TASK
+--------------------------------------------------------------------
+FW17
+  Q47  Two verified facts have no source key - the mission travel-day
+       rules and the six Geneva worked examples. Both are cited under
+       missionCapDays because they share row 2's ge.ch page. FW18 made
+       this load-bearing on a third article.
+  Q48  DataGrid's tfoot total rule is the seventh alias of
+       --size-input-border-focus. Its own token, or leave it?
+  Q49  Two of two comparison tables failed at 320 dp in FD13's shape.
+       Pressure is lower than FW17 thought: Geneve's six-row two-column
+       table fits.
+  Q50  FD13's inline CTA card does not exist in the kit; articles use a
+       prose link.
+  Q51  The reviewer field says "l'equipe frontalier". What should it say
+       until Checkpoint E?
+
+FW17b
+  Q52  Three typed thresholds live in lib/fr, where R147 does not reach -
+       the home page description, the footer link label, and the FW2
+       spike. Should R147's scan extend to lib/fr?
+
+FW18
+  Q53  ANSWERED, in the negative, by FW19: the window and the
+       irrevocability could not be sourced for the comparator's banner
+       either.
+
+FW19
+  Q54  Can the opendata.swiss licence be read and recorded? The dataset
+       is published by the OFSP and looks open, but this environment gets
+       403 from both the dataset page and the CKAN API. Reading it
+       unblocks R157 option (1).
+  Q55  Which comes first - the premium data or the droit d'option rules?
+       They are separable. The droit d'option rules alone unblock FW18's
+       guide; both are needed for the comparator.
+
+R47  Still open, still the operator's. Not raised.
+
+STATE OF THE TREE
+--------------------------------------------------------------------
+  git status clean; local main == origin/main == d06d3d3
+  parking.md current, four entries
+  Six guides live and in the sitemap:
+    teletravail-frontalier-40-pourcent   [pillar]
+    seuil-social-49-9-pourcent           [cluster]
+    jours-de-mission-hors-suisse         [cluster]
+    attestation-employeur-teletravail    [cluster]
+    declaration-impots-frontalier        [cluster]
+    geneve                               [canton]
+  Two planned and deliberately empty:
+    droit-option-lamal-cmu               P2
+    calculateur-lamal-cmu                P4
+  Suites at the last full run: test 2324, test:e2e 187, test:visual 100,
+  test:a11y 128. Lighthouse 100/100/100/100 on four URLs.
+
+Night complete. FW20 not started.
+
+END OF REPORT-NIGHT
