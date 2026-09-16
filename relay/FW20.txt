@@ -77,6 +77,26 @@ R166 (new - /releve-annuel IS IN SCOPE). todo.md names five pages for
     analytics sentence is already under, applied to a product claim
     rather than a privacy one.
 
+R167 (new - A CITATION NAMES THE INSTRUMENT, NOT ITS CURRENT FILE). A
+    source row's identity is the instrument's name - "Choix du systeme
+    d'assurance maladie", "circulaire no 45" - and any URL is recorded
+    with a fetch date as a convenience that is allowed to rot. A dead
+    PDF link is a maintenance item, never a claim becoming unsourced.
+    R153's shape one layer out: copy names the rule rather than quoting
+    its value; a citation names the instrument rather than pinning its
+    file.
+    Operationally, and it is the half that matters when a link check
+    goes red: the URL carries its fetch date and may rot; the row's
+    identity does not depend on it.
+
+R168 (new - NO RELAY PROMPT CARRIES A FRENCH QUOTATION). Prompts are
+    ASCII by transport constraint (R155), so a quotation passing through
+    one becomes transliterated copy - the exact defect R155 forbids. A
+    prompt points at where the accented original lives.
+    This prompt obeys it: A1 below points at
+    docs/regulatory-sources.md rather than reproducing the two CLEISS
+    transcriptions.
+
 R47. Still open, still the operator's. Not raised.
 
 ====================================================================
@@ -312,9 +332,19 @@ into rows is this task's job, and it has a decision in it:
   which is most of them - and wrong in the direction that costs a
   reader cover. This is the fact's load-bearing half.
 
-  FACT 6 does not gate the guide. If it makes the page longer without
-  making a reader safer, it is a row and not a paragraph - that is a
-  judgement, make it and say which.
+  FACT 6 does not gate the guide, and the operator's steer is that it
+  probably earns a ROW AND NOT A PARAGRAPH: a reader who has decided
+  needs the form's name and that it goes to their cantonal body; the
+  part numbering, the CPAM's role and the Olten address are procedure
+  they will get from CLEISS itself at the moment they act. The guide's
+  job is to make them act IN TIME, not to be the form's manual.
+  Still your call with the page in front of you - but if you keep more
+  than the name and the destination, say what a reader gains by having
+  it here rather than on the page they are about to open.
+
+  R167 APPLIES TO BOTH ROWS. The form is recorded by NAME; its URL
+  carries juin2019, CLEISS says it is being updated, and that URL is a
+  convenience with a fetch date. Same for the BAG cantonal-body list.
 
 DO NOT INVENT. Anything beyond what the transcription carries is not
 written (R146 case (c)). If the transcription does not answer a
