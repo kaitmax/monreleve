@@ -1,0 +1,173 @@
+---
+title: "Le télétravail frontalier à Genève"
+description: "Genève impose à la source, ce qui décide de ce qu’un dépassement coûte — et l’administration genevoise publie ses propres exemples chiffrés, que le calculateur de ce site reproduit."
+slug: geneve
+breadcrumbLabel: "Genève"
+cluster: canton
+related:
+  - teletravail-frontalier-40-pourcent
+lastReviewed: "2026-09-09"
+reviewer: "l’équipe frontalier"
+faq:
+  - question: "Mon statut de frontalier est-il menacé si je dépasse à Genève ?"
+    answer: "Non. Genève impose à la source, et sous ce régime un dépassement rend les journées excédentaires imposables en France sans remettre le statut en cause. C’est l’autre régime, celui de l’accord de 1983, qui met le statut en jeu."
+  - question: "Pourquoi cette page donne-t-elle des exemples chiffrés alors que les autres n’en donnent pas ?"
+    answer: "Parce que ce sont ceux de l’administration genevoise elle-même, publiés par elle. Ils ne sont pas une illustration inventée pour ce site : ce sont les cas sur lesquels le calculateur est vérifié."
+  - question: "Le calculateur donne-t-il exactement les mêmes résultats ?"
+    answer: "Oui, sur les six cas et sur leurs quatre sorties. C’est une condition de publication du calculateur, pas une coïncidence : si l’un d’eux cessait de correspondre, rien ne serait mis en ligne."
+  - question: "La liste des cantons de l’accord de 1983 est encore à vérifier, cela me concerne-t-il ?"
+    answer: "Pas pour Genève. Genève impose à la source, ce qui est établi et vérifié ; c’est l’appartenance d’autres cantons à l’autre groupe qui reste à confirmer."
+  - question: "Ces exemples valent-ils pour une année incomplète ou un temps partiel ?"
+    answer: "Les cas publiés portent sur une année complète à temps plein. Une année incomplète ou un temps partiel réduit le plafond de jours de mission proportionnellement, et le calculateur applique cette réduction."
+claims:
+  - key: residence1983Cantons
+    unresolved: true
+    says: "Genève relève de l’imposition à la source, où un dépassement rend les jours excédentaires imposables en France sans mettre le statut de frontalier en cause."
+  - key: fiscalCeiling
+    says: "Le plafond porte sur le temps de travail annuel et vaut à Genève comme ailleurs ; c’est la conséquence d’un dépassement qui diffère selon le régime."
+  - key: simplifiedBasisDays
+    says: "Les exemples publiés par l’administration genevoise rapportent les jours comptés à la base simplifiée de la circulaire."
+  - key: missionCapDays
+    says: "Les exemples publiés montrent le plafond de jours de mission en train de mordre : au-delà, les jours cessent d’être crédités et deviennent imposables en France."
+  - key: missionCapProration
+    says: "Le plafond de jours de mission est réduit proportionnellement en cas de temps partiel ou d’année incomplète."
+---
+
+{/*
+  CANTON PAGE. SPEC 9.5: "Geneve only at launch (D8); thin canton pages are
+  worse than none."
+
+  AC3 ASKS WHAT IS TRUE OF GENEVE AND NOT OF THE PILLAR, and the answer is not
+  the regime sentence - the pillar carries that already, for both regimes. It
+  is THE SIX PUBLISHED WORKED EXAMPLES. ge.ch publishes them; Checkpoint A
+  read them on 09.09.2026 and recorded that all six match "on their inputs AND
+  on all four outputs"; fixtures/geneva-cases.json is frozen against them and
+  SPEC 7.5 says "if any fails, nothing ships". They appear nowhere else on
+  this site - the mission cluster uses case (c) alone - and they are the
+  administration's own arithmetic rather than an illustration invented here.
+
+  That is genuinely canton-specific reference material, which is what a
+  long-tail canton page is for. Without it this page would restate the pillar
+  and, per SPEC 9.5, should not have been published at all.
+
+  THE FIGURES IN THE TABLE ARE CITATIONS, not RuleSet values: they are the
+  inputs and outputs of six published cases, like a date or an article number.
+  Every figure that IS a RuleSet value - the ceiling, the basis, the mission
+  cap - arrives as an expression (R147).
+
+  THE SOURCE KEY IS missionCapDays for the examples, because they are
+  published on the same ge.ch page row 2 cites as its primary source. The six
+  cases have no row of their own in the constants table; that gap is Q47 in
+  REPORT-FW17.txt and is not closed here.
+*/}
+
+Genève impose à la source. C’est la première chose à savoir, parce qu’elle
+décide de ce qu’un dépassement du plafond de télétravail coûte réellement :
+les journées excédentaires deviennent imposables en France, et le statut de
+frontalier lui-même n’est pas remis en cause.
+
+C’est aussi le canton dont l’administration publie ses propres exemples
+chiffrés. Ils sont reproduits plus bas, parce qu’ils disent mieux que
+n’importe quelle explication ce que le plafond fait dans des situations
+réelles.
+
+<Encadre titre="En bref">
+
+- Régime applicable à Genève : imposition à la source
+- Conséquence d’un dépassement : les jours excédentaires imposables en France
+- Ce qui n’est pas en jeu : le statut de frontalier lui-même
+- Plafond : {fiscal} du temps de travail annuel, comme partout
+- Base des exemples publiés : {basisDays} jours ouvrés, année complète
+
+</Encadre>
+
+## Ce que le régime genevois change
+
+Le plafond est le même dans tous les cantons. La conséquence d’un dépassement
+ne l’est pas, et c’est de cela que dépend le risque réel.
+
+Sous l’imposition à la source, qui est le régime genevois, un dépassement
+déplace l’imposition des journées excédentaires vers la France. Sous l’accord
+de 1983, qui concerne d’autres cantons, c’est le statut de frontalier qui est
+en jeu — une conséquence d’une autre nature.
+
+<Avertissement>
+
+La composition exacte de la liste des cantons relevant de l’accord de 1983
+reste à vérifier contre le texte, et ce site le signale partout où la liste
+apparaît. Pour un lecteur genevois, cela ne change rien : que Genève impose à
+la source est établi, et c’est l’appartenance d’autres cantons à l’autre
+groupe qui est en attente. Voir [sources et vérifications](/sources).
+
+</Avertissement>
+
+Le détail des deux régimes est traité dans
+[le guide du plafond fiscal](/guides/teletravail-frontalier-40-pourcent).
+
+## Les six exemples publiés par l’administration
+
+Ce sont les cas que l’administration genevoise publie, avec leurs entrées et
+le taux déclarable qui en résulte. Le calculateur de ce site les reproduit
+exactement, sur les six cas et sur chacune de leurs sorties.
+
+<DataGrid
+  caption="Les six cas publiés, et le taux déclarable de chacun"
+  columns={[
+    { key: "cas", header: "Situation" },
+    { key: "taux", header: "Taux déclarable" },
+  ]}
+  rows={[
+    {
+      key: "a",
+      cells: { cas: "72 jours de télétravail, aucune mission", taux: "30,00 %" },
+    },
+    {
+      key: "b",
+      cells: { cas: "91 jours de télétravail, 8 jours de mission", taux: "40,00 %" },
+    },
+    {
+      key: "c",
+      cells: { cas: "84 jours de télétravail, 24 jours de mission", taux: "39,16 %" },
+    },
+    {
+      key: "d",
+      cells: { cas: "94 jours de télétravail, 12 jours de mission", taux: "40,00 %" },
+    },
+    {
+      key: "e",
+      cells: { cas: "144 jours de télétravail, 5 jours de mission", taux: "60,00 %" },
+    },
+    {
+      key: "special",
+      cells: { cas: "aucun télétravail, 30 jours de mission", taux: "4,16 %" },
+    },
+  ]}
+/>
+
+Trois d’entre eux méritent d’être lus deux fois.
+
+Le cas à 39,16 % est celui où le plafond de jours de mission mord : sur
+24 jours de mission déclarés, seuls {missionCap} sont crédités, et les 14
+autres deviennent imposables en France. Le taux reste sous le plafond fiscal
+— les deux limites se vérifient séparément.
+
+Le cas à 60 % est le seul où le régime est perdu, et il n’a rien
+d’exotique : un peu moins de trois jours de télétravail par semaine y
+suffisent.
+
+Le dernier, à 4,16 %, est celui d’un frontalier qui ne télétravaille jamais
+et se déplace beaucoup. Il montre que le plafond concerne des gens qui ne se
+pensent pas concernés.
+[Calculez vos jours restants](/calculateur-teletravail-frontalier) pour situer
+votre propre année parmi ces six.
+
+## Ce que ces exemples ne disent pas
+
+Ils portent sur une année complète à temps plein. À temps partiel, ou sur une
+année incomplète, le plafond de jours de mission est réduit dans la même
+proportion et arrondi à l’entier supérieur.
+
+Ils ne disent rien non plus du second seuil, celui de la sécurité sociale,
+qui est plus haut et dont la conséquence est d’une autre nature. Et ils ne
+remplacent pas votre propre décompte : ce sont des cas de référence, pas votre
+année.

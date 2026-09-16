@@ -219,6 +219,7 @@ const COUNTED_IN_E2E: readonly string[] = [
   '/guides/jours-de-mission-hors-suisse',
   '/guides/attestation-employeur-teletravail',
   '/guides/declaration-impots-frontalier',
+  '/guides/geneve',
 ];
 
 describe('the census covers every live public route (R119)', () => {

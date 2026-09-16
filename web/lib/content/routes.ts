@@ -177,7 +177,7 @@ export const PUBLIC_ROUTES: readonly PublicRoute[] = [
     changeFrequency: 'monthly',
     priority: 0.7,
   },
-  { path: '/guides/geneve', status: 'planned', task: 'FW18', changeFrequency: 'monthly', priority: 0.6 },
+  { path: '/guides/geneve', status: 'live', task: 'FW18', changeFrequency: 'monthly', priority: 0.6 },
 
   // ---- the product ------------------------------------------------------
   {

@@ -46,6 +46,15 @@ const STATES: readonly VisualState[] = [
   // picture of the same decisions.
   { id: 'pilier', route: '/guides/teletravail-frontalier-40-pourcent' },
   { id: 'cluster-missions', route: '/guides/jours-de-mission-hors-suisse' },
+
+  // FW18's two, chosen for what they contain rather than to be complete.
+  // The attestation guide is the one written ENTIRELY in the conditional
+  // (R146 case (c) applied to a premise, parked as P1) and carries two
+  // stacked Avertissements; the Geneve page is the only one with a six-row
+  // DataGrid, and the only canton page. The declaration guide is
+  // structurally a subset of the attestation guide's shape.
+  { id: 'attestation', route: '/guides/attestation-employeur-teletravail' },
+  { id: 'geneve', route: '/guides/geneve' },
   {
     // THE STATE NOBODY HAS SEEN. Every other baseline carries the FAQ
     // closed; the answers' colour, measure and spacing have never been
