@@ -33,7 +33,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { APP_NAME } from '@/lib/fr';
 import { LAST_REGULATORY_REVIEW, reviewNotice } from '@/lib/content/regulatory';
 import { LEGAL_COPY } from '@/lib/fr/legal';
-import { ctaHrefIfLive } from '@/lib/content/routes';
+import { ctaHrefIfLive, visibleFooterColumns, visibleNav } from '@/lib/content/routes';
 import { formatDate } from '@/lib/ui/core';
 import { FOOTER_COLUMNS, SHELL_COPY, SHELL_NAV } from '@/lib/fr/shell';
 import type { NavLink } from '@/lib/fr/shell';
@@ -58,7 +58,17 @@ const renderShell = () => render(<PublicShell>{CHILD}</PublicShell>);
  * `NavLink[] | NavEntry[]` and fails, which is the type doing its job: a
  * disclosure has no destination and must not be treated as if it had.
  */
-const LEAVES: readonly NavLink[] = SHELL_NAV.flatMap((entry) => {
+/**
+ * WHAT THE SHELL RENDERS, not what lib/fr declares - and FW20 is why.
+ *
+ * These derived from SHELL_NAV, the raw copy list, which includes routes that
+ * are not built. The shell filters those out through visibleNav, so the test
+ * was asserting the presence of links the component is right not to render.
+ *
+ * R171: a test names a role. The role here is "every destination the shell
+ * actually offers", and visibleNav is the only thing that knows it.
+ */
+const LEAVES: readonly NavLink[] = visibleNav(SHELL_NAV).flatMap((entry) => {
   if (entry.children !== undefined) return [...entry.children];
 
   return entry.href === undefined ? [] : [{ label: entry.label, href: entry.href }];
@@ -395,7 +405,10 @@ describe('the footer', () => {
 
     const footer = screen.getByRole('contentinfo');
 
-    for (const column of FOOTER_COLUMNS) {
+    // visibleFooterColumns, for LEAVES' reason: FOOTER_COLUMNS declares
+    // destinations that are not built, and the footer is right not to link
+    // them.
+    for (const column of visibleFooterColumns(FOOTER_COLUMNS)) {
       for (const link of column.links) {
         const found = within(footer).getAllByRole('link', { name: link.label });
 

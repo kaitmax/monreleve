@@ -528,3 +528,51 @@ the column.
 TOUCHES:   `web/app/(public)/sources/page.tsx` (the Container width on the
 table section), `web/app/(public)/sources/sources.module.scss`, and the two
 `page-sources-*` baselines.
+
+## PARK-12 - the shell no longer announces unbuilt pages  [FW20, 2026-09-16]
+
+QUESTION:  todo.md's FW20 check is "click every footer link: zero 404s", and
+the footer had two: `/calculateur-lamal-cmu` and `/application`. Both are
+declared, neither is built. The state is older than this task —
+`lib/content/routes.ts` has said since FW9 that "the nav and footer still link
+planned ones … and every one of those links is a 404 today" — and eleven tasks
+later two were left, 404ing from the footer of every page on the site.
+
+Nothing caught it because nothing asked. The registry test asserts every href
+the shell renders is REGISTERED, which these were; the sitemap test asserts no
+planned route is LISTED, which they were not. Between *declared* and *in the
+sitemap* sat *linked from every page and broken*.
+
+TAKEN:     `isHrefHidden` now hides any route that is not `live`, so the nav
+and footer show only pages that exist. It is R85's rule — a target renders
+only when it is live — which the result panel has followed since FW12 and the
+shell simply never applied.
+
+The reader-facing consequence: "Comparateur LAMal / CMU" and
+"L'application" disappear from the footer, and the *Calculateurs* disclosure
+now holds one child rather than two.
+
+It follows PARK-7's own precedent. That entry refused to link the comparator
+from the droit d'option guide and refused equally to *name* it and tell a
+reader to wait, because "a promise of a page that does not exist is a second
+thing for the reader to remember and the product to owe". A footer entry is
+the same promise in a smaller font.
+
+NOT TAKEN: (a) Rendering them as plain text rather than links — no 404, and
+the product still announces two unbuilt things on every page. That is the
+option PARK-7 already rejected for the same product. (b) Removing them from
+`lib/fr/shell.ts` entirely. The copy is right and the routes are real plans;
+what was wrong was rendering an anchor to them. Deleting the entries would
+mean rewriting them when the pages ship. (c) Leaving the 404s — todo.md's
+acceptance criterion forbids it, and it is the kind of defect a stranger
+finds in ten seconds.
+
+REVERSIBLE: one predicate, one line. If you want planned products announced,
+it is `if (route.status !== 'live') return true;` in `isHrefHidden` plus a
+non-link rendering in `PublicShell`.
+
+TOUCHES:   `web/lib/content/routes.ts`, and four tests that had encoded the
+old behaviour — three in `PublicShell.test.tsx` that derived their
+expectations from the DECLARED nav rather than the rendered one (R171 again),
+and one in `regulatory-gate.test.ts` whose premise was that the unbuilt
+comparator kept a disclosure alive.

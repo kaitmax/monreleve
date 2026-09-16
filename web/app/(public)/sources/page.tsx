@@ -138,7 +138,7 @@ export default function SourcesPage() {
             page scroll sideways - measured at 320, 360, 390, 1280 and 1440,
             with 0 px of PAGE overflow at every one.
           */}
-          <div className={styles.tableScroll}>
+          <div className={styles.tableScroll} data-scroll="true">
             <table className={styles.table}>
               <thead>
                 <tr>

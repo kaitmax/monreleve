@@ -34,6 +34,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { axe } from 'vitest-axe';
 import * as matchers from 'vitest-axe/matchers';
 import { CguContent } from '@/app/(public)/cgu/CguContent';
+import AProposPage from '@/app/(public)/a-propos/page';
+import HomePage from '@/app/(public)/page';
+import ReleveAnnuelPage from '@/app/(public)/releve-annuel/page';
+import TarifsPage from '@/app/(public)/tarifs/page';
 import { ConfidentialiteContent } from '@/app/(public)/confidentialite/ConfidentialiteContent';
 import { MentionsLegalesContent } from '@/app/(public)/mentions-legales/MentionsLegalesContent';
 import { LEGAL_ENTITY, LEGAL_ENTITY_FIELDS, type LegalEntity } from '@/lib/content/legal-entity';
@@ -55,14 +59,34 @@ const PAGES = [
   { name: 'confidentialite, filled', node: <ConfidentialiteContent entity={FILLED} /> },
   { name: 'cgu, empty', node: <CguContent entity={LEGAL_ENTITY} /> },
   { name: 'cgu, filled', node: <CguContent entity={FILLED} /> },
+
+  // FW20's four public pages. Each is prose in the shell, which is the shape
+  // this file already covers - but "the same shape" is a description, not a
+  // measurement, and the heading-order assertion below is the one that would
+  // catch a page opening at h2 or skipping a level.
+  //
+  // The home page is here too although it is not new: it stopped being a
+  // placeholder in FW20 and grew its first interactive elements, so the
+  // version this file last saw is not the version that ships.
+  { name: 'accueil', node: <HomePage /> },
+  { name: 'a-propos', node: <AProposPage /> },
+  { name: 'tarifs', node: <TarifsPage /> },
+  { name: 'releve-annuel', node: <ReleveAnnuelPage /> },
 ];
 
 describe('every page composed in the shell is free of axe violations', () => {
-  it('covers all three legal pages in both states', () => {
+  it('covers all three legal pages in both states, and FW20s four', () => {
     // Without this the loop could pass by shrinking to nothing.
-    expect(PAGES).toHaveLength(6);
+    expect(PAGES).toHaveLength(10);
     for (const page of ['mentions-legales', 'confidentialite', 'cgu']) {
       expect(PAGES.filter((entry) => entry.name.startsWith(page))).toHaveLength(2);
+    }
+
+    // FW20's four, NAMED rather than counted, for the reason the legal pages
+    // are: a count of ten is satisfied by any ten, and the page that would
+    // quietly fall out of this list is the one somebody rewrote.
+    for (const page of ['accueil', 'a-propos', 'tarifs', 'releve-annuel']) {
+      expect(PAGES.filter((entry) => entry.name === page), page).toHaveLength(1);
     }
   });
 

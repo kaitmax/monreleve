@@ -35,10 +35,20 @@ export const A_PROPOS_COPY = {
     'Qui tient ce site, comment une information réglementaire y arrive, et ' +
     'ce qui a été vérifié ou non.',
 
+  /**
+   * IT DESCRIBES WHAT THE SITE DOES TODAY, and the first draft did not. It
+   * said the site "calcule une part de télétravail ET TIENT UN REGISTRE DE
+   * JOURNÉES" - a register that /releve-annuel, written in the same task,
+   * says is not built. Two pages asserting what a third denies.
+   *
+   * Found by the read-through, which is the only thing that could: each
+   * sentence is plausible alone, every test passed, and the contradiction
+   * only exists between pages.
+   */
   lead:
-    'Ce site calcule une part de télétravail et tient un registre de ' +
-    'journées. Il ne donne pas de conseil, et il ne remplace ni votre ' +
-    'employeur, ni votre administration fiscale, ni un avocat.',
+    'Ce site calcule votre part de télétravail annuelle. Il ne donne pas de ' +
+    'conseil, et il ne remplace ni votre employeur, ni votre administration ' +
+    'fiscale, ni un avocat.',
 
   // -- who has read the rules ---------------------------------------------
   reviewHeading: 'Personne n’a validé ces règles',

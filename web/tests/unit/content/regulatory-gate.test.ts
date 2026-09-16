@@ -172,14 +172,36 @@ describe('the third surface: the nav and the footer (R54)', () => {
     expect(hrefs(open)).toContain(CALCULATOR_PATH);
   });
 
-  it('keeps the Calculateurs disclosure while its other child survives', () => {
-    // The comparator is planned but NOT gated, so the menu still has a child
-    // and must not vanish with the calculator.
+  it('drops the Calculateurs disclosure when the gate closes, since FW20', () => {
+    // THIS TEST ASSERTED THE OPPOSITE UNTIL FW20, and its premise was
+    // "the comparator is planned but NOT gated, so the menu still has a child
+    // and must not vanish with the calculator."
+    //
+    // That premise depended on planned routes being LINKED. FW20 stopped it:
+    // the shell had advertised /calculateur-lamal-cmu and /application from
+    // the footer of every page since FW9, and both 404ed the whole time.
+    // isHrefHidden now hides anything not live, which is R85's rule - a target
+    // renders only when it is live - finally applied to the shell.
+    //
+    // So with the review closed, the disclosure's only two children are a
+    // gated calculator and an unbuilt comparator, and it correctly vanishes -
+    // which is exactly what the next test says must happen to a disclosure
+    // that loses every child.
     const closed = visibleNav(SHELL_NAV, null);
-    const menu = closed.find((entry) => entry.children !== undefined);
 
-    expect(menu).toBeDefined();
-    expect(menu?.children?.length).toBeGreaterThan(0);
+    expect(closed.find((entry) => entry.children !== undefined)).toBeUndefined();
+  });
+
+  it('keeps it open today, because the calculator is live and the review is recorded', () => {
+    // THE OTHER HALF, and the one that would catch an over-eager filter. A
+    // predicate that hid too much would leave this disclosure empty too, and
+    // the assertion above alone cannot tell "correctly dropped" from "drops
+    // everything".
+    const open = visibleNav(SHELL_NAV, '2026-09-09');
+    const menu = open.find((entry) => entry.children !== undefined);
+
+    expect(menu, 'the Calculateurs disclosure is gone even with the gate open').toBeDefined();
+    expect(menu?.children?.map((child) => child.href)).toEqual([CALCULATOR_PATH]);
   });
 
   it('drops a disclosure that loses every child', () => {

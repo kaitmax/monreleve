@@ -272,3 +272,41 @@ test.describe('SPEC section 20 vocabulary, in the head as well as the body', () 
     expect(claims, `/cgu body claims: ${claims.join(', ')}`).toEqual([]);
   });
 });
+
+test.describe('every link the shell renders resolves (FW20)', () => {
+  // todo.md's manual check for FW20 - "click every footer link: zero 404s" -
+  // done as a test, because a manual check is performed once by whoever
+  // remembers it.
+  //
+  // IT IS NOT A DUPLICATE OF THE REGISTRY TEST. tests/unit/content/routes.test.ts
+  // asserts every href the shell renders is REGISTERED; this asserts the
+  // registered route actually serves. Those came apart for four tasks:
+  // /releve-annuel was registered, linked from the calculator's best outcome,
+  // and 404ing the whole time.
+
+  test('the nav and footer link nothing that 404s', async ({ request, page }) => {
+    await page.goto('/');
+
+    const hrefs = await page.evaluate(() =>
+      [...document.querySelectorAll('header a[href], footer a[href]')]
+        .map((node) => node.getAttribute('href') ?? '')
+        .filter((href) => href.startsWith('/')),
+    );
+
+    // NON-VACUOUS: the shell renders a real set, so an empty list below would
+    // be a broken selector rather than a clean bill of health.
+    expect(hrefs.length, 'the shell rendered no internal links').toBeGreaterThanOrEqual(10);
+
+    const broken: string[] = [];
+
+    for (const href of [...new Set(hrefs)]) {
+      const status = (await request.get(href)).status();
+
+      if (status !== 200) broken.push(`${href} -> ${String(status)}`);
+    }
+
+    expect(broken, `links the shell renders that do not serve:\n${broken.join('\n')}`).toEqual(
+      [],
+    );
+  });
+});

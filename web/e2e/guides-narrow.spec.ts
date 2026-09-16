@@ -27,6 +27,15 @@ const NARROW = { width: 320, height: 720 };
 
 const FIXED = [
   ['the hub', '/guides'],
+
+  // FW20 PUT FOUR MORE PUBLIC PAGES IN FRONT OF READERS, and R127 applies to
+  // every one: the home page grew a two-column card grid that has to collapse,
+  // and /sources carries the one table on the site wide enough to need R159.
+  ['the home page', '/'],
+  ['a-propos', '/a-propos'],
+  ['tarifs', '/tarifs'],
+  ['releve-annuel', '/releve-annuel'],
+  ['sources', '/sources'],
   ['the article', '/guides/fixture-modele-article'],
 ] as const;
 
@@ -107,6 +116,22 @@ for (const [what, route] of ROUTES) {
       let worst = { tag: '', width: 0 };
 
       for (const element of document.querySelectorAll('main *')) {
+        // ELEMENTS INSIDE AN R159 SCROLL CONTAINER ARE EXEMPT, and the
+        // exemption is the rule rather than a loophole. R159 says a table too
+        // wide for the viewport scrolls ITSELF; such a table is therefore
+        // SUPPOSED to be wider than 320, and measuring it here asserts the
+        // opposite of what R159 decided.
+        //
+        // FW20 found this the first time /sources ran at 320: the regulatory
+        // table is 665 px, correctly, inside a container that scrolls and a
+        // page that does not. The assertion predates R159 and had never met
+        // a page carrying one.
+        //
+        // The container ITSELF is still measured - it is not exempt - so a
+        // container wider than the viewport still fails, which is the case
+        // that would actually push the document sideways.
+        if (element.closest('[data-scroll="true"]') !== null) continue;
+
         const width = element.getBoundingClientRect().width;
 
         if (width > worst.width) worst = { tag: element.tagName.toLowerCase(), width };

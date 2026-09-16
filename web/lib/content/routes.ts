@@ -324,6 +324,23 @@ export function isHrefHidden(
 
   if (route === undefined) return false;
 
+  // NOT BUILT YET IS ALSO HIDDEN, since FW20, and this closed a hole that had
+  // been open since FW9. That task shipped a nav and footer linking every
+  // planned route, and routes.ts said so plainly: "every one of those links is
+  // a 404 today." Eleven tasks later two were left - /calculateur-lamal-cmu
+  // and /application - and they were still 404ing from the footer of every
+  // page on the site.
+  //
+  // Nothing caught it because nothing asked. The registry test asserts every
+  // href the shell renders is REGISTERED, which these were; the sitemap test
+  // asserts no planned route is LISTED, which they were not. Between "declared"
+  // and "in the sitemap" sat "linked from every page and broken", and todo.md's
+  // FW20 check - "click every footer link: zero 404s" - is what finally asked.
+  //
+  // It is R85's rule, which the result panel has followed since FW12: a target
+  // renders only when it is live. The shell simply never applied it.
+  if (route.status !== 'live') return true;
+
   return isGated(route) && review === null;
 }
 

@@ -39,10 +39,16 @@ export const TARIFS_COPY = {
    */
   position: 'Gratuit en 2027. Payant dès 2028 (CHF 39-49/an prévu).',
 
+  /**
+   * IT LISTS WHAT EXISTS. The first draft said "le calculateur, les guides ET
+   * LE RELEVÉ sont gratuits", which prices a document /releve-annuel says is
+   * not built - and a free price on an absent thing still asserts the thing.
+   * Found by the read-through, between pages rather than on one.
+   */
   positionDetail:
-    'Le calculateur, les guides et le relevé sont gratuits pour toute ' +
-    'l’année 2027. Aucun paiement n’est demandé, aucun moyen de paiement ' +
-    'n’est collecté, et rien ne change en cours d’année.',
+    'Le calculateur et les guides sont gratuits pour toute l’année 2027. ' +
+    'Aucun paiement n’est demandé, aucun moyen de paiement n’est collecté, ' +
+    'et rien ne change en cours d’année.',
 
   whyHeading: 'Pourquoi c’est gratuit cette année',
 
@@ -66,7 +72,8 @@ export const TARIFS_COPY = {
   noGridBody:
     'Un seul produit, une seule offre. Pas de version limitée, pas d’option ' +
     'à cocher, pas de tableau comparatif dont la colonne du milieu est mise ' +
-    'en avant. Ce qui est décrit sur ce site est ce que vous obtenez.',
+    'en avant. Ce qui existe sur ce site est disponible pour tout le monde, ' +
+    'et ce qui n’existe pas encore est décrit comme tel.',
 
   sourcesLink: 'Voir ce qui est vérifié, et ce qui ne l’est pas',
 } as const;
