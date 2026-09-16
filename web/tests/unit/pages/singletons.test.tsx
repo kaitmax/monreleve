@@ -446,6 +446,12 @@ describe('the contextual link: exactly one, by Status (R119)', () => {
     const slot = document.querySelector('[data-panel="link"]');
 
     expect(slot?.querySelector('a')).toBeNull();
+
+    // R154: the LINK TEXT is a constant linkPending cannot launder, so this
+    // fails if the interpolation empties; the equality below then pins the
+    // whole sentence. FW17 wrote only the equality, which would have passed
+    // against a linkPending that dropped its argument.
+    expect(slot?.textContent).toContain(RESULT_COPY.links.compliant.text);
     expect(slot?.textContent).toBe(RESULT_COPY.linkPending(RESULT_COPY.links.compliant.text));
   });
 });

@@ -77,6 +77,9 @@ test.describe('with JavaScript disabled (AC3)', () => {
 
     const main = (await page.locator('main').textContent()) ?? '';
 
+    // R154: the year itself, then the sentence around it. See the unit
+    // test of the same name for why the second alone proves nothing.
+    expect(main).toContain(String(YEAR));
     expect(main).toContain(CALCULATEUR_COPY.yearCaption(YEAR));
   });
 

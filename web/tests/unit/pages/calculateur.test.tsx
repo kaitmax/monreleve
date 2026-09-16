@@ -146,6 +146,11 @@ describe('the shell that survives without JavaScript (AC3)', () => {
 
 describe('ruling R55: the year', () => {
   it('shows the tax year above the form', () => {
+    // R154: THE VALUE FIRST, AND THE SENTENCE SECOND. Asserting only
+    // yearCaption(YEAR) is tautological - if the template stopped
+    // interpolating, both sides would lose the year and still match. The
+    // digits come from YEAR itself, which no copy function can launder.
+    expect(pageText()).toContain(String(YEAR));
     expect(pageText()).toContain(CALCULATEUR_COPY.yearCaption(YEAR));
   });
 

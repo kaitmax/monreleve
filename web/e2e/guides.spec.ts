@@ -14,7 +14,11 @@
 // 680 px measure. Those are properties of compiled output.
 
 import { expect, test } from '@playwright/test';
+import { GUIDES_COPY } from '@/lib/fr/guides';
 import { LEGAL_COPY } from '@/lib/fr/legal';
+import { GUIDES_PATH, allGuides } from '@/lib/guides/registry';
+import { readingMinutes } from '@/lib/guides/reading-time';
+import { formatDate } from '@/lib/ui/core';
 
 /** The fixture article: the one guide that exists in FW16. */
 const FIXTURE = '/guides/fixture-modele-article';
@@ -342,5 +346,130 @@ test.describe('the article template', () => {
     const robots = await page.locator('meta[name="robots"]').getAttribute('content');
 
     expect(robots).toContain('noindex');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// RULING R154: A MECHANISM IS PROVEN TO DELIVER, NOT PROVEN NOT TO FAIL.
+//
+// THE GAP THIS CLOSES, found by auditing the five mechanisms R154 names and
+// then noticing a sixth that was not on the list. The chips are a chain:
+//
+//   frontmatter.lastReviewed -> formatDate -> GUIDES_COPY.reviewedOn -> chip
+//
+// and NOTHING asserted the rendered chip carried the article's date.
+// tests/unit/pages/guide-section-order.test.tsx passes the literal
+// '09.09.2026' into a COPY of the head markup, and the e2e order assertion
+// above checks only that [data-chips] EXISTS and sits in the right position.
+//
+// If the middle link emptied, the chip would read "Derniere verification : "
+// - grammatical, plausible, and every suite green. SPEC 9.5 REQUIRES it:
+// "every guide carries a derniere verification date". That is the blockJS
+// shape exactly, on the chip the spec names.
+//
+// EVERY VALUE COMES FROM THE REGISTRY, never written as a literal, so the
+// test cannot agree with a renderer that has stopped interpolating.
+//
+// AND THE FIXTURE'S DATE WAS CHANGED TO MAKE THIS DISCRIMINATE. All four
+// articles carried 2026-09-09, so "the chip contains the date" would have
+// passed against a template with the date hardcoded - the same vacuity R154
+// is about, in the test written to enforce R154. The fixture now reads
+// 2026-01-15, so one hardcoded date cannot satisfy both.
+
+test.describe('the metadata chips deliver their values (R154)', () => {
+  const articles = allGuides();
+
+  test('the set carries more than one date, or nothing below discriminates', () => {
+    const dates = new Set(articles.map((guide) => guide.frontmatter.lastReviewed));
+
+    expect(dates.size, 'every article shares a date; a hardcoded one would pass').toBeGreaterThan(
+      1,
+    );
+  });
+
+  for (const guide of articles) {
+    const { slug, lastReviewed, reviewer } = guide.frontmatter;
+
+    test(`${slug} renders its own date, reviewer and reading time`, async ({ page }) => {
+      await page.goto(`${GUIDES_PATH}/${slug}`);
+
+      // textContent rather than innerText, and includes() rather than a
+      // matcher: R66/R71 - the normaliser collapses the U+00A0 these
+      // sentences carry, and a matcher written with an ordinary space would
+      // match either character.
+      const chips = await page
+        .locator('[data-chips]')
+        .evaluate((node) => node.textContent ?? '');
+
+      // THE EXPECTATION MUST NOT COME FROM THE FUNCTION UNDER TEST, and the
+      // first version of this block did exactly that - it compared the chip
+      // against GUIDES_COPY.reviewedOn(formatDate(...)). Planting the defect
+      // proved it worthless: with reviewedOn returning its sentence WITHOUT
+      // the date, both sides lost the date and the comparison still matched.
+      // All four articles passed against an emptied interpolation.
+      //
+      // That is the tautological comparison tasks/plan.md records under R71 -
+      // "a comparison whose two sides both come from the formatter proves
+      // pass-through, not the value" - occurring inside the test written to
+      // enforce R154. The same shape, one level up, again.
+      //
+      // So each assertion is against the VALUE, taken from the frontmatter:
+      // the formatted date, the reviewer as written, the computed count. An
+      // emptied interpolation drops all three out of the chip and all three
+      // fail.
+      expect(chips, `${slug}: the verification date`).toContain(formatDate(lastReviewed));
+      expect(chips, `${slug}: the reviewer`).toContain(reviewer);
+      expect(chips, `${slug}: the reading time`).toContain(
+        String(readingMinutes(guide.body)),
+      );
+
+      // AND THE FORMATTER ITSELF, which formatDate cannot launder either:
+      // the year and the day come from the raw ISO string in the file, so a
+      // formatter returning something unrelated fails here even though it
+      // would agree with itself above.
+      const [year, , day] = lastReviewed.split('-');
+
+      expect(chips, `${slug}: the year`).toContain(year ?? '');
+      expect(chips, `${slug}: the day`).toContain(day ?? '');
+
+      // The sentence around the value is still the copy module's, and that
+      // it is PRESENT is worth one assertion - it is what makes the date a
+      // verification date rather than a loose number.
+      expect(chips, `${slug}: the chip's sentence`).toContain(
+        GUIDES_COPY.reviewedOn('').trim().split(String.fromCharCode(0x00a0))[0] ?? '',
+      );
+
+      // A reading time of zero renders "0 min de lecture", which is
+      // grammatical and wrong. The count is computed from the body, so it
+      // must be positive for a real article.
+      expect(readingMinutes(guide.body), `${slug}: reading time`).toBeGreaterThan(0);
+    });
+  }
+});
+
+test.describe('the hub delivers each entry its own date (R154)', () => {
+  test('every listed guide shows the date its frontmatter carries', async ({ page }) => {
+    await page.goto(GUIDES_PATH);
+
+    const text = await page.locator('main').evaluate((node) => node.textContent ?? '');
+    const published = allGuides().filter((guide) => !guide.file.startsWith('_'));
+
+    expect(published.length).toBeGreaterThan(0);
+
+    for (const guide of published) {
+      expect(text, guide.frontmatter.slug).toContain(
+        GUIDES_COPY.reviewedOn(formatDate(guide.frontmatter.lastReviewed)),
+      );
+      expect(text, guide.frontmatter.slug).toContain(guide.frontmatter.title);
+    }
+
+    // The fixture's date must NOT be here - it is excluded from the hub, and
+    // this is what makes the assertion above about THESE guides rather than
+    // about any date at all.
+    const fixture = allGuides().find((guide) => guide.file.startsWith('_'));
+
+    expect(text).not.toContain(
+      GUIDES_COPY.reviewedOn(formatDate(fixture?.frontmatter.lastReviewed ?? '')),
+    );
   });
 });
