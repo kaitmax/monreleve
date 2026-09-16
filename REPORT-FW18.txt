@@ -1,0 +1,353 @@
+REPORT-FW18.txt - frontalier
+Task FW18: the remaining guides. Six commits, all pushed.
+
+SUMMARY
+--------------------------------------------------------------------
+THREE of the four planned articles are published; the fourth is not, and
+that is the main finding rather than a shortfall.
+
+  attestation-employeur-teletravail   published
+  declaration-impots-frontalier       published, structural
+  geneve                              published, earns its slug
+  droit-option-lamal-cmu              NOT PUBLISHED - parked as P2
+
+Six guides are live, the mesh is clean over all six, and the Lighthouse
+floor now covers a new article as well as the pillar.
+
+R146 DECIDED THIS TASK, not the prose. Three of the four subjects have
+NO verified row in docs/regulatory-sources.md - its eight rows are all
+telework constants - and `claims` accepts only those eight plus P1-P3.
+So each article was written against what could actually be cited:
+
+  attestation   the obligation is never asserted; the whole article is
+                conditional (P1)
+  declaration   no date, no form, no procedure - and it says so on the
+                page (P3)
+  geneve        earns its slug on the six published worked examples,
+                which the pillar does not carry
+  droit-option  its two load-bearing facts cannot be written at all (P2)
+
+PRECONDITIONS
+--------------------------------------------------------------------
+R0. REPORT-FW17b.txt read from disk. No item marked BLOCKING; no
+    deviation touching the MDX pipeline, the frontmatter contract, the
+    template or the mesh checker. Its questions Q47-Q52 are carried
+    forward below.
+
+R1. CI green on origin/main before starting:
+    19c3ece  run 35023463067
+    https://github.com/kaitmax/Frontalier/actions/runs/35023463067
+    The run for this task's final push is recorded under PUSH PROOF.
+
+INCREMENT 0
+--------------------------------------------------------------------
+0a. parking.md created at the repo root with R156 stated in full - why
+    the file exists, the boundary copied rather than summarised, and the
+    entry format. It records that a reversal is a NEW entry naming the
+    one it supersedes rather than an edit in place: an entry edited
+    after the operator has read it is a decision with no history.
+
+0b. CONFIRMED, NOT REIMPLEMENTED. FW17b's R154 chip assertion is
+    parameterised over allGuides() at module load, so every .mdx added
+    to content/guides becomes a test case with no edit. The three new
+    articles were covered the moment their files existed, and the
+    visible evidence is test:e2e's count: 172 -> 177 -> 182 -> 187
+    across the four content increments, with no test written.
+
+RED/GREEN LEDGER
+--------------------------------------------------------------------
+This task wrote prose, not mechanisms, so most increments had no RED of
+their own. The two that did:
+
+  R146 refused geneve's first version
+    x reports no violation for what is written today
+      "geneve: residence1983Cantons is not a verified row and is not
+       marked unresolved"
+    The claim was written unhedged because for Geneve the settled half
+    is what matters - that Geneve taxes at source is established, and
+    the PENDING half is the membership of the other group. The
+    mechanism cannot express that split: the key is pending, so a claim
+    on it is marked unresolved. GREEN after marking it; the prose
+    already carried case (b)'s hedge and says the pending list does not
+    affect a Geneva reader either way.
+
+  A false red from a doubled pattern
+    The script adding the new slug to the sitemap census matched the
+    FIRST of two identical lines in routes.test.ts - the SPEC 9.5 slug
+    list rather than the sitemap list - so one list gained a duplicate
+    and the other gained nothing. Same shape as FW17b's regex that
+    edited a function's parameter list. A pattern that matches twice
+    edits the wrong one silently.
+
+CLAIMS TABLE
+--------------------------------------------------------------------
+13 claims across the three new articles. Every key resolves; three are
+written as open questions under R146 case (b).
+
+attestation-employeur-teletravail
+  fiscalCeiling         1  VERIFIED     the ceiling is annual, so the
+                                        document must cover the year
+  simplifiedBasisDays   5  VERIFIED     the basis is the employer's
+                                        choice, applied uniformly
+  missionCapDays        2  VERIFIED     missions count inside the
+                                        ceiling, under their own cap
+  dayClassification     6  PENDING (b)  over four hours is a whole day,
+                                        two to four a half
+
+declaration-impots-frontalier
+  fiscalCeiling         1  VERIFIED     the figure to produce is annual
+  simplifiedBasisDays   5  VERIFIED     the base the percentage is
+                                        reported against
+  missionCapDays        2  VERIFIED     mission days belong to that total
+  residence1983Cantons  7  PENDING (b)  two regimes, different
+                                        consequences
+
+geneve
+  residence1983Cantons  7  PENDING (b)  Geneve taxes at source; a breach
+                                        does not put the status at risk
+  fiscalCeiling         1  VERIFIED     the ceiling is the same
+                                        everywhere
+  simplifiedBasisDays   5  VERIFIED     the basis the published examples
+                                        use
+  missionCapDays        2  VERIFIED     the published examples show the
+                                        cap binding
+  missionCapProration   3  VERIFIED     reduced for part-time and
+                                        partial years
+
+WHAT IS NOT CLAIMED, and this is the substance of the task. The employer
+attestation obligation, its date and its form; every French declaration
+deadline and form number; the LAMal/CMU window and irrevocability. None
+has a row; none is written.
+
+PROVISIONAL
+--------------------------------------------------------------------
+Row 6, in the attestation guide, where it decides part of any
+discrepancy between two counts:
+  "Cette conversion des heures en journees n'a pas encore ete verifiee
+   contre le texte de la circulaire n 45, et elle decide pourtant d'une
+   partie de l'ecart entre deux decomptes. Le detail de ce qui est
+   verifie et de ce qui ne l'est pas est publie sur la page [sources et
+   verifications](/sources)."
+
+Row 7, in the declaration guide:
+  "La composition exacte de la liste des cantons relevant de cet accord
+   n'a pas encore ete verifiee contre le texte : voir [sources et
+   verifications](/sources). Ce qui est etabli, c'est que les deux
+   regimes existent et qu'ils different."
+
+Row 7, in the Geneve guide, where the hedge is turned round to say it
+does NOT affect this reader:
+  "Pour un lecteur genevois, cela ne change rien : que Geneve impose a
+   la source est etabli, et c'est l'appartenance d'autres cantons a
+   l'autre groupe qui est en attente."
+
+GENEVE
+--------------------------------------------------------------------
+PUBLISHED. AC3 asks what is true of Geneve and not of the pillar.
+
+The regime sentence is NOT that content - the pillar carries both
+regimes and both consequences already, and a page that said only "Geneve
+taxes at source" would be the thin canton page SPEC 9.5 calls worse than
+none.
+
+What earns the slug is THE SIX PUBLISHED WORKED EXAMPLES. ge.ch
+publishes them; Checkpoint A read them on 09.09.2026 and recorded that
+all six match "on their inputs AND on all four outputs";
+fixtures/geneva-cases.json is frozen against them and SPEC 7.5 says "if
+any fails, nothing ships". They appear nowhere else on this site - the
+mission cluster uses case (c) alone - and they are the administration's
+own arithmetic rather than an illustration invented here.
+
+Three are read out rather than left in the table: the case where the
+mission cap bites (39,16 %), the case where the regime is lost (60 %,
+"un peu moins de trois jours de teletravail par semaine y suffisent"),
+and the case of a frontalier who never teleworks and travels a lot
+(4,16 %) - the one that shows the ceiling reaches people who do not
+think it concerns them.
+
+The table's figures are CITATIONS - the inputs and outputs of six
+published cases, like a date or an article number. Every figure that is
+a RuleSet value arrives as an expression.
+
+MESH
+--------------------------------------------------------------------
+checkMesh over six published guides: no violations.
+
+  teletravail-frontalier-40-pourcent [pillar]
+    -> jours-de-mission, geneve, seuil-social, attestation, declaration
+  attestation-employeur-teletravail  -> pillar, jours-de-mission
+  declaration-impots-frontalier      -> pillar
+  geneve [canton]                    -> pillar
+  jours-de-mission-hors-suisse       -> pillar, seuil-social
+  seuil-social-49-9-pourcent         -> pillar, jours-de-mission
+
+Rules verified, each planted and captured in mesh.test.ts:
+cluster-links-pillar, calculator-link-inline, in-hub, href-resolves,
+undeclared-cross-link, pillar-links-every-cluster, links-sources, plus
+the four about reporting every violation and naming the guide.
+
+The declaration guide links no other cluster on purpose. SPEC 9.5:
+cluster-to-cluster "only where genuinely related", and "forced
+cross-links dilute the signal".
+
+PARKED
+--------------------------------------------------------------------
+  P1  the employer attestation is described, never asserted
+  P2  droit-option-lamal-cmu is NOT published
+  P3  the declaration guide carries no date, form or procedure
+
+P2 is the one to read first. Its two load-bearing facts are the
+three-month window and the irrevocability. docs/regulatory-sources.md has
+no entry for LAMal, CMU, the droit d'option, a window or irrevocability -
+the grep returns nothing - and SPEC 22 names "3-month irrevocable
+LAMal/CMU option" in its OWN list of figures "compiled from advisory and
+news sources", to be verified "before the fixtures are frozen".
+
+The claims test would NOT have refused a hedged version: it validates
+DECLARED claims and does not force every sentence to be declared. That
+is a loophole rather than a permission, and P2 names it so the silence is
+not mistaken for approval.
+
+READ-THROUGH
+--------------------------------------------------------------------
+All three new articles read end to end from served HTML. Read for: does
+every paragraph say something actionable; is any sentence a claim I
+could not trace; is the register reference rather than marketing; does
+any figure appear R147 should have caught; does the French read as
+French.
+
+IT FOUND NOTHING TO FIX, and that is worth stating plainly rather than
+manufacturing a find. FW17's read-through caught two defects because
+nothing else could see them; R155's guard and FW17b's chip assertion now
+catch those classes mechanically, which is what a guard is for.
+
+Two judgements it did produce, recorded rather than acted on:
+
+ 1. The declaration guide is short - three minutes. That is a
+    consequence of refusing to publish unsourced dates, not a gap to
+    fill. Filling it would mean writing the deadlines.
+ 2. The attestation guide's concession - "en dehors de ces cas, il ne
+    vous apporte rien" - is the sentence most likely to be softened
+    later by somebody reading it as undersell. It is the point of the
+    article, and this is where that is on the record.
+
+SIZE
+--------------------------------------------------------------------
+  /guides           107.4 KiB  delta 6.8   pass
+  /guides/[slug]    108.6 KiB  delta 8.0   pass
+  framework floor 100.6 KiB; GATE A 125.0; GATE B 25.0.
+Unchanged from FW17b - three articles add no JavaScript.
+
+LIGHTHOUSE (R152)
+--------------------------------------------------------------------
+The floor covers a NEW article as well as the pillar.
+  /                                           100 100 100 100
+  /guides                                     100 100 100 100
+  /guides/teletravail-frontalier-40-pourcent  100 100 100 100
+  /guides/geneve                              100 100 100 100
+All four categories asserted at minScore 1 as errors.
+
+BASELINES (R135)
+--------------------------------------------------------------------
+22 regenerations and 4 additions across four increments.
+
+increment 1 - 6 regenerated
+  guides-hub-{d,m}, guides-pilier-{d,m}, guides-cluster-missions-{d,m}
+  A fourth hub entry; the pillar gained a forward link; the mission
+  cluster's GUIDES LIES gained a third entry.
+
+increments 2-3 - 4 regenerated
+  guides-hub-{d,m}, guides-pilier-{d,m}
+  A fifth hub entry; the pillar gained another forward link.
+
+increment 4 - 4 regenerated, 4 ADDED
+  guides-hub-{d,m}, guides-pilier-{d,m}
+  guides-attestation-{d,m}       NEW
+  guides-geneve-{d,m}            NEW
+  A sixth hub entry under a third group. The two new states are
+  increment 5's, taken in the same container run. Chosen for what they
+  contain: the attestation guide is the one written entirely in the
+  conditional and carries two stacked Avertissements; Geneve is the only
+  one with a six-row DataGrid and the only canton page. The declaration
+  guide is structurally a subset of the attestation guide's shape.
+
+Each group was opened and read. The hub shots were checked entry by
+entry against the registry.
+
+TOKENS ADDED (R77)
+--------------------------------------------------------------------
+None. No new component, no new token, no layout change.
+
+DEVIATIONS
+--------------------------------------------------------------------
+D1. ONE OF THE FOUR ARTICLES IS NOT PUBLISHED. See P2. The task's
+    acceptance criteria say "four articles at their SPEC 9.5 slugs";
+    three are. R156's conservative option and R146's case (c) both point
+    the same way, and the prompt's own increment 4 establishes that not
+    publishing is an available outcome.
+
+D2. ROUTE FLIPS HAPPENED PER INCREMENT, not in increment 5. FW17's hub
+    assertion refuses an article listed on a live hub whose own route is
+    planned, so the flip is forced the moment a file lands. The sitemap
+    census and the R119 singleton exemption move with it.
+
+D3. INCREMENT 2's ARTEFACT IS A PARKING ENTRY, so it has no commit of
+    its own; P2 was committed with increment 1 and increment 3's commit
+    carries both their titles. Recorded rather than invented a commit
+    for.
+
+D4. TWO OF INCREMENT 5's BASELINES WERE TAKEN IN INCREMENT 4, to spend
+    one container run instead of two. Their reasons are recorded above
+    under increment 4.
+
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------
+N1. The six Geneva worked examples and the mission travel-day rules
+    still have no row of their own, so both are cited under
+    missionCapDays because they share row 2's ge.ch page. That is Q47
+    from FW17 and this task made it load-bearing on a third article.
+
+N2. The declaration guide's "Ce que ce guide ne vous dira pas" is a
+    pattern that could be reused - an article naming its own absence
+    rather than leaving a reader to find it. If FW20 writes pages with
+    the same problem, it is the shape to copy.
+
+QUESTIONS FOR THE OPERATOR
+--------------------------------------------------------------------
+Carried from FW17 and FW17b, all still open: Q47 (verified facts with no
+source key), Q48 (DataGrid's total rule), Q49 (a responsive table in the
+kit - Geneve's six-row two-column table fits at 320, so the pressure is
+lower than FW17 thought), Q50 (FD13's inline CTA card), Q51 (the
+reviewer field), Q52 (typed thresholds in lib/fr).
+
+New:
+  Q53. THE DROIT D'OPTION NEEDS A REVIEWER PASS BEFORE IT CAN BE
+       WRITTEN, and FW19 builds a comparator on the same subject. If the
+       window and the irrevocability cannot be sourced for a guide, they
+       cannot be sourced for a warning banner either. SPEC 9.6 requires
+       that banner. This is the same question one surface along and it
+       is now in front of FW19.
+
+R47. Still open, still the operator's. Not raised.
+
+FINAL VERIFICATION
+--------------------------------------------------------------------
+  pnpm gate:changed   typecheck, lint, test, build, test:e2e, test:visual
+                      test:        2324 passed
+                      test:e2e:     187 passed
+                      test:visual:  100 passed
+  pnpm test:a11y      128 passed across 6 files
+  pnpm size           all gated routes pass GATE A and GATE B
+  pnpm lighthouse     4 URLs, all four categories at 100, floors asserted
+
+PUSH PROOF
+--------------------------------------------------------------------
+  790a9b1  FW18: parking.md, and the chip proof confirmed for a new article
+  17307c5  FW18: the employer attestation guide
+  cc92834  FW18: the declaration-season guide, and the LAMal/CMU guide parked
+  89f47c4  FW18: the Geneve canton guide
+  36e90c1  FW18: mesh, registry, a11y, baselines, read-through
+
+  All pushed to origin/main.
+
+END OF REPORT-FW18
