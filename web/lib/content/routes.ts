@@ -201,7 +201,7 @@ export const PUBLIC_ROUTES: readonly PublicRoute[] = [
   // here since FW10 while the route was planned, so every public page carried
   // a link to a 404.
   { path: '/sources', status: 'live', task: 'FW12', changeFrequency: 'monthly', priority: 0.5 },
-  { path: '/a-propos', status: 'planned', task: 'FW20', changeFrequency: 'yearly', priority: 0.4 },
+  { path: '/a-propos', status: 'live', task: 'FW20', changeFrequency: 'yearly', priority: 0.4 },
   { path: '/alertes', status: 'live', task: 'FW14', changeFrequency: 'monthly', priority: 0.5 },
 ];
 

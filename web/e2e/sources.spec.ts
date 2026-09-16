@@ -21,6 +21,7 @@
 import { expect, test } from '@playwright/test';
 import { goToServedPage } from './support/served';
 import { SOURCES_COPY, UNKNOWN_IDS } from '../lib/fr/sources';
+import { A_PROPOS_COPY } from '../lib/fr/a-propos';
 
 /** 390 is a phone; 1280 and 1440 are the desktop widths the baselines use. */
 const WIDTHS = [1440, 1280, 390] as const;
@@ -187,5 +188,48 @@ test('the page discloses what this site does not know (R154)', async ({ page }) 
     for (const promise of ['bientôt', 'prochainement', 'à venir', 'sous peu']) {
       expect(body, `${id} promises "${promise}"`).not.toContain(promise);
     }
+  }
+});
+
+test('/a-propos says nobody has validated the rules (R160 at page length)', async ({ page }) => {
+  // THE PAGE'S ONE JOB, and todo.md's TODO-REVIEWER placeholder is what it
+  // replaces. A placeholder is not a sentence a reader can read.
+  //
+  // ASSERTED BY VALUE from the copy module, because the failure that matters
+  // is a page that renders its headings and drops the paragraph carrying the
+  // admission - which would leave a section titled "Personne n'a valide ces
+  // regles" above nothing, reading as an oversight rather than a statement.
+  await goToServedPage(page, '/a-propos');
+
+  const text = await page.locator('main').evaluate((node) => node.textContent ?? '');
+
+  expect(text, 'the admission heading').toContain(A_PROPOS_COPY.reviewHeading);
+  expect(text, 'the admission itself').toContain(A_PROPOS_COPY.reviewBody);
+  expect(text, 'what it means in practice').toContain(A_PROPOS_COPY.reviewConsequence);
+
+  // THE METHOD, all three steps and the refusal that is their point.
+  expect(text, 'the method intro').toContain(A_PROPOS_COPY.methodIntro);
+  for (const step of A_PROPOS_COPY.method) {
+    expect(text, `step: ${step.heading}`).toContain(step.heading);
+    expect(text, `step body: ${step.heading}`).toContain(step.body);
+  }
+  expect(text, 'the refusal').toContain(A_PROPOS_COPY.methodRefusal);
+
+  // NON-VACUOUS: real copy behind every assertion above, so none of them is
+  // toContain('') - the hole this task already fell into once.
+  expect(A_PROPOS_COPY.method.length).toBe(3);
+  expect(A_PROPOS_COPY.reviewHeading.length).toBeGreaterThan(20);
+  expect(A_PROPOS_COPY.reviewBody.length).toBeGreaterThan(120);
+  for (const step of A_PROPOS_COPY.method) {
+    expect(step.heading.length, step.heading).toBeGreaterThan(10);
+    expect(step.body.length, step.heading).toBeGreaterThan(80);
+  }
+
+  // AND IT IS NOT A STORY. SPEC 9.1 gives this page one subject; a founder
+  // narrative is the thing a page like this grows into if nobody says not to.
+  const forbidden = ['fondateur', 'notre mission', 'notre histoire', 'passionn'];
+
+  for (const word of forbidden) {
+    expect(text.toLowerCase(), `the page reads like a story: "${word}"`).not.toContain(word);
   }
 });

@@ -128,7 +128,7 @@ describe('the sitemap lists what exists and nothing else', () => {
     expect([...sitemapPaths()].sort()).toEqual([...liveRoutes().map((r) => r.path)].sort());
   });
 
-  it('lists the fifteen routes that exist and may be seen today', () => {
+  it('lists the sixteen routes that exist and may be seen today', () => {
     // FOUR UNTIL FW11, five with the calculator, six with /sources. The
     // calculator joined when its page was built AND the Checkpoint A review
     // was recorded - two independent conditions, both of which had to be
@@ -175,6 +175,10 @@ describe('the sitemap lists what exists and nothing else', () => {
     // being checked.
     expect([...sitemapPaths()].sort()).toEqual([
       '/',
+      // FW20: /a-propos joined when it stopped being a TODO-REVIEWER
+      // placeholder and became a page that says, in a sentence a reader can
+      // read, that nobody has validated these rules.
+      '/a-propos',
       '/alertes',
       '/calculateur-teletravail-frontalier',
       '/cgu',
@@ -204,7 +208,7 @@ describe('the sitemap lists what exists and nothing else', () => {
     // be lowered to nothing; the set below says which five, so shipping one
     // is an edit that names it.
     expect([...planned].sort()).toEqual([
-      '/a-propos',
+      // FW20 took /a-propos out of this list and into the sitemap one.
       '/application',
       '/calculateur-lamal-cmu',
       '/releve-annuel',

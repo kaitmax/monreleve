@@ -85,7 +85,7 @@ test.describe('sitemap.xml', () => {
     // until it guards nothing. The set says which five, so shipping one is an
     // edit that names it.
     expect(planned.map((route) => route.path).sort()).toEqual([
-      '/a-propos',
+      // FW20 took /a-propos out of this list; it is a live page now.
       '/application',
       '/calculateur-lamal-cmu',
       '/releve-annuel',

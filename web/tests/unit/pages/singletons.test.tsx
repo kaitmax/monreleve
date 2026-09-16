@@ -40,6 +40,7 @@ import HomePage from '@/app/(public)/page';
 import MentionsPage from '@/app/(public)/mentions-legales/page';
 import NotFound from '@/app/not-found';
 import AlertesPage from '@/app/(public)/alertes/page';
+import AProposPage from '@/app/(public)/a-propos/page';
 import SourcesPage from '@/app/(public)/sources/page';
 import { PUBLIC_ROUTES, ctaHrefIfLive } from '@/lib/content/routes';
 import { CALCULATEUR_COPY } from '@/lib/fr/calculateur';
@@ -118,6 +119,21 @@ const PAGES: readonly Expected[] = [
     // ZERO, and the field name is the reason: this census counts the
     // CALCULATOR's Calculer button, not any primary-styled control. The
     // capture form has a submit of its own and it is not that button.
+    primaryActions: 0,
+  },
+  {
+    label: '/a-propos',
+    render: () => {
+      render(
+        <PublicShell>
+          <AProposPage />
+        </PublicShell>,
+      );
+    },
+    // A page of prose. Its one link is the pointer to /sources in the closing
+    // paragraph, which is not SPEC 9.3's contextual link slot - that belongs
+    // to the calculator's result panel and exists nowhere else.
+    contextualLinks: 0,
     primaryActions: 0,
   },
   {
