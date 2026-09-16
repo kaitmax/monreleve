@@ -2,10 +2,11 @@ FW20 SESSION PROMPT - frontalier
 Paste this entire prompt as the first message of a fresh Claude Code
 session, opened at the repository root. Run after FW18b.
 
-This task builds the pages that decide whether a stranger believes the
-site. Seven guides now argue for the product; nothing yet argues for the
-site itself. /sources comes first, because the others link to it and it
-is what makes them defensible.
+This task builds the five remaining public pages. Four of them decide
+whether a stranger believes the site; seven guides now argue for the
+product and nothing yet argues for the site itself. /sources comes
+first, because the other three link to it and it is what makes them
+defensible.
 
 ====================================================================
 PRE-STEP RULINGS (apply verbatim)
@@ -62,6 +63,19 @@ R165 (new - RETROFITTED COPY IS WRITTEN, NEVER LIFTED). Copy for a
     best sentence in the set and true in exactly one place; on the droit
     d'option guide it sat under a paragraph saying telework has no
     bearing on that choice and then explained telework arithmetic.
+
+R166 (new - /releve-annuel IS IN SCOPE). todo.md names five pages for
+    FW20 and it is right. It is a DEAD LINK FROM A LIVE PAGE: the
+    calculator's `compliant` contextual link has pointed at it since
+    FW12 - the same defect as /calculateur-lamal-cmu in the nav, which
+    this task also closes.
+    Its own increment, BEFORE the shell increment, so that increment can
+    report it live.
+    CONSTRAINT: the dossier does not exist. The page is written in the
+    tense that matches the code (R138) - what the document WILL contain,
+    what the app WILL do, never the present. That is the discipline the
+    analytics sentence is already under, applied to a product claim
+    rather than a privacy one.
 
 R47. Still open, still the operator's. Not raised.
 
@@ -167,22 +181,42 @@ INCREMENT 3 - /a-propos
  - Commit: "FW20: /a-propos, and how a figure gets onto this site".
 
 ====================================================================
-INCREMENT 4 - /tarifs and /releve-annuel
+INCREMENT 4 - /tarifs
 ====================================================================
- - /tarifs: gratuit en 2027, payant des 2028 (D3), verbatim. NO tier
-   grid, NO checkout, no "from" price, no feature comparison. todo.md is
-   explicit and the acceptance criterion is an absence - so assert the
-   absence AND assert the sentence is present (R154: an absence
-   assertion is satisfied by a page that renders nothing).
- - /releve-annuel: the offer page. A card listing exactly what the
-   dossier contains - working days, CH days, telework, missions,
-   annualised %, per-entry timestamps, late flags. Linked from every
-   calculator result.
- - Both link /sources.
- - Commit: "FW20: /tarifs and /releve-annuel".
+ - gratuit en 2027, payant des 2028 (D3), verbatim. NO tier grid, NO
+   checkout, no "from" price, no feature comparison.
+ - todo.md's acceptance criterion is an ABSENCE, so assert the absence
+   AND assert the sentence is present. R154: an absence assertion is
+   satisfied by a page that renders nothing at all.
+ - Links /sources.
+ - Commit: "FW20: /tarifs".
 
 ====================================================================
-INCREMENT 5 - the homepage
+INCREMENT 5 - /releve-annuel (R166)
+====================================================================
+The dead link. The calculator's `compliant` contextual link has pointed
+here since FW12, so a reader who reaches the best outcome the product
+has is the one who gets a 404.
+
+ - The offer page. A card listing exactly what the dossier WILL contain
+   - working days, CH days, telework, missions, annualised %, per-entry
+   timestamps, late flags.
+ - THE TENSE IS THE CONSTRAINT (R166, R138). The dossier does not exist.
+   Every sentence about the document is future or conditional; none is
+   present. "Le releve contient" is false today. This is the same
+   discipline the analytics sentence is under, applied to a product
+   claim rather than a privacy one - and it is testable: assert the
+   page carries no present-tense assertion about the document.
+ - A CLAIMS-STYLE AUDIT APPLIES. Every statement about the document
+   traces to SPEC 12. Anything not specified there is not written -
+   R146 case (c), one surface over.
+ - NO price (that is /tarifs), NO screenshot of a document that does not
+   exist, NO waiting list.
+ - Links /sources.
+ - Commit: "FW20: /releve-annuel, in the tense the code is in".
+
+====================================================================
+INCREMENT 6 - the homepage
 ====================================================================
  - ONE JOB: route to the calculator or the guides. todo.md: "no hero
    theatre".
@@ -191,7 +225,7 @@ INCREMENT 5 - the homepage
  - Commit: "FW20: the homepage".
 
 ====================================================================
-INCREMENT 6 - mesh, a11y, baselines, size, read-through
+INCREMENT 7 - mesh, a11y, baselines, size, read-through
 ====================================================================
  - Every footer link clicked: zero 404s. todo.md's manual check, done as
    a test.
@@ -221,14 +255,49 @@ OUT OF SCOPE
 - Renaming the published P-numbers. R162 settled the direction.
 
 ====================================================================
-OPEN QUESTION TO RAISE, NOT TO GUESS
+A1 - THE CLEISS ROW COUNT, AND THE TWO FACTS THAT DID NOT LAND
 ====================================================================
-The operator's FW18b acceptance said "V1-V8 are transcribed from that
-fetch". docs/regulatory-sources.md carries the CLEISS rows as D1-D7,
-which is SEVEN, and the file has no V-numbering. Either the label is
-loose or their fetch produced an eighth fact that is not in the table.
-Ask before writing anything that depends on the count; nothing in this
-task does.
+Eight facts were verified from the operator's fetch of the CLEISS page
+on 16.09.2026. docs/regulatory-sources.md carries SEVEN rows, D1-D7.
+The audit was run at the end of FW18b and this is its result - it is
+recorded here rather than left to be rediscovered.
+
+NOTHING MERGED. One fact SPLIT and two never landed:
+
+  operator fact                          row
+  1. three-month window, four triggers   D1 (window) + D2 (triggers)
+  2. irrevocable, exercised once         D3
+  3. what reopens it                     D4
+  4. what does NOT reopen it             D5
+  5. default is Swiss affiliation        D6
+  6. where it is filed, and the form     ABSENT
+  7. legal basis                         D7
+  8. family members cannot opt separately  ABSENT
+
+  8 facts, +1 for the split, -2 absent = 7 rows.
+
+Verified absent from the GUIDE as well as the register: nothing in
+droit-option-lamal-cmu.mdx mentions a form, a filing address or a
+caisse, and its only mentions of "famille" are D5's negative list - a
+birth or a death in the family - which is a different fact.
+
+WHAT THIS TASK DOES:
+ - DO NOT INVENT A ROW. Neither missing fact may be written from
+   general knowledge; both need the operator's transcription.
+ - FACT 8 IS THE URGENT ONE and the operator named it: it decides cover
+   for a whole household. A reader with a family reading the published
+   guide today has no way to learn that their choice binds their
+   dependants. Add it as a row AND as guide copy, citing the same
+   CLEISS URL and the 16.09.2026 fetch date.
+ - FACT 6 is procedural rather than substantive. Add it as a row if the
+   operator supplies its wording; it does not gate the guide.
+ - IF THE OPERATOR HAS NOT SUPPLIED THE EXACT WORDING for fact 8 by the
+   time you reach it: park it and say so. "Family members cannot opt
+   separately" is a summary, and a summary of a rule about household
+   cover is not precise enough to publish - it does not say whether the
+   option covers dependants automatically, whether a spouse with their
+   own Swiss employment is bound, or what happens to children. R146
+   case (c) is available and this is exactly what it is for.
 
 ====================================================================
 FINAL VERIFICATION
@@ -247,7 +316,11 @@ WHAT THIS SITE DOES NOT KNOW  The three entries, quoted as published,
                  with the parking entry each came from.
 THE FIGURE PARAGRAPH  /a-propos's account of how a figure gets onto
                  this site, quoted.
+THE CLEISS AUDIT  A1's result as you found it, and what you did with
+                 facts 6 and 8 - added, or parked with the reason.
 R163 PROOF       The fixture changed, the guide's test red.
+THE TENSE PROOF  /releve-annuel carries no present-tense assertion
+                 about a document that does not exist (R166).
 MESH, SIZE, BASELINES, TOKENS ADDED, DEVIATIONS, PARKED,
 NOTICED BUT NOT TOUCHING, QUESTIONS, PUSH PROOF
 
