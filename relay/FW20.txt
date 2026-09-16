@@ -281,23 +281,44 @@ droit-option-lamal-cmu.mdx mentions a form, a filing address or a
 caisse, and its only mentions of "famille" are D5's negative list - a
 birth or a death in the family - which is a different fact.
 
-WHAT THIS TASK DOES:
- - DO NOT INVENT A ROW. Neither missing fact may be written from
-   general knowledge; both need the operator's transcription.
- - FACT 8 IS THE URGENT ONE and the operator named it: it decides cover
-   for a whole household. A reader with a family reading the published
-   guide today has no way to learn that their choice binds their
-   dependants. Add it as a row AND as guide copy, citing the same
-   CLEISS URL and the 16.09.2026 fetch date.
- - FACT 6 is procedural rather than substantive. Add it as a row if the
-   operator supplies its wording; it does not gate the guide.
- - IF THE OPERATOR HAS NOT SUPPLIED THE EXACT WORDING for fact 8 by the
-   time you reach it: park it and say so. "Family members cannot opt
-   separately" is a summary, and a summary of a rule about household
-   cover is not precise enough to publish - it does not say whether the
-   option covers dependants automatically, whether a spouse with their
-   own Swiss employment is bound, or what happens to children. R146
-   case (c) is available and this is exactly what it is for.
+THE WORDING IS SUPPLIED. The operator transcribed both facts verbatim
+from the same fetch, and they are in docs/regulatory-sources.md under
+"TRANSCRIBED, NOT YET ROWS". Read them there - they are not reproduced
+here, because a relay prompt is ASCII and these are French regulatory
+quotes that R155 forbids taking from a transliteration.
+
+They are NOT D-rows yet and no claims key exists for them. Turning them
+into rows is this task's job, and it has a decision in it:
+
+  THE R158 SPLIT. Fact 8 is one fact. Fact 6 is arguably three -
+  WHERE the option is filed (two destinations by status), WHAT the
+  instrument is (the form, and that it is being revised), and the
+  PROCEDURE (which parts, the CPAM counter-signature, the deadline).
+  R158 says a key identifies a fact, so three ids rather than one -
+  unless you can argue they are never cited apart. Say which you chose
+  and why. Note the procedure's "within the three months" is D1
+  restated: cite D1, do not re-assert the window under a second key.
+
+  THE FORM IS RECORDED BY NAME. Its URL carries juin2019 and CLEISS
+  says it is being updated, so the durable fact is the form's name and
+  the URL is a convenience. R153's shape one layer out: copy names the
+  rule rather than quoting its value; a citation names the instrument
+  rather than pinning its current file.
+
+  FACT 8 NEEDS ITS QUALIFIER IN THE GUIDE, not only in the row. The
+  rule covers family members with no professional activity of their own
+  and no Swiss-only pension. "Votre famille suit votre choix" without
+  that qualifier is WRONG for a household where both partners work,
+  which is most of them - and wrong in the direction that costs a
+  reader cover. This is the fact's load-bearing half.
+
+  FACT 6 does not gate the guide. If it makes the page longer without
+  making a reader safer, it is a row and not a paragraph - that is a
+  judgement, make it and say which.
+
+DO NOT INVENT. Anything beyond what the transcription carries is not
+written (R146 case (c)). If the transcription does not answer a
+question the copy raises, the copy does not raise it.
 
 ====================================================================
 FINAL VERIFICATION

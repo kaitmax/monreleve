@@ -312,6 +312,59 @@ https://www.cleiss.fr/faq/droit_d_option_des_frontaliers_france-suisse.html
 | D6 | *The default* | Failing to opt within three months means **automatic affiliation in Switzerland** | ☑ CLEISS, 16.09.2026 |
 | D7 | *Legal basis* | The ALCP, in force 1 June 2002; Regulation (CE) 883/2004 applicable between Switzerland and the EU since 1 April 2012; the modalities from the accord of 7 July 2016 | ☑ CLEISS, 16.09.2026 |
 
+### TRANSCRIBED, NOT YET ROWS — two facts the FW18b pass carried and FW18b did not record
+
+> **THESE ARE NOT D-ROWS AND MUST NOT BE CITED AS ONE.** They are the
+> operator's verbatim transcription from the same fetch of 16.09.2026, held
+> here so the wording is not lost between sessions. FW20 turns them into rows
+> and decides the R158 split; until it does, no `claims` key exists for them
+> and no article may cite them.
+>
+> They are here because FW18b's audit found them missing: eight facts were
+> verified from the fetch and seven rows were written. Nothing merged — one
+> fact split into D1 and D2, and these two never landed.
+
+**T1 — family members cannot opt separately.** CLEISS puts it as a question:
+
+> « Les membres de ma famille qui n'exercent pas d'activité professionnelle
+> ou ne perçoivent pas de pension ou rente du seul régime suisse pourront-ils
+> exercer un droit d'option ? »
+
+and answers **Non** — if they reside in France, their health cover is
+determined by the option the worker exercised.
+
+**THE QUALIFIER IS THE USEFUL PART, and it is load-bearing for the guide.**
+The rule covers family members with **no professional activity of their own
+and no Swiss-only pension**. A spouse who works — in France *or* in
+Switzerland — is outside it and has their own affiliation. *"Your family
+follows your choice"* without that qualifier is wrong for any household where
+both partners work, which is most of them.
+
+**T2 — where the option is filed, and the instrument.** Two destinations, by
+status:
+
+| status | where the option is exercised |
+|---|---|
+| frontier worker | the competent **cantonal body of the canton of work** (CLEISS links the list as a BAG PDF) |
+| holder of a Swiss pension alone | **Institution commune LAMal**, Industriestrasse 75, CH-4600 Olten — also online at `kvg.org` |
+
+The instrument is the form **« Choix du système d'assurance maladie »**, and
+CLEISS marks it **« Formulaire en cours d'actualisation »** — which is part of
+the fact, not a detail to omit.
+
+The procedure on the same page: parts 1, 2 and 4 — or 1, 3 and 4 depending on
+situation — are completed by the applicant; part 5 carries the choice; part 6
+is completed by the **CPAM of the French place of residence**; the form then
+goes to the Swiss competent authority **within the three months**.
+
+> **RECORD THE FORM BY NAME, THE URL AS A CONVENIENCE.** The operator's
+> caution, and it generalises: the form's own address carries `juin2019`
+> (`cleiss.fr/pdf/suisse_droit_option_formulaire-juin2019.pdf`) and the page
+> says it is being updated, so it is a link that will rot. The durable fact is
+> the form's NAME. This is R153's shape one layer out — copy names the rule
+> rather than quoting its value; a citation names the instrument rather than
+> pinning its current file.
+
 ### Why D2 is the one that matters
 
 **Every advisor writes "three months from hiring", and that is wrong** for a
