@@ -22,6 +22,7 @@ import { expect, test } from '@playwright/test';
 import { goToServedPage } from './support/served';
 import { SOURCES_COPY, UNKNOWN_IDS } from '../lib/fr/sources';
 import { A_PROPOS_COPY } from '../lib/fr/a-propos';
+import { TARIFS_COPY } from '../lib/fr/tarifs';
 
 /** 390 is a phone; 1280 and 1440 are the desktop widths the baselines use. */
 const WIDTHS = [1440, 1280, 390] as const;
@@ -231,5 +232,38 @@ test('/a-propos says nobody has validated the rules (R160 at page length)', asyn
 
   for (const word of forbidden) {
     expect(text.toLowerCase(), `the page reads like a story: "${word}"`).not.toContain(word);
+  }
+});
+
+test('/tarifs states SPEC D3 and sells nothing (R154)', async ({ page }) => {
+  // BOTH HALVES, because D3's acceptance criterion is an ABSENCE - "no tier
+  // grid, no checkout" - and an absence assertion is satisfied by a page that
+  // renders nothing at all. So the sentence is asserted present first, and
+  // only then is the grid asserted absent.
+  await goToServedPage(page, '/tarifs');
+
+  const text = await page.locator('main').evaluate((node) => node.textContent ?? '');
+
+  expect(text, "SPEC D3's position sentence").toContain(TARIFS_COPY.position);
+  expect(text, 'what free actually means this year').toContain(TARIFS_COPY.positionDetail);
+  expect(text, 'why it is free').toContain(TARIFS_COPY.whyBody);
+  expect(text, 'what happens in 2028').toContain(TARIFS_COPY.laterBody);
+  expect(TARIFS_COPY.position.length, 'the position sentence is empty').toBeGreaterThan(40);
+
+  // NO TIER GRID. D3 named the A/B price experiment it replaced and said it
+  // "does not belong in the build"; a two-column table with a highlighted
+  // middle is that experiment arriving through the back door.
+  await expect(page.locator('main table'), 'a pricing table').toHaveCount(0);
+
+  // NO CHECKOUT. No form, no button that takes money, no third party.
+  await expect(page.locator('main form'), 'a payment form').toHaveCount(0);
+  await expect(page.locator('main button'), 'a purchase control').toHaveCount(0);
+
+  const hrefs = await page
+    .locator('main a')
+    .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('href') ?? ''));
+
+  for (const href of hrefs) {
+    expect(href.startsWith('/'), `/tarifs links offsite: ${href}`).toBe(true);
   }
 });

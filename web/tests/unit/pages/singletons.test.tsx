@@ -42,6 +42,7 @@ import NotFound from '@/app/not-found';
 import AlertesPage from '@/app/(public)/alertes/page';
 import AProposPage from '@/app/(public)/a-propos/page';
 import SourcesPage from '@/app/(public)/sources/page';
+import TarifsPage from '@/app/(public)/tarifs/page';
 import { PUBLIC_ROUTES, ctaHrefIfLive } from '@/lib/content/routes';
 import { CALCULATEUR_COPY } from '@/lib/fr/calculateur';
 import { LEGAL_COPY } from '@/lib/fr/legal';
@@ -133,6 +134,20 @@ const PAGES: readonly Expected[] = [
     // A page of prose. Its one link is the pointer to /sources in the closing
     // paragraph, which is not SPEC 9.3's contextual link slot - that belongs
     // to the calculator's result panel and exists nowhere else.
+    contextualLinks: 0,
+    primaryActions: 0,
+  },
+  {
+    label: '/tarifs',
+    render: () => {
+      render(
+        <PublicShell>
+          <TarifsPage />
+        </PublicShell>,
+      );
+    },
+    // One page, one product. Its only link is to /sources; D3 forbids the
+    // checkout that would be a primary action.
     contextualLinks: 0,
     primaryActions: 0,
   },

@@ -194,7 +194,7 @@ export const PUBLIC_ROUTES: readonly PublicRoute[] = [
     priority: 0.9,
   },
   { path: '/releve-annuel', status: 'planned', task: 'FW20', changeFrequency: 'monthly', priority: 0.8 },
-  { path: '/tarifs', status: 'planned', task: 'FW20', changeFrequency: 'monthly', priority: 0.6 },
+  { path: '/tarifs', status: 'live', task: 'FW20', changeFrequency: 'monthly', priority: 0.6 },
   // LIVE AT FW12 INCREMENT 0, not FW20 (ruling R113). P2 - the 49,9 edge -
   // has no input trigger by design, so this page is its ONLY disclosure, and
   // the calculator was indexed before it existed. The footer had also linked

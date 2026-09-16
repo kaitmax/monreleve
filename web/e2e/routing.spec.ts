@@ -89,7 +89,6 @@ test.describe('sitemap.xml', () => {
       '/application',
       '/calculateur-lamal-cmu',
       '/releve-annuel',
-      '/tarifs',
     ]);
 
     for (const route of planned) {
