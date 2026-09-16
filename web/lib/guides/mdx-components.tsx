@@ -25,6 +25,7 @@
 import type { MDXRemoteProps } from 'next-mdx-remote/rsc';
 import type { ReactNode } from 'react';
 import { DataGrid } from '@/lib/ui/react/DataGrid/DataGrid';
+import { GuideInlineCta } from '@/lib/ui/react/GuideInlineCta/GuideInlineCta';
 import type { Heading } from './headings';
 import { assertResolves } from './links';
 import styles from './mdx.module.scss';
@@ -156,5 +157,20 @@ export function mdxComponents(context: MdxContext): ComponentMap {
      * rather than styling a second one here.
      */
     DataGrid,
+
+    /**
+     * FD13's inline calculator card, FW18b, and the one new component this
+     * task added.
+     *
+     * NAMED IN FRENCH like Encadre and Avertissement, because an author
+     * writing a French article types it in the middle of French prose.
+     * DataGrid keeps its English name because it is FW9's product component
+     * handed through unchanged; this one exists only for articles.
+     *
+     * IT TAKES NO PROPS, and the map passes none. SPEC 9.5 puts exactly one
+     * of these in each guide, pointing at the calculator; a `titre` or
+     * `href` prop here is how seven articles grow seven offers.
+     */
+    CarteCalculateur: GuideInlineCta,
   };
 }

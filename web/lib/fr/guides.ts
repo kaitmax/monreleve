@@ -75,6 +75,41 @@ export const GUIDES_COPY = {
     'vous en reste avant chaque seuil. Gratuit, sans inscription.',
   ctaAction: 'Calculer mes jours',
 
+  /**
+   * FD13'S INLINE CARD, the sentence that sits left of the button.
+   *
+   * ONE LINE, which is the brief's wording and a layout instruction as much
+   * as a copy one: the card carries a sentence, not a paragraph. A second
+   * sentence turns a card that interrupts the reading into one that competes
+   * with it.
+   *
+   * IT NAMES THE MOMENT RATHER THAN THE PRODUCT. SPEC 9.5 places this card
+   * "at the moment the reader realises they cannot do the math", so the
+   * sentence says exactly that and leaves the promise to the button.
+   *
+   * IT IS A STANDING OFFER, NOT A REMARK ABOUT THE PARAGRAPH ABOVE IT, and
+   * the first version got that wrong in a way worth recording. It lifted the
+   * pillar's own lead-in - "Entre la base retenue par votre employeur, les
+   * demi-journées et les jours de mission, le calcul cesse vite d'être
+   * faisable de tête" - which is the best sentence any of the seven had and
+   * is true in exactly one of them. On the droit d'option guide that card
+   * lands directly under a paragraph explaining that the telework threshold
+   * has NO EFFECT on the choice being discussed, and then explains telework
+   * arithmetic. One constant rendered in seven articles has to be true in
+   * all seven; a sentence that reads as a reply to the text above it is only
+   * true where it was written.
+   *
+   * Found by cropping the regenerated baseline and reading the card in place
+   * (R135) - every suite was green with the wrong sentence in it.
+   *
+   * A QUESTION, because that is what the reader is holding at this point in
+   * any of the seven, and it leaves the promise to the button beside it.
+   *
+   * NO FIGURE (R147): the thresholds belong to the year's RuleSet, and this
+   * is a constant that cannot reach one.
+   */
+  inlineCtaBody: `Où en êtes-vous de vos jours de télétravail${n('?')}`,
+
   /** FD13: the article footer, above the related guides. */
   sourcesNote:
     'Chaque règle citée sur cette page renvoie à son texte d’origine.',

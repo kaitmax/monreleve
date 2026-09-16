@@ -1,0 +1,83 @@
+@use "../../core/styles/breakpoints" as bp;
+
+// web/lib/ui/react/GuideInlineCta/GuideInlineCta.module.scss
+// Tokens only; camelCase class names for CSS Module addressing.
+//
+// FD13's inline card: white, radius 16, padding 24, one line of prose left
+// and a primary 48 h button right. No shadow - SPEC 20 and FD13 both forbid
+// one on a card.
+//
+// RADIUS 16 IS --radius-lg AND PADDING 24 IS --space-6, which is worth saying
+// rather than leaving to be re-derived: the brief gives pixels, the product
+// has a closed set of nine radius names (DESIGN-SYSTEM.md 4.1), and every
+// figure FD13 names for this card already had a token. Nothing new was added
+// for it.
+//
+// LIGHTER THAN THE CLOSING CARD ON PURPOSE. GuideCta pads 32 and opens with a
+// 44 px icon square and an h2; this one is 24, has no icon and no heading. It
+// interrupts the reading and then gets out of the way, which is the
+// difference between a card mid-article and a card that ends one.
+
+// MOBILE FIRST, so the phone needs no override: the prose sits above the
+// button in one column, which is the only arrangement that fits at 320 dp -
+// a French sentence and a 120 px minimum button cannot share a 320 px row
+// without squeezing the text to two words a line.
+//
+// $breakpoint-md RATHER THAN A WIDTH OF ITS OWN, and through the breakpoints
+// partial rather than tokens.scss: `@use "tokens"` from a CSS Module emits
+// the whole token layer into this stylesheet, which is the 4 386-byte
+// duplication that partial exists to prevent.
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  align-items: flex-start;
+  margin: var(--space-8) 0;
+  padding: var(--space-6);
+  border: var(--size-card-border) solid var(--colour-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--colour-surface);
+
+  @media (width >= bp.$breakpoint-md) {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+// ONE LINE OF PROSE, which is FD13's wording and a layout instruction: the
+// card carries a sentence, not a paragraph, and the copy module is where that
+// is kept true.
+//
+// min-width: 0 lets it shrink inside the flex row at all. Without it a flex
+// item refuses to go below its min-content width - the longest word plus its
+// padding - which is the same fixed-width failure R127 catches at 320 dp and
+// R159 catches on a table.
+.body {
+  min-width: 0;
+  margin: 0;
+  color: var(--colour-text-secondary);
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  line-height: var(--type-body-line);
+}
+
+// The primary action, drawn exactly as the closing card's - same height, same
+// radius, same brand fill. Two buttons to one destination that looked
+// different would read as two different offers.
+.action {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  height: var(--size-button-height);
+  min-width: var(--size-button-min-width);
+  padding: 0 var(--space-5);
+  border-radius: var(--radius-md);
+  background: var(--colour-brand);
+  color: var(--colour-surface);
+  font-size: var(--type-label-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-label-line);
+  text-decoration: none;
+}

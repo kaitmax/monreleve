@@ -107,6 +107,13 @@ const MEASURED_ELSEWHERE: ReadonlyArray<readonly [string, string]> = [
       'guide. It takes no props at all, so there is no interactive surface ' +
       'and nothing for a client bundle to carry.',
   ],
+  [
+    'GuideInlineCta',
+    'A server component, and GuideCta’s reasoning exactly: a card, a line ' +
+      'of prose and a link, identical in every guide. It takes no props, so ' +
+      'there is no interactive surface and nothing for a client bundle to ' +
+      'carry. FW18b built it for FD13’s inline slot.',
+  ],
 ];
 
 /**

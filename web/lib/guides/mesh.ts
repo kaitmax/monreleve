@@ -128,16 +128,29 @@ export function checkMesh(
     // carries is therefore the honest half of the rule - and the rendered
     // page's two links, in order, are asserted in e2e where position can be
     // seen (R119).
+    // FW18b: THE CARD COUNTS, AND IT IS NOW THE EXPECTED FORM. Until this
+    // task the inline reference was a markdown link inside a sentence, so
+    // counting hrefs was the whole rule. FD13's card carries the link inside
+    // a component with no href in the article source, and a rule that only
+    // counted hrefs would report every article as missing the thing it had
+    // just been given.
+    //
+    // BOTH FORMS ARE ACCEPTED rather than swapping one for the other. The
+    // fixture links the calculator in prose to exercise the LINK path of the
+    // map - assertResolves, the styling, the href validation - and forcing it
+    // to use the card would retire that coverage to satisfy a census.
+    const inlineCard = /<CarteCalculateur\b/.test(guide.body);
     const calculatorLinks = internalHrefs(guide.body).filter(
       (href) => pathOf(href) === CALCULATOR_PATH,
     );
 
-    if (calculatorLinks.length < 1) {
+    if (!inlineCard && calculatorLinks.length < 1) {
       add(
         'calculator-link-inline',
         slug,
-        'carries no inline link to the calculator. SPEC 9.5 wants two per ' +
-          'guide: the end card is the template, the inline one is yours.',
+        'carries no inline calculator card and no inline link to the ' +
+          'calculator. SPEC 9.5 wants two per guide: the end card is the ' +
+          'template, the inline one is yours - <CarteCalculateur /> since FW18b.',
       );
     }
 
