@@ -59,7 +59,32 @@ export function DataGrid({
   const empty = rows.length === 0;
 
   return (
-    <table className={styles.table}>
+    /*
+      RULING R159: THE TABLE SCROLLS, NEVER THE PAGE.
+
+      A table has a minimum width its columns cannot go below. Without this
+      container that width pushes the DOCUMENT sideways, and a document that
+      scrolls sideways takes the prose, the heading and the navigation with
+      it - the reader pays for the table by losing the page.
+
+      ALWAYS PRESENT, never conditional on overflow. overflow-x: auto shows no
+      scrollbar when there is nothing to scroll, and nothing on the server
+      knows a rendered width; a container added only where someone predicted
+      an overflow would be missing in exactly the case nobody predicted.
+
+      FOCUSABLE BECAUSE IT SCROLLS (WCAG 2.1.1, axe's
+      scrollable-region-focusable). A region that scrolls and cannot take
+      focus cannot be moved by keyboard at all. That makes it a tab stop even
+      on a table that happens to fit, which is a real cost, accepted: the
+      alternative is a region some readers cannot reach.
+
+      NAMED FROM THE CAPTION, which is already the table's required accessible
+      name. Inventing a second name for the same thing is how two names come
+      to disagree - and captionHidden hides the caption from SIGHT only, so
+      the name survives it.
+    */
+    <div className={styles.scroll} data-scroll="true" tabIndex={0} role="region" aria-label={caption}>
+      <table className={styles.table}>
       {/* Visually hidden rather than removed: a caption taken out of the
           accessibility tree takes the table's only name with it. */}
       <caption className={captionHidden ? 'u-visually-hidden' : styles.caption}>{caption}</caption>
@@ -130,7 +155,8 @@ export function DataGrid({
             )}
           </tr>
         </tfoot>
-      )}
-    </table>
+        )}
+      </table>
+    </div>
   );
 }

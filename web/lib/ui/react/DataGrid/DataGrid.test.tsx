@@ -271,3 +271,64 @@ describe('numeric columns', () => {
     expect(headers[0]?.hasAttribute('data-numeric')).toBe(false);
   });
 });
+
+describe('the table scrolls, never the page (R159)', () => {
+  // RULING R159, in the operator's words: "the table scrolls, never the page."
+  //
+  // WHAT GOES WRONG WITHOUT IT. A table has a minimum width its columns cannot
+  // go below, and at 320 dp the Geneve guide's six-row grid is wider than the
+  // viewport. A table that cannot shrink pushes the DOCUMENT sideways, and a
+  // document that scrolls sideways moves the prose, the heading and the
+  // navigation with it - so the reader pays for the table by losing the page.
+  // e2e/guides-narrow.spec.ts already refuses that at the document level; this
+  // is the mechanism that lets it keep refusing when a table gets wider.
+  //
+  // THE CONTAINER IS ALWAYS PRESENT, not conditional on overflow. CSS decides
+  // whether it actually scrolls - overflow-x: auto shows no scrollbar when
+  // there is nothing to scroll - and there is no server-side way to know a
+  // rendered width. A container that appeared only when someone predicted an
+  // overflow would be absent in exactly the case nobody predicted.
+
+  it('wraps the table in a scroll container', () => {
+    render(<DataGrid caption="Récapitulatif" columns={COLUMNS} rows={ROWS} />);
+
+    const table = screen.getByRole('table');
+    const container = table.parentElement;
+
+    expect(container?.dataset.scroll).toBe('true');
+  });
+
+  it('makes the container focusable, because a scrollable region must be (WCAG 2.1.1)', () => {
+    // A region that scrolls and cannot take focus is unreachable by keyboard:
+    // there is no way to move it. This is axe's scrollable-region-focusable,
+    // and it is the reason the container is a tab stop even on a table that
+    // happens to fit - neither the server nor the DOM knows which it is.
+    render(<DataGrid caption="Récapitulatif" columns={COLUMNS} rows={ROWS} />);
+
+    const container = screen.getByRole('table').parentElement;
+
+    expect(container?.getAttribute('tabindex')).toBe('0');
+  });
+
+  it('names the region with the caption, so it is not announced as "group"', () => {
+    // A focusable region with no name is announced as a bare landmark. The
+    // caption is already the table's required accessible name, so the region
+    // borrows it rather than inventing a second one - two names for one thing
+    // is how they come to disagree.
+    render(<DataGrid caption="Récapitulatif mensuel" columns={COLUMNS} rows={ROWS} />);
+
+    expect(screen.getByRole('region', { name: 'Récapitulatif mensuel' })).toBeTruthy();
+  });
+
+  it('names the region even when the caption is visually hidden', () => {
+    // captionHidden removes it from SIGHT, never from the accessibility tree,
+    // so the region's name must survive it. A hidden caption that also emptied
+    // the region's name would leave the one user who needs the name most with
+    // nothing.
+    render(
+      <DataGrid caption="Détail des jours" captionHidden columns={COLUMNS} rows={ROWS} />,
+    );
+
+    expect(screen.getByRole('region', { name: 'Détail des jours' })).toBeTruthy();
+  });
+});

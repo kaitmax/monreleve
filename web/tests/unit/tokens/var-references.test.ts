@@ -173,6 +173,55 @@ describe('every var() resolves to a token that exists', () => {
     expect(uses, 'the token is defined and nothing uses it').toBe(6);
   });
 
+  it("draws the total row's rule from its own token, not the input one (Q48)", () => {
+    // RULING Q48, AND IT IS THE THIRD TIME THIS CENSUS HAS RUN. R69 found
+    // four sites aliasing the card border for a hairline; R150 found six
+    // drawing a banner accent from an input focus ring; this is DataGrid's
+    // tfoot drawing the rule above a TOTAL from --size-input-border-focus.
+    //
+    // The operator's answer to Q48 was "its own token".
+    //
+    // THE VALUE IS NOT THE COMPLAINT THIS TIME, which is the difference from
+    // R150. There, DESIGN-SYSTEM.md specified 4 px and the shipped 2 px was
+    // wrong as well as misnamed. Nothing in DESIGN-SYSTEM.md or the briefs
+    // gives a figure for a table's total rule, so 2 px stays and only the
+    // name changes - inventing a new value here would be inventing a product
+    // decision.
+    //
+    // WHY IT MATTERS WITH THE SAME VALUE: the two are independent decisions
+    // that coincide today. Someone thickening the focus ring for a contrast
+    // review would silently thicken the rule above every total, and nothing
+    // would look broken until a reviewer noticed the table had changed for a
+    // reason that had nothing to do with tables.
+    const offenders = FILES.filter((file) => {
+      const source = withoutComments(readFileSync(file, 'utf8'));
+
+      return /border-top:\s*var\(\s*--size-input-border-focus/.test(source);
+    });
+
+    expect(
+      offenders,
+      `a total rule drawn from the input focus token (Q48): ${offenders.join(', ')}`,
+    ).toEqual([]);
+
+    // NON-VACUITY: the token exists, it carries the value that shipped, and
+    // something uses it.
+    expect(defined.has('--size-total-rule')).toBe(true);
+    expect(readFileSync(join('lib', 'ui', 'core', 'styles', 'tokens.scss'), 'utf8')).toContain(
+      '$size-total-rule: 2px;',
+    );
+
+    const uses = FILES.reduce(
+      (total, file) =>
+        total +
+        withoutComments(readFileSync(file, 'utf8')).split('var(--size-total-rule)').length -
+        1,
+      0,
+    );
+
+    expect(uses, 'the token is defined and nothing uses it').toBe(1);
+  });
+
   it('does not read prose about tokens as a reference to one', () => {
     // The false positive that made the first run of this report two failures
     // for two correct decisions.

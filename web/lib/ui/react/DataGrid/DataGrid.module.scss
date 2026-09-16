@@ -62,7 +62,11 @@
 .totalHeader,
 .totalCell {
   padding: var(--space-2) var(--space-3);
-  border-top: var(--size-input-border-focus) solid var(--colour-border-strong);
+
+  // Q48: its own token. This drew the rule above a total from
+  // --size-input-border-focus - an INPUT FOCUS RING - until FW18b, which made
+  // it the third instance of R69's census after R150's notice accent.
+  border-top: var(--size-total-rule) solid var(--colour-border-strong);
   font-weight: var(--type-body-m-weight);
   text-align: left;
 }
@@ -76,4 +80,26 @@
   text-align: right;
 
   @include fonts.tabular-figures;
+}
+
+// RULING R159: THE TABLE SCROLLS, NEVER THE PAGE.
+//
+// overflow-x only. A vertical scroll here would trap a long table inside a
+// short box and hide rows behind a second scrollbar, which is a different
+// decision nobody asked for; the page scrolls vertically, as it always did.
+//
+// NO max-width AND NO width: the container takes the width its parent gives
+// it - the article measure, the panel, the page - and the table inside is
+// what overflows. Constraining it here would decide the measure in a
+// component that cannot see the layout.
+//
+// THE FOCUS RING IS THE REAL ONE. The container is a tab stop (WCAG 2.1.1),
+// so it must show focus like every other tab stop; inheriting the product
+// ring rather than drawing one keeps that a single decision.
+.scroll {
+  overflow-x: auto;
+
+  // Shows the scroll position without a permanent scrollbar on a table that
+  // fits. Both properties, because the standard one is not yet everywhere.
+  scrollbar-width: thin;
 }

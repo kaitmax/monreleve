@@ -41,6 +41,17 @@ const ROUTES = [
   ['the pillar', '/guides/teletravail-frontalier-40-pourcent'],
   ['the social cluster', '/guides/seuil-social-49-9-pourcent'],
   ['the mission cluster', '/guides/jours-de-mission-hors-suisse'],
+
+  // GENEVE AND THE DROIT D'OPTION, added at FW18b, and Geneve is the omission
+  // worth naming: FW18 gave it the product's widest table - the only six-row
+  // DataGrid - and did not add it to this census. The article most likely to
+  // overflow at 320 was the one article not checked at 320. FW18b's R159
+  // container is what makes a wide table safe, so the two arrive together.
+  ['geneve', '/guides/geneve'],
+  // Named by slug, like 'geneve' above, because R126's guard refuses a French
+  // elision apostrophe outside lib/fr - and a test label is not an exception
+  // to that rule, it is just a place the rule happened to reach.
+  ['droit-option', '/guides/droit-option-lamal-cmu'],
 ] as const;
 
 test.use({ viewport: NARROW });
@@ -106,4 +117,56 @@ test('the outline comes before the prose on a phone', async ({ page }) => {
   });
 
   expect(order).toBe('outline first');
+});
+
+test('a table too wide for the phone scrolls itself, not the page (R159)', async ({ page }) => {
+  // THE POSITIVE HALF, and R154 is why it exists. Every assertion above is
+  // "the document does not scroll sideways", which a page with no table
+  // satisfies perfectly - and would go on satisfying if the scroll container
+  // were deleted tomorrow, right up until an article grew a wide table.
+  //
+  // So this drives a KNOWN input through the mechanism: a cell is made wider
+  // than the viewport, and the two things R159 decides are then measured
+  // separately. The table scrolls. The page does not.
+  await page.goto('/guides/geneve');
+  await page.evaluate(() => document.fonts.ready);
+
+  const measured = await page.evaluate(() => {
+    const table = document.querySelector('main table');
+    const container = table?.parentElement;
+
+    if (table === null || container === undefined || container === null) return null;
+
+    // An unbreakable string, so the table's min-content width cannot shrink
+    // to fit - which is exactly what a long word in a real cell does.
+    const cell = table.querySelector('tbody td');
+
+    if (cell === null) return null;
+    cell.textContent = 'X'.repeat(200);
+
+    return {
+      containerScrolls: container.scrollWidth > container.clientWidth,
+      containerWidth: container.clientWidth,
+      documentScroll: document.documentElement.scrollWidth,
+      documentClient: document.documentElement.clientWidth,
+      focusable: container.getAttribute('tabindex'),
+    };
+  });
+
+  expect(measured, '/guides/geneve has no table to widen').not.toBeNull();
+
+  // THE TABLE SCROLLS - the container has more content than it can show, and
+  // it can be reached by keyboard to scroll it.
+  expect(measured?.containerScrolls, 'the container does not scroll').toBe(true);
+  expect(measured?.focusable, 'a scrollable region that cannot take focus').toBe('0');
+
+  // NEVER THE PAGE - and this is the assertion that would fail without the
+  // container, because the 200-character cell would push the document.
+  expect(
+    measured?.documentScroll,
+    `the page scrolled sideways instead: ${String((measured?.documentScroll ?? 0) - (measured?.documentClient ?? 0))} px`,
+  ).toBeLessThanOrEqual(measured?.documentClient ?? 0);
+
+  // And the container did not silently grow to fit it either.
+  expect(measured?.containerWidth).toBeLessThanOrEqual(320);
 });

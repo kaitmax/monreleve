@@ -270,6 +270,30 @@ $size-button-compact-height: 40px;
 // the same pixel today.
 $size-rule: 1px;
 
+// THE RULE ABOVE A TOTAL, ruling Q48, and the third time R69's census has run.
+// R69 found four sites aliasing the card border for a hairline; R150 found six
+// drawing a banner accent from an input focus ring; this is DataGrid's tfoot
+// drawing the rule above a TOTAL from --size-input-border-focus.
+//
+// THE VALUE IS NOT THE COMPLAINT THIS TIME, which is what separates it from
+// R150. There, DESIGN-SYSTEM.md specified 4 px and the shipped 2 px was wrong
+// as well as misnamed. Nothing in DESIGN-SYSTEM.md or the design briefs gives
+// a figure for a table's total rule, so the value that shipped stays and only
+// the name changes: inventing a figure here would be inventing a product
+// decision, which is not this task's to take.
+//
+// WHY IT STILL MATTERS AT THE SAME VALUE. They are independent decisions that
+// coincide today. Someone thickening the focus ring after a contrast review
+// would silently thicken the rule above every total, and nothing would look
+// broken until a reviewer noticed the table had changed for a reason with
+// nothing to do with tables. That is R68's wording - "distinct names even
+// where the values coincide".
+//
+// IT IS ALSO HEAVIER THAN $size-rule ON PURPOSE. The hairlines separate rows;
+// this one separates the rows from their sum, which is a different kind of
+// boundary and reads as one.
+$size-total-rule: 2px;
+
 // ---------------------------------------------------------------------------
 // BREAKPOINTS - SASS ONLY, and this is a mechanism constraint rather than a
 // preference (ruling R68).
@@ -479,6 +503,7 @@ $motion-toast-max: 5000ms;
   --size-header-height-mobile: #{$size-header-height-mobile};
   --size-button-compact-height: #{$size-button-compact-height};
   --size-rule: #{$size-rule};
+  --size-total-rule: #{$size-total-rule};
 
   // $breakpoint-md is deliberately NOT mirrored here. See the BREAKPOINTS
   // block above: a media query condition cannot read var().
