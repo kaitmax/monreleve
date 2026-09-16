@@ -1,0 +1,528 @@
+====================================================================
+REPORT-FW18b.txt
+====================================================================
+
+SUMMARY
+--------------------------------------------------------------------
+Six increments, six commits, all green.
+
+The droit d'option guide is published - the article FW18 refused - now
+that CLEISS supplies the two facts it turns on. R160 took the reviewer's
+name out of every chip and put the status in. R147 reached lib/fr and
+found four typed figures in the three files the operator named. R159's
+scroll container and Q48's token landed together. FD13's inline card
+replaced the prose link in all seven articles.
+
+Three findings came from the read-through and nothing else could have
+found any of them: two registers that both number their entries P<n> and
+agree on none, typed derivatives of a RuleSet value sitting beside a live
+expression, and /sources hiding its status column on a 1440 desktop. All
+three are recorded rather than fixed, and the reason is the same in each
+case - the correction is a rule or a layout decision, not a defect with
+an obvious fix.
+
+R135 caught two defects in my own work, both by cropping a regenerated
+baseline and looking at it. Neither was visible to any gate.
+
+
+PRECONDITIONS
+--------------------------------------------------------------------
+FW18 and FW19 reports read        yes
+relay/FW18b.txt                   6566883
+CI URL                            https://github.com/kaitmax/Frontalier
+CLEISS URL confirmed              NO - still pending, parked as P5
+
+The URL was located by search after the operator's pass and its published
+content matches that pass on every checkable point. docs/regulatory-
+sources.md says so above the table: the body is cited with certainty, the
+page provisionally. Nothing depends on it - no slug, no anchor, no
+published link - so it is one string in a data file when confirmed.
+
+
+THE NEW ROWS - docs/regulatory-sources.md
+--------------------------------------------------------------------
+Section: THE DROIT D'OPTION LAMAL/CMU - VERIFIED 16.09.2026
+Source:  CLEISS, the French public body responsible for the coordination
+         of cross-border social security. An authority, not an advisor.
+Date:    16.09.2026 (CLEISS_PASS in web/lib/content/sources.ts)
+
+  D1  The window is three months.
+  D2  It runs from ANY of four events: taking up work in Switzerland,
+      resuming work after a period of unemployment, taking up residence
+      in France, or moving from worker to pensioner status.
+  D3  The right is exercised ONCE and is irrevocable.
+  D4  Three changes reopen it: resuming work in Switzerland, transferring
+      residence to France, retirement under the Swiss scheme alone.
+  D5  Four changes do NOT: marriage, divorce, a birth or a death in the
+      family, and changing jobs with no unemployment between them.
+  D6  Failing to opt within three months means automatic affiliation in
+      Switzerland.
+  D7  The basis is the ALCP, in force 01.06.2002; Regulation (CE)
+      883/2004, applicable between Switzerland and the EU since
+      01.04.2012; modalities from the accord of 07.07.2016.
+
+D2 is the one that matters, and the section says so. Every advisory page
+writes "three months from hiring", which is wrong for a frontalier
+already working in Switzerland who then moves to France.
+
+Six new source ids: missionTravelDays, genevaWorkedExamples,
+droitOptionWindow, droitOptionIrrevocable, droitOptionDefault,
+droitOptionBasis. SOURCE_IDS is now 14.
+
+
+RED/GREEN LEDGER
+--------------------------------------------------------------------
+Every new behaviour had a failing test first, with the reason it failed.
+
+INC 1  sitemap census              RED  14 routes listed, 15 live
+       planned-route floor         RED  expected >5, received 5
+       planned-route floor (e2e)   RED  the SECOND copy, found by the
+                                        gate four minutes into test:e2e
+                                        after a green unit suite
+
+INC 2  chip states the status      RED  x8  GUIDES_COPY.expertReview
+                                        undefined; chip still read
+                                        "Relu par l'equipe frontalier"
+       second render site          RED  typecheck found it unaided -
+                                        the head-markup replica in
+                                        guide-section-order.test.tsx
+       chip-order census           RED  fixture reviewer "FW16" expected
+                                        in the middle chip
+
+INC 3  R147 over lib/fr            RED  4 hits, exactly the three files
+                                        the operator named:
+                                          index.ts:13 fiscal + social
+                                          shell.ts:63 fiscal
+                                          spike.ts:49 fiscal
+       R66 codepoint census        RED  40 -> 36 after the figures left
+       both scans re-proven        RED  planted a violation in an MDX
+                                        and in lib/fr; both went red off
+                                        the shared list
+       meta description (R154)     RED  planted the emptied
+                                        interpolation; the served tag
+                                        read "avant les seuils de  et "
+
+INC 4  Q48 token census            RED  offender named:
+                                        DataGrid.module.scss
+       scroll container            RED  x4  no container, no tabindex,
+                                        no named region
+       R159 positive proof         RED  planted overflow-x: visible; the
+                                        page scrolled 1860 px at 320 dp
+
+INC 5  the inline card             RED  module did not exist
+       R122 island harness         RED  GuideInlineCta unmeasured
+       R71 on my own test          RED  getByText normalised the U+00A0
+                                        R91 puts before a question mark
+
+INC 6  R148 card geometry          RED  planted a 24 px left offset;
+                                        expected 472, received 496
+
+FINAL VERIFICATION, one run, all green:
+  pnpm gate          exit 0  (coverage, budgets, parity)
+  pnpm test:e2e      214 passed
+  pnpm test:visual   100 passed
+  pnpm test:a11y     129 passed
+  pnpm test:runtime    9 passed
+  pnpm test         2346 passed across 131 files
+  pnpm lighthouse    4 URLs, all assertions passed
+
+
+CLAIMS TABLE
+--------------------------------------------------------------------
+The droit d'option article declares four claims and hedges none. Every
+regulatory sentence in it cites one. R146 case (a) applies throughout,
+which is the difference a verified source makes and is why the article
+reads differently from the attestation guide next door.
+
+  key                     what it carries
+  droitOptionWindow       three months, and the four events it runs from
+  droitOptionIrrevocable  once and irrevocable; the three that reopen it
+                          and the four that do not
+  droitOptionDefault      no choice in three months = Switzerland
+  droitOptionBasis        ALCP, 883/2004, the 2016 accord
+
+THE KEYS R158 SPLIT. R158 says a key identifies a FACT, not a URL, and
+two facts were sharing keys with the rows they happened to sit near:
+
+  missionTravelDays       jours-de-mission-hors-suisse - which travel
+                          days count. Previously folded into the mission
+                          cap row, which is a different fact with a
+                          different verification state.
+  genevaWorkedExamples    geneve - the six published worked examples.
+                          They are the administration's figures, cited;
+                          the cap and the basis that appear beside them
+                          are ours, from RuleSet. One key for both would
+                          have said the six examples were verified in the
+                          same way the cap is.
+
+
+THE FOUR TRIGGERS
+--------------------------------------------------------------------
+The paragraph, as published:
+
+  Le delai court a compter de l'une de ces quatre situations :
+    - une prise d'activite en Suisse ;
+    - une reprise d'activite apres une periode de chomage ;
+    - une prise de residence en France ;
+    - un passage du statut de travailleur a celui de pensionne.
+
+and the Avertissement directly under it:
+
+  L'erreur la plus repandue sur ce sujet. On lit presque partout que le
+  delai part de l'embauche. C'est vrai dans un cas et faux dans les
+  autres. Si vous travailliez deja en Suisse et que vous venez vous
+  installer en France, c'est votre installation qui ouvre le delai - pas
+  une embauche qui peut remonter a plusieurs annees.
+
+WHY IT IS THE ARTICLE'S MOST VALUABLE PARAGRAPH. Every page ranking for
+this term says "three months from hiring". For a frontalier who was
+already working in Switzerland and then moved to France, that sentence
+points at a date years in the past and tells them a window is closed
+that is in fact open - on a choice that cannot be retaken. The other
+three sections are better-written versions of what exists elsewhere.
+This one is the reason the page is worth more than the dozen that
+already rank.
+
+
+PARKED
+--------------------------------------------------------------------
+P5   The CLEISS URL is cited pending the operator's confirmation.
+     Body certain, page provisional, said so in the file.
+
+P6   The droit d'option guide is published, SUPERSEDING PARKING P2.
+     P2 stays with a forward pointer rather than being deleted: the
+     refusal was correct on the record as it stood, and a parking file
+     that erases the decisions later unblocked stops being a record of
+     how the product decides.
+
+P7   The article does not link /calculateur-lamal-cmu. R85 forbids an
+     anchor to a planned route, and rather than promise a tool the
+     section names what drives the cost on each side - canton, age,
+     franchise and model in Switzerland, income in France - and states
+     that no simple rule decides between them. True whether or not the
+     comparator is ever built.
+
+P8   The reviewer frontmatter stays, unrendered. Kept because it records
+     who made the pass, which is true and worth keeping; the e2e test
+     now asserts the value does not reach the reader, so "recorded but
+     not claimed" is held by the suite rather than by a comment.
+
+P9   TWO REGISTERS BOTH NUMBER THEIR ENTRIES P<n>.   [read-through]
+P10  TYPED DERIVATIVES OF A RuleSet VALUE.           [read-through]
+P11  /sources HIDES ITS STATUS COLUMN.               [read-through]
+
+     The three below, in full.
+
+
+QUESTIONS CLOSED
+--------------------------------------------------------------------
+Q47  A source key identifies a FACT, not a URL (R158).
+     DONE, and applied retroactively as well as forward. Two existing
+     rows were split - missionTravelDays out of the mission cap row,
+     genevaWorkedExamples out of the Geneve rows - because each was one
+     key covering two facts with different verification states. Six new
+     ids in total; SOURCE_IDS is 14.
+
+Q48  Its own token.
+     DONE. --size-total-rule, 2 px. DataGrid's tfoot drew the rule above
+     a TOTAL from --size-input-border-focus, an input focus ring; this
+     is the third run of R69's census after R150's notice accent. The
+     VALUE is not the complaint this time - nothing in DESIGN-SYSTEM.md
+     or the briefs gives a figure for a table's total rule, so 2 px
+     stays and only the name changes. Inventing a figure would have been
+     inventing a product decision.
+
+Q49  The table scrolls, never the page (R159).
+     DONE. DataGrid wraps its table in a scroll container, always
+     present rather than conditional: nothing on the server knows a
+     rendered width, and a container added only where somebody predicted
+     an overflow is missing in exactly the case nobody predicted. It is
+     focusable with a name (WCAG 2.1.1) - a real cost, a tab stop on
+     tables that fit, accepted because the alternative is a region some
+     readers cannot move. Proven by planting: without it the page
+     scrolls 1860 px at 320 dp.
+
+Q50  Build the CTA card, as its own increment.
+     DONE, increment 5. FD13's card in all seven articles. See TOKENS
+     ADDED - none were needed.
+
+Q51  The chip states the status, not a name (R160).
+     DONE. "Relecture experte : en attente", linking /sources. The old
+     sentence claimed review by someone, the someone was this project,
+     and a reader had no way to tell that apart from the expert review
+     these pages have not had.
+
+Q52  Extend R147 to lib/fr.
+     DONE, and it found four typed figures in the three files named. The
+     larger finding is that FIVE OTHER FILES in lib/fr already carried a
+     comment explaining why a threshold must not be typed - metrics.ts,
+     result.ts, statuses.ts, faq.ts, errors.ts. Five files observed a
+     rule nothing enforced, and the three that did not observe it were
+     found by reading rather than by running.
+
+
+MESH
+--------------------------------------------------------------------
+Clean over all seven articles plus the fixture. 35 tests across
+mesh.test.ts, hub.test.ts and links.test.ts, all green.
+
+Rules verified: pillar-links-every-cluster, cluster-links-pillar,
+related-is-mutual, undeclared-cross-link, calculator-link-inline,
+links-sources, and the hub/registry pair in both directions - no live
+guide route without an article, no article without a live route.
+
+calculator-link-inline had to learn the card. It counted hrefs in the
+article SOURCE, and the card carries its link inside a component, so the
+rule would have reported all seven articles as missing the thing they
+had just been given. Both forms are accepted rather than swapped: the
+fixture keeps a prose link, which is what exercises the map's LINK path
+- assertResolves, href validation, styling - and forcing it to the card
+would have retired that coverage to satisfy a census.
+
+SPEC 9.5 says 49,9 <-> LAMal/CMU is not a genuine cross-link. Not
+forced. The droit d'option guide links the pillar and is linked back by
+it, and says explicitly that the two subjects do not meet in the rules.
+
+
+SIZE
+--------------------------------------------------------------------
+All gated routes pass both gates.
+
+  route                    js total   delta   verdict
+  /                          107.2      6.6   pass (A 17.8, B 18.4)
+  /calculateur-...           121.1     20.5   pass (A  3.9, B  4.5)
+  /guides                    107.4      6.8   pass (A 17.6, B 18.2)
+  /guides/[slug]             108.6      8.0   pass (A 16.4, B 17.0)
+  /sources                   107.5      6.9   pass (A 17.5, B 18.1)
+
+The inline card added no JavaScript. It is a server component with no
+props, and /guides/[slug] carries the same first-load JS it did before.
+
+Lighthouse: 4 URLs (/, /guides, the pillar, geneve), all assertions
+passed.
+
+
+BASELINES - R135
+--------------------------------------------------------------------
+Regenerated across the task, by increment, each with its reason.
+
+INCREMENT 0 - 6 files
+  page-sources-{desktop,mobile}      four droit d'option rows added to
+                                     the regulatory table
+  guides-hub-{desktop,mobile}        the new article's card in the list
+  guides-pilier-{desktop,mobile}     the pillar's new forward link
+
+INCREMENT 2 - 12 files, then the same 12 again
+  guides-{article,article-faq-ouverte,attestation,cluster-missions,
+          geneve,pilier}-{desktop,mobile}
+    First pass: the middle chip's sentence changed on every article.
+    Second pass: and then its COLOUR did - see DEVIATIONS.
+
+INCREMENT 3 - 30 files
+  guides-{attestation,cluster-missions,geneve,hub,pilier}-*
+  page-{404,accueil,alertes,alertes-confirmee,alertes-desinscrit,
+        alertes-lien-invalide,cgu,confidentialite,mentions-legales,
+        sources}-{desktop,mobile}
+    The footer's "Le seuil de 40 %" became "Le plafond fiscal", and the
+    footer is on every page, so every page state moved by one label.
+
+INCREMENT 4 - NONE, and that is the expected result. overflow-x: auto
+  draws nothing on a table that fits, so all 100 visual tests passed
+  against the existing record after the scroll container landed.
+
+INCREMENT 5 - 8 files, then the same 8 again
+  guides-{attestation,cluster-missions,geneve,pilier}-{desktop,mobile}
+    First pass: the inline card replaced the prose link.
+    Second pass: the card's sentence was wrong - see DEVIATIONS.
+    The FIXTURE's baseline did not move either time, because the fixture
+    keeps its prose link. That is the visible proof both forms work.
+
+INCREMENT 6 - none.
+
+CROPPED AND READ, not merely regenerated: the chip row at 1440 and 390,
+the footer at 1440, the inline card at 1440 and 390, and the /sources
+table at 1440. Two of those reads found defects; one found a false alarm
+worth recording (see DEVIATIONS).
+
+
+TOKENS ADDED
+--------------------------------------------------------------------
+ONE. --size-total-rule, 2 px, under the operator's Q48 ruling. SPEC 20
+makes a new token ask-first and the ruling is the authorisation; it is
+recorded verbatim under QUESTIONS CLOSED.
+
+NONE for the inline card, which is worth stating because FD13 gives it
+three pixel figures. Radius 16 is --radius-lg, padding 24 is --space-6,
+the 48 h button is --size-button-height. Every figure the brief names
+already had a name.
+
+One token was REACHED FOR AND WITHDRAWN. The card's first stylesheet
+used --size-inline-cta-body as a flex basis, which does not exist and
+would have been a second new token on a task authorising one component.
+Replaced with the existing $breakpoint-md: the card is one column on a
+phone and a row above 768, which is mobile-first and needs no width of
+its own.
+
+
+DEVIATIONS
+--------------------------------------------------------------------
+1. R135 CAUGHT A DEFECT IN MY OWN R160 WORK. The new chip link rendered
+   in default browser blue between two grey chips. No gate objected -
+   the link was present, correct, and pointed at the right page - and
+   the next baseline would have photographed it and certified it. Fixed
+   with the one line .breadcrumb already uses, a { color: inherit },
+   underline kept. Found by cropping the image and looking.
+
+2. R135 CAUGHT MY CARD COPY, the second time in one task. The card's
+   sentence was the pillar's own lead-in, lifted: the best statement of
+   the moment any of the seven had, and true in exactly one of them. On
+   the droit d'option guide it landed directly under a paragraph saying
+   the telework threshold has NO EFFECT on the choice being discussed,
+   and then explained telework arithmetic. One constant rendered in
+   seven articles has to be true in all seven. Replaced with a standing
+   offer, and one line as FD13 asks rather than two.
+
+3. A FALSE ALARM, recorded because the method matters. The footer crop
+   appeared to show two link colours - some blue, some dark. Sampling
+   the pixels showed all three sampled links share the same darkest
+   value, rgb(102,112,133); the difference was subpixel anti-aliasing
+   fringing. A crop is evidence to investigate, not a verdict.
+
+4. THE E2E COPY OF A STALE FLOOR SURVIVED A GREEN UNIT SUITE. Flipping
+   the route to live took the planned-route count from six to five, and
+   toBeGreaterThan(5) existed in TWO files. The unit copy went red at
+   once; the other, asserting against served XML, was caught four
+   minutes into test:e2e. That is R132 selecting e2e from the diff
+   rather than from judgement, working exactly as intended.
+
+5. ONE TRANSIENT GATE FAILURE, not chased. Increment 2's first gate run
+   aborted six tests into test:e2e with a NoFallbackError on an alertes
+   route. The same suite then passed 200/200 in isolation and 200/200
+   on the re-run, and 214/214 since. Recorded as transient rather than
+   diagnosed, which is R99's recorded handling of this machine's worker
+   contention. Nothing was committed on the failing run.
+
+6. HEREDOC ATE MY BACKSLASHES AGAIN, for the third recorded time. A
+   regex written into a test file through a shell heredoc lost every
+   backslash and the file would not parse. Fixed with the Edit tool.
+   The durable lesson stands: scripts with regexes or backticks go
+   through the file-writing tool, never a heredoc.
+
+
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------
+A. A VACUOUS TEST WHOSE PREMISE HAS EXPIRED.
+   e2e/calculateur.spec.ts:555, "the contextual link is NOT a tab stop,
+   because it is not a link yet", asserts expect(true).toBe(true). Its
+   comment says the slot's four destinations "are all status: 'planned'
+   ... becomes a tab stop the day FW17 ships the first guide". FW17
+   shipped. Three of the four destinations are guide routes that have
+   been live since, so ctaHrefIfLive now renders anchors and the
+   sentence the test is named after is false.
+
+   Verified rather than assumed: lib/fr/result.ts lines 118-130 give the
+   four destinations, and three are /guides/... routes that are live in
+   the registry today. Not touched because writing the real keyboard
+   assertion is work on the result panel, a different surface from this
+   task's.
+
+B. THE INTEGER-PERCENT FORMATTING RULE NOW EXISTS IN THREE PLACES.
+   formatPercent(value, Number.isInteger(value) ? 0 : 1) appears in
+   lib/guides/scope.ts and in the calculator page. I avoided adding a
+   third by importing guideScope into the home page rather than writing
+   a local helper, but the existing two are still two.
+
+C. /dev/spike's banner and table are placeholder copy on a robots-
+   disallowed page. R147 now covers it and it was fixed rather than
+   exempted, which is right, but the file is still marked TODO-COPY
+   throughout and nobody has decided whether the spike outlives FW2.
+
+
+QUESTIONS
+--------------------------------------------------------------------
+Q55  THE TWO P-REGISTERS. parking.md and lib/content/provisional.ts both
+     number their entries P<n> and agree on none of them. The
+     provisional ids are PUBLISHED - /sources renders a section per
+     reading, readingAnchor builds #lecture-P1, and two guides send
+     readers to "la reference P1" and "la reference P2" in prose. The
+     parking ids are internal and were created later, in FW18, without
+     anybody noticing.
+
+     It has already produced one error, mine: P6 was first written
+     "supersedes P2" unqualified, which read against the published
+     article says the 49,9 % reading was superseded. It has not been.
+
+     parking.md now opens with a disambiguation table and every
+     cross-reference in it names its register. That stops the confusion;
+     it does not remove it. The published ids are the expensive ones to
+     change - an anchor is a URL and SPEC 14 makes those permanent - so
+     if either is renamed it should be the parking side, to D<n> for
+     decision or similar. Four committed report files cite P1 through P8
+     by number, so a rename needs a mapping note. Your call. P9.
+
+Q56  TYPED DERIVATIVES OF A RuleSet VALUE. Two articles narrate the
+     Geneve worked example as "credites : {missionCap} ... comptes : 94
+     ... taux : 39,16 % ... imposables : 14". The first is live; the
+     other three are hand-computed from it - 84+10, 94/240, 24-10. Move
+     the cap to 12 and the expression updates while the derivatives do
+     not, and the passage reads "seuls 12 sont credites, et les 14
+     autres deviennent imposables", contradicting itself in one breath.
+     R147 cannot see it: it scans for the figures, and a derivative is
+     not one.
+
+     Two defensible readings and choosing is a rule, not a wording:
+       (a) the block is a CITATION of the administration's published
+           example, so every number in it is the source's - including
+           the cap - and {missionCap} is the intruder;
+       (b) it is a DEMONSTRATION of our engine, so nothing should be
+           typed and the scope should carry derived values.
+     Today's text is correct, so nothing is urgent. P10.
+
+Q57  /sources HIDES ITS STATUS COLUMN. Measured, not estimated:
+
+       viewport  container  table  status column   page overflow
+       1440      616        665    49 px outside   0
+       1280      616        665    49 px outside   0
+        390      350        665   315 px outside   0
+
+     The page never scrolls sideways, which is R159's rule working. The
+     cost lands entirely on the last column, which is the status: on a
+     1440 screen with 824 px of unused viewport a reader sees every
+     rule, value, source and date, and a chip clipped to "Trans" and
+     "En att".
+
+     It matters more since this task. R160 made every guide's chip read
+     "Relecture experte : en attente" and link here, so /sources is now
+     the page that answers "what is verified" - and the column carrying
+     that answer is off-screen by default.
+
+     It predates FW18b: sources.module.scss already records the same
+     shape. The fix is one container width - the table section could
+     take the public measure instead of article - which needs no token.
+     Not taken because which measure a reference table gets is a layout
+     decision on a page FW20 rewrites. P11.
+
+Q58  THE CLEISS URL, still. Five minutes, seventh time something has
+     waited on a confirmation. Everything else about those seven rows is
+     yours and verified; the link a reader follows is the one string
+     nobody has confirmed.
+
+
+PUSH PROOF
+--------------------------------------------------------------------
+branch  main
+remote  https://github.com/kaitmax/Frontalier.git
+
+  40a9f46  FW18b: the droit d'option guide, now that it is sourced
+  dbabdcc  FW18b: R160 - the chip states the status, not a name
+  120114f  FW18b: R147 reaches lib/fr (Q52)
+  cb6f1bf  FW18b: R159's scroll container, and Q48's own token
+  1659bc8  FW18b: the inline calculator card
+  f389408  FW18b: mesh, a11y, baselines, read-through
+
+106 files changed, 1786 insertions(+), 77 deletions(-)
+
+Every commit was made on a green gate, with the printed selection in its
+body. No red commit.
+
+END OF REPORT-FW18b.txt
