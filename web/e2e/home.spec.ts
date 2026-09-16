@@ -7,6 +7,8 @@ import { LAST_REGULATORY_REVIEW, reviewNotice } from '../lib/content/regulatory'
 import { HOME_COPY } from '../lib/fr';
 import { SHELL_COPY } from '../lib/fr/shell';
 import { formatDate } from '../lib/ui/core';
+import { currentTaxYear } from '../lib/content/tax-year';
+import { guideScope } from '../lib/guides/scope';
 
 const ORIGIN = 'http://localhost:3000';
 
@@ -180,4 +182,35 @@ test('/api/ready is 200 and ready when the process is not marked as serving', as
   expect(response.status()).toBe(200);
   expect(body.ready).toBe(true);
   expect(body.checks.every((check) => check.ok)).toBe(true);
+});
+
+test('the meta description delivers both thresholds, formatted (R147, R154)', async ({ page }) => {
+  // FW18b MADE THE DESCRIPTION A FUNCTION, because R147 now reaches lib/fr
+  // and it used to type "40 %" and "49,9 %". A function that returned its
+  // sentence with the interpolations empty would still be a valid meta tag,
+  // still parse, still pass every other assertion on this page, and the
+  // snippet in every search result would read "avant les seuils de  et ".
+  //
+  // That is exactly the shape R154 exists for, so the assertion is against
+  // the VALUES - taken from the engine, not from the copy module - rather
+  // than against the sentence the copy module would produce.
+  await page.goto('/');
+
+  const description = await page
+    .locator('meta[name="description"]')
+    .getAttribute('content');
+
+  const { fiscal, social } = guideScope(currentTaxYear());
+
+  expect(description, 'the fiscal ceiling').toContain(fiscal);
+  expect(description, 'the social ceiling').toContain(social);
+
+  // AND THE FIGURES ARE REAL ONES, so a scope returning two empty strings
+  // cannot satisfy the two assertions above by making them vacuous.
+  expect(fiscal).toMatch(/\d/u);
+  expect(social).toMatch(/\d/u);
+
+  // The sentence around them is still the copy module's, and that it survived
+  // is worth one assertion.
+  expect(description).toContain('Calculez votre part de télétravail annuelle');
 });

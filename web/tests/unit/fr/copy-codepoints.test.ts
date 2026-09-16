@@ -145,7 +145,7 @@ describe('the whitespace codepoints in French copy are on the record (R66)', () 
     expect(summary, summary.join(' | ')).toEqual([]);
   });
 
-  it('carries exactly the 40 the typography pass put there', () => {
+  it('carries exactly the 36 the typography pass left there', () => {
     // A count, so that a no-break space arriving or disappearing is a
     // deliberate edit here rather than a silent one. Per file, because a
     // total alone would let one move between files unnoticed.
@@ -157,16 +157,24 @@ describe('the whitespace codepoints in French copy are on the record (R66)', () 
       'lib/fr/cgu.ts': 7,
       'lib/fr/confidentialite.ts': 15,
       'lib/fr/errors.ts': 2,
-      'lib/fr/index.ts': 4,
-      'lib/fr/shell.ts': 2,
+      // FW18b: FOUR BECAME TWO, and the two that left are the point. R147
+      // now reaches lib/fr, so the home description no longer types "40 %"
+      // and "49,9 %" - it takes them formatted, and formatPercent sets the
+      // no-break space. The codepoint did not disappear; it moved to the one
+      // producer SPEC 6.4 names, which is where the comment above says it
+      // belongs.
+      'lib/fr/index.ts': 2,
+      // FW18b: the nav label "Le seuil de 40 %" became "Le plafond fiscal".
+      'lib/fr/shell.ts': 1,
       // FW18b: one, in the droit d’option window's description -
       // "Delai pour choisir son systeme d’assurance maladie" sets a
       // no-break space before its colon like every other French label here.
       'lib/fr/sources.ts': 1,
-      'lib/fr/spike.ts': 7,
+      // FW18b: the spike banner "Seuil de 40 % approche" named the rule.
+      'lib/fr/spike.ts': 6,
       'lib/fr/statuses.ts': 2,
     });
-    expect(occurrences).toHaveLength(40);
+    expect(occurrences).toHaveLength(36);
   });
 
   it('puts every one of them immediately before : ; ? ! or %', () => {

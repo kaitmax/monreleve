@@ -29,6 +29,7 @@
 import { describe, expect, it } from 'vitest';
 import { ruleSetFor } from '@/lib/calc-engine';
 import { allGuides } from '@/lib/guides/registry';
+import { TYPED_FIGURES } from '../../support/typed-figures';
 
 /**
  * The four figures R147 names, as they would look typed into French prose.
@@ -38,13 +39,16 @@ import { allGuides } from '@/lib/guides/registry';
  * before a percent sign is the fiscal ceiling. The pattern is the figure AND
  * what makes it a regulatory quantity.
  */
-const TYPED = [
-  { what: 'the fiscal ceiling', pattern: /\b40\s*(?:%|pour cent)/i },
-  { what: 'the social ceiling', pattern: /\b49[,.]9\s*(?:%|pour cent)/i },
-  { what: 'the simplified basis', pattern: /\b240\s+jours/i },
-  { what: 'the mission cap', pattern: /\b10\s+jours/i },
-  { what: 'the A1 threshold', pattern: /\b25\s*(?:%|pour cent)/i },
-] as const;
+/**
+ * The figures R147 names now live in tests/support/typed-figures.ts.
+ *
+ * MOVED IN FW18b, when the operator's Q52 answer extended R147 to lib/fr and
+ * tests/unit/fr/typed-numbers.test.ts needed the same list. Two hand-kept
+ * copies of a forbidden-figure list disagree the day either is edited, and
+ * the disagreement is silent in the direction that matters: the copy nobody
+ * updated permits the figure the other forbids.
+ */
+const TYPED = TYPED_FIGURES;
 
 /** Every figure above must actually be a RuleSet value, or the rule is fiction. */
 const RULES = ruleSetFor(2026);

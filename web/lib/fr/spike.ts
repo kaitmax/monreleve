@@ -55,7 +55,7 @@ export const SPIKE = {
   },
 
   banner: {
-    title: 'Seuil de 40 % approché',
+    title: 'Seuil fiscal approché', // R147: named, not quoted
     body: 'Il reste 4 jours de télétravail avant le seuil fiscal.', // TODO-COPY
   },
 

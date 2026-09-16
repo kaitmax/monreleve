@@ -27,11 +27,19 @@ export const HOME_COPY = {
    * one; the home page, which FW20 rewrites, had none, and nothing would have
    * noticed.
    *
-   * SPEC 14 wants the 40 % threshold named in the description. It is.
+   * SPEC 14 wants the thresholds named in the description, and they are -
+   * but R147 says a figure is never TYPED, so both arrive as arguments,
+   * already formatted, exactly as CALCULATEUR_COPY.description takes its own.
+   *
+   * IT WAS A CONSTANT WITH THE FIGURES IN IT until FW18b, and it is the
+   * clearest case the extended scan found: the description of the one page
+   * the whole SEO strategy points at, promising two thresholds by value, in a
+   * file whose five neighbours each carry a comment explaining why that must
+   * not be done.
    */
-  description:
+  description: (fiscal: string, social: string): string =>
     'Calculez votre part de télétravail annuelle et les jours qui vous ' +
-    'restent avant les seuils de 40 % et 49,9 %, puis tenez le registre ' +
+    `restent avant les seuils de ${fiscal} et ${social}, puis tenez le registre ` +
     'horodaté de vos journées.',
 
   intro:

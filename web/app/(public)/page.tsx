@@ -20,14 +20,29 @@
 import type { Metadata } from 'next';
 import { HOME_COPY } from '@/lib/fr';
 import { formatDays } from '@/lib/ui/core/format/number';
+import { currentTaxYear } from '@/lib/content/tax-year';
+import { guideScope } from '@/lib/guides/scope';
 
 // The title stays the layout's default - the bare product name for "/" -
 // while the description is this page's own. A site-wide default description
 // would apply to any page that forgot one, which is how every page ends up
 // with the same snippet in a search result.
-export const metadata: Metadata = {
-  description: HOME_COPY.description,
-};
+//
+// generateMetadata RATHER THAN A CONSTANT, since FW18b extended R147 to
+// lib/fr. The description names both thresholds and no longer types either:
+// they arrive formatted, from the year's RuleSet, the same way the
+// calculator's has since FW11. A static export cannot call anything, so the
+// shape of the export is what the rule decides here.
+//
+// guideScope RATHER THAN A THIRD ceiling() HELPER. It returns the year's
+// figures already formatted, with the same "integer takes no decimal" rule
+// the calculator applies - and a third private copy of a formatting decision
+// is the duplication R147 exists to refuse, one layer down.
+export function generateMetadata(): Metadata {
+  const { fiscal, social } = guideScope(currentTaxYear());
+
+  return { description: HOME_COPY.description(fiscal, social) };
+}
 
 // Through formatDays rather than quoted. lib/fr used to carry the rendered
 // string with a hand-typed U+202F in it, which made a second producer of the

@@ -130,7 +130,19 @@ export const FOOTER_COLUMNS: readonly FooterColumn[] = [
     heading: 'Guides',
     links: [
       { label: 'Tous les guides', href: '/guides' },
-      { label: 'Le seuil de 40 %', href: '/guides/teletravail-frontalier-40-pourcent' },
+      // R147/R153: THE LABEL NAMES THE RULE, THE SLUG KEEPS THE FIGURE.
+      // It read "Le seuil de 40 %" until FW18b. The slug may keep the number
+      // because SPEC 14 freezes slugs permanently - a stronger rule than this
+      // one - but nothing freezes an anchor's text, so in 2028 this footer
+      // would have offered a threshold that no longer exists.
+      //
+      // "Le plafond fiscal" is the article's own breadcrumbLabel, so the
+      // footer and the breadcrumb now agree on what the page is called.
+      //
+      // IT COSTS THE FIGURE AS ANCHOR TEXT, which is a real SEO trade and the
+      // reason to state it: the term survives in the slug, the article title
+      // and the h1, which are the stronger signals. Reversible in one string.
+      { label: 'Le plafond fiscal', href: '/guides/teletravail-frontalier-40-pourcent' },
     ],
   },
   {
