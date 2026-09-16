@@ -180,3 +180,33 @@
   font-size: var(--type-body-size);
   line-height: var(--type-body-line);
 }
+
+// R164: THE TABLE IS WIDE, THE PROSE AROUND IT IS NOT.
+//
+// The table section moved to Container 'public' at 1200 so the status column
+// is visible without scrolling. Its heading and its two notes are still
+// sentences, and a sentence set at 1200 px is the measure FD13's 680 exists
+// to prevent - so they keep the article measure inside the wide container.
+//
+// --layout-article, the same token Container uses for width="article". Two
+// rules that must agree reading one value is the point; a second literal here
+// would be R171's "a literal standing in for a role", one layer down.
+// EVERY TEXT ELEMENT, not only the table section's. The page is ONE
+// container now - see page.tsx - because two centred containers of different
+// widths give two different LEFT EDGES, and the first version of this change
+// shipped exactly that: the h1 began 260 px right of the section heading
+// below it. No gate objected; R135's crop found it, which is the same way
+// FW17 found the article head sitting 100 px right of its own prose.
+//
+// So the page is 1200 wide, every sentence on it is capped at the article
+// measure, and everything shares one left edge. Only the table uses the full
+// width, which is what R164 asked for.
+.title,
+.lead,
+.reviewed,
+.heading,
+.note,
+.prose,
+.readings {
+  max-width: var(--layout-article);
+}

@@ -89,7 +89,7 @@ export default function SourcesPage() {
 
   return (
     <main className={styles.page}>
-      <Container width="article">
+      <Container width="public">
         <h1 className={styles.title}>{COPY.title}</h1>
         <p className={styles.lead}>{COPY.intro}</p>
 
@@ -106,7 +106,28 @@ export default function SourcesPage() {
           </p>
         )}
 
-        <section className={styles.section}>
+      {/*
+        RULING R164: THE REGULATORY TABLE TAKES THE WIDE CONTAINER.
+
+        FW18b measured this page and found 49 px of the LAST column - the
+        status - outside its scroll container at 1440 and 1280, and 315 px at
+        390, with 0 px of page overflow at every width. The page never
+        scrolled sideways, which is R159 working exactly as specified. The
+        cost landed entirely on the column a reader most needs, on a screen
+        with 824 px of unused viewport. Recorded as PARK-11.
+
+        It was a defect of the WRONG CONTAINER, not of the scroll rule. The
+        680 px article measure exists for reading paragraphs; this is a
+        reference table, and R160 made every guide's chip link here to read
+        precisely the column that was off-screen.
+
+        THE PROSE DOES NOT COME WITH IT. The heading and the two notes keep
+        the article measure through .heading and .note below - widening the
+        page to 1200 would have shown the status column and set every
+        sentence on it at 1200 px, which is the measure FD13's 680 exists to
+        prevent. Only the table is wide.
+      */}
+      <section className={styles.section}>
           <h2 className={styles.heading}>{COPY.tableHeading}</h2>
 
           {/*
