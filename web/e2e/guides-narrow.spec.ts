@@ -20,6 +20,7 @@
 // cannot be hidden by a capture that widens.
 
 import { expect, test } from '@playwright/test';
+import { goToServedPage } from './support/served';
 import { GUIDES_PATH, publishedGuides } from '../lib/guides/registry';
 
 const NARROW = { width: 320, height: 720 };
@@ -79,7 +80,7 @@ test('the derived list found the articles, so the loop below is not empty', () =
 
 for (const [what, route] of ROUTES) {
   test(`${what} does not scroll sideways at 320 dp (R127)`, async ({ page }) => {
-    await page.goto(route);
+    await goToServedPage(page, route);
     await page.evaluate(() => document.fonts.ready);
 
     const overflow = await page.evaluate(() => ({
@@ -99,7 +100,7 @@ for (const [what, route] of ROUTES) {
     // The document can fit while a single element pokes out - an image, a
     // long unbroken URL, a card with a min-width. scrollWidth would not
     // always show it; measuring the widest element does.
-    await page.goto(route);
+    await goToServedPage(page, route);
     await page.evaluate(() => document.fonts.ready);
 
     const widest = await page.evaluate(() => {
@@ -124,7 +125,7 @@ test('the outline comes before the prose on a phone', async ({ page }) => {
   // on a phone meets a long reference document and needs to know what is in
   // it before deciding to scroll. It is also the document order, so this is
   // asserting that no CSS reordering has been introduced.
-  await page.goto('/guides/fixture-modele-article');
+  await goToServedPage(page, '/guides/fixture-modele-article');
 
   const order = await page.evaluate(() => {
     const toc = document.querySelector('[data-toc]');
@@ -149,7 +150,7 @@ test('a table too wide for the phone scrolls itself, not the page (R159)', async
   // So this drives a KNOWN input through the mechanism: a cell is made wider
   // than the viewport, and the two things R159 decides are then measured
   // separately. The table scrolls. The page does not.
-  await page.goto('/guides/geneve');
+  await goToServedPage(page, '/guides/geneve');
   await page.evaluate(() => document.fonts.ready);
 
   const measured = await page.evaluate(() => {

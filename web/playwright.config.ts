@@ -1,10 +1,19 @@
 // web/playwright.config.ts
 import { defineConfig, devices } from '@playwright/test';
 
-const BASE_URL = 'http://localhost:3000';
+// R170: the port comes from the environment, default 3000. It was this
+// literal, and that is half of how FW20 found the suite testing a different
+// product - see e2e/support/base-url.ts and e2e/global-setup.ts.
+import { BASE_URL, PORT } from './e2e/support/base-url';
 
 export default defineConfig({
   testDir: './e2e',
+
+  // RULING R169: the suite asserts what it is pointed at, FIRST. This runs
+  // after webServer and before any spec, and aborts the entire run if the
+  // address is answering for a different product. See e2e/global-setup.ts
+  // for the measurement that produced the rule.
+  globalSetup: './e2e/global-setup.ts',
   // The R81 runtime-guard suite is excluded here and run by
   // playwright.runtime.config.ts, which starts a server with
   // FRONTALIER_RUNTIME=1 and no origin. Collected by this config it would
@@ -59,8 +68,15 @@ export default defineConfig({
   // The e2e suite runs against a production build, not the dev server: the
   // font payload, the chunking and the CSS output all differ.
   webServer: {
-    command: 'node scripts/copy-fonts.mjs && next build && next start',
+    command: `node scripts/copy-fonts.mjs && next build && next start -p ${PORT}`,
     url: BASE_URL,
+    // KEPT, AND R169 IS WHAT MAKES IT SAFE. Reusing a server is only sound
+    // if it is OUR server, and until FW20 nothing established that: the
+    // suite attached to whatever held the port and ran a full pass against
+    // another product, reporting 91 tests passed. e2e/global-setup.ts now
+    // refuses the run before a spec executes unless /api/health names this
+    // product. Reuse stays because a warm server is worth minutes on every
+    // local run; what changed is that it can no longer be the wrong one.
     reuseExistingServer: !process.env.CI,
     timeout: 240_000,
     // A SITE ORIGIN, BECAUSE OTHERWISE THERE ARE NO CANONICALS TO ASSERT.

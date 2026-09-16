@@ -27,6 +27,7 @@
 //
 // R53 disallows /api/* in robots.txt, so this is never crawled.
 
+import { APP_NAME } from '@/lib/fr';
 import { isProvisionalOrigin, isRuntime, servingWithoutOrigin, siteOrigin } from '@/lib/content/site';
 
 /** Per-request: the runtime marker means nothing to a prerendered response. */
@@ -48,6 +49,20 @@ export function GET(): Response {
 
   return Response.json(
     {
+      // WHO IS ANSWERING, ruling R169, and it is first because it is the
+      // field that makes the rest of the payload trustworthy. A status of
+      // "ok" tells a caller that SOMETHING is healthy on this port; only
+      // this says what.
+      //
+      // It exists because FW20 found the e2e suite pointed at another
+      // project's container and reported 91 tests passed. e2e/global-setup.ts
+      // reads this field and refuses the whole run when it is absent or names
+      // something else - which a foreign server cannot avoid, since it either
+      // 404s this route or answers without the field.
+      //
+      // APP_NAME rather than a second literal: the product has one name, and
+      // an identity check comparing two strings that could drift is not one.
+      service: APP_NAME,
       status: degraded ? 'degraded' : 'ok',
       reasons,
       // Deliberately NOT the resolved origin when it is provisional: a health

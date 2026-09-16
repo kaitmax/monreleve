@@ -3,6 +3,7 @@
 // browser can prove: that Inter is reaching the page with tabular numerals on.
 
 import { expect, test } from '@playwright/test';
+import { BASE_URL } from './support/base-url';
 import { LAST_REGULATORY_REVIEW, reviewNotice } from '../lib/content/regulatory';
 import { HOME_COPY } from '../lib/fr';
 import { SHELL_COPY } from '../lib/fr/shell';
@@ -10,7 +11,18 @@ import { formatDate } from '../lib/ui/core';
 import { currentTaxYear } from '../lib/content/tax-year';
 import { guideScope } from '../lib/guides/scope';
 
-const ORIGIN = 'http://localhost:3000';
+/**
+ * The server these tests actually hit, which is NOT the origin the build is
+ * configured with. The build sets NEXT_PUBLIC_SITE_URL to frontalier.example
+ * so the canonicals have something real to assert, so a trace filtered by the
+ * METADATA origin calls every request foreign.
+ *
+ * FROM THE SHARED CONSTANT SINCE R170, not the literal localhost:3000. The
+ * port moves, and a hardcoded one here does not fail loudly - it reclassifies
+ * our own chunks as third-party requests, which is this file asserting the
+ * opposite of what it means. Found on the first run at FRONTALIER_PORT=3100.
+ */
+const ORIGIN = BASE_URL;
 
 test('/ responds 200 and renders its heading from lib/fr', async ({ page }) => {
   const response = await page.goto('/');

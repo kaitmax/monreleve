@@ -33,18 +33,28 @@
 // reason to want one - would pass it.
 
 import { expect, test } from '@playwright/test';
-import { CONFIRMATION_PATH, UNSUBSCRIBE_PATH } from '../lib/alerts/status';
+import { goToServedPage } from './support/served';
+import { BASE_URL } from './support/base-url';
+import {
+  CONFIRMATION_PATH,
+  CONFIRM_STATES,
+  UNSUBSCRIBE_PATH,
+  UNSUBSCRIBE_STATES,
+} from '../lib/alerts/status';
 import { liveRoutes } from '../lib/content/routes';
 
 /**
- * The server these tests actually hit, which is NOT the origin the build
- * is configured with. playwright.config.ts serves on localhost:3000 and
- * sets NEXT_PUBLIC_SITE_URL to frontalier.example so the canonicals have
- * something real to assert - so a trace filtered by the METADATA origin
- * calls every request foreign, which is how the first run of this spec
- * failed on all nine routes at once.
+ * The server these tests actually hit, which is NOT the origin the build is
+ * configured with. The build sets NEXT_PUBLIC_SITE_URL to frontalier.example
+ * so the canonicals have something real to assert, so a trace filtered by the
+ * METADATA origin calls every request foreign.
+ *
+ * FROM THE SHARED CONSTANT SINCE R170, not the literal localhost:3000. The
+ * port moves, and a hardcoded one here does not fail loudly - it reclassifies
+ * our own chunks as third-party requests, which is this file asserting the
+ * opposite of what it means. Found on the first run at FRONTALIER_PORT=3100.
  */
-const ORIGIN = 'http://localhost:3000';
+const ORIGIN = BASE_URL;
 
 /**
  * Hostnames that host the analytics anybody would reach for. Named rather
@@ -68,11 +78,24 @@ const VENDORS = [
   'posthog',
 ];
 
-/** The live public routes, plus the two alert status pages. */
+/**
+ * The live public routes, plus the two alert status pages.
+ *
+ * THE STATES COME FROM THE CONSTANTS, and FW20 found out why. This list held
+ * the literal `/alertes/desinscription/desinscrit` - a state that does not
+ * exist, since UNSUBSCRIBE_STATES is { unsubscribed: 'ok', unknown:
+ * 'invalide' }. The route 404s, and it has 404ed since FW14.
+ *
+ * IT PASSED THE WHOLE TIME. Every assertion in this file is an absence - no
+ * analytics host, no cookie, no third-party request - and an error page
+ * satisfies all three perfectly. The route was certified clean by never being
+ * loaded. Found the moment R169's corollary made these tests require a 200
+ * first, which is the entire argument for that rule in one line.
+ */
 const ROUTES = [
   ...liveRoutes().map((route) => route.path),
-  `${CONFIRMATION_PATH}/confirmee`,
-  `${UNSUBSCRIBE_PATH}/desinscrit`,
+  `${CONFIRMATION_PATH}/${CONFIRM_STATES.confirmed}`,
+  `${UNSUBSCRIBE_PATH}/${UNSUBSCRIBE_STATES.unsubscribed}`,
 ];
 
 test('the routes under test are the real registry, not a chosen few', () => {
@@ -94,7 +117,8 @@ for (const route of ROUTES) {
       if (!request.url().startsWith(ORIGIN)) foreign.push(request.url());
     });
 
-    await page.goto(route, { waitUntil: 'networkidle' });
+    await goToServedPage(page, route);
+    await page.waitForLoadState('networkidle');
 
     // SPEC 17, from a real trace rather than a hostname grep.
     expect(foreign, `${route} made third-party requests`).toEqual([]);

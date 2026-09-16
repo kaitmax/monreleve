@@ -12,6 +12,7 @@
 // DECLARATION exists; this asserts the browser applied it.
 
 import { expect, test } from '@playwright/test';
+import { goToServedPage } from './support/served';
 import { ctaHrefIfLive } from '../lib/content/routes';
 import { SHELL_COPY } from '../lib/fr/shell';
 
@@ -209,7 +210,7 @@ test.describe('no horizontal scroll at the narrowest supported width', () => {
   test.use({ viewport: { width: 320, height: 800 } });
 
   test('the document does not scroll sideways at 320 px', async ({ page }) => {
-    await page.goto('/');
+    await goToServedPage(page, '/');
     await page.evaluate(() => document.fonts.ready);
 
     const overflow = await page.evaluate(() => {
@@ -232,7 +233,7 @@ test.describe('no horizontal scroll at the narrowest supported width', () => {
     // and asks for breathing room. Fixing the 320 overflow by compressing the
     // row could have eaten the 360 margin, and only this test would notice.
     await page.setViewportSize({ width: 360, height: 800 });
-    await page.goto('/');
+    await goToServedPage(page, '/');
     await page.evaluate(() => document.fonts.ready);
 
     // MEASURED ON THE LAST THING IN THE ROW, whatever that is. R85 removed the
