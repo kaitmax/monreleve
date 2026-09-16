@@ -78,7 +78,9 @@ function Head() {
       <h1>{frontmatter?.title}</h1>
       <ul data-chips>
         <li>{GUIDES_COPY.reviewedOn('09.09.2026')}</li>
-        <li>{GUIDES_COPY.reviewedBy(frontmatter?.reviewer ?? '')}</li>
+        <li>
+          <a href="/sources">{GUIDES_COPY.expertReview}</a>
+        </li>
         <li>{GUIDES_COPY.readingTime(readingMinutes(fixture?.body ?? ''))}</li>
       </ul>
       <hr />
@@ -122,7 +124,10 @@ describe('R137: the article renders its sections in one order', () => {
 
     expect(chips.length).toBe(3);
     expect(chips[0]).toContain('09.09.2026');
-    expect(chips[1]).toContain(fixture?.frontmatter.reviewer ?? '');
+    // R160: the middle chip states the review STATUS. It read the
+    // fixture reviewer until FW18b - which also meant the assertion went
+    // vacuous whenever the fixture failed to load, because of the ?? ''.
+    expect(chips[1]).toContain(GUIDES_COPY.expertReview);
     expect(chips[2]).toContain('min de lecture');
   });
 });

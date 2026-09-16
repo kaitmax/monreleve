@@ -294,3 +294,33 @@ half a comparison with nothing saying so.
 
 TOUCHES:   One section of `web/content/guides/droit-option-lamal-cmu.mdx`. If
 FW-whichever builds the comparator, this is where its link goes.
+
+## P8 - the reviewer field stays, and nothing renders it  [FW18b, 2026-09-16]
+
+QUESTION:  R160 took the name out of the chip. `reviewer` is still a required
+field of the frontmatter contract, validated at build, carried by all seven
+articles and the fixture — and now read by nothing. A required field nothing
+reads is the kind of thing that rots quietly.
+
+TAKEN:     Keep it, unrendered. It records who made the pass, which is true
+and worth keeping: `lastReviewed` says a pass happened and `reviewer` says who
+made it, and dropping half of that makes the remaining half harder to trust,
+not easier. The e2e test now asserts the value does NOT reach the reader, so
+"recorded but not claimed" is a state the suite holds rather than a comment
+somebody has to believe.
+
+NOT TAKEN: (a) Deleting the field and the eight values with it. That is the
+irreversible direction — the values would have to be reconstructed from git
+history — and it is the operator's call, not one to take while implementing
+their ruling. (b) Making it optional and driving the chip off its presence:
+reviewer present names them, absent says "en attente". That is the better
+mechanism and it is why this entry exists, but it decides what the chip says
+once a real expert review happens, and R160 says only what it says today.
+(c) Renaming it `internalReviewer` to mark that it is not the expert review.
+Cosmetic; the contract's own comment can say so, and a rename touches eight
+files for no change in behaviour.
+
+TOUCHES:   `web/lib/guides/frontmatter.ts` (the field), the eight articles,
+and `app/(public)/guides/[slug]/page.tsx` if it is ever read again. If the
+operator picks (b), the chip is the only render site and the copy module
+already holds both sentences' worth of decision in one constant.

@@ -33,7 +33,25 @@ export const GUIDES_COPY = {
    */
   reviewedOn: (date: string): string => `Dernière vérification${n(':')} ${date}`,
 
-  reviewedBy: (reviewer: string): string => `Relu par ${reviewer}`,
+  /**
+   * FD13's second chip, and RULING R160 decides what it says: "the chip
+   * states the status, not a name."
+   *
+   * IT USED TO BE reviewedBy(reviewer), rendering "Relu par l’equipe
+   * frontalier" on every article. That sentence claims review by someone.
+   * The someone was us, and a reader has no way to tell it apart from the
+   * expert review these pages have NOT had - which is the distinction the
+   * whole /sources page exists to draw.
+   *
+   * It is the same rule CLAUDE.md holds on the releve, one surface over:
+   * declare, record, timestamp - never certify, attest or conform. A chip
+   * that says who read it is the guide-shaped version of "certifie".
+   *
+   * NOT A FUNCTION, deliberately. The old signature took a name because it
+   * rendered one; a constant cannot be handed a reviewer, so the field
+   * cannot leak back into the chip by someone passing it again.
+   */
+  expertReview: `Relecture experte${n(':')} en attente`,
 
   /** FD13: the outline card heads itself SUR CETTE PAGE, uppercase. */
   tocLabel: 'Sur cette page',

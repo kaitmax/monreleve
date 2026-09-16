@@ -190,9 +190,19 @@ export default async function GuidePage({ params }: RouteParams) {
               <CalendarCheck size={CHIP_ICON} strokeWidth={STROKE} aria-hidden="true" />
               <span>{GUIDES_COPY.reviewedOn(formatDate(frontmatter.lastReviewed))}</span>
             </li>
+            {/*
+              R160: THE STATUS, NOT A NAME - and it is a link, because a
+              status of "en attente" that a reader cannot follow up is a
+              disclosure nobody can act on. /sources is where what verified
+              means here is written down.
+
+              frontmatter.reviewer is deliberately NOT read. It still exists
+              in the contract and still records who made the pass; it no
+              longer reaches a reader. Parked as P8.
+            */}
             <li className={styles.chip}>
               <UserCheck size={CHIP_ICON} strokeWidth={STROKE} aria-hidden="true" />
-              <span>{GUIDES_COPY.reviewedBy(frontmatter.reviewer)}</span>
+              <a href="/sources">{GUIDES_COPY.expertReview}</a>
             </li>
             <li className={styles.chip}>
               <Clock size={CHIP_ICON} strokeWidth={STROKE} aria-hidden="true" />

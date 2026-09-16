@@ -418,7 +418,6 @@ test.describe('the metadata chips deliver their values (R154)', () => {
       // emptied interpolation drops all three out of the chip and all three
       // fail.
       expect(chips, `${slug}: the verification date`).toContain(formatDate(lastReviewed));
-      expect(chips, `${slug}: the reviewer`).toContain(reviewer);
       expect(chips, `${slug}: the reading time`).toContain(
         String(readingMinutes(guide.body)),
       );
@@ -443,6 +442,51 @@ test.describe('the metadata chips deliver their values (R154)', () => {
       // grammatical and wrong. The count is computed from the body, so it
       // must be positive for a real article.
       expect(readingMinutes(guide.body), `${slug}: reading time`).toBeGreaterThan(0);
+    });
+
+    test(`${slug} states the review STATUS and names nobody (R160)`, async ({ page }) => {
+      // RULING R160: "the chip states the status, not a name."
+      //
+      // IT USED TO READ "Relu par l'equipe frontalier", and the assertion
+      // directly above used to check that the reviewer's name reached the
+      // chip - a correct R154 test of a sentence the product should not be
+      // saying. "Relu par" is a claim of review by someone; the someone was
+      // this project; and a reader has no way to tell that apart from the
+      // expert review the page has NOT had. CLAUDE.md's standing rule is the
+      // same rule one surface over: declare, record, timestamp - never
+      // certify, attest or conform.
+      //
+      // So the chip now states where the article stands, and links the page
+      // that says what verified means here.
+      await page.goto(`${GUIDES_PATH}/${slug}`);
+
+      const chips = page.locator('[data-chips]');
+      const text = await chips.evaluate((node) => node.textContent ?? '');
+
+      expect(text, `${slug}: the review status`).toContain(GUIDES_COPY.expertReview);
+
+      // THE NAME IS GONE FROM THE RENDERED PAGE, not merely from this chip.
+      // An absence assertion is weak on its own (R154), which is why it sits
+      // beside the positive one above rather than instead of it - but the
+      // absence is the half that matters here: the defect was a claim being
+      // made, so what has to be true is that it is no longer made anywhere.
+      // SCOPED TO main, NOT body, and the first version got this wrong in a
+      // way worth keeping. body.textContent includes the RSC flight payload
+      // Next embeds in <script> tags - every string the page was built from,
+      // rendered or not - so the fixture failed on its own description meta
+      // ("Fixture FW16..."), which no reader ever sees. An absence assertion
+      // over markup a reader cannot read is not the claim being made.
+      const read = await page.locator('main').evaluate((node) => node.textContent ?? '');
+
+      expect(read, `${slug}: the reviewer's name still reaches the reader`).not.toContain(
+        reviewer,
+      );
+
+      // AND THE CHIP IS A ROUTE OUT. A status of "en attente" that a reader
+      // cannot follow up is a disclosure nobody can act on.
+      const link = chips.locator('a[href="/sources"]');
+
+      await expect(link, `${slug}: the status chip links /sources`).toHaveCount(1);
     });
   }
 });

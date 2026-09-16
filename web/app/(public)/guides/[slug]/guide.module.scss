@@ -94,6 +94,19 @@
   font-size: var(--type-caption-size);
   font-weight: var(--type-caption-weight);
   line-height: var(--type-caption-line);
+
+  // R160 PUT A LINK IN THE MIDDLE CHIP, and without this it rendered in the
+  // browser default blue with the two grey chips either side of it - which
+  // no gate objected to and the next baseline would have photographed and
+  // certified. R135 caught it the only way it can be caught: by cropping the
+  // regenerated image and looking at it.
+  //
+  // color: inherit, not a token - the same line .breadcrumb already uses,
+  // for the same reason. The underline stays: it is a link, and the chip
+  // should not be the one place on the page where that is hidden.
+  a {
+    color: inherit;
+  }
 }
 
 .rule {
