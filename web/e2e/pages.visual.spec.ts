@@ -53,6 +53,7 @@ const PAGES = [
   // losing its indent, because no assertion is about how it looks.
   { id: 'a-propos', path: '/a-propos' },
   { id: 'tarifs', path: '/tarifs' },
+  { id: 'releve-annuel', path: '/releve-annuel' },
 
   // FW14: the alert list. The landing a Facebook post points at, and the
   // three outcome pages a reader reaches from an email - each of which says

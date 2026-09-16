@@ -88,7 +88,6 @@ test.describe('sitemap.xml', () => {
       // FW20 took /a-propos out of this list; it is a live page now.
       '/application',
       '/calculateur-lamal-cmu',
-      '/releve-annuel',
     ]);
 
     for (const route of planned) {

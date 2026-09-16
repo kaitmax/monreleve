@@ -41,6 +41,7 @@ import MentionsPage from '@/app/(public)/mentions-legales/page';
 import NotFound from '@/app/not-found';
 import AlertesPage from '@/app/(public)/alertes/page';
 import AProposPage from '@/app/(public)/a-propos/page';
+import ReleveAnnuelPage from '@/app/(public)/releve-annuel/page';
 import SourcesPage from '@/app/(public)/sources/page';
 import TarifsPage from '@/app/(public)/tarifs/page';
 import { PUBLIC_ROUTES, ctaHrefIfLive } from '@/lib/content/routes';
@@ -148,6 +149,21 @@ const PAGES: readonly Expected[] = [
     },
     // One page, one product. Its only link is to /sources; D3 forbids the
     // checkout that would be a primary action.
+    contextualLinks: 0,
+    primaryActions: 0,
+  },
+  {
+    label: '/releve-annuel',
+    render: () => {
+      render(
+        <PublicShell>
+          <ReleveAnnuelPage />
+        </PublicShell>,
+      );
+    },
+    // An offer page for a document that does not exist. Its links are
+    // ordinary prose links, not SPEC 9.3's contextual slot, and there is
+    // nothing to buy or start - so no primary action.
     contextualLinks: 0,
     primaryActions: 0,
   },
@@ -460,11 +476,21 @@ describe('the contextual link: exactly one, by Status (R119)', () => {
     }
   });
 
-  it('still names WITHOUT linking for compliant, whose target is not built', () => {
-    // THE FOURTH, AND IT IS STILL PLANNED. /releve-annuel is FW20's. Asserted
-    // rather than left implicit, so that "three of four resolve" is a
-    // measurement instead of a description - and so that whoever ships
-    // /releve-annuel has one failing test telling them to check this panel.
+  it('LINKS for compliant now that /releve-annuel is built', () => {
+    // THE TRIPWIRE FIRED, AND THIS IS THE DELIBERATE ANSWER. The previous
+    // version of this test asserted the compliant slot rendered TEXT and no
+    // anchor, because /releve-annuel was planned - and its comment said why
+    // it was written that way: "so that whoever ships /releve-annuel has one
+    // failing test telling them to check this panel."
+    //
+    // FW20 shipped it under R166, and this test is the one that failed. The
+    // panel needed no edit: ctaHrefIfLive reads the registry, so flipping the
+    // route was the whole change. What needed an edit was the assertion that
+    // had recorded the route's absence as a fact.
+    //
+    // A READER REACHING `compliant` IS THE BEST OUTCOME THE PRODUCT HAS -
+    // inside both thresholds - and until FW20 they were the one reader sent
+    // to a page that did not exist.
     render(
       <PublicShell>
         <CalculateurPage />
@@ -479,15 +505,21 @@ describe('the contextual link: exactly one, by Status (R119)', () => {
     });
 
     const slot = document.querySelector('[data-panel="link"]');
+    const anchor = slot?.querySelector('a');
 
-    expect(slot?.querySelector('a')).toBeNull();
+    expect(anchor, 'the compliant slot still renders no anchor').not.toBeNull();
+    expect(anchor?.getAttribute('href')).toBe(RESULT_COPY.links.compliant.href);
 
-    // R154: the LINK TEXT is a constant linkPending cannot launder, so this
-    // fails if the interpolation empties; the equality below then pins the
-    // whole sentence. FW17 wrote only the equality, which would have passed
-    // against a linkPending that dropped its argument.
+    // R154: the LINK TEXT is a constant, so this fails if the interpolation
+    // empties rather than passing on a blank anchor.
     expect(slot?.textContent).toContain(RESULT_COPY.links.compliant.text);
-    expect(slot?.textContent).toBe(RESULT_COPY.linkPending(RESULT_COPY.links.compliant.text));
+
+    // AND IT NO LONGER READS AS PENDING. The "pas encore disponible" wording
+    // is what a reader saw for four tasks; leaving it beside a working link
+    // would be worse than either state alone.
+    expect(slot?.textContent).not.toBe(
+      RESULT_COPY.linkPending(RESULT_COPY.links.compliant.text),
+    );
   });
 });
 

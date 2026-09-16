@@ -23,6 +23,8 @@ import { goToServedPage } from './support/served';
 import { SOURCES_COPY, UNKNOWN_IDS } from '../lib/fr/sources';
 import { A_PROPOS_COPY } from '../lib/fr/a-propos';
 import { TARIFS_COPY } from '../lib/fr/tarifs';
+import { RELEVE_COPY } from '../lib/fr/releve-annuel';
+import { complianceClaims } from '../tests/support/vocabulary';
 
 /** 390 is a phone; 1280 and 1440 are the desktop widths the baselines use. */
 const WIDTHS = [1440, 1280, 390] as const;
@@ -266,4 +268,63 @@ test('/tarifs states SPEC D3 and sells nothing (R154)', async ({ page }) => {
   for (const href of hrefs) {
     expect(href.startsWith('/'), `/tarifs links offsite: ${href}`).toBe(true);
   }
+});
+
+test('/releve-annuel is written in the tense the code is in (R166, R138)', async ({ page }) => {
+  // THE CONSTRAINT R166 PUT ON THIS PAGE. The dossier does not exist, so
+  // every sentence about it is future or conditional and none is present.
+  // "Le releve contient" would be the clearest possible violation of the rule
+  // this product is built on, on the page describing the artifact that rule
+  // exists to protect.
+  await goToServedPage(page, '/releve-annuel');
+
+  const text = await page.locator('main').evaluate((node) => node.textContent ?? '');
+
+  // PRESENCE FIRST, so the absences below are not satisfied by an empty page.
+  expect(text, 'the page says it does not exist yet').toContain(RELEVE_COPY.lead);
+  expect(text, 'what it will be for').toContain(RELEVE_COPY.purposeBody);
+  expect(text, 'where the document stands').toContain(RELEVE_COPY.stateBody);
+  expect(RELEVE_COPY.contents.length, 'SPEC 12 has six sections').toBe(6);
+  for (const item of RELEVE_COPY.contents) {
+    expect(text, `a section of the document: ${item.slice(0, 30)}`).toContain(item);
+  }
+
+  // NO PRESENT-TENSE ASSERTION ABOUT THE DOCUMENT. These are the forms that
+  // would claim it exists; the page uses "contiendra", "servira", "dira".
+  for (const claim of [
+    'le relevé contient',
+    'le relevé comprend',
+    'le document contient',
+    'vous obtenez',
+    'téléchargez',
+  ]) {
+    expect(text.toLowerCase(), `present-tense claim: "${claim}"`).not.toContain(claim);
+  }
+
+  // SPEC 12's OWN VOCABULARY RULE, THROUGH THE PRODUCT'S OWN GUARD.
+  //
+  // The first version of this check hand-rolled a list - 'sont certifiées',
+  // 'sont attestées' - and failed on this page's own sentence saying it will
+  // NEVER claim those things. A substring cannot tell a disclaimer from an
+  // assertion, which is precisely the mistake tests/support/vocabulary.ts
+  // records having made once already: banning 'certifi' outright forbade the
+  // calculator from naming the A1 CERTIFICATE that SPEC 7.1 requires it to
+  // explain.
+  //
+  // So the check is the shared guard, which matches claim FORMS. R171: a test
+  // names a role - the vocabulary rule - never a word list that happens to
+  // approximate it today.
+  expect(
+    complianceClaims(text),
+    'the page makes a compliance claim SPEC 20 forbids',
+  ).toEqual([]);
+
+  // NON-VACUOUS: the guard catches something, so an empty result above means
+  // the page is clean rather than the guard being broken.
+  expect(complianceClaims('Vos journées sont certifiées conformes.').length).toBeGreaterThan(0);
+
+  // NO WAITING LIST, NO PRICE. A form collecting addresses against a promise
+  // is a promise; the price is /tarifs' subject and belongs to one page.
+  await expect(page.locator('main form'), 'a waiting list').toHaveCount(0);
+  expect(text, 'a price on the wrong page').not.toContain('CHF');
 });
