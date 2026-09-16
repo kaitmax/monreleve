@@ -1,0 +1,218 @@
+FW18 SESSION PROMPT - frontalier
+Run after FW17b is complete and its report is pushed.
+
+====================================================================
+PRE-STEP RULINGS (apply verbatim)
+====================================================================
+R0. Read REPORT-FW17b.txt in full. If it contains an item marked
+    BLOCKING for FW18, or a DEVIATION that changes the MDX pipeline,
+    the frontmatter contract, the template or the mesh checker, apply
+    R156 (park it) and proceed if a conservative path exists; stop
+    only if R156 says stop.
+
+R1 (discharged). CI green on origin/main: verify, record the run URL.
+R2, R7-R8, R10-R13, R15-R155 (carried). The engine is closed.
+    R9: you own document edits.
+
+R156 (new - THE PARKING RULE, and it has a hard boundary).
+    The operator is asleep. An open question does NOT stop the task.
+    Instead:
+      (1) Take the CONSERVATIVE, REVERSIBLE option - the one that
+          claims less, ships less, and can be changed tomorrow
+          without a migration, a 301, or a correction to something
+          already published.
+      (2) Record it in parking.md at the repo root, in the format
+          below, with the option taken and the one not taken.
+      (3) Continue.
+    PARK: copy wording, a token value already present in a brief
+    (R77), a layout choice, a hedge-versus-state decision on an
+    unverified claim (R146 case (b) IS the conservative option), a
+    missing data source (degrade the feature, do not invent data),
+    a component shape, a test's strictness.
+    DO NOT PARK - STOP AND WRITE THE REPORT:
+      - anything PERMANENT: a slug, a URL param name, a database
+        column that would need a migration, an anchor, a published
+        redirect;
+      - anything that would PUBLISH A FALSE OR UNSOURCED CLAIM -
+        R146's three options are exhaustive and (c) "not written" is
+        always available, so this should never force a stop;
+      - a gate, budget or threshold change;
+      - a new runtime dependency;
+      - a red commit or a failing gate you cannot fix inside the
+        increment;
+      - anything touching lib/calc-engine.
+    parking.md entry format, appended, newest last:
+      ## P<n> - <one-line title>  [FW<task>, <date>]
+      QUESTION:  what was unclear, in two sentences.
+      TAKEN:     the conservative option, and why it is reversible.
+      NOT TAKEN: the alternative, and what it would cost to switch.
+      TOUCHES:   files, tests and baselines a switch would change.
+
+====================================================================
+CONTEXT
+====================================================================
+You are executing FW18 ONLY: the four remaining guides. FW17 wrote the
+pillar and two clusters; the mesh, the template, the claims test
+(R146) and the no-typed-number scan (R147) all exist and will refuse
+a wrong article.
+
+The four:
+  /guides/attestation-employeur-teletravail
+  /guides/droit-option-lamal-cmu
+  /guides/declaration-impots-frontalier
+  /guides/geneve
+
+Read first: CLAUDE.md, README.md, SPEC 9.5 (verbatim), 14, 20;
+docs/regulatory-sources.md IN FULL; prompts/design-frontier/FD13;
+tasks/todo.md FW18; REPORT-FW17.txt and REPORT-FW17b.txt.
+
+====================================================================
+STANDING PROTOCOL
+====================================================================
+1. SESSION SCOPE. Increment 0 and FW18 only. Do not start FW19.
+   Exactly four articles.
+2. INCREMENT CYCLE. Green after EVERY increment, suites per
+   R132/R140/R144.
+3. COMMIT ONLY ON GREEN, chained with && (R15).
+4. COMMITS. "FW18: <increment title>".
+5. SIMPLICITY FIRST. MDX and frontmatter. A new component is a park
+   or a stop, never a quiet addition.
+6. TEST-FIRST for MECHANISMS; prose is reviewed by reading and the
+   report says what you read for.
+7. R146 governs every regulatory sentence. R147: no typed threshold.
+   R153: FAQ answers name the rule, never its value. R155: full
+   accents. R91, R126: typography and apostrophes.
+8. UI DISCIPLINE. Tokens; one h1; Container 'article'; the FW16
+   component kit and nothing new.
+9. QUESTIONS. R156 - park and continue, or stop per its boundary.
+10. EXIT ARTIFACT. REPORT-FW18.txt, committed and pushed.
+
+====================================================================
+INCREMENT 0 - parking.md and the R154 chip proof
+====================================================================
+0a. Create parking.md at the repo root with a header explaining
+    R156, the format, and the boundary. If FW17b already created it,
+    confirm and move on.
+0b. Confirm FW17b's chip assertion (R154) holds for a NEW article -
+    the mechanism was proven on three; four more arrive today. If
+    FW17b did not implement it, implement it here before writing
+    prose: rendered chip text must carry THIS article's date,
+    reviewer and reading time, asserted against served HTML.
+Commits per letter; R49 applies.
+
+====================================================================
+TASK FW18 - THE FOUR REMAINING GUIDES
+====================================================================
+AC1. Four articles at their SPEC 9.5 slugs, each with `claims`
+     resolving, each with lastReviewed and reviewer, each with two
+     calculator links counted by position, each in the hub.
+AC2. The mesh checker passes over all SEVEN guides: pillar links
+     every cluster, every cluster links the pillar, declared
+     cross-links are mutual, every guide links /sources.
+AC3. The canton page earns its slug: it contains content that is
+     TRUE OF GENEVE AND NOT OF THE PILLAR. If it cannot, it is not
+     published - park the decision and ship six guides.
+
+--------------------------------------------------------------------
+INCREMENT 1 - attestation-employeur-teletravail
+--------------------------------------------------------------------
+The product's own argument, so the honesty bar is highest here.
+ - What the employer certifies from 2026, and what that document is.
+ - What it does NOT cover: mission days the employer may not know
+   about, and days worked for a second employer.
+ - Why your own dated record is complementary rather than a
+   substitute - and say plainly that if the employer's attestation is
+   complete and correct, it may be all a reader needs. A guide that
+   cannot concede that is selling, not informing.
+ - Cross-link the pillar and the mission cluster (mutual).
+ - Commit: "FW18: the employer attestation guide". Push.
+
+--------------------------------------------------------------------
+INCREMENT 2 - droit-option-lamal-cmu
+--------------------------------------------------------------------
+ - The choice, the three-month window, and that it is IRREVOCABLE -
+   the single most consequential fact in this article.
+ - Who it applies to and when the window opens.
+ - NO COST FIGURES, NO PREMIUM AMOUNTS. The comparator is FW19 and
+   its data source is unresolved; a figure here would be unsourced.
+   Name the factors that drive the cost; do not quantify them.
+ - Link to /calculateur-lamal-cmu ONLY IF the route is live; it is
+   planned, so per R85 the link renders as text or is omitted -
+   decide, park the choice, and say which.
+ - Commit: "FW18: the LAMal/CMU option guide". Push.
+
+--------------------------------------------------------------------
+INCREMENT 3 - declaration-impots-frontalier
+--------------------------------------------------------------------
+ - The April season: what a frontalier declares in France, and what
+   the Swiss side has already withheld.
+ - What the annual record is for at that moment.
+ - Every deadline or form number is a CLAIM and needs a verified row
+   or it is written as an open question. French declaration deadlines
+   are NOT in docs/regulatory-sources.md - expect most of this
+   article to be structural rather than numeric, and say so in the
+   report rather than sourcing a date from memory.
+ - Commit: "FW18: the declaration-season guide". Push.
+
+--------------------------------------------------------------------
+INCREMENT 4 - geneve, or not
+--------------------------------------------------------------------
+ - AC3's test: what is true of Geneve and not of the pillar? The
+   verified source IS Geneva's - ge.ch publishes the six worked
+   examples, and Geneva is a source-taxation canton, which the
+   eight 1983-accord cantons are not. That is genuinely
+   canton-specific.
+ - If, writing it, the article restates the pillar: DO NOT PUBLISH.
+   Park the decision, ship six, and say so. SPEC 9.5: thin canton
+   pages are worse than none.
+ - Commit: "FW18: the Geneve canton guide" (or "FW18: Geneve not
+   published - parked"). Push.
+
+--------------------------------------------------------------------
+INCREMENT 5 - mesh, hub, registry, a11y, baselines, size
+--------------------------------------------------------------------
+ - Mesh checker over all seven (or six); capture the clean run and
+   the rules verified.
+ - Registry: published routes move to live, enter the sitemap.
+ - jest-axe across the new articles and the hub; keyboard paths;
+   320 dp overflow (R127); geometric alignment on one article
+   (R148).
+ - Baselines at 1440/390 for two of the four, zero tolerance,
+   dimensions asserted, reasons recorded.
+ - Lighthouse floor (R152) on one new article.
+ - THE READ-THROUGH: read all four end to end and report what you
+   read for. FW17's read-through found two defects no layer could.
+ - Commit: "FW18: mesh, registry, a11y, baselines, read-through".
+   Push.
+
+====================================================================
+OUT OF SCOPE
+====================================================================
+- The comparator - FW19. The homepage, /tarifs, /a-propos - FW20.
+- /application - FW20b. Analytics - FW28.
+- Any engine change. Any premium or cost figure.
+
+====================================================================
+FINAL VERIFICATION
+====================================================================
+pnpm gate && pnpm test:e2e && pnpm test:visual && pnpm test:a11y &&
+pnpm test:runtime
+Green in one run; CI green after the final push.
+
+====================================================================
+REPORT FORMAT - REPORT-FW18.txt (pure ASCII, committed and pushed)
+====================================================================
+SUMMARY
+PRECONDITIONS   FW17b read; CI URL.
+INCREMENT 0     parking.md; the chip proof for a new article.
+RED/GREEN LEDGER
+CLAIMS TABLE    Every claim across the four, its source key, its row.
+PROVISIONAL     Where an open question is written, and its sentence.
+GENEVE          Published or parked, with the AC3 reasoning.
+MESH            The clean run over all published guides.
+PARKED          Every P<n> raised this session, one line each.
+READ-THROUGH    What you read for, and what it found.
+SIZE, BASELINES, TOKENS ADDED, DEVIATIONS,
+NOTICED BUT NOT TOUCHING, QUESTIONS, PUSH PROOF
+
+END OF FW18 PROMPT

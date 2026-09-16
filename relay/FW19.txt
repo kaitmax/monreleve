@@ -1,0 +1,197 @@
+FW19 SESSION PROMPT - frontalier
+Run after FW18 is complete and its report is pushed.
+
+====================================================================
+PRE-STEP RULINGS (apply verbatim)
+====================================================================
+R0. Read REPORT-FW18.txt in full, including its PARKED section. If it
+    contains an item marked BLOCKING for FW19, apply R156.
+
+R1 (discharged). CI green on origin/main: verify, record the run URL.
+R2, R7-R8, R10-R13, R15-R156 (carried). The engine is closed.
+    R9: you own document edits.
+
+R157 (new - THE COMPARATOR MAY NOT INVENT A NUMBER). This task's
+    known risk, recorded in tasks/plan.md since the pivot: the LAMal
+    premium data may have no clean, citable, dated source. The order
+    of preference is fixed and you may not deviate upward:
+      (1) A DATED, CITED dataset from a primary source (OFSP /
+          priminfo or equivalent), stored as a data file with its
+          source URL and fetch date in its header, and a row in
+          docs/regulatory-sources.md - same treatment as a
+          regulatory constant.
+      (2) If (1) is unavailable: the user ENTERS their own premium
+          and the tool computes only the comparison, showing its
+          arithmetic. The tool then states plainly that it does not
+          hold premium data.
+      (3) If neither is defensible: the comparator is NOT PUBLISHED.
+          Park it, ship nothing, and say so.
+    Under no circumstances: a figure from memory, a scraped page
+    without a licence, an averaged estimate presented as a premium,
+    or a placeholder number in shipped copy. A wrong premium on a
+    page about an IRREVOCABLE three-month choice is the worst
+    single defect this product could ship.
+    Decide at INCREMENT 1, before any UI exists, and record the
+    decision in parking.md and the report.
+
+====================================================================
+CONTEXT
+====================================================================
+You are executing FW19 ONLY: /calculateur-lamal-cmu. SPEC 9.6: the
+same shell as the telework calculator; inputs are revenu fiscal de
+reference, household size and canton; the output is a two-column
+comparison, a badge on the cheaper option, and a prominent error
+banner stating the choice is IRREVOCABLE and the window is THREE
+MONTHS.
+
+Its job is acquisition at the moment of highest need, not retention -
+it is a funnel entrance, single-use by nature. That does not lower the
+accuracy bar; it raises it, because a reader arrives at it once, acts,
+and cannot undo the action.
+
+Read first: CLAUDE.md, README.md, SPEC 9.6, 9.3 (the shell it
+reuses), 16, 20; docs/regulatory-sources.md; the FW18 droit-option
+guide as shipped; tasks/todo.md FW19; REPORT-FW18.txt.
+
+====================================================================
+STANDING PROTOCOL
+====================================================================
+1. SESSION SCOPE. Increment 0 and FW19 only. Do not start FW20.
+2. INCREMENT CYCLE. Green after EVERY increment.
+3. COMMIT ONLY ON GREEN, chained with && (R15).
+4. COMMITS. "FW19: <increment title>".
+5. SIMPLICITY FIRST. A form, a pure comparison function, a table.
+   R136: prefer zero client JS; if the comparison needs an island,
+   justify the bytes against GATE A.
+6. TEST-FIRST with a RED row per behaviour. R96 for figures.
+7. THE COMPARISON LOGIC IS PURE and lives in lib/lamal - no React,
+   no I/O, no clock. It is NOT in lib/calc-engine and must not
+   import it: different domain, different sources, different
+   verification status. A lint fence asserts the separation.
+8. UI DISCIPLINE. Tokens; French only from lib/fr; the result never
+   gated; R110's disclosure pattern if any input touches an
+   unverified assumption.
+9. QUESTIONS. R156 - park and continue, or stop per its boundary.
+10. EXIT ARTIFACT. REPORT-FW19.txt, committed and pushed.
+
+====================================================================
+INCREMENT 0 - carried rulings
+====================================================================
+Apply anything FW18 parked that belongs here, and any carried
+ruling. Confirm parking.md exists and is being appended to.
+
+====================================================================
+TASK FW19 - THE LAMAL/CMU COMPARATOR
+====================================================================
+AC1. R157's decision is made, recorded, and implemented - with the
+     data file cited and dated if (1), or the user-entered path if
+     (2), or nothing published if (3).
+AC2. The irrevocability notice is unmissable: above the fold of the
+     result, error-coloured accent, stating the choice cannot be
+     reversed and the window is three months. Asserted by count
+     (R119) and by position (R137).
+AC3. Every figure the page displays is either entered by the user,
+     computed from an entered figure, or drawn from a cited dated
+     source. A test enumerates displayed figures against their
+     origin - no figure has a fourth origin.
+
+--------------------------------------------------------------------
+INCREMENT 1 - THE DATA DECISION (do this first, build nothing yet)
+--------------------------------------------------------------------
+ - Investigate what is actually available: a licensed dataset, its
+   terms, its date, its granularity (canton, age band, model).
+ - Apply R157's order of preference and record the decision in
+   parking.md and the report, with what you found and what you could
+   not.
+ - If (1): create the data file with its header - source URL, fetch
+   date, licence - and the row in docs/regulatory-sources.md marked
+   PENDING verification like any other constant.
+ - If (2) or (3): say so now; the remaining increments adapt.
+ - Commit: "FW19: the premium data decision (R157)". Push.
+
+--------------------------------------------------------------------
+INCREMENT 2 - lib/lamal, pure
+--------------------------------------------------------------------
+ - The CMU side: the contribution computed from the revenu fiscal de
+   reference, with its rate and threshold cited like any constant.
+   If the rate cannot be sourced, it is an input, not a constant.
+ - The LAMal side: per the increment 1 decision.
+ - The comparison: annual cost each way, the difference, and WHICH
+   IS CHEAPER - returned as data, never as a recommendation.
+ - Result type, never throws, validation errors mapped to French
+   copy like the engine's.
+ - RED first per function; boundary cases at zero income, a single
+   person, a large household.
+ - Commit: "FW19: the pure comparison module". Push.
+
+--------------------------------------------------------------------
+INCREMENT 3 - the page
+--------------------------------------------------------------------
+ - Same shell as the telework calculator: Container 'narrow', a card
+   with the fields, the result below and never replacing the form.
+ - Inputs per SPEC 9.6, each in FieldGroup, R109's text+inputMode
+   for numerics.
+ - Output: DataGrid two columns, a badge on the cheaper option, the
+   irrevocability banner, LegalNote, and the email capture below the
+   result (never gating it).
+ - If the increment 1 decision was (2), the premium input is a FIELD
+   with helper text saying where to find the figure on the reader's
+   own policy.
+ - Commit: "FW19: the comparator page". Push.
+
+--------------------------------------------------------------------
+INCREMENT 4 - honesty surfaces
+--------------------------------------------------------------------
+ - The page states, in prose a reader will actually read: what it
+   does not know, where its figures come from, and that it is an
+   estimate for orientation and not advice.
+ - Link the FW18 droit-option guide, and /sources.
+ - If any assumption is unverified, R110's input-specific notice
+   pattern applies - not a global banner.
+ - Commit: "FW19: what the comparator does not know". Push.
+
+--------------------------------------------------------------------
+INCREMENT 5 - metadata, a11y, baselines, size
+--------------------------------------------------------------------
+ - Metadata, canonical, the R54 gate pattern if applicable, JSON-LD
+   WebApplication from the visible source (the FW15 pattern).
+ - jest-axe across empty, filled, error and notice states; keyboard
+   path; 320 dp overflow; geometric alignment (R148).
+ - Baselines 1440/390, zero tolerance, dimensions asserted, reasons.
+ - pnpm size: the new route against GATE A and GATE B; any client JS
+   justified (R136).
+ - Registry: the route goes live only if increment 1 chose (1) or
+   (2).
+ - Commit: "FW19: metadata, a11y, baselines, size". Push.
+
+====================================================================
+OUT OF SCOPE
+====================================================================
+- The homepage, /tarifs, /a-propos - FW20. /application - FW20b.
+- Analytics - FW28. Any engine change.
+- Any premium figure not covered by R157's option (1) or (2).
+
+====================================================================
+FINAL VERIFICATION
+====================================================================
+pnpm gate && pnpm test:e2e && pnpm test:visual && pnpm test:a11y &&
+pnpm test:runtime
+Green in one run; CI green after the final push.
+
+====================================================================
+REPORT FORMAT - REPORT-FW19.txt (pure ASCII, committed and pushed)
+====================================================================
+SUMMARY
+PRECONDITIONS   FW18 read; CI URL.
+DATA DECISION   R157: what was found, what was chosen, what was
+                refused, and the licence and date if a dataset was
+                used. The report's core evidence.
+RED/GREEN LEDGER
+FIGURE ORIGINS  AC3's enumeration: every displayed figure and where
+                it came from.
+IRREVOCABILITY  The notice, asserted by count and position.
+PARKED          Every P<n> raised this session.
+SIZE, BASELINES, TOKENS ADDED, DEVIATIONS,
+NOTICED BUT NOT TOUCHING, QUESTIONS, PUSH PROOF
+
+END OF FW19 PROMPT

@@ -1,0 +1,377 @@
+REPORT-FW17b.txt - frontalier
+Task FW17b: the copy-integrity sweep. Three commits, all pushed.
+
+SUMMARY
+--------------------------------------------------------------------
+lib/fr and content/guides are written in accented French and a guard
+refuses the unaccented forms (R155). The breadcrumb is a short label
+rather than the title repeated (Q45). The metadata chips are proven to
+deliver their values rather than merely to exist (R154).
+
+TWO DEFECTS WERE FOUND IN THE GUARDS THEMSELVES, both by planting the
+failure they exist to catch, and both are the same shape as the defect
+that produced R154:
+
+ 1. THE R154 TEST HAD THE DEFECT R154 IS ABOUT. Its first version
+    compared the rendered chip against
+    GUIDES_COPY.reviewedOn(formatDate(...)) - the same function the page
+    uses. Planted, with reviewedOn returning its sentence WITHOUT the
+    date, ALL FOUR ARTICLES STILL PASSED: both sides lost the date and
+    the comparison matched. tasks/plan.md records this under R71 - "a
+    comparison whose two sides both come from the formatter proves
+    pass-through, not the value" - and it occurred inside the guard
+    written to stop it.
+
+ 2. THE R155 SCAN FLAGGED IDENTIFIERS IN A THIRD SYNTAX. The prompt
+    carried two - a route path in a TypeScript string, an object key in
+    a JSX prop. YAML is the third: `slug:` and the items under
+    `related:` both contain a space and carry no quote, so they passed
+    the span rule and missed the code-line rule.
+
+PRECONDITIONS
+--------------------------------------------------------------------
+R0. REPORT-FW17.txt read in full from disk, including its READ-THROUGH
+    section, which produced this task. Its questions Q47 to Q51 are
+    carried forward below unchanged. Nothing in it blocks FW17b.
+
+R1. CI green on origin/main at 19c3ece before starting:
+    run 35023463067
+    https://github.com/kaitmax/Frontalier/actions/runs/35023463067
+    The run for this task's final push is recorded under PUSH PROOF.
+
+THE GUARD (R155)
+--------------------------------------------------------------------
+tests/unit/fr/accents.test.ts, beside its three siblings - R91
+typography, R126 apostrophes, R153 name-don't-quote.
+
+THE RED, before anything was corrected:
+
+  lib/fr/guides.ts  derniere        "Derniere verification${n(':')} ${date}"
+  lib/fr/guides.ts  verification    "Derniere verification${n(':')} ${date}"
+  lib/fr/guides.ts  etes            "Savoir ou vous en etes, en une minute"
+  lib/fr/guides.ts  teletravail     "Le calculateur reprend vos jours de teletravail"
+  lib/fr/guides.ts  regle           "Chaque regle citee sur cette page renvoie a"
+  lib/fr/guides.ts  citee           "Chaque regle citee sur cette page renvoie a"
+  lib/fr/guides.ts  reglementaires  "Voir les sources reglementaires"
+  lib/fr/guides.ts  reference       "Les guides de reference sur le teletravail"
+  lib/fr/guides.ts  teletravail     "Les guides de reference sur le teletravail"
+  lib/fr/guides.ts  derniere        "Chaque guide porte sa date de derniere"
+  lib/fr/guides.ts  verification    "Chaque guide porte sa date de derniere"
+  lib/fr/guides.ts  separement      "Ils se lisent separement, dans l'ordre"
+  lib/fr/guides.ts  frequentes      "Questions frequentes"
+  _fixture.mdx      verifier        "Il sert a verifier que le gabarit rend"
+  _fixture.mdx      verifications   "[sources et verifications]"
+  _fixture.mdx      derniere        "## La derniere section"
+
+13 in ONE file plus the fixture - which is the measurement the prompt
+carried, and it confirms the operator's diagnosis rather than merely
+agreeing with it. The other 23 files of lib/fr were already correct:
+cgu.ts writes "journees que vous declarez" with its accents, cantons.ts
+has Geneve, Bale and Neuchatel. The defect is in the files whose copy was
+transcribed out of an ASCII relay prompt.
+
+WHY EACH QUESTIONABLE ENTRY IS ON THE LIST. Every form is one that no
+correct French word spells that way. The list is CURATED because deriving
+it does not work: stripping accents off the articles' own vocabulary
+proposes votre, des, sur, compte, entre, note, passe, donne, demande,
+compare, tranche, copie, valide, and the verb forms horodate ("il
+horodate") and genevoise - 117 occurrences, every one correct French. A
+guard reporting those is a guard somebody deletes. A test asserts they
+are NOT reported, so the day one is added the suite says so.
+
+THE DISCRIMINATOR, and it is a rule rather than an exemption list. Prose
+contains a space; an identifier does not. That removes "/releve-annuel",
+"regime-lost", "NEGATIVE_DAYS", "/confidentialite" and every slug and
+href in the articles, without an entry that has to grow with each new
+route, enum member or slug. SPEC 14 makes slugs permanent, so they are
+permanently unaccented, and a guard that flagged them would be refusing
+something that cannot change.
+
+Three further exclusions were needed and each is stated in the file:
+ - MDX comments, which are English commentary (R91's and R147's
+   treatment);
+ - lines that introduce a quoted value, which are scanned by their quoted
+   spans instead - `regime: "Cantons de l'accord de 1983"` has an object
+   KEY that is never rendered and a STRING that is;
+ - the frontmatter fields that hold identifiers - slug, cluster,
+   related - excluded BY CONTRACT rather than by shape. The tempting
+   rule, "a hyphenated lowercase token is a slug", would swallow
+   mi-temps, au-dela, demi-journee and compte-t-elle.
+
+THE OTHER DIRECTION is asserted too: a codepoint count over lib/fr's
+quoted spans, floored at 850 (it is 885 today). Somebody facing a failure
+could "fix" it by deleting the accented word or rewording around it; the
+count would collapse and the test fails. Same shape as copy-codepoints'
+apostrophe count.
+
+THE GUARD IS A FLOOR, NOT A CEILING, and reading proved it in the same
+sitting. Two defects it could not report:
+  'Guides lies'            -> 'Guides lies' with its accent
+  'Les questions precises' -> 'Les questions precises' with its accent
+`precises` was unambiguous and is now on the list. `lies` CANNOT BE:
+"tu lies" is correct French, so that form belongs to reading rather than
+to a scan. Recorded rather than forced onto the list.
+
+CORRECTIONS
+--------------------------------------------------------------------
+lib/fr/guides.ts, eleven strings:
+  Derniere verification : {date}     -> Derniere -> with its accents
+  Savoir ou vous en etes...          -> ou -> where, etes -> you are
+  ...vos jours de teletravail...     -> teletravail accented
+  Chaque regle citee ... renvoie a   -> regle, citee, a all accented
+  Voir les sources reglementaires    -> reglementaires accented
+  Guides lies                        -> lies -> linked (found by reading)
+  Les guides de reference sur le teletravail frontalier
+  Chaque guide porte sa date de derniere verification...
+  ...Ils se lisent separement...
+  Les questions precises             -> (found by reading)
+  Questions frequentes
+
+content/guides/_fixture-modele-article.mdx, twenty replacements across
+the frontmatter and the body - demonstration, verificateur, parait,
+prefixe, repertoire, verifier, limite, caracteres, Au-dela, oeil ->
+the ligature, hierarchie, plutot, supposee, ou, tete, verifications,
+entree, defile, depasse, ecran, derniere.
+
+THE H2 ANCHOR DID NOT MOVE, which was checked rather than assumed:
+"## La derniere section" became "## La derniere section" with its accent
+and anchorFor normalises NFD and drops diacritics, so the id is still
+la-derniere-section. An anchor is a URL and a changed one breaks every
+saved link.
+
+BREADCRUMB (Q45)
+--------------------------------------------------------------------
+`breadcrumbLabel` in lib/guides/frontmatter.ts. REQUIRED and capped at 40
+characters: optional would mean falling back to the title, which is the
+defect with a default, and the cap is what makes it a label rather than a
+second title. Not permanent the way a slug is - SPEC 14 governs URLs and
+this is presentation - but it changes what a reader meets inside a
+navigation landmark.
+
+R147 WAS DECIDED RATHER THAN EXEMPTED. FD13's example carries the figure
+("Regle des 40 %"), which is the collision the title had in FW17. The
+title and slug are exempt as identity fields, and the comment that made
+that exemption says a THIRD field wanting one is a ruling, not an edit.
+So the labels name the rule:
+
+  Le plafond fiscal        teletravail-frontalier-40-pourcent
+  Le seuil social          seuil-social-49-9-pourcent
+  Les jours de mission     jours-de-mission-hors-suisse
+  Article de demonstration the fixture
+
+It costs nothing: a breadcrumb is not a search surface and the slug still
+carries the term. This is R153's shape one field along.
+
+THE FIELD IS ASSERTED TO MEAN SOMETHING. hub.test.ts asserts, for every
+article, that breadcrumbLabel is NOT the title and is shorter than it - a
+label somebody fills by copying the title is the field not existing.
+
+Rendered and read: "Guides / Le plafond fiscal".
+
+R154
+--------------------------------------------------------------------
+THE AUDIT, done in the FW17 session and carried in the prompt so this one
+did not re-derive it. Four of the five mechanisms R154 names are CLEAN:
+
+  claims resolution  planted detectors in "R146 refuses what it is for";
+                     allGuides() asserted non-empty; /sources renders the
+                     actual RuleSet values and sources.test.tsx asserts
+                     each one appears.
+  FAQ identity       e2e compares served JSON-LD to the served accordion
+                     and asserts questions.length > 0 first.
+  rail / zones       rail-render.test.ts asserts known input -> known
+                     bytes, down to width="130.021".
+  sitemap            routes.test.ts holds a hardcoded expected list; e2e
+                     compares served XML to liveRoutes() and fetches
+                     every URL for a 200.
+
+THE ONE THAT WAS NOT CLEAN was not on the list. The chips are a chain -
+lastReviewed -> formatDate -> reviewedOn -> the rendered chip - and
+nothing asserted the chip carried the article's date. The unit test
+passes the literal '09.09.2026' into a COPY of the head markup; the e2e
+order assertion checks only that [data-chips] exists and sits in the
+right position. An emptied interpolation renders "Derniere verification
+: ": grammatical, plausible, every suite green, on the chip SPEC 9.5
+requires.
+
+PROVED BY PLANTING, TWICE. With reviewedOn returning its sentence without
+the date:
+  first version   4 articles PASSED   (the tautology above)
+  rewritten       4 articles FAILED
+  restored        6 tests pass
+The rewrite asserts values the copy function cannot launder: the
+formatted date, the reviewer as written, the computed minute count, and
+the year and day sliced from the raw ISO string so a broken formatter
+fails too.
+
+THE FIXTURE'S DATE MOVED TO 2026-01-15, and that is load-bearing. All
+four articles carried 2026-09-09, so "the chip contains the date" would
+have passed against a template with the date hardcoded - the same vacuity
+a third time. Two distinct dates make it discriminate, and the hub
+assertion uses the fact in reverse: the fixture's date must NOT appear
+on the hub.
+
+THE BACKLOG WAS WORKED, NOT JUST NAMED. Three more interpolations were
+asserted through the function under test:
+  CALCULATEUR_COPY.yearCaption   tests/unit/pages/calculateur.test.tsx
+  CALCULATEUR_COPY.yearCaption   e2e/calculateur.spec.ts
+  RESULT_COPY.linkPending        tests/unit/pages/singletons.test.tsx
+The third is one FW17 wrote. Each now asserts the value first - the year
+as digits, the link text as its own constant - and the sentence second.
+SOURCES_COPY.reviewedOn was already correct.
+
+READ-THROUGH
+--------------------------------------------------------------------
+The chrome, read as French, on a served article and on the calculator.
+
+WHAT IT CONFIRMS. Every string a reader meets around an article is now
+correct:
+  Derniere verification : 09.09.2026   (with both accents)
+  Relu par l'equipe frontalier
+  Questions frequentes                 (accented)
+  Savoir ou vous en etes, en une minute (accented)
+  Chaque regle citee sur cette page renvoie a son texte d'origine.
+  Voir les sources reglementaires
+  Guides lies
+and the calculator's own copy was ALREADY correct throughout - written in
+FW11 to FW15, never transcribed from a prompt. That is the diagnosis
+confirmed from the other side.
+
+WHAT IT FOUND, and it is not an accent problem. Three typed thresholds
+live in lib/fr, where R147 does not reach:
+
+  lib/fr/index.ts:34   "les seuils de 40 % et 49,9 %"  - the home page
+                       description. Its own comment says SPEC 14 wants
+                       the threshold named there, so it is deliberate -
+                       and it is still a figure that goes stale in 2028
+                       with every test green.
+  lib/fr/shell.ts:133  "Le seuil de 40 %" - the footer link to the
+                       pillar. Arguably the article's public name, which
+                       is the argument that exempted the title.
+  lib/fr/spike.ts:58   "Seuil de 40 % approche" - FW2 bundle-spike copy,
+                       explicitly throwaway.
+
+The calculator's own sentences are NOT among them: calculateur.ts builds
+them from ${fiscal} and ${social}, which the caller resolves from
+RuleSet. Raised as Q52.
+
+SIZE
+--------------------------------------------------------------------
+Unchanged, as expected for a text-only task. Measured on a clean
+production build:
+
+  /guides           107.4 KiB  delta 6.8   pass
+  /guides/[slug]    108.6 KiB  delta 8.0   pass
+  framework floor 100.6 KiB; GATE A 125.0; GATE B 25.0.
+
+BASELINES (R135)
+--------------------------------------------------------------------
+22 regenerations across three increments, 14 distinct files. Each group
+has one reason and each was opened and read.
+
+increment 0 - 10 files
+  guides-article-{desktop,mobile}
+  guides-article-faq-ouverte-{desktop,mobile}
+  guides-cluster-missions-{desktop,mobile}
+  guides-hub-{desktop,mobile}
+  guides-pilier-{desktop,mobile}
+  The chips, the FAQ heading, the closing card, the sources line and the
+  hub's own copy gained their accents, and accented glyphs reflow the
+  lines carrying them. Read the hub desktop shot: "Chaque guide porte sa
+  date de derniere verification" carries both accents, "Ils se lisent
+  separement" and "Les questions precises" are correct, nothing else
+  moved. EXACTLY the guides surface and nothing else, which is the blast
+  radius the prompt predicted.
+
+increment 1 - 8 files
+  guides-article-{desktop,mobile}
+  guides-article-faq-ouverte-{desktop,mobile}
+  guides-cluster-missions-{desktop,mobile}
+  guides-pilier-{desktop,mobile}
+  The breadcrumb is shorter on every article. The HUB baselines did not
+  move, which is the expected result - a hub has no breadcrumb.
+
+increment 2 - 4 files
+  guides-article-{desktop,mobile}
+  guides-article-faq-ouverte-{desktop,mobile}
+  The fixture's verification chip now reads 15.01.2026. Only the
+  fixture's four moved - no real article's date changed.
+
+DEVIATIONS
+--------------------------------------------------------------------
+D1. INCREMENT 3 HAS NO COMMIT OF ITS OWN. The prompt puts every baseline
+    regeneration in increment 3, and protocol item 2 requires green after
+    EVERY increment - which means the baselines each increment moved had
+    to be regenerated inside that increment to commit it at all. So the
+    regenerations are distributed above with their reasons, and increment
+    3's remaining work - a11y, size, the read-through - is evidence
+    rather than change. Recorded rather than invented a commit for.
+
+D2. THE ACCENT COUNT IS FLOORED AT 850, NOT AT THE MEASURED 885. R149
+    says a threshold raised twice is a defect in the threshold, so it is
+    set once and low enough to be a collapse detector rather than a
+    precision instrument.
+
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------
+N1. A FALSE RED FROM A BROAD REGEX, recorded because it looked real. A
+    pattern adding breadcrumbLabel to the synthetic guides in
+    mesh.test.ts also matched the factory's PARAMETER LIST, shifting
+    `cluster` to the third argument, and eight mesh rules reported [].
+    A pattern broad enough to edit test data is broad enough to edit
+    code.
+
+N2. tests/unit/meta/eslint-effective-rules.test.ts failed once in a full
+    run and passed in isolation and on re-run. R99's shape - worker
+    starvation producing a false red. Recorded, not chased.
+
+N3. tests/unit/pages/guide-section-order.test.tsx still renders a COPY of
+    the head markup with a literal date. FW17 showed compileMDX can be
+    awaited in a test, so the copy could be replaced by the real route's
+    output. Out of scope; the e2e assertion added here covers the
+    delivery half.
+
+QUESTIONS FOR THE OPERATOR
+--------------------------------------------------------------------
+Carried from FW17, unchanged and still open:
+  Q47. Two verified facts have no source key - the mission travel-day
+       rules and the six Geneva worked examples. Both are declared under
+       missionCapDays because they are published on the same ge.ch page
+       row 2 cites. Should SOURCE_IDS gain rows?
+  Q48. DataGrid's tfoot total rule is the seventh alias of
+       --size-input-border-focus. Its own token, or leave it?
+  Q49. Two of two comparison tables failed at 320 dp in the shape FD13
+       draws them. Should the kit gain a responsive table before FW18
+       writes four more articles?
+  Q50. FD13's inline CTA card does not exist in the kit; the articles use
+       a prose link. Build it in FW18, or is the link the answer?
+  Q51. The reviewer field says "l'equipe frontalier". What should it say
+       until Checkpoint E?
+
+New:
+  Q52. THREE TYPED THRESHOLDS LIVE IN lib/fr, where R147 does not reach -
+       the home page description, the footer link label, and the FW2
+       spike. The first is deliberate under SPEC 14 and is still the copy
+       that goes stale in 2028. Should R147's scan extend to lib/fr, with
+       the same identity-field exemption the guides have? It would be one
+       more member of the copy-integrity family and the scanner already
+       exists.
+
+R47. Still open, still the operator's. Not raised.
+
+FINAL VERIFICATION
+--------------------------------------------------------------------
+  pnpm gate:changed   typecheck, lint, test, build, test:e2e, test:visual
+  pnpm test:a11y      125 passed across 6 files
+  pnpm test:runtime   R81 still holds
+  pnpm size           all gated routes pass GATE A and GATE B
+
+PUSH PROOF
+--------------------------------------------------------------------
+  034d0b3  FW17b: R155 - lib/fr is authoritative and fully accented
+  023c76d  FW17b: a breadcrumb that is not the title again
+  37fb036  FW17b: R154 - the chips are proven to deliver
+
+  All pushed to origin/main.
+
+END OF REPORT-FW17b
