@@ -20,6 +20,7 @@
 
 import { expect, test } from '@playwright/test';
 import { goToServedPage } from './support/served';
+import { SOURCES_COPY, UNKNOWN_IDS } from '../lib/fr/sources';
 
 /** 390 is a phone; 1280 and 1440 are the desktop widths the baselines use. */
 const WIDTHS = [1440, 1280, 390] as const;
@@ -136,4 +137,55 @@ test('the page has ONE left edge, head and table alike (R148)', async ({ page })
 
   expect(heading, 'the section heading does not start where the title does').toBe(title);
   expect(table, 'the table does not start where the prose does').toBe(title);
+});
+
+test('the page discloses what this site does not know (R154)', async ({ page }) => {
+  // THE SECTION EXISTS BECAUSE THREE REFUSALS WERE INVISIBLE. PARK-1, PARK-3
+  // and PARK-4 each recorded a decision not to publish something for want of
+  // a source, and each lived only in the repository - so a reader looking for
+  // one of those figures met an absence, with no way to tell a deliberate
+  // refusal from an oversight.
+  //
+  // ASSERTED BY VALUE, from the copy module, because the failure this guards
+  // is a section that renders its container and none of its entries. A count
+  // alone would pass on three empty rows.
+  await goToServedPage(page, '/sources');
+
+  const text = await page.locator('main').evaluate((node) => node.textContent ?? '');
+
+  expect(text, 'the section heading').toContain(SOURCES_COPY.unknownsHeading);
+  expect(text, 'the section intro').toContain(SOURCES_COPY.unknownsIntro);
+
+  for (const id of UNKNOWN_IDS) {
+    expect(text, `${id}: the heading`).toContain(SOURCES_COPY.unknowns[id].heading);
+    expect(text, `${id}: the body`).toContain(SOURCES_COPY.unknowns[id].body);
+  }
+
+  // NON-VACUOUS, AND THE FIRST VERSION WAS NOT. It checked the BODY lengths
+  // and not the headings, so toContain(SOURCES_COPY.unknowns[id].heading)
+  // degenerated to toContain('') the moment a heading emptied - which is
+  // what planting an emptied heading proved: the test passed. R154 again,
+  // inside the test written to satisfy R154. Both fields are checked now.
+  expect(UNKNOWN_IDS.length).toBe(3);
+  for (const id of UNKNOWN_IDS) {
+    expect(SOURCES_COPY.unknowns[id].heading.length, `${id}: heading`).toBeGreaterThan(20);
+    expect(SOURCES_COPY.unknowns[id].body.length, `${id}: body`).toBeGreaterThan(80);
+  }
+
+  // AND IT PROMISES NOTHING. SPEC 20's vocabulary rule is strictest on the
+  // page whose subject is what the product does not know: an entry saying
+  // when a figure will arrive would be the one claim this section cannot
+  // make.
+  for (const id of UNKNOWN_IDS) {
+    const body = SOURCES_COPY.unknowns[id].body.toLowerCase();
+
+    // NO ELISION FORMS IN THIS LIST. R126 refuses a French elision apostrophe
+    // outside lib/fr, and it caught the first version of this line, which
+    // carried "en cours d'ajout". A guard's vocabulary is not product copy and
+    // does not belong in the copy module either - so the list uses forms that
+    // say the same thing without an apostrophe.
+    for (const promise of ['bientôt', 'prochainement', 'à venir', 'sous peu']) {
+      expect(body, `${id} promises "${promise}"`).not.toContain(promise);
+    }
+  }
 });

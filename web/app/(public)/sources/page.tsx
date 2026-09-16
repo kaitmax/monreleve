@@ -38,7 +38,7 @@ import { PUBLISHED_PROVISIONAL_IDS, readingAnchor } from '@/lib/content/provisio
 import { LAST_REGULATORY_REVIEW } from '@/lib/content/regulatory';
 import { SOURCE_ENTRIES } from '@/lib/content/sources';
 import { currentTaxYear } from '@/lib/content/tax-year';
-import { SOURCES_COPY as COPY } from '@/lib/fr/sources';
+import { SOURCES_COPY as COPY, UNKNOWN_IDS } from '@/lib/fr/sources';
 import { Container } from '@/lib/ui/react/Container/Container';
 import { formatDate, formatDays, formatPercent } from '@/lib/ui/core';
 import styles from './sources.module.scss';
@@ -218,6 +218,32 @@ export default function SourcesPage() {
               <div className={styles.reading} id={readingAnchor(id)} key={id}>
                 <dt className={styles.readingHeading}>{COPY.provisional[id].heading}</dt>
                 <dd className={styles.readingBody}>{COPY.provisional[id].body}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+
+        {/*
+          WHAT THIS SITE DOES NOT KNOW. Three tasks refused to publish
+          something for want of a source, and until now each refusal lived
+          only in the repository - so a reader looking for one of those
+          figures met an absence with no way to tell a decision from an
+          oversight.
+
+          IT SITS AFTER THE READINGS AND BEFORE THE FIXTURES, which is the
+          order of decreasing certainty the whole page is built on: what is
+          verified, what is read one way and awaits an expert, what is not
+          known at all.
+        */}
+        <section className={styles.section}>
+          <h2 className={styles.heading}>{COPY.unknownsHeading}</h2>
+          <p className={styles.prose}>{COPY.unknownsIntro}</p>
+
+          <dl className={styles.readings}>
+            {UNKNOWN_IDS.map((id) => (
+              <div className={styles.reading} key={id}>
+                <dt className={styles.readingHeading}>{COPY.unknowns[id].heading}</dt>
+                <dd className={styles.readingBody}>{COPY.unknowns[id].body}</dd>
               </div>
             ))}
           </dl>

@@ -35,6 +35,18 @@ export interface ProvisionalEntry {
   readonly body: string;
 }
 
+/**
+ * The three absences this page discloses.
+ *
+ * A UNION RATHER THAN A FREE RECORD, for the reason R113 gave the provisional
+ * readings one: a fourth thing this site declines to publish has to appear
+ * here AND in the page, or it does not compile. An absence that is disclosed
+ * nowhere is the state this section exists to end.
+ */
+export const UNKNOWN_IDS = ['attestation', 'declaration', 'primes'] as const;
+
+export type UnknownId = (typeof UNKNOWN_IDS)[number];
+
 export const SOURCES_COPY = {
   title: 'Sources et vérifications',
 
@@ -180,6 +192,65 @@ export const SOURCES_COPY = {
         "travaillés et intègre donc déjà le taux d’activité.",
     },
   } satisfies Record<PublishedProvisionalId, ProvisionalEntry>,
+
+  /**
+   * WHAT THIS SITE DOES NOT KNOW, and the reason it is a section rather than
+   * a silence.
+   *
+   * Three tasks have now refused to publish something for want of a source -
+   * the employer attestation obligation, the French declaration calendar, the
+   * LAMal premium data. Each refusal was recorded in the repository and was
+   * invisible to anyone outside it, so a reader looking for one of those
+   * figures learned only that this site does not have it, by its absence, and
+   * had no way to tell a deliberate refusal from an oversight.
+   *
+   * EACH ENTRY SAYS WHAT IS MISSING AND WHY IT IS NOT WRITTEN. None says when
+   * it will arrive: that is a promise, and SPEC 20's vocabulary rule is the
+   * standard on this page above all others.
+   *
+   * AUTHORED, NOT LIFTED (R165). The parking entries these come from are
+   * written for the operator and carry the alternative considered and the cost
+   * of switching. A reader needs neither; they need to know what is absent and
+   * that its absence was chosen.
+   */
+  unknownsHeading: 'Ce que ce site ne sait pas',
+
+  unknownsIntro:
+    'Trois sujets reviennent souvent et ne figurent nulle part sur ce site. ' +
+    "Ce n’est pas un oubli : aucune source primaire n’a pu être vérifiée " +
+    'pour eux, et ce site ne publie pas une information réglementaire ' +
+    "qu’il ne peut pas rattacher à son texte d’origine. Les nommer vaut " +
+    'mieux que de vous laisser les chercher.',
+
+  unknowns: {
+    attestation: {
+      heading: "Ce qu’un employeur doit ou non vous remettre",
+      body:
+        "Rien ici ne dit qu’un employeur doive vous remettre un document " +
+        'indiquant votre part de télétravail, ni depuis quand, ni sous quelle ' +
+        'forme. Le guide consacré à ce document est écrit au conditionnel ' +
+        "pour cette raison : il explique comment le lire si vous en recevez " +
+        "un, et n’affirme pas qu’il vous en soit dû un.",
+    },
+    declaration: {
+      heading: 'Les dates et les formulaires de la déclaration française',
+      body:
+        'Aucune date limite, aucun numéro de formulaire, aucune marche à ' +
+        'suivre case par case. Une date de déclaration est une information ' +
+        "réglementaire au même titre qu’un plafond, et une date fausse sur " +
+        "cette page coûterait à un lecteur bien plus qu’une date absente. " +
+        'Votre centre des finances publiques la publie.',
+    },
+    primes: {
+      heading: "Le coût comparé de l’assurance maladie suisse et française",
+      body:
+        "Ce site ne dispose d’aucune donnée de primes qu’il puisse citer. Il " +
+        'ne publie donc pas de comparateur de coût, et le guide du droit ' +
+        "d’option ne donne aucun montant. Sur un choix qui ne se reprend " +
+        'pas, un chiffre approximatif serait plus dangereux que pas de ' +
+        'chiffre du tout.',
+    },
+  } satisfies Record<UnknownId, ProvisionalEntry>,
 
   /** The engine's own verification state, in one line. */
   fixturesHeading: 'Les cas de référence',

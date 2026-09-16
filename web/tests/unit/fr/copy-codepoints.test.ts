@@ -145,7 +145,7 @@ describe('the whitespace codepoints in French copy are on the record (R66)', () 
     expect(summary, summary.join(' | ')).toEqual([]);
   });
 
-  it('carries exactly the 36 the typography pass left there', () => {
+  it('carries exactly the 38 the typography pass left there', () => {
     // A count, so that a no-break space arriving or disappearing is a
     // deliberate edit here rather than a silent one. Per file, because a
     // total alone would let one move between files unnoticed.
@@ -169,12 +169,18 @@ describe('the whitespace codepoints in French copy are on the record (R66)', () 
       // FW18b: one, in the droit d’option window's description -
       // "Delai pour choisir son systeme d’assurance maladie" sets a
       // no-break space before its colon like every other French label here.
-      'lib/fr/sources.ts': 1,
+      //
+      // FW20: three. The 'what this site does not know' section added two
+      // colons to reader-facing prose - the intro's "Ce n'est pas un oubli :"
+      // and the attestation entry's "pour cette raison :". Both were written
+      // with an ASCII space and R91 refused them, which is the guard doing
+      // exactly its job on new copy rather than on a regression.
+      'lib/fr/sources.ts': 3,
       // FW18b: the spike banner "Seuil de 40 % approche" named the rule.
       'lib/fr/spike.ts': 6,
       'lib/fr/statuses.ts': 2,
     });
-    expect(occurrences).toHaveLength(36);
+    expect(occurrences).toHaveLength(38);
   });
 
   it('puts every one of them immediately before : ; ? ! or %', () => {
