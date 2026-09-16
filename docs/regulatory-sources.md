@@ -292,12 +292,15 @@ Sécurité Sociale, a French public body. An authority, not an advisory site.
 
 https://www.cleiss.fr/faq/droit_d_option_des_frontaliers_france-suisse.html
 
-> **THE URL IS PENDING THE OPERATOR'S CONFIRMATION, the content is not.** The
-> operator performed this pass and reported its content; the URL above was
-> located afterwards and its published content matches the pass on every
-> checkable point. The row cites the body with certainty and the page
-> provisionally — see **P5** in `parking.md`. A citation is itself a claim and
-> inherits this file's standard.
+> **THE URL IS CONFIRMED.** The operator fetched the page above on
+> **16.09.2026** and read it in full; the rows below are transcribed from that
+> fetch. The URL resolves, the content matches, and CLEISS is the publisher.
+>
+> It was provisional for one day. FW18b cited the body with certainty and the
+> page provisionally, because the operator had reported the content of their
+> pass without the address and a citation is itself a claim that inherits this
+> file's standard. Recorded then as PARK-5, closed on the operator's
+> confirmation.
 
 | # | Fact | Content | Verified |
 |---|---|---|---|

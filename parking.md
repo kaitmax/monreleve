@@ -17,35 +17,45 @@ somebody else made on their behalf, with the alternative and the cost of
 switching, so that reversing one is a deliberate act rather than an
 archaeology exercise.
 
-## WARNING: "P2" MEANS TWO DIFFERENT THINGS IN THIS PRODUCT
+## THE TWO REGISTERS, AND WHY THIS ONE IS CALLED PARK — ruling R162
 
-There are **two independent registers** both numbering their entries `P<n>`,
-and they disagree on every number they share. Found by FW18b's read-through;
-nothing else could have found it, because each register is internally
-consistent and every test passes.
+This file numbers its entries **`PARK-<n>`**. It did not always, and the
+reason it does now is worth two minutes.
+
+There are **two registers** in this product, and until FW18b both numbered
+their entries `P<n>` while agreeing on none of the numbers they shared:
 
 | | `parking.md` (this file) | `web/lib/content/provisional.ts` |
 |---|---|---|
 | What it holds | decisions taken without the operator | regulatory readings that are not settled |
 | Who reads it | the operator, next morning | **the public**, on `/sources` |
-| P1 | the employer attestation is described, never asserted | the imputation order |
-| P2 | droit-option-lamal-cmu is NOT published *(now superseded)* | 49,9 % versus under-50 |
-| P3 | the declaration guide carries no date, form or procedure | the exact method's cap proration |
+| Numbered | `PARK-1`, `PARK-2`, … *(since R162)* | `P1`, `P2`, `P3` *(unchanged)* |
+| 1 | the employer attestation is described, never asserted | the imputation order |
+| 2 | droit-option-lamal-cmu is NOT published *(superseded)* | 49,9 % versus under-50 |
+| 3 | the declaration guide carries no date, form or procedure | the exact method's cap proration |
 
-**Two published guides cite the OTHER register by number.**
-`jours-de-mission-hors-suisse` sends readers to "la référence P1" and
-`seuil-social-49-9-pourcent` to "la référence P2" — both meaning the
-provisional register, both correct, and both unreadable against the table
-above without this note.
+**THE PUBLISHED IDS KEEP THEIRS, and that direction is not arbitrary.**
+`jours-de-mission-hors-suisse` sends readers to *« la référence P1 »* and
+`seuil-social-49-9-pourcent` to *« la référence P2 »* in prose, `/sources`
+renders a section per reading, and `readingAnchor` builds `#lecture-P1` —
+which is an anchor, and an anchor is a URL that SPEC §14 makes permanent.
+Renaming user-facing references to resolve an internal collision is
+backwards. The internal register is the one that moves.
 
-It has already caused one error in this file: FW18b's P6 was first written
-"P6 supersedes P2" with no qualifier, which read against the published
-article says the 49,9 % reading has been superseded. It has not.
+**WHY IT MATTERED ENOUGH TO RENAME.** The collision did not merely risk
+confusion; it produced a **factually wrong statement about a regulatory
+interpretation, inside the file that exists to keep decisions traceable**.
+FW18b wrote "P6 supersedes P2", meaning this file's P2 — the droit d'option
+refusal, correctly superseded. Read against the published register, that
+sentence says the 49,9 % interpretation had been withdrawn. It had not, it
+has not, and it stands today.
 
-**So every cross-reference in this file names its register.** The published
-ids are the expensive ones to change - `readingAnchor` builds `#lecture-P1`,
-and a published anchor is a URL - so if either is renamed it should be this
-one. That is the operator's call and is recorded as P9.
+That is the lesson, and it generalises past this file: a namespace shared
+between an internal record and a published one will eventually make the
+internal record assert something false about the published one, and no test
+can see it because each register is internally consistent.
+
+Closed as PARK-9.
 
 ## The boundary, which is not negotiable
 
@@ -78,7 +88,7 @@ Appended, newest last. Never edited in place once the operator has read it;
 a reversal is a new entry that names the one it supersedes.
 
 ```
-## P<n> - <one-line title>  [FW<task>, <date>]
+## PARK-<n> - <one-line title>  [FW<task>, <date>]
 QUESTION:  what was unclear, in two sentences.
 TAKEN:     the conservative option, and why it is reversible.
 NOT TAKEN: the alternative, and what it would cost to switch.
@@ -87,7 +97,7 @@ TOUCHES:   files, tests and baselines a switch would change.
 
 ---
 
-## P1 - the employer attestation is described, never asserted  [FW18, 2026-09-16]
+## PARK-1 - the employer attestation is described, never asserted  [FW18, 2026-09-16]
 
 QUESTION:  SPEC 9.5 describes this cluster as "what employers must certify",
 and the prompt asks for "what the employer certifies from 2026". No row in
@@ -116,9 +126,9 @@ TOUCHES:   `web/content/guides/attestation-employeur-teletravail.mdx`
 `web/lib/content/sources.ts`, `docs/regulatory-sources.md`,
 `web/tests/unit/pages/sources.test.tsx`, and the `/sources` baselines.
 
-## P2 - droit-option-lamal-cmu is NOT published  [FW18, 2026-09-16]
+## PARK-2 - droit-option-lamal-cmu is NOT published  [FW18, 2026-09-16]
 
-SUPERSEDED BY parking P6 ON 16.09.2026. The article is published. This entry is kept
+SUPERSEDED BY PARK-6 ON 16.09.2026. The article is published. This entry is kept
 because the refusal was correct on the record as it stood, and the decision
 below is what made the verification worth doing.
 
@@ -156,7 +166,7 @@ window and the irrevocability, ids in `web/lib/content/sources.ts`
 `web/tests/unit/content/routes.test.ts`, the census exemption in
 `web/tests/unit/pages/singletons.test.tsx`, and the hub baselines.
 
-## P3 - the declaration guide carries no date, form or procedure  [FW18, 2026-09-16]
+## PARK-3 - the declaration guide carries no date, form or procedure  [FW18, 2026-09-16]
 
 QUESTION:  SPEC §9.5 describes this cluster as "April declaration season",
 which a reader would expect to mean deadlines and forms. No French
@@ -175,7 +185,7 @@ the slug, the anchors or the mesh.
 NOT TAKEN: Publishing the deadlines from general knowledge. That is the
 unsourced-claim category R156 says never to publish, and a wrong filing date
 costs a reader more than an absent one. Also not taken: declining to publish
-at all, as with P2 — unlike the droit d'option, this article has a real
+at all, as with PARK-2 — unlike the droit d'option, this article has a real
 subject that IS sourced (which number, from where, and why April is too
 late), so it is not a thin page.
 
@@ -184,7 +194,7 @@ section and the second FAQ answer), plus rows in
 `docs/regulatory-sources.md` and `web/lib/content/sources.ts` if dates are
 ever verified.
 
-## P4 - the LAMal/CMU comparator is NOT published (R157 option 3)  [FW19, 2026-09-16]
+## PARK-4 - the LAMal/CMU comparator is NOT published (R157 option 3)  [FW19, 2026-09-16]
 
 QUESTION:  R157 fixes an order of preference for premium data and forbids
 deviating upward from it. Two things had to be established: whether a dated,
@@ -208,7 +218,7 @@ independent reasons, either of which is sufficient:
 2. **The page's required warning cannot be written, which defeats option (2)
    as well.** SPEC §9.6 requires "a prominent error banner stating the choice
    is **irrevocable** and the window is **three months**", and FW19's own AC2
-   repeats it. FW18 parked the droit-option guide (P2) precisely because those
+   repeats it. FW18 parked the droit-option guide (PARK-2) precisely because those
    two facts have no verified row and SPEC §22 lists "3-month irrevocable
    LAMal/CMU option" among figures "compiled from advisory and news sources"
    awaiting verification. So the user-entry path leads to a tool that helps
@@ -234,7 +244,19 @@ premium data AND for the droit d'option window and irrevocability; then
 `web/tests/unit/content/routes.test.ts`, the R119 census in
 `web/tests/unit/pages/singletons.test.tsx`, and new baselines at 1440/390.
 
-## P5 - the CLEISS URL is cited pending the operator's confirmation  [FW18b, 2026-09-16]
+## PARK-5 - the CLEISS URL is cited pending the operator's confirmation  [FW18b, 2026-09-16]
+
+CLOSED 16.09.2026. The operator fetched
+`https://www.cleiss.fr/faq/droit_d_option_des_frontaliers_france-suisse.html`
+on 16.09.2026 and read it in full. The URL resolves, the content matches, and
+CLEISS is the publisher. `docs/regulatory-sources.md` now records the page as
+confirmed rather than provisional; the source rows in
+`web/lib/content/sources.ts` needed no change, because they already carried
+the URL and the date — it was the CITATION's standing that was provisional,
+not its content.
+
+It was open for one day, and the cost of that was one paragraph of hedging in
+a file nobody outside the repo reads. That is what the parking rule is for.
 
 QUESTION:  The operator performed the droit d'option verification and reported
 its content, naming CLEISS as the body. The prompt asks that the URL be
@@ -263,12 +285,12 @@ four `droitOption*` entries in `web/lib/content/sources.ts`. If the operator
 read a different page, those are the only edits; the facts and every claim
 citing them are unaffected.
 
-## P6 - the droit d'option guide is published, superseding parking P2  [FW18b, 2026-09-16]
+## PARK-6 - the droit d'option guide is published, superseding parking P2  [FW18b, 2026-09-16]
 
 QUESTION:  FW18 refused to write this article. Its two load-bearing facts —
 the three-month window and the irrevocability of the choice — had no verified
 row in `docs/regulatory-sources.md`, and SPEC 22 lists the three-month figure
-among those "compiled from advisory and news sources". P2 recorded the refusal
+among those "compiled from advisory and news sources". PARK-2 recorded the refusal
 and named what would unblock it: a verified row for each fact.
 
 TAKEN:     Written and published. The operator read CLEISS — the French public
@@ -281,7 +303,7 @@ also says the thing every advisory page gets wrong — that the window opens on
 any of four events and not on the hiring alone — which is the reason it is
 worth more than the dozen pages already ranking for the term.
 
-NOT TAKEN: (a) Publishing it in FW18 with hedges, which is what P2 refused and
+NOT TAKEN: (a) Publishing it in FW18 with hedges, which is what PARK-2 refused and
 still refuses: a hedge on a three-month irrevocable deadline is worse than
 silence, because a reader who acts on a hedged deadline has still missed it.
 (b) Waiting for a second source to corroborate CLEISS. CLEISS is the body, not
@@ -293,13 +315,14 @@ TOUCHES:   `web/content/guides/droit-option-lamal-cmu.mdx`, the pillar's
 `web/tests/unit/content/routes.test.ts`, the R119 exemption in
 `web/tests/unit/pages/singletons.test.tsx`, and the guide baselines.
 
-SUPERSEDES: parking P2 (NOT the published P2, which is the 49,9 % reading
-and is untouched). Parking P2 stays in this file rather than being deleted — the refusal
+SUPERSEDES: PARK-2. Under R162 that name can no longer be read as the
+published P2, which is the 49,9 % interpretation and is untouched and
+standing. PARK-2 stays in this file rather than being deleted — the refusal
 was correct on the record as it stood, and a parking file that erases the
 decisions that were later unblocked stops being a record of how the product
 decides.
 
-## P7 - the article does not link /calculateur-lamal-cmu  [FW18b, 2026-09-16]
+## PARK-7 - the article does not link /calculateur-lamal-cmu  [FW18b, 2026-09-16]
 
 QUESTION:  The comparator is the natural next step for a reader who has just
 learned that the choice is irrevocable, and SPEC 9.6 names the page. It is
@@ -326,7 +349,7 @@ half a comparison with nothing saying so.
 TOUCHES:   One section of `web/content/guides/droit-option-lamal-cmu.mdx`. If
 FW-whichever builds the comparator, this is where its link goes.
 
-## P8 - the reviewer field stays, and nothing renders it  [FW18b, 2026-09-16]
+## PARK-8 - the reviewer field stays, and nothing renders it  [FW18b, 2026-09-16]
 
 QUESTION:  R160 took the name out of the chip. `reviewer` is still a required
 field of the frontmatter contract, validated at build, carried by all seven
@@ -356,7 +379,7 @@ and `app/(public)/guides/[slug]/page.tsx` if it is ever read again. If the
 operator picks (b), the chip is the only render site and the copy module
 already holds both sentences' worth of decision in one constant.
 
-## P9 - two registers both number their entries P<n>  [FW18b, 2026-09-16]
+## PARK-9 - two registers both numbered their entries P<n> (closed by R162)  [FW18b, 2026-09-16]
 
 QUESTION:  `parking.md` and `web/lib/content/provisional.ts` both identify
 their entries as P1, P2, P3 …, and they agree on none of them. The
@@ -365,32 +388,38 @@ provisional ids are **published**: `/sources` renders a section per reading,
 référence P1" and "la référence P2" in prose. The parking ids are internal
 and were created later, in FW18, without anybody noticing the collision.
 
-TAKEN:     Neither is renamed, and the disambiguation is a note at the top of
-this file plus a rule that every cross-reference here names its register. The
-collision has already produced one error — FW18b's P6 was written "supersedes
-P2" unqualified, which read against the published article says the 49,9 %
-reading was superseded, and it was not.
+TAKEN, AS PARKED:     Neither renamed. A disambiguation note at the top of
+this file, and a rule that every cross-reference here names its register.
+Conservative because the published ids are the expensive ones — `#lecture-P1`
+is an anchor, an anchor is a URL, SPEC §14 makes those permanent — so the
+parked option deferred the rename rather than guessing its direction.
 
-Not renaming is the conservative option because the published ids are the
-expensive ones: `#lecture-P1` is an anchor, an anchor is a URL, and SPEC §14
-makes published URLs permanent. Renaming the parking ids is nearly free today
-and gets more expensive with every entry and every report that cites one.
+CLOSED BY R162, 16.09.2026, and the operator's ruling went further than the
+parked option: **this register is renamed to `PARK-<n>`; the published
+`P<n>` in `provisional.ts` keep theirs.** The reasoning is the one the entry
+could not take on its own authority — *renaming user-facing references to fix
+an internal collision is backwards.* Done: every heading and every internal
+cross-reference in this file now reads `PARK-<n>`, and the six references to
+the PUBLISHED register are untouched and identified as such.
 
-NOT TAKEN: (a) Renaming the parking entries now — to `D<n>` for *decision*,
-say. It is the right end to change and it is not a wording choice: report
-files already committed cite P1 through P8 by number, so a rename makes every
-past report wrong unless it is done with a mapping note. That is the
-operator's call. (b) Renaming the provisional ids, which breaks published
-anchors and needs the 301s SPEC §14 requires. (c) Leaving it undocumented,
-which is how it produced its first error.
+The operator also named the lesson, which this entry had recorded as a risk
+and they recorded as a fact: **a namespace collision produced a factually
+wrong statement about a regulatory interpretation, inside the file that
+exists to keep decisions traceable.** That is the reason the rename was worth
+doing rather than documenting around.
 
-TOUCHES:   A rename of the parking side touches this file, `REPORT-FW18.txt`,
-`REPORT-FW19.txt`, `REPORT-NIGHT.txt` and `REPORT-FW18b.txt`, plus the
-comments in `web/tests/unit/content/routes.test.ts` and
-`web/lib/content/provisional.ts` that mention a P-number. No code reads the
-parking ids, so nothing compiles differently and no test changes.
+MAPPING, for the four committed reports that cite the old names.
+`REPORT-FW18.txt`, `REPORT-FW19.txt`, `REPORT-NIGHT.txt` and
+`REPORT-FW18b.txt` cite P1 through P11 meaning THIS register. They are the
+record of sessions that happened and are not rewritten; read every `P<n>` in
+a report dated on or before 16.09.2026 as `PARK-<n>` unless it appears as
+"la référence P<n>", `#lecture-P<n>`, or in a list of what `claims` accepts —
+those three forms are the published register in every case.
 
-## P10 - typed DERIVATIVES of a RuleSet value sit beside a live expression  [FW18b, 2026-09-16]
+TOUCHES:   This file only. No code reads these ids, nothing compiles
+differently, and no test changed.
+
+## PARK-10 - typed DERIVATIVES of a RuleSet value sit beside a live expression  [FW18b, 2026-09-16]
 
 QUESTION:  Found by FW18b's read-through, and no layer could have found it.
 Two articles narrate the Genève worked example — 84 télétravail days, 24
@@ -442,7 +471,7 @@ NOTE:      The engine is not affected either way. SPEC 7.5's Genève fixtures
 are what pin 39,16 % and 4,16 %, and they pass. This is about PROSE that
 narrates the fixtures going stale while the fixtures themselves do not.
 
-## P11 - /sources hides its status column on a 1440 desktop  [FW18b, 2026-09-16]
+## PARK-11 - /sources hides its status column on a 1440 desktop  [FW18b, 2026-09-16]
 
 QUESTION:  Found by FW18b's read-through, by cropping the regenerated
 baseline and reading it (R135). The regulatory table on `/sources` sits in

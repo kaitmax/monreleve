@@ -1,0 +1,257 @@
+FW20 SESSION PROMPT - frontalier
+Paste this entire prompt as the first message of a fresh Claude Code
+session, opened at the repository root. Run after FW18b.
+
+This task builds the pages that decide whether a stranger believes the
+site. Seven guides now argue for the product; nothing yet argues for the
+site itself. /sources comes first, because the others link to it and it
+is what makes them defensible.
+
+====================================================================
+PRE-STEP RULINGS (apply verbatim)
+====================================================================
+R0. Read REPORT-FW18b.txt in full from disk, including its PARKED and
+    QUESTIONS sections, and parking.md. PARK-1, PARK-3, PARK-4, PARK-10
+    and PARK-11 are direct inputs to this task.
+
+R1. CI green on origin/main: verify, record the run URL.
+R2, R7-R8, R10-R13, R15-R161 (carried). The engine is closed.
+    R9: you own document edits. R156's parking rule applies throughout.
+
+R162 (new - THE INTERNAL REGISTER IS RENAMED). parking.md numbers its
+    entries PARK-<n>. The published P-numbers in
+    web/lib/content/provisional.ts keep theirs.
+    The published ones are cited in prose on two guides and on /sources,
+    and may be anchors; renaming user-facing references to fix an
+    internal collision is backwards.
+    ALREADY DONE by the FW18b operator turn - parking.md carries the
+    rename, the disambiguation table and the corrected PARK-6 entry.
+    Carried here because the lesson is standing: a namespace shared
+    between an internal record and a published one will eventually make
+    the internal record assert something FALSE about the published one,
+    and no test can see it, because each register is internally
+    consistent. It already did: "P6 supersedes P2" read against the
+    published register says the 49,9 % interpretation was withdrawn. It
+    was not.
+
+R163 (new - NARRATE FROM THE FIXTURE). The Geneva worked example lives
+    in the fixture file the engine is gated on. Prose that narrates it
+    interpolates from that file - or, where a narrative passage cannot
+    hold expressions, a test asserts that every number in the passage
+    equals the fixture's. Either way the guide is tied to the same
+    source the engine is.
+    It arrives from Q56. R147 forbids a typed FIGURE and cannot see a
+    typed DERIVATIVE: two articles narrate the example as
+    "credites : {missionCap} ... comptes : 94 ... taux : 39,16 % ...
+    imposables : 14", where three of those four are hand-computed from
+    the cap. Move the cap to 12 and the passage contradicts itself in
+    one breath. A derivative is not a figure, but it IS a value from a
+    fixture, and that is checkable.
+
+R164 (new - /sources USES THE WIDE CONTAINER). The regulatory table
+    takes Container 'public' at 1200, not the 680 px article measure.
+    It arrives from Q57. It is a reference table, not prose; the 680 px
+    measure exists for reading paragraphs. R159 did its job - the page
+    did not scroll - but a status column cut off at 1440 is a defect of
+    the wrong container, not of the scroll rule.
+
+R165 (new - RETROFITTED COPY IS WRITTEN, NEVER LIFTED). Copy for a
+    component retrofitted across several pages is either authored per
+    instance or written generic. It is never lifted from one instance.
+    It arrives from FW18b's read-through. The pillar's lead-in was the
+    best sentence in the set and true in exactly one place; on the droit
+    d'option guide it sat under a paragraph saying telework has no
+    bearing on that choice and then explained telework arithmetic.
+
+R47. Still open, still the operator's. Not raised.
+
+====================================================================
+WHAT FW18b LEFT YOU
+====================================================================
+Seven guides live. The droit d'option article is published and sourced
+to CLEISS, URL confirmed 16.09.2026 (PARK-5 closed).
+
+R160 put "Relecture experte : en attente" in every article's chip and
+pointed it at /sources. That link is now load-bearing: every guide
+promises that /sources answers "what is verified here", and /sources has
+not been written to answer it.
+
+Three findings are open and two of them are yours:
+  PARK-10  typed derivatives - R163 answers it, you implement it
+  PARK-11  /sources status column - R164 answers it, you implement it
+  PARK-9   closed by R162, nothing to do
+
+====================================================================
+STANDING PROTOCOL
+====================================================================
+One task, this one. Out-of-scope observations go in the report under
+NOTICED BUT NOT TOUCHING.
+
+Commit only on green (R132): pnpm gate:changed reads the diff, prints
+its selection, runs the suites chained. Paste the printed selection into
+the commit body. A red commit is a bounce.
+
+Test-first. The report shows the RED run and the reason it failed. A
+test that passed on its first run is evidence of nothing - plant the
+defect and show it go red.
+
+A regenerated baseline needs a stated reason (R135), AND somebody has to
+crop the image and look at it. FW18b's read-through and crops found five
+defects across two tasks that no gate saw, two of them in its own work.
+
+Tokens only. French only in lib/fr, fully accented (R155). SPEC 20's
+ask-first items stop and ask.
+
+====================================================================
+INCREMENT 0 - /sources, the page the guides now point at
+====================================================================
+It comes first because the other three link to it.
+
+ - R164: Container 'public' at 1200 for the table section. Measure the
+   result at 1440, 1280, 390: the status column must be inside the
+   container at desktop widths, and the page must still not scroll
+   sideways at any of them. Both halves asserted.
+ - The dataset is already the one the guides cite - lib/content/sources.ts
+   with 14 ids. Do not build a second list. todo.md: "renders from the
+   same dataset the guides cite - one source of truth, no drift".
+ - The two 'pending' rows keep saying pending. The em dash in the date
+   column is a decision, not a gap.
+ - Commit: "FW20: /sources, in the container a reference table needs".
+
+====================================================================
+INCREMENT 1 - "what this site does not know"
+====================================================================
+A new section on /sources, and the most valuable thing in this task.
+
+ - PARK-1, PARK-3 and PARK-4 become READER-FACING TEXT: the employer
+   attestation obligation, the French declaration deadlines and forms,
+   and the LAMal/CMU premium data. Three tasks have now refused to
+   publish something for want of a source, and those refusals are
+   invisible to anyone outside the repo.
+ - A reader looking for a figure this site does not have should find
+   that out ON THE PAGE, not by its absence.
+ - Each entry says what is missing and why it is not written. It does
+   NOT say when it will arrive - that is a promise, and SPEC 20's
+   vocabulary rule is the standard.
+ - R165 applies: this copy is authored, not lifted from the parking
+   entries. Those are written for the operator; this is written for a
+   stranger deciding whether to trust the page.
+ - Commit: "FW20: what this site does not know".
+
+====================================================================
+INCREMENT 2 - R163, the fixture narration
+====================================================================
+ - The Geneva worked example is narrated in geneve.mdx and in
+   jours-de-mission-hors-suisse.mdx. Tie both to the Geneva fixture file
+   - the one SPEC 7.5 gates the engine on.
+ - Interpolate where the passage can hold an expression. Where it cannot,
+   a test asserts every number in the passage equals the fixture's.
+ - THE TEST IS THE POINT and it must be proven: change the fixture in a
+   scratch copy and show the guide's test go red. A test that reads both
+   sides from the same place proves pass-through, not the value (R71).
+ - Commit: "FW20: the guides narrate the fixture (R163)".
+
+====================================================================
+INCREMENT 3 - /a-propos
+====================================================================
+ - IT SAYS NOBODY HAS REVIEWED THE RULES. R160's discipline applied to a
+   page rather than a chip. todo.md's TODO-REVIEWER placeholder is not a
+   sentence a reader can read; the honest version is.
+ - THE PARAGRAPH THAT MATTERS: how a figure gets onto this site. A
+   primary source, a fetch date, a row - and if none can be found, it is
+   not written. That is the product's actual differentiator, stated
+   plainly. Most competitors have neither a dated source list nor a
+   named reviewer; this site will have the first and an honest account
+   of lacking the second.
+ - No founder story, no mission statement, no team photograph.
+ - Commit: "FW20: /a-propos, and how a figure gets onto this site".
+
+====================================================================
+INCREMENT 4 - /tarifs and /releve-annuel
+====================================================================
+ - /tarifs: gratuit en 2027, payant des 2028 (D3), verbatim. NO tier
+   grid, NO checkout, no "from" price, no feature comparison. todo.md is
+   explicit and the acceptance criterion is an absence - so assert the
+   absence AND assert the sentence is present (R154: an absence
+   assertion is satisfied by a page that renders nothing).
+ - /releve-annuel: the offer page. A card listing exactly what the
+   dossier contains - working days, CH days, telework, missions,
+   annualised %, per-entry timestamps, late flags. Linked from every
+   calculator result.
+ - Both link /sources.
+ - Commit: "FW20: /tarifs and /releve-annuel".
+
+====================================================================
+INCREMENT 5 - the homepage
+====================================================================
+ - ONE JOB: route to the calculator or the guides. todo.md: "no hero
+   theatre".
+ - Its meta description is already a function of the year's thresholds
+   (FW18b, R147). Do not regress it to a constant.
+ - Commit: "FW20: the homepage".
+
+====================================================================
+INCREMENT 6 - mesh, a11y, baselines, size, read-through
+====================================================================
+ - Every footer link clicked: zero 404s. todo.md's manual check, done as
+   a test.
+ - The route registry: five routes move to live and enter the sitemap.
+   The sitemap census and the planned-route set are BOTH exact lists now
+   - update both with reasons.
+ - R119's census in singletons.test.tsx gains five rows.
+ - jest-axe on all five; keyboard paths; 320 dp; R148 geometry.
+ - Baselines: expect a large regeneration. List every file with its
+   reason, and CROP AND READ at least /sources and /a-propos.
+ - pnpm size; Lighthouse floor.
+
+ - THE READ-THROUGH IS THE HARDEST PART OF THIS TASK, and the operator
+   named where: /a-propos and /tarifs. Those are the two pages where
+   every sentence can be individually true and the page still
+   overclaims. Read each one as a stranger who has been burned by a
+   confident website before, and report what you read for.
+
+ - Commit: "FW20: mesh, a11y, baselines, read-through".
+
+====================================================================
+OUT OF SCOPE
+====================================================================
+- The comparator (PARK-4, R157 option 3 stands). Any engine change. Any
+  premium or cost figure. Analytics - FW28. /application - FW20b.
+- The URSSAF simulator finding: recorded for FW19b, not built.
+- Renaming the published P-numbers. R162 settled the direction.
+
+====================================================================
+OPEN QUESTION TO RAISE, NOT TO GUESS
+====================================================================
+The operator's FW18b acceptance said "V1-V8 are transcribed from that
+fetch". docs/regulatory-sources.md carries the CLEISS rows as D1-D7,
+which is SEVEN, and the file has no V-numbering. Either the label is
+loose or their fetch produced an eighth fact that is not in the table.
+Ask before writing anything that depends on the count; nothing in this
+task does.
+
+====================================================================
+FINAL VERIFICATION
+====================================================================
+pnpm gate && pnpm test:e2e && pnpm test:visual && pnpm test:a11y &&
+pnpm test:runtime
+Green in one run; CI green after the final push.
+
+====================================================================
+REPORT FORMAT - REPORT-FW20.txt (pure ASCII, committed and pushed)
+====================================================================
+SUMMARY
+PRECONDITIONS
+RED/GREEN LEDGER
+WHAT THIS SITE DOES NOT KNOW  The three entries, quoted as published,
+                 with the parking entry each came from.
+THE FIGURE PARAGRAPH  /a-propos's account of how a figure gets onto
+                 this site, quoted.
+R163 PROOF       The fixture changed, the guide's test red.
+MESH, SIZE, BASELINES, TOKENS ADDED, DEVIATIONS, PARKED,
+NOTICED BUT NOT TOUCHING, QUESTIONS, PUSH PROOF
+
+THE READ-THROUGH gets its own section, and it names what was read for
+on /a-propos and /tarifs specifically.
+
+END OF FW20 PROMPT
