@@ -5,7 +5,8 @@
       "url": [
         "http://localhost:3000/",
         "http://localhost:3000/guides",
-        "http://localhost:3000/guides/teletravail-frontalier-40-pourcent"
+        "http://localhost:3000/guides/teletravail-frontalier-40-pourcent",
+        "http://localhost:3000/guides/geneve"
       ],
       "numberOfRuns": 1,
       "settings": {
