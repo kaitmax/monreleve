@@ -1,0 +1,215 @@
+REPORT-FW19.txt - frontalier
+Task FW19: the LAMal/CMU comparator. One commit, pushed.
+Outcome: R157 OPTION (3). Nothing published.
+
+SUMMARY
+--------------------------------------------------------------------
+The comparator is not built. /calculateur-lamal-cmu stays `planned`,
+there is no lib/lamal, no page, no copy and no baseline.
+
+R157 fixes an order of preference for premium data and says to decide at
+increment 1, before any UI exists. The decision is (3), on two
+independent grounds, either of which would be sufficient:
+
+  1. The premium data could not be LICENSED from this environment.
+  2. The page's required irrevocability warning cannot be WRITTEN at
+     all, which defeats the user-entry path as well.
+
+The second is the more important, and it is not an environment limit. It
+is the same wall FW18 hit one surface earlier and raised as Q53.
+
+PRECONDITIONS
+--------------------------------------------------------------------
+R0. REPORT-FW18.txt read from disk in full, including its PARKED
+    section. Nothing marked BLOCKING. Its P2 is the direct input to this
+    task's decision and its Q53 asks this task's central question.
+
+R1. CI green on origin/main at FW18's final push:
+    e2482db  run 35048369569
+    https://github.com/kaitmax/Frontalier/actions/runs/35048369569
+
+    Handover checks (C2), all four passed before FW19 was opened:
+      REPORT-FW18.txt committed and pushed        yes  e2482db
+      git status clean, local main == origin/main yes
+      CI run for FW18's final push GREEN          yes  35048369569
+      nothing BLOCKING for FW19 in the report     yes
+
+INCREMENT 0
+--------------------------------------------------------------------
+parking.md exists, created in FW18 increment 0a, and is being appended
+to. P1-P3 are FW18's; P4 is this task's. Nothing FW18 parked belongs to
+FW19 except P2, which is an input to the decision below rather than work
+to apply.
+
+DATA DECISION (R157)
+--------------------------------------------------------------------
+This is the report's core evidence, so it records what was actually done
+rather than what was concluded.
+
+WHAT WAS FOUND
+  - The primary source exists and is current. priminfo.admin.ch (OFSP)
+    publishes premium data for the 2026 premium year, as PDF and XLSX,
+    and states that "Les donnees de primes sont disponibles comme
+    fichiers Excel et CSV sous opendata.swiss".
+  - The opendata.swiss dataset is "Primes de l'assurance-maladie",
+    published by the OFSP, with current resources plus archives back to
+    2016. Its granularity, from its description, is canton, age group and
+    insurer.
+
+WHAT COULD NOT BE ESTABLISHED
+  - THE LICENCE. The opendata.swiss dataset page returns HTTP 403 in this
+    environment, and so does the CKAN API
+    (ckan.opendata.swiss/api/3/action/package_show). Neither the licence
+    name, nor its terms, nor its redistribution conditions could be read.
+
+  R157 forbids "a scraped page without a licence". A dataset whose terms
+  are unknown is exactly that, so option (1) is unavailable FROM HERE.
+
+  That distinction is deliberate and it matters for tomorrow: this is a
+  limit of this environment, not a finding about the dataset. The data
+  appears to be published openly by a federal office; an operator with
+  ordinary browser access may be able to read the licence and complete
+  option (1) in minutes. P4 says so.
+
+WHY OPTION (2) DOES NOT RESCUE IT
+  Option (2) is: the user enters their own premium, the tool computes
+  only the comparison and states plainly that it holds no premium data.
+  Two problems, and the second is decisive.
+
+  First, the CMU side would also be an input rather than a constant. The
+  prompt anticipates this - "if the rate cannot be sourced, it is an
+  input, not a constant" - and docs/regulatory-sources.md has no CMU rate
+  or threshold; its eight rows are all telework constants. So the tool
+  would hold no figure of its own at all: the reader would supply the
+  premium AND the rate, and the tool would supply a multiplication and a
+  subtraction.
+
+  Second, and this is the one that decides it: THE PAGE'S REQUIRED
+  WARNING CANNOT BE WRITTEN. SPEC 9.6 specifies "a prominent error banner
+  stating the choice is IRREVOCABLE and the window is THREE MONTHS", and
+  this task's own AC2 requires it "above the fold of the result,
+  error-coloured, asserted by count and by position".
+
+  Those two facts have no verified row. FW18 parked the droit-option
+  guide (P2) for exactly this, and SPEC 22 lists "3-month irrevocable
+  LAMal/CMU option" in its OWN inventory of figures "compiled from
+  advisory and news sources", to be verified "before the fixtures are
+  frozen". Checkpoint A verified six of eight telework constants and
+  never reached it.
+
+  So the choices were: publish the banner and assert an unsourced
+  regulatory claim, which R156's boundary forbids outright; publish
+  without it, which fails AC2 and SPEC 9.6 and removes the single most
+  valuable thing on the page; or publish it hedged, which still leaves a
+  tool steering a reader toward an irreversible decision on facts it
+  cannot state. All three are worse than not publishing.
+
+WHAT WAS REFUSED
+  - A premium figure from memory.
+  - An averaged estimate presented as a premium.
+  - A placeholder number in shipped copy.
+  - A scrape of priminfo's XLSX without established terms.
+  None of these was attempted; they are listed because R157 names them
+  and the report should say plainly that the line was not approached.
+
+FIGURE ORIGINS (AC3)
+--------------------------------------------------------------------
+Vacuously satisfied, and worth stating rather than skipping: the page
+displays no figures because there is no page. No figure in this task has
+an origin that is not "none - nothing was published".
+
+IRREVOCABILITY (AC2)
+--------------------------------------------------------------------
+NOT MET, and it is the reason the task ends here rather than an
+oversight. The notice cannot be asserted by count or position because it
+cannot be written: its content has no verified source. AC2 and SPEC 9.6
+both require it, so a comparator that satisfies the rest of the spec
+while omitting it would not be the specified page.
+
+RED/GREEN LEDGER
+--------------------------------------------------------------------
+No behaviour was written, so there is no RED to show. The gate ran on the
+documentation change alone:
+  typecheck exit 0, lint exit 0, test 2324 passed, build exit 0.
+
+PARKED
+--------------------------------------------------------------------
+  P4  the LAMal/CMU comparator is NOT published (R157 option 3)
+
+It records what was found, the two independent grounds, the three
+alternatives refused, and the full list of files a later build would
+touch - including the rows that would first have to exist in
+docs/regulatory-sources.md for the premium data AND for the window and
+the irrevocability.
+
+SIZE
+--------------------------------------------------------------------
+Unchanged. No route added, no client JavaScript, no new dependency.
+All gated routes continue to pass GATE A and GATE B.
+
+BASELINES (R135)
+--------------------------------------------------------------------
+None regenerated and none added. No pixels changed.
+
+TOKENS ADDED (R77)
+--------------------------------------------------------------------
+None.
+
+DEVIATIONS
+--------------------------------------------------------------------
+D1. INCREMENTS 2 TO 5 WERE NOT EXECUTED. Each presupposes the comparator:
+    increment 2 is its pure module, 3 its page, 4 its honesty surfaces,
+    5 its metadata and baselines. With option (3) chosen at increment 1,
+    nothing remained to build. The night prompt anticipates this exact
+    outcome and calls it "a complete and correct outcome, not a failure";
+    R157 calls it "park it, ship nothing, and say so".
+
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------
+N1. THE SAME MISSING SOURCE NOW BLOCKS TWO DELIVERABLES. The droit
+    d'option window and its irrevocability blocked FW18's guide and now
+    block FW19's comparator. That is one reviewer question - not a
+    dataset, not a design decision - standing between the product and two
+    of its planned surfaces. It is the highest-leverage item outstanding.
+
+N2. THE FOOTER AND NAV STILL LINK /calculateur-lamal-cmu, which remains
+    `planned` and therefore 404s. That is the state FW9 shipped and which
+    each task has been resolving as its own page lands; this task did not
+    land one. Not touched, because changing the shell's links is FW20's
+    surface and doing it here would be cross-task refactoring (C4).
+
+QUESTIONS FOR THE OPERATOR
+--------------------------------------------------------------------
+Carried and still open: Q47, Q48, Q49, Q50, Q51, Q52 (FW17 and FW17b),
+Q53 (FW18 - answered by this task in the negative: the window and the
+irrevocability could not be sourced for the banner either).
+
+New:
+  Q54. CAN THE opendata.swiss LICENCE BE READ AND RECORDED? The dataset
+       is published by the OFSP and looks open, but this environment gets
+       403 from both the dataset page and the CKAN API. If you can read
+       the licence and confirm redistribution is permitted, option (1)
+       becomes available and increments 2-5 can run unchanged.
+
+  Q55. WHICH COMES FIRST - the premium data or the droit d'option rules?
+       They are separable. The window and the irrevocability alone would
+       unblock FW18's guide. Both are needed for the comparator. If only
+       one reviewer pass is available, the droit d'option rules unblock
+       more.
+
+R47. Still open, still the operator's. Not raised.
+
+FINAL VERIFICATION
+--------------------------------------------------------------------
+  pnpm gate:changed   typecheck, lint, test, build
+                      test: 2324 passed
+  No browser suites selected: no path matched the selector, because the
+  only change is documentation.
+
+PUSH PROOF
+--------------------------------------------------------------------
+  7bc1ac3  FW19: the premium data decision (R157)
+
+  Pushed to origin/main.
+
+END OF REPORT-FW19
