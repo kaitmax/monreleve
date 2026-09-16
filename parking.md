@@ -121,3 +121,31 @@ window and the irrevocability, ids in `web/lib/content/sources.ts`
 `web/lib/content/routes.ts`, the hardcoded sitemap list in
 `web/tests/unit/content/routes.test.ts`, the census exemption in
 `web/tests/unit/pages/singletons.test.tsx`, and the hub baselines.
+
+## P3 - the declaration guide carries no date, form or procedure  [FW18, 2026-09-16]
+
+QUESTION:  SPEC §9.5 describes this cluster as "April declaration season",
+which a reader would expect to mean deadlines and forms. No French
+declaration date, form number or procedure appears in
+`docs/regulatory-sources.md`, whose eight rows are all telework constants.
+
+TAKEN:     Published, but structural: what number a reader must be able to
+produce, where it comes from, why it cannot be reconstructed in April, and
+which regime decides where the days are taxed — each of those resting on a
+declared claim. No date, no form number, no step-by-step. The article says so
+on the page, in a section called *Ce que ce guide ne vous dira pas*, because
+an article that silently omits the deadline reads as one that forgot.
+Reversible: verified rows would turn that section into content without moving
+the slug, the anchors or the mesh.
+
+NOT TAKEN: Publishing the deadlines from general knowledge. That is the
+unsourced-claim category R156 says never to publish, and a wrong filing date
+costs a reader more than an absent one. Also not taken: declining to publish
+at all, as with P2 — unlike the droit d'option, this article has a real
+subject that IS sourced (which number, from where, and why April is too
+late), so it is not a thin page.
+
+TOUCHES:   `web/content/guides/declaration-impots-frontalier.mdx` (one
+section and the second FAQ answer), plus rows in
+`docs/regulatory-sources.md` and `web/lib/content/sources.ts` if dates are
+ever verified.

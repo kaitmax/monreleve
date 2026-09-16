@@ -172,7 +172,7 @@ export const PUBLIC_ROUTES: readonly PublicRoute[] = [
   },
   {
     path: '/guides/declaration-impots-frontalier',
-    status: 'planned',
+    status: 'live',
     task: 'FW18',
     changeFrequency: 'monthly',
     priority: 0.7,
