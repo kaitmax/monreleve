@@ -421,6 +421,19 @@ differently, and no test changed.
 
 ## PARK-10 - typed DERIVATIVES of a RuleSet value sit beside a live expression  [FW18b, 2026-09-16]
 
+CLOSED BY R163 IN FW20. The operator ruled: prose that narrates a fixture is
+tied to the fixture. Implemented as the test branch R163 permits rather than
+as interpolation - the fixtures directory sits outside web/, so reading it
+from lib/guides at module load would be R139 failure shape, a path that
+exists here and in a full clone and may not exist wherever only web/ is
+deployed.
+
+web/tests/unit/guides/fixture-narration.test.ts derives every number both
+passages state from geneva-cases.json and RuleSet, including the 94 that is
+neither - it is the sum of a fixture input and an engine constant, which is
+why R147 could never have seen it. Proven by changing frenchTaxedDays from
+14 to 12 in the fixture: four tests go red, both guides among them.
+
 QUESTION:  Found by FW18b's read-through, and no layer could have found it.
 Two articles narrate the Genève worked example — 84 télétravail days, 24
 mission days, base 240 — like this:
