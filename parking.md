@@ -149,3 +149,53 @@ TOUCHES:   `web/content/guides/declaration-impots-frontalier.mdx` (one
 section and the second FAQ answer), plus rows in
 `docs/regulatory-sources.md` and `web/lib/content/sources.ts` if dates are
 ever verified.
+
+## P4 - the LAMal/CMU comparator is NOT published (R157 option 3)  [FW19, 2026-09-16]
+
+QUESTION:  R157 fixes an order of preference for premium data and forbids
+deviating upward from it. Two things had to be established: whether a dated,
+licensed premium dataset could be obtained, and whether the page could be
+built honestly without one.
+
+TAKEN:     Option (3). Nothing is published. `/calculateur-lamal-cmu` stays
+`planned`, no `lib/lamal` is created, no route, no copy, no baseline. Two
+independent reasons, either of which is sufficient:
+
+1. **The data could not be licensed from here.** priminfo.admin.ch does
+   publish 2026 premiums (PDF and XLSX) and points to opendata.swiss for the
+   CSV — but the opendata.swiss dataset page and the CKAN API both return
+   **403** in this environment, so the licence, its terms and its
+   redistribution conditions could not be read. R157 forbids "a scraped page
+   without a licence", and a dataset whose terms are unknown is exactly that.
+   Option (1) is therefore unavailable *from here* — not proven unavailable in
+   general, which matters: an operator with browser access may well be able to
+   complete it in minutes.
+
+2. **The page's required warning cannot be written, which defeats option (2)
+   as well.** SPEC §9.6 requires "a prominent error banner stating the choice
+   is **irrevocable** and the window is **three months**", and FW19's own AC2
+   repeats it. FW18 parked the droit-option guide (P2) precisely because those
+   two facts have no verified row and SPEC §22 lists "3-month irrevocable
+   LAMal/CMU option" among figures "compiled from advisory and news sources"
+   awaiting verification. So the user-entry path leads to a tool that helps
+   somebody toward an irreversible decision while unable to state that it is
+   irreversible — which is worse than no tool, not better.
+
+Reversible at zero cost: nothing was created, so nothing must be corrected,
+redirected or un-indexed.
+
+NOT TAKEN: (a) Option (2) with the banner omitted — fails AC2 and SPEC §9.6,
+and removes the single most valuable thing the page would carry. (b) Option
+(2) with the banner hedged — the tool would still be steering an irreversible
+choice on facts it cannot source. (c) Premium figures from memory or an
+averaged estimate — forbidden outright by R157.
+
+TOUCHES:   To build later: a licensed dataset under `web/data/` with source
+URL, fetch date and licence in its header; a row in
+`docs/regulatory-sources.md` and an id in `web/lib/content/sources.ts` for the
+premium data AND for the droit d'option window and irrevocability; then
+`web/lib/lamal/`, the page under
+`web/app/(public)/calculateur-lamal-cmu/`, `web/lib/fr/lamal.ts`,
+`status: 'live'` in `web/lib/content/routes.ts`, the sitemap census in
+`web/tests/unit/content/routes.test.ts`, the R119 census in
+`web/tests/unit/pages/singletons.test.tsx`, and new baselines at 1440/390.
