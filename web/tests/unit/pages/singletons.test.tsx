@@ -217,6 +217,7 @@ const COUNTED_IN_E2E: readonly string[] = [
   '/guides/teletravail-frontalier-40-pourcent',
   '/guides/seuil-social-49-9-pourcent',
   '/guides/jours-de-mission-hors-suisse',
+  '/guides/attestation-employeur-teletravail',
 ];
 
 describe('the census covers every live public route (R119)', () => {

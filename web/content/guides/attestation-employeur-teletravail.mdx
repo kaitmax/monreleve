@@ -1,0 +1,162 @@
+---
+title: "L’attestation de télétravail de votre employeur"
+description: "Ce qu’un document remis par l’employeur établit, ce qu’il ne peut pas couvrir, et le moment où votre propre relevé change quelque chose — ou ne change rien."
+slug: attestation-employeur-teletravail
+breadcrumbLabel: "L’attestation employeur"
+cluster: cluster
+related:
+  - teletravail-frontalier-40-pourcent
+  - jours-de-mission-hors-suisse
+lastReviewed: "2026-09-09"
+reviewer: "l’équipe frontalier"
+faq:
+  - question: "L’attestation de mon employeur suffit-elle ?"
+    answer: "Si elle couvre toute l’année, qu’elle repose sur la même base de calcul que celle retenue pour vous, et qu’elle inclut vos déplacements professionnels hors de Suisse, alors oui, elle peut suffire. Un relevé personnel n’a d’intérêt que là où l’un de ces trois points manque."
+  - question: "Pourquoi mes jours de mission poseraient-ils problème ?"
+    answer: "Parce qu’ils sont comptés à l’intérieur du plafond fiscal et non en plus, et que l’employeur qui établit le document ne connaît pas toujours le détail de vos déplacements. C’est le point à vérifier en premier."
+  - question: "Que faire si je ne suis pas d’accord avec le pourcentage indiqué ?"
+    answer: "Commencez par identifier l’écart : la base de jours retenue, le traitement des demi-journées, ou les jours de déplacement. Un désaccord sur le pourcentage est presque toujours un désaccord sur l’une de ces trois choses."
+  - question: "Dois-je tenir un relevé si mon employeur établit déjà le document ?"
+    answer: "Ce n’est pas une obligation que ce site vous impose. Un relevé daté sert à vérifier le document que vous recevez et à couvrir ce qu’il ne contient pas ; si vous n’avez rien à vérifier, il ne vous apporte rien."
+  - question: "Et si j’ai deux employeurs ?"
+    answer: "Chaque employeur ne connaît que le temps que vous passez pour lui. Le plafond, lui, porte sur votre temps de travail. Si votre situation est celle-là, c’est le cas où un décompte tenu par vous cesse d’être un confort."
+claims:
+  - key: fiscalCeiling
+    says: "Le plafond de télétravail porte sur le temps de travail annuel, ce qui est la grandeur qu’un document annuel doit couvrir."
+  - key: simplifiedBasisDays
+    says: "La base de jours ouvrés est choisie par l’employeur entre la base simplifiée de la circulaire et un décompte exact, et doit s’appliquer uniformément à l’année."
+  - key: missionCapDays
+    says: "Les jours de mission hors de Suisse sont comptés à l’intérieur du plafond fiscal et non en plus, sous un plafond annuel qui leur est propre."
+  - key: dayClassification
+    unresolved: true
+    says: "Une journée de plus de quatre heures compte pour une journée entière, une journée de deux à quatre heures pour une demi-journée."
+---
+
+{/*
+  CLUSTER. SPEC 9.5: "what employers must certify, why yours may not
+  suffice".
+
+  THE HONESTY BAR IS HIGHEST HERE BECAUSE THIS IS THE PRODUCT'S OWN
+  ARGUMENT, and R146 bites hardest for the same reason. There is NO row in
+  docs/regulatory-sources.md about an employer attestation - no obligation,
+  no date, no form. The `claims` vocabulary is the eight source rows plus
+  P1-P3, and none of them covers it.
+
+  SO THE ARTICLE NEVER ASSERTS THE OBLIGATION. It is written in the
+  conditional throughout - "si votre employeur vous remet", "le document que
+  vous recevez" - which asserts nothing about whether one must be issued, by
+  whom, or since when. Everything it DOES state as a rule is one of the four
+  claims above. That is R146 case (c), "not written", applied to the whole
+  premise of the article rather than to a sentence.
+
+  Parked as P1: see parking.md.
+
+  AND IT CONCEDES. The prompt is explicit and it is right: a guide that
+  cannot say "if the document is complete, it may be all you need" is
+  selling rather than informing. That sentence is in the lede AND in the
+  first FAQ answer, not buried at the end.
+*/}
+
+Si votre employeur vous remet un document attestant votre part de
+télétravail, ce document et le relevé que vous tiendriez vous-même ne
+répondent pas tout à fait à la même question. Le premier dit ce que
+l’employeur a enregistré. Le second dit ce que vous avez fait.
+
+La plupart du temps, les deux coïncident, et il faut le dire simplement : si
+le document couvre l’année entière, s’appuie sur la base retenue pour vous et
+inclut vos déplacements professionnels, il peut suffire à lui seul. Ce guide
+sert à vérifier ces trois points — pas à vous convaincre que vous en avez un
+quatrième.
+
+<Encadre titre="En bref">
+
+- Ce que le plafond mesure : {fiscal} du temps de travail annuel
+- Base de calcul usuelle : {basisDays} jours ouvrés par an
+- Jours de mission : {missionCap} jours par an, à l’intérieur du plafond
+- Le point le plus souvent absent : les déplacements hors de Suisse
+- Ce qu’un relevé ajoute : une date d’enregistrement par journée
+
+</Encadre>
+
+## Les trois points à vérifier
+
+Un document annuel se lit vite, et trois choses décident s’il est complet.
+
+La période d’abord. Le plafond porte sur le temps de travail annuel, donc un
+document qui ne couvre qu’une partie de l’année ne dit rien du plafond — il
+dit quelque chose d’une partie de l’année.
+
+La base ensuite. Le pourcentage rapporte vos jours de télétravail à un nombre
+de jours travaillés, et ce nombre n’est pas unique : votre employeur retient
+soit la base simplifiée de {basisDays} jours prévue par la circulaire
+n° 45, soit un décompte exact des jours réellement travaillés. Le choix lui
+appartient et doit valoir pour toute l’année. Deux documents qui indiquent des
+pourcentages différents peuvent l’un et l’autre être justes s’ils ne partent
+pas de la même base.
+
+Les déplacements enfin, et c’est le point de la section suivante.
+
+## Ce que votre employeur ne voit pas toujours
+
+<Avertissement>
+
+Les jours de mission hors de Suisse comptent à l’intérieur du plafond fiscal,
+et non en plus. Un plafond de {missionCap} jours par an s’y applique. Ce sont
+aussi les jours qu’un document établi depuis un système de gestion des temps
+est le plus susceptible de ne pas contenir.
+
+</Avertissement>
+
+Un déplacement professionnel n’est pas toujours enregistré comme tel. Il peut
+apparaître comme une journée travaillée ordinaire, ou ne pas apparaître du
+tout. Si le pourcentage qu’on vous remet ignore vos déplacements, il est trop
+bas — et un pourcentage trop bas n’est pas une bonne nouvelle : c’est un
+chiffre qui ne correspond pas à votre situation.
+
+Les règles de détail — quels jours de trajet comptent, ce qui se passe au
+delà du plafond de mission — sont dans
+[le guide des jours de mission](/guides/jours-de-mission-hors-suisse).
+
+## Les demi-journées, qui se perdent facilement
+
+Une journée de plus de quatre heures compte pour une journée entière ; une
+journée de deux à quatre heures compte pour une demi-journée. C’est la
+convention que le calculateur applique.
+
+<Avertissement>
+
+Cette conversion des heures en journées n’a pas encore été vérifiée contre le
+texte de la circulaire n° 45, et elle décide pourtant d’une partie de l’écart
+entre deux décomptes. Le détail de ce qui est vérifié et de ce qui ne l’est
+pas est publié sur la page [sources et vérifications](/sources).
+
+</Avertissement>
+
+Si le document que vous recevez ne distingue pas les demi-journées et que vous
+en avez fait, l’écart vient probablement de là.
+
+## Quand un relevé daté ajoute quelque chose
+
+Un relevé personnel ne remplace pas le document de votre employeur et ne
+prétend pas le faire. Il sert dans trois situations, et dans trois seulement.
+
+Quand vous avez des déplacements que l’employeur n’enregistre pas. Quand vous
+travaillez pour plus d’un employeur, puisque chacun ne connaît que le temps
+passé pour lui. Et quand vous n’êtes pas d’accord avec le pourcentage qu’on
+vous remet et qu’il faut pouvoir montrer où est l’écart.
+
+En dehors de ces cas, il ne vous apporte rien, et un guide qui prétendrait le
+contraire vous ferait perdre votre temps.
+[Calculez vos jours restants](/calculateur-teletravail-frontalier) si vous
+voulez simplement savoir où vous en êtes.
+
+## La différence entre une affirmation et un document
+
+Un décompte reconstitué en décembre, de mémoire, est une affirmation. Un
+décompte dont chaque journée porte la date à laquelle elle a été enregistrée
+est autre chose : il montre qu’il n’a pas été écrit après coup.
+
+C’est une différence qui ne sert jamais — jusqu’au moment où on vous demande
+de justifier un écart, et où elle est la seule chose qui distingue les deux
+documents. Le reste du calcul est expliqué dans
+[le guide du plafond fiscal](/guides/teletravail-frontalier-40-pourcent).

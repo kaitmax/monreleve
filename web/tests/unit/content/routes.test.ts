@@ -128,7 +128,7 @@ describe('the sitemap lists what exists and nothing else', () => {
     expect([...sitemapPaths()].sort()).toEqual([...liveRoutes().map((r) => r.path)].sort());
   });
 
-  it('lists the eleven routes that exist and may be seen today', () => {
+  it('lists the twelve routes that exist and may be seen today', () => {
     // FOUR UNTIL FW11, five with the calculator, six with /sources. The
     // calculator joined when its page was built AND the Checkpoint A review
     // was recorded - two independent conditions, both of which had to be
@@ -171,6 +171,7 @@ describe('the sitemap lists what exists and nothing else', () => {
       '/cgu',
       '/confidentialite',
       '/guides',
+      '/guides/attestation-employeur-teletravail',
       '/guides/jours-de-mission-hors-suisse',
       '/guides/seuil-social-49-9-pourcent',
       '/guides/teletravail-frontalier-40-pourcent',
