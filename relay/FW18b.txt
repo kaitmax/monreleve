@@ -1,0 +1,289 @@
+FW18b SESSION PROMPT - frontalier
+Paste this entire prompt as the first message of a fresh Claude Code
+session, opened at the repository root. Run after FW19 and BEFORE FW20.
+
+This task exists because a verification pass happened. It publishes what
+that pass unblocked, and closes six questions that accumulated across
+FW17, FW17b and FW18.
+
+====================================================================
+PRE-STEP RULINGS (apply verbatim)
+====================================================================
+R0. Read REPORT-FW18.txt and REPORT-FW19.txt in full from disk,
+    including their PARKED sections, and parking.md. P2 and P4 are the
+    direct inputs to this task.
+
+R1. CI green on origin/main: verify, record the run URL.
+R2, R7-R8, R10-R13, R15-R157 (carried). The engine is closed.
+    R9: you own document edits. R156's parking rule applies throughout.
+
+R158 (new - A SOURCE KEY IDENTIFIES A FACT, NOT A URL). Three facts
+    sharing a citation is normal; three facts sharing a KEY means the
+    claims test cannot tell them apart. Every distinct regulatory fact
+    an article may cite gets its own id in SOURCE_IDS, even when two
+    ids point at the same page.
+    It arrives from Q47: FW17 and FW18 cited the mission travel-day
+    rules AND the six Geneva worked examples under `missionCapDays`,
+    because all three are published on the same ge.ch page. That made
+    `claims` unable to distinguish "the cap is ten days" from "a travel
+    day worked mostly in Switzerland is not counted".
+
+R159 (new - THE TABLE SCROLLS, NEVER THE PAGE). A comparison table that
+    cannot fit the viewport gets its own overflow-x container, with the
+    scroll made VISIBLE rather than implied. The page body never scrolls
+    sideways (R127 is unchanged).
+    It arrives from Q49: two of two comparison tables written in FD13's
+    shape overflowed 320 dp, and both were fixed by transposing them -
+    a per-author decision made twice. The kit answers it once.
+
+R160 (new - THE CHIP STATES THE STATUS, NOT A NAME). Until a named
+    expert reviewer exists, the article's reviewer chip reads
+    "Relecture experte : en attente" and links /sources. It does not
+    name the team.
+    It arrives from Q51: "Relu par l'equipe frontalier" implies a review
+    that has not happened - the same defect as a present-tense privacy
+    claim, on the surface whose whole argument is that it does not claim
+    more than the record supports.
+
+R47. Still open, still the operator's. Not raised.
+
+====================================================================
+THE VERIFICATION THIS TASK PUBLISHES
+====================================================================
+The operator performed the pass. Transcribe it EXACTLY as written
+below; do not paraphrase it, do not extend it, and do not add a fact it
+does not contain.
+
+SOURCE. CLEISS - Centre des Liaisons Europeennes et Internationales de
+Securite Sociale, a French public body. An authority, not an advisory
+site.
+  https://www.cleiss.fr/faq/droit_d_option_des_frontaliers_france-suisse.html
+  CONFIRM THIS URL WITH THE OPERATOR AT INCREMENT 0 before writing the
+  row. It is the page a search located and its content matches the pass
+  on every point, but the row must cite what the operator actually read.
+
+THE WINDOW. Three months. CONFIRMED.
+
+THE TRIGGER, and this is the part everyone gets wrong. The three months
+run from ANY of four events:
+  1. taking up work in Switzerland;
+  2. resuming work after a period of unemployment;
+  3. taking up residence in France;
+  4. moving from worker to pensioner status.
+Every advisor writes "three months from hiring", which is WRONG for a
+frontalier who was already working in Switzerland and then moves to
+France. This is the guide's most valuable paragraph.
+
+IRREVOCABILITY. The right may be exercised ONCE and it is irrevocable.
+
+WHAT REOPENS IT. Only a change of situation: resuming work in
+Switzerland, transferring residence to France, or retiring on a Swiss
+pension alone.
+
+WHAT DOES NOT REOPEN IT, named explicitly by CLEISS: marriage, divorce,
+a birth or a death in the family, or changing jobs without an
+unemployment gap between them.
+
+THE DEFAULT. Failing to opt within three months means automatic
+affiliation in Switzerland.
+
+LEGAL BASIS. The ALCP, in force 1 June 2002; Regulation (CE) 883/2004
+applicable between Switzerland and the EU since 1 April 2012; the
+modalities from the accord of 7 July 2016.
+
+====================================================================
+CONTEXT
+====================================================================
+You are executing FW18b ONLY. Two kinds of work, in this order: publish
+the guide the verification unblocked, then close the six questions.
+
+Q54 IS NOT IN THIS TASK. The opendata.swiss licence is still unread -
+both the FW19 session and the operator hit bot detection from two
+independent environments. The comparator stays parked (P4) and
+/calculateur-lamal-cmu stays `planned`.
+
+ONE FINDING FOR A LATER FW19b, recorded here so it is not lost: URSSAF
+publishes an OFFICIAL SIMULATOR for the CMU contribution, and CLEISS
+links it. The comparator never needed to compute the French side - it
+can link the official tool instead. That changes R157's arithmetic and
+should be weighed when the comparator is next considered. It is OUT OF
+SCOPE here.
+
+Read first: CLAUDE.md, README.md, SPEC 9.5, 9.6, 14, 20;
+docs/regulatory-sources.md; parking.md; prompts/design-frontier/FD13;
+REPORT-FW18.txt, REPORT-FW19.txt.
+
+====================================================================
+STANDING PROTOCOL
+====================================================================
+1. SESSION SCOPE. FW18b only. Do not start FW20, do not build the
+   comparator.
+2. INCREMENT CYCLE. Green after EVERY increment, suites per
+   R132/R140/R144.
+3. COMMIT ONLY ON GREEN, chained with && (R15).
+4. COMMITS. "FW18b: <increment title>".
+5. SIMPLICITY FIRST. One new component is authorised in this task and
+   only one: FD13's inline CTA card, in its own increment.
+6. TEST-FIRST for mechanisms; prose is reviewed by reading.
+7. R146 governs every regulatory sentence. R147, R153, R155, R91, R126
+   all apply. R158, R159, R160 are new and apply here first.
+8. UI DISCIPLINE. Tokens; one h1; the FW16 kit plus the one new
+   component.
+9. QUESTIONS. R156 - park and continue, or stop per its boundary.
+10. EXIT ARTIFACT. REPORT-FW18b.txt, committed and pushed.
+
+====================================================================
+INCREMENT 0 - THE VERIFICATION LANDS, AND R158
+====================================================================
+0a. CONFIRM THE CLEISS URL with the operator, then add the rows to
+    docs/regulatory-sources.md. They are NOT telework constants and do
+    not belong in the RuleSet table - give them their own section, with
+    the same treatment: source, fetch date, verification status.
+    Under R158 these are SEPARATE FACTS and get separate rows:
+      - the three-month window and its four triggers
+      - irrevocability, what reopens it, what does not
+      - the default on failing to opt
+      - the legal basis
+    Mark each TRANSCRIPTION VERIFIED with the operator's pass date.
+    They are NOT "legal review pending" in the way P1-P3 are: the
+    operator read a French public body's own publication.
+
+0b. Ids in web/lib/content/sources.ts and French descriptions in
+    web/lib/fr/sources.ts, so /sources renders them. The page's existing
+    tests assert every row renders its value or its no-value phrase;
+    extend them rather than working around them.
+
+0c. R158 APPLIED RETROACTIVELY, which is Q47. Give the mission
+    travel-day rules and the six Geneva worked examples their own ids,
+    both pointing at the same ge.ch page, and move the claims in
+    jours-de-mission-hors-suisse.mdx and geneve.mdx onto them. The
+    claims test should then be able to distinguish the three facts that
+    currently share `missionCapDays`.
+Commits per letter; R49 applies.
+
+====================================================================
+INCREMENT 1 - droit-option-lamal-cmu (P2 REVERSED)
+====================================================================
+The article FW18 refused to write. Publish it now, and append a parking
+entry that supersedes P2 rather than editing P2 in place - parking.md
+says a reversal is a new entry naming the one it replaces.
+
+ - THE FOUR TRIGGERS ARE THE MOST VALUABLE PARAGRAPH. Lead with the
+   window, then immediately correct the common error: the three months
+   do not necessarily run from hiring. Someone already working in
+   Switzerland who moves to France has a window opening on the move.
+ - Irrevocability, stated plainly and once - not as a banner shouting,
+   as a fact with its consequence.
+ - What reopens it, and what does not. CLEISS names marriage, divorce,
+   a birth, a death, and a job change with no unemployment gap. That
+   list is the article's second most useful paragraph, because it is
+   the list a reader will otherwise guess at.
+ - The default: silence means Switzerland.
+ - NO COST FIGURES, NO PREMIUM AMOUNTS. R157 still binds and the
+   premium data is still unlicensed. Name the factors, quantify
+   nothing.
+ - Do NOT link /calculateur-lamal-cmu: it is planned and stays planned.
+   R85 decides how that renders; say which you chose.
+ - Mesh: cluster, linked from the pillar and back, `related` mutual.
+   SPEC 9.5 says 49.9 <-> LAMal/CMU is NOT a genuine cross-link; do not
+   force one.
+ - Commit: "FW18b: the droit d'option guide, now that it is sourced".
+
+====================================================================
+INCREMENT 2 - R160: the chip states the status (Q51)
+====================================================================
+ - GUIDES_COPY gains the status form; the reviewer chip reads
+   "Relecture experte : en attente" and links /sources.
+ - The `reviewer` frontmatter field: decide whether it survives as an
+   optional field for the day a named reviewer exists, or is removed
+   now. Removing it is the conservative option ONLY if re-adding it is
+   cheap; a frontmatter field is a contract, so weigh it and park the
+   decision either way.
+ - Every article updated. Baselines move on all seven.
+ - Commit: "FW18b: R160 - the chip states the status".
+
+====================================================================
+INCREMENT 3 - R147 reaches lib/fr (Q52)
+====================================================================
+ - Extend the typed-threshold scan to lib/fr, with the same
+   identity-field reasoning the guides use. Three sites are known and
+   were measured in FW17b:
+     lib/fr/index.ts   "les seuils de 40 % et 49,9 %"  home description
+     lib/fr/shell.ts   "Le seuil de 40 %"              footer link label
+     lib/fr/spike.ts   "Seuil de 40 % approche"        FW2 spike copy
+ - Each needs a decision, not a blanket fix. The home description's own
+   comment says SPEC 14 wants the threshold named there; the footer
+   label is arguably the article's public name, which is the argument
+   that exempted the title; the spike is throwaway.
+ - RED first, with the three hits listed.
+ - Commit: "FW18b: R147 reaches lib/fr".
+
+====================================================================
+INCREMENT 4 - R159 and the seventh alias (Q49, Q48)
+====================================================================
+ - R159: a scroll container for comparison tables, with the scroll
+   VISIBLE. Keyboard-reachable and named, or a screen-reader user meets
+   a region they cannot scroll. Then reconsider whether the two
+   transposed tables should return to FD13's shape - if they read
+   better transposed, say so and leave them.
+ - Q48: DataGrid's tfoot total rule gets its own token, same treatment
+   as R150's --size-notice-accent. R77: report it.
+ - Commit: "FW18b: R159, and the total rule gets its own token".
+
+====================================================================
+INCREMENT 5 - FD13's inline CTA card (Q50)
+====================================================================
+The one new component this task authorises.
+ - FD13: a white card, radius 16, padding 24, one line of prose left
+   and a primary 48 h button right. It is NOT the closing card - that
+   one is GuideCta and stays unique.
+ - Every guide's inline prose link becomes this card, at the point
+   where the arithmetic stops being doable mentally.
+ - SPEC 9.5's "twice, counted by position" must still hold.
+ - Commit: "FW18b: the inline calculator card".
+
+====================================================================
+INCREMENT 6 - mesh, a11y, baselines, size, read-through
+====================================================================
+ - Mesh over all seven guides; capture the clean run.
+ - jest-axe including the new card and the scroll container; keyboard
+   paths; 320 dp on all seven; R148 geometric assertions.
+ - Baselines: expect a large regeneration - R160 touches every chip and
+   increment 5 touches every article. List every file with its reason.
+ - pnpm size; Lighthouse floor still green.
+ - THE READ-THROUGH: all seven, and the chrome.
+ - Commit: "FW18b: mesh, a11y, baselines, read-through".
+
+====================================================================
+OUT OF SCOPE
+====================================================================
+- The comparator (P4, Q54 unresolved). The homepage, /tarifs,
+  /a-propos - FW20. /application - FW20b. Analytics - FW28.
+- Any engine change. Any premium or cost figure.
+- The URSSAF simulator finding: recorded above for FW19b, not built.
+
+====================================================================
+FINAL VERIFICATION
+====================================================================
+pnpm gate && pnpm test:e2e && pnpm test:visual && pnpm test:a11y &&
+pnpm test:runtime
+Green in one run; CI green after the final push.
+
+====================================================================
+REPORT FORMAT - REPORT-FW18b.txt (pure ASCII, committed and pushed)
+====================================================================
+SUMMARY
+PRECONDITIONS    FW18 and FW19 read; CI URL; the CLEISS URL confirmed.
+THE NEW ROWS     What was added to docs/regulatory-sources.md, verbatim
+                 from the operator's pass, with its source and date.
+RED/GREEN LEDGER
+CLAIMS TABLE     Including the keys R158 split.
+THE FOUR TRIGGERS  The paragraph, quoted, and why it is the article's
+                 most valuable.
+PARKED           P5 onward, including the entry superseding P2.
+QUESTIONS CLOSED Q47, Q48, Q49, Q50, Q51, Q52 - each with what was
+                 done.
+MESH, SIZE, BASELINES, TOKENS ADDED, DEVIATIONS,
+NOTICED BUT NOT TOUCHING, QUESTIONS, PUSH PROOF
+
+END OF FW18b PROMPT
