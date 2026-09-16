@@ -517,3 +517,86 @@ test.describe('the hub delivers each entry its own date (R154)', () => {
     );
   });
 });
+
+test.describe("FW18b's two new surfaces, in the served article", () => {
+  const PILLAR = `${GUIDES_PATH}/teletravail-frontalier-40-pourcent`;
+
+  test('the inline card aligns to the prose measure (R148)', async ({ page }) => {
+    // R148, EXTENDED TO THE NEW COMPONENT. The existing geometric assertion
+    // caught the article HEAD sitting 100 px left of its prose, which no
+    // other layer noticed because every element was present and individually
+    // correct. A card dropped into the middle of the prose column is the same
+    // risk in the same place: it is a block-level element inside the grid
+    // track, and getting its width from anywhere but the track would put a
+    // visible step in the left edge of the article.
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(PILLAR);
+    await page.evaluate(() => document.fonts.ready);
+
+    const box = async (selector: string): Promise<{ left: number; width: number }> =>
+      page.locator(selector).first().evaluate((node) => {
+        const rect = node.getBoundingClientRect();
+
+        return { left: Math.round(rect.left), width: Math.round(rect.width) };
+      });
+
+    const prose = await box('[data-article-body] p');
+    const card = await box('[data-guide-inline-cta]');
+
+    expect(card.left, 'the card must start where the prose starts').toBe(prose.left);
+    expect(card.width, 'the card must be the prose measure wide').toBe(prose.width);
+  });
+
+  test('the inline card and the closing card make exactly two, in order', async ({ page }) => {
+    // SPEC 9.5's "twice, counted by POSITION", re-asserted now that the
+    // inline one is a component rather than a link in a sentence. The mesh
+    // counts the source; only a browser can say which comes first.
+    await page.goto(PILLAR);
+
+    const order = await page.evaluate(() => {
+      const links = [...document.querySelectorAll('main a')]
+        .filter((a) => a.getAttribute('href') === '/calculateur-teletravail-frontalier');
+
+      return {
+        count: links.length,
+        inlineFirst:
+          links[0]?.closest('[data-guide-inline-cta]') !== null &&
+          links[1]?.closest('[data-guide-cta]') !== null,
+      };
+    });
+
+    expect(order.count, 'SPEC 9.5 wants exactly two calculator links').toBe(2);
+    expect(order.inlineFirst, 'the inline card must come before the closing card').toBe(true);
+  });
+
+  test('both cards and the table container are reachable by keyboard', async ({ page }) => {
+    // THE KEYBOARD PATH FOR WHAT FW18b ADDED. The scroll container is a tab
+    // stop by design (R159, WCAG 2.1.1) and that is the half most likely to
+    // be got wrong - a region that scrolls and cannot take focus cannot be
+    // moved at all, and one that takes focus without a name is announced as
+    // nothing.
+    await page.goto(`${GUIDES_PATH}/geneve`);
+
+    const reached = await page.evaluate(() => {
+      const focusable = [
+        ...document.querySelectorAll<HTMLElement>(
+          'main a[href], main [tabindex="0"], main button, main summary',
+        ),
+      ];
+
+      return {
+        inlineCard: focusable.some((el) => el.closest('[data-guide-inline-cta]') !== null),
+        closingCard: focusable.some((el) => el.closest('[data-guide-cta]') !== null),
+        scrollRegion: focusable.some((el) => el.getAttribute('role') === 'region'),
+        regionNamed: [...document.querySelectorAll('[role="region"]')].every(
+          (el) => (el.getAttribute('aria-label') ?? '').length > 0,
+        ),
+      };
+    });
+
+    expect(reached.inlineCard, 'the inline card is not keyboard reachable').toBe(true);
+    expect(reached.closingCard, 'the closing card is not keyboard reachable').toBe(true);
+    expect(reached.scrollRegion, 'the table container is not a tab stop').toBe(true);
+    expect(reached.regionNamed, 'a scrollable region with no accessible name').toBe(true);
+  });
+});

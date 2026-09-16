@@ -17,6 +17,36 @@ somebody else made on their behalf, with the alternative and the cost of
 switching, so that reversing one is a deliberate act rather than an
 archaeology exercise.
 
+## WARNING: "P2" MEANS TWO DIFFERENT THINGS IN THIS PRODUCT
+
+There are **two independent registers** both numbering their entries `P<n>`,
+and they disagree on every number they share. Found by FW18b's read-through;
+nothing else could have found it, because each register is internally
+consistent and every test passes.
+
+| | `parking.md` (this file) | `web/lib/content/provisional.ts` |
+|---|---|---|
+| What it holds | decisions taken without the operator | regulatory readings that are not settled |
+| Who reads it | the operator, next morning | **the public**, on `/sources` |
+| P1 | the employer attestation is described, never asserted | the imputation order |
+| P2 | droit-option-lamal-cmu is NOT published *(now superseded)* | 49,9 % versus under-50 |
+| P3 | the declaration guide carries no date, form or procedure | the exact method's cap proration |
+
+**Two published guides cite the OTHER register by number.**
+`jours-de-mission-hors-suisse` sends readers to "la référence P1" and
+`seuil-social-49-9-pourcent` to "la référence P2" — both meaning the
+provisional register, both correct, and both unreadable against the table
+above without this note.
+
+It has already caused one error in this file: FW18b's P6 was first written
+"P6 supersedes P2" with no qualifier, which read against the published
+article says the 49,9 % reading has been superseded. It has not.
+
+**So every cross-reference in this file names its register.** The published
+ids are the expensive ones to change - `readingAnchor` builds `#lecture-P1`,
+and a published anchor is a URL - so if either is renamed it should be this
+one. That is the operator's call and is recorded as P9.
+
 ## The boundary, which is not negotiable
 
 A question is **parked** when it concerns: copy wording; a token value
@@ -88,7 +118,7 @@ TOUCHES:   `web/content/guides/attestation-employeur-teletravail.mdx`
 
 ## P2 - droit-option-lamal-cmu is NOT published  [FW18, 2026-09-16]
 
-SUPERSEDED BY P6 ON 16.09.2026. The article is published. This entry is kept
+SUPERSEDED BY parking P6 ON 16.09.2026. The article is published. This entry is kept
 because the refusal was correct on the record as it stood, and the decision
 below is what made the verification worth doing.
 
@@ -233,7 +263,7 @@ four `droitOption*` entries in `web/lib/content/sources.ts`. If the operator
 read a different page, those are the only edits; the facts and every claim
 citing them are unaffected.
 
-## P6 - the droit d'option guide is published, superseding P2  [FW18b, 2026-09-16]
+## P6 - the droit d'option guide is published, superseding parking P2  [FW18b, 2026-09-16]
 
 QUESTION:  FW18 refused to write this article. Its two load-bearing facts —
 the three-month window and the irrevocability of the choice — had no verified
@@ -263,7 +293,8 @@ TOUCHES:   `web/content/guides/droit-option-lamal-cmu.mdx`, the pillar's
 `web/tests/unit/content/routes.test.ts`, the R119 exemption in
 `web/tests/unit/pages/singletons.test.tsx`, and the guide baselines.
 
-SUPERSEDES: P2. P2 stays in this file rather than being deleted — the refusal
+SUPERSEDES: parking P2 (NOT the published P2, which is the 49,9 % reading
+and is untouched). Parking P2 stays in this file rather than being deleted — the refusal
 was correct on the record as it stood, and a parking file that erases the
 decisions that were later unblocked stops being a record of how the product
 decides.
@@ -324,3 +355,134 @@ TOUCHES:   `web/lib/guides/frontmatter.ts` (the field), the eight articles,
 and `app/(public)/guides/[slug]/page.tsx` if it is ever read again. If the
 operator picks (b), the chip is the only render site and the copy module
 already holds both sentences' worth of decision in one constant.
+
+## P9 - two registers both number their entries P<n>  [FW18b, 2026-09-16]
+
+QUESTION:  `parking.md` and `web/lib/content/provisional.ts` both identify
+their entries as P1, P2, P3 …, and they agree on none of them. The
+provisional ids are **published**: `/sources` renders a section per reading,
+`readingAnchor` builds `#lecture-P1`, and two guides send readers to "la
+référence P1" and "la référence P2" in prose. The parking ids are internal
+and were created later, in FW18, without anybody noticing the collision.
+
+TAKEN:     Neither is renamed, and the disambiguation is a note at the top of
+this file plus a rule that every cross-reference here names its register. The
+collision has already produced one error — FW18b's P6 was written "supersedes
+P2" unqualified, which read against the published article says the 49,9 %
+reading was superseded, and it was not.
+
+Not renaming is the conservative option because the published ids are the
+expensive ones: `#lecture-P1` is an anchor, an anchor is a URL, and SPEC §14
+makes published URLs permanent. Renaming the parking ids is nearly free today
+and gets more expensive with every entry and every report that cites one.
+
+NOT TAKEN: (a) Renaming the parking entries now — to `D<n>` for *decision*,
+say. It is the right end to change and it is not a wording choice: report
+files already committed cite P1 through P8 by number, so a rename makes every
+past report wrong unless it is done with a mapping note. That is the
+operator's call. (b) Renaming the provisional ids, which breaks published
+anchors and needs the 301s SPEC §14 requires. (c) Leaving it undocumented,
+which is how it produced its first error.
+
+TOUCHES:   A rename of the parking side touches this file, `REPORT-FW18.txt`,
+`REPORT-FW19.txt`, `REPORT-NIGHT.txt` and `REPORT-FW18b.txt`, plus the
+comments in `web/tests/unit/content/routes.test.ts` and
+`web/lib/content/provisional.ts` that mention a P-number. No code reads the
+parking ids, so nothing compiles differently and no test changes.
+
+## P10 - typed DERIVATIVES of a RuleSet value sit beside a live expression  [FW18b, 2026-09-16]
+
+QUESTION:  Found by FW18b's read-through, and no layer could have found it.
+Two articles narrate the Genève worked example — 84 télétravail days, 24
+mission days, base 240 — like this:
+
+    Jours de mission crédités : {missionCap}, soit le plafond
+    Jours comptés contre le plafond fiscal : 94 sur une base de {basisDays}
+    Taux déclarable : 39,16 %
+    Jours imposables en France : 14
+
+`{missionCap}` is live, from RuleSet. **94, 39,16 and 14 are hand-computed
+from it** — 84 + 10, 94 ÷ 240, 24 − 10. Move the cap to 12 and the expression
+updates while the three derivatives do not, and the passage reads "seuls 12
+sont crédités, et les 14 autres deviennent imposables" — a sentence that
+contradicts itself in the same breath.
+
+R147's scan cannot see any of it: it looks for the figures themselves —
+`10 jours`, `240 jours`, `40 %` — and a derivative matches none of its
+patterns. This is the same failure one level down.
+
+TAKEN:     Nothing changed, and the question is recorded. Both readings are
+defensible and choosing between them is a rule, not a wording:
+
+  (a) The whole block is a CITATION of an example the Genève administration
+      published. Every number in it is the source's, including the cap that
+      produced it — so `{missionCap}` is the intruder and should be the
+      literal the source printed. R158's reasoning, applied to a figure.
+
+  (b) The block is an ILLUSTRATION of the product's own engine, so every
+      number should be an expression and none typed — which needs the scope
+      to carry derived values, not just constants.
+
+Recording rather than choosing is the conservative option because either
+choice is a precedent for every future worked example, and today's text is
+CORRECT: the cap is 10, and 94, 39,16 and 14 are right.
+
+NOT TAKEN: Picking (a) because it is the smaller edit. It replaces one
+expression with a literal in two articles and would look tidy, and it decides
+by convenience the question of whether a cited example is a quotation or a
+demonstration — which is exactly the shape of decision R156 says to park.
+
+TOUCHES:   `web/content/guides/geneve.mdx` and
+`web/content/guides/jours-de-mission-hors-suisse.mdx` (the narration under
+each table); under (b) also `web/lib/guides/scope.ts`. The figures inside the
+`<DataGrid>` itself are already settled — R158 gave them the key
+`genevaWorkedExamples` and they are the administration's, not ours.
+
+NOTE:      The engine is not affected either way. SPEC 7.5's Genève fixtures
+are what pin 39,16 % and 4,16 %, and they pass. This is about PROSE that
+narrates the fixtures going stale while the fixtures themselves do not.
+
+## P11 - /sources hides its status column on a 1440 desktop  [FW18b, 2026-09-16]
+
+QUESTION:  Found by FW18b's read-through, by cropping the regenerated
+baseline and reading it (R135). The regulatory table on `/sources` sits in
+the 616 px article measure, and its intrinsic width is 665 px. Measured:
+
+    viewport   container   table   status column right edge   page overflow
+    1440       616         665     49 px outside the container   0
+    1280       616         665     49 px outside the container   0
+     390       350         665    315 px outside the container   0
+
+The page never scrolls sideways — `.tableScroll` absorbs it, which is
+exactly R159's rule working. The cost lands entirely on the LAST column,
+which is the status: a reader on a 1440 screen with 824 px of unused viewport
+sees every rule, value, source and date, and a chip clipped mid-word to
+"Trans" and "En att".
+
+It matters more since this task. R160 made every guide's chip read
+« Relecture experte : en attente » and LINK HERE, so `/sources` is now the
+page that answers "what is verified" — and the column carrying that answer
+is the one off-screen by default.
+
+IT PREDATES FW18b. `sources.module.scss` already records the same shape:
+"container is 616 px wide, so the table overflowed by 64 px and clipped the
+…". FW18b's four droit d'option rows made the table denser, not wider.
+
+TAKEN:     Recorded, not fixed. The fix is a container width — the section
+could take the `public` measure instead of `article` on wide screens, which
+needs no new token and is one prop — but which measure a reference table gets
+is a layout decision on a page FW20 is scheduled to rewrite, and taking it
+here would move every `/sources` baseline again for a reason outside this
+task.
+
+NOT TAKEN: (a) Widening it now. Small, reversible, and still a layout choice
+made in passing on somebody else's increment. (b) Dropping or shortening the
+status column so it fits — that trades the reader's access to the status for
+a tidier default, on the one page whose job is to disclose status. (c)
+Treating the measured 0 px of page overflow as the whole answer: it is the
+correct result of the rule and says nothing about whether a reader can see
+the column.
+
+TOUCHES:   `web/app/(public)/sources/page.tsx` (the Container width on the
+table section), `web/app/(public)/sources/sources.module.scss`, and the two
+`page-sources-*` baselines.

@@ -20,41 +20,62 @@
 // cannot be hidden by a capture that widens.
 
 import { expect, test } from '@playwright/test';
+import { GUIDES_PATH, publishedGuides } from '../lib/guides/registry';
 
 const NARROW = { width: 320, height: 720 };
 
-const ROUTES = [
+const FIXED = [
   ['the hub', '/guides'],
   ['the article', '/guides/fixture-modele-article'],
-
-  // THE THREE REAL ARTICLES, FW17, and adding them was not a formality: both
-  // comparison tables failed here the first time they were written. FD13
-  // draws the pillar's as three columns of French sentences, which comes to
-  // 334 px inside a 320 dp viewport and cannot be styled narrower - a table's
-  // min-content width is its longest words plus its padding. The social
-  // cluster's three-column form missed by two pixels, which is the same
-  // defect and easier to wave away.
-  //
-  // The fixture could never have caught it: it contains no table, no summary
-  // block and no banner. This is the R140 shape again - the guard was on the
-  // template, and the CONTENT is what has the fixed widths.
-  ['the pillar', '/guides/teletravail-frontalier-40-pourcent'],
-  ['the social cluster', '/guides/seuil-social-49-9-pourcent'],
-  ['the mission cluster', '/guides/jours-de-mission-hors-suisse'],
-
-  // GENEVE AND THE DROIT D'OPTION, added at FW18b, and Geneve is the omission
-  // worth naming: FW18 gave it the product's widest table - the only six-row
-  // DataGrid - and did not add it to this census. The article most likely to
-  // overflow at 320 was the one article not checked at 320. FW18b's R159
-  // container is what makes a wide table safe, so the two arrive together.
-  ['geneve', '/guides/geneve'],
-  // Named by slug, like 'geneve' above, because R126's guard refuses a French
-  // elision apostrophe outside lib/fr - and a test label is not an exception
-  // to that rule, it is just a place the rule happened to reach.
-  ['droit-option', '/guides/droit-option-lamal-cmu'],
 ] as const;
 
+/**
+ * EVERY PUBLISHED ARTICLE, DERIVED, and FW18b derived it after finding the
+ * hole a hand-kept list had already grown.
+ *
+ * THE REAL ARTICLES ARE WHY THIS CHECK EXISTS AT ALL. Both of FW17's
+ * comparison tables failed here the first time they were written: FD13 draws
+ * the pillar's as three columns of French sentences, which comes to 334 px
+ * inside a 320 dp viewport, and the social cluster's missed by two pixels -
+ * the same defect and easier to wave away. The fixture could never have
+ * caught either; it has no table, no summary block and no banner. That is the
+ * R140 shape - the guard was on the template, and the CONTENT is what carries
+ * the fixed widths.
+ *
+ * FW17 listed its three articles here by hand and the list was right. FW18
+ * then added four more and put none of them in it - so at FW18b the census
+ * covered three of seven, and the two it missed included GENEVE, which
+ * carries the product's only six-row DataGrid and is therefore the article
+ * most likely to overflow. The article most likely to fail this check was
+ * one of the articles not running it.
+ *
+ * DERIVING IS THE RIGHT CHOICE HERE AND THE WRONG ONE IN
+ * tests/unit/content/routes.test.ts, which hardcodes its list on purpose and
+ * says so. The difference is what each is asserting. That test asks "is the
+ * registry's content what we intend", and deriving would make it agree with
+ * whatever the registry says. This one asks "does every article survive 320
+ * dp", and the set of articles is not the claim - it is the input. A list
+ * that can fall behind the content directory is a check that silently stops
+ * covering what it is for.
+ */
+const ARTICLES = publishedGuides().map(
+  (guide) => [guide.frontmatter.slug, `${GUIDES_PATH}/${guide.frontmatter.slug}`] as const,
+);
+
+const ROUTES = [...FIXED, ...ARTICLES] as const;
+
 test.use({ viewport: NARROW });
+
+test('the derived list found the articles, so the loop below is not empty', () => {
+  // THE COST OF DERIVING, PAID HERE. A hand-kept list goes stale loudly - the
+  // entries are visible and wrong. A derived one goes stale SILENTLY: if
+  // publishedGuides() returned nothing, the loop would generate zero tests
+  // and this file would pass in a fraction of a second having checked
+  // nothing. That is the failure mode R154 names, arriving through the fix
+  // for a different one.
+  expect(ARTICLES.length, 'publishedGuides() returned nothing').toBeGreaterThanOrEqual(7);
+  expect(ARTICLES.map(([, route]) => route)).toContain('/guides/geneve');
+});
 
 for (const [what, route] of ROUTES) {
   test(`${what} does not scroll sideways at 320 dp (R127)`, async ({ page }) => {

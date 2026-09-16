@@ -41,6 +41,8 @@ import { MDX_OPTIONS } from '@/lib/guides/mdx-options';
 import { guideScope } from '@/lib/guides/scope';
 import { Faq } from '@/lib/ui/react/Faq/Faq';
 import { GuideCta } from '@/lib/ui/react/GuideCta/GuideCta';
+import { GuideInlineCta } from '@/lib/ui/react/GuideInlineCta/GuideInlineCta';
+import { DataGrid } from '@/lib/ui/react/DataGrid/DataGrid';
 import { PublicShell } from '@/lib/ui/react/PublicShell/PublicShell';
 import { TableOfContents } from '@/lib/ui/react/TableOfContents/TableOfContents';
 
@@ -78,6 +80,37 @@ function ArticleParts() {
             ),
           )}
         </div>
+
+        {/*
+          FW18b'S TWO NEW SURFACES, both of which axe has something to say
+          about and neither of which the fixture contains.
+
+          THE INLINE CARD is an aside with a link in it, mid-article, and the
+          question axe answers is whether a second call to action with the
+          same accessible name as the closing card's reads as a duplicate or
+          as a repetition of one offer.
+
+          THE SCROLL CONTAINER is the one that had to be checked: R159 makes
+          it tabbable and gives it role="region" with a name, which is three
+          separate things axe can object to - a focusable element with no
+          accessible name, a landmark without one, and duplicated landmark
+          names if two tables ever shared a caption. A table is therefore
+          rendered here even though the fixture has none.
+        */}
+        <GuideInlineCta />
+
+        <DataGrid
+          caption="Six années comparées"
+          columns={[
+            { key: 'cas', header: 'Cas' },
+            { key: 'taux', header: 'Taux déclarable', numeric: true },
+          ]}
+          rows={[
+            { key: 'a', cells: { cas: '72 jours, aucune mission', taux: '30,00 %' } },
+            { key: 'b', cells: { cas: '84 jours, 24 de mission', taux: '39,16 %' } },
+          ]}
+          total={{ key: 'total', cells: { cas: 'Moyenne', taux: '34,58 %' } }}
+        />
 
         <Faq heading={GUIDES_COPY.faqHeading} entries={faq} />
         <GuideCta />
