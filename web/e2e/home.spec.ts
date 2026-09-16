@@ -91,27 +91,6 @@ test('exactly one h1 on the page', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
 });
 
-test('figures are set in tabular numerals', async ({ page }) => {
-  await page.goto('/');
-  const figure = page.getByTestId('tabular-proof');
-
-  // Both properties are asserted on purpose. font-variant-numeric does not
-  // populate font-feature-settings, so checking only the modern property
-  // would leave the OpenType feature unverified - which is the thing AC1
-  // actually asks about.
-  const featureSettings = await figure.evaluate(
-    (el) => getComputedStyle(el).fontFeatureSettings,
-  );
-  const variantNumeric = await figure.evaluate(
-    (el) => getComputedStyle(el).fontVariantNumeric,
-  );
-  const fontFamily = await figure.evaluate((el) => getComputedStyle(el).fontFamily);
-
-  expect(featureSettings).toContain('tnum');
-  expect(variantNumeric).toContain('tabular-nums');
-  expect(fontFamily).toContain('Inter Variable');
-});
-
 test('the Inter subset is actually served and loaded, not just declared', async ({
   page,
 }) => {

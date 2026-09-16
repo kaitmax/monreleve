@@ -46,6 +46,41 @@ export const HOME_COPY = {
     'frontalier calcule votre part de télétravail annuelle et le nombre de jours ' +
     "qu’il vous reste avant les deux seuils qui comptent : celui de l’imposition " +
     'et celui de la sécurité sociale.',
+
+  /**
+   * THE HOME PAGE'S ONE JOB (todo.md): "route to the calculator or the
+   * guides", with no hero theatre.
+   *
+   * TWO DOORS, NOT A FUNNEL. A reader arrives either knowing what they need
+   * to compute or not knowing what the rules are, and those want different
+   * pages. A single call to action sends the second group into a form they
+   * cannot fill.
+   *
+   * EACH ONE SAYS WHAT IS BEHIND IT AND WHAT IT COSTS IN TIME, because the
+   * decision being made here is which of two things to spend the next
+   * minute on. "En savoir plus" tells a reader nothing.
+   *
+   * NO FIGURE (R147), and none is wanted: naming the thresholds is the
+   * guides' job and quoting them here would be a third place they live.
+   */
+  doors: [
+    {
+      href: '/calculateur-teletravail-frontalier',
+      label: 'Calculer mes jours',
+      body:
+        'Vous savez combien de jours vous avez télétravaillé. Le calculateur ' +
+        'vous dit où vous en êtes des deux seuils et combien de jours il vous ' +
+        'reste. Une minute, sans inscription.',
+    },
+    {
+      href: '/guides',
+      label: 'Comprendre les règles',
+      body:
+        'Sept guides sur le plafond fiscal, le seuil social, les jours de ' +
+        'mission, le droit d’option et le cas genevois. Chaque règle citée ' +
+        'renvoie à son texte d’origine.',
+    },
+  ],
 } as const;
 
 /**

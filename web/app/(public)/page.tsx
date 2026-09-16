@@ -19,7 +19,8 @@
 
 import type { Metadata } from 'next';
 import { HOME_COPY } from '@/lib/fr';
-import { formatDays } from '@/lib/ui/core/format/number';
+import { Container } from '@/lib/ui/react/Container/Container';
+import styles from './home.module.scss';
 import { currentTaxYear } from '@/lib/content/tax-year';
 import { guideScope } from '@/lib/guides/scope';
 
@@ -44,22 +45,40 @@ export function generateMetadata(): Metadata {
   return { description: HOME_COPY.description(fiscal, social) };
 }
 
-// Through formatDays rather than quoted. lib/fr used to carry the rendered
-// string with a hand-typed U+202F in it, which made a second producer of the
-// one codepoint SPEC 6.4 mandates, sitting beside the formatter that is
-// supposed to be the only one.
-const TABULAR_PROOF_DAYS = 1234.5;
+// FW1 AC1's TABULAR-NUMERAL PROOF MOVED TO /dev/composants, and it was
+// visible here. The home page rendered a bare "1 234,5" between the intro and
+// the footer - a test artifact on the product's front door, shipped since FW1
+// and photographed by every accueil baseline since. FW20 found it by cropping
+// one and reading it (R135).
+//
+// The proof still exists and still runs: AC1 asks that tabular numerals be
+// verified ON A FIGURE, and the workbench is where component proofs belong.
+// Both suites already visit it.
 
 export default function HomePage() {
   return (
-    <main>
-      <h1>{HOME_COPY.heading}</h1>
-      <p>{HOME_COPY.intro}</p>
+    <main className={styles.page}>
+      <Container width="public">
+        <h1 className={styles.title}>{HOME_COPY.heading}</h1>
+        <p className={styles.intro}>{HOME_COPY.intro}</p>
 
-      {/* FW1 AC1's tabular-numeral proof. See the module comment. */}
-      <figure className="u-tnum" data-testid="tabular-proof">
-        {formatDays(TABULAR_PROOF_DAYS)}
-      </figure>
+        {/*
+          THE PAGE'S ONE JOB: route to the calculator or the guides. todo.md
+          says "no hero theatre", and two equal doors is what that leaves -
+          neither recommended, because a reader who does not yet know the
+          rules cannot use the calculator and should not be pushed at it.
+        */}
+        <ul className={styles.doors}>
+          {HOME_COPY.doors.map((door) => (
+            <li className={styles.door} key={door.href}>
+              <p className={styles.doorLabel}>
+                <a href={door.href}>{door.label}</a>
+              </p>
+              <p className={styles.doorBody}>{door.body}</p>
+            </li>
+          ))}
+        </ul>
+      </Container>
     </main>
   );
 }

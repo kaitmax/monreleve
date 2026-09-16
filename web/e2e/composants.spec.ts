@@ -261,3 +261,34 @@ test.describe('no horizontal scroll at the narrowest supported width', () => {
     expect(clearance, 'the header row sits inside FD2 8 px gutter margin').toBeGreaterThanOrEqual(8);
   });
 });
+
+test('the Inter subset renders with tabular numerals (FW1 AC1)', async ({ page }) => {
+  // MOVED FROM e2e/home.spec.ts BY FW20, with the figure it asserts on. The
+  // proof rendered a bare "1 234,5" on the product's front door for nineteen
+  // tasks; the assertion is unchanged, the page it runs against is not.
+  //
+  // IT IS NOT A DUPLICATE OF THE AC3 TEST ABOVE. That one checks the two
+  // rates inside a specimen carry tnum; this one checks the FONT ITSELF is
+  // Inter Variable, which is the half AC1 is actually about and which no
+  // other assertion makes.
+  await goToServedPage(page, '/dev/composants');
+
+  const figure = page.getByTestId('tabular-proof');
+
+  // Both properties on purpose. font-variant-numeric does not populate
+  // font-feature-settings, so checking only the modern property would leave
+  // the OpenType feature unverified - the thing AC1 actually asks about.
+  const applied = await figure.evaluate((el) => {
+    const style = getComputedStyle(el);
+
+    return {
+      features: style.fontFeatureSettings,
+      variant: style.fontVariantNumeric,
+      family: style.fontFamily,
+    };
+  });
+
+  expect(applied.features).toContain('tnum');
+  expect(applied.variant).toContain('tabular-nums');
+  expect(applied.family).toContain('Inter Variable');
+});

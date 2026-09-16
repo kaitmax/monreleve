@@ -755,6 +755,11 @@ describe('every colour rule in the five stylesheets, at the bar its size implies
       .sort();
 
     expect(nested).toEqual([
+      // FW20: the home page routes with two cards, and both text rules sit
+      // on the fill .door paints. They arrived here the same way the notice
+      // rules did - by failing this assertion rather than by being noticed.
+      '(public)/home .doorBody -> --colour-surface',
+      '(public)/home .doorLabel -> --colour-surface',
       // FW13 added the link notice, whose three text rules sit on the fill
       // it paints. They arrived here by FAILING this assertion, which is
       // what naming the set is for: the derived scan found them without

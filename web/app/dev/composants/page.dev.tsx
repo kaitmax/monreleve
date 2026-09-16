@@ -107,6 +107,25 @@ export default function WorkbenchPage() {
   return (
     <main className={styles.page}>
       <h1>{WORKBENCH_TITLE}</h1>
+
+      {/*
+        FW1 AC1's TABULAR-NUMERAL PROOF, moved here by FW20.
+
+        It lived on the home page, where it rendered a bare "1 234,5" between
+        the intro and the footer - a test artifact on the product's front
+        door, shipped since FW1 and photographed by every accueil baseline
+        since. Nothing objected: it was a valid figure, correctly formatted,
+        and no assertion was about whether a reader should see it.
+
+        AC1 asks that tabular numerals be verified ON A FIGURE, which this
+        still is, and a workbench is where a component proof belongs. Through
+        formatDays rather than quoted, because lib/fr once carried the
+        rendered string with a hand-typed U+202F in it - a second producer of
+        the one codepoint SPEC 6.4 mandates.
+      */}
+      <figure className="u-tnum" data-testid="tabular-proof">
+        {formatDays(1234.5)}
+      </figure>
       <p className={styles.intro}>{WORKBENCH.intro}</p>
 
       <section className={styles.section}>
