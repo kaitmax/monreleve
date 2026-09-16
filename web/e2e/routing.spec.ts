@@ -73,8 +73,24 @@ test.describe('sitemap.xml', () => {
     const body = await request.get('/sitemap.xml').then((r) => r.text());
     const planned = PUBLIC_ROUTES.filter((route) => route.status === 'planned');
 
-    // Non-vacuous: there really are planned routes to be absent.
-    expect(planned.length).toBeGreaterThan(5);
+    // NON-VACUOUS, AND NAMED RATHER THAN COUNTED. This was
+    // toBeGreaterThan(5) in two files - here and in
+    // tests/unit/content/routes.test.ts - and FW18b's flip of
+    // /guides/droit-option-lamal-cmu to live took the count from six to five
+    // and turned both red. The unit copy was found first and fixed; this one
+    // was found by the gate, four minutes into test:e2e, which is the reason
+    // R132 selects e2e from the diff rather than from judgement.
+    //
+    // A floor that has to be lowered every time a page ships gets lowered
+    // until it guards nothing. The set says which five, so shipping one is an
+    // edit that names it.
+    expect(planned.map((route) => route.path).sort()).toEqual([
+      '/a-propos',
+      '/application',
+      '/calculateur-lamal-cmu',
+      '/releve-annuel',
+      '/tarifs',
+    ]);
 
     for (const route of planned) {
       expect(body, route.path).not.toContain(`<loc>${ORIGIN}${route.path}</loc>`);

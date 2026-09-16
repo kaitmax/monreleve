@@ -279,6 +279,56 @@ flatly or omitted.
   a correct description of the consequence and an honest note that their
   canton's membership is pending.
 
+## THE DROIT D'OPTION LAMAL/CMU — VERIFIED 16.09.2026
+
+> **A SEPARATE SUBJECT AND A SEPARATE SOURCE.** These are not `RuleSet`
+> constants and they have no row in the table above: nothing here concerns
+> telework, the fiscal ceiling or the engine. They are recorded in this file
+> because it is the product's register of regulatory facts, and an article
+> may only cite what this file carries (R146).
+
+**Source: CLEISS** — Centre des Liaisons Européennes et Internationales de
+Sécurité Sociale, a French public body. An authority, not an advisory site.
+
+https://www.cleiss.fr/faq/droit_d_option_des_frontaliers_france-suisse.html
+
+> **THE URL IS PENDING THE OPERATOR'S CONFIRMATION, the content is not.** The
+> operator performed this pass and reported its content; the URL above was
+> located afterwards and its published content matches the pass on every
+> checkable point. The row cites the body with certainty and the page
+> provisionally — see **P5** in `parking.md`. A citation is itself a claim and
+> inherits this file's standard.
+
+| # | Fact | Content | Verified |
+|---|---|---|---|
+| D1 | *The window* | **Three months.** | ☑ CLEISS, 16.09.2026 |
+| D2 | *What starts it* | The three months run from **any of four events**: taking up work in Switzerland; resuming work after a period of unemployment; taking up residence in France; moving from worker to pensioner status | ☑ CLEISS, 16.09.2026 |
+| D3 | *Irrevocability* | The right may be exercised **once** and is **irrevocable** | ☑ CLEISS, 16.09.2026 |
+| D4 | *What reopens it* | Only a change of situation: resuming work in Switzerland, transferring residence to France, or retiring on a Swiss pension alone | ☑ CLEISS, 16.09.2026 |
+| D5 | *What does NOT reopen it* | Named explicitly by CLEISS: marriage, divorce, a birth or a death in the family, or changing jobs **without an unemployment gap** between them | ☑ CLEISS, 16.09.2026 |
+| D6 | *The default* | Failing to opt within three months means **automatic affiliation in Switzerland** | ☑ CLEISS, 16.09.2026 |
+| D7 | *Legal basis* | The ALCP, in force 1 June 2002; Regulation (CE) 883/2004 applicable between Switzerland and the EU since 1 April 2012; the modalities from the accord of 7 July 2016 | ☑ CLEISS, 16.09.2026 |
+
+### Why D2 is the one that matters
+
+**Every advisor writes "three months from hiring", and that is wrong** for a
+frontalier who was already working in Switzerland and then moves to France.
+Their window opens on the move, not on a hiring that may be years past. D2 is
+the reason this subject was worth verifying rather than paraphrasing, and it
+is the most valuable paragraph in the guide that cites it.
+
+### What this unblocks, and what it does not
+
+**Unblocked:** `/guides/droit-option-lamal-cmu`, refused in FW18 as P2
+precisely because D1 and D3 had no source.
+
+**Still blocked:** the comparator at `/calculateur-lamal-cmu` (P4). Its other
+half is the LAMal premium data, whose licence could not be read — see Q54.
+Note for whoever returns to it: **URSSAF publishes an official simulator for
+the CMU contribution and CLEISS links it**, so the comparator never needed to
+compute the French side. That changes R157's arithmetic and should be weighed
+before any premium dataset is pursued.
+
 ## COPY ITEMS FOR THE REVIEWER
 
 Wording the reviewer must confirm, kept separate from the readings above

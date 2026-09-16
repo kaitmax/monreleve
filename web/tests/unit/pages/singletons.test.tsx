@@ -220,6 +220,7 @@ const COUNTED_IN_E2E: readonly string[] = [
   '/guides/attestation-employeur-teletravail',
   '/guides/declaration-impots-frontalier',
   '/guides/geneve',
+  '/guides/droit-option-lamal-cmu',
 ];
 
 describe('the census covers every live public route (R119)', () => {

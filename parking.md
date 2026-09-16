@@ -88,6 +88,10 @@ TOUCHES:   `web/content/guides/attestation-employeur-teletravail.mdx`
 
 ## P2 - droit-option-lamal-cmu is NOT published  [FW18, 2026-09-16]
 
+SUPERSEDED BY P6 ON 16.09.2026. The article is published. This entry is kept
+because the refusal was correct on the record as it stood, and the decision
+below is what made the verification worth doing.
+
 QUESTION:  The article's two load-bearing facts are the three-month window
 and that the choice is irrevocable. Neither appears anywhere in
 `docs/regulatory-sources.md` — the file has no entry for LAMal, CMU, the
@@ -199,3 +203,94 @@ premium data AND for the droit d'option window and irrevocability; then
 `status: 'live'` in `web/lib/content/routes.ts`, the sitemap census in
 `web/tests/unit/content/routes.test.ts`, the R119 census in
 `web/tests/unit/pages/singletons.test.tsx`, and new baselines at 1440/390.
+
+## P5 - the CLEISS URL is cited pending the operator's confirmation  [FW18b, 2026-09-16]
+
+QUESTION:  The operator performed the droit d'option verification and reported
+its content, naming CLEISS as the body. The prompt asks that the URL be
+confirmed with them before the row is written; they were not in the loop when
+the task ran.
+
+TAKEN:     The row cites the body with certainty and the page provisionally.
+`https://www.cleiss.fr/faq/droit_d_option_des_frontaliers_france-suisse.html`
+was located by search after the pass, and its published content matches the
+pass on every checkable point — three months, default affiliation in
+Switzerland, exercised once and irrevocable, and the same three reopeners.
+`docs/regulatory-sources.md` says so in a note above the table, so the file
+records what is certain and what is not. Reversible at near-zero cost: the URL
+is one string in a data file and one line in the document; no slug, anchor or
+published link depends on it.
+
+NOT TAKEN: (a) Stopping the task until the URL could be confirmed — R156 says
+an open question does not stop the task, and the facts themselves are not in
+doubt. (b) Citing only "CLEISS" with no URL, which would make the row
+unfollowable for a reader and defeat the point of `/sources`. (c) Asserting
+the URL silently, which would be a claim about provenance with no basis — the
+same standard R146 sets for the facts themselves.
+
+TOUCHES:   `docs/regulatory-sources.md` (the note and the source line) and the
+four `droitOption*` entries in `web/lib/content/sources.ts`. If the operator
+read a different page, those are the only edits; the facts and every claim
+citing them are unaffected.
+
+## P6 - the droit d'option guide is published, superseding P2  [FW18b, 2026-09-16]
+
+QUESTION:  FW18 refused to write this article. Its two load-bearing facts —
+the three-month window and the irrevocability of the choice — had no verified
+row in `docs/regulatory-sources.md`, and SPEC 22 lists the three-month figure
+among those "compiled from advisory and news sources". P2 recorded the refusal
+and named what would unblock it: a verified row for each fact.
+
+TAKEN:     Written and published. The operator read CLEISS — the French public
+body responsible for the coordination of cross-border social security, an
+authority rather than an advisor — and `docs/regulatory-sources.md` carries
+the result as rows D1 to D7. Four source keys back four claims, every
+regulatory sentence in the article cites one of them, and none is hedged:
+R146 case (a) applies, so the article states the facts plainly. The article
+also says the thing every advisory page gets wrong — that the window opens on
+any of four events and not on the hiring alone — which is the reason it is
+worth more than the dozen pages already ranking for the term.
+
+NOT TAKEN: (a) Publishing it in FW18 with hedges, which is what P2 refused and
+still refuses: a hedge on a three-month irrevocable deadline is worse than
+silence, because a reader who acts on a hedged deadline has still missed it.
+(b) Waiting for a second source to corroborate CLEISS. CLEISS is the body, not
+a commentator on the body; a second source would be a page quoting it.
+
+TOUCHES:   `web/content/guides/droit-option-lamal-cmu.mdx`, the pillar's
+`related` and its forward link, `status: 'live'` in
+`web/lib/content/routes.ts`, the sitemap census and the planned-route set in
+`web/tests/unit/content/routes.test.ts`, the R119 exemption in
+`web/tests/unit/pages/singletons.test.tsx`, and the guide baselines.
+
+SUPERSEDES: P2. P2 stays in this file rather than being deleted — the refusal
+was correct on the record as it stood, and a parking file that erases the
+decisions that were later unblocked stops being a record of how the product
+decides.
+
+## P7 - the article does not link /calculateur-lamal-cmu  [FW18b, 2026-09-16]
+
+QUESTION:  The comparator is the natural next step for a reader who has just
+learned that the choice is irrevocable, and SPEC 9.6 names the page. It is
+`status: 'planned'` — FW19 reached R157 option (3) and built no UI, because
+the premium data is unlicensed and a comparator that invents a number is
+worse than no comparator.
+
+TAKEN:     No anchor and no mention. R85 forbids linking a planned route, so
+the only question was whether to name the tool in prose and tell the reader to
+wait. The article does not: a promise of a page that does not exist is a
+second thing for the reader to remember and the product to owe. Instead the
+section that would have carried the link says what drives the cost on each
+side — canton, age, franchise and insurance model in Switzerland, income in
+France — and states that no simple rule decides between them. That paragraph
+is true whether or not the comparator is ever built.
+
+NOT TAKEN: (a) Linking it anyway, which R85 forbids and which would put a 404
+on a live page. (b) "Un comparateur arrive prochainement", which dates the
+page the moment the plan changes. (c) Linking the URSSAF simulator as a
+substitute: it computes the French side only, and a reader on a page about
+choosing between two systems who is handed one side's figure has been given
+half a comparison with nothing saying so.
+
+TOUCHES:   One section of `web/content/guides/droit-option-lamal-cmu.mdx`. If
+FW-whichever builds the comparator, this is where its link goes.

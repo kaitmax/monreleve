@@ -145,7 +145,7 @@ describe('the whitespace codepoints in French copy are on the record (R66)', () 
     expect(summary, summary.join(' | ')).toEqual([]);
   });
 
-  it('carries exactly the 39 the typography pass put there', () => {
+  it('carries exactly the 40 the typography pass put there', () => {
     // A count, so that a no-break space arriving or disappearing is a
     // deliberate edit here rather than a silent one. Per file, because a
     // total alone would let one move between files unnoticed.
@@ -159,10 +159,14 @@ describe('the whitespace codepoints in French copy are on the record (R66)', () 
       'lib/fr/errors.ts': 2,
       'lib/fr/index.ts': 4,
       'lib/fr/shell.ts': 2,
+      // FW18b: one, in the droit d’option window's description -
+      // "Delai pour choisir son systeme d’assurance maladie" sets a
+      // no-break space before its colon like every other French label here.
+      'lib/fr/sources.ts': 1,
       'lib/fr/spike.ts': 7,
       'lib/fr/statuses.ts': 2,
     });
-    expect(occurrences).toHaveLength(39);
+    expect(occurrences).toHaveLength(40);
   });
 
   it('puts every one of them immediately before : ; ? ! or %', () => {

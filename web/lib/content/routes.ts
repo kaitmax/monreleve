@@ -165,7 +165,7 @@ export const PUBLIC_ROUTES: readonly PublicRoute[] = [
   },
   {
     path: '/guides/droit-option-lamal-cmu',
-    status: 'planned',
+    status: 'live',
     task: 'FW18',
     changeFrequency: 'monthly',
     priority: 0.7,

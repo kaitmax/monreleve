@@ -62,7 +62,11 @@ describe('the key universe is the product registry, not a list kept here', () =>
     // NON-VACUITY WITH TEETH: if a future pass verified the two pending rows,
     // this fails and whoever did it updates the guides' hedging in the same
     // change. The numbers are the record of 09.09.2026, not a preference.
-    expect(VERIFIED.size).toBe(6);
+    // TWELVE VERIFIED SINCE FW18b: the original six, plus the two R158 split
+    // out of missionCapDays and the four from the CLEISS pass. UNRESOLVED is
+    // UNCHANGED at five - rows 6 and 7 plus P1-P3 - which is the half worth
+    // asserting: adding verified facts must not quietly resolve a pending one.
+    expect(VERIFIED.size).toBe(12);
     expect(UNRESOLVED.size).toBe(5);
     expect([...UNRESOLVED].sort()).toEqual(
       ['P1', 'P2', 'P3', 'dayClassification', 'residence1983Cantons'].sort(),

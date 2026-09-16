@@ -128,7 +128,7 @@ describe('the sitemap lists what exists and nothing else', () => {
     expect([...sitemapPaths()].sort()).toEqual([...liveRoutes().map((r) => r.path)].sort());
   });
 
-  it('lists the fourteen routes that exist and may be seen today', () => {
+  it('lists the fifteen routes that exist and may be seen today', () => {
     // FOUR UNTIL FW11, five with the calculator, six with /sources. The
     // calculator joined when its page was built AND the Checkpoint A review
     // was recorded - two independent conditions, both of which had to be
@@ -156,6 +156,15 @@ describe('the sitemap lists what exists and nothing else', () => {
     // planned lists a page every link leaves, and live articles under a
     // planned hub have one way in.
     //
+    // /guides/droit-option-lamal-cmu JOINED AT FW18b, and late. FW18 wrote
+    // the other three and REFUSED this one: its two load-bearing facts - the
+    // three-month window and the irrevocability - had no verified row, and
+    // SPEC 22 listed the figure among those compiled from advisory sources.
+    // It was parked as P2. The operator then read CLEISS, a French public
+    // body, and docs/regulatory-sources.md carries the result as rows D1-D7,
+    // so the article could be written from sources rather than from memory.
+    // P6 supersedes P2. The delay is the mechanism working.
+    //
     // THE LIST IS ALSO CHECKED AGAINST THE DISK. app/sitemap.xml/route.ts
     // emits a live guide route only when its article exists in
     // content/guides, and tests/unit/guides/hub.test.ts refuses a live guide
@@ -173,6 +182,7 @@ describe('the sitemap lists what exists and nothing else', () => {
       '/guides',
       '/guides/attestation-employeur-teletravail',
       '/guides/declaration-impots-frontalier',
+      '/guides/droit-option-lamal-cmu',
       '/guides/geneve',
       '/guides/jours-de-mission-hors-suisse',
       '/guides/seuil-social-49-9-pourcent',
@@ -187,7 +197,19 @@ describe('the sitemap lists what exists and nothing else', () => {
     // there, and it is well-formed XML, so nothing else objects.
     const planned = PUBLIC_ROUTES.filter((route) => route.status === 'planned').map((r) => r.path);
 
-    expect(planned.length).toBeGreaterThan(5);
+    // HARDCODED RATHER THAN A FLOOR. It was toBeGreaterThan(5) - a
+    // non-vacuity guard - and FW18b's flip of /guides/droit-option-lamal-cmu
+    // took the count from six to five and turned the guard red. A floor that
+    // has to be lowered every time a page ships is a floor that will one day
+    // be lowered to nothing; the set below says which five, so shipping one
+    // is an edit that names it.
+    expect([...planned].sort()).toEqual([
+      '/a-propos',
+      '/application',
+      '/calculateur-lamal-cmu',
+      '/releve-annuel',
+      '/tarifs',
+    ]);
     for (const path of planned) {
       expect(sitemapPaths(), path).not.toContain(path);
     }

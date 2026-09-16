@@ -55,6 +55,20 @@ const STATES: readonly VisualState[] = [
   // structurally a subset of the attestation guide's shape.
   { id: 'attestation', route: '/guides/attestation-employeur-teletravail' },
   { id: 'geneve', route: '/guides/geneve' },
+
+  // FW18b's droit d'option guide gets NO STATE, and that is a decision rather
+  // than an oversight. The selection rule this list has followed since FW17 is
+  // "photograph what no existing baseline contains": the pillar for every kit
+  // element once, the mission cluster for a table beside two banners, the
+  // attestation guide for stacked Avertissements, Geneve for a six-row
+  // DataGrid. The droit d'option article is an Encadre, one Avertissement and
+  // bullet lists - each already photographed, in the same column, at the same
+  // widths. A seventh picture of the same decisions costs two baselines to
+  // review on every regeneration and catches nothing the six do not.
+  //
+  // IT IS NOT UNPHOTOGRAPHED. The hub baseline carries its card, and its
+  // prose is asserted in e2e/guides.spec.ts and the mesh. If the article ever
+  // grows a table or a second banner, it earns a state here.
   {
     // THE STATE NOBODY HAS SEEN. Every other baseline carries the FAQ
     // closed; the answers' colour, measure and spacing have never been

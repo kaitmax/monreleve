@@ -37,6 +37,23 @@ export const SOURCE_IDS = [
   'dayClassification',
   'residence1983Cantons',
   'a1ThresholdRate',
+
+  // R158: A SOURCE KEY IDENTIFIES A FACT, NOT A URL. These two are published
+  // on the SAME ge.ch page as missionCapDays and were cited under it by FW17
+  // and FW18 for that reason - which left `claims` unable to tell "the cap is
+  // ten days" from "a travel day worked mostly in Switzerland is not
+  // counted". Three facts, three ids, one citation.
+  'missionTravelDays',
+  'genevaWorkedExamples',
+
+  // THE DROIT D'OPTION, verified against CLEISS on 16.09.2026. A separate
+  // subject from the telework constants and from a different authority:
+  // nothing here concerns the ceiling or the engine. Four ids because they
+  // are four facts a guide cites separately (R158).
+  'droitOptionWindow',
+  'droitOptionIrrevocable',
+  'droitOptionDefault',
+  'droitOptionBasis',
 ] as const;
 
 export type SourceId = (typeof SOURCE_IDS)[number];
@@ -60,6 +77,16 @@ export type SourceStatus = 'transcribed' | 'pending';
  * the rows it skipped.
  */
 export const CHECKPOINT_A = '2026-09-09';
+
+/**
+ * The pass that read CLEISS on the droit d'option.
+ *
+ * ITS OWN CONSTANT, NOT CHECKPOINT_A's, and that is the same reasoning that
+ * made verifiedOn per-row in the first place: a second pass does not
+ * retroactively verify what the first one did not reach, and a shared date
+ * would be a lie about the rows it skipped.
+ */
+export const CLEISS_PASS = '2026-09-16';
 
 /**
  * One row, and A PENDING ROW CANNOT CARRY A DATE.
@@ -159,6 +186,48 @@ export const SOURCE_ENTRIES: readonly SourceEntry[] = [
     verifiedOn: CHECKPOINT_A,
     ruleSetKey: 'a1ThresholdRate',
     url: 'https://www.bsv.admin.ch/bsv/fr/home/assurances-sociales/int/teletravail.html',
+    status: 'transcribed',
+  },
+  {
+    id: 'missionTravelDays',
+    sourceName: 'ge.ch',
+    verifiedOn: CHECKPOINT_A,
+    url: 'https://www.ge.ch/imposition-du-teletravail-personnes-frontalieres/regles-missions-temporaires-etranger',
+    status: 'transcribed',
+  },
+  {
+    id: 'genevaWorkedExamples',
+    sourceName: 'ge.ch',
+    verifiedOn: CHECKPOINT_A,
+    url: 'https://www.ge.ch/imposition-du-teletravail-personnes-frontalieres/regles-missions-temporaires-etranger',
+    status: 'transcribed',
+  },
+  {
+    id: 'droitOptionWindow',
+    sourceName: 'CLEISS',
+    verifiedOn: CLEISS_PASS,
+    url: 'https://www.cleiss.fr/faq/droit_d_option_des_frontaliers_france-suisse.html',
+    status: 'transcribed',
+  },
+  {
+    id: 'droitOptionIrrevocable',
+    sourceName: 'CLEISS',
+    verifiedOn: CLEISS_PASS,
+    url: 'https://www.cleiss.fr/faq/droit_d_option_des_frontaliers_france-suisse.html',
+    status: 'transcribed',
+  },
+  {
+    id: 'droitOptionDefault',
+    sourceName: 'CLEISS',
+    verifiedOn: CLEISS_PASS,
+    url: 'https://www.cleiss.fr/faq/droit_d_option_des_frontaliers_france-suisse.html',
+    status: 'transcribed',
+  },
+  {
+    id: 'droitOptionBasis',
+    sourceName: 'CLEISS',
+    verifiedOn: CLEISS_PASS,
+    url: 'https://www.cleiss.fr/faq/droit_d_option_des_frontaliers_france-suisse.html',
     status: 'transcribed',
   },
 ];

@@ -104,6 +104,25 @@ export const SOURCES_COPY = {
     a1ThresholdRate:
       "Part de télétravail à partir de laquelle l’accord-cadre européen " +
       "s’applique",
+
+    // R158: three facts published on one ge.ch page, three ids.
+    missionTravelDays:
+      "Jours de trajet d’une mission : ce qui est compté et ce qui ne " +
+      "l’est pas",
+    genevaWorkedExamples:
+      "Exemples chiffrés publiés par l’administration genevoise",
+
+    // Le droit d’option, vérifié contre le CLEISS.
+    droitOptionWindow:
+      "Délai pour choisir son système d’assurance maladie, et les " +
+      "situations qui l’ouvrent",
+    droitOptionIrrevocable:
+      "Caractère irrévocable du choix, et les changements de situation qui " +
+      "permettent d’y revenir",
+    droitOptionDefault:
+      "Régime applicable à défaut de choix dans le délai",
+    droitOptionBasis:
+      "Textes qui fondent le droit d’option",
   } satisfies Record<SourceId, string>,
 
   /**
