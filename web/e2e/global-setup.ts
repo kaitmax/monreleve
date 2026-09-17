@@ -51,16 +51,17 @@ interface HealthBody {
  * 3000 - another project?" sends them to `docker ps`, which is where the
  * answer was.
  */
-function refuse(found: string): never {
+function refuse(found: string, rule = 'R169'): never {
   throw new Error(
     [
       '',
-      'R169: the e2e suite refused to run.',
+      `${rule}: the e2e suite refused to run.`,
       '',
       `  expected  ${APP_NAME} at ${BASE_URL}`,
       `  found     ${found}`,
       '',
-      '  Something other than this product is answering on that port.',
+      '  Something other than this product is answering on that port, or',
+      '  it answered without the stylesheets that make its pages real.',
       '  Is another project\'s server or container publishing it?',
       '    docker ps --format "{{.Image}} {{.Ports}}"',
       '',
@@ -73,6 +74,67 @@ function refuse(found: string): never {
       '',
     ].join('\n'),
   );
+}
+
+/**
+ * A token every compiled stylesheet of this product declares.
+ *
+ * R177 asks for "a known token declaration" rather than merely non-empty CSS,
+ * because non-empty proves a file arrived and says nothing about whose it is.
+ */
+const TOKEN = '--colour-brand';
+
+/**
+ * RULING R177: THE PAGE UNDER TEST HAS STYLES, asserted before anything else
+ * is asserted about it.
+ *
+ * R169's presence corollary applied to CSS. R169 settles WHOSE server is
+ * answering; this settles that what it served is the real page rather than an
+ * unstyled shell - and the two failures look nothing alike from inside a
+ * suite. A page whose CSS failed to load still renders every element, still
+ * carries every string, and still satisfies every assertion this suite makes
+ * about content. What it stops satisfying is anything about layout, and the
+ * geometric assertions R148 added would fail with numbers that look like a
+ * design regression rather than a missing file.
+ *
+ * COUNTING <link> TAGS IS NOT THE CHECK. A tag pointing at a 404, or at a
+ * file the build emptied, leaves the page exactly as unstyled while the tag
+ * is still there to count. So the sheet is FETCHED, asserted NON-EMPTY, and
+ * asserted to carry a token this product declares.
+ */
+async function assertStyled(): Promise<void> {
+  const response = await fetch(BASE_URL, { cache: 'no-store' });
+  const html = await response.text();
+  const hrefs = [...html.matchAll(/<link[^>]+rel="stylesheet"[^>]+href="([^"]+)"/g)].map(
+    (match) => match[1] ?? '',
+  );
+
+  if (hrefs.length === 0) refuse('HTML with no <link rel="stylesheet"> at all', 'R177');
+
+  let bytes = 0;
+  let carriesToken = false;
+
+  for (const href of hrefs) {
+    const sheet = await fetch(href.startsWith('http') ? href : `${BASE_URL}${href}`, {
+      cache: 'no-store',
+    });
+
+    if (!sheet.ok) refuse(`a stylesheet that did not load: HTTP ${String(sheet.status)} ${href}`, 'R177');
+
+    const css = await sheet.text();
+
+    bytes += css.length;
+    if (css.includes(TOKEN)) carriesToken = true;
+  }
+
+  if (bytes === 0) refuse(`${String(hrefs.length)} stylesheet link(s) totalling 0 bytes`, 'R177');
+
+  if (!carriesToken) {
+    refuse(
+      `${String(hrefs.length)} stylesheet(s), ${String(bytes)} bytes, none declaring ${TOKEN}`,
+      'R177',
+    );
+  }
 }
 
 export default async function globalSetup(): Promise<void> {
@@ -100,6 +162,8 @@ export default async function globalSetup(): Promise<void> {
       if (body.service !== APP_NAME) {
         refuse(`a server identifying as "${body.service}"`);
       }
+
+      await assertStyled();
 
       return;
     } catch (error) {

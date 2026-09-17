@@ -60,6 +60,14 @@ const ORIGIN = 'https://frontalier.example';
 const PORT = process.env.FRONTALIER_PORT ?? process.env.PORT ?? '3000';
 const BASE = `http://localhost:${PORT}`;
 
+/**
+ * A token every compiled stylesheet of this product declares.
+ *
+ * R177 asks for "a known token declaration" rather than merely non-empty CSS,
+ * because non-empty proves a file arrived and nothing about whose it is.
+ */
+const TOKEN = '--colour-brand';
+
 /** The product's own name, as /api/health reports it. */
 const SERVICE = 'frontalier';
 
@@ -147,17 +155,81 @@ async function assertStyled() {
   const response = await fetch(BASE, { cache: 'no-store' });
   const html = await response.text();
 
-  const sheets = [...html.matchAll(/<link[^>]+rel="stylesheet"[^>]*>/g)].length;
+  const hrefs = [...html.matchAll(/<link[^>]+rel="stylesheet"[^>]+href="([^"]+)"/g)].map(
+    (match) => match[1],
+  );
 
-  if (sheets === 0) {
+  if (hrefs.length === 0) {
     refuse('the page served no stylesheet', 'HTML with zero <link rel="stylesheet">');
   }
 
-  console.log(`lighthouse: ${BASE} is ${SERVICE} and serves ${sheets} stylesheet(s)`);
+  // FETCHED, NON-EMPTY, AND CARRYING A KNOWN TOKEN. Counting <link> tags is
+  // not the check R177 asks for: a tag pointing at a 404, or at a file the
+  // build emptied, leaves the page exactly as unstyled while the tag is still
+  // there to count. The token declaration is what proves the file is THIS
+  // product's compiled stylesheet rather than any non-empty CSS.
+  let carriesToken = false;
+  let bytes = 0;
+
+  for (const href of hrefs) {
+    const sheet = await fetch(href.startsWith('http') ? href : `${BASE}${href}`, {
+      cache: 'no-store',
+    });
+
+    if (!sheet.ok) refuse('a stylesheet did not load', `HTTP ${sheet.status} for ${href}`);
+
+    const css = await sheet.text();
+
+    bytes += css.length;
+    if (css.includes(TOKEN)) carriesToken = true;
+  }
+
+  if (bytes === 0) refuse('every stylesheet was empty', `${hrefs.length} link(s), 0 bytes`);
+
+  if (!carriesToken) {
+    refuse(
+      'no stylesheet carried a known design token',
+      `${hrefs.length} link(s), ${bytes} bytes, none declaring ${TOKEN}`,
+    );
+  }
+
+  console.log(
+    `lighthouse: ${BASE} is ${SERVICE}, ${hrefs.length} stylesheet(s), ` +
+      `${bytes} bytes, ${TOKEN} present`,
+  );
 }
 
 console.log(`lighthouse: building with NEXT_PUBLIC_SITE_URL=${env.NEXT_PUBLIC_SITE_URL}`);
 run('pnpm', ['build']);
+
+/**
+ * NOTHING MAY ALREADY BE ON THE PORT, and this check exists because the first
+ * version of this script created the problem it now refuses.
+ *
+ * `spawn(..., { shell: true })` gives back the PID of the SHELL, so
+ * server.kill() killed cmd.exe and left `next start` running. The orphan then
+ * served a build whose CSS the next build had replaced - and the run after it
+ * failed R177 with "HTTP 400 for /_next/static/css/<old hash>.css", which
+ * reads like a broken stylesheet and was really a stale server.
+ *
+ * That is R98's orphan-container problem one layer down, and the honest fix is
+ * both halves: refuse a busy port loudly, and kill the whole process tree.
+ */
+async function assertPortFree() {
+  try {
+    const response = await fetch(`${BASE}/api/health`, { cache: 'no-store' });
+
+    refuse(
+      'something is already serving that port',
+      `HTTP ${response.status} from an existing server - an orphan of a previous run, ` +
+        'or another project',
+    );
+  } catch {
+    // Connection refused is the good case: nothing is there.
+  }
+}
+
+await assertPortFree();
 
 console.log(`lighthouse: starting the server on ${PORT}`);
 const server = spawn('pnpm', ['exec', 'next', 'start', '-p', PORT], {
@@ -166,8 +238,19 @@ const server = spawn('pnpm', ['exec', 'next', 'start', '-p', PORT], {
   env,
 });
 
+/**
+ * KILL THE TREE, NOT THE SHELL. server.pid is cmd.exe under shell:true, and
+ * killing it leaves `next start` holding the port - the orphan this script
+ * spent a run diagnosing.
+ */
 const stop = () => {
-  if (!server.killed) server.kill();
+  if (server.pid === undefined) return;
+
+  if (process.platform === 'win32') {
+    spawnSync('taskkill', ['/PID', String(server.pid), '/T', '/F'], { stdio: 'ignore' });
+  } else if (!server.killed) {
+    server.kill();
+  }
 };
 
 process.on('exit', stop);
