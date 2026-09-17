@@ -328,3 +328,28 @@ test('/releve-annuel is written in the tense the code is in (R166, R138)', async
   await expect(page.locator('main form'), 'a waiting list').toHaveCount(0);
   expect(text, 'a price on the wrong page').not.toContain('CHF');
 });
+
+test('/sources counts itself correctly (R171)', async ({ page }) => {
+  // FOUND BY RUNNING THE APP, not by any suite. The lead read "huit
+  // constantes et trois lectures" as a constant. FW18b took SOURCE_IDS from
+  // eight to fourteen and nobody changed the sentence, so the page whose
+  // entire subject is accuracy opened by miscounting itself by six. The table
+  // beneath it was right the whole time.
+  //
+  // THE SENTENCE IS DERIVED NOW, so this asserts the two agree rather than
+  // asserting a number - a test naming a literal here would be the same
+  // defect one layer up (R171).
+  await goToServedPage(page, '/sources');
+
+  const lead = await page.locator('main p').first().evaluate((n) => n.textContent ?? '');
+  const rows = await page.locator('main table tbody tr').count();
+
+  expect(lead, 'the lead does not state the row count').toContain(String(rows));
+  expect(rows, 'the table rendered no rows').toBeGreaterThanOrEqual(14);
+
+  // AND THE READINGS, the other half of the same sentence.
+  const readings = await page.locator('main dl div[id^="lecture-"]').count();
+
+  expect(lead, 'the lead does not state the reading count').toContain(String(readings));
+  expect(readings).toBe(3);
+});

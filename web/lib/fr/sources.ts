@@ -55,8 +55,21 @@ export const SOURCES_COPY = {
     'état de vérification, et les trois lectures qui attendent un avis ' +
     'expert.',
 
-  intro:
-    'Le calculateur applique huit constantes et trois lectures. Cette page ' +
+  /**
+   * THE COUNTS ARE DERIVED, and FW20 found out why on a live server.
+   *
+   * This read "huit constantes et trois lectures" as a constant. FW18b took
+   * SOURCE_IDS from eight to fourteen - the six CLEISS and R158 rows - and
+   * nobody changed the sentence, so the page whose entire subject is accuracy
+   * opened by miscounting itself by six. The table beneath it was right the
+   * whole time; no test compares the two, and no reader would check.
+   *
+   * R171: the sentence means "how many rows this page carries", which is a
+   * role. A literal standing in for it was accidentally correct for exactly
+   * one task.
+   */
+  intro: (constants: number, readings: number): string =>
+    `Le calculateur applique ${constants} constantes et ${readings} lectures. Cette page ` +
     'indique pour chacune sa source primaire et son état. Elle est tenue à ' +
     'jour à la main, et sa date de dernière vérification est celle qui ' +
     'figure au bas de chaque page.',

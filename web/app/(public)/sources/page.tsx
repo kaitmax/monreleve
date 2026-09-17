@@ -34,6 +34,7 @@
 
 import type { Metadata } from 'next';
 import { ruleSetFor } from '@/lib/calc-engine';
+import { SOURCE_IDS } from '@/lib/content/sources';
 import { PUBLISHED_PROVISIONAL_IDS, readingAnchor } from '@/lib/content/provisional';
 import { LAST_REGULATORY_REVIEW } from '@/lib/content/regulatory';
 import { SOURCE_ENTRIES } from '@/lib/content/sources';
@@ -91,7 +92,9 @@ export default function SourcesPage() {
     <main className={styles.page}>
       <Container width="public">
         <h1 className={styles.title}>{COPY.title}</h1>
-        <p className={styles.lead}>{COPY.intro}</p>
+        <p className={styles.lead}>
+          {COPY.intro(SOURCE_IDS.length, PUBLISHED_PROVISIONAL_IDS.length)}
+        </p>
 
         {/*
           R51's date, where a reader looking for it will be. Null would mean the
