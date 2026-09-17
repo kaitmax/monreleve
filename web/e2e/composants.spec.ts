@@ -11,6 +11,7 @@
 // and a figure changes width as it counts up. The unit suite asserts the
 // DECLARATION exists; this asserts the browser applied it.
 
+import { APP_NAME } from '../lib/fr';
 import { expect, test } from '@playwright/test';
 import { goToServedPage } from './support/served';
 import { ctaHrefIfOffered } from '../lib/content/routes';
@@ -144,7 +145,10 @@ test.describe('the mobile header keyboard path (AC2)', () => {
     }
 
     // The wordmark is always in the path; the CTA only when it exists.
-    expect(reached.join(' | ')).toContain('frontalier');
+    // FROM THE CONSTANT (R171). This read toContain('frontalier') - the
+    // product name as a literal in an assertion about the WORDMARK, which is
+    // the role. FW20c renamed the product and this failed, correctly.
+    expect(reached.join(' | ')).toContain(APP_NAME);
 
     if (ctaHrefIfOffered(SHELL_COPY.ctaHref, PRODUCT_STATE.appExists) !== null) {
       expect(reached.join(' | ')).toContain('Suivre mes jours');

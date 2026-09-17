@@ -18,6 +18,12 @@ describe('unit harness', () => {
   });
 
   it('loads lib/fr through the same alias', () => {
-    expect(APP_NAME).toBe('frontalier');
+    // THE ALIAS IS THE SUBJECT, NOT THE NAME. This asserted
+    // toBe('frontalier') until FW20c, so the rename broke a test whose
+    // whole purpose is to prove the "@/lib/fr" alias resolves at all.
+    // R171 exactly: a literal standing in for a role, accidentally
+    // correct until the role changed.
+    expect(APP_NAME).toBeTypeOf('string');
+    expect(APP_NAME.length).toBeGreaterThan(0);
   });
 });

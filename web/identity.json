@@ -1,0 +1,5 @@
+{
+  "service": "monreleve",
+  "domain": "monreleve.ch",
+  "testOrigin": "https://monreleve.example"
+}

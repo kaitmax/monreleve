@@ -19,6 +19,7 @@
 // reader might still have one of our messages - which, from their side, is
 // forever.
 
+import { TEST_ORIGIN } from '../../lib/content/identity';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { prisma } from '@/lib/db/client';
 import { hashToken, recordSubscription } from '@/lib/alerts/record';
@@ -238,7 +239,7 @@ describe('every send carries a working one-click unsubscribe (increment 4)', () 
     resetRateLimit();
 
     await POST(
-      new NextRequest('https://frontalier.example/api/alertes', {
+      new NextRequest(`${TEST_ORIGIN}/api/alertes`, {
         method: 'POST',
         headers: {
           'content-type': 'application/x-www-form-urlencoded',

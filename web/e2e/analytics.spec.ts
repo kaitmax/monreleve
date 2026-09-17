@@ -45,7 +45,7 @@ import { liveRoutes } from '../lib/content/routes';
 
 /**
  * The server these tests actually hit, which is NOT the origin the build is
- * configured with. The build sets NEXT_PUBLIC_SITE_URL to frontalier.example
+ * configured with. The build sets NEXT_PUBLIC_SITE_URL to monreleve.example
  * so the canonicals have something real to assert, so a trace filtered by the
  * METADATA origin calls every request foreign.
  *

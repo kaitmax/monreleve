@@ -14,6 +14,7 @@
 // one-line statement of what the list is for is asserted, and why the
 // "ignore this" sentence is too.
 
+import { TEST_ORIGIN } from '../../lib/content/identity';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { NextRequest } from 'next/server';
 import { POST } from '@/app/api/alertes/route';
@@ -24,7 +25,11 @@ import { EMAIL_COPY } from '@/lib/fr/emails';
 import { hashToken } from '@/lib/alerts/record';
 import { resetRateLimit } from '@/lib/alerts/rate-limit';
 
-const ORIGIN = 'https://frontalier.example';
+// R171: the origin is a ROLE - "what the build was configured with" - and
+// FW20c made it one constant. It was a literal in thirteen files, which is
+// twelve chances for a rename to leave one behind pointing at a host that
+// no longer means anything.
+const ORIGIN = TEST_ORIGIN;
 
 beforeEach(async () => {
   await prisma.alertSubscriber.deleteMany();

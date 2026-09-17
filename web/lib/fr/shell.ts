@@ -28,13 +28,15 @@ export interface NavEntry {
   readonly children?: readonly NavLink[];
 }
 
+import { APP_NAME } from '@/lib/fr';
+
 export const SHELL_COPY = {
   /**
    * The accessible name of the home link. The mark beside APP_NAME is
    * decorative and aria-hidden, and a link announced as only the product name
    * does not say where it goes.
    */
-  homeLabel: 'frontalier, accueil',
+  homeLabel: `${APP_NAME}, accueil`,
 
   /** <nav aria-label>. A second nav arrives with the footer, so it is named. */
   navLabel: 'Navigation principale',

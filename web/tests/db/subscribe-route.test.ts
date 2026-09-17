@@ -9,6 +9,7 @@
 // away before answering, that it never redirects anywhere the request asked
 // for, and that a failure still lands the reader back on their own page.
 
+import { TEST_ORIGIN } from '../../lib/content/identity';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { NextRequest } from 'next/server';
 import { POST } from '@/app/api/alertes/route';
@@ -18,7 +19,11 @@ import { resetRateLimit } from '@/lib/alerts/rate-limit';
 import { CALCULATOR_PATH } from '@/lib/content/routes';
 import { ALERTES_PATH } from '@/lib/content/alertes';
 
-const ORIGIN = 'https://frontalier.example';
+// R171: the origin is a ROLE - "what the build was configured with" - and
+// FW20c made it one constant. It was a literal in thirteen files, which is
+// twelve chances for a rename to leave one behind pointing at a host that
+// no longer means anything.
+const ORIGIN = TEST_ORIGIN;
 
 beforeEach(async () => {
   await prisma.alertSubscriber.deleteMany();

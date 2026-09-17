@@ -44,6 +44,8 @@ describePlaceholderCensus({
   fields: MENTIONS_LEGALES_FIELDS,
   // The editor identity block and the host, at minimum.
   minimumFields: 5,
+  // R84, and the number is stated rather than derived: publicationDirector. French law wants a named natural person and the operator has not supplied one - it is never inferred from a git author or a company officer.
+  shippedPlaceholders: 1,
 });
 
 describe('the page shape', () => {

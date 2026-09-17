@@ -1,4 +1,5 @@
 // web/playwright.config.ts
+import { TEST_ORIGIN } from './lib/content/identity';
 import { defineConfig, devices } from '@playwright/test';
 
 // R170: the port comes from the environment, default 3000. It was this
@@ -98,7 +99,7 @@ export default defineConfig({
     // graph was costing the calculator 1,6 KiB and every other public route
     // 0,7. One flag, set here and nowhere a deployment can read it.
     env: {
-      NEXT_PUBLIC_SITE_URL: 'https://frontalier.example',
+      NEXT_PUBLIC_SITE_URL: TEST_ORIGIN,
       FRONTALIER_DEV_ROUTES: '1',
     },
   },

@@ -10,17 +10,22 @@
 // the slashed form of a URL really redirects, or whether a canonical tag
 // reaches the rendered head. Those are integration facts.
 //
-// THE ORIGIN IS https://frontalier.example, set by playwright.config.ts. Under
+// THE ORIGIN IS TEST_ORIGIN, set by playwright.config.ts. Under
 // ruling R81 a build with no configured origin omits canonicals entirely, so a
 // suite that did not supply one could not prove they work. .example is
 // reserved by RFC 2606 and can never resolve, so it cannot be mistaken for the
 // real domain - which is still an open question.
 
+import { TEST_ORIGIN } from '../lib/content/identity';
 import { expect, test } from '@playwright/test';
 import { NON_INDEXED, PUBLIC_ROUTES, liveRoutes } from '../lib/content/routes';
 import { complianceClaims } from '../tests/support/vocabulary';
 
-const ORIGIN = 'https://frontalier.example';
+// R171: the origin is a ROLE - "what the build was configured with" - and
+// FW20c made it one constant. It was a literal in thirteen files, which is
+// twelve chances for a rename to leave one behind pointing at a host that
+// no longer means anything.
+const ORIGIN = TEST_ORIGIN;
 
 test.describe('robots.txt', () => {
   test('allows the site and keeps out the three prefixes R53 names', async ({ request }) => {
@@ -154,7 +159,7 @@ test.describe('one URL per page', () => {
  * THE ROOT IS THE BARE ORIGIN, with no trailing slash. Next resolves the
  * layout's relative `canonical: './'` that way, and it is not a defect: RFC
  * 3986 section 6.2.3 makes an empty path equivalent to "/", so
- * https://frontalier.example and https://frontalier.example/ are the same URL
+ * The origin with and without a trailing slash are the same URL
  * and every crawler normalises them together. The sitemap writes the slashed
  * form because that is the conventional shape of a <loc>; the two therefore
  * differ by one character on one route and mean the same thing. Recorded here

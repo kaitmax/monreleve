@@ -19,15 +19,17 @@
 //
 // TODO-COPY: realistic French, not reviewed by counsel.
 
+import { APP_NAME } from '@/lib/fr';
+
 export const CGU_COPY = {
   title: "Conditions générales d’utilisation",
 
   description:
-    'Ce que frontalier fait, ce dont vous restez responsable, le tarif, la ' +
+    `Ce que ${APP_NAME} fait, ce dont vous restez responsable, le tarif, la ` +
     'suppression du compte et le droit applicable.',
 
   intro:
-    "Ces conditions régissent l’utilisation du site frontalier et de " +
+    `Ces conditions régissent l’utilisation du site ${APP_NAME} et de ` +
     "l’application qui lui est associée. En les utilisant, vous les acceptez. " +
     "La version applicable est celle publiée sur cette page.",
 
@@ -41,7 +43,7 @@ export const CGU_COPY = {
 
   objectHeading: 'Objet du service',
   object: [
-    'frontalier est un outil de tenue de registre. Il enregistre les ' +
+    `${APP_NAME} est un outil de tenue de registre. Il enregistre les ` +
       'journées que vous déclarez, il les horodate au moment où le serveur ' +
       'les reçoit, et il met en forme un relevé annuel à partir de ces ' +
       'seules déclarations.',

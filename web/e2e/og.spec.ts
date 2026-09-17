@@ -22,6 +22,7 @@
 // A failure in the second is a privacy defect. Never a tolerance, never a
 // skip.
 
+import { TEST_ORIGIN } from '../lib/content/identity';
 import { expect, test } from '@playwright/test';
 import { PARAM_NAMES } from '../lib/params/schema';
 import { SOCIAL_HEIGHT, SOCIAL_WIDTH } from '../lib/ui/core/rail/geometry';
@@ -112,14 +113,22 @@ test.describe('the social card', () => {
 
     const image = await content('meta[property="og:image"]');
 
-    expect(image, 'no og:image in the head').not.toBeNull();
+    // NARROWED RATHER THAN ASSERTED-AND-HOPED. getAttribute returns
+    // string | null, and the old `toMatch` accepted null silently - so a head
+    // with no og:image at all would have failed on the regex rather than on
+    // the absence, which is a worse message for the same defect.
+    if (image === null) throw new Error('no og:image in the head');
+
     expect(image).toContain(CARD);
 
     // ABSOLUTE, because a relative og:image is not resolved by every platform
     // - and R81 is the other half: with no configured origin these tags are
     // absent entirely rather than absolute against localhost. The e2e server
-    // configures https://frontalier.example, so here they must be present.
-    expect(image).toMatch(/^https:\/\/frontalier\.example\//);
+    // configures the reserved test origin, so here they must be present.
+    // THE ORIGIN WAS INSIDE A REGEX, which is why FW20c's sweep of quoted
+    // strings walked past it - and why this surfaced at e2e rather than at
+    // typecheck. Built from the constant now, so a rename carries it.
+    expect(image.startsWith(`${TEST_ORIGIN}/`), image).toBe(true);
 
     expect(await content('meta[name="twitter:card"]')).toBe('summary_large_image');
     expect(await content('meta[property="og:image:width"]')).toBe(String(SOCIAL_WIDTH));

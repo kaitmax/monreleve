@@ -15,6 +15,7 @@
 // The form island arrives in increment 2. What increment 1 owes is the copy
 // and no result region, which is what this asserts.
 
+import { TEST_ORIGIN } from '../lib/content/identity';
 import { expect, test } from '@playwright/test';
 import { CALCULATOR_PATH, gateRobotsDirective, sitemapPaths } from '../lib/content/routes';
 import { LAST_REGULATORY_REVIEW } from '../lib/content/regulatory';
@@ -191,7 +192,7 @@ test.describe('ruling R54: the gate, in the state it is actually in', () => {
 
     await expect(canonical).toHaveCount(1);
     expect(await canonical.getAttribute('href')).toBe(
-      `https://frontalier.example${CALCULATOR_PATH}`,
+      `${TEST_ORIGIN}${CALCULATOR_PATH}`,
     );
   });
 });
@@ -696,7 +697,7 @@ test.describe('the head survives the params (FW13 AC3)', () => {
     const canonical = page.locator('head > link[rel="canonical"]');
 
     expect(await canonical.getAttribute('href')).toBe(
-      `https://frontalier.example${CALCULATOR_PATH}`,
+      `${TEST_ORIGIN}${CALCULATOR_PATH}`,
     );
   });
 

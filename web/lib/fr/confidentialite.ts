@@ -49,11 +49,13 @@
 //
 // TODO-COPY: realistic French, not reviewed by counsel.
 
+import { APP_NAME } from '@/lib/fr';
+
 export const CONFIDENTIALITE_COPY = {
   title: 'Politique de confidentialité',
 
   description:
-    'Ce que frontalier enregistre, ce qui ne quitte jamais votre appareil, ' +
+    `Ce que ${APP_NAME} enregistre, ce qui ne quitte jamais votre appareil, ` +
     'les durées de conservation et vos droits.',
 
   intro:

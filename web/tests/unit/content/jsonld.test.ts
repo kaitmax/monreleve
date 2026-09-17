@@ -20,6 +20,7 @@
 // copy of the questions. One source, two consumers: lib/fr/faq.ts. If the two
 // could disagree there would be no way to know which was wrong.
 
+import { TEST_ORIGIN } from '../../../lib/content/identity';
 import { describe, expect, it } from 'vitest';
 import {
   FAQ_PAGE_PROPERTIES,
@@ -35,7 +36,7 @@ const ENTRIES = FAQ_COPY.entries({ fiscal: 'AAA', social: 'BBB', basisDays: 'CCC
 const APP = {
   name: 'Calculateur',
   description: 'Une description visible sur la page.',
-  url: 'https://frontalier.example/calculateur-teletravail-frontalier',
+  url: `${TEST_ORIGIN}/calculateur-teletravail-frontalier`,
 };
 
 /** Every property name in an object tree, deduplicated. */

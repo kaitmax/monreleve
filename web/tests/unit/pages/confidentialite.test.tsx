@@ -42,6 +42,8 @@ describePlaceholderCensus({
   fields: CONFIDENTIALITE_FIELDS,
   // The controller, its address, the DPO, the contact address and the host.
   minimumFields: 5,
+  // R84, and the number is stated rather than derived: dpoContact, euRepresentative and chRepresentative. The two representatives are the GDPR Art. 27 and nLPD Art. 14 questions awaiting advice; the DPO is a fourth gap FW20c's prompt did not name.
+  shippedPlaceholders: 3,
 });
 
 function pageText(): string {

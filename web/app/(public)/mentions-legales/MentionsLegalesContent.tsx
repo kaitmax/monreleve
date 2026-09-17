@@ -36,10 +36,25 @@ const EDITOR_FIELDS = [
   'legalForm',
   'address',
   'registrationNumber',
+  'incorporatedOn',
+  // FRENCH LAW WANTS A NAMED NATURAL PERSON here, and there is not one. It is
+  // declared so the page PRINTS the gap - R52's whole argument: a plausible
+  // blank reads as filled in, and nobody goes looking for it.
+  'publicationDirector',
   'contactEmail',
 ] as const satisfies readonly LegalEntityField[];
 
-const HOSTING_FIELDS = ['hostingProvider', 'hostingAddress'] as const satisfies readonly LegalEntityField[];
+// THE LCEN WANTS NAME, ADDRESS AND TELEPHONE for the host. The registration
+// and website are not required and are published because they are verified
+// and useful. OVH's SHARE CAPITAL IS ABSENT deliberately: published sources
+// disagree on it, and the law does not ask.
+const HOSTING_FIELDS = [
+  'hostingProvider',
+  'hostingAddress',
+  'hostingPhone',
+  'hostingWebsite',
+  'hostingRegistration',
+] as const satisfies readonly LegalEntityField[];
 
 /**
  * RULING R84's declaration: the entity constants this page consumes.

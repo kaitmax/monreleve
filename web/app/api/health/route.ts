@@ -27,7 +27,7 @@
 //
 // R53 disallows /api/* in robots.txt, so this is never crawled.
 
-import { APP_NAME } from '@/lib/fr';
+import { SERVICE_NAME } from '@/lib/content/identity';
 import { isProvisionalOrigin, isRuntime, servingWithoutOrigin, siteOrigin } from '@/lib/content/site';
 
 /** Per-request: the runtime marker means nothing to a prerendered response. */
@@ -62,7 +62,7 @@ export function GET(): Response {
       //
       // APP_NAME rather than a second literal: the product has one name, and
       // an identity check comparing two strings that could drift is not one.
-      service: APP_NAME,
+      service: SERVICE_NAME,
       status: degraded ? 'degraded' : 'ok',
       reasons,
       // Deliberately NOT the resolved origin when it is provisional: a health

@@ -38,6 +38,8 @@ describePlaceholderCensus({
   // /confidentialite - repeating them here would print placeholders for facts
   // stated elsewhere.
   minimumFields: 3,
+  // R84, and the number is stated rather than derived: /cgu declares legalName, address and contactEmail - all three filled in FW20c, so the page now shows no gap at all.
+  shippedPlaceholders: 0,
 });
 
 function pageText(): string {

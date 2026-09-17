@@ -53,6 +53,16 @@ interface CensusOptions {
   readonly fields: readonly LegalEntityField[];
   /** Below this the counts would be near-vacuous. */
   readonly minimumFields: number;
+  /**
+   * How many placeholders this page renders in the SHIPPED state.
+   *
+   * STATED PER PAGE RATHER THAN DERIVED, and FW20c is why. It used to be
+   * `fields.length` - true while every constant was empty, and a derivation
+   * that would now agree with whatever LEGAL_ENTITY says. A count that agrees
+   * with the data cannot catch a field silently emptied, which is the one
+   * thing R84 exists to catch.
+   */
+  readonly shippedPlaceholders: number;
 }
 
 export function describePlaceholderCensus({
@@ -60,6 +70,7 @@ export function describePlaceholderCensus({
   Content,
   fields,
   minimumFields,
+  shippedPlaceholders,
 }: CensusOptions): void {
   afterEach(cleanup);
 
@@ -88,10 +99,20 @@ export function describePlaceholderCensus({
   });
 
   describe(`${page} renders exactly as many placeholders as it has gaps (R84)`, () => {
-    it('one per declared constant while all are empty', () => {
-      // The shipped state: every declared field is empty, so every one of them
-      // prints a placeholder - no more, and no fewer.
-      expect(placeholders(LEGAL_ENTITY)).toBe(fields.length);
+    it('exactly the declared number in the shipped state', () => {
+      // FW10 to FW20b: every declared field was empty, so this read
+      // fields.length. FW20c filled twelve of sixteen, so the number is now a
+      // per-page fact somebody wrote down - which is the point, because the
+      // alternative agrees with the data and catches nothing.
+      expect(placeholders(LEGAL_ENTITY)).toBe(shippedPlaceholders);
+    });
+
+    it('renders a placeholder for each open field it declares, and no other', () => {
+      // THE COUNT'S COUNTERPART. A number alone is satisfied by the wrong
+      // three; this says which, by emptying the filled ones one at a time.
+      const open = fields.filter((field) => LEGAL_ENTITY[field].trim() === '');
+
+      expect(open.length, 'the declared open fields').toBe(shippedPlaceholders);
     });
 
     it('none once every constant is filled', () => {

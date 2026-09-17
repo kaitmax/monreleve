@@ -25,6 +25,7 @@
 // that sets it for every route including the bare path, which would quietly
 // de-index the page the whole SEO strategy rests on.
 
+import { TEST_ORIGIN } from '../../../lib/content/identity';
 import { describe, expect, it, vi } from 'vitest';
 import { generateMetadata } from '@/app/(public)/calculateur-teletravail-frontalier/page';
 import { CALCULATOR_PATH } from '@/lib/content/routes';
@@ -43,7 +44,7 @@ const QUERIES: ReadonlyArray<readonly [string, string, boolean]> = [
 
 /** A request through the middleware, as Next would route it. */
 function headersFor(query: string): Headers {
-  const url = `https://frontalier.example${CALCULATOR_PATH}${query}`;
+  const url = `${TEST_ORIGIN}${CALCULATOR_PATH}${query}`;
 
   // A REAL NextRequest, because the middleware reads `nextUrl` and a plain
   // Request has none - the first version of this passed one and every case
@@ -133,7 +134,7 @@ describe('AC3: the canonical names the bare path, from every URL', () => {
     // e2e suite supplies it. A relative canonical is resolved per ROUTE, and
     // a route has no query string - which is why the bare-path requirement
     // needs no condition anywhere.
-    vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'https://frontalier.example');
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', TEST_ORIGIN);
     vi.resetModules();
 
     try {

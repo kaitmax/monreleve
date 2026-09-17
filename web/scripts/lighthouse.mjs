@@ -52,9 +52,17 @@
 // ---------------------------------------------------------------------------
 
 import { spawn, spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 
-/** RFC 2606. Reserved, unresolvable, unmistakable for the real domain. */
-const ORIGIN = 'https://frontalier.example';
+/**
+ * RFC 2606. Reserved, unresolvable, unmistakable for the real domain.
+ *
+ * It matters more since FW20c than it did: monreleve.ch is a domain that
+ * could actually resolve, so a typo in the TLD would point a measurement
+ * run at production rather than at nothing.
+ */
+const ORIGIN = JSON.parse(readFileSync(new URL('../identity.json', import.meta.url), 'utf8'))
+  .testOrigin;
 
 /** R170: the port comes from the environment, so two projects can coexist. */
 const PORT = process.env.FRONTALIER_PORT ?? process.env.PORT ?? '3000';
@@ -68,8 +76,25 @@ const BASE = `http://localhost:${PORT}`;
  */
 const TOKEN = '--colour-brand';
 
-/** The product's own name, as /api/health reports it. */
-const SERVICE = 'frontalier';
+/**
+ * The product's own name, as /api/health reports it.
+ *
+ * READ FROM identity.json RATHER THAN TYPED, and FW20c is why. R189 says
+ * the service field and R169’s guard change in ONE commit, because a
+ * rename that moves one and not the other either refuses the correct
+ * server or accepts any server at all. There turned out to be THREE
+ * copies, not two: e2e/global-setup.ts imports the constant, and this
+ * file had a literal of its own - so a rename that satisfied R189 as
+ * written would still have left every Lighthouse run refusing.
+ *
+ * A .mjs script cannot import the TypeScript that derives the name from
+ * APP_NAME, so identity.json is the transport. It is a transcription, and
+ * R185 says a transcription is asserted rather than argued:
+ * tests/unit/content/identity.test.ts pins this file against the derived
+ * value.
+ */
+const SERVICE = JSON.parse(readFileSync(new URL('../identity.json', import.meta.url), 'utf8'))
+  .service;
 
 const ROUTES = ['/', '/guides', '/guides/teletravail-frontalier-40-pourcent', '/guides/geneve'];
 

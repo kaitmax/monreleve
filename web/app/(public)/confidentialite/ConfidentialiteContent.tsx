@@ -34,6 +34,12 @@ const CONTROLLER_FIELDS = [
   'address',
   'dpoContact',
   'contactEmail',
+  // GDPR Art. 27 and nLPD Art. 14. Both MAY be required of a UK controller
+  // targeting French and Swiss residents, and neither has been appointed.
+  // R138: declaring them prints the open question; it does not claim an
+  // appointment. The site must not say it has a representative it has not.
+  'euRepresentative',
+  'chRepresentative',
 ] as const satisfies readonly LegalEntityField[];
 
 const HOSTING_FIELDS = ['hostingProvider', 'hostingAddress'] as const satisfies readonly LegalEntityField[];

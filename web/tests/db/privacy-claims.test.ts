@@ -28,6 +28,7 @@
 // list has always been leavable by the link in every message; the page now
 // says so.
 
+import { TEST_ORIGIN } from '../../lib/content/identity';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
@@ -45,7 +46,11 @@ import { resetRateLimit } from '@/lib/alerts/rate-limit';
 /** Written once: a literal escape in a heredoc has bitten this session three times. */
 const NEWLINE = String.fromCharCode(10);
 
-const ORIGIN = 'https://frontalier.example';
+// R171: the origin is a ROLE - "what the build was configured with" - and
+// FW20c made it one constant. It was a literal in thirteen files, which is
+// twelve chances for a rename to leave one behind pointing at a host that
+// no longer means anything.
+const ORIGIN = TEST_ORIGIN;
 const EMAIL = 'lecteur@example.com';
 
 beforeEach(async () => {

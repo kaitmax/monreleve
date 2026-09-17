@@ -31,7 +31,7 @@
 // runs; the poll below exists for the seconds between "listening" and
 // "answering", not as a substitute for that ordering.
 
-import { APP_NAME } from '../lib/fr';
+import { SERVICE_NAME } from '../lib/content/identity';
 import { BASE_URL } from './support/base-url';
 
 /** Long enough for a cold start behind `next build`, short enough to fail fast. */
@@ -57,7 +57,7 @@ function refuse(found: string, rule = 'R169'): never {
       '',
       `${rule}: the e2e suite refused to run.`,
       '',
-      `  expected  ${APP_NAME} at ${BASE_URL}`,
+      `  expected  ${SERVICE_NAME} at ${BASE_URL}`,
       `  found     ${found}`,
       '',
       '  Something other than this product is answering on that port, or',
@@ -159,7 +159,7 @@ export default async function globalSetup(): Promise<void> {
         refuse(`a JSON body at ${url} with no "service" field`);
       }
 
-      if (body.service !== APP_NAME) {
+      if (body.service !== SERVICE_NAME) {
         refuse(`a server identifying as "${body.service}"`);
       }
 

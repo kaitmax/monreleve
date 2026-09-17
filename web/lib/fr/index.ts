@@ -8,7 +8,26 @@
 
 import type { ProductState } from '@/lib/content/product-state';
 
-export const APP_NAME = 'frontalier';
+/**
+ * THE PRODUCT NAME, accented, and the single source R188 names.
+ *
+ * "Mon Relevé" is the name in French prose, in headings and in the
+ * wordmark. R155 makes the accented form authoritative for copy, which is
+ * why it lives here rather than in lib/content beside the domain.
+ *
+ * THE OTHER TWO FORMS ARE CONSEQUENCES OF THIS ONE. lib/content/identity.ts
+ * derives the byte-constrained spelling - "monreleve", for /api/health, the
+ * package name and test identifiers - by stripping the accents off this
+ * string rather than declaring a second literal beside it. A second literal
+ * is a transcription, correct on the day it is written (R181).
+ *
+ * IT WAS "frontalier" UNTIL FW20c, which was also the French common noun for
+ * the reader this product is built for - a frontalier is a cross-border
+ * worker. The copy is full of the word in that sense and stays that way; the
+ * rename is of the PRODUCT, not of the vocabulary, and SPEC 14 freezes the
+ * slugs that carry the word as a URL.
+ */
+export const APP_NAME = 'Mon Relevé';
 
 // The workbench: every component, every state. Noindex, out of the sitemap.
 export const WORKBENCH_TITLE = 'Composants — workbench';
@@ -55,8 +74,11 @@ export const HOME_COPY = {
     `restent avant les seuils de ${fiscal} et ${social}` +
     (state.trackerExists ? ', puis tenez le registre horodaté de vos journées.' : '.'),
 
+  // THE PRODUCT NAMES ITSELF HERE, so it derives. It read "frontalier
+  // calcule..." until FW20c - the product name typed into prose, which is the
+  // occurrence R188's scan is for.
   intro:
-    'frontalier calcule votre part de télétravail annuelle et le nombre de jours ' +
+    `${APP_NAME} calcule votre part de télétravail annuelle et le nombre de jours ` +
     "qu’il vous reste avant les deux seuils qui comptent : celui de l’imposition " +
     'et celui de la sécurité sociale.',
 

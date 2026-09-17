@@ -22,6 +22,7 @@
 // social platform publishes cannot disagree, and neither can drift from the
 // picture - they are the same string.
 
+import { TEST_ORIGIN } from '../../../lib/content/identity';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -93,7 +94,7 @@ describe('R81: the tags are omitted while the origin is the stand-in', () => {
   });
 
   it('declares both once an origin exists', async () => {
-    vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'https://frontalier.example');
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', TEST_ORIGIN);
     vi.resetModules();
 
     const layout = await import('@/app/(public)/layout');
@@ -130,7 +131,7 @@ describe('R81: the tags are omitted while the origin is the stand-in', () => {
     const bothAbsent =
       without.metadata.openGraph === undefined && without.metadata.twitter === undefined;
 
-    vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'https://frontalier.example');
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', TEST_ORIGIN);
     vi.resetModules();
 
     const with_ = await import('@/app/(public)/layout');

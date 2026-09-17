@@ -33,22 +33,67 @@ const FILLED: LegalEntity = Object.fromEntries(
   LEGAL_ENTITY_FIELDS.map((field) => [field, `valeur-${field}`]),
 ) as unknown as LegalEntity;
 
+const STILL_OPEN = [
+  'chRepresentative',
+  'dpoContact',
+  'euRepresentative',
+  'publicationDirector',
+] as const;
+
 describe('the shipped constants are empty, deliberately', () => {
-  it('has every field empty', () => {
-    // The whole point of R52. A default that guessed - "frontalier SAS" - would
-    // be a claim about a company that does not exist yet, printed on the page
-    // where a reader is most entitled to rely on it.
-    for (const field of LEGAL_ENTITY_FIELDS) {
+  /**
+   * THE FOUR STILL OPEN, NAMED RATHER THAN COUNTED.
+   *
+   * FW10 shipped all nine empty and this asserted exactly that. FW20c filled
+   * twelve of sixteen from values the operator verified against Companies
+   * House and OVHcloud's legal pages, so the assertion changes shape: it now
+   * names WHICH are open, because a count alone is satisfied by any four and
+   * the identity of these four is the whole point.
+   *
+   * dpoContact IS THE FOURTH AND FW20c'S PROMPT NAMED ONLY THREE. It is not
+   * an oversight in the fill - no DPO has been appointed - but it is a gap
+   * the prompt did not account for, raised as a question rather than closed
+   * by guessing.
+   */
+  it('leaves exactly the four open fields empty', () => {
+    // The whole point of R52. A default that guessed - "Mon Relevé SAS" -
+    // would be a claim about a company that does not exist, printed on the
+    // page where a reader is most entitled to rely on it.
+    for (const field of STILL_OPEN) {
       expect(LEGAL_ENTITY[field], field).toBe('');
     }
+  });
+
+  it('fills every other field, so the placeholders that remain are the real gaps', () => {
+    const open = new Set<string>(STILL_OPEN);
+
+    for (const field of LEGAL_ENTITY_FIELDS) {
+      if (open.has(field)) continue;
+
+      expect(LEGAL_ENTITY[field].trim(), `${field} is empty and is not a declared gap`).not.toBe(
+        '',
+      );
+    }
+  });
+
+  it('names a natural person nowhere, which is why publicationDirector is empty', () => {
+    // FRENCH LAW WANTS A NAMED PERSON and the operator has not supplied one.
+    // The failure this guards is inference: a git author, a commit trailer or
+    // a company officer read out of Companies House would each be a claim
+    // about somebody's legal responsibility, made by a script.
+    expect(LEGAL_ENTITY.publicationDirector).toBe('');
+    expect(LEGAL_ENTITY.legalName).not.toContain(' ' + 'Ltd,');
   });
 
   it('is not complete', () => {
     expect(isComplete(LEGAL_ENTITY)).toBe(false);
   });
 
-  it('reports every field as missing', () => {
-    expect([...missingFields(LEGAL_ENTITY)].sort()).toEqual([...LEGAL_ENTITY_FIELDS].sort());
+  it('reports exactly the four open fields as missing', () => {
+    // It compared against the WHOLE field list while all nine were empty,
+    // which was true and is no longer. Naming them keeps the assertion about
+    // WHICH are open rather than how many.
+    expect([...missingFields(LEGAL_ENTITY)].sort()).toEqual([...STILL_OPEN].sort());
   });
 });
 
@@ -64,24 +109,39 @@ describe('the field list matches the shape, so nothing can be forgotten', () => 
     expect(new Set(LEGAL_ENTITY_FIELDS).size).toBe(LEGAL_ENTITY_FIELDS.length);
   });
 
-  it('covers the nine values the prompt names', () => {
-    expect([...LEGAL_ENTITY_FIELDS].sort()).toEqual([
-      'address',
-      'contactEmail',
-      'dataController',
-      'dpoContact',
-      'hostingAddress',
-      'hostingProvider',
-      'legalName',
-      'legalForm',
-      'registrationNumber',
-    ].sort());
+  it('covers the sixteen values the legal pages need', () => {
+    // NINE AT FW10, SIXTEEN AT FW20c. Seven arrived with the filled values:
+    // an incorporation date, the host's telephone, website and registration -
+    // the LCEN asks for the telephone - and three that are deliberately empty
+    // so the pages state them as gaps rather than omitting them.
+    expect([...LEGAL_ENTITY_FIELDS].sort()).toEqual(
+      [
+        'address',
+        'chRepresentative',
+        'contactEmail',
+        'dataController',
+        'dpoContact',
+        'euRepresentative',
+        'hostingAddress',
+        'hostingPhone',
+        'hostingProvider',
+        'hostingRegistration',
+        'hostingWebsite',
+        'incorporatedOn',
+        'legalForm',
+        'legalName',
+        'publicationDirector',
+        'registrationNumber',
+      ].sort(),
+    );
   });
 });
 
 describe('the render helper', () => {
   it('returns the placeholder for an empty field', () => {
-    expect(entityValue(LEGAL_ENTITY, 'legalName')).toBe(LEGAL_PLACEHOLDER);
+    // legalName IS FILLED NOW, so the empty case needs a field that is still
+    // open - which is the point of naming them rather than counting them.
+    expect(entityValue(LEGAL_ENTITY, 'publicationDirector')).toBe(LEGAL_PLACEHOLDER);
   });
 
   it('returns the value for a filled field', () => {
@@ -94,7 +154,7 @@ describe('the render helper', () => {
     // read as zero placeholders on a page full of them.
     expect(LEGAL_PLACEHOLDER).toContain('COMPLÉTER');
     expect(LEGAL_PLACEHOLDER).toBe('[À COMPLÉTER]');
-    expect(entityValue(LEGAL_ENTITY, 'address')).toBe(LEGAL_PLACEHOLDER);
+    expect(entityValue(LEGAL_ENTITY, 'euRepresentative')).toBe(LEGAL_PLACEHOLDER);
   });
 
   it('trims, so a value of spaces is still missing', () => {

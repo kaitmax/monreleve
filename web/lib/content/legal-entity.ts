@@ -24,7 +24,15 @@
 
 import { LEGAL_PLACEHOLDER } from '@/lib/fr/legal';
 
-/** Every entity-specific value the legal pages need. Nine, per the prompt. */
+/**
+ * Every entity-specific value the legal pages need.
+ *
+ * NINE AT FW10, SIXTEEN AT FW20c. The seven added are the ones the filled
+ * values made necessary: an incorporation date and the host’s telephone,
+ * website and registration, which the LCEN and a reader both want - and
+ * three that are DELIBERATELY EMPTY, so the page states them as gaps
+ * rather than omitting them.
+ */
 export interface LegalEntity {
   /** The registered company name. */
   readonly legalName: string;
@@ -44,6 +52,34 @@ export interface LegalEntity {
   readonly hostingAddress: string;
   /** The public contact address. */
   readonly contactEmail: string;
+  /** The date of incorporation, ISO, for the editor's identification. */
+  readonly incorporatedOn: string;
+  /**
+   * The directeur de la publication.
+   *
+   * FRENCH LAW REQUIRES A NAMED NATURAL PERSON, and the operator has not
+   * supplied one. It must NOT be inferred from a git author, a commit or a
+   * company officer: the obligation is on a person who accepts it, and a name
+   * guessed from version control would be a claim about somebody's legal
+   * responsibility made by a script.
+   */
+  readonly publicationDirector: string;
+  /**
+   * The EU representative under GDPR Art. 27.
+   *
+   * MAY be required for a UK controller targeting French residents. Awaiting
+   * legal advice, and R138 governs the page: the site does not claim to have
+   * appointed one.
+   */
+  readonly euRepresentative: string;
+  /** The Swiss representative under nLPD Art. 14. Same advice, same question. */
+  readonly chRepresentative: string;
+  /** The hosting provider's telephone, which the LCEN requires. */
+  readonly hostingPhone: string;
+  /** The hosting provider's website. */
+  readonly hostingWebsite: string;
+  /** The hosting provider's own registration. */
+  readonly hostingRegistration: string;
 }
 
 export type LegalEntityField = keyof LegalEntity;
@@ -66,6 +102,13 @@ export const LEGAL_ENTITY_FIELDS = [
   'hostingProvider',
   'hostingAddress',
   'contactEmail',
+  'incorporatedOn',
+  'publicationDirector',
+  'euRepresentative',
+  'chRepresentative',
+  'hostingPhone',
+  'hostingWebsite',
+  'hostingRegistration',
 ] as const satisfies readonly LegalEntityField[];
 
 /**
@@ -75,15 +118,57 @@ export const LEGAL_ENTITY_FIELDS = [
  * no copy file mentions a company name.
  */
 export const LEGAL_ENTITY: LegalEntity = {
-  legalName: '',
-  legalForm: '',
-  address: '',
-  registrationNumber: '',
-  dataController: '',
+  // Verified by the operator against Companies House on 17.09.2026.
+  legalName: 'KAMELEO LTD',
+  legalForm: 'Private limited company, registered in England and Wales',
+  address: '128 City Road, London EC1V 2NX, United Kingdom',
+  registrationNumber: '15274008 (Companies House)',
+  incorporatedOn: '2023-11-10',
+
+  // THE CONTROLLER IS THE COMPANY, NAMED. The operator's note reads "KAMELEO
+  // LTD, at the address above" - a description of who and where, not a string
+  // to print: the address is rendered by the same page a few lines up, in
+  // French, and an English clause inside a French legal page would be the
+  // only English on it. So the company is the value and the page says where.
+  dataController: 'KAMELEO LTD',
+  contactEmail: 'contact@monreleve.ch',
+
+  // Verified against OVHcloud's own legal pages on 17.09.2026. The LCEN wants
+  // the host's name, address and telephone; OVH's share capital is NOT stated
+  // here, because published sources disagree on it and the law does not ask.
+  hostingProvider: 'OVH SAS',
+  hostingAddress: '2 rue Kellermann, 59100 Roubaix, France',
+  hostingPhone: '1007 (depuis la France) / +33 9 72 10 10 07',
+  hostingWebsite: 'https://www.ovhcloud.com',
+  hostingRegistration: 'RCS Lille Metropole 424 761 419',
+
+  // ---------------------------------------------------------------------
+  // STILL EMPTY, AND THE EMPTINESS IS THE POINT (R52).
+  //
+  // Each of these prints a visible placeholder on the page that needs it, so
+  // a reader sees an acknowledged gap rather than a silent omission - and a
+  // test counts them, so the gap cannot be closed by deleting the row.
+  // ---------------------------------------------------------------------
+
+  /** A named natural person. Not inferable, and never inferred. */
+  publicationDirector: '',
+
+  /** GDPR Art. 27. Awaiting legal advice - see PARK-13. */
+  euRepresentative: '',
+
+  /** nLPD Art. 14. Same advice, same question. */
+  chRepresentative: '',
+
+  /**
+   * No DPO has been appointed, and this stays empty until one is - or until
+   * the advice says none is required, at which point the honest change is to
+   * remove the row rather than to fill it.
+   *
+   * NOT ON FW20c's LIST of three outstanding fields, which named only the
+   * publication director and the two representatives. It is a FOURTH gap, and
+   * it is raised as a question rather than quietly filled.
+   */
   dpoContact: '',
-  hostingProvider: '',
-  hostingAddress: '',
-  contactEmail: '',
 };
 
 /** Whitespace counts as missing - see the module comment. */

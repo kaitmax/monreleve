@@ -22,6 +22,8 @@
 //
 // TODO-COPY: realistic French, not reviewed.
 
+import { APP_NAME } from '@/lib/fr';
+import { MAIL_SUBDOMAIN } from '@/lib/content/identity';
 import { ALERTES_COPY } from '@/lib/fr/alertes';
 
 /** Written once, in the copy module the pages use (R126). */
@@ -39,7 +41,7 @@ export const EMAIL_COPY = {
      * The subject. Says what to do and what it is about, in that order,
      * because a phone shows about forty characters of it.
      */
-    subject: `Confirmez votre inscription aux alertes frontalier`,
+    subject: `Confirmez votre inscription aux alertes ${APP_NAME}`,
 
     /**
      * The body, as lines. Joined with newlines by the sender; kept as an
@@ -84,4 +86,8 @@ export const EMAIL_COPY = {
  * records are an operator task and belong to FW28 - noted there rather than
  * attempted here, because nothing in this repository can create them.
  */
-export const EMAIL_FROM = 'frontalier <alertes@notifications.frontalier.fr>';
+// THE NAME AND THE DOMAIN BOTH DERIVE (R188). This line carried the only
+// `.fr` host in the repository - notifications.frontalier.fr - which was a
+// FOURTH form of the product identity hiding in a string nobody renders on
+// a page. R171 applies to a mail host exactly as to a canonical.
+export const EMAIL_FROM = `${APP_NAME} <alertes@${MAIL_SUBDOMAIN}>`;

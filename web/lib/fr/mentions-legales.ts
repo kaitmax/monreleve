@@ -19,6 +19,7 @@
 //
 // TODO-COPY: realistic French, not reviewed by counsel.
 
+import { APP_NAME } from '@/lib/fr';
 import type { LegalEntityField } from '@/lib/content/legal-entity';
 
 /**
@@ -40,6 +41,18 @@ export const LEGAL_ENTITY_TERMS: Readonly<Record<LegalEntityField, string>> = {
   hostingProvider: 'Hébergeur',
   hostingAddress: "Adresse de l’hébergeur",
   contactEmail: 'Adresse de contact',
+
+  // FW20c. Seven more, and the type is what required them: the map is a
+  // Required<Record<LegalEntityField, string>>, so a field added to the
+  // entity does not compile until somebody has written its French label.
+  // That is the mechanism this file's own comment describes, working.
+  incorporatedOn: "Date d’immatriculation",
+  publicationDirector: 'Directeur de la publication',
+  euRepresentative: "Représentant dans l’Union européenne",
+  chRepresentative: 'Représentant en Suisse',
+  hostingPhone: "Téléphone de l’hébergeur",
+  hostingWebsite: "Site de l’hébergeur",
+  hostingRegistration: "Immatriculation de l’hébergeur",
 };
 
 export const MENTIONS_LEGALES_COPY = {
@@ -51,11 +64,11 @@ export const MENTIONS_LEGALES_COPY = {
    * badly served by marketing copy.
    */
   description:
-    "Identité de l’éditeur du site frontalier, hébergement, propriété " +
+    `Identité de l’éditeur du site ${APP_NAME}, hébergement, propriété ` +
     'intellectuelle et droit applicable.',
 
   intro:
-    "Les informations ci-dessous identifient l’éditeur du site frontalier et " +
+    `Les informations ci-dessous identifient l’éditeur du site ${APP_NAME} et ` +
     "son hébergeur, comme l’exige la réglementation applicable aux services " +
     'de communication au public en ligne.',
 
