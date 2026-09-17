@@ -1,0 +1,238 @@
+FW20b SESSION PROMPT - frontalier
+Paste this entire prompt as the first message of a fresh Claude Code
+session, opened at the repository root. Run after FW20.
+
+This task closes the public site. After it, what remains is the backend
+and the Android app - where product-state's flags start flipping one at
+a time.
+
+====================================================================
+PRE-STEP RULINGS (apply verbatim)
+====================================================================
+R0. Read REPORT-FW20.txt in full from disk, including its PARKED,
+    NOTICED BUT NOT TOUCHING and QUESTIONS sections, and parking.md.
+    PARK-12 and questions Q59-Q61 are direct inputs.
+
+R1. CI green on origin/main: verify, record the run URL.
+R2, R7-R8, R10-R13, R15-R171 (carried). The engine is closed.
+    R9: you own document edits. R156's parking rule applies throughout.
+
+R172 (new - PRODUCT STATE COMES FROM ONE MODULE).
+    lib/content/product-state.ts holds the facts - dossierExists,
+    trackerExists, comparatorExists and their siblings - and every page
+    derives its sentence from them, the way the footer derives from
+    LAST_REGULATORY_REVIEW. A flag flips once and every page that
+    depends on it changes together.
+    It arrives from FW20's read-through. Three pages written in one task
+    each said something plausible about what exists, and the
+    contradiction lived only BETWEEN them: /a-propos said the site
+    "tient un registre de journees", /tarifs said "le releve" was free,
+    /releve-annuel said the register "ne sont pas construits". No test
+    can see that, because each page is right about itself - the same
+    shape as the P-register collision, one subject over.
+
+R173 (new - AN UNSTYLED ANCHOR IS IMPOSSIBLE, NOT DISCOURAGED).
+    `a` takes the link token in the base layer, with a test asserting no
+    rendered anchor resolves to the user-agent default.
+    It shipped three times - .breadcrumb, R160's reviewer chip, the home
+    page's two doors - each in default browser blue against grey prose,
+    each invisible to every gate, each found by cropping a baseline.
+    THIRD SHIPPING IS THE SIGNAL R149 DESCRIBES: the defect is in the
+    guard, not the component. Fixing it a fourth time in a fourth
+    component would guarantee a fifth.
+
+R174 (new - A SAMPLED MEASUREMENT GETS A BETTER SAMPLE, NEVER A LOOSER
+    GATE). Lighthouse runs three times and asserts the MEDIAN, floor
+    unchanged at 100, and it checks /api/health identifies this product
+    before it measures anything - R169 extended to the tool that did not
+    have it.
+    FW20's floor failed once at 0.99 with numberOfRuns: 1. R114's
+    no-tolerance rule governs BASELINES, where a diff means something
+    changed; Lighthouse is sampled, so 0.01 is noise and the answer is
+    more samples rather than a widened band.
+
+R47. Still open, still the operator's. Not raised.
+
+====================================================================
+WHAT FW20 LEFT YOU
+====================================================================
+Five public pages live and every shell link resolves. PARK-12 closed the
+two dead footer routes that had been there since FW9.
+
+The lesson worth carrying: A RULE WITH NO ENFORCEMENT POINT IS A
+COMMENT. R85 existed from FW9 and the shell never applied it. The
+registry test asked whether each href was DECLARED and the sitemap test
+asked whether a planned route was LISTED; nothing asked whether the
+thing a reader clicks answers.
+
+Two findings are open and both are yours:
+  Q59  CLEISS fact 8, and it is not optional - see increment 3
+  Q61  whether a planned product should be announced at all. PARK-12
+       took the conservative option; this task does not reopen it.
+
+====================================================================
+STANDING PROTOCOL
+====================================================================
+One task, this one. Out-of-scope observations go in the report under
+NOTICED BUT NOT TOUCHING.
+
+Commit only on green (R132). Paste the printed selection into the commit
+body. A red commit is a bounce.
+
+Test-first. The report shows the RED run and the reason it failed. A
+test that passed on its first run is evidence of nothing - plant the
+defect and show it go red.
+
+A regenerated baseline needs a stated reason (R135), AND somebody has to
+crop the image and look at it. FW20 found five defects that way and one
+more by starting the dev server; four of the six were in its own work.
+
+PORTS: another project shares this machine. R169 will refuse the run if
+something else answers - set FRONTALIER_PORT rather than stopping their
+container.
+
+====================================================================
+INCREMENT 0 - R173, the base anchor style
+====================================================================
+The structural fix for a defect that has shipped three times.
+
+ - `a` takes the link token in the base layer, so an anchor is styled
+   before any component says anything.
+ - THE TEST IS THE POINT: no rendered anchor resolves to the UA default.
+   Assert computed colour against the token, over the real pages, not
+   against a list of components somebody maintains.
+ - The three existing `a { color: inherit }` overrides stay where a
+   component deliberately wants inheritance - breadcrumb, chip, doors.
+   They are now deliberate rather than load-bearing.
+ - Prove it: plant a new unstyled anchor on a page and watch the test
+   go red.
+ - Commit: "FW20b: an unstyled anchor is impossible (R173)".
+
+====================================================================
+INCREMENT 1 - R174, Lighthouse
+====================================================================
+ - numberOfRuns 3, assert the median, floor stays 100.
+ - An identity check before measuring: /api/health names this product,
+   or the run refuses. Same shape as e2e/global-setup.ts - and note
+   lighthouserc starts its OWN server, so this guards against measuring
+   a foreign app on a taken port exactly as R169 does.
+ - R139: this changes a build/verification step, so pnpm gate:clean
+   runs once on this increment.
+ - Commit: "FW20b: Lighthouse identifies what it measures (R174)".
+
+====================================================================
+INCREMENT 2 - R172, the product-state module
+====================================================================
+ - lib/content/product-state.ts: dossierExists, trackerExists,
+   comparatorExists, appExists - named facts, each false today, each
+   with the task that flips it in a comment.
+ - /a-propos, /tarifs and /releve-annuel derive their sentences from it.
+   The copy modules take the flags as arguments, the way HOME_COPY's
+   description takes its thresholds.
+ - THE TEST THAT MAKES IT WORTH DOING: flip a flag in a scratch copy and
+   assert every page that mentions it changes together. A module three
+   pages read but nothing cross-checks is three pages again.
+ - Commit: "FW20b: product state comes from one module (R172)".
+
+====================================================================
+INCREMENT 3 - CLEISS fact 8 (Q59)
+====================================================================
+NOT OPTIONAL, and the operator's reason is the failure direction: a
+two-earner household reading the guide today concludes the working
+spouse is covered by the worker's option. That reading leaves someone
+UNINSURED.
+
+ - The transcription is in docs/regulatory-sources.md under
+   "TRANSCRIBED, NOT YET ROWS". Read it there - R168 keeps it out of
+   this prompt.
+ - It becomes a row (D8) with its own key, and guide copy in
+   droit-option-lamal-cmu.mdx.
+ - THE QUALIFIER IS THE LOAD-BEARING HALF. The rule covers family
+   members with no professional activity of their own and no Swiss-only
+   pension. "Votre famille suit votre choix" without it is wrong for
+   most households.
+ - Fact 6 (where it is filed, the form) is the operator's steer from
+   FW20's A1: probably a row and not a paragraph. Your call with the
+   page in front of you; say which and why. R167 - the form is recorded
+   by NAME, its URL a convenience with a fetch date.
+ - Commit: "FW20b: the droit d'option covers the household (D8)".
+
+====================================================================
+INCREMENT 4 - /application
+====================================================================
+The hardest page on the site and the one most likely to drift.
+
+ - THE APP DOES NOT EXIST. Every sentence about it is future tense,
+   DERIVED FROM product-state, with a test asserting no present-tense
+   claim appears. R138's discipline applied to a product claim rather
+   than a privacy one, and it is what keeps the page honest until the AN
+   series ships something.
+ - THE TRAP IS THE TWO MODE CARDS. FD12's rule is that manual and
+   automatic are MECHANICALLY IDENTICAL: same dimensions, same weights,
+   same grey icon squares, and THE SAME GREEN CHECK ON EVERY LINE -
+   including the line about needing access to the device position.
+   (That wording is ILLUSTRATIVE and ASCII by transport, R155: the copy
+   is written accented in lib/fr, never taken from this prompt.)
+   The moment that line renders as a warning, manual becomes the safe
+   choice and automatic the risky one, and the page has quietly taken a
+   side.
+ - R119's counts and R148's geometry are how that is HELD rather than
+   remembered. Assert: identical card dimensions, identical icon
+   treatment, the same check glyph on every line of both cards, and no
+   warning token anywhere in either.
+ - SPEC 13 governs what may be said about detection: coordinate-free,
+   on-device, the fix discarded, no map, no movement timeline, and the
+   app never records a day by itself. Nothing beyond SPEC 13 is written.
+ - Commit: "FW20b: /application, and two cards that take no side".
+
+====================================================================
+INCREMENT 5 - mesh, a11y, baselines, size, read-through
+====================================================================
+ - Every shell link resolves: the FW20 test now covers /application too.
+ - The registry: /application moves to live and enters the sitemap. It
+   is the route UNASSIGNED named - update that assertion, which pins the
+   gap at exactly one route.
+ - jest-axe; keyboard paths; 320 dp; R148 geometry on the mode cards.
+ - Baselines with reasons; crop and READ /application at both widths.
+ - pnpm size; Lighthouse under its new config.
+
+ - THE READ-THROUGH IS POINTED AT ONE QUESTION: do the two mode cards
+   take a side? Read them as somebody deciding whether to let an app
+   watch where they are. If automatic reads as the risky option, the
+   page has made the choice for them.
+
+ - Commit: "FW20b: mesh, a11y, baselines, read-through".
+
+====================================================================
+OUT OF SCOPE
+====================================================================
+- The comparator (PARK-4). Its licence field is the operator's.
+- Any engine change. Any premium or cost figure. Analytics - FW28.
+- Reopening PARK-12's question of announcing planned products (Q61).
+
+====================================================================
+FINAL VERIFICATION
+====================================================================
+pnpm gate && pnpm test:e2e && pnpm test:visual && pnpm test:a11y &&
+pnpm test:runtime
+Green in one run; CI green after the final push.
+
+====================================================================
+REPORT FORMAT - REPORT-FW20b.txt (pure ASCII, committed and pushed)
+====================================================================
+SUMMARY
+PRECONDITIONS
+RED/GREEN LEDGER
+R173 PROOF        A planted unstyled anchor, red.
+R172 PROOF        A flag flipped, every dependent page moved.
+FACT 8            The row and the guide paragraph, quoted, with the
+                  qualifier and why it is load-bearing.
+THE TWO CARDS     What was asserted to keep them identical, and what a
+                  reader would see if it drifted.
+MESH, SIZE, BASELINES, TOKENS ADDED, DEVIATIONS, PARKED,
+NOTICED BUT NOT TOUCHING, QUESTIONS, PUSH PROOF
+
+THE READ-THROUGH gets its own section and answers the one question:
+do the cards take a side?
+
+END OF FW20b PROMPT
