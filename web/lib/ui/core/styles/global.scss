@@ -39,6 +39,37 @@ figure {
   margin: 0;
 }
 
+// RULING R173: AN UNSTYLED ANCHOR IS IMPOSSIBLE, NOT MERELY DISCOURAGED.
+//
+// The default-blue link shipped THREE times in three components -
+// .breadcrumb at FW17, R160's reviewer chip at FW18b, the home page's two
+// doors at FW20 - and each was fixed where it was found. Every time: no gate
+// objected, a baseline photographed it, and a person cropping that baseline
+// caught it.
+//
+// Third shipping is the signal R149 describes - the defect is in the guard,
+// not the component - and the base layer is the guard. e2e/anchors.spec.ts
+// asserts the consequence over every live route: no anchor resolves to the
+// user agent's default.
+//
+// IT FOUND A FOURTH INSTANCE THE MOMENT IT WAS WRITTEN. Every guide's
+// "Voir les sources reglementaires" footer link and all six related-guide
+// links were rendering in browser blue on all seven articles - roughly fifty
+// anchors, live, that nobody had noticed in four tasks of cropping guide
+// baselines. They sit below the fold of the crops that were taken.
+//
+// --colour-brand, which is what lib/guides/mdx.module.scss and /sources
+// already set on the links they style. No new token: the product had a link
+// colour, it simply had no default.
+//
+// A COMPONENT MAY STILL OVERRIDE IT, and three deliberately do -
+// .breadcrumb, the reviewer chip and the home doors all take `color: inherit`
+// because their anchor is a title sitting in a coloured context. Those are
+// now decisions rather than repairs.
+a {
+  color: var(--colour-brand);
+}
+
 // Utility: tabular figures. Applied to any element carrying numbers.
 .u-tnum {
   @include fonts.tabular-figures;
