@@ -182,14 +182,22 @@ export const PUBLIC_ROUTES: readonly PublicRoute[] = [
   // ---- the product ------------------------------------------------------
   {
     // SPEC 9.1: new in v2, and the target of the header's single primary CTA
-    // ("Suivre mes jours"). NO TASK IN tasks/todo.md BUILDS IT - FW20 builds
-    // /releve-annuel, /tarifs, /sources and /a-propos and stops there. So the
-    // product's only call to action points at a 404 and nothing is scheduled
-    // to change that. Raised as a question in REPORT-FW10.txt; the test pins
-    // the gap at exactly this one route.
+    // ("Suivre mes jours").
+    //
+    // LIVE AT FW20b, AND IT WAS THE ONE ROUTE NO TASK CLAIMED. From FW9 until
+    // FW20 it was 'planned' with UNASSIGNED_TASK: SPEC 9.1 required it,
+    // tasks/todo.md never built it, and the product's only call to action
+    // pointed at a 404 from every page. PARK-12 stopped rendering the link;
+    // FW20b builds the page, which is the other half.
+    //
+    // THE PAGE IS LIVE AND THE APP IS NOT. PRODUCT_STATE.appExists stays
+    // false - there is no android/ directory - and every sentence on the page
+    // derives from that flag. This entry says a reader can reach the page,
+    // nothing more, and /releve-annuel has made exactly that distinction
+    // since FW20.
     path: '/application',
-    status: 'planned',
-    task: UNASSIGNED_TASK,
+    status: 'live',
+    task: 'FW20b',
     changeFrequency: 'monthly',
     priority: 0.9,
   },
@@ -256,6 +264,32 @@ export function ctaHrefIfLive(
   routes: readonly PublicRoute[] = PUBLIC_ROUTES,
 ): string | null {
   return isLive(href, routes) ? href : null;
+}
+
+/**
+ * RULING R85 AND RULING R172 TOGETHER: the href, or null when either the
+ * TARGET does not exist or the THING THE BUTTON PROMISES does not exist.
+ *
+ * WHY A SECOND QUESTION. R85 was written when `planned` meant both "no
+ * page" and "no feature", so one check answered both. FW20b separated
+ * them: /application is live and the application is not built. The header
+ * CTA reads "Suivre mes jours", and on the registry check alone that flip
+ * would have put a prominent offer of day-tracking on every public page of
+ * a product that cannot track a day - a PROMISE rather than a broken link,
+ * which is worse because nothing 404s and nothing looks wrong.
+ *
+ * ONE FUNCTION RATHER THAN A CONDITION IN THE SHELL, because the three
+ * tests that assert the button’s visibility computed R85 for themselves
+ * and all three went green against a shell that had stopped agreeing with
+ * them. A rule with no single enforcement point is a comment: this is the
+ * point, and the shell and its tests now call it.
+ */
+export function ctaHrefIfOffered(
+  href: string,
+  offered: boolean,
+  routes: readonly PublicRoute[] = PUBLIC_ROUTES,
+): string | null {
+  return offered ? ctaHrefIfLive(href, routes) : null;
 }
 
 /** The routes that exist, whether or not a gate currently hides them. */

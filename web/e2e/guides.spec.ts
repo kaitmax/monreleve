@@ -601,3 +601,157 @@ test.describe("FW18b's two new surfaces, in the served article", () => {
     expect(reached.regionNamed, 'a scrollable region with no accessible name').toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// RULING R154, ON THE ONE SENTENCE WHOSE ABSENCE LEAVES SOMEBODY UNINSURED.
+//
+// FW20b adds D8 to the droit d'option guide: a family member's cover follows
+// the worker's option ONLY where they have no professional activity of their
+// own and no pension from the Swiss scheme alone. The qualifier is not a
+// nuance, it is most of the fact - a two-earner household that reads the
+// headline without it concludes the working spouse is covered, does nothing,
+// and finds out at a hospital desk.
+//
+// SO THE ASSERTION IS THAT BOTH HALVES ARE SERVED, not that the section
+// exists. `claims` proves the key resolves and the frontmatter parses; it
+// cannot prove the prose reached the HTML, which is exactly the hole R154 was
+// issued about - blockJS deleted every MDX expression while every guard
+// passed, because each was verifying an absence.
+//
+// AND THE ORDER MATTERS. A qualifier served after the reader has stopped
+// reading is a qualifier nobody read, so the condition is asserted to appear
+// in the same section as the rule rather than merely somewhere on the page.
+// ---------------------------------------------------------------------------
+test.describe("FW20b: the household follows the worker choice (D8)", () => {
+  const OPTION_SLUG = 'droit-option-lamal-cmu';
+  const OPTION = `${GUIDES_PATH}/${OPTION_SLUG}`;
+
+  test('serves the rule AND its qualifier, in that order, in one section', async ({ page }) => {
+    await page.goto(OPTION);
+
+    const section = await page.evaluate(() => {
+      const headings = [...document.querySelectorAll('[data-article-body] h2')];
+      const heading = headings.find((node) => (node.textContent ?? '').includes('famille'));
+
+      if (heading === undefined) return null;
+
+      // Everything from this heading to the next one: the section a reader
+      // meets as a unit.
+      const parts: string[] = [];
+
+      for (let node = heading.nextElementSibling; node !== null; node = node.nextElementSibling) {
+        if (node.tagName === 'H2') break;
+        parts.push(node.textContent ?? '');
+      }
+
+      return parts.join(' ').replace(/\s+/gu, ' ');
+    });
+
+    expect(section, 'no section about the household is served at all').not.toBeNull();
+
+    const text = section ?? '';
+
+    // THE RULE.
+    expect(text, 'the rule itself').toContain('suit le');
+    // THE QUALIFIER, both halves, IN THE WARNING BOX rather than merely in
+    // the section - and the difference is a defect this test found in its own
+    // first plant. Deleting the Avertissement left both phrases standing in
+    // the lead paragraph, so a section-level assertion PASSED on a page that
+    // had lost the one element a skimming reader stops at. The qualifier
+    // being load-bearing means where it sits is part of delivering it.
+    const warning = await page.evaluate(() => {
+      const boxes = [...document.querySelectorAll('[data-article-body] [data-warning]')];
+      const box = boxes.find((node) => (node.textContent ?? '').includes('condition'));
+
+      return (box?.textContent ?? '').replace(/\s+/gu, ' ');
+    });
+
+    expect(warning, 'the qualifier has no warning box of its own').not.toBe('');
+    expect(warning, 'the no-activity half of the qualifier').toContain(
+      'sans activité professionnelle propre',
+    );
+    expect(warning, 'the no-Swiss-pension half of the qualifier').toContain(
+      'sans pension du seul régime suisse',
+    );
+    // THE CASE THE QUALIFIER EXISTS FOR, named rather than left to inference.
+    expect(text, 'the working spouse, who is the household this is written for').toContain(
+      'conjoint qui travaille',
+    );
+
+    // ORDER: the warning box follows the rule IMMEDIATELY, rather than
+    // closing the section after the reader has stopped.
+    //
+    // MEASURED AGAINST THE SECTION, NOT AGAINST A SUBSTRING. The first
+    // version of this compared two indexOf results inside `text` and was
+    // satisfied by the lead paragraph alone, which contains both phrases -
+    // an assertion that could not fail while the section had any lead at all.
+    // The positional question is about ELEMENTS, so it is asked of elements.
+    const position = await page.evaluate(() => {
+      const headings = [...document.querySelectorAll('[data-article-body] h2')];
+      const heading = headings.find((node) => (node.textContent ?? '').includes('famille'));
+      const blocks: Element[] = [];
+
+      for (let node = heading?.nextElementSibling ?? null; node !== null; node = node.nextElementSibling) {
+        if (node.tagName === 'H2') break;
+        blocks.push(node);
+      }
+
+      return {
+        total: blocks.length,
+        warningAt: blocks.findIndex((node) => node.matches('[data-warning]')),
+      };
+    });
+
+    expect(position.warningAt, 'the section has no warning box in it').toBeGreaterThan(-1);
+    expect(
+      position.warningAt,
+      'the qualifier must follow the rule, not close the section behind it',
+    ).toBeLessThan(position.total - 1);
+  });
+
+  test('names the instrument and links no file (R167)', async ({ page }) => {
+    await page.goto(OPTION);
+
+    const body = await page.locator('[data-article-body]').innerText();
+
+    // R167: THE CITATION NAMES THE INSTRUMENT. The form's own address carries
+    // `juin2019` and CLEISS marks the form as being updated, so the durable
+    // fact is the NAME.
+    //
+    // THE NAME IS READ FROM THE GUIDE'S OWN `claims`, NOT TYPED HERE, and the
+    // reason is two rulings at once. R126 forbids French copy outside lib/fr,
+    // and the first version of this test slipped two elided phrases past that
+    // scan by writing them as \u escapes - which is evasion rather than
+    // compliance, since the scan exists to stop exactly this duplication.
+    // R163 gives the better answer: prose that narrates a recorded fact is
+    // TIED to the record. The claim is the record, so the assertion reads the
+    // instrument name out of it and looks for that in the served body. Rename
+    // the form in the frontmatter and this test follows; type a different name
+    // into the prose and it fails.
+    const guide = allGuides().find((one) => one.frontmatter.slug === OPTION_SLUG);
+    const formClaim = guide?.frontmatter.claims.find((one) => one.key === "droitOptionForm");
+    const quoted = /\u00ab\s*([^\u00bb]+?)\s*\u00bb/u.exec(formClaim?.says ?? "");
+
+    expect(quoted, "the droitOptionForm claim names no instrument in guillemets").not.toBeNull();
+
+    const formName = quoted?.[1] ?? "";
+
+    expect(body, "the instrument, by the name its own claim gives it").toContain(formName);
+    expect(body, 'the two filing destinations').toContain('Institution commune LAMal');
+    // ONE WORD, because "en cours d-apostrophe-actualisation" is an elision
+    // and R126 is right to want it out of this file. The word is specific
+    // enough: no other guide uses it.
+    expect(body, 'CLEISS marks the form as being updated').toContain('actualisation');
+
+    // AND NO LINK TO THE PDF, which is the half R167 makes load-bearing: a
+    // page that pointed at a file it cannot keep current would be making
+    // exactly the promise the ruling refuses.
+    const pdfLinks = await page.evaluate(() =>
+      [...document.querySelectorAll('[data-article-body] a')]
+        .map((a) => a.getAttribute('href') ?? '')
+        .filter((href) => href.includes('.pdf') || href.includes('cleiss.fr/pdf')),
+    );
+
+    expect(pdfLinks, 'the article links a PDF this product cannot keep current').toEqual([]);
+  });
+});

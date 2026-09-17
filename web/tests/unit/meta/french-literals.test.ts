@@ -97,11 +97,20 @@ const ALLOWED: ReadonlyArray<readonly [string, string]> = [
       'forbid them everywhere else.',
   ],
   [
-    'tests/unit/content/product-state.test.ts',
-    'Synthetic sentences fed to the R172 claim detector - four it must flag ' +
-      'and four it must not. Same case as tests/support/vocabulary.ts: a ' +
-      'detector cannot be asserted without inputs, and an absence assertion ' +
-      'with a broken detector passes forever. None of them reaches a page.',
+    'tests/support/product-claims.ts',
+    'The five sentences that produced R172 and four that must not be flagged ' +
+      '- synthetic input for the claim scan, held beside the patterns they ' +
+      'exercise. That vocabulary has silently matched NOTHING twice, once ' +
+      'through a wrong verb stem and once through a word boundary that does ' +
+      'not exist after an accented letter, and only these samples knew.',
+  ],
+  [
+    'tests/support/present-tense.ts',
+    'The sentences a page about a SHIPPED application would use, so ' +
+      '/application can be asserted not to use one. Synthetic detector input, ' +
+      'never rendered - the same case as tests/support/vocabulary.ts, and it ' +
+      'is a support module precisely so R126 has one file to exempt rather ' +
+      'than a spec full of French literals.',
   ],
 ];
 
@@ -179,10 +188,38 @@ describe('French copy is written once, in lib/fr (R126)', () => {
       expect(reason.length, file).toBeGreaterThan(40);
     }
 
+    // RAISED FROM SIX TO SEVEN IN FW20b, and the cap is asked to justify
+    // itself rather than just moved.
+    //
+    // The task added two detectors - the R172 claim scan and /application's
+    // present-tense scan - and each needs French sentences to be proved
+    // against. Both times the first draft put those sentences in the spec
+    // file, this test caught them, and the fix was to move them into a
+    // tests/support module beside the detector rather than to escape the
+    // apostrophes and hide them (R181: deriving is the fix, escaping is
+    // evasion).
+    //
+    // SO THE LIST GREW BECAUSE THE DISCIPLINE HELD, not because it drifted -
+    // and it now has one shape: every detector vocabulary is a
+    // tests/support/* module, which is where vocabulary.ts has always been.
+    // A future entry that is NOT one of those is the drift this cap is
+    // watching for, so it is asserted separately below.
     expect(
       ALLOWED.length,
       'the exemption list has grown - has the discipline drifted?',
-    ).toBeLessThanOrEqual(6);
+    ).toBeLessThanOrEqual(7);
+
+    // THE SHAPE, not just the count. Four entries are tests whose SUBJECT is
+    // French text; three are support modules holding a detector's
+    // vocabulary. Anything else is a spec that kept its literals, which is
+    // the thing this file exists to refuse.
+    const support = ALLOWED.filter(([path]) => path.startsWith("tests/support/"));
+    const selfReferential = ALLOWED.filter(([path]) => path.startsWith("tests/unit/"));
+
+    expect(
+      support.length + selfReferential.length,
+      'an exemption that is neither a detector vocabulary nor a test about French text',
+    ).toBe(ALLOWED.length);
   });
 
   it('and the detector would actually catch one', () => {

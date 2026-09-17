@@ -35,6 +35,7 @@ import { axe } from 'vitest-axe';
 import * as matchers from 'vitest-axe/matchers';
 import { CguContent } from '@/app/(public)/cgu/CguContent';
 import AProposPage from '@/app/(public)/a-propos/page';
+import ApplicationPage from '@/app/(public)/application/page';
 import HomePage from '@/app/(public)/page';
 import ReleveAnnuelPage from '@/app/(public)/releve-annuel/page';
 import TarifsPage from '@/app/(public)/tarifs/page';
@@ -71,21 +72,28 @@ const PAGES = [
   { name: 'accueil', node: <HomePage /> },
   { name: 'a-propos', node: <AProposPage /> },
   { name: 'tarifs', node: <TarifsPage /> },
+  { name: 'application', node: <ApplicationPage /> },
   { name: 'releve-annuel', node: <ReleveAnnuelPage /> },
 ];
 
 describe('every page composed in the shell is free of axe violations', () => {
-  it('covers all three legal pages in both states, and FW20s four', () => {
+  it('covers all three legal pages in both states, FW20s four and FW20bs one', () => {
     // Without this the loop could pass by shrinking to nothing.
-    expect(PAGES).toHaveLength(10);
+    expect(PAGES).toHaveLength(11);
     for (const page of ['mentions-legales', 'confidentialite', 'cgu']) {
       expect(PAGES.filter((entry) => entry.name.startsWith(page))).toHaveLength(2);
     }
 
-    // FW20's four, NAMED rather than counted, for the reason the legal pages
-    // are: a count of ten is satisfied by any ten, and the page that would
-    // quietly fall out of this list is the one somebody rewrote.
-    for (const page of ['accueil', 'a-propos', 'tarifs', 'releve-annuel']) {
+    // FW20's four plus FW20b's one, NAMED rather than counted, for the reason
+    // the legal pages are: a count of ten is satisfied by any ten, and the page
+    // that would quietly fall out of this list is the one somebody rewrote.
+    //
+    // /application EARNS ITS PLACE HERE more than most. Its two mode cards are
+    // the only place on the site where a glyph repeats six times, and the
+    // decision to make it decorative - aria-hidden, meaning carried by the
+    // sentence beside it - is exactly the kind that axe checks and a human
+    // reviewer takes on trust.
+    for (const page of ['accueil', 'a-propos', 'tarifs', 'releve-annuel', 'application']) {
       expect(PAGES.filter((entry) => entry.name === page), page).toHaveLength(1);
     }
   });

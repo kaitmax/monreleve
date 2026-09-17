@@ -128,7 +128,7 @@ describe('the sitemap lists what exists and nothing else', () => {
     expect([...sitemapPaths()].sort()).toEqual([...liveRoutes().map((r) => r.path)].sort());
   });
 
-  it('lists the eighteen routes that exist and may be seen today', () => {
+  it('lists the nineteen routes that exist and may be seen today', () => {
     // FOUR UNTIL FW11, five with the calculator, six with /sources. The
     // calculator joined when its page was built AND the Checkpoint A review
     // was recorded - two independent conditions, both of which had to be
@@ -180,6 +180,10 @@ describe('the sitemap lists what exists and nothing else', () => {
       // read, that nobody has validated these rules.
       '/a-propos',
       '/alertes',
+      // FW20b: the route no task claimed from FW9 to FW20. SPEC 9.1 required
+      // it and tasks/todo.md never built it, so the product's only call to
+      // action pointed at a 404 from every page until PARK-12 hid the link.
+      '/application',
       '/calculateur-teletravail-frontalier',
       '/cgu',
       '/confidentialite',
@@ -212,8 +216,9 @@ describe('the sitemap lists what exists and nothing else', () => {
     // be lowered to nothing; the set below says which five, so shipping one
     // is an edit that names it.
     expect([...planned].sort()).toEqual([
-      // FW20 took /a-propos out of this list and into the sitemap one.
-      '/application',
+      // FW20 took /a-propos out of this list and into the sitemap one, and
+      // FW20b took /application - which leaves ONE planned route, blocked on
+      // a licence rather than on a task (PARK-4, R157 option 3).
       '/calculateur-lamal-cmu',
     ]);
     for (const path of planned) {
@@ -237,14 +242,19 @@ describe('every planned route names the task that builds it', () => {
     }
   });
 
-  it('has exactly one route no task claims, and it is /application', () => {
-    // PINNED, not tolerated. tasks/todo.md builds /releve-annuel, /tarifs,
-    // /sources and /a-propos in FW20 and never builds /application - which
-    // SPEC 9.1 requires and which is the target of the header's single primary
-    // CTA, so the product's only call to action currently points at a 404.
-    // Raised as a question in REPORT-FW10.txt. This assertion exists so the
-    // gap stays exactly one route wide until someone answers it.
-    expect(UNASSIGNED).toEqual(['/application']);
+  it('has no route that no task claims, now that /application is built', () => {
+    // THE GAP IS CLOSED, and the assertion changes shape rather than moving.
+    //
+    // From FW9 to FW20 this read `toEqual(['/application'])`: SPEC 9.1
+    // required the page, tasks/todo.md never built it, and the product's only
+    // call to action pointed at a 404 from every page. The assertion existed
+    // to keep the gap exactly one route wide until somebody answered it.
+    // FW20b answered it.
+    //
+    // EMPTY IS NOW THE CLAIM, which is stronger than the old one: any FUTURE
+    // route added without a task in tasks/todo.md fails here on the day it is
+    // added, rather than widening a gap that was already tolerated at one.
+    expect(UNASSIGNED).toEqual([]);
   });
 });
 

@@ -17,6 +17,10 @@ faq:
     answer: "Non. Le mariage, le divorce, une naissance ou un décès dans la famille ne rouvrent pas le choix, pas plus qu’un changement d’employeur sans période de chômage entre les deux. Ce sont les cas que l’on croit le plus souvent suffisants."
   - question: "Que se passe-t-il si je laisse passer les trois mois ?"
     answer: "Vous êtes affilié d’office en Suisse. L’absence de choix est donc elle-même un choix, et c’est celui qui se produit par défaut."
+  - question: "Mon conjoint et mes enfants suivent-ils mon choix ?"
+    answer: "Seulement s’ils n’exercent aucune activité professionnelle et ne perçoivent ni pension ni rente du seul régime suisse. Un conjoint qui travaille, en France comme en Suisse, relève de sa propre affiliation et n’est pas couvert par votre choix. Dans un foyer où les deux conjoints travaillent, la question se pose deux fois."
+  - question: "Auprès de qui le choix s’exerce-t-il ?"
+    answer: "Auprès de l’organisme compétent du canton où vous travaillez si vous êtes en activité, ou auprès de l’Institution commune LAMal si vous percevez une pension du seul régime suisse. Le document est le formulaire « Choix du système d’assurance maladie », dont une partie est remplie par votre caisse primaire d’assurance maladie."
   - question: "Ce guide me dit-il lequel des deux coûte le moins cher ?"
     answer: "Non, et il ne donne aucun montant. Ce site ne dispose pas de données de primes qu’il puisse citer, et un chiffre approximatif sur une décision irréversible serait pire que pas de chiffre du tout."
 claims:
@@ -28,6 +32,12 @@ claims:
     says: "À défaut de choix dans le délai de trois mois, l’affiliation se fait d’office en Suisse."
   - key: droitOptionBasis
     says: "Le droit repose sur l’ALCP, en vigueur depuis le 1er juin 2002, sur le règlement (CE) 883/2004 applicable entre la Suisse et l’Union européenne depuis le 1er avril 2012, et sur les modalités de l’accord du 7 juillet 2016."
+  - key: droitOptionFamily
+    says: "Un membre de la famille qui réside en France, qui n’exerce aucune activité professionnelle et qui ne perçoit ni pension ni rente du seul régime suisse n’exerce pas de droit d’option distinct : sa couverture maladie suit le choix exercé par le travailleur. Un conjoint qui travaille, en France comme en Suisse, n’entre pas dans ce cas et relève de sa propre affiliation."
+  - key: droitOptionFiling
+    says: "Le choix s’exerce auprès de l’organisme compétent du canton de travail pour un travailleur frontalier, et auprès de l’Institution commune LAMal, à Olten, pour un titulaire d’une pension du seul régime suisse. Une partie du formulaire est remplie par la caisse primaire d’assurance maladie du lieu de résidence en France, et l’ensemble parvient à l’autorité suisse compétente dans le délai."
+  - key: droitOptionForm
+    says: "Le choix s’exerce au moyen du formulaire « Choix du système d’assurance maladie », que le CLEISS signale comme étant en cours d’actualisation."
 ---
 
 {/*
@@ -40,11 +50,45 @@ claims:
   body, and docs/regulatory-sources.md carries the result as rows D1-D7. P6
   supersedes P2.
 
-  EVERY REGULATORY SENTENCE HERE CITES ONE OF FOUR KEYS. Nothing is written
+  EVERY REGULATORY SENTENCE HERE CITES ONE OF SEVEN KEYS. Nothing is written
   from general knowledge, and nothing is hedged - these facts are verified, so
   R146 case (a) applies and the article states them plainly. That is the
   difference a source makes, and it is why the article reads differently from
   the attestation guide next door.
+
+  FOUR KEYS UNTIL FW20b, AND THE THREE THAT ARRIVED ARE THE DANGEROUS ONES.
+  FW18b's audit found that eight facts were verified in the CLEISS pass and
+  seven rows were written: one fact split into D1 and D2, and two never
+  landed. They sat in docs/regulatory-sources.md under "TRANSCRIBED, NOT YET
+  ROWS" for two tasks.
+
+  THE FAMILY RULE IS NOT AN ADDITION, IT IS A CORRECTION OF AN ABSENCE, and
+  the failure direction is what makes it urgent rather than tidy. A
+  two-earner household reading this page WITHOUT the qualifier concludes the
+  working spouse is covered by the worker's option, does nothing, and ends up
+  UNINSURED. An omission that produces a wrong belief is not a smaller claim
+  than a wrong sentence; here it is a more expensive one, because the reader
+  discovers it at a hospital desk.
+
+  SO THE QUALIFIER GETS ITS OWN Avertissement rather than a subordinate
+  clause. "No professional activity of their own and no Swiss-only pension"
+  is the load-bearing half of D8, and a reader who skims the section must not
+  be able to take away the headline without it. That is the same judgement
+  R146 makes about hedging, inverted: this fact is verified, so it is stated
+  plainly - AND its condition is stated just as plainly, because the
+  condition is most of the fact.
+
+  WHERE IT IS FILED IS TWO KEYS, NOT ONE (R158). droitOptionFiling and
+  droitOptionForm have different rot profiles: CLEISS can reissue the form
+  under a new reference without the cantonal bodies moving, and the
+  Institution commune's address can change without the form changing.
+  R167 then decides how the form is named - by NAME, with the URL a
+  convenience that is allowed to rot - which is why the section says
+  « Choix du systeme d'assurance maladie » and links nothing, and why it
+  tells the reader to ask the body they file with for the current version
+  rather than a third-party site, THIS ONE INCLUDED. CLEISS marks the form as
+  being updated; a page that pointed at a file it cannot keep current would
+  be making exactly the promise R167 exists to refuse.
 
   THE FOUR TRIGGERS ARE THE POINT. Every advisor writes "three months from
   hiring", which is wrong for a frontalier who was already working in
@@ -75,6 +119,7 @@ lentement une fois plutôt que vite deux fois.
 - Le délai : trois mois
 - Ce qui l’ouvre : quatre situations, pas seulement l’embauche
 - La portée du choix : une seule fois, irrévocable
+- Votre famille : elle suit votre choix, sous conditions
 - Si vous ne faites rien : affiliation d’office en Suisse
 - Ce que ce guide ne donne pas : des montants
 
@@ -130,6 +175,27 @@ Ce dernier cas est le plus traître. Changer d’employeur en Suisse, du vendred
 au lundi, ne rouvre rien — alors qu’une période de chômage entre deux emplois,
 elle, ouvre un nouveau délai.
 
+## Votre famille ne choisit pas séparément
+
+Un membre de votre famille qui réside en France, qui n’exerce aucune activité
+professionnelle et qui ne perçoit ni pension ni rente du seul régime suisse
+n’exerce pas de droit d’option pour lui-même : sa couverture maladie suit le
+choix que vous avez fait.
+
+<Avertissement>
+
+**La condition est la moitié de la règle.** Elle ne vaut que pour un proche
+sans activité professionnelle propre et sans pension du seul régime suisse.
+Un conjoint qui travaille — en France comme en Suisse — n’entre pas dans ce
+cas : il relève de sa propre affiliation, et votre choix ne le couvre pas.
+
+</Avertissement>
+
+Dans un foyer où les deux conjoints travaillent, la question se pose donc deux
+fois et non une. C’est la situation la plus courante, et c’est exactement
+celle dans laquelle lire « votre famille suit votre choix » sans la condition
+laisse quelqu’un sans couverture.
+
 ## Si vous ne faites rien
 
 À défaut de choix dans le délai, l’affiliation se fait d’office en Suisse.
@@ -137,6 +203,30 @@ elle, ouvre un nouveau délai.
 Ne rien faire est donc une décision, et pas une absence de décision. C’est la
 raison pour laquelle le délai mérite d’être repéré au moment où il s’ouvre
 plutôt que retrouvé plus tard.
+
+## Où et comment le choix s’exerce
+
+Le choix s’exerce auprès de l’organisme compétent, et lequel dépend de votre
+situation :
+
+- si vous travaillez en Suisse, auprès de l’organisme compétent du canton où
+  vous travaillez ;
+- si vous percevez une pension du seul régime suisse, auprès de l’Institution
+  commune LAMal, à Olten, qui reçoit également les demandes en ligne.
+
+Le document qui porte le choix est le formulaire « Choix du système
+d’assurance maladie ». Une de ses parties est remplie par votre caisse
+primaire d’assurance maladie, celle de votre lieu de résidence en France, et
+l’ensemble doit parvenir à l’autorité suisse compétente dans le délai.
+
+<Avertissement>
+
+**Le formulaire est en cours d’actualisation** au moment où cette page a été
+relue, et le CLEISS l’indique lui-même. Demandez la version en vigueur à
+l’organisme auprès duquel vous déposez, plutôt qu’à un site tiers — celui-ci
+compris.
+
+</Avertissement>
 
 ## Ce que ce guide ne chiffre pas
 

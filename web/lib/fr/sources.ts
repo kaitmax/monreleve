@@ -68,8 +68,27 @@ export const SOURCES_COPY = {
    * role. A literal standing in for it was accidentally correct for exactly
    * one task.
    */
+  /**
+   * THE SUBJECT WAS WRONG AND THE COUNT MADE IT VISIBLE (FW20b).
+   *
+   * It said "LE CALCULATEUR applique N constantes". The calculator applies
+   * ten of them - the telework ceilings, the mission cap, the Geneva
+   * examples. The seven droit d'option rows are facts the GUIDES cite and the
+   * engine never touches: no code path reads droitOptionWindow.
+   *
+   * It was already false at fourteen, when FW18b added four CLEISS rows, and
+   * nothing noticed because the count derives correctly (R171) and a derived
+   * count is right about arithmetic while the sentence around it is wrong
+   * about the subject. FW20b's three more made it seven of seventeen, which
+   * is the point at which reading the page out loud catches it.
+   *
+   * "Ce site" is the honest subject: this table is the register of every
+   * regulatory fact the product stands on, whoever consumes it - which is
+   * what /a-propos already promises in so many words ("ce qui n'y figure pas
+   * n'est utilise nulle part sur ce site").
+   */
   intro: (constants: number, readings: number): string =>
-    `Le calculateur applique ${constants} constantes et ${readings} lectures. Cette page ` +
+    `Ce site s’appuie sur ${constants} constantes et ${readings} lectures. Cette page ` +
     'indique pour chacune sa source primaire et son état. Elle est tenue à ' +
     'jour à la main, et sa date de dernière vérification est celle qui ' +
     'figure au bas de chaque page.',
@@ -148,6 +167,13 @@ export const SOURCES_COPY = {
       "Régime applicable à défaut de choix dans le délai",
     droitOptionBasis:
       "Textes qui fondent le droit d’option",
+    droitOptionFamily:
+      "Couverture des membres de la famille sans activité professionnelle " +
+      "propre ni pension du seul régime suisse",
+    droitOptionFiling:
+      "Organisme auprès duquel le choix s’exerce, selon la situation",
+    droitOptionForm:
+      "Formulaire par lequel le choix s’exerce",
   } satisfies Record<SourceId, string>,
 
   /**

@@ -44,7 +44,7 @@
 
 import { Menu, X } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
-import { ctaHrefIfLive, visibleFooterColumns, visibleNav } from '@/lib/content/routes';
+import { ctaHrefIfOffered, visibleFooterColumns, visibleNav } from '@/lib/content/routes';
 import { APP_NAME } from '@/lib/fr';
 import { LAST_REGULATORY_REVIEW, reviewNotice } from '@/lib/content/regulatory';
 import { LEGAL_COPY } from '@/lib/fr/legal';
@@ -120,11 +120,31 @@ function NavItem({ entry }: { readonly entry: NavEntry }) {
 }
 
 /**
- * RULING R85's answer for this render. Module scope, because it depends only
- * on the route registry - not on props, not on state - and computing it per
+ * RULING R85's answer for this render, AND R172's.
+ *
+ * Module scope, because it depends only on the route registry and the
+ * product-state module - not on props, not on state - and computing it per
  * render would suggest otherwise.
+ *
+ * TWO CONDITIONS, AND FW20b IS WHY THE SECOND ONE EXISTS. R85 asks whether
+ * the TARGET EXISTS; this button also has to ask whether the THING IT
+ * PROMISES exists. It reads "Suivre mes jours", and /application went live
+ * in FW20b as a page describing an application that is not built. On the
+ * registry check alone, that flip would have switched on a prominent button
+ * on every public page offering a reader day-tracking the product cannot do
+ * - a promise, not a broken link, which is the worse of the two because
+ * nothing 404s and nothing looks wrong.
+ *
+ * IT IS EXACTLY THE DISTINCTION lib/content/product-state.ts calls
+ * load-bearing: A PAGE EXISTING IS NOT THE THING EXISTING. /releve-annuel
+ * has been live since FW20 with dossierExists false for the same reason.
+ *
+ * FOUND BY A TEST WRITTEN TO FIND IT. The singleton census asserted this
+ * button renders zero times while the target is planned, and its comment
+ * said: "the day /application ships, this fails and says the count has to be
+ * reconsidered rather than silently becoming 1." It did, and it did.
  */
-const ctaHref = ctaHrefIfLive(SHELL_COPY.ctaHref);
+const ctaHref = ctaHrefIfOffered(SHELL_COPY.ctaHref, PRODUCT_STATE.appExists);
 
 /**
  * RULING R54's third surface, computed at module scope for the same reason

@@ -24,6 +24,7 @@ import {
   isLive,
   type PublicRoute,
 } from '@/lib/content/routes';
+import { PRODUCT_STATE } from '@/lib/content/product-state';
 import { SHELL_COPY } from '@/lib/fr/shell';
 
 const LIVE: PublicRoute = {
@@ -56,7 +57,10 @@ describe('isLive', () => {
     // and a default pointing at the wrong list would make every assertion here
     // decorative.
     expect(isLive('/mentions-legales')).toBe(true);
-    expect(isLive('/application')).toBe(false);
+    // FW20b: /application is live now, so the default-registry check needs a
+    // route that is still planned. /calculateur-lamal-cmu is the last one,
+    // blocked on a premium-data licence rather than on a task (PARK-4).
+    expect(isLive('/calculateur-lamal-cmu')).toBe(false);
   });
 });
 
@@ -78,23 +82,41 @@ describe('ctaHrefIfLive', () => {
 });
 
 describe('the shipped state, stated so it cannot change silently', () => {
-  it('has /application registered but NOT live', () => {
-    // The premise of R85. If this ever fails it is because /application
-    // shipped - in which case the CTA should start rendering, and the shell
-    // test that asserts its absence is the one to update.
+  it('has /application live, and the CTA still hidden - for a different reason', () => {
+    // THIS BLOCK SAID THE OPPOSITE UNTIL FW20b, and how it changed is the
+    // part worth keeping.
+    //
+    // It read: "has /application registered but NOT live ... if this ever
+    // fails it is because /application shipped, IN WHICH CASE THE CTA SHOULD
+    // START RENDERING, and the shell test that asserts its absence is the one
+    // to update." The page shipped, this went red, and that instruction was
+    // wrong - following it would have put a button reading "Suivre mes jours"
+    // on every public page of a product that cannot track a day.
+    //
+    // R85 asks whether the TARGET EXISTS. That was the only question while a
+    // planned route meant both "no page" and "no feature". /application
+    // separates them: the page is real and the application is not, so the
+    // shell asks PRODUCT_STATE.appExists as well - the same distinction
+    // /releve-annuel has drawn since FW20.
     const application = PUBLIC_ROUTES.find((route) => route.path === '/application');
 
     expect(application).toBeDefined();
-    expect(application?.status).toBe('planned');
+    expect(application?.status).toBe('live');
   });
 
-  it('means the header CTA has no target today', () => {
-    expect(ctaHrefIfLive(SHELL_COPY.ctaHref)).toBeNull();
+  it('means the header CTA has a target, and still renders nothing', () => {
+    // BOTH HALVES, because either alone is now misleading. R85 is satisfied -
+    // the href resolves - and the button is absent anyway.
+    expect(ctaHrefIfLive(SHELL_COPY.ctaHref)).toBe('/application');
+    expect(
+      PRODUCT_STATE.appExists,
+      'the app now exists - the shell should render its CTA and this test is the one to update',
+    ).toBe(false);
   });
 
   it('still points the CTA at /application, so it flips with no code change', () => {
     // The href stays in lib/fr and stays correct; only its VISIBILITY is
-    // conditional. Marking the route live is the whole change.
+    // conditional. Flipping appExists is now the whole change.
     expect(SHELL_COPY.ctaHref).toBe('/application');
   });
 });

@@ -53,6 +53,10 @@ const PAGES = [
   // losing its indent, because no assertion is about how it looks.
   { id: 'a-propos', path: '/a-propos' },
   { id: 'tarifs', path: '/tarifs' },
+  // FW20b. Photographed at both widths because the mode cards' EQUALITY is a
+  // visual property: R148's numbers assert it, and a picture is what a person
+  // reads to notice the kind of imbalance numbers agree with.
+  { id: 'application', path: '/application' },
   { id: 'releve-annuel', path: '/releve-annuel' },
 
   // FW14: the alert list. The landing a Facebook post points at, and the

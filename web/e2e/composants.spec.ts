@@ -13,7 +13,8 @@
 
 import { expect, test } from '@playwright/test';
 import { goToServedPage } from './support/served';
-import { ctaHrefIfLive } from '../lib/content/routes';
+import { ctaHrefIfOffered } from '../lib/content/routes';
+import { PRODUCT_STATE } from '../lib/content/product-state';
 import { SHELL_COPY } from '../lib/fr/shell';
 
 // #B7791F, the warning token, as Chromium serialises a computed colour.
@@ -102,18 +103,25 @@ test.describe('the mobile header keyboard path (AC2)', () => {
     // The CTA is OUTSIDE the panel, so it must be reachable while the menu is
     // shut. That is the requirement most easily lost in a mobile layout.
     //
-    // RULING R85 MADE THE BUTTON CONDITIONAL, so the assertion is too: while
-    // /application is only planned the header renders no CTA at all, and a
-    // test that simply stopped looking for it would be indistinguishable from
-    // one where the CTA had fallen inside the mobile panel - the exact
+    // R85 AND R172 MAKE THE BUTTON CONDITIONAL, so the assertion is too, and
+    // a test that simply stopped looking for it would be indistinguishable
+    // from one where the CTA had fallen inside the mobile panel - the exact
     // regression this test exists to catch. So the absence is asserted
     // together with its REASON.
+    //
+    // THE REASON CHANGED IN FW20b AND THE PREDICATE HAD TO FOLLOW. This read
+    // ctaHrefIfLive, which answers "does the target exist". /application went
+    // live while the application did not, and on that question alone the
+    // header would have rendered a button offering day-tracking to a reader
+    // who cannot have it. ctaHrefIfOffered asks both questions, and it is one
+    // function precisely so this spec and the shell cannot drift apart - they
+    // did, and this test caught it four minutes into the gate.
     const trigger = shell(page).getByRole('button', { name: 'Ouvrir le menu' });
     const cta = shell(page).getByRole('link', { name: 'Suivre mes jours' });
 
     await expect(trigger).toBeVisible();
 
-    if (ctaHrefIfLive(SHELL_COPY.ctaHref) === null) {
+    if (ctaHrefIfOffered(SHELL_COPY.ctaHref, PRODUCT_STATE.appExists) === null) {
       await expect(cta).toHaveCount(0);
     } else {
       await expect(cta).toBeVisible();
@@ -138,7 +146,7 @@ test.describe('the mobile header keyboard path (AC2)', () => {
     // The wordmark is always in the path; the CTA only when it exists.
     expect(reached.join(' | ')).toContain('frontalier');
 
-    if (ctaHrefIfLive(SHELL_COPY.ctaHref) !== null) {
+    if (ctaHrefIfOffered(SHELL_COPY.ctaHref, PRODUCT_STATE.appExists) !== null) {
       expect(reached.join(' | ')).toContain('Suivre mes jours');
     }
   });

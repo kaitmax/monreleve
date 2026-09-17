@@ -58,15 +58,20 @@ describe('the key universe is the product registry, not a list kept here', () =>
     );
   });
 
-  it('splits into six verified and five unresolved, which is the state of the record', () => {
+  it('splits into fifteen verified and five unresolved, which is the state of the record', () => {
     // NON-VACUITY WITH TEETH: if a future pass verified the two pending rows,
     // this fails and whoever did it updates the guides' hedging in the same
     // change. The numbers are the record of 09.09.2026, not a preference.
-    // TWELVE VERIFIED SINCE FW18b: the original six, plus the two R158 split
-    // out of missionCapDays and the four from the CLEISS pass. UNRESOLVED is
-    // UNCHANGED at five - rows 6 and 7 plus P1-P3 - which is the half worth
-    // asserting: adding verified facts must not quietly resolve a pending one.
-    expect(VERIFIED.size).toBe(12);
+    // FIFTEEN VERIFIED SINCE FW20b: the original six, the two R158 split out
+    // of missionCapDays, the four from the CLEISS pass, and now
+    // droitOptionFamily, droitOptionFiling and droitOptionForm off the same
+    // CLEISS fetch.
+    //
+    // UNRESOLVED IS UNCHANGED AT FIVE - rows 6 and 7 plus P1-P3 - and that is
+    // the half worth asserting: adding verified facts must not quietly
+    // resolve a pending one. FW20b added three and resolved none, which is
+    // the correct outcome for a task that transcribed rather than researched.
+    expect(VERIFIED.size).toBe(15);
     expect(UNRESOLVED.size).toBe(5);
     expect([...UNRESOLVED].sort()).toEqual(
       ['P1', 'P2', 'P3', 'dayClassification', 'residence1983Cantons'].sort(),

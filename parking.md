@@ -690,3 +690,59 @@ REVERSIBLE: one line in `web/lib/fr/legal.ts`.
 TOUCHES:   `web/lib/fr/legal.ts`, `web/lib/ui/react/LegalNote/LegalNote.tsx`,
 `web/lib/ui/react/PublicShell/PublicShell.tsx`, and the six test files that
 compared against the constant.
+
+## PARK-15 - a baseline was regenerated against a half-edited tree  [FW20b, 2026-09-17]
+
+QUESTION:  FW20b increment 3 regenerated the visual baselines while increment
+4's work was already underway in the same working tree. The container builds
+inside the run, so what it photographed was whatever the files said at that
+moment - and at that moment `/application` had been moved to `status: 'live'`
+but the shell's CTA still asked only R85's question.
+
+The result: `composants-shell-desktop.png` and 68 siblings were rewritten to
+show the header rendering a prominent "Suivre mes jours" button. That is the
+exact defect the next increment identified and removed - a site-wide offer of
+day-tracking on a product that cannot track a day - and the visual record had
+just been made to certify it as correct.
+
+NOTHING REACHED MAIN. Increment 3 was never committed, and the contaminated
+baselines were overwritten by a clean run before anything was pushed. The
+defect is in the process, not in the repository.
+
+WHY IT IS WORTH AN ENTRY. R135 governs regenerating a baseline - it must be
+listed, with a reason, and somebody must crop it and look. All three happened
+and none of them would have caught this: the list was accurate, the reason
+was true of the sentence that changed, and the crop that was read was
+/sources, which was correct. THE ASSUMPTION R135 DOES NOT STATE is that the
+tree being photographed is the tree you mean to photograph.
+
+It is the third instance in FW20b of one shape - a guard that cannot see the
+thing it guards because of WHEN it runs:
+  (a) tests/unit/meta/distdir-leaks.test.ts runs inside `pnpm test`, which
+      the gate runs BEFORE `test:visual` - so the leak a visual run creates
+      is invisible to the gate run that created it.
+  (b) a planted defect was logged as planted without checking the file had
+      changed, and `String.replace` had silently hit the FAQ instead of the
+      prose (R180).
+  (c) this.
+
+TAKEN:     the baselines were regenerated from a settled tree with no edits
+during the run, and the two images that carried the CTA were read again
+afterwards.
+
+PROPOSED, FOR THE OPERATOR TO RULE ON: a baseline is regenerated from a
+QUIESCENT tree. The regeneration is the last thing an increment does, nothing
+is edited while it runs, and the run prints the working-tree state it
+photographed so the report can show the two agree. Today `scripts/visual.mjs`
+prints WHICH baselines changed; it does not print WHAT it built them from,
+and those are different claims - the same distinction R177 draws between a
+stylesheet link and a stylesheet.
+
+NOT TAKEN: (a) Serialising by convention - "remember not to edit during a
+visual run" is the judgement version, and R132's own history says the
+judgement version is the one that fails. (b) Having the script refuse to run
+on a dirty tree. Every increment here runs on a dirty tree by construction;
+the question is whether it CHANGES during the run, not whether it differs
+from HEAD.
+
+TOUCHES:   `web/scripts/visual.mjs` if taken.

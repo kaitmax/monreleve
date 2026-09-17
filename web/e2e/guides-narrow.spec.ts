@@ -35,6 +35,10 @@ const FIXED = [
   ['a-propos', '/a-propos'],
   ['tarifs', '/tarifs'],
   ['releve-annuel', '/releve-annuel'],
+  // FW20b: /application, whose two mode cards are the only two-column grid
+  // on the site that MUST collapse rather than shrink - two narrow cards
+  // side by side at 320 dp would be the page taking a side by illegibility.
+  ['application', '/application'],
   ['sources', '/sources'],
   ['the article', '/guides/fixture-modele-article'],
 ] as const;

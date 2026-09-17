@@ -144,3 +144,35 @@ export const EXEMPT: ReadonlyArray<{ readonly file: string; readonly why: string
  * their text is rendered for exactly this reason.
  */
 export const WITHDRAWN_EXEMPTION = 'legal.ts';
+
+/**
+ * THE SENTENCES THAT PRODUCED R172, and four that must NOT be flagged.
+ *
+ * Synthetic input for the scan's own self-test. An absence assertion with a
+ * broken detector passes forever, and this vocabulary has been broken twice:
+ * once by `tien(?:t|ez)`, which matches "tienez" and so matches nothing, and
+ * once by a trailing \b after an accented letter, which in JavaScript is not
+ * a word boundary at all. Both times the scan reported clean and only these
+ * samples knew.
+ *
+ * THEY LIVE HERE RATHER THAN IN THE SPEC because R126 forbids French copy
+ * outside lib/fr, and a list of French sentences in a test file is
+ * indistinguishable from duplicated page copy - to the scanner and to a
+ * reader. A detector vocabulary belongs beside its detector, which is where
+ * tests/support/vocabulary.ts has kept its own all along.
+ */
+export const PRODUCED_THE_RULE: readonly string[] = [
+  'Calculez votre part et les jours qui restent, puis tenez le registre horodaté de vos journées.',
+  'Ce site calcule votre part de télétravail annuelle et tient un registre de journées.',
+  'Le service met en forme un relevé annuel à partir de ces journées.',
+  'Ce site publie un comparateur de coût.',
+  'Chaque jour enregistré est horodaté par le service.',
+];
+
+/** Prose that mentions the same words WITHOUT claiming the capability. */
+export const MUST_NOT_FLAG: readonly string[] = [
+  'Une date de relevé, consignée avec la règle.',
+  'Le registre journalier et le document qui en découle ne sont pas construits.',
+  'Ce site ne dispose d’aucune donnée de primes. Il ne publie donc pas de comparateur de coût.',
+  'Ce document n’existe pas encore.',
+];

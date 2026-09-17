@@ -34,7 +34,12 @@ import { APP_NAME } from '@/lib/fr';
 import { LAST_REGULATORY_REVIEW, reviewNotice } from '@/lib/content/regulatory';
 import { LEGAL_COPY } from '@/lib/fr/legal';
 import { PRODUCT_STATE } from '@/lib/content/product-state';
-import { ctaHrefIfLive, visibleFooterColumns, visibleNav } from '@/lib/content/routes';
+import {
+  ctaHrefIfLive,
+  ctaHrefIfOffered,
+  visibleFooterColumns,
+  visibleNav,
+} from '@/lib/content/routes';
 import { formatDate } from '@/lib/ui/core';
 import { FOOTER_COLUMNS, SHELL_COPY, SHELL_NAV } from '@/lib/fr/shell';
 import type { NavLink } from '@/lib/fr/shell';
@@ -197,7 +202,7 @@ describe('the nav', () => {
     // route, and it fails if the shell hides a button whose target is live.
     renderShell();
 
-    const expected = ctaHrefIfLive(SHELL_COPY.ctaHref);
+    const expected = ctaHrefIfOffered(SHELL_COPY.ctaHref, PRODUCT_STATE.appExists);
     const cta = screen.queryAllByRole('link', { name: SHELL_COPY.cta });
 
     if (expected === null) {
@@ -208,13 +213,26 @@ describe('the nav', () => {
     }
   });
 
-  it('is hidden TODAY, and for the stated reason', () => {
+  it('is hidden TODAY, and the reason changed in FW20b', () => {
     // The state above, pinned, so "no CTA" cannot quietly become "the CTA
-    // broke". If this fails because /application went live, delete it and the
-    // conditional above starts exercising the other branch.
+    // broke".
+    //
+    // IT USED TO SAY: "if this fails because /application went live, delete it
+    // and the conditional above starts exercising the other branch."
+    // /application DID go live, and deleting this would have been wrong. The
+    // page exists; the application does not. R85 is satisfied and the button
+    // still must not render, because it reads "Suivre mes jours" and the
+    // product cannot track a day.
+    //
+    // BOTH HALVES, so neither can drift: the target resolves, and the offer is
+    // withheld.
     renderShell();
 
-    expect(ctaHrefIfLive(SHELL_COPY.ctaHref)).toBeNull();
+    expect(ctaHrefIfLive(SHELL_COPY.ctaHref), 'the page exists').toBe('/application');
+    expect(
+      ctaHrefIfOffered(SHELL_COPY.ctaHref, PRODUCT_STATE.appExists),
+      'the application does not',
+    ).toBeNull();
     expect(screen.queryAllByRole('link', { name: SHELL_COPY.cta })).toHaveLength(0);
   });
 });
@@ -319,7 +337,10 @@ describe('the mobile menu', () => {
     // and it is outside the panel, or there is none AND the reason is that its
     // target is not live.
     if (cta === undefined) {
-      expect(ctaHrefIfLive(SHELL_COPY.ctaHref), 'no CTA, and not because of R85').toBeNull();
+      expect(
+        ctaHrefIfOffered(SHELL_COPY.ctaHref, PRODUCT_STATE.appExists),
+        'no CTA, and not because of R85 or R172',
+      ).toBeNull();
     } else {
       expect(panel?.contains(cta)).toBe(false);
     }

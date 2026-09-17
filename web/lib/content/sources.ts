@@ -54,6 +54,29 @@ export const SOURCE_IDS = [
   'droitOptionIrrevocable',
   'droitOptionDefault',
   'droitOptionBasis',
+
+  // FW20b: THREE MORE FROM THE SAME FETCH, and FW18b's audit is why they were
+  // missing. Eight facts were verified on 16.09.2026 and seven rows were
+  // written; one fact split into D1 and D2, and two never landed at all. They
+  // waited in docs/regulatory-sources.md under "TRANSCRIBED, NOT YET ROWS".
+  //
+  // FACT 8 IS NOT OPTIONAL, and the operator's reason is the failure
+  // DIRECTION: a two-earner household reading the guide without the qualifier
+  // concludes the working spouse is covered by the worker's option, does
+  // nothing, and ends up UNINSURED. Absence here is not a smaller claim; it
+  // is a wrong one.
+  'droitOptionFamily',
+
+  // FACT 6 IS TWO IDS, NOT ONE, and the split is R158's own test rather than
+  // tidiness. Where the option is filed and which form files it have
+  // DIFFERENT ROT PROFILES: CLEISS can reissue the form under a new reference
+  // without the cantonal bodies moving, and the Institution commune's address
+  // can change without the form changing. One key covering both would leave
+  // `claims` unable to tell "a pensioner files at Olten" from "the instrument
+  // is « Choix du systeme d'assurance maladie »" - which is exactly the state
+  // missionCapDays was in before R158.
+  'droitOptionFiling',
+  'droitOptionForm',
 ] as const;
 
 export type SourceId = (typeof SOURCE_IDS)[number];
@@ -225,6 +248,33 @@ export const SOURCE_ENTRIES: readonly SourceEntry[] = [
   },
   {
     id: 'droitOptionBasis',
+    sourceName: 'CLEISS',
+    verifiedOn: CLEISS_PASS,
+    url: 'https://www.cleiss.fr/faq/droit_d_option_des_frontaliers_france-suisse.html',
+    status: 'transcribed',
+  },
+  {
+    id: 'droitOptionFamily',
+    sourceName: 'CLEISS',
+    verifiedOn: CLEISS_PASS,
+    url: 'https://www.cleiss.fr/faq/droit_d_option_des_frontaliers_france-suisse.html',
+    status: 'transcribed',
+  },
+  {
+    id: 'droitOptionFiling',
+    sourceName: 'CLEISS',
+    verifiedOn: CLEISS_PASS,
+    url: 'https://www.cleiss.fr/faq/droit_d_option_des_frontaliers_france-suisse.html',
+    status: 'transcribed',
+  },
+  {
+    // R167: THE INSTRUMENT IS THE NAME, THE URL IS A CONVENIENCE. The form's
+    // own address carries `juin2019` and CLEISS marks the form as being
+    // updated, so this link is expected to rot - and a dead PDF link is a
+    // maintenance item, never this fact becoming unsourced. The row's identity
+    // is « Choix du systeme d'assurance maladie »; the FAQ page below is where
+    // CLEISS names it, which is what the reader needs to reach it.
+    id: 'droitOptionForm',
     sourceName: 'CLEISS',
     verifiedOn: CLEISS_PASS,
     url: 'https://www.cleiss.fr/faq/droit_d_option_des_frontaliers_france-suisse.html',

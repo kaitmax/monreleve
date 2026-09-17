@@ -85,8 +85,13 @@ test.describe('sitemap.xml', () => {
     // until it guards nothing. The set says which five, so shipping one is an
     // edit that names it.
     expect(planned.map((route) => route.path).sort()).toEqual([
-      // FW20 took /a-propos out of this list; it is a live page now.
-      '/application',
+      // FW20 took /a-propos out of this list and FW20b took /application,
+      // which leaves ONE planned route - and it is blocked on a premium-data
+      // licence rather than on a task (PARK-4, R157 option 3). The set is
+      // down to a single entry, which is the point at which it is worth
+      // saying out loud: when this list empties, the shape of the assertion
+      // changes rather than the list, the way tests/unit/content/routes.test
+      // .ts's UNASSIGNED did in FW20b.
       '/calculateur-lamal-cmu',
     ]);
 

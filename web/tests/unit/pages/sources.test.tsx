@@ -48,13 +48,19 @@ describe('the constants table', () => {
     const text = pageText();
 
     expect(SOURCE_ENTRIES).toHaveLength(SOURCE_IDS.length);
-    // FOURTEEN SINCE FW18b, and the growth is two separate decisions.
+    // SEVENTEEN SINCE FW20b, and every step of the growth is a decision
+    // somebody wrote down.
     // R158 split the two facts that shared missionCapDays because they share
     // its ge.ch PAGE - the travel-day rules and the six worked examples - and
-    // the CLEISS pass added four for the droit d’option. Hardcoded on
-    // purpose: deriving it from SOURCE_IDS would agree with whatever
-    // SOURCE_IDS says, which is the thing being checked.
-    expect(SOURCE_ENTRIES.length).toBe(14);
+    // the CLEISS pass added four for the droit d’option. FW20b added the
+    // last three: droitOptionFamily, the fact FW18b transcribed and never
+    // turned into a row, plus droitOptionFiling and droitOptionForm - fact 6
+    // split in two because where the option is filed and which form files it
+    // have different rot profiles (R158).
+    //
+    // Hardcoded on purpose: deriving it from SOURCE_IDS would agree with
+    // whatever SOURCE_IDS says, which is the thing being checked.
+    expect(SOURCE_ENTRIES.length).toBe(17);
 
     for (const entry of SOURCE_ENTRIES) {
       expect(text, entry.id).toContain(SOURCES_COPY.rules[entry.id]);
@@ -219,7 +225,7 @@ describe('the assembled page', () => {
 
     expect(container.querySelectorAll('table')).toHaveLength(1);
     expect(container.querySelectorAll('th[scope="col"]')).toHaveLength(5);
-    expect(container.querySelectorAll('th[scope="row"]')).toHaveLength(14);
+    expect(container.querySelectorAll('th[scope="row"]')).toHaveLength(17);
   });
 });
 
@@ -228,11 +234,13 @@ describe('the verification date column', () => {
     const text = pageText();
     const transcribed = SOURCE_ENTRIES.filter((entry) => entry.status === 'transcribed');
 
-    // TWELVE OF FOURTEEN. The two still unread are rows 6 and 7 - the day
+    // FIFTEEN OF SEVENTEEN. The two still unread are rows 6 and 7 - the day
     // classification and the 1983 canton list - and they are the same two
-    // they have always been. The six added in FW18b were all read: two off
-    // the ge.ch page Checkpoint A already covered, four off CLEISS.
-    expect(transcribed).toHaveLength(12);
+    // they have always been, which is the number worth watching: every row
+    // added since has arrived WITH its source read, and these two have not
+    // moved in four tasks. FW20b's three came off the CLEISS fetch of
+    // 16.09.2026 that D1-D7 already came from.
+    expect(transcribed).toHaveLength(15);
     expect(text).toContain(formatDate(CHECKPOINT_A));
   });
 

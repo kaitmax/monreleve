@@ -46,7 +46,13 @@ import { A_PROPOS_COPY } from '@/lib/fr/a-propos';
 import { LEGAL_COPY } from '@/lib/fr/legal';
 import { RELEVE_COPY } from '@/lib/fr/releve-annuel';
 import { TARIFS_COPY } from '@/lib/fr/tarifs';
-import { CLAIM_PATTERNS, EXEMPT, claimsIn } from '../../support/product-claims';
+import {
+  CLAIM_PATTERNS,
+  EXEMPT,
+  MUST_NOT_FLAG,
+  PRODUCED_THE_RULE,
+  claimsIn,
+} from '../../support/product-claims';
 import { quotedSpans, withoutComments } from '../../support/quoted-spans';
 
 const WEB = process.cwd();
@@ -345,28 +351,15 @@ describe('no page claims a capability the module does not grant', () => {
    * scan above on an empty repository.
    */
   it('recognises the sentences that produced the rule', () => {
-    const produced = [
-      'Calculez votre part et les jours qui restent, puis tenez le registre horodaté de vos journées.',
-      'Ce site calcule votre part de télétravail annuelle et tient un registre de journées.',
-      'Le service met en forme un relevé annuel à partir de ces journées.',
-      'Ce site publie un comparateur de coût.',
-      'Chaque jour enregistré est horodaté par le service.',
-    ];
-
-    for (const sentence of produced) {
-      expect(claimsIn(sentence).length, `not recognised as a claim: ${sentence}`).toBeGreaterThan(0);
+    for (const sentence of PRODUCED_THE_RULE) {
+      expect(claimsIn(sentence).length, `not recognised as a claim: ${sentence}`).toBeGreaterThan(
+        0,
+      );
     }
   });
 
   it('does not flag prose that mentions the words without claiming them', () => {
-    const innocent = [
-      'Une date de relevé, consignée avec la règle.',
-      'Le registre journalier et le document qui en découle ne sont pas construits.',
-      'Ce site ne dispose d’aucune donnée de primes. Il ne publie donc pas de comparateur de coût.',
-      'Ce document n’existe pas encore.',
-    ];
-
-    for (const sentence of innocent) {
+    for (const sentence of MUST_NOT_FLAG) {
       expect(claimsIn(sentence).map((claim) => claim.what), `false positive: ${sentence}`).toEqual(
         [],
       );

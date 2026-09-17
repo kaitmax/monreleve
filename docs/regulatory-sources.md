@@ -311,14 +311,47 @@ https://www.cleiss.fr/faq/droit_d_option_des_frontaliers_france-suisse.html
 | D5 | *What does NOT reopen it* | Named explicitly by CLEISS: marriage, divorce, a birth or a death in the family, or changing jobs **without an unemployment gap** between them | ☑ CLEISS, 16.09.2026 |
 | D6 | *The default* | Failing to opt within three months means **automatic affiliation in Switzerland** | ☑ CLEISS, 16.09.2026 |
 | D7 | *Legal basis* | The ALCP, in force 1 June 2002; Regulation (CE) 883/2004 applicable between Switzerland and the EU since 1 April 2012; the modalities from the accord of 7 July 2016 | ☑ CLEISS, 16.09.2026 |
+| D8 | *Family members* | A family member residing in France who has **no professional activity of their own** and **no pension or annuity from the Swiss scheme alone** does not exercise a separate option: their health cover follows the option the worker exercised. A spouse who works — in France *or* in Switzerland — falls outside this and has their own affiliation | ☑ CLEISS, 16.09.2026 |
+| D9 | *Where the option is exercised* | By status. A **frontier worker** files with the competent **cantonal body of the canton of work**; a **holder of a Swiss pension alone** files with **Institution commune LAMal**, Industriestrasse 75, CH-4600 Olten, also online at `kvg.org`. Part 6 of the form is completed by the **CPAM of the French place of residence**, and the file reaches the Swiss competent authority **within the three months** | ☑ CLEISS, 16.09.2026 |
+| D10 | *The instrument* | The form **« Choix du système d'assurance maladie »**, which CLEISS marks **« Formulaire en cours d'actualisation »**. Recorded by NAME per R167; the address it currently carries is a convenience with a fetch date and is allowed to rot | ☑ CLEISS, 16.09.2026 |
+
+### FW20b: D8, D9 and D10 landed, and why fact 6 became two rows
+
+The block below was FW18b's holding pen. FW20b turned it into the three rows
+above, and the split is the decision worth recording.
+
+**D8 is the whole of T1**, qualifier included, because the qualifier is the
+fact. *"Votre famille suit votre choix"* without *"no professional activity of
+their own and no Swiss-only pension"* is wrong for any household where both
+partners work — and the failure direction is that a working spouse reads it,
+does nothing, and ends up **uninsured**. That is why this was not optional.
+
+**T2 became TWO rows, not one.** The operator's steer was "probably a row",
+and the page in front of me says two, on R158's own test: *a source key
+identifies a fact, not a URL*. Where the option is filed and which form files
+it have **different rot profiles**. CLEISS can reissue the form under a new
+reference without the cantonal bodies moving, and the Institution commune's
+address can change without the form changing. One key covering both would
+leave `claims` unable to tell *"a pensioner files at Olten"* from *"the
+instrument is « Choix du système d'assurance maladie »"* — which is exactly
+the state FW17 and FW18 left `missionCapDays` in.
+
+The procedure detail — parts 1/2/4 or 1/3/4 by the applicant, part 5 the
+choice, part 6 the CPAM, the whole within the three months — sits inside D9
+rather than in a fourth row. It is routing, and routing is what D9 is about.
 
 ### TRANSCRIBED, NOT YET ROWS — two facts the FW18b pass carried and FW18b did not record
 
-> **THESE ARE NOT D-ROWS AND MUST NOT BE CITED AS ONE.** They are the
-> operator's verbatim transcription from the same fetch of 16.09.2026, held
-> here so the wording is not lost between sessions. FW20 turns them into rows
-> and decides the R158 split; until it does, no `claims` key exists for them
-> and no article may cite them.
+> **THESE BECAME D8, D9 AND D10 IN FW20b** and the block is kept as the
+> operator's verbatim transcription from the fetch of 16.09.2026 — the
+> accented original the rows are read from, which is where R168 points a
+> relay prompt instead of carrying a French quotation through ASCII.
+>
+> It said until FW20b: "THESE ARE NOT D-ROWS AND MUST NOT BE CITED AS ONE …
+> FW20 turns them into rows and decides the R158 split; until it does, no
+> `claims` key exists for them and no article may cite them." FW20 did not;
+> FW20b did, and the three keys are `droitOptionFamily`, `droitOptionFiling`
+> and `droitOptionForm`.
 >
 > They are here because FW18b's audit found them missing: eight facts were
 > verified from the fetch and seven rows were written. Nothing merged — one

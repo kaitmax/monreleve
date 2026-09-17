@@ -41,10 +41,11 @@ import MentionsPage from '@/app/(public)/mentions-legales/page';
 import NotFound from '@/app/not-found';
 import AlertesPage from '@/app/(public)/alertes/page';
 import AProposPage from '@/app/(public)/a-propos/page';
+import ApplicationPage from '@/app/(public)/application/page';
 import ReleveAnnuelPage from '@/app/(public)/releve-annuel/page';
 import SourcesPage from '@/app/(public)/sources/page';
 import TarifsPage from '@/app/(public)/tarifs/page';
-import { PUBLIC_ROUTES, ctaHrefIfLive } from '@/lib/content/routes';
+import { PUBLIC_ROUTES } from '@/lib/content/routes';
 import { CALCULATEUR_COPY } from '@/lib/fr/calculateur';
 import { LEGAL_COPY } from '@/lib/fr/legal';
 import { PRODUCT_STATE } from '@/lib/content/product-state';
@@ -165,6 +166,27 @@ const PAGES: readonly Expected[] = [
     // An offer page for a document that does not exist. Its links are
     // ordinary prose links, not SPEC 9.3's contextual slot, and there is
     // nothing to buy or start - so no primary action.
+    contextualLinks: 0,
+    primaryActions: 0,
+  },
+  {
+    label: '/application',
+    render: () => {
+      render(
+        <PublicShell>
+          <ApplicationPage />
+        </PublicShell>,
+      );
+    },
+    // A page for an application that does not exist. Its two closing links
+    // - the calculator and the releve - are ordinary prose links rather than
+    // SPEC 9.3's contextual slot, which belongs to the calculator's result
+    // panel and exists nowhere else.
+    //
+    // NO PRIMARY ACTION, AND THAT IS THE POINT OF THE PAGE. FD12 puts store
+    // badges in the hero and a brand CTA in the closing strip; there is
+    // nothing to download, so a primary action here could only lead
+    // somewhere that is not the thing the button names.
     contextualLinks: 0,
     primaryActions: 0,
   },
@@ -553,20 +575,28 @@ describe('the primary action: exactly one (R119)', () => {
     ).toHaveLength(1);
   });
 
-  it('counts the shell CTA as zero while its target is planned (R85)', () => {
+  it('counts the shell CTA as zero while the app it promises does not exist (R85, R172)', () => {
     // THE OTHER PRIMARY ACTION, and it is absent by design rather than by
-    // omission. SHELL_COPY.ctaHref is /application, which is `status:
-    // 'planned'`, so ctaHrefIfLive returns null and the header renders no
-    // anchor at all. Asserted as a pair - the registry says planned, the DOM
-    // shows none - so the day /application ships, this fails and says the
-    // count has to be reconsidered rather than silently becoming 1.
+    // omission.
+    //
+    // THIS TEST DID ITS JOB IN FW20b. It read "while its target is planned"
+    // and said: "the day /application ships, this fails and says the count has
+    // to be reconsidered rather than silently becoming 1." /application went
+    // live, this went red, and the answer was NOT to update the count.
+    //
+    // The button reads "Suivre mes jours". Rendering it because the PAGE now
+    // exists would put a prominent offer of day-tracking on every public page
+    // of a product that cannot track a day - a promise rather than a broken
+    // link, which is worse precisely because nothing 404s. So the shell now
+    // asks PRODUCT_STATE.appExists as well as the registry, and the pair below
+    // asserts both halves.
     render(
       <PublicShell>
         <HomePage />
       </PublicShell>,
     );
 
-    expect(ctaHrefIfLive(SHELL_COPY.ctaHref)).toBeNull();
+    expect(PRODUCT_STATE.appExists, 'the app now exists - reconsider this count').toBe(false);
     expect(screen.queryAllByRole('link', { name: SHELL_COPY.cta })).toHaveLength(0);
   });
 });
