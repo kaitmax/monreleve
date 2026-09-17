@@ -1,6 +1,6 @@
 // web/scripts/lighthouse.mjs
 //
-// `pnpm lighthouse`, with a site origin.
+// `pnpm lighthouse`, with a site origin, an identity check, and three runs.
 //
 // WHY THIS FILE EXISTS, and it is a measurement rather than a preference.
 // R152 asks for a Lighthouse FLOOR on the first real guide. Run without a
@@ -25,23 +25,45 @@
 //
 // NEXT_PUBLIC_SITE_URL IS INLINED AT BUILD, not read at serve, so it has to be
 // present for `next build` rather than for `next start`. So this script builds
-// FIRST, with the origin, and lighthouserc.json's startServerCommand only
-// starts what was built.
-//
-// THE BUILD IS NOT IN startServerCommand, and that is measured too: lhci waits
-// 30 seconds by default for the server to answer, a build takes minutes, and
-// the result is not a timeout message - lhci gives up waiting and Chrome
-// reports "prevented page load with an interstitial", which reads like a
-// security failure and sent the first attempt looking in the wrong place.
+// FIRST, with the origin, and only then starts what was built.
 //
 // A NODE WRAPPER RATHER THAN AN INLINE ASSIGNMENT because `VAR=x cmd` is shell
 // syntax that Windows does not have, and this repository is developed on
 // Windows and built on Linux.
+//
+// ---------------------------------------------------------------------------
+// RULING R174: A SAMPLED MEASUREMENT GETS A BETTER SAMPLE, NEVER A LOOSER GATE
+//
+// FW20's floor failed once at 0.99 on /guides/geneve with numberOfRuns: 1, and
+// passed on re-run. R114's no-tolerance rule governs BASELINES, where a diff
+// means something changed; Lighthouse is a sampled measurement of a machine
+// under load, so 0.01 is noise. The answer is three runs and the median, with
+// the floor unchanged at 100 - not a widened band.
+//
+// AND THE SERVER IS OURS BEFORE ANYTHING IS MEASURED. This script now starts
+// the server itself rather than handing lighthouserc a startServerCommand,
+// because a check that runs after `lhci autorun` has already collected is a
+// check that reports on numbers it cannot retract.
+//
+// FW20 measured the cost of not having this in the e2e suite: pointed at
+// another project's container, 91 tests passed. Lighthouse had the same hole -
+// a hardcoded port and no idea what answered on it - and would have reported a
+// performance score for somebody else's application without a word.
+// ---------------------------------------------------------------------------
 
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 
 /** RFC 2606. Reserved, unresolvable, unmistakable for the real domain. */
 const ORIGIN = 'https://frontalier.example';
+
+/** R170: the port comes from the environment, so two projects can coexist. */
+const PORT = process.env.FRONTALIER_PORT ?? process.env.PORT ?? '3000';
+const BASE = `http://localhost:${PORT}`;
+
+/** The product's own name, as /api/health reports it. */
+const SERVICE = 'frontalier';
+
+const ROUTES = ['/', '/guides', '/guides/teletravail-frontalier-40-pourcent', '/guides/geneve'];
 
 const env = {
   ...process.env,
@@ -54,6 +76,112 @@ const run = (command, args) => {
   if (result.status !== 0) process.exit(result.status ?? 1);
 };
 
+/** What was found, in a sentence somebody woken at 02:00 can act on. */
+function refuse(what, found) {
+  console.error('');
+  console.error(`R174: lighthouse refused to measure - ${what}.`);
+  console.error('');
+  console.error(`  expected  ${SERVICE} at ${BASE}`);
+  console.error(`  found     ${found}`);
+  console.error('');
+  console.error('  Something other than this product is answering on that port,');
+  console.error('  or it is answering without its stylesheets.');
+  console.error('    docker ps --format "{{.Image}} {{.Ports}}"');
+  console.error('');
+  console.error(`  To measure elsewhere: FRONTALIER_PORT=3100 pnpm lighthouse`);
+  console.error('');
+  console.error('  A score for the wrong page is worse than no score: it is a');
+  console.error('  number somebody will quote.');
+  console.error('');
+  process.exit(1);
+}
+
+/**
+ * R174: whose server is this.
+ *
+ * A STATUS CODE IS NOT ENOUGH, and FW20 proved it twice. The foreign container
+ * that captured port 3000 answered /api/health with 200 and valid JSON of its
+ * own; so did the one that later captured 3100. Only the `service` field
+ * distinguishes them.
+ */
+async function assertOurs() {
+  const deadline = Date.now() + 90_000;
+  let last = 'nothing - no response before the deadline';
+
+  while (Date.now() < deadline) {
+    try {
+      const response = await fetch(`${BASE}/api/health`, { cache: 'no-store' });
+
+      if (!response.ok) refuse('the health route did not answer', `HTTP ${response.status}`);
+
+      const body = await response.json();
+
+      if (body.service !== SERVICE) {
+        refuse('the server is not this product', `a server identifying as "${body.service}"`);
+      }
+
+      return;
+    } catch (error) {
+      last = error instanceof Error ? error.message : String(error);
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+  }
+
+  refuse('the server never answered', last);
+}
+
+/**
+ * R177: the page under measurement actually has styles.
+ *
+ * THE SAME QUESTION AS R174, ONE LAYER DOWN. R174 asks whether the right
+ * application is answering; this asks whether what it served is the real page
+ * rather than an unstyled shell. A Lighthouse run against a page whose CSS
+ * failed to load reports a PERFECT performance score and a plausible
+ * accessibility one - there is almost nothing to paint - and every number is
+ * meaningless.
+ *
+ * It is the absence-satisfied-by-absence shape that R169's corollary names,
+ * arriving in the one tool that measures how fast a page paints.
+ */
+async function assertStyled() {
+  const response = await fetch(BASE, { cache: 'no-store' });
+  const html = await response.text();
+
+  const sheets = [...html.matchAll(/<link[^>]+rel="stylesheet"[^>]*>/g)].length;
+
+  if (sheets === 0) {
+    refuse('the page served no stylesheet', 'HTML with zero <link rel="stylesheet">');
+  }
+
+  console.log(`lighthouse: ${BASE} is ${SERVICE} and serves ${sheets} stylesheet(s)`);
+}
+
 console.log(`lighthouse: building with NEXT_PUBLIC_SITE_URL=${env.NEXT_PUBLIC_SITE_URL}`);
 run('pnpm', ['build']);
-run('lhci', ['autorun']);
+
+console.log(`lighthouse: starting the server on ${PORT}`);
+const server = spawn('pnpm', ['exec', 'next', 'start', '-p', PORT], {
+  stdio: 'ignore',
+  shell: true,
+  env,
+});
+
+const stop = () => {
+  if (!server.killed) server.kill();
+};
+
+process.on('exit', stop);
+process.on('SIGINT', () => {
+  stop();
+  process.exit(130);
+});
+
+await assertOurs();
+await assertStyled();
+
+// The URLs are built from the port rather than read from lighthouserc, for
+// R171's reason: the config's list would be a literal standing in for "the
+// routes on the server this script just started".
+run('lhci', ['autorun', ...ROUTES.map((route) => `--collect.url=${BASE}${route}`)]);
+
+stop();

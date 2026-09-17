@@ -1,17 +1,11 @@
 {
   "ci": {
     "collect": {
-      "startServerCommand": "node scripts/copy-fonts.mjs && next start",
-      "url": [
-        "http://localhost:3000/",
-        "http://localhost:3000/guides",
-        "http://localhost:3000/guides/teletravail-frontalier-40-pourcent",
-        "http://localhost:3000/guides/geneve"
-      ],
-      "numberOfRuns": 1,
+      "numberOfRuns": 3,
       "settings": {
         "preset": "desktop"
-      }
+      },
+      "_comment": "R174: three runs, median asserted, floor unchanged at 100. The server and the URL list belong to scripts/lighthouse.mjs, which starts the server itself so it can verify WHOSE it is before anything is measured - a check after autorun reports on numbers it cannot retract."
     },
     "assert": {
       "assertions": {
@@ -39,7 +33,8 @@
             "minScore": 1
           }
         ]
-      }
+      },
+      "aggregationMethod": "median"
     },
     "upload": {
       "target": "filesystem",
