@@ -1,0 +1,729 @@
+====================================================================
+REPORT-FW20b.txt
+====================================================================
+
+SUMMARY
+--------------------------------------------------------------------
+Six increments. The public site is closed: /application is built and
+live, and there is no longer any route in the registry that no task
+claims.
+
+The task's own subject was R172 - statements about the product's own
+state come from one module - and the module was the easy half. The
+prompt named three pages. The increment found FIVE instances of the
+defect, and the two nobody could have read:
+
+  the home page's META DESCRIPTION promised "puis tenez le registre
+  horodate de vos journees" - an instruction to use a register that
+  does not exist, in the sentence a search engine prints under the
+  product's name. A read-through reads pages; a meta description is
+  never on one.
+
+  $legal-01, the standing disclaimer, said "Chaque jour enregistre est
+  horodate par le service" in the footer of EVERY public page -
+  including /releve-annuel, whose body says the register is not built.
+  The footer contradicted the article above it ON THE SAME RENDER, and
+  it shipped in FW20 alongside the very page it contradicts.
+
+Then increment 4 found the one that would have been worst. Moving
+/application to `live` switched on a site-wide button reading "Suivre
+mes jours" - a prominent offer of day-tracking on a product that cannot
+track a day. R85 was satisfied: the href resolved, nothing 404ed,
+nothing looked wrong. A PROMISE is worse than a broken link precisely
+because nothing looks wrong.
+
+Three findings in this task are the same shape, and it is not the
+shape the earlier tasks kept finding. FW17 to FW20 found guards that
+verified the absence of the wrong thing. FW20b found guards that verify
+the right thing AT THE WRONG TIME:
+
+  - the distDir leak detector runs inside `pnpm test`, which the gate
+    runs BEFORE `test:visual` - so a leak a visual run creates is
+    invisible to the gate run that created it, and is caught only by
+    the NEXT task.
+  - a planted defect was recorded as planted without checking the file
+    had changed. String.replace had hit the FAQ instead of the prose,
+    and the test passed. That is R180.
+  - a baseline was regenerated while the next increment was already
+    editing the tree, so the visual record was rewritten to certify a
+    defect that had been identified but not yet removed. PARK-15.
+
+
+PRECONDITIONS
+--------------------------------------------------------------------
+REPORT-FW20.txt read in full, with PARKED, NOTICED and QUESTIONS   yes
+parking.md read; PARK-4 and PARK-12 are this task's inputs         yes
+docs/regulatory-sources.md "TRANSCRIBED, NOT YET ROWS" read there   yes
+CI green on origin/main before the task                     7af3d98
+
+R168 held throughout: the prompt carries no French quotation, and every
+accented string in this task was authored in lib/fr or read from
+docs/regulatory-sources.md rather than transliterated out of a prompt.
+
+
+RED/GREEN LEDGER
+--------------------------------------------------------------------
+inc 0  R173, the base anchor style
+       RED:   the new e2e assertion found ~50 LIVE unstyled anchors,
+              before the fix landed. R178 came out of that.
+       GREEN: 5028637
+
+inc 1  R174, Lighthouse
+       RED:   the identity check refused a run against a foreign app on
+              the contended port.
+       GREEN: 28a178b, ab3b728. R139's clean gate ran here.
+
+inc 2  R172, the product-state module
+       RED:   16 failed / 12 passed. 15 were "X is not a function" -
+              the copy was still constants. THE OTHER ONE WAS MINE:
+              the claim pattern was written `tien(?:t|ez)`, which
+              matches "tienez", a word that does not exist. It missed
+              the exact sentence it was written for, AND THE SCAN
+              PASSED FINDING NOTHING. Only the non-vacuity test knew.
+       RED 2: `\brelev[ee]\b` matched nothing at all - JavaScript's \b
+              is ASCII, so there is no boundary between an accented
+              final letter and the space after it. In a guard whose
+              whole subject is accented French.
+       GREEN: 9a9b6e8
+
+inc 3  CLEISS fact 8, D8 D9 D10
+       RED:   R91 refused seven ASCII spaces before French marks in the
+              new copy. R126 refused the spec's describe title. Four
+              census counts moved.
+       PLANT: the qualifier's warning box deleted -> the first version
+              of the test PASSED, because both phrases also live in the
+              lead paragraph. Rewritten to assert the element.
+       PLANT: a PDF link added -> R167 assertion red, 3 matches.
+       PLANT: the instrument renamed in the prose -> first attempt hit
+              the FAQ silently and the test passed (R180); redone
+              against the prose line, red.
+       GREEN: f4c75e3
+
+inc 4  /application and the two cards
+       RED:   the header-CTA census went red exactly as its own comment
+              had predicted, and its instruction was WRONG. It said "the
+              day /application ships ... the CTA should start rendering";
+              following that would have put a button reading "Suivre mes
+              jours" on every public page of a product that cannot track
+              a day.
+       RED:   FIVE separate places each computed ctaHrefIfLive for
+              themselves and all five stayed green against a shell that
+              had stopped agreeing with them - three unit tests, then two
+              e2e specs the earlier gate run never reached. That is the
+              argument for one predicate, demonstrated rather than
+              asserted: ctaHrefIfOffered(href, offered).
+       RED:   the read-through found both mode cards in the PRESENT tense
+              under a lead saying the app does not exist, and the
+              detector written to prevent exactly that was broken three
+              different ways. See THE READ-THROUGH.
+       GREEN: f4c75e3
+
+inc 5  mesh, a11y, baselines, size, read-through
+       RED:   the 390 dp crop found grid-auto-rows applying to a
+              single-column grid. No assertion could have caught it.
+       GREEN: f4c75e3
+
+
+R173 PROOF
+--------------------------------------------------------------------
+The prompt asked for a planted unstyled anchor. R178 exists because the
+first run did better than that.
+
+  anchors nobody styled, on all seven articles:
+    "Voir les sources reglementaires"  -> /sources          rgb(0,0,238)
+    "Le seuil social de 49,9 %..."     -> /guides/seuil...  rgb(0,0,238)
+    ... five more related-guide links, per article
+
+Roughly fifty live anchors in browser default blue, missed by four tasks
+of cropping guide baselines because they sit below the CTA card and every
+crop was of the article head. A crop is a decision about where to look,
+and the defect was below the fold of that decision.
+
+The planted anchor was also run and also went red. It is the weaker
+evidence and it is recorded second.
+
+
+R172 PROOF
+--------------------------------------------------------------------
+THE MODULE. web/lib/content/product-state.ts, seven facts:
+
+  calculatorExists  true   FW11  the route renders a form the engine reads
+  guidesExist       true   FW17  content/guides holds .mdx articles
+  alertsExist       true   FW14  app/api/alertes + the one Prisma model
+  trackerExists     false        no Entry model, no route records a day
+  dossierExists     false        no app/releve/print, and no tracker
+  comparatorExists  false        planned; PARK-4, R157 option (3)
+  appExists         false        there is no android/ in this repository
+
+A PAGE EXISTING IS NOT THE THING EXISTING. /releve-annuel has been live
+since FW20 with dossierExists false, and FW20b adds /application live
+with appExists false. Anything that read the route registry to decide
+what to CLAIM would get both exactly backwards - which is what the header
+CTA did.
+
+THE FACTS ARE CHECKED, NOT TRUSTED. Each flag is asserted against the
+evidence its comment names - the Prisma schema, the route directory, the
+absent android/ - so shipping the tracker without flipping the flag fails
+in the suite rather than in a sentence somebody reads.
+
+THE FLIP TEST, which is what the prompt asked for. Every wired getter is
+rendered in both states and required to differ:
+
+  trackerExists    -> / description, /a-propos lead,
+                      /releve-annuel stateBody, $legal-01
+  dossierExists    -> /tarifs positionDetail and eight strings on
+                      /releve-annuel, headings included
+  calculatorExists -> /a-propos lead, /tarifs positionDetail
+  guidesExist      -> /tarifs positionDetail
+  comparatorExists -> /tarifs positionDetail
+  appExists        -> /application, every sentence on it
+  alertsExist      -> stated as not wired, with the reason
+
+Rendered, both states, /tarifs:
+
+  today          Le calculateur et les guides sont gratuits pour toute
+                 l'annee 2027.
+  dossier true   Le calculateur, les guides et le releve sont gratuits
+                 pour toute l'annee 2027.
+
+PLANTED: a getter that takes ProductState and ignores it -> red, naming
+the flag and the page. An unwired claim in a new lib/fr file -> the scan
+goes red naming file, line, flag and sentence.
+
+THE FIFTH INSTANCE, and the worst. PublicShell.tsx renders $legal-01 in
+the footer of every public page. One of those pages is /releve-annuel. A
+reader on that page met:
+
+  body    "Le registre journalier et le document qui en decoule ne sont
+           pas construits."
+  footer  "Chaque jour enregistre est horodate par le service."
+
+R172's defect collapsed from three pages onto one render, shipped in FW20
+beside the page it contradicts. The clause is now conditional on
+trackerExists, SPEC 12's wording preserved verbatim for the state SPEC
+describes; PARK-14 records it and it reverts with one ternary.
+
+
+FACT 8
+--------------------------------------------------------------------
+THE ROW (docs/regulatory-sources.md, D8):
+
+  A family member residing in France who has no professional activity of
+  their own and no pension or annuity from the Swiss scheme alone does
+  not exercise a separate option: their health cover follows the option
+  the worker exercised. A spouse who works - in France or in Switzerland
+  - falls outside this and has their own affiliation.
+  Verified: CLEISS, 16.09.2026.
+
+THE GUIDE PARAGRAPH is written accented in content/guides and is not
+transliterated here (R168). In English: a family member resident in
+France who carries on no professional activity and draws no pension or
+annuity from the Swiss scheme alone does not exercise an option of their
+own, and their cover follows the choice the worker made. Then, in its own
+warning box:
+
+  the condition is half the rule. It holds only for a relative with no
+  professional activity of their own and no Swiss-only pension. A spouse
+  who works - in France as in Switzerland - is outside it, has their own
+  affiliation, and is not covered by your choice.
+
+WHY THE QUALIFIER IS LOAD-BEARING, in the operator's terms: the failure
+direction. A two-earner household reading "your family follows your
+choice" without it concludes the working spouse is covered, does nothing,
+and finds out at a hospital desk. An omission that produces a wrong
+belief is not a smaller claim than a wrong sentence - here it is the more
+expensive one.
+
+So it is an Avertissement rather than a subordinate clause, and the test
+asserts the qualifier is IN THAT ELEMENT rather than merely in the
+section. That distinction was found by planting: deleting the warning box
+left both phrases standing in the lead paragraph, and the first version
+of the test passed on a page that had lost the one element a skimming
+reader stops at.
+
+FACT 6 BECAME TWO ROWS, NOT ONE. The operator's steer was "probably a
+row"; the page argued for two, on R158's own test - a source key
+identifies a fact, not a URL:
+
+  D9  droitOptionFiling - where it is exercised, by status: the competent
+      cantonal body of the canton of work; or Institution commune LAMal,
+      Olten, for a holder of a Swiss pension alone. Part 6 by the CPAM of
+      the French place of residence, the whole within the window.
+  D10 droitOptionForm - the instrument, by NAME, which CLEISS marks as
+      being updated.
+
+They have DIFFERENT ROT PROFILES. CLEISS can reissue the form under a new
+reference without the cantonal bodies moving; Olten's address can change
+without the form changing. One key covering both would leave `claims`
+unable to tell "a pensioner files at Olten" from "the instrument is <the
+form's name>" - exactly the state missionCapDays was in before R158.
+
+R167 IS ENFORCED, NOT JUST OBSERVED. The article names the instrument and
+links no PDF, and tells the reader to ask the body they file with for the
+current version rather than a third-party site, THIS ONE INCLUDED. A
+planted link to the juin2019 PDF turns the assertion red.
+
+AND THE TEST DOES NOT TYPE THE FORM'S NAME. It reads it out of the
+guide's own droitOptionForm claim and looks for that in the served body,
+so renaming it in frontmatter carries the test along and typing a variant
+into the prose fails. The first version typed it, which is the defect
+R167 exists to survive, inside the test written to enforce R167.
+
+
+THE TWO CARDS
+--------------------------------------------------------------------
+FD12: manual and automatic are MECHANICALLY IDENTICAL, and the same green
+check on every line INCLUDING the line about needing access to the device
+position. A requirement is not a drawback.
+
+WHAT KEEPS THEM IDENTICAL, in order of how hard it is to break:
+
+  1. ONE TYPE. `LoggingMode` has no `recommended`, no `badge`, no `tone`
+     field. There is no way to express "this one is better", so no future
+     edit can add the distinction without adding the field - which is a
+     visible decision rather than a styling tweak.
+  2. ONE ARRAY, ONE MAP, ONE CLASS. Both cards render from
+     APPLICATION_COPY.modes through a single `.modeCard`. Two JSX blocks
+     side by side are two blocks somebody edits one of.
+  3. NO SELECTOR HOOK. application.module.scss carries no modifier and no
+     :first-child / :last-child anywhere.
+  4. ONE GLYPH COMPONENT, aria-hidden, used six times.
+
+WHAT IS ASSERTED, in a browser:
+  - exactly two cards, counted against APPLICATION_COPY.modes.length
+  - identical rendered width and height (R148's numbers, not a glance)
+  - three lines each, a glyph on every one
+  - ONE distinct path `d` across all six, and ONE computed colour
+  - no element in either card whose class or attributes match
+    warn|caution|danger|alert|risk|recommend
+  - no "recommand" or "conseill" anywhere in the pair
+
+WHAT A READER WOULD SEE IF IT DRIFTED. The cheapest drift is the third
+line of the automatic card - the background-location requirement -
+rendered amber with a triangle instead of green with a check. Nothing
+else would change. The page would still read as balanced and would have
+made the choice: manual becomes the safe option, automatic the one you
+were warned about, and the reader never notices they were steered. That
+is the highlighted middle column of a pricing table, dressed as candour.
+The single-colour assertion is what makes it impossible to ship quietly.
+
+
+THE READ-THROUGH
+--------------------------------------------------------------------
+Pointed at one question, as the prompt directs: DO THE TWO CARDS TAKE A
+SIDE? Read as somebody deciding whether to let an application watch where
+they are.
+
+THE ANSWER IS NO, and the reason is that the automatic card's third line
+is written in the same register as the manual card's second:
+
+  manual     "Aucune autorisation a accorder"
+  automatic  "Necessitera l'acces a la position, y compris en
+              arriere-plan"
+
+Both are flat statements of what the mode needs. Neither is hedged,
+apologised for, or softened. A reader who wants to avoid background
+location finds that out in one line and picks manual; a reader who wants
+the day proposed to them finds out what it costs in one line and picks
+automatic. The page does not have an opinion about which of those readers
+is right.
+
+WHAT THE READ-THROUGH FOUND, AND IT IS IN MY OWN WORK. The cards were in
+the PRESENT TENSE on a page whose lead says the application does not
+exist and whose refusals band is entirely in the future:
+
+  lead       "Cette application n'existe pas encore"
+  refusals   "Elle n'enregistrera aucune coordonnee"
+  card A     "Un geste par jour, et la journee EST ENREGISTREE"
+  card B     "L'application COMPARE votre position ... et vous PROPOSE"
+  card A     "FONCTIONNE hors connexion"
+
+That is the defect lib/fr/releve-annuel.ts argues against in its own
+comment - half-derived is worse than not derived, because a lead saying
+one thing above a section saying another is R172 inside a single page. I
+wrote that argument in increment 2 and shipped the thing it forbids in
+increment 4.
+
+AND MY OWN DETECTOR DID NOT CATCH IT, THREE TIMES, each a different way
+of proving nothing:
+
+  1. tests/support/present-tense.ts was a list of PHRASES written from
+     what I imagined a shipped-app page saying rather than from what my
+     page said. It carried "...compare votre position a la frontiere et
+     ENREGISTRE"; the page said "compare ... et vous PROPOSE".
+  2. rewritten to match VERBS, one pattern ended with a \b after an
+     accented letter - the ASCII word-boundary trap, which matches
+     nothing at all. I WROTE THE COMMENT EXPLAINING THAT TRAP IN
+     tests/support/product-claims.ts TWO INCREMENTS EARLIER and set it
+     again in the same task.
+  3. the "Fonctionne hors connexion" pattern used ^ with no m flag. It
+     fired on the bare sample string at position 0 - which is how the
+     non-vacuity check was written - and matched nothing on the served
+     page, where that line sits mid-document. THE SAMPLE HAD BEEN SHAPED
+     TO THE PATTERN'S CONVENIENCE.
+
+Only a planted present-tense line ON THE REAL PAGE caught the third, and
+R180 is why it was trusted: the plant was verified to have changed the
+file before its result was read.
+
+FIXED: the mode bodies and every fact line are now functions of appExists
+like the rest of the page; the detector matches verbs; and the spec
+asserts BOTH directions - it fires on the five forms the page actually
+carried before the read-through, and stays silent on the ten future forms
+it carries now.
+
+WHAT THE CROPS SHOWED, at both widths, and one of it I kept:
+
+  1440  The cards are identical in width and height and every one of the
+        six lines carries the same green check, including the
+        background-location line. The manual card carries a visible gap
+        between its body and its rule, because the fact lists are
+        bottom-aligned so both start level. That gap is the unavoidable
+        consequence of FD12's own demand for identical heights - the
+        automatic mode takes more words to describe - it favours neither
+        mode, and top-aligning would move it to the card's foot rather
+        than remove it. Kept, and recorded rather than hidden.
+  390   FIXED. grid-auto-rows: 1fr was declared unconditionally, so it
+        applied to the SINGLE-COLUMN grid too and padded the stacked
+        manual card with ~60 px of whitespace a reader cannot explain.
+        Equal heights exist to stop one card looking more important when
+        they sit SIDE BY SIDE; stacked, nobody compares them. It now
+        lives inside the two-column breakpoint.
+
+No assertion I wrote would have caught the 390 dp one, because the cards
+WERE equal - which is R135's "somebody has to crop the image and look"
+earning its place in the increment that was most sure of its numbers.
+
+THE OTHER READ-THROUGH FINDING, on a page the prompt did not name, and it
+is here because R176's second clause says attention is directed without
+being restricted:
+
+  /sources said "LE CALCULATEUR applique 17 constantes et 3 lectures".
+
+The calculator applies TEN of them. The seven droit d'option rows are
+facts the guides cite and the engine never reads: no code path touches
+droitOptionWindow. It was already false at fourteen, when FW18b added
+four CLEISS rows, and nothing noticed because THE COUNT DERIVES CORRECTLY
+- R171 working exactly as designed, being right about the arithmetic
+while the sentence around it was wrong about the subject. FW20b's three
+more made it seven of seventeen, which is the point at which reading the
+page out loud catches it. Now: "Ce site s'appuie sur 17 constantes et 3
+lectures."
+
+
+WALKTHROUGH
+--------------------------------------------------------------------
+R176/R177: `pnpm dev`, driven, before the baselines, and again after the
+push at the operator's request. Port 3200 rather than 3000, since another
+project shares this machine (R170).
+
+  /                meta description now ends at the two thresholds. The
+                   register promise is gone from the sentence a search
+                   engine prints.
+  /a-propos        "Ce site calcule votre part de teletravail annuelle."
+                   - one clause, because one flag is true.
+  /tarifs          "Le calculateur et les guides sont gratuits pour toute
+                   l'annee 2027."
+  /releve-annuel   "Ce document n'existe pas encore." ... "Le registre
+                   journalier et le document qui en decoule ne sont pas
+                   construits."
+  footer           NO timestamp clause on any page - checked for the
+                   SENTENCE, not for the word "horodat", which
+                   /releve-annuel's body legitimately uses to describe
+                   what the document will contain. The body and the
+                   footer agree for the first time.
+  /application     opens by saying the application is not built; two
+                   cards side by side at 1440 and stacked at 320; the
+                   refusals band before any argument to install; the last
+                   link on the page goes to the calculator.
+  header           no "Suivre mes jours" button anywhere.
+
+All thirteen public routes answered 200, and /api/health named this
+product rather than a neighbour's container.
+
+The dev server was stopped by killing its process TREE and the port
+confirmed free afterwards - R179's own discipline applied to the
+walkthrough rather than only to the script it was written about.
+
+
+MESH
+--------------------------------------------------------------------
+/application moves to `live` with task FW20b and enters the sitemap.
+
+THE GAP IS CLOSED. UNASSIGNED was pinned at exactly ['/application'] from
+FW9 to FW20 - SPEC 9.1 required the page, tasks/todo.md never built it.
+The assertion now reads toEqual([]), which is STRONGER than updating the
+list would have been: any future route added without a task fails on the
+day it is added, rather than widening a gap that was already tolerated at
+one.
+
+One planned route remains: /calculateur-lamal-cmu, blocked on a
+premium-data licence rather than on a task (PARK-4). The e2e sitemap
+assertion that names the planned set is down to that single entry.
+
+Every shell link resolves; the FW20 test covers /application too. axe
+passes on /application, which is now the eleventh page in that suite.
+
+
+SIZE
+--------------------------------------------------------------------
+All gated routes pass both gates. /application is a static page with no
+client component of its own, so the only JavaScript it costs is the
+shell's, which every public route already pays:
+
+  route                                total   A      B     fonts
+  /application                         108.4   7.8    6.4   47.1
+  /releve-annuel                       108.4   7.8    6.5   47.1
+  /tarifs                              108.4   7.8    6.5   47.1
+  /sources                             108.4   7.8    6.5   47.1
+  /calculateur-teletravail-frontalier  122.8  22.2    8.3   47.1
+
+  /application  pass (GATE A 16.6 KiB spare, GATE B 17.2 KiB spare)
+
+GATE A is 125 KiB total first-load per public route; GATE B is 25 KiB of
+feature delta over the recorded framework floor of 100.6 KiB. The
+calculator remains the tight one at 2.2 KiB of A spare, unchanged by this
+task. CSS and fonts are reported and never gated against a JS budget.
+
+
+BASELINES
+--------------------------------------------------------------------
+R135, and this task is the reason PARK-15 exists.
+
+Four regenerations, because two of them were wrong:
+  inc 2   68 baselines. Every one carries the footer, plus the
+          legal-standing component itself - the blast radius of removing
+          one sentence from $legal-01. Verified by looking: the
+          shell-desktop diff is grey everywhere except the two disclaimer
+          lines.
+  inc 3   2 baselines, /sources at both widths, for three new rows.
+          CONTAMINATED - see below.
+  final   69 baselines, from a quiescent tree.
+  final2  69 again, after the read-through's tense fix and the 390 dp
+          grid fix.
+
+WHY THE INCREMENT 3 RUN WAS WRONG, and it is the finding: it ran while
+increment 4 was already editing the same working tree. /application had
+been moved to live; the shell's CTA had not yet been taught to ask
+R172's question. The container built THAT, and rewrote
+composants-shell-desktop.png and 68 siblings to show a header rendering
+"Suivre mes jours" - the exact defect the next increment removed. The
+visual record had been made to certify it.
+
+R135's three requirements all held and none of them would have caught it:
+the list was accurate, the reason was true of the sentence that changed,
+and the image that was cropped and read was /sources, which was correct.
+CONFIRMING ONE IMAGE DOES NOT CONFIRM A RUN. The assumption R135 does not
+state is that the tree being photographed is the tree you mean to
+photograph. PARK-15.
+
+Nothing reached main - increment 3 was never committed.
+
+Isolation, stated per R98: sole container of
+mcr.microsoft.com/playwright:v1.63.0-noble (checked), per-run distDir,
+node_modules and .next on anonymous volumes. The final run restored
+tsconfig.json and next-env.d.ts and said so.
+
+
+TOKENS ADDED
+--------------------------------------------------------------------
+None. application.module.scss uses --space-*, --type-*, --radius-lg,
+--colour-border-default, --colour-surface, --colour-success and
+--size-input-border, all of which existed. The check glyph takes
+--colour-success, which /sources and the result panel already use.
+
+
+DEVIATIONS
+--------------------------------------------------------------------
+1. FD12 IS FOLLOWED IN STRUCTURE AND NOT IN CONTENT, deliberately, and
+   the brief is not wrong - it is early. Held back, each because it
+   cannot be true yet:
+
+     store badges    There is nothing to download. A Google Play badge on
+                     a page for an unbuilt app is the most concrete lie
+                     the site could tell, because a reader clicks it.
+     two screenshots FD12 specifies the pixels of an Aujourd'hui screen
+                     and an exported PDF. Neither exists; drawing them
+                     would be an illustration of a product presented as a
+                     picture of one.
+     "Gratuit en 2027" on this page. It is priced on /tarifs, from
+                     PRODUCT_STATE, where the list of what is free
+                     derives from what is built.
+
+   Kept in full: the two modes as equals, the refusals band BEFORE any
+   argument to install, and the closing pointer to the calculator rather
+   than to a store.
+
+2. INCREMENTS 3, 4 AND 5 ARE ONE COMMIT rather than three. The baselines
+   were regenerated once, at the end, from a settled tree - the
+   correction PARK-15 demanded. Three commits would have put two on main
+   whose stated gate never ran on a tree that ever existed, which is what
+   R132 exists to prevent.
+
+3. The R126 exemption cap was raised from 6 to 7. Two detectors were
+   added in this task and each needs French sentences to be proved
+   against; both times the first draft put them in the spec file, this
+   guard caught them, and the fix was to move them into tests/support
+   beside the detector. A new assertion now requires every exemption to
+   be either a support-module vocabulary or a test whose subject is
+   French text, so the next entry that is neither fails.
+
+4. Increment 2's commit body records one caveat: a JSDoc comment in
+   lib/fr/tarifs.ts was edited after that gate's build phase, so e2e ran
+   on a tree differing from the commit by that comment alone. The final
+   gate covers it.
+
+
+PARKED
+--------------------------------------------------------------------
+PARK-13  /cgu and /confidentialite describe a product that is not built.
+         A sweep of all 234 reader-facing sentences in lib/fr found
+         R172's five instances - all fixed - and roughly twenty more
+         concentrated on those two pages. /cgu opens with the product's
+         own definition: "frontalier est un outil de tenue de registre.
+         Il enregistre les journees que vous declarez, il les horodate
+         ... et il met en forme un releve annuel." None of the three
+         exists. Both files are EXEMPT in
+         tests/support/product-claims.ts with the reason written out, so
+         the scan reports them as a decision rather than passing over
+         them in silence.
+PARK-14  $legal-01 drops its timestamp clause until the register exists.
+         It edits a SPEC-quoted legal string; the wording is preserved
+         verbatim for the state SPEC describes, and it reverts with one
+         ternary.
+PARK-15  a baseline was regenerated against a half-edited tree.
+
+
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------
+1. THE DISTDIR LEAK DETECTOR CANNOT SEE THE LEAK ITS OWN GATE RUN
+   CREATES. tests/unit/meta/distdir-leaks.test.ts exists to catch
+   scripts/visual.mjs leaving a per-run distDir in tsconfig.json and
+   next-env.d.ts. It runs inside `pnpm test`; the gate runs `pnpm test`
+   BEFORE `test:visual`. So the leak is created minutes after the only
+   thing that looks for it has finished.
+
+   It happened in this task: after increment 2's gate, both files pointed
+   at .next-visual-11256-mu5f1usy. The gate was green. Found by running
+   the detector by hand before committing - it failed 4 of 5 - and the
+   files were restored. `tsc --noEmit` exits 0 with a dead
+   /// <reference path>, which that file's own comment records as a
+   measured fact, so nothing else would have objected.
+
+   Suggested: the leak check runs AFTER test:visual in the chain, or
+   visual.mjs asserts its own restore before exiting. Not touched because
+   it is a change to the gate's contract.
+
+2. R91's runtime walk counts functions and returns without calling them,
+   and this task turned eleven copy constants into functions. Not a
+   regression - the file says so itself and its SOURCE scan caught my
+   template literals, which is that claim being true rather than
+   asserted. Recorded so the next person converting copy to functions
+   knows which of the two scans is carrying them.
+
+3. The gate process ended after test:visual on its final run without
+   executing test:e2e - no failure, no totals, no orphan, port free.
+   test:e2e was run separately and passed 284. Worth watching: if a gate
+   can end mid-chain and exit 0, a future session could read that as
+   green. Not diagnosed here.
+
+
+QUESTIONS
+--------------------------------------------------------------------
+Q62. /cgu and /confidentialite (PARK-13). Roughly twenty present-tense
+     sentences describing a register, an application and an account that
+     do not exist. Deriving them from PRODUCT_STATE is the consistent
+     move and it is a contract and a privacy notice, which is your call
+     rather than a wiring one. A contract written entirely in the future
+     reads as a draft of a contract; the honest form is probably a dated
+     scope line saying which clauses are in force, and that is a legal
+     question.
+
+Q63. $legal-01 (PARK-14). The middle clause is now conditional on
+     trackerExists. SPEC 12 item 6 specifies that footer for the DOCUMENT
+     and SPEC 17.6 puts the same token in the site footer. Nothing SPEC
+     specifies has been altered and the sentence returns verbatim when
+     the flag flips - but it is a SPEC-quoted legal string, so:
+     acceptable, or should the site footer carry a different string from
+     the document footer?
+
+Q64. PARK-15's proposal: should scripts/visual.mjs print the
+     working-tree state it photographed, so a report can show that the
+     baselines and the commit are the same tree? Today it prints WHICH
+     baselines changed, which is a different claim.
+
+Q65. R181 is recorded with a clause you did not write - "a test that
+     quotes the copy has the same defect as the copy". It is the bit that
+     made this task's R167 repair obvious in hindsight, since the
+     assertion typed the form's name and would have stayed green through
+     exactly the rot R167 exists to survive. Cut it if it is over-reach.
+
+STILL OUTSTANDING AND STILL YOURS, unchanged from FW20: the
+opendata.swiss licence field, and the PAT. Neither raised.
+
+
+PUSH PROOF
+--------------------------------------------------------------------
+  5028637  FW20b: an unstyled anchor is impossible (R173)
+  28a178b  FW20b: Lighthouse identifies what it measures (R174, R177)
+  ab3b728  FW20b: R175-R178 canonical, and R177 strengthened
+  75e50e4  chore: R179 recorded
+  9a9b6e8  FW20b: product state comes from one module (R172)
+  87756a1  chore: R180 and R181 recorded
+  f4c75e3  FW20b: the household, /application, and the mesh that
+           closed the gap
+
+pushed   7af3d98..f4c75e3  main -> main
+CI       success
+run      https://github.com/kaitmax/Frontalier/actions/runs/35230724934
+
+THE FINAL GATE, on the tree that was committed:
+
+  typecheck    clean
+  lint         0 errors (2 pre-existing calc-engine warnings)
+  test         133 files, 2417 passed
+  build        clean
+  test:visual  108 passed, 69 baselines regenerated
+  test:e2e     284 passed
+  size         all gated routes pass both gates
+
+STATED RATHER THAN GLOSSED: the gate process ended after test:visual
+without running test:e2e to completion - no failure, no totals, no
+leftover process, port free. Rather than treat a truncated run as green,
+test:e2e was run separately on the same tree and reported 284 passed.
+Both numbers above are from the tree at f4c75e3.
+
+INCREMENTS 3, 4 AND 5 ARE ONE COMMIT, and the reason is R132. The
+baselines were regenerated once, at the end, from a settled tree - the
+correction PARK-15 demanded. Three commits would have put two on main
+whose stated gate never ran on a tree that ever existed, which is the
+thing R132 exists to prevent.
+
+RUN ON LOCALHOST, after the push, at the operator's request - port 3200
+rather than 3000, since another project shares this machine (R170):
+
+  /api/health                          {"service":"frontalier", ...}
+  /                                    200
+  /application                         200
+  /releve-annuel                       200
+  /tarifs                              200
+  /a-propos                            200
+  /sources                             200
+  /guides                              200
+  /guides/droit-option-lamal-cmu       200
+  /calculateur-teletravail-frontalier  200
+  /alertes                             200
+  /cgu                                 200
+  /confidentialite                     200
+  /mentions-legales                    200
+
+  /application    every sentence future tense, as served: "Cette
+                  application n'existe pas encore ... Fonctionnera hors
+                  connexion ... Necessitera l'acces a la position, y
+                  compris en arriere-plan".
+  header          no "Suivre mes jours" button on any page.
+  /releve-annuel  the footer disclaimer carries NO timestamp clause -
+                  checked for the sentence itself, not for the word
+                  "horodat", which the page's own body legitimately uses
+                  to describe what the document will contain. The body
+                  and the footer agree for the first time.
