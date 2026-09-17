@@ -44,13 +44,74 @@
 
 import type { ProductState } from '@/lib/content/product-state';
 
+/**
+ * The clause SPEC 12 item 6 specifies: "each entry carries a server recording
+ * timestamp".
+ *
+ * ONE DECLARATION, TWO SURFACES, which is what keeps R183's two strings from
+ * becoming two WORDINGS. R84's census counts occurrences of a constant; this
+ * is the same discipline one level down, on the sentence inside it.
+ */
+const TIMESTAMP = 'Chaque jour enregistré est horodaté par le service. ';
+
+const OPENING =
+  'Estimation fournie à titre indicatif, sur la base des jours que vous ' +
+  'avez déclarés. ';
+
+const ADVICE =
+  'Ce document ne constitue pas un conseil fiscal et n’engage ni ' +
+  'l’administration française ni l’administration suisse.';
+
+// ---------------------------------------------------------------------------
+// RULING R183: THE SITE FOOTER AND THE DOCUMENT FOOTER CARRY DIFFERENT
+// STRINGS.
+//
+// SPEC 12 item 6 specifies the timestamp sentence for THE DOCUMENT, where it
+// is always true - there is no way to be an entry in an exported dossier
+// without carrying a server timestamp. SPEC 17.6 put the same $legal-01 token
+// in the SITE footer, where the identical sentence is a claim about a PRODUCT
+// STATE, and that claim was false on every public page from FW8 to FW20b.
+//
+// IT SUPERSEDES FW20b'S FIX (PARK-14), which made the single shared string
+// conditional. That was right about the defect and wrong about the remedy:
+// one constant rendered on two surfaces has to be true on both, and the
+// honest answer is two constants rather than a branch. R165's lifted-copy
+// rule, arriving on a legal string - copy retrofitted across surfaces is
+// authored per instance, never taken from one and reused.
+//
+// THE DOCUMENT'S IS UNCONDITIONAL AND THAT IS THE HALF EASY TO LOSE. Making
+// both conditional would be tidier and would be wrong: a dossier omitting the
+// sentence would understate what it actually carries, and SPEC 12 fixes the
+// wording.
+// ---------------------------------------------------------------------------
+
 export const LEGAL_COPY = {
+  /**
+   * $legal-01 on the SITE: every public page's footer, and the result panel.
+   *
+   * Conditional, because the timestamp clause is a claim about a register
+   * this product does not yet have. PublicShell.tsx renders this on
+   * /releve-annuel, whose body says the register is not built - the
+   * contradiction FW20b found on a single render.
+   */
   standing: (state: ProductState): string =>
-    'Estimation fournie à titre indicatif, sur la base des jours que vous ' +
-    'avez déclarés. ' +
-    (state.trackerExists ? 'Chaque jour enregistré est horodaté par le service. ' : '') +
-    'Ce document ne constitue pas un conseil fiscal et n’engage ni ' +
-    'l’administration française ni l’administration suisse.',
+    OPENING + (state.trackerExists ? TIMESTAMP : '') + ADVICE,
+
+  /**
+   * $legal-01 on the DOCUMENT: SPEC 12 item 6's footer, verbatim.
+   *
+   * NOT A FUNCTION, deliberately. The state that would make the clause false
+   * is a state in which the document cannot be produced at all, so there is
+   * no branch to take - and giving this the site's signature "for
+   * consistency" is precisely the edit R183 exists to refuse.
+   *
+   * NOTHING RENDERS IT YET. SPEC 12's document is unbuilt - PRODUCT_STATE
+   * .dossierExists is false, app/releve/ does not exist, and R53 reserves
+   * /releve/print for a route nobody has written. It is declared here so the
+   * task that builds the document finds the sentence already decided, the way
+   * R53 reserves the route.
+   */
+  documentStanding: OPENING + TIMESTAMP + ADVICE,
 } as const;
 
 /**

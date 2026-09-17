@@ -64,6 +64,10 @@ export const SUITE_COUNTS = Object.freeze({
   'test:visual': /(\d+) passed/,
   // Also vitest, against its own config.
   'test:db': /Tests {2}(?:\d+ failed \| )?(\d+) passed/,
+  // R182 re-runs two files, so it is vitest again. It gets a pattern for
+  // the same reason every other suite has one: a suite that reports
+  // nothing must not read as a pass (R133).
+  'test:late': /Tests {2}(?:\d+ failed \| )?(\d+) passed/,
 });
 
 /**
@@ -149,6 +153,33 @@ export const DATABASE_SUITES = Object.freeze(['test:db']);
  * *.runtime.spec.ts belongs to it and to nothing else.
  */
 export const RUNTIME_SUITES = Object.freeze(['test:runtime']);
+
+/**
+ * RULING R182: A CHECK RUNS AFTER THE THING IT CHECKS FOR CAN EXIST.
+ *
+ * ORDER IS PART OF A GUARD’S SPECIFICATION. Two checks in tests/unit/meta
+ * read artefacts that `test:visual` PRODUCES, and both of them sit inside
+ * `pnpm test`, which this chain runs four steps earlier:
+ *
+ *   distdir-leaks.test.ts  tsconfig.json and next-env.d.ts, which the
+ *                          visual container rewrites to its per-run
+ *                          distDir and scripts/visual.mjs restores after.
+ *   og-image.test.ts       public/opengraph-image.png against
+ *                          tests/visual/baselines/og-card.png, which
+ *                          e2e/og.visual.spec.ts writes.
+ *
+ * FW20b MEASURED THE COST. After a fully green gate, both files pointed
+ * at a dead .next-visual-<pid> directory. The detector had run minutes
+ * before the run that corrupted them, and `tsc --noEmit` exits 0 on a
+ * dead /// <reference path>, so nothing else objected. The leak would
+ * have been committed and caught by the NEXT task.
+ *
+ * TWICE, NOT MOVED, and that is the deliberate half. The early run catches
+ * a leak INHERITED from a previous crashed run - the state FW20b actually
+ * found the tree in - and this late run catches one the current gate
+ * created. Moving them would trade one blind spot for the other.
+ */
+export const LATE_SUITES = Object.freeze(['test:late']);
 
 /**
  * R132's patterns, in the order they are reported.
@@ -323,6 +354,21 @@ export function selectSuites(paths) {
     if (!matched.some((hit) => hit.pattern === pattern.label)) continue;
 
     for (const suite of pattern.suites) {
+      if (!suites.includes(suite)) suites.push(suite);
+    }
+  }
+
+  // R182: LAST, AND ONLY WHEN THERE IS SOMETHING TO RE-CHECK. Appended
+  // after the pattern loop rather than from a pattern, because a
+  // pattern contributes its suites at ITS position in the list and the
+  // whole point of these two is that they come after test:visual.
+  //
+  // Conditional on test:visual for the other half: with no visual run,
+  // nothing rewrites tsconfig.json or og-card.png, and a second
+  // execution of two file-reading tests would be noise rather than a
+  // guard.
+  if (suites.includes('test:visual')) {
+    for (const suite of LATE_SUITES) {
       if (!suites.includes(suite)) suites.push(suite);
     }
   }

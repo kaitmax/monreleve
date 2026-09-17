@@ -639,7 +639,37 @@ TOUCHES:   nothing yet. When taken: `web/lib/fr/cgu.ts`,
 `web/lib/fr/confidentialite.ts`, their two page tests, and the EXEMPT list in
 `web/tests/support/product-claims.ts`.
 
+RULED (Q62, after FW20b): THE FIX IS A DATED SCOPE LINE, NOT A REWRITE.
+The operator’s answer, and it changes what "taken" will mean here.
+
+A contract written entirely in the future reads as a draft of a contract.
+So the clause BODIES stay in the present - which is the register a contract
+is written in - and the page gains a dated line saying WHICH CLAUSES ARE IN
+FORCE TODAY, and that the remainder takes effect when the corresponding
+feature ships.
+
+That is a different shape from the five R172 fixed. Those were sentences
+about what the product does, and the repair was to derive each from
+PRODUCT_STATE. This is a legal instrument whose clauses describe the whole
+service by design; scoping it is one sentence about the document rather than
+a rewrite of twenty sentences inside it.
+
+AND IT WANTS A LAWYER BEFORE THE APP SHIPS, NOT BEFORE. The operator is
+explicit that this is a legal question and should not be answered as a
+wiring one. Parked in that form: the shape is decided, the wording is not,
+and the deadline is the AN series rather than the next task.
+
 ## PARK-14 - $legal-01 drops its timestamp clause until the register exists  [FW20b, 2026-09-17]
+
+> **SUPERSEDED BY R183.** The defect below is real and the remedy was wrong.
+> Making the single shared string conditional kept ONE constant rendered on
+> two surfaces, which has to be true on both; R183 splits it instead -
+> `LEGAL_COPY.standing(state)` for the site, conditional, and
+> `LEGAL_COPY.documentStanding` for SPEC 12’s document, verbatim and
+> unconditional. R165’s lifted-copy rule, arriving on a legal string.
+> Kept as written because the reasoning about the defect is the useful part,
+> and because a parking entry that quietly changed its answer would be the
+> register lying about its own history (R162’s subject, one file over).
 
 QUESTION:  SPEC 12 item 6 specifies the document's legal footer as "each
 entry carries a server recording timestamp; document established on user
@@ -692,6 +722,16 @@ TOUCHES:   `web/lib/fr/legal.ts`, `web/lib/ui/react/LegalNote/LegalNote.tsx`,
 compared against the constant.
 
 ## PARK-15 - a baseline was regenerated against a half-edited tree  [FW20b, 2026-09-17]
+
+> **TAKEN, as R182 and R184.** The proposal below asked for two things and
+> both are now rules rather than intentions. R184: `scripts/visual.mjs`
+> prints the commit it built from and how many paths were uncommitted, so a
+> report can SHOW the baselines and the commit are the same tree instead of
+> assuming it. R182 generalises the ordering half beyond this script - a
+> check runs after the thing it checks for can exist - and its audit found a
+> second instance: `og-image.test.ts` compares the shipped OG card against a
+> baseline `test:visual` produces, from inside `pnpm test`, which the gate
+> runs four steps earlier.
 
 QUESTION:  FW20b increment 3 regenerated the visual baselines while increment
 4's work was already underway in the same working tree. The container builds

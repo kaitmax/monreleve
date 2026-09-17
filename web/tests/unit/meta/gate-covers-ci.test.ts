@@ -424,6 +424,14 @@ const LOCAL_ONLY: Record<string, string> = {
     'Writes baselines rather than checking them. Running it in CI would mean ' +
     'CI deciding what the product looks like, which is the whole failure ' +
     'ruling R114 forbids in its other form.',
+  'test:late':
+    'R182 re-runs two checks AFTER test:visual, because the visual run ' +
+    'rewrites the artefacts they read - tsconfig.json, next-env.d.ts and ' +
+    'og-card.png. THE HAZARD IS THE SHARED LOCAL WORKING TREE: the gate chain ' +
+    'runs pnpm test and test:visual one after the other in one directory. CI ' +
+    'runs each job in its own fresh checkout and calls playwright directly ' +
+    'rather than through scripts/visual.mjs, so no CI job can see another ' +
+    'job leak into its files. Running it there would assert nothing.',
   'test:clean-tree':
     'CI is already a fresh checkout, so moving the generated directories ' +
     'aside there would assert nothing (R94).',

@@ -48,9 +48,35 @@ export interface SuiteCount {
   readonly failure?: string;
 }
 
+// THE DRIFT THIS FILE PREDICTED HAPPENED, TWICE, AND IS RECORDED HERE RATHER
+// THAN QUIETLY FIXED.
+//
+// The header above says a hand-written declaration "is a second description of
+// one module and can disagree with it", and argues the disagreement is safe
+// because the test exercises the real module at runtime. That argument holds
+// for a declaration that is WRONG. It does not cover one that is INCOMPLETE:
+// an omitted export is not a type that disagrees, it is a compile error on
+// correct code, and the failure lands on whoever adds the next export rather
+// than on whoever forgot the last one.
+//
+//   RUNTIME_SUITES  added to the module when test:runtime became selectable,
+//                   never added here. Nothing noticed because no test imported
+//                   it.
+//   LATE_SUITES     added by R182. tsc refused a correct test, and the first
+//                   three diagnoses were wrong - a stale tsbuildinfo, the `@/`
+//                   alias, then a duplicate file - because the error says
+//                   "no exported member" of a module whose source plainly
+//                   exports it. The module TypeScript reads is this file.
+//
+// R181's shape, one layer out: this IS a transcription of something else, and
+// the honest reading is that it should be derived. It is kept because the
+// alternative - allowJs in the strict project - drags six build scripts into
+// it for one import, which R107's header already argued against.
 export declare const BASE_SUITES: readonly string[];
 export declare const BROWSER_SUITES: readonly string[];
 export declare const DATABASE_SUITES: readonly string[];
+export declare const RUNTIME_SUITES: readonly string[];
+export declare const LATE_SUITES: readonly string[];
 export declare const SELECTOR_PATTERNS: readonly SelectorPattern[];
 export declare const SUITE_COUNTS: Readonly<Record<string, RegExp>>;
 

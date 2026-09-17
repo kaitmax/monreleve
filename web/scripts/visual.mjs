@@ -171,6 +171,54 @@ const inContainer = [
   `pnpm exec playwright test --project=visual${update ? ' --update-snapshots' : ''} 2>&1 | tee /tmp/visual-run.txt; code=$?; mkdir -p test-results; cp /tmp/visual-run.txt ${RUN_LOG}; exit $code`,
 ].join(' && ');
 
+/**
+ * RULING R184: A REGENERATION PRINTS WHAT IT PHOTOGRAPHED, not only what it
+ * produced.
+ *
+ * "Which baselines changed" is a claim about OUTPUT. "What was photographed"
+ * is a claim about INPUT, and they are not the same claim.
+ *
+ * PARK-15 EXISTS BECAUSE ONLY THE SECOND WOULD HAVE CAUGHT IT. FW20b
+ * regenerated the baselines while the next increment was already editing the
+ * working tree: /application had been moved to live, the shell CTA had not
+ * yet been taught to ask whether the application exists, and the container
+ * built THAT. Sixty-nine images were rewritten to show a header rendering
+ * "Suivre mes jours" - the exact defect the next increment removed.
+ *
+ * R135's three requirements all held and none of them saw it: the list was
+ * accurate, the reason was true of the sentence that changed, and the image
+ * that was cropped and read was /sources, which was correct. CONFIRMING ONE
+ * IMAGE DOES NOT CONFIRM A RUN. The assumption R135 does not state is that
+ * the tree being photographed is the tree you mean to photograph.
+ *
+ * DIRTY IS NOT AN ERROR HERE, and the script does not refuse it. Every
+ * increment in this repository runs on a dirty tree by construction - the
+ * question is whether it CHANGED DURING the run, not whether it differs from
+ * HEAD. What this buys is a line a report can quote, so the baselines and the
+ * commit can be shown to be the same tree instead of assumed to be.
+ */
+function photographed() {
+  const git = (args) => {
+    try {
+      return execFileSync('git', args, { cwd: WEB, encoding: 'utf8' }).trim();
+    } catch {
+      // A repository this script can run outside of is not a reason to fail
+      // the run; it is a reason to say so.
+      return '';
+    }
+  };
+
+  const commit = git(['rev-parse', '--short', 'HEAD']) || 'unknown';
+  const dirty = git(['status', '--porcelain'])
+    .split(NEWLINE)
+    .map((line) => line.trim())
+    .filter((line) => line !== '').length;
+
+  return dirty === 0
+    ? `photographed: ${commit}, clean tree`
+    : `photographed: ${commit} plus ${dirty} uncommitted path(s) - the baselines below are of THAT tree, not of ${commit}`;
+}
+
 process.stdout.write(
   [
     `visual baselines in ${IMAGE}${update ? ' (regenerating)' : ''}`,
@@ -178,6 +226,8 @@ process.stdout.write(
     // it means the report can QUOTE this line instead of asserting something
     // about a run nobody can inspect afterwards.
     `isolation: sole container of ${IMAGE} (checked); distDir ${DIST_DIR}; node_modules and .next on anonymous volumes`,
+    // R184, and it is the INPUT half of the same idea.
+    photographed(),
     '',
   ].join(NEWLINE),
 );

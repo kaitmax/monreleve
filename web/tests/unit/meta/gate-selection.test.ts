@@ -278,13 +278,20 @@ describe('R133: a suite that reports nothing must not read as a pass', () => {
     expect(readCount('test:e2e', '  1 passed\n', undefined).failure).toBeUndefined();
   });
 
-  it('counts exactly the four suites that report counts', () => {
+  it('counts exactly the five suites that report counts', () => {
     // R63 again: the assertions above would all still pass if a suite were
     // quietly dropped from the map and began being judged on exit code.
+    //
+    // FIVE SINCE R182. test:late re-runs the two checks whose subject
+    // test:visual produces, and it gets a count pattern for the same
+    // reason every other suite has one - a suite that reports nothing
+    // must not read as a pass (R133). A late guard exempt from R133
+    // would be a guard that runs at the right moment and says nothing.
     expect(Object.keys(SUITE_COUNTS).sort()).toEqual([
       'test',
       'test:db',
       'test:e2e',
+      'test:late',
       'test:visual',
     ]);
   });
@@ -328,6 +335,11 @@ describe('the database layer selects its own suite (FW14)', () => {
       'test:e2e',
       'test:visual',
       'test:db',
+      // R182: LAST, and after test:visual specifically. It is appended
+      // outside the pattern loop precisely so it cannot land mid-list -
+      // a late check that runs before its subject exists is the defect
+      // the ruling names, wearing a new name.
+      'test:late',
     ]);
   });
 });
@@ -393,7 +405,7 @@ describe('R140: output reaching rendered HTML is what selects, not the directory
     const { suites, matched } = selectSuites(['web/lib/params/codec.ts']);
 
     expect(matched).toHaveLength(1);
-    expect(suites).toEqual([...BASE_SUITES, 'test:e2e', 'test:visual']);
+    expect(suites).toEqual([...BASE_SUITES, 'test:e2e', 'test:visual', 'test:late']);
   });
 
   it('still selects nothing for a module whose output never reaches HTML', () => {
