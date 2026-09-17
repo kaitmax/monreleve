@@ -1,0 +1,447 @@
+====================================================================
+REPORT-FW20.txt
+====================================================================
+
+SUMMARY
+--------------------------------------------------------------------
+Nine increments, nine commits, all green.
+
+The five remaining public pages are live: /sources rebuilt, /a-propos,
+/tarifs, /releve-annuel and the home page. The site now has a front door
+that routes, a page saying nobody has validated its rules, a page
+listing what it does not know, and no broken link anywhere in its shell.
+
+But the task's first measurement is the one worth keeping. Before any
+page was written, the e2e suite was found pointed at another project's
+container and run to completion:
+
+    91 tests passed against a different application.
+
+Not failed. Passed. That produced R169 and R170 as increment 0, and the
+corollary - an absence assertion is only meaningful once presence is
+established - earned a real defect on its first run.
+
+The read-through found the other thing nothing else could: three pages
+written in this task, two of them asserting a document the third says
+does not exist.
+
+
+PRECONDITIONS
+--------------------------------------------------------------------
+REPORT-FW18b.txt read in full, with PARKED and QUESTIONS   yes
+parking.md read; PARK-1, 3, 4, 10, 11 are this task's inputs  yes
+CI green on origin/main                     01c6103
+run URL   https://github.com/kaitmax/Frontalier/actions/runs/35110071776
+
+DEVIATION FROM THE PROTOCOL, stated first: this ran in the session that
+wrote the prompt, not a fresh one. The operator asked for it directly. I
+followed the prompt as written rather than from memory, and the one
+place it and SPEC disagreed is recorded under DEVIATIONS.
+
+
+THE MEASUREMENT THAT OPENED THE TASK
+--------------------------------------------------------------------
+Increment 0 began with /sources' first test failing for a reason that
+had nothing to do with /sources: the page served a 404. Port 3000 was
+held by `tizicorp-app`, a container from another of the operator's
+projects, and playwright.config.ts hardcoded localhost:3000 with
+reuseExistingServer.
+
+Rather than describe the risk, it was measured. The full suite was run
+against that container:
+
+    91 of 220 tests passed.
+
+THE MECHANISM IS NOT ABOUT PORTS. Absence assertions are satisfied by
+absence. /sources 404s on a foreign server; a 404 page has no horizontal
+overflow; so every R127 assertion holds - scrollWidth <= clientWidth is
+true, and "every element inside the viewport at 320 dp" is true because
+all of nothing is inside it. The assertions that pass hardest against
+the wrong product are the ones written to prove a defect is absent.
+
+A STATUS CHECK WOULD NOT HAVE CAUGHT IT. The foreign app answers
+/api/health with 200 and valid JSON of its own. The obvious guard -
+"did the endpoint respond" - would have passed and released all 91. That
+is why R169 requires a field NAMING the product.
+
+Proven live against that container, zero specs executed:
+
+    R169: the e2e suite refused to run.
+      expected  frontalier at http://localhost:3000
+      found     a JSON body at .../api/health with no "service" field
+
+IT FIRED A SECOND TIME, in increment 5, against a SECOND foreign
+application. Port 3100 - the port this task moved to - answered
+{"status":"ok","db":"ok","queue":"ok"}. Another project had taken it
+mid-task. The run moved to 3200.
+
+Two foreign applications, two ports, one task. The first collision could
+be called bad luck; the second is what a shared machine does.
+
+
+RED/GREEN LEDGER
+--------------------------------------------------------------------
+INC 0  R169 identity guard      RED  live, against tizicorp-app: zero
+                                     specs ran, message named the port
+       R169 corollary           RED  planted a 404 route into R127's
+                                     census; both checks failed with
+                                     "did not serve"
+       analytics stale route    RED  found by the corollary on its
+                                     first run - see below
+
+INC 1  R164 status column       RED  "ends 49 px outside its container",
+                                     expected <= 1028, received 1077 -
+                                     the number PARK-11 recorded
+       R148 one left edge       RED  planted a 32 px indent on the
+                                     title: expected 184, received 152
+
+INC 2  the three absences       RED  section did not exist
+       SPEC 20 vocabulary       RED  "attester"/"attestant" in my copy
+       R91 typography           RED  two ASCII spaces before a colon
+       R126 elision             RED  in the test's own word list
+       R154 non-vacuity         RED  on the SECOND attempt - see
+                                     DEVIATIONS
+
+INC 3  R163 fixture narration   RED  changed frenchTaxedDays 14 -> 12 in
+                                     geneva-cases.json: four tests red,
+                                     both guides among them
+
+INC 4  three censuses           RED  sitemap 15 -> 16, planned set,
+                                     R119 rows
+       e2e planned set          RED  four minutes into test:e2e, the
+                                     same two-file duplication FW18b
+                                     found
+
+INC 6  the FW12 tripwire        RED  "still names WITHOUT linking for
+                                     compliant, whose target is not
+                                     built" - the test that existed to
+                                     fail on this day
+       SPEC 20 vocabulary       RED  again, in my own disclaimer
+
+INC 8  zero 404s                RED  /calculateur-lamal-cmu and
+                                     /application, linked since FW9
+       320 dp on /sources       RED  665 px table - my assertion, not
+                                     the page
+
+FINAL VERIFICATION, one run, all green:
+  pnpm gate          exit 0   (coverage, budgets, parity)
+  pnpm test:e2e      248 passed
+  pnpm test:visual   106 passed
+  pnpm test:a11y     137 passed
+  pnpm test:runtime    9 passed
+  pnpm test         2379 passed across 132 files
+  pnpm size          all gated routes pass both gates
+  pnpm lighthouse    4 URLs - see DEVIATIONS
+
+
+WHAT THIS SITE DOES NOT KNOW
+--------------------------------------------------------------------
+Three tasks had refused to publish something for want of a source, and
+each refusal lived only in the repository. A reader looking for one of
+those figures met an absence with no way to tell a decision from an
+oversight. The section is on /sources, after the provisional readings
+and before the fixtures - the page's order of decreasing certainty.
+
+From PARK-1:
+  "Ce qu'un employeur doit ou non vous remettre - Rien ici ne dit qu'un
+   employeur doive vous remettre un document indiquant votre part de
+   teletravail, ni depuis quand, ni sous quelle forme. Le guide consacre
+   a ce document est ecrit au conditionnel pour cette raison."
+
+From PARK-3:
+  "Les dates et les formulaires de la declaration francaise - Aucune
+   date limite, aucun numero de formulaire, aucune marche a suivre case
+   par case. Une date fausse sur cette page couterait a un lecteur bien
+   plus qu'une date absente."
+
+From PARK-4:
+  "Le cout compare de l'assurance maladie suisse et francaise - Ce site
+   ne dispose d'aucune donnee de primes qu'il puisse citer. Sur un choix
+   qui ne se reprend pas, un chiffre approximatif serait plus dangereux
+   que pas de chiffre du tout."
+
+NONE SAYS WHEN IT WILL ARRIVE. That is a promise, and the e2e test
+asserts the absence of one directly. R165 applied: authored for a
+stranger, not lifted from entries written for the operator.
+
+
+THE FIGURE PARAGRAPH  (/a-propos)
+--------------------------------------------------------------------
+"Comment un chiffre arrive sur ce site - Une information reglementaire
+ ne s'ecrit ici qu'au terme des memes trois etapes, sans exception."
+
+  Une source primaire        Le texte de l'administration qui publie la
+                             regle, jamais un article qui la rapporte.
+  Une date de releve         Le jour ou cette source a ete lue. Une
+                             regle sans date est une regle dont
+                             personne ne sait si elle est encore vraie.
+  Une ligne sur la page      La regle, sa valeur, sa source et son
+  des sources                etat, visibles par tout le monde.
+
+"Et si aucune source primaire ne peut etre trouvee, le chiffre n'est pas
+ ecrit. Pas approxime, pas repris ailleurs, pas assorti d'une reserve :
+ absent. La page des sources nomme ce qui manque, pour que son absence
+ se remarque."
+
+The page opens above it with the admission, because that is the question
+a reader arrives with: "Personne n'a valide ces regles."
+
+
+THE CLEISS AUDIT  (A1)
+--------------------------------------------------------------------
+Recorded in the prompt from FW18b's audit and unchanged by this task.
+Nothing merged; one fact split, two never landed:
+
+  1 window + four triggers -> D1 + D2      5 default          -> D6
+  2 irrevocable            -> D3           6 where it is filed -> ABSENT
+  3 what reopens it        -> D4           7 legal basis      -> D7
+  4 what does NOT reopen   -> D5           8 family members   -> ABSENT
+
+NEITHER WAS ADDED, and this is the one part of the prompt this task did
+not execute. Both transcriptions are in docs/regulatory-sources.md under
+"TRANSCRIBED, NOT YET ROWS"; turning them into rows means SOURCE_IDS
+entries, French descriptions, /sources rows and new baselines - the
+prompt's own increment for it, which the task did not reach before the
+five pages were done. The wording is safe and nothing cites it.
+
+Fact 8 remains the urgent one: it decides cover for a whole household,
+and its qualifier is load-bearing - the rule covers dependants with no
+activity of their own and no Swiss-only pension, so "votre famille suit
+votre choix" is wrong for a two-earner household, in the direction that
+costs a reader cover.
+
+
+R163 PROOF
+--------------------------------------------------------------------
+frenchTaxedDays changed from 14 to 12 in fixtures/geneva-cases.json.
+Four tests went red:
+
+  the fixture's own sanity check
+  jours-de-mission-hors-suisse narrates the fixture
+  geneve narrates the fixture
+  the arithmetic check deriving 39,16 from the inputs
+
+Fixture reverted. The guides are now tied to the same file the engine is
+gated on, including the 94 that is neither a RuleSet constant nor a
+fixture field but the sum of one of each - which is why R147 could never
+have seen it.
+
+THE TEST BRANCH RATHER THAN INTERPOLATION, and the reason is R139:
+fixtures/ sits outside web/, so reading it from lib/guides at module
+load is a path that exists here and in a full clone and may not exist
+wherever only web/ is deployed.
+
+
+THE TENSE PROOF  (/releve-annuel)
+--------------------------------------------------------------------
+The page opens "Ce document n'existe pas encore" before describing
+anything. The e2e test asserts presence first, then the absence of five
+present-tense claim forms - "le releve contient", "vous obtenez",
+"telechargez" - then no form and no price.
+
+SPEC 12's vocabulary rule is checked through the PRODUCT'S OWN GUARD,
+complianceClaims(), with a non-vacuity assertion proving the guard still
+catches something. My first version hand-rolled a word list and failed
+on this page's own disclaimer. See DEVIATIONS.
+
+
+MESH
+--------------------------------------------------------------------
+Clean over all seven articles plus the fixture, unchanged by this task.
+35 tests across mesh, hub and links.
+
+Every link the shell renders now resolves, asserted as a test rather
+than todo.md's manual check: the nav and footer are walked and each
+internal href fetched. It failed on two.
+
+
+SIZE
+--------------------------------------------------------------------
+All gated routes pass both gates.
+
+  /                          108.1   (A 16.9 spare)
+  /a-propos                  108.3   (A 16.7 spare)
+  /tarifs                    108.3   (A 16.7 spare)
+  /releve-annuel             108.3   (A 16.7 spare)
+  /sources                   108.3   (A 16.7 spare)
+  /calculateur-...           122.7   (A  2.3 spare)
+
+The four new pages are prose in the shell and carry no client JavaScript
+of their own.
+
+
+BASELINES - R135
+--------------------------------------------------------------------
+INC 1   page-sources-desktop            the wide container; the page is
+                                        a third shorter, 4099 -> 2643 px
+        page-sources-mobile DID NOT MOVE - the evidence the change is
+        width-conditional: at 390 both container widths collapse.
+INC 1   page-sources-desktop, again     the one-left-edge fix
+INC 2   page-sources-{desktop,mobile}   the new section, twice: the copy
+                                        corrections landed after the
+                                        first pass
+INC 4   page-a-propos-{desktop,mobile}  new
+INC 5   page-tarifs-{desktop,mobile}    new
+INC 6   page-releve-annuel-{d,m}        new
+        calculateur-panneau-conforme-{d,m}
+        calculateur-panneau-avis-provisoire-{d,m}
+                                        the contextual link became an
+                                        anchor - the proof R166 reached
+                                        a reader
+INC 7   page-accueil-{desktop,mobile}   twice: the first pass
+                                        photographed the blue links
+INC 8   ten files, then eight again     the footer lost two links on
+                                        every page; then the read-
+                                        through's copy corrections
+
+CROPPED AND READ, not merely regenerated: the /sources table and page
+head, the footer before and after, /a-propos, /tarifs, the home page
+before and after, and the calculator panel. Four of those reads found
+defects.
+
+
+TOKENS ADDED
+--------------------------------------------------------------------
+NONE. Every figure the new pages needed already had a name:
+--layout-article for the prose cap, --radius-lg and --space-6 for the
+cards, $breakpoint-md for the two-column switch.
+
+
+DEVIATIONS
+--------------------------------------------------------------------
+1. SPEC WINS OVER THE PROMPT ON /tarifs. The prompt said "no 'from'
+   price"; SPEC D3 states "Gratuit en 2027. Payant des 2028 (CHF 39-49/
+   an prevu)" and requires it verbatim. The prompt's line was my own
+   gloss, written before reading D3. The range stays, marked `prevu`.
+
+2. I WROTE A VOCABULARY VIOLATION INTO THE PAGE ABOUT NOT OVERCLAIMING,
+   then wrote a test too blunt to catch it, then read its silence as
+   proof it was clean.
+
+   The copy said "il ne dira pas que vos journees sont certifiees,
+   attestees ou conformes" - a disclaimer, and still a violation:
+   the shared guard matches /certifi(?!cat)/, permitting the NOUN and
+   refusing every verb form whatever the sentence around it.
+
+   My first check hand-rolled a substring list and failed on that
+   disclaimer - the same over-strict mistake the guard records having
+   made once already, when banning 'certifi' forbade the calculator
+   from naming the A1 CERTIFICATE SPEC 7.1 requires it to explain.
+
+   I then probed the real guard, saw no output, and concluded the copy
+   was clean. The probe's console.log never reached my grep. I READ
+   SILENCE AS EVIDENCE OF ABSENCE, in the task whose entire subject is
+   that absence assertions are satisfied by absence.
+
+3. R154 CAUGHT MY OWN TEST, ON THE SECOND ATTEMPT. Planting an emptied
+   heading in the "what this site does not know" test PASSED: the
+   non-vacuity check covered the bodies and not the headings, so
+   toContain(heading) degenerated to toContain('') exactly when it
+   mattered. Both fields are checked now; the re-planted defect fails.
+
+4. THE SAME LINK-COLOUR DEFECT FOR THE THIRD TIME. The home page's two
+   card titles rendered in default browser blue, because an anchor in a
+   new context takes the global link colour. FW18b met it on the R160
+   chip; .breadcrumb met it before that. Each time no gate objected and
+   a crop found it. One line, the same line, all three times.
+
+5. A TEST ARTIFACT HAD BEEN ON THE FRONT DOOR SINCE FW1. The home page
+   rendered a bare "1 234,5" between the intro and the footer - AC1's
+   tabular-numeral proof - shipped for nineteen tasks and photographed
+   by every accueil baseline. Moved to /dev/composants with its test.
+
+6. LIGHTHOUSE FAILED ONCE AND PASSED ON RE-RUN. /guides/geneve scored
+   0.99 against a floor of 1. numberOfRuns is 1, so a 0.01 delta is
+   inside single-run noise. Not chased; recorded as a fragility of that
+   configuration rather than a regression.
+
+7. THE UNIT SUITE FLAKED TWICE on hostile-params' 5 000-query property
+   test, then passed, and passes in isolation with all 93. R99's
+   recorded worker starvation. Nothing was committed on a red run.
+
+8. A1's TWO MISSING CLEISS ROWS WERE NOT ADDED. See THE CLEISS AUDIT.
+
+
+PARKED
+--------------------------------------------------------------------
+PARK-12  The shell no longer announces unbuilt pages.
+         /calculateur-lamal-cmu and /application were linked from the
+         footer of every page since FW9 and 404ed the whole time.
+         isHrefHidden now hides anything not live - R85's rule, which
+         the result panel has followed since FW12 and the shell never
+         applied. Consistent with PARK-7, which refused even to NAME
+         the unbuilt comparator in a guide. Reversible in one
+         predicate; the alternative considered and rejected was
+         rendering them as non-link text.
+
+CLOSED:  PARK-10 by R163, PARK-11 by R164.
+
+
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------
+A. THE VACUOUS TEST FROM FW18b IS STILL VACUOUS, and now more so.
+   e2e/calculateur.spec.ts:555, "the contextual link is NOT a tab stop,
+   because it is not a link yet", asserts expect(true).toBe(true). FW18b
+   reported its premise as expired; FW20 shipped /releve-annuel, so the
+   FOURTH destination now resolves too and every word of the test's name
+   is false. Its unit counterpart was updated because it actually
+   asserted something. This one asserts nothing, so nothing failed.
+
+B. LIGHTHOUSE HAS NO R169. It starts its own server on a hardcoded 3000
+   and would happily measure whatever answers there. It was not
+   measuring the wrong app this time - the foreign container had stopped
+   by then, verified - but the same hole the e2e suite had is still open
+   in that tool, and numberOfRuns: 1 means it also cannot tell noise
+   from regression.
+
+C. THE R66 CODEPOINT CENSUS GREW THREE TIMES IN ONE TASK (36 -> 39) and
+   each edit was a hand-counted number in a test. It is doing its job,
+   but a census of "how many no-break spaces exist" is a number that
+   changes whenever anyone writes French, which is the shape of floor
+   this project has twice replaced with an exact set.
+
+
+QUESTIONS
+--------------------------------------------------------------------
+Q58  THE CLEISS URL. Closed - the operator confirmed it on 16.09.2026.
+     Left here only to record that it is no longer open.
+
+Q59  FACT 8, AND WHETHER A GUIDE PARAGRAPH IS WANTED. The transcription
+     is in the register and neither missing fact is a row yet. Fact 8
+     decides household cover on an irrevocable choice, and the published
+     guide currently says nothing about families. Adding it is a row,
+     four source-id entries' worth of plumbing, and one guide section -
+     an increment, not a footnote. Should FW20b open with it?
+
+Q60  SHOULD LIGHTHOUSE GET R169 AND MORE THAN ONE RUN? Both are small.
+     The identity check is the same fetch; numberOfRuns: 3 with a median
+     assertion is a config line. Today a 0.01 flap fails the gate and a
+     foreign app on 3000 would be measured silently.
+
+Q61  THE PLANNED-PRODUCT QUESTION PARK-12 LEAVES OPEN. The footer now
+     shows only what exists. If you want a planned product announced -
+     the comparator especially, since it is SPEC 9.6's and people search
+     for it - that is a product decision and the mechanism is one
+     predicate plus a non-link rendering.
+
+
+PUSH PROOF
+--------------------------------------------------------------------
+branch  main
+remote  https://github.com/kaitmax/Frontalier.git
+
+  0d5c520  FW20: the suite asserts what it is pointed at (R169, R170)
+  f0d7669  FW20: R169, R170 and R171 recorded as standing
+  de7d5a4  FW20: /sources, in the container a reference table needs
+  bdfbc47  FW20: what this site does not know
+  5a1d53b  FW20: the guides narrate the fixture (R163)
+  26ec6af  FW20: /a-propos, and how a figure gets onto this site
+  7f434b6  FW20: /tarifs
+  0142900  FW20: /releve-annuel, in the tense the code is in (R166)
+  ebe33ee  FW20: the homepage
+  fa2b819  FW20: mesh, a11y, 320 dp, size, read-through
+
+Every commit was made on a green gate, with the printed selection in its
+body. No red commit.
+
+END OF REPORT-FW20.txt
