@@ -13,6 +13,7 @@
 
 import type { Metadata } from 'next';
 import { TARIFS_COPY as COPY } from '@/lib/fr/tarifs';
+import { PRODUCT_STATE } from '@/lib/content/product-state';
 import { Container } from '@/lib/ui/react/Container/Container';
 import styles from '../sources/sources.module.scss';
 
@@ -29,7 +30,7 @@ export default function TarifsPage() {
 
         {/* SPEC D3, verbatim, as the lead. */}
         <p className={styles.lead}>{COPY.position}</p>
-        <p className={styles.prose}>{COPY.positionDetail}</p>
+        <p className={styles.prose}>{COPY.positionDetail(PRODUCT_STATE)}</p>
 
         <section className={styles.section}>
           <h2 className={styles.heading}>{COPY.whyHeading}</h2>

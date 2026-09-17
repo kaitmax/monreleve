@@ -23,6 +23,7 @@ import { Container } from '@/lib/ui/react/Container/Container';
 import styles from './home.module.scss';
 import { currentTaxYear } from '@/lib/content/tax-year';
 import { guideScope } from '@/lib/guides/scope';
+import { PRODUCT_STATE } from '@/lib/content/product-state';
 
 // The title stays the layout's default - the bare product name for "/" -
 // while the description is this page's own. A site-wide default description
@@ -42,7 +43,7 @@ import { guideScope } from '@/lib/guides/scope';
 export function generateMetadata(): Metadata {
   const { fiscal, social } = guideScope(currentTaxYear());
 
-  return { description: HOME_COPY.description(fiscal, social) };
+  return { description: HOME_COPY.description(fiscal, social, PRODUCT_STATE) };
 }
 
 // FW1 AC1's TABULAR-NUMERAL PROOF MOVED TO /dev/composants, and it was

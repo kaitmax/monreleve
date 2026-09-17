@@ -20,6 +20,7 @@ import { readFileSync } from 'node:fs';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { LEGAL_COPY } from '@/lib/fr/legal';
+import { PRODUCT_STATE } from '@/lib/content/product-state';
 import { text } from '@/tests/support/markup';
 import { LegalNote } from './LegalNote';
 
@@ -27,14 +28,14 @@ const render = (): string => renderToStaticMarkup(<LegalNote />);
 
 describe('the standing disclaimer', () => {
   it('renders the text from lib/fr and declares none of its own', () => {
-    expect(text(render())).toContain(LEGAL_COPY.standing);
+    expect(text(render())).toContain(LEGAL_COPY.standing(PRODUCT_STATE));
   });
 
   it('uses none of the forbidden words', () => {
     // SPEC section 20's vocabulary constraint, asserted on the COPY rather
     // than the markup so that it holds however the component wraps it.
     for (const forbidden of ['certifi', 'attest', 'conform']) {
-      expect(LEGAL_COPY.standing.toLowerCase()).not.toContain(forbidden);
+      expect(LEGAL_COPY.standing(PRODUCT_STATE).toLowerCase()).not.toContain(forbidden);
     }
   });
 

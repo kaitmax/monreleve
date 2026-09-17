@@ -25,6 +25,8 @@
 // NO FIGURE ANYWHERE (R147). Nothing here is a threshold, and a page about how
 // figures are handled is the last place to type one.
 
+import type { ProductState } from '@/lib/content/product-state';
+
 const NB = String.fromCharCode(0x00a0);
 const n = (mark: string): string => `${NB}${mark}`;
 
@@ -44,11 +46,32 @@ export const A_PROPOS_COPY = {
    * Found by the read-through, which is the only thing that could: each
    * sentence is plausible alone, every test passed, and the contradiction
    * only exists between pages.
+   *
+   * FW20 FIXED THE SENTENCE AND LEFT THE MECHANISM, which is R149's signal.
+   * A hand-corrected sentence is correct until the next hand edits it, so
+   * R172 makes the clause a function of the fact: the register appears here
+   * when, and only when, `trackerExists` says it exists. The refusal half -
+   * "il ne donne pas de conseil" - is unconditional and stays outside the
+   * branch, because it is true of every state this product can be in.
    */
-  lead:
-    'Ce site calcule votre part de télétravail annuelle. Il ne donne pas de ' +
-    'conseil, et il ne remplace ni votre employeur, ni votre administration ' +
-    'fiscale, ni un avocat.',
+  lead: (state: ProductState): string => {
+    const does = [
+      state.calculatorExists ? 'calcule votre part de télétravail annuelle' : null,
+      state.trackerExists ? 'tient le registre horodaté de vos journées' : null,
+    ].filter((clause): clause is string => clause !== null);
+
+    // THE EMPTY CASE IS WRITTEN OUT rather than left to produce "Ce site .".
+    // It is unreachable - `calculatorExists` is asserted against the route
+    // that renders the form - and writing it anyway is what stops the flip
+    // test passing on ungrammatical output. A test that only asks whether the
+    // string CHANGED is satisfied by a string that changed into nonsense.
+    const opening = does.length > 0 ? `Ce site ${does.join(' et ')}.` : 'Ce site ne fait rien.';
+
+    return (
+      `${opening} Il ne donne pas de conseil, et il ne remplace ni votre ` +
+      'employeur, ni votre administration fiscale, ni un avocat.'
+    );
+  },
 
   // -- who has read the rules ---------------------------------------------
   reviewHeading: 'Personne n’a validé ces règles',

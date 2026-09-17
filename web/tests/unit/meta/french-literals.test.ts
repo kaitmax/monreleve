@@ -96,6 +96,13 @@ const ALLOWED: ReadonlyArray<readonly [string, string]> = [
     'This file. It names both characters and several particles in order to ' +
       'forbid them everywhere else.',
   ],
+  [
+    'tests/unit/content/product-state.test.ts',
+    'Synthetic sentences fed to the R172 claim detector - four it must flag ' +
+      'and four it must not. Same case as tests/support/vocabulary.ts: a ' +
+      'detector cannot be asserted without inputs, and an absence assertion ' +
+      'with a broken detector passes forever. None of them reaches a page.',
+  ],
 ];
 
 interface Hit {

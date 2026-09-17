@@ -15,8 +15,9 @@
 // secondary - 4,68:1 and 4,97:1 - and tertiary survives only as a hairline.
 
 import { LEGAL_COPY } from '@/lib/fr/legal';
+import { PRODUCT_STATE } from '@/lib/content/product-state';
 import styles from './LegalNote.module.scss';
 
 export function LegalNote() {
-  return <p className={styles.note}>{LEGAL_COPY.standing}</p>;
+  return <p className={styles.note}>{LEGAL_COPY.standing(PRODUCT_STATE)}</p>;
 }

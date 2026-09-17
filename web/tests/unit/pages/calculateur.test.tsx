@@ -24,6 +24,7 @@ import { CALCULATOR_PATH, gateRobotsDirective } from '@/lib/content/routes';
 import { currentTaxYear } from '@/lib/content/tax-year';
 import { CALCULATEUR_COPY } from '@/lib/fr/calculateur';
 import { LEGAL_COPY } from '@/lib/fr/legal';
+import { PRODUCT_STATE } from '@/lib/content/product-state';
 import { PublicShell } from '@/lib/ui/react/PublicShell/PublicShell';
 import { formatPercent } from '@/lib/ui/core';
 
@@ -263,8 +264,8 @@ describe('ruling R113: the always-present path to /sources', () => {
     );
     const text = container.textContent ?? '';
 
-    expect(text).toContain(LEGAL_COPY.standing);
-    expect(text.split(LEGAL_COPY.standing).length - 1).toBe(1);
+    expect(text).toContain(LEGAL_COPY.standing(PRODUCT_STATE));
+    expect(text.split(LEGAL_COPY.standing(PRODUCT_STATE)).length - 1).toBe(1);
   });
 
   it('and the panel adds SPEC 9.3 item 6 only once there is a result', () => {
@@ -274,7 +275,7 @@ describe('ruling R113: the always-present path to /sources', () => {
     // arrives with the numbers.
     const { container } = render(<CalculateurPage />);
 
-    expect(container.textContent).not.toContain(LEGAL_COPY.standing);
+    expect(container.textContent).not.toContain(LEGAL_COPY.standing(PRODUCT_STATE));
   });
 
   it('shows the note whether or not anything has been typed', () => {

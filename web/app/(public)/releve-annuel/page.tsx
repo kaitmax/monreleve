@@ -21,12 +21,13 @@
 import type { Metadata } from 'next';
 import { CALCULATOR_PATH } from '@/lib/content/routes';
 import { RELEVE_COPY as COPY } from '@/lib/fr/releve-annuel';
+import { PRODUCT_STATE } from '@/lib/content/product-state';
 import { Container } from '@/lib/ui/react/Container/Container';
 import styles from '../sources/sources.module.scss';
 
 export const metadata: Metadata = {
   title: COPY.title,
-  description: COPY.description,
+  description: COPY.description(PRODUCT_STATE),
 };
 
 export default function ReleveAnnuelPage() {
@@ -34,16 +35,16 @@ export default function ReleveAnnuelPage() {
     <main className={styles.page}>
       <Container width="article">
         <h1 className={styles.title}>{COPY.title}</h1>
-        <p className={styles.lead}>{COPY.lead}</p>
+        <p className={styles.lead}>{COPY.lead(PRODUCT_STATE)}</p>
 
         <section className={styles.section}>
-          <h2 className={styles.heading}>{COPY.purposeHeading}</h2>
+          <h2 className={styles.heading}>{COPY.purposeHeading(PRODUCT_STATE)}</h2>
           <p className={styles.prose}>{COPY.purposeBody}</p>
         </section>
 
         <section className={styles.section}>
-          <h2 className={styles.heading}>{COPY.contentsHeading}</h2>
-          <p className={styles.prose}>{COPY.contentsIntro}</p>
+          <h2 className={styles.heading}>{COPY.contentsHeading(PRODUCT_STATE)}</h2>
+          <p className={styles.prose}>{COPY.contentsIntro(PRODUCT_STATE)}</p>
 
           {/*
             SPEC 12's six sections, in a reader's words. An ordered list
@@ -59,13 +60,13 @@ export default function ReleveAnnuelPage() {
         </section>
 
         <section className={styles.section}>
-          <h2 className={styles.heading}>{COPY.vocabularyHeading}</h2>
-          <p className={styles.prose}>{COPY.vocabularyBody}</p>
+          <h2 className={styles.heading}>{COPY.vocabularyHeading(PRODUCT_STATE)}</h2>
+          <p className={styles.prose}>{COPY.vocabularyBody(PRODUCT_STATE)}</p>
         </section>
 
         <section className={styles.section}>
           <h2 className={styles.heading}>{COPY.stateHeading}</h2>
-          <p className={styles.prose}>{COPY.stateBody}</p>
+          <p className={styles.prose}>{COPY.stateBody(PRODUCT_STATE)}</p>
 
           <p className={styles.prose}>
             <a href={CALCULATOR_PATH}>{COPY.calculatorLink}</a>

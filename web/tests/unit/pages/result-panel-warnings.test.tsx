@@ -44,6 +44,7 @@ import {
 import CalculateurPage from '@/app/(public)/calculateur-teletravail-frontalier/page';
 import { CALCULATEUR_COPY } from '@/lib/fr/calculateur';
 import { LEGAL_COPY } from '@/lib/fr/legal';
+import { PRODUCT_STATE } from '@/lib/content/product-state';
 import { CANTONS_BY_NAME } from '@/lib/fr/cantons';
 import { RESULT_COPY, WARNING_CODES, warningEntry } from '@/lib/fr/result';
 import { PublicShell } from '@/lib/ui/react/PublicShell/PublicShell';
@@ -340,7 +341,7 @@ describe('the standing disclaimer is said once, not twice (increment 6)', () => 
   // goes is the copy I added mid-page, whose actual job - the /sources link -
   // stays exactly where it was. The sentence itself is still in the served
   // HTML with scripting off, from the footer, which is a server component.
-  const STANDING = LEGAL_COPY.standing;
+  const STANDING = LEGAL_COPY.standing(PRODUCT_STATE);
 
   const occurrences = (text: string, needle: string): number =>
     text.split(needle).length - 1;

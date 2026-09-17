@@ -16,6 +16,7 @@
 import { expect, test } from '@playwright/test';
 import { GUIDES_COPY } from '@/lib/fr/guides';
 import { LEGAL_COPY } from '@/lib/fr/legal';
+import { PRODUCT_STATE } from '@/lib/content/product-state';
 import { GUIDES_PATH, allGuides } from '@/lib/guides/registry';
 import { readingMinutes } from '@/lib/guides/reading-time';
 import { formatDate } from '@/lib/ui/core';
@@ -91,7 +92,7 @@ test.describe('the article template', () => {
         inPageFooter: occurrences(pageFooter?.textContent ?? ''),
         inMain: occurrences(main?.textContent ?? ''),
       };
-    }, LEGAL_COPY.standing);
+    }, LEGAL_COPY.standing(PRODUCT_STATE));
 
     expect(counts.footers, 'the article footer and the page footer').toBe(2);
     expect(counts.inPageFooter).toBe(1);

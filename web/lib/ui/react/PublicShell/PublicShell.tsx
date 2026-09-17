@@ -48,6 +48,7 @@ import { ctaHrefIfLive, visibleFooterColumns, visibleNav } from '@/lib/content/r
 import { APP_NAME } from '@/lib/fr';
 import { LAST_REGULATORY_REVIEW, reviewNotice } from '@/lib/content/regulatory';
 import { LEGAL_COPY } from '@/lib/fr/legal';
+import { PRODUCT_STATE } from '@/lib/content/product-state';
 import { FOOTER_COLUMNS, SHELL_COPY, SHELL_NAV } from '@/lib/fr/shell';
 import type { NavEntry } from '@/lib/fr/shell';
 import styles from './PublicShell.module.scss';
@@ -257,7 +258,7 @@ export function PublicShell({ children }: PublicShellProps) {
               $legal-01 in the footer, and FD11 prints a shorter line -
               the prompt says the spec wins on conflict, and one wording
               means one promise. */}
-          <p className={styles.disclaimer}>{LEGAL_COPY.standing}</p>
+          <p className={styles.disclaimer}>{LEGAL_COPY.standing(PRODUCT_STATE)}</p>
 
           {/* RULING R51. The constant, and nothing a caller chose: there is
               no prop here on purpose, because a prop would be the channel

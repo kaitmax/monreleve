@@ -47,6 +47,7 @@ import TarifsPage from '@/app/(public)/tarifs/page';
 import { PUBLIC_ROUTES, ctaHrefIfLive } from '@/lib/content/routes';
 import { CALCULATEUR_COPY } from '@/lib/fr/calculateur';
 import { LEGAL_COPY } from '@/lib/fr/legal';
+import { PRODUCT_STATE } from '@/lib/content/product-state';
 import { RESULT_COPY } from '@/lib/fr/result';
 import { SHELL_COPY } from '@/lib/fr/shell';
 import type { Status } from '@/lib/ui/core';
@@ -317,8 +318,8 @@ describe('the standing disclaimer, counted per region (R119, R124)', () => {
     const footer = document.querySelector('footer');
     const main = document.querySelector('main');
 
-    expect(occurrences(footer?.textContent ?? '', LEGAL_COPY.standing)).toBe(1);
-    expect(occurrences(main?.textContent ?? '', LEGAL_COPY.standing)).toBe(0);
+    expect(occurrences(footer?.textContent ?? '', LEGAL_COPY.standing(PRODUCT_STATE))).toBe(1);
+    expect(occurrences(main?.textContent ?? '', LEGAL_COPY.standing(PRODUCT_STATE))).toBe(0);
   });
 
   it('the calculator with a result has one in the panel AND one in the footer', () => {
@@ -342,12 +343,12 @@ describe('the standing disclaimer, counted per region (R119, R124)', () => {
     const footer = document.querySelector('footer');
     const main = document.querySelector('main');
 
-    expect(occurrences(panel?.textContent ?? '', LEGAL_COPY.standing)).toBe(1);
-    expect(occurrences(footer?.textContent ?? '', LEGAL_COPY.standing)).toBe(1);
+    expect(occurrences(panel?.textContent ?? '', LEGAL_COPY.standing(PRODUCT_STATE))).toBe(1);
+    expect(occurrences(footer?.textContent ?? '', LEGAL_COPY.standing(PRODUCT_STATE))).toBe(1);
 
     // And ONE in main altogether, which is the assertion the duplicate
     // failed: the panel's copy is the only one inside main.
-    expect(occurrences(main?.textContent ?? '', LEGAL_COPY.standing)).toBe(1);
+    expect(occurrences(main?.textContent ?? '', LEGAL_COPY.standing(PRODUCT_STATE))).toBe(1);
   });
 
   it('counts 2 on the whole document, and that number is deliberate', () => {
@@ -367,7 +368,7 @@ describe('the standing disclaimer, counted per region (R119, R124)', () => {
       target: { value: '110' },
     });
 
-    expect(occurrences(document.body.textContent ?? '', LEGAL_COPY.standing)).toBe(2);
+    expect(occurrences(document.body.textContent ?? '', LEGAL_COPY.standing(PRODUCT_STATE))).toBe(2);
   });
 });
 

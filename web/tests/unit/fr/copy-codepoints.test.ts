@@ -164,10 +164,15 @@ describe('the whitespace codepoints in French copy are on the record (R66)', () 
       // producer SPEC 6.4 names, which is where the comment above says it
       // belongs.
       'lib/fr/index.ts': 2,
-      // FW20: one, in the releve-annuel description. The page's other
-      // no-break spaces are built by n() at runtime and so are counted by
-      // the runtime walk rather than seen on a source line.
-      'lib/fr/releve-annuel.ts': 1,
+      // FW20 recorded one here, in the releve-annuel description - the page's
+      // one literal, its other no-break spaces being built by n().
+      //
+      // FW20b: NONE. R172 made that description a function of ProductState,
+      // and its two branches are written with n(':') like every other string
+      // in the file. The codepoint did not disappear, it moved to the file's
+      // own single producer - the same movement FW18b recorded for index.ts
+      // when the figures went to formatPercent, and the direction this
+      // comment's own argument prefers.
       // FW18b: the nav label "Le seuil de 40 %" became "Le plafond fiscal".
       'lib/fr/shell.ts': 1,
       // FW18b: one, in the droit d’option window's description -
@@ -184,7 +189,8 @@ describe('the whitespace codepoints in French copy are on the record (R66)', () 
       'lib/fr/spike.ts': 6,
       'lib/fr/statuses.ts': 2,
     });
-    expect(occurrences).toHaveLength(39);
+    // FW20b: 38. One left releve-annuel.ts for n(), as the comment above says.
+    expect(occurrences).toHaveLength(38);
   });
 
   it('puts every one of them immediately before : ; ? ! or %', () => {

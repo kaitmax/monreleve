@@ -24,6 +24,7 @@ import { SOURCES_COPY, UNKNOWN_IDS } from '../lib/fr/sources';
 import { A_PROPOS_COPY } from '../lib/fr/a-propos';
 import { TARIFS_COPY } from '../lib/fr/tarifs';
 import { RELEVE_COPY } from '../lib/fr/releve-annuel';
+import { PRODUCT_STATE } from '../lib/content/product-state';
 import { complianceClaims } from '../tests/support/vocabulary';
 
 /** 390 is a phone; 1280 and 1440 are the desktop widths the baselines use. */
@@ -247,7 +248,7 @@ test('/tarifs states SPEC D3 and sells nothing (R154)', async ({ page }) => {
   const text = await page.locator('main').evaluate((node) => node.textContent ?? '');
 
   expect(text, "SPEC D3's position sentence").toContain(TARIFS_COPY.position);
-  expect(text, 'what free actually means this year').toContain(TARIFS_COPY.positionDetail);
+  expect(text, 'what free actually means this year').toContain(TARIFS_COPY.positionDetail(PRODUCT_STATE));
   expect(text, 'why it is free').toContain(TARIFS_COPY.whyBody);
   expect(text, 'what happens in 2028').toContain(TARIFS_COPY.laterBody);
   expect(TARIFS_COPY.position.length, 'the position sentence is empty').toBeGreaterThan(40);
@@ -281,9 +282,9 @@ test('/releve-annuel is written in the tense the code is in (R166, R138)', async
   const text = await page.locator('main').evaluate((node) => node.textContent ?? '');
 
   // PRESENCE FIRST, so the absences below are not satisfied by an empty page.
-  expect(text, 'the page says it does not exist yet').toContain(RELEVE_COPY.lead);
+  expect(text, 'the page says it does not exist yet').toContain(RELEVE_COPY.lead(PRODUCT_STATE));
   expect(text, 'what it will be for').toContain(RELEVE_COPY.purposeBody);
-  expect(text, 'where the document stands').toContain(RELEVE_COPY.stateBody);
+  expect(text, 'where the document stands').toContain(RELEVE_COPY.stateBody(PRODUCT_STATE));
   expect(RELEVE_COPY.contents.length, 'SPEC 12 has six sections').toBe(6);
   for (const item of RELEVE_COPY.contents) {
     expect(text, `a section of the document: ${item.slice(0, 30)}`).toContain(item);

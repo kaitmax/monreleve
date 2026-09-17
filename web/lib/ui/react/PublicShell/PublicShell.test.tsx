@@ -33,6 +33,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { APP_NAME } from '@/lib/fr';
 import { LAST_REGULATORY_REVIEW, reviewNotice } from '@/lib/content/regulatory';
 import { LEGAL_COPY } from '@/lib/fr/legal';
+import { PRODUCT_STATE } from '@/lib/content/product-state';
 import { ctaHrefIfLive, visibleFooterColumns, visibleNav } from '@/lib/content/routes';
 import { formatDate } from '@/lib/ui/core';
 import { FOOTER_COLUMNS, SHELL_COPY, SHELL_NAV } from '@/lib/fr/shell';
@@ -457,7 +458,7 @@ describe('the footer', () => {
     renderShell();
 
     expect(text(screen.getByRole('contentinfo').textContent ?? '')).toContain(
-      LEGAL_COPY.standing,
+      LEGAL_COPY.standing(PRODUCT_STATE),
     );
   });
 });

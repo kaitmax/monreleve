@@ -21,8 +21,50 @@
 // that rather than selling. Nothing here is a threshold, so R147 has nothing
 // to find.
 
+import type { ProductState } from '@/lib/content/product-state';
+
 const NB = String.fromCharCode(0x00a0);
 const n = (mark: string): string => `${NB}${mark}`;
+
+/**
+ * What this page prices, in the order a reader meets it, each behind the fact
+ * that decides whether it exists.
+ *
+ * THE ORDER IS FIXED AND THE MEMBERSHIP IS NOT. A list that re-sorted itself
+ * as flags flipped would rewrite the sentence for a reason no reader could
+ * see.
+ *
+ * `alertsExist` IS DELIBERATELY ABSENT. /alertes is a list somebody joins,
+ * not a thing this page prices, and putting it here would lengthen a sentence
+ * SPEC D3 keeps to one product for no gain to the reader.
+ */
+const PRICED: ReadonlyArray<readonly [keyof ProductState, string]> = [
+  ['calculatorExists', 'le calculateur'],
+  ['guidesExist', 'les guides'],
+  ['dossierExists', 'le relevé'],
+  ['comparatorExists', 'le comparateur'],
+];
+
+/**
+ * "A", "A et B", "A, B et C" - the third case is the only one with a comma.
+ *
+ * CONCATENATION RATHER THAN A TEMPLATE LITERAL, and R91's source scan is the
+ * reason. Its second pass reads the quoted spans of each line, and a template
+ * holding `?? ''` or a ternary puts an ASCII space before a "?" or a ":"
+ * INSIDE the span - so the guard reports a French typography offence in what
+ * is actually JavaScript syntax. Keeping operators out of template literals
+ * costs nothing here and keeps the scan's signal clean.
+ */
+function frenchList(items: readonly string[]): string {
+  if (items.length === 0) return '';
+  if (items.length === 1) return items[0] ?? '';
+
+  const last = items[items.length - 1] ?? '';
+
+  return items.slice(0, -1).join(', ') + ' et ' + last;
+}
+
+const capitalise = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1);
 
 export const TARIFS_COPY = {
   title: 'Tarifs',
@@ -44,11 +86,40 @@ export const TARIFS_COPY = {
    * LE RELEVÉ sont gratuits", which prices a document /releve-annuel says is
    * not built - and a free price on an absent thing still asserts the thing.
    * Found by the read-through, between pages rather than on one.
+   *
+   * R172: THE LIST IS NOW THE FLAGS, so the day the relevé ships it appears
+   * here without anybody remembering this page. That is the half FW20 could
+   * not fix by editing the sentence - a corrected list is a list that is
+   * right until the product changes, and the product changing is the whole
+   * point of the next ten tasks.
+   *
+   * THE YEAR STAYS TYPED, deliberately. 2027 is SPEC D3's own figure, already
+   * written verbatim in `position` above, and it is a commercial commitment
+   * rather than a regulatory quantity - R147's list carries none of it.
    */
-  positionDetail:
-    'Le calculateur et les guides sont gratuits pour toute l’année 2027. ' +
-    'Aucun paiement n’est demandé, aucun moyen de paiement n’est collecté, ' +
-    'et rien ne change en cours d’année.',
+  positionDetail: (state: ProductState): string => {
+    const free = PRICED.filter(([flag]) => state[flag]).map(([, name]) => name);
+
+    // Unreachable while the calculator exists, and written out for the reason
+    // a-propos states: a flip test is satisfied by a string that changed into
+    // nonsense.
+    if (free.length === 0) {
+      return (
+        'Rien n’est facturé, parce que rien n’est encore disponible. Aucun ' +
+        'moyen de paiement n’est collecté.'
+      );
+    }
+
+    const verb = free.length > 1 ? 'sont gratuits' : 'est gratuit';
+
+    return (
+      capitalise(frenchList(free)) +
+      ' ' +
+      verb +
+      ' pour toute l’année 2027. Aucun paiement n’est demandé, aucun moyen ' +
+      'de paiement n’est collecté, et rien ne change en cours d’année.'
+    );
+  },
 
   whyHeading: 'Pourquoi c’est gratuit cette année',
 

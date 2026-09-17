@@ -21,6 +21,7 @@
 
 import type { Metadata } from 'next';
 import { A_PROPOS_COPY as COPY } from '@/lib/fr/a-propos';
+import { PRODUCT_STATE } from '@/lib/content/product-state';
 import { Container } from '@/lib/ui/react/Container/Container';
 import styles from '../sources/sources.module.scss';
 
@@ -34,7 +35,7 @@ export default function AProposPage() {
     <main className={styles.page}>
       <Container width="article">
         <h1 className={styles.title}>{COPY.title}</h1>
-        <p className={styles.lead}>{COPY.lead}</p>
+        <p className={styles.lead}>{COPY.lead(PRODUCT_STATE)}</p>
 
         {/*
           FIRST, BECAUSE IT IS THE ANSWER TO THE QUESTION THE PAGE IS FOR. A

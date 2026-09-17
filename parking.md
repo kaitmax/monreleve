@@ -576,3 +576,117 @@ old behaviour — three in `PublicShell.test.tsx` that derived their
 expectations from the DECLARED nav rather than the rendered one (R171 again),
 and one in `regulatory-gate.test.ts` whose premise was that the unbuilt
 comparator kept a disclosure alive.
+
+## PARK-13 - /cgu and /confidentialite describe a product that is not built  [FW20b, 2026-09-17]
+
+QUESTION:  R172 made every claim about the product's own state derive from
+`lib/content/product-state.ts`, and a sweep of all 234 reader-facing sentences
+in `lib/fr` found the rule's five instances on four pages plus the footer -
+all fixed - and a much larger concentration on two pages it did not touch.
+
+`lib/fr/cgu.ts` opens with the product's own definition: *frontalier est un
+outil de tenue de registre. Il enregistre les journees que vous declarez, il
+les horodate au moment ou le serveur les recoit, et il met en forme un releve
+annuel a partir de ces seules declarations.* None of those three things
+exists. `prisma/schema.prisma` declares `AlertSubscriber` and nothing else,
+`app/api/` holds `alertes`, `health` and `ready`, and there is no print or PDF
+route. The same page also says the reader may delete their account from the
+application, that offline days sync when the connection returns, and that the
+service is free in 2027 *sans limitation de fonctionnalite* - which is the
+sentence FW20 narrowed on /tarifs, surviving here in a broader form.
+
+`lib/fr/confidentialite.ts` does the same for the Android application: *L'
+application Android tient le registre de vos journees* introduces a seven-item
+list of fields recorded nowhere. `android/` does not exist; the siblings of
+`web/` are docs, fixtures, prompts, relay and tasks.
+
+Nine sentences on /cgu and roughly a dozen on /confidentialite. Each is a
+faithful description of what SPEC 8, SPEC 12 and SPEC 13 specify. Each is
+false as a present-tense statement today.
+
+TAKEN:     Nothing, on these two pages. Both are listed in
+`tests/support/product-claims.ts` as EXEMPT, with the reason written out, so
+the R172 scan reports them as a decision rather than passing over them in
+silence. The exemption is the record that they were seen and measured.
+
+The five instances that WERE fixed are the ones on pages whose subject is
+what the product does today: the home page's meta description, /a-propos,
+/tarifs, /releve-annuel, and $legal-01 in the footer of every page.
+
+NOT TAKEN: (a) Deriving the CGU and the privacy notice from
+`PRODUCT_STATE` the way the five were. It is the consistent move and it is
+about twenty sentences of contract and privacy copy, each of which would need
+a present-tense and a future-tense reading written and reviewed. Rewriting a
+contract is a decision the operator makes; R9 gives me document edits, and a
+terms-of-service page is not that kind of document. (b) Putting them in the
+future tense wholesale. A contract written entirely in the future reads as a
+draft of a contract, and the honest form is probably a dated scope line
+saying which clauses are in force - which is a legal question, not a wiring
+one. (c) Leaving them out of the guard's list, which is what would have
+happened if the sweep had not been run: the scan would have passed and the
+pages would have looked examined.
+
+WHY IT MATTERS MORE THAN IT LOOKS: /cgu is the page a reader consults when
+they want to know what they are agreeing to, and today it tells them they are
+agreeing to a register that cannot record anything. It is the same defect
+R172 names, on the pages where a false statement is least excusable - and it
+is bigger on those two pages than on all five that were fixed combined.
+
+REVERSIBLE: entirely. Removing either file from `EXEMPT` turns its sentences
+into failures again, which is the intended way to pick this up.
+
+TOUCHES:   nothing yet. When taken: `web/lib/fr/cgu.ts`,
+`web/lib/fr/confidentialite.ts`, their two page tests, and the EXEMPT list in
+`web/tests/support/product-claims.ts`.
+
+## PARK-14 - $legal-01 drops its timestamp clause until the register exists  [FW20b, 2026-09-17]
+
+QUESTION:  SPEC 12 item 6 specifies the document's legal footer as "each
+entry carries a server recording timestamp; document established on user
+declaration for record-keeping purposes; not tax advice", and SPEC 17.6 says
+the SITE footer carries the same `$legal-01`. `LEGAL_COPY.standing` therefore
+read, on every public page since FW8:
+
+  Estimation fournie a titre indicatif, sur la base des jours que vous avez
+  declares. CHAQUE JOUR ENREGISTRE EST HORODATE PAR LE SERVICE. Ce document
+  ne constitue pas un conseil fiscal et n'engage ni l'administration
+  francaise ni l'administration suisse.
+
+`PublicShell.tsx:260` renders it in the footer of every public page. One of
+those pages is /releve-annuel, whose body says the day register is not built.
+The footer contradicted the article above it ON THE SAME RENDER - R172's
+defect collapsed from three pages onto one - and it shipped in FW20 alongside
+the very page it contradicts. FW20's read-through did not see it because a
+footer is furniture a reader stops reading, and no claim-scan existed yet.
+
+TAKEN:     the middle clause is now conditional on `trackerExists`. SPEC's
+wording is preserved EXACTLY in the state SPEC describes: a document is a
+thing that has entries, so the clause is true whenever there is a register,
+and it is omitted only in the state SPEC was not written about. The two
+render sites pass `PRODUCT_STATE` rather than a prop - LegalNote.tsx's "no
+props" rule is about a CALLER choosing the wording, and a fact module is not
+a choice.
+
+R165 covers it independently: the site footer took the DOCUMENT's sentence
+unchanged, which is the lifted-copy defect exactly. One constant rendered in
+several places has to be true in all of them.
+
+NOT TAKEN: (a) Leaving it. It is a present-tense claim that the service
+timestamps recorded days, on the surface whose whole argument is that it
+claims no more than the record supports, six lines below a paragraph denying
+it. (b) Writing a second, site-only string. Two disclaimers is how the two
+wordings drift, and R84's census counts occurrences of THIS constant. (c)
+Rewriting the clause in the future tense. It is a legal disclaimer, not a
+roadmap, and a footer that promises future timestamping says less than one
+that does not mention them.
+
+FOR THE OPERATOR: this edits a SPEC-quoted legal string. The change is a
+branch, not a rewrite - nothing SPEC specifies has been altered, and the
+sentence returns verbatim the moment `trackerExists` flips. If you would
+rather $legal-01 stay literal and unconditional, the revert is one ternary.
+
+REVERSIBLE: one line in `web/lib/fr/legal.ts`.
+
+TOUCHES:   `web/lib/fr/legal.ts`, `web/lib/ui/react/LegalNote/LegalNote.tsx`,
+`web/lib/ui/react/PublicShell/PublicShell.tsx`, and the six test files that
+compared against the constant.

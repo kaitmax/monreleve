@@ -13,13 +13,44 @@
 // what the user declared and stamped when. A test asserts their absence.
 //
 // TODO-COPY: realistic French, not reviewed by counsel.
+//
+// ---------------------------------------------------------------------------
+// R172: THE TIMESTAMP CLAUSE IS CONDITIONAL, and this is the worst instance
+// the product-state audit found.
+//
+// PublicShell.tsx:260 renders this sentence in the footer of EVERY public
+// page. One of those pages is /releve-annuel, whose body says the day
+// register is not built - so the footer contradicted the article above it ON
+// THE SAME RENDER, which is R172's defect collapsed from three pages onto
+// one. It shipped in FW20 alongside the very page it contradicts, and the
+// read-through that found the other three did not see it, because a footer is
+// furniture a reader stops reading.
+//
+// SPEC'S WORDING IS PRESERVED EXACTLY in the state SPEC describes. SPEC 12's
+// item 6 specifies this footer for THE DOCUMENT - "each entry carries a
+// server recording timestamp" - and a document is a thing that has entries.
+// The clause is therefore true whenever there is a register, and the branch
+// below says nothing SPEC does not, in the state SPEC was written about.
+//
+// AND R165 ALREADY COVERED IT. The site footer took the DOCUMENT's sentence
+// unchanged, which is the lifted-copy defect exactly: one constant rendered
+// in several places has to be true in all of them. The document's footer will
+// be true the day the document exists; the site's was not.
+//
+// NO PROP, STILL. The branch reads PRODUCT_STATE at the call site, not a
+// caller's argument - the seam LegalNote.tsx refuses is a CALLER choosing the
+// wording, and a fact module is not a choice.
+// ---------------------------------------------------------------------------
+
+import type { ProductState } from '@/lib/content/product-state';
 
 export const LEGAL_COPY = {
-  standing:
+  standing: (state: ProductState): string =>
     'Estimation fournie à titre indicatif, sur la base des jours que vous ' +
-    'avez déclarés. Chaque jour enregistré est horodaté par le service. Ce ' +
-    "document ne constitue pas un conseil fiscal et n’engage ni " +
-    "l’administration française ni l’administration suisse.",
+    'avez déclarés. ' +
+    (state.trackerExists ? 'Chaque jour enregistré est horodaté par le service. ' : '') +
+    'Ce document ne constitue pas un conseil fiscal et n’engage ni ' +
+    'l’administration française ni l’administration suisse.',
 } as const;
 
 /**

@@ -1,6 +1,12 @@
 // web/lib/fr/index.ts
 // Every user-facing web string lives here. Nothing else declares one.
 // French only, one locale, no i18n abstraction (SPEC section 1 non-goals).
+//
+// R172: a sentence about what the product CAN DO takes ProductState as an
+// argument, exactly as one naming a threshold takes the formatted figure. The
+// flags are facts; this file holds words.
+
+import type { ProductState } from '@/lib/content/product-state';
 
 export const APP_NAME = 'frontalier';
 
@@ -36,11 +42,18 @@ export const HOME_COPY = {
    * the whole SEO strategy points at, promising two thresholds by value, in a
    * file whose five neighbours each carry a comment explaining why that must
    * not be done.
+   *
+   * AND IT TOOK THE STATE FOR THE SAME REASON, in FW20b. It ended "puis tenez
+   * le registre horodaté de vos journées" - an instruction to use a register
+   * that does not exist, on the sentence Google prints under the product's
+   * name. It is the FOURTH instance of the defect R172 was issued about and
+   * the one FW20's read-through could not have found: a read-through reads
+   * pages, and a meta description is never on one.
    */
-  description: (fiscal: string, social: string): string =>
+  description: (fiscal: string, social: string, state: ProductState): string =>
     'Calculez votre part de télétravail annuelle et les jours qui vous ' +
-    `restent avant les seuils de ${fiscal} et ${social}, puis tenez le registre ` +
-    'horodaté de vos journées.',
+    `restent avant les seuils de ${fiscal} et ${social}` +
+    (state.trackerExists ? ', puis tenez le registre horodaté de vos journées.' : '.'),
 
   intro:
     'frontalier calcule votre part de télétravail annuelle et le nombre de jours ' +
