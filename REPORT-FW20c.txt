@@ -1,0 +1,470 @@
+====================================================================
+REPORT-FW20c.txt
+====================================================================
+
+NOTE ON SPELLING: this file is pure ASCII (standing protocol), so the
+product name appears here as "Mon Releve". The authoritative form carries
+an acute on the second e and lives in web/lib/fr/index.ts. R155 exactly:
+the ASCII in a report or a relay prompt is a transport constraint and is
+never a source.
+
+
+SUMMARY
+--------------------------------------------------------------------
+The product is Mon Releve. The legal entity is filled, the domain is
+recorded, and 111 files changed across one commit.
+
+THE RENAME WAS NOT THE HARD PART. "frontalier" is the French common noun
+for the reader this product is built for, and the copy uses it correctly
+dozens of times - "le statut de frontalier lui-meme", "les regles du
+teletravail frontalier". SPEC 14 also freezes it into permanent URLs:
+/calculateur-teletravail-frontalier. Thirty files contained the string
+and ten occurrences were the product. A sweeping rename would have
+corrupted the product's own vocabulary and 404ed every link ever shared,
+and NOTHING IN THE SUITE ASSERTS A SLUG'S SPELLING.
+
+FOUR THINGS WERE FOUND THAT A CAREFUL READING OF THE PROMPT WOULD NOT
+HAVE PRODUCED:
+
+  1. R189 names two places the service field lives. THERE WERE THREE.
+     scripts/lighthouse.mjs held its own literal, so satisfying the
+     ruling exactly as written would still have left every Lighthouse
+     run refusing to measure.
+
+  2. A FOURTH IDENTITY FORM, where no page renders it: EMAIL_FROM
+     carried notifications.frontalier.fr, the only .fr host in the
+     repository.
+
+  3. TWO LITERALS A STRING SWEEP STRUCTURALLY CANNOT SEE - a bare
+     toContain('frontalier') standing in for the wordmark, and the
+     origin INSIDE A REGEX. Both surfaced at e2e, minutes in, rather
+     than at typecheck.
+
+  4. THE SHIPPED OG CARD. After the baselines were regenerated,
+     public/opengraph-image.png still said "frontalier" while the
+     baseline said "Mon Releve". Every link shared to Twitter or
+     LinkedIn would have unfurled with the old name AND NO PAGE ON THE
+     SITE WOULD HAVE LOOKED WRONG.
+
+The fourth is the one worth keeping. It was caught by og-image.test.ts,
+which R182's audit moved into test:late two sessions ago precisely
+because it compares an artefact against something a LATER step produces.
+It fired here on its first real opportunity, on the artefact with an
+external audience.
+
+
+PRECONDITIONS
+--------------------------------------------------------------------
+CLAUDE.md, README.md, SPEC 9.7 / 14 / 20, DESIGN-SYSTEM.md,
+lib/content/legal-entity.ts as FW10 shipped it, REPORT-FW20b.txt  read
+CI green on origin/main before the task                      712db81
+run  https://github.com/kaitmax/Frontalier/actions/runs/35249025911
+
+R1 discharged. R188 and R189 applied as written, and where R189's count
+was wrong the report says so rather than quietly satisfying it.
+
+
+CENSUS
+--------------------------------------------------------------------
+111 files in commit 582af5f: 73 baselines, 1 shipped OG card, 37 source
+and test files. A rename is reviewed by census, so they are grouped by
+WHY rather than listed by path.
+
+THE SOURCE (3)
+  lib/fr/index.ts             APP_NAME = "Mon Releve", accented. R155
+                              makes it authoritative for copy.
+  lib/content/identity.ts     asciiName() derives the byte-constrained
+                              form; SITE_DOMAIN, PRODUCTION_ORIGIN,
+                              TEST_ORIGIN, MAIL_SUBDOMAIN.
+  identity.json               the transport for .mjs scripts, which
+                              cannot import TypeScript. Asserted against
+                              the derived values (R185).
+
+R189 - THE SERVICE FIELD AND ITS GUARDS, ONE COMMIT (3)
+  app/api/health/route.ts     service: SERVICE_NAME
+  e2e/global-setup.ts         R169 compares SERVICE_NAME
+  scripts/lighthouse.mjs      R174's check read a LITERAL; now reads
+                              identity.json. The third place.
+
+COPY THAT NAMED THE PRODUCT (6 files, 10 occurrences)
+  lib/fr/index.ts             HOME_COPY.intro opened "frontalier calcule"
+  lib/fr/cgu.ts               3: the description, the scope clause, and
+                              "frontalier est un outil de tenue de
+                              registre"
+  lib/fr/confidentialite.ts   1: "Ce que frontalier enregistre"
+  lib/fr/mentions-legales.ts  2: "du site frontalier", twice
+  lib/fr/shell.ts             1: the home link's accessible name
+  lib/fr/emails.ts            2: the confirmation subject, and
+                              EMAIL_FROM's name AND its .fr host
+
+  NOT CHANGED, and this is the census entry that matters: every other
+  occurrence of the word. "le statut de frontalier lui-meme",
+  "les regles du teletravail frontalier", "le regime frontalier",
+  "Calculateur de teletravail frontalier" - the common noun and the
+  adjective, in calculateur.ts, guides.ts, params.ts, result.ts,
+  sources.ts, statuses.ts, alertes.ts and the engine.
+
+THE ORIGIN LITERAL, R171 (13)
+  playwright.config.ts, e2e/{routing,home,analytics,calculateur,og}
+  .spec.ts, tests/db/{privacy-claims,subscribe-route,confirm-unsubscribe,
+  confirmation-email}.test.ts, tests/unit/content/jsonld.test.ts,
+  tests/unit/pages/{og-metadata,param-metadata}.test.ts
+  All built https://frontalier.example by hand. One TEST_ORIGIN now.
+
+LITERALS THE SWEEP COULD NOT SEE (2)
+  e2e/composants.spec.ts      toContain('frontalier') - an assertion
+                              argument, not an origin, standing in for
+                              THE WORDMARK
+  e2e/og.spec.ts              /^https:\/\/frontalier\.example\// - a
+                              REGEX, where no quoted origin appears
+
+THE LEGAL ENTITY (8)
+  lib/content/legal-entity.ts         nine fields to sixteen
+  lib/fr/mentions-legales.ts          seven French labels, forced by the
+                                      type
+  app/(public)/mentions-legales/      renders the editor and the host
+  app/(public)/confidentialite/       renders the controller and the two
+                                      representative questions
+  tests/unit/content/legal-entity.test.ts
+  tests/unit/pages/placeholder-census.tsx    takes an explicit count
+  tests/unit/pages/{cgu,confidentialite,mentions-legales}.test.tsx
+
+IDENTITY AND DOMAIN (3)
+  package.json                frontalier-web -> monreleve-web
+  tasks/todo.md               FW28's env checklist records
+                              https://monreleve.ch
+  tests/harness.test.ts       asserted the NAME while testing the ALIAS
+
+CHECKED, NO OCCURRENCE
+  lib/fr/a-propos.ts and lib/fr/application.ts. The prompt asks that both
+  derive; neither names the product at all - they say "Ce site" and
+  "Cette application". Recorded so the absence is a finding rather than
+  an omission.
+
+
+R189 PROOFS
+--------------------------------------------------------------------
+PROOF 1 - THE SUITE RUNS AGAINST THE RENAMED SERVER.
+
+  284 passed (2.1m), full e2e, against a server answering
+  {"service":"monreleve"}.
+
+PROOF 2 - IT REFUSES A SERVER STILL ANSWERING WITH THE OLD VALUE.
+
+  /api/health reverted to service: 'frontalier', verified changed in the
+  file before the run was read (R180). The suite aborted before a single
+  spec executed:
+
+    R169: the e2e suite refused to run.
+
+      expected  monreleve at http://localhost:3100
+      found     a server identifying as "frontalier"
+
+  Both values named, which is the whole point of the message.
+
+WHAT THE TWO PROVE TOGETHER. Had the guard moved without the field,
+every run would look like proof 2 - the suite refusing the correct
+server. Had the field moved without the guard, the comparison would pass
+against anything, which is the state R169 was issued to end.
+
+AND THE THIRD PLACE. lighthouse.mjs is not covered by either proof
+because it is not the e2e suite; it is covered by an assertion that it
+contains no literal and reads identity.json, and by identity.json being
+pinned to asciiName(APP_NAME).
+
+
+R188
+--------------------------------------------------------------------
+NO FOURTH FORM. tests/unit/content/identity.test.ts, 12 assertions:
+
+  the accented name is authoritative and carries its accent
+  SERVICE_NAME === asciiName(APP_NAME), not a second literal
+  asciiName strips accents rather than dropping the letters carrying
+    them - "Releve" not "Relev", which is the NFD trap
+  the domain is NOT derived: it is a registration, not a spelling, and
+    the two are free to diverge. Today they agree, asserted, so a future
+    divergence is a visible edit
+  TEST_ORIGIN ends .example (RFC 2606) and is never the real domain -
+    which matters more now, because monreleve.ch could actually resolve
+
+THE UNACCENTED FORM APPEARS NOWHERE A READER WILL SEE IT. Two scans over
+the quoted spans of lib/fr, comments excluded:
+
+  no "monreleve" unaccented in reader-facing copy
+  no "Mon Releve" typed as a literal outside index.ts, which declares it
+
+AND THE OTHER DIRECTION, which is the half a rename gets wrong: no
+"site|application|service frontalier", and no "frontalier
+calcule|enregistre|est un|fait". The product is not called frontalier
+anywhere; the word still is what it always was everywhere else.
+
+PLANTED (R180, each verified present in the file before the result was
+read): three violations in one copy file - "Le site frontalier vous
+aide", "Bienvenue sur Mon Releve", "ecrivez a monreleve". Three separate
+assertions went red, one per violation. Restored.
+
+NON-VACUITY: the same scanner is asserted to still find the common noun
+more than five times in lib/fr. An extractor returning nothing would
+have reported perfect compliance on all four checks.
+
+
+PLACEHOLDER COUNTS
+--------------------------------------------------------------------
+                      before   after   what remains open
+  /mentions-legales      7       1     publicationDirector
+  /confidentialite       6       3     dpoContact, euRepresentative,
+                                       chRepresentative
+  /cgu                   3       0     -
+
+Confirmed on the running server, not only in the suite: 1, 3 and 0.
+
+THE COUNTS ARE STATED, NOT DERIVED, and the prompt is right to insist.
+describePlaceholderCensus asserted fields.length - true while every
+constant was empty, and a derivation would now agree with whatever
+LEGAL_ENTITY says. It could not catch a field silently emptied, which is
+the one thing R84 exists to catch. It takes an explicit
+shippedPlaceholders, and the TYPE requires every page to supply one.
+
+SIXTEEN FIELDS, TWELVE FILLED. The seven added are the ones the values
+made necessary: incorporatedOn, hostingPhone, hostingWebsite,
+hostingRegistration, and the three deliberately empty.
+LEGAL_ENTITY_TERMS is a Required<Record<LegalEntityField, string>>, so
+each new field refused to compile until somebody had written its French
+label - the type doing the work the comment describes.
+
+FOUR OPEN, NOT THREE. The prompt names publicationDirector,
+euRepresentative and chRepresentative. dpoContact has been empty since
+FW10 and the prompt does not mention it. No DPO has been appointed, so
+filling it would be the guess R52 forbids. Left empty, named in the test
+as the fourth gap, and raised below as a question.
+
+
+DOMAIN
+--------------------------------------------------------------------
+https://monreleve.ch, recorded in FW28's env checklist in tasks/todo.md
+rather than hardcoded anywhere in the tree. web/lib/content/identity.ts
+holds the domain the origin is built from.
+
+R81's fallback behaviour is UNCHANGED and re-proven: 14 tests in
+tests/unit/content/site.test.ts, untouched by this task and green. With
+no configured origin the localhost stand-in is still in play, canonicals
+are still omitted, and a serving process still reports degraded.
+
+hreflang, canonicals and the sitemap derive from the one constant. No
+literal host string remains in any spec, config or test.
+
+
+WALKTHROUGH
+--------------------------------------------------------------------
+R176/R177, against pnpm dev on port 3200 - not 3000, because another
+project shares this machine (R170).
+
+  /api/health        {"service":"monreleve", ...}  the byte-constrained
+                     form, live, which is what R169 compares
+
+                     Mon Releve   frontalier   placeholders
+  /                       3            0            0
+  /mentions-legales       3            0            1
+  /confidentialite        2            0            3
+  /cgu                    4            0            0
+  /a-propos               2            0            0
+  /application            2            0            0
+
+  header and footer  the wordmark reads "Mon Releve", accented, beside
+                     the mark, on every page
+  /mentions-legales  KAMELEO LTD, the form, 128 City Road, 15274008,
+                     2023-11-10, contact@monreleve.ch; OVH SAS with
+                     address, telephone, site and RCS; NO share capital;
+                     exactly one [A COMPLETER], against Directeur de la
+                     publication
+  /confidentialite   three placeholders, against the DPO and the two
+                     representative questions
+
+AND THE OTHER DIRECTION, driven deliberately:
+
+  /calculateur-teletravail-frontalier          HTTP 200, noun x3
+  /guides/teletravail-frontalier-40-pourcent   HTTP 200, noun x11
+    e.g. "c'est le statut de frontalier lui-meme qui est en jeu"
+
+Both permanent slugs serve. The vocabulary is intact.
+
+The server was stopped by killing its process TREE and the port confirmed
+free (R179).
+
+
+SIZE
+--------------------------------------------------------------------
+All gated routes pass both gates. The name is longer and the pages got
+SMALLER, which is a build fact rather than a rename effect and is stated
+rather than claimed as a saving:
+
+  route                                before   after   delta
+  /                                     108.2   107.5   -0.7
+  /application                          108.4   107.6   -0.8
+  /releve-annuel                        108.4   107.7   -0.7
+  /tarifs                               108.4   107.7   -0.7
+  /calculateur-teletravail-frontalier   122.8   121.3   -1.5
+
+  /calculateur  pass (GATE A 3.7 KiB spare, GATE B 4.3 KiB spare)
+
+THE FIRST MEASUREMENT WAS WRONG AND IS WORTH RECORDING. Run straight
+after the walkthrough, pnpm size reported EVERY route at ~1935 KiB - 15x
+the budget, eight FAIL lines - because pnpm dev had overwritten .next
+with a development build and pnpm size reads .next without checking
+which kind it is. A confident wrong number, in the tool whose whole job
+is a number. Re-measured after pnpm build. See NOTICED.
+
+
+BASELINES
+--------------------------------------------------------------------
+R135 - 73 baselines, ONE reason, ONE commit: the wordmark is the product
+name and the product was renamed. Every page carries the header, so every
+page baseline moved; the OG card carries APP_NAME through renderRailSvg,
+so the three rail cards moved too.
+
+  photographed: 712db81 plus 38 uncommitted path(s) - the baselines
+  below are of THAT tree, not of 712db81
+  isolation: sole container of
+  mcr.microsoft.com/playwright:v1.63.0-noble (checked); distDir
+  .next-visual-22192-mu61xa6a; node_modules and .next on anonymous
+  volumes
+
+That photographed line is R184 on its first real run, and it is doing
+exactly what PARK-15 asked for: the report can SHOW which tree the
+baselines are of instead of asserting it.
+
+REGENERATED FROM A SETTLED TREE (PARK-15): increments 1, 2 and 3 were
+complete and nothing was edited while the container ran.
+
+CROPPED AND READ, because a list and a reason are not looking:
+  composants-shell-desktop.png    "Mon Releve" beside the mark, nav and
+                                  footer unchanged
+  page-mentions-legales-desktop   the filled entity, one [A COMPLETER]
+                                  against Directeur de la publication,
+                                  the host's telephone present, no share
+                                  capital
+  public/opengraph-image.png      the shipped card, "Mon Releve"
+
+
+PARKED
+--------------------------------------------------------------------
+Nothing new. PARK-13's dated-scope-line question is the resting place for
+the two representative fields, and this task's filling of the entity does
+not disturb it: the representatives remain open placeholders, and the
+site claims no appointment (R138).
+
+
+DEVIATIONS
+--------------------------------------------------------------------
+1. ONE COMMIT, NOT FOUR. The prompt asks for four commits with the
+   baselines regenerated in increment 4. The wordmark changes in
+   increment 1, so 73 baselines go red there and stay red until
+   increment 4 - three intermediate commits would each be a RED COMMIT,
+   which R132 forbids outright. R189's requirement that the field and
+   the guard move together is satisfied inside the single commit.
+
+2. dataController is "KAMELEO LTD" rather than the prompt's "KAMELEO
+   LTD, at the address above". The address is rendered by the same page
+   two rows above, and the literal transcription would put the only
+   English clause on a French legal page. The note describes who and
+   where; it is not a string to print.
+
+3. THE LEGAL FORM STAYS IN ENGLISH. "Private limited company, registered
+   in England and Wales" is on a French page deliberately: a UK private
+   limited company has no French equivalent, and rendering it "SARL"
+   would name a different legal form. Transcribed as verified.
+
+4. Seven fields were added to the entity, not three. The prompt asks for
+   the three empty ones; the four others - incorporatedOn, hostingPhone,
+   hostingWebsite, hostingRegistration - are values the prompt supplies
+   and the LCEN wants the telephone, so they are rendered rather than
+   held as data nobody shows.
+
+
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------
+1. pnpm size DOES NOT CHECK WHICH BUILD IT IS MEASURING. It read a
+   development .next left by the walkthrough and reported every public
+   route 15x over budget, with eight FAIL lines and two GATE BREACH
+   messages. Nothing in the output said "this is a dev build".
+
+   It is R177's shape in the one tool whose entire output is a number:
+   assert what you are measuring before you measure it. The obvious fix
+   is a precondition - .next must carry a production build - and a line
+   saying which was measured, which is R184 one tool over. Not touched
+   because it changes a gate tool's contract.
+
+2. FRONTALIER_RUNTIME AND FRONTALIER_PORT are untouched: 39 occurrences
+   across scripts, configs and docs. Environment variable names are
+   byte-constrained, so R188 PERMITS the unaccented form, and it does
+   not require renaming them. Renaming would break every local command
+   the operator runs and any FW28 deploy config already drafted, for no
+   reader-visible gain. Raised as a question rather than swept.
+
+3. The repository directory is still "frontier work" and the GitHub
+   remote is still Frontalier. Neither is in scope and neither is
+   reader-facing; the remote in particular is a URL that other things
+   may reference.
+
+
+QUESTIONS
+--------------------------------------------------------------------
+Q66. dpoContact is a FOURTH open field the prompt did not name. No DPO
+     is appointed. Should it stay an open placeholder beside the two
+     representatives, or - if the advice says none is required - should
+     the ROW be removed rather than filled? Removing is the honest move
+     for an obligation that does not apply; filling it would be the
+     guess R52 forbids.
+
+Q67. FRONTALIER_RUNTIME and FRONTALIER_PORT (NOTICED 2). Rename to
+     MONRELEVE_*, or leave them? They are internal and byte-constrained,
+     so R188 permits either. The cost of renaming is your local
+     commands and FW28's runner config; the cost of leaving them is a
+     fourth spelling of the product's identity living in the
+     environment.
+
+Q68. The legal form and the registration number are rendered in English
+     on a French page - "Private limited company, registered in England
+     and Wales", "15274008 (Companies House)". The FORM should not be
+     translated. Should the descriptive clauses be French -
+     "immatriculee en Angleterre et au Pays de Galles", "(registre des
+     societes du Royaume-Uni)" - with the proper nouns kept?
+
+Q69. pnpm size measuring a dev build (NOTICED 1). Worth a ruling, or
+     worth a precondition in the script and nothing more?
+
+STILL OUTSTANDING AND STILL YOURS: the opendata.swiss licence field, the
+PAT, and now the domain itself - buying and configuring monreleve.ch is
+explicitly out of scope for this task and nothing here assumes it
+resolves.
+
+
+PUSH PROOF
+--------------------------------------------------------------------
+  582af5f  FW20c: the product is Mon Releve (R188, R189), legal entity,
+           domain
+
+pushed   712db81..582af5f  main -> main
+CI       success
+run      https://github.com/kaitmax/Frontalier/actions/runs/35282157054
+
+111 files changed, 719 insertions(+), 79 deletions(-)
+  73  baselines
+   1  shipped OG card
+  37  source and test files
+
+THE GATE, on the committed tree:
+
+  typecheck    exit 0
+  lint         exit 0 (2 pre-existing calc-engine warnings)
+  test         2458 passed
+  build        exit 0
+  test:e2e     284 passed
+  test:visual  108 passed
+  test:db      97 passed
+  test:late    10 passed
+
+test:db was selected because the legal-entity change reaches the
+database tests through the confirmation email. test:late ran LAST, which
+is R182 working - and it is the suite whose og-image check found the
+shipped card still carrying the old name.
