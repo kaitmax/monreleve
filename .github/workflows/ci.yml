@@ -1,10 +1,52 @@
 name: CI
 
+# ===========================================================================
+# R201 - THE OCTOBER BUDGET SPLIT. Written now, DISABLED now.
+#
+# The September 2026 Actions allowance is exhausted; the repository stays
+# private; the allowance returns on 1 October at 2 000 minutes a month. From
+# then on it is spent deliberately rather than on every push, because what CI
+# provides is not "the tests pass" - pnpm gate:clone proves that on a fresh
+# clone - but the answer to a different question: DOES THIS WORK ON A MACHINE
+# THAT IS NOT MINE.
+#
+# THE SWITCH ON 1 OCTOBER IS ONE ACTION AND TOUCHES NO FILE:
+#
+#   gh variable set CI_OCTOBER --body on
+#
+# Every job below is gated on that repository variable. While it is unset the
+# jobs are SKIPPED, and a skipped job consumes no minutes and produces no red
+# run - which is why this file is still wired to `push` rather than commented
+# out. Commenting the trigger would make the switch an edit, a review and a
+# chance to get the YAML wrong at the moment CI is most needed.
+#
+#   gh variable set CI_OCTOBER --body off     reverts it, same one action
+#
+# WHAT RUNS ON PUSH (the clean-machine claim, ~8 minutes, about one run per
+# task):
+#   web - Postgres service, migrations, test:db, build, test:e2e, size.
+#
+# WHAT RUNS ON workflow_dispatch ONLY (deterministic, passes locally, worth
+# checking at a checkpoint rather than continuously):
+#   format parity matrix (R27), rail visual baselines, runtime guard (R81).
+#
+# WHAT NEVER RUNS IN CI:
+#   the full visual suite. It runs in a container locally, and R114's zero
+#   tolerance plus R184's tree-printing make it trustworthy where it runs.
+#
+# THE ALARM. The `web` job's first step prints the account's remaining Actions
+# minutes and writes them to the run summary. BELOW 400 REMAINING the protocol
+# reverts to gate:clone-only for the rest of the month - deliberately, and
+# recorded in phase4parking.md, rather than discovered by a job refusing to
+# start. A budget with no alarm is a budget you learn about the way this one
+# was learnt: five commits pushed against a CI that had already stopped
+# running, with nothing saying so until somebody looked.
+# ===========================================================================
+
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -13,6 +55,9 @@ concurrency:
 jobs:
   web:
     name: web
+    # R201: the one job worth paying for on every push to main. Skipped - at
+    # no cost - until CI_OCTOBER is set.
+    if: vars.CI_OCTOBER == 'on' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -48,6 +93,75 @@ jobs:
       DATABASE_URL: postgresql://frontalier:frontalier@localhost:5432/frontalier?schema=public
 
     steps:
+      # R201 - THE ALARM, AND IT IS THE FIRST STEP ON PURPOSE.
+      #
+      # September 2026 was learnt the expensive way: five commits pushed
+      # against a CI that had already stopped running, with nothing saying so
+      # until somebody opened the runs page. A budget with no alarm is a
+      # budget you discover by a job refusing to start.
+      #
+      # BELOW 400 REMAINING the protocol reverts to gate:clone-only for the
+      # rest of the month - a decision recorded in phase4parking.md, taken
+      # deliberately rather than discovered.
+      #
+      # IT WARNS, IT DOES NOT FAIL. Failing the run that is telling you the
+      # budget is low would spend more of the budget to say so, and would
+      # bury the number under a red tick. The figure goes to the run summary
+      # so the task report can quote it.
+      #
+      # R133 - IT SAYS WHEN IT COULD NOT READ. The billing endpoint needs a
+      # token with the `Manage billing` scope, which GITHUB_TOKEN does not
+      # carry by default. If the read fails, the step says exactly that
+      # rather than printing nothing and reading as healthy. Supply
+      # BILLING_TOKEN (a fine-grained PAT, read-only on billing) to enable
+      # it.
+      - name: Actions minutes remaining (R201 alarm)
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.BILLING_TOKEN || github.token }}
+        run: |
+          set +e
+          owner="${GITHUB_REPOSITORY%%/*}"
+          json=$(gh api "users/$owner/settings/billing/actions" 2>/dev/null)
+
+          if [ -z "$json" ]; then
+            echo "::warning::R201 alarm could not read the Actions budget."
+            {
+              echo "### R201 budget alarm: UNREAD"
+              echo ""
+              echo "The billing endpoint returned nothing. GITHUB_TOKEN has no"
+              echo "billing scope; set the BILLING_TOKEN secret to a fine-grained"
+              echo "PAT with read-only billing access to enable this."
+              echo ""
+              echo "**This run is not evidence that the budget is healthy.**"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          included=$(echo "$json" | jq -r '.included_minutes // 0')
+          used=$(echo "$json" | jq -r '.total_minutes_used // 0')
+          remaining=$(( included - used ))
+
+          echo "Actions minutes: $used used of $included, $remaining remaining"
+          {
+            echo "### R201 budget alarm"
+            echo ""
+            echo "| used | included | remaining |"
+            echo "|---|---|---|"
+            echo "| $used | $included | **$remaining** |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$remaining" -lt 400 ]; then
+            echo "::warning::Below 400 Actions minutes ($remaining). R201: revert to gate:clone-only for the rest of the month and record it in phase4parking.md."
+            {
+              echo ""
+              echo "**BELOW 400.** R201 says: revert to \`gate:clone\`-only for the"
+              echo "rest of the month, and record the decision in"
+              echo "\`phase4parking.md\` rather than discovering it when a job"
+              echo "refuses to start."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - uses: actions/checkout@v4
 
       # No version here on purpose: package.json carries packageManager, and
@@ -176,6 +290,9 @@ jobs:
   # unit suite going red.
   visual:
     name: rail visual baselines
+    # R201: workflow_dispatch ONLY. Deterministic and run in the same
+    # container locally; this is insurance against a runner difference.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/playwright:v1.63.0-noble
@@ -242,6 +359,8 @@ jobs:
   # one command.
   runtime-guard:
     name: runtime guard (R81)
+    # R201: workflow_dispatch ONLY. Passes locally; checkpoint insurance.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -274,6 +393,8 @@ jobs:
   # NOTHING, so a leg cannot go red for a toolchain reason.
   format-parity-build:
     name: format parity (compile)
+    # R201: workflow_dispatch ONLY. Feeds the Node matrix below.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -308,6 +429,12 @@ jobs:
   format-parity:
     name: format parity (node ${{ matrix.node }})
     needs: format-parity-build
+    # R201: workflow_dispatch ONLY. `needs` would skip this anyway when its
+    # dependency skips, and that is exactly why it is written out - a reader
+    # should not have to derive a job's trigger from another job's, and a
+    # later edit that drops the `needs` would silently put the matrix back on
+    # every push.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     strategy:
       # Every version reports. Stopping at the first failure would hide
