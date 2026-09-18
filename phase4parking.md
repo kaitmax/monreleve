@@ -10,7 +10,16 @@ holds things that could not be finished, and why.
 
 ---
 
-## P4-1 - Auth.js tables cannot be written "as its adapter requires" [FW21, 2026-09-18]
+## P4-1 - Auth.js tables written from documentation [FW21, CLOSED FW22 increment 1]
+
+**STATUS: CLOSED. The transcription was correct.** The adapter is installed,
+and every method FW22 will use has been called against the real tables -
+see the bottom of this entry for what was proven and how.
+
+---
+
+### The original entry, kept as written
+
 
 **HIT AT:** FW21 increment 1, which asks for "Auth.js tables as its adapter
 requires".
@@ -116,5 +125,78 @@ the way this entry was discovered.
 - the property that someone else could clone and build this. That matters
   at Checkpoint E, not now. `gate:clone` covers the mechanical half of it;
   what it cannot cover is a machine that is not this one.
+
+---
+
+### CLOSING P4-1 [FW22 increment 1, 2026-09-18]
+
+**THE ANSWER: FW21's transcription was right.** `@auth/prisma-adapter`
+2.11.3 is installed, and `tests/db/auth-adapter.test.ts` calls every method
+FW22's flow uses against the real PostgreSQL — `createUser`, `getUser`,
+`getUserByEmail`, `updateUser`, `linkAccount`, `getUserByAccount`,
+`createSession`, `getSessionAndUser`, `deleteSession`,
+`createVerificationToken`, `useVerificationToken`. Eight tests, all green,
+no migration needed.
+
+**`User` HAS NO `image` COLUMN AND THE ADAPTER DOES NOT NEED ONE.** That was
+the specific worry FW21 recorded. The adapter's `AdapterUser` type carries
+`image`; nothing in SPEC §8 displays an avatar; R187 says an unused column is
+a promise to a client that will eventually read it. Every test above passes
+with the column absent, so the omission was correct and stays.
+
+**I OVERCLAIMED THE TYPE-LEVEL PROOF AND CORRECTED IT.** The first draft of
+that test file asserted that `PrismaAdapter(prisma)` typechecking would catch
+a missing column "without a database". It would not. The adapter ships
+compiled JS plus a `.d.ts`, so TypeScript never re-checks its body against our
+client: `prisma.account.create(...)` inside the package was checked when the
+package was built, against a generic client. Our client satisfies the
+signature because it *is* a `PrismaClient` — whether it has an `account` model
+is not a question the signature asks. **A schema missing `Account` entirely
+would compile and fail at the first sign-in.** The runtime tests are therefore
+the whole of the answer, and the comment now says so. An assertion that sounds
+stronger than it is, is the argument R185 forbids wearing a type annotation.
+
+**PROVEN LOAD-BEARING BY TWO ABLATIONS**, because eight tests passing on their
+first run is evidence of nothing (R133):
+
+| ablation | result |
+|---|---|
+| tables absent (a pre-FW21, FW14-era database) | all 8 fail, `The table public.User does not exist` |
+| one column dropped (`VerificationToken.expires`) | exactly 1 fails, the 7 others still pass |
+
+The second is the one that matters: it shows *column-level* sensitivity, which
+is what P4-1 was actually about, since FW21 transcribed columns from a
+document.
+
+**NEEDS:** nothing further.
+
+---
+
+## PARK4-1 - seven OAuth columns on Account that this product may never write [FW22, 2026-09-18]
+
+**QUESTION:** `Account` carries `refresh_token`, `access_token`, `expires_at`,
+`token_type`, `scope`, `id_token` and `session_state`, all nullable, all
+transcribed from the adapter's published schema in FW21. This product is
+passwordless by magic link (D6, D23) and has no OAuth provider, so the email
+flow writes `type`, `provider`, `providerAccountId` and `userId` and leaves
+all seven null. R187 says an unused column is a promise to a client that will
+eventually read it.
+
+**TAKEN:** left in place, untouched. They are part of the adapter's contract
+rather than fields this product invented, and the adapter — not our code —
+decides what it writes when a provider is added. Removing them would be a
+migration that makes adding any OAuth provider a second migration, and R187's
+concern is about columns an API client might read, which these are not: they
+are internal to Auth.js and no `/api/v1` response will ever carry them.
+
+**NOT TAKEN:** dropping the seven. Cheap now (the table is empty), and it
+would have to be undone the first time an OAuth provider is considered.
+
+**TOUCHES:** `prisma/schema.prisma`, one migration,
+`tests/db/auth-adapter.test.ts`.
+
+**NEEDS:** a ruling only if the answer is "this product will never support
+OAuth". If that is certain, say so and they go; if it is merely true today,
+they stay.
 
 ---
