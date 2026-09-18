@@ -172,6 +172,11 @@ enum Provenance {
   DETECTED_CORRECTED
 }
 
+enum EntryAction {
+  CREATED
+  MODIFIED
+}
+
 /// The person whose days these are.
 model User {
   id String @id @default(cuid())
@@ -225,7 +230,9 @@ model User {
 
   createdAt DateTime @default(now())
 
-  entries  Entry[]
+  entries     Entry[]
+  entryEvents EntryEvent[]
+
   devices  Device[]
   accounts Account[]
   sessions Session[]
@@ -324,6 +331,53 @@ model Entry {
 
   @@unique([userId, dayDate, portion])
   @@index([userId, dayDate])
+}
+
+/// The append-only audit trail. SPEC 8: "never updated, never deleted".
+///
+/// ENFORCED BY TRIGGERS, not by convention. The prompt: "a convention in a
+/// service file is not enforcement". The migration carries them.
+///
+/// IT DUPLICATES FIELDS FROM Entry ON PURPOSE, and that is not normalisation
+/// debt. An event records what was true AT THE TIME, so reading the trail
+/// does not depend on the row still existing or still saying the same thing.
+/// A trail that had to join back to Entry to be legible would report today's
+/// value for a day that was corrected twice.
+///
+/// NO FOREIGN KEY ON entryId, for the same reason and deliberately. SPEC 8
+/// declares none. An entry that is deleted leaves its events behind, still
+/// readable, still carrying the kind and the day they recorded - which is
+/// what an audit trail is for. A cascade here would let a deletion erase the
+/// evidence that the day was ever declared.
+///
+/// THE USER RELATION IS THE ONE EXCEPTION, and D11 is its justification:
+/// "suppression du compte - removes user, entries, events, devices". Erasing
+/// a person has to erase their events, and the cascade is how.
+model EntryEvent {
+  id      String @id @default(cuid())
+  userId  String
+  entryId String
+
+  action EntryAction
+
+  kind         EntryKind
+  provenance   Provenance
+  detectedKind EntryKind?
+
+  dayDate DateTime     @db.Date
+  portion EntryPortion
+
+  /// Server clock. Never client-supplied - SPEC 8 makes this and
+  /// Entry.firstRecordedAt the two fields no API path may accept from a
+  /// caller.
+  recordedAt DateTime @default(now())
+
+  clientClaimedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, entryId])
+  @@index([entryId, recordedAt])
 }
 
 // ---------------------------------------------------------------------------
