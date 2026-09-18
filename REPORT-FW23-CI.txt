@@ -246,10 +246,64 @@ STILL SINGLE-MACHINE, and named rather than left implicit:
   the deployment                    FW28. Nothing has ever been
                                     deployed anywhere.
 
-THE SWITCH BACK
+THE SWITCH BACK, PROVEN
 --------------------------------------------------------------------
-See "THE SWITCH BACK, PROVEN" below - written after it was done rather
-than before.
+Done, observed, and restored - in that order, and this section was
+written from what was observed rather than from what was expected
+(R182: a check runs after the thing it checks for can exist).
+
+  gh variable delete CI_FULL          leaving NO variables set at all,
+                                      so CI_OCTOBER is unset too: the
+                                      September R201 split
+  push 51ad209                        run 35400663008
+  gh variable set CI_FULL --body on   restored
+
+  Run 35400663008    created 22:14:35Z  updated 22:14:37Z  SKIPPED
+    format parity (compile)            skipped
+    format parity (node MATRIX)        skipped
+    rail visual baselines              skipped
+    runtime guard (R81)                skipped
+    web                                skipped
+
+THE MEASUREMENT I REACHED FOR FIRST WAS VACUOUS, and that is the
+finding in this section.
+
+  /timing  ->  {"UBUNTU": ... "total_ms": 0}   on the SKIPPED run
+  /timing  ->  {"UBUNTU": ... "total_ms": 0}   on the FULL run
+
+Billable minutes read ZERO FOR BOTH, because a public repository is
+not billed at all. The number is identical for a run that allocated
+nothing and a run that held six machines for five and a half minutes.
+Had this report cited total_ms as its zero-cost proof it would have
+cited a figure that CANNOT DISTINGUISH THE TWO STATES - the same shape
+as R169's foreign health check answering 200, and as R213's
+never-executed check reporting no failures. An absence assertion
+satisfied by absence, one more time, on the metric that looked most
+like money.
+
+WHAT ACTUALLY PROVES IT, three independent signals:
+
+  1. runner_name is NONE ALLOCATED on all five jobs.
+     On the full run it names six machines - GitHub Actions 1000000931
+     through 1000000936. NO MACHINE WAS EVER ASSIGNED is what zero cost
+     means; a billing figure is a downstream consequence of it.
+  2. Wall clock 2 SECONDS against 5m33s.
+     22:14:35 to 22:14:37, versus 19:52:00 to 19:57:33.
+  3. FIVE jobs, not six.
+     The matrix job is listed UNEXPANDED - its name still carries the
+     literal matrix expression - because `if:` is evaluated BEFORE
+     matrix expansion. The two runtimes were never enumerated, so the
+     skip happened upstream of the fan-out rather than five times
+     inside it.
+
+RESTORATION IS PROVEN BY THE NEXT PUSH rather than asserted here: the
+commit carrying this section runs with CI_FULL back on, and both
+directions are therefore observed. A switch demonstrated in one
+direction only is half a switch - the same reason R196's constraints
+prove acceptance as well as rejection.
+
+COST OF THE PROOF: one 2-second run, no runner, nothing billable even
+in principle.
 
 PARKED
 --------------------------------------------------------------------
@@ -287,7 +341,25 @@ NOTICED BUT NOT TOUCHING
    visual job, and R37's container pinning means the VISUAL suite is
    insulated from it - but the other four jobs are not.
 
-3. FW23 IS INCOMPLETE. Increments 4, 5 and 6 - the read path, the
+3. A FOREIGN DEV SERVER WAS RUNNING ON THIS MACHINE throughout the
+   gate - four node processes belonging to Downloads/tizicorp, another
+   repository entirely, including a Next dev server holding port 3200.
+   NOT KILLED: R179 authorises a harness to kill the tree IT spawned,
+   and this is not one. It held no port of ours - 3000 and 3101 were
+   both clear - so R169 never fired, correctly. Recorded because the
+   FW20 defect began exactly here, with somebody else's Next server on
+   this machine, and what made it harmless this time was R170 giving
+   our suite a port of its own.
+
+4. THE FIRST GATE RUN CRASHED TWO VITEST WORKERS - exit 134 (SIGABRT)
+   and 2147483651 - with 1.8 GB free of 15.8 GB, the foreign dev
+   server holding 1.2 GB of it. NOT A TEST FAILURE: 2527 of 2577
+   passed and two files never started. The re-run passed 142 files and
+   2577 tests, WHICH ARE THE RUNNER'S EXACT COUNTS. Worth one line
+   because a crashed worker and a red test look alike in a tail, and
+   only one of them is evidence about the product.
+
+5. FW23 IS INCOMPLETE. Increments 4, 5 and 6 - the read path, the
    frozen contract document, the walkthrough - are FW23's session, not
    this one. This session verified what exists.
 
@@ -309,7 +381,12 @@ PUSH PROOF
 --------------------------------------------------------------------
   1f51211  chore: workflow log audit before public CI (R212)
   dd6fd3f  chore: enable full CI for the public window
-  <this>   FW23-CI: first-ever external verification
+  51ad209  FW23-CI: first-ever external verification
+  <this>   FW23-CI: the switch back, proven in both directions
+
+CI:  35388307280  dd6fd3f  six jobs green, three for the first time
+     35400663008  51ad209  five jobs skipped, no runner allocated
+     <this run>            CI_FULL restored, the full set runs again
 
 CI: https://github.com/kaitmax/monreleve/actions/runs/35388307280
     six jobs, all green, three of them for the first time ever.
