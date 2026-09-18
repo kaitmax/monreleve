@@ -159,18 +159,23 @@ describe('the row, and the constraint that keeps it one row', () => {
     // "_prisma_migrations" - a true fact about PostgreSQL that has nothing to
     // do with what this test is asking.
     expect(tables.map((row) => row.table_name).sort()).toEqual([
-      // Auth.js, written from its published adapter schema. phase4parking.md
-      // P4-1: the adapter is not installed, so the shape is transcribed rather
-      // than verified, and FW22 is where it gets checked.
+      // Auth.js. Written from the published adapter schema in FW21 and
+      // VERIFIED against the installed adapter in FW22 increment 1: every
+      // method the sign-in flow uses was called against these tables and its
+      // row read back. P4-1 is closed, and the transcription was right.
       'Account',
       'AlertSubscriber',
       // D21, replacing the PushSubscription a web-push design would need.
       'Device',
+      // FW22 increment 3: one sign-in on one device, and the credentials
+      // that belong to it. Not in SPEC 8 - see the schema for why.
+      'DeviceSession',
       // SPEC 8: the declared day, and the append-only trail behind it.
       // FW21 increments 2 and 3.
       'Entry',
       'EntryEvent',
       'Session',
+      'SessionToken',
       'User',
       'VerificationToken',
       '_prisma_migrations',

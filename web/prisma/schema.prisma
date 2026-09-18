@@ -232,6 +232,7 @@ model User {
 
   entries     Entry[]
   entryEvents EntryEvent[]
+  sessions_   DeviceSession[]
 
   devices  Device[]
   accounts Account[]
@@ -250,7 +251,8 @@ model Device {
   lastSeenAt DateTime @default(now())
   createdAt  DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceSessions DeviceSession[]
 
   @@index([userId])
 }
@@ -439,4 +441,103 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+// ---------------------------------------------------------------------------
+// FW22 INCREMENT 3: the device session, and the tokens that belong to it.
+//
+// NOT IN SPEC 8, AND JUSTIFIED HERE BY NAME (R187). SPEC 8's data model
+// predates the token design; SPEC 10 specifies the design without giving it
+// tables: "the callback issues a short-lived access token and a long-lived
+// refresh token stored in EncryptedSharedPreferences. A daily-use tax app must
+// not demand a login every session, so the refresh token is only invalidated
+// by sign-out, account deletion, or a server-side revoke."
+//
+// THAT SENTENCE IS WHY THESE ARE ROWS RATHER THAN A JWT. A self-contained
+// token carrying claims cannot be withdrawn: it stays valid until it expires,
+// whatever the server decides in the meantime. "Invalidated by account
+// deletion" is then a promise the architecture cannot keep, and FW26's
+// deletion path is the place it would be discovered. A row can be deleted; a
+// signature cannot be unsigned.
+//
+// IT COSTS A DATABASE READ PER REQUEST, and that is the price of the sentence
+// above. For one VPS and a daily-use app it is one indexed lookup on a hash.
+// ---------------------------------------------------------------------------
+
+enum SessionTokenKind {
+  ACCESS
+  REFRESH
+}
+
+/// Why a session ended. Kept so that a support question - "why was I signed
+/// out?" - has an answer that is a fact rather than a guess.
+enum SessionRevocation {
+  SIGNED_OUT
+  REVOKED_ALL
+  ACCOUNT_DELETED
+  /// Reuse detection: a refresh token was presented twice. See DeviceSession.
+  TOKEN_REPLAYED
+}
+
+/// One sign-in on one device. The unit that is revoked.
+///
+/// REVOKING IS A PROPERTY OF THIS ROW, NOT OF THE TOKENS. Setting revokedAt
+/// ends the session and every token in it in one write, which is what
+/// "revocable by row" has to mean when a session contains a chain of rotated
+/// refresh tokens rather than a single credential.
+model DeviceSession {
+  id     String @id @default(cuid())
+  userId String
+
+  /// The device this session belongs to, once it has registered one (D21).
+  /// Nullable because the session is created at callback, and registration is
+  /// a separate call the client makes afterwards - a session that cannot
+  /// exist before a device row would make sign-in depend on push permission.
+  deviceId String?
+
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime  @default(now())
+
+  revokedAt     DateTime?
+  revokedReason SessionRevocation?
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  device Device? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+
+  tokens SessionToken[]
+
+  @@index([userId])
+  @@index([deviceId])
+}
+
+/// One issued credential. Access tokens and refresh tokens are the same shape
+/// and differ only in kind and lifetime, so they are one table rather than two
+/// that would drift apart.
+///
+/// THE HASH IS STORED, NEVER THE TOKEN. Same reasoning as the sign-in link:
+/// this table must not be a list of working credentials for whoever reads a
+/// backup.
+model SessionToken {
+  id        String @id @default(cuid())
+  sessionId String
+
+  kind      SessionTokenKind
+  tokenHash String           @unique
+
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  /// When this token was exchanged for its successor.
+  ///
+  /// A CONSUMED REFRESH TOKEN PRESENTED AGAIN IS THE REUSE SIGNAL. It means
+  /// the token was captured, because the legitimate client has already moved
+  /// on to the successor and has no reason to send this one. The session is
+  /// revoked whole - see lib/auth/tokens.ts for why the whole chain rather
+  /// than just this row.
+  consumedAt DateTime?
+
+  session DeviceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, kind])
+  @@index([expiresAt])
 }

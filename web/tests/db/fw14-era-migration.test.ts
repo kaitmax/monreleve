@@ -301,9 +301,11 @@ describe('the FW21 migration on an FW14-era database', () => {
       'Account',
       'AlertSubscriber',
       'Device',
+      'DeviceSession',
       'Entry',
       'EntryEvent',
       'Session',
+      'SessionToken',
       'User',
       'VerificationToken',
       '_prisma_migrations',
@@ -336,8 +338,10 @@ describe('the FW21 migration on an FW14-era database', () => {
     ]);
 
     expect(checks).toEqual([
+      'DeviceSession_revoked_pair',
       'Entry_absenceReason_iff_absent',
       'Entry_detectedKind_when_detected',
+      'SessionToken_consumed_after_created',
       'User_employmentRate_range',
       'User_exactTotalWorkDays_iff_exact',
     ]);
