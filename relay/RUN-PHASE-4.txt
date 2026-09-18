@@ -42,8 +42,11 @@ C1. ONE AT A TIME, IN ORDER. Read the prompt in full, execute every
 C2. HANDOVER CHECK, recorded in the next report's PRECONDITIONS:
       - the previous report is committed and pushed;
       - git status clean, local main equals origin/main;
-      - CI green for the previous task's final push (wait; record the
-        URL);
+      - pnpm gate:clone green on origin/main's HEAD, with the commit
+        hash and chain output recorded (R199/R200 - this replaces
+        "CI green for the previous task's final push", which cannot
+        be satisfied before 1 October; from then on ALSO record the
+        run URL where the budget permits one, R201);
       - nothing in the previous report marked BLOCKING that R156 does
         not permit you to park.
     If a check fails: STOP. Write REPORT-NIGHT-P4.txt saying which

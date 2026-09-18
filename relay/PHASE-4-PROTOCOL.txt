@@ -5,8 +5,16 @@ start of the night and re-read from disk before each task.
 ====================================================================
 CARRIED RULINGS
 ====================================================================
-R1 (discharged). CI green on origin/main: verify per task, record the
-   run URL.
+R1 (REWORDED by R200, FW22 increment 0). Before starting: pnpm
+   gate:clone green on a fresh clone of origin/main's HEAD. Record
+   the commit hash and the chain output in the report's
+   PRECONDITIONS. From 1 October, ALSO record the CI run URL where
+   the budget permits one (R201).
+   THERE IS NO CI UNTIL OCTOBER. The September 2026 Actions allowance
+   is exhausted; it returns on 1 October at 2 000 minutes a month and
+   is spent deliberately from then on. The clean-machine claim moved
+   to gate:clone (R199) rather than lapsing - see
+   relay/CI-BUDGET-AMENDMENT.txt.
 R2, R7-R8, R10-R13, R15-R192 (all carried). The engine is closed.
 R9: you own document edits. R169/R177 govern every browser run.
 R176/R177: every task ends with the server run and driven, against
