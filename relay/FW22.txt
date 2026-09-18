@@ -1,5 +1,48 @@
 FW22 SESSION PROMPT - Mon Releve
-Read relay/PHASE-4-PROTOCOL.txt first, from disk.
+Read relay/PHASE-4-PROTOCOL.txt first, from disk, and note that its
+CI clauses are superseded by relay/CI-BUDGET-AMENDMENT.txt, which is
+this task's increment 0.
+
+====================================================================
+PRE-STEP RULINGS (apply verbatim)
+====================================================================
+R0. Read REPORT-FW21.txt and REPORT-NIGHT-P4.txt in full. FW21 is
+    complete; the night stopped at C2c on CI availability, not on any
+    property of the code. Five FW21 commits have never been exercised
+    by a runner - gate:clone (R199) is what settles them now.
+
+R1 (REWORDED by R200). Before starting: pnpm gate:clone green on a
+    fresh clone of origin/main's HEAD. Record the commit hash and the
+    chain output in PRECONDITIONS. There is no CI until October.
+
+R156 with phase4parking.md, entries PARK4-<n>. R169/R177 govern
+    browser runs. R176/R177: end with the server run and driven.
+    R180: verify a plant landed. R196: SPEC invariants live in the
+    database where it can express them. R197: a fixture is consistent
+    as a scenario. R198: an error crossing a boundary preserves which
+    rule fired.
+
+R202 (new - answers Q66). detectedKind AND provenance ARE
+    ORTHOGONAL, and the contract says so in those words:
+      detectedKind - what detection PROPOSED for that day, if
+        anything.
+      provenance   - how the STORED value came to be.
+    A MANUAL row MAY carry a detectedKind: auto mode proposed, the
+    proposal expired unconfirmed, and the user backfilled the day in
+    the calendar later. No proposal was accepted or corrected, so the
+    provenance is MANUAL - and the annex is more honest for recording
+    that detection had proposed something. The FORWARD constraint
+    stays: a DETECTED_CONFIRMED or DETECTED_CORRECTED row without a
+    detectedKind is incoherent and is refused. The reverse is legal.
+    Do not add the reverse constraint.
+
+R203 (new - answers Q67). EntryEvent.entryId CARRIES NO FOREIGN KEY
+    DELIBERATELY: the trail must outlive the row it records, and an
+    event carries enough to be read alone. ONE BOUND, which the
+    contract must state: outliving the ROW is not outliving the
+    ACCOUNT. FW26's deletion removes events too, so the property is
+    bounded by account lifetime. Say so in docs/api-v1.md, so nobody
+    later reads "append-only, no FK" as "retained after erasure".
 
 ====================================================================
 CONTEXT
@@ -9,14 +52,15 @@ NO signed-in web area (D14) - auth exists so the Android client can
 call /api/v1. The web never authenticates and sets no cookie on a
 public route.
 
-Read: SPEC 3 (Auth.js, Resend), SPEC 10 (auth), SPEC 8 (User, Auth
-tables), SPEC 20; REPORT-FW21.txt; parking.md.
+Read: SPEC 3 (Auth.js, Resend), SPEC 10 (auth), SPEC 8 (User, Device,
+Auth tables), SPEC 20; REPORT-FW21.txt; phase4parking.md (P4-1 is
+this task's first job).
 
-WHAT CANNOT BE FINISHED TONIGHT, and it is expected: the Android App
-Link callback needs ANDROID_PACKAGE_NAME and the SHA-256 certificate
-fingerprints, which do not exist until AN14. Build the token flow and
-test it with a FAKE DEVICE CLIENT; park assetlinks.json as PARK4-<n>
-with NEEDS naming exactly what AN14 must supply.
+WHAT CANNOT BE FINISHED, and it is expected: the App Link callback
+needs ANDROID_PACKAGE_NAME and the SHA-256 certificate fingerprints,
+which do not exist until AN14. Build the token flow and test it with a
+FAKE DEVICE CLIENT; park assetlinks.json with NEEDS naming exactly
+what AN14 must supply.
 
 ====================================================================
 ACCEPTANCE CRITERIA
@@ -26,51 +70,127 @@ AC1. A magic-link round trip completes end to end against the fake
      access token + refresh token. Refresh rotates; sign-out revokes;
      a revoked refresh token is rejected.
 AC2. The magic-link request does not reveal whether an address is
-     registered - identical response and identical timing envelope
-     for known and unknown addresses. Asserted.
+     registered - identical response and identical timing envelope for
+     known and unknown addresses. Asserted.
 AC3. No cookie is set on any public route; the zero-cookie trace that
-     has passed since FW1 still passes. /api/v1 accepts a bearer
-     token and nothing else - no cookie, no body field, no query
-     parameter carries identity.
+     has passed since FW1 still passes. /api/v1 accepts a bearer token
+     and NOTHING else - no cookie, no body field, no query parameter
+     carries identity.
 
 ====================================================================
-INCREMENTS
+INCREMENT 0 - THE CI BUDGET AMENDMENT
 ====================================================================
-1. Auth.js v5 with the Resend email provider and the Prisma adapter;
-   trustHost true. The email from lib/fr, short and plain, with the
-   single-use link and one line saying what it is for. Rate limit the
-   request by IP and by address. RED first per behaviour.
-   Commit: "FW22: magic link request and delivery".
-2. The callback and token issuance: a short-lived access token (state
-   its lifetime and why) and an opaque refresh token stored hashed in
-   the database with rotation on use. A reused refresh token
-   invalidates the whole chain and is logged as a security event -
-   state the policy you chose.
-   Commit: "FW22: token issuance and rotation".
-3. /api/v1 bearer middleware: resolves the user, rejects missing,
-   malformed, expired and revoked tokens with stable codes. A route
-   handler receives a userId and can obtain identity NOWHERE else -
-   prove it by planting a body-supplied userId and asserting it is
-   ignored (R180: verify the plant landed).
-   Commit: "FW22: bearer middleware and tenancy".
-4. Sign-out and revoke-all endpoints; the device registers its token
-   pair against a Device row (FW21) so revoke-all can enumerate.
-   Commit: "FW22: sign-out and revoke".
-5. assetlinks.json: the route exists and reads ANDROID_PACKAGE_NAME
-   and ANDROID_SHA256_CERT_FINGERPRINTS from the environment; with
-   them unset it returns 404 rather than an empty statement list - an
-   empty assetlinks is a published claim that no app is associated,
-   which is worse than absent. Park the real values.
-   Commit: "FW22: assetlinks route, values parked".
-6. Walkthrough (R176): drive the whole flow with curl against
-   pnpm dev - request a link, read the fake outbox, follow it, call
-   /api/v1 with the token, refresh, revoke, call again and see it
-   rejected. Report what each step returned.
-   Commit: "FW22: walkthrough and report".
+Apply relay/CI-BUDGET-AMENDMENT.txt in full: R199 gate:clone, R200's
+rewording everywhere, R201's October workflow written and disabled
+with its minutes alarm, and P4-2 closed with what actually happened.
+Commits per letter; R49 applies.
 
-OUT OF SCOPE: any entries route (FW23), any web sign-in page, any
-real device, any FCM.
+Then run gate:clone once on origin/main's HEAD and record it. Those
+five unverified FW21 commits are what it is settling.
 
-REPORT: SUMMARY / PRECONDITIONS / RED-GREEN LEDGER / TOKEN POLICY
-(lifetimes, rotation, reuse) / ENUMERATION PROOF / TENANCY PROOF /
-PARKED / WALKTHROUGH / DEVIATIONS / NOTICED / QUESTIONS / PUSH PROOF
+====================================================================
+INCREMENT 1 - P4-1: the adapter, asserted not argued
+====================================================================
+- Install the Auth.js Prisma adapter. FW21 wrote Account, Session and
+  VerificationToken from the PUBLISHED schema and parked the
+  verification because the adapter was not installed.
+- R185: assert the shipped tables against the INSTALLED adapter, not
+  against its documentation. If they differ, that is a migration
+  against empty tables - cheap now, expensive after AN4.
+- Close P4-1 with the result either way.
+- Commit: "FW22: Auth.js adapter installed, FW21's tables asserted
+  (P4-1)". Push.
+
+====================================================================
+INCREMENT 2 - magic link request and delivery
+====================================================================
+- Auth.js v5, Resend email provider, the Prisma adapter, trustHost.
+- The email from lib/fr: short, plain, one link, one sentence saying
+  what it is for. R153: it names what it is for; it quotes no
+  threshold. R155: fully accented.
+- The sender is the SAME fixed boundary FW14 established - one outbox,
+  one fake, used by both features. If FW14's is not reusable, say why
+  rather than building a second.
+- The token is SINGLE-USE, SHORT-LIVED AND CONSUMED ATOMICALLY:
+  consumption and invalidation are one database operation. PROVE THE
+  RACE, do not reason about it - two concurrent consumptions, exactly
+  one wins.
+- Rate limit by IP and by address.
+- RED first per behaviour.
+- Commit: "FW22: magic link request, atomic single-use token". Push.
+
+====================================================================
+INCREMENT 3 - token issuance and rotation
+====================================================================
+- A short-lived access token (state its lifetime and the reasoning)
+  and an OPAQUE refresh token stored HASHED, one row per device
+  session, rotated on use.
+- Tokens are opaque and revocable by row: a compliance product must be
+  able to end a session the moment an account is deleted, and FW26's
+  deletion path depends on it. No self-contained token carrying claims
+  that cannot be withdrawn.
+- A REUSED refresh token invalidates the whole chain and is recorded
+  as a security event - state the policy chosen and why.
+- Revoking one device leaves another's session alive - assert it.
+- Commit: "FW22: opaque revocable token pair with rotation". Push.
+
+====================================================================
+INCREMENT 4 - bearer middleware and tenancy
+====================================================================
+- /api/v1 resolves the user from a bearer token and rejects missing,
+  malformed, expired and revoked tokens with STABLE, DISTINCT codes -
+  R198: the error that crosses the boundary names which rule fired.
+- A route handler obtains identity NOWHERE ELSE. Prove it: plant a
+  body-supplied userId and a query-supplied one, assert both ignored,
+  and verify each plant landed (R180).
+- Commit: "FW22: bearer middleware and tenancy". Push.
+
+====================================================================
+INCREMENT 5 - sign-out, revoke-all, assetlinks
+====================================================================
+- Sign-out and revoke-all; the device registers its pair against a
+  Device row (FW21) so revoke-all can enumerate.
+- /.well-known/assetlinks.json reads ANDROID_PACKAGE_NAME and
+  ANDROID_SHA256_CERT_FINGERPRINTS from the environment. WITH THEM
+  UNSET IT RETURNS 404, never an empty statement list - an empty
+  assetlinks is a published claim that no app is associated, which is
+  worse than absent. Park the real values with NEEDS naming AN14.
+- Commit: "FW22: sign-out, revoke, assetlinks route". Push.
+
+====================================================================
+INCREMENT 6 - privacy map, walkthrough, report
+====================================================================
+- Extend FW14's privacy map: every sentence on /confidentialite about
+  accounts, sessions and email must be true of this code. Anything not
+  yet true is CORRECTED on the page (R138's tense rule), not left
+  standing.
+- R186: no PRODUCT_STATE flag flips. Auth existing does not mean a
+  user can record a day.
+- WALKTHROUGH (R176/R177) with curl against pnpm dev: request a link,
+  read the fake outbox, follow it, call /api/v1 with the token,
+  refresh, revoke, call again and see it rejected. Report what each
+  step returned, not that it worked.
+- gate:clone once more before the final push (R199).
+- Commit: "FW22: privacy map, walkthrough, report". Push.
+
+====================================================================
+OUT OF SCOPE
+====================================================================
+- Any entries route (FW23). Any web sign-in page. Any cookie on a
+  public route. Any real device, any FCM.
+- SPF/DKIM on the Resend domain - operator, FW28 checklist.
+- Any flag flip. Any engine change.
+
+====================================================================
+REPORT FORMAT - REPORT-FW22.txt
+====================================================================
+SUMMARY / PRECONDITIONS (gate:clone hash and output, R200) /
+INCREMENT 0 (the amendment, and what gate:clone settled) / P4-1
+RESULT (adapter asserted, differences if any) / RED-GREEN LEDGER /
+TOKEN POLICY (lifetimes, storage, rotation, reuse) / RACE PROOF /
+ENUMERATION PROOF / TENANCY PROOF (both plants, both verified) /
+ZERO-COOKIE RE-PROOF / PRIVACY MAP DELTA / WALKTHROUGH / PARKED
+(PARK4-<n>) / DEVIATIONS / NOTICED BUT NOT TOUCHING / QUESTIONS /
+PUSH PROOF
+
+END OF FW22 PROMPT

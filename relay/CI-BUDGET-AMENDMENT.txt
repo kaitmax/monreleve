@@ -1,0 +1,122 @@
+CI BUDGET AMENDMENT - Mon Releve
+Applied as increment 0 of relay/FW22.txt. Supersedes the CI clauses in
+relay/PHASE-4-PROTOCOL.txt and in CLAUDE.md.
+
+====================================================================
+WHY
+====================================================================
+The GitHub Actions allowance for September 2026 is exhausted. The
+repository stays PRIVATE. CI returns on 1 October with a 2 000
+minute monthly allowance, and from then on it is spent deliberately
+rather than on every push.
+
+What CI was providing was never "the tests pass" - the local gate
+proves that. It was the answer to a different question: DOES THIS
+WORK ON A MACHINE THAT IS NOT MINE. Four defects this month came from
+that gap alone: web/public missing on a fresh checkout, a stale .next
+making pnpm size report fifteen times over budget, an orphaned server
+serving a build whose CSS had been replaced, and a generated Prisma
+client that existed locally and not on a runner. R139 exists because
+"it passes here" and "it passes on a clean checkout with no secrets"
+are different claims.
+
+So the claim needs a home, not a holiday.
+
+====================================================================
+R199 - gate:clean BECOMES A FRESH CLONE
+====================================================================
+The current gate:clean scrubs the working tree. That is not the same
+claim: it keeps node_modules, the generated Prisma client, and
+whatever else the directory has accumulated.
+
+  pnpm gate:clone  (replacing or wrapping gate:clean)
+    1. git clone --local . into a temp directory at HEAD
+    2. no .env copied, no node_modules, no .next, no public/
+    3. install from the lockfile only (frozen)
+    4. generate what must be generated (prisma generate, fonts,
+       tokens) - and if a generation step is missing, the chain
+       fails there, which is the point
+    5. run the full chain: typecheck, lint, test, build, size,
+       and the database suites against a local Postgres
+    6. print the temp path, the commit hash, and the chain result
+    7. delete the clone
+
+RUN IT BEFORE EVERY PUSH, not before every commit. A push is the unit
+that leaves this machine.
+
+If a step cannot run in a fresh clone - a browser download, a
+container, a secret - it is NAMED in the output as skipped with its
+reason, never silently omitted. R133: a harness asserts a positive
+signal.
+
+====================================================================
+R200 - R1 IS REWORDED
+====================================================================
+Every prompt from FW22 onward reads:
+
+  R1. Before starting: pnpm gate:clone green on a fresh clone of
+      origin/main's HEAD. Record the commit hash and the chain
+      output in the report's PRECONDITIONS. From 1 October, ALSO
+      record the CI run URL where the budget permits one (R201).
+
+"CI green on origin/main" is replaced by this everywhere it appears -
+PHASE-4-PROTOCOL.txt, CLAUDE.md, and the remaining relay prompts. Do
+the edit once, in increment 0, and list the files changed.
+
+====================================================================
+R201 - THE OCTOBER BUDGET, AND ITS ALARM
+====================================================================
+From 1 October the workflow splits. Write it now, disabled, so the
+switch on 1 October is a one-line change rather than a design
+session.
+
+  ALWAYS, on push to main ONLY (not per commit, not on branches):
+    the `web` job - Postgres service, migrations, test:db, build,
+    test:e2e, size. This is the clean-machine claim and it is the
+    one worth paying for. ~8 minutes, roughly one run per task.
+
+  ON workflow_dispatch ONLY:
+    the Node parity matrix (R27), the rail visual baselines, the
+    runtime guard (R81). All three are deterministic and pass
+    locally in the container; they are insurance against a runner
+    difference, worth checking at a checkpoint rather than
+    continuously.
+
+  NEVER in CI:
+    the full visual suite. It runs in a container locally, and
+    R114's zero tolerance plus R184's tree-printing make it
+    trustworthy where it runs.
+
+  THE ALARM. The workflow's FIRST step prints the account's
+  remaining Actions minutes, and the report records the figure.
+  BELOW 400 REMAINING, the protocol reverts to gate:clone-only for
+  the rest of the month - deliberately, and recorded in
+  phase4parking.md, rather than discovered by a job refusing to
+  start. A budget with no alarm is a budget you learn about the way
+  this one was learnt.
+
+====================================================================
+WHAT IS KNOWINGLY LOST UNTIL OCTOBER
+====================================================================
+State these in the report rather than letting them lapse quietly:
+  - the Node 22/24 parity matrix (R27) - run it manually once before
+    FW29;
+  - the property that someone else could clone and build this. That
+    matters at Checkpoint E, not now;
+  - nothing else. The visual, a11y and database suites all run
+    locally today.
+
+====================================================================
+INCREMENT 0 TASKS
+====================================================================
+0a. gate:clone per R199, with the skipped-step naming.
+0b. R200's rewording, everywhere. List the files.
+0c. The October workflow split per R201, written and DISABLED, with
+    the minutes-remaining step and the 400 threshold documented in
+    the file beside it.
+0d. phase4parking.md: close P4-2 with what actually happened (the
+    allowance, not a payment failure), and record the October switch
+    date as a NEEDS.
+Commits per letter; R49 applies.
+
+END OF AMENDMENT
