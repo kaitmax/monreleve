@@ -115,7 +115,20 @@ jobs:
       # rather than printing nothing and reading as healthy. Supply
       # BILLING_TOKEN (a fine-grained PAT, read-only on billing) to enable
       # it.
+      # R212: WHILE THE REPOSITORY IS PUBLIC, GITHUB_STEP_SUMMARY IS
+      # WORLD-READABLE, and this step writes the account's Actions usage into
+      # it - minutes used, minutes included, minutes remaining. That is not a
+      # secret and Actions will not mask it: it is account information about
+      # the operator, published to anyone who opens the run.
+      #
+      # SO IT DOES NOT RUN ON A PUBLIC REPOSITORY, and nothing is lost by
+      # that: a public repository has UNLIMITED Actions minutes, so there is
+      # no budget for an alarm to be about. The alarm exists for the private
+      # window, which is where R201's 2 000-minute allowance applies.
+      #
+      # Found by the R212 audit before the public window was used, not after.
       - name: Actions minutes remaining (R201 alarm)
+        if: ${{ github.event.repository.private }}
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.BILLING_TOKEN || github.token }}

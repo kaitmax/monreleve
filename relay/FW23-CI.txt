@@ -1,0 +1,153 @@
+FW23-CI SESSION PROMPT - Mon Releve
+External verification while the repository is temporarily public and
+Actions minutes are unlimited.
+
+Paste as the first message of a fresh Claude Code session at the
+repository root. This is NOT a build task: it adds no feature. It
+settles claims that have never been checked outside this machine.
+
+====================================================================
+WHY THIS SESSION EXISTS
+====================================================================
+CI has barely run on this project. Of roughly 120 commits, four jobs
+have executed on a runner a handful of times, and three external
+checks have NEVER run at all:
+
+  R27's Node parity matrix        never executed (deferred since FW6)
+  pnpm test:runtime               unrun FW10 to FW15, rarely since
+  the visual suite on a runner    never - it has only run locally
+
+gate:clone (R199) settles the clean-checkout claim on THIS machine.
+It cannot settle the different-machine claim: a different CPU
+architecture, a different font stack, a different Docker daemon, a
+different Node patch release. That is what this window buys.
+
+The repository returns to private afterwards and the R201 budget
+split resumes. Leave the workflow in a state where that is ONE
+VARIABLE, not a rewrite.
+
+====================================================================
+PRE-STEP RULINGS (apply verbatim)
+====================================================================
+R1 (as reworded by R200). Before starting: pnpm gate:clone green on a
+   fresh clone of origin/main's HEAD. Record the commit hash.
+
+R133 a harness asserts a positive signal. R180 verify a plant landed.
+R204 the entry point is the unit under test. R208 a regeneration
+reports what it wrote, from its own output.
+
+R212 (new). WHILE THE REPOSITORY IS PUBLIC, WORKFLOW LOGS ARE
+   WORLD-READABLE. Before enabling anything: audit every workflow step
+   for a command that echoes an environment, prints a connection
+   string, dumps a config, or runs with `set -x`. Secrets are masked
+   by Actions; DATABASE_URL assembled inline in a step is not a
+   secret and will be printed. Report what you found and what you
+   changed. If nothing needed changing, say that you looked and where.
+
+R213 (new). AN EXTERNAL CHECK THAT HAS NEVER RUN IS NOT A PASSING
+   CHECK. This session's value is the FIRST-EVER result of three
+   suites, whatever it is. A failure here is the session succeeding:
+   it is a defect that has been latent for three months and is now
+   visible. Do not fix a first-ever failure by weakening the check -
+   park it (PARK4-<n>) with what it found, unless the fix is
+   obviously correct and provable inside this session.
+
+====================================================================
+INCREMENT 0 - the security audit (R212) and the history check
+====================================================================
+0a. R212's workflow audit. Report each step examined.
+0b. Run once and report the output verbatim:
+      git log -p --all -S 'RESEND_API_KEY' -S 'AUTH_SECRET' \
+        -S 'PDF_TOKEN_SECRET' -S 'DATABASE_URL' | head -80
+      git log --all --name-only | grep -iE '\.env$|\.env\.local|serviceAccount|\.pem$|\.p12$'
+    If a real value ever landed in history, STOP and report it. Do not
+    rewrite history and do not delete the commit - the operator
+    rotates the key, because anyone could already hold it.
+Commit: "chore: workflow log audit before public CI (R212)". Push.
+
+====================================================================
+INCREMENT 1 - enable everything, deliberately and reversibly
+====================================================================
+- Flip CI_OCTOBER (or whatever gates R201's split) so ALL jobs run,
+  and add the three that have never run: the Node parity matrix
+  (R27: 22 and 24), test:runtime, and the visual suite.
+- Leave a single documented switch that returns to the R201 budget
+  split - one variable, with a comment naming the date the repository
+  goes private again and what reverts.
+- The workflow's first step still prints remaining minutes (R201); on
+  a public repository it should report unlimited or say it could not
+  read the endpoint. Silence reads as health (R133).
+- Commit: "chore: enable full CI for the public window". Push and let
+  it run.
+
+====================================================================
+INCREMENT 2 - the first-ever results (R213)
+====================================================================
+Report each of the three, individually, with its run URL and its
+outcome:
+
+  a. NODE PARITY (R27). The formatter suite under Node 22 and 24.
+     What this could find: an ICU version difference changing a
+     separator codepoint. R6's formatters normalise Intl output
+     precisely because ICU has emitted different codepoints across
+     versions - this is the check that has been asserting that claim
+     without ever testing it on a second runtime.
+  b. test:runtime (R81). The refusal behaviour: sitemap 503, health
+     degraded, canonicals omitted, /api/ready 503, with
+     MONRELEVE_RUNTIME set and the site URL unset.
+  c. THE VISUAL SUITE ON A RUNNER. Expect this to FAIL on font
+     rendering, and that failure is INFORMATION, not a problem to
+     paper over. R37 already rules that baselines are container-only;
+     if the runner's container produces different pixels from the
+     local container, the question is WHY - a different base image, a
+     different font package, a different device scale factor. Report
+     the diff count per file and what the crops show. DO NOT
+     regenerate baselines from the runner (R135, R207): the local
+     container remains the reference until a ruling says otherwise.
+
+====================================================================
+INCREMENT 3 - FW23's own verification
+====================================================================
+Everything FW23 has built so far, under CI rather than locally:
+ - the payload contract's 39 tests, including the strict-unknown-key
+   rejection;
+ - the day module's DST tests at both transitions, and the
+   TZ ablation - run the suite on the runner under TZ=UTC as well,
+   since a runner's clock is UTC and this machine's is not. That is a
+   different-machine claim the local ablation could not make.
+ - the write path: all-or-nothing, intra-batch duplicate refusal,
+   clientMutationId deduplication, batch limits;
+ - the coordinate scan and both tenancy plants at the HTTP boundary.
+Report which of these were executed on a runner for the first time.
+
+====================================================================
+INCREMENT 4 - the report, and the switch back
+====================================================================
+- REPORT-FW23-CI.txt: every suite, its run URL, its first-ever status
+  where applicable, and every finding.
+- phase4parking.md: any first-ever failure, parked per R213 with what
+  it found rather than how to silence it.
+- Confirm the one-variable switch back to the R201 split works, by
+  setting it and observing jobs skip at zero cost, then restoring.
+- The operator returns the repository to private. State in the report
+  that the workflow is ready for that and what reverts automatically.
+- Commit: "FW23-CI: first-ever external verification". Push.
+
+====================================================================
+OUT OF SCOPE
+====================================================================
+- Any feature. Any new test. Any baseline regeneration.
+- Weakening a check to make a first-ever failure green.
+- Completing FW23's remaining increments - that is FW23's session.
+
+====================================================================
+REPORT FORMAT - REPORT-FW23-CI.txt
+====================================================================
+SUMMARY / PRECONDITIONS (gate:clone hash) / R212 AUDIT (steps
+examined, changes made) / HISTORY CHECK (verbatim output) / FIRST-EVER
+RESULTS (Node parity, runtime guard, visual on a runner - each with
+its run URL and outcome) / FW23 UNDER CI (which suites ran on a runner
+for the first time) / FINDINGS / PARKED / THE SWITCH BACK (proven) /
+DEVIATIONS / NOTICED BUT NOT TOUCHING / QUESTIONS / PUSH PROOF
+
+END OF FW23-CI PROMPT
