@@ -92,7 +92,7 @@ files into a temp directory and ran install, typecheck, build.
 
   IT STOPPED AT build. Now: test, size, and the database suites
   against a scratch database it creates and migrates itself - the
-  difference between "the suites pass"and"the suites pass from empty
+  difference between "the suites pass" and "the suites pass from empty
   on a machine with nothing prepared".
 
 IT GENERATES NOTHING ITSELF. The chain calls the project's own
@@ -115,7 +115,7 @@ TWO MORE DEFECTS IN MY OWN POSITIVE SIGNALS:
              prose rather than its verdict. Now the exact sentence.
   db:deploy  /migrations? (have been )?applied/ would have FAILED on a
              SUCCESSFUL deploy - Prisma prints "migration(s) have been
-             applied"and"(s)" sits where that pattern wanted a
+             applied" and "(s)" sits where that pattern wanted a
              space. A positive signal that cannot match the success
              case turns every green run red and teaches the next
              person to widen it until it means nothing.
@@ -383,8 +383,8 @@ THREE UNDER-DISCLOSURES, all created by FW22:
    because that is what makes the disclosure bearable), and the
    confirmation date.
 
-2. " Une adresse e-mail est enregistree UNIQUEMENT ... POUR RECEVOIR
-   LES ALERTES REGLEMENTAIRES " is a closed PURPOSE, and sign-in is
+2. "Une adresse e-mail est enregistree UNIQUEMENT ... POUR RECEVOIR
+   LES ALERTES REGLEMENTAIRES" is a closed PURPOSE, and sign-in is
    now a second one. Worse than a missing item: the sentence attached
    the alert list's three protections - double opt-in, stored consent
    date, one-click unsubscribe - to an address recorded for a
@@ -420,7 +420,7 @@ notice, (3) NOT_PERSONAL entries carry reasons.
 
 R126 REFUSED MY FIRST ATTEMPT, AND WAS RIGHT TO. The map held COPIES
 of the French sentences. The tempting fix was to match apostrophe-free
-substrings - "historique des modifications"for"l'historique des
+substrings - "historique des modifications" for "l'historique des
 modifications" - which passes the guard, leaves the duplication
 entirely intact, and then DRIFTS: the guard would go on checking a
 sentence the page no longer renders, green all the way. A GUARD THAT
@@ -473,9 +473,9 @@ two defects no guard could:
      more peers; each case began "Pour..." and read as a subordinate
      clause hunting for its sentence. THE COUNT WAS A PROMISE THE
      LAYOUT BROKE.
-     Fixed in copy rather than in rendering: " Premier cas, les
-     alertes reglementaires... "and" Second cas, la connexion a
-     l'application... ", so each bullet is self-locating and the text
+     Fixed in copy rather than in rendering: "Premier cas, les
+     alertes reglementaires..." and "Second cas, la connexion a
+     l'application...", so each bullet is self-locating and the text
      keeps the promise without the rendering having to. Nesting the
      list would change a shape every section shares.
 
@@ -531,8 +531,8 @@ reported a regeneration that did not happen.
   crashes during install emits the same sentence as a run that
   photographed 108 pages.
 
-CAUGHT ONLY BY CROPPING THE IMAGE. The baseline still read " Pour les
-alertes reglementaires "where the source said" Premier cas ", and
+CAUGHT ONLY BY CROPPING THE IMAGE. The baseline still read "Pour les
+alertes reglementaires" where the source said "Premier cas", and
 the height had not moved one pixel from 5276. Every other signal
 reported success, INCLUDING THE ONE WHOSE JOB IS TO REPORT
 REGENERATION.
@@ -757,7 +757,7 @@ Q72. A SECOND CANDIDATE RULING, and the sharper of the two.
      pasted into a report as evidence.
      Proposed: A REGENERATION REPORTS THE FILES IT WROTE, FROM ITS OWN
      OUTPUT, NEVER FROM THE WORKING TREE'S DIFF. The current
-     implementation cannot distinguish "I wrote this"from"this
+     implementation cannot distinguish "I wrote this" from "this
      differs from HEAD for any reason" - a previous run, a manual
      edit, a half-finished attempt - and it prints the same sentence
      for all of them. R133's rule applied to the reporter rather than
