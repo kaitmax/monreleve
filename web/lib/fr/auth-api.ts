@@ -43,4 +43,15 @@ export const AUTH_API_COPY = {
     `être envoyé. Il est valable quelques minutes et ne fonctionne qu${APOS}une fois.`,
 
   malformedBody: `Requête illisible${n(':')} le corps attendu est du JSON.`,
+
+  /**
+   * The 401 body.
+   *
+   * IT SAYS NOTHING ABOUT WHICH RULE FIRED, deliberately. That is the `code`
+   * field's job, and it is the CLIENT that acts on it. A human reading this
+   * string is a developer with the response in front of them or somebody in a
+   * support conversation; neither is helped by "jeton expiré" on a request the
+   * app should already have refreshed and retried without anyone noticing.
+   */
+  unauthorised: `Authentification requise${n(':')} cette requête doit porter un jeton valide.`,
 } as const;

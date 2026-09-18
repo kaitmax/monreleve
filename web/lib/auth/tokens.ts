@@ -101,33 +101,75 @@ export async function issueTokenPair(userId: string, deviceId?: string): Promise
 }
 
 /**
- * Who is this access token, if anyone.
+ * Why an access token was refused.
+ *
+ * THESE ARE DISTINCT BECAUSE THE CLIENT ACTS DIFFERENTLY ON EACH. `expired`
+ * means refresh silently and the person never notices; `revoked` means the
+ * refresh token is dead too and the only way back is a new sign-in. A client
+ * told `expired` when the session was revoked would refresh, be refused, and
+ * loop. R198: the error preserves which rule fired.
+ */
+export type AccessDenial = 'unknown' | 'expired' | 'rotated' | 'revoked';
+
+export type AccessResolution =
+  | ({ readonly ok: true } & ResolvedToken)
+  | { readonly ok: false; readonly denial: AccessDenial };
+
+/**
+ * Who is this access token, and if nobody, why not.
  *
  * THE SESSION IS CHECKED, NOT ONLY THE TOKEN. A revoked session must kill
- * every token inside it in one write, so the question "is this still valid?"
- * has to look at the session row - otherwise revocation would mean finding
- * and expiring each token individually, and the one it missed is the one that
- * matters.
+ * every token inside it in one write, so "is this still valid?" has to look at
+ * the session row - otherwise revocation would mean finding and expiring each
+ * token individually, and the one it missed is the one that matters.
+ *
+ * ORDER MATTERS HERE. Revocation is checked BEFORE expiry, so a token that is
+ * both revoked and expired reports `revoked` - the more serious fact, and the
+ * one that tells the client not to bother refreshing. The other order would
+ * send it into the loop described above whenever a revoked session happened
+ * to be old.
+ *
+ * A REFRESH TOKEN PRESENTED HERE IS `unknown`, not `wrong kind`. The caller is
+ * holding a credential that is real but not for this door; saying so would
+ * confirm the token exists, and there is nothing a correct client does with
+ * that which it cannot do with `unknown`.
  */
-export async function resolveAccessToken(token: string): Promise<ResolvedToken | null> {
+export async function inspectAccessToken(token: string): Promise<AccessResolution> {
   const row = await prisma.sessionToken.findUnique({
     where: { tokenHash: hash(token) },
     include: { session: true },
   });
 
   if (row === null || row.kind !== 'ACCESS') {
-    return null;
-  }
-
-  if (row.consumedAt !== null || row.expiresAt <= new Date()) {
-    return null;
+    return { ok: false, denial: 'unknown' };
   }
 
   if (row.session.revokedAt !== null) {
-    return null;
+    return { ok: false, denial: 'revoked' };
   }
 
-  return { userId: row.session.userId, sessionId: row.sessionId };
+  if (row.consumedAt !== null) {
+    return { ok: false, denial: 'rotated' };
+  }
+
+  if (row.expiresAt <= new Date()) {
+    return { ok: false, denial: 'expired' };
+  }
+
+  return { ok: true, userId: row.session.userId, sessionId: row.sessionId };
+}
+
+/**
+ * The same question, when the reason does not matter.
+ *
+ * A WRAPPER RATHER THAN A SECOND IMPLEMENTATION. Two functions deciding
+ * validity independently is two chances to disagree, and the one that
+ * disagrees is a token accepted by one path and refused by the other.
+ */
+export async function resolveAccessToken(token: string): Promise<ResolvedToken | null> {
+  const resolution = await inspectAccessToken(token);
+
+  return resolution.ok ? { userId: resolution.userId, sessionId: resolution.sessionId } : null;
 }
 
 /** End one session, and every token in it, in one write. */
