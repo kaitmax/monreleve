@@ -90,6 +90,21 @@ export const AUTH_API_COPY = {
    */
   invalidRefresh: `Session expirée${n(':')} reconnectez-vous depuis l${APOS}application.`,
 
+  /**
+   * A payload carrying a coordinate. SPEC 13.1 / D18.
+   *
+   * IT NAMES NO VALUE, ONLY THE RULE. The keys are echoed to the client so a
+   * developer can find them; the VALUES never are - not in the response, not
+   * in a log line. A coordinate this product refuses to store must not survive
+   * in an error message about refusing to store it, which is the shape of
+   * mistake that makes a promise technically true and practically false.
+   */
+  coordinateRefused:
+    `Cette requête contient des données de localisation. Le service n${APOS}en ` +
+    `accepte aucune${n(':')} ni latitude, ni longitude, ni altitude, ni vitesse. ` +
+    `La détection de pays se fait sur votre appareil et la position n${APOS}en ` +
+    `sort jamais.`,
+
   signedOut: `Vous êtes déconnecté de cet appareil.`,
 
   revokedAll: `Vous êtes déconnecté de tous vos appareils.`,
