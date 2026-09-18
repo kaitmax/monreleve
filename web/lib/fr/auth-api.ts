@@ -66,6 +66,28 @@ export const AUTH_API_COPY = {
     `quelques minutes et ne fonctionnent qu${APOS}une fois${n(';')} demandez-en un ` +
     `nouveau depuis l${APOS}application.`,
 
+  /**
+   * The refresh route's refusal. ONE SENTENCE FOR EVERY CAUSE - unknown,
+   * expired, already rotated, revoked, and replayed.
+   *
+   * R210 ASKS THAT A REPLAY BE DISTINGUISHABLE FROM AN EXPIRY, AND THIS IS
+   * NOT WHERE THAT HAPPENS. Saying "ce lien a deja servi" here would tell an
+   * unauthenticated caller which case fired, and the caller holding a
+   * replayed token is the thief: they would learn that the legitimate client
+   * is still active, which is the one thing the refusal must not confirm.
+   *
+   * SO THE SENTENCE IS WRITTEN FOR THE STALE USER, who is the common case and
+   * the one R210 protects: calm, factual, and actionable. Somebody whose
+   * session simply lapsed is told it lapsed.
+   *
+   * THE REPLAY IS SURFACED AFTER RE-AUTHENTICATION, not instead of this. The
+   * reason is recorded on DeviceSession.revokedReason = TOKEN_REPLAYED, and a
+   * person who signs in again has proven they own the address - at which
+   * point telling them a session was ended for security costs an attacker
+   * nothing. FW26 builds the account screen where that belongs; no field is
+   * added to this response for it today, because a field no client reads is a
+   * promise to a client that will eventually read it (R187).
+   */
   invalidRefresh: `Session expirée${n(':')} reconnectez-vous depuis l${APOS}application.`,
 
   signedOut: `Vous êtes déconnecté de cet appareil.`,

@@ -430,7 +430,7 @@ Every task also clears the project-wide Definition of Done and the Execution, Te
 
 ## FW21: Full Prisma schema + migrations + seed
 
-**Description:** Extend the schema to spec §8 v2.1: `User` (settings incl. `loggingMode` MANUAL|AUTO_DETECT, `detectionConsentAt`, `granularity`, `denominatorKind`, `activityStartDate`, `reminderTime`, and the reserved nullable `organizationId`), `Entry` (unique `userId+dayDate+portion`, unique `clientMutationId`, immutable `firstRecordedAt`, `clientClaimedAt`, the provenance trio `provenance` / `detectedKind` / `detectedAt`, and `kind = ABSENT` with a required `absenceReason`), append-only `EntryEvent` carrying provenance, `Device` (FCM tokens), Auth.js tables. Dev seed generating a realistic logged year: manual days, detected-and-confirmed days, one corrected day, one late entry, one offline-synced entry, one unrecorded weekday.
+**Description:** Extend the schema to spec §8 v2.1: `User` (settings incl. `loggingMode` MANUAL|AUTO_DETECT, `detectionConsentAt`, `granularity`, `denominatorKind`, `activityStartDate`, `reminderTime`, and the reserved nullable `organizationId`), `Entry` (unique `userId+dayDate+portion`, unique `clientMutationId`, immutable `firstRecordedAt`, `clientClaimedAt`, the provenance trio `provenance` / `detectedKind` / `detectedAt`, and `kind = ABSENT` with a required `absenceReason`), append-only `EntryEvent` carrying provenance, `Device` (FCM tokens), and `Account`/`Session`/`VerificationToken` (transcribed from the Auth.js adapter in FW21; R209 later removed the adapter, and Q70 dropped `Account`'s seven OAuth columns). Dev seed generating a realistic logged year: manual days, detected-and-confirmed days, one corrected day, one late entry, one offline-synced entry, one unrecorded weekday.
 
 **Acceptance criteria:**
 - [ ] Migration applies cleanly on empty and on FW14-era databases; constraints and indexes match spec §8
@@ -450,7 +450,7 @@ Every task also clears the project-wide Definition of Done and the Execution, Te
 
 ## FW22: Auth — magic link, App Link callback, device tokens
 
-**Description:** Auth.js v5 email provider (Resend), `trustHost: true`. Two callback paths: browser (for account operations) and **Android App Link**, which issues a short-lived access token plus a long-lived refresh token to the device. Token refresh and revoke endpoints. `/.well-known/assetlinks.json` served from the web app with the package name and cert fingerprints. **No `/connexion` or `/inscription` pages** — remove them if scaffolded, and confirm no session cookie is set on any public route.
+**Description:** Passwordless magic link built in this repository (R209), Resend for delivery, no `trustHost`. One callback path - the **Android App Link** (D14: the web never authenticates) - which issues a short-lived access token plus a long-lived refresh token to the device. Token refresh and revoke endpoints. `/.well-known/assetlinks.json` served from the web app with the package name and cert fingerprints. **No `/connexion` or `/inscription` pages** — remove them if scaffolded, and confirm no session cookie is set on any public route.
 
 **Acceptance criteria:**
 - [ ] Magic-link round trip completes through the App Link callback and returns a usable token pair; refresh and revoke work; sign-out invalidates

@@ -23,7 +23,7 @@
 // nulled is a person who asked to be removed and is back on the list.
 
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Client } from 'pg';
@@ -220,10 +220,41 @@ afterAll(async () => {
 });
 
 describe('the FW21 migration on an FW14-era database', () => {
-  it('applies the pending migrations and no others', () => {
-    expect(deployOutput).toContain('20260918003225_user_device_auth');
-    expect(deployOutput).toContain('20260918075246_entry_provenance_mutation_id');
-    expect(deployOutput).toContain('20260918080540_entry_event_append_only');
+  it('applies EVERY pending migration, and no others', () => {
+    // DERIVED FROM THE DIRECTORY, NEVER TYPED, and this test is why the rule
+    // matters. It used to name three migrations by hand:
+    //
+    //   20260918003225_user_device_auth
+    //   20260918075246_entry_provenance_mutation_id
+    //   20260918080540_entry_event_append_only
+    //
+    // By FW23 there were SIX on disk. FW22's device_session_tokens was never
+    // added to that list, so the "and no others" half of the title had never
+    // been asserted at all - and the next migration would have slid past in
+    // green for exactly the same reason. R175: the space between "these three
+    // were applied" and "FW14's two were not" held every migration written
+    // since, unexamined.
+    //
+    // Reading the directory closes it permanently: a migration added tomorrow
+    // is covered the moment it exists, without anyone remembering to come
+    // here. R171 - a test names a role, never a coincidence.
+    const onDisk = readdirSync('prisma/migrations')
+      .filter((name) => /^\d{14}_/u.test(name))
+      .sort();
+
+    const expected = onDisk.filter(
+      (name) => !(FW14_MIGRATIONS as readonly string[]).includes(name),
+    );
+
+    // NON-VACUITY FIRST. "every pending migration was applied" is satisfied by
+    // there being none, which is what a changed path or a renamed directory
+    // would produce.
+    expect(onDisk.length).toBeGreaterThan(FW14_MIGRATIONS.length);
+    expect(expected.length).toBeGreaterThan(0);
+
+    for (const name of expected) {
+      expect(deployOutput, `${name} should have been applied`).toContain(name);
+    }
 
     // FW14's two were already recorded as applied, so the CLI must not have
     // touched them. If it did, the fixture was wrong and everything below is

@@ -185,22 +185,26 @@ export const PERSONAL_DATA: Readonly<Record<string, Disclosure>> = {
   'VerificationToken.token': 'signInLink',
   'VerificationToken.expires': 'signInLink',
 
-  // ---- Auth.js's own tables. Written from the adapter's published schema in
-  // FW21 and verified against the installed adapter in FW22 (P4-1). Nothing
-  // writes them today; they are disclosed under sign-in because that is what
-  // they would hold.
+  // ---- FW21 RESIDUE, WITH NO ADAPTER BEHIND IT ANY MORE (R209). These were
+  // written from the Auth.js Prisma adapter's published schema and verified
+  // against the installed adapter in FW22 (P4-1). R209 then removed the
+  // adapter permanently, so nothing requires their shape and nothing writes
+  // them: Account and Session are the only two tables here with no writer.
+  //
+  // Q70 DROPPED Account's SEVEN OAuth COLUMNS - refresh_token, access_token,
+  // expires_at, token_type, scope, id_token, session_state - under R187: an
+  // unused column is a promise to a client that will eventually read it.
+  //
+  // AND THAT MADE THIS BLOCK HONEST. All seven mapped to 'credentials', whose
+  // sentence promises « sous forme d'empreinte et jamais en clair ». An OAuth
+  // access_token is stored as issued, in clear, so the notice was describing a
+  // property those columns did not have. What remains under 'credentials' -
+  // SessionToken's hashes and Session.sessionToken - genuinely is hashed.
   'Account.id': 'signInLink',
   'Account.userId': 'signInLink',
   'Account.type': 'signInLink',
   'Account.provider': 'signInLink',
   'Account.providerAccountId': 'signInLink',
-  'Account.refresh_token': 'credentials',
-  'Account.access_token': 'credentials',
-  'Account.expires_at': 'credentials',
-  'Account.token_type': 'credentials',
-  'Account.scope': 'credentials',
-  'Account.id_token': 'credentials',
-  'Account.session_state': 'credentials',
 
   'Session.id': 'sessions',
   'Session.sessionToken': 'credentials',

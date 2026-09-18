@@ -63,7 +63,7 @@ Unifying the phases forced concrete choices. Each is a deliberate deviation from
 | D3 | **`/tarifs` is one honest page** — "Gratuit en 2027. Payant dès 2028 (CHF 39–49/an prévu)." | The phase-1 A/B price test (39/an vs 5/mois landing pages) | The A/B test was a phased-rollout experiment. Price framing can still be tested later via the alert list; it does not belong in the build. |
 | D4 | **Homepage ships at launch.** `/` routes to the calculator or the guides; no redirect period. | Phase 0's "the calculator is the homepage, `/` 302-redirects" | With guides and the app shipping simultaneously, the redirect rationale is gone. |
 | D5 | **Contextual links point at real guides from day one.** | The phase-0 fallback where all four statuses pointed at `/alertes` | The guides exist at launch. The mapping table in §9.3 is final. |
-| D6 | **Auth is passwordless magic-link (Resend).** `/mot-de-passe-oublie` is removed from the route map. | architecture.md's login/signup/forgot-password triple | No password storage, one fewer screen, fits a compliance audience. Auth.js v5 email provider. |
+| D6 | **Auth is passwordless magic-link (Resend).** `/mot-de-passe-oublie` is removed from the route map. | architecture.md's login/signup/forgot-password triple | No password storage, one fewer screen, fits a compliance audience. Resend email provider; the flow is built in this repository, not on Auth.js (R209). |
 | D7 | **The daily reminder is Web Push (VAPID) scheduled server-side**, default 17:30 Europe/Paris, exactly one per day, opt-in. | design.md's "one daily local notification" | Locally-scheduled PWA notifications (Notification Triggers API) never shipped in browsers. Server-scheduled push is the only reliable implementation. Degrades gracefully to the in-app "jours non renseignés" banner if permission is denied. |
 | D8 | **Canton guide: Genève only at launch.** | architecture.md's open list of canton pages | Its own recommendation — test one before building twenty-six. |
 | D9 | **Tracker granularity: day and half-day. Hours mode is calculator-only.** Half-days log as AM/PM portions. | calc-engine exposes three granularities; design.md's tracker implied day-only | The three-button daily log has no sane hourly UX. The engine keeps `hours` for the calculator's exact-method users; the tracker validates against it. |
@@ -136,7 +136,10 @@ Everything else — the calculation, the rounding rules, the zone/status distinc
 ### Backend (Node, colocated with the web project)
 
 - **Prisma + PostgreSQL** — users, entries, entry events, subscribers, device tokens.
-- **Auth.js v5** — email magic-link via Resend, `trustHost: true` (required behind the reverse proxy). For Android, the magic link opens an **App Link** and the callback issues a refresh token (D23).
+- **Passwordless sign-in, built in this repository** — email magic-link via Resend, an **App Link** callback that issues an opaque token pair (D23). No Auth.js, no `next-auth`, no adapter. **Amended by R209 (FW23); this line previously named Auth.js v5 with `trustHost: true`.**
+  - The line was written before **D14** withdrew the signed-in web area. With no web session there is nothing for a session library to manage, and §10's zero-cookie guarantee — total again, D12's exception withdrawn — forbids the cookie its route handlers exist to set. Auth.js would have added a second identity mechanism beside the one actually built, plus adapter table shapes this product does not control.
+  - What replaced it: `lib/auth/magic-link.ts` (single-use token, hashed, consumed in one statement), `lib/auth/tokens.ts` (opaque access + refresh, rotation, reuse detection), `lib/auth/bearer.ts` (the guard, identity from the Authorization header and nowhere else). `docs/api-v1.md` is the contract.
+  - `trustHost` went with it. It exists so a session library can trust the `Host` header behind a proxy; this product never derives an origin from a request — the sign-in link is built from a fixed constant, because deriving it from `Host` is host-header injection pointing sign-in links at an attacker's domain.
 - **Resend** — magic links, alert-list sends, double-opt-in confirmations.
 - **pg-boss** — scheduled jobs (daily reminders, retention hygiene), started once in `instrumentation.ts` behind a `globalThis` guard so hot-reload and multiple workers don't duplicate the scheduler.
 - **Firebase Cloud Messaging** — reminder delivery to devices (D21). FCM is the only third-party service the Android app talks to besides our own API.
@@ -200,7 +203,14 @@ frontalier/
       api/
         alertes/route.ts                        → POST subscribe
         alertes/confirm/route.ts                → GET double-opt-in
-        auth/[...nextauth]/route.ts             → magic link; App Link callback for Android
+        v1/auth/magic-link/route.ts             → POST, request a sign-in link
+        v1/auth/callback/route.ts               → GET, the App Link target; issues the token pair
+        v1/auth/refresh/route.ts                → POST, rotate; reuse ends the session (R210)
+        v1/auth/sign-out/route.ts               → POST, end this session
+        v1/auth/revoke-all/route.ts             → POST, end every session
+        (R209 replaced `auth/[...nextauth]/route.ts`: an Auth.js catch-all
+         handler is the cookie-setting path §10's guarantee forbids, and
+         building one from this map would have created it.)
         v1/entries/route.ts                     → GET by year, POST batch (device sync)
         v1/dossier/route.ts                     → GET computed dossier for a year
         v1/export/{pdf,csv}/route.ts
@@ -532,7 +542,7 @@ Two guards: **the Geneva fixtures are pinned to `taxYear: 2026` and are unchange
 
 ## 8. Data model
 
-Prisma, PostgreSQL. Auth.js standard tables (`Account`, `Session`, `VerificationToken`) omitted for brevity.
+Prisma, PostgreSQL. `Account`, `Session` and `VerificationToken` omitted for brevity — they were transcribed from the Auth.js adapter's published schema in FW21 and are **this product's own tables now** (R209 removed the adapter). Only `VerificationToken` has a writer: `lib/auth/magic-link.ts` issues and consumes the sign-in token directly. `Account` lost its seven OAuth columns under Q70/R187 — an unused column is a promise to a client that will eventually read it.
 
 ```prisma
 model User {
@@ -784,9 +794,17 @@ Same shell as the calculator. Inputs: revenu fiscal de référence, taille du fo
 
 ## 10. Auth
 
-Passwordless throughout (D6, D23). Auth.js v5 with the Resend email provider, `trustHost: true`.
+Passwordless throughout (D6, D23). **Built in this repository, not on Auth.js — see §3 and R209.** The Resend email provider stays; only the session library is gone, because D14 deleted the thing it manages.
 
-**Android sign-in:** the user enters an email in the app; the magic link opens an **Android App Link** back into the app; the callback issues a short-lived access token and a long-lived refresh token stored in `EncryptedSharedPreferences`. A daily-use tax app must not demand a login every session, so the refresh token is only invalidated by sign-out, account deletion, or a server-side revoke.
+**Android sign-in:** the user enters an email in the app; the magic link opens an **Android App Link** back into the app; the callback issues a short-lived access token and a long-lived refresh token stored in `EncryptedSharedPreferences`. A daily-use tax app must not demand a login every session, so the refresh token is invalidated only by sign-out, account deletion, a server-side revoke, **or a detected replay (R210)**.
+
+**Tokens are opaque rows, not signed claims.** The sentence above is why: a self-contained token stays valid until it expires whatever the server decides, so *"invalidated by account deletion"* would be a promise the architecture cannot keep. `DELETE` is a complete answer; a signature cannot be un-signed. The cost is one indexed lookup per request.
+
+**Replay ends the session (R210).** A consumed refresh token presented a second time means it was captured — the legitimate client has already moved to its successor and has no reason to send the old one. The server cannot tell which holder is the thief, so it trusts neither and revokes the whole chain with `revokedReason = TOKEN_REPLAYED`.
+
+- Refusing only the replayed token is the gentler-looking option and is the wrong one: the thief's stolen **successor** keeps working, so the defender loses and the attacker does not.
+- The legitimate user signs in again through an address they control. That is the minor cost; locking the thief out is the point.
+- **The caller is not told which case fired.** `/api/v1/auth/refresh` answers every failure identically — unknown, expired, already rotated, revoked, replayed — because distinguishing them tells a thief that the real client is still active. The reason is recorded on `DeviceSession` and surfaced to the **person** after they sign in again, when they have proven ownership; it is never in the refusal itself.
 
 **Web never authenticates.** No `/connexion`, no `/inscription`, no session cookie on any public route — the v1 cookie exception (D12) is withdrawn, and the "zero cookies on the public surface" guarantee is total again.
 
@@ -973,11 +991,12 @@ The battery figure is a product requirement, not an optimisation target. Backgro
 Coolify on the OVH VPS, alongside the existing sites — **never touch saharadesertguide.com's containers or ports.**
 
 - Multi-stage Dockerfile, Next.js `output: 'standalone'`. **`ENV HOSTNAME="0.0.0.0"` in the runner stage** — without it the container answers on localhost only and the proxy returns 502.
-- **`trustHost: true`** in the Auth.js config — required behind Coolify's reverse proxy or callback URLs break.
+- **No `trustHost`, and no origin derived from a request** (R209). `trustHost` exists so a session library can believe the `Host` header behind a proxy; this product builds the sign-in link from `PRODUCTION_ORIGIN`, a fixed constant, because deriving it from `Host` is host-header injection pointing sign-in links at an attacker's domain. Nothing behind Coolify needs configuring for it.
 - Chromium + fonts installed in the runner stage (Debian slim base, not Alpine) for PDF printing; Inter copied into the image so the PDF renders identically to the web.
 - pg-boss started once in `instrumentation.ts` behind a `globalThis` guard — otherwise dev hot-reload and multiple workers duplicate the reminder scheduler.
 - PostgreSQL as a Coolify-managed service; automated daily dumps — the entries table **is** the product; losing it is losing every user's evidence.
-- Env: `DATABASE_URL`, `AUTH_SECRET`, `AUTH_URL`, `RESEND_API_KEY`, `EMAIL_FROM`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `NEXT_PUBLIC_UMAMI_*`, `TZ=Europe/Paris`.
+- Env: `DATABASE_URL`, `RESEND_API_KEY`, `EMAIL_FROM`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `NEXT_PUBLIC_UMAMI_*`, `TZ=Europe/Paris`, and from AN14 `ANDROID_PACKAGE_NAME` + `ANDROID_SHA256_CERT_FINGERPRINTS` (PARK4-2).
+  - **`AUTH_SECRET` and `AUTH_URL` removed (R209).** Neither had a reader: token hashing is unkeyed SHA-256 over 32 random bytes, and the origin is a constant. `AUTH_SECRET` survived only in `gate-clone.mjs`'s strip-list, and **stripping a variable nothing reads is a no-op that reads as coverage** — a deployment variable named in a spec and read by nothing is R187 on the ops surface.
 - Umami as a separate Coolify service, proxied same-origin.
 - Health check endpoint `/api/health` (DB ping) wired into Coolify.
 - Env additions for v2: `FCM_SERVICE_ACCOUNT_JSON`, `PDF_TOKEN_SECRET`, `ANDROID_PACKAGE_NAME`, `ANDROID_SHA256_CERT_FINGERPRINTS` (for the App Links `assetlinks.json` served at `/.well-known/`).

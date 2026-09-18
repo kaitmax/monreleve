@@ -7,7 +7,7 @@ One backend, two clients:
 | Client | Role | Stack |
 |---|---|---|
 | **Web** (`web/`) | Public, anonymous acquisition surface: calculator, LAMal/CMU comparator, guides, alert list, app landing page. No signed-in area. | Next.js 15, TypeScript strict, Sass + CSS tokens, MDX |
-| **Backend** (inside `web/`) | API `/api/v1`, database, dossier computation, PDF, jobs. Authority for timestamps and the document. | Prisma + PostgreSQL, Auth.js (magic link), pg-boss, FCM, Playwright/Chromium for PDF |
+| **Backend** (inside `web/`) | API `/api/v1`, database, dossier computation, PDF, jobs. Authority for timestamps and the document. | Prisma + PostgreSQL, passwordless magic link built here (R209 - no Auth.js), pg-boss, FCM, Playwright/Chromium for PDF |
 | **Android** (`android/`) | The app: daily logging (manual, or location detection that *proposes* and the user confirms), calendar, dossier, exports. | Kotlin, Jetpack Compose, Room, WorkManager |
 
 iOS is designed (see `prompts/design-frontier/`) but is **not** in the launch scope.

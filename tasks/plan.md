@@ -25,7 +25,7 @@ The plan is dependency-ordered and vertically sliced. Three properties are prese
 - **One rendering paradigm (React)**; `lib/ui/core` stays React-free so the rail and formatters render identically in browser, PDF, and OG image.
 - **Engine first, everything else is delivery.** The Geneva fixtures are ship-blocking; fixtures are frozen only after the human regulatory-verification gate at Checkpoint A.
 - **Evidence model:** server-assigned timestamps, append-only `EntryEvent` audit, late-entry flags surfaced everywhere including the PDF. No API path ever accepts a client `recordedAt`.
-- **Magic-link auth (Auth.js v5 + Resend)**, database sessions, `trustHost: true`.
+- **Magic-link auth built in this repository (R209)**, Resend for delivery. No Auth.js, no database sessions, no `trustHost`: D14 withdrew the signed-in web area, so there is no web session to manage, and the device holds an opaque token pair instead.
 - **PDF = headless Chromium printing a session-gated print route** that reuses the exact Relevé components — the screen and the document cannot drift.
 - **Reminders = server-scheduled FCM** (pg-boss + Firebase), exactly one per day, opt-in, carrying the proposal in auto mode.
 - **No signed-in web area.** The web is static/ISR and anonymous; TanStack Query and session cookies are gone from it entirely, so the "zero cookies on public routes" guarantee is total.
