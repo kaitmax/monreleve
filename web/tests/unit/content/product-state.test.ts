@@ -63,38 +63,118 @@ const FR = join(WEB, 'lib', 'fr');
 // ---------------------------------------------------------------------------
 
 /**
- * The evidence each flag's comment names, as a predicate.
+ * RULING R186: A FLAG ASSERTS A USER-FACING CAPABILITY, AND ITS PROXY IS THE
+ * LAST THING THAT MAKES THAT CAPABILITY TRUE, NEVER THE FIRST.
  *
- * READ FROM THE FILESYSTEM AND THE SCHEMA, never from another constant. A
- * flag checked against a second constant is two constants agreeing with each
- * other, which is what R171 forbids one layer down: the test names the role -
- * "there is a model that records a day" - rather than a literal that happens
- * to match today.
+ * THE DEFECT THIS CORRECTS IS MINE, FROM FW20b. trackerExists asserted
+ * against /^\s*model\s+Entry\b/m in prisma/schema.prisma - the FIRST thing
+ * that makes a tracker possible rather than the last. A table is not a
+ * tracker: nobody can record a day until an API, a client and a release
+ * exist.
+ *
+ * LEFT ALONE, FW21’s SCHEMA COMMIT WOULD HAVE FLIPPED IT - and flipping
+ * trackerExists rewrites four public surfaces at once: the home page’s meta
+ * description regains "puis tenez le registre horodaté de vos journées",
+ * /a-propos claims the site holds a register, /releve-annuel stops saying
+ * the register is not built, and $legal-01 tells every page’s footer that
+ * each recorded day is timestamped. Four pages would have gone from honest
+ * to false ON A COMMIT THAT ADDS A TABLE, which is the exact defect R172 was
+ * created to prevent, reintroduced by R172’s own detector.
+ *
+ * SO EACH FLAG CARRIES ITS CAPABILITY IN WORDS. The sentence is what the
+ * flag being true PROMISES A READER; the proxy is the artefact whose
+ * existence makes that promise keepable. Where they disagree, the sentence
+ * wins and the proxy is wrong.
  */
-const EVIDENCE: Record<keyof ProductState, () => boolean> = {
-  calculatorExists: () =>
-    existsSync(join(WEB, 'app', '(public)', 'calculateur-teletravail-frontalier', 'page.tsx')),
+interface Flag {
+  /** What a reader may do when this is true. Written as a promise to them. */
+  readonly capability: string;
+  /** The artefact whose existence settles it, named for the report. */
+  readonly proxy: string;
+  /** Why this artefact is the LAST one, rather than an earlier enabler. */
+  readonly last: string;
+  readonly check: () => boolean;
+}
 
-  guidesExist: () =>
-    existsSync(join(WEB, 'content', 'guides')) &&
-    readdirSync(join(WEB, 'content', 'guides')).some((name) => name.endsWith('.mdx')),
+const ANDROID = join(WEB, '..', 'android');
 
-  alertsExist: () => existsSync(join(WEB, 'app', 'api', 'alertes', 'route.ts')),
+const EVIDENCE: Record<keyof ProductState, Flag> = {
+  calculatorExists: {
+    capability: 'A reader can enter their days and get their annual rate.',
+    proxy: 'app/(public)/calculateur-teletravail-frontalier/page.tsx',
+    last:
+      'The engine and the form both exist behind it, but neither is reachable ' +
+      'until the route renders. The page is what a reader can open.',
+    check: () =>
+      existsSync(join(WEB, 'app', '(public)', 'calculateur-teletravail-frontalier', 'page.tsx')),
+  },
 
-  // SPEC 8's day record. The model is the thing that makes a day durable, and
-  // no route can record one without it.
-  trackerExists: () => /^\s*model\s+Entry\b/m.test(readFileSync(join(WEB, 'prisma', 'schema.prisma'), 'utf8')),
+  guidesExist: {
+    capability: 'A reader can read the rules, sourced.',
+    proxy: 'content/guides/*.mdx',
+    last:
+      'The registry, the MDX pipeline and the claims map all precede an ' +
+      'article. An article with no file is a route that 404s.',
+    check: () =>
+      existsSync(join(WEB, 'content', 'guides')) &&
+      readdirSync(join(WEB, 'content', 'guides')).some((name) => name.endsWith('.mdx')),
+  },
 
-  // SPEC 12's document needs the tracker beneath it AND the print route R53
-  // reserves. /releve-annuel being live is NOT evidence - that is the offer
-  // page, and the distinction is the one the module comment calls
-  // load-bearing.
-  dossierExists: () =>
-    EVIDENCE.trackerExists() && existsSync(join(WEB, 'app', 'releve', 'print')),
+  alertsExist: {
+    capability: 'A reader can subscribe to regulatory alerts.',
+    proxy: 'app/api/alertes/route.ts',
+    last:
+      'The AlertSubscriber model and the capture card come first; the route ' +
+      'is what turns a filled form into a subscription. Delivery is degraded ' +
+      'without RESEND_API_KEY, which is configuration rather than existence.',
+    check: () => existsSync(join(WEB, 'app', 'api', 'alertes', 'route.ts')),
+  },
 
-  comparatorExists: () => existsSync(join(WEB, 'app', '(public)', 'calculateur-lamal-cmu')),
+  trackerExists: {
+    capability: 'A reader can record a day, and it is timestamped by the server.',
+    proxy: 'a released Android client (AN14), under android/',
+    last:
+      'THE SCHEMA IS THE FIRST THING, NOT THE LAST. Between prisma/schema ' +
+      '.prisma and a day somebody can record sit the entries API (FW23), ' +
+      'auth (FW22), the client that calls them, and a release that puts it ' +
+      'on a phone. Each of those is necessary; the release is the one that ' +
+      'is sufficient, because nothing before it lets a reader do anything.',
+    check: () => existsSync(ANDROID),
+  },
 
-  appExists: () => existsSync(join(WEB, '..', 'android')),
+  dossierExists: {
+    capability: 'A reader can export the Relevé annuel as a document.',
+    proxy: 'app/releve/print, plus the tracker beneath it',
+    last:
+      'Already correct before R186, and it is the pattern the others now ' +
+      'follow: a document needs entries to be about, so it requires the ' +
+      'tracker AND the route R53 reserves. /releve-annuel being `live` is ' +
+      'NOT evidence - that is the offer page, and the distinction is the one ' +
+      'lib/content/product-state.ts calls load-bearing.',
+    check: () => EVIDENCE.trackerExists.check() && existsSync(join(WEB, 'app', 'releve', 'print')),
+  },
+
+  comparatorExists: {
+    capability: 'A reader can compare LAMal and CMU costs.',
+    proxy: 'app/(public)/calculateur-lamal-cmu/',
+    last:
+      'Blocked on a premium-data licence rather than on code (PARK-4, R157 ' +
+      'option 3), so the route is both the last step and the one that cannot ' +
+      'be taken yet.',
+    check: () => existsSync(join(WEB, 'app', '(public)', 'calculateur-lamal-cmu')),
+  },
+
+  appExists: {
+    capability: 'A reader can install the application.',
+    proxy: 'the android/ directory',
+    last:
+      'It shares a proxy with trackerExists TODAY and they are different ' +
+      'claims: an app could ship that cannot yet record a day. When android/ ' +
+      'lands, trackerExists takes the narrower marker - a release that talks ' +
+      'to the entries API - and these two separate. Recorded so the sharing ' +
+      'is a known approximation rather than a discovered one.',
+    check: () => existsSync(ANDROID),
+  },
 };
 
 describe('the flags are facts, checked against the code', () => {
@@ -105,7 +185,7 @@ describe('the flags are facts, checked against the code', () => {
         `PRODUCT_STATE.${flag} disagrees with the code. Either the capability ` +
           'shipped and the flag was not flipped, or the flag was flipped ahead ' +
           'of the build. Both put a false sentence on a public page.',
-      ).toBe(EVIDENCE[flag]());
+      ).toBe(EVIDENCE[flag].check());
     });
   }
 
