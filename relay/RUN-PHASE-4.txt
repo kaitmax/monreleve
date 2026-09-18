@@ -1,0 +1,87 @@
+PHASE 4 OVERNIGHT RUN - FW22 to FW29 - Mon Releve
+Paste as the first message of a fresh Claude Code session at the
+repository root. All of relay/PHASE-4-PROTOCOL.txt, relay/FW22.txt
+through relay/FW29.txt must be committed and present.
+
+====================================================================
+WHAT THIS SESSION DOES
+====================================================================
+Eight tasks, in order, each exactly as its own prompt specifies:
+
+  FW22 auth -> FW23 entries API -> FW24 dossier -> FW25 exports ->
+  FW26 account -> FW27 scheduler -> FW28 deployment artefacts ->
+  FW29 audit
+
+Read relay/PHASE-4-PROTOCOL.txt once now, and re-read it from disk
+before each task. The operator is asleep and will read
+Phase4parking.md in the morning.
+
+====================================================================
+WHAT IS EXPECTED NOT TO FINISH
+====================================================================
+Three tasks have a hard external dependency and the prompts say so.
+Reaching those points and parking is a CORRECT outcome, not a
+failure:
+
+  FW22  assetlinks.json needs the Android package name and SHA-256
+        fingerprints, which do not exist until AN14.
+  FW27  real FCM delivery needs a Firebase service account.
+  FW28  the Coolify deploy needs the VPS, the secrets and a domain
+        that is not yet bought.
+
+In each case: build the seam, prove it with a fake, park the real
+thing with NEEDS naming exactly what must be supplied.
+
+====================================================================
+BETWEEN TASKS
+====================================================================
+C1. ONE AT A TIME, IN ORDER. Read the prompt in full, execute every
+    increment, write and push the report. Only then open the next.
+    Do not read ahead.
+
+C2. HANDOVER CHECK, recorded in the next report's PRECONDITIONS:
+      - the previous report is committed and pushed;
+      - git status clean, local main equals origin/main;
+      - CI green for the previous task's final push (wait; record the
+        URL);
+      - nothing in the previous report marked BLOCKING that R156 does
+        not permit you to park.
+    If a check fails: STOP. Write REPORT-NIGHT-P4.txt saying which
+    check failed, commit, push, end.
+
+C3. NO CROSS-TASK REFACTORING. A defect noticed in an earlier task's
+    output goes under NOTICED BUT NOT TOUCHING.
+
+C4. CONTEXT DISCIPLINE. Before each task re-read CLAUDE.md and
+    PHASE-4-PROTOCOL.txt from disk. If you cannot locate a file you
+    know exists, or a command's output stops matching what you
+    expect, STOP with REPORT-NIGHT-P4.txt rather than continue on a
+    degraded context.
+
+C5. THE GATE NEVER SLIPS. Every commit green on the selected suites.
+    A tired session and a rested one commit under the same rule.
+
+C6. THE EVIDENCE PROPERTIES NEVER SLIP EITHER. Server-assigned
+    timestamps, append-only EntryEvent, immutable firstRecordedAt,
+    coordinate rejection, ABSENT excluded from the engine. If
+    implementing something would weaken one of these, that is a STOP,
+    not a park.
+
+C7. END OF NIGHT. After REPORT-FW29.txt is pushed and green, write
+    REPORT-NIGHT-P4.txt: one line per task (task, final commit, CI
+    URL, status), every PARK4-<n> with its one-line title and what it
+    NEEDS, every open question with its origin task, and the sentence
+    "Phase 4 complete to its external dependencies. AN1 not started."
+    Commit, push, end.
+
+====================================================================
+IF THE NIGHT STOPS EARLY
+====================================================================
+A stopped night is a correct outcome. Tree clean, everything so far
+pushed, Phase4parking.md current, and REPORT-NIGHT-P4.txt saying
+exactly where and why. The operator resumes by hand.
+
+====================================================================
+BEGIN
+====================================================================
+Open relay/FW22.txt now and execute it.

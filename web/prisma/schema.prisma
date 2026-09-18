@@ -102,3 +102,167 @@ model AlertSubscriber {
   /// est supprimée au bout de 30 jours."
   @@index([confirmedAt, createdAt])
 }
+
+// ---------------------------------------------------------------------------
+// FW21 INCREMENT 1: the person, their device, and the auth tables.
+//
+// RULING R187: A SCHEMA IS A CONTRACT WITH A CLIENT THAT CANNOT BE REDEPLOYED.
+// From this task the Android app is a consumer. A column renamed later is a
+// migration, plus an app release, plus every version still in the field
+// calling the old shape. So every field below is either in SPEC 8 or named in
+// REPORT-FW21.txt with its reason. Nothing is here because it might be wanted:
+// an unused column is a promise to a client that will eventually read it.
+// ---------------------------------------------------------------------------
+
+enum DenominatorKind {
+  SIMPLIFIED240
+  EXACT
+}
+
+/// D9. Whether this reader logs whole days or halves.
+enum LogGranularity {
+  DAY
+  HALF_DAY
+}
+
+/// D15 / D19.
+enum LoggingMode {
+  MANUAL
+  AUTO_DETECT
+}
+
+/// The person whose days these are.
+model User {
+  id String @id @default(cuid())
+
+  /// D33 - RESERVED, NO FEATURES BUILT. SPEC 8 carries it, and it is added now
+  /// because adding a nullable column later is a migration on a table holding
+  /// real rows, while adding it here costs nothing: no index, no constraint,
+  /// and no code path reads it. It is the one field in this file that exists
+  /// for a future, and it is in SPEC rather than invented.
+  organizationId String?
+
+  email         String    @unique
+  emailVerified DateTime?
+  name          String?
+
+  /// Canton code. Null until onboarding - the calculator asks for it, the
+  /// account does not have it until the reader says.
+  canton String?
+
+  /// 1-100. Enforced by a CHECK constraint in the migration rather than only
+  /// in Zod, for the reason the absence rule is: a rule that lives only in
+  /// application code is a rule the next writer can bypass.
+  employmentRate Int @default(100)
+
+  denominatorKind DenominatorKind @default(SIMPLIFIED240)
+
+  /// Required iff denominatorKind = EXACT. Also a CHECK constraint.
+  exactTotalWorkDays Int?
+
+  granularity LogGranularity @default(DAY)
+  loggingMode LoggingMode    @default(MANUAL)
+
+  /// When background-location consent was given. Null means never, and SPEC 13
+  /// forbids detection without it.
+  detectionConsentAt DateTime?
+
+  /// Sets periodFraction for the year.
+  activityStartDate DateTime?
+
+  /// HH:mm, Europe/Paris.
+  ///
+  /// A STRING RATHER THAN A DateTime because it is a wall-clock time, not an
+  /// instant. "17:30" means half past five where the reader lives, on both
+  /// sides of a DST boundary - which a timestamp cannot say without carrying a
+  /// date nobody meant.
+  reminderTime String @default("17:30")
+
+  /// True only after push permission is granted, so the scheduler never has to
+  /// ask whether a device will accept what it sends.
+  reminderEnabled Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  devices  Device[]
+  accounts Account[]
+  sessions Session[]
+}
+
+/// D21. Replaces the PushSubscription a web-push design would have needed.
+model Device {
+  id     String @id @default(cuid())
+  userId String
+
+  fcmToken   String  @unique
+  platform   String  @default("android")
+  appVersion String?
+
+  lastSeenAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// AUTH.JS TABLES.
+//
+// SPEC 8 omits them "for brevity" and names them: Account, Session,
+// VerificationToken. They are written here from the Auth.js Prisma adapter's
+// PUBLISHED schema.
+//
+// AND THAT IS A BOTTLENECK, RECORDED AS phase4parking.md P4-1. No Auth.js
+// package is installed - auth is FW22 - so "as its adapter requires" cannot be
+// VERIFIED in this task, only transcribed from documentation. Installing the
+// adapter to check is a dependency addition, which SPEC 20 makes ask-first and
+// which this task's scope excludes. FW22's first job is to assert the shipped
+// shape against the installed adapter: the R185 mechanism, generated or
+// asserted, never argued.
+//
+// NO `image` COLUMN ON User. The adapter's AdapterUser type carries one;
+// nothing in SPEC 8 and nothing in this product displays an avatar, and R187
+// says an unused column is a promise to a client that will eventually read it.
+// If FW22 finds the adapter needs it, it is one nullable column on a table
+// that will still be empty.
+// ---------------------------------------------------------------------------
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}

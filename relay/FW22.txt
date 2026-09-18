@@ -1,0 +1,76 @@
+FW22 SESSION PROMPT - Mon Releve
+Read relay/PHASE-4-PROTOCOL.txt first, from disk.
+
+====================================================================
+CONTEXT
+====================================================================
+FW22 ONLY: authentication. Passwordless throughout (D6, D23). There is
+NO signed-in web area (D14) - auth exists so the Android client can
+call /api/v1. The web never authenticates and sets no cookie on a
+public route.
+
+Read: SPEC 3 (Auth.js, Resend), SPEC 10 (auth), SPEC 8 (User, Auth
+tables), SPEC 20; REPORT-FW21.txt; parking.md.
+
+WHAT CANNOT BE FINISHED TONIGHT, and it is expected: the Android App
+Link callback needs ANDROID_PACKAGE_NAME and the SHA-256 certificate
+fingerprints, which do not exist until AN14. Build the token flow and
+test it with a FAKE DEVICE CLIENT; park assetlinks.json as PARK4-<n>
+with NEEDS naming exactly what AN14 must supply.
+
+====================================================================
+ACCEPTANCE CRITERIA
+====================================================================
+AC1. A magic-link round trip completes end to end against the fake
+     outbox and a fake device client: request -> email -> callback ->
+     access token + refresh token. Refresh rotates; sign-out revokes;
+     a revoked refresh token is rejected.
+AC2. The magic-link request does not reveal whether an address is
+     registered - identical response and identical timing envelope
+     for known and unknown addresses. Asserted.
+AC3. No cookie is set on any public route; the zero-cookie trace that
+     has passed since FW1 still passes. /api/v1 accepts a bearer
+     token and nothing else - no cookie, no body field, no query
+     parameter carries identity.
+
+====================================================================
+INCREMENTS
+====================================================================
+1. Auth.js v5 with the Resend email provider and the Prisma adapter;
+   trustHost true. The email from lib/fr, short and plain, with the
+   single-use link and one line saying what it is for. Rate limit the
+   request by IP and by address. RED first per behaviour.
+   Commit: "FW22: magic link request and delivery".
+2. The callback and token issuance: a short-lived access token (state
+   its lifetime and why) and an opaque refresh token stored hashed in
+   the database with rotation on use. A reused refresh token
+   invalidates the whole chain and is logged as a security event -
+   state the policy you chose.
+   Commit: "FW22: token issuance and rotation".
+3. /api/v1 bearer middleware: resolves the user, rejects missing,
+   malformed, expired and revoked tokens with stable codes. A route
+   handler receives a userId and can obtain identity NOWHERE else -
+   prove it by planting a body-supplied userId and asserting it is
+   ignored (R180: verify the plant landed).
+   Commit: "FW22: bearer middleware and tenancy".
+4. Sign-out and revoke-all endpoints; the device registers its token
+   pair against a Device row (FW21) so revoke-all can enumerate.
+   Commit: "FW22: sign-out and revoke".
+5. assetlinks.json: the route exists and reads ANDROID_PACKAGE_NAME
+   and ANDROID_SHA256_CERT_FINGERPRINTS from the environment; with
+   them unset it returns 404 rather than an empty statement list - an
+   empty assetlinks is a published claim that no app is associated,
+   which is worse than absent. Park the real values.
+   Commit: "FW22: assetlinks route, values parked".
+6. Walkthrough (R176): drive the whole flow with curl against
+   pnpm dev - request a link, read the fake outbox, follow it, call
+   /api/v1 with the token, refresh, revoke, call again and see it
+   rejected. Report what each step returned.
+   Commit: "FW22: walkthrough and report".
+
+OUT OF SCOPE: any entries route (FW23), any web sign-in page, any
+real device, any FCM.
+
+REPORT: SUMMARY / PRECONDITIONS / RED-GREEN LEDGER / TOKEN POLICY
+(lifetimes, rotation, reuse) / ENUMERATION PROOF / TENANCY PROOF /
+PARKED / WALKTHROUGH / DEVIATIONS / NOTICED / QUESTIONS / PUSH PROOF

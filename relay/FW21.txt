@@ -1,0 +1,192 @@
+FW21 SESSION PROMPT - frontalier
+Paste as the first message of a fresh Claude Code session at the
+repository root.
+
+====================================================================
+PRE-STEP RULINGS (apply verbatim)
+====================================================================
+R1 (discharged). CI green on origin/main: verify, record the run URL.
+R2, R7-R8, R10-R13, R15-R185 (carried). R9: you own document edits.
+R156: park, do not stop. R169/R177 govern every browser run.
+R176: the task ends with the server run and driven.
+
+R186 (new, and it corrects a wiring you flagged). A PRODUCT_STATE FLAG
+   ASSERTS A USER-FACING CAPABILITY, AND ITS PROXY IS THE LAST THING
+   THAT MAKES THAT CAPABILITY TRUE, NEVER THE FIRST.
+   trackerExists currently asserts against /^\s*model\s+Entry\b/m in
+   prisma/schema.prisma. A table is not a tracker: nobody can record a
+   day until an API, a client and a release exist. As wired, this
+   task's schema commit would turn four public pages from honest to
+   false - the exact defect R172 was created to prevent, reintroduced
+   by its own detector.
+   INCREMENT 0 FIXES THE TEST, NOT THE COPY. trackerExists means "a
+   user can record a day" and its proxy becomes the released Android
+   client (AN14); dossierExists means "a user can export the
+   document" and keeps its print-route proxy, which was already
+   correct. Audit every other flag the same way and report each
+   flag's capability sentence beside its proxy.
+   FW21 FLIPS NOTHING. If any flag would flip in this task, stop and
+   report - it means a capability shipped that this task did not
+   build.
+
+R187 (new). A SCHEMA IS A CONTRACT WITH A CLIENT THAT CANNOT BE
+   REDEPLOYED. From this task the Android app is a consumer: a column
+   renamed later is a migration plus an app release plus every
+   version in the field still calling the old shape. Every field in
+   this schema is therefore either specified in SPEC 8 or justified
+   in the report by name. Nothing speculative, nothing "we might
+   want" - an unused column is a promise to a client that will
+   eventually read it.
+
+====================================================================
+CONTEXT
+====================================================================
+You are executing FW21 ONLY: the full Prisma schema per SPEC 8 (v2.1),
+its migrations, and a seed. This opens the backend phase and is the
+last task before the API contract freezes for the Android client at
+FW23.
+
+FW14 already introduced Prisma, Postgres and AlertSubscriber with a CI
+database. This task adds everything else and must not disturb what
+FW14 shipped: the alert list is live, its privacy map is published,
+and a migration that breaks it breaks a promise on /confidentialite.
+
+Read first: CLAUDE.md, README.md, SPEC 8 IN FULL (the data model, the
+timestamp rules, the provenance rules), SPEC 3 (backend stack), SPEC
+13.2 (what sync will send), SPEC 20; tasks/todo.md FW21; parking.md;
+REPORT-FW20b.txt and REPORT-FW14.txt.
+
+Standing protocol as in relay/FW18.txt. Exit artifact:
+REPORT-FW21.txt, committed and pushed.
+
+====================================================================
+INCREMENT 0 - R186, and the flag audit
+====================================================================
+- Retarget trackerExists per R186; audit every flag; report each
+  flag's capability sentence beside its proxy.
+- Prove it: with the Entry model present (stub the check), no public
+  copy changes. That assertion is the whole point of the increment.
+- Commit: "FW21: PRODUCT_STATE flags assert capability, not
+  implementation (R186)". Push.
+
+====================================================================
+TASK FW21 - THE FULL SCHEMA
+====================================================================
+AC1. Migration applies cleanly on an EMPTY database and on an
+     FW14-era one carrying live AlertSubscriber rows. Both proven -
+     the second by seeding FW14's shape first, then migrating.
+AC2. EntryEvent is effectively append-only and Entry.firstRecordedAt
+     immutable - an attempted UPDATE on either fails, proven at the
+     database level, not by convention in application code.
+AC3. pnpm db:seed produces the demo year: every provenance value,
+     both flag cases (late and on-time), an offline-synced entry with
+     both timestamps, at least one absence of each reason, and one
+     unrecorded working day.
+
+--------------------------------------------------------------------
+INCREMENT 1 - User, Device, and the reserved column
+--------------------------------------------------------------------
+- User per SPEC 8: email unique, emailVerified, name, canton,
+  employmentRate, denominatorKind, exactTotalWorkDays, granularity
+  (DAY | HALF_DAY), activityStartDate, reminderTime, reminderEnabled,
+  loggingMode (MANUAL | AUTO_DETECT), detectionConsentAt, and the
+  nullable organizationId (D33 - reserved, no features built; the
+  report states that it is reserved and why it is cheaper now).
+- Device replacing PushSubscription: fcmToken unique, platform,
+  appVersion, lastSeenAt.
+- Auth.js tables as its adapter requires.
+- R187: every field named above is in SPEC 8. Anything you add beyond
+  it is justified in the report by name or is not added.
+- Commit: "FW21: User, Device, Auth tables". Push.
+
+--------------------------------------------------------------------
+INCREMENT 2 - Entry, with provenance and the mutation id
+--------------------------------------------------------------------
+- Entry per SPEC 8 v2.1: userId, dayDate (@db.Date, Europe/Paris
+  semantics), portion (FULL | AM | PM), kind (CH | HOME | MISSION_FR
+  | MISSION_THIRD | ABSENT), absenceReason (required iff kind =
+  ABSENT - enforce it, do not merely document it), note,
+  clientMutationId unique, provenance (MANUAL | DETECTED_CONFIRMED |
+  DETECTED_CORRECTED), detectedKind, detectedAt, clientClaimedAt,
+  firstRecordedAt, updatedAt.
+- Unique on (userId, dayDate, portion); index on (userId, dayDate).
+- THE ABSENCE RULE IS A DATABASE CONCERN, not only an application
+  one: a check constraint or equivalent so an ABSENT row without a
+  reason, or a non-ABSENT row with one, cannot exist.
+- Commit: "FW21: Entry with provenance and mutation id". Push.
+
+--------------------------------------------------------------------
+INCREMENT 3 - EntryEvent, append-only and immutability
+--------------------------------------------------------------------
+- EntryEvent per SPEC 8: userId, entryId, action (CREATED |
+  MODIFIED), kind, provenance, detectedKind, dayDate, portion,
+  recordedAt, clientClaimedAt.
+- AC2's enforcement at the database level: a rule or trigger that
+  rejects UPDATE and DELETE on EntryEvent, and rejects any UPDATE
+  that changes Entry.firstRecordedAt. Prove each by attempting it and
+  capturing the rejection - this is the evidence layer's foundation
+  and a convention in a service file is not enforcement.
+- Commit: "FW21: EntryEvent, append-only, with immutable first
+  timestamp". Push.
+
+--------------------------------------------------------------------
+INCREMENT 4 - migrations against a live FW14 database
+--------------------------------------------------------------------
+- AC1's second half: seed FW14's AlertSubscriber shape with confirmed
+  and unconfirmed rows, apply the migration, assert every row
+  survives with its confirmedAt and unsubscribedAt intact.
+- The FW14 privacy map's claims about the alert list must still hold
+  after migration - re-run its tests and say so.
+- Commit: "FW21: migration proven against an FW14-era database".
+  Push.
+
+--------------------------------------------------------------------
+INCREMENT 5 - the seed
+--------------------------------------------------------------------
+- AC3's demo year, and it is not decoration: FW24, FW25 and FW27 all
+  assert against it, so it is a fixture. Its shape is documented in
+  the file's header.
+- It must include the cases that have caught defects before: a
+  corrected detection, an entry recorded more than seven days late, a
+  synced-offline entry with clientClaimedAt earlier than
+  firstRecordedAt, an absence of each reason, a half-day pair, and a
+  working day with no entry.
+- R120: include a case where two derivations of the same figure
+  DISAGREE, so a later test cannot pass by using the wrong one - the
+  FW12 tile defect is the precedent.
+- The seed refuses to run against a non-local database host (FW14's
+  precedent) and uses @example.com addresses.
+- Commit: "FW21: the demo-year seed". Push.
+
+--------------------------------------------------------------------
+INCREMENT 6 - CI, walkthrough, report
+--------------------------------------------------------------------
+- CI applies migrations and runs the database suites; gate:clean once
+  (R139 - schema and build steps changed).
+- WALKTHROUGH (R176): with the seed applied, open Prisma Studio or
+  query directly and confirm the demo year looks like a year a person
+  lived - the late entry, the correction, the absence, the gap. The
+  walkthrough here is against the DATA, since this task renders
+  nothing. Report what you looked at.
+- Confirm no public copy changed (R186) and no flag flipped.
+- Commit: "FW21: CI database, walkthrough, report". Push.
+
+====================================================================
+OUT OF SCOPE
+====================================================================
+- Any API route - FW23. Auth flows - FW22. The dossier - FW24.
+- Any client. Any flag flip. Any engine change.
+- Any column not in SPEC 8 without a named justification (R187).
+
+====================================================================
+REPORT FORMAT - REPORT-FW21.txt
+====================================================================
+SUMMARY / PRECONDITIONS / FLAG AUDIT (each flag: capability sentence,
+proxy, why the proxy is last) / RED-GREEN LEDGER / SCHEMA JUSTIFICATION
+(every field: SPEC 8 reference or named reason, R187) / IMMUTABILITY
+PROOFS (the rejected UPDATE and DELETE attempts) / MIGRATION (empty
+database and FW14-era, with the alert rows intact) / SEED SHAPE /
+WALKTHROUGH / PARKED / DEVIATIONS / NOTICED BUT NOT TOUCHING /
+QUESTIONS / PUSH PROOF
+
+END OF FW21 PROMPT

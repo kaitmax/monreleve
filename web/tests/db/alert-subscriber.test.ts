@@ -139,11 +139,16 @@ describe('the row, and the constraint that keeps it one row', () => {
     expect(row.createdAt).toBeInstanceOf(Date);
   });
 
-  it('is the only table this task created', async () => {
-    // SPEC section 8 defines six models and FW14 builds ONE. A schema is a
-    // promise about what exists, and a User table with no auth behind it is a
-    // promise this task has not kept. Asserted against the database rather
-    // than the schema file, because the database is what is true.
+  it('sits among exactly the tables the schema has grown to', async () => {
+    // FW14 BUILT ONE TABLE AND ASSERTED SO: "SPEC section 8 defines six models
+    // and FW14 builds ONE. A schema is a promise about what exists, and a User
+    // table with no auth behind it is a promise this task has not kept."
+    //
+    // FW21 KEEPS THAT PROMISE, so the list grows - and it is still a list
+    // rather than a count, for FW14's reason: a count of seven is satisfied by
+    // any seven, and the table that would quietly appear is the one nobody
+    // meant to add. Asserted against the DATABASE rather than the schema file,
+    // because the database is what is true.
     const tables = await prisma.$queryRaw<{ table_name: string }[]>`
       SELECT table_name FROM information_schema.tables
       WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
@@ -154,7 +159,16 @@ describe('the row, and the constraint that keeps it one row', () => {
     // "_prisma_migrations" - a true fact about PostgreSQL that has nothing to
     // do with what this test is asking.
     expect(tables.map((row) => row.table_name).sort()).toEqual([
+      // Auth.js, written from its published adapter schema. phase4parking.md
+      // P4-1: the adapter is not installed, so the shape is transcribed rather
+      // than verified, and FW22 is where it gets checked.
+      'Account',
       'AlertSubscriber',
+      // D21, replacing the PushSubscription a web-push design would need.
+      'Device',
+      'Session',
+      'User',
+      'VerificationToken',
       '_prisma_migrations',
     ]);
   });

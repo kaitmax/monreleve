@@ -1,0 +1,70 @@
+FW23 SESSION PROMPT - Mon Releve
+Read relay/PHASE-4-PROTOCOL.txt first, from disk.
+
+====================================================================
+CONTEXT
+====================================================================
+FW23 ONLY: the entries API. THIS TASK FREEZES THE CONTRACT the Android
+client will call. R187 applies at full force: a field renamed after
+AN5 ships costs a migration, an app release, and every version in the
+field still sending the old shape.
+
+Read: SPEC 8 (the timestamp and provenance rules, verbatim), SPEC 13.2
+(what sync will send), SPEC 20; REPORT-FW21.txt and REPORT-FW22.txt.
+
+====================================================================
+ACCEPTANCE CRITERIA
+====================================================================
+AC1. POST /api/v1/entries accepts a BATCH and assigns recordedAt and
+     firstRecordedAt from the SERVER CLOCK. A payload attempting to
+     set either is rejected or ignored - proven, with the server value
+     winning. clientClaimedAt is stored verbatim when supplied.
+AC2. A payload containing latitude, longitude, accuracy, altitude,
+     speed, heading or a provider name is REJECTED with 400. The test
+     asserting this is named so it cannot be deleted quietly, and it
+     covers nested and unknown-key forms.
+AC3. Every write appends an EntryEvent; editing preserves
+     firstRecordedAt and detectedKind; a replayed batch carrying a
+     seen clientMutationId writes no row and no event and is
+     acknowledged, not errored.
+
+====================================================================
+INCREMENTS
+====================================================================
+1. The payload contract: zod schema for the batch item -
+   clientMutationId, dayDate (ISO day string, R28), portion, kind,
+   absenceReason (required iff ABSENT), note, provenance,
+   detectedKind, detectedAt, clientClaimedAt. UNKNOWN KEYS ARE
+   REJECTED, not stripped - a client sending a field we do not know
+   is a client we disagree with. RED first.
+   Commit: "FW23: the entries payload contract".
+2. Coordinate rejection (AC2), including a nested object and an
+   unknown key whose name contains 'lat' - prove the plant landed.
+   Commit: "FW23: coordinate rejection".
+3. The write path: upsert on (userId, dayDate, portion), latest
+   server receipt wins for kind, EntryEvent appended per write,
+   clientMutationId deduplication, tenancy from the token only.
+   Day boundaries in Europe/Paris with unit tests at BOTH DST
+   transitions.
+   Commit: "FW23: the write path".
+4. GET /api/v1/entries?year= : the user's entries for a year, ordered,
+   with every stored timestamp and provenance field. No aggregation
+   here - that is FW24.
+   Commit: "FW23: the read path".
+5. THE CONTRACT DOCUMENT: docs/api-v1.md - every route, every field,
+   every error code, with a sentence per field saying what a client
+   may assume. A test asserts the document lists exactly the fields
+   the schema accepts, so the two cannot drift (the FW15 identity
+   pattern).
+   Commit: "FW23: the /v1 contract document".
+6. Walkthrough (R176) with curl: post a batch, replay it, edit a day,
+   attempt a coordinate, attempt a foreign userId, read the year back.
+   Report each response.
+   Commit: "FW23: walkthrough and report".
+
+OUT OF SCOPE: the dossier (FW24), exports (FW25), any client.
+
+REPORT: SUMMARY / PRECONDITIONS / RED-GREEN LEDGER / CONTRACT (the
+frozen field list) / SERVER CLOCK PROOF / COORDINATE REJECTION PROOF /
+IDEMPOTENCY PROOF / DST TESTS / PARKED / WALKTHROUGH / DEVIATIONS /
+NOTICED / QUESTIONS / PUSH PROOF

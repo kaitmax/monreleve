@@ -1,0 +1,85 @@
+PHASE 4 STANDING PROTOCOL - Mon Releve (backend and API)
+Referenced by relay/FW22.txt through relay/FW29.txt. Read once at the
+start of the night and re-read from disk before each task.
+
+====================================================================
+CARRIED RULINGS
+====================================================================
+R1 (discharged). CI green on origin/main: verify per task, record the
+   run URL.
+R2, R7-R8, R10-R13, R15-R192 (all carried). The engine is closed.
+R9: you own document edits. R169/R177 govern every browser run.
+R176/R177: every task ends with the server run and driven, against
+   pnpm dev, and the report carries a WALKTHROUGH.
+R187: from FW21 the schema is a contract with a client that cannot be
+   redeployed. The same now applies to every /api/v1 route.
+
+====================================================================
+THE PARKING RULE FOR THIS PHASE (R156, with a phase-specific file)
+====================================================================
+The operator is asleep. An open question does NOT stop the task.
+  (1) Take the CONSERVATIVE, REVERSIBLE option - the one that claims
+      less, ships less, and can be changed tomorrow without a
+      migration, a 301, a published correction, or an app release.
+  (2) Record it in Phase4parking.md at the repo root, entries
+      numbered PARK4-<n>, in the format below.
+  (3) Continue.
+
+PARK: a missing credential (build the seam, fake the transport, park
+  the real one); a missing external artefact (assetlinks fingerprints,
+  a licence, a domain); copy wording; a token value already in a
+  brief; a test's strictness; a component shape; a hedge-versus-state
+  decision on an unverified claim.
+
+DO NOT PARK - STOP AND WRITE THE REPORT:
+  - anything PERMANENT: an /api/v1 route shape, a field name, a
+    database column needing a migration, a slug, an anchor;
+  - anything that would PUBLISH A FALSE OR UNSOURCED CLAIM, including
+    a privacy claim on /confidentialite that the code does not make
+    true;
+  - a gate, budget or threshold change;
+  - a new runtime dependency;
+  - a red commit or a failing gate you cannot fix inside the
+    increment;
+  - anything touching lib/calc-engine;
+  - anything that weakens an evidence property: server-assigned
+    timestamps, append-only EntryEvent, immutable firstRecordedAt,
+    coordinate rejection.
+
+Phase4parking.md entry format, appended, newest last:
+  ## PARK4-<n> - <one-line title>  [FW<task>, <date>]
+  QUESTION:  what was unclear, in two sentences.
+  TAKEN:     the conservative option, and why it is reversible.
+  NOT TAKEN: the alternative, and what it would cost to switch.
+  TOUCHES:   files, tests and migrations a switch would change.
+  NEEDS:     what the operator must supply to close it.
+
+====================================================================
+STANDING PROTOCOL
+====================================================================
+1. ONE TASK PER PROMPT. Do not start the next.
+2. INCREMENTS: implement -> test -> verify -> commit -> push. Green
+   after every increment, on the suites the selector chooses
+   (R132/R140/R144).
+3. COMMIT ONLY ON GREEN, chained with && (R15). A red commit is a
+   bounce.
+4. COMMITS: "FW<n>: <increment title>"; "chore: <title>" for rulings.
+5. SIMPLICITY FIRST. No abstraction before the third use. No ORM
+   wrapper over Prisma, no queue abstraction, no admin UI.
+6. TEST-FIRST with a RED row per behaviour. R96 codepoint literals,
+   R119 singletons by count, R120 fixtures must disagree, R133
+   positive signals, R154 mechanisms prove delivery, R180 verify the
+   plant.
+7. THE API IS THE PRODUCT'S CONTRACT. Every route is /api/v1.
+   Tenancy comes from the token, never from a body field. Errors are
+   French where a human reads them and stable codes where a client
+   does.
+8. EVIDENCE PROPERTIES ARE NOT NEGOTIABLE (SPEC 8): the server
+   assigns recordedAt and firstRecordedAt; EntryEvent is append-only;
+   no payload carrying a coordinate is accepted; ABSENT never reaches
+   the engine.
+9. QUESTIONS: R156 - park and continue, or stop per its boundary.
+10. EXIT ARTIFACT: REPORT-FW<n>.txt, committed and pushed, in the
+    report format the task names.
+
+Pure ASCII in prompts and reports. Code carries accented French.

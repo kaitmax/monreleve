@@ -1,0 +1,69 @@
+FW24 SESSION PROMPT - Mon Releve
+Read relay/PHASE-4-PROTOCOL.txt first, from disk.
+
+====================================================================
+CONTEXT
+====================================================================
+FW24 ONLY: the dossier service. GET /api/v1/dossier?year= returns the
+computed statement the Android Releve screen renders and the PDF
+prints. This is where the engine's output becomes the document.
+
+Read: SPEC 12 (the dossier, verbatim), SPEC 7 (the engine's API),
+SPEC 8, SPEC 20; fixtures/geneva-cases.json; REPORT-FW23.txt.
+
+====================================================================
+ACCEPTANCE CRITERIA
+====================================================================
+AC1. For the seeded year, the metrics and EVERY monthly cumulative
+     percentage match a direct calculateTelework call exactly,
+     including truncation - 12,91 % and not 12,92 %. Asserted against
+     codepoint literals (R96).
+AC2. ABSENT rows never reach the engine: engine output is identical
+     for the seeded year with and without them, and absences are
+     counted once in the identification block as "Absences
+     declarees".
+AC3. The annex includes GAP ROWS - a working day with no entry is
+     returned as "Non renseigne", never omitted - and every entry
+     carries its provenance in words, its first timestamp, its
+     last-modified when different, its clientClaimedAt when synced
+     offline, and its late flag.
+
+====================================================================
+INCREMENTS
+====================================================================
+1. Aggregation: entries for a year -> TeleworkInput. HOME is
+   telework; MISSION_FR and MISSION_THIRD stay separate; FULL is 1
+   and AM/PM are 0,5; granularity and denominator from User;
+   periodFraction from activityStartDate; taxYear from the requested
+   year, and RULE_SET_FALLBACK surfaces when it differs (R11).
+   ABSENT filtered before the engine sees anything. RED first.
+   Commit: "FW24: aggregation to TeleworkInput".
+2. The monthly breakdown: Suisse / Domicile / Mission FR / Mission
+   tiers / cumulative declarable percentage, chronological.
+   R120: the fixture set must include a month where two derivations
+   of the same figure disagree, so a test cannot pass by using the
+   wrong one - the FW12 tile defect is the precedent.
+   Commit: "FW24: the monthly breakdown".
+3. The evidence annex: every entry plus gap rows, with provenance
+   rendered as a French phrase rather than an enum leaked to the
+   client. Late flag derived from firstRecordedAt - dayDate > 7 days.
+   Commit: "FW24: the evidence annex".
+4. The payload: identification block (titulaire, canton, taux,
+   methode, mode d'enregistrement, periode, absences declarees,
+   generated at), four metrics, the engine result, the monthly table,
+   the annex, and the provisional flag when the year is not closed.
+   A year with no entries returns an honest empty payload, not zeros.
+   Commit: "FW24: the dossier payload".
+5. docs/api-v1.md extended; the drift test still passes.
+   Commit: "FW24: contract document".
+6. Walkthrough (R176): fetch the dossier for the seeded year and read
+   it. Does it describe a year a person lived? Check one month by
+   hand against the seed. Report what you checked.
+   Commit: "FW24: walkthrough and report".
+
+OUT OF SCOPE: CSV, the print route, the PDF (all FW25). Any client.
+
+REPORT: SUMMARY / PRECONDITIONS / RED-GREEN LEDGER / ENGINE PARITY
+(the hand-checked month) / ABSENCE ISOLATION PROOF / GAP ROWS /
+TRUNCATION (codepoint literals) / PARKED / WALKTHROUGH / DEVIATIONS /
+NOTICED / QUESTIONS / PUSH PROOF
