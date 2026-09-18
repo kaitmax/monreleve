@@ -360,11 +360,19 @@ try {
   // Playwright output. It happened once, when this distDir was added without
   // its volume: eslint then reported 6 568 errors from generated files. So it
   // is reported rather than silently cleaned.
+  // READ ONCE, HERE, so the R208 block below can ask what the RUNNER said
+  // rather than what the working tree looks like. An absent log is an empty
+  // string: the container copies it out at the end, so a run that died during
+  // install leaves none - which is exactly the case R208 exists for, and an
+  // empty string yields zero written snapshots rather than a false list.
+  const logPath = resolve(WEB, RUN_LOG);
+  const printedForUpdate = existsSync(logPath) ? readFileSync(logPath, 'utf8') : '';
+  const runFailed = process.exitCode === 1;
+
   // R133. Only when the run itself succeeded: a failed run has already
   // said why, and a second complaint about its count would bury that.
-  if (process.exitCode !== 1) {
-    const logPath = resolve(WEB, RUN_LOG);
-    const printed = existsSync(logPath) ? readFileSync(logPath, 'utf8') : '';
+  if (!runFailed) {
+    const printed = printedForUpdate;
     const counted = readCount('test:visual', printed, floors.visual);
 
     if (counted.failure !== undefined) {
@@ -384,11 +392,45 @@ try {
   // button into the visual record. Printing it here means the report quotes a
   // list rather than assembling one.
   //
-  // git rather than mtimes: --update-snapshots rewrites every file it
-  // compares, so mtimes would name all 69. What matters is which came out
-  // DIFFERENT.
+  // ========================================================================
+  // R208: THE COUNT COMES FROM THE RUNNER, NEVER FROM `git status`
+  // ========================================================================
+  //
+  // IT USED TO COME FROM git status, AND THAT MADE THIS LINE A LIAR. FW22
+  // ran a regeneration that died with ENOMEM during `pnpm install`, exit code
+  // 1, having taken NO SCREENSHOT AT ALL - and this block still printed
+  //
+  //   R135: 2 baseline(s) regenerated - list these in the report with a
+  //   reason: ...
+  //
+  // naming two files a PREVIOUS run had written, AFTER the failure line. The
+  // sentence exists to be pasted into a report as evidence, so it reported a
+  // regeneration that did not happen, in the one place designed to be quoted.
+  //
+  // `git status` answers "does this differ from HEAD", which is true of a
+  // previous run's output, a hand edit, or a half-finished attempt. It cannot
+  // answer "did THIS run write this", which is the only question R135 asks.
+  //
+  // Playwright answers it directly: it prints a line per snapshot it writes.
+  // That is the positive signal (R133) - specific enough that only an actual
+  // write produces it.
   if (update) {
-    const changed = execFileSync(
+    // Playwright's own wording, both cases: an existing snapshot that changed
+    // and a snapshot that did not exist yet.
+    const WROTE = /^(.*\.png) (?:is re-generated, writing actual|does not exist.*writing actual)/u;
+
+    const wrote = printedForUpdate
+      .split(NEWLINE)
+      .map((line) => WROTE.exec(line.trim()))
+      .filter((match) => match !== null)
+      .map((match) => (match[1] ?? '').replace(/^\/repo\/web\//u, ''))
+      .sort();
+
+    // The second signal, kept but DEMOTED to a cross-check. Where the two
+    // disagree, something outside this run touched a baseline and that is
+    // worth knowing - it is the PARK-15 shape, a tree changing underneath a
+    // regeneration.
+    const differs = execFileSync(
       'git',
       ['status', '--porcelain', '--', 'tests/visual/baselines'],
       { cwd: WEB, encoding: 'utf8' },
@@ -397,16 +439,68 @@ try {
       .map((line) => line.trim())
       .filter((line) => line !== '');
 
-    process.stdout.write(
-      [
-        '',
-        changed.length === 0
-          ? 'R135: no baseline changed. Nothing to state a reason for.'
-          : `R135: ${changed.length} baseline(s) regenerated - list these in the report with a reason:`,
-        ...changed.map((line) => `  ${line}`),
-        '',
-      ].join(NEWLINE),
-    );
+    if (runFailed) {
+      // NO CLAIM IS MADE AT ALL. A failed run cannot have regenerated
+      // anything, and printing a list here is what produced R208.
+      process.stderr.write(
+        [
+          '',
+          'R208: THE RUN FAILED, so no regeneration is claimed.',
+          '',
+          `  ${differs.length} baseline(s) differ from HEAD, and this run did NOT`,
+          '  write them - they are a previous run, a hand edit, or a partial',
+          '  attempt. Check them before trusting the working tree:',
+          ...differs.map((line) => `    ${line}`),
+          '',
+        ].join(NEWLINE),
+      );
+      process.exitCode = 1;
+    } else if (wrote.length === 0) {
+      // R208: ZERO IS LOUD. A regeneration that regenerated nothing is either
+      // a run that did not do what was asked, or a command that should not
+      // have been run. Both deserve a stop rather than a shrug - "no baseline
+      // changed" reads as success and is how a failed run passes for a clean
+      // one.
+      process.stderr.write(
+        [
+          '',
+          'R208: REGENERATION WROTE NOTHING.',
+          '',
+          '  --update-snapshots ran and Playwright reported no snapshot',
+          '  written. Either the pages are identical to their baselines - in',
+          '  which case this command was not the one you wanted - or the run',
+          '  did not reach the comparison.',
+          differs.length === 0
+            ? '  git agrees: no baseline differs from HEAD.'
+            : `  AND YET ${differs.length} baseline(s) differ from HEAD, which this run did not write:`,
+          ...differs.map((line) => `    ${line}`),
+          '',
+        ].join(NEWLINE),
+      );
+      process.exitCode = 1;
+    } else {
+      process.stdout.write(
+        [
+          '',
+          `R135: ${wrote.length} baseline(s) regenerated BY THIS RUN - list these in the report with a reason:`,
+          ...wrote.map((file) => `  ${file}`),
+          '',
+        ].join(NEWLINE),
+      );
+
+      // R207's cross-check, stated rather than assumed equal.
+      if (differs.length !== wrote.length) {
+        process.stdout.write(
+          [
+            `  NOTE: ${differs.length} baseline(s) differ from HEAD but this run wrote ${wrote.length}.`,
+            '  The difference was not made by this run. Investigate before',
+            '  regenerating again (PARK-15: a tree that changed underneath a',
+            '  regeneration certifies whatever it happened to photograph).',
+            '',
+          ].join(NEWLINE),
+        );
+      }
+    }
   }
 
   const host = resolve(WEB, DIST_DIR);
