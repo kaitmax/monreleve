@@ -37,7 +37,6 @@ const STILL_OPEN = [
   'chRepresentative',
   'dpoContact',
   'euRepresentative',
-  'publicationDirector',
 ] as const;
 
 describe('the shipped constants are empty, deliberately', () => {
@@ -76,13 +75,19 @@ describe('the shipped constants are empty, deliberately', () => {
     }
   });
 
-  it('names a natural person nowhere, which is why publicationDirector is empty', () => {
-    // FRENCH LAW WANTS A NAMED PERSON and the operator has not supplied one.
-    // The failure this guards is inference: a git author, a commit trailer or
-    // a company officer read out of Companies House would each be a claim
-    // about somebody's legal responsibility, made by a script.
-    expect(LEGAL_ENTITY.publicationDirector).toBe('');
-    expect(LEGAL_ENTITY.legalName).not.toContain(' ' + 'Ltd,');
+  it('names the natural person French law requires, supplied and not inferred', () => {
+    // THE FIELD FLIPPED ON 18.09.2026 and the rule that kept it empty is the
+    // reason it is trustworthy now: it could only ever be filled by somebody
+    // telling us. A git author, a commit trailer or a Companies House officer
+    // would each have been a claim about a person s legal responsibility made
+    // by a script.
+    //
+    // SO THE ASSERTION IS THAT IT DOES NOT MATCH THE PLACES IT COULD HAVE
+    // BEEN INFERRED FROM. It is not the company, and it is not the git
+    // identity - which is what a future automated fill would reach for.
+    expect(LEGAL_ENTITY.publicationDirector).toBe('Khalid Ait mouna');
+    expect(LEGAL_ENTITY.publicationDirector).not.toBe(LEGAL_ENTITY.legalName);
+    expect(LEGAL_ENTITY.publicationDirector).not.toContain('LTD');
   });
 
   it('is not complete', () => {
@@ -141,7 +146,7 @@ describe('the render helper', () => {
   it('returns the placeholder for an empty field', () => {
     // legalName IS FILLED NOW, so the empty case needs a field that is still
     // open - which is the point of naming them rather than counting them.
-    expect(entityValue(LEGAL_ENTITY, 'publicationDirector')).toBe(LEGAL_PLACEHOLDER);
+    expect(entityValue(LEGAL_ENTITY, 'euRepresentative')).toBe(LEGAL_PLACEHOLDER);
   });
 
   it('returns the value for a filled field', () => {

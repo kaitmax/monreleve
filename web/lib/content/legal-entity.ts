@@ -150,8 +150,21 @@ export const LEGAL_ENTITY: LegalEntity = {
   // test counts them, so the gap cannot be closed by deleting the row.
   // ---------------------------------------------------------------------
 
-  /** A named natural person. Not inferable, and never inferred. */
-  publicationDirector: '',
+  /**
+   * THE NAMED NATURAL PERSON FRENCH LAW REQUIRES, supplied by the operator
+   * on 18.09.2026.
+   *
+   * SPELLED AS THE OPERATOR WROTE IT. A person s name is not French prose and
+   * R155 does not reach it: capitalisation and accents belong to the person,
+   * not to the copy rules, and inventing either would be the same class of
+   * guess R52 forbids one field over.
+   *
+   * IT WAS EMPTY FROM FW10 TO FW20c and it was the last placeholder on
+   * /mentions-legales. The rule that kept it empty - never infer a natural
+   * person from a git author, a commit trailer or a company officer - is why
+   * it could only ever be filled by somebody telling us.
+   */
+  publicationDirector: 'Khalid Ait mouna',
 
   /** GDPR Art. 27. Awaiting legal advice - see PARK-13. */
   euRepresentative: '',
