@@ -145,7 +145,7 @@ describe('the whitespace codepoints in French copy are on the record (R66)', () 
     expect(summary, summary.join(' | ')).toEqual([]);
   });
 
-  it('carries exactly the 39 the typography pass left there', () => {
+  it('carries exactly the 42 the typography pass left there', () => {
     // A count, so that a no-break space arriving or disappearing is a
     // deliberate edit here rather than a silent one. Per file, because a
     // total alone would let one move between files unnoticed.
@@ -155,7 +155,11 @@ describe('the whitespace codepoints in French copy are on the record (R66)', () 
 
     expect(perFile).toEqual({
       'lib/fr/cgu.ts': 7,
-      'lib/fr/confidentialite.ts': 15,
+      // FW22: 15 -> 19. Four arrive with the sessions and credentials added
+      // to the enumeration under « pour votre compte et pour lui seul », and
+      // with the sign-in purpose split out of the alert-list sentence. Each
+      // is a French colon or semicolon in new copy, set the way R91 requires.
+      'lib/fr/confidentialite.ts': 19,
       'lib/fr/errors.ts': 2,
       // FW18b: FOUR BECAME TWO, and the two that left are the point. R147
       // now reaches lib/fr, so the home description no longer types "40 %"
@@ -189,8 +193,14 @@ describe('the whitespace codepoints in French copy are on the record (R66)', () 
       'lib/fr/spike.ts': 6,
       'lib/fr/statuses.ts': 2,
     });
+    // FW22: 38 -> 42, the four added to lib/fr/confidentialite.ts above.
+    //
+    // THE TITLE AND THIS NUMBER NOW AGREE, AND DID NOT BEFORE: the test was
+    // called "exactly the 39" while asserting 38. Harmless, and exactly the
+    // drift a census exists to stop - a name that stops matching what it
+    // counts is the first thing somebody trusts instead of reading.
     // FW20b: 38. One left releve-annuel.ts for n(), as the comment above says.
-    expect(occurrences).toHaveLength(38);
+    expect(occurrences).toHaveLength(42);
   });
 
   it('puts every one of them immediately before : ; ? ! or %', () => {

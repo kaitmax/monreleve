@@ -1,0 +1,791 @@
+====================================================================
+REPORT-FW22.txt - authentication
+Mon Releve / frontalier   2026-09-18
+====================================================================
+
+NOTE ON SPELLING. This report is pure ASCII, as the protocol requires,
+so every French phrase quoted below is transliterated: guillemets
+become double quotes and accents are dropped. R155 - THE ASCII HERE IS
+ILLUSTRATIVE, NEVER A SOURCE. The accented original lives in
+web/lib/fr/confidentialite.ts and is what ships; nothing in this file
+should be copied back into the product.
+
+SUMMARY
+--------------------------------------------------------------------
+Passwordless sign-in for the Android client. A magic link that is
+single-use and consumed atomically; an opaque, revocable token pair
+with rotation and reuse detection; a bearer guard whose refusals name
+the rule that fired; sign-out and revoke-all; an assetlinks route that
+publishes nothing until it can publish something true.
+
+Seven increments, ten commits. Every increment gated; gate:clone run
+before every push (R199). No PRODUCT_STATE flag flipped.
+
+WHAT IS WORTH READING, in order of how much it changed:
+
+1. A TEST THAT COULD ONLY FAIL ONCE, AND DID. The sign-in email
+   addressed /api/v1/auth/callback from increment 2. THE ROUTE DID NOT
+   EXIST until increment 5. Three increments of green: the copy test
+   asserted the message carried one link, the token test asserted
+   single-use atomic consumption, the token-pair test asserted
+   issuance and rotation. Every part correct; no path between them.
+   -> R204.
+
+2. THE PROMPT'S OWN RACE TEST WOULD NOT HAVE CAUGHT THE RACE.
+   Ablated to read-then-delete, "exactly one of TWO concurrent uses"
+   PASSED and "exactly one of TEN" failed with 2 winners. Two racers
+   collide rarely enough to look green.
+
+3. /confidentialite WAS FALSE, NOT MERELY INCOMPLETE. "pour votre
+   compte et pour lui seul" is a CLOSED enumeration, and FW22 stored
+   three things outside it. A closed list is not degraded by an
+   addition; it is falsified. Corrected, and the enumeration now
+   DERIVES from the schema so the next task cannot repeat it.
+
+4. A GUARD THAT REJECTED CORRECTLY AND EXPLAINED ITSELF WRONGLY. The
+   append-only triggers' SQLSTATE made Prisma report "Foreign key
+   constraint violated" for an append-only breach (FW21 carry-over,
+   fixed there; the shape recurred here in how much each endpoint
+   tells its caller, and is now a documented decision per endpoint).
+
+5. THREE FW14-ERA DEFECTS FOUND BY USING THE THING. The outbox that
+   was never printed, the closed email PURPOSE, and "L'application
+   enregistre" for rows the server writes.
+
+BLOCKER: none. CI still cannot run (P4-2, allowance exhausted until
+1 October); gate:clone carries the clean-machine claim per R199/R200.
+
+PRECONDITIONS (R1 as reworded by R200)
+--------------------------------------------------------------------
+There is no CI until October. R1 is now: pnpm gate:clone green on a
+fresh clone of origin/main's HEAD, hash and chain output recorded.
+
+  commit    a8397c7196637c675a041ab1f40bbfc6c61331ce
+  tree      clean - HEAD is everything you have
+  ran       install, typecheck, lint, test, build, size,
+            db:deploy, test:db
+  skipped   test:e2e, test:visual, test:runtime, lighthouse,
+            parity:check   (each NAMED with its reason, R133)
+  result    GATE:CLONE PASSED
+
+  test:db in that clone: 11 files, 169 tests, against a scratch
+  database the clone created and migrated from empty.
+
+THAT RUN SETTLED FW21's FIVE UNVERIFIED COMMITS - 3481026, 7454a9f,
+e8d9600, 9628cc7 and 3bf64a1 - which no runner had ever executed.
+
+INCREMENT 0 - THE CI BUDGET AMENDMENT
+--------------------------------------------------------------------
+0a  gate:clone (R199)                              cb1fd1c
+0b  R1 reworded wherever live (R200)               b06ea35
+0c  the October split, written and disabled (R201) 9f9688e
+0d  P4-2 closed, and my own record corrected       ef08b3d
+
+WHAT gate:clean WAS SHORT OF. It copied `git ls-files` plus untracked
+files into a temp directory and ran install, typecheck, build.
+
+  IT COPIED UNCOMMITTED WORK - correctly, because it ran before a
+  COMMIT. gate:clone runs before a PUSH, the unit that leaves this
+  machine, so it clones HEAD and PRINTS the dirty paths when there are
+  any. A green run that silently excluded your edits is worse than one
+  that says so.
+
+  IT STOPPED AT build. Now: test, size, and the database suites
+  against a scratch database it creates and migrates itself - the
+  difference between "the suites pass"and"the suites pass from empty
+  on a machine with nothing prepared".
+
+IT GENERATES NOTHING ITSELF. The chain calls the project's own
+mechanisms - postinstall generates the Prisma client, build copies the
+fonts - and fails where one is missing. A harness that generated them
+would prove the harness works and hide that the project does not.
+
+THE FIRST RUN PASSED AND WAS WRONG TO TRUST. It reported GATE:CLONE
+PASSED having SKIPPED every database suite: DATABASE_URL lives in
+web/.env and reaches db commands through --env-file-if-exists, never
+the ambient shell. The run whose job was to settle FW21's database
+commits never opened a database.
+
+  THE ONLY REASON I SAW IT IS THAT THE SCRIPT NAMES WHAT IT SKIPPED.
+  The conventional version quietly runs what it can and prints the
+  same PASSED line. R133 earning its place on a script's first run.
+
+TWO MORE DEFECTS IN MY OWN POSITIVE SIGNALS:
+  size       /GATE A|budget|within/i matched the script's explanatory
+             prose rather than its verdict. Now the exact sentence.
+  db:deploy  /migrations? (have been )?applied/ would have FAILED on a
+             SUCCESSFUL deploy - Prisma prints "migration(s) have been
+             applied"and"(s)" sits where that pattern wanted a
+             space. A positive signal that cannot match the success
+             case turns every green run red and teaches the next
+             person to widen it until it means nothing.
+
+R201's SPLIT IS WRITTEN AND DISABLED. Every job is gated on a
+CI_OCTOBER repository variable, so today they SKIP - verified in
+production: the push of ef08b3d produced a run "completed / skipped"
+in 1 second, no minutes, no red tick. The switch is one action and
+touches no file: `gh variable set CI_OCTOBER --body on`.
+
+  THE ALARM IS THE FIRST STEP OF `web` AND WARNS RATHER THAN FAILS.
+  Failing the run that tells you the budget is low spends more budget
+  to say so and buries the figure under a red tick. It also SAYS WHEN
+  IT COULD NOT READ: GITHUB_TOKEN carries no billing scope, so without
+  BILLING_TOKEN the step writes "This run is not evidence that the
+  budget is healthy" to the summary. Silence there would read as
+  health, which is how September was learnt.
+
+0d CORRECTED MY OWN RECORD. FW21 filed the outage as a "payment
+failure" because that is what GitHub's annotation says. The cause was
+the September included-minutes allowance being exhausted. I had
+transcribed a vendor message as a diagnosis and sent the operator to
+check a payment method for a problem that did not exist - R181's
+defect on an operational record, where the NEEDS line is acted on.
+
+P4-1 RESULT - THE ADAPTER, ASSERTED NOT ARGUED
+--------------------------------------------------------------------
+FW21 wrote Account, Session and VerificationToken from the published
+adapter schema and parked the verification. @auth/prisma-adapter
+2.11.3 is now installed and every method the sign-in flow uses was
+CALLED against the real tables: createUser, getUser, getUserByEmail,
+updateUser, linkAccount, getUserByAccount, createSession,
+getSessionAndUser, deleteSession, createVerificationToken,
+useVerificationToken.
+
+THE TRANSCRIPTION WAS RIGHT. Eight tests green, no migration needed.
+User still has no `image` column and the adapter does not need one -
+FW21's R187 judgement holds.
+
+I OVERCLAIMED THE TYPE-LEVEL PROOF AND CORRECTED IT. The first draft
+said `PrismaAdapter(prisma)` typechecking would catch a missing column
+"without a database". IT WOULD NOT: the adapter ships compiled JS plus
+a .d.ts, so TypeScript never re-checks its body against our client.
+`prisma.account.create(...)` inside the package was checked when the
+PACKAGE was built. Ours satisfies the signature because it IS a
+PrismaClient; whether it has an `account` model is not a question the
+signature asks. A SCHEMA MISSING Account ENTIRELY WOULD COMPILE.
+
+  So the runtime tests are the whole of the answer, and the file says
+  so. An assertion that sounds stronger than it is, is the ARGUMENT
+  R185 forbids wearing a type annotation - the same defect P4-1
+  existed to close, one level up.
+
+PROVEN LOAD-BEARING BY TWO ABLATIONS:
+  tables absent (a pre-FW21 database)   all 8 fail, "The table
+                                        public.User does not exist"
+  ONE COLUMN dropped (VerificationToken.expires)
+                                        exactly 1 fails, 7 pass
+The second is the one that matters: COLUMN-level sensitivity, which is
+what P4-1 was about.
+
+RED-GREEN LEDGER
+--------------------------------------------------------------------
+increment 1 - the adapter                          0f328ea
+  RED    8 fail against a pre-FW21 database; 1 fails with one column
+         dropped.
+  GREEN  typecheck 0, lint 0, test 2458, build 0, test:db 177.
+
+increment 2 - magic link                           a95be00
+  RED-1  "Cannot find package '@/lib/auth/magic-link'".
+  RED-2  ABLATION to read-then-delete:
+           exactly one of TWO concurrent uses .... PASSED
+           exactly one of TEN concurrent uses .... FAILED, 2 winners
+         The prompt asks for two. Two would have certified the bug.
+  RED-3  R155 plant: an unaccented word not in the curated list fired
+         nothing; re-planted with a word the list holds, the guard
+         named the file, the form and the context. R180 - verify the
+         plant landed BEFORE reading its result.
+  GREEN  typecheck 0, lint 0, test 2458, build 0, e2e 284,
+         visual 108, test:db 198, late 10.
+
+increment 3 - the token pair                       d1f63b5
+  RED-1  "Cannot find package '@/lib/auth/tokens'".
+  RED-2  reuse -> refuse only the replayed token: 2 fail. "expected
+         { ...(2) } to be null" is the thief's successor still
+         resolving.
+  RED-3  resolveAccessToken skips the session check: 3 fail.
+  GREEN  typecheck 0, lint 0, test 2458, build 0, test:db 213.
+
+increment 4 - bearer and tenancy                   cc5696e
+  RED-1  "Cannot find package '@/lib/auth/bearer'".
+  RED-2  guard taught to trust ?userId= : exactly the query-plant
+         test failed.
+  GREEN  typecheck 0, lint 0, test 2458, build 0, e2e 284,
+         visual 108, test:db 229, late 10.
+
+increment 5 - routes, assetlinks                   1adda74
+  RED    the round-trip suite on its first run: the email addressed a
+         route that did not exist.
+  GREEN  typecheck 0, lint 0, test 2470, build 0, e2e 284,
+         visual 108, test:db 239, late 10.
+
+increment 6 - privacy map, walkthrough, report
+  RED-1  R126 refused the first personal-data map: it held COPIES of
+         the French. See PRIVACY MAP DELTA.
+  RED-2  a planted new column (User.lastKnownIpAddress) failed the
+         derivation guard BY NAME.
+  RED-3  the disclosure fragment renamed in the copy: 2 fail.
+  GREEN  see PUSH PROOF.
+
+TOKEN POLICY
+--------------------------------------------------------------------
+OPAQUE AND REVOCABLE BY ROW, and SPEC 10 decides this rather than
+taste: "the refresh token is only invalidated by sign-out, account
+deletion, or a server-side revoke." A self-contained token stays valid
+until it expires whatever the server decides - there is no un-signing -
+so that sentence would be a promise the architecture cannot keep, and
+FW26's deletion path is where it would be found out. DELETE is a
+complete answer; a signature is not, and a test asserts it: delete the
+user, the access token stops resolving.
+
+  access    15 minutes. Presented on every request, so it is the
+            credential most likely to be captured - a log, a proxy, a
+            crash report - and its lifetime is the window in which a
+            capture is worth anything.
+  refresh   90 days, rotated on every use. SPEC 10: a daily-use app
+            must not demand a login every session. Ninety days is what
+            happens to somebody who stops entirely.
+
+A test asserts access * 10 < refresh: if they converge, the pair has
+stopped being a pair.
+
+STORED AS HASHES, never in clear. Unsalted SHA-256 is right for 32
+random bytes and would be wrong for a password: what is defended
+against is READING the table, not guessing the input.
+
+ROTATION KILLS THE OLD ACCESS TOKEN TOO, or a captured one outlives
+the rotation meant to replace it.
+
+REUSE: THE WHOLE SESSION DIES. A consumed refresh token presented
+again means it was CAPTURED - the legitimate client has moved to the
+successor and has no reason to send the old one. The server cannot
+tell which holder is the thief, so it trusts neither. The real user
+signs in again through an email they control; the thief is left with
+nothing.
+
+  REFUSING ONLY THE REPLAYED TOKEN is the gentler-looking option and
+  is wrong: the thief's stolen SUCCESSOR keeps working.
+
+  DEVIATION: THIS IS A FOURTH WAY A SESSION ENDS, where SPEC 10 names
+  three. SPEC's sentence is about not nagging a daily user; this is
+  about a credential known to be in two hands. Flagged rather than
+  resolved quietly - see QUESTIONS.
+
+RACE PROOF
+--------------------------------------------------------------------
+consumeMagicLink is ONE STATEMENT: deleteMany carries the whole
+validity condition - identifier, hash, not expired - inside its WHERE,
+so the row is matched and removed in the same breath and PostgreSQL's
+count IS the answer to "did I win".
+
+THE ABLATION IS THE PROOF, and it produced the finding of the task:
+
+  implementation          two concurrent    ten concurrent
+  read-then-delete        PASSED            FAILED (2 winners)
+  one-statement delete    passed            passed
+
+The prompt asks for "two concurrent consumptions, exactly one wins".
+ON THIS RUN THAT TEST PASSED AGAINST THE BROKEN IMPLEMENTATION. Only
+the ten-way margin caught it. A race test that has never been seen to
+fail certifies nothing, and a two-way race is thin enough to win by
+luck often enough to look green.
+
+The cases this prevents are not exotic: a mail forwarded to a
+colleague, a link-preview fetcher that follows URLs before a human
+does, a phone retrying a tap on a bad connection.
+
+ENUMERATION PROOF (AC2)
+--------------------------------------------------------------------
+AC2: the request must not reveal whether an address is registered.
+
+FOR THIS PRODUCT MEMBERSHIP IS ITSELF THE SENSITIVE FACT - an account
+implies living in France and working in Switzerland, paired with a tax
+threshold. /confidentialite promises not to enable that inference, so
+an enumerable sign-in form would falsify it on the one endpoint
+everybody touches.
+
+IDENTICAL WORK, NOT AN IDENTICAL MESSAGE. A token row is written and a
+message sent for ANY syntactically valid address, registered or not.
+Whether a User row exists is decided at CONSUMPTION, where no attacker
+is watching. So the identical response rests on an identical code path
+rather than on a timing pad somebody tunes and then stops trusting.
+
+  asserted: the same result object for known and unknown
+  asserted: a VerificationToken row for BOTH
+  asserted: a message in the outbox for BOTH
+  asserted: rate-limited requests answer as served ones do
+
+THE ACCOUNT IS CREATED AT THE CALLBACK, not at the request - the first
+moment somebody has proven they control the address. Creating it
+earlier would let anyone fill the table with addresses they do not
+own, AND would falsify the "identical work" claim, since a new row is
+work an existing address does not need.
+
+TENANCY PROOF
+--------------------------------------------------------------------
+Identity comes from the Authorization header and from NOWHERE ELSE -
+enforced by absence rather than validation: the guard reads one header
+and never looks at the body or the URL, so a later handler cannot
+forget the rule.
+
+THREE PLANTS, EACH VERIFIED TO HAVE LANDED BEFORE ITS RESULT WAS READ
+(R180), because a plant that silently failed produces a passing test
+that gets recorded as proof:
+
+  body      { userId: <victim> }   verified via request.clone().json()
+  query     ?userId=<victim>       verified via new URL(request.url)
+  header    x-user-id: <victim>    verified via headers.get()
+
+All three resolve to the TOKEN's user.
+
+AND A FOURTH TEST THAT HOLDS THEM HONEST: remove the token, leave the
+planted id, and require nothing. Without it, all three would pass
+against a guard that ignored the token too.
+
+ABLATION: the guard taught to prefer ?userId= when offered - exactly
+the query-plant test failed.
+
+ZERO-COOKIE RE-PROOF (AC3)
+--------------------------------------------------------------------
+SPEC 10: "Web never authenticates... no session cookie on any public
+route - the v1 cookie exception (D12) is withdrawn, and the 'zero
+cookies on the public surface' guarantee is total again."
+
+  e2e/analytics.spec.ts   /confidentialite loads no analytics, sets no
+                          cookie, calls no third party - PASSED
+  round-trip suite        Set-Cookie absent from the magic-link
+                          response, the callback response and the
+                          sign-out response, asserted on the RESPONSES
+                          rather than trusted to the absence of cookie
+                          code
+  walkthrough             curl -D showed 0 Set-Cookie headers at every
+                          step
+  callback                Cache-Control: no-store, no-cache,
+                          must-revalidate, private - the URL carries a
+                          credential, so a cached response is a
+                          credential in a shared cache
+
+THERE IS NO CODE PATH THAT COULD SET ONE. No Auth.js handler is
+mounted - see DEVIATIONS.
+
+PRIVACY MAP DELTA
+--------------------------------------------------------------------
+Audited by six agents: every schema column classified, every
+"not personal" verdict adversarially challenged, every sentence about
+accounts/sessions/email judged against the code.
+
+THREE UNDER-DISCLOSURES, all created by FW22:
+
+1. "pour votre compte et pour lui seul" IS A CLOSED ENUMERATION and
+   FW22 stored three things outside it: DeviceSession, SessionToken
+   and VerificationToken. A closed list is not made incomplete by an
+   addition - it is made FALSE. Three items added: vos connexions,
+   les identifiants de connexion (as hashes, with the hashing stated
+   because that is what makes the disclosure bearable), and the
+   confirmation date.
+
+2. " Une adresse e-mail est enregistree UNIQUEMENT ... POUR RECEVOIR
+   LES ALERTES REGLEMENTAIRES " is a closed PURPOSE, and sign-in is
+   now a second one. Worse than a missing item: the sentence attached
+   the alert list's three protections - double opt-in, stored consent
+   date, one-click unsubscribe - to an address recorded for a
+   different reason, where none of them apply. Split into a lead
+   naming two cases and one sentence per case.
+
+3. "L'application Android ... Elle enregistre" - every one of those
+   rows is written by the SERVER, and there is no Android client in
+   this repository. R138 in the VOICE as well as the tense. Now "Ce
+   que le service enregistre pour votre compte".
+
+AND ONE THE AUDIT FOUND THAT I WOULD NOT HAVE: a VerificationToken row
+exists BEFORE any User does, so it cannot be "pour votre compte" -
+there is no compte yet, and for an address nobody signs in with there
+never will be. It is disclosed under the public-site section instead.
+
+THE DURABLE FIX: lib/content/personal-data.ts maps every stored column
+to a disclosure, and its test asserts (1) every column in
+schema.prisma is accounted for, (2) every disclosure appears in the
+notice, (3) NOT_PERSONAL entries carry reasons.
+
+  THE DRIFT HAS A DIRECTION. FW23, FW26, FW27 and AN5 all add columns,
+  and each adds something stored before it adds a sentence - so the
+  notice drifts towards claiming LESS is held than is held, the
+  failure a notice cannot afford. A new column is now a FAILING TEST:
+  planting User.lastKnownIpAddress failed the guard by name.
+
+  NOT_PERSONAL IS ASSERTED EMPTY, not merely empty. All sixty-odd
+  columns were classified and every not-personal verdict challenged;
+  none survived. Asserting emptiness makes the first exemption a
+  deliberate act that must survive the same challenge, rather than the
+  second entry in an established habit.
+
+R126 REFUSED MY FIRST ATTEMPT, AND WAS RIGHT TO. The map held COPIES
+of the French sentences. The tempting fix was to match apostrophe-free
+substrings - "historique des modifications"for"l'historique des
+modifications" - which passes the guard, leaves the duplication
+entirely intact, and then DRIFTS: the guard would go on checking a
+sentence the page no longer renders, green all the way. A GUARD THAT
+VERIFIES STALE TEXT IS WORSE THAN NO GUARD.
+
+  -> R206: one text, one home, referenced by key. The sentences live
+  once in DISCLOSED_RECORDS; the page references them; the map names
+  KEYS. Zero French characters remain in personal-data.ts.
+
+BASELINES REGENERATED (R135, R184, R207)
+--------------------------------------------------------------------
+  M web/tests/visual/baselines/page-confidentialite-desktop.png
+  M web/tests/visual/baselines/page-confidentialite-mobile.png
+
+AND NOTHING ELSE. The set was stated BEFORE the command ran and the
+command produced exactly it (R207).
+
+REASON: /confidentialite's copy changed deliberately - the closed
+enumeration gained three items, the email sentence split into a lead
+and two named cases, the section heading and the third-party paragraph
+moved to the tense and voice the code supports. Desktop 4800 -> 5276,
+mobile 7222 -> 7958, consistent with that much added text.
+
+THE RUN PRINTED SEVEN FAILURE MARKERS ACROSS THREE SNAPSHOTS AND THE
+TALLY SAID TWO. The extra markers were RETRIES of
+guides.visual.spec.ts "desktop / pilier", which timed out at 5000 ms
+taking a screenshot and then passed. Skimming the markers would have
+rewritten a guide baseline under the reason "the privacy page grew" -
+a regeneration certifying something nobody examined, under a reason
+belonging to a different change. -> R207.
+
+CROPPED AND READ, WHICH IS WHAT R135 ACTUALLY ASKS FOR, and it found
+two defects no guard could:
+
+  1. appThirdParty STILL SAID "L'application ne communique..." in
+     the PRESENT TENSE about an application that does not exist - the
+     same R138 defect corrected in appHeading and appIntro, sitting
+     two paragraphs below them. MY OWN HEADING CHANGE MADE IT VISIBLE:
+     while the section was titled "Ce que l'application enregistre"
+     the subject was introduced and the paragraph read as part of it;
+     retitling to "le service" left a sentence talking about a
+     subject the section no longer names. Every guard passed - strings
+     present, typography right, no figure typed.
+
+  2. THE EMAIL SPLIT DID NOT READ AS THREE STATEMENTS. The lead
+     "Une adresse e-mail est enregistree dans deux cas seulement"
+     rendered as a BULLET AT THE SAME LEVEL as the two cases it
+     announces, with the unrelated audience sentence following at that
+     level too. A reader met a promise of two cases and then three
+     more peers; each case began "Pour..." and read as a subordinate
+     clause hunting for its sentence. THE COUNT WAS A PROMISE THE
+     LAYOUT BROKE.
+     Fixed in copy rather than in rendering: " Premier cas, les
+     alertes reglementaires... "and" Second cas, la connexion a
+     l'application... ", so each bullet is self-locating and the text
+     keeps the promise without the rendering having to. Nesting the
+     list would change a shape every section shares.
+
+BOTH ARE ADJACENCY DEFECTS - every element present, individually
+correct, wrong in relation to each other. The same class as FW13's
+share row sitting above the notice that explains it. PRESENCE IS NOT
+PLACEMENT, and the e2e assertions that prove the strings render cannot
+distinguish the two.
+
+R98 THEN REFUSED A REGENERATION, CORRECTLY, AND IT WAS MY ORPHAN.
+Having found defect 2, I stopped the running regeneration so it would
+not photograph a tree I was about to change - PARK-15's shape avoided.
+STOPPING THE SHELL DID NOT STOP THE CONTAINER (R179: a harness kills
+the tree it spawned), so the next regeneration met a live container
+and refused:
+
+  REFUSING TO RUN: 1 container(s) of mcr.microsoft.com/playwright...
+  Two containers share this repository mount. One writes baselines
+  while the other reads them, and neither run says so - the result
+  looks normal and means nothing.
+
+THE BASELINES ON DISK AT THAT MOMENT WERE STALE - written by the first
+regeneration, before both copy fixes - and a second container writing
+alongside them is exactly the state that produces a baseline set
+nobody can account for. The orphan was killed (052ef5a09942) and the
+regeneration re-run against a settled tree and a single container.
+
+Three rulings caught one mistake in sequence: R135 said crop and look,
+which found the defect; PARK-15 said do not photograph a half-edited
+tree, which is why I stopped the run; R98 caught the orphan the stop
+left behind.
+
+AND THEN THE REGENERATION REPORTER LIED, WHICH IS THE FINDING OF THIS
+INCREMENT.
+
+The next run died with `ENOMEM: not enough memory` during `pnpm
+install` inside the container, exit code 1, having taken NO
+screenshots at all. IT STILL PRINTED:
+
+  R135: 2 baseline(s) regenerated - list these in the report with a
+  reason:
+    M web/tests/visual/baselines/page-confidentialite-desktop.png
+    M web/tests/visual/baselines/page-confidentialite-mobile.png
+
+THAT LINE IS COMPUTED FROM `git status`, not from what the run
+produced. The two files differed from HEAD because the FIRST
+regeneration had written them, before either copy fix. So the message
+whose entire purpose is to be pasted into a report as R135 evidence
+reported a regeneration that did not happen.
+
+  It is R133's shape one level up: a positive signal that is not
+  specific enough that only the right thing can produce it. A run that
+  crashes during install emits the same sentence as a run that
+  photographed 108 pages.
+
+CAUGHT ONLY BY CROPPING THE IMAGE. The baseline still read " Pour les
+alertes reglementaires "where the source said" Premier cas ", and
+the height had not moved one pixel from 5276. Every other signal
+reported success, INCLUDING THE ONE WHOSE JOB IS TO REPORT
+REGENERATION.
+
+After the retry: 108 passed, and the baseline is 1440x5302 - the 26 px
+the new copy adds - with the crop confirming "Premier cas" and
+"Second cas". VERIFIED BY READING THE IMAGE, not by reading the
+reporter.
+
+See QUESTIONS for the proposed rule.
+
+WALKTHROUGH (R176/R177)
+--------------------------------------------------------------------
+Against `pnpm dev` on port 3100, driven with curl. R169 first:
+/api/health returned {"service":"monreleve",...} - this product, not
+another. R177: the compiled stylesheet was fetched and non-empty.
+
+  1  POST /api/v1/auth/magic-link
+     -> 202 Accepted, 0 Set-Cookie headers
+     -> "Si un compte existe pour cette adresse, un lien de connexion
+        vient d'y etre envoye..."
+  2  read the outbox from the dev terminal
+     -> subject "Votre lien de connexion Mon Releve"
+     -> one link, "Il est valable 15 minutes et ne fonctionne qu'une
+        seule fois."
+  3  GET the callback
+     -> 200, 0 Set-Cookie, Cache-Control: no-store...
+     -> access expires 14:04:48Z (15 min), refresh 2026-12-17 (90 d)
+  4  GET the callback AGAIN
+     -> 400 invalid_link
+  5  POST /api/v1/auth/refresh
+     -> 200, a new pair, both values different
+  6  the OLD access token
+     -> 401 rotated_token
+  7  REPLAY the old refresh token
+     -> 401 invalid_refresh_token
+  8  the CURRENT access token, obtained honestly at step 5
+     -> 401 revoked_session
+  9  no Authorization header
+     -> 401 missing_token
+ 10  GET /.well-known/assetlinks.json
+     -> 404 {"status":"not_configured"} - NOT an empty array
+ 11  GET /confidentialite
+     -> the corrected enumeration renders
+
+STEP 8 IS THE ONE THAT PROVES THE POLICY rather than the plumbing. The
+token refused there was obtained legitimately by the real client one
+step earlier, and the replay killed it too. Had only step 7 failed,
+the thief's successor would still be working.
+
+FOUR DISTINCT CODES ACROSS FOUR FAILURES, each one the client acts on
+differently - which is the argument for not collapsing them into
+"unauthorized".
+
+A FW14 DEFECT THE WALKTHROUGH EXPOSED. lib/alerts/mailer.ts has always
+said the outbox exists "for `pnpm dev`, where reading the confirmation
+link out of the terminal is how the loop gets exercised without a mail
+provider" - AND NOTHING PRINTED ANYTHING. The loop it describes could
+not be exercised, by anyone, since FW14. R154: a mechanism asserted in
+a comment and never proven to deliver. It now prints, gated on
+NODE_ENV === 'development' AND the absent key, so a production
+instance missing its key gets the existing warning rather than sign-in
+links in its logs, and the suites keep the quiet path.
+
+THE LINK POINTS AT monreleve.ch EVEN IN DEVELOPMENT, and that is
+correct rather than a bug: the App Link is registered against the
+production domain, and deriving the origin from the request Host would
+be host-header injection pointing sign-in links at an attacker's
+domain. The dev loop copies the token across, which is what the
+walkthrough did.
+
+FLAG AUDIT (R186)
+--------------------------------------------------------------------
+NO FLAG FLIPS. Verified against the tree rather than inferred: no
+android/ directory, no app/releve/, no calculateur-lamal-cmu/.
+
+FW22 IS THE MORE TEMPTING NEAR-MISS THAN FW21. It adds the first
+user-shaped artefacts the product has ever had - User, Session,
+Device, DeviceSession, SessionToken, VerificationToken - plus five
+live routes. ANY PROXY PHRASED AS "auth exists", "a User model
+exists", or "there is an API under app/api/v1" FIRES TODAY.
+
+Firing trackerExists would rewrite four public surfaces on a commit
+that ships no user-visible feature: the home page's meta description,
+/a-propos, /releve-annuel, and $legal-01 in every page's footer. The
+fourth is the worst - the server would assert it timestamps
+recordings that no code path can create.
+
+trackerExists' own `last` field names FW22 as the SECOND of five links
+(the entries API, auth, the client, a release). A person can now hold
+an access token. Holding a token is not recording a day.
+
+  Two tasks, two near-misses, zero page edits. That is the empirical
+  case for R186 rather than a theoretical one.
+
+PARKED
+--------------------------------------------------------------------
+P4-1  CLOSED. The adapter is installed and the tables verified; the
+      transcription was right.
+P4-2  CLOSED by relocation, not by CI returning. The September
+      allowance is exhausted; gate:clone carries the claim; R201's
+      split is written and disabled. NEEDS: `gh variable set
+      CI_OCTOBER --body on` on 1 October.
+PARK4-1  Seven OAuth columns on Account that a magic-link-only product
+      may never write. Left in place: they are the adapter's contract
+      rather than fields we invented, no /api/v1 response carries
+      them, and removing them makes adding any OAuth provider a second
+      migration. NEEDS a ruling only if "never OAuth" is certain
+      rather than merely true today.
+PARK4-2  assetlinks.json has no fingerprints until AN14. NEEDS the
+      applicationId and the SHA-256 fingerprints - INCLUDING Google's
+      Play App Signing key if Play re-signs the upload, because a
+      statement naming only the upload key verifies for nobody and
+      fails silently and intermittently.
+
+DEVIATIONS
+--------------------------------------------------------------------
+1. next-auth INSTALLED THEN REMOVED, AND IT NEEDS A RULING.
+   SPEC 3 and SPEC 10 both name "Auth.js v5 ... trustHost: true".
+   SPEC 10 ALSO says the zero-cookie guarantee is TOTAL and D12's
+   exception is WITHDRAWN. Those pull against each other: Auth.js's
+   handlers exist to set a session cookie and redirect a browser, and
+   trustHost configures that path. Under AC3 they cannot be mounted,
+   and with nothing mounted no file imports next-auth -
+   @auth/prisma-adapter does not depend on it either.
+   I resolved toward the guarantee, which is the one with a published
+   promise on /confidentialite behind it. Keeping the package would
+   mean a dependency nothing imports and a config nothing reads, which
+   R187's discipline refuses and which would be a fabricated
+   compliance with the prompt's letter.
+   REVERSIBLE SIDE TAKEN: mounting handlers later is one install plus
+   a route; un-mounting them after the Android client depends on them
+   is not.
+
+2. REUSE DETECTION IS A FOURTH WAY A SESSION ENDS, where SPEC 10
+   names three. See TOKEN POLICY and QUESTIONS.
+
+3. THE CALLBACK AND REFRESH ROUTES LANDED IN INCREMENT 5, not in the
+   increments that built their libraries (2 and 3). AC1 requires the
+   round trip, and the round-trip test is what revealed the callback
+   route had never been written.
+
+4. next-auth 5.0.0-beta.32 IS THE ONLY v5. Noted because "Auth.js v5"
+   in SPEC names a version that has no stable release, and a beta in a
+   dependency list is a decision rather than a detail. Moot while the
+   package is removed; it returns with the ruling on deviation 1.
+
+5. THE R66 CODEPOINT CENSUS TITLE AND TOTAL DISAGREED before this task
+   - "exactly the 39" while asserting 38. Harmless, and exactly the
+   drift a census exists to stop, so they now agree at 42.
+
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------
+1. /confidentialite STILL DESCRIBES THINGS NO CODE WRITES: canton,
+   taux, methode and date de debut (columns exist, only the callback
+   writes a User row and it writes email and emailVerified),
+   the server timestamps (no entries route until FW23), the FCM token
+   (no device registration endpoint). These are OVER-disclosure, the
+   safe direction, and each resolves at the task that builds it. FW22
+   corrected the UNDER-disclosures it created and left these standing
+   rather than rewriting three future tasks' copy.
+
+2. AM/PM ARE ONLY LEGAL WHEN granularity = HALF_DAY (SPEC 8) and that
+   is still not enforced in the database - a CHECK cannot reference
+   another table, and granularity is mutable while entries are
+   historical, so a trigger would block legitimate edits. The boundary
+   of R196's "where the database can express it". FW23's write path.
+
+3. PRISMA MISMAPS TRIGGER ERRORS. P0001 surfaces as code P2039 with
+   the message inline - legible, but not a code FW23 can branch on.
+
+4. TWO ESLINT WARNINGS in tests/unit/calc-engine (unused
+   eslint-disable directives). Pre-existing, reproduce locally, zero
+   errors.
+
+5. THE DEMO YEAR DOES NOT SURVIVE `pnpm test:db`, because the other
+   database suites empty User between tests. `pnpm db:seed` after.
+   Correct trade - those suites need an empty table to assert
+   "exactly one row" at all.
+
+QUESTIONS
+--------------------------------------------------------------------
+Q68. next-auth. SPEC 3 and SPEC 10 name Auth.js v5 with trustHost;
+     SPEC 10 also makes the zero-cookie guarantee total with D12
+     withdrawn. I removed the package and mounted no handlers. If the
+     intent is that Auth.js owns the callback and may set a cookie on
+     /api/auth/*, say so and it returns in one command - but AC3's
+     wording has to move with it, because as written it rules that
+     out.
+
+Q69. Reuse detection ends a session, which SPEC 10 does not list. Is
+     TOKEN_REPLAYED a fourth invalidation cause, or should a replay
+     refuse the token and leave the session alive? I implemented the
+     former; the latter leaves a thief's stolen successor working.
+
+Q70. PARK4-1 - are the seven OAuth columns on Account to stay? Only
+     needs answering if "this product will never support OAuth" is
+     certain rather than merely true today.
+
+Q71. A CANDIDATE RULING I DID NOT INVENT A NUMBER FOR. Three edits in
+     increment 6 landed somewhere other than intended: a first-match
+     replacement that hit DISCLOSED_RECORDS itself and produced a
+     self-referencing record, a line parser that read 26 items where
+     there were 10 because continuations start with a quote in that
+     file, and hand-retyping that flattened no-break spaces.
+     The one that behaved correctly asserted its own arity BEFORE
+     writing and aborted, so the bad edit never landed. Proposed: a
+     scripted edit states what it expects to match - a unique anchor,
+     an expected count - and refuses to write when it does not. It
+     would have caught two of the three; R91 caught the third.
+     NOTE ON WHAT CAUGHT THE FIRST ONE: `tsc`, via TS7022/TS2448,
+     because the corruption happened to be a self-reference and that
+     is a TYPE error. A replacement that substituted a different VALID
+     string would have been well-typed and silent. The compiler caught
+     the shape of this corruption, not the class of it.
+
+Q72. A SECOND CANDIDATE RULING, and the sharper of the two.
+     `pnpm test:visual:update` prints its R135 list from `git status`
+     rather than from its own output, so a run that FAILED without
+     taking a screenshot printed "2 baseline(s) regenerated" naming
+     two files a PREVIOUS run had written. That sentence exists to be
+     pasted into a report as evidence.
+     Proposed: A REGENERATION REPORTS THE FILES IT WROTE, FROM ITS OWN
+     OUTPUT, NEVER FROM THE WORKING TREE'S DIFF. The current
+     implementation cannot distinguish "I wrote this"from"this
+     differs from HEAD for any reason" - a previous run, a manual
+     edit, a half-finished attempt - and it prints the same sentence
+     for all of them. R133's rule applied to the reporter rather than
+     to the thing reported.
+     It also needs a non-zero exit to be fatal: the script printed the
+     R135 line AFTER `[ELIFECYCLE] Command failed with exit code 1`.
+
+PUSH PROOF
+--------------------------------------------------------------------
+Branch main, remote github.com/kaitmax/Frontalier.
+
+  25b7cfa  chore: the FW22 prompt and the CI budget amendment
+  cb1fd1c  FW22: 0a - gate:clone, a real fresh clone (R199)
+  b06ea35  FW22: 0b - R1 reworded wherever it is still live (R200)
+  9f9688e  FW22: 0c - the October budget split, disabled (R201)
+  ef08b3d  FW22: 0d - P4-2 closed, and my own record corrected
+  0f328ea  FW22: Auth.js adapter installed, FW21's tables asserted
+  a95be00  FW22: magic link request, atomic single-use token
+  d1f63b5  FW22: opaque revocable token pair with rotation
+  cc5696e  FW22: bearer middleware and tenancy
+  1adda74  FW22: sign-out, revoke, assetlinks route
+  <inc6>   FW22: privacy map, walkthrough, report
+
+CI: not run. P4-2 - the September allowance is exhausted and the
+October workflow is written and disabled. Each push produced a run
+"completed / skipped" in about one second, consuming no minutes, which
+is R201's gate working rather than a failure.
+
+====================================================================
+END OF REPORT-FW22.txt
+====================================================================

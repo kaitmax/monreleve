@@ -87,6 +87,35 @@ export async function sendMail(message: Message): Promise<boolean> {
 
     outbox.push({ ...message, sentAt: new Date() });
 
+    // AND IT IS PRINTED, which FW14 said it was and never did. The comment on
+    // `outbox` above has always read "for `pnpm dev`, where reading the
+    // confirmation link out of the terminal is how the loop gets exercised
+    // without a mail provider" - and nothing printed anything, so the loop it
+    // describes could not be exercised. FW22's walkthrough needed the sign-in
+    // link and found the mechanism missing: R154, a mechanism asserted in a
+    // comment and never proven to deliver.
+    //
+    // DEVELOPMENT ONLY, AND BOTH CONDITIONS MATTER. No key means nothing was
+    // delivered; NODE_ENV guards the case where production is missing its key,
+    // where the right response is the warning above rather than sign-in links
+    // in a production log. Tests keep the quiet path - they read the outbox
+    // directly, and a suite that printed every message would bury its own
+    // failures.
+    if (process.env.NODE_ENV === 'development') {
+      console.log(
+        [
+          '',
+          '--- message not sent (no RESEND_API_KEY); here it is -----------',
+          `to:      ${message.to}`,
+          `subject: ${message.subject}`,
+          '',
+          message.text,
+          '---------------------------------------------------------------',
+          '',
+        ].join('\n'),
+      );
+    }
+
     return true;
   }
 

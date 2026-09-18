@@ -1,16 +1,57 @@
 FW23 SESSION PROMPT - Mon Releve
-Read relay/PHASE-4-PROTOCOL.txt first, from disk.
+Read relay/PHASE-4-PROTOCOL.txt first, from disk. Its CI clauses are
+superseded by relay/CI-BUDGET-AMENDMENT.txt, applied in FW22.
+
+====================================================================
+PRE-STEP RULINGS (apply verbatim)
+====================================================================
+R0. Read REPORT-FW22.txt in full, including its QUESTIONS. If it
+    contains an item marked BLOCKING for FW23, or a DEVIATION that
+    changes the bearer middleware, the token shape or the Auth
+    tables, apply R156 (park in phase4parking.md, PARK4-<n>) and
+    proceed if a conservative path exists; stop only if R156 says
+    stop.
+
+R1 (as reworded by R200). Before starting: pnpm gate:clone green on a
+    fresh clone of origin/main's HEAD. Record the commit hash and the
+    chain output in PRECONDITIONS. No CI until October.
+
+CARRIED, and each one has bitten at least once this phase:
+    R133 a harness asserts a positive signal, never infers from
+         absence. R180 verify a plant landed before reading its
+         result. R196 a SPEC invariant lives in the database where it
+         can express it. R197 a fixture is consistent as a scenario.
+         R198 an error crossing a boundary preserves which rule
+         fired. R202 detectedKind and provenance are orthogonal.
+         R203 no FK on entryId, bounded by account lifetime.
+         R204 integration is a property: the ENTRY POINT is the unit
+         under test, not the module. R206 one text, one home,
+         referenced by key. R176/R177 end with the server run and
+         driven.
+
+R208 (new, from FW22's increment 6). A REGENERATION REPORTS THE FILES
+    IT WROTE, FROM ITS OWN OUTPUT, NEVER FROM THE WORKING TREE'S
+    DIFF. FW22 found pnpm test:visual:update printing
+    "R135: 2 baseline(s) regenerated" for a run that died with ENOMEM
+    and took no screenshot - the count came from git status, so a run
+    that crashes during install emits the same sentence as one that
+    photographed 108 pages. If that fix did not land in FW22, land it
+    here before anything else: the count comes from the runner's own
+    report of written snapshots, and ZERO REGENERATED after a
+    regeneration command is a LOUD FAILURE, not a quiet success.
 
 ====================================================================
 CONTEXT
 ====================================================================
 FW23 ONLY: the entries API. THIS TASK FREEZES THE CONTRACT the Android
-client will call. R187 applies at full force: a field renamed after
-AN5 ships costs a migration, an app release, and every version in the
-field still sending the old shape.
+client will call. R187 at full force: a field renamed after AN5 ships
+costs a migration, an app release, and every version in the field
+still sending the old shape. Assume you cannot change any name in this
+task after it is pushed.
 
 Read: SPEC 8 (the timestamp and provenance rules, verbatim), SPEC 13.2
-(what sync will send), SPEC 20; REPORT-FW21.txt and REPORT-FW22.txt.
+(what sync will send), SPEC 20; docs/api-v1.md as FW22 left it;
+REPORT-FW21.txt and REPORT-FW22.txt.
 
 ====================================================================
 ACCEPTANCE CRITERIA
@@ -21,50 +62,126 @@ AC1. POST /api/v1/entries accepts a BATCH and assigns recordedAt and
      winning. clientClaimedAt is stored verbatim when supplied.
 AC2. A payload containing latitude, longitude, accuracy, altitude,
      speed, heading or a provider name is REJECTED with 400. The test
-     asserting this is named so it cannot be deleted quietly, and it
-     covers nested and unknown-key forms.
+     is NAMED so it cannot be deleted quietly, and it covers nested
+     objects, arrays, and unknown keys whose names contain those
+     words.
 AC3. Every write appends an EntryEvent; editing preserves
      firstRecordedAt and detectedKind; a replayed batch carrying a
      seen clientMutationId writes no row and no event and is
-     acknowledged, not errored.
+     ACKNOWLEDGED, not errored.
 
 ====================================================================
-INCREMENTS
+INCREMENT 1 - the payload contract
 ====================================================================
-1. The payload contract: zod schema for the batch item -
-   clientMutationId, dayDate (ISO day string, R28), portion, kind,
-   absenceReason (required iff ABSENT), note, provenance,
-   detectedKind, detectedAt, clientClaimedAt. UNKNOWN KEYS ARE
-   REJECTED, not stripped - a client sending a field we do not know
-   is a client we disagree with. RED first.
-   Commit: "FW23: the entries payload contract".
-2. Coordinate rejection (AC2), including a nested object and an
-   unknown key whose name contains 'lat' - prove the plant landed.
-   Commit: "FW23: coordinate rejection".
-3. The write path: upsert on (userId, dayDate, portion), latest
-   server receipt wins for kind, EntryEvent appended per write,
-   clientMutationId deduplication, tenancy from the token only.
-   Day boundaries in Europe/Paris with unit tests at BOTH DST
-   transitions.
-   Commit: "FW23: the write path".
-4. GET /api/v1/entries?year= : the user's entries for a year, ordered,
-   with every stored timestamp and provenance field. No aggregation
-   here - that is FW24.
-   Commit: "FW23: the read path".
-5. THE CONTRACT DOCUMENT: docs/api-v1.md - every route, every field,
-   every error code, with a sentence per field saying what a client
-   may assume. A test asserts the document lists exactly the fields
-   the schema accepts, so the two cannot drift (the FW15 identity
-   pattern).
-   Commit: "FW23: the /v1 contract document".
-6. Walkthrough (R176) with curl: post a batch, replay it, edit a day,
-   attempt a coordinate, attempt a foreign userId, read the year back.
-   Report each response.
-   Commit: "FW23: walkthrough and report".
+- Zod schema for the batch item: clientMutationId, dayDate (ISO day
+  string, R28 - never a Date), portion, kind, absenceReason (required
+  iff ABSENT), note, provenance, detectedKind, detectedAt,
+  clientClaimedAt.
+- UNKNOWN KEYS ARE REJECTED, not stripped. A client sending a field we
+  do not know is a client we disagree with, and silently dropping it
+  means the app believes something was stored that was not.
+- R202: a MANUAL row MAY carry a detectedKind. The forward constraint
+  stays - DETECTED_* without detectedKind is refused. Assert both
+  directions so a later reader cannot mistake the asymmetry for an
+  oversight.
+- Batch limits: a maximum item count and a maximum body size, both
+  named constants, both tested at the boundary. An unbounded batch is
+  a denial-of-service surface on a route that writes.
+- RED first per behaviour.
+- Commit: "FW23: the entries payload contract". Push.
 
-OUT OF SCOPE: the dossier (FW24), exports (FW25), any client.
+====================================================================
+INCREMENT 2 - coordinate rejection (AC2)
+====================================================================
+- The banned key set, rejected wherever it appears: top level, nested
+  object, inside an array, and as an unknown key whose name CONTAINS
+  one of the words. Case-insensitive.
+- R180: verify each plant landed before reading its result. The FAQ
+  plant that produced R180, and the first-match regex that produced a
+  self-referencing record in FW22, are both this class.
+- The test's name states why it exists, so a future reader deleting it
+  has to delete a sentence explaining that no coordinate ever reaches
+  this server (SPEC 13.1, D18).
+- Commit: "FW23: coordinate rejection, by name". Push.
 
-REPORT: SUMMARY / PRECONDITIONS / RED-GREEN LEDGER / CONTRACT (the
-frozen field list) / SERVER CLOCK PROOF / COORDINATE REJECTION PROOF /
-IDEMPOTENCY PROOF / DST TESTS / PARKED / WALKTHROUGH / DEVIATIONS /
-NOTICED / QUESTIONS / PUSH PROOF
+====================================================================
+INCREMENT 3 - the write path
+====================================================================
+- Upsert on (userId, dayDate, portion); latest server receipt wins for
+  kind; an EntryEvent appended per write; clientMutationId
+  deduplication; tenancy from the bearer token ONLY (FW22's
+  middleware - plant a body userId and a query userId, verify both
+  plants landed, assert both ignored).
+- Day boundaries in Europe/Paris, with unit tests at BOTH DST
+  transitions. A UTC day-boundary bug here is a wrong record, and it
+  is the class of defect that only appears twice a year.
+- R198: every rejection names which rule fired, with a stable code the
+  app can branch on. The trigger work in FW21 moved to P0001 for
+  exactly this reason; do not undo it at the API layer by collapsing
+  distinct failures into one 400.
+- Commit: "FW23: the write path". Push.
+
+====================================================================
+INCREMENT 4 - the read path
+====================================================================
+- GET /api/v1/entries?year= : the user's entries for a year, ordered,
+  with every stored timestamp and provenance field. No aggregation -
+  that is FW24.
+- Pagination or an explicit unbounded contract: decide, state it in
+  the document, and test the boundary. A year is bounded (about 260
+  working days) so unbounded may be correct - but it must be a stated
+  decision, not an omission.
+- Commit: "FW23: the read path". Push.
+
+====================================================================
+INCREMENT 5 - the contract document
+====================================================================
+- docs/api-v1.md: every route, every field, every error code, with a
+  sentence per field saying WHAT A CLIENT MAY ASSUME.
+- A test asserts the document lists exactly the fields the schema
+  accepts, so the two cannot drift (the FW15 identity pattern, and
+  R206: one text, one home).
+- Carry forward what FW22 wrote: R203's bound (outliving the ROW is
+  not outliving the ACCOUNT), the callback's prefetch case, and
+  section 1.5 on where the API deliberately says less.
+- Add a FROZEN marker: the field names in this document are frozen as
+  of this commit, and a change after AN5 requires a version, not an
+  edit.
+- Commit: "FW23: the /v1 contract, frozen". Push.
+
+====================================================================
+INCREMENT 6 - walkthrough and report
+====================================================================
+- WALKTHROUGH (R176/R177) with curl against pnpm dev, and report what
+  each step RETURNED, not that it worked: post a batch, replay it
+  verbatim, edit a day, attempt a coordinate, attempt a foreign
+  userId, attempt an unknown key, post a batch one item over the
+  limit, read the year back.
+- Then read the year back and CHECK ONE DAY BY HAND against what you
+  posted - the FW21 walkthrough found an impossible seed by doing
+  exactly this, and the FW22 round trip found a route nobody wrote.
+- R186: no PRODUCT_STATE flag flips. An entries API existing does not
+  mean a user can record a day; that needs the Android client.
+- gate:clone once before the final push.
+- Commit: "FW23: walkthrough and report". Push.
+
+====================================================================
+OUT OF SCOPE
+====================================================================
+- The dossier (FW24), exports (FW25), the account routes (FW26).
+- Any client. Any flag flip. Any engine change.
+- Any field name not in SPEC 8 without a named justification (R187).
+
+====================================================================
+REPORT FORMAT - REPORT-FW23.txt
+====================================================================
+SUMMARY / PRECONDITIONS (gate:clone hash and output) / R208 (landed in
+FW22, or landed here) / RED-GREEN LEDGER / THE FROZEN CONTRACT (the
+field list, verbatim) / SERVER CLOCK PROOF / COORDINATE REJECTION
+PROOF (four forms, each plant verified) / IDEMPOTENCY PROOF / TENANCY
+PROOF (both plants verified) / DST TESTS / BATCH LIMITS / ERROR CODES
+(each rule and its code, R198) / WALKTHROUGH (each response, and the
+hand-checked day) / PARKED / DEVIATIONS / NOTICED BUT NOT TOUCHING /
+QUESTIONS / PUSH PROOF
+
+END OF FW23 PROMPT

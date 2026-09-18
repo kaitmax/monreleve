@@ -51,6 +51,99 @@
 
 import { APP_NAME } from '@/lib/fr';
 
+/**
+ * THE ENUMERATED RECORDS, KEYED - and keyed so that something else can point
+ * at them without restating them.
+ *
+ * lib/content/personal-data.ts maps every stored database column to one of
+ * these keys, and its test asserts each key is actually rendered. The first
+ * version of that map held COPIES of these sentences, and R126 caught it:
+ * French written twice is French that drifts, and the copy the page renders
+ * would have stopped being the copy the privacy guard checks.
+ *
+ * R181 - the text a reader sees is derived from the thing it describes,
+ * never transcribed alongside it. The alternative on offer was to pick
+ * apostrophe-free substrings so the guard could not see the duplication,
+ * which is evasion rather than a fix.
+ */
+export const DISCLOSED_RECORDS = {
+  // --- Recorded by the public site, before any account exists.
+  // EACH CASE NAMES ITSELF, and cropping the baseline is what showed why.
+  // The lead sentence announces « deux cas seulement » and then renders as a
+  // BULLET AT THE SAME LEVEL as the two cases it announces, with the
+  // unrelated audience sentence following at that level too. A reader
+  // scanning the list met a promise of two cases and then three more peers.
+  //
+  // The count was a promise the LAYOUT broke: nothing grouped the cases under
+  // their lead, so each began « Pour... » and read as a subordinate clause
+  // hunting for the sentence it came from. Naming them « Premier cas » and
+  // « Second cas » makes each bullet self-locating, so the text keeps the
+  // promise without the rendering having to.
+  //
+  // Not a nested list, deliberately: the section renders a flat array, and
+  // changing that shape for one section is a rendering change reaching every
+  // page that uses it. Copy is the cheaper and more reversible fix.
+  alertList:
+    'Premier cas, les alertes réglementaires, si vous donnez votre adresse ' +
+    'vous-même. Un lien de confirmation vous est alors envoyé, la date de ' +
+    'votre accord est enregistrée, et chaque message contient un lien de ' +
+    'désinscription en un clic.',
+  signInLink:
+    'Second cas, la connexion à l’application, lorsqu’un lien de connexion ' +
+    'est demandé pour cette adresse. Le service enregistre alors, le temps ' +
+    'que le lien reste valable, l’adresse et une empreinte du lien — jamais ' +
+    'le lien lui-même. Tant que ce lien n’a pas été ouvert, aucun compte ' +
+    'n’existe, et si personne ne l’ouvre il ne reste rien.',
+
+  // --- Recorded for an account, under « pour votre compte et pour lui seul ».
+  email:
+    'votre adresse e-mail, qui sert aussi à vous connecter, par un lien ' +
+    'envoyé par message et sans mot de passe ;',
+  profile:
+    'votre canton de travail, votre taux d’activité, votre méthode de ' +
+    'décompte et votre date de début d’activité ;',
+  day:
+    'pour chaque journée déclarée, la date, sa nature (Suisse, domicile, ' +
+    'mission, absence), la portion (journée entière ou demi-journée) et le ' +
+    'motif s’il s’agit d’une absence ;',
+  provenance:
+    'l’origine de chaque journée, à savoir une saisie à la main, une ' +
+    'proposition acceptée ou une proposition corrigée, ainsi que ce qui ' +
+    'avait été proposé lorsque vous l’avez corrigée ;',
+  timestamps:
+    'les horodatages, c’est-à-dire la date et l’heure auxquelles le serveur ' +
+    'a reçu chaque déclaration. Ils sont assignés par le serveur et jamais ' +
+    'par votre téléphone : c’est ce qui donne sa valeur au relevé annuel ;',
+  history:
+    'l’historique des modifications, en ajout seul. Une correction ajoute ' +
+    'une ligne, elle n’en efface aucune ;',
+  notificationToken:
+    'si vous activez le rappel quotidien, un jeton de notification propre à ' +
+    'votre appareil ;',
+
+  // --- FW22 ADDED THESE THREE, AND THE LIST IS CLOSED. « pour votre compte
+  // et pour lui seul » is exhaustive: an addition does not make it
+  // incomplete, it makes it FALSE. Sessions and credentials were stored from
+  // the moment sign-in shipped, and a reader was being told the list ended
+  // before them.
+  //
+  // The failure direction matters. Claiming to hold MORE than is held is
+  // safe; claiming LESS is the one a notice cannot afford, and a
+  // hand-maintained list drifts that way at every task that adds a column.
+  sessions:
+    'vos connexions : une ligne par appareil connecté, indiquant quand la ' +
+    'session a commencé, quand elle a servi pour la dernière fois, et si ' +
+    'elle a pris fin — déconnexion, déconnexion de tous les appareils, ' +
+    'suppression du compte, ou réutilisation détectée d’un identifiant ;',
+  credentials:
+    'les identifiants de connexion eux-mêmes, sous forme d’empreinte et ' +
+    'jamais en clair, avec leur date d’émission et d’expiration. Une ' +
+    'empreinte ne permet pas de reconstituer l’identifiant ;',
+  emailConfirmed:
+    'la date à laquelle vous avez confirmé votre adresse en ouvrant un lien ' +
+    'de connexion.',
+} as const;
+
 export const CONFIDENTIALITE_COPY = {
   title: 'Politique de confidentialité',
 
@@ -77,11 +170,28 @@ export const CONFIDENTIALITE_COPY = {
     'Le site public ne dépose aucun cookie, ne vous demande aucun compte et ' +
       'ne vous identifie pas. Vous pouvez utiliser le calculateur sans rien ' +
       'communiquer.',
-    'Une adresse e-mail est enregistrée uniquement si vous la donnez ' +
-      'vous-même, pour recevoir les alertes réglementaires. Un lien de ' +
-      'confirmation vous est alors envoyé, la date de votre accord est ' +
-      'enregistrée, et chaque message contient un lien de désinscription en ' +
-      'un clic.',
+    // FW22 MADE THE OLD SENTENCE FALSE, AND IT IS WORTH SAYING HOW. It read
+    // "Une adresse e-mail est enregistrée UNIQUEMENT si vous la donnez
+    // vous-même, POUR RECEVOIR LES ALERTES RÉGLEMENTAIRES", and then
+    // described double opt-in, a stored consent date and a one-click
+    // unsubscribe.
+    //
+    // « uniquement ... pour » is a CLOSED PURPOSE, and sign-in is now a
+    // second one. None of the three guarantees in that sentence applies to
+    // it: there is no double opt-in on a sign-in link, no consent date, and
+    // no unsubscribe link in it. Leaving the sentence standing would have
+    // described the alert list's protections as though they covered an
+    // address recorded for a different reason.
+    //
+    // « si vous la donnez vous-même » was strained too: the sign-in endpoint
+    // accepts an address typed by anyone, so a row can exist for somebody who
+    // never asked. That is why the sign-in message says no account has been
+    // created.
+    'Une adresse e-mail est enregistrée dans deux cas seulement, et jamais ' +
+      'sans une action de votre part.',
+    // DERIVED, NOT RESTATED - see DISCLOSED_RECORDS.
+    DISCLOSED_RECORDS.alertList,
+    DISCLOSED_RECORDS.signInLink,
     // RULING R138: A PRIVACY CLAIM IS WRITTEN IN THE TENSE THAT MATCHES THE
     // CODE. This sentence was in the present tense from FW10 and described
     // analytics that do not exist: nothing on this site measures anything
@@ -110,35 +220,54 @@ export const CONFIDENTIALITE_COPY = {
       'vers un tiers.',
   ],
 
-  appHeading: "Ce que l’application enregistre",
+  // THE HEADING SAID l’application, AND THE APPLICATION DOES NOT EXIST.
+  // Every row FW22 writes is written by the SERVER - the sign-in token, the
+  // account, the session, the credentials - and there is no Android client in
+  // this repository to write anything. R138: a claim is written in the tense
+  // AND THE VOICE that match the code.
+  appHeading: 'Ce que le service enregistre pour votre compte',
   appIntro:
-    "L’application Android tient le registre de vos journées. Elle " +
-    'enregistre, pour votre compte et pour lui seul :',
+    'Le service tient le registre de vos journées et ce qu’il faut pour ' +
+    'vous y donner accès. Il enregistre, pour votre compte et pour lui ' +
+    'seul :',
+  // DERIVED, NOT RESTATED. The sentences live in DISCLOSED_RECORDS above so
+  // that lib/content/personal-data.ts can point at them by key without
+  // copying the French (R126, R181).
   app: [
-    'votre adresse e-mail, qui sert aussi à vous connecter, par un lien ' +
-      'envoyé par message et sans mot de passe ;',
-    "votre canton de travail, votre taux d’activité, votre méthode de " +
-      "décompte et votre date de début d’activité ;",
-    'pour chaque journée déclarée, la date, sa nature (Suisse, domicile, ' +
-      'mission, absence), la portion (journée entière ou demi-journée) et le ' +
-      "motif s’il s’agit d’une absence ;",
-    "l’origine de chaque journée, à savoir une saisie à la main, une " +
-      'proposition acceptée ou une proposition corrigée, ainsi que ce qui ' +
-      "avait été proposé lorsque vous l’avez corrigée ;",
-    "les horodatages, c’est-à-dire la date et l’heure auxquelles le serveur " +
-      'a reçu chaque déclaration. Ils sont assignés par le serveur et jamais ' +
-      "par votre téléphone : c’est ce qui donne sa valeur au relevé annuel ;",
-    "l’historique des modifications, en ajout seul. Une correction ajoute " +
-      "une ligne, elle n’en efface aucune ;",
-    'si vous activez le rappel quotidien, un jeton de notification propre à ' +
-      'votre appareil.',
+    DISCLOSED_RECORDS.email,
+    DISCLOSED_RECORDS.profile,
+    DISCLOSED_RECORDS.day,
+    DISCLOSED_RECORDS.provenance,
+    DISCLOSED_RECORDS.timestamps,
+    DISCLOSED_RECORDS.history,
+    DISCLOSED_RECORDS.notificationToken,
+    DISCLOSED_RECORDS.sessions,
+    DISCLOSED_RECORDS.credentials,
+    DISCLOSED_RECORDS.emailConfirmed,
   ],
+  // R138 AGAIN, AND ONLY CROPPING THE BASELINE FOUND IT. This paragraph said
+  // « L’application ne communique qu’avec... » in the PRESENT TENSE about an
+  // application that does not exist - the same defect corrected in appHeading
+  // and appIntro two paragraphs above, sitting directly beneath them.
+  //
+  // MY OWN HEADING CHANGE IS WHAT MADE IT VISIBLE. While the section was
+  // titled « Ce que l’application enregistre » the subject was introduced and
+  // this paragraph read as part of it. Retitling to « le service » left the
+  // sentence talking about a subject the section no longer names, in a tense
+  // the code does not support. Every guard passed - the strings are present,
+  // the typography is right, no figure is typed. R135 earning itself: the
+  // only thing that catches this is a person cropping the image and reading
+  // it.
+  //
+  // The future tense is the honest form until AN14 ships a client, and it
+  // says what is true today FIRST, as the audience sentence above does.
   appThirdParty:
-    "L’application ne communique qu’avec notre propre interface de " +
-    'programmation et avec le service de notification de Google (FCM), ' +
-    'utilisé uniquement pour acheminer le rappel que vous avez demandé. ' +
-    "Aucun autre service tiers n’y est intégré : ni régie publicitaire, ni " +
-    'outil de mesure tiers, ni identifiant publicitaire.',
+    'L’application Android n’existe pas encore. Lorsqu’elle existera, elle ' +
+    'ne communiquera qu’avec notre propre interface de programmation et ' +
+    'avec le service de notification de Google (FCM), utilisé uniquement ' +
+    'pour acheminer le rappel que vous aurez demandé. Aucun autre service ' +
+    'tiers n’y sera intégré : ni régie publicitaire, ni outil de mesure ' +
+    'tiers, ni identifiant publicitaire.',
 
   neverHeading: "Ce qui n’est jamais enregistré",
   never: [
