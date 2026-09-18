@@ -1,6 +1,28 @@
 name: CI
 
 # ===========================================================================
+# THE PUBLIC WINDOW - ONE VARIABLE, AND THIS IS IT
+# ===========================================================================
+#
+# `CI_FULL` runs EVERYTHING: the web job, the Node parity matrix (R27), the
+# runtime guard (R81) and the visual suite. It exists for the window in which
+# this repository is public and Actions minutes are unlimited, so that three
+# suites which have NEVER executed on a runner can execute (R213).
+#
+# TO GO BACK TO THE R201 BUDGET SPLIT, when the repository returns to private:
+#
+#     gh variable delete CI_FULL
+#
+# That is the whole revert. Every job falls back to the split below: `web` on
+# push if CI_OCTOBER is on, the other three on workflow_dispatch only. Nothing
+# else in this file changes, and the R201 minutes alarm re-arms by itself
+# because it is gated on the repository being private.
+#
+# NOTHING HERE IS DATED, deliberately. A comment saying "remove this on 1
+# November" is a comment nobody reads on 1 November; a variable that has to be
+# deleted is a decision somebody makes.
+#
+# ===========================================================================
 # R201 - THE OCTOBER BUDGET SPLIT. Written now, DISABLED now.
 #
 # The September 2026 Actions allowance is exhausted; the repository stays
@@ -57,7 +79,7 @@ jobs:
     name: web
     # R201: the one job worth paying for on every push to main. Skipped - at
     # no cost - until CI_OCTOBER is set.
-    if: vars.CI_OCTOBER == 'on' || github.event_name == 'workflow_dispatch'
+    if: ${{ vars.CI_FULL == 'on' || vars.CI_OCTOBER == 'on' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -305,7 +327,7 @@ jobs:
     name: rail visual baselines
     # R201: workflow_dispatch ONLY. Deterministic and run in the same
     # container locally; this is insurance against a runner difference.
-    if: github.event_name == 'workflow_dispatch'
+    if: ${{ vars.CI_FULL == 'on' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/playwright:v1.63.0-noble
@@ -373,7 +395,7 @@ jobs:
   runtime-guard:
     name: runtime guard (R81)
     # R201: workflow_dispatch ONLY. Passes locally; checkpoint insurance.
-    if: github.event_name == 'workflow_dispatch'
+    if: ${{ vars.CI_FULL == 'on' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -407,7 +429,7 @@ jobs:
   format-parity-build:
     name: format parity (compile)
     # R201: workflow_dispatch ONLY. Feeds the Node matrix below.
-    if: github.event_name == 'workflow_dispatch'
+    if: ${{ vars.CI_FULL == 'on' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -447,7 +469,7 @@ jobs:
     # should not have to derive a job's trigger from another job's, and a
     # later edit that drops the `needs` would silently put the matrix back on
     # every push.
-    if: github.event_name == 'workflow_dispatch'
+    if: ${{ vars.CI_FULL == 'on' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     strategy:
       # Every version reports. Stopping at the first failure would hide
