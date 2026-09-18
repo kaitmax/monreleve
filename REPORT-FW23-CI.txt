@@ -1,0 +1,319 @@
+====================================================================
+REPORT-FW23-CI.txt - first-ever external verification
+Mon Releve   2026-09-18
+====================================================================
+
+NOTE ON SPELLING. Pure ASCII, as the protocol requires. Any French
+quoted here is transliterated; the accented original lives in
+web/lib/fr (R155 - the ASCII is illustrative, never a source).
+
+SUMMARY
+--------------------------------------------------------------------
+Three suites that had NEVER executed on a runner executed. All three
+passed, and two of the three passes are demonstrably non-vacuous.
+
+  Node parity (R27)        deferred since FW6      PASSED, and the two
+                           runtimes carry DIFFERENT ICU builds, so it
+                           compared two libraries rather than one
+                           library twice
+  test:runtime (R81)       unrun since FW10        PASSED, 9 behaviours
+  visual on a runner       never run at all        PASSED, 108, and I
+                           PREDICTED IT WOULD FAIL
+
+R213 says a failure would have been the session succeeding. It did not
+fail, and the session still succeeded - because a pass that could not
+have failed is worth nothing, and two of these could have.
+
+THE FINDING IS THE ONE I GOT WRONG. I expected the visual suite to
+fail on font rendering. It did not, and the reason turns R37 from a
+convenience into a load-bearing rule with evidence: baselines are
+container-only, the runner's job uses the SAME image this machine
+uses, so the machine underneath is irrelevant. Had any baseline ever
+been generated outside the container, this run would have failed.
+
+R212's audit found one real item before the window was used: the R201
+minutes alarm was publishing account billing to a world-readable step
+summary. Fixed, and it re-arms by itself when the repository goes
+private.
+
+PRECONDITIONS (R1 as reworded by R200)
+--------------------------------------------------------------------
+  gate:clone  PASSED on 203f35f462285f6f48217871ccdf1d19256d052a
+              tree clean; install, typecheck, lint, test, build, size,
+              db:deploy, test:db
+              skipped and NAMED: test:e2e, test:visual, test:runtime,
+              lighthouse, parity:check
+
+That run settles the clean-checkout claim ON THIS MACHINE. Everything
+below is what it structurally cannot settle.
+
+R212 AUDIT
+--------------------------------------------------------------------
+THE REPOSITORY WAS ALREADY PUBLIC when this session began - visibility
+PUBLIC, renamed to kaitmax/monreleve - so logs, step summaries and
+artifacts were world-readable before the audit ran. It was done first
+for that reason.
+
+ONE REAL FINDING, FIXED.
+
+  .github/workflows/ci.yml, "Actions minutes remaining (R201 alarm)"
+  It writes the account's Actions usage - used, included, remaining -
+  into GITHUB_STEP_SUMMARY. Not a secret, so Actions does not mask it:
+  ACCOUNT INFORMATION ABOUT THE OPERATOR, published to anyone opening
+  the run.
+
+  Gated on github.event.repository.private. Nothing is lost - a public
+  repository has unlimited minutes, so there is no budget for an alarm
+  to be about - and it resumes by itself on going private, with no
+  variable to remember.
+
+THREE EXAMINED AND ACCEPTED, with reasons rather than silence:
+
+  job-level DATABASE_URL in `web`
+      R212 names this case exactly: inline, unmasked, printed if
+      anything echoes it. ACCEPTED - a localhost credential for a
+      service container that lives only for the job, and already
+      visible in the workflow file, which is public regardless.
+  visual-diff artifact
+      World-downloadable while public. ACCEPTED - screenshots of the
+      PUBLIC site.
+  runtime-guard-report artifact
+      Likewise a Playwright report of the public site. No account
+      data, no database contents.
+
+NO LEAK PATTERNS. Searched all five jobs across both workflow files
+for `set -x`, printenv, a bare `env`, `cat` of a config,
+toJSON(secrets), and echo of a secret expression. NONE FOUND. Saying
+where I looked, because "nothing to report" and "I did not look" read
+identically (R133).
+
+HISTORY CHECK
+--------------------------------------------------------------------
+  git log --all --pretty=format: --name-only | sort -u
+    683 distinct paths ever tracked
+    the only env-shaped path: web/.env.example
+
+  git log -p --all -S RESEND_API_KEY -S AUTH_SECRET
+                     -S PDF_TOKEN_SECRET -S DATABASE_URL
+
+    Every ADDED line carrying one of those names is a NAME REFERENCE:
+      process.env.DATABASE_URL            lib/db/client.ts
+      'DATABASE_URL is not set...'        error messages, x4
+      'AUTH_SECRET', 'DATABASE_URL',
+      'RESEND_API_KEY'                    gate-clone.mjs strip-list
+      url: env('DATABASE_URL')            prisma.config.ts
+      RESEND_API_KEY=""                   .env.example, empty
+
+    NOT ONE VALUE. The four value-bearing connection strings in the
+    whole history:
+      postgresql://user:pw@db.example.com:5432/...   a fixture proving
+          the seed refuses a non-local host. RFC 2606 domain, literal
+          "pw".
+      postgresql://frontalier:frontalier@localhost:5432/...  the CI
+          service container, ephemeral, in the public workflow file.
+      postgresql://frontalier:frontalier@localhost:5436/...  .env.example
+      DATABASE_URL: scratchUrl()   code, not a value
+
+  NOTHING TO ROTATE. Reported rather than assumed: the cost of being
+  wrong is a credential anyone has already had time to copy.
+
+FIRST-EVER RESULTS (R213)
+--------------------------------------------------------------------
+Run: https://github.com/kaitmax/monreleve/actions/runs/35388307280
+All six jobs green.
+
+a. NODE PARITY (R27) - deferred since FW6
+   job 105740568856 (node 22), job 105740568932 (node 24)
+
+     format parity on v22.23.2 (ICU 78.2, CLDR 48.0)
+       11 codepoint cases and 10001 exhaustive values: all identical
+     format parity on v24.20.0 (ICU 78.3, CLDR 48.0)
+       11 codepoint cases and 10001 exhaustive values: all identical
+
+   THE ICU VERSIONS DIFFER - 78.2 against 78.3 - AND THAT IS WHAT
+   MAKES THIS A RESULT. Had both runtimes shipped the same ICU build,
+   this would have compared one library to itself through two wrappers
+   and learned nothing. Two builds, 10 001 exhaustive values,
+   identical output.
+
+   R6's formatters normalise Intl output because ICU has emitted
+   different separator codepoints across versions. That claim has been
+   asserted since June and had never been tested on a second runtime.
+   It is now PROVEN AGAINST AN ACTUAL VERSION DIFFERENCE rather than
+   resting on a documented hazard. Three months deferred, eight
+   seconds to settle.
+
+b. test:runtime (R81) - unrun FW10 to FW15, rarely since
+   job 105740408919 - 9 passed (44.2s)
+
+   The refusal behaviours, each named by its test:
+     /api/health reports degraded, and names what is missing
+     the home page omits its canonical rather than pointing at
+       localhost
+     no localhost URL reaches the rendered head at all
+     the site still SERVES - degraded is not broken
+     liveness stays 200 while readiness refuses - the same process,
+       the same moment
+     /api/ready names the failing check and the variable to set
+     the readiness refusal is not cached
+
+   A guard that existed, was correct, and had never executed. This
+   closes the longest-standing gap in the project.
+
+c. THE VISUAL SUITE ON A RUNNER - never run
+   job 105740408253 - 108 passed (1.2m)
+
+   I PREDICTED THIS WOULD FAIL, and being wrong is the finding.
+
+   The prediction was that font rendering differs between machines.
+   It does not differ here, because the runner's job uses
+   mcr.microsoft.com/playwright:v1.63.0-noble - THE SAME IMAGE
+   web/scripts/visual.mjs builds locally. The container pins the font
+   stack, so the machine underneath is irrelevant.
+
+   R37 SAYS BASELINES ARE CONTAINER-ONLY. That has looked like a
+   convenience for eleven tasks. It is the thing that makes a baseline
+   PORTABLE, and this is its first evidence from a second machine: had
+   any baseline ever been generated outside the container, this run
+   would have failed.
+
+   NO BASELINE WAS REGENERATED (R135, R207, and the prompt's own
+   instruction). 108 compared, 108 matched, nothing written.
+
+FW23 UNDER CI
+--------------------------------------------------------------------
+job 105740408263 (web), every count identical to local:
+
+  test:coverage   142 files, 2577 tests     calc-engine 100% stmt/branch
+  test:db          18 files,  269 tests
+  test:e2e                    284 tests
+  size            All gated routes pass both gates
+
+RAN ON A RUNNER FOR THE FIRST TIME, all of it being FW23's:
+  the payload contract          39 tests, including strict unknown-key
+                                rejection and the R202 both-directions
+                                assertions
+  the day module's DST tests    the 23-hour and 25-hour days, and the
+                                full-year round trip
+  the write path                all-or-nothing, intra-batch duplicate
+                                refusal, clientMutationId dedup, batch
+                                limits
+  the coordinate scan           four forms
+  both tenancy plants           at the HTTP boundary
+
+THE DST TESTS ON A UTC MACHINE ARE A DIFFERENT CLASS OF EVIDENCE from
+the local ablation. TZ=Pacific/Kiritimati changed a PROCESS VARIABLE
+on one machine; a runner whose clock is genuinely UTC is a different
+machine. Same assertions, different claim.
+
+WHAT IS NOW EXTERNALLY VERIFIED, AND WHAT IS STILL SINGLE-MACHINE
+--------------------------------------------------------------------
+This is the durable output of the session. When the repository goes
+private, THIS LIST IS WHAT THE R201 BUDGET SPLIT IS PROTECTING.
+
+EXTERNALLY VERIFIED as of this run - a second machine, a different
+CPU, a different Node patch, a different ICU build:
+
+  the unit suite                    2577 tests
+  the database suite                269 tests, against a real
+                                    PostgreSQL service container
+  the e2e suite                     284 tests
+  the visual baselines              108, and R37's container rule
+  the size budgets                  both gates
+  calc-engine coverage              100%
+  Intl formatting parity            across ICU 78.2 and 78.3
+  the runtime refusal guard         9 behaviours
+  migrations from empty             db:deploy on a fresh database
+  the DST boundary tests            on a UTC clock
+
+STILL SINGLE-MACHINE, and named rather than left implicit:
+
+  the Docker path itself            gate:clone and the visual container
+                                    both run under one Docker daemon
+                                    here; the runner uses its own, and
+                                    the two agreed - but only for the
+                                    visual job.
+  the walkthrough (R176/R177)       every walkthrough in this project
+                                    has been driven against `pnpm dev`
+                                    on this machine. Nothing external
+                                    has ever driven the product as a
+                                    user.
+  lighthouse                        never run on a runner.
+  the CPU architecture              both this machine and ubuntu-latest
+                                    are x86_64. Nothing has ever built
+                                    or run on arm64, which is what a
+                                    cheap VPS increasingly is.
+  the deployment                    FW28. Nothing has ever been
+                                    deployed anywhere.
+
+THE SWITCH BACK
+--------------------------------------------------------------------
+See "THE SWITCH BACK, PROVEN" below - written after it was done rather
+than before.
+
+PARKED
+--------------------------------------------------------------------
+NOTHING NEW. R213 asks for a first-ever failure to be parked with what
+it found; there was no first-ever failure. Saying so explicitly,
+because an empty PARKED section and an unexamined one look the same.
+
+Carried, unchanged by this session: P4-1 (closed), P4-2 (closed),
+PARK4-1 (closed by Q70), PARK4-2 (assetlinks, needs AN14).
+
+DEVIATIONS
+--------------------------------------------------------------------
+1. THE REPOSITORY WAS ALREADY PUBLIC when the session began. The
+   prompt reads as though the session opens the window; the operator
+   had opened it. The R212 audit and the history check were therefore
+   done on an already-exposed repository rather than before exposure -
+   which is why they were done FIRST, before anything was enabled.
+
+2. A NEW VARIABLE, CI_FULL, rather than reusing CI_OCTOBER. Reusing
+   it would have conflated two different decisions - "the public
+   window is open" and "the October allowance has arrived" - in one
+   flag, and the revert would then have had to remember which one it
+   was undoing.
+
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------
+1. ACTIONS DEPRECATION WARNINGS on every job: actions/checkout@v4,
+   setup-node@v4, upload-artifact@v4 and pnpm/action-setup@v4 target
+   Node 20, which is deprecated and being forced to Node 24. They
+   still work. Bumping them is a change to CI on the day CI is being
+   used to verify something else, which is the wrong day.
+
+2. ubuntu-latest MIGRATES TO UBUNTU 26 on 19 October 2026, per the
+   runner's own annotation. That is a base-image change under the
+   visual job, and R37's container pinning means the VISUAL suite is
+   insulated from it - but the other four jobs are not.
+
+3. FW23 IS INCOMPLETE. Increments 4, 5 and 6 - the read path, the
+   frozen contract document, the walkthrough - are FW23's session, not
+   this one. This session verified what exists.
+
+QUESTIONS
+--------------------------------------------------------------------
+Q73. The arm64 gap, now that it is named. A cheap VPS is increasingly
+     arm64, FW28 deploys to one, and nothing in this project has ever
+     been built or run on that architecture - including the Prisma
+     engines, which ship per-platform binaries. Worth one
+     workflow_dispatch run on an arm64 runner while the window is
+     open, or worth parking until FW28?
+
+Q74. The walkthrough has only ever been driven on this machine. R176
+     asks for the server run and driven; it does not say by whom or
+     where. Is a walkthrough against a deployed instance part of FW28,
+     or does it stay local forever?
+
+PUSH PROOF
+--------------------------------------------------------------------
+  1f51211  chore: workflow log audit before public CI (R212)
+  dd6fd3f  chore: enable full CI for the public window
+  <this>   FW23-CI: first-ever external verification
+
+CI: https://github.com/kaitmax/monreleve/actions/runs/35388307280
+    six jobs, all green, three of them for the first time ever.
+
+====================================================================
+END OF REPORT-FW23-CI.txt
+====================================================================
