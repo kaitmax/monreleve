@@ -191,14 +191,26 @@ describe('the batch is bounded', () => {
   // tested AT THE BOUNDARY, because an off-by-one in a limit is how a limit
   // becomes decorative.
 
+  /**
+   * A batch of distinct days.
+   *
+   * ONE DAY PER ITEM, and the first version of this helper got it wrong: it
+   * used a single date with alternating AM/PM, which is 100 duplicate pairs at
+   * MAX_BATCH_ITEMS. The batch rule above correctly refused it, and the
+   * failure was in the fixture rather than the limit - a fixture that cannot
+   * be valid tests nothing about the boundary it was written for.
+   */
   const batch = (count: number): unknown => ({
-    entries: Array.from({ length: count }, (_unused, index) =>
-      item({
+    entries: Array.from({ length: count }, (_unused, index) => {
+      const day = new Date('2026-01-01T00:00:00.000Z');
+
+      day.setUTCDate(day.getUTCDate() + index);
+
+      return item({
         clientMutationId: `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
-        dayDate: '2026-04-07',
-        portion: index % 2 === 0 ? 'AM' : 'PM',
-      }),
-    ),
+        dayDate: day.toISOString().slice(0, 10),
+      });
+    }),
   });
 
   it('accepts exactly MAX_BATCH_ITEMS', () => {
@@ -226,6 +238,70 @@ describe('the batch is bounded', () => {
 
   it('refuses a note long enough to make the size limit reachable', () => {
     expect(entryItemSchema.safeParse(item({ note: 'x'.repeat(10_000) })).success).toBe(false);
+  });
+});
+
+describe('one batch may not carry two versions of one day', () => {
+  // ADDED AFTER A TEST FOUND THE DEFECT. The write path UPSERTS on
+  // (userId, dayDate, portion), so a batch containing two items for one
+  // day-and-portion does NOT collide - the second silently updates the first,
+  // and the row ends up holding whichever was last in the array. The database
+  // cannot catch it, because an upsert is precisely the instruction not to.
+  //
+  // SPEC 13.2 settles conflicts by "latest server receipt wins", and two items
+  // in one batch share a receipt: there is no later. The tie has no rule, so
+  // the batch is refused rather than resolved arbitrarily.
+
+  const two = (first: Record<string, unknown>, second: Record<string, unknown>): unknown => ({
+    entries: [
+      { clientMutationId: 'a1111111-1111-4111-8111-111111111111', dayDate: '2026-04-07', kind: 'CH', ...first },
+      { clientMutationId: 'b2222222-2222-4222-8222-222222222222', dayDate: '2026-04-07', kind: 'HOME', ...second },
+    ],
+  });
+
+  it('refuses two items for the same day and portion', () => {
+    expect(entriesBatchSchema.safeParse(two({ portion: 'FULL' }, { portion: 'FULL' })).success).toBe(
+      false,
+    );
+  });
+
+  it('names both positions, so a client author can find them', () => {
+    const parsed = entriesBatchSchema.safeParse(two({ portion: 'FULL' }, { portion: 'FULL' }));
+
+    expect(JSON.stringify(parsed.error?.issues)).toContain('entries[1]');
+    expect(JSON.stringify(parsed.error?.issues)).toContain('entries[0]');
+  });
+
+  it('ALLOWS the same day in two portions, which is the half-day pair', () => {
+    // NON-VACUITY, and the case this must not break: AM and PM of one date are
+    // two rows by design (D9), and refusing them would refuse the shape the
+    // product exists to record.
+    expect(entriesBatchSchema.safeParse(two({ portion: 'AM' }, { portion: 'PM' })).success).toBe(
+      true,
+    );
+  });
+
+  it('allows the same portion on two different days', () => {
+    expect(
+      entriesBatchSchema.safeParse(two({ portion: 'FULL' }, { portion: 'FULL', dayDate: '2026-04-08' }))
+        .success,
+    ).toBe(true);
+  });
+
+  it('refuses two items sharing a clientMutationId', () => {
+    // The same shape one layer over: the id is the deduplication key, so a
+    // batch carrying it twice asks to be deduplicated against itself. The
+    // unique index would refuse the second and roll the batch back - a
+    // 500-shaped failure for a client mistake that has a name.
+    const parsed = entriesBatchSchema.safeParse({
+      entries: [
+        { clientMutationId: 'c3333333-3333-4333-8333-333333333333', dayDate: '2026-04-07', kind: 'CH' },
+        { clientMutationId: 'c3333333-3333-4333-8333-333333333333', dayDate: '2026-04-08', kind: 'CH' },
+      ],
+    });
+
+    expect(parsed.success).toBe(false);
+    expect(JSON.stringify(parsed.error?.issues)).toContain('clientMutationId');
   });
 });
 

@@ -105,6 +105,30 @@ export const AUTH_API_COPY = {
     `La détection de pays se fait sur votre appareil et la position n${APOS}en ` +
     `sort jamais.`,
 
+  payloadTooLarge:
+    `Cet envoi est trop volumineux. Découpez-le en plusieurs envois plus ` +
+    `petits${n(';')} l${APOS}application le fait normalement toute seule.`,
+
+  invalidPayload:
+    `Cet envoi ne correspond pas à ce que le service attend. Le détail des ` +
+    `champs en cause accompagne cette réponse.`,
+
+  /**
+   * Two items for one day in one batch, or one client id used twice.
+   *
+   * IT NAMES THE CLIENT'S MISTAKE RATHER THAN OUR FAILURE. « Latest server
+   * receipt wins » cannot settle a tie inside a single batch, because both
+   * items arrived at the same instant - so the server refuses rather than
+   * picking one by array order, which would be a rule nobody wrote.
+   */
+  batchConflict:
+    `Cet envoi contient deux versions d${APOS}une même journée. L${APOS}application ` +
+    `doit n${APOS}en envoyer qu${APOS}une${n(';')} réessayez depuis l${APOS}application.`,
+
+  writeFailed:
+    `Le service n${APOS}a pas pu enregistrer cet envoi. Rien n${APOS}a été modifié${n(';')} ` +
+    `l${APOS}application réessaiera.`,
+
   signedOut: `Vous êtes déconnecté de cet appareil.`,
 
   revokedAll: `Vous êtes déconnecté de tous vos appareils.`,

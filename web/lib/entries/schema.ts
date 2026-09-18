@@ -182,6 +182,63 @@ export const entriesBatchSchema = z
   .object({
     entries: z.array(entryItemSchema).min(1).max(MAX_BATCH_ITEMS),
   })
-  .strict();
+  .strict()
+  .superRefine((value, context) => {
+    // TWO ITEMS FOR ONE DAY-AND-PORTION ARE REFUSED, AND A TEST IS WHY THIS
+    // EXISTS. The write path upserts on (userId, dayDate, portion), so a batch
+    // containing both would not collide - the second would SILENTLY UPDATE the
+    // first, and the row would end up holding whichever happened to be last in
+    // the array. The database cannot catch it, because an upsert is exactly
+    // the instruction not to.
+    //
+    // SPEC 13.2 says "latest server receipt wins", and two items in one batch
+    // share a receipt: there is no later. So the tie has no rule to settle it,
+    // and a client sending one is telling the server two things at once. Its
+    // queue should have coalesced them; saying so is more useful than picking
+    // one.
+    const seen = new Map<string, number>();
+
+    value.entries.forEach((entry, index) => {
+      const key = `${entry.dayDate}#${entry.portion}`;
+      const first = seen.get(key);
+
+      if (first === undefined) {
+        seen.set(key, index);
+
+        return;
+      }
+
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['entries', index],
+        message:
+          `entries[${index}] repeats ${entry.dayDate} ${entry.portion}, already at ` +
+          `entries[${first}]. One batch may not carry two versions of one day.`,
+      });
+    });
+
+    // AND TWO ITEMS SHARING A clientMutationId, which is the same shape one
+    // layer over: the id is the deduplication key (D30), so a batch carrying
+    // it twice is asking to be deduplicated against itself. The unique index
+    // would refuse the second and roll the batch back - a 500-shaped failure
+    // for what is a client mistake with a name.
+    const ids = new Map<string, number>();
+
+    value.entries.forEach((entry, index) => {
+      const first = ids.get(entry.clientMutationId);
+
+      if (first === undefined) {
+        ids.set(entry.clientMutationId, index);
+
+        return;
+      }
+
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['entries', index],
+        message: `entries[${index}] repeats the clientMutationId at entries[${first}].`,
+      });
+    });
+  });
 
 export type EntriesBatch = z.infer<typeof entriesBatchSchema>;
