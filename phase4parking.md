@@ -56,64 +56,65 @@ never argued.
 shape correction there is a migration against no rows.
 
 ---
-## P4-2 - CI cannot run: GitHub Actions billing [FW21, 2026-09-18]
+## P4-2 - CI unavailable until 1 October: the Actions allowance [FW21, CLOSED FW22 increment 0]
 
-**HIT AT:** FW21 increment 6, verifying CI on the pushed increments.
+**STATUS: CLOSED.** Not by CI returning, but by the claim it was making
+moving somewhere it can be made. See R199, R200 and R201 in
+`relay/CI-BUDGET-AMENDMENT.txt`.
 
-**THE BLOCKER.** Every job on the last four FW21 commits reports:
+**WHAT I RECORDED AT THE TIME, AND WHAT IT ACTUALLY WAS.** FW21 recorded
+this as a *payment failure*, because that is what the annotation on every
+refused job says:
 
 > The job was not started because recent account payments have failed or
-> your spending limit needs to be increased. Please check the 'Billing &
-> plans' section in your settings
+> your spending limit needs to be increased.
 
-The jobs have `steps=0` and complete in 2-4 seconds. Nothing executed.
-This is an account state, not a code defect, and it is not something this
-session can fix — it needs the account owner in GitHub billing settings.
+The cause was the **September 2026 included-minutes allowance being
+exhausted** on a private repository. Nothing had failed to pay. GitHub
+reports an exhausted allowance and a failed card in the same sentence,
+and I copied the sentence into a parking entry as though it were a
+diagnosis — so the entry told the operator to go and check their payment
+method for a problem that was not there.
 
-**WHAT IS ACTUALLY KNOWN ABOUT CI.** Run 35320869948, on increment 1
-(`6705d3b`), started before the limit was reached and **the four jobs that
-executed all passed**:
+**THAT IS R181's DEFECT ON AN OPERATIONAL RECORD.** A transcription is
+correct on the day it is written and misleading afterwards: the text was
+quoted accurately and the *fact* was wrong, because the vendor's message
+conflates two causes and nothing connected the entry to the thing it
+described. A parking entry naming what must be SUPPLIED has the same duty
+as published copy — the operator acts on it.
 
-| job | result |
-|---|---|
-| `web` (includes `db:deploy`, `test:db`, `build`, `test:e2e`, `size`) | passed, 8m9s |
-| `format parity (compile)` | passed, 40s |
-| `rail visual baselines` | passed, 3m22s |
-| `runtime guard (R81)` | passed, 1m52s |
+**WHAT IS TRUE.** The repository stays private. The allowance returns on
+**1 October 2026** at 2 000 minutes a month.
 
-Its two `format parity (node 22 / node 24)` matrix jobs are the first two
-that hit the billing wall — `steps=0`, same annotation.
+**HOW IT IS CLOSED.**
+- `pnpm gate:clone` (R199) now makes the clean-machine claim locally:
+  a real `git clone` of HEAD, install from the lockfile, then typecheck,
+  lint, test, build, size, and the database suites against a scratch
+  database it creates and migrates itself. Steps that cannot run in a
+  clone are named with their reason rather than omitted.
+- R200 reworded R1 wherever it is still live: `CLAUDE.md`,
+  `relay/PHASE-4-PROTOCOL.txt`, `relay/RUN-PHASE-4.txt`. Historical
+  reports and spent prompts are left alone — they record what was true
+  when they were written.
+- R201's split is written into `.github/workflows/ci.yml` and DISABLED:
+  every job is gated on the `CI_OCTOBER` repository variable, so the jobs
+  skip at no cost and produce no red runs.
 
-So the FW21 schema, its first migration and the updated table census are
-CI-proven on a real PostgreSQL service container. Increments 2 to 5 are
-**not**: `3481026`, `7454a9f`, `e8d9600` and `9628cc7` have never had a job
-start.
+**NEEDS:** on **1 October 2026**, one action, touching no file:
 
-**TAKEN:** every increment gated locally with `pnpm gate:changed`
-(typecheck, lint, test, build, test:db — 169 db tests at increment 6), and
-`pnpm gate:clean` run once per R139 since the schema and generated client
-changed. That last one covers the specific failure CI would otherwise be
-the first to see: a Prisma client that exists on this machine and not on a
-fresh install.
+    gh variable set CI_OCTOBER --body on
 
-**NOT TAKEN:**
-(a) Claiming CI green. It is not, and four of the five commits have no
-    evidence either way.
-(b) Disabling or narrowing jobs to get a green tick. The tick would mean
-    less than the red one does.
-(c) Re-running the failed runs. They fail identically until billing is
-    resolved; `gh run rerun` would only add noise.
+Then `web` runs on each push to main (~8 min, about one per task), and
+the parity matrix, visual baselines and runtime guard become
+`workflow_dispatch` only. The `web` job's first step prints the remaining
+minutes to the run summary; **below 400, revert to gate:clone-only for
+the rest of the month and record that here** rather than discovering it
+the way this entry was discovered.
 
-**WHAT UNBLOCKS IT:** the account owner raises the spending limit or
-settles the payment, then `gh run rerun 35325037923` (or any push)
-exercises increments 2-5. **The first thing to read is the `web` job's
-`pnpm test:db` step** — it is the one carrying FW21's new work, and
-`fw14-era-migration.test.ts` needs `CREATE DATABASE`, which the postgres
-image's `POSTGRES_USER` has and a hardened role would not.
-
-**RISK IF WRONG:** moderate and bounded. The database suites passed
-locally against the same PostgreSQL 16 major version CI uses, and
-increment 1 proved the service-container path works. The untested
-difference is privilege and environment, not logic.
+**WHAT IS KNOWINGLY LOST UNTIL THEN**, stated rather than left to lapse:
+- the Node 22/24 parity matrix (R27) — run it manually once before FW29;
+- the property that someone else could clone and build this. That matters
+  at Checkpoint E, not now. `gate:clone` covers the mechanical half of it;
+  what it cannot cover is a machine that is not this one.
 
 ---
