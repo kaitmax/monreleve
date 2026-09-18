@@ -35,7 +35,11 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { NextRequest } from 'next/server';
 import { POST } from '@/app/api/alertes/route';
 import { prisma } from '@/lib/db/client';
-import { CONFIDENTIALITE_COPY } from '@/lib/fr/confidentialite';
+import {
+  CONFIDENTIALITE_COPY,
+  DISCLOSED_RECORDS,
+  WEB_STATEMENTS,
+} from '@/lib/fr/confidentialite';
 import { ALERTES_COPY } from '@/lib/fr/alertes';
 import { clearOutbox, readOutbox } from '@/lib/alerts/mailer';
 import { confirmByToken, unsubscribeByToken } from '@/lib/alerts/confirm';
@@ -84,8 +88,8 @@ const pageText = (): string =>
 
 describe('CLAIM 1: the public site sets no cookie and asks for no account', () => {
   it('is still on the page', () => {
-    expect(CONFIDENTIALITE_COPY.web[0]).toContain('aucun cookie');
-    expect(CONFIDENTIALITE_COPY.web[0]).toContain('aucun compte');
+    expect(WEB_STATEMENTS.noCookies).toContain('aucun cookie');
+    expect(WEB_STATEMENTS.noCookies).toContain('aucun compte');
   });
 
   it('holds: subscribing sets no cookie', async () => {
@@ -117,8 +121,16 @@ describe('CLAIM 1: the public site sets no cookie and asks for no account', () =
 });
 
 describe('CLAIM 2: an address is recorded only if the reader gives it', () => {
-  it('is still on the page', () => {
-    expect(CONFIDENTIALITE_COPY.web[1]).toContain('uniquement si vous la donnez');
+  it('is still on the page, in the two halves FW22 split it into', () => {
+    // FW14 asserted one word - "uniquement si vous la donnez" - because the
+    // sentence made ONE claim. FW22 split it: the closed PURPOSE was falsified
+    // by sign-in, so the page now leads with how many cases there are and then
+    // names each. The claim is unchanged and is made in two places, so it is
+    // asserted in two places rather than loosened to match whichever half
+    // still happens to contain the old phrase.
+    expect(WEB_STATEMENTS.twoCases).toContain('jamais');
+    expect(WEB_STATEMENTS.twoCases).toContain('sans une action de votre part');
+    expect(DISCLOSED_RECORDS.alertList).toContain('si vous donnez votre adresse');
   });
 
   it('holds: no row exists until a POST carries an address', async () => {
@@ -138,8 +150,8 @@ describe('CLAIM 2: an address is recorded only if the reader gives it', () => {
 
 describe('CLAIM 3: a confirmation link is sent', () => {
   it('is still on the page', () => {
-    expect(CONFIDENTIALITE_COPY.web[1]).toContain('lien de ');
-    expect(CONFIDENTIALITE_COPY.web[1]).toContain('confirmation');
+    expect(DISCLOSED_RECORDS.alertList).toContain('lien de ');
+    expect(DISCLOSED_RECORDS.alertList).toContain('confirmation');
   });
 
   it('holds: the message goes out, and the address is not on the list until it is opened', async () => {
@@ -158,7 +170,7 @@ describe('CLAIM 3: a confirmation link is sent', () => {
 
 describe('CLAIM 4: the date of the reader agreement is recorded', () => {
   it('is still on the page', () => {
-    expect(CONFIDENTIALITE_COPY.web[1]).toContain('la date de votre accord');
+    expect(DISCLOSED_RECORDS.alertList).toContain('la date de votre accord');
   });
 
   it('holds: confirming stamps confirmedAt', async () => {
@@ -174,7 +186,7 @@ describe('CLAIM 4: the date of the reader agreement is recorded', () => {
 
 describe('CLAIM 5: every message carries a one-click unsubscribe', () => {
   it('is still on the page', () => {
-    expect(CONFIDENTIALITE_COPY.web[1]).toContain('désinscription en un clic');
+    expect(DISCLOSED_RECORDS.alertList).toContain('désinscription en un clic');
   });
 
   it('holds: the link is in the message, and it works', async () => {
@@ -315,7 +327,7 @@ describe('R138: a claim with no code behind it is in the future tense', () => {
     // analytics that do not exist is a published claim nothing enforces -
     // the same shape as the consent sentence FW14 corrected, and live
     // today on a page about privacy.
-    expect(CONFIDENTIALITE_COPY.web[2]).toContain('ne mesure pas encore');
+    expect(WEB_STATEMENTS.analytics).toContain('ne mesure pas encore');
   });
 
   it('makes no present-tense promise about how it measures', () => {
@@ -338,7 +350,7 @@ describe('R138: a claim with no code behind it is in the future tense', () => {
     // added instead is e2e/analytics.spec.ts, which holds the half of the
     // sentence that IS about today - "ne mesure pas encore" - on every
     // public route.
-    const claim = CONFIDENTIALITE_COPY.web[2];
+    const claim = WEB_STATEMENTS.analytics;
 
     expect(claim).not.toContain('est auto-hébergée');
     expect(claim).not.toContain('Elle compte les pages');
@@ -348,7 +360,7 @@ describe('R138: a claim with no code behind it is in the future tense', () => {
   it('still describes what it WILL do, rather than saying nothing', () => {
     // Non-vacuity: deleting the sentence would satisfy both assertions
     // above and tell the reader less than the page told them before.
-    const claim = CONFIDENTIALITE_COPY.web[2];
+    const claim = WEB_STATEMENTS.analytics;
 
     expect(claim).toContain('auto-hébergée');
     expect(claim).toContain('sans cookie');
@@ -363,11 +375,20 @@ describe('the map covers the page rather than a chosen part of it', () => {
     // and nobody noticed. This finds every sentence that mentions the list
     // and requires it to be one this file has taken a position on.
     const MAPPED = [
-      CONFIDENTIALITE_COPY.web[0],
-      CONFIDENTIALITE_COPY.web[1],
+      WEB_STATEMENTS.noCookies,
+      DISCLOSED_RECORDS.alertList,
       CONFIDENTIALITE_COPY.basis[1],
       CONFIDENTIALITE_COPY.retention[0],
       CONFIDENTIALITE_COPY.retention[3],
+
+      // FW22. The filter below catches any sentence mentioning "e-mail", and
+      // the split introduced two more. Both are owned:
+      //   twoCases    asserted by CLAIM 2 above, in its two halves.
+      //   signInLink  asserted by tests/unit/content/personal-data.test.ts,
+      //               which maps VerificationToken's three columns to it and
+      //               requires it rendered.
+      WEB_STATEMENTS.twoCases,
+      DISCLOSED_RECORDS.signInLink,
     ];
 
     /**
@@ -389,7 +410,7 @@ describe('the map covers the page rather than a chosen part of it', () => {
      * script, no cookie, no third-party request. The future-tense half is
      * still a promise, and stays one until a task ships the measurement.
      */
-    const NOT_THIS_TASK = [CONFIDENTIALITE_COPY.web[2]];
+    const NOT_THIS_TASK = [WEB_STATEMENTS.analytics];
 
     const mentionsAlerts = [
       ...CONFIDENTIALITE_COPY.web,

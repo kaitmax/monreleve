@@ -144,6 +144,32 @@ export const DISCLOSED_RECORDS = {
     'de connexion.',
 } as const;
 
+/**
+ * The public-site statements that are not data disclosures.
+ *
+ * KEYED FOR THE SAME REASON DISCLOSED_RECORDS IS. tests/db/privacy-claims.ts
+ * used to reach these by POSITION - web[0], web[1], web[2] - and FW22 put two
+ * sentences in the middle of the array. Seven assertions then pointed at the
+ * wrong sentence and gate:clone caught it, because the index was a literal
+ * that happened to be correct rather than a name for the thing it meant
+ * (R171). Keys do not move when the list does.
+ */
+export const WEB_STATEMENTS = {
+  noCookies:
+    'Le site public ne dépose aucun cookie, ne vous demande aucun compte et ' +
+    'ne vous identifie pas. Vous pouvez utiliser le calculateur sans rien ' +
+    'communiquer.',
+  twoCases:
+    'Une adresse e-mail est enregistrée dans deux cas seulement, et jamais ' +
+    'sans une action de votre part.',
+  analytics:
+    'Le site ne mesure pas encore son audience. Lorsqu’il le fera, la ' +
+    'mesure sera auto-hébergée, sans cookie et sans identifiant ' +
+    'publicitaire. Elle comptera les pages consultées et quelques ' +
+    'actions agrégées, comme le fait de lancer un calcul. Elle ne ' +
+    'permettra pas de vous reconnaître, et aucune donnée ne partira ' +
+    'vers un tiers.',
+} as const;
 export const CONFIDENTIALITE_COPY = {
   title: 'Politique de confidentialité',
 
@@ -167,57 +193,32 @@ export const CONFIDENTIALITE_COPY = {
 
   webHeading: 'Ce que le site public enregistre',
   web: [
-    'Le site public ne dépose aucun cookie, ne vous demande aucun compte et ' +
-      'ne vous identifie pas. Vous pouvez utiliser le calculateur sans rien ' +
-      'communiquer.',
-    // FW22 MADE THE OLD SENTENCE FALSE, AND IT IS WORTH SAYING HOW. It read
-    // "Une adresse e-mail est enregistrée UNIQUEMENT si vous la donnez
-    // vous-même, POUR RECEVOIR LES ALERTES RÉGLEMENTAIRES", and then
-    // described double opt-in, a stored consent date and a one-click
-    // unsubscribe.
+    WEB_STATEMENTS.noCookies,
+
+    // FW22 MADE THE OLD SENTENCE FALSE. It read "Une adresse e-mail est
+    // enregistrée UNIQUEMENT si vous la donnez vous-même, POUR RECEVOIR LES
+    // ALERTES RÉGLEMENTAIRES", and then described double opt-in, a stored
+    // consent date and a one-click unsubscribe.
     //
-    // « uniquement ... pour » is a CLOSED PURPOSE, and sign-in is now a
-    // second one. None of the three guarantees in that sentence applies to
-    // it: there is no double opt-in on a sign-in link, no consent date, and
-    // no unsubscribe link in it. Leaving the sentence standing would have
+    // « uniquement ... pour » is a CLOSED PURPOSE and sign-in is now a second
+    // one. None of the three guarantees applies to it: no double opt-in on a
+    // sign-in link, no consent date, no unsubscribe link. Leaving it standing
     // described the alert list's protections as though they covered an
     // address recorded for a different reason.
     //
     // « si vous la donnez vous-même » was strained too: the sign-in endpoint
     // accepts an address typed by anyone, so a row can exist for somebody who
-    // never asked. That is why the sign-in message says no account has been
-    // created.
-    'Une adresse e-mail est enregistrée dans deux cas seulement, et jamais ' +
-      'sans une action de votre part.',
-    // DERIVED, NOT RESTATED - see DISCLOSED_RECORDS.
+    // never asked. That is why the sign-in message says no account was created.
+    WEB_STATEMENTS.twoCases,
     DISCLOSED_RECORDS.alertList,
     DISCLOSED_RECORDS.signInLink,
-    // RULING R138: A PRIVACY CLAIM IS WRITTEN IN THE TENSE THAT MATCHES THE
-    // CODE. This sentence was in the present tense from FW10 and described
-    // analytics that do not exist: nothing on this site measures anything
-    // today. FW14's privacy map found it while proving the alert-list claims
-    // and could not map it to a test, because there is no code to test.
-    //
-    // The future tense is the honest form until FW15 ships Umami. FW15 flips
-    // it back to the present and maps it to its test in the same increment -
-    // and tests/db/privacy-claims.test.ts pins the tense until then, so the
-    // flip cannot happen without the mapping.
-    //
-    // IT SAYS WHAT IS TRUE TODAY FIRST. "Le site ne mesure pas encore son
-    // audience" is a stronger privacy statement than the one it replaces, and
-    // it is the sentence a reader can actually rely on.
-    // THREE SENTENCES, MIRRORING THE ONE IT REPLACES. The first draft joined
-    // the second and third with a colon, and R91's guard refused it: French
-    // sets a no-break space before ":", and this file writes its strings as
-    // plain literals with no helper for one. Restructuring is the better fix
-    // anyway - the original was three sentences, and the correction should
-    // read like a tense change rather than a rewrite.
-    'Le site ne mesure pas encore son audience. Lorsqu’il le fera, la ' +
-      'mesure sera auto-hébergée, sans cookie et sans identifiant ' +
-      'publicitaire. Elle comptera les pages consultées et quelques ' +
-      'actions agrégées, comme le fait de lancer un calcul. Elle ne ' +
-      'permettra pas de vous reconnaître, et aucune donnée ne partira ' +
-      'vers un tiers.',
+
+    // R138: a privacy claim is written in the tense that matches the code.
+    // Present tense from FW10 for analytics that do not exist; the future
+    // tense is the honest form until FW15 ships Umami, and
+    // tests/db/privacy-claims.test.ts pins the tense until then so the flip
+    // cannot happen without the mapping.
+    WEB_STATEMENTS.analytics,
   ],
 
   // THE HEADING SAID l’application, AND THE APPLICATION DOES NOT EXIST.
