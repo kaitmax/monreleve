@@ -56,3 +56,64 @@ never argued.
 shape correction there is a migration against no rows.
 
 ---
+## P4-2 - CI cannot run: GitHub Actions billing [FW21, 2026-09-18]
+
+**HIT AT:** FW21 increment 6, verifying CI on the pushed increments.
+
+**THE BLOCKER.** Every job on the last four FW21 commits reports:
+
+> The job was not started because recent account payments have failed or
+> your spending limit needs to be increased. Please check the 'Billing &
+> plans' section in your settings
+
+The jobs have `steps=0` and complete in 2-4 seconds. Nothing executed.
+This is an account state, not a code defect, and it is not something this
+session can fix — it needs the account owner in GitHub billing settings.
+
+**WHAT IS ACTUALLY KNOWN ABOUT CI.** Run 35320869948, on increment 1
+(`6705d3b`), started before the limit was reached and **the four jobs that
+executed all passed**:
+
+| job | result |
+|---|---|
+| `web` (includes `db:deploy`, `test:db`, `build`, `test:e2e`, `size`) | passed, 8m9s |
+| `format parity (compile)` | passed, 40s |
+| `rail visual baselines` | passed, 3m22s |
+| `runtime guard (R81)` | passed, 1m52s |
+
+Its two `format parity (node 22 / node 24)` matrix jobs are the first two
+that hit the billing wall — `steps=0`, same annotation.
+
+So the FW21 schema, its first migration and the updated table census are
+CI-proven on a real PostgreSQL service container. Increments 2 to 5 are
+**not**: `3481026`, `7454a9f`, `e8d9600` and `9628cc7` have never had a job
+start.
+
+**TAKEN:** every increment gated locally with `pnpm gate:changed`
+(typecheck, lint, test, build, test:db — 169 db tests at increment 6), and
+`pnpm gate:clean` run once per R139 since the schema and generated client
+changed. That last one covers the specific failure CI would otherwise be
+the first to see: a Prisma client that exists on this machine and not on a
+fresh install.
+
+**NOT TAKEN:**
+(a) Claiming CI green. It is not, and four of the five commits have no
+    evidence either way.
+(b) Disabling or narrowing jobs to get a green tick. The tick would mean
+    less than the red one does.
+(c) Re-running the failed runs. They fail identically until billing is
+    resolved; `gh run rerun` would only add noise.
+
+**WHAT UNBLOCKS IT:** the account owner raises the spending limit or
+settles the payment, then `gh run rerun 35325037923` (or any push)
+exercises increments 2-5. **The first thing to read is the `web` job's
+`pnpm test:db` step** — it is the one carrying FW21's new work, and
+`fw14-era-migration.test.ts` needs `CREATE DATABASE`, which the postgres
+image's `POSTGRES_USER` has and a hardened role would not.
+
+**RISK IF WRONG:** moderate and bounded. The database suites passed
+locally against the same PostgreSQL 16 major version CI uses, and
+increment 1 proved the service-container path works. The untested
+difference is privilege and environment, not logic.
+
+---

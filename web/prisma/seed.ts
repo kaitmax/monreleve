@@ -406,6 +406,8 @@ function buildEntries(userId: string): Built[] {
     const weekday = date.getUTCDay();
     const kind: EntryKind = weekday === 2 || weekday === 4 ? 'HOME' : 'CH';
 
+    // AND THE ORDINARY DAY IS DETECTED, because the person this fixture
+    // describes turned detection on. See ordinaryDaysAgreeWithTheSettings.
     built.push({
       userId,
       dayDate: date,
@@ -414,9 +416,9 @@ function buildEntries(userId: string): Built[] {
       absenceReason: null,
       clientMutationId: `demo-${key}-FULL`,
       note: null,
-      provenance: 'MANUAL',
-      detectedKind: null,
-      detectedAt: null,
+      provenance: 'DETECTED_CONFIRMED',
+      detectedKind: kind,
+      detectedAt: at(`${key}T17:52:00.000`),
       clientClaimedAt: null,
       firstRecordedAt: at(`${key}T18:00:00.000`),
     });
@@ -453,6 +455,8 @@ async function seedDemoYear(): Promise<void> {
   });
 
   const entries = buildEntries(user.id);
+
+  ordinaryDaysAgreeWithTheSettings(user.loggingMode, entries);
 
   await prisma.entry.createMany({ data: entries });
 
@@ -507,6 +511,59 @@ async function seedDemoYear(): Promise<void> {
   });
 
   await report(user.id, stored);
+}
+
+/**
+ * Refuse a year that contradicts the person it belongs to.
+ *
+ * THE WALKTHROUGH FOUND THIS, and nothing else could have. The first version
+ * gave the demo user loggingMode AUTO_DETECT with consent recorded on 2
+ * January, and then wrote 259 of 261 days as MANUAL: a person who switched
+ * detection on and typed every day by hand for a year. Both halves were
+ * internally consistent - the settings were valid, every entry was valid, and
+ * every test passed - and the contradiction existed only BETWEEN them, which
+ * is the shape R172 was written for, one subject over.
+ *
+ * It matters because the fixture is what FW24, FW25 and FW27 render. SPEC 8
+ * requires provenance shown in the calendar cell, the edit sheet, the annex,
+ * the CSV and the PDF; against 259 identical MANUAL rows, a renderer that
+ * ignored provenance entirely would have looked very nearly right.
+ *
+ * THE RULE IT ENFORCES: detection knows where the phone was, not why somebody
+ * was away. So an absence is never detected, and a person with detection
+ * switched on has proposals on most of their ordinary days.
+ */
+function ordinaryDaysAgreeWithTheSettings(
+  loggingMode: 'MANUAL' | 'AUTO_DETECT',
+  entries: Built[],
+): void {
+  const detectedAbsence = entries.find(
+    (entry) => entry.kind === 'ABSENT' && entry.detectedKind !== null,
+  );
+
+  if (detectedAbsence !== undefined) {
+    throw new Error(
+      `${iso(detectedAbsence.dayDate)} is an absence carrying a detected kind. ` +
+        'Detection knows which country the phone was in; it cannot propose ' +
+        'a reason somebody was away.',
+    );
+  }
+
+  if (loggingMode !== 'AUTO_DETECT') {
+    return;
+  }
+
+  const worked = entries.filter((entry) => entry.kind !== 'ABSENT');
+  const proposed = worked.filter((entry) => entry.detectedKind !== null);
+
+  if (proposed.length * 2 <= worked.length) {
+    throw new Error(
+      `the demo person has detection switched on and only ${proposed.length} of ` +
+        `${worked.length} worked days carry a proposal. That is a year that ` +
+        'contradicts its own settings, and it is what FW24, FW25 and FW27 ' +
+        'would render.',
+    );
+  }
 }
 
 /**

@@ -73,10 +73,20 @@ export const PRODUCT_STATE: ProductState = {
   // existence one - the feature is here.
   alertsExist: true,
 
-  // NOT BUILT. There is no Entry model, no EntryEvent, and no API route that
-  // records a day: prisma/schema.prisma declares AlertSubscriber and nothing
-  // else, and app/api/ holds alertes, health and ready.
-  // Flipped by: the FW2x backend series.
+  // NOT BUILT. FW21 added Entry, EntryEvent and the triggers that make them
+  // evidence - AND THAT CHANGES NOTHING HERE, which is the whole point of
+  // R186. A table is not a tracker: nobody can record a day until an API
+  // (FW23), a client and a release exist. The proxy is a released Android
+  // client under android/, not a model in the schema.
+  //
+  // THIS COMMENT USED TO NAME THE SCHEMA as its evidence - "there is no Entry
+  // model ... prisma/schema.prisma declares AlertSubscriber and nothing else"
+  // - and FW21 made that sentence false while the flag stayed correctly
+  // false. The test had already been retargeted, so nothing failed: the value
+  // was right, the guard was right, and the reason a reader was given for the
+  // value was four commits out of date. An evidence comment is part of the
+  // claim, and it goes stale exactly where nothing executes it.
+  // Flipped by: the AN series, at AN14.
   trackerExists: false,
 
   // NOT BUILT, and /releve-annuel being `live` does not change that - see the

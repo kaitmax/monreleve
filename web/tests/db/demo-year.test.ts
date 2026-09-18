@@ -122,6 +122,48 @@ describe('every provenance value appears', () => {
   });
 });
 
+describe('the year agrees with the person it belongs to', () => {
+  // THE WALKTHROUGH FOUND THIS AND NOTHING ELSE COULD HAVE. The first version
+  // of the fixture gave the demo user AUTO_DETECT with consent recorded on 2
+  // January, and wrote 259 of 261 days as MANUAL: somebody who switched
+  // detection on and then typed every day by hand for a year.
+  //
+  // Both halves were valid. Every test passed. The contradiction existed only
+  // BETWEEN the settings and the entries - the shape R172 was written for, one
+  // subject over - and it mattered because this fixture is what FW24, FW25 and
+  // FW27 render. Against 259 identical MANUAL rows, a dossier that ignored
+  // provenance entirely would have looked very nearly right.
+
+  it('proposes on most worked days, because detection is switched on', async () => {
+    const user = await prisma.user.findUniqueOrThrow({ where: { email: DEMO_EMAIL } });
+
+    expect(user.loggingMode).toBe('AUTO_DETECT');
+    expect(user.detectionConsentAt).not.toBeNull();
+
+    const worked = entries.filter((entry) => entry.kind !== 'ABSENT');
+    const proposed = worked.filter((entry) => entry.detectedKind !== null);
+
+    expect(proposed.length * 2).toBeGreaterThan(worked.length);
+  });
+
+  it('never proposes an absence', () => {
+    // Detection knows which country the phone was in. It cannot propose a
+    // reason somebody was away, so an absence carrying a detectedKind is a
+    // fixture describing a capability the product does not have.
+    for (const entry of entries.filter((candidate) => candidate.kind === 'ABSENT')) {
+      expect(entry.detectedKind).toBeNull();
+      expect(entry.provenance).toBe('MANUAL');
+    }
+  });
+
+  it('still keeps manual days, so the three provenances are all real cases', () => {
+    // The correction above must not swing the other way: a year where every
+    // single day is detected cannot tell a renderer that handles MANUAL from
+    // one that has never met it.
+    expect(entries.filter((entry) => entry.provenance === 'MANUAL').length).toBeGreaterThan(3);
+  });
+});
+
 describe('both sides of the late flag', () => {
   // SPEC 8: late is derived, firstRecordedAt - dayDate > 7 days, "uncomfortable
   // by design". A fixture with only late entries passes a renderer that flags

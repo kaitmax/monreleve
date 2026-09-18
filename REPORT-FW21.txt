@@ -1,0 +1,796 @@
+====================================================================
+REPORT-FW21.txt - the full Prisma schema
+Mon Releve / frontalier   2026-09-18
+====================================================================
+
+SUMMARY
+--------------------------------------------------------------------
+SPEC 8 is in the database. User, Device, Entry, EntryEvent and the
+three Auth.js tables; four CHECK constraints; three triggers; five
+migrations; a demo year that is a fixture rather than decoration.
+
+The task opened the backend phase and is the last one before the API
+contract freezes for the Android client at FW23. Nothing it added
+reaches a rendered byte, and no flag flipped.
+
+Six increments, six commits, all pushed. Every increment gated with
+pnpm gate:changed. gate:clean run once (R139).
+
+WHAT IS WORTH READING, in order of how much it changed:
+
+1. THE WALKTHROUGH FOUND A DEFECT NOTHING ELSE COULD. The demo person
+   had loggingMode AUTO_DETECT with consent recorded on 2 January, and
+   259 of 261 days written as MANUAL - somebody who switched detection
+   on and then typed every day by hand for a year. Both halves were
+   valid, every test passed, and the contradiction lived only BETWEEN
+   the settings and the entries. It is R172's shape one subject over,
+   and it mattered because this fixture is what FW24, FW25 and FW27
+   render: against 259 identical MANUAL rows, a dossier that ignored
+   provenance entirely would have looked very nearly right.
+
+2. A GUARD THAT REJECTED CORRECTLY AND EXPLAINED ITSELF WRONGLY. All
+   three triggers first carried USING ERRCODE = 'restrict_violation',
+   the semantically correct SQLSTATE. Prisma maps it to P2003,
+   "Foreign key constraint violated on the (not available)", and
+   buried the real message in err.meta.driverAdapterError.cause. A
+   caller would have been told the problem was a relation, in a breach
+   that has nothing to do with relations.
+
+3. AN ABLATION FOUND A HOLE IN MY OWN TEST FILE. Dropping both of
+   Entry's check constraints failed only the absence tests:
+   Entry_detectedKind_when_detected had no test, so a later migration
+   could have dropped it with every gate green.
+
+4. AN EVIDENCE COMMENT WENT STALE WHERE NOTHING EXECUTES IT.
+   trackerExists still read "there is no Entry model ...
+   prisma/schema.prisma declares AlertSubscriber and nothing else".
+   Increment 0 had retargeted the TEST, so the flag stayed correctly
+   false and nothing failed - and the reason a reader was given for
+   the value was four commits out of date.
+
+BLOCKER: CI has not run on four of the six commits. GitHub Actions
+refuses to start jobs pending an account billing action. Parked as
+P4-2 with exactly what is and is not known. I am not claiming green.
+
+PRECONDITIONS
+--------------------------------------------------------------------
+R1: CI green on origin/main before starting - VERIFIED. Run
+    35291460577 on 262b0da (increment 0) succeeded, all jobs.
+R2, R7-R8, R10-R13, R15-R196: carried.
+R9: document edits owned.
+R156: parked rather than stopped for - see PARKED.
+R169/R177: no browser run in this task. Nothing rendered.
+R176: the task ends with the work driven - see WALKTHROUGH. Against
+      the DATA, as the prompt directs, since this task renders
+      nothing.
+
+Local PostgreSQL 16.14 at localhost:5436, database `frontalier`.
+Prisma 7.10.0, driver adapter, connection string in prisma.config.ts.
+
+FLAG AUDIT (R186)
+--------------------------------------------------------------------
+Increment 0 retargeted trackerExists and audited the rest. Each flag
+below: the capability sentence (what being true PROMISES A READER),
+the proxy (the artefact whose existence makes that promise keepable),
+and why that artefact is the LAST one rather than an earlier enabler.
+
+calculatorExists = true
+  capability  A reader can enter their days and get their annual rate.
+  proxy       app/(public)/calculateur-teletravail-frontalier/page.tsx
+  why last    The engine alone computes nothing a reader can reach;
+              the page is where the capability becomes theirs.
+
+guidesExist = true
+  capability  A reader can read the rules, sourced.
+  proxy       content/guides/*.mdx, live in the registry
+  why last    A written article that is not `live` is not readable.
+
+alertsExist = true
+  capability  A reader can subscribe to regulatory alerts.
+  proxy       app/api/alertes/route.ts
+  why last    The form posts somewhere or it does nothing. Delivery
+              being degraded without RESEND_API_KEY is a
+              configuration state, not an existence one.
+
+trackerExists = false        <- RETARGETED IN INCREMENT 0
+  capability  A reader can record a day, and it is timestamped by the
+              server.
+  proxy       a released Android client (AN14), under android/
+  why last    A TABLE IS NOT A TRACKER. Nobody can record a day until
+              an API (FW23), a client and a release exist. The old
+              proxy was /^\s*model\s+Entry\b/m in the schema - the
+              FIRST thing that makes a tracker possible rather than
+              the last - and THIS TASK'S SCHEMA COMMIT WOULD HAVE
+              FLIPPED IT, rewriting four public surfaces at once: the
+              home page's meta description, /a-propos, /releve-annuel
+              and the $legal-01 footer disclaimer. Four pages from
+              honest to false on a commit that adds a table.
+
+dossierExists = false
+  capability  A reader can export the Releve annuel as a document.
+  proxy       app/releve/print, plus the tracker beneath it
+  why last    Already correct before this task. A print route with no
+              days to print is not an export.
+
+comparatorExists = false
+  capability  A reader can compare LAMal and CMU costs.
+  proxy       app/(public)/calculateur-lamal-cmu/
+  why last    PARK-4: the premium data is unlicensed, so the route is
+              `planned` and there is no UI at all (R157 option 3).
+
+appExists = false
+  capability  A reader can install the application.
+  proxy       the android/ directory
+  why last    There is no android/ in this repository.
+
+FW21 FLIPPED NOTHING. Verified two ways:
+  - tests/unit/content/product-state.test.ts passes, including the
+    "checks every flag, so a shortened list cannot pass" census and
+    the sixteen "flipping a flag changes every page that depends on
+    it" cases.
+  - git diff 6705d3b~1..HEAD -- web/app web/lib/fr web/lib/ui
+    web/content web/lib/content is EMPTY for the five schema
+    increments. No reader-facing file was touched by any of them.
+
+  The one lib/content change in this task is increment 6's correction
+  of the trackerExists EVIDENCE COMMENT, which is not copy: it is the
+  reason recorded beside the value, and it had become false. The value
+  did not move.
+
+RED-GREEN LEDGER
+--------------------------------------------------------------------
+Increment 1 - User, Device, Auth tables            commit 6705d3b
+  RED    proven by hand: four illegal rows rejected by constraint
+         name (rate 0, rate 101, EXACT with no total, SIMPLIFIED with
+         a total); two legal rows accepted.
+  GREEN  typecheck 0, lint 0, test 2458, build 0, test:db 97.
+  NOTE   those five cases were proven ONCE, in a session. Increment 2
+         moved them into a committed file, because a proof that runs
+         once is the same artefact as a convention in a service file.
+
+Increment 2 - Entry                               commit 3481026
+  RED-1  25 failed. prisma.entry undefined - no model existed.
+  RED-2  5 failed. Both Entry check constraints dropped; every
+         illegal row ACCEPTED. This is what proves the constraints
+         do the rejecting rather than the enum or Prisma.
+  FOUND  RED-2 failed only the FIVE absence tests.
+         Entry_detectedKind_when_detected had no test at all.
+  RED-3  2 failed. That constraint dropped alone, after three tests
+         were written for it; exactly the two new rejection cases
+         failed, both with "the write was ACCEPTED".
+  GREEN  typecheck 0, lint 0, test 2458, build 0, test:db 126.
+
+Increment 3 - EntryEvent, append-only             commit 7454a9f
+  RED-1  4 failed. The triggers fired, and the message said "Foreign
+         key constraint violated". The assertion is on the RULE'S
+         NAME, so it caught the mistranslation rather than passing on
+         "it threw".
+  RED-2  6 failed. All three triggers dropped; every rejection test
+         failed with "the write was ACCEPTED", and the four
+         still-works tests passed without them, as they must.
+  GREEN  typecheck 0, lint 0, test 2458, build 0, test:db 136.
+
+Increment 4 - the FW14-era migration              commit e8d9600
+  RED    the instrument self-test IS the red: the file's last test
+         damages the scratch database on purpose and requires the
+         comparison to notice. Without it, six "nothing changed"
+         assertions would be satisfied by an instrument that cannot
+         see change.
+  GREEN  typecheck 0, lint 0, test 2458, build 0, test:db 143.
+
+Increment 5 - the demo-year seed                  commit 9628cc7
+  RED    five-way ablation, one case removed per run:
+           gap filled in ................ CAUGHT by the suite
+           late entry recorded on time .. CAUGHT by the suite
+           offline claim AFTER receipt .. CAUGHT by the suite
+           corrected proposal deleted ... CAUGHT by the suite (2)
+           half-day pair made identical . CAUGHT EARLIER, by the
+             seed's own R120 guard, so the fixture cannot be built
+             wrong at all; all 23 tests were SKIPPED behind a failed
+             beforeAll rather than passing against a bad year.
+  GREEN  typecheck 0, lint 0, test 2458, build 0, test:db 166.
+
+Increment 6 - CI, walkthrough, report
+  RED    the walkthrough. Ordinary days returned to MANUAL while the
+         person stays AUTO_DETECT, and the seed now refuses:
+           "the demo person has detection switched on and only 2 of
+            257 worked days carry a proposal. That is a year that
+            contradicts its own settings, and it is what FW24, FW25
+            and FW27 would render."
+  GREEN  typecheck 0, lint 0, test 2458, build 0, test:db 169.
+  CLEAN  gate:clean PASSED - installs, typechecks and builds from a
+         clean checkout with no secrets in the environment.
+
+SCHEMA JUSTIFICATION (R187)
+--------------------------------------------------------------------
+A schema is a contract with a client that cannot be redeployed. From
+this task the Android app is a consumer: a column renamed later is a
+migration plus an app release plus every version still in the field
+calling the old shape. So every field is in SPEC 8 or named here.
+
+User - all in SPEC 8: id, email (unique), emailVerified, name, canton,
+employmentRate, denominatorKind, exactTotalWorkDays, granularity,
+loggingMode, detectionConsentAt, activityStartDate, reminderTime,
+reminderEnabled, organizationId, createdAt.
+
+  organizationId   D33, RESERVED, no features built. In SPEC. Added
+                   now because a nullable column on an EMPTY table
+                   costs nothing - no index, no constraint, no code
+                   path reads it - and the same column on a table
+                   holding real rows is a migration. It is the one
+                   field here that exists for a future, and it is
+                   specified rather than invented.
+  reminderTime     A STRING, NOT A DateTime, and this is the one
+                   modelling decision in the file. "17:30" is a
+                   wall-clock time: it means half past five where the
+                   reader lives, on both sides of a DST boundary,
+                   which a timestamp cannot say without carrying a
+                   date nobody meant.
+  no `image`       The Auth.js AdapterUser type carries one. Nothing
+                   in SPEC 8 and nothing in this product displays an
+                   avatar, and an unused column is a promise to a
+                   client that will eventually read it. See P4-1: if
+                   FW22's adapter needs it, it is one nullable column
+                   on a table that will still be empty.
+
+Device - all in SPEC 8 (D21, replacing PushSubscription): id, userId,
+fcmToken (unique), platform, appVersion, lastSeenAt, createdAt.
+
+Entry - all in SPEC 8 v2.1: id, userId, dayDate, portion, kind,
+absenceReason, clientMutationId (unique), note, provenance,
+detectedKind, detectedAt, clientClaimedAt, firstRecordedAt, updatedAt.
+Unique (userId, dayDate, portion); index (userId, dayDate).
+
+  dayDate @db.Date   A DAY IS A DAY. As a timestamp the recorded day
+                     would depend on the offset of whatever wrote it -
+                     2026-04-07 in Paris is 2026-04-06T22:00Z, and a
+                     naive read gives back the sixth. SPEC 8: "A UTC
+                     day-boundary bug here is a wrong record." A test
+                     asks information_schema for EVERY dayDate column
+                     in the schema, so EntryEvent cannot drift from
+                     Entry.
+  the unique key     IS THE SYNC CONTRACT, not a tidiness index. A
+                     client that posts, loses the response and posts
+                     again must not produce two rows for one
+                     afternoon: the ratio this product computes is a
+                     count of days, so a duplicate is a wrong answer.
+                     Deliberately NOT (userId, dayDate) - a half-day
+                     pair is what D9 exists for.
+
+EntryEvent - all in SPEC 8: id, userId, entryId, action, kind,
+provenance, detectedKind, dayDate, portion, recordedAt,
+clientClaimedAt. Indexes (userId, entryId) and (entryId, recordedAt).
+
+  duplicated fields  ON PURPOSE, not normalisation debt. An event
+                     records what was true AT THE TIME, so reading the
+                     trail does not depend on the row still existing
+                     or still saying the same thing. A trail that had
+                     to join back to Entry would report today's value
+                     for a day corrected twice.
+  NO FK on entryId   SPEC 8 declares none, and the reason is the
+                     same. An entry that is deleted leaves its events
+                     behind, still readable, still carrying the kind
+                     and the day they recorded. A cascade there would
+                     let a deletion erase the evidence that the day
+                     was ever declared.
+  user relation      THE ONE ADDITION, justified by D11: "suppression
+                     du compte ... removes user, entries, events,
+                     devices". Erasing a person must erase their
+                     events, and the cascade is how.
+
+Account, Session, VerificationToken - SPEC 8 omits them "for brevity"
+and names them. Written from the Auth.js Prisma adapter's published
+schema. See P4-1: the adapter is NOT installed, so the shape is
+transcribed rather than verified, and FW22 must assert the shipped
+tables against the installed adapter.
+
+Enums, all from SPEC 8: DenominatorKind, LogGranularity, LoggingMode,
+EntryPortion, EntryKind, AbsenceReason, Provenance, EntryAction.
+
+  ABSENT is a KIND rather than a null, because "no entry" and "a day
+  declared absent" are different facts that the dossier shows
+  differently. A year of gaps and a year of declared holidays are the
+  same number of worked days and very different documents.
+
+CONSTRAINTS - R196, and why there are four rather than one
+--------------------------------------------------------------------
+The prompt asks for the absence rule as a database concern. SPEC 8
+states three more invariants in the same grammatical form, so all of
+them are constraints. Prisma's schema language cannot say "required
+iff", so these are hand-written below its output - and a rule that
+lives only in a Zod schema lives in ONE of the writers. The seed is a
+second, a migration a third, a support query at 02:00 a fourth.
+
+User_employmentRate_range
+  1-100. A rate of 0 is not a part-timer, it is somebody who does not
+  work here.
+
+User_exactTotalWorkDays_iff_exact
+  BOTH DIRECTIONS. Forward: EXACT with no total leaves the engine
+  without a denominator. Reverse - the one that bites: a total left on
+  a SIMPLIFIED240 row is a number a later reader will use, and the
+  engine takes its denominator from the KIND, so the row carries a
+  figure that disagrees with the calculation and nothing says which
+  wins.
+
+Entry_absenceReason_iff_absent
+  BOTH DIRECTIONS. ABSENT never reaches the engine - absences are
+  filtered out before counting - so a CH row carrying an absence
+  reason is a day that READS as absent in the dossier and COUNTS as
+  worked in the calculation.
+
+Entry_detectedKind_when_detected
+  SPEC 8: "Whenever a proposal existed, detectedKind is stored EVEN
+  WHEN THE USER OVERRODE IT. Deleting the overridden detection to make
+  the record look tidier is a review rejection." A DETECTED_CORRECTED
+  row with no detectedKind is that tidied record: the correction has
+  nothing left to be a correction OF.
+  FORWARD DIRECTION ONLY - see QUESTIONS.
+
+IMMUTABILITY PROOFS (AC2)
+--------------------------------------------------------------------
+Three triggers. Each rejection below was produced by attempting the
+write and capturing what came back; each is asserted by the RULE'S
+NAME, never by "it threw" - a test that only checks for rejection is
+satisfied by a typo in a column, a missing foreign key, or the
+database being down.
+
+REJECTED - EntryEvent UPDATE
+  prisma.entryEvent.update({ data: { kind: 'HOME' } })
+  -> Database error. Code: P0001. Message: EntryEvent is append-only
+     (SPEC 8): UPDATE rejected. An event records what was true at the
+     time it was written. Correcting one in place makes every dossier
+     it backs unverifiable - append a new event instead.
+
+REJECTED - EntryEvent UPDATE THAT CHANGES NOTHING
+  Same message. The rule is about the STATEMENT, not whether the
+  bytes moved: a trigger that let harmless updates through would have
+  to decide what harmless means, inside the one table that must not
+  be argued with.
+
+REJECTED - EntryEvent DELETE (single row, user alive)
+REJECTED - EntryEvent DELETE (deleteMany, no WHERE)
+  -> Database error. Code: P0001. Message: EntryEvent is append-only
+     (SPEC 8): DELETE rejected while the user still exists. An event
+     may only disappear together with the person it belongs to (D11,
+     account deletion) - never on its own.
+
+REJECTED - Entry.firstRecordedAt moved BACKWARD to 2020-01-01
+REJECTED - Entry.firstRecordedAt moved FORWARD to 2030-01-01
+  -> Database error. Code: P0001. Message: Entry.firstRecordedAt is
+     immutable (SPEC 8): attempted to change X to Y. It is the server
+     clock at first receipt, and the late flag and the dossier both
+     rest on it.
+  BOTH DIRECTIONS because the rule is not "cannot be backdated".
+  Moving a receipt forward hides a record made on time as effectively
+  as moving one back hides a late one.
+
+ACCEPTED, and this half is not padding - a table nobody can write to
+satisfies every rejection above and is useless:
+  EntryEvent INSERT           or there is no trail at all
+  Entry UPDATE of kind        SPEC 8's "latest wins" correction path,
+                              which is the product's main interaction
+  Entry UPDATE naming
+    firstRecordedAt with its
+    own current value         an ORM is entitled to write every
+                              column; the trigger compares VALUES
+                              rather than inspecting the statement
+  User DELETE cascading to
+    entries and events        D11, and /confidentialite publishes it
+
+WHY DELETE IS NOT SIMPLY REFUSED - the design decision in this task.
+D11 says account deletion "removes user, entries, events, devices". A
+trigger refusing every DELETE would enforce the audit rule by breaking
+the privacy one. So: an event may never be removed ON ITS OWN, which
+is a record being tidied; it may disappear WITH the person, which is
+the record being destroyed at their request with nothing left behind
+to be misread.
+
+The two are told apart because PostgreSQL deletes the parent row
+before firing the referential action, so the User is already invisible
+to the transaction when a cascade reaches the trigger, and still
+visible when somebody deletes an event directly. VERIFIED EMPIRICALLY
+ON THROWAWAY TABLES BEFORE THE TRIGGER WAS WRITTEN rather than assumed
+from documentation - a probe showed "parent still visible = t" on a
+direct delete and "= f" during the cascade - and both directions are
+asserted in the suite, so a PostgreSQL that reordered this would fail
+a test rather than silently make every account undeletable.
+
+WHY A TRIGGER AND NOT A REVOKE OR A RULE. REVOKE binds a role: it
+holds against the application user and not against the superuser a
+migration runs as, and it is invisible in the schema. CREATE RULE ...
+DO INSTEAD NOTHING discards the write silently, and an audit trail
+that quietly ignores writes cannot be told apart from one that accepts
+them. A trigger raises, naming the rule.
+
+THE ERRCODE REVERSAL. All three RAISEs first carried USING ERRCODE =
+'restrict_violation' - SQLSTATE 23001, semantically correct. Prisma
+maps it to P2003 and reports "Foreign key constraint violated on the
+(not available)", with the real text buried in
+err.meta.driverAdapterError.cause. FW23's error handling would have
+been written against that. Left at plpgsql's default P0001, Prisma
+surfaces the message itself. A GUARD THAT REJECTS CORRECTLY AND
+EXPLAINS ITSELF WRONGLY sends the next person to the wrong place, at
+the moment they are least able to argue with it.
+
+MIGRATION (AC1)
+--------------------------------------------------------------------
+Five migrations. FW14's two, then FW21's three:
+
+  20260918003225_user_device_auth
+  20260918075246_entry_provenance_mutation_id
+  20260918080540_entry_event_append_only
+
+ON AN EMPTY DATABASE: all five replay cleanly. Proven twice - once by
+the local development database, and once per run of
+fw14-era-migration.test.ts, which creates a scratch database from
+nothing.
+
+ON AN FW14-ERA DATABASE: tests/db/fw14-era-migration.test.ts. It does
+not simulate one. It creates a scratch database, applies FW14's two
+migration files verbatim, writes their _prisma_migrations rows exactly
+as the CLI writes them (sha256 checksums included, so the deploy sees
+them as done), inserts four subscribers, and only then runs
+`prisma migrate deploy` - the same command CI and production use.
+
+  applied           the three FW21 migrations, and NOT FW14's two
+                    (asserted, not assumed - if it had replayed them
+                    the fixture was wrong and everything else in the
+                    file is asserting against a database built twice)
+  four rows         one per state the table can hold: confirmed;
+                    unconfirmed; confirmed then unsubscribed; never
+                    confirmed then unsubscribed
+  compared          FIELD BY FIELD, before and after. A count is
+                    satisfied by a migration that keeps every row and
+                    clears every timestamp - which is the failure that
+                    matters, because an unsubscribedAt silently nulled
+                    is a person who asked to be removed and is back on
+                    the list
+  the nulls         half the claim. The 30-day purge selects on
+                    confirmedAt IS NULL, so a backfill would make
+                    unconfirmed addresses permanent - silently, and in
+                    the direction that keeps data rather than loses
+                    it, which is the direction nobody notices
+  also asserted     the five FW14 indexes the privacy claims depend
+                    on, the nine tables, the three triggers and the
+                    four check constraints. A migration can create
+                    every table and arrive without the hand-written
+                    half below Prisma's output, which is what AC2
+                    rests on
+
+THE FILE'S LAST TEST DAMAGES THE SCRATCH DATABASE ON PURPOSE. Every
+assertion in it has the shape "nothing changed", and that shape is
+satisfied by an instrument that cannot see change at all - a query
+against the wrong database, a deploy that silently did nothing, an
+empty result compared to an empty result. So it ends by clearing one
+unsubscribedAt and requiring the comparison to notice.
+
+FW14'S PRIVACY SUITES RE-RUN AFTER MIGRATION, as the prompt asks:
+privacy-claims, purge and confirm-unsubscribe, 42 passed. Their claims
+still hold.
+
+A CHECKSUM REPAIR, recorded because it is a change to migration
+bookkeeping. Increment 1 applied its migration and I appended the
+constraints afterwards, so _prisma_migrations held the checksum of the
+pre-edit file and Prisma refused the next migration as drift.
+`migrate reset` is destructive and Prisma's agent guard rightly
+refuses it unattended. Instead: the algorithm was confirmed as sha256
+of the file bytes against FW14's two untouched migrations (both
+MATCH), the live schema was verified to carry exactly what the edited
+file declares, and only then was the recorded checksum aligned. No
+data dropped. The same repair was needed once more in increment 3
+after the ERRCODE reversal. Increments 2 onward use `migrate dev
+--create-only`, edit, then apply - so the checksum is computed over
+the final file and this cannot recur.
+
+SEED SHAPE (AC3)
+--------------------------------------------------------------------
+`pnpm db:seed`. Local hosts only - FW14's guard, re-asserted by a test
+that points the seed at db.example.com and requires the refusal by
+name. The stake went up with this increment: the seed now writes a
+year of a person's movements rather than four invented addresses.
+
+Deterministic: fixed year 2026, fixed timestamps, no Date.now(). Two
+runs produce the same database. It is a fixture - FW24, FW25 and FW27
+assert against it.
+
+THE FIXTURE IS THE RULE, NOT THE NUMBERS. The totals below are what
+the seed PRINTS; they are not typed into its header, because a derived
+figure written into a comment is R163's defect - a value from a
+fixture restated where nothing checks it.
+
+  the person   demo@example.com, canton GE, 100%, SIMPLIFIED240,
+               granularity HALF_DAY, loggingMode AUTO_DETECT, consent
+               2026-01-02, rappel 17:30
+  the rule     every weekday of 2026 gets an entry except one gap;
+               Tuesdays and Thursdays are HOME, everything else CH;
+               the named days override that
+  printed      entries 261, events 262, one working day with no entry
+
+  provenance   DETECTED_CONFIRMED 248, MANUAL 12,
+               DETECTED_CORRECTED 1
+  kinds        CH 152, HOME 103, ABSENT 4, MISSION_FR 1,
+               MISSION_THIRD 1
+
+THE NAMED DAYS, each a case that has hidden a defect before:
+  2026-06-17  THE GAP. No entry at all. "Non renseigne" and "declared
+              absent" are different facts; a fixture with no gap lets
+              a renderer conflate them and stay green. A test also
+              asserts the date is a WEEKDAY, without which the first
+              assertion is satisfied by naming a Sunday.
+  2026-02-10  late: received 2026-03-05, 23 days after the day.
+  2026-02-11  on time: received the same evening. Only-late passes a
+              renderer that flags everything.
+  2026-03-18  DETECTED_CONFIRMED, detectedKind equals kind.
+  2026-03-17  DETECTED_CORRECTED, detectedKind CH, kind HOME - they
+              DIFFER, or the case proves nothing.
+  2026-05-20  offline: clientClaimedAt 18:03 on the day,
+              firstRecordedAt five days later. Where they agree, a
+              renderer reading the wrong one is indistinguishable
+              from one reading the right one.
+  2026-04-14  half-day pair, AM CH and PM HOME - different kinds, or
+              a calculation ignoring portion would still be right.
+  2026-07-07  edited: entry says HOME, trail holds CREATED kind=CH
+              then MODIFIED kind=HOME. The row and the trail
+              disagree on purpose.
+  absences    FERIE 2026-05-01, CONGE 2026-08-10, AUTRE 2026-09-28,
+              MALADIE 2026-11-03.
+  missions    MISSION_FR 2026-06-02, MISSION_THIRD 2026-10-06.
+
+R120 - TWO DERIVATIONS OF ONE FIGURE DISAGREE BY CONSTRUCTION, and the
+seed REFUSES to produce a year where they do not:
+
+    telework ROWS  103      telework DAYS  102.5
+    total ENTRIES  261      worked DAYS    256
+
+The FW12 tile defect is the precedent: a figure two code paths
+computed differently, in a fixture where both happened to match, so
+the test passed using the wrong one.
+
+THE FIXTURE VALIDATES ITSELF BEFORE WRITING. It refuses a named day
+that falls on a weekend (a special case written on a Sunday is a row
+the calendar never renders and no test misses), a half-day pair that
+is not two portions of one date, fewer than four distinct absence
+reasons, an absence carrying a detected kind, and - added in increment
+6 - a year that contradicts its own settings.
+
+WALKTHROUGH (R176)
+--------------------------------------------------------------------
+This task renders nothing, so the walkthrough is against the DATA, as
+the prompt directs. `pnpm db:seed`, then the year read back day by day
+the way a calendar would show it.
+
+WHAT WAS DRIVEN
+  the person's settings row
+  February 10-11      both sides of the late flag
+  March 17-18         detection corrected, then confirmed
+  April 14            the half-day pair
+  May 20              the offline sync, both timestamps
+  June 15-19          the week containing the gap, in sequence
+  the four absences, the two missions
+  July 7              the entry, then its two events in order
+  provenance and kind grouped over the whole year
+
+WHAT IT SHOWED - and this is the finding
+
+    THE PERSON SAYS: loggingMode=AUTO_DETECT, consent 2026-01-02
+    PROVENANCE:  MANUAL 259   DETECTED_CONFIRMED 1
+                 DETECTED_CORRECTED 1
+
+A year belonging to somebody who switched detection on and then typed
+every single day by hand. Nothing was invalid. Every constraint held,
+every test passed, the settings were coherent and the entries were
+coherent - THE CONTRADICTION EXISTED ONLY BETWEEN THEM. That is
+exactly R172's shape one subject over, and exactly what R176 says the
+walkthrough is for: not copy across pages, not pixels against a
+baseline, but a thing contradicting itself.
+
+It mattered because this fixture is what FW24's dossier, FW25 and FW27
+render, and SPEC 8 requires provenance shown in the calendar cell, the
+edit sheet, the annex, the CSV and the PDF. Against 259 identical
+MANUAL rows, a renderer that ignored provenance entirely would have
+looked very nearly right for three tasks.
+
+FIXED, WITH THE RULE STATED: detection knows which country the phone
+was in; it cannot propose a reason somebody was away. So ordinary
+worked days are DETECTED_CONFIRMED, and MANUAL is kept for the twelve
+days where a person genuinely typed - the four absences, the two
+missions, the late entry recorded from memory, the offline sync, the
+half-day pair, the edited day and one on-time day.
+
+MADE PERMANENT, two ways: the seed now refuses to write a year whose
+provenance contradicts the person's loggingMode (ablated - it rejects
+exactly the state that shipped, naming the count), and three tests
+assert the agreement, that no absence is ever detected, and that
+MANUAL days still exist so the correction cannot swing the other way.
+
+ALSO CONFIRMED IN THE WALKTHROUGH
+  the gap sits mid-week, between two recorded days, as a gap rather
+    than an absence
+  the late entry is the only row whose receipt is weeks from its day
+  the corrected day shows kind HOME beside propose=CH - both on the
+    record, as SPEC 8 requires
+  the edited day's entry says HOME while its CREATED event still says
+    CH, in order, 18:00 then 21:14
+  every absence carries a reason and no worked day carries one
+
+NOTED, NOT A DEFECT: the demo year does not survive `pnpm test:db`,
+because the other database suites empty User between tests. A
+developer who wants the demo data runs `pnpm db:seed` afterwards. That
+is the correct trade - those suites need an empty table to assert
+"exactly one row" at all.
+
+CI
+--------------------------------------------------------------------
+CI already applied migrations and ran the database suites before this
+task (FW14): `pnpm db:deploy` then `pnpm test:db`, against a
+postgres:16-alpine service container.
+
+FW21 added two requirements on that role, and both are easy to remove
+by accident while tightening things up, so they are now documented in
+ci.yml beside the step:
+  CREATE DATABASE     fw14-era-migration.test.ts builds a real
+                      FW14-era database in a scratch database of its
+                      own. POSTGRES_USER in the postgres image is a
+                      superuser; a restricted role swapped in later
+                      would fail that file.
+  the seed runs here  demo-year.test.ts shells out to `prisma db
+                      seed`, because AC3 is about the COMMAND.
+
+gate:clean (R139) PASSED. Required because the schema and the
+generated client changed: a fresh clone must regenerate Prisma at
+postinstall, and that is precisely the FW14 failure this gate exists
+for - a client that exists on this machine and not on a fresh install.
+
+CI ITSELF HAS NOT RUN ON FOUR OF THE SIX COMMITS. See PARKED P4-2. I
+am not claiming green.
+
+PARKED
+--------------------------------------------------------------------
+P4-1 (from increment 1) - the Auth.js tables cannot be written "as its
+adapter requires" because no Auth.js package is installed; installing
+one is ask-first under SPEC 20 and outside this task's scope. Written
+from the published adapter schema, every field justified above. FW22's
+first job is to assert the shipped tables against the installed
+adapter - the R185 mechanism, one layer over: generated or asserted,
+never argued.
+
+P4-2 (new) - CI cannot run. Every job on the last four FW21 commits
+reports "The job was not started because recent account payments have
+failed or your spending limit needs to be increased", with steps=0.
+This is an account state, not a code defect, and not something this
+session can fix.
+
+  WHAT IS KNOWN: run 35320869948 on increment 1 (6705d3b) started
+  before the limit was reached, and the four jobs that executed ALL
+  PASSED - `web` 8m9s (including db:deploy, test:db, build, e2e,
+  size), format parity (compile) 40s, rail visual baselines 3m22s,
+  runtime guard 1m52s. So the schema, its first migration and the
+  updated table census are CI-proven on a real PostgreSQL service
+  container.
+  WHAT IS NOT: commits 3481026, 7454a9f, e8d9600, 9628cc7 have never
+  had a job start.
+  UNBLOCKS IT: the account owner settles billing, then any push
+  exercises increments 2-5. Read the `web` job's `pnpm test:db` step
+  first.
+
+DEVIATIONS
+--------------------------------------------------------------------
+1. THE MIGRATION CHECKSUM WAS EDITED DIRECTLY, twice. Increment 1
+   applied its migration before the hand-written constraints were
+   appended, and increment 3 needed the ERRCODE reversal after
+   applying. Prisma then refused the next migration as drift, and
+   `migrate reset` is destructive - its agent guard refuses it without
+   explicit consent, correctly. Rather than ask for a destructive
+   command when a non-destructive one exists: the checksum algorithm
+   was confirmed as sha256 of the file bytes against FW14's two
+   untouched migrations, the live schema was verified to carry exactly
+   what the edited file declares, and only then was the recorded
+   checksum aligned. No data was dropped, and the workflow changed to
+   --create-only so it cannot recur.
+
+2. FOUR CHECK CONSTRAINTS RATHER THAN THE ONE THE PROMPT NAMES. R196
+   is the ruling; the other three are SPEC 8 invariants in the same
+   grammatical form. Entry_detectedKind_when_detected is the one the
+   prompt does not mention at all - see QUESTIONS.
+
+3. INCREMENT 1'S CONSTRAINT PROOFS WERE MOVED INTO A COMMITTED FILE
+   during increment 2. They had been proven once, by hand, in a
+   session. A proof that runs once is the same artefact as a
+   convention in a service file, and the prompt's own words about AC2
+   apply to the proof as much as to the rule.
+
+4. THE SEED'S ORDINARY DAYS CHANGED FROM MANUAL TO DETECTED_CONFIRMED
+   in increment 6, after the walkthrough. The fixture's shape moved
+   after increment 5 was committed. Doing it now is right - FW24, FW25
+   and FW27 do not exist yet, so nothing asserts against the old
+   shape, and the alternative is three tasks of churn later.
+
+5. THE trackerExists EVIDENCE COMMENT was corrected in increment 6.
+   Increment 0 retargeted the test; the comment beside the value still
+   named the schema as its evidence and became false when Entry
+   landed. The value did not move and no copy changed.
+
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------
+1. AM/PM ARE ONLY LEGAL WHEN granularity = HALF_DAY (SPEC 8), and
+   that is NOT enforced in the database. It cannot be cheaply: a CHECK
+   constraint cannot reference another table, so it would need a
+   trigger. And it should probably not be - granularity is mutable
+   while entries are historical, so a person switching back to whole
+   days would retroactively invalidate their own past half-days and a
+   trigger would block legitimate edits. This marks the boundary of
+   R196's "where the database can express it". FW23's write path.
+
+2. PRISMA MISMAPS TRIGGER ERRORS GENERALLY. P0001 surfaces as
+   PrismaClientKnownRequestError code P2039 with the message inline,
+   which is legible but is not a code FW23 can branch on. FW23 will
+   need to match on the message or introduce its own error mapping.
+
+3. THE DEMO YEAR IS 2026, which is the current year today and will not
+   be next January. That is deliberate (R171 - the value IS the
+   assertion) but the demo will read as historical over time. Worth a
+   decision before the app ships, not now.
+
+4. tests/db/ NOW TAKES ~20s and spawns a container-free but real
+   PostgreSQL round trip per file. Still fine; worth watching as FW23
+   adds route tests.
+
+QUESTIONS
+--------------------------------------------------------------------
+Q66. Entry_detectedKind_when_detected is enforced in the FORWARD
+     direction only: a DETECTED_CONFIRMED or DETECTED_CORRECTED row
+     must carry detectedKind. The reverse - a MANUAL row must carry
+     NONE - follows from the definitions ("MANUAL when the user chose
+     it outright", so no proposal existed) and would make the pair
+     symmetric with User_exactTotalWorkDays_iff_exact.
+
+     I did not enforce it because SPEC does not STATE it, and the
+     asymmetry of cost is real: enforcing only what is stated can
+     never refuse a row SPEC permits, while enforcing what is merely
+     implied can. A MANUAL row carrying a detectedKind would be a
+     record that discloses a signal while claiming none existed, which
+     argues for the constraint.
+
+     Ruling wanted. If yes, it is one line in a new migration against
+     an empty table.
+
+Q67. EntryEvent has no foreign key on entryId, matching SPEC 8. That
+     means a deleted Entry leaves events pointing at an id that no
+     longer resolves - deliberate, because the trail must outlive the
+     row it records. Confirming this is the intent, since FW23's
+     delete path and FW24's dossier both depend on it.
+
+PUSH PROOF
+--------------------------------------------------------------------
+Branch main, remote github.com/kaitmax/Frontalier.
+
+  262b0da  FW21: PRODUCT_STATE flags assert capability, not
+           implementation (R186)                     [increment 0]
+  6705d3b  FW21: User, Device, Auth tables (R187, R196)
+  3481026  FW21: Entry with provenance and mutation id (R196)
+  7454a9f  FW21: EntryEvent, append-only, with immutable first
+           timestamp
+  e8d9600  FW21: migration proven against an FW14-era database
+  9628cc7  FW21: the demo-year seed
+           FW21: CI database, walkthrough, report   <- carries this
+           file, so its own hash is the commit you are reading this
+           from. `git log --oneline -1` names it.
+
+All pushed. CI status: see PARKED P4-2 - green on 262b0da and on the
+four executed jobs of 6705d3b; not run on the rest.
+
+The final gate, for the record - lib/content/** selects the browser
+suites by design (R140), so increment 6 ran the full set even though
+its lib/content change is a comment. The selector is path-based
+because the judgement version is the version that failed in FW13:
+
+  typecheck 0 | lint 0 | test 2458 | build 0
+  test:e2e 284 | test:visual 108 | test:db 169 | test:late 10
+
+NO BASELINE WAS REGENERATED in this task (R135 does not apply): the
+108 visual tests COMPARED against the stored images and passed.
+
+====================================================================
+END OF REPORT-FW21.txt
+====================================================================

@@ -106,6 +106,24 @@ jobs:
       # tests/db/** is excluded from pnpm test on purpose - see
       # vitest.db.config.ts - so it is named here. R132's selector requires
       # it locally whenever prisma/**, lib/db/** or tests/db/** changes.
+      #
+      # FW21 ADDED TWO REQUIREMENTS ON THIS ROLE, and both are easy to remove
+      # by accident while trying to tighten things up:
+      #
+      #   CREATE DATABASE. tests/db/fw14-era-migration.test.ts builds a real
+      #   FW14-era database in a scratch database of its own, applies FW14's
+      #   two migrations to it, inserts subscriber rows and only then runs
+      #   `migrate deploy` - which is the only way to prove AC1's second half
+      #   against rows that already exist rather than against an empty
+      #   schema. POSTGRES_USER in the postgres image is a superuser, so this
+      #   works as configured; a restricted role swapped in later would fail
+      #   that file with "permission denied to create database".
+      #
+      #   The seed runs here. tests/db/demo-year.test.ts shells out to
+      #   `prisma db seed`, because AC3 is about the COMMAND - a seed that
+      #   works when called directly and fails through the CLI is a seed
+      #   nobody can use. The seed refuses any host but localhost, which this
+      #   job satisfies.
       - run: pnpm test:db
 
       - run: pnpm build
