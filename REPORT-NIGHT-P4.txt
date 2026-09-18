@@ -1,0 +1,198 @@
+====================================================================
+REPORT-NIGHT-P4.txt - Phase 4 overnight run
+Mon Releve / frontalier   2026-09-18
+====================================================================
+
+OUTCOME
+--------------------------------------------------------------------
+STOPPED AT THE C2 HANDOVER CHECK, BEFORE FW22 WAS OPENED.
+
+relay/RUN-PHASE-4.txt C2 requires four checks between tasks. Three
+pass. The third fails:
+
+  C2a  previous report committed and pushed .............. PASS
+  C2b  git status clean, local main == origin/main ....... PASS
+  C2c  CI green for the previous task's final push ....... FAIL
+  C2d  nothing BLOCKING that R156 does not permit ........ PASS
+
+C2 says: "If a check fails: STOP. Write REPORT-NIGHT-P4.txt saying
+which check failed, commit, push, end." That is what this is.
+
+FW22 through FW29 are NOT STARTED. No file belonging to them has been
+read, created or changed.
+
+WHICH CHECK FAILED, AND WHY
+--------------------------------------------------------------------
+C2c. CI is not green on FW21's final push, and it cannot become green
+from inside this session.
+
+Run 35327519570, on 3bf64a1 (FW21's final commit), 3 seconds:
+
+  web                                 failure, steps=0
+  rail visual baselines               failure, steps=0
+  format parity (compile)             failure, steps=0
+  runtime guard (R81)                 failure, steps=0
+  format parity (node ${{ matrix.node }})  skipped, steps=0
+
+steps=0 on every job. Nothing executed. The annotation on each:
+
+  "The job was not started because recent account payments have
+   failed or your spending limit needs to be increased. Please check
+   the 'Billing & plans' section in your settings"
+
+THIS IS AN ACCOUNT STATE, NOT A CODE DEFECT, and not something this
+session can act on. Parked in full as phase4parking.md P4-2.
+
+C2c SAYS "wait; record the URL". WAITING IS NOT THE ANSWER HERE, and
+that is the one judgement in this report. A queued job becomes a
+started job on its own; a job refused for billing does not. Waiting
+would consume the night and end in the same place, with eight tasks
+unstarted and no additional information.
+
+WHAT IS AND IS NOT VERIFIED
+--------------------------------------------------------------------
+KNOWN GREEN. Run 35320869948 on 6705d3b (FW21 increment 1) started
+before the limit was reached, and the four jobs that executed ALL
+PASSED:
+
+  web (db:deploy, test:db, build, test:e2e, size)   passed  8m9s
+  format parity (compile)                           passed    40s
+  rail visual baselines                             passed  3m22s
+  runtime guard (R81)                               passed  1m52s
+
+So FW21's schema, its first migration and the updated table census
+are CI-proven against a real PostgreSQL service container.
+
+NOT VERIFIED BY CI. Five commits have never had a job start:
+
+  3481026  Entry with provenance and mutation id
+  7454a9f  EntryEvent, append-only, immutable first timestamp
+  e8d9600  migration proven against an FW14-era database
+  9628cc7  the demo-year seed
+  3bf64a1  CI database, walkthrough, report
+
+VERIFIED LOCALLY, on every one of them. `pnpm gate:changed` passed
+before each commit, with the suites its selector chose. The final
+increment ran the full set:
+
+  typecheck 0 | lint 0 | test 2458 | build 0
+  test:e2e 284 | test:visual 108 | test:db 169 | test:late 10
+
+and `pnpm gate:clean` (R139) passed once, which is the check that
+covers the specific class CI would otherwise be first to see: a
+generated Prisma client that exists on this machine and not on a
+fresh install. That was FW14's failure and this task changed the
+schema, so it was the right gate to run.
+
+WHY NOT CARRY ON ANYWAY
+--------------------------------------------------------------------
+Beyond C2 saying so, the substance points the same way, and it is
+worth stating because the protocol elsewhere tells me to park rather
+than stop.
+
+Phase 4 is auth, an entries API, the dossier, exports, the account
+screen, a scheduler, deployment artefacts and an audit. FW23 freezes
+the API contract for the Android client. Running eight tasks with no
+CI at all, on top of five commits that have never been verified,
+would mean a night of work whose first external check comes after
+everything is written - and the tasks most likely to fail in CI
+rather than locally are exactly the ones queued next: a Firebase
+seam, a Coolify deployment, an auth flow with secrets that exist in
+.env here and in a GitHub environment there.
+
+R139 exists because "it passes here" and "it passes on a clean
+checkout with no secrets" are different claims. CI is where the
+second claim is settled, and it is currently unavailable.
+
+WHAT UNBLOCKS IT
+--------------------------------------------------------------------
+1. Settle the GitHub Actions billing or raise the spending limit -
+   Settings -> Billing & plans on the account that owns
+   github.com/kaitmax/Frontalier.
+
+2. Re-run the last run, or push anything:
+
+     gh run rerun 35327519570
+
+3. READ THE `web` JOB'S `pnpm test:db` STEP FIRST. It carries all of
+   FW21's new work, and two things in it have never run on a runner:
+
+   - tests/db/fw14-era-migration.test.ts needs CREATE DATABASE. The
+     postgres image's POSTGRES_USER is a superuser, so it should
+     work as configured; a restricted role would fail with
+     "permission denied to create database". Documented in ci.yml
+     beside the step.
+   - tests/db/demo-year.test.ts shells out to `prisma db seed`,
+     because AC3 is about the command rather than a function. The
+     seed refuses any host but localhost, which that job satisfies.
+
+4. Then resume Phase 4 by pasting relay/RUN-PHASE-4.txt into a fresh
+   session. C2 will pass and FW22 opens normally. Nothing in this
+   session needs undoing.
+
+STATE OF THE TREE
+--------------------------------------------------------------------
+Branch main, clean. Local main == origin/main == 3bf64a1.
+
+  262b0da  FW21: PRODUCT_STATE flags assert capability, not
+           implementation (R186)
+  6705d3b  FW21: User, Device, Auth tables (R187, R196)
+  3481026  FW21: Entry with provenance and mutation id (R196)
+  7454a9f  FW21: EntryEvent, append-only, with immutable first
+           timestamp
+  e8d9600  FW21: migration proven against an FW14-era database
+  9628cc7  FW21: the demo-year seed
+  3bf64a1  FW21: CI database, walkthrough, report
+
+TASK LEDGER
+--------------------------------------------------------------------
+  FW21  DONE     3bf64a1   CI: see above   REPORT-FW21.txt pushed
+  FW22  not started
+  FW23  not started
+  FW24  not started
+  FW25  not started
+  FW26  not started
+  FW27  not started
+  FW28  not started
+  FW29  not started
+
+PARKED (phase4parking.md)
+--------------------------------------------------------------------
+P4-1  Auth.js tables cannot be written "as its adapter requires"
+      NEEDS: nothing from you. FW22 installs the adapter; its first
+      job is to assert the shipped Account / Session /
+      VerificationToken shapes against the installed adapter rather
+      than against its documentation (R185 - generated or asserted,
+      never argued). The tables are empty until then, so a
+      correction is a migration against no rows.
+
+P4-2  CI cannot run: GitHub Actions billing
+      NEEDS: YOU, in GitHub billing settings. This is the one
+      blocking item and it is what stopped the night. Detail above
+      and in phase4parking.md.
+
+OPEN QUESTIONS
+--------------------------------------------------------------------
+Q66 (FW21). Entry_detectedKind_when_detected is enforced in the
+     FORWARD direction only: a DETECTED_CONFIRMED or
+     DETECTED_CORRECTED row must carry detectedKind. The reverse - a
+     MANUAL row must carry none - follows from the definitions but
+     SPEC does not state it. I did not enforce it because enforcing
+     only what is stated can never refuse a row SPEC permits, while
+     enforcing what is merely implied can. A ruling before FW23
+     freezes the API contract would be worth having; if yes, it is
+     one line in a migration against an empty table.
+
+Q67 (FW21). EntryEvent has no foreign key on entryId, matching SPEC
+     8, so a deleted Entry leaves events pointing at an id that no
+     longer resolves. That is deliberate - the trail must outlive
+     the row it records - and FW23's delete path and FW24's dossier
+     both depend on it. Confirming the intent.
+
+Phase 4 not started. FW21 complete and reported; the night stopped
+at its first handover check, on CI availability rather than on any
+property of the code.
+
+====================================================================
+END OF REPORT-NIGHT-P4.txt
+====================================================================
