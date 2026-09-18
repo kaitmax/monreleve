@@ -166,6 +166,8 @@ describe('the row, and the constraint that keeps it one row', () => {
       'AlertSubscriber',
       // D21, replacing the PushSubscription a web-push design would need.
       'Device',
+      // SPEC 8: the declared day. FW21 increment 2.
+      'Entry',
       'Session',
       'User',
       'VerificationToken',

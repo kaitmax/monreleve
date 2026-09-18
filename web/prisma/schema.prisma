@@ -131,6 +131,47 @@ enum LoggingMode {
   AUTO_DETECT
 }
 
+/// D9. AM/PM are only legal when the user's granularity is HALF_DAY.
+enum EntryPortion {
+  FULL
+  AM
+  PM
+}
+
+/// SPEC 8 / D28.
+///
+/// ABSENT IS A KIND RATHER THAN A NULL, because "no entry" and "a day the
+/// reader declared absent" are different facts and the dossier shows them
+/// differently: an absence is a record, a gap is a gap. A year of gaps and a
+/// year of declared holidays are the same number of worked days and very
+/// different documents.
+enum EntryKind {
+  CH
+  HOME
+  MISSION_FR
+  MISSION_THIRD
+  ABSENT
+}
+
+enum AbsenceReason {
+  CONGE
+  MALADIE
+  FERIE
+  AUTRE
+}
+
+/// SPEC 8 / D17. The three values are the ones the dossier must distinguish:
+/// a day the reader typed, a proposal they accepted, and a proposal they
+/// changed. The third is what makes detection auditable rather than merely
+/// convenient - SPEC 8 keeps the overridden proposal on the record because
+/// "an audit that discovers the app had a contradicting signal is worse than
+/// a document that discloses it".
+enum Provenance {
+  MANUAL
+  DETECTED_CONFIRMED
+  DETECTED_CORRECTED
+}
+
 /// The person whose days these are.
 model User {
   id String @id @default(cuid())
@@ -184,6 +225,7 @@ model User {
 
   createdAt DateTime @default(now())
 
+  entries  Entry[]
   devices  Device[]
   accounts Account[]
   sessions Session[]
@@ -204,6 +246,84 @@ model Device {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+/// One declared day, or half-day. SPEC 8 v2.1.
+///
+/// THE UNIQUE KEY IS (userId, dayDate, portion) AND THAT IS THE SYNC
+/// CONTRACT, not a tidiness index. A client that posts, loses the response
+/// and posts again must not produce two rows for one afternoon - the ratio
+/// this product computes is a count of days, so a duplicate is a wrong
+/// answer rather than an untidy table. clientMutationId (D30) is the other
+/// half: it lets the server recognise the replay instead of merely refusing
+/// it, which is what SPEC 8 means by "acknowledged and ignored".
+///
+/// NOT (userId, dayDate). A half-day pair is the shape D9 exists for: a
+/// morning in Geneva and an afternoon at home is precisely the case the
+/// threshold is about.
+model Entry {
+  id     String @id @default(cuid())
+  userId String
+
+  /// Interpreted in Europe/Paris.
+  ///
+  /// @db.Date BECAUSE A DAY IS A DAY. As a timestamp, the day a reader
+  /// recorded would depend on the offset of whatever wrote it - 2026-04-07 in
+  /// Paris is 2026-04-06T22:00Z, and a naive read gives back the sixth. SPEC
+  /// 8: "A UTC day-boundary bug here is a wrong record." The column type is
+  /// the only place that can be settled once; every layer above it is a
+  /// convention somebody has to remember.
+  dayDate DateTime @db.Date
+
+  /// AM/PM only when the user's granularity is HALF_DAY.
+  portion EntryPortion @default(FULL)
+
+  kind EntryKind
+
+  /// Required iff kind = ABSENT, and forbidden otherwise - enforced by a
+  /// CHECK constraint in the migration, both directions, because the prompt
+  /// is explicit that this is a database concern and not only an application
+  /// one.
+  ///
+  /// IT IS NOT TIDINESS. ABSENT never reaches the engine (SPEC 8): absences
+  /// are filtered out before counting. A CH row carrying an absence reason is
+  /// a day that reads as absent in the dossier and counts as worked in the
+  /// calculation - the record and the figure disagreeing, which is the one
+  /// thing this product cannot afford.
+  absenceReason AbsenceReason?
+
+  /// D30. Client-generated UUID, unique, so a retried mutation is recognised
+  /// rather than duplicated.
+  clientMutationId String @unique
+
+  note String?
+
+  provenance Provenance @default(MANUAL)
+
+  /// What detection proposed, KEPT EVEN WHEN THE READER OVERRODE IT. SPEC 8
+  /// makes deleting the overridden proposal a review rejection, and the pair
+  /// is what gives DETECTED_CORRECTED meaning in the dossier: the proposal
+  /// and the correction are both on the record.
+  detectedKind EntryKind?
+
+  /// When the proposal was produced on-device.
+  detectedAt DateTime?
+
+  /// What the offline client asserted. The server keeps both this and
+  /// firstRecordedAt, and SPEC 8 requires the dossier to show both.
+  clientClaimedAt DateTime?
+
+  /// Server clock at first receipt. IMMUTABLE - increment 3 adds the trigger
+  /// that rejects any UPDATE changing it, because the late flag and the whole
+  /// evidence claim rest on it and a client clock is trivially changed.
+  firstRecordedAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dayDate, portion])
+  @@index([userId, dayDate])
 }
 
 // ---------------------------------------------------------------------------
