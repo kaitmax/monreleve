@@ -36,7 +36,7 @@
     "test:clean-tree": "node scripts/clean-tree-test.mjs",
     "gate": "pnpm test:floor && pnpm typecheck && pnpm lint && pnpm test:coverage && pnpm test:floor -- --report test-results/vitest.json && pnpm build && pnpm size && pnpm parity:check",
     "gate:changed": "node scripts/gate-for-changes.mjs",
-    "gate:clean": "node scripts/gate-clean.mjs",
+    "gate:clone": "node scripts/gate-clone.mjs",
     "test:late": "vitest run tests/unit/meta/distdir-leaks.test.ts tests/unit/meta/og-image.test.ts"
   },
   "dependencies": {

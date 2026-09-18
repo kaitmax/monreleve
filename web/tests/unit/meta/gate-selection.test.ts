@@ -417,7 +417,7 @@ describe('R140: output reaching rendered HTML is what selects, not the directory
     for (const path of [
       'web/lib/calc-engine/compute.ts',
       'web/lib/db/client.ts',
-      'web/scripts/gate-clean.mjs',
+      'web/scripts/gate-clone.mjs',
       'relay/FW15.txt',
     ]) {
       const suites = suitesFor([path]);
