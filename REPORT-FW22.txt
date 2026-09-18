@@ -779,7 +779,7 @@ Branch main, remote github.com/kaitmax/Frontalier.
   d1f63b5  FW22: opaque revocable token pair with rotation
   cc5696e  FW22: bearer middleware and tenancy
   1adda74  FW22: sign-out, revoke, assetlinks route
-  <inc6>   FW22: privacy map, walkthrough, report
+  c0fe616  FW22: privacy map, walkthrough, report
 
 CI: not run. P4-2 - the September allowance is exhausted and the
 October workflow is written and disabled. Each push produced a run
