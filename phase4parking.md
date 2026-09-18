@@ -200,3 +200,54 @@ OAuth". If that is certain, say so and they go; if it is merely true today,
 they stay.
 
 ---
+## PARK4-2 - assetlinks.json has no fingerprints until AN14 [FW22, 2026-09-18]
+
+**QUESTION:** `/.well-known/assetlinks.json` is what makes the sign-in link an
+Android App Link — without it, tapping the link opens a browser instead of the
+app. It needs the application's package name and the SHA-256 fingerprints of
+the certificates it is signed with. Neither exists: there is no `android/`
+directory in this repository and no signed build until AN14.
+
+**TAKEN:** the route is built and reads `ANDROID_PACKAGE_NAME` and
+`ANDROID_SHA256_CERT_FINGERPRINTS` from the environment. **With them unset it
+returns 404, never an empty statement list.** That distinction is the entry:
+`[]` is not "we have not said yet", it is a complete published statement that
+*no* application is associated with this domain — which Android reads, caches
+and acts on. Serving it while the values are merely unknown publishes
+something false in the one file whose whole purpose is to be believed. A 404
+says what is true: there is no statement here.
+
+It is R160's reviewer chip in a JSON file — *en attente* rather than a name
+implying a review nobody did — and the same rule as never claiming more than
+the record supports.
+
+Malformed values are refused the same way, with a log line. A fingerprint with
+a typo produces a file that is syntactically valid and verifies against
+nothing, and the symptom ("the link opens a browser sometimes") is about as
+far from the cause as a symptom gets.
+
+**NOT TAKEN:**
+(a) A placeholder fingerprint. It would publish a false statement and would
+    verify against nothing, which is the failure above with extra steps.
+(b) Omitting the route until AN14. The seam is where the questions live, and
+    building it now means the day those values exist the change is two
+    environment variables and no code.
+
+**TOUCHES:** nothing in code. Two environment variables in the deployment.
+
+**NEEDS — from AN14, exactly:**
+1. `ANDROID_PACKAGE_NAME` — the `applicationId` from the app's
+   `build.gradle.kts`, e.g. `ch.monreleve.app`.
+2. `ANDROID_SHA256_CERT_FINGERPRINTS` — comma-separated SHA-256 fingerprints,
+   uppercase hex, colon-separated, from
+   `keytool -list -v -keystore <release.jks> -alias <alias>`. **Both the
+   release key and the Play App Signing key** if Play re-signs the upload —
+   Google's key is the one that ships, and a statement naming only the upload
+   key verifies for nobody. The debug key too, if App Links are to work on a
+   development build.
+
+Proven in both states by `tests/unit/pages/assetlinks.test.ts`: 404 unset,
+404 malformed, and a statement matching the Digital Asset Links shape when the
+variables are supplied.
+
+---

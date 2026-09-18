@@ -54,4 +54,21 @@ export const AUTH_API_COPY = {
    * app should already have refreshed and retried without anyone noticing.
    */
   unauthorised: `Authentification requise${n(':')} cette requête doit porter un jeton valide.`,
+
+  /**
+   * The callback's refusal. One sentence for four causes - unknown, expired,
+   * already used, wrong address - because the reader does the same thing in
+   * all four, and because saying which would tell whoever holds a stale link
+   * whether it was ever valid.
+   */
+  invalidLink:
+    `Ce lien n${APOS}est plus valable. Les liens de connexion expirent après ` +
+    `quelques minutes et ne fonctionnent qu${APOS}une fois${n(';')} demandez-en un ` +
+    `nouveau depuis l${APOS}application.`,
+
+  invalidRefresh: `Session expirée${n(':')} reconnectez-vous depuis l${APOS}application.`,
+
+  signedOut: `Vous êtes déconnecté de cet appareil.`,
+
+  revokedAll: `Vous êtes déconnecté de tous vos appareils.`,
 } as const;
