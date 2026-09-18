@@ -129,6 +129,39 @@ export const AUTH_API_COPY = {
     `Le service n${APOS}a pas pu enregistrer cet envoi. Rien n${APOS}a été modifié${n(';')} ` +
     `l${APOS}application réessaiera.`,
 
+  /**
+   * The read path's year parameter. FW23 increment 4.
+   *
+   * IT DESCRIBES THE SHAPE AND NAMES NO YEAR. R153: a figure typed where a
+   * constant cannot reach it is the copy that goes stale - and an example year
+   * in an error message is stale the moment it passes.
+   */
+  invalidYear:
+    `L${APOS}année demandée est absente ou mal formée${n(':')} elle s${APOS}écrit ` +
+    `sur quatre chiffres.`,
+
+  /**
+   * A query parameter the route does not know.
+   *
+   * REFUSED RATHER THAN IGNORED, for the reason `.strict()` exists on the write
+   * payload: a client sending something the server silently drops has been told
+   * it worked. A client that sends a filter we ignore receives a whole year and
+   * believes it received a slice.
+   *
+   * THE OFFENDING KEYS ACCOMPANY THE ANSWER, because this refusal can be
+   * triggered by something outside the client's control - a proxy appending a
+   * cache-buster - and a total failure whose cause is invisible is a hunt
+   * through somebody else's infrastructure. Named, it is in the client's own
+   * crash report.
+   */
+  unknownParameter:
+    `Cette requête contient un paramètre que le service ne connaît pas. Les ` +
+    `paramètres en cause accompagnent cette réponse.`,
+
+  readFailed:
+    `Le service n${APOS}a pas pu lire ces journées${n(';')} l${APOS}application ` +
+    `réessaiera.`,
+
   signedOut: `Vous êtes déconnecté de cet appareil.`,
 
   revokedAll: `Vous êtes déconnecté de tous vos appareils.`,

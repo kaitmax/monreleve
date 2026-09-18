@@ -30,6 +30,19 @@ import { authenticate, unauthorised } from '@/lib/auth/bearer';
 import { MAX_BATCH_BODY_BYTES, entriesBatchSchema } from '@/lib/entries/schema';
 import { findLocationKeys } from '@/lib/entries/no-coordinates';
 import { writeEntries } from '@/lib/entries/write';
+import { parseReadQuery } from '@/lib/entries/read-query';
+import { readYear } from '@/lib/entries/read';
+
+/**
+ * NEVER CACHED, AND SAID TWICE ON PURPOSE.
+ *
+ * An authenticated GET is the one shape a framework or a proxy will happily
+ * treat as static, and the failure mode is one person's year served to another.
+ * `dynamic` tells Next; the headers tell everything between here and the
+ * device. Neither is trusted alone, and a test asserts the headers on the
+ * SERVED response rather than reading this file back.
+ */
+export const dynamic = 'force-dynamic';
 
 function refuse(code: string, message: string, status = 400): NextResponse {
   return NextResponse.json({ status: 'error', code, message }, { status });
@@ -111,4 +124,96 @@ export async function POST(request: Request): Promise<NextResponse> {
     { status: 'ok', written: result.written, duplicates: result.duplicates },
     { status: 200 },
   );
+}
+
+// ============================================================================
+// GET /api/v1/entries?year=YYYY - the read path. FW23 increment 4.
+// ============================================================================
+//
+// THE ORDER IS THE SAME CONTRACT AS POST'S, AND FOR THE SAME REASONS:
+//
+//   1. authenticate            no token, nothing else is read.
+//   2. scan for coordinates    ON THE QUERY STRING, BEFORE VALIDATION. A
+//                              `?lat=` is BOTH a coordinate and an unknown
+//                              parameter; validating first would answer
+//                              `unknown_parameter` and the one interesting
+//                              fact - that a client is sending coordinates -
+//                              would go unrecorded (SPEC 13.1, D18).
+//   3. validate the query      unknown parameters refused, not ignored.
+//   4. read                    tenancy from the token, never the query.
+//
+// WHAT THE COORDINATE SCAN BUYS HERE, STATED HONESTLY. A query string is in the
+// request line, so a `?latitude=` has ALREADY been written to any reverse
+// proxy's access log before this handler runs. The refusal is a signal to a
+// client author that the field is not wanted; it is NOT a guarantee that no
+// coordinate was logged. Writing it as the latter would be the overclaim this
+// product refuses everywhere else - declare what the record supports.
+
+export async function GET(request: Request): Promise<NextResponse> {
+  const auth = await authenticate(request);
+
+  if (!auth.ok) {
+    return unauthorised(auth.code);
+  }
+
+  const url = new URL(request.url);
+
+  // THE PARAMETER NAMES, AS AN OBJECT, so the same scanner that guards the POST
+  // body guards this one. `findLocationKeys` reads keys and never values, which
+  // is what makes handing it the whole map safe: a coordinate this product
+  // refuses to store must not survive in the error about refusing to store it.
+  const coordinates = findLocationKeys(Object.fromEntries(url.searchParams));
+
+  if (coordinates.length > 0) {
+    console.error(
+      `[entries] read refused: location keys in the query string (${coordinates.sort().join(', ')})`,
+    );
+
+    return refuse('coordinates_refused', AUTH_API_COPY.coordinateRefused);
+  }
+
+  const query = parseReadQuery(url);
+
+  if (!query.ok) {
+    if (query.code === 'unknown_parameter') {
+      return NextResponse.json(
+        {
+          status: 'error',
+          code: 'unknown_parameter',
+          message: AUTH_API_COPY.unknownParameter,
+          // NAMED, so a refusal triggered by something outside the client's
+          // control is diagnosable from the client's own crash report.
+          parameters: query.keys,
+        },
+        { status: 400 },
+      );
+    }
+
+    return refuse('invalid_year', AUTH_API_COPY.invalidYear);
+  }
+
+  try {
+    const entries = await readYear(auth.userId, query.year);
+
+    return NextResponse.json(
+      { status: 'ok', year: query.year, entries },
+      {
+        status: 200,
+        headers: {
+          'cache-control': 'no-store, private',
+          vary: 'Authorization',
+        },
+      },
+    );
+  } catch (cause) {
+    console.error(
+      `[entries] read of ${query.year} failed:`,
+      cause instanceof Error ? cause.message : String(cause),
+    );
+
+    // NEVER A PARTIAL 200. A short array carrying a success code is the one
+    // answer this route must not give: the client cannot tell it from a year
+    // with missing days, which is the fact the product exists to report.
+    return refuse('read_failed', AUTH_API_COPY.readFailed, 500);
+  }
 }
