@@ -733,3 +733,136 @@ describe('the census: no column joins or leaves the wire contract by accident', 
     expect([...ENTRY_DERIVED_FIELDS]).toEqual(['lastModifiedAt']);
   });
 });
+
+describe('what an edit keeps and what it clears - found by the walkthrough', () => {
+  // THE WALKTHROUGH FOUND THIS, and it is the instrument working as R176
+  // describes: the returned row contradicted the document that describes it.
+  //
+  // The frozen document said `clientClaimedAt` was "what the client asserted,
+  // verbatim as sent". Posting a day with a claim and then EDITING it returned
+  // null - because the edit asserted none. Nothing is lost (the original claim
+  // is in the append-only trail) and the behaviour is right; the SENTENCE was
+  // wrong, and a sentence in a frozen contract is the thing being frozen.
+  //
+  // So the asymmetry is now documented AND asserted. A reader would otherwise
+  // assume one rule for all three fields and be wrong about two of them.
+  async function post(body: unknown, bearer = token): Promise<Response> {
+    const { POST } = await import('@/app/api/v1/entries/route');
+
+    return POST(
+      new Request(`${ORIGIN}/api/v1/entries`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${bearer}` },
+        body: JSON.stringify(body),
+      }),
+    );
+  }
+
+  it('KEEPS detectedKind and detectedAt when an edit does not mention them', async () => {
+    await post({
+      entries: [
+        {
+          clientMutationId: mutation(),
+          dayDate: '2026-04-08',
+          kind: 'HOME',
+          provenance: 'DETECTED_CONFIRMED',
+          detectedKind: 'HOME',
+          detectedAt: '2026-04-08T17:02:11.000Z',
+        },
+      ],
+    });
+
+    await post({
+      entries: [{ clientMutationId: mutation(), dayDate: '2026-04-08', kind: 'CH' }],
+    });
+
+    const [entry] = entriesOf(await readYear('2026'));
+
+    // SPEC 8: deleting the overridden proposal is a review rejection. The pair
+    // is what gives the dossier its meaning - detection proposed HOME, the
+    // reader said CH, and BOTH are on the record.
+    expect(entry).toMatchObject({
+      kind: 'CH',
+      provenance: 'MANUAL',
+      detectedKind: 'HOME',
+      detectedAt: '2026-04-08T17:02:11.000Z',
+    });
+  });
+
+  it('CLEARS clientClaimedAt when an edit does not mention it', async () => {
+    await post({
+      entries: [
+        {
+          clientMutationId: mutation(),
+          dayDate: '2026-04-07',
+          kind: 'CH',
+          clientClaimedAt: '2026-04-07T18:44:02.000Z',
+        },
+      ],
+    });
+
+    await post({
+      entries: [{ clientMutationId: mutation(), dayDate: '2026-04-07', kind: 'HOME' }],
+    });
+
+    const [entry] = entriesOf(await readYear('2026'));
+
+    // AND THIS IS CORRECT, not a bug to fix. `clientClaimedAt` describes the
+    // write that produced the row's CURRENT state; the edit asserted nothing,
+    // so there is nothing to report. The earlier claim is not lost - see below.
+    expect(entry?.clientClaimedAt).toBeNull();
+    expect(entry?.kind).toBe('HOME');
+  });
+
+  it('keeps the earlier claim in the trail, which is why clearing it is safe', async () => {
+    // THE HALF THAT MAKES THE ABOVE ACCEPTABLE. Without this, "an edit clears
+    // clientClaimedAt" would be evidence loss rather than a field describing
+    // the latest write. Asserted, not assumed.
+    await post({
+      entries: [
+        {
+          clientMutationId: mutation(),
+          dayDate: '2026-04-07',
+          kind: 'CH',
+          clientClaimedAt: '2026-04-07T18:44:02.000Z',
+        },
+      ],
+    });
+
+    await post({
+      entries: [{ clientMutationId: mutation(), dayDate: '2026-04-07', kind: 'HOME' }],
+    });
+
+    const events = await prisma.entryEvent.findMany({
+      where: { userId },
+      orderBy: { recordedAt: 'asc' },
+      select: { action: true, kind: true, clientClaimedAt: true },
+    });
+
+    expect(events).toHaveLength(2);
+    expect(events[0]).toMatchObject({ action: 'CREATED', kind: 'CH' });
+    expect(events[0]?.clientClaimedAt?.toISOString()).toBe('2026-04-07T18:44:02.000Z');
+    expect(events[1]).toMatchObject({ action: 'MODIFIED', kind: 'HOME', clientClaimedAt: null });
+  });
+
+  it('never moves firstRecordedAt, end to end through both routes', async () => {
+    await post({
+      entries: [{ clientMutationId: mutation(), dayDate: '2026-04-07', kind: 'CH' }],
+    });
+
+    const before = entriesOf(await readYear('2026'))[0]?.firstRecordedAt;
+
+    await post({
+      entries: [{ clientMutationId: mutation(), dayDate: '2026-04-07', kind: 'HOME' }],
+    });
+
+    const after = entriesOf(await readYear('2026'))[0];
+
+    // THE WHOLE EVIDENCE CLAIM. A database trigger refuses any update that
+    // moves it; this proves the guarantee survives the route, the write path
+    // and the read path rather than only the trigger.
+    expect(after?.firstRecordedAt).toBe(before);
+    expect(after?.kind).toBe('HOME');
+    expect(after?.lastModifiedAt).not.toBeNull();
+  });
+});

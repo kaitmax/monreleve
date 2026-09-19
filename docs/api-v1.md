@@ -357,9 +357,9 @@ client built per §6.4 keeps working.
 | `absenceReason` | The reason, or `null`. Non-null iff `kind` is `ABSENT`. |
 | `note` | The note, or `null`. |
 | `provenance` | `MANUAL`, `DETECTED_CONFIRMED` or `DETECTED_CORRECTED`. |
-| `detectedKind` | What detection proposed, or `null`. **Kept even where the reader overrode it** — deleting an overridden proposal is a review rejection (SPEC §8). |
-| `detectedAt` | When the proposal was produced, or `null`. |
-| `clientClaimedAt` | What the client asserted, or `null`. Verbatim as sent. |
+| `detectedKind` | What detection proposed, or `null`. **Survives an edit that does not mention it** — deleting an overridden proposal is a review rejection (SPEC §8). Supplying one replaces it. |
+| `detectedAt` | When the proposal was produced, or `null`. Survives an edit alongside `detectedKind`. |
+| `clientClaimedAt` | What the client asserted **about the write that produced this row’s current state** — verbatim as sent, or `null` if that write asserted none. **An edit that does not mention it clears it**, and that is not evidence loss: the earlier claim stays on the `CREATED` event in the trail. See §6.3. |
 | `firstRecordedAt` | **The server clock at first receipt, and it never moves.** A database trigger rejects any update that changes it. This is the timestamp the *Relevé annuel* rests on. |
 | `lastModifiedAt` | **The instant this day was last edited, or `null` if it never was.** Derived from the append-only trail: `max(EntryEvent.recordedAt)` over that entry's `MODIFIED` events. See §6.3 for why it is not `updatedAt`. |
 
@@ -431,6 +431,22 @@ names the column; SPEC §12 froze the CSV header as *exact and stable* with
 `lastModifiedAt`. One published fact gets one published name across the API,
 the CSV and the PDF; the column name is an implementation detail that never
 leaves the server.
+
+**An edit keeps the proposal and drops the claim, and the asymmetry is the
+point.** `detectedKind` and `detectedAt` survive an edit that says nothing
+about them; `clientClaimedAt` does not. They are answering different questions.
+The detection pair is *what the system proposed and the reader overrode* — a
+fact about the record's history that SPEC §8 forbids deleting. `clientClaimedAt`
+is *what the client asserted about the write that produced the row as it stands*,
+and after an online edit there is no such assertion to report. Nothing is lost
+either way: every write's claim is on its own `EntryEvent`, and the trail is
+append-only.
+
+This was found by the FW23 walkthrough, not by a test. The row came back with
+`clientClaimedAt: null` while this document said "verbatim as sent", which a
+client author would reasonably read as *the original claim survives*. The
+behaviour was right and the sentence was wrong — and in a frozen contract the
+sentence is the thing being frozen.
 
 **`late` is not here yet.** SPEC §12 lists it as a CSV column and SPEC §11.3
 defines the seven-day backfill threshold behind it, but it is not an `Entry`

@@ -1,0 +1,563 @@
+====================================================================
+REPORT-FW23.txt - the entries API
+Mon Releve   2026-09-19
+====================================================================
+
+NOTE ON SPELLING. Pure ASCII, as the protocol requires. Any French
+quoted here is transliterated; the accented original lives in
+web/lib/fr (R155 - the ASCII is illustrative, never a source).
+
+SUMMARY
+--------------------------------------------------------------------
+The entries API is built and its contract is frozen. POST accepts a
+batch and assigns the server clock; GET returns a year whole; the
+document says what a client may assume about every field; and a test
+holds the document to the code.
+
+THREE FINDINGS, AND EACH WAS FOUND BY A DIFFERENT INSTRUMENT. That is
+the sentence worth keeping from this session.
+
+  A PLANT THAT DID NOT FAIL     removing the portion ordering entirely
+                                left all forty tests passing. The
+                                assertion was satisfied by a btree
+                                index, not by the code under test.
+  A MEASUREMENT BEFORE A DESIGN Entry.updatedAt differs from
+                                firstRecordedAt by ~5 ms on a row
+                                nobody edited, so SPEC 12's "print it
+                                when different" would fire on every
+                                row.
+  A WALKTHROUGH                 the returned row said
+                                clientClaimedAt: null where the frozen
+                                document said "verbatim as sent".
+
+None of the three could have been found by the other two.
+
+PRECONDITIONS (R1 as reworded by R200)
+--------------------------------------------------------------------
+  gate:clone  on 551f7609994f62beb54d47dfcb253a8fda5e4eed
+              tree clean; install, typecheck, lint, test, build, size,
+              db:deploy, test:db - 312 passed
+              named as unable to run in a clone (R133, not silently
+              omitted): test:e2e, test:visual, test:runtime,
+              lighthouse, parity:check
+
+  THE FIRST ATTEMPT WENT RED AND DID NOT REPRODUCE.
+  tests/unit/meta/declaration-parity.test.ts failed with ENOENT on a
+  Vite SSR cache path, under 1.8 GB free of 15.8 GB. The second run
+  passed the same suite. Recorded rather than smoothed over: a dynamic
+  import() in a test is environment-fragile under memory pressure, and
+  a transient red that nobody writes down is a red somebody rediscovers.
+
+  gate:clone was then run before EVERY push (R199), not only the last:
+  1e6e71f PASSED, 8aeb87c PASSED, and the final one below.
+
+RED-GREEN LEDGER
+--------------------------------------------------------------------
+INCREMENT 4 - the read path
+
+  RED    tests/db/entries-read.test.ts
+         Error: Cannot find package '@/lib/entries/read'
+         41 tests, no tests ran. The read path did not exist.
+  GREEN  40 passed after lib/entries/read.ts, read-query.ts and the
+         GET handler.
+
+  AND THEN THE PLANTS, because forty tests passing on their first run
+  is evidence of nothing. Five, each VERIFIED TO HAVE LANDED before
+  its result was read (R180), each written by a harness that declares
+  its anchor and refuses to write on anything but exactly one match
+  (R211):
+
+   1 take: 500 in the query
+       CAUGHT - expected length 1098, got 500
+   2 startOfParisDay where toStoredDay belongs
+       CAUGHT - and the failure is the wrong-record defect itself:
+       expected ['2028-01-01','2028-12-31'], got
+       ['2027-12-31','2028-01-01']. The previous year's last day
+       pulled in, this year's dropped. 31 December vanished entirely.
+   3 lastModifiedAt backed by updatedAt
+       CAUGHT - 6 tests, "expected '2026-09-18T23:18:50.513Z' to be
+       null"
+   4 the portion ordering removed
+       *** NOT CAUGHT. ALL FORTY PASSED. *** See FINDINGS.
+   5 userId added to the serialised row
+       CAUGHT - the field census and the body scan, both
+
+INCREMENT 5 - the contract document
+
+  The drift test passed on its first run, so it was planted in both
+  directions:
+   A renaming clientClaimedAt in the DOCUMENT only
+       CAUGHT - '+ clientAssertedAt'
+   B adding a field to the SCHEMA only
+       CAUGHT - '- mood'
+
+INCREMENT 6 - what the walkthrough found
+
+  RED    none written first - these are CHARACTERISATION tests for
+         behaviour that already existed and was found to be
+         undocumented. Said plainly rather than dressed as test-first.
+  PLANT  making detectedKind non-sticky in write.ts
+       CAUGHT - "KEEPS detectedKind and detectedAt when an edit does
+       not mention them"
+
+  Every restore was verified afterwards, which is not decoration - see
+  DEVIATIONS 1, where an unverified restore silently reverted a
+  refactor and the next run blamed the wrong thing.
+
+THE FROZEN CONTRACT (the field list, verbatim)
+--------------------------------------------------------------------
+POST /api/v1/entries - what a client may send. Derived from the Zod
+shape by ENTRY_ITEM_FIELDS, so the document cannot drift from it:
+
+  absenceReason  clientClaimedAt  clientMutationId  dayDate
+  detectedAt     detectedKind     kind              note
+  portion        provenance
+
+GET /api/v1/entries?year= - what comes back. ENTRY_READ_FIELDS:
+
+  id            clientMutationId  dayDate      portion
+  kind          absenceReason     note         provenance
+  detectedKind  detectedAt        clientClaimedAt
+  firstRecordedAt               lastModifiedAt
+
+  NOT EXPOSED, and asserted rather than merely absent: userId,
+  updatedAt. A census against information_schema requires every Entry
+  column to be in one list or the other, so a column added next year
+  can neither join the contract by accident nor leave it silently.
+
+THE PAGINATION DECISION, STATED
+--------------------------------------------------------------------
+UNBOUNDED. The year IS the page: no limit, no offset, no cursor, no
+hasMore, and the server NEVER TRUNCATES - a short array never carries
+a 200.
+
+  THE BOUND IS STRUCTURAL, NOT HOPED FOR:
+    @@unique([userId, dayDate, portion])  one row per portion per day
+    |EntryPortion| = 3
+    366 days in a leap year
+    ------------------------------------  1098 rows, ever
+
+  The prompt's "about 260 working days" is the TYPICAL count and not
+  the bound, and the difference is reachable by a real user: ABSENT is
+  a kind, so all 366 calendar days can be declared; and nothing
+  constrains `portion` by the user's granularity, so somebody who
+  switches DAY -> HALF_DAY mid-year leaves FULL rows beside AM/PM ones.
+  Verified in the schema rather than assumed.
+
+  A CURSOR WOULD BE WRONG HERE, not merely unnecessary. The client
+  reconciles a SET, and a half-fetched year is indistinguishable from
+  a year with missing days - which is the one fact this product exists
+  to report honestly. Tested by saturating a leap year to 1098 rows
+  with maximum-length notes, asserting the whole set comes back, and
+  only THEN asserting no pagination key exists. On an empty response
+  that last assertion holds for the wrong reason.
+
+OPERATOR RULINGS, RECORDED VERBATIM
+--------------------------------------------------------------------
+Three questions were raised before the contract froze, because SPEC
+does not settle them and R187 makes them permanent.
+
+R214. THE WIRE SAYS lastModifiedAt; THE COLUMN STAYS updatedAt.
+      SPEC 8's column is `updatedAt`. SPEC 12 line 879 freezes the CSV
+      columns as "exact and stable" and names `lastModifiedAt` among
+      them. SPEC never names the API field. One published fact gets
+      one published name across the API, the CSV and the PDF; the
+      column name is an implementation detail that never leaves the
+      server.
+
+R215. IT IS DERIVED FROM THE TRAIL, NOT FROM updatedAt.
+      max(EntryEvent.recordedAt) over that entry's MODIFIED events,
+      null when never modified. Taken against a measurement: see
+      FINDINGS 2.
+
+R216. `late` DEFERS TO FW24.
+      SPEC 12 lists it as a CSV column and SPEC 11.3 defines the
+      seven-day threshold behind it, but it is not an Entry column and
+      the threshold has no home in the code. It arrives with the
+      dossier, where that home is built. Adding a key is additive and
+      breaks nobody. Until then the document forbids a client
+      adjudicating lateness from a threshold of its own - a 7 compiled
+      into an APK is the least revisable constant in this system.
+
+SERVER CLOCK PROOF
+--------------------------------------------------------------------
+  firstRecordedAt and recordedAt are refused as INPUT by name: the
+  payload schema is .strict(), so a client sending either is answered
+  `invalid_payload` rather than having it stripped.
+
+  WALKTHROUGH, END TO END: a day posted with
+  clientClaimedAt 2026-04-07T18:44:02.000Z came back with
+  clientClaimedAt 2026-04-07T18:44:02.000Z and
+  firstRecordedAt 2026-09-19T00:25:02.334Z. The client asserted April;
+  the server recorded September; the read path shows BOTH, which is
+  the whole point - a reader sees the gap rather than being handed one
+  number and asked to believe it.
+
+  IT NEVER MOVES ON AN EDIT, proven through both routes rather than
+  trusted to the trigger: the same row after an edit still carried
+  firstRecordedAt 2026-09-19T00:25:02.334Z - the batch-1 clock, shared
+  with the two rows written beside it - while lastModifiedAt became
+  00:25:02.806Z.
+
+COORDINATE REJECTION PROOF (four forms, each plant verified)
+--------------------------------------------------------------------
+Carried from increment 2 and now extended to the READ path, which the
+prompt did not ask for and the boundary demands:
+
+  POST body        top level, nested object, inside an array, and a
+                   key whose NAME CONTAINS a banned word. All four
+                   refused 400 `coordinates_refused`, each plant
+                   verified present in the bytes being sent.
+  GET query string latitude, lastKnownLongitude, accuracy, and mixed
+                   case Lat. All refused.
+  THE ORDER IS ASSERTED: `?year=2026&latitude=46.2` answers
+  `coordinates_refused`, NOT `unknown_parameter`. A latitude is both;
+  validating first would answer "unknown parameter" and the one
+  interesting fact - that a client is sending coordinates - would go
+  unrecorded.
+  THE VALUE NEVER APPEARS: the answer to a payload carrying 46.20731
+  contains neither 46.20731 nor 46.2.
+
+  AND WHAT IT DOES NOT BUY IS WRITTEN DOWN. A `?lat=` is in the
+  request line and has ALREADY reached any reverse proxy's access log
+  before the handler runs. The refusal is a signal to a client author,
+  not a guarantee that nothing was logged. Section 6.5 says so.
+  Writing it as the stronger claim would be the overclaim this product
+  refuses everywhere else - and on the surface whose whole argument is
+  that no coordinate reaches this server.
+
+IDEMPOTENCY PROOF
+--------------------------------------------------------------------
+  WALKTHROUGH. The same three-item batch, sent twice, verbatim:
+    first  {"status":"ok","written":3,"duplicates":0}
+    second {"status":"ok","written":0,"duplicates":3}    HTTP 200
+
+  ACKNOWLEDGED, NOT ERRORED (AC3). And no event was appended on the
+  replay - asserted in tests/db, because "no row was written" and "no
+  event was written" are different claims and only one of them is
+  visible in the response.
+
+TENANCY PROOF (both plants verified)
+--------------------------------------------------------------------
+  POST   a foreign userId in the BODY      -> 400 invalid_payload,
+         issues[0] = 'Unrecognized key: "userId"'
+         in the QUERY STRING               -> ignored, rows landed on
+         the caller, none on the victim
+         in a HEADER (x-user-id)           -> ignored, same
+  GET    a foreign userId in the QUERY     -> 400 unknown_parameter,
+         parameters: ["userId"]
+
+  THE NON-VACUITY HALF, which is what makes the rest mean anything:
+  with the token REMOVED and the plants left in place, nothing is
+  written and nothing is read - 401. Without it, all of the above
+  would pass against a route that ignored the token too.
+
+  AND PRESENCE BEFORE ABSENCE ON THE READ: "no other user's rows
+  appear" is asserted in a test that has already fetched the other
+  user's own year and found two rows in it. Otherwise it is satisfied
+  by an empty database.
+
+DST TESTS
+--------------------------------------------------------------------
+Carried from increment 3, unchanged: the 23-hour day, the 25-hour day,
+and a full-year round trip, with the zone supplied as an INPUT rather
+than read from the ambient one. The read path adds the boundary that
+matters for a YEAR rather than a day - see the plant 2 result above,
+where using Paris instants against a @db.Date column moved the window
+by an hour and silently swapped 31 December for the previous year's.
+
+BATCH LIMITS
+--------------------------------------------------------------------
+  WALKTHROUGH, BOTH SIDES OF THE BOUNDARY:
+    201 items -> 400 invalid_payload,
+                 "Too big: expected array to have <=200 items"
+    200 items -> 200 ok, written: 200
+
+  The legal side is the half that matters: a limit that refuses
+  everything passes the illegal-side test perfectly. Body size is
+  bounded separately at 256 KiB because `note` is free text, and
+  without it 200 maximum-length notes would quietly decide how much
+  this route reads.
+
+ERROR CODES (each rule and its code, R198)
+--------------------------------------------------------------------
+  missing_token        401  no Authorization header
+  invalid_token        401  unknown token
+  expired_token        401  access token expired
+  revoked_session      401  session ended (incl. R210's replay)
+  payload_too_large    413  body over 256 KiB
+  malformed_body       400  body is not JSON
+  coordinates_refused  400  a location key, in body or query
+  invalid_payload      400  batch fails validation; issues[] names each
+  conflict             409  the client sent two versions of one day
+  write_failed         500  ours; nothing written, whole batch rolled back
+  invalid_year         400  year absent, repeated, or not four digits
+  unknown_parameter    400  a query parameter we do not read;
+                            parameters[] NAMES them
+  read_failed          500  ours; the year could not be served WHOLE,
+                            so it is not served at all
+
+  EACH IS DISTINCT AND ASSERTED DISTINCT - a test drives four rules
+  through the route and requires four different codes, so collapsing
+  two into one goes red.
+
+WALKTHROUGH (R176/R177)
+--------------------------------------------------------------------
+Driven with curl against `pnpm dev` on port 3010. R179's precondition
+was asserted first (3010 free), and R169's identity check was run
+before anything was believed:
+
+  /api/health -> {"service":"monreleve","status":"ok",...}
+
+A REAL TOKEN THROUGH THE REAL FLOW, not a fixture: POST magic-link
+answered 202 with the neutral body, the dev server PRINTED the sign-in
+link (R154's mechanism, proven to deliver), and the callback answered
+200 with an access token, a refresh token, and NO Set-Cookie.
+
+  1  POST three days          {"status":"ok","written":3,"duplicates":0}
+  2  replay verbatim          {"status":"ok","written":0,"duplicates":3}
+  3  edit 2026-04-07          {"status":"ok","written":1,"duplicates":0}
+  4  coordinate in the body   400 coordinates_refused
+  5  foreign userId in body   400 invalid_payload, Unrecognized key "userId"
+  6  unknown key "mood"       400 invalid_payload, Unrecognized key "mood"
+  7  201 items                400 invalid_payload, "<=200 items"
+  7b 200 items                200 ok, written: 200
+  8  read 2026 back           200, three entries
+  9a unknown query parameter  400 unknown_parameter, parameters ["limit"]
+  9b ?latitude=46.2           400 coordinates_refused
+  9c ?year=20xx               400 invalid_year
+  9d ?userId=<other>          400 unknown_parameter, parameters ["userId"]
+  9e no token                 401 missing_token
+  9f headers                  cache-control: no-store, private
+                              vary: Authorization
+
+THE DAY CHECKED BY HAND - 2026-04-07, the edited one.
+
+  POSTED FIRST   kind CH, note "bureau Geneve",
+                 clientClaimedAt 2026-04-07T18:44:02.000Z, id wt-0001
+  THEN EDITED    kind HOME, note "finalement teletravail", id wt-0004,
+                 saying nothing about clientClaimedAt
+
+  CAME BACK      clientMutationId wt-0004   <- the LAST write, as the
+                                               document says
+                 kind HOME                  <- the edit
+                 note "finalement teletravail"
+                 firstRecordedAt 00:25:02.334Z  <- UNMOVED, and equal
+                                               to the two rows written
+                                               beside it in batch 1
+                 lastModifiedAt  00:25:02.806Z  <- the MODIFIED event
+                 clientClaimedAt null       <- *** NOT WHAT THE
+                                               DOCUMENT SAID ***
+
+  That last line is FINDING 3. The trail was then read directly:
+
+    CREATED   kind=CH   recordedAt=00:25:02.334Z
+              clientClaimedAt=2026-04-07T18:44:02.000Z
+    MODIFIED  kind=HOME recordedAt=00:25:02.806Z
+              clientClaimedAt=null
+
+  So nothing is lost and the behaviour is right. The SENTENCE was
+  wrong.
+
+  AND A SECOND CHECK, of the rule the first one raised: editing
+  2026-04-08 - which carried detectedKind HOME from a DETECTED_CONFIRMED
+  write - with a MANUAL edit mentioning neither returned
+  detectedKind HOME and detectedAt 2026-04-08T17:02:11.000Z INTACT,
+  with provenance MANUAL and kind CH. That is SPEC 8's rule holding
+  end to end, and it is also a live instance of R202's legal asymmetry
+  that section 6.3 describes: a MANUAL row carrying a detectedKind.
+
+FINDINGS
+--------------------------------------------------------------------
+1. A PLANT THAT DID NOT FAIL, AND THE GUARD IT CONDEMNED.
+
+   Removing the portion ordering entirely - `return 0` - left ALL
+   FORTY tests passing, including the one written to assert exactly
+   that order.
+
+   THE CAUSE, MEASURED RATHER THAN GUESSED: @@unique([userId, dayDate,
+   portion]) is a btree index on those columns, so Postgres serves the
+   rows already ordered by portion. Rows inserted PM, FULL, AM come
+   back FULL, AM, PM with no sort at all. The route-level assertion
+   was satisfied by the INDEX, never by the code under test - R171's
+   coincidence, inside the guard written to prevent coincidences.
+
+   THE FIX IS NOT TO DELETE THE SORT, and the distinction is worth
+   stating because day.ts's own ablation rule points the other way.
+   That file removed a second pass because no input could reach it:
+   Europe's transitions are at 02:00, never at midnight. This sort IS
+   reachable - index order is a property of the QUERY PLAN, and a
+   planner choosing a sequential scan plus a sort for a large result
+   has no obligation to break ties by portion. So the comparator is
+   exported and tested on input the database did not order, and the
+   same plant now goes red.
+
+2. A MEASUREMENT TAKEN BEFORE A DESIGN, WHICH CHANGED THE DESIGN.
+
+   The obvious backing for `lastModifiedAt` is Entry.updatedAt. It is
+   wrong here, and one probe settled it:
+
+     firstRecordedAt : 2026-09-18T23:03:02.392Z
+     updatedAt       : 2026-09-18T23:03:02.397Z
+     equal?          : false      delta: 5 ms
+
+   On a row NOBODY HAS EDITED. firstRecordedAt is the batch clock
+   taken once at the top of writeEntries; Prisma stamps @updatedAt at
+   query execution, a findMany and a findUnique and an upsert later.
+
+   SPEC 12 item 5 prints the last-modified timestamp "WHEN DIFFERENT".
+   Backed by updatedAt that fires on EVERY row, and the one thing the
+   column exists to tell a reader of the legal document - was this day
+   edited? - becomes unreadable. Null-when-never-modified is a state a
+   reader can act on.
+
+   WHAT MAKES THIS A FINDING RATHER THAN A DETAIL: every test would
+   have been green. A round-trip asserting "lastModifiedAt >=
+   firstRecordedAt" passes. The defect would have surfaced in FW25, in
+   a PDF, as an annex where every row claims to have been edited.
+
+3. THE WALKTHROUGH CAUGHT THE DOCUMENT CONTRADICTING THE PRODUCT.
+
+   Recorded under WALKTHROUGH above. The instrument worked exactly as
+   R176 describes - not copy read across pages, not pixels compared to
+   a baseline, but a returned row contradicting the sentence that
+   describes it. No test could have found it, because the tests
+   asserted the BEHAVIOUR and the behaviour was correct.
+
+   THE ASYMMETRY IS NOW DOCUMENTED AND ASSERTED: detectedKind and
+   detectedAt survive an edit that omits them (SPEC 8 - deleting an
+   overridden proposal is a review rejection); clientClaimedAt does
+   not, because it describes the write that produced the row's current
+   state, and after an online edit there is no assertion to report.
+   Nothing is lost either way - every write's claim sits on its own
+   EntryEvent, and the trail is append-only.
+
+4. CI REFUSED TO RUN, AND IT IS NOT A CODE DEFECT.
+
+   The push of 1e6e71f produced four failed jobs with ZERO STEPS and a
+   40-second run. The annotation:
+
+     "The job was not started because recent account payments have
+      failed or your spending limit needs to be increased."
+
+   THE REPOSITORY IS PRIVATE AGAIN. It was PUBLIC for the whole of
+   FW23-CI this morning - which is why those runs were free and why
+   they ran at all. Private means minutes bill against the September
+   allowance that R201 exists because of.
+
+   NOTHING RAN, SO NOTHING FAILED. This is not a red commit in R132's
+   sense and the code was never executed. But it needs the operator's
+   eye: "recent account payments have failed" is a stronger statement
+   than "the allowance is exhausted", and only the operator can tell
+   which it is.
+
+   ACTION TAKEN, AND IT IS ONE COMMAND TO UNDO: `gh variable delete
+   CI_FULL`, which is the switch back proven in both directions six
+   hours ago and the documented response to the repository being
+   private. Without it every further push adds a red check to main
+   that no test caused. `gh variable set CI_FULL --body on` restores
+   it. THE R212 FIX NOW ARMS ITSELF: the minutes alarm is gated on
+   github.event.repository.private, which is true again.
+
+PARKED
+--------------------------------------------------------------------
+PARK4-3. THE GATE SELECTOR DOES NOT SEE lib/entries/** AS THE DATABASE
+   LAYER. Increment 5 changed lib/entries/schema.ts - the API contract
+   that tests/db/entries-route.test.ts drives end to end - and the
+   selector chose the base chain only, because its database rule is
+   prisma/**, lib/db/**, tests/db/**. test:db was run BY HAND and
+   passed 312, so nothing shipped red. The general shape is R175's:
+   between "this is application code" and "this is the database layer"
+   sits "this is the contract the database suite exercises", and
+   nothing claims it. Not fixed here - changing the selector is a
+   change to the gate on a task the gate is checking.
+
+DEVIATIONS
+--------------------------------------------------------------------
+1. AN UNVERIFIED RESTORE SILENTLY REVERTED A REFACTOR, and it cost a
+   wrong diagnosis. The plant harness snapshots a file once and
+   restores from that snapshot. After planting, I refactored the same
+   file; the next plant's restore wrote the PRE-REFACTOR snapshot
+   back, and the following run failed on a test whose subject had
+   vanished. R180 says a plant is verified before its result is read;
+   this is the same sentence pointed at the RESTORE, which nothing had
+   said. Every restore in this session is now verified afterwards, and
+   the stale snapshot was deleted rather than reused. Recorded because
+   the failure presented as a test defect and was a harness defect -
+   R179's shape exactly.
+
+2. THE CHARACTERISATION TESTS IN INCREMENT 6 ARE NOT TEST-FIRST, and
+   saying so plainly is better than dressing them up. They lock
+   behaviour that already existed and that the walkthrough found to be
+   undocumented. Each was plant-verified instead, which is the
+   available substitute for a RED run when the code predates the test.
+
+3. gate:clone RAN BEFORE EVERY PUSH, not once before the final one as
+   the prompt's increment 6 says. CLAUDE.md's R199 makes it a
+   per-push rule and CLAUDE.md is the authority; running it more often
+   is never wrong. Three runs, all green.
+
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------
+1. A FOREIGN DEV SERVER FROM ANOTHER REPOSITORY was running on this
+   machine during the precondition - four node processes belonging to
+   Downloads/tizicorp, one holding port 3200. Not killed: R179
+   authorises a harness to kill the tree IT spawned, and this is not
+   one. It held no port of ours. Recorded because FW20's defect began
+   exactly here, and what made it harmless was R170 giving our suite a
+   port of its own.
+
+2. R179 EARNED ITS KEEP AGAIN, IN THIS SESSION. Stopping the
+   walkthrough's dev server left `next dev` holding port 3010 - the
+   shell died, the tree did not. Detected by asserting the port free
+   afterwards, and the orphan was killed. This is the third distinct
+   occasion the rule has caught something it predicted.
+
+3. THE POST RESPONSE DOES NOT CARRY THE SERVER VALUES. SPEC 13.2 says
+   "the app displays a pending state until the server value comes
+   back", and today that value comes back only via GET - so a client
+   needs two round trips to leave the pending state. The POST contract
+   froze in increment 3 and its envelope is `{status, written,
+   duplicates}`. Adding an `entries[]` array to the POST answer later
+   is ADDITIVE and breaks nobody, so this is not urgent; it is
+   recorded because a client author will meet it on their first day.
+
+4. tests/unit/meta/declaration-parity.test.ts IS FRAGILE UNDER MEMORY
+   PRESSURE. See PRECONDITIONS. A dynamic import() with a template
+   specifier makes Vite build a candidate glob and cache SSR
+   transforms under the OS temp directory; with 1.8 GB free it failed
+   ENOENT once and passed on a re-run. Not touched - it is R185's test
+   and diagnosing Vite's cache is not this task.
+
+QUESTIONS
+--------------------------------------------------------------------
+Q75. CI is refusing to start jobs on a billing message, and the repo
+     is private again. Is the September allowance simply exhausted -
+     in which case CI_FULL stays deleted until October and the R201
+     split does its job - or has a payment genuinely failed, which is
+     an account matter this session cannot see? The switch is one
+     command either way and is proven in both directions.
+
+Q76. Should the POST answer carry the written rows, so a client can
+     leave the pending state SPEC 13.2 describes without a second
+     request? Additive, so it can wait for FW26 - but the decision is
+     better made while the client is being designed than after.
+
+Q77. PARK4-3: does the gate selector's database rule want to include
+     lib/entries/**, or is "run test:db by hand when you touch the
+     contract" the intended discipline? The first is a change to the
+     gate; the second is a rule with no enforcement point, which this
+     project has ruled on before.
+
+PUSH PROOF
+--------------------------------------------------------------------
+  1e6e71f  FW23: the read path
+  8aeb87c  FW23: the /v1 contract, frozen
+  <this>   FW23: walkthrough and report
+
+  gate:clone PASSED before each push.
+  CI: refused by the billing gate, not by a test - see FINDINGS 4.
+
+====================================================================
+END OF REPORT-FW23.txt
+====================================================================
