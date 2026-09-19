@@ -209,3 +209,304 @@ in the body, the query string and a header, verifies each plant landed (R180),
 and requires the resolved identity to be the token's — plus a fourth test that
 removes the token and requires the planted id alone to get nothing, without
 which the other three would pass against a guard that ignored the token too.
+---
+
+## 6. `/api/v1/entries` — the entries contract
+
+**FROZEN AS OF FW23.** Every field name, every error code and both route
+shapes below are fixed. A change after AN5 ships requires a **version**, not an
+edit: `/api/v2/entries` beside this one, both served, until no client in the
+field calls the old one.
+
+This is not ceremony. The client is an Android application on somebody's phone,
+and a phone updates when its owner decides to. A renamed field costs a
+migration, an app release, and a tail of versions still sending the old shape
+for as long as anyone keeps a handset — R187, at the one place in this product
+where it is not recoverable.
+
+**What may still change freely:** every French `message`, because a client that
+branches on it was already broken; the HTTP status *within* a class; the order
+of keys inside a JSON object; and anything additive — a **new** key beside the
+existing ones, which a client built per §6.4 will ignore.
+
+### 6.1 `POST /api/v1/entries` — the offline queue flushing
+
+One batch is one user action: the queue draining after a tunnel, a flight, a
+weekend in the mountains. It is **all-or-nothing** — a half-applied batch would
+leave the client unable to say what happened without reading everything back.
+
+```
+POST /api/v1/entries
+Authorization: Bearer <access token>
+Content-Type: application/json
+
+{ "entries": [ { … }, { … } ] }
+```
+
+Between 1 and **200** items, and at most **256 KiB** of body. Both limits exist
+because `note` is free text: without the byte bound, 200 maximum-length notes
+would quietly decide how much this route reads.
+
+An **empty** `entries` array is refused rather than answered 200. Zero items
+means the queue logic sent something it should not have, and acknowledging it
+hides that for the life of the client.
+
+<!-- fields:write -->
+
+| field | may a client assume |
+|---|---|
+| `clientMutationId` | **The idempotency key (D30).** The client's own id, 1–64 characters, unique across the account. Re-sending a batch whose ids the server has already seen writes nothing, appends no event, and answers **200** — a replay is acknowledged, never an error, because the retry is what makes all-or-nothing safe. |
+| `dayDate` | A calendar day as `YYYY-MM-DD`, **never an instant**. Validated as a real day: `2026-02-30` and `2026-13-01` match the pattern and are refused. Interpreted in Europe/Paris — the reader lives in France (SPEC §8). |
+| `portion` | `FULL`, `AM` or `PM`. Defaults to `FULL`. The row's identity is `(dayDate, portion)`, so `AM` and `PM` are two rows and either may sit beside a `FULL` one. |
+| `kind` | `CH`, `HOME`, `MISSION_FR`, `MISSION_THIRD` or `ABSENT`. |
+| `absenceReason` | `CONGE`, `MALADIE`, `FERIE` or `AUTRE`. **Required iff `kind` is `ABSENT`**, and refused otherwise — both directions, in the schema *and* as a database CHECK constraint, so the rule survives a writer that does not know it exists (R196). |
+| `note` | Free text, at most 500 characters. A person's aide-mémoire, not a document. |
+| `provenance` | `MANUAL`, `DETECTED_CONFIRMED` or `DETECTED_CORRECTED`. Defaults to `MANUAL`. |
+| `detectedKind` | What detection proposed. **Required when `provenance` is not `MANUAL`**; permitted, and meaningful, on a `MANUAL` row (see §6.3). |
+| `detectedAt` | When the proposal was produced on-device. An ISO instant with an offset. |
+| `clientClaimedAt` | What the offline client asserts about when this was written. **Stored verbatim and never trusted as evidence** — the server keeps this *and* its own `firstRecordedAt`, and the dossier shows both, so a reader sees the gap rather than being handed one number and asked to believe it. |
+
+<!-- /fields:write -->
+
+**Unknown keys are refused, not stripped.** Zod strips by default, and
+stripping is a lie with a success code: a client sending `firstRecordedAt`, a
+misspelt `dayDte`, or a `latitude` would receive 200 and believe the value was
+stored. The app would then show a day as synced while the server holds
+something different, and nobody would find out until a dossier is wrong a year
+later.
+
+Three names are refused **specifically because a client must never send them**:
+`firstRecordedAt` and `recordedAt` are the server clock and the whole evidence
+claim; `userId` is tenancy, which comes from the token and nowhere else; `id`
+is the server naming its own rows.
+
+**Answer:**
+
+```json
+{ "status": "ok", "written": 2, "duplicates": 1 }
+```
+
+`written` produced a row; `duplicates` were already here and are **acknowledged
+rather than retried**. A client reconciles its queue from those two numbers.
+
+### 6.2 `GET /api/v1/entries?year=YYYY` — the read path
+
+```
+GET /api/v1/entries?year=2026
+Authorization: Bearer <access token>
+```
+
+**The year is the page. There is no pagination, and that is a decision rather
+than an omission.**
+
+The result set has a *structural* ceiling, not a hoped-for one:
+`@@unique([userId, dayDate, portion])` permits at most one row per portion per
+day, `EntryPortion` has three values, and a leap year has 366 days — **1098
+rows, ever**. Nothing a client, a user or a malformed batch can do exceeds it.
+(The oft-quoted "about 260 working days" is the *typical* count, not the bound:
+`ABSENT` is a kind, so all 366 calendar days can be declared, and a user who
+changes granularity mid-year leaves `FULL` rows beside `AM`/`PM` ones.)
+
+**A cursor would be wrong here, not merely unnecessary.** The client reconciles
+a *set*. A half-fetched year is indistinguishable from a year with missing days
+— and which days are missing is the one fact this product exists to report
+honestly. A snapshot that arrives whole or fails cannot lie about completeness;
+a paged feed that stops on page three renders as a year the user did not live.
+
+So **the server never truncates.** A short array never carries a 200. A year
+that cannot be served whole is `read_failed`, never a partial success.
+
+**The envelope is an object, never a bare array.** That is the one decision
+with no recovery at any price: a top-level array can never gain a sibling key.
+If the ceiling ever moves, `nextCursor` can be added beside `entries` and every
+client built per §6.4 keeps working.
+
+```json
+{
+  "status": "ok",
+  "year": 2026,
+  "entries": [
+    {
+      "id": "cly3k8qv10001s6a1b2c3d4e5",
+      "clientMutationId": "9f1c0f2e-7b3a-4a6d-9f21-0b2d4c6e8a10",
+      "dayDate": "2026-04-07",
+      "portion": "FULL",
+      "kind": "CH",
+      "absenceReason": null,
+      "note": "Bureau Genève",
+      "provenance": "DETECTED_CORRECTED",
+      "detectedKind": "HOME",
+      "detectedAt": "2026-04-07T17:02:11.000Z",
+      "clientClaimedAt": "2026-04-07T18:44:02.000Z",
+      "firstRecordedAt": "2026-04-07T18:44:09.311Z",
+      "lastModifiedAt": null
+    }
+  ]
+}
+```
+
+<!-- fields:read -->
+
+| field | may a client assume |
+|---|---|
+| `id` | Opaque and **stable for the life of the row** — an edit updates in place rather than minting a new one. It is what `EntryEvent.entryId` refers to. It is *not* the reconciliation key: align on `(dayDate, portion)`. |
+| `clientMutationId` | **The id of the LAST write the server applied to this row**, not the one that created it. So equality with a pending mutation proves the server applied *your* write; **inequality proves only that the last write was not yours** — it is not an instruction to re-send. On a second device, re-sending on inequality overwrites a newer edit with stale content. |
+| `dayDate` | `YYYY-MM-DD`, the same string that was sent. Never an instant. |
+| `portion` | `FULL`, `AM` or `PM`. |
+| `kind` | One of the five kinds. |
+| `absenceReason` | The reason, or `null`. Non-null iff `kind` is `ABSENT`. |
+| `note` | The note, or `null`. |
+| `provenance` | `MANUAL`, `DETECTED_CONFIRMED` or `DETECTED_CORRECTED`. |
+| `detectedKind` | What detection proposed, or `null`. **Kept even where the reader overrode it** — deleting an overridden proposal is a review rejection (SPEC §8). |
+| `detectedAt` | When the proposal was produced, or `null`. |
+| `clientClaimedAt` | What the client asserted, or `null`. Verbatim as sent. |
+| `firstRecordedAt` | **The server clock at first receipt, and it never moves.** A database trigger rejects any update that changes it. This is the timestamp the *Relevé annuel* rests on. |
+| `lastModifiedAt` | **The instant this day was last edited, or `null` if it never was.** Derived from the append-only trail: `max(EntryEvent.recordedAt)` over that entry's `MODIFIED` events. See §6.3 for why it is not `updatedAt`. |
+
+<!-- /fields:read -->
+
+**Every key is always present.** Empty values are an explicit `null`, never an
+omitted key: `absent` and `null` differ to kotlinx.serialization and to Moshi,
+and a test asserting a field is *undefined* passes both when the server
+correctly omits it and when the server has no such field at all.
+
+**Instants are UTC with a `Z` and milliseconds, always.** The client's original
+offset on `detectedAt` and `clientClaimedAt` is already lost at write — the
+column is `timestamp(3)` — so no change of serialiser recovers it. If a
+device's believed zone ever matters evidentially, that is a *column* change,
+not an API change.
+
+**Order: `dayDate` ascending, then `FULL`, `AM`, `PM`.** Stated here in words
+rather than inherited from the Postgres enum's declaration order, which an
+`ALTER TYPE … ADD VALUE … BEFORE` could silently rearrange. Because the sort
+key is the natural key, the order is *total*: two calls with no writes between
+them return identical arrays.
+
+**The year window is inclusive at both ends** — `YYYY-01-01` through
+`YYYY-12-31`, compared as stored calendar days. A half-open upper bound would
+compute the next year's first day, and for `?year=9999` that is not a
+four-digit day at all: a 500 on an input this route's own rule accepts.
+
+**A year holding nothing is `200` with `"entries": []`, never 404.** "You have
+no entries for 2019" is a true and useful answer; 404 says "no such resource",
+which is a different claim and would make the client branch on two shapes for
+one meaning.
+
+**The query string is strict.** Exactly `year`, once. Any other parameter is
+refused with `unknown_parameter` **and the offending keys are named in the
+answer** — because this refusal can be triggered by something outside the
+client's control, such as a proxy appending a cache-buster, and a total failure
+whose cause is invisible is a hunt through somebody else's infrastructure.
+Named, it is in the client's own crash report, and the fix stays a one-line
+server deploy. Strict → lenient breaks nobody; lenient → strict breaks every
+client already sending something we ignored, so it is strict now or never.
+
+**Never cached.** `Cache-Control: no-store, private` and `Vary: Authorization`,
+asserted on the served response rather than trusted to route configuration. An
+authenticated `GET` is the one shape a framework or a proxy will happily treat
+as static, and the failure mode is one person's year served to another.
+
+### 6.3 Three field decisions worth the paragraph
+
+**`detectedKind` on a `MANUAL` row is legal, and the asymmetry is deliberate.**
+A `DETECTED_*` row must say what was proposed — the forward rule. The reverse
+is not enforced, because auto mode can propose a day, have the proposal expire
+unconfirmed, and the reader backfill it later: no proposal was accepted or
+corrected, so the provenance is `MANUAL`, and the annex is *more* honest for
+recording that detection had proposed something. A later reader must not
+"tidy" this into symmetry.
+
+**`lastModifiedAt` is derived from the trail, not from `updatedAt`.** The
+obvious implementation is `Entry.updatedAt`, and it is wrong here. Measured:
+on a row nobody has edited, `firstRecordedAt` and `updatedAt` differ by about
+five milliseconds — `firstRecordedAt` is the batch clock taken once, while
+Prisma stamps `@updatedAt` at query execution, several statements later. SPEC
+§12 prints the last-modified timestamp **"when different"**, so backing it with
+`updatedAt` fires on *every* row and the one thing the column exists to tell a
+reader — *was this day edited?* — becomes unreadable in the legal document.
+`null` when never modified is a state a reader can act on.
+
+**The API says `lastModifiedAt` while the column is `updatedAt`.** SPEC §8
+names the column; SPEC §12 froze the CSV header as *exact and stable* with
+`lastModifiedAt`. One published fact gets one published name across the API,
+the CSV and the PDF; the column name is an implementation detail that never
+leaves the server.
+
+**`late` is not here yet.** SPEC §12 lists it as a CSV column and SPEC §11.3
+defines the seven-day backfill threshold behind it, but it is not an `Entry`
+column and the threshold has no single home in the code. It arrives with FW24's
+dossier, where that home is built — adding a key is additive and breaks nobody.
+Until then a client **must not** adjudicate lateness from `firstRecordedAt`
+against a threshold of its own: a `7` compiled into an APK is the least
+revisable constant in this system.
+
+### 6.4 What a client must do to stay compatible
+
+These are requirements on the *client*, and they cannot be retrofitted to a
+version already in the field. If the first Android build gets them wrong, no
+field can ever be added to these responses.
+
+- **Ignore unknown keys** when parsing every response. This is what makes
+  additive change possible; strict parsing closes the escape hatch before it is
+  used.
+- **Treat an unrecognised `code` as terminal** for that request, and never
+  retry a 4xx. A client that switches exhaustively over today's codes turns the
+  next added one into a breaking change.
+- **Treat an unrecognised enum value** — a sixth `kind`, a fourth `portion` —
+  as opaque and display it rather than crashing.
+- **Branch on `code`, never on `message`.** The French is rewritten whenever it
+  can be written better.
+
+### 6.5 The order of checks is part of the contract
+
+Both routes check in the same order, and it is observable: a request that
+breaks two rules is told about the *earlier* one.
+
+| | `POST` | `GET` |
+|---|---|---|
+| 1 | authenticate | authenticate |
+| 2 | bound the body, before parsing | — |
+| 3 | scan for coordinates, **before validation** | scan the query string, **before validation** |
+| 4 | validate the payload | validate the query |
+| 5 | write | read |
+
+**Coordinates are scanned before validation on purpose.** A `?lat=` is *both* a
+coordinate and an unknown parameter; a payload carrying `latitude` is also an
+unknown key. If validation ran first, every such request would be answered
+"unknown field" and the one interesting fact about it — that a client is
+sending coordinates — would never be recorded (SPEC §13.1, D18).
+
+The scan covers nested objects, arrays, and any key whose **name contains** a
+banned word, case-insensitively. It reads **keys and never values**, so a
+coordinate this product refuses to store cannot survive in the error about
+refusing to store it, nor in the log line about that error.
+
+---
+
+## 7. Error codes
+
+Stable, ASCII, and **frozen**. The `code` is what a client branches on; the
+`message` beside it is French for a human and may be rewritten at any time.
+
+| code | route | status | fires when |
+|---|---|---|---|
+| `missing_token` | any `/v1` | 401 | no `Authorization: Bearer` header |
+| `invalid_token` | any `/v1` | 401 | the token is unknown |
+| `expired_token` | any `/v1` | 401 | the access token has expired |
+| `revoked_session` | any `/v1` | 401 | the session was ended — sign-out, revoke-all, account deletion, or a detected replay (§2) |
+| `payload_too_large` | `POST` | 413 | the body exceeds 256 KiB |
+| `malformed_body` | `POST` | 400 | the body is not JSON |
+| `coordinates_refused` | both | 400 | a location key appears in the payload or the query string |
+| `invalid_payload` | `POST` | 400 | the batch fails validation; `issues[]` names each path and rule |
+| `conflict` | `POST` | 409 | the write collided — the client's mistake, and it is named |
+| `write_failed` | `POST` | 500 | ours. Nothing was written; the whole batch rolled back |
+| `invalid_year` | `GET` | 400 | `year` is absent, repeated, or not exactly four digits |
+| `unknown_parameter` | `GET` | 400 | a query parameter this route does not read; `parameters[]` names them |
+| `read_failed` | `GET` | 500 | ours. The year could not be served **whole**, so it is not served at all |
+
+**Refusals are labelled by the rule that fired, not collapsed into one.** The
+exception is deliberate and lives in §1.5: the sign-in and refresh routes
+answer identically for every cause, because telling an unauthenticated caller
+*which* case fired is the vulnerability.
+
+---

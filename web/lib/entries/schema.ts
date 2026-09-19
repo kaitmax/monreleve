@@ -96,7 +96,7 @@ const PROVENANCES = ['MANUAL', 'DETECTED_CONFIRMED', 'DETECTED_CORRECTED'] as co
  * `.strict()` IS THE LOAD-BEARING CALL IN THIS FILE. Removing it turns every
  * rejection above into a silent strip.
  */
-export const entryItemSchema = z
+const entryItemObject = z
   .object({
     /** D30. The client's own id for this write, so a retry is recognised. */
     clientMutationId: z.string().min(1).max(64),
@@ -129,7 +129,23 @@ export const entryItemSchema = z
      */
     clientClaimedAt: clientInstant.optional(),
   })
-  .strict()
+  .strict();
+
+/**
+ * Every field a client may send, DERIVED FROM THE SCHEMA ITSELF.
+ *
+ * R206: one text, one home. `docs/api-v1.md` documents these names and
+ * tests/unit/meta/api-contract-doc.test.ts asserts the document's list EQUALS
+ * this one - so prose and contract cannot drift apart without going red.
+ *
+ * A HAND-KEPT SECOND LIST WOULD BE A TRANSCRIPTION (R181): correct on the day
+ * it was written, silently wrong afterwards, with every suite green. The split
+ * between `entryItemObject` and `entryItemSchema` exists only so the shape is
+ * readable before the refinements wrap it. No field name changed.
+ */
+export const ENTRY_ITEM_FIELDS = Object.keys(entryItemObject.shape).sort();
+
+export const entryItemSchema = entryItemObject
   .superRefine((value, context) => {
     // SPEC 8: absenceReason is required iff kind = ABSENT. The database
     // enforces this too (FW21, Entry_absenceReason_iff_absent); here so the
