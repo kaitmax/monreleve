@@ -1,0 +1,172 @@
+====================================================================
+REPORT-FW24.txt - the dossier service, increments 1-3
+Mon Releve   2026-09-21
+====================================================================
+
+Pure ASCII. Accented French lives in web/lib/fr (R155).
+
+WHAT IS DONE AND WHAT IS NOT
+--------------------------------------------------------------------
+DONE, gated and committed:
+  1  R223  the CI refusal is named by us, not transcribed
+  2        rows become a TeleworkInput (lib/dossier/aggregate.ts)
+  3        the monthly breakdown and its cumulative column
+  6a       the hand-check of one month, against the demo year
+
+NOT DONE, and not started rather than half-built:
+  4        the dossier service assembling the document's sections
+  5        the French copy and the document itself
+  6b       the walkthrough against a served page
+
+Said plainly because a report that implied six increments from three
+would be the overclaim this product refuses everywhere else. The three
+that exist are the arithmetic layer; nothing renders yet.
+
+THE FRAMING THAT SHAPED IT
+--------------------------------------------------------------------
+This is where the engine meets real rows for the first time. Every
+fixture it has been fed since FW3 was a TeleworkInput somebody typed.
+lib/dossier is the first thing that BUILDS one, and it sits between
+two verified things - R175's position exactly.
+
+IT COUNTS, IT DOES NOT CALCULATE. Nothing in aggregate.ts divides,
+rounds or compares against a threshold. FW12's tile defect was a panel
+recomputing what the engine had already produced, and it passed
+because every fixture agreed; the two only diverge on inputs nobody
+wrote down. The defence is having no second implementation.
+
+ABSENCES NEVER REACH THE ENGINE, asserted as IDENTITY rather than
+absence: the engine's input AND its result are equal with and without
+them. "Absences are excluded" is satisfied by code that excludes them
+from three of four counters. A third test asserts they are still
+COUNTED, or both identity tests pass against an aggregation that drops
+them on the floor.
+
+FINDING 1 - A DEFECT IN MY OWN MODULE, CAUGHT BY ONE GUARD
+--------------------------------------------------------------------
+`calculateTelework` returns Result<TeleworkResult, ValidationError[]>,
+not a bare result. The first monthly.ts read `.declarableRate` off the
+wrapper, which is `undefined`.
+
+THREE TESTS PASSED ON THAT:
+  "December equals the annual figure"  undefined === undefined
+  "the column rises through the year"  undefined vs undefined, x12
+  "every month has a row"              never read a rate
+
+The one that caught it asserted the December figure was GREATER THAN
+ZERO. A non-vacuity guard, doing exactly what R133 says it is for -
+inside my own work, an hour after I wrote the guard for a different
+reason.
+
+It now throws rather than returning zero on a refusal: a rate of 0
+because validation failed is indistinguishable, on the page, from a
+rate of 0 because the person never left Switzerland.
+
+FINDING 2 - THE ACCUMULATION TRAP, MEASURED
+--------------------------------------------------------------------
+The cumulative column is the engine's answer for January through each
+month - twelve calls, no arithmetic. Planting the obvious alternative,
+adding each month's rate to a running total:
+
+  expected 19.919999999999998 to be 20
+
+Twelve truncations compounding in one direction. Every row plausible,
+the arithmetic internally consistent, and only the December figure
+disagreeing with the annual one - which is the single assertion that
+separates the two implementations.
+
+FINDING 3 - THE HAND-CHECK DISAGREED WITH THE ENGINE, AND THE ENGINE
+WAS RIGHT
+--------------------------------------------------------------------
+Increment 6's instrument, run against the demo year. March, counted
+from the rows by hand:
+
+  CH 13   HOME 9   MISSION_FR 0   MISSION_THIRD 0   ABSENT 0
+
+The service agrees exactly. December's cumulative (42.7) equals the
+annual rate (42.7), so the computed-not-accumulated property holds on
+real data and not only on a fixture built for it.
+
+THEN THE ANNUAL FIGURE DID NOT MATCH MY ARITHMETIC:
+
+  by hand   (102.5 + 1 + 1) / 240  =  43.54
+  engine    declarableRate          =  42.70
+  engine    rawRate                 =  43.60
+
+I had used the wrong numerator. The engine computes the declarable
+rate from `waterfall.daysCountedAgainstCeiling` - telework only,
+102.5/240 = 42.7083, truncated to 42.70 - while `rawRate` counts every
+day outside Switzerland, 104.5/240 rounded UP to 43.6. calculate.ts
+says so two lines below the call: days outside Switzerland are "a
+different quantity from the declarable numerator and legitimately
+larger".
+
+WHY IT IS WORTH RECORDING RATHER THAN QUIETLY CORRECTING. Two rates,
+two numerators, two rounding rules, and both are percentages of the
+same denominator that differ by under a point. SPEC 12's monthly
+column is "cumul % declarable", so it takes the first. The zone
+panel's annualised percentage is not yet decided, and putting the
+wrong one there would be invisible to every test that checks a rate is
+a plausible percentage. Increment 4 has to choose deliberately.
+
+AND THE DEMO YEAR CROSSES THE THRESHOLD, which matters for FW25:
+
+  remainingToFiscal  -6.5
+  warnings           FISCAL_CEILING_EXCEEDED, A1_REQUIRED
+
+A fixture that never crossed could not exercise the warning path at
+all.
+
+R223 - THE REFUSAL IS NAMED HERE
+--------------------------------------------------------------------
+CI_FULL is unset; window 2 is closed. The guard that names the
+private-plus-CI_FULL condition CANNOT LIVE IN THE WORKFLOW, which is
+the whole reason it exists: in that state GitHub starts no job, so a
+guard job would be refused with the rest. It runs in gate:clone, which
+already gates every push.
+
+It reports rather than refuses, and says so: the push is sound, what
+is wrong is what CI will do with it. A test asserts that sentence is
+present - without it the next session reads "your work is broken".
+
+R133 on the unknown path: an unauthenticated gh is reported as
+UNKNOWN, because "the guard found nothing" and "the guard could not
+look" read identically in a log.
+
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------
+1. `ruleSetFor` FALLS BACK TO THE LATEST KNOWN RULES for any year it
+   does not have, and only 2026 has a RuleSet. A dossier for 2019 is
+   therefore computed with 2026's thresholds. The engine is honest -
+   it warns when the applied year differs from the requested one - so
+   this is not a defect, but it makes carrying the warnings an
+   obligation of every caller. Three tests hold lib/dossier to it,
+   including the negative case.
+
+2. THE SESSION PROMPT LANDED AT THE REPOSITORY ROOT because I staged
+   with `git add -A`. Moved to relay/, where every other prompt is
+   tracked. The lesson is the small one: stage what the increment
+   changed, not what the tree happens to hold.
+
+QUESTIONS
+--------------------------------------------------------------------
+Q82. The zone panel's annualised percentage (SPEC 12 item 3): the
+     declarable rate or the raw rate? They differ by under a point on
+     the demo year - 42.70 against 43.60 - and both are defensible
+     readings of "annualised percentage". The monthly column is
+     settled by SPEC 12's own wording; this one is not, and choosing
+     wrong is invisible to any test that checks a percentage is
+     plausible.
+
+PUSH PROOF
+--------------------------------------------------------------------
+  7238e76  FW24/1    R223, the refusal named here
+  4463bb4            the prompt moved to relay/
+  b905abd  FW24/2-3  the aggregation and the cumulative column
+  <this>             this report
+
+  Each gated: base chain, test 2605 then 2626.
+
+====================================================================
+END OF REPORT-FW24.txt
+====================================================================
