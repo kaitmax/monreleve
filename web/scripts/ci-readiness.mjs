@@ -63,6 +63,39 @@ export function ciReadiness() {
     return { state: 'unknown', why: 'gh could not list the repository variables' };
   }
 
+  return classifyReadiness(visibility, variables);
+}
+
+/**
+ * Two `gh` answers, classified. Pure, so a test can reach it (R233).
+ *
+ * ==========================================================================
+ * AN ANSWER THAT IS NEITHER `true` NOR `false` IS UNKNOWN, NOT PUBLIC
+ * ==========================================================================
+ *
+ * This read `visibility === 'true'` until 22 September, which made every
+ * other answer - including the EMPTY STRING that `--jq` yields when it
+ * matches nothing - mean `false`, and therefore PUBLIC. The guard duly
+ * printed "the repository is public" about a private repository, and printed
+ * "private" for the same repository an hour later. A report then corrected
+ * the operator's own prompt on the strength of it.
+ *
+ * THE DEFAULT WAS THE PERMISSIVE ONE, in the guard that exists to catch an
+ * expensive condition. R205's shape on a console line: the claim was emitted
+ * because the answer could be PARSED, not because it could be BELIEVED - and
+ * R133's, because "gh says public" and "gh said something I did not
+ * understand" read identically in a log and mean opposite things.
+ */
+export function classifyReadiness(visibility, variables) {
+  if (visibility !== 'true' && visibility !== 'false') {
+    return {
+      state: 'unknown',
+      // R198: name what actually arrived. A bare "unknown" sends the next
+      // reader to check their gh auth, which is the one thing that is fine.
+      why: `gh answered ${JSON.stringify(visibility)} for the repository visibility, which is neither true nor false`,
+    };
+  }
+
   const isPrivate = visibility === 'true';
   // The list is `NAME\tVALUE\tUPDATED`. A variable set to anything other than
   // `on` does not enable the jobs, so the value is read rather than assumed.

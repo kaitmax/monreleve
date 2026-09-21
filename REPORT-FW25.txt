@@ -164,7 +164,7 @@ where the note is noise. Planting the note away fails it.
 
 AND THE BANNED WORDS ARE ASSERTED ON THE RENDERED HTML, which is a
 different claim from FW24's assertion over the copy module - a word
-added in JSX bypasses lib/fr entirely. Planting "certifié" into the h1
+added in JSX bypasses lib/fr entirely. Planting "certifie" into the h1
 proves it; the copy-module test could not have seen that.
 
 FOUR STANDING GUARDS CAUGHT ME, NONE NEEDING A PLANT
@@ -201,11 +201,37 @@ and wrong on both the no-break space and the precision - in a document
 where SPEC 7.3 says the declarable rate must match the employer's
 filing.
 
-PREMISES IN THE PROMPT THAT WERE WRONG
+PREMISES THAT WERE WRONG - INCLUDING ONE OF MINE
 --------------------------------------------------------------------
-1. "the repository is private". It is PUBLIC. CI_FULL unset is
-   correct. The difference matters: public means jobs SKIP cheaply
-   rather than being refused on billing.
+1. WITHDRAWN 22 SEPTEMBER. I WAS WRONG AND THE PROMPT WAS RIGHT.
+
+   This report first said the prompt's "the repository is private"
+   was mistaken and the repository was PUBLIC. THE REPOSITORY IS
+   PRIVATE. `gh repo view --json isPrivate` answers `true`, under
+   both its old name and its new one.
+
+   WHERE THE WRONG CLAIM CAME FROM: gate:clone's readiness line,
+   which printed "the repository is public" on 21 September and
+   "private" on 22 September with nothing about the repository
+   changed. I took the first reading as a fact about the project and
+   used it to correct the operator, which is the wrong direction to
+   push an unverified reading.
+
+   ROOT CAUSE, now fixed as R233: `ci-readiness.mjs` read
+   `visibility === 'true'`, so EVERY other answer - including the
+   empty string `--jq` yields when it matches nothing - meant
+   `false`, and therefore PUBLIC. The permissive default, in the
+   guard whose whole job is catching an expensive condition.
+
+   IT IS R205 ON A CONSOLE LINE: a claim emitted because the answer
+   could be PARSED rather than because it could be BELIEVED. And the
+   reason it survived is R175: `describeReadiness` was tested and
+   `ciReadiness` was documented as untestable - true of the
+   CONDITION, false of the PARSING, which is pure. Nothing examined
+   the space between them. `classifyReadiness` is now that space,
+   with ten tests including the empty-string case.
+
+   CI_FULL unset remains correct, and the state is `quiet`.
 
 2. "prompts/design-frontier/FD8 (the A4 brief)". FD8 DOES NOT EXIST.
    The directory holds FD1, FD2, FD11, FD12, FD13, and FD8 appears
@@ -270,6 +296,59 @@ Q84. A CSV NOTE BEGINNING = + - or @ is evaluated as a formula by
      file whose whole claim is that it reports what was recorded,
      silently editing a user's note is not obviously the safer
      failure. Two tests record the behaviour. Not decided here.
+
+ADDENDUM - 22 SEPTEMBER
+--------------------------------------------------------------------
+Q83 and Q84 are both answered, and two gaps in increment 2 surfaced
+while preparing the work that follows.
+
+R229 answers Q83: Chromium stays, driven by `playwright-core` as a
+runtime dependency with a system Chromium installed via apt and
+pinned, `executablePath` from the environment. `@playwright/test`
+stays dev-only. The reasoning is the project's own: the print route
+IS the document, so a PDF library would be a SECOND implementation of
+the document layout - the thing R206 exists to prevent.
+
+R232 follows from it: the PDF's assertions are STRUCTURAL, never
+pixel. The dev browser is bundled Playwright and the runtime browser
+is apt's Chromium, so a pixel baseline taken here would certify a
+renderer that never runs in production.
+
+R230 answers Q84 and is IMPLEMENTED - commit 509f8a5. The CSV
+prefixes an apostrophe on a note opening `=`, `+`, `-` or `@`; the
+API payload and the document carry the note byte for byte; section
+6.7 of docs/api-v1.md states it. This supersedes the two
+holding-position tests described above under INCREMENT 1.
+
+TWO GAPS IN INCREMENT 2, FOUND BEFORE BUILDING ON IT:
+
+1. `notRecorded` IS COPY NOBODY RENDERS. `Non renseigne` lives in
+   lib/fr/dossier.ts and is asserted in tests/unit/fr/dossier.test.ts,
+   and nowhere else. lib/dossier/service.ts builds the annex as
+   `[...entries].sort().map()` - it maps over ENTRIES, so a day with
+   no entry produces no row, and the CSV inherits the gap because it
+   is built from the annex.
+
+   SPEC 12 item 5 requires the opposite: days with no entry are
+   printed as `Non renseigne` RATHER THAN SKIPPED, because "a
+   document that silently omits dates invites the question of what
+   else it omits". It is the layer SPEC calls what makes the document
+   evidence rather than assertion.
+
+   IT IS R225's DEFECT ONE LINE AWAY FROM R225's OWN INSTANCE, in the
+   same file. R225 was discharged against `workedDaysNote` - the
+   instance - rather than against the class, which is the R149
+   pattern: fixing the instance guarantees the next one.
+
+2. THE PRINT ROUTE DOES NOT RENDER THE RAIL. `renderRailSvg` is
+   rendered by the calculator page, the OG route and the dev pages;
+   app/releve/print/page.tsx does not import it. SPEC line 885
+   justifies non-drift BY ASSERTING the print route renders it, and
+   R232 asks the PDF to assert the rail's presence - which cannot
+   pass today.
+
+Both are gaps in work this report calls done. Increment 2 is correct
+in what it does and incomplete against SPEC 12 in these two respects.
 
 PUSH PROOF
 --------------------------------------------------------------------

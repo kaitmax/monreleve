@@ -18,4 +18,16 @@ export interface CiReadiness {
 
 export declare function ciReadiness(): CiReadiness;
 
+/**
+ * Two `gh` answers, classified (R233).
+ *
+ * Exported so a test can reach the PARSING without the I/O: the condition this
+ * guard detects cannot be reproduced locally, but turning gh's answer into a
+ * boolean is pure - and that is where the 22 September misreading lived.
+ */
+export declare function classifyReadiness(
+  visibility: string,
+  variables: string,
+): CiReadiness;
+
 export declare function describeReadiness(result: CiReadiness): string;

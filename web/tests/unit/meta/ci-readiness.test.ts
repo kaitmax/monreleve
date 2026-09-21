@@ -15,7 +15,7 @@
 // and it was briefly read as a diagnosis of the second.
 
 import { describe, expect, it } from 'vitest';
-import { describeReadiness } from '../../../scripts/ci-readiness.mjs';
+import { classifyReadiness, describeReadiness } from '../../../scripts/ci-readiness.mjs';
 
 describe('R223: the refusal is named here, not transcribed from a vendor', () => {
   it('names BOTH halves of the condition, because either alone is fine', () => {
@@ -83,5 +83,63 @@ describe('R223: the refusal is named here, not transcribed from a vendor', () =>
       expect(text).not.toContain('WILL REFUSE');
       expect(text).toContain('CI readiness');
     }
+  });
+});
+
+describe('R233: the answer is parsed strictly, and an ambiguous one is UNKNOWN', () => {
+  // ==========================================================================
+  // THE LIVE DEFECT THIS WAS WRITTEN FOR
+  // ==========================================================================
+  //
+  // On 22 September this guard printed `the repository is public` for a
+  // repository that is PRIVATE, and printed `private` for the same repository
+  // an hour later with nothing about it changed. `gh repo view --json isPrivate
+  // --jq .isPrivate` had answered something that was neither `true` nor
+  // `false` - most plausibly the empty string, which is what `--jq` yields when
+  // it matches nothing - and `visibility === 'true'` read that as FALSE and
+  // therefore as PUBLIC.
+  //
+  // THE DEFAULT WAS THE PERMISSIVE ONE, in the guard whose whole job is to
+  // catch an expensive condition. R205's shape on a console line: a claim
+  // emitted because the answer could be PARSED rather than because it could be
+  // BELIEVED. The header above explains why `ciReadiness` is not tested - the
+  // CONDITION cannot be reproduced locally - and that is true of the condition
+  // and false of the PARSING, which is pure. R175: two sides examined and the
+  // space between them, which is where this lived.
+  //
+  // A wrong reading here is not cosmetic. It told a report that the repository
+  // was public, and that report corrected the operator's own prompt on it.
+
+  it('reads true as private', () => {
+    expect(classifyReadiness('true', '').state).toBe('quiet');
+  });
+
+  it('reads false as public, so the strictness is not refusing everything', () => {
+    // R196: rejection alone proves a parser is STRICT, never that it is RIGHT.
+    expect(classifyReadiness('false', '').state).toBe('ready');
+  });
+
+  it('refuses when CI_FULL is on and the repository is private', () => {
+    expect(classifyReadiness('true', 'CI_FULL\ton\t2026-09-01').state).toBe('refused');
+  });
+
+  it('calls an EMPTY answer unknown, which is the defect that produced this', () => {
+    // Today this returns `ready` and says "the repository is public".
+    expect(classifyReadiness('', '').state).toBe('unknown');
+  });
+
+  it.each(['null', 'undefined', 'TRUE', 'yes', '{"isPrivate":true}'])(
+    'calls %s unknown rather than guessing',
+    (answer) => {
+      expect(classifyReadiness(answer, '').state).toBe('unknown');
+    },
+  );
+
+  it('names what it actually got, so the next reader is not left guessing', () => {
+    // R198: the refusal names which rule fired. A bare "unknown" sends somebody
+    // to check their gh auth when the real answer is that gh replied oddly.
+    const { why } = classifyReadiness('yes', '');
+
+    expect(why).toContain('yes');
   });
 });
