@@ -1,5 +1,5 @@
 ====================================================================
-REPORT-FW24.txt - the dossier service, four of six increments
+REPORT-FW24.txt - the dossier service, five of six increments
 Mon Releve   2026-09-21
 ====================================================================
 
@@ -13,16 +13,18 @@ DONE, gated and committed:
   3        the monthly breakdown and its cumulative column
   4        the dossier payload, both rates (R224), and
            lib/entries/late.ts - R216's deferred threshold
+  5        the document's own words (lib/fr/dossier.ts)
   6a       the hand-check of one month, against the demo year
 
 NOT DONE, and not started rather than half-built:
-  5        the French copy and the document itself
-  6b       the walkthrough against a served page
+  6b       the walkthrough against a served page - there is no page
+           yet. The copy and the payload exist; nothing renders them,
+           and a walkthrough needs something to drive.
 
-Said plainly because a report implying six from four would be the
-overclaim this product refuses on every public page. What exists is
-the arithmetic and the payload; nothing renders yet, and no French has
-been written.
+Said plainly because a report implying six from five would be the
+overclaim this product refuses on every public page. What exists is the
+arithmetic, the payload and the copy. Nothing renders them yet, which
+is why 6b is not merely unfinished but not yet possible.
 
 THE FRAMING THAT SHAPED IT
 --------------------------------------------------------------------
@@ -118,6 +120,29 @@ AND THE DEMO YEAR CROSSES THE THRESHOLD, which matters for FW25:
 
 A fixture that never crossed could not exercise the warning path at
 all.
+
+FINDING 4 - THE COPY GUARDS CAUGHT TWO REAL VIOLATIONS, FIRST RUN
+--------------------------------------------------------------------
+lib/fr/dossier.ts is scanned by the four standing guards the moment it
+exists, and both violations it found fail nothing else:
+
+  an ASCII space before % in "Cumul % declarable", where French sets a
+  no-break space (R91);
+
+  240 typed into a method label. simplifiedBasisDays lives in the
+  RuleSet, and rules.ts says that is the only place a threshold may
+  appear (R147/R153). It is the figure that goes stale in 2028 with
+  every suite green - the exact failure R73 was written for.
+
+R178: live instances, on a guard I did not write and was not thinking
+about. Neither needed a plant to prove the guard works.
+
+WHAT THE STANDING GUARDS CANNOT CHECK is what SPEC 12 asks of THIS
+document, so the new tests cover: the vocabulary ban asserted in BOTH
+directions, so silence cannot pass; the threshold sentence naming both
+figures AND following when they change; badge labels that survive a
+monochrome photocopy and say WHICH seuil was crossed; and R183s
+unconditional footer.
 
 R223 - THE REFUSAL IS NAMED HERE
 --------------------------------------------------------------------
