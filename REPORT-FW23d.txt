@@ -1,0 +1,183 @@
+====================================================================
+REPORT-FW23d.txt - two deadlines cleared before FW24
+Mon Releve   2026-09-21
+====================================================================
+
+Pure ASCII. Accented French lives in web/lib/fr (R155).
+
+SUMMARY
+--------------------------------------------------------------------
+Three increments, each gated on its own tree so a bisect lands on a
+state that was checked rather than inferred.
+
+  1  R221  the selector sees the whole repository, not only web/
+  2        CLAUDE.md says what to do when a neighbour holds 3000
+  3  R220  the client-generated key is unique per account
+
+R220 had the hard deadline: once AN5 ships, a client retrying a
+permanently-409ing mutation needs an app release to stop. R221's
+deadline is AN1, when android/ becomes the top-level directory the
+old implementation could not see.
+
+OPERATOR RULINGS, VERBATIM
+--------------------------------------------------------------------
+  "Q80 - scope the index per account, and take it now (R220). A
+   client-generated key colliding across accounts is a correctness
+   defect waiting for a second user [...] That's not a conflict to
+   report, it's a bug to remove."
+
+  "Q79 accordingly becomes what I first thought it was: conflict has
+   no live producer once scoped, and it stays reserved for the
+   out-of-order case parked in 6.4. Document it with that single
+   reason rather than two."
+
+  "The selector root mismatch - fix both halves (R221). Both commands
+   run from the repo root, paths normalised once, and a test asserting
+   a planted untracked file at the root is seen by the selector."
+
+INCREMENT 1 - R221
+--------------------------------------------------------------------
+RED     none possible as a behaviour test - the mechanism could not
+        see the file at all. The substitute is the plant below, which
+        is what R180 offers when a RED run is not available.
+GREEN   2598 in the base chain; 73 in the selector's own file.
+PLANT   cwd restored to the package root -> two tests fail, the first
+        naming the defect: "an untracked file at the repository root
+        is invisible to the selector". Restore verified.
+
+`changedPaths` MOVED to gate-selection.mjs, and that is not tidying:
+gate-for-changes.mjs runs the gate on import, so a test could not
+import the function without running the thing it was testing. A
+function no test can reach is a function with no test. R185's parity
+test agreed once the declaration was updated.
+
+AND THE GATE CAUGHT MY OWN LEFTOVER. The first run failed on lint -
+`execFileSync` imported in gate-for-changes.mjs and no longer used
+there. A real error, in the commit that moves a function between
+modules, which is exactly where one belongs.
+
+AND IT DEMONSTRATED ITSELF ONE COMMIT LATER. R220 gate selection,
+run after increment 1 landed:
+
+  web/prisma/migrations/..._per_account/migration.sql  (untracked)
+  web/prisma/schema.prisma                             (tracked)
+
+Both with the web/ prefix. The same pair printed inconsistently in
+FW23c, which is what raised this. Not a test - a live selection, and
+the better kind of evidence (R178).
+
+INCREMENT 2 - the CLAUDE.md port line
+--------------------------------------------------------------------
+THE FIRST DRAFT WAS WRONG AND THE CHECK CAUGHT IT. It claimed
+`pnpm test:visual` reads FRONTALIER_PORT. It does not: test:visual
+runs Playwright inside its own container against a server it starts
+there, so the host's ports never reach it.
+
+Verified readers, by grep rather than by memory:
+  e2e/support/base-url.ts     -> pnpm test:e2e
+  scripts/lighthouse.mjs      -> pnpm lighthouse
+  gate:changed passes it through to both.
+  pnpm dev takes PORT instead.
+
+Writing the unverified version into CLAUDE.md would have been R154's
+failure - a mechanism asserted and never proven to deliver - in the
+one file whose job is to be right about mechanisms.
+
+INCREMENT 3 - R220
+--------------------------------------------------------------------
+RED     "never treats another user mutation id as seen"
+        AssertionError: expected undefined to be 1
+        The second account's write was refused 409 rather than landing.
+GREEN   337 in the database suite.
+
+MIGRATION  DROP INDEX Entry_clientMutationId_key
+           CREATE UNIQUE INDEX Entry_userId_clientMutationId_key
+                 ON "Entry"("userId", "clientMutationId")
+
+SAFE ON EXISTING DATA BY CONSTRUCTION: the new constraint is strictly
+WEAKER than the one dropped. Anything unique globally is unique within
+an account, so no existing row can violate it. Written by hand from
+`prisma migrate diff` output because `migrate dev` refuses to run
+non-interactively when it has a warning to show, and applied with
+`db:deploy`.
+
+PLANTS, on the live index rather than on source:
+  the GLOBAL unique restored  -> caught by BOTH layers: the database
+      constraint test and the route behaviour test
+  the composite DROPPED       -> caught by two constraint tests
+Restores verified by reading pg_indexes back, and the first restore
+had NOT landed - a shell-mangled $executeRawUnsafe - which is why the
+verification exists.
+
+THE REACHABILITY CHANGE, AGAINST THE FREEZE'S ASYMMETRY. No field
+changes. The response for a given request changes only in the
+direction of SUCCEEDING where it previously failed wrongly: a second
+account's legitimate write now lands instead of being refused 409.
+Nothing a client could have relied on is removed, because nothing
+should have relied on a stranger's id reserving its own.
+
+Q79 IS NOW ONE REASON. The `conflict` row reads: reserved, no path
+produces it today, kept for the out-of-order case in 6.4.
+
+AND I VERIFIED "NO PATH PRODUCES IT" RATHER THAN INHERITING IT. The
+one case I could construct that might still raise P2002 is a
+concurrent double-submit of the same mutation id, where two
+transactions both find nothing and both insert. Measured:
+
+  submission A: ok, written 1, duplicates 0, code null
+  submission B: ok, written 1, duplicates 0, code null
+  rows created: 1
+
+No conflict - the upsert's update branch absorbs the second. So the
+document's claim holds for the ordinary AND the concurrent case.
+
+  A SIDE-OBSERVATION worth one line: both callers were told
+  written: 1 while ONE row exists. Not data loss - the row is correct
+  and R217's returned entries are accurate - but a client summing
+  `written` across retries to track queue progress would over-count.
+
+THE PRE-FW24 CHECK
+--------------------------------------------------------------------
+Asked for before FW24 rather than during it: does the demo year still
+satisfy R197 (a scenario consistent as one) and R120 (two derivations
+of a figure that disagree) after R219's and R220's migrations touched
+these tables?
+
+  demo-year.test.ts   26 passed, including its R120 block
+  shape after both migrations:
+    users 2, entries 262, events 264
+    events carrying a mutation id :   2
+    events with NULL (pre-R219)   : 262
+    client ids shared across rows :   0
+
+BOTH HOLD. And the useful fact for FW24: the demo year's trail is
+entirely in the PRE-R219 shape, which a fresh seed reproduces. That is
+the exact case R219's Entry fallback exists for, so it is exercised by
+the demo year rather than only by its own test.
+
+FW24 IS UNAFFECTED: lastModifiedAt derives from EntryEvent.recordedAt
+and action, never from clientMutationId, so aggregation reads nothing
+that changed. R220 changed an index, not a column.
+
+  ONE THING TO DECIDE LATER, NOT NOW: the seed does not populate
+  EntryEvent.clientMutationId, so a freshly seeded demo year is
+  unrealistic in that one respect - a real user's events, written
+  through the API after R219, carry it. It does not affect FW24. It
+  would affect an AN-series task testing dedup against the demo year.
+  Q81.
+
+QUESTIONS
+--------------------------------------------------------------------
+Q81. Should the seed populate EntryEvent.clientMutationId, so the demo
+     year's trail matches what the write path now produces? Against:
+     the seed's ids would then be a second source of the same value,
+     and R197 wants the scenario consistent rather than merely
+     populated. Not needed for FW24 either way.
+
+PUSH PROOF
+--------------------------------------------------------------------
+<FILLED IN AFTER THE PUSH>
+
+====================================================================
+END OF REPORT-FW23d.txt
+====================================================================

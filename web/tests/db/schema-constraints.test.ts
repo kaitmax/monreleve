@@ -458,3 +458,90 @@ describe('a day is a day', () => {
     expect(entry.firstRecordedAt.getTime()).toBeLessThanOrEqual(Date.now() + 1000);
   });
 });
+
+describe('Entry.clientMutationId is unique within the account, not globally (R220)', () => {
+  // ============================================================================
+  // ASSERTED IN THE DATABASE, NOT INFERRED FROM BEHAVIOUR
+  // ============================================================================
+  //
+  // The two tests below prove what the INDEX permits and refuses. They are not
+  // a second copy of the route tests: those prove the write path behaves
+  // correctly, and this proves the database would still refuse a bad row
+  // written by something that is not the write path - a seed, a migration, a
+  // future admin script (R196).
+  //
+  // It was `@unique` globally. `clientMutationId` is the CLIENT's own id, so a
+  // global namespace meant two devices generating UUIDs independently could
+  // collide and the second account's legitimate write was refused. A key the
+  // client issues is unique within the account that issued it.
+
+  it('permits two accounts to hold the same client-generated id', async () => {
+    const first = await prisma.user.create({ data: { email: 'r220-a@example.com' } });
+    const second = await prisma.user.create({ data: { email: 'r220-b@example.com' } });
+
+    const shared = 'r220-shared-id';
+
+    await prisma.entry.create({
+      data: {
+        userId: first.id,
+        dayDate: new Date('2026-04-07T00:00:00.000Z'),
+        portion: 'FULL',
+        kind: 'CH',
+        clientMutationId: shared,
+        firstRecordedAt: new Date(),
+      },
+    });
+
+    // THE ONE THE OLD INDEX REFUSED. Written straight to the database, so the
+    // claim is about the CONSTRAINT rather than about the route.
+    await expect(
+      prisma.entry.create({
+        data: {
+          userId: second.id,
+          dayDate: new Date('2026-04-07T00:00:00.000Z'),
+          portion: 'FULL',
+          kind: 'HOME',
+          clientMutationId: shared,
+          firstRecordedAt: new Date(),
+        },
+      }),
+    ).resolves.toBeDefined();
+
+    expect(await prisma.entry.count({ where: { clientMutationId: shared } })).toBe(2);
+  });
+
+  it('still refuses the SAME account holding it twice', async () => {
+    // BOTH DIRECTIONS, and this is the half that says the index was scoped
+    // rather than dropped. A migration that deleted the constraint outright
+    // would pass the test above perfectly.
+    const owner = await prisma.user.create({ data: { email: 'r220-c@example.com' } });
+    const shared = 'r220-own-id';
+
+    await prisma.entry.create({
+      data: {
+        userId: owner.id,
+        dayDate: new Date('2026-04-07T00:00:00.000Z'),
+        portion: 'FULL',
+        kind: 'CH',
+        clientMutationId: shared,
+        firstRecordedAt: new Date(),
+      },
+    });
+
+    await expect(
+      prisma.entry.create({
+        data: {
+          userId: owner.id,
+          // A DIFFERENT DAY, so the (userId, dayDate, portion) key cannot be
+          // what refuses it - otherwise this test would pass for the wrong
+          // reason and say nothing about the id at all.
+          dayDate: new Date('2026-04-08T00:00:00.000Z'),
+          portion: 'FULL',
+          kind: 'HOME',
+          clientMutationId: shared,
+          firstRecordedAt: new Date(),
+        },
+      }),
+    ).rejects.toThrow(/Entry_userId_clientMutationId_key|Unique constraint/u);
+  });
+});

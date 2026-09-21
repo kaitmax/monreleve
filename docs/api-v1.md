@@ -597,7 +597,7 @@ Stable, ASCII, and **frozen**. The `code` is what a client branches on; the
 | `malformed_body` | `POST` | 400 | the body is not JSON |
 | `coordinates_refused` | both | 400 | a location key appears in the payload or the query string |
 | `invalid_payload` | `POST` | 400 | the batch fails validation; `issues[]` names each path and rule |
-| `conflict` | `POST` | 409 | the write collided. The live producer today is a `clientMutationId` already used **by another account** - the column is globally unique, so two accounts cannot share one. **Also reserved** for the out-of-order case in section 6.4 should that ruling land: a late write refused rather than silently applied is what a client would need to be told. |
+| `conflict` | `POST` | 409 | **Reserved.** No path produces it today. It is kept for the out-of-order case in section 6.4 should that ruling land: a late write refused rather than silently applied is what a client would need to be told. Until then a client will not see it - and per section 6.5 must still treat it as terminal rather than retrying. |
 | `write_failed` | `POST` | 500 | ours. Nothing was written; the whole batch rolled back |
 | `invalid_year` | `GET` | 400 | `year` is absent, repeated, or not exactly four digits |
 | `unknown_parameter` | `GET` | 400 | a query parameter this route does not read; `parameters[]` names them |

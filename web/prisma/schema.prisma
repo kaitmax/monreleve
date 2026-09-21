@@ -303,7 +303,10 @@ model Entry {
 
   /// D30. Client-generated UUID, unique, so a retried mutation is recognised
   /// rather than duplicated.
-  clientMutationId String @unique
+  /// The client's own idempotency key (D30), unique WITHIN THE ACCOUNT that
+  /// issued it - see @@unique below. It records which mutation LAST WROTE this
+  /// row; the set of mutations ever applied lives on EntryEvent (R219).
+  clientMutationId String
 
   note String?
 
@@ -332,6 +335,13 @@ model Entry {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, dayDate, portion])
+  /// R220. It was `@unique` globally, which made a CLIENT-GENERATED id a
+  /// shared namespace: two devices generating UUIDs independently could
+  /// collide, and the second account's legitimate write was refused 409
+  /// because a stranger had used that id first. That is not a conflict to
+  /// report, it is a bug to remove. A key the client issues is unique within
+  /// the account that issued it.
+  @@unique([userId, clientMutationId])
   @@index([userId, dayDate])
 }
 

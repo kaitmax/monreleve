@@ -760,30 +760,51 @@ describe('R219: a replay is recognised by the TRAIL, not by the current row', ()
       ),
     );
 
-    // THE ANSWER IS `conflict`, NOT `duplicates`, AND THE DIFFERENCE MATTERS.
+    // THE SECOND ACCOUNT'S WRITE LANDS, AND IT IS A NEW WRITE (R220).
     //
-    // I expected this write to land. It does not: `Entry.clientMutationId` is
-    // `@unique` GLOBALLY rather than per user, so the second account collides
-    // with the first at the database and the batch is refused 409.
+    // `clientMutationId` is the CLIENT's own id. Two devices generating UUIDs
+    // independently can produce the same one, and the second account's write is
+    // legitimate - refusing it because a stranger used that id first is not a
+    // conflict to report, it is a bug to remove. The unique index is
+    // @@unique([userId, clientMutationId]): unique within the account that
+    // issued it, which is what a client-generated key means.
     //
-    // What this test is for either way: the other account's id must never be
-    // read as THIS account's duplicate. A dedup set that ignored userId would
-    // answer `duplicates: 1` here and silently swallow a real write. So the
-    // assertion is that the answer is NOT an acknowledgement.
-    expect(theirs.status).toBe('error');
-    expect(theirs.code).toBe('conflict');
+    // R219 is what makes this safe. The duplicate set is scoped by userId, so
+    // the other account's id is never read as THIS account's - if it were, the
+    // answer here would be `duplicates: 1` and a real write would be silently
+    // swallowed, which is the failure this test exists to catch.
+    expect(theirs.written).toBe(1);
+    expect(theirs.duplicates).toBe(0);
 
-    // NOT AN ACKNOWLEDGEMENT AT ALL - there is no `duplicates` key on an error,
-    // which is a stronger statement than "duplicates is zero" and the one that
-    // matters: the write was refused rather than quietly absorbed.
-    expect(Object.hasOwn(theirs, 'duplicates')).toBe(false);
+    // BOTH ROWS EXIST, one per account. Presence on both sides, so neither
+    // assertion is satisfied by an empty database.
+    expect(await prisma.entry.count({ where: { userId: otherId } })).toBe(1);
+    expect(await prisma.entry.count({ where: { userId } })).toBe(1);
 
-    // AND NOTHING OF THEIRS LANDED, which is the half that says the refusal was
-    // total rather than partial.
-    expect(await prisma.entry.count({ where: { userId: otherId } })).toBe(0);
+    // AND THEY ARE DIFFERENT ROWS carrying the same client id.
+    const mine = await prisma.entry.findFirstOrThrow({ where: { userId } });
+    const yours = await prisma.entry.findFirstOrThrow({ where: { userId: otherId } });
 
-    // WHILE THE FIRST ACCOUNT'S ROW IS UNTOUCHED - presence, so the absence
-    // above is not satisfied by an empty database.
+    expect(mine.id).not.toBe(yours.id);
+    expect(mine.clientMutationId).toBe(yours.clientMutationId);
+  });
+
+  it('still refuses a REPEAT of the account own id, which is the point of the index', async () => {
+    // THE OTHER DIRECTION. Scoping the index per account must not weaken it
+    // WITHIN an account - a dedup that stopped recognising the caller's own
+    // replay would pass every test above while reintroducing R219's defect.
+    const shared = mutation();
+
+    await post({ entries: [{ clientMutationId: shared, dayDate: '2026-04-07', kind: 'CH' }] });
+
+    const replay = await answerOf(
+      await post({ entries: [{ clientMutationId: shared, dayDate: '2026-04-08', kind: 'HOME' }] }),
+    );
+
+    // SAME ID, DIFFERENT DAY, SAME ACCOUNT - still a duplicate, because the id
+    // identifies the MUTATION and the server has applied it.
+    expect(replay.written).toBe(0);
+    expect(replay.duplicates).toBe(1);
     expect(await prisma.entry.count({ where: { userId } })).toBe(1);
   });
 });
