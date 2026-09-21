@@ -497,13 +497,31 @@ client author would reasonably read as *the original claim survives*. The
 behaviour was right and the sentence was wrong — and in a frozen contract the
 sentence is the thing being frozen.
 
-**`late` is not here yet.** SPEC §12 lists it as a CSV column and SPEC §11.3
-defines the seven-day backfill threshold behind it, but it is not an `Entry`
-column and the threshold has no single home in the code. It arrives with FW24's
-dossier, where that home is built — adding a key is additive and breaks nobody.
-Until then a client **must not** adjudicate lateness from `firstRecordedAt`
-against a threshold of its own: a `7` compiled into an APK is the least
-revisable constant in this system.
+**`late` now has a home, and it is not this response.** SPEC §12 lists it as a
+CSV column and SPEC §11.3 defines the seven-day backfill threshold behind it.
+FW24 built that home — `lib/entries/late.ts` — so the dossier, the CSV and the
+PDF all read one rule. The field is **not** on this response today; adding it
+is additive under §6.3 and can happen the day a client needs it.
+
+A client still **must not** adjudicate lateness against a threshold of its own:
+a `7` compiled into an APK is the least revisable constant in this system. It
+MAY predict — SPEC §11.3 gives the entry sheet a prospective warning that fires
+while the reader is still editing, before any write, which no server value can
+supply.
+
+**Lateness is measured against the server's observation, never the client's
+claim.** `firstRecordedAt` decides it; `clientClaimedAt` never does, and the
+function that computes it has no parameter for one. The reason is who would
+benefit from the other choice: a device that could assert an earlier moment
+could clear its own late flag, and the annex's whole value is that the server's
+timestamp is not negotiable.
+
+**So an entry written offline and synced eight days later is genuinely late,**
+and the document says so. That is not a defect of the offline path. The dossier
+prints `clientClaimedAt` beside `firstRecordedAt` (SPEC §12 item 5) precisely so
+a reader sees the device's account and the server's observation together and
+judges the gap themselves — two facts, both shown, neither standing in for the
+other.
 
 ### 6.4 Replay, ordering, and what is still open
 

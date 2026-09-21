@@ -50,11 +50,28 @@ const LATE_BACKFILL_MS = LATE_BACKFILL_DAYS * MS_PER_DAY;
 /**
  * Was this day recorded late?
  *
- * BOTH ARGUMENTS ARE SERVER FACTS. `dayDate` is the calendar day the entry
- * describes, `firstRecordedAt` the instant the server first heard about it -
- * never `clientClaimedAt`, which is what the client asserted and which SPEC 8
- * forbids treating as evidence. A client that backdated its claim would
- * otherwise clear its own flag.
+ * ============================================================================
+ * LATENESS IS MEASURED AGAINST THE SERVER'S OBSERVATION, NEVER THE CLIENT'S
+ * CLAIM. THIS IS A DECISION, NOT A MISSING PARAMETER.
+ * ============================================================================
+ *
+ * `dayDate` is the calendar day the entry describes and `firstRecordedAt` is
+ * the instant the server first heard about it. `clientClaimedAt` - the
+ * device's own assertion about when it was written - is deliberately not an
+ * input, and the signature has no parameter for it.
+ *
+ * ASK WHO WOULD BENEFIT FROM THE OTHER CHOICE. A user whose app could claim an
+ * earlier moment would be able to clear a late flag at will, and the annex's
+ * entire value is that the server's timestamp is not negotiable. Reading the
+ * claim would make the flag a statement the record's subject controls, which is
+ * the opposite of evidence.
+ *
+ * SO AN OFFLINE ENTRY SYNCED EIGHT DAYS LATER IS GENUINELY LATE, and the
+ * dossier says so. That is not a defect of the offline path: the document
+ * reports when the SERVER learned of a day, and it prints `clientClaimedAt`
+ * beside it (SPEC 12 item 5) so a reader can see the device's account of the
+ * same day and judge the gap themselves. Two facts, both shown, neither
+ * standing in for the other.
  *
  * STRICTLY GREATER THAN. Seven days is not late; the eighth is. SPEC 11.3 says
  * "beyond 7 days", and a boundary written as `>=` would flag a day recorded
