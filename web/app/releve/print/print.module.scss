@@ -1,0 +1,210 @@
+// web/app/releve/print/print.module.scss
+//
+// A4 geometry, black rules, and colour only where SPEC 12 allows it.
+//
+// TOKENS ONLY, and the stylelint rule caught the first draft writing `1px`
+// three times - which is the value `--size-rule` exists to hold. A document is
+// the surface where a hand-typed length is most tempting and least visible.
+//
+// THE MILLIMETRES ARE NOT TOKENS AND CANNOT BE. A4 is 210 x 297 mm because ISO
+// 216 says so, not because this product chose it; there is no design token for
+// the size of a sheet of paper, and inventing one would put a physical constant
+// in a file about brand decisions.
+
+.sheet {
+  // A4. @page sets the paper; this sets the content column, so a browser and
+  // Chromium agree on the measure before either paginates.
+  // EXEMPTED, NOT TOKENISED, on the precedent global.scss already set for the
+  // visually-hidden idiom: "a token that no designer chose and no design could
+  // change". 210 x 297 mm is ISO 216. It is the size of a sheet of paper, not
+  // a brand decision, and a --size-page-a4-width token would put a physical
+  // constant in a file about this product's choices.
+  //
+  // The margins are the one judgement here, and they are the fiduciaire's
+  // convention rather than ours - enough gutter to punch and file without
+  // taking a column of the annex with it.
+  /* stylelint-disable scale-unlimited/declaration-strict-value */
+  width: 210mm;
+  min-height: 297mm;
+  padding: 16mm 14mm;
+  /* stylelint-enable scale-unlimited/declaration-strict-value */
+  margin: 0 auto;
+  background: var(--colour-surface);
+  color: var(--colour-text-primary);
+
+  // NO font-family HERE. global.scss sets it on body from --type-family, and
+  // the sheet inherits it - which is also what guarantees the PDF and the web
+  // use the SAME family rather than two declarations that agree today.
+  //
+  // The first draft wrote var(--font-family-base), which is the SCSS variable's
+  // name and not a custom property at all. Nothing would have rendered wrong -
+  // the declaration is simply invalid and the inherited family wins - so the
+  // only thing that catches it is a census over every var() in the tree, which
+  // is what tests/unit/tokens/var-references.test.ts is.
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+}
+
+.title {
+  font-size: var(--type-h1-size);
+  line-height: var(--type-h1-line);
+  font-weight: var(--type-h1-weight);
+  margin: 0 0 var(--space-6);
+}
+
+.identification {
+  dl {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--space-1) var(--space-4);
+    margin: 0 0 var(--space-6);
+  }
+
+  dt {
+    color: var(--colour-text-secondary);
+  }
+
+  dd {
+    margin: 0;
+  }
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+
+  > div {
+    border: var(--size-rule) solid var(--colour-border-default);
+    padding: var(--space-4);
+  }
+}
+
+.tileValue {
+  display: block;
+  font-size: var(--type-h2-size);
+  line-height: var(--type-h2-line);
+  font-weight: var(--type-h2-weight);
+}
+
+.tileLabel {
+  display: block;
+  color: var(--colour-text-secondary);
+}
+
+.tileNote {
+  display: block;
+  margin-top: var(--space-1);
+  font-size: var(--type-micro-size);
+  line-height: var(--type-micro-line);
+  color: var(--colour-text-secondary);
+}
+
+.zone {
+  border: var(--size-rule) solid var(--colour-border-default);
+  padding: var(--space-6);
+  margin-bottom: var(--space-6);
+}
+
+.rate {
+  margin: 0;
+}
+
+.rateValue {
+  display: block;
+  font-size: var(--type-display-size);
+  line-height: var(--type-display-line);
+  font-weight: var(--type-display-weight);
+}
+
+.rateLabel {
+  display: block;
+  color: var(--colour-text-secondary);
+}
+
+.rawRate {
+  margin: var(--space-3) 0 0;
+}
+
+.thresholds {
+  margin: var(--space-4) 0 0;
+}
+
+.badge {
+  margin: var(--space-4) 0 0;
+  font-weight: var(--type-body-m-weight);
+}
+
+.note {
+  margin: var(--space-3) 0 0;
+  font-size: var(--type-micro-size);
+  line-height: var(--type-micro-line);
+  color: var(--colour-text-secondary);
+}
+
+.months,
+.annex {
+  margin-bottom: var(--space-6);
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th,
+  td {
+    border-bottom: var(--size-rule) solid var(--colour-border-default);
+    padding: var(--space-1) var(--space-3);
+    text-align: left;
+    vertical-align: top;
+  }
+
+  th {
+    font-weight: var(--type-body-m-weight);
+  }
+}
+
+.annex {
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-line);
+
+  // A LONG TABLE ACROSS PAGES. Repeating the header on every printed page is
+  // what stops page four being a wall of unlabelled columns.
+  thead {
+    display: table-header-group;
+  }
+
+  tr {
+    break-inside: avoid;
+  }
+}
+
+.late {
+  // THE WORD CARRIES THE STATUS, not the weight. SPEC 12's monochrome rule: a
+  // reader photocopying this must lose nothing, so the flag is text and the
+  // emphasis is only emphasis.
+  font-weight: var(--type-body-m-weight);
+}
+
+.legal {
+  border-top: var(--size-rule) solid var(--colour-text-primary);
+  padding-top: var(--space-4);
+  font-size: var(--type-micro-size);
+  line-height: var(--type-micro-line);
+  color: var(--colour-text-secondary);
+
+  p {
+    margin: 0 0 var(--space-1);
+  }
+}
+
+@page {
+  size: a4;
+  margin: 0;
+}
+
+.subheading {
+  margin: 0 0 var(--space-3);
+  color: var(--colour-text-secondary);
+}
