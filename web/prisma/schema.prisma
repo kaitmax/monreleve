@@ -376,10 +376,29 @@ model EntryEvent {
 
   clientClaimedAt DateTime?
 
+  /// The mutation that produced this event (R219).
+  ///
+  /// THIS IS THE DUPLICATE SET. `Entry.clientMutationId` records which mutation
+  /// LAST WROTE the row, so an edit destroys the evidence that an earlier one was
+  /// ever applied - and a queue replaying that earlier mutation then reverts the
+  /// day. EntryEvent is append-only, so it holds every mutation ever applied and
+  /// no later write can overwrite it.
+  ///
+  /// NULLABLE, AND IT CANNOT BE BACKFILLED. Events written before this migration
+  /// have no id recorded, and the id on their Entry is the LAST write's rather
+  /// than the one that created them - so filling it in would write a falsehood
+  /// into an append-only table. The write path consults Entry as well for
+  /// exactly those rows.
+  clientMutationId String?
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, entryId])
   @@index([entryId, recordedAt])
+  /// The duplicate lookup, scoped to the account. Never a global index: the ids
+  /// are the client's own, and one account must not be able to decide whether
+  /// another account's id counts as seen.
+  @@index([userId, clientMutationId])
 }
 
 // ---------------------------------------------------------------------------

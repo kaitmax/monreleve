@@ -156,6 +156,13 @@ export const PERSONAL_DATA: Readonly<Record<string, Disclosure>> = {
   'EntryEvent.detectedKind': 'history',
   'EntryEvent.dayDate': 'history',
   'EntryEvent.portion': 'history',
+  // R219: the mutation that produced this event. Disclosed as 'history' like
+  // the rest of the event record, not as 'day' like Entry.clientMutationId -
+  // the category describes WHICH RECORD holds the column, and this one is the
+  // modification trail. It is the client's own opaque id and carries nothing
+  // about the person, but "carries nothing" is not a reason to leave it
+  // undisclosed: the notice enumerates what is STORED.
+  'EntryEvent.clientMutationId': 'history',
   'EntryEvent.recordedAt': 'timestamps',
   'EntryEvent.clientClaimedAt': 'timestamps',
 

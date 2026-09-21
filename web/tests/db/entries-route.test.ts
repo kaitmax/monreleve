@@ -533,3 +533,257 @@ describe('R217: the answer carries the written rows', () => {
     expect(JSON.stringify(theirs)).not.toContain(userId);
   });
 });
+
+describe('R219: a replay is recognised by the TRAIL, not by the current row', () => {
+  // ============================================================================
+  // THE DEFECT THIS CLOSES, AND WHY IT WAS INVISIBLE
+  // ============================================================================
+  //
+  // The contract says a batch carrying a seen `clientMutationId` writes no row
+  // and no event, and is acknowledged. That sentence was FALSE in one case, and
+  // the case is ordinary rather than contrived.
+  //
+  // The duplicate set was built from `Entry.clientMutationId`, which records
+  // which mutation LAST WROTE the row. An edit overwrites it - so the evidence
+  // that an earlier mutation was ever applied is destroyed by the next write to
+  // the same day. The replay then looks new, and the day reverts.
+  //
+  //   1. mutation A writes 2026-04-07 as CH        row carries A
+  //   2. mutation C edits it to HOME               row carries C
+  //   3. the queue retries A, as a queue does when
+  //      it never received the answer to A
+  //   4. the lookup for A finds nothing            A is APPLIED
+  //   5. the day is CH again                       the edit is GONE
+  //
+  // Somebody logs a day in a tunnel, corrects it that evening on wifi, and the
+  // queue drains afterwards. That is the whole reproduction.
+  //
+  // THE FIX MAKES THE DOCUMENTED SENTENCE TRUE RATHER THAN CHANGING IT. The
+  // contract always meant "the server has applied this mutation"; the
+  // implementation meant "the current row carries this id", which is a narrower
+  // accidental meaning nobody chose. EntryEvent is append-only, so it holds
+  // every mutation ever applied and cannot be overwritten by a later edit.
+
+  async function post(payload: unknown, bearer = token): Promise<Response> {
+    return POST(
+      new Request(`${ORIGIN}/api/v1/entries`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${bearer}` },
+        body: JSON.stringify(payload),
+      }),
+    );
+  }
+
+  async function answerOf(response: Response): Promise<Record<string, unknown>> {
+    return (await response.json()) as Record<string, unknown>;
+  }
+
+  it('does NOT revert a newer edit when the original write is replayed late', async () => {
+    const first = mutation();
+
+    await post({ entries: [{ clientMutationId: first, dayDate: '2026-04-07', kind: 'CH' }] });
+
+    await post({
+      entries: [{ clientMutationId: mutation(), dayDate: '2026-04-07', kind: 'HOME', note: 'edited' }],
+    });
+
+    // THE LATE REPLAY. Byte-identical to the first send, which is what a queue
+    // holding an unacknowledged item actually emits.
+    const replay = await answerOf(
+      await post({ entries: [{ clientMutationId: first, dayDate: '2026-04-07', kind: 'CH' }] }),
+    );
+
+    expect(replay.written).toBe(0);
+    expect(replay.duplicates).toBe(1);
+
+    // AND THE DAY IS UNTOUCHED. The count alone is not the claim - a route that
+    // reported 0 and wrote anyway would satisfy it.
+    const row = await prisma.entry.findFirstOrThrow({ where: { userId } });
+
+    expect(row.kind).toBe('HOME');
+    expect(row.note).toBe('edited');
+  });
+
+  it('appends no event for the late replay', async () => {
+    const first = mutation();
+
+    await post({ entries: [{ clientMutationId: first, dayDate: '2026-04-07', kind: 'CH' }] });
+    await post({
+      entries: [{ clientMutationId: mutation(), dayDate: '2026-04-07', kind: 'HOME' }],
+    });
+
+    const before = await prisma.entryEvent.count({ where: { userId } });
+
+    await post({ entries: [{ clientMutationId: first, dayDate: '2026-04-07', kind: 'CH' }] });
+
+    // "No row was written" and "no event was written" are different claims and
+    // only one of them is visible in the response.
+    expect(await prisma.entryEvent.count({ where: { userId } })).toBe(before);
+  });
+
+  it('still recognises the SIMPLE replay, which was already correct', async () => {
+    // THE REGRESSION GUARD. The old mechanism handled this case; the new one
+    // must not lose it while fixing the other.
+    const id = mutation();
+    const batch = { entries: [{ clientMutationId: id, dayDate: '2026-04-07', kind: 'CH' }] };
+
+    await post(batch);
+
+    const replay = await answerOf(await post(batch));
+
+    expect(replay.written).toBe(0);
+    expect(replay.duplicates).toBe(1);
+  });
+
+  it('still writes a genuinely new mutation', async () => {
+    // THE OTHER DIRECTION, and it is what stops the fix becoming "refuse
+    // everything". A dedup set that matched every id would pass all three tests
+    // above perfectly.
+    await post({ entries: [{ clientMutationId: mutation(), dayDate: '2026-04-07', kind: 'CH' }] });
+
+    const second = await answerOf(
+      await post({ entries: [{ clientMutationId: mutation(), dayDate: '2026-04-08', kind: 'HOME' }] }),
+    );
+
+    expect(second.written).toBe(1);
+    expect(second.duplicates).toBe(0);
+    expect(await prisma.entry.count({ where: { userId } })).toBe(2);
+  });
+
+  it('records the mutation id on the event, which is what makes the trail usable', async () => {
+    const id = mutation();
+
+    await post({ entries: [{ clientMutationId: id, dayDate: '2026-04-07', kind: 'CH' }] });
+
+    const events = await prisma.entryEvent.findMany({ where: { userId } });
+
+    expect(events).toHaveLength(1);
+    expect(events[0]?.clientMutationId).toBe(id);
+  });
+
+  it('records it on a MODIFIED event too, not only on CREATED', async () => {
+    // AN EDIT IS A MUTATION AND ITS ID MUST BE RECORDED, or the second write to
+    // any day is replayable for ever - the same defect, one write later.
+    await post({ entries: [{ clientMutationId: mutation(), dayDate: '2026-04-07', kind: 'CH' }] });
+
+    const editId = mutation();
+
+    await post({
+      entries: [{ clientMutationId: editId, dayDate: '2026-04-07', kind: 'HOME' }],
+    });
+
+    const modified = await prisma.entryEvent.findFirstOrThrow({
+      where: { userId, action: 'MODIFIED' },
+    });
+
+    expect(modified.clientMutationId).toBe(editId);
+
+    // AND REPLAYING THE EDIT IS ALSO REFUSED.
+    const replay = await answerOf(
+      await post({ entries: [{ clientMutationId: editId, dayDate: '2026-04-07', kind: 'HOME' }] }),
+    );
+
+    expect(replay.duplicates).toBe(1);
+  });
+
+  it('still recognises a mutation whose event predates this migration', async () => {
+    // THE BACKFILL GAP, AND IT IS NOT DEFENSIVE CODE - it is reachable by every
+    // row written before this migration ran, including the demo year.
+    //
+    // Those events carry no clientMutationId and cannot be given one: the id on
+    // their Entry is the LAST write's, not the one that created them, so a
+    // backfill would record a falsehood in an append-only table. EntryEvent is
+    // also UPDATE-blocked by its own trigger, which is the database saying the
+    // same thing.
+    //
+    // So Entry is still consulted. It covers exactly the pre-migration rows and
+    // nothing else, because every write after this point puts the id on the
+    // event too.
+    const legacy = mutation();
+
+    // BUILT BY INSERTING IT, not by editing a row afterwards. EntryEvent is
+    // UPDATE-blocked by its own trigger, and reaching past that guard to set up
+    // a test would be testing a state the database forbids reaching. An INSERT
+    // is exactly how these rows came to exist.
+    const entry = await prisma.entry.create({
+      data: {
+        userId,
+        dayDate: new Date('2026-04-07T00:00:00.000Z'),
+        portion: 'FULL',
+        kind: 'CH',
+        clientMutationId: legacy,
+        firstRecordedAt: new Date(),
+      },
+    });
+
+    await prisma.entryEvent.create({
+      data: {
+        userId,
+        entryId: entry.id,
+        action: 'CREATED',
+        kind: 'CH',
+        provenance: 'MANUAL',
+        dayDate: new Date('2026-04-07T00:00:00.000Z'),
+        portion: 'FULL',
+        // clientMutationId deliberately absent - this is the pre-migration shape.
+      },
+    });
+
+    // R180: the state really is the one being tested.
+    const stripped = await prisma.entryEvent.findFirstOrThrow({ where: { userId } });
+
+    expect(stripped.clientMutationId).toBeNull();
+    expect(entry.clientMutationId).toBe(legacy);
+
+    const replay = await answerOf(
+      await post({ entries: [{ clientMutationId: legacy, dayDate: '2026-04-07', kind: 'CH' }] }),
+    );
+
+    expect(replay.duplicates).toBe(1);
+    expect(replay.written).toBe(0);
+  });
+
+  it('never treats another user mutation id as seen', async () => {
+    // TENANCY ON THE DEDUP SET. A global index on clientMutationId would make
+    // one account's replay silently swallow another's write - and the ids are
+    // the CLIENT's own, so two devices colliding is not far-fetched.
+    const shared = mutation();
+
+    await post({ entries: [{ clientMutationId: shared, dayDate: '2026-04-07', kind: 'CH' }] });
+
+    const otherToken = (await issueTokenPair(otherId)).accessToken;
+
+    const theirs = await answerOf(
+      await post(
+        { entries: [{ clientMutationId: shared, dayDate: '2026-04-07', kind: 'HOME' }] },
+        otherToken,
+      ),
+    );
+
+    // THE ANSWER IS `conflict`, NOT `duplicates`, AND THE DIFFERENCE MATTERS.
+    //
+    // I expected this write to land. It does not: `Entry.clientMutationId` is
+    // `@unique` GLOBALLY rather than per user, so the second account collides
+    // with the first at the database and the batch is refused 409.
+    //
+    // What this test is for either way: the other account's id must never be
+    // read as THIS account's duplicate. A dedup set that ignored userId would
+    // answer `duplicates: 1` here and silently swallow a real write. So the
+    // assertion is that the answer is NOT an acknowledgement.
+    expect(theirs.status).toBe('error');
+    expect(theirs.code).toBe('conflict');
+
+    // NOT AN ACKNOWLEDGEMENT AT ALL - there is no `duplicates` key on an error,
+    // which is a stronger statement than "duplicates is zero" and the one that
+    // matters: the write was refused rather than quietly absorbed.
+    expect(Object.hasOwn(theirs, 'duplicates')).toBe(false);
+
+    // AND NOTHING OF THEIRS LANDED, which is the half that says the refusal was
+    // total rather than partial.
+    expect(await prisma.entry.count({ where: { userId: otherId } })).toBe(0);
+
+    // WHILE THE FIRST ACCOUNT'S ROW IS UNTOUCHED - presence, so the absence
+    // above is not satisfied by an empty database.
+    expect(await prisma.entry.count({ where: { userId } })).toBe(1);
+  });
+});

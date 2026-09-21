@@ -280,7 +280,7 @@ hides that for the life of the client.
 
 | field | may a client assume |
 |---|---|
-| `clientMutationId` | **The idempotency key (D30).** The client's own id, 1–64 characters, unique across the account. Re-sending a batch whose ids the server has already seen writes nothing, appends no event, and answers **200** — a replay is acknowledged, never an error, because the retry is what makes all-or-nothing safe. |
+| `clientMutationId` | **The idempotency key (D30).** The client's own id, 1–64 characters, unique across the account. Re-sending a batch whose ids the server has already seen writes nothing, appends no event, and answers **200** — a replay is acknowledged, never an error, because the retry is what makes all-or-nothing safe. **"Already seen" means the server has applied this mutation at any point**, not that the day still carries it: the check reads the append-only trail, so a replay is still recognised after the day has been edited by something else. See section 6.4. |
 | `dayDate` | A calendar day as `YYYY-MM-DD`, **never an instant**. Validated as a real day: `2026-02-30` and `2026-13-01` match the pattern and are refused. Interpreted in Europe/Paris — the reader lives in France (SPEC §8). |
 | `portion` | `FULL`, `AM` or `PM`. Defaults to `FULL`. The row's identity is `(dayDate, portion)`, so `AM` and `PM` are two rows and either may sit beside a `FULL` one. |
 | `kind` | `CH`, `HOME`, `MISSION_FR`, `MISSION_THIRD` or `ABSENT`. |
@@ -505,7 +505,41 @@ Until then a client **must not** adjudicate lateness from `firstRecordedAt`
 against a threshold of its own: a `7` compiled into an APK is the least
 revisable constant in this system.
 
-### 6.4 What a client must do to stay compatible
+### 6.4 Replay, ordering, and what is still open
+
+**A replay is recognised by the trail, not by the current row.** The duplicate
+check reads `EntryEvent`, which is append-only and records every mutation the
+server has ever applied. It does *not* read the day's current
+`clientMutationId`, which records only the mutation that wrote it **last**.
+
+The difference is not academic. It was a live data-loss defect until R219:
+
+| | |
+|---|---|
+| 1 | mutation **A** writes 2026-04-07 as `CH` |
+| 2 | mutation **C** edits it to `HOME` |
+| 3 | the queue retries **A**, as a queue does when it never received the answer |
+| 4 | under the old check **A** looked new, and was applied |
+| 5 | the day was `CH` again. **The correction was gone.** |
+
+Log a day in a tunnel, correct it that evening on wifi, let the queue drain
+afterwards. That is the whole reproduction. The contract always said what it
+says now; what changed in R219 is that it became true.
+
+**What is NOT closed, and a client author should know it.** A *replay* of an old
+mutation is refused. A **genuinely new** mutation that arrives late - queued
+behind an edit, or sent before one and delivered after - still wins, because
+SPEC 13.2 orders writes by **server receipt**. The user-visible symptom is the
+same: a day reverts to older content.
+
+Receipt order is the wrong order for an offline queue and `clientClaimedAt` is
+the honest one. Changing it is a change to a *stated rule* rather than to an
+implementation, so it waits for AN5's evidence about what the queue actually
+emits - recorded here rather than decided quietly. Until then: **a client should
+not assume the last write it sent is the one the server kept.** Read the year
+back after a queue drain.
+
+### 6.5 What a client must do to stay compatible
 
 These are requirements on the *client*, and they cannot be retrofitted to a
 version already in the field. If the first Android build gets them wrong, no
@@ -522,7 +556,7 @@ field can ever be added to these responses.
 - **Branch on `code`, never on `message`.** The French is rewritten whenever it
   can be written better.
 
-### 6.5 The order of checks is part of the contract
+### 6.6 The order of checks is part of the contract
 
 Both routes check in the same order, and it is observable: a request that
 breaks two rules is told about the *earlier* one.
@@ -563,7 +597,7 @@ Stable, ASCII, and **frozen**. The `code` is what a client branches on; the
 | `malformed_body` | `POST` | 400 | the body is not JSON |
 | `coordinates_refused` | both | 400 | a location key appears in the payload or the query string |
 | `invalid_payload` | `POST` | 400 | the batch fails validation; `issues[]` names each path and rule |
-| `conflict` | `POST` | 409 | the write collided — the client's mistake, and it is named |
+| `conflict` | `POST` | 409 | the write collided. The live producer today is a `clientMutationId` already used **by another account** - the column is globally unique, so two accounts cannot share one. **Also reserved** for the out-of-order case in section 6.4 should that ruling land: a late write refused rather than silently applied is what a client would need to be told. |
 | `write_failed` | `POST` | 500 | ours. Nothing was written; the whole batch rolled back |
 | `invalid_year` | `GET` | 400 | `year` is absent, repeated, or not exactly four digits |
 | `unknown_parameter` | `GET` | 400 | a query parameter this route does not read; `parameters[]` names them |

@@ -1,0 +1,378 @@
+====================================================================
+REPORT-FW23c.txt - R219, the replay that reverted an edit
+Mon Releve   2026-09-21
+====================================================================
+
+NOTE ON SPELLING. Pure ASCII, as the protocol requires. Any French
+quoted here is transliterated; the accented original lives in
+web/lib/fr (R155 - the ASCII is illustrative, never a source).
+
+SUMMARY
+--------------------------------------------------------------------
+The data-loss defect FW23b found is closed. A replayed mutation is now
+recognised by the append-only trail rather than by the day's current
+row, so a queue retrying an old item can no longer revert a newer
+edit.
+
+The fix is INSIDE the freeze because it makes the documented sentence
+true rather than changing it. The contract has always said a batch
+carrying a seen clientMutationId writes no row and no event. It meant
+"the server has applied this mutation"; the implementation meant "the
+current row carries this id" - a narrower accidental meaning nobody
+chose, and false in exactly the case that costs a user their
+correction.
+
+THE SECOND HALF IS NAMED AND NOT FIXED. A genuinely NEW mutation that
+arrives late still wins on server receipt and still reverts a day.
+Same symptom, different cause. That is a change to a STATED RULE, so
+it is parked with its mechanism written into the contract document and
+a test that stops the note being tidied away.
+
+OPERATOR RULING, VERBATIM
+--------------------------------------------------------------------
+CLAUDE.md makes any Prisma schema change ask-first. It was ruled:
+
+  "R219 - the dedup set is derived from EntryEvent, and this is inside
+   the freeze. [...] Practically: EntryEvent needs clientMutationId
+   and an index on (userId, clientMutationId). That's an additive
+   migration on a table with a demo year in it. Entry.clientMutationId
+   stays - it still records which mutation last wrote the row, which
+   the annex wants."
+
+And on the second half:
+
+  "With dedup correct, a replay of A after B is refused. But a NEW
+   mutation A arriving late, after B, still wins under SPEC 13.2's
+   'latest server receipt wins' - and reverts B with older data. [...]
+   That's a change to a stated rule, so it wants AN5's evidence about
+   what the queue actually emits rather than a decision today. Park it
+   with the mechanism written down."
+
+And on Q79:
+
+  "Keep `conflict`, and tie it to that. [...] Removing it would also
+   set a worse precedent than the dead branch costs - the freeze is
+   soft while no client exists is true of every field today and won't
+   be true next month."
+
+RED-GREEN LEDGER
+--------------------------------------------------------------------
+  RED    tests/db/entries-route.test.ts, 8 new tests, 6 failing.
+         The first one IS the defect:
+
+           does NOT revert a newer edit when the original write is
+           replayed late
+           AssertionError: expected 1 to be +0
+
+         `written: 1` on a mutation id the server had already applied.
+         And beside it:
+
+           appends no event for the late replay
+           AssertionError: expected 3 to be 2
+
+         Three more failed on the column not existing yet, which is
+         the honest RED for an additive migration.
+
+  GREEN  103 passed in the entries files; 334 in the whole database
+         suite, which matters because the migration landed on a table
+         that already had rows.
+
+  PLANTS, each verified to have landed, each restore verified
+  byte-for-byte:
+   1 dedup from the row again
+       CAUGHT - the data-loss test ("expected 1 to be +0") and the
+       no-new-event test together
+   2 the id recorded only on CREATED events
+       CAUGHT - "expected null to be 00000000-...-047", and the
+       replay of the edit stopped being recognised
+   3 the pre-migration Entry fallback removed
+       CAUGHT - the legacy-shape test. This is what proves that
+       fallback is LIVE CODE rather than defensive padding, which is
+       the question day.ts's ablation rule asks of any belt-and-braces
+       line.
+   4 the dedup unscoped from userId
+       CAUGHT - the tenancy test
+
+  AND ONE PLANT WAS REFUSED BY THE HARNESS, correctly: its anchor
+  matched twice, because the same text sets clientMutationId on the
+  row and on the event. R211 doing exactly what it exists for - the
+  bad edit never landed, so there was nothing to recover.
+
+WHAT CHANGED
+--------------------------------------------------------------------
+  prisma/schema.prisma          EntryEvent.clientMutationId String?
+                                @@index([userId, clientMutationId])
+  migrations/..._entry_event_mutation_id
+                                ALTER TABLE ADD COLUMN + CREATE INDEX
+                                Additive. Nullable. No backfill.
+  lib/entries/write.ts          the duplicate set reads EntryEvent
+                                (and Entry, for pre-migration rows);
+                                every event records its mutation id
+  docs/api-v1.md                6.1 says what "already seen" means;
+                                6.4 is new - replay vs late write;
+                                7 gives `conflict` its live producer
+                                and its reservation
+
+NOT BACKFILLED, AND THE REASON MATTERS
+--------------------------------------------------------------------
+The tempting migration is to fill EntryEvent.clientMutationId from the
+Entry each event points at. It would be WRONG, and wrong in the
+specific way this project keeps finding: the id on the Entry is the
+LAST write's, not the one that created the event. Backfilling would
+write a plausible falsehood into an append-only table - the one table
+whose entire value is that it records what actually happened.
+
+The database says the same thing independently: EntryEvent is
+UPDATE-blocked by its own trigger, so the backfill cannot be performed
+without first disabling the guarantee.
+
+So Entry is still consulted for the duplicate set. It covers exactly
+the rows written before this migration - including the demo year - and
+nothing else, because every write after this point records the id on
+the event too. The test builds that shape by INSERTING it rather than
+by editing a row afterwards, since reaching past the append-only
+trigger to construct a fixture would be testing a state the database
+forbids reaching.
+
+A THING I HAD ASSUMED AND HAD WRONG
+--------------------------------------------------------------------
+The tenancy test was written expecting the second account's write to
+LAND, on the reasoning that the duplicate set is scoped by userId and
+the ids are the client's own.
+
+It does not land. `Entry.clientMutationId` is `@unique` GLOBALLY
+rather than per account, so the second account collides at the
+database and the batch is refused 409 `conflict`.
+
+TWO CONSEQUENCES, and the first answers a question asked yesterday:
+
+  Q79 IS ANSWERED BETTER THAN EXPECTED. `conflict` is not a dead
+  branch awaiting a plausible future producer - it has a LIVE one
+  today. The document now records that, and keeps the code reserved
+  for the ordering case as ruled.
+
+  AND IT IS A CROSS-TENANT COUPLING, which is new. One account can
+  make another account's write fail by using the same id first, and
+  can learn that an id is taken globally. With client-generated UUIDs
+  this is not practically reachable, but the mechanism is real and it
+  is not what the column is for. See QUESTIONS.
+
+The test now asserts the real behaviour and says in its own comment
+what I had expected and why it is not that.
+
+THE PRIVACY CENSUS CAUGHT THE SCHEMA CHANGE, AND THAT IS R178
+--------------------------------------------------------------------
+The first gate run FAILED, at pnpm test, on a guard I had not
+thought about:
+
+  tests/unit/content/personal-data.test.ts
+  > every stored column is accounted for
+  > has a disclosure or a stated reason it is not personal data
+  AssertionError: These columns are stored and the privacy notice
+  does not account for them.
+
+Adding EntryEvent.clientMutationId added a STORED COLUMN, and the
+notice enumerates what is stored. The census refused the commit until
+the column was either disclosed or justified as not personal - which
+is the decision being forced rather than defaulted.
+
+DISCLOSED AS `history`, with the rest of the event record, rather than
+as `day` like Entry.clientMutationId. The category describes WHICH
+RECORD holds the column, and this one is the modification trail.
+
+NO PLANT WAS WRITTEN FOR IT, deliberately - R178. The guard fired on a
+REAL instance on its first exposure to this change, and a live
+instance is better proof than a planted one. Planting it afterwards
+would only demonstrate what the gate had already demonstrated.
+
+It is also the answer to a question nobody asked in this session: what
+stops a schema change from quietly widening what the product stores?
+This did, on the first run, without anyone remembering to check.
+
+R169 REFUSED A SUITE RUN, AGAINST A REAL FOREIGN APPLICATION
+--------------------------------------------------------------------
+The second gate run failed at pnpm test:e2e before a single spec
+executed:
+
+  R169: the e2e suite refused to run.
+    expected  monreleve at http://localhost:3000
+    found     a JSON body at http://localhost:3000/api/health
+              with no "service" field
+
+Identified rather than guessed at:
+
+  docker ps  ->  tizicorp-app  0.0.0.0:3000->3000/tcp
+  curl       ->  {"status":"ok","db":"ok","queue":"ok"}
+
+THIS IS THE FW20 SCENARIO, LIVE. A neighbouring project publishes a
+container on 3000 and its health endpoint answers 200 with valid
+JSON. The obvious guard - is something listening, does it return a
+200, is the body JSON - would have PASSED all three checks and
+released the whole suite against another application, which is
+exactly what happened in FW20 and produced 91 green tests against a
+product nobody was working on.
+
+What caught it is the one thing R169 insists on: the answer must
+NAME THIS PRODUCT. Specificity, not liveness.
+
+HANDLED BY MOVING OUR PORT, NOT BY STOPPING THEIRS. R179 authorises
+a harness to kill the tree IT spawned; that container is not one,
+and it was holding no port of ours by right. R170 exists precisely
+so the answer is FRONTALIER_PORT=3100 rather than a negotiation over
+who owns 3000 - freeing a port fixes today, a port that can move
+fixes it for good. The refusal message says so itself, which is
+R179's other half: a refusal is labelled by the rule that raised it
+and tells you what to do next.
+
+NO PLANT (R178). Two guards fired on REAL instances in this session
+- the privacy census above and this one - and a live instance is
+better proof than a planted one.
+
+IT IS ALSO THE SECOND FOREIGN TIZICORP PROCESS THIS SESSION. The
+first was noted in REPORT-FW23b under NOTICED BUT NOT TOUCHING and
+held port 3200, which is nobody's business here. This one held 3000,
+which is ours by default - and the only reason that cost twenty
+minutes rather than a wrong green is that both R169 and R170 already
+existed.
+
+
+WHAT IS STILL OPEN, WRITTEN INTO THE CONTRACT
+--------------------------------------------------------------------
+Section 6.4 now distinguishes two failures with one symptom:
+
+  A REPLAY of an old mutation          refused, as of R219
+  A NEW mutation arriving LATE         still wins, on server receipt
+
+The second still reverts a day to older content. SPEC 13.2 orders
+writes by server receipt, and receipt order is the wrong order for an
+offline queue - clientClaimedAt is the honest one. Changing it is a
+change to a stated rule rather than to an implementation, so it waits
+for AN5's evidence about what the queue actually emits.
+
+The document says so, and tells a client the only thing it can act on
+today: do not assume the last write you sent is the one the server
+kept; read the year back after a queue drain.
+
+A TEST ASSERTS THE PARKING NOTE SURVIVES. Without it, the next session
+reads the replay fix, sees a section headed "replay and ordering", and
+tidies away the half that is still broken - which is exactly how a
+known defect becomes an unknown one.
+
+WALKTHROUGH (R176/R177)
+--------------------------------------------------------------------
+THE SAME SEQUENCE THAT FAILED YESTERDAY, run against the fix. Driven
+with curl against pnpm dev on 3010, port asserted free first, and
+/api/health checked for this product before anything was believed.
+
+  1  mutation A writes 2026-04-07 as CH
+     written:1  kind=CH  note="bureau"  mutation=A
+
+  2  mutation C edits the same day to HOME
+     written:1  kind=HOME  note="finalement teletravail"
+     mutation=C  lastModifiedAt=2026-09-21T11:11:34.228Z
+
+  3  THE LATE REPLAY of A, byte-identical to step 1
+     written:0  duplicates:1
+     kind=HOME  note="finalement teletravail"  mutation=C
+
+     YESTERDAY THIS ANSWERED written:1 AND THE DAY REVERTED TO CH.
+
+  4  read the day back
+     2026-04-07  kind=HOME  note="finalement teletravail"
+     VERDICT: the edit SURVIVED the replay.
+
+  5  replaying the EDIT itself is refused too   duplicates:1
+  6  a genuinely NEW mutation still writes      written:1
+
+  7  the trail, read directly:
+       2026-04-07  CREATED   kind=CH          mutation=A
+       2026-04-07  MODIFIED  kind=HOME        mutation=C
+       2026-04-11  CREATED   kind=MISSION_FR  mutation=D
+
+     A IS STILL THERE, on the CREATED event, long after
+     Entry.clientMutationId moved to C. That row is the evidence the
+     old check destroyed, and it is why the replay was refused.
+
+R217 AND R219 COMPOSE, which was not designed and is worth noting:
+because the POST answer now carries the rows, step 3 is
+self-evidencing - the replay's own response shows the day still in
+its edited state, so no second request is needed to see that nothing
+was reverted. A client gets the same reassurance.
+
+R179 EARNED ITS KEEP FOR THE FIFTH TIME. Stopping the walkthrough's
+dev server left next dev holding 3010; the post-check found the
+orphan and killed it. Port 3100, used by the gate's own harness, was
+clean - which is the difference between a harness that kills its tree
+and a shell that does not.
+
+DEVIATIONS
+--------------------------------------------------------------------
+1. THE PRISMA SCHEMA CHANGE IS ASK-FIRST AND WAS RULED RATHER THAN
+   ASKED BY ME. The ruling arrived with the task, quoted verbatim
+   above, so nothing was invented - but recording it here is the point
+   of the rule.
+
+2. A THIRD REPORT IN ONE CALENDAR DAY. REPORT-FW23b.txt is already
+   pushed and closed; appending R219 to it would have meant amending a
+   published artefact, so this is its own file.
+
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------
+1. `Entry.clientMutationId` IS GLOBALLY UNIQUE. See above. The natural
+   shape for an idempotency key that a CLIENT generates is
+   @@unique([userId, clientMutationId]) - unique within the account
+   that issued it. Changing it is a schema change and a migration on a
+   table with data, and it would remove `conflict`'s only live
+   producer, so it is a question rather than a repair.
+
+2. THE DEDUP IS NOW TWO QUERIES RATHER THAN ONE. Sequential inside the
+   transaction, deliberately: an interactive transaction is one
+   connection, and issuing two concurrently is not something to rely
+   on for a guard whose failure mode is silent data loss. Both are
+   indexed lookups bounded by the batch's 200 ids. If the second ever
+   needs to go, it can - once no pre-migration row remains, which is
+   not knowable from here.
+
+3. THE GATE REPORTS TRACKED AND UNTRACKED PATHS FROM DIFFERENT
+   ROOTS, and this run is where it showed. The selection printed
+
+     web/prisma/schema.prisma                  (tracked)
+     prisma/migrations/..._mutation_id/...     (untracked)
+
+   for two files in the same directory. gate-for-changes.mjs runs
+   both git commands with cwd: web. `git diff --name-only HEAD`
+   reports from the REPOSITORY ROOT; `git ls-files --others`
+   reports relative to the CURRENT DIRECTORY. Measured, not
+   inferred.
+
+   HARMLESS TODAY, and only by luck: toPackagePath strips a leading
+   `web/` and passes an already-package-relative path through
+   unchanged, so both forms land on the right rule.
+
+   THE SHARPER HALF: an untracked file OUTSIDE web/ is invisible to
+   the selector entirely - `git ls-files --others` with cwd: web
+   cannot see it. Verified with a probe file at the repository
+   root: zero hits. Nothing selectable lives outside web/ today, so
+   nothing is missed; a new top-level directory that ever needed a
+   suite would be missed silently on its first commit, which is the
+   run where it matters most.
+
+   Not touched - it is the gate, on a task the gate is checking.
+
+QUESTIONS
+--------------------------------------------------------------------
+Q80. Should `Entry.clientMutationId` become
+     @@unique([userId, clientMutationId]) rather than globally
+     `@unique`? It is a client-generated id, so scoping it to the
+     account that issued it is the shape that matches what it is.
+     Against: it removes `conflict`'s only live producer, which
+     yesterday's ruling deliberately kept. The two decisions are
+     coupled and should be taken together.
+
+PUSH PROOF
+--------------------------------------------------------------------
+<FILLED IN AFTER THE PUSH>
+
+====================================================================
+END OF REPORT-FW23c.txt
+====================================================================

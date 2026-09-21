@@ -69,18 +69,53 @@ export async function writeEntries(userId: string, items: EntryItem[]): Promise<
 
   try {
     return await prisma.$transaction(async (tx) => {
-      // D30, AND IT IS ONE QUERY RATHER THAN ONE PER ITEM. The ids are the
-      // client's own, so the set of already-seen ones is a single lookup.
+      // ========================================================================
+      // D30, AND THE SET COMES FROM THE APPEND-ONLY TRAIL (R219)
+      // ========================================================================
+      //
+      // It used to come from `Entry.clientMutationId`, which records which
+      // mutation LAST WROTE the row. An edit overwrites it, so the evidence that
+      // an earlier mutation had been applied was destroyed by the next write to
+      // the same day - and a queue replaying that earlier mutation was not
+      // recognised, was applied, and REVERTED THE EDIT.
+      //
+      // The reproduction is ordinary: log a day in a tunnel, correct it that
+      // evening on wifi, and let the queue drain afterwards.
+      //
+      // THIS MAKES THE DOCUMENTED SENTENCE TRUE RATHER THAN CHANGING IT. The
+      // contract has always said a batch carrying a seen id writes no row and no
+      // event. It meant "the server has applied this mutation"; the
+      // implementation meant "the current row carries this id", which is a
+      // narrower accidental meaning nobody chose. EntryEvent is append-only, so
+      // it holds every mutation ever applied and no later write can erase one.
+      const ids = items.map((item) => item.clientMutationId);
+
+      // SEQUENTIAL, NOT Promise.all. An interactive transaction is one
+      // connection, and issuing two queries into it concurrently is not
+      // something to rely on for a guard whose failure mode is silent data loss.
+      const applied = await tx.entryEvent.findMany({
+        where: { userId, clientMutationId: { in: ids } },
+        select: { clientMutationId: true },
+      });
+
+      // AND THE ROWS AS WELL, FOR THE PRE-MIGRATION GAP. Events written before
+      // R219's migration carry no id, and it cannot be backfilled: the id on
+      // their Entry is the LAST write's rather than the one that created them,
+      // so filling it in would write a falsehood into an append-only table.
+      //
+      // This is not untested defensive code - it is reachable by every row
+      // written before the migration, including the demo year, and a test
+      // constructs exactly that shape. It becomes redundant only when no such
+      // row remains, which is not knowable from here, so it stays.
+      const legacy = await tx.entry.findMany({
+        where: { userId, clientMutationId: { in: ids } },
+        select: { clientMutationId: true },
+      });
+
       const seen = new Set(
-        (
-          await tx.entry.findMany({
-            where: {
-              userId,
-              clientMutationId: { in: items.map((item) => item.clientMutationId) },
-            },
-            select: { clientMutationId: true },
-          })
-        ).map((row) => row.clientMutationId),
+        [...applied, ...legacy]
+          .map((row) => row.clientMutationId)
+          .filter((id): id is string => id !== null),
       );
 
       let written = 0;
@@ -160,6 +195,11 @@ export async function writeEntries(userId: string, items: EntryItem[]): Promise<
             portion: item.portion,
             recordedAt: existing === null ? now : new Date(),
             clientClaimedAt: shape.clientClaimedAt,
+            // R219: WITHOUT THIS THE TRAIL CANNOT ANSWER THE QUESTION ABOVE.
+            // On MODIFIED as well as CREATED - an edit is a mutation, and an
+            // edit whose id went unrecorded would be replayable for ever, which
+            // is the same defect one write later.
+            clientMutationId: item.clientMutationId,
           },
         });
 

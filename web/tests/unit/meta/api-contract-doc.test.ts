@@ -126,6 +126,29 @@ describe('docs/api-v1.md documents exactly what the code accepts', () => {
     expect(SOURCE).toContain('**Adding a field to a REQUEST is not free**');
   });
 
+  it('distinguishes a replay from a late write, and says which is open (R219)', () => {
+    // TWO FAILURES WITH ONE SYMPTOM, and a document that described only the
+    // fixed one would tell a client author the problem is solved. A replay of
+    // an old mutation is refused; a genuinely NEW mutation arriving late still
+    // wins on server receipt and still reverts a day to older content.
+    //
+    // The second is a change to a STATED RULE (SPEC 13.2's receipt ordering)
+    // rather than to an implementation, so it is parked with its mechanism
+    // written down rather than decided quietly - and this assertion is what
+    // stops the parking note being tidied away by somebody who reads the
+    // replay fix and assumes the section is finished.
+    expect(SOURCE).toContain('A replay is recognised by the trail, not by the current row');
+    expect(SOURCE).toContain('**What is NOT closed');
+    expect(SOURCE).toContain('server receipt');
+
+    // AND THE CLIENT-FACING CONSEQUENCE, which is the only part a client author
+    // can act on today.
+    expect(SOURCE).toContain('a client should');
+    expect(SOURCE).toContain(
+      'not assume the last write it sent is the one the server kept',
+    );
+  });
+
   it('carries the freeze and says what a version costs', () => {
     // R160's shape on a contract document: the marker states the status rather
     // than implying a process nobody wrote down.
