@@ -371,7 +371,23 @@ Q80. Should `Entry.clientMutationId` become
 
 PUSH PROOF
 --------------------------------------------------------------------
-<FILLED IN AFTER THE PUSH>
+  4809d50  R219: a replay is recognised by the trail, not by the
+           current row
+
+  gate:changed PASSED on the third run:
+    typecheck/lint/build exit 0, test 2594, e2e 284,
+    visual 108 (none regenerated), db 334, late 10.
+  The first two runs failed on GUARDS rather than on this work - the
+  privacy census and R169 - both recorded above.
+
+  gate:clone PASSED on 4809d50, tree clean, db suites 334 passed.
+  That run is the one that matters most here: it applied the new
+  migration to a database created from nothing, which is the only
+  way to know an additive migration works somewhere that is not this
+  machine.
+
+  CI: still skipping by design. CI_FULL stays deleted while the
+  repository is private and Q75 is unresolved.
 
 ====================================================================
 END OF REPORT-FW23c.txt
