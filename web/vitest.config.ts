@@ -33,6 +33,32 @@ export default defineConfig({
     // holds sometimes is a cap nobody can rely on, and the failure it prevents
     // is a false red, which costs more than the seconds it adds.
     maxWorkers: WORKER_CAP,
+    // ====================================================================
+    // R228: SIZED FOR THE AXE ASSERTIONS, WHICH ARE THE SLOWEST LEGITIMATE
+    // TESTS IN THIS SUITE - AND THE ONLY ONES THAT CASCADE WHEN THEY TIME OUT
+    // ====================================================================
+    //
+    // MEASURED, NOT GUESSED. A healthy axe run over the FAQ page costs about
+    // 1,15 s. Vitest's default budget is 5 s, so a machine 4x slower than this
+    // one - which a fresh clone installing into a temp directory demonstrably
+    // is - exceeds it.
+    //
+    // WHAT MAKES THAT WORSE THAN AN ORDINARY SLOW TEST: axe holds a GLOBAL
+    // lock. When vitest abandons a timed-out test the axe run keeps going and
+    // keeps the lock, so every later axe call in that file fails with "Axe is
+    // already running". ONE slow test becomes N failures, and the log names
+    // the lock rather than the timeout - which reads like a concurrency bug in
+    // the tests instead of a machine under load.
+    //
+    // Reproduced deterministically with --testTimeout=600: test one times out,
+    // test two reports the lock. Byte for byte the failure a fresh clone
+    // produced on f9521aa.
+    //
+    // 20 s gives roughly 17x headroom over the measured cost. A test that
+    // genuinely hangs still fails; the duration report still shows what is
+    // slow. What this buys is that a LOADED machine produces a green run or an
+    // honest single failure, never a cascade that has to be diagnosed.
+    testTimeout: 20_000,
     // .tsx as well as .ts: FW8's component tests are .test.tsx, and a glob
     // ending in .test.ts does not match them. The failure mode is the quiet
     // one - `pnpm test` still exits 0 while asserting nothing.

@@ -54,7 +54,7 @@ import { ciReadiness, describeReadiness } from './ci-readiness.mjs';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import { tmpdir } from 'node:os';
+import { cpus, freemem, tmpdir, totalmem } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 const web = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -242,6 +242,30 @@ try {
 
   console.log(`  clone     ${clone}`);
   console.log(`  scrubbed  ${SECRETS.join(', ')}`);
+
+  // ========================================================================
+  // R227: THE RESOURCE ENVELOPE, STATED, SO A RED CLONE CAN BE READ
+  // ========================================================================
+  //
+  // This run installs from the lockfile and then executes the whole suite in a
+  // temp directory, which makes it the most contended thing this machine does.
+  // A fresh clone measured >4x slower than a warm local run - enough to push
+  // the slowest legitimate tests past their budget.
+  //
+  // WITHOUT THESE THREE NUMBERS a red clone is unreadable: "did the code break
+  // or did the machine?" has no answer in the log, and the habit that follows
+  // is re-running until green, which is the habit R99 exists to prevent.
+  //
+  // The worker cap is NOT set here. vitest.config.ts applies it to every run,
+  // so the clone already inherits it - printing it is how you know that
+  // without reading two files.
+  const cap = Math.max(1, Math.floor(cpus().length / 2));
+
+  console.log('');
+  console.log('  resource envelope (R227):');
+  console.log(`    cpus        ${cpus().length}`);
+  console.log(`    vitest      maxWorkers ${cap} (R99's cap, from vitest.config.ts)`);
+  console.log(`    free memory ${Math.round(freemem() / 1024 / 1024)} MiB of ${Math.round(totalmem() / 1024 / 1024)} MiB`);
   console.log('');
   console.log('  named as unable to run in a clone (R133 - not silently omitted):');
   for (const [step, why] of CANNOT_RUN_HERE) {
