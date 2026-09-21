@@ -39,6 +39,18 @@
 //   - Tuesdays and Thursdays are telework (HOME), everything else is CH;
 //   - the named days below override that, and are the reason the file exists.
 //
+// THE DEMO PERSON EXCEEDS THE FISCAL CEILING, AND THAT IS DELIBERATE.
+//
+// Measured on this fixture: declarableRate 42,70 against a 40 % ceiling,
+// remainingToFiscal -6,5 days, warnings FISCAL_CEILING_EXCEEDED and
+// A1_REQUIRED. Two of the engine's eight warning codes, live.
+//
+// DO NOT "TIDY" THE DEMO PERSON INTO COMPLIANCE. A fixture that never crossed
+// would leave the exceeded path exercised only by unit tests written for it -
+// which is exactly what R222 had to fix for the trail eras, one module over. A
+// dossier that renders a breach wrongly is the failure this fixture exists to
+// catch, and it cannot catch it against a person who never breaches.
+//
 // THE NAMED DAYS - each one is a case that has caught a defect before
 //
 //   gap                 a working day with NO entry at all. "Non renseigne"
