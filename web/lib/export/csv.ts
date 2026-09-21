@@ -32,12 +32,14 @@
 // is the same string the API already serialises. R206: one representation of a
 // calendar day, everywhere.
 //
-// WHAT THIS FILE DOES NOT DO is force Excel to treat the column as text. The
-// two ways to do that - a leading apostrophe, or `="2026-07-07"` - both corrupt
-// the file for every other reader, and the second is a formula, which is the
-// thing the note field already has to be careful about. Excel parsing an ISO
-// day as 7 July 2026 is CORRECT behaviour; the assertion below is that the
-// bytes we write are the ISO string, which is the only half we control.
+// WHAT THIS FILE DOES NOT DO is force Excel to treat the DAY column as text.
+// The two ways to do that - a leading apostrophe, or `="2026-07-07"` - both
+// corrupt the file for every other reader, and the second writes a formula to
+// prevent a formula. Excel parsing an ISO day as 7 July 2026 is CORRECT
+// behaviour; the assertion below is that the bytes we write are the ISO string,
+// which is the only half we control.
+//
+// The note column is different, and `neutraliseFormula` below says why.
 
 import type { AnnexRow } from '@/lib/dossier/service';
 
@@ -105,6 +107,52 @@ export function quoteField(value: string): string {
   return `"${value.split('"').join('""')}"`;
 }
 
+/**
+ * The characters Excel and LibreOffice read as the start of a formula.
+ *
+ * Evaluation keys on the FIRST character only, which is why a note reading
+ * `Réunion 9h-17h` is left alone: it contains a `-` and is not a formula.
+ */
+export const FORMULA_LEADS = ['=', '+', '-', '@'];
+
+/**
+ * A free-text note, made inert for a spreadsheet (R230).
+ *
+ * ============================================================================
+ * DEFEND WHERE IT EXECUTES, PRESERVE WHERE IT IS EVIDENCE
+ * ============================================================================
+ *
+ * A note beginning `=`, `+`, `-` or `@` is EVALUATED when the file is opened
+ * in Excel or LibreOffice. The threat model is unusual and real: the attacker
+ * and the victim are not the same person, because the user writes their own
+ * dossier and hands it to a fiduciaire - so a crafted note runs in the
+ * ACCOUNTANT'S spreadsheet. It is not a way to attack another user of this
+ * product; it is a way to attack the person the document is FOR.
+ *
+ * THE OBJECTION TO MITIGATING IS THAT IT EDITS THE USER'S WORDS, in a product
+ * whose whole claim is that it reports what was recorded. That objection is
+ * answered by noticing the CSV is NOT the evidence document - the PDF is. So
+ * the format that EXECUTES is defended here, and the formats that ARE the
+ * record - the API payload and the document - carry the note byte for byte.
+ * Those are asserted in tests/db/entries-read and tests/db/print-route, and
+ * `docs/api-v1.md` states the difference so it is not a surprise.
+ *
+ * IT IS APPLIED TO `note` ALONE, and the scope is not squeamishness: every
+ * other column is PARSED by the reader. Prefixing `dayDate` would turn the day
+ * column into text, which is the corruption the ISO paragraph above spends
+ * its length refusing.
+ *
+ * THE APOSTROPHE IS NOT PART OF THE VALUE. Excel consumes it as the
+ * text-literal marker and displays the note as written; other readers show one
+ * leading character that was not in the note. That visible cost is the reason
+ * this is documented rather than silent.
+ */
+export function neutraliseFormula(value: string): string {
+  const lead = value.charAt(0);
+
+  return FORMULA_LEADS.includes(lead) ? `'${value}` : value;
+}
+
 /** An empty cell for a null, never the word "null". */
 const cell = (value: string | null): string => (value === null ? '' : value);
 
@@ -130,7 +178,11 @@ export function toCsv(annex: readonly AnnexRow[]): string {
         cell(row.absenceReason),
         row.provenance,
         cell(row.detectedKind),
-        cell(row.note),
+        // NEUTRALISE, THEN QUOTE - the order is the correctness. Quoting
+        // first would put the apostrophe OUTSIDE the field (`'"=SUM(A1,B1)"`),
+        // which is a malformed record rather than a neutralised one. The
+        // `.map(quoteField)` below is what runs second.
+        neutraliseFormula(cell(row.note)),
         row.firstRecordedAt,
         cell(row.lastModifiedAt),
         cell(row.clientClaimedAt),

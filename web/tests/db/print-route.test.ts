@@ -191,3 +191,22 @@ describe('the token gates the document', () => {
     await expect(render(2026, mintPrintToken(userId, 2026))).resolves.toContain(COPY.title);
   });
 });
+
+describe('R230: the document is the record, and carries the note unaltered', () => {
+  // The other bound. SPEC 12 makes the PDF the evidence document, so a note
+  // rendered here is what an auditor reads - and a mitigation that belongs to
+  // a spreadsheet must not reach it.
+  //
+  // INCREMENT 3 EXTENDS THIS TO THE PRODUCED PDF. This asserts the HTML the
+  // renderer is pointed at, which is the honest claim while no PDF exists; the
+  // same assertion over extracted PDF text is what proves it end to end.
+
+  it('prints a formula-shaped note exactly as written', async () => {
+    await seed('2026-03-02', { note: '=1+1' });
+
+    const html = await render(2026, mintPrintToken(userId, 2026));
+
+    expect(html).toContain('=1+1');
+    expect(html).not.toContain("'=1+1");
+  });
+});

@@ -614,6 +614,42 @@ banned word, case-insensitively. It reads **keys and never values**, so a
 coordinate this product refuses to store cannot survive in the error about
 refusing to store it, nor in the log line about that error.
 
+### 6.7 One field is altered in one export, and only there
+
+`note` is the only free-text field this API carries, and it is the only field
+whose representation differs between surfaces. The difference is deliberate and
+narrow, and it is written here so no client author discovers it from a
+support ticket.
+
+| surface | what a note opening `=` `+` `-` `@` looks like |
+|---|---|
+| `GET /api/v1/entries` | **unaltered**, byte for byte |
+| the PDF | **unaltered**, byte for byte |
+| the CSV export | prefixed with a single apostrophe `'` |
+
+**Why the CSV alone.** Excel and LibreOffice evaluate a cell beginning with one
+of those four characters as a *formula*. The threat model is unusual and worth
+stating plainly: the attacker and the victim are not the same person. A user
+writes their own dossier and hands it to a fiduciaire, so a crafted note would
+run in **the accountant's** spreadsheet. It is not a way to reach another user
+of this product; it is a way to reach the person the document is *for*.
+
+**Why not everywhere.** Editing a user's words sits badly in a product whose
+whole claim is that it reports what was recorded — and the objection dissolves
+once you notice the CSV is not the evidence document. The **PDF** is. So the
+format that *executes* is defended, and the formats that *are* the record carry
+the note exactly as typed. A client that re-displays `note` needs no special
+handling; one that re-exports it to a spreadsheet should do what this API does.
+
+**What a client may assume.** That the apostrophe is never part of the stored
+value, that it never appears in a payload, and that it will never be stripped
+on write — the record keeps what the user typed. Excel consumes the apostrophe
+as its text-literal marker and shows the note as written; other readers show one
+leading character that was not in the note, which is the visible cost of the
+mitigation and the reason it is documented rather than silent.
+
+---
+
 ---
 
 ## 7. Error codes

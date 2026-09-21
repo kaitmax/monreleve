@@ -174,43 +174,84 @@ describe('the late flag is a value a spreadsheet can filter', () => {
   });
 });
 
-describe('a note that looks like a formula - documented, not silently changed', () => {
-  // ============================================================================
-  // THIS TEST RECORDS BEHAVIOUR RATHER THAN ASSERTING A FIX
-  // ============================================================================
+describe('R230: the format that executes is defended', () => {
+  // ==========================================================================
+  // R230 - DEFEND WHERE IT EXECUTES, PRESERVE WHERE IT IS EVIDENCE
+  // ==========================================================================
   //
-  // `note` is 500 characters of free text the user writes. A note beginning
-  // `=`, `+`, `-` or `@` is evaluated as a FORMULA when the file is opened in
-  // Excel or LibreOffice - the CSV injection class.
+  // `note` is 500 characters of free text. A note beginning `=`, `+`, `-` or
+  // `@` is evaluated as a FORMULA when the file is opened in Excel or
+  // LibreOffice - the CSV injection class.
   //
   // THE THREAT MODEL IS UNUSUAL AND REAL. The attacker and the victim are not
   // the same person: the user writes their own dossier and hands it to a
-  // fiduciaire, so a crafted note runs in the accountant's spreadsheet. It is
-  // not a way to attack another user of this product; it is a way to attack the
-  // person the document is FOR.
+  // fiduciaire, so a crafted note runs in the ACCOUNTANT'S spreadsheet. It is
+  // not a way to attack another user of this product; it is a way to attack
+  // the person the document is FOR.
   //
-  // THE TWO MITIGATIONS BOTH ALTER THE DOCUMENT. Prefixing with an apostrophe
-  // hides in Excel and shows as a stray character everywhere else; wrapping in
-  // `="..."` writes a formula to prevent a formula. In a document whose whole
-  // claim is that it reports what was recorded, silently editing a user's note
-  // is not obviously the safer failure.
+  // THE CONFLICT BETWEEN DEFENDING AND PRESERVING DISSOLVES ONCE THE CSV IS
+  // NOT THE EVIDENCE DOCUMENT. The PDF is. So the CSV - the format that
+  // executes - is defended, and the API payload and the document - the formats
+  // that ARE the record - carry the note byte for byte.
   //
-  // So this is a QUESTION for the operator, not a decision taken here - and the
-  // test exists so the behaviour is written down rather than discovered by
-  // somebody's accountant. See REPORT-FW25.txt.
+  // Those two halves are asserted in different files on purpose: a mitigation
+  // nobody bounded is one that spreads to the surfaces that must not have it.
+  // The other half lives in tests/db/entries-read and tests/db/print-route.
 
-  it('passes a formula-shaped note through unchanged, today', () => {
-    const csv = toCsv([row({ note: '=1+1' })]);
+  it.each(['=', '+', '-', '@'])('prefixes an apostrophe on a note opening with %s', (lead) => {
+    const csv = toCsv([row({ note: `${lead}1+1` })]);
 
-    expect(csv).toContain('=1+1');
+    expect(csv).toContain(`'${lead}1+1`);
   });
 
-  it('still quotes it when it also contains a delimiter', () => {
-    // The quoting rules apply normally; quoting is not a mitigation and does
-    // not pretend to be one. Excel evaluates a quoted formula field too.
+  it('leaves an ordinary note untouched, so the guard is not blanket', () => {
+    // A mitigation that prefixed everything would pass every test above and
+    // put a stray apostrophe on all 261 rows of a document somebody files.
+    const csv = toCsv([row({ note: 'Bureau de Genève' })]);
+
+    expect(csv).toContain('Bureau de Genève');
+    expect(csv).not.toContain("'Bureau");
+  });
+
+  it('does not prefix a note that merely CONTAINS one of the characters', () => {
+    // Excel evaluates on the FIRST character. `Réunion 9h-17h` is not a
+    // formula, and prefixing it would corrupt an ordinary note.
+    const csv = toCsv([row({ note: 'Réunion 9h-17h' })]);
+
+    expect(csv).toContain('Réunion 9h-17h');
+    expect(csv).not.toContain("'Réunion");
+  });
+
+  it('prefixes BEFORE quoting, so the apostrophe is inside the quotes', () => {
+    // ORDER IS THE WHOLE CORRECTNESS OF THIS. Quoting first would produce
+    // `'"=SUM(A1,B1)"` - an apostrophe outside the field, which is a malformed
+    // record rather than a neutralised one, and RFC 4180 readers would reject
+    // the row instead of displaying it.
     const csv = toCsv([row({ note: '=SUM(A1,B1)' })]);
 
-    expect(csv).toContain('"=SUM(A1,B1)"');
+    expect(csv).toContain(`"'=SUM(A1,B1)"`);
+    expect(csv).not.toContain(`'"=SUM`);
+  });
+
+  it('applies to the note column ONLY, because every other column is parsed', () => {
+    // The scope is not squeamishness. `dayDate` must stay a date a spreadsheet
+    // can parse, and prefixing it would turn the whole column into text - which
+    // is the corruption the ISO decision at the top of lib/export/csv.ts spends
+    // a paragraph refusing. `note` is the only free-text column, and the only
+    // one where a leading `=` can be the user's own bytes.
+    //
+    // `kind` is a closed vocabulary and cannot hold this value in practice; it
+    // is passed here to prove the mitigation is SCOPED rather than global.
+    const csv = toCsv([row({ kind: '=cmd', note: null })]);
+
+    expect(csv).toContain('=cmd');
+    expect(csv).not.toContain("'=cmd");
+  });
+
+  it('still neutralises when the formula is the whole note', () => {
+    const csv = toCsv([row({ note: '@SUM(1)' })]);
+
+    expect(csv).toContain(`'@SUM(1)`);
   });
 });
 

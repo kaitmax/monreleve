@@ -22,6 +22,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { ENTRY_ITEM_FIELDS } from '@/lib/entries/schema';
 import { ENTRY_READ_FIELDS } from '@/lib/entries/read';
+import { FORMULA_LEADS } from '@/lib/export/csv';
 
 const DOC = join(process.cwd(), '..', 'docs', 'api-v1.md');
 const SOURCE = readFileSync(DOC, 'utf8');
@@ -175,5 +176,32 @@ describe('docs/api-v1.md documents exactly what the code accepts', () => {
     // than implying a process nobody wrote down.
     expect(SOURCE).toContain('requires a **version**, not an\nedit');
     expect(SOURCE).toContain('/api/v2/entries');
+  });
+});
+
+describe('R230: the document states the one place a note is altered', () => {
+  // A MITIGATION NOBODY DOCUMENTED IS A SURPRISE IN A SUPPORT TICKET. R230
+  // requires the CSV's apostrophe to be stated, and "stated" needs an
+  // enforcement point or it is a comment.
+
+  it('names every character the CSV neutralises, DERIVED from the module', () => {
+    // R181: the document is not transcribed beside the code. Add a character
+    // to FORMULA_LEADS and this fails until the contract lists it, in order.
+    const rendered = FORMULA_LEADS.map((lead) => `\`${lead}\``).join(' ');
+
+    expect(SOURCE).toContain(rendered);
+  });
+
+  it('says the payload and the PDF are unaltered, which is the bound', () => {
+    // Naming the mitigation without naming its limit is the half that sends a
+    // client author to strip apostrophes that were never there.
+    expect(SOURCE).toContain('**unaltered**, byte for byte');
+  });
+
+  it('states the threat model rather than only the behaviour', () => {
+    // "We prefix an apostrophe" is a changelog line. The reason a reader needs
+    // is that the victim is the ACCOUNTANT, not the user - which is what makes
+    // an otherwise odd edit to someone's words the right call.
+    expect(SOURCE).toContain("the accountant's");
   });
 });

@@ -866,3 +866,36 @@ describe('what an edit keeps and what it clears - found by the walkthrough', () 
     expect(after?.lastModifiedAt).not.toBeNull();
   });
 });
+
+describe('R230: the API payload is the record, and carries the note unaltered', () => {
+  // ==========================================================================
+  // THE BOUND ON THE CSV MITIGATION, ASSERTED FROM THE OTHER SIDE
+  // ==========================================================================
+  //
+  // `lib/export/csv.ts` prefixes an apostrophe on a note opening with `=`,
+  // `+`, `-` or `@`, because a spreadsheet EXECUTES it. This route is not a
+  // spreadsheet: it is the record the Android client reads back and the client
+  // re-displays, so the note has to arrive exactly as the user typed it.
+  //
+  // WITHOUT THIS TEST THE MITIGATION HAS NO UPPER BOUND. Somebody moving it
+  // "closer to the data" - into the read path, into the write path, into the
+  // serialiser - would be tidying, every CSV test would still pass, and the
+  // product would silently rewrite what people wrote.
+
+  it('returns a formula-shaped note byte for byte', async () => {
+    await seed(userId, '2026-03-02', { note: '=1+1' });
+
+    const [entry] = entriesOf(await readYear('2026'));
+
+    expect(entry?.note).toBe('=1+1');
+  });
+
+  it('adds no apostrophe, which is the specific thing the CSV does add', async () => {
+    await seed(userId, '2026-03-03', { note: '@SUM(1)' });
+
+    const [entry] = entriesOf(await readYear('2026'));
+
+    expect(entry?.note).not.toBe("'@SUM(1)");
+    expect(String(entry?.note).startsWith("'")).toBe(false);
+  });
+});
