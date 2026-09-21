@@ -1,0 +1,287 @@
+====================================================================
+REPORT-FW25.txt - the exports, two of five increments
+Mon Releve   2026-09-21
+====================================================================
+
+Pure ASCII. Accented French lives in web/lib/fr (R155).
+
+SUMMARY
+--------------------------------------------------------------------
+DONE, gated and pushed:
+  R227/R228  the precondition was flaky; that was the defect
+  1          the CSV export
+  2          the print route
+
+NOT DONE:
+  3          the PDF - BLOCKED on a decision, see below
+  4          the document read as a document - needs 3
+  5          walkthrough, R226, report - needs 3 and 4
+
+R226 WAS ALREADY DISCHARGED before this session, in FW24's closing
+work: docs/api-v1.md section 6.5 carries the sentence, with a test
+asserting it is present including its reason. The prompt asks for it
+again; it is there.
+
+WHY INCREMENT 3 IS BLOCKED RATHER THAN UNFINISHED
+--------------------------------------------------------------------
+The PDF route drives headless Chromium. Measured:
+
+  playwright        NOT resolvable
+  playwright-core   NOT resolvable
+  @playwright/test  resolvable, and a devDependency
+
+So the route cannot be written without adding a RUNTIME dependency
+and putting a browser binary in the deployment image. SPEC 12 decided
+the approach - "the API handler drives headless Chromium (Playwright,
+installed in the runtime image)" - but not the package, and the choice
+has costs this session should not absorb on its own:
+
+  a ~150 MB browser in the image, on the one VPS D1 specifies;
+  a heavy package moved from dev to production dependencies;
+  FW28's deployment inherits both.
+
+The prompt's own concurrency requirement says the same thing from the
+other side: "two simultaneous exports must not OOM the VPS". A machine
+that cannot afford two renders is a machine where the packaging is a
+real decision rather than a formality.
+
+CLAUDE.md: anything not covered - ask. Q83.
+
+PRECONDITIONS, AND THE FIRST FINDING
+--------------------------------------------------------------------
+R1's gate:clone FAILED on f9521aa - origin/main's HEAD, a tree nobody
+had modified - and PASSED on a re-run of the same commit. Two runs,
+one commit, opposite results.
+
+THE MECHANISM, REPRODUCED IN ONE COMMAND:
+
+  pnpm exec vitest run tests/unit/pages/accessibility-faq.test.tsx \
+    --testTimeout=600
+
+  test 1  Error: Test timed out in 600ms.
+  test 2  Unknown Error: Axe is already running.
+
+Byte for byte the clone's failure. A healthy axe run over that page
+costs about 1,15 s against vitest's 5 s default, so a machine 4x
+slower exceeds it - and a fresh clone installing into a temp directory
+demonstrably is.
+
+WHAT MAKES IT WORSE THAN AN ORDINARY SLOW TEST: axe holds a GLOBAL
+lock. When vitest abandons a timed-out test the run keeps going and
+keeps the lock, so every later axe call in that file fails. ONE slow
+test becomes N failures, and the log names the LOCK rather than the
+TIMEOUT - which reads like a concurrency bug in the tests instead of a
+machine under load.
+
+TWO CORRECTIONS TO THE RULINGS AS GIVEN, both from measurement:
+
+  FILE PARALLELISM IS NOT THE CAUSE. With isolate: true each file has
+  its own module registry, so two files cannot share axe's lock. Those
+  two tests were ALREADY serial. Running the a11y specs single-file
+  would have fixed nothing.
+
+  THE CLONE ALREADY INHERITED R99's WORKER CAP. maxWorkers lives in
+  vitest.config.ts and applies to every run. There was no full-width
+  default to correct; what was missing was the ENVELOPE, never printed.
+
+SO THE FIX IS THE BUDGET: testTimeout 20 s, ~17x the measured cost.
+And gate:clone now states cpus, the inherited cap and free memory.
+
+  IT EARNED ITS KEEP ON THE FIRST RUN: 716 MiB free of 16195. That is
+  the number that answers "did the code break or did the machine?",
+  and it was not in the log before.
+
+  AND THE FIX WAS THEN TESTED BY ACCIDENT UNDER THE SAME PRESSURE.
+  The next clone ran at 716 MiB free and passed, with zero axe
+  incidents. Same condition, opposite result.
+
+INCREMENT 1 - THE CSV
+--------------------------------------------------------------------
+GET /api/v1/export/csv?year=. SPEC 12's eleven columns verbatim, held
+by a snapshot IN the test so a reviewer sees the contract rather than
+a hash.
+
+THE DATE FORMAT IS ISO, AND THE FAILURE IT AVOIDS IS NOT THE OBVIOUS
+ONE. Excel showing 2026-07-07 as a date is a display transformation
+the day survives. What must never happen is an AMBIGUOUS form:
+03/04/2026 is a different day in Paris and in New York, and a dossier
+that means two things depending on who opens it is worse than one that
+is hard to read. ISO also sorts chronologically AS TEXT.
+
+  It does NOT force Excel to treat the column as text. The two ways to
+  do that - a leading apostrophe, or ="2026-07-07" - both corrupt the
+  file for every other reader, and the second writes a formula to
+  prevent a formula.
+
+A TEST THAT FAILED FOR A REASON WORTH KEEPING. The BOM assertion used
+response.text() and failed: the WHATWG UTF-8 decoder STRIPS a leading
+BOM, so text() can neither confirm nor deny one - and the inverse
+assertion would "prove" it absent on a file that has it. It is now
+asserted on the bytes: [0xEF, 0xBB, 0xBF].
+
+R175: the CSV and the annex carry the SAME day set, asserted, because
+they bound one property from opposite sides. The CSV IS the annex
+serialised differently rather than a second query.
+
+QUOTING TESTED CASE BY CASE - comma, embedded quote, newline, and
+SEMICOLON, which RFC 4180 does not require but European Excel locales
+need. The newline case asserts the RECORD COUNT, since a note becoming
+two rows is invisible to a contains check. An ordinary note is
+asserted UNQUOTED, or a writer that quoted everything would pass all
+of them.
+
+INCREMENT 2 - THE PRINT ROUTE
+--------------------------------------------------------------------
+/releve/print?year=&token=. The first surface that renders the FW24
+payload.
+
+THE TOKEN IS SHORT-LIVED, NOT SINGLE-USE, AND THE REASON IS A RULE.
+Single-use needs server state to record consumption: a row, a model, a
+schema change - ASK-FIRST, and not sought. AC3 permits either.
+
+  What 120 seconds costs: a token captured from an access log within
+  two minutes can replay that ONE year for that ONE person. No other
+  year, no other account, no write, no bearer privileges.
+
+  IT IS IN A URL BECAUSE A PERSON HAS TO OPEN THE DOCUMENT. Increment
+  4 requires a human to read it, and a browser sends no Authorization
+  header for a typed URL. A requirement, not a limitation.
+
+  THE GRANT IS (PERSON, YEAR). R198: missing, invalid, expired,
+  wrong_year and not_configured are five facts with five names.
+
+AUTH_SECRET WAS ANTICIPATED AND NEVER INTRODUCED - it appeared only in
+gate:clone's scrub list. The code REFUSES an unset secret and REFUSES
+the placeholder .env.example ships, by value. R205 applied to a key: a
+route that signs with a default is worse than one that refuses.
+
+R225 - THE NOTE, AT THE SURFACE THAT RAISES THE QUESTION
+--------------------------------------------------------------------
+The test renders the document, asserts the tile and the annex DISAGREE
+first, and only then requires the note. Conditional on the condition,
+both ways: a page that always printed it would not pass a document
+where the note is noise. Planting the note away fails it.
+
+AND THE BANNED WORDS ARE ASSERTED ON THE RENDERED HTML, which is a
+different claim from FW24's assertion over the copy module - a word
+added in JSX bypasses lib/fr entirely. Planting "certifié" into the h1
+proves it; the copy-module test could not have seen that.
+
+FOUR STANDING GUARDS CAUGHT ME, NONE NEEDING A PLANT
+--------------------------------------------------------------------
+R178's point, four times in one session, on guards I did not write and
+was not thinking about:
+
+  the typed-number scan   240 in a method label, where
+                          simplifiedBasisDays lives in the RuleSet.
+                          The figure that goes stale in 2028 with
+                          every suite green.
+  R91's no-break space    an ASCII space before % in "Cumul % ..."
+  react/jsx-no-literals   a bare "%" and an em dash in JSX. The "%"
+                          was R91 again, repeated on a second surface
+                          an hour after the first.
+  the var() census        --font-family-base is the SCSS variable's
+                          name, not a custom property.
+
+THE LAST ONE IS THE ONE TO KEEP. That declaration was INVALID, so the
+browser drops it and the inherited font wins. The page renders
+correctly. The build compiles. Stylelint passes. The visual baselines
+would have photographed a document that was RIGHT FOR A REASON THE
+STYLESHEET DID NOT STATE, and certified it for as long as it stayed
+that way. Only a census over every var() against the tokens that exist
+can see that.
+
+The fix is better than a rename: the sheet declares no font at all and
+inherits --type-family, which is what makes the PDF and the web share
+one family rather than two declarations that agree today.
+
+I ALSO WROTE A SECOND FORMATTER AND DELETED IT. percent() did
+toFixed(2).replace('.', ','), duplicating lib/ui/core/format/number.ts
+and wrong on both the no-break space and the precision - in a document
+where SPEC 7.3 says the declarable rate must match the employer's
+filing.
+
+PREMISES IN THE PROMPT THAT WERE WRONG
+--------------------------------------------------------------------
+1. "the repository is private". It is PUBLIC. CI_FULL unset is
+   correct. The difference matters: public means jobs SKIP cheaply
+   rather than being refused on billing.
+
+2. "prompts/design-frontier/FD8 (the A4 brief)". FD8 DOES NOT EXIST.
+   The directory holds FD1, FD2, FD11, FD12, FD13, and FD8 appears
+   nowhere in the repository except in this prompt. Built on SPEC 12,
+   which the prompt names as the authority anyway.
+
+   THE SAME CAVEAT APPLIES TO R224, taken last session: I implemented
+   it on the operator's statement about FD3's two-rate state, not on a
+   document I could read. FD3 is not in the repository either. The
+   implementation stands; the citation was taken on trust.
+
+FLAG DECISION (R186)
+--------------------------------------------------------------------
+dossierExists STAYS FALSE, and this task does not satisfy the proxy.
+
+It needs the print route AND a client that can reach it. The route
+exists; no client does, and the PDF endpoint the app would call is
+increment 3. A reader of /releve-annuel would be told the document
+exists when nothing they own can produce one.
+
+PARKED
+--------------------------------------------------------------------
+PARK5-1. The a11y specs remain vulnerable to the cascade in principle
+   - the 20 s budget makes a timeout unlikely, not impossible, and a
+   timed-out axe run still poisons its file. A serialising wrapper
+   around the axe helper would convert a residual cascade into one
+   honest failure. Not built: the budget removes the observed case,
+   and six files would have to change.
+
+DEVIATIONS
+--------------------------------------------------------------------
+1. THREE GATE ATTEMPTS ON INCREMENT 2, each red on a different
+   standing guard, each a real defect in my work rather than a flake.
+   Recorded because "gated green" alone would imply it went in once.
+
+2. R227/R228 WERE COMMITTED BEFORE FW25's FIRST INCREMENT, on the
+   instruction that a flaky precondition is a defect to fix rather
+   than a check that passed. The CSV waited for it.
+
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------
+1. THE A4 MILLIMETRES ARE EXEMPTED FROM THE TOKEN RULE, on the
+   precedent global.scss set for the visually-hidden idiom: "a token
+   that no designer chose and no design could change". 210 x 297 mm is
+   ISO 216. If the design system ever wants print tokens, this is the
+   first place that would use them.
+
+QUESTIONS
+--------------------------------------------------------------------
+Q83. WHICH PACKAGE DRIVES CHROMIUM, AND WHO PAYS FOR IT? The PDF route
+     needs a runtime dependency and a browser in the deployment image
+     - ~150 MB on the single VPS D1 specifies. playwright-core plus a
+     system Chromium is the smaller shape; `playwright` is simpler and
+     heavier. SPEC 12 decided the approach, not the package, and FW28
+     inherits whichever. Increment 3 is blocked on this.
+
+Q84. A CSV NOTE BEGINNING = + - or @ is evaluated as a formula by
+     Excel. The threat model is unusual and real: the user writes
+     their own dossier and hands it to a fiduciaire, so a crafted note
+     runs in the accountant's spreadsheet. Both mitigations ALTER THE
+     DOCUMENT - a leading apostrophe, or wrapping in ="..." - and in a
+     file whose whole claim is that it reports what was recorded,
+     silently editing a user's note is not obviously the safer
+     failure. Two tests record the behaviour. Not decided here.
+
+PUSH PROOF
+--------------------------------------------------------------------
+  7eef6ea  R227/R228   base chain, test 2664
+  0467495  increment 1 test 2689, e2e 284, visual 108, db 358,
+                       late 10
+  4ca198f  increment 2 test 2716, e2e 284, visual 108, db 369,
+                       late 10
+
+  gate:clone PASSED before each push. The precondition itself needed
+  two runs, which is the first finding above.
+
+====================================================================
+END OF REPORT-FW25.txt
+====================================================================
