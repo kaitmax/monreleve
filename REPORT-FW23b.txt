@@ -433,7 +433,20 @@ Q79. `conflict` is frozen in the document and may have no producer
 
 PUSH PROOF
 --------------------------------------------------------------------
-<FILLED IN AFTER THE PUSH>
+  22e3047  R218: the database selection is derived, not listed
+           gated on its OWN tree with R217 stashed - base chain,
+           test: 2592 passed - so a bisect landing here meets a
+           state that was actually checked.
+  7dce1c5  R217: the write answer carries the rows it wrote
+           typecheck/lint/build exit 0, test 2593, e2e 284,
+           visual 108 (none regenerated), db 326, late 10.
+
+  gate:clone PASSED on 7dce1c5, tree clean, db suites 326 passed.
+  Pushed; local and remote agree.
+
+  CI: still skipping by design - CI_FULL stays deleted while the
+  repository is private and Q75 is unresolved. Nothing is being
+  spent, and main collects no reds that no test caused.
 
 ====================================================================
 END OF REPORT-FW23b.txt
