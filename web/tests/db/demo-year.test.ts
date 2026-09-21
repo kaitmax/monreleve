@@ -25,6 +25,7 @@ import { execFileSync } from 'node:child_process';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { prisma } from '@/lib/db/client';
 import type { Entry } from '@prisma/client';
+import { writeEntries } from '@/lib/entries/write';
 
 const DEMO_EMAIL = 'demo@example.com';
 const DEMO_YEAR = 2026;
@@ -347,5 +348,118 @@ describe('the seed refuses a database it was not meant for', () => {
 
     expect(failure).toContain('Refusing to seed a non-local database');
     expect(failure).toContain('db.example.com');
+  });
+});
+
+describe('R222: the trail carries both eras, because a real database does', () => {
+  // R219 gave EntryEvent a clientMutationId and could not backfill it - the id
+  // on a legacy event's Entry is the LAST write's, not the one that created it.
+  // So every real database has a long stretch whose events carry no id and a
+  // recent stretch whose events do, and a fixture with only one of them is
+  // unrealistic in a way that matters: only the mixed version exercises BOTH
+  // duplicate-detection paths.
+
+  it('has a legacy stretch AND a modern one, neither of them empty', async () => {
+    // BOTH DIRECTIONS, and each is the other's non-vacuity guard. A seed that
+    // populated everything would pass a "modern exists" test; one that
+    // populated nothing would pass a "legacy exists" test. Only the pair says
+    // the fixture is mixed.
+    const modern = await prisma.entryEvent.count({
+      where: { userId, clientMutationId: { not: null } },
+    });
+    const legacy = await prisma.entryEvent.count({
+      where: { userId, clientMutationId: null },
+    });
+
+    expect(modern, 'no modern events - the trail path is not exercised').toBeGreaterThan(10);
+    expect(legacy, 'no legacy events - the fallback is not exercised').toBeGreaterThan(100);
+  });
+
+  it('reads the id from the row rather than deriving it twice', async () => {
+    // R181: a second derivation of one value is the defect, and it would be
+    // invisible here because both derivations would look right. The event's id
+    // must BE the entry's, not a string built from the same template.
+    const events = await prisma.entryEvent.findMany({
+      where: { userId, clientMutationId: { not: null } },
+      select: { entryId: true, clientMutationId: true },
+    });
+
+    expect(events.length).toBeGreaterThan(10);
+
+    for (const event of events) {
+      const row = await prisma.entry.findUniqueOrThrow({ where: { id: event.entryId } });
+
+      expect(event.clientMutationId).toBe(row.clientMutationId);
+    }
+  });
+
+  it('keeps the EDITED day in the legacy stretch, which is the point of it', async () => {
+    // 2026-07-07 is the day the fixture edits, so its Entry.clientMutationId
+    // has been overwritten by the second mutation. That is R219's exact
+    // scenario, and keeping it legacy means the Entry fallback is exercised
+    // against a row whose evidence the old check would have destroyed.
+    const events = await prisma.entryEvent.findMany({
+      where: { userId, dayDate: new Date('2026-07-07T00:00:00.000Z') },
+      orderBy: { recordedAt: 'asc' },
+    });
+
+    expect(events).toHaveLength(2);
+    expect(events.map((event) => event.action)).toEqual(['CREATED', 'MODIFIED']);
+
+    for (const event of events) {
+      expect(event.clientMutationId).toBeNull();
+    }
+  });
+
+  it('recognises a replay of a LEGACY mutation, through the Entry fallback', async () => {
+    // THE FIXTURE EXERCISING R219, rather than R219's own test exercising a
+    // fixture built for it. This is the path that has no trail to consult.
+    const legacyRow = await prisma.entry.findFirstOrThrow({
+      where: { userId, dayDate: { lt: new Date('2026-12-01T00:00:00.000Z') } },
+      orderBy: { dayDate: 'asc' },
+    });
+
+    const result = await writeEntries(userId, [
+      {
+        clientMutationId: legacyRow.clientMutationId,
+        dayDate: legacyRow.dayDate.toISOString().slice(0, 10),
+        portion: legacyRow.portion,
+        kind: 'MISSION_FR',
+        provenance: 'MANUAL',
+      },
+    ]);
+
+    expect(result.written).toBe(0);
+    expect(result.duplicates).toBe(1);
+
+    // AND THE DAY IS UNTOUCHED - the count alone would pass against a route
+    // that reported 0 and wrote anyway.
+    const after = await prisma.entry.findUniqueOrThrow({ where: { id: legacyRow.id } });
+
+    expect(after.kind).toBe(legacyRow.kind);
+  });
+
+  it('recognises a replay of a MODERN mutation, through the trail', async () => {
+    const modernRow = await prisma.entry.findFirstOrThrow({
+      where: { userId, dayDate: { gte: new Date('2026-12-01T00:00:00.000Z') } },
+      orderBy: { dayDate: 'asc' },
+    });
+
+    const result = await writeEntries(userId, [
+      {
+        clientMutationId: modernRow.clientMutationId,
+        dayDate: modernRow.dayDate.toISOString().slice(0, 10),
+        portion: modernRow.portion,
+        kind: 'MISSION_FR',
+        provenance: 'MANUAL',
+      },
+    ]);
+
+    expect(result.written).toBe(0);
+    expect(result.duplicates).toBe(1);
+
+    const after = await prisma.entry.findUniqueOrThrow({ where: { id: modernRow.id } });
+
+    expect(after.kind).toBe(modernRow.kind);
   });
 });

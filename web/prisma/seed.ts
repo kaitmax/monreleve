@@ -140,6 +140,42 @@ type Named = {
  * The day with no entry. Named separately because its whole point is that
  * nothing is written for it, which a list of entries cannot express.
  */
+/**
+ * Where the modern era of the trail begins. R222.
+ *
+ * ============================================================================
+ * A REAL DATABASE ON THIS DATE HAS BOTH ERAS, SO THE FIXTURE DOES TOO
+ * ============================================================================
+ *
+ * R219 gave EntryEvent a `clientMutationId` and could not backfill it: the id
+ * on a legacy event's Entry is the LAST write's, not the one that created it,
+ * so filling it in would write a falsehood into an append-only table.
+ *
+ * That leaves every real database looking like this one - a long stretch
+ * written before the migration whose events carry no id, and a recent stretch
+ * written through the API since, whose events do. A uniformly-legacy fixture is
+ * as unrealistic as a uniformly-modern one, and only the mixed version
+ * exercises BOTH duplicate-detection paths: the trail for modern ids, and the
+ * Entry fallback for legacy ones.
+ *
+ * THE CUTOFF IS DECEMBER because every named day sits before it - the late day,
+ * the offline day, the half-day pair, the absences, and the EDITED day at
+ * 2026-07-07. The edit is the one that matters: it is R219's exact scenario, so
+ * keeping it legacy means the fallback is exercised against a row whose
+ * `Entry.clientMutationId` has already been overwritten by a later mutation.
+ *
+ * NOT WRITTEN THROUGH writeEntries, though that would make this seed a consumer
+ * of the contract rather than a second implementation of it, which is the
+ * better shape. The write path takes the SERVER CLOCK for `firstRecordedAt`,
+ * and this fixture is pinned to 2026: run the seed in 2027 and every modern row
+ * would be recorded a year after the day it describes, so the late flag would
+ * fire across the whole stretch and the scenario would say something it does
+ * not mean. A fixture whose meaning changes with the date is what R197 forbids.
+ * So the id is carried in ONE variable and both columns are set from it - see
+ * `clientMutationId` below, which is read rather than re-derived.
+ */
+const MODERN_TRAIL_FROM = '2026-12-01';
+
 const GAP = '2026-06-17';
 
 const NAMED: readonly Named[] = [
@@ -484,6 +520,12 @@ async function seedDemoYear(): Promise<void> {
       portion: entry.portion,
       recordedAt: entry.firstRecordedAt,
       clientClaimedAt: entry.clientClaimedAt,
+      // R222: ONE ID PER MUTATION, ONE VARIABLE. Read from the row rather than
+      // rebuilt from the same template, so the trail cannot disagree with the
+      // entry it records - a second derivation of one value is the defect R181
+      // names, and it would be invisible here because both would look right.
+      clientMutationId:
+        iso(entry.dayDate) >= MODERN_TRAIL_FROM ? entry.clientMutationId : null,
     })),
   });
 
