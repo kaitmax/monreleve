@@ -1,0 +1,196 @@
+FW25b SESSION PROMPT - Mon Releve
+Read relay/PHASE-4-PROTOCOL.txt first, from disk.
+
+====================================================================
+WHY THIS PROMPT EXISTS
+====================================================================
+FW25 stopped at two of five. Increment 3 was BLOCKED, not unfinished:
+the PDF route needs a runtime dependency and a browser in the
+deployment image, and SPEC 12 decided the approach without deciding
+the package. That question is now answered, so this prompt finishes
+FW25's increments 3, 4 and 5 and nothing else.
+
+====================================================================
+PRE-STEP RULINGS (apply verbatim)
+====================================================================
+R0. Read REPORT-FW25.txt in full, and REPORT-FW26.txt if it exists.
+    This task resumes FW25; it does not revisit its increments 1 and
+    2, which are pushed and gated.
+
+R1 (as reworded by R200). pnpm gate:clone green on a fresh clone of
+    origin/main's HEAD. Record the commit hash and the envelope it
+    prints (R227).
+
+R229 (answers Q83). CHROMIUM STAYS, AND THE PACKAGE IS
+    playwright-core PLUS A SYSTEM CHROMIUM.
+    Why Chromium at all: the print route IS the document. A PDF
+    library would be a SECOND IMPLEMENTATION of the layout - the
+    thing R206 and its family exist to prevent. One renderer, one
+    layout, no drift between what a reader sees in a browser and what
+    an accountant receives.
+    Why playwright-core and not playwright: no bundled 150 MB
+    download in the image; security updates arrive through apt rather
+    than a package bump; and the dev and runtime browsers become
+    EXPLICITLY different rather than accidentally so.
+    Shape: playwright-core as a runtime dependency, Chromium
+    installed via apt and PINNED, executablePath read from the
+    environment. @playwright/test stays dev-only. FW28 inherits the
+    image work; record what it must install.
+
+R230 (answers Q84). DEFEND WHERE IT EXECUTES, PRESERVE WHERE IT IS
+    EVIDENCE. A note whose first character is = + - or @ is prefixed
+    with a single quote IN THE CSV ONLY. The API payload and the PDF
+    carry the note UNALTERED, and docs/api-v1.md says so. A test
+    asserts all three behaviours. The CSV is not the evidence
+    document; the PDF is.
+
+R232 (new, and it follows from R229). THE PDF'S ASSERTIONS ARE
+    STRUCTURAL, NEVER PIXEL. Extracted text, the rail's presence, the
+    annex row count, embedded fonts. If pixel baselines are ever
+    wanted for the PDF they are generated IN THE DEPLOYMENT IMAGE,
+    because a baseline from a bundled dev Chromium would certify a
+    renderer that never runs in production.
+
+R231 (carried). A prompt cites only what is in the repository. FD8 is
+    NOT in prompts/design-frontier/ - do not look for it. SPEC 12 is
+    the authority for this document and always was.
+
+CARRIED: R133 positive signals. R176/R177 end with the server run and
+    driven. R178 a live instance beats a planted one. R180 verify a
+    plant landed. R182 a check runs after its subject can exist.
+    R183 the document's footer is unconditional. R186 no flag flips
+    on a guess. R198 an error names which rule fired. R205 a file is
+    served only when it can be believed. R206 one text, one home.
+    R225 a copy string that answers a question the document raises is
+    asserted at the surface that raises it.
+
+====================================================================
+CONTEXT
+====================================================================
+FW25b ONLY: the PDF, the document read as a document, and the
+walkthrough that discharges FW24's 6b.
+
+Read: SPEC 12 (verbatim - structure, vocabulary, the monochrome
+rule), SPEC 20; lib/fr/dossier.ts; the print route as FW25 built it;
+REPORT-FW25.txt.
+
+====================================================================
+WHAT THE DOCUMENT MUST NOT DO (restated - each is a way it looks
+right and is wrong)
+====================================================================
+  No certifie, atteste, conforme, valide, approuve. Only declare,
+  enregistre, horodate - and asserted on the PRODUCED FILE, which is
+  a different claim from FW25's assertion over the rendered HTML.
+  It survives a monochrome photocopy: every status carries its word,
+  and each names WHICH seuil.
+  Every date is printed, including gaps and absences.
+  Nothing is recomputed; every figure comes from the FW24 payload.
+  The footer is unconditional (R183).
+
+====================================================================
+ACCEPTANCE CRITERIA
+====================================================================
+AC1. GET /api/v1/export/pdf?year= returns A4, driven by
+     playwright-core over the print route with the caller's identity.
+     Unauthenticated 401; another user's year 403; each named (R198).
+AC2. Asserted ON THE PRODUCED FILE: the five banned words absent, the
+     rail present, the annex row count equal to the payload's, Inter
+     embedded with no substitution. R182 - these run after the PDF
+     exists.
+AC3. Two concurrent exports both succeed, serialized by a named
+     mechanism, and a queue that cannot drain returns 503 by name
+     rather than converting memory pressure into latency and then an
+     OOM.
+
+====================================================================
+INCREMENT 1 - the dependency and the render
+====================================================================
+- playwright-core as a runtime dependency; executablePath from the
+  environment; a clear failure when the browser is absent - R205's
+  shape: a route that cannot render must refuse, not return an empty
+  or partial file.
+- The route drives the print route with the caller's identity. State
+  how identity reaches the browser - a signed short-lived token in
+  the URL (FW25's mechanism) or a header on the request - and why.
+- gate:clone once (R139: a dependency and a build step changed), and
+  record what the image must install for FW28.
+- Commit: "FW25b: the PDF route (R229)". Push.
+
+====================================================================
+INCREMENT 2 - the concurrency guard
+====================================================================
+- AC3's mechanism, named and tested: two concurrent requests both
+  succeed and are serialized; a third beyond the bound returns 503
+  with its own code.
+- Report the memory measured for one render on this machine. That
+  figure is FW28's input, and a number nobody measured is how a VPS
+  is sized wrongly.
+- Commit: "FW25b: one render at a time". Push.
+
+====================================================================
+INCREMENT 3 - assertions on the produced file, and R230
+====================================================================
+- AC2's four assertions, each against extracted content rather than
+  the template.
+- R230: the CSV escape for = + - @, the payload and PDF unaltered,
+  all three asserted, and the sentence in docs/api-v1.md.
+- Commit: "FW25b: the file asserts itself, and R230". Push.
+
+====================================================================
+INCREMENT 4 - THE DOCUMENT READ AS A DOCUMENT
+====================================================================
+Not a test increment. Produce the PDF for the demo year, open it, and
+read it as a fiduciaire would.
+
+  - Does the identification block say who, and for what period.
+  - The demo year CROSSES the fiscal ceiling - remainingToFiscal
+    -6.5, FISCAL_CEILING_EXCEEDED and A1_REQUIRED. Are those visible
+    and LEGIBLE on the page, naming which seuil, not merely present
+    in the payload.
+  - Do 261 annex rows against a 240-day basis read as an error, or
+    does workedDaysNote answer it? R225 in practice rather than in a
+    test.
+  - Render or print it in greyscale and confirm nothing is lost.
+  - Does any sentence claim more than the record supports.
+
+Report what you read for and what it found. Every read-through in
+this project has found something no gate could - and this is the
+first document rather than a page.
+- Commit: "FW25b: the document read as a document". Push.
+
+====================================================================
+INCREMENT 5 - the walkthrough, and FW24's 6b discharged
+====================================================================
+- Drive the whole chain against pnpm dev and report what each
+  RETURNED: the dossier endpoint, the CSV, the print route opened in
+  a browser, the PDF downloaded and opened.
+- FW24's 6b is discharged here; say so explicitly, since it has been
+  carried as "not yet possible" for two tasks.
+- R186: state whether dossierExists now satisfies its proxy. The
+  proxy is the print route AND a client that can reach it. Decide on
+  the rule, not on a feeling, and do not flip it on a guess.
+- gate:clone before the final push.
+- Commit: "FW25b: walkthrough, and FW24's 6b discharged". Push.
+
+====================================================================
+OUT OF SCOPE
+====================================================================
+- FW26's account routes. FW27's scheduler. FW28's image, beyond
+  recording what it must install.
+- Any pixel baseline of the PDF (R232). Any engine change.
+- Any /v1 field rename (frozen).
+
+====================================================================
+REPORT FORMAT - REPORT-FW25b.txt
+====================================================================
+SUMMARY / PRECONDITIONS (gate:clone hash and envelope) / RED-GREEN
+LEDGER / THE DEPENDENCY (what was added, what the image must install)
+/ IDENTITY TO THE BROWSER (mechanism and why) / CONCURRENCY (the
+mechanism, the 503, the memory measured) / ASSERTIONS ON THE PRODUCED
+FILE (four, each with its evidence) / R230 (three behaviours) / THE
+DOCUMENT READ AS A DOCUMENT (what you read for, what it found,
+greyscale) / WALKTHROUGH (each response) / FW24's 6b DISCHARGED /
+FLAG DECISION / PARKED / DEVIATIONS / NOTICED BUT NOT TOUCHING /
+QUESTIONS / PUSH PROOF
+
+END OF FW25b PROMPT
