@@ -1,0 +1,215 @@
+FW25 SESSION PROMPT - Mon Releve
+Read relay/PHASE-4-PROTOCOL.txt first, from disk. Its CI clauses are
+superseded by relay/CI-BUDGET-AMENDMENT.txt.
+
+====================================================================
+PRE-STEP RULINGS (apply verbatim)
+====================================================================
+R0. Read REPORT-FW24.txt in full, including NOTICED BUT NOT TOUCHING.
+    FW24 delivered five of six increments; 6b - the walkthrough
+    against a served page - was not possible because nothing rendered
+    the payload. THIS TASK BUILDS THAT SURFACE, so FW24's 6b is
+    discharged here, not carried as debt.
+
+R1 (as reworded by R200). pnpm gate:clone green on a fresh clone of
+    origin/main's HEAD before starting. Record the commit hash.
+    CI_FULL is unset and the repository is private; gate:clone's R223
+    reporter states the push is sound and what CI will do with it.
+
+R225 (new, from FW24's own flag). A COPY STRING THAT ANSWERS A
+    QUESTION THE DOCUMENT RAISES IS ASSERTED PRESENT AT THE SURFACE
+    THAT RAISES IT. DOSSIER_COPY.tiles.workedDaysNote exists because
+    a reader who counts 261 annex rows against a 240-day basis will
+    ask; "the string exists in lib/fr" is already true and
+    insufficient. The test renders the document and FAILS if the note
+    is absent while the tile and the annex disagree in count. R175's
+    shape: copy and payload both correct, the space between them
+    unasserted.
+
+R226 (new, promoting FW24's NOTICED 1). ruleSetFor FALLS BACK, AND
+    CARRYING THE WARNING IS THE CALLER'S OBLIGATION. A dossier for
+    2019 is computed under 2026 thresholds and is honest ONLY because
+    RULE_SET_FALLBACK travels with it. Three tests hold lib/dossier
+    to that; nothing holds a future client to it. Put it in
+    docs/api-v1.md under what a client may assume, in one sentence,
+    so AN11 reads it from the contract rather than from this report.
+
+CARRIED, each having bitten this phase:
+    R114 zero tolerance; a diff means something changed.
+    R119 a specified-once element is asserted by count.
+    R128 a baseline asserts its own dimensions.
+    R133 positive signals, never inferred from absence.
+    R135/R207/R208 regeneration: stated reason, named files, counted
+         from the runner's own output.
+    R137 adjacency is asserted as sequence or not at all.
+    R148 alignment and measure are asserted geometrically.
+    R176/R177 end with the server run and driven, against pnpm dev.
+    R178 a live instance beats a planted one.
+    R180 verify a plant landed.
+    R182 a check runs after the thing it checks for can exist.
+    R183 the site footer and the DOCUMENT footer are different
+         strings; the document's is unconditional.
+    R198 an error crossing a boundary preserves which rule fired.
+    R206 one text, one home.
+
+====================================================================
+CONTEXT
+====================================================================
+FW25 ONLY: the exports. CSV, the print route, and the PDF.
+
+THIS IS THE FIRST TIME THE DOSSIER CAN BE LOOKED AT. Everything
+FW24 built is a payload and a copy module; nothing has rendered them.
+The PDF is the artefact the whole product exists to produce, read by
+an accountant or a tax administration, and the one surface where a
+defect is discovered by somebody who is not us.
+
+Read: SPEC 12 (the dossier, verbatim - structure, vocabulary, the
+monochrome rule), SPEC 20; docs/api-v1.md; lib/fr/dossier.ts as FW24
+wrote it; prompts/design-frontier/FD8 (the A4 brief; SPEC wins on
+conflict); REPORT-FW24.txt.
+
+====================================================================
+WHAT THE DOCUMENT MUST NOT DO
+====================================================================
+State these before building. Each is a way the PDF looks right and
+is wrong:
+
+  IT DOES NOT CLAIM MORE THAN THE RECORD SUPPORTS. No certifie,
+  atteste, conforme, valide, approuve. Only declare, enregistre,
+  horodate. FW24 asserts the ban in both directions so silence
+  cannot pass - keep that property when the words reach a page.
+
+  IT SURVIVES A MONOCHROME PHOTOCOPY. Every status carries its word.
+  Two badges both reading "Seuil depasse" tell a photocopied reader
+  nothing; each names WHICH seuil.
+
+  IT PRINTS EVERY DATE, including days with no entry and days of
+  absence. A document that silently omits dates invites the question
+  of what else it omitted.
+
+  IT DOES NOT RECOMPUTE. Every figure comes from the FW24 payload.
+
+  ITS FOOTER IS UNCONDITIONAL (R183). The site's version branches on
+  trackerExists; the document's cannot - every entry in an exported
+  dossier IS timestamped.
+
+====================================================================
+ACCEPTANCE CRITERIA
+====================================================================
+AC1. The CSV's columns are exact and stable, asserted against a
+     header snapshot, UTF-8 with BOM, and it opens in a spreadsheet
+     without mangling accents or turning a date into a number.
+AC2. The PDF is A4, carries the rail from renderRailSvg (the same
+     generator as the web, not a redrawing), prints every annex row
+     including gaps and absences with provenance in words, and
+     contains none of the five banned words - asserted by extracting
+     text from the produced file, not from the template.
+AC3. The print route is token-gated: unauthenticated returns 401,
+     another user's year 403, and the token is single-use or
+     short-lived - state which and why.
+
+====================================================================
+INCREMENT 1 - CSV
+====================================================================
+- GET /api/v1/export/csv?year=, columns exactly: dayDate, portion,
+  kind, absenceReason, provenance, detectedKind, note,
+  firstRecordedAt, lastModifiedAt, clientClaimedAt, late.
+- BOM, CRLF, and quoting that survives a note containing a comma, a
+  quote, a newline and a semicolon. Test each.
+- A DATE MUST NOT BECOME A NUMBER. Excel reads 07.07.2026 as text and
+  2026-07-07 as a date depending on locale; state the format chosen
+  and why, and assert it round-trips as text.
+- Gaps and absences appear as rows, matching the annex (R175: the CSV
+  and the annex bound the same property from two sides - assert they
+  contain the same day set).
+- Commit: "FW25: the CSV export". Push.
+
+====================================================================
+INCREMENT 2 - the print route
+====================================================================
+- /releve/print?year=&token=, server-rendered, noindex, no client JS.
+  It renders the FW24 payload with print CSS: A4 geometry, Inter,
+  black rules, colour only from the three status tokens plus the two
+  country dots.
+- The annex is ALWAYS EXPANDED here - it is collapsible on a screen,
+  never in a document.
+- Token design per AC3. R198: 401, 403 and an expired token are
+  distinct and named.
+- R225: the workedDaysNote assertion lands here, at the surface that
+  raises the question.
+- Commit: "FW25: the print route". Push.
+
+====================================================================
+INCREMENT 3 - the PDF
+====================================================================
+- GET /api/v1/export/pdf?year= drives headless Chromium over the
+  print route with the caller's identity and returns A4.
+- A CONCURRENCY GUARD: one render at a time, or a bounded queue. Two
+  simultaneous exports must not OOM the VPS. State the mechanism and
+  test two concurrent requests both succeeding, serialized.
+- ASSERT ON THE PRODUCED FILE, NOT THE TEMPLATE: extract text and
+  assert the banned words are absent, the rail is present, the annex
+  row count matches the payload, and the fonts are embedded (Inter,
+  no substitution).
+- R182: this check runs after the PDF exists, not beside the code
+  that writes it.
+- Commit: "FW25: the PDF". Push.
+
+====================================================================
+INCREMENT 4 - the document read as a document
+====================================================================
+Not a test increment. Produce the PDF for the demo year, open it, and
+READ IT as a fiduciaire would.
+
+  - Does the identification block say who and for what period.
+  - Does the rate panel state both thresholds and name which one was
+    crossed - the demo year crosses the fiscal ceiling, so
+    FISCAL_CEILING_EXCEEDED and A1_REQUIRED must be visible and
+    legible, not merely present in the payload.
+  - Do 261 annex rows against a 240-day basis read as an error, or
+    does the note answer it (R225 in practice rather than in a test).
+  - Print it in greyscale, or render it so, and confirm nothing is
+    lost.
+  - Does any sentence claim more than the record supports.
+
+Report what you read for and what it found. Four tasks running, the
+read-through has found what no gate could each time - and this is the
+first document rather than a page.
+- Commit: "FW25: the document read as a document". Push.
+
+====================================================================
+INCREMENT 5 - walkthrough, R226, report
+====================================================================
+- FW24's 6b, discharged: drive the whole thing against pnpm dev -
+  the dossier endpoint, the CSV, the print route in a browser, the
+  PDF downloaded and opened. Report what each returned.
+- R226's sentence into docs/api-v1.md.
+- Baselines for the print route at A4 width, zero tolerance,
+  dimensions asserted, reasons recorded.
+- R186: no PRODUCT_STATE flag flips. dossierExists needs the print
+  route AND a client that can reach it - state whether this task
+  satisfies the proxy or not, and do not flip it on a guess.
+- gate:clone before the final push.
+- Commit: "FW25: walkthrough and report". Push.
+
+====================================================================
+OUT OF SCOPE
+====================================================================
+- The account routes (FW26), the scheduler (FW27), deployment (FW28).
+- Any client. Any engine change. Any /v1 field rename (frozen).
+- Any flag flip decided on a guess.
+
+====================================================================
+REPORT FORMAT - REPORT-FW25.txt
+====================================================================
+SUMMARY / PRECONDITIONS (gate:clone hash) / RED-GREEN LEDGER / CSV
+(the header snapshot, the quoting cases, the date format and why) /
+PRINT ROUTE (token design, the three distinct refusals) / PDF (the
+concurrency mechanism, and every assertion made against the PRODUCED
+FILE) / R225 (the note asserted at the surface that raises it) / THE
+DOCUMENT READ AS A DOCUMENT (what you read for, what it found,
+greyscale) / WALKTHROUGH (each response) / R226 / FLAG DECISION /
+BASELINES / PARKED / DEVIATIONS / NOTICED BUT NOT TOUCHING /
+QUESTIONS / PUSH PROOF
+
+END OF FW25 PROMPT
