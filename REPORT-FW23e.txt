@@ -1,0 +1,251 @@
+====================================================================
+REPORT-FW23e.txt - R222 and CI-WINDOW-2
+Mon Releve   2026-09-21
+====================================================================
+
+Pure ASCII. Accented French lives in web/lib/fr (R155).
+
+SUMMARY
+--------------------------------------------------------------------
+  1  R222  the demo year carries both trail eras
+  2        the schema is read BACK from the database, not inferred
+           from a migration's exit code
+  3        CI window 2, opened on a public repository
+
+THE WINDOW NEEDED ALMOST NO MACHINERY, AND THAT IS THE FINDING. The
+web job already deploys migrations from an empty database and runs
+test:db; the parity script already prints its ICU version. The single
+genuine gap was that nothing read the schema back. A window that
+discovers it mostly already existed means the local gate and the
+runner were closer than the prompt assumed.
+
+TWO PREMISES CORRECTED BEFORE ANY WORK WAS DONE
+--------------------------------------------------------------------
+1. SEEDING THE MODERN STRETCH THROUGH writeEntries WOULD HAVE MADE
+   THE FIXTURE TIME-DEPENDENT. The write path takes the SERVER CLOCK
+   for firstRecordedAt, and this fixture is pinned to 2026. Seeded in
+   2027 every modern row would be recorded a year after the day it
+   describes, the late flag would fire across the whole stretch, and
+   the scenario would assert something it does not mean - which is
+   what R197 forbids. The operator amended the ruling: the
+   one-variable construction is correct rather than a fallback.
+
+2. THE FW14-ERA REPLAY HAS RUN ON A RUNNER. It existed at window 1's
+   commit dd6fd3f and was inside that run's 269-test database suite,
+   so "never run anywhere but this machine" was wrong.
+
+   THE ACCURATE CLAIM IS SMALLER AND STILL WORTH THE WINDOW: the
+   checksum replay has never run against a migration history
+   CONTAINING the two 2026-09-21 migrations, because neither existed
+   at dd6fd3f. Verified rather than argued:
+
+     git cat-file -e dd6fd3f:web/tests/db/fw14-era-migration.test.ts
+       -> present
+     migrations at dd6fd3f  -> ends at 20260918165649_drop_oauth_columns
+     migrations now         -> ..._entry_event_mutation_id
+                               ..._entry_mutation_id_per_account
+
+INCREMENT 1 - R222
+--------------------------------------------------------------------
+The demo year's trail now has two eras, because a real database on
+this date has two: R219 added EntryEvent.clientMutationId and could
+not backfill it, so every real database has a long stretch whose
+events carry no id and a recent stretch whose events do.
+
+  legacy events  239   (no mutation id - the Entry fallback's subject)
+  modern events   23   (December weekdays - the trail's subject)
+
+THE CUTOFF IS 2026-12-01 BECAUSE OF ONE DAY. Every named day sits
+before it, and the one that matters is the EDITED day at 2026-07-07:
+its Entry.clientMutationId has been overwritten by a second mutation,
+which is R219's exact scenario. Keeping it legacy means the fallback
+is exercised against a row whose evidence the old check destroyed -
+rather than only by its own unit test.
+
+ONE VALUE, ONE HOME (R206) rather than one variable written twice.
+The event reads `entry.clientMutationId` from the row it records; a
+test walks every modern event and asserts it equals its entry's. A
+second derivation from the same template would look right in both
+places and drift in neither direction visibly, which is R181's defect.
+
+PLANTS, both directions, restores verified:
+  uniformly modern -> "no legacy events - the fallback is not
+                       exercised: expected 1 to be greater than 100"
+                       and the edited-day test
+  uniformly legacy -> "no modern events - the trail path is not
+                       exercised: expected 0 to be greater than 10"
+                       and the one-value test
+
+The second plant is the state the fixture was in before this
+increment, so its failure is also a statement about what was missing.
+
+R221 DEMONSTRATED ITSELF AGAIN, ON THIS SESSION S OWN PROMPT
+--------------------------------------------------------------------
+The prompt file arrived as CI-WINDOW-2.txt, untracked, at the
+repository root. changedPaths() now returns it:
+
+  paths: CI-WINDOW-2.txt, web/tests/db/schema-shape.test.ts
+
+The implementation before FW23d/1 could not see it - git ls-files
+--others run from web/ cannot look outside web/. It matches no
+selector rule, correctly, because it is prose; the point is that it
+is SEEN. Second live instance in two sessions, and R178 again: a real
+one beats a planted one.
+
+INCREMENT 2 - the schema read back
+--------------------------------------------------------------------
+tests/db/schema-shape.test.ts. It runs in tests/db, AFTER db:deploy,
+which is the only moment its answer means anything (R182).
+
+WHY AN EXIT CODE IS NOT THE CLAIM. `prisma migrate deploy` succeeding
+says the files ran. It does not say the schema is the one they
+describe: a DROP that found nothing, an index created under a name
+nothing looks for, a column added to the wrong table - each exits 0.
+Same distinction as counting `<link>` tags versus fetching the
+stylesheet.
+
+ASSERTED CENSUSES, NOT SPOT CHECKS (R206's corollary). The index sets
+are compared WHOLE, so an index added next year is a deliberate edit
+here, and - the half that matters - an index REMOVED cannot pass by
+not being looked for.
+
+  Entry       4 indexes, including Entry_userId_clientMutationId_key
+  EntryEvent  4 indexes, including
+              EntryEvent_userId_clientMutationId_idx
+
+  AND ONE ASSERTION STATED SEPARATELY THOUGH THE CENSUS IMPLIES IT:
+  Entry_clientMutationId_key is ABSENT. R220's migration is a DROP
+  then a CREATE, and a DROP that found nothing to drop exits 0 exactly
+  like one that worked. The equality above fails for many reasons;
+  this names the one that matters.
+
+  NULLABILITY IS ASSERTED TOO, because the no-backfill argument
+  depends on it: a migration that made EntryEvent.clientMutationId
+  NOT NULL would have to invent values for legacy rows, and inventing
+  them is what R219 refused to do.
+
+  AND THE APPEND-ONLY TRIGGERS, because the entire R219 fix rests on
+  EntryEvent being append-only. A trail a later write could edit would
+  be no better than the row it replaced.
+
+INCREMENT 3 - CI WINDOW 2
+--------------------------------------------------------------------
+Opened by setting CI_FULL on a repository that is PUBLIC again, so
+the minutes are free and the billing refusal of 19 September does
+not arise. Run 35611866226 on ddc78a6. SIX JOBS, ALL GREEN.
+
+  web                        success
+  rail visual baselines      success
+  runtime guard (R81)        success
+  format parity (compile)    success
+  format parity (node 22)    success
+  format parity (node 24)    success
+
+MEASURED ON THE RUNNER, not inferred from the conclusion:
+
+  unit        143 files, 2598 tests
+  database     20 files,  348 tests
+  e2e                     284 tests
+
+Identical to this machine. The four files that carry this window s
+new claims all ran there, confirmed by name in the log:
+schema-shape, demo-year, fw14-era-migration, entries-route.
+
+THE ICU DIVERGENCE PERSISTS, SO THE PARITY PASS STILL MEANS SOMETHING
+--------------------------------------------------------------------
+Reread rather than assumed, because a pass across two runtimes that
+have since converged on one ICU build is a tautology wearing a
+matrix:
+
+  node 22.23.2   ICU 78.2   CLDR 48.0
+  node 24.20.0   ICU 78.3   CLDR 48.0
+
+Still different, as in window 1. Had they converged the report would
+have had to say the next pass means less; they have not, so agreement
+across them remains a real claim. The mechanism that prints this
+already existed in check-format-parity.mjs - nothing was added, it
+was READ.
+
+NEWLY PROVEN
+--------------------------------------------------------------------
+Narrow on purpose. Window 1 settled the Node matrix, the runtime
+guard and the visual suite; re-running them proves nothing new, and
+saying "all green" as though it did would make the phrase mean less
+each time. What this window actually added:
+
+  the two 2026-09-21 migrations     applied in sequence from an
+                                    EMPTY database, on a machine
+                                    that is not this one. Neither
+                                    existed at window 1.
+
+  the schema they produced          read BACK from the runner s own
+                                    database - index censuses on
+                                    both tables, the dropped global
+                                    unique asserted ABSENT, the
+                                    nullability the no-backfill
+                                    argument rests on, and the
+                                    append-only triggers.
+
+  the FW14-era checksum replay      against a migration history
+                                    CONTAINING both new migrations.
+                                    The test itself ran in window 1
+                                    - this is the smaller, accurate
+                                    claim.
+
+  R219 s data-loss reproduction     the late replay that reverted an
+                                    edit, refused on a runner.
+
+  R220 s per-account index          two accounts sharing a
+                                    client-generated id, externally.
+
+  R222 s two-era demo year          seeded through `prisma db seed`
+                                    by the CLI, as AC3 requires.
+
+  R217 s write-answer contract      the rows returned by POST.
+
+  the database suite                269 -> 348 tests externally.
+
+AND ONE NEGATIVE RESULT WORTH THE SAME SPACE: the ICU divergence
+persists (78.2 / 78.3). Had the two runtimes converged, the parity
+pass would have become a tautology and this report would have had to
+say so. It has not.
+
+STILL SINGLE-MACHINE
+--------------------------------------------------------------------
+Unchanged by this window, and named rather than left implicit. When
+the repository goes private again, THIS IS WHAT THE R201 BUDGET
+SPLIT IS PROTECTING.
+
+  the walkthrough (R176/R177)  every walkthrough in this project has
+                               been driven against `pnpm dev` HERE.
+                               Nothing external has ever driven the
+                               product as a user - and the last two
+                               sessions found defects that only a
+                               walkthrough could find.
+
+  lighthouse                   never run on a runner.
+
+  the Docker path itself       gate:clone and the visual container
+                               both run under one daemon here. The
+                               runner uses its own, and the two
+                               agree - but only for the visual job.
+                               gate:clone has never run anywhere but
+                               this machine, which matters more now
+                               that it is the thing verifying
+                               migrations before every push.
+
+  the CPU architecture         both this machine and ubuntu-latest
+                               are x86_64. Nothing has built or run
+                               on arm64, which is what a cheap VPS
+                               increasingly is.
+
+  the deployment               FW28. Nothing has been deployed
+                               anywhere.
+
+PUSH PROOF
+--------------------------------------------------------------------
+<FILLED IN AFTER THE PUSH>
+
+====================================================================
+END OF REPORT-FW23e.txt
+====================================================================
