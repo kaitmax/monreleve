@@ -178,6 +178,8 @@ pnpm test · pnpm test:e2e
 pnpm size · pnpm lighthouse
 ```
 
+**When another project holds port 3000, move ours rather than stopping theirs.** `FRONTALIER_PORT=3100 pnpm test:e2e` — the variable is read by `e2e/support/base-url.ts` and by `scripts/lighthouse.mjs`, and `pnpm gate:changed` passes it through to both, so setting it once in front of the gate is enough. `pnpm dev` takes `PORT` instead, and `pnpm test:visual` needs neither: it runs Playwright inside its own container against a server it starts there, so the host's ports do not reach it. R169 refuses the run rather than testing the neighbour, and its message names the port; R179 only authorises killing a tree this harness spawned, which a neighbour’s container is not. Not hypothetical — a `tizicorp-app` container publishing 3000 answered `/api/health` with a valid 200 and no `service` field during FW23c, which is FW20’s defect exactly and the reason R169 requires the answer to NAME this product rather than merely exist.
+
 Engine tests: `pnpm exec vitest run tests/unit/calc-engine`. They live outside `lib/calc-engine` because the engine fence forbids every non-relative import inside it, and a co-located test would have to import `vitest`.
 
 Budgets (R2): GATE A total first-load JS ≤ 125 KiB per public route; GATE B feature delta ≤ 25 KiB over the recorded framework baseline. Fonts and CSS are reported separately and never counted against a JS gate.
