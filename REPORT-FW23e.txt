@@ -244,7 +244,39 @@ SPLIT IS PROTECTING.
 
 PUSH PROOF
 --------------------------------------------------------------------
-<FILLED IN AFTER THE PUSH>
+  daf20b4  FW23e/1  R222, the demo year carries both trail eras
+           test 2598, test:db 342.
+  ddc78a6  FW23e/2  the schema read back from the database
+           test 2598, test:db 348.
+  78fd87a  FW23e/3  the window results and this report
+
+  Each gated on its own tree. gate:clone PASSED before each push,
+  and on ddc78a6 it correctly reported the tree DIRTY with one path
+  not in the run - CI-WINDOW-2.txt, the prompt file, which is not
+  part of the codebase.
+
+  CI: window 2 is run 35611866226 on ddc78a6, six jobs green. The
+  push of 78fd87a triggered a further run, which is a re-run of
+  settled ground rather than a new claim - the repository is public,
+  so it costs nothing.
+
+THE WINDOW IS STILL OPEN, AND THAT IS A DECISION TO TAKE
+--------------------------------------------------------------------
+CI_FULL remains set and the repository is public, so every push runs
+six jobs for free. Two things are worth knowing before that changes:
+
+  CI_FULL ON + THE REPOSITORY PRIVATE is the combination that
+  produced 19 September s refusals - four jobs, zero steps, a billing
+  message. Making the repository private again without unsetting
+  CI_FULL recreates that exactly.
+
+  R212 s alarm arms itself on private, but it REPORTS minutes; it
+  does not close the window. `gh variable delete CI_FULL` does, and
+  it is proven in both directions.
+
+Not decided here. Q75 also remains open and free: 1 October
+distinguishes an exhausted allowance from a failed payment at no
+cost, and nothing is being spent while the repository is public.
 
 ====================================================================
 END OF REPORT-FW23e.txt
