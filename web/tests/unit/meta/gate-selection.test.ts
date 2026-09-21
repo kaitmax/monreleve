@@ -25,15 +25,21 @@
 // suite that caught half the failure. a11y is still NAMED in the printed
 // selection so that its absence reads as considered rather than forgotten.
 
+import { readFileSync, readdirSync } from 'node:fs';
+import { join, relative, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   BASE_SUITES,
+  PACKAGE_ROOT,
   SELECTOR_PATTERNS,
   SUITE_COUNTS,
+  databaseClosure,
   describeSelection,
   readCount,
   selectSuites,
 } from '../../../scripts/gate-selection.mjs';
+
+const SLASH = String.fromCharCode(47);
 
 /**
  * The two commits R132 was written for, by their real paths.
@@ -359,7 +365,7 @@ describe('the pattern list is the ruling, stated once', () => {
       'lib/fr/**',
       'lib/ui/**',
       'modules whose output reaches rendered HTML (R140)',
-      'the database layer (prisma/**, lib/db/**, tests/db/**)',
+      'the database layer (prisma/**, lib/db/**, tests/db/**, and anything test:db imports)',
       'the token layer (lib/ui/core/styles/**)',
     ]);
   });
@@ -517,5 +523,112 @@ describe('R144: a test file selects the suite it belongs to', () => {
 
     expect(suites).toContain('test:db');
     expect(suites).not.toContain('test:e2e');
+  });
+});
+
+describe('R218: the database selection is derived from the import graph', () => {
+  // WHY THIS REPLACED A PATH LIST. The list had been extended three times -
+  // FW14 added three directories, FW23 found a fourth missing - which is R149's
+  // signal that the defect is in the mechanism rather than in the entry nobody
+  // added. FW23's increment 5 changed lib/entries/schema.ts, the API contract
+  // that tests/db drives end to end, and the selector chose the base chain
+  // only; test:db was run by hand.
+
+  const closure = databaseClosure(PACKAGE_ROOT);
+
+  it('found a real graph, so nothing below passes vacuously', () => {
+    // R133. An empty closure would make every `has` below false and every
+    // "is not selected" assertion true for the wrong reason.
+    expect(closure.size).toBeGreaterThan(20);
+    expect(closure.has('lib/db/client.ts')).toBe(true);
+  });
+
+  it('reaches the module that raised the question', () => {
+    // THE CASE Q77 WAS ABOUT.
+    expect(closure.has('lib/entries/schema.ts')).toBe(true);
+    expect(selectSuites(['web/lib/entries/schema.ts']).suites).toContain('test:db');
+  });
+
+  it('reaches it although it imports no Prisma - which is the whole point', () => {
+    // THE OBVIOUS FORWARD RULE WOULD HAVE MISSED THIS, and that is worth an
+    // assertion rather than a comment. "A module that imports the Prisma
+    // client selects test:db" is the natural way to say it and it is the wrong
+    // direction: schema.ts imports no Prisma at all, it is imported BY write.ts,
+    // which does. A forward rule would have left Q77's case exactly where it
+    // was while appearing to have fixed it.
+    const source = readFileSync(join(PACKAGE_ROOT, 'lib/entries/schema.ts'), 'utf8');
+
+    expect(source).not.toContain('@prisma/client');
+    expect(source).not.toContain('@/lib/db/client');
+    expect(closure.has('lib/entries/schema.ts')).toBe(true);
+  });
+
+  it('reaches the route handlers the suite drives, not only the modules', () => {
+    // R204: the entry point is the unit under test, so the route is in the
+    // graph and a change to it selects the suite that drives it.
+    expect(closure.has('app/api/v1/entries/route.ts')).toBe(true);
+  });
+
+  it('follows the graph transitively, not one hop', () => {
+    // day.ts is imported by read.ts and write.ts, which are imported by the
+    // route, which is imported by the test. Three hops from a seed.
+    expect(closure.has('lib/entries/day.ts')).toBe(true);
+  });
+
+  it('does NOT reach the pure presentation layer', () => {
+    // THE OTHER DIRECTION, and it is what stops this becoming "select
+    // everything". A closure that swallowed the whole repository would make
+    // test:db run on every change and the selection would stop meaning
+    // anything - the failure mode R132 exists to prevent, arrived at from the
+    // safe side.
+    expect(closure.has('lib/ui/core/styles/tokens.scss')).toBe(false);
+    expect(selectSuites(['web/lib/ui/core/styles/tokens.scss']).suites).not.toContain('test:db');
+  });
+
+  it('keeps the definitional paths as a floor, not as the rule', () => {
+    // A migration and a config are not reachable through an import, so the
+    // prefixes stay. They are no longer asked to KEEP UP, which is the part
+    // that kept failing.
+    expect(selectSuites(['web/prisma/migrations/20260101000000_x/migration.sql']).suites).toContain(
+      'test:db',
+    );
+    expect(selectSuites(['web/vitest.db.config.ts']).suites).toContain('test:db');
+  });
+
+  it('seeds from every file the suite actually globs, at any depth', () => {
+    // THE CLOSURE IS ONLY AS COMPLETE AS ITS SEEDS, and the first version of
+    // seeds() read tests/db flat while vitest.db.config.ts globs every .test.ts
+    // under it AT ANY DEPTH. It was correct only because no subdirectory exists
+    // yet - R171's coincidence, inside the mechanism written to remove exactly
+    // that, and invisible to the non-vacuity check because the other seeds
+    // remain.
+    //
+    // So the seeds are compared against the GLOB rather than against a count
+    // somebody typed. Add tests/db/entries/foo.test.ts and this fails until the
+    // walk finds it.
+    const walk = (dir: string): string[] =>
+      readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+        entry.isDirectory()
+          ? walk(join(dir, entry.name))
+          : entry.name.endsWith('.test.ts')
+            ? [join(dir, entry.name)]
+            : [],
+      );
+
+    const globbed = walk(join(PACKAGE_ROOT, 'tests', 'db')).map((file) =>
+      relative(PACKAGE_ROOT, file).split(sep).join(SLASH),
+    );
+
+    expect(globbed.length, 'no db test files found').toBeGreaterThan(10);
+
+    for (const file of globbed) {
+      expect(closure.has(file), `${file} is globbed by the suite but not seeded`).toBe(true);
+    }
+  });
+
+  it('survives a path that no longer exists', () => {
+    // A deleted file is a normal thing to find in a diff, and a closure that
+    // threw on one would take the whole gate down at exactly the wrong moment.
+    expect(() => selectSuites(['web/lib/entries/deleted-yesterday.ts'])).not.toThrow();
   });
 });

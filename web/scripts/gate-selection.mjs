@@ -125,6 +125,166 @@ export function readCount(suite, output, floor) {
 }
 
 /** Always run, whatever changed. The chain CLAUDE.md used to call green. */
+/**
+ * Every source file the database suite transitively depends on. R218.
+ *
+ * ============================================================================
+ * DERIVED FROM THE IMPORT GRAPH, NOT FROM A LIST SOMEBODY REMEMBERS TO EXTEND
+ * ============================================================================
+ *
+ * The path list had been extended three times - FW14 added three directories,
+ * FW23 found a fourth missing - which is R149's signal that the defect is in the
+ * mechanism rather than in the entry nobody added. Same move as the mesh checker
+ * deriving from the registry instead of from a hand-kept copy of it.
+ *
+ * THE DIRECTION MATTERS, AND THE OBVIOUS ONE IS WRONG. "A module that imports
+ * the Prisma client selects test:db" does not cover the case that raised the
+ * question: `lib/entries/schema.ts` imports no Prisma at all - it is imported BY
+ * `write.ts`, which does. Measured before this was built, which is why this
+ * walks the graph from the SUITE outward rather than from each file inward.
+ *
+ * The question the selector actually asks is "could changing this file break
+ * test:db?", and that is answered by reachability FROM the suite's own test
+ * files. Everything they import, and everything those import, is in scope.
+ */
+
+import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
+import { join, dirname, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+/** web/, derived from this file's own location rather than from process.cwd(). */
+export const PACKAGE_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+/** Extensions tried when a specifier carries none, in resolution order. */
+const EXTENSIONS = ['.ts', '.tsx', '.mts', '.mjs', '/index.ts', '/index.tsx'];
+
+/**
+ * Every import specifier in a source file.
+ *
+ * A REGEX RATHER THAN A PARSER, deliberately. The alternative is a TypeScript
+ * program, which costs seconds on every gate run to answer a question this
+ * answers in milliseconds. It over-matches - a specifier inside a comment or a
+ * string counts - and over-matching is the SAFE direction here: the cost is
+ * running test:db when it was not needed, never skipping it when it was.
+ */
+function specifiersOf(source) {
+  const found = [];
+
+  for (const match of source.matchAll(/(?:from|import|require)\s*\(?\s*['"]([^'"]+)['"]/gu)) {
+    if (match[1] !== undefined) found.push(match[1]);
+  }
+
+  return found;
+}
+
+/** A specifier resolved to a file under the package, or null for anything else. */
+function resolve(root, fromFile, specifier) {
+  let base;
+
+  if (specifier.startsWith('@/')) {
+    base = join(root, specifier.slice(2));
+  } else if (specifier.startsWith('./') || specifier.startsWith('../')) {
+    base = join(dirname(fromFile), specifier);
+  } else {
+    // A bare package - node_modules, or `node:fs`. Not ours, so not a subject.
+    return null;
+  }
+
+  if (existsSync(base) && statSync(base).isFile()) return base;
+
+  for (const extension of EXTENSIONS) {
+    const candidate = base + extension;
+
+    if (existsSync(candidate) && statSync(candidate).isFile()) return candidate;
+  }
+
+  return null;
+}
+
+/**
+ * Every *.test.ts under tests/db - the suite's own entry points.
+ *
+ * RECURSIVE, BECAUSE THE SUITE IS. vitest.db.config.ts globs every
+ * .test.ts under tests/db AT ANY DEPTH, and the first version of this read the
+ * directory flat. It was correct only because no subdirectory exists yet - R171's
+ * coincidence, inside the mechanism written to remove exactly that. A test
+ * asserts every file the glob would match is in the closure, so the day
+ * somebody adds tests/db/entries/ this stays honest.
+ */
+function seeds(root) {
+  const dir = join(root, 'tests', 'db');
+
+  if (!existsSync(dir)) return [];
+
+  const found = [];
+  const stack = [dir];
+
+  while (stack.length > 0) {
+    const current = stack.pop();
+
+    if (current === undefined) continue;
+
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      const full = join(current, entry.name);
+
+      if (entry.isDirectory()) stack.push(full);
+      else if (entry.name.endsWith('.test.ts')) found.push(full);
+    }
+  }
+
+  return found;
+}
+
+/**
+ * The closure, as package-relative POSIX paths.
+ *
+ * Memoised per root: `selectSuites` asks once per changed path and the graph
+ * does not move inside a run.
+ */
+const CACHE = new Map();
+
+export function databaseClosure(root) {
+  const key = root;
+  const cached = CACHE.get(key);
+
+  if (cached !== undefined) return cached;
+
+  const queue = seeds(root);
+  const seen = new Set();
+
+  while (queue.length > 0) {
+    const file = queue.pop();
+
+    if (file === undefined || seen.has(file)) continue;
+
+    seen.add(file);
+
+    let source;
+
+    try {
+      source = readFileSync(file, 'utf8');
+    } catch {
+      // A file that cannot be read contributes nothing. It is not an error:
+      // a deleted file is a normal thing to find in a diff.
+      continue;
+    }
+
+    for (const specifier of specifiersOf(source)) {
+      const target = resolve(root, file, specifier);
+
+      if (target !== null && !seen.has(target)) queue.push(target);
+    }
+  }
+
+  const closure = new Set(
+    [...seen].map((file) => relative(root, file).split('\\').join('/')),
+  );
+
+  CACHE.set(key, closure);
+
+  return closure;
+}
+
 export const BASE_SUITES = Object.freeze(['typecheck', 'lint', 'test', 'build']);
 
 /** What a change to something the browser renders requires. */
@@ -307,14 +467,28 @@ export const SELECTOR_PATTERNS = Object.freeze([
     // FW14 increment 1: "R132's selection must include the database
     // suites." One entry rather than five, because the printed selection is
     // read by a person and "the database layer" says more than a path does.
-    label: 'the database layer (prisma/**, lib/db/**, tests/db/**)',
+    label: 'the database layer (prisma/**, lib/db/**, tests/db/**, and anything test:db imports)',
     suites: DATABASE_SUITES,
+    // R218: THE LIST IS A FLOOR; THE GRAPH IS THE RULE.
+    //
+    // The four path prefixes stay because they are DEFINITIONAL - a migration,
+    // a new lib/db module nothing imports yet, a config - and none of them is
+    // reachable through an import. What they are no longer asked to do is keep
+    // up: `lib/entries/schema.ts` is the API contract tests/db drives end to
+    // end, it matched none of these, and FW23 ran test:db by hand to cover it.
+    //
+    // The closure answers the question the list was standing in for: could
+    // changing this file break test:db? Note that the obvious forward rule -
+    // "a module that imports the Prisma client" - would NOT have caught
+    // schema.ts, which imports no Prisma and is merely imported by something
+    // that does. Measured before this was written.
     matches: (path) =>
       path.startsWith('prisma/') ||
       path.startsWith('lib/db/') ||
       path.startsWith('tests/db/') ||
       path === 'prisma.config.ts' ||
-      path === 'vitest.db.config.ts',
+      path === 'vitest.db.config.ts' ||
+      databaseClosure(PACKAGE_ROOT).has(path),
   },
 ]);
 

@@ -72,6 +72,9 @@ export interface SuiteCount {
 // the honest reading is that it should be derived. It is kept because the
 // alternative - allowJs in the strict project - drags six build scripts into
 // it for one import, which R107's header already argued against.
+/** web/, derived from the module's own location rather than from the cwd. */
+export declare const PACKAGE_ROOT: string;
+
 export declare const BASE_SUITES: readonly string[];
 export declare const BROWSER_SUITES: readonly string[];
 export declare const DATABASE_SUITES: readonly string[];
@@ -79,6 +82,13 @@ export declare const RUNTIME_SUITES: readonly string[];
 export declare const LATE_SUITES: readonly string[];
 export declare const SELECTOR_PATTERNS: readonly SelectorPattern[];
 export declare const SUITE_COUNTS: Readonly<Record<string, RegExp>>;
+
+/**
+ * Every source file the database suite transitively depends on (R218).
+ *
+ * Package-relative POSIX paths. Memoised per root.
+ */
+export declare function databaseClosure(root: string): ReadonlySet<string>;
 
 export declare function selectSuites(paths: readonly string[]): Selection;
 export declare function describeSelection(selection: Selection): string;
