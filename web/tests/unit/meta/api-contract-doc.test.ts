@@ -149,6 +149,27 @@ describe('docs/api-v1.md documents exactly what the code accepts', () => {
     );
   });
 
+  it('tells a client it must surface warnings, not only figures', () => {
+    // THE ONE CLIENT OBLIGATION ABOUT HONESTY RATHER THAN PARSING, and the
+    // easiest to drop because the figures alone look complete.
+    //
+    // Only 2026 has a rule set. ruleSetFor applies the latest known rules to
+    // any other year without refusing, so a 2019 calculation runs under 2026
+    // thresholds - honest only because the engine warns which year it applied.
+    // A client that renders the rate and discards the warning publishes a
+    // figure derived from rules that did not exist in the year it describes.
+    //
+    // lib/dossier is held to this by three tests. AN11 will read this document
+    // rather than any report, so the sentence has to be here - and this test
+    // is what stops it being tidied out of a section about parsing.
+    expect(SOURCE).toContain('Surface every');
+    expect(SOURCE).toContain('ruleSetFor');
+
+    // AND THE REASON, not just the instruction. An obligation with no stated
+    // consequence is the kind a client author reads as boilerplate.
+    expect(SOURCE).toContain('that did not exist in the year it claims');
+  });
+
   it('carries the freeze and says what a version costs', () => {
     // R160's shape on a contract document: the marker states the status rather
     // than implying a process nobody wrote down.

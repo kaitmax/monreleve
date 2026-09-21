@@ -100,8 +100,26 @@ export const DOSSIER_COPY = {
      *
      * A reader who counts the annex rows and compares them with this tile will
      * get a different number under the simplified basis — 261 rows against a
-     * 240-day forfait. Saying nothing invites the conclusion that the document
-     * cannot add up.
+     * 240-day forfait. The denominator is PRORATED, not counted (SPEC §7.4).
+     * Saying nothing invites the conclusion that the document cannot add up.
+     *
+     * ========================================================================
+     * R225: THIS STRING EXISTING IS NOT THE GUARANTEE. FW25 OWES THE TEST.
+     * ========================================================================
+     *
+     * The copy guards prove this sentence is well-formed French. The payload
+     * tests prove both numbers are right. Neither can tell you the reader ever
+     * sees the sentence that reconciles them - which is R175's unexamined
+     * space, between two verified things.
+     *
+     * WHAT FW25 OWES: a test that RENDERS the dossier and fails if this note
+     * is absent while the tile and the annex disagree in count. Conditional on
+     * the condition, both ways - a test that always demanded the note would
+     * pass on a document where the two figures agree and the note is noise.
+     *
+     * Asserting that this constant exists would be the version that passes
+     * today and proves nothing, because the constant was never what was
+     * missing.
      */
     workedDaysNote: `Base de calcul retenue pour l${APOS}année, et non le nombre de journées saisies.`,
   },

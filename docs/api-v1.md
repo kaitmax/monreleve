@@ -573,6 +573,22 @@ field can ever be added to these responses.
   as opaque and display it rather than crashing.
 - **Branch on `code`, never on `message`.** The French is rewritten whenever it
   can be written better.
+- **Surface every `warning` a calculation returns, never only the figures.**
+  This is the one obligation on this list that is about *honesty* rather than
+  about parsing, and it is the easiest to drop because the figures alone look
+  complete.
+
+  Only 2026 has a rule set of its own. `ruleSetFor` applies the latest known
+  rules to any other year and does **not** refuse — so a calculation for 2019
+  is computed under 2026 thresholds. The engine is honest about it: it emits a
+  warning naming the year it actually applied. **That warning is the only
+  thing standing between an honest answer and a wrong one**, and a client that
+  renders the rate while discarding it publishes a figure derived from rules
+  that did not exist in the year it claims to describe.
+
+  `lib/dossier` is held to this by three tests, including the negative case so
+  a caller that warned unconditionally fails too. Nothing holds a client to it
+  but this sentence.
 
 ### 6.6 The order of checks is part of the contract
 
