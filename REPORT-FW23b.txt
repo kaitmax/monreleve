@@ -386,6 +386,23 @@ DEVIATIONS
    and fail. Two plants stand in, which is what R180 offers when a
    RED run is not available.
 
+4. I PUSHED ONE COMMIT BEFORE RUNNING gate:clone, WHICH IS THE
+   WRONG ORDER. R199 makes it unconditional - a push is the unit
+   that leaves this machine - and the commit that filled in this
+   report's own PUSH PROOF went out without it.
+
+   The content was a root .txt that no selector matches and no
+   suite reads, so the OUTCOME was never at risk. The ORDER was
+   wrong, and that is the part worth writing down: a rule followed
+   only when the change looks harmless is a rule being judged case
+   by case, which is exactly the version R132 own history says
+   fails - FW13 put two red commits on main under "run the visual
+   suite when you think you changed pixels".
+
+   Recorded rather than quietly corrected. The commit that added
+   this paragraph was made in the correct order: commit, then
+   gate:clone, then push.
+
 NOTICED BUT NOT TOUCHING
 --------------------------------------------------------------------
 1. A LATE REPLAY REVERTS A NEWER EDIT. CONFIRMED, END TO END,
