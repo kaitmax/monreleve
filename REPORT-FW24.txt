@@ -1,5 +1,5 @@
 ====================================================================
-REPORT-FW24.txt - the dossier service, increments 1-3
+REPORT-FW24.txt - the dossier service, four of six increments
 Mon Releve   2026-09-21
 ====================================================================
 
@@ -11,16 +11,18 @@ DONE, gated and committed:
   1  R223  the CI refusal is named by us, not transcribed
   2        rows become a TeleworkInput (lib/dossier/aggregate.ts)
   3        the monthly breakdown and its cumulative column
+  4        the dossier payload, both rates (R224), and
+           lib/entries/late.ts - R216's deferred threshold
   6a       the hand-check of one month, against the demo year
 
 NOT DONE, and not started rather than half-built:
-  4        the dossier service assembling the document's sections
   5        the French copy and the document itself
   6b       the walkthrough against a served page
 
-Said plainly because a report that implied six increments from three
-would be the overclaim this product refuses everywhere else. The three
-that exist are the arithmetic layer; nothing renders yet.
+Said plainly because a report implying six from four would be the
+overclaim this product refuses on every public page. What exists is
+the arithmetic and the payload; nothing renders yet, and no French has
+been written.
 
 THE FRAMING THAT SHAPED IT
 --------------------------------------------------------------------
@@ -107,7 +109,7 @@ same denominator that differ by under a point. SPEC 12's monthly
 column is "cumul % declarable", so it takes the first. The zone
 panel's annualised percentage is not yet decided, and putting the
 wrong one there would be invisible to every test that checks a rate is
-a plausible percentage. Increment 4 has to choose deliberately.
+a plausible percentage. Increment 4 chose it deliberately - see Q82.
 
 AND THE DEMO YEAR CROSSES THE THRESHOLD, which matters for FW25:
 
@@ -150,13 +152,19 @@ NOTICED BUT NOT TOUCHING
 
 QUESTIONS
 --------------------------------------------------------------------
-Q82. The zone panel's annualised percentage (SPEC 12 item 3): the
-     declarable rate or the raw rate? They differ by under a point on
-     the demo year - 42.70 against 43.60 - and both are defensible
-     readings of "annualised percentage". The monthly column is
-     settled by SPEC 12's own wording; this one is not, and choosing
-     wrong is invisible to any test that checks a percentage is
-     plausible.
+Q82. ANSWERED - R224. The panel takes the DECLARABLE rate, the same
+     figure as the monthly column and the one that positions the rail
+     (SPEC 6.2). A panel whose number and whose rail disagreed by
+     0,84 points would contradict itself on one card. The RAW rate
+     travels beside it: FD3 specifies a two-rate state, and
+     discarding the raw rate would make that state unbuildable in
+     FW25. Geneva is the precedent - 39,16 declarable published
+     against 45,0 raw.
+
+     Implemented in increment 4 and planted BOTH ways. Taking the raw
+     rate as the figure fails two tests, and the second is the one
+     that matters: the monthly column still reads the declarable
+     rate, so the same card disagrees with itself.
 
 PUSH PROOF
 --------------------------------------------------------------------
