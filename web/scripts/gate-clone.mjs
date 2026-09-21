@@ -50,6 +50,7 @@
 // that quietly drops the browser suites reports the same green as one that
 // ran them.
 
+import { ciReadiness, describeReadiness } from './ci-readiness.mjs';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -376,6 +377,9 @@ try {
 
   console.log('');
   console.log('GATE:CLONE PASSED');
+  // R223: said AFTER the pass, because it is about what CI will do with a push
+  // this gate has just approved - not about whether the work is sound.
+  console.log(describeReadiness(ciReadiness()));
   console.log(`  commit  ${head}`);
   console.log(`  clone   ${clone} (removed)`);
   console.log(`  ran     install, typecheck, lint, test, build, size${local === null ? '' : ', db:deploy, test:db'}`);

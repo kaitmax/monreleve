@@ -1,69 +1,211 @@
 FW24 SESSION PROMPT - Mon Releve
-Read relay/PHASE-4-PROTOCOL.txt first, from disk.
+Read relay/PHASE-4-PROTOCOL.txt first, from disk. Its CI clauses are
+superseded by relay/CI-BUDGET-AMENDMENT.txt.
+
+====================================================================
+PRE-STEP RULINGS (apply verbatim)
+====================================================================
+R0. Read REPORT-FW23.txt, REPORT-FW23b/c/d/e.txt in full, including
+    their QUESTIONS and phase4parking.md. If an item is marked
+    BLOCKING for FW24, or a DEVIATION changes the entries API, the
+    schema or the demo year, apply R156 (park as PARK4-<n>) and
+    proceed if a conservative path exists.
+
+R1 (as reworded by R200). pnpm gate:clone green on a fresh clone of
+    origin/main's HEAD before starting. Record the commit hash.
+
+R223 (new). UNSET CI_FULL IN INCREMENT 0. Private plus CI_FULL
+    recreates 19 September's refusals silently, on the next push,
+    when nobody is thinking about billing. Then ADD THE GUARD: a
+    workflow step that fails fast and by name when the repository is
+    private and CI_FULL is set - "CI_FULL is set on a private
+    repository; unset it or accept the charge" - rather than letting
+    GitHub emit a billing string that has already been mistaken for a
+    diagnosis once. R198's shape at the workflow level.
+
+CARRIED, each having bitten this phase:
+    R120 a fixture includes a case where two derivations disagree.
+    R133 positive signals, never inferred from absence.
+    R163 prose narrating a worked example is tied to the fixture.
+    R175 assert the space between two tests that bound a property.
+    R176/R177 end with the server run and driven.
+    R178 a live instance beats a planted one.
+    R180 verify a plant landed.
+    R182 a check runs after the thing it checks for can exist.
+    R197 a fixture is consistent as a scenario, and its meaning does
+         not change with the date.
+    R198 an error crossing a boundary preserves which rule fired.
+    R202 detectedKind and provenance are orthogonal.
+    R203 the trail outlives the ROW, not the ACCOUNT.
+    R206 one text, one home, referenced by key.
+    R213 a check that has never run is not a passing check.
 
 ====================================================================
 CONTEXT
 ====================================================================
 FW24 ONLY: the dossier service. GET /api/v1/dossier?year= returns the
-computed statement the Android Releve screen renders and the PDF
-prints. This is where the engine's output becomes the document.
+computed Releve annuel de teletravail as data. FW25 renders it; the
+Android app displays it; the PDF is printed from it.
 
-Read: SPEC 12 (the dossier, verbatim), SPEC 7 (the engine's API),
-SPEC 8, SPEC 20; fixtures/geneva-cases.json; REPORT-FW23.txt.
+THIS IS WHERE THE ENGINE MEETS REAL ROWS FOR THE FIRST TIME. Until
+now calculateTelework has been fed fixtures written by hand. FW24
+feeds it aggregated database rows, and the aggregation is new surface
+sitting between two verified things.
+
+Read: SPEC 12 (the dossier, verbatim), SPEC 7 (the engine's API and
+its rounding rules), SPEC 8, SPEC 13.2, SPEC 20;
+docs/regulatory-sources.md; docs/api-v1.md as FW23 froze it;
+fixtures/geneva-cases.json.
+
+====================================================================
+WHAT THE SERVICE MUST NOT DO
+====================================================================
+State these before building, because each is a way the dossier could
+look right and be wrong:
+
+  IT DOES NOT RECOMPUTE ANYTHING THE ENGINE COMPUTES. The rate, the
+  headroom, the credited missions, the status - all come from
+  calculateTelework. The service aggregates rows into a
+  TeleworkInput and formats a TeleworkResult. FW12's tile defect was
+  a panel recomputing a value the engine had already given it, and
+  it passed because every fixture agreed.
+
+  ABSENCES NEVER REACH THE ENGINE. Filter them before building the
+  input, and assert that a year with and without absence rows yields
+  identical engine output (SPEC 8, the absence rule).
+
+  IT DOES NOT TYPE A THRESHOLD. Every figure comes from the year's
+  RuleSet (R147), including in any prose the payload carries.
+
+  IT DOES NOT SKIP A DAY. Unrecorded working days appear as
+  Non renseigne rows. A document that silently omits dates invites
+  the question of what else it omitted.
+
+  IT DOES NOT CLAIM A LEGAL REVIEW. Nothing in the payload asserts
+  verification beyond what docs/regulatory-sources.md supports.
 
 ====================================================================
 ACCEPTANCE CRITERIA
 ====================================================================
-AC1. For the seeded year, the metrics and EVERY monthly cumulative
-     percentage match a direct calculateTelework call exactly,
-     including truncation - 12,91 % and not 12,92 %. Asserted against
-     codepoint literals (R96).
-AC2. ABSENT rows never reach the engine: engine output is identical
-     for the seeded year with and without them, and absences are
-     counted once in the identification block as "Absences
-     declarees".
-AC3. The annex includes GAP ROWS - a working day with no entry is
-     returned as "Non renseigne", never omitted - and every entry
-     carries its provenance in words, its first timestamp, its
-     last-modified when different, its clientClaimedAt when synced
-     offline, and its late flag.
+AC1. For the demo year, every figure in the payload matches a DIRECT
+     calculateTelework call on the same aggregated input - asserted
+     field by field, not by snapshot (SPEC 7.6 forbids snapshots in
+     the engine and the same reasoning applies to its consumer).
+     The monthly cumulative percentages truncate: 12,91 % not 12,92 %.
+AC2. The evidence annex carries every entry with its date, portion,
+     kind, note, provenance IN WORDS, firstRecordedAt, lastModifiedAt
+     when different, clientClaimedAt when present, and the late flag -
+     plus Non renseigne rows for unrecorded working days and absence
+     rows counted only in the identification block.
+AC3. A year with no entries returns an honest empty payload, not
+     zeros; a partial year is marked provisional with the period
+     covered.
 
 ====================================================================
-INCREMENTS
+INCREMENT 1 - aggregation, and the disagreement case
 ====================================================================
-1. Aggregation: entries for a year -> TeleworkInput. HOME is
-   telework; MISSION_FR and MISSION_THIRD stay separate; FULL is 1
-   and AM/PM are 0,5; granularity and denominator from User;
-   periodFraction from activityStartDate; taxYear from the requested
-   year, and RULE_SET_FALLBACK surfaces when it differs (R11).
-   ABSENT filtered before the engine sees anything. RED first.
-   Commit: "FW24: aggregation to TeleworkInput".
-2. The monthly breakdown: Suisse / Domicile / Mission FR / Mission
-   tiers / cumulative declarable percentage, chronological.
-   R120: the fixture set must include a month where two derivations
-   of the same figure disagree, so a test cannot pass by using the
-   wrong one - the FW12 tile defect is the precedent.
-   Commit: "FW24: the monthly breakdown".
-3. The evidence annex: every entry plus gap rows, with provenance
-   rendered as a French phrase rather than an enum leaked to the
-   client. Late flag derived from firstRecordedAt - dayDate > 7 days.
-   Commit: "FW24: the evidence annex".
-4. The payload: identification block (titulaire, canton, taux,
-   methode, mode d'enregistrement, periode, absences declarees,
-   generated at), four metrics, the engine result, the monthly table,
-   the annex, and the provisional flag when the year is not closed.
-   A year with no entries returns an honest empty payload, not zeros.
-   Commit: "FW24: the dossier payload".
-5. docs/api-v1.md extended; the drift test still passes.
-   Commit: "FW24: contract document".
-6. Walkthrough (R176): fetch the dossier for the seeded year and read
-   it. Does it describe a year a person lived? Check one month by
-   hand against the seed. Report what you checked.
-   Commit: "FW24: walkthrough and report".
+- lib/dossier/aggregate.ts: rows -> TeleworkInput. HOME is telework;
+  MISSION_FR and MISSION_THIRD are the two mission fields; CH is
+  neither; ABSENT is filtered out entirely. FULL counts 1, AM and PM
+  count 0.5. granularity, denominator and periodFraction come from
+  the User's settings, not from the rows.
+- R120: the demo year must contain a case where two derivations of
+  the same figure DISAGREE - swissTaxedDays computed from rows versus
+  derived as total minus french. FW21's seed was built with this in
+  mind; verify it still holds after R219/R220/R222 and say so. If it
+  does not, the fixture is the defect, not the test.
+- Europe/Paris day semantics throughout (R28: ISO day strings, never
+  a Date).
+- RED first per behaviour.
+- Commit: "FW24: aggregation from rows to engine input". Push.
 
-OUT OF SCOPE: CSV, the print route, the PDF (all FW25). Any client.
+====================================================================
+INCREMENT 2 - the engine call and the figures
+====================================================================
+- Call calculateTelework with the year's RuleSet. Surface
+  RULE_SET_FALLBACK when input.taxYear differs from the rule set's
+  (R11).
+- The four metrics, the status, the rate, the headroom - all read
+  from the result. A test asserts the service computes NO arithmetic
+  of its own: plant a recomputation of swissTaxedDays and show the
+  disagreement case catches it (R180: verify the plant landed).
+- Commit: "FW24: the engine call, no recomputation". Push.
 
-REPORT: SUMMARY / PRECONDITIONS / RED-GREEN LEDGER / ENGINE PARITY
-(the hand-checked month) / ABSENCE ISOLATION PROOF / GAP ROWS /
-TRUNCATION (codepoint literals) / PARKED / WALKTHROUGH / DEVIATIONS /
-NOTICED / QUESTIONS / PUSH PROOF
+====================================================================
+INCREMENT 3 - the monthly breakdown
+====================================================================
+- Suisse / Domicile / Mission FR / Mission tiers / cumulative
+  declarable % per month, chronological, plus a total row.
+- THE CUMULATIVE COLUMN IS THE TRAP: each month's figure is the
+  engine's declarable rate for the year TO THAT POINT, computed by
+  calling the engine per month rather than by accumulating
+  percentages. Accumulating them would truncate twelve times and
+  drift. Assert against the Geneva-shaped values where the demo year
+  allows.
+- Commit: "FW24: the monthly breakdown". Push.
+
+====================================================================
+INCREMENT 4 - the evidence annex
+====================================================================
+- Every entry per AC2. Provenance rendered as a French phrase from
+  lib/fr, never an enum leaked to the client (R206: the phrase has
+  one home).
+- lastModifiedAt derived from EntryEvent (FW23's R216 finding: the
+  5 ms updatedAt would have fired on every row).
+- The late flag derived, not stored: firstRecordedAt - dayDate > 7
+  days.
+- Non renseigne rows for unrecorded working days; absences counted
+  once in the identification block and appearing in no other figure.
+- R203: the annex reads the trail, and the trail outlives the row but
+  not the account - say so in the contract if FW23 did not.
+- Commit: "FW24: the evidence annex". Push.
+
+====================================================================
+INCREMENT 5 - the route, provisional years, empty years
+====================================================================
+- GET /api/v1/dossier?year=, bearer-authenticated, tenancy from the
+  token only (both plants, both verified, at the HTTP boundary).
+- Provisional marking with the period covered; an empty year honest
+  rather than zeroed; a future year refused by name (R198).
+- docs/api-v1.md gains the payload, field by field, with what a
+  client may assume - and the test asserting document and schema
+  cannot drift.
+- Commit: "FW24: the dossier route". Push.
+
+====================================================================
+INCREMENT 6 - walkthrough and report
+====================================================================
+- WALKTHROUGH (R176/R177) with curl against pnpm dev, reporting what
+  each call RETURNED: the demo year's dossier, a year with no
+  entries, a partial year, a foreign user's year, a future year.
+- THEN HAND-CHECK ONE MONTH against the rows: count the days
+  yourself, compute the cumulative rate yourself, and compare. That
+  instrument has found an impossible seed, a route nobody wrote and a
+  regeneration that never ran - three tasks, three findings no
+  automated signal produced.
+- R186: no PRODUCT_STATE flag flips. A dossier endpoint existing does
+  not mean a user can export the document.
+- gate:clone before the final push.
+- Commit: "FW24: walkthrough and report". Push.
+
+====================================================================
+OUT OF SCOPE
+====================================================================
+- CSV, the print route, the PDF - FW25.
+- Any rendering. Any client. Any flag flip. Any engine change.
+- Any field name change in /v1 (frozen, FW23).
+
+====================================================================
+REPORT FORMAT - REPORT-FW24.txt
+====================================================================
+SUMMARY / PRECONDITIONS (gate:clone hash) / INCREMENT 0 (R223: CI_FULL
+unset, the private-plus-CI_FULL guard) / RED-GREEN LEDGER / AC1 FIELD
+BY FIELD (payload against a direct engine call) / NO-RECOMPUTATION
+PROOF (the plant, verified) / DISAGREEMENT CASE (R120, as it stands
+after R219/R220/R222) / TRUNCATION (the monthly column, and why it is
+not accumulated) / ANNEX COMPLETENESS (gaps, absences, provenance
+phrases) / TENANCY PROOF / WALKTHROUGH (each response, and the
+hand-checked month) / PARKED / DEVIATIONS / NOTICED BUT NOT TOUCHING
+/ QUESTIONS / PUSH PROOF
+
+END OF FW24 PROMPT

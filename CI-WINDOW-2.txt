@@ -1,0 +1,146 @@
+CI-WINDOW-2 SESSION PROMPT - Mon Releve
+External verification during the second temporary public window.
+
+Paste as the first message of a fresh Claude Code session at the
+repository root. This is NOT a build task.
+
+====================================================================
+WHY THIS WINDOW IS NARROWER THAN THE FIRST
+====================================================================
+CI-WINDOW-1 settled three first-evers: the Node parity matrix across
+ICU 78.2 and 78.3, test:runtime's nine refusal behaviours, and the
+visual suite on a second machine - which passed because R37's
+container pins the font stack, making that rule load-bearing and
+proven rather than conventional.
+
+Those claims do not need re-settling. What has changed since is a
+week of database work that has run in exactly two places: this
+machine, and a fresh clone on this machine.
+
+  R217  the write answer carries the rows
+  R219  dedup derived from the append-only trail (a data-loss fix)
+  R220  the client key is unique per account (an index migration)
+  R221  the selector sees the whole repository
+  R222  the demo year carries both eras
+
+TWO MIGRATIONS LANDED THIS WEEK. gate:clone applied them in sequence
+to a database created from nothing - on this machine. This window is
+the first time another machine does it.
+
+Spend the window on THAT, not on re-running what is already settled.
+
+====================================================================
+PRE-STEP RULINGS (apply verbatim)
+====================================================================
+R1 (as reworded by R200). pnpm gate:clone green on a fresh clone of
+   origin/main's HEAD before starting. Record the commit hash.
+
+R212 (carried, and it applies again). WHILE THE REPOSITORY IS PUBLIC,
+   WORKFLOW LOGS ARE WORLD-READABLE. Re-run the audit - the workflow
+   has changed since window 1, and a step added while private was
+   written without this constraint in mind. Report each step
+   examined, not a conclusion.
+
+R213 (carried). AN EXTERNAL CHECK THAT HAS NEVER RUN IS NOT A PASSING
+   CHECK, and a first-ever FAILURE here is the window succeeding. Do
+   not weaken a check to make it green; park it with what it found.
+
+R133 positive signals. R178 a live instance beats a planted one.
+R180 verify a plant landed. R207 regenerate only the files the change
+explains. R208 a regeneration reports what it wrote.
+
+====================================================================
+INCREMENT 0 - the audit, and the history check
+====================================================================
+0a. R212's workflow audit against the CURRENT workflow, including
+    anything added since window 1. Name each step examined.
+0b. The history check, once, verbatim output:
+      git log -p --all -S 'RESEND_API_KEY' -S 'AUTH_SECRET' \
+        -S 'PDF_TOKEN_SECRET' -S 'DATABASE_URL' | head -80
+      git log --all --name-only | grep -iE '\.env$|\.env\.local|serviceAccount|\.pem$|\.p12$'
+    A real value in history means the operator rotates the key -
+    never rewrite history, since anyone could already hold it.
+Commit: "chore: workflow audit before the second public window".
+Push.
+
+====================================================================
+INCREMENT 1 - enable, and state what is new
+====================================================================
+- Restore CI_FULL (or whatever gates the split) so every job runs.
+- Before reading any result, write down what this window is expected
+  to settle and what it cannot. A window that reports "all green"
+  without saying what was newly proven has told you nothing.
+- Commit: "chore: enable full CI for the second public window".
+  Push and let it run.
+
+====================================================================
+INCREMENT 2 - THE MIGRATIONS ON ANOTHER MACHINE (the point)
+====================================================================
+This is why the window exists. Report each explicitly:
+
+  a. BOTH MIGRATIONS IN SEQUENCE, from an empty database, on a
+     runner. R219's additive EntryEvent column and index, then
+     R220's index swap. Not "db:deploy succeeded" - report the
+     resulting pg_indexes and column list read back from the
+     database, so the claim is about the database's state rather
+     than the command's exit code.
+  b. THE FW14-ERA REPLAY on a runner. It creates a database and
+     replays migrations off disk with Prisma's own checksums. It has
+     never run anywhere but here, and it is the test that makes
+     migration history immutable in practice.
+  c. THE FULL DATABASE SUITE - 337 at the last count. Window 1 ran
+     269. Report the delta and which of the new tests had never run
+     externally.
+  d. R219's REPRODUCTION, on a runner: the late replay answering
+     written 0, duplicates 1, with the day unchanged. The data-loss
+     fix proven somewhere that is not this machine.
+
+====================================================================
+INCREMENT 3 - the rest, briefly
+====================================================================
+- Unit, e2e, size, runtime guard: report status and any delta from
+  window 1's figures. No narrative unless something differs.
+- THE VISUAL SUITE: run it, and expect it to pass for window 1's
+  reason. If it FAILS, that is the interesting outcome - the
+  container's base image may have moved. Report the diff count per
+  file and DO NOT regenerate from the runner (R135, R207): the local
+  container remains the reference.
+- NODE PARITY: run it once. It is cheap, and the ICU versions may
+  have moved since window 1 - report the versions observed, which is
+  the fact that made window 1's pass non-vacuous.
+
+====================================================================
+INCREMENT 4 - the report and the switch back
+====================================================================
+- REPORT-CI-WINDOW-2.txt: every suite with its run URL; a NEWLY
+  PROVEN section listing exactly what this window settled that
+  window 1 did not; and a STILL SINGLE-MACHINE section listing what
+  remains unverified elsewhere. That second list is what the R201
+  budget split protects when the repository goes private.
+- Q75: note whether the billing view was readable this time. A public
+  repository bills nothing, so the question stays open for free until
+  1 October, which distinguishes the two hypotheses at no cost.
+- Prove the switch back: set the variable, observe jobs skip at zero
+  cost, restore, and say so. The operator returns the repository to
+  private.
+- Commit: "CI-WINDOW-2: migrations verified on a second machine".
+  Push.
+
+====================================================================
+OUT OF SCOPE
+====================================================================
+- Any feature, any new test, any baseline regeneration.
+- FW24. R222's seed change - that belongs to a task, not a window.
+- Weakening any check to make a first-ever failure green.
+
+====================================================================
+REPORT FORMAT - REPORT-CI-WINDOW-2.txt
+====================================================================
+SUMMARY / PRECONDITIONS (gate:clone hash) / R212 AUDIT / HISTORY
+CHECK (verbatim) / MIGRATIONS ON A RUNNER (indexes and columns read
+back, the replay, the suite delta, R219's reproduction) / OTHER
+SUITES (status and deltas only) / NEWLY PROVEN / STILL SINGLE-MACHINE
+/ Q75 / THE SWITCH BACK (proven) / PARKED / DEVIATIONS / QUESTIONS /
+PUSH PROOF
+
+END OF CI-WINDOW-2 PROMPT
