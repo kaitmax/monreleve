@@ -148,12 +148,65 @@ export function readCount(suite, output, floor) {
  * files. Everything they import, and everything those import, is in scope.
  */
 
+import { execFileSync } from 'node:child_process';
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { join, dirname, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /** web/, derived from this file's own location rather than from process.cwd(). */
 export const PACKAGE_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+/** The repository root, which is NOT the package root. */
+export const REPO_ROOT = join(PACKAGE_ROOT, '..');
+
+/**
+ * Every path the working tree has changed, from the repository root.
+ *
+ * ============================================================================
+ * BOTH GIT COMMANDS RUN FROM THE SAME PLACE (R221)
+ * ============================================================================
+ *
+ * They used to run from web/, and the two disagreed about what a path IS:
+ * `git diff --name-only` reports from the REPOSITORY ROOT whichever directory
+ * it runs in, while `git ls-files --others` reports relative to the CURRENT
+ * one. A single selection printed
+ *
+ *     web/prisma/schema.prisma                  (tracked)
+ *     prisma/migrations/..._id/migration.sql    (untracked)
+ *
+ * for two files in the same directory.
+ *
+ * THE HARMLESS HALF: `toPackagePath` strips a leading `web/` and passes an
+ * already-package-relative path through unchanged, so both forms happened to
+ * land on the right rule. Correct by absorption, not by design.
+ *
+ * THE HALF THAT WOULD HAVE BITTEN: `ls-files --others` run from web/ CANNOT
+ * SEE an untracked file outside it. Everything selectable lives under web/
+ * today - but `android/` arrives at AN1, and a new top-level directory would
+ * be invisible on exactly the commit where it matters most, its first. A test
+ * plants a file at the repository root and asserts this function sees it.
+ *
+ * IT LIVES HERE RATHER THAN IN gate-for-changes.mjs because that script runs
+ * the gate on import. A function a test cannot import without running the
+ * thing it is testing is a function with no test.
+ */
+export function changedPaths(cwd = REPO_ROOT) {
+  const git = (args) =>
+    execFileSync('git', args, { cwd, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 })
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line !== '');
+
+  const raw = [
+    ...git(['diff', '--name-only', 'HEAD']),
+    ...git(['ls-files', '--others', '--exclude-standard']),
+  ];
+
+  // NORMALISED ONCE, HERE, rather than by each consumer guessing. Backslashes
+  // because this runs on Windows; the set because a file can be reported by
+  // both commands.
+  return [...new Set(raw.map((path) => path.split('\\').join('/')))].sort();
+}
 
 /** Extensions tried when a specifier carries none, in resolution order. */
 const EXTENSIONS = ['.ts', '.tsx', '.mts', '.mjs', '/index.ts', '/index.tsx'];

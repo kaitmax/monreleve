@@ -75,6 +75,17 @@ export interface SuiteCount {
 /** web/, derived from the module's own location rather than from the cwd. */
 export declare const PACKAGE_ROOT: string;
 
+/** The repository root, which is NOT the package root. */
+export declare const REPO_ROOT: string;
+
+/**
+ * Every path the working tree has changed, from the repository root (R221).
+ *
+ * Both git commands run from the same place, so tracked and untracked files
+ * are reported the same way - and an untracked file outside web/ is visible.
+ */
+export declare function changedPaths(cwd?: string): string[];
+
 export declare const BASE_SUITES: readonly string[];
 export declare const BROWSER_SUITES: readonly string[];
 export declare const DATABASE_SUITES: readonly string[];

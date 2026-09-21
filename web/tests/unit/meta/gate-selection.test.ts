@@ -25,12 +25,14 @@
 // suite that caught half the failure. a11y is still NAMED in the printed
 // selection so that its absence reads as considered rather than forgotten.
 
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   BASE_SUITES,
   PACKAGE_ROOT,
+  REPO_ROOT,
+  changedPaths,
   SELECTOR_PATTERNS,
   SUITE_COUNTS,
   databaseClosure,
@@ -40,6 +42,7 @@ import {
 } from '../../../scripts/gate-selection.mjs';
 
 const SLASH = String.fromCharCode(47);
+const BACKSLASH = String.fromCharCode(92);
 
 /**
  * The two commits R132 was written for, by their real paths.
@@ -630,5 +633,95 @@ describe('R218: the database selection is derived from the import graph', () => 
     // A deleted file is a normal thing to find in a diff, and a closure that
     // threw on one would take the whole gate down at exactly the wrong moment.
     expect(() => selectSuites(['web/lib/entries/deleted-yesterday.ts'])).not.toThrow();
+  });
+});
+
+describe('R221: the selector sees the whole repository, not only web/', () => {
+  // ============================================================================
+  // THE DEFECT: AN UNTRACKED FILE OUTSIDE web/ WAS INVISIBLE
+  // ============================================================================
+  //
+  // Both git commands used to run with cwd: web, and the two disagree about
+  // what a path is. `git diff --name-only` reports from the REPOSITORY ROOT
+  // whichever directory it runs in; `git ls-files --others` reports relative to
+  // the CURRENT one. A single real selection printed
+  //
+  //     web/prisma/schema.prisma                  (tracked)
+  //     prisma/migrations/..._id/migration.sql    (untracked)
+  //
+  // for two files in the same directory.
+  //
+  // The inconsistency was absorbed by toPackagePath, which strips a leading
+  // `web/` and passes an already-package-relative path through. Correct by
+  // absorption rather than by design - and the half that was NOT absorbed is
+  // that `ls-files --others` run from web/ cannot see outside it at all.
+  //
+  // Nothing selectable lives outside web/ today. `android/` arrives at AN1, and
+  // a new top-level directory would be invisible on its FIRST commit, which is
+  // the run where a missed suite costs the most.
+
+  it('sees an untracked file planted at the repository root', () => {
+    // R180: the plant is verified to have landed before its result is read -
+    // and here the mechanism under test is one that could not see it at all.
+    const planted = join(REPO_ROOT, 'r221-probe-untracked.txt');
+
+    writeFileSync(planted, 'temporary, written by a test\n', 'utf8');
+
+    try {
+      expect(existsSync(planted), 'the plant did not land').toBe(true);
+
+      const paths = changedPaths();
+
+      // NON-VACUITY FIRST. An empty list would satisfy nothing below for the
+      // right reason, and changedPaths returning [] is a plausible break.
+      expect(paths.length).toBeGreaterThan(0);
+
+      expect(
+        paths,
+        'an untracked file at the repository root is invisible to the selector',
+      ).toContain('r221-probe-untracked.txt');
+    } finally {
+      rmSync(planted, { force: true });
+    }
+  });
+
+  it('reports tracked and untracked paths in the SAME shape', () => {
+    // THE OTHER HALF. Seeing the file is not enough if it is reported in a
+    // different form from its tracked neighbours - that was the original
+    // symptom, and it is what a future consumer would trip on.
+    const planted = join(REPO_ROOT, 'web', 'r221-probe-in-web.txt');
+
+    writeFileSync(planted, 'temporary, written by a test\n', 'utf8');
+
+    try {
+      const paths = changedPaths();
+
+      // A file under web/ is reported WITH the prefix, exactly as `git diff`
+      // reports a tracked one. Previously this came back as the bare name.
+      expect(paths).toContain('web/r221-probe-in-web.txt');
+      expect(paths).not.toContain('r221-probe-in-web.txt');
+    } finally {
+      rmSync(planted, { force: true });
+    }
+  });
+
+  it('normalises separators, so a Windows path selects like any other', () => {
+    // The selector matches on forward slashes. git on Windows does not always
+    // agree with itself about which it emits, and a backslash would silently
+    // match no rule at all - a file that selects nothing looks exactly like a
+    // file that needs nothing.
+    for (const path of changedPaths()) {
+      expect(path, `${path} carries a backslash`).not.toContain(BACKSLASH);
+    }
+  });
+
+  it('routes a top-level android/ path to no suite today, but SEES it', () => {
+    // AN1's directory does not exist yet, so this asserts the thing that will
+    // matter then: the path reaches the selector. What it selects is a
+    // question for AN1; being invisible is not.
+    const selection = selectSuites(['android/app/src/main/AndroidManifest.xml']);
+
+    expect(selection.suites).toEqual([...BASE_SUITES]);
+    expect(selection.matched).toEqual([]);
   });
 });

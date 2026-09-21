@@ -31,11 +31,11 @@
 // printed summary says which of the two each suite got.
 
 import { spawn } from 'node:child_process';
-import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describeSelection, readCount, selectSuites } from './gate-selection.mjs';
+import {
+  changedPaths, describeSelection, readCount, selectSuites } from './gate-selection.mjs';
 
 const web = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -60,19 +60,7 @@ const FLOOR_FOR = {
 };
 
 
-function changedPaths() {
-  const git = (args) =>
-    execFileSync('git', args, { cwd: web, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 })
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line !== '');
 
-  // Tracked changes against HEAD, plus files git has never seen.
-  return [
-    ...git(['diff', '--name-only', 'HEAD']),
-    ...git(['ls-files', '--others', '--exclude-standard']),
-  ];
-}
 
 /** Run one command, streaming its output and keeping a copy to measure. */
 function run(command) {
