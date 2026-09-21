@@ -1,0 +1,440 @@
+====================================================================
+REPORT-FW23b.txt - R217 and R218
+Mon Releve   2026-09-21
+====================================================================
+
+NOTE ON SPELLING. Pure ASCII, as the protocol requires. Any French
+quoted here is transliterated; the accented original lives in
+web/lib/fr (R155 - the ASCII is illustrative, never a source).
+
+SUMMARY
+--------------------------------------------------------------------
+Two operator rulings implemented, and one question I could not
+answer from this machine and did not pretend to.
+
+  R217  POST /api/v1/entries returns the rows it wrote, so a client
+        clears SPEC 13.2's pending state in one round trip. The
+        document now states what the freeze forbids, in the terms
+        that decide the next question of this kind.
+  R218  The gate selector derives its database selection from the
+        import graph instead of a path list.
+  Q75   Not answerable here: the token lacks the `user` scope, so
+        both billing endpoints 404. What WOULD settle it, and a free
+        test that settles it by itself on 1 October, are below.
+
+THE MOST SERIOUS THING FOUND IS NOT EITHER RULING. Reading the write
+path for R217 surfaced a silent data-loss path: a late replay of an
+already-applied mutation id reverts a newer edit. Confirmed by probe
+and then end to end through the real routes in the walkthrough. Not
+fixed - what to do is a D30 semantics question - and it is Q78.
+
+THE FINDING INSIDE THE WORK IS IN R218, AND IT IS THAT THE RULING'S
+OWN MECHANISM DOES NOT COVER THE CASE THAT PRODUCED IT. Measured before building:
+`lib/entries/schema.ts` imports no Prisma client at all. A forward
+rule - "a module that imports the Prisma client selects test:db" -
+would have left Q77's case exactly where it was while looking like a
+fix. The direction had to be reversed.
+
+RED-GREEN LEDGER
+--------------------------------------------------------------------
+R217 - the rows on the write path
+
+  RED    tests/db/entries-route.test.ts, 11 new tests, 8 failing
+         AssertionError: Target cannot be null or undefined
+         at expect(entriesOf(answer)).toHaveLength(2)
+         The answer had no `entries` key.
+         The two that did NOT fail are guards rather than the
+         subject - "no entries on a refusal" and "never exposes
+         userId" both hold trivially while there is no such key, and
+         they are there to keep holding once there is.
+  GREEN  95 passed after the shared reader, the snapshot inside the
+         transaction, and the route change.
+
+  PLANTS, each verified to have landed, each restore verified
+  byte-for-byte afterwards (see DEVIATIONS 1):
+   1 a replay returns no rows
+       CAUGHT - "expected [] to have a length of 1 but got +0", in
+       the test written to say this is the case that matters most
+   2 the shared shape loses lastModifiedAt
+       CAUGHT - 8 tests across BOTH routes, which is the point of
+       the shape having one home
+   3 the shared reader drops its tenancy filter
+       CAUGHT - 2 tests, one per route
+
+R218 - the selector derives its database rule
+
+  RED    none, and saying so plainly is better than dressing it up.
+         The eight closure tests were written against a mechanism
+         that did not exist, so the honest description is that they
+         could not run rather than that they ran and failed. What
+         stands in for a RED run here is the pair of plants below,
+         which is the substitute R180 describes.
+  GREEN  69 passed in tests/unit/meta/gate-selection.test.ts,
+         eight closure tests plus the seed/glob parity guard added
+         after the finding below.
+
+  AND AN EXISTING TEST WENT RED ON THE WAY, correctly: "is exactly
+  the twelve names R132 now carries" caught the selector label
+  changing. That is R206's asserted-list corollary doing its job -
+  the label is printed into commit bodies, so changing it silently
+  would change what every future commit claims.
+
+  PLANTS:
+   A the walk stops after one hop
+       CAUGHT - 5 tests, including "follows the graph transitively,
+       not one hop"
+   B the closure matches every path
+       CAUGHT - 6 tests, including three that assert OTHER suites
+       are chosen correctly. That is the over-selection direction,
+       and it is the one that would have made the selection
+       meaningless while every database test still passed.
+
+R217: WHAT THE ANSWER NOW CARRIES
+--------------------------------------------------------------------
+  { "status": "ok", "written": 2, "duplicates": 1,
+    "entries": [ {...}, {...}, {...} ] }
+
+  THE SHAPE IS THE READ PATH'S, FROM THE READ PATH'S CODE. Not a
+  second serialiser that agrees today: `readEntriesWhere` is now the
+  one home (R206) and both routes call it. A test asserts the two
+  routes return objects that are equal for the same day, which is
+  the enforcement point rather than the comment above it.
+
+  DUPLICATES ARE INCLUDED, AND THAT IS THE HALF THAT MATTERS. A
+  client retries precisely because it never received the first
+  answer. A replay that withheld the rows would deny the timestamps
+  to the one caller that cannot obtain them any other way, and the
+  second round trip would survive in exactly the case R217 exists to
+  remove. The test that says so is named for it.
+
+  THE SNAPSHOT IS READ INSIDE THE TRANSACTION. Read afterwards it
+  would be a different moment from the one being reported, and a
+  concurrent write could land between them - so the answer would
+  describe a state the caller's request never produced.
+
+  A REFUSAL CARRIES NO `entries` KEY AT ALL. The batch is
+  all-or-nothing; an error must not hand back rows suggesting
+  something landed.
+
+THE DOCUMENT NOW SAYS WHAT THE FREEZE FORBIDS
+--------------------------------------------------------------------
+Three operations forbidden - renaming a field, removing a field or
+code, and changing what an existing field MEANS. The third is called
+out as the worst, because nothing fails: the client parses happily
+and is wrong.
+
+Four things left free, and the first is the escape hatch: adding a
+field to a RESPONSE. Adding one to a REQUEST is NOT free, and the
+asymmetry is stated - a new optional request field is fine, making an
+existing one required is not.
+
+R217 is written into the document as the worked example, so the next
+session meets the reasoning rather than re-deriving it. A test
+asserts all five phrases are present: without it, a future session
+reads FROZEN as "nothing changes" and leaves improvements unmade that
+break nobody, which is how this response nearly kept its two round
+trips.
+
+R218: WHY THE DIRECTION HAD TO BE REVERSED
+--------------------------------------------------------------------
+THE RULING'S WORDING WAS "a module that imports the Prisma client
+selects test:db". Measured before building it:
+
+  lib/entries/schema.ts      imports no '@prisma/client'
+                             imports no '@/lib/db/client'
+
+So the forward rule does not select the module whose omission raised
+Q77 in the first place. schema.ts is the API contract that tests/db
+drives end to end, and it reaches the database only by being imported
+BY write.ts, which imports it.
+
+THE QUESTION THE SELECTOR ACTUALLY ASKS is "could changing this file
+break test:db?", and that is answered by reachability FROM the suite
+rather than by what each file imports. So `databaseClosure` walks the
+import graph outward from every tests/db/*.test.ts and returns what
+it reaches - 85 files today.
+
+  IN   lib/entries/schema.ts   <- Q77's case, now covered
+  IN   app/api/v1/entries/route.ts  <- R204: the suite drives the
+                                      route, so the route is in scope
+  IN   lib/entries/day.ts      <- three hops from a seed
+  IN   lib/calc-engine/index.ts
+  out  lib/ui/core/styles/tokens.scss
+
+  THE PATH LIST SURVIVES AS A FLOOR, NOT AS THE RULE. prisma/**,
+  lib/db/**, tests/db/** and the two configs stay, because a
+  migration and a config are not reachable through an import. What
+  they are no longer asked to do is KEEP UP - which is the part that
+  failed three times.
+
+  A REGEX, NOT A PARSER, and the trade is stated where it lives: a
+  TypeScript program costs seconds on every gate run to answer in a
+  different way what this answers in milliseconds. It over-matches -
+  a specifier inside a comment counts - and over-matching is the SAFE
+  direction: the cost is running test:db when it was not needed,
+  never skipping it when it was.
+
+  AND THE OVER-SELECTION DIRECTION IS ASSERTED, because a closure
+  that swallowed the repository would make test:db run on every
+  change and the selection would stop meaning anything - R132's own
+  failure mode, reached from the safe side. Plant B proves the test
+  fires.
+
+R218 FOUND THE SAME DEFECT IN ITSELF, ONE LAYER DOWN
+--------------------------------------------------------------------
+The first version of `seeds()` read tests/db with a flat
+`readdirSync`. vitest.db.config.ts globs every .test.ts under
+tests/db AT ANY DEPTH.
+
+So the closure was complete only because no subdirectory exists yet -
+R171 coincidence, inside the mechanism written to remove exactly
+that, and invisible to the non-vacuity check because the other
+eighteen seeds remain. It is the same shape as the btree finding in
+FW23: a guard that is right today for a reason that is not the
+reason it claims.
+
+FIXED BEFORE COMMIT, and the guard for it is tied to the GLOB rather
+than to a count somebody typed: every file the suite would glob must
+be in the closure.
+
+PROVEN WITH A REAL SUBDIRECTORY, because the guard cannot fail
+without one. tests/db/nested/probe.test.ts was created, the
+recursive walk seeded it (69 passed), the flat scan was planted back,
+and the guard failed by name:
+
+  tests/db/nested/probe.test.ts is globbed by the suite but not
+  seeded: expected false to be true
+
+The plant was restored and verified, and the temporary file removed.
+
+A TEST THAT TAUGHT ME THE CONTRACT
+--------------------------------------------------------------------
+I wrote a test asserting that a batch naming one day twice collapses
+into a single entry in its final state - guarding against an answer
+built from each upsert's return value, where the first row would be
+stale by the time it was sent.
+
+It failed, and the reason was better than the test: the schema
+already refuses a batch that repeats a (dayDate, portion), with
+
+  "entries[1] repeats 2026-04-07 FULL, already at entries[0].
+   One batch may not carry two versions of one day."
+
+So the hazard cannot arise - it is foreclosed a layer earlier than
+where I was defending. The test now asserts the rule that actually
+fires, including that nothing landed, and says in its own comment why
+it was rewritten: if that validation rule is ever relaxed, the
+answer's freshness quietly becomes load-bearing and this is where
+somebody should find that out.
+
+Recorded because the honest version of "my test failed" here is "my
+test was wrong about the product", and the product was better than
+the test.
+
+FINDINGS: A LATE REPLAY SILENTLY DESTROYS AN EDIT
+--------------------------------------------------------------------
+FOUND WHILE READING THE WRITE PATH FOR R217, CONFIRMED BY PROBE, AND
+THEN DEMONSTRATED END TO END IN THE WALKTHROUGH.
+
+The duplicate set is one query:
+
+  tx.entry.findMany({ where: { userId,
+    clientMutationId: { in: items.map(i => i.clientMutationId) } } })
+
+`Entry.clientMutationId` holds the id of the LAST write applied to
+that row, not every id ever applied. So:
+
+  1. mutation A writes 2026-04-07 as CH.        row carries A
+  2. mutation C edits it to HOME.               row carries C
+  3. the queue retries A - as a queue does when
+     it never received the answer to A.
+  4. the lookup for A finds nothing. A is NOT a
+     duplicate. A is APPLIED.
+  5. the day is CH again. The edit is gone.
+
+WALKTHROUGH STEP 7, VERBATIM:
+
+  status: ok  written: 1  duplicates: 0
+  {"clientMutationId":"r217-a","dayDate":"2026-04-07","kind":"CH",
+   "note":"bureau","firstRecordedAt":"2026-09-21T10:03:34.157Z",
+   "lastModifiedAt":"2026-09-21T10:03:35.016Z"}
+
+`written: 1` on a mutation id the server had already applied, and the
+row is back to CH with the pre-edit note. The reader's correction is
+gone from the record.
+
+WHAT IS NOT LOST: the trail. EntryEvent is append-only, so the edit
+and the revert are both on it, and lastModifiedAt moves. The
+DOCUMENT can still show what happened. It is the current state - what
+the app displays and what the dossier counts - that is wrong.
+
+WHY IT IS PLAUSIBLE IN THE FIELD RATHER THAN THEORETICAL: step 3 is
+exactly what an offline queue does. The client posts A, the tunnel
+eats the response, the user edits the day on the same device, and the
+queue flushes A on reconnect. D30's idempotency key is doing its job
+for the SIMPLE replay - walkthrough step 2 proves that - and stops
+working the moment the row has moved on.
+
+THE FIX IS NOT OBVIOUS, WHICH IS WHY IT IS A QUESTION. The dedup set
+could be built from EntryEvent, which holds every mutation id ever
+applied - one more query and an index. But that changes what D30
+MEANS: today "already seen" is a property of the row, and it would
+become a property of the account's history. That is a product
+decision about what a client may assume, and this contract froze two
+days ago.
+
+NOT TOUCHED. The design panel predicted this in the abstract during
+FW23 - "inequality proves only that the last write was not yours" -
+and the prediction was about the CLIENT re-sending. This is the
+server accepting what the client re-sent. Same root, other end.
+
+Q75 - WHAT I CAN AND CANNOT SEE FROM HERE
+--------------------------------------------------------------------
+I CANNOT ANSWER IT, and the reason is specific rather than a shrug.
+Both billing endpoints refuse this token:
+
+  users/kaitmax/settings/billing/actions      404
+  users/kaitmax/settings/billing/usage        404
+  gh: This API operation needs the "user" scope.
+
+  token scopes: gist, read:org, repo, workflow
+
+Widening a credential's scope is a change to the account's security
+posture and is not something to do unasked, so it was not done.
+
+WHAT WOULD SETTLE IT, both in Settings -> Billing & plans: the usage
+view showing Actions minutes consumed against the 2 000 included,
+and whether a payment method is on file with a non-zero spending
+limit. Exhausted minutes with a zero limit is the allowance; a
+declined card says so separately.
+
+AND THERE IS A FREE TEST THAT SETTLES IT WITHOUT ANYONE LOOKING.
+The two hypotheses make different predictions about 1 October: an
+exhausted September allowance resets and CI starts working by
+itself; a failed payment does not. Since CI_FULL is deleted, nothing
+is being spent in the meantime and nothing needs deciding before
+then.
+
+WHAT IS OBSERVABLE FROM HERE, for the record: the repository is
+PRIVATE (it was public during FW23-CI, which is why those runs were
+free); the last two pushes produced `skipped` rather than `failure`,
+so the switch back is doing its job and main is no longer collecting
+reds that no test caused.
+
+WALKTHROUGH (R176/R177)
+--------------------------------------------------------------------
+Driven with curl against `pnpm dev` on 3010. Port asserted free
+first (R179); /api/health answered {"service":"monreleve"} before
+anything was believed (R169). A real token through the real flow:
+magic-link 202, the dev server printed the link, the callback
+returned an access token.
+
+  1  POST two days
+     written:2 duplicates:0 entries:2
+     Both rows returned WITH firstRecordedAt 2026-09-21T10:03:34.157Z
+     - the server clock the client was previously waiting a second
+     round trip for.
+
+  2  REPLAY the same batch verbatim
+     written:0 duplicates:2 ENTRIES:2
+     Byte-identical to step 1. The recovery case works: a client that
+     lost the first answer gets the timestamps from the retry.
+
+  3  EDIT 2026-04-07
+     written:1 duplicates:0 entries:1
+     kind HOME, note "finalement teletravail",
+     firstRecordedAt UNMOVED at ...34.157Z,
+     lastModifiedAt ...34.503Z - appearing in the POST answer itself
+     rather than only on a later GET.
+
+  4  A BATCH NAMING ONE DAY TWICE
+     400 invalid_payload, and the message names both positions:
+     "entries[1] repeats 2026-04-10 FULL, already at entries[0]."
+
+  5  A REFUSAL
+     entries: <ABSENT>. No key at all, as the document says.
+
+  6  GET the year
+     Equal to what the POST answers said, field for field. 2026-04-07
+     carries the edited state from step 3; 2026-04-08 still
+     lastModifiedAt null.
+
+  7  Q78, END TO END - see FINDINGS below.
+
+R179 EARNED ITS KEEP AGAIN, for the fourth distinct time. Stopping
+the walkthrough's dev server left `next dev` holding 3010 - the shell
+died, the tree did not. Caught by asserting the port free afterwards
+and the orphan killed.
+
+DEVIATIONS
+--------------------------------------------------------------------
+1. THE PLANT HARNESS WAS REBUILT before it was used, because last
+   session's version caused a wrong diagnosis: it snapshotted a file
+   once, I refactored that file between plants, and the next restore
+   wrote the pre-refactor snapshot back - silently reverting real
+   work, after which the following run failed on a test whose
+   subject had vanished. The new one snapshots FRESH on every plant
+   and the restore is compared byte-for-byte before it reports
+   success. R180's sentence, pointed at the restore.
+
+2. TWO RULINGS IN ONE SESSION rather than one task. Both were given
+   in the same instruction and R218 is small; they are separate
+   commits so either can be reverted alone.
+
+3. R218's CLOSURE TESTS ARE NOT TEST-FIRST in the RED sense - the
+   mechanism did not exist, so they could not run rather than run
+   and fail. Two plants stand in, which is what R180 offers when a
+   RED run is not available.
+
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------
+1. A LATE REPLAY REVERTS A NEWER EDIT. CONFIRMED, END TO END,
+   THROUGH THE REAL ROUTES - see FINDINGS. Not fixed, because what to
+   do about it is a D30 semantics question rather than a bug with one
+   obvious repair, and inventing a product decision is the one thing
+   this protocol forbids outright. Q78 asks for the ruling, and it is
+   the most serious thing found this session.
+
+2. `conflict` MAY BE UNREACHABLE. It is raised from a P2002, and the
+   write path uses `upsert` for the day-and-portion key while the
+   schema refuses a repeated day before the write path is reached.
+   The one live producer appears to be the unique index on
+   clientMutationId. Not investigated; a frozen error code with no
+   producer is this project's named class, so it is worth one.
+
+3. THE GATE SELECTOR STILL HAS NO RULE FOR ITSELF. Changing
+   scripts/gate-selection.mjs selects the base chain, and its tests
+   run there, so nothing is missed today. Recorded because the file
+   now READS THE FILESYSTEM, which is a new failure mode for it: a
+   closure that silently returned nothing would degrade to the path
+   floor and no gate run would say so. The non-vacuity test
+   (closure.size > 20) is the guard; it lives in the right place but
+   is worth knowing about.
+
+QUESTIONS
+--------------------------------------------------------------------
+Q78. *** THE ONE THAT MATTERS. *** A late replay of an already-applied
+     mutation id silently reverts a newer edit - confirmed end to end,
+     reproduction in FINDINGS. Should "already seen" be a property of
+     the ROW (today) or of the ACCOUNT'S HISTORY (build the dedup set
+     from EntryEvent, which holds every id ever applied - one more
+     query and an index)? The second closes it, and changes what D30
+     means for a client. It is a product decision on a contract that
+     froze two days ago, so it is asked rather than answered. If the
+     answer is the second, it should land before AN5 rather than
+     after, for the same R217 reason: response-shape changes are
+     cheap now and expensive once handsets have them.
+
+Q79. `conflict` is frozen in the document and may have no producer
+     reachable from the route. Keep it as a reserved code, or remove
+     it before AN5 ships and a client branches on something that
+     cannot happen? Removing is the operation the freeze forbids, so
+     it is now or never.
+
+PUSH PROOF
+--------------------------------------------------------------------
+<FILLED IN AFTER THE PUSH>
+
+====================================================================
+END OF REPORT-FW23b.txt
+====================================================================

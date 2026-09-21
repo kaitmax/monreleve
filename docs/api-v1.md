@@ -224,10 +224,35 @@ migration, an app release, and a tail of versions still sending the old shape
 for as long as anyone keeps a handset — R187, at the one place in this product
 where it is not recoverable.
 
-**What may still change freely:** every French `message`, because a client that
-branches on it was already broken; the HTTP status *within* a class; the order
-of keys inside a JSON object; and anything additive — a **new** key beside the
-existing ones, which a client built per §6.4 will ignore.
+**What the freeze forbids, precisely.** Read it as "nothing changes" and you
+will leave real improvements unmade; read it as "anything goes" and you will
+break a handset somebody cannot update. It forbids exactly three things:
+
+| | |
+|---|---|
+| **Renaming** any field, in a request or a response | a shipped client looks for the old name and finds nothing |
+| **Removing** any field or error `code` | same |
+| **Changing what an existing field MEANS** | the worst of the three, because nothing fails — the client parses happily and is wrong |
+
+**What stays free**, and the first row is the one that matters most:
+
+| | |
+|---|---|
+| **Adding a field to a RESPONSE** | a client built per §6.4 ignores keys it does not know. This is the escape hatch, and it is meant to be used |
+| Every French `message` | a client that branches on it was already broken |
+| The HTTP status *within* a class | 400 → 422 is fine; 400 → 200 is not |
+| The order of keys inside a JSON object | never part of the contract |
+
+**Adding a field to a REQUEST is not free**, and the asymmetry is the whole
+point: a new *optional* request field is additive and fine, but making an
+existing optional field required, or adding a required one, breaks every client
+that does not send it.
+
+R217 is the worked example. The `POST` answer gained `entries` *after* this
+document said FROZEN, because a response gaining a key breaks nobody — and the
+cost of not adding it was a second round trip paid by every client forever, on
+the call the app makes most often. Deferring it would have cost a response
+change plus an app release instead of one increment.
 
 ### 6.1 `POST /api/v1/entries` — the offline queue flushing
 
@@ -283,11 +308,35 @@ is the server naming its own rows.
 **Answer:**
 
 ```json
-{ "status": "ok", "written": 2, "duplicates": 1 }
+{
+  "status": "ok",
+  "written": 2,
+  "duplicates": 1,
+  "entries": [ { … }, { … }, { … } ]
+}
 ```
 
 `written` produced a row; `duplicates` were already here and are **acknowledged
 rather than retried**. A client reconciles its queue from those two numbers.
+
+`entries` carries **the current state of every day the batch named**, in exactly
+the shape and order §6.2 specifies — the same object, from the same code, so a
+client needs one parser rather than two. This is what lets the app clear the
+pending state SPEC §13.2 describes **without a second request**.
+
+**Duplicates are included, and that is the half that matters.** A client retries
+precisely because it never received the first answer; a replay that withheld the
+rows would deny the timestamps to the one caller that cannot obtain them any
+other way, and the second round trip would survive in exactly the case this
+exists to remove.
+
+**A refusal carries no `entries` key at all.** The batch is all-or-nothing, so
+an error must not hand back rows that suggest something landed.
+
+**One batch may not name the same `(dayDate, portion)` twice.** It is refused
+with `invalid_payload`, and the message names both positions — *"entries[1]
+repeats 2026-04-07 FULL, already at entries[0]"* — because a client author is
+holding a queue rather than a batch and needs to know which two items collided.
 
 ### 6.2 `GET /api/v1/entries?year=YYYY` — the read path
 

@@ -121,7 +121,15 @@ export async function POST(request: Request): Promise<NextResponse> {
   // this: `written` are new, `duplicates` were already here and are
   // acknowledged rather than retried (D30, AC3).
   return NextResponse.json(
-    { status: 'ok', written: result.written, duplicates: result.duplicates },
+    {
+      status: 'ok',
+      written: result.written,
+      duplicates: result.duplicates,
+      // R217: THE ROWS, so a client can clear the pending state SPEC 13.2
+      // describes without a second request. Additive under the freeze - a
+      // client built per section 6.4 ignores keys it does not know.
+      entries: result.entries,
+    },
     { status: 200 },
   );
 }

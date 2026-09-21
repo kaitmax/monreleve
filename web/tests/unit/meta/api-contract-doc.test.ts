@@ -110,6 +110,22 @@ describe('docs/api-v1.md documents exactly what the code accepts', () => {
     }
   });
 
+  it('says what the freeze forbids, not merely that it is frozen (R217)', () => {
+    // WITHOUT THIS THE DOCUMENT IS AMBIGUOUS IN THE EXPENSIVE DIRECTION. A
+    // session reading "FROZEN" as "nothing changes" leaves improvements unmade
+    // that break nobody - which is how the POST answer nearly kept its two
+    // round trips. The three forbidden operations are named, and so is the one
+    // that stays free.
+    expect(SOURCE).toContain('**Renaming**');
+    expect(SOURCE).toContain('**Removing**');
+    expect(SOURCE).toContain('**Changing what an existing field MEANS**');
+    expect(SOURCE).toContain('**Adding a field to a RESPONSE**');
+
+    // AND THE ASYMMETRY, which is the half a reader gets wrong: a response may
+    // gain a key freely, a request may not gain a REQUIRED one.
+    expect(SOURCE).toContain('**Adding a field to a REQUEST is not free**');
+  });
+
   it('carries the freeze and says what a version costs', () => {
     // R160's shape on a contract document: the marker states the status rather
     // than implying a process nobody wrote down.

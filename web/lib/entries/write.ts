@@ -31,6 +31,7 @@ import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db/client';
 import { toStoredDay } from '@/lib/entries/day';
 import type { EntryItem } from '@/lib/entries/schema';
+import { type ReadEntry, readEntriesWhere } from '@/lib/entries/read';
 
 export interface WriteResult {
   readonly ok: boolean;
@@ -38,6 +39,18 @@ export interface WriteResult {
   readonly written: number;
   /** Items whose clientMutationId had been seen before (D30). */
   readonly duplicates: number;
+  /**
+   * The current state of every day this batch named (R217).
+   *
+   * WRITTEN AND DUPLICATE ALIKE, and the duplicates are the half that matters.
+   * A client retries precisely because it never received the first answer, so a
+   * replay that withheld the rows would deny the timestamps to the one caller
+   * that cannot get them any other way - leaving the second round trip in place
+   * in exactly the case this exists to remove.
+   *
+   * Empty when ok is false: a refusal is not a partial success.
+   */
+  readonly entries: ReadEntry[];
   /** Set when ok is false. A stable code, never prose (R198). */
   readonly code?: 'conflict' | 'write_failed';
 }
@@ -72,7 +85,16 @@ export async function writeEntries(userId: string, items: EntryItem[]): Promise<
 
       let written = 0;
 
+      // EVERY DAY THE BATCH NAMES, duplicates included. The snapshot below is
+      // taken once, AFTER the loop, rather than collecting each upsert's return
+      // value: two items in one batch may touch the same day, and the row as it
+      // stood when the first was applied is stale by the time the answer is
+      // sent. Reading afterwards reports what is stored.
+      const touched: Array<{ dayDate: Date; portion: string }> = [];
+
       for (const item of items) {
+        touched.push({ dayDate: toStoredDay(item.dayDate), portion: item.portion });
+
         if (seen.has(item.clientMutationId)) {
           // ACKNOWLEDGED AND IGNORED (SPEC 8). No row, no event. An error here
           // would make the queue retry forever, and the retry is what produced
@@ -144,7 +166,15 @@ export async function writeEntries(userId: string, items: EntryItem[]): Promise<
         written += 1;
       }
 
-      return { ok: true, written, duplicates: items.length - written };
+      // INSIDE THE TRANSACTION, deliberately. A snapshot read afterwards is a
+      // different moment from the one being reported, and a concurrent write
+      // could land between them - so the answer would describe a state the
+      // caller's request never produced.
+      const entries = await readEntriesWhere(tx, userId, {
+        OR: touched.map((ref) => ({ dayDate: ref.dayDate, portion: ref.portion as 'FULL' })),
+      });
+
+      return { ok: true, written, duplicates: items.length - written, entries };
     });
   } catch (cause) {
     // R198: the boundary preserves WHICH rule fired. A unique-constraint
@@ -173,6 +203,6 @@ export async function writeEntries(userId: string, items: EntryItem[]): Promise<
       code === 'write_failed' ? (cause instanceof Error ? cause.message : String(cause)) : '',
     );
 
-    return { ok: false, written: 0, duplicates: 0, code };
+    return { ok: false, written: 0, duplicates: 0, entries: [], code };
   }
 }

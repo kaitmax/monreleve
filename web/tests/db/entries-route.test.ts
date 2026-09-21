@@ -17,6 +17,7 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { prisma } from '@/lib/db/client';
 import { issueTokenPair } from '@/lib/auth/tokens';
 import { MAX_BATCH_BODY_BYTES } from '@/lib/entries/schema';
+import { ENTRY_READ_FIELDS } from '@/lib/entries/read';
 import { POST } from '@/app/api/v1/entries/route';
 
 const ORIGIN = 'https://monreleve.ch';
@@ -313,5 +314,222 @@ describe('R198: each rule that fires has its own code', () => {
 
     expect(codes.size).toBe(4);
     for (const code of codes) expect(code).toMatch(/^[a-z][a-z_]*[a-z]$/);
+  });
+});
+
+describe('R217: the answer carries the written rows', () => {
+  // WHY THIS IS INSIDE THE FREEZE, stated where the next reader meets it.
+  // The freeze forbids RENAMING and REMOVING; a response GAINING a key breaks
+  // no client built per section 6.4, which requires ignoring unknown keys.
+  // What it buys: SPEC 13.2 says the app shows a pending state until the server
+  // value comes back, and until now that value arrived only via GET - so every
+  // client paid two round trips on the call the app makes most often.
+
+  async function post(payload: unknown, bearer = token): Promise<Response> {
+    return POST(
+      new Request(`${ORIGIN}/api/v1/entries`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${bearer}` },
+        body: JSON.stringify(payload),
+      }),
+    );
+  }
+
+  async function answerOf(response: Response): Promise<Record<string, unknown>> {
+    return (await response.json()) as Record<string, unknown>;
+  }
+
+  function entriesOf(payload: Record<string, unknown>): Array<Record<string, unknown>> {
+    return payload.entries as Array<Record<string, unknown>>;
+  }
+
+  it('returns one entry per day the batch touched', async () => {
+    const answer = await answerOf(
+      await post({
+        entries: [
+          { clientMutationId: mutation(), dayDate: '2026-04-07', kind: 'CH' },
+          { clientMutationId: mutation(), dayDate: '2026-04-08', kind: 'HOME' },
+        ],
+      }),
+    );
+
+    expect(answer.written).toBe(2);
+    expect(entriesOf(answer)).toHaveLength(2);
+    expect(entriesOf(answer).map((entry) => entry.dayDate)).toEqual(['2026-04-07', '2026-04-08']);
+  });
+
+  it('returns the SAME shape as the read path, field for field', async () => {
+    // R206: one home for the entry shape. Two routes returning two shapes for
+    // one concept would make a client carry two parsers for the same object,
+    // and the second one drifts.
+    const answer = await answerOf(
+      await post({ entries: [{ clientMutationId: mutation(), dayDate: '2026-04-07', kind: 'CH' }] }),
+    );
+
+    expect(Object.keys(entriesOf(answer)[0] ?? {}).sort()).toEqual([...ENTRY_READ_FIELDS].sort());
+  });
+
+  it('carries the server clock the client is waiting for', async () => {
+    // THE POINT OF THE WHOLE CHANGE. The pending state clears on
+    // firstRecordedAt, and this is where it now arrives.
+    const answer = await answerOf(
+      await post({ entries: [{ clientMutationId: mutation(), dayDate: '2026-04-07', kind: 'CH' }] }),
+    );
+
+    const entry = entriesOf(answer)[0];
+
+    expect(typeof entry?.firstRecordedAt).toBe('string');
+    expect(entry?.lastModifiedAt).toBeNull();
+    expect(new Date(String(entry?.firstRecordedAt)).getUTCFullYear()).toBeGreaterThan(2020);
+  });
+
+  it('RETURNS THE ROWS ON A REPLAY TOO, which is the case that matters most', async () => {
+    // THE DECIDING TEST. A client retries precisely because it did not receive
+    // the first answer - so if a replay withheld the rows, the client that most
+    // needs the timestamps is the one denied them, and it would still need the
+    // GET. Withholding them would leave the two round trips in place in exactly
+    // the case R217 exists to remove.
+    const id = mutation();
+    const batch = { entries: [{ clientMutationId: id, dayDate: '2026-04-07', kind: 'CH' }] };
+
+    const first = await answerOf(await post(batch));
+    const replay = await answerOf(await post(batch));
+
+    expect(replay.written).toBe(0);
+    expect(replay.duplicates).toBe(1);
+
+    // SAME ROWS, SAME VALUES - an acknowledgement a client can act on rather
+    // than a count it has to interpret.
+    expect(entriesOf(replay)).toHaveLength(1);
+    expect(entriesOf(replay)[0]).toEqual(entriesOf(first)[0]);
+  });
+
+  it('agrees with what the read path returns afterwards', async () => {
+    // BOTH ROUTES, ONE ANSWER. If these ever diverge, a client reconciling from
+    // the POST answer and a client reconciling from the GET disagree about the
+    // same day, and only one of them is right.
+    const { GET } = await import('@/app/api/v1/entries/route');
+
+    const posted = await answerOf(
+      await post({
+        entries: [
+          {
+            clientMutationId: mutation(),
+            dayDate: '2026-04-07',
+            kind: 'CH',
+            note: 'bureau',
+            clientClaimedAt: '2026-04-07T18:44:02.000Z',
+          },
+        ],
+      }),
+    );
+
+    const read = (await (
+      await GET(
+        new Request(`${ORIGIN}/api/v1/entries?year=2026`, {
+          headers: { authorization: `Bearer ${token}` },
+        }),
+      )
+    ).json()) as Record<string, unknown>;
+
+    expect(entriesOf(posted)).toEqual(entriesOf(read));
+  });
+
+  it('cannot be handed a stale row, because one batch may not repeat a day', async () => {
+    // I WROTE THIS TEST FOR A HAZARD THAT DOES NOT EXIST, and the test is what
+    // found that out - so it now asserts the real rule instead of the imagined
+    // one.
+    //
+    // The worry was sound in shape: if a batch could touch one day twice, an
+    // answer built from each upsert's return value would carry the row as it
+    // stood when the FIRST item was applied - correct when read and stale when
+    // sent. The snapshot is taken after the whole batch for that reason.
+    //
+    // But the schema forecloses it a layer earlier: a batch repeating a
+    // (dayDate, portion) is refused at validation and never reaches the write
+    // path. So the guarantee has two independent reasons, and this test pins
+    // the one that actually fires - because if that validation rule were ever
+    // relaxed, the answer's freshness would quietly become load-bearing.
+    const answer = await answerOf(
+      await post({
+        entries: [
+          { clientMutationId: mutation(), dayDate: '2026-04-07', kind: 'CH' },
+          { clientMutationId: mutation(), dayDate: '2026-04-07', kind: 'HOME', note: 'final' },
+        ],
+      }),
+    );
+
+    expect(answer.status).toBe('error');
+    expect(answer.code).toBe('invalid_payload');
+
+    // THE MESSAGE NAMES BOTH POSITIONS, which is what makes it actionable to a
+    // client author holding a queue rather than a batch.
+    expect(JSON.stringify(answer.issues)).toContain('repeats 2026-04-07 FULL');
+    expect(JSON.stringify(answer.issues)).toContain('entries[0]');
+
+    // AND NOTHING LANDED - all-or-nothing, so the refusal is total.
+    expect(await prisma.entry.count({ where: { userId } })).toBe(0);
+  });
+
+  it('orders them the way the read path does', async () => {
+    const answer = await answerOf(
+      await post({
+        entries: [
+          { clientMutationId: mutation(), dayDate: '2026-04-09', kind: 'CH', portion: 'PM' },
+          { clientMutationId: mutation(), dayDate: '2026-04-07', kind: 'CH' },
+          { clientMutationId: mutation(), dayDate: '2026-04-09', kind: 'CH', portion: 'AM' },
+        ],
+      }),
+    );
+
+    expect(entriesOf(answer).map((entry) => String(entry.dayDate) + '/' + String(entry.portion))).toEqual([
+      '2026-04-07/FULL',
+      '2026-04-09/AM',
+      '2026-04-09/PM',
+    ]);
+  });
+
+  it('never exposes userId through the new field either', async () => {
+    const answer = await answerOf(
+      await post({ entries: [{ clientMutationId: mutation(), dayDate: '2026-04-07', kind: 'CH' }] }),
+    );
+
+    expect(JSON.stringify(answer)).not.toContain(userId);
+  });
+
+  it('carries no entries on a refusal', async () => {
+    // AN ERROR IS NOT A PARTIAL SUCCESS. The batch is all-or-nothing, so a
+    // refusal must not hand back rows that suggest something landed.
+    const answer = await answerOf(
+      await post({
+        entries: [{ clientMutationId: mutation(), dayDate: '2026-04-07', kind: 'NOPE' }],
+      }),
+    );
+
+    expect(answer.status).toBe('error');
+    expect(Object.hasOwn(answer, 'entries')).toBe(false);
+  });
+
+  it('returns another user nothing, in a run that proves the caller got rows', async () => {
+    // PRESENCE BEFORE ABSENCE. Without the first assertion this passes against
+    // a route that returns no entries to anybody.
+    const mine = await answerOf(
+      await post({ entries: [{ clientMutationId: mutation(), dayDate: '2026-04-07', kind: 'CH' }] }),
+    );
+
+    expect(entriesOf(mine)).toHaveLength(1);
+
+    const otherToken = (await issueTokenPair(otherId)).accessToken;
+
+    const theirs = await answerOf(
+      await post(
+        { entries: [{ clientMutationId: mutation(), dayDate: '2026-04-07', kind: 'HOME' }] },
+        otherToken,
+      ),
+    );
+
+    expect(entriesOf(theirs)).toHaveLength(1);
+    expect(entriesOf(theirs)[0]?.id).not.toBe(entriesOf(mine)[0]?.id);
+    expect(JSON.stringify(theirs)).not.toContain(userId);
   });
 });

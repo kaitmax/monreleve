@@ -211,14 +211,39 @@ export function byDayThenPortion(
 export async function readYear(userId: string, year: number): Promise<ReadEntry[]> {
   const padded = String(year).padStart(4, '0');
 
-  const rows = await prisma.entry.findMany({
-    where: {
-      userId,
-      dayDate: {
-        gte: toStoredDay(`${padded}-01-01`),
-        lte: toStoredDay(`${padded}-12-31`),
-      },
+  return readEntriesWhere(prisma, userId, {
+    dayDate: {
+      gte: toStoredDay(`${padded}-01-01`),
+      lte: toStoredDay(`${padded}-12-31`),
     },
+  });
+}
+
+/**
+ * The rows the caller owns matching `where`, serialised for the wire.
+ *
+ * ============================================================================
+ * ONE HOME FOR THE ENTRY SHAPE, BECAUSE TWO ROUTES NOW RETURN IT (R206)
+ * ============================================================================
+ *
+ * FW23's increment 4 built this for the read path alone. R217 gives the WRITE
+ * path the same object, so a client can clear SPEC 13.2's pending state without
+ * a second request - and the moment two routes return one concept, the shape
+ * needs one home or the second copy drifts. A test asserts the two routes
+ * return byte-identical objects for the same day, which is the enforcement
+ * point rather than this comment.
+ *
+ * IT TAKES A CLIENT rather than reaching for the module-level `prisma`, so the
+ * write path can call it INSIDE its transaction. A snapshot read outside the
+ * transaction would be a different moment from the one being reported.
+ */
+export async function readEntriesWhere(
+  client: Prisma.TransactionClient,
+  userId: string,
+  where: Prisma.EntryWhereInput,
+): Promise<ReadEntry[]> {
+  const rows = await client.entry.findMany({
+    where: { ...where, userId },
     select: SELECT,
     orderBy: { dayDate: 'asc' },
   });
@@ -243,7 +268,7 @@ export async function readYear(userId: string, year: number): Promise<ReadEntry[
   const modifications =
     ids.length === 0
       ? []
-      : await prisma.entryEvent.groupBy({
+      : await client.entryEvent.groupBy({
           by: ['entryId'],
           where: { userId, entryId: { in: ids }, action: 'MODIFIED' },
           _max: { recordedAt: true },
