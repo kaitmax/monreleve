@@ -51,6 +51,12 @@ import { findLocationKeys } from '@/lib/entries/no-coordinates';
 import { parseReadQuery } from '@/lib/entries/read-query';
 import { mintPrintToken } from '@/lib/export/print-token';
 import { RendererUnavailableError, RendererUnstyledError, renderPdf } from '@/lib/export/pdf';
+import {
+  RenderBusyError,
+  RenderTimeoutError,
+  renderSlots,
+  withRenderSlot,
+} from '@/lib/export/render-queue';
 
 export const dynamic = 'force-dynamic';
 // Playwright drives a child process and touches the filesystem; the Edge
@@ -114,7 +120,11 @@ export async function GET(request: Request): Promise<NextResponse> {
   target.searchParams.set('token', printToken);
 
   try {
-    const pdf = await renderPdf(target.toString());
+    // ONE RENDER AT A TIME, with a bounded waiting room. A render costs a
+    // Chromium process tree; two at once on the single VPS D1 specifies is the
+    // difference between a document and an OOM kill - and an OOM kill takes
+    // the database connection pool with it. See lib/export/render-queue.ts.
+    const pdf = await withRenderSlot(() => renderPdf(target.toString()));
 
     return new NextResponse(pdf as unknown as BodyInit, {
       status: 200,
@@ -131,6 +141,32 @@ export async function GET(request: Request): Promise<NextResponse> {
   } catch (cause) {
     // R198: each of these is a different fact with a different remedy, so each
     // gets its own code rather than collapsing into "export failed".
+    //
+    // BUSY AND TIMED-OUT ARE NOT THE SAME FACT, and a client should act on
+    // them differently: turned away at the door means retry shortly; waited
+    // and gave up means the machine is saturated and backing off is right.
+    if (cause instanceof RenderBusyError) {
+      const { active, queued } = renderSlots();
+
+      console.warn(`[export] pdf busy: ${active} rendering, ${queued} waiting`);
+
+      return NextResponse.json(
+        { status: 'error', code: 'renderer_busy', message: AUTH_API_COPY.readFailed },
+        // Retry-After is what turns a 503 into an instruction. Without it a
+        // client either gives up or hammers, and both are worse than waiting.
+        { status: 503, headers: { 'retry-after': '30' } },
+      );
+    }
+
+    if (cause instanceof RenderTimeoutError) {
+      console.warn(`[export] pdf timed out waiting for a slot: ${cause.message}`);
+
+      return NextResponse.json(
+        { status: 'error', code: 'renderer_timeout', message: AUTH_API_COPY.readFailed },
+        { status: 503, headers: { 'retry-after': '60' } },
+      );
+    }
+
     if (cause instanceof RendererUnavailableError) {
       console.error(`[export] pdf renderer unavailable: ${cause.message}`);
 

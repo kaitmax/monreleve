@@ -31,6 +31,7 @@ import { prisma } from '@/lib/db/client';
 import { issueTokenPair } from '@/lib/auth/tokens';
 import { GET } from '@/app/api/v1/export/pdf/route';
 import { liveOrigin } from './support/live-server';
+import { MAX_QUEUED } from '@/lib/export/render-queue';
 
 /** Resolved once, at collection time, so the skip is visible in the report. */
 const LIVE = await liveOrigin();
@@ -226,5 +227,55 @@ describe.skipIf('skip' in LIVE)(LIVE_SUITE, () => {
     const response = await GET(get('?year=2026', origin));
 
     expect(response.headers.get('cache-control')).toContain('no-store');
+  });
+});
+
+describe.skipIf('skip' in LIVE)(`AC3 (through the route): ${LIVE_SUITE}`, () => {
+  const origin = 'origin' in LIVE ? LIVE.origin : '';
+
+  it('serves TWO concurrent exports, both succeeding', async () => {
+    // R204: the queue's own tests prove serialization with a controllable job.
+    // This proves the ROUTE is wired to it and that serializing does not turn
+    // the second caller's request into a failure - which is the half AC3 asks
+    // for and the half a mutex alone gets wrong.
+    await seed('2026-03-02');
+
+    const [first, second] = await Promise.all([
+      GET(get('?year=2026', origin)),
+      GET(get('?year=2026', origin)),
+    ]);
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+
+    const [a, b] = await Promise.all([first.arrayBuffer(), second.arrayBuffer()]);
+
+    // BOTH ARE REAL FILES. Two 200s carrying nothing would pass the above.
+    expect(new TextDecoder().decode(new Uint8Array(a).slice(0, 5))).toBe('%PDF-');
+    expect(new TextDecoder().decode(new Uint8Array(b).slice(0, 5))).toBe('%PDF-');
+  });
+
+  it('refuses past the bound with renderer_busy and a Retry-After', async () => {
+    // One rendering, MAX_QUEUED waiting, and one more than that. The last is
+    // turned away by NAME rather than joining an unbounded queue that converts
+    // memory pressure into latency and then into an OOM anyway.
+    await seed('2026-03-02');
+
+    const responses = await Promise.all(
+      Array.from({ length: MAX_QUEUED + 2 }, () => GET(get('?year=2026', origin))),
+    );
+
+    const busy = responses.filter((r) => r.status === 503);
+    const ok = responses.filter((r) => r.status === 200);
+
+    // PRESENCE BEFORE ABSENCE (R169): some succeeded, so this is not a route
+    // that refuses everything.
+    expect(ok.length).toBeGreaterThan(0);
+    expect(busy.length).toBeGreaterThan(0);
+
+    const body = (await busy[0]!.json()) as { code: string };
+
+    expect(body.code).toBe('renderer_busy');
+    expect(busy[0]!.headers.get('retry-after')).toBe('30');
   });
 });
