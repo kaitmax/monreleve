@@ -1,0 +1,64 @@
+R241 - CONTINUOUS EXECUTION
+The standing consigne. Paste into any running session, and carry it
+verbatim in every prompt from FW27 onward.
+
+====================================================================
+RUN THE WHOLE TASK WITHOUT RETURNING TO THE OPERATOR. THE ONLY THING
+THAT ENDS THE SESSION IS THE REPORT, COMMITTED AND PUSHED. Nothing
+else is a stopping point.
+
+In particular, do NOT stop to:
+  - say an increment is done, or that a gate is running;
+  - summarise progress, or ask whether to continue;
+  - ask a question you could park;
+  - report a finding, however good - it goes in the report;
+  - wait for acknowledgement of anything.
+If you find yourself composing a message that is not the report,
+that is the signal to keep working instead.
+
+WHEN SOMETHING IS UNCLEAR: R156. Take the conservative, reversible
+option - the one that claims less, ships less, and can be changed
+tomorrow without a migration, a 301, or a correction to something
+already published - write the PARK entry, and CONTINUE.
+
+THE FOUR THINGS THAT DO END THE SESSION EARLY. Each ends it with the
+report written, the tree clean, and everything so far pushed:
+
+  1. R156's boundary.
+     - a PERMANENT decision: a slug, a URL parameter name, a
+       database column needing a migration, an anchor, a published
+       redirect;
+     - anything that would publish a FALSE OR UNSOURCED claim -
+       R146's three options are exhaustive and (c) "not written" is
+       always available, so this should never be what forces a stop;
+     - a gate, budget or threshold change;
+     - a new RUNTIME dependency;
+     - anything touching lib/calc-engine.
+  2. A red gate you cannot fix inside the increment.
+  3. Any path where a test or a job could reach a real person
+     (R243's shape, wherever it applies).
+  4. A degraded context: you cannot find a file you know exists, or
+     a command's output stops matching what you expect.
+
+A session that stops for one of these is a session that succeeded.
+A session that stops to talk is not.
+
+WHAT DOES NOT CHANGE. Every increment is still gated and pushed on
+its own green chain - this removes the conversation BETWEEN
+increments, never the discipline WITHIN one. gate:clone still runs
+before every push. The walkthrough (R176/R177) and the read-through
+still happen, and they are the two instruments that have found what
+no gate could, in every task for five tasks running.
+
+AND THE REPORT CARRIES WHAT YOU WOULD HAVE SAID. Every parked
+question with the option taken and the one not taken; every defect
+found by reading; every plant and whether it landed; every guard that
+fired on your own work. A report that says "went well" after a silent
+run has told the operator less than a stop would have.
+
+WHY THIS EXISTS, so it is not mistaken for impatience: the operator
+reads one report and rules on everything in it at once. Mid-task
+messages cost a round trip each and arrive when the operator cannot
+act on them. The trade is real and accepted - some decisions will be
+taken conservatively and parked, and one may be reversed in the
+morning. R156 is what makes that survivable.
