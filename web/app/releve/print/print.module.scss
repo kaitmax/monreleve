@@ -137,6 +137,14 @@
 }
 
 .note {
+  // A BLOCK, and it was inline until the document was looked at.
+  //
+  // `.note` is a <span> inside the raw-rate paragraph, so without this the
+  // sentence ran straight into the label before it: the document printed
+  // "43,6 % Part de jours hors de SuisseLes deux pourcentages diffèrent...".
+  // Every gate passed - it is one text node following another, which is
+  // valid markup, valid French and unreadable.
+  display: block;
   margin: var(--space-3) 0 0;
   font-size: var(--type-micro-size);
   line-height: var(--type-micro-line);

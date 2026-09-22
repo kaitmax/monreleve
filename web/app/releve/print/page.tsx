@@ -276,7 +276,23 @@ export default async function PrintPage({
             percentage={dossier.zone.declarableRate}
             zone={zoneFor(dossier.zone.declarableRate, thresholds)}
             thresholds={thresholds}
-            variant="inline"
+            // COMPACT, AND THE REASON IS MONOCHROME RATHER THAN SPACE.
+            //
+            // `inline` adds an HTML legend of three colour-coded dots -
+            // Imposition Suisse, Imposition France, Sécurité sociale France.
+            // Rendering the document in greyscale turns those into three
+            // IDENTICAL grey dots beside three different labels, which is
+            // worse than omitting them: it implies a distinction the reader
+            // cannot make, on the one surface SPEC 12 says must survive a
+            // photocopy.
+            //
+            // `compact` drops the legend and keeps everything that carries
+            // meaning without colour - the track, both ticks WITH their
+            // labels, and the rate. The component's own comment says compact
+            // is "the variant chosen when there is no room"; there is room
+            // here, and the criterion is that the legend says nothing in
+            // black and white.
+            variant="compact"
             width={RAIL_WIDTH}
           />
         </div>
