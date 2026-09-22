@@ -1,0 +1,423 @@
+====================================================================
+REPORT-FW25b.txt - the PDF, the document, the walkthrough
+Mon Releve   2026-09-22
+====================================================================
+
+Pure ASCII. Accented French lives in web/lib/fr (R155).
+
+SUMMARY
+--------------------------------------------------------------------
+All five increments done, gated and pushed.
+
+  1  the PDF route (R229)                            4d9faad
+  2  one render at a time                            af6eb86
+  3  the file asserts itself, and the six the
+     reading found                                   de4d80b
+  4  the document read as a document                 6e3e4b6
+  -  R234, found while gating increment 4            15a20b1
+  5  the walkthrough, and FW24's 6b discharged       (this commit)
+
+THE SHAPE OF THE TASK IN ONE LINE: increments 1 and 2 built the
+renderer; increment 3 was made ONE INCREMENT WIDER by the operator to
+absorb six defects that only became findable once the document could
+be looked at; increment 4 looked at it again and found two more, one
+of which no test could have caught.
+
+PRECONDITIONS
+--------------------------------------------------------------------
+R1: gate:clone green on origin/main's HEAD, ce70cc0.
+
+  resource envelope (R227)
+    cpus         8
+    vitest       maxWorkers 4 (R99's cap, inherited)
+    free memory  2855 MiB of 16195 MiB
+
+  CI readiness: quiet - private, CI_FULL unset, jobs will skip.
+
+No precondition flake this time. R228's timeout budget held across
+five clone runs, at 657, 1105, 2069, 2574, 2601, 2793 and 2855 MiB
+free - the 657 MiB run is the tightest this project has recorded and
+it passed clean, which is a fourth data point for the fix rather than
+a lucky draw.
+
+RED-GREEN LEDGER
+--------------------------------------------------------------------
+  the PDF route      RED  Cannot find package
+                          '@/app/api/v1/export/pdf/route'
+                     GREEN 9 passed, 3 of them against a live server
+
+  the render queue   RED  Cannot find package
+                          '@/lib/export/render-queue'
+                     GREEN 7 passed
+
+  the six defects    RED  4 annex tests failed on the new day-mapping;
+                          2 CSV day-set tests on gap rows
+                     GREEN 2754, then 2757
+
+  R234              RED  3 selector tests failed on `filter` alone
+                     GREEN 76 passed
+
+PLANTS, each VERIFIED TO HAVE LANDED (R180):
+  - the rail removed from the print page: exactly ONE test failed,
+    "expected 1 to be greater than or equal to 2", with 18 passing.
+    The assertion is specific, not broad.
+  - a fifth character added to FORMULA_LEADS (R230, previous session):
+    the derived contract test failed naming the character.
+
+THE DEPENDENCY, AND WHAT FW28's IMAGE MUST INSTALL
+--------------------------------------------------------------------
+playwright-core, PINNED at 1.63.0, as a RUNTIME dependency. It matches
+the dev @playwright/test so both agree on the CDP protocol.
+@playwright/test stays dev-only.
+
+  THE IMAGE MUST:
+    apt-get install chromium, PINNED
+    set FRONTALIER_CHROMIUM_PATH to its path
+    install the document's fonts
+    NOT install @playwright/test
+
+  IT MUST NOT need a browser download. Proven rather than asserted:
+  gate:clone installs from the lockfile on a clean checkout and no
+  browser was fetched - the only mentions of a download in its log are
+  its own "cannot run here" reasons. That is the whole point of
+  playwright-core over playwright.
+
+WHY CHROMIUM AT ALL, recorded because it will be asked again: the
+print route IS the document. A PDF library would be a SECOND
+implementation of the layout, and then the browser and the accountant
+would look at two documents that agree only while somebody keeps them
+agreeing.
+
+IDENTITY TO THE BROWSER
+--------------------------------------------------------------------
+The route mints the short-lived (person, year) print token FW25 built,
+and puts it in the URL Chromium navigates to.
+
+Chromium is a separate process and does not share the request's
+Authorization header. The alternative - an extra HTTP header set on
+every navigation - leaks to any redirect target and teaches the print
+route a second authentication mechanism.
+
+The credential was already in a URL for a reason that PREDATES this
+route: a human has to be able to open the document, and a browser
+sends no Authorization header for a typed URL.
+
+THE ORIGIN IS THE REQUEST'S OWN, not a configured base URL. The
+browser runs on the same host as the server it fetches from, so the
+address the request arrived on is the address that works - including
+behind a proxy, where a configured public URL would send the render
+out through the internet and back (R171).
+
+CONCURRENCY
+--------------------------------------------------------------------
+One render slot, a waiting room bounded at 2, and a 30 s deadline.
+
+MEMORY MEASURED: one render peaks at 279.9 MB resident across 4
+processes, sampled every 200 ms while the route printed a year. The
+browser is a TREE - shell plus renderer and GPU children - so summing
+only the parent would have under-reported it.
+
+  THE FIRST MEASUREMENT SAID 0 MB AND WAS WRONG. It matched processes
+  named `chrome`; Playwright 1.63 runs headless through
+  `headless_shell.exe`. 340 samples found nothing and printed zero,
+  which reads exactly like a result rather than like a miss. The
+  sampler now matches on the executable PATH and reports whether it
+  saw the browser at all - R133's positive signal, on a measurement.
+
+WHY BOUNDED AND NOT MERELY SERIALIZED: a mutex alone converts
+concurrency into latency, which sounds like the safe failure until you
+follow it - each waiting request holds its connection, its context and
+its computed payload, so the queue is itself a memory cost and the
+machine OOMs anyway, later and with a symptom pointing elsewhere.
+
+R198: renderer_busy (retry-after 30) and renderer_timeout (retry-after
+60) are separate codes. Turned away at the door and waited-then-gave-
+up call for different client behaviour.
+
+THE `finally` HAS ITS OWN TEST. Without it one failed render holds the
+only slot for ever, every later export queues behind it, and the route
+answers 503 indefinitely while nothing is running - "exports stopped
+working" on a machine that looks healthy.
+
+ASSERTIONS ON THE PRODUCED FILE (AC2)
+--------------------------------------------------------------------
+Each runs on extracted content, after the file exists (R182).
+
+  banned words     absent from the FILE, which is a different claim
+                   from FW25's assertion over the rendered HTML
+  the rail         proven by its TICK LABELS: the social ceiling
+                   appears once in the thresholds sentence and once
+                   more as the rail's own label. One occurrence means
+                   the sentence rendered and the rail did not - the
+                   state this document shipped in until increment 3
+  annex rows       every day the payload carries is printed, checked
+                   per day rather than by a count, plus the gap count
+                   equalling the payload's
+  fonts            12 subsets, all Inter, every one embedded
+
+THE FONT ASSERTION IS NOT A /FontFile CHECK, and the distinction was
+earned. Chromium writes /Subtype /Type3 fonts for the variable Inter
+family - each glyph is a drawing procedure under /CharProcs - so this
+document has NO /FontFile and is nonetheless fully embedded. A
+/FontFile assertion would have FAILED on a correct document, and the
+tempting fix, deleting it, would have removed the only guard against
+the real defect: a font named but not carried, which renders in
+whatever the opening machine happens to have.
+
+THE EXTRACTOR MAPS PER FONT, and the first version did not. Merging
+every ToUnicode CMap into one table produced 2 conflicting glyph ids
+of 62 - 0x17 was both "E" and ",", 0xcf both "p" and a no-break space,
+which is why the rate first extracted as "100p%". Two is a small
+number and the wrong thing to reason about: that text is what the
+banned-word assertion runs on, so a table that can turn one letter
+into another can hide the word it is looking for.
+
+IT REFUSES A SUSPICIOUSLY EMPTY RESULT (R154). An extractor that
+silently yields "" makes every absence assertion pass, and "no banned
+words in this document" is satisfied perfectly by a document nobody
+managed to read.
+
+R230 - THREE BEHAVIOURS
+--------------------------------------------------------------------
+Implemented in the previous session (509f8a5) and re-verified live
+here:
+
+  the CSV          prefixes an apostrophe on a note opening = + - @
+  the API payload  carries the note byte for byte
+  the PDF          carries the note byte for byte
+
+The walkthrough proves the preserve-half in the real product: GET
+/api/v1/entries returned the note "saisie tardive" unaltered.
+
+docs/api-v1.md section 6.7 states the difference, with the expected
+character list DERIVED from FORMULA_LEADS so adding one forces the
+document to change.
+
+THE DOCUMENT READ AS A DOCUMENT
+--------------------------------------------------------------------
+Produced for the demo year, opened, and read - in colour and in
+greyscale, which is the half that cannot be reasoned about.
+
+WHAT I READ FOR: whether the identification block says who and for
+what period; whether the crossed threshold is legible and NAMES which
+seuil; whether 262 annex rows against a 240-day basis read as an error
+or are answered; whether anything is lost without colour; whether any
+sentence claims more than the record supports.
+
+WHAT THE FIRST READ FOUND - six defects, none of which any gate could
+see, all fixed in increment 3 on the operator's ruling:
+
+  1  no NAME anywhere            SPEC 12 item 1
+  2  no generation date          SPEC 12 item 1
+  3  no "Absences declarees"     SPEC 12 item 5
+  4  gaps SKIPPED, not printed   SPEC 12 item 5
+  5  no rail                     SPEC 12 item 3, and line 885 relies
+                                 on it for the no-drift guarantee
+  6  151.5 where the same page   a French document inconsistent with
+     writes 42,70 %              itself about its own separator
+
+THE MISSING NAME WAS A CORRECTNESS DEFECT, not an omission. Every
+other gap made the document incomplete; that one made it
+UNATTRIBUTABLE. A PDF that cannot be filed against a person is not a
+releve, it is a table of numbers.
+
+ONE MAPPING CHOICE CAUSED TWO OF THE SIX: the annex mapped over
+ENTRIES, so a day with no entry was not a row. It now maps over DAYS.
+That fix is also what makes workedDaysNote CORRECT rather than merely
+present - the note now explains a real relationship instead of
+papering over a mapping choice.
+
+`name` AND `generatedAt` ALREADY EXISTED IN lib/fr/dossier.ts,
+unrendered - the third instance of the `notRecorded` class in one
+file. Only `absencesDeclared` had to be written.
+
+WHAT THE SECOND READ FOUND, in greyscale:
+
+  7  THE RAIL'S LEGEND WAS COLOUR-ONLY. Green, amber and red dots in
+     colour; three IDENTICAL grey dots beside three different labels
+     in greyscale - worse than omitting them, because it implies a
+     distinction the reader cannot make. Fixed with variant="compact",
+     an affordance the component already documents, which drops the
+     legend and keeps the track, both ticks WITH their labels, and the
+     rate. No shared component was changed.
+
+  8  THE RAW-RATE LINE RAN INTO ITS OWN EXPLANATION: "43,6 % Part de
+     jours hors de SuisseLes deux pourcentages different...". `.note`
+     is a <span> and was never made a block. Every gate passed - one
+     text node following another is valid markup, valid French and
+     unreadable. I had seen it in an innerText dump and dismissed it
+     as a concatenation artefact; only looking at the rendered page
+     settled it.
+
+WHAT SURVIVED THE GREYSCALE READ, checked rather than assumed: every
+figure, both tick labels, the badge word naming WHICH seuil, the bar's
+position against the ticks, and 17.06.2026 "Non renseigne" sitting
+between 16.06 and 18.06 with weekends correctly absent.
+
+NO SENTENCE OVERCLAIMS. The five banned words are absent from the
+produced file, and the footer says what it can support: "Document
+etabli sur la base des declarations de l'utilisateur", "ne constitue
+pas un conseil fiscal".
+
+WALKTHROUGH (R176, R177)
+--------------------------------------------------------------------
+Driven against `pnpm dev` over HTTP, through the real entry points,
+with a session obtained the way a person obtains one: request a magic
+link, read it out of the dev server's terminal, spend it. The script
+imports NOTHING from the application - a walkthrough that reached into
+lib/ would exercise the modules rather than the product.
+
+  GET  /api/health                 200, service "monreleve", ok
+  POST /api/v1/auth/magic-link     202 (always, so it cannot enumerate)
+  GET  /api/v1/auth/callback       200, accessToken + refreshToken
+  GET  /api/v1/entries?year=2026   200, 261 entries, first 2026-01-01,
+                                   note "saisie tardive" UNALTERED
+  GET  /api/v1/export/csv          200, text/csv, BOM ef bb bf,
+                                   263 rows, 1 gap row,
+                                   releve-2026.csv
+  GET  /api/v1/export/pdf          200, application/pdf, %PDF-,
+                                   207062 bytes, releve-2026.pdf,
+                                   15522 ms
+  two exports at once              200, 200 - both real PDFs (AC3)
+  refusals                         401 missing_token, 400 invalid_year,
+                                   400 coordinates_refused,
+                                   400 unknown_parameter
+  GET  /releve/print (no token)    404
+
+The print route was also opened in a browser and photographed at A4
+width, in colour and greyscale - see THE DOCUMENT READ AS A DOCUMENT.
+
+15.5 SECONDS FOR ONE EXPORT is a dev-server figure and is reported
+rather than explained away: it includes on-demand compilation and a
+262-row annex. It is FW28's starting point, not its target.
+
+FW24's 6b, DISCHARGED
+--------------------------------------------------------------------
+FW24 recorded 6b as "the walkthrough against a served page - there is
+no page", and said it was "not merely unfinished but not yet
+possible". It has been carried for two tasks.
+
+IT IS DISCHARGED HERE. There is a served page, it was served, opened,
+photographed and read; and the whole chain above it was driven end to
+end. Nothing about 6b remains outstanding.
+
+FLAG DECISION (R186)
+--------------------------------------------------------------------
+dossierExists STAYS FALSE, decided on the rule rather than on a
+feeling.
+
+The proxy is the print route AND A CLIENT THAT CAN REACH IT.
+
+  the print route    EXISTS, and now renders a complete document
+  a client           DOES NOT EXIST. The Android app is AN1-AN15,
+                     unbuilt. There is no web surface either - D14
+                     withdrew it.
+
+The walkthrough script is a harness, not a client: it reads a sign-in
+link out of a server log. Nobody who is not sitting at this machine
+can obtain this document. Flipping the flag would make /releve-annuel
+tell a reader the dossier exists when nothing they own can produce
+one, which is the exact defect R172 and the flag exist to prevent.
+
+PARKED
+--------------------------------------------------------------------
+PARK5b-1. THERE IS NO DOSSIER ENDPOINT. /api/v1 carries auth, entries
+   and export/{csv,pdf}; nothing returns the dossier PAYLOAD. SPEC 868
+   says the Android Releve screen "renders natively from a
+   server-computed payload", so AN-something needs GET
+   /api/v1/dossier?year=. The payload type exists (lib/dossier);
+   only the route does not. It is also half of what dossierExists
+   waits for.
+
+PARK5b-2. THE CSV CARRIES NO IDENTITY. It now REQUIRES a titulaire -
+   it is built from the same dossier - but its own bytes name nobody:
+   SPEC 12 fixes the columns as "exact and stable", so a column would
+   be a contract change, and a leading comment row would break
+   RFC 4180. The export is attributable only by its filename. Raised
+   as Q86 rather than decided.
+
+DEVIATIONS
+--------------------------------------------------------------------
+1. INCREMENT 3 IS ONE INCREMENT WIDER THAN THE PROMPT, on the
+   operator's explicit ruling, and the reasoning is recorded here
+   because it will read as scope creep otherwise: this is the first
+   session in which the document can be LOOKED AT, so the first in
+   which those six are findable; they are all in one file; and a
+   follow-up task would reopen the exact surface increment 3 was
+   already touching.
+
+2. INCREMENT 4 WAS "NOT A TEST INCREMENT" AND PRODUCED TWO CODE
+   CHANGES. Findings 7 and 8 are defects in the artefact increment 4
+   exists to read, and both are one-line fixes on the surface this
+   task owns. Reading them and deferring them would have shipped a
+   document I had just looked at and knew to be wrong.
+
+3. R234 IS NOT IN THE PROMPT AT ALL. It was found by reading the
+   gate's own output during increment 4 and is committed separately
+   (15a20b1) so the FW25b increments stay legible.
+
+4. THE RENDER TESTS SKIP IN THE GATE, by design, and are run
+   separately against `pnpm dev`. The gate has no server; the skip
+   names its reason in the gate log. Recorded because "12 skipped"
+   in a passing gate should never be read as coverage.
+
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------
+1. `pnpm build` CORRUPTS A RUNNING `pnpm dev` IN THE SAME DIRECTORY.
+   Both write .next, and the dev server then serves MODULE_NOT_FOUND
+   500s. It cost one confusing round here and it is systemic: R177
+   requires the walkthrough to run against `pnpm dev`, and every gate
+   runs a build, so any session doing both will hit it. A separate
+   distDir for the walkthrough server would close it.
+
+2. MY OWN TOOLING PRODUCED THREE CORRUPTED EDITS, all from generating
+   code through nested shell quoting. One produced `console.error()`
+   with its template literal eaten, and TYPECHECK PASSED because an
+   empty call is valid TypeScript - R211's warning exactly, that a
+   guard firing on the shape of one corruption is not a guard against
+   the class. Every file edited that way was scanned; one more was
+   found and fixed. Code with escapes is no longer generated through
+   a shell.
+
+3. A BROAD `taskkill /IM node.exe` killed the dev server along with
+   the process it was aimed at. No harm, and recorded because the
+   next person to use that hammer should know it is one.
+
+QUESTIONS
+--------------------------------------------------------------------
+Q85. THE PDF TAKES 15.5 SECONDS on the dev server for a 262-row
+     annex, against a 30 s queue deadline. On a production build it
+     will be faster, but the margin is not large and the deadline was
+     chosen before the figure existed. Should QUEUE_WAIT_MS move, or
+     should FW28 measure on the real image first and decide then?
+
+Q86. SHOULD THE CSV NAME ITS TITULAIRE? It requires one and carries
+     none. Every option costs something: a column breaks "exact and
+     stable", a comment row breaks RFC 4180, and a filename is not
+     inside the file. Deliberately not decided here.
+
+PUSH PROOF
+--------------------------------------------------------------------
+  4d9faad  increment 1   test 2736, e2e 284, visual 108, db 378+3
+                         skipped, late 10
+  af6eb86  increment 2   test 2743, e2e 284, visual 108, db 378+5
+                         skipped, late 10
+  de4d80b  increment 3   test 2754, e2e 284, visual 108, db 379+12
+                         skipped, late 10
+  6e3e4b6  increment 4   test 2757, e2e 284, visual 108, db 379+12
+                         skipped, late 10
+  15a20b1  R234          same run as increment 4
+  (this)   increment 5   see below
+
+  gate:clone PASSED before every push:
+    ce70cc0 (precondition), 4d9faad, af6eb86, de4d80b, 15a20b1.
+
+  R169 REFUSED THE FIRST e2e RUN of increment 1, correctly: port 3000
+  answered /api/health with valid JSON and NO service field - another
+  project's container, the FW23c case exactly. Re-run on
+  FRONTALIER_PORT=3200 per CLAUDE.md, which moves ours rather than
+  stopping theirs.
+
+====================================================================
+END OF REPORT-FW25b.txt
+====================================================================
