@@ -345,12 +345,26 @@ export const CONFIDENTIALITE_COPY = {
     "traitement, ou retirer un consentement que vous avez donné. Vous n’avez " +
     'pas à motiver votre demande.',
   rights: [
-    "Dans l’application, Exporter mes données produit un fichier JSON et un " +
-      'fichier CSV contenant vos journées, leur origine et leurs horodatages.',
-    "Dans l’application, Supprimer mon compte efface votre compte, vos " +
-      'journées, leur historique, vos appareils enregistrés et les données ' +
-      'conservées sur votre téléphone. Cette opération est définitive, et le ' +
-      'relevé annuel ne peut plus être reproduit ensuite.',
+    // R242: THE TENSE, NOT THE DETAIL. These two said "Dans l'application"
+    // while there is no application - a present-tense claim about a channel
+    // that is not open, which is what R138 governs. The conditional costs the
+    // reader nothing: they still learn exactly HOW, and the sentence stops
+    // asserting they can do it today. Same move as FW15's analytics line,
+    // where "le site ne mesure pas encore son audience" was stronger than the
+    // claim it replaced because it stated a fact and then promised a
+    // mechanism.
+    //
+    // The server side is built (FW26): the export and the erasure exist as
+    // API routes. What does not exist is a client, so what is conditional is
+    // the WAY IN rather than the right.
+    "Dans l’application mobile, lorsqu’elle sera disponible, Exporter mes " +
+      'données produira un fichier JSON et un fichier CSV contenant vos ' +
+      'journées, leur origine et leurs horodatages.',
+    "Dans l’application mobile, lorsqu’elle sera disponible, Supprimer mon " +
+      'compte effacera votre compte, vos journées, leur historique, vos ' +
+      'appareils enregistrés et les données conservées sur votre téléphone. ' +
+      'Cette opération est définitive, et le relevé annuel ne peut plus être ' +
+      'reproduit ensuite.',
     // WHAT SURVIVES, SAID OUT LOUD (FW26). The alert list is keyed by address
     // and is a separate consent under a separate identity - most addresses on
     // it never had an account. Deleting the account would revoke a consent

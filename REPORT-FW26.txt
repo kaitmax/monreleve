@@ -361,17 +361,39 @@ PARK26-1. THE EXPORT CENSUS FINDS DIRECT OWNERSHIP ONLY. SessionToken
    census that walked it wrongly would be worse than one whose reach
    is written down.
 
-PARK26-2. /confidentialite SAYS "DANS L'APPLICATION" TWICE, AND THERE
-   IS NO APPLICATION. The export and deletion now exist as API
-   endpoints; no client can reach them. It is dossierExists' shape on
-   published privacy copy, and FW26 moved it closer to true rather
-   than further away. I did not edit published privacy text on my own
-   judgement (R241: the conservative, reversible option). The honest
-   readings are (a) leave it, since it describes the product as
-   designed and the operator has reviewed it across many tasks, or
-   (b) state the right without asserting a shipped surface, which
-   makes a privacy notice LESS specific about how - arguably worse.
-   Q88.
+PARK26-2. CLOSED BY R242, AFTER THE REPORT WAS FIRST WRITTEN.
+   /confidentialite said "Dans l'application" twice where there is no
+   application - a present-tense claim about a channel that is not
+   open, which R138 governs plainly. I had parked it rather than edit
+   published privacy copy on my own judgement.
+
+   THE RULING: correct it, and the vagueness I was worried about is
+   not forced, because THE FIX IS TENSE RATHER THAN SPECIFICITY.
+
+     "Dans l'application, Exporter mes donnees produit..."
+     -> "Dans l'application mobile, lorsqu'elle sera disponible,
+         Exporter mes donnees produira..."
+
+   The reader still learns exactly HOW, and the sentence stops
+   asserting a channel that is not open. Same move as FW15's analytics
+   line, where stating a fact and then promising a mechanism was
+   stronger than the claim it replaced.
+
+   A THIRD INSTANCE WAS CHECKED AND LEFT ALONE: the detection
+   paragraph's "polygone des frontieres suisses embarque dans
+   l'application" is already conditional - it opens "Si vous
+   choisissez le mode automatique" - so it asserts nothing about the
+   app existing. A fourth, in lib/fr/application.ts, is a NEGATIVE
+   claim ("ni dans l'application, ni sur nos serveurs") and is safe.
+
+   WHAT STAYED UNCONDITIONAL, correctly: the alert-list bullet. That
+   unsubscribe works today, through the web, without an app.
+
+   CLAIM 8 and CLAIM 9 in the privacy map now pin the conditional, so
+   it cannot be dropped without a failing test.
+
+   Verified by cropping the rendered page rather than by reading the
+   baseline: both bullets keep their detail and gain the conditional.
 
 PARK26-3. THE EXPORT'S clientMutationId IS IN THE FILE. It is a sync
    identifier with no meaning to a person, sitting in a document
@@ -439,10 +461,9 @@ Q87. SHOULD THE EXPORT'S SETTINGS BLOCK CARRY WORDS TOO? The entries
      configuration a client writes BACK, and a label beside a
      writable field invites somebody to send the label.
 
-Q88. PARK26-2: does /confidentialite keep saying "dans l'application"
-     while there is no application? R138's tense rule says correct it;
-     making a privacy notice vaguer about HOW is a real cost. This is
-     the operator's call on published copy.
+Q88. ANSWERED BY R242 and implemented - see PARK26-2. The fix is
+     TENSE rather than specificity, so the notice keeps its detail and
+     stops asserting a channel that is not open.
 
 PUSH PROOF
 --------------------------------------------------------------------

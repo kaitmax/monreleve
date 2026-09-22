@@ -498,6 +498,11 @@ describe('CLAIM 8: the export produces JSON and CSV of the days, their origin an
     expect(CONFIDENTIALITE_COPY.rights[0]).toContain('JSON');
     expect(CONFIDENTIALITE_COPY.rights[0]).toContain('CSV');
     expect(CONFIDENTIALITE_COPY.rights[0]).toContain('horodatages');
+
+    // R242: AND IT SAYS WHEN. The server side exists; the way in does
+    // not. Without this assertion the conditional could be dropped and
+    // the page would go back to promising a channel that is not open.
+    expect(CONFIDENTIALITE_COPY.rights[0]).toContain('lorsqu');
   });
 
   it('holds: both formats come back, and the stamps are in them', async () => {
@@ -523,6 +528,7 @@ describe('CLAIM 9: deletion erases the account, the days, their history and the 
   it('is still on the page, including that it cannot be undone', () => {
     expect(CONFIDENTIALITE_COPY.rights[1]).toContain('définitive');
     expect(CONFIDENTIALITE_COPY.rights[1]).toContain('historique');
+    expect(CONFIDENTIALITE_COPY.rights[1]).toContain('lorsqu');
   });
 
   it('holds: every user-owned row is gone afterwards', async () => {
