@@ -4,110 +4,153 @@ Read relay/PHASE-4-PROTOCOL.txt first, from disk.
 ====================================================================
 PRE-STEP RULINGS (apply verbatim)
 ====================================================================
-R0. Read REPORT-FW25.txt in full. FW25 stopped at two of five: the
-    PDF was blocked on Q83, now answered (R229: playwright-core plus
-    a system Chromium) and Q84 (R230: escape in the CSV only, the
-    payload and the PDF unaltered, stated in the contract).
-    FW25's increments 3-5 are NOT this task's work. If REPORT-FW25b
-    does not exist, the PDF is unbuilt - that does not block FW26,
-    but dossierExists STAYS FALSE and this task does not flip it.
+R0. Read REPORT-FW25b.txt in full, including PARKED and QUESTIONS.
+    FW25b completed the document: the PDF route, the produced-file
+    assertions, and eight defects found by reading it. Two of its
+    parked items are answered below and one becomes this task's
+    increment 1.
 
 R1 (as reworded by R200). pnpm gate:clone green on a fresh clone of
-    origin/main's HEAD. Record the commit hash, and the envelope it
-    now prints (R227) - cpus, worker cap, free memory.
+    origin/main's HEAD. Record the commit hash and the envelope it
+    prints (R227) - cpus, worker cap, free memory. That envelope is
+    the number that answers "did the code break or did the machine".
 
-R231 (new, and it is the operator's error). A PROMPT CITES ONLY WHAT
-    IS IN THE REPOSITORY. FW25's prompt cited FD8, and R224 cited
-    FD3; neither is in prompts/design-frontier/. If a prompt names a
-    file you cannot open, SAY SO IN THE REPORT and build from SPEC,
-    which is always the named authority. Do not infer the missing
-    document's contents.
+R235 (new, answers PARK5b-1). THE DOSSIER ENDPOINT IS THIS TASK'S.
+    /api/v1 carries auth, entries and export/{csv,pdf}; nothing
+    returns the dossier PAYLOAD, and SPEC line 868 says the Android
+    Releve screen renders natively from a server-computed one. The
+    type exists in lib/dossier; only the route does not. It belongs
+    here rather than in a task of its own - same layer, same auth,
+    same tenancy plants - and it is half of what dossierExists waits
+    for.
+
+R236 (new, answers Q85). DO NOT MOVE QUEUE_WAIT_MS. 15,5 s against a
+    30 s deadline, on a dev server, with the deadline chosen before
+    the figure existed, is the situation where adjusting the number
+    now would be fitting the gate to the measurement. FW28 measures
+    on the production image and sets it once, recording the figure.
+    Two notes for that task, recorded here so they are not
+    rediscovered: a 262-row annex is a TYPICAL year, not a worst
+    case - a half-day-heavy year doubles the rows; and the deadline
+    governs the WAIT, so the number that matters is the deadline
+    minus the worst-case render under two concurrent requests.
+
+R237 (answers Q86, and is implemented). The CSV is attributable by
+    FILENAME. It is not the document of record - R230 already settled
+    that asymmetry. docs/api-v1.md states that a client may assume
+    the YEAR is always present and the name is not.
+
+R231 (carried, and it is the operator's error). A prompt cites only
+    what is in the repository. If this prompt names a file you cannot
+    open, say so in the report and build from SPEC, which is always
+    the named authority.
 
 CARRIED, each having bitten this phase:
-    R133 positive signals. R175 assert the space between two tests
-    that bound a property. R180 verify a plant landed. R182 a check
-    runs after the thing it checks for can exist. R193 tokens are
-    opaque and revocable - account deletion depends on it. R198 an
-    error names which rule fired. R203 the trail outlives the ROW,
-    not the ACCOUNT. R205 a file is served only when it can be
-    believed. R206 one text, one home. R176/R177 end with the server
-    run and driven.
+    R133 positive signals, and R233 a measurement reports whether it
+    observed its subject. R175 assert the space between two tests
+    that bound a property - it has now landed on the selector R218
+    was written to fix. R180 verify a plant landed. R182 a check runs
+    after its subject can exist. R193 tokens are opaque and revocable
+    - deletion depends on it. R198 an error names which rule fired.
+    R203 the trail outlives the ROW, not the ACCOUNT. R205 a file is
+    served only when it can be believed. R206 one text, one home.
+    R211 a scripted edit states what it expects to match and refuses
+    to write on mismatch. R176/R177 end with the server run and
+    driven.
 
 ====================================================================
 CONTEXT
 ====================================================================
-FW26 ONLY: the account routes - settings, data export, and deletion.
+FW26 ONLY: the dossier endpoint, then the account routes - settings,
+data export, and deletion.
 
 THIS IS WHERE THE PRIVACY NOTICE BECOMES CODE. /confidentialite has
 claimed since FW10 that a person can export their data and delete
 their account. FW14 made the alert-list half true. This task makes
 the account half true, or corrects the page (R138's tense rule).
 
-AND IT HAS A REAL TECHNICAL TENSION, which is the interesting part:
-FW21 made EntryEvent APPEND-ONLY with database triggers rejecting
-UPDATE and DELETE. Account deletion must remove those rows. R203
-already draws the line - the trail outlives the ROW, not the ACCOUNT
-- but the trigger does not know that. How erasure passes a guard
-built to refuse it is this task's central design decision, and it must
-be a NARROW, NAMED path rather than a disabled trigger.
+AND IT CARRIES A REAL TECHNICAL TENSION, which is the interesting
+part rather than an obstacle: FW21 made EntryEvent APPEND-ONLY with
+database triggers refusing UPDATE and DELETE. Account erasure must
+remove those rows. R203 draws the line - the trail outlives the ROW,
+not the ACCOUNT - but the trigger does not know that. How erasure
+passes a guard built to refuse it is this task's central design
+decision, and it must be a NARROW, NAMED path. A disabled trigger is
+not an option.
 
-Read: SPEC 8 (the model and its rules), SPEC 11.5 (Parametres), SPEC
-20; /confidentialite as shipped; docs/api-v1.md; REPORT-FW21.txt for
-the trigger design; REPORT-FW25.txt.
+Read: SPEC 8 (the model and its rules), SPEC 11.5, SPEC 12 (the
+payload the endpoint returns), SPEC 20; /confidentialite as shipped;
+docs/api-v1.md; REPORT-FW21.txt for the trigger design;
+REPORT-FW25b.txt.
 
 ====================================================================
 ACCEPTANCE CRITERIA
 ====================================================================
-AC1. GET /api/v1/account/export returns EVERY row belonging to the
-     caller - entries, events, devices, sessions, settings - asserted
-     against direct row counts per table, not against a sample. A
-     table added later and not exported is a silent gap, so the test
-     enumerates the schema's user-owned tables and fails on one it
-     does not cover.
-AC2. POST /api/v1/account/delete removes every row belonging to the
-     caller across every table, and the proof is a NEGATIVE SWEEP:
-     after deletion, no row anywhere references that user id. Not
-     "the delete returned ok" - a query per table, asserted empty.
-     Tokens are revoked in the same transaction; a previously valid
-     access token is rejected afterwards.
-AC3. The append-only guard still refuses an ordinary DELETE on
-     EntryEvent after this task. Proven by attempting one outside the
-     erasure path and capturing the refusal by name (R198).
+AC1. GET /api/v1/dossier?year= returns the payload lib/dossier
+     computes, bearer-authenticated, tenancy from the token only
+     (both plants, both verified, at the HTTP boundary). A provisional
+     year is marked with the period covered; an empty year is honest
+     rather than zeroed; a future year is refused BY NAME (R198).
+     R226's fallback sentence is already in the contract - assert the
+     warning actually travels in the payload.
+AC2. GET /api/v1/account/export returns EVERY row belonging to the
+     caller, asserted against direct row counts per table. The test
+     ENUMERATES the schema's user-owned tables and fails on one it
+     does not cover, so a table added later is a failing test rather
+     than a silent gap (R175).
+AC3. POST /api/v1/account/delete removes every row belonging to the
+     caller, proven by a NEGATIVE SWEEP written from the schema - a
+     query per table, asserted empty - not by the delete returning
+     ok. Tokens are revoked in the same transaction and a previously
+     valid access token is rejected afterwards. The append-only guard
+     still refuses an ordinary DELETE on EntryEvent, proven by
+     attempting one outside the erasure path and capturing the
+     refusal by name.
 
 ====================================================================
-INCREMENT 1 - /api/v1/me
+INCREMENT 1 - the dossier endpoint (R235)
+====================================================================
+- GET /api/v1/dossier?year=. The route ASSEMBLES NOTHING: lib/dossier
+  computes, the route serialises. A plant that recomputes one figure
+  in the route must fail (R180: verify the plant landed).
+- The four refusals, each named: unauthenticated, another user's
+  year, a malformed year, a future year.
+- docs/api-v1.md gains the payload field by field with what a client
+  may assume, and the test asserting document and schema cannot
+  drift.
+- Commit: "FW26: the dossier endpoint (R235)". Push.
+
+====================================================================
+INCREMENT 2 - /api/v1/me
 ====================================================================
 - GET and PATCH: canton, employmentRate, denominatorKind,
   exactTotalWorkDays, granularity, activityStartDate, reminderTime,
   reminderEnabled, loggingMode, detectionConsentAt.
 - CONSENT IS TIMESTAMPED IN BOTH DIRECTIONS. Granting sets
   detectionConsentAt; revoking clears it AND the response tells the
-  client, so the app can stop sampling immediately (SPEC 13, D19).
+  client so the app can stop sampling immediately (SPEC 13, D19).
   Revocation is never a confirmation dialog away - stopping data
   collection must not require persuasion.
-- Validation reuses the engine's rules where they overlap
-  (employmentRate 1-100, exactTotalWorkDays iff EXACT) rather than
-  restating them - R196 put those in the database; do not write a
-  third copy here.
-- RED first per behaviour.
+- Validation reuses what exists. R196 put employmentRate 1-100 and
+  exactTotalWorkDays-iff-EXACT in the database; the engine validates
+  them too. Do not write a third copy.
 - Commit: "FW26: /api/v1/me". Push.
 
 ====================================================================
-INCREMENT 2 - the export
+INCREMENT 3 - the export
 ====================================================================
 - JSON and CSV. The CSV reuses FW25's serialiser - one
-  implementation, not a second (R206). R230's escaping applies to
-  the CSV only.
-- AC1's schema enumeration: the test reads the user-owned tables from
-  the schema and fails if the export omits one. A new table is then a
-  failing test rather than a silent gap - R175's shape, since the
-  export and the schema bound the same property from opposite sides.
-- The export includes the TRAIL, because an export that omitted it
-  would hand a person a record they cannot verify.
+  implementation, not a second (R206) - and R237's filename rule
+  applies to it as it does to the dossier CSV.
+- AC2's schema enumeration. The export includes the TRAIL, because
+  an export that omitted it would hand a person a record they cannot
+  verify.
+- R230: the formula escape applies to the CSV only; the JSON carries
+  the note unaltered. Assert both.
 - Commit: "FW26: account data export". Push.
 
 ====================================================================
-INCREMENT 3 - the erasure path through the append-only guard
+INCREMENT 4 - the erasure path through the append-only guard
 ====================================================================
 THE CENTRAL DESIGN DECISION. Choose and justify:
   - a trigger condition that recognises an erasure - a transaction-
@@ -115,10 +158,9 @@ THE CENTRAL DESIGN DECISION. Choose and justify:
     refuses every ordinary DELETE and permits exactly this one; or
   - deletion performed by a path the trigger cannot see, with its own
     narrow authorisation.
-State what you chose, what it refuses, and how an attacker or a bug
-would have to look to use it. A disabled trigger is not an option.
+State what you chose, what it refuses, and HOW AN ATTACKER OR A BUG
+WOULD HAVE TO LOOK to use it. A disabled trigger is not an option.
 
-- AC3: an ordinary DELETE on EntryEvent still refused, by name.
 - The deletion is ONE TRANSACTION. A partial erasure that succeeds
   halfway is worse than a refusal: the person believes they are gone.
 - Tokens revoked in the same transaction (R193).
@@ -128,60 +170,61 @@ would have to look to use it. A disabled trigger is not an option.
   Push.
 
 ====================================================================
-INCREMENT 4 - the negative sweep, and what is NOT deleted
+INCREMENT 5 - the negative sweep, and what survives
 ====================================================================
-- AC2's sweep: a query per table asserting no row references the user
-  id. Written from the schema, like AC1's enumeration, so it cannot
-  miss a table by omission.
-- WHAT SURVIVES, DELIBERATELY, AND THE PAGE MUST SAY SO:
-    an AlertSubscriber row is a SEPARATE consent under a separate
-    identity. Deleting an account must not silently unsubscribe an
-    address that consented independently, and must not silently keep
-    it either. Decide, state it in /confidentialite, and give the
-    person the one-click unsubscribe that already exists.
+- AC3's sweep, written from the schema like AC2's enumeration so it
+  cannot miss a table by omission.
+- WHAT SURVIVES, DELIBERATELY, AND THE PAGE MUST SAY SO: an
+  AlertSubscriber row is a SEPARATE consent under a separate
+  identity. Deleting an account must not silently unsubscribe an
+  address that consented independently, and must not silently keep it
+  either. Decide, state it in /confidentialite, and give the person
+  the one-click unsubscribe that already exists.
   This is the one place where "delete everything" and "honour the
-  consent the person actually gave" pull apart. Say which you chose
-  and why, in the report and on the page.
+  consent the person actually gave" pull apart.
 - Commit: "FW26: the negative sweep, and what survives". Push.
 
 ====================================================================
-INCREMENT 5 - the privacy map, walkthrough, report
+INCREMENT 6 - privacy map, walkthrough, report
 ====================================================================
 - Extend the privacy map: every sentence on /confidentialite about
-  export, deletion, settings and consent maps to the test that makes
-  it true. Anything not yet true is CORRECTED on the page, not left
-  standing (R138).
-- WALKTHROUGH (R176/R177) with curl against pnpm dev, reporting what
-  each call RETURNED: read settings, revoke consent, export, read the
-  export and count its rows against the database, delete, then
-  re-authenticate with the old token and watch it refused, then query
-  a table directly and see nothing.
+  the dossier, export, deletion, settings and consent maps to the
+  test that makes it true. Anything not yet true is CORRECTED on the
+  page, not left standing (R138).
+- WALKTHROUGH (R176/R177) against pnpm dev, reporting what each call
+  RETURNED: read the dossier, read settings, revoke consent, export,
+  count the export's rows against the database, delete, re-try the
+  old token and watch it refused, then query a table directly and see
+  nothing.
 - THE EXPORT IS READ, not merely counted. Open the JSON and confirm a
-  person could understand what they have been given - the annex's
-  provenance in words, not enum values; dates in a readable form.
-  This is increment 4's instrument applied to a file rather than a
-  page.
-- R186: no flag flips. dossierExists stays false.
+  person could understand what they have been given - provenance in
+  words, dates in a readable form. FW25b's instrument applied to a
+  file rather than a page, and it has found something every time.
+- R186: state whether dossierExists now satisfies its proxy. The
+  proxy is the print route AND a client that can reach it. The
+  endpoint is half of it; a client is the other half and does not
+  exist. Decide on the rule, not on a feeling.
 - gate:clone before the final push.
 - Commit: "FW26: privacy map, walkthrough, report". Push.
 
 ====================================================================
 OUT OF SCOPE
 ====================================================================
-- FW25's PDF. The scheduler (FW27). Deployment (FW28).
-- Any client. Any engine change. Any /v1 field rename (frozen).
-- Disabling the append-only trigger.
+- The scheduler (FW27). Deployment (FW28). Any client.
+- Any engine change. Any /v1 field rename (frozen).
+- Disabling the append-only trigger. Moving QUEUE_WAIT_MS (R236).
 
 ====================================================================
 REPORT FORMAT - REPORT-FW26.txt
 ====================================================================
 SUMMARY / PRECONDITIONS (gate:clone hash and envelope) / R231 (any
-prompt citation you could not open) / RED-GREEN LEDGER / THE ERASURE
-PATH (what you chose, what it refuses, how it could be abused) /
-AC3 PROOF (an ordinary DELETE still refused, by name) / EXPORT
-COMPLETENESS (schema enumeration, row counts per table) / NEGATIVE
-SWEEP (per table, empty) / WHAT SURVIVES AND WHY / PRIVACY MAP DELTA
-/ WALKTHROUGH (each response, and the export read) / FLAG DECISION /
+citation you could not open) / RED-GREEN LEDGER / THE DOSSIER
+ENDPOINT (the four refusals, the no-recomputation plant) / THE
+ERASURE PATH (what you chose, what it refuses, how it could be
+abused) / APPEND-ONLY STILL REFUSES (by name) / EXPORT COMPLETENESS
+(schema enumeration, row counts per table) / NEGATIVE SWEEP (per
+table, empty) / WHAT SURVIVES AND WHY / PRIVACY MAP DELTA /
+WALKTHROUGH (each response, and the export read) / FLAG DECISION /
 PARKED / DEVIATIONS / NOTICED BUT NOT TOUCHING / QUESTIONS /
 PUSH PROOF
 
