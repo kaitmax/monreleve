@@ -777,3 +777,70 @@ answer for 2031 — a full basis, nothing logged, 0 % declared — and that answ
 is not so much wrong as *meaningless*, which is worse, because it looks like a
 compliant year. `invalid_year` would send a client author to check their
 parser.
+
+---
+
+## 9. `/api/v1/me` — settings
+
+`GET` returns the ten configuration fields. `PATCH` accepts any subset of them,
+refuses an unknown key rather than stripping it, and refuses an empty body.
+
+**`email` and `name` are not settings and are not returned.** The address is
+the fact §1.5 goes to some length to keep a sign-in form from confirming; a
+settings endpoint handing it back on every poll would be the same leak through
+a quieter door. The name *is* returned by §8, where it is the document's
+titulaire and the whole point — one surface with a reason, not a default.
+
+### 9.1 The fields
+
+| field | `GET` | `PATCH` | notes |
+|---|---|---|---|
+| `canton` | ✓ | ✓ | one of the 26 codes |
+| `employmentRate` | ✓ | ✓ | 1–100, enforced by the database |
+| `denominatorKind` | ✓ | ✓ | `SIMPLIFIED240` or `EXACT` |
+| `exactTotalWorkDays` | ✓ | ✓ | required iff `EXACT`; `null` clears it |
+| `granularity` | ✓ | ✓ | `DAY` or `HALF_DAY` |
+| `activityStartDate` | ✓ | ✓ | `YYYY-MM-DD` or `null` |
+| `reminderTime` | ✓ | ✓ | `HH:mm`, wall clock |
+| `reminderEnabled` | ✓ | ✓ | |
+| `loggingMode` | ✓ | ✓ | `MANUAL` or `AUTO_DETECT` |
+| `detectionConsentAt` | ✓ | — | server-assigned; see §9.3 |
+| `detectionConsent` | — | ✓ | boolean; grants or revokes |
+
+### 9.2 What a client may assume
+
+- **`activityStartDate` is a day, not an instant** — `YYYY-MM-DD`. Sending a
+  timestamp is refused. A client that rendered a midnight-UTC instant would
+  show the day before for half the year in Paris.
+- **`reminderTime` is a wall-clock `HH:mm`**, not an instant: *half past five
+  where the reader lives*, on both sides of a DST boundary.
+- **The invariants are enforced by the database, and named here.**
+  `employment_rate_out_of_range` and `exact_total_required` are refusals a
+  client can act on. SPEC §8 states both rules and R196 put them in the schema
+  so they survive a writer that does not know they exist — this route is one
+  such writer, and a third copy of the bound in the API would be the defect
+  rather than the safety net it resembles.
+
+### 9.3 Consent, in both directions
+
+A client sends **`detectionConsent: true | false`**. It never sends
+`detectionConsentAt`: timestamps are server-assigned throughout this product,
+and a client that could name the moment it consented could name one it did not.
+
+| request | effect |
+|---|---|
+| `detectionConsent: true` | `detectionConsentAt` stamped now |
+| `detectionConsent: false` | stamp cleared **and `loggingMode` forced to `MANUAL`** |
+| `loggingMode: AUTO_DETECT` with no consent | refused, `consent_required` |
+| `loggingMode: AUTO_DETECT` **and** `detectionConsent: true` together | accepted |
+
+**Revocation forcing `MANUAL` is server-side and is not a request the client
+may decline.** SPEC §13 forbids detection without consent, so a row carrying
+`AUTO_DETECT` beside a null stamp is the forbidden state written down — and a
+setting that says one thing while the system does another is found out by the
+person who revoked it.
+
+**Revoking while already on `AUTO_DETECT` is never refused.** It is the one
+thing revocation must always be permitted to do; refusing it would make
+stopping data collection take two requests, which is the persuasion D19 exists
+to forbid.

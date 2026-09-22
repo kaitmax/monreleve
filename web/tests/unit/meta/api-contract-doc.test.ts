@@ -23,6 +23,7 @@ import { describe, expect, it } from 'vitest';
 import { ENTRY_ITEM_FIELDS } from '@/lib/entries/schema';
 import { ENTRY_READ_FIELDS } from '@/lib/entries/read';
 import { DOSSIER_RESPONSE_FIELDS } from '@/lib/dossier/service';
+import { ME_PATCH_FIELDS } from '@/lib/me/schema';
 import { FORMULA_LEADS } from '@/lib/export/csv';
 
 const DOC = join(process.cwd(), '..', 'docs', 'api-v1.md');
@@ -263,5 +264,26 @@ describe('R235: the dossier payload and its contract cannot drift', () => {
 
   it('names future_year as its own refusal, with the reason', () => {
     expect(SOURCE).toContain('`future_year` is its own code');
+  });
+});
+
+describe('the /api/v1/me contract matches the route', () => {
+  it('documents every field PATCH accepts, derived from the schema', () => {
+    // R181: the expectation comes from the schema the route validates with, so
+    // a field added to one fails until the other describes it.
+    const section = SOURCE.split('## 9. `/api/v1/me`')[1] ?? '';
+
+    for (const field of ME_PATCH_FIELDS) {
+      expect(section, field).toContain(field);
+    }
+  });
+
+  it('states that revocation forces MANUAL, which is the whole rule', () => {
+    expect(SOURCE).toContain('`loggingMode` forced to `MANUAL`');
+    expect(SOURCE).toContain('Revoking while already on `AUTO_DETECT` is never refused');
+  });
+
+  it('states that the client never sends the consent timestamp', () => {
+    expect(SOURCE).toContain('It never sends\n`detectionConsentAt`');
   });
 });
