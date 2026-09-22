@@ -113,7 +113,9 @@ describe('the export comes back', () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toContain('text/csv');
-    expect(response.headers.get('content-disposition')).toContain('releve-2026.csv');
+    // R237: the year AND the titulaire, because the filename is the only place
+    // this export names anybody.
+    expect(response.headers.get('content-disposition')).toContain('releve-2026-camille-rey.csv');
 
     // An authenticated export is the one shape a proxy treats as static, and
     // the failure mode is one person's year served to another.
@@ -232,5 +234,36 @@ describe('tenancy and refusals', () => {
 
   it('refuses a malformed year', async () => {
     expect((await GET(get('?year=20xx'))).status).toBe(400);
+  });
+});
+
+describe('R237: the filename is where the CSV names its titulaire', () => {
+  it('carries both the year and the person, through the ROUTE', () => {
+    // R204: the unit test proves the slug; this proves the route uses it. The
+    // two are different claims, and the second is the one a client sees.
+    return (async () => {
+      await seed(userId, '2026-04-07');
+
+      const response = await GET(get('?year=2026'));
+      const disposition = response.headers.get('content-disposition') ?? '';
+
+      expect(disposition).toContain('2026');
+      expect(disposition).toContain('camille-rey');
+    })();
+  });
+
+  it('is the ONLY place the export names anybody', () => {
+    // The bytes themselves carry no identity, and that is the decision rather
+    // than an omission - SPEC 12 freezes the columns and the PDF is the
+    // document of record. Asserting it here stops somebody "fixing" it later
+    // by quietly adding a column.
+    return (async () => {
+      await seed(userId, '2026-04-07');
+
+      const body = await (await GET(get('?year=2026'))).text();
+
+      expect(body).not.toContain('Camille');
+      expect(body).not.toContain('camille');
+    })();
   });
 });

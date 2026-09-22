@@ -648,6 +648,31 @@ as its text-literal marker and shows the note as written; other readers show one
 leading character that was not in the note, which is the visible cost of the
 mitigation and the reason it is documented rather than silent.
 
+**The same asymmetry decides where the CSV names its titulaire.** It does not —
+not in any column, not in any row. SPEC §12 freezes the CSV header as *exact and
+stable*, so an identity column would break every spreadsheet built on it, and a
+leading comment row would break RFC 4180 for every reader that is not Excel.
+
+So **the CSV is attributable by its filename alone**:
+`releve-<year>-<name-slug>.csv`, in `Content-Disposition`. The slug folds
+accents and admits only ASCII letters and digits, because the value is parsed
+as an HTTP header and the name is user-controlled.
+
+**The filename carries the titulaire when it can.** A name that slugifies to
+nothing — one written entirely in a script the slug does not fold, or in
+punctuation — falls back to `releve-<year>.csv`, because a trailing separator
+reads as a truncation bug rather than as a missing name. A client must not
+assume the person's name is always present in the filename; it must assume the
+**year** always is. This is stated rather than left to be discovered, because a
+reader told the export is attributable by filename should not meet one where it
+is not.
+
+**The CSV is not the document of record — the PDF is**, and the PDF names its
+titulaire in its header block where an auditor reads it. A client that needs to
+attribute an export reads the filename or, better, the PDF. A client that
+re-uploads a CSV somewhere should carry the filename with it: nothing inside
+those bytes says whose year it is.
+
 ---
 
 ---

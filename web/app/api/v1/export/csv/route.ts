@@ -34,7 +34,7 @@ import { findLocationKeys } from '@/lib/entries/no-coordinates';
 import { parseReadQuery } from '@/lib/entries/read-query';
 import { buildDossierFor } from '@/lib/dossier/load';
 import { MissingTitulaireError } from '@/lib/dossier/service';
-import { toCsv } from '@/lib/export/csv';
+import { csvFilename, toCsv } from '@/lib/export/csv';
 
 export const dynamic = 'force-dynamic';
 
@@ -81,14 +81,16 @@ export async function GET(request: Request): Promise<NextResponse> {
   try {
     const dossier = await buildDossierFor(auth.userId, query.year);
 
-    // THE FILENAME CARRIES THE YEAR, because a reader exporting three years
-    // ends up with three files in one folder and `export.csv` twice is a
-    // support request.
+    // THE FILENAME CARRIES THE YEAR AND THE TITULAIRE, and under R237 it is
+    // the ONLY place this file names whose year it is - the columns are frozen
+    // by SPEC 12 and a comment row would break RFC 4180. A reader exporting
+    // three years ends up with three files in one folder, and a fiduciaire
+    // holding two people's exports needs to tell them apart.
     return new NextResponse(toCsv(dossier.annex), {
       status: 200,
       headers: {
         'content-type': 'text/csv; charset=utf-8',
-        'content-disposition': `attachment; filename="releve-${query.year}.csv"`,
+        'content-disposition': `attachment; filename="${csvFilename(query.year, dossier.titulaire)}"`,
         // Never cached: the same reasoning as the read path. An authenticated
         // export is the one shape a proxy will happily treat as static, and
         // the failure mode is one person's year served to another.

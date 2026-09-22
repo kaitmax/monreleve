@@ -205,3 +205,26 @@ describe('R230: the document states the one place a note is altered', () => {
     expect(SOURCE).toContain("the accountant's");
   });
 });
+
+describe('R237: the contract says where the CSV names its titulaire', () => {
+  it('states that it is attributable by FILENAME and names the shape', () => {
+    // A client author who does not read this will assume an export carries its
+    // own identity, because every other artefact this product produces does.
+    expect(SOURCE).toContain('attributable by its filename alone');
+    expect(SOURCE).toContain('releve-<year>-<name-slug>.csv');
+  });
+
+  it('warns that the name is not ALWAYS in the filename', () => {
+    // R237 claims the export is attributable by filename. A name that
+    // slugifies to nothing falls back to the year alone, and a client told
+    // the first thing must be told the second or it will parse for a name
+    // that is not there.
+    expect(SOURCE).toContain('carries the titulaire when it can');
+  });
+
+  it('says the CSV is NOT the document of record, which is the reason', () => {
+    // Without this the filename decision reads as a limitation somebody will
+    // "fix" by adding a column - and SPEC 12 froze those columns.
+    expect(SOURCE).toContain('not the document of record');
+  });
+});

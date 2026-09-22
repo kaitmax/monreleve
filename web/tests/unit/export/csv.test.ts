@@ -3,7 +3,7 @@
 // The CSV export. FW25 increment 1.
 
 import { describe, expect, it } from 'vitest';
-import { CSV_COLUMNS, quoteField, toCsv } from '@/lib/export/csv';
+import { CSV_COLUMNS, csvFilename, quoteField, toCsv } from '@/lib/export/csv';
 import type { AnnexRow } from '@/lib/dossier/service';
 
 function row(overrides: Partial<AnnexRow> = {}): AnnexRow {
@@ -269,5 +269,118 @@ describe('quoteField, directly', () => {
     ['empty', '', ''],
   ])('%s', (_label, input, expected) => {
     expect(quoteField(input)).toBe(expected);
+  });
+});
+
+describe('R237: the CSV is attributable by its FILENAME, and by nothing else', () => {
+  // ==========================================================================
+  // THE ASYMMETRY IS DELIBERATE, AND R230 ALREADY SETTLED WHY
+  // ==========================================================================
+  //
+  // The CSV requires a titulaire - it is built from the same dossier the
+  // document is - and names nobody in its own bytes. Every way of fixing that
+  // inside the file costs something real: a column breaks SPEC 12's "exact and
+  // stable", and a leading comment row breaks RFC 4180 for every reader.
+  //
+  // It is not an oversight, because the CSV is NOT the evidence document. The
+  // PDF is, and it names its titulaire in the header. R230 settled the same
+  // asymmetry from the other side when it let the CSV escape a formula that
+  // the PDF carries faithfully: the format that EXECUTES is defended, the
+  // format that IS the record stays literal.
+  //
+  // So the filename carries the identity, and `docs/api-v1.md` says so rather
+  // than leaving a reader to infer it.
+
+  it('carries the year and the titulaire', () => {
+    expect(csvFilename(2026, 'Camille Rey')).toBe('releve-2026-camille-rey.csv');
+  });
+
+  it('folds accents rather than emitting them into a header', () => {
+    // A Content-Disposition filename is a header value. Non-ASCII there is a
+    // question about RFC 6266 encoding that this product does not need to
+    // answer: the name inside the DOCUMENT is fully accented, and this is a
+    // handle for a file on a disk.
+    expect(csvFilename(2026, 'Benoît Müller-Sørensen')).toBe(
+      'releve-2026-benoit-muller-sorensen.csv',
+    );
+  });
+
+  it('cannot break out of the quoted filename', () => {
+    // THE ONE THAT MATTERS. `name` is user-controlled, and it is being placed
+    // inside a quoted header value - a name containing a quote, a newline or a
+    // semicolon could otherwise forge a second header parameter.
+    const hostile = csvFilename(2026, 'a"; filename="evil.exe\r\nX-Injected: 1');
+
+    expect(hostile).not.toContain('"');
+    expect(hostile).not.toContain('\r');
+    expect(hostile).not.toContain('\n');
+    expect(hostile).not.toContain(';');
+    expect(hostile.startsWith('releve-2026-')).toBe(true);
+    expect(hostile.endsWith('.csv')).toBe(true);
+  });
+
+  it('stays a usable filename when the name is long', () => {
+    const long = csvFilename(2026, 'A'.repeat(300));
+
+    expect(long.length).toBeLessThanOrEqual(80);
+    expect(long.endsWith('.csv')).toBe(true);
+  });
+
+  it('falls back to the year alone when a name slugifies to nothing', () => {
+    // A name of only punctuation is not a name this product can put in a
+    // filename, and `releve-2026-.csv` is worse than `releve-2026.csv`.
+    // buildDossier refuses an EMPTY titulaire; it does not refuse "***".
+    expect(csvFilename(2026, '***')).toBe('releve-2026.csv');
+  });
+});
+
+describe('R237: the slug, at its edges', () => {
+  it('handles an accented Latin letter through NFD, not through the map', () => {
+    // THE BOUNDARY THE MAP DRAWS. `å` is a + U+030A, so normalisation splits
+    // it and the combining-mark strip leaves `a`. Putting it in UNDECOMPOSED
+    // would be redundant and would blur the rule the map follows - measured
+    // rather than assumed, because it looks like it should need an entry.
+    expect(csvFilename(2026, 'Åsa Lindé')).toBe('releve-2026-asa-linde.csv');
+  });
+
+  it('degrades a letter OUTSIDE the map to a hyphen, visibly', () => {
+    // The map is deliberately incomplete: it covers what a French or
+    // Swiss-adjacent name plausibly carries. Anything else becomes a hyphen,
+    // which is a visibly lossy filename rather than a silently mangled one -
+    // and the DOCUMENT carries the name in full either way.
+    expect(csvFilename(2026, 'Ωmega Ipsilon')).toBe('releve-2026-mega-ipsilon.csv');
+  });
+
+  it('truncates on a word boundary rather than mid-word', () => {
+    // A cut mid-word reads as corruption. Where a hyphen is near the limit the
+    // slug ends there, so a shortened name still looks like a shortened name.
+    const name = 'Jean-Baptiste Emmanuel Marie de la Tour du Pin Chambly';
+    const file = csvFilename(2026, name);
+
+    expect(file.endsWith('.csv')).toBe(true);
+    expect(file.length).toBeLessThanOrEqual(80);
+    // It did not stop in the middle of a word.
+    expect(file.replace('.csv', '').endsWith('-')).toBe(false);
+    expect(name.toLowerCase().replace(/[^a-z0-9]+/gu, '-')).toContain(
+      file.replace('releve-2026-', '').replace('.csv', ''),
+    );
+  });
+
+  it('produces a header that parses to exactly ONE filename parameter', () => {
+    // THE PROPERTY; the character class is only the mechanism. Asserting that
+    // the forbidden characters are gone tests today's allow-list. Asserting
+    // that the header still has one parameter tests what the allow-list is
+    // FOR - a forged second parameter is invisible in the file and shows up
+    // only in what a browser calls it.
+    const hostile = 'a"; filename="evil.exe\r\nX-Injected: 1';
+    const header = `attachment; filename="${csvFilename(2026, hostile)}"`;
+
+    const parameters = header
+      .split(';')
+      .map((part) => part.trim())
+      .filter((part) => part.startsWith('filename='));
+
+    expect(parameters).toHaveLength(1);
+    expect(header.split('\n')).toHaveLength(1);
   });
 });

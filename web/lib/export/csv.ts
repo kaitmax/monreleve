@@ -153,6 +153,108 @@ export function neutraliseFormula(value: string): string {
   return FORMULA_LEADS.includes(lead) ? `'${value}` : value;
 }
 
+/**
+ * Letters that do NOT decompose under NFD, and their ASCII stand-ins.
+ *
+ * ============================================================================
+ * THE RULE THIS LIST FOLLOWS, AND THE ONE IT DOES NOT
+ * ============================================================================
+ *
+ * An ACCENTED LATIN LETTER is a base letter plus a combining mark, so NFD
+ * splits it and the strip below leaves the base: `é` -> `e`, `ü` -> `u`,
+ * `ñ` -> `n`, and `å` -> `a`. None of those belong here, and `å` is named
+ * because it looks like it should: it is a + U+030A, measured, not assumed.
+ *
+ * THESE ARE DIFFERENT LETTERS, not decorated ones. `ø`, `æ`, `ß`, `œ`, `ð`,
+ * `þ`, `ł` and `đ` are single codepoints with no decomposition at all, so the
+ * strip leaves them whole and the character class turns each into a hyphen -
+ * `benoit-muller-s-rensen`, which reads as corruption rather than as a name.
+ *
+ * IT IS DELIBERATELY INCOMPLETE. It covers the letters a French or
+ * Swiss-adjacent name plausibly carries. Anything outside it degrades to a
+ * hyphen, which is a visibly lossy filename rather than a silently mangled
+ * one - and the document itself carries the name in full.
+ */
+const UNDECOMPOSED: Readonly<Record<string, string>> = {
+  ø: 'o',
+  Ø: 'O',
+  æ: 'ae',
+  Æ: 'AE',
+  œ: 'oe',
+  Œ: 'OE',
+  ß: 'ss',
+  đ: 'd',
+  Đ: 'D',
+  ł: 'l',
+  Ł: 'L',
+  ð: 'd',
+  Ð: 'D',
+  þ: 'th',
+  Þ: 'TH',
+};
+
+/**
+ * The CSV's filename, which is the ONLY place it names whose year it is.
+ *
+ * ============================================================================
+ * R237: THE CSV IS ATTRIBUTABLE BY ITS FILENAME, AND BY NOTHING ELSE
+ * ============================================================================
+ *
+ * The export requires a titulaire - it is built from the same dossier the
+ * document is - and carries no name in its own bytes. Every way of fixing that
+ * inside the file costs something real: a column would break SPEC 12's "exact
+ * and stable", and a leading comment row would break RFC 4180 for every reader
+ * that is not Excel.
+ *
+ * IT IS NOT AN OVERSIGHT, because the CSV is not the evidence document. The
+ * PDF is, and it names its titulaire in the header. R230 settled the same
+ * asymmetry from the other side when it let the CSV escape a formula the PDF
+ * carries faithfully: the format that EXECUTES is defended, the format that IS
+ * the record stays literal. `docs/api-v1.md` states this so a client author
+ * meets it in the contract rather than inferring it from a filename.
+ *
+ * THE NAME IS USER-CONTROLLED AND THIS GOES IN A HEADER. A `Content-
+ * Disposition` value is parsed by every HTTP client there is, so a name
+ * carrying a quote, a semicolon or a newline could otherwise forge a second
+ * parameter. The character class below admits ASCII letters and digits and
+ * nothing else, which makes that structural rather than a list of things to
+ * remember to escape.
+ */
+export function csvFilename(year: number, titulaire: string): string {
+  const folded = [...titulaire].map((character) => UNDECOMPOSED[character] ?? character).join('');
+
+  const wide = folded
+    .normalize('NFD')
+    // Combining marks, so `é` becomes `e` rather than a hyphen.
+    .replace(/[̀-ͯ]/gu, '')
+    .replace(/[^A-Za-z0-9]+/gu, '-')
+    .toLowerCase()
+    .replace(/^-+|-+$/gu, '');
+
+  // ============================================================================
+  // THE BOUND COMES FROM WHAT A FILESYSTEM TOLERATES, NOT FROM TASTE
+  // ============================================================================
+  //
+  // Most filesystems cap a NAME at 255 bytes. `releve-` + a four-digit year +
+  // `-` + `.csv` is 17, so 60 leaves the whole filename at 77 - far inside the
+  // limit with room for a browser appending ` (1)` on a second download.
+  const LIMIT = 60;
+
+  // TRUNCATE ON A WORD BOUNDARY WHERE ONE IS NEAR. A cut mid-word looks like
+  // corruption; `releve-2026-jean-baptiste` is obviously a shortened name in a
+  // way `releve-2026-jean-baptis` is not. Only when the boundary is close
+  // enough that the name is still recognisable.
+  const cut = wide.slice(0, LIMIT);
+  const boundary = cut.lastIndexOf('-');
+  const slug = (wide.length <= LIMIT ? wide : boundary >= LIMIT - 12 ? cut.slice(0, boundary) : cut)
+    .replace(/^-+|-+$/gu, '');
+
+  // A name of only punctuation slugifies to nothing. `releve-2026-.csv` is
+  // worse than the year alone, and `buildDossier` refuses an EMPTY titulaire
+  // but not one made of asterisks.
+  return slug === '' ? `releve-${year}.csv` : `releve-${year}-${slug}.csv`;
+}
+
 /** An empty cell for a null, never the word "null". */
 const cell = (value: string | null): string => (value === null ? '' : value);
 
