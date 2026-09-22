@@ -29,6 +29,57 @@
 
 import { prisma } from '@/lib/db/client';
 import { ME_SELECT, serialiseMe } from '@/lib/me/read';
+import { DOSSIER_COPY } from '@/lib/fr/dossier';
+
+// ============================================================================
+// EVERY CODE TRAVELS WITH THE WORD FOR IT
+// ============================================================================
+//
+// The first version of this export shipped `"kind": "HOME"`, `"portion":
+// "FULL"` and `"provenance": "DETECTED_CONFIRMED"`. Reading it as a person
+// found the defect the row counts could not: a French reader opening their own
+// data met English-ish enum tokens, in a product whose every other surface is
+// carefully French.
+//
+// THE CODE STAYS, because an export is also a machine-readable record and a
+// person re-importing it elsewhere needs the stable token. The WORD is added
+// beside it. Both, rather than either.
+//
+// THE WORDS COME FROM DOSSIER_COPY (R206). They are the same ones the document
+// prints, so an export and the PDF cannot describe the same day differently.
+
+const KIND_LABEL: Readonly<Record<string, string>> = {
+  CH: DOSSIER_COPY.annex.kindSwiss,
+  HOME: DOSSIER_COPY.annex.kindHome,
+  MISSION_FR: DOSSIER_COPY.annex.kindMissionFrance,
+  MISSION_THIRD: DOSSIER_COPY.annex.kindMissionThird,
+  ABSENT: DOSSIER_COPY.annex.absenceAutre,
+};
+
+const PORTION_LABEL: Readonly<Record<string, string>> = {
+  FULL: DOSSIER_COPY.annex.portionFull,
+  AM: DOSSIER_COPY.annex.portionMorning,
+  PM: DOSSIER_COPY.annex.portionAfternoon,
+};
+
+const PROVENANCE_LABEL: Readonly<Record<string, string>> = {
+  MANUAL: DOSSIER_COPY.annex.provenanceManual,
+  DETECTED_CONFIRMED: DOSSIER_COPY.annex.provenanceConfirmed,
+  DETECTED_CORRECTED: DOSSIER_COPY.annex.provenanceCorrected,
+};
+
+const ABSENCE_LABEL: Readonly<Record<string, string>> = {
+  CONGE: DOSSIER_COPY.annex.absenceConge,
+  MALADIE: DOSSIER_COPY.annex.absenceMaladie,
+  FERIE: DOSSIER_COPY.annex.absenceFerie,
+  AUTRE: DOSSIER_COPY.annex.absenceAutre,
+};
+
+/** The word for a code, or the code itself when there is no word for it. */
+const wordFor = (
+  table: Readonly<Record<string, string>>,
+  code: string | null,
+): string | null => (code === null ? null : (table[code] ?? code));
 
 /** The tables whose rows appear in an export, and the key each appears under. */
 export const EXPORTED = {
@@ -104,12 +155,16 @@ export async function buildAccountExport(userId: string): Promise<AccountExport>
     entries: entries.map((entry) => ({
       dayDate: day(entry.dayDate),
       portion: entry.portion,
+      portionLabel: wordFor(PORTION_LABEL, entry.portion),
       kind: entry.kind,
+      kindLabel: wordFor(KIND_LABEL, entry.kind),
       absenceReason: entry.absenceReason,
+      absenceLabel: wordFor(ABSENCE_LABEL, entry.absenceReason),
       // R230: the JSON is the RECORD and carries the note byte for byte. Only
       // the CSV neutralises a formula, because only a spreadsheet executes one.
       note: entry.note,
       provenance: entry.provenance,
+      provenanceLabel: wordFor(PROVENANCE_LABEL, entry.provenance),
       detectedKind: entry.detectedKind,
       firstRecordedAt: entry.firstRecordedAt.toISOString(),
       clientClaimedAt: instant(entry.clientClaimedAt),
@@ -124,8 +179,11 @@ export async function buildAccountExport(userId: string): Promise<AccountExport>
       recordedAt: event.recordedAt.toISOString(),
       dayDate: day(event.dayDate),
       portion: event.portion,
+      portionLabel: wordFor(PORTION_LABEL, event.portion),
       kind: event.kind,
+      kindLabel: wordFor(KIND_LABEL, event.kind),
       provenance: event.provenance,
+      provenanceLabel: wordFor(PROVENANCE_LABEL, event.provenance),
       detectedKind: event.detectedKind,
       clientClaimedAt: instant(event.clientClaimedAt),
       clientMutationId: event.clientMutationId,

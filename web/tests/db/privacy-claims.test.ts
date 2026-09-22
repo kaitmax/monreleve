@@ -34,6 +34,10 @@ import { join } from 'node:path';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { NextRequest } from 'next/server';
 import { POST } from '@/app/api/alertes/route';
+import { GET as exportRoute } from '@/app/api/v1/account/export/route';
+import { POST as deleteRoute } from '@/app/api/v1/account/delete/route';
+import { PATCH as mePatch } from '@/app/api/v1/me/route';
+import { issueTokenPair } from '@/lib/auth/tokens';
 import { prisma } from '@/lib/db/client';
 import {
   CONFIDENTIALITE_COPY,
@@ -438,5 +442,177 @@ describe('the map covers the page rather than a chosen part of it', () => {
   it('found sentences at all, so the filter above is not empty', () => {
     expect(pageText()).toContain('alerte');
     expect(pageText().length).toBeGreaterThan(500);
+  });
+});
+
+// ============================================================================
+// FW26: THE ACCOUNT HALF OF THE PAGE BECOMES TRUE
+// ============================================================================
+//
+// FW14 made the alert-list claims true. These four have described an account
+// that could not yet be exported or deleted - a description of intent, exactly
+// as the alert-list sentences were before FW14. Each is now bound to the code
+// that makes it so, in the same two halves: the page still says it, and the
+// code still does it.
+
+/** A fresh account with one logged day, its trail, and a live token. */
+async function accountWithData(email: string): Promise<{ userId: string; token: string }> {
+  const user = await prisma.user.create({
+    data: { email, name: 'Camille Rey', canton: 'GE', employmentRate: 100 },
+  });
+
+  const entry = await prisma.entry.create({
+    data: {
+      userId: user.id,
+      dayDate: new Date('2026-03-02T00:00:00.000Z'),
+      portion: 'FULL',
+      kind: 'HOME',
+      clientMutationId: `00000000-0000-4000-f000-${Date.now().toString().slice(-12)}`,
+    },
+  });
+
+  await prisma.entryEvent.create({
+    data: {
+      userId: user.id,
+      entryId: entry.id,
+      action: 'CREATED',
+      kind: 'HOME',
+      provenance: 'MANUAL',
+      dayDate: entry.dayDate,
+      portion: 'FULL',
+    },
+  });
+
+  return { userId: user.id, token: (await issueTokenPair(user.id)).accessToken };
+}
+
+function bearer(url: string, token: string, init: RequestInit = {}): Request {
+  return new Request(url, {
+    ...init,
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${token}`, ...init.headers },
+  });
+}
+
+describe('CLAIM 8: the export produces JSON and CSV of the days, their origin and stamps', () => {
+  it('is still on the page', () => {
+    expect(CONFIDENTIALITE_COPY.rights[0]).toContain('JSON');
+    expect(CONFIDENTIALITE_COPY.rights[0]).toContain('CSV');
+    expect(CONFIDENTIALITE_COPY.rights[0]).toContain('horodatages');
+  });
+
+  it('holds: both formats come back, and the stamps are in them', async () => {
+    const { token } = await accountWithData('claim8@example.com');
+
+    const json = (await (
+      await exportRoute(bearer(`${TEST_ORIGIN}/api/v1/account/export`, token))
+    ).json()) as { entries: { firstRecordedAt: string; provenance: string }[] };
+
+    expect(json.entries.length).toBeGreaterThan(0);
+    expect(json.entries[0]?.firstRecordedAt).toBeTruthy();
+    expect(json.entries[0]?.provenance).toBe('MANUAL');
+
+    const csv = await (
+      await exportRoute(bearer(`${TEST_ORIGIN}/api/v1/account/export?format=csv`, token))
+    ).text();
+
+    expect(csv).toContain('firstRecordedAt');
+  });
+});
+
+describe('CLAIM 9: deletion erases the account, the days, their history and the devices', () => {
+  it('is still on the page, including that it cannot be undone', () => {
+    expect(CONFIDENTIALITE_COPY.rights[1]).toContain('définitive');
+    expect(CONFIDENTIALITE_COPY.rights[1]).toContain('historique');
+  });
+
+  it('holds: every user-owned row is gone afterwards', async () => {
+    const { userId, token } = await accountWithData('claim9@example.com');
+
+    // PRESENCE FIRST: the rows must exist, or "they are gone" is satisfied by
+    // an account that never had any.
+    expect(await prisma.entry.count({ where: { userId } })).toBeGreaterThan(0);
+    expect(await prisma.entryEvent.count({ where: { userId } })).toBeGreaterThan(0);
+
+    await deleteRoute(
+      bearer(`${TEST_ORIGIN}/api/v1/account/delete`, token, {
+        method: 'POST',
+        body: JSON.stringify({ confirm: 'SUPPRIMER' }),
+      }),
+    );
+
+    expect(await prisma.user.count({ where: { id: userId } })).toBe(0);
+    expect(await prisma.entry.count({ where: { userId } })).toBe(0);
+    expect(await prisma.entryEvent.count({ where: { userId } })).toBe(0);
+  });
+});
+
+describe('CLAIM 10: an alert-list subscription is separate and survives deletion', () => {
+  it('is still on the page, and says the unsubscribe link stays valid', () => {
+    expect(CONFIDENTIALITE_COPY.rights[2]).toContain('consentement distinct');
+    expect(CONFIDENTIALITE_COPY.rights[2]).toContain('désinscription');
+  });
+
+  it('holds: the row and its unsubscribe token outlive the account', async () => {
+    const { token } = await accountWithData('claim10@example.com');
+
+    await prisma.alertSubscriber.create({
+      data: {
+        email: 'claim10@example.com',
+        source: 'calculateur',
+        confirmedAt: new Date(),
+        unsubscribeTokenHash: 'claim10-hash',
+      },
+    });
+
+    await deleteRoute(
+      bearer(`${TEST_ORIGIN}/api/v1/account/delete`, token, {
+        method: 'POST',
+        body: JSON.stringify({ confirm: 'SUPPRIMER' }),
+      }),
+    );
+
+    const row = await prisma.alertSubscriber.findUnique({
+      where: { email: 'claim10@example.com' },
+    });
+
+    expect(row).not.toBeNull();
+    expect(row?.unsubscribeTokenHash).toBe('claim10-hash');
+  });
+});
+
+describe('CLAIM 11: a consent given can be withdrawn', () => {
+  it('is still on the page', () => {
+    expect(CONFIDENTIALITE_COPY.rightsIntro).toContain('retirer un consentement');
+  });
+
+  it('holds: revoking detection clears the stamp AND stops the sampling', async () => {
+    // The half that matters. A page promising withdrawal, over a system that
+    // kept sampling because the client was never told to stop, would be the
+    // page describing intent again.
+    const { userId, token } = await accountWithData('claim11@example.com');
+
+    await mePatch(
+      bearer(`${TEST_ORIGIN}/api/v1/me`, token, {
+        method: 'PATCH',
+        body: JSON.stringify({ detectionConsent: true, loggingMode: 'AUTO_DETECT' }),
+      }),
+    );
+
+    const granted = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+
+    expect(granted.detectionConsentAt).not.toBeNull();
+    expect(granted.loggingMode).toBe('AUTO_DETECT');
+
+    await mePatch(
+      bearer(`${TEST_ORIGIN}/api/v1/me`, token, {
+        method: 'PATCH',
+        body: JSON.stringify({ detectionConsent: false }),
+      }),
+    );
+
+    const revoked = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+
+    expect(revoked.detectionConsentAt).toBeNull();
+    expect(revoked.loggingMode).toBe('MANUAL');
   });
 });

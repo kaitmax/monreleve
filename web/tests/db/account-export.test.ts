@@ -23,6 +23,7 @@ import { prisma } from '@/lib/db/client';
 import { issueTokenPair } from '@/lib/auth/tokens';
 import { GET } from '@/app/api/v1/account/export/route';
 import { EXCLUDED, EXPORTED } from '@/lib/account/export';
+import { DOSSIER_COPY as COPY } from '@/lib/fr/dossier';
 
 const ORIGIN = 'https://monreleve.ch';
 const SCHEMA = readFileSync(join(process.cwd(), 'prisma/schema.prisma'), 'utf8');
@@ -260,5 +261,103 @@ describe('R230: the CSV escapes a formula and the JSON does not', () => {
     const response = await GET(get('?format=csv'));
 
     expect(response.headers.get('content-disposition')).toContain('camille-rey');
+  });
+});
+
+describe('the export is readable by the person it belongs to', () => {
+  // FOUND BY READING IT, not by counting rows. The first version shipped
+  // "kind": "HOME", "portion": "FULL", "provenance": "DETECTED_CONFIRMED" -
+  // enum tokens, to a French reader, in a product whose every other surface is
+  // carefully French. The row counts were all correct.
+
+  beforeEach(async () => {
+    const absent = await prisma.entry.create({
+      data: {
+        userId,
+        dayDate: new Date('2026-03-05T00:00:00.000Z'),
+        portion: 'AM',
+        kind: 'ABSENT',
+        absenceReason: 'MALADIE',
+        provenance: 'DETECTED_CORRECTED',
+        detectedKind: 'CH',
+        clientMutationId: mutation(),
+      },
+    });
+
+    // A TRAIL ROW AND A SECOND KIND, because the assertions below are about
+    // both. The first version of this fixture made one ABSENT entry and no
+    // event, so "the trail is labelled" failed on an empty trail and "the
+    // words come from DOSSIER_COPY" failed looking for a day that was never
+    // created - two tests failing for a reason that was not the subject.
+    await prisma.entryEvent.create({
+      data: {
+        userId,
+        entryId: absent.id,
+        action: 'CREATED',
+        kind: 'ABSENT',
+        provenance: 'DETECTED_CORRECTED',
+        dayDate: absent.dayDate,
+        portion: 'AM',
+      },
+    });
+
+    await prisma.entry.create({
+      data: {
+        userId,
+        dayDate: new Date('2026-03-06T00:00:00.000Z'),
+        portion: 'FULL',
+        kind: 'HOME',
+        clientMutationId: mutation(),
+      },
+    });
+  });
+
+  it('gives every code the word for it, in French', async () => {
+    const payload = (await (await GET(get())).json()) as {
+      entries: Record<string, string>[];
+    };
+
+    const row = payload.entries.find((entry) => entry.dayDate === '2026-03-05');
+
+    expect(row?.portionLabel).toBe(COPY.annex.portionMorning);
+    expect(row?.kindLabel).toBe(COPY.annex.absenceAutre);
+    expect(row?.absenceLabel).toBe(COPY.annex.absenceMaladie);
+    expect(row?.provenanceLabel).toBe(COPY.annex.provenanceCorrected);
+  });
+
+  it('KEEPS the code beside the word, because an export is also machine-readable', async () => {
+    // Replacing the token would break re-import and make the file useless to
+    // anything but a human reader. Both, rather than either.
+    const payload = (await (await GET(get())).json()) as {
+      entries: Record<string, string>[];
+    };
+
+    const row = payload.entries.find((entry) => entry.dayDate === '2026-03-05');
+
+    expect(row?.portion).toBe('AM');
+    expect(row?.kind).toBe('ABSENT');
+    expect(row?.provenance).toBe('DETECTED_CORRECTED');
+  });
+
+  it('labels the TRAIL too, which is the half a person most needs explained', async () => {
+    const payload = (await (await GET(get())).json()) as {
+      trail: Record<string, string>[];
+    };
+
+    expect(payload.trail.length).toBeGreaterThan(0);
+    expect(payload.trail[0]?.kindLabel).toBeTruthy();
+    expect(payload.trail[0]?.provenanceLabel).toBeTruthy();
+  });
+
+  it('takes the words from DOSSIER_COPY, so the export and the PDF agree', async () => {
+    // R206: one home. An export that said "Détection corrigée" while the
+    // document said something else would be two descriptions of one day.
+    const payload = (await (await GET(get())).json()) as {
+      entries: Record<string, string>[];
+    };
+
+    const words = payload.entries.map((entry) => entry.kindLabel);
+
+    expect(words).toContain(COPY.annex.kindHome);
   });
 });

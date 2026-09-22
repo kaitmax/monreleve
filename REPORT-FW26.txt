@@ -1,0 +1,477 @@
+====================================================================
+REPORT-FW26.txt - the dossier endpoint, and the account routes
+Mon Releve   2026-09-22
+====================================================================
+
+Pure ASCII. Accented French lives in web/lib/fr (R155).
+Run under R241: continuous execution, one report at the end.
+
+SUMMARY
+--------------------------------------------------------------------
+All six increments done, gated and pushed.
+
+  1  the dossier endpoint (R235)                      e241966
+  2  /api/v1/me                                       2fd4b7d
+  3  account data export                              1384397
+  4  deletion through a named erasure path            4866461
+  5  the negative sweep, and what survives            c3b4fb5
+  6  privacy map, walkthrough, report                 (this commit)
+
+THE SHAPE OF THE TASK: increment 1's endpoint was the smaller half of
+its own commit - reading lib/fr/dossier.ts against the page found FOUR
+defects, one of which made the document state something FALSE. The
+erasure in increment 4 needed no new mechanism because FW21 had
+already built the door-less one. And the export's read-through found
+that the file was machine-shaped in a French product.
+
+PRECONDITIONS
+--------------------------------------------------------------------
+R1: gate:clone green on origin/main's HEAD, 261948d.
+
+  cpus         8
+  vitest       maxWorkers 4 (R99's cap, inherited)
+  free memory  1815 MiB of 16195 MiB
+  CI readiness quiet - private, CI_FULL unset, jobs will skip
+
+No precondition flake. R228's timeout budget held across six clone
+runs this task, at 1815 to 2699 MiB free.
+
+R231 - CITATIONS I COULD NOT OPEN
+--------------------------------------------------------------------
+None. Every file this prompt named exists: SPEC 8, SPEC 11.5, SPEC 12,
+SPEC 20, /confidentialite as shipped, docs/api-v1.md, REPORT-FW21.txt
+and REPORT-FW25b.txt were all read.
+
+RED-GREEN LEDGER
+--------------------------------------------------------------------
+  the period payload  RED  Cannot read properties of undefined
+                           (reading 'fraction'), 3 tests
+                      GREEN 23
+
+  the dossier route   RED  Cannot find package
+                           '@/app/api/v1/dossier/route'
+                      GREEN 16
+
+  /api/v1/me          RED  Cannot find package '@/app/api/v1/me/route'
+                      GREEN 19
+
+  the export          RED  Cannot find package
+                           '@/app/api/v1/account/export/route'
+                      GREEN 16
+
+  the erasure         RED  Cannot find package
+                           '@/app/api/v1/account/delete/route'
+                      GREEN 16
+
+PLANTS, each verified to have landed (R180):
+  - a recomputation in the dossier route: ONE test failed of sixteen,
+    naming the field and both values, 0.4 against 0.41.
+  - the unconditional header restored: ONE test failed of fourteen.
+  - the rail removed (FW25b, re-verified): ONE of nineteen.
+
+THE DOSSIER ENDPOINT
+--------------------------------------------------------------------
+GET /api/v1/dossier?year=. The route assembles nothing; it serialises
+DOSSIER_RESPONSE_FIELDS.
+
+SIX NAMED REFUSALS (R198):
+  missing_token        401  no bearer
+  coordinates_refused  400  checked FIRST, before the year
+  unknown_parameter    400  including a planted userId
+  invalid_year         400  not four digits
+  future_year          400  a year that has not happened
+  titulaire_missing    422  no name, so no attributable document
+
+future_year IS ITS OWN CODE rather than invalid_year. The engine WOULD
+answer for 2031 - full basis, nothing logged, 0 % declared - and that
+answer is not so much wrong as MEANINGLESS, which is worse because it
+looks like a compliant year. invalid_year would send a client author
+to check their parser.
+
+BOTH TENANCY PLANTS AT THE HTTP BOUNDARY. A planted userId is REFUSED
+as unknown_parameter rather than ignored - the stronger answer, since
+a route that silently ignored it would still have served the caller's
+own data and passed a laxer test. Two accounts each holding data get
+their own, so "did not leak" is not satisfied by an empty answer.
+
+THE NO-RECOMPUTATION PLANT is the one the prompt said to watch, and it
+fired precisely.
+
+`result` STAYS OFF THE WIRE. It duplicates declarableRate, rawRate and
+both headrooms, all of which zone already carries. Two sources for one
+figure inside a frozen contract is R206's drift where it is most
+expensive to undo. R217 permits additive fields, so its unique ones
+can be named later.
+
+FOUR DOCUMENT DEFECTS, FOUND BY READING
+--------------------------------------------------------------------
+All in lib/fr/dossier.ts, all invisible to every gate.
+
+1. THE HEADER STATED SOMETHING FALSE. It printed "Annee 2026 entiere"
+   unconditionally while the engine prorated the basis from
+   activityStartDate - so a person starting 1 July read about 120
+   jours ouvres under a line claiming the whole year. Every figure
+   below it was right; the one line framing them was wrong.
+   COPY.header.fromDate, written for exactly this, rendered nowhere.
+
+   FIXED ON period.fraction, THE VALUE THE ENGINE USED, read from
+   toTeleworkInput rather than recomputed. Keying on activityStartDate
+   would be correct only while that stays the sole cause of proration.
+
+   THE WALKTHROUGH VINDICATED THAT CHOICE CONCRETELY: the demo user
+   has activityStartDate 2026-01-01 and fraction 1, so the header
+   correctly says "entiere". Keyed on the start date, every 1 January
+   starter would now read "Du 01.01.2026 au 31 decembre 2026" -
+   technically true, worse, and a silent behaviour change.
+
+2/3. remainingToFiscal AND remainingToSocial - THE PRODUCT'S HEADLINE
+   ANSWER - computed and never printed. The rail POSITIONED the reader
+   between two thresholds and the document never said how far.
+   R239 renders both; a breach is a DISTANCE ABOVE, with
+   formatSignedDays splitting magnitude from sign so neither "-6,5"
+   nor "0" can appear (SPEC 7.2 step 6, R12, R73).
+
+4. badgeNearFiscal - a FOURTH status the engine cannot produce. SPEC
+   line 291 makes the 30 % and 38 % steps in-band alerts, "not new
+   statuses". R240 deletes it; a test asserts the badge COUNT so the
+   next speculative one fails under a different name.
+
+SPEC 12 item 3 updated (R9) so the structure and the document agree.
+
+R238 - EVERY COPY STRING IS REACHABLE, OR DECLARED UNREACHABLE
+--------------------------------------------------------------------
+Four orphans in one file is not forgetfulness: a copy module can hold
+a string no surface reaches and NOTHING NOTICES, because it is
+well-formed French that passes every typography guard.
+
+ITS FIRST RUN FOUND THREE LIVE ORPHANS (R178) - no planted violation
+needed - and one of them was the product's headline answer. The
+allow-list is EMPTY, and an entry must name the state it waits for,
+because "unused for now" is exactly the note the four would have
+carried.
+
+WHEN THE ANDROID RELEVE SCREEN ARRIVES it renders from the same
+payload, and a string genuinely conditional on a state the web
+fixtures cannot produce will want an entry. The rule holds as long as
+each entry names its state.
+
+THE ERASURE PATH
+--------------------------------------------------------------------
+WHAT I CHOSE: nothing new. FW21 had already built the door-less
+answer and proved it empirically on throwaway tables BEFORE writing
+the trigger.
+
+PostgreSQL deletes a parent row before firing the referential action,
+so during a cascade from User the person is already invisible to the
+transaction, while a direct DELETE on EntryEvent still sees them. The
+trigger asks exactly that question:
+
+  direct delete  -> the user is still visible -> REFUSED, by name
+  cascade        -> the user is already gone  -> permitted
+
+WHAT IT REFUSES: every removal of an event on its own. An event may
+disappear WITH the person; never by itself.
+
+HOW AN ATTACKER OR A BUG WOULD HAVE TO LOOK TO USE IT: they would need
+a valid access token for the account, and the result is the TOTAL
+destruction of that account. There is no partial form - the capability
+IS the erasure. Nobody can tidy one inconvenient event without
+destroying the whole record, which is the loudest possible side
+effect. The failure mode worth guarding is therefore "somebody erases
+an account they should not have", which is ordinary authentication.
+
+The alternatives - a transaction-local setting, a dedicated role, a
+marker row - are each a way of teaching a guard to stand aside, and
+each is a door. This has none.
+
+ONE TRANSACTION. The counts are taken BEFORE the cascade, because
+afterwards there is nothing left to count and a receipt of zeros is
+indistinguishable from a deletion that did nothing.
+
+VerificationToken DOES NOT CASCADE - it is keyed by ADDRESS, not by
+userId - so a pending sign-in link would have outlived the account it
+was issued for. It is deleted explicitly, in the same transaction.
+
+APPEND-ONLY STILL REFUSES, BY NAME
+--------------------------------------------------------------------
+Three ways, because a file that only proved the erasure works would be
+satisfied by a disabled trigger:
+
+  a direct DELETE on EntryEvent   rejected, /append-only/
+  an UPDATE                       rejected, /append-only/
+  both, AFTER a successful erasure of a different account
+
+The third matters most: a trigger quietly dropped would pass every
+erasure test and fail nothing until an audit.
+
+EXPORT COMPLETENESS
+--------------------------------------------------------------------
+AC2's census is DERIVED FROM prisma/schema.prisma. Every model
+carrying a userId is either EXPORTED or EXCLUDED WITH A REASON, and a
+model that is neither fails the test - which is the point, because the
+way an export goes wrong is not that somebody breaks it but that
+somebody adds a table in two years and nobody remembers the file
+exists.
+
+  EXPORTED   User -> settings, Entry -> entries, EntryEvent -> trail,
+             Device -> devices, DeviceSession -> sessions
+  EXCLUDED   SessionToken, Account, Session, VerificationToken
+
+Each exclusion argues for itself and the test refuses a reason under
+60 characters. The sharpest is SessionToken: hashed credentials tell
+the person nothing and put a credential-shaped artefact in a file they
+will email to an accountant. The SESSIONS are exported, so every
+signed-in device is still visible.
+
+ROW COUNTS, walkthrough, demo account:
+  entries   261      trail   262      devices   0      sessions  1
+matching the database exactly, with presence proven first.
+
+THE TRAIL IS IN IT, and that is the point. An export of the entries
+alone hands somebody a list of days they already know.
+
+NEGATIVE SWEEP
+--------------------------------------------------------------------
+Written from the schema like the census. A query per user-owned model,
+each asserted empty, with presence proven first so the sweep is not
+asserting that nothing became nothing.
+
+From the walkthrough's erasure receipt:
+  User 1, Entry 261, EntryEvent 262, Device 0, DeviceSession 1,
+  VerificationToken 0
+
+and afterwards the old token answered 401 unknown_token, the export
+answered 401, and every swept table was empty.
+
+WHAT SURVIVES AND WHY
+--------------------------------------------------------------------
+AlertSubscriber, deliberately.
+
+It is keyed by EMAIL, not by user: a separate consent under a separate
+identity. Most addresses on that list never had an account, and one
+that does had it added by a different act on a different day.
+
+  DELETING IT would revoke a consent nobody withdrew.
+  KEEPING IT SILENTLY would be worse - somebody who asked to be
+  forgotten and then receives an email has been told something untrue
+  by the ABSENCE of a sentence.
+
+So it survives, the response SAYS so (alertSubscriptionRemains), and
+/confidentialite states the rule. The row keeps its unsubscribe token,
+so the one-click route that already exists still works - destroying it
+would strand somebody on a list they could no longer leave.
+
+Both directions asserted: true for a confirmed subscription, false
+when there is none and false for one already unsubscribed.
+
+PRIVACY MAP DELTA
+--------------------------------------------------------------------
+Four claims added, each in the same two halves the map has used since
+FW14 - the page still says it, and the code still does it.
+
+  CLAIM 8   the export produces JSON and CSV of the days, their origin
+            and their timestamps
+  CLAIM 9   deletion erases the account, days, history and devices,
+            and cannot be undone
+  CLAIM 10  an alert-list subscription is separate and survives, with
+            its unsubscribe link still valid
+  CLAIM 11  a consent given can be withdrawn - asserted as clearing
+            the stamp AND stopping the sampling, because a page
+            promising withdrawal over a system that kept sampling
+            would be the page describing intent again
+
+WALKTHROUGH (R176/R177)
+--------------------------------------------------------------------
+Driven against `pnpm dev` over HTTP, through the real entry points,
+with a session obtained the way a person obtains one. The script
+imports nothing from the application.
+
+  POST /api/v1/auth/magic-link      202, link read from the terminal
+  GET  /api/v1/dossier?year=2026    200
+       titulaire "Demo", period fraction 1 from 2026-01-01,
+       declarable 42.7, remainingToFiscal -6.5, recordedEntries 261,
+       annex 262 rows, result NOT on the wire,
+       warnings FISCAL_CEILING_EXCEEDED + A1_REQUIRED
+  GET  /api/v1/dossier?year=2031    400 future_year
+  GET  /api/v1/me                   200, ten fields, no email,
+                                    consent stamped, AUTO_DETECT
+  PATCH /api/v1/me revoke           200, stamp null, mode MANUAL
+  GET  /api/v1/account/export       200, 168224 bytes,
+                                    261 entries / 262 trail /
+                                    0 devices / 1 session,
+                                    no credential in the file
+  GET  .../export?format=csv        200, donnees-2026-demo.csv,
+                                    262 rows
+  POST /api/v1/account/delete {}    400 confirmation_required
+  POST .../delete confirmed         200, receipt above
+  the old token afterwards          401 unknown_token
+  the export afterwards             401
+
+-6.5 matches the figure the prompt states for the demo year.
+
+THE EXPORT READ AS A DOCUMENT
+--------------------------------------------------------------------
+WHAT I READ FOR: whether a person could understand what they had been
+given - provenance in words, dates in a readable form.
+
+THEY COULD NOT. The file shipped
+
+  "kind": "HOME", "portion": "FULL",
+  "provenance": "DETECTED_CONFIRMED", "denominatorKind": "SIMPLIFIED240"
+
+- enum tokens, to a French reader, in a product whose every other
+surface is carefully French. Every row count was correct; nothing in
+the suite could see it.
+
+FIXED: every code now travels with the WORD for it - portionLabel,
+kindLabel, absenceLabel, provenanceLabel - on the entries AND on the
+trail, which is the half a person most needs explained. The CODE
+STAYS, because an export is also machine-readable and somebody
+re-importing it needs the stable token. Both, rather than either.
+
+THE WORDS COME FROM DOSSIER_COPY (R206), so an export and the PDF
+cannot describe the same day differently.
+
+DATES ARE ISO AND STAY ISO. The CSV decision in FW25 already argued
+it: 03/04/2026 is a different day in Paris and in New York, and a
+record that means two things depending on who opens it is worse than
+one that is hard to read.
+
+FLAG DECISION (R186)
+--------------------------------------------------------------------
+dossierExists STAYS FALSE, on the rule.
+
+The proxy is the print route AND A CLIENT THAT CAN REACH IT.
+
+  the print route    exists, and renders a complete document
+  the ENDPOINT       now exists too - this task built it
+  a client           DOES NOT EXIST. The Android app is AN1-AN15.
+
+The endpoint is half of the proxy and the half that was missing is
+still missing. Nobody who is not sitting at this machine can obtain
+this document.
+
+PARKED
+--------------------------------------------------------------------
+PARK26-1. THE EXPORT CENSUS FINDS DIRECT OWNERSHIP ONLY. SessionToken
+   belongs to a person through sessionId -> DeviceSession.userId and
+   is invisible to it. It is in EXCLUDED with a reason, so today's
+   partition is complete - but a future table owned only indirectly
+   would slip past. Closing it means walking the relation graph, and a
+   census that walked it wrongly would be worse than one whose reach
+   is written down.
+
+PARK26-2. /confidentialite SAYS "DANS L'APPLICATION" TWICE, AND THERE
+   IS NO APPLICATION. The export and deletion now exist as API
+   endpoints; no client can reach them. It is dossierExists' shape on
+   published privacy copy, and FW26 moved it closer to true rather
+   than further away. I did not edit published privacy text on my own
+   judgement (R241: the conservative, reversible option). The honest
+   readings are (a) leave it, since it describes the product as
+   designed and the operator has reviewed it across many tasks, or
+   (b) state the right without asserting a shipped surface, which
+   makes a privacy notice LESS specific about how - arguably worse.
+   Q88.
+
+PARK26-3. THE EXPORT'S clientMutationId IS IN THE FILE. It is a sync
+   identifier with no meaning to a person, sitting in a document
+   otherwise being made readable. It is genuinely their data and
+   removing it would make the export less complete; leaving it is one
+   more line of noise. Not decided.
+
+DEVIATIONS
+--------------------------------------------------------------------
+1. INCREMENT 1 IS MUCH WIDER THAN "the dossier endpoint". Four
+   document defects, R238, R239, R240 and a SPEC edit landed in it,
+   on the FW25b precedent the operator set: same surface, same
+   instrument, fix rather than defer. The endpoint alone would have
+   been a third of the commit.
+
+2. THE NEGATIVE SWEEP SHIPPED IN INCREMENT 4, not 5. It lives in the
+   same file as the erasure it verifies, and splitting it would have
+   put half a test file in each commit. Increment 5 is therefore
+   "what survives" plus the page.
+
+3. THE EXPORT'S FRENCH LABELS LANDED IN INCREMENT 6, not 3, because
+   the read-through that found the defect is increment 6's
+   instrument.
+
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------
+1. A NEXT.JS ROUTE MAY EXPORT ONLY ITS HANDLERS AND KNOWN CONFIG KEYS.
+   DELETE_CONFIRMATION exported from the route failed the BUILD with
+   "not assignable to type 'never'" and PASSED `tsc --noEmit`. One of
+   the few defects only `pnpm build` sees, which is why the gate runs
+   both.
+
+2. THREE FIXTURES OF MINE WERE THE DEFECT, each caught by its own
+   presence assertion rather than by luck:
+     - 92 weekdays against a 96-day ceiling, so the breach test would
+       have asserted the over-threshold path on a document that never
+       entered it (FW25b, carried here as the pattern);
+     - the trail came back EMPTY because prisma.entry.create does not
+       write EntryEvent - the write path does;
+     - the erasure receipt counted six VerificationTokens where the
+       fixture made one, because user.deleteMany() does not touch a
+       table keyed by address - the same non-cascading fact the
+       erasure exists to handle.
+
+3. I ASSERTED THE CSV ESCAPE AS A QUOTED FIELD and it is not: =SUM(A1)
+   contains no comma, semicolon, quote or newline, so RFC 4180 needs
+   no quoting. The assertion was testing the quoting rules rather than
+   R230.
+
+4. A DEAD BRANCH WAS WRITTEN AND REMOVED in /api/v1/me: a guard on
+   `!forcedManual && ...` that can never be true. The 19 tests passed
+   identically before and after, which is what unreachable code looks
+   like from a suite.
+
+5. SHELL QUOTING CORRUPTED TWO MORE SCRIPTED EDITS this task, after
+   three in FW25b. Both were caught immediately; code with escapes is
+   now written with a file tool rather than through a shell.
+
+QUESTIONS
+--------------------------------------------------------------------
+Q87. SHOULD THE EXPORT'S SETTINGS BLOCK CARRY WORDS TOO? The entries
+     and the trail now do. `denominatorKind: "SIMPLIFIED240"` and
+     `granularity: "HALF_DAY"` are still bare codes, and DOSSIER_COPY
+     has the words for the first. Left alone because settings are a
+     configuration a client writes BACK, and a label beside a
+     writable field invites somebody to send the label.
+
+Q88. PARK26-2: does /confidentialite keep saying "dans l'application"
+     while there is no application? R138's tense rule says correct it;
+     making a privacy notice vaguer about HOW is a real cost. This is
+     the operator's call on published copy.
+
+PUSH PROOF
+--------------------------------------------------------------------
+  e241966  increment 1   test 2783, e2e 284, visual 108, db 401+12
+  2fd4b7d  increment 2   test 2786, e2e 284, visual 108, db 420+12
+  1384397  increment 3   test 2786, e2e 284, visual 108, db 432+12
+  4866461  increment 4   test 2786, e2e 284, visual 108, db 443+12
+  c3b4fb5  increment 5   test 2786, e2e 284, visual 108, db 448+12
+  (this)   increment 6   see below
+
+  gate:clone PASSED before every push.
+
+  TWO GATES WENT RED and both were real:
+    increment 4  pnpm build, on the route's extra export
+    increment 5  test:visual, on the privacy page's new sentence
+
+  THE BASELINE REGENERATION, R207 IN PRACTICE: two files stated BEFORE
+  the command ran - page-confidentialite-desktop.png and
+  page-confidentialite-mobile.png - and exactly those two changed. The
+  run printed SIX red markers; four were retries, and the run's own
+  tally said "2 failed". R184 confirmed what was photographed: commit
+  4866461 plus four uncommitted paths.
+
+  I COULD NOT READ the new sentence in the regenerated baseline - the
+  mobile page is 390x8230 and renders at a scale where body text is
+  illegible - so it was verified separately with a targeted crop
+  against `pnpm dev`, and it renders correctly as the third bullet of
+  "Vos droits".
+
+====================================================================
+END OF REPORT-FW26.txt
+====================================================================
