@@ -1,0 +1,148 @@
+// web/lib/account/export.ts
+//
+// Everything this product holds about one person. FW26 increment 3.
+//
+// ============================================================================
+// THE TRAIL IS IN IT, AND THAT IS THE POINT
+// ============================================================================
+//
+// An export of the entries alone would hand somebody a list of days they
+// already know. What makes the record worth having is `EntryEvent` - when each
+// day was first recorded, when it was edited, and what it was before. That is
+// the layer SPEC §12 calls "what makes the document evidence rather than
+// assertion", and an export without it is a claim the person cannot check.
+//
+// ============================================================================
+// EVERY USER-OWNED TABLE IS EITHER EXPORTED OR EXCLUDED WITH A REASON
+// ============================================================================
+//
+// `EXPORTED` and `EXCLUDED` below partition the schema's user-owned models, and
+// a test reads `prisma/schema.prisma` to assert the partition is complete. A
+// table added later is a FAILING TEST rather than a silent gap - which is R175
+// in its original form: two lists that between them must cover everything, and
+// the space between them named rather than left.
+//
+// The exclusions are credentials and dead adapter tables. Neither is personal
+// data in any useful sense, and one of them is a security consideration:
+// handing somebody 32-byte token hashes tells them nothing and puts a
+// credential-shaped artefact in a file they will email to an accountant.
+
+import { prisma } from '@/lib/db/client';
+import { ME_SELECT, serialiseMe } from '@/lib/me/read';
+
+/** The tables whose rows appear in an export, and the key each appears under. */
+export const EXPORTED = {
+  User: 'settings',
+  Entry: 'entries',
+  EntryEvent: 'trail',
+  Device: 'devices',
+  DeviceSession: 'sessions',
+} as const;
+
+/**
+ * User-owned tables deliberately absent, each naming why.
+ *
+ * Same shape as R238's allow-list: an entry argues for itself or it is not
+ * one. "Not useful" is not a reason; "a credential hash that means nothing to
+ * the person and everything to somebody who intercepts the file" is.
+ */
+export const EXCLUDED: Readonly<Record<string, string>> = {
+  SessionToken:
+    'hashed credentials. They are not personal data in any useful sense, and a ' +
+    'file a person emails to their accountant should not carry credential-shaped ' +
+    'artefacts. The SESSIONS they belong to are exported, so the person can still ' +
+    'see every device that has been signed in.',
+  Account:
+    'an Auth.js adapter table with no adapter behind it (R209). It is always ' +
+    'empty, and exporting a permanently empty array would tell a reader this ' +
+    'product stores something it does not.',
+  Session:
+    'the other Auth.js adapter table, empty for the same reason (R209). D14 ' +
+    'withdrew the web session this would have held.',
+  VerificationToken:
+    'single-use sign-in tokens keyed by address rather than by user, already ' +
+    'expired or consumed by the time anybody exports. Exporting them would be ' +
+    'exporting a credential with no informational value.',
+};
+
+export interface AccountExport {
+  readonly exportedAt: string;
+  readonly settings: Record<string, unknown>;
+  readonly entries: readonly Record<string, unknown>[];
+  readonly trail: readonly Record<string, unknown>[];
+  readonly devices: readonly Record<string, unknown>[];
+  readonly sessions: readonly Record<string, unknown>[];
+}
+
+const day = (value: Date): string => value.toISOString().slice(0, 10);
+const instant = (value: Date | null): string | null =>
+  value === null ? null : value.toISOString();
+
+/**
+ * Everything, for one person.
+ *
+ * ORDERED, so two exports of an unchanged account are the same file. An export
+ * that shuffled its rows between downloads would be impossible to diff, which
+ * is the first thing somebody checking a record wants to do.
+ */
+export async function buildAccountExport(userId: string): Promise<AccountExport> {
+  const [user, entries, trail, devices, sessions] = await Promise.all([
+    prisma.user.findUniqueOrThrow({ where: { id: userId }, select: ME_SELECT }),
+    prisma.entry.findMany({
+      where: { userId },
+      orderBy: [{ dayDate: 'asc' }, { portion: 'asc' }],
+    }),
+    prisma.entryEvent.findMany({ where: { userId }, orderBy: { recordedAt: 'asc' } }),
+    prisma.device.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
+    prisma.deviceSession.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
+  ]);
+
+  return {
+    exportedAt: new Date().toISOString(),
+    settings: serialiseMe(user),
+
+    entries: entries.map((entry) => ({
+      dayDate: day(entry.dayDate),
+      portion: entry.portion,
+      kind: entry.kind,
+      absenceReason: entry.absenceReason,
+      // R230: the JSON is the RECORD and carries the note byte for byte. Only
+      // the CSV neutralises a formula, because only a spreadsheet executes one.
+      note: entry.note,
+      provenance: entry.provenance,
+      detectedKind: entry.detectedKind,
+      firstRecordedAt: entry.firstRecordedAt.toISOString(),
+      clientClaimedAt: instant(entry.clientClaimedAt),
+      clientMutationId: entry.clientMutationId,
+    })),
+
+    // EVERY COLUMN THE TRAIL HAS. It carries no `note` and no `absenceReason`
+    // - the trail records what a day WAS, not what was written beside it - so
+    // this is the whole row rather than a selection.
+    trail: trail.map((event) => ({
+      action: event.action,
+      recordedAt: event.recordedAt.toISOString(),
+      dayDate: day(event.dayDate),
+      portion: event.portion,
+      kind: event.kind,
+      provenance: event.provenance,
+      detectedKind: event.detectedKind,
+      clientClaimedAt: instant(event.clientClaimedAt),
+      clientMutationId: event.clientMutationId,
+    })),
+
+    devices: devices.map((device) => ({
+      platform: device.platform,
+      createdAt: device.createdAt.toISOString(),
+      // NO PUSH TOKEN. It is a credential for addressing the device, not a
+      // fact about the person, and the same reasoning excludes SessionToken.
+    })),
+
+    sessions: sessions.map((session) => ({
+      createdAt: session.createdAt.toISOString(),
+      lastUsedAt: instant(session.lastUsedAt),
+      revokedAt: instant(session.revokedAt),
+      revokedReason: session.revokedReason,
+    })),
+  };
+}
