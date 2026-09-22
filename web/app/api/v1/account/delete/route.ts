@@ -65,7 +65,15 @@ export async function POST(request: Request): Promise<NextResponse> {
     // account is gone; this tells them what went with it, which is what D11's
     // confirmation promised and the last chance to say it.
     return NextResponse.json(
-      { status: 'ok', removed: receipt.removed },
+      {
+        status: 'ok',
+        removed: receipt.removed,
+        // REPORTED, NEVER SILENT. An alert-list subscription is a separate
+        // consent under a separate identity and survives the erasure -
+        // somebody who asked to be forgotten and then receives an email has
+        // been told something untrue by the absence of this field.
+        alertSubscriptionRemains: receipt.alertSubscriptionRemains,
+      },
       { status: 200, headers: { 'cache-control': 'no-store, private' } },
     );
   } catch (cause) {

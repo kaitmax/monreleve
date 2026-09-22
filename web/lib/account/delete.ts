@@ -47,6 +47,28 @@ import { prisma } from '@/lib/db/client';
 export interface ErasureReceipt {
   /** Rows destroyed, by table, so a caller can report what happened. */
   readonly removed: Readonly<Record<string, number>>;
+  /**
+   * Whether an alert-list subscription for this address SURVIVES the erasure.
+   *
+   * ==========================================================================
+   * THE ONE PLACE "DELETE EVERYTHING" AND "HONOUR THE CONSENT THEY GAVE" PULL
+   * APART
+   * ==========================================================================
+   *
+   * `AlertSubscriber` is keyed by EMAIL, not by user. It is a separate consent
+   * under a separate identity: most rows on that list belong to addresses that
+   * never had an account at all, and one that does had it added by a different
+   * act on a different day.
+   *
+   * DELETING IT WOULD REVOKE A CONSENT NOBODY WITHDREW. Keeping it SILENTLY
+   * would be worse - somebody who asked to be forgotten and then receives an
+   * email has been told something untrue by the absence of a sentence.
+   *
+   * So it survives, and the erasure REPORTS it. The row keeps the one-click
+   * unsubscribe token it was issued with, which is the mechanism that already
+   * exists and the one the confirmation email carries.
+   */
+  readonly alertSubscriptionRemains: boolean;
 }
 
 /**
@@ -83,11 +105,20 @@ export async function deleteAccount(userId: string): Promise<ErasureReceipt> {
       where: { identifier: user.email },
     });
 
+    // READ, NOT DELETED. A subscription to the alert list is a separate
+    // consent under a separate identity - see the receipt's own note - and it
+    // is reported rather than silently kept.
+    const subscription = await tx.alertSubscriber.findUnique({
+      where: { email: user.email },
+      select: { unsubscribedAt: true },
+    });
+
     // THE CASCADE. One statement; the trigger permits what follows because the
     // person is already gone by the time it fires.
     await tx.user.delete({ where: { id: userId } });
 
     return {
+      alertSubscriptionRemains: subscription !== null && subscription.unsubscribedAt === null,
       removed: {
         User: 1,
         Entry: entries,

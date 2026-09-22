@@ -272,3 +272,97 @@ describe('AC3: the negative sweep, written from the schema', () => {
     expect(await prisma.user.count({ where: { id: otherId } })).toBe(1);
   });
 });
+
+describe('increment 5: what SURVIVES, deliberately, and is reported rather than silent', () => {
+  // ==========================================================================
+  // THE ONE PLACE "DELETE EVERYTHING" AND "HONOUR THE CONSENT THEY GAVE" PULL
+  // APART
+  // ==========================================================================
+  //
+  // AlertSubscriber is keyed by EMAIL, not by user. Most rows on that list
+  // belong to addresses that never had an account; one that does had it added
+  // by a different act on a different day.
+  //
+  // Deleting it would revoke a consent nobody withdrew. Keeping it SILENTLY
+  // would be worse: somebody who asked to be forgotten and then receives an
+  // email has been told something untrue by the absence of a sentence.
+
+  beforeEach(async () => {
+    await prisma.alertSubscriber.deleteMany();
+  });
+
+  it('keeps a confirmed subscription, because nobody withdrew that consent', async () => {
+    await prisma.alertSubscriber.create({
+      data: { email: 'erase@example.com', source: 'calculateur', confirmedAt: new Date() },
+    });
+
+    await POST(post({ confirm: 'SUPPRIMER' }));
+
+    const remaining = await prisma.alertSubscriber.findUnique({
+      where: { email: 'erase@example.com' },
+    });
+
+    expect(remaining).not.toBeNull();
+    expect(remaining?.unsubscribedAt).toBeNull();
+  });
+
+  it('SAYS SO in the response, which is what stops it being silent', async () => {
+    await prisma.alertSubscriber.create({
+      data: { email: 'erase@example.com', source: 'calculateur', confirmedAt: new Date() },
+    });
+
+    const body = (await (await POST(post({ confirm: 'SUPPRIMER' }))).json()) as {
+      alertSubscriptionRemains: boolean;
+    };
+
+    expect(body.alertSubscriptionRemains).toBe(true);
+  });
+
+  it('reports FALSE when there is nothing on the list, so the flag means something', async () => {
+    // R196's shape: a field hardcoded to true would pass the test above.
+    const body = (await (await POST(post({ confirm: 'SUPPRIMER' }))).json()) as {
+      alertSubscriptionRemains: boolean;
+    };
+
+    expect(body.alertSubscriptionRemains).toBe(false);
+  });
+
+  it('reports FALSE for an address that already unsubscribed', async () => {
+    await prisma.alertSubscriber.create({
+      data: {
+        email: 'erase@example.com',
+        source: 'calculateur',
+        confirmedAt: new Date(),
+        unsubscribedAt: new Date(),
+      },
+    });
+
+    const body = (await (await POST(post({ confirm: 'SUPPRIMER' }))).json()) as {
+      alertSubscriptionRemains: boolean;
+    };
+
+    expect(body.alertSubscriptionRemains).toBe(false);
+  });
+
+  it('leaves the unsubscribe token intact, so the one-click route still works', async () => {
+    // The mechanism already exists - GET /api/alertes/desinscription?token= -
+    // and the token was emailed at confirmation. Destroying it here would
+    // strand somebody on a list they can no longer leave.
+    await prisma.alertSubscriber.create({
+      data: {
+        email: 'erase@example.com',
+        source: 'calculateur',
+        confirmedAt: new Date(),
+        unsubscribeTokenHash: 'a-hash-that-must-survive',
+      },
+    });
+
+    await POST(post({ confirm: 'SUPPRIMER' }));
+
+    const remaining = await prisma.alertSubscriber.findUnique({
+      where: { email: 'erase@example.com' },
+    });
+
+    expect(remaining?.unsubscribeTokenHash).toBe('a-hash-that-must-survive');
+  });
+});

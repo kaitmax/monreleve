@@ -351,6 +351,16 @@ export const CONFIDENTIALITE_COPY = {
       'journées, leur historique, vos appareils enregistrés et les données ' +
       'conservées sur votre téléphone. Cette opération est définitive, et le ' +
       'relevé annuel ne peut plus être reproduit ensuite.',
+    // WHAT SURVIVES, SAID OUT LOUD (FW26). The alert list is keyed by address
+    // and is a separate consent under a separate identity - most addresses on
+    // it never had an account. Deleting the account would revoke a consent
+    // nobody withdrew; keeping it silently would be worse, because somebody
+    // who asked to be forgotten and then receives an email has been told
+    // something untrue by the absence of this sentence.
+    "Si votre adresse figure aussi sur la liste d’alerte, cette inscription " +
+      'est un consentement distinct et elle subsiste après la suppression du ' +
+      'compte. Le lien de désinscription reçu lors de la confirmation reste ' +
+      'valable, et un seul clic suffit.',
     "Vous pouvez aussi écrire à l’adresse de contact indiquée plus haut.",
   ],
 
