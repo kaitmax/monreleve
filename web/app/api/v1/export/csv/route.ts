@@ -33,6 +33,7 @@ import { authenticate, unauthorised } from '@/lib/auth/bearer';
 import { findLocationKeys } from '@/lib/entries/no-coordinates';
 import { parseReadQuery } from '@/lib/entries/read-query';
 import { buildDossierFor } from '@/lib/dossier/load';
+import { MissingTitulaireError } from '@/lib/dossier/service';
 import { toCsv } from '@/lib/export/csv';
 
 export const dynamic = 'force-dynamic';
@@ -96,6 +97,16 @@ export async function GET(request: Request): Promise<NextResponse> {
       },
     });
   } catch (cause) {
+    // R198: a missing titulaire is a DIFFERENT fact from a failed read, with a
+    // different remedy - set a name, rather than go looking at the database.
+    // Without this it arrives as `read_failed` (500), the misleading code that
+    // sends somebody to the wrong subsystem entirely.
+    if (cause instanceof MissingTitulaireError) {
+      console.error(`[export] csv refused: ${cause.message}`);
+
+      return refuse('titulaire_missing', AUTH_API_COPY.readFailed, 422);
+    }
+
     console.error(
       `[export] csv for ${query.year} failed:`,
       cause instanceof Error ? cause.message : String(cause),

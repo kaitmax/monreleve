@@ -26,11 +26,15 @@
 // names the steps a clone cannot run. A suite that quietly reports fewer tests
 // is how "the renderer works" becomes something nobody actually checked.
 
+import { writeFile } from 'node:fs/promises';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { prisma } from '@/lib/db/client';
 import { issueTokenPair } from '@/lib/auth/tokens';
 import { GET } from '@/app/api/v1/export/pdf/route';
 import { liveOrigin } from './support/live-server';
+import { everyFontEmbedded, extractPdfText, fontNames } from './support/pdf-text';
+import { buildDossierFor } from '@/lib/dossier/load';
+import { DOSSIER_COPY as COPY } from '@/lib/fr/dossier';
 import { MAX_QUEUED } from '@/lib/export/render-queue';
 
 /** Resolved once, at collection time, so the skip is visible in the report. */
@@ -103,7 +107,9 @@ beforeEach(async () => {
 
   userId = (
     await prisma.user.create({
-      data: { email: 'pdf@example.com', canton: 'GE', employmentRate: 100 },
+      // SPEC 12 item 1: a dossier needs a titulaire, and the route refuses
+      // without one. Every fixture that expects a document names somebody.
+      data: { email: 'pdf@example.com', name: 'Camille Rey', canton: 'GE', employmentRate: 100 },
     })
   ).id;
   token = (await issueTokenPair(userId)).accessToken;
@@ -211,6 +217,14 @@ describe.skipIf('skip' in LIVE)(LIVE_SUITE, () => {
     // AND IT IS NOT AN EMPTY DOCUMENT. A near-zero-byte body with a correct
     // header and a correct magic number passes everything above.
     expect(bytes.byteLength).toBeGreaterThan(10_000);
+
+    // THE WALKTHROUGH NEEDS THE PRODUCED FILE, and this test already holds it.
+    // R176 asks a person to open the document and read it; writing the bytes
+    // out on request is how they get the same file the assertions ran against,
+    // rather than one produced by a second path that could differ.
+    if (process.env.FRONTALIER_PDF_OUT !== undefined) {
+      await writeFile(process.env.FRONTALIER_PDF_OUT, bytes);
+    }
   });
 
   it('names the year in the filename, so three exports are three files', async () => {
@@ -277,5 +291,144 @@ describe.skipIf('skip' in LIVE)(`AC3 (through the route): ${LIVE_SUITE}`, () => 
 
     expect(body.code).toBe('renderer_busy');
     expect(busy[0]!.headers.get('retry-after')).toBe('30');
+  });
+});
+
+describe('SPEC 12 item 1: no titulaire, no document', () => {
+  it('refuses BEFORE launching a browser, with its own code', async () => {
+    // A document that cannot be attributed to a person is not a relevé. The
+    // check is here rather than inside the render because discovering it in
+    // Chromium would cost a browser and report `renderer_unavailable`, which
+    // sends the operator hunting a missing binary (R198).
+    await prisma.user.update({ where: { id: userId }, data: { name: null } });
+    await seed('2026-03-02');
+
+    const response = await GET(get('?year=2026', HANDLER_ORIGIN));
+
+    expect(response.status).toBe(422);
+    expect(((await response.json()) as { code: string }).code).toBe('titulaire_missing');
+  });
+});
+
+describe.skipIf('skip' in LIVE)(`AC2 (on the produced file): ${LIVE_SUITE}`, () => {
+  const origin = 'origin' in LIVE ? LIVE.origin : '';
+
+  /** The bytes the route returned, and the text inside them. */
+  async function produce(): Promise<{ bytes: Uint8Array; text: string }> {
+    const response = await GET(get('?year=2026', origin));
+
+    expect(response.status).toBe(200);
+
+    const bytes = new Uint8Array(await response.arrayBuffer());
+
+    // R182: extraction runs AFTER the file exists, on the file, never beside
+    // the code that wrote it.
+    return { bytes, text: extractPdfText(bytes) };
+  }
+
+  beforeEach(async () => {
+    await seed('2026-03-02');
+    await seed('2026-03-03', { kind: 'ABSENT', absenceReason: 'MALADIE' });
+  });
+
+  it('carries the document, PROVEN PRESENT before anything is claimed absent', async () => {
+    // R169's corollary, and the reason it leads this block: every assertion
+    // below is an absence or a count, and both are satisfied perfectly by a
+    // document nobody managed to read.
+    const { text } = await produce();
+
+    expect(text).toContain(COPY.title);
+    expect(text).toContain(COPY.header.name);
+    expect(text).toContain(COPY.annex.heading);
+  });
+
+  it('uses NO banned word - asserted on the FILE, not the template', async () => {
+    // FW25 asserted this over the rendered HTML, which is a different claim: a
+    // word could reach the page and not the file, or reach the file through a
+    // path the DOM never showed.
+    const { text } = await produce();
+
+    for (const banned of ['certifié', 'attesté', 'conforme', 'validé', 'approuvé']) {
+      expect(text.toLowerCase(), `${banned} reached the produced document`).not.toContain(banned);
+    }
+  });
+
+  it('names the titulaire and the generation date (SPEC 12 item 1)', async () => {
+    // Both were absent from the document until the read-through found them.
+    // A PDF that cannot be filed against a person is not a relevé.
+    const { text } = await produce();
+
+    expect(text).toContain('Camille Rey');
+    expect(text).toContain(COPY.header.generatedAt);
+    expect(text).toContain(COPY.header.absencesDeclared);
+  });
+
+  it('prints the rail, which SPEC line 885 relies on and nothing rendered', async () => {
+    // THE RAIL IS VECTOR, so its presence is proven by the TICK LABELS it
+    // draws: the social ceiling appears once in the thresholds sentence and
+    // once more as the rail's own label. One occurrence means the sentence
+    // rendered and the rail did not - which is exactly the state this document
+    // shipped in until FW25b.
+    const { text } = await produce();
+    const social = '49,9';
+
+    expect(text.split(social).length - 1).toBeGreaterThanOrEqual(2);
+  });
+
+  it('prints every day the payload carries, including the ones with no entry', async () => {
+    // AC2's row count, as a claim about days rather than about a number: the
+    // file and the payload must describe the same year. A count alone passes
+    // on a document with the right number of wrong rows.
+    const { text } = await produce();
+    const dossier = await buildDossierFor(userId, 2026);
+
+    const missing = dossier.annex
+      .map((row) => {
+        const [y, m, d] = row.dayDate.split('-');
+
+        return `${d}.${m}.${y}`;
+      })
+      .filter((printed) => !text.includes(printed));
+
+    expect(missing).toEqual([]);
+
+    // AND THE GAPS ARE COUNTED, not merely present. The test user logged two
+    // days of 2026, so the rest of the year is unlogged and the document must
+    // say so once per working day.
+    const gaps = dossier.annex.filter((row) => !row.recorded).length;
+
+    expect(gaps).toBeGreaterThan(0);
+    expect(text.split(COPY.annex.notRecorded).length - 1).toBe(gaps);
+  });
+
+  it('embeds every font, and every one of them is Inter', async () => {
+    // NOT A /FontFile CHECK, and the difference matters: Chromium writes
+    // Type 3 fonts for a variable family, where each glyph is a drawing
+    // procedure under /CharProcs. A /FontFile assertion would fail on this
+    // correct document, and deleting it would remove the only guard against
+    // the real defect - a font named but not carried, which renders in
+    // whatever the opening machine happens to have.
+    const { bytes } = await produce();
+
+    const names = fontNames(bytes);
+
+    expect(names.length).toBeGreaterThan(0);
+    expect(names.filter((name) => !/Inter/u.test(name))).toEqual([]);
+    expect(everyFontEmbedded(bytes)).toBe(true);
+  });
+
+  it('writes French decimals, never a decimal point', async () => {
+    // The document printed 151.5 and 102.5 while its percentages used commas -
+    // inconsistent with itself about its own separator, in the one artefact
+    // SPEC 7.3 says must match the employer's filing. `formatDays` existed the
+    // whole time and the page was not using it (R206).
+    const { text } = await produce();
+
+    // A digit, a POINT, a digit. Dates use dots too, so the pattern excludes
+    // anything that looks like one.
+    const decimals = text.match(/\d+\.\d(?!\d\.)/gu) ?? [];
+    const suspicious = decimals.filter((hit) => !/^\d{2}\.\d$/u.test(hit));
+
+    expect(suspicious).toEqual([]);
   });
 });

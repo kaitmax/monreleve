@@ -9,6 +9,9 @@ import type { AnnexRow } from '@/lib/dossier/service';
 function row(overrides: Partial<AnnexRow> = {}): AnnexRow {
   return {
     dayDate: '2026-07-07',
+    // A LOGGED row. The gap rows SPEC 12 item 5 requires are covered by their
+    // own tests; this factory is the ordinary case.
+    recorded: true,
     portion: 'FULL',
     kind: 'HOME',
     absenceReason: null,

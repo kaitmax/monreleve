@@ -49,6 +49,8 @@ import { AUTH_API_COPY } from '@/lib/fr/auth-api';
 import { authenticate, unauthorised } from '@/lib/auth/bearer';
 import { findLocationKeys } from '@/lib/entries/no-coordinates';
 import { parseReadQuery } from '@/lib/entries/read-query';
+import { prisma } from '@/lib/db/client';
+import { titulaireOf } from '@/lib/dossier/service';
 import { mintPrintToken } from '@/lib/export/print-token';
 import { RendererUnavailableError, RendererUnstyledError, renderPdf } from '@/lib/export/pdf';
 import {
@@ -102,6 +104,24 @@ export async function GET(request: Request): Promise<NextResponse> {
     }
 
     return refuse('invalid_year', AUTH_API_COPY.invalidYear);
+  }
+
+  // SPEC 12 item 1, CHECKED BEFORE A BROWSER IS LAUNCHED. A document with no
+  // identified titulaire cannot be produced at all, so discovering it inside
+  // Chromium would cost a render and report `renderer_unavailable` - a code
+  // that sends the operator looking for a missing browser (R198).
+  //
+  // The predicate is the one `buildDossier` refuses with, not a second reading
+  // of what a blank name is (R206).
+  const owner = await prisma.user.findUnique({
+    where: { id: auth.userId },
+    select: { name: true },
+  });
+
+  if (owner === null || titulaireOf(owner.name) === null) {
+    console.error('[export] pdf refused: the account has no name, so the dossier has no titulaire');
+
+    return refuse('titulaire_missing', AUTH_API_COPY.readFailed, 422);
   }
 
   const printToken = mintPrintToken(auth.userId, query.year);

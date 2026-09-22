@@ -37,9 +37,11 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { DOSSIER_COPY as COPY } from '@/lib/fr/dossier';
 import { buildDossierFor } from '@/lib/dossier/load';
+import { MissingTitulaireError } from '@/lib/dossier/service';
 import { readPrintToken } from '@/lib/export/print-token';
 import { ruleSetFor } from '@/lib/calc-engine';
-import { formatPercent } from '@/lib/ui/core';
+import { formatDays, formatPercent, zoneFor } from '@/lib/ui/core';
+import { ThresholdRail } from '@/lib/ui/react';
 import styles from './print.module.scss';
 
 export const dynamic = 'force-dynamic';
@@ -68,6 +70,16 @@ export const metadata: Metadata = {
 // once rendered the declarable rate - the figure SPEC 7.3 says must match the
 // employer's filing - as 39,1 instead of 39,16. The precisions below are the
 // ones that comment names.
+
+/**
+ * The rail's drawing width, in CSS pixels.
+ *
+ * NOT A DESIGN TOKEN and deliberately not one: it is a GEOMETRY input to a
+ * pure function, the same kind of value as the 210mm sheet. The A4 content
+ * column is 210mm less 28mm of gutter, which is about 688 px at 96 dpi; 640
+ * leaves the rail inside the column at every printer margin we have seen.
+ */
+const RAIL_WIDTH = 640;
 
 /** A day, as the document prints it. */
 function day(iso: string): string {
@@ -152,11 +164,24 @@ export default async function PrintPage({
   // on them.
   if (!grant.ok) notFound();
 
-  const dossier = await buildDossierFor(grant.userId, year);
+  // DEFENCE IN DEPTH. The PDF route refuses a nameless account before it gets
+  // here, but this page is also opened directly by a person, and a 500 on a
+  // document that simply cannot exist is the wrong answer. Same 404 as every
+  // other refusal on this route.
+  let dossier;
+  try {
+    dossier = await buildDossierFor(grant.userId, year);
+  } catch (cause) {
+    if (cause instanceof MissingTitulaireError) notFound();
+    throw cause;
+  }
   const rules = ruleSetFor(year);
   // The RuleSet holds fractions - 0.4, 0.499 - and formatPercent takes
   // percentage points. 0 decimals for the whole one, 1 for the other: the
   // precisions the formatter's own note prescribes for threshold labels.
+  // ONE object for the rail and the sentence, so the bands the reader sees
+  // and the numbers the sentence states cannot come from different places.
+  const thresholds = { fiscalCeiling: rules.fiscalCeiling, socialCeiling: rules.socialCeiling };
   const fiscal = formatPercent(rules.fiscalCeiling * 100, 0);
   const social = formatPercent(rules.socialCeiling * 100, 1);
 
@@ -166,6 +191,12 @@ export default async function PrintPage({
 
       <section className={styles.identification}>
         <dl>
+          {/* SPEC 12 item 1 puts the NAME first, and it is first for a reason:
+              a document that cannot be attributed to a person is not a relevé,
+              it is a table of numbers. `buildDossier` refuses to produce one
+              without it, so this is never empty. */}
+          <dt>{COPY.header.name}</dt>
+          <dd>{dossier.titulaire}</dd>
           <dt>{COPY.header.canton}</dt>
           <dd>{dossier.canton}</dd>
           <dt>{COPY.header.employmentRate}</dt>
@@ -181,26 +212,35 @@ export default async function PrintPage({
           </dd>
           <dt>{COPY.header.period}</dt>
           <dd>{COPY.header.fullYear(year)}</dd>
+          {/* SPEC 12 item 1, last. A dossier with no generation date cannot be
+              placed against the year it describes - two exports of 2026 made
+              six months apart are different documents and must say so. */}
+          <dt>{COPY.header.generatedAt}</dt>
+          <dd>{stamp(dossier.generatedAt)}</dd>
+          {/* D28: absences are counted ONCE, here, and appear in no other
+              figure. SPEC 12 item 5 puts the count in this block. */}
+          <dt>{COPY.header.absencesDeclared}</dt>
+          <dd>{formatDays(dossier.absenceDays)}</dd>
         </dl>
       </section>
 
       <section className={styles.tiles}>
         <div>
-          <span className={styles.tileValue}>{dossier.tiles.workedDays}</span>
+          <span className={styles.tileValue}>{formatDays(dossier.tiles.workedDays)}</span>
           <span className={styles.tileLabel}>{COPY.tiles.workedDays}</span>
           {/* R225: the note that answers the question this tile raises. */}
           <span className={styles.tileNote}>{COPY.tiles.workedDaysNote}</span>
         </div>
         <div>
-          <span className={styles.tileValue}>{dossier.tiles.swissDays}</span>
+          <span className={styles.tileValue}>{formatDays(dossier.tiles.swissDays)}</span>
           <span className={styles.tileLabel}>{COPY.tiles.swissDays}</span>
         </div>
         <div>
-          <span className={styles.tileValue}>{dossier.tiles.teleworkDays}</span>
+          <span className={styles.tileValue}>{formatDays(dossier.tiles.teleworkDays)}</span>
           <span className={styles.tileLabel}>{COPY.tiles.teleworkDays}</span>
         </div>
         <div>
-          <span className={styles.tileValue}>{dossier.tiles.missionDays}</span>
+          <span className={styles.tileValue}>{formatDays(dossier.tiles.missionDays)}</span>
           <span className={styles.tileLabel}>{COPY.tiles.missionDays}</span>
         </div>
       </section>
@@ -213,6 +253,33 @@ export default async function PrintPage({
           </span>
           <span className={styles.rateLabel}>{COPY.zone.declarableLabel}</span>
         </p>
+
+        {/* SPEC 12 item 3 lists the rail as part of the zone panel, and SPEC
+            line 885 justifies non-drift BY ASSERTING this route renders it:
+            "because the print route renders renderRailSvg and the same
+            formatters, the browser, the PDF and the OG image cannot drift".
+            It did not, until FW25b - the guarantee was written down and never
+            wired, which is R-a-rule-with-no-enforcement-point on a spec line.
+
+            THE COMPONENT, NOT renderRailSvg DIRECTLY. ThresholdRail owns the
+            one sanctioned dangerouslySetInnerHTML, and tests/unit/meta/
+            inner-html.test.ts pins how many of those exist precisely so a
+            second call site is a failing test rather than something a
+            reviewer has to notice. It is a server component, so this adds no
+            client JS to a page that deliberately ships none.
+
+            POSITIONED BY declarableRate (R224): the rail and the large figure
+            above it must be the same number, or the document argues with
+            itself in the one place a reader looks first. */}
+        <div className={styles.rail}>
+          <ThresholdRail
+            percentage={dossier.zone.declarableRate}
+            zone={zoneFor(dossier.zone.declarableRate, thresholds)}
+            thresholds={thresholds}
+            variant="inline"
+            width={RAIL_WIDTH}
+          />
+        </div>
 
         {dossier.zone.ratesDiffer ? (
           <p className={styles.rawRate}>
@@ -257,10 +324,10 @@ export default async function PrintPage({
             {dossier.months.map((month) => (
               <tr key={month.month}>
                 <td>{MONTHS[month.month - 1]}</td>
-                <td>{month.swissDays}</td>
-                <td>{month.teleworkDays}</td>
-                <td>{month.missionDaysFrance}</td>
-                <td>{month.missionDaysThirdState}</td>
+                <td>{formatDays(month.swissDays)}</td>
+                <td>{formatDays(month.teleworkDays)}</td>
+                <td>{formatDays(month.missionDaysFrance)}</td>
+                <td>{formatDays(month.missionDaysThirdState)}</td>
                 <td>{formatPercent(month.cumulativeDeclarableRate, 2)}</td>
               </tr>
             ))}
@@ -290,23 +357,34 @@ export default async function PrintPage({
             </tr>
           </thead>
           <tbody>
-            {dossier.annex.map((entry) => (
-              <tr key={`${entry.dayDate}-${entry.portion}`}>
-                <td>{day(entry.dayDate)}</td>
-                <td>{PORTION_LABEL[entry.portion] ?? entry.portion}</td>
-                <td>
-                  {entry.kind === 'ABSENT'
-                    ? (ABSENCE_LABEL[entry.absenceReason ?? 'AUTRE'] ?? COPY.annex.absenceAutre)
-                    : (KIND_LABEL[entry.kind] ?? entry.kind)}
-                  {entry.late ? <span className={styles.late}> {COPY.annex.late}</span> : null}
-                </td>
-                <td>{entry.note ?? ''}</td>
-                <td>{PROVENANCE_LABEL[entry.provenance] ?? entry.provenance}</td>
-                <td>{stamp(entry.firstRecordedAt)}</td>
-                <td>{stamp(entry.lastModifiedAt)}</td>
-                <td>{stamp(entry.clientClaimedAt)}</td>
-              </tr>
-            ))}
+            {dossier.annex.map((entry) =>
+              entry.recorded ? (
+                <tr key={`${entry.dayDate}-${entry.portion ?? ''}`}>
+                  <td>{day(entry.dayDate)}</td>
+                  <td>{PORTION_LABEL[entry.portion ?? ''] ?? entry.portion}</td>
+                  <td>
+                    {entry.kind === 'ABSENT'
+                      ? (ABSENCE_LABEL[entry.absenceReason ?? 'AUTRE'] ?? COPY.annex.absenceAutre)
+                      : (KIND_LABEL[entry.kind ?? ''] ?? entry.kind)}
+                    {entry.late ? <span className={styles.late}> {COPY.annex.late}</span> : null}
+                  </td>
+                  <td>{entry.note ?? ''}</td>
+                  <td>{PROVENANCE_LABEL[entry.provenance ?? ''] ?? entry.provenance}</td>
+                  <td>{stamp(entry.firstRecordedAt)}</td>
+                  <td>{stamp(entry.lastModifiedAt)}</td>
+                  <td>{stamp(entry.clientClaimedAt)}</td>
+                </tr>
+              ) : (
+                // SPEC 12 item 5: a working day nobody logged is PRINTED, not
+                // skipped. One spanning cell rather than six empty ones,
+                // because a row of blanks reads as data that failed to load -
+                // which is the ambiguity the requirement exists to remove.
+                <tr key={entry.dayDate} className={styles.notRecorded}>
+                  <td>{day(entry.dayDate)}</td>
+                  <td colSpan={7}>{COPY.annex.notRecorded}</td>
+                </tr>
+              ),
+            )}
           </tbody>
         </table>
         <p className={styles.note}>{COPY.annex.lateNote}</p>

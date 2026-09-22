@@ -173,17 +173,22 @@ export function toCsv(annex: readonly AnnexRow[]): string {
     lines.push(
       [
         row.dayDate,
-        row.portion,
-        row.kind,
+        // NULLABLE SINCE FW25b: an unlogged working day is a ROW now (SPEC 12
+        // item 5), and it has no portion, no kind, no provenance and no
+        // recording stamp. R175 binds the CSV and the annex to the same day
+        // set, so a CSV that dropped the gap rows the PDF prints would be
+        // exactly the drift that rule exists to prevent.
+        cell(row.portion),
+        cell(row.kind),
         cell(row.absenceReason),
-        row.provenance,
+        cell(row.provenance),
         cell(row.detectedKind),
         // NEUTRALISE, THEN QUOTE - the order is the correctness. Quoting
         // first would put the apostrophe OUTSIDE the field (`'"=SUM(A1,B1)"`),
         // which is a malformed record rather than a neutralised one. The
         // `.map(quoteField)` below is what runs second.
         neutraliseFormula(cell(row.note)),
-        row.firstRecordedAt,
+        cell(row.firstRecordedAt),
         cell(row.lastModifiedAt),
         cell(row.clientClaimedAt),
         // A boolean a spreadsheet can filter on, and the same two words in

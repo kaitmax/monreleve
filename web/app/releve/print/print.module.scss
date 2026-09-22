@@ -208,3 +208,21 @@
   margin: 0 0 var(--space-3);
   color: var(--colour-text-secondary);
 }
+
+.rail {
+  // SPEC 12 item 3. The rail sits under the large figure it is positioned by,
+  // with space above so the two read as one panel rather than as two claims.
+  margin: var(--space-4) 0 0;
+}
+
+.notRecorded {
+  // A WORKING DAY NOBODY LOGGED (SPEC 12 item 5). It is set in the secondary
+  // colour so a reader scanning the annex can see at a glance how much of the
+  // year is unaccounted for - but it is still a printed row with a date, which
+  // is the whole point: a document that silently omits dates invites the
+  // question of what else it omits.
+  //
+  // COLOUR IS NOT THE SIGNAL. SPEC 12's monochrome rule means this survives a
+  // photocopy, so the WORD carries the status and the tint is only emphasis.
+  color: var(--colour-text-secondary);
+}

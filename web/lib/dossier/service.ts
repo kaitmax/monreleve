@@ -45,13 +45,37 @@ import { type MonthRow, annualResult, monthlyBreakdown } from '@/lib/dossier/mon
 /** One row of the evidence annex - SPEC 12 item 5. */
 export interface AnnexRow {
   readonly dayDate: string;
-  readonly portion: string;
-  readonly kind: string;
+  /**
+   * False for a working day nobody logged.
+   *
+   * ============================================================================
+   * SPEC 12 ITEM 5: A DAY WITH NO ENTRY IS PRINTED, NOT SKIPPED
+   * ============================================================================
+   *
+   * "Days with no entry are printed as *Non renseigné* rather than skipped: a
+   * document that silently omits dates invites the question of what else it
+   * omits."
+   *
+   * Until FW25b the annex mapped over ENTRIES, so a gap simply was not there.
+   * Reading the demo document found it: 16.06 present, 18.06 present, 17.06 -
+   * a Wednesday the seed deliberately leaves empty - absent, with nothing
+   * saying so.
+   *
+   * That single mapping choice caused two of the six defects the read-through
+   * found. It is also what makes `workedDaysNote` honest: with gaps as rows the
+   * note explains a real relationship between 240 and the row count, rather
+   * than papering over the fact that the annex was counting a different thing.
+   */
+  readonly recorded: boolean;
+  /** Null on an unlogged day - there is no portion to state. */
+  readonly portion: string | null;
+  readonly kind: string | null;
   readonly absenceReason: string | null;
   readonly note: string | null;
-  readonly provenance: string;
+  readonly provenance: string | null;
   readonly detectedKind: string | null;
-  readonly firstRecordedAt: string;
+  /** Null on an unlogged day: nothing was recorded, so nothing was stamped. */
+  readonly firstRecordedAt: string | null;
   /**
    * Null when the day has never been edited.
    *
@@ -94,8 +118,61 @@ export interface Tiles {
   readonly missionDays: number;
 }
 
+/**
+ * The dossier needs one fact about the person the engine never does.
+ *
+ * SPEC 12 item 1 puts the NAME first in the header, and `AggregatableUser` is
+ * the engine's view - it has no business carrying one.
+ */
+export interface DossierUser extends AggregatableUser {
+  readonly name: string | null;
+}
+
+/**
+ * The document has no identified titulaire, so it is not a dossier.
+ *
+ * ============================================================================
+ * A CORRECTNESS DEFECT, NOT A MISSING FIELD (R205)
+ * ============================================================================
+ *
+ * Every other gap the read-through found makes the document INCOMPLETE. This
+ * one makes it UNATTRIBUTABLE: a PDF that cannot be filed against a person is
+ * not a relevé, it is a table of numbers. A fiduciaire holding two of them
+ * cannot tell whose is whose.
+ *
+ * So the route refuses rather than rendering, which is R205's rule on a
+ * document: served only when it can be believed. An unnamed dossier is the
+ * `assetlinks.json` of `[]` - syntactically complete and a statement of
+ * something nobody meant.
+ */
+export class MissingTitulaireError extends Error {
+  constructor() {
+    super('the dossier has no titulaire; SPEC 12 item 1 requires a name in the header');
+    this.name = 'MissingTitulaireError';
+  }
+}
+
+/**
+ * The titulaire's name, or null when there is not one.
+ *
+ * ONE PREDICATE, TWO CALLERS (R206). `buildDossier` uses it to refuse, and the
+ * PDF route uses it to refuse EARLY with a name a client can act on - before
+ * minting a token and launching a browser for a document that cannot exist.
+ * Two callers each deciding what "blank" means is how one accepts a name of
+ * three spaces that the other rejects.
+ */
+export function titulaireOf(name: string | null): string | null {
+  const trimmed = (name ?? '').trim();
+
+  return trimmed === '' ? null : trimmed;
+}
+
 export interface Dossier {
   readonly taxYear: number;
+  /** SPEC 12 item 1. Never empty - `buildDossier` refuses first. */
+  readonly titulaire: string;
+  /** SPEC 12 item 1, ISO. Server-assigned, like every other stamp. */
+  readonly generatedAt: string;
   readonly canton: string;
   readonly employmentRate: number;
   readonly denominatorKind: string;
@@ -131,10 +208,123 @@ const instant = (date: Date | null): string | null => (date === null ? null : da
  * regenerations of the same year, which is the opposite of what an evidence
  * annex is for.
  */
+/**
+ * Every Monday-to-Friday of the year, as ISO days.
+ *
+ * ============================================================================
+ * WHICH DAYS FORM THE ANNEX'S UNIVERSE, AND WHY THIS IS A DECISION
+ * ============================================================================
+ *
+ * SPEC 12 item 5 says days with no entry are printed rather than skipped. It
+ * does not say WHICH days, and the two readings differ by 104 rows.
+ *
+ * WEEKDAYS, because the annex exists to account for WORKING days: a Saturday
+ * nobody logged is not a fact about anybody's telework, and printing 104 of
+ * them would bury the one Wednesday that matters under noise - which is the
+ * opposite of what "a document that silently omits dates" is guarding against.
+ *
+ * A weekend day that HAS an entry still appears: the universe is the weekdays
+ * UNION the days actually logged, so somebody who worked a Saturday sees it.
+ *
+ * Public holidays are not excluded, because this product does not know the
+ * canton's holiday calendar and inventing one would be a second source of
+ * truth about what a working day is.
+ */
+function weekdaysOf(year: number): string[] {
+  const days: string[] = [];
+  const cursor = new Date(Date.UTC(year, 0, 1));
+
+  while (cursor.getUTCFullYear() === year) {
+    const weekday = cursor.getUTCDay();
+
+    if (weekday !== 0 && weekday !== 6) {
+      days.push(cursor.toISOString().slice(0, 10));
+    }
+
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+
+  return days;
+}
+
+/** One unlogged working day, as SPEC 12 item 5 requires it to appear. */
+function notRecorded(dayDate: string): AnnexRow {
+  return {
+    dayDate,
+    recorded: false,
+    portion: null,
+    kind: null,
+    absenceReason: null,
+    note: null,
+    provenance: null,
+    detectedKind: null,
+    firstRecordedAt: null,
+    lastModifiedAt: null,
+    clientClaimedAt: null,
+    // NOT late. Lateness is a property of a recording, and there was none -
+    // `false` here means "no late recording", not "recorded on time".
+    late: false,
+  };
+}
+
+/**
+ * The evidence annex: every logged entry, plus every working day that has none.
+ *
+ * ONE PASS OVER A UNION, not a merge of two sorted lists, because the sort is
+ * then stated once. A document whose rows arrive in query-plan order changes
+ * between two regenerations of the same year.
+ */
+function buildAnnex(entries: readonly AnnexEntry[], taxYear: number): AnnexRow[] {
+  const byDay = new Map<string, AnnexEntry[]>();
+
+  for (const entry of entries) {
+    const day = isoDay(entry.dayDate);
+    const existing = byDay.get(day);
+
+    if (existing === undefined) byDay.set(day, [entry]);
+    else existing.push(entry);
+  }
+
+  const universe = [...new Set([...weekdaysOf(taxYear), ...byDay.keys()])].sort();
+  const rows: AnnexRow[] = [];
+
+  for (const day of universe) {
+    const logged = byDay.get(day);
+
+    if (logged === undefined) {
+      rows.push(notRecorded(day));
+
+      continue;
+    }
+
+    for (const entry of [...logged].sort(
+      (left, right) => PORTION_ORDER.indexOf(left.portion) - PORTION_ORDER.indexOf(right.portion),
+    )) {
+      rows.push({
+        dayDate: day,
+        recorded: true,
+        portion: entry.portion,
+        kind: entry.kind,
+        absenceReason: entry.absenceReason,
+        note: entry.note,
+        provenance: entry.provenance,
+        detectedKind: entry.detectedKind,
+        firstRecordedAt: entry.firstRecordedAt.toISOString(),
+        lastModifiedAt: instant(entry.lastModifiedAt),
+        clientClaimedAt: instant(entry.clientClaimedAt),
+        late: isLate(entry.dayDate, entry.firstRecordedAt),
+      });
+    }
+  }
+
+  return rows;
+}
+
 export function buildDossier(
-  user: AggregatableUser,
+  user: DossierUser,
   entries: readonly AnnexEntry[],
   taxYear: number,
+  generatedAt: Date = new Date(),
 ): Dossier {
   const result = annualResult(user, entries, taxYear);
   const counts = countDays(entries);
@@ -143,8 +333,18 @@ export function buildDossier(
     throw new Error('the dossier needs a canton; toTeleworkInput refuses first, this is belt');
   }
 
+  // BEFORE ANYTHING IS COMPUTED. A document that cannot be attributed should
+  // not be half-built and then discarded by a renderer.
+  const titulaire = titulaireOf(user.name);
+
+  if (titulaire === null) {
+    throw new MissingTitulaireError();
+  }
+
   return {
     taxYear,
+    titulaire,
+    generatedAt: generatedAt.toISOString(),
     canton: user.canton,
     employmentRate: user.employmentRate,
     denominatorKind: user.denominatorKind,
@@ -172,28 +372,7 @@ export function buildDossier(
 
     months: monthlyBreakdown(user, entries, taxYear),
 
-    annex: [...entries]
-      .sort((left, right) => {
-        const a = isoDay(left.dayDate);
-        const b = isoDay(right.dayDate);
-
-        if (a !== b) return a < b ? -1 : 1;
-
-        return PORTION_ORDER.indexOf(left.portion) - PORTION_ORDER.indexOf(right.portion);
-      })
-      .map((entry) => ({
-        dayDate: isoDay(entry.dayDate),
-        portion: entry.portion,
-        kind: entry.kind,
-        absenceReason: entry.absenceReason,
-        note: entry.note,
-        provenance: entry.provenance,
-        detectedKind: entry.detectedKind,
-        firstRecordedAt: entry.firstRecordedAt.toISOString(),
-        lastModifiedAt: instant(entry.lastModifiedAt),
-        clientClaimedAt: instant(entry.clientClaimedAt),
-        late: isLate(entry.dayDate, entry.firstRecordedAt),
-      })),
+    annex: buildAnnex(entries, taxYear),
 
     absenceDays: counts.absenceDays,
     result,

@@ -61,6 +61,9 @@ export async function buildDossierFor(userId: string, year: number): Promise<Dos
   const user = await prisma.user.findUniqueOrThrow({
     where: { id: userId },
     select: {
+      // SPEC 12 item 1 puts the name first in the header. `buildDossier`
+      // refuses without one, so this column is not optional in practice.
+      name: true,
       canton: true,
       employmentRate: true,
       denominatorKind: true,

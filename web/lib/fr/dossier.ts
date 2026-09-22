@@ -71,6 +71,13 @@ export const DOSSIER_COPY = {
     generatedAt: 'Date de génération',
 
     /**
+     * D28: absences are counted ONCE, in this block, and appear in no other
+     * figure. SPEC 12 item 5 puts the count here rather than in a tile,
+     * because it is a fact about the record and not a term in the rate.
+     */
+    absencesDeclared: 'Absences déclarées',
+
+    /**
      * The two denominator methods, in the reader's words rather than ours.
      *
      * THE BASIS IS AN ARGUMENT. 240 belongs to the year's RuleSet

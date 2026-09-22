@@ -4,9 +4,13 @@
 
 import { describe, expect, it } from 'vitest';
 import { type AnnexEntry, buildDossier } from '@/lib/dossier/service';
-import type { AggregatableUser } from '@/lib/dossier/aggregate';
+import { MissingTitulaireError } from '@/lib/dossier/service';
+import type { DossierUser } from '@/lib/dossier/service';
 
-const USER: AggregatableUser = {
+const USER: DossierUser = {
+  // SPEC 12 item 1. buildDossier refuses without one, so every fixture that
+  // expects a document has to name somebody.
+  name: 'Camille Rey',
   canton: 'GE',
   employmentRate: 100,
   denominatorKind: 'SIMPLIFIED240',
@@ -123,6 +127,16 @@ describe('the tiles report the engine denominator, not a row count', () => {
   });
 });
 
+/**
+ * The LOGGED rows.
+ *
+ * Since FW25b the annex also carries a row for every working day nobody
+ * logged (SPEC 12 item 5), so a test about entries has to say so. Filtering
+ * is the honest fix; indexing annex[0] and hoping is what these did before,
+ * and it worked only because gaps were missing entirely.
+ */
+const logged = (d: ReturnType<typeof buildDossier>) => d.annex.filter((r) => r.recorded);
+
 describe('the annex is an evidence record', () => {
   it('sorts by day, then FULL AM PM, so two regenerations agree', () => {
     const dossier = buildDossier(
@@ -135,7 +149,7 @@ describe('the annex is an evidence record', () => {
       2026,
     );
 
-    expect(dossier.annex.map((row) => `${row.dayDate}/${row.portion}`)).toEqual([
+    expect(logged(dossier).map((row) => `${row.dayDate}/${row.portion}`)).toEqual([
       '2026-03-01/FULL',
       '2026-03-05/AM',
       '2026-03-05/PM',
@@ -154,8 +168,8 @@ describe('the annex is an evidence record', () => {
       2026,
     );
 
-    expect(dossier.annex[0]?.late).toBe(false);
-    expect(dossier.annex[1]?.late).toBe(true);
+    expect(logged(dossier)[0]?.late).toBe(false);
+    expect(logged(dossier)[1]?.late).toBe(true);
   });
 
   it('keeps ABSENT rows in the annex while keeping them out of every figure', () => {
@@ -168,7 +182,7 @@ describe('the annex is an evidence record', () => {
       2026,
     );
 
-    expect(dossier.annex).toHaveLength(2);
+    expect(logged(dossier)).toHaveLength(2);
     expect(dossier.absenceDays).toBe(1);
     expect(dossier.tiles.swissDays).toBe(0);
     expect(dossier.tiles.teleworkDays).toBe(1);
@@ -184,8 +198,8 @@ describe('the annex is an evidence record', () => {
       2026,
     );
 
-    expect(dossier.annex[0]?.lastModifiedAt).toBeNull();
-    expect(dossier.annex[1]?.lastModifiedAt).toBe('2026-03-10T08:00:00.000Z');
+    expect(logged(dossier)[0]?.lastModifiedAt).toBeNull();
+    expect(logged(dossier)[1]?.lastModifiedAt).toBe('2026-03-10T08:00:00.000Z');
   });
 });
 
@@ -194,5 +208,106 @@ describe('the months and the year agree', () => {
     const dossier = buildDossier(USER, divergentYear(), 2026);
 
     expect(dossier.months.at(-1)?.cumulativeDeclarableRate).toBe(dossier.zone.declarableRate);
+  });
+});
+
+describe('SPEC 12 item 5: a working day nobody logged is PRINTED, not skipped', () => {
+  // ==========================================================================
+  // FOUND BY READING THE DOCUMENT, NOT BY A GATE
+  // ==========================================================================
+  //
+  // The annex mapped over ENTRIES until FW25b, so a gap simply was not there.
+  // The demo year plants one on 2026-06-17, a Wednesday: 16.06 printed, 18.06
+  // printed, 17.06 absent with nothing saying so. Every suite was green.
+  //
+  // "A document that silently omits dates invites the question of what else it
+  // omits" - which is the whole argument of an evidence annex.
+
+  it('emits a row for a weekday with no entry', () => {
+    // 2026-03-03 is a Tuesday; only the Monday is logged.
+    const dossier = buildDossier(USER, [entry('2026-03-02', 'HOME')], 2026);
+
+    const gap = dossier.annex.find((row) => row.dayDate === '2026-03-03');
+
+    expect(gap?.recorded).toBe(false);
+    // It is a DAY, not an entry: nothing was recorded, so nothing was stamped.
+    expect(gap?.firstRecordedAt).toBeNull();
+    expect(gap?.kind).toBeNull();
+    // NOT late. Lateness is a property of a recording and there was none.
+    expect(gap?.late).toBe(false);
+  });
+
+  it('proves the neighbours render first, so the absence means something', () => {
+    // R169's corollary, which is how this defect was actually caught: an
+    // absence assertion is satisfied by absence. "17.06 is missing" holds on
+    // an empty document too.
+    const dossier = buildDossier(USER, [entry('2026-06-16', 'CH'), entry('2026-06-18', 'CH')], 2026);
+
+    const days = dossier.annex.map((row) => row.dayDate);
+
+    expect(days).toContain('2026-06-16');
+    expect(days).toContain('2026-06-18');
+
+    const gap = dossier.annex.find((row) => row.dayDate === '2026-06-17');
+
+    expect(gap).toBeDefined();
+    expect(gap?.recorded).toBe(false);
+  });
+
+  it('does NOT print an unlogged weekend, so the guard is not blanket', () => {
+    // 2026-03-07 is a Saturday. Printing 104 weekend rows would bury the one
+    // Wednesday that matters, which is the opposite of the requirement.
+    const dossier = buildDossier(USER, [entry('2026-03-02', 'HOME')], 2026);
+
+    expect(dossier.annex.map((row) => row.dayDate)).not.toContain('2026-03-07');
+  });
+
+  it('DOES print a weekend that was logged', () => {
+    // The universe is the weekdays UNION the days actually logged, so somebody
+    // who worked a Saturday still sees it.
+    const dossier = buildDossier(USER, [entry('2026-03-07', 'CH')], 2026);
+
+    const saturday = dossier.annex.find((row) => row.dayDate === '2026-03-07');
+
+    expect(saturday?.recorded).toBe(true);
+    expect(saturday?.kind).toBe('CH');
+  });
+
+  it('covers every weekday of the year exactly once', () => {
+    // 2026 has 261 weekdays. A document missing one is the defect this whole
+    // block exists for; a document with duplicates would be worse.
+    const dossier = buildDossier(USER, [], 2026);
+
+    expect(dossier.annex).toHaveLength(261);
+    expect(new Set(dossier.annex.map((row) => row.dayDate)).size).toBe(261);
+    expect(dossier.annex.every((row) => !row.recorded)).toBe(true);
+  });
+});
+
+describe('SPEC 12 item 1: a document that cannot be attributed is not a dossier', () => {
+  it('REFUSES when the person has no name', () => {
+    // R205 on a document: served only when it can be believed. Every other gap
+    // makes it incomplete; this one makes it unattributable, and a PDF that
+    // cannot be filed against a person is a table of numbers.
+    expect(() => buildDossier({ ...USER, name: null }, [entry('2026-03-02', 'HOME')], 2026)).toThrow(
+      MissingTitulaireError,
+    );
+  });
+
+  it('REFUSES a name that is only whitespace', () => {
+    expect(() => buildDossier({ ...USER, name: '   ' }, [], 2026)).toThrow(MissingTitulaireError);
+  });
+
+  it('accepts a real name, so the guard is not refusing everything', () => {
+    // R196: rejection alone proves a guard is STRICT, never that it is RIGHT.
+    const dossier = buildDossier(USER, [entry('2026-03-02', 'HOME')], 2026);
+
+    expect(dossier.titulaire).toBe('Camille Rey');
+  });
+
+  it('carries a generation date, because two exports of one year differ', () => {
+    const dossier = buildDossier(USER, [], 2026, new Date('2027-02-01T10:30:00.000Z'));
+
+    expect(dossier.generatedAt).toBe('2027-02-01T10:30:00.000Z');
   });
 });

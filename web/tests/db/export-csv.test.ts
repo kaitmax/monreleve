@@ -60,18 +60,41 @@ function daysIn(csv: string): string[] {
     .map((line) => line.split(',')[0] ?? '');
 }
 
+/**
+ * The days that carry an ENTRY, as opposed to every day the year prints.
+ *
+ * Since FW25b the CSV carries a row for every working day with no entry
+ * (SPEC 12 item 5), because R175 binds it to the annex and the annex prints
+ * them. A test about which entries were exported therefore has to say so -
+ * the alternative is comparing against all 261 weekdays, which asserts the
+ * calendar rather than the query.
+ *
+ * A gap row has an empty `portion`, the second column.
+ */
+function loggedDaysIn(csv: string): string[] {
+  return csv
+    .slice(BOM.length)
+    .split('\r\n')
+    .filter((line) => line !== '')
+    .slice(1)
+    .filter((line) => (line.split(',')[1] ?? '') !== '')
+    .map((line) => line.split(',')[0] ?? '');
+}
+
 beforeEach(async () => {
   await prisma.user.deleteMany();
 
   userId = (
     await prisma.user.create({
-      data: { email: 'csv@example.com', canton: 'GE', employmentRate: 100 },
+      // SPEC 12 item 1: buildDossier refuses without a titulaire, and the CSV
+      // is built from the same dossier the document is.
+      data: { email: 'csv@example.com', name: 'Camille Rey', canton: 'GE', employmentRate: 100 },
     })
   ).id;
 
   otherId = (
     await prisma.user.create({
-      data: { email: 'autre-csv@example.com', canton: 'GE', employmentRate: 100 },
+      data: { email: 'autre-csv@example.com', name: 'Autre Personne', canton: 'GE', employmentRate: 100 },
     })
   ).id;
 
@@ -147,15 +170,21 @@ describe('R175: the CSV and the annex carry the SAME day set', () => {
     await seed(userId, '2026-12-31');
     await seed(userId, '2027-01-01');
 
-    expect(daysIn(await (await GET(get('?year=2026'))).text())).toEqual([
-      '2026-01-01',
-      '2026-12-31',
-    ]);
+    const year2026 = await (await GET(get('?year=2026'))).text();
+
+    // THE LOGGED days, because every weekday of 2026 is now a row.
+    expect(loggedDaysIn(year2026)).toEqual(['2026-01-01', '2026-12-31']);
+
+    // AND THE NEIGHBOURS ARE ABSENT ALTOGETHER - not merely unlogged. A gap
+    // row for 2025-12-31 inside the 2026 export would be a window defect that
+    // the logged-days assertion above could not see.
+    expect(daysIn(year2026)).not.toContain('2025-12-31');
+    expect(daysIn(year2026)).not.toContain('2027-01-01');
 
     // Absence is only meaningful once presence is established (R169's
     // corollary): the neighbours are fetched under their own years and found.
-    expect(daysIn(await (await GET(get('?year=2025'))).text())).toEqual(['2025-12-31']);
-    expect(daysIn(await (await GET(get('?year=2027'))).text())).toEqual(['2027-01-01']);
+    expect(loggedDaysIn(await (await GET(get('?year=2025'))).text())).toEqual(['2025-12-31']);
+    expect(loggedDaysIn(await (await GET(get('?year=2027'))).text())).toEqual(['2027-01-01']);
   });
 });
 
@@ -174,8 +203,15 @@ describe('tenancy and refusals', () => {
     const otherToken = (await issueTokenPair(otherId)).accessToken;
     const theirs = await (await GET(get('?year=2026', otherToken))).text();
 
-    expect(daysIn(mine)).toEqual(['2026-04-07']);
-    expect(daysIn(theirs)).toEqual(['2026-06-11']);
+    // The LOGGED days: both exports carry all 261 weekdays of 2026, and the
+    // question this test asks is whose ENTRIES are in them.
+    expect(loggedDaysIn(mine)).toEqual(['2026-04-07']);
+    expect(loggedDaysIn(theirs)).toEqual(['2026-06-11']);
+
+    // AND NEITHER CARRIES THE OTHER'S DAY AS AN ENTRY, stated from the other
+    // side so a serialiser that emitted both would fail here too.
+    expect(loggedDaysIn(mine)).not.toContain('2026-06-11');
+    expect(loggedDaysIn(theirs)).not.toContain('2026-04-07');
   });
 
   it('refuses a coordinate in the query string, before the year is validated', async () => {

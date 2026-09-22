@@ -64,7 +64,7 @@ beforeEach(async () => {
 
   userId = (
     await prisma.user.create({
-      data: { email: 'print@example.com', canton: 'GE', employmentRate: 100 },
+      data: { email: 'print@example.com', name: 'Camille Rey', canton: 'GE', employmentRate: 100 },
     })
   ).id;
 });
