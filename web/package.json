@@ -48,6 +48,7 @@
     "next": "15.5.25",
     "next-mdx-remote": "6.0.0",
     "pg": "^8.23.0",
+    "pg-boss": "12.33.4",
     "playwright-core": "1.63.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
