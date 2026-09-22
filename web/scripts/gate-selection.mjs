@@ -452,9 +452,24 @@ export const SELECTOR_PATTERNS = Object.freeze([
     // Everything else under e2e/ is the ordinary suite - including
     // e2e/baseline.ts and other helpers, which are not specs but decide
     // what every spec asserts.
+    // ITS SCOPE IS STATED, NOT INHERITED FROM ITS POSITION (R234).
+    //
+    // This used to be a bare `startsWith('e2e/')`, correct only because it was
+    // declared AFTER the two specialisations above and the selector took the
+    // first match. That made declaration order load-bearing: moving this line
+    // up would have silently made every visual spec select test:e2e, a suite
+    // that deliberately excludes it.
+    //
+    // Now the three are genuinely disjoint, so the selector can take the union
+    // of everything a path matches - which is what a path in two ORTHOGONAL
+    // categories (a page that a database test renders) needs - without a
+    // specialisation being swallowed by its own general case.
     label: 'a spec file, which selects the suite it belongs to (R144)',
     suites: ['test:e2e'],
-    matches: (path) => path.startsWith('e2e/'),
+    matches: (path) =>
+      path.startsWith('e2e/') &&
+      !path.endsWith('.visual.spec.ts') &&
+      !path.endsWith('.runtime.spec.ts'),
   },
   {
     // A BASELINE IS NOT A TEST, IT IS THE RECORD A TEST COMPARES AGAINST,
@@ -566,9 +581,30 @@ export function selectSuites(paths) {
 
   for (const path of paths) {
     const candidate = toPackagePath(path);
-    const hit = SELECTOR_PATTERNS.find((pattern) => pattern.matches(candidate));
 
-    if (hit !== undefined) matched.push({ path, pattern: hit.label });
+    // ============================================================================
+    // EVERY PATTERN A PATH MATCHES, NOT THE FIRST (R234)
+    // ============================================================================
+    //
+    // This was `.find(...)` from R218 until FW25b, so a path belonging to two
+    // categories contributed only the suites of whichever pattern was DECLARED
+    // FIRST. The size of the gap was set by declaration order in the list
+    // below and by nothing else.
+    //
+    // THE INSTANCE THAT EXPOSED IT: `app/releve/print/page.tsx` is matched by
+    // `app/**` (line ~474) and is also imported by `tests/db/print-route.test.ts`,
+    // so it is in the database closure (line ~523). `find` returned `app/**`,
+    // and the change that added a row type to the document did not run the
+    // database suite that renders it.
+    //
+    // THE SUITE'S SHAPE IS WHY IT SURVIVED, and it is R175's shape on the
+    // mechanism R218 exists to be: one test asserted ONE path in ONE category,
+    // another asserted TWO paths in TWO categories, and *one path in two
+    // categories* was never named. Two correct tests bounding a property from
+    // opposite sides, with the case in the middle unexamined.
+    for (const pattern of SELECTOR_PATTERNS) {
+      if (pattern.matches(candidate)) matched.push({ path, pattern: pattern.label });
+    }
   }
 
   // The union, in a fixed order: the base chain, then each group in the

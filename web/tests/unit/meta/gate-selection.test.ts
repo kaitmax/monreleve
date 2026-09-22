@@ -126,7 +126,12 @@ describe('R132 against the two commits it was written for', () => {
 
     // And for the RIGHT reason: three of its paths match, and they are the
     // three that changed what a browser renders.
-    expect(matched.map((hit) => hit.path).sort()).toEqual([
+    //
+    // DISTINCT PATHS, because since R234 a path is reported once per pattern
+    // it matches - CalculatorForm.module.scss is both `app/**` and
+    // `**/*.module.scss`, and both reasons are true. The claim here is about
+    // WHICH FILES fired, not how many reasons each had.
+    expect([...new Set(matched.map((hit) => hit.path))].sort()).toEqual([
       'web/app/(public)/calculateur-teletravail-frontalier/CalculatorForm.module.scss',
       'web/app/(public)/calculateur-teletravail-frontalier/CalculatorForm.tsx',
       'web/lib/fr/params.ts',
@@ -723,5 +728,76 @@ describe('R221: the selector sees the whole repository, not only web/', () => {
 
     expect(selection.suites).toEqual([...BASE_SUITES]);
     expect(selection.matched).toEqual([]);
+  });
+});
+
+describe('R234: a path selects the UNION of every pattern it matches', () => {
+  // ==========================================================================
+  // THE PROPERTY, NOT THE CASE
+  // ==========================================================================
+  //
+  // `selectSuites` used `.find(...)` from R218 until FW25b, so a path in two
+  // categories contributed only the suites of whichever pattern was DECLARED
+  // FIRST. That is not one dropped suite: it is systematic under-selection
+  // across every commit since, with the size of the gap set entirely by the
+  // order of the pattern list.
+  //
+  // THE SUITE'S OWN SHAPE IS WHY IT SURVIVED - R175 on the mechanism R218
+  // exists to be. One test asserted ONE path in ONE category. Another asserted
+  // TWO paths in TWO categories. *One path in two categories* was never named,
+  // and that is where it lived.
+  //
+  // So this asserts the PROPERTY rather than the instance: whatever patterns a
+  // path matches, every one of their suites is selected. A pattern added at
+  // the bottom of the list years from now cannot reintroduce the defect under
+  // a pairing nobody thought to write a case for.
+
+  const SAMPLE = [
+    // The instance that exposed it: matched by app/** AND imported by
+    // tests/db/print-route.test.ts, so also in the database closure.
+    'web/app/releve/print/page.tsx',
+    'web/app/api/v1/export/csv/route.ts',
+    'web/lib/export/csv.ts',
+    'web/lib/dossier/service.ts',
+    'web/lib/ui/core/styles/tokens.scss',
+    'web/lib/fr/dossier.ts',
+    'web/prisma/schema.prisma',
+    'web/app/page.tsx',
+  ];
+
+  it('is not vacuous: at least one real path matches more than one pattern', () => {
+    // R133. Without this the property below is satisfied perfectly by a
+    // repository in which no path is ever in two categories, and the test
+    // would keep passing after somebody put `.find` back.
+    const multi = SAMPLE.map((path) => selectSuites([path])).filter(
+      (selection) => selection.matched.length > 1,
+    );
+
+    expect(multi.length).toBeGreaterThan(0);
+  });
+
+  it('selects every suite of every pattern it reports as matched', () => {
+    for (const path of SAMPLE) {
+      const { suites, matched } = selectSuites([path]);
+
+      for (const hit of matched) {
+        const pattern = SELECTOR_PATTERNS.find((candidate) => candidate.label === hit.pattern);
+
+        expect(pattern, hit.pattern).toBeDefined();
+
+        for (const suite of pattern?.suites ?? []) {
+          expect(suites, path + ' -> ' + hit.pattern).toContain(suite);
+        }
+      }
+    }
+  });
+
+  it('runs the database suite for a page a database test renders', () => {
+    // The concrete instance, kept beside the property because a named case is
+    // what makes a regression legible in a diff.
+    const { suites } = selectSuites(['web/app/releve/print/page.tsx']);
+
+    expect(suites).toContain('test:db');
+    expect(suites).toContain('test:e2e');
   });
 });
