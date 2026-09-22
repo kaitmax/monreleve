@@ -234,3 +234,24 @@
   // photocopy, so the WORD carries the status and the tint is only emphasis.
   color: var(--colour-text-secondary);
 }
+
+.headroom {
+  // THE ANSWER TO THE PRODUCT'S QUESTION (R239), set as a definition list so
+  // each figure is bound to the threshold it belongs to. Two numbers under one
+  // shared label would be the R73 defect: a reader cannot tell which ceiling
+  // was passed.
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-1) var(--space-4);
+  margin: var(--space-4) 0 0;
+
+  dt {
+    color: var(--colour-text-secondary);
+  }
+
+  dd {
+    margin: 0;
+    font-weight: var(--type-body-m-weight);
+    text-align: right;
+  }
+}

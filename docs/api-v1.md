@@ -704,3 +704,76 @@ answer identically for every cause, because telling an unauthenticated caller
 *which* case fired is the vulnerability.
 
 ---
+
+---
+
+## 8. `GET /api/v1/dossier?year=YYYY` — the document as data
+
+**It is placed after the error codes rather than beside §6, deliberately.** The
+dossier is not part of the entries resource, and inserting a section between §6
+and §7 would renumber §7 — a contract document's headings are addresses, and
+moving one to satisfy a reading order is the wrong trade.
+
+**The route assembles nothing.** `lib/dossier` computes and the route
+serialises a frozen field list. SPEC §12 makes the Android *Relevé* screen and
+the PDF "the same document at two widths", which holds only while one
+computation stands behind both — so a figure recomputed anywhere downstream is
+a second implementation, and the surface it would eventually disagree with is
+the one an auditor reads.
+
+### 8.1 The payload
+
+| field | what it is |
+|---|---|
+| `taxYear` | the year requested, echoed |
+| `period` | `{ fraction, startDate }` — what the figures actually cover |
+| `titulaire` | the person's name. Never empty; the route refuses instead |
+| `generatedAt` | ISO instant, server-assigned |
+| `canton` | the canton of work |
+| `employmentRate` | 1–100 |
+| `denominatorKind` | `SIMPLIFIED240` or `EXACT` |
+| `tiles` | `workedDays`, `swissDays`, `teleworkDays`, `missionDays` |
+| `zone` | the rates, both ceilings' headroom, and the **warnings** |
+| `months` | twelve rows, with the cumulative declarable rate |
+| `annex` | every entry **and every working day without one** |
+| `absenceDays` | D28: counted once here and in no other figure |
+| `recordedEntries` | how many annex rows carry an entry |
+
+### 8.2 What a client may assume
+
+- **`period.fraction` is the property; `period.startDate` is only today's
+  cause.** A fraction below 1 means the basis was prorated and the figures
+  cover part of the year. Render the span from `startDate` when it is present,
+  and say *partial* when it is not — do **not** key your rendering on
+  `startDate` alone, which is how the web document came to print *« Année 2026
+  entière »* over prorated figures.
+- **`recordedEntries === 0` is not the same as a compliant year.** Both declare
+  0 % telework. One means the person logged nothing. A client that renders the
+  rate without this distinction shows somebody a clean result for a year they
+  never filled in.
+- **`annex` contains unlogged days.** A row with `recorded: false` carries a
+  `dayDate` and nothing else — no portion, no kind, no timestamp. SPEC §12
+  item 5 requires them printed rather than skipped.
+- **`zone.warnings` must be surfaced, never only the figures** — see §6.5,
+  which is the same obligation stated where a client meets it first.
+- **`result` is not on the wire.** The engine's own output duplicates four of
+  `zone`'s figures, and two sources for one figure inside a frozen contract is
+  the drift this document exists to prevent. Its unique fields may be added
+  later as named fields (§6.3's additive rule permits it).
+
+### 8.3 Refusals
+
+| code | status | fires when |
+|---|---|---|
+| `missing_token` / `invalid_token` | 401 | no bearer, or one that does not resolve |
+| `coordinates_refused` | 400 | a location key in the query — checked **first** |
+| `unknown_parameter` | 400 | any parameter other than `year`, including a planted `userId` |
+| `invalid_year` | 400 | not four digits |
+| `future_year` | 400 | a year that has not happened |
+| `titulaire_missing` | 422 | the account has no name, so no document can be attributed |
+
+**`future_year` is its own code and not `invalid_year`.** The engine would
+answer for 2031 — a full basis, nothing logged, 0 % declared — and that answer
+is not so much wrong as *meaningless*, which is worse, because it looks like a
+compliant year. `invalid_year` would send a client author to check their
+parser.

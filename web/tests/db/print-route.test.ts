@@ -22,6 +22,7 @@ import { prisma } from '@/lib/db/client';
 import { DOSSIER_COPY as COPY } from '@/lib/fr/dossier';
 import { mintPrintToken } from '@/lib/export/print-token';
 import { buildDossierFor } from '@/lib/dossier/load';
+import { formatDays } from '@/lib/ui/core';
 import PrintPage from '@/app/releve/print/page';
 
 let userId = '';
@@ -208,5 +209,91 @@ describe('R230: the document is the record, and carries the note unaltered', () 
 
     expect(html).toContain('=1+1');
     expect(html).not.toContain("'=1+1");
+  });
+});
+
+describe('SPEC 12 item 1: the header states the period it actually computed', () => {
+  // The defect this replaces stated something FALSE rather than omitting
+  // something true: prorated figures under "Année 2026 entière". Both
+  // directions are asserted, because a renderer that always printed the
+  // part-year line would pass a test for the part-year case alone.
+
+  it('says the whole year when nothing prorated it', async () => {
+    await seed('2026-03-02');
+
+    const html = await render(2026, mintPrintToken(userId, 2026));
+
+    expect(html).toContain(COPY.header.fullYear(2026));
+  });
+
+  it('says the span when the basis was prorated, and NOT the whole year', async () => {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { activityStartDate: new Date('2026-07-01T00:00:00.000Z') },
+    });
+    await seed('2026-09-02');
+
+    const html = await render(2026, mintPrintToken(userId, 2026));
+
+    expect(html).toContain(COPY.header.fromDate('01.07.2026', 2026));
+
+    // THE HALF THAT MATTERS. Printing the span while ALSO printing "année
+    // entière" somewhere would be the same contradiction in a longer form.
+    expect(html).not.toContain(COPY.header.fullYear(2026));
+  });
+});
+
+describe('R239: the document states how far the reader is from each threshold', () => {
+  // ==========================================================================
+  // THE PRODUCT'S OPENING SENTENCE, PRINTED AT LAST
+  // ==========================================================================
+  //
+  // "how many telework days are left before the 40 % fiscal threshold and the
+  // 49,9 % social-security threshold". The payload carried both figures and
+  // the page used them ONLY as comparisons to choose a badge - so the rail
+  // positioned the reader between two ticks and the document never said how
+  // far. R238's first run found the labels sitting unrendered.
+
+  it('prints both headroom figures under the thresholds sentence', async () => {
+    await seed('2026-03-02');
+
+    const html = await render(2026, mintPrintToken(userId, 2026));
+
+    expect(html).toContain(COPY.zone.remainingToFiscal);
+    expect(html).toContain(COPY.zone.remainingToSocial);
+  });
+
+  it('reports a BREACH as a distance above, never as a minus sign or a zero', async () => {
+    // SPEC 7.2 step 6 / R12: negatives are reported, never clamped. This is
+    // the state a reader in trouble is actually in, and the one a naive render
+    // gets wrong - `-6,5` reads as a formatting artefact and `0` is a lie.
+    // 170 calendar days is about 121 weekdays, against a 96-day fiscal
+    // ceiling (240 x 40 %). The first attempt used 130 and produced 92 - four
+    // days SHORT of a breach, which the presence assertion below caught.
+    for (let day = 1; day <= 170; day += 1) {
+      const date = new Date(Date.UTC(2026, 0, 1) + (day - 1) * 86_400_000);
+      const weekday = date.getUTCDay();
+
+      if (weekday === 0 || weekday === 6) continue;
+
+      await seed(date.toISOString().slice(0, 10));
+    }
+
+    const dossier = await buildDossierFor(userId, 2026);
+
+    // PRESENCE FIRST: the fixture must actually be over the ceiling, or the
+    // assertions below are about a state the document never entered.
+    expect(dossier.zone.remainingToFiscal).toBeLessThan(0);
+
+    const html = await render(2026, mintPrintToken(userId, 2026));
+
+    expect(html).toContain(COPY.zone.overFiscal);
+    expect(html).not.toContain(COPY.zone.remainingToFiscal);
+
+    // The magnitude, with no sign character attached to it.
+    const magnitude = formatDays(Math.abs(dossier.zone.remainingToFiscal));
+
+    expect(html).toContain(magnitude);
+    expect(html).not.toContain(`-${magnitude}`);
   });
 });

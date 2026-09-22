@@ -39,6 +39,7 @@ import {
   type AggregatableEntry,
   type AggregatableUser,
   countDays,
+  toTeleworkInput,
 } from '@/lib/dossier/aggregate';
 import { type MonthRow, annualResult, monthlyBreakdown } from '@/lib/dossier/monthly';
 
@@ -153,6 +154,43 @@ export class MissingTitulaireError extends Error {
 }
 
 /**
+ * What `GET /api/v1/dossier` serialises, and the whole of it.
+ *
+ * ============================================================================
+ * `result` IS DELIBERATELY ABSENT, AND IT IS THE ONLY OMISSION
+ * ============================================================================
+ *
+ * `Dossier.result` is the engine's own output, and it carries `declarableRate`,
+ * `rawRate`, `remainingToFiscal` and `remainingToSocial` a SECOND time - `zone`
+ * already has all four. Serialising both would put two sources for one figure
+ * into a contract SPEC 14 freezes, which is the drift R206 exists to prevent
+ * arriving where it is most expensive to undo.
+ *
+ * Its genuinely unique fields - regime, missionCap, creditedMissionDays and
+ * the two taxed-day counts - are not in SPEC 12's document structure. R217
+ * permits ADDITIVE response fields under the freeze, so any of them can be
+ * added later as its own named field rather than as a nested duplicate.
+ *
+ * ONE HOME (R206): the route iterates this list, the contract test reads it,
+ * and the payload cannot gain a field that the document does not describe.
+ */
+export const DOSSIER_RESPONSE_FIELDS = [
+  'taxYear',
+  'period',
+  'titulaire',
+  'generatedAt',
+  'canton',
+  'employmentRate',
+  'denominatorKind',
+  'tiles',
+  'zone',
+  'months',
+  'annex',
+  'absenceDays',
+  'recordedEntries',
+] as const;
+
+/**
  * The titulaire's name, or null when there is not one.
  *
  * ONE PREDICATE, TWO CALLERS (R206). `buildDossier` uses it to refuse, and the
@@ -167,8 +205,42 @@ export function titulaireOf(name: string | null): string | null {
   return trimmed === '' ? null : trimmed;
 }
 
+/**
+ * What span of the year the figures were computed for.
+ *
+ * ============================================================================
+ * IT CARRIES THE FRACTION THE ENGINE USED, NOT THE DATE IT CAME FROM
+ * ============================================================================
+ *
+ * SPEC 12 item 1 puts *période couverte* in the header, and until FW26 the
+ * document said "Année 2026 entière" unconditionally while the engine prorated
+ * the basis from `activityStartDate`. A person who began on 1 July saw roughly
+ * 120 jours ouvrés under a line claiming the whole year: every figure right,
+ * and the one line that frames them wrong.
+ *
+ * THE FRACTION IS THE PROPERTY AND THE START DATE IS ONLY TODAY'S CAUSE. A
+ * renderer keyed to `activityStartDate !== null` is correct exactly as long as
+ * that is the only thing that prorates - and it would go stale silently the
+ * day something else did, which is how the defect above happened in the first
+ * place.
+ */
+export interface DossierPeriod {
+  /** 1 for a whole year; less when the engine prorated the basis. */
+  readonly fraction: number;
+  /**
+   * The day the person began, when that is what prorated it.
+   *
+   * Null on a whole year, and null-with-a-fraction-below-1 is a state no path
+   * produces today - see the renderer, which says what it does with one rather
+   * than assuming it cannot happen.
+   */
+  readonly startDate: string | null;
+}
+
 export interface Dossier {
   readonly taxYear: number;
+  /** SPEC 12 item 1. What the figures below actually cover. */
+  readonly period: DossierPeriod;
   /** SPEC 12 item 1. Never empty - `buildDossier` refuses first. */
   readonly titulaire: string;
   /** SPEC 12 item 1, ISO. Server-assigned, like every other stamp. */
@@ -182,6 +254,18 @@ export interface Dossier {
   readonly annex: readonly AnnexRow[];
   /** D28: counted once, here, and in no other figure. */
   readonly absenceDays: number;
+  /**
+   * How many annex rows carry an entry, as opposed to being an unlogged day.
+   *
+   * IT IS WHAT MAKES AN EMPTY YEAR HONEST RATHER THAN ZEROED. A year with
+   * nothing recorded and a year recorded as entirely Swiss both declare 0 %
+   * telework - the same number and opposite facts. Without this a client
+   * cannot tell "this person logged nothing" from "this person is compliant",
+   * and would render the second while meaning the first.
+   *
+   * ROWS, not days: a half-day pair is two of them. Named for what it counts.
+   */
+  readonly recordedEntries: number;
   /** Working days in the year with no entry at all - SPEC 12 item 5. */
   readonly result: TeleworkResult;
 }
@@ -341,8 +425,21 @@ export function buildDossier(
     throw new MissingTitulaireError();
   }
 
+  // READ FROM THE INPUT THE ENGINE WAS GIVEN, not recomputed beside it.
+  // `toTeleworkInput` is the single home of that arithmetic (R181), so asking
+  // it is reading the source rather than writing a second opinion that agrees
+  // until somebody changes one of them.
+  const { periodFraction } = toTeleworkInput(user, entries, taxYear);
+
   return {
     taxYear,
+    period: {
+      fraction: periodFraction,
+      startDate:
+        user.activityStartDate === null
+          ? null
+          : user.activityStartDate.toISOString().slice(0, 10),
+    },
     titulaire,
     generatedAt: generatedAt.toISOString(),
     canton: user.canton,
@@ -375,6 +472,7 @@ export function buildDossier(
     annex: buildAnnex(entries, taxYear),
 
     absenceDays: counts.absenceDays,
+    recordedEntries: entries.length,
     result,
   };
 }

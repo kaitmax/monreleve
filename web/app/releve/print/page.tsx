@@ -40,7 +40,7 @@ import { buildDossierFor } from '@/lib/dossier/load';
 import { MissingTitulaireError } from '@/lib/dossier/service';
 import { readPrintToken } from '@/lib/export/print-token';
 import { ruleSetFor } from '@/lib/calc-engine';
-import { formatDays, formatPercent, zoneFor } from '@/lib/ui/core';
+import { formatDays, formatPercent, formatSignedDays, zoneFor } from '@/lib/ui/core';
 import { ThresholdRail } from '@/lib/ui/react';
 import styles from './print.module.scss';
 
@@ -182,6 +182,8 @@ export default async function PrintPage({
   // ONE object for the rail and the sentence, so the bands the reader sees
   // and the numbers the sentence states cannot come from different places.
   const thresholds = { fiscalCeiling: rules.fiscalCeiling, socialCeiling: rules.socialCeiling };
+  const headroomFiscal = formatSignedDays(dossier.zone.remainingToFiscal);
+  const headroomSocial = formatSignedDays(dossier.zone.remainingToSocial);
   const fiscal = formatPercent(rules.fiscalCeiling * 100, 0);
   const social = formatPercent(rules.socialCeiling * 100, 1);
 
@@ -210,8 +212,26 @@ export default async function PrintPage({
               ? COPY.header.methodExact
               : COPY.header.methodSimplified(rules.simplifiedBasisDays)}
           </dd>
+          {/* SPEC 12 item 1. KEYED ON THE FRACTION THE ENGINE USED, not on
+              whether a start date exists.
+
+              This line said "Année 2026 entière" unconditionally until FW26,
+              while the engine prorated the basis for anybody with an
+              activityStartDate - so a person who began on 1 July read roughly
+              120 jours ouvrés under a claim of the whole year. Every figure
+              below was right; the line framing them was false.
+
+              The two coincide today. Keying on the start date would be correct
+              exactly as long as nothing else ever prorates, and would go stale
+              in silence the day something did - which is how this happened. */}
           <dt>{COPY.header.period}</dt>
-          <dd>{COPY.header.fullYear(year)}</dd>
+          <dd>
+            {dossier.period.fraction >= 1
+              ? COPY.header.fullYear(year)
+              : dossier.period.startDate === null
+                ? COPY.header.partialPeriod(year)
+                : COPY.header.fromDate(day(dossier.period.startDate), year)}
+          </dd>
           {/* SPEC 12 item 1, last. A dossier with no generation date cannot be
               placed against the year it describes - two exports of 2026 made
               six months apart are different documents and must say so. */}
@@ -306,6 +326,27 @@ export default async function PrintPage({
         ) : null}
 
         <p className={styles.thresholds}>{COPY.zone.thresholds(fiscal, social)}</p>
+
+        {/* R239: HOW FAR, which is the question this product exists to answer
+            and the one the rail raises without answering. Both figures were in
+            the payload and both labels were written; the page used the numbers
+            only to choose a badge.
+
+            SPEC 7.2 step 6 and R12: a negative is REPORTED, not clamped - the
+            label changes and the magnitude is printed unsigned, because
+            "6,5 jours au-dessus" is a position and "-6,5" is a formatting
+            artefact. `formatSignedDays` splits exactly that way: the text
+            carries no sign and the caller picks the sentence. */}
+        <dl className={styles.headroom}>
+          <dt>
+            {headroomFiscal.negative ? COPY.zone.overFiscal : COPY.zone.remainingToFiscal}
+          </dt>
+          <dd>{headroomFiscal.text}</dd>
+          <dt>
+            {headroomSocial.negative ? COPY.zone.overSocial : COPY.zone.remainingToSocial}
+          </dt>
+          <dd>{headroomSocial.text}</dd>
+        </dl>
 
         {/* THE BADGE IS A WORD. SPEC 12: every status carries its word, and
             each names WHICH seuil - two badges both reading "dépassé" tell a

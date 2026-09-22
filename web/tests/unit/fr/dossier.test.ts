@@ -104,13 +104,25 @@ describe('the status is a WORD, for the monochrome photocopy', () => {
     // "Attention" would depend on the colour to mean anything.
     for (const badge of [
       DOSSIER_COPY.zone.badgeUnder,
-      DOSSIER_COPY.zone.badgeNearFiscal,
       DOSSIER_COPY.zone.badgeOverFiscal,
       DOSSIER_COPY.zone.badgeOverSocial,
     ]) {
       expect(badge.length).toBeGreaterThan(10);
       expect(badge.toLowerCase()).toMatch(/seuil/u);
     }
+  });
+
+  it('has exactly THREE badges, because the engine has three statuses (R240)', () => {
+    // A `badgeNearFiscal` sat here unrendered until FW26. SPEC line 291 makes
+    // the 30 % and 38 % steps IN-BAND ALERTS, "not new statuses", so a fourth
+    // badge asserts a status the engine cannot produce - and the renderer's
+    // three-way branch would read as missing a case rather than as complete.
+    //
+    // Asserted as a COUNT rather than by naming the absent one, because the
+    // next speculative badge will have a different name.
+    const badges = Object.keys(DOSSIER_COPY.zone).filter((key) => key.startsWith('badge'));
+
+    expect(badges.sort()).toEqual(['badgeOverFiscal', 'badgeOverSocial', 'badgeUnder']);
   });
 
   it('distinguishes the two seuils in the badge labels themselves', () => {

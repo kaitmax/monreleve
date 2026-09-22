@@ -311,3 +311,58 @@ describe('SPEC 12 item 1: a document that cannot be attributed is not a dossier'
     expect(dossier.generatedAt).toBe('2027-02-01T10:30:00.000Z');
   });
 });
+
+describe('SPEC 12 item 1: the period covered, and it is keyed on what the ENGINE computed', () => {
+  // ==========================================================================
+  // THE DOCUMENT STATED SOMETHING FALSE, WHICH IS WORSE THAN OMITTING ONE
+  // ==========================================================================
+  //
+  // `periodFractionOf` prorates from `activityStartDate` and feeds
+  // `periodFraction` into the engine, so a mid-year starter's figures are all
+  // computed for a PART year. The header rendered "Année 2026 entière"
+  // unconditionally, and `COPY.header.fromDate` - written for exactly this -
+  // rendered nowhere.
+  //
+  // So a person who began on 1 July saw roughly 120 jours ouvrés under a line
+  // claiming the whole year. Every figure below it was right; the one line
+  // that frames them was wrong.
+  //
+  // THE PAYLOAD CARRIES THE FRACTION THE ENGINE USED, not the start date it
+  // came from. Those coincide today. If a future path prorates for another
+  // reason, a header keyed to the start date goes stale silently - which is
+  // exactly how this defect happened.
+
+  it('reports a whole year when nothing prorated it', () => {
+    const dossier = buildDossier(USER, [entry('2026-03-02', 'HOME')], 2026);
+
+    expect(dossier.period.fraction).toBe(1);
+    expect(dossier.period.startDate).toBeNull();
+  });
+
+  it('reports the fraction the engine used for a mid-year start', () => {
+    const dossier = buildDossier(
+      { ...USER, activityStartDate: new Date('2026-07-01T00:00:00.000Z') },
+      [entry('2026-09-02', 'HOME')],
+      2026,
+    );
+
+    expect(dossier.period.fraction).toBeLessThan(1);
+    expect(dossier.period.fraction).toBeGreaterThan(0);
+    expect(dossier.period.startDate).toBe('2026-07-01');
+  });
+
+  it('prorates the BASIS in step with it, which is what made the old header false', () => {
+    // The two halves of the defect, asserted together: the figure moved and
+    // the label did not. A test for the label alone would pass on a document
+    // whose figures were never prorated at all.
+    const whole = buildDossier(USER, [], 2026);
+    const half = buildDossier(
+      { ...USER, activityStartDate: new Date('2026-07-01T00:00:00.000Z') },
+      [],
+      2026,
+    );
+
+    expect(half.tiles.workedDays).toBeLessThan(whole.tiles.workedDays);
+    expect(half.period.fraction).toBeLessThan(whole.period.fraction);
+  });
+});

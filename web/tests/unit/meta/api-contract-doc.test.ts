@@ -22,6 +22,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { ENTRY_ITEM_FIELDS } from '@/lib/entries/schema';
 import { ENTRY_READ_FIELDS } from '@/lib/entries/read';
+import { DOSSIER_RESPONSE_FIELDS } from '@/lib/dossier/service';
 import { FORMULA_LEADS } from '@/lib/export/csv';
 
 const DOC = join(process.cwd(), '..', 'docs', 'api-v1.md');
@@ -226,5 +227,41 @@ describe('R237: the contract says where the CSV names its titulaire', () => {
     // Without this the filename decision reads as a limitation somebody will
     // "fix" by adding a column - and SPEC 12 froze those columns.
     expect(SOURCE).toContain('not the document of record');
+  });
+});
+
+describe('R235: the dossier payload and its contract cannot drift', () => {
+  /** The field names the document's 8.1 table actually lists. */
+  function documented(): string[] {
+    const section = SOURCE.split('### 8.1 The payload')[1]?.split('### 8.2')[0] ?? '';
+
+    return [...section.matchAll(/^\|\s*`([A-Za-z]+)`\s*\|/gmu)].map((match) => match[1]!);
+  }
+
+  it('finds a table to read, so the comparison is not vacuous', () => {
+    // R133. Both assertions below are set comparisons, and two empty sets are
+    // equal - a heading renamed in the document would otherwise read as
+    // perfect agreement.
+    expect(documented().length).toBeGreaterThan(5);
+  });
+
+  it('documents every field the route serialises, and no others', () => {
+    // R206 / R181: the expectation is DERIVED from the constant the route
+    // iterates, so adding a field to the payload fails here until the contract
+    // describes it - and describing one that does not exist fails too.
+    expect(documented().sort()).toEqual([...DOSSIER_RESPONSE_FIELDS].sort());
+  });
+
+  it('states the two assumptions a client would otherwise get wrong', () => {
+    // Not decoration. Both were live defects in this product's own renderer:
+    // the web document keyed its period on the start date and printed "année
+    // entière" over prorated figures, and nothing distinguished an empty year
+    // from a compliant one.
+    expect(SOURCE).toContain('`period.fraction` is the property');
+    expect(SOURCE).toContain('`recordedEntries === 0` is not the same as a compliant year');
+  });
+
+  it('names future_year as its own refusal, with the reason', () => {
+    expect(SOURCE).toContain('`future_year` is its own code');
   });
 });
