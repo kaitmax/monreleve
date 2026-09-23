@@ -338,6 +338,190 @@ export function databaseClosure(root) {
   return closure;
 }
 
+// ============================================================================
+// RULING R246: THE FRAMEWORK'S ENTRY POINTS ARE ENUMERATED, AND EACH ONE IS
+// ASSERTED TO BE COVERED BY A SELECTOR RULE
+// ============================================================================
+//
+// AN ENTRY POINT IS REACHABLE FROM NO IMPORT, BY DEFINITION. instrumentation.ts,
+// middleware.ts, next.config.ts and everything Next routes to under app/** are
+// invoked BY THE FRAMEWORK rather than by a module, so R218's import-derived
+// closure cannot see them however far it walks. A closure is the right
+// mechanism for a library and is STRUCTURALLY BLIND to an entry point - not
+// incomplete, blind, and no amount of walking fixes it.
+//
+// WHAT IT COST BEFORE IT WAS A RULE. FW27 added `startScheduler()` and wired it
+// into instrumentation.ts, which is its ONLY caller. instrumentation.ts matched
+// no pattern in the list below, so a commit touching that file alone would have
+// run the base chain and NOT test:db - the suite that starts the scheduler and
+// asserts both queues register. It is covered today only because
+// tests/db/scheduled-jobs.test.ts imports it. That is the right fix - a file
+// enters the closure by being REACHABLE, not by being listed - and it is also
+// INCIDENTAL: delete that one import and the coverage leaves with it, in
+// silence. The guard turns that silence into a failure.
+//
+// TWO HALVES, AND THEY ARE DIFFERENT MECHANISMS ON PURPOSE.
+//
+//   app/**     DISCOVERED, by Next's filename conventions. A route added
+//              tomorrow is enumerated on the day it is written, with nobody
+//              remembering to list it.
+//   the root   CLOSED-WORLD. Every code file at the package root is either a
+//              framework entry point or a tool's config, and one that is
+//              NEITHER fails. Discovery cannot help here: there is no
+//              convention to walk, the set is small enough to classify, and
+//              the root is exactly where R246's gap was.
+//
+// THE LIMIT, STATED RATHER THAN HOPED: a convention Next ADDS - some future
+// app/**/proxy.ts - would not be in APP_ENTRY_STEMS and would not be found.
+// The closed-world root check is what bounds that, because a new root-level
+// convention arrives as a new root-level FILE and fails as unclassified.
+
+/**
+ * The filename stems Next.js routes to under app/**.
+ *
+ * Next matches these before any extension, and `page.dev.tsx` is a `page` -
+ * R129's dev-route mechanism works by making `dev.tsx` a page extension, so
+ * the stem is read up to the FIRST dot rather than the last.
+ */
+export const APP_ENTRY_STEMS = Object.freeze([
+  'page',
+  'layout',
+  'route',
+  'not-found',
+  'error',
+  'global-error',
+  'loading',
+  'template',
+  'default',
+  'sitemap',
+  'robots',
+  'manifest',
+  'opengraph-image',
+  'twitter-image',
+  'icon',
+  'apple-icon',
+]);
+
+/**
+ * Framework entry points at the package root, as conventions rather than as
+ * files: one that does not exist is simply not found.
+ *
+ * instrumentation-client.ts is named although this product has none. It is a
+ * convention Next already supports, so naming it now means the day somebody
+ * adds one it is enumerated rather than invisible - which is the whole of
+ * R246 applied to its own list.
+ */
+export const ROOT_ENTRY_POINTS = Object.freeze([
+  'instrumentation.ts',
+  'instrumentation-client.ts',
+  'middleware.ts',
+  'next.config.ts',
+]);
+
+/**
+ * Root code files that are a TOOL's entry point, not the framework's.
+ *
+ * They are classified rather than ignored, so the root check is closed-world:
+ * a new file at the root is neither of these until somebody decides which it
+ * is, and until then the guard fails.
+ *
+ * THEY ARE DELIBERATELY NOT ASSERTED TO BE COVERED, and that is a smaller
+ * claim than it looks. vitest.config.ts configures `test`, which is in
+ * BASE_SUITES and therefore always runs; prisma.config.ts and
+ * vitest.db.config.ts are already named by the database rule. What that leaves
+ * is the two Playwright configs, which is a real gap of the same shape and is
+ * reported rather than fixed here - R246 rules on the FRAMEWORK's entry
+ * points, and widening a gate is an "ask first" item.
+ */
+export const ROOT_TOOL_CONFIGS = Object.freeze([
+  // FOUND BY THE CHECK, NOT BY THE AUTHOR. `.stylelintrc.mjs` is a dotfile,
+  // so the hand survey of the root that produced this list - an `ls` - did
+  // not list it, and the closed-world assertion failed on its first run
+  // naming a file its own author had missed. R178's point arriving inside the
+  // mechanism written to make it: a list is wrong the day it is written.
+  '.stylelintrc.mjs',
+  'eslint.config.mjs',
+  'next-env.d.ts',
+  'playwright.config.ts',
+  'playwright.runtime.config.ts',
+  'prisma.config.ts',
+  'vitest.config.ts',
+  'vitest.db.config.ts',
+]);
+
+/** Extensions Next will route to. */
+const ENTRY_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'];
+
+/** Every code file directly at the package root, for the closed-world check. */
+export function rootCodeFiles(root) {
+  if (!existsSync(root)) return [];
+
+  return readdirSync(root, { withFileTypes: true })
+    .filter(
+      (entry) =>
+        entry.isFile() && ENTRY_EXTENSIONS.some((extension) => entry.name.endsWith(extension)),
+    )
+    .map((entry) => entry.name)
+    .sort();
+}
+
+/**
+ * Every file the framework invokes, as package-relative POSIX paths.
+ *
+ * @param {string} root the package root
+ * @returns {string[]}
+ */
+export function frameworkEntryPoints(root) {
+  const found = ROOT_ENTRY_POINTS.filter((name) => existsSync(join(root, name)));
+  const appDir = join(root, 'app');
+  const stack = existsSync(appDir) ? [appDir] : [];
+
+  while (stack.length > 0) {
+    const current = stack.pop();
+
+    if (current === undefined) continue;
+
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      const full = join(current, entry.name);
+
+      if (entry.isDirectory()) {
+        stack.push(full);
+        continue;
+      }
+
+      const dot = entry.name.indexOf('.');
+
+      if (dot < 1) continue;
+
+      // The stem is read to the FIRST dot and the extension from the LAST, so
+      // `page.dev.tsx` is a page and `CalculatorForm.tsx` is not.
+      const stem = entry.name.slice(0, dot);
+
+      if (!APP_ENTRY_STEMS.includes(stem)) continue;
+      if (!ENTRY_EXTENSIONS.some((extension) => entry.name.endsWith(extension))) continue;
+
+      found.push(relative(root, full).split('\\').join('/'));
+    }
+  }
+
+  return found.sort();
+}
+
+/**
+ * Those of `points` that no selector rule claims.
+ *
+ * An empty `matched` is the signal: `selectSuites` returns one hit per pattern
+ * a path satisfies (R234), so nothing matched means the base chain and nothing
+ * else - a change to that file would run typecheck, lint, test and build, and
+ * whatever suite actually exercises it would not run.
+ *
+ * @param {readonly string[]} points
+ * @returns {string[]}
+ */
+export function uncoveredEntryPoints(points) {
+  return points.filter((point) => selectSuites([point]).matched.length === 0);
+}
+
 export const BASE_SUITES = Object.freeze(['typecheck', 'lint', 'test', 'build']);
 
 /** What a change to something the browser renders requires. */
@@ -489,6 +673,30 @@ export const SELECTOR_PATTERNS = Object.freeze([
     label: 'app/**',
     suites: BROWSER_SUITES,
     matches: (path) => path.startsWith('app/'),
+  },
+  {
+    // R246, first live instance. R140's question - can a change to it alter a
+    // byte a browser receives, without any file already matched changing too?
+    // - is answered by the file's only statement: it sets X-Robots-Tag on the
+    // calculator. Three tests in e2e/calculateur.spec.ts assert that header
+    // and its two absences, and none of them would have run.
+    //
+    // It is named on its own rather than folded into a "root files" rule
+    // because the printed selection is read by a person deciding whether the
+    // right suites ran, and "middleware" says what "the package root" does not.
+    label: 'middleware.ts, which sets a header on a rendered response (R246)',
+    suites: BROWSER_SUITES,
+    matches: (path) => path === 'middleware.ts',
+  },
+  {
+    // R246, second live instance, and the broader of the two: trailingSlash
+    // decides which URLs answer 200, pageExtensions decides whether /dev/**
+    // is in the build at all (R129), and distDir decides where the visual
+    // container photographs from (R98). None of those is a module whose
+    // output reaches HTML - each decides what the HTML IS.
+    label: 'next.config.ts, which decides what every route is (R246)',
+    suites: BROWSER_SUITES,
+    matches: (path) => path === 'next.config.ts',
   },
   {
     label: 'lib/ui/**',

@@ -359,9 +359,14 @@ describe('the database layer selects its own suite (FW14)', () => {
 });
 
 describe('the pattern list is the ruling, stated once', () => {
-  it('is exactly the twelve names R132 now carries', () => {
+  it('is exactly the fourteen names R132 now carries', () => {
     // R63's shape: if a pattern were dropped, every table row above that
     // does not use it would still pass. This pins the list itself.
+    //
+    // R246 ADDED THE LAST TWO, and this census is how they were noticed as a
+    // deliberate act rather than absorbed: middleware.ts and next.config.ts
+    // are invoked by Next, reachable from no import, and until FW28 matched
+    // by nothing at all.
     expect(SELECTOR_PATTERNS.map((pattern) => pattern.label).sort()).toEqual([
       '**/*.module.scss',
       'a baseline, which is the record test:visual compares against (R144)',
@@ -372,7 +377,9 @@ describe('the pattern list is the ruling, stated once', () => {
       'guide content, which IS rendered HTML (R140)',
       'lib/fr/**',
       'lib/ui/**',
+      'middleware.ts, which sets a header on a rendered response (R246)',
       'modules whose output reaches rendered HTML (R140)',
+      'next.config.ts, which decides what every route is (R246)',
       'the database layer (prisma/**, lib/db/**, tests/db/**, and anything test:db imports)',
       'the token layer (lib/ui/core/styles/**)',
     ]);

@@ -101,6 +101,28 @@ export declare const SUITE_COUNTS: Readonly<Record<string, RegExp>>;
  */
 export declare function databaseClosure(root: string): ReadonlySet<string>;
 
+/**
+ * R246: the framework's entry points, which no import graph can reach.
+ *
+ * `APP_ENTRY_STEMS` are the filenames Next routes to under app/**;
+ * `ROOT_ENTRY_POINTS` are the framework's root files as CONVENTIONS, so one
+ * that does not exist is simply not found; `ROOT_TOOL_CONFIGS` are the root
+ * files that belong to a tool rather than to Next, classified so that the root
+ * check can be closed-world.
+ */
+export declare const APP_ENTRY_STEMS: readonly string[];
+export declare const ROOT_ENTRY_POINTS: readonly string[];
+export declare const ROOT_TOOL_CONFIGS: readonly string[];
+
+/** Every code file directly at the package root. */
+export declare function rootCodeFiles(root: string): string[];
+
+/** Every file the framework invokes, as package-relative POSIX paths. */
+export declare function frameworkEntryPoints(root: string): string[];
+
+/** Those of `points` that no selector rule claims. */
+export declare function uncoveredEntryPoints(points: readonly string[]): string[];
+
 export declare function selectSuites(paths: readonly string[]): Selection;
 export declare function describeSelection(selection: Selection): string;
 export declare function readCount(
