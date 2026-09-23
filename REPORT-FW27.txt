@@ -42,6 +42,12 @@ public/fonts.
                 PASSED
   increment 3   commit  a4edfec9bb642b0e8505414977c18f39fbcca72f
                 PASSED
+  increment 4   commit  8b144b1ca8ffd9a025dc3d35ba5e2a4faa04b503
+                PASSED
+  increment 5   commit  051b29351edc08dddd497f498442e2717d93bdf2
+                PASSED
+  increment 6   commit  2936797e2e52893ffbe0b470d7b27d85e295ad95
+                PASSED
 
 The envelope each printed (R227):
 
@@ -58,9 +64,9 @@ The envelope each printed (R227):
                  workflow_dispatch from October
 
 A SCRATCH DATABASE PER RUN, created and migrated by the harness -
-monreleve_gate_clone_ad8c855f and monreleve_gate_clone_a4edfec9 - so
-the database suites ran against a schema built from the migrations
-rather than against this machine's.
+monreleve_gate_clone_ad8c855f, _a4edfec9, _8b144b1c, _051b2935 and
+_2936797e - so the database suites ran against a schema built from the
+migrations rather than against this machine's.
 
 THE CI-READINESS LINE CORRECTED SOMETHING I BELIEVED. It printed "the
 repository is public and CI_FULL is unset - jobs will skip", and I had
@@ -819,14 +825,14 @@ PUSH PROOF
   a4edfec  FW27: FCM behind a seam, uncredentialed
   8b144b1  FW27: retention jobs, scheduled and counted
   051b293  FW27: RFC 8058 one-click unsubscribe
-  <inc6>   FW27: privacy map, walkthrough, report
+  2936797  FW27: privacy map, walkthrough, report
 
   gate:clone, in order, each on the commit it guarded:
     ad8c855fa94565c4ba80804aab152cbdf60e9cfc   PASSED
     a4edfec9bb642b0e8505414977c18f39fbcca72f   PASSED
     8b144b1ca8ffd9a025dc3d35ba5e2a4faa04b503   PASSED
     051b29351edc08dddd497f498442e2717d93bdf2   PASSED
-    <inc6>                                     PASSED
+    2936797e2e52893ffbe0b470d7b27d85e295ad95   PASSED
 
   suite counts, by increment:
               test  e2e  visual   db  late
