@@ -95,6 +95,18 @@ const CANNOT_RUN_HERE = [
   ['test:runtime', 'needs a Playwright browser download'],
   ['lighthouse', 'needs a Chrome binary and a served build'],
   ['parity:check', 'covered by typecheck here; the Node matrix is R201 workflow_dispatch from October'],
+  // R251's suite. IT COULD RUN HERE - a clone can build an image - and it is
+  // named rather than run for a stated reason: it already has two owners that
+  // between them cover more than a third run would. The selector runs it
+  // locally whenever Dockerfile, .dockerignore, scripts/entrypoint.mjs,
+  // container-check.mjs or lib/deploy/placeholders.mjs changed, and CI runs
+  // it on EVERY push, on a runner with no store cache and no image layers -
+  // which is a stronger version of this gate's own question.
+  //
+  // It is in this list rather than absent from it because R133 does not
+  // distinguish "cannot" from "chose not to": either way an omission has to
+  // be a line somebody reads, not a silence somebody notices.
+  ['test:container', 'selected locally when the container changed, and run by CI on every push (R251)'],
 ];
 
 function scrubbed(extra = {}) {
