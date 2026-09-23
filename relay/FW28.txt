@@ -1,0 +1,255 @@
+FW28 SESSION PROMPT - Mon Releve
+Read relay/PHASE-4-PROTOCOL.txt and relay/R241-CONSIGNE.txt first,
+from disk.
+
+====================================================================
+R241 - CONTINUOUS EXECUTION, AND IT IS THE STANDING CONSIGNE
+====================================================================
+RUN THE WHOLE TASK WITHOUT RETURNING TO THE OPERATOR. THE ONLY THING
+THAT ENDS THIS SESSION IS REPORT-FW28.txt, COMMITTED AND PUSHED.
+
+Do NOT stop to say an increment is done, to summarise progress, to
+ask whether to continue, to ask a question you could park, or to
+report a finding however good. If you are composing a message that
+is not the report, that is the signal to keep working.
+
+Unclear? R156: take the conservative, reversible option, write the
+PARK entry, CONTINUE.
+
+FOUR THINGS END THE SESSION EARLY, each with the report written, the
+tree clean and everything pushed:
+  1. R156's boundary - a PERMANENT decision; a FALSE OR UNSOURCED
+     claim; a gate, budget or threshold change; a new RUNTIME
+     dependency beyond R229's; anything touching lib/calc-engine.
+  2. A red gate you cannot fix inside the increment.
+  3. Any path where something could reach a real person or a real
+     third-party account (R243).
+  4. A degraded context.
+A session that stops for one of these succeeded. One that stops to
+talk did not.
+
+====================================================================
+PRE-STEP RULINGS (apply verbatim)
+====================================================================
+R0. Read REPORT-FW27.txt in full, including PARKED and QUESTIONS.
+    Phase 4's code is complete: /v1 carries auth, entries, dossier,
+    me, export and delete; the document is produced and correct; the
+    scheduler runs the purge and holds the reminder behind an
+    unconfigured sender. NOTHING HAS EVER BEEN DEPLOYED ANYWHERE.
+
+R1 (as reworded by R200). pnpm gate:clone green on a fresh clone of
+    origin/main's HEAD. Record the commit hash and the envelope.
+
+R248 (carried, and it applies from the first commit). CI IS BACK.
+    CI_FULL is set and the repository is public, so every push runs
+    the full workflow. The private-plus-CI_FULL guard stays and
+    gate:clone keeps reporting the combination - if the repository
+    goes private later, the guard names the condition rather than
+    GitHub emitting a billing string that has already been mistaken
+    for a diagnosis once.
+
+R249 (new, and it governs this task). A DEPLOYMENT IS A CLAIM ABOUT A
+    MACHINE, NOT A FILE. "The Dockerfile builds" is not the claim;
+    "this image, on this host, serves this product correctly" is.
+    Every assertion in this task is made against a RUNNING CONTAINER
+    - its health endpoints, its rendered pages, its produced PDF -
+    never against the build's exit code. R154's shape at the
+    infrastructure layer.
+
+R250 (new). NO REAL CREDENTIAL IS SOUGHT OR CREATED. This task
+    prepares the deployment; it does not perform one against a live
+    domain with live secrets. Firebase, Resend's production domain,
+    the VPS, DNS for monreleve.ch - each is PARKED with exactly what
+    the operator must supply and where it goes. The image must REFUSE
+    to start with a placeholder, as FW25's print route refuses a
+    default secret (R205), and a test asserts that refusal.
+
+CARRIED: R81/R83 liveness and readiness are different questions.
+    R133/R233/R244 positive signals, and a measurement reports
+    whether it observed its subject. R176/R177 end with the thing
+    run and driven. R178 a live instance beats a planted one.
+    R180 verify a plant landed - and R204's shell corollary: a check
+    that can legitimately exit non-zero cannot be chained with &&.
+    R182 a check runs after its subject can exist. R198 an error
+    names which rule fired. R246 an entry point is reachable from no
+    import.
+
+====================================================================
+CONTEXT
+====================================================================
+FW28 ONLY: the deployment artefacts, and the first time this product
+runs anywhere but a development machine.
+
+SEVERAL PROVISIONAL THINGS LAND HERE AT ONCE, and each has been
+waiting for a real image:
+
+  R236  QUEUE_WAIT_MS is 30 s, chosen before any figure existed.
+        FW25b measured 15,5 s for a 262-row annex on a dev server.
+        MEASURE ON THE PRODUCTION IMAGE and set it once, recording
+        the figure. Two notes recorded then: 262 rows is a TYPICAL
+        year, not a worst case - a half-day-heavy year doubles them;
+        and the deadline governs the WAIT, so the number that
+        matters is the deadline minus the worst-case render under two
+        concurrent requests.
+  R229  playwright-core plus a SYSTEM Chromium, installed by apt and
+        PINNED, executablePath from the environment. This is the
+        first time that packaging is exercised off this machine.
+  R232  the PDF's assertions stay structural. If a pixel baseline is
+        ever wanted it is generated IN THIS IMAGE, because a baseline
+        from a bundled dev Chromium would certify a renderer that
+        never runs in production.
+  gate:clone's Docker path has never run anywhere but here, and it
+        is the thing verifying migrations before every push.
+
+Read: SPEC 18 (deployment, verbatim - the HOSTNAME trap, the runner
+stage, the backups), SPEC 3, SPEC 13.3, SPEC 20; REPORT-FW25b.txt for
+the render measurement and the image's install list; REPORT-FW27.txt
+for the scheduler's start conditions; parking.md and
+phase4parking.md for every NEEDS already recorded.
+
+====================================================================
+ACCEPTANCE CRITERIA
+====================================================================
+AC1. A multi-stage image builds and RUNS: health 200, readiness
+     correct, a public page served, the calculator computing, and a
+     PDF produced - all asserted against the running container
+     (R249), not the build.
+AC2. The image REFUSES to start, by name, when a required secret is
+     absent or is the placeholder .env.example ships. Proven for each
+     required variable, and the refusal distinguishes absent from
+     placeholder (R198).
+AC3. QUEUE_WAIT_MS is set from a measurement taken IN THE IMAGE, with
+     the figure, the row count, the concurrency and the memory
+     recorded. A worst-case estimate is stated alongside the typical
+     one.
+
+====================================================================
+INCREMENT 1 - the image
+====================================================================
+- Multi-stage Dockerfile, Next standalone output. SPEC 18's traps,
+  each asserted rather than assumed:
+    ENV HOSTNAME="0.0.0.0" in the runner - without it the container
+    answers on localhost only and a reverse proxy returns 502;
+    TZ=Europe/Paris, and a test in the container asserting a day
+    boundary resolves as it does here (FW23's day module was
+    ablation-tested against exactly this);
+    Debian-slim, not Alpine, because of Chromium and fonts.
+- R229's packaging: playwright-core from the lockfile, Chromium and
+  Inter installed by apt and PINNED by version, executablePath from
+  the environment. Record the pinned versions - an unpinned browser
+  is a renderer that changes without a commit.
+- Report the image size, and what each layer costs.
+- Commit: "FW28: the image". Push.
+
+====================================================================
+INCREMENT 2 - it refuses to start wrongly (AC2)
+====================================================================
+- The env contract: every variable the product needs, in one place,
+  with which are required at BUILD and which at RUN. DATABASE_URL,
+  AUTH_SECRET, PDF_TOKEN_SECRET, NEXT_PUBLIC_SITE_URL,
+  MONRELEVE_RUNTIME, the FCM pair, the Resend pair, the Android pair
+  (R250: parked, not created).
+- Startup refuses: absent, and placeholder, distinguished by name.
+  R205 - a server that starts with a default secret is worse than one
+  that refuses.
+- R81/R83 re-proven IN THE CONTAINER: with MONRELEVE_RUNTIME set and
+  the site URL unset, /api/health is 200 degraded, /api/ready is 503,
+  the sitemap is 503 and canonicals are omitted.
+- Commit: "FW28: the image refuses to start wrongly". Push.
+
+====================================================================
+INCREMENT 3 - it serves, and it renders (AC1)
+====================================================================
+- Bring the container up against a Postgres, apply migrations, seed
+  the demo year.
+- Assert against the RUNNING CONTAINER: a public page, the
+  calculator's result for a known input, /api/v1/dossier for the demo
+  year, and A PDF PRODUCED IN THE IMAGE with FW25b's four structural
+  assertions re-run on it (R232).
+- THE PDF IS THE ONE THAT MATTERS. It is the first exercise of
+  R229's packaging anywhere but here, and a renderer that works with
+  a bundled Chromium and fails with apt's would fail silently as an
+  unstyled or fontless document - R177's renderer_unstyled refusal
+  must fire correctly in the image too.
+- Commit: "FW28: it serves and it renders". Push.
+
+====================================================================
+INCREMENT 4 - R236's measurement
+====================================================================
+- Measure IN THE IMAGE: one render's wall time and peak memory for
+  the demo year, then for a synthetic worst case - a half-day-heavy
+  year with roughly double the annex rows. Then two concurrent
+  requests through the queue.
+- R233: report whether the sampler observed its subject. FW25b's
+  first sampler reported 0 MB across 340 samples because it matched
+  `chrome` and the process is `headless_shell`.
+- Set QUEUE_WAIT_MS once, from the worst case under concurrency, and
+  record the arithmetic. State what the VPS must have: memory for two
+  renders plus Node plus Postgres.
+- Commit: "FW28: the queue deadline, measured in the image (R236)".
+  Push.
+
+====================================================================
+INCREMENT 5 - Coolify, backups, and the scheduler in production
+====================================================================
+- docker-compose or the Coolify service definition, the env
+  checklist, /api/ready as the deploy health check (R83), and the
+  restart policy.
+- POSTGRES BACKUPS: an automated dump and A TESTED RESTORE. The
+  entries table IS the product; a backup nobody has restored is a
+  hope. Prove the restore into an empty database and assert the demo
+  year's row counts survive.
+- The scheduler in production: exactly one instance runs pg-boss.
+  State what happens with two containers - this is the case FW27's
+  globalThis guard does NOT cover, because it is per-process.
+- DO NOT TOUCH the other services on the VPS. Record the do-not-touch
+  list in docs/deploy.md.
+- Commit: "FW28: Coolify, backups with a tested restore, the
+  scheduler". Push.
+
+====================================================================
+INCREMENT 6 - the walkthrough, docs, and the report
+====================================================================
+- WALKTHROUGH (R176/R177) against the RUNNING CONTAINER, not pnpm
+  dev: open the home page, the calculator, a guide, /sources,
+  /confidentialite; compute a result; fetch a dossier; download a
+  PDF and OPEN IT. Report what each returned.
+- READ THE PDF PRODUCED BY THE IMAGE as a fiduciaire would, and
+  compare it against the one this machine produces. A different
+  Chromium is a different renderer; if they differ, that is the
+  finding.
+- docs/deploy.md: env, ports, the backup and its tested restore, the
+  do-not-touch list, what the operator must supply and where.
+- PARK with NEEDS, precisely: the VPS, DNS for monreleve.ch, the
+  Firebase service account, Resend's production domain with SPF and
+  DKIM, and the Android pair. Name each as precisely as PARK4-2
+  named AN14's fingerprints.
+- R186: no flag flips. Deployment artefacts existing does not mean
+  anything is deployed.
+- gate:clone before the final push.
+- Commit: "FW28: walkthrough, deploy docs, report". Push.
+
+====================================================================
+OUT OF SCOPE
+====================================================================
+- Deploying to the real VPS, buying or pointing DNS, creating any
+  third-party account or credential (R250).
+- Any client. Any engine change. Any /v1 field rename (frozen).
+- FW29's release audit.
+
+====================================================================
+REPORT FORMAT - REPORT-FW28.txt
+====================================================================
+SUMMARY / PRECONDITIONS (gate:clone hash and envelope; the CI run) /
+RED-GREEN LEDGER / THE IMAGE (stages, pinned versions, size per
+layer) / REFUSALS (each variable, absent versus placeholder) /
+AGAINST THE RUNNING CONTAINER (every assertion, R249) / THE PDF IN
+THE IMAGE (four structural assertions, and how it compares to this
+machine's) / R236 (wall time, peak memory, typical and worst case,
+concurrency, the arithmetic, the VPS requirement, and whether the
+sampler observed its subject) / BACKUP AND TESTED RESTORE / THE
+SCHEDULER WITH TWO CONTAINERS / WALKTHROUGH / THE PDF READ AS A
+DOCUMENT / NEEDS (each parked item, precisely) / PARKED / DEVIATIONS
+/ NOTICED BUT NOT TOUCHING / QUESTIONS / PUSH PROOF
+
+END OF FW28 PROMPT
