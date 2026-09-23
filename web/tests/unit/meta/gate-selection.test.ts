@@ -359,7 +359,7 @@ describe('the database layer selects its own suite (FW14)', () => {
 });
 
 describe('the pattern list is the ruling, stated once', () => {
-  it('is exactly the fourteen names R132 now carries', () => {
+  it('is exactly the sixteen names R132 now carries', () => {
     // R63's shape: if a pattern were dropped, every table row above that
     // does not use it would still pass. This pins the list itself.
     //
@@ -380,6 +380,8 @@ describe('the pattern list is the ruling, stated once', () => {
       'middleware.ts, which sets a header on a rendered response (R246)',
       'modules whose output reaches rendered HTML (R140)',
       'next.config.ts, which decides what every route is (R246)',
+      'playwright.config.ts, which defines both browser projects (R247)',
+      'playwright.runtime.config.ts, which is the runtime project (R247)',
       'the database layer (prisma/**, lib/db/**, tests/db/**, and anything test:db imports)',
       'the token layer (lib/ui/core/styles/**)',
     ]);

@@ -112,7 +112,14 @@ export declare function databaseClosure(root: string): ReadonlySet<string>;
  */
 export declare const APP_ENTRY_STEMS: readonly string[];
 export declare const ROOT_ENTRY_POINTS: readonly string[];
-export declare const ROOT_TOOL_CONFIGS: readonly string[];
+
+/**
+ * R247: each tool config mapped to the suites that MUST run when it changes.
+ *
+ * `null` means it configures no suite that is run, which is a claim rather
+ * than a blank - a test reads the exemptions back and names the only one.
+ */
+export declare const ROOT_TOOL_CONFIGS: Readonly<Record<string, readonly string[] | null>>;
 
 /** Every code file directly at the package root. */
 export declare function rootCodeFiles(root: string): string[];

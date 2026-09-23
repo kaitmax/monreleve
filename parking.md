@@ -3,6 +3,15 @@
 Open questions that did **not** stop a task, and the conservative option
 taken instead. Ruling **R156**, created in FW18.
 
+> **Every entry here is a decision that has already shipped.** A parked item
+> is not an outstanding defect and not a task waiting to be done: it is a
+> question the evidence did not settle, resolved in the direction that claims
+> less, with the alternative and the cost of switching recorded so that
+> reversing it is deliberate. A register that is longer is not a product that
+> is less finished — it is one that has been honest about more of its edges.
+> This is the product's own argument applied to its construction: it claims no
+> more than the record supports, including about itself.
+
 ## Why this file exists
 
 The operator is not always awake when a session runs. Before R156, an
