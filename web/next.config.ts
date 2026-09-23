@@ -4,6 +4,39 @@ import type { NextConfig } from 'next';
 const nextConfig: NextConfig = {
   reactStrictMode: true,
 
+  // FW28: THE IMAGE SHIPS server.js AND THE TRACED MODULES, NOT node_modules.
+  //
+  // Standalone output runs Next's file tracer over the built app and emits
+  // `.next/standalone` containing a server and exactly the dependencies that
+  // server reaches. The alternative - copying node_modules into the runner -
+  // ships the dev toolchain, `@playwright/test`, the Prisma CLI and every
+  // build-only dependency into the thing that faces the internet.
+  //
+  // IT CHANGES WHAT MUST BE COPIED, and that is the part worth reading before
+  // editing web/Dockerfile: `.next/static` and `public/` are NOT traced,
+  // because they are served from disk rather than imported. An image missing
+  // them serves every route with no CSS - which is R177's case exactly, where
+  // the Lighthouse score IMPROVES as the product breaks, so nothing complains.
+  //
+  // ONLY WHERE IT IS ASKED FOR, AND THE REASON IS MEASURED. Set
+  // unconditionally, this BROKE `pnpm build` on the development machine:
+  // Next's tracer reproduces pnpm's store layout with symlinks, and Windows
+  // refuses to create one without elevated privilege. Nine EPERM errors, and
+  // the gate failed at `build` with typecheck, lint and test already green.
+  //
+  // THE FLAG IS NOT HIDING A BROKEN PATH, WHICH IS THE THING TO CHECK. The
+  // standalone bundle is a DEPLOYMENT ARTEFACT, and the machine that has to
+  // produce it is the image builder, not this laptop - which is R249's own
+  // argument: the claim is about a machine. `docker build` exercises this
+  // branch on every image build, and scripts/container-facts.mjs then asserts
+  // server.js and .next/static are actually THERE, inside a running
+  // container. What the local build stops doing is proving something about a
+  // bundle it was never going to ship.
+  //
+  // Same shape as FRONTALIER_DEV_ROUTES and NEXT_DIST_DIR above: a flag the
+  // ordinary build leaves unset, named so its absence is legible.
+  ...(process.env.FRONTALIER_STANDALONE === '1' ? { output: 'standalone' } : {}),
+
   // ONE URL PER PAGE, WITHOUT THE TRAILING SLASH.
   //
   // The choice barely matters; having made it and enforced it matters a great

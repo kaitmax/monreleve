@@ -1,0 +1,229 @@
+# web/Dockerfile
+#
+# ============================================================================
+# RULING R249: A DEPLOYMENT IS A CLAIM ABOUT A MACHINE, NOT A FILE
+# ============================================================================
+#
+# "The Dockerfile builds" is not the claim. "This image, on this host, serves
+# this product correctly" is. So nothing in FW28 is asserted against a build's
+# exit code: every check runs against a RUNNING CONTAINER - the health
+# endpoints, a rendered page, a produced PDF. That is R154's shape at the
+# infrastructure layer, one level below where it was first written.
+#
+# A build that exits 0 proves that a sequence of commands succeeded. It cannot
+# tell you the server binds an address the proxy can reach, that Chromium
+# starts, that the fonts arrived, or that the document a fiduciaire receives
+# has glyphs in it. Each of those has its own assertion, against a container.
+#
+# ============================================================================
+# THE FOUR ENVIRONMENT FACTS, AND WHY EACH IS HERE RATHER THAN IN COOLIFY
+# ============================================================================
+#
+#   HOSTNAME=0.0.0.0        Next's standalone server binds 127.0.0.1 by
+#                           default, which a reverse proxy in another
+#                           container cannot reach: the symptom is a 502 with
+#                           a server that is running perfectly and logging
+#                           nothing. It belongs in the IMAGE because it is a
+#                           property of being containerised, not a property of
+#                           one deployment.
+#   TZ=Europe/Paris         SPEC's day boundaries are Paris days. A container
+#                           defaulting to UTC puts every entry made between
+#                           midnight and 02:00 CEST on the wrong DAY, in the
+#                           document whose whole value is which day a thing
+#                           happened on.
+#   FRONTALIER_RUNTIME=1    The marker that distinguishes SERVING from
+#                           BUILDING, which NODE_ENV cannot: `next build` sets
+#                           NODE_ENV=production too, and an earlier guard
+#                           keyed on it broke every local build (R81).
+#   FRONTALIER_CHROMIUM_PATH
+#                           lib/export/pdf.ts takes the system Chromium
+#                           through playwright-core rather than downloading
+#                           one. Empty is treated as unset there, deliberately.
+#
+# A deployment-specific value - DATABASE_URL, NEXT_PUBLIC_SITE_URL, the
+# secrets - is NOT here. Those are supplied by the host and the entrypoint
+# refuses to start without them (R250).
+
+# ============================================================================
+# THE BROWSER IS PINNED, AND THE PIN IS VERIFIED (R249)
+# ============================================================================
+#
+# AN UNPINNED BROWSER IS A RENDERER THAT CHANGES WITHOUT A COMMIT. The PDF is
+# the product's output of record; `apt-get install -y chromium` would let the
+# thing that draws it move between two builds of the same source, and the
+# first anybody would know is a document that looks different.
+#
+# WHY A VERIFIED PIN RATHER THAN A BARE `=version`. Debian removes superseded
+# point releases from the mirror, so a hard pin turns every security update
+# upstream into a BUILD FAILURE WITH NO DIAGNOSIS - "package has no
+# installation candidate" - months later, on an unrelated commit. The pin is
+# stated, the install is attempted, and the INSTALLED version is compared
+# against it. Drift stops the build with a message naming both versions, and
+# the fix is a one-line commit to this ARG. That is exactly the property the
+# ruling asks for: the browser cannot move without a commit.
+ARG NODE_IMAGE=node:22-bookworm-slim
+ARG CHROMIUM_VERSION=153.0.8010.52-1~deb12u1
+
+# ---------------------------------------------------------------------------
+# deps - node_modules from the lockfile, and nothing else
+# ---------------------------------------------------------------------------
+# SEPARATE FROM THE BUILDER so that a source edit does not reinstall. The
+# lockfile is the input; `--frozen-lockfile` makes a lockfile that disagrees
+# with package.json a failure rather than a silent resolution, which is the
+# same claim gate:clone makes about a fresh install.
+FROM ${NODE_IMAGE} AS deps
+WORKDIR /app
+
+RUN corepack enable
+
+# prisma/ and prisma.config.ts come first because `postinstall` runs
+# `prisma generate`, and a missing schema there fails with "no exported member
+# 'PrismaClient'" several steps later, in the typecheck of unrelated code.
+# That is the FW14 defect, and the fix is to let postinstall do its job here.
+# pnpm-workspace.yaml IS NOT OPTIONAL, AND LEAVING IT OUT FAILED LOUDLY.
+#
+# This repository is a single package (SPEC D1) and the file exists for one
+# reason: pnpm 11 refuses to run a dependency's build scripts until they are
+# ANSWERED, and this is where they are answered - Prisma's allowed,
+# @parcel/watcher's declined. Without it the install ends in
+# ERR_PNPM_IGNORED_BUILDS with prisma unbuilt.
+#
+# It is the FW14 defect one layer out: a file that exists on the development
+# machine, is never thought of as an input, and is absent from a fresh build.
+# gate:clone catches that class for a CLONE; a build context needs the same
+# care, and this line is it.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml prisma.config.ts ./
+COPY prisma ./prisma
+
+# THE FIRST BUILD TIMED OUT HERE, AND THE NUMBERS ARE WHY THESE THREE LINES
+# EXIST. Individual registry requests took 17-19 s and pnpm 11's supply-chain
+# policy check spent 7 m 33 s verifying 1042 lockfile entries before the
+# default fetch timeout aborted the install.
+#
+# THE CHECK STAYS. It is a security pass over the lockfile of the image that
+# faces the internet, and "it made the build slow" is not a reason to stop
+# verifying the dependencies of a deployment artefact. What changes is the
+# budget it is given and whether a retry has to pay for it twice.
+#
+# The cache mount is a BUILD cache, not an image layer: node_modules is
+# materialised into /app either way, so nothing about what ships depends on
+# whether this machine had a warm store.
+# CONFIGURED BY ENVIRONMENT, NOT BY `pnpm config set --global`. That command
+# writes to PNPM_HOME and then refuses unless PNPM_HOME/bin is on PATH -
+# an error about a global BIN directory raised by a command that was only
+# setting a STORE directory. The env form has no such coupling.
+ENV npm_config_store_dir=/pnpm/store
+
+# --network-concurrency IS THE ONE THAT FIXED IT, and the reason is worth a
+# line because the obvious knob was the wrong one. Raising the timeout alone
+# failed twice: the default 16 parallel fetches SATURATE a slow link, so each
+# individual request took 40-50 s and tripped its own deadline. Fewer requests
+# in flight means each one completes; the timeout is raised as well, but it
+# was the concurrency that was causing the timeouts it was being asked to
+# tolerate.
+RUN --mount=type=cache,target=/pnpm/store,sharing=locked \
+    pnpm install --frozen-lockfile \
+      --network-concurrency=4 \
+      --fetch-timeout=600000
+
+# ---------------------------------------------------------------------------
+# builder - next build, standalone
+# ---------------------------------------------------------------------------
+FROM ${NODE_IMAGE} AS builder
+WORKDIR /app
+
+RUN corepack enable
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+# NO DATABASE, ON PURPOSE. `pnpm build` must succeed with no DATABASE_URL and
+# no .env - the same condition gate:clone builds under. A build that needs a
+# live database is a build that cannot run in CI, and an import-time Prisma
+# client fails here with "Failed to collect page data" rather than at runtime.
+#
+# `pnpm build` is `copy-fonts && next build`: the fonts are GENERATED here,
+# never copied from the host (.dockerignore excludes them).
+# FRONTALIER_STANDALONE=1 IS WHAT MAKES THIS A DEPLOYABLE BUILD. next.config.ts
+# emits `output: 'standalone'` only when it is set, because setting it
+# unconditionally broke `pnpm build` on the Windows development machine - the
+# tracer reproduces pnpm's store with symlinks, which Windows refuses without
+# elevated privilege. This is the machine that has to produce the bundle, so
+# this is where the flag belongs.
+ENV NEXT_TELEMETRY_DISABLED=1 \
+    FRONTALIER_STANDALONE=1
+RUN pnpm build
+
+# ---------------------------------------------------------------------------
+# runner - the image that actually serves
+# ---------------------------------------------------------------------------
+FROM ${NODE_IMAGE} AS runner
+ARG CHROMIUM_VERSION
+WORKDIR /app
+
+# Chromium, the fonts under it, and the zoneinfo TZ needs to mean anything.
+#
+# fonts-liberation IS A FALLBACK, NOT THE DOCUMENT'S FONT. Inter reaches the
+# renderer as woff2 over HTTP from this same server, because the print route
+# is a page and its @font-face rule points at /fonts. What this package buys
+# is that a FAILED webfont degrades to readable glyphs instead of to tofu -
+# and increment 6 asserts the webfont actually loaded, because a fallback that
+# renders cleanly is precisely the failure nobody notices.
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+      "chromium=${CHROMIUM_VERSION}" \
+      fonts-liberation \
+      tzdata \
+      ca-certificates; \
+    installed="$(dpkg-query -W -f='${Version}' chromium)"; \
+    if [ "$installed" != "${CHROMIUM_VERSION}" ]; then \
+      echo "R249: chromium resolved to ${installed}, this image pins ${CHROMIUM_VERSION}." >&2; \
+      echo "      An unpinned browser is a renderer that changes without a commit." >&2; \
+      echo "      Bump CHROMIUM_VERSION in web/Dockerfile and commit the change." >&2; \
+      exit 1; \
+    fi; \
+    printf '%s\n' "$installed" > /etc/frontalier-chromium-version; \
+    rm -rf /var/lib/apt/lists/*
+
+# UNPRIVILEGED, and --no-sandbox in lib/export/pdf.ts is the consequence: the
+# container has no user-namespace support, so Chromium's own sandbox cannot
+# start. Running the SERVER as root to get it back would trade a sandbox
+# inside a container for root inside that container, which is the worse half.
+RUN groupadd --system --gid 1001 nodejs \
+ && useradd --system --uid 1001 --gid nodejs --home /app --shell /usr/sbin/nologin nextjs
+
+# Next's standalone output: server.js plus exactly the traced node_modules.
+# static/ and public/ are NOT traced - they are served from disk and have to
+# be copied beside it, which is the step whose omission produces a site with
+# no CSS and a perfect Lighthouse performance score (R177).
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+
+# The migrations travel with the image so that the version being deployed and
+# the migrations applied for it are the same artefact. Running them is a
+# separate, deliberate step - see docs/deploy.md - because a server that
+# migrates on boot migrates once per replica, concurrently.
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
+    HOSTNAME=0.0.0.0 \
+    PORT=3000 \
+    TZ=Europe/Paris \
+    FRONTALIER_RUNTIME=1 \
+    FRONTALIER_CHROMIUM_PATH=/usr/bin/chromium
+
+USER nextjs
+EXPOSE 3000
+
+# The readiness endpoint, NOT liveness (R83). Coolify's DEPLOY health check
+# points here: /api/ready returns 503 while degraded, which stops a bad deploy
+# and leaves the running version serving. /api/health returns 200 whenever the
+# process answers, because an orchestrator RESTARTS what fails liveness and a
+# restart cannot supply a missing environment variable.
+HEALTHCHECK --interval=10s --timeout=5s --start-period=20s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/api/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+
+CMD ["node", "server.js"]
