@@ -1,0 +1,321 @@
+====================================================================
+REPORT-FW28 - THE FRAMEWORK'S ENTRY POINTS, ENUMERATED (R246)
+====================================================================
+
+TASK      R246, as ruled at the close of FW27: "Enumerate the
+          framework's entry points explicitly, assert each is covered
+          by at least one selector rule, and fail on one that isn't."
+COMMIT    1628639  FW28: the framework's entry points, enumerated and
+                   asserted (R246)
+PUSHED    f637e37..1628639  main -> main
+
+
+====================================================================
+SUMMARY
+====================================================================
+
+An entry point is reachable from no import, BY DEFINITION. That is not
+a gap in R218's closure - it is the closure's shape. The closure walks
+outward from tests/db's own files and reaches everything they import,
+and nothing imports instrumentation.ts, middleware.ts, next.config.ts
+or a page. The framework invokes them. No amount of walking arrives at
+a root.
+
+So the enumeration is explicit, and it is asserted rather than listed:
+
+  tests/unit/meta/entry-points.test.ts   9 tests, the new guard
+  scripts/gate-selection.mjs             the enumeration, and two new
+                                         selector rules
+  scripts/gate-selection.d.mts           six new declarations (R185)
+  tests/unit/meta/gate-selection.test.ts the pattern census, +2 labels
+
+TWO MECHANISMS, AND THE SECOND IS WHAT KEEPS IT TRUE.
+
+  app/**     DISCOVERED, by Next's filename conventions. A route added
+             tomorrow is enumerated on the day it is written, with
+             nobody remembering to list it. 49 entry points found.
+  the root   CLOSED-WORLD. Every code file at the package root is
+             either a framework entry point or a tool's config, and
+             one that is NEITHER fails until somebody classifies it.
+
+THE LIMIT IS STATED RATHER THAN HOPED. A convention Next ADDS - some
+future app/**/proxy.ts - is not in APP_ENTRY_STEMS and would not be
+found. The closed-world root check is what bounds that, because a new
+root-level convention arrives as a new root-level FILE and fails as
+unclassified. Discovery cannot help at the root: there is no
+convention to walk, and the gap R246 was written for was at the root.
+
+
+====================================================================
+WHAT IT FOUND ON ITS FIRST RUN (R178)
+====================================================================
+
+THREE LIVE INSTANCES. The planted case is in the WALKTHROUGH below and
+is the lesser evidence; these are the proof that the class existed and
+was invisible.
+
+  middleware.ts      MATCHED NOTHING.
+                     It sets X-Robots-Tag on the calculator. Three
+                     tests in e2e/calculateur.spec.ts assert that
+                     header and its two absences - the bare path and
+                     the empty "?" - and a commit touching only
+                     middleware.ts would have run none of them.
+                     R140's question answers itself here: the file's
+                     single statement IS a byte the browser receives.
+
+  next.config.ts     MATCHED NOTHING.
+                     trailingSlash decides which URLs answer 200.
+                     pageExtensions decides whether /dev/** is in the
+                     build at all (R129). distDir decides where the
+                     visual container photographs from (R98). None of
+                     those is a module whose output reaches HTML -
+                     each decides what the HTML IS.
+
+  .stylelintrc.mjs   UNCLASSIFIED, and this one is about the author.
+                     The root list was built from an `ls`, which does
+                     not show dotfiles. The closed-world assertion
+                     failed on its FIRST run naming a file the person
+                     writing the check had missed while writing it.
+                     A list is wrong the day it is written, including
+                     this one - which is the argument for deriving,
+                     made against the person deriving it.
+
+INSTRUMENTATION.TS IS NOT IN THAT LIST, and the reason is the ruling's
+own: it is covered THROUGH the database closure, because
+tests/db/scheduled-jobs.test.ts imports it. A file enters the closure
+by being REACHABLE, not by being listed, so that is the right fix and
+it stays.
+
+It is also INCIDENTAL, and the guard now says so out loud. One test
+asserts instrumentation.ts selects test:db, with a message naming the
+import that carries it and what its removal would mean. Deleting that
+import while tidying is now a failure instead of a silence.
+
+
+====================================================================
+RED-GREEN LEDGER
+====================================================================
+
+The order was chosen so the RED would be the DEFECT rather than a
+compile error. Writing the guard first would have failed on "no
+exported member", which is evidence of nothing.
+
+  1  ENUMERATION ADDED to gate-selection.mjs and its .d.mts.
+     No selector rule changed. Nothing asserted yet.
+
+  2  GUARD WRITTEN and run.  RED, 3 failed | 6 passed.
+       - uncovered entry points: [middleware.ts, next.config.ts]
+       - middleware.ts does not select test:e2e
+       - unclassified root file: [.stylelintrc.mjs]
+     Every failure is a live instance. No planted case was needed to
+     produce this red.
+
+  3  TWO SELECTOR RULES ADDED, .stylelintrc.mjs classified.
+     Guard GREEN, 9 passed.
+
+  4  gate-selection.test.ts RED on the pattern-label census: the list
+     is pinned at twelve names and there were now fourteen. That is
+     the census working - a new rule must be a deliberate act, not an
+     absorbed one. Both labels added, with the reason.
+
+  5  FULL META SUITE  21 files, 295 passed.
+
+  6  GATE  base chain only, correct for these paths - nothing
+     rendered changed. pnpm test is in that chain and carries all 295
+     meta assertions, so the selector's own behaviour is measured by
+     the run that gates the selector's own change.
+
+       gate selection (R132):
+         no path matched the selector - base chain only
+         suites: typecheck, lint, test, build
+         measured:
+           typecheck: exit 0 (no count to check)
+           lint:      exit 0 (no count to check)
+           test:      2843 passed
+           build:     exit 0 (no count to check)
+
+  7  GATE:CLONE PASSED on 1628639e, scratch database
+     monreleve_gate_clone_1628639e created and migrated from the
+     migrations rather than from this machine's schema.
+     ran     install, typecheck, lint, test, build, size, db:deploy,
+             test:db
+     skipped test:e2e, test:visual, test:runtime, lighthouse,
+             parity:check - each named with its reason (R133).
+
+
+====================================================================
+WALKTHROUGH (R176), AGAINST THE MECHANISM
+====================================================================
+
+THIS TASK TOUCHED NO PAGE. Driving pnpm dev would have exercised
+nothing it changed, so the thing driven is the gate, which is what the
+task built. Recorded because a walkthrough that drives the wrong
+subject is a walkthrough that proves nothing.
+
+1. WHAT EACH ENTRY POINT NOW SELECTS, asked of the real module:
+
+     middleware.ts   -> typecheck, lint, test, build, test:e2e,
+                        test:visual, test:late
+                        "middleware.ts, which sets a header on a
+                         rendered response (R246)"
+     next.config.ts  -> typecheck, lint, test, build, test:e2e,
+                        test:visual, test:late
+                        "next.config.ts, which decides what every
+                         route is (R246)"
+     instrumentation.ts
+                     -> typecheck, lint, test, build, test:db
+                        "the database layer (... and anything test:db
+                         imports)"
+     app/(public)/sources/page.tsx
+                     -> typecheck, lint, test, build, test:e2e,
+                        test:visual, test:late   ("app/**")
+
+   test:late arrives with test:visual, per R182. The three that used
+   to select the base chain alone now select the suites that actually
+   exercise them.
+
+2. THE PLANT, and it is the one that matters, because the claim it
+   tests is the FRAGILE one: instrumentation.ts is covered by an
+   import somebody could delete.
+
+   PLANT       line 39 of tests/db/scheduled-jobs.test.ts,
+               `import { register } from '@/instrumentation';`
+               replaced by a comment.
+   VERIFIED    import count 1 -> 0, line 39 read back and confirmed
+               to hold the marker, git status showing exactly one
+               modified file (R180).
+   RESULT      2 failed | 7 passed.
+                 uncovered entry points: [instrumentation.ts]
+                 instrumentation.ts no longer selects test:db, with
+                 the message "that import was removed and the only
+                 caller of startScheduler() is unguarded again"
+   RESTORED    from `git show HEAD:...`, import count back to 1,
+               plant marker count 0, git status EMPTY.
+   RE-RUN      9 passed.
+
+   R180'S SECOND HALF EARNED ITSELF AGAIN, in a small way worth
+   recording. The plant-and-verify command printed NOTHING at all:
+   `AFTER=$(grep -c ...)` takes the exit status of the substitution,
+   grep -c exits 1 on a count of zero, and the && chain stopped there
+   - after the sed had already run. So the plant was applied and the
+   verification silently truncated. Re-checking the tree is the only
+   reason there is evidence either way, which is the rule exactly:
+   an unverified plant that produces a passing test is
+   indistinguishable from a working guard.
+
+
+====================================================================
+R245, RECORDED
+====================================================================
+
+Recorded in CLAUDE.md as ruled. The operator's reasoning, kept because
+the rule is thinner without it: RFC 8058 is about bulk and list mail,
+and List-Unsubscribe on a sign-in link is wrong twice over - it
+invites a mail client to fire a one-click POST against a transactional
+message, and it offers to unsubscribe someone from a list they may not
+be on, since the header has to name something and the only honest
+answer for an auth mail is nothing.
+
+THE MECHANISM WAS CHECKED BEFORE THE RULE WAS WRITTEN DOWN, because
+the rule claims a test exists and this product does not claim more
+than its record supports. Both directions are live in
+tests/db/one-click-unsubscribe.test.ts:
+
+  :245-246  the auth mail carries NEITHER header
+  :255-256  the list mail carries BOTH, the second equal to
+            ONE_CLICK_BODY
+
+Both, because a header that is never emitted anywhere satisfies the
+absence assertion perfectly (R196's shape, on a mail header).
+
+
+====================================================================
+DEVIATIONS
+====================================================================
+
+D1. THE GUARD IS IN tests/unit/meta, NOT A SCRIPT. It sits beside
+    gate-selection.test.ts and gate-covers-ci.test.ts, which are the
+    other two checks on the selector, and it therefore runs inside
+    pnpm test - a suite in BASE_SUITES, so it runs on every gate
+    whatever changed. A script would have needed a selector rule of
+    its own to be run, which is the problem it exists to solve.
+
+D2. SIX NEW EXPORTS ON gate-selection.mjs. R185's parity test
+    requires the .d.mts to match, and it was the mechanism that
+    confirmed they do rather than an intention to keep them in sync.
+
+D3. NO "ASK FIRST" ITEM WAS TRIGGERED, and this was checked rather
+    than assumed. Two selector rules were ADDED, which widens what
+    the gate runs for two paths; nothing was removed, no budget
+    moved, no threshold loosened. A gate that runs MORE is not a gate
+    change in the sense SPEC 20 guards against. The one place where
+    that judgement would have gone the other way is named under
+    NOTICED BUT NOT TOUCHING, and was left alone for exactly that
+    reason.
+
+
+====================================================================
+NOTICED BUT NOT TOUCHING
+====================================================================
+
+N1. THE PLAYWRIGHT CONFIGS ARE THE SAME DEFECT, ONE CATEGORY OVER.
+    The closed-world root check classifies seven files as tool
+    configs and does not assert they are covered. Measured, that is a
+    smaller exemption than it reads:
+
+      vitest.config.ts        configures `test`, which is in
+                              BASE_SUITES and always runs.
+      .stylelintrc.mjs,       configure `lint`, likewise always runs.
+      eslint.config.mjs
+      prisma.config.ts,       already named by the database rule.
+      vitest.db.config.ts
+      next-env.d.ts           generated.
+
+      playwright.config.ts            MATCH NOTHING, and a change to
+      playwright.runtime.config.ts    either changes what test:e2e or
+                                      test:runtime does.
+
+    Two genuinely uncovered files, of exactly R246's shape. NOT FIXED
+    HERE: R246 rules on the FRAMEWORK's entry points, and adding
+    rules for a tool's config is a decision about the gate that
+    belongs to the operator. The mechanism to see them now exists;
+    what it found is above.
+
+N2. R201'S PREMISE HAS LAPSED, and the clone gate now says so itself.
+    Its closing line reads:
+
+      CI readiness: ready - the repository is public and CI_FULL is
+      unset - jobs will skip.
+
+    R201 records that CI returns on 1 October because the September
+    Actions allowance is exhausted. Actions minutes are FREE on a
+    public repository, so the allowance is not the binding
+    constraint and has not been since the repo became public. CI
+    could be turned back on today - 23 September - by setting
+    CI_FULL, eight days early. Not done: that is a repository
+    settings change and outward-facing.
+
+
+====================================================================
+QUESTIONS
+====================================================================
+
+Q1. N1 - do the two Playwright configs get selector rules? It is one
+    line each and the same argument as R246's. Held because widening
+    the gate for a tool's config is the operator's call.
+
+Q2. N2 - set CI_FULL now rather than on 1 October? The clone gate
+    already reports the repository as public and the jobs as
+    skipping, so this is a switch rather than a plan.
+
+
+====================================================================
+PUSH PROOF
+====================================================================
+
+  gate:changed   PASSED, base chain, 2843 tests
+  gate:clone     PASSED on 1628639e, clean clone, no .env,
+                 scratch database monreleve_gate_clone_1628639e
+  push           f637e37..1628639  main -> main
+  tree           clean at HEAD after the walkthrough plant was
+                 restored and re-verified
