@@ -51,12 +51,64 @@
 // would be a credential-disclosure bug inside the credential guard.
 
 import { spawn } from 'node:child_process';
-import { classifyEnvironment, describeEnvironment } from '../lib/deploy/placeholders.mjs';
+import { readFileSync } from 'node:fs';
+import {
+  classifyEnvironment,
+  classifyOrigin,
+  describeEnvironment,
+} from '../lib/deploy/placeholders.mjs';
 
 const report = classifyEnvironment(process.env);
 
 console.log('\n[entrypoint] deployment environment (R250):');
 console.log(describeEnvironment(report));
+
+// ============================================================================
+// THE IMAGE IS ENVIRONMENT-SPECIFIC, AND THIS IS WHERE THAT IS ENFORCED
+// ============================================================================
+//
+// Static routes bake their canonicals during `next build`, so the origin the
+// image was BUILT for is part of the artefact. Running a staging image with a
+// production origin serves production traffic with staging canonicals -
+// correct in every test, invisible in every log, expensive in search.
+//
+// Measured before it was guarded: an image built without the origin failed 41
+// of 284 e2e specs while the same source under `next start` passed all 284.
+function bakedOrigin() {
+  try {
+    return readFileSync('/etc/frontalier-site-origin', 'utf8');
+  } catch {
+    // R133: "could not look" is not "found nothing".
+    return null;
+  }
+}
+
+const baked = bakedOrigin();
+const originVerdict = classifyOrigin(baked, process.env.NEXT_PUBLIC_SITE_URL);
+
+if (originVerdict === 'mismatch' || originVerdict === 'unbuilt') {
+  console.error('\n  THIS CONTAINER WILL NOT START (R250).');
+  console.error('');
+  console.error(
+    originVerdict === 'mismatch'
+      ? `    NEXT_PUBLIC_SITE_URL is ${JSON.stringify(
+          (process.env.NEXT_PUBLIC_SITE_URL ?? '').trim(),
+        )} but this image was BUILT for ${JSON.stringify((baked ?? '').trim())}.`
+      : `    NEXT_PUBLIC_SITE_URL is ${JSON.stringify(
+          (process.env.NEXT_PUBLIC_SITE_URL ?? '').trim(),
+        )} but this image was built with NO origin.`,
+  );
+  console.error('');
+  console.error('    Static routes bake their canonicals at build time, so this image');
+  console.error('    already serves the wrong ones and no runtime value can change that.');
+  console.error('    Rebuild with --build-arg NEXT_PUBLIC_SITE_URL=<the origin>.');
+  console.error('\n[entrypoint] refusing to start (R250).\n');
+  process.exit(1);
+}
+
+if (originVerdict === 'unknown') {
+  console.log('\n  origin: this image records no build origin - it predates the check (R133).');
+}
 
 if (!report.mayServe) {
   // R198: the refusal is labelled by the rule that raised it, and the exit

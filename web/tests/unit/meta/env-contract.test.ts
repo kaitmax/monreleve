@@ -20,6 +20,7 @@ import {
   PLACEHOLDER_PROJECT_ID,
   PLACEHOLDER_SECRET,
   classifyEnvironment,
+  classifyOrigin,
   classifyVariable,
   describeEnvironment,
 } from '../../../lib/deploy/placeholders.mjs';
@@ -158,6 +159,47 @@ describe('R250: absent is a different verdict from placeholder', () => {
     expect(classifyVariable(withPlaceholder, 'a real value')).toBe('ok');
     expect(classifyVariable(withPlaceholder, undefined)).toBe('absent');
     expect(classifyVariable(withPlaceholder, withPlaceholder.placeholder)).toBe('placeholder');
+  });
+});
+
+describe('R249: the image is environment-specific, and the origin proves it', () => {
+  // MEASURED BEFORE IT WAS GUARDED. An image built without the origin failed
+  // 41 of 284 e2e specs while the same source under `next start` passed all
+  // 284: correct CSS, correct scripts, a correct /api/health naming the right
+  // runtime origin, and ZERO canonicals - because static routes bake their
+  // <head> during `next build` and no runtime value can reach frozen HTML.
+
+  it('agreeing values may serve', () => {
+    expect(classifyOrigin('https://monreleve.ch\n', 'https://monreleve.ch')).toBe('ok');
+  });
+
+  it('a staging image run with a production origin is a MISMATCH', () => {
+    // The failure this exists for: promoting a staging image. Green in every
+    // test, invisible in every log, and it serves production traffic with
+    // canonicals pointing at staging.
+    expect(classifyOrigin('https://staging.monreleve.ch', 'https://monreleve.ch')).toBe(
+      'mismatch',
+    );
+  });
+
+  it('an image built with NO origin, run with one, is UNBUILT', () => {
+    // Distinguished from `mismatch` by name (R198): the fix is the same
+    // rebuild, but the diagnosis is different - nobody passed the build
+    // argument, rather than somebody passed the wrong one.
+    expect(classifyOrigin('', 'https://monreleve.ch')).toBe('unbuilt');
+  });
+
+  it('built with none and run with none is fine, which is local development', () => {
+    expect(classifyOrigin('', undefined)).toBe('ok');
+    expect(classifyOrigin('', '')).toBe('ok');
+  });
+
+  it('no record at all is UNKNOWN, not ok', () => {
+    // R133: "could not look" and "found nothing" must not read alike. An
+    // image predating the check has no file, and treating that as agreement
+    // would be the permissive default in the guard that exists to catch one.
+    expect(classifyOrigin(null, 'https://monreleve.ch')).toBe('unknown');
+    expect(classifyOrigin(undefined, 'https://monreleve.ch')).toBe('unknown');
   });
 });
 

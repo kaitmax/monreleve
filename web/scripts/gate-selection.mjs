@@ -808,6 +808,7 @@ export const SELECTOR_PATTERNS = Object.freeze([
       path === '.dockerignore' ||
       path === 'scripts/entrypoint.mjs' ||
       path === 'scripts/container-check.mjs' ||
+      path === 'scripts/container-e2e.mjs' ||
       path === 'lib/deploy/placeholders.mjs',
   },
   {

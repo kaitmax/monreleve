@@ -60,4 +60,10 @@ export declare function classifyEnvironment(
   env: Readonly<Record<string, string | undefined>>,
 ): EnvReport;
 
+/** Does the origin this image was BUILT for match the one it is RUN with? */
+export declare function classifyOrigin(
+  baked: string | null | undefined,
+  runtime: string | undefined,
+): 'ok' | 'mismatch' | 'unbuilt' | 'unknown';
+
 export declare function describeEnvironment(report: EnvReport): string;

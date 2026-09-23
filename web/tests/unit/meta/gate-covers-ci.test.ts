@@ -100,6 +100,7 @@ const MAPPING_TARGETS = [
   'db:deploy',
   'test:db',
   'test:container',
+  'test:container:e2e',
 ] as const;
 
 type MappingTarget = (typeof MAPPING_TARGETS)[number];
@@ -262,6 +263,7 @@ describe('the workflow was parsed at all', () => {
       'db:deploy',
       'test:db',
       'test:container',
+      'test:container:e2e',
     ]);
     for (const name of MAPPING_TARGETS) {
       expect(PACKAGE.scripts[name], name).toBeDefined();

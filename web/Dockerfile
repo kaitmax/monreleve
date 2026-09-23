@@ -150,8 +150,37 @@ COPY . .
 # tracer reproduces pnpm's store with symlinks, which Windows refuses without
 # elevated privilege. This is the machine that has to produce the bundle, so
 # this is where the flag belongs.
+# ============================================================================
+# THE SITE ORIGIN IS A BUILD INPUT, AND FINDING THAT OUT COST 41 FAILURES
+# ============================================================================
+#
+# NEXT_PUBLIC_SITE_URL is read at RUNTIME by the server bundle - /api/health
+# reports the value passed to `docker run`, so the obvious conclusion is that
+# supplying it at runtime is enough. IT IS NOT, and the difference is
+# prerendering: every static route's <head> is rendered DURING `next build`.
+# A canonical computed then, with the variable unset, is frozen into the HTML
+# that ships, and no runtime value can reach it.
+#
+# MEASURED, NOT REASONED. The e2e suite run against this image failed 41 of
+# 284 while `next start` on the same source passes all 284. The container
+# served correct CSS, correct scripts, a correct /api/health naming the right
+# origin - and zero <link rel="canonical"> on a static page.
+#
+# THE CONSEQUENCE IS THAT THE IMAGE IS ENVIRONMENT-SPECIFIC, which is a real
+# deployment fact rather than a wart to hide: the production image is built
+# with https://monreleve.ch and a staging image is a different build. docs/
+# deploy.md states it, because somebody will otherwise promote a staging image
+# to production and get canonicals pointing at staging - a failure that is
+# invisible in every test and expensive in search.
+#
+# The default is DELIBERATELY the stand-in rather than the production origin.
+# A build that forgets the argument must produce a visibly wrong artefact, not
+# a silently-production-looking one.
+ARG NEXT_PUBLIC_SITE_URL=""
+
 ENV NEXT_TELEMETRY_DISABLED=1 \
-    FRONTALIER_STANDALONE=1
+    FRONTALIER_STANDALONE=1 \
+    NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
 RUN pnpm build
 
 # ---------------------------------------------------------------------------
@@ -185,6 +214,17 @@ RUN set -eux; \
     fi; \
     printf '%s\n' "$installed" > /etc/frontalier-chromium-version; \
     rm -rf /var/lib/apt/lists/*
+
+# THE ORIGIN THIS IMAGE WAS BUILT FOR, recorded so the entrypoint can refuse a
+# mismatch. Static routes bake their canonicals at build time, so an image
+# built for staging and run with a production NEXT_PUBLIC_SITE_URL serves
+# production traffic with canonicals pointing at staging - correct in every
+# test, invisible in every log, and expensive in search.
+#
+# The same move as the chromium version file: an artefact records what went
+# into it, so the claim can be checked rather than assumed.
+ARG NEXT_PUBLIC_SITE_URL
+RUN printf '%s\n' "${NEXT_PUBLIC_SITE_URL}" > /etc/frontalier-site-origin
 
 # UNPRIVILEGED, and --no-sandbox in lib/export/pdf.ts is the consequence: the
 # container has no user-namespace support, so Chromium's own sandbox cannot

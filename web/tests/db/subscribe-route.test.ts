@@ -48,8 +48,25 @@ function post(fields: Record<string, string>, ip = '1.2.3.4'): NextRequest {
   });
 }
 
-const locationOf = (response: Response): URL =>
-  new URL(String(response.headers.get('location')));
+/** The Location header exactly as sent, with no interpretation. */
+const rawLocationOf = (response: Response): string =>
+  String(response.headers.get('location'));
+
+/**
+ * The Location header, resolved so the assertions below can read its parts.
+ *
+ * THE HEADER ITSELF IS RELATIVE SINCE FW28, and `rawLocationOf` is what
+ * asserts that. The handler used to build an absolute URL from
+ * `request.nextUrl.origin`, which under `next start` is the developer's
+ * localhost and INSIDE THE IMAGE is `http://0.0.0.0:3000` - an address no
+ * browser can follow. Four e2e specs failed against the container and passed
+ * against next start.
+ *
+ * Resolving here against a base keeps every pathname/hash/searchParams
+ * assertion in this file working, while the raw form is checked where it
+ * matters: the open-redirect test below.
+ */
+const locationOf = (response: Response): URL => new URL(rawLocationOf(response), ORIGIN);
 
 describe('the shape of the answer', () => {
   it('redirects with 303 so a refresh does not re-post', async () => {
@@ -82,11 +99,29 @@ describe('the shape of the answer', () => {
       }),
     );
 
-    const location = locationOf(response);
+    const raw = rawLocationOf(response);
 
-    expect(location.origin).toBe(ORIGIN);
-    expect(location.pathname).toBe(CALCULATOR_PATH);
-    expect(String(location)).not.toContain('evil.example');
+    // ======================================================================
+    // A RELATIVE Location, AND NOT A PROTOCOL-RELATIVE ONE
+    // ======================================================================
+    //
+    // This is the assertion that got STRONGER when the header stopped
+    // carrying an origin. `//evil.example` begins with a slash and is an
+    // absolute URL to another host - the browser supplies the scheme - so
+    // "starts with /" alone would accept exactly the payload this request
+    // sends in its `next` field.
+    //
+    // It cannot happen today because `path` comes from the closed RETURN_TO
+    // map and never from a form field. Asserted anyway, because that is one
+    // refactor away from being untrue and the failure would be an open
+    // redirect on a page about tax compliance.
+    expect(raw.startsWith('/'), `Location must be relative, got ${raw}`).toBe(true);
+    expect(raw.startsWith('//'), `Location must not be protocol-relative, got ${raw}`).toBe(
+      false,
+    );
+
+    expect(locationOf(response).pathname).toBe(CALCULATOR_PATH);
+    expect(raw).not.toContain('evil.example');
   });
 
   it('sets no cookie, on a public route (SPEC D12)', async () => {

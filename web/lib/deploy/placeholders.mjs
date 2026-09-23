@@ -187,6 +187,45 @@ export function classifyEnvironment(env) {
   return { results, refusals, degraded, mayServe: refusals.length === 0 };
 }
 
+/**
+ * Does the origin this image was BUILT for match the one it is being RUN with?
+ *
+ * ============================================================================
+ * WHY THIS EXISTS: 41 FAILURES, MEASURED
+ * ============================================================================
+ *
+ * NEXT_PUBLIC_SITE_URL is read at runtime by the server bundle, so
+ * /api/health reports whatever `docker run` passed and everything looks
+ * correct. It is ALSO read during `next build`, when every static route's
+ * <head> is rendered - and a canonical computed then is frozen into HTML that
+ * no runtime value can reach.
+ *
+ * The e2e suite pointed at an image built without it failed 41 of 284 while
+ * the same source under `next start` passed all 284. Correct CSS, correct
+ * scripts, a correct /api/health, and zero canonicals.
+ *
+ * SO THE IMAGE IS ENVIRONMENT-SPECIFIC, and the failure this guards is
+ * promoting a staging image to production: canonicals pointing at staging,
+ * green in every test, invisible in every log.
+ *
+ * @returns {'ok'|'mismatch'|'unbuilt'|'unknown'}
+ */
+export function classifyOrigin(baked, runtime) {
+  const built = (baked ?? '').trim();
+  const running = (runtime ?? '').trim();
+
+  // No record at all: an image built before this file existed, or by
+  // something that is not the Dockerfile. R133 - "could not look" and "found
+  // nothing" must not read alike.
+  if (baked === null || baked === undefined) return 'unknown';
+
+  // Built with no origin. Static canonicals are already missing, whatever is
+  // passed now, so serving it anywhere that matters is wrong.
+  if (built === '') return running === '' ? 'ok' : 'unbuilt';
+
+  return built === running ? 'ok' : 'mismatch';
+}
+
 /** What the entrypoint prints. Pure, so a test can read it. */
 export function describeEnvironment(report) {
   const lines = [];

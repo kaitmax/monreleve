@@ -473,6 +473,67 @@ jobs:
       # the runner works rather than that the image does.
       - run: pnpm test:container
 
+  container-e2e:
+    name: the suite against the image (R249)
+    # `pnpm test:e2e` proves the SOURCE is correct. This proves the DEPLOYED
+    # ARTEFACT is, and the two differ: standalone output rather than
+    # node_modules, an apt Chromium, TZ=Europe/Paris in the process, and an
+    # entrypoint that decides whether any of it runs.
+    #
+    # IT FOUND A PRODUCTION DEFECT ON ITS FIRST RUN. /api/alertes redirected to
+    # an absolute URL built from request.nextUrl.origin, which inside the image
+    # is http://0.0.0.0:3000 - an address no browser can follow. Four specs,
+    # green against next start, failing against the image, and every
+    # no-JavaScript subscriber sent nowhere.
+    if: ${{ vars.CI_FULL == 'on' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: frontalier
+          POSTGRES_PASSWORD: frontalier
+          POSTGRES_DB: frontalier
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U frontalier"
+          --health-interval 2s --health-timeout 3s --health-retries 20
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+
+      # THE DATABASE IS HANDED OVER rather than created. Locally the script
+      # makes a scratch database inside the compose container; CI has a
+      # `services: postgres` with no such container NAME, so it supplies one
+      # and the script uses it as given. R251's principle: where a suite could
+      # run in CI, the answer is a mechanism, not an exemption.
+      - run: pnpm test:container:e2e
+        env:
+          CONTAINER_E2E_DATABASE_URL: postgresql://frontalier:frontalier@localhost:5432/frontalier?schema=public
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ failure() }}
+        with:
+          name: container-e2e-report
+          path: web/test-results/
+          retention-days: 7
+
   format-parity-build:
     name: format parity (compile)
     # R201: workflow_dispatch ONLY. Feeds the Node matrix below.

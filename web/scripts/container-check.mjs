@@ -1,4 +1,4 @@
-// web/scripts/container-facts.mjs
+// web/scripts/container-check.mjs
 //
 // ============================================================================
 // RULING R249: A DEPLOYMENT IS A CLAIM ABOUT A MACHINE, NOT A FILE
@@ -25,6 +25,21 @@ import { execFileSync } from 'node:child_process';
 
 const MARKER = 'frontalier-container-facts';
 
+/**
+ * The origin this suite builds the image FOR.
+ *
+ * Static routes bake their canonicals at build time, so the entrypoint
+ * refuses to run an image whose baked origin disagrees with the one passed at
+ * runtime. This suite therefore has to name one and use it on both sides -
+ * and finding that out is how the mechanism first fired: the build passed no
+ * origin, the fixture passed a production one, and the complete-environment
+ * case correctly refused to start.
+ *
+ * .example is reserved by RFC 2606, so it can never resolve and can never be
+ * mistaken for the real domain.
+ */
+const BUILD_ORIGIN = 'https://container-check.example';
+
 const ARGS = process.argv.slice(2);
 const SHOULD_BUILD = ARGS.includes('--build');
 const IMAGE = ARGS.find((arg) => !arg.startsWith('--')) ?? 'monreleve:fw28';
@@ -45,10 +60,14 @@ if (SHOULD_BUILD) {
   console.log(`\nbuilding ${IMAGE} (R251: the suite tests the image this commit describes)`);
 
   try {
-    execFileSync('docker', ['build', '-t', IMAGE, '.'], {
-      stdio: ['ignore', 'ignore', 'inherit'],
-      timeout: 900_000,
-    });
+    execFileSync(
+      'docker',
+      ['build', '--build-arg', `NEXT_PUBLIC_SITE_URL=${BUILD_ORIGIN}`, '-t', IMAGE, '.'],
+      {
+        stdio: ['ignore', 'ignore', 'inherit'],
+        timeout: 900_000,
+      },
+    );
   } catch (cause) {
     console.error(`\ndocker build failed: ${cause instanceof Error ? cause.message : cause}`);
     process.exit(1);
@@ -259,7 +278,7 @@ const REAL_SECRET = 'suite-generated-not-a-deployment-secret';
 const COMPLETE = {
   DATABASE_URL: 'postgresql://u:p@db.invalid:5432/x',
   AUTH_SECRET: REAL_SECRET,
-  NEXT_PUBLIC_SITE_URL: 'https://monreleve.ch',
+  NEXT_PUBLIC_SITE_URL: BUILD_ORIGIN,
   RESEND_API_KEY: 'suite-not-a-real-key',
   FCM_PROJECT_ID: 'suite-project',
   FCM_CLIENT_EMAIL: 'suite@example.iam.gserviceaccount.com',
@@ -328,6 +347,20 @@ refuses(
   'FCM_PROJECT_ID = the placeholder (degradable)',
   { ...COMPLETE, FCM_PROJECT_ID: PLACEHOLDER_FCM_PROJECT },
   ['FCM_PROJECT_ID', 'PLACEHOLDER'],
+);
+
+// THE ORIGIN MISMATCH, which is the case that promotes a staging image into
+// production. Static routes bake their canonicals at build time, so an image
+// built for one origin and run with another already serves the wrong ones and
+// no runtime value can change that.
+//
+// IT EARNED ITS PLACE BY FIRING ON ITS AUTHOR: this suite built with no origin
+// and ran with a production one, and the complete-environment case refused to
+// start. The fixture was wrong and the guard was right.
+refuses(
+  'an origin the image was NOT built for',
+  { ...COMPLETE, NEXT_PUBLIC_SITE_URL: 'https://promoted-by-mistake.example' },
+  ['NEXT_PUBLIC_SITE_URL', 'BUILT for', 'WILL NOT START'],
 );
 
 // A DEGRADABLE variable ABSENT must NOT refuse - R83's half of the design.

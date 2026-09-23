@@ -103,18 +103,54 @@ const MAX_PARAM_LENGTH = 32;
  * stays static, renders every status hidden, and CSS :target reveals the one
  * named here.
  */
+/**
+ * ============================================================================
+ * THE Location IS RELATIVE, AND A CONTAINER IS WHAT PROVED IT HAS TO BE
+ * ============================================================================
+ *
+ * This built an absolute URL from `request.nextUrl.origin`. Under `next start`
+ * on a developer's machine that origin is `http://localhost:3100` and every
+ * test passes. INSIDE THE IMAGE IT IS `http://0.0.0.0:3000`, because the
+ * standalone server derives it from the address it is BOUND to - and
+ * ENV HOSTNAME="0.0.0.0" is not optional, it is what makes the server
+ * reachable from outside the container at all.
+ *
+ * So the no-JavaScript reader posted the form and was redirected to
+ * `http://0.0.0.0:3000/...`, which no browser can navigate to. Measured:
+ * 4 of 284 e2e specs, green against next start, failing against the image.
+ *
+ * A RELATIVE Location REMOVES THE CLASS. RFC 7231 has allowed one since 2014
+ * and every browser resolves it against the request URL, so the answer stops
+ * depending on how the server perceives its own address - through a proxy,
+ * behind a port mapping, bound to a wildcard, or none of those.
+ *
+ * FIXING IT IN THE PROXY WOULD HAVE WORKED AND BEEN WORSE: Coolify sets
+ * x-forwarded-host, so production would likely have been fine while every
+ * direct hit - staging, a health probe, a container run by hand - stayed
+ * broken. That is a defect that only appears where nobody is looking.
+ *
+ * R27's protection is untouched: `path` still comes from the closed map and
+ * never from a form field, so this cannot become an open redirect. A relative
+ * Location is in fact strictly harder to abuse, having no host at all.
+ */
 function back(
-  request: NextRequest,
   path: string,
   status: AlertStatus,
   scenario: URLSearchParams,
 ): NextResponse {
-  const url = new URL(path, request.nextUrl.origin);
+  // Built against a fixed base purely to assemble path + query + fragment
+  // safely, then emitted WITHOUT the origin.
+  const url = new URL(path, 'http://relative.invalid');
 
   url.search = scenario.toString();
   url.hash = statusFragment(status);
 
-  return NextResponse.redirect(url, 303);
+  return relativeRedirect(`${url.pathname}${url.search}${url.hash}`);
+}
+
+/** A 303 whose Location carries no host (see `back`). */
+function relativeRedirect(target: string): NextResponse {
+  return new NextResponse(null, { status: 303, headers: { Location: target } });
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -145,11 +181,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     if (!rate.allowed) {
-      return back(request, RETURN_TO[source], ALERT_STATUS.rate, scenario);
+      return back(RETURN_TO[source], ALERT_STATUS.rate, scenario);
     }
 
     if (!parsed.ok) {
-      return back(request, RETURN_TO[source], statusForError(parsed.error), scenario);
+      return back(RETURN_TO[source], statusForError(parsed.error), scenario);
     }
 
     const recorded = await recordSubscription(parsed.value);
@@ -173,13 +209,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // and one sentence, because the difference between them is exactly what
     // an address-enumeration attack is trying to read. lib/alerts/record.ts
     // keeps the distinction only as long as the mailer needs it.
-    return back(request, RETURN_TO[parsed.value.source], ALERT_STATUS.ok, scenario);
+    return back(RETURN_TO[parsed.value.source], ALERT_STATUS.ok, scenario);
   } catch {
     // The database refused, the body was not a form, the connection died.
     // The reader did nothing wrong and there is nothing for them to fix, so
     // they get a page that says so - never a stack trace, and never a
     // success message for something that did not happen.
-    return back(request, RETURN_TO[source], ALERT_STATUS.unavailable, scenario);
+    return back(RETURN_TO[source], ALERT_STATUS.unavailable, scenario);
   }
 }
 
@@ -190,6 +226,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
  * exist, or a crawler is. Either way a bare error body is a dead end, and the
  * page that explains the list is not.
  */
-export function GET(request: NextRequest): NextResponse {
-  return NextResponse.redirect(new URL(ALERTES_PATH, request.nextUrl.origin), 303);
+export function GET(): NextResponse {
+  // Relative, for the reason `back` records: inside the image
+  // request.nextUrl.origin is http://0.0.0.0:3000, which is not an address a
+  // browser can follow.
+  return relativeRedirect(ALERTES_PATH);
 }
