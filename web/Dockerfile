@@ -207,6 +207,17 @@ COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 # migrates on boot migrates once per replica, concurrently.
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 
+# R250'S TWO FILES, COPIED EXPLICITLY BECAUSE NOTHING TRACES THEM.
+#
+# Next's standalone tracer follows what server.js imports. The entrypoint runs
+# BEFORE server.js and is imported by nothing, so it is invisible to the
+# tracer - the same reason R246 says an entry point is reachable from no
+# import. Its one dependency comes with it, at the path it imports:
+# scripts/entrypoint.mjs resolves ../lib/deploy/placeholders.mjs, which is
+# /app/lib/deploy/placeholders.mjs here and in the repository alike.
+COPY --from=builder --chown=nextjs:nodejs /app/lib/deploy/placeholders.mjs ./lib/deploy/placeholders.mjs
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/entrypoint.mjs ./scripts/entrypoint.mjs
+
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     HOSTNAME=0.0.0.0 \
@@ -226,4 +237,14 @@ EXPOSE 3000
 HEALTHCHECK --interval=10s --timeout=5s --start-period=20s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/api/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
-CMD ["node", "server.js"]
+# R250: THE PREFLIGHT IS THE ENTRYPOINT, so a misconfigured container never
+# becomes a serving one. It refuses on a PLACEHOLDER at any severity and on an
+# absent REQUIRED variable, exits non-zero with the variable named, and
+# otherwise spawns server.js and forwards SIGTERM to it.
+#
+# It deliberately does NOT refuse an absent degradable variable: that is a
+# designed state the product reports through /api/ready, and converting it
+# into a crash would turn "this deploy did not go out" into a crash-loop -
+# which is what R83 argues against, since a restart cannot supply a missing
+# environment variable.
+ENTRYPOINT ["node", "scripts/entrypoint.mjs"]

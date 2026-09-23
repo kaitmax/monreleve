@@ -56,8 +56,15 @@ export const PRINT_TOKEN_TTL_MS = 120 * 1000;
  * R133 AS A POSITIVE GUARD: the code refuses this string explicitly rather than
  * hoping nobody deploys it. A signing key everybody has is not a signing key,
  * and a placeholder copied into production is the ordinary way that happens.
+ *
+ * RE-EXPORTED, NOT DECLARED (R206). FW28 needed the same string in
+ * scripts/entrypoint.mjs, which runs before Next and cannot import TypeScript,
+ * so the text moved to lib/deploy/placeholders.mjs and both sides now name it
+ * rather than carrying a copy. Every existing importer is unaffected.
  */
-export const PLACEHOLDER_SECRET = 'change-me-local-only-not-for-deployment';
+import { PLACEHOLDER_SECRET } from '@/lib/deploy/placeholders.mjs';
+
+export { PLACEHOLDER_SECRET };
 
 export type PrintTokenFailure =
   | 'missing_token'

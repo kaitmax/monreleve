@@ -32,11 +32,12 @@
 // import one script would drag six build scripts into it and produce a wall
 // of findings unrelated to any rule. So: assert.
 
-import { readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { join, relative } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-const SCRIPTS = join(process.cwd(), 'scripts');
+const PACKAGE_ROOT = process.cwd();
 
 /**
  * Every hand-written declaration for a local module, found rather than listed.
@@ -44,8 +45,58 @@ const SCRIPTS = join(process.cwd(), 'scripts');
  * DERIVED, because a list would be a third description of the same thing and
  * would go stale in exactly the way this file exists to catch. A new .d.mts
  * beside a .mjs is covered on the day it is written.
+ *
+ * ==========================================================================
+ * IT USED TO READ scripts/ ONLY, AND THE FIRST DECLARATION OUTSIDE IT WAS
+ * UNCOVERED ON ARRIVAL
+ * ==========================================================================
+ *
+ * FW28 added lib/deploy/placeholders.mjs - JavaScript because a plain `node`
+ * entrypoint reads it before any compilation exists (R250) - with a
+ * placeholders.d.mts beside it. Its header said parity was asserted rather
+ * than argued, and parity was NOT being asserted: this file's scope was one
+ * directory, chosen when every .mjs happened to live there.
+ *
+ * That is R246's shape on a different enumeration: a scope that was correct
+ * only because nothing had moved, and a new instance arriving invisible. So
+ * the directory is no longer part of the rule - a declaration beside a module
+ * is, wherever the two of them live.
  */
-const DECLARATIONS = readdirSync(SCRIPTS).filter((name) => name.endsWith('.d.mts'));
+interface FoundDeclaration {
+  /** Absolute path to the .d.mts. */
+  readonly declaration: string;
+  /** Absolute path to the .mjs beside it. */
+  readonly module: string;
+}
+
+function findDeclarations(
+  dir: string = PACKAGE_ROOT,
+  found: FoundDeclaration[] = [],
+): FoundDeclaration[] {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name === 'node_modules' || entry.name.startsWith('.next')) continue;
+    if (entry.name.startsWith('.') && entry.isDirectory()) continue;
+
+    const full = join(dir, entry.name);
+
+    if (entry.isDirectory()) {
+      findDeclarations(full, found);
+      continue;
+    }
+
+    if (!entry.name.endsWith('.d.mts')) continue;
+
+    const module = full.replace(/\.d\.mts$/u, '.mjs');
+
+    // A declaration with no module beside it is a different problem and not
+    // this file's: it declares nothing that can be compared.
+    if (existsSync(module)) found.push({ declaration: full, module });
+  }
+
+  return found;
+}
+
+const DECLARATIONS = findDeclarations();
 
 /**
  * The VALUE exports a declaration file promises.
@@ -65,23 +116,40 @@ function declaredValues(source: string): readonly string[] {
 
 describe('R185: a declaration is asserted, not argued', () => {
   it('found the declarations, so nothing below passes vacuously', () => {
-    // R63's shape. A glob that matched nothing would report perfect parity.
-    expect(DECLARATIONS.length, 'no .d.mts found in scripts/').toBeGreaterThan(0);
-    expect(DECLARATIONS).toContain('gate-selection.d.mts');
+    // R63's shape. A walk that matched nothing would report perfect parity.
+    expect(DECLARATIONS.length, 'no .d.mts found beside a .mjs').toBeGreaterThan(0);
+
+    const names = DECLARATIONS.map((found) =>
+      relative(PACKAGE_ROOT, found.declaration).split('\\').join('/'),
+    );
+
+    expect(names).toContain('scripts/gate-selection.d.mts');
+
+    // NAMED EXPLICITLY, because it is the one the old scope missed. If a
+    // future edit narrows the walk back to a single directory, this fails
+    // rather than quietly covering less.
+    expect(names, 'the declaration outside scripts/ that R246 caught').toContain(
+      'lib/deploy/placeholders.d.mts',
+    );
   });
 
-  for (const declaration of DECLARATIONS) {
-    const stem = declaration.replace(/\.d\.mts$/u, '');
-    const module = `${stem}.mjs`;
+  for (const found of DECLARATIONS) {
+    const declaration = relative(PACKAGE_ROOT, found.declaration).split('\\').join('/');
+    const module = relative(PACKAGE_ROOT, found.module).split('\\').join('/');
 
     it(`${declaration} declares exactly what ${module} exports`, async () => {
-      const source = readFileSync(join(SCRIPTS, declaration), 'utf8');
+      const source = readFileSync(found.declaration, 'utf8');
       const declared = declaredValues(source);
 
       // The real module, imported for its keys. Nothing here calls anything:
       // the subject is the SHAPE, and a module whose import has side effects
       // would be a different problem.
-      const actual: Record<string, unknown> = await import(`../../../scripts/${stem}.mjs`);
+      // A FILE URL, because the module is now found by walking rather than
+      // named by a fixed directory. Vitest is told not to analyse it: the
+      // specifier is a runtime value and there is nothing to pre-bundle.
+      const actual: Record<string, unknown> = await import(
+        /* @vite-ignore */ pathToFileURL(found.module).href
+      );
       const exported = Object.keys(actual)
         .filter((name) => name !== 'default')
         .sort();
@@ -121,7 +189,7 @@ describe('R185: a declaration is asserted, not argued', () => {
     // assertions above are green on a fixed tree and prove nothing on their
     // own (R178's order: the live instances are the evidence, and they are in
     // the commit message; this is the mechanism check).
-    const source = readFileSync(join(SCRIPTS, 'gate-selection.d.mts'), 'utf8');
+    const source = readFileSync(join(PACKAGE_ROOT, 'scripts', 'gate-selection.d.mts'), 'utf8');
     const full = declaredValues(source);
     const short = full.filter((name) => name !== 'LATE_SUITES');
 

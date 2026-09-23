@@ -45,11 +45,19 @@ import type { PushAttempt, PushNotification, PushSender } from '@/lib/push/sende
  *
  * R133 AS A POSITIVE GUARD, exactly as PLACEHOLDER_SECRET is: the code refuses
  * these strings explicitly rather than hoping nobody deploys them.
+ *
+ * RE-EXPORTED, NOT DECLARED (R206). FW28's entrypoint refuses the same three
+ * before the server starts and cannot import TypeScript, so the text lives in
+ * lib/deploy/placeholders.mjs and both sides name it. A test comparing two
+ * copies would only prove they were equal when somebody last looked.
  */
-export const PLACEHOLDER_PROJECT_ID = 'your-firebase-project-id';
-export const PLACEHOLDER_CLIENT_EMAIL =
-  'service-account@your-firebase-project-id.iam.gserviceaccount.com';
-export const PLACEHOLDER_PRIVATE_KEY = 'REPLACE_WITH_THE_SERVICE_ACCOUNT_PRIVATE_KEY';
+import {
+  PLACEHOLDER_CLIENT_EMAIL,
+  PLACEHOLDER_PRIVATE_KEY,
+  PLACEHOLDER_PROJECT_ID,
+} from '@/lib/deploy/placeholders.mjs';
+
+export { PLACEHOLDER_CLIENT_EMAIL, PLACEHOLDER_PRIVATE_KEY, PLACEHOLDER_PROJECT_ID };
 
 /**
  * Just enough of an environment to read variables out of.
