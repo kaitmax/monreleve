@@ -159,7 +159,11 @@ describe('the whitespace codepoints in French copy are on the record (R66)', () 
       // to the enumeration under « pour votre compte et pour lui seul », and
       // with the sign-in purpose split out of the alert-list sentence. Each
       // is a French colon or semicolon in new copy, set the way R91 requires.
-      'lib/fr/confidentialite.ts': 19,
+      // 19 -> 20 in FW27: DISCLOSED_RECORDS.reminderLog added one
+      // no-break space, before the semicolon that ends it. The count is
+      // pinned so that a space arriving by accident is a failure rather
+      // than a drift, which means a deliberate one updates the number.
+      'lib/fr/confidentialite.ts': 20,
       'lib/fr/errors.ts': 2,
       // FW18b: FOUR BECAME TWO, and the two that left are the point. R147
       // now reaches lib/fr, so the home description no longer types "40 %"
@@ -200,7 +204,11 @@ describe('the whitespace codepoints in French copy are on the record (R66)', () 
     // drift a census exists to stop - a name that stops matching what it
     // counts is the first thing somebody trusts instead of reading.
     // FW20b: 38. One left releve-annuel.ts for n(), as the comment above says.
-    expect(occurrences).toHaveLength(42);
+    // FW27: 42 -> 43. DISCLOSED_RECORDS.reminderLog carries one, before
+    // the semicolon ending its sentence, and the per-file map above moved
+    // in step. Two numbers, one change - if only one of them had needed
+    // updating, the census would be measuring something other than it says.
+    expect(occurrences).toHaveLength(43);
   });
 
   it('puts every one of them immediately before : ; ? ! or %', () => {

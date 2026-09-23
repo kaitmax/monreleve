@@ -121,6 +121,20 @@ export const DISCLOSED_RECORDS = {
     'si vous activez le rappel quotidien, un jeton de notification propre à ' +
     'votre appareil ;',
 
+  // FW27 ADDED THIS ONE, and it had to: the scheduler stores which days a
+  // reminder went out, and the enumeration here is CLOSED - a stored column
+  // with no line to disclose it is not an omission but a published falsehood.
+  // tests/unit/content/personal-data.ts refused the new table until this
+  // existed, which is the guard doing exactly its job.
+  //
+  // IT SAYS WHY, because "we record when we contacted you" invites the
+  // question and the answer is reassuring: the trace exists so that a
+  // technical retry cannot send a second notification.
+  reminderLog:
+    'si vous activez le rappel quotidien, les jours pour lesquels un rappel ' +
+    'vous a été envoyé. Cette trace existe pour qu’une relance technique ne ' +
+    'puisse pas vous en envoyer un second ;',
+
   // --- FW22 ADDED THESE THREE, AND THE LIST IS CLOSED. « pour votre compte
   // et pour lui seul » is exhaustive: an addition does not make it
   // incomplete, it makes it FALSE. Sessions and credentials were stored from
@@ -242,6 +256,10 @@ export const CONFIDENTIALITE_COPY = {
     DISCLOSED_RECORDS.timestamps,
     DISCLOSED_RECORDS.history,
     DISCLOSED_RECORDS.notificationToken,
+    // FW27. It sits beside the token because both are conditional on the same
+    // opt-in, and a reader who enables the reminder should meet both
+    // consequences together rather than one here and one in a changelog.
+    DISCLOSED_RECORDS.reminderLog,
     DISCLOSED_RECORDS.sessions,
     DISCLOSED_RECORDS.credentials,
     DISCLOSED_RECORDS.emailConfirmed,

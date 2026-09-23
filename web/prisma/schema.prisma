@@ -234,6 +234,7 @@ model User {
   entryEvents EntryEvent[]
   sessions_   DeviceSession[]
 
+  reminders ReminderSent[]
   devices  Device[]
   accounts Account[]
   sessions Session[]
@@ -562,4 +563,38 @@ model SessionToken {
 
   @@index([sessionId, kind])
   @@index([expiresAt])
+}
+
+/// One row per reminder actually sent, and the reason it exists is retries.
+///
+/// FW27. The prompt's words: idempotency on (user, date) "enforced where a
+/// retry cannot defeat it: a unique row, not an in-memory set". A scheduler
+/// retries; an in-memory set does not survive the restart that caused the
+/// retry, and two processes do not share one. The unique index is the only
+/// place the guarantee can live.
+///
+/// THE DAY IS THE PERSON'S LOCAL DAY, in Europe/Paris, stored as a `@db.Date`
+/// exactly as Entry.dayDate is (R28). A reminder at 17:30 Paris on 30 March
+/// belongs to 30 March whatever UTC thinks.
+///
+/// IT CASCADES. D11 removes everything belonging to a person, and FW26's
+/// negative sweep enumerates every model carrying a userId - so this table
+/// joins that sweep automatically rather than by anybody remembering.
+model ReminderSent {
+  id     String @id @default(cuid())
+  userId String
+
+  /// The local day the reminder was for, not the instant it went out.
+  sentOn DateTime @db.Date
+
+  /// Server-assigned, like every other stamp in this product.
+  sentAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// THE GUARANTEE. A retry inserting a second row for one day fails here,
+  /// in the database, rather than being prevented by a caller remembering to
+  /// check first.
+  @@unique([userId, sentOn])
+  @@index([userId])
 }

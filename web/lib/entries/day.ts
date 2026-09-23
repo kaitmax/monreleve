@@ -152,3 +152,48 @@ export function endOfParisDay(day: string): Date {
 
   return startOfParisDay(next.toISOString().slice(0, 10));
 }
+
+/**
+ * The calendar day it is in Paris, at a given instant.
+ *
+ * FW27 NEEDED THIS AND IT DID NOT EXIST. The reminder job has to answer "what
+ * day is it for this person" and "is today already logged", and both questions
+ * are about the Paris day rather than the UTC one - at 00:30 Paris in summer
+ * it is still yesterday in UTC, so a job using UTC would send a second
+ * reminder for a day it had already covered.
+ *
+ * IT LIVES HERE, with `toStoredDay` and `startOfParisDay`, because this module
+ * is the one home for the question "which day is this" (R206). A timezone
+ * conversion written a second time in a job file is the drift that produces
+ * two reminders on the last Sunday in March.
+ */
+export function parisDayOf(instant: Date): string {
+  // `en-CA` formats as YYYY-MM-DD, which is the shape the rest of this module
+  // speaks. Asked of the platform rather than derived from an offset, for the
+  // reason `parisOffsetMinutes` gives above.
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: PARIS,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(instant);
+}
+
+/**
+ * The wall-clock time in Paris, as `HH:mm`, at a given instant.
+ *
+ * THE SAME SHAPE `User.reminderTime` IS STORED IN, deliberately: the column is
+ * a string because "17:30" means half past five where the reader lives on both
+ * sides of a DST boundary, and comparing two `HH:mm` strings is exactly the
+ * comparison the reminder rule describes. Converting either to an instant to
+ * compare them would reintroduce the offset this representation exists to
+ * avoid.
+ */
+export function parisTimeOf(instant: Date): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: PARIS,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(instant);
+}

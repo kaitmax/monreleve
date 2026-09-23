@@ -88,6 +88,10 @@ export const EXPORTED = {
   EntryEvent: 'trail',
   Device: 'devices',
   DeviceSession: 'sessions',
+  // FW27. A record of every reminder this product sent to the person is
+  // plainly their data, and it is the only place they can check that the
+  // 'exactly one per day' promise was kept.
+  ReminderSent: 'reminders',
 } as const;
 
 /**
@@ -123,6 +127,7 @@ export interface AccountExport {
   readonly trail: readonly Record<string, unknown>[];
   readonly devices: readonly Record<string, unknown>[];
   readonly sessions: readonly Record<string, unknown>[];
+  readonly reminders: readonly Record<string, unknown>[];
 }
 
 const day = (value: Date): string => value.toISOString().slice(0, 10);
@@ -137,7 +142,7 @@ const instant = (value: Date | null): string | null =>
  * is the first thing somebody checking a record wants to do.
  */
 export async function buildAccountExport(userId: string): Promise<AccountExport> {
-  const [user, entries, trail, devices, sessions] = await Promise.all([
+  const [user, entries, trail, devices, sessions, reminders] = await Promise.all([
     prisma.user.findUniqueOrThrow({ where: { id: userId }, select: ME_SELECT }),
     prisma.entry.findMany({
       where: { userId },
@@ -146,6 +151,7 @@ export async function buildAccountExport(userId: string): Promise<AccountExport>
     prisma.entryEvent.findMany({ where: { userId }, orderBy: { recordedAt: 'asc' } }),
     prisma.device.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
     prisma.deviceSession.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
+    prisma.reminderSent.findMany({ where: { userId }, orderBy: { sentOn: 'asc' } }),
   ]);
 
   return {
@@ -194,6 +200,11 @@ export async function buildAccountExport(userId: string): Promise<AccountExport>
       createdAt: device.createdAt.toISOString(),
       // NO PUSH TOKEN. It is a credential for addressing the device, not a
       // fact about the person, and the same reasoning excludes SessionToken.
+    })),
+
+    reminders: reminders.map((reminder) => ({
+      sentOn: day(reminder.sentOn),
+      sentAt: reminder.sentAt.toISOString(),
     })),
 
     sessions: sessions.map((session) => ({

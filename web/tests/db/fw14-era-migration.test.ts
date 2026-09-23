@@ -335,6 +335,8 @@ describe('the FW21 migration on an FW14-era database', () => {
       'DeviceSession',
       'Entry',
       'EntryEvent',
+      // FW27 increment 2.
+      'ReminderSent',
       'Session',
       'SessionToken',
       'User',

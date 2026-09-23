@@ -167,6 +167,15 @@ export const PERSONAL_DATA: Readonly<Record<string, Disclosure>> = {
   'EntryEvent.clientClaimedAt': 'timestamps',
 
   // ---- FW22: sessions and credentials. The three that broke the closed list.
+  // ---- FW27: the reminder log. Disclosed by , which was
+  // added to the notice in the same change - the enumeration is closed, so
+  // storing these without a line there would have been a published
+  // falsehood rather than a gap.
+  'ReminderSent.id': 'reminderLog',
+  'ReminderSent.userId': 'reminderLog',
+  'ReminderSent.sentOn': 'reminderLog',
+  'ReminderSent.sentAt': 'reminderLog',
+
   'DeviceSession.id': 'sessions',
   'DeviceSession.userId': 'sessions',
   'DeviceSession.deviceId': 'sessions',
