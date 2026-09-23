@@ -39,7 +39,10 @@ export async function register(): Promise<void> {
   //
   // Deferring WHEN something runs says nothing about WHETHER it is bundled.
   if (process.env.NEXT_RUNTIME === 'nodejs') {
-    const { SchedulerRefused, startScheduler } = await import('@/lib/scheduler/boss');
+    const { SchedulerRefused, isSchedulerRunning, startScheduler } = await import(
+      '@/lib/scheduler/boss',
+    );
+    const { describeRegistration, registerJobs } = await import('@/lib/scheduler/jobs');
     const { describePushSender, resolvePushSender } = await import('@/lib/push/resolve');
 
     // SAID AT STARTUP, BEFORE ANYTHING DEPENDS ON IT. Whether this process can
@@ -49,10 +52,24 @@ export async function register(): Promise<void> {
     // log at boot is where somebody actually looks.
     console.log(describePushSender(resolvePushSender()));
 
+    // ASKED BEFORE STARTING, because startScheduler() returns the EXISTING
+    // scheduler when there is one and nothing in its answer says which case
+    // happened. Registering again would add a SECOND worker to each queue in
+    // the same process - harmless for the purge, which is idempotent, and
+    // pointless for the reminder, whose unique row already makes a double
+    // pass a no-op. Pointless work in a hot-reload loop is still work.
+    const alreadyRunning = isSchedulerRunning();
+
     try {
-      await startScheduler();
+      const boss = await startScheduler();
 
       console.log('[scheduler] started');
+
+      // WHAT WILL RUN, AND WHAT WILL NOT, said at boot. Whether this process
+      // can deliver a push is decided by three environment variables, and the
+      // consequence of getting it wrong is SILENCE - reminders that never
+      // arrive, on an opt-in feature nobody is told has stopped.
+      if (!alreadyRunning) console.log(describeRegistration(await registerJobs(boss)));
     } catch (cause) {
       if (cause instanceof SchedulerRefused) {
         console.warn(`[scheduler] not started (${cause.code}): ${cause.message}`);

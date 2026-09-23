@@ -63,6 +63,16 @@ const EMAIL = 'lecteur@example.com';
 
 beforeEach(async () => {
   await prisma.alertSubscriber.deleteMany();
+  // AND THE ACCOUNTS THIS FILE CREATES. Every other tests/db file empties the
+  // tables it owns - vitest.db.config.ts's header states the rule - and this
+  // one did not, so the fixed addresses in `accountWithData` collided with
+  // whatever a CRASHED earlier run had left behind. Found when an interrupted
+  // plant run left claim8@example.com in the database and the next run failed
+  // on `User_email_key` rather than on anything it was testing.
+  //
+  // R131's shape for a database: a suite that depends on the state a previous
+  // run happened to leave is a suite whose result is about scheduling.
+  await prisma.user.deleteMany();
   clearOutbox();
   resetRateLimit();
 });
@@ -256,7 +266,7 @@ describe('CLAIM 7: an unconfirmed subscription is deleted after thirty days', ()
       },
     });
 
-    expect(await purgeUnconfirmed()).toBe(1);
+    expect((await purgeUnconfirmed()).deleted).toBe(1);
   });
 });
 

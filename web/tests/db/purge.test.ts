@@ -22,7 +22,7 @@
 
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { prisma } from '@/lib/db/client';
-import { purgeUnconfirmed, PURGE_AFTER_DAYS } from '@/lib/alerts/purge';
+import { describePurge, purgeUnconfirmed, PURGE_AFTER_DAYS } from '@/lib/alerts/purge';
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -53,9 +53,14 @@ describe('AC3: unconfirmed rows older than thirty days are purged', () => {
       ],
     });
 
-    const removed = await purgeUnconfirmed();
+    const run = await purgeUnconfirmed();
 
-    expect(removed).toBe(1);
+    expect(run.deleted).toBe(1);
+    // R244's other three, at the boundary where they are least ambiguous:
+    // two rows looked at, one removed, one kept because it is too recent.
+    expect(run.considered).toBe(2);
+    expect(run.keptTooRecent).toBe(1);
+    expect(run.keptUnsubscribed).toBe(0);
 
     const left = await prisma.alertSubscriber.findMany({ select: { email: true } });
 
@@ -75,7 +80,7 @@ describe('AC3: unconfirmed rows older than thirty days are purged', () => {
       },
     });
 
-    expect(await purgeUnconfirmed()).toBe(0);
+    expect((await purgeUnconfirmed()).deleted).toBe(0);
     expect(await prisma.alertSubscriber.count()).toBe(1);
   });
 
@@ -92,7 +97,7 @@ describe('AC3: unconfirmed rows older than thirty days are purged', () => {
       },
     });
 
-    expect(await purgeUnconfirmed()).toBe(0);
+    expect((await purgeUnconfirmed()).deleted).toBe(0);
     expect(await prisma.alertSubscriber.count()).toBe(1);
   });
 
@@ -103,7 +108,7 @@ describe('AC3: unconfirmed rows older than thirty days are purged', () => {
       data: { email: 'neuve@example.com', source: 'calculateur' },
     });
 
-    expect(await purgeUnconfirmed()).toBe(0);
+    expect((await purgeUnconfirmed()).deleted).toBe(0);
     expect(await prisma.alertSubscriber.count()).toBe(1);
   });
 
@@ -116,7 +121,57 @@ describe('AC3: unconfirmed rows older than thirty days are purged', () => {
       ],
     });
 
-    expect(await purgeUnconfirmed()).toBe(2);
+    expect((await purgeUnconfirmed()).deleted).toBe(2);
     expect(await prisma.alertSubscriber.count()).toBe(1);
+  });
+});
+
+describe('R244: the run says what it did, not that it ran', () => {
+  it('distinguishes an empty match from a full set of exemptions', async () => {
+    // "0 deleted" is true of a healthy list with nothing lapsed, and equally
+    // true of a query that stopped matching anything. These four numbers are
+    // not: every unconfirmed row is accounted for by exactly one of them.
+    await prisma.alertSubscriber.createMany({
+      data: [
+        // Unconfirmed, past the cutoff, never unsubscribed: goes.
+        { email: 'lapsed@example.com', source: 'calculateur', createdAt: daysAgo(31) },
+        // Unconfirmed, past the cutoff, asked not to be written to: kept.
+        {
+          email: 'refused@example.com',
+          source: 'calculateur',
+          createdAt: daysAgo(31),
+          unsubscribedAt: daysAgo(30),
+        },
+        // Unconfirmed, still inside its thirty days: kept.
+        { email: 'recent@example.com', source: 'alertes', createdAt: daysAgo(29) },
+        // Confirmed: not even considered, because the rule is about
+        // subscriptions lapsing rather than about deleting subscribers.
+        {
+          email: 'member@example.com',
+          source: 'guide',
+          createdAt: daysAgo(400),
+          confirmedAt: daysAgo(399),
+        },
+      ],
+    });
+
+    const run = await purgeUnconfirmed();
+
+    expect(run.considered).toBe(3);
+    expect(run.deleted).toBe(1);
+    expect(run.keptUnsubscribed).toBe(1);
+    expect(run.keptTooRecent).toBe(1);
+
+    // AND THEY ADD UP. A census whose parts do not sum to its whole is a
+    // census measuring something other than it says (R171's shape).
+    expect(run.deleted + run.keptUnsubscribed + run.keptTooRecent).toBe(run.considered);
+  });
+
+  it('names the cutoff it used, so a wrong clock is visible in the log', async () => {
+    const run = await purgeUnconfirmed(Date.parse('2026-07-07T12:00:00.000Z'));
+
+    expect(run.cutoff).toBe('2026-06-07T12:00:00.000Z');
+    expect(describePurge(run)).toContain('2026-06-07T12:00:00.000Z');
+    expect(describePurge(run)).toContain('considered 0');
   });
 });
