@@ -50,6 +50,9 @@ import { confirmByToken, unsubscribeByToken } from '@/lib/alerts/confirm';
 import { recordSubscription } from '@/lib/alerts/record';
 import { purgeUnconfirmed, PURGE_AFTER_DAYS } from '@/lib/alerts/purge';
 import { resetRateLimit } from '@/lib/alerts/rate-limit';
+import { POST as registerDevice } from '@/app/api/v1/devices/route';
+import { runDailyReminders } from '@/lib/reminders/job';
+import { FakeTransport } from '@/lib/reminders/transport';
 
 /** Written once: a literal escape in a heredoc has bitten this session three times. */
 const NEWLINE = String.fromCharCode(10);
@@ -630,5 +633,161 @@ describe('CLAIM 11: a consent given can be withdrawn', () => {
 
     expect(revoked.detectionConsentAt).toBeNull();
     expect(revoked.loggingMode).toBe('MANUAL');
+  });
+});
+
+// ===========================================================================
+// FW27: THE NOTIFICATION CLAIMS
+// ===========================================================================
+//
+// The enumeration in DISCLOSED_RECORDS is CLOSED, so a stored column with no
+// line to disclose it is a published falsehood rather than an omission. FW27
+// stored two new kinds of thing - a push token and a record of which days a
+// reminder went out - and both are claimed below in the same two halves as
+// every claim above: THE PAGE still says it, THE CODE still does it.
+
+/** 17:30 Paris on 7 July 2026, which is 15:30 UTC in summer. */
+const AT_1730 = new Date('2026-07-07T15:30:00.000Z');
+
+async function reminderAccount(): Promise<{ userId: string; token: string }> {
+  const user = await prisma.user.create({
+    data: {
+      email: 'rappel@example.com',
+      name: 'Camille Rey',
+      canton: 'GE',
+      reminderTime: '17:30',
+    },
+  });
+
+  return { userId: user.id, token: (await issueTokenPair(user.id)).accessToken };
+}
+
+describe('CLAIM: a notification token, if you turn the reminder on', () => {
+  it('is still on the page, and only under the opt-in', () => {
+    expect(CONFIDENTIALITE_COPY.app).toContain(DISCLOSED_RECORDS.notificationToken);
+    // THE CONDITION IS PART OF THE CLAIM. Without "si vous activez le rappel
+    // quotidien" the sentence would over-disclose for somebody who never
+    // turned reminders on - in the one direction that costs trust.
+    expect(DISCLOSED_RECORDS.notificationToken).toContain('si vous activez le rappel');
+  });
+
+  it('holds: a registration stores the token and NOTHING else about the phone', async () => {
+    const { token } = await reminderAccount();
+
+    await registerDevice(
+      new Request(`${ORIGIN}/api/v1/devices`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+        body: JSON.stringify({ fcmToken: 'token-from-a-phone', appVersion: '1.5.0' }),
+      }),
+    );
+
+    const [device] = await prisma.device.findMany();
+
+    // The columns ARE the claim. A device model, an advertising id, a locale
+    // or a timezone would each be a fact about the phone this sentence does
+    // not disclose - and the route refuses all four rather than stripping.
+    expect(Object.keys(device ?? {}).sort()).toEqual([
+      'appVersion',
+      'createdAt',
+      'fcmToken',
+      'id',
+      'lastSeenAt',
+      'platform',
+      'userId',
+    ]);
+  });
+
+  it('holds: the export never carries the token, because it is a credential', async () => {
+    const { token } = await reminderAccount();
+
+    await registerDevice(
+      new Request(`${ORIGIN}/api/v1/devices`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+        body: JSON.stringify({ fcmToken: 'token-that-must-not-be-exported' }),
+      }),
+    );
+
+    const exported = await exportRoute(
+      new Request(`${ORIGIN}/api/v1/account/export`, {
+        headers: { authorization: `Bearer ${token}` },
+      }),
+    );
+
+    // A PERSON MAY SEE EVERY DEVICE THEY HAVE SIGNED IN ON - that is what the
+    // export is for. The token is how the server ADDRESSES that device rather
+    // than a fact about them, and putting it in a file they will mail to
+    // themselves is how a credential leaves the system.
+    expect(await exported.text()).not.toContain('token-that-must-not-be-exported');
+  });
+});
+
+describe('CLAIM: the days a reminder was sent', () => {
+  it('is still on the page, beside the token and under the same opt-in', () => {
+    expect(CONFIDENTIALITE_COPY.app).toContain(DISCLOSED_RECORDS.reminderLog);
+    expect(DISCLOSED_RECORDS.reminderLog).toContain('si vous activez le rappel');
+  });
+
+  it('holds: one row per day, and nothing about what the reminder said', async () => {
+    const { userId } = await reminderAccount();
+
+    await prisma.user.update({ where: { id: userId }, data: { reminderEnabled: true } });
+    await runDailyReminders(AT_1730, new FakeTransport());
+
+    const [row] = await prisma.reminderSent.findMany();
+
+    // The disclosed sentence says "the days", and these are the columns that
+    // make that exactly true: who, which day, when it was recorded. No title,
+    // no body, no device.
+    expect(Object.keys(row ?? {}).sort()).toEqual(['id', 'sentAt', 'sentOn', 'userId']);
+  });
+
+  it('holds: the trace is what stops a retry sending a second, which is what it SAYS', async () => {
+    // THE SENTENCE MAKES A CLAIM ABOUT PURPOSE, and a purpose is testable:
+    // remove the row and a second arrives.
+    const { userId } = await reminderAccount();
+
+    await prisma.user.update({ where: { id: userId }, data: { reminderEnabled: true } });
+
+    const transport = new FakeTransport();
+
+    await runDailyReminders(AT_1730, transport);
+    await runDailyReminders(AT_1730, transport);
+
+    expect(transport.sent).toHaveLength(1);
+
+    await prisma.reminderSent.deleteMany();
+    await runDailyReminders(AT_1730, transport);
+
+    expect(transport.sent).toHaveLength(2);
+  });
+});
+
+describe('CLAIM: the reminder is opt-in, and leaving takes no persuasion (D19)', () => {
+  it('holds: reminderEnabled is false until somebody turns it on', async () => {
+    const { userId } = await reminderAccount();
+
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: userId } })).reminderEnabled).toBe(
+      false,
+    );
+  });
+
+  it('holds: turning it off takes effect on the very next run', async () => {
+    const { userId } = await reminderAccount();
+
+    await prisma.user.update({ where: { id: userId }, data: { reminderEnabled: true } });
+
+    const transport = new FakeTransport();
+
+    expect((await runDailyReminders(AT_1730, transport)).considered).toBe(1);
+
+    await prisma.user.update({ where: { id: userId }, data: { reminderEnabled: false } });
+
+    // NOT EVEN CONSIDERED. Opting out removes somebody from the query rather
+    // than filtering them later, so there is no path that could send - which
+    // is the difference between a setting that is HONOURED and one that is
+    // CONSULTED.
+    expect((await runDailyReminders(AT_1730, transport)).considered).toBe(0);
   });
 });

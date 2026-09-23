@@ -1,0 +1,850 @@
+REPORT-FW27.txt - the scheduler, the reminder, the retention jobs
+Mon Releve / web
+2026-09-23
+
+====================================================================
+SUMMARY
+====================================================================
+
+FW27 built the only code in this product that acts WITHOUT A REQUEST.
+Six increments, each gated and pushed on its own green chain:
+
+  1  pg-boss, started once                           86b5d6b
+  2  the daily reminder                              ad8c855
+  3  FCM behind a seam, uncredentialed               a4edfec
+  4  retention jobs, scheduled and counted           (see below)
+  5  RFC 8058 one-click unsubscribe                  (see below)
+  6  privacy map, walkthrough, report                (this)
+
+WHAT NOW RUNS ON ITS OWN, and what deliberately does not:
+
+  the 30-day purge      SCHEDULED, 03:17 Europe/Paris, missed:'once'
+  the daily reminder    scheduled ONLY where a push sender exists,
+                        which is nowhere today - R243, and the skip is
+                        reported by name rather than being an absence
+                        somebody has to notice
+
+ONE SENTENCE FOR THE WHOLE TASK: nothing built here can reach a real
+person, and the reason is structural rather than careful - there is no
+Firebase project, `createFcmSender` answers `not_configured` on every
+machine that exists, and a test would have to set three environment
+variables to values nobody has.
+
+====================================================================
+PRECONDITIONS (R1 as reworded by R200)
+====================================================================
+
+gate:clone was run before EVERY push, on HEAD, in a fresh
+`git clone --local` with no .env, no node_modules, no .next and no
+public/fonts.
+
+  increment 2   commit  ad8c855fa94565c4ba80804aab152cbdf60e9cfc
+                PASSED
+  increment 3   commit  a4edfec9bb642b0e8505414977c18f39fbcca72f
+                PASSED
+
+The envelope each printed (R227):
+
+  ran     install, typecheck, lint, test, build, size, db:deploy,
+          test:db
+  skipped test:e2e, test:visual, test:runtime, lighthouse,
+          parity:check
+  named with their reasons, never silently omitted (R133):
+    test:e2e     needs a Playwright browser download
+    test:visual  needs the Playwright Docker container (R98)
+    test:runtime needs a Playwright browser download
+    lighthouse   needs a Chrome binary and a served build
+    parity:check covered by typecheck here; the Node matrix is R201
+                 workflow_dispatch from October
+
+A SCRATCH DATABASE PER RUN, created and migrated by the harness -
+monreleve_gate_clone_ad8c855f and monreleve_gate_clone_a4edfec9 - so
+the database suites ran against a schema built from the migrations
+rather than against this machine's.
+
+THE CI-READINESS LINE CORRECTED SOMETHING I BELIEVED. It printed "the
+repository is public and CI_FULL is unset - jobs will skip", and I had
+carried from FW25 that the repository was private. Checked rather than
+assumed this time:
+
+  gh repo view --json isPrivate,nameWithOwner,visibility
+  {"isPrivate":false,"nameWithOwner":"kaitmax/monreleve",
+   "visibility":"PUBLIC"}
+
+The FW25 belief was about the PREVIOUS remote, before it moved to
+monreleve. R233's classifier is behaving correctly. See QUESTIONS.
+====================================================================
+RED-GREEN LEDGER
+====================================================================
+
+TEST-FIRST WAS NOT AVAILABLE FOR MOST OF THIS TASK, and saying so
+plainly matters more than claiming it was. The code and its tests were
+written together in each increment, so almost everything passed on its
+first run - which R241 is explicit about being evidence of nothing.
+
+WHAT WAS DONE INSTEAD: every guard that matters was PLANTED AGAINST,
+and every plant was VERIFIED IN THE FILE at a named line before its
+result was read. R180 exists because FW20b's plant edited a FAQ heading
+instead of the prose and the test passed for the wrong reason.
+
+INCREMENT 1
+  RED    tests/db/scheduler-start.test.ts would not compile:
+         `import PgBoss from 'pg-boss'` - v12 has no default export.
+         The typecheck caught it before a test ran.
+  RED    `pnpm build` failed on four Node built-ins. The dynamic import
+         sat after an early return, where webpack still analyses it;
+         `serverExternalPackages` did not help, because it does not
+         reach the Edge compilation of instrumentation.ts. Moving the
+         import INSIDE the `if` fixed it. Deferring WHEN something runs
+         says nothing about WHETHER it is bundled.
+
+INCREMENT 2
+  RED    the gate, at test:db: two TABLE CENSUSES failed because
+         ReminderSent had appeared and nothing had declared it.
+           tests/db/alert-subscriber.test.ts
+           tests/db/fw14-era-migration.test.ts
+         Both are guards whose comments say exactly why they are lists
+         rather than counts: "the table that would quietly appear is
+         the one nobody meant to add". A real defect, found by the
+         gate, fixed by declaring the table in both places.
+
+INCREMENT 3 - five plants, five reds
+  whitelist   DEAD_TOKEN_STATUSES = [404, 410, 503], line 69
+              -> "expected [ 404, 410, 503 ] to deeply equal
+                  [ 404, 410 ]"
+              -> "503 must not prune: expected 'token_dead' to be
+                  'undelivered'"
+  outage      a failed TOKEN EXCHANGE reported as token_dead, line 242
+              -> "NEVER reports a dead token when it was the
+                  credentials that failed"
+  prune       `if (attempt.outcome !== 'delivered')`, line 75
+              -> "promise resolved "{ devices: +0 }" instead of
+                  rejecting", three times
+              The message shows BOTH halves: the rows go AND the
+              transport stops throwing, so the job would record
+              "nowhere to deliver" instead of a failure.
+  copy        auto mode rendered with the MANUAL copy, line 37
+              -> "expected 'Indiquez ou vous avez travaille : dom...'
+                  to contain 'confirmer'"
+  example     .env.example drifted to a real-looking project, line 36
+              -> "FCM_PROJECT_ID must ship the value the code refuses"
+
+INCREMENT 4 - five plants, five reds
+  orphanqueue the handler registered on a queue nobody sends to,
+              line 92
+              -> "the queued purge never reached purgeUnconfirmed:
+                  expected 1 to be +0", after the full 8.5 s poll
+              FW22's defect exactly, one layer over: every unit
+              correct, no path between them.
+  noregister  register() starts the scheduler and registers nothing,
+              line 72
+              -> "expected null not to be null"
+              Which is what instrumentation.ts did for the whole of
+              increment 3, and nothing could see it.
+  countlate   the census moved AFTER the delete, line 74
+              -> "expected 1 to be 2" and "expected 2 to be 3"
+              MY FIRST ATTEMPT AT THIS PLANT WAS MALFORMED: it
+              declared `deleted` twice and the file would not parse.
+              That is not the defect I meant, and reading its red as a
+              guard finding would have recorded a parse error as proof
+              of a census. R180 applies to the PLANTER as much as to
+              the plant. Redone as a true reorder.
+  always      the reminder scheduled with nowhere to send, line 108
+              -> "expected [ 'purge-unconfirmed', ...(1) ] to not
+                  include 'daily-reminder'"
+              -> "expected { name: 'daily-reminder', ...(9) } to be
+                  null"
+              Two assertions bounding the same property from both
+              ends, and both fired.
+  drift       scripts/purge-unconfirmed.mjs -> 90 days, line 33
+              -> "expected 90 to be 30"
+
+  Each restored and re-run green before the next was planted.
+====================================================================
+SINGLE START (AC1's proof)
+====================================================================
+
+lib/scheduler/boss.ts keeps the scheduler on `globalThis`, and the
+guard is TWO things rather than one:
+
+  __monreleveBoss          the scheduler, once there is one
+  __monreleveBossStarting  the IN-FLIGHT PROMISE
+
+The second is part of the guard, not an optimisation. Two concurrent
+callers would otherwise both find the slot empty and both start, which
+is the double-scheduler the module exists to prevent arriving through
+the one door a simple "is it set?" check leaves open. Next can call
+register() from more than one entry point.
+
+Asserted in tests/db/scheduler-start.test.ts:
+
+  starts, and reports itself running            (presence first, R169)
+  returns the SAME instance on a second start
+  survives module re-evaluation, which a module-level variable does not
+  starts ONCE under three concurrent callers
+  can be stopped and started again              (R196: not a one-shot
+                                                 latch)
+
+A MODULE-LEVEL `let` WOULD NOT DO IT. Next hot-reload re-evaluates a
+module and hands the new copy a fresh module scope, so the old
+scheduler keeps its connections and its timers while the new one starts
+beside it. The symptom is two reminders, which SPEC 13.3 says gets a
+compliance tool uninstalled.
+
+R243 AT THE SAME PLACE: the scheduler refuses a non-local database
+host, named (R198) as `non_local_database`, distinct from
+`no_database_url`. Both directions proved - four refusals by code, and
+`ACCEPTS a local host, so the guard is not refusing everything`,
+without which a guard that rejected every URL would pass all four.
+
+FW27 increment 4 added the entry point itself:
+tests/db/scheduled-jobs.test.ts imports `register` from
+@/instrumentation and drives it, asserting that it starts the
+scheduler, registers the purge, does NOT register the reminder in a
+test environment, and does nothing at all outside the Node runtime.
+
+====================================================================
+THE FOUR REMINDER CASES (AC2)
+====================================================================
+
+All four against a fake clock and the fake transport, in
+tests/db/reminder-job.test.ts:
+
+  ONE on an unconfirmed day          transport.sent length 1, run.sent 1
+  NONE on a day already logged       and it says WHY: considered 1,
+                                     skippedDayLogged 1
+  NONE after opt-out                 considered 0 - not filtered later,
+                                     REMOVED FROM THE QUERY
+  NONE TWICE on a retry              second.sent 0,
+                                     second.skippedAlreadySent 1
+
+THE FOURTH IS THE ONE THAT MATTERS. The first three are what the
+feature is; the fourth is what makes it safe to schedule, because a
+scheduler retries and the thing that caused the retry is often the
+thing that lost the memory.
+
+FOUR MORE, because the boundary and the failure path are where this
+goes wrong quietly:
+
+  17:29 Paris sends nothing, 17:30 sends            (R196, one minute
+                                                     apart, opposite
+                                                     answers)
+  16:30 UTC in JANUARY sends, because that is 17:30 in Paris
+  a failed delivery RELEASES the claim, and the next run delivers
+  two overlapping runs produce ONE send, which a check-then-insert
+    would not
+
+====================================================================
+IDEMPOTENCY: WHERE IT IS ENFORCED AND WHY A RETRY CANNOT DEFEAT IT
+====================================================================
+
+IN THE DATABASE. `ReminderSent` has a unique index on
+(userId, sentOn), and the INSERT is what claims the day - not a set in
+memory, not a "does a row exist?" check.
+
+  the check-then-insert door   two concurrent runs both find nothing
+                               and both send. Asserted closed: two
+                               runs in Promise.all produce exactly one
+                               send, and exactly one skippedAlreadySent
+  the guarantee stated where   a second create() for the same
+  it lives                     (user, day) is asserted to THROW. If
+                               that ever stops throwing, every test
+                               above rests on application code alone
+
+THE ORDER IS THE WHOLE DESIGN, and it is a choice between two losses:
+
+  insert-then-send   a crash between them costs one MISSED reminder
+  send-then-insert   a crash between them costs one DUPLICATE tomorrow,
+                     and on every retry until the insert succeeds
+
+SPEC 13.3 decides: a tool that nags gets uninstalled, so the missed
+reminder is the cheaper failure. When the send then fails, the row is
+REMOVED again, so the window in which a crash loses a reminder is the
+few milliseconds between the insert and the failure rather than the
+whole delivery.
+====================================================================
+FCM SEAM: WHAT IS BUILT, WHAT IS PARKED, WHAT THE OPERATOR SUPPLIES
+====================================================================
+
+BUILT AND PROVEN AS FAR AS THE WIRE:
+
+  lib/push/sender.ts     the interface, and the CLASSIFICATION
+  lib/push/fcm.ts        the real adapter - credential reader, signed
+                         assertion, token exchange, message envelope
+  lib/push/fake.ts       the tests' sender, scriptable per token
+  lib/push/console.ts    development: it PRINTS and delivers nothing
+  lib/push/resolve.ts    which sender this process gets, or none
+  lib/push/message.ts    one reminder, as it will appear
+  lib/push/transport.ts  fan-out over devices, and pruning
+
+WHAT IS PROVEN, POSITIVELY (R154), without a credential:
+  the assertion is DECODED and its claims asserted field by field, and
+    its signature VERIFIED against the public half of a key pair the
+    test generates
+  both requests are captured from an injected fetch and read against
+    Google's published shapes - the form body, the bearer header, the
+    message envelope
+  the access token is CACHED: three calls for two devices, not four
+  a refused token exchange NEVER reports token_dead
+
+WHAT IS NOT PROVEN, said rather than implied: the wire. No request has
+ever left this machine for googleapis.com and none can, because there
+are no credentials. FW28 is where that changes.
+
+WHAT THE OPERATOR MUST SUPPLY (as precisely as PARK4-2 named AN14's
+fingerprints):
+
+  1. A FIREBASE PROJECT. console.firebase.google.com, add a project,
+     add an Android app with the package name the client will ship
+     under. The project id is the string in the messages:send URL.
+
+  2. A SERVICE ACCOUNT JSON. Project settings -> Service accounts ->
+     Generate new private key. It downloads a JSON file containing
+     `project_id`, `client_email` and `private_key`. The file is a
+     CREDENTIAL: it authorises sending a push to every device
+     registered to that project, and it never enters this repository.
+
+  3. THREE ENVIRONMENT VARIABLES, in FW28's env checklist beside
+     DATABASE_URL, RESEND_API_KEY and AUTH_SECRET:
+
+       FCM_PROJECT_ID    the JSON's `project_id`
+       FCM_CLIENT_EMAIL  the JSON's `client_email`
+       FCM_PRIVATE_KEY   the JSON's `private_key`, newlines escaped as
+                         backslash-n so it fits on one line in a .env
+                         file, a Coolify variable or a CI secret. The
+                         code restores them; a key with literal
+                         backslash-n in it is refused by node:crypto at
+                         SIGNING time, which is a failure a whole
+                         deployment away from its cause, so the reader
+                         does that transformation once, up front.
+
+     .env.example ships all three as PLACEHOLDERS, and the code refuses
+     those three strings BY VALUE with a distinct code
+     (`placeholder_credentials`, not `not_configured`) because the two
+     send whoever is debugging to different places. A test reads
+     .env.example and asserts the shipped values are the refused ones -
+     R181, because "the value .env.example ships" had been a COMMENT on
+     PLACEHOLDER_SECRET since FW25 with nothing checking it.
+
+PARKED, WITH THE REASON:
+
+  PARK27-1  THE NOTIFICATION CANNOT CARRY THE DETECTED COUNTRY.
+            SPEC 13.3 asks for a notification naming the detected day -
+            and the SERVER DOES NOT HAVE IT. Detection happens on the
+            device, D16 writes nothing until the person taps, and no
+            table holds a pending proposal. The payload carries `day`
+            and `mode` so a client in auto mode composes SPEC's
+            sentence from the proposal it already holds locally; the
+            notification's own fallback text names the DECISION
+            (confirm or correct) rather than a country this product
+            cannot claim to know.
+            To do it server-side would mean STORING PROPOSALS: a new
+            table, a new thing to disclose on /confidentialite, and a
+            new thing to erase. That is a product decision, not an
+            implementation one.
+
+  PARK27-2  NO REAL CREDENTIAL WAS SOUGHT (R243). Creating a Firebase
+            project would have made every later test one environment
+            variable away from delivering to a real device.
+
+  PARK27-3  THERE IS NO `DELETE /api/v1/devices`. Signing out revokes
+            the session; a dead token is pruned when the service says
+            so; deleting the account removes the row (D11). A
+            deregister endpoint would be a fourth way to remove a row
+            and the only one a client could get wrong.
+
+  PARK27-4  A TIME-BASED DEVICE SWEEP. `Device.lastSeenAt` exists, and
+            "prune a device not seen for N days" would need N - which
+            is a RETENTION PERIOD, which is a product decision and a
+            /confidentialite sentence. Not invented (R156).
+            Consequence today: a device row for an uninstalled app
+            survives until the next send refuses it. Bounded, because
+            the reminder is the only send and it happens daily.
+
+  PARK27-5  THE REMINDER CADENCE IS FIVE MINUTES, and whether that is
+            right is an operational question about a machine that does
+            not exist yet. "Exactly one per day" is the unique row and
+            holds at ANY interval; the cadence only bounds how late a
+            17:30 reminder can be. R236's shape: FW28 measures on the
+            real image.
+====================================================================
+RETENTION: THE 29/31 BOUNDARY, AND 404/410 VERSUS TRANSIENT (AC3)
+====================================================================
+
+THE BOUNDARY ALREADY EXISTED, from FW14, and FW27 did not rewrite it:
+tests/db/purge.test.ts asserts the 31-day row goes and the 29-day one
+stays, IN ONE TEST. The pair is the point - a purge with the comparison
+inverted passes "deletes old rows" and passes "keeps new rows" when
+each is tested alone. Beside it: a CONFIRMED row however old is never
+touched, and an UNSUBSCRIBED row is never touched, because the rule is
+about subscriptions lapsing rather than about deleting subscribers.
+
+WHAT FW27 ADDED IS THE SCHEDULE. Until this task the promise
+/confidentialite has published since FW10 depended on somebody
+remembering to type a command. FW12 measured what that is worth in this
+repository: `pnpm test:runtime` had not run since FW10.
+
+  purge      17 3 * * *      Europe/Paris   missed: 'once'
+  reminder   */5 * * * *     Europe/Paris   missed: 'skip'
+
+BOTH IN PARIS, because both are statements about the reader's calendar
+and a job evaluated in UTC drifts an hour twice a year against the only
+clock anybody here cares about.
+
+THE MISSED-OCCURRENCE POLICY DIFFERS BY JOB, deliberately:
+  purge     'once'  a deployment down at 03:17 should still purge on
+                    the way back up - the promise is about how long a
+                    row may LIVE, not about a particular minute
+  reminder  'skip'  the next pass is five minutes away, and a backlog
+                    would all find the same people due and race for the
+                    same claim rows to no purpose
+
+DEAD-TOKEN PRUNING IS NOT A SEPARATE SCHEDULED JOB, and that is the
+honest answer rather than a gap. A token is only KNOWN to be dead when
+a send is refused, so the rule lives where the send happens.
+
+  prune      404, 410, and nothing else
+  keep       every other answer, including 401, 403, 429, 500, 503 and
+             a network error with no status at all
+
+IT IS A WHITELIST, NOT A LIST OF EXCEPTIONS, and the difference is the
+whole safety argument. Deleting a device row is destructive and SILENT:
+nothing appears on the phone, nothing surfaces in the application, and
+the registration only returns when the client next launches - which,
+for the population reminders exist for, may be never. A credential
+outage answers 401 for EVERY device in the database, so "prune unless
+the send succeeded" empties the table in a single run.
+
+THE SWEEP IS OVER THE WHOLE SPACE, not a table of statuses somebody
+thought of: every status from 100 to 599 is classified, exactly two
+prune, exactly one hundred deliver, and the set of outcomes is exactly
+three with no undefined. A status nobody anticipated - a proxy's 502, a
+future 451 - cannot widen the rule by being absent from a list.
+
+PROVED IN BOTH DIRECTIONS AT THE TRANSPORT TOO:
+  prunes on 404, and keeps the device that accepted
+  prunes on 410, so the rule is not one vendor's status
+  every token dead -> zero devices, rows gone, does NOT throw (nothing
+    to retry)
+  every device 503 -> throws, and DELETES NOTHING
+  every device 401 (the credential outage) -> throws, three rows intact
+  mixed: the dead one pruned, the transient one kept, in one run
+
+====================================================================
+R244 COUNTS: WHAT EACH JOB REPORTS
+====================================================================
+
+A SCHEDULED JOB REPORTS WHAT IT DID, NOT THAT IT RAN. "Completed" is
+true of a run whose query was wrong, and unlike a test, nobody is
+looking when it happens.
+
+  runDailyReminders returns
+    day, parisTime            what moment this run represents
+    considered                due and opted in
+    sent                      somebody received something
+    skippedAlreadySent        the claim row was already there
+    skippedDayLogged          they filled the day in at lunchtime
+    skippedNoDevice           reminders on, nowhere to deliver
+    failed                    the transport threw; the claim released
+
+  purgeUnconfirmed returns
+    cutoff                    the moment a row had to be older than
+    considered                every unconfirmed row, any age or state
+    deleted
+    keptUnsubscribed          past the cutoff, asked not to be written
+    keptTooRecent             still inside its thirty days
+
+AND THE PURGE'S FOUR HAVE TO ADD UP. considered = deleted +
+keptUnsubscribed + keptTooRecent is asserted, so a census that stops
+summing means the query and the count disagree - which a single number
+cannot show. A plant that moved the counts AFTER the delete made
+`considered` 2 where it should be 3, and the test said so.
+
+skippedNoDevice IS THE ONE THAT WAS NOT THERE IN INCREMENT 2, and it
+arrived because increment 3 produced the first transport that can have
+NOWHERE to deliver. Reporting that as a failure retries for ever on
+something retrying cannot fix; reporting it as a send puts a reminder
+nobody received into the one number R244 exists to make trustworthy.
+====================================================================
+RFC 8058 (R141)
+====================================================================
+
+Every LIST message now carries two headers a mail client reads:
+
+  List-Unsubscribe       <https://.../api/alertes/desinscription?token=...>
+  List-Unsubscribe-Post  List-Unsubscribe=One-Click
+
+Gmail, Outlook and Apple Mail each render their own unsubscribe control
+from them, at the top of the message, before the reader has to look for
+anything. A reader who cannot find the way off a list marks it as spam
+instead, and that is a domain-level cost paid by every later message.
+
+ONE URI, NOT TWO. RFC 2369 permits a `mailto:` alternative and RFC 8058
+requires the one-click POST to go to an https URI. A mailbox this
+product does not read would be a published promise nobody keeps - R205
+in a header - so the header carries exactly the URI that works, and a
+test asserts there is exactly one.
+
+THE SAME URL AS THE BODY'S LINK, from the same token (R206). Two URLs
+from two tokens would work and would mean the control at the top of the
+message and the link at the bottom expired at different moments.
+
+THE GET STAYS, idempotent and reversible, and both verbs reach ONE
+function. They differ only in the answer: a person gets a 303 to the
+page that says what happened; a mail client gets 200 and one line of
+text, because it has no browser to redirect.
+
+THE POST ANSWERS 200 WHETHER OR NOT THE TOKEN WAS REAL. lib/alerts/
+confirm.ts already gives an unknown token and a used one the same
+answer so the endpoint cannot be fed tokens to learn which were real. A
+person needs to know whether they are off the list, so the GET's page
+distinguishes them; a mail client cannot act on the difference and
+would only turn this into an oracle.
+  SO THE TESTS ASSERT THE ROW, NOT THE STATUS: unsubscribed for a real
+  token, untouched for an invented one, 200 both times. A plant that
+  made the handler answer 200 and do nothing failed three of them.
+
+THE BODY IS NOT REQUIRED. The RFC specifies what a conforming client
+sends; refusing one that sends something else would leave a reader
+subscribed because their mail app is imperfect, which is the wrong way
+round for an unsubscribe. The token in the URL is the authorisation,
+exactly as for the GET.
+
+PREFETCH, ONCE MORE. FW14 argued the GET link was safe because the
+action is idempotent and reversible and the row is kept; the one-click
+POST is the same mechanism in the same direction, and a prefetch costs
+somebody one re-subscription. It is the OPPOSITE of FW22's magic link,
+where a prefetch BURNS a credential - same hazard, opposite
+consequence, and the consequence is what decides.
+
+====================================================================
+PRIVACY MAP DELTA
+====================================================================
+
+/confidentialite's enumeration of what is stored is CLOSED, so a new
+column with no line to disclose it is a published falsehood rather than
+an omission. FW27 added one line and mapped four tables.
+
+  DISCLOSED_RECORDS.reminderLog   NEW. The days a reminder was sent,
+                                  and WHY that trace exists - so a
+                                  technical retry cannot send a second.
+  DISCLOSED_RECORDS.notificationToken
+                                  Already there; now true of a column
+                                  that exists.
+
+lib/content/personal-data.ts maps every column:
+  Device.*         -> notificationToken   (7 columns)
+  ReminderSent.*   -> reminderLog         (4 columns)
+
+BOTH ARE CONDITIONAL ON THE SAME OPT-IN and sit beside each other in
+the list, so a reader who enables the reminder meets both consequences
+together rather than one here and one in a changelog.
+
+WHAT THE EXPORT CARRIES, and what it deliberately does not: the days a
+reminder went out, and the platform and dates of each device. NOT the
+push token. A person may see every device they have signed in on -
+that is what the export is for - but the token is how the server
+ADDRESSES that device rather than a fact about them, and putting it in
+a file they will mail to themselves is how a credential leaves the
+system. Asserted.
+
+R242's TENSE RULE HELD THROUGHOUT: the application does not exist, so
+every sentence about what it sends is conditional. The reminder copy
+itself is not - a notification is only ever produced when there is a
+device to send it to.
+====================================================================
+WALKTHROUGH (R176/R177), AGAINST pnpm dev
+====================================================================
+
+PORT=3100, because a neighbour's container holds 3000. Every line below
+is what the DEV SERVER PRINTED or what the DATABASE held afterwards -
+not a summary of it.
+
+1. BOOT. Three lines, in this order:
+
+     [push] no Firebase credentials: reminders will be PRINTED to this
+            terminal and delivered to nobody (development only).
+     [scheduler] started
+     [scheduler] scheduled: purge-unconfirmed, daily-reminder
+
+   The seam ANNOUNCES ITSELF before anything depends on it. In
+   production the first line is the refusal and the third names one
+   queue, not two.
+
+2. /api/health answers {"service":"monreleve", ...} - R169's signal,
+   coming from this product rather than from something merely
+   listening.
+
+3. POST /api/v1/auth/magic-link -> 202, and the message PRINTS. One
+   link, fifteen minutes, once, and what to do if it was not you.
+   AND IT CARRIES NO List-Unsubscribe HEADER. The mailer now prints
+   headers, so their ABSENCE on a transactional message is VISIBLE
+   rather than assumed.
+
+4. GET the callback -> 200 with accessToken, refreshToken and both
+   expiries. No cookie.
+
+5. POST /api/v1/devices -> 200
+
+     {"id":"cmudyajgu...","platform":"android","appVersion":"1.5.0",
+      "lastSeenAt":"2026-09-23T10:18:59.214Z"}
+
+   THE TOKEN IS NOT ECHOED.
+     { fcmToken, deviceModel: "Pixel 8" } -> 400 invalid_body
+     { fcmToken, latitude: 46.2044 }      -> 400 coordinates_refused,
+   and that refusal names the four kinds of coordinate and NOT the
+   value it was sent.
+
+6. PATCH /api/v1/me { reminderEnabled: true, reminderTime: "12:00" },
+   with Paris at 12:19 - a time already past.
+
+7. THE SCHEDULER FIRED ON ITS OWN at 12:20, unprompted:
+
+     --- push not sent (no FCM credentials); here it is -------------
+     device:  walkthro...
+     title:   Journee du 23.09.2026 a enregistrer
+     body:    Indiquez ou vous avez travaille : domicile, Suisse,
+              mission ou absence.
+     data:    {"kind":"daily_reminder","day":"2026-09-23",
+               "mode":"MANUAL"}
+     ---------------------------------------------------------------
+
+   ASCII here by R168. The rendered copy is fully accented and lib/fr
+   is the authority (R155).
+
+8. READ AS A PERSON WOULD RECEIVE IT.
+
+   IT NAMES THE DAY - 23.09.2026, in the product's own date format,
+   not "vous avez une journee a enregistrer", which is true every day
+   of the year.
+   IT SAYS WHAT IT WANTS - the four answers, so a reader knows both
+   the question and that answering is one choice among four.
+   IT LEAKS NOTHING - no enum token, no user id, and the device token
+   truncated to eight characters, because a terminal is a place things
+   get pasted from.
+
+   THE HONEST LIMIT: a reader cannot ANSWER from the lock screen today.
+   The four answers are named; acting on them needs the application,
+   whose notification actions belong to AN13. The copy does not pretend
+   otherwise - it says *indiquez*, not *tap to confirm*.
+
+9. THREE RUNS, THREE REASONS, ONE NOTIFICATION:
+
+     12:20  considered 1, sent 1, skipped 0 already-sent, 0 logged
+     12:25  considered 1, sent 0, skipped 1 already-sent, 0 logged
+     12:30  considered 1, sent 0, skipped 0 already-sent, 1 logged
+     notifications printed in total: 1
+
+   THE 12:25 LINE IS THE RETRY CASE, live and unprompted - the thing
+   AC2 calls "the case that makes it safe to schedule", happening
+   because a scheduler ran again rather than because a test asked it
+   to. The 12:30 line is the day-logged case, after POSTing the day
+   and releasing the claim.
+   A single "sent: 0" would have been ambiguous between those two and
+   between both and a broken query. R244 is exactly why it is not.
+
+10. THE PURGE, with 29- and 31-day rows seeded:
+
+     [purge] older than 30 days (2026-08-24T10:30:40.594Z):
+             considered 3 unconfirmed, deleted 1,
+             kept 1 unsubscribed and 1 too recent
+
+    The 400-day CONFIRMED row is not among the three considered. The
+    three outcomes sum to `considered`. AC3's boundary is legible in
+    the counts rather than inferred from them.
+
+11. RFC 8058, END TO END through the real server:
+
+     the printed header ->
+       List-Unsubscribe: <.../desinscription?token=96b06621...>
+       List-Unsubscribe-Post: List-Unsubscribe=One-Click
+     unsubscribedAt BEFORE:  null
+     POST that exact URL with the RFC's body -> 200 "unsubscribed"
+     unsubscribedAt AFTER:   2026-09-23T10:31:22.535Z
+
+R179 CAUGHT ITSELF ON THE WAY OUT, which is worth recording because it
+is the rule's own defect class arriving one more time: stopping the
+background task killed the SHELL, and `next dev` survived still holding
+3100. THE PORT ASSERTION IS WHAT FOUND IT - the kill reported success.
+The surviving process was identified by PID and command line before
+being stopped, and the port re-asserted free afterwards. "A harness
+kills the tree it spawned, AND asserts the port free" - both halves,
+because either alone leaves the trap.
+
+R186: NO FLAG FLIPS. lib/content/product-state.ts has no diff in this
+task. Nothing FW27 built changes what any page claims the product can
+do; the scheduler is invisible to every public surface.
+====================================================================
+DEVIATIONS
+====================================================================
+
+D1. POST /api/v1/devices DID NOT EXIST.
+    The prompt's increment 3 says "Token registration already exists at
+    POST /api/v1/devices (FW22); wire pruning to it." It does not: no
+    route file, no line in docs/api-v1.md, no mention in any report.
+    tasks/todo.md line 591 lists `app/api/v1/devices/route.ts` under
+    FW27's OWN "Files likely touched", so the route is FW27's to build.
+    BUILT, at the path todo.md already names - a documented decision
+    executed, not a new one invented (R156, R231).
+
+D2. "EVERY SEND" WAS READ AS "EVERY SEND OF A LIST MESSAGE".
+    Increment 5 asks for List-Unsubscribe headers "on every send".
+    There are exactly two callers of sendMail: the alert confirmation
+    (a list message) and the sign-in link (transactional). The headers
+    go on the first only.
+    WHY: an unsubscribe control on a sign-in mail is a promise nothing
+    keeps. The reader cannot unsubscribe from their own sign-in;
+    pressing it would either do nothing or remove them from a list the
+    message has no connection to. RFC 2369 is about mailing lists, and
+    R205 is about publishing a claim only where it can be believed.
+    ENFORCED RATHER THAN INTENDED: a test requires the sign-in message
+    to carry NEITHER header and, in the same run, the list message to
+    carry BOTH. If the operator meant literally every sendMail call,
+    that test is what would have to be deleted.
+
+D3. ReminderTransport's SIGNATURE CHANGED INSIDE THE TASK.
+    Increment 2 typed `send` as Promise<void>. Increment 3 produced the
+    first transport that can have NOWHERE to deliver, and increment 3
+    changed it to return ReminderDelivery, adding skippedNoDevice to
+    ReminderRun. The alternative - leaving it - would have made the job
+    retry for ever on a person with no device.
+
+D4. tests/db/privacy-claims.test.ts GAINED ONE LINE OF CLEANUP.
+    Out of increment 4's stated scope, in a file increment 4 already
+    edits. It emptied only `alertSubscriber` where every other tests/db
+    file empties the tables it owns, so a CRASHED run poisoned the
+    next. Found when my own interrupted plant runs left three accounts
+    behind and the following run failed on `User_email_key` rather than
+    on anything it was testing.
+
+D5. tests/db/privacy-claims.test.ts GAINED THREE CLAIM GROUPS.
+    Increment 6's privacy-map delta: the notification token, the
+    reminder log, and the opt-in pair, each asserted in the two halves
+    every claim in that file uses - THE PAGE still says it, THE CODE
+    still does it.
+    ONE CORRECTION ON THE WAY: my first draft asserted against
+    WEB_STATEMENTS.app, which does not exist - the app enumeration is
+    CONFIDENTIALITE_COPY.app. The test failed with "the given
+    combination of arguments (undefined and string) is invalid for
+    this assertion", which is a matcher refusing to compare against
+    nothing rather than passing vacuously. Worth naming because the
+    failure mode it avoided is exactly the one this whole file exists
+    to prevent: an assertion that looks like a check and is none.
+
+D6. ONE COMMENT FIXED IN PASSING.
+    tests/unit/fr/copy-codepoints.test.ts was titled "exactly the 42"
+    while asserting 43 - the drift its own comment warns about ("a name
+    that stops matching what it counts is the first thing somebody
+    trusts instead of reading"). Increment 2 moved the number and not
+    the title; increment 3 moved the title.
+
+====================================================================
+NOTICED BUT NOT TOUCHING
+====================================================================
+
+N1. THE SCHEDULED PURGE AND THE DEV DATABASE SHARE A DATABASE.
+    Now that the purge is scheduled, any long-lived `pnpm dev` or
+    `next start` on this machine holds a scheduler that purges the same
+    database tests/db/purge.test.ts seeds 29- and 31-day rows into. The
+    window is one minute a day (03:17 Paris) and the scheduler refuses
+    non-local databases, so it is bounded - but it is a flake with no
+    visible cause, arriving in a different file from the one that
+    caused it.
+    tests/db/scheduled-jobs.test.ts now unschedules and deletes its own
+    queued jobs in afterEach for exactly this reason (R179 reaching the
+    database rather than only the process). The residual risk is a
+    developer's own server, not the suite.
+
+N2. scripts/purge-unconfirmed.mjs STILL DUPLICATES THE RULE.
+    A .mjs script cannot import a .ts module here: node
+    --experimental-strip-types needs the .ts extension on the
+    specifier, which tsc rejects without allowImportingTsExtensions,
+    and the module reaches @/lib/db/client through an alias plain Node
+    does not resolve. lib/db/local-host.ts records the same blocker for
+    the seed.
+    BOUNDED RATHER THAN ARGUED (R185): a test reads the script and
+    asserts both the number AND the three conditions match the module's
+    - because the number is the easy half, and a script deleting on age
+    alone would pass a number check and empty the confirmed list. The
+    script is NOT deleted, because until FW28 deploys the scheduler it
+    is the only way to keep a promise the live site already makes.
+
+N3. TWO PRE-EXISTING ESLINT WARNINGS, unchanged all session:
+    unused eslint-disable directives in tests/unit/calc-engine's
+    benchmark and verification-trace files. Not errors; not mine.
+
+N4. THE PDF RENDER TESTS SKIP, LOUDLY, on every run this session -
+    12 of them. R133 refuses to run them without a server that NAMES
+    this product, and the message says so. Not new.
+====================================================================
+QUESTIONS
+====================================================================
+
+Q1. THE REPOSITORY IS PUBLIC. I believed it was private, carrying that
+    from FW25; gate:clone's envelope said otherwise and `gh repo view`
+    confirms {"isPrivate":false,"visibility":"PUBLIC"} for
+    kaitmax/monreleve. The FW25 belief was about the previous remote,
+    before it moved.
+    NOTHING SECRET IS PUBLISHED - .env is gitignored, every commit this
+    session was scanned for keys and connection strings, and the FCM
+    variables ship as refused placeholders. But the source, SPEC-
+    frontalier-web.md, DESIGN-SYSTEM.md, every REPORT-*.txt and
+    parking.md are all readable by anyone. The reports name operational
+    detail and the parking register names what is not built yet.
+    IF THAT IS NOT INTENDED it is a setting rather than a code change,
+    and it is yours to make. I have changed nothing.
+    It also means CI minutes are free, which is the premise R201's
+    "CI returns on 1 October" rests on.
+
+Q2. DOES "EVERY SEND" MEAN EVERY sendMail CALL? See DEVIATIONS D2. I
+    read it as every LIST message and enforced that with a test. One
+    line and one deleted test reverses it.
+
+Q3. THE REMINDER CADENCE. Five minutes bounds how late a reminder can
+    be; correctness does not depend on it. FW28 measures on the real
+    image (R236's shape). If a person choosing 17:30 should receive it
+    at 17:30 rather than by 17:35, the answer is a per-minute cron and
+    a heavier query, and that is a product decision about punctuality.
+
+Q4. WHEN A DEVICE ROW SHOULD EXPIRE ON TIME rather than on refusal.
+    PARK27-4. It needs a retention period, which is a /confidentialite
+    sentence.
+
+====================================================================
+PUSH PROOF
+====================================================================
+
+  86b5d6b  FW27: pg-boss, started once
+  ad8c855  FW27: the daily reminder
+  a4edfec  FW27: FCM behind a seam, uncredentialed
+  8b144b1  FW27: retention jobs, scheduled and counted
+  051b293  FW27: RFC 8058 one-click unsubscribe
+  <inc6>   FW27: privacy map, walkthrough, report
+
+  gate:clone, in order, each on the commit it guarded:
+    ad8c855fa94565c4ba80804aab152cbdf60e9cfc   PASSED
+    a4edfec9bb642b0e8505414977c18f39fbcca72f   PASSED
+    8b144b1ca8ffd9a025dc3d35ba5e2a4faa04b503   PASSED
+    051b29351edc08dddd497f498442e2717d93bdf2   PASSED
+    <inc6>                                     PASSED
+
+  suite counts, by increment:
+              test  e2e  visual   db  late
+    inc 2     2795  284     108  495    10
+    inc 3     2830  284     108  525    10
+    inc 4     2834  284     108  546    10
+    inc 5     2834  284     108  546    10
+    inc 6     2834    -       -  542     -
+  (increment 6 touched one test file and the report, so the selector
+   chose typecheck, lint, test, build and test:db - no browser suite,
+   because no app/**, lib/ui/** or content changed. A report at the
+   repository root matches no rule at all, which is correct: it is
+   documentation and changes no behaviour.)
+  (db totals include the 12 PDF render tests R133 skips without a
+   server that names this product - the same 12 in every run.)
+
+  remote   https://github.com/kaitmax/monreleve.git
+  branch   main
+
+Each preceded by `pnpm gate:changed` green on the paths it changed, and
+by `pnpm gate:clone` green on the commit being pushed.
