@@ -11,6 +11,7 @@ import { EMAIL_COPY } from '@/lib/fr/emails';
 import { siteOrigin } from '@/lib/content/site';
 import { sendMail } from '@/lib/alerts/mailer';
 import { issueUnsubscribeToken } from '@/lib/alerts/confirm';
+import { listUnsubscribeHeaders } from '@/lib/alerts/list-headers';
 
 /** Where a confirmation link points. */
 export const CONFIRM_PATH = '/api/alertes/confirm';
@@ -61,11 +62,16 @@ export async function sendConfirmation(email: string, token: string): Promise<bo
   // newest message is the one in front of the reader.
   const unsubscribeToken = await issueUnsubscribeToken(email);
 
+  const off = unsubscribeUrl(unsubscribeToken);
+
   return sendMail({
     to: email,
     subject: EMAIL_COPY.confirmation.subject,
-    text: EMAIL_COPY.confirmation
-      .lines(confirmUrl(token), unsubscribeUrl(unsubscribeToken))
-      .join('\n'),
+    text: EMAIL_COPY.confirmation.lines(confirmUrl(token), off).join('\n'),
+    // RFC 8058, from THE SAME URL the body links to and therefore the same
+    // token (R206). Two URLs built from two tokens would work and would mean
+    // the control at the top of the message and the link at the bottom
+    // expired at different moments.
+    headers: listUnsubscribeHeaders(off),
   });
 }

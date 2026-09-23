@@ -29,6 +29,15 @@ export interface Message {
   readonly subject: string;
   /** Plain text. See lib/fr/emails.ts for why there is no HTML part. */
   readonly text: string;
+  /**
+   * Headers a MAIL CLIENT reads rather than a person.
+   *
+   * RFC 8058's List-Unsubscribe pair is the only user today, and it is the
+   * reason this field exists at all: the unsubscribe link in the body is for
+   * somebody who looks for it, and these are what put a control at the top of
+   * the message for somebody who does not.
+   */
+  readonly headers?: Readonly<Record<string, string>>;
 }
 
 export interface SentMessage extends Message {
@@ -108,6 +117,12 @@ export async function sendMail(message: Message): Promise<boolean> {
           '--- message not sent (no RESEND_API_KEY); here it is -----------',
           `to:      ${message.to}`,
           `subject: ${message.subject}`,
+          // THE HEADERS ARE PRINTED TOO, because the one-click unsubscribe
+          // URL exists ONLY in them - it is not the link in the body, it is
+          // the one a mail client fires - and a walkthrough that cannot read
+          // it cannot exercise the flow. R154: the same reason this block
+          // exists at all.
+          ...Object.entries(message.headers ?? {}).map(([name, value]) => `${name}: ${value}`),
           '',
           message.text,
           '---------------------------------------------------------------',
@@ -125,6 +140,10 @@ export async function sendMail(message: Message): Promise<boolean> {
       to: message.to,
       subject: message.subject,
       text: message.text,
+      // SPREAD RATHER THAN PASSED AS undefined: a provider that treats an
+      // explicit undefined differently from an absent key is a class of bug
+      // nobody finds from this side.
+      ...(message.headers === undefined ? {} : { headers: message.headers }),
     });
 
     if (error !== null) {
