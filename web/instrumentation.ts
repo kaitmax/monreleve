@@ -1,6 +1,6 @@
 // web/instrumentation.ts
 //
-// The one place the scheduler starts. FW27 increment 1.
+// The one place the scheduler starts. FW27 increment 1, extended by 3.
 //
 // SPEC §3 names this file specifically: pg-boss "started once in
 // `instrumentation.ts` behind a `globalThis` guard so hot-reload and multiple
@@ -40,6 +40,14 @@ export async function register(): Promise<void> {
   // Deferring WHEN something runs says nothing about WHETHER it is bundled.
   if (process.env.NEXT_RUNTIME === 'nodejs') {
     const { SchedulerRefused, startScheduler } = await import('@/lib/scheduler/boss');
+    const { describePushSender, resolvePushSender } = await import('@/lib/push/resolve');
+
+    // SAID AT STARTUP, BEFORE ANYTHING DEPENDS ON IT. Whether this process can
+    // deliver a push is decided by three environment variables, and the
+    // consequence of getting it wrong is silence - reminders that simply never
+    // arrive, on an opt-in feature nobody is told has stopped. A line in the
+    // log at boot is where somebody actually looks.
+    console.log(describePushSender(resolvePushSender()));
 
     try {
       await startScheduler();

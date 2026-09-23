@@ -1,6 +1,6 @@
 // web/lib/reminders/job.ts
 //
-// The daily reminder. FW27 increment 2.
+// The daily reminder. FW27 increment 2, extended by 3.
 //
 // ============================================================================
 // EXACTLY ONE PER DAY, AND THE DATABASE IS WHAT GUARANTEES IT
@@ -49,6 +49,16 @@ export interface ReminderRun {
   readonly sent: number;
   readonly skippedAlreadySent: number;
   readonly skippedDayLogged: number;
+  /**
+   * Due, and nowhere to deliver: reminders on, no registered device.
+   *
+   * SEPARATE FROM `failed` BECAUSE RETRYING CANNOT FIX IT, and separate from
+   * `sent` because nobody received anything. A number growing here is an
+   * operational fact - people who asked for reminders and are not getting them
+   * - and folding it into either neighbour would hide it in a number that is
+   * expected to be non-zero.
+   */
+  readonly skippedNoDevice: number;
   readonly failed: number;
 }
 
@@ -78,6 +88,7 @@ export async function runDailyReminders(
   let sent = 0;
   let skippedAlreadySent = 0;
   let skippedDayLogged = 0;
+  let skippedNoDevice = 0;
   let failed = 0;
 
   for (const user of due) {
@@ -107,7 +118,19 @@ export async function runDailyReminders(
     }
 
     try {
-      await transport.send({ userId: user.id, day, mode: user.loggingMode });
+      const delivery = await transport.send({ userId: user.id, day, mode: user.loggingMode });
+
+      // NOWHERE TO DELIVER. The claim is released so that registering a device
+      // later the same day still earns today's reminder - and it is NOT
+      // counted as sent, because nobody received anything.
+      if (delivery.devices === 0) {
+        await prisma.reminderSent.deleteMany({ where: { userId: user.id, sentOn: stored } });
+
+        skippedNoDevice += 1;
+
+        continue;
+      }
+
       sent += 1;
     } catch (cause) {
       // THE CLAIM IS RELEASED so the next run can try again. Without this a
@@ -132,6 +155,7 @@ export async function runDailyReminders(
     sent,
     skippedAlreadySent,
     skippedDayLogged,
+    skippedNoDevice,
     failed,
   };
 
@@ -139,8 +163,8 @@ export async function runDailyReminders(
   // nobody because its query was wrong, and nobody is watching to notice.
   console.log(
     `[reminders] ${day} ${parisTime}: considered ${run.considered}, sent ${run.sent}, ` +
-      `skipped ${run.skippedAlreadySent} already-sent and ${run.skippedDayLogged} logged, ` +
-      `failed ${run.failed}`,
+      `skipped ${run.skippedAlreadySent} already-sent, ${run.skippedDayLogged} logged and ` +
+      `${run.skippedNoDevice} with no device, failed ${run.failed}`,
   );
 
   return run;

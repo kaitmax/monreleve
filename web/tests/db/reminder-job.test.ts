@@ -236,8 +236,40 @@ describe('R244: the run reports what it DID', () => {
       sent: 1,
       skippedDayLogged: 1,
       skippedAlreadySent: 0,
+      skippedNoDevice: 0,
       failed: 0,
     });
+  });
+});
+
+describe('nowhere to deliver is neither a send nor a failure', () => {
+  it('counts it on its own and leaves the day unclaimed', async () => {
+    // Reminders on, no registered device: they turned reminders on, then
+    // uninstalled, and their token was pruned on the next send. Counting it as
+    // a SEND would put a reminder nobody received into the one number R244
+    // exists to make trustworthy; counting it as a FAILURE would retry for
+    // ever on something retrying cannot fix.
+    const transport = new FakeTransport();
+
+    transport.noDevicesFor(userId);
+
+    const run = await runDailyReminders(AT_1730, transport);
+
+    expect(run).toMatchObject({ considered: 1, sent: 0, failed: 0, skippedNoDevice: 1 });
+    expect(transport.sent).toHaveLength(0);
+    expect(await prisma.reminderSent.count()).toBe(0);
+  });
+
+  it('delivers the same day once a device appears, because the claim was released', async () => {
+    const transport = new FakeTransport();
+
+    transport.noDevicesFor(userId);
+
+    await runDailyReminders(AT_1730, transport);
+
+    const withDevice = new FakeTransport();
+
+    expect((await runDailyReminders(AT_1730, withDevice)).sent).toBe(1);
   });
 });
 

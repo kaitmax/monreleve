@@ -145,7 +145,7 @@ describe('the whitespace codepoints in French copy are on the record (R66)', () 
     expect(summary, summary.join(' | ')).toEqual([]);
   });
 
-  it('carries exactly the 42 the typography pass left there', () => {
+  it('carries exactly the 43 the typography pass left there', () => {
     // A count, so that a no-break space arriving or disappearing is a
     // deliberate edit here rather than a silent one. Per file, because a
     // total alone would let one move between files unnoticed.

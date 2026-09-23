@@ -844,3 +844,85 @@ person who revoked it.
 thing revocation must always be permitted to do; refusing it would make
 stopping data collection take two requests, which is the persuasion D19 exists
 to forbid.
+
+---
+
+## 10. `POST /api/v1/devices` — where a phone says to send its reminders
+
+Added in FW27. One call, made after sign-in and on every launch afterwards.
+
+```
+POST /api/v1/devices
+Authorization: Bearer <access token>
+Content-Type: application/json
+
+{ "fcmToken": "…", "platform": "android", "appVersion": "1.5.0" }
+```
+
+| field | required | notes |
+|---|---|---|
+| `fcmToken` | yes | 1–4096 characters. The FCM registration token. |
+| `platform` | no | `android`, which is also the default. A closed set, not a free string. |
+| `appVersion` | no | 1–40 characters. A token is worth registering from a build that does not know its own version. |
+
+The response is the stored row **without the token**:
+
+```json
+{ "id": "…", "platform": "android", "appVersion": "1.5.0", "lastSeenAt": "2026-07-07T15:30:00.000Z" }
+```
+
+### 10.1 The token moves to whoever is signed in
+
+`Device.fcmToken` is unique, and a registration token belongs to an **app
+install**, not to a person. One phone lent, sold, or simply signed out of and
+into a second account produces the same token arriving under a different id.
+
+**The row is reassigned to the caller.** If it kept its first owner, the
+previous person's reminders would go on arriving on a phone that is now
+somebody else's — a notification naming a day they are no longer logging, on a
+device they no longer hold.
+
+It follows that **possession of a token is not authority over an account**.
+Nothing on this route reads the token to decide who is calling; that comes from
+the bearer header and from nowhere else. Registering a token another phone
+reported tells the server only where to send *your* reminders, and the person
+who still holds that phone takes it back on their next launch.
+
+### 10.2 Re-registering is idempotent
+
+A client registers on every launch. The same token twice leaves **one row**,
+with `appVersion` and `lastSeenAt` refreshed. `lastSeenAt` is server-assigned,
+like every timestamp in this product.
+
+### 10.3 What it refuses
+
+| body | code |
+|---|---|
+| not JSON | `malformed_body` |
+| missing or empty `fcmToken`, unknown field, wrong `platform` | `invalid_body` |
+| any latitude, longitude, altitude or speed key | `coordinates_refused` |
+| no bearer, or a bearer that does not resolve | 401, with the usual auth code |
+
+**Unknown fields are refused rather than stripped**, for the reason the entries
+route refuses unknown parameters: a client that misspells a field and receives
+200 has been told its change was saved. A device model, an advertising id, a
+locale or a timezone are all unknown fields.
+
+**The coordinate refusal names the keys and never the values.** A coordinate
+this product refuses to store must not survive inside the error message about
+refusing to store it.
+
+### 10.4 When a token is deleted
+
+Only when the push service says it is gone — **404 or 410, and nothing else**.
+
+A 401, a 403, a 429, a 500, a 503 or a network error leaves the row alone and
+costs one missed reminder. Pruning on any of those would empty the table during
+a credential outage or a quota incident, and the symptom — somebody quietly
+stops receiving reminders, months before they mention it — is about as far from
+its cause as a symptom gets. The rule is a whitelist of two statuses rather
+than a list of exceptions, so a status nobody anticipated keeps the row.
+
+There is **no `DELETE`**. Signing out revokes the session; the token is pruned
+when the service reports it dead, and deleting the account removes the row with
+everything else (D11).
