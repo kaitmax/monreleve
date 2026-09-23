@@ -34,7 +34,8 @@ import { describePurge, purgeUnconfirmed } from '@/lib/alerts/purge';
 import { describePushSender, resolvePushSender } from '@/lib/push/resolve';
 import type { EnvLike } from '@/lib/push/resolve';
 import { DevicePushTransport } from '@/lib/push/transport';
-import { runDailyReminders } from '@/lib/reminders/job';
+import { describeRun, runDailyReminders } from '@/lib/reminders/job';
+import { tagged } from '@/lib/scheduler/instance';
 
 export const REMINDER_QUEUE = 'daily-reminder';
 export const PURGE_QUEUE = 'purge-unconfirmed';
@@ -91,7 +92,7 @@ export async function registerJobs(
 
   await boss.work(PURGE_QUEUE, async () => {
     // R244: what it considered, what it removed, and why it kept the rest.
-    console.log(describePurge(await purgeUnconfirmed()));
+    console.log(tagged(describePurge(await purgeUnconfirmed())));
   });
 
   // `once` rather than `skip`: a deployment that was down at 03:17 should
@@ -118,7 +119,14 @@ export async function registerJobs(
   await boss.work(REMINDER_QUEUE, async () => {
     // `new Date()` here and nowhere below it: the job's own module takes the
     // moment as a parameter so a test can place the clock (R171).
-    await runDailyReminders(new Date(), transport);
+    //
+    // AND THE RESULT IS PRINTED. This awaited and DISCARDED it until FW28,
+    // so the pass that runs at 06:00 with nobody awake reported nothing at
+    // all - while every skip reason R244 requires was computed and thrown
+    // away. Tagged with the instance, because every replica runs its own
+    // scheduler and two containers logging identical lines into one
+    // aggregator is indistinguishable from one container restarting.
+    console.log(tagged(describeRun(await runDailyReminders(new Date(), transport))));
   });
 
   // `skip` rather than `once`: the next pass is five minutes away, and a

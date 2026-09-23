@@ -92,14 +92,38 @@ export async function startScheduler(): Promise<PgBoss> {
     );
   }
 
-  if (!isLocalDatabase(url)) {
+  // ==========================================================================
+  // R243 IS LIFTED BY A MARKER, NOT BY DELETING THE CHECK (FW28)
+  // ==========================================================================
+  //
+  // The refusal exists because this process sends reminders WITHOUT BEING
+  // ASKED, and a run against a real database is a notification in somebody's
+  // hand with no undo. That hazard does not go away because the product is
+  // deployable now - it is exactly as real for a developer who points
+  // DATABASE_URL at production for ten minutes to debug something.
+  //
+  // So the check stays and gains one door: FRONTALIER_SCHEDULER=1, which a
+  // DEPLOYMENT sets and nothing else does.
+  //
+  // THE IMAGE DELIBERATELY DOES NOT SET IT. web/Dockerfile sets HOSTNAME, TZ
+  // and FRONTALIER_RUNTIME because those are properties of being
+  // containerised; sending reminders is a property of being THE deployment,
+  // and `docker run monreleve` by hand must not start notifying people. The
+  // marker is supplied where the database URL is, by whoever decided this
+  // container is the one that serves.
+  //
+  // WHY NOT REUSE FRONTALIER_RUNTIME: it is set by the image and by
+  // playwright.runtime.config.ts, so keying on it would make the R81 guard
+  // suite a reminder sender.
+  if (!isLocalDatabase(url) && process.env.FRONTALIER_SCHEDULER !== '1') {
     throw new SchedulerRefused(
       'non_local_database',
       `Refusing to start the scheduler against a non-local database. This ` +
         'process sends reminders without being asked, and a run against a ' +
         'real database is a notification in somebody’s hand with no undo ' +
-        '(R243). FW28 owns production scheduling and must lift this ' +
-        'deliberately.',
+        '(R243). A deployment that intends to send sets ' +
+        'FRONTALIER_SCHEDULER=1; the image does not set it, so a container ' +
+        'run by hand stays quiet.',
     );
   }
 

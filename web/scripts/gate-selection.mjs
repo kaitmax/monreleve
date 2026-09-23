@@ -72,6 +72,9 @@ export const SUITE_COUNTS = Object.freeze({
   // every other suite has one - a suite that reports nothing must not read
   // as a pass.
   'test:container': /Container checks {2}(\d+) passed/,
+  // The scheduler probe measures something - executions across two replicas -
+  // so it reports a number rather than being judged on its exit code alone.
+  'test:container:scheduler': /Scheduler checks {2}(\d+) passed/,
 });
 
 /**
@@ -801,6 +804,11 @@ export const SELECTOR_PATTERNS = Object.freeze([
     // is only expressible because R234 takes every pattern a path matches
     // rather than the first: it is the entrypoint's contract and it is
     // imported by print-token.ts. One file, two orthogonal categories.
+    // THE IMAGE ITSELF, and what decides whether it serves at all. These
+    // select the FAST container suite - structural facts and the refusal
+    // matrix - because they are touched often and a fifteen-minute gate is a
+    // gate people route around. CI runs all three container suites on every
+    // push, which is where the heavier claims are answered.
     label: 'the container, and what decides whether it serves (R251)',
     suites: CONTAINER_SUITES,
     matches: (path) =>
@@ -808,8 +816,22 @@ export const SELECTOR_PATTERNS = Object.freeze([
       path === '.dockerignore' ||
       path === 'scripts/entrypoint.mjs' ||
       path === 'scripts/container-check.mjs' ||
-      path === 'scripts/container-e2e.mjs' ||
       path === 'lib/deploy/placeholders.mjs',
+  },
+  {
+    // R247 EXACTLY: a harness selects the suite it DEFINES, not a neighbour's.
+    // container-scheduler.mjs used to select test:container, which meant the
+    // file that decides what the scheduler probe does could change without
+    // the scheduler probe running - the defect R247 was written for, inside
+    // the rule that implements it.
+    label: 'the container e2e harness, which defines that suite (R247)',
+    suites: Object.freeze(['test:container:e2e']),
+    matches: (path) => path === 'scripts/container-e2e.mjs',
+  },
+  {
+    label: 'the scheduler probe, which defines that suite (R247)',
+    suites: Object.freeze(['test:container:scheduler']),
+    matches: (path) => path === 'scripts/container-scheduler.mjs',
   },
   {
     label: 'lib/ui/**',

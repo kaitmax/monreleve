@@ -527,6 +527,16 @@ jobs:
         env:
           CONTAINER_E2E_DATABASE_URL: postgresql://frontalier:frontalier@localhost:5432/frontalier?schema=public
 
+      # TWO CONTAINERS, ONE DATABASE. `globalThis` is per-process, so replicas
+      # are separate schedulers - and what matters is whether the WORK is
+      # duplicated. Measured rather than reasoned (R249): N jobs enqueued, the
+      # executions counted out of both containers' logs. It also fails when a
+      # replica does NOTHING, because a correct total with an idle replica is
+      # the shape of a lock nobody released - it looks exactly like success.
+      - run: pnpm test:container:scheduler
+        env:
+          CONTAINER_SCHEDULER_DATABASE_URL: postgresql://frontalier:frontalier@localhost:5432/frontalier?schema=public
+
       - uses: actions/upload-artifact@v4
         if: ${{ failure() }}
         with:

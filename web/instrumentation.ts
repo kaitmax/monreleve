@@ -44,6 +44,7 @@ export async function register(): Promise<void> {
     );
     const { describeRegistration, registerJobs } = await import('@/lib/scheduler/jobs');
     const { describePushSender, resolvePushSender } = await import('@/lib/push/resolve');
+    const { SCHEDULER_INSTANCE, tagged } = await import('@/lib/scheduler/instance');
 
     // SAID AT STARTUP, BEFORE ANYTHING DEPENDS ON IT. Whether this process can
     // deliver a push is decided by three environment variables, and the
@@ -63,16 +64,20 @@ export async function register(): Promise<void> {
     try {
       const boss = await startScheduler();
 
-      console.log('[scheduler] started');
+      // NAMED, because every replica runs its own scheduler and the database
+      // arbitrates per day (R244). Two containers logging '[scheduler]
+      // started' into one aggregator is indistinguishable from one container
+      // restarting.
+      console.log(tagged(`[scheduler] started as ${SCHEDULER_INSTANCE}`));
 
       // WHAT WILL RUN, AND WHAT WILL NOT, said at boot. Whether this process
       // can deliver a push is decided by three environment variables, and the
       // consequence of getting it wrong is SILENCE - reminders that never
       // arrive, on an opt-in feature nobody is told has stopped.
-      if (!alreadyRunning) console.log(describeRegistration(await registerJobs(boss)));
+      if (!alreadyRunning) console.log(tagged(describeRegistration(await registerJobs(boss))));
     } catch (cause) {
       if (cause instanceof SchedulerRefused) {
-        console.warn(`[scheduler] not started (${cause.code}): ${cause.message}`);
+        console.warn(tagged(`[scheduler] not started (${cause.code}): ${cause.message}`));
 
         return;
       }

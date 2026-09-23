@@ -42,6 +42,41 @@ import { parisDayOf, parisTimeOf, toStoredDay } from '@/lib/entries/day';
 import type { ReminderTransport } from '@/lib/reminders/transport';
 
 /** What one run did. Every field is a number somebody could act on. */
+/**
+ * What a run did, as one line.
+ *
+ * ============================================================================
+ * THE COUNTS EXISTED AND NOTHING PRINTED THEM
+ * ============================================================================
+ *
+ * This file's own header says "Nobody is watching when this runs. 'Reminders
+ * sent' is indistinguishable from 'reminders not sent'" - and that is exactly
+ * what the SCHEDULED path did: lib/scheduler/jobs.ts awaited
+ * runDailyReminders() and discarded the result. Every skip reason R244 asks
+ * for was computed and thrown away.
+ *
+ * FW28 found it by running two containers and having nothing to read. The
+ * figures FW27's walkthrough recorded came from driving the job BY HAND,
+ * which is a different code path from the one that runs at 06:00 with nobody
+ * awake - the same shape as R176's distinction between a smoke check and a
+ * walkthrough.
+ *
+ * EVERY REASON IS NAMED, INCLUDING THE ZEROES. "sent: 0" alone is ambiguous
+ * between "nobody was due", "everybody already had theirs" and "the query is
+ * broken", and those send a reader to three different places.
+ */
+export function describeRun(run: ReminderRun): string {
+  return [
+    `[scheduler] reminders ${run.day} at ${run.parisTime}:`,
+    `considered ${run.considered},`,
+    `sent ${run.sent},`,
+    `skipped ${run.skippedAlreadySent} already-sent,`,
+    `${run.skippedDayLogged} day-logged,`,
+    `${run.skippedNoDevice} no-device,`,
+    `${run.failed} failed`,
+  ].join(' ');
+}
+
 export interface ReminderRun {
   readonly day: string;
   readonly parisTime: string;
