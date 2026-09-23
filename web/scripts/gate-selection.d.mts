@@ -91,6 +91,13 @@ export declare const BROWSER_SUITES: readonly string[];
 export declare const DATABASE_SUITES: readonly string[];
 export declare const RUNTIME_SUITES: readonly string[];
 export declare const LATE_SUITES: readonly string[];
+
+/**
+ * R251: the container, and what decides whether it serves.
+ *
+ * A file that determines what runs, or whether it runs, belongs to a suite.
+ */
+export declare const CONTAINER_SUITES: readonly string[];
 export declare const SELECTOR_PATTERNS: readonly SelectorPattern[];
 export declare const SUITE_COUNTS: Readonly<Record<string, RegExp>>;
 

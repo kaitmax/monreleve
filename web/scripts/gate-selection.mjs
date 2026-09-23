@@ -68,6 +68,10 @@ export const SUITE_COUNTS = Object.freeze({
   // the same reason every other suite has one: a suite that reports
   // nothing must not read as a pass (R133).
   'test:late': /Tests {2}(?:\d+ failed \| )?(\d+) passed/,
+  // R251's suite is not vitest: it prints its own line for the same reason
+  // every other suite has one - a suite that reports nothing must not read
+  // as a pass.
+  'test:container': /Container checks {2}(\d+) passed/,
 });
 
 /**
@@ -470,6 +474,8 @@ export const ROOT_TOOL_CONFIGS = Object.freeze({
   // not list it, and the closed-world assertion failed on its first run
   // naming a file its own author had missed. R178's point arriving inside the
   // mechanism written to make it: a list is wrong the day it is written.
+  Dockerfile: ['test:container'],
+  '.dockerignore': ['test:container'],
   '.stylelintrc.mjs': ['lint'],
   'eslint.config.mjs': ['lint'],
   'next-env.d.ts': null,
@@ -483,14 +489,33 @@ export const ROOT_TOOL_CONFIGS = Object.freeze({
 /** Extensions Next will route to. */
 const ENTRY_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'];
 
-/** Every code file directly at the package root, for the closed-world check. */
+/**
+ * Root files with no extension that still determine what runs (R251).
+ *
+ * THE EXTENSION SCAN CANNOT SEE THESE, and that is the point. `Dockerfile`
+ * decides what exists to run at all, and it matched nothing - neither a
+ * selector rule nor the closed-world census, because the census was looking
+ * for code and a Dockerfile is not code. R251's general form is what
+ * corrects it: source, config, schema, CONTAINER.
+ */
+const ROOT_EXTENSIONLESS = ['Dockerfile', '.dockerignore'];
+
+/**
+ * Every root file that can determine what runs, for the closed-world check.
+ *
+ * Named `rootCodeFiles` when it only looked at extensions; it now answers the
+ * broader question R251 asks, and the name follows the question rather than
+ * the implementation.
+ */
 export function rootCodeFiles(root) {
   if (!existsSync(root)) return [];
 
   return readdirSync(root, { withFileTypes: true })
     .filter(
       (entry) =>
-        entry.isFile() && ENTRY_EXTENSIONS.some((extension) => entry.name.endsWith(extension)),
+        entry.isFile() &&
+        (ENTRY_EXTENSIONS.some((extension) => entry.name.endsWith(extension)) ||
+          ROOT_EXTENSIONLESS.includes(entry.name)),
     )
     .map((entry) => entry.name)
     .sort();
@@ -608,6 +633,28 @@ export const RUNTIME_SUITES = Object.freeze(['test:runtime']);
  * created. Moving them would trade one blind spot for the other.
  */
 export const LATE_SUITES = Object.freeze(['test:late']);
+
+/**
+ * RULING R251: A FILE THAT DETERMINES WHAT RUNS, OR WHETHER IT RUNS, BELONGS
+ * TO A SUITE.
+ *
+ * The general form of R247, stated once so the next category does not need a
+ * ruling of its own. Source, config, schema, container - if no suite covers
+ * it, THAT IS THE FINDING, and the answer is a suite rather than an
+ * exemption.
+ *
+ * WHAT IT COVERS HERE. scripts/entrypoint.mjs decides whether the container
+ * serves AT ALL (R250), which makes it a runtime component by any reading;
+ * the Dockerfile and .dockerignore decide what exists to run. None of the
+ * three matched any pattern, so a commit touching only the file that can
+ * refuse every deploy would have run the base chain.
+ *
+ * DELIBERATELY NARROW, because a slow suite is a suite people route around.
+ * Four container runs and one probe: the refusal matrix and the image's
+ * structural facts. Anything needing a database, a browser or a rendered
+ * page belongs to test:db or test:e2e, which already own those claims.
+ */
+export const CONTAINER_SUITES = Object.freeze(['test:container']);
 
 /**
  * R132's patterns, in the order they are reported.
@@ -746,6 +793,22 @@ export const SELECTOR_PATTERNS = Object.freeze([
     label: 'playwright.runtime.config.ts, which is the runtime project (R247)',
     suites: RUNTIME_SUITES,
     matches: (path) => path === 'playwright.runtime.config.ts',
+  },
+  {
+    // R251. The image and the thing that decides whether it serves.
+    //
+    // lib/deploy/placeholders.mjs is here AND in the database closure, which
+    // is only expressible because R234 takes every pattern a path matches
+    // rather than the first: it is the entrypoint's contract and it is
+    // imported by print-token.ts. One file, two orthogonal categories.
+    label: 'the container, and what decides whether it serves (R251)',
+    suites: CONTAINER_SUITES,
+    matches: (path) =>
+      path === 'Dockerfile' ||
+      path === '.dockerignore' ||
+      path === 'scripts/entrypoint.mjs' ||
+      path === 'scripts/container-check.mjs' ||
+      path === 'lib/deploy/placeholders.mjs',
   },
   {
     label: 'lib/ui/**',

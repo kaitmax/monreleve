@@ -426,6 +426,53 @@ jobs:
           retention-days: 7
 
   # NOTHING, so a leg cannot go red for a toolchain reason.
+  container:
+    name: container (R249/R251)
+    # RULING R251: a file that determines what runs, or whether it runs,
+    # belongs to a suite. The Dockerfile, .dockerignore and
+    # scripts/entrypoint.mjs decide what exists to run and whether it serves,
+    # and until FW28 they matched no selector rule at all.
+    #
+    # IT RUNS IN CI RATHER THAN BEING DECLARED LOCAL-ONLY, and that is the
+    # decision worth reading. Every entry in LOCAL_ONLY has a STRUCTURAL
+    # reason CI cannot answer the question - test:visual:update writes
+    # baselines, test:late needs a shared working tree, test:clean-tree needs
+    # a dirty one. A container has none of those: CI can build and run it, and
+    # doing so answers the question gate:clone was built to ask - does this
+    # work on a machine that is not mine? - on a machine that is genuinely
+    # not mine, with no store cache and no image layers.
+    #
+    # R250's refusal matrix is the fast half; the image facts are the rest.
+    # No database, no browser, no rendered page: those belong to the suites
+    # that already own them.
+    if: ${{ vars.CI_FULL == 'on' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # THE SAME COMMAND THE GATE RUNS, not a paraphrase of it (R206). The
+      # first version of this step called `node scripts/container-check.mjs`
+      # directly with its own tag, and gate-covers-ci.test.ts refused it -
+      # correctly: it maps CI steps to package scripts by name, so a step
+      # that reproduces a script's body is a second definition of the suite
+      # that can drift from the first.
+      #
+      # NO `pnpm install`. The check imports only Node built-ins, and the
+      # image installs its own dependencies from the lockfile inside the
+      # build - which is the claim being tested. An install here would prove
+      # the runner works rather than that the image does.
+      - run: pnpm test:container
+
   format-parity-build:
     name: format parity (compile)
     # R201: workflow_dispatch ONLY. Feeds the Node matrix below.

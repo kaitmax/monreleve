@@ -99,6 +99,7 @@ const MAPPING_TARGETS = [
   'size:dev',
   'db:deploy',
   'test:db',
+  'test:container',
 ] as const;
 
 type MappingTarget = (typeof MAPPING_TARGETS)[number];
@@ -240,6 +241,17 @@ describe('the workflow was parsed at all', () => {
     //
     // The list is pinned so that widening it is an edit here with a reason,
     // never a way to make a failing mapping go quiet.
+    //
+    // R251 ADDED test:container, and the reason it is a TARGET rather than a
+    // step inside `gate` is the same one that made size:dev its own: it costs
+    // a docker build, and folding that into every local gate run is how a
+    // check becomes something people route around. The selector runs it only
+    // when the Dockerfile, .dockerignore or the entrypoint changed.
+    //
+    // It is NOT in LOCAL_ONLY, deliberately. Every entry there has a
+    // STRUCTURAL reason CI cannot answer the question; a container has none,
+    // and running it on a runner with no store cache and no image layers is
+    // the closest thing to gate:clone's question that CI can ask.
     expect([...MAPPING_TARGETS]).toEqual([
       'gate',
       'test:e2e',
@@ -249,6 +261,7 @@ describe('the workflow was parsed at all', () => {
       'size:dev',
       'db:deploy',
       'test:db',
+      'test:container',
     ]);
     for (const name of MAPPING_TARGETS) {
       expect(PACKAGE.scripts[name], name).toBeDefined();
