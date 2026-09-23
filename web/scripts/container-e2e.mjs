@@ -355,6 +355,64 @@ try {
   const code = await new Promise((resolve) => suite.on('exit', resolve));
 
   if (code !== 0) failure = `pnpm test:e2e exited ${code} against the container`;
+
+  // ==========================================================================
+  // THE AUTH ROUND TRIP, OVER HTTP, AGAINST THE SAME CONTAINER
+  // ==========================================================================
+  //
+  // Playwright drives a browser; this drives the API. The flow has no page -
+  // it is a device client's - so a spec would be the wrong shape for it, and
+  // tests/db/container-auth.test.ts is a vitest file pointed at the container
+  // by CONTAINER_BASE_URL.
+  //
+  // R133: THE COUNT IS READ BACK. That file is `describe.skipIf(BASE ===
+  // undefined)`, so it skips silently under `pnpm test:db` where there is no
+  // container - and a suite that skipped everything exits 0 and looks exactly
+  // like a suite that passed everything. Asserting a non-zero pass count is
+  // what makes the skip safe, which is R169's presence-before-absence
+  // corollary applied to a test file rather than to a server.
+  if (failure === null) {
+    console.log('\n--- the auth round trip, over HTTP, against the container ---\n');
+
+    let authOutput = '';
+
+    try {
+      authOutput = run(
+        'node',
+        [
+          'node_modules/vitest/vitest.mjs',
+          'run',
+          '--config',
+          'vitest.db.config.ts',
+          'tests/db/container-auth.test.ts',
+        ],
+        {
+          env: {
+            ...process.env,
+            DATABASE_URL: toolUrl,
+            CONTAINER_BASE_URL: `http://127.0.0.1:${PORT}`,
+          },
+        },
+      );
+      console.log(authOutput);
+    } catch (cause) {
+      authOutput = `${cause.stdout ?? ''}${cause.stderr ?? ''}`;
+      console.log(authOutput);
+      failure = 'the auth round trip failed against the container';
+    }
+
+    const counted = /Tests {2}(?:\d+ failed \| )?(\d+) passed/u.exec(authOutput);
+    const passed = counted === null ? 0 : Number(counted[1]);
+
+    if (failure === null && passed < 1) {
+      failure =
+        'the auth round trip reported no passing tests. A file that SKIPPED ' +
+        'everything exits 0 and reads exactly like one that passed everything ' +
+        '(R133), so the count is the signal rather than the exit code.';
+    } else if (failure === null) {
+      console.log(`auth round trip: ${passed} passed, over HTTP, against the image.`);
+    }
+  }
 } catch (cause) {
   failure = cause instanceof Error ? cause.message : String(cause);
 } finally {
