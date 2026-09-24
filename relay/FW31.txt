@@ -1,0 +1,203 @@
+FW31 SESSION PROMPT - Mon Releve
+THE PRODUCTION WRITE, AND THE HOLE THAT HID IT
+Read relay/PHASE-4-PROTOCOL.txt and relay/R241-CONSIGNE.txt first.
+
+====================================================================
+R241 - CONTINUOUS EXECUTION
+====================================================================
+RUN THE WHOLE TASK. THE ONLY THING THAT ENDS THIS SESSION IS
+REPORT-FW31.txt, COMMITTED AND PUSHED. Do not stop to report that the
+defect is fixed - that is the middle of the task, not the end.
+
+Unclear? R156: conservative, reversible, park it, continue.
+Ends early: R156's boundary; a red gate you cannot fix in the
+increment; a path reaching a real person or third party; a degraded
+context.
+
+====================================================================
+PRE-STEP
+====================================================================
+R0. Read REPORT-FW30.txt and docs/audit-adversarial.md IN FULL,
+    F-WRITE, F-CI and F-CONTRACT especially.
+
+R1. pnpm gate:clone green on a fresh clone of origin/main's HEAD.
+    Record the commit hash and the envelope. CI is expected to be
+    OFF - see R257.
+
+R256 (new, and it is the point of this task). THE FIX SHIPS WITH A
+    TEST THAT RUNS IN gate:clone, NOT IN CI. Build production, start
+    the container, POST an entry, read the row back. CI's container
+    job has never passed, so a CI-only test is a test that does not
+    exist. And the corollary is the durable half: gate:clone SKIPPING
+    THE CONTAINER SUITES IS WHAT ALLOWED THIS. Either it runs them,
+    or it names the skip so loudly that nobody can read a green clone
+    as a production claim. R133's rule applied to the verifier that
+    was built to be the last line while CI was down.
+
+R257 (new, and it corrects the operator). R248's premise was wrong:
+    it said the September allowance stopped binding "when the
+    repository went public", and the repository did not go public.
+    CI_FULL set on a private repository is the 19 September trap
+    recurring, and FW30's zero-step runs are that state rather than a
+    result about the work. UNSET CI_FULL in increment 0. The
+    visibility decision is the operator's and is parked, not taken
+    here.
+
+R255 (carried, and it still binds). This task fixes THREE NAMED
+    FINDINGS and audits nothing further. Anything else FW30 parked
+    stays parked. A session that starts fixing the list stops fixing
+    the defect.
+
+CARRIED: R133/R233 positive signals and measurements reporting
+    whether they observed their subject. R175 assert the space
+    between two checks. R180 verify a plant landed. R187 a schema and
+    a contract bind a client that cannot be redeployed. R204 the
+    entry point is the unit under test. R252 suspect a new way of
+    running first.
+
+====================================================================
+CONTEXT
+====================================================================
+FW31 ONLY: F-WRITE, F-CI and F-CONTRACT.
+
+WHAT HAPPENED, so the fix addresses the condition and not the line.
+POST /api/v1/entries returns 500 and writes zero rows on a production
+build. The cause takes both halves: the Prisma client memoises only
+when NODE_ENV is not production, and the Proxy passes itself as
+Reflect.get's receiver, so $transaction opens on one client and
+resolves its internals against others. Application code is correct.
+Second consequence: about four pools leak per request and roughly
+twenty-five requests exhaust the database - and a request with a
+garbage bearer token leaks them too, so no account is needed.
+
+THE CONDITION IS THE FINDING. Dev and test memoise; gate:clone skips
+the container suites; CI's container job has never passed;
+container-e2e.mjs never POSTs an entry; and no e2e spec touches this
+route BY DESIGN, since D14 removed the signed-in web area. Five
+layers, each individually reasonable, and the intersection is a hole
+the size of the product's main use case.
+
+Read: REPORT-FW30.txt, docs/audit-adversarial.md, web/lib/db/client.ts,
+web/lib/entries/write.ts, docs/api-v1.md, scripts/gate-clone.mjs.
+
+====================================================================
+ACCEPTANCE CRITERIA
+====================================================================
+AC1. A test that FAILS on the current code and PASSES after the fix,
+     running in gate:clone: production build, container up, POST an
+     entry with a valid token, 200, and the row read back from the
+     database. RED captured before the fix exists (the ordering rule,
+     FW4's pattern).
+AC2. gate:clone no longer reports PASSED while skipping a suite whose
+     absence could hide a production defect. Either it runs the
+     container suites, or its output names each skipped suite, why,
+     and what claim is therefore NOT being made.
+AC3. The pool leak is closed and measured: connections held before
+     and after 30 requests, including 30 with a garbage bearer token.
+     R233 - the measurement reports whether it observed its subject.
+
+====================================================================
+INCREMENT 0 - R257
+====================================================================
+- Unset CI_FULL. Confirm the FW24 private-plus-CI_FULL guard reports
+  the condition. Park the visibility decision (PARK31-1) with both
+  options and what each costs - the operator takes it.
+- Commit: "chore: unset CI_FULL on a private repository (R257)".
+  Push.
+
+====================================================================
+INCREMENT 1 - the failing test, before the fix
+====================================================================
+- Write AC1's test. Run it against the CURRENT code. Capture the 500
+  and the zero rows verbatim. This is the RED that the last three
+  weeks did not have.
+- Also capture, at this commit: prisma.user === prisma.user under
+  production, and the pool count after 30 requests. Those are the
+  before-figures AC3 compares against.
+- The commit's body states that the new test is expected red and why
+  (R20 - a declared red is permitted when the ordering rule requires
+  it).
+- Commit: "FW31: the production write, failing". Push.
+
+====================================================================
+INCREMENT 2 - the fix
+====================================================================
+- Both halves. Memoise regardless of NODE_ENV, and correct the
+  Proxy's receiver so $transaction resolves against the client it
+  opened on. State which half each defect required, and prove each
+  independently - a fix for one that hides the other is the shape
+  R175 keeps finding.
+- AC1 green. AC3's after-figures measured against increment 1's
+  before-figures.
+- A garbage-token request leaks nothing.
+- Commit: "FW31: the production write, fixed". Push.
+
+====================================================================
+INCREMENT 3 - R256's corollary, and F-CI
+====================================================================
+- gate:clone per AC2. If running the container suites is too slow for
+  every push, say so with the measurement and make the skip LOUD -
+  "container suites not run: this clone makes no claim about a
+  production build" - rather than silent. A verifier that omits the
+  one thing CI cannot do is not a last line.
+- F-CI: the container job has never passed. Diagnose why in one
+  paragraph and either fix it or park it with the reason. Do not
+  spend the session here - R256 makes gate:clone the answer and CI
+  the redundancy, not the reverse.
+- Commit: "FW31: gate:clone makes the production claim (R256)". Push.
+
+====================================================================
+INCREMENT 4 - F-CONTRACT
+====================================================================
+- docs/api-v1.md calls itself frozen and omits 4 of 13 routes. The
+  Android client is built against it at AN4, and a client built
+  against a contract missing a third of its surface discovers the
+  omissions by failing, one at a time, in a codebase that cannot be
+  redeployed.
+- Document the four. Then make the omission impossible: a test
+  enumerates the router's routes and fails on one the document does
+  not describe - derived, not listed (R246's lesson, and R175's).
+- The freeze is unaffected: documenting an existing route is not a
+  change to the contract, and say so in the document so a future
+  reader does not treat the addition as a version bump.
+- Commit: "FW31: the contract describes every route". Push.
+
+====================================================================
+INCREMENT 5 - the walkthrough, and the report
+====================================================================
+- WALKTHROUGH against the RUNNING PRODUCTION CONTAINER (R249): sign
+  in, POST a day, read it back, correct it, read the trail, fetch the
+  dossier, export the PDF. Report what each returned. This is the
+  journey that has never been driven end to end on a production
+  build, and it is why the defect survived.
+- Then leave the container up and send 30 more requests; confirm the
+  pool is stable.
+- Update docs/audit-adversarial.md: F-WRITE, F-CI and F-CONTRACT
+  closed or reduced, with the evidence. The other 27 findings are
+  untouched.
+- gate:clone before the final push.
+- Commit: "FW31: walkthrough and report". Push.
+
+====================================================================
+OUT OF SCOPE
+====================================================================
+- The other 27 FW30 findings. Any further audit. Any deployment.
+- The visibility decision (parked for the operator).
+- Any engine change. Any /v1 field RENAME - documenting an existing
+  route is not a rename.
+
+====================================================================
+REPORT FORMAT - REPORT-FW31.txt
+====================================================================
+SUMMARY / PRECONDITIONS / R257 / THE RED (increment 1's captured
+failure, verbatim) / THE FIX (both halves, each proven independently)
+/ POOL (before and after, including garbage tokens; and whether the
+sampler observed its subject) / gate:clone's CLAIM (what it now runs
+or what it now says it does not) / F-CI (one paragraph, fixed or
+parked) / F-CONTRACT (the four routes, and the derived test) /
+WALKTHROUGH (each step, against the production container) / WHAT
+WOULD HAVE CAUGHT THIS EARLIER, in one paragraph - it is the most
+useful thing this report can carry forward / PARKED / DEVIATIONS /
+QUESTIONS / PUSH PROOF
+
+END OF FW31 PROMPT
