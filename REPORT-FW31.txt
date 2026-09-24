@@ -1,0 +1,518 @@
+====================================================================
+REPORT-FW31 - THE PRODUCTION WRITE, AND THE HOLE THAT HID IT
+====================================================================
+
+TASK      FW31, relay/FW31.txt. It fixes THREE NAMED FINDINGS from
+          FW30 - F-WRITE, F-CI, F-CONTRACT - and audits nothing
+          further. The other 27 stay parked (R255).
+RULINGS   R256 the fix ships with a test that runs in gate:clone, not
+          in CI. R257 CI_FULL was set on a private repository and the
+          premise of R248 was wrong.
+
+====================================================================
+SUMMARY
+====================================================================
+
+POST /api/v1/entries RETURNS 200 AND WRITES ITS ROW ON A PRODUCTION
+BUILD. It had returned 500 with zero rows since 13 September.
+
+  test:container:write   4 failures -> 10 passed
+  connections over 60 requests   +96 -> +1
+  CI container job       never passed -> PASSED with CI=1
+  /api/v1 routes documented      9 of 13 -> 13 of 13
+
+THE CAUSE TOOK BOTH HALVES, and the brief's account of the second was
+WRONG IN ITS MECHANISM. FW30 said `Reflect.get(client, property,
+receiver)` passed the Proxy as `this`. Read from the shipped runtime:
+Prisma 7's constructor ends `return this._appliedParent = <composite
+proxy>`, and that proxy's trap is `get(o,s)` - TWO PARAMETERS, THE
+RECEIVER DISCARDED. The third argument was inert. The real mechanism
+is that the trap returned an UNBOUND function, and
+`prisma.$transaction(cb)` binds `this` to the outer Proxy by ordinary
+method-call semantics whatever the trap was told; Prisma then read
+this._engine and a dozen more back through the trap, and with
+memoisation skipped each re-entry built a DIFFERENT client.
+
+THE CONDITION WAS THE FINDING, AND IT IS THE PART THAT IS FIXED FOR
+GOOD. Dev and test memoise; gate:clone skipped the container suites;
+CI's container job had never passed; container-e2e.mjs never POSTs an
+entry; and no e2e spec touches /api/v1 BY DESIGN since D14 removed
+the signed-in web area. Five layers, each individually reasonable,
+and the intersection was a hole the size of the product's main use
+case. gate:clone now builds the image and writes through it.
+
+AND THE WALKTHROUGH FOUND A SECOND THING NOTHING HAD DRIVEN. THE
+TITULAIRE CANNOT BE SET THROUGH ANY ROUTE, so a client that signs in,
+configures everything the API exposes and records a year of days
+still receives 422 titulaire_missing when it asks for the Releve
+annuel - forever. Demonstrated with a control: the same request is
+422 without a name and 200 with one, and the only change between them
+is a column write no client can perform. PARK31-6, parked because
+R255 binds and this task was given three findings. IT IS THE ONE TO
+ANSWER FIRST.
+
+====================================================================
+PRECONDITIONS
+====================================================================
+
+R0. REPORT-FW30.txt and docs/audit-adversarial.md read in full.
+
+R1. gate:clone PASSED on origin/main HEAD before the first commit.
+      commit  71079143e3f824392393822a89dc99dabe494ba5
+      ran     install, typecheck, lint, test, build, size,
+              db:deploy, test:db
+      skipped test:e2e, test:visual, test:runtime, lighthouse,
+              parity:check, test:container
+    THAT SKIP LIST IS AC2's SUBJECT. A green clone that omits every
+    container suite is what let this survive.
+
+====================================================================
+R257 - AND THE PREMISE MOVED UNDER IT
+====================================================================
+
+CI_FULL UNSET.
+  gh variable delete CI_FULL   exit 0
+  gh variable list             empty
+
+THE REPOSITORY IS NO LONGER PRIVATE, AND IT WAS WHEN FW30 MEASURED
+IT. A state change between sessions, not a correction of FW30:
+
+  FW30, ~14:0x   gh repo view -> "visibility":"PRIVATE", and both
+                 pushes produced CI runs with ZERO STEPS
+  FW31, ~15:3x   gh repo view -> {"isPrivate":false,
+                                  "visibility":"PUBLIC"}
+
+So R248's premise - "the allowance stopped binding when the
+repository went public" - IS TRUE NOW, having been false when FW30
+measured it, and PARK30-19 is resolved by the operator's action
+rather than by this task.
+
+THE FW24 GUARD REPORTS THE CONDITION, read from its classification
+rather than from its printed line (scripts/ci-readiness.mjs:99-124):
+  private + CI_FULL on   -> refused
+  private + CI_FULL off  -> quiet
+  public  + CI_FULL on   -> ready, jobs run, minutes free
+  public  + CI_FULL off  -> ready, jobs skip
+and gate:clone printed the fourth row. The guard's own header records
+that this check read visibility BACKWARDS until 22 September and
+"printed 'the repository is public' about a private repository",
+which is why the classification was read rather than the line.
+
+====================================================================
+THE RED - increment 1, captured before the fix existed
+====================================================================
+
+  PASS  R169: /api/health names this product  monreleve
+  PASS  sign-in returns 200  200
+  PASS  sign-in yields an access token  43 chars
+  FAIL  POST /api/v1/entries returns 200  expected 200, got 500
+        body: {"status":"error","code":"write_failed","message":
+               "Le service n'a pas pu enregistrer cet envoi. Rien
+                n'a ete modifie ; l'application reessaiera."}
+  FAIL  the row is in the database  expected 1, got 0
+  FAIL  an EntryEvent was recorded  expected 1, got 0
+
+AND THE MODULE-LEVEL FIGURES AT THAT COMMIT:
+                                  NODE_ENV=test  NODE_ENV=production
+  prisma.user === prisma.user        true            FALSE
+  $transaction                       SUCCEEDED       THREW
+                                     {u:199,e:3153}  "Transaction not found"
+
+THE SUITE READS THE ROW BACK FROM THE DATABASE, not from the
+response, because a 200 that wrote nothing is exactly the defect it
+exists to catch.
+
+A FIRST RUN OF THE HARNESS USED year=2031 and every authenticated
+request was 400 - outside the ruleset - so the pool grew only to 67.
+The harness was corrected to a year with rules BEFORE its numbers
+were recorded.
+
+====================================================================
+THE FIX - both halves, each proven independently
+====================================================================
+
+  create()  the NODE_ENV guard removed; the client is cached in
+            every environment. There was never a "plain module
+            singleton": that needs a module-scope binding and there
+            is none - there is a Proxy that calls create() on every
+            property access.
+  Proxy     function results bound to the client they came from, and
+            the receiver argument dropped WITH THE REASON STATED,
+            because leaving it would imply a mechanism that is not
+            there. Model delegates are objects, not functions, and
+            pass through untouched.
+
+THE HEADER SENTENCE THAT CLAIMED PRODUCTION GOT A SINGLETON IS
+CORRECTED IN PLACE AND KEPT IN THE PAST TENSE. A comment asserting a
+property nothing delivers is R154's defect and is what hid this;
+deleting it would leave the lesson nowhere.
+
+THE INDEPENDENT PROOF MATRIX. Each half reverted ON ITS OWN, anchors
+asserted unique before writing (R211), each plant verified landed
+(R180), the file restored and verified afterwards.
+
+  variant               delegate identity  detached method  transaction
+  broken (as shipped)   FAIL               FAIL             FAIL
+  memoise only          pass               FAIL             pass
+  bind only             FAIL               pass             pass
+  both (the fix)        pass               pass             pass
+
+DELEGATE IDENTITY ISOLATES MEMOISATION. DETACHED INVOCATION ISOLATES
+BINDING. AND THE THIRD COLUMN IS THE FINDING: THE TRANSACTION TEST -
+THE OBVIOUS ONE, THE ONE THAT MATCHES THE 500 - PASSES WITH EITHER
+HALF ALONE. Had only that test been written, fixing either half would
+have looked like a complete fix while the other defect stayed. "A fix
+for one that hides the other", measured rather than argued.
+
+The two discriminating assertions live in
+tests/db/client-surface.test.ts and FORCE NODE_ENV=production,
+clearing the globalThis cache and re-importing - because under the
+ambient NODE_ENV they would have passed on the broken code and proved
+nothing.
+
+====================================================================
+POOL
+====================================================================
+
+                              BEFORE         AFTER
+  connections before          1              1
+  after 30 authenticated      97 of 100      2
+  after 30 garbage-bearer     NOT OBSERVED   2
+  authenticated statuses      500            200
+  garbage statuses            401, 500       401
+  sampler observed subject    FALSE          true
+
+SIXTY REQUESTS NOW ADD ONE CONNECTION, AND A GARBAGE BEARER TOKEN
+LEAKS NOTHING - which mattered because a request carrying an invalid
+token still reached the database on its way to a 401, so the cheapest
+denial of service against this product needed no account at all.
+
+R233 EARNED ITS PLACE ON THE FIRST RUN. In the RED state the sampler
+reported "NOT OBSERVED" for the third sample: thirty more requests
+had exhausted the server so completely that the measuring tool could
+not connect. A sampler that returned null and was read as "no
+connections" would have reported the pool as FINE.
+
+THE MEASUREMENT WAS CORRECTED BEFORE IT WAS TRUSTED. The first green
+run still showed `authenticated statuses: 500` - the pool was fixed
+but the route was not. Cause: a user created by a first sign-in has
+no name and no canton, and the dossier raises MissingTitulaireError
+without one, which is legitimate product behaviour. A pool that does
+not grow across sixty FAILING requests proves nothing, so the harness
+now sets a titulaire and ASSERTS the sampled requests returned 200.
+
+====================================================================
+gate:clone's CLAIM
+====================================================================
+
+IT NOW RUNS THE PRODUCTION-WRITE SUITE:
+  ran  install, typecheck, lint, test, build, size, db:deploy,
+       test:db, test:container:write
+
+It builds from THE CLONE - the image this commit describes, on a
+machine with no .env and no warm state - and points the suite at the
+same scratch database gate:clone created from empty. Docker missing
+is NAMED rather than fatal, because a gate people cannot run is a
+gate people route around.
+
+AND THE SKIP LIST NOW NAMES THE CLAIM IT WITHHOLDS. It used to print
+one line of suite names; a reader saw GATE:CLONE PASSED, skimmed
+them, and took the commit to be sound. It was not - this gate
+reported PASSED on every push of a build that could not write. Now:
+
+  NOT RUN HERE, AND THE CLAIM EACH ONE IS THEREFORE NOT MAKING:
+    test:e2e        SO no claim about the product in a real browser
+    test:visual     SO no claim that any page still looks the way
+                       its baseline says
+    test:runtime    SO no claim about the runtime guard (R81)
+    lighthouse      SO no claim about performance, and none about
+                       SPEC 21 LCP
+    parity:check    SO no claim about Node versions other than this
+    test:container  SO no claim about the image beyond what the
+                       production-write suite proves
+
+Naming the SUITE says what did not execute; naming the CLAIM says
+what is still unknown, which is the half a reader needs.
+
+THE test:container SKIP'S STATED JUSTIFICATION WAS FALSE AND IS
+CORRECTED. It read "run by CI on every push... a stronger version of
+this gate's own question", naming that as one of two owners covering
+more than a third run would. THE CI CONTAINER JOB HAD NEVER PASSED,
+so one of the two owners had never once run.
+
+COST OF THE ADDED CLAIM: 416 s cold, 102 s with warm layers, on top
+of an existing gate:clone of roughly five minutes, paid on every
+push. The alternative - naming the skip and running nothing - is what
+the last three weeks were.
+
+====================================================================
+F-CI - one paragraph, and it is FIXED rather than parked
+====================================================================
+
+playwright.config.ts set `reuseExistingServer: !process.env.CI`, and
+scripts/container-e2e.mjs starts the image on port 3100 and then runs
+that suite against it. In CI reuse was off, so Playwright insisted on
+starting its own server, found the port held BY THE CONTAINER IT WAS
+MEANT TO TEST, and refused before a single spec executed - "Error:
+http://localhost:3100 is already used". The suite was STRUCTURALLY
+INCAPABLE of passing in CI and never once did, which is why FW30
+could find three consecutive red runs on main with seven of eight
+jobs green. The paragraph directly above that line argues that reuse
+is safe now because R169's global setup refuses any server not naming
+this product - and then the clause disabled it in exactly the
+environment where the harness depends on it. The fix is not to widen
+reuse generally but to let the process that STARTED the server say
+so: FRONTALIER_SERVER_IS_OURS=1, set by container-e2e.mjs, honoured
+by the config, with R169 still verifying the claim before any spec
+runs. VERIFIED BY REPRODUCING CI's CONDITION - `CI=1 pnpm
+test:container:e2e` now ends "CONTAINER E2E PASSED - the deployed
+artefact served the whole suite (R249)", plus nine auth round-trip
+tests over HTTP against the image.
+
+====================================================================
+F-CONTRACT - the four routes, and the derived test
+====================================================================
+
+docs/api-v1.md described NINE of the thirteen routes app/api/v1
+actually serves. It now describes thirteen.
+
+  11. GET  /api/v1/export/pdf      the document as a file
+  12. GET  /api/v1/export/csv      the annex as a spreadsheet
+  13. GET  /api/v1/account/export  everything, for one person
+  14. POST /api/v1/account/delete  erasure, and what survives it
+
+  48 357 -> 94 066 characters
+  api-contract.test.ts  4 failed, 11 passed -> 15 passed
+
+THE MISSING FOUR WERE THE RELEVE ANNUEL ITSELF, its CSV annex, and
+BOTH GDPR RIGHTS PATHS. Each section was written from the handler,
+its Zod schema, the lib module beneath it and its tests, with
+file:line citations - not from memory.
+
+THE OMISSION IS NOW IMPOSSIBLE RATHER THAN MERELY CORRECTED. The test
+derives the route set FROM THE FILESYSTEM, because that is what Next
+routes from; a hand-kept list would have been correct the day it was
+written and would then have drifted exactly as this did. Both
+directions are asserted (R196) - a route nothing describes, and a
+documented path nothing serves - and an R133 sanity check establishes
+that both sides were read at all, since the assertions are otherwise
+satisfied by an empty set.
+
+THE FREEZE IS UNAFFECTED AND THE DOCUMENT SAYS SO. Nothing is new,
+nothing moved, no working client stops working. What changed is that
+these four are now INSIDE the freeze rather than outside it - before
+today, renaming /api/v1/export/pdf would have breached no frozen
+contract, because the contract did not know it existed.
+
+ONE CORRECTION TO THE TEST BEFORE THE DOCS LANDED. The new sections
+cite handlers as `web/app/api/v1/export/csv/route.ts`, and a naive
+scan reads that as a route named /api/v1/export/csv/route, which the
+reverse assertion would report as documented-but-not-served. The
+extractor now drops anything preceded by `app`. Verified it still
+found exactly the same four failures beforehand, so the fix did not
+weaken it.
+
+====================================================================
+WALKTHROUGH - against the running production container (R249)
+====================================================================
+
+Built for this commit, against a scratch database created from empty.
+/api/health NAMED this product before anything was driven (R169).
+
+   1  sign in (emailed link -> token pair)     200
+   2  read settings                            200
+   3  set the canton, which is settable        200
+   4  RECORD A DAY                             200  written:1
+   5  read it back                             200  kind HOME
+   6  CORRECT THE DAY (same date, kind CH)     200  written:1
+   7  read it back after the correction        200  kind CH
+      the append-only trail: CREATED/HOME, MODIFIED/CH
+   8  fetch the dossier                        422 titulaire_missing
+   9  EXPORT THE PDF                           422 titulaire_missing
+      --- User.name set DIRECTLY, which no route can do ---
+  10  EXPORT THE PDF again                     200  150 587 bytes
+  11  export everything (GDPR access)          200
+
+  connections before                           1
+  after all of it plus 30 more dossier reads   7
+
+STEPS 4 TO 7 ARE THE THREE WEEKS. Recording a day, reading it back,
+correcting it, and seeing the trail keep the original are the
+product, and none of them worked on a production build until today.
+The entry id is unchanged across the correction and the trail holds
+both events, so the upsert and the append-only log both behave.
+
+AND THE WALKTHROUGH FOUND A SECOND THING NOTHING HAD DRIVEN - see
+PARK31-6. The titulaire cannot be set through any route, so steps 8
+and 9 are what a real client gets, forever.
+
+====================================================================
+WHAT WOULD HAVE CAUGHT THIS EARLIER
+====================================================================
+
+ONE TEST THAT DROVE THE PRODUCT'S MAIN USE CASE AGAINST A PRODUCTION
+BUILD - and nothing else would have, which is the part worth
+carrying forward. More unit tests would not have: the defect could
+not exist under NODE_ENV=test. More guards would not have: every
+guard this project owns was green throughout, and several of them
+were green ABOUT THIS FILE. More CI would not have: the container job
+never ran, and even green it would not have helped, because
+container-e2e.mjs never POSTs an entry. The project had container
+suites and it had write tests; what it did not have was one test at
+the INTERSECTION, and the intersection was the only place the defect
+lived. The generalisable form: WHEN A DEFECT CAN ONLY EXIST IN ONE
+ENVIRONMENT, COVERAGE MEASURED IN ANY OTHER ENVIRONMENT IS NOT
+EVIDENCE ABOUT IT - and a suite's environment is a property nobody
+lists beside its name, so the gap is invisible in every coverage
+report. R177 said a suite that only sees built output cannot tell you
+the development path is broken; nobody had written the inverse, and
+the inverse is where the product lived. The cheapest closure is the
+one now in gate:clone: build the image, sign in, write one row, read
+it back from the database. It costs 102 seconds warm and it is the
+only thing in this repository that makes a claim about production.
+
+====================================================================
+PARKED
+====================================================================
+
+PARK31-1  THE VISIBILITY AND CI COMBINATION. OPERATOR'S CALL.
+  The measured state is PUBLIC with CI_FULL UNSET, which means
+  MINUTES ARE FREE AND CI STILL DOES NOT RUN - the one combination
+  nobody chose. R257 said to unset CI_FULL on the premise the
+  repository was private, and it became public between the two
+  sessions.
+    OPTION A - set CI_FULL again. COST: nothing in money, public
+      minutes are free. GAIN: the redundancy R256 calls CI - a second
+      machine answering "does this work somewhere that is not mine".
+      The container job now passes, so this no longer means a
+      permanent red check.
+    OPTION B - leave it unset. COST: gate:clone is the only verifier,
+      which R256 already requires it to be. GAIN: no CI at all to
+      maintain.
+  NOT TAKEN HERE. NAMESPACE (R162): PARK31-1 lives in this report,
+  not in parking.md, which numbers its entries PARK-<n>.
+
+FIVE FOUND WHILE DOING IN-SCOPE WORK, NOT BY GOING LOOKING. R255
+binds and the prompt puts "any further audit" out of scope, so all
+five are recorded and none is fixed.
+
+PARK31-2  /api/v1/account/delete HAS NO ZOD SCHEMA, and therefore NO
+  COORDINATE SCAN. Verified across every v1 handler: findLocationKeys
+  is present on all seven data routes and absent only here, on the
+  one route that accepts a POST body and hand-parses it. So
+  {"confirm":"SUPPRIMER","latitude":46.2} erases the account and
+  never produces coordinates_refused, and SPEC 13.1 / D18's record is
+  not made. Unknown keys are silently accepted, which section 6.1
+  calls "a lie with a success code", and there is no body bound so
+  payload_too_large cannot fire. SEVERITY: MEDIUM - the coordinate
+  arrives on the request that destroys the account, so nothing is
+  retained, but the guard's absence on one route of thirteen is what
+  SPEC 13.1 is absolute about.
+
+PARK31-3  /api/v1/export/csv LACKS THE future_year CHECK its sibling
+  /api/v1/dossier has, though both share parseReadQuery and
+  buildDossierFor. ?year=2031 returns 200 and a CSV of every weekday
+  of 2031 as gap rows - the answer the dossier route's own comment
+  calls "meaningless, which is worse". SEVERITY: LOW.
+
+PARK31-4  invalid_token IS DOCUMENTED AND NEVER EMITTED. Sections 7
+  and 8.3 list it for "any /v1" route; AUTH_CODES emits
+  missing_token, malformed_authorization, unknown_token and
+  revoked_session. A client branching on it branches on nothing.
+  SEVERITY: LOW, and the same family as F-CONTRACT - the document
+  describing something untrue rather than omitting something true.
+
+PARK31-5  A MISSING CANTON ON /api/v1/export/pdf IS REPORTED AS
+  renderer_unavailable (503), which is precisely the outcome the
+  titulaire check exists to prevent - its own comment calls that "a
+  code that sends the operator looking" in the wrong place.
+  SEVERITY: LOW-MEDIUM, the same family as FW30's F-RETRY: a user
+  input condition presented as a service failure.
+
+PARK31-6  THE TITULAIRE CANNOT BE SET THROUGH ANY ROUTE, so the
+  Releve annuel cannot be produced by any client. SEVERITY: HIGH,
+  and parked only because R255 binds.
+  There are exactly three writes to User anywhere - the sign-in
+  upsert (auth/callback/route.ts:59), the settings PATCH
+  (me/route.ts:143) and the seed - and NONE SETS `name`.
+  lib/me/schema.ts exposes canton, employmentRate, denominatorKind,
+  exactTotalWorkDays, granularity, activityStartDate, reminderTime,
+  reminderEnabled, loggingMode and detectionConsent, and no name.
+  The field is only ever READ.
+  DEMONSTRATED IN THE WALKTHROUGH WITH A CONTROL THAT ISOLATES IT:
+    PDF without a titulaire   422 titulaire_missing
+    PDF with one              200, 150 587 bytes
+  the only change between them being a column write no client can
+  perform. A real Android client can sign in, configure everything
+  the API exposes, record a year of days, and never produce the
+  document the product exists to produce - receiving 422 forever,
+  under a French message saying the application will retry.
+
+THE OTHER 27 FW30 FINDINGS STAY PARKED (R255). This task fixed the
+three it was given and audited nothing further.
+
+====================================================================
+DEVIATIONS
+====================================================================
+
+D1. INCREMENT 0's COMMIT MESSAGE. The prompt specifies "chore: unset
+    CI_FULL on a private repository (R257)". The repository is no
+    longer private, so the subject states what is true and the body
+    records the state change with both measurements.
+
+D2. F-CI WAS FIXED RATHER THAN PARKED. The prompt allows either and
+    warns against spending the session there. The diagnosis was one
+    line, the reasoning was already settled by R169, and the fix was
+    verified by reproducing CI's condition rather than by argument.
+
+D3. THE BRIEF'S DIAGNOSIS OF THE SECOND HALF WAS CORRECTED. FW30's
+    report and docs/audit-adversarial.md both attribute the defect to
+    Reflect.get's receiver argument. That argument is inert in Prisma
+    7. Both documents are corrected in increment 5; an audit that
+    misstates a mechanism is the thing FW30 was written about.
+
+====================================================================
+QUESTIONS
+====================================================================
+
+Q1. PARK31-6 IS THE ONE TO ANSWER FIRST, and it is larger than a
+    parked line. The product cannot produce its own document for any
+    client. Is `name` missing from lib/me/schema.ts deliberately -
+    a field intended to arrive with an onboarding step that does not
+    exist yet - or is it an omission? The answer decides whether
+    AN4 can produce a PDF at all, and it is a product decision
+    rather than a fix.
+
+Q2. PARK31-2 IS A PRIVACY GUARD MISSING FROM ONE ROUTE. SPEC 13.1 is
+    absolute about coordinates and section 6.6 states the check
+    order as though it were universal. Adding the scan to
+    /api/v1/account/delete is three lines; whether the CONTRACT
+    should also say the order is universal is the decision.
+
+Q3. gate:clone NOW COSTS 102 s WARM AND 416 s COLD MORE, on every
+    push, for the production-write claim. That is the price of the
+    claim and I have not tried to reduce it. If it proves too slow
+    in practice, the honest alternative is NOT to skip it silently
+    but to say which pushes skip it and why.
+
+Q4. PARK31-1, THE VISIBILITY AND CI COMBINATION, is the operator's
+    and is above. The container job now passes, so setting CI_FULL
+    would no longer mean a permanent red check.
+
+====================================================================
+PUSH PROOF
+====================================================================
+
+  946544d  chore: unset CI_FULL (R257)
+  931dd44  FW31: the production write, failing
+  5ffb75b  FW31: the production write, fixed
+  4f6fb6d  FW31: gate:clone makes the production claim (R256)
+  9292c62  FW31: the contract describes every route
+  <this>   FW31: walkthrough and report
+
+  gate:changed green before each commit, EXCEPT 931dd44, which is
+  the declared red the ordering rule requires (R20) - its base chain
+  passed and only the new suite failed, which was the point.
+  gate:clone green before each push. From 4f6fb6d onward, that
+  gate:clone includes test:container:write - so every push after
+  the fix carries a production-write claim rather than a skip.

@@ -33,12 +33,24 @@ DEPLOYED.**
     (1) create() memoises ONLY when NODE_ENV !== 'production', so in
         production every property access builds a new PrismaClient
         around a new pool.
-    (2) the Proxy does Reflect.get(client, property, receiver) with
-        receiver = THE PROXY, so prisma.$transaction() runs with
-        `this` bound to the Proxy and every `this.x` inside builds
-        yet another client.
+    (2) the Proxy's trap returns an UNBOUND function, and
+        prisma.$transaction(cb) is a method call whose base reference
+        is the Proxy - so JavaScript binds `this` to the Proxy, and
+        every `this.x` inside Prisma builds yet another client.
   So $transaction opens on one client and resolves its internals
   against others. Either half alone would be survivable.
+
+  CORRECTION, MADE BY FW31 AND LEFT VISIBLE. Point (2) originally
+  read "the Proxy does Reflect.get(client, property, receiver) with
+  receiver = THE PROXY". That is WRONG, and it was corrected by
+  reading the shipped runtime rather than by argument: Prisma 7's
+  constructor ends `return this._appliedParent = <composite proxy>`
+  and that proxy's trap is `get(o,s)` - TWO PARAMETERS, THE RECEIVER
+  DISCARDED. The third argument to Reflect.get was inert, and a fix
+  that only re-pointed it would have changed nothing. The conclusion
+  was right and the mechanism was not. An audit that misstates a
+  mechanism is the thing this report is about, so the error is kept
+  rather than quietly rewritten.
 
   THE APPLICATION CODE IS CORRECT. lib/entries/write.ts:71 opens the
   transaction and uses the `tx` handle properly. The fault is

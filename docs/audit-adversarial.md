@@ -78,14 +78,26 @@ export const prisma: PrismaClient = new Proxy({} as PrismaClient, {
 1. `create()` memoises **only** when `NODE_ENV !== 'production'`, so in production
    every property access constructs a new `PrismaClient` around a new `PrismaPg`
    pool.
-2. `Reflect.get(client, property, receiver)` passes **the Proxy** as the receiver,
-   so a method called as `prisma.$transaction()` runs with `this` bound to the
-   Proxy. Every `this.x` inside it is another Proxy get, and therefore another new
-   client.
+2. The trap returns an **unbound** function, and `prisma.$transaction(cb)` is a
+   method call whose base reference is the Proxy — so JavaScript binds `this` to
+   the Proxy. Every `this.x` inside Prisma is then another Proxy get, and
+   therefore another new client.
 
 So `$transaction` opens a transaction on one client and resolves its own internals
 against others. The transaction id it created is unknown to the client asked about
 it. Either half alone would be survivable. Together they break every transaction.
+
+> **CORRECTION, FW31.** This section originally attributed the second half to
+> `Reflect.get(client, property, receiver)` passing the Proxy as the **receiver
+> argument**. That is wrong, and it was corrected by reading the shipped runtime
+> rather than by argument: Prisma 7's constructor ends
+> `return this._appliedParent = <composite proxy>`, and that proxy's own trap is
+> `get(o, s)` — **two parameters, the receiver discarded**. The third argument to
+> `Reflect.get` was therefore inert, and a fix that only re-pointed it would have
+> changed nothing. The `this` binding comes from ordinary method-call semantics,
+> not from the receiver. The conclusion was right and the mechanism was not — an
+> audit that misstates a mechanism is the thing this document is about, so the
+> error is kept visible rather than silently rewritten.
 
 **The application code is correct.** `lib/entries/write.ts:71` opens
 `prisma.$transaction(async (tx) => …)` and uses `tx.entryEvent` inside, which is
@@ -837,11 +849,17 @@ This section is as valuable as the findings.
 
 ## 11. PARK30, by severity
 
+> **THE FIRST THREE ARE CLOSED BY FW31.** The rest are untouched — that task
+> fixed the three it was given and audited nothing further (R255). FW31 found
+> six more while doing so, recorded as PARK31-2 … PARK31-6 in `REPORT-FW31.txt`;
+> one of them, **PARK31-6**, is that the titulaire cannot be set through any
+> route, so no client can produce the Relevé annuel at all.
+
 | id | Finding | Severity |
 |---|---|---|
-| **PARK30-1** | **F-WRITE** — every transactional write fails in a production build; ~4 pools leaked per request; ~25 unauthenticated requests exhaust the database | **CRITICAL** |
-| **PARK30-2** | **F-CI** — the container suite is structurally incapable of passing in CI (`reuseExistingServer: !process.env.CI` against a harness that starts the container on the same port). Main has been red for three pushes. | **HIGH** |
-| **PARK30-3** | **F-CONTRACT** — `docs/api-v1.md` calls itself *"the contract with the Android client"* and *"FW23 freezes it"*, and omits 4 of the 13 v1 routes: `/export/pdf`, `/export/csv`, `/account/export`, `/account/delete`. A rename of the PDF route today breaches no frozen contract. | **HIGH** |
+| ~~**PARK30-1**~~ | **F-WRITE — CLOSED (FW31).** `POST /api/v1/entries` returns 200 and writes its row on a production build. Both halves fixed — unconditional memoisation, and function results bound to the client — each proven independently by a four-variant matrix in which the obvious transaction test passes with *either* half alone. Pool over 60 requests: **+96 → +1**. Guarded by `test:container:write`, which runs in `gate:clone`. | ~~CRITICAL~~ |
+| ~~**PARK30-2**~~ | **F-CI — CLOSED (FW31).** The harness now declares that it started the server (`FRONTALIER_SERVER_IS_OURS=1`), which only the starting process can honestly claim and which R169 still verifies. Proven by reproducing CI's condition: `CI=1 pnpm test:container:e2e` → *"CONTAINER E2E PASSED"*. | ~~HIGH~~ |
+| ~~**PARK30-3**~~ | **F-CONTRACT — CLOSED (FW31).** `docs/api-v1.md` now describes 13 of 13 routes (48,357 → 94,066 chars), and `tests/unit/meta/api-contract.test.ts` derives the route set from the filesystem and fails in **both** directions, so the omission is impossible rather than corrected. | ~~HIGH~~ |
 | **PARK30-4** | **F-PLATFORM** — `no-coordinates.ts:86` matches by substring, so `platform` contains `lat` and the documented device-registration body is refused `coordinates_refused`. `docs/api-v1.md:859` publishes that exact body; line 902 documents the error as `invalid_body`. | **MEDIUM** (high on contact) |
 | **PARK30-5** | **F-EXPORT** — `lib/account/export.ts` is unbounded and unpaginated: 1.2 MB at ten years, plus unbounded event, device, session and reminder reads | **MEDIUM** |
 | **PARK30-6** | **F-CONN** — `connection_limit` unset, pg-boss pool unsized, `docs/deploy.md` silent on the arithmetic while documenting per-replica schedulers | **MEDIUM** |
