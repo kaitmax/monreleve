@@ -537,6 +537,24 @@ jobs:
         env:
           CONTAINER_SCHEDULER_DATABASE_URL: postgresql://frontalier:frontalier@localhost:5432/frontalier?schema=public
 
+      # THE PRODUCTION WRITE (FW31, R256). Nothing else in this repository
+      # exercises one: the browser suite cannot reach /api/v1 by design since
+      # D14, container-e2e.mjs never POSTs an entry, and every other suite runs
+      # with NODE_ENV=test where the Prisma client memoises. That intersection
+      # let a 500 on the product's main use case live for three weeks.
+      #
+      # IT IS HERE AS REDUNDANCY, NOT AS THE ANSWER. R256 puts the claim in
+      # gate:clone, because this job has never passed - so a CI-only test would
+      # be a test that does not exist.
+      #
+      # It reuses the image the e2e step above already built, rather than
+      # paying for a second full build in the same job.
+      - run: pnpm test:container:write
+        env:
+          CONTAINER_IMAGE: monreleve:e2e
+          CONTAINER_WRITE_NO_BUILD: '1'
+          CONTAINER_WRITE_DATABASE_URL: postgresql://frontalier:frontalier@localhost:5432/frontalier?schema=public
+
       # A BACKUP NOBODY HAS RESTORED IS A HOPE. pg_dump running nightly proves
       # a file is being written; it says nothing about whether that file can
       # be turned back into a database. This does the destructive half - dump,

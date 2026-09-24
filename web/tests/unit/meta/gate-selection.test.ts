@@ -292,7 +292,7 @@ describe('R133: a suite that reports nothing must not read as a pass', () => {
     expect(readCount('test:e2e', '  1 passed\n', undefined).failure).toBeUndefined();
   });
 
-  it('counts exactly the eight suites that report counts', () => {
+  it('counts exactly the nine suites that report counts', () => {
     // R63 again: the assertions above would all still pass if a suite were
     // quietly dropped from the map and began being judged on exit code.
     //
@@ -305,11 +305,16 @@ describe('R133: a suite that reports nothing must not read as a pass', () => {
     // SIX SINCE R251. test:container is not vitest and not Playwright, so it
     // prints its own count line - which is the point: the rule is about
     // every suite reporting, not about the runner that happens to report.
+    //
+    // SEVEN SINCE R256. test:container:write makes the only production-write
+    // claim in the repository, and a claim nobody counts is the shape that
+    // let a 500 on the main use case live for three weeks.
     expect(Object.keys(SUITE_COUNTS).sort()).toEqual([
       'test',
       'test:container',
       'test:container:restore',
       'test:container:scheduler',
+      'test:container:write',
       'test:db',
       'test:e2e',
       'test:late',
@@ -355,6 +360,11 @@ describe('the database layer selects its own suite (FW14)', () => {
       ...BASE_SUITES,
       'test:e2e',
       'test:visual',
+      // FW31/R256. lib/db/client.ts selects the production-write suite as
+      // well as test:db, and the pair is the point: test:db runs with
+      // NODE_ENV=test, where this file's defect does not exist. The suite
+      // that covered it could not see what went wrong in it.
+      'test:container:write',
       'test:db',
       // R182: LAST, and after test:visual specifically. It is appended
       // outside the pattern loop precisely so it cannot land mid-list -
@@ -366,7 +376,7 @@ describe('the database layer selects its own suite (FW14)', () => {
 });
 
 describe('the pattern list is the ruling, stated once', () => {
-  it('is exactly the twenty names R132 now carries', () => {
+  it('is exactly the twenty-one names R132 now carries', () => {
     // R63's shape: if a pattern were dropped, every table row above that
     // does not use it would still pass. This pins the list itself.
     //
@@ -392,6 +402,7 @@ describe('the pattern list is the ruling, stated once', () => {
       'the container e2e harness, which defines that suite (R247)',
       'the container, and what decides whether it serves (R251)',
       'the database layer (prisma/**, lib/db/**, tests/db/**, and anything test:db imports)',
+      'the production write, and the client whose defect it catches (R256)',
       'the restore probe, which defines that suite (R247)',
       'the scheduler probe, which defines that suite (R247)',
       'the token layer (lib/ui/core/styles/**)',

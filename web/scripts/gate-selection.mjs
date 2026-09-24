@@ -78,6 +78,9 @@ export const SUITE_COUNTS = Object.freeze({
   // The restore probe counts what it asserted about a backup that was
   // actually restored, so it reports a number rather than an exit code.
   'test:container:restore': /Restore checks {2}(\d+) passed/,
+  // FW31/R256. A suite that reports nothing must not read as a pass, and this
+  // one makes the only production-write claim in the repository.
+  'test:container:write': /Production write checks {2}(\d+) passed/,
 });
 
 /**
@@ -842,6 +845,24 @@ export const SELECTOR_PATTERNS = Object.freeze([
     label: 'the restore probe, which defines that suite (R247)',
     suites: Object.freeze(['test:container:restore']),
     matches: (path) => path === 'scripts/backup-restore.mjs',
+  },
+  {
+    // FW31/R256. The production-write probe, and THE ONE FILE WHOSE DEFECT IT
+    // EXISTS TO CATCH.
+    //
+    // lib/db/client.ts already selects test:db through R218's import closure,
+    // and test:db runs with NODE_ENV=test - the environment in which the
+    // Prisma client memoises and the defect does not exist. So the suite that
+    // covered this file was structurally incapable of seeing what went wrong
+    // in it. That is R175's shape: two checks bounding a property and an
+    // unexamined space between them, and the space was the product's main use
+    // case for three weeks.
+    //
+    // The harness selects the suite it DEFINES (R247); the client selects the
+    // suite that would have CAUGHT it.
+    label: 'the production write, and the client whose defect it catches (R256)',
+    suites: Object.freeze(['test:container:write']),
+    matches: (path) => path === 'scripts/container-write.mjs' || path === 'lib/db/client.ts',
   },
   {
     label: 'lib/ui/**',

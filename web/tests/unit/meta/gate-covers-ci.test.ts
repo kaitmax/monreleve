@@ -103,6 +103,7 @@ const MAPPING_TARGETS = [
   'test:container:e2e',
   'test:container:scheduler',
   'test:container:restore',
+  'test:container:write',
 ] as const;
 
 type MappingTarget = (typeof MAPPING_TARGETS)[number];
@@ -273,6 +274,10 @@ describe('the workflow was parsed at all', () => {
       'test:container:e2e',
       'test:container:scheduler',
       'test:container:restore',
+      // FW31/R256. It is in CI as REDUNDANCY: the claim it makes lives in
+      // gate:clone, because this job has never passed, so a CI-only test
+      // would be a test that does not exist.
+      'test:container:write',
     ]);
     for (const name of MAPPING_TARGETS) {
       expect(PACKAGE.scripts[name], name).toBeDefined();
