@@ -52,7 +52,12 @@ import { parseReadQuery } from '@/lib/entries/read-query';
 import { prisma } from '@/lib/db/client';
 import { titulaireOf } from '@/lib/dossier/service';
 import { mintPrintToken } from '@/lib/export/print-token';
-import { RendererUnavailableError, RendererUnstyledError, renderPdf } from '@/lib/export/pdf';
+import {
+  RendererFontlessError,
+  RendererUnavailableError,
+  RendererUnstyledError,
+  renderPdf,
+} from '@/lib/export/pdf';
 import {
   RenderBusyError,
   RenderTimeoutError,
@@ -197,6 +202,17 @@ export async function GET(request: Request): Promise<NextResponse> {
       console.error(`[export] pdf refused: ${cause.message}`);
 
       return refuse('renderer_unstyled', AUTH_API_COPY.readFailed, 503);
+    }
+
+    // A SEPARATE CODE FROM `renderer_unstyled`, because the two send whoever
+    // reads the log somewhere else (R198): unstyled means the CSS did not
+    // arrive, fontless means it did and the webfont behind it did not. The
+    // second is the quieter failure - a correctly laid out, fully legible
+    // document in the wrong typeface, which passes every structural check.
+    if (cause instanceof RendererFontlessError) {
+      console.error(`[export] pdf refused: ${cause.message}`);
+
+      return refuse('renderer_fontless', AUTH_API_COPY.readFailed, 503);
     }
 
     console.error(

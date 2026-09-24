@@ -79,7 +79,27 @@ export default defineConfig({
     // product. Reuse stays because a warm server is worth minutes on every
     // local run; what changed is that it can no longer be the wrong one.
     reuseExistingServer: !process.env.CI,
-    timeout: 240_000,
+    // ========================================================================
+    // A TOLERANCE, NOT A THRESHOLD (FW28, PARK-16)
+    // ========================================================================
+    //
+    // 240 s was enough until FW28's increment 6, when `next build && next
+    // start` began exceeding it on this machine - twice in the host suite and
+    // once inside the visual container, which builds from scratch by design
+    // (R98) and cannot borrow a warm .next. The build SUCCEEDS; it is slow.
+    // A 25-minute `pnpm install` in the same container the same evening says
+    // what the machine and the link were doing.
+    //
+    // THIS WEAKENS NO ASSERTION. Every spec still runs and every baseline is
+    // still compared at zero tolerance; what changes is how long the harness
+    // waits for a server to exist before giving up. R114's no-tolerance rule
+    // is about DIFFS, and this is not one.
+    //
+    // Reversible in one line, and PARK-16 records the alternative not taken:
+    // making the container reuse a host build, which would trade R98's
+    // isolation - the property that makes a baseline mean anything - for a
+    // few minutes.
+    timeout: 600_000,
     // A SITE ORIGIN, BECAUSE OTHERWISE THERE ARE NO CANONICALS TO ASSERT.
     // Ruling R81 omits canonical and hreflang tags entirely when the origin is
     // the localhost stand-in - a canonical pointing at localhost is an

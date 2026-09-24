@@ -1,0 +1,211 @@
+FW29 SESSION PROMPT - Mon Releve
+Read relay/PHASE-4-PROTOCOL.txt and relay/R241-CONSIGNE.txt first,
+from disk.
+
+====================================================================
+R241 - CONTINUOUS EXECUTION, AND IT IS THE STANDING CONSIGNE
+====================================================================
+RUN THE WHOLE TASK WITHOUT RETURNING TO THE OPERATOR. THE ONLY THING
+THAT ENDS THIS SESSION IS REPORT-FW29.txt, COMMITTED AND PUSHED.
+
+The operator is asleep. Do NOT stop to say an increment is done, to
+summarise, to ask whether to continue, to ask a question you could
+park, or to report a finding however good. If you are composing a
+message that is not the report, keep working instead.
+
+Unclear? R156: take the conservative, reversible option, write the
+PARK entry, CONTINUE.
+
+FOUR THINGS END THE SESSION EARLY, each with the report written, the
+tree clean and everything pushed:
+  1. R156's boundary - a PERMANENT decision; a FALSE OR UNSOURCED
+     claim; a gate, budget or threshold change; a new RUNTIME
+     dependency; anything touching lib/calc-engine.
+  2. A red gate you cannot fix inside the increment.
+  3. Any path where something could reach a real person or a real
+     third-party account (R243, R250).
+  4. A degraded context.
+A session that stops for one of these succeeded. One that stops to
+talk did not.
+
+====================================================================
+PRE-STEP
+====================================================================
+R0. Read REPORT-FW28.txt IN FULL, including PARKED, NEEDS and
+    QUESTIONS. If FW28 stopped early, THIS TASK DOES NOT START:
+    write REPORT-FW29.txt with only a PRECONDITIONS section saying
+    which increment FW28 reached and why, commit, push, end. An audit
+    of an incomplete phase audits nothing.
+
+R1 (as reworded by R200). pnpm gate:clone green on a fresh clone of
+    origin/main's HEAD. Record the commit hash and the envelope. CI
+    is on (R248); record the run URL too.
+
+R250 (carried, and it is absolute tonight). NO REAL CREDENTIAL IS
+    SOUGHT OR CREATED, no third-party account is opened, nothing is
+    deployed to a real host, no DNS is touched, no email or push
+    reaches anybody. This task AUDITS. Everything it finds missing is
+    a NEEDS entry, never an attempt.
+
+====================================================================
+CONTEXT
+====================================================================
+FW29 ONLY: the release audit. It builds nothing.
+
+Its output is a document, docs/release-audit-web.md, that answers one
+question for every criterion in SPEC 21 and every ruling that claims
+a standing property: IS THIS TRUE TODAY, AND WHAT PROVES IT.
+
+TWO FAILURE MODES, and the second is the likely one:
+
+  The audit that fails - a criterion is not met. That is useful and
+  easy to write down.
+
+  THE AUDIT THAT LIES - a criterion is recorded as met on the
+  strength of a test that cannot fail, a guard that never ran, a
+  claim nobody re-checked, or a sentence copied from an earlier
+  report. This project has found, in eleven tasks: a suite passing 91
+  tests against a different application; a regeneration reporting
+  files it never wrote; a measurement reporting 0 MB because it
+  matched nothing; a job discarding every count it computed; a
+  parity declaration asserting its own correctness; and an audit
+  glob correct only by accident. Every one of those would have
+  supplied a green line to an audit written from reports.
+
+  SO: EVERY LINE IN THE AUDIT CITES EVIDENCE THAT WAS PRODUCED OR
+  RE-RUN IN THIS SESSION, or it is marked UNVERIFIED. A report from
+  an earlier task is a POINTER to evidence, never the evidence.
+
+Read: SPEC 21 IN FULL (the success criteria), SPEC 20 (the
+boundaries), CLAUDE.md, README.md, tasks/plan.md's checkpoints,
+parking.md and phase4parking.md IN FULL, docs/regulatory-sources.md,
+docs/api-v1.md, docs/deploy.md as FW28 left it, and every REPORT-*.txt
+at the root - as pointers.
+
+====================================================================
+ACCEPTANCE CRITERIA
+====================================================================
+AC1. docs/release-audit-web.md exists and covers EVERY SPEC 21
+     criterion, each marked MET / NOT MET / UNVERIFIED, each with
+     evidence produced in this session and the command that produced
+     it. A criterion whose evidence could not be re-run tonight is
+     UNVERIFIED, never MET.
+AC2. Every standing ruling that claims a mechanism still holds is
+     RE-PROVEN, not re-asserted: the guard is fired, the plant is
+     planted and verified (R180), the refusal is observed. A ruling
+     whose guard cannot be made to fire tonight is listed as such.
+AC3. One consolidated NEEDS list: everything a human must supply
+     before anything can ship - credentials, accounts, DNS, the
+     expert reviewer, the legal entity's missing fields - each as
+     precise as PARK4-2 named AN14's fingerprints, with what it
+     blocks.
+
+====================================================================
+INCREMENT 1 - the full chain, and the closed-world checks
+====================================================================
+- Run everything, in one pass, and record each figure: gate,
+  test:db, test:e2e, test:visual, test:a11y, test:runtime,
+  container:facts, size, lighthouse, gate:clone. Record what CI
+  reports for the same commit.
+- Then the closed-world checks, because these are the ones that go
+  stale silently: the selector's entry-point enumeration (R246), the
+  declaration-parity walk (R185), the var() census (R134), R238's
+  copy reachability, the singleton censuses, the privacy map, the
+  no-typed-threshold scan (R147/R161), the no-gradients scan (R82).
+  For each: does it run, what does it cover, and is its scope derived
+  or listed? A listed scope is a finding.
+- Commit: "FW29: the full chain and the closed-world checks". Push.
+
+====================================================================
+INCREMENT 2 - SPEC 21, criterion by criterion
+====================================================================
+- Walk SPEC 21 in order. For each: MET, NOT MET or UNVERIFIED; the
+  evidence; the command. No criterion is marked MET on the strength
+  of a report alone.
+- The engine's criteria are the ones to be most careful with, since
+  they have been stable longest and are therefore least recently
+  examined: the six Geneva fixtures reproducing exactly, 100 percent
+  coverage, the eight invariants at 10 000 cases, both rate forms,
+  the codepoint formatters, the rail's byte parity.
+- Write docs/release-audit-web.md as you go rather than at the end.
+- Commit: "FW29: SPEC 21 audited". Push.
+
+====================================================================
+INCREMENT 3 - the rulings that claim a mechanism
+====================================================================
+Re-prove, do not re-assert. At minimum, and fire each:
+  R169 the suite refuses a foreign server - point it at something
+       that answers 200 with valid JSON and no service field.
+  R177 a page with no stylesheet is refused, and Lighthouse too.
+  R180 a plant that did not land is caught.
+  R196 the database refuses an invalid row - one per CHECK.
+  R198 an error names which rule fired - one per named refusal.
+  R203/R219 the trail survives an edit; a replay writes nothing.
+  R205 assetlinks 404s rather than serving an empty statement list.
+  R208 a regeneration reports what it wrote, and zero is loud.
+  R230 the CSV escapes, the payload and PDF do not.
+  R237 one Content-Disposition filename parameter, hostile name.
+  R243 the scheduler refuses a non-local database.
+  R249 the container refuses absent and placeholder, distinctly.
+- Any guard that cannot be made to fire tonight is a finding, not an
+  omission: a guard nobody can trigger is a guard nobody has tested.
+- Commit: "FW29: standing mechanisms re-proven". Push.
+
+====================================================================
+INCREMENT 4 - the human gates and the NEEDS list
+====================================================================
+- Checkpoint A: docs/regulatory-sources.md. What is TRANSCRIPTION
+  VERIFIED, what is PROVISIONAL (P1, P2, P3), what is pending. State
+  plainly that no named expert has reviewed anything, and what that
+  blocks.
+- Checkpoint C: the domain. monreleve.ch is referenced by every
+  canonical, the OG card and /api/health. Is it owned? If not, say
+  so as a NEEDS - nothing can be indexed until it resolves.
+- AC3's consolidated NEEDS list, merged from parking.md,
+  phase4parking.md and FW28's, deduplicated, each with what it
+  blocks and who supplies it: the VPS, DNS, Firebase, Resend's
+  production domain with SPF and DKIM, the Android package name and
+  fingerprints, the publication director, the EU and Swiss
+  representatives, the expert reviewer, the opendata.swiss licence.
+- Commit: "FW29: human gates and the NEEDS list". Push.
+
+====================================================================
+INCREMENT 5 - the read, and the report
+====================================================================
+- READ docs/release-audit-web.md end to end as somebody deciding
+  whether to launch. Does any line claim more than its evidence
+  supports? Is any MET resting on a pointer? That reading has found
+  something in every task for six tasks running, and tonight its
+  subject is the audit itself.
+- READ /sources, /a-propos, /confidentialite and /tarifs against
+  today's code one final time. They are the four pages that assert
+  facts about the product, and three of them have been corrected
+  after a reading already.
+- The report's last line states, in one sentence, whether this
+  product could be launched tomorrow and what the single largest
+  obstacle is.
+- gate:clone before the final push.
+- Commit: "FW29: the audit read, and the report". Push.
+
+====================================================================
+OUT OF SCOPE
+====================================================================
+- Building anything, fixing anything found (unless the fix is
+  obviously correct and provable inside the increment - otherwise
+  PARK it), deploying, creating a credential, buying a domain.
+- The AN series. Any engine change.
+
+====================================================================
+REPORT FORMAT - REPORT-FW29.txt
+====================================================================
+SUMMARY / PRECONDITIONS (gate:clone hash, envelope, CI run) / THE
+FULL CHAIN (every figure) / CLOSED-WORLD CHECKS (each: runs, covers,
+derived or listed) / SPEC 21 (the count MET / NOT MET / UNVERIFIED,
+and every NOT MET in full) / MECHANISMS RE-PROVEN (each, with how it
+was fired; and any that could not be) / HUMAN GATES / NEEDS (the
+consolidated list) / THE AUDIT READ (what it found) / THE FOUR PAGES
+READ / PARKED / DEVIATIONS / NOTICED BUT NOT TOUCHING / QUESTIONS /
+PUSH PROOF / LAST LINE (could this launch tomorrow, and the single
+largest obstacle)
+
+END OF FW29 PROMPT

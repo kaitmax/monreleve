@@ -230,8 +230,28 @@ RUN printf '%s\n' "${NEXT_PUBLIC_SITE_URL}" > /etc/frontalier-site-origin
 # container has no user-namespace support, so Chromium's own sandbox cannot
 # start. Running the SERVER as root to get it back would trade a sandbox
 # inside a container for root inside that container, which is the worse half.
+# ============================================================================
+# A WRITABLE HOME, BECAUSE CHROMIUM NEEDS ONE AND /app IS ROOT'S
+# ============================================================================
+#
+# MEASURED, NOT ANTICIPATED. With --home /app the user's HOME was a directory
+# created by WORKDIR and owned by ROOT, so the unprivileged user could not
+# write into it. Chromium refused to start with
+#
+#   Failed to create headless user data directory container
+#
+# and the PDF route answered 503 `renderer_unavailable` - the product's
+# OUTPUT OF RECORD could not be produced in the image at all. Nothing before
+# increment 6 could have seen it: the build succeeds, the server serves, 270
+# e2e specs pass, and the one thing that needs a browser is the one thing
+# none of them exercise.
+#
+# --chown on the COPY lines below chowns what is COPIED. It does not chown
+# /app itself, which is the distinction that hid this.
 RUN groupadd --system --gid 1001 nodejs \
- && useradd --system --uid 1001 --gid nodejs --home /app --shell /usr/sbin/nologin nextjs
+ && useradd --system --uid 1001 --gid nodejs --home-dir /home/nextjs --create-home --shell /usr/sbin/nologin nextjs
+
+ENV HOME=/home/nextjs
 
 # Next's standalone output: server.js plus exactly the traced node_modules.
 # static/ and public/ are NOT traced - they are served from disk and have to

@@ -795,3 +795,36 @@ the question is whether it CHANGES during the run, not whether it differs
 from HEAD.
 
 TOUCHES:   `web/scripts/visual.mjs` if taken.
+
+## PARK-16 - the Playwright webServer timeout went from 240 s to 600 s  [FW28, 2026-09-24]
+
+**The question.** `pnpm test:e2e` and `pnpm test:visual` both start a server
+with `node scripts/copy-fonts.mjs && next build && next start`, and Playwright
+gives that 240 seconds to answer. During FW28's increment 6 it stopped being
+enough: twice in the host suite and once inside the visual container.
+
+**Measured, so the cause is not a guess.** The build SUCCEEDS - run by hand
+with the same environment it exits 0 and prints the route table. It is slow.
+The same evening, `pnpm install` inside the visual container took **24 m 54 s**,
+and a `pnpm install` inside `docker build` had already needed
+`--network-concurrency=4` because sixteen parallel registry fetches were each
+taking 40-50 s. Docker Desktop's engine had also failed with a bus error under
+disk pressure and needed a WSL restart and a 27,85 GB build-cache prune.
+
+**The option taken: raise the tolerance to 600 s.** It weakens no assertion.
+Every spec still runs; every baseline is still compared at zero tolerance
+(R114). What changed is how long the harness waits for a server to EXIST
+before giving up - a tolerance, not a threshold, and not a diff.
+
+**The option NOT taken: let the visual container reuse a host build.** It
+would be faster and it would cost R98, which says a baseline is valid only
+from an ISOLATED build. The isolation is the reason a baseline means anything;
+trading it for a few minutes is the wrong direction on the suite whose whole
+job is to certify that nothing changed.
+
+**The cost of being wrong.** A genuinely hung server now takes ten minutes to
+report instead of four. That is the entire downside, and it is paid only when
+something is already broken.
+
+**To reverse:** one line in `web/playwright.config.ts`. If the machine and the
+link recover, 240 s is the better number because a hung server reports sooner.

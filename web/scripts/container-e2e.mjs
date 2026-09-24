@@ -248,7 +248,12 @@ try {
   console.log(`\n--- building ${IMAGE} for origin ${origin} ---`);
   run('docker', ['build', '--build-arg', `NEXT_PUBLIC_SITE_URL=${origin}`, '-t', IMAGE, '.'], {
     stdio: ['ignore', 'ignore', 'inherit'],
-    timeout: 900_000,
+    // A COLD BUILD ON A SLOW LINK EXCEEDED FIFTEEN MINUTES: the supply-chain
+    // pass over 1042 lockfile entries plus a full next build. The timeout
+    // killed a build that then finished seconds later, and the failure read
+    // as "spawnSync docker ETIMEDOUT" - a docker fault rather than an
+    // impatient harness.
+    timeout: 2_400_000,
   });
 
   console.log(`\n--- starting ${IMAGE} on ${PORT} ---`);
@@ -385,12 +390,21 @@ try {
           '--config',
           'vitest.db.config.ts',
           'tests/db/container-auth.test.ts',
+          'tests/db/container-pdf.test.ts',
         ],
         {
           env: {
             ...process.env,
             DATABASE_URL: toolUrl,
             CONTAINER_BASE_URL: `http://127.0.0.1:${PORT}`,
+            // THE SAME SECRET THE CONTAINER HOLDS. container-pdf.test.ts
+            // mints a print token HERE and hands it to the CONTAINER's print
+            // route, so the two processes must sign with the same key. The
+            // developer .env carries the placeholder, which print-token.ts
+            // refuses by value - correctly, and that refusal is what this
+            // discovered: mintPrintToken returned null and the comparison
+            // could not run.
+            AUTH_SECRET: 'container-e2e-not-a-deployment-secret',
           },
         },
       );
@@ -421,7 +435,11 @@ try {
   console.log('\n--- teardown ---');
 
   try {
-    console.log(run('docker', ['logs', '--tail', '15', NAME], { stdio: ['ignore', 'pipe', 'pipe'] }));
+    // SIXTY, NOT FIFTEEN. A failing PDF export logs its refusal code and is
+    // then followed by request noise, so fifteen lines showed the startup
+    // banner and hid the one line that said WHY - which is a teardown that
+    // reports without diagnosing.
+    console.log(run('docker', ['logs', '--tail', '60', NAME], { stdio: ['ignore', 'pipe', 'pipe'] }));
   } catch {
     // No container, no logs.
   }

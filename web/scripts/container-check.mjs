@@ -65,7 +65,13 @@ if (SHOULD_BUILD) {
       ['build', '--build-arg', `NEXT_PUBLIC_SITE_URL=${BUILD_ORIGIN}`, '-t', IMAGE, '.'],
       {
         stdio: ['ignore', 'ignore', 'inherit'],
-        timeout: 900_000,
+        // THE SAME BUDGET container-e2e.mjs USES, and it is here because
+        // raising it in one place only was worth a failed gate: a cold build
+        // on this machine's current link exceeded fifteen minutes and was
+        // killed, reporting "spawnSync docker ETIMEDOUT" - a docker fault
+        // rather than an impatient harness. A tolerance, not a threshold
+        // (PARK-16).
+        timeout: 2_400_000,
       },
     );
   } catch (cause) {
