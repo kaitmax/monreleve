@@ -84,6 +84,44 @@ export const SUITE_COUNTS = Object.freeze({
 });
 
 /**
+ * A runner's output with its colour codes removed.
+ *
+ * EVERY COUNT PATTERN ABOVE ASSUMES THE DIGITS SIT IMMEDIATELY AFTER THE
+ * LABEL, and a colouring runner puts an escape sequence between them: vitest
+ * prints `Tests  \u001B[1m\u001B[32m9 passed\u001B[39m`, which
+ * `/Tests {2}(\d+) passed/` cannot match. It matches locally because output
+ * captured through a pipe is not a TTY and vitest does not colourise; it fails
+ * wherever the runner decides otherwise.
+ *
+ * FW31 FOUND THIS IN CI, AND THE WAY IT FAILED IS WHY IT IS A FUNCTION RATHER
+ * THAN A REGEX REPEATED TWICE. scripts/container-e2e.mjs carried its own copy
+ * of the same pattern. Nine tests passed, the parse returned null, and the
+ * harness reported "the auth round trip reported NO PASSING TESTS" - R133's
+ * guard against a suite that silently skipped everything, firing on a suite
+ * that had silently passed everything. A guard that cannot read its subject
+ * reports the absence of the subject, which is the most expensive way for a
+ * guard to be wrong.
+ *
+ * @param {string} output
+ * @returns {string}
+ */
+export function stripAnsi(output) {
+  // CSI colour sequences only. That is all a runner emits here, and a wider
+  // pattern could eat a digit it was never meant to touch.
+  //
+  // no-control-regex IS DISABLED HERE AND NOWHERE ELSE, because the thing
+  // being removed IS a control character: U+001B is what starts every escape
+  // sequence, and a function that strips them cannot avoid naming it. The
+  // rule exists to catch a control character that arrived in a pattern by
+  // accident - a literal tab or NUL somebody pasted - which is the opposite
+  // of this case. The alternative, building the pattern with
+  // String.fromCharCode(27), would satisfy the linter by hiding the
+  // character from it, which is evasion rather than a fix (R181).
+  // eslint-disable-next-line no-control-regex -- U+001B is the subject, not an accident
+  return output.replace(/\u001B\[[0-9;]*m/gu, '');
+}
+
+/**
  * What a finished suite actually reported.
  *
  * `floor` is the other half of R133: "N tests ran AND N >= expected". The
@@ -104,7 +142,7 @@ export function readCount(suite, output, floor) {
 
   if (pattern === undefined) return { counted: false };
 
-  const found = pattern.exec(output);
+  const found = pattern.exec(stripAnsi(output));
 
   if (found === null) {
     return {

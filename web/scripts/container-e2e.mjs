@@ -40,6 +40,9 @@
 
 import { execFileSync, spawn } from 'node:child_process';
 import { readFileSync, readdirSync } from 'node:fs';
+// ONE HOME FOR THE STRIPPING, not a second copy of the regex (R206). The
+// count patterns and the thing that makes them readable belong together.
+import { stripAnsi } from './gate-selection.mjs';
 
 const PORT = process.env.FRONTALIER_PORT ?? '3100';
 const IMAGE = process.env.CONTAINER_IMAGE ?? 'monreleve:e2e';
@@ -422,7 +425,14 @@ try {
       failure = 'the auth round trip failed against the container';
     }
 
-    const counted = /Tests {2}(?:\d+ failed \| )?(\d+) passed/u.exec(authOutput);
+    // STRIPPED FIRST, AND CI IS WHAT TAUGHT THIS. vitest colourises when it
+    // decides it is talking to a terminal, and prints
+    // `Tests  \u001B[1m\u001B[32m9 passed\u001B[39m` - which this pattern
+    // cannot match, because it wants the digits immediately after the label.
+    // On 24 September nine tests passed here, the parse returned null, and the
+    // harness reported "no passing tests": R133's guard against a suite that
+    // skipped everything, firing on a suite that had passed everything.
+    const counted = /Tests {2}(?:\d+ failed \| )?(\d+) passed/u.exec(stripAnsi(authOutput));
     const passed = counted === null ? 0 : Number(counted[1]);
 
     if (failure === null && passed < 1) {

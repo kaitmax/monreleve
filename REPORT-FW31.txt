@@ -500,6 +500,85 @@ Q4. PARK31-1, THE VISIBILITY AND CI COMBINATION, is the operator's
     would no longer mean a permanent red check.
 
 ====================================================================
+ADDENDUM - CI RUN, AND WHAT IT FOUND BEHIND F-CI
+====================================================================
+
+PARK31-1 WAS DECIDED BY THE OPERATOR: OPTION A. CI_FULL is set, the
+repository is public, and the FW24 guard now classifies the state as
+"ready - jobs will run, and the minutes are free". R248's premise is
+satisfied in fact rather than only in words.
+
+  gh variable set CI_FULL --body on   exit 0
+  run 36039159222, dispatched on HEAD 6ae2b89, SELECTED BY COMMIT
+  rather than by recency - FW28 watched the wrong run by taking
+  `gh run list --limit 1` while another was registering.
+
+JOBS START WITH REAL STEPS, WHICH IS THE THING THAT WAS BROKEN:
+  web 24 | the suite against the image 17 | format parity 11 |
+  runtime guard 11 | rail visual baselines 9 | container 8
+against FW30's two pushes, which produced ZERO STEPS on every job
+with the matrix name unexpanded. That contrast is the measurement.
+
+THE F-CI FIX WORKED, AND WHAT THE JOB REACHED IS THE EVIDENCE. The
+port collision is gone; the run shows
+  v 87 [chromium] e2e/calculateur.spec.ts:854:3 ...
+so the Playwright suite EXECUTED, where before it died before a
+single spec. That failure is closed.
+
+AND THE JOB STILL FAILED, ON SOMETHING THAT HAD BEEN MASKED BY IT
+FOR THE SUITE'S ENTIRE LIFE:
+
+  CONTAINER E2E FAILED: the auth round trip reported no passing
+  tests. A file that SKIPPED everything exits 0 and reads exactly
+  like one that passed everything (R133), so the count is the signal
+  rather than the exit code.
+
+EXCEPT THE TESTS PASSED. Six lines earlier in the same log:
+  v tests/db/container-auth.test.ts (7 tests)  450ms
+  v tests/db/container-pdf.test.ts  (2 tests) 2870ms
+  Test Files  2 passed (2)
+NINE TESTS PASSED AND THE HARNESS REPORTED NONE.
+
+THE CAUSE: THE COUNT PARSER CANNOT READ COLOURED OUTPUT.
+  container-e2e.mjs   /Tests {2}(?:\d+ failed \| )?(\d+) passed/u
+  CI's vitest prints  ESC[2m Tests ESC[22m ESC[1mESC[32m9 passedESC[39m
+The pattern wants the digits IMMEDIATELY after the label, and a
+colouring runner puts an escape sequence between them. It matches
+locally because output captured through a pipe is not a TTY and
+vitest does not colourise.
+
+R133's GUARD AGAINST A SUITE THAT SILENTLY SKIPPED EVERYTHING FIRED
+ON A SUITE THAT HAD SILENTLY PASSED EVERYTHING. A guard that cannot
+read its subject reports the absence of the subject, because null is
+indistinguishable from zero.
+
+NINE PATTERNS SHARED THE FRAGILITY - seven in SUITE_COUNTS, one in
+gate-clone, one in container-e2e - and NOTHING IN THE REPOSITORY
+STRIPPED ANSI ANYWHERE. Only this one had ever been exercised in a
+colouring environment.
+
+FIX: stripAnsi exported from gate-selection.mjs, applied inside
+readCount so all seven are covered at one point, and IMPORTED by
+container-e2e.mjs rather than copied (R206). Declared in the .d.mts
+(R185). Proven both directions with the CI log's own line as the
+fixture rather than an invented one:
+  without the fix   expected undefined to be 9
+  with the fix      9
+plus a second test that stripping takes only colour and never a
+digit. The plant was verified landed and the file verified restored.
+
+AND THE LESSON IS THIS REPORT'S OWN, LANDING ON ITS AUTHOR. The
+F-CI section above says the fix was "VERIFIED BY REPRODUCING CI's
+CONDITION - CI=1 pnpm test:container:e2e". That was true, and it was
+not enough: SETTING CI=1 IS NOT BEING CI. The variable reproduced
+the branch I was reasoning about and nothing else - not the runner's
+TTY, not its colour decision, not its database. The claim was right
+about the defect it named and over-confident about the environment,
+which is the same shape as the paragraph this report ends on:
+coverage measured in one environment is not evidence about another.
+The section is left as written, with this correction beneath it.
+
+====================================================================
 PUSH PROOF
 ====================================================================
 

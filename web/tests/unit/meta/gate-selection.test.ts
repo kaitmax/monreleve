@@ -38,6 +38,7 @@ import {
   databaseClosure,
   describeSelection,
   readCount,
+  stripAnsi,
   selectSuites,
 } from '../../../scripts/gate-selection.mjs';
 
@@ -219,6 +220,31 @@ describe('R133: a suite that reports nothing must not read as a pass', () => {
   it('reads playwright', () => {
     expect(readCount('test:e2e', '  96 passed (1.6m)\n').ran).toBe(96);
     expect(readCount('test:visual', '  69 passed (1.9m)\n').ran).toBe(69);
+  });
+
+  it('reads a COLOURED runner, which is how CI prints it (FW31)', () => {
+    // COPIED FROM A CI LOG, not invented: run 36039159222, the container job,
+    // 24 September. vitest colourises when it decides it is talking to a
+    // terminal, and puts an escape sequence between the label and the digits -
+    // which every pattern in SUITE_COUNTS wants to be adjacent.
+    //
+    // NINE TESTS PASSED AND THE HARNESS REPORTED "no passing tests". R133's
+    // guard against a suite that silently skipped everything fired on a suite
+    // that had silently passed everything, because the parse returned null and
+    // null is indistinguishable from zero. A guard that cannot read its
+    // subject reports the absence of the subject.
+    const coloured = ' \u001B[2m Tests \u001B[22m \u001B[1m\u001B[32m9 passed\u001B[39m\u001B[22m\u001B[90m (9)\u001B[39m\n';
+
+    expect(readCount('test', coloured).ran).toBe(9);
+    expect(readCount('test', coloured).failure).toBeUndefined();
+  });
+
+  it('strips only colour, never a digit', () => {
+    // The narrow pattern matters: a wider one could eat part of the number it
+    // was added to protect.
+    expect(stripAnsi('\u001B[32m12 passed\u001B[39m')).toBe('12 passed');
+    expect(stripAnsi('no escapes here')).toBe('no escapes here');
+    expect(stripAnsi('')).toBe('');
   });
 
   it('FAILS on the exact output that fooled FW13 harness', () => {
