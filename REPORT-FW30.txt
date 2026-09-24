@@ -1,0 +1,691 @@
+====================================================================
+REPORT-FW30 - THE ADVERSARIAL AUDIT
+====================================================================
+
+TASK      FW30, relay/FW30.txt. An adversarial audit across six
+          dimensions. It builds nothing and ships nothing.
+OUTPUT    docs/audit-adversarial.md; web/scripts/fw30-dataset.mjs.
+RULINGS   R254 an audit measures, it does not reason. R255 the audit
+          fixes almost nothing. R250 no real credential, no third
+          party, no traffic beyond localhost.
+
+====================================================================
+SUMMARY - AND THE FIRST THING IN IT IS THE FINDING
+====================================================================
+
+**EVERY TRANSACTIONAL WRITE FAILS IN A PRODUCTION BUILD. RECORDING A
+DAY - THE ENTIRE PURPOSE OF THIS PRODUCT - DOES NOT WORK WHEN
+DEPLOYED.**
+
+  Fresh container, nothing else running, 7 of 100 connections, ONE
+  request:
+
+    POST /api/v1/entries
+    {"entries":[{"dayDate":"2028-05-10","kind":"HOME",
+                 "clientMutationId":"fw30-single-write-proof"}]}
+    -> HTTP 500  {"code":"write_failed"}
+       rows written: 0
+
+  Not load. Not a race. Not intermittent. The log names it:
+    Transaction API error: Transaction not found.
+
+  MECHANISM, and it takes both halves. web/lib/db/client.ts:
+    (1) create() memoises ONLY when NODE_ENV !== 'production', so in
+        production every property access builds a new PrismaClient
+        around a new pool.
+    (2) the Proxy does Reflect.get(client, property, receiver) with
+        receiver = THE PROXY, so prisma.$transaction() runs with
+        `this` bound to the Proxy and every `this.x` inside builds
+        yet another client.
+  So $transaction opens on one client and resolves its internals
+  against others. Either half alone would be survivable.
+
+  THE APPLICATION CODE IS CORRECT. lib/entries/write.ts:71 opens the
+  transaction and uses the `tx` handle properly. The fault is
+  entirely in the client module.
+
+  PROVEN THREE WAYS, independently:
+    CODE    the Proxy and the conditional memoisation, read
+    MODULE  $transaction driven directly:
+              NODE_ENV=test        SUCCEEDED {"a":199,"b":3131}
+              NODE_ENV=production  THREW "Transaction not found"
+    SYSTEM  one POST to a production container: 500, zero rows
+  A fourth from the other direction: the SAME write is 200
+  in-process under NODE_ENV=test and 500 against production.
+
+  SECOND CONSEQUENCE - CONNECTIONS. ~4 new pools per request, never
+  reused, released only by node-postgres's ~10 s idleTimeoutMillis:
+    baseline                        5 of 100
+    after 10 authenticated reads   45 of 100
+    after 20 authenticated reads   85 of 100
+    after ~25                      psql itself could not connect
+    15 s later                      1 of 100
+  A request carrying `Bearer <garbage>` opens pools on its way to a
+  401, so NO ACCOUNT IS NEEDED: about twenty-five HTTP requests
+  carrying a made-up token exhaust the database. A request with no
+  Authorization header short-circuits and costs nothing.
+
+  WHY EVERY GUARD HERE IS BLIND:
+    unit and db tests   NODE_ENV=test        -> memoised
+    pnpm dev            NODE_ENV=development -> memoised
+    R176's walkthrough  runs against pnpm dev
+    gate:changed        never builds production and drives it
+    gate:clone          skips the container suites, and SAYS SO
+    CI's container job  HAS NEVER PASSED (see F-CI)
+
+  AND IT IS OLDER AND MORE STRUCTURAL THAN F-CI. Reconciled against
+  FW28 and FW29, which both record test:container:e2e 270 + 9 HTTP
+  passed against a production image:
+    scripts/container-e2e.mjs NEVER POSTS AN ENTRY
+    e2e/ NEVER TOUCHES /api/v1/entries - by design, since D14
+      removed the signed-in web area and the write path's only
+      intended caller is an Android client that does not exist
+    the suites that DO exercise it all run under NODE_ENV=test
+    git log -- lib/db/client.ts -> 9c22ffd, 2026-09-13, FW14
+  SO A GREEN CONTAINER JOB WOULD NOT HAVE CAUGHT IT EITHER. The
+  reason this shipped is that NOTHING exercises a production write,
+  and that has been true since 13 September.
+
+  WHY IT WAS NOT THE SESSION'S HARD STOP. The prompt names
+  authentication bypass, cross-tenant data access, secret exposure
+  and remote code execution. This is none of them - nothing is read
+  that should not be, nothing is bypassed, nothing leaks. It is a
+  total functional failure and a denial of service. So the audit
+  continued, and this is first and in full, which is the binding
+  half of that instruction.
+
+THE REST, IN ONE LINE EACH. Authentication, tenancy, injection,
+secrets and logging came through clean under probe, each with a
+working control. The predicted finding - the PDF at 2 600 annex rows
+- DOES NOT EXIST, because the dossier is year-scoped. Seventeen
+findings are parked. SIX TIMES a measurement produced a finding that
+was not there, and section 8 of the audit document is about that.
+
+====================================================================
+PRECONDITIONS
+====================================================================
+
+R0. REPORT-FW29.txt and docs/release-audit-web.md read in full.
+
+R1. gate:clone PASSED on a fresh clone of origin/main HEAD.
+      commit  db10184017a8a6d79f7706be90f0768f8e3a586b
+      ran     install, typecheck, lint, test, build, size,
+              db:deploy, test:db
+      skipped test:e2e, test:visual, test:runtime, lighthouse,
+              parity:check, test:container - each NAMED with its
+              reason (R133)
+
+R250 HELD ABSOLUTELY. No real credential was sought or created, no
+     third-party account touched, no DNS changed, and every probe ran
+     against localhost. The one container started with a deliberately
+     wrong origin was REFUSED BY THE ENTRYPOINT by name, which is
+     R250's own guard firing in passing.
+
+====================================================================
+THE DATASET - web/scripts/fw30-dataset.mjs, COMMITTED
+====================================================================
+
+Every previous measurement in this project was taken against a
+261-row demo year for one user. That is a screenshot, not a load.
+
+  users            200   each a consistent scenario (R197): six
+                         cantons, three employment rates, both
+                         denominators (EXACT always carrying
+                         exactTotalWorkDays), both granularities,
+                         both logging modes
+  entries        3 424
+  entryEvents    3 131   one CREATED per entry plus MODIFIED on
+                         every fifth, so the trail is LONGER than
+                         the table
+  subscribers    5 000   confirmed / unconfirmed fresh / unconfirmed
+                         over 30 days / unsubscribed
+  ten-year user  2 609   2016-2025
+  half-day year    522
+  all-absent year  261   the zero-worked-days denominator
+  empty user         0   deliberately - the likeliest divide-by-zero
+  longest note  10 003   plus one carrying tab, CR, LF, NBSP, narrow
+                         NBSP, line separator and ZWSP
+  DST            both 2026 boundaries
+
+A CHECK CONSTRAINT REFUSED THE FIRST VERSION OF THIS FIXTURE.
+Entry_detectedKind_when_detected fired because the generator set a
+DETECTED provenance with a null detectedKind. R196 argues the
+database enforces an invariant "so the rule survives a writer who
+does not know it exists"; tonight that writer was the auditor, and
+the database was the only thing that noticed. A live instance, which
+R178 prefers to a planted one.
+
+THE GENERATOR RUNS ANALYZE BEFORE READING ANY PLAN. Without it the
+planner estimated 9 rows where there were 2 609, and the first
+reading produced a finding - a sequential scan on the alert send -
+THAT DOES NOT EXIST.
+
+====================================================================
+SECURITY - PER PROBE: SENT, RETURNED, VERDICT
+====================================================================
+
+AUTHENTICATION. Nine bad-credential classes x eleven authenticated
+routes, the routes DERIVED from app/api/**/route.ts (R246's lesson).
+99 refusals, ZERO acceptances, four distinct names (R198):
+
+  no token at all             401 missing_token            x11
+  malformed - not a JWT       401 unknown_token            x11
+  malformed - empty bearer    401 malformed_authorization  x11
+  wrong scheme (Basic)        401 malformed_authorization  x11
+  token with no scheme        401 malformed_authorization  x11
+  a REFRESH token as access   401 unknown_token            x11
+  token of a DELETED account  401 unknown_token            x11
+  token of a REVOKED session  401 revoked_session          x11
+  token in a COOKIE           401 missing_token            x11
+  token in a QUERY PARAM      401 missing_token
+
+The cookie and query-parameter rows are AC3's zero-cookie guarantee
+MEASURED rather than asserted. CONTROL: the same eleven routes with
+a good token are not all 401 - six 200s - so the refusals are not
+satisfied by the routes being broken.
+
+TENANCY - the highest-value probe, and it is clean.
+  query userId=B on dossier/entries/csv/account-export
+                                    400 unknown_parameter
+  duplicated year 2025&2026         400 invalid_year
+  duplicated userId A then B        400 unknown_parameter
+  B's entry id in a POST body       400
+  B's clientMutationId reused       400
+  PATCH /me with userId:B in body   400 invalid_body
+  CONTROL - A reads A's own dossier 200   <- GREEN
+  occurrences of B's id in A's body   0
+A DUPLICATED PARAMETER IS REFUSED OUTRIGHT rather than resolved
+first-wins or last-wins, which is the strongest available answer.
+
+  THE FIRST TWO RUNS OF THIS PROBE WERE WORTHLESS AND THE CONTROL
+  IS WHAT SAID SO. Probe 10 was sign-out, which ENDED A's SESSION,
+  and every probe after it returned 401 - refusals satisfied by
+  having no credential rather than by tenancy holding.
+
+INJECTION. Eighteen payloads. Type-confusion shapes - a Prisma
+operator object where a string belongs, an array for a scalar, a
+scalar for an array, __proto__, constructor.prototype - all 400,
+the runtime prototype verified unpolluted, oversized bodies 413.
+
+  THE SCHEMA-VALID HALF OF THAT RUN PROVED NOTHING, because F-WRITE
+  returned 500 for everything that reached the database, including
+  the control. Asked again IN-PROCESS through the route handler
+  (R204) under NODE_ENV=test, then read back from the database:
+    ' OR 1=1 --                      200  stored VERBATIM
+    '; DROP TABLE "Entry"; --        200  stored VERBATIM
+    ' UNION SELECT * FROM "User" --  200  stored VERBATIM
+    \' OR '1'='1                     200  stored VERBATIM
+    100% _wildcard_                  200  stored VERBATIM
+    cafe <U+202E> reversed           200  stored VERBATIM
+    "User" 199 rows, "Entry" 3 430 - NEITHER TABLE DROPPED
+  Kept exactly and interpreted nowhere, INCLUDING the LIKE wildcards
+  and the backslash, which are the two a hand-built query gets
+  wrong. That is the positive form (R133).
+
+HEADERS. All six ABSENT and set nowhere: Content-Security-Policy,
+X-Content-Type-Options, Referrer-Policy, Permissions-Policy,
+Strict-Transport-Security, X-Frame-Options. Not added - the prompt
+is right that a CSP written without measurement breaks a page and
+gets relaxed to nothing. Permissions-Policy is the one that fits
+this product best: geolocation=() would make SPEC's central promise
+structural in the browser rather than a property of our code.
+
+SECRETS. Clean.
+  client bundle, 56 files    no match for any secret shape
+  server bundle              one match, "BEGIN PRIVATE KEY", which
+                             is a PEM-FORMAT VALIDATOR CONSTANT
+  git history                the same constant, from FW27
+  tracked .env               none, only web/.env.example
+  NEXT_PUBLIC_*              exactly one, NEXT_PUBLIC_SITE_URL
+
+RATE LIMITS.
+  magic-link   LIMITED, INVISIBLY. 10 attempts at one address on a
+               restarted container issued ONE token. Every response
+               was 202 because every refusal maps to 202 so an
+               attacker cannot tell them apart.
+  refresh      NOT limited. 30 attempts in 757 ms, zero 429s. No
+               outbound work and 256-bit tokens, so it is unbounded
+               work per caller rather than a guessing vector.
+  export/pdf   bounded by MAX_QUEUED=2, not rate-limited
+  alertes      5 per 10 minutes per client key
+
+EMAIL ENUMERATION: NO ORACLE. 12 known/unknown pairs, status
+identical (202), body identical, MEDIAN TIMING DELTA -0,0 ms.
+
+LOGGING. 119 lines including several exception stack traces. Zero
+occurrences of the address, @example.com, Bearer, accessToken,
+fcmToken, a note's contents or a JWT prefix.
+  BUT SEE F-PRINTLOG: a PRINT TOKEN does reach the log, and this
+  probe missed it because a print token has none of those shapes.
+
+DEPENDENCIES. pnpm audit: 14 advisories, 7 high, 6 moderate, 1 low,
+0 critical. 14 direct production dependencies, 2 088 lockfile
+entries. ONLY ONE VULNERABLE PACKAGE IS IN THE PRODUCTION TREE:
+postcss@8.4.31 via next@15.5.25, and its advisories are attacks via
+malicious CSS input at build time. tmp, extract-zip and uuid are
+dev-only, confirmed with pnpm why --prod.
+
+====================================================================
+JOURNEY COVERAGE
+====================================================================
+
+(See the table in docs/audit-adversarial.md section 9.)
+
+====================================================================
+SCALABILITY AT VOLUME
+====================================================================
+
+QUERY PLANS, EXPLAIN (ANALYZE, BUFFERS), after ANALYZE:
+  dossier, one year      Bitmap Index Scan on
+                         Entry_userId_dayDate_portion_key
+                         261 rows, 0,269 ms
+  account export, all    Index Scan Entry_userId_dayDate_idx
+                         2 609 rows, 0,680 ms
+  the alert send         Bitmap Index Scan
+                         AlertSubscriber_confirmedAt_createdAt_idx
+                         1 000 rows, 0,512 ms
+  the purge              same index, 1 250 rows, 0,463 ms
+NO MISSING INDEX, NO N+1, NO SEQUENTIAL SCAN on any query that
+matters, at ten years and 5 000 subscribers.
+  The one remaining seq scan is EntryEvent and it is MY FIXTURE'S
+  FAULT: only one user has events, so the filter selects 100 % of
+  the table and a seq scan is correct. Stated as a limit.
+
+PAYLOADS AND TIMINGS:
+  PDF, 261-row annex                200, 1 485 ms
+  PDF, 522 half-day rows            200, 1 643 ms
+  PDF, pathological user            200, 154 882 bytes, 1 976 ms
+  account export, ten years         200, 1 237 600 bytes, 130 ms
+DOUBLING THE ROWS COST 158 ms - the render is not row-bound.
+
+THE PREDICTED FINDING DOES NOT EXIST, AND ITS PREMISE WAS WRONG.
+The prompt expected the PDF at 2 600 annex rows to be the single
+measurement most likely to produce a finding. lib/dossier/load.ts is
+YEAR-SCOPED, so a 2 600-row annex CANNOT EXIST. QUEUE_WAIT_MS of
+30 000 has roughly 18x headroom over the slowest render measured.
+THE 2 600-ROW LOAD IS REAL BUT LIVES ELSEWHERE: account/export.ts
+reads { where: { userId } } with no year bound and no pagination -
+1,2 MB at ten years, plus unbounded event, device, session and
+reminder reads.
+
+CONCURRENCY:
+  10 simultaneous dossier requests   all 200 in 4 086 ms,
+                                     44 of 100 connections after
+  5 simultaneous PDF renders         503 503 200 200 200, 17 102 ms
+                                     - exactly three served
+  4 renders across TWO containers    four 200s, ZERO 503s
+R236 asked what the sixth caller gets: a 503, promptly, rather than
+a timeout. The bound behaves as specified ON ONE REPLICA. The queue
+is in process memory, so N replicas admit 2N concurrent renders.
+
+CONNECTIONS:
+  max_connections                    100
+  superuser_reserved_connections       3  -> 97 usable
+  host and container CPUs              8
+  connection_limit                   SET NOWHERE
+  pg-boss                            no max set
+  docs/deploy.md:192                 "every replica runs its own
+                                      scheduler"
+docs/deploy.md never mentions a pool size, a connection_limit or
+max_connections. Under F-WRITE's leak this stops being arithmetic
+and becomes the binding constraint.
+
+====================================================================
+RESILIENCE
+====================================================================
+
+POSTGRES STOPPED MID-FLIGHT, then restarted with no intervention:
+  GET /api/v1/dossier   500, P1001 named in the log
+  GET /api/ready        200
+  GET /api/health       200
+  GET / and calculator  200
+  after docker start    serves again - RECOVERS WITHOUT INTERVENTION
+Static pages are unaffected, which is correct.
+
+CHROMIUM KILLED MID-RENDER (11 processes, pkill -9):
+  the in-flight request   read_failed, a 126-byte structured JSON
+                          error, not a hang and not a crash
+  a second render, 3 s later   200, 192 125 bytes
+  RECOVERS WITHOUT INTERVENTION
+The log names it: "page.goto: Target page, context or browser has
+been closed".
+
+THE RENDER QUEUE FILLED: 503 503 200 200 200, as above.
+
+NOT PERFORMED: making the mailer throw. Recorded in UNEXAMINED.
+
+F-BLIND. A DATABASE OUTAGE IS SILENT AT EVERY OBSERVABLE ENDPOINT.
+What I first wrote was too strong and the documentation corrected
+me: docs/deploy.md:94-106 scopes /api/ready to Coolify's DEPLOY
+health check and argues R83, and for a deploy gate a configuration
+check is right. The finding that survives is narrower and still
+real: NOTHING ANYWHERE REPORTS "THIS INSTANCE CANNOT REACH THE
+DATABASE". R244 made scheduled jobs report themselves; the request
+path has no equivalent.
+
+BACKUP AND RESTORE AT VOLUME:
+  pg_dump -Fc                1 s, 515 655 bytes
+  restore into a fresh db    2 s
+  all eight tables           counts MATCH
+  one dossier from each      72 364 bytes, SHA256 IDENTICAL
+A determinism question fell out of it: the first comparison differed
+at the same byte length, so the dossier was built TWICE FROM THE
+SAME DATABASE - also different, and the first differing byte named
+generatedAt, a build timestamp a document SHOULD carry. Excluding
+it, the dossier is byte-for-byte deterministic across two databases
+and two runs.
+
+====================================================================
+INTEGRITY UNDER CONCURRENCY
+====================================================================
+
+SCOPE, STATED: these ran IN-PROCESS through the route handlers
+(R204) under NODE_ENV=test. They CANNOT run against the production
+container because F-WRITE makes every write there return 500.
+Integrity is a property of the transaction logic and the database
+rather than of NODE_ENV, so the results mean something - but
+"integrity holds" must NOT be read as "holds in production", where
+no write completes at all.
+
+  two simultaneous writes to one day   both 200; ONE row (the unique
+                                       key); TWO events - both
+                                       attempts left a trace
+  can firstRecordedAt be moved?        NO. Identical before and
+                                       after 8 concurrent edits.
+                                       updatedAt did move.
+  a client-supplied firstRecordedAt    HTTP 400 - REFUSED, not
+                                       silently stripped
+  a replay concurrent with an edit     replay 200, edit 200, 1 row,
+                                       events 1 -> 2, DELTA 1: the
+                                       replay added NO event
+  a deletion concurrent with a write   write 200, 1 row, no crash
+
+Last-writer-wins on the row and the append-only trail keeps the
+loser: the state is unambiguous and the evidence complete. SPEC's
+"timestamps are server-assigned" survives eight-way concurrency AND
+a deliberate attempt.
+
+====================================================================
+CODE QUALITY
+====================================================================
+
+THE TWENTY-TEST FALSIFIABILITY SAMPLE.
+"Could this test fail?" answered by reading is reasoning, which R254
+forbids. It was answered by MUTATION.
+
+  population   vitest list: 1 823 + 505 = 2 328
+  excluded     e2e, visual, runtime, a11y, late, container - not
+               vitest suites reachable this way (R133, no silent cap)
+  seed         FW30, stated so the draw reproduces (R171)
+  redraws      none
+
+Mutations were PROPOSED by twenty independent readers and APPLIED by
+one sequential harness, because the proposer must not be the judge.
+The harness asserts its anchor occurs EXACTLY ONCE and refuses to
+write otherwise (R211), proves the plant LANDED via git diff
+--numstat (R180), requires the test to be OBSERVED TO RUN - a -t
+matcher selecting nothing is INCONCLUSIVE, never a pass (R133) - and
+restores the file before reading any result. Tree verified clean
+after all twenty.
+
+  RESULT: 18 RED, 2 UNFALSIFIABLE-BY-MUTATION.
+
+  01 rules.ts           simplifiedBasisDays 240 -> 250
+  03 warnings.ts        requestedTaxYear !== -> ===
+  05 account/export.ts  ADDED fcmToken to the export payload
+  13 provisional.ts     employmentRate < FULL_TIME -> >
+  18 fr/faq.ts          the social threshold swapped for the fiscal
+  20 vocabulary.ts      /certifi(?!cat)/i -> /certifi/i
+
+BOTH UNFALSIFIABLE ONES SURVIVED ADVERSARIAL CHALLENGE - two
+independent agents each, all four returning UNFALSIFIABLE-CONFIRMED
+after attempting refutation - AND THEY ARE DIFFERENT KINDS.
+
+  14 typography.test.ts "does not mistake the typographic one for
+     it" is a SELF-TEST OF A HELPER DEFINED IN THE TEST FILE. THIS
+     ONE IS CORRECT AS IT STANDS: its describe block is named "the
+     elision detector works, SO THE ABSENCE BELOW MEANS SOMETHING"
+     - it is an R133 positive control for the block that scans real
+     guide content, and a control is supposed to be independent of
+     what it controls.
+
+  17 params/schema.test.ts "gives every param a documented meaning"
+     IS A FINDING. The assertion is a tautology under the subject's
+     own types - PARAM_SCHEMA is Readonly<Record<ParamName,
+     ParamSpec>>, so a missing entry is a COMPILE error and the
+     test's own `?.` is dead code; field is a closed union of
+     non-empty literals so field.length > 0 always holds. AND THE
+     SHARPER HALF: the name promises a DOCUMENTED meaning and
+     ParamSpec HAS NO DESCRIPTION FIELD AT ALL. The name claims
+     documentation and the code measures a string length.
+
+(Duplication, dead code, complexity hotspots, type safety and the
+ruling-register triage: docs/audit-adversarial.md section 9.)
+
+====================================================================
+THE AUDIT'S OWN INSTRUMENT - SEVEN NEAR-MISSES
+====================================================================
+
+SEVEN TIMES A MEASUREMENT PRODUCED A FINDING THAT WAS NOT THERE.
+Every one would have been reported as a defect. Every one was caught
+only by asking what the OBSERVABLE EFFECT should be rather than what
+the symptom usually looks like.
+
+ 1. "Three FCM credentials declared and never read" - an operator
+    handing over a real private key that nothing consumes. FALSE:
+    the grep demanded process.env.FCM_PROJECT_ID and the code reads
+    env.FCM_PROJECT_ID through an INJECTABLE PARAMETER, written that
+    way so a test can supply a fake.
+ 2. "CSV formula injection is defended", 0 lines matching. FALSE
+    TWICE: the formula was planted in User.name, which the CSV has
+    no column for, and an earlier probe had overwritten that name.
+ 3. "The magic-link endpoint is unrated and sends mail." FALSE: it
+    IS limited, and every refusal maps to 202 SO AN ATTACKER CANNOT
+    TELL THEM APART. The limiter is invisible BY DESIGN and I was
+    looking for it by status code.
+ 4. "The alert send does a seq scan while the purge is indexed."
+    FALSE: the plan was read off tables never ANALYZEd.
+ 5. "Every injection shape refused", eighteen clean 400s. FALSE:
+    the payloads used items: where the schema says entries:, so
+    every one was rejected for a FIELD-NAME MISMATCH before any
+    injection content was examined.
+ 6. "Connections leak and never drain, 87 of 100." FALSE: those 87
+    belonged to MY OWN vitest process and vanished when it exited.
+    The container's real leak was found afterwards, with curl.
+ 7. "No user data reaches the log." FALSE: a PRINT TOKEN does, and
+    the probe missed it because a print token has none of the shapes
+    it searched for.
+
+THREE OF THE SEVEN WERE CAUGHT BY A CONTROL - a positive case
+asserted beside the negative one. That is R196's both-directions
+rule, and it earned its place three times in one session.
+
+====================================================================
+UNEXAMINED
+====================================================================
+
+- The Android client. No android/ directory; AN1-AN15 unbuilt.
+- Lighthouse and the throttled calculator. Not run this session, so
+  SPEC 21's LCP-on-slow-4G criterion remains unverified.
+- The visual baselines. test:visual not run; no baseline
+  regenerated, and none needed to be (R135/R207 do not arise).
+- Making the mailer throw. Two of four failure injections were done.
+- EntryEvent query plans at realistic multi-user selectivity.
+- Events orphaned by a concurrent delete - the relation filter was
+  rejected by Prisma and returned -1. Unmeasured, not zero.
+- Whether adding the six headers would break any page.
+- F-HALFDAY beyond the engine and its two render sites.
+- Real data. Every number here comes from a generated fixture.
+
+====================================================================
+PARK30 BY SEVERITY
+====================================================================
+
+CRITICAL
+  PARK30-1  F-WRITE. Every transactional write fails in production;
+            ~4 pools leaked per request; ~25 unauthenticated
+            requests exhaust the database.
+
+HIGH
+  PARK30-2  F-CI. The container suite is structurally incapable of
+            passing in CI - playwright.config.ts:78 sets
+            reuseExistingServer: !process.env.CI, and the harness
+            starts the container on the same port, so Playwright
+            refuses before a single spec runs. PRECISELY: it failed
+            on every run where jobs EXECUTED (35974016195,
+            35990070225, 35992419962); on tonight's two runs no job
+            executed at all (see Q4). Both support the same
+            conclusion - nothing verifies the container suite
+            anywhere - but they are different claims.
+            FW29 cited run 35974016195 as a precondition without
+            recording that it FAILED.
+  PARK30-3  F-CONTRACT. docs/api-v1.md calls itself "the contract
+            with the Android client" and "FW23 freezes it", and
+            omits 4 of the 13 v1 routes: export/pdf, export/csv,
+            account/export, account/delete.
+
+MEDIUM
+  PARK30-4  F-PLATFORM. no-coordinates.ts:86 matches by SUBSTRING,
+            so "platform" contains "lat" and the documented device
+            body is refused coordinates_refused. docs/api-v1.md:859
+            publishes that exact body; line 902 documents the error
+            as invalid_body. Derived blast radius: 4 of 98 declared
+            field names caught, of which ZERO are coordinates.
+  PARK30-5  F-EXPORT. account/export.ts unbounded and unpaginated.
+  PARK30-6  F-CONN. connection_limit unset, pg-boss pool unsized,
+            deploy.md silent on the arithmetic.
+  PARK30-7  F-RETRY. A deterministic input refusal
+            (DAYS_EXCEED_TOTAL) is presented as 500 with
+            "l'application reessaiera", a retry that cannot succeed.
+  PARK30-8  F-BLIND. Nothing reports "this instance cannot reach the
+            database".
+  PARK30-9  F-AUDIT. release-audit-web.md:205 claims "Six CHECK
+            constraints exist. Every one was fired"; its own
+            evidence exercises THREE. Never fired:
+            Entry_detectedKind_when_detected,
+            DeviceSession_revoked_pair,
+            SessionToken_consumed_after_created.
+  PARK30-10 F-TAUTOLOGY. params/schema.test.ts cannot fail and its
+            name claims documentation ParamSpec has no field for.
+  PARK30-11 Six security headers absent.
+  PARK30-19 F-R248. A standing ruling rests on a premise that is not
+            true: R248 says the allowance stopped binding "when the
+            repository went public", and the repository is PRIVATE.
+            CI executed jobs at 11:20Z today and started none at
+            14:02Z. Measurement in Q4.
+
+LOW
+  PARK30-12 F-HALFDAY. A whole-day user is told "0,5 jours
+            restants" when the takeable answer is 0, on the
+            calculator AND the printed Releve. 57 of 167 year
+            lengths produce it.
+  PARK30-13 /api/v1/auth/refresh unrated.
+  PARK30-14 postcss@8.4.31, the only vulnerable package in the
+            production tree, build-time only.
+  PARK30-18 F-PRINTLOG. The print token reaches the application's
+            own log on success and failure. The product already
+            reasons about this and bounds it at 120 s, PROVEN IN
+            BOTH DIRECTIONS (fresh 200, expired 404); what is
+            missing is that print-token.ts's threat list names a
+            reverse-proxy log and not the one we write ourselves.
+
+OBSERVATION
+  PARK30-15 The render queue is per-process: N replicas admit 2N.
+  PARK30-16 /releve/print accepts a token minted for another user by
+            design - the token IS the credential, so AUTH_SECRET
+            leakage yields any user's dossier.
+  PARK30-17 R209's consequence line is one table too broad:
+            VerificationToken has 25 call sites.
+
+====================================================================
+THE THREE THAT DESERVE A TASK OF THEIR OWN
+====================================================================
+
+PARK30-1 (F-WRITE), because the product does not work when deployed
+and the fix is worthless without a test that runs a production build
+and writes; PARK30-2 (F-CI), because it is the only place such a
+test could run and it has never once passed; and PARK30-3
+(F-CONTRACT), because the Android client is the next thing to be
+built and it will be built against a document that is both wrong
+where it speaks and silent about a third of what it governs.
+
+====================================================================
+DEVIATIONS
+====================================================================
+
+D1. INCREMENTS 4 AND 5 SHARE A COMMIT WITH THE AUDIT DOCUMENT. The
+    measurements are findings rather than code, and the document is
+    the artifact the gate certifies.
+
+D2. THE DATASET OMITS ONE ITEM THE PROMPT ASKED FOR AND ADDS
+    CONTEXT FOR IT. "A note with every kind of whitespace" and the
+    10 000-character note are present; the DST rows are present;
+    the all-absent and empty users are present. Nothing was
+    silently dropped.
+
+D3. INTEGRITY UNDER CONCURRENCY RAN IN-PROCESS, NOT AGAINST THE
+    CONTAINER, BECAUSE F-WRITE MAKES EVERY CONTAINER WRITE 500.
+    Stated in the section rather than left for a reader to infer.
+
+D4. THE FIRST DATASET WAS INCOHERENT AND THE ENGINE CAUGHT IT.
+    fw30-u1 had an 80 % employment rate and a full-time ten-year
+    history, and the dossier refused with DAYS_EXCEED_TOTAL -
+    correctly. The generator now pins the named scenario users.
+    Recorded because it produced F-RETRY, which survives the fixture.
+
+D5. NOTHING STRUCTURAL WAS FIXED (R255). The only code change in
+    this session is to the generator.
+
+====================================================================
+QUESTIONS
+====================================================================
+
+Q1. F-WRITE's fix looks like two lines. Should it be a task of its
+    own with the production-mode write test, or folded into the
+    next task? The audit's position is the former: the edit without
+    the test restores the condition that allowed this.
+
+Q2. F-PLATFORM is a change to a privacy guard's matching rule.
+    Exact matching loses homeLat and gpsLatitude; a word-boundary
+    regex has to decide about camelCase. SPEC's no-coordinate rule
+    is absolute, so this is a product decision, not a fix.
+
+Q3. F-HALFDAY is a rounding rule in the engine, which SPEC 20 puts
+    behind ASK FIRST. Should remainingToFiscal floor to whole days
+    for a whole-day user?
+
+Q4. R248 RESTS ON A PREMISE THAT IS NOT TRUE, AND IT BIT TONIGHT.
+    The ruling says "CI runs again, BECAUSE THE ALLOWANCE STOPPED
+    BINDING WHEN THE REPOSITORY WENT PUBLIC". Measured:
+    gh repo view -> "visibility":"PRIVATE", with CI_FULL on.
+      FW29's push 35992419962, 11:20Z   jobs RAN
+                  steps 13, 25, 11, 17, 9, 12, 8, 8
+      my push     36005178330, 14:02Z   ZERO STEPS
+      my push     36009891559, 14:02Z   ZERO STEPS
+                  every job steps=0, 2-3 s, and the matrix name
+                  unexpanded: "format parity (node ${{ matrix.node }})"
+    GITHUB STARTED NO JOB on either of tonight's pushes. That is
+    not a red gate in my work - gate:clone was green for both - it
+    is exactly the state the FW24 guard names in words, and the
+    guard predicted it precisely.
+    Either make the repository public, so R248's premise becomes
+    true, or delete CI_FULL so the checks skip cleanly instead of
+    failing with zero steps. The guard prints both commands. It is
+    the user's decision, not an audit's.
+
+====================================================================
+PUSH PROOF
+====================================================================
+
+  a839114  FW30: a dataset worth measuring against
+  db10184  FW30: security probes
+  <this>   FW30: the adversarial audit
+
+  gate:changed green before each commit; gate:clone green before
+  each push.
+
+  CI RAN NO JOB ON ANY OF THEM. Both pushed commits produced a run
+  with ZERO STEPS on every job - the private-repository-plus-
+  CI_FULL state the FW24 guard names, and which gate:clone printed
+  before each push. The red checks on these commits are not a
+  result about this work; Q4 has the measurement.

@@ -1,0 +1,278 @@
+FW30 SESSION PROMPT - Mon Releve
+THE ADVERSARIAL AUDIT
+Read relay/PHASE-4-PROTOCOL.txt and relay/R241-CONSIGNE.txt first,
+from disk.
+
+====================================================================
+R241 - CONTINUOUS EXECUTION
+====================================================================
+RUN THE WHOLE TASK. THE ONLY THING THAT ENDS THIS SESSION IS
+REPORT-FW30.txt, COMMITTED AND PUSHED. Do not stop to report a
+finding, however alarming - findings go in the report. If you are
+composing a message that is not the report, keep working.
+
+Unclear? R156: conservative, reversible, park it, continue.
+
+ENDS THE SESSION EARLY: R156's boundary; a red gate you cannot fix in
+the increment; any path where something could reach a real person or
+a real third-party account (R243, R250); a degraded context.
+
+ONE ADDITION, and it is absolute: IF YOU FIND A LIVE SECURITY DEFECT
+THAT IS EXPLOITABLE AS SHIPPED - authentication bypass, cross-tenant
+data access, secret exposure, remote code execution - STOP, write the
+report with that finding first and in full, and end the session. Do
+not fix it silently and continue; do not leave it in a list of
+twenty other observations. Everything else is a finding to record.
+
+====================================================================
+PRE-STEP
+====================================================================
+R0. Read REPORT-FW29.txt and docs/release-audit-web.md IN FULL.
+    FW29 audited the product against ITS OWN criteria: SPEC 21, the
+    standing rulings, the human gates. It answered "did we do what we
+    said". THIS TASK ASKS A DIFFERENT QUESTION: what would a hostile
+    reviewer, a real attacker, a real load, and a maintainer in two
+    years find that our own criteria never asked about.
+
+R1. pnpm gate:clone green on a fresh clone of origin/main's HEAD.
+    Record the commit hash, the envelope, and the CI run.
+
+R250. NO REAL CREDENTIAL, no third-party account, no scan against any
+    host you do not own, no traffic to any domain but localhost. Every
+    probe runs against a local instance. A dependency advisory is read
+    from the lockfile and the advisory database, not by contacting a
+    vendor.
+
+R254 (new, and it governs this task). AN AUDIT MEASURES; IT DOES NOT
+    REASON. "We use parameterised queries, so injection is handled"
+    is not a finding - it is a belief. Every claim in the report is
+    backed by something that was RUN: a probe that was sent and
+    refused, a query plan that was read, a dataset that was generated
+    and timed, a header that was fetched. A section with no evidence
+    is written as UNEXAMINED, which is an honest and useful thing for
+    a report to say.
+
+R255 (new). THE AUDIT FIXES ALMOST NOTHING. A finding is recorded and
+    parked (PARK30-<n>) with its severity, its evidence, and what it
+    would take to close. Fix only what is obviously correct, provable
+    inside the increment, and smaller than its finding - a missing
+    header, a bounded query. Anything structural is a finding, not a
+    refactor: a session that starts fixing stops auditing.
+
+CARRIED: R133/R233/R244 positive signals and measurements that report
+    whether they observed their subject. R180 verify a plant landed.
+    R252 when a check run a new way fails, suspect the new way first.
+    R178 a live instance beats a planted one.
+
+====================================================================
+CONTEXT
+====================================================================
+FW30 ONLY: an adversarial audit across six dimensions. It builds
+nothing and ships nothing.
+
+WHY IT IS WORTH A SESSION. Every check this project owns was written
+by the people who wrote the code, against criteria the same people
+chose. That has caught a great deal - twelve instances of a signal
+reporting success while verifying nothing - but it cannot catch what
+nobody thought to ask. This task asks the questions an outsider asks.
+
+THE DATA PROBLEM, AND IT SHAPES EVERYTHING. Every measurement in this
+project has been taken against a 261-row demo year for one user. That
+is not a load, and several of the answers below only appear at
+volume. INCREMENT 1 GENERATES A REALISTIC DATASET and every later
+increment measures against it.
+
+Read: SPEC 20 (the boundaries), SPEC 8, SPEC 13, docs/api-v1.md,
+docs/deploy.md, docs/release-audit-web.md, phase4parking.md.
+
+====================================================================
+INCREMENT 1 - a dataset worth measuring against
+====================================================================
+Generate, locally, into a throwaway database:
+  - 200 users, each with settings that differ (cantons, rates,
+    methods, granularities, both logging modes);
+  - 10 YEARS of entries for at least one user - roughly 2 600
+    entries and 2 600+ events, which is what a person who started in
+    2026 will have in 2036;
+  - a user with half-day granularity throughout, which roughly
+    doubles the row count per year;
+  - a user with 5 000 alert subscriptions' worth of list data;
+  - pathological rows within the contract: a 10 000-character note,
+    a note with every kind of whitespace, an entry at each DST
+    boundary, a year with every day absent, a year with no entries.
+R197 applies: each user is a consistent scenario, not noise.
+The generator is committed so the measurements can be reproduced.
+- Commit: "FW30: a dataset worth measuring against". Push.
+
+====================================================================
+INCREMENT 2 - SECURITY
+====================================================================
+Probe, do not reason. For each, send the request and record the
+response.
+
+  AUTHENTICATION. An expired token, a revoked token, a token from a
+  deleted account, a malformed token, no token, a token in a cookie
+  instead of a header, a token in a query parameter. Each must be
+  refused and each refusal named (R198).
+  TENANCY. For EVERY authenticated route: user A's token against
+  user B's identifier, in the path, the body, the query, and as a
+  duplicated parameter. This is the highest-value probe in the
+  audit and it is cheap - enumerate the routes from the router, do
+  not list them by hand (R246's lesson).
+  INJECTION. Into every field that reaches the database or a query:
+  SQL metacharacters, a Prisma operator object where a string is
+  expected, an oversized payload, an array where a scalar is
+  expected, a prototype-pollution shape (__proto__, constructor).
+  HEADERS. Fetch a public page and an API route and record what is
+  present and absent: CSP, X-Content-Type-Options, Referrer-Policy,
+  Permissions-Policy, HSTS, X-Frame-Options. State which are missing
+  and what each would prevent. Do not add them all reflexively - a
+  CSP written without measurement breaks a page and gets relaxed to
+  nothing.
+  SECRETS. Scan the built image, the client bundle and the git
+  history for anything secret-shaped. The client bundle matters most:
+  NEXT_PUBLIC_ variables ship to every reader.
+  RATE LIMITS. Which write routes have one, which do not, and what
+  an unlimited one costs - the magic-link endpoint sends email, the
+  PDF endpoint spawns a browser.
+  LOGGING. What does the server print on a failed request? Does a
+  token, an email address, an entry payload or a note reach a log?
+  /confidentialite makes claims about this.
+  DEPENDENCIES. pnpm audit, and for every production dependency: is
+  it maintained, what does it pull in, and does anything ship to the
+  client that should not.
+- Commit: "FW30: security probes". Push.
+
+====================================================================
+INCREMENT 3 - END-TO-END COVERAGE, HONESTLY
+====================================================================
+Not "how many e2e tests" - WHICH JOURNEYS.
+  - Enumerate the journeys a real person performs: arrive from a
+    search, calculate, share a link, open a shared link, subscribe,
+    confirm, unsubscribe, sign in, record a day, correct a day,
+    export a dossier, delete an account.
+  - For each: is it covered end to end, partially, or not at all?
+    A journey covered by three unit tests and no e2e is NOT covered.
+  - THE ENTRY-POINT QUESTION (R204, and FW27's finding): where a
+    path can be driven two ways - by hand and by a scheduler, by a
+    function and by a route - is the AUTOMATIC one the one under
+    test? FW27 discovered the walkthrough exercised the manual entry
+    point while the scheduler ran a different code path that
+    discarded its counts.
+  - The no-JavaScript journeys: the calculator, the alert form, the
+    guides. Which still work?
+- Commit: "FW30: journey coverage". Push.
+
+====================================================================
+INCREMENT 4 - SCALABILITY AND PERFORMANCE, AT VOLUME
+====================================================================
+Against increment 1's dataset, measured:
+  - QUERY PLANS. EXPLAIN ANALYZE every query the dossier, the entries
+    read and the export perform, for the 10-year user. Sequential
+    scans, missing indexes, and N+1 patterns - name them with their
+    row counts and timings.
+  - UNBOUNDED READS. FW23 made the entries read unbounded on the
+    argument that a year is structurally bounded. Is that still true
+    for the export, the dossier annex and the account export at ten
+    years and half-day granularity? Measure the payload size in
+    bytes and the time.
+  - THE PDF AT VOLUME. FW28 measured a 262-row annex. Measure a
+    2 600-row one: wall time, peak memory, and whether it completes
+    inside QUEUE_WAIT_MS. R236 set that deadline from a typical
+    year; this is the worst case it was told to state.
+  - CONNECTIONS. How many does the app hold, how many does pg-boss
+    hold, and what is the pool limit? Two containers plus the
+    scheduler against a default Postgres is a real arithmetic
+    question.
+  - CONCURRENCY. Ten simultaneous dossier requests; five simultaneous
+    PDF requests against a single-render queue. What is returned to
+    the sixth?
+  - THE CALCULATOR PAGE at its GATE A limit, on a throttled
+    connection, measured rather than scored.
+- Commit: "FW30: scalability and performance at volume". Push.
+
+====================================================================
+INCREMENT 5 - RESILIENCE, DATA INTEGRITY, OPERABILITY
+====================================================================
+  - FAILURE INJECTION. Stop Postgres mid-request. Kill Chromium
+    mid-render. Fill the render queue. Make the mailer throw. For
+    each: what does the user see, what does the log say, and does
+    the system recover without intervention?
+  - DATA INTEGRITY UNDER CONCURRENCY. The evidence claims are the
+    product. Two simultaneous writes to the same day; a replay
+    concurrent with an edit; a deletion concurrent with a write.
+    Does the trail stay consistent, and can firstRecordedAt be moved
+    by any interleaving?
+  - BACKUP AND RESTORE at volume: dump the 10-year dataset, restore
+    into an empty database, and assert row counts and one dossier
+    identical. FW28 proved a restore with a demo year.
+  - OPERABILITY. If this breaks at 03:00, what is there to look at?
+    What is logged, what is counted, what is silent? R244 required
+    scheduled jobs to report; does anything report for a request
+    path?
+- Commit: "FW30: resilience, integrity, operability". Push.
+
+====================================================================
+INCREMENT 6 - CODE QUALITY, FOR THE MAINTAINER IN TWO YEARS
+====================================================================
+Measured, not opined:
+  - DUPLICATION. Where does the same logic exist twice? R206 governs
+    text; this is the same question for code. Name each pair.
+  - DEAD CODE. Exports nobody imports, branches nothing reaches,
+    copy nothing renders (R238 covers the last for one module - what
+    about lib/fr generally?).
+  - COMPLEXITY HOTSPOTS. The five longest functions and the five
+    with the most branches. Are they the ones you would expect - the
+    waterfall, the aggregation - or is something incidental large?
+  - TEST QUALITY, NOT COUNT. Sample twenty tests at random. For each:
+    could it fail? Does it assert an outcome or an implementation
+    detail? Is it DAMP or is it a puzzle? A suite of 2 700 tests
+    whose sample contains three that cannot fail is a finding.
+  - THE RULING REGISTER. 250+ rulings. Which are enforced by a
+    mechanism, which are conventions nobody checks, and which are
+    now obsolete because the thing they governed is gone?
+  - TYPE SAFETY. Any `any`, any `as` that discards a check, any
+    non-null assertion. Where and why.
+- Commit: "FW30: code quality". Push.
+
+====================================================================
+INCREMENT 7 - THE REPORT
+====================================================================
+- docs/audit-adversarial.md: every dimension, every finding, each
+  with SEVERITY (critical / high / medium / low / observation),
+  EVIDENCE (what was run and what it returned), and WHAT IT WOULD
+  TAKE TO CLOSE.
+- A section named UNEXAMINED, listing what this audit did not look
+  at and why. That section is as valuable as the findings.
+- The consolidated PARK30 list, ordered by severity, and a single
+  sentence: the three findings that most deserve a task of their own.
+- READ THE AUDIT as somebody deciding whether to trust this product
+  with their tax record. Does any section claim more than its
+  evidence supports? FW29's read found the audit holding two
+  standards for one kind of claim, and the subject was itself.
+- gate:clone before the final push.
+- Commit: "FW30: the adversarial audit". Push.
+
+====================================================================
+OUT OF SCOPE
+====================================================================
+- Fixing anything structural (R255). Deploying. Any real credential,
+  host, or third party. Any engine change. Any /v1 field rename.
+- Adding a dependency to production. A dev-only tool needed for a
+  measurement is parked and named, not installed on judgement.
+
+====================================================================
+REPORT FORMAT - REPORT-FW30.txt
+====================================================================
+SUMMARY (and if a critical finding exists, it is the first thing in
+the file) / PRECONDITIONS / THE DATASET (what was generated) /
+SECURITY (per probe: sent, returned, verdict) / JOURNEY COVERAGE (the
+table) / SCALABILITY (query plans, payload sizes, timings, the PDF at
+2 600 rows, connection arithmetic) / RESILIENCE (each injection: what
+the user saw, what the log said, whether it recovered) / INTEGRITY
+UNDER CONCURRENCY / CODE QUALITY (duplication, dead code, hotspots,
+the twenty-test sample, the ruling register triage) / UNEXAMINED /
+PARK30 BY SEVERITY / THE THREE THAT DESERVE A TASK / DEVIATIONS /
+QUESTIONS / PUSH PROOF
+
+END OF FW30 PROMPT
