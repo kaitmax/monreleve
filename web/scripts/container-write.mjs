@@ -337,6 +337,19 @@ try {
 
   const token = await signIn();
 
+  // A TITULAIRE, SO THE DOSSIER CAN RENDER. A user created by a first sign-in
+  // has no name and no canton, and lib/dossier/service.ts raises
+  // MissingTitulaireError without one - so the dossier route answers 500 and
+  // the pool measurement below would be of a FAILING path. Setting it here
+  // makes AC3 measure the route a real client actually drives.
+  await withClient(toolUrl, async (client) => {
+    await client.query('UPDATE "User" SET name = $1, canton = $2 WHERE email = $3', [
+      'Fixture Titulaire',
+      'GE',
+      EMAIL,
+    ]);
+  });
+
   const mutation = `fw31-write-${randomBytes(6).toString('hex')}`;
   const dayDate = '2026-04-07';
 
@@ -412,6 +425,14 @@ try {
   }
 
   const afterGarbage = await connections();
+
+  // THE MEASUREMENT IS ONLY WORTH ANYTHING IF THE REQUESTS SUCCEEDED. A route
+  // answering 500 may touch the database less than one that works, so a pool
+  // that did not grow across sixty failures would prove nothing.
+  const allAuthedOk = authed.every((status) => status === 200);
+
+  if (allAuthedOk) ok('AC3: the sampled requests actually succeeded', '30x 200');
+  else bad('AC3: the sampled requests actually succeeded', `statuses ${[...new Set(authed)].join(', ')}`);
 
   const observed = before !== null && afterAuthed !== null && afterGarbage !== null;
 

@@ -7,11 +7,22 @@
 // the migration CLI reads - so the application's connection is configured
 // here, in TypeScript, where it can be read and tested like anything else.
 //
-// ONE INSTANCE, GUARDED ON globalThis. Next's dev server re-evaluates modules
-// on every edit, and a new PrismaClient per evaluation opens a new pool per
-// edit until PostgreSQL refuses connections. The guard is a development
-// concern only and is written so that production still gets a plain module
-// singleton.
+// ONE INSTANCE, CACHED ON globalThis, IN EVERY ENVIRONMENT. Next's dev server
+// re-evaluates modules on every edit, and a new PrismaClient per evaluation
+// opens a new pool per edit until PostgreSQL refuses connections. The same is
+// true of production for a different reason - the Proxy below calls create()
+// on every property access - so the cache is unconditional.
+//
+// THIS PARAGRAPH USED TO SAY THE GUARD WAS "a development concern only" AND
+// THAT "production still gets a plain module singleton". That was false from
+// the day it was written: a module singleton needs a module-scope binding and
+// there is none. Production had no singleton at all, every `prisma.x` built a
+// client and a pool, and POST /api/v1/entries returned 500 with zero rows
+// from 13 September until FW31 - three weeks in which every suite was green,
+// because they all run where the guard WAS applied. The sentence is kept, in
+// the past tense, because a comment asserting a property nothing delivers is
+// the mechanism that hid this (R154), and deleting it would leave the lesson
+// nowhere.
 //
 // NO ABSTRACTION LAYER OVER IT. FW14's standing protocol: "a form, a table,
 // two route handlers, one email. No ORM abstraction layer over Prisma." What
@@ -52,9 +63,25 @@ function create(): PrismaClient {
     globalForPrisma.frontalierPrisma ??
     new PrismaClient({ adapter: new PrismaPg({ connectionString: connectionString() }) });
 
-  if (process.env.NODE_ENV !== 'production') {
-    globalForPrisma.frontalierPrisma = client;
-  }
+  // CACHED IN EVERY ENVIRONMENT, PRODUCTION INCLUDED. FW31.
+  //
+  // This assignment used to sit behind `NODE_ENV !== 'production'`, on the
+  // reasoning recorded above it that production "still gets a plain module
+  // singleton". IT NEVER DID: a module singleton needs a module-scope binding
+  // and there is none - there is a Proxy that calls this function on EVERY
+  // property access. So production cached nothing and every `prisma.x` built
+  // a PrismaClient and a PrismaPg pool.
+  //
+  // Measured before the change, against a production container: thirty
+  // authenticated requests took the server from 1 to 97 of 100 connections,
+  // and the next thirty exhausted it so completely that psql could not
+  // connect. About four pools per request, released only by node-postgres's
+  // ~10s idleTimeoutMillis.
+  //
+  // globalThis rather than a module-scope `let`, still: Next bundles server
+  // code into several chunks and this module can be evaluated more than once
+  // in one process, which is the same reason the dev guard used it.
+  globalForPrisma.frontalierPrisma = client;
 
   return client;
 }
@@ -79,9 +106,40 @@ function create(): PrismaClient {
  * it is confined to this file.
  */
 export const prisma: PrismaClient = new Proxy({} as PrismaClient, {
-  get(_target, property, receiver) {
+  get(_target, property) {
     const client = create();
+    const value = Reflect.get(client, property) as unknown;
 
-    return Reflect.get(client, property, receiver) as unknown;
+    // WHAT COMES BACK IS BOUND TO THE CLIENT, and a 500 on the product's main
+    // use case is what taught this. FW31.
+    //
+    // `prisma.$transaction(cb)` is a method call whose base reference is THIS
+    // PROXY, so JavaScript binds `this` to the Proxy no matter what the trap
+    // returned. Prisma's `$transaction` then reads `this._engine`,
+    // `this._tracingHelper`, `this._createItxClient` and a dozen more through
+    // here instead of off the client that opened the transaction. While the
+    // cache above was skipped in production, each of those re-entries built a
+    // DIFFERENT client - so the transaction was started on one engine and
+    // committed against another: "Transaction API error: Transaction not
+    // found."
+    //
+    // Binding makes each method carry the client it came from, so no Prisma
+    // internal is ever resolved against this Proxy, and the trap fires once
+    // per call site rather than a dozen times per transaction.
+    //
+    // MODEL DELEGATES ARE UNTOUCHED. `prisma.entry` is an object - Prisma's
+    // own composite proxy - not a function, so it passes through unbound and
+    // keeps its identity.
+    //
+    // THE RECEIVER ARGUMENT IS GONE BECAUSE IT NEVER DID ANYTHING, and saying
+    // so matters more than dropping it. `Reflect.get`'s third argument sets
+    // `this` for an ACCESSOR during the get; it cannot decide the `this` of a
+    // later call. And in Prisma 7 it could not even do that much: the
+    // constructor ends `return this._appliedParent = <composite proxy>`, and
+    // that proxy's trap is `get(o, s)` - two parameters, the receiver
+    // discarded. Read from the shipped runtime, not assumed. Leaving it in
+    // would imply a mechanism that is not there, which is how this defect was
+    // first described.
+    return typeof value === 'function' ? (value.bind(client) as unknown) : value;
   },
 });
