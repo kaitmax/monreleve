@@ -611,7 +611,190 @@ three times in one session.
 
 ## 9. Static code-quality census
 
-*Filled from the parallel census — see the section appended below.*
+Seven read-only dimensions, run in parallel, each required to report the commands
+it ran rather than how it reasoned.
+
+> **THE STANDARD OF EVIDENCE IN THIS SECTION IS WEAKER THAN IN EVERY OTHER
+> SECTION, AND THE READ-THROUGH FOUND IT IN THIS DOCUMENT RATHER THAN IN THE
+> PRODUCT.** Sections 3 to 7 report things this session sent, ran and read back.
+> This section reports a **census produced by other readers**. I re-verified every
+> high-severity claim by hand — F-CONFIRM, F-EMAIL, R93, the git hooks, the
+> Lighthouse invocation — and one of those checks changed the reading. **I did
+> not re-run the counts**: 593 exports, 113 unreferenced, 182 enforced, 148 e2e
+> blocks, 983 lines, 7 of 18 probes. Those are reported as the census produced
+> them.
+>
+> That is exactly the defect FW29 caught in itself (its F4): **two standards
+> applied to one kind of claim**. FW29 resolved its version by doing the work
+> rather than adjusting the wording. I have resolved mine by adjusting the
+> wording, because re-deriving forty counts is a second census and not an audit —
+> and a weaker claim written as weaker is the honest form (FW29's own rule for
+> the five rulings it could not fire in isolation). **Read the counts below as
+> indicative and the named findings as verified.**
+
+### Journey coverage — 12 journeys, 4 covered end to end
+
+| Journey | Tier | |
+|---|---|---|
+| arrive from a search | e2e in a browser | covered |
+| calculate | e2e in a browser | covered |
+| open a shared link | e2e in a browser | covered |
+| subscribe to alerts | e2e in a browser | covered |
+| share a link | **partial** — the control is pressed, the URL it produces is never read | |
+| unsubscribe | in-process only, no e2e | |
+| sign in (magic link) | in-process only — **by design**, D14 removed the signed-in web area | |
+| record a day | in-process only — the only client is an unbuilt Android app | |
+| correct a day | in-process only | |
+| export a dossier | in-process + one real-HTTP suite | |
+| delete an account | in-process only | |
+| **confirm (double opt-in)** | **nothing, at any tier** | **HIGH** |
+
+**Of 148 e2e test blocks, exactly 4 exercise a persistence step**, so one of twelve
+journeys is e2e-covered through a database.
+
+**F-CONFIRM, verified by hand.** `app/api/alertes/confirm/route.ts` exists (2 069
+bytes) and is imported by **no test**. The route-handler imports across `tests/`
+and `e2e/` are `@/app/api/alertes/route` ×4 and
+`@/app/api/alertes/desinscription/route` ×1 — never confirm. The confirmation
+*page* is covered by a unit test and two visual baselines, but that is the landing
+page, not the route that consumes the token. The chain is joined only in two
+disjoint halves: one test extracts the emailed token and asserts its hash matches
+the stored one **without consuming it**; another drives `confirmByToken()` with
+tokens taken straight from the fixture. The equivalent round trip **does** exist
+for the unsubscribe link. So the step that turns an unconfirmed subscriber into a
+confirmed one — the step `/confidentialite` makes claims about, and the one that
+makes the list lawful — is exercised by nothing. R204's shape exactly: the entry
+point is the unit under test, and here the entry point is the only part nobody
+drives.
+
+### Complexity hotspots — the top of both lists is incidental
+
+Across 239 parsed files and 879 non-test function nodes (median **5** lines):
+
+| | Longest | Branchiest |
+|---|---|---|
+| 1 | `CalculatorForm` **983 lines** | `CalculatorForm` **63** |
+| 2 | `PrintPage` 317 | `decode` (`lib/params/codec.ts`) **40** |
+| 3 | `WorkbenchPage` 270 (dev-only) | `validateInput` 19 |
+
+**The answer to the dimension's question is no.** The expected domain hotspots are
+small and well-decomposed — `runWaterfall` is **42 lines with 1 branch** (rank
+#73 by length), `buildDossier` **72 lines with 3 branches** (#35). The largest
+function in the product is a client-side UI form 3.1× longer than anything else,
+and the second-branchiest thing is a URL query-string codec with 2.1× the branches
+of the calculation engine's branchiest function. Only `PrintPage` is where
+expectation predicts.
+
+*The agent notes its own limit: the branch set counts `if/else/switch/ternary/&&/||/catch`
+as the brief specified, so `??`, `?.` and loops are excluded and at least one
+figure is understated.*
+
+### Duplication — 22 named pairs, 5 high
+
+| Pair | What is duplicated |
+|---|---|
+| `lib/alerts/purge.ts` vs `scripts/purge-unconfirmed.mjs` | the alert retention rule, implemented twice |
+| `scripts/container-e2e.mjs` vs `scripts/lighthouse.mjs` | R169's health-identity check, a fourth and weakest copy |
+| `lib/alerts/subscribe.ts` vs `lib/auth/request.ts` | **two definitions of a valid email address** |
+| `lib/dossier/load.ts` vs `lib/entries/read.ts` | a 14-line trail query, byte-identical apart from the client binding |
+| `lib/entries/read.ts` vs `lib/dossier/service.ts` | `PORTION_ORDER` declared twice, only one pinned to the schema |
+
+And in `app/api/v1`, `refuse()` is defined identically **eight times**, the
+coordinate guard is written out **eight times**, and a 39-line authenticated-GET
+prologue is duplicated four times — `diff -u` of the CSV and dossier routes with
+comments stripped is identical but for one log string.
+
+**F-EMAIL, verified by hand rather than taken from the agent.** `lib/alerts/subscribe.ts`
+uses a hand-written regex `/^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/`; `lib/auth/request.ts:68`
+uses Zod's `.email()`. Run against 18 probe addresses, **7 disagree**, and the
+regex is the more permissive one every time:
+
+```
+a..b@c.co   regex ACCEPT   zod reject
+a@-b.co     regex ACCEPT   zod reject
+"q"@b.co    regex ACCEPT   zod reject
+a@b.c       regex ACCEPT   zod reject
+.a@b.co     regex ACCEPT   zod reject
+a.@b.co     regex ACCEPT   zod reject
+a@b_c.co    regex ACCEPT   zod reject
+```
+
+An address can **join the alert list and then be refused at sign-in**. One product,
+two answers, and the surface that collects the address is the looser of the two.
+
+### Dead code
+
+| | |
+|---|---|
+| named exports in `web/lib/**` | 593 across 150 non-test files |
+| zero references outside their own file | **113 (19.1 %)** — 13 referenced *nowhere*, 100 in-file only |
+| referenced only by tests, never production | 87 (14.7 %) |
+| unreachable statements | **zero**, by `tsc --allowUnreachableCode false` exit 0 — **with a planted case proving TS7027 fires** (R180) |
+| dead enum or union members | none, across 20 Prisma members and 5 `as const` unions |
+| `lib/fr` orphaned copy | **0 provable orphans** across 583 leaves in 40 constants — **with a negative control**: 69 appear when `DOSSIER_COPY`'s two consumers are removed |
+
+Two results deserve their own line. First, the clean ones are **clean with a
+control**: the unreachable-code check was proven able to fire, and the copy scan
+was proven able to find orphans. That is R133's positive-signal rule applied by the
+census to itself. Second, **R238's reachability guard covers 1 of the 40 copy
+constants**, and its `SURFACES` list is already one consumer short — a guard whose
+scope is listed rather than derived, which is the shape FW29 checked seven other
+guards for and found deriving.
+
+### Type safety — the rule holds, and its second half does not
+
+| | |
+|---|---|
+| `any`, explicit or via `as any` | **zero** in 453 tracked TypeScript files — no `AnyKeyword` node anywhere, `no-explicit-any` at error, both `tsc` programs green |
+| assertions from `any`/`unknown` to a concrete type | 93 — **17 in production**, 76 in tests |
+| non-null assertions (`!`) | 32, **zero in production** |
+| `@ts-expect-error` | 9, all described, all type-level proofs |
+| `@ts-ignore` / `@ts-nocheck` | zero |
+
+*"No `any`"* holds and is mechanically enforced. *"`unknown` and narrow"* does not
+fully hold: nine of the seventeen production assertions are in a single `map` in
+the account-export route, and `(await request.json()) as {…}` in the magic-link and
+refresh routes is what permits `body.email` to be dereferenced with no null check.
+
+### The ruling register — 255 rulings, triaged
+
+| | R1–R128 | R129–R255 | total |
+|---|---|---|---|
+| ENFORCED | 92 | 90 | **182** |
+| CONVENTION | 18 | 24 | **42** |
+| OBSOLETE | 9 | 6 | **15** |
+| NOT FOUND — no statement of the rule exists anywhere | 9 | 7 | **16** |
+
+Roughly ten of the 42 conventions are process-by-nature and cannot be mechanised —
+R156, R176, R178, R241, R252, R254, R255 among them. The rest could carry a guard
+today and do not.
+
+**Three findings inside that table, each verified by hand.**
+
+**R132 and R199 have no enforcement mechanism at all.** `.git/hooks` contains
+**zero non-sample files**. *"Commit only on green"* and *"`gate:clone` runs before
+every push"* — two of the most-cited rulings in `CLAUDE.md`, and the ones this very
+session leaned on — are disciplines a session follows, not gates that fire. They
+were followed tonight because the session chose to.
+
+**`scripts/lighthouse.mjs` is invoked by no gate and no CI job.** Its only
+appearance outside itself is `gate-clone.mjs:96`, in the *skipped* list with its
+reason. R152, R174 and half of R177 rest on a script that nothing runs. It is
+honest — R133 requires the skip to be named — and it means three rulings are
+enforced only in principle.
+
+**R93's own test admits what the ruling abolished — and says so.** `e2e/routing.spec.ts:136`
+asserts `expect([301, 308]).toContain(response.status())`, where the ruling is
+*"308, not 301, and the word '301' goes"*. My check found the nuance the summary
+omitted: the comment above it reads *"The prompt says 301; this accepts either and
+the report records the deviation."* So it is a **recorded deviation, not a
+concealed one** — which makes it a classification question (ENFORCED or
+CONVENTION?) rather than a defect. Reported that way.
+
+**R6 is currently violated**, and this audit is running inside the violation: a
+5 143-byte `CLAUDE.md` for an unrelated Morocco travel platform sits one directory
+above the repository root. `web/CLAUDE.md` opens by telling the reader to ignore
+it, which is the mitigation; the ruling asks for its absence.
 
 ---
 
@@ -640,6 +823,15 @@ This section is as valuable as the findings.
   was taken.
 - **Real-world data.** Every number here comes from a generated fixture. R197 kept
   each user coherent, but a fixture is not a population.
+- **The counts in §9.** Produced by a parallel census, not re-derived by this
+  session. The named findings in that section were verified by hand; the numbers
+  were not. Stated at the head of §9 and repeated here so it is not discoverable
+  only by a careful reader.
+- **The 182 rulings classified ENFORCED.** The census read the assertion at each
+  cited line; it did not observe one go red. A test that asserts the right thing
+  but is skipped, vacuous, or excluded by a glob would still read as ENFORCED —
+  which is precisely the class of defect this project has found twelve times, so
+  the classification is the weakest thing in §9.
 
 ---
 
@@ -664,6 +856,19 @@ This section is as valuable as the findings.
 | **PARK30-15** | **The render queue is per-process** — N replicas admit 2N concurrent renders and neither knows about the other | **observation** |
 | **PARK30-16** | **`/releve/print` accepts a token minted for another user by design** — the token *is* the credential, so `AUTH_SECRET` leakage yields any user's dossier | **observation** |
 | **PARK30-17** | **R209's consequence line is one table too broad** — `VerificationToken` has 25 call sites; the magic-link flow took it over. `Account` and `Session` are genuinely dead, and `lib/content/personal-data.ts:208` already says so. | **observation** |
+| **PARK30-18** | **F-PRINTLOG** — the print token reaches the application's own log, on success as well as failure. The product already reasons about this and bounds it at 120 s, **proven in both directions** (fresh 200, expired 404); what is missing is that `print-token.ts`'s threat list names a reverse-proxy log and not the one we write ourselves. | **LOW** |
+| **PARK30-19** | **F-R248** — the ruling says the allowance stopped binding *"when the repository went public"*; the repository is **private**. CI executed jobs at 11:20Z today and started **none** at 14:02Z — zero steps on every job, exactly as the FW24 guard predicts. | **MEDIUM** |
+| **PARK30-20** | **F-CONFIRM** — `app/api/alertes/confirm/route.ts` is imported by **no test at any tier**. The step that makes the alert list lawful is exercised by nothing, while the equivalent round trip exists for unsubscribe. | **HIGH** |
+| **PARK30-21** | **F-EMAIL** — two definitions of a valid address, 7 of 18 probes disagreeing, the collecting surface the looser one | **MEDIUM** |
+| **PARK30-22** | **R132 and R199 have no mechanism** — `.git/hooks` holds zero non-sample files. *"Commit only on green"* and *"`gate:clone` before every push"* are disciplines, not gates — including in this session. | **MEDIUM** |
+| **PARK30-23** | **`scripts/lighthouse.mjs` is invoked by no gate and no CI job**, so R152, R174 and half of R177 are enforced in principle only | **MEDIUM** |
+| **PARK30-24** | **R238's copy-reachability guard covers 1 of 40** copy constants, and its `SURFACES` list is already one consumer short — a listed scope, not a derived one | **MEDIUM** |
+| **PARK30-25** | **`CalculatorForm.tsx` is 983 lines and 63 branches** — 3.1× the next longest, against a median of 5; the domain code it dwarfs (`runWaterfall`, 42 lines, one branch) is where complexity was expected | **MEDIUM** |
+| **PARK30-26** | 113 of 593 exports in `lib/**` have no reference outside their own file; 13 have none anywhere; 87 more only in tests | **LOW** |
+| **PARK30-27** | `refuse()` defined identically **eight times**, the coordinate guard eight times, a 39-line authenticated-GET prologue four times | **LOW** |
+| **PARK30-28** | 42 of 255 rulings are CONVENTION, 15 OBSOLETE, **16 NOT FOUND** — no statement of the rule exists anywhere in the tree | **observation** |
+| **PARK30-29** | **R6 is currently violated** — an unrelated `CLAUDE.md` sits one directory above the repository root; `web/CLAUDE.md` mitigates by telling the reader to ignore it | **observation** |
+| **PARK30-30** | 93 assertions from `any`/`unknown` to a concrete type, 17 in production, nine in one `map`. *"No `any`"* holds; *"`unknown` and narrow"* is the half that does not. | **observation** |
 
 ---
 

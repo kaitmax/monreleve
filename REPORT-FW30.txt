@@ -269,7 +269,52 @@ dev-only, confirmed with pnpm why --prod.
 JOURNEY COVERAGE
 ====================================================================
 
-(See the table in docs/audit-adversarial.md section 9.)
+NOT "how many e2e tests" - WHICH JOURNEYS. Twelve named, and the
+stricter reading the prompt asks for is applied: a journey covered by
+unit tests and no e2e is NOT covered.
+
+  arrive from a search    e2e in a browser        COVERED
+  calculate               e2e in a browser        COVERED
+  open a shared link      e2e in a browser        COVERED
+  subscribe to alerts     e2e in a browser        COVERED
+  share a link            PARTIAL - the control is pressed, the URL
+                          it produces is never read
+  unsubscribe             in-process only
+  sign in (magic link)    in-process only - BY DESIGN, D14 removed
+                          the signed-in web area
+  record a day            in-process only - the only client is an
+                          Android app that does not exist
+  correct a day           in-process only
+  export a dossier        in-process + one real-HTTP suite
+  delete an account       in-process only
+  CONFIRM (double opt-in) NOTHING, AT ANY TIER            <- HIGH
+
+OF 148 e2e TEST BLOCKS, EXACTLY 4 EXERCISE A PERSISTENCE STEP. One
+journey of twelve is e2e-covered through a database.
+
+F-CONFIRM, VERIFIED BY HAND. app/api/alertes/confirm/route.ts exists,
+2 069 bytes, and is imported by NO TEST. The route-handler imports
+across tests/ and e2e/ are @/app/api/alertes/route x4 and
+.../desinscription/route x1 - never confirm. The confirmation PAGE
+has a unit test and two visual baselines, but that is the landing
+page, not the route that consumes the token. The chain is joined only
+in two disjoint halves: one test extracts the emailed token and
+asserts its hash matches the stored one WITHOUT CONSUMING IT; another
+drives confirmByToken() with tokens taken straight from the fixture.
+THE EQUIVALENT ROUND TRIP EXISTS FOR THE UNSUBSCRIBE LINK. So the
+step that turns an unconfirmed subscriber into a confirmed one - the
+step /confidentialite makes claims about, and the one that makes the
+list lawful - is exercised by nothing. R204's shape exactly.
+
+THE ENTRY-POINT QUESTION (R204, FW27's finding). instrumentation.ts
+is driven by tests/db/scheduled-jobs.test.ts, so the AUTOMATIC entry
+point is the one under test there. The gap is not in the scheduler
+this time; it is the confirm route above, where the automatic entry
+point - a link in an email - is driven by nothing.
+
+THE NO-JAVASCRIPT JOURNEYS. javaScriptEnabled appears at 8 sites in
+e2e/, so the no-JS path is exercised. Not re-measured by me; recorded
+as the census reported it.
 
 ====================================================================
 SCALABILITY AT VOLUME
@@ -459,8 +504,126 @@ after attempting refutation - AND THEY ARE DIFFERENT KINDS.
      ParamSpec HAS NO DESCRIPTION FIELD AT ALL. The name claims
      documentation and the code measures a string length.
 
-(Duplication, dead code, complexity hotspots, type safety and the
-ruling-register triage: docs/audit-adversarial.md section 9.)
+THE STATIC CENSUS - seven read-only dimensions run in parallel, each
+required to report the COMMANDS IT RAN rather than how it reasoned.
+Full tables in docs/audit-adversarial.md section 9.
+
+  THE STANDARD OF EVIDENCE HERE IS WEAKER THAN EVERYWHERE ELSE IN
+  THIS REPORT, AND THE READ-THROUGH FOUND IT IN MY OWN DOCUMENT
+  RATHER THAN IN THE PRODUCT. Every other section reports something
+  this session SENT, RAN AND READ BACK. This one reports a census
+  produced by OTHER READERS. I re-verified every high-severity claim
+  by hand - F-CONFIRM, F-EMAIL, R93, the git hooks, the Lighthouse
+  invocation - and one of those checks CHANGED THE READING. I DID
+  NOT RE-RUN THE COUNTS: 593 exports, 113 unreferenced, 182
+  enforced, 148 e2e blocks, 983 lines, 7 of 18 probes. Those are
+  reported as the census produced them.
+  THAT IS EXACTLY FW29 F4 - TWO STANDARDS FOR ONE KIND OF CLAIM -
+  ARRIVING IN MY DOCUMENT. FW29 resolved its version by doing the
+  work rather than adjusting the wording; I have resolved mine by
+  ADJUSTING THE WORDING, because re-deriving forty counts is a
+  second census and not an audit, and a weaker claim written as
+  weaker is the honest form - which is FW29 own rule for the five
+  rulings it could not fire in isolation.
+  READ THE COUNTS AS INDICATIVE AND THE NAMED FINDINGS AS VERIFIED.
+
+DUPLICATION - 22 named pairs, 5 high. The alert retention rule
+implemented twice; a fourth copy of R169's health-identity check; a
+14-line trail query byte-identical in two dossier modules;
+PORTION_ORDER declared twice with only one pinned to the schema. And
+in app/api/v1, refuse() is defined identically EIGHT TIMES, the
+coordinate guard written out EIGHT TIMES, and a 39-line
+authenticated-GET prologue duplicated four times - diff -u of the CSV
+and dossier routes with comments stripped is identical but for one
+log string.
+
+  F-EMAIL, VERIFIED BY ME RATHER THAN TAKEN FROM THE AGENT.
+  lib/alerts/subscribe.ts uses a hand-written regex;
+  lib/auth/request.ts:68 uses Zod's .email(). Against 18 probe
+  addresses, 7 DISAGREE and the regex is the more permissive one
+  every time: a..b@c.co, a@-b.co, "q"@b.co, a@b.c, .a@b.co,
+  a.@b.co, a@b_c.co all ACCEPT on the alerts side and REJECT on the
+  auth side. AN ADDRESS CAN JOIN THE ALERT LIST AND THEN BE REFUSED
+  AT SIGN-IN, and the surface that collects it is the looser one.
+
+DEAD CODE.
+  named exports in lib/**            593 across 150 files
+  zero references outside their file 113 (19,1 %), 13 nowhere at all
+  referenced only by tests           87 (14,7 %)
+  unreachable statements             ZERO - tsc --allowUnreachable-
+                                     Code false exit 0, WITH A
+                                     PLANTED CASE PROVING IT FIRES
+  dead enum or union members         none
+  lib/fr orphaned copy               0 across 583 leaves in 40
+                                     constants, WITH A NEGATIVE
+                                     CONTROL: 69 appear when
+                                     DOSSIER_COPY's consumers go
+  THE CLEAN RESULTS ARE CLEAN WITH A CONTROL - both were proven able
+  to fire. That is R133 applied by the census to itself.
+  AND: R238's reachability guard covers 1 OF THE 40 copy constants,
+  and its SURFACES list is already one consumer short - a guard whose
+  scope is LISTED rather than derived.
+
+COMPLEXITY HOTSPOTS - the top of both lists is INCIDENTAL.
+  longest     CalculatorForm 983 lines, PrintPage 317, Workbench 270
+  branchiest  CalculatorForm 63, decode (params/codec) 40,
+              validateInput 19
+  median function length across 879 non-test nodes: 5 lines
+  THE EXPECTED HOTSPOTS ARE SMALL: runWaterfall is 42 lines with ONE
+  branch (rank 73 by length); buildDossier is 72 lines with three.
+  The largest function in the product is a client-side UI form 3,1x
+  longer than anything else, and the second-branchiest is a URL
+  query-string codec with 2,1x the branches of the engine's
+  branchiest function.
+
+TYPE SAFETY - the rule holds, its second half does not.
+  any, explicit or via as any        ZERO in 453 files
+  assertions from any/unknown        93 - 17 production, 76 tests
+  non-null assertions                32, ZERO in production
+  @ts-expect-error                   9, all described
+  @ts-ignore / @ts-nocheck           zero
+  "No any" holds and is mechanically enforced. "unknown and narrow"
+  does not: nine of the seventeen production assertions are in a
+  single map in the account-export route.
+
+THE RULING REGISTER - 255 rulings triaged.
+                      R1-R128   R129-R255   total
+    ENFORCED             92         90        182
+    CONVENTION           18         24         42
+    OBSOLETE              9          6         15
+    NOT FOUND             9          7         16
+  NOT FOUND means no statement of the rule exists anywhere in the
+  tree. About ten of the 42 conventions are process-by-nature and
+  cannot be mechanised; the rest could carry a guard today.
+
+  THREE FINDINGS INSIDE THAT TABLE, EACH VERIFIED BY HAND:
+
+  R132 AND R199 HAVE NO ENFORCEMENT MECHANISM AT ALL. .git/hooks
+  contains ZERO non-sample files. "Commit only on green" and
+  "gate:clone runs before every push" - two of the most-cited
+  rulings in CLAUDE.md, and the two THIS SESSION LEANED ON - are
+  disciplines a session follows, not gates that fire. They were
+  followed tonight because the session chose to.
+
+  scripts/lighthouse.mjs IS INVOKED BY NO GATE AND NO CI JOB. Its
+  only appearance outside itself is gate-clone.mjs:96, in the
+  SKIPPED list with its reason. R152, R174 and half of R177 rest on
+  a script nothing runs. Honest - R133 requires the skip to be
+  named - and it means three rulings are enforced in principle only.
+
+  R93's OWN TEST ADMITS WHAT THE RULING ABOLISHED, AND SAYS SO.
+  e2e/routing.spec.ts:136 asserts expect([301, 308]).toContain(...)
+  where the ruling is "308, not 301, and the word 301 goes". MY
+  CHECK FOUND THE NUANCE THE SUMMARY OMITTED: the comment above it
+  reads "The prompt says 301; this accepts either and the report
+  records the deviation." A RECORDED deviation, not a concealed one,
+  which makes it a classification question rather than a defect.
+
+  R6 IS CURRENTLY VIOLATED AND THIS AUDIT RAN INSIDE THE VIOLATION:
+  a 5 143-byte CLAUDE.md for an unrelated Morocco travel platform
+  sits one directory above the repository root. web/CLAUDE.md opens
+  by telling the reader to ignore it, which is the mitigation; the
+  ruling asks for its absence.
 
 ====================================================================
 THE AUDIT'S OWN INSTRUMENT - SEVEN NEAR-MISSES
@@ -516,6 +679,15 @@ UNEXAMINED
 - Whether adding the six headers would break any page.
 - F-HALFDAY beyond the engine and its two render sites.
 - Real data. Every number here comes from a generated fixture.
+- THE COUNTS IN THE STATIC CENSUS. Produced by a parallel census,
+  not re-derived by this session. The named findings there were
+  verified by hand; the numbers were not.
+- THE 182 RULINGS CLASSIFIED ENFORCED. The census READ the assertion
+  at each cited line; it did not observe one go red. A test that
+  asserts the right thing but is skipped, vacuous or excluded by a
+  glob would still read as ENFORCED - which is precisely the class
+  of defect this project has found twelve times, so this is the
+  weakest claim in the report.
 
 ====================================================================
 PARK30 BY SEVERITY
@@ -543,6 +715,11 @@ HIGH
             with the Android client" and "FW23 freezes it", and
             omits 4 of the 13 v1 routes: export/pdf, export/csv,
             account/export, account/delete.
+  PARK30-20 F-CONFIRM. The double opt-in route
+            app/api/alertes/confirm/route.ts is imported by NO test
+            at any tier. The step that makes the alert list lawful
+            is exercised by nothing, while the equivalent round trip
+            exists for the unsubscribe link.
 
 MEDIUM
   PARK30-4  F-PLATFORM. no-coordinates.ts:86 matches by SUBSTRING,
@@ -573,6 +750,25 @@ MEDIUM
             repository went public", and the repository is PRIVATE.
             CI executed jobs at 11:20Z today and started none at
             14:02Z. Measurement in Q4.
+  PARK30-21 F-EMAIL. Two definitions of a valid email address, 7 of
+            18 probes disagreeing, the collecting surface the looser
+            one. An address can join the alert list and then be
+            refused at sign-in.
+  PARK30-22 R132 AND R199 HAVE NO MECHANISM. .git/hooks holds zero
+            non-sample files. "Commit only on green" and
+            "gate:clone before every push" are disciplines, not
+            gates - including in this session.
+  PARK30-23 scripts/lighthouse.mjs is invoked by no gate and no CI
+            job, so R152, R174 and half of R177 are enforced in
+            principle only.
+  PARK30-24 R238's copy-reachability guard covers 1 of the 40 copy
+            constants in lib/fr, and its SURFACES list is already
+            one consumer short - a listed scope, not a derived one.
+  PARK30-25 CalculatorForm.tsx is 983 lines and 63 branches - 3,1x
+            the next longest function in the product, against a
+            median of 5. The domain code it dwarfs (runWaterfall, 42
+            lines and ONE branch) is the part complexity was
+            expected in.
 
 LOW
   PARK30-12 F-HALFDAY. A whole-day user is told "0,5 jours
@@ -589,7 +785,25 @@ LOW
             missing is that print-token.ts's threat list names a
             reverse-proxy log and not the one we write ourselves.
 
+LOW (continued)
+  PARK30-26 113 of 593 exports in lib/** (19,1 %) have no reference
+            outside their own file; 13 have none anywhere; 87 more
+            are referenced only by tests.
+  PARK30-27 refuse() is defined identically eight times across
+            app/api/v1, the coordinate guard eight times, and a
+            39-line authenticated-GET prologue four times.
+
 OBSERVATION
+  PARK30-28 42 of 255 rulings are CONVENTION (about ten of them
+            process-by-nature), 15 OBSOLETE, and 16 NOT FOUND - no
+            statement of the rule exists anywhere in the tree.
+  PARK30-29 R6 is currently violated: an unrelated CLAUDE.md sits
+            one directory above the repository root. web/CLAUDE.md
+            mitigates by telling the reader to ignore it.
+  PARK30-30 93 assertions from any/unknown to a concrete type, 17 in
+            production, nine of them in one map in the account
+            export route. "No any" holds; "unknown and narrow" is
+            the half that does not.
   PARK30-15 The render queue is per-process: N replicas admit 2N.
   PARK30-16 /releve/print accepts a token minted for another user by
             design - the token IS the credential, so AUTH_SECRET
