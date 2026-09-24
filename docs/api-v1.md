@@ -926,3 +926,873 @@ than a list of exceptions, so a status nobody anticipated keeps the row.
 There is **no `DELETE`**. Signing out revokes the session; the token is pruned
 when the service reports it dead, and deleting the account removes the row with
 everything else (D11).
+
+---
+
+# The four routes this contract did not describe
+
+**Added by FW31. THE FREEZE IS UNAFFECTED, and that sentence is the point of
+this heading.** FW23 froze this contract, and R187 extended to routes makes a
+rename a migration plus an app release plus every version still calling the old
+shape. Writing down a route that has been served all along is **not** a change
+to the contract and **not** a version bump: nothing here is new, nothing here
+moved, and no client that works today stops working. What changes is that these
+four are now inside the freeze rather than outside it.
+
+They were found by FW30's adversarial audit, which compared the routes this
+document describes against the routes `app/api/v1/**/route.ts` actually
+serves and found **nine of thirteen**. The missing four were
+`/api/v1/export/pdf` — the *Relevé annuel* itself, the product's reason to
+exist — `/api/v1/export/csv`, and both GDPR rights paths.
+
+**The omission is now impossible rather than merely corrected.**
+`web/tests/unit/meta/api-contract.test.ts` derives the route set from the
+filesystem, because that is what Next routes from, and fails on any route this
+document does not mention — and, in the other direction, on any path this
+document mentions that nothing serves. A hand-kept list would have been correct
+on the day it was written and would then have drifted in exactly the way it did.
+
+---
+
+## 11. `GET /api/v1/export/pdf?year=YYYY` — the document as a file
+
+Added in FW25b. **Appended rather than inserted beside §6.7's CSV paragraph**,
+for the reason §8 gives: a contract document's headings are addresses, and
+renumbering §7 to group the two exports together would move one.
+
+**The success answer is bytes, not JSON.** Every other route in this document
+answers JSON on both sides. Here a 200 carries `application/pdf` and only the
+refusals are JSON. A client that parses every response as JSON is broken on the
+one path that worked.
+
+```
+GET /api/v1/export/pdf?year=2026
+Authorization: Bearer <access token>
+```
+
+The query string is the same one §6.2 specifies, read by the same module:
+exactly `year`, once, exactly four ASCII digits. There is no other parameter,
+and there is no request body.
+
+| header on a 200 | value |
+|---|---|
+| `Content-Type` | `application/pdf` |
+| `Content-Disposition` | `attachment; filename="releve-<year>.pdf"` |
+| `Cache-Control` | `no-store, private` |
+| `Vary` | `Authorization` |
+
+**Never cached**, for §6.2's reason: an authenticated `GET` is the one shape a
+proxy will happily treat as static, and the failure mode is one person's year
+served to another.
+
+### 11.1 The route does not build a PDF — it prints the page that *is* the document
+
+`/releve/print` is the document. This route drives headless Chromium at it and
+returns what comes back. **One renderer, one layout, no drift.** A PDF library
+beside the page would be a second implementation of the same document, and the
+browser and the accountant would then be reading two things that agree only for
+as long as somebody keeps them agreeing.
+
+Chromium is a separate process and does not share this request's
+`Authorization` header, so the route **mints what the print route already
+accepts**: a token signed with `AUTH_SECRET`, scoped to one person *and one
+year*, living 120 seconds. The browser then makes an ordinary anonymous request
+that happens to carry a capability. The credential was already in a URL before
+this route existed — a human opening the rendered dossier in a browser sends no
+`Authorization` header — so this inherits that decision rather than adding a
+second one.
+
+**None of it is visible to a client.** The print token never reaches the caller,
+`/releve/print` is not part of this contract, and the URL the browser fetches is
+built from **this request's own origin** rather than from a configured public
+address: behind a proxy, a configured one would send the render out through the
+internet and back.
+
+The handler declares `runtime = 'nodejs'` explicitly. Playwright drives a child
+process and touches the filesystem, and the edge runtime can do neither — stated
+rather than inherited, because the default moving would be a deployment failure
+rather than a compile error.
+
+### 11.2 The order of checks, and why it earns its keep here more than anywhere
+
+Both entries routes check in the order §6.6 sets out. This route adds two steps
+before the expensive one, and the order is observable the same way: a request
+that breaks two rules is told about the earlier one.
+
+| | |
+|---|---|
+| 1 | authenticate |
+| 2 | scan the query string for coordinates, **before validation** |
+| 3 | validate the query |
+| 4 | the account has a titulaire |
+| 5 | a signing key exists |
+| 6 | take the render slot, then render |
+
+**Steps 1–5 cost microseconds; step 6 costs a browser.** One render was measured
+at 279.9 MB resident across four processes, so validating the year after
+launching Chromium would mean one malformed request paying ~300 MB to discover
+the year was `abc`.
+
+**The titulaire check is here rather than inside the render**, and that is not
+an optimisation. A document with no identified titulaire cannot be produced at
+all (SPEC §12 item 1), so discovering it inside Chromium would cost a render
+*and* report `renderer_unavailable` — a code that sends whoever reads the log
+hunting a missing binary (R198). The predicate is the one `buildDossier` refuses
+with, not a second reading of what a blank name is.
+
+**Coordinates are scanned before validation** for §6.6's reason: a `?lat=` is
+*both* a coordinate and an unknown parameter, and if validation ran first the one
+interesting fact about the request — that a client is sending coordinates —
+would never be recorded (SPEC §13.1, D18). The log line names the keys and never
+the values.
+
+### 11.3 Refusals
+
+| code | status | fires when |
+|---|---|---|
+| §1.4's auth codes | 401 | no bearer, or one that does not resolve; `WWW-Authenticate: Bearer` |
+| `coordinates_refused` | 400 | a location key in the query — checked **first** |
+| `unknown_parameter` | 400 | any parameter other than `year`; `parameters[]` names them |
+| `invalid_year` | 400 | `year` absent, repeated, or not exactly four digits |
+| `titulaire_missing` | 422 | the account has no name, so no document can be attributed |
+| `not_configured` | 503 | `AUTH_SECRET` is unset or is the placeholder `.env.example` ships |
+| `renderer_busy` | 503 | one render is running and both waiting places are taken; `Retry-After: 30` |
+| `renderer_timeout` | 503 | waited 30 s for a slot without reaching the front; `Retry-After: 60` |
+| `renderer_unavailable` | 503 | Chromium would not start, or the print route did not answer 200 |
+| `renderer_unstyled` | 503 | the page rendered without its stylesheet |
+| `renderer_fontless` | 503 | the stylesheet arrived and the webfont behind it did not |
+| `read_failed` | 500 | ours. Anything else the render threw |
+
+**Busy and timed-out are not the same fact**, and a client should act on them
+differently: turned away at the door means retry shortly; waited and gave up
+means the machine is saturated and backing off is right. That is what the two
+`Retry-After` values say, and a `Retry-After` is what turns a 503 into an
+instruction — without one a client either gives up or hammers, and both are
+worse than waiting. **The other four 503s carry no `Retry-After` at all**, and a
+client must not wait on a header that is not there.
+
+**Six 503s where one would do**, because each sends whoever reads it somewhere
+else (R198): a missing signing key, a full waiting room, a wait that ran out, a
+browser that would not start, a stylesheet that did not arrive, and a font that
+did not. Collapsing them into *"export failed"* would make the cheapest of these
+indistinguishable from the most expensive.
+
+**`renderer_unstyled` and `renderer_fontless` are refusals, not degradations,**
+and that is the decision worth defending. A document whose CSS failed to load
+still contains every word, every table row and every figure; one in the fallback
+face is correctly laid out and fully legible. Both pass every structural
+assertion anybody has written, and both are unfilable. So the renderer
+establishes presence — a known design token resolves, and the family the page
+asks for actually loaded — before it prints, and refuses rather than emitting a
+document nobody looked at. It is R205's rule on a renderer: served only when it
+can be believed, not when it can be parsed.
+
+**`renderer_unavailable` also covers a print route that answered anything but
+200**, which is how one *account* state reaches a *machine* code. `User.canton`
+is nullable and is an ordinary §9 setting; the dossier refuses to compute
+without one, and that refusal is not `MissingTitulaireError`, so the print page
+rethrows it, answers 500, and the renderer reports the page it could not fetch.
+**A named account that has never set a canton is therefore told
+`renderer_unavailable`** — the code whose whole purpose, per the paragraph above
+about the titulaire check, is to mean *the browser is missing*.
+
+**From the titulaire check onward the French message is the same one**
+(`AUTH_API_COPY.readFailed`, also §8.3's), while the three earlier refusals each
+carry their own. That sentence tells the reader the app will retry, which is
+true of a busy renderer and false of an account with no name — the sharpest
+available argument for §1.4's rule that a client branches on the `code` and
+never on the French.
+
+### 11.4 What a client may assume
+
+- **The filename carries the year and never the name.** `releve-<year>.pdf`,
+  always, with no slug. §6.7 makes the CSV attributable by its filename alone
+  because nothing inside those bytes says whose year it is; the PDF does not need
+  that, because it names its titulaire in its header block where an auditor
+  reads it. **A client that attributes an export by parsing a filename must not
+  apply the CSV's shape to this one** — the two exports differ here deliberately.
+- **`note` reaches the PDF unaltered**, byte for byte. The apostrophe prefix
+  §6.7 describes is the CSV's alone, for the reason given there: the format that
+  *executes* is defended, and the format that *is* the record carries what the
+  user typed.
+- **Bounded, not rate-limited.** One render at a time, at most two waiting.
+  FW30's adversarial audit fired five concurrent exports and measured
+  `503 503 200 200 200`. A person pressing the button twice is the realistic
+  burst and is served; the sixth is refused by name rather than joining an
+  unbounded queue that converts memory pressure into latency and then into an
+  OOM anyway.
+- **A 503 here is never an authentication problem**, and none of the six should
+  trigger a refresh, a sign-out, or a prompt to sign in again.
+- **Six of these codes appear nowhere else in this document** —
+  `not_configured` and the five `renderer_*`. That is precisely the case §6.5's
+  rule exists for: treat an unrecognised `code` as terminal for that request, and
+  never retry a 4xx.
+- **§8.3's `future_year` has no counterpart here.** `GET /api/v1/dossier?year=2031`
+  is refused 400; the same year on this route is not refused on that ground — it
+  authenticates, validates, mints a token and is handed to the renderer. A client
+  must not infer one route's refusals from the other's.
+- **The PDF does not carry the engine's warnings.** `zone.warnings` is on the
+  dossier payload (§8.1) and nothing on the printed document renders it, so the
+  obligation §6.5 and §8.2 both state — surface every warning, never only the
+  figures — is one a client discharges from the dossier response, not by handing
+  somebody the file.
+
+## 12. `GET /api/v1/export/csv?year=YYYY` — the annex as a spreadsheet
+
+Added in FW25. One year, one file, handed to a fiduciaire.
+
+```
+GET /api/v1/export/csv?year=2026
+Authorization: Bearer <access token>
+```
+
+```
+200 OK
+Content-Type: text/csv; charset=utf-8
+Content-Disposition: attachment; filename="releve-2026-camille-rey.csv"
+Cache-Control: no-store, private
+Vary: Authorization
+```
+
+**A success is CSV and a refusal is JSON.** Every error on this route carries
+the usual `{ "status": "error", "code", "message" }` envelope, so a client
+branches on the status *before* it touches the body — a parser pointed at the
+body first will meet two different formats on one route.
+
+**The query string is §6.2's, parsed by the same function.** `year`, once,
+exactly four ASCII digits, every other parameter refused **and named**. Not a
+second year parser that agrees until the day one of them learns something
+(R206) — the same `parseReadQuery` the entries read path and §8 use.
+
+### 12.1 It is the dossier's annex, serialised — not a second query
+
+The route builds the same dossier §8 returns and writes `annex` out as rows. It
+does not query entries itself, and that is a decision rather than convenience:
+the CSV and the evidence annex bound the same property — *which days are in
+this year* — from opposite sides (R175), and a `findMany` of its own would be a
+second answer to that question, diverging the day either changed its window. A
+test asserts the two carry the same day set, having first established that the
+set is non-empty.
+
+Four consequences a client author should have in front of them:
+
+- **A year with nothing logged is not an empty file.** The annex's universe is
+  every Monday-to-Friday of the year, *union* the days actually logged, because
+  SPEC §12 item 5 requires a day with no entry to be printed rather than
+  skipped. So an untouched year exports one row per weekday with the day filled
+  and the rest of the columns empty. A **weekend** day that carries an entry
+  still appears; **public holidays are not excluded**, because this product does
+  not know a canton's holiday calendar and inventing one would be a second
+  source of truth about what a working day is.
+- **A gap row is recognised by its empty columns, not by a marker.** The
+  `recorded` flag §8.2 tells a client to read is **not** a CSV column: SPEC §12
+  froze the columns and that is not one of them. A reader tells an unlogged
+  day by `portion` being empty.
+- **`late` is `false` on a gap row, and there it means "no late recording",
+  not "recorded on time".** Nothing was recorded, so nothing can be late.
+- **It is not a sync format.** No `id`, no `clientMutationId` — a client
+  reconciling state reads §6.2 and aligns on `(dayDate, portion)`, as it does
+  everywhere else in this contract.
+
+### 12.2 The columns, and the file around them
+
+SPEC §12's columns, exact, stable, and in SPEC §12's order. The header
+line and the row builder are written from one list, so a column added to one
+cannot go missing from the other.
+
+| column | what a client may assume |
+|---|---|
+| `dayDate` | ISO `YYYY-MM-DD`, always, and never a locale format. `03/04/2026` means a different day depending on who opens it; ISO is unambiguous everywhere and sorts chronologically **as text**, so a reader who sorts the column without parsing it still gets the year in order. |
+| `portion` | `FULL`, `AM` or `PM` — **empty on an unlogged day**, which is what identifies one. |
+| `kind` | One of the five kinds, or empty on an unlogged day. |
+| `absenceReason` | The reason, or empty. Non-empty iff `kind` is `ABSENT`. |
+| `provenance` | `MANUAL`, `DETECTED_CONFIRMED` or `DETECTED_CORRECTED`, or empty. |
+| `detectedKind` | What detection proposed, or empty. |
+| `note` | The note — **the one column altered on its way into this file**. §6.7 says what is done to it, and why it is done here and nowhere else. |
+| `firstRecordedAt` | The server clock at first receipt, as a full ISO instant with a `Z` and milliseconds — distinguishable from a day at a glance. Empty on an unlogged day. |
+| `lastModifiedAt` | When the day was last edited, or empty if it never was. Derived from the append-only trail, not from `updatedAt`; §6.3 says why that distinction is load-bearing in a legal document. |
+| `clientClaimedAt` | What the client asserted about the write that produced this row, or empty. §6.3 says what an edit does to it. |
+| `late` | The literal `true` or `false`, the same two words in every row. Not Excel's localised `VRAI`/`FAUX`: the file is read by other tools too, and a spreadsheet can filter on either. It is SPEC §12.3's rule — more than seven days between the day and its first recording — computed in `lib/entries/late.ts`, the one home §6.3 names, which the dossier, the CSV and the PDF all read. |
+
+**The file begins with a UTF-8 BOM.** Three bytes whose whole job is to stop
+Excel reading UTF-8 as its ANSI code page and turning *Détection corrigée* into
+mojibake. They are invisible to anything that decodes UTF-8 properly —
+including `Response.text()`, whose decoder strips a leading BOM, which is why
+the test that asserts it reads the bytes rather than the string.
+
+**Records end with CRLF**, including the last one: RFC 4180, and the ending
+several readers expect rather than a file that stops mid-record.
+
+**Quoting is RFC 4180 plus the semicolon.** A field containing a comma, a
+double quote or a line break is wrapped in quotes and an embedded quote is
+doubled. A semicolon is quoted too, which the standard does not require —
+several European Excel locales use `;` as their delimiter, and a note
+containing one would otherwise split the row there. Nothing else is quoted, so
+the file reads as a document in a text editor rather than as a wall of
+quotation marks.
+
+**A null is an empty cell, never the word `null`.**
+
+**Order is `dayDate` ascending, then `FULL`, `AM`, `PM`** — §6.2's order,
+because these are §6.2's rows. **The year window is inclusive at both ends**,
+`YYYY-01-01` through `YYYY-12-31`, built by the same function the read path
+uses rather than by a window re-derived here.
+
+**Never cached**, for §6.2's reason and asserted on the served response: an
+authenticated export is the one shape a proxy will happily treat as static, and
+the failure mode is one person's year served to another.
+
+### 12.3 What it refuses
+
+| code | status | fires when |
+|---|---|---|
+| the auth codes of §1.4 | 401 | no bearer, or one that does not resolve; the response carries `WWW-Authenticate: Bearer` |
+| `coordinates_refused` | 400 | a location key in the query string — checked **first**, before the year is even looked at |
+| `unknown_parameter` | 400 | any parameter other than `year`; `parameters[]` names them |
+| `invalid_year` | 400 | `year` is absent, repeated, or not exactly four digits |
+| `titulaire_missing` | 422 | the account has no name, so no document can be attributed |
+| `read_failed` | 500 | ours. The year could not be built, so nothing is served |
+
+**The check order is §6.6's `GET` column, unchanged**: authenticate, scan for
+coordinates *before* validation, validate the query, read. It is observable —
+`?year=2026&latitude=46.2` is answered about the coordinate, and so is the same
+request with a malformed year, because a location key is *also* an unknown
+parameter and only one of those two facts is worth recording (SPEC §13.1, D18).
+
+**`titulaire_missing` is 422 and its own code**, for §8.3's reason: a document
+that cannot be attributed is not a relevé, and the remedy is to set a name
+rather than to go looking at the database. Note that the `message` beside it is
+**`read_failed`'s**, which tells the reader the days could not be read and that
+the application will try again — so a client that renders the French instead of
+branching on the code promises a retry that cannot succeed. The code is the
+contract and the message is free (§1.4); this is where that split costs
+something.
+
+**There is no `future_year` here, and §8.3 has one.** Both routes build the
+same dossier through the same loader, and only the dossier route refuses a year
+that has not happened. `?year=2031` is served by this route: 200, one gap row
+for every weekday of 2031, every `late` false. Written down because a client
+author reading §8.3 would reasonably expect the pair to agree.
+
+**`read_failed` covers more than a database being down.** The account row
+vanishing mid-request lands here, and so does an account with **no canton** —
+the column is nullable and the dossier refuses to build without one, through a
+path that has no code of its own. A client meeting a 500 on an export should
+not assume the server is unwell before checking that the account is set up.
+
+### 12.4 What §6.7 already settles, and is not repeated here
+
+Two facts about this route live in §6.7, where the decision that produced them
+is explained: **the apostrophe prefixed to a note beginning `=` `+` `-` `@`**,
+applied in this file and on no other surface, and **the filename**,
+`releve-<year>-<name-slug>.csv`, which is the only place this export names
+whose year it is. A client author writing an export screen should read §6.7
+before this table: the bytes themselves carry no identity at all, and the CSV
+is not the document of record.
+
+---
+
+## 13. `GET /api/v1/account/export` — everything, for one person
+
+Added in FW26. **This is where `/confidentialite` becomes code**: the privacy
+notice has said since FW10 that a person can take their record with them, and
+this is the route that hands it over.
+
+```
+GET /api/v1/account/export
+GET /api/v1/account/export?format=csv
+Authorization: Bearer <access token>
+```
+
+**It is not scoped to a year**, where §6.2 fetches a year, §8 computes one and
+`/api/v1/export/csv` serialises one. The module behind it opens *"everything
+this product holds about one person"*, and every read in it is
+`where: { userId }` with no date bound at all.
+
+**There is no schema behind this route.** One optional parameter, `format`,
+compared against two literals; every other parameter is refused by name. The
+effect is §6.2's strictness — a parameter the route does not read is a refusal
+rather than a silent drop — reached in code rather than through a validator,
+and no comment says why.
+
+### 13.1 Two formats, and one of them is not the record
+
+| | |
+|---|---|
+| `?format=json`, and the default | settings, entries, **the trail**, devices, reminders and sessions |
+| `?format=csv` | the entries alone, through the dossier's own serialiser |
+
+**A spreadsheet holds one table and the export is six.** So the format that
+cannot carry the record carries the part of it a person is most likely to open,
+and the JSON stays the one that is complete. **The two are not equivalent
+downloads** and a client that offers both should not present them as though
+they were.
+
+Both are `Content-Disposition: attachment`, both `Cache-Control: no-store,
+private` with `Vary: Authorization`. This is an authenticated `GET` of one
+person's entire record — the one shape a framework or a proxy will happily
+treat as static, and the failure mode is one person's record served to another.
+
+### 13.2 The JSON payload
+
+**There is no `status` envelope.** The 200 body is the export itself, not
+`{ "status": "ok", … }`. A client that asserts `status === "ok"` on every 200
+in this API breaks on this route. The top level is still an **object**, so
+§6.2's one irrecoverable decision is honoured: it can gain a sibling key.
+
+```json
+{
+  "exportedAt": "2026-07-07T15:30:00.000Z",
+  "settings": {
+    "canton": "GE",
+    "employmentRate": 100,
+    "denominatorKind": "SIMPLIFIED240",
+    "exactTotalWorkDays": null,
+    "granularity": "HALF_DAY",
+    "activityStartDate": null,
+    "reminderTime": "17:30",
+    "reminderEnabled": true,
+    "loggingMode": "MANUAL",
+    "detectionConsentAt": null
+  },
+  "entries": [
+    {
+      "dayDate": "2026-03-05",
+      "portion": "AM",
+      "portionLabel": "Matin",
+      "kind": "ABSENT",
+      "kindLabel": "Absence — autre",
+      "absenceReason": "MALADIE",
+      "absenceLabel": "Absence — maladie",
+      "note": null,
+      "provenance": "DETECTED_CORRECTED",
+      "provenanceLabel": "Détection corrigée",
+      "detectedKind": "CH",
+      "firstRecordedAt": "2026-03-05T18:44:09.311Z",
+      "clientClaimedAt": "2026-03-05T18:44:02.000Z",
+      "clientMutationId": "9f1c0f2e-7b3a-4a6d-9f21-0b2d4c6e8a10"
+    }
+  ],
+  "trail": [
+    {
+      "action": "CREATED",
+      "recordedAt": "2026-03-05T18:44:09.311Z",
+      "dayDate": "2026-03-05",
+      "portion": "AM",
+      "portionLabel": "Matin",
+      "kind": "ABSENT",
+      "kindLabel": "Absence — autre",
+      "provenance": "DETECTED_CORRECTED",
+      "provenanceLabel": "Détection corrigée",
+      "detectedKind": "CH",
+      "clientClaimedAt": "2026-03-05T18:44:02.000Z",
+      "clientMutationId": "9f1c0f2e-7b3a-4a6d-9f21-0b2d4c6e8a10"
+    }
+  ],
+  "devices": [{ "platform": "android", "createdAt": "2026-01-12T08:02:44.120Z" }],
+  "reminders": [{ "sentOn": "2026-03-05", "sentAt": "2026-03-05T16:30:00.000Z" }],
+  "sessions": [
+    {
+      "createdAt": "2026-01-12T08:02:41.007Z",
+      "lastUsedAt": "2026-07-07T15:29:58.441Z",
+      "revokedAt": null,
+      "revokedReason": null
+    }
+  ]
+}
+```
+
+| key | what it is | order |
+|---|---|---|
+| `exportedAt` | when the file was produced. Server clock, like every stamp in this product | — |
+| `settings` | §9.1's ten fields, through the same serialiser `/api/v1/me` uses | — |
+| `entries` | one row per recorded day-portion, **every year** | `dayDate` ascending, then `FULL`, `AM`, `PM` |
+| `trail` | every `EntryEvent` | `recordedAt` ascending |
+| `devices` | one row per registered device | `createdAt` ascending |
+| `reminders` | one row per reminder actually sent | `sentOn` ascending |
+| `sessions` | every sign-in ever made, including the ended ones | `createdAt` ascending |
+
+**Everything is ordered, so two exports of an unchanged account differ only in
+`exportedAt`.** An export that shuffled its rows between downloads would be
+impossible to diff, which is the first thing somebody checking a record does.
+
+**The trail is in it, and that is the point.** Entries alone are a list of days
+the person already knows. What makes the record worth having is when each day
+was first recorded, when it was edited and what it was before — the layer SPEC
+§12 calls what makes the document evidence rather than assertion. An export
+without it is a claim the person cannot check.
+
+**Every code travels with the word for it.**
+
+| code | word beside it | the words |
+|---|---|---|
+| `portion` | `portionLabel` | *Journée entière*, *Matin*, *Après-midi* |
+| `kind` | `kindLabel` | *Suisse*, *Domicile*, *Mission en France*, *Mission pays tiers*, *Absence — autre* |
+| `absenceReason` | `absenceLabel` | *Absence — congé*, *— maladie*, *— jour férié*, *— autre* |
+| `provenance` | `provenanceLabel` | *Saisie manuelle*, *Détection confirmée*, *Détection corrigée* |
+
+The first version shipped the codes alone, and **reading it as a person found
+the defect the row counts could not**: a French reader opening their own data
+met English-ish enum tokens, in a product whose every other surface is
+carefully French. The code stays, because an export is also machine-readable
+and somebody re-importing it elsewhere needs the stable token. The word is
+added beside it — both, rather than either.
+
+The words come from `DOSSIER_COPY` (R206), so an export and the PDF cannot
+describe the same day differently. A code with no word in the table serialises
+**as itself**, never as `null`.
+
+**`kindLabel` on an `ABSENT` row always reads *« Absence — autre »*, and the
+reason carries the specific word.** A sick day is `kind: "ABSENT"`,
+`kindLabel: "Absence — autre"`, `absenceReason: "MALADIE"`,
+`absenceLabel: "Absence — maladie"`. A client that renders `kindLabel` alone
+shows every absence as *autre*. It is stated here because it reads as a defect;
+`tests/db/account-export.test.ts` pins exactly this on a `MALADIE` row.
+
+### 13.3 The rows
+
+| field on an entry | what a client may assume |
+|---|---|
+| `dayDate` | `YYYY-MM-DD`. Never an instant |
+| `portion` / `portionLabel` | `FULL`, `AM` or `PM`, and the word |
+| `kind` / `kindLabel` | one of the five kinds, and the word |
+| `absenceReason` / `absenceLabel` | the reason and its word, or `null` for both |
+| `note` | **unaltered**, byte for byte as typed, including a leading `=` — see §6.7 |
+| `provenance` / `provenanceLabel` | the provenance, and the word |
+| `detectedKind` | what detection proposed, or `null`. **No label beside it** |
+| `firstRecordedAt` | the server clock at first receipt, which never moves |
+| `clientClaimedAt` | what the client asserted, verbatim, or `null` |
+| `clientMutationId` | the id of the last write the server applied to this row (§6.2) |
+
+**Three fields §6.2 carries are absent here**: `id`, `detectedAt` and
+`lastModifiedAt`, and nothing in the module says why. Two of the three are
+recoverable from what is present — the trail carries every `MODIFIED` event
+with its `recordedAt`, which is what §6.2 derives `lastModifiedAt` from. The
+third is not: **`detectedAt` appears nowhere in this export**, on the entry or
+on the trail, so the instant a proposal was produced is not in the file.
+
+**A trail row carries the same shape minus the free text.** `action` —
+`CREATED` or `MODIFIED` — `recordedAt`, and then the day's identity and state:
+`dayDate`, `portion`, `kind`, `provenance`, `detectedKind`, `clientClaimedAt`,
+`clientMutationId`, each code with its word. It carries **no `note` and no
+`absenceReason`**: the trail records what a day *was*, not what was written
+beside it.
+
+**It carries no `entryId` either.** A reader attaches an event to a day by
+`(dayDate, portion)` — which §6.2 already names as the reconciliation key, and
+which is the natural key of an entry. There is nothing else to join on: these
+`entries` carry no `id`.
+
+### 13.4 What is not in it, and how that stays true
+
+| collection | fields | what is deliberately absent |
+|---|---|---|
+| `devices` | `platform`, `createdAt` | **the FCM token**, and the `id`, `appVersion` and `lastSeenAt` §10 returns on registration |
+| `reminders` | `sentOn`, `sentAt` | anything about what the reminder said |
+| `sessions` | `createdAt`, `lastUsedAt`, `revokedAt`, `revokedReason` | the token hashes |
+
+**A push token is not a fact about the person.** It is how the server
+*addresses* a device, and the same reasoning excludes the session token hashes:
+a file somebody emails to their accountant should not carry credential-shaped
+artefacts. The devices themselves are exported, so a person can still see every
+phone that has been signed in.
+
+**`sessions` is where §2's fourth revocation becomes visible to the person.** A
+session ended by reuse detection carries `revokedReason: "TOKEN_REPLAYED"`,
+beside `SIGNED_OUT`, `REVOKED_ALL` and `ACCOUNT_DELETED`. §1.5 keeps the
+refresh route from telling an unauthenticated caller that a token was replayed,
+because that caller may be the thief; here the reader has presented a valid
+access token for the account, which is the point at which saying so costs an
+attacker nothing.
+
+| table | why it is not in the export |
+|---|---|
+| `SessionToken` | hashed credentials. They tell the person nothing and tell an interceptor something. The **sessions** they belong to are exported |
+| `Account` | an Auth.js adapter table with no adapter behind it (R209). Always empty, and a permanently empty array would tell a reader this product stores something it does not |
+| `Session` | the other adapter table, empty for the same reason. D14 withdrew the web session it would have held |
+| `VerificationToken` | single-use sign-in tokens, keyed by address rather than by user and already spent by the time anybody exports |
+
+**The partition is derived from the schema, not typed beside it.**
+`tests/db/account-export.test.ts` reads `prisma/schema.prisma`, collects every
+model carrying a `userId` column, and requires each one to be **either exported
+or excluded with a stated reason** — a reason long enough that *"not useful"*
+cannot be one. A table added two years from now lands in neither list and fails
+there, which is R175 in its original form: two lists that between them must
+cover everything, with the space between them named rather than left.
+
+Its reach is written down rather than assumed: the census sees **direct**
+ownership only. `SessionToken` belongs to a person through its session, is
+invisible to that scan, and is in the excluded list by hand.
+
+**Nothing in the export is bounded.** Every read is `where: { userId }` with no
+year, no limit and no cursor, across all six tables. Measured at ten years:
+1 237 600 bytes in one response, 130 ms. That is a known open item rather than
+a contract decision — a client should not assume a size, and should not assume
+this stays a single response forever.
+
+### 13.5 `?format=csv` — the entries, through the dossier's serialiser
+
+Not a second serialiser (R206): the same `toCsv` FW25 wrote for
+`/api/v1/export/csv`. So this file carries **SPEC §12's eleven columns, exact
+and in its order**, opens with a UTF-8 BOM, ends its rows with CRLF, and
+neutralises a formula-shaped note exactly as §6.7 describes — the apostrophe
+here, the note unaltered in the JSON, because only a spreadsheet executes one.
+
+**Its rows are the entries, never the gaps.** The dossier's CSV prints every
+working day *without* an entry, because SPEC §12 item 5 requires a year's
+document to show what is missing. An account export is what the person
+**wrote**, and an unlogged day is a fact about a year's document rather than
+about this person's record.
+
+**Two columns are constant in this file whatever the day is.**
+`lastModifiedAt` is written empty on every row and `late` is written `false` on
+every row. A day edited five times is indistinguishable here from one written
+once: the trail in the JSON is the only place that history appears, and a
+reader who needs it must take the JSON.
+
+**The French words are not in the CSV.** Every cell carries the code —
+`HOME`, `AM`, `DETECTED_CORRECTED` — because the columns are SPEC §12's and
+those are frozen. The labels of §13.2 exist in the JSON alone.
+
+**The filename is the only place this file names anybody**, and it takes three
+shapes:
+
+| the account's name | filename |
+|---|---|
+| absent, or blank | `mon-releve-donnees.csv` |
+| present, slugifies to nothing | `donnees-<year>.csv` |
+| present | `donnees-<year>-<slug>.csv` |
+
+Same helper and same rule as §6.7: the slug folds accents and admits only ASCII
+letters and digits, because the value is parsed as an HTTP header and the name
+is user-controlled.
+
+**The year in that filename is the year of the download, not a scope.** It is
+the server's current UTC year at the moment of the request. The dossier's
+`releve-<year>-<name-slug>.csv` names a tax year and means it; this one records
+when the file was taken, while the file itself holds every year the person has.
+A client that parses a year out of this filename is reading the wrong fact.
+
+**A nameless account is exported anyway.** §8.3 refuses a dossier with
+`titulaire_missing`, because a document nobody is named on cannot be
+attributed. This is not the document of record, so the name is used where it
+helps and its absence is not a refusal.
+
+The JSON filename is `mon-releve-donnees.json`, always — no name, no year.
+
+### 13.6 The order of the checks is part of the contract
+
+| | |
+|---|---|
+| 1 | authenticate |
+| 2 | scan the query string for coordinates, **before anything else about the parameters** |
+| 3 | refuse unknown parameters |
+| 4 | validate `format` |
+| 5 | read |
+
+Step 2 precedes step 3 for §6.6's reason: a `?lat=` is *both* a coordinate and
+an unknown parameter, and answering *"unknown parameter"* would lose the one
+interesting fact about that request — that a client is sending coordinates
+(SPEC §13.1, D18). As everywhere else the scan reads **keys and never values**,
+and the keys it found go to the server log rather than into the response.
+
+| code | status | fires when |
+|---|---|---|
+| the auth codes of §1.4 | 401 | no bearer token, or one that does not resolve |
+| `coordinates_refused` | 400 | any query key whose name contains a banned location word |
+| `unknown_parameter` | 400 | any parameter other than `format`; `parameters[]` names them |
+| `invalid_format` | 400 | `format` is present and is neither `json` nor `csv` |
+
+**`format` is defaulted only when it is absent.** `?format=` — the key present
+with an empty value — is `invalid_format`, not JSON.
+
+**A repeated `format` is first-wins**: `?format=csv&format=json` serves the CSV.
+§8 refuses a repeated `year` outright, and the difference is worth stating
+because a client author who learned the strict behaviour there will expect it
+here.
+
+**`invalid_format` carries the write path's French message**, which says the
+detail of the offending fields accompanies the response. On this route nothing
+accompanies it: the body is `{ status, code, message }`, and the `code` is the
+part a client acts on — §1.4's rule, which is why the French may be rewritten
+freely.
+
+**There is no `POST`, `PATCH` or `DELETE` here.** This route only reads;
+erasure is its own route, and deleting the account removes every row this
+export describes (D11).
+
+---
+
+## 14. `POST /api/v1/account/delete` — erasure, and what survives it
+
+Added in FW26. D11, and SPEC §14.5's *suppression du compte* in Paramètres.
+
+**It is a `POST` and not a `DELETE`, and the reason is the client.** SPEC §14.5
+requires a confirmation naming what is destroyed, and a confirmed action that
+carries a body is a `POST` everywhere else in this API — so a request that
+reaches this route by accident does not erase anybody.
+
+```
+POST /api/v1/account/delete
+Authorization: Bearer <access token>
+Content-Type: application/json
+
+{ "confirm": "SUPPRIMER" }
+```
+
+| field | required | notes |
+|---|---|---|
+| `confirm` | yes | The literal `SUPPRIMER`, compared exactly. It is **French because it is the word the app shows** — a client sending `DELETE` has not read SPEC §14.5's confirmation requirement, which is the point. |
+
+**The confirmation is not security.** A caller holding a valid access token can
+always send the word, and sending it changes nothing about what that token
+authorises. It is there so a mis-wired client, a retried request or a curious
+developer with a shell does not destroy an account by making the obvious call —
+which is the realistic failure, and the one D11's *"the confirmation names what
+is destroyed"* is written against.
+
+**This route has no schema.** It reads one key and compares it; there is no Zod
+parse, so **unknown fields are ignored rather than refused** and no coordinate
+scan runs. That is the opposite of §6.1 and §10.3, and it is written down here
+because a client author who read §6.6 would expect otherwise: a body carrying
+`latitude` beside a valid `confirm` erases the account and is neither refused
+nor recorded, and an oversized body is not `payload_too_large`.
+
+### 14.1 The answer is a receipt, not `ok`
+
+```json
+{
+  "status": "ok",
+  "removed": {
+    "User": 1,
+    "Entry": 184,
+    "EntryEvent": 197,
+    "Device": 1,
+    "DeviceSession": 3,
+    "VerificationToken": 0
+  },
+  "alertSubscriptionRemains": false
+}
+```
+
+**`ok` would tell somebody their account is gone; this tells them what went with
+it** — which is what the confirmation promised, and the last chance to say it.
+
+- **The counts are taken before the cascade**, inside the same transaction. A
+  receipt of zeros would be indistinguishable from a deletion that did nothing.
+- **`removed` is exactly those six keys, and it is not an inventory of every
+  table.** `Account`, `Session`, `ReminderSent` and `SessionToken` are destroyed
+  by the same cascade and are **not** counted; `User` is the literal `1`. The set
+  is written out in the erasure path rather than derived from the schema, so a
+  new user-owned table does not join it by itself.
+- **The keys are PascalCase model names**, unlike every other field this
+  document names. Parse the object as a map, never as a fixed record: a key
+  may be added under §6's additive rule, and a client that fails on an unknown
+  one fails on the response it can least afford to lose.
+
+### 14.2 One transaction, and no narrower privilege
+
+Everything below happens inside `$transaction` or not at all. **A partial
+erasure that succeeds halfway is worse than a refusal, because the person
+believes they are gone.**
+
+The erasure **passes** §3's append-only trigger rather than standing it aside.
+PostgreSQL removes the parent row before firing the referential action, so
+during a cascade from `User` the person is already invisible to the transaction,
+while a direct `DELETE FROM "EntryEvent"` still sees them — and the trigger asks
+exactly that question. There is no transaction-local flag, no dedicated role and
+no marker row, because each of those is a way of teaching a guard to stand aside
+and every one of them is a door.
+
+It follows that **the capability is the deletion**. Nothing on this path can tidy
+one inconvenient event without destroying the entire account, which is the
+loudest possible side effect; the failure worth guarding is therefore somebody
+erasing an account they should not have, which is ordinary authentication.
+
+**`VerificationToken` is deleted explicitly, because it does not cascade.** It is
+keyed by address rather than by `userId`, so a pending sign-in link would
+otherwise outlive the account it was issued for — a live credential still
+resolving to an address this product has just promised to forget.
+
+**Tokens are revoked by being destroyed (R193).** `SessionToken` cascades from
+`DeviceSession`, which cascades from `User`, so every credential for the account
+ceases to exist in the statement that removes the account. There is no window in
+which a token outlives its owner.
+
+### 14.3 The alert-list subscription survives, and is reported
+
+`AlertSubscriber` is keyed by **email**, not by user. It is a separate consent
+under a separate identity: most rows on that list belong to addresses that never
+had an account at all, and one that does had it added by a different act on a
+different day.
+
+Deleting it would revoke a consent nobody withdrew. **Keeping it silently would
+be worse — somebody who asked to be forgotten and then receives an email has
+been told something untrue by the absence of a field.**
+
+So it survives, and `alertSubscriptionRemains` reports it on every successful
+answer. `true` means a row exists for the address and has not unsubscribed;
+`false` covers both no row and an address that already left. The row keeps the
+one-click unsubscribe token it was issued with, which is the mechanism that
+already exists and the only way off that list this API offers. **A client that
+erases an account must surface this field**, for the same reason §6.5 requires it
+to surface a warning: the receipt alone looks complete without it.
+
+### 14.4 What it refuses
+
+| code | status | fires when |
+|---|---|---|
+| `missing_token` / `malformed_authorization` | 401 | no `Authorization: Bearer` header, or one that is not two parts |
+| `unknown_token` / `expired_token` / `rotated_token` / `revoked_session` | 401 | the usual auth refusals of §1.4 |
+| `malformed_body` | 400 | the body is not JSON |
+| `confirmation_required` | 400 | `confirm` is absent, or is anything other than `SUPPRIMER` |
+| `erasure_blocked` | 500 | the append-only guard refused the cascade |
+| `write_failed` | 500 | ours. The transaction rolled back and nothing was erased |
+
+**`erasure_blocked` reaching a client would be a design failure rather than a
+runtime one**: it means the cascade of §3 was not recognised as a cascade. It is
+named rather than folded into `write_failed` so the next reader is told which
+rule refused instead of being handed *"delete failed"*, and it is logged
+server-side with the trigger's own message. Like `conflict` in §7, a client
+should not expect it and must still treat it as terminal (§6.5).
+
+Only `POST` is exported, so any other method is the framework's answer rather
+than one of these codes. **Every 401 carries `WWW-Authenticate: Bearer`**; the
+200 carries `Cache-Control: no-store, private`, and the refusals carry no cache
+header.
+
+### 14.5 The order of checks is part of the contract
+
+| | |
+|---|---|
+| 1 | authenticate |
+| 2 | parse the body as JSON |
+| 3 | compare `confirm` |
+| 4 | erase, in one transaction |
+
+A request that breaks two rules is told about the earlier one, so a call with no
+bearer *and* no confirmation is a 401. **Nothing is destroyed before step 4**,
+and that is asserted on the `confirmation_required` path — the account is counted
+afterwards and must still be there — rather than trusted to the reading.
+
+### 14.6 What a client must know before it calls this
+
+These are obligations on the *client*, in the shape of §6.5, and the first is the
+one that cannot be recovered by a later release.
+
+- **It is not idempotent, and a lost answer cannot be resolved by retrying.** The
+  retry's access token no longer resolves, because its row was destroyed with the
+  account, so the second call is `401 unknown_token` — indistinguishable from an
+  ordinary expiry. **A client that never received the 200 cannot learn from this
+  API whether the erasure happened.** Render the receipt when it arrives; on a
+  401 following a delete, sign the person out rather than offering to refresh.
+- **What follows an erasure is `unknown_token`, not `revoked_session`.** §7 lists
+  account deletion among the causes of `revoked_session`; that row describes a
+  session that was *revoked*, and this route *destroys* the session rows, leaving
+  nothing behind to report a reason.
+- **Local data is the client's own obligation.** SPEC §14.5 names the Room
+  database beside the server rows. This route reaches the server and no further.
+- **The dossier cannot be regenerated afterwards**, and SPEC §14.5 requires the
+  confirmation to say so before the call is made. No route in this API can
+  rebuild it: the entries, the trail and the timestamps that the *Relevé annuel*
+  rests on are gone in the same statement.

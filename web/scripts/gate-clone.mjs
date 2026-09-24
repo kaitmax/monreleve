@@ -141,7 +141,7 @@ const CANNOT_RUN_HERE = [
   [
     'test:container',
     'selected locally when the container changed (R251). CI runs it too, but that job has never passed - see F-CI',
-    'no claim about the image beyond what the production-write suite below proves',
+    'no claim about the image beyond what the production-write suite above proves',
   ],
 ];
 
