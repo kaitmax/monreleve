@@ -83,30 +83,66 @@ const SECRETS = [
 ];
 
 /**
- * Steps that cannot run inside a fresh clone, each with the reason.
+ * Steps that do not run inside a fresh clone: the reason, AND THE CLAIM EACH
+ * ONE IS THEREFORE NOT MAKING.
  *
- * NAMED RATHER THAN OMITTED. This list is printed on every run, pass or fail,
- * so "the browser suites did not run" is a line in the output instead of an
- * absence somebody has to notice.
+ * NAMED RATHER THAN OMITTED, and since FW31 the third column is the point.
+ * This list used to print as a bare line of names - "skipped test:e2e,
+ * test:visual, ... test:container" - and a reader took GATE:CLONE PASSED to
+ * mean the commit was sound. It did not: POST /api/v1/entries returned 500
+ * and wrote zero rows on every production build from 13 September, and this
+ * gate reported PASSED on each of those pushes because the one suite that
+ * would have noticed was in this list.
+ *
+ * R256: either the gate runs the container suites, or it says so loudly
+ * enough that nobody can read a green clone as a production claim. A skip
+ * that names a SUITE tells you what did not execute; a skip that names the
+ * CLAIM tells you what you still do not know, which is the thing a reader
+ * actually needs.
  */
 const CANNOT_RUN_HERE = [
-  ['test:e2e', 'needs a Playwright browser download; runs locally via pnpm test:e2e'],
-  ['test:visual', 'needs the Playwright Docker container (R98); runs locally via pnpm test:visual'],
-  ['test:runtime', 'needs a Playwright browser download'],
-  ['lighthouse', 'needs a Chrome binary and a served build'],
-  ['parity:check', 'covered by typecheck here; the Node matrix is R201 workflow_dispatch from October'],
-  // R251's suite. IT COULD RUN HERE - a clone can build an image - and it is
-  // named rather than run for a stated reason: it already has two owners that
-  // between them cover more than a third run would. The selector runs it
-  // locally whenever Dockerfile, .dockerignore, scripts/entrypoint.mjs,
-  // container-check.mjs or lib/deploy/placeholders.mjs changed, and CI runs
-  // it on EVERY push, on a runner with no store cache and no image layers -
-  // which is a stronger version of this gate's own question.
+  [
+    'test:e2e',
+    'needs a Playwright browser download; runs locally via pnpm test:e2e',
+    'no claim about the product in a real browser',
+  ],
+  [
+    'test:visual',
+    'needs the Playwright Docker container (R98); runs locally via pnpm test:visual',
+    'no claim that any page still looks the way its baseline says',
+  ],
+  ['test:runtime', 'needs a Playwright browser download', 'no claim about the runtime guard (R81)'],
+  [
+    'lighthouse',
+    'needs a Chrome binary and a served build',
+    'no claim about performance, and none about SPEC 21 LCP',
+  ],
+  [
+    'parity:check',
+    'covered by typecheck here; the Node matrix is R201 workflow_dispatch from October',
+    'no claim about Node versions other than this one',
+  ],
+  // R251's suite, and ITS STATED JUSTIFICATION WAS FALSE. This entry used to
+  // read "run by CI on every push, on a runner with no store cache and no
+  // image layers - which is a stronger version of this gate's own question",
+  // and it named that as one of two owners covering more than a third run
+  // would. THE CI CONTAINER JOB HAS NEVER PASSED: it dies on a port collision
+  // before a single spec executes, because playwright.config.ts sets
+  // `reuseExistingServer: !process.env.CI` while the harness starts the
+  // container on the port Playwright then insists on binding. So one of the
+  // two owners had never once run, and the sentence claiming otherwise is
+  // exactly the shape of a comment asserting a property nothing delivers.
   //
-  // It is in this list rather than absent from it because R133 does not
-  // distinguish "cannot" from "chose not to": either way an omission has to
-  // be a line somebody reads, not a silence somebody notices.
-  ['test:container', 'selected locally when the container changed, and run by CI on every push (R251)'],
+  // It stays skipped here - the FAST facts suite is genuinely covered by the
+  // selector, which runs it whenever Dockerfile, .dockerignore,
+  // entrypoint.mjs, container-check.mjs or placeholders.mjs change - but the
+  // reason is now the true one, and the production-write claim it does NOT
+  // make is made below instead.
+  [
+    'test:container',
+    'selected locally when the container changed (R251). CI runs it too, but that job has never passed - see F-CI',
+    'no claim about the image beyond what the production-write suite below proves',
+  ],
 ];
 
 function scrubbed(extra = {}) {
@@ -114,6 +150,27 @@ function scrubbed(extra = {}) {
     ...Object.fromEntries(Object.entries(process.env).filter(([name]) => !SECRETS.includes(name))),
     ...extra,
   };
+}
+
+/**
+ * Whether a Docker daemon will answer.
+ *
+ * ASKED OF THE DAEMON, NOT OF THE BINARY. `docker` on PATH with no daemon
+ * behind it exits non-zero on the first real command, which would turn a
+ * missing daemon into a gate failure rather than a named skip.
+ */
+function dockerAvailable() {
+  try {
+    execFileSync('docker', ['version', '--format', '{{.Server.APIVersion}}'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+      timeout: 30_000,
+    });
+
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function run(label, command, args, cwd, expect, env) {
@@ -209,6 +266,9 @@ function postgres() {
 
 const clone = mkdtempSync(join(tmpdir(), 'monreleve-clone-'));
 let scratchDatabase = null;
+
+/** Whether the production-write suite actually ran, so the summary can say so. */
+let wroteInProduction = false;
 let admin = null;
 
 async function dropScratch() {
@@ -377,7 +437,15 @@ try {
     console.log('');
     console.log(`--- database: scratch database ${scratchDatabase} created ---`);
 
-    const withDatabase = scrubbed({ DATABASE_URL: scratchUrl.toString() });
+    // CONTAINER_WRITE_DATABASE_URL hands the SAME scratch database to the
+    // production-write suite, so it too is talking to something this script
+    // created from empty rather than to anything a developer prepared. The
+    // suite rewrites `localhost` to `host.docker.internal` for the container's
+    // own connection string; the host-side tools keep this one.
+    const withDatabase = scrubbed({
+      DATABASE_URL: scratchUrl.toString(),
+      CONTAINER_WRITE_DATABASE_URL: scratchUrl.toString(),
+    });
 
     const database = [
       // Prisma's exact wording. An earlier draft read
@@ -394,6 +462,39 @@ try {
       ],
       ['pnpm test:db', 'pnpm', ['test:db'], /Test Files\s+\d+ passed/],
     ];
+
+    // ---------------------------------------------------------------------
+    // THE PRODUCTION WRITE (R256), AND IT IS THE REASON THIS GATE EXISTS.
+    //
+    // Every other step above runs with NODE_ENV=test. The defect FW31 fixed
+    // lived ONLY under NODE_ENV=production - the Prisma client cached itself
+    // in every other environment - so a chain that never builds the image and
+    // drives it cannot see that class of defect at all. It did not, for three
+    // weeks, on a product whose main use case is recording a day.
+    //
+    // It builds from THE CLONE, which is the claim: the image this commit
+    // describes, on a machine with no .env and no warm state, accepting a
+    // write and putting a row in a database this script created from empty.
+    //
+    // IT NEEDS DOCKER, and a missing Docker is NAMED rather than fatal -
+    // otherwise the gate becomes unrunnable for anyone without it, and a gate
+    // people cannot run is a gate people route around.
+    if (dockerAvailable()) {
+      database.push([
+        'pnpm test:container:write',
+        'pnpm',
+        ['test:container:write'],
+        /Production write checks {2}\d+ passed/,
+      ]);
+
+      wroteInProduction = true;
+    } else {
+      console.log('');
+      console.log('--- production write: SKIPPED, and named ---');
+      console.log('  docker is not available, so no image can be built or run here.');
+      console.log('  THIS RUN MAKES NO CLAIM THAT A PRODUCTION BUILD CAN WRITE AN ENTRY,');
+      console.log('  which is the one claim this gate was extended to make (R256).');
+    }
 
     for (const [label, command, args, expect] of database) {
       const result = run(label, command, args, there, expect, withDatabase);
@@ -418,8 +519,39 @@ try {
   console.log(describeReadiness(ciReadiness()));
   console.log(`  commit  ${head}`);
   console.log(`  clone   ${clone} (removed)`);
-  console.log(`  ran     install, typecheck, lint, test, build, size${local === null ? '' : ', db:deploy, test:db'}`);
-  console.log(`  skipped ${CANNOT_RUN_HERE.map(([step]) => step).join(', ')}${local === null ? ', db:deploy, test:db' : ''}`);
+  console.log(
+    `  ran     install, typecheck, lint, test, build, size${local === null ? '' : ', db:deploy, test:db'}${wroteInProduction ? ', test:container:write' : ''}`,
+  );
+
+  // ---------------------------------------------------------------------
+  // WHAT THIS RUN DOES NOT CLAIM (AC2, R256).
+  //
+  // This used to be one line of suite names. A reader saw GATE:CLONE PASSED,
+  // skimmed the names, and took the commit to be sound - which is how a
+  // production build that returned 500 on every write was pushed, repeatedly,
+  // behind a green gate. Naming the SUITE says what did not execute; naming
+  // the CLAIM says what is still unknown, and that is the useful half.
+  // ---------------------------------------------------------------------
+  console.log('');
+  console.log('  NOT RUN HERE, AND THE CLAIM EACH ONE IS THEREFORE NOT MAKING:');
+
+  for (const [step, why, claim] of CANNOT_RUN_HERE) {
+    console.log(`    ${step}`);
+    console.log(`      why   ${why}`);
+    console.log(`      SO    ${claim}`);
+  }
+
+  if (local === null) {
+    console.log('    db:deploy, test:db');
+    console.log('      why   no local PostgreSQL to create a scratch database on');
+    console.log('      SO    no claim about prisma/**, lib/db/** or tests/db/**');
+  }
+
+  if (!wroteInProduction) {
+    console.log('    test:container:write');
+    console.log('      why   docker unavailable, or no database to point it at');
+    console.log('      SO    NO CLAIM THAT A PRODUCTION BUILD CAN WRITE AN ENTRY');
+  }
 } finally {
   await dropScratch();
   rmSync(clone, { recursive: true, force: true });

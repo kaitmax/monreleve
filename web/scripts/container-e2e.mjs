@@ -354,7 +354,14 @@ try {
   const suite = spawn(command, {
     stdio: 'inherit',
     shell: true,
-    env: { ...process.env, FRONTALIER_PORT: PORT },
+    // FRONTALIER_SERVER_IS_OURS: this process started the container on that
+    // port, so it is the only one that can honestly tell Playwright the server
+    // is ours to reuse. Without it, CI turned reuse off, Playwright tried to
+    // start its own server on the port the container already held, and the job
+    // died before a spec ran - every time, since the suite was written (F-CI).
+    // R169's global setup still refuses anything that does not name this
+    // product, so the claim is checked rather than trusted.
+    env: { ...process.env, FRONTALIER_PORT: PORT, FRONTALIER_SERVER_IS_OURS: '1' },
   });
 
   const code = await new Promise((resolve) => suite.on('exit', resolve));

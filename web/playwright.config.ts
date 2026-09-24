@@ -78,7 +78,25 @@ export default defineConfig({
     // refuses the run before a spec executes unless /api/health names this
     // product. Reuse stays because a warm server is worth minutes on every
     // local run; what changed is that it can no longer be the wrong one.
-    reuseExistingServer: !process.env.CI,
+    // ...AND THE CONTAINER HARNESS SAYS SO EXPLICITLY (FW31, F-CI).
+    //
+    // `!process.env.CI` alone made the container job STRUCTURALLY INCAPABLE OF
+    // PASSING, and it never once did. scripts/container-e2e.mjs starts the
+    // image on this port and then runs this suite against it; in CI reuse was
+    // off, so Playwright insisted on starting its own server, found the port
+    // held BY THE CONTAINER IT WAS MEANT TO TEST, and refused before a single
+    // spec executed:
+    //
+    //   Error: http://localhost:3100 is already used, make sure that nothing
+    //   is running on the port/url or set reuseExistingServer:true
+    //
+    // The paragraph above argues that reuse is safe now because R169's global
+    // setup refuses any server that does not NAME this product - and then the
+    // clause disabled it in exactly the environment where the harness depends
+    // on it. The fix is not to widen reuse generally: it is to let the process
+    // that STARTED the server say so, which is a claim only that process can
+    // make, and which R169 still verifies before any spec runs.
+    reuseExistingServer: !process.env.CI || process.env.FRONTALIER_SERVER_IS_OURS === '1',
     // ========================================================================
     // A TOLERANCE, NOT A THRESHOLD (FW28, PARK-16)
     // ========================================================================
