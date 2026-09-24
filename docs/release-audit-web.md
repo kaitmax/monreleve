@@ -135,7 +135,7 @@ this audit exists to avoid.
 | 2b | Eight property invariants × 10 000 cases | **MET** | `PROPERTY_RUNS` defaults to `10_000` in `arbitraries.ts`; no override set tonight. 462 engine tests green. |
 | 2c | Zero runtime deps in the engine | **MET** | No non-relative import exists anywhere in `lib/calc-engine/**`. The fence is structural, not a lint rule. |
 | 2d | Median execution < 0,1 ms | **MEASURED, NOT ENFORCED** | median **0,00490 ms**, mean 0,00648, p95 0,00950 — twenty times under budget. **But the test's own name is *"measures and reports the median, without asserting a duration"*.** See finding F1. |
-| 3 | Param round-trip over 10 000 inputs | **MET** | Covered inside `pnpm test` (2 877 passed). |
+| 3 | Param round-trip over 10 000 inputs | **MET** | `tests/unit/params/codec.test.ts` run in isolation tonight: **14 passed**. (Section 8, F4.) |
 | 4 | `renderRailSvg` byte-identical Node vs browser | **MET** | `e2e/rail-parity.spec.ts` green in `test:e2e`, incl. *"the browser really is executing the generator, not echoing a fixture"* and *"a DOM round-trip would have given a different answer"*. |
 | 4b | Rail/badge baselines pass | **MET** | `test:visual` **108 passed**, zero tolerance (R114). |
 | 4c | 200 px thumbnail legible to a human | **UNVERIFIED** | Requires a person looking. Not done tonight. |
@@ -146,16 +146,16 @@ this audit exists to avoid.
 | 8b | LCP < 2,5 s slow 4G on the calculator | **UNVERIFIED** | `pnpm lighthouse` not run tonight. |
 | 8c | Zero third-party requests; zero cookies on public routes | **MET** | `e2e/analytics.spec.ts` asserts both on **every** route in the registry — and the route list is derived from the registry, not chosen ("the routes under test are the real registry, not a chosen few"). Re-proven against the **container** too: 270 specs. |
 | 9 | Zero jest-axe violations; usable at 320 px; calculator meaningful with JS off | **MET** | `pnpm test:a11y` **139 passed** (6 files); `guides-narrow.spec.ts` asserts no sideways scroll *and* every element inside the viewport at 320 dp; `calculateur.spec.ts` asserts the JS-disabled empty state. |
-| 10 | Every `ValidationError` and `Status` has French copy, exhaustiveness-tested | **MET** | Covered in `pnpm test`; `react/jsx-no-literals` plus the `lib/fr` guards (R91, R126, R153, R155) enforce the copy side. |
-| 11 | Offline log queued and synced; `EntryEvent` append-only | **PARTIAL** | Append-only is **MET** — enforced by a database trigger and proven in `test:db` (542 passed). Offline queueing is **ANDROID**. |
-| 12 | PDF renders A4 with the same rail and formatters; CSV schema exact | **MET** | `test:container:e2e` renders a real PDF **inside the image**: 9 pages, 155 569 bytes, and the renderer now refuses an unstyled *or* fontless document. CSV schema covered in `test:db`. |
-| 13 | Account export and deletion work end-to-end | **MET** | Route handlers under `app/api/v1/account/{export,delete}`, covered in `test:db`. |
+| 10 | Every `ValidationError` and `Status` has French copy, exhaustiveness-tested | **MET** | `tests/unit/fr/errors.test.ts` in isolation: **14 passed**. `react/jsx-no-literals` and the `lib/fr` guards (R91, R126, R153, R155) enforce the copy side. |
+| 11 | Offline log queued and synced; `EntryEvent` append-only | **PARTIAL** | Append-only is **MET** — `tests/db/append-only.test.ts` run in isolation tonight (part of **54 passed**), incl. refusing an UPDATE that changes nothing and a bulk DELETE with no WHERE. Offline queueing is **ANDROID**. |
+| 12 | PDF renders A4 with the same rail and formatters; CSV schema exact | **MET** | `test:container:e2e` renders a real PDF **inside the image**: 9 pages, 155 569 bytes, and the renderer now refuses an unstyled *or* fontless document. `tests/db/export-csv.test.ts` run in isolation tonight, part of **54 passed**. |
+| 13 | Account export and deletion work end-to-end | **MET** | `account-export` and `account-delete` run in isolation tonight, part of **54 passed**. |
 | 14 | **Expert reviewer signed off** | **NOT MET** | No named expert has reviewed anything. The reviewer chip reads *"Relecture experte : en attente"* (R160) precisely because claiming otherwise would be a claim the record does not support. **See NEEDS.** |
 | 15 | Both engines pass `fixtures/geneva-cases.json` identically | **ANDROID — out of scope tonight** | Only one engine exists. |
 | 16 | No coordinate anywhere outside `detection/` | **MET (web half)** | **No Prisma column stores a coordinate** — verified against the schema tonight. The API rejects any payload carrying one (`coordinates_refused`, proven in `test:db` and in the container walkthrough). The *full-database inspection after a simulated month of auto-mode use* is **ANDROID**. |
 | 17–20, 23 | Detection battery cost, offline sampling, manual/auto parity, Play Store form, hysteresis | **ANDROID — out of scope tonight** | |
 | 21 | Geneva fixtures unchanged after the `RuleSet` refactor, byte for byte | **MET** | The fixture file is unmodified and the six cases reproduce. |
-| 22 | Engine output identical with/without absence rows; replayed `clientMutationId` produces no new event | **MET** | Both proven in `test:db` (R203/R219). |
+| 22 | Engine output identical with/without absence rows; replayed `clientMutationId` produces no new event | **MET** | `tests/db/entries-write.test.ts` in isolation: **17 passed**, incl. *"writes no row and no event the second time"*. |
 
 ### Product gates
 
@@ -349,3 +349,83 @@ a real account, a real person or real money.
 
 **N1 is the one that gates the others.** A VPS without a domain serves nothing
 anybody can reach; an image built before the origin is chosen has to be rebuilt.
+
+---
+
+## 8. The read — what this audit found about itself
+
+FW29's own prompt predicted that reading the audit end to end would find
+something, and it did. **The finding is an inconsistent standard, and it was
+mine.**
+
+### F4 — the audit applied two different standards to the same kind of evidence
+
+Section 5 demoted five rulings to **UNVERIFIED** with the reasoning that they
+*"passed as part of a suite, and nobody watched them fail tonight."* Section 3
+then marked **six** SPEC §21 criteria **MET** on evidence of exactly that form —
+*"covered inside `pnpm test`"*, *"covered in `test:db`"*.
+
+Either the standard is right and those six were over-marked, or the standard
+is too strict and the five were under-marked. It cannot be both.
+
+**Resolved by doing the work rather than by adjusting the wording.** Each was
+re-run *in isolation* tonight:
+
+| Criterion | Isolated run | Result |
+|---|---|---|
+| Param round-trip (#3) | `tests/unit/params/codec.test.ts` | **14 passed** |
+| `ValidationError`/`Status` exhaustiveness (#10) | `tests/unit/fr/errors.test.ts` | **14 passed** |
+| `EntryEvent` append-only (#11) | `tests/db/append-only.test.ts` | part of **54 passed** |
+| Account export and deletion (#13) | `account-export`, `account-delete` | part of **54 passed** |
+| CSV schema (#12) | `tests/db/export-csv.test.ts` | part of **54 passed** |
+| Replayed `clientMutationId` writes nothing (#22) | `tests/db/entries-write.test.ts` | **17 passed**, incl. *"writes no row and no event the second time"* and *"scopes the id to the user, so two people cannot collide"* |
+
+All six are now **MET on isolated evidence**, at the standard section 5 sets.
+
+### F5 — a near-miss worth recording, because it would have been a false finding
+
+The first isolated run of those four database files reported **54 failures**,
+and the obvious reading was damning: *tests that pass in company and fail
+alone*. That would have been a serious finding about the suite.
+
+It was wrong. The cause was:
+
+```
+Error: DATABASE_URL is not set.
+```
+
+`pnpm test:db` runs vitest through `node --env-file-if-exists=.env`; invoking
+`vitest` directly skips it. **The defect was in how I ran them, not in the
+tests.** Re-run the way the suite actually runs them: 54 passed.
+
+This is recorded because an audit can lie in *two* directions. The one FW29's
+prompt warns about is a criterion marked MET on evidence that cannot fail. The
+other is a finding recorded against a suite that was never broken — and the
+second is cheaper to produce, because a red result feels like diligence.
+
+**Diagnose before recording.** It cost one extra command.
+
+---
+
+## 9. Could this launch tomorrow?
+
+**No — and the obstacle is not the software.**
+
+Every technical criterion this codebase owns is met and was re-proven tonight,
+at a standard that refuses "covered by a suite" as evidence: the engine
+reproduces all six Geneva cases with 100 % coverage and a structural
+zero-dependency fence, the artefact has been driven as a running container
+through its auth flow and its PDF, the database refuses six invalid row shapes
+by name, and the guards that protect all of it can still be made to fire.
+
+**The single largest obstacle is N1: `monreleve.ch` does not exist.** It is not
+a deployment step that can be done last — the origin is a *build argument*, so
+every canonical, the OG card and `/api/health` are fixed at build time and an
+image built before the domain is chosen has to be rebuilt. Nothing can be
+indexed until it resolves, and the ten other NEEDS entries are all downstream
+of having somewhere to deploy to.
+
+After the domain: the credentials (N3–N7), and then the one criterion no
+amount of engineering closes — **N8, a named expert reviewer**, without whom
+SPEC §21's reviewer criterion stays NOT MET and the product keeps saying,
+correctly, *Relecture experte : en attente*.

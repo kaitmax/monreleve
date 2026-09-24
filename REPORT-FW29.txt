@@ -1,0 +1,288 @@
+====================================================================
+REPORT-FW29 - THE WEB RELEASE AUDIT
+====================================================================
+
+TASK      FW29, tasks/todo.md line 707 - "Web + backend release
+          audit". It builds nothing.
+OUTPUT    docs/release-audit-web.md, 431 lines.
+RULINGS   R250 carried and absolute: nothing was created, no account
+          opened, no DNS touched, no credential sought.
+
+====================================================================
+PRECONDITIONS
+====================================================================
+
+R0. REPORT-FW28.txt read in full. FW28 completed all seven
+    increments and did not stop early, so this task started.
+
+R1. gate:clone PASSED on a fresh clone of origin/main HEAD.
+
+      commit  abfab6a1dcdc87c086775474995baa4bab0b1f56
+      ran     install, typecheck, lint, test, build, size,
+              db:deploy, test:db
+      skipped test:e2e, test:visual, test:runtime, lighthouse,
+              parity:check, test:container - each NAMED with its
+              reason (R133), never silently omitted
+      CI      run 35974016195, same commit, CI_FULL on
+
+====================================================================
+WHAT AN AUDIT IS FOR, AND THE TWO WAYS IT CAN LIE
+====================================================================
+
+The prompt names one failure mode: A CRITERION RECORDED AS MET ON THE
+STRENGTH OF A TEST THAT CANNOT FAIL, a guard that never ran, or a
+sentence copied from an earlier report.
+
+THIS SESSION FOUND BOTH THAT ONE AND ITS MIRROR, and the mirror is
+the one worth carrying forward because it is cheaper to produce:
+
+  THE AUDIT THAT OVER-CLAIMS   marks a criterion MET on evidence
+                               that could not have failed.
+  THE AUDIT THAT OVER-REPORTS  records a finding against something
+                               that was never broken. A red result
+                               FEELS like diligence, so it gets
+                               written down faster than a green one.
+
+Both happened tonight. Both are in the audit document under F4 and
+F5, with what produced them.
+
+====================================================================
+INCREMENT 1 - THE FULL CHAIN AND THE CLOSED-WORLD CHECKS
+====================================================================
+
+EVERY FIGURE RE-RUN IN THIS SESSION. A report from an earlier task
+is a pointer, never the evidence.
+
+  typecheck  exit 0          test:a11y               139 passed
+  lint       exit 0          test:runtime              9 passed
+  test        2 877 passed   test:db                 542 passed
+  build      exit 0          test:late                10 passed
+  test:e2e     284 passed    test:container           16 passed
+  test:visual  108 passed    test:container:e2e      270 + 9 HTTP
+  size       all pass        test:container:scheduler  4 passed
+  gate:clone PASSED          test:container:restore    6 passed
+
+  test:coverage   100 %  statements 313/313, branches 180/180,
+                         functions 55/55, lines 299/299
+
+SIZE, EXACTLY. Every gated route passes GATE A and GATE B. The
+framework floor is 100,6 KiB. The tightest route is the calculator at
+121,3 KiB total - 3,7 KiB of spare under A.
+
+THE CLOSED-WORLD CHECKS. The question is not whether they pass but
+whether their scope is DERIVED or LISTED, because a listed scope goes
+stale in silence.
+
+  entry points (R246)        derived, root half closed-world
+  declaration parity (R185)  derived
+  glob canaries              derived
+  french literals (R155)     derived
+  no gradients (R82)         derived
+  innerHTML                  derived
+  next/link                  derived
+
+ALL SEVEN DERIVE. Two of them were NARROWER THAN THEIR OWN
+DOCUMENTATION CLAIMED until FW28 corrected them, and both were the
+same shape: A SCOPE CORRECT ONLY BECAUSE NOTHING HAD MOVED YET.
+
+====================================================================
+INCREMENT 2 - SPEC 21
+====================================================================
+
+23 technical criteria, 7 product gates.
+
+  MET                     17 (web-owned)
+  NOT MET                  1 - the expert reviewer
+  MEASURED NOT ENFORCED    1 - the engine's 0,1 ms median
+  UNVERIFIED               2 - the 200 px thumbnail (needs a person),
+                               LCP on slow 4G (lighthouse not run)
+  ANDROID / OUT OF SCOPE   7
+  NOT YET MEASURABLE       7 product gates - they need real users on
+                           a deployed product
+
+THE PRODUCT GATES ARE LISTED UNCHANGED rather than dropped, because
+SPEC says they matter MORE than the technical ones and an audit that
+omitted them would be reporting on the easy half.
+
+THE ENGINE, WHICH IS THE PART TO BE MOST CAREFUL WITH because it has
+been stable longest and is therefore least recently examined:
+
+  all six Geneva cases reproduce - a, b, c, d, e, special - each
+  also "accounts for every working day", AND a non-vacuity test
+  reading all six so the suite cannot pass on an empty fixture file
+  declarableRateFor(94, 240) === 39.16, asserted "not 39.17"
+  coverage 100 % on all four measures
+  PROPERTY_RUNS defaults to 10 000; no override set tonight
+  zero runtime deps - NO non-relative import exists anywhere in
+  lib/calc-engine. The fence is structural, not a lint rule.
+  median 0,00490 ms against a 0,1 ms budget
+
+====================================================================
+INCREMENT 3 - THE MECHANISMS, MADE TO FIRE
+====================================================================
+
+RE-PROVEN, NOT RE-ASSERTED. A guard that cannot be triggered is a
+guard nobody has tested.
+
+R196  ALL SIX CHECK CONSTRAINTS FIRED BY NAME, and legal rows
+      accepted - both directions, because a constraint that rejects
+      everything passes the negative test perfectly.
+
+        employmentRate 0    -> "User_employmentRate_range"
+        employmentRate 101  -> "User_employmentRate_range"
+        employmentRate 80   -> INSERT 0 1
+        EXACT without days  -> "User_exactTotalWorkDays_iff_exact"
+        ABSENT w/o reason   -> "Entry_absenceReason_iff_absent"
+        HOME *with* reason  -> "Entry_absenceReason_iff_absent"
+        HOME legal          -> INSERT 0 1
+
+      The sixth line is the one worth noticing: the OTHER DIRECTION
+      of the iff. A non-absent entry carrying an absence reason is
+      refused too - the half a "required when ABSENT" rule misses.
+
+R169  A server answering 200 with valid JSON and NO service field was
+      started on 3199 and the suite pointed at it. It refused the
+      whole run before one spec executed, naming what it found, the
+      port, and the history - 91 tests once passed against a
+      different application.
+
+R205  404 unset; the specified shape when set, uppercased because
+      Android compares exactly; 404 for a truncated fingerprint, for
+      no colons, for a non-hex character; and a dedicated test that
+      it NEVER returns an empty statement list.
+
+R180  A plant was planted, VERIFIED TO HAVE LANDED (1 occurrence ->
+      1 planted), caught by typecheck with 3 errors, and the restore
+      VERIFIED against HEAD - 0 files differing.
+
+R243  Non-local refused, local accepted, so the refusal is not
+      blanket.
+
+R249/R250  The container's four refusals and its one start.
+
+FIVE COULD NOT BE FIRED IN ISOLATION and are recorded as UNVERIFIED
+in the strict sense rather than rounded up: R177's Lighthouse half,
+R208, R230, R237, R203/R219. They passed inside a suite. That is a
+weaker claim and it is written as weaker.
+
+====================================================================
+INCREMENT 4 - THE HUMAN GATES
+====================================================================
+
+CHECKPOINT C: monreleve.ch DOES NOT EXIST.
+
+  A DNS lookup tonight returns "Non-existent domain".
+
+  IT IS NOT A DEPLOYMENT DETAIL. Every canonical derives from it, the
+  OG card and /api/health report it, and NEXT_PUBLIC_SITE_URL is a
+  BUILD ARGUMENT - so an image built before the domain is chosen has
+  to be rebuilt. Nothing can be indexed until it resolves.
+
+CHECKPOINT A: 34 source rows - 7 verified, 9 provisional, 11 pending,
+2 unverified. Three readings are PUBLISHED as provisional on /sources
+(P1, P2, P3), which is the product naming what it does not know
+rather than rounding up. NO NAMED EXPERT HAS REVIEWED ANYTHING.
+
+ELEVEN NEEDS, consolidated and deduplicated from parking.md,
+phase4parking.md and FW28, each with who supplies it and what it
+blocks. N1 - the domain - gates the others.
+
+====================================================================
+INCREMENT 5 - THE READ, AND WHAT IT FOUND ABOUT THE AUDIT
+====================================================================
+
+F4. THE AUDIT APPLIED TWO STANDARDS TO THE SAME KIND OF EVIDENCE.
+
+    Section 5 demoted five rulings to UNVERIFIED for "passing as part
+    of a suite". Section 3 then marked SIX SPEC 21 criteria MET on
+    evidence of exactly that form - "covered inside pnpm test",
+    "covered in test:db".
+
+    Either the standard is right and those six were over-marked, or
+    it is too strict and the others were under-marked. It cannot be
+    both.
+
+    RESOLVED BY DOING THE WORK RATHER THAN ADJUSTING THE WORDING.
+    All SIX were re-run in isolation: the param round-trip (14 passed),
+    the ValidationError/Status exhaustiveness (14 passed), append-
+    only, account export, account delete and the CSV schema (54
+    passed together), and the replay (17 passed, including "writes
+    no row and no event the second time"). All five now cite
+    isolated evidence.
+
+    THE COUNT ITSELF WAS WRONG IN THE FIRST DRAFT - the prose said
+    four in one place and five in another while the table listed six.
+    Corrected to six, which is what the table and the commands show.
+    An audit that cannot count its own findings is not in a position
+    to check anybody else's.
+
+F5. A NEAR-MISS THAT WOULD HAVE BEEN A FALSE FINDING.
+
+    The first isolated run of those database files reported 54
+    FAILURES. The obvious reading was damning - tests that pass in
+    company and fail alone - and it would have been a serious finding
+    about the suite.
+
+    It was wrong. The cause was "DATABASE_URL is not set": pnpm
+    test:db runs vitest through node --env-file-if-exists=.env, and
+    invoking vitest directly skips it. THE DEFECT WAS IN HOW I RAN
+    THEM. Re-run the way the suite runs them: 54 passed.
+
+    Recorded because it is the audit's mirror-image failure, and the
+    cheaper of the two to produce.
+
+====================================================================
+DEVIATIONS
+====================================================================
+
+D1. INCREMENTS 2, 3 AND 4 SHARE ONE COMMIT. The audit document was
+    written in one pass across them and the gate certifies the file
+    rather than a section of it. The three sections are separate in
+    the document and the commit message names all three.
+
+D2. NOTHING FOUND WAS FIXED. F1 (the unasserted speed budget) is an
+    engine change and the prompt puts that out of scope; F2 and F3
+    are observations. F4 was corrected because it was a defect IN
+    THIS DOCUMENT, which is the one thing this task owns.
+
+====================================================================
+PARKED
+====================================================================
+
+F1. THE ENGINE'S SPEED CRITERION IS MEASURED BUT NOT ENFORCED. The
+    median is 0,00490 ms against a 0,1 ms budget and the test's own
+    name is "measures and reports the median, WITHOUT ASSERTING A
+    DURATION". The criterion is true today and nothing would notice
+    if it stopped being true. Twenty times of headroom is a reason
+    not to panic, not a reason to leave it unasserted. An engine
+    change is out of scope for an audit.
+
+F2. The calculator has 3,7 KiB of spare under GATE A. It passes, and
+    it is the route most likely to receive the next feature.
+
+F3. PROPERTY_RUNS is environment-overridable by design, so "10 000
+    cases" is a claim about a run where nobody set the variable.
+
+====================================================================
+COULD THIS LAUNCH TOMORROW
+====================================================================
+
+NO - AND THE OBSTACLE IS NOT THE SOFTWARE. Every technical criterion
+this codebase owns is met and was re-proven tonight at a standard
+that refuses "covered by a suite" as evidence. THE SINGLE LARGEST
+OBSTACLE IS THAT monreleve.ch DOES NOT EXIST, and because the origin
+is a build argument rather than a runtime one, it cannot be left
+until last: an image built before the domain is chosen has to be
+rebuilt.
+
+====================================================================
+PUSH PROOF
+====================================================================
+
+  ae351da  FW29: the full chain and the closed-world checks
+  42b4d65  FW29: SPEC 21 audited, mechanisms re-proven, human gates
+           and NEEDS
+  <this>   FW29: the audit read, and the report
+
+  gate:changed green before each commit; gate:clone green before each
+  push; CI on for every pushed commit.
