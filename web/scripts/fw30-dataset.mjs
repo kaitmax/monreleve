@@ -100,6 +100,24 @@ step('200 users, each a consistent scenario', () =>
   ),
 );
 
+// THE NAMED SCENARIO USERS ARE PINNED, because R197 asks for a CONSISTENT
+// scenario and the modulus above does not know which users the rest of the
+// audit will drive. The first version left fw30-u1 on an 80 % rate while
+// giving it a full-time ten-year history, and the engine refused the dossier
+// with DAYS_EXCEED_TOTAL - correctly. A part-timer who records 261 full days
+// is not a load, it is a contradiction, and every measurement taken against
+// it would have been measuring the contradiction.
+step('pin the named scenario users to coherent settings', () =>
+  psql(
+    `UPDATE "User"
+     SET "employmentRate" = 100,
+         "denominatorKind" = 'SIMPLIFIED240',
+         "exactTotalWorkDays" = NULL
+     WHERE id IN ('fw30-u1','fw30-u2','fw30-u3','fw30-u4','fw30-u5')`,
+    DB,
+  ),
+);
+
 // ---------------------------------------------------------------------------
 // TEN YEARS for fw30-u1. ~2 600 working days: what somebody who starts in
 // 2026 is carrying in 2036.
