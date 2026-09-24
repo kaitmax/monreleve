@@ -292,7 +292,7 @@ describe('R133: a suite that reports nothing must not read as a pass', () => {
     expect(readCount('test:e2e', '  1 passed\n', undefined).failure).toBeUndefined();
   });
 
-  it('counts exactly the seven suites that report counts', () => {
+  it('counts exactly the eight suites that report counts', () => {
     // R63 again: the assertions above would all still pass if a suite were
     // quietly dropped from the map and began being judged on exit code.
     //
@@ -308,6 +308,7 @@ describe('R133: a suite that reports nothing must not read as a pass', () => {
     expect(Object.keys(SUITE_COUNTS).sort()).toEqual([
       'test',
       'test:container',
+      'test:container:restore',
       'test:container:scheduler',
       'test:db',
       'test:e2e',
@@ -365,7 +366,7 @@ describe('the database layer selects its own suite (FW14)', () => {
 });
 
 describe('the pattern list is the ruling, stated once', () => {
-  it('is exactly the nineteen names R132 now carries', () => {
+  it('is exactly the twenty names R132 now carries', () => {
     // R63's shape: if a pattern were dropped, every table row above that
     // does not use it would still pass. This pins the list itself.
     //
@@ -391,6 +392,7 @@ describe('the pattern list is the ruling, stated once', () => {
       'the container e2e harness, which defines that suite (R247)',
       'the container, and what decides whether it serves (R251)',
       'the database layer (prisma/**, lib/db/**, tests/db/**, and anything test:db imports)',
+      'the restore probe, which defines that suite (R247)',
       'the scheduler probe, which defines that suite (R247)',
       'the token layer (lib/ui/core/styles/**)',
     ]);

@@ -75,6 +75,9 @@ export const SUITE_COUNTS = Object.freeze({
   // The scheduler probe measures something - executions across two replicas -
   // so it reports a number rather than being judged on its exit code alone.
   'test:container:scheduler': /Scheduler checks {2}(\d+) passed/,
+  // The restore probe counts what it asserted about a backup that was
+  // actually restored, so it reports a number rather than an exit code.
+  'test:container:restore': /Restore checks {2}(\d+) passed/,
 });
 
 /**
@@ -832,6 +835,13 @@ export const SELECTOR_PATTERNS = Object.freeze([
     label: 'the scheduler probe, which defines that suite (R247)',
     suites: Object.freeze(['test:container:scheduler']),
     matches: (path) => path === 'scripts/container-scheduler.mjs',
+  },
+  {
+    // The restore probe. A backup nobody has restored is a hope, and this is
+    // the one file whose change could make that proof stop proving anything.
+    label: 'the restore probe, which defines that suite (R247)',
+    suites: Object.freeze(['test:container:restore']),
+    matches: (path) => path === 'scripts/backup-restore.mjs',
   },
   {
     label: 'lib/ui/**',

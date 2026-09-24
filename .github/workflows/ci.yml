@@ -537,6 +537,20 @@ jobs:
         env:
           CONTAINER_SCHEDULER_DATABASE_URL: postgresql://frontalier:frontalier@localhost:5432/frontalier?schema=public
 
+      # A BACKUP NOBODY HAS RESTORED IS A HOPE. pg_dump running nightly proves
+      # a file is being written; it says nothing about whether that file can
+      # be turned back into a database. This does the destructive half - dump,
+      # DROP DATABASE, restore - and compares every row count.
+      #
+      # It needs no container, only a database, so it runs here rather than in
+      # a job of its own.
+      # The client binaries, because a supplied server means this talks to it
+      # directly rather than through a compose container that CI does not have.
+      - run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - run: pnpm test:container:restore
+        env:
+          RESTORE_DATABASE_URL: postgresql://frontalier:frontalier@localhost:5432/frontalier?schema=public
+
       - uses: actions/upload-artifact@v4
         if: ${{ failure() }}
         with:

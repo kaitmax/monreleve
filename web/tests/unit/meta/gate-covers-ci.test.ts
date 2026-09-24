@@ -102,6 +102,7 @@ const MAPPING_TARGETS = [
   'test:container',
   'test:container:e2e',
   'test:container:scheduler',
+  'test:container:restore',
 ] as const;
 
 type MappingTarget = (typeof MAPPING_TARGETS)[number];
@@ -115,6 +116,11 @@ type MappingTarget = (typeof MAPPING_TARGETS)[number];
 const SETUP_STEPS: readonly string[] = [
   'pnpm install --frozen-lockfile',
   'pnpm exec playwright install --with-deps chromium',
+  // FW28. The restore probe talks to a SUPPLIED server directly rather than
+  // through the compose container CI does not have, so CI needs the client
+  // binaries. It installs something and checks nothing, which is exactly what
+  // this list is for.
+  'sudo apt-get update && sudo apt-get install -y postgresql-client',
 ];
 
 /** Every `- run:` command in the workflow, in order. */
@@ -266,6 +272,7 @@ describe('the workflow was parsed at all', () => {
       'test:container',
       'test:container:e2e',
       'test:container:scheduler',
+      'test:container:restore',
     ]);
     for (const name of MAPPING_TARGETS) {
       expect(PACKAGE.scripts[name], name).toBeDefined();
