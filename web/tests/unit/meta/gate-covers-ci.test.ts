@@ -124,6 +124,18 @@ const SETUP_STEPS: readonly string[] = [
   'sudo apt-get update && sudo apt-get install -y postgresql-client',
 ];
 
+/**
+ * Steps belonging to a job entirely outside the web/pnpm ecosystem (AN1
+ * increment 6, the `android` job). MAPPING_TARGETS and ownersOf() are pnpm
+ * scripts; a Gradle task can never be "mapped" by them even when it satisfies
+ * R106's actual property - a command a developer runs locally and CI runs
+ * VERBATIM, nothing paraphrased (R206). `./gradlew gate` (defined in
+ * android/app/build.gradle.kts) is exactly that command: the aggregate task
+ * the Android report names, verified below to be real rather than declared,
+ * the same shape as the SETUP_STEPS/LOCAL_ONLY verification just above.
+ */
+const NON_WEB_STEPS: readonly string[] = ['./gradlew gate'];
+
 /** Every `- run:` command in the workflow, in order. */
 function workflowSteps(): readonly string[] {
   const NEWLINE = String.fromCharCode(10);
@@ -298,7 +310,9 @@ describe('the workflow was parsed at all', () => {
 });
 
 describe('TOTALITY - every CI check step is run locally (R106)', () => {
-  const steps = workflowSteps().filter((step) => !SETUP_STEPS.includes(step));
+  const steps = workflowSteps().filter(
+    (step) => !SETUP_STEPS.includes(step) && !NON_WEB_STEPS.includes(step),
+  );
 
   it('has check steps left after the setup ones are removed', () => {
     expect(steps.length).toBeGreaterThanOrEqual(9);
@@ -313,7 +327,9 @@ describe('TOTALITY - every CI check step is run locally (R106)', () => {
 });
 
 describe('EXCLUSIVITY - each step has exactly one owner (R111)', () => {
-  const steps = workflowSteps().filter((step) => !SETUP_STEPS.includes(step));
+  const steps = workflowSteps().filter(
+    (step) => !SETUP_STEPS.includes(step) && !NON_WEB_STEPS.includes(step),
+  );
 
   it.each(steps)('%s has one owner', (step) => {
     const owners = ownersOf(step);
@@ -350,6 +366,43 @@ describe('the setup exemptions are honest', () => {
     for (const exempt of SETUP_STEPS) {
       expect(exempt, exempt).toMatch(/install/);
     }
+  });
+});
+
+describe('the non-web exemption is honest, not a blank check (AN1 increment 6)', () => {
+  it('exempts only steps the workflow actually has', () => {
+    const all = workflowSteps();
+
+    for (const exempt of NON_WEB_STEPS) {
+      expect(all, exempt).toContain(exempt);
+    }
+  });
+
+  it('is exactly the one Gradle task, widening it is a deliberate edit', () => {
+    // Pinned the same way MAPPING_TARGETS is: a second entry here should be a
+    // reviewed addition, never a quiet way to excuse a new unmapped step.
+    expect([...NON_WEB_STEPS]).toEqual(['./gradlew gate']);
+  });
+
+  it('names a task that is real, not merely declared (R133)', () => {
+    // The claim this exemption makes is "this command exists and IS the
+    // Android gate" - checked against the actual build file rather than
+    // trusted, the same way SETUP_STEPS/LOCAL_ONLY entries are checked
+    // against real scripts/package.json entries above.
+    const buildFile = readFileSync(join(WEB, '..', 'android', 'app', 'build.gradle.kts'), 'utf8');
+
+    expect(buildFile).toContain('tasks.register("gate")');
+  });
+
+  it('only exempts the android job, and that job stays gated like web (R156)', () => {
+    // R156/R241: written and disabled behind the SAME variable as `web`,
+    // never a new one - so this exemption cannot quietly cover a job that
+    // pushes on its own trigger.
+    const workflow = readFileSync(WORKFLOW, 'utf8');
+    const androidJobMatch = /^ {2}android:\n([\s\S]*?)\n {2}\S/m.exec(`${workflow}\n  z`);
+
+    expect(androidJobMatch, 'expected an `android:` job in the workflow').not.toBeNull();
+    expect(androidJobMatch?.[1]).toContain("vars.CI_FULL == 'on'");
   });
 });
 

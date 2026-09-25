@@ -75,8 +75,12 @@ dependencies {
 // source set RUNS; the floor proves the harness actually observed tests rather
 // than exiting 0 having run none (the web project shipped a glob that matched no
 // files while the suite went green). It reads the JUnit XML the run produced -
-// its own output - and fails if fewer than the floor executed.
-val unitTestFloor = 2
+// its own output - and fails if fewer than the floor executed. Raised from 2 to
+// 10 in increment 6: the real count is 15 (2 canary, 3 radius, 2 theme census,
+// 7 fences, 1 screenshot); 2 protected against zero but not against a config
+// regression that silently dropped most of a source set while two canaries
+// kept passing.
+val unitTestFloor = 10
 
 tasks.register("checkTestFloor") {
     dependsOn("testDebugUnitTest")
@@ -94,5 +98,34 @@ tasks.register("checkTestFloor") {
             )
         }
         println("test floor OK: $total unit tests observed (>= $unitTestFloor)")
+    }
+}
+
+// AN1 increment 6: one command for everything the Android gate governs,
+// printing what it ran AND WHAT IT SKIPPED with reasons (R133 - gate:clone,
+// the web equivalent, once reported PASSED having silently skipped every
+// database suite; only the printed selection caught it).
+tasks.register("gate") {
+    dependsOn("assembleDebug", "testDebugUnitTest", "checkTestFloor", "ktlintCheck", "detekt", "verifyPaparazziDebug")
+    doLast {
+        println(
+            """
+            |
+            |ANDROID GATE
+            |RAN: assembleDebug, testDebugUnitTest (includes the six fences in
+            |     FencesTest.kt and the theme/radius censuses), checkTestFloor,
+            |     ktlintCheck, detekt, verifyPaparazziDebug (the screenshot
+            |     baseline - a regression guard, never proof of correctness; R135).
+            |SKIPPED, with reason:
+            |  - scripts/emulator.sh / screenshot.sh / walkthrough.sh (the AC2
+            |    instrument): needs a real AVD with hardware acceleration. Not a
+            |    Gradle task by construction - its whole point is a person driving
+            |    it and looking at the PNG (R176/R177), which an unattended gate
+            |    task cannot do.
+            |  - connectedDebugAndroidTest (the instrumented canary,
+            |    CanaryInstrumentedTest.kt): same reason, needs a running device.
+            |    Exercised by the emulator instrument, not this gate.
+            """.trimMargin(),
+        )
     }
 }
