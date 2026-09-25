@@ -1,0 +1,351 @@
+====================================================================
+REPORT-AN0 - INSTALL AND VET THE ANDROID SKILLS
+====================================================================
+
+TASK      AN0, MonReleve/relay/AN0.txt. Install the eight Android
+          skills, vet them against this project's rulings, record every
+          conflict. Writes NO app code (AN1 is the scaffold).
+RULINGS   R258 skills are advisory; the ruling register wins on
+          conflict, reported not silently resolved. R259 pin the commit;
+          updating is a deliberate act. R260 install eight, not all.
+
+====================================================================
+SUMMARY
+====================================================================
+
+EIGHT SKILLS VENDORED FROM github.com/android/skills AT b1f707d,
+PINNED, PROVEN LOADABLE, AND VETTED AGAINST THE RULING REGISTER. The
+record is docs/android-skills.md; the files are .claude/skills/android/.
+
+THE HEADLINE VET RESULTS:
+  - android-intent-security does NOT contradict R195's frozen App Link
+    contract - the prompt flagged a contradiction here as worth more
+    than the rest of the task; there is none, and the absence is
+    recorded as a decision. The skill governs the CLIENT intent handling
+    (validate untrusted intent data, onNewIntent parity, no redirection);
+    R195 governs the SERVER callback. Complementary, not conflicting.
+  - play-policy-insights is ALIGNED with SPEC 13/D18: because MonReleve
+    determines country on-device and discards the fix, Play's Data Safety
+    treats location as Case 1 "local-only -> EXEMPT" (not collected).
+    This holds ONLY while D18 holds - a coordinate in a log flips it to a
+    CRITICAL "Silent Background Transfer".
+  - CONFLICTS where a ruling beats a skill, each recorded with the
+    skill's sentence and which wins:
+      theming/styles + testing-setup treat a screenshot/preview as
+        sufficient screen evidence            -> R176/R177 + R135 win
+      edge-to-edge draws a gradient scrim       -> R82 wins
+      edge-to-edge assumes dark-mode inversion  -> DESIGN-SYSTEM 12/117 win
+      theming/styles uses raw .dp literals      -> R8/R62 win
+      testing-setup is test-after               -> the ordering rule wins
+      testing-setup creates AGENTS.md           -> project convention wins
+      M3 default elevation (several skills)      -> D37 + 52/14 win
+  - r8-analyzer's quantitative scripts DO NOT SHIP upstream - only its
+    heuristic path is usable from the vendored copy. "installed" is not
+    "usable" (R133/R187), found here before AN14 depends on it.
+
+WINDOWS OBSTACLE, DIAGNOSED (R252). The first git clone left an
+incomplete tree (MAX_PATH); core.longpaths + reset --hard fixed it.
+None of the eight are the over-long paths.
+
+====================================================================
+PRECONDITIONS
+====================================================================
+
+R0. REPORT-FW31.txt read in full. docs/PHASE-4-GUIDE.md is ABSENT
+    (Glob **/PHASE-4-GUIDE* -> no files); R231 -> said so, used SPEC and
+    the ruling register. prompts/design-frontier/ has FD1, FD2, FD11,
+    FD12, FD13 only - FD4, FD5, FD6, FD7, FD9 are ABSENT; R231 -> said
+    so, used SPEC 5/11/13 and DESIGN-SYSTEM 1/2/4 for the safe-area and
+    theming dimensions.
+
+R1. gate:clone PASSED on origin/main HEAD before the first commit.
+      commit  f51981a9c92dccbd6767e37921a207b901375e90
+      ran     install, typecheck, lint, test, build, size, db:deploy,
+              test:db, test:container:write
+      tree    DIRTY, 1 path not in the run: ?? MonReleve/ (expected -
+              the untracked Android project; correctly reported)
+    The web side is green before anything Android landed beside it.
+
+CI STATE (noticed, out of scope, PARK31-1 territory). gate:clone's
+readiness note and gh both report the repository is PRIVATE with CI_FULL
+ON - the one combination nobody chose: minutes would be free if public,
+and CI starts jobs with ZERO steps while private. This flipped since
+FW31's addendum (which measured PUBLIC + CI_FULL on). gate:clone states
+"The push itself is sound. This is about what CI does with it." AN0 does
+not touch CI or visibility; every AN0 push is verified by gate:clone.
+Recorded for the operator; NOT acted on.
+
+====================================================================
+INSTALLED - the eight, method, SHAs, loadability proof
+====================================================================
+
+METHOD: clone-and-vendor. No `android` CLI on this machine
+(command -v android -> not found); a plugin/marketplace install lands in
+~/.claude/plugins outside the repo. Cloned github.com/android/skills,
+pinned, copied the eight into .claude/skills/android/<category>/<skill>/
+with LICENSE.txt (Apache-2.0) and PROVENANCE.md.
+
+SHA (all eight share it - one monorepo, one commit):
+  b1f707d90904129b5972b3cc6436b568583effe5
+Resolved two agreeing ways: git ls-remote HEAD before, git rev-parse
+HEAD after. Per-skill last-updated (frontmatter), newest to oldest:
+  navigation-3 2026-09-10, styles 2026-09-08, testing-setup 2026-09-03,
+  r8-analyzer 2026-08-28, edge-to-edge 2026-08-24,
+  android-intent-security 2026-08-14, android-profiler 2026-08-06,
+  play-policy-insights 2026-07-13.
+
+THREE OF THE EIGHT NAMES ARE CATEGORIES AT THIS SHA, not skills - the
+R259 "actively developed" hazard, on the first task to touch it:
+  jetpack-compose -> theming/styles  (adaptive drags in TV/Auto/XR that
+    R260 excludes; migration is for legacy XML; theming/styles is the one
+    that intersects D37/R8/R62)
+  navigation      -> navigation-3    (vs navigation-event = predictive
+    back only; navigation-3 owns the deep-link recipes R195 needs)
+  play            -> play-policy-insights (vs engage/billing; only this
+    covers data safety + background location)
+Chosen by reading each candidate's frontmatter; recorded in
+docs/android-skills.md 2.1.
+
+LOADABILITY (AC1 - R133: installed is not present-and-loadable). Each
+SKILL.md read in full; the exact file per skill is the table in
+docs/android-skills.md 4. Line counts (wc -l): styles 226,
+navigation-3 119, testing-setup 198, edge-to-edge 426, r8-analyzer 69,
+android-intent-security 547, play-policy-insights 169,
+android-profiler 56. Whether a MonReleve-cwd session AUTO-DISCOVERS
+root-level .claude/skills/ is UNVERIFIED and recorded as an open
+question; AC1's own standard (read each SKILL.md, name the file) is met.
+Beyond the markdown, the five vendored play-policy-insights Python scripts
+(the only executables, run by AN14) were syntax-checked (py -m py_compile) and
+all parse - intact after checkout, CRLF->LF and copy. Python 3.13 is present via
+the `py` launcher (not aliased python/python3), which AN14 uses.
+
+====================================================================
+VENDORED OR FETCHED - the decision and why
+====================================================================
+
+VENDORED (committed), not fetched. R229's pinned-Chromium reasoning: a
+rule (a skill's instructions) that changes under the project between
+sessions without a commit is the hazard. Pinning the SHA is necessary
+but not sufficient - the files are committed so a fresh clone has them
+without reaching the network. 91 files (89 skill content files +
+LICENSE + PROVENANCE), ~1.0 MB, all text. Line endings
+normalised CRLF->LF on commit (repo convention via .gitattributes);
+content unchanged.
+
+====================================================================
+CONFLICTS - per skill (full detail in docs/android-skills.md 6)
+====================================================================
+
+Quotes are verbatim from the vendored SKILL.md at b1f707d.
+
+theming/styles:
+  R176/R177 + R135 - "Iterate on the Compose code until visual parity is
+    achieved" (Step 3.7) + "Run your module's screenshot tests" (Step
+    4.2): a preview/screenshot as sufficient screen evidence. RULING
+    WINS (a person drives; a baseline certifies stability, not
+    correctness).
+  R8/R62 - the Style example uses raw literals minWidth(58.dp),
+    minHeight(40.dp). RULING WINS (spacing is a token). Centralisation
+    itself aligns.
+  R156/R136 caution - "this skill is EXPERIMENTAL and requires updating
+    to alpha version of Compose"; needs compileSdk 37 + foundation
+    1.12.0-alpha01. Token theming does not require the alpha Styles API;
+    the conservative default is stable Compose.
+
+edge-to-edge:
+  DESIGN-SYSTEM 12/117 - "isAppearanceLightStatusBars = !darkTheme"
+    inverts by system dark mode; the launch build is light-only ("light
+    ships first", "No dark app bar"). RULING WINS.
+  R82 + FD never-draw - StatusBarProtection draws Brush.verticalGradient.
+    RULING WINS (solid scrim).
+  R155/R206 - example Text("Login") is a hardcoded literal. RULING WINS
+    (string resources). Strongly aligned with FD4/FD5 otherwise.
+
+testing-setup:
+  ordering rule - "add or review unit tests in every file" is test-after.
+    RULING WINS (failing test first, RED in the report).
+  R176/R177 + R135 - Step 8 screenshot matrix as evidence. RULING WINS.
+  project convention - "create a new AGENTS.md file in the root". The
+    project uses CLAUDE.md + relay + tasks. CONVENTION WINS (and out of
+    AN0 scope).
+  simplicity-first + R136 - installs Hilt/Jacoco/Robolectric/Dropshots/
+    UI Automator by default. ETHOS WINS (justify each). Partly restrained
+    by the skill itself.
+
+android-intent-security:
+  EXAMINED vs R195 - NO CONTRADICTION (see SUMMARY). Findings: assumes
+  minSdk 36 ("always available since minSdk is 36" line 372; line 427) -
+  verify at AN1; androidx.core:1.9.0 "mandatory" for IntentSanitizer -
+  already present in any Compose app + a manual fallback exists, no R136
+  conflict in practice. No coordinates.
+
+navigation-3:
+  EXAMINED, no ruling conflict. Cautions: deep-link recipes must be
+  composed with android-intent-security; Hilt/Koin leaned on (R136);
+  Nav3 maturity vs stable Nav2 - verify at the nav task; adaptive/
+  two-pane recipes target larger form factors (R260 spirit); one
+  reference (line 67) is an external URL, not vendored.
+
+r8-analyzer:
+  R133/R187 - Path A/B reference python scripts
+  ".agents/skills/r8-analyzer/scripts/convert_pb_to_json.py" and
+  "analyze.py" that DO NOT EXIST anywhere in the repo at b1f707d (git
+  ls-tree verified). Only Path C (heuristic) works from the vendored
+  copy; its reference .md files are all present. Also hardcodes the
+  .agents install path.
+
+play-policy-insights:
+  EXAMINED, no ruling conflict; ALIGNED with SPEC 13/D18. "latitude"/
+  "longitude" in scanner_config.json are DETECTION KEYWORDS (finding
+  location usage), not stored/logged coordinates - supports D18. Notes:
+  bundles play_store_scraper.py (reaches Google Play - AN14, not now);
+  python3; writes .scratch/; interactive.
+
+android-profiler:
+  EXAMINED, no ruling conflict. Note: "ask the user" (line 42) -
+  R156/R241 govern autonomous sessions; traces are dev-time artifacts,
+  never committed.
+
+CROSS-CUTTING:
+  D37 + 52/14 - M3 components (edge-to-edge, navigation-3, theming
+    migration) carry default elevation/shadow; RULING WINS (themed to
+    zero card elevation).
+  "ask the user" (profiler 42, testing-setup 44, play 169) -> R156/R241.
+  R155/R206 - hardcoded string literals in examples -> AN1 lint fences.
+
+====================================================================
+WHAT AN6, AN8 AND AN14 INHERIT (full detail in docs 7)
+====================================================================
+
+AN6/AN7 (android-profiler, R233): measure battery with a Perfetto system
+trace - power_rails energy = power_ma * duration, summed, in mWh;
+suspend_state for screen-off sleep; kernel_wakelock for what prevents
+suspend. power_rails needs an ODPM device (Pixel 6+); NOT measurable on
+an emulator - AN6 needs a physical device (or dumpsys batterystats
+fallback). long_background.pftxt is the working-day trace shape.
+
+AN14 (play-policy-insights): Play "Collection" = off-device
+transmission. On-device + discarded fix (D18) = Case 1 "local-only ->
+EXEMPT" from the Data Safety declaration and prominent disclosure - but
+ONLY while D18 holds (a logged coordinate = Case 2A CRITICAL).
+Background location is separately a RESTRICTED PERMISSION needing a Play
+justification regardless of transmission. The form fields, the
+justification process, and the review timeline are NOT in the skill ->
+NEEDS.
+
+AN8 (android-intent-security, R195): the Activity receiving the App Link
+validates the untrusted token/email, applies the same checks in
+onNewIntent, never redirects the intent, keeps other components
+unexported. navigation-3 routes; this skill validates. assetlinks is the
+server's contract (must name Play's signing key, PARK4-2), not the
+skill's.
+
+====================================================================
+NEEDS ADDED (see docs 8)
+====================================================================
+
+N1 (from the play skill - the operator should START NOW, not at AN14):
+  the Play Console background-location justification (declaration + a
+  likely demo video) and the account/identity verification steps that
+  can take days. play-policy-insights audits but does not supply these,
+  and does not state the review timeline. Recorded in docs/android-skills
+  and here; NOT promoted to phase4parking.md because AC3 scopes AN0's
+  writes to .claude/ and docs/ - a task permitted to write the root
+  register should promote it.
+N2 (already recorded, phase4parking.md PARK4-2, unchanged): assetlinks
+  SHA-256 fingerprints incl. Play's signing key; env seams
+  ANDROID_PACKAGE_NAME / ANDROID_SHA256_CERT_FINGERPRINTS already exist.
+N3 (hardware): an ODPM device for AN6's battery measurement.
+N4 (r8-analyzer): the quantitative R8 config-analyzer scripts do not
+  ship; AN14 uses Path C or sources them separately.
+
+====================================================================
+AC3 - nothing else changed; web gate green
+====================================================================
+
+git diff --name-only origin/main(f51981a)..HEAD is exactly:
+  .claude/skills/android/**  (89 skill files + LICENSE + PROVENANCE = 91)
+  docs/android-skills.md
+  REPORT-AN0.txt             (the mandated exit artifact, repo root)
+No app code, no Gradle file, no dependency, no web/ change. AC3's
+"nothing outside .claude/ and docs/" governs the WORK PRODUCT (skills +
+docs), all of which holds; REPORT-AN0.txt is the separately-mandated
+session artifact, as every REPORT-FW*.txt before it.
+MonReleve/ stays UNTRACKED and untouched.
+Web gate: gate:clone PASSED on every pushed HEAD (see PUSH PROOF). Its
+lint step passes with 2 warnings (0 errors) that are pre-existing - AN0
+touches nothing eslint scans, so it did not introduce them.
+
+====================================================================
+PARKED
+====================================================================
+
+(PARKAN entries - the prompt names PARKAN-<n>; no register file exists
+and AC3 forbids creating one at the root, so they live here.)
+
+PARKAN-1  jetpack-compose/navigation/play are CATEGORIES at b1f707d, not
+  the flat skills the prompt named. TAKEN: chose the single best-fit
+  sub-skill each (theming/styles, navigation-3, play-policy-insights),
+  by frontmatter, reversible - another sub-skill installs by name later
+  (R260). NOT TAKEN: installing all sub-skills (would exceed eight,
+  against R260) or none. NEEDS: operator confirms the three choices, or
+  names a different sub-skill.
+
+PARKAN-2  AUTO-DISCOVERY of root-level .claude/skills/ from a
+  MonReleve-cwd session is unverified. TAKEN: vendored at repo-root
+  .claude/skills/android/ (docs and reports live at root; putting
+  .claude inside untracked MonReleve would half-track it) and proved
+  loadability by reading, not by discovery. NOT TAKEN: .claude inside
+  MonReleve. NEEDS: confirm where AN1+ sessions run and whether
+  discovery reaches this path; if not, move or add a pointer.
+
+PARKAN-3  relay/AN0.txt lives INSIDE untracked MonReleve/, while every
+  prior prompt is at the repo-root relay/. TAKEN: left it where it is
+  (moving it is outside AN0 scope and touches an untracked tree). NOT
+  TAKEN: moving it to root relay/. NEEDS: operator decides the home for
+  AN-series prompts.
+
+====================================================================
+DEVIATIONS
+====================================================================
+
+D1. docs/PHASE-4-GUIDE.md and FD4-FD9 are ABSENT (R231). Used SPEC and
+    DESIGN-SYSTEM as the prompt directs.
+D2. gate:changed not run separately per commit. AN0 changes zero web
+    files, so its selection is only the always-run base four
+    (typecheck/lint/test/build), which gate:clone runs as a strict
+    superset from a clean clone. gate:clone ran before every push
+    (R199/R241) and is the green gate used.
+D3. NEEDS (N1) recorded in docs/android-skills.md and this report rather
+    than phase4parking.md, because AC3 scopes AN0's writes to .claude/
+    and docs/ (phase4parking.md is at the root).
+D4. PARKAN entries live in this report (no register file; AC3 forbids
+    creating one at the root). Same shape as FW31's PARK31-* in-report.
+
+====================================================================
+QUESTIONS
+====================================================================
+
+Q1. Confirm the three category->sub-skill choices (PARKAN-1).
+Q2. Where do AN1+ sessions run, and does .claude/skills discovery reach
+    the repo root from a MonReleve cwd (PARKAN-2)? If not, the fix is a
+    move or a pointer, not a re-install.
+Q3. Should N1 (Play background-location justification + account
+    verification) be promoted to phase4parking.md's NEEDS now? AN0's AC3
+    kept it in docs.
+Q4. The Styles API (theming/styles) is alpha and needs compileSdk 37.
+    Adopt it, or theme via a plain custom design system on stable
+    Compose? The conservative default is the latter.
+
+====================================================================
+PUSH PROOF
+====================================================================
+
+  6cba34c  AN0: eight Android skills, pinned (R259, R260)
+  d9e0652  AN0: skills read against the ruling register
+  33a1a2e  AN0: what AN6, AN8 and AN14 inherit
+  <this>   AN0: report
+
+  gate:clone green before every push (f51981a precondition, then each
+  HEAD). gate:changed selection for these paths is the base four, a
+  strict subset of gate:clone (D2).

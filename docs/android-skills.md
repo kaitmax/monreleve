@@ -67,6 +67,12 @@ it (R260).
 | 7 | play | `play/play-policy-insights` (play-policy-insights) | AN14: data safety, background-location |
 | 8 | profilers/android-profiler | `profilers/android-profiler` | AN6/AN7 battery budget |
 
+**Pinned SHA, per skill (R259).** All eight are vendored from the single commit
+`b1f707d90904129b5972b3cc6436b568583effe5`: `android/skills` is one monorepo, so
+one commit pins all eight, and repeating the same 40 characters in eight rows
+would be duplication (R206). A future update that touched only some skills would
+split this into per-skill rows; today one row is the honest record.
+
 ### 2.1 Three of the eight names are CATEGORIES, not skills (finding)
 
 The prompt's eight names were written against an older/flatter layout. At
@@ -107,7 +113,8 @@ under the project between sessions without a commit is the hazard R229 closed.
 Pinning the SHA is necessary but not sufficient - the files themselves are
 committed so a fresh clone has them without reaching the network.
 
-Total vendored: 90 files, ~1.0 MB, all text. `.claude/` is not gitignored for
+Total vendored: 91 files (89 skill content files + `LICENSE.txt` +
+`PROVENANCE.md`), ~1.0 MB, all text. `.claude/` is not gitignored for
 these paths; the files are tracked.
 
 ## 4. Loadability proof (AC1 - R133: "installed" is not "present and loadable")
@@ -133,6 +140,13 @@ whose working directory is `MonReleve/` auto-discovers skills placed at the
 repository-root `.claude/skills/` is NOT claimed here - it is unverified from
 this task and recorded as an open question. AC1's own standard - the agent can
 read each `SKILL.md` and say which file - is met literally by the table above.
+
+Beyond the `SKILL.md` files, the five vendored play-policy-insights Python
+scripts (the only executable artifacts, which AN14 will run) were syntax-checked
+with `py -m py_compile` and all parse - so the executables are intact after the
+Windows checkout, the CRLF->LF normalisation and the copy, not merely present.
+Python 3.13 is available on this machine via the `py` launcher (not aliased as
+`python`/`python3`), which AN14 uses to run them.
 
 ## 5. How to update this vendored copy deliberately (R259)
 
@@ -432,4 +446,29 @@ the CLIENT side of that contract, which AN8 must apply on top of R195:
   and it must name Play's SIGNING key, not the upload key (PARK4-2). The skill
   does not cover App Links / assetlinks; that contract comes from the project,
   and the fingerprints are AN14's supply (Section 8).
-<!-- Section 8 (NEEDS) added in AN0 increment 4. -->
+## 8. NEEDS
+
+- **N1 - Play background-location justification and account verification (start
+  NOW, not at AN14).** play-policy-insights AUDITS permission usage but does not
+  supply, and does not state the timeline for: the Play Console
+  background-location justification (a declaration, and typically a demo video)
+  and the developer-account identity-verification steps, which can take days.
+  Because they gate AN14's submission and are slow, the operator should begin
+  them now. Recorded here rather than promoted to `phase4parking.md`'s NEEDS list
+  because AC3 scopes AN0's writes to `.claude/` and `docs/`; a task permitted to
+  write the root register should promote it.
+- **N2 - assetlinks fingerprints (already recorded, unchanged).**
+  `phase4parking.md` PARK4-2 already names what AN14 must supply:
+  `ANDROID_PACKAGE_NAME` and `ANDROID_SHA256_CERT_FINGERPRINTS` (including Play's
+  App Signing key if Play re-signs the upload - a statement naming only the
+  upload key verifies for nobody). The env seams exist and `gate:clone` already
+  scrubs them. Listed here only so AN8/AN14's App Link path (Section 7.3) points
+  at it; nothing new.
+- **N3 - an ODPM device for AN6's battery measurement.** `power_rails` needs
+  on-device power measurement (Pixel 6+ / Tensor); the 3 % budget is not
+  measurable on an emulator (Section 7.1). AN6 needs the hardware or the coarser
+  `dumpsys batterystats` fallback.
+- **N4 - r8-analyzer quantitative scripts.** The `convert_pb_to_json.py` /
+  `analyze.py` the skill's Paths A/B call do not ship in the repo at `b1f707d`
+  (Section 6.6). AN14 uses Path C (heuristic) or sources the R8 configuration
+  analyzer separately.
