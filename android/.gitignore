@@ -8,3 +8,11 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Runtime artefacts of scripts/emulator.sh, scripts/screenshot.sh and
+# scripts/walkthrough.sh - never committed (R176/R177's evidence is the
+# report's description of what was seen, not the PNG file itself).
+.emulator.pid
+.emulator.log
+.walkthrough-*.png
+
