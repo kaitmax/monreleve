@@ -344,5 +344,92 @@ Quotes below are verbatim from the vendored `SKILL.md` at the pinned SHA.
   English literals in composables (e.g. edge-to-edge `Text("Login")`). Applied
   code is re-authored to the copy discipline; AN1's lint fences enforce it.
 
-<!-- Section 7 (what AN6/AN8/AN14 inherit) added in AN0 increment 3. -->
+## 7. What AN6, AN8 and AN14 inherit
+
+Three skills carry information later tasks depend on. Extracted here so those
+tasks do not rediscover it.
+
+### 7.1 android-profiler -> AN6/AN7 (battery and memory measurement, R233)
+
+The 3 %-per-working-day battery budget is a NUMBER THAT MUST BE MEASURED, and
+the method matters as much as the figure (R233). The skill measures with
+**Perfetto system traces** (recording via `recording_orchestrator.md`, analysis
+via `analysis_orchestrator.md`; the power method is in
+`analysis/.../hints/subsystems/hints_power.md`).
+
+- **Battery:** query the `power_rails` track; energy per rail =
+  `power_ma * duration`; sum across rails; convert to **milliwatt-hours (mWh)**
+  to compare severity. (hints_power.md)
+- **Screen-off correctness:** query the `suspend_state` track - *"a lack of time
+  in 'suspended' state indicates a wakefulness problem."* Root-cause a failure to
+  suspend via the `kernel_wakelock` track (aggregate total duration per wake
+  lock).
+- **Why this is the right instrument for AN6/AN7:** MonReleve's detection wakes
+  periodically to determine country on-device. The budget is dominated by whether
+  the device SUSPENDS between detections and whether any wake lock is held.
+  `suspend_state` + `kernel_wakelock` prove exactly that the detection wake
+  pattern does not keep the device awake.
+- **Hard constraint (R233 - the method's precondition):** `power_rails` needs a
+  device with on-device power measurement (ODPM) - Pixel 6+ (Tensor) and similar.
+  An emulator has no power rails, so **the 3 % figure cannot be measured on an
+  emulator**; AN6 needs a supported physical device, or must fall back to
+  `dumpsys batterystats` (a coarser method). This device requirement belongs in
+  the AN6 plan now.
+- Vendored recording configs of interest: `long_background.pftxt` (a long
+  background trace - the shape a working-day battery measurement needs),
+  `memory_counters.pftxt`, `sched_cpu.pftxt`, `app_jank.pftxt`.
+
+### 7.2 play-policy-insights -> AN14 (data safety, background-location)
+
+The decisive result, from the skill's Data Safety Case Matrix
+(`resources/goal_data_safety.md`):
+
+- **Play's "Collection" means OFF-DEVICE TRANSMISSION.** Case 1 - *"Not
+  Transferred (Local only) -> EXEMPT"*. MonReleve determines country on-device
+  against a bundled border polygon and DISCARDS the fix, transmitting no
+  coordinate (SPEC 13/D18). So location is **Case 1: not collected** in Play's
+  sense - the Data Safety form declares location NOT collected/shared, and
+  prominent disclosure is EXEMPT.
+- **This holds ONLY while D18 holds.** Heuristic 1, "The Logger Loop": *"if a
+  user identifier ... or precise location is passed to a logger that uploads
+  payloads off-device, this counts as transferred"* -> Case 2A *"Silent
+  Background Transfer"* = **CRITICAL** violation. D18 (no coordinate logged or
+  transmitted; the API rejects coordinate payloads) is exactly what keeps the
+  Data Safety declaration honest as local-only. The auditor is the tool that
+  would catch a regression here.
+- **Background location is separately a RESTRICTED PERMISSION.**
+  `ACCESS_BACKGROUND_LOCATION` triggers Play's restricted-permission review
+  regardless of whether any data is transmitted - a justification (Play Console
+  declaration, and typically a demo video) is required just to ship the
+  permission. The skill AUDITS permission usage; it does not walk the
+  justification form.
+- **NOT covered by the skill (-> NEEDS, Section 8):** the Data Safety form
+  fields, the background-location justification PROCESS, and HOW LONG PLAY REVIEW
+  TAKES. The skill is a code-vs-declaration auditor, not a submission guide.
+- Running the auditor reaches Google Play (`play_store_scraper.py`) - a
+  deliberate third-party call, at AN14, not now.
+
+### 7.3 android-intent-security -> AN8 (the App Link callback, R195)
+
+R195's callback contract is UNCONTRADICTED (Section 6.4). What the skill adds for
+the CLIENT side of that contract, which AN8 must apply on top of R195:
+
+- The Activity receiving the `https` App Link must treat the incoming intent's
+  data (the `token` and `email` in the URI) as UNTRUSTED input and validate it
+  before use (*"validate all incoming intent extras"*, line 539).
+- It must apply the SAME validation in `onNewIntent` as in `onCreate` - a
+  `singleTop` launcher handling the App Link receives warm-boot deliveries via
+  `onNewIntent` (antipattern, line 530; section 4).
+- It must never forward the incoming intent to a nested/private component
+  (intent redirection) - the callback is consumed in-app, never re-launched
+  (lines 87-95, 526).
+- The App-Link intent-filter Activity is necessarily `exported="true"`; keep
+  every OTHER component `exported="false"` (line 537).
+- **Composition:** navigation-3 supplies the deep-link ROUTING; this skill
+  supplies the VALIDATION. AN8 uses both together.
+- **assetlinks is the server's job, not this skill's.** The App Link only opens
+  the app if `/.well-known/assetlinks.json` verifies (docs/api-v1.md 4, R205),
+  and it must name Play's SIGNING key, not the upload key (PARK4-2). The skill
+  does not cover App Links / assetlinks; that contract comes from the project,
+  and the fingerprints are AN14's supply (Section 8).
 <!-- Section 8 (NEEDS) added in AN0 increment 4. -->
