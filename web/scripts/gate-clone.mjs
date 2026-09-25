@@ -284,6 +284,79 @@ async function dropScratch() {
   await client.end();
 }
 
+/**
+ * ONE CLEANUP PATH, called from the normal `finally` below AND from a signal
+ * handler. Both `rmSync` (force: true) and `dropScratch` (IF EXISTS) are
+ * idempotent, so calling this twice in a race is harmless.
+ */
+async function cleanup() {
+  await dropScratch();
+  rmSync(clone, { recursive: true, force: true });
+}
+
+/**
+ * THE LEAK'S FIRST CAUSE (FW32, AC1): every step failure below used to call
+ * process.exit(1) from inside the try block that follows. process.exit()
+ * terminates immediately WITHOUT unwinding to a pending `finally` - a
+ * documented Node.js semantic, not a bug in this file - so every failed run
+ * leaked its clone (and, from one path, its scratch database). Failures now
+ * `throw` instead, so the `finally` below runs on every exit from the try
+ * block, success or failure alike.
+ */
+class GateCloneFailure extends Error {}
+
+/**
+ * THE LEAK'S SECOND, ORIGINAL CAUSE (AN1's nine killed-process leaks) IS
+ * SEPARATE FROM THE ONE ABOVE, and this does not close it - it narrows what
+ * remains open. A registered SIGINT/SIGTERM handler replaces Node's default
+ * disposition for that signal, so without one, killing this process (a
+ * terminal Ctrl+C, a supervisor's SIGTERM, `docker stop`) skipped this
+ * file's cleanup entirely, exactly like the process.exit(1) paths did.
+ *
+ * WHAT THIS DOES NOT CLOSE, MEASURED RATHER THAN ASSUMED (see
+ * REPORT-FW32.txt, THE LEAK): a SIGKILL cannot be caught by any process, by
+ * definition. Narrower and less obvious, and measured against this file
+ * itself rather than a throwaway probe - on THIS Windows machine, THREE
+ * independent kill mechanisms were tried against a running `gate:clone`
+ * with this exact handler registered, and NONE of them reached it (no
+ * "received SIGTERM" line, no orderly exit code, and the clone leaked every
+ * time): this harness's own foreground-timeout kill; a cross-process
+ * `process.kill(pid, 'SIGINT')` from an unrelated node invocation (EPERM,
+ * yet the target still died); and `kill -TERM <pid>` from the SAME Git Bash
+ * shell that spawned it, tested twice, once mid-install and once well into
+ * a long-running step - both times the child died, the parent logged one
+ * more line and then stopped, and the temp clone remained. Node's Windows
+ * SIGTERM is a libuv emulation over TerminateProcess, not a real signal a
+ * handler can intercept, and this suggests the emulation does not wait for
+ * a same-process synchronous throw/catch/finally already in flight to
+ * finish before tearing the process down. NOT TESTED: a genuine interactive
+ * terminal Ctrl+C, which Node's own docs describe as the supported case on
+ * Windows - this session has no interactive terminal to produce one. So
+ * this handler is written correctly and should do what it says under a real
+ * POSIX SIGTERM/SIGINT (Linux CI, macOS, `docker stop`) - and, on this
+ * machine, against every external kill mechanism actually tested, it did
+ * not close the leak it was written for.
+ */
+let cleaningUp = false;
+
+async function onSignal(signal, code) {
+  if (cleaningUp) {
+    return;
+  }
+
+  cleaningUp = true;
+  console.error(`\ngate:clone: received ${signal}, cleaning up before exit`);
+  await cleanup();
+  process.exit(code);
+}
+
+process.on('SIGINT', () => {
+  void onSignal('SIGINT', 130);
+});
+process.on('SIGTERM', () => {
+  void onSignal('SIGTERM', 143);
+});
+
 try {
   const head = git(['rev-parse', 'HEAD']);
   const subject = git(['log', '-1', '--pretty=%s']);
@@ -354,7 +427,7 @@ try {
 
   if (cloned !== head) {
     console.error(`gate:clone FAILED: the clone is at ${cloned}, this tree is at ${head}.`);
-    process.exit(1);
+    throw new GateCloneFailure('clone hash mismatch');
   }
 
   const there = join(clone, 'web');
@@ -396,7 +469,7 @@ try {
       console.error('This is a defect a normal gate cannot see: it passes on a machine');
       console.error('that has a .env, a generated client, a populated public/ or a');
       console.error('node_modules nobody rebuilt. A fresh clone has none of those.');
-      process.exit(1);
+      throw new GateCloneFailure(result.why);
     }
   }
 
@@ -506,8 +579,7 @@ try {
         console.error(`The scratch database was ${scratchDatabase}, migrated from empty by`);
         console.error('the clone itself. A failure here is a migration or a suite that');
         console.error('only works against a database somebody prepared by hand.');
-        await dropScratch();
-        process.exit(1);
+        throw new GateCloneFailure(result.why);
       }
     }
   }
@@ -552,7 +624,16 @@ try {
     console.log('      why   docker unavailable, or no database to point it at');
     console.log('      SO    NO CLAIM THAT A PRODUCTION BUILD CAN WRITE AN ENTRY');
   }
+} catch (err) {
+  // A GateCloneFailure is one of the three expected step-failure paths above,
+  // already reported in full via console.error at the point it was thrown -
+  // AC1's subject. Anything else is a real bug in this script, and gets its
+  // real stack trace rather than being silently reduced to exit code 1.
+  if (err instanceof GateCloneFailure) {
+    process.exitCode = 1;
+  } else {
+    throw err;
+  }
 } finally {
-  await dropScratch();
-  rmSync(clone, { recursive: true, force: true });
+  await cleanup();
 }
