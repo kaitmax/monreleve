@@ -7,4 +7,11 @@ package ch.monreleve.app.fr
  */
 object Fr {
     const val GREETING = "Bonjour Camille"
+
+    /**
+     * The Aujourd'hui hero figure (SPEC 11.2) is a placeholder until AN2 ports
+     * the engine - an explicit, honest zero rather than a computed-looking
+     * number, so nobody mistakes it for a real rate.
+     */
+    const val PLACEHOLDER_RATE = "0,0 %"
 }
