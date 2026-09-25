@@ -98,6 +98,51 @@ interface Flag {
 
 const ANDROID = join(WEB, '..', 'android');
 
+/**
+ * Whether any Kotlin source under android/app/src references the given
+ * literal (e.g. an API path). A crude substring scan, deliberately - the
+ * question is "does the client call this route at all", not "how", and a
+ * false positive here only makes trackerExists's proxy WEAKER, which
+ * androidReleaseIsSigned() still gates it against via appExists.
+ */
+function androidSourceCalls(needle: string): boolean {
+  const srcRoot = join(ANDROID, 'app', 'src');
+
+  if (!existsSync(srcRoot)) {
+    return false;
+  }
+
+  const walk = (dir: string): string[] =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const full = join(dir, entry.name);
+
+      return entry.isDirectory() ? walk(full) : entry.name.endsWith('.kt') ? [full] : [];
+    });
+
+  return walk(srcRoot).some((file) => readFileSync(file, 'utf8').includes(needle));
+}
+
+/**
+ * Whether android/app/build.gradle.kts's release buildType assigns a real
+ * signingConfig. Gradle's own distinction between a debug-signed and a
+ * release-signed build IS the last thing that makes "a reader can install
+ * the application" true - nobody outside this machine can install an
+ * unsigned build. See appExists's `last` field for why this proxy is
+ * provisional.
+ */
+function androidReleaseIsSigned(): boolean {
+  const buildFile = join(ANDROID, 'app', 'build.gradle.kts');
+
+  if (!existsSync(buildFile)) {
+    return false;
+  }
+
+  const source = readFileSync(buildFile, 'utf8');
+  const releaseBlock = /release\s*\{([^}]*)\}/s.exec(source)?.[1] ?? '';
+
+  return /signingConfig\s*=/.test(releaseBlock);
+}
+
 const EVIDENCE: Record<keyof ProductState, Flag> = {
   calculatorExists: {
     capability: 'A reader can enter their days and get their annual rate.',
@@ -132,14 +177,18 @@ const EVIDENCE: Record<keyof ProductState, Flag> = {
 
   trackerExists: {
     capability: 'A reader can record a day, and it is timestamped by the server.',
-    proxy: 'a released Android client (AN14), under android/',
+    proxy: 'a released Android client (AN14) whose source calls the entries API',
     last:
       'THE SCHEMA IS THE FIRST THING, NOT THE LAST. Between prisma/schema ' +
       '.prisma and a day somebody can record sit the entries API (FW23), ' +
       'auth (FW22), the client that calls them, and a release that puts it ' +
       'on a phone. Each of those is necessary; the release is the one that ' +
-      'is sufficient, because nothing before it lets a reader do anything.',
-    check: () => existsSync(ANDROID),
+      'is sufficient, because nothing before it lets a reader do anything. ' +
+      'SEPARATED FROM appExists AT AN1 (this comment forecast it): a ' +
+      'released app that cannot yet record a day is a real, distinct state, ' +
+      'so this now requires BOTH a release (appExists) AND source evidence ' +
+      'that the client actually calls /api/v1/entries - AN1 wires neither.',
+    check: () => EVIDENCE.appExists.check() && androidSourceCalls('/api/v1/entries'),
   },
 
   dossierExists: {
@@ -166,14 +215,20 @@ const EVIDENCE: Record<keyof ProductState, Flag> = {
 
   appExists: {
     capability: 'A reader can install the application.',
-    proxy: 'the android/ directory',
+    proxy: 'the release build type signed for distribution, in android/app/build.gradle.kts',
     last:
-      'It shares a proxy with trackerExists TODAY and they are different ' +
-      'claims: an app could ship that cannot yet record a day. When android/ ' +
-      'lands, trackerExists takes the narrower marker - a release that talks ' +
-      'to the entries API - and these two separate. Recorded so the sharing ' +
-      'is a known approximation rather than a discovered one.',
-    check: () => existsSync(ANDROID),
+      'existsSync(ANDROID) WAS THE PROXY UNTIL AN1, and it is the FIRST thing ' +
+      '(a source tree existing), not the LAST (R186s own rule) - it was safe ' +
+      'only because android/ did not exist yet, and AN1 creating it is what ' +
+      'exposed the gap. A reader cannot install an unsigned debug build; the ' +
+      'release buildType gaining a real signingConfig is the last artefact ' +
+      'the repo holds before Play distribution, which needs operator actions ' +
+      '(a Console account, identity verification - N1/R262) this repo cannot ' +
+      'evidence at all. PROVISIONAL (see REPORT-AN1.txt QUESTIONS): the AN14 ' +
+      'release task may find a stronger in-repo marker; until then this is ' +
+      'the most conservative artefact that is false today and requires a ' +
+      'real signing decision to flip.',
+    check: () => androidReleaseIsSigned(),
   },
 };
 

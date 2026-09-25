@@ -102,8 +102,12 @@ export const PRODUCT_STATE: ProductState = {
   // Flipped by: whichever task resolves the licence question.
   comparatorExists: false,
 
-  // NOT BUILT. There is no android/ directory in this repository: the
-  // siblings of web/ are docs, fixtures, prompts, relay and tasks.
-  // Flipped by: the AN series.
+  // NOT BUILT. android/ exists (AN1) but its release buildType is unsigned -
+  // nobody outside this machine can install it. The comment used to name
+  // "there is no android/ directory" as the evidence; AN1 creating that
+  // directory made the comment false while the flag stayed correctly false,
+  // which is the exact FW21 staleness class this module's header documents.
+  // Flipped by: the AN series, at the release task (provisional - see
+  // tests/unit/content/product-state.test.ts EVIDENCE.appExists).
   appExists: false,
 };
