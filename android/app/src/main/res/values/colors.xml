@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Window background shown before Compose draws. Mirrors the design canvas
+         token (design/Tokens.kt Canvas = #F7F8FA); a test ties the two together
+         in AN1 increment 2/3. A window background must be a colour resource, so
+         this is the one place the value lives outside design/. -->
+    <color name="frontier_canvas">#F7F8FA</color>
+</resources>

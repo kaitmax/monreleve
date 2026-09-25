@@ -1,0 +1,21 @@
+# detekt configuration. buildUponDefaultConfig = true (app/build.gradle.kts), so
+# this overlays detekt's defaults. The six project fences (SPEC 5) are added in
+# AN1 increment 3; this file carries only the base tuning the scaffold needs.
+build:
+  maxIssues: 0
+
+style:
+  # Design tokens ARE numbers (the radius set, the 4 dp scale). The token layer
+  # is the single source and is guarded by its own census test (R8 ported), so
+  # MagicNumber would fire on every token definition for no gain.
+  MagicNumber:
+    active: false
+  MaxLineLength:
+    maxLineLength: 120
+
+naming:
+  # @Composable functions are UpperCamelCase by Jetpack Compose's own convention
+  # (a composable reads like a type, not a verb) - the standard, documented
+  # detekt/Compose interaction, not a project-specific relaxation.
+  FunctionNaming:
+    ignoreAnnotated: ["Composable"]

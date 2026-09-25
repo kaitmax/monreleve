@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Launch/window theme (pre-Compose). Light, no action bar, canvas window
+         background, transparent system bars for edge-to-edge (FD4/FD5). The
+         Compose FrontierTheme (design/FrontierTheme.kt, AN1 increment 2) themes
+         everything drawn after. Light ships first - no dark variant wired
+         (DESIGN-SYSTEM 12). -->
+    <style name="Theme.MonReleve" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowBackground">@color/frontier_canvas</item>
+    </style>
+</resources>

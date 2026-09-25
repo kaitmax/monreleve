@@ -1,0 +1,8 @@
+root = true
+
+[*.{kt,kts}]
+# @Composable functions are UpperCamelCase by Jetpack Compose's own convention
+# (a composable reads like a type, not a verb) - the documented ktlint knob for
+# the same, standard detekt/Compose interaction handled in
+# config/detekt/detekt.yml's naming > FunctionNaming > ignoreAnnotated.
+ktlint_function_naming_ignore_when_annotated_with = Composable
