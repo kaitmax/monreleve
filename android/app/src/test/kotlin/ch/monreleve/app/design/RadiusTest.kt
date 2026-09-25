@@ -36,4 +36,35 @@ class RadiusTest {
         )
         assertEquals(9, Radius.allForTest.size)
     }
+
+    /**
+     * CENSUS OF THE OBJECT ITSELF, not just the map. `val tenth: Dp = 7.dp`
+     * typed directly into Radius (beside tokens, never added to it) would
+     * satisfy both tests above while compiling as a live tenth token - the
+     * evasion AC3 asks for. Java reflection reads FIELD NAMES here, not
+     * types: Dp is a Kotlin inline class and its stored field type erases to
+     * the underlying Float, which is what made raw reflection unreliable for
+     * ThemeCensusTest's richer types - names survive erasure regardless.
+     */
+    @Test
+    fun theObjectDeclaresNoFieldBeyondTheMapAndTheNineAccessors() {
+        // $stable is the Compose compiler plugin's OWN generated field (stability
+        // inference for recomposition skipping) - present on any class the
+        // compiler touches, unrelated to the token set. Found empirically on
+        // this test's first RED run, not assumed in advance.
+        val expectedFieldNames =
+            setOf(
+                "INSTANCE", "tokens", "xs", "checkbox", "sm", "md", "buttonLg", "lg", "xl", "xxl", "pill",
+                "\$stable",
+            )
+        val actualFieldNames = Radius::class.java.declaredFields.map { it.name }.toSet()
+
+        assertEquals(
+            "Radius declares a field this test does not expect - a token typed " +
+                "directly into the object, bypassing the map, is a live tenth " +
+                "radius that both other tests in this file would miss.",
+            expectedFieldNames,
+            actualFieldNames,
+        )
+    }
 }

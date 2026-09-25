@@ -56,6 +56,12 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     testImplementation(libs.junit)
+    // TEST-ONLY, justified by name (AN1 out-of-scope note): ThemeCensusTest.kt
+    // reflects over androidx Typography/ColorScheme, library data classes with
+    // too many properties for plain Java reflection to enumerate cleanly - the
+    // project's own token objects (Radius) stay Map-based specifically to avoid
+    // needing this in production code.
+    testImplementation(libs.kotlin.reflect)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

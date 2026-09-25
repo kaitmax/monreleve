@@ -2,24 +2,8 @@ package ch.monreleve.app.design
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-
-/**
- * DESIGN-SYSTEM.md section 1: "FONT: Inter everywhere (web + Android; Roboto
- * only as system fallback)."
- *
- * PARKED (see REPORT-AN1.txt / docs/android-skills.md): Inter ships as woff2 in
- * web/public/fonts, which Android's font-resource system does not load, and no
- * ttf/otf exists anywhere in this repository or its caches. Fetching one is a
- * missing-external-artefact decision (a licence, PHASE-4-PROTOCOL's PARK list)
- * this session does not make blind. FrontierFontFamily is the ONE seam: it is
- * FontFamily.Default today - the documented fallback, not a defect - and
- * becomes the bundled Inter family with TTF files under res/font/ the day
- * those files land, with every TextStyle below unchanged.
- */
-val FrontierFontFamily: FontFamily = FontFamily.Default
 
 /**
  * DESIGN-SYSTEM.md section 1: "All figures, percentages, dates and timestamps
@@ -117,21 +101,35 @@ object FrontierType {
 }
 
 /**
- * Maps the nine-style DESIGN-SYSTEM scale onto Material3's Typography slots, so
- * MaterialTheme.typography.* never falls back to M3's default (Roboto-metric)
- * scale. displayLarge is the only slot given tabular numerals by default,
- * matching "large statistics only" - callers needing a tabular figure at
- * another size call .tabularNums() explicitly.
+ * Maps the nine-style DESIGN-SYSTEM scale onto ALL FIFTEEN of Material3's
+ * Typography slots, so MaterialTheme.typography.* never falls back to M3's
+ * default (Roboto-metric) scale on ANY slot - a component this project has not
+ * built yet (M3 TopAppBar reads titleLarge; NavigationBar's label reads
+ * labelMedium) would otherwise render Roboto-metric text nobody chose, and
+ * silently switch families alone the day Inter lands on the nine slots that
+ * were set. The nine styles are a CLOSED set (DESIGN-SYSTEM.md section 1); M3's
+ * finer fifteen-slot grid reuses them rather than inventing a tenth size.
+ * ThemeCensusTest.kt asserts every slot resolves to one of the nine.
+ *
+ * displayLarge is the only slot given tabular numerals by default, matching
+ * "large statistics only" - callers needing a tabular figure at another size
+ * call .tabularNums() explicitly.
  */
 val FrontierTypography =
     Typography(
         displayLarge = FrontierType.display.tabularNums(),
+        displayMedium = FrontierType.display,
+        displaySmall = FrontierType.h1,
         headlineLarge = FrontierType.h1,
         headlineMedium = FrontierType.h2,
         headlineSmall = FrontierType.h3,
+        titleLarge = FrontierType.h3,
+        titleMedium = FrontierType.bodyM,
+        titleSmall = FrontierType.bodyM,
         bodyLarge = FrontierType.bodyL,
         bodyMedium = FrontierType.body,
-        titleMedium = FrontierType.bodyM,
+        bodySmall = FrontierType.caption,
         labelLarge = FrontierType.caption,
+        labelMedium = FrontierType.micro,
         labelSmall = FrontierType.micro,
     )

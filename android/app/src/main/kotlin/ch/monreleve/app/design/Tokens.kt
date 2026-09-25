@@ -1,11 +1,34 @@
 package ch.monreleve.app.design
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 // DESIGN-SYSTEM.md section 1, as Kotlin. The single source for every radius,
 // colour and spacing value in ui/ (SPEC 5 / D37). No other file defines one.
+
+/**
+ * DESIGN-SYSTEM.md section 1: "FONT: Inter everywhere (web + Android; Roboto
+ * only as system fallback)."
+ *
+ * PARKED (see REPORT-AN1.txt / docs/android-skills.md): Inter ships as woff2 in
+ * web/public/fonts, which Android's font-resource system does not load, and no
+ * ttf/otf exists anywhere in this repository or its caches. Fetching one is a
+ * missing-external-artefact decision (a licence, PHASE-4-PROTOCOL's PARK list)
+ * this session does not make blind. FrontierFontFamily is the ONE seam: it is
+ * FontFamily.Default today - the documented fallback, not a defect - and
+ * becomes the bundled Inter family with TTF files under res/font/ the day
+ * those files land, with every TextStyle in Typography.kt unchanged.
+ *
+ * LIVES HERE, NOT IN Typography.kt, DELIBERATELY. FrontierType's styles need
+ * this value; Typography.kt's FrontierTypography needs FrontierType's styles.
+ * Declaring it alongside FrontierType in the same file created a genuine
+ * circular static initializer (FrontierType.<clinit> -> TypographyKt.<clinit>
+ * -> FrontierType.display, read before FrontierType finished initialising ->
+ * NPE) - caught by ThemeCensusTest.kt's first run, not reasoned out in advance.
+ */
+val FrontierFontFamily: FontFamily = FontFamily.Default
 
 /**
  * The radius scale: a closed set of NINE token names, never arbitrary
