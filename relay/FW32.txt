@@ -1,0 +1,207 @@
+FW32 SESSION PROMPT - Mon Releve
+THE VERIFIER ITSELF
+Read relay/PHASE-4-PROTOCOL.txt and relay/R241-CONSIGNE.txt first.
+
+====================================================================
+R241 - CONTINUOUS EXECUTION
+====================================================================
+RUN THE WHOLE TASK. THE ONLY THING THAT ENDS THIS SESSION IS
+REPORT-FW32.txt, COMMITTED AND PUSHED.
+
+Unclear? R156: conservative, reversible, park it, continue.
+Ends early: R156's boundary; a red gate you cannot fix in the
+increment; a path reaching a real person or third party; a degraded
+context.
+
+====================================================================
+PRE-STEP
+====================================================================
+R0. Read REPORT-AN1.txt IN FULL - the SUMMARY, THE GATE and Q5
+    especially. AN1 found two defects in the verifier this project
+    relies on, and one of them means gate:clone has been UNABLE TO
+    VERIFY THE WEB SIDE on a fresh clone.
+
+R1 IS SUSPENDED FOR THIS TASK'S PRE-STEP, deliberately: gate:clone is
+    the subject. Do not run it as a precondition. Record instead: the
+    working tree's full `pnpm test` result, the free disk space, and
+    the commit you start from. gate:clone returns as the exit gate in
+    increment 5, and getting there is the task.
+
+R264 (new). DELETE MonReleve/. An untracked directory duplicating the
+    real project's shape, which the session harness defaulted into,
+    has already cost one session's orientation. It is in git history
+    at no point checked. Delete it, and confirm the repository root
+    is what a session lands in.
+
+R265 (new, and it is the frame for Q5). R252 APPLIES TO THE
+    ENVIRONMENT, NOT ONLY THE INVOCATION. The failing clone ran at
+    8.5 GB free and 99 percent used. A vitest worker dying with no
+    disk explains "thirteen warnings then nothing, exit 0" at least
+    as well as a code cause, and better than a Kotlin-only commit
+    would. TEST THE ENVIRONMENT HYPOTHESIS FIRST, with room on the
+    disk. Only if it reproduces with ample space is bd7e5c5 worth a
+    minute.
+
+CARRIED: R133 a harness asserts a positive signal - gate:clone's own
+    R133 check is what refused to read that silence as a pass, and it
+    is the reason this defect is visible at all. R180 verify a plant
+    landed. R199 gate:clone is a fresh clone. R227 a verifier cannot
+    be starved. R256 gate:clone must be able to make a production
+    claim.
+
+====================================================================
+CONTEXT
+====================================================================
+FW32 ONLY: repair the verifier. It ships no product code.
+
+TWO DEFECTS, BOTH IN THE THING THIS PROJECT TRUSTS MOST.
+
+  THE LEAK, root-caused in AN1 and not yet fixed:
+  web/scripts/gate-clone.mjs calls process.exit(1) from inside its
+  own try block on every step failure (line 399, and 357/510 for two
+  other paths), while the clone's removal sits in that try's finally
+  (line 557). process.exit does not unwind to a pending finally, so
+  EVERY FAILED RUN LEAKS ITS CLONE - not only killed ones, which is
+  what CLAUDE.md's "periodic manual cleanup" note assumes. Nine
+  leaked clones filled this machine to zero bytes; it recurred inside
+  the same session after being cleaned.
+
+  THE SILENCE: on a fresh clone of main, pnpm test prints thirteen
+  benign axe-core canvas warnings and then NOTHING - no banner, no
+  file list, no summary - and exits 0. The same suite in the working
+  tree passes 163 files and 2901 tests with a printed summary. So it
+  is clone-specific. gate:clone's R133 check refused to call the
+  silence a pass, which is the only reason anybody knows.
+
+WHY THIS IS ITS OWN TASK. gate:clone is the ONLY thing standing
+between this project and "it worked on my machine" while CI is off
+(R199, R248, R257). A verifier that leaks 1.7 GB per failure and
+cannot run the web suite is not a verifier. Everything downstream -
+AN2's engine port, FW31's production write, the whole Android series
+- rests on it.
+
+Read: web/scripts/gate-clone.mjs IN FULL, REPORT-AN1.txt,
+docs/PHASE-4-GUIDE.md section 11, CLAUDE.md's cleanup note.
+
+====================================================================
+ACCEPTANCE CRITERIA
+====================================================================
+AC1. A gate:clone run that FAILS leaves no clone behind. Proven by
+     forcing a failure at each of the three exit paths (399, 357,
+     510) and checking the temp directory after each. R180 - verify
+     the forced failure actually occurred at the path you intended.
+AC2. The cause of the silent pnpm test is NAMED with evidence, and
+     either fixed or parked with what it would take. R265's ordering:
+     the disk hypothesis is tested first, on a machine with room, and
+     the result is reported whichever way it falls.
+AC3. gate:clone runs green end to end on a fresh clone of main, with
+     the web suite printing its summary - or, if AC2 lands in
+     "parked", gate:clone SAYS SO LOUDLY rather than passing: a
+     verifier that cannot run a suite must name the suite and the
+     claim it is therefore not making (R256's corollary).
+
+====================================================================
+INCREMENT 0 - the ground, and R264
+====================================================================
+- Record free disk space, the working tree's full pnpm test result,
+  and the starting commit. Delete any leaked monreleve-clone-*
+  directories and say how many and how much.
+- R264: delete MonReleve/. Confirm nothing tracked referenced it.
+- Unset CI_FULL if it is still set on a private repository (AN1's Q2
+  - the operator has ruled: delete it).
+- Commit: "chore: clear the ground (R264)". Push.
+
+====================================================================
+INCREMENT 1 - the leak (AC1)
+====================================================================
+- Fix the exit paths. The obvious shapes: throw instead of
+  process.exit(1) so the finally runs, or register cleanup with
+  process.on('exit'). Choose, and say why - one of them survives an
+  uncaught throw and the other survives an explicit exit, and the
+  script has both.
+- ALSO HANDLE THE KILLED CASE, which is the original one: a SIGINT
+  or SIGTERM should clean up too. State what still leaks after this
+  (a SIGKILL cannot be caught) and put THAT in CLAUDE.md, replacing
+  the current note that assumes killing is the only cause.
+- AC1's three forced failures, each verified to have hit the path
+  intended.
+- Commit: "FW32: a failed gate:clone cleans up after itself". Push.
+
+====================================================================
+INCREMENT 2 - the silence, environment first (R265, AC2)
+====================================================================
+- With ample disk free, run gate:clone again on the same commit.
+  Report the result. If it passes, the cause is the environment and
+  AC2 is answered - say so plainly, and note that the earlier
+  investigation into bd7e5c5 was narrowing a suspect that was never
+  the cause. That is a finding about method, not a failure.
+- If it still fails: bisect the clone, not the history. Run pnpm test
+  inside the clone directly and capture stderr, the exit code, and
+  whether any worker started. Vitest dying before its banner is a
+  setup-file or worker-spawn failure, not a test failure - look
+  there first. The from-scratch install is the difference: something
+  the working tree has and a fresh clone does not (a generated
+  directory, a cache, a font file) is the standing suspect, and
+  web/public has been exactly that defect once before (FW20's
+  no-gradients walker).
+- Whatever the cause, R133: the fix is not "make it print something"
+  but "make the check specific enough that only a real pass
+  satisfies it".
+- Commit: "FW32: the silent suite, named". Push.
+
+====================================================================
+INCREMENT 3 - what the verifier claims (AC3)
+====================================================================
+- gate:clone prints, at the end, exactly what it RAN and what it
+  SKIPPED with reasons, and states the claim it is making: "this
+  commit builds and passes X, Y, Z from a clean checkout" - and the
+  claim it is NOT making. R256's corollary, and the direct lesson of
+  the run that reported PASSED having skipped every database suite.
+- The container suites (R256): confirm whether they now run, or that
+  the skip is named. FW31 may have done this - check rather than
+  assume.
+- Commit: "FW32: the verifier states its claim". Push.
+
+====================================================================
+INCREMENT 4 - the leak's second life
+====================================================================
+- Bound the damage even when cleanup fails: a temp clone older than
+  N hours is removed at the START of the next run, with a count
+  reported (R244's shape - the run says what it cleaned). Nine
+  clones accumulated over eleven days because nothing ever looked.
+- Report the disk cost of one clone, measured, so the bound is set
+  from a figure rather than a guess.
+- Commit: "FW32: stale clones are swept, and counted". Push.
+
+====================================================================
+INCREMENT 5 - the exit gate, and the report
+====================================================================
+- NOW run gate:clone as the exit gate, on the final tree. It must be
+  green, or AC3's loud refusal must be what it prints.
+- Update CLAUDE.md and docs/PHASE-4-GUIDE.md section 11: the leak had
+  two causes, one of them not killing; what still leaks; what the
+  sweep bounds.
+- Commit: "FW32: the verifier repaired". Push.
+
+====================================================================
+OUT OF SCOPE
+====================================================================
+- Any product code, web or Android. AN2. FW31's findings.
+- The repository visibility decision (operator's).
+- Chasing bd7e5c5 before R265's environment test has been run.
+
+====================================================================
+REPORT FORMAT - REPORT-FW32.txt
+====================================================================
+SUMMARY / GROUND (disk before and after, clones swept, MonReleve
+deleted, CI_FULL) / THE LEAK (the three paths, each forced and
+verified; what still leaks and why) / THE SILENCE (R265's environment
+test FIRST, with its result; then whatever else was needed; the cause
+named or parked with evidence) / WHAT THE VERIFIER NOW CLAIMS (ran,
+skipped, the claim made and the claim not made) / THE SWEEP (the
+measured cost of one clone; the bound and why) / EXIT GATE (the
+gate:clone run, verbatim) / METHOD NOTE (anything this task learned
+about how the investigation should have been sequenced) / PARKED /
+DEVIATIONS / QUESTIONS / PUSH PROOF
+
+END OF FW32 PROMPT
