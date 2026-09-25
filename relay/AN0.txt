@@ -1,0 +1,201 @@
+AN0 SESSION PROMPT - Mon Releve
+INSTALL AND VET THE ANDROID SKILLS
+Read relay/PHASE-4-PROTOCOL.txt and relay/R241-CONSIGNE.txt first.
+
+====================================================================
+R241 - CONTINUOUS EXECUTION
+====================================================================
+RUN THE WHOLE TASK. THE ONLY THING THAT ENDS THIS SESSION IS
+REPORT-AN0.txt, COMMITTED AND PUSHED.
+
+Unclear? R156: conservative, reversible, park it (PARKAN-<n>),
+continue. Ends early: R156's boundary; a red gate; a path reaching a
+real person or third party; a degraded context.
+
+====================================================================
+PRE-STEP
+====================================================================
+R0. Read REPORT-FW31.txt if it exists, and docs/PHASE-4-GUIDE.md IN
+    FULL. The guide is what the Android series inherits; this task is
+    the first that touches android/, and nothing in the guide stops
+    applying because the language changed.
+
+R1. pnpm gate:clone green on a fresh clone of origin/main's HEAD.
+    The web side must be green before anything Android lands beside
+    it.
+
+R258 (new, and it governs everything the skills touch). SKILLS ARE
+    ADVISORY. SPEC-frontalier-web.md, DESIGN-SYSTEM.md and the ruling
+    register WIN ON CONFLICT, always. A skill is Google's generic
+    best practice; this project has deliberate departures from
+    several of them. Where a skill and a ruling disagree, FOLLOW THE
+    RULING AND REPORT THE CONFLICT - naming the skill, the sentence,
+    the ruling, and which won. Do not resolve a conflict silently and
+    do not edit a skill's text to agree with us.
+
+R259 (new). PIN THE COMMIT. android/skills is actively developed.
+    Instructions that change under the project between sessions are
+    the hazard R229 closed for Chromium: a rule that moves without a
+    commit. Record the exact SHA installed, per skill, in
+    docs/android-skills.md, and state that updating is a deliberate
+    act with its own commit.
+
+R260 (new). INSTALL EIGHT, NOT ALL. An agent carrying instructions
+    for cameras, TV, Wear and XR spends context on things this app
+    will never do. The eight are listed below with why. Anything else
+    is installed later, by name, when a task needs it.
+
+CARRIED: R133 positive signals - "installed" is not "present and
+    loadable". R180 verify a plant landed. R187 a contract binds a
+    client that cannot be redeployed. R252 when a check run a new way
+    fails, suspect the new way first.
+
+====================================================================
+CONTEXT
+====================================================================
+AN0 ONLY: install the Android skills, vet them against this
+project's rulings, and record what conflicts.
+
+It writes no app code. AN1 is the scaffold.
+
+WHY IT IS ITS OWN TASK. A skill is instructions entering the agent's
+context and shaping what it builds. This project has 257 rulings,
+several of which deliberately contradict generic Android practice -
+Material components themed rather than defaulted (D37), no radius
+outside the token set (R8, R62), French-only copy from one module
+(R155, R206), RED before GREEN (the ordering rule), no toast for a
+pending sync (R176's family), no gamification. Reading the eight
+skills against those BEFORE any code exists is cheaper than
+discovering a conflict at AN9 in a component that already shipped.
+
+SOURCE: https://github.com/android/skills - official, Google,
+Apache-2.0. It ships a .claude-plugin directory, so it installs as a
+Claude Code plugin; the Android CLI's `android skills add --project=.`
+is the alternative. Either is fine; record which was used and where
+the files landed.
+
+Read: docs/PHASE-4-GUIDE.md section 14 (what the Android series
+inherits), SPEC 5 (the android/ layout), SPEC 11 (the app), SPEC 13
+(detection), DESIGN-SYSTEM.md sections 1, 2 and 4, CLAUDE.md,
+prompts/design-frontier/FD4, FD5, FD6, FD7, FD9 if present (R231 - if
+they are not in the repository, say so and use SPEC).
+
+====================================================================
+THE EIGHT, AND WHY
+====================================================================
+  jetpack-compose                the whole UI
+  navigation                     one activity, four destinations
+  testing/testing-setup          the protocol lives or dies here
+  system/edge-to-edge            FD4 and FD5 specify safe-area
+                                 behaviour explicitly
+  performance/r8-analyzer        the 12 MB APK budget, R8 at AN14
+  security/android-intent-security  the App Link callback (R195) is
+                                 an intent surface, on a compliance
+                                 product
+  play                           AN14: data safety, the
+                                 background-location justification
+  profilers/android-profiler     AN6/AN7's 3 %-per-working-day
+                                 battery budget
+
+====================================================================
+ACCEPTANCE CRITERIA
+====================================================================
+AC1. The eight are installed, pinned by SHA, and PROVEN LOADABLE -
+     not merely present on disk. R133: "the directory exists" is not
+     the signal; demonstrate the agent can read each SKILL.md and
+     say which file it read.
+AC2. docs/android-skills.md records, per skill: what it is for, the
+     pinned SHA, and EVERY CONFLICT found with this project's rulings
+     - the skill's sentence, the ruling that beats it, and which
+     wins. A skill with no conflicts is recorded as examined with
+     none found, which is a different statement from silence.
+AC3. Nothing outside .claude/ (or the agent directory used) and
+     docs/ changes. No app code, no gradle file, no dependency. The
+     web gate is green afterwards, unchanged.
+
+====================================================================
+INCREMENT 1 - install, pinned
+====================================================================
+- Install the eight. Prefer the method that lets you pin: if the CLI
+  installs from HEAD without a SHA, record the SHA it resolved and
+  say how it was determined.
+- AC1's loadability proof for each.
+- .gitignore or commit the skill files - decide, and say why. They
+  are third-party instructions the build depends on for behaviour;
+  vendoring them makes the project reproducible, and not vendoring
+  them makes it depend on a fetch. R229's reasoning for pinned
+  Chromium applies.
+- Commit: "AN0: eight Android skills, pinned (R259, R260)". Push.
+
+====================================================================
+INCREMENT 2 - read them against the rulings
+====================================================================
+Read each SKILL.md in full and look specifically for conflicts with:
+  - D37 / R8 / R62: Material components are permitted but THEMED;
+    every radius, colour and spacing is a token; no shadow on a card.
+    A skill recommending Material 3 defaults conflicts.
+  - R155 / R206: French only, from one module. A skill showing
+    hardcoded strings in composables conflicts with lint fences AN1
+    will build.
+  - The ordering rule and the RED/GREEN ledger: a skill recommending
+    a test-after workflow conflicts.
+  - R176 / R177: the walkthrough. A skill that treats a preview or a
+    screenshot test as sufficient evidence of a screen conflicts -
+    this project requires a person to look at a rendered thing.
+  - SPEC 13 and D18: no coordinate stored, logged or transmitted. A
+    location skill showing a lat/lng in a log or a payload conflicts,
+    and that one matters more than the rest.
+  - R136's spirit: a skill recommending a dependency where the
+    platform suffices.
+- AC2's table. Be specific: quote the skill's sentence.
+- Commit: "AN0: skills read against the ruling register". Push.
+
+====================================================================
+INCREMENT 3 - the ones that shape a future task
+====================================================================
+Three skills carry information later tasks depend on. Extract what
+each says into a note in docs/android-skills.md, so AN6, AN8 and AN14
+do not rediscover it:
+  - android-profiler: how battery and memory are measured on a
+    device. AN6's 3 %-per-working-day budget is a NUMBER THAT MUST BE
+    MEASURED, and the method matters as much as the figure (R233).
+  - play: what the data safety form and the background-location
+    justification actually require, and how long review takes. AN14
+    inherits this and the account has verification steps that take
+    days - if the skill says so, that goes in the NEEDS list now.
+  - android-intent-security: what an App Link callback must do to be
+    safe. R195 froze that contract's shape; if the skill contradicts
+    it, that is a finding worth more than the rest of this task.
+- Commit: "AN0: what AN6, AN8 and AN14 inherit". Push.
+
+====================================================================
+INCREMENT 4 - the report
+====================================================================
+- docs/android-skills.md complete: the eight, their SHAs, the
+  conflicts, the extracted notes, and how to update deliberately.
+- Add to the NEEDS list anything the play skill reveals the operator
+  must start now rather than at AN14.
+- Confirm AC3: nothing outside .claude/ and docs/ changed; the web
+  gate is green.
+- gate:clone before the final push.
+- Commit: "AN0: report". Push.
+
+====================================================================
+OUT OF SCOPE
+====================================================================
+- Any app code, any Gradle file, any dependency - AN1.
+- Installing a ninth skill. Editing a skill's text.
+- Resolving a conflict by changing a ruling: report it, the operator
+  rules.
+
+====================================================================
+REPORT FORMAT - REPORT-AN0.txt
+====================================================================
+SUMMARY / PRECONDITIONS / INSTALLED (the eight, method, SHAs,
+loadability proof per skill) / VENDORED OR FETCHED (the decision and
+why) / CONFLICTS (per skill: the sentence, the ruling, which wins -
+or "examined, none found") / WHAT AN6, AN8 AND AN14 INHERIT / NEEDS
+ADDED / AC3 (nothing else changed; web gate green) / PARKED /
+DEVIATIONS / QUESTIONS / PUSH PROOF
+
+END OF AN0 PROMPT

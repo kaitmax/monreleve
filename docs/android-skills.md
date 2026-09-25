@@ -472,3 +472,39 @@ the CLIENT side of that contract, which AN8 must apply on top of R195:
   `analyze.py` the skill's Paths A/B call do not ship in the repo at `b1f707d`
   (Section 6.6). AN14 uses Path C (heuristic) or sources the R8 configuration
   analyzer separately.
+
+## 9. Standing translations and operator rulings (post-AN0)
+
+### 9.1 "ask the user" is a standing translation, not a per-skill conflict
+
+Several skills instruct interactive Q&A - android-profiler line 42, testing-setup
+line 44, play-policy-insights line 169 (Section 6.9 X2). **In this project's
+autonomous sessions nobody is there (R241), so a skill that says "ask the user"
+MEANS: take the conservative, reversible option, park it, and continue (R156).**
+This is standing and stated here once, rather than re-derived per skill in every
+task that touches one.
+
+### 9.2 Operator rulings accepting AN0
+
+- **R261 (answers Q4) - STABLE COMPOSE.** Do not adopt the experimental
+  Jetpack Compose Styles API (theming/styles, Section 6.1): it is alpha, needs
+  `compileSdk 37`, and centralises tokens that FrontierTheme centralises anyway
+  with a data class and a `CompositionLocal`. R136 - prefer the platform, prefer
+  stable. Revisit only if FrontierTheme proves inadequate, which it has not been
+  asked to do. This resolves 6.1's CAUTION.
+- **R262 (Q3) - N1 promoted.** The Play background-location justification and the
+  account/identity verification steps (N1) are promoted to the root NEEDS
+  register by the operator - they are the only need whose lead time is measured
+  in days. AN0 correctly kept them out of the root register under AC3; the
+  promotion is the operator's write.
+- **R263 (answers Q2 and PARKAN-2/3) - `.claude/skills/` and `relay/` live at the
+  repository root, and AN-series sessions run from the root.** `android/` per
+  SPEC §5 is a sibling of `web/`, so the root is where a session sees both; a
+  split register repeats the P-register collision, and an untracked subtree
+  holding tracked-project instructions is the `web/public` hazard again.
+  `relay/AN0.txt` moved to the root `relay/`. Skill discovery is to be verified
+  **by observation** from a root session, not by reading (R133).
+- **Q1 confirmed.** theming/styles, navigation-3 and play-policy-insights are the
+  right picks (Section 2.1). If navigation-3 turns out to conflict with stable
+  Navigation 2 at the navigation task, that is a finding, not a reason to have
+  chosen differently now.

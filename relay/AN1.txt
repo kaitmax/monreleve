@@ -1,0 +1,261 @@
+AN1 SESSION PROMPT - Mon Releve
+THE ANDROID SCAFFOLD, AND THE INSTRUMENT
+Read relay/PHASE-4-PROTOCOL.txt and relay/R241-CONSIGNE.txt first.
+
+====================================================================
+R241 - CONTINUOUS EXECUTION
+====================================================================
+RUN THE WHOLE TASK. THE ONLY THING THAT ENDS THIS SESSION IS
+REPORT-AN1.txt, COMMITTED AND PUSHED.
+
+Unclear? R156: conservative, reversible, park it, continue.
+Ends early: R156's boundary; a red gate you cannot fix in the
+increment; a path reaching a real person or a real third-party
+account; a degraded context.
+
+A SKILL THAT SAYS "ask the user" MEANS: take the conservative option,
+park it, continue. Nobody is there. That translation is standing and
+is recorded in docs/android-skills.md rather than re-derived.
+
+====================================================================
+PRE-STEP
+====================================================================
+R0. Read REPORT-AN0.txt and docs/android-skills.md IN FULL, and
+    docs/PHASE-4-GUIDE.md - section 14 especially, which is what this
+    series inherits. AN0 vetted eight skills and recorded four
+    conflicts; every one of those rulings still wins here.
+
+R1. pnpm gate:clone green on a fresh clone of origin/main's HEAD.
+    The web side must be green before Android lands beside it.
+    Record the commit hash and the envelope.
+
+R258 (carried). SKILLS ARE ADVISORY. SPEC, DESIGN-SYSTEM and the
+    ruling register win on conflict, and a conflict is REPORTED, not
+    resolved silently. AN0 already found: theming/styles recommends
+    raw dp literals (R8/R62 wins); edge-to-edge inverts on system
+    dark mode (light ships first - DESIGN-SYSTEM wins) and draws a
+    gradient scrim (R82 wins, solid); testing-setup is test-after
+    (the ordering rule wins) and installs Hilt, Jacoco, Robolectric,
+    Dropshots and UI Automator by default (R136 wins - justify each).
+
+R261 (new, answers AN0's Q4). STABLE COMPOSE. Do NOT adopt the
+    experimental Styles API: it is alpha, needs compileSdk 37, and
+    centralises tokens that FrontierTheme centralises anyway with a
+    data class and a CompositionLocal. R136's reasoning - prefer the
+    platform, prefer stable. Revisit only if FrontierTheme proves
+    inadequate, which it has not been asked to do.
+
+R263 (new, answers Q2 and PARKAN-3). .claude/skills/ AND relay/ LIVE
+    AT THE REPOSITORY ROOT, and AN-series sessions run from the root.
+    Move relay/AN0.txt to the root relay/ if it is not there. VERIFY
+    SKILL DISCOVERY BY OBSERVATION, not by reading: start from the
+    root, prompt something a skill should answer, and confirm it
+    activates. R133 - "the file is present" is not the signal.
+
+R262 (carried). N1 is promoted to the root NEEDS register: the Play
+    Console background-location justification and the account and
+    identity verification steps. It is the only need whose lead time
+    is measured in days and cannot be compressed.
+
+CARRIED AND LOAD-BEARING HERE: R63 every test glob gets a canary.
+    R133/R233 positive signals, and a measurement reports whether it
+    observed its subject. R176/R177 the walkthrough. R180 verify a
+    plant landed. R7 proofs are adversarial. R227 a verifier cannot
+    be starved. R98/R105/R179 orphans - kill the tree you spawned and
+    assert the port free.
+
+====================================================================
+CONTEXT
+====================================================================
+AN1 ONLY: the Android project's scaffold, its theme, its fences, its
+CI, and - the part that decides the next fourteen tasks - THE
+INSTRUMENT.
+
+THE INSTRUMENT IS WHY THIS TASK MATTERS MOST. On the web, a person
+looking at a rendered thing found what no gate could, in every task
+for six tasks running: a page serving with no CSS, /sources
+miscounting itself by six, fifty unstyled anchors below the fold of
+every crop, eight defects in the PDF with two visible only in
+greyscale, an export shipping enum tokens to a French reader. On
+Android there is no page to fetch and no server to curl. A Compose
+screen exists only on a device.
+
+So the instrument has to be built: a headless emulator, a screenshot
+captured with adb, and a PNG the agent can open. IF IT IS NOT WIRED
+HERE IT WILL BE SKIPPED IN EVERY LATER TASK, with a plausible excuse
+each time. Treat it as an acceptance criterion, not a convenience.
+
+Read: SPEC 5 (the android/ layout), SPEC 11 (the app), SPEC 20;
+DESIGN-SYSTEM.md sections 1, 2 and 4 - the token block is normative;
+docs/android-skills.md (the conflicts and the extracted notes);
+docs/PHASE-4-GUIDE.md section 14. If prompts/design-frontier/FD4,
+FD5, FD6, FD7 or FD9 are absent, say so (R231) and build from SPEC
+and DESIGN-SYSTEM, which are the named authority.
+
+====================================================================
+ACCEPTANCE CRITERIA
+====================================================================
+AC1. The app builds and launches to a placeholder Aujourd'hui with
+     FrontierTheme applied: Inter rendering with tabular numerals on
+     a figure, the canvas at its token colour, and no Material
+     default shape or elevation anywhere. Proven by a SCREENSHOT the
+     session captured and looked at, not by the build succeeding.
+AC2. THE INSTRUMENT WORKS END TO END: a script starts a headless
+     emulator, installs the debug build, drives it, captures a PNG,
+     and the session OPENS THAT PNG and describes what is on it. The
+     report names the file and says what was seen. A harness that
+     produces an image nobody looked at is not the instrument.
+AC3. Every fence fails on a planted violation and each plant is
+     VERIFIED TO HAVE LANDED (R180), adversarially (R7): a
+     RoundedCornerShape(10.dp), a raw Color(0xFF...), a raw spacing
+     literal, a String literal in a composable, an android.* import
+     inside calc/, a coordinate type outside detection/ - and for
+     each, one evasion attempt (a constant indirection, an alternate
+     file extension, a re-export).
+
+====================================================================
+INCREMENT 1 - the project, and the canary
+====================================================================
+- android/ per SPEC 5: Kotlin, Compose, minSdk 26, single activity,
+  JDK 17, Gradle version catalog. Nothing else - no Hilt, no
+  Robolectric, no UI Automator (R136: the testing-setup skill
+  installs them by default and each must be justified when a task
+  needs it).
+- R63's canary FIRST: one trivially-passing test per source set the
+  harness claims to cover - unit, and instrumented if configured -
+  plus a test-count floor. The web project shipped a glob that
+  matched no .test.tsx files while the suite exited 0; the Android
+  equivalent is a source set nobody runs.
+- ./gradlew assembleDebug, test, ktlintCheck, detekt green.
+- Commit: "AN1: the Android project, and the canary". Push.
+
+====================================================================
+INCREMENT 2 - FrontierTheme, on stable Compose (R261)
+====================================================================
+- design/Tokens.kt and design/FrontierTheme.kt: the DESIGN-SYSTEM
+  section 1 token block as Kotlin - colours (light only; dark
+  defined but NOT wired, per "light ships first"), the type scale,
+  the radius set {4, 6, 8, 12, 14, 16, 20, 24, 999}, the 4 dp
+  spacing scale, and Inter bundled with tabularNum available.
+- FrontierTheme WRAPS MaterialTheme (D37). Material components are
+  permitted and themed: card elevation zero, shapes from the token
+  set, no default surface tint.
+- AN0's edge-to-edge conflicts apply here: the status-bar appearance
+  does NOT invert on system dark mode (light ships first), and any
+  scrim is SOLID, never a gradient (R82).
+- A test asserts each radius token equals its documented value and
+  that NO OTHER radius token exists - the R8(b) shape, ported.
+- Commit: "AN1: FrontierTheme on stable Compose". Push.
+
+====================================================================
+INCREMENT 3 - the fences (AC3)
+====================================================================
+Six fences, each proven adversarially, each plant verified:
+  - calc/ imports nothing from android.*, androidx.* or any project
+    package. Relative imports within calc/ allowed.
+  - detection/ cannot import data/remote, and NO COORDINATE TYPE -
+    Location, LatLng, or a lat/lng pair - appears outside
+    detection/. This is D18 as a compile-time fence, and it is the
+    most important one in the file.
+  - ui/ contains no radius, colour or spacing literal outside the
+    token set.
+  - no String literal in a composable; French comes from fr/.
+  - ui/ writes entries only through the repository (a stub today -
+    the rule exists before the thing it governs).
+  - no Material default shape or elevation.
+Prove each with the straight violation AND one evasion. Report the
+evasion attempted and whether the fence held.
+- Commit: "AN1: six fences, proven adversarially". Push.
+
+====================================================================
+INCREMENT 4 - THE INSTRUMENT (AC2)
+====================================================================
+This is the increment the series depends on. Build it properly.
+
+- scripts/emulator.sh (or .mjs): create or reuse a named AVD, start
+  it headless (-no-window -no-audio -no-boot-anim), adb wait-for-
+  device plus a boot-completed poll, and FAIL LOUDLY with a named
+  reason if it does not come up. R133 - a script that silently
+  proceeds without a device produces screenshots of nothing.
+- scripts/screenshot.sh: adb exec-out screencap -p > <path>, with
+  the device serial asserted and the file's size checked non-zero.
+  R233 - the measurement reports whether it observed its subject; a
+  0-byte PNG must fail, not pass.
+- ORPHAN DISCIPLINE (R98/R105/R179): the harness kills the emulator
+  it started, asserts no stale emulator or adb server before
+  starting, and names what it found. Four concurrency classes have
+  bitten this project; a long-lived emulator is the fifth.
+- A walkthrough helper: install the debug APK, launch the activity,
+  optionally drive it with adb shell input, capture, and print the
+  path.
+- THEN USE IT: capture Aujourd'hui, OPEN THE PNG, and describe what
+  is on it in the report - the greeting, the canvas colour, whether
+  the figure renders with tabular numerals, whether anything has a
+  Material shadow. AC1 is proven here, by looking.
+- Commit: "AN1: the emulator and screenshot instrument". Push.
+
+====================================================================
+INCREMENT 5 - screenshot tests, and what they are for
+====================================================================
+- Paparazzi or Roborazzi for component-level baselines (JVM, fast,
+  deterministic). Choose one, say why, and record that a baseline
+  CERTIFIES STABILITY, NEVER CORRECTNESS (R135) - the instrument in
+  increment 4 is what certifies correctness, and the two are not
+  interchangeable. AN0 recorded this conflict against two skills.
+- Baselines pinned to one device configuration, stated in the report,
+  because changing it later regenerates everything.
+- R114: zero tolerance. R128: a baseline asserts its own dimensions.
+- R208's shape: whatever regenerates baselines reports the files IT
+  WROTE, from its own output, never from a git diff.
+- Commit: "AN1: screenshot baselines, and their scope". Push.
+
+====================================================================
+INCREMENT 6 - the gate, CI, and the report
+====================================================================
+- pnpm-level or gradle-level: one command that runs assembleDebug,
+  test, ktlintCheck, detekt, the fence proofs and the screenshot
+  baselines, printing what it ran AND WHAT IT SKIPPED with reasons
+  (R133 - gate:clone reported PASSED having skipped every database
+  suite, and only the naming caught it).
+- R132's selector gains android/**: state which suites an Android
+  path selects. R246 - an entry point is reachable from no import;
+  MainActivity, the Application class and the manifest are invoked
+  by the framework, so enumerate them explicitly.
+- CI: Android jobs written and DISABLED behind the same variable as
+  the web ones. The repository is private and CI_FULL is unset
+  (R257); do not turn anything on.
+- Emulator work does not belong in CI yet - say so with the reason
+  rather than omitting it.
+- R186: no PRODUCT_STATE flag flips. trackerExists waits for a
+  RELEASED client (R186), and this is a placeholder screen.
+- gate:clone before the final push (the web side must still be
+  green).
+- Commit: "AN1: the gate, CI, and the report". Push.
+
+====================================================================
+OUT OF SCOPE
+====================================================================
+- The engine port (AN2), components (AN3), auth (AN4), Room and sync
+  (AN5), detection (AN6+).
+- Any dependency beyond Compose, the token layer and one screenshot
+  library - each justified by name.
+- Any real credential, any Play Console action, any flag flip.
+- Adopting the experimental Styles API (R261).
+
+====================================================================
+REPORT FORMAT - REPORT-AN1.txt
+====================================================================
+SUMMARY / PRECONDITIONS (gate:clone hash and envelope; R263's
+discovery verified by observation) / RED-GREEN LEDGER / THE CANARY
+(per source set) / FRONTIERTHEME (the radius census; what Material
+defaults were overridden) / THE SIX FENCES (each: straight violation,
+evasion attempted, plant verified, fence held or not) / THE
+INSTRUMENT (the scripts, the orphan discipline, the emulator's
+failure modes) / WHAT THE SCREENSHOT SHOWED - described, not
+asserted / BASELINES (library chosen and why; the device
+configuration; what a baseline does and does not certify) / THE GATE
+(what it runs, what it skips and why) / SKILL CONFLICTS ENCOUNTERED
+(R258: any beyond AN0's four) / PARKED / DEVIATIONS / NOTICED BUT NOT
+TOUCHING / QUESTIONS / PUSH PROOF
+
+END OF AN1 PROMPT
