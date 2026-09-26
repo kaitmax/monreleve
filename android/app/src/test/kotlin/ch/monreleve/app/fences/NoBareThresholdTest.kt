@@ -8,9 +8,14 @@ package ch.monreleve.app.fences
 // SPEC section 7.1: "A magic 0.4 or 240 anywhere in the code is a review
 // rejection." SPEC section 7.7: "RuleSet is the only place a threshold may
 // appear." calc/Rules.kt is the one exempt file - it is where the constants
-// live. ui/ is scanned too, from AN3 onward: the rail's ticks sit at exactly
-// 40 and 49.9, which makes ui/ the second most tempting place to write a
-// bare literal once a rail component exists to draw them.
+// live. ui/ AND design/ are scanned too, from AN3 onward: the rail's ticks
+// sit at exactly 40 and 49.9, and design/rail/RailGeometry.kt is exactly
+// where AN3 increment 3 put that arithmetic - the second most tempting
+// place (after ui/) to write a bare literal once a rail component exists
+// to draw them. Extended to design/ empirically, not merely in principle:
+// RailGeometry.kt did not exist when this fence was first written, so its
+// FIRST run against design/ is also this fence's first real exercise
+// there.
 
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -18,8 +23,9 @@ import java.io.File
 
 private val CALC_DIR = File("src/main/kotlin/ch/monreleve/app/calc")
 private val UI_DIR = File("src/main/kotlin/ch/monreleve/app/ui")
+private val DESIGN_DIR = File("src/main/kotlin/ch/monreleve/app/design")
 
-private val SCANNED_DIRS = listOf(CALC_DIR, UI_DIR)
+private val SCANNED_DIRS = listOf(CALC_DIR, UI_DIR, DESIGN_DIR)
 
 /**
  * Scoped to a path, not a basename - the same reasoning the TS guard states
@@ -46,6 +52,18 @@ private val FORBIDDEN_PERCENT_FORMS = setOf(40.0, 49.9)
  * annual working time"), and a threshold named in a citation string is the
  * opposite of a hardcoded one - only arithmetic can misuse a number.
  *
+ * ALSO STRIPS Kotlin's `.dp` / `.sp` UNIT-LITERAL SUFFIX, found necessary
+ * on this guard's OWN FIRST RUN against design/ (R178): `space40: Dp =
+ * 40.dp` and `lineHeight = 40.sp` in Tokens.kt/Typography.kt both matched
+ * the bare-40 check, and neither has anything to do with a fiscal
+ * percentage - Kotlin's dimension DSL means every legitimate design-token
+ * VALUE in this codebase carries one of these two suffixes, which the TS
+ * reference's own scanner never had to consider (TypeScript has no such
+ * literal syntax). A threshold-shaped number used AS a threshold never
+ * carries `.dp`/`.sp` - thresholds are percentages and fractions, not
+ * screen dimensions - so stripping the suffixed form narrows nothing the
+ * check is meant to catch.
+ *
  * KNOWN LIMIT, matching the TS guard's own recorded one: a number built by
  * string interpolation - `"${40}"` - is inside the string-strip pass and
  * would not be caught either way, so this is not a new gap. No Kotlin file
@@ -58,6 +76,7 @@ private fun strippedSource(file: File): String =
         .replace(Regex("""//[^\n]*"""), " ")
         .replace(Regex(""""(?:[^"\\\n]|\\.)*""""), " ")
         .replace(Regex("""'(?:[^'\\\n]|\\.)*'"""), " ")
+        .replace(Regex("""\b\d+(?:\.\d+)?\.(?:dp|sp)\b"""), " ")
 
 private fun offendingLiterals(
     source: String,

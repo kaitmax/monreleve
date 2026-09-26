@@ -6,6 +6,9 @@ package ch.monreleve.app.fr
  * label is a platform string resource (res/values/strings.xml) by necessity.
  */
 object Fr {
+    /** The product name (web: lib/fr/index.ts's APP_NAME). Social rail card only (SPEC 6.3). */
+    const val APP_NAME = "Mon Relevé"
+
     const val GREETING = "Bonjour Camille"
 
     /**
