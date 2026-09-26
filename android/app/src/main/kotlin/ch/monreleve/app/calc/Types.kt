@@ -61,6 +61,18 @@ enum class Granularity {
 sealed interface DenominatorMethod {
     data object Simplified240 : DenominatorMethod
 
+    /**
+     * Int, not Double: a denominator basis is always a whole count of days
+     * in this domain (Simplified240 always ceils to one; nothing in SPEC
+     * 7.2 step 2 contemplates a fractional Exact total either). TypeScript's
+     * untyped `number` here also admits NaN/Infinity, and validate.test.ts's
+     * "never throws, whatever it is handed" test exercises that specific
+     * case for the Exact method's supplied total - Kotlin's Int makes that
+     * state unrepresentable rather than merely validated against, which is
+     * a stronger guarantee than the TS side has, not a gap. The Kotlin
+     * conformance test for this omits only that one NaN sub-case, noted at
+     * the point it would otherwise appear (Validate.kt's own test file).
+     */
     data class Exact(val totalWorkDays: Int) : DenominatorMethod
 }
 
@@ -74,9 +86,15 @@ data class TeleworkInput(
     val periodFraction: Double,
     val denominator: DenominatorMethod,
     val granularity: Granularity,
-    val teleworkDays: Int,
-    val missionDaysFrance: Int,
-    val missionDaysThirdState: Int,
+    /**
+     * Double, not Int: under HALF_DAY granularity a value of 10.5 is not an
+     * edge case to guard against, it is the ordinary case (SPEC 7.2 step 3 -
+     * classifyTeleworkHours itself returns 0.5). All three day-count fields
+     * below share this.
+     */
+    val teleworkDays: Double,
+    val missionDaysFrance: Double,
+    val missionDaysThirdState: Double,
 )
 
 data class TeleworkResult(
@@ -89,9 +107,10 @@ data class TeleworkResult(
     val declarableRate: Double,
     /** Rounded up, 1 dp - for display. */
     val rawRate: Double,
-    val swissTaxedDays: Int,
-    val frenchTaxedDays: Int,
-    val creditedMissionDays: Int,
+    /** Double: derived from the input day-count fields, which may be half-days. */
+    val swissTaxedDays: Double,
+    val frenchTaxedDays: Double,
+    val creditedMissionDays: Double,
     /** May be negative. */
     val remainingToFiscal: Double,
     /** May be negative. */
@@ -102,9 +121,9 @@ data class TeleworkResult(
 sealed interface Warning {
     data class FiscalCeilingExceeded(val regime: Regime) : Warning
 
-    data class MissionCapExceeded(val cap: Int, val excess: Int) : Warning
+    data class MissionCapExceeded(val cap: Int, val excess: Double) : Warning
 
-    data class MissionsExceedHeadroom(val excess: Int) : Warning
+    data class MissionsExceedHeadroom(val excess: Double) : Warning
 
     data object SocialCeilingExceeded : Warning
 
@@ -122,14 +141,22 @@ sealed interface Warning {
     data class RuleSetFallback(val requestedYear: Int, val appliedYear: Int) : Warning
 }
 
-/** The field a ValidationError names, mirroring TeleworkInput's own properties. */
+/**
+ * The field a ValidationError names. NOT every TeleworkInput property - only
+ * the ones validate.ts (Validate.kt, increment 3) actually assigns as a
+ * NegativeDays or GranularityMismatch field: the three day-count fields
+ * that share those two checks, plus DENOMINATOR for the Exact method's
+ * supplied total (validate.ts's own `field: 'denominator'` - a value
+ * TypeScript's `keyof TeleworkInput` allows structurally because
+ * TeleworkInput has a denominator property, not a separately-declared
+ * variant). RATE_OUT_OF_RANGE and PERIOD_OUT_OF_RANGE carry no field at
+ * all, so employmentRate and periodFraction are correctly absent here.
+ */
 enum class InputField {
-    EMPLOYMENT_RATE,
-    PERIOD_FRACTION,
     TELEWORK_DAYS,
     MISSION_DAYS_FRANCE,
     MISSION_DAYS_THIRD_STATE,
-    GRANULARITY,
+    DENOMINATOR,
 }
 
 sealed interface ValidationError {
@@ -193,4 +220,28 @@ data class AllowedTeleworkDays(
 data class DenominatorOutcome(
     val totalWorkDays: Int,
     val warnings: List<Warning>,
+)
+
+/** What runWaterfall (Waterfall.kt) takes. SPEC section 7.2 step 5. */
+data class WaterfallInput(
+    val totalWorkDays: Int,
+    val missionCap: Int,
+    val teleworkDays: Double,
+    val missionDaysFrance: Double,
+    val missionDaysThirdState: Double,
+)
+
+/** What runWaterfall (Waterfall.kt) answers. SPEC section 7.2 step 5. */
+data class WaterfallOutcome(
+    val regimeApplies: Boolean,
+    val fiscalCeilingDays: Double,
+    /** fiscalCeiling - teleworkDays. Zero in the regime-lost branch. */
+    val headroomDays: Double,
+    val creditedFranceDays: Double,
+    val creditedThirdStateDays: Double,
+    val creditedMissionDays: Double,
+    /** The numerator of declarableRate. Excludes missions when the regime is lost. */
+    val daysCountedAgainstCeiling: Double,
+    val swissTaxedDays: Double,
+    val frenchTaxedDays: Double,
 )
