@@ -1,0 +1,281 @@
+AN3 SESSION PROMPT - Mon Releve
+THE COMPONENTS, AND THE FIRST SCREENS A PERSON JUDGES
+Read relay/PHASE-4-PROTOCOL.txt and relay/R241-CONSIGNE.txt first.
+
+====================================================================
+R241 - CONTINUOUS EXECUTION
+====================================================================
+RUN THE WHOLE TASK. THE ONLY THING THAT ENDS THIS SESSION IS
+REPORT-AN3.txt, COMMITTED AND PUSHED.
+
+Unclear? R156: conservative, reversible, park it (PARKAN-<n>),
+continue. A skill that says "ask the user" means: take the
+conservative option, park it, continue.
+
+Ends early: R156's boundary - anything touching web/lib/calc-engine
+or android/.../calc/ is on it, both engines are frozen; a red gate
+you cannot fix in the increment; a path reaching a real person or
+third party; a degraded context.
+
+====================================================================
+PRE-STEP
+====================================================================
+R0. Read REPORT-AN2.txt IN FULL, plus docs/android-skills.md and
+    docs/PHASE-4-GUIDE.md sections 3, 4 and 6. Section 6 is the one
+    that decides this task: the two instruments no gate replaces.
+
+R1. pnpm gate:clone green on a fresh clone of origin/main's HEAD.
+    Record the hash, the envelope, and what the run says it claims.
+
+R268 (new, from AN2's Q1). FOLD GenevaWaterfallTest.kt INTO
+    GenevaConformanceTest.kt AND DELETE IT. Its checks are subsumed,
+    and two files asserting the same fixture with different coverage
+    is a reader's trap: the next person changing a Geneva expectation
+    updates one and leaves the other green on a narrower assertion.
+    Keep one file and keep a header note saying what it covers.
+
+R269 (new, from AN2's Q2, and it is increment 0). PORT THE SIX
+    DISCIPLINE SCANS TO KOTLIN. Hand-verification is the mechanism
+    that failed at every one of the defects those scans caught on the
+    web side - \u escapes, typed thresholds, invented tokens,
+    duplicated copy. calc/ being small and stable is true today; the
+    scans' value is on the code THIS TASK WRITES. Port them where
+    they will earn their keep rather than retrofitting after AN5.
+    At minimum, adapted to Kotlin and Compose:
+      - no typed threshold outside RuleSet (R147/R161)
+      - no colour, radius or spacing literal outside the token set
+        (R8/R62) - AN1's fence, now with real components to catch
+      - no String literal in a composable; French from fr/ (R155)
+      - no duplicated copy string (R126's shape)
+      - every exported copy string is reachable or declared
+        unreachable (R238) - it found three orphans on its first web
+        run, one of which was the product's headline answer
+      - no raw dp where a token exists (the theming/styles conflict
+        AN0 recorded)
+    Each proven adversarially (R7), each plant verified (R180).
+
+R258 (carried). Skills are advisory. AN0's four conflicts stand: the
+    edge-to-edge skill inverts on system dark mode (light ships
+    first) and draws a gradient scrim (R82 - solid); theming/styles
+    recommends raw dp (R8/R62 wins); testing-setup is test-after (the
+    ordering rule wins) and installs five dependencies by default
+    (R136 - justify each by name or do not add it).
+
+CARRIED AND LOAD-BEARING: R44/R45/R46/R48 the rail's shape. R30 four
+    status icons. R41 the compliant label. R73 negative tiles name
+    the threshold. R119 singletons by count. R128 a baseline asserts
+    its dimensions. R135 a baseline certifies stability, never
+    correctness. R137 adjacency as sequence. R148 alignment measured
+    geometrically. R176/R177 the walkthrough. R180 verify the plant.
+    R207/R208 regeneration names its files, from its own output.
+
+====================================================================
+CONTEXT
+====================================================================
+AN3 ONLY: the shared visual components - the rail, the badge, the
+rate display, the metric tile, the day cell, the legend, the
+confidence tier - and the formatters they depend on.
+
+WHY THIS TASK IS WHERE THE INSTRUMENT STOPS BEING A SCAFFOLD. AN1
+built an emulator harness and proved it on a placeholder. From here
+every component is a thing a person judges by looking, and six tasks
+of web history say the same sentence: a person looking at a rendered
+thing has found what no gate could, every time. A baseline certifies
+that nothing changed; only a person opening a PNG says whether what
+is there is right.
+
+THE COMPONENTS ARE NOT NEW DESIGN. They exist, specified, in
+DESIGN-SYSTEM.md and in the FD briefs, and the web implementations
+are the reference for behaviour. The risk is not invention, it is
+DRIFT: a rail whose ticks scale, a badge that reads its colour from a
+Status instead of a Zone, a tile that renders a minus sign, a
+formatter that loses a no-break space.
+
+Read: DESIGN-SYSTEM.md sections 1, 2, 3 and 4 (the token block is
+normative); SPEC 6 (zones, statuses, the rail, French formatting),
+SPEC 11 (where each component lands), SPEC 20;
+web/lib/ui/core/** and web/lib/ui/react/** as the behavioural
+reference. If prompts/design-frontier/FD3, FD4, FD6, FD7 are absent,
+SAY SO (R231) and build from SPEC and DESIGN-SYSTEM, which are the
+named authority.
+
+====================================================================
+ACCEPTANCE CRITERIA
+====================================================================
+AC1. THE FORMATTERS ARE CODEPOINT-EXACT AND MATCH THE WEB'S BYTES:
+     formatPercent(34.6) is "34,6" + U+00A0 + "%", formatDays(1234.5)
+     groups with U+202F, formatDate is Swiss dots, formatDateTime
+     puts U+00A0 on BOTH sides of the a-grave (R29). Asserted by
+     codepoint, never by visual equality, and R26's exhaustive
+     round-trips ported: for every integer n in 0..10000,
+     formatPercent(n/100) renders the digits of n at two decimals.
+AC2. THE RAIL MATCHES THE WEB'S OUTPUT, and the comparison is made:
+     same RailData, the web's renderRailSvg geometry versus the
+     Compose rendering - fill fraction, tick positions at 40 and
+     49,9, tick width 2 dp NOT SCALED (R130), labels anchored
+     outward (R39), band names absent at narrow widths (R45), the
+     three static bands only in the social variant (R48). Where an
+     exact pixel comparison is not possible across the two
+     technologies, compare the GEOMETRY NUMBERS and say so.
+AC3. EVERY COMPONENT IN EVERY STATE IS CAPTURED ON A DEVICE AND
+     LOOKED AT. Not a Paparazzi baseline - those certify stability.
+     The instrument from AN1: emulator, screencap, open the PNG,
+     describe what is on it. The report says what was seen, per
+     component, in words. This is the acceptance criterion the whole
+     task turns on.
+
+====================================================================
+INCREMENT 0 - R268 and R269
+====================================================================
+- R268's fold and delete.
+- R269's six scans, each proven adversarially with a verified plant.
+  If a scan finds a LIVE instance in code written before this task,
+  that is R178's shape and it leads the report.
+- Commit per item; R49 applies if only baselines differ.
+
+====================================================================
+INCREMENT 1 - the formatters (AC1)
+====================================================================
+- fr/format/: percent, days, signed days, date, date-time. Inter's
+  tabular numerals are a rendering concern, not a formatting one -
+  keep them separate.
+- The web's are the reference. R206: do not transcribe the French
+  strings; the copy lives in fr/ and the formatter takes values.
+- R26's exhaustive loops, ported. 10 001 and 1 001 cases,
+  deterministic, not property tests.
+- Kotlin traps to prove against, each with a test: String.format is
+  locale-sensitive and will emit a period in some locales; DecimalFormat
+  carries a DecimalFormatSymbols that must be pinned, not defaulted;
+  and the JVM's default locale on a device is the USER's, which is
+  exactly the thing that must not leak into a French document.
+- Commit: "AN3: the formatters, codepoint-exact". Push.
+
+====================================================================
+INCREMENT 2 - zones, statuses, and the copy
+====================================================================
+- The Zone/Status distinction (SPEC 6.2), ported whole: three rail
+  bands, four badge statuses, and mission-exposure sitting on the
+  COMPLIANT band with a WARNING badge. A test asserts that pairing
+  by name - it is the one a refactor will try to "fix".
+- R32's boundaries: compliant at rate <= 40; fiscal-exposure at
+  40 < rate <= 49,9; social-switch above. Both sides of each.
+- Status copy from fr/: label, Lucide-equivalent icon name, one-line
+  explanation, colour token. R41: compliant reads "Sous les deux
+  seuils". R30: four icons, social-switch distinct from regime-lost.
+- R238's reachability scan (from increment 0) must pass over this
+  new copy - and if it finds an orphan, that is a finding.
+- Commit: "AN3: zones, statuses, and their copy". Push.
+
+====================================================================
+INCREMENT 3 - the rail (AC2)
+====================================================================
+- The rail as a Compose component: 8 dp pill track, fill in the band
+  colour, two ticks at 40 and 49,9, 2 dp wide, NOT SCALING with the
+  rail's width (R130 - vector-effect's equivalent; if Compose has no
+  direct analogue, compute in dp from the density and say so).
+- Labels anchored outward (R39): 40 % ends at its tick, 49,9 %
+  starts at its tick. They can then never collide, at any width.
+- Band names absent in inline and compact (R45); the React wrapper
+  renders them as a legend, so the Compose equivalent is a separate
+  legend composable, not text inside the rail.
+- The social variant (R48): three static bands, no fill by rate, no
+  rate at all (R44). It is generic by construction.
+- AC2's geometry comparison against the web's numbers.
+- A non-finite rate renders the unavailable state and NEVER calls
+  zoneFor (R33). Assert zoneFor is not reached.
+- Commit: "AN3: the threshold rail". Push.
+
+====================================================================
+INCREMENT 4 - badge, rate, tile, day cell, legend, confidence
+====================================================================
+- ZoneBadge: pill chip, soft fill, icon, label, explanation beneath.
+  Warning label colour is text-primary on the soft fill, NOT the
+  warning colour (R57) - that pairing measured 3,42:1 on the web and
+  fails AA at body size.
+- RateDisplay: Display size, tabular, band-coloured, with the
+  secondary rawRate block and its explanatory line when the two
+  differ (R224). The warning-band hero at Display size is the ONE
+  permitted large-text use of the warning colour, and the contrast
+  test applies the large-text threshold explicitly rather than
+  exempting it.
+- MetricTile: label, figure, and the negative variant where the
+  label NAMES THE THRESHOLD from the RuleSet (R73) and the figure is
+  the absolute value - never a minus sign, never clamped to zero.
+- DayCell: date, the kind letter with its country dot (S/D/M/A), the
+  4 dp quality bar (green on time, amber late, grey missing, none
+  for weekend or future), the corner mark for a corrected detection.
+  Colour means RECORD QUALITY; the letter and dot mean WHERE. A test
+  asserts a legend exists wherever a DayCell grid does - letters
+  need a key (R119's shape).
+- ConfidenceTier: words plus icon plus three segments, NEVER a
+  percentage (R27).
+- Commit: "AN3: badge, rate, tile, day cell, legend, confidence".
+  Push.
+
+====================================================================
+INCREMENT 5 - baselines, and what they do not certify
+====================================================================
+- Paparazzi or Roborazzi baselines per component per state, at the
+  single pinned device configuration AN1 recorded. R114 zero
+  tolerance, R128 dimensions asserted, R207/R208 regeneration names
+  the files it wrote from its own output.
+- A comment at the baseline harness stating, in one sentence, that a
+  baseline certifies stability and never correctness, and naming the
+  instrument that certifies the latter. AN0 recorded two skills
+  getting this wrong.
+- jest-axe's equivalent: Compose semantics. Every component that
+  carries meaning by colour also carries it by text or shape, and
+  TalkBack announces kind, quality and provenance on a DayCell -
+  not colour alone.
+- Commit: "AN3: baselines, and their scope". Push.
+
+====================================================================
+INCREMENT 6 - THE INSTRUMENT (AC3), and the report
+====================================================================
+This is the increment the task turns on.
+- A gallery screen under a dev route listing every component in
+  every state, in French, from fr/.
+- Drive it on the emulator, capture PNGs, OPEN THEM, and DESCRIBE
+  what is there, per component: does the rail's fill stop short of
+  the 40 tick at 39,16; do the two tick labels touch at 320 dp; is
+  the amber badge's label black rather than amber; does the negative
+  tile read "Jours au-dessus de 40 %" with no minus; do the four day
+  cells differ from each other at a glance; is anything carrying a
+  Material shadow.
+- AT 320 dp AS WELL AS THE DEFAULT. The web's tick labels collided
+  below 420 px and it was invisible until someone looked.
+- AND AT 200 percent text scale: R16's Android clause. A component
+  that truncates there is a finding.
+- R186: no flag flips.
+- gate:clone before the final push; the web side must still be green
+  and untouched.
+- Commit: "AN3: the gallery, seen". Push.
+
+====================================================================
+OUT OF SCOPE
+====================================================================
+- Auth (AN4), Room and sync (AN5), detection (AN6+), any screen from
+  SPEC 11 beyond the dev gallery.
+- Either engine. Any dependency beyond the screenshot library and
+  what Compose needs - each justified by name.
+- Dark mode: the tokens exist, nothing wires them (light ships
+  first).
+
+====================================================================
+REPORT FORMAT - REPORT-AN3.txt
+====================================================================
+SUMMARY / PRECONDITIONS (gate:clone hash, envelope, what it claims) /
+INCREMENT 0 (R268; R269's six scans, each plant verified, and any
+LIVE instance found) / RED-GREEN LEDGER / THE FORMATTERS (the
+codepoint assertions; the three Kotlin locale traps and what each
+would have done) / ZONE AND STATUS (the mission-exposure pairing,
+asserted; both sides of each boundary) / THE RAIL (AC2's geometry
+comparison against the web's numbers, field by field) / THE
+COMPONENTS (each, with its states) / BASELINES (library, device
+config, what they do and do not certify) / WHAT THE SCREENSHOTS
+SHOWED - per component, described, not asserted; at the default
+width, at 320 dp, and at 200 percent text / SKILL CONFLICTS (R258) /
+PARKED / DEVIATIONS / NOTICED BUT NOT TOUCHING / QUESTIONS /
+PUSH PROOF
+
+END OF AN3 PROMPT
