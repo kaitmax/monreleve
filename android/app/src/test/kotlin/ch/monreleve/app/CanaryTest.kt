@@ -1,6 +1,7 @@
 package ch.monreleve.app
 
-import ch.monreleve.app.calc.CALC_PACKAGE_SCAFFOLDED
+import ch.monreleve.app.calc.Canton
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -10,9 +11,9 @@ import org.junit.Test
  * count - a source set that runs nothing exits 0 and reads exactly like one that
  * passed everything (R133). The second test also proves calc/ is reachable.
  *
- * AN2 increment 0: references CALC_PACKAGE_SCAFFOLDED rather than AN1's
- * enginePlaceholder() (deleted - the real package replaces the placeholder
- * it was proving). Updated again in increment 1 once real types land.
+ * AN2 increment 1: references the real Canton.GE now that Types.kt exists -
+ * increment 0's CALC_PACKAGE_SCAFFOLDED marker and AN1's enginePlaceholder()
+ * before it are both gone.
  */
 class CanaryTest {
     @Test
@@ -22,6 +23,6 @@ class CanaryTest {
 
     @Test
     fun calcPackageIsReachableFromUnitTests() {
-        assertTrue(CALC_PACKAGE_SCAFFOLDED)
+        assertEquals("GE", Canton.GE.name)
     }
 }
