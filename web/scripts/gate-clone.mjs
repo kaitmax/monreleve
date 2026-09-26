@@ -53,7 +53,7 @@
 import { ciReadiness, describeReadiness } from './ci-readiness.mjs';
 import { stripAnsi } from './gate-selection.mjs';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { cpus, freemem, tmpdir, totalmem } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -174,6 +174,98 @@ function dockerAvailable() {
   }
 }
 
+/** Total bytes under `path`, walked recursively. Missing files cost nothing. */
+function directorySize(path) {
+  let total = 0;
+  let entries;
+
+  try {
+    entries = readdirSync(path, { withFileTypes: true });
+  } catch {
+    return 0;
+  }
+
+  for (const entry of entries) {
+    const entryPath = join(path, entry.name);
+
+    if (entry.isDirectory()) {
+      total += directorySize(entryPath);
+    } else {
+      try {
+        total += statSync(entryPath).size;
+      } catch {
+        // Gone between readdir and stat - another sweep, or the OS. Not this
+        // one's problem; count what is still there.
+      }
+    }
+  }
+
+  return total;
+}
+
+/**
+ * FW32, increment 4: THE LEAK'S SECOND LIFE. Increment 1 fixed both known
+ * causes of a leaked clone (a failed run's process.exit, a caught signal),
+ * and increment 1's own commit measured that a SIGKILL - and, on this
+ * machine, this harness's own foreground-timeout kill - still bypasses
+ * both. Cleanup can still fail for a cause nobody has found yet either. This
+ * bounds the DAMAGE rather than chasing the cause further: nine clones
+ * accumulated over eleven days (AN0-AN1) because nothing ever looked until
+ * the disk hit zero.
+ *
+ * RUNS AT THE START, before this run's own clone exists, so it can never
+ * sweep itself. STALE_HOURS is set from what a real run costs, MEASURED
+ * (REPORT-FW32.txt, THE SWEEP): every full chain this task ran, including
+ * the production-write suite's Docker build, finished in single-digit
+ * minutes. Four hours is not a guess at "how long is too long" - it is
+ * roughly 30-60x the slowest real run this task observed, so a clone still
+ * there at that age is not a slow gate, it is one cleanup already failed to
+ * remove.
+ */
+const STALE_HOURS = 4;
+
+function sweepStaleClones() {
+  const root = tmpdir();
+  const cutoff = Date.now() - STALE_HOURS * 60 * 60 * 1000;
+  let entries;
+
+  try {
+    entries = readdirSync(root, { withFileTypes: true });
+  } catch {
+    return { count: 0, bytes: 0 };
+  }
+
+  let count = 0;
+  let bytes = 0;
+
+  for (const entry of entries) {
+    if (!entry.isDirectory() || !entry.name.startsWith('monreleve-clone-')) {
+      continue;
+    }
+
+    const path = join(root, entry.name);
+    let stat;
+
+    try {
+      stat = statSync(path);
+    } catch {
+      continue;
+    }
+
+    if (stat.mtimeMs >= cutoff) {
+      continue;
+    }
+
+    const size = directorySize(path);
+
+    rmSync(path, { recursive: true, force: true });
+    count += 1;
+    bytes += size;
+  }
+
+  return { count, bytes };
+}
+
 function run(label, command, args, cwd, expect, env) {
   process.stdout.write(`--- ${label} ---\n`);
 
@@ -277,6 +369,9 @@ function postgres() {
   return parsed;
 }
 
+// Runs BEFORE this run's own clone exists (R244's shape - a sweep reports
+// what it cleaned), so it can never sweep itself.
+const swept = sweepStaleClones();
 const clone = mkdtempSync(join(tmpdir(), 'monreleve-clone-'));
 let scratchDatabase = null;
 
@@ -400,6 +495,18 @@ try {
 
   console.log(`  clone     ${clone}`);
   console.log(`  scrubbed  ${SECRETS.join(', ')}`);
+
+  // FW32, increment 4: what THIS run cleaned up on somebody else's behalf,
+  // before doing its own work (R244's shape).
+  if (swept.count === 0) {
+    console.log(`  swept     no stale clones (older than ${STALE_HOURS}h) found`);
+  } else {
+    const mb = Math.round(swept.bytes / (1024 * 1024));
+
+    console.log(
+      `  swept     ${swept.count} stale clone(s) older than ${STALE_HOURS}h, reclaiming ~${mb} MiB`,
+    );
+  }
 
   // ========================================================================
   // R227: THE RESOURCE ENVELOPE, STATED, SO A RED CLONE CAN BE READ
