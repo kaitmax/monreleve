@@ -188,3 +188,9 @@ data class AllowedTeleworkDays(
     val atSocial: Double,
     val missionCap: Int,
 )
+
+/** What resolveDenominator (Denominator.kt) answers. SPEC section 7.2 step 2. */
+data class DenominatorOutcome(
+    val totalWorkDays: Int,
+    val warnings: List<Warning>,
+)

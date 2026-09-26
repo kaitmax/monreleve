@@ -82,6 +82,10 @@ dependencies {
     testImplementation(libs.kotest.assertions.core)
     testImplementation(libs.kotest.property)
     testRuntimeOnly(libs.junit.vintage.engine)
+    // AN2, TEST-ONLY: the real JVM org.json, so the conformance suites can
+    // read fixtures/*.json under plain JVM unit tests, where android.jar's
+    // own org.json classes are stubbed to throw "not mocked".
+    testImplementation(libs.json.org)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

@@ -22,6 +22,11 @@ kotest = "5.9.1"
 # would silently stop running every JUnit-4-style test in the project, which
 # is exactly the class of regression checkTestFloor exists to catch (R133).
 junitVintage = "5.10.2"
+# AN2, TEST-ONLY: android.jar's own org.json classes are stubbed to throw
+# "not mocked" under plain JVM unit tests (testDebugUnitTest, not an
+# instrumented test) - this is the real JVM implementation, used only to
+# read fixtures/*.json, the same files the TypeScript engine reads directly.
+jsonOrg = "20260814"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -43,6 +48,7 @@ kotest-runner-junit5 = { group = "io.kotest", name = "kotest-runner-junit5", ver
 kotest-assertions-core = { group = "io.kotest", name = "kotest-assertions-core", version.ref = "kotest" }
 kotest-property = { group = "io.kotest", name = "kotest-property", version.ref = "kotest" }
 junit-vintage-engine = { group = "org.junit.vintage", name = "junit-vintage-engine", version.ref = "junitVintage" }
+json-org = { group = "org.json", name = "json", version.ref = "jsonOrg" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
