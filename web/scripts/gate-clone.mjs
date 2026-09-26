@@ -51,6 +51,7 @@
 // ran them.
 
 import { ciReadiness, describeReadiness } from './ci-readiness.mjs';
+import { stripAnsi } from './gate-selection.mjs';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -192,7 +193,19 @@ function run(label, command, args, cwd, expect, env) {
     return { ok: false, why: `${label} exited ${String(child.status)}`, output };
   }
 
-  if (!expect.test(output)) {
+  // FW32, AC2: THE SILENCE. `expect` is tested against STRIPPED output, not
+  // `output` itself. vitest's own summary line splits "Test Files" from its
+  // digits with colour codes - `Test Files\x1b[22m \x1b[1m\x1b[32m164
+  // passed...` - which \s+ does not bridge, so a run that had just PASSED
+  // 2907/2907 read as silence and failed this exact check, deterministically,
+  // on every fresh clone this task tried. NOT an environment or resource
+  // defect (R265's own hypothesis, tested first and disproved: it reproduced
+  // identically with 17 GB free as with 8.5 GB) - REPORT-FW31.txt's own
+  // PUSH PROOF already named "one in gate-clone" among nine colour-fragile
+  // patterns and closed only container-e2e.mjs's instance. This is that
+  // instance. Imported rather than copied (R206) - stripAnsi is exactly the
+  // function FW31 wrote and exported for reuse.
+  if (!expect.test(stripAnsi(output))) {
     return {
       ok: false,
       why:
