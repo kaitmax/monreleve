@@ -216,6 +216,20 @@ data class AllowedTeleworkDays(
     val missionCap: Int,
 )
 
+/**
+ * What allowedTeleworkDays (AllowedDays.kt) takes: the fields
+ * calculateTelework's own input carries but this question does not need -
+ * no day has been entered yet.
+ */
+data class AllowedTeleworkDaysInput(
+    val taxYear: Int,
+    val canton: Canton,
+    val employmentRate: Int,
+    val periodFraction: Double,
+    val denominator: DenominatorMethod,
+    val granularity: Granularity,
+)
+
 /** What resolveDenominator (Denominator.kt) answers. SPEC section 7.2 step 2. */
 data class DenominatorOutcome(
     val totalWorkDays: Int,
@@ -229,6 +243,29 @@ data class WaterfallInput(
     val teleworkDays: Double,
     val missionDaysFrance: Double,
     val missionDaysThirdState: Double,
+)
+
+/** What warningsFor (Warnings.kt) takes. SPEC section 7.4's Warning union. */
+data class WarningContext(
+    val regime: Regime,
+    val regimeApplies: Boolean,
+    val daysCountedAgainstCeiling: Double,
+    /**
+     * input.teleworkDays. Distinct from daysCountedAgainstCeiling, which
+     * also carries credited mission days: the framework agreement behind
+     * A1Required is about work performed in the state of RESIDENCE, and a
+     * mission day in a third state is not that.
+     */
+    val teleworkDays: Double,
+    /** fiscalCeiling - teleworkDays. Zero when the regime is already lost. */
+    val headroomDays: Double,
+    val missionDaysTotal: Double,
+    val missionCap: Int,
+    val totalWorkDays: Int,
+    /** input.taxYear, which may differ from the rule set actually applied. */
+    val requestedTaxYear: Int,
+    /** Warnings the denominator produced, e.g. ExactMethodUnverified. */
+    val denominatorWarnings: List<Warning>,
 )
 
 /** What runWaterfall (Waterfall.kt) answers. SPEC section 7.2 step 5. */
