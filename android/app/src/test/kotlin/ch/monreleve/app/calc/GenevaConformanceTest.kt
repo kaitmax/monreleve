@@ -3,13 +3,25 @@ package ch.monreleve.app.calc
 // AN2 increment 5. The complete AC1 pass (SPEC 7.5): reads
 // fixtures/geneva-cases.json - the SAME file the TypeScript suite reads
 // (R206) - and runs it through the full calculateTelework pipeline,
-// including declarableRate now that DeclarableRate.kt (increment 4) and the
-// full assembly (increment 5) both exist. GenevaWaterfallTest.kt is the
-// increment 3 partial pass this completes; that file's own comment points
-// here.
+// checking all four published fields for each of the six cases:
+// declarableRate, swissTaxedDays, frenchTaxedDays, regimeApplies - plus
+// the day-partition invariant (SPEC 7.6 #1) as a cross-check on the
+// published cases themselves.
 //
 // "If any fails, nothing ships" (SPEC 7.5). No snapshots (SPEC 7.6): a
 // snapshot records what the code did, not what the AFC published.
+//
+// FOLDED FROM GenevaWaterfallTest.kt (R268, close-out review). That file
+// was increment 3's own partial pass, written before DeclarableRate.kt
+// (increment 4) and the full calculateTelework assembly (increment 5)
+// existed, so it could only check swissTaxedDays/frenchTaxedDays/
+// regimeApplies against the waterfall alone. Once this file existed and
+// subsumed every one of those checks plus declarableRate, keeping both
+// stopped documenting history and started being a reader's trap: two
+// files asserting the same fixture at different coverage levels means
+// the next person changing a Geneva expectation can update one and
+// leave the other green on its narrower assertion. Deleted rather than
+// left as a historical pair.
 
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
