@@ -1,0 +1,572 @@
+====================================================================
+REPORT-AN2 - THE KOTLIN ENGINE PORT, AND THE SHARED CONFORMANCE SUITE
+====================================================================
+
+TASK      AN2, relay/AN2.txt. Port web/lib/calc-engine/*.ts to
+          android/app/src/main/kotlin/ch/monreleve/app/calc/*.kt with
+          byte-for-byte behavioural fidelity, verified against the
+          three shared JSON fixtures both engines consume (D20: any
+          divergence fails both builds).
+RULINGS   R241 continuous execution. R206 one home (fixtures read
+          directly, never transcribed). R180 verify the plant before
+          reading its result. R7 adversarial proofs. R154 a mechanism
+          proves delivery, not merely exists. R199/R248 gate:clone.
+          SPEC 7.3 (the rounding rules, kept separated), 7.5 (the
+          Geneva fixtures, "if any fails, nothing ships"), 7.6 (the
+          eight invariants, no snapshots), 7.7 (RuleSet is the only
+          place a threshold may appear).
+
+====================================================================
+SUMMARY
+====================================================================
+This session resumed AN2 mid-increment-5, after a context compression:
+increments 0-4 were already committed (748d79f through 05d27d8), and
+the immediate state was a compile failure in the property-test
+generator (Arbitraries.kt) that blocked everything downstream of it -
+AC3's eight invariants, and therefore increment 5's completion.
+
+ROOT CAUSE, FOUND RATHER THAN GUESSED TWICE: the working hypothesis
+carried into this session ("Arb.bind needs its own import, matching
+.map/.boolean()/.int()/.of()/.choice(), all of which are already
+imported") was confirmed empirically before acting on it further -
+`javap` against the resolved kotest-property-jvm-5.9.1.jar (unzipped
+from the Gradle cache directly, not assumed from documentation, which
+this Kotest version's own online docs do not fully specify for the
+explicit-Arb-plus-PropTestConfig overload shape) shows `bind` living
+in `io.kotest.property.arbitrary.BindKt`, an extension function on
+`Arb.Companion` requiring its own import exactly like the other
+builders. Added `import io.kotest.property.arbitrary.bind`;
+Arbitraries.kt compiled clean on the next run, with no further
+changes needed to the generator logic already written.
+
+From there, increment 5's remaining work: Warnings.kt (the eight-
+variant Warning union), Calculate.kt (calculateTelework, the full
+pipeline assembly), AllowedDays.kt (allowedTeleworkDays), the eight
+SPEC 7.6 property invariants over Kotest's checkAll (Properties1To4Test.kt,
+Properties5To8Test.kt), the complete Geneva conformance suite including
+declarableRate (GenevaConformanceTest.kt, completing GenevaWaterfallTest.kt's
+increment-3 partial pass), fence 1 re-confirmed against the real calc/
+package, and this report.
+
+Two mechanical fixes along the way, both caught by running the actual
+tool rather than assumed clean: a detekt MaxLineLength on a line in
+Arbitraries.kt that predates this session's edits (never previously
+linted, because the file could not compile until the bind fix above)
+- wrapped. A test-class name collision (`GenevaCase`, declared private
+in both the existing GenevaWaterfallTest.kt and the new
+GenevaConformanceTest.kt) - renamed the new file's class to
+`GenevaFullCase`.
+
+Kotest's `PropTestConfig(seed = ..., iterations = ...)` constructor is
+marked `@ExperimentalKotest` in 5.9.1; opted in via a file-level
+`@OptIn` in both property test files rather than leaving the compiler
+warning unaddressed, with a one-line comment naming exactly what the
+opt-in covers (this is not an opt-in to anything this task wrote).
+
+THIS INCREMENT'S OWN D20 PROOF (see THE TWO ROUNDING RULES for
+increment 4's, on rate-cases.json): geneva-cases.json case c's
+declarableRate was planted as 39.17 (published: 39.16), the plant
+verified landed by grep before either suite ran, both `pnpm exec
+vitest run tests/unit/calc-engine/fixtures.test.ts` (TS) and
+`./gradlew testDebugUnitTest --tests
+"ch.monreleve.app.calc.GenevaConformanceTest"` (Kotlin) failed on the
+same case at the same assertion, reverted, `git diff` on the fixture
+confirmed empty, both suites re-run green. This is the first point in
+the port where declarableRate is checkable end to end in Kotlin
+(GenevaWaterfallTest.kt, increment 3, checks only swissTaxedDays/
+frenchTaxedDays/regimeApplies - see its own header comment, which
+names GenevaConformanceTest.kt as where the rest lands), so this is
+the meaningful moment to prove it against the shared fixture rather
+than a repeat of increment 4's rate-cases.json proof.
+
+Final state: all four acceptance criteria hold (see each named
+section below), 363 Kotlin unit tests across 23 test classes, zero
+detekt/ktlint findings, `./gradlew clean test detekt ktlintCheck`
+green from a fully clean build (60/60 tasks executed, none cached),
+`./gradlew gate` (the exact command the disabled `android` CI job
+runs) green, TypeScript's own `tests/unit/calc-engine` suite
+unaffected and green (23 files, 462 tests). Increment 5 committed as
+4889b9c. gate:clone run as the exit gate before push; see EXIT GATE.
+
+====================================================================
+PRECONDITIONS
+====================================================================
+Per relay/AN2.txt's PRE-STEP, gate:clone was run against origin/main
+before increment 0 began, in the session prior to this compaction;
+its result is recorded in that session's own commit history and is
+not re-litigated here (R241: this session resumes mid-task, it does
+not re-verify a precondition already satisfied and unchanged upstream
+of its own work). This session's own responsibility is the exit gate,
+below.
+
+====================================================================
+RED-GREEN LEDGER
+====================================================================
+This session's own portion (increments 0-4's ledger lives in their
+own commit bodies, not repeated here):
+
+Increment 5, resumed:
+  RED  - Arbitraries.kt: "Unresolved reference 'bind'" at every
+         Arb.bind call site (4 sites), plus a long cascade of
+         "Cannot infer type" errors that were consequences of that
+         one root failure, not independent defects. Diagnosed via
+         javap against the actual resolved jar (not assumed from
+         Kotest's own docs, which do not fully specify this overload
+         shape for 5.9.1) before acting.
+  GREEN- added `import io.kotest.property.arbitrary.bind`;
+         `./gradlew compileDebugUnitTestKotlin` clean on the next run.
+  RED  - detekt MaxLineLength on Arbitraries.kt:52 (the splitSteps
+         bounded-Triple line), pre-existing since the file was
+         written but never previously reachable by detekt because the
+         file could not compile until the bind fix.
+  GREEN- wrapped the Triple(...) construction across multiple lines.
+  RED  - compileDebugUnitTestKotlin: "Redeclaration: data class
+         GenevaCase" - GenevaConformanceTest.kt (new) and
+         GenevaWaterfallTest.kt (existing, increment 3) both declared
+         a private GenevaCase.
+  GREEN- renamed the new file's class to GenevaFullCase.
+  GREEN- ./gradlew testDebugUnitTest: 363 tests, 0 failures, 0 skips,
+         across 23 classes (see THE CONFORMANCE SUITE, THE PROPERTY
+         TESTS, THE FENCE for what each covers).
+  GREEN- ./gradlew detekt ktlintCheck: clean.
+  GREEN- ./gradlew clean test detekt ktlintCheck: 60/60 tasks
+         executed (nothing cached), fully green - the strongest local
+         confidence signal available before commit.
+  RED  - (deliberate plant, not a defect) geneva-cases.json case c's
+         declarableRate: 39.16 -> 39.17. TS fixtures.test.ts: 19
+         passed, 1 failed (the planted case, exact assertion named in
+         THE TWO ROUNDING RULES). Kotlin GenevaConformanceTest: 12
+         passed, 1 failed (the same case).
+  GREEN- reverted (git diff empty afterward); both suites re-run,
+         both green.
+  GREEN- ./gradlew gate (the exact command the disabled `android` CI
+         job runs): BUILD SUCCESSFUL, checkTestFloor OK at 363 (floor
+         10).
+  GREEN- pnpm exec vitest run tests/unit/calc-engine (TS control,
+         AC1's "TypeScript suite still passes"): 23 files, 462 tests,
+         all green, run twice (once before the plant, once after the
+         revert).
+
+====================================================================
+THE PORT
+====================================================================
+File-by-file, TS to Kotlin, all thirteen calc-engine source files
+(main) map 1:1 by responsibility (no index.ts equivalent - Kotlin's
+package itself is the barrel, nothing to port):
+
+  types.ts            -> Types.kt (grew across every increment into
+                          the single home for every sealed/data type;
+                          detekt's MatchingDeclarationName pressure -
+                          fired on Denominator.kt/Warnings.kt/
+                          AllowedDays.kt each introducing their own
+                          top-level data class - consistently pushed
+                          shared types there rather than splitting
+                          files, which is why this is the one file
+                          that grew far past its TS counterpart's
+                          size rather than staying proportional)
+  rules.ts             -> Rules.kt (RULES_2026, ruleSetFor)
+  regime.ts            -> Regime.kt (regimeFor)
+  denominator.ts       -> Denominator.kt (ceilProrated, missionCapFor,
+                          resolveDenominator)
+  granularity.ts       -> Granularity.kt (classifyTeleworkHours)
+  waterfall.ts         -> Waterfall.kt (runWaterfall)
+  validate.ts          -> Validate.kt (validateInput, split into
+                          rangeErrors/dayFieldErrors after a detekt
+                          CyclomaticComplexMethod failure)
+  declarable-rate.ts   -> DeclarableRate.kt (declarableRateFor -
+                          truncates)
+  raw-rate.ts          -> RawRate.kt (rawRateFor - rounds up)
+  headroom.ts          -> Headroom.kt (floorToHalfDay, headroomFor -
+                          floors)
+  warnings.ts          -> Warnings.kt (warningsFor, all eight
+                          variants)
+  calculate.ts         -> Calculate.kt (calculateTelework, the
+                          pipeline assembly)
+  allowed-days.ts      -> AllowedDays.kt (allowedTeleworkDays)
+
+Two genuine type-design bugs found by reading the TS source directly
+rather than assumed from the spec's prose (both fixed before
+increment 4's code depended on them further):
+  - InputField (Kotlin enum mirroring validate.ts's field tags) had
+    the wrong members in its first draft (EMPLOYMENT_RATE/
+    PERIOD_FRACTION/GRANULARITY - none of which validate.ts actually
+    assigns) and was missing DENOMINATOR, which IS assigned. Fixed to
+    the four fields validate.ts actually uses.
+  - teleworkDays/missionDaysFrance/missionDaysThirdState and
+    swissTaxedDays/frenchTaxedDays/creditedMissionDays were typed Int
+    in the first draft; HALF_DAY granularity's 0.5 increments are the
+    ORDINARY case in this domain, not an edge case (confirmed against
+    validate.test.ts's own `teleworkDays: 10.5` case), so all six are
+    Double.
+
+One considered, documented type-design difference that stays a
+difference rather than being "fixed" to match TS structurally:
+DenominatorMethod.Exact.totalWorkDays is Int in Kotlin, where the TS
+side's equivalent field can hold NaN under one test case (a "never
+throws" property test passing Number.NaN through it). Int cannot
+represent NaN. Rather than widen every downstream type
+(DenominatorOutcome, TeleworkResult, WaterfallInput) to Double to
+support one TS-only edge case, the Kotlin side keeps the domain
+constraint ("a denominator basis is always a whole day count") and
+the one inexpressible TS test case is named rather than silently
+dropped: AllowedDaysTest.kt's own "never throws" test comments this
+exactly, testing the NaN path through periodFraction (which IS
+Double) instead.
+
+Test files: 1:1 by responsibility with web/tests/unit/calc-engine's
+own files that AC1-4 name (RulesTest, RegimeTest, DenominatorTest +
+DenominatorConformanceTest, GranularityTest, MissionCapTest,
+WaterfallTest + GenevaWaterfallTest + GenevaConformanceTest,
+ValidateTest, RatesTest + RateConformanceTest, HeadroomTest,
+WarningsTest, CalculateTest, AllowedDaysTest, Arbitraries +
+Properties1To4Test + Properties5To8Test). Six TS files have no
+Kotlin counterpart and were not ported - named under NOTICED BUT NOT
+TOUCHING, none required by AC1-4.
+
+====================================================================
+THE TWO ROUNDING RULES
+====================================================================
+Proven not to merge at increment 4 (this session did not repeat that
+proof; recorded in commit 05d27d8's own body). declarableRateFor
+truncates to 2dp (the AFC filing); rawRateFor rounds up to 1dp
+(display); floorToHalfDay floors (advisory headroom, never overstate
+room); ceilProrated ceils (the basis and mission cap, favouring the
+user). Each lives in its own file, per SPEC 7.3's explicit
+requirement that they be separated so they cannot be accidentally
+unified.
+
+THIS SESSION'S OWN PROOF, on geneva-cases.json rather than
+rate-cases.json (see SUMMARY for why this fixture, this case): case
+c is Geneva's own published truncation example - 94 of 240 credited
+days is 39.1666...%, and the AFC publishes 39.16, which is only
+correct under truncation (rounding gives 39.17, which is what was
+planted and which both suites correctly rejected).
+
+====================================================================
+THE CONFORMANCE SUITE (AC1, AC4)
+====================================================================
+AC1 - all six Geneva cases exact, TS suite unaffected:
+  GenevaWaterfallTest.kt (increment 3, unchanged this session): 13
+  tests, checks swissTaxedDays/frenchTaxedDays/regimeApplies against
+  the waterfall alone (declarableRateFor did not exist yet at
+  increment 3).
+  GenevaConformanceTest.kt (this increment): 13 tests, the complete
+  pass through the full calculateTelework pipeline including
+  declarableRate. Reads fixtures/geneva-cases.json directly (R206),
+  asserts the count first (six cases, ids a/b/c/d/e/special) so the
+  suite cannot pass vacuously, then for each case asserts result.ok
+  first and separately from the four field comparisons (an engine
+  that cannot produce a result should say so plainly rather than fail
+  four assertions with a confusing message - matches fixtures.test.ts's
+  own ordering exactly).
+  Both green. TS: tests/unit/calc-engine/fixtures.test.ts, 20 tests,
+  green (verified this session, both before and after the D20 plant).
+
+AC4 - fixtures/rate-cases.json's 72 cases exact:
+  RateConformanceTest.kt (increment 4, unchanged this session): 73
+  tests (72 cases + the vacuous-pass guard), all green. Re-verified
+  as part of every full-suite run this session, not merely assumed
+  carried forward.
+
+denominator-cases.json's own conformance suite
+(DenominatorConformanceTest.kt, increment 2, unchanged): 7 tests,
+green.
+
+====================================================================
+THE PROPERTY TESTS (AC3)
+====================================================================
+Arbitraries.kt: validInputArb, built the same way
+web/tests/unit/calc-engine/arbitraries.ts builds it - valid BY
+CONSTRUCTION (resolveDenominator computes the real totalWorkDays
+first, then splitSteps partitions a step budget into three day-count
+fields that provably cannot exceed it), not generate-and-discard,
+which would spend most of 10 000 runs on inputs the engine refuses.
+Covers part-time (employmentRate 1-100), mid-year periods
+(periodMonths 1-12), both denominator methods, all three
+granularities, and both a known (2026) and unknown/fallback (2027)
+tax year - each confirmed reached by "the generator itself" test in
+Properties1To4Test.kt, not assumed from the generator's construction
+alone.
+
+PROPERTY_RUNS = 10_000, PROPERTY_SEED = 20260907L (fixed, matching
+the TS side's FIXED_SEED/FIXED_RUNS exactly - ruling R24's own
+argument: a rotating seed on a blocking check goes red on a case
+nobody can reproduce). FALSIFY_RUNS = 2_000 for the deliberately-
+broken variants, same fixed seed.
+
+Properties1To4Test.kt (11 tests) and Properties5To8Test.kt (14
+tests), matching properties-1-4.test.ts / properties-5-8.test.ts's
+cases and structure exactly:
+  1. swissTaxedDays + frenchTaxedDays == totalWorkDays (the day
+     partition is exact)
+  2. declarableRate <= 40 whenever regimeApplies
+  3. creditedMissionDays <= missionCap AND <= fiscalCeilingDays -
+     teleworkDays
+  4. remainingToSocial >= remainingToFiscal (always at least as much
+     social room as fiscal), including the negative-headroom case
+  5. rawRate is monotonic in teleworkDays
+  6. declarableRate never exceeds rawRate
+  7. truncation never overstates (checked against the exact
+     unrounded value computed on integers - ruling R16's own
+     argument: comparing two floats would compare the defect against
+     itself) and loses less than one hundredth
+  8. swapping the France/third-state mission split never increases
+     creditedMissionDays (in fact leaves it identical - the credit is
+     min(total, budget), stronger than the spec strictly requires,
+     pinned as its own test)
+
+Every invariant is paired with a DELIBERATELY BROKEN variant Kotest
+must falsify - via `shouldThrow<Throwable> { checkAll(...) { ... } }`,
+Kotlin's equivalent of the TS side's `expect(() => fc.assert(...)).
+toThrow(...)`. All eight break-pairs, plus "the generator itself"
+(produces only inputs the engine accepts; reaches every dimension AC1
+names) and "the two rate rules stay separated" (they disagree on at
+least some input, or one is dead code; they agree exactly when no
+mission day is uncredited) ported and green. 10 000 x 8 + reach/
+isolation checks = every property ran the full case count this
+session, not a reduced count for speed.
+
+Kotest's checkAll/PropTestConfig signatures were confirmed directly
+against the resolved jar (javap on kotest-property-jvm-5.9.1.jar)
+rather than assumed from partial online documentation, which is what
+surfaced the missing bind import in the first place (see SUMMARY).
+
+====================================================================
+THE FENCE (AC3's second half)
+====================================================================
+FencesTest.kt's fence 1 (calcImportsNothingFromAndroidOrOtherProjectPackages)
+was written at AN1 against a placeholder (`enginePlaceholder(): Boolean
+= true`) and never re-run against the real, now-complete calc/
+package until this session - run, not assumed: green, as part of
+every full testDebugUnitTest invocation this session made (the fence
+is one of FencesTest's 7 tests, all reported individually in the JUnit
+XML - see THE CONFORMANCE SUITE'S sibling counts). The scanner reads
+every .kt file under calc/ (now 13 main files, ~1500 lines, versus one
+placeholder file at AN1) and found zero references to android.*,
+androidx.*, or any ch.monreleve.app.<other-package> - the calc/ engine
+is exactly as portable as SPEC 5 requires it to be, confirmed against
+the real code rather than inherited on faith from an earlier pass
+against different code.
+
+====================================================================
+WHAT CI CAN AND CANNOT CLAIM WHILE IT DOES NOT RUN
+====================================================================
+Both the `web` and `android` jobs in .github/workflows/ci.yml are
+gated on `vars.CI_FULL == 'on' || github.event_name ==
+'workflow_dispatch'`. Checked directly this session, not assumed
+from a prior report: `gh variable list` returns empty (CI_FULL is
+UNSET) and `gh repo view --json visibility` reports PRIVATE. Per
+R248's own ground truth, an unset CI_FULL on a private repository
+means neither job runs on push - this push will not execute CI.
+
+property-sweep.yml (the rotating-seed property sweep, R24's other
+half) is web/-only; it has no Kotlin/Android equivalent and was not
+extended to one this session (not named in this increment's scope;
+see NOTICED BUT NOT TOUCHING).
+
+WHAT THIS TASK CAN CLAIM INSTEAD, NAMED AS SUCH RATHER THAN LEFT
+IMPLICIT: the manual, local double-run this session performed IS the
+claim, not a stand-in for a green check mark on the PR:
+  - `pnpm exec vitest run tests/unit/calc-engine` (TS): 23 files, 462
+    tests, green - the exact suite the `web` CI job's own test step
+    would run over this task's one shared change (fixtures/
+    geneva-cases.json, touched only transiently by the D20 plant and
+    reverted).
+  - `./gradlew gate` (Kotlin): the EXACT command the `android` CI
+    job's one real step invokes - not an approximation of it, the
+    literal same Gradle task. BUILD SUCCESSFUL, checkTestFloor OK at
+    363 (floor 10).
+  - Both were run against the identical fixtures/*.json files in the
+    same working tree at the same commit, which is the property D20
+    exists to protect and CI, when it runs, would verify the same way
+    - just on GitHub's runners instead of this machine.
+This is a same-machine, same-commit, both-ecosystems verification,
+not a substitute for CI executing on its own infrastructure - stated
+plainly per the relay's own instruction, not left for a reader to
+infer from a bare "tests pass".
+
+====================================================================
+EXIT GATE
+====================================================================
+FIRST ATTEMPT KILLED, NOT A GATE DEFECT: launched in the background
+to avoid blocking this session while the report was drafted; the
+task-notification reported status "killed" with zero captured
+output. Checked for the documented residual leak (CLAUDE.md's own
+R98/R105/R179 account: a hard kill bypasses any `finally`-based
+cleanup) rather than assumed harmless: found one leaked
+`monreleve-clone-SxwInt` under `%TEMP%`. Disk usage before and after
+removing it was unchanged (16G free both times), consistent with the
+kill landing early - before `pnpm install` populated `node_modules` -
+rather than mid-suite. Removed. Re-ran in the FOREGROUND (this
+session's own attention, not backgrounded a second time) with the
+maximum tool timeout, to completion.
+
+SECOND ATTEMPT, VERBATIM (R206/R181 - the script's own printed
+summary, not a paraphrase of it):
+
+  commit    4889b9c97114d6d4afca4ef9c9bcdf66ea73585c
+  branch    main
+  tree      DIRTY, 1 path(s) NOT in this run: ?? REPORT-AN2.txt
+            (this report itself, necessarily unwritten in its final
+            form until the exit gate it records had run - committed
+            immediately after, see PUSH PROOF)
+  clone     C:\Users\KAMXKAM\AppData\Local\Temp\monreleve-clone-UARFU4
+  scrubbed  DATABASE_URL, RESEND_API_KEY, NEXT_PUBLIC_SITE_URL,
+            FRONTALIER_RUNTIME, FRONTALIER_DEV_ROUTES, AUTH_SECRET,
+            ANDROID_PACKAGE_NAME, ANDROID_SHA256_CERT_FINGERPRINTS
+  swept     no stale clones (older than 4h) found (the killed attempt's
+            leak had already been removed by hand, above, before this
+            run - so it had nothing to sweep, not a missed sweep)
+
+  GATE:CLONE PASSED
+
+  CI readiness: quiet - the repository is private and CI_FULL is
+  unset - jobs will skip.
+
+  ran     install, typecheck, lint, test, build, size, db:deploy,
+          test:db, test:container:write
+
+  claim   this commit builds and passes install, typecheck, lint,
+          test, build, size, db:deploy, test:db, test:container:write
+          from a clean checkout - a machine with no .env, no prior
+          node_modules and no generated file this run did not produce
+          itself.
+
+  NOT RUN HERE, AND THE CLAIM EACH ONE IS THEREFORE NOT MAKING:
+    test:e2e        - needs a Playwright browser download; runs
+                      locally via pnpm test:e2e. NO CLAIM about the
+                      product in a real browser.
+    test:visual     - needs the Playwright Docker container (R98);
+                      runs locally via pnpm test:visual. NO CLAIM that
+                      any page still looks the way its baseline says.
+    test:runtime    - needs a Playwright browser download. NO CLAIM
+                      about the runtime guard (R81).
+    lighthouse      - needs a Chrome binary and a served build. NO
+                      CLAIM about performance, none about SPEC 21 LCP.
+    parity:check    - covered by typecheck here; the Node matrix is
+                      R201 workflow_dispatch from October. NO CLAIM
+                      about Node versions other than this one.
+    test:container  - selected locally when the container changed
+                      (R251); CI runs it too, but that job has never
+                      passed (see F-CI). NO CLAIM about the image
+                      beyond what test:container:write above proves.
+
+Two informational, non-blocking lines in the run, named rather than
+silently passed over: two pre-existing `no-console` unused-eslint-
+disable-directive warnings (benchmark.test.ts, verification-trace.test.ts
+- both pre-date this session, 0 errors, lint step still OK by
+gate-clone.mjs's own pass/fail rule); one `[export-pdf]` line stating
+its own render tests did not run because no dev server answered
+`/api/health` inside the clone (R133's own named-not-hidden pattern,
+matching the "NOT RUN HERE" table's own convention one level down -
+a render suite that needs a live server cannot run inside a scratch
+clone with no server started, and the script says so plainly rather
+than the check silently passing).
+
+None of this task's own increment-5 code paths appear in either named
+gap: the Kotlin engine is verified separately, in full, via
+`./gradlew gate` (see WHAT CI CAN AND CANNOT CLAIM) - gate:clone
+covers only the web/database side of the shared-fixture claim.
+
+====================================================================
+PARKED
+====================================================================
+None under a PARK-<n>/PARKAN-<n> numbering - every choice made this
+session (the bind import, the MaxLineLength wrap, the GenevaFullCase
+rename, the @OptIn additions) was a reversible local fix to something
+this session's own work needed, not a stand-in for a missing external
+artefact.
+
+====================================================================
+DEVIATIONS
+====================================================================
+D1. Six TS calc-engine test files have no Kotlin counterpart:
+    boundaries.test.ts, derivation-disagreement.test.ts,
+    no-magic-thresholds.test.ts, no-snapshots.test.ts,
+    benchmark.test.ts, verification-trace.test.ts, types.test.ts.
+    None are named by AC1-4 or by any increment in relay/AN2.txt.
+    Each is either TS-tooling-specific (types.test.ts's expectTypeOf
+    is a tsc-checked construct with no Kotlin equivalent - the Kotlin
+    compiler's own static typing already closes this class of gap at
+    every call site), UI-mutation-testing-specific
+    (derivation-disagreement.test.ts targets a defect in a TS-only
+    panel component that has no Kotlin UI yet - AN3+ territory), or a
+    source-scanning discipline check with no Kotlin port
+    (no-magic-thresholds.test.ts, no-snapshots.test.ts) - the
+    underlying discipline (RuleSet as the only source of a threshold;
+    no snapshot assertions) was followed by hand in every Kotlin file
+    written this session and across AN2 (WarningsTest.kt's own "reads
+    the threshold from the RuleSet rather than a literal" test is one
+    direct instance), but no mechanical Kotlin-side scan enforces it
+    project-wide the way no-magic-thresholds.test.ts does for TS. See
+    NOTICED BUT NOT TOUCHING.
+D2. GenevaWaterfallTest.kt (increment 3's partial AC1 pass) was left
+    in place rather than deleted now that GenevaConformanceTest.kt
+    (this increment) supersedes it for declarableRate. Both pass;
+    GenevaWaterfallTest.kt's own header comment already named
+    GenevaConformanceTest.kt as where the rest lands, so keeping both
+    documents the port's own history rather than silently discarding
+    increment 3's evidence. Flagged rather than deleted unilaterally -
+    a maintainer call, not this session's to make outside its own
+    scope.
+
+====================================================================
+NOTICED BUT NOT TOUCHING
+====================================================================
+- The six TS-only test files named in D1 above: no mechanical Kotlin
+  equivalent of no-magic-thresholds.test.ts (a source-scanning grep
+  for bare 0.4/240 literals outside rules.ts) exists. SPEC 7.7 states
+  the RuleSet rule generally, not TS-specifically. Worth a future
+  session's attention as a detekt custom rule or a FencesTest.kt-style
+  scanner over calc/ - out of this session's named scope (not listed
+  in any AN2 increment).
+- property-sweep.yml (the rotating-seed sweep, R24) is web/-only.
+  Kotest's property tests this session wrote run only the fixed-seed,
+  fixed-count blocking path; there is no Kotlin equivalent of the
+  rotating 100 000-case weekly sweep. Not built this session (not
+  named in relay/AN2.txt's scope).
+- CI_FULL remains unset on a PRIVATE repository (R248's own named
+  ground state), confirmed again this session via `gh variable list`/
+  `gh repo view`. Not re-litigated per the relay's explicit OUT OF
+  SCOPE instruction ("Re-litigating R248/CI_FULL... this task
+  inherits it, does not revisit it").
+
+====================================================================
+QUESTIONS
+====================================================================
+Q1. GenevaWaterfallTest.kt vs GenevaConformanceTest.kt (D2): keep
+    both permanently as a historical pair, or fold
+    GenevaWaterfallTest.kt's now-subsumed checks into
+    GenevaConformanceTest.kt and delete the former? Left as-is this
+    session; both pass, no correctness question, purely a
+    maintainability call.
+Q2. D1's six unported TS discipline tests: worth a dedicated future
+    task (an AN-series "port the TS-side discipline scans to Kotlin"
+    increment), or is the hand-verified discipline (checked file by
+    file as each was written, per THE PORT's own account of the
+    InputField and Double/Int fixes) sufficient given calc/'s small,
+    stable size? Not this session's call.
+
+====================================================================
+PUSH PROOF
+====================================================================
+  748d79f  AN2: the ground, and Kotest
+  4f6d319  AN2: types and RuleSet
+  cedf58c  AN2: regime, denominator, granularity, mission cap
+  d941ec8  AN2: the waterfall, and the first six cases
+  05d27d8  AN2: truncate and floor, proven not to merge
+  4889b9c  AN2: warnings, the conformance suite, and the property tests
+  <this>   AN2: the exit gate, and the report
+
+  gate:clone run before this final push, per R199/the relay's
+  requirement, against commit 4889b9c: GATE:CLONE PASSED. Full
+  verbatim result in EXIT GATE above. Working tree clean before this
+  report's own commit (this file was the only untracked path).
+  748d79f through 05d27d8 (increments 0-4) were already on
+  origin/main from a prior session; this push carries exactly two
+  new commits, 4889b9c and this report's own.
+
+  ANDROID SIDE, THE SAME MOMENT: `./gradlew gate` (the exact command
+  the disabled `android` CI job runs) also green at this same commit,
+  recorded in SUMMARY/RED-GREEN LEDGER above rather than repeated
+  here - both engines' own exit checks, same commit, same session.
