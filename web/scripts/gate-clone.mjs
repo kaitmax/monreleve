@@ -597,6 +597,11 @@ try {
     }
   }
 
+  // FW32, AC3: ONE SOURCE for what ran, shared by the "ran" line and the
+  // claim sentence below it - so the two can never say something different
+  // from each other, the way a hand-kept list drifts from what actually runs.
+  const ranSteps = `install, typecheck, lint, test, build, size${local === null ? '' : ', db:deploy, test:db'}${wroteInProduction ? ', test:container:write' : ''}`;
+
   console.log('');
   console.log('GATE:CLONE PASSED');
   // R223: said AFTER the pass, because it is about what CI will do with a push
@@ -604,9 +609,18 @@ try {
   console.log(describeReadiness(ciReadiness()));
   console.log(`  commit  ${head}`);
   console.log(`  clone   ${clone} (removed)`);
+  console.log(`  ran     ${ranSteps}`);
+  console.log('');
+  // THE CLAIM, STATED AS A SENTENCE (AC3, R256's corollary) - not left for a
+  // reader to assemble from the suite list themselves. "GATE:CLONE PASSED"
+  // read alone is how a production build that wrote zero rows on every push
+  // since 13 September looked sound (FW31); a list of suite names is still
+  // something a reader has to translate into a claim. This says the claim.
   console.log(
-    `  ran     install, typecheck, lint, test, build, size${local === null ? '' : ', db:deploy, test:db'}${wroteInProduction ? ', test:container:write' : ''}`,
+    `  claim   this commit builds and passes ${ranSteps} from a clean checkout -`,
   );
+  console.log('          a machine with no .env, no prior node_modules and no generated');
+  console.log('          file this run did not produce itself.');
 
   // ---------------------------------------------------------------------
   // WHAT THIS RUN DOES NOT CLAIM (AC2, R256).
