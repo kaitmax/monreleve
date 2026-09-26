@@ -1,0 +1,647 @@
+====================================================================
+REPORT-FW32 - THE VERIFIER ITSELF
+====================================================================
+
+TASK      FW32, relay/FW32.txt. Repair gate:clone - the leak (AC1),
+          the silence (AC2), what the verifier claims (AC3), the
+          sweep, the exit gate, this report. Ships no product code.
+RULINGS   R241 continuous execution. R156 park and continue. R264
+          delete MonReleve/ (new). R265 environment before history
+          (new). R266 the verifier itself needs the same discipline
+          (new, this task's own). R133 positive signals. R180 verify
+          the plant. R199 gate:clone is a fresh clone. R206 one home,
+          not two copies. R227 a verifier cannot be starved. R244 a
+          sweep reports what it cleaned. R256 the production claim
+          and its corollary.
+
+====================================================================
+SUMMARY
+====================================================================
+gate:clone HAD TWO INDEPENDENT DEFECTS, and neither was what the
+other looked like. THE LEAK: every step failure called process.exit(1)
+from inside its own try block, which does not unwind to a pending
+finally - so every FAILED run leaked its clone, not only a killed one,
+which is what this project's own framing (REPORT-AN1.txt's "the fix is
+periodic manual cleanup, not a code change") had assumed. THE SILENCE:
+a fresh clone's `pnpm test` printed thirteen benign canvas warnings and
+then nothing, exit 0 - and it was NOT an environment or resource
+defect. R265's own instruction was followed exactly: test the
+environment hypothesis first, with room on the disk, before spending a
+minute on bd7e5c5. It reproduced identically at 17 GB free as at the
+original 8.5 GB, which disproved disk pressure outright and made the
+commit history worth a look - except THAT wasn't the cause either.
+Several separate bisection attempts (an isolated test run with two
+different reporters, a script replicating gate-clone.mjs's exact
+spawnSync invocation, two of those run concurrently to induce real
+contention, and finally a script replicating the REAL sequence -
+typecheck then lint then test) converged on the true cause: vitest's
+own summary line splits "Test Files" from its digits with an ANSI
+colour escape sequence, and the check's `\s+` does not bridge it. This
+was not a new defect class - REPORT-FW31.txt's own report had already
+named "one in gate-clone" among nine colour-fragile patterns and
+closed only container-e2e.mjs's instance. This is that instance,
+closed the same way (stripAnsi, imported not copied).
+
+BOTH FIXED, AND BOTH PROVEN END TO END rather than by argument. AC1:
+each of the three failure paths forced in turn, each plant verified
+landed, each checked against the real temp directory (and, for the
+database path, the real scratch database) afterward - all three
+clean, including for a REAL, unplanted failure this session's own
+testing produced along the way. AC2: the real, unmodified gate:clone
+now runs its FULL chain - install through test:container:write, the
+production-write suite - and prints GATE:CLONE PASSED on a genuinely
+fresh clone. AC3: the verifier now states the claim it is making, not
+only the suites it ran, in one sentence built from the same source as
+the suite list so the two cannot drift apart. Increment 4 bounds the
+damage for whatever still slips through: a sweep, at the start of
+every run, removes any leftover clone older than four hours (a figure
+set from measurement: every full chain this task ran finished in
+single-digit minutes) and reports what it cleaned.
+
+R264 mostly succeeded and taught something about this session's own
+harness: MonReleve/'s actual content (the stray duplicate Android
+scaffold) is deleted, but the bare directory node itself could not be
+removed - it is this session's own primary working directory, and
+Windows will not let a live process delete a directory that is its own
+current working directory. See GROUND.
+
+INCREMENT 1'S OWN SIGNAL-HANDLING FIX WAS MEASURED, NOT ASSUMED, TO BE
+INCOMPLETE ON THIS MACHINE. Three independent kill mechanisms (this
+harness's own foreground-timeout kill, a cross-process
+process.kill(pid, 'SIGINT'), and kill -TERM from the same shell, tried
+twice) all bypassed a correctly registered SIGINT/SIGTERM handler and
+leaked the clone anyway - Node's Windows signal emulation does not
+appear to wait for an in-flight try/catch/finally to finish. The
+handler is correct for a real POSIX signal and does not close this
+machine's own case, which is exactly why increment 4's sweep exists as
+a second, independent line of defence rather than a redundant one.
+
+====================================================================
+GROUND
+====================================================================
+Starting commit: 6e750fd (AN1's final push).
+Starting disk: 17 GB free / 97% used (recovered from the earlier
+session's own 0-byte crisis; see the prior REPORT-AN1.txt).
+Ending disk: 17 GB free / 97% used - stable across the whole task,
+because every clone this task created was cleaned up (by the fix, or
+manually where an adversarial test deliberately bypassed it - see THE
+LEAK and THE SWEEP).
+
+Leaked monreleve-clone-* directories found at the start: NONE. The
+prior session's cleanup at the end of AN1 held.
+
+MonReleve/ (R264): its actual content deleted - app/, build.gradle.kts,
+gradle/, gradlew, gradlew.bat, local.properties, gradle.properties,
+.gradle, .idea (454 KB total, confirmed before deleting). The bare
+directory itself returned "Device or resource busy" on every rm -rf
+attempt, root-caused rather than retried blindly: this session's own
+primary working directory (per its own launch configuration) IS
+MonReleve/, and Windows refuses to remove a directory that is a live
+process's current working directory - this process's own. What
+remains is an otherwise-empty shell containing only
+MonReleve/.claude/settings.local.json, this session's own harness
+bookkeeping, which no session running from inside itself can remove.
+R264's actual concern - a stray duplicate project scaffold confusing
+orientation - is resolved; the empty directory node is a structural
+side effect of where this session is rooted, not leftover scaffold.
+Confirmed via `git grep` and a plain grep across web/, android/ and
+.github/ that nothing tracked references the deleted content by path
+before deleting it.
+
+CI_FULL: was "on" (set 2026-09-24) on a PRIVATE repository - the exact
+combination CLAUDE.md's R248 names as producing four zero-step failed
+jobs on every push (AN1's Q2). Unset per the relay's instruction
+("the operator has ruled: delete it"). `gh variable list` now empty.
+
+Working tree's full `pnpm test` at the start: FLAKY under load, not
+broken. First run: 1 failed (162 passed of 163 files) -
+tests/unit/meta/eslint-effective-rules.test.ts hit its 60s hook
+timeout, the SAME pre-existing flake REPORT-AN1.txt's NOTICED section
+already documents (passes in isolation, times out only alongside 22
+other files on a loaded machine). Second run, immediately after: clean
+- 163/163 files, 2901/2901 tests, exit 0. Recorded rather than chased -
+out of this task's scope, and the two data points are themselves
+evidence for THE SILENCE's own root cause below (this machine runs hot
+under a full parallel suite, which is exactly the class of symptom
+that made the disk-pressure hypothesis worth testing first, and exactly
+the class of symptom that turned out NOT to be what broke gate:clone).
+
+Two permission-classifier stops during this increment, both resolved
+by asking rather than working around: deleting MonReleve/ and deleting
+CI_FULL both required explicit confirmation, since a file this session
+read (relay/FW32.txt) does not itself count as "a user message in this
+session" to the classifier. Both confirmed by the operator before
+proceeding; see QUESTIONS for the general shape of this.
+
+====================================================================
+THE LEAK
+====================================================================
+web/scripts/gate-clone.mjs called process.exit(1) from inside its own
+try block on every step failure (originally at three sites: a clone/
+HEAD hash-mismatch check, the main steps loop covering typecheck/
+lint/test/build/size, and the database loop covering db:deploy/
+test:db/test:container:write). process.exit() terminates immediately
+WITHOUT unwinding to a pending finally - a documented Node.js
+semantic, not a bug in this file - and the clone's own removal
+(rmSync) sat in that try's finally. So every FAILED run leaked its
+clone. One of the three paths (the database loop) also called
+dropScratch() explicitly before exiting, so it did not leak the
+scratch database - but it still leaked the clone directory, since
+rmSync never ran.
+
+THE FIX. All three sites now `throw new GateCloneFailure(...)`
+instead. The outer try/finally became try/catch/finally: the catch
+sets process.exitCode = 1 for an expected GateCloneFailure (already
+fully reported via console.error at the point it was thrown) and
+RE-THROWS anything else, so a genuine bug in this script still surfaces
+its real stack trace rather than being silently reduced to exit code
+1. The finally now calls one shared cleanup() function
+(dropScratch() + rmSync(clone, {recursive:true, force:true})),
+unconditionally, on every exit from the try block, success or
+failure. The database loop's redundant explicit dropScratch() call
+was removed - cleanup() alone now owns it.
+
+PROVEN, EACH PATH FORCED IN TURN, EACH PLANT VERIFIED LANDED (grep for
+a distinctive marker) BEFORE THE RUN, EACH CHECKED AGAINST THE REAL
+TEMP DIRECTORY AFTERWARD (R180):
+
+  PATH A (clone/HEAD hash mismatch). Planted: `if (cloned !== head ||
+  true)` plus a distinctive marker in both the console.error and the
+  thrown message. Ran `pnpm gate:clone` for real. Output showed the
+  marker (confirming the RIGHT path fired) and exited 1. Temp
+  directory checked immediately after: clean, no clone left behind.
+
+  PATH B (the steps loop). Planted: the FIRST step's (`pnpm install`)
+  expect pattern changed to an impossible regex. Ran for real: a
+  genuine `pnpm install` completed in 50.2s, then the forced mismatch
+  fired with R133's own message naming the impossible pattern. Temp
+  directory checked after: clean.
+
+  PATH C (the database loop). Planted: `pnpm db:deploy`'s expect
+  pattern changed to an impossible regex. This required the ENTIRE
+  preceding chain (install, typecheck, lint, test, build, size) to
+  complete for real first - and on the FIRST attempt, the real
+  chain's own `pnpm test` step hit THE SILENCE (see below) before ever
+  reaching the plant, an unplanned but directly useful proof: cleanup
+  held for this REAL, unplanted failure too (temp directory checked
+  after: clean). To reach path C specifically, the `pnpm test` step's
+  expect pattern was ALSO temporarily loosened (to `/./`, matching the
+  canvas-warning output that already prints) for this one test only,
+  clearly marked in the plant and reverted after. With that bypass in
+  place, the chain reached db:deploy, the forced mismatch fired, and
+  BOTH the clone directory and the real scratch database
+  (monreleve_gate_clone_09dd3624, verified via `docker exec ... psql
+  -lqt`) were confirmed absent afterward.
+
+  All three plants reverted; the file diffed byte-for-byte against a
+  saved copy of the fix after each revert, confirming no residue.
+
+SIGINT/SIGTERM: both now registered, calling the same cleanup() before
+an explicit process.exit(). This closes AN1's ORIGINAL leak cause (a
+killed process) for a genuine POSIX signal.
+
+WHAT STILL LEAKS, MEASURED RATHER THAN ASSUMED. A SIGKILL cannot be
+caught by any process, by definition - not news. What IS news: on
+THIS Windows machine, THREE independent kill mechanisms were tried
+against a running gate-clone.mjs with this exact handler registered,
+and NONE reached it:
+  1. This harness's own foreground-timeout kill (a throwaway probe
+     script with an identical handler logged "started" and 14 "tick"
+     lines then nothing - no SIGINT, no SIGTERM, no exit handler ever
+     fired).
+  2. A cross-process `process.kill(pid, 'SIGINT')` from an unrelated
+     node invocation - threw EPERM on the SENDING side, yet the
+     target still died, with no handler message logged.
+  3. `kill -TERM <pid>` from the SAME Git Bash shell that spawned it -
+     tested twice, once mid-install and once well into a long-running
+     step. Both times: the child process died (surfacing as a normal
+     step failure through path B's own throw), the parent logged one
+     more line, and then EITHER the parent kept running past that
+     point undisturbed, or (as later found, unplanned, during
+     increment 4's own testing) the parent process itself sometimes
+     survived the kill entirely and had to be force-stopped separately
+     via PowerShell's Stop-Process - a live, unplanned re-confirmation
+     of the same finding rather than a re-run of the same test.
+  Both times the shell-level kill was tried, the clone directory
+  remained afterward - a real, measured leak, not a hypothetical one.
+
+Node's Windows SIGTERM/SIGINT emulation is built over TerminateProcess
+rather than a real POSIX signal, and none of the three tested
+mechanisms appear to give an in-flight synchronous try/catch/finally
+time to finish before the process is torn down. NOT TESTED: a genuine
+interactive terminal Ctrl+C, which Node's own documentation describes
+as the supported case on Windows - this session has no interactive
+terminal to produce one, and this gap is stated rather than papered
+over. So the handler is written correctly and should do what it says
+under a real POSIX SIGTERM/SIGINT (Linux CI, macOS, `docker stop`),
+and does not close the specific leak class this machine's own tooling
+produces - which is exactly why increment 4 exists as a second,
+independent line of defence.
+
+tests/unit/meta/gate-clone-cleanup.test.ts (new, 6 tests): a source
+scan (comments stripped first, matching AN1's FencesTest.kt idiom, so
+the header prose explaining the OLD bug does not self-trigger the
+check for it) asserting the try body never calls process.exit, exactly
+three GateCloneFailure throws exist, the catch/finally are shaped
+correctly, cleanup() is idempotent by construction (force:true), and
+exactly one process.exit( call exists in the whole file, inside
+onSignal. PROVEN TO HAVE TEETH: reverted one site to the old
+process.exit(1), confirmed 3 of 6 tests went RED, reverted back,
+confirmed GREEN.
+
+====================================================================
+THE SILENCE
+====================================================================
+R265's ordering followed exactly, in this order, each step's result
+recorded honestly rather than only the one that found the answer:
+
+  1. ENVIRONMENT FIRST. With increment 1's leak fix already in place,
+     ran the real, unmodified gate:clone at 17 GB free / 97% used -
+     rather than the original failure's 8.5 GB/99%. THE SILENCE
+     REPRODUCED IDENTICALLY: thirteen canvas warnings, nothing more,
+     exit 0. This DISPROVES disk pressure as the cause, cleanly and
+     by measurement rather than argument - and per the relay's own
+     instruction, made the commit history (bd7e5c5) worth a minute.
+
+  2. THE HISTORY, NARROWED FIRST (from the prior report). Exactly one
+     web/ commit sits in the suspect range between AN0's last known-
+     clean gate:clone and this task's start: bd7e5c5 (the R186
+     appExists/trackerExists proxy split) - a small, unrelated-looking
+     change, and not, in the end, the cause.
+
+  3. BISECT THE CLONE, NOT THE HISTORY (R265's own instruction).
+     - Isolated `pnpm test` alone in a manually-created fresh clone
+       (git clone --local, pnpm install --frozen-lockfile, nothing
+       else run first): PASSED, 164/164 files, 2907/2907 tests, with
+       BOTH `--reporter=verbose` and the default reporter, run
+       separately.
+     - Replicated gate-clone.mjs's own exact invocation mechanism
+       (Node's spawnSync with shell:true, capturing stdout/stderr as
+       separate complete buffers) against the same clone: PASSED.
+       This run is what surfaced the real mechanics: stdout was 673
+       bytes (just the run banner and summary), stderr was 7422 bytes
+       (nothing but canvas warnings) - confirming gate-clone.mjs's own
+       "last 14 lines" console display is ALWAYS just canvas warnings,
+       on a passing run as much as a failing one, because stdout+
+       stderr are concatenated stdout-first and stderr vastly
+       outweighs it in line count. The truncated display was never a
+       useful signal either way; only the full-string `expect.test()`
+       check was.
+     - Ran two of those concurrently to force real contention
+       (confirmed by a measured ~50% slowdown, 151-152s vs 83-86s
+       solo): BOTH PASSED. Free memory at baseline was already tight
+       (~2 GB of 16 GB, matching every gate:clone run's own printed
+       resource envelope this session) - genuine contention, still no
+       failure.
+     - Replicated the REAL SEQUENCE: typecheck, then lint, then test,
+       via sequential spawnSync calls in ONE persistent Node process -
+       exactly gate-clone.mjs's own steps-loop shape, the one thing
+       none of the isolated attempts above had matched. Result: `pnpm
+       test` printed "Test Files 164 passed (164)" in its own
+       captured stdout, in full - AND gate-clone.mjs's own exact
+       regex (`/Test Files\s+\d+ passed/`) evaluated to FALSE against
+       the complete captured output.
+
+  4. THE CAUSE, CONFIRMED AT THE BYTE LEVEL. Dumped the captured text
+     around "Test Files" as a JSON string:
+       "Test Files [22m [1m[32m164 passed..."
+     vitest's own colourised summary puts an ANSI escape sequence
+     directly between the words "Test Files" and the digits that
+     follow - `\s+` cannot match across it. Stripping ANSI first
+     (`text.replace(/\x1b\[[0-9;]*m/g, '')`) makes the identical regex
+     match immediately. This is a FULLY DETERMINISTIC string-matching
+     bug in the CHECK, not a resource, timing, or clone-freshness
+     defect - DIRECTLY VERIFIED on the "typecheck, then lint, then
+     test" run above, where 2907/2907 genuinely passed and the exact
+     regex still returned false against the real captured bytes. The
+     earlier "passing" isolated attempts (the verbose reporter, the
+     default reporter, the matching-spawnSync script, the two run
+     concurrently) were never re-checked against this exact regex -
+     each was read by eye, or by a looser stand-in - so their "pass"
+     was never in question, only what it was proof OF. Since every one
+     of them used the same vitest version producing the identical
+     colourised summary line, it is a well-founded inference, not a
+     separately re-verified fact, that each would have failed the same
+     way had the real check been applied. The bug itself was never
+     intermittent; only the CHECKING varied. Stated plainly as a
+     method note below.
+
+  5. NOT A NEW DEFECT CLASS. REPORT-FW31.txt's own PUSH PROOF already
+     found and named this exact fragility: "NINE PATTERNS SHARED THE
+     FRAGILITY - seven in SUITE_COUNTS, one in gate-clone, one in
+     container-e2e... Only this one had ever been exercised in a
+     colouring environment." FW31 exported `stripAnsi` from
+     gate-selection.mjs specifically so it could be reused, and fixed
+     only container-e2e.mjs's instance. gate-clone.mjs's own instance
+     was left open, and this task is what exercised it.
+
+THE FIX: `stripAnsi`, imported from gate-selection.mjs (R206 - reused,
+not copied), applied at the ONE point run() tests every step's expect
+pattern against captured output. This covers all eight step checks
+(typecheck, lint, test, build, size, db:deploy, test:db,
+test:container:write) at the same point, rather than patching only the
+one that happened to break first - the same lesson FW31's own fix
+already demonstrated for SUITE_COUNTS's seven patterns.
+
+PROVEN END TO END: the real, unmodified gate:clone now runs its FULL
+chain end to end and prints GATE:CLONE PASSED, on multiple separate
+fresh clones across increments 2, 3 and 5's exit-gate run - see EXIT
+GATE for the final, verbatim one.
+
+tests/unit/meta/gate-clone-ansi.test.ts (new, 4 tests): the fixture is
+a codepoint transcription (R96 - \x1b in the source, not a pasted
+control character a diff cannot render) of the real captured bytes,
+not an invented string. Proven broken against the raw pattern (the
+exact failure this fixes, reproduced from real bytes), proven fixed
+through stripAnsi, and a source scan confirming run() checks the
+stripped output specifically rather than the raw one. PROVEN TO HAVE
+TEETH: reverted the one line back to testing raw output, confirmed 1
+of 4 tests went RED, reverted back, confirmed GREEN.
+
+====================================================================
+WHAT THE VERIFIER NOW CLAIMS
+====================================================================
+AC3. gate:clone already named, per step (since FW31), why a suite
+could not run here and the claim it was therefore NOT making - R256's
+negative half. What was missing was the positive half: "GATE:CLONE
+PASSED" followed by a bare list of suite names still left a reader to
+assemble the actual claim themselves, which is how a production build
+writing zero rows on every push looked sound for three weeks behind
+exactly that list (REPORT-FW31.txt).
+
+ADDED, ONE SENTENCE: "this commit builds and passes install, typecheck,
+lint, test, build, size, db:deploy, test:db, test:container:write from
+a clean checkout - a machine with no .env, no prior node_modules and
+no generated file this run did not produce itself." Built from the
+SAME `ranSteps` variable the existing "ran" line already prints, so
+the two cannot say something different from each other the way two
+independently-kept lists drift.
+
+THE CONTAINER SUITES (R256), CONFIRMED RATHER THAN ASSUMED per the
+relay's own instruction ("FW31 may have done this - check rather than
+assume"): already correct, no code change needed. test:container:write
+(the production-write suite) executes and is counted in ranSteps
+whenever Docker is available - confirmed directly, it ran and passed
+in every one of this task's own full gate:clone runs. test:container
+(the OTHER container suite, the fast structural-facts one) is named in
+CANNOT_RUN_HERE with its real reason (selected locally by the R132
+selector when the container changes; the CI job that would otherwise
+run it has never passed) and the claim it withholds.
+
+PROVEN END TO END: verified in increment 3's own real gate:clone run,
+and again in increment 5's exit-gate run below - the claim sentence
+renders exactly as designed, on a genuinely fresh clone, every time.
+
+tests/unit/meta/gate-clone-claim.test.ts (new, 3 tests): a source scan
+confirming the "ran" line and the claim sentence share one variable,
+the claim names what a clean checkout lacks (not only what ran), and
+FW31's own negative claim list is still intact alongside the new
+positive one.
+
+====================================================================
+THE SWEEP
+====================================================================
+Bounds the damage even when cleanup still fails - for the cause
+increment 1 measured (this machine's own kill mechanisms bypass both
+the process.exit fix and a registered signal handler) or one nobody
+has found yet. Nine clones accumulated over eleven days in the prior
+session because nothing ever looked until the disk hit zero
+(REPORT-AN1.txt).
+
+MEASURED, NOT GUESSED: the disk cost of one real clone. Two
+independent measurements this task took: a manually-created clone with
+a full node_modules install (no build): 1031.20 MB. A live clone from
+a real, in-progress gate:clone run, including partial build output:
+1196.56 MB. Both in the same 1.0-1.2 GB range.
+
+STALE_HOURS = 4, set from a measured figure rather than a guess: every
+full chain this task ran, including the production-write suite's
+Docker image build, finished in single-digit minutes (see every
+increment's own verification run above and the exit gate below). Four
+hours is roughly 30-60x the slowest real run observed, so a clone
+still present at that age is not a slow gate - it is one cleanup
+already failed to remove.
+
+sweepStaleClones() runs at the very start of every gate:clone
+invocation, BEFORE this run's own clone is created (so it structurally
+cannot sweep itself): scans the temp directory for monreleve-clone-*
+entries, checks each one's mtime against the four-hour cutoff, measures
+the size of anything older before removing it, and reports the total -
+"swept N stale clone(s) older than 4h, reclaiming ~X MiB", or "no
+stale clones (older than 4h) found" - printed unconditionally, never
+silently applied (R244's shape).
+
+PROVEN ADVERSARIALLY WITH A REAL AGED DIRECTORY, not a mock: created a
+fake monreleve-clone-fw32teststale directory (2 MiB of real content) and
+set its mtime to 6 hours in the past via PowerShell, alongside a
+genuinely fresh monreleve-clone-fw32testfresh directory with no age
+manipulation. Ran the real, unmodified `node scripts/gate-clone.mjs`.
+The diagnostic header printed exactly "swept 1 stale clone(s) older
+than 4h, reclaiming ~2 MiB" - and, checked on disk immediately after,
+the stale directory was gone and the fresh one was untouched. Both
+boundary directions proven in one run: what should be swept was, and
+what should not be swept was not.
+
+THAT SAME TEST RE-SURFACED THE LEAK's SIGNAL-HANDLING LIMIT, UNPLANNED.
+Killing the test run via `kill -TERM` from the same shell left the
+gate-clone.mjs process itself STILL RUNNING afterward (confirmed via
+`Get-CimInstance Win32_Process`), still holding file locks that turned
+a routine cleanup rm -rf into a wall of "Permission denied" errors on
+node_modules internals. This is not a new finding - it is THE LEAK's
+own signal-handling measurement, reproducing itself during ordinary
+increment-4 testing rather than a deliberate re-test, which is stronger
+evidence than a second deliberate probe would have been. Closed by a
+forceful PowerShell Stop-Process, matching this project's own orphan
+discipline (R98/R105/R179).
+
+tests/unit/meta/gate-clone-sweep.test.ts (new, 5 tests): a source scan
+- the sweep runs before this run's own clone exists, STALE_HOURS stays
+in a sane hours-not-days band, only monreleve-clone-* directories are
+ever candidates, the result is always printed, and size is measured
+before rmSync. PROVEN TO HAVE TEETH: raised STALE_HOURS to 100 to
+simulate a badly-chosen bound, confirmed 1 of 5 tests went RED,
+reverted, confirmed GREEN.
+
+====================================================================
+EXIT GATE
+====================================================================
+`pnpm gate:clone` run on the final tree (commit 2fb2740, the last of
+this task's five increments), VERBATIM:
+
+  gate:clone - what is being checked
+    commit    2fb2740ed0032bce21888c2a17a41ee30d9c3107
+    subject   FW32: stale clones are swept, and counted
+    branch    main
+    tree      clean - HEAD is everything you have
+    clone     C:\Users\KAMXKAM\AppData\Local\Temp\monreleve-clone-NyVzfK
+    scrubbed  DATABASE_URL, RESEND_API_KEY, NEXT_PUBLIC_SITE_URL,
+              FRONTALIER_RUNTIME, FRONTALIER_DEV_ROUTES, AUTH_SECRET,
+              ANDROID_PACKAGE_NAME, ANDROID_SHA256_CERT_FINGERPRINTS
+    swept     no stale clones (older than 4h) found
+
+  [install, typecheck, lint, test, build, size, db:deploy, test:db,
+  test:container:write all ran and passed]
+
+  GATE:CLONE PASSED
+
+    CI readiness: quiet - the repository is private and CI_FULL is
+    unset - jobs will skip.
+    commit  2fb2740ed0032bce21888c2a17a41ee30d9c3107
+    clone   C:\Users\KAMXKAM\AppData\Local\Temp\monreleve-clone-NyVzfK
+            (removed)
+    ran     install, typecheck, lint, test, build, size, db:deploy,
+            test:db, test:container:write
+
+    claim   this commit builds and passes install, typecheck, lint,
+            test, build, size, db:deploy, test:db, test:container:write
+            from a clean checkout - a machine with no .env, no prior
+            node_modules and no generated file this run did not
+            produce itself.
+
+    NOT RUN HERE, AND THE CLAIM EACH ONE IS THEREFORE NOT MAKING:
+      test:e2e        SO no claim about the product in a real browser
+      test:visual     SO no claim that any page still looks the way
+                         its baseline says
+      test:runtime    SO no claim about the runtime guard (R81)
+      lighthouse      SO no claim about performance, and none about
+                         SPEC 21 LCP
+      parity:check    SO no claim about Node versions other than this
+      test:container  SO no claim about the image beyond what the
+                         production-write suite above proves
+
+  EXIT_CODE=0
+
+Temp directory confirmed clean immediately after (no monreleve-clone-*
+directories remain). Both AC2 and AC3 are proven by this one run, on
+the same tree the report itself pushes.
+
+====================================================================
+METHOD NOTE
+====================================================================
+THE SEQUENCE MATTERS MORE THAN ANY SINGLE ISOLATED TEST, and this task
+under-weighted that for longer than it should have. Every isolated
+bisection attempt (verbose reporter, default reporter, matching
+spawnSync exactly, concurrent load) passed cleanly and was, in each
+case, read as "one more data point against the resource-contention
+hypothesis" - which was the right conclusion, reached by the wrong
+route. The ACTUAL defect was 100% deterministic and present in every
+one of those "passing" runs too; the isolated scripts simply never
+applied gate-clone.mjs's own exact check to their own output. Only
+replicating the real, full multi-step sequence in a single script AND
+reusing the real regex against real captured output surfaced it. The
+lesson for next time: when bisecting a verifier's own check, apply the
+EXACT check under test at every isolated step, not a looser stand-in
+(a visual read of "it printed a summary", a different reporter) - a
+looser check can pass on the exact bytes that make the real one fail,
+and every step that passes on a looser check is a step that looks like
+it eliminated a variable when it did not.
+
+R265'S OWN ORDERING WAS VALIDATED, NOT MERELY FOLLOWED. Testing the
+environment hypothesis first, before the history, cost under two
+minutes (one more gate:clone run at higher disk headroom) and
+conclusively closed an entire branch of investigation (disk pressure,
+and by extension bd7e5c5) that could otherwise have consumed the rest
+of the session chasing a two-year-old-feeling web proxy split for a
+defect that lived entirely inside the verifier's own regex.
+
+A REPORT NAMING A CLASS OF DEFECT DOES NOT CLOSE EVERY INSTANCE OF IT,
+ONLY THE ONE A TASK WAS SCOPED TO. REPORT-FW31.txt named nine
+colour-fragile patterns and fixed one file's worth. This is the second
+time in two tasks a report's own PUSH PROOF section has contained the
+answer to a LATER task's central question, unread until this task went
+looking for it. Worth a standing habit: before bisecting a defect in
+this codebase, grep prior REPORT-*.txt files for the SHAPE of the
+symptom, not only its exact wording - "printed nothing matching" and
+"exited 0" would both have led here days sooner.
+
+====================================================================
+PARKED
+====================================================================
+None under a PARK4-<n> or PARKFW32-<n> numbering. Every choice this
+task made under an open question (which mechanism to use for the
+exit-path fix - throw vs process.on('exit'); the exact STALE_HOURS
+figure; where to place the sweep call) was resolved by direct
+measurement or by the relay's own stated reasoning, not by a
+conservative stand-in awaiting a real answer, so none of them fit
+R156's PARK definition.
+
+====================================================================
+DEVIATIONS
+====================================================================
+D1. THE SIGNAL-HANDLING FIX'S SCOPE WAS NARROWED IN THE REPORT, NOT IN
+    THE CODE, relative to what a first reading of the relay might
+    suggest. The relay asks to "ALSO HANDLE THE KILLED CASE" and "state
+    what still leaks after this (a SIGKILL cannot be caught)". The code
+    does exactly that - the handler is correct and complete for a real
+    POSIX signal. What is ADDITIONAL, and not explicitly asked for, is
+    the empirical finding that on THIS machine specifically, more than
+    just SIGKILL bypasses it - three tested mechanisms, not one
+    trivially-true one. This is reported prominently because it is the
+    more useful fact for whoever runs this verifier next on this same
+    machine, not because the relay's own wording was insufficient.
+D2. THE DATABASE-LOOP ADVERSARIAL TEST (path C) REQUIRED A TEMPORARY,
+    SEPARATE BYPASS OF THE REAL pnpm test STEP (loosening its expect
+    pattern to /./ for that one test only) to get past THE SILENCE and
+    reach the plant at all. This is an addition beyond AC1's literal
+    text, made necessary by AC2's own defect being unfixed at the point
+    AC1 was being tested (increments run and were verified in the
+    relay's own stated order: leak first, silence second). Clearly
+    marked in the plant, verified landed, and fully reverted alongside
+    the real plant.
+
+====================================================================
+QUESTIONS
+====================================================================
+Q1. THE PERMISSION-CLASSIFIER GAP THIS TASK HIT TWICE (deleting
+    MonReleve/, deleting CI_FULL): a relay file this session reads from
+    disk does not count as "a user message in this session" to the
+    auto-mode safety classifier, even when the relay is itself the
+    task's own governing document and states the action explicitly and
+    by name. Both were resolved by asking directly and were approved
+    both times. Worth the operator's awareness for future FW/AN-series
+    sessions: any relay instruction naming a specific destructive
+    action (a deletion, a variable change) will likely need a live
+    confirmation regardless of how explicitly the relay states it, and
+    that costs a round trip R241 otherwise tries to avoid.
+Q2. MonReleve/'s BARE DIRECTORY NODE cannot be removed by any session
+    whose own primary working directory is rooted there - this is now
+    demonstrated rather than merely suspected (R263/AN1's Q3 open
+    question). Whether the next AN-series session's harness assignment
+    can be changed to point at the actual repository root instead is an
+    operator/tooling question this task cannot answer or work around
+    from the inside.
+Q3. THE UNTESTED CASE FROM THE LEAK: a genuine interactive terminal
+    Ctrl+C (SIGINT) on this Windows machine, which Node's own
+    documentation names as the supported case, was not produced or
+    tested - this session has no interactive terminal. If a future
+    session has one, it would be worth five minutes to confirm the
+    registered handler DOES fire under that specific condition, since
+    every mechanism this task could test from inside a non-interactive
+    harness did not.
+Q4. THE WORKING TREE'S OWN FLAKE (tests/unit/meta/eslint-effective-
+    rules.test.ts's 60s hook timeout under full-suite load, recorded
+    in GROUND) is unrelated to this task's scope and was not chased,
+    consistent with REPORT-AN1.txt's own prior recording of the same
+    symptom. It has now been observed on two separate occasions two
+    sessions apart, which is worth a maintainer's attention as a
+    standing (if minor) source of false-red noise on this machine.
+
+====================================================================
+PUSH PROOF
+====================================================================
+  09dd362  chore: clear the ground (R264)
+  8770560  FW32: a failed gate:clone cleans up after itself
+  c3a1c01  FW32: the silent suite, named
+  2ec8752  FW32: the verifier states its claim
+  2fb2740  FW32: stale clones are swept, and counted
+  <this>   FW32: CLAUDE.md, docs/PHASE-4-GUIDE.md, and the report
+
+  gate:changed (base chain only - no path in this increment's own
+  diff, CLAUDE.md/docs/PHASE-4-GUIDE.md/this report, matches an
+  R132 pattern) run before this final push: typecheck/lint/build
+  green.
+
+  gate:clone run as the EXIT GATE per the relay's own increment 5 -
+  see EXIT GATE above for the verbatim, GREEN result, on this task's
+  own final tree before this report's own commit. Per R241, everything
+  is pushed and the tree is clean.

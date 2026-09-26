@@ -249,6 +249,8 @@ Four concurrency classes, each found the same way — something left running.
 
 **R252 — when a check is run a new way and fails, suspect the new way first.** 54 failures from a direct vitest invocation that skipped an env file. A red result feels like diligence, which makes a false red cheaper to produce than a false green and just as expensive to act on.
 
+**R266 — the verifier itself needs the same discipline it applies to everything else (FW32).** Two independent defects, found only because gate:clone kept getting run rather than trusted. THE LEAK had two causes: `process.exit(1)` inside a try block skips a pending `finally` (fixed by throwing instead, caught once, cleaned up once), and a killed process bypasses cleanup entirely — a SIGKILL always, and on this machine, measured rather than assumed, so does this harness's own kill and a plain `kill -TERM`, even against a correctly registered SIGINT/SIGTERM handler. A sweep at the start of every run now bounds the damage when cleanup fails for either reason: any leftover clone older than four hours (30-60x the slowest real run measured) is removed and counted. THE SILENCE looked like a resource defect and was not — R265's environment-first test disproved disk pressure by reproducing the failure identically at 17 GB free, and the real cause was a colour-code regex mismatch REPORT-FW31.txt had already named as fragile in this exact file and fixed only in `container-e2e.mjs`. The lesson underneath both: a report naming a class of defect ("nine colour-fragile patterns") does not close every instance of it, only the one a task happened to be scoped to.
+
 ---
 
 ## 12. Rulings about rulings
