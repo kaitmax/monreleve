@@ -1,0 +1,362 @@
+AN2 SESSION PROMPT - Mon Releve
+THE KOTLIN ENGINE, AND THE FIXTURES THAT PROVE IT
+Read relay/PHASE-4-PROTOCOL.txt and relay/R241-CONSIGNE.txt first.
+Drafted by the same session that closed FW32, from tasks/todo.md's own
+AN2 entry, SPEC-frontalier-web.md section 7, and the current
+web/lib/calc-engine source - not invented.
+
+====================================================================
+R241 - CONTINUOUS EXECUTION
+====================================================================
+RUN THE WHOLE TASK. THE ONLY THING THAT ENDS THIS SESSION IS
+REPORT-AN2.txt, COMMITTED AND PUSHED.
+
+Unclear? R156: conservative, reversible, park it, continue.
+Ends early: R156's boundary; a red gate you cannot fix in the
+increment; a path reaching a real person or third party; a degraded
+context.
+
+ONE NAMED EXCEPTION, from tasks/todo.md's own estimate ("L - if it
+exceeds one session, split waterfall from rates/headroom as
+AN2a/AN2b"): if increment 3 (the waterfall) closes clean but the
+remaining scope will not fit a continuous session at the quality this
+project holds everything else to, STOP THERE rather than rushing
+increments 4-5. Write REPORT-AN2.txt for what shipped, name explicitly
+what AN2b inherits, and treat that as a successful, planned partial
+close - not a failure to finish. This is the ONLY pre-authorised
+early stop beyond R156's own four.
+
+====================================================================
+PRE-STEP
+====================================================================
+R1. `pnpm gate:clone` green on a fresh clone of origin/main's HEAD -
+    THIS IS THE FIRST TASK SINCE FW32 THAT CAN USE IT AS INTENDED.
+    Record the commit hash and the verbatim PASSED output (ran/claim/
+    swept lines) in the report's PRECONDITIONS. If it is anything
+    other than green, STOP - a red gate:clone on a task that does not
+    touch the verifier itself is a R241 boundary, not something to
+    work around.
+
+READ IN FULL before writing any Kotlin:
+  - tasks/todo.md's AN2 entry (description, acceptance criteria,
+    verification, dependencies, estimated scope) - reproduced below,
+    but read the file directly in case this relay drifts from it.
+  - SPEC-frontalier-web.md section 7 IN FULL (7.1 through 7.7) - the
+    regulatory basis table, the six-step calculation, the two rounding
+    rules, the full API surface, the fixtures section, the eight
+    property invariants, RuleSet/D29.
+  - web/lib/calc-engine/*.ts, EVERY FILE, not a summary of them -
+    types.ts, rules.ts, regime.ts, denominator.ts, granularity.ts (if
+    present under another name - check allowed-days.ts too),
+    waterfall.ts, headroom.ts, declarable-rate.ts, raw-rate.ts,
+    warnings.ts, validate.ts, calculate.ts, index.ts. This IS the
+    contract; the spec describes it, the code is it.
+  - fixtures/geneva-cases.json, fixtures/denominator-cases.json,
+    fixtures/rate-cases.json, all three, IN FULL - read the $comment,
+    contract, rule and scan fields in each, not only the cases arrays.
+    rate-cases.json is NOT named in todo.md's AN2 description but its
+    own "contract" field states plainly that both engines must
+    consume it (R206-shaped: one home) - it is in scope by the
+    fixture's own words, not by omission.
+  - web/tests/unit/calc-engine/fixtures.test.ts,
+    properties-1-4.test.ts, properties-5-8.test.ts, rates.test.ts -
+    how the TypeScript side currently proves conformance; the Kotlin
+    side proves the same claims, not a paraphrase of them.
+  - REPORT-AN1.txt (the Android scaffold, FrontierTheme, the six
+    fences - fence 1 is calc/ importing nothing from android.*/
+    androidx.*/other project packages, and it is proven against
+    android/app/src/main/kotlin/ch/monreleve/app/calc/
+    EnginePlaceholder.kt today).
+  - REPORT-FW29.txt (what "fixtures frozen" means and what R250 binds).
+
+CARRIED: R7 adversarial proofs (a deliberate one-digit fixture change
+    must fail BOTH builds - AC2 below - and the plant is reverted).
+    R96 codepoint literals over pasted text. R120 fixtures must
+    disagree - the Kotlin port is proven against fixtures that already
+    exist and already fail on a wrong reading, not fixtures written
+    alongside the code they check. R133 positive signals. R154 a
+    mechanism proves delivery, not a comment asserting one. R180
+    verify a plant landed. R206 one home, not two copies - the JSON
+    files are that home; nothing in Kotlin transcribes their numbers
+    into source. R241/R156 continuous execution and parking.
+    D20 (SPEC 7.7/7.5): a divergence between the two engines on any
+    fixture case fails both builds - this is the property AC2 exists
+    to prove, not an aspiration.
+
+====================================================================
+CONTEXT
+====================================================================
+AN2 ONLY: the calc-engine port and its shared conformance suite. It
+does NOT touch UI, does not touch detection, does not touch anything
+under android/.../ui, .../data, .../detection. It ships no product
+screen - AN3 is what renders anything this task computes.
+
+WHY THIS IS ITS OWN TASK. AN1 scaffolded calc/ as an empty, fenced
+package - fence 1 (FencesTest.kt) already asserts it imports nothing
+from android.*/androidx.*/other project packages, and that fence
+holds against EnginePlaceholder.kt today. AN3 (core components),
+AN4 (auth/onboarding) and AN5 (Room/repository/sync, "local engine
+output matches the server dossier" as its own acceptance criterion)
+all sit downstream and cannot be built against a placeholder that
+returns `true`. The engine is the one piece of this product where
+being subtly wrong is not a bug that ships and gets patched - it is a
+number filed with a tax authority.
+
+TWO ENGINES, ONE SOURCE OF TRUTH, FOREVER. fixtures/geneva-cases.json,
+fixtures/denominator-cases.json and fixtures/rate-cases.json are
+consumed by BOTH the TypeScript engine and this Kotlin port, from now
+on. Nothing in Kotlin re-types a fixture's expected value as a
+literal - JSON is read at test time, same as
+web/tests/unit/calc-engine/fixtures.test.ts already does. A future
+session that "simplifies" this by hand-copying six numbers into
+Kotlin source is undoing the entire point of the file.
+
+THE ARITHMETIC IS THE HARD PART, NOT THE STRUCTURE. Two rounding
+rules that must never merge (SPEC 7.3): declarableRateFor truncates,
+computed on the integer numerator/denominator BEFORE any percentage is
+formed (web/lib/calc-engine/declarable-rate.ts's own comment: forming
+the percentage first and truncating after gives 18.39 instead of
+18.4, wrong in 36 of 125 750 pairs up to denominator 500).
+floorToHalfDay floors, and floors a possibly-negative value without
+clamping. Kotlin's Double has the identical IEEE 754 representation
+as JavaScript's Number for this purpose - the same binary fractions
+fail to represent exactly, so the same integer-arithmetic techniques
+apply verbatim, not merely "similarly".
+
+====================================================================
+ACCEPTANCE CRITERIA
+====================================================================
+(from tasks/todo.md verbatim, plus AC4 which the fixture's own
+contract field requires and todo.md's description does not separately
+list)
+
+AC1. All six Geneva cases exact in Kotlin, including 39,16% and
+     4,16%; the TypeScript suite reads the SAME JSON and still passes
+     (it does today - do not touch web/lib/calc-engine or its tests
+     except to re-run them as a control).
+AC2. A deliberate one-digit change to fixtures/geneva-cases.json fails
+     BOTH the Kotlin suite and the TypeScript suite - proven directly
+     (run both, see both go red on the identical edit) and reverted
+     immediately after, verified restored via git diff.
+AC3. All eight invariants (SPEC 7.6, listed in full below) pass
+     10,000 generated cases each in Kotest; calc/ has no Android
+     import (fence 1, already enforced - confirm it still holds
+     against real code, not only the placeholder).
+AC4. fixtures/rate-cases.json's 72 floating-point conformance cases
+     also pass in Kotlin, proven the same way as AC1/AC2 (all 72
+     exact; a deliberate wrong expected value on one case fails the
+     Kotlin suite, reverted after).
+
+VERIFICATION (from todo.md):
+  - `./gradlew :app:testDebugUnitTest` and `pnpm test` (web side) both
+    green.
+  - Both CI workflows green on the same fixture file (CI is disabled
+    per R248's own reasoning chain - see AN1's Q2/FW32's GROUND; state
+    plainly whether this can be verified locally instead, and how).
+  - Manual check: diff the two implementations' rounding sites -
+    comments name the SAME rules (truncate vs floor), not a paraphrase
+    that could drift.
+
+THE EIGHT INVARIANTS (SPEC 7.6, reproduced so this relay is
+self-contained - the spec is still the authority):
+  1. swissTaxedDays + frenchTaxedDays === totalWorkDays
+  2. declarableRate <= 40 whenever regimeApplies === true
+  3. creditedMissionDays <= missionCap AND <= fiscalCeilingDays -
+     teleworkDays
+  4. remainingToSocial >= remainingToFiscal, always
+  5. increasing teleworkDays never decreases rawRate (monotonic)
+  6. declarableRate <= rawRate
+  7. declarableRate is never above the exact unrounded value
+     (truncation holds)
+  8. swapping France and third-state mission days never increases
+     creditedMissionDays
+
+====================================================================
+INCREMENT 0 - the ground, and Kotest
+====================================================================
+- R1's gate:clone pre-check (above). Record it.
+- Kotest wiring: add kotest-runner-junit5, kotest-assertions-core and
+  kotest-property as `testImplementation` in
+  android/app/build.gradle.kts, versions compatible with this
+  project's Kotlin 2.0.21 / AGP 8.10.1 (AN1's REPORT-AN1.txt) - verify
+  compatibility before pinning a version, do not guess. THIS IS A
+  TEST-ONLY DEPENDENCY, matching the precedent AN1 already set for
+  kotlin-reflect (build.gradle.kts's own comment there: "TEST-ONLY,
+  justified by name") - proceed under that precedent rather than
+  treating it as R241's "new RUNTIME dependency" boundary, but if
+  anything about the setup feels like it is acquiring a runtime
+  dependency in disguise (a plugin that touches the release build),
+  stop and ask rather than assume the precedent still covers it.
+- Scaffold calc/ to mirror web/lib/calc-engine's file-per-concern
+  shape (types, rules, regime, denominator, granularity, waterfall,
+  headroom, declarable-rate, raw-rate, warnings, validate,
+  calculate) - one Kotlin file per TypeScript file, same name,
+  translated. Replace EnginePlaceholder.kt's placeholder function;
+  keep the file's own fence-proving role intact (fence 1 must still
+  hold against the real package after this).
+- Commit: "AN2: the ground, and Kotest". Push.
+
+====================================================================
+INCREMENT 1 - types and RuleSet (SPEC 7.4, 7.7/D29)
+====================================================================
+- Canton, Regime, Granularity, DenominatorMethod, TeleworkInput,
+  TeleworkResult, Warning, ValidationError, Result<T, E> - as Kotlin
+  sealed interfaces/data classes/enums, matching the TypeScript union
+  shapes exactly (a Warning is a closed set of variants, not a string
+  code with a separate payload map).
+- RuleSet and ruleSetFor(taxYear) (D29): taxYear, fiscalCeiling
+  (0.40), socialCeiling (0.499), a1ThresholdRate (0.25),
+  missionCapDays (10), simplifiedBasisDays (240),
+  residence1983Cantons, sources. Only RuleSet may hold a threshold -
+  a bare 0.4 or 240 anywhere else in this package is a review
+  rejection (SPEC 7.1's own words, carried to Kotlin).
+- Unit tests for ruleSetFor: exact match for 2026, falls back to the
+  latest known set for an unknown year with a warning (SPEC 7.7).
+- Commit: "AN2: types and RuleSet". Push.
+
+====================================================================
+INCREMENT 2 - regime, denominator, granularity, mission cap (steps 1-4)
+====================================================================
+- regimeFor(canton): the eight residence-1983 cantons vs source,
+  SPEC 7.2 step 1.
+- Denominator resolution (step 2): simplified240 = ceil(240 x
+  employmentRate/100 x periodFraction); exact = supplied, validated
+  not derived. Port denominator-cases.json's own conformance suite
+  (already exists on the TS side; SPEC 7.2 step 2 + ruling R10) -
+  read it from the SAME JSON file, not a transcribed copy.
+- classifyTeleworkHours / granularity (step 3): day/halfDay/hours,
+  the exact boundary table from SPEC 7.2 step 3 (>4h, 2-4h, <2h).
+- Mission cap (step 4): ceil(10 x employmentRate/100 x
+  periodFraction) - rounded UP, the one rule that favours the user.
+- Unit tests at the boundaries SPEC 7.6 names: employment rate 1/50/
+  80/100 and mission-cap round-up at each; periodFraction for mid-year
+  starts; all three granularities at 1.9h, 2h, 4h, 4.1h.
+- Commit: "AN2: regime, denominator, granularity, mission cap". Push.
+
+====================================================================
+INCREMENT 3 - the waterfall (step 5), and validation
+====================================================================
+- The waterfall itself, SPEC 7.2 step 5, verbatim shape: the
+  regime-lost branch (telework alone exceeds the ceiling - mission
+  days EXCLUDED from declarableRate but still taxed in France) and the
+  regime-applies branch (headroom, budget = min(missionCap,
+  headroom), France missions imputed BEFORE third-state ones,
+  credited totals). Get the imputation ORDER right - it decides who
+  pays how (French withholding vs employee-declared), not merely which
+  number is bigger.
+- ValidationError union and the validation pass RATE_OUT_OF_RANGE,
+  PERIOD_OUT_OF_RANGE, NEGATIVE_DAYS, GRANULARITY_MISMATCH,
+  DAYS_EXCEED_TOTAL, TOTAL_WORK_DAYS_NOT_POSITIVE - a test enumerates
+  the union the way the TypeScript side's own test does, so an added
+  variant cannot go unmapped.
+- AC1's suite runs here for the first time, against the real
+  waterfall: all six Geneva cases, read from fixtures/geneva-cases.json
+  (not transcribed).
+- THIS IS THE NAMED SPLIT POINT (see R241 above). If this increment
+  closes clean and green but the session cannot sustain 4-5 at full
+  quality, STOP HERE and report AN2a/AN2b explicitly rather than
+  rushing the rounding rules or the property tests.
+- Commit: "AN2: the waterfall, and the first six cases". Push.
+
+====================================================================
+INCREMENT 4 - the two rounding rules, and rawRate
+====================================================================
+- declarableRateFor: truncate, on the INTEGER numerator/denominator,
+  never on a pre-formed percentage (the exact defect
+  declarable-rate.ts's own comment measures - reproduce that
+  measurement's REASONING in a comment, do not merely assert the
+  conclusion). AC4: fixtures/rate-cases.json's 72 cases, all exact,
+  read from the JSON.
+- floorToHalfDay: floor, negative values reported not clamped, and
+  documented as the rule that must never merge with truncation (SPEC
+  7.3 - two rules living in two files on purpose).
+- rawRate (rounded up, 1 dp, for display) and headroomFor
+  (remainingToFiscal/remainingToSocial).
+- AC2, proven with a real plant: change ONE digit in ONE case's
+  expected value in fixtures/geneva-cases.json (not rate-cases.json -
+  the relay names geneva-cases.json specifically because it is the
+  file todo.md's own AC2 names), verify the plant landed (git diff),
+  run BOTH suites, confirm BOTH go red on the identical edit, revert,
+  verify restored (git diff empty), confirm both green again.
+- Commit: "AN2: truncate and floor, proven not to merge". Push.
+
+====================================================================
+INCREMENT 5 - warnings, the conformance suite, property tests, CI
+====================================================================
+- The Warning union: FISCAL_CEILING_EXCEEDED, MISSION_CAP_EXCEEDED,
+  MISSIONS_EXCEED_HEADROOM, SOCIAL_CEILING_EXCEEDED, A1_REQUIRED,
+  FRONTALIER_STATUS_AT_RISK (residence-1983 only),
+  EXACT_METHOD_UNVERIFIED - same trigger conditions as the TypeScript
+  side, same codes (compared directly against warnings.ts, not
+  reconstructed from the spec table alone, since SPEC 7.1's A1
+  threshold note carries history the bare table does not).
+- calculateTelework, allowedTeleworkDays: the public API SPEC 7.4
+  names, assembling everything from increments 1-4.
+- THE CONFORMANCE SUITE, matching web/tests/unit/calc-engine/
+  fixtures.test.ts's own shape: reads geneva-cases.json and
+  denominator-cases.json at test time (not `readFixture`'s TypeScript
+  form, but the same PRINCIPLE - Kotest's own resource/file reading,
+  from the SAME repo-root fixtures/ directory both engines share).
+  Asserts the count first (six Geneva cases, so the suite cannot pass
+  vacuously - SPEC 7.5's own "if any fails, nothing ships" applies
+  identically here).
+- KOTEST PROPERTY TESTS, the eight invariants, 10,000 generated cases
+  each, using Kotest's property-testing arbitraries (Kotest's
+  equivalent of fast-check, matching properties-1-4.test.ts and
+  properties-5-8.test.ts's shape on generation strategy - valid
+  inputs only, not garbage that would fail validation before reaching
+  the invariant).
+- AC3's second half: confirm fence 1 (FencesTest.kt,
+  calcImportsNothingFromAndroidOrOtherProjectPackages) still holds
+  against the REAL calc/ package, not the placeholder - run it,
+  record the result, do not assume it still passes because it passed
+  against `enginePlaceholder(): Boolean = true`.
+- CI: both workflows (web and android, both currently gated behind
+  CI_FULL per FW32's own GROUND - CI_FULL is unset) consume the same
+  fixture files. State plainly what "both CI green" can mean while CI
+  does not run - the manual verification (both gradle/pnpm test
+  invocations, locally, against the identical files) IS the claim
+  this task can make, named as such rather than left implicit.
+- Commit: "AN2: warnings, the conformance suite, and the property
+  tests". Push.
+- gate:clone as the exit gate (R199 - now meaningfully green again
+  since FW32). Verbatim in the report.
+- REPORT-AN2.txt.
+
+====================================================================
+OUT OF SCOPE
+====================================================================
+- Anything under android/.../ui, .../data, .../detection, .../auth,
+  .../sync - AN3 through AN6's own territory.
+- Touching web/lib/calc-engine itself, beyond running its existing
+  tests as a control (AC1's "TypeScript suite still passes").
+  fixtures/*.json are read by both engines and edited only for AC2's
+  and AC4's deliberate, reverted plants.
+- A new rule set for a year other than 2026 (SPEC 7.7's own two
+  guards: the Geneva fixtures are pinned to 2026 and unchanged by
+  this port; a new year needs its own sourced, reviewed fixture file
+  first).
+- Re-litigating R248/CI_FULL (FW32's own GROUND section covers the
+  current state; this task inherits it, does not revisit it).
+- gate-clone.mjs itself, or anything in web/scripts/ - FW32's territory,
+  closed.
+
+====================================================================
+REPORT FORMAT - REPORT-AN2.txt
+====================================================================
+SUMMARY / PRECONDITIONS (the R1 gate:clone pre-check, verbatim) /
+RED-GREEN LEDGER (per increment) / THE PORT (what maps to what,
+file by file, TS to Kotlin) / THE TWO ROUNDING RULES (proven not to
+merge, with the AC2/AC4 plant-and-revert evidence) / THE CONFORMANCE
+SUITE (AC1, AC4 - exact results) / THE PROPERTY TESTS (AC3 - all eight
+invariants, 10,000 cases each, pass/fail) / THE FENCE (fence 1 against
+real code) / WHAT CI CAN AND CANNOT CLAIM WHILE IT DOES NOT RUN /
+EXIT GATE (gate:clone, verbatim) / PARKED / DEVIATIONS / QUESTIONS /
+PUSH PROOF
+
+If this session stops at the named AN2a/AN2b split point (increment
+3), the report format is the same, with PUSH PROOF's last line naming
+exactly what AN2b inherits instead of an EXIT GATE section for
+increments not yet built.
+
+END OF AN2 PROMPT

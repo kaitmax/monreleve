@@ -11,6 +11,17 @@ composeBom = "2024.09.00"
 ktlint = "12.1.1"
 detekt = "1.23.7"
 paparazzi = "1.3.5"
+# AN2: last stable pre-6.x release. Kotest 6.0+ requires Kotlin 2.2 (kotest.io
+# docs, release6) - this project is pinned to Kotlin 2.0.21 (AN1), so 6.x is
+# not an option without a toolchain upgrade this task is not authorised to
+# make. Verified via web search rather than guessed - see REPORT-AN2.txt.
+kotest = "5.9.1"
+# Bridges the existing JUnit 4 test files (CanaryTest.kt, RadiusTest.kt,
+# ThemeCensusTest.kt, FencesTest.kt, the screenshot test) onto the JUnit
+# Platform Kotest's own runner requires - without this, useJUnitPlatform()
+# would silently stop running every JUnit-4-style test in the project, which
+# is exactly the class of regression checkTestFloor exists to catch (R133).
+junitVintage = "5.10.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -28,6 +39,10 @@ androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-man
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
 kotlin-reflect = { group = "org.jetbrains.kotlin", name = "kotlin-reflect", version.ref = "kotlin" }
+kotest-runner-junit5 = { group = "io.kotest", name = "kotest-runner-junit5", version.ref = "kotest" }
+kotest-assertions-core = { group = "io.kotest", name = "kotest-assertions-core", version.ref = "kotest" }
+kotest-property = { group = "io.kotest", name = "kotest-property", version.ref = "kotest" }
+junit-vintage-engine = { group = "org.junit.vintage", name = "junit-vintage-engine", version.ref = "junitVintage" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

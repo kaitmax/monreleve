@@ -47,6 +47,15 @@ detekt {
     config.setFrom("$rootDir/config/detekt/detekt.yml")
 }
 
+// AN2: Kotest's runner requires the JUnit Platform. Without this, Gradle's
+// default JUnit 4 runner would simply not discover Kotest specs at all -
+// zero of them would run, silently, with a green build (R133) - which is
+// exactly why checkTestFloor below reads the real count rather than trusting
+// the exit code.
+tasks.withType<Test> {
+    useJUnitPlatform()
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -63,6 +72,16 @@ dependencies {
     // project's own token objects (Radius) stay Map-based specifically to avoid
     // needing this in production code.
     testImplementation(libs.kotlin.reflect)
+    // AN2, TEST-ONLY (same precedent as kotlin-reflect above): the engine's
+    // conformance suite and its eight SPEC 7.6 property invariants, matching
+    // the web engine's own fast-check property tests. Kotest requires the
+    // JUnit Platform (see useJUnitPlatform() below); junit-vintage-engine
+    // bridges the existing JUnit 4 test files onto it so none of them go
+    // silently unrun.
+    testImplementation(libs.kotest.runner.junit5)
+    testImplementation(libs.kotest.assertions.core)
+    testImplementation(libs.kotest.property)
+    testRuntimeOnly(libs.junit.vintage.engine)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
