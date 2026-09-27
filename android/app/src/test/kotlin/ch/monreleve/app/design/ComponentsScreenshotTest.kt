@@ -23,9 +23,23 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
+import ch.monreleve.app.calc.ruleSetFor
+import ch.monreleve.app.fr.MetricCopy
 import ch.monreleve.app.fr.format.SignedDays
+import ch.monreleve.app.fr.format.formatPercent
 import org.junit.Rule
 import org.junit.Test
+
+// AN4 increment 0 - Q3. MetricTile's captions were hand-typed noun phrases
+// ("...avant le plafond fiscal") that encoded the PRE-contract form. MetricCopy's
+// documented contract (web/lib/fr/metrics.ts) is a formatted PERCENTAGE, so the
+// caption is derived here from the RuleSet exactly as the gallery's own tile does
+// (formatPercent of the ceiling) - codepoint-faithful (the U+202F before %) and
+// moving with the ceiling rather than going stale. Regenerated baselines:
+// metricTilePositive.png, metricTileNegative.png (R135/R207).
+private val RULES = ruleSetFor(2026)
+private const val PERCENT = 100.0
+private val FISCAL_CEILING_LABEL = formatPercent(RULES.fiscalCeiling * PERCENT, 0)
 
 class ComponentsScreenshotTest {
     @get:Rule
@@ -80,8 +94,8 @@ class ComponentsScreenshotTest {
     fun metricTilePositive() {
         snapshot {
             MetricTile(
-                label = "Jours restants avant le plafond fiscal",
-                overLabel = "Jours au-dessus du plafond fiscal",
+                label = MetricCopy.remaining(FISCAL_CEILING_LABEL),
+                overLabel = MetricCopy.over(FISCAL_CEILING_LABEL),
                 days = SignedDays(text = "24", negative = false),
             )
         }
@@ -91,8 +105,8 @@ class ComponentsScreenshotTest {
     fun metricTileNegative() {
         snapshot {
             MetricTile(
-                label = "Jours restants avant le plafond fiscal",
-                overLabel = "Jours au-dessus du plafond fiscal",
+                label = MetricCopy.remaining(FISCAL_CEILING_LABEL),
+                overLabel = MetricCopy.over(FISCAL_CEILING_LABEL),
                 days = SignedDays(text = "4", negative = true),
             )
         }
