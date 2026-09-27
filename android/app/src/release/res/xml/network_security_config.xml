@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  AN4 increment 1 (AC3). RELEASE build. Cleartext is denied EVERYWHERE, and the
+  deny is EXPLICIT rather than left to the platform default: minSdk is 26, and
+  API 26/27 default cleartextTrafficPermitted to TRUE (only API 28+ flipped it).
+  So an absent config would permit cleartext on a third of the supported fleet -
+  the deny is stated so it holds on all of it. checkReleaseCleartext parses this
+  file and the merged release manifest and fails the gate if cleartext is
+  permitted anywhere (proven by planting cleartextTrafficPermitted="true" and
+  watching it go red, R180).
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>

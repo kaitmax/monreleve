@@ -8,6 +8,12 @@ espressoCore = "3.6.1"
 lifecycleRuntimeKtx = "2.8.7"
 activityCompose = "1.9.3"
 composeBom = "2024.09.00"
+# AN4 increment 1: made EXPLICIT rather than relied on transitively (it already
+# ships via lifecycle-runtime-ktx). data/remote's transport wraps the platform
+# HttpsURLConnection in withContext(Dispatchers.IO); R136 prefers the platform
+# HTTP client, and this is only the concurrency primitive the app already uses,
+# not an HTTP library. Pinned to match the version lifecycle 2.8.7 already brings.
+coroutines = "1.8.1"
 ktlint = "12.1.1"
 detekt = "1.23.7"
 paparazzi = "1.3.5"
@@ -49,6 +55,8 @@ kotest-assertions-core = { group = "io.kotest", name = "kotest-assertions-core",
 kotest-property = { group = "io.kotest", name = "kotest-property", version.ref = "kotest" }
 junit-vintage-engine = { group = "org.junit.vintage", name = "junit-vintage-engine", version.ref = "junitVintage" }
 json-org = { group = "org.json", name = "json", version.ref = "jsonOrg" }
+kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

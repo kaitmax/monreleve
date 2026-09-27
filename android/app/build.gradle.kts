@@ -22,12 +22,25 @@ android {
     }
 
     buildTypes {
+        debug {
+            // AN4 increment 1 (AC3). The emulator reaches the host's `pnpm dev` at
+            // 10.0.2.2; the port is a gradle property (default 3000) so a neighbour
+            // holding 3000 moves this build rather than stopping theirs - R170's
+            // shape on the Android side. Cleartext to this host is permitted only
+            // by src/debug/res/xml/network_security_config.xml; the release sibling
+            // denies all cleartext, proven by checkReleaseCleartext.
+            val frontalierPort = (project.findProperty("frontalierPort") as String?) ?: "3000"
+            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:$frontalierPort\"")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            // The real domain over HTTPS. No cleartext exists in this build
+            // (src/release/res network security config denies it everywhere).
+            buildConfigField("String", "API_BASE_URL", "\"https://monreleve.ch\"")
         }
     }
     compileOptions {
@@ -39,6 +52,8 @@ android {
     }
     buildFeatures {
         compose = true
+        // AN4 increment 1: BuildConfig.API_BASE_URL carries the per-build-type base URL.
+        buildConfig = true
     }
 }
 
@@ -65,6 +80,9 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    // AN4 increment 1: the transport wraps the platform HttpsURLConnection in
+    // withContext(Dispatchers.IO). Explicit rather than transitive (see catalog).
+    implementation(libs.kotlinx.coroutines.android)
     testImplementation(libs.junit)
     // TEST-ONLY, justified by name (AN1 out-of-scope note): ThemeCensusTest.kt
     // reflects over androidx Typography/ColorScheme, library data classes with
@@ -86,6 +104,9 @@ dependencies {
     // read fixtures/*.json under plain JVM unit tests, where android.jar's
     // own org.json classes are stubbed to throw "not mocked".
     testImplementation(libs.json.org)
+    // AN4 increment 1, TEST-ONLY: runTest + StandardTestDispatcher for the
+    // single-flight refresh proof (increment 5) and any suspend seam under test.
+    testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
@@ -128,17 +149,85 @@ tasks.register("checkTestFloor") {
 // printing what it ran AND WHAT IT SKIPPED with reasons (R133 - gate:clone,
 // the web equivalent, once reported PASSED having silently skipped every
 // database suite; only the printed selection caught it).
+// AN4 increment 1 (AC3). The release build must permit cleartext NOWHERE. This
+// reads the MERGED release manifest (processReleaseManifest's output, not the
+// source - the merger or a library could introduce usesCleartextTraffic) AND the
+// release network security config, and fails if cleartext is permitted anywhere.
+// R182: it dependsOn the task that PRODUCES its subject, so it never runs before
+// the merged manifest exists. Proven by planting cleartextTrafficPermitted="true"
+// and watching it go red (R180), recorded in REPORT-AN4.txt.
+tasks.register("checkReleaseCleartext") {
+    dependsOn("processReleaseManifest")
+    doLast {
+        val problems = mutableListOf<String>()
+
+        // Strip XML comments before matching. The first run of this task tripped
+        // on its OWN documentation: the release config's comment names
+        // cleartextTrafficPermitted="true" as the string to plant, and a guard
+        // that reads its own prose as a violation is the FW22 size-regex shape
+        // (a positive signal not specific enough that only the real thing produces
+        // it). The subject is the elements, never the comments around them.
+        val stripComments = { text: String -> text.replace(Regex("""(?s)<!--.*?-->"""), "") }
+
+        val manifestDir = layout.buildDirectory.dir("intermediates/merged_manifest/release").get().asFile
+        val mergedManifest = manifestDir.walkTopDown().firstOrNull { it.name == "AndroidManifest.xml" }
+        if (mergedManifest == null) {
+            throw GradleException(
+                "checkReleaseCleartext: no merged release manifest under $manifestDir - " +
+                    "processReleaseManifest did not produce its output",
+            )
+        }
+        val manifestText = stripComments(mergedManifest.readText())
+        if (Regex("""usesCleartextTraffic\s*=\s*"true"""").containsMatchIn(manifestText)) {
+            problems += "merged release manifest sets android:usesCleartextTraffic=\"true\" ($mergedManifest)"
+        }
+
+        val nsc = file("src/release/res/xml/network_security_config.xml")
+        if (!nsc.exists()) {
+            problems += "release network security config missing at $nsc"
+        } else {
+            val nscText = stripComments(nsc.readText())
+            if (Regex("""cleartextTrafficPermitted\s*=\s*"true"""").containsMatchIn(nscText)) {
+                problems += "release network security config permits cleartext (cleartextTrafficPermitted=\"true\")"
+            }
+            if (!Regex("""cleartextTrafficPermitted\s*=\s*"false"""").containsMatchIn(nscText)) {
+                problems +=
+                    "release network security config does not EXPLICITLY deny cleartext - minSdk 26 " +
+                    "defaults to permitted, so an absent cleartextTrafficPermitted=\"false\" is not a denial"
+            }
+        }
+
+        if (problems.isNotEmpty()) {
+            throw GradleException(
+                "checkReleaseCleartext FAILED - cleartext must be permitted NOWHERE in the release build:\n" +
+                    problems.joinToString("\n") { "  - $it" },
+            )
+        }
+        println("checkReleaseCleartext OK: release permits cleartext nowhere (merged manifest + network security config)")
+    }
+}
+
 tasks.register("gate") {
-    dependsOn("assembleDebug", "testDebugUnitTest", "checkTestFloor", "ktlintCheck", "detekt", "verifyPaparazziDebug")
+    dependsOn(
+        "assembleDebug",
+        "testDebugUnitTest",
+        "checkTestFloor",
+        "ktlintCheck",
+        "detekt",
+        "verifyPaparazziDebug",
+        "checkReleaseCleartext",
+    )
     doLast {
         println(
             """
             |
             |ANDROID GATE
-            |RAN: assembleDebug, testDebugUnitTest (includes the six fences in
+            |RAN: assembleDebug, testDebugUnitTest (includes the fences in
             |     FencesTest.kt and the theme/radius censuses), checkTestFloor,
             |     ktlintCheck, detekt, verifyPaparazziDebug (the screenshot
-            |     baseline - a regression guard, never proof of correctness; R135).
+            |     baseline - a regression guard, never proof of correctness; R135),
+            |     checkReleaseCleartext (AC3: the release build permits cleartext
+            |     nowhere - merged manifest + network security config, R182).
             |SKIPPED, with reason:
             |  - scripts/emulator.sh / screenshot.sh / walkthrough.sh (the AC2
             |    instrument): needs a real AVD with hardware acceleration. Not a

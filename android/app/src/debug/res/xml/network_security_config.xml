@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  AN4 increment 1 (AC3). DEBUG build only. The emulator reaches the host's
+  `pnpm dev` at 10.0.2.2 over plain HTTP, so cleartext is permitted to THAT
+  host and to nothing else: the base-config denies cleartext for every other
+  domain. This file lives in src/debug/res, so it is compiled into the debug
+  APK and CANNOT reach a release build (the src/release/res sibling denies all
+  cleartext). The release proof is checkReleaseCleartext (build.gradle.kts).
+
+  monreleve.ch itself is HTTPS and needs no exception here; this is the dev
+  loopback alias alone.
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>
