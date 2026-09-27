@@ -1,0 +1,85 @@
+package ch.monreleve.app.auth
+
+import ch.monreleve.app.data.remote.AuthApi
+import ch.monreleve.app.data.remote.HttpRequest
+import ch.monreleve.app.data.remote.HttpResponse
+import ch.monreleve.app.data.remote.HttpTransport
+import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.shouldBe
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runTest
+import java.io.IOException
+
+// AN4 increment 3. The request-screen state transitions, driven through the real
+// AuthApi against a scripted transport. The one that matters is 202 -> LINK_SENT:
+// the same phase whatever the address, so the client cannot enumerate. RED first:
+// SignInController did not exist.
+
+private class ScriptedTransport(
+    private val response: HttpResponse = HttpResponse(202, ""),
+    private val throwable: Throwable? = null,
+) : HttpTransport {
+    override suspend fun execute(request: HttpRequest): HttpResponse {
+        throwable?.let { throw it }
+        return response
+    }
+}
+
+private fun controllerWith(
+    scope: kotlinx.coroutines.CoroutineScope,
+    response: HttpResponse = HttpResponse(202, ""),
+    throwable: Throwable? = null,
+): SignInController = SignInController(AuthApi(ScriptedTransport(response, throwable), "http://10.0.2.2:3000"), scope)
+
+class SignInControllerTest : FunSpec({
+    test("a blank email never submits - stays EDITING") {
+        runTest {
+            val controller = controllerWith(this)
+            controller.submit()
+            controller.state.value.phase shouldBe SignInPhase.EDITING
+        }
+    }
+
+    test("a 202 moves to LINK_SENT - one phase whatever the address (no enumeration)") {
+        runTest {
+            val controller = controllerWith(this, HttpResponse(202, ""))
+            controller.onEmailChange("a@b.ch")
+            controller.submit()
+            advanceUntilIdle()
+            controller.state.value.phase shouldBe SignInPhase.LINK_SENT
+        }
+    }
+
+    test("a 429 moves to RATE_LIMITED") {
+        runTest {
+            val controller = controllerWith(this, HttpResponse(429, ""))
+            controller.onEmailChange("a@b.ch")
+            controller.submit()
+            advanceUntilIdle()
+            controller.state.value.phase shouldBe SignInPhase.RATE_LIMITED
+        }
+    }
+
+    test("a network failure moves to NETWORK_ERROR, distinct from a server refusal") {
+        runTest {
+            val controller = controllerWith(this, throwable = IOException("no route"))
+            controller.onEmailChange("a@b.ch")
+            controller.submit()
+            advanceUntilIdle()
+            controller.state.value.phase shouldBe SignInPhase.NETWORK_ERROR
+        }
+    }
+
+    test("retry returns to EDITING with the typed email preserved") {
+        runTest {
+            val controller = controllerWith(this, HttpResponse(500, ""))
+            controller.onEmailChange("a@b.ch")
+            controller.submit()
+            advanceUntilIdle()
+            controller.state.value.phase shouldBe SignInPhase.GENERIC_ERROR
+            controller.retry()
+            controller.state.value.phase shouldBe SignInPhase.EDITING
+            controller.state.value.email shouldBe "a@b.ch"
+        }
+    }
+})
