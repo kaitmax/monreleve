@@ -92,6 +92,17 @@ object Elevation {
 }
 
 /**
+ * Layout breakpoints - a different token category from Radius/Spacing
+ * (a viewport width, not a padding or corner value). AN3 increment 6:
+ * promoted from a literal `320.dp` repeated in ThresholdRailScreenshotTest.kt
+ * and dev/GalleryScreen.kt, both independently exercising R127's "the 320 dp
+ * requirement: the narrowest width this product supports".
+ */
+object Breakpoints {
+    val minSupportedWidth: Dp = 320.dp
+}
+
+/**
  * LIGHT colours (DESIGN-SYSTEM 1). Light ships first - DarkColors below is
  * defined but NOT wired into FrontierTheme (DESIGN-SYSTEM section 12 override;
  * AN0's edge-to-edge conflict).

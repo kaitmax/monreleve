@@ -191,7 +191,7 @@ class FencesTest {
                 File(appSrcRoot, "design/Typography.kt").canonicalFile,
             )
         val scanned =
-            (ktFiles("ui") + ktFiles("design")).filterNot { it.canonicalFile in tokenDefinitionFiles }
+            (ktFiles("ui") + ktFiles("design") + ktFiles("dev")).filterNot { it.canonicalFile in tokenDefinitionFiles }
 
         val offenders = mutableListOf<String>()
         for (file in scanned) {
@@ -218,15 +218,23 @@ class FencesTest {
     // same-file constant referenced from inside the composable) escaped it -
     // the literal still lives in ui/, which is what the rule actually cares
     // about. Broadened after that finding; see REPORT-AN1.txt.
+    //
+    // dev/ ADDED IN AN3 INCREMENT 6: GalleryScreen.kt is exactly the shape
+    // this fence exists for (a Composable file assembling captions), so its
+    // first run there is a real exercise, not a formality. design/ is NOT
+    // added here - out of scope for this task; see REPORT-AN3.txt's NOTICED
+    // BUT NOT TOUCHING (this fence has never scanned design/, and at least
+    // one live instance - DayKind's single-letter codes in DayCell.kt -
+    // would need a stated exemption, not a silent pass, before it could).
     // ------------------------------------------------------------------
     @Test
-    fun uiFilesCarryNoStringLiteral() {
+    fun uiAndDevFilesCarryNoStringLiteral() {
         val offenders = mutableListOf<String>()
-        for (file in ktFiles("ui")) {
+        for (file in ktFiles("ui") + ktFiles("dev")) {
             val text = stripComments(file.readText())
             val match = Regex(""""[^"]+"""").find(text)
             if (match != null) {
-                offenders += "${file.path}: string literal ${match.value} in ui/ - French copy must come from fr/"
+                offenders += "${file.path}: string literal ${match.value} in ui//dev/ - French copy must come from fr/"
             }
         }
         assertTrue("no-inline-string fence violated:\n${offenders.joinToString("\n")}", offenders.isEmpty())

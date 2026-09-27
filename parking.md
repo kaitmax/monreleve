@@ -828,3 +828,143 @@ something is already broken.
 
 **To reverse:** one line in `web/playwright.config.ts`. If the machine and the
 link recover, 240 s is the better number because a hung server reports sooner.
+
+## PARK-17 - the threshold rail's tick labels collide at 200% text scale  [AN3, 2026-09-27]
+
+**The question.** AN3 increment 6's AC3 instrument (a real device, not a
+Paparazzi baseline) captured `dev/GalleryScreen.kt` at the emulator's default
+`font_scale`, then at `2.0` (R16's Android clause). At 2.0 every rail state
+showed its own caption's last line overlapping the rail's own inline percent
+label, and the two tick labels ("40 %", "49,9 %") sit close enough to the
+track and to each other that the enlarged glyphs touch it and, in one state,
+each other.
+
+**Measured, not assumed.** `design/rail/ThresholdRail.kt` draws its tick
+labels with `drawText` onto a `Canvas` at X positions `RailGeometry.kt`
+computes in dp, independent of `LocalDensity.current.fontScale`. The
+SURROUNDING layout (`Spacing.space20` between a caption and its rail) is
+also fixed dp. Compose's `sp`-sized canvas text DOES grow with `fontScale`;
+the positions it is drawn at do not - so at 2x scale the same label occupies
+roughly twice the width at the same anchor point, and collides with whatever
+is next to it.
+
+**The option taken: ship as observed, described in REPORT-AN3.txt, not
+redesigned here.** This is a component-shape question (does a dense,
+Canvas-drawn rail cap its own internal font scale the way a calendar cell
+might; does it reflow the two labels vertically past some scale threshold;
+does it grow the rail's own height to make room) with no existing brief in
+DESIGN-SYSTEM.md to resolve it, and R156's boundary names exactly this shape
+as parkable ("a component shape") while reserving "stops the task" for
+permanent things (a slug, a migration) this is not.
+
+**The option NOT taken: clamp `fontScale` inside `ThresholdRail` to 1.0 for
+its own canvas text.** Tempting, and NOT taken, because it would silently
+defeat the one setting (R16's Android clause) large-text users rely on for
+exactly this content - the fix would read as solving the finding by hiding
+it from the one instrument built to surface it.
+
+**The cost of being wrong (i.e., of leaving this parked).** A user who has
+set 200% system text - genuinely more likely among AN3's own audience than
+average, given who needs a document this precise read aloud or magnified -
+sees an illegible rail. Nothing else in the gallery showed this: ZoneBadge,
+RateDisplay, MetricTile and the Formatters section all reflowed cleanly at
+2x, described in the same report.
+
+**To reverse:** a real fix to `ThresholdRail.kt`'s label placement, scoped
+and tested on its own - AC2's own geometry proof (railGeometry, the 33-case
+RailGeometryTest.kt) must not regress while this is addressed, which is
+reason enough it is a task of its own rather than a same-session patch.
+
+## PARK-18 - DayCell and DayKindLegend become illegible at 200% text scale  [AN3, 2026-09-27]
+
+**The question.** The same AC3 instrument, same 2.0 `font_scale`, on
+`design/DayCell.kt`'s five-cell row and `design/Legend.kt` immediately below
+it (`dev/GalleryComponentSections.kt`'s `dayCellSection()`). Every cell's
+date, kind letter and country dot overlap into an unreadable stack ("3" and
+"S" fuse; "14" and "M" read as "M4"), and the legend's last entry ("A
+Absence") wraps one character per line, cascading eight lines down the
+right edge of the screen.
+
+**Measured, not assumed.** `DayCell` is `Modifier.size(Spacing.space40)` -
+a FIXED 40 dp box, by design (DESIGN-SYSTEM.md's calendar grid needs a
+whole month of these on one screen at once, which a scale-with-font cell
+could not do and still fit). The date (`FrontierType.caption`), the kind
+letter (`FrontierType.micro`) and the dot all keep their assigned corner
+inside that fixed box; at 2x scale the TEXT grows, the BOX does not, and
+the four corners' content overlaps. `DayKindLegend` lays its four
+kind-plus-word pairs in one `Row`, each wrapped in its own
+`Row(Modifier.padding(end = Spacing.space12))` with no `FlowRow` and no
+minimum width; at 2x scale the first three entries consume enough of the
+available width that the fourth's `Text` is handed a near-zero remaining
+width and wraps character-by-character, which is Compose's ordinary
+behaviour for a `Text` with plenty of vertical room and almost none
+horizontal.
+
+**The option taken: ship as observed, described in REPORT-AN3.txt.** Same
+reasoning as PARK-17, and the same R156 boundary ("a component shape"):
+whether a calendar grid gets a distinct high-text-scale presentation (a
+list instead of a grid; a cap on the SPECIFIC internal glyphs' own scale,
+which Android supports via a locally-overridden `fontScale` and is a real,
+legitimate accessibility pattern for dense grids elsewhere in the platform;
+a taller cell above some scale threshold) is a product decision this task
+was not asked to make and SPEC/DESIGN-SYSTEM.md do not yet answer.
+
+**The option NOT taken: switch `DayKindLegend` to a `FlowRow` today.** This
+one alone looks mechanical, and very nearly was fixed inline - but the two
+findings share one root cause (fixed-dp layout meeting scaled-up text) and
+a fix to the legend alone would leave the report describing one arm of the
+same defect as closed and the other as open, which reads as more settled
+than it is. Recorded together; whichever task takes PARK-17 should take
+this alongside it.
+
+**The cost of being wrong.** Worse than PARK-17's: not a collision but a
+genuinely unreadable calendar and a legend that cannot be read at all past
+its first three words, for exactly the users R16 exists to serve.
+
+**To reverse:** a real fix to `DayCell.kt` and `Legend.kt`, scoped and
+tested on its own, once the product question above is answered - not a
+same-session patch.
+
+## PARK-19 - `design/Tokens.kt` gained a `Breakpoints` token without asking first  [AN3, 2026-09-27]
+
+**The question.** AN3 increment 6's gallery needed a 320 dp width constant
+(already used, as a bare literal, by AN3 increment 3's own
+`ThresholdRailScreenshotTest.kt`) and `FencesTest.kt`'s no-raw-`.dp`-literal
+fence - correctly extended to scan `dev/` this same increment - refused the
+bare `320.dp`. The fix promoted it to `design/Tokens.kt` as
+`Breakpoints.minSupportedWidth`. CLAUDE.md's SPEC 20 names "adding a token
+outside DESIGN-SYSTEM.md" as an ASK-FIRST item, and this shipped without
+one - found only in this task's own close-out, re-reading the increment
+against SPEC 20 rather than assumed clean because the gate was green.
+
+**Why it happened anyway.** Under R241 ("run the whole task, only
+REPORT-AN3.txt committed and pushed ends the session") an ask-first item
+with no reply available reads as exactly the ambiguity R156 exists for:
+conservative, reversible, park it, continue - and a breakpoint constant
+holding a value ALREADY live in a committed test file is about as
+conservative as a new token gets. That is the justification for shipping
+it, not a reason it should have skipped the flag.
+
+**The option taken: the token exists, named for what it is (a viewport
+width, explicitly distinguished in its own doc comment from the Radius/
+Spacing scale), and this entry is the ask that should have preceded it.**
+
+**The option NOT taken: a second `320.dp` literal duplicating the one
+already in `ThresholdRailScreenshotTest.kt`**, which is the state the fence
+was written to refuse, or an `@Suppress` on the fence, which would have
+hidden a real duplication rather than resolved it.
+
+**The cost of being wrong.** Low, and asymmetric: DESIGN-SYSTEM.md gains an
+undocumented category by omission rather than by a wrong VALUE - 320 dp is
+not in dispute, only whether a fourth token family belongs beside Radius,
+Spacing and Elevation, or whether a breakpoint constant belongs somewhere
+else entirely (a test-only fixture, since today's only two call sites are
+a screenshot test and a dev-only gallery, with no production screen using
+it yet).
+
+**To reverse:** delete `Breakpoints` from `Tokens.kt`, inline `320.dp` back
+into an `@Suppress`-annotated exemption list in `FencesTest.kt` (naming
+`GalleryRailSection.kt` and `ThresholdRailScreenshotTest.kt` explicitly, so
+the exemption cannot silently grow), or fold the constant into
+`ThresholdRailScreenshotTest.kt`'s own file and have `dev/` depend on the
+test source set - each is reversible without a migration.

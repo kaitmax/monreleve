@@ -17,6 +17,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!--
+          AN3 increment 6. The AC3 instrument (dev/GalleryScreen.kt). No
+          intent-filter - never appears in the launcher, never a SPEC 11
+          screen. Reached only by naming the component directly:
+            adb shell am start -n ch.monreleve.app/ch.monreleve.app.dev.GalleryActivity
+          See GalleryActivity.kt's own header for why it is exported.
+        -->
+        <activity
+            android:name=".dev.GalleryActivity"
+            android:exported="true"
+            android:theme="@style/Theme.MonReleve" />
     </application>
 
 </manifest>

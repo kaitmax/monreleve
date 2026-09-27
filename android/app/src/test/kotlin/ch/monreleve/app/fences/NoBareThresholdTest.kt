@@ -16,6 +16,11 @@ package ch.monreleve.app.fences
 // RailGeometry.kt did not exist when this fence was first written, so its
 // FIRST run against design/ is also this fence's first real exercise
 // there.
+//
+// dev/ ADDED IN AN3 INCREMENT 6, SAME REASONING: GalleryScreen.kt
+// instantiates ThresholdRail at 39.16/45.0/55.0, none forbidden, but it is
+// the first file under dev/ this fence has ever scanned, so it is that
+// exercise rather than an assumption.
 
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -24,8 +29,9 @@ import java.io.File
 private val CALC_DIR = File("src/main/kotlin/ch/monreleve/app/calc")
 private val UI_DIR = File("src/main/kotlin/ch/monreleve/app/ui")
 private val DESIGN_DIR = File("src/main/kotlin/ch/monreleve/app/design")
+private val DEV_DIR = File("src/main/kotlin/ch/monreleve/app/dev")
 
-private val SCANNED_DIRS = listOf(CALC_DIR, UI_DIR, DESIGN_DIR)
+private val SCANNED_DIRS = listOf(CALC_DIR, UI_DIR, DESIGN_DIR, DEV_DIR)
 
 /**
  * Scoped to a path, not a basename - the same reasoning the TS guard states

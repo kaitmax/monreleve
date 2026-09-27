@@ -20,6 +20,33 @@ package ch.monreleve.app.fences
 // then. Components live in design/, not ui/ (ui/ holds screens that
 // compose them), so the census was blind to the one place AN3 actually
 // writes.
+//
+// dev/ ADDED, AND THE CENSUS ITSELF WIDENED, IN AN3 INCREMENT 6. The
+// census only ever matched `const val` inside an `object` - true of every
+// copy constant increment 2-4 happened to add, so nothing had failed. But
+// fr/MetricCopy.kt's `remaining`/`over` are `fun`, not `const val`, and
+// this file's own first attempt to build dev/GalleryScreen.kt's tile
+// section found them referenced NOWHERE in ui/ or design/ - a real,
+// live orphan (R178), not a planted one: MetricTile shipped in increment
+// 4 with its label/overLabel props always supplied by the CALLER, and no
+// caller had existed until this gallery. The census was blind to it only
+// because `fun` was never a shape it looked for; STATUS_COPY (a top-level
+// `val` map, not `const val`) is the same blind spot and is, separately,
+// already genuinely reached (design/ZoneTokens.kt) - proof the miss was in
+// the SCANNER, not (only) in the reached-ness of the copy itself.
+//
+// Widened to also match a top-level (column-0) `val`/`fun` - referenced
+// bare, matching how such a declaration is actually called - and an
+// object-member (column-4) `val`/`fun` alongside the pre-existing `const
+// val` - referenced `Object.name`, exactly as before. `private` entries
+// are excluded either way: nothing outside the file can be reaching them,
+// so there is nothing for a surface census to prove. Anchored to the
+// START of a line (multiline mode) rather than matched anywhere in the
+// text, deliberately: a `val` inside a function body (DayCellCopy.kt's own
+// `contentDescription` has three) sits at a deeper indent than either
+// column and is excluded by construction, and a data class's constructor
+// property (`data class StatusCopy(val label: String, ...)`) never starts
+// a line at all - both would otherwise read as fresh, ungrounded entries.
 
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -30,6 +57,7 @@ private val SURFACE_DIRS =
     listOf(
         File("src/main/kotlin/ch/monreleve/app/ui"),
         File("src/main/kotlin/ch/monreleve/app/design"),
+        File("src/main/kotlin/ch/monreleve/app/dev"),
     )
 
 private fun ktFiles(dir: File): List<File> =
@@ -52,14 +80,60 @@ private fun stripComments(text: String): String {
 
 /** The enclosing `object Name` a const belongs to - this codebase's convention is one per file. */
 private val OBJECT_NAME = Regex("""object\s+(\w+)""")
-private val CONST_NAME = Regex("""const\s+val\s+(\w+)\s*=""")
+private val OBJECT_MEMBER_DECL = Regex("""(?m)^ {4}(private\s+)?(?:const\s+)?(?:val|fun)\s+(\w+)""")
+private val TOP_LEVEL_DECL = Regex("""(?m)^(private\s+)?(?:val|fun)\s+(\w+)""")
 
-/** Every `Object.CONST` reference a copy constant would be read through. */
+/**
+ * The object's `{ ... }` body, by brace depth - NOT "everything after the
+ * `object` keyword", because a file can hold a top-level function BEFORE
+ * its object (RailCopy.kt does: `fun railAriaLabel` precedes `object
+ * RailCopy`). Found necessary rather than assumed: a first version without
+ * this span check read `railAriaLabel`'s own local `val spoken = ...` - at
+ * the same 4-space indent a real object member sits at, purely by
+ * coincidence of both being one indent level deep - as `RailCopy.spoken`,
+ * which is not a real reference and would have failed the census on a
+ * name nothing outside the file ever calls.
+ */
+private fun objectBodySpan(text: String): IntRange? {
+    val objectMatch = OBJECT_NAME.find(text) ?: return null
+    val braceStart = text.indexOf('{', objectMatch.range.last)
+
+    return braceStart.takeIf { it != -1 }?.let { start ->
+        var depth = 1
+        var i = start + 1
+        while (i < text.length && depth > 0) {
+            when (text[i]) {
+                '{' -> depth++
+                '}' -> depth--
+            }
+            i++
+        }
+        start..i
+    }
+}
+
+/** Every `Object.member` or bare top-level `member` reference a copy declaration would be read through. */
 private fun copyReferences(): List<String> =
     ktFiles(FR_DIR).flatMap { file ->
         val text = stripComments(file.readText())
-        val objectName = OBJECT_NAME.find(text)?.groupValues?.get(1) ?: return@flatMap emptyList()
-        CONST_NAME.findAll(text).map { "$objectName.${it.groupValues[1]}" }.toList()
+        val objectName = OBJECT_NAME.find(text)?.groupValues?.get(1)
+        val span = objectBodySpan(text)
+
+        val topLevel =
+            TOP_LEVEL_DECL.findAll(text)
+                .filter { it.groupValues[1].isEmpty() }
+                .map { it.groupValues[2] }
+
+        val members =
+            if (objectName == null || span == null) {
+                emptySequence()
+            } else {
+                OBJECT_MEMBER_DECL.findAll(text)
+                    .filter { it.groupValues[1].isEmpty() && it.range.first in span }
+                    .map { "$objectName.${it.groupValues[2]}" }
+            }
+
+        (topLevel + members).toList()
     }
 
 private fun renderedText(): String = SURFACE_DIRS.flatMap { ktFiles(it) }.joinToString("\n") { it.readText() }
@@ -90,7 +164,7 @@ class CopyReachabilityTest {
         val rendered = renderedText()
         val orphans = copyReferences().filter { ref -> ref !in rendered && UNREACHABLE[ref] == null }
 
-        assertTrue("no surface (ui/ or design/) references: ${orphans.joinToString(", ")}", orphans.isEmpty())
+        assertTrue("no surface (ui/, design/ or dev/) references: ${orphans.joinToString(", ")}", orphans.isEmpty())
     }
 
     @Test
