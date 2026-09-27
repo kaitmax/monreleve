@@ -571,5 +571,36 @@ Commits this session (80f7c20..a6cad02), oldest first:
   2404a39  AN3: baselines, and their scope
   a6cad02  AN3: the gallery, seen
 
-[gate:clone output and push confirmation recorded below after the
-commands run.]
+Web side untouched: `git status`/diff clean before this run; the
+gate:clone below is against 2eb0e97 ("AN3: the report"), the commit
+this report itself is part of.
+
+GATE:CLONE PASSED, verbatim:
+
+  commit    2eb0e97a0b0d6612b878c5e93f4ca24e18f6a5ae
+  subject   AN3: the report
+  branch    main
+  tree      clean - HEAD is everything you have
+  scrubbed  DATABASE_URL, RESEND_API_KEY, NEXT_PUBLIC_SITE_URL,
+            FRONTALIER_RUNTIME, FRONTALIER_DEV_ROUTES, AUTH_SECRET,
+            ANDROID_PACKAGE_NAME, ANDROID_SHA256_CERT_FINGERPRINTS
+  swept     no stale clones (older than 4h) found
+  ran       install, typecheck, lint, test, build, size, db:deploy,
+            test:db, test:container:write
+  claim     this commit builds and passes install, typecheck, lint,
+            test, build, size, db:deploy, test:db, test:container:write
+            from a clean checkout - a machine with no .env, no prior
+            node_modules and no generated file this run did not
+            produce itself.
+  NOT RUN (each with its reason, printed by the gate itself):
+            test:e2e, test:visual, test:runtime, lighthouse,
+            parity:check, test:container - unchanged from every prior
+            gate:clone this task ran; none of AN3's commits touch web/.
+
+Android side: ./gradlew clean test detekt ktlintCheck green against
+a6cad02 (the commit before this report), 533 unit tests, 60/60 Gradle
+tasks executed fresh - the last full run before this report was
+written, per the RED-GREEN LEDGER and every increment section above.
+
+PUSH: this commit (the report) and a6cad02 push together as one
+fast-forward of main, immediately after this gate:clone.
