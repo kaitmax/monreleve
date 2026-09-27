@@ -70,7 +70,10 @@ const val MICRO_SIZE = 11.0
 const val H2_SIZE = 24.0
 const val BODY_SIZE = 15.0
 
-private const val ROW_GAP = 4.0
+// internal (was private): ThresholdRail.withTextScaledVertical (R271) rebuilds
+// the vertical stack from the measured line box and needs the same row gap the
+// pure geometry uses, rather than a second copy of 4.0 that could drift (R206).
+internal const val ROW_GAP = 4.0
 
 private val BAND_ORDER: List<Zone> = listOf(Zone.COMPLIANT, Zone.FISCAL_EXPOSURE, Zone.SOCIAL_SWITCH)
 

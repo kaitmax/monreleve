@@ -35,12 +35,14 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import ch.monreleve.app.design.FrontierType
 import ch.monreleve.app.design.LightColors
@@ -58,6 +60,47 @@ private const val RATE_DECIMALS = 2
 
 /** DrawScope IS a Density in Compose, so this needs no density parameter of its own. */
 private fun DrawScope.toPx(value: Double): Float = value.dp.toPx()
+
+/**
+ * A single line's rendered height, in dp, AT THE CURRENT fontScale. The digit
+ * is irrelevant - a caption line box is the same height whatever it holds - so
+ * "0" is measured rather than a threshold string a fence would flag (R35). This
+ * is what makes the rail scale-aware: at 100% it returns caption's 18, at 200%
+ * roughly 36, and the vertical stack is built from whichever it is.
+ */
+private fun lineHeightDp(
+    textMeasurer: TextMeasurer,
+    density: Density,
+    style: TextStyle,
+): Double = with(density) { textMeasurer.measure("0", style).size.height.toDp().value.toDouble() }
+
+/**
+ * R271 (PARK-17). Rebuild ONLY the vertical coordinates of a non-social
+ * geometry from the measured caption line height, leaving every horizontal
+ * field (track x/width, tick x, fill width, label x, anchors) exactly as
+ * railGeometry produced it - so AC2's RailGeometryTest, which asserts the
+ * pure function, is untouched.
+ *
+ * The rate sits with its top at 0; the track a ROW_GAP + protrusion below it;
+ * the tick labels a full ROW_GAP below the tick region, top-aligned there via
+ * the SAME line height drawLabel will measure. At 100% this matches the old
+ * stack height (60) while correcting a pre-existing 5 px top-clip on the rate
+ * and a 5 px overlap of the labels into the ticks; above 100% the whole rail
+ * grows to fit rather than colliding.
+ */
+private fun RailGeometry.withTextScaledVertical(lineDp: Double): RailGeometry {
+    val newTrackY = lineDp + ROW_GAP + TICK_PROTRUSION
+    val trackBottom = newTrackY + track.height
+    val tickLabelTop = trackBottom + TICK_PROTRUSION + ROW_GAP
+    val newLabelBaselineY = tickLabelTop + lineDp
+    return copy(
+        svgHeight = newLabelBaselineY,
+        track = track.copy(y = newTrackY),
+        fill = fill.copy(y = newTrackY),
+        rateBaselineY = lineDp,
+        ticks = ticks.map { tick -> tick.copy(y = newTrackY - TICK_PROTRUSION, labelY = newLabelBaselineY) },
+    )
+}
 
 /** Where a label's baseline sits - bundled so drawLabel stays under the parameter-count fence. */
 private data class LabelBaseline(val x: Double, val y: Double)
@@ -82,7 +125,7 @@ fun ThresholdRail(
     BoxWithConstraints(modifier = modifier) {
         val requestedWidth = if (variant == RailVariant.SOCIAL) SOCIAL_WIDTH else maxWidth.value.toDouble()
 
-        val geometry =
+        val baseGeometry =
             remember(percentage, zone, variant, thresholds, requestedWidth) {
                 railGeometry(
                     RailData(
@@ -97,6 +140,25 @@ fun ThresholdRail(
             }
 
         val generic = variant == RailVariant.SOCIAL
+
+        // R271 (PARK-17). The tick and rate labels scale with fontScale; the
+        // vertical stack railGeometry computed does NOT (it works from the
+        // fixed 18/22/32 line constants). At 200% text those labels overran
+        // the track and each caption's own inline percent. The horizontal
+        // geometry stays railGeometry's (AC2's 33-case proof is untouched);
+        // the vertical stack is rebuilt here from the MEASURED line box, so
+        // the rail grows its own height to fit at any scale rather than
+        // capping the glyphs (which would defeat the setting R16 serves).
+        // Social keeps its fixed 1200x630 layout (a known-limit cropped
+        // baseline; not part of the 200% concern).
+        val density = LocalDensity.current
+        val geometry =
+            if (generic) {
+                baseGeometry
+            } else {
+                baseGeometry.withTextScaledVertical(lineHeightDp(textMeasurer, density, FrontierType.caption))
+            }
+
         val ariaLabel =
             when {
                 generic -> RailCopy.RAIL_SOCIAL_ARIA

@@ -831,6 +831,16 @@ link recover, 240 s is the better number because a hung server reports sooner.
 
 ## PARK-17 - the threshold rail's tick labels collide at 200% text scale  [AN3, 2026-09-27]
 
+**RULED (AN4 relay increment 0, 2026-09-27): FIXED, R271.** The tick and rate
+labels are measured with `TextMeasurer` and the rail's VERTICAL stack is rebuilt
+from the measured line box (`ThresholdRail.withTextScaledVertical`), so the rail
+grows its own height to fit at any `fontScale` rather than capping the glyphs -
+which would defeat the setting R16 serves, the option this entry recorded as NOT
+taken. `railGeometry` (AC2's 33-case proof) is untouched: only the vertical
+coordinates are rebuilt, every horizontal field is the pure function's. Proven
+by the 200% emulator screenshot, not the geometry test (which passed before the
+fix too).
+
 **The question.** AN3 increment 6's AC3 instrument (a real device, not a
 Paparazzi baseline) captured `dev/GalleryScreen.kt` at the emulator's default
 `font_scale`, then at `2.0` (R16's Android clause). At 2.0 every rail state
@@ -876,6 +886,17 @@ RailGeometryTest.kt) must not regress while this is addressed, which is
 reason enough it is a task of its own rather than a same-session patch.
 
 ## PARK-18 - DayCell and DayKindLegend become illegible at 200% text scale  [AN3, 2026-09-27]
+
+**RULED (AN4 relay increment 0, 2026-09-27): SPLIT, R271.** The two halves this
+entry recorded together get different homes, as the entry itself anticipated.
+The LEGEND half is FIXED here: `DayKindLegend` is now a `FlowRow`, so whole
+entries wrap onto the next line instead of one character per line (the
+`@ExperimentalLayoutApi` opt-in is authorised by the relay naming FlowRow; the
+R261 tension is recorded in REPORT-AN4.txt). The DAY-CELL half is NOT this
+task's: at high font scale the calendar renders as a LIST (one row per day -
+date, kind in words, quality, provenance), which lands at **AN10** with the
+calendar, where the font-scale threshold is measured on a device rather than
+guessed. Recorded for AN10; not built here.
 
 **The question.** The same AC3 instrument, same 2.0 `font_scale`, on
 `design/DayCell.kt`'s five-cell row and `design/Legend.kt` immediately below
@@ -926,6 +947,13 @@ tested on its own, once the product question above is answered - not a
 same-session patch.
 
 ## PARK-19 - `design/Tokens.kt` gained a `Breakpoints` token without asking first  [AN3, 2026-09-27]
+
+**RULED (AN4 relay increment 0, 2026-09-27): RATIFIED, R272.** `Breakpoints` is
+a fourth token category and stays in `design/Tokens.kt` as shipped; it is now
+documented in DESIGN-SYSTEM.md section 1 ("ANDROID BREAKPOINTS"), closing the
+SPEC 20 ask-first item this entry flagged. The precedent named in the ruling is
+R68 (a breakpoint is a legitimate token) and R77 (a token whose value already
+appears in a brief - here R127's 320 dp - needs no separate value ruling).
 
 **The question.** AN3 increment 6's gallery needed a 320 dp width constant
 (already used, as a bare literal, by AN3 increment 3's own
