@@ -62,6 +62,21 @@ class ComponentLogicTest : FunSpec({
         test("omits the correction clause when not corrected") {
             DayCellCopy.contentDescription(1, "S", "ON_TIME", corrected = false).contains("corrigé") shouldBe false
         }
+
+        // SPEC 966: "colour and shape convey nothing on their own." The
+        // quality bar IS colour-only on screen (one shape, four colours) -
+        // this is what keeps that true anyway: every RecordQuality has its
+        // own French phrase in the announcement, so a screen-reader user
+        // gets the same distinction a sighted user gets from the bar's tint.
+        test("every RecordQuality has a distinct, named phrase - never a bare fallback to its enum name") {
+            val phrases =
+                RecordQuality.entries.map {
+                    DayCellCopy.contentDescription(1, "S", it.name, corrected = false)
+                }
+
+            phrases.toSet().size shouldBe RecordQuality.entries.size
+            RecordQuality.entries.forEach { quality -> phrases.none { it.contains(quality.name) } shouldBe true }
+        }
     }
 
     context("LegendCopy") {
