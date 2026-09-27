@@ -160,10 +160,20 @@ class FencesTest {
     }
 
     // ------------------------------------------------------------------
-    // Fence 3 - ui/ contains no radius, colour or spacing literal outside
-    // the token set (D37/R8/R62). design/ is the token DEFINITION site and
-    // is intentionally not scanned - an alias there is not an evasion of
-    // this fence, it is the fence's own source of truth.
+    // Fence 3 - ui/ AND design/ contain no radius, colour or spacing
+    // literal outside the token set (D37/R8/R62), EXCEPT the token
+    // DEFINITION files themselves (Tokens.kt, Typography.kt) - an alias
+    // there is not an evasion of this fence, it is the fence's own source
+    // of truth.
+    //
+    // design/ ADDED IN AN3 INCREMENT 4, FOUND NECESSARY RATHER THAN
+    // ASSUMED (the same shape as NoBareThresholdTest's and
+    // CopyReachabilityTest's own design/ extensions this same increment):
+    // AN1 wrote this fence when design/ held only token definitions, and
+    // its own comment said so explicitly. AN3 put real COMPONENTS there
+    // (Zones.kt, ZoneTokens.kt, rail/, ZoneBadge.kt and five more) -
+    // exactly the code this fence exists to hold to the token-only
+    // standard, sitting one directory outside where it was looking.
     //
     // KNOWN LIMIT (found by the required evasion attempt): each regex
     // anchors on the literal appearing AT the call site
@@ -174,12 +184,20 @@ class FencesTest {
     // AN1's scope. See REPORT-AN1.txt.
     // ------------------------------------------------------------------
     @Test
-    fun uiHasNoRadiusColourOrSpacingLiteralOutsideTokens() {
+    fun uiAndDesignHaveNoRadiusColourOrSpacingLiteralOutsideTokens() {
+        val tokenDefinitionFiles =
+            setOf(
+                File(appSrcRoot, "design/Tokens.kt").canonicalFile,
+                File(appSrcRoot, "design/Typography.kt").canonicalFile,
+            )
+        val scanned =
+            (ktFiles("ui") + ktFiles("design")).filterNot { it.canonicalFile in tokenDefinitionFiles }
+
         val offenders = mutableListOf<String>()
-        for (file in ktFiles("ui")) {
+        for (file in scanned) {
             val text = stripComments(file.readText())
             if (Regex("""Color\(\s*0x""").containsMatchIn(text)) {
-                offenders += "${file.path}: raw Color(0x...) literal outside design/"
+                offenders += "${file.path}: raw Color(0x...) literal outside design/Tokens.kt"
             }
             if (Regex("""RoundedCornerShape\(\s*\d""").containsMatchIn(text)) {
                 offenders += "${file.path}: RoundedCornerShape(...) with a raw numeric literal"
@@ -188,7 +206,7 @@ class FencesTest {
                 offenders += "${file.path}: raw .dp literal outside Spacing/Radius"
             }
         }
-        assertTrue("ui/ token fence violated:\n${offenders.joinToString("\n")}", offenders.isEmpty())
+        assertTrue("ui//design/ token fence violated:\n${offenders.joinToString("\n")}", offenders.isEmpty())
     }
 
     // ------------------------------------------------------------------
