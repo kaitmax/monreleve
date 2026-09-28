@@ -2,9 +2,21 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
     alias(libs.plugins.ktlint)
     alias(libs.plugins.detekt)
     alias(libs.plugins.paparazzi)
+}
+
+// AN5 increment 1. exportSchema = true writes the room schema JSON here; R187
+// makes it a contract with every device that installs a release, so it is
+// committed and RoomSchemaContractTest reads it back in the JVM gate. The
+// ksp-arg form (not the room-gradle-plugin) is deliberate: it adds no second
+// plugin, works under KSP1 - which 2.0.21-1.0.28 selects by default - and the
+// generated file is confirmed to land before the freeze test's expectations
+// were written (advisor point 3; see REPORT-AN5.txt).
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 android {
@@ -55,6 +67,26 @@ android {
         // AN4 increment 1: BuildConfig.API_BASE_URL carries the per-build-type base URL.
         buildConfig = true
     }
+    // AN5 increment 1: MigrationTestHelper reads the exported schema JSON at
+    // runtime from the test APK's assets, so the schemas/ directory must be an
+    // androidTest asset source. Without this the harness fails on-device with
+    // "Cannot find the schema file" even though the JSON is committed.
+    sourceSets {
+        getByName("androidTest") {
+            assets.srcDir("$projectDir/schemas")
+        }
+    }
+}
+
+// AN5 increment 1: KSP writes Room's DAO/database implementations under
+// build/generated/ksp, which the ktlint plugin would otherwise scan and fail on
+// (generated code does not follow this project's style, and it is not ours to
+// format). detekt's default source set does not include generated output, so it
+// needs no equivalent.
+ktlint {
+    filter {
+        exclude { element -> element.file.path.contains("generated") }
+    }
 }
 
 detekt {
@@ -83,6 +115,11 @@ dependencies {
     // AN4 increment 1: the transport wraps the platform HttpsURLConnection in
     // withContext(Dispatchers.IO). Explicit rather than transitive (see catalog).
     implementation(libs.kotlinx.coroutines.android)
+    // AN5 increment 1: the offline record store (data/local). room-ktx brings the
+    // suspend/Flow DAO extensions; room-compiler runs as the KSP processor.
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
     testImplementation(libs.junit)
     // TEST-ONLY, justified by name (AN1 out-of-scope note): ThemeCensusTest.kt
     // reflects over androidx Typography/ColorScheme, library data classes with
@@ -111,6 +148,10 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
+    // AN5 increment 1: MigrationTestHelper (the R187 migration harness). On-device
+    // only - it validates the exported schema against a real SQLite database, which
+    // is why the JVM gate skips it with a reason, as it does connectedDebugAndroidTest.
+    androidTestImplementation(libs.androidx.room.testing)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 }
