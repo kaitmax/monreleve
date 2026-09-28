@@ -1,0 +1,12 @@
+{
+  "note": "SPEC 11.3 backfill threshold, the ONE home for the 7 (R286/R206). Read by BOTH the server's web/lib/entries/late.ts (isLate + LATE_BACKFILL_DAYS, via web/tests/unit/entries/late-fixture.test.ts) and the Kotlin ch.monreleve.app.dossier.LatenessForecast (via LatenessConformanceTest). A one-digit change to thresholdDays fails BOTH builds. lib/entries/late.ts is NOT edited by AN5c; this fixture is bound to it, never the other way round.",
+  "boundary": "STRICTLY GREATER THAN (late.ts): seven days is not late, the eighth is. The rule measures firstRecordedAt (the server's observation) against UTC midnight of dayDate; observedAt below is that observation instant. R216: the client may PREDICT this to warn, but the dossier's flag is the server's.",
+  "thresholdDays": 7,
+  "cases": [
+    { "id": "same-day", "dayDate": "2026-04-07", "observedAt": "2026-04-07T09:00:00.000Z", "late": false },
+    { "id": "six-days", "dayDate": "2026-04-07", "observedAt": "2026-04-13T12:00:00.000Z", "late": false },
+    { "id": "exactly-seven-days", "dayDate": "2026-04-07", "observedAt": "2026-04-14T00:00:00.000Z", "late": false },
+    { "id": "one-ms-past-seven", "dayDate": "2026-04-07", "observedAt": "2026-04-14T00:00:00.001Z", "late": true },
+    { "id": "eighth-day", "dayDate": "2026-04-07", "observedAt": "2026-04-15T09:00:00.000Z", "late": true }
+  ]
+}
