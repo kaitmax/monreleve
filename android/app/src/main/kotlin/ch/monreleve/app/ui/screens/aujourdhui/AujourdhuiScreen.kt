@@ -29,6 +29,7 @@ import ch.monreleve.app.design.FrontierType
 import ch.monreleve.app.design.MetricTile
 import ch.monreleve.app.design.Radius
 import ch.monreleve.app.design.RateDisplay
+import ch.monreleve.app.design.Size
 import ch.monreleve.app.design.Spacing
 import ch.monreleve.app.design.ZoneBadge
 import ch.monreleve.app.design.ZoneThresholds
@@ -53,8 +54,9 @@ private const val THRESHOLD_DECIMALS = 1
 // EntryRepository (D16, fence 5). It speaks the UI vocabulary only (RecordedKind/Slot/AbsenceChoice);
 // the wire enums never reach this file (the ui fence forbids it). No success animation, no "bravo":
 // the confirmation is the recorded row appearing (DESIGN-SYSTEM section 2). The mode strip names
-// "Saisie manuelle" with no Changer link (R282). Buttons use the 48 dp touch-target token pending a
-// 56 dp sizing token (PARKAN, report).
+// "Saisie manuelle" with no Changer link (R282). The day's record buttons use the 56 dp large-action
+// size token (Size.buttonLarge, SPEC 11.2 / R285, closing PARKAN-16). The pending line escalates as the
+// oldest unsynced day nears the late threshold (R286), predicting only to warn (R216).
 
 @Composable
 fun AujourdhuiScreen(
@@ -123,7 +125,15 @@ private fun YearSection(year: YearPanel?) {
         )
 
         if (year.unsyncedDays > 0) {
-            Text(text = AujourdhuiCopy.unsyncedNote(year.unsyncedDays), style = FrontierType.caption)
+            Text(
+                text =
+                    AujourdhuiCopy.pendingNote(
+                        year.unsyncedDays,
+                        year.pendingLateness.name,
+                        year.lateThresholdDays,
+                    ),
+                style = FrontierType.caption,
+            )
         }
         if (year.partialYear) Text(text = AujourdhuiCopy.PARTIAL_YEAR, style = FrontierType.caption)
         year.fallbackYear?.let { Text(text = AujourdhuiCopy.fallbackNote(it), style = FrontierType.caption) }
@@ -182,7 +192,9 @@ private fun RecordButton(
     onClick: () -> Unit,
 ) {
     val shape = RoundedCornerShape(Radius.buttonLg)
-    val sizing = Modifier.fillMaxWidth().heightIn(min = Spacing.space48)
+    // R285 / SPEC 11.2: the day's primary action is a 56 dp large button (the size token, not the 48 dp
+    // touch-target spacing value PARKAN-16 stood in with).
+    val sizing = Modifier.fillMaxWidth().heightIn(min = Size.buttonLarge)
     // Selected renders filled, unselected outlined - the state is visible without colour alone.
     if (selected) {
         Button(onClick = onClick, shape = shape, modifier = sizing) { Text(text = label) }

@@ -6,6 +6,7 @@ import ch.monreleve.app.data.local.Portion
 import ch.monreleve.app.data.repo.FakeEntryDao
 import ch.monreleve.app.data.repo.LocalEntryRepository
 import ch.monreleve.app.data.repo.RecordCommand
+import ch.monreleve.app.dossier.LatenessForecast
 import ch.monreleve.app.onboarding.GranularityChoice
 import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
@@ -135,6 +136,54 @@ class AujourdhuiControllerTest : FunSpec({
             val controller = AujourdhuiController(repo, storeWith("DAY", "2026-07-01"), TAX_YEAR, clock, this)
             advanceUntilIdle()
             controller.state.value.year?.partialYear shouldBe true
+        }
+    }
+
+    // R286: the pending line escalates with the OLDEST unsynced day. today is 2026-06-15.
+    test("a recently recorded pending day is not yet flagged (NONE)") {
+        runTest {
+            val dao = FakeEntryDao()
+            val repo = LocalEntryRepository(dao, clock)
+            repo.record(RecordCommand(dayDate = "2026-06-14", kind = EntryKind.HOME))
+            val controller = AujourdhuiController(repo, storeWith("DAY"), TAX_YEAR, clock, this)
+            advanceUntilIdle()
+            controller.state.value.year?.pendingLateness shouldBe PendingLateness.NONE
+        }
+    }
+
+    test("a pending day nearing the threshold escalates to APPROACHING before it is crossed") {
+        runTest {
+            val dao = FakeEntryDao()
+            val repo = LocalEntryRepository(dao, clock)
+            // 2026-06-09 is six days before today: one day short of the seven-day threshold.
+            repo.record(RecordCommand(dayDate = "2026-06-09", kind = EntryKind.HOME))
+            val controller = AujourdhuiController(repo, storeWith("DAY"), TAX_YEAR, clock, this)
+            advanceUntilIdle()
+            controller.state.value.year?.pendingLateness shouldBe PendingLateness.APPROACHING
+        }
+    }
+
+    test("a pending day past the threshold is OVERDUE, driven by the OLDEST pending day") {
+        runTest {
+            val dao = FakeEntryDao()
+            val repo = LocalEntryRepository(dao, clock)
+            // 2026-06-06 is nine days before today; a recent day does not lower the escalation.
+            repo.record(RecordCommand(dayDate = "2026-06-06", kind = EntryKind.HOME))
+            repo.record(RecordCommand(dayDate = "2026-06-14", kind = EntryKind.HOME))
+            val controller = AujourdhuiController(repo, storeWith("DAY"), TAX_YEAR, clock, this)
+            advanceUntilIdle()
+            controller.state.value.year?.pendingLateness shouldBe PendingLateness.OVERDUE
+        }
+    }
+
+    test("the pending escalation carries the shared threshold, not a typed number (R206)") {
+        runTest {
+            val dao = FakeEntryDao()
+            val repo = LocalEntryRepository(dao, clock)
+            repo.record(RecordCommand(dayDate = "2026-06-06", kind = EntryKind.HOME))
+            val controller = AujourdhuiController(repo, storeWith("DAY"), TAX_YEAR, clock, this)
+            advanceUntilIdle()
+            controller.state.value.year?.lateThresholdDays shouldBe LatenessForecast.BACKFILL_DAYS
         }
     }
 })

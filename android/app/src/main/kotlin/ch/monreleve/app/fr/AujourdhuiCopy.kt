@@ -43,8 +43,31 @@ object AujourdhuiCopy {
     const val EMPTY_YEAR = "Aucune journée enregistrée cette année pour le moment."
     const val PARTIAL_YEAR = "Ce taux couvre votre période d’activité, pas l’année entière."
 
+    /**
+     * The pending line (R286). It names the unsynced count and ESCALATES as the oldest unsynced day
+     * nears the late-saisie threshold - APPROACHING, then OVERDUE - before the threshold is crossed.
+     * R216: it PREDICTS to warn ("sera signalee ... des sa synchronisation"); the dossier's flag is the
+     * server's. R153/R181: the threshold is interpolated from the shared source (thresholdDays), never
+     * typed. latenessName is the PendingLateness `.name` (the DayCellCopy pattern), so fr/ needs no
+     * import of the controller's enum. The base count line is private, reached only through this entry.
+     */
+    fun pendingNote(
+        unsyncedDays: Int,
+        latenessName: String,
+        thresholdDays: Int,
+    ): String =
+        when (latenessName) {
+            "APPROACHING" ->
+                "${unsyncedNote(unsyncedDays)} ; la plus ancienne approche du seuil de saisie tardive " +
+                    "($thresholdDays jours) : reconnectez-vous pour les synchroniser."
+            "OVERDUE" ->
+                "${unsyncedNote(unsyncedDays)} ; la plus ancienne dépasse $thresholdDays jours et sera " +
+                    "signalée comme saisie tardive dès sa synchronisation."
+            else -> unsyncedNote(unsyncedDays)
+        }
+
     /** "dont 3 jours pas encore synchronisés" - the count is a runtime figure, not a regulatory one (R153). */
-    fun unsyncedNote(days: Int): String {
+    private fun unsyncedNote(days: Int): String {
         val plural = if (days > 1) "s" else ""
         return "dont $days jour$plural pas encore synchronisé$plural"
     }

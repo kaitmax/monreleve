@@ -92,6 +92,20 @@ object Elevation {
 }
 
 /**
+ * Component sizes - a token category ported from the web's R62 SIZE family
+ * (`$size-button-large-height` etc.), distinct from Radius (corners), Spacing
+ * (padding/gaps), Elevation and Breakpoints. R285 answers PARKAN-16, which parked
+ * the day's record buttons at the 48 dp touch target pending this: SPEC 11.2 names
+ * 56 dp for the day's primary action button, and R77 (a token whose value already
+ * appears in a brief needs no separate value ruling) covers the 56. Ratified in
+ * DESIGN-SYSTEM section 1, the R272 Breakpoints precedent for an Android token.
+ */
+object Size {
+    /** SPEC 11.2 / DESIGN-SYSTEM: the large primary action button height (the day's one-tap record). */
+    val buttonLarge: Dp = 56.dp
+}
+
+/**
  * Layout breakpoints - a different token category from Radius/Spacing
  * (a viewport width, not a padding or corner value). AN3 increment 6:
  * promoted from a literal `320.dp` repeated in ThresholdRailScreenshotTest.kt

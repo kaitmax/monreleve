@@ -14,6 +14,7 @@ import ch.monreleve.app.data.local.todayInParis
 import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.RecordCommand
 import ch.monreleve.app.dossier.AggregatableEntry
+import ch.monreleve.app.dossier.LatenessForecast
 import ch.monreleve.app.dossier.toTeleworkInput
 import ch.monreleve.app.onboarding.GranularityChoice
 import ch.monreleve.app.settings.Settings
@@ -26,6 +27,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Clock
+import java.time.LocalDate
 
 // AN5b increment 3. Recording a day (SPEC 11.2). The one question - where are you working today? -
 // answered in one tap, which records through AN5's EntryRepository (D16: the tap is the only writer,
@@ -50,6 +52,21 @@ enum class Slot { FULL, MORNING, AFTERNOON }
 /** The screen's absence reasons. Maps 1:1 to the wire's AbsenceReason, but the screen never sees that. */
 enum class AbsenceChoice { CONGE, MALADIE, FERIE, AUTRE }
 
+/**
+ * How close the OLDEST unsynced day is to the late-saisie threshold (R286). A WARNING state, not the
+ * record: R216 - the dossier's « saisie tardive » flag is the server's, from its own observation; this
+ * only escalates the pending line before the threshold is crossed. NONE while young, APPROACHING as it
+ * nears, OVERDUE once it would already be flagged if it synced now.
+ */
+enum class PendingLateness { NONE, APPROACHING, OVERDUE }
+
+/**
+ * How many days before the threshold the pending line starts to escalate (R286). PARKAN-18: the prompt
+ * does not set this, so the conservative small look-ahead (two days) is taken - it warns before the
+ * crossing without alarming early. Reversible: it is a client-only warning window, no migration.
+ */
+private const val WARN_WINDOW_DAYS = 2L
+
 /** What one portion slot holds: the recorded kind (screen vocabulary) and its sync state in words. */
 data class DayEntry(
     val kind: RecordedKind,
@@ -71,6 +88,10 @@ data class YearPanel(
     val socialCeiling: Double,
     /** Days included in the rate that the server has not yet acknowledged (AC3: said in words). */
     val unsyncedDays: Int,
+    /** How close the oldest unsynced day is to the late threshold (R286). Defaults to NONE. */
+    val pendingLateness: PendingLateness = PendingLateness.NONE,
+    /** The late threshold, from the shared source (R206), so the copy interpolates it (R153). */
+    val lateThresholdDays: Int = LatenessForecast.BACKFILL_DAYS,
     /** periodFraction < 1: the engine used part of the year (FW26 - keyed on the fraction, not the date). */
     val partialYear: Boolean,
     /** Set when the engine fell back to another year's RuleSet (R11 / RULE_SET_FALLBACK). */
@@ -190,16 +211,33 @@ class AujourdhuiController(
         val result = (calculateTelework(input) as? CalcResult.Ok)?.value ?: return null
         val fallback = result.warnings.filterIsInstance<Warning.RuleSetFallback>().firstOrNull()
         val rules = ruleSetFor(taxYear)
+        val pending = yearEntries.filter { it.syncState == SyncState.PENDING }
 
         return YearPanel(
             result = result,
             fiscalCeiling = rules.fiscalCeiling,
             socialCeiling = rules.socialCeiling,
-            unsyncedDays = yearEntries.count { it.syncState == SyncState.PENDING },
+            unsyncedDays = pending.size,
+            pendingLateness = latenessOf(pending.minByOrNull { it.dayDate }?.dayDate),
             // Keyed on the fraction the engine actually used, never on the start date (FW26).
             partialYear = input.periodFraction < 1.0,
             fallbackYear = fallback?.appliedYear,
         )
+    }
+
+    /**
+     * The escalation state of the OLDEST unsynced day (R286). OVERDUE once it would be flagged if it
+     * synced now (the precise, fixture-bound rule); APPROACHING within WARN_WINDOW_DAYS of crossing;
+     * NONE otherwise. R216: this only WARNS - the record's flag is the server's. The window is a parked
+     * conservative choice (PARKAN-18): a small look-ahead claims less.
+     */
+    @Suppress("ReturnCount")
+    private fun latenessOf(oldestPendingDay: String?): PendingLateness {
+        if (oldestPendingDay == null) return PendingLateness.NONE
+        val day = LocalDate.parse(oldestPendingDay)
+        if (LatenessForecast.wouldBeLate(day, clock.instant())) return PendingLateness.OVERDUE
+        val daysUntil = LatenessForecast.daysUntilLate(day, LocalDate.parse(today))
+        return if (daysUntil <= WARN_WINDOW_DAYS) PendingLateness.APPROACHING else PendingLateness.NONE
     }
 
     /** Record today's kind for a slot. One tap, one write to the queue (D16). */

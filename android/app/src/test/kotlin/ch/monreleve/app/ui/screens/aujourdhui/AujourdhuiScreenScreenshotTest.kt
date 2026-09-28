@@ -9,6 +9,7 @@ import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import ch.monreleve.app.aujourdhui.AujourdhuiState
 import ch.monreleve.app.aujourdhui.DayEntry
+import ch.monreleve.app.aujourdhui.PendingLateness
 import ch.monreleve.app.aujourdhui.RecordedKind
 import ch.monreleve.app.aujourdhui.YearPanel
 import ch.monreleve.app.calc.CalcResult
@@ -65,7 +66,10 @@ class AujourdhuiScreenScreenshotTest {
 
     // A real engine result, so the year panel photographs the same figures the device would compute,
     // not a hand-typed rate. 30 telework days -> a compliant ~12,5 %; 110 -> over the 40 % ceiling.
-    private fun sampleYear(teleworkDays: Double): YearPanel {
+    private fun sampleYear(
+        teleworkDays: Double,
+        pendingLateness: PendingLateness = PendingLateness.NONE,
+    ): YearPanel {
         val input =
             TeleworkInput(
                 taxYear = 2026,
@@ -85,6 +89,7 @@ class AujourdhuiScreenScreenshotTest {
             fiscalCeiling = rules.fiscalCeiling,
             socialCeiling = rules.socialCeiling,
             unsyncedDays = 3,
+            pendingLateness = pendingLateness,
             partialYear = false,
             fallbackYear = null,
         )
@@ -96,6 +101,24 @@ class AujourdhuiScreenScreenshotTest {
             granularity = GranularityChoice.DAY,
             fullDay = DayEntry(kind = RecordedKind.SUISSE, absence = null, pending = true, failed = false),
             year = sampleYear(teleworkDays = 30.0),
+        )
+
+    // R286: the pending line escalating. APPROACHING as the oldest unsynced day nears the threshold;
+    // OVERDUE once it would be flagged on sync (R216: a prediction, not the record's flag).
+    private val pendingApproaching =
+        AujourdhuiState(
+            today = "2026-06-15",
+            granularity = GranularityChoice.DAY,
+            fullDay = DayEntry(kind = RecordedKind.SUISSE, absence = null, pending = true, failed = false),
+            year = sampleYear(teleworkDays = 30.0, pendingLateness = PendingLateness.APPROACHING),
+        )
+
+    private val pendingOverdue =
+        AujourdhuiState(
+            today = "2026-06-15",
+            granularity = GranularityChoice.DAY,
+            fullDay = DayEntry(kind = RecordedKind.SUISSE, absence = null, pending = true, failed = false),
+            year = sampleYear(teleworkDays = 30.0, pendingLateness = PendingLateness.OVERDUE),
         )
 
     // A year over the fiscal ceiling: the rate is red, the badge REGIME_LOST, the fiscal tile a
@@ -151,6 +174,22 @@ class AujourdhuiScreenScreenshotTest {
     @Test
     fun aujourdhuiSyncFailed() {
         paparazzi.snapshot { host(syncFailed) }
+    }
+
+    @Test
+    fun aujourdhuiPendingApproaching() {
+        paparazzi.snapshot { host(pendingApproaching) }
+    }
+
+    @Test
+    fun aujourdhuiPendingOverdue() {
+        paparazzi.snapshot { host(pendingOverdue) }
+    }
+
+    @Test
+    fun aujourdhuiPendingOverdueLarge() {
+        paparazzi.unsafeUpdateConfig(DeviceConfig.PIXEL_5.copy(fontScale = 2f))
+        paparazzi.snapshot { host(pendingOverdue) }
     }
 
     @Test
