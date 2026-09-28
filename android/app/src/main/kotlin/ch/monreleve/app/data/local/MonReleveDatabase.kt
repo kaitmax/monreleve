@@ -1,6 +1,8 @@
 package ch.monreleve.app.data.local
 
+import android.content.Context
 import androidx.room.Database
+import androidx.room.Room
 import androidx.room.RoomDatabase
 
 // AN5 increment 1. The device's local store.
@@ -32,4 +34,24 @@ const val DATABASE_VERSION = 1
 )
 abstract class MonReleveDatabase : RoomDatabase() {
     abstract fun entryDao(): EntryDao
+
+    companion object {
+        @Volatile
+        private var instance: MonReleveDatabase? = null
+
+        /**
+         * The on-disk store, one per process. Being on disk is what makes the
+         * mutation queue survive process death (increment 2). NO destructive-migration
+         * fallback: a schema change must ship a real Migration proven by the harness
+         * (R187), never wipe a device's records.
+         */
+        fun get(context: Context): MonReleveDatabase =
+            instance ?: synchronized(this) {
+                instance ?: Room.databaseBuilder(
+                    context.applicationContext,
+                    MonReleveDatabase::class.java,
+                    DATABASE_NAME,
+                ).build().also { instance = it }
+            }
+    }
 }

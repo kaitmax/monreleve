@@ -3,11 +3,14 @@ package ch.monreleve.app.data.local
 import ch.monreleve.app.fr.format.DATE_TIME_ZONE
 import java.time.Clock
 import java.time.LocalDate
+import java.time.OffsetDateTime
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 private val PARIS: ZoneId = ZoneId.of(DATE_TIME_ZONE)
 
-// AN5 increment 1. Which calendar day "today" is, for the record (R28).
+// AN5. Which calendar day "today" is, for the record (R28), and the device's claim
+// about when a day was recorded.
 //
 // THE DEVICE'S TIMEZONE IS NOT Europe/Paris BY ASSUMPTION. A frontalier travels,
 // and a device can be set to UTC; naming the day from the device's own zone would
@@ -26,3 +29,21 @@ private val PARIS: ZoneId = ZoneId.of(DATE_TIME_ZONE)
  * timezone still records the Paris day.
  */
 fun todayInParis(clock: Clock): String = LocalDate.ofInstant(clock.instant(), PARIS).toString()
+
+// Explicit seconds, milliseconds and offset, always. OffsetDateTime.toString() and
+// the ISO_OFFSET_DATE_TIME formatter both OMIT the seconds field when it is zero,
+// producing "...T14:30+02:00" - which the server's zod .datetime({ offset: true })
+// rejects. A fixed pattern cannot land on that trap.
+private val CLAIM_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSxxx")
+
+/**
+ * The device's clock at the tap, as an ISO instant WITH OFFSET, in the zone the
+ * clock carries (the device's own).
+ *
+ * This is clientClaimedAt: sent verbatim and NEVER trusted as evidence (SPEC 8).
+ * The server keeps both this and its own firstRecordedAt, so a reader can see the
+ * gap rather than being told one number. The offset reflects where the device
+ * thinks it is - which is exactly what a claim is, and why - unlike the day - it is
+ * NOT pinned to Paris.
+ */
+fun deviceClaimNow(clock: Clock): String = OffsetDateTime.now(clock).format(CLAIM_FORMAT)
