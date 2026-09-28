@@ -94,9 +94,32 @@ REPORT-AN6a.txt shows it fires. `MIGRATION_1_2` creates the table; `MonReleveMig
 runs and validates it against `schemas/2.json` on the emulator — the migration harness's first
 real execution.
 
-## Tier thresholds (AN6a increment 4)
+## Tier thresholds, and the proposal (AN6a increment 4)
 
-_Encoded from `docs/field-protocol-AN6b.md` §3, not chosen here (R276). Filled in at increment 4._
+**Tiers are ENCODED from `docs/field-protocol-AN6b.md` §3, not chosen (R276)**, in
+`detection/Proposal.kt`. `TierThresholdParityTest` reads the six numbers back out of that
+document and fails if the constants drift (R181):
+
+- **HIGH**: samples ≥ 50 % of expected, buffer ≤ 20 %, winning side ≥ 85 %.
+- **MEDIUM**: samples ≥ 25 % of expected, buffer ≤ 40 %, winning side ≥ 70 %.
+- **LOW**: anything else — and **LOW withholds** (no proposal; the day stays *Non renseigné*).
+
+"Expected samples" is the window length over the sampling cadence (`SAMPLE_INTERVAL_MINUTES` =
+15, SPEC 13.1's WorkManager floor): a 12 h window expects 48.
+
+**The proposal.** HIGH/MEDIUM propose the winning side — INSIDE → *En Suisse* (CH), OUTSIDE →
+*Domicile* (HOME). SPEC 13.1 granularity: > 4 h is a full day, 2–4 h a half day (AM/PM from
+when the winning side's fixes fall), under 2 h is withheld. **Missions and absences are never
+detected** (`ProposalTest` asserts no tally yields MISSION_FR/MISSION_THIRD/ABSENT). A split
+day (neither side ≥ 70 %) is LOW, so it is withheld rather than guessed.
+
+**The tier is words plus segments, never a percentage (R27):** `Tier` is HIGH/MEDIUM/LOW and
+the display (AN8) renders those words beside the minute segments, never a confidence figure.
+
+**Nothing here writes an entry (D16).** A `Proposal` is a value; only the confirming tap
+records it. `FencesTest.detectionNeverWritesAnEntry` (fence 7) asserts detection/ never
+references the entry-write path (EntryRepository/RecordCommand); the plant in REPORT-AN6a.txt
+shows it fires.
 
 ## Sampling and background mechanics (AN6a increment 5)
 

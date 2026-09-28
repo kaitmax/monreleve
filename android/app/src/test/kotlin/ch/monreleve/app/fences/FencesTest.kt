@@ -295,4 +295,26 @@ class FencesTest {
         }
         assertTrue("Material-default fence violated:\n${offenders.joinToString("\n")}", offenders.isEmpty())
     }
+
+    // ------------------------------------------------------------------
+    // Fence 7 (D16, AN6a increment 4) - detection/ proposes, it never
+    // records. A proposal is a value; only the person's confirming tap
+    // writes an entry. So no file under detection/ may reach the
+    // entry-write path (EntryRepository / RecordCommand). The tally it
+    // DOES write (TallyDao) is not an entry - that distinction is the
+    // whole of D16. Proven by a plant (REPORT-AN6a.txt): a reference to
+    // EntryRepository placed in detection/ turns this red.
+    // ------------------------------------------------------------------
+    @Test
+    fun detectionNeverWritesAnEntry() {
+        val forbidden = listOf("""\bEntryRepository\b""", """\bRecordCommand\b""")
+        val offenders = mutableListOf<String>()
+        for (file in ktFiles("detection")) {
+            val text = stripComments(file.readText())
+            if (forbidden.any { Regex(it).containsMatchIn(text) }) {
+                offenders += "${file.path}: detection/ reaches the entry-write path (D16 - a proposal is not a record)"
+            }
+        }
+        assertTrue("D16 fence violated:\n${offenders.joinToString("\n")}", offenders.isEmpty())
+    }
 }
