@@ -67,9 +67,32 @@ code change. Recorded as a **NEEDS** only if enclave accuracy ever matters.
 
 ---
 
-## Buffer, hysteresis constants (AN6a increment 3)
+## Hysteresis and the daily tally (AN6a increment 3)
 
-_Filled in at increment 3._
+**Hysteresis (D26), named in `detection/Tally.kt`.** A change of side is provisional until it
+has persisted **10 minutes** (`HYSTERESIS_PROVISIONAL_MINUTES`) and is significant after **30**
+(`HYSTERESIS_SIGNIFICANT_MINUTES`). Excursions shorter than 10 minutes are folded back into the
+preceding side — the GPS-flicker guard for someone living near Geneva. The tally's minute
+attribution turns on the 10-minute fold; the 30-minute mark is the stronger-confidence signal
+the tier reads (increment 4). `TallyComputerTest` proves the boundary (9 min folds, 10/11 min
+stand), oscillation folding, and that buffer time is attributed to neither side.
+
+**Minutes come from the fixes' own timestamps**, never the wall clock: the gap after each fix is
+attributed to its side. This is what lets a compressed replay of a day (increment 5) produce the
+tally a real day would.
+
+**The working window.** 07:00–19:00 Europe/Paris (`WORKING_WINDOW_START_MINUTE` /
+`WORKING_WINDOW_END_MINUTE`), pinned to Paris regardless of the device timezone (R28,
+`WorkingWindowTest`). Stored on each tally as minutes-of-day so a past tally keeps the window it
+was computed under.
+
+**The tally table (`daily_tally`), Room version 2.** Per day: `minutesSwitzerland`,
+`minutesElsewhere`, `fixCount`, `bufferFixCount`, the window, and `tier` (nullable, set at
+increment 4). **No coordinate column** — the DDL scan now iterates every table
+(`RoomSchemaContractTest.noColumnIsCoordinateShapedInAnyTable`), and the plant in
+REPORT-AN6a.txt shows it fires. `MIGRATION_1_2` creates the table; `MonReleveMigrationTest`
+runs and validates it against `schemas/2.json` on the emulator — the migration harness's first
+real execution.
 
 ## Tier thresholds (AN6a increment 4)
 

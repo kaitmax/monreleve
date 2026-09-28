@@ -1,0 +1,161 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 2,
+    "identityHash": "fbc46d254b283da52dad25cf83fdcac2",
+    "entities": [
+      {
+        "tableName": "entry",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`clientMutationId` TEXT NOT NULL, `dayDate` TEXT NOT NULL, `portion` TEXT NOT NULL, `kind` TEXT NOT NULL, `absenceReason` TEXT, `note` TEXT, `provenance` TEXT NOT NULL, `detectedKind` TEXT, `detectedAt` TEXT, `clientClaimedAt` TEXT, `serverId` TEXT, `firstRecordedAt` TEXT, `lastModifiedAt` TEXT, `syncState` TEXT NOT NULL, PRIMARY KEY(`dayDate`, `portion`))",
+        "fields": [
+          {
+            "fieldPath": "clientMutationId",
+            "columnName": "clientMutationId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dayDate",
+            "columnName": "dayDate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "portion",
+            "columnName": "portion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "absenceReason",
+            "columnName": "absenceReason",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "provenance",
+            "columnName": "provenance",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "detectedKind",
+            "columnName": "detectedKind",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "detectedAt",
+            "columnName": "detectedAt",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "clientClaimedAt",
+            "columnName": "clientClaimedAt",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "serverId",
+            "columnName": "serverId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "firstRecordedAt",
+            "columnName": "firstRecordedAt",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastModifiedAt",
+            "columnName": "lastModifiedAt",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "syncState",
+            "columnName": "syncState",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "dayDate",
+            "portion"
+          ]
+        }
+      },
+      {
+        "tableName": "daily_tally",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`dayDate` TEXT NOT NULL, `minutesSwitzerland` INTEGER NOT NULL, `minutesElsewhere` INTEGER NOT NULL, `fixCount` INTEGER NOT NULL, `bufferFixCount` INTEGER NOT NULL, `windowStartMinuteOfDay` INTEGER NOT NULL, `windowEndMinuteOfDay` INTEGER NOT NULL, `tier` TEXT, PRIMARY KEY(`dayDate`))",
+        "fields": [
+          {
+            "fieldPath": "dayDate",
+            "columnName": "dayDate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "minutesSwitzerland",
+            "columnName": "minutesSwitzerland",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "minutesElsewhere",
+            "columnName": "minutesElsewhere",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fixCount",
+            "columnName": "fixCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bufferFixCount",
+            "columnName": "bufferFixCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "windowStartMinuteOfDay",
+            "columnName": "windowStartMinuteOfDay",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "windowEndMinuteOfDay",
+            "columnName": "windowEndMinuteOfDay",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tier",
+            "columnName": "tier",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "dayDate"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'fbc46d254b283da52dad25cf83fdcac2')"
+    ]
+  }
+}

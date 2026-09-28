@@ -7,18 +7,15 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-// AN5 increment 1. The migration harness R187 requires from the very first
-// version. It reads the exported schema JSON from the test APK's assets (wired by
-// android.sourceSets.androidTest.assets.srcDir("schemas") in build.gradle.kts) and
-// opens a real SQLite database against it - so it needs the device runtime and is
-// an instrumented test, run on the emulator, not by `./gradlew test`. The gate
-// names connectedDebugAndroidTest among what it skips for exactly this reason.
+// AN5 increment 1 / AN6a increment 3. The migration harness, now with a REAL migration to
+// run - the execution AN5's report honestly recorded as never having happened. It creates the
+// database at version 1 (the AN5 entry store), applies MIGRATION_1_2, and validates the result
+// against the exported schemas/2.json: if the migration's DDL drifts from what Room expects for
+// TallyEntity, runMigrationsAndValidate fails here, on the emulator, before a device that
+// cannot be un-installed ever runs it (R187).
 //
-// WITH ONE VERSION THERE IS NO MIGRATION TO RUN YET. What this proves today is
-// that the exported schema and the compiled schema agree, and that the database
-// opens at version 1. Its real value is the day a column is added: runMigrationsAndValidate
-// then proves the ALTER against the frozen schema BEFORE it ships to a device that
-// cannot be un-installed - which is the whole point of exporting the schema.
+// Instrumented (needs the device runtime), so the JVM gate skips it with a reason, as it does
+// connectedDebugAndroidTest; run on the emulator.
 @RunWith(AndroidJUnit4::class)
 class MonReleveMigrationTest {
     @get:Rule
@@ -29,8 +26,9 @@ class MonReleveMigrationTest {
         )
 
     @Test
-    fun schemaVersion1OpensAndValidates() {
-        helper.createDatabase(TEST_DB, DATABASE_VERSION).close()
+    fun migratesFromVersion1ToVersion2() {
+        helper.createDatabase(TEST_DB, 1).close()
+        helper.runMigrationsAndValidate(TEST_DB, DATABASE_VERSION, true, MIGRATION_1_2)
     }
 
     private companion object {
