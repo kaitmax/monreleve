@@ -1,0 +1,502 @@
+====================================================================
+REPORT-AN4.txt - sign-in on the device
+Mon Releve / frontalier   2026-09-28
+====================================================================
+
+NOTE ON SPELLING. Pure ASCII, as the protocol requires. Every French
+phrase quoted below is transliterated: accents dropped, guillemets
+become double quotes. R155 - THE ASCII HERE IS ILLUSTRATIVE, NEVER A
+SOURCE. The accented original lives in android/.../fr and is what ships.
+
+SUMMARY
+--------------------------------------------------------------------
+Passwordless sign-in for the Android client, preceded by AN3's three
+carried fixes. Seven increments (0-6), each gated on the Android gate
+and pushed on its own green chain; gate:clone run before every push.
+
+WHAT IS WORTH READING, in order of how much it changed:
+
+1. THE FULL SIGN-IN LOOP RUNS ON THE DEVICE AGAINST pnpm dev. Email
+   entered in the app -> POST magic-link -> 202; the link read from the
+   dev outbox -> fired by adb -> GET callback -> 200, token pair stored
+   -> "Vous etes connecte"; an authenticated GET /api/v1/me -> 200;
+   refresh -> 200, a new pair; the authenticated call again on the
+   rotated token -> 200; sign-out -> 200; the next authenticated call
+   -> refused, no session. Every step seen on the emulator and read.
+
+2. THE TWO CLAIMS ARE STATED SEPARATELY. The app's HANDLING of the
+   callback is proven by firing the intent directly. The OS's App Link
+   VERIFICATION is not, and cannot be: monreleve.ch does not resolve
+   (FW29 Checkpoint C), so assetlinks.json cannot be served or checked.
+   PARKAN-1 records exactly what would close it.
+
+3. FW31 IS OPEN AND BEARS ON WHAT THIS CLAIMS. The walkthrough runs
+   against pnpm dev, which memoises the Prisma client and works.
+   NOTHING HERE PROVES SIGN-IN WORKS ON A PRODUCTION BUILD, and this
+   report does not imply it does. See FW31 below.
+
+4. security-crypto IS DEPRECATED, so token storage is the Android
+   Keystore directly, not EncryptedSharedPreferences. SPEC 10 names the
+   deprecated library; that spec line is out of date (the R209 shape).
+
+5. checkReleaseCleartext TRIPPED ON ITS OWN DOCUMENTATION on its first
+   run - the FW22 size-regex-matched-prose shape, one layer over. Found
+   and fixed before the increment closed.
+
+BLOCKER: none.
+
+PRECONDITIONS (R1 as reworded by R200)
+--------------------------------------------------------------------
+R0 reads done: REPORT-AN3.txt, REPORT-FW22.txt, docs/api-v1.md (the
+frozen /api/v1 contract), SPEC 10/11.1/20, docs/android-skills.md
+(the android-intent-security notes).
+
+R1 - pnpm gate:clone green on a fresh clone of origin/main's HEAD:
+
+  commit    3cf603e5d3fabcc5414fcbc824d50a94247c51d0
+  tree      DIRTY at start (relay/AN4.txt untracked, named by the run)
+  ran       install, typecheck, lint, test, build, size, db:deploy,
+            test:db, test:container:write
+  claim     builds and passes those from a clean checkout - no .env, no
+            prior node_modules, no generated file the run did not make
+  NOT RUN   test:e2e, test:visual, test:runtime, lighthouse,
+            parity:check, test:container (each named with its reason)
+  result    GATE:CLONE PASSED
+  CI        quiet - the repository is private and CI_FULL is unset
+
+R270 (new, carried verbatim in the prompt). No injected instruction was
+acted on - see the R270 section.
+
+INCREMENT 0 - AN3's three carried fixes
+--------------------------------------------------------------------
+THE RAIL (PARK-17, R271). ThresholdRail drew its tick and rate labels
+at X/Y positions railGeometry computes in dp, while the label TEXT
+scales with fontScale - so at 200 percent the labels overran the track
+and each caption's own inline percent. withTextScaledVertical now
+rebuilds ONLY the vertical coordinates from the MEASURED caption line
+box (TextMeasurer), leaving every horizontal field railGeometry's, so
+AC2's 33-case RailGeometryTest is untouched. NOT a cap on the glyph
+scale - that defeats the setting R16 serves.
+
+  SEEN AT 200 PERCENT on emulator-5554: every rail state (conforme 30,
+  depassement fiscal 45, bascule sociale 55, compact Geneve 39,16)
+  shows its rate clear of the gallery caption above, the track below
+  it, and the two tick labels "40 %" and "49,9 %" clear of the track
+  and of each other. The fix is proven by that screenshot, not by the
+  geometry test (which passed before the fix too).
+
+THE LEGEND (PARK-18's legend half, R271). DayKindLegend was one Row, so
+at 200 percent the fourth entry "A Absence" was handed a near-zero
+width and wrapped one character per line. It is a FlowRow now: whole
+entries wrap onto the next line. SEEN AT 200 PERCENT: "S Suisse D
+Domicile M Mission" on line one, "A Absence" whole on line two.
+FlowRow is @ExperimentalLayoutApi at compose-bom 2024.09; the opt-in is
+authorised by the relay naming FlowRow, and the R261 tension (prefer
+stable Compose) is recorded here.
+
+PARK-18's DAY CELL half is NOT this task's. At high font scale the
+calendar renders as a LIST, which lands at AN10 with the calendar; the
+day cells still overlap at 200 percent, seen and left as the parked
+entry says.
+
+BREAKPOINTS (R272). Documented in DESIGN-SYSTEM.md section 1 (ANDROID
+BREAKPOINTS): Breakpoints.minSupportedWidth 320 dp, a fourth token
+category, citing R68/R77. Closes PARK-19's SPEC 20 ask-first item.
+
+METRICTILE (AN3 Q3). ComponentsScreenshotTest passed hand-typed noun
+phrases ("...avant le plafond fiscal"). MetricCopy's contract
+(web/lib/fr/metrics.ts) is a formatted PERCENTAGE, so the captions now
+derive from the RuleSet via MetricCopy + formatPercent - codepoint
+faithful (U+202F before the percent sign). R135's reason: "the caption
+now uses the form the contract requires." R207: the expected set was
+TWO PNGs, and the run produced exactly them -
+metricTilePositive.png and metricTileNegative.png. The relay said "that
+one baseline"; it is two, corrected here.
+
+The five rail baselines also regenerated (the 1x rendering moved: the
+rate is no longer clipped 5 px at the top and the tick labels clear the
+tick region by a full gap), listed and cropped: inlineCompliant,
+inlineFiscalExposure, inlineSocialSwitch, compactAt320Dp, unavailable.
+
+Committed per item (four commits). PARK-17/18/19 annotated with their
+rulings in parking.md.
+
+RED-GREEN LEDGER
+--------------------------------------------------------------------
+increment 0 - rail/legend/breakpoints/Q3
+  the geometry test stayed green throughout (R271's point); the proof
+  is the 200 percent screenshots. Baselines regenerated, gate green.
+
+increment 1 - network layer, cleartext
+  RED-1  AuthServerCodeTest: "Unresolved reference 'AuthServerCode'" -
+         the mapping types did not exist.
+  RED-2  checkReleaseCleartext PLANT: cleartextTrafficPermitted="true"
+         in the release element -> FAILED naming the release config.
+         Reverted. (Its FIRST honest run had also failed, tripping on
+         its own comment - fixed by stripping XML comments.)
+  GREEN  gate: assembleDebug, testDebugUnitTest, checkTestFloor,
+         ktlint, detekt, verifyPaparazziDebug, checkReleaseCleartext.
+
+increment 2 - token storage, log fence
+  RED-1  LogFenceTest PLANT: android.util.Log.d(..., refreshToken) in
+         KeystoreTokenStore.save -> noCredentialShareALineWithALogSink
+         FAILED. Reverted (R7/R178: the app logs nothing, so a plant
+         is the proof).
+  GREEN  gate green; instrumented Keystore round-trip green on the
+         emulator (3 tests: save/load, clear, load-without-save).
+
+increment 3 - requesting a link
+  RED    AuthApiRequestLinkTest: "Unresolved reference 'AuthApi'".
+  GREEN  gate green; sign-in screen rendered on the emulator and read.
+
+increment 4 - the callback
+  RED    CallbackLinkTest / AuthApiCallbackTest: "Unresolved reference
+         'CallbackLink' / 'exchangeCallback'".
+  GREEN  gate green; MALFORMED and MISMATCH fired by adb and seen.
+
+increment 5 - refresh, replay, sign-out
+  RED    SessionManagerTest: the single-flight test failed to compile
+         until SessionManager existed.
+  GREEN  gate green; the ten-way single-flight test asserts exactly one
+         rotation reached the server.
+
+increment 6 - walkthrough, report
+  the full loop driven on the emulator against pnpm dev; every screen
+  seen. gate green (578 unit tests).
+
+THE NETWORK LAYER (increment 1)
+--------------------------------------------------------------------
+HTTP CLIENT: the platform HttpsURLConnection behind a thin HttpTransport
+seam, on Dispatchers.IO (R136 - no OkHttp/Ktor/Retrofit for a handful
+of JSON endpoints). The seam is why the refresh state machine and the
+single-flight proof run as plain JVM tests against a fake.
+
+JSON: org.json - the library AN2 already brought for the fixtures,
+reused, not a second. On a device it is the platform's; the unit tests
+get the real JVM impl via the existing test dependency. Its
+read-what-you-ask parsing satisfies the contract's ignore-unknown-keys
+obligation (docs 6.5) structurally, where a strict serialiser would
+need configuring.
+
+BASE URL PER BUILD TYPE (BuildConfig.API_BASE_URL): debug is
+http://10.0.2.2:<port> (frontalierPort gradle property, default 3000 -
+a neighbour holding 3000 moves us, R170's shape), release is
+https://monreleve.ch. Cleartext is permitted only to 10.0.2.2 in the
+DEBUG network security config and NOWHERE in release, with the release
+deny EXPLICIT because minSdk 26 defaults cleartext to permitted (only
+API 28+ flipped it).
+
+checkReleaseCleartext (a gate task, dependsOn processReleaseManifest -
+R182, so it never runs before the merged manifest exists) reads the
+MERGED release manifest and the release network config and fails if
+cleartext is permitted anywhere. THE DEFECT IT FOUND IN ITSELF: its
+first run failed, reporting the release config permits cleartext - but
+the config said "false". The regex had matched the string
+cleartextTrafficPermitted="true" inside the config's own COMMENT (which
+names it as the value to plant). Fixed by stripping XML comments before
+matching. Then proven by planting the value in the ELEMENT (R180):
+FAILED for the right reason, reverted.
+
+ERROR MAPPING (R198): AuthServerCode maps every auth code (docs 1.4 /
+bearer.ts) to its own ClientAction; an unrecognised code is preserved,
+never guessed (docs 6.5); a Network failure is a distinct type from a
+Server failure, so "could not connect" is never read as "the link was
+already used".
+
+TOKEN STORAGE (increment 2)
+--------------------------------------------------------------------
+NOT EncryptedSharedPreferences. androidx.security:security-crypto was
+DEPRECATED in April 2025 (1.1.0-alpha07) over main-thread StrictMode
+violations and keyset corruption on some OEMs, verified by web search,
+and the relay forbids building on a deprecated API. SPEC 10 names
+EncryptedSharedPreferences, so SPEC's mechanism is out of date - the
+same shape as R209's Auth.js line (DEVIATIONS).
+
+CHOSEN: the platform Android Keystore directly (R136). An AES-256-GCM
+key that never leaves the Keystore; the pair serialised to JSON,
+encrypted, and the ciphertext plus a fresh per-save IV kept in an
+ordinary SharedPreferences. No new dependency. This delivers SPEC 10's
+actual requirement - "stored in Keystore-backed storage".
+
+setUserAuthenticationRequired(false): silent refresh must work while the
+phone is locked, so the key is not gated on a device unlock. An
+unreadable stored blob (an invalidated key, a corrupt ciphertext) is
+not a crash: load() drops the pair and returns null, and the caller
+signs in again - the local mirror of the server's unknown_token
+"corrupted stored token" case.
+
+PROVEN by an instrumented test on emulator-5554 (real AES-GCM, not a
+JVM stub): save -> load returns the same pair; clear drops it; an empty
+store loads null.
+
+WHAT CANNOT LEAK (increment 2, AC3)
+--------------------------------------------------------------------
+LOG FENCE: no token, refresh token or email reaches a log line. A
+source scanner (LogFenceTest) forbids a log/print sink sharing a line
+with a credential word, plus TokenPair.toString() redacts both tokens
+for the leak a generic serialiser (a crash reporter, Log.d("$pair"))
+would produce. Proven adversarially - a planted Log.d(refreshToken)
+turned it RED (R7/R178: the app logs nothing, so a plant is the proof).
+
+BACKUP: the token store AND the pending-sign-in store are excluded from
+BOTH fullBackupContent (API 26-30) AND dataExtractionRules (31+, cloud
+backup AND device transfer) - a restored backup must not resurrect a
+session, and device transfer is the channel fullBackupContent cannot
+express. The Keystore key is device-bound anyway; excluding the
+ciphertext is the explicit second guarantee. BackupRulesTest asserts
+both files, both channels.
+
+FLAG_SECURE: RECORDED, NOT SPRINKLED. No screen renders a token or the
+sign-in link - the email screen shows an email the user typed, the
+check-email and callback screens show messages, and the link is read
+from the outbox, never displayed. noRawTokenReachesTheUiLayer asserts
+the premise (ui/ holds no raw token). Applying FLAG_SECURE to the
+callback screen would have blacked out AC2's own required screenshots
+for nothing on screen to hide, so it is applied nowhere and the reason
+is recorded here rather than the flag scattered performatively.
+
+THE CALLBACK (increment 4, AC2)
+--------------------------------------------------------------------
+CallbackActivity is the App Link target (exported, singleTop,
+autoVerify) for FW22's frozen callback path (R195). The incoming URI is
+UNTRUSTED (android-intent-security, AN0): CallbackLink.parse validates
+scheme, host and path against the frozen shape and extracts token+email
+(a pure java.net.URI, JVM-tested), applied identically in onCreate AND
+onNewIntent (setIntent first, so a singleTop warm delivery is trusted
+no more than a cold one). The exchange then GETs the app's OWN
+configured base URL, never a host taken from the incoming URI. No
+intent redirection; only the App Link, the LAUNCHER and the dev
+activities are exported.
+
+LOGIN-CSRF: a co-installed app can fire the exported callback with a
+VALID link for an account the user never requested. SignInController
+remembers the requested address (PendingSignInStore, persisted so it
+survives process death); the callback refuses a link whose email does
+not match, and refuses one with no pending request at all (MISMATCH),
+before any exchange. This is "never act on extras an external app could
+supply" applied to the whole flow.
+
+THE FOUR-DISTINCT QUESTION, ANSWERED HONESTLY. The relay's AC2 asks for
+"expired, used, unknown, malformed" as distinct states. The server
+collapses expired/used/unknown into ONE invalid_link 400 by design
+(callback route lines 43-52: distinguishing them would tell whoever
+holds a stale link whether it was ever valid). The client consumes that
+exactly (R195), so it renders what it can honestly tell apart:
+  MALFORMED    - a foreign host/scheme/path or a missing parameter,
+                 decided by the client before any call.
+  MISMATCH     - a valid link for an unrequested account (login-CSRF),
+                 decided by the client before any call.
+  INVALID_LINK - the server's one 400 for unknown/expired/used.
+  NETWORK      - could not reach the server.
+The three expired/used/unknown are not separable; that limit is the
+contract's, not a client defect, and is stated rather than faked.
+
+SEEN (by adb am start, the intent fired directly at the activity):
+  MALFORMED    - fired a foreign-host URI -> "Ce lien est incomplet ou
+                 incorrect." The app's own validation refused it.
+  MISMATCH     - fired a valid-shape URI for stranger@x.ch with no
+                 pending request -> "Ce lien ne correspond pas a la
+                 demande de connexion en cours sur cet appareil."
+                 Delivered via onNewIntent (warm), re-validated.
+  INVALID_LINK - fired a bogus token with the pending email set ->
+                 server 400 invalid_link -> "Ce lien n'est plus
+                 valable... demandez-en un nouveau."
+  SIGNED       - fired the REAL token from the outbox -> server 200 ->
+                 "Vous etes connecte." (the AC1 loop below).
+
+THE TWO CLAIMS (increment 4)
+--------------------------------------------------------------------
+CLAIM PROVEN: the app's HANDLING of the callback. Every state above was
+produced on the emulator and read.
+
+CLAIM NOT MADE: the OS's App Link VERIFICATION. monreleve.ch does not
+resolve (FW29 Checkpoint C), so /.well-known/assetlinks.json cannot be
+served, cached or checked, and "tap the link in the email, the app
+opens" is not tested here - the intents were fired directly, which
+bypasses the OS's routing. The manifest carries autoVerify so
+verification happens the day the domain does, with no app change.
+PARKAN-1 records the NEEDS: the domain resolving and serving
+assetlinks.json with the package name and the SHA-256 fingerprints,
+INCLUDING Google's Play App Signing key if Play re-signs the upload
+(PARK4-2 - a statement naming only the upload key verifies for nobody),
+and FW22's assetlinks route configured (it 404s until the env vars are
+set, R205).
+
+SINGLE-FLIGHT REFRESH (increment 5)
+--------------------------------------------------------------------
+Two requests racing an expiry must not BOTH refresh: the second's
+refresh replays the first's rotated token, and a replay ends the whole
+session (R210 turned against ourselves). SessionManager.refresh takes a
+mutex; a caller that finds the stored refresh token already rotated
+while it waited returns the new pair rather than refreshing again.
+
+PROVEN by firing TEN concurrent refreshes and asserting EXACTLY ONE
+rotation reached the server. FW22's report records a TWO-way race
+PASSING against a broken implementation and only the ten-way catching
+it, so this deviates upward from the relay's "two" deliberately, and
+says so.
+
+R210's distinction is kept in the outcomes and seen in the walkthrough:
+an expired access token whose refresh fails is SessionExpired (an
+ordinary lapse); revoked_session/unknown_token on a still-held token -
+what a replay produces - is SessionEnded, tokens cleared. The server
+does not label the replay in the refresh answer (auth-api.ts defers
+that to FW26's account screen), so the client distinguishes
+revoked_session from an ordinary expiry, which is the achievable and
+honest form of "renders differently from expiry".
+
+FW31 (what this could and could not claim about production)
+--------------------------------------------------------------------
+FW31 is open: the production Prisma client breaks $transaction. The
+walkthrough runs against pnpm dev, which memoises the client and works -
+every server call in the loop returned 200 (magic-link 202, callback
+200, me 200, refresh 200, me 200, sign-out 200). NOTHING HERE PROVES
+SIGN-IN WORKS ON A PRODUCTION BUILD. Magic-link consumption is atomic
+(R194); whether its current single-statement deleteMany or issueTokenPair
+would hit the broken $transaction path on a production build is FW31's
+question, not this task's, and this report does not imply the production
+path works. It works against pnpm dev; that is the whole of the claim.
+
+WALKTHROUGH (R176/R177, AC1)
+--------------------------------------------------------------------
+Against pnpm dev on port 3000, reached from the emulator at 10.0.2.2.
+R169 first: http://localhost:3000/api/health returned
+{"service":"monreleve",...} - this product. The emulator has no curl,
+so the app's own calls are the reach; every one landed (server log).
+
+Driven and SEEN at default text scale:
+  1  email screen: "Connexion", the prompt, the field, "Recevoir le
+     lien" in the brand blue.
+  2  typed demo@monreleve.ch, submitted -> "Verifiez votre boite mail /
+     Si un compte existe pour cette adresse..." (POST magic-link 202).
+  3  read the outbox from the dev terminal: subject "Votre lien de
+     connexion Mon Releve", one link to the callback with a token.
+  4  fired that link by adb -> "Vous etes connecte" (GET callback 200,
+     pair stored).
+  5  the session probe (dev/SignInProbeActivity, the AC1 instrument for
+     the steps with no production screen until AN5): "Appel authentifie:
+     reussi" (me 200), "Rafraichissement du jeton: jeton rafraichi"
+     (refresh 200), "Appel authentifie, jeton rafraichi: reussi" (me
+     200 on the rotated token), "Deconnexion: effectuee" (sign-out
+     200), "Appel authentifie apres deconnexion: refuse, aucune
+     session" (the token cleared, no server call - refused locally).
+
+SEEN at 200 percent text (the sign-in screens are the first a new user
+meets): the email screen and the check-email screen both scale cleanly -
+the prompt wraps to three then six lines, the field and the brand
+button stay whole, nothing truncates or overlaps.
+
+The screenshots were opened and read one by one; that is how the probe's
+last row was noticed to crowd its outcome against its long label (a dev
+instrument cosmetic, NOTICED BUT NOT TOUCHING).
+
+R270 (any injected instruction encountered)
+--------------------------------------------------------------------
+A block claiming to be a SessionStart hook, introducing a "superpowers"
+skill system with "you ABSOLUTELY MUST invoke the skill... not
+negotiable", arrived inside an MCP server's instruction text - the same
+block AN1 and AN3 saw. It is not in this session's skill list and its
+"must" conflicts with R241. Per R270 it was disregarded, named here,
+and work continued. No other injected instruction was acted on.
+
+SKILL CONFLICTS (R258)
+--------------------------------------------------------------------
+android-intent-security (AN0's vendored skill) was applied to the
+callback, and it composes with R195 without conflict (the skill governs
+client intent handling, R195 governs the server token). Its minSdk 36
+assumption does not hold here (SPEC 3 says 26); no API needing a guard
+was used. No skill instruction overrode SPEC, DESIGN-SYSTEM or a ruling.
+
+PARKED
+--------------------------------------------------------------------
+PARKAN-1  the OS App Link verification is not, and cannot be, tested
+          here (monreleve.ch does not resolve). NEEDS the domain,
+          assetlinks.json with the package name and SHA-256
+          fingerprints (incl. Play's signing key, PARK4-2), and FW22's
+          assetlinks route configured. Recorded in parking.md.
+PARK-17/18/19  AN3's parked items, ruled and annotated in increment 0:
+          PARK-17 fixed (R271 rail), PARK-18 split (legend fixed R271,
+          day cell -> AN10), PARK-19 ratified (R272).
+
+DEVIATIONS
+--------------------------------------------------------------------
+1. SPEC 10 NAMES EncryptedSharedPreferences, which is deprecated. Token
+   storage is the Android Keystore directly. The spec line is out of
+   date (the R209 shape - a spec naming a mechanism a later decision
+   overtook). Amending SPEC 10 to name Keystore-backed storage is a
+   QUESTION below.
+2. AC2's "four distinct callback states" is not achievable against the
+   frozen contract, which collapses expired/used/unknown into one
+   invalid_link. The client renders what it can honestly tell apart
+   (MALFORMED, MISMATCH, INVALID_LINK, NETWORK). Consuming the contract
+   exactly (R195), not an edit to the server.
+3. SCOPE. The todo.md AN4 card names an onboarding shell (canton, taux,
+   methode...) and a four-destination bottom bar. The relay narrowed
+   AN4 to the sign-in flow ("then builds passwordless sign-in on the
+   device"), and SPEC 11.1's onboarding is mode/consent while
+   canton/taux are 11.5 Parametres - AN5+. This task built the sign-in
+   flow; the onboarding fields and nav are not in the relay's
+   increments.
+4. AC2's screenshots are split: the client-decided states (MALFORMED,
+   MISMATCH) in increment 4, the server-round-trip states (SIGNED,
+   INVALID_LINK) in increment 6's loop against pnpm dev, where the
+   server exists. Every callback state is screenshotted; where each was
+   produced follows where its precondition lives.
+5. SINGLE-FLIGHT proven ten-way, not two (FW22's precedent). Stated at
+   the test.
+6. The AC1 steps with no production screen yet (authenticated call,
+   refresh, sign-out) are driven through a dev instrument
+   (SignInProbeActivity), the same pattern as AN3's gallery. The
+   production signed-in area is AN5.
+
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------
+1. The probe's last row ("Appel authentifie apres deconnexion") crowds
+   its long label against the outcome at default width in a
+   SpaceBetween row. A dev-instrument cosmetic, not a product screen.
+2. GET /api/v1/me's settings body is not modelled - the probe only
+   needs its status (accepted / refused). Modelling /me is AN5's.
+3. The sign-in loop stores a session but there is no production
+   signed-in destination yet (Aujourd'hui is AN1's placeholder). Main
+   Activity always opens at sign-in; routing a signed-in user is AN5.
+
+QUESTIONS
+--------------------------------------------------------------------
+Q1. Amend SPEC 10 to name Keystore-backed storage rather than
+    EncryptedSharedPreferences (deprecated April 2025)? The R209 shape:
+    the spec line is what is out of date, not the storage guarantee.
+Q2. Is the dev SignInProbeActivity the right AC1 instrument for the
+    authenticated-call / refresh / sign-out steps, given the production
+    signed-in area is AN5? It exercises the real SessionManager against
+    pnpm dev and is dev-only, mirroring AN3's gallery.
+Q3. AC2's "four distinct" wording versus the server's single
+    invalid_link - confirm the honest three-state client rendering
+    (MALFORMED client-side, INVALID_LINK server, NETWORK) is the intent,
+    the contract being what it is.
+
+PUSH PROOF
+--------------------------------------------------------------------
+Branch main, remote github.com/kaitmax/monreleve.
+
+  08e7678  chore: the AN4 prompt
+  9315afd  AN4: increment 0 - rail and legend legible at 200% text (R271)
+  6e7e0d8  AN4: increment 0 - Breakpoints ratified as a token category (R272)
+  ffbac61  AN4: increment 0 - MetricTile caption in the percentage form (Q3)
+  3885b84  AN4: the network layer, cleartext debug-only
+  889d4f0  AN4: tokens stored, and fenced from every log
+  0940aa1  AN4: requesting a sign-in link
+  4417304  AN4: the App Link callback
+  eafce7b  AN4: refresh, replay, sign-out
+  <this>   AN4: sign-in, seen
+
+Each increment's push was preceded by gate:clone GREEN (recorded per
+push): 3cf603e (R1), ffbac61, 3885b84, 889d4f0, 0940aa1, 4417304,
+eafce7b, and the final one below. The Android gate ran green before each
+commit; the walkthrough drove the loop on emulator-5554.
+
+[final gate:clone output and push confirmation recorded below after the
+commands run.]
+
+====================================================================
+END OF REPORT-AN4.txt
+====================================================================

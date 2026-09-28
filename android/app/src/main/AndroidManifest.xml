@@ -59,6 +59,19 @@
             android:name=".dev.GalleryActivity"
             android:exported="true"
             android:theme="@style/Theme.MonReleve" />
+
+        <!--
+          AN4 increment 6. The AC1 walkthrough instrument (dev/SignInProbeActivity):
+          drives SessionManager against pnpm dev after sign-in. No intent-filter,
+          never in the launcher. Reached only by:
+            adb shell am start -n ch.monreleve.app/ch.monreleve.app.dev.SignInProbeActivity
+          exported for that adb reach; it holds no data and reads the session the
+          real callback already stored.
+        -->
+        <activity
+            android:name=".dev.SignInProbeActivity"
+            android:exported="true"
+            android:theme="@style/Theme.MonReleve" />
     </application>
 
 </manifest>
