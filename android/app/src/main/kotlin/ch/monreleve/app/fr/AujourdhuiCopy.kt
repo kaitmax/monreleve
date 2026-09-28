@@ -34,6 +34,20 @@ object AujourdhuiCopy {
     const val PENDING = "En attente de synchronisation"
     const val EDIT_HINT = "Touchez une réponse pour corriger la journée."
 
+    // AC3 - the year panel never overclaims. An empty year says so rather than showing 0 %; a rate
+    // that includes unsynced days says so; a partial year names that it covers the activity period.
+    const val EMPTY_YEAR = "Aucune journée enregistrée cette année pour le moment."
+    const val PARTIAL_YEAR = "Ce taux couvre votre période d’activité, pas l’année entière."
+
+    /** "dont 3 jours pas encore synchronisés" - the count is a runtime figure, not a regulatory one (R153). */
+    fun unsyncedNote(days: Int): String {
+        val plural = if (days > 1) "s" else ""
+        return "dont $days jour$plural pas encore synchronisé$plural"
+    }
+
+    /** Named when the engine used another year's barème (R11 / RULE_SET_FALLBACK). */
+    fun fallbackNote(year: Int): String = "Barème $year appliqué (année en cours non encore publiée)."
+
     private const val RECORDED_PREFIX = "Enregistré :"
 
     /** The French label for an AbsenceChoice, by its `.name`. Serves the reason buttons and the recorded row. */

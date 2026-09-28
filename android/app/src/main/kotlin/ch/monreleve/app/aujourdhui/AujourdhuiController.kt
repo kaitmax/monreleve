@@ -1,5 +1,10 @@
 package ch.monreleve.app.aujourdhui
 
+import ch.monreleve.app.calc.CalcResult
+import ch.monreleve.app.calc.TeleworkResult
+import ch.monreleve.app.calc.Warning
+import ch.monreleve.app.calc.calculateTelework
+import ch.monreleve.app.calc.ruleSetFor
 import ch.monreleve.app.data.local.AbsenceReason
 import ch.monreleve.app.data.local.EntryEntity
 import ch.monreleve.app.data.local.EntryKind
@@ -8,8 +13,12 @@ import ch.monreleve.app.data.local.SyncState
 import ch.monreleve.app.data.local.todayInParis
 import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.RecordCommand
+import ch.monreleve.app.dossier.AggregatableEntry
+import ch.monreleve.app.dossier.toTeleworkInput
 import ch.monreleve.app.onboarding.GranularityChoice
+import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
+import ch.monreleve.app.settings.toAggregatableUser
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -48,12 +57,32 @@ data class DayEntry(
     val pending: Boolean,
 )
 
+/**
+ * The year's position, computed ON THE DEVICE (Room -> the increment-2 aggregation -> the engine).
+ * There is NO second arithmetic in the UI (FW12's defect): the engine produces the rate and the
+ * remaining days, the screen only maps them to a zone and a badge. Null on AujourdhuiState means the
+ * year has no entries yet - shown as such, never as 0 % (AC3).
+ */
+data class YearPanel(
+    val result: TeleworkResult,
+    val fiscalCeiling: Double,
+    val socialCeiling: Double,
+    /** Days included in the rate that the server has not yet acknowledged (AC3: said in words). */
+    val unsyncedDays: Int,
+    /** periodFraction < 1: the engine used part of the year (FW26 - keyed on the fraction, not the date). */
+    val partialYear: Boolean,
+    /** Set when the engine fell back to another year's RuleSet (R11 / RULE_SET_FALLBACK). */
+    val fallbackYear: Int?,
+)
+
 data class AujourdhuiState(
     val today: String,
     val granularity: GranularityChoice,
     val fullDay: DayEntry? = null,
     val morning: DayEntry? = null,
     val afternoon: DayEntry? = null,
+    /** The year's position, or null when the year has no entries (AC3: no rate shown). */
+    val year: YearPanel? = null,
 )
 
 private fun EntryKind.toRecordedKind(): RecordedKind =
@@ -106,20 +135,23 @@ private fun EntryEntity.toDayEntry(): DayEntry =
 
 class AujourdhuiController(
     private val repository: EntryRepository,
-    settingsStore: SettingsStore,
+    private val settingsStore: SettingsStore,
+    private val taxYear: Int,
     private val clock: Clock,
     private val scope: CoroutineScope,
 ) {
     private val today: String = todayInParis(clock)
+    private val settings: Settings? = settingsStore.load()
     private val granularity: GranularityChoice =
-        if (settingsStore.load()?.granularity == "HALF_DAY") GranularityChoice.HALF_DAY else GranularityChoice.DAY
+        if (settings?.granularity == "HALF_DAY") GranularityChoice.HALF_DAY else GranularityChoice.DAY
 
     private val mutableState = MutableStateFlow(AujourdhuiState(today = today, granularity = granularity))
     val state: StateFlow<AujourdhuiState> = mutableState.asStateFlow()
 
     init {
         // Observing the repository IS the confirmation (DESIGN-SYSTEM section 2): a recorded tap and a
-        // completed sync both flow to the UI without a toast or an animation.
+        // completed sync both flow to the UI without a toast or an animation. The year is recomputed
+        // on every change - the engine is < 0.1 ms (FW5), so there is no reason to cache a rate.
         scope.launch {
             repository.observeAll().collect { entries ->
                 val todays = entries.filter { it.dayDate == today }
@@ -128,10 +160,43 @@ class AujourdhuiController(
                         fullDay = todays.firstOrNull { e -> e.portion == Portion.FULL }?.toDayEntry(),
                         morning = todays.firstOrNull { e -> e.portion == Portion.AM }?.toDayEntry(),
                         afternoon = todays.firstOrNull { e -> e.portion == Portion.PM }?.toDayEntry(),
+                        year = computeYear(entries),
                     )
                 }
             }
         }
+    }
+
+    /**
+     * The year's position, on the device: the year's rows -> the increment-2 aggregation -> the
+     * engine. Null when the year has no entries (AC3: shown as "no rate yet", never 0 %) or when the
+     * engine cannot produce a result (settings were validated at onboarding, so this is defensive).
+     */
+    @Suppress("ReturnCount")
+    private fun computeYear(entries: List<EntryEntity>): YearPanel? {
+        val settings = settings ?: return null
+        val yearEntries = entries.filter { it.dayDate.startsWith("$taxYear-") }
+        if (yearEntries.isEmpty()) return null
+
+        val input =
+            toTeleworkInput(
+                settings.toAggregatableUser(),
+                yearEntries.map { AggregatableEntry(it.dayDate, it.portion, it.kind) },
+                taxYear,
+            )
+        val result = (calculateTelework(input) as? CalcResult.Ok)?.value ?: return null
+        val fallback = result.warnings.filterIsInstance<Warning.RuleSetFallback>().firstOrNull()
+        val rules = ruleSetFor(taxYear)
+
+        return YearPanel(
+            result = result,
+            fiscalCeiling = rules.fiscalCeiling,
+            socialCeiling = rules.socialCeiling,
+            unsyncedDays = yearEntries.count { it.syncState == SyncState.PENDING },
+            // Keyed on the fraction the engine actually used, never on the start date (FW26).
+            partialYear = input.periodFraction < 1.0,
+            fallbackYear = fallback?.appliedYear,
+        )
     }
 
     /** Record today's kind for a slot. One tap, one write to the queue (D16). */

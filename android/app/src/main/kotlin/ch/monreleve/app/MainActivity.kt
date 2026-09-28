@@ -85,7 +85,8 @@ class MainActivity : ComponentActivity() {
                             OnboardingRoute(session, settingsStore, taxYear, lifecycleScope) {
                                 destination = Destination.AUJOURDHUI
                             }
-                        Destination.AUJOURDHUI -> AujourdhuiRoute(repository, settingsStore, clock, lifecycleScope)
+                        Destination.AUJOURDHUI ->
+                            AujourdhuiRoute(repository, settingsStore, taxYear, clock, lifecycleScope)
                     }
                 }
             }
@@ -141,10 +142,11 @@ private fun OnboardingRoute(
 private fun AujourdhuiRoute(
     repository: EntryRepository,
     store: SettingsStore,
+    taxYear: Int,
     clock: Clock,
     scope: CoroutineScope,
 ) {
-    val controller = remember { AujourdhuiController(repository, store, clock, scope) }
+    val controller = remember { AujourdhuiController(repository, store, taxYear, clock, scope) }
     val state by controller.state.collectAsState()
     AujourdhuiScreen(state = state, onRecord = controller::record)
 }

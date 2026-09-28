@@ -10,6 +10,7 @@ import ch.monreleve.app.onboarding.GranularityChoice
 import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -23,9 +24,14 @@ import java.time.ZoneId
 // writes a day. FakeEntryDao.observeAll() is a one-shot flow (Room's is hot), so the observe->state
 // mapping is tested by seeding a day BEFORE the controller, and the write by reading the DAO after.
 
-private fun storeWith(granularity: String): SettingsStore =
+private const val TAX_YEAR = 2026
+
+private fun storeWith(
+    granularity: String,
+    activityStartDate: String? = null,
+): SettingsStore =
     object : SettingsStore {
-        override fun load(): Settings = Settings("GE", 100, "SIMPLIFIED240", null, granularity, null)
+        override fun load(): Settings = Settings("GE", 100, "SIMPLIFIED240", null, granularity, activityStartDate)
 
         override fun save(settings: Settings) = Unit
 
@@ -42,7 +48,7 @@ class AujourdhuiControllerTest : FunSpec({
         runTest {
             val dao = FakeEntryDao()
             val repo = LocalEntryRepository(dao, clock)
-            val controller = AujourdhuiController(repo, storeWith("DAY"), clock, this)
+            val controller = AujourdhuiController(repo, storeWith("DAY"), TAX_YEAR, clock, this)
             // Screen vocabulary in; wire vocabulary out (R202): SUISSE -> CH.
             controller.record(RecordedKind.SUISSE, Slot.FULL)
             advanceUntilIdle()
@@ -54,7 +60,7 @@ class AujourdhuiControllerTest : FunSpec({
         runTest {
             val dao = FakeEntryDao()
             val repo = LocalEntryRepository(dao, clock)
-            val controller = AujourdhuiController(repo, storeWith("DAY"), clock, this)
+            val controller = AujourdhuiController(repo, storeWith("DAY"), TAX_YEAR, clock, this)
             controller.record(RecordedKind.ABSENCE, Slot.FULL, AbsenceChoice.CONGE)
             advanceUntilIdle()
             val row = dao.byDayPortion(today, Portion.FULL)
@@ -67,7 +73,7 @@ class AujourdhuiControllerTest : FunSpec({
         runTest {
             val dao = FakeEntryDao()
             val repo = LocalEntryRepository(dao, clock)
-            val controller = AujourdhuiController(repo, storeWith("HALF_DAY"), clock, this)
+            val controller = AujourdhuiController(repo, storeWith("HALF_DAY"), TAX_YEAR, clock, this)
             controller.record(RecordedKind.DOMICILE, Slot.MORNING)
             advanceUntilIdle()
             dao.byDayPortion(today, Portion.AM)?.kind shouldBe EntryKind.HOME
@@ -79,7 +85,7 @@ class AujourdhuiControllerTest : FunSpec({
             val dao = FakeEntryDao()
             val repo = LocalEntryRepository(dao, clock)
             repo.record(RecordCommand(dayDate = today, kind = EntryKind.HOME))
-            val controller = AujourdhuiController(repo, storeWith("DAY"), clock, this)
+            val controller = AujourdhuiController(repo, storeWith("DAY"), TAX_YEAR, clock, this)
             advanceUntilIdle()
             // Wire vocabulary out of Room, screen vocabulary into the state (R202): HOME -> DOMICILE.
             controller.state.value.fullDay?.kind shouldBe RecordedKind.DOMICILE
@@ -91,8 +97,44 @@ class AujourdhuiControllerTest : FunSpec({
         runTest {
             val dao = FakeEntryDao()
             val repo = LocalEntryRepository(dao, clock)
-            val controller = AujourdhuiController(repo, storeWith("HALF_DAY"), clock, this)
+            val controller = AujourdhuiController(repo, storeWith("HALF_DAY"), TAX_YEAR, clock, this)
             controller.state.value.granularity shouldBe GranularityChoice.HALF_DAY
+        }
+    }
+
+    test("an empty year shows no rate, not 0 % (AC3): state.year is null") {
+        runTest {
+            val dao = FakeEntryDao()
+            val repo = LocalEntryRepository(dao, clock)
+            val controller = AujourdhuiController(repo, storeWith("DAY"), TAX_YEAR, clock, this)
+            advanceUntilIdle()
+            controller.state.value.year shouldBe null
+        }
+    }
+
+    test("the year is computed on the device from the recorded days, unsynced days counted (AC2/AC3)") {
+        runTest {
+            val dao = FakeEntryDao()
+            val repo = LocalEntryRepository(dao, clock)
+            // Seeded before the controller so the one-shot observe picks them up; both stay PENDING.
+            repo.record(RecordCommand(dayDate = "2026-06-01", kind = EntryKind.HOME))
+            repo.record(RecordCommand(dayDate = "2026-06-02", kind = EntryKind.HOME))
+            val controller = AujourdhuiController(repo, storeWith("DAY"), TAX_YEAR, clock, this)
+            advanceUntilIdle()
+            val year = controller.state.value.year
+            year.shouldNotBeNull()
+            year.unsyncedDays shouldBe 2
+        }
+    }
+
+    test("a mid-year start marks the year partial, keyed on the fraction not the date (FW26)") {
+        runTest {
+            val dao = FakeEntryDao()
+            val repo = LocalEntryRepository(dao, clock)
+            repo.record(RecordCommand(dayDate = "2026-07-06", kind = EntryKind.HOME))
+            val controller = AujourdhuiController(repo, storeWith("DAY", "2026-07-01"), TAX_YEAR, clock, this)
+            advanceUntilIdle()
+            controller.state.value.year?.partialYear shouldBe true
         }
     }
 })

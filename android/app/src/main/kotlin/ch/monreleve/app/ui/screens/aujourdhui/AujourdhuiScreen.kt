@@ -23,12 +23,29 @@ import ch.monreleve.app.aujourdhui.AujourdhuiState
 import ch.monreleve.app.aujourdhui.DayEntry
 import ch.monreleve.app.aujourdhui.RecordedKind
 import ch.monreleve.app.aujourdhui.Slot
+import ch.monreleve.app.aujourdhui.YearPanel
 import ch.monreleve.app.design.FrontierType
+import ch.monreleve.app.design.MetricTile
 import ch.monreleve.app.design.Radius
+import ch.monreleve.app.design.RateDisplay
 import ch.monreleve.app.design.Spacing
+import ch.monreleve.app.design.ZoneBadge
+import ch.monreleve.app.design.ZoneThresholds
+import ch.monreleve.app.design.rail.RailVariant
+import ch.monreleve.app.design.rail.ThresholdRail
+import ch.monreleve.app.design.statusFor
+import ch.monreleve.app.design.zoneFor
 import ch.monreleve.app.fr.AujourdhuiCopy
 import ch.monreleve.app.fr.Fr
+import ch.monreleve.app.fr.MetricCopy
+import ch.monreleve.app.fr.format.formatPercent
+import ch.monreleve.app.fr.format.formatSignedDays
 import ch.monreleve.app.onboarding.GranularityChoice
+
+// The threshold captions are derived from the RuleSet ceilings, never typed (R181): a fraction like
+// 0.40 becomes "40,0 %". PERCENT scales the fraction; THRESHOLD_DECIMALS matches SPEC 9.3's "40,0 %".
+private const val PERCENT = 100.0
+private const val THRESHOLD_DECIMALS = 1
 
 // AN5b increment 3. Recording a day (SPEC 11.2): one question, answered in one tap. Stateless - it
 // reads an AujourdhuiState and calls onRecord, which the controller turns into a write through
@@ -60,6 +77,55 @@ fun AujourdhuiScreen(
         } else {
             RecordSection(Slot.FULL, state.fullDay, onRecord)
         }
+
+        YearSection(state.year)
+    }
+}
+
+/**
+ * The year's position (SPEC 11.2), in the web result panel's order (R137): badge, rate, rail, the two
+ * remaining-days tiles. Every figure comes from the engine result the controller computed (FW12: NO
+ * second arithmetic here); zoneFor/statusFor are pure display mappings, not a recomputed rate. AC3:
+ * an empty year says so instead of 0 %, and the honesty notes are conditional on their condition.
+ */
+@Composable
+private fun YearSection(year: YearPanel?) {
+    if (year == null) {
+        Text(text = AujourdhuiCopy.EMPTY_YEAR, style = FrontierType.body)
+        return
+    }
+    val result = year.result
+    val thresholds = ZoneThresholds(year.fiscalCeiling, year.socialCeiling)
+    val zone = zoneFor(result.declarableRate, thresholds)
+    val fiscalPct = formatPercent(year.fiscalCeiling * PERCENT, THRESHOLD_DECIMALS)
+    val socialPct = formatPercent(year.socialCeiling * PERCENT, THRESHOLD_DECIMALS)
+
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.space16)) {
+        ZoneBadge(statusFor(result))
+        RateDisplay(declarableRate = result.declarableRate, zone = zone, rawRate = result.rawRate)
+        ThresholdRail(
+            percentage = result.declarableRate,
+            zone = zone,
+            variant = RailVariant.INLINE,
+            thresholds = thresholds,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        MetricTile(
+            label = MetricCopy.remaining(fiscalPct),
+            overLabel = MetricCopy.over(fiscalPct),
+            days = formatSignedDays(result.remainingToFiscal),
+        )
+        MetricTile(
+            label = MetricCopy.remaining(socialPct),
+            overLabel = MetricCopy.over(socialPct),
+            days = formatSignedDays(result.remainingToSocial),
+        )
+
+        if (year.unsyncedDays > 0) {
+            Text(text = AujourdhuiCopy.unsyncedNote(year.unsyncedDays), style = FrontierType.caption)
+        }
+        if (year.partialYear) Text(text = AujourdhuiCopy.PARTIAL_YEAR, style = FrontierType.caption)
+        year.fallbackYear?.let { Text(text = AujourdhuiCopy.fallbackNote(it), style = FrontierType.caption) }
     }
 }
 
