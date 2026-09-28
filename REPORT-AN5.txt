@@ -1,0 +1,420 @@
+================================================================================
+REPORT-AN5.txt -- Room, the offline queue, and the first write from the device
+================================================================================
+
+--------------------------------------------------------------------------------
+SUMMARY (and R273 first)
+--------------------------------------------------------------------------------
+AN5 built local persistence (Room), a durable offline mutation queue, sync
+(WorkManager), the ordering evidence docs/api-v1.md 6.4 was parked for, a dev
+recorder, and then drove the emulator against the PRODUCTION CONTAINER to make
+the first production sign-in and the first production write this client has ever
+made. All three acceptance criteria pass, verified by reading the container's
+own database, not the app's claims.
+
+R273 -- A PROMPT'S STATEMENT OF PROJECT STATE IS A CLAIM TO VERIFY.
+  NO CONTRADICTION FOUND. AN5's prompt framed FW31 as a question ("does
+  test:container:write build production, POST an entry, read it back? If so FW31
+  landed") rather than asserting a state, and R0.1 confirmed it does and FW31 is
+  fixed. The prompt's other state claims -- both engines frozen, the /v1 contract
+  frozen -- match the repository. The AN4->AN5 transition carried the FW31
+  correction forward as required (the accepted REPORT-AN4.txt was left as a
+  historical record; this report states the corrected fact). Nothing the prompt
+  said was contradicted by the repository or by a run.
+
+THE HEADLINE: this is the first time the product has signed in and written an
+entry FROM ITS OWN CLIENT against a production build. The DB row carries
+firstRecordedAt assigned by the server (2026-09-28 08:40:58.271) and
+clientClaimedAt carrying the device's clock at the tap (2026-09-28 08:40:56.349)
+-- the ~2 second gap between them IS the evidence claim, and it is visible in the
+record.
+
+--------------------------------------------------------------------------------
+R0 VERIFICATION (four checks, from source not report)
+--------------------------------------------------------------------------------
+R0.1 -- what test:container:write does (web/scripts/container-write.mjs).
+  It BUILDS the production image (docker build --build-arg NEXT_PUBLIC_SITE_URL,
+  -t monreleve:write), creates a scratch database and migrates it, RUNS the
+  container, waits for /api/health to NAME the product (R169), signs in by
+  planting a hashed VerificationToken and calling the real callback, POSTs a real
+  entry to /api/v1/entries with a bearer token, and READS THE ROW BACK FROM THE
+  DATABASE (not the response) -- the assertion is on the Entry table, because a
+  200 that wrote nothing was the FW31 defect. So FW31 landed and the production
+  Prisma client is fixed. AN5's own walkthrough re-confirms this end to end from
+  the device.
+
+R0.2 -- the entries payload the SERVER accepts (web/lib/entries/schema.ts, the
+  zod schema, read directly). Per item, .strict() (unknown keys REJECTED, not
+  stripped): clientMutationId string 1..64; dayDate isoDay YYYY-MM-DD validated
+  as a real calendar day; portion enum FULL|AM|PM default FULL; kind enum
+  CH|HOME|MISSION_FR|MISSION_THIRD|ABSENT; absenceReason enum
+  CONGE|MALADIE|FERIE|AUTRE, optional, required iff kind=ABSENT; note string
+  max 500 optional; provenance enum MANUAL|DETECTED_CONFIRMED|DETECTED_CORRECTED
+  default MANUAL; detectedKind enum (the SAME full 5-value ENTRY_KINDS set),
+  optional, required iff provenance != MANUAL; detectedAt and clientClaimedAt
+  datetime({offset:true}) optional. Batch: entries array 1..MAX_BATCH_ITEMS(200),
+  .strict(); two items for one (dayDate,portion) refused; two items sharing a
+  clientMutationId refused. MAX_NOTE_LENGTH=500, MAX_BATCH_BODY_BYTES=256KiB.
+  firstRecordedAt/recordedAt/userId/id are DELIBERATELY ABSENT (a client must
+  never send them; they are rejected as unknown keys).
+
+R0.3 -- the write response (web/app/api/v1/entries/route.ts + write.ts + read.ts).
+  POST returns {status:'ok', written, duplicates, entries: ReadEntry[]} (R217 --
+  the rows, written AND duplicate alike, so a client clears pending from the
+  server's rows in one round trip). ReadEntry carries 13 fields including
+  firstRecordedAt (a non-null ISO instant, server-assigned) and lastModifiedAt
+  (derived from the EntryEvent trail, null when never modified).
+
+R0.4 -- docs/api-v1.md 6.4. A replay is refused by the append-only EntryEvent
+  trail (R219). A genuinely-new mutation arriving late still wins by "latest
+  server receipt" and can revert a newer value. The note explicitly parked this
+  for AN5's evidence about what the queue emits. Increment 4 provides it (below).
+
+--------------------------------------------------------------------------------
+PRECONDITIONS
+--------------------------------------------------------------------------------
+R1 -- gate:clone green on a fresh clone of origin/main HEAD.
+  Recorded at session start on 6c5cffa (chore: the AN5 prompt): GATE:CLONE PASSED
+  -- install, typecheck, lint, test, build, size, db:deploy, test:db,
+  test:container:write from a clean checkout. Re-run on 8a04f38 (increment 4, the
+  docs change) before that push: PASSED again. The final HEAD gate:clone is in
+  PUSH PROOF.
+
+Toolchain verified, not guessed (the AN2 Kotest discipline):
+  - KSP 2.0.21-1.0.28 (must start with the Kotlin version; last for 2.0.21).
+  - Room 2.7.2 (targets Kotlin 2.0, KSP2-ready; used under KSP1).
+  - WorkManager 2.10.1 (a mature stable, not the 2.12.0 bleeding edge;
+    CoroutineWorker reachable through work-runtime-ktx regardless of the
+    ktx-emptying move). Sources: developer.android.com/jetpack/androidx/releases.
+
+--------------------------------------------------------------------------------
+RED-GREEN LEDGER (honest -- only REDs actually run and observed)
+--------------------------------------------------------------------------------
+GENUINE TEST-FIRST RED:
+  - CalendarDayTest.todayIsTheParisDayWhateverTheDeviceTimezone: written first,
+    then todayInParis implemented with the TRAP (LocalDate.now(clock), reads the
+    clock's zone). RED: ComparisonFailure at CalendarDayTest.kt:46 (device day,
+    not Paris). Fixed to LocalDate.ofInstant(clock.instant(), PARIS). GREEN.
+
+ADVERSARIAL PLANTS (R7/R178 -- each RED run, then reverted):
+  - inc1 coordinate plant (latitude column on EntryEntity): THREE guards RED --
+    FencesTest.noCoordinateTypeAppearsOutsideDetection (fence 2b, source scan),
+    RoomSchemaContractTest.noColumnIsCoordinateShaped (DDL scan) and
+    .everyColumnMatchesTheFrozenContract. Reverted; schema hash restored.
+  - inc1 parity plant (remove MISSION_THIRD from EntryKind):
+    WireContractParityTest.entryKindsMatchTheServer RED. Reverted.
+  - inc2 plant A (record() writes SYNCED not PENDING):
+    aRecordIsPersistedPendingWithNoServerColumns RED (line 75). Reverted.
+  - inc2 plant B (reuse existing id on edit):
+    editingASyncedDayCoalescesKeepsFirstRecordedAtAndMintsANewId RED (line 90).
+    Reverted.
+  - inc3 plant 1 (a 400 returns Retryable, i.e. retried):
+    aClientDefectIsMarkedFailedAndNotRetried RED (line 118). Reverted.
+  - inc3 plant 2 (reconcile keeps the local row, not the server row):
+    aDrainMarksRowsSyncedFromTheServerRow RED (line 88, serverId null). Reverted.
+
+PASSED ON FIRST RUN, NON-VACUITY RESTS ON THE ABOVE (stated plainly, not claimed
+as test-first): RoomSchemaContractTest (proven by the coordinate plant),
+WireContractParityTest (proven by the MISSION_THIRD plant), EntriesWireTest
+(positive output assertions, R154), BatchLimitParityTest (derive-from-source,
+R181), SyncEngineTest's remaining cases, EntryRepositoryTest's UUID/clientClaimedAt
+cases (partly covered by plants A/B), and OrderingEvidenceTest (evidence of a
+structural property whose mechanism -- the composite PK -- is proven by inc1's
+schema census and inc2's id-reuse plant). These are guards and evidence, not new
+behaviour, so they are honestly NOT test-first REDs.
+
+Every increment's full android gate: GREEN before commit (assembleDebug,
+testDebugUnitTest, checkTestFloor, ktlintCheck, detekt, verifyPaparazziDebug,
+checkReleaseCleartext). Test floor rose 578 -> 606.
+
+--------------------------------------------------------------------------------
+ROOM (increment 1)
+--------------------------------------------------------------------------------
+THE SCHEMA EXPORTED. exportSchema=true writes
+schemas/ch.monreleve.app.data.local.MonReleveDatabase/1.json (committed). One
+table "entry", 14 columns, all TEXT, PK (dayDate, portion) mirroring the server's
+@@unique([userId,dayDate,portion]). Wire enums (EntryKind/Portion/Provenance/
+AbsenceReason) persist as their .name -- so enum.name is BOTH the DB value AND the
+wire value (one home, R206). No @TypeConverter. No userId column (single-user
+device; sign-out-clears-store parked). NO COORDINATE COLUMN (D18), enforced three
+ways: this file, fence 2b (source), RoomSchemaContractTest (DDL) -- the coordinate
+plant showed the last two fire.
+
+THE MIGRATION HARNESS. MonReleveMigrationTest (androidTest) uses
+MigrationTestHelper against the exported schema; wired via
+androidTest.assets.srcDir("schemas"). It runs on a device (compiled and verified
+via compileDebugAndroidTestKotlin; executed on the emulator), skipped by the JVM
+gate with a reason, as connectedDebugAndroidTest is. R187: the first release makes
+this schema permanent, so the harness exists from version 1.
+
+THE TIMEZONE TEST. todayInParis(clock) reads only clock.instant() and pins
+Europe/Paris (reusing DATE_TIME_ZONE, R206). CalendarDayTest changes the device
+timezone (TimeZone.setDefault, restored in finally) AND injects foreign-zone
+clocks, across both Paris offsets and both directions (UTC/Los Angeles behind,
+Pacific/Kiritimati ahead). The trap (device zone) failed all; the fix passes all.
+The walkthrough confirmed it live: the recorder showed 28.09.2026 with the device
+on 2026-09-28.
+
+--------------------------------------------------------------------------------
+THE QUEUE (increment 2) -- where the mutation id is born, and why there
+--------------------------------------------------------------------------------
+clientMutationId is a UUID minted INSIDE record(), at the moment the person taps,
+and persisted with the row BEFORE any network call (there is no network in
+EntryRepository). An id minted at send time would be regenerated on every retry,
+turning a safe replay into a duplicate write -- the queue's whole safety rests on
+that id being stable from the tap, which AC3 then relies on.
+
+clientClaimedAt is the device's clock at the tap (deviceClaimNow(clock)), an ISO
+instant WITH OFFSET in the device's own zone, sent verbatim and never used by the
+client to compute lateness. Its format is fixed (yyyy-MM-dd'T'HH:mm:ss.SSSxxx) so
+the seconds field is never omitted, which the server's zod would reject.
+
+Pending is a DURABLE state (Room on disk), surfaced by observePending() and shown
+in the recorder as the persistent words "En attente de synchronisation", never a
+toast (DESIGN-SYSTEM section 2). An edit read-modify-writes, PRESERVING the
+server-assigned columns (serverId, firstRecordedAt, lastModifiedAt) so a
+re-record of a synced day keeps its immutable evidence moment locally (advisor
+call). Coalescing is @Upsert on the composite PK: an edit REPLACES the pending
+row with a new id, so the queue never holds two mutations for one day.
+
+--------------------------------------------------------------------------------
+SYNC (increment 3) -- one worker, one round trip, a rejected payload
+--------------------------------------------------------------------------------
+ONE WORKER AT A TIME. SyncScheduler enqueues UNIQUE work; WorkManager never runs
+two concurrently. APPEND_OR_REPLACE, not KEEP: a record made while a drain runs
+still gets its own drain rather than being dropped. Network-constrained,
+exponential backoff.
+
+ONE ROUND TRIP. SyncEngine snapshots pending, batches at MAX_BATCH_ITEMS (the
+server's named constant, asserted equal to schema.ts by BatchLimitParityTest,
+R181), POSTs, and on 200 reconciles each local row FROM THE SERVER'S ROW (R217) --
+serverId, firstRecordedAt, lastModifiedAt and all -- not from what the client
+sent. A concurrency guard only marks a row SYNCED if it is STILL the same pending
+mutation that was sent, so an edit made mid-flight is not clobbered.
+
+A REJECTED PAYLOAD IS A CLIENT DEFECT (R198). A 400/409/413 for a payload the
+client built marks the batch FAILED -- held out of pending() so it is NEVER
+retried (retrying a rejected payload can never succeed) -- and surfaced via the
+FAILED sync state and SyncOutcome.Settled(defects>0), not via android.util.Log
+(which is stubbed in JVM tests and would leak note text at runtime). A network
+fault is Retryable (rows stay pending); no session is reported so the worker
+stops rather than backing off forever against an absent session. The R210 replay
+handling is shared with the authenticated GET through one code path
+(SessionManager.attempt), so it cannot drift between GET and POST.
+
+--------------------------------------------------------------------------------
+ORDERING EVIDENCE (increment 4) -- what the queue can and cannot emit
+--------------------------------------------------------------------------------
+STRUCTURAL, not a matter of timing. The store keys on (dayDate, portion) and
+record() coalesces onto that key, so the queue holds AT MOST ONE pending mutation
+per (dayDate, portion). From a SINGLE DEVICE:
+  - it can never place two items for one (dayDate,portion) in a batch, so the
+    server's reserved conflict (409) can never fire against it; and
+  - it can never emit two out-of-order mutations for one day, because there is
+    only ever one to emit.
+So the section-6.4 reversion is NOT reachable from one device. It requires TWO
+devices with two independent queues (device A's older-but-genuinely-new mutation
+arriving after device B's newer one, winning by server receipt) -- which no
+single-device coalescing can prevent. Encoded in OrderingEvidenceTest
+(aBatchNeverCarriesTwoItemsForOneDayAndPortion); recorded in docs/api-v1.md 6.4
+under "AN5 evidence". The product is single-user and effectively single-device
+today, so the reversion is not reachable in practice now. The decision -- keep
+server-receipt order or move to clientClaimedAt -- stays the operator's, unchanged
+by AN5 (the rule is frozen, R156). See QUESTIONS.
+
+--------------------------------------------------------------------------------
+AGAINST PRODUCTION (AC1) -- sign-in and the write, from the device
+--------------------------------------------------------------------------------
+SERVER: the production image monreleve:write (built by gate:clone on 8a04f38's
+web code; web unchanged since, so it is current production) run as monreleve-an5
+on host port 3130 (distinct from test:container:write's 3120, so the final
+gate:clone does not collide), NEXT_PUBLIC_SITE_URL=https://monreleve.example,
+against a scratch database monreleve_an5 on frontalier-postgres:5436. R169: GET
+/api/health returned {"service":"monreleve","status":"ok",...} -- it NAMES the
+product before anything else ran.
+
+DEVICE: emulator Pixel_10 (emulator-5554), debug build assembled with
+-PfrontalierPort=3130 so BuildConfig.API_BASE_URL = http://10.0.2.2:3130 (the
+emulator reaches the host container there; cleartext to 10.0.2.2 is debug-only).
+
+SIGN-IN (the first production sign-in from the device):
+  1. RequestLinkScreen: typed an5-device@example.com, tapped "Recevoir le lien".
+     The device POSTed magic-link to the container -> 202 -> the screen showed
+     "Verifiez votre boite mail". This populated the on-device login-CSRF pending
+     store (magic-link 202s without a Resend key by design).
+  2. Planted a hashed VerificationToken for that email in the container DB (no
+     real email; the mechanism container-write.mjs uses).
+  3. Fired the App Link callback: adb VIEW intent, host monreleve.ch (CallbackLink
+     rejects 10.0.2.2; the exchange goes to the configured base URL, not the
+     intent's host), email URL-encoded. CallbackActivity validated the email
+     against the pending store, exchanged the token against the 3130 base, and
+     showed "Vous etes connecte". The container created the user
+     an5-device@example.com.
+
+THE WRITE: DevRecorderActivity -> "Enregistrer Domicile" for 28.09.2026 -> the row
+drained to SYNCED. Read back from the container DB:
+    dayDate          2026-09-28
+    kind             HOME
+    firstRecordedAt  2026-09-28 08:40:58.271   (SERVER-assigned)
+    clientClaimedAt  2026-09-28 08:40:56.349   (the DEVICE's clock at the tap)
+    clientMutationId 38b4d39e-...-41d6ac16e502  (a UUID, born at the tap)
+firstRecordedAt is the server's; clientClaimedAt is the device's, ~2s earlier.
+The gap is the evidence the product exists to show.
+
+--------------------------------------------------------------------------------
+OFFLINE (AC2)
+--------------------------------------------------------------------------------
+Airplane mode ON. Recorded three days offline (25/26/27.09 as HOME) -- each showed
+"En attente de synchronisation". Edited one (27.09 -> Suisse/CH) -- it coalesced to
+CH, still pending, ONE row. Force-stopped and relaunched the app: all three
+pending rows PERSISTED (Room on disk), the 27.09->CH edit included. Airplane OFF,
+tapped Synchroniser: the queue drained, every row showed "Synchronise".
+
+Read back from the container DB: exactly 4 Entry rows (25/26 HOME, 27 CH -- the
+edit won, no lost edit; 28 HOME from AC1); 4 EntryEvents, all CREATED, count 1
+per day -- no duplicate, one event per mutation.
+
+THE ARITHMETIC, STATED (not left as a surprise): AC2 was 4 taps (3 records + 1
+edit) but 3 wire mutations, because the 27.09 edit REPLACED a still-pending
+mutation before any sync -- so it produced one CREATED event carrying CH, not a
+CREATED(HOME)+MODIFIED(CH) pair. With AC1's 28.09 that is 4 rows / 4 CREATED
+events total. This is the designed outcome of offline coalescing; whether it is
+the desired PRODUCT semantics is parked for the operator (see QUESTIONS).
+
+--------------------------------------------------------------------------------
+INTERRUPTED (AC3)
+--------------------------------------------------------------------------------
+Recorded 24.09 offline (0 rows in the DB -- confirmed not sent). Airplane OFF then
+force-stop IMMEDIATELY. The kill landed BEFORE the server write (0 rows in the DB
+right after the kill) -- the interrupted-sync PRE-WRITE case. Restarted the app;
+WorkManager rescheduled the persisted work and drained: 24.09 became exactly 1
+Entry row / 1 EntryEvent. NO LOSS -- an interrupted sync recovers.
+
+THE REPLAY-HARMLESS HALF, proven deterministically because the kill landed
+pre-write (honest: I did not fake a mid-write kill). The device's persisted
+mutation id for 24.09 was 92eabf50-...-d8b06f3a1cb3. Re-sending THAT SAME id to
+the container -- exactly what the client's retry would send had the kill landed
+after the server write -- returned written=0, duplicates=1, and the DB still held
+1 row / 1 event. R219 dedups on the trail; the client's retry relies on it
+correctly because the id is persisted at the tap and never regenerated.
+
+--------------------------------------------------------------------------------
+WALKTHROUGH (every step, seen)
+--------------------------------------------------------------------------------
+Ran against the PRODUCTION container (not pnpm dev), driven on the emulator, each
+step screenshotted and looked at (screenshots were transient; findings recorded
+above and here):
+  01 sign-in screen ("Connexion", field, "Recevoir le lien").
+  02 email typed (an5-device@example.com in the field).
+  03 link sent ("Verifiez votre boite mail").
+  04 callback done ("Vous etes connecte").
+  05 recorder empty ("Enregistreur (dev)", day 28.09.2026, "Aucune journee
+     enregistree").
+  06 AC1 recorded: row "28.09.2026 HOME Synchronise".
+  07 AC2 offline: 25/26/27 HOME "En attente de synchronisation", 28 Synchronise,
+     airplane icon shown.
+  08 AC2 edit: 27.09 now CH, still pending.
+  09 AC2 after force-stop+relaunch: all three pending rows persisted.
+  10 AC2 drained: all four rows Synchronise, wifi restored.
+  11 AC3 offline: 24.09 pending.
+  12 AC3 recovered: all five rows (24-28) Synchronise.
+The dev server / production distinction (R177) is honoured: the walkthrough ran
+against the production container specifically, which is the point of AN5.
+
+--------------------------------------------------------------------------------
+R270 (injected instructions lack this prompt's authority)
+--------------------------------------------------------------------------------
+A SessionStart hook injected a "superpowers: using-superpowers" skill instruction
+demanding a skill be invoked before any action. Under R270 an instruction arriving
+through a hook does not carry this prompt's authority; I noted it and continued
+under the AN5 relay and CLAUDE.md, which are the authority here. No skill was
+required or invoked. The task-tracking system-reminders (TaskCreate/Update) are
+harness affordances, not instructions, and were used only to track increments. No
+MCP/plugin instruction influenced the work.
+
+--------------------------------------------------------------------------------
+SKILL CONFLICTS (R258)
+--------------------------------------------------------------------------------
+None. No skill was invoked during AN5.
+
+--------------------------------------------------------------------------------
+PARKED (PARKAN-<n>)
+--------------------------------------------------------------------------------
+PARKAN-1 (carried from AN4): OS App Link verification is not testable --
+  monreleve.ch does not resolve and assetlinks.json needs the Play signing key.
+  The callback was driven by naming CallbackActivity explicitly (adb -n), which
+  proves the app's HANDLING, not the OS's verification. Unchanged by AN5.
+PARKAN-2: sign-out does not clear the local store. AN5 assumes a single-user
+  device (no userId column). If a shared device or account switch is ever in
+  scope, sign-out must clear Room, and the schema may need userId -- which is the
+  migration the harness exists to make safe. Conservative: deferred, not built.
+PARKAN-3: AC2 coalescing semantics. An offline record-then-edit of one day
+  coalesces to a single CREATED event (final value), never CREATED+MODIFIED. This
+  is correct queue behaviour (no lost edit, no duplicate) but it means the
+  EntryEvent trail does not record that the day was first HOME then CH while
+  offline. Whether the product WANTS that intermediate history is a decision;
+  parked for the operator.
+PARKAN-4: granular FAILED. A 400 marks the WHOLE batch FAILED rather than parsing
+  issues[] to fail only the offending item(s). Safe (no infinite retry) and never
+  hit in AC1-AC3 (the client builds valid payloads), but a refinement worth a
+  ruling if per-item recovery is wanted.
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+1. Schema export via ksp { arg("room.schemaLocation", ...) }, not the Room Gradle
+   plugin -- adds no second plugin, works under KSP1, and the generated 1.json was
+   confirmed present before the freeze test's expectations were written (advisor
+   point 3). Recorded rather than treated as an ask-first.
+2. WorkManager 2.10.1, not the latest 2.12.0 (AN2's "mature stable" reasoning).
+   WorkManager is a task-REQUIRED dependency: the relay mandates it and the
+   server's schema.ts names it, so it is authorised by the task, not an unplanned
+   addition.
+3. Reused the monreleve:write image rather than rebuilding for the walkthrough.
+   Provenance: built by gate:clone on 8a04f38; every commit since is android-only,
+   so it is current production web code.
+4. R199 reconciliation for android-only increments. gate:clone runs the WEB suites
+   and does not build android, so for AN5's android-only pushes (inc 1,2,3,5) the
+   ANDROID gate is the push gate, and each push was verified to touch zero web/
+   files (git diff origin/main -- web/ empty). gate:clone ran where a push touched
+   a web-read file (inc 4's docs/api-v1.md) and runs on the final HEAD (PUSH
+   PROOF). The relay scopes gate:clone to "the final push"; this honours both the
+   relay and R199's intent (validate what leaves the machine).
+
+--------------------------------------------------------------------------------
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------------------
+- reconcile pulls detectedKind/detectedAt from the server row (R202 forward
+  preservation), so a future edit of a detected day (AN10+) is already faithful.
+  Not exercised in AN5 (no detection yet); left in as correct and future-proof.
+- The client does not validate note length (<=500) or the iff-rules before
+  sending; a violation would 400 -> FAILED (loud, not retried). Pre-send
+  validation would prevent the 400 entirely; it is a refinement, not needed for
+  AN5's valid-command recorder. Not touched.
+- The magic-link route creates its own (un-plantable) VerificationToken on the
+  device request; the walkthrough plants a second, known-raw token for the
+  callback. Both coexist harmlessly (the callback matches by hash). Noted.
+
+--------------------------------------------------------------------------------
+QUESTIONS
+--------------------------------------------------------------------------------
+Q1. Ordering rule (docs 6.4). AN5's evidence: a single device cannot cause the
+    reversion; only multi-device use can. Keep "latest server receipt wins", or
+    move to clientClaimedAt when multi-device sync becomes real? The rule is
+    frozen; this is the operator's to rule.
+Q2. AC2 coalescing semantics (PARKAN-3). Is a single CREATED event for an offline
+    record-then-edit the desired product behaviour, or should the intermediate
+    value be recorded?
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+Increment commits pushed to origin/main:
+  f1fcc0a  AN5: Room, with its schema as a contract
+  b9d3abc  AN5: a durable mutation queue
+  9f636e8  AN5: sync, one worker, one round trip
+  8a04f38  AN5: the ordering evidence            (gate:clone PASSED before push)
+  8b73830  AN5: a dev recorder
+  <final>  AN5: the first production write, from the device   (this report)
+
+The final gate:clone on HEAD and the final push hash are appended below once run.
