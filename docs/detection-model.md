@@ -32,6 +32,16 @@ its full legal code at opendatacommons.org. Two obligations follow and both are 
   product ever publicly conveys them as data (beyond shipping them inside the app), the
   derived database is itself ODbL 1.0.
 
+**Compliance (R280, AN5b increment 0).** Distributing the APK distributes the GeoJSON inside
+it; whether that is "Public Use" of a Derivative Database is arguable, and complying costs
+almost nothing, so the product complies rather than arguing the edge. A licence-and-attribution
+notice ships **beside the data**, in the same assets folder that is packaged into every build:
+`android/app/src/main/assets/border/switzerland.json.LICENSE.txt`. It states the ODbL 1.0 licence,
+the "© OpenStreetMap contributors" attribution, the OSM relation it derives from, and the
+share-alike obligation — so the licence travels with the file it governs. The simplified polygon
+is thereby **available under ODbL 1.0 with attribution** at that path (tracked in git and shipped
+in the APK). The in-app attribution **screen** remains the NEEDS above.
+
 **Processing.** `android/scripts/prepare-border-polygon.mjs` — a one-time, off-device data
 tool, not shipped, no dependency (hand-rolled Douglas-Peucker + a bbox clip; distances in
 metres via an equirectangular projection). The runtime geometry (`detection/BorderPolygon.kt`)

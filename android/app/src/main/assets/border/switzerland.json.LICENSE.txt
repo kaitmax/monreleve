@@ -1,0 +1,33 @@
+switzerland.json — licence and attribution
+===========================================
+
+This file (switzerland.json) is a simplified polygon of the Swiss national
+boundary, derived from OpenStreetMap data.
+
+  Data source:  OpenStreetMap, relation 51701 (admin_level=2, Switzerland)
+  Processing:   Douglas-Peucker simplification at 25 m
+                (android/scripts/prepare-border-polygon.mjs)
+
+ATTRIBUTION (required)
+----------------------
+© OpenStreetMap contributors
+
+LICENCE
+-------
+This derived polygon is made available under the Open Data Commons Open
+Database License (ODbL) 1.0, the same licence as the OpenStreetMap data it is
+derived from.
+
+  ODbL 1.0:  https://opendatacommons.org/licenses/odbl/1-0/
+  OSM copyright:  https://www.openstreetmap.org/copyright
+
+SHARE-ALIKE
+-----------
+This polygon is a Derivative Database. Anyone who publicly conveys it, or a
+work produced from it, must do so under ODbL 1.0 and must keep the attribution
+above.
+
+The in-app attribution SCREEN (a credits line naming OpenStreetMap and the
+ODbL, shown in the detection UI) remains a NEEDS for AN9+ — see
+docs/detection-model.md. This notice ships beside the data in every build so
+the licence travels with the file it governs.
