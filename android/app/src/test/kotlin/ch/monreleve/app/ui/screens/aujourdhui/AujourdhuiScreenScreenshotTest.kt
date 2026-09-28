@@ -45,19 +45,27 @@ class AujourdhuiScreenScreenshotTest {
         AujourdhuiState(
             today = "2026-06-15",
             granularity = GranularityChoice.DAY,
-            fullDay = DayEntry(kind = RecordedKind.SUISSE, absence = null, pending = true),
+            fullDay = DayEntry(kind = RecordedKind.SUISSE, absence = null, pending = true, failed = false),
         )
 
     private val halfDay =
         AujourdhuiState(
             today = "2026-06-15",
             granularity = GranularityChoice.HALF_DAY,
-            morning = DayEntry(kind = RecordedKind.DOMICILE, absence = null, pending = false),
+            morning = DayEntry(kind = RecordedKind.DOMICILE, absence = null, pending = false, failed = false),
         )
 
-    // A real engine result (30 telework days on the 240 basis -> a compliant ~12,5 %), so the year
-    // panel photographs the same figures the device would compute, not a hand-typed rate.
-    private fun sampleYear(): YearPanel {
+    // R198: a sync the server refused, held and SAID so (not silently dropped).
+    private val syncFailed =
+        AujourdhuiState(
+            today = "2026-06-15",
+            granularity = GranularityChoice.DAY,
+            fullDay = DayEntry(kind = RecordedKind.SUISSE, absence = null, pending = false, failed = true),
+        )
+
+    // A real engine result, so the year panel photographs the same figures the device would compute,
+    // not a hand-typed rate. 30 telework days -> a compliant ~12,5 %; 110 -> over the 40 % ceiling.
+    private fun sampleYear(teleworkDays: Double): YearPanel {
         val input =
             TeleworkInput(
                 taxYear = 2026,
@@ -66,7 +74,7 @@ class AujourdhuiScreenScreenshotTest {
                 periodFraction = 1.0,
                 denominator = DenominatorMethod.Simplified240,
                 granularity = Granularity.DAY,
-                teleworkDays = 30.0,
+                teleworkDays = teleworkDays,
                 missionDaysFrance = 0.0,
                 missionDaysThirdState = 0.0,
             )
@@ -86,8 +94,17 @@ class AujourdhuiScreenScreenshotTest {
         AujourdhuiState(
             today = "2026-06-15",
             granularity = GranularityChoice.DAY,
-            fullDay = DayEntry(kind = RecordedKind.SUISSE, absence = null, pending = true),
-            year = sampleYear(),
+            fullDay = DayEntry(kind = RecordedKind.SUISSE, absence = null, pending = true, failed = false),
+            year = sampleYear(teleworkDays = 30.0),
+        )
+
+    // A year over the fiscal ceiling: the rate is red, the badge REGIME_LOST, the fiscal tile a
+    // distance ABOVE the threshold (never a negative, R73/SPEC 7.2 step 6).
+    private val overCeiling =
+        AujourdhuiState(
+            today = "2026-06-15",
+            granularity = GranularityChoice.DAY,
+            year = sampleYear(teleworkDays = 110.0),
         )
 
     @Composable
@@ -129,5 +146,21 @@ class AujourdhuiScreenScreenshotTest {
     fun aujourdhuiWithYearLarge() {
         paparazzi.unsafeUpdateConfig(DeviceConfig.PIXEL_5.copy(fontScale = 2f))
         paparazzi.snapshot { host(withYear) }
+    }
+
+    @Test
+    fun aujourdhuiSyncFailed() {
+        paparazzi.snapshot { host(syncFailed) }
+    }
+
+    @Test
+    fun aujourdhuiOverCeiling() {
+        paparazzi.snapshot { host(overCeiling) }
+    }
+
+    @Test
+    fun aujourdhuiOverCeilingLarge() {
+        paparazzi.unsafeUpdateConfig(DeviceConfig.PIXEL_5.copy(fontScale = 2f))
+        paparazzi.snapshot { host(overCeiling) }
     }
 }

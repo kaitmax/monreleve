@@ -9,6 +9,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -195,6 +196,13 @@ private fun RecordedRow(entry: DayEntry) {
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.space4)) {
         Text(text = AujourdhuiCopy.recordedLabel(entry.kind.name, entry.absence?.name), style = FrontierType.bodyM)
         if (entry.pending) Text(text = AujourdhuiCopy.PENDING, style = FrontierType.caption)
+        if (entry.failed) {
+            Text(
+                text = AujourdhuiCopy.SYNC_FAILED,
+                style = FrontierType.caption,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
         Text(text = AujourdhuiCopy.EDIT_HINT, style = FrontierType.caption)
     }
 }

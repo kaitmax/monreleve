@@ -32,6 +32,10 @@ object AujourdhuiCopy {
     const val AFTERNOON = "Après-midi"
 
     const val PENDING = "En attente de synchronisation"
+
+    // R198: a client-built payload the server refused is held, not retried forever - and the person is
+    // TOLD, because a silently-failed sync is a day they believe is recorded and is not.
+    const val SYNC_FAILED = "Enregistrement refusé par le serveur. Corrigez la journée et réessayez."
     const val EDIT_HINT = "Touchez une réponse pour corriger la journée."
 
     // AC3 - the year panel never overclaims. An empty year says so rather than showing 0 %; a rate

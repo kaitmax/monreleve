@@ -50,11 +50,13 @@ enum class Slot { FULL, MORNING, AFTERNOON }
 /** The screen's absence reasons. Maps 1:1 to the wire's AbsenceReason, but the screen never sees that. */
 enum class AbsenceChoice { CONGE, MALADIE, FERIE, AUTRE }
 
-/** What one portion slot holds: the recorded kind (screen vocabulary) and whether it is still pending sync. */
+/** What one portion slot holds: the recorded kind (screen vocabulary) and its sync state in words. */
 data class DayEntry(
     val kind: RecordedKind,
     val absence: AbsenceChoice?,
     val pending: Boolean,
+    /** The server refused the client-built payload (R198): held, not retried, and SAID so, never silent. */
+    val failed: Boolean,
 )
 
 /**
@@ -131,6 +133,7 @@ private fun EntryEntity.toDayEntry(): DayEntry =
         kind = kind.toRecordedKind(),
         absence = absenceReason?.toChoice(),
         pending = syncState == SyncState.PENDING,
+        failed = syncState == SyncState.FAILED,
     )
 
 class AujourdhuiController(
