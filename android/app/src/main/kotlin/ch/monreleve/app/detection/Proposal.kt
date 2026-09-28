@@ -90,17 +90,30 @@ fun computeProposal(
     expectedSamples: Int = expectedSamples(),
 ): Proposal? {
     val tier = computeTier(tally, expectedSamples)
+    val kind = proposedKind(tally, tier) ?: return null
+    val insideWins = kind == EntryKind.CH
+    val winningMinutes = if (insideWins) tally.minutesSwitzerland else tally.minutesElsewhere
+    val portion = if (winningMinutes > FULL_DAY_MINUTES) Portion.FULL else halfDayPortion(fixes, insideWins, dayDate)
+    return Proposal(tier, kind, portion)
+}
+
+/**
+ * The kind a tally would propose, or null if withheld - the KIND half of a proposal, shared by
+ * computeProposal and the field export so both agree. LOW withholds; a winning side under 2h is
+ * too thin; otherwise the winning side (INSIDE -> CH, OUTSIDE -> HOME).
+ */
+fun proposedKind(
+    tally: DailyTally,
+    tier: Tier,
+): EntryKind? {
+    if (tier == Tier.LOW) return null
     val insideWins = tally.minutesSwitzerland >= tally.minutesElsewhere
     val winningMinutes = if (insideWins) tally.minutesSwitzerland else tally.minutesElsewhere
-    // LOW withholds; under 2h is too thin; otherwise the granularity rule sets FULL / half.
-    val portion =
-        when {
-            tier == Tier.LOW -> null
-            winningMinutes > FULL_DAY_MINUTES -> Portion.FULL
-            winningMinutes >= HALF_DAY_MINUTES -> halfDayPortion(fixes, insideWins, dayDate)
-            else -> null
-        } ?: return null
-    return Proposal(tier, if (insideWins) EntryKind.CH else EntryKind.HOME, portion)
+    return when {
+        winningMinutes < HALF_DAY_MINUTES -> null
+        insideWins -> EntryKind.CH
+        else -> EntryKind.HOME
+    }
 }
 
 private fun halfDayPortion(

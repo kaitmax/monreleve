@@ -1,0 +1,446 @@
+================================================================================
+REPORT-AN6a.txt -- the detection instrument, proven on synthetic tracks
+================================================================================
+
+--------------------------------------------------------------------------------
+WHAT AN6a PROVES, AND WHAT IT DOES NOT
+--------------------------------------------------------------------------------
+AN6a proves that the CLASSIFIER does what it was designed to do: seven synthetic
+tracks, each a scenario with its expected proposal written before it ran (R197),
+are replayed through the real sampling entry point (DetectionSession.onFix) on
+the emulator and in the JVM regression, and each produces exactly its expected
+tier and proposal. The border geometry, the buffer, the hysteresis fold, the
+tally, the tier thresholds and the proposal rule are all exercised end to end,
+and no coordinate survives its classification (proven three ways, each with a
+planted violation confirmed to fire).
+
+AN6a does NOT prove the design is right for REAL signals. A synthetic track is
+whatever coordinates it is fed; it cannot tell you how a phone behaves in
+Annemasse, in a Leman Express tunnel, or on a Xiaomi that kills background work.
+Whether the thresholds are the right ones, whether a real suburban border
+produces the tallies these tracks assume, and what a working day actually costs
+in battery -- those are AN6b, a person carrying the phone across the border for
+weeks, scored by the harness this task delivers. A green AN6a is NOT a pass at
+Checkpoint G. It is the instrument that makes Checkpoint G measurable, scoreable,
+and honest.
+
+--------------------------------------------------------------------------------
+R273 -- A PROMPT'S STATEMENT OF PROJECT STATE IS A CLAIM TO VERIFY
+--------------------------------------------------------------------------------
+NO CONTRADICTION FOUND, ONE CORRECTION MADE TO MY OWN WORK.
+
+The prompt's state claims held on inspection: both engines and the /v1 contract
+are frozen (git shows no change under lib/calc-engine or the wire contract this
+task); SPEC 22 open question 7 (the accuracy threshold) and 9 (the polygon's
+source and licence) were still open and are the two this task answers; the
+field protocol docs/field-protocol-AN6b.md exists and states the kill criteria
+and tier thresholds this task encodes.
+
+The contradiction this session found was in AN6a's OWN increment-6 code, not in
+the prompt: the scoring harness printed a 95% upper bound of 150.0% on the K3
+line (rule of three, 3/n, at n=2). A bound on a probability cannot exceed 100%.
+This is the exact failure the harness exists to prevent -- an impossible number
+where an honest one belongs -- so it was fixed before the report quoted the
+worked example (see THE SCORING HARNESS). The evidence (the printed bound) won
+over the assumption that the harness was already correct.
+
+--------------------------------------------------------------------------------
+PRECONDITIONS (R0, R1)
+--------------------------------------------------------------------------------
+R0. Read REPORT-AN5.txt, SPEC 13 in full (sampling, classification, hysteresis,
+    tally, proposal, confirmation), SPEC 20, docs/android-skills.md (the profiler
+    and Play notes), and docs/field-protocol-AN6b.md -- the field protocol this
+    instrument serves.
+
+R1. gate:clone was green on origin/main HEAD at session open (9081b1a, the AN5
+    finalization), before any AN6a code. Increment 0 (R275) followed as bf88b54.
+    The authoritative envelope for what ships is the FINAL gate:clone on this
+    session's HEAD -- see PUSH PROOF -- because gate:clone checks HEAD (R199),
+    and HEAD carries every AN6a increment.
+
+--------------------------------------------------------------------------------
+R275 -- A COALESCED MUTATION CARRIES THE FINAL TAP'S CLAIM TIME (increment 0)
+--------------------------------------------------------------------------------
+Carried from AN5's Q2. The ruling: a coalesced mutation's clientClaimedAt must
+be the tap that set its FINAL value, because a timestamp describes the value it
+travels with. AN5's report did not say which tap the code kept; this closes that
+with a test.
+
+Test (EntryRepositoryTest.aCoalescedEditCarriesTheFinalTapsClaimTime, bf88b54):
+record HOME in the morning (07:00 UTC = 09:00 Paris), correct to CH that evening
+(15:00 UTC = 17:00 Paris), both offline so they coalesce onto one (dayDate,
+portion) row. Assert the coalesced row's clientClaimedAt is the EVENING tap
+(2027-06-18T17:00:00.000+02:00), NOT the morning one (09:00) -- claiming CH was
+recorded at 09:00, when the day held HOME then, would be a false claim the
+evidence model refuses.
+
+RED first: with clientClaimedAt = existing?.clientClaimedAt ?: deviceClaimNow()
+(keep the original tap), the assertion failed on 09:00. GREEN with
+clientClaimedAt = deviceClaimNow(clock) recomputed at every record(), so the
+last tap's time is the one stored. The immutable server columns (firstRecordedAt,
+serverId) still survive the edit; only the client's claim-of-value time moves,
+which is correct: that field describes the value, and the value changed.
+
+--------------------------------------------------------------------------------
+THE POLYGON (SPEC 22 open question 9, answered)
+--------------------------------------------------------------------------------
+SOURCE. OpenStreetMap, the Switzerland national boundary, relation 51701
+(admin_level=2), fetched as GeoJSON from polygons.openstreetmap.fr on 2026-09-28.
+Source integrity recorded in docs/detection-model.md: 1,197,323 bytes,
+sha256 cb41591c...78c0. The 1.2 MB raw source is not committed (re-fetchable,
+checksummed).
+
+LICENCE, READ FROM THE SOURCE (R146). OpenStreetMap data is under the Open Data
+Commons Open Database License (ODbL) 1.0, read from openstreetmap.org/copyright
+on the fetch date (it names the ODbL and links the legal code at
+opendatacommons.org). Two real obligations follow, both recorded as NEEDS:
+  - Attribution: the product must credit "(c) OpenStreetMap contributors"
+    wherever the border data is used. No such screen exists yet -- a NEEDS for
+    the detection UI (AN8): an about/credits line naming OSM and the ODbL.
+  - Share-alike: the bundled and reference polygons are a derived database; if
+    the product ever publicly conveys them AS DATA, that database is ODbL 1.0.
+
+SIMPLIFICATION TOLERANCE AND ITS TEST AGAINST THE BUFFER. Douglas-Peucker at
+25 m -- chosen WELL BELOW the 150 m buffer (D25), so simplification can never
+move the border far enough to misclassify a point the buffer exists to protect.
+BorderPolygonTest.simplificationErrorStaysFarBelowTheBuffer measures the bundled
+polygon against the UNSIMPLIFIED Geneva reference at 50/100/200/500 m offsets
+either side of the real border and asserts the error stays far below the buffer.
+A polygon simplified at 200 m would fail that test -- which is the point of
+stating the tolerance rather than trusting it.
+
+SIZE. Bundled: app/src/main/assets/border/switzerland.json, GeoJSON MultiPolygon,
+6,878 points (from 52,159), 157,852 bytes (~154 KB), sha256 11d1534f...b400.
+Reference (test only): the full-resolution boundary clipped to the Geneva window,
+6,171 points. The runtime geometry (detection/BorderPolygon.kt) is pure Kotlin,
+no geo dependency (R136).
+
+ENCLAVE LIMITATION, RECORDED HONESTLY. This extract returns the outer boundary
+with no interior rings, so Buesingen (DE) and Campione (IT) are not cut out; a
+point inside either would classify as INSIDE. Both sit on the German and Italian
+borders, far from the Franco-Swiss border near Geneva this product serves, so it
+is immaterial today. The ray-cast is nonetheless hole-aware (it processes
+interior rings), so a hole-carrying source drops in with no code change. A NEEDS
+only if enclave accuracy ever matters.
+
+--------------------------------------------------------------------------------
+THE COORDINATE'S LIFETIME (AC2 -- three proofs, each with a landed plant)
+--------------------------------------------------------------------------------
+D18/R277: no coordinate is stored, logged, transmitted or retained beyond its
+classification. A fix enters classify(lat, lng), leaves as a Classification
+(INSIDE/OUTSIDE/BUFFER) plus its epoch millis, and the coordinate is discarded.
+Proven three independent ways, each with a violation planted and confirmed to
+fire (R178/R180):
+
+1. SOURCE FENCE (FencesTest, fence 2b, AN1's re-proven). No latitude/longitude
+   type or field name appears in source OUTSIDE detection/. The three synthetic
+   coordinates and the TrackPoint that names them live in detection/, which the
+   fence permits. PLANT: a latitude field added to an entity outside detection/
+   -> fence 2b RED. Reverted.
+
+2. ROOM DDL SCAN (RoomSchemaContractTest, AN5's re-proven, now iterating every
+   table). noColumnIsCoordinateShapedInAnyTable walks both entities (entry and
+   the new daily_tally) and fails on any column whose name is coordinate-shaped.
+   daily_tally has none -- it is minutes, counts, a window and a tier. PLANT: a
+   latitude column on daily_tally -> the DDL scan RED. Reverted; schema hash
+   restored.
+
+3. RUNTIME TYPE ASSERTION (CoordinateConfinementTest). ClassifiedFix, the
+   classifier's OUTPUT type, is reflected over and asserted to carry no
+   coordinate field -- only a Classification and epochMillis. (Synthetic and
+   compiler-generated fields -- jacoco's $jacocoData, Compose's $stable -- are
+   filtered by isSynthetic || name starts with "$", so the assertion measures
+   the declared shape.) PLANT: a latitude property on ClassifiedFix -> the
+   reflection assertion RED. Reverted.
+
+The measurement build (AN6b) carries D18 UNCHANGED (R277): failures are diagnosed
+from the TALLY -- minutes each side, fix count, buffer-fix count, tier -- which
+is exactly what production stores. The export the scorer reads carries no
+coordinate key (FieldExportTest.theExportCarriesNoCoordinate). The privacy model
+survives the one task most tempted to break it.
+
+--------------------------------------------------------------------------------
+HYSTERESIS AND THE TALLY
+--------------------------------------------------------------------------------
+HYSTERESIS (D26), in detection/Tally.kt. A change of side is provisional until it
+has persisted 10 minutes (HYSTERESIS_PROVISIONAL_MINUTES) and significant after
+30 (HYSTERESIS_SIGNIFICANT_MINUTES). Excursions shorter than 10 minutes fold back
+into the preceding side -- the GPS-flicker guard for someone living near the
+border. TallyComputerTest proves the boundary (9 min folds, 10/11 min stand),
+oscillation folding, and that buffer time is attributed to neither side.
+
+MINUTES COME FROM THE FIXES' OWN TIMESTAMPS, never the wall clock: the gap after
+each fix is attributed to its side. This is what lets a compressed replay of a
+day produce the tally a real day would -- the tunnel-gap track (below) depends
+on it.
+
+THE WORKING WINDOW. 07:00-19:00 Europe/Paris, pinned to Paris regardless of the
+device timezone (R28, WorkingWindowTest), stored on each tally as minutes-of-day
+so a past tally keeps the window it was computed under.
+
+THE TABLE (daily_tally, Room v2). Per day: minutesSwitzerland, minutesElsewhere,
+fixCount, bufferFixCount, the window, and tier (nullable). No coordinate column.
+MIGRATION_1_2 creates it; MonReleveMigrationTest runs the v1->v2 migration on the
+emulator and validates it against schemas/2.json -- the migration harness's first
+real execution.
+
+--------------------------------------------------------------------------------
+TIERS (SPEC 22 open question 7 -- encoded, not chosen)
+--------------------------------------------------------------------------------
+THE THRESHOLDS ARE ENCODED FROM docs/field-protocol-AN6b.md SECTION 3 (R276), in
+detection/Proposal.kt. This task does NOT choose, adjust or calibrate them --
+picking a threshold after seeing field data is fitting the gate to the
+measurement. TierThresholdParityTest reads the six numbers back out of that
+document and fails if the constants drift (R181), so the doc is the source and
+the code follows it:
+
+  HIGH:   samples >= 50% of expected, buffer <= 20%, winning side >= 85%
+  MEDIUM: samples >= 25% of expected, buffer <= 40%, winning side >= 70%
+  LOW:    anything else -- and LOW WITHHOLDS (no proposal; the day stays
+          Non renseigne, entered by hand).
+
+"Expected samples" is the window length over the sampling cadence
+(SAMPLE_INTERVAL_MINUTES = 15, SPEC 13.1's WorkManager floor): a 12 h window
+expects 48. The proposal proposes only the winning side (INSIDE -> En Suisse / CH,
+OUTSIDE -> Domicile / HOME); > 4 h is a full day, 2-4 h a half day (AM/PM from
+where the winning side's fixes fall), under 2 h is withheld. MISSIONS AND ABSENCES
+ARE NEVER DETECTED (ProposalTest asserts no tally yields MISSION_FR/MISSION_THIRD/
+ABSENT) -- a trip abroad is a business fact, not a geographic one. The tier is
+words plus segments, never a percentage (R27). Nothing here writes an entry
+(D16): a Proposal is a value; only the confirming tap records it (FencesTest
+fence 7, detection/ never references the entry-write path).
+
+--------------------------------------------------------------------------------
+THE SEVEN TRACKS (AC1 -- expected written first, observed, seen)
+--------------------------------------------------------------------------------
+Each track's expected result was hand-reasoned from the algorithm and written in
+SyntheticTracks.kt BEFORE it ran (R197). All seven were replayed through the real
+sampling path (DetectionSession.onFix) two ways: on the emulator by the dev
+replay screen (loading the shipped asset polygon), and in the JVM regression by
+DetectionSessionTest (in the 643-test gate). Every expected == observed == OK.
+The emulator run was RE-CAPTURED AT THIS SESSION'S HEAD (screenshot
+an6a-tracks-head.png, in android/build/emulator-shots/, gitignored) because
+increment 6 refactored Proposal.kt AFTER increment 5's original observation --
+the tracks exercise exactly the refactored proposedKind, so the evidence had to
+be photographed on the tree that ships (R184: input, not only output).
+
+  a. commute (home in France, day in Geneva)
+     expected HIGH, CH, FULL  -- observed HIGH, CH, FULL  -- OK
+     Geneva is ~92% of attributed minutes.
+  b. telework (home all day)
+     expected HIGH, HOME, FULL -- observed HIGH, HOME, FULL -- OK
+     100% one side.
+  c. home 120 m from the border (every fix in the buffer)
+     expected withheld -- observed withheld (aucune proposition) -- OK
+     Every fix is BUFFER; nothing is attributed to either side -> LOW.
+  d. tunnel gap (45 min with no fix mid-commute)
+     expected HIGH, CH, FULL -- observed HIGH, CH, FULL -- OK
+     The gap folds onto the Geneva side; still ~94%. This is the case that
+     proves minutes come from the fixes' timestamps, not fix counts.
+  e. morning home, afternoon in Geneva (the half-day case)
+     expected withheld -- observed withheld -- OK
+     ~52% one side, below the 70% floor -> a split day, LOW, withheld rather
+     than guessed.
+  f. a day with no fixes at all
+     expected withheld -- observed withheld -- OK
+     Nothing sampled -> LOW.
+  g. train crossing that dwells at the border station
+     expected withheld -- observed withheld -- OK
+     The border dwell pushes buffer > 40% -> LOW.
+
+The emulator screen shows the tier in words (HIGH), never a percentage, and no
+map. "Position actuelle: aucune" confirms the OS-location READ layer returns null
+on the headless emulator without an active updates client -- see DEVIATIONS.
+
+--------------------------------------------------------------------------------
+THE SCORING HARNESS (AC3 -- a worked example, with confidence bounds)
+--------------------------------------------------------------------------------
+android/scripts/score-field-run.mjs scores a run mechanically:
+  node score-field-run.mjs --export <app export.json> --log <tester log.csv>
+                           [--battery-median <pct>]
+
+It reads the app's export (detection/exportFieldRun -- per day: tier, proposed
+kind derived by the SAME proposedKind the app uses, minutes and counts; NO
+coordinate) and the tester's daily log (date, Suisse/Domicile/Mission/Absent,
+note), and prints the R276 verdict per kill criterion: the count, the rate, and
+its 95% confidence bound. The thresholds are the field protocol's, encoded
+(R276), not chosen. FALSE-CH is on its own line (K1, R278): proposing "En Suisse"
+on a home day UNDERSTATES telework -- the person believes they have more headroom
+than they do -- so it is scored separately and more strictly (threshold: zero)
+than any other error.
+
+THE BOUND IS HONEST, AND SAYS SO. With 20 working days and zero errors the 95%
+upper bound on the error rate is ~15% (the rule of three, 3/n). The harness
+prints that beside every rate so a good month cannot be read as an accuracy
+claim; its final line says "a PASS means not visibly broken, never proof". The
+rule of three saturates below n=3 (3/2 = 1.5), so the bound is capped at 100% --
+a probability bound above 100% is meaningless, and the honest reading at n=2 is
+"this sample says almost nothing", which the capped 100% conveys. (This cap was
+the R273 correction above.)
+
+WORKED EXAMPLE (fabricated data, android/scripts/fixtures/). 22 days: 14 HIGH/CH,
+3 HIGH/HOME, 2 MEDIUM/CH, 3 withheld. The tester log agrees on every proposed
+day, includes two degraded days (train + tunnel) the detector rightly dropped to
+MEDIUM, one worked day the phone spent at home in the morning that the detector
+WITHHELD (an honest coverage miss, not a wrong guess), and two conge days
+(Absent, never detected). Output (verbatim, --battery-median omitted):
+
+  === field run score (R276) ===
+  days matched: 22   working days: 20
+  a PASS means "not visibly broken", never proof - read the bounds.
+
+    PASS  K1  FALSE-CH on a HIGH day (proposed En Suisse, was at home)
+          0 of 17 HIGH days   (threshold: zero)   95% upper bound 17.6%
+    PASS  K2  Wrong HIGH proposals (any kind)
+          0 of 17 HIGH days   (threshold: at most 1)   95% upper bound 17.6%
+    PASS  K3  Wrong MEDIUM proposals
+          0 of 2 MEDIUM days (0.0%)   (threshold: at most 15.0%)   95% upper bound 100.0%
+    PASS  K4  Coverage (HIGH or MEDIUM on a working day)
+          19 of 20 working days (95.0%)   (threshold: at least 60.0%)
+    n/a   K5  Battery, median per working day
+          measured separately (profiler method)   (threshold: at most 3%)
+    PASS  K6  A day written without the person tap
+          measurement mode never writes an entry (D16, fence 7)   (threshold: never)
+
+  Checkpoint G, so far: no criterion failed (not a pass - see the bounds) (K5 not measured this run)
+
+Read the bounds, not the PASSes: K1/K2 are certain of nothing tighter than ~18%
+error on 17 HIGH days, and K3 with two MEDIUM days is certain of nothing at all
+(bound 100.0%). That is what 22 fabricated days buy; a real month buys more, and
+AN6b's job is to spend enough days that the bounds mean something. With
+--battery-median 2.4 the K5 line reads PASS 2.4% (threshold at most 3%) and the
+"K5 not measured" note drops.
+
+FieldExportTest proves the export the scorer eats: proposedKind matches what the
+app would propose, the key set is exactly the seven the scorer reads, and there
+is no coordinate-shaped key.
+
+--------------------------------------------------------------------------------
+BATTERY METHOD (R233 -- the method matters as much as the figure)
+--------------------------------------------------------------------------------
+The 3%-per-working-day budget (K5) is a NUMBER THAT MUST BE MEASURED. From the
+android-profiler notes (docs/detection-model.md records it in full):
+  - Preferred: a Perfetto system trace over a working-day background window.
+    Energy from the power_rails track (power_ma * duration, summed, mWh);
+    confirm the device SUSPENDS between wakes via suspend_state; root-cause any
+    failure to suspend via kernel_wakelock -- the budget is dominated by whether
+    the device stays asleep between fixes.
+  - Hard constraint: power_rails needs on-device power measurement (ODPM), a
+    Pixel 6+ (Tensor) or similar. THE 3% FIGURE CANNOT BE MEASURED ON AN
+    EMULATOR (no power rails), so AN6a does not produce it. AN6b measures it on
+    the tester's physical phone, the same way every day, and reports it to
+    score-field-run.mjs --battery-median.
+  - Fallback where ODPM is absent: dumpsys batterystats (coarser), reset at the
+    window start, read at the end.
+
+--------------------------------------------------------------------------------
+WHAT AN6b NEEDS FROM THE OPERATOR
+--------------------------------------------------------------------------------
+1. RATIFY THE SECTION-3 THRESHOLDS BEFORE DAY ONE, THEN FREEZE THEM. The six
+   tier numbers and the six kill criteria in docs/field-protocol-AN6b.md are
+   encoded exactly as written. If any is wrong, it must change in the DOCUMENT
+   before AN6b begins -- TierThresholdParityTest will then fail until the code
+   is re-encoded, which is the intended tripwire. Changing a threshold after
+   field data exists is refused (R276).
+2. TESTERS WHO TELEWORK, ON PHONES THAT FIGHT BACKGROUND WORK. Each tester must
+   telework >= 5 days in the window (so there are home days to get wrong), and
+   the fleet must include the phone brands that kill background apps (Xiaomi,
+   Huawei) -- an accuracy result on a Pixel says nothing about a Xiaomi. This
+   is the longest-lead item; recruiting is the critical path, not the code.
+3. A physical Pixel 6+ (or ODPM device) for the battery figure; an emulator
+   cannot produce K5.
+4. AN OSM/ODbL ATTRIBUTION LINE in the eventual detection UI (AN8), and a
+   decision on whether the polygon is ever conveyed as data (share-alike).
+5. The measurement build runs WITHOUT A SERVER (detection is on-device, D18) and
+   is BLIND (it does not show the tester its proposals during the run; the export
+   carries them at the end), so the daily log stays independent ground truth.
+
+--------------------------------------------------------------------------------
+PARKED
+--------------------------------------------------------------------------------
+No new PARKAN entries this session. The standing detection NEEDS are recorded in
+docs/detection-model.md (OSM attribution UI, enclave interior rings if ever
+material) and above under WHAT AN6b NEEDS. The OS-location READ layer is not
+parked but recorded under DEVIATIONS as AN7's owned scope.
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+1. THE OS-LOCATION READ LAYER IS NOTED, NOT DEMONSTRATED. AC1 asks for the
+   tracks through the real SAMPLING path, and they are (DetectionSession.onFix on
+   the emulator). But the layer that would feed onFix from the OS --
+   detection/LiveLocation.classifyCurrentLocation reading
+   LocationManager.getLastKnownLocation -- returns null on the headless emulator
+   without an active location-updates client, even though adb emu geo fix sets
+   the position (verified: OK). That client -- which combination of WorkManager
+   periodic work, geofences or a foreground service meets the accuracy and
+   battery budgets -- is SPEC 13.1's spike, AN7, and is explicitly out of AN6a's
+   scope. The classifier the client would feed is fully proven via the tracks.
+   This is a scope boundary, honestly drawn, not a gap in what AN6a claims.
+
+2. INCREMENT 5's EMULATOR OBSERVATION WENT UNSAVED. The original seven-tracks
+   emulator run (committed 3ab21a3) was observed but photographed nothing, and
+   increment 6 then refactored Proposal.kt. This session re-launched the
+   emulator, installed the debug APK, re-ran the replay AT HEAD, and saved
+   an6a-tracks-head.png -- so AC1's "seen" is current, not remembered. Closed.
+
+3. THE ANDROID GATE, NOT gate:clone, IS THE ANDROID VERIFIER. gate:clone runs
+   the WEB suites from a clean checkout (R199); AN6a touches no web files, so it
+   passes trivially and discharges R199 for the repository's push. The Android
+   verification is :app:gate (assembleDebug, 643 unit tests including the fences
+   and censuses, checkTestFloor, ktlintCheck, detekt, verifyPaparazziDebug,
+   checkReleaseCleartext), green on this session's tree. score-field-run.mjs is a
+   Node script the Android gate does not cover; its proof is the verbatim worked-
+   example run above, re-run after the R273 cap fix.
+
+--------------------------------------------------------------------------------
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------------------
+- The scorer's parseLog splits the tester CSV on comma and reads only the first
+  two fields, so a note containing commas ("train, tunnel") is tolerated but its
+  tail is dropped. Fine for scoring (only date and actual matter), but a note
+  with a comma is silently truncated in any future note-aware use. Not touched --
+  the scorer does not read the note.
+- The dev replay screen's onCreate runs all seven replays synchronously, which
+  is ~15 s on a cold-booted emulator and shows a splash first. Acceptable for a
+  dev-only screen; a production detection UI (AN8) would not replay on the main
+  thread.
+
+--------------------------------------------------------------------------------
+QUESTIONS
+--------------------------------------------------------------------------------
+None blocking. One for the operator's judgement, not a decision this task may
+take: the worked example shows coverage 95% (19/20) with one worked day withheld
+because the phone was at home in the morning. K4's floor is 60%, so this passes
+comfortably -- but the field protocol treats coverage and accuracy as separate
+criteria, and a real fleet on background-hostile phones may trade coverage for
+accuracy (fewer proposals, but the ones made are right). That is exactly what
+AN6b measures; flagging it here so the coverage/accuracy trade-off is read as
+expected, not as a surprise, when the first real numbers land.
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+AN6a commits on origin/main (increment 0 R275, then 1-5, already pushed):
+  bf88b54  AN5: R275 -- a coalesced mutation carries the final tap's clientClaimedAt
+  337a157  AN6a: the border polygon, sourced and licensed
+  05d1d26  AN6a: classification, and a coordinate that cannot escape
+  8c1e2ea  AN6a: hysteresis and the daily tally
+  25a5fe9  AN6a: tiers, and a proposal that is never a record
+  3ab21a3  AN6a: seven tracks, replayed on the device
+  (chore)  the AN6a prompt (relay/AN6a.txt, relay/field-protocol-AN6b.md)
+  (final)  AN6a: the scoring harness, and the report   (this report)
+
+Android gate on this session's tree: BUILD SUCCESSFUL, 643 unit tests observed
+(checkTestFloor OK). RAN: assembleDebug, testDebugUnitTest (fences + censuses),
+checkTestFloor, ktlintCheck, detekt, verifyPaparazziDebug, checkReleaseCleartext.
+SKIPPED with reason: the emulator instrument (needs a real AVD; driven by hand
+this session -- see THE SEVEN TRACKS) and connectedDebugAndroidTest (needs a
+running device).
+
+FINAL gate:clone on HEAD: <filled at push>.
+  claim: <filled at push>.
+Web is byte-identical to origin/main (git diff --stat origin/main -- web/ empty),
+so the AN6a changes are confined to android/, docs/, scripts under android/, and
+this report; gate:clone's clean-checkout run of the web suites discharges R199
+for the push. This is the last thing the session does.

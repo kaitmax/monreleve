@@ -146,8 +146,37 @@ noted, not demonstrated; the classifier pipeline it feeds is fully proven via th
 
 ## Battery measurement method (AN6a increment 6)
 
-_The 3 %-per-working-day budget cannot be measured on an emulator (no power rails). The
-method for AN6b's physical device is recorded at increment 6._
+The 3 %-per-working-day budget (SPEC 13.1, K5) is a NUMBER THAT MUST BE MEASURED, and the
+method matters as much as the figure (R233). From the android-profiler skill (docs/android-skills.md
+§7.1):
+
+- **Preferred: Perfetto system trace.** Record a working-day background trace (the
+  `long_background.pftxt` config shape); read energy from the **`power_rails`** track (energy per
+  rail = `power_ma * duration`, summed, in mWh). Confirm the device SUSPENDS between detection
+  wakes via the **`suspend_state`** track, and root-cause any failure to suspend via
+  **`kernel_wakelock`** - the detection budget is dominated by whether the device stays asleep
+  between fixes.
+- **Hard constraint:** `power_rails` needs on-device power measurement (ODPM) - a Pixel 6+
+  (Tensor) or similar. **The 3 % figure cannot be measured on an emulator** (no power rails), so
+  AN6a does not produce it; AN6b measures it on the tester's physical phone, the same way every
+  day, and reports it to `score-field-run.mjs --battery-median`.
+- **Fallback where ODPM is absent:** `dumpsys batterystats` (coarser), reset at the window start
+  and read at the end.
+
+## The scoring harness (AN6a increment 6, AC3)
+
+`android/scripts/score-field-run.mjs` scores a run: `--export <app export.json> --log <tester
+log.csv>`. It reads the app's export (`detection/exportFieldRun` - per day tier, proposed kind,
+minutes, fix and buffer counts; **no coordinate**, R277) and the tester's daily log (date,
+`Suisse`/`Domicile`/`Mission`/`Absent`, note - the fiche testeur format), and prints per kill
+criterion the count, the rate, and its **95 % confidence bound** (the rule of three, 3/n, for a
+zero-error month; the Wilson upper bound otherwise). FALSE-CH is on its own line (K1, R278). The
+thresholds are encoded from the field protocol §3 (R276), not chosen. A worked example on
+fabricated data lives in `android/scripts/fixtures/` and is shown in REPORT-AN6a.txt.
+
+The measurement build **runs without a server** (detection is on-device, D18) and is **blind**
+(it does not show the tester its proposals during the run - the export carries them at the end),
+so the daily log stays independent ground truth.
 
 ## Geofence contingency (D31)
 

@@ -1,0 +1,200 @@
+[
+  {
+    "dayDate": "2027-06-01",
+    "tier": "HIGH",
+    "proposedKind": "CH",
+    "minutesSwitzerland": 660,
+    "minutesElsewhere": 60,
+    "fixCount": 47,
+    "bufferFixCount": 2
+  },
+  {
+    "dayDate": "2027-06-02",
+    "tier": "HIGH",
+    "proposedKind": "CH",
+    "minutesSwitzerland": 660,
+    "minutesElsewhere": 60,
+    "fixCount": 47,
+    "bufferFixCount": 2
+  },
+  {
+    "dayDate": "2027-06-03",
+    "tier": "HIGH",
+    "proposedKind": "CH",
+    "minutesSwitzerland": 660,
+    "minutesElsewhere": 60,
+    "fixCount": 47,
+    "bufferFixCount": 2
+  },
+  {
+    "dayDate": "2027-06-04",
+    "tier": "HIGH",
+    "proposedKind": "CH",
+    "minutesSwitzerland": 660,
+    "minutesElsewhere": 60,
+    "fixCount": 47,
+    "bufferFixCount": 2
+  },
+  {
+    "dayDate": "2027-06-05",
+    "tier": "HIGH",
+    "proposedKind": "CH",
+    "minutesSwitzerland": 660,
+    "minutesElsewhere": 60,
+    "fixCount": 47,
+    "bufferFixCount": 2
+  },
+  {
+    "dayDate": "2027-06-06",
+    "tier": "HIGH",
+    "proposedKind": "CH",
+    "minutesSwitzerland": 660,
+    "minutesElsewhere": 60,
+    "fixCount": 47,
+    "bufferFixCount": 2
+  },
+  {
+    "dayDate": "2027-06-07",
+    "tier": "HIGH",
+    "proposedKind": "CH",
+    "minutesSwitzerland": 660,
+    "minutesElsewhere": 60,
+    "fixCount": 47,
+    "bufferFixCount": 2
+  },
+  {
+    "dayDate": "2027-06-08",
+    "tier": "HIGH",
+    "proposedKind": "CH",
+    "minutesSwitzerland": 660,
+    "minutesElsewhere": 60,
+    "fixCount": 47,
+    "bufferFixCount": 2
+  },
+  {
+    "dayDate": "2027-06-09",
+    "tier": "HIGH",
+    "proposedKind": "CH",
+    "minutesSwitzerland": 660,
+    "minutesElsewhere": 60,
+    "fixCount": 47,
+    "bufferFixCount": 2
+  },
+  {
+    "dayDate": "2027-06-10",
+    "tier": "HIGH",
+    "proposedKind": "CH",
+    "minutesSwitzerland": 660,
+    "minutesElsewhere": 60,
+    "fixCount": 47,
+    "bufferFixCount": 2
+  },
+  {
+    "dayDate": "2027-06-11",
+    "tier": "HIGH",
+    "proposedKind": "CH",
+    "minutesSwitzerland": 660,
+    "minutesElsewhere": 60,
+    "fixCount": 47,
+    "bufferFixCount": 2
+  },
+  {
+    "dayDate": "2027-06-12",
+    "tier": "HIGH",
+    "proposedKind": "CH",
+    "minutesSwitzerland": 660,
+    "minutesElsewhere": 60,
+    "fixCount": 47,
+    "bufferFixCount": 2
+  },
+  {
+    "dayDate": "2027-06-13",
+    "tier": "HIGH",
+    "proposedKind": "CH",
+    "minutesSwitzerland": 660,
+    "minutesElsewhere": 60,
+    "fixCount": 47,
+    "bufferFixCount": 2
+  },
+  {
+    "dayDate": "2027-06-14",
+    "tier": "HIGH",
+    "proposedKind": "CH",
+    "minutesSwitzerland": 660,
+    "minutesElsewhere": 60,
+    "fixCount": 47,
+    "bufferFixCount": 2
+  },
+  {
+    "dayDate": "2027-06-15",
+    "tier": "HIGH",
+    "proposedKind": "HOME",
+    "minutesSwitzerland": 0,
+    "minutesElsewhere": 720,
+    "fixCount": 48,
+    "bufferFixCount": 0
+  },
+  {
+    "dayDate": "2027-06-16",
+    "tier": "HIGH",
+    "proposedKind": "HOME",
+    "minutesSwitzerland": 0,
+    "minutesElsewhere": 720,
+    "fixCount": 48,
+    "bufferFixCount": 0
+  },
+  {
+    "dayDate": "2027-06-17",
+    "tier": "HIGH",
+    "proposedKind": "HOME",
+    "minutesSwitzerland": 0,
+    "minutesElsewhere": 720,
+    "fixCount": 48,
+    "bufferFixCount": 0
+  },
+  {
+    "dayDate": "2027-06-18",
+    "tier": "MEDIUM",
+    "proposedKind": "CH",
+    "minutesSwitzerland": 400,
+    "minutesElsewhere": 100,
+    "fixCount": 20,
+    "bufferFixCount": 6
+  },
+  {
+    "dayDate": "2027-06-19",
+    "tier": "MEDIUM",
+    "proposedKind": "CH",
+    "minutesSwitzerland": 400,
+    "minutesElsewhere": 100,
+    "fixCount": 20,
+    "bufferFixCount": 6
+  },
+  {
+    "dayDate": "2027-06-20",
+    "tier": "LOW",
+    "proposedKind": null,
+    "minutesSwitzerland": 100,
+    "minutesElsewhere": 50,
+    "fixCount": 6,
+    "bufferFixCount": 3
+  },
+  {
+    "dayDate": "2027-06-21",
+    "tier": "LOW",
+    "proposedKind": null,
+    "minutesSwitzerland": 0,
+    "minutesElsewhere": 0,
+    "fixCount": 0,
+    "bufferFixCount": 0
+  },
+  {
+    "dayDate": "2027-06-22",
+    "tier": "LOW",
+    "proposedKind": null,
+    "minutesSwitzerland": 0,
+    "minutesElsewhere": 0,
+    "fixCount": 0,
+    "bufferFixCount": 0
+  }
+]
