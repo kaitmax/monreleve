@@ -557,6 +557,32 @@ emits - recorded here rather than decided quietly. Until then: **a client should
 not assume the last write it sent is the one the server kept.** Read the year
 back after a queue drain.
 
+**AN5 evidence: what the Android queue emits.** The Android client keys its local
+store on `(dayDate, portion)` - that pair is the Room entity's primary key - and
+recording a day *coalesces* onto that key: a re-record REPLACES the pending row in
+place, with a fresh `clientMutationId`, rather than appending a second mutation. So
+the queue holds **at most one pending mutation per `(dayDate, portion)`**, and one
+worker drains it (unique work, never two concurrently). Two consequences, both from
+a *single device*:
+
+- it can never place two items for one `(dayDate, portion)` in a batch, so the
+  reserved `conflict` (409) can never fire against it; and
+- it can never emit two *out-of-order* mutations for one day, because there is only
+  ever one to emit - the older is coalesced away before the newer is queued, or is
+  already synced and gone.
+
+So the reversion above is **not reachable from one device**. It requires TWO devices
+with two independent queues: device A's older-but-genuinely-new mutation arriving
+after device B's newer one, winning by server receipt. No single-device coalescing
+can prevent that, because the two mutations never share a queue to coalesce in. The
+structural evidence is the Android suite's `OrderingEvidenceTest`
+(`aBatchNeverCarriesTwoItemsForOneDayAndPortion`).
+
+The product is single-user and effectively single-device today, so the reversion is
+not reachable in practice now. The decision - keep server-receipt order, or move to
+`clientClaimedAt` - stays the operator's, unchanged by AN5 (the rule is frozen,
+R156); AN5 only supplies the evidence it was parked for.
+
 ### 6.5 What a client must do to stay compatible
 
 These are requirements on the *client*, and they cannot be retrofitted to a
