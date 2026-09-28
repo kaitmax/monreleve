@@ -123,7 +123,26 @@ shows it fires.
 
 ## Sampling and background mechanics (AN6a increment 5)
 
-_Filled in at increment 5._
+**The entry point is `DetectionSession.onFix(latitude, longitude, epochMillis)`** — classify,
+accumulate, and at day's end compute the tally and proposal. The seven synthetic tracks
+(`detection/SyntheticTracks.kt`, each a scenario with its expected result written first, R197)
+are replayed through it: on the emulator by `dev/DetectionReplayActivity` (loading the shipped
+asset polygon, showing each track's expected vs observed proposal and OK), and in the JVM
+regression by `DetectionSessionTest`. All seven pass; the tier shows in words, no percentage,
+no map (R27).
+
+**Assumed cadence: one fix per `SAMPLE_INTERVAL_MINUTES` (15).** SPEC 13.1's WorkManager floor.
+The tally attributes minutes from the fixes' own timestamps, so a compressed replay produces
+the tally a real day would.
+
+**The background sampling CLIENT is deliberately NOT built here — it is SPEC 13.1's spike (AN7).**
+AN6a proves the CLASSIFIER on synthetic tracks; which combination of WorkManager periodic work,
+geofences, or a foreground service meets the accuracy and battery budgets is what AN6b measures
+and AN7 wires. The `detection/LiveLocation.classifyCurrentLocation` bridge is built and
+`adb emu geo fix` sets the emulator position (verified: `OK`), but
+`LocationManager.getLastKnownLocation` returns null on the headless emulator without an active
+location-updates client — which is exactly the client AN7 owns. So the OS-location READ layer is
+noted, not demonstrated; the classifier pipeline it feeds is fully proven via the tracks.
 
 ## Battery measurement method (AN6a increment 6)
 

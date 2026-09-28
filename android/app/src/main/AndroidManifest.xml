@@ -4,6 +4,14 @@
     <!-- AN4 increment 1: the client talks to /api/v1 over the network. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!--
+      AN6a increment 5: on-device detection reads GPS fixes, classifies them against the
+      bundled polygon, and DISCARDS the coordinate (D18) - it is never stored, logged or sent.
+      FINE (foreground) only here; ACCESS_BACKGROUND_LOCATION (Play's restricted permission) is
+      an AN7 decision with the background-sampling spike, not requested yet.
+    -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -83,6 +91,18 @@
         -->
         <activity
             android:name=".dev.DevRecorderActivity"
+            android:exported="true"
+            android:theme="@style/Theme.MonReleve" />
+
+        <!--
+          AN6a increment 5. The detection replay (dev/DetectionReplayActivity): runs the seven
+          synthetic tracks through the real pipeline and shows the live geo-fix classification.
+          No intent-filter, never in the launcher. Reached only by:
+            adb shell am start -n ch.monreleve.app/ch.monreleve.app.dev.DetectionReplayActivity
+          exported for that adb reach, the same status as the gallery, the probe and the recorder.
+        -->
+        <activity
+            android:name=".dev.DetectionReplayActivity"
             android:exported="true"
             android:theme="@style/Theme.MonReleve" />
     </application>
