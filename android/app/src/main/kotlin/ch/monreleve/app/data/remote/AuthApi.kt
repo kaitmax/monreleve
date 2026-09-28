@@ -207,6 +207,40 @@ class AuthApi(
     }
 
     /**
+     * A PATCH carrying the access token as a bearer and a JSON body, returning its
+     * status/body or the 401 code. AN5b: the settings write (/api/v1/me) uses this; the 401 path is
+     * identical to authenticatedGet/Post so SessionManager applies R210 the same way.
+     */
+    suspend fun authenticatedPatch(
+        path: String,
+        body: String,
+        accessToken: String,
+    ): AuthedResponse {
+        val response =
+            try {
+                transport.execute(
+                    HttpRequest(
+                        method = HttpMethod.PATCH,
+                        url = "$baseUrl$path",
+                        headers =
+                            mapOf(
+                                "Authorization" to "Bearer $accessToken",
+                                "Content-Type" to "application/json",
+                            ),
+                        body = body,
+                    ),
+                )
+            } catch (e: IOException) {
+                return AuthedResponse.Failed(ApiFailure.Network(e.message ?: "network unreachable"))
+            }
+        return if (response.status == HTTP_UNAUTHORIZED) {
+            AuthedResponse.Unauthorized(parseServerFailure(response.status, response.body).code)
+        } else {
+            AuthedResponse.Ok(response.status, response.body)
+        }
+    }
+
+    /**
      * End this session server-side. Best-effort: a network failure returns false,
      * and the caller clears local storage regardless.
      */

@@ -7,7 +7,10 @@ package ch.monreleve.app.data.remote
 // UrlConnectionTransport. Nothing here knows about tokens or codes; those are
 // the layers above.
 
-enum class HttpMethod { GET, POST }
+// PATCH is added for /api/v1/me (AN5b). Android's HttpURLConnection is OkHttp-backed and accepts
+// PATCH via requestMethod; the desktop JDK's own implementation rejects it, but this runs on-device
+// and the JVM tests drive the fake transport, never HttpURLConnection.
+enum class HttpMethod { GET, POST, PATCH }
 
 data class HttpRequest(
     val method: HttpMethod,

@@ -66,6 +66,10 @@ interface AuthenticatedPoster {
     ): PostOutcome
 }
 
+// One cohesive responsibility - the session - across three authenticated verbs (GET/POST/PATCH) that
+// share the R210 refresh-once-and-replay machinery in `attempt`, plus refresh and sign-out. Splitting
+// it would scatter the replay handling the shared machinery exists to keep in one place.
+@Suppress("TooManyFunctions")
 class SessionManager(
     private val api: AuthApi,
     private val tokenStore: TokenStore,
@@ -192,6 +196,24 @@ class SessionManager(
         body: String,
     ): PostOutcome =
         when (val attempt = attempt { token -> api.authenticatedPost(path, body, token) }) {
+            is Attempt.Ok -> PostOutcome.Ok(attempt.status, attempt.body)
+            Attempt.SessionExpired -> PostOutcome.SessionExpired
+            Attempt.SessionEnded -> PostOutcome.SessionEnded
+            Attempt.NoSession -> PostOutcome.NoSession
+            Attempt.NetworkError -> PostOutcome.NetworkError
+        }
+
+    /**
+     * An authenticated PATCH with the SAME refresh-once-and-retry and replay handling as the GET
+     * and POST (R210), through the shared `attempt` machinery. AN5b: the settings write
+     * (/api/v1/me). Returns PostOutcome so the caller can branch on 400 (the database's named
+     * refusal, R198) versus 200.
+     */
+    suspend fun authenticatedPatch(
+        path: String,
+        body: String,
+    ): PostOutcome =
+        when (val attempt = attempt { token -> api.authenticatedPatch(path, body, token) }) {
             is Attempt.Ok -> PostOutcome.Ok(attempt.status, attempt.body)
             Attempt.SessionExpired -> PostOutcome.SessionExpired
             Attempt.SessionEnded -> PostOutcome.SessionEnded
