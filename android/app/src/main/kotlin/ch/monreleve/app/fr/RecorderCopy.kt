@@ -21,7 +21,11 @@ object RecorderCopy {
     const val EARLIER = "Jour précédent"
     const val LATER = "Jour suivant"
     const val SYNC = "Synchroniser"
-    const val STATE_PENDING = "En attente de synchronisation"
+
+    // The pending-sync line is a production concept now (AN5b's Aujourd'hui shows it too), so its one
+    // home is AujourdhuiCopy.PENDING and this dev tool references it - R206, rather than a second copy
+    // the duplication guard rightly refused.
+    const val STATE_PENDING = AujourdhuiCopy.PENDING
     const val STATE_SYNCED = "Synchronisé"
     const val STATE_FAILED = "Échec"
     const val EMPTY = "Aucune journée enregistrée"

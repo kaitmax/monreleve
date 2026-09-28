@@ -15,12 +15,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
+import ch.monreleve.app.aujourdhui.AujourdhuiController
 import ch.monreleve.app.auth.KeystoreTokenStore
 import ch.monreleve.app.auth.SessionManager
 import ch.monreleve.app.auth.SharedPrefsPendingSignInStore
 import ch.monreleve.app.auth.SignInController
+import ch.monreleve.app.data.local.MonReleveDatabase
 import ch.monreleve.app.data.remote.AuthApi
 import ch.monreleve.app.data.remote.UrlConnectionTransport
+import ch.monreleve.app.data.repo.EntryRepository
+import ch.monreleve.app.data.repo.LocalEntryRepository
 import ch.monreleve.app.design.FrontierTheme
 import ch.monreleve.app.onboarding.OnboardingController
 import ch.monreleve.app.onboarding.OnboardingPhase
@@ -32,6 +36,7 @@ import ch.monreleve.app.ui.screens.onboarding.OnboardingActions
 import ch.monreleve.app.ui.screens.onboarding.OnboardingScreen
 import ch.monreleve.app.ui.screens.signin.RequestLinkScreen
 import kotlinx.coroutines.CoroutineScope
+import java.time.Clock
 import java.time.Year
 import java.time.ZoneId
 
@@ -57,6 +62,8 @@ class MainActivity : ComponentActivity() {
         val session = SessionManager(api, tokenStore)
         val settingsStore: SettingsStore = SharedPrefsSettingsStore(context)
         val pending = SharedPrefsPendingSignInStore(context)
+        val clock = Clock.systemDefaultZone()
+        val repository: EntryRepository = LocalEntryRepository(MonReleveDatabase.get(context).entryDao(), clock)
         // R28: the tax year is the Paris calendar year, not the device's. The composition root is
         // the one place a clock is allowed; the engine and the aggregation stay clock-free.
         val taxYear = Year.now(ZoneId.of("Europe/Paris")).value
@@ -78,7 +85,7 @@ class MainActivity : ComponentActivity() {
                             OnboardingRoute(session, settingsStore, taxYear, lifecycleScope) {
                                 destination = Destination.AUJOURDHUI
                             }
-                        Destination.AUJOURDHUI -> AujourdhuiScreen()
+                        Destination.AUJOURDHUI -> AujourdhuiRoute(repository, settingsStore, clock, lifecycleScope)
                     }
                 }
             }
@@ -128,4 +135,16 @@ private fun OnboardingRoute(
                 onSubmit = controller::submit,
             ),
     )
+}
+
+@Composable
+private fun AujourdhuiRoute(
+    repository: EntryRepository,
+    store: SettingsStore,
+    clock: Clock,
+    scope: CoroutineScope,
+) {
+    val controller = remember { AujourdhuiController(repository, store, clock, scope) }
+    val state by controller.state.collectAsState()
+    AujourdhuiScreen(state = state, onRecord = controller::record)
 }
