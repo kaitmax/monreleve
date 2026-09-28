@@ -388,4 +388,20 @@ increment 2 was pushed after gate:clone (eb65590). Android :app:gate green on th
 final tree (assembleDebug, testDebugUnitTest incl. the fences and censuses,
 checkTestFloor, ktlintCheck, detekt, verifyPaparazziDebug, checkReleaseCleartext).
 
-FINAL gate:clone on HEAD <filled at push>: <filled at push>.
+FINAL gate:clone on HEAD 33d9801: GATE:CLONE PASSED.
+  ran     install, typecheck, lint, test, build, size, db:deploy, test:db,
+          test:container:write, from a clean clone -- no .env, no prior
+          node_modules, no generated file the run did not produce. The web test
+          suite there includes tests/unit/dossier/aggregation-fixture.test.ts,
+          which reads the committed fixtures/aggregation-cases.json, so the R281
+          binding is verified from a clean checkout.
+  claim   this commit builds and passes those suites from a clean checkout.
+  CI readiness: quiet -- the repository is private and CI_FULL is unset, so jobs
+          skip (the carried FW24 combination).
+  NOT RUN in a clone (R133), making no claim: test:e2e, test:visual, test:runtime,
+          lighthouse, parity:check, test:container.
+
+A report-only finalization commit follows 33d9801, changing ONLY REPORT-AN5b.txt
+to record this proof. Web is byte-identical to 33d9801, so the gate:clone above
+discharges R199 for it as well. Both are pushed together; this is the last thing
+the session does.
