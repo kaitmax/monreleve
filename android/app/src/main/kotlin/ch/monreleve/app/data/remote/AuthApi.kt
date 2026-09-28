@@ -13,7 +13,9 @@ import java.net.URLEncoder
 private const val HTTP_OK = 200
 private const val HTTP_ACCEPTED = 202
 private const val HTTP_BAD_REQUEST = 400
+private const val HTTP_UNAUTHORIZED = 401
 private const val HTTP_TOO_MANY_REQUESTS = 429
+private const val HTTP_OK_MAX = 299
 
 /**
  * The outcome of asking for a sign-in link. `Sent` is the ONE answer for a 202,
@@ -45,6 +47,31 @@ sealed interface CallbackResult {
     data object InvalidLink : CallbackResult
 
     data class Failed(val failure: ApiFailure) : CallbackResult
+}
+
+/**
+ * The outcome of a refresh. `Rotated` is a new pair; `Invalid` is the server's ONE
+ * 401 answer for every unusable refresh token - unknown, expired, already rotated,
+ * revoked, AND a detected replay - because the server refuses to say which
+ * (docs/api-v1.md 1.5). The client cannot tell a replay from an expiry HERE; it
+ * learns a replay only when a still-held access token later returns revoked_session
+ * (R210), which is why SessionManager keeps those two paths distinct.
+ */
+sealed interface RefreshResult {
+    data class Rotated(val pair: TokenPair) : RefreshResult
+
+    data object Invalid : RefreshResult
+
+    data class Failed(val failure: ApiFailure) : RefreshResult
+}
+
+/** The outcome of an authenticated call: a 2xx body, a 401 with its code, or a network failure. */
+sealed interface AuthedResponse {
+    data class Ok(val status: Int, val body: String) : AuthedResponse
+
+    data class Unauthorized(val code: AuthServerCode?) : AuthedResponse
+
+    data class Failed(val failure: ApiFailure) : AuthedResponse
 }
 
 class AuthApi(
@@ -96,6 +123,67 @@ class AuthApi(
             HTTP_BAD_REQUEST -> CallbackResult.InvalidLink
             else -> CallbackResult.Failed(parseServerFailure(response.status, response.body))
         }
+    }
+
+    /** Rotate a refresh token for a new pair. The refresh token travels in the BODY (docs/api-v1.md 1.3). */
+    suspend fun refresh(refreshToken: String): RefreshResult {
+        val response =
+            try {
+                transport.execute(
+                    HttpRequest(
+                        method = HttpMethod.POST,
+                        url = "$baseUrl/api/v1/auth/refresh",
+                        headers = mapOf("Content-Type" to "application/json"),
+                        body = JSONObject().put("refreshToken", refreshToken).toString(),
+                    ),
+                )
+            } catch (e: IOException) {
+                return RefreshResult.Failed(ApiFailure.Network(e.message ?: "network unreachable"))
+            }
+        return when (response.status) {
+            HTTP_OK ->
+                parseTokenPair(response.body)?.let { RefreshResult.Rotated(it) }
+                    ?: RefreshResult.Failed(ApiFailure.Malformed("refresh 200 carried no token pair"))
+            else -> RefreshResult.Invalid
+        }
+    }
+
+    /** A GET carrying the access token as a bearer, returning its status/body or the 401 code. */
+    suspend fun authenticatedGet(
+        path: String,
+        accessToken: String,
+    ): AuthedResponse {
+        val response =
+            try {
+                transport.execute(
+                    HttpRequest(
+                        method = HttpMethod.GET,
+                        url = "$baseUrl$path",
+                        headers = mapOf("Authorization" to "Bearer $accessToken"),
+                    ),
+                )
+            } catch (e: IOException) {
+                return AuthedResponse.Failed(ApiFailure.Network(e.message ?: "network unreachable"))
+            }
+        return if (response.status == HTTP_UNAUTHORIZED) {
+            AuthedResponse.Unauthorized(parseServerFailure(response.status, response.body).code)
+        } else {
+            AuthedResponse.Ok(response.status, response.body)
+        }
+    }
+
+    /**
+     * End this session server-side. Best-effort: a network failure returns false,
+     * and the caller clears local storage regardless.
+     */
+    suspend fun signOut(accessToken: String): Boolean {
+        val request =
+            HttpRequest(
+                method = HttpMethod.POST,
+                url = "$baseUrl/api/v1/auth/sign-out",
+                headers = mapOf("Authorization" to "Bearer $accessToken"),
+            )
+        return runCatching { transport.execute(request).status in HTTP_OK..HTTP_OK_MAX }.getOrDefault(false)
     }
 }
 
