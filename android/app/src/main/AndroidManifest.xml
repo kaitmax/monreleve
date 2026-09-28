@@ -23,6 +23,31 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+          AN4 increment 4 (SPEC 10, R195). The App Link callback target. exported
+          is required for an App Link; singleTop so a warm delivery reaches
+          onNewIntent, which re-validates. autoVerify asks the OS to verify the
+          domain against /.well-known/assetlinks.json - which cannot succeed until
+          monreleve.ch resolves and serves the fingerprints (PARK4-2 / PARKAN-1):
+          this task proves the app's HANDLING of the intent, NOT the OS's
+          verification. The path is the frozen contract shape exactly.
+        -->
+        <activity
+            android:name=".CallbackActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.MonReleve">
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="monreleve.ch"
+                    android:path="/api/v1/auth/callback" />
+            </intent-filter>
+        </activity>
         <!--
           AN3 increment 6. The AC3 instrument (dev/GalleryScreen.kt). No
           intent-filter - never appears in the launcher, never a SPEC 11

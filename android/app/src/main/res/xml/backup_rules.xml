@@ -9,4 +9,5 @@
 -->
 <full-backup-content>
     <exclude domain="sharedpref" path="monreleve.auth.xml" />
+    <exclude domain="sharedpref" path="monreleve.pending.xml" />
 </full-backup-content>

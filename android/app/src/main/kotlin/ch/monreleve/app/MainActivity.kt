@@ -11,6 +11,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
+import ch.monreleve.app.auth.SharedPrefsPendingSignInStore
 import ch.monreleve.app.auth.SignInController
 import ch.monreleve.app.data.remote.AuthApi
 import ch.monreleve.app.data.remote.UrlConnectionTransport
@@ -32,13 +33,14 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val api = AuthApi(UrlConnectionTransport(), BuildConfig.API_BASE_URL)
+        val pending = SharedPrefsPendingSignInStore(applicationContext)
         setContent {
             FrontierTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,
                 ) {
-                    val controller = remember { SignInController(api, lifecycleScope) }
+                    val controller = remember { SignInController(api, pending, lifecycleScope) }
                     val state by controller.state.collectAsState()
                     RequestLinkScreen(
                         state = state,

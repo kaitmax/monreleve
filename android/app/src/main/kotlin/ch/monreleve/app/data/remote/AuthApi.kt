@@ -1,14 +1,18 @@
 package ch.monreleve.app.data.remote
 
+import ch.monreleve.app.auth.TokenPair
 import org.json.JSONObject
 import java.io.IOException
+import java.net.URLEncoder
 
 // AN4 increment 3+. The typed calls onto the frozen auth contract (R195), built
 // on the increment-1 transport seam and error mapping. requestMagicLink is
-// increment 3; the callback exchange, refresh, sign-out and revoke-all land in
-// increments 4-5 on the same shape.
+// increment 3; the callback exchange is increment 4; refresh, sign-out and
+// revoke-all land in increment 5 on the same shape.
 
+private const val HTTP_OK = 200
 private const val HTTP_ACCEPTED = 202
+private const val HTTP_BAD_REQUEST = 400
 private const val HTTP_TOO_MANY_REQUESTS = 429
 
 /**
@@ -25,6 +29,22 @@ sealed interface MagicLinkResult {
     data object RateLimited : MagicLinkResult
 
     data class Failed(val failure: ApiFailure) : MagicLinkResult
+}
+
+/**
+ * The outcome of exchanging a callback link. `Signed` carries the token pair from
+ * a 200; `InvalidLink` is the server's ONE 400 answer for every callback failure -
+ * unknown, expired, already used, wrong address - because the server refuses to
+ * say which (docs/api-v1.md callback route, lines 43-52), and the client renders
+ * one actionable "ask for a new link" state for all of them. `Failed` is the
+ * distinct network/malformed case.
+ */
+sealed interface CallbackResult {
+    data class Signed(val pair: TokenPair) : CallbackResult
+
+    data object InvalidLink : CallbackResult
+
+    data class Failed(val failure: ApiFailure) : CallbackResult
 }
 
 class AuthApi(
@@ -51,4 +71,44 @@ class AuthApi(
             else -> MagicLinkResult.Failed(parseServerFailure(response.status, response.body))
         }
     }
+
+    /**
+     * Exchange a validated callback link for a token pair. The token and email are
+     * URL-encoded onto the app's OWN configured base URL (never a host taken from
+     * the incoming intent - CallbackLink validated the URI, this call does not
+     * trust it as an address).
+     */
+    suspend fun exchangeCallback(
+        token: String,
+        email: String,
+    ): CallbackResult {
+        val url = "$baseUrl/api/v1/auth/callback?token=${encode(token)}&email=${encode(email)}"
+        val response =
+            try {
+                transport.execute(HttpRequest(method = HttpMethod.GET, url = url))
+            } catch (e: IOException) {
+                return CallbackResult.Failed(ApiFailure.Network(e.message ?: "network unreachable"))
+            }
+        return when (response.status) {
+            HTTP_OK ->
+                parseTokenPair(response.body)?.let { CallbackResult.Signed(it) }
+                    ?: CallbackResult.Failed(ApiFailure.Malformed("callback 200 carried no token pair"))
+            HTTP_BAD_REQUEST -> CallbackResult.InvalidLink
+            else -> CallbackResult.Failed(parseServerFailure(response.status, response.body))
+        }
+    }
 }
+
+private fun encode(value: String): String = URLEncoder.encode(value, "UTF-8")
+
+/** The token pair carried by a callback or refresh 200, or null if the body is not that shape. */
+internal fun parseTokenPair(body: String): TokenPair? =
+    runCatching {
+        val json = JSONObject(body)
+        TokenPair(
+            accessToken = json.getString("accessToken"),
+            refreshToken = json.getString("refreshToken"),
+            accessExpiresAt = json.getString("accessExpiresAt"),
+            refreshExpiresAt = json.getString("refreshExpiresAt"),
+        )
+    }.getOrNull()

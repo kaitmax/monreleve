@@ -28,6 +28,7 @@ data class SignInState(
 
 class SignInController(
     private val api: AuthApi,
+    private val pending: PendingSignInStore,
     private val scope: CoroutineScope,
 ) {
     private val mutableState = MutableStateFlow(SignInState())
@@ -40,6 +41,9 @@ class SignInController(
     fun submit() {
         val email = mutableState.value.email.trim()
         if (email.isEmpty()) return
+        // Remember the address BEFORE the request: the callback (increment 4) binds
+        // to it, refusing a link fired for any other account (login-CSRF).
+        pending.remember(email)
         mutableState.update { it.copy(phase = SignInPhase.SUBMITTING) }
         scope.launch {
             val phase =

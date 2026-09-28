@@ -996,3 +996,36 @@ into an `@Suppress`-annotated exemption list in `FencesTest.kt` (naming
 the exemption cannot silently grow), or fold the constant into
 `ThresholdRailScreenshotTest.kt`'s own file and have `dev/` depend on the
 test source set - each is reversible without a migration.
+
+## PARKAN-1 - the OS App Link verification is not, and cannot be, tested here  [AN4, 2026-09-28]
+
+QUESTION:  AC1/AC2 ask the callback to work end to end, but an Android App Link
+opens the app only after the OS has VERIFIED the domain against
+`https://monreleve.ch/.well-known/assetlinks.json` - and `monreleve.ch` does not
+resolve (FW29 Checkpoint C). So "tap the link in the email, the app opens" cannot
+be proven in this task, only the app's handling once the intent arrives.
+
+TAKEN:     The two claims are stated SEPARATELY (relay's own instruction). The
+app's HANDLING of the callback is proven by firing the intent directly at
+`CallbackActivity` with `adb am start` - MALFORMED (foreign host, intent-security)
+and MISMATCH (valid link for an unrequested account, login-CSRF) seen in this
+increment; SIGNED and INVALID_LINK in increment 6's loop against `pnpm dev`. The
+OS's verification is NOT claimed. The manifest carries `android:autoVerify="true"`
+so verification happens the day the domain does, with no app change. Reversible:
+nothing is faked, so nothing must be un-faked.
+
+NOT TAKEN: Faking a resolving domain or a served `assetlinks.json`. That would be
+a false claim that the App Link is verified - the exact overstatement this product
+refuses, on the one path whose failure ("the link opens a browser sometimes") is
+farthest from its cause.
+
+TOUCHES:   nothing in the app. The intent-filter shape is the frozen contract
+(R195) and is correct; only the world outside the repo is missing.
+
+NEEDS:     (1) `monreleve.ch` resolving and serving `/.well-known/assetlinks.json`
+with `package_name` `ch.monreleve.app` and the SHA-256 fingerprints - INCLUDING
+Google's Play App Signing key if Play re-signs the upload (PARK4-2 /
+docs/api-v1.md 4: a statement naming only the upload key verifies for nobody and
+fails silently and intermittently). (2) FW22's assetlinks route configured - it
+404s until `ANDROID_PACKAGE_NAME` and `ANDROID_SHA256_CERT_FINGERPRINTS` are set
+(R205). Until both, the link opens a browser, not the app.

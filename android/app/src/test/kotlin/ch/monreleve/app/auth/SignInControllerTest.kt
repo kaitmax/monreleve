@@ -6,6 +6,7 @@ import ch.monreleve.app.data.remote.HttpResponse
 import ch.monreleve.app.data.remote.HttpTransport
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import java.io.IOException
@@ -25,12 +26,30 @@ private class ScriptedTransport(
     }
 }
 
+private class FakePendingStore : PendingSignInStore {
+    var remembered: String? = null
+
+    override fun remember(email: String) {
+        remembered = email
+    }
+
+    override fun pending(): String? = remembered
+
+    override fun clear() {
+        remembered = null
+    }
+}
+
 private fun controllerWith(
     scope: kotlinx.coroutines.CoroutineScope,
     response: HttpResponse = HttpResponse(202, ""),
     throwable: Throwable? = null,
-): SignInController = SignInController(AuthApi(ScriptedTransport(response, throwable), "http://10.0.2.2:3000"), scope)
+    pending: PendingSignInStore = FakePendingStore(),
+): SignInController {
+    return SignInController(AuthApi(ScriptedTransport(response, throwable), "http://10.0.2.2:3000"), pending, scope)
+}
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class SignInControllerTest : FunSpec({
     test("a blank email never submits - stays EDITING") {
         runTest {
@@ -47,6 +66,17 @@ class SignInControllerTest : FunSpec({
             controller.submit()
             advanceUntilIdle()
             controller.state.value.phase shouldBe SignInPhase.LINK_SENT
+        }
+    }
+
+    test("submit remembers the email so the callback can bind to it (login-CSRF)") {
+        runTest {
+            val pending = FakePendingStore()
+            val controller = controllerWith(this, pending = pending)
+            controller.onEmailChange("a@b.ch")
+            controller.submit()
+            advanceUntilIdle()
+            pending.remembered shouldBe "a@b.ch"
         }
     }
 
