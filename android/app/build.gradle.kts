@@ -298,6 +298,43 @@ tasks.register("checkReleaseCleartext") {
     }
 }
 
+// R284 guard (b). The debug session injection (SessionInjectionActivity, declared only in
+// src/debug/AndroidManifest.xml) must never reach a release build. This reads the MERGED release
+// manifest (processReleaseManifest's output - the merger or a library could introduce a component the
+// source does not) and fails if the injection is present anywhere in it. R182: it dependsOn the task
+// that PRODUCES its subject, so it never runs before the merged manifest exists. The companion source
+// scan is NoDebugInjectionInMainTest (guard a); this is the merged-output guard, exactly the shape of
+// checkReleaseCleartext (AN4). Proven by planting the activity in src/main/AndroidManifest.xml and
+// watching it go red (R180), recorded in REPORT-AN5c.txt.
+tasks.register("checkReleaseNoDebugInjection") {
+    dependsOn("processReleaseManifest")
+    doLast {
+        // Strip XML comments before matching, the checkReleaseCleartext lesson: a guard that reads its
+        // own documentation as a violation is the FW22 size-regex shape. The subject is the elements.
+        val stripComments = { text: String -> text.replace(Regex("""(?s)<!--.*?-->"""), "") }
+        val marker = "SessionInjection"
+
+        val manifestDir = layout.buildDirectory.dir("intermediates/merged_manifest/release").get().asFile
+        val mergedManifest = manifestDir.walkTopDown().firstOrNull { it.name == "AndroidManifest.xml" }
+        if (mergedManifest == null) {
+            throw GradleException(
+                "checkReleaseNoDebugInjection: no merged release manifest under $manifestDir - " +
+                    "processReleaseManifest did not produce its output",
+            )
+        }
+        val manifestText = stripComments(mergedManifest.readText())
+        if (manifestText.contains(marker)) {
+            throw GradleException(
+                "checkReleaseNoDebugInjection FAILED - the debug session injection ('$marker') is " +
+                    "present in the merged RELEASE manifest ($mergedManifest). It must exist only in " +
+                    "the debug source set (R284): a release build that could be handed a session " +
+                    "bypasses sign-in entirely.",
+            )
+        }
+        println("checkReleaseNoDebugInjection OK: no debug session injection in the merged release manifest")
+    }
+}
+
 tasks.register("gate") {
     dependsOn(
         "assembleDebug",
@@ -307,6 +344,7 @@ tasks.register("gate") {
         "detekt",
         "verifyPaparazziDebug",
         "checkReleaseCleartext",
+        "checkReleaseNoDebugInjection",
     )
     doLast {
         println(
@@ -318,7 +356,9 @@ tasks.register("gate") {
             |     ktlintCheck, detekt, verifyPaparazziDebug (the screenshot
             |     baseline - a regression guard, never proof of correctness; R135),
             |     checkReleaseCleartext (AC3: the release build permits cleartext
-            |     nowhere - merged manifest + network security config, R182).
+            |     nowhere - merged manifest + network security config, R182),
+            |     checkReleaseNoDebugInjection (R284 guard b: the debug session
+            |     injection is absent from the merged release manifest).
             |SKIPPED, with reason:
             |  - scripts/emulator.sh / screenshot.sh / walkthrough.sh (the AC2
             |    instrument): needs a real AVD with hardware acceleration. Not a

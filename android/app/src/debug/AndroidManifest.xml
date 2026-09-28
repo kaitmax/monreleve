@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  DEBUG-ONLY manifest fragment (R284). It declares the session-injection activity into the DEBUG
+  variant only; the manifest merger never adds it to a release build because src/debug is not part of
+  the release variant. checkReleaseNoDebugInjection reads the MERGED RELEASE manifest and fails if the
+  activity ever appears there anyway (a library, a stray main-manifest entry) - the guard that makes
+  "debug-only" a checked fact rather than a claim, mirroring checkReleaseCleartext.
+
+  exported="true" so `adb shell am start -n` can reach it; no intent-filter, so it is never in the
+  launcher and no App Link opens it. It is consumed in-app and never forwarded (android-intent-security).
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <activity
+            android:name=".debug.SessionInjectionActivity"
+            android:exported="true"
+            android:theme="@style/Theme.MonReleve" />
+    </application>
+</manifest>
