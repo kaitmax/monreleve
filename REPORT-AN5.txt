@@ -142,10 +142,15 @@ plant showed the last two fire.
 
 THE MIGRATION HARNESS. MonReleveMigrationTest (androidTest) uses
 MigrationTestHelper against the exported schema; wired via
-androidTest.assets.srcDir("schemas"). It runs on a device (compiled and verified
-via compileDebugAndroidTestKotlin; executed on the emulator), skipped by the JVM
-gate with a reason, as connectedDebugAndroidTest is. R187: the first release makes
-this schema permanent, so the harness exists from version 1.
+androidTest.assets.srcDir("schemas"). It COMPILED and was verified via
+compileDebugAndroidTestKotlin; it was NOT EXECUTED this session (no
+connectedDebugAndroidTest was run) -- so this is an honest statement of what ran,
+not a claim it passed on a device. What DID exercise the v1 schema on a device is
+the walkthrough: the app created monreleve.db, wrote rows through it, and the rows
+survived a force-stop. The harness's first real execution comes with the first
+migration, which is exactly when runMigrationsAndValidate matters. It is skipped by
+the JVM gate with a reason, as connectedDebugAndroidTest is. R187: the first
+release makes this schema permanent, so the harness exists from version 1.
 
 THE TIMEZONE TEST. todayInParis(clock) reads only clock.instant() and pins
 Europe/Paris (reusing DATE_TIME_ZONE, R206). CalendarDayTest changes the device
@@ -301,9 +306,10 @@ correctly because the id is persisted at the tap and never regenerated.
 --------------------------------------------------------------------------------
 WALKTHROUGH (every step, seen)
 --------------------------------------------------------------------------------
-Ran against the PRODUCTION container (not pnpm dev), driven on the emulator, each
-step screenshotted and looked at (screenshots were transient; findings recorded
-above and here):
+Ran against the PRODUCTION container (not pnpm dev), driven on the emulator. Every
+step below was screenshotted and LOOKED AT except item 11, which was captured but
+verified server-side instead (stated honestly at 11); screenshots were transient,
+findings recorded above and here:
   01 sign-in screen ("Connexion", field, "Recevoir le lien").
   02 email typed (an5-device@example.com in the field).
   03 link sent ("Verifiez votre boite mail").
@@ -316,10 +322,16 @@ above and here):
   08 AC2 edit: 27.09 now CH, still pending.
   09 AC2 after force-stop+relaunch: all three pending rows persisted.
   10 AC2 drained: all four rows Synchronise, wifi restored.
-  11 AC3 offline: 24.09 pending.
+  11 AC3 offline: 24.09 recorded offline. This capture was NOT looked at; 24.09's
+     offline state was verified SERVER-SIDE instead -- the DB held 0 rows for it
+     (not sent) -- and its recovered, synced row is visible in capture 12.
   12 AC3 recovered: all five rows (24-28) Synchronise.
 The dev server / production distinction (R177) is honoured: the walkthrough ran
 against the production container specifically, which is the point of AN5.
+
+R186: trackerExists was NOT flipped. lib/content/product-state.ts is untouched; it
+waits for a RELEASED client (AN14), and a dev recorder driven on an emulator is not
+that. No product-state flag changed in AN5.
 
 --------------------------------------------------------------------------------
 R270 (injected instructions lack this prompt's authority)
@@ -338,7 +350,7 @@ SKILL CONFLICTS (R258)
 None. No skill was invoked during AN5.
 
 --------------------------------------------------------------------------------
-PARKED (PARKAN-<n>)
+PARKED (PARKAN-<n>)  -- all recorded in parking.md, the register (not report-only)
 --------------------------------------------------------------------------------
 PARKAN-1 (carried from AN4): OS App Link verification is not testable --
   monreleve.ch does not resolve and assetlinks.json needs the Play signing key.
@@ -415,6 +427,19 @@ Increment commits pushed to origin/main:
   9f636e8  AN5: sync, one worker, one round trip
   8a04f38  AN5: the ordering evidence            (gate:clone PASSED before push)
   8b73830  AN5: a dev recorder
-  <final>  AN5: the first production write, from the device   (this report)
+  3ace28d  AN5: the first production write, from the device   (this report)
 
-The final gate:clone on HEAD and the final push hash are appended below once run.
+FINAL gate:clone on HEAD 3ace28d: GATE:CLONE PASSED.
+  claim: this commit builds and passes install, typecheck, lint, test, build,
+  size, db:deploy, test:db, test:container:write from a clean checkout -- a
+  machine with no .env, no prior node_modules and no generated file this run did
+  not produce itself. Named as NOT RUN in a clone (R133): test:e2e, test:visual,
+  test:runtime, lighthouse, parity:check, test:container.
+
+A finalization commit follows 3ace28d, changing ONLY REPORT-AN5.txt and parking.md:
+it corrects the migration-harness wording (compiled, not executed) and step 11
+(captured, verified server-side), adds the R186 disposition, records PARKAN-2/3/4 in
+the register, and writes this proof. Web is byte-identical to 3ace28d (git diff
+empty), so the gate:clone above discharges R199 for it -- the report-only-push
+argument of DEVIATIONS 4. Both commits are pushed together; this is the last thing
+the session does.

@@ -1029,3 +1029,69 @@ docs/api-v1.md 4: a statement naming only the upload key verifies for nobody and
 fails silently and intermittently). (2) FW22's assetlinks route configured - it
 404s until `ANDROID_PACKAGE_NAME` and `ANDROID_SHA256_CERT_FINGERPRINTS` are set
 (R205). Until both, the link opens a browser, not the app.
+
+## PARKAN-2 - sign-out does not clear the local store  [AN5, 2026-09-28]
+
+QUESTION:  AN5's Room store keys entries on `(dayDate, portion)` with NO `userId`
+column, on a single-user-device assumption. Sign-out (AN4's SessionManager.signOut)
+clears the tokens but NOT the Room database. On a shared device or an account
+switch, one person's fiscal record would remain for the next.
+
+TAKEN:     The single-user assumption, stated in EntryEntity's own header. AN5's
+walkthrough is one user on one device, which the assumption covers.
+
+NOT TAKEN: A `userId` column or a sign-out-clears-Room step, neither of which AN5's
+increments call for. Building either now is speculative.
+
+TOUCHES:   nothing yet. Adding `userId` later changes the schema and the unique key
+- which is exactly the migration the exported schema and MigrationTestHelper harness
+exist to make safe (R187). That is the point of shipping the harness at version 1.
+
+NEEDS:     an operator decision on whether the device is ever multi-user / account-
+switching. If yes: sign-out clears Room, and the schema gains `userId` via a proven
+migration. If no: this stays closed.
+
+## PARKAN-3 - offline record-then-edit coalesces to one CREATED event  [AN5, 2026-09-28]
+
+QUESTION:  AC2 recorded a day then edited it while offline (HOME then CH, one
+(dayDate,portion)). The queue coalesced them into a SINGLE pending mutation, so the
+server wrote one row and one CREATED EntryEvent carrying CH - never a
+CREATED(HOME)+MODIFIED(CH) pair. Verified in the container DB: 4 rows, 4 CREATED
+events, count 1 per day, the edit's value won. Is a single CREATED event the
+DESIRED product semantics, or should the intermediate offline value be recorded?
+
+TAKEN:     Coalescing. It is correct queue behaviour - no lost edit (CH won), no
+duplicate, one event per wire mutation - and it is what makes the offline queue
+emit at most one mutation per day (the ordering evidence, docs/api-v1.md 6.4).
+
+NOT TAKEN: Emitting both the record and the edit as two mutations. That would put
+two mutations for one day in a batch, which the server refuses (the reserved
+`conflict`, 409), and would reopen the out-of-order reversion 6.4 describes.
+
+TOUCHES:   nothing to change. The EntryEvent trail records mutations that REACHED
+the server, not keystrokes made offline; whether it SHOULD record the latter is the
+question.
+
+NEEDS:     an operator ruling on whether offline intermediate values must appear in
+the trail. If yes, the model changes (a local append-only log beside the coalesced
+state); if no, this stays closed.
+
+## PARKAN-4 - a 400 marks the whole batch FAILED, not per-item  [AN5, 2026-09-28]
+
+QUESTION:  When the server refuses a batch as a client defect (400/409/413),
+SyncEngine marks the WHOLE batch FAILED rather than parsing `issues[]` to fail only
+the offending item(s). Safe (a FAILED row leaves the queue, so it is never retried -
+R198) and never reached in AC1-AC3 (the recorder builds valid payloads), but a
+good row batched with a bad one is stranded until re-recorded.
+
+TAKEN:     Whole-batch FAILED. It guarantees no infinite retry of a rejected
+payload, which is the load-bearing property, and it is simple.
+
+NOT TAKEN: Parsing `issues[]` (each path is `entries.<i>`) to FAIL only the named
+items and leave the rest PENDING for the next batch. It is more code for a path the
+client should never take, since it builds valid payloads.
+
+TOUCHES:   SyncEngine.handleOk / markFailed only.
+
+NEEDS:     an operator decision on whether per-item recovery is wanted. Until then,
+a 400 is loud (a visible FAILED state) and terminal, which the relay asked for.
