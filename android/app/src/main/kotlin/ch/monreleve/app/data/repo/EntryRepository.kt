@@ -71,6 +71,9 @@ class LocalEntryRepository(
                 detectedAt = command.detectedAt,
                 // The device's clock at the tap, sent verbatim; the client never
                 // computes lateness - the server's observation is the only one that counts.
+                // Recomputed on every record(), so a coalescing edit carries the FINAL
+                // tap's time, never the original's (R275) - a timestamp describes the value
+                // it is attached to.
                 clientClaimedAt = deviceClaimNow(clock),
                 // SERVER-ASSIGNED COLUMNS SURVIVE AN EDIT. Re-recording a synced day
                 // keeps its immutable firstRecordedAt locally rather than nulling it

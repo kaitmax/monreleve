@@ -117,4 +117,30 @@ class EntryRepositoryTest {
             assertEquals("the server id survives the edit", "srv-1", edited.serverId)
             assertEquals("the edit is pending again, to be drained", SyncState.PENDING, edited.syncState)
         }
+
+    @Test
+    fun aCoalescedEditCarriesTheFinalTapsClaimTime() =
+        runTest {
+            val dao = FakeEntryDao()
+            val morning = Clock.fixed(Instant.parse("2027-06-18T07:00:00Z"), ZoneId.of("Europe/Paris"))
+            val evening = Clock.fixed(Instant.parse("2027-06-18T15:00:00Z"), ZoneId.of("Europe/Paris"))
+
+            // Recorded HOME in the morning, corrected to CH that evening - both offline, so
+            // they coalesce onto one (dayDate, portion) row (R275).
+            LocalEntryRepository(dao, morning).record(RecordCommand(dayDate = "2027-06-18", kind = EntryKind.HOME))
+            LocalEntryRepository(dao, evening).record(RecordCommand(dayDate = "2027-06-18", kind = EntryKind.CH))
+
+            val row = dao.byDayPortion("2027-06-18", Portion.FULL)!!
+            assertEquals("the coalesced row holds the edit's value", EntryKind.CH, row.kind)
+            // R275: clientClaimedAt describes the value it is attached to. The coalesced
+            // mutation carries the EVENING tap (when CH was chosen, Paris +02:00 = 17:00),
+            // never the morning one - claiming CH was recorded at 09:00 when it was HOME
+            // then would be a false claim the evidence model refuses.
+            assertEquals("2027-06-18T17:00:00.000+02:00", row.clientClaimedAt)
+            assertNotEquals(
+                "the original tap's time must not carry forward",
+                "2027-06-18T09:00:00.000+02:00",
+                row.clientClaimedAt,
+            )
+        }
 }
