@@ -57,12 +57,15 @@ enum class AbsenceReason {
 
 /**
  * A LOCAL-ONLY column - it never goes on the wire and has no server counterpart.
- * PENDING means this row is a mutation the queue still owes the server; SYNCED
- * means the server has acknowledged it and returned its own row. Sync-failure
- * states arrive with the sync path (increment 3); a new TEXT enum value needs no
- * schema migration, so adding one later is free.
+ * PENDING means this row is a mutation the queue still owes the server; SYNCED means
+ * the server has acknowledged it and returned its own row; FAILED means the server
+ * refused the payload the CLIENT built (a 400/409/413 - a client defect), so it is
+ * held out of the queue rather than retried forever (R198, increment 3). A new TEXT
+ * enum value needs no schema migration, which is why FAILED could be added here
+ * without touching schemas/1.json.
  */
 enum class SyncState {
     PENDING,
     SYNCED,
+    FAILED,
 }

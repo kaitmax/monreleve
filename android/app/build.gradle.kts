@@ -120,6 +120,9 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
+    // AN5 increment 3: the offline-queue drain (data/sync). CoroutineWorker + the
+    // unique, network-constrained, backing-off work request.
+    implementation(libs.androidx.work.runtime.ktx)
     testImplementation(libs.junit)
     // TEST-ONLY, justified by name (AN1 out-of-scope note): ThemeCensusTest.kt
     // reflects over androidx Typography/ColorScheme, library data classes with

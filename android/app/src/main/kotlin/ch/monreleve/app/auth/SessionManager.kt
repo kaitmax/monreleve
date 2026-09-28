@@ -35,10 +35,41 @@ sealed interface AuthedOutcome {
     data object NetworkError : AuthedOutcome
 }
 
+/**
+ * The outcome of an authenticated POST. Unlike the GET's, Ok carries the HTTP
+ * STATUS as well as the body: the entries sync (AN5) branches on 200 vs 400/409/413
+ * to tell a client-built defect (loud, never retried - R198) from a written batch.
+ * The 401 path is identical to the GET's, so a replay ends the session the same way
+ * (R210).
+ */
+sealed interface PostOutcome {
+    data class Ok(val status: Int, val body: String) : PostOutcome
+
+    data object SessionExpired : PostOutcome
+
+    data object SessionEnded : PostOutcome
+
+    data object NoSession : PostOutcome
+
+    data object NetworkError : PostOutcome
+}
+
+/**
+ * The one call the entries sync needs from the session (AN5). A seam, so SyncEngine
+ * runs as a plain JVM test against a scripted fake rather than the real Keystore and
+ * network - the same reason the transport is an interface (Http.kt).
+ */
+interface AuthenticatedPoster {
+    suspend fun authenticatedPost(
+        path: String,
+        body: String,
+    ): PostOutcome
+}
+
 class SessionManager(
     private val api: AuthApi,
     private val tokenStore: TokenStore,
-) {
+) : AuthenticatedPoster {
     private val refreshMutex = Mutex()
 
     fun isSignedIn(): Boolean = tokenStore.load() != null
@@ -82,46 +113,90 @@ class SessionManager(
      * replay produces on a still-held token) distinct from an ordinary expiry, so
      * the two render different copy (R210).
      */
-    suspend fun authenticatedGet(path: String): AuthedOutcome {
-        val pair = tokenStore.load() ?: return AuthedOutcome.NoSession
-        return when (val response = api.authenticatedGet(path, pair.accessToken)) {
-            is AuthedResponse.Ok -> AuthedOutcome.Ok(response.body)
-            is AuthedResponse.Failed -> AuthedOutcome.NetworkError
-            is AuthedResponse.Unauthorized -> onUnauthorized(response.code, path)
+    suspend fun authenticatedGet(path: String): AuthedOutcome =
+        when (val attempt = attempt { token -> api.authenticatedGet(path, token) }) {
+            is Attempt.Ok -> AuthedOutcome.Ok(attempt.body)
+            Attempt.SessionExpired -> AuthedOutcome.SessionExpired
+            Attempt.SessionEnded -> AuthedOutcome.SessionEnded
+            Attempt.NoSession -> AuthedOutcome.NoSession
+            Attempt.NetworkError -> AuthedOutcome.NetworkError
+        }
+
+    // The shared machinery for BOTH authenticated calls (AN5): load the token, issue the
+    // request, and on a 401 refresh ONCE and retry - EXPIRED/ROTATED refresh, anything
+    // else ends the session (R210, replay). GET and POST differ only in the request
+    // lambda and how each maps the result; one code path means the replay handling cannot
+    // drift between them.
+    private suspend fun attempt(request: suspend (String) -> AuthedResponse): Attempt {
+        val pair = tokenStore.load() ?: return Attempt.NoSession
+        return when (val response = request(pair.accessToken)) {
+            is AuthedResponse.Ok -> Attempt.Ok(response.status, response.body)
+            is AuthedResponse.Failed -> Attempt.NetworkError
+            is AuthedResponse.Unauthorized -> onUnauthorized(response.code, request)
         }
     }
 
     private suspend fun onUnauthorized(
         code: AuthServerCode?,
-        path: String,
-    ): AuthedOutcome =
+        request: suspend (String) -> AuthedResponse,
+    ): Attempt =
         if (code == AuthServerCode.EXPIRED_TOKEN || code == AuthServerCode.ROTATED_TOKEN) {
-            retryAfterRefresh(path)
+            retryAfterRefresh(request)
         } else {
             // revoked_session, unknown_token, or anything else: the session is dead.
             tokenStore.clear()
-            AuthedOutcome.SessionEnded
+            Attempt.SessionEnded
         }
 
-    private suspend fun retryAfterRefresh(path: String): AuthedOutcome =
+    private suspend fun retryAfterRefresh(request: suspend (String) -> AuthedResponse): Attempt =
         when (val outcome = refresh()) {
-            is RefreshOutcome.Refreshed -> retryWith(outcome.pair, path)
-            RefreshOutcome.Expired -> AuthedOutcome.SessionExpired
-            RefreshOutcome.NetworkError -> AuthedOutcome.NetworkError
-            RefreshOutcome.NoSession -> AuthedOutcome.NoSession
+            is RefreshOutcome.Refreshed -> retryWith(outcome.pair, request)
+            RefreshOutcome.Expired -> Attempt.SessionExpired
+            RefreshOutcome.NetworkError -> Attempt.NetworkError
+            RefreshOutcome.NoSession -> Attempt.NoSession
         }
 
     private suspend fun retryWith(
         pair: TokenPair,
-        path: String,
-    ): AuthedOutcome =
-        when (val retry = api.authenticatedGet(path, pair.accessToken)) {
-            is AuthedResponse.Ok -> AuthedOutcome.Ok(retry.body)
-            is AuthedResponse.Failed -> AuthedOutcome.NetworkError
+        request: suspend (String) -> AuthedResponse,
+    ): Attempt =
+        when (val retry = request(pair.accessToken)) {
+            is AuthedResponse.Ok -> Attempt.Ok(retry.status, retry.body)
+            is AuthedResponse.Failed -> Attempt.NetworkError
             is AuthedResponse.Unauthorized -> {
                 tokenStore.clear()
-                AuthedOutcome.SessionEnded
+                Attempt.SessionEnded
             }
+        }
+
+    /** The internal result of one authenticated attempt, mapped by each caller to its own outcome type. */
+    private sealed interface Attempt {
+        data class Ok(val status: Int, val body: String) : Attempt
+
+        data object SessionExpired : Attempt
+
+        data object SessionEnded : Attempt
+
+        data object NoSession : Attempt
+
+        data object NetworkError : Attempt
+    }
+
+    /**
+     * An authenticated POST with the SAME refresh-once-and-retry and replay handling as
+     * the GET (R210), through the shared `attempt` machinery. The status is returned so
+     * the caller maps the entries route's 400/409/413 to a client defect (AN5).
+     */
+    override suspend fun authenticatedPost(
+        path: String,
+        body: String,
+    ): PostOutcome =
+        when (val attempt = attempt { token -> api.authenticatedPost(path, body, token) }) {
+            is Attempt.Ok -> PostOutcome.Ok(attempt.status, attempt.body)
+            Attempt.SessionExpired -> PostOutcome.SessionExpired
+            Attempt.SessionEnded -> PostOutcome.SessionEnded
+            Attempt.NoSession -> PostOutcome.NoSession
+            Attempt.NetworkError -> PostOutcome.NetworkError
         }
 
     /** End the session: revoke server-side (best-effort), then clear local storage unconditionally. */
