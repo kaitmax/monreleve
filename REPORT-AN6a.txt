@@ -438,9 +438,22 @@ SKIPPED with reason: the emulator instrument (needs a real AVD; driven by hand
 this session -- see THE SEVEN TRACKS) and connectedDebugAndroidTest (needs a
 running device).
 
-FINAL gate:clone on HEAD: <filled at push>.
-  claim: <filled at push>.
-Web is byte-identical to origin/main (git diff --stat origin/main -- web/ empty),
-so the AN6a changes are confined to android/, docs/, scripts under android/, and
-this report; gate:clone's clean-checkout run of the web suites discharges R199
-for the push. This is the last thing the session does.
+FINAL gate:clone on HEAD b58ed33: GATE:CLONE PASSED.
+  CI readiness: quiet -- the repository is private and CI_FULL is unset, so jobs
+  skip (the FW24 combination, named rather than left to a vendor string).
+  ran     install, typecheck, lint, test, build, size, db:deploy, test:db,
+          test:container:write, from a clean checkout of b58ed33 in a temp clone
+          (removed after) -- a machine with no .env, no prior node_modules and no
+          generated file the run did not produce itself.
+  claim   this commit builds and passes those suites from a clean checkout.
+  NOT RUN in a clone (R133), so making no claim: test:e2e and test:runtime
+          (need a Playwright browser), test:visual (needs the Playwright
+          container), lighthouse (needs Chrome + a served build), parity:check
+          (the Node matrix, workflow_dispatch), test:container (the CI job F-CI).
+
+A report-only finalization commit follows b58ed33, changing ONLY REPORT-AN6a.txt
+to record this proof. Web is byte-identical to b58ed33 (and to origin/main:
+git diff --stat origin/main -- web/ is empty), and the AN6a changes are confined
+to android/, docs/, scripts under android/, relay/, and this report, so the
+gate:clone above discharges R199 for the finalization commit as well. Both are
+pushed together; this is the last thing the session does.
