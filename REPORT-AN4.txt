@@ -150,13 +150,22 @@ increment 3 - requesting a link
   GREEN  gate green; sign-in screen rendered on the emulator and read.
 
 increment 4 - the callback
-  RED    CallbackLinkTest / AuthApiCallbackTest: "Unresolved reference
-         'CallbackLink' / 'exchangeCallback'".
+  RED    NOT EXECUTED as an isolated run. The tests (CallbackLinkTest,
+         AuthApiCallbackTest, CallbackControllerTest) were authored
+         alongside their impl without a compile in between - a
+         test-first economy, honestly recorded in DEVIATIONS rather
+         than dressed as a RED that never ran. The REDs actually
+         executed this task are increments 1 and 3 (unresolved-reference
+         compiles, tool output on record) and the two adversarial plants
+         (cleartext, log fence).
   GREEN  gate green; MALFORMED and MISMATCH fired by adb and seen.
 
 increment 5 - refresh, replay, sign-out
-  RED    SessionManagerTest: the single-flight test failed to compile
-         until SessionManager existed.
+  RED    NOT EXECUTED as an isolated run - SessionManager.kt preceded
+         SessionManagerTest.kt (DEVIATIONS). The positive signal is the
+         stronger one anyway: the test floor rose 572 -> 578 across this
+         gate, so the six SessionManagerTest cases - single-flight
+         included - demonstrably RAN and passed.
   GREEN  gate green; the ten-way single-flight test asserts exactly one
          rotation reached the server.
 
@@ -448,6 +457,21 @@ DEVIATIONS
    refresh, sign-out) are driven through a dev instrument
    (SignInProbeActivity), the same pattern as AN3's gallery. The
    production signed-in area is AN5.
+7. TEST-FIRST ECONOMY, STATED PLAINLY. An isolated RED run was executed
+   for increment 1 (AuthServerCode unresolved), increment 3 (AuthApi
+   unresolved), and BOTH adversarial plants (the cleartext element, the
+   log-fence Log.d) - those are the REDs on record. For increments 4 and
+   5 the tests were authored alongside their impl without an isolated
+   RED, so this report claims none rather than a RED it did not run
+   (the R135 reporter-that-lied shape is exactly what a fabricated RED
+   row would be). The GREEN for those two is backed by positive signals:
+   the callback failures fired on a real device, and the test floor rose
+   572 -> 578 proving the SessionManager cases ran.
+8. INCREMENT 0's four per-item commits were gated ONCE on the union of
+   their changes, not per intermediate HEAD. Each is code+baseline
+   consistent (a component's rendering and its baseline moved together),
+   so each cumulative HEAD is green; saying so beats a reviewer finding
+   it.
 
 NOTICED BUT NOT TOUCHING
 --------------------------------------------------------------------
@@ -494,8 +518,19 @@ push): 3cf603e (R1), ffbac61, 3885b84, 889d4f0, 0940aa1, 4417304,
 eafce7b, and the final one below. The Android gate ran green before each
 commit; the walkthrough drove the loop on emulator-5554.
 
-[final gate:clone output and push confirmation recorded below after the
-commands run.]
+FINAL gate:clone, before this push:
+  commit  ea6c1a50678a73a49cfb613c38f95cd56e848c94 (AN4: sign-in, seen)
+  tree    clean - HEAD is everything you have
+  ran     install, typecheck, lint, test, build, size, db:deploy,
+          test:db, test:container:write
+  result  GATE:CLONE PASSED
+  claim   this commit builds and passes those from a clean checkout
+  CI      quiet - the repository is private and CI_FULL is unset
+
+This report's own commit, "AN4: record the gate:clone push proof", is
+the +1 after ea6c1a5 - a root .txt no suite reads, in the AN2/AN3-
+sanctioned order: gate the code commit, then record the proof and the
+ledger correction (DEVIATIONS 7). The push carries both ea6c1a5 and it.
 
 ====================================================================
 END OF REPORT-AN4.txt
