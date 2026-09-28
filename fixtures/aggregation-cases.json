@@ -12,8 +12,9 @@
     "the ride so the fixture looks like a real row.",
     "",
     "expected is the TeleworkInput. granularity/denominator use the ENGINE's tags (day/halfDay,",
-    "simplified240/exact), which each side maps to its own type; periodFraction is the exact",
-    "double 1 - 0.05... no: remainingYearFraction output, pinned to its shortest round-trip form."
+    "simplified240/exact), which each side maps to its own type; periodFraction is the",
+    "remainingYearFraction output, pinned to its shortest round-trip decimal (184/365 for the",
+    "mid-year case) so both languages parse it to the same IEEE-754 double."
   ],
   "cases": [
     {

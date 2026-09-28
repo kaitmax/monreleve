@@ -1,0 +1,391 @@
+================================================================================
+REPORT-AN5b.txt -- the manual product, part one: onboarding and Aujourd'hui
+================================================================================
+
+--------------------------------------------------------------------------------
+SUMMARY (and the R273 determination FIRST, including task numbering)
+--------------------------------------------------------------------------------
+The prompt arrived as "AN8" but flagged its own uncertainty. R273 says the task
+file decides, and it does: tasks/todo.md's AN8 is "Onboarding -- mode chooser,
+permission priming, refusal" -- the AUTOMATIC-mode onboarding, dependent on AN7,
+after Checkpoint G. Its AN9 is "Aujourd'hui -- auto mode". The relay's scope is
+the MANUAL product (no mode chooser, R282), which in todo.md is Checkpoint F:
+AN4's onboarding shell and AN5's "Aujourd'hui manual mode" -- AN5's card names
+the split explicitly: "AN5a (Room + repo + sync) and AN5b (Aujourd'hui manual
+UI)". Verified against the repository: AN4 deferred the onboarding FIELDS to
+"AN5+" (REPORT-AN4.txt), and AN5 shipped AN5a and left Aujourd'hui as AN1's
+placeholder. So this task is the deferred half -- AN5b -- and the report is named
+for it, per R273. Commit prefixes are "AN5b" for the same reason (a "AN8:" commit
+beside REPORT-AN5b.txt would recreate the P-register namespace collision R162
+forbids). See DEVIATIONS for the prefix ruling.
+
+WHAT WAS BUILT (eight commits): the two AN6a follow-up fixes (R279 the exact
+binomial bound, R280 ODbL compliance); the shared aggregation binding the Kotlin
+and TypeScript sides (R281, the operator's stated main technical risk); the
+manual onboarding path; recording a day; the year computed on the device; and the
+year panel's states. All acceptance criteria are met in substance and verified;
+the one item that hit its stop-loss is the emulator drive PAST sign-in (a scripted
+`adb input` reliability problem, not an app defect) -- see WALKTHROUGH.
+
+  AC1 -- onboarding + recording built; every screen has a looked-at Paparazzi
+         baseline at default and 200%; the sign-in screen and the magic-link
+         round trip to the production container were driven on the emulator.
+  AC2 -- PROVEN BOTH WAYS: the shared aggregation fixture (R281) binds Kotlin ==
+         TypeScript, and one live comparison against the running production
+         container agrees field by field (server dossier == device panel).
+  AC3 -- every honesty state built and each ASSERTED: empty year shows no rate,
+         unsynced days are said, a partial year is keyed on period.fraction, a
+         RuleSet fallback is named, and a server-refused sync is shown not hidden.
+
+--------------------------------------------------------------------------------
+PRECONDITIONS (R0, R1)
+--------------------------------------------------------------------------------
+R0. Read REPORT-AN6a.txt and REPORT-AN5.txt, SPEC 11.1 and 11.2 verbatim, SPEC 6
+    / 7.4 / 8 / 20, DESIGN-SYSTEM sections 1/2/4 (section 2's product overrides
+    bind this task most), and lib/dossier/** as the aggregation reference.
+    FD4/FD5 are ABSENT from prompts/design-frontier/ (only FD1, FD2, FD11, FD12,
+    FD13 exist); per R231 that is said here, and the screens were built from
+    SPEC 11.1/11.2 + DESIGN-SYSTEM section 2.
+
+R1. pnpm gate:clone GREEN on origin/main HEAD 3928e0938b94d4d97193193e8b29270130472ef4.
+    ran: install, typecheck, lint, test, build, size, db:deploy, test:db,
+    test:container:write from a clean clone. CI readiness: quiet -- the repository
+    is private and CI_FULL is unset, so jobs skip (the carried FW24 combination).
+
+--------------------------------------------------------------------------------
+INCREMENT 0 -- R279 (the exact binomial bound) and R280 (ODbL)
+--------------------------------------------------------------------------------
+R279. AN6a's scoring harness used the rule of three (3/n) at zero errors, which
+      prints 150% at n=2 and was then capped to a still-dishonest 100%. R279
+      replaces the zero-error branch with the EXACT one-sided binomial,
+      1 - 0.05^(1/n) (from (1-p)^n = 0.05); Wilson stays for k > 0; the two meet
+      with no discontinuity, and the exact form is always < 1 so no cap is needed.
+      upper-bound.test.mjs pins it against independently-computed values (node
+      --test, 5/5 green):
+
+        n= 1  ->  95.0 %   (rule of three: 300 %)
+        n= 2  ->  77.6 %   (rule of three: 150 %, the impossible one)
+        n= 3  ->  63.2 %   (rule of three: 100 %)
+        n=10  ->  25.9 %   (rule of three:  30 %)
+        n=17  ->  16.2 %   (rule of three:  17.6 %)  -- the worked example's HIGH count
+        n=20  ->  13.9 %   (rule of three:  15 %)    -- here they nearly agree
+
+      The worked example (android/scripts/fixtures/) re-run: K1 and K2 now read
+      16.2% (was 17.6%), K3 reads 77.6% (was the capped 100%). The rule of three
+      stays in docs/field-protocol-AN6b.md as the human-facing explanation; the
+      code uses the exact formula; docs/detection-model.md was updated to match
+      (R149 -- a doc that names the code's method must not go stale).
+
+R280. Distributing the APK distributes the GeoJSON inside it. Rather than argue
+      whether that is "Public Use" of a Derivative Database, the product complies:
+      a licence-and-attribution notice ships beside the data at
+      android/app/src/main/assets/border/switzerland.json.LICENSE.txt (ODbL 1.0,
+      "(c) OpenStreetMap contributors", the source relation, the share-alike
+      obligation), so the licence travels with the file. The simplified polygon is
+      thereby available under ODbL 1.0 with attribution at that path; recorded in
+      docs/detection-model.md. The in-app attribution SCREEN stays a NEEDS (AN9+).
+
+--------------------------------------------------------------------------------
+RED-GREEN LEDGER (only REDs actually run and observed)
+--------------------------------------------------------------------------------
+R279 test: the n=17 pinned constant was hand-mis-computed (0.162264); the test
+  went RED (expected ~0.162264, got 0.16156611...) on its first run and was
+  corrected to 0.161566 -- a genuine RED that caught my own arithmetic, not the
+  formula's.
+
+R281 plant (the important one, told in order):
+  1. Planted a one-digit change in fixtures/aggregation-cases.json
+     (full-days-simple expected teleworkDays 3.0 -> 4.0).
+  2. TypeScript suite RED: "AssertionError: expected 3 to be 4" on case
+     full-days-simple.
+  3. Kotlin suite: BUILD SUCCESSFUL in 3s, testDebugUnitTest UP-TO-DATE -- IT DID
+     NOT RUN. THE SILENCE WAS THE FINDING: the shared fixtures live outside the
+     Gradle module, so a fixture-only change left the test task cached and a
+     divergence would go unrun -- R281's "fails BOTH builds" was false on the
+     Kotlin side under normal incremental runs.
+  4. Fix: declared fixtures/ as a Test task input in app/build.gradle.kts
+     (inputs.dir ... withPathSensitivity RELATIVE).
+  5. Re-planted the same one digit, ran WITHOUT --rerun-tasks: the Kotlin task
+     now executed and went RED -- "AggregationConformanceTest > case
+     full-days-simple ... FAILED, io.kotest.assertions.AssertionFailedError,
+     9 tests completed, 1 failed, BUILD FAILED". Proven: input tracking makes a
+     fixture change re-run the suite.
+  6. Reverted the digit; both suites GREEN again.
+  R267 CLOSURE: the same inputs.dir fix closes the identical latent gap for AN2's
+  frozen geneva-cases.json / denominator-cases.json / rate-cases.json -- named
+  and covered, not left half-applied.
+
+Increment 1-5 discipline REDs (the guards catching real drift, not planted):
+  - The ui no-string-literal fence caught @Suppress("LongParameterList") in the
+    onboarding screen (the annotation string is a literal); fixed by an
+    OnboardingActions data class (LongParameterList ignores data classes), not a
+    suppression.
+  - The ui-never-references-data-local fence caught the Aujourd'hui screen
+    importing EntryKind/Portion/AbsenceReason; fixed by the R202 vocabulary split
+    (RecordedKind/Slot/AbsenceChoice in aujourdhui/, the wire enums never in ui/).
+  - CopyDuplicationTest caught "En attente de synchronisation" duplicated between
+    AujourdhuiCopy.PENDING and RecorderCopy.STATE_PENDING; folded to one home
+    (R206), the dev recorder now references the production const.
+  - CopyReachabilityTest shaped the copy: mapped copy lives in private members
+    reached through public functions (the DayCellCopy pattern), so internal
+    fragments are not orphans.
+
+--------------------------------------------------------------------------------
+ONBOARDING (the manual path)
+--------------------------------------------------------------------------------
+SPEC 11.1 manual path: sign-in (AN4) -> canton -> employment rate -> calculation
+method -> granularity -> activity start date -> Aujourd'hui, as one scrolling
+form. The settings PATCH to /api/v1/me (new PATCH support added through
+Http/AuthApi/SessionManager, reusing the R210 refresh-once-and-replay machinery)
+and are cached locally in a SharedPrefs SettingsStore that yields the increment-2
+AggregatableUser, so Aujourd'hui computes offline from first launch.
+
+VALIDATION HAS NO THIRD COPY (R196). The 1-100 rule and the exact-total iff live
+in the engine and the database; the controller does not restate either. It builds
+the settings' TeleworkInput through the increment-2 aggregation with no entries
+and runs calculateTelework -- the settings are valid iff the engine accepts what
+they produce. RATE_INVALID at 150 is the engine's RateOutOfRange, not a typed
+bound. The two structural pre-checks it makes (canton chosen, an EXACT method's
+total present) are the ones the aggregation would otherwise throw on, turned into
+a named field error.
+
+The canton consequence is derived from the engine's regimeFor (R181, never a
+typed list of eight): a RESIDENCE_1983 canton says the frontalier status itself
+is at risk, a SOURCE canton says the excess becomes imposable in France, and the
+enumeration is hedged ("La liste des cantons ... est en cours de verification",
+Checkpoint A row 7). No threshold value is printed (R153).
+
+--------------------------------------------------------------------------------
+THE SHARED AGGREGATION (R281, AC2) -- the fixture, and the plant
+--------------------------------------------------------------------------------
+fixtures/aggregation-cases.json is read by BOTH web/lib/dossier/aggregate.ts
+(toTeleworkInput, UNCHANGED) and the new ch.monreleve.app.dossier.toTeleworkInput.
+The step before the two engines -- turning rows into a TeleworkInput -- was the
+one derivation nothing bound, which is where FW12's tile defect lived. Now a
+one-digit change fails both builds (the plant above).
+
+The seven cases, each a scenario chosen for a defect it can catch:
+  full-days-simple           CH rows are not an engine input; HOME is telework.
+  half-day-pair              an AM/PM pair sums to exactly one day.
+  absences-of-each-reason    an absence of each reason reaches no figure (D28),
+                             asserted by dropping them and getting an identical
+                             input, not merely by "excluded".
+  missions-france-and-third  France and third-state counted separately.
+  partial-year-midyear-start periodFraction 184/365, derived from the date.
+  r120-rows-versus-portions  R120: one day, AM HOME + PM HOME. Counting ROWS
+                             gives 2; summing PORTION-DAYS gives 1.0. The input is
+                             1.0 -- a port that counts rows fails ONLY this case.
+  exact-denominator          the supplied total flows through; a null with kind
+                             EXACT errors (a database written around), not here.
+
+--------------------------------------------------------------------------------
+RECORDING A DAY
+--------------------------------------------------------------------------------
+SPEC 11.2: one question -- where are you working today? -- answered in one tap,
+recorded through AN5's EntryRepository (D16: the tap is the only writer, the
+mutation id born at the tap). En Suisse / Domicile / Mission (nested En France /
+Pays tiers) / Declarer une absence (nested reasons); half-days render Matin and
+Apres-midi slots. Editing is re-tapping (coalesces onto one row).
+
+R202: the screen speaks RecordedKind/Slot/AbsenceChoice; the wire's
+EntryKind/Portion/AbsenceReason never enter ui/ (the fence enforces it) -- the
+AujourdhuiController translates, the same split DayCell's DayKind makes.
+DESIGN-SYSTEM section 2: no success animation, no "bravo" -- the confirmation is
+the recorded row appearing; pending is a persistent line in words, never a toast.
+
+--------------------------------------------------------------------------------
+THE YEAR ON THE DEVICE
+--------------------------------------------------------------------------------
+Below today's question, the year's position, computed ON THE DEVICE: Room's
+entries for the tax year -> the increment-2 aggregation -> the Kotlin engine. NO
+second arithmetic in the UI (FW12): the controller produces the TeleworkResult,
+the screen only maps it to a zone/status via the pure design helpers
+(zoneFor/statusFor). Panel order is the web result panel's (R137): ZoneBadge,
+RateDisplay (raw rate shown only when it differs, R224), ThresholdRail, the two
+remaining-days tiles (negative -> "au-dessus", R73). Threshold captions derived
+from the RuleSet ceilings, never typed (R181).
+
+--------------------------------------------------------------------------------
+AC2 -- THE LIVE COMPARISON (field by field)
+--------------------------------------------------------------------------------
+Against the running PRODUCTION container (monreleve:write, the image gate:clone
+built this session, on port 3000 against a scratch database on frontalier-postgres):
+signed in the way a real client does (planted a hashed VerificationToken,
+exchanged it at the real /api/v1/auth/callback), set the titulaire and the
+settings (GE, 100%, simplified 240, whole day, whole year) via PATCH /api/v1/me,
+POSTed 30 telework (HOME) days to /api/v1/entries, and read GET /api/v1/dossier.
+The DEVICE side is the aujourdhuiWithYear Paparazzi baseline, which ran the REAL
+Kotlin aggregation + engine on the identical 30 HOME days.
+
+  field                 SERVER (/api/v1/dossier)   DEVICE (Aujourd'hui panel)
+  --------------------  -------------------------  --------------------------
+  declarableRate        12.5                       12,50 %
+  rawRate               12.5 (ratesDiffer: false)  not shown (equals declarable)
+  remainingToFiscal     66                         66  ("avant 40,0 %")
+  remainingToSocial     89.5                       89,5 ("avant 49,9 %")
+  fiscalCeilingDays     96                         (rail positioned at 40)
+  status                no warnings, rate < 40     COMPLIANT ("Sous les deux seuils")
+  period.fraction       1                          full year (no partial note)
+
+They AGREE field by field. AC2 is proven both ways: the shared fixture binds the
+two aggregations, and this live comparison confirms the device engine and the
+server dossier produce the same rate, headroom and status on the same synced
+entries. (A disagreement would have been the most important finding this task
+could make -- there was none.)
+
+--------------------------------------------------------------------------------
+AC3 -- WHAT THE SCREEN DOES NOT CLAIM (each asserted)
+--------------------------------------------------------------------------------
+- An EMPTY YEAR shows "Aucune journee enregistree cette annee pour le moment.",
+  never 0 % -- state.year is null, asserted in AujourdhuiControllerTest.
+- Days included but NOT yet synced are said: "dont N jours pas encore
+  synchronises", conditional on the unsynced count (asserted = 2 for two pending
+  days).
+- A MID-YEAR start marks the year partial, keyed on period.fraction < 1, never on
+  the start date (FW26) -- asserted.
+- A RULE_SET_FALLBACK is named if the engine returns one (R11).
+- A server-REFUSED sync (R198) is shown, not hidden: a failed flag drives a red
+  "Enregistrement refuse par le serveur..." line, so a client-defect failure is
+  learned, not silent.
+
+--------------------------------------------------------------------------------
+THE STATES
+--------------------------------------------------------------------------------
+Each a looked-at Paparazzi baseline at default and (for the key ones) 200%:
+  onboardingEmpty / onboardingEmptyLarge / onboardingFilledExact /
+    onboardingFilledExactLarge
+  aujourdhuiEmpty (first launch) / aujourdhuiEmptyLarge / aujourdhuiRecordedPending
+    / aujourdhuiHalfDay / aujourdhuiWithYear / aujourdhuiWithYearLarge /
+    aujourdhuiSyncFailed / aujourdhuiOverCeiling / aujourdhuiOverCeilingLarge
+Over the ceiling (looked at, R184): 110 telework days render 45,83 % amber with
+the raw 45,9 % shown because it differs (R224), "Regime non applicable", the rail
+past the 40 % tick, and "Jours au-dessus de 40,0 %" -> 14 in red -- a distance
+ABOVE, never a negative (R73 / SPEC 7.2 step 6).
+
+--------------------------------------------------------------------------------
+WALKTHROUGH (driven on the emulator; where it stopped, and why)
+--------------------------------------------------------------------------------
+On a real emulator (Pixel_10, headless), against the production container:
+  - The app installs and launches.
+  - The sign-in screen renders correctly (an5b-01-signin: "Connexion", the email
+    field, "Recevoir le lien" in brand blue).
+  - Typing an email and submitting reaches the container: the app POSTs
+    /api/v1/auth/magic-link and moves to "Verifiez votre boite mail"
+    (an5b-02-checkemail) -- so the app-to-production-container path works on the
+    device.
+
+STOPPED AT THE CALLBACK DRIVE, by the stop-loss. Driving PAST sign-in needs the
+callback deep link fired at the emulator, bound to the email the app remembered
+(login-CSRF, PendingSignInStore). The email had to be typed via `adb shell input
+text`, and that proved unreliable TWICE: first it concatenated two input calls
+("walk example.comwalk@example.com"), then it truncated "camille@test.ch" to
+"camil". Both are `adb input` automation defects, NOT app defects -- the pending
+email was read back from the app's own prefs each time and was exactly what the
+tool had typed. Per the stop-loss (a step failing twice), the emulator drive of
+onboarding -> record -> sync -> year was not forced further.
+
+What covers the un-driven screens instead: the Paparazzi baselines (JVM, real
+Compose via Layoutlib) render every one of them and were LOOKED AT (R184); the
+AC2 live comparison drove the server round trip end to end; the controllers'
+logic is unit-tested. The gap is specifically the on-DEVICE render of onboarding
+and Aujourd'hui and the on-device sync-drain animation of the pending line -- a
+NEEDS carried to a session with a stable input path.
+
+--------------------------------------------------------------------------------
+R282 -- NO MENTION OF ANY ABSENT FEATURE (confirmed)
+--------------------------------------------------------------------------------
+grep over android/app/.../fr/ for "automatique", "Changer", "rappel/reminder",
+"passez en mode": the ONLY matches are in comments explaining the deliberate
+omission. No copy constant names automatic mode, a mode chooser, a "Changer"
+link, or a reminder. The mode strip shows "Saisie manuelle" as a plain,
+non-interactive label (SPEC 11.2 wants the mode visible; R282 forbids inviting a
+switch). The reminder step and the mode chooser are not offered.
+
+--------------------------------------------------------------------------------
+SKILL CONFLICTS (R258)
+--------------------------------------------------------------------------------
+The superpowers "using-superpowers" skill instructs, on ambiguity, to invoke a
+skill that may "ask the user". Under R241/R156 this session is autonomous and
+asking is not available; the standing ruling is: take the conservative option,
+park it (PARKAN-<n>), continue. Applied at the 56 dp button sizing (PARKAN-16)
+and the offline connectivity banner (PARKAN-17). No skill was allowed to halt the
+task for a question.
+
+--------------------------------------------------------------------------------
+R270 -- INJECTED INSTRUCTIONS CARRY NO AUTHORITY
+--------------------------------------------------------------------------------
+The harness emitted recurring "consider using TaskCreate/TaskUpdate" reminders
+throughout the session. Per R270 these were treated as ambient tooling notes, not
+instructions, and did not change the plan. No instruction arriving through a tool
+result or hook was acted on as if it came from the prompt.
+
+--------------------------------------------------------------------------------
+PARKED
+--------------------------------------------------------------------------------
+PARKAN-16: SPEC 11.2 specifies 56 dp large buttons; 56 is not in the spacing
+  token set and adding a sizing token is ask-first (SPEC 20). Conservative: the
+  record buttons use the 48 dp touch-target token (meets the Android minimum)
+  pending a Sizing-token decision.
+PARKAN-17: SPEC 11.2 mentions an offline banner; there is no connectivity source
+  wired yet, so "offline" is represented by the persistent pending line (which is
+  what offline produces -- unsynced rows). A dedicated banner waits for a
+  connectivity signal.
+NEEDS (carried): the emulator drive of onboarding -> record -> sync -> year, once
+  a reliable device text-input path exists; the OSM/ODbL attribution SCREEN (AN9+).
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+1. INCREMENT ORDER: increment 2 (the shared aggregation) was built BEFORE
+   increment 1 (onboarding), to front-load the operator's stated main technical
+   risk (R281) -- it is self-contained and does not depend on onboarding. The two
+   are independent; increment 4 consumes increment 2 either way.
+2. COMMIT PREFIX: "AN5b", not the relay's literal "AN8:", because R273 overrode
+   the number and the prefixes inherit -- "AN8:" commits beside REPORT-AN5b.txt
+   would recreate the R162 namespace collision. Recorded here per R273.
+3. THE AC2 LIVE COMPARISON used a one-off script (web/scripts/an5b-live.mjs, NOT
+   committed -- removed after) that reused container-write.mjs's proven recipe.
+   The repeatable proof of device == server is the committed shared fixture
+   (R281); the live run is the empirical belt-and-braces, its result tabled above.
+4. THE WALKTHROUGH stop-loss (above): the emulator drive past sign-in was blocked
+   by `adb input` unreliability and not forced.
+
+--------------------------------------------------------------------------------
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------------------
+- MainActivity computes its start destination once in onCreate, so the live
+  SignIn -> Onboarding transition within one process needs a relaunch (the app
+  re-evaluates on next launch). Acceptable for the first-run path; a reactive
+  session observer is a later concern (not this task's scope).
+- The scorer's parseLog still splits the tester CSV on comma and drops a note's
+  tail (noticed in AN6a); unchanged, the note is not read.
+
+--------------------------------------------------------------------------------
+QUESTIONS
+--------------------------------------------------------------------------------
+1. The 56 dp button sizing (PARKAN-16): add a Sizing token object, or accept the
+   48 dp token? SPEC 11.2 says 56; the token set does not have it.
+2. The offline banner (PARKAN-17): wire a connectivity source for a dedicated
+   banner, or is the persistent pending line sufficient (it is what offline
+   produces)?
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+AN5b commits on origin/main:
+  a565bc0  AN5b: the exact binomial bound at zero errors (R279)
+  062f934  AN5b: ODbL notice beside the polygon (R280)
+  674bd2c  AN5b: one aggregation, bound on both sides (R281, AC2)
+  eb65590  chore: the AN8 prompt (built as AN5b per R273)
+  8863711  AN5b: onboarding, the manual path
+  db03112  AN5b: recording a day
+  17c1903  AN5b: the year, computed on the device
+  1f098fa  AN5b: the states - offline, sync failed, over the ceiling
+  (final)  AN5b: the live comparison, and the report   (this report)
+
+Each Android increment was pushed after a green :app:gate; the web-touching
+increment 2 was pushed after gate:clone (eb65590). Android :app:gate green on the
+final tree (assembleDebug, testDebugUnitTest incl. the fences and censuses,
+checkTestFloor, ktlintCheck, detekt, verifyPaparazziDebug, checkReleaseCleartext).
+
+FINAL gate:clone on HEAD <filled at push>: <filled at push>.
