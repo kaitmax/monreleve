@@ -32,6 +32,23 @@ private const val DEGREES_TO_RADIANS = Math.PI / 180.0
 /** A ring is a closed loop of [longitude, latitude] points; a polygon is an exterior ring then holes. */
 class BorderPolygon(private val polygons: List<List<List<DoubleArray>>>) {
     /**
+     * A fix in, one of INSIDE / OUTSIDE / BUFFER out (SPEC 13). BUFFER is any point within
+     * 150 m of the border, either side - counted and discarded, never guessed onto a side.
+     * The coordinate lives only in this call's arguments; the returned value carries none.
+     */
+    fun classify(
+        latitude: Double,
+        longitude: Double,
+    ): Classification =
+        if (distanceToEdgeMeters(latitude, longitude) <= BUFFER_METERS) {
+            Classification.BUFFER
+        } else if (contains(latitude, longitude)) {
+            Classification.INSIDE
+        } else {
+            Classification.OUTSIDE
+        }
+
+    /**
      * Point-in-polygon by ray casting, HOLE-AWARE: a point is inside Switzerland if it is
      * inside some polygon's exterior ring and inside none of that polygon's holes. This
      * OSM extract has no holes (the Buesingen and Campione enclaves are not cut out - a
