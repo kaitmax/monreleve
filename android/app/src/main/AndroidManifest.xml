@@ -72,6 +72,19 @@
             android:name=".dev.SignInProbeActivity"
             android:exported="true"
             android:theme="@style/Theme.MonReleve" />
+
+        <!--
+          AN5 increment 5. The dev recorder (dev/DevRecorderActivity): records a day
+          through EntryRepository and shows its pending/synced state, so the AN5
+          walkthrough can drive a real write against the production container. No
+          intent-filter, never in the launcher. Reached only by:
+            adb shell am start -n ch.monreleve.app/ch.monreleve.app.dev.DevRecorderActivity
+          exported for that adb reach, the same status as the gallery and the probe.
+        -->
+        <activity
+            android:name=".dev.DevRecorderActivity"
+            android:exported="true"
+            android:theme="@style/Theme.MonReleve" />
     </application>
 
 </manifest>
