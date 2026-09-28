@@ -101,6 +101,17 @@ detekt {
 // the exit code.
 tasks.withType<Test> {
     useJUnitPlatform()
+    // The shared conformance fixtures (fixtures/*.json at the repo root) are read at test time by
+    // the calc and dossier suites - the SAME files the TypeScript side reads (R206). They live
+    // OUTSIDE this module, so Gradle does not track them as task inputs by default: a fixture-only
+    // change leaves the test task UP-TO-DATE and a divergence goes unrun. AN5b found this by
+    // planting a one-digit change and watching the Kotlin task skip at 3s while the TypeScript
+    // suite went red. Declaring the directory as an input makes a change to ANY shared fixture
+    // re-run these suites, which is exactly what R281's "a one-digit plant fails BOTH builds"
+    // requires - and it closes the same latent gap for AN2's frozen geneva-cases.json.
+    inputs.dir(rootProject.layout.projectDirectory.dir("../fixtures"))
+        .withPropertyName("sharedFixtures")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 dependencies {

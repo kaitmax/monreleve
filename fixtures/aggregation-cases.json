@@ -1,0 +1,238 @@
+{
+  "_comment": [
+    "AN5b increment 2 (R281). The ONE aggregation, bound on both sides.",
+    "Rows + a person's settings go in; a TeleworkInput comes out. The TypeScript side reads",
+    "this file through web/lib/dossier/aggregate.ts (toTeleworkInput); the Kotlin side reads",
+    "the SAME file through ch.monreleve.app.dossier.toTeleworkInput. FW12's tile defect was a",
+    "second derivation of a figure the first had already produced; the way to not have it twice",
+    "is to have no second unbound derivation. A one-digit change here fails BOTH builds (AC2).",
+    "",
+    "entries carry the full row shape (dayDate, portion, kind, absenceReason, provenance); the",
+    "aggregation reads only dayDate/portion/kind - absenceReason and provenance are along for",
+    "the ride so the fixture looks like a real row.",
+    "",
+    "expected is the TeleworkInput. granularity/denominator use the ENGINE's tags (day/halfDay,",
+    "simplified240/exact), which each side maps to its own type; periodFraction is the exact",
+    "double 1 - 0.05... no: remainingYearFraction output, pinned to its shortest round-trip form."
+  ],
+  "cases": [
+    {
+      "id": "full-days-simple",
+      "note": "DAY granularity, full year: CH days are not an engine input, HOME is telework, missions split.",
+      "user": {
+        "canton": "GE",
+        "employmentRate": 100,
+        "denominatorKind": "SIMPLIFIED240",
+        "exactTotalWorkDays": null,
+        "granularity": "DAY",
+        "activityStartDate": null
+      },
+      "taxYear": 2026,
+      "entries": [
+        { "dayDate": "2026-01-05", "portion": "FULL", "kind": "HOME", "absenceReason": null, "provenance": "MANUAL" },
+        { "dayDate": "2026-01-06", "portion": "FULL", "kind": "HOME", "absenceReason": null, "provenance": "MANUAL" },
+        { "dayDate": "2026-01-07", "portion": "FULL", "kind": "HOME", "absenceReason": null, "provenance": "MANUAL" },
+        { "dayDate": "2026-01-08", "portion": "FULL", "kind": "CH", "absenceReason": null, "provenance": "MANUAL" },
+        { "dayDate": "2026-01-09", "portion": "FULL", "kind": "CH", "absenceReason": null, "provenance": "MANUAL" },
+        { "dayDate": "2026-01-12", "portion": "FULL", "kind": "CH", "absenceReason": null, "provenance": "MANUAL" },
+        { "dayDate": "2026-01-13", "portion": "FULL", "kind": "CH", "absenceReason": null, "provenance": "MANUAL" },
+        { "dayDate": "2026-01-14", "portion": "FULL", "kind": "CH", "absenceReason": null, "provenance": "MANUAL" },
+        { "dayDate": "2026-01-15", "portion": "FULL", "kind": "MISSION_FR", "absenceReason": null, "provenance": "MANUAL" },
+        { "dayDate": "2026-01-16", "portion": "FULL", "kind": "MISSION_THIRD", "absenceReason": null, "provenance": "MANUAL" }
+      ],
+      "expected": {
+        "taxYear": 2026,
+        "canton": "GE",
+        "employmentRate": 100,
+        "periodFraction": 1.0,
+        "denominator": { "kind": "simplified240" },
+        "granularity": "day",
+        "teleworkDays": 3.0,
+        "missionDaysFrance": 1.0,
+        "missionDaysThirdState": 1.0
+      }
+    },
+    {
+      "id": "half-day-pair",
+      "note": "HALF_DAY: a HOME/CH split day is 0.5 telework; a mission split day is 0.5 France + 0.5 third.",
+      "user": {
+        "canton": "VD",
+        "employmentRate": 100,
+        "denominatorKind": "SIMPLIFIED240",
+        "exactTotalWorkDays": null,
+        "granularity": "HALF_DAY",
+        "activityStartDate": null
+      },
+      "taxYear": 2026,
+      "entries": [
+        { "dayDate": "2026-02-02", "portion": "AM", "kind": "HOME", "absenceReason": null, "provenance": "MANUAL" },
+        { "dayDate": "2026-02-02", "portion": "PM", "kind": "CH", "absenceReason": null, "provenance": "MANUAL" },
+        { "dayDate": "2026-02-03", "portion": "AM", "kind": "MISSION_FR", "absenceReason": null, "provenance": "MANUAL" },
+        { "dayDate": "2026-02-03", "portion": "PM", "kind": "MISSION_THIRD", "absenceReason": null, "provenance": "MANUAL" }
+      ],
+      "expected": {
+        "taxYear": 2026,
+        "canton": "VD",
+        "employmentRate": 100,
+        "periodFraction": 1.0,
+        "denominator": { "kind": "simplified240" },
+        "granularity": "halfDay",
+        "teleworkDays": 0.5,
+        "missionDaysFrance": 0.5,
+        "missionDaysThirdState": 0.5
+      }
+    },
+    {
+      "id": "absences-of-each-reason-excluded",
+      "note": "D28: an absence of each reason reaches no engine figure. Only HOME counts as telework.",
+      "user": {
+        "canton": "GE",
+        "employmentRate": 100,
+        "denominatorKind": "SIMPLIFIED240",
+        "exactTotalWorkDays": null,
+        "granularity": "DAY",
+        "activityStartDate": null
+      },
+      "taxYear": 2026,
+      "entries": [
+        { "dayDate": "2026-03-02", "portion": "FULL", "kind": "HOME", "absenceReason": null, "provenance": "MANUAL" },
+        { "dayDate": "2026-03-03", "portion": "FULL", "kind": "HOME", "absenceReason": null, "provenance": "MANUAL" },
+        { "dayDate": "2026-03-04", "portion": "FULL", "kind": "CH", "absenceReason": null, "provenance": "MANUAL" },
+        { "dayDate": "2026-03-05", "portion": "FULL", "kind": "ABSENT", "absenceReason": "CONGE", "provenance": "MANUAL" },
+        { "dayDate": "2026-03-06", "portion": "FULL", "kind": "ABSENT", "absenceReason": "MALADIE", "provenance": "MANUAL" },
+        { "dayDate": "2026-03-09", "portion": "FULL", "kind": "ABSENT", "absenceReason": "FERIE", "provenance": "MANUAL" },
+        { "dayDate": "2026-03-10", "portion": "FULL", "kind": "ABSENT", "absenceReason": "AUTRE", "provenance": "MANUAL" }
+      ],
+      "expected": {
+        "taxYear": 2026,
+        "canton": "GE",
+        "employmentRate": 100,
+        "periodFraction": 1.0,
+        "denominator": { "kind": "simplified240" },
+        "granularity": "day",
+        "teleworkDays": 2.0,
+        "missionDaysFrance": 0.0,
+        "missionDaysThirdState": 0.0
+      }
+    },
+    {
+      "id": "missions-france-and-third-state",
+      "note": "France and third-state missions are counted SEPARATELY (the waterfall imputes France first).",
+      "user": {
+        "canton": "GE",
+        "employmentRate": 100,
+        "denominatorKind": "SIMPLIFIED240",
+        "exactTotalWorkDays": null,
+        "granularity": "DAY",
+        "activityStartDate": null
+      },
+      "taxYear": 2026,
+      "entries": [
+        { "dayDate": "2026-04-06", "portion": "FULL", "kind": "MISSION_FR", "absenceReason": null, "provenance": "MANUAL" },
+        { "dayDate": "2026-04-07", "portion": "FULL", "kind": "MISSION_FR", "absenceReason": null, "provenance": "MANUAL" },
+        { "dayDate": "2026-04-08", "portion": "FULL", "kind": "MISSION_THIRD", "absenceReason": null, "provenance": "MANUAL" },
+        { "dayDate": "2026-04-09", "portion": "FULL", "kind": "MISSION_THIRD", "absenceReason": null, "provenance": "MANUAL" },
+        { "dayDate": "2026-04-10", "portion": "FULL", "kind": "MISSION_THIRD", "absenceReason": null, "provenance": "MANUAL" },
+        { "dayDate": "2026-04-13", "portion": "FULL", "kind": "HOME", "absenceReason": null, "provenance": "MANUAL" }
+      ],
+      "expected": {
+        "taxYear": 2026,
+        "canton": "GE",
+        "employmentRate": 100,
+        "periodFraction": 1.0,
+        "denominator": { "kind": "simplified240" },
+        "granularity": "day",
+        "teleworkDays": 1.0,
+        "missionDaysFrance": 2.0,
+        "missionDaysThirdState": 3.0
+      }
+    },
+    {
+      "id": "partial-year-midyear-start",
+      "note": "activityStartDate 2026-07-01 -> periodFraction 184/365, derived from the date, never from a clock.",
+      "user": {
+        "canton": "GE",
+        "employmentRate": 80,
+        "denominatorKind": "SIMPLIFIED240",
+        "exactTotalWorkDays": null,
+        "granularity": "DAY",
+        "activityStartDate": "2026-07-01"
+      },
+      "taxYear": 2026,
+      "entries": [
+        { "dayDate": "2026-07-06", "portion": "FULL", "kind": "HOME", "absenceReason": null, "provenance": "MANUAL" },
+        { "dayDate": "2026-07-07", "portion": "FULL", "kind": "HOME", "absenceReason": null, "provenance": "MANUAL" },
+        { "dayDate": "2026-07-08", "portion": "FULL", "kind": "HOME", "absenceReason": null, "provenance": "MANUAL" },
+        { "dayDate": "2026-07-09", "portion": "FULL", "kind": "HOME", "absenceReason": null, "provenance": "MANUAL" },
+        { "dayDate": "2026-07-10", "portion": "FULL", "kind": "CH", "absenceReason": null, "provenance": "MANUAL" }
+      ],
+      "expected": {
+        "taxYear": 2026,
+        "canton": "GE",
+        "employmentRate": 80,
+        "periodFraction": 0.5041095890410959,
+        "denominator": { "kind": "simplified240" },
+        "granularity": "day",
+        "teleworkDays": 4.0,
+        "missionDaysFrance": 0.0,
+        "missionDaysThirdState": 0.0
+      }
+    },
+    {
+      "id": "r120-rows-versus-portions-disagree",
+      "note": "R120: one day, AM HOME + PM HOME. Counting HOME ROWS gives 2; summing PORTION-DAYS gives 1.0. The engine input is 1.0. A port that counts rows fails only this case.",
+      "user": {
+        "canton": "GE",
+        "employmentRate": 100,
+        "denominatorKind": "SIMPLIFIED240",
+        "exactTotalWorkDays": null,
+        "granularity": "HALF_DAY",
+        "activityStartDate": null
+      },
+      "taxYear": 2026,
+      "entries": [
+        { "dayDate": "2026-05-04", "portion": "AM", "kind": "HOME", "absenceReason": null, "provenance": "MANUAL" },
+        { "dayDate": "2026-05-04", "portion": "PM", "kind": "HOME", "absenceReason": null, "provenance": "MANUAL" }
+      ],
+      "expected": {
+        "taxYear": 2026,
+        "canton": "GE",
+        "employmentRate": 100,
+        "periodFraction": 1.0,
+        "denominator": { "kind": "simplified240" },
+        "granularity": "halfDay",
+        "teleworkDays": 1.0,
+        "missionDaysFrance": 0.0,
+        "missionDaysThirdState": 0.0
+      }
+    },
+    {
+      "id": "exact-denominator",
+      "note": "EXACT method: the supplied total flows through unchanged; a null total with kind EXACT is a database written around (it throws), not a case here.",
+      "user": {
+        "canton": "GE",
+        "employmentRate": 100,
+        "denominatorKind": "EXACT",
+        "exactTotalWorkDays": 220,
+        "granularity": "DAY",
+        "activityStartDate": null
+      },
+      "taxYear": 2026,
+      "entries": [
+        { "dayDate": "2026-06-01", "portion": "FULL", "kind": "HOME", "absenceReason": null, "provenance": "MANUAL" },
+        { "dayDate": "2026-06-02", "portion": "FULL", "kind": "HOME", "absenceReason": null, "provenance": "MANUAL" }
+      ],
+      "expected": {
+        "taxYear": 2026,
+        "canton": "GE",
+        "employmentRate": 100,
+        "periodFraction": 1.0,
+        "denominator": { "kind": "exact", "totalWorkDays": 220 },
+        "granularity": "day",
+        "teleworkDays": 2.0,
+        "missionDaysFrance": 0.0,
+        "missionDaysThirdState": 0.0
+      }
+    }
+  ]
+}
