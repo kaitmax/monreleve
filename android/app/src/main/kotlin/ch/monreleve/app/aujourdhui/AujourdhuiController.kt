@@ -157,12 +157,16 @@ private fun EntryEntity.toDayEntry(): DayEntry =
         failed = syncState == SyncState.FAILED,
     )
 
+// The sync trigger is injected as a lambda (default no-op for JVM tests): the controller lives outside
+// ui/ but has no Context, and SyncScheduler.requestSync needs one. MainActivity, the composition root,
+// supplies { SyncScheduler.requestSync(applicationContext) }.
 class AujourdhuiController(
     private val repository: EntryRepository,
     private val settingsStore: SettingsStore,
     private val taxYear: Int,
     private val clock: Clock,
     private val scope: CoroutineScope,
+    private val requestSync: () -> Unit = {},
 ) {
     private val today: String = todayInParis(clock)
     private val settings: Settings? = settingsStore.load()
@@ -255,6 +259,9 @@ class AujourdhuiController(
                     absenceReason = absence?.toReason(),
                 ),
             )
+            // SPEC 13.2: written to Room, then enqueued for replay on connectivity. The drain is
+            // network-constrained (SyncScheduler), so this is a no-op cost offline and drains when online.
+            requestSync()
         }
     }
 }

@@ -25,6 +25,7 @@ import ch.monreleve.app.data.remote.AuthApi
 import ch.monreleve.app.data.remote.UrlConnectionTransport
 import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.LocalEntryRepository
+import ch.monreleve.app.data.sync.SyncScheduler
 import ch.monreleve.app.design.FrontierTheme
 import ch.monreleve.app.onboarding.OnboardingController
 import ch.monreleve.app.onboarding.OnboardingPhase
@@ -86,7 +87,10 @@ class MainActivity : ComponentActivity() {
                                 destination = Destination.AUJOURDHUI
                             }
                         Destination.AUJOURDHUI ->
-                            AujourdhuiRoute(repository, settingsStore, taxYear, clock, lifecycleScope)
+                            AujourdhuiRoute(repository, settingsStore, taxYear, clock, lifecycleScope) {
+                                // SPEC 13.2: recording enqueues the drain; WorkManager replays on connectivity.
+                                SyncScheduler.requestSync(context)
+                            }
                     }
                 }
             }
@@ -138,6 +142,10 @@ private fun OnboardingRoute(
     )
 }
 
+// The composition root wires six distinct dependencies into the one screen; bundling them into a data
+// class would only move the list. This file is not ui/ (the no-literal fence scans ui/ and dev/), so the
+// annotation is permitted here.
+@Suppress("LongParameterList")
 @Composable
 private fun AujourdhuiRoute(
     repository: EntryRepository,
@@ -145,8 +153,9 @@ private fun AujourdhuiRoute(
     taxYear: Int,
     clock: Clock,
     scope: CoroutineScope,
+    requestSync: () -> Unit,
 ) {
-    val controller = remember { AujourdhuiController(repository, store, taxYear, clock, scope) }
+    val controller = remember { AujourdhuiController(repository, store, taxYear, clock, scope, requestSync) }
     val state by controller.state.collectAsState()
     AujourdhuiScreen(state = state, onRecord = controller::record)
 }

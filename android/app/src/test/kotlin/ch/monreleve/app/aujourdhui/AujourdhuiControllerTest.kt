@@ -176,6 +176,22 @@ class AujourdhuiControllerTest : FunSpec({
         }
     }
 
+    // SPEC 13.2: "Entries are written to Room first AND enqueued as pending mutations; WorkManager
+    // replays them on connectivity." Recording must enqueue the drain, or a day recorded through the
+    // real screen never reaches the server (DevRecorderActivity, the only other trigger, is adb-only).
+    test("recording a day requests a sync so the offline queue drains (SPEC 13.2)") {
+        runTest {
+            val dao = FakeEntryDao()
+            val repo = LocalEntryRepository(dao, clock)
+            var syncRequests = 0
+            val controller =
+                AujourdhuiController(repo, storeWith("DAY"), TAX_YEAR, clock, this, requestSync = { syncRequests += 1 })
+            controller.record(RecordedKind.SUISSE, Slot.FULL)
+            advanceUntilIdle()
+            syncRequests shouldBe 1
+        }
+    }
+
     test("the pending escalation carries the shared threshold, not a typed number (R206)") {
         runTest {
             val dao = FakeEntryDao()
