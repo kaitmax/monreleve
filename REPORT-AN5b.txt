@@ -215,7 +215,11 @@ exchanged it at the real /api/v1/auth/callback), set the titulaire and the
 settings (GE, 100%, simplified 240, whole day, whole year) via PATCH /api/v1/me,
 POSTed 30 telework (HOME) days to /api/v1/entries, and read GET /api/v1/dossier.
 The DEVICE side is the aujourdhuiWithYear Paparazzi baseline, which ran the REAL
-Kotlin aggregation + engine on the identical 30 HOME days.
+Kotlin engine on the TeleworkInput the fixture-proven aggregation produces from the
+identical 30 HOME days. (Precisely: the shared fixture proves 30 HOME rows ->
+teleworkDays 30.0; the baseline proves engine(30.0) -> 12,50 / 66 / 89,5. The
+baseline builds that TeleworkInput directly rather than re-running the aggregation,
+so the two links are proven separately, not in one executed path.)
 
   field                 SERVER (/api/v1/dossier)   DEVICE (Aujourd'hui panel)
   --------------------  -------------------------  --------------------------
@@ -332,6 +336,14 @@ PARKAN-17: SPEC 11.2 mentions an offline banner; there is no connectivity source
   connectivity signal.
 NEEDS (carried): the emulator drive of onboarding -> record -> sync -> year, once
   a reliable device text-input path exists; the OSM/ODbL attribution SCREEN (AN9+).
+NEEDS (the one real blind spot): the DEVICE-SIDE PATCH verb is UNEXERCISED on
+  Android. The app's /api/v1/me write goes HttpMethod.PATCH -> UrlConnectionTransport
+  -> Android's HttpURLConnection; the claim that the OkHttp-backed HttpURLConnection
+  accepts PATCH (where the desktop JDK's does not) is REASONED, not observed -- the
+  walkthrough stopped before onboarding, and the AC2 live comparison PATCHed via the
+  script's fetch, not the app. The first drive past sign-in must verify the /me PATCH
+  actually lands from the device; if it does not, onboarding fails at its first real
+  use.
 
 --------------------------------------------------------------------------------
 DEVIATIONS
@@ -381,7 +393,13 @@ AN5b commits on origin/main:
   db03112  AN5b: recording a day
   17c1903  AN5b: the year, computed on the device
   1f098fa  AN5b: the states - offline, sync failed, over the ceiling
-  (final)  AN5b: the live comparison, and the report   (this report)
+  33d9801  AN5b: the live comparison, and the report
+  3f1cd40  AN5b: record the gate:clone push proof
+  A further report-only commit follows 3f1cd40 (it cannot name its own hash):
+    "AN5b: correct the report" -- fixes the AC2 device-side verb (the baseline runs
+    the engine on the aggregation's proven output, not the aggregation itself) and
+    names the unexercised on-device PATCH. Web byte-identical, so the 33d9801
+    gate:clone discharges R199 for it too.
 
 Each Android increment was pushed after a green :app:gate; the web-touching
 increment 2 was pushed after gate:clone (eb65590). Android :app:gate green on the
