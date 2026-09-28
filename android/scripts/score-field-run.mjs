@@ -8,13 +8,14 @@
 // section 3 froze them; a zero-error month is scored against exactly what shipped. Picking a
 // threshold after seeing the data would be fitting the gate to the measurement.
 //
-// A PASS IS "NOT VISIBLY BROKEN", NEVER PROOF. With 20 working days and zero errors the 95%
-// upper bound on the error rate is ~15% (the rule of three, 3/n). The harness prints that bound
-// beside every rate so a good month cannot be read as an accuracy claim.
+// A PASS IS "NOT VISIBLY BROKEN", NEVER PROOF. With 20 working days and zero errors the exact 95%
+// upper bound on the error rate is ~14% (1 - 0.05^(1/n)). The harness prints that bound beside
+// every rate so a good month cannot be read as an accuracy claim.
 //
 // Usage: node score-field-run.mjs --export <export.json> --log <log.csv> [--battery-median <pct>]
 
 import { readFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 
 // docs/field-protocol-AN6b.md section 3 - the kill criteria, encoded.
 const K2_MAX_WRONG_HIGH = 1;
@@ -29,13 +30,17 @@ function arg(name) {
   return i === -1 ? undefined : process.argv[i + 1];
 }
 
-// The 95% upper bound on the true error rate: the rule of three when there are no errors, the
-// Wilson score upper bound otherwise. Null when there is no data to bound. Capped at 1: a bound on
-// a probability cannot exceed 100%, and the rule of three saturates below n=3 (3/2 = 1.5), where
-// the honest reading is "this sample says almost nothing", not "150% of days".
-function upper95(errors, n) {
+// The 95% upper bound on the true error rate (R279). At ZERO errors the EXACT one-sided binomial
+// bound: the largest p for which observing 0 errors in n trials still has 5% probability is
+// 1 - 0.05^(1/n), from (1-p)^n = 0.05. The rule of three (3/n) is a large-n approximation of this
+// - at n=2 it gives 150% where the exact bound is 78%, and capping it at 100% makes the number
+// possible without making it honest, which is exactly the small-n territory these rows live in.
+// The exact form is always < 1, so no cap is needed, and it removes the discontinuity between the
+// zero-error formula and Wilson (used for k > 0). The rule of three stays in the field protocol as
+// the human-facing explanation; the code uses the exact formula. Null when there is no data.
+export function upper95(errors, n) {
   if (n === 0) return null;
-  if (errors === 0) return Math.min(1, 3 / n);
+  if (errors === 0) return 1 - Math.pow(0.05, 1 / n);
   const z = 1.96;
   const p = errors / n;
   const denom = 1 + (z * z) / n;
@@ -129,33 +134,42 @@ function score(exportRows, log, batteryMedian) {
   return { results, dayCount: days.length, workingCount: workingDays.length };
 }
 
-const exportPath = arg('--export');
-const logPath = arg('--log');
-if (!exportPath || !logPath) {
-  console.error('usage: node score-field-run.mjs --export <export.json> --log <log.csv> [--battery-median <pct>]');
-  process.exit(1);
-}
-const batteryArg = arg('--battery-median');
-const batteryMedian = batteryArg === undefined ? undefined : Number(batteryArg);
+// CLI only when invoked directly. `node --test upper-bound.test.mjs` imports upper95/score from
+// this module and must not trigger the reader or process.exit (R182: a check that imports this
+// module runs no side effect of it).
+function main() {
+  const exportPath = arg('--export');
+  const logPath = arg('--log');
+  if (!exportPath || !logPath) {
+    console.error('usage: node score-field-run.mjs --export <export.json> --log <log.csv> [--battery-median <pct>]');
+    process.exit(1);
+  }
+  const batteryArg = arg('--battery-median');
+  const batteryMedian = batteryArg === undefined ? undefined : Number(batteryArg);
 
-const exportRows = JSON.parse(readFileSync(exportPath, 'utf8'));
-const log = parseLog(readFileSync(logPath, 'utf8'));
-const { results, dayCount, workingCount } = score(exportRows, log, batteryMedian);
+  const exportRows = JSON.parse(readFileSync(exportPath, 'utf8'));
+  const log = parseLog(readFileSync(logPath, 'utf8'));
+  const { results, dayCount, workingCount } = score(exportRows, log, batteryMedian);
 
-console.log('\n=== field run score (R276) ===');
-console.log(`days matched: ${dayCount}   working days: ${workingCount}`);
-console.log('a PASS means "not visibly broken", never proof - read the bounds.\n');
-let allPass = true;
-const unmeasured = [];
-for (const r of results) {
-  const mark = r.pass === null ? 'n/a ' : r.pass ? 'PASS' : 'FAIL';
-  if (r.pass === false) allPass = false;
-  if (r.pass === null) unmeasured.push(r.id);
-  console.log(`  ${mark}  ${r.id}  ${r.label}`);
-  console.log(`        ${r.value}   (threshold: ${r.threshold})${r.bound ? `   ${r.bound}` : ''}`);
+  console.log('\n=== field run score (R276) ===');
+  console.log(`days matched: ${dayCount}   working days: ${workingCount}`);
+  console.log('a PASS means "not visibly broken", never proof - read the bounds.\n');
+  let allPass = true;
+  const unmeasured = [];
+  for (const r of results) {
+    const mark = r.pass === null ? 'n/a ' : r.pass ? 'PASS' : 'FAIL';
+    if (r.pass === false) allPass = false;
+    if (r.pass === null) unmeasured.push(r.id);
+    console.log(`  ${mark}  ${r.id}  ${r.label}`);
+    console.log(`        ${r.value}   (threshold: ${r.threshold})${r.bound ? `   ${r.bound}` : ''}`);
+  }
+  const unmeasuredNote = unmeasured.length === 0 ? '' : ` (${unmeasured.join(', ')} not measured this run)`;
+  console.log(
+    `\nCheckpoint G, so far: ${allPass ? 'no criterion failed (not a pass - see the bounds)' : 'A CRITERION FAILED'}${unmeasuredNote}`,
+  );
+  process.exit(allPass ? 0 : 1);
 }
-const unmeasuredNote = unmeasured.length === 0 ? '' : ` (${unmeasured.join(', ')} not measured this run)`;
-console.log(
-  `\nCheckpoint G, so far: ${allPass ? 'no criterion failed (not a pass - see the bounds)' : 'A CRITERION FAILED'}${unmeasuredNote}`,
-);
-process.exit(allPass ? 0 : 1);
+
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}

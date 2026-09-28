@@ -27,7 +27,7 @@ its full legal code at opendatacommons.org. Two obligations follow and both are 
 
 - **Attribution.** The product must credit **"© OpenStreetMap contributors"** (ODbL 1.0)
   wherever the border data is used. The app has no such screen yet — this is a **NEEDS**
-  for the detection UI (AN8): an about/credits line naming OpenStreetMap and the ODbL.
+  for the detection UI (AN9+): an about/credits line naming OpenStreetMap and the ODbL.
 - **Share-alike.** The bundled and reference polygons are a *derived database*. If the
   product ever publicly conveys them as data (beyond shipping them inside the app), the
   derived database is itself ODbL 1.0.
@@ -169,10 +169,14 @@ method matters as much as the figure (R233). From the android-profiler skill (do
 log.csv>`. It reads the app's export (`detection/exportFieldRun` - per day tier, proposed kind,
 minutes, fix and buffer counts; **no coordinate**, R277) and the tester's daily log (date,
 `Suisse`/`Domicile`/`Mission`/`Absent`, note - the fiche testeur format), and prints per kill
-criterion the count, the rate, and its **95 % confidence bound** (the rule of three, 3/n, for a
-zero-error month; the Wilson upper bound otherwise). FALSE-CH is on its own line (K1, R278). The
-thresholds are encoded from the field protocol §3 (R276), not chosen. A worked example on
-fabricated data lives in `android/scripts/fixtures/` and is shown in REPORT-AN6a.txt.
+criterion the count, the rate, and its **95 % confidence bound**. At zero errors the bound is the
+**exact one-sided binomial**, `1 - 0.05^(1/n)` (R279): the rule of three (`3/n`) is a large-n
+approximation of it that gives 150 % at n = 2 where the exact bound is 78 %, so the code uses the
+exact form and the field protocol keeps the rule of three only as the human-facing explanation.
+For k > 0 errors the bound is the Wilson score upper bound; the two meet with no discontinuity.
+`upper-bound.test.mjs` pins the formula at n = 1, 2, 3, 10, 17, 20 against independently-computed
+values. FALSE-CH is on its own line (K1, R278). The thresholds are encoded from the field protocol
+§3 (R276), not chosen. A worked example on fabricated data lives in `android/scripts/fixtures/`.
 
 The measurement build **runs without a server** (detection is on-device, D18) and is **blind**
 (it does not show the tester its proposals during the run - the export carries them at the end),
