@@ -1,0 +1,424 @@
+================================================================================
+REPORT-AN5c.txt -- the instrument past sign-in, and AN5b's owed walkthrough
+================================================================================
+
+--------------------------------------------------------------------------------
+SUMMARY (R273 determination first)
+--------------------------------------------------------------------------------
+R273: the prompt names AN5c. tasks/todo.md has no literal "AN5c"; AN5c is the
+residual of AN5 ("Room, repository, sync -- manual mode end to end", split
+AN5a/AN5b/AN5c, Checkpoint F). AN5's own acceptance criteria name "three 56 dp
+large buttons" (R285) and "log offline -> reopen -> reconnect -> entry syncs"
+(the sync loop this task completes). The prompt's scope -- repair the instrument
+past sign-in, repay AN5b's owed walkthrough, land the two parked decisions --
+matches. NO CONTRADICTION with the file; commit prefixes are "AN5c" per the AN5b
+precedent (an "AN8"-style number beside REPORT-AN5c.txt would recreate the R162
+collision the prompt built as AN5b to avoid).
+
+WHAT WAS BUILT (seven commits after the prompt chore):
+  0  R283: every test input declared -- and the live gap it found.
+  1  R284: a DEBUG-ONLY session injection, three guards, each planted; AC1 3/3.
+  2  R286: one late threshold, a fixture both sides read; one-digit plant fails
+     both builds.
+  3  R285 (56 dp) and R286 (the escalating pending line) on the screen.
+  3b SPEC 13.2: recording enqueues a sync -- a defect the walkthrough prep found.
+  4  AC2: AN5b's owed walkthrough, driven on the device and looked at.
+
+ALL THREE ACCEPTANCE CRITERIA MET:
+  AC1 -- 3/3 consecutive runs reached a signed-in Aujourd'hui, no retry, using a
+         real server-issued session.
+  AC2 -- onboarding, recording, the pending line, the sync drain and the year
+         moving driven on the device against the production container and looked
+         at, at default and 200 percent; the R286 escalation seen. The on-device
+         PATCH /api/v1/me verb (AN5b's named blind spot) LANDED.
+  AC3 -- the debug injection cannot reach a release build (two guards, each
+         planted) and the late threshold has ONE value on both sides (a one-digit
+         plant fails both builds).
+
+THE ONE SUBSTANTIVE DEVIATION: the production Aujourd'hui record path did not
+enqueue a sync (only the adb-only dev recorder did), so a day logged on the real
+screen never reached the server. SPEC 13.2 already specifies enqueue-at-record,
+so it is a defect fixed (one injected lambda, test-first) rather than a decision
+parked. See DEVIATIONS.
+
+--------------------------------------------------------------------------------
+PRECONDITIONS (R0, R1)
+--------------------------------------------------------------------------------
+R0. Read REPORT-AN5b.txt in full (the WALKTHROUGH stop-loss, PARKAN-16/17, the
+    unexercised on-device PATCH NEEDS); REPORT-AN4.txt (the sign-in the injection
+    stands in for); SPEC 11.2 and 13.2; DESIGN-SYSTEM sections 1/2/4; FD4.
+
+R1. pnpm gate:clone GREEN on origin/main HEAD
+    e9c626ef5597f76bf029f2238ff5b1d8ee293e70.
+    ran     install, typecheck, lint, test, build, size, db:deploy, test:db,
+            test:container:write, from a clean clone.
+    claim   this commit builds and passes those suites from a clean checkout.
+    CI readiness: quiet -- repository private, CI_FULL unset, so jobs skip (the
+            carried FW24 combination).
+
+--------------------------------------------------------------------------------
+R283 -- EVERY TEST INPUT DECLARED (increment 0, commit 6578e2f)
+--------------------------------------------------------------------------------
+Audit of every test that reads a file OUTSIDE its compiled classpath:
+
+  DECLARED already (AN5b, inputs.dir ../fixtures):
+    fixtures/*.json  <- DenominatorConformanceTest, GenevaConformanceTest,
+    MissionCapTest, RateConformanceTest, AggregationConformanceTest (and AN5c's
+    LatenessConformanceTest).
+
+  UNDECLARED, LIVE (R178 -- the finding, not a plant):
+    web/lib/entries/schema.ts  <- WireContractParityTest, BatchLimitParityTest
+    docs/field-protocol-AN6b.md <- TierThresholdParityTest
+    Neither is under fixtures/, so a change to the frozen server contract left
+    testDebugUnitTest UP-TO-DATE and the parity assertion unrun -- AN5b's exact
+    defect class, still open for these three.
+
+  IN-MODULE data read as text, no compile dependency (also declared, for
+  completeness): schemas/ (RoomSchemaContractTest), src/main/assets
+  (BorderPolygon/Classification/DetectionSession tests), src/main/res/xml
+  (BackupRulesTest). And src/main/kotlin (the source-scanning fences +
+  WarningsTest's comment read -- a comment-only change recompiles nothing).
+
+INCREMENTAL PROOF (mirroring AN5b's aggregation plant; ordinary runs, no
+--rerun-tasks):
+  1. baseline testDebugUnitTest executed.
+  2. planted MAX_NOTE_LENGTH 500 -> 501 in web/lib/entries/schema.ts:
+       > Task :app:testDebugUnitTest UP-TO-DATE ; BUILD SUCCESSFUL in 3s
+     the divergence shipped GREEN -- the R283 defect, live.
+  3. declared the inputs in app/build.gradle.kts; re-planted the same digit:
+       > Task :app:testDebugUnitTest ; BatchLimitParityTest >
+       theNoteCapMatchesTheServer FAILED ; BUILD FAILED
+     re-ran and caught it.
+  4. reverted; both green.
+
+--------------------------------------------------------------------------------
+THE INJECTION (R284, increment 1, commit 60306fa)
+--------------------------------------------------------------------------------
+HOW THE SESSION IS OBTAINED. android/scripts/an5c-signedin.mjs plants a hashed
+sha256 VerificationToken in a scratch database and exchanges it at the real
+GET /api/v1/auth/callback for the token pair {accessToken, refreshToken,
+accessExpiresAt, refreshExpiresAt} -- the same recipe AN5b's AC2 run used. The
+four fields are passed to a DEBUG-ONLY SessionInjectionActivity as intent extras:
+  adb shell am start -n ch.monreleve.app/ch.monreleve.app.debug.SessionInjectionActivity
+    --es accessToken <jwt> --es refreshToken <opaque> --es accessExpiresAt <iso>
+    --es refreshExpiresAt <iso> [--es canton GE --es employmentRate 100 ...]
+The activity validates, stores via KeystoreTokenStore.save() (synchronous
+commit()), and optionally seeds settings via SharedPrefsSettingsStore. The
+walkthrough force-stops and relaunches MainActivity, which re-reads a durable
+session in onCreate. No typing -- the adb text that broke AN5b twice is gone. The
+downstream screens still call the REAL server at 10.0.2.2:3000.
+
+THE THREE GUARDS, each proven with a planted violation (R178/R180), then reverted:
+
+  (a) the receiver exists ONLY in the debug source set.
+      NoDebugInjectionInMainTest scans src/main + src/release for the marker.
+      PLANT: a SessionInjectionLeakPlant.kt placed in src/main ->
+        theInjectionExistsOnlyInTheDebugSourceSet FAILED.
+      (Copying the exact class instead REDECLARES and fails to compile -- a
+      second, incidental barrier, recorded so the plant's shape is honest.)
+
+  (b) the MERGED RELEASE MANIFEST is free of it (exactly as AN4's
+      checkReleaseCleartext, dependsOn processReleaseManifest, stripComments).
+      PLANT: declared the activity in src/main/AndroidManifest.xml ->
+        checkReleaseNoDebugInjection FAILED - "the debug session injection
+        ('SessionInjection') is present in the merged RELEASE manifest".
+      Distinct from (a): no .kt in main, so (a) stays green on this plant.
+
+  (c) the intent accepts ONLY a well-formed session and refuses anything else BY
+      NAME (R198). SessionInjectionTest (in src/testDebug, so testReleaseUnitTest
+      never compiles against the debug class).
+      PLANT: weakened the validator to accept a blank token (isNullOrBlank ->
+        == null) -> "a blank refresh token is refused by name" FAILED.
+      Every refusal names the FIELD, never a value (a value could be a token; the
+      log fence forbids logging a credential).
+
+R241 BOUNDARY CHECK: no path lets the injection reach a release build. The class
+and the manifest entry live only in src/debug; guards (a) and (b) fail if either
+appears in a shipped source set or the merged release manifest. Both proven.
+
+--------------------------------------------------------------------------------
+AC1 -- THREE CONSECUTIVE RUNS TO A SIGNED-IN AUJOURD'HUI (no retry)
+--------------------------------------------------------------------------------
+android/scripts/an5c-signedin.mjs --runs 3, on the Pixel_10 headless emulator,
+against monreleve:write on host port 3000 (R169: /api/health names "monreleve";
+R179: port asserted free):
+
+  provisioning: created + migrated scratch DB, started the container, obtained a
+  43-char access token via the callback, set the titulaire and PATCHed the
+  settings to /api/v1/me (so the server agrees with the injected device settings).
+
+  run 1: REACHED a signed-in Aujourd'hui (marker text="Bonjour Camille")
+  run 2: REACHED a signed-in Aujourd'hui
+  run 3: REACHED a signed-in Aujourd'hui
+  AC1: 3/3. PASS.
+
+Each run: pm clear -> inject the real session + settings -> force-stop ->
+relaunch MainActivity -> uiautomator confirms the app's own window carries
+text="Bonjour Camille". LOOKED AT (R184): the screenshots show a signed-in
+Aujourd'hui ("Bonjour Camille", "Saisie manuelle", the record buttons, the
+empty-year note) each run.
+
+DETERMINISM / THE ONE INSTRUMENT DEFECT FOUND AND FIXED: the headless emulator's
+SystemUI throws a recurring "System UI isn't responding" ANR whose dialog steals
+the focused window, so uiautomator dumped the DIALOG, not the app. BACK does NOT
+dismiss it; tapping its "Wait" (bounds parsed from the dump) does. The read
+dismisses the ANR and re-reads the SAME already-reached screen -- a robust READ,
+not a retry of the sign-in flow (AC1's "no retry" holds: the injection path is
+deterministic and runs once per run).
+
+REMAINING TEXT INPUT: AC1 types nothing (settings are injected). The only text
+step left anywhere is onboarding's employment-rate field, driven ONCE in AC2 with
+a short numeric "100" and verified present before submit. The email that broke
+AN5b is gone from every path.
+
+--------------------------------------------------------------------------------
+THE LATE THRESHOLD (R286, increment 2, commit 64d91b3)
+--------------------------------------------------------------------------------
+THE FIXTURE: fixtures/late-threshold-cases.json states thresholdDays = 7 and five
+(dayDate, observedAt) -> late boundary cases. STRICTLY GREATER THAN (late.ts's
+documented choice): exactly seven days is NOT late, one millisecond past is, the
+eighth day is. Both sides are bound to it:
+  - web/tests/unit/entries/late-fixture.test.ts binds the server's
+    LATE_BACKFILL_DAYS and isLate. lib/entries/late.ts is NOT edited -- the
+    fixture is bound to it; its cases match its behaviour exactly.
+  - ch.monreleve.app.dossier.LatenessForecast (BACKFILL_DAYS + wouldBeLate,
+    UTC-midnight of dayDate via toEpochDay()*MS_PER_DAY, strictly-greater) is
+    bound by LatenessConformanceTest.
+Two copies of seven would be R206's defect; this is the late-flag equivalent of
+R281 (the shared aggregation fixture).
+
+R216: LatenessForecast is a PREDICTION used only to warn (the pending line). The
+dossier's "saisie tardive" flag stays the server's, from its own firstRecordedAt.
+
+THE PLANT (one digit, ordinary incremental run, R283): thresholdDays 7 -> 8 in
+the fixture failed BOTH builds:
+  web:    "expected 7 to be 8" (late-fixture.test.ts)
+  kotlin: testDebugUnitTest EXECUTED (re-ran -- fixtures/ is a declared input)
+          and LatenessConformanceTest "the Kotlin threshold is the fixture
+          threshold ... FAILED", BUILD FAILED.
+Reverted; both green.
+
+--------------------------------------------------------------------------------
+R285 AND R286 ON SCREEN (increment 3, commit d30cc6e)
+--------------------------------------------------------------------------------
+R285 (closes PARKAN-16): a Size token category in design/Tokens.kt,
+Size.buttonLarge = 56 dp, ported from the web R62 SIZE family
+($size-button-large-height), ratified in DESIGN-SYSTEM section 1 following the
+R272 Breakpoints precedent. SPEC 11.2 names 56 dp for the day's primary action;
+R77 covers the value. The three record buttons move off the 48 dp touch-target
+value AN5b parked them at. No census enumerates the token objects, so adding a
+fifth object breaks nothing.
+
+R286 (closes PARKAN-17): NO offline banner. The pending line escalates with the
+OLDEST unsynced day -- NONE while young, APPROACHING as it nears (naming the
+threshold, interpolated from the shared source, R153/R181), OVERDUE once it would
+be flagged if it synced now. Computed in AujourdhuiController.latenessOf from
+LatenessForecast, carried on YearPanel, rendered by AujourdhuiCopy.pendingNote.
+Proven: controller tests for NONE/APPROACHING/OVERDUE (the OLDEST pending day
+drives it) and the carried threshold; a positive copy delivery test (R154) that
+pendingNote(_, "APPROACHING", 9) -> "(9 jours)" -- the threshold is interpolated,
+not a typed 7. R216 on screen: "sera signalee ... des sa synchronisation", a
+prediction, never "est en retard".
+
+BASELINES (R135/R207): the set stated BEFORE recording equalled what was
+produced, nothing else changed -- 9 aujourdhui baselines changed (R285 grew the
+buttons 48 -> 56, and every screen renders them) plus 3 new
+(aujourdhuiPendingApproaching / Overdue / OverdueLarge). LOOKED AT (R184): the
+56 dp buttons render larger and clean at default and 200 percent; the escalation
+text renders and, being the last element of a scrolling screen, continues below
+the fold in a fixed-viewport baseline (the copy test asserts it in full, and the
+on-device walkthrough scrolls to it).
+
+--------------------------------------------------------------------------------
+AC2 -- THE WALKTHROUGH, ON THE DEVICE (increment 4, commit 452a76c)
+--------------------------------------------------------------------------------
+android/scripts/an5c-ac2.mjs drove the signed-in app on the emulator against the
+production container. EVERY PNG OPENED AND DESCRIBED, default and 200 percent:
+
+  01 onboarding (default): "Vos parametres de calcul", the canton dropdown, the
+     rate field, the method radios, the submit button.
+  02 onboarding filled: canton = GE, "Taux d'activite (%)" = 100 (VERIFIED
+     present before submit, R180), Forfait de 240 jours selected; the number
+     keyboard up over the (below-the-fold) submit.
+  03 after onboarding: a signed-in Aujourd'hui ("Bonjour Camille", the three
+     56 dp buttons, "Aucune journee enregistree cette annee pour le moment") --
+     the transition happened, so the PATCH succeeded.
+     ON-DEVICE PATCH VERB (AN5b's named blind spot) LANDED: DB read-back
+     canton=GE, employmentRate=100. Android's OkHttp-backed HttpURLConnection
+     accepts PATCH against the real server.
+  04 recorded, offline (airplane icon in the status bar): "Domicile" filled,
+     "Enregistre : Domicile", "En attente de synchronisation" (the pending line),
+     the year moved to 0,41 %.
+  05 reconnected (5G in the status bar): the pending line is GONE -- the enqueued
+     CONNECTED work drained and the row synced. SPEC 13.2 replay-on-connectivity,
+     live, on the real screen (the increment-3b fix), the year still 0,41 %.
+  06 offline backdated day (airplane icon): the year moved to 0,83 % and the
+     escalation renders IN FULL: "dont 1 jour pas encore synchronise ; la plus
+     ancienne depasse 7 jours et sera signalee comme saisie tardive des sa
+     synchronisation" -- OVERDUE, threshold interpolated, phrased as a prediction.
+  07 the year panel at 200 percent: "Sous les deux seuils", "0,83 %", the rail,
+     the remaining-days tiles -- all large, wrapping without overlap or
+     truncation. HONEST GAP: the escalation line itself falls below the fold at
+     200 percent, in both this on-device shot and the aujourdhuiPendingOverdueLarge
+     baseline (it is the last element of a scrolling screen). Its full text was
+     seen at the default size (shot 06) and is asserted verbatim by the copy
+     delivery test (R154); at 200 percent only the layout above it is confirmed.
+  08 onboarding at 200 percent: the title, intro, canton, rate field and method
+     radios all legible and wrapping cleanly.
+
+The drive itself surfaced (R176's purpose) and closed several instrument defects:
+the SystemUI ANR (tap "Wait"), DROP DATABASE blocked by a prior container's
+connections (pg_terminate_backend first), a Windows undici event-loop-drain
+during health polling (a ref'd keep-alive), and adb logcat overflowing
+execFileSync's 1 MB buffer (64 MB maxBuffer). None is a product defect.
+
+--------------------------------------------------------------------------------
+FD4 AGAINST THE RULINGS (each conflict, and which won)
+--------------------------------------------------------------------------------
+FD4 predates most of the ruling register; where it and a ruling/SPEC disagree the
+ruling wins (R258's shape), and the divergence is named, not restyled -- layout
+work is not this task.
+
+  1. FD4's mode chip carries a "Changer" link; the built strip shows "Saisie
+     manuelle" as a plain, non-interactive label. R282 WINS (a Changer link
+     points at a mode chooser the manual product does not have). Already settled
+     in AN5b; unchanged.
+  2. FD4 has a four-item bottom navigation; the app has none. NOT A CONFLICT --
+     the bottom nav and its other three destinations are AN10+; MainActivity
+     routes the linear first-run path. A gap, not a divergence.
+  3. FD4 (and SPEC 11.2) place the hero STATUS CARD (the annualised rate) ABOVE
+     the log block; the built screen places the year panel BELOW the record
+     buttons. A real divergence, inherited from AN5b, NAMED here and left alone
+     (reordering the screen is out of AN5c's scope -- R285/R286 are the named
+     screen changes). See NOTICED BUT NOT TOUCHING.
+  4. FD4's "unlogged-days banner" (calendar-x, "3 jours non renseignes" -> the
+     calendar) is not built; the calendar is AN10. A gap, not a conflict. The
+     pending/escalation line (R286) is a different element on a different concern
+     (sync lateness, not unrecorded days).
+
+--------------------------------------------------------------------------------
+PARKED (PARKAN-<n>)
+--------------------------------------------------------------------------------
+PARKAN-18 -- the escalation look-ahead window. R286 says the pending line
+  escalates "before" the threshold is crossed but does not set how far ahead
+  APPROACHING begins. TAKEN: two days (WARN_WINDOW_DAYS = 2L in
+  AujourdhuiController) -- a small look-ahead that warns before the crossing
+  without alarming early, the conservative choice (claims less). NOT TAKEN: a
+  wider window (more warning, more noise). Reversible: a client-only warning
+  constant, no migration, no contract. NEEDS: an operator preference on how many
+  days' warning is wanted.
+
+CARRIED-CLOSED: PARKAN-16 (56 dp) is closed by R285; PARKAN-17 (offline banner)
+is closed by R286 (the escalating pending line, no banner).
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+1. AN EXTRA COMMIT, NOT PARKED: SPEC 13.2's enqueue-at-record (commit 189b8de).
+   The AC2 prep found the production Aujourd'hui record path never called
+   SyncScheduler.requestSync -- only DevRecorderActivity did, and it is reachable
+   only by adb. On a real phone the shipped manual product could not sync a day
+   it logged. SPEC 13.2 already specifies it ("written to Room first AND enqueued
+   as pending mutations; WorkManager replays them on connectivity"), and AN5's
+   AC1 ("log offline -> reopen -> reconnect -> entry syncs") is impossible
+   without it -- so it is UNIMPLEMENTED SPEC, fixed rather than parked (R156). One
+   injected lambda (AujourdhuiController takes requestSync, default no-op for JVM
+   tests; MainActivity supplies { SyncScheduler.requestSync(applicationContext) }).
+   Test-first: "recording a day requests a sync (SPEC 13.2)" FAILED first
+   (syncRequests 0), GREEN once wired. AujourdhuiRoute reached 6 params ->
+   LongParameterList; a reasoned @Suppress (MainActivity is not ui/, so not
+   fence-4-scoped). A one-lambda change the operator can bounce.
+2. AC2's sync drain is shown through the PRODUCTION record path (deviation 1's
+   fix), not the dev recorder -- which is the honest test of the product.
+3. Two dev instruments (an5c-signedin.mjs, an5c-ac2.mjs) share the container-write
+   provisioning recipe. Accepted for throwaway harnesses; the product code shares
+   nothing. See NOTICED BUT NOT TOUCHING.
+
+--------------------------------------------------------------------------------
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------------------
+- SCREEN ORDER (FD4/SPEC 11.2 #3 above): the year panel sits below the record
+  buttons; SPEC 11.2 wants the hero rate at the top. Inherited from AN5b, out of
+  AN5c's scope. A later task should reorder Aujourd'hui to lead with the rate.
+- The two dev instruments duplicate the provisioning recipe (DEVIATIONS #3). A
+  later cleanup could extract a shared an5c-lib.mjs; not done here to avoid
+  re-touching the committed AC1 script.
+- Untracked files appeared in the working tree during the session:
+  relay/AN10.txt, relay/AN11.txt, relay/AN12.txt, relay/RUN-NIGHT-AN10-AN12.txt.
+  They are future-task prompts, not AN5c's, and carry no authority here (R270);
+  left untracked and uncommitted.
+- android/.an5c-ac2-shots/ holds the AC2 walkthrough PNGs (this report describes
+  them). Left untracked, like AN5b's live-comparison artifacts.
+- MainActivity still computes its start destination once in onCreate (AN5b's
+  noted item), so a live in-process transition needs a relaunch; the injection
+  and the walkthrough force-stop + relaunch, so it does not bite here.
+
+--------------------------------------------------------------------------------
+QUESTIONS
+--------------------------------------------------------------------------------
+1. The escalation look-ahead window (PARKAN-18): is two days' warning right, or
+   is a wider/narrower window wanted?
+2. The sync-trigger fix (DEVIATIONS #1): the operator may bounce the one-lambda
+   change if a different trigger point is preferred (e.g., also at launch); the
+   fix is record-time only, since WorkManager persists the CONNECTED work across
+   process death.
+3. The screen order (year panel below the buttons vs SPEC 11.2's hero-first): fix
+   in a later task, or is the current order acceptable?
+
+--------------------------------------------------------------------------------
+R186 -- NO trackerExists FLIP
+--------------------------------------------------------------------------------
+trackerExists (web/lib/content/product-state.ts) was NOT flipped and
+product-state.ts was not touched. R186: trackerExists waits for a RELEASED
+client; this session shipped no release (the injection is debug-only and cannot
+reach a release build, guards a/b), so the flag stays as it was. No product-state
+claim changed.
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+AN5c commits on origin/main (all pushed):
+  5f887e7  chore: the AN5c prompt
+  6578e2f  AN5c: every test input declared (R283)
+  60306fa  AN5c: a deterministic path past sign-in (R284)
+  64d91b3  AN5c: one late threshold, both sides
+  d30cc6e  AN5c: 56 dp, and a pending line that warns before late
+  189b8de  AN5c: enqueue a sync at record time (SPEC 13.2)
+  452a76c  AN5c: AN5b's walkthrough, on the device
+  <report commit follows -- it cannot name its own hash>
+
+CADENCE (AN5b precedent, endorsed by the prompt): the Android increments (0, 1,
+3b, 4) pushed after a green :app:gate; increment 3 is Android + the DESIGN-SYSTEM
+ratification (a root doc, read by no web suite), likewise pushed after :app:gate
+and covered by the final gate:clone, which clones a HEAD that includes that edit;
+the web-touching increment (2) and the final push after gate:clone. Android
+:app:gate green on the final tree
+(assembleDebug, testDebugUnitTest 713, checkTestFloor, ktlintCheck, detekt,
+verifyPaparazziDebug, checkReleaseCleartext, checkReleaseNoDebugInjection). The
+emulator was stopped before the final gate:clone (orphan discipline).
+
+FINAL gate:clone on HEAD 452a76c397c97c58935ea22d6915b09cd4c22d88: GATE:CLONE PASSED.
+  ran     install, typecheck, lint, test, build, size, db:deploy, test:db,
+          test:container:write, from a clean clone (no .env, no prior
+          node_modules, no generated file the run did not produce itself). The web
+          suite there includes tests/unit/entries/late-fixture.test.ts, which
+          reads fixtures/late-threshold-cases.json, so the R286 binding is
+          verified from a clean checkout.
+  claim   this commit builds and passes those suites from a clean checkout.
+  CI readiness: quiet -- the repository is private and CI_FULL is unset, so jobs
+          skip (the carried FW24 combination).
+  NOT RUN in a clone (R133), making no claim: test:e2e, test:visual, test:runtime,
+          lighthouse, parity:check, test:container.
+  tree    DIRTY at the check, 5 paths NOT in the run -- all expected and none
+          this session's product work: android/.an5c-ac2-shots/ (the AC2
+          walkthrough PNGs, described above) and relay/AN10.txt, relay/AN11.txt,
+          relay/AN12.txt, relay/RUN-NIGHT-AN10-AN12.txt (future-task prompts that
+          appeared in the tree, not AN5c's -- R270). gate:clone clones HEAD, so
+          none of these is in the verified run.
+
+THE REPORT-ONLY FINALIZATION COMMIT ("AN5c: report") follows 452a76c and changes
+only REPORT-AN5c.txt at the repo root. It is web-byte-identical to 452a76c, so the
+gate:clone above discharges R199 for it as well (the AN5b precedent). This is the
+last thing the session does.
+
+END OF REPORT-AN5c.txt
