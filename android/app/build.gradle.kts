@@ -101,16 +101,52 @@ detekt {
 // the exit code.
 tasks.withType<Test> {
     useJUnitPlatform()
-    // The shared conformance fixtures (fixtures/*.json at the repo root) are read at test time by
-    // the calc and dossier suites - the SAME files the TypeScript side reads (R206). They live
-    // OUTSIDE this module, so Gradle does not track them as task inputs by default: a fixture-only
-    // change leaves the test task UP-TO-DATE and a divergence goes unrun. AN5b found this by
-    // planting a one-digit change and watching the Kotlin task skip at 3s while the TypeScript
-    // suite went red. Declaring the directory as an input makes a change to ANY shared fixture
-    // re-run these suites, which is exactly what R281's "a one-digit plant fails BOTH builds"
-    // requires - and it closes the same latent gap for AN2's frozen geneva-cases.json.
+    // ANY FILE A TEST READS IS A DECLARED TASK INPUT (R283). A test reading a file Gradle does not
+    // track as an input passes UP-TO-DATE after that file changes: the assertion goes unrun and a
+    // divergence ships green. AN5b found this on the shared fixtures (the Kotlin task skipped at 3s
+    // while the TypeScript suite went red); AN5c's increment 0 audited EVERY test that reads a file
+    // outside its compiled classpath and declares each here. Proven the same way: planting a one-digit
+    // change to web/lib/entries/schema.ts left this task UP-TO-DATE before this block listed it, and
+    // re-ran it after (REPORT-AN5c.txt R283).
+    //
+    // The shared conformance fixtures (fixtures/*.json at the repo root) - the SAME files the
+    // TypeScript side reads (R206) - read by the calc and dossier suites and AN5c's late-threshold
+    // suite. This also closes the same latent gap for AN2's frozen geneva-cases.json.
     inputs.dir(rootProject.layout.projectDirectory.dir("../fixtures"))
         .withPropertyName("sharedFixtures")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    // The frozen server contract (web/lib/entries/schema.ts), read by WireContractParityTest and
+    // BatchLimitParityTest to derive the wire vocabulary and the batch/note limits from ONE home on
+    // the server side (R181/R187). This was the live R283 gap: a schema change re-runs these now.
+    inputs.file(rootProject.layout.projectDirectory.file("../web/lib/entries/schema.ts"))
+        .withPropertyName("serverEntrySchema")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    // The field-protocol doc (docs/field-protocol-AN6b.md), read by TierThresholdParityTest to keep
+    // the human-facing tier thresholds and the code's in agreement.
+    inputs.file(rootProject.layout.projectDirectory.file("../docs/field-protocol-AN6b.md"))
+        .withPropertyName("fieldProtocolDoc")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    // In-module DATA read as text with no compile dependency: the exported Room schema
+    // (RoomSchemaContractTest), the bundled border polygon (BorderPolygon/Classification/DetectionSession
+    // tests), and the backup rules XML (BackupRulesTest). A manual edit to any of these recompiles
+    // nothing, so without these it would leave this task UP-TO-DATE.
+    inputs.dir("$projectDir/schemas")
+        .withPropertyName("roomSchemas")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.dir("$projectDir/src/main/assets")
+        .withPropertyName("bundledAssets")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.dir("$projectDir/src/main/res/xml")
+        .withPropertyName("resXml")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    // The source-scanning fences (FencesTest, LogFenceTest, the copy guards, NoBareThresholdTest) and
+    // WarningsTest read src/main/kotlin as TEXT. A NEW violation is always a semantic change that
+    // recompiles and re-runs this task; but a comment-only change (WarningsTest asserts the absence of
+    // a "PROVISIONAL TRIGGER" comment, which it does NOT strip) recompiles nothing. Declaring the tree
+    // makes every text-scanning assertion re-run on any source edit, so R283 holds literally, not only
+    // for the cases that happen to recompile.
+    inputs.dir("$projectDir/src/main/kotlin")
+        .withPropertyName("scannedMainSource")
         .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
