@@ -796,7 +796,9 @@ Same shell as the calculator. Inputs: revenu fiscal de référence, taille du fo
 
 Passwordless throughout (D6, D23). **Built in this repository, not on Auth.js — see §3 and R209.** The Resend email provider stays; only the session library is gone, because D14 deleted the thing it manages.
 
-**Android sign-in:** the user enters an email in the app; the magic link opens an **Android App Link** back into the app; the callback issues a short-lived access token and a long-lived refresh token stored in `EncryptedSharedPreferences`. A daily-use tax app must not demand a login every session, so the refresh token is invalidated only by sign-out, account deletion, a server-side revoke, **or a detected replay (R210)**.
+**Android sign-in:** the user enters an email in the app; the magic link opens an **Android App Link** back into the app; the callback issues a short-lived access token and a long-lived refresh token stored in **Keystore-backed storage**. A daily-use tax app must not demand a login every session, so the refresh token is invalidated only by sign-out, account deletion, a server-side revoke, **or a detected replay (R210)**.
+
+- **Amended after AN4 (Q1); this line previously named `EncryptedSharedPreferences`.** That library (`androidx.security:security-crypto`) was deprecated in April 2025 over main-thread StrictMode violations and keyset corruption on some OEMs, so building on it was refused. The guarantee is **Keystore-backed at-rest encryption**, never one library: AN4 uses the Android Keystore directly — an AES-256-GCM key that never leaves the Keystore, the pair's ciphertext in a `SharedPreferences` excluded from cloud backup and device transfer. The R209 shape: a spec line naming a mechanism a later reality overtook, corrected in place.
 
 **Tokens are opaque rows, not signed claims.** The sentence above is why: a self-contained token stays valid until it expires whatever the server decides, so *"invalidated by account deletion"* would be a promise the architecture cannot keep. `DELETE` is a complete answer; a signature cannot be un-signed. The cost is one indexed lookup per request.
 
