@@ -21,8 +21,11 @@ package ch.monreleve.app.design
 // green one - the two never merge into a single semantic.
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -113,9 +116,20 @@ fun DayCell(
     modifier: Modifier = Modifier,
     isToday: Boolean = false,
     provenance: DayProvenance? = null,
+    // R292 / PARKAN-22: the afternoon kind of a SPLIT half-day. When set, the cell shows BOTH letters -
+    // a day that was Suisse in the morning and Domicile in the afternoon must not read as Suisse alone.
+    secondKind: DayKind? = null,
 ) {
     val description =
-        DayCellCopy.contentDescription(dayOfMonth, kind?.letter, quality.name, corrected, isToday, provenance?.name)
+        DayCellCopy.contentDescription(
+            dayOfMonth,
+            kind?.letter,
+            quality.name,
+            corrected,
+            isToday,
+            provenance?.name,
+            secondKind?.letter,
+        )
 
     BoxWithConstraints(
         modifier =
@@ -158,23 +172,7 @@ fun DayCell(
             )
 
             if (kind != null) {
-                Text(
-                    text = kind.letter,
-                    style = FrontierType.micro,
-                    modifier =
-                        Modifier
-                            .align(Alignment.BottomStart)
-                            .padding(start = Spacing.space4, bottom = Spacing.space4),
-                )
-                Box(
-                    modifier =
-                        Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(Spacing.space4)
-                            .size(Radius.checkbox)
-                            .clip(CircleShape)
-                            .background(kind.dotColour(DOT_COLOURS)),
-                )
+                KindMarkers(kind = kind, secondKind = secondKind)
             }
 
             // The corrected mark sits at BottomEnd, deliberately distinct
@@ -193,4 +191,37 @@ fun DayCell(
             }
         }
     }
+}
+
+// The kind letter(s) and the country dot. A SPLIT half-day (R292 / PARKAN-22) shows BOTH letters side by
+// side at the bottom-left; a whole day or a lone half shows the single letter. The two letters ARE the
+// split signal, and the a11y announcement names both halves (« matin ..., apres-midi ... »). BottomStart,
+// clear of the date (TopStart), the dot (TopEnd) and the corrected mark (BottomEnd). The dot is the
+// morning kind's; the letters carry both kinds.
+@Composable
+private fun BoxScope.KindMarkers(
+    kind: DayKind,
+    secondKind: DayKind?,
+) {
+    Row(
+        modifier =
+            Modifier
+                .align(Alignment.BottomStart)
+                .padding(start = Spacing.space4, bottom = Spacing.space4),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.space4),
+    ) {
+        Text(text = kind.letter, style = FrontierType.micro)
+        if (secondKind != null) {
+            Text(text = secondKind.letter, style = FrontierType.micro)
+        }
+    }
+    Box(
+        modifier =
+            Modifier
+                .align(Alignment.TopEnd)
+                .padding(Spacing.space4)
+                .size(Radius.checkbox)
+                .clip(CircleShape)
+                .background(kind.dotColour(DOT_COLOURS)),
+    )
 }

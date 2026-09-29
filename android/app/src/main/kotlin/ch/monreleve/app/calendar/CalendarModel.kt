@@ -42,6 +42,13 @@ data class CalendarDayUi(
     /** The ISO YYYY-MM-DD day in Europe/Paris (R28). */
     val isoDate: String,
     val kind: DayKind?,
+    /**
+     * The afternoon kind of a SPLIT half-day (R292 / PARKAN-22): set only when the day holds an AM and a
+     * PM portion of DIFFERENT kinds, in which case `kind` is the morning's and this is the afternoon's,
+     * and the cell shows BOTH. Null for a full day, a same-kind pair (one letter is already accurate) or
+     * a lone half - the cell then shows the single `kind`.
+     */
+    val secondKind: DayKind?,
     val quality: RecordQuality,
     val corrected: Boolean,
     val provenance: DayProvenance?,
@@ -134,17 +141,35 @@ private fun qualityOf(entry: EntryEntity): RecordQuality =
         else -> RecordQuality.ON_TIME
     }
 
+/** Everything one grid cell shows, combined from a day's rows. */
+private data class CellContent(
+    val kind: DayKind?,
+    val secondKind: DayKind?,
+    val quality: RecordQuality,
+    val corrected: Boolean,
+    val provenance: DayProvenance?,
+)
+
 /**
- * Combine a day's rows into the ONE letter, bar and mark a cell can show (PARKAN: the mixed half-day
- * case). One row renders directly. A half-day pair with different kinds shows the MORNING kind (a
- * deterministic choice; the edit sheet always shows both portions in full, so no truth is lost in the
- * cell). Quality takes the least-settled portion (PENDING over LATE over ON_TIME): a day that is part
- * late, part still pending is not yet a settled "late" for the whole day. Corrected if any portion is.
+ * Combine a day's rows into what one cell shows. One row renders directly.
+ *
+ * R292 / PARKAN-22 (REVERSES the AN10 collapse of the KIND): a half-day pair whose two kinds DIFFER
+ * renders as SPLIT - `kind` is the morning's, `secondKind` the afternoon's, and the cell shows BOTH,
+ * because a day that was Suisse in the morning and Domicile in the afternoon, shown as Suisse alone,
+ * misstates the day. A same-kind pair keeps ONE letter (it is already accurate, not "less"), and a lone
+ * half (only AM or only PM recorded) shows its one kind - outside the ruling, so unchanged.
+ *
+ * The QUALITY collapse is NOT reversed: one bar, the least-settled portion (PENDING over LATE over
+ * ON_TIME), because a day that is part late and part still pending is not yet a settled "late" for the
+ * whole day. Corrected if any portion is; provenance is the morning's.
  */
-private fun cellOf(rows: List<EntryEntity>): Triple<DayKind?, RecordQuality, Pair<Boolean, DayProvenance?>> {
-    if (rows.isEmpty()) return Triple(null, RecordQuality.NONE, false to null)
+private fun cellOf(rows: List<EntryEntity>): CellContent {
+    if (rows.isEmpty()) return CellContent(null, null, RecordQuality.NONE, false, null)
     val morningFirst = rows.sortedBy { it.portion }
     val kind = morningFirst.first().kind.toDayKind()
+    val am = rows.firstOrNull { it.portion == Portion.AM }
+    val pm = rows.firstOrNull { it.portion == Portion.PM }
+    val secondKind = if (am != null && pm != null && am.kind != pm.kind) pm.kind.toDayKind() else null
     val qualities = rows.map { qualityOf(it) }
     val quality =
         when {
@@ -154,7 +179,7 @@ private fun cellOf(rows: List<EntryEntity>): Triple<DayKind?, RecordQuality, Pai
         }
     val corrected = rows.any { it.provenance == Provenance.DETECTED_CORRECTED }
     val provenance = morningFirst.first().provenance.toDayProvenance()
-    return Triple(kind, quality, corrected to provenance)
+    return CellContent(kind, secondKind, quality, corrected, provenance)
 }
 
 /**
@@ -207,11 +232,10 @@ fun buildMonthView(
             val inPeriod = periodStart == null || !date.isBefore(periodStart)
             val isPast = iso < today
 
-            val (kind, recordedQuality, correctedProv) = cellOf(rows)
-            val (corrected, provenance) = correctedProv
+            val cell = cellOf(rows)
             val quality =
                 when {
-                    rows.isNotEmpty() -> recordedQuality
+                    rows.isNotEmpty() -> cell.quality
                     // No entry: a past working day inside the period is missing; today is not (it is
                     // still recordable), and weekends, future and out-of-period days carry no bar.
                     inPeriod && isPast && !isWeekend -> RecordQuality.MISSING
@@ -221,10 +245,11 @@ fun buildMonthView(
             CalendarDayUi(
                 dayOfMonth = d,
                 isoDate = iso,
-                kind = kind,
+                kind = cell.kind,
+                secondKind = cell.secondKind,
                 quality = quality,
-                corrected = corrected,
-                provenance = provenance,
+                corrected = cell.corrected,
+                provenance = cell.provenance,
                 isToday = iso == today,
                 recordable = inPeriod && iso <= today,
             )

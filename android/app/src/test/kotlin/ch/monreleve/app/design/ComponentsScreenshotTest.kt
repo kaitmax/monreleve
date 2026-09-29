@@ -149,6 +149,22 @@ class ComponentsScreenshotTest {
     }
 
     @Test
+    fun dayCellSplit() {
+        // R292 / PARKAN-22: a split half-day - Suisse in the morning, Domicile in the afternoon - shows
+        // BOTH letters, because a cell rendered as Suisse alone misstates the day. One quality bar still
+        // (the least-settled portion); only the kind display splits.
+        snapshot {
+            DayCell(
+                dayOfMonth = 5,
+                kind = DayKind.SUISSE,
+                quality = RecordQuality.ON_TIME,
+                corrected = false,
+                secondKind = DayKind.DOMICILE,
+            )
+        }
+    }
+
+    @Test
     fun dayCellPending() {
         // AN10: recorded but not yet synced - a lettered cell with no quality bar (the server has not
         // fixed on-time-versus-late, R216), distinct from both an on-time and an unrecorded cell.

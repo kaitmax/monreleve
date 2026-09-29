@@ -42,11 +42,12 @@ private fun entry(
     kind: EntryKind,
     syncState: SyncState = SyncState.SYNCED,
     firstRecordedAt: String = "${dayDate}T09:00:00Z",
+    portion: Portion = Portion.FULL,
 ): EntryEntity =
     EntryEntity(
-        clientMutationId = "$dayDate-FULL",
+        clientMutationId = "$dayDate-${portion.name}",
         dayDate = dayDate,
-        portion = Portion.FULL,
+        portion = portion,
         kind = kind,
         absenceReason = if (kind == EntryKind.ABSENT) AbsenceReason.FERIE else null,
         note = null,
@@ -78,6 +79,10 @@ class CalendrierScreenScreenshotTest {
                     // recorded eight days after the day: late by the server's own timestamp (R216).
                     entry("2026-06-03", EntryKind.HOME, firstRecordedAt = "2026-06-11T09:00:00Z"),
                     entry("2026-06-04", EntryKind.MISSION_FR, syncState = SyncState.PENDING),
+                    // R292 / PARKAN-22: a split half-day - Suisse in the morning, Domicile in the
+                    // afternoon - which the cell must show as split, never as Suisse alone.
+                    entry("2026-06-05", EntryKind.CH, portion = Portion.AM),
+                    entry("2026-06-05", EntryKind.HOME, portion = Portion.PM),
                     entry("2026-06-08", EntryKind.ABSENT),
                 ),
             settings = settings(),

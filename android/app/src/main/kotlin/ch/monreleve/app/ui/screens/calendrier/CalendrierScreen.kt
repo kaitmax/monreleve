@@ -223,6 +223,7 @@ private fun RowScope.GridCell(
                 corrected = day.corrected,
                 isToday = day.isToday,
                 provenance = day.provenance,
+                secondKind = day.secondKind,
             )
         }
     }

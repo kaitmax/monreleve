@@ -137,15 +137,31 @@ class CalendarModelTest : FunSpec({
         view.summary.nonRenseigne shouldBe view.days.count { it.quality == RecordQuality.MISSING }.toDouble()
     }
 
-    test("a mixed half-day shows the morning kind and the least-settled quality (PARKAN)") {
+    test("a split half-day (different kinds) shows BOTH, morning and afternoon (R292 / PARKAN-22)") {
+        // AM Domicile, PM Suisse: the cell must show the split, NOT the morning kind alone - PARKAN-22
+        // reverses the AN10 collapse, because Suisse-in-the-morning shown as Suisse-all-day misstates it.
         val entries =
             listOf(
                 synced("2026-06-05", EntryKind.HOME, "2026-06-05T08:00:00Z").copy(portion = Portion.AM),
                 entry("2026-06-05", EntryKind.CH, portion = Portion.PM),
             )
-        val view = june(entries, "2026-06-15")
-        dayOf(view, 5).kind shouldBe DayKind.DOMICILE
-        dayOf(view, 5).quality shouldBe RecordQuality.PENDING
+        val day = dayOf(june(entries, "2026-06-15"), 5)
+        day.kind shouldBe DayKind.DOMICILE // the morning half
+        day.secondKind shouldBe DayKind.SUISSE // the afternoon half - the split the cell now shows
+        // The QUALITY collapse is NOT reversed: one bar, the least-settled portion (PENDING here).
+        day.quality shouldBe RecordQuality.PENDING
+    }
+
+    test("a same-kind half-day pair shows one letter - already accurate, not a split (R292)") {
+        // AM Suisse, PM Suisse: one letter states the whole day correctly, so there is no second letter.
+        val entries =
+            listOf(
+                synced("2026-06-09", EntryKind.CH, "2026-06-09T08:00:00Z").copy(portion = Portion.AM),
+                synced("2026-06-09", EntryKind.CH, "2026-06-09T08:00:00Z").copy(portion = Portion.PM),
+            )
+        val day = dayOf(june(entries, "2026-06-15"), 9)
+        day.kind shouldBe DayKind.SUISSE
+        day.secondKind shouldBe null
     }
 
     test("a mid-year start narrows the period: days before it are out of period, not missing") {

@@ -68,12 +68,15 @@ private fun CalendarListRow(
             style = FrontierType.bodyM,
             color = if (day.isToday) LightColors.brand else LightColors.textPrimary,
         )
+        // R292: a split half-day names BOTH kinds here too, so the 200 % list reader gets the whole
+        // record the grid reader gets - not just the morning kind.
         val kindWord = day.kind?.let { LegendCopy.forKind(it.letter) }
+        val secondKindWord = day.secondKind?.let { LegendCopy.forKind(it.letter) }
         val qualityWord = CalendarCopy.qualityWord(day.quality.name)
         // Manual product: the only provenance is « Saisie manuelle » (one home, R206); the detected forms
         // are AN9+, so they show no word here rather than a hint at anything absent (R282).
         val provenanceWord = if (day.provenance == DayProvenance.MANUAL) AujourdhuiCopy.MODE_MANUAL else null
-        val words = listOfNotNull(kindWord, qualityWord, provenanceWord)
+        val words = listOfNotNull(kindWord, secondKindWord, qualityWord, provenanceWord)
         if (words.isNotEmpty()) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.space8)) {
                 words.forEach { word ->

@@ -37,6 +37,8 @@ object DayCellCopy {
 
     // Long by design: the announcement names each facet the cell renders (day, kind, quality,
     // correction, today, provenance), mirroring DayCell's own deliberately-separate axes (SPEC 966).
+    // R292: a SPLIT half-day names BOTH halves - « matin Suisse, apres-midi Domicile » - so TalkBack
+    // reads the whole record, never just the morning (the cell must never say less than the record).
     @Suppress("LongParameterList")
     fun contentDescription(
         dayOfMonth: Int,
@@ -45,8 +47,16 @@ object DayCellCopy {
         corrected: Boolean,
         isToday: Boolean = false,
         provenanceName: String? = null,
+        secondKindLetter: String? = null,
     ): String {
-        val kind = kindLetter?.let { KIND_NAMES[it] } ?: "Non renseigné"
+        val morningName = kindLetter?.let { KIND_NAMES[it] }
+        val afternoonName = secondKindLetter?.let { KIND_NAMES[it] }
+        val kind =
+            when {
+                morningName != null && afternoonName != null -> "matin $morningName, après-midi $afternoonName"
+                morningName != null -> morningName
+                else -> "Non renseigné"
+            }
         val quality = QUALITY_NAMES[qualityName] ?: qualityName
         val today = if (isToday) "Aujourd’hui, " else ""
         val provenance = provenanceName?.let { PROVENANCE_NAMES[it] }?.let { ", $it" } ?: ""

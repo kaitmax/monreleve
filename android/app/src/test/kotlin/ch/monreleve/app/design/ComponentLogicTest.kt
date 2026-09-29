@@ -63,6 +63,24 @@ class ComponentLogicTest : FunSpec({
             DayCellCopy.contentDescription(1, "S", "ON_TIME", corrected = false).contains("corrigé") shouldBe false
         }
 
+        // R292 / PARKAN-22: a split half-day (Suisse morning, Domicile afternoon) must read as split -
+        // TalkBack names BOTH halves. A cell announced as Suisse alone would say less than the record.
+        test("a split half-day names both halves - matin and apres-midi (R292)") {
+            val description =
+                DayCellCopy.contentDescription(
+                    dayOfMonth = 5,
+                    kindLetter = "S",
+                    qualityName = "ON_TIME",
+                    corrected = false,
+                    secondKindLetter = "D",
+                )
+
+            description.contains("matin Suisse") shouldBe true
+            description.contains("après-midi Domicile") shouldBe true
+            // The morning kind must not stand alone as the day's only kind (the AN10 misstatement).
+            description.contains("Jour 5, Suisse,") shouldBe false
+        }
+
         // SPEC 966: "colour and shape convey nothing on their own." The
         // quality bar IS colour-only on screen (one shape, four colours) -
         // this is what keeps that true anyway: every RecordQuality has its
