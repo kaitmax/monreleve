@@ -1,7 +1,7 @@
 # Home page and public shell — design (FW33, FW34)
 
 - **Date:** 29.09.2026
-- **Status:** design approved section by section (H1–H6). It was then verified against the repository by twelve independent reviewers: six finders and six adversarial checkers, 96 findings. This revision folds in every confirmed finding. **Four decisions (§2.2) are open and need the user.** This document uses the recommended default for each, and awaits the user's review before an implementation plan is written.
+- **Status:** design approved section by section (H1–H6). It was then verified against the repository by twelve independent reviewers: six finders and six adversarial checkers, 96 findings. This revision folds in every confirmed finding. The four decisions that verification raised (§2.2) were then put to the user and ruled (H7–H10), each as recommended. It awaits the user's review before an implementation plan is written.
 - **Inputs:** the user's Carbon-style mockup and request ("improve the home page the navigation the spacing"), `home.png` (repo root, 06.09.2026), `prompts/design-frontier/FD11-accueil-desktop.md`, the live site, `DESIGN-SYSTEM.md`, SPEC.
 - **Scope:** `web/` only. Nothing in `android/`, the calculation engine, the database schema or the deployment changes.
 
@@ -27,29 +27,33 @@ It must stay true on the day it ships. Every sentence that depends on a product 
 | H4 | Section 1, the shell | "yes its look right / go" |
 | H5 | Section 2, the home body, **and** SPEC §20's ask-first item *"Adding a component to lib/ui"* for `Button`, `Card` and `IconTile` | "yes" |
 | H6 | Section 3, tests and execution | "yes" |
+| H7 | Where FD11 conflicts with DESIGN-SYSTEM.md, which wins? (nav colour; Display type for the 01/02/03 numerals) | "DESIGN-SYSTEM wins (Recommended)" |
+| H8 | Buttons: 15/600 (no such type token) or 15/500? | "Body-M 15/500 (Recommended)" |
+| H9 | May I add `--size-icon-tile: 44px`? (SPEC §20 ask-first token) | "Add --size-icon-tile (Recommended)" |
+| H10 | Footer Guides column: all seven, FD11's three, or today's one? | "All seven guides (Recommended)" |
 
-- **H5 is the SPEC §20 ruling** for the three new `lib/ui/react` components. It goes verbatim into REPORT-FW34.
+- **H5 is the SPEC §20 ruling** for the three new `lib/ui/react` components, and **H9 the SPEC §20 ruling** for the one new token. Both go verbatim into REPORT-FW34; H7 and H10 go verbatim into REPORT-FW33.
 - **H1 keeps D35.** The mockup's IBM Carbon visuals were declined.
 - **H1 reverses FW20's "no hero theatre" (`tasks/todo.md:405`, the phrase's only site in todo.md).** The placeholder's two equal doors were that decision's answer; FD11's hero with one repeated primary action replaces them. The reversal is the user's and is recorded here, so that a later reader does not find the old line and "restore" it.
 - **H2 and the *Pourquoi* band.** The option text said card 3 *and* the *Pourquoi* band would describe the app as coming. Section 2 instead kept *Pourquoi* as general reasoning about records, which claims nothing about the product, and asked the user to say if they wanted otherwise. The user approved Section 2 as presented.
 
-### 2.2 Open: the user's to decide
+### 2.2 Raised by verification, then ruled (H7–H10)
 
-These surfaced in verification. Each is either a conflict between FD11 and a normative document, or an ask-first item. They were not resolved in code.
+These surfaced in verification. Each is either a conflict between FD11 and a normative document, or an ask-first item. None was resolved in code; each was put to the user, and the last column is the ruling.
 
-| # | Decision | Options | Default used here |
+| # | Decision | Options | Ruling |
 |---|---|---|---|
-| **O1** | Where FD11 conflicts with `DESIGN-SYSTEM.md`, which wins? Two instances: (a) nav colour, DESIGN-SYSTEM §4 `#111827` versus FD11 `#667085`; (b) DESIGN-SYSTEM:17 limits Display type to "large statistics only", while FD11 sets the ornamental 01/02/03 in Display. | DESIGN-SYSTEM wins; or FD11 wins and DESIGN-SYSTEM.md is amended under a recorded ruling | **DESIGN-SYSTEM wins**: it is normative (D35, SPEC §6), and FW9 already settled the nav colour its way. The nav stays `text-primary`; the numerals use the H2 triple. H4 approved `text-secondary` before this conflict was shown, so it is re-asked, not assumed. |
-| **O2** | Button label type. DESIGN-SYSTEM:53 and FD11 say 15/600, but no 15/600 type triple exists. Composing `--type-body-m-size` with `--weight-semibold` is the cross-family defect R70 removed, and the R70 scan cannot see it. | Body-M 15/500, which every shipped button uses; or a new `--type-button-*` triple 15/22/600 (a new token, ask-first) | **Body-M 15/500**, recorded as a deviation from DESIGN-SYSTEM:53 |
-| **O3** | IconTile's 44 × 44 size. GuideCta already borrows `--size-icon-button` for the same square, and its comment says a second site "needs a token rather than a third alias". IconTile is that second site. | Add `--size-icon-tile: 44px` (ask-first); or alias `--size-icon-button` a second time under a ruling that overrides GuideCta's note | **Add `--size-icon-tile`**, pending the ruling |
-| **O4** | The footer's Guides column. SPEC §9.2 asks for the footer to be "the full sitemap" (seven live articles); FD11 §7 curates three (*Règle des 40 %*, *Seuil social*, *Droit d'option*). Today the column has one. | All seven (SPEC §9.2); FD11's three; or keep today's one | **All seven**, because FW9's precedence rule is "the spec wins on conflict" (`lib/fr/shell.ts:103-110`) |
+| **H7** | Where FD11 conflicts with `DESIGN-SYSTEM.md`, which wins? Two instances: (a) nav colour, DESIGN-SYSTEM §4 `#111827` versus FD11 `#667085`; (b) DESIGN-SYSTEM:17 limits Display type to "large statistics only", while FD11 sets the ornamental 01/02/03 in Display. | DESIGN-SYSTEM wins; or FD11 wins and DESIGN-SYSTEM.md is amended under a recorded ruling | **H7: DESIGN-SYSTEM wins.** It is normative (D35, SPEC §6), and FW9 already settled the nav colour its way. The nav stays `text-primary`; the numerals use the H2 triple. H7 supersedes H4 on the nav colour: H4 approved `text-secondary` before this conflict was shown. |
+| **H8** | Button label type. DESIGN-SYSTEM:53 and FD11 say 15/600, but no 15/600 type triple exists. Composing `--type-body-m-size` with `--weight-semibold` is the cross-family defect R70 removed, and the R70 scan cannot see it. | Body-M 15/500, which every shipped button uses; or a new `--type-button-*` triple 15/22/600 (a new token, ask-first) | **H8: Body-M 15/500**, recorded as a deviation from DESIGN-SYSTEM:53 |
+| **H9** | IconTile's 44 × 44 size. GuideCta already borrows `--size-icon-button` for the same square, and its comment says a second site "needs a token rather than a third alias". IconTile is that second site. | Add `--size-icon-tile: 44px` (ask-first); or alias `--size-icon-button` a second time under a ruling that overrides GuideCta's note | **H9: add `--size-icon-tile`** |
+| **H10** | The footer's Guides column. SPEC §9.2 asks for the footer to be "the full sitemap" (seven live articles); FD11 §7 curates three (*Règle des 40 %*, *Seuil social*, *Droit d'option*). Today the column has one. | All seven (SPEC §9.2); FD11's three; or keep today's one | **H10: all seven**, as FW9's precedence rule reads: "the spec wins on conflict" (`lib/fr/shell.ts:103-110`) |
 
 ### 2.3 What changed after each section was approved
 
 The user approved Sections 1–3 as presented. Verification then showed these parts of them to be wrong or unbuildable. Each correction is made below and summarised here, so the approval is not read as covering text the user never saw.
 
 - **Shell (Section 1):**
-  - The nav colour and the 69-baseline reason's *"caret"* both change: see O1 and §4.1.
+  - The nav colour and the 69-baseline reason's *"caret"* both change: see H7 and §4.1.
   - The collapsed *Calculateurs* link takes its child's label.
   - The CTA keeps its own style: its migration to `Button` is deferred (§5.2).
   - The footer changes more than the two links first described (§4.2).
@@ -70,7 +74,7 @@ The user approved Sections 1–3 as presented. Verification then showed these pa
 
 ## 3. Non-goals
 
-- No change to `DESIGN-SYSTEM.md` and no new token, **except as O1–O3 rule**. Under the defaults, the only new token is `--size-icon-tile` (O3).
+- One new token only: `--size-icon-tile` (H9), added in FW34 to `tokens.scss` and to `DESIGN-SYSTEM.md`'s token block under that ruling. Nothing else in `DESIGN-SYSTEM.md` changes.
 - No client JavaScript in the home body. It stays a Server Component. FW33's chevron enters the shared client shell; its cost is measured on every route (§4.3).
 - No change to the calculator, the guides' bodies, `/releve-annuel`, or any route's URL. `/application` changes only in one release-state branch that does not render today (§5.6).
 - The header CTA *Suivre mes jours* keeps its own `.cta` rule and its `appExists` gating. It does **not** move onto `Button` (§5.2).
@@ -88,7 +92,7 @@ It changes the header and footer, which render on every public page.
   - Below `bp.$breakpoint-md`, the nav is `display: none` and `.cta` keeps `margin-left: auto`, which is FD2's "right, always visible outside the menu".
   - From `bp.$breakpoint-md`, `.nav` takes `margin-left: auto` and `.cta` resets to `margin-left: 0`, relying on `.bar`'s gap. The nav then sits centre-right, with the 12 px wordmark-to-nav gap gone (`PublicShell.module.scss:184`), and the CTA follows it when shown.
 - **Spacing:** nav items are 32 px apart (`--space-8`; today `--space-5`, 20 px, at `PublicShell.module.scss:94`), set in Body-M 15/500.
-- **Colour:** per O1. The default keeps `--colour-text-primary` (`PublicShell.module.scss:108`), as DESIGN-SYSTEM §4 fixes it.
+- **Colour:** unchanged, `--colour-text-primary` (`PublicShell.module.scss:108`), as DESIGN-SYSTEM §4 fixes it (H7).
 - **A disclosure with exactly one live child renders as a plain link to that child, labelled with the child's label.** Today that is *Calculateur de télétravail* → `/calculateur-teletravail-frontalier`, because `/calculateur-lamal-cmu` is `planned` (`routes.ts:117-122`).
   - A plural *Calculateurs* over one destination would misname it. The mobile panel already flattens to the child's label, so desktop and mobile then agree.
   - The rule lives in a **new pure function applied after `visibleNav`** in `lib/content/routes.ts`. `visibleNav` itself is unchanged, so `regulatory-gate.test.ts:195-205` stays green.
@@ -111,7 +115,7 @@ Column contents, against FD11 §7:
 | Outils: *Calculateur LAMal/CMU* | Hidden while `planned` (unchanged) | R85 |
 | Outils: *Alertes e-mail* → `/alertes` | **Added** | Live (`routes.ts:213`) |
 | Guides: *Tous les guides* | Kept | — |
-| Guides: *Règle des 40 %*, *Seuil social 49,9 %*, *Droit d'option* | **Per O4**. The default is all seven live articles, each labelled with its own `breadcrumbLabel` (*Le plafond fiscal*, *Le seuil social*, …) | SPEC §9.2 full sitemap. The labels are names (R153), and each is the article's own name for itself (R181) |
+| Guides: *Règle des 40 %*, *Seuil social 49,9 %*, *Droit d'option* | **All seven live articles (H10)**, each labelled with its own `breadcrumbLabel` (*Le plafond fiscal*, *Le seuil social*, …) | SPEC §9.2 full sitemap. The labels are names (R153), and each is the article's own name for itself (R181) |
 | Le produit: *L'application*, *Le relevé annuel*, *Tarifs* | Kept, as *L’application*, *Le relevé*, *Tarifs* | *Le relevé* is the nav's label for the same page |
 | Le produit: *À propos* → `/a-propos` | **Added** | Live (`routes.ts:212`) |
 | Le produit: *Sources réglementaires* | **Moved** from Légal to Le produit, keeping the label *Sources* | FD11's grouping; *Sources* is not a legal page |
@@ -129,7 +133,7 @@ Column contents, against FD11 §7:
 
 | Source says | This design | Why |
 |---|---|---|
-| FD11 §1: nav `#667085` | `text-primary` (default under O1) | DESIGN-SYSTEM §4 is normative. Under O1 = FD11, `text-secondary` applies and DESIGN-SYSTEM §4 is amended |
+| FD11 §1: nav `#667085` | `text-primary` | DESIGN-SYSTEM §4 is normative (H7) |
 | FD11 §1 / SPEC §9.2: *Calculateurs ▾* menu | A plain link while one child is live | A one-item menu is a wasted interaction (H4). SPEC §9.2 is annotated |
 | FD2:102: footer in four stacked sections | Two columns below the breakpoint | The D40 rows cannot shrink (H4) |
 | FD11 §7 footer entries | As in §4.2's table | R85, R147, R153, R181, SPEC §9.2 |
@@ -153,7 +157,7 @@ All values are existing tokens, named below. FD11's internal spacings apply by d
 - **Outline:** h1 → h2 (cards, visually hidden) → h3 ×3 → h2 (*Pourquoi*) → h3 ×3 → h2 (trust, visually hidden) → h3 ×3, then the footer's existing h2 column heads. No level is skipped; the existing assembled-page heading-order test enforces it.
 - **Type:** name the triples, never a shorthand:
   - H1: `--type-hero-size/-line/-weight` (40/48/700, R88)
-  - numerals: `--type-h2-*` with tabular figures under the O1 default, or `--type-display-*` (48/56/600) if O1 = FD11
+  - numerals: `--type-h2-*` with tabular figures, not Display, which DESIGN-SYSTEM:17 keeps for statistics (H7)
   - trust-band eyebrows: `--type-eyebrow-*` with `--tracking-eyebrow` and uppercase (R89)
   - the review date: a `p` in `--type-h2-*` with tabular figures, **not** an `h2` element
   - lead and closing line: `--type-body-l-*`
@@ -176,7 +180,7 @@ New directories under `web/lib/ui/react/`, each with `<Name>.tsx` and `<Name>.mo
 
   | Variant | Height | Fill | Label | Min-width |
   |---|---|---|---|---|
-  | `primary` | 48 (`--size-button-height`) | brand, white label | Body-M 15/500 (O2 default) | `--size-button-min-width` |
+  | `primary` | 48 (`--size-button-height`) | brand, white label | Body-M 15/500 (H8) | `--size-button-min-width` |
   | `primaryLarge` | 56 (`--size-button-large-height`) | as `primary`; radius `--radius-button-lg` (14) | as `primary` | `--size-button-min-width` |
   | `secondary` | 48 | white, 1 px `--colour-border-default` | as `primary` | `--size-button-min-width` |
   | `text` | `min-height: var(--size-touch-target-web)` (44), inline-flex, centred | none | brand, Body-M | none |
@@ -184,8 +188,8 @@ New directories under `web/lib/ui/react/`, each with `<Name>.tsx` and `<Name>.mo
   - The `text` variant takes its trailing `arrow-right` (16 px, stroke 1.75) **as a child** passed by the page, so `Button` imports no icon.
   - `Button` never pairs `--type-body-m-size` with `--weight-semibold` or a raw `600` (R70). The R70 scan cannot see that composition, so the rule is stated here.
 - **`Card`**: white, 1 px `--colour-border-default`, `--radius-lg`, no shadow. Padding is `--space-6` (24) by default and `--space-8` (32) when asked. It never uses `--size-card-padding` (16) or `--size-card-status-padding`, which mean other things (R62, R68). The 24 default follows FD11 rather than DESIGN-SYSTEM:55's 16, because the only consumer is FD11's page (§5.5).
-- **`IconTile`**: a `--size-icon-tile` square (44, per O3), `--colour-info-soft`, `--radius-md`, holding a Lucide glyph at `--size-icon-lg` (24) in `--colour-brand`, stroke 1.75, `aria-hidden`.
-  - If O3 is ruled, GuideCta's `.icon` square either moves onto `IconTile` in FW34 or the report records why the two stay separate.
+- **`IconTile`**: a `--size-icon-tile` square (44, H9), `--colour-info-soft`, `--radius-md`, holding a Lucide glyph at `--size-icon-lg` (24) in `--colour-brand`, stroke 1.75, `aria-hidden`.
+  - GuideCta's `.icon` square, the first site, either moves onto `IconTile` in FW34 or the report records why the two stay separate. Either way it stops aliasing `--size-icon-button`, which is what GuideCta's own note asks for.
 
 **The shell CTA does not move onto `Button`.** Four findings showed why:
 - `.cta` is FD2's compact 40 px button below the breakpoint, and no `Button` variant is.
@@ -325,10 +329,10 @@ Each column, in order:
 |---|---|---|
 | FD11: hero and *Pourquoi* top padding 96 | `--space-20`, 80 | FD11's own scale stops at 80 |
 | FD11: hero column 640 px | `--layout-article`, 680 px | No 640 token; R64 closes the widths at three; 680 is the documented ~70-character measure |
-| FD11 / DESIGN-SYSTEM:53: button label 15/600 | Body-M 15/500 (O2 default) | No 15/600 triple exists; composing one is R70's defect |
+| FD11 / DESIGN-SYSTEM:53: button label 15/600 | Body-M 15/500 (H8) | No 15/600 triple exists; composing one is R70's defect |
 | FD11 / DESIGN-SYSTEM:53: text button 40 h | `min-height` 44 (`--size-touch-target-web`) | D40 and DESIGN-SYSTEM:59: every text button here is a tapped link |
 | DESIGN-SYSTEM:55: card padding 16 | `Card` defaults to 24, 32 for trust and closing | FD11:20; the component's only consumer is FD11's page |
-| FD11: numerals `#D0D5DD` in Display | `text-secondary`, in the H2 triple (O1 default) | 1.39:1 fails R76; DESIGN-SYSTEM:17 limits Display to statistics |
+| FD11: numerals `#D0D5DD` in Display | `text-secondary`, in the H2 triple (H7) | 1.39:1 fails R76; DESIGN-SYSTEM:17 limits Display to statistics |
 | FD11: hero secondary *Découvrir l’application* | *Lire les guides* → `/guides` until `appExists` | H2, R172: no offer of an app that does not exist |
 | FD11 lead: *doit rester sous*; *Depuis 2026* on both thresholds; no A1 condition | Three scoped sentences (§5.3) | Obligation versus ceiling; date scope; the `socialCeiling` row's own A1 condition; P2 |
 | FD11: typed figures | Interpolated | R147, R153 |
@@ -367,10 +371,10 @@ Every new guard is written first. Each report shows its RED run and the reason. 
 1. **Measured on the desktop shell** (Playwright):
    - The nav's right edge meets the bar's content edge, and its left edge is well clear of the wordmark. RED: today it sits 12 px after it.
    - Nav items are 32 px apart. RED: 20.
-   - Colour per O1 (a regression pin under the default).
+   - The nav colour stays `text-primary` (H7). **Regression pin.**
    - The lone-child entry is a link named *Calculateur de télétravail*. RED: a button today.
    - The footer has four equal columns on desktop and two below the breakpoint. RED.
-   - *Alertes e-mail*, *À propos* and the O4 guide links are present in their columns and answer 200. RED: absent.
+   - *Alertes e-mail*, *À propos* and the seven guide links (H10) are present in their columns and answer 200. RED: absent.
    - *Sources* sits under *Le produit*. RED.
    - The bar (`header > div`) is 64 px. **Regression pin**: already true. The `<header>` box is 65 px because of its 1 px rule.
 2. **The collapse function, both directions** (unit), using synthetic entries as `regulatory-gate.test.ts:209-214` does, so no signature change is needed:
@@ -481,7 +485,7 @@ The sets:
 
 ## 9. Execution
 
-- **Two sessions, one task each.** FW33 first, then FW34, each ending with `REPORT-FW33.txt` / `REPORT-FW34.txt`. The IDs follow the highest relay (`relay/FW32.txt`); the user may renumber. **FW33 cannot start until O1 and O4 are ruled, and FW34 until O1–O3.**
+- **Two sessions, one task each.** FW33 first, then FW34, each ending with `REPORT-FW33.txt` / `REPORT-FW34.txt`. The IDs follow the highest relay (`relay/FW32.txt`); the user may renumber. H7–H10 settle every decision verification raised; nothing blocks FW33.
 - **The gate.** `pnpm gate:changed` runs per commit, and its printed selection goes in the commit body.
   - A change under `app/**` or `lib/ui/**` selects `typecheck`, `lint`, `test`, `build`, `test:e2e`, `test:visual` and `test:late`.
   - `test:db` is selected when a changed file is in its import closure, computed from the working tree at gate time. Today that includes `lib/fr/index.ts`, `lib/fr/shell.ts`, `lib/content/routes.ts` and `lib/ui/react/index.ts`, plus anything they import. Other `lib/fr` files select only the browser suites.
