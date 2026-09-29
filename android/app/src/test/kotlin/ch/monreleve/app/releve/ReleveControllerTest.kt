@@ -1,10 +1,12 @@
 package ch.monreleve.app.releve
 
+import ch.monreleve.app.auth.BytesOutcome
 import ch.monreleve.app.data.local.EntryEntity
 import ch.monreleve.app.data.local.EntryKind
 import ch.monreleve.app.data.local.Portion
 import ch.monreleve.app.data.local.SyncState
 import ch.monreleve.app.data.remote.DossierResult
+import ch.monreleve.app.data.remote.ExportBytes
 import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.RecordCommand
 import ch.monreleve.app.dossier.DossierDocument
@@ -12,10 +14,12 @@ import ch.monreleve.app.dossier.DossierPeriod
 import ch.monreleve.app.dossier.DossierTiles
 import ch.monreleve.app.dossier.DossierZone
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -93,6 +97,7 @@ class ReleveControllerTest : FunSpec({
             val controller =
                 ReleveController(
                     fetch = { DossierResult.Loaded(doc) },
+                    exportBytes = { BytesOutcome.NetworkError },
                     repository = repoOf(),
                     taxYear = TAX_YEAR,
                     scope = this,
@@ -125,6 +130,7 @@ class ReleveControllerTest : FunSpec({
             val controller =
                 ReleveController(
                     fetch = { DossierResult.Loaded(document()) },
+                    exportBytes = { BytesOutcome.NetworkError },
                     repository = repo,
                     taxYear = TAX_YEAR,
                     scope = this,
@@ -142,6 +148,7 @@ class ReleveControllerTest : FunSpec({
             val controller =
                 ReleveController(
                     fetch = { DossierResult.Cached(doc) },
+                    exportBytes = { BytesOutcome.NetworkError },
                     repository = repoOf(),
                     taxYear = TAX_YEAR,
                     scope = this,
@@ -159,6 +166,7 @@ class ReleveControllerTest : FunSpec({
             val controller =
                 ReleveController(
                     fetch = { DossierResult.NetworkError },
+                    exportBytes = { BytesOutcome.NetworkError },
                     repository = repoOf(),
                     taxYear = TAX_YEAR,
                     scope = this,
@@ -173,6 +181,7 @@ class ReleveControllerTest : FunSpec({
             val controller =
                 ReleveController(
                     fetch = { DossierResult.Unreadable },
+                    exportBytes = { BytesOutcome.NetworkError },
                     repository = repoOf(),
                     taxYear = TAX_YEAR,
                     scope = this,
@@ -187,6 +196,7 @@ class ReleveControllerTest : FunSpec({
             val expired =
                 ReleveController(
                     fetch = { DossierResult.SessionExpired },
+                    exportBytes = { BytesOutcome.NetworkError },
                     repository = repoOf(),
                     taxYear = TAX_YEAR,
                     scope = this,
@@ -197,12 +207,90 @@ class ReleveControllerTest : FunSpec({
             val ended =
                 ReleveController(
                     fetch = { DossierResult.SessionEnded },
+                    exportBytes = { BytesOutcome.NetworkError },
                     repository = repoOf(),
                     taxYear = TAX_YEAR,
                     scope = this,
                 )
             advanceUntilIdle()
             ended.state.value shouldBe ReleveState.Failed(ReleveError.SESSION_ENDED)
+        }
+    }
+
+    test("AC2/R237: a 200 export emits Ready with the server's filename and the right mime, at the PDF path") {
+        runTest {
+            var requestedPath: String? = null
+            val bytes = byteArrayOf(0x25, 0x50, 0x44, 0x46) // %PDF
+            val controller =
+                ReleveController(
+                    fetch = { DossierResult.Loaded(document()) },
+                    exportBytes = { path ->
+                        requestedPath = path
+                        BytesOutcome.Ok(200, ExportBytes(bytes, "releve-2026-camille-rey.pdf"))
+                    },
+                    repository = repoOf(),
+                    taxYear = TAX_YEAR,
+                    scope = this,
+                )
+
+            controller.export(ExportKind.PDF)
+            val event = controller.exportEvents.first().shouldBeInstanceOf<ExportEvent.Ready>()
+
+            requestedPath shouldBe "/api/v1/export/pdf?year=2026"
+            event.filename shouldBe "releve-2026-camille-rey.pdf"
+            event.mimeType shouldBe "application/pdf"
+            event.bytes.contentEquals(bytes).shouldBeTrue()
+        }
+    }
+
+    test("AC2: a CSV export with no server filename falls back to a year-named file (R237 fallback)") {
+        runTest {
+            val controller =
+                ReleveController(
+                    fetch = { DossierResult.Loaded(document()) },
+                    exportBytes = { BytesOutcome.Ok(200, ExportBytes(byteArrayOf(1, 2, 3), filename = null)) },
+                    repository = repoOf(),
+                    taxYear = TAX_YEAR,
+                    scope = this,
+                )
+
+            controller.export(ExportKind.CSV)
+            val event = controller.exportEvents.first().shouldBeInstanceOf<ExportEvent.Ready>()
+
+            event.filename shouldBe "releve-2026.csv"
+            event.mimeType shouldBe "text/csv"
+        }
+    }
+
+    test("SPEC 13.2: a network failure on export is RequiresConnectivity, said plainly") {
+        runTest {
+            val controller =
+                ReleveController(
+                    fetch = { DossierResult.Loaded(document()) },
+                    exportBytes = { BytesOutcome.NetworkError },
+                    repository = repoOf(),
+                    taxYear = TAX_YEAR,
+                    scope = this,
+                )
+
+            controller.export(ExportKind.PDF)
+            controller.exportEvents.first() shouldBe ExportEvent.RequiresConnectivity
+        }
+    }
+
+    test("a 503 renderer error on export is Failed, not a broken empty file") {
+        runTest {
+            val controller =
+                ReleveController(
+                    fetch = { DossierResult.Loaded(document()) },
+                    exportBytes = { BytesOutcome.Ok(503, ExportBytes(byteArrayOf(), filename = null)) },
+                    repository = repoOf(),
+                    taxYear = TAX_YEAR,
+                    scope = this,
+                )
+
+            controller.export(ExportKind.PDF)
+            controller.exportEvents.first() shouldBe ExportEvent.Failed
         }
     }
 })

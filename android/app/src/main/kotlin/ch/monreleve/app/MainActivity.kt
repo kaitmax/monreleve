@@ -1,6 +1,9 @@
 package ch.monreleve.app
 
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
@@ -17,7 +20,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
+import ch.monreleve.app.auth.BytesOutcome
 import ch.monreleve.app.auth.KeystoreTokenStore
 import ch.monreleve.app.auth.SessionManager
 import ch.monreleve.app.auth.SharedPrefsPendingSignInStore
@@ -32,9 +38,12 @@ import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.LocalEntryRepository
 import ch.monreleve.app.data.sync.SyncScheduler
 import ch.monreleve.app.design.FrontierTheme
+import ch.monreleve.app.fr.ReleveCopy
 import ch.monreleve.app.onboarding.OnboardingController
 import ch.monreleve.app.onboarding.OnboardingPhase
 import ch.monreleve.app.onboarding.SessionSettingsSaver
+import ch.monreleve.app.releve.ExportEvent
+import ch.monreleve.app.releve.ExportKind
 import ch.monreleve.app.settings.SettingsStore
 import ch.monreleve.app.settings.SharedPrefsSettingsStore
 import ch.monreleve.app.ui.screens.aujourdhui.AujourdhuiScreen
@@ -115,6 +124,7 @@ class MainActivity : ComponentActivity() {
                                     SyncScheduler.requestSync(context)
                                 },
                                 dossierFetch = dossierApi::fetch,
+                                exportBytes = session::authenticatedGetBytes,
                             )
                     }
                 }
@@ -183,19 +193,27 @@ private fun MainShell(
     scope: CoroutineScope,
     requestSync: () -> Unit,
     dossierFetch: suspend (Int) -> DossierResult,
+    exportBytes: suspend (String) -> BytesOutcome,
 ) {
     // R291: the controllers are built by MainGraph, the ONE construction site MainGraphWiringTest also
     // calls - so the graph the JVM test checks is the graph the app uses. SPEC 13.2: both day-writers are
     // built with requestSync, and the test fails if either is not (the AN10 calendar-never-synced bug,
     // which hid because this wiring lived inside a Composable no JVM test reaches, R176/R204). AN11 adds
-    // the Releve controller, wired with the dossier fetch seam.
+    // the Releve controller, wired with the dossier fetch and export seams.
     val controllers =
-        remember { MainGraph.build(repository, store, taxYear, clock, scope, requestSync, dossierFetch) }
+        remember { MainGraph.build(repository, store, taxYear, clock, scope, requestSync, dossierFetch, exportBytes) }
     var tab by remember { mutableStateOf(AppTab.AUJOURDHUI) }
 
     val aujourdhuiState by controllers.aujourdhui.state.collectAsState()
     val calendarState by controllers.calendar.state.collectAsState()
     val releveState by controllers.releve.state.collectAsState()
+
+    // AC2 / R136: an export event carries the server-rendered file to the platform share sheet. Handled at
+    // the shell level (not inside the Releve tab) so a switch of tab after the tap does not cancel the hand-off.
+    val context = LocalContext.current
+    LaunchedEffect(controllers.releve) {
+        controllers.releve.exportEvents.collect { event -> handleExport(context, event) }
+    }
 
     Scaffold(bottomBar = { AppBottomBar(selected = tab, onSelect = { tab = it }) }) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
@@ -217,9 +235,49 @@ private fun MainShell(
                 AppTab.RELEVE ->
                     ReleveScreen(
                         state = releveState,
-                        actions = ReleveActions(onRetry = controllers.releve::load),
+                        actions =
+                            ReleveActions(
+                                onRetry = controllers.releve::load,
+                                onExportPdf = { controllers.releve.export(ExportKind.PDF) },
+                                onExportCsv = { controllers.releve.export(ExportKind.CSV) },
+                            ),
                     )
             }
         }
     }
+}
+
+// AC2 / R136: hand the server-rendered export to the platform. A Ready event's bytes are written to a
+// private cache file and shared through a FileProvider content URI (no storage permission), so a viewer or a
+// spreadsheet app opens the PDF/CSV. A connectivity or server failure is surfaced as a toast, never silently
+// (SPEC 13.2: the export requires connectivity and says so). Lives in the composition root (not ui/), where
+// a Context, an Intent and a FileProvider are permitted.
+private fun handleExport(
+    context: Context,
+    event: ExportEvent,
+) {
+    when (event) {
+        is ExportEvent.Ready -> shareFile(context, event)
+        ExportEvent.RequiresConnectivity ->
+            Toast.makeText(context, ReleveCopy.EXPORT_REQUIRES_CONNECTIVITY, Toast.LENGTH_LONG).show()
+        ExportEvent.Failed ->
+            Toast.makeText(context, ReleveCopy.EXPORT_FAILED, Toast.LENGTH_LONG).show()
+    }
+}
+
+private fun shareFile(
+    context: Context,
+    event: ExportEvent.Ready,
+) {
+    val dir = java.io.File(context.cacheDir, "exports").apply { mkdirs() }
+    val file = java.io.File(dir, event.filename)
+    file.writeBytes(event.bytes)
+    val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+    val send =
+        Intent(Intent.ACTION_SEND).apply {
+            type = event.mimeType
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+    context.startActivity(Intent.createChooser(send, ReleveCopy.EXPORT_CHOOSER_TITLE))
 }

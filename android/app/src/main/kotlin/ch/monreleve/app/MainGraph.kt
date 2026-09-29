@@ -1,6 +1,7 @@
 package ch.monreleve.app
 
 import ch.monreleve.app.aujourdhui.AujourdhuiController
+import ch.monreleve.app.auth.BytesOutcome
 import ch.monreleve.app.calendar.CalendarController
 import ch.monreleve.app.data.remote.DossierResult
 import ch.monreleve.app.data.repo.EntryRepository
@@ -60,10 +61,12 @@ object MainGraph {
         // AN11: the Releve controller's fetch seam (DossierApi::fetch in the app; a stub in tests), the same
         // lambda-seam idiom as requestSync. It reads GET /api/v1/dossier through the session.
         dossierFetch: suspend (Int) -> DossierResult,
+        // AN11: the export seam (SessionManager::authenticatedGetBytes in the app), for the PDF and CSV.
+        exportBytes: suspend (String) -> BytesOutcome,
     ): MainControllers =
         MainControllers(
             aujourdhui = AujourdhuiController(repository, settingsStore, taxYear, clock, scope, requestSync),
             calendar = CalendarController(repository, settingsStore, taxYear, clock, scope, requestSync),
-            releve = ReleveController(dossierFetch, repository, taxYear, scope),
+            releve = ReleveController(dossierFetch, exportBytes, repository, taxYear, scope),
         )
 }

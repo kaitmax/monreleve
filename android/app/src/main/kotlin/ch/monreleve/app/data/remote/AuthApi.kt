@@ -65,13 +65,31 @@ sealed interface RefreshResult {
     data class Failed(val failure: ApiFailure) : RefreshResult
 }
 
-/** The outcome of an authenticated call: a 2xx body, a 401 with its code, or a network failure. */
-sealed interface AuthedResponse {
-    data class Ok(val status: Int, val body: String) : AuthedResponse
+/**
+ * The outcome of an authenticated call, over any payload type T: a response with its status and value, a
+ * 401 with its code, or a network failure. AN11 generalised this from a String-only shape so the SAME
+ * SessionManager.attempt machinery drives the String reads (GET/POST/PATCH) AND the binary export read
+ * (authenticatedGetBytes) - one code path, so the R210 refresh-and-replay handling cannot drift between
+ * them (the reason SessionManager's own comment gives for keeping it single).
+ */
+sealed interface AuthedResult<out T> {
+    data class Ok<out T>(val status: Int, val value: T) : AuthedResult<T>
 
-    data class Unauthorized(val code: AuthServerCode?) : AuthedResponse
+    data class Unauthorized(val code: AuthServerCode?) : AuthedResult<Nothing>
 
-    data class Failed(val failure: ApiFailure) : AuthedResponse
+    data class Failed(val failure: ApiFailure) : AuthedResult<Nothing>
+}
+
+/** A binary export (the PDF, the CSV): the bytes and the filename the server named in Content-Disposition. */
+data class ExportBytes(val bytes: ByteArray, val filename: String?) {
+    // ByteArray needs structural equals/hashCode for value semantics (the IDE/detekt convention).
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is ExportBytes) return false
+        return bytes.contentEquals(other.bytes) && filename == other.filename
+    }
+
+    override fun hashCode(): Int = 31 * bytes.contentHashCode() + (filename?.hashCode() ?: 0)
 }
 
 class AuthApi(
@@ -152,7 +170,7 @@ class AuthApi(
     suspend fun authenticatedGet(
         path: String,
         accessToken: String,
-    ): AuthedResponse {
+    ): AuthedResult<String> {
         val response =
             try {
                 transport.execute(
@@ -163,12 +181,12 @@ class AuthApi(
                     ),
                 )
             } catch (e: IOException) {
-                return AuthedResponse.Failed(ApiFailure.Network(e.message ?: "network unreachable"))
+                return AuthedResult.Failed(ApiFailure.Network(e.message ?: "network unreachable"))
             }
         return if (response.status == HTTP_UNAUTHORIZED) {
-            AuthedResponse.Unauthorized(parseServerFailure(response.status, response.body).code)
+            AuthedResult.Unauthorized(parseServerFailure(response.status, response.body).code)
         } else {
-            AuthedResponse.Ok(response.status, response.body)
+            AuthedResult.Ok(response.status, response.body)
         }
     }
 
@@ -181,7 +199,7 @@ class AuthApi(
         path: String,
         body: String,
         accessToken: String,
-    ): AuthedResponse {
+    ): AuthedResult<String> {
         val response =
             try {
                 transport.execute(
@@ -197,12 +215,12 @@ class AuthApi(
                     ),
                 )
             } catch (e: IOException) {
-                return AuthedResponse.Failed(ApiFailure.Network(e.message ?: "network unreachable"))
+                return AuthedResult.Failed(ApiFailure.Network(e.message ?: "network unreachable"))
             }
         return if (response.status == HTTP_UNAUTHORIZED) {
-            AuthedResponse.Unauthorized(parseServerFailure(response.status, response.body).code)
+            AuthedResult.Unauthorized(parseServerFailure(response.status, response.body).code)
         } else {
-            AuthedResponse.Ok(response.status, response.body)
+            AuthedResult.Ok(response.status, response.body)
         }
     }
 
@@ -215,7 +233,7 @@ class AuthApi(
         path: String,
         body: String,
         accessToken: String,
-    ): AuthedResponse {
+    ): AuthedResult<String> {
         val response =
             try {
                 transport.execute(
@@ -231,12 +249,45 @@ class AuthApi(
                     ),
                 )
             } catch (e: IOException) {
-                return AuthedResponse.Failed(ApiFailure.Network(e.message ?: "network unreachable"))
+                return AuthedResult.Failed(ApiFailure.Network(e.message ?: "network unreachable"))
             }
         return if (response.status == HTTP_UNAUTHORIZED) {
-            AuthedResponse.Unauthorized(parseServerFailure(response.status, response.body).code)
+            AuthedResult.Unauthorized(parseServerFailure(response.status, response.body).code)
         } else {
-            AuthedResponse.Ok(response.status, response.body)
+            AuthedResult.Ok(response.status, response.body)
+        }
+    }
+
+    /**
+     * A GET whose success is BYTES, carrying the access token as a bearer (AN11: the PDF and CSV exports).
+     * Returns the status and the [ExportBytes] (bytes + the Content-Disposition filename, R237), or the 401
+     * code - the same three-way shape as the String verbs, so SessionManager.attempt drives it identically
+     * and R210 applies unchanged. A non-2xx non-401 (e.g. a 503 renderer error) still returns Ok with its
+     * status and whatever bytes came back; the caller branches on the status.
+     */
+    suspend fun authenticatedGetBytes(
+        path: String,
+        accessToken: String,
+    ): AuthedResult<ExportBytes> {
+        val response =
+            try {
+                transport.executeForBytes(
+                    HttpRequest(
+                        method = HttpMethod.GET,
+                        url = "$baseUrl$path",
+                        headers = mapOf("Authorization" to "Bearer $accessToken"),
+                    ),
+                )
+            } catch (e: IOException) {
+                return AuthedResult.Failed(ApiFailure.Network(e.message ?: "network unreachable"))
+            }
+        return if (response.status == HTTP_UNAUTHORIZED) {
+            // The 401 body is small JSON; decode it just to read the code, as the String verbs do.
+            AuthedResult.Unauthorized(
+                parseServerFailure(response.status, String(response.bytes, Charsets.UTF_8)).code,
+            )
+        } else {
+            AuthedResult.Ok(response.status, ExportBytes(response.bytes, filenameOf(response.headers)))
         }
     }
 
@@ -256,6 +307,17 @@ class AuthApi(
 }
 
 private fun encode(value: String): String = URLEncoder.encode(value, "UTF-8")
+
+/** U+0022-quoted filename from a Content-Disposition header. R237: the CSV's only carrier of its titulaire. */
+private val FILENAME = Regex("""filename\*?=(?:UTF-8'')?"?([^\";]+)"?""", RegexOption.IGNORE_CASE)
+
+/** The download filename the server named in Content-Disposition, or null if it named none. */
+internal fun filenameOf(headers: Map<String, String>): String? {
+    val disposition =
+        headers.entries.firstOrNull { it.key.equals("Content-Disposition", ignoreCase = true) }?.value
+            ?: return null
+    return FILENAME.find(disposition)?.groupValues?.get(1)?.trim()?.ifEmpty { null }
+}
 
 /** The token pair carried by a callback or refresh 200, or null if the body is not that shape. */
 internal fun parseTokenPair(body: String): TokenPair? =

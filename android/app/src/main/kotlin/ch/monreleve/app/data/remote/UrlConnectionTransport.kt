@@ -51,4 +51,34 @@ class UrlConnectionTransport(
                 connection.disconnect()
             }
         }
+
+    // AN11: the binary path for the PDF and CSV exports. Reads the stream as BYTES - the PDF is binary and
+    // the CSV's BOM and CRLF must survive verbatim, both of which a text reader would corrupt - and keeps the
+    // response headers so the caller reads the Content-Disposition filename (R237). Same connection handling
+    // as execute; a GET export carries no request body.
+    override suspend fun executeForBytes(request: HttpRequest): HttpBytesResponse =
+        withContext(Dispatchers.IO) {
+            val connection = URI(request.url).toURL().openConnection() as HttpURLConnection
+            try {
+                connection.requestMethod = request.method.name
+                connection.connectTimeout = connectTimeoutMs
+                connection.readTimeout = readTimeoutMs
+                connection.instanceFollowRedirects = false
+                request.headers.forEach { (key, value) -> connection.setRequestProperty(key, value) }
+
+                val status = connection.responseCode
+                val stream =
+                    if (status in HTTP_OK_MIN..HTTP_OK_MAX) connection.inputStream else connection.errorStream
+                val bytes = stream?.use { it.readBytes() } ?: ByteArray(0)
+                val headers =
+                    buildMap {
+                        connection.headerFields.forEach { (key, values) ->
+                            if (key != null) put(key, values.joinToString(","))
+                        }
+                    }
+                HttpBytesResponse(status = status, bytes = bytes, headers = headers)
+            } finally {
+                connection.disconnect()
+            }
+        }
 }

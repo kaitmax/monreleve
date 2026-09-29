@@ -2,7 +2,8 @@ package ch.monreleve.app.auth
 
 import ch.monreleve.app.data.remote.AuthApi
 import ch.monreleve.app.data.remote.AuthServerCode
-import ch.monreleve.app.data.remote.AuthedResponse
+import ch.monreleve.app.data.remote.AuthedResult
+import ch.monreleve.app.data.remote.ExportBytes
 import ch.monreleve.app.data.remote.RefreshResult
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -52,6 +53,24 @@ sealed interface PostOutcome {
     data object NoSession : PostOutcome
 
     data object NetworkError : PostOutcome
+}
+
+/**
+ * The outcome of an authenticated binary GET (AN11: the PDF and CSV exports). Ok carries the HTTP status
+ * (so the export screen tells a 200 from a 503 renderer error) and the [ExportBytes] (the file and its
+ * Content-Disposition filename). The session states mirror the other verbs, so a replay ends an export the
+ * same way (R210).
+ */
+sealed interface BytesOutcome {
+    data class Ok(val status: Int, val export: ExportBytes) : BytesOutcome
+
+    data object SessionExpired : BytesOutcome
+
+    data object SessionEnded : BytesOutcome
+
+    data object NoSession : BytesOutcome
+
+    data object NetworkError : BytesOutcome
 }
 
 /**
@@ -119,31 +138,31 @@ class SessionManager(
      */
     suspend fun authenticatedGet(path: String): AuthedOutcome =
         when (val attempt = attempt { token -> api.authenticatedGet(path, token) }) {
-            is Attempt.Ok -> AuthedOutcome.Ok(attempt.body)
+            is Attempt.Ok -> AuthedOutcome.Ok(attempt.value)
             Attempt.SessionExpired -> AuthedOutcome.SessionExpired
             Attempt.SessionEnded -> AuthedOutcome.SessionEnded
             Attempt.NoSession -> AuthedOutcome.NoSession
             Attempt.NetworkError -> AuthedOutcome.NetworkError
         }
 
-    // The shared machinery for BOTH authenticated calls (AN5): load the token, issue the
-    // request, and on a 401 refresh ONCE and retry - EXPIRED/ROTATED refresh, anything
-    // else ends the session (R210, replay). GET and POST differ only in the request
-    // lambda and how each maps the result; one code path means the replay handling cannot
-    // drift between them.
-    private suspend fun attempt(request: suspend (String) -> AuthedResponse): Attempt {
+    // The shared machinery for EVERY authenticated call (AN5, generalised for the AN11 byte exports): load
+    // the token, issue the request, and on a 401 refresh ONCE and retry - EXPIRED/ROTATED refresh, anything
+    // else ends the session (R210, replay). The verbs differ only in the request lambda's payload type T
+    // and how each maps the result; ONE generic code path means the replay handling cannot drift between a
+    // String read and a byte export.
+    private suspend fun <T> attempt(request: suspend (String) -> AuthedResult<T>): Attempt<T> {
         val pair = tokenStore.load() ?: return Attempt.NoSession
         return when (val response = request(pair.accessToken)) {
-            is AuthedResponse.Ok -> Attempt.Ok(response.status, response.body)
-            is AuthedResponse.Failed -> Attempt.NetworkError
-            is AuthedResponse.Unauthorized -> onUnauthorized(response.code, request)
+            is AuthedResult.Ok -> Attempt.Ok(response.status, response.value)
+            is AuthedResult.Failed -> Attempt.NetworkError
+            is AuthedResult.Unauthorized -> onUnauthorized(response.code, request)
         }
     }
 
-    private suspend fun onUnauthorized(
+    private suspend fun <T> onUnauthorized(
         code: AuthServerCode?,
-        request: suspend (String) -> AuthedResponse,
-    ): Attempt =
+        request: suspend (String) -> AuthedResult<T>,
+    ): Attempt<T> =
         if (code == AuthServerCode.EXPIRED_TOKEN || code == AuthServerCode.ROTATED_TOKEN) {
             retryAfterRefresh(request)
         } else {
@@ -152,7 +171,7 @@ class SessionManager(
             Attempt.SessionEnded
         }
 
-    private suspend fun retryAfterRefresh(request: suspend (String) -> AuthedResponse): Attempt =
+    private suspend fun <T> retryAfterRefresh(request: suspend (String) -> AuthedResult<T>): Attempt<T> =
         when (val outcome = refresh()) {
             is RefreshOutcome.Refreshed -> retryWith(outcome.pair, request)
             RefreshOutcome.Expired -> Attempt.SessionExpired
@@ -160,30 +179,30 @@ class SessionManager(
             RefreshOutcome.NoSession -> Attempt.NoSession
         }
 
-    private suspend fun retryWith(
+    private suspend fun <T> retryWith(
         pair: TokenPair,
-        request: suspend (String) -> AuthedResponse,
-    ): Attempt =
+        request: suspend (String) -> AuthedResult<T>,
+    ): Attempt<T> =
         when (val retry = request(pair.accessToken)) {
-            is AuthedResponse.Ok -> Attempt.Ok(retry.status, retry.body)
-            is AuthedResponse.Failed -> Attempt.NetworkError
-            is AuthedResponse.Unauthorized -> {
+            is AuthedResult.Ok -> Attempt.Ok(retry.status, retry.value)
+            is AuthedResult.Failed -> Attempt.NetworkError
+            is AuthedResult.Unauthorized -> {
                 tokenStore.clear()
                 Attempt.SessionEnded
             }
         }
 
     /** The internal result of one authenticated attempt, mapped by each caller to its own outcome type. */
-    private sealed interface Attempt {
-        data class Ok(val status: Int, val body: String) : Attempt
+    private sealed interface Attempt<out T> {
+        data class Ok<out T>(val status: Int, val value: T) : Attempt<T>
 
-        data object SessionExpired : Attempt
+        data object SessionExpired : Attempt<Nothing>
 
-        data object SessionEnded : Attempt
+        data object SessionEnded : Attempt<Nothing>
 
-        data object NoSession : Attempt
+        data object NoSession : Attempt<Nothing>
 
-        data object NetworkError : Attempt
+        data object NetworkError : Attempt<Nothing>
     }
 
     /**
@@ -196,7 +215,7 @@ class SessionManager(
         body: String,
     ): PostOutcome =
         when (val attempt = attempt { token -> api.authenticatedPost(path, body, token) }) {
-            is Attempt.Ok -> PostOutcome.Ok(attempt.status, attempt.body)
+            is Attempt.Ok -> PostOutcome.Ok(attempt.status, attempt.value)
             Attempt.SessionExpired -> PostOutcome.SessionExpired
             Attempt.SessionEnded -> PostOutcome.SessionEnded
             Attempt.NoSession -> PostOutcome.NoSession
@@ -214,11 +233,25 @@ class SessionManager(
         body: String,
     ): PostOutcome =
         when (val attempt = attempt { token -> api.authenticatedPatch(path, body, token) }) {
-            is Attempt.Ok -> PostOutcome.Ok(attempt.status, attempt.body)
+            is Attempt.Ok -> PostOutcome.Ok(attempt.status, attempt.value)
             Attempt.SessionExpired -> PostOutcome.SessionExpired
             Attempt.SessionEnded -> PostOutcome.SessionEnded
             Attempt.NoSession -> PostOutcome.NoSession
             Attempt.NetworkError -> PostOutcome.NetworkError
+        }
+
+    /**
+     * An authenticated binary GET with the SAME refresh-once-and-replay handling as the other verbs (R210),
+     * through the shared generic `attempt`. AN11: the PDF and CSV exports. Ok carries the status and the
+     * bytes+filename, so the export screen branches on the status and hands the file to the platform.
+     */
+    suspend fun authenticatedGetBytes(path: String): BytesOutcome =
+        when (val attempt = attempt { token -> api.authenticatedGetBytes(path, token) }) {
+            is Attempt.Ok -> BytesOutcome.Ok(attempt.status, attempt.value)
+            Attempt.SessionExpired -> BytesOutcome.SessionExpired
+            Attempt.SessionEnded -> BytesOutcome.SessionEnded
+            Attempt.NoSession -> BytesOutcome.NoSession
+            Attempt.NetworkError -> BytesOutcome.NetworkError
         }
 
     /** End the session: revoke server-side (best-effort), then clear local storage unconditionally. */

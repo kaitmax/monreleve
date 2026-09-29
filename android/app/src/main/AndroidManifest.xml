@@ -105,6 +105,22 @@
             android:name=".dev.DetectionReplayActivity"
             android:exported="true"
             android:theme="@style/Theme.MonReleve" />
+
+        <!--
+          AN11: the FileProvider for exporting the Releve (AC2 / R136). The PDF/CSV is written to the private
+          cache and shared as a content URI with a per-share read grant - no storage permission, nothing but
+          the exports/ subfolder exposed (res/xml/file_paths.xml). Authority is ${applicationId}.fileprovider,
+          which the code reads back as "${context.packageName}.fileprovider".
+        -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 
 </manifest>

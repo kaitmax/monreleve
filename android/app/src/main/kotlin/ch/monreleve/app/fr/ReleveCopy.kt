@@ -308,6 +308,18 @@ object ReleveCopy {
             "celle de la réception. Seule la seconde est attribuée par le serveur."
 
     // ------------------------------------------------------------------
+    // Export (AC2, FD7 section 8) - the buttons and the outcomes the composition root reports
+    // ------------------------------------------------------------------
+    const val EXPORT_PDF = "Exporter en PDF"
+    const val EXPORT_CSV = "Exporter en CSV"
+    const val EXPORT_CHOOSER_TITLE = "Partager le relevé"
+
+    /** SPEC 13.2: the export is a server render and requires connectivity - said plainly, never silent. */
+    const val EXPORT_REQUIRES_CONNECTIVITY =
+        "L’export nécessite une connexion. Reconnectez-vous à Internet, puis réessayez."
+    const val EXPORT_FAILED = "Le document n’a pas pu être produit. Réessayez dans un instant."
+
+    // ------------------------------------------------------------------
     // 6. Footer - SPEC 12 item 6. R183: UNCONDITIONAL here (every entry in the document IS timestamped).
     // ------------------------------------------------------------------
     const val FOOTER_TIMESTAMPS =

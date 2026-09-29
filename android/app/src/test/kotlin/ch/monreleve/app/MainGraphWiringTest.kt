@@ -67,8 +67,9 @@ class MainGraphWiringTest : FunSpec({
                     clock = fixedClock,
                     scope = this,
                     requestSync = { syncs++ },
-                    // The Releve controller is not a DayWriter; a stub fetch keeps this test about the sync wiring.
+                    // The Releve controller is not a DayWriter; stub seams keep this test about the sync wiring.
                     dossierFetch = { DossierResult.NetworkError },
+                    exportBytes = { ch.monreleve.app.auth.BytesOutcome.NetworkError },
                 )
 
             val writers = dayWritersOf(controllers)
@@ -100,6 +101,7 @@ class MainGraphWiringTest : FunSpec({
                     scope = this,
                     requestSync = { syncs++ },
                     dossierFetch = { DossierResult.NetworkError },
+                    exportBytes = { ch.monreleve.app.auth.BytesOutcome.NetworkError },
                 )
             advanceUntilIdle()
 

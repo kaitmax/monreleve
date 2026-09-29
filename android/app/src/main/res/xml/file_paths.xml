@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  AN11: the FileProvider paths for exporting the Releve (AC2 / R136). Only the private cache's exports/
+  subfolder is shared - a content URI granted per-share, no storage permission, nothing outside the app's
+  own cache exposed.
+-->
+<paths>
+    <cache-path
+        name="exports"
+        path="exports/" />
+</paths>

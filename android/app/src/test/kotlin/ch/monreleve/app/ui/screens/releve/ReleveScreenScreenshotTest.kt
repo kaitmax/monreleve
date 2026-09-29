@@ -173,7 +173,7 @@ private val EMPTY_YEAR =
         ),
     )
 
-private const val TALL = 6000
+private const val TALL = 7200
 
 // The document roughly doubles in height at 200 percent text, so the tall config is taller still, to
 // photograph the WHOLE document rather than cutting it off at the monthly table (a below-the-fold blind
@@ -192,7 +192,10 @@ class ReleveScreenScreenshotTest {
     private fun host(state: ReleveState) {
         FrontierTheme {
             Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                ReleveScreen(state = state, actions = ReleveActions(onRetry = {}))
+                ReleveScreen(
+                    state = state,
+                    actions = ReleveActions(onRetry = {}, onExportPdf = {}, onExportCsv = {}),
+                )
             }
         }
     }

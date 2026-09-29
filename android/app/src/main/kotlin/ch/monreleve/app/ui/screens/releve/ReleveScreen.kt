@@ -5,11 +5,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -18,6 +20,7 @@ import androidx.compose.ui.draw.clip
 import ch.monreleve.app.design.FrontierType
 import ch.monreleve.app.design.LightColors
 import ch.monreleve.app.design.Radius
+import ch.monreleve.app.design.Size
 import ch.monreleve.app.design.Spacing
 import ch.monreleve.app.fr.ReleveCopy
 import ch.monreleve.app.fr.SignInCopy
@@ -48,7 +51,7 @@ fun ReleveScreen(
     when (state) {
         ReleveState.Loading -> CenteredMessage(ReleveCopy.LOADING, modifier)
         is ReleveState.Failed -> FailedBody(state.reason, actions.onRetry, modifier)
-        is ReleveState.Loaded -> DocumentBody(state, modifier)
+        is ReleveState.Loaded -> DocumentBody(state, actions, modifier)
     }
 }
 
@@ -95,6 +98,7 @@ private fun FailedBody(
 @Composable
 private fun DocumentBody(
     loaded: ReleveState.Loaded,
+    actions: ReleveActions,
     modifier: Modifier = Modifier,
 ) {
     val document = loaded.document
@@ -133,7 +137,34 @@ private fun DocumentBody(
         ZonePanel(document.zone, loaded.rules)
         MonthlyTable(document.months)
         AnnexSection(document)
+        ExportButtons(onExportPdf = actions.onExportPdf, onExportCsv = actions.onExportCsv)
         LegalFooter()
+    }
+}
+
+// FD7 section 8: a primary PDF button and a secondary CSV button. Text-only (no lucide file-down/table
+// glyph shipped - the FD7 icon is the named conflict); the labels carry the meaning. The export is a server
+// render handed to the platform share sheet by the composition root (AC2 / R136).
+@Composable
+private fun ExportButtons(
+    onExportPdf: () -> Unit,
+    onExportCsv: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.space8)) {
+        Button(
+            onClick = onExportPdf,
+            shape = RoundedCornerShape(Radius.buttonLg),
+            modifier = Modifier.fillMaxWidth().heightIn(min = Size.buttonLarge),
+        ) {
+            Text(text = ReleveCopy.EXPORT_PDF)
+        }
+        OutlinedButton(
+            onClick = onExportCsv,
+            shape = RoundedCornerShape(Radius.md),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(text = ReleveCopy.EXPORT_CSV)
+        }
     }
 }
 

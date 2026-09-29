@@ -145,7 +145,22 @@ private fun renderedText(): String = SURFACE_DIRS.flatMap { ktFiles(it) }.joinTo
  * itself, or it is not one. "Unused for now" is exactly the note the web
  * side's four orphans would have carried.
  */
-private val UNREACHABLE: Map<String, String> = emptyMap()
+private val UNREACHABLE: Map<String, String> =
+    mapOf(
+        // AN11: the export hand-off strings are rendered by the composition root (MainActivity's share sheet
+        // and toasts), which needs an Activity Context, an Intent and a FileProvider - none permitted in ui/,
+        // and it carries file-path literals the no-literal fence forbids there. So this copy is reachable, but
+        // from the root package rather than a fr-surface directory this census scans.
+        "ReleveCopy.EXPORT_CHOOSER_TITLE" to
+            "the Intent.createChooser title for the export share sheet, used by MainActivity's platform " +
+            "hand-off (a Context/Intent/FileProvider concern the ui/ fence and no-literal fence keep out of ui/)",
+        "ReleveCopy.EXPORT_REQUIRES_CONNECTIVITY" to
+            "the toast shown when an export cannot reach the server render (SPEC 13.2), raised by MainActivity's " +
+            "composition root, which owns the Toast and the platform share - not a fr-surface directory",
+        "ReleveCopy.EXPORT_FAILED" to
+            "the toast shown when the server could not produce the export, raised by MainActivity's composition " +
+            "root, which owns the Toast and the platform share - not a fr-surface directory this census scans",
+    )
 
 class CopyReachabilityTest {
     @Test

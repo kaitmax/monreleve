@@ -24,7 +24,33 @@ data class HttpResponse(
     val body: String,
 )
 
+/**
+ * A binary response (AN11: the PDF and CSV exports). The bytes are the file, unaltered; the headers carry
+ * Content-Disposition, which is the ONLY place the CSV names its titulaire (R237). Header keys are as the
+ * server sent them; a reader matches them case-insensitively (HTTP header names are case-insensitive).
+ */
+data class HttpBytesResponse(
+    val status: Int,
+    val bytes: ByteArray,
+    val headers: Map<String, String>,
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is HttpBytesResponse) return false
+        return status == other.status && bytes.contentEquals(other.bytes) && headers == other.headers
+    }
+
+    override fun hashCode(): Int = 31 * (31 * status + bytes.contentHashCode()) + headers.hashCode()
+}
+
 /** The seam. A fake in tests, UrlConnectionTransport on a device. */
 interface HttpTransport {
     suspend fun execute(request: HttpRequest): HttpResponse
+
+    /**
+     * Fetch a binary response (AN11 exports). Default THROWS rather than returning a plausible empty
+     * response: a fake that has not implemented it must fail loudly, never look like it succeeded.
+     */
+    suspend fun executeForBytes(request: HttpRequest): HttpBytesResponse =
+        throw UnsupportedOperationException("this transport does not implement executeForBytes")
 }
