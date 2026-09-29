@@ -39,6 +39,21 @@ import ch.monreleve.app.releve.ReleveRules
 private const val EMPLOYMENT_DECIMALS = 0
 
 @Composable
+internal fun OfflineBanner(generatedAt: String) {
+    // R288: an offline releve is a DATED copy, never presented as current. The date is the cached payload's
+    // own generatedAt (server-assigned, R181), read in UTC exactly as the annex stamps are.
+    val generatedDay = formatDossierStamp(generatedAt).substringBefore(' ')
+    SectionCard {
+        Text(text = ReleveCopy.OFFLINE_TITLE, style = FrontierType.bodyM, color = LightColors.warning)
+        Text(
+            text = ReleveCopy.offlineCaveat(generatedDay),
+            style = FrontierType.caption,
+            color = LightColors.textSecondary,
+        )
+    }
+}
+
+@Composable
 internal fun ProvisionalBanner(
     generatedAt: String,
     taxYear: Int,

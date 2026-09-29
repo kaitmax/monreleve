@@ -136,6 +136,24 @@ class ReleveControllerTest : FunSpec({
         }
     }
 
+    test("R288: a cached fetch is Loaded but marked offline, so the screen dates it") {
+        runTest {
+            val doc = document()
+            val controller =
+                ReleveController(
+                    fetch = { DossierResult.Cached(doc) },
+                    repository = repoOf(),
+                    taxYear = TAX_YEAR,
+                    scope = this,
+                )
+            advanceUntilIdle()
+
+            val loaded = controller.state.value.shouldBeInstanceOf<ReleveState.Loaded>()
+            (loaded.document === doc) shouldBe true
+            loaded.offline shouldBe true
+        }
+    }
+
     test("a network failure is Failed(NETWORK), offering a retry rather than a blank screen") {
         runTest {
             val controller =

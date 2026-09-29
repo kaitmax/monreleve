@@ -145,6 +145,13 @@ private val WITH_PENDING =
         pendingCount = 3,
     )
 
+// R288: the same document shown offline, marked as a dated copy that may not reflect recent days.
+private val OFFLINE =
+    loaded(
+        document(declarable = 18.33, raw = 19.50, remainingFiscal = 52.0, remainingSocial = 76.5),
+        offline = true,
+    )
+
 private val OVER_CEILING =
     loaded(
         document(
@@ -209,6 +216,11 @@ class ReleveScreenScreenshotTest {
     @Test
     fun releveWithPending() {
         paparazzi.snapshot { host(WITH_PENDING) }
+    }
+
+    @Test
+    fun releveOffline() {
+        paparazzi.snapshot { host(OFFLINE) }
     }
 
     @Test

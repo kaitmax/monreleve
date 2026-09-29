@@ -23,6 +23,7 @@ import ch.monreleve.app.auth.SessionManager
 import ch.monreleve.app.auth.SharedPrefsPendingSignInStore
 import ch.monreleve.app.auth.SignInController
 import ch.monreleve.app.data.local.MonReleveDatabase
+import ch.monreleve.app.data.local.SharedPrefsDossierCache
 import ch.monreleve.app.data.remote.AuthApi
 import ch.monreleve.app.data.remote.DossierApi
 import ch.monreleve.app.data.remote.DossierResult
@@ -78,8 +79,9 @@ class MainActivity : ComponentActivity() {
         val pending = SharedPrefsPendingSignInStore(context)
         val clock = Clock.systemDefaultZone()
         val repository: EntryRepository = LocalEntryRepository(MonReleveDatabase.get(context).entryDao(), clock)
-        // AN11: the Releve reads GET /api/v1/dossier through the session (R210 refresh handling included).
-        val dossierApi = DossierApi(session)
+        // AN11: the Releve reads GET /api/v1/dossier through the session (R210 refresh handling included), and
+        // caches the last body per year so an offline reader gets a dated copy rather than a blank screen (R288).
+        val dossierApi = DossierApi(session::authenticatedGet, SharedPrefsDossierCache(context))
         // R28: the tax year is the Paris calendar year, not the device's. The composition root is
         // the one place a clock is allowed; the engine and the aggregation stay clock-free.
         val taxYear = Year.now(ZoneId.of("Europe/Paris")).value

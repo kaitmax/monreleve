@@ -63,6 +63,15 @@ object ReleveCopy {
     const val ERROR_NO_SESSION = "Connectez-vous pour consulter votre relevé."
 
     // ------------------------------------------------------------------
+    // R288: an offline copy is DATED and never presented as current (SPEC 13.2, D22)
+    // ------------------------------------------------------------------
+    const val OFFLINE_TITLE = "Copie hors ligne"
+
+    fun offlineCaveat(generatedDay: String): String =
+        "Ce relevé n’a pas pu être actualisé. Voici la dernière copie enregistrée, générée le " +
+            "$generatedDay$NB; elle peut ne pas refléter les journées enregistrées depuis."
+
+    // ------------------------------------------------------------------
     // Provisional banner - SPEC 11.4 ("provisional until the year closes, and it says so"), FD7 section 2
     // ------------------------------------------------------------------
     const val BANNER_PROVISIONAL_TITLE = "Relevé provisoire"

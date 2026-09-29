@@ -1,20 +1,30 @@
 package ch.monreleve.app.data.remote
 
 import ch.monreleve.app.auth.AuthedOutcome
-import ch.monreleve.app.auth.SessionManager
+import ch.monreleve.app.data.local.DossierCache
 import ch.monreleve.app.dossier.DossierDocument
 import ch.monreleve.app.dossier.parseDossier
 
-// AN11 increment 1. The read of GET /api/v1/dossier, through the session (SPEC 11.4, docs/api-v1.md
-// section 8). It goes through SessionManager.authenticatedGet, so the R210 refresh-once-and-replay
-// machinery covers it exactly as it covers /me and the entries read - one code path, no drift.
+// AN11 increments 1, 3. The read of GET /api/v1/dossier, through the session (SPEC 11.4, docs/api-v1.md
+// section 8), with the R288 offline cache around it. The authenticated GET is a seam (suspend (String) ->
+// AuthedOutcome, i.e. SessionManager::authenticatedGet in the app) so this is JVM-testable against a
+// scripted response and a fake cache, without a real session or network. The R210 refresh-once-and-replay
+// machinery lives in SessionManager, so it covers this read exactly as it covers /me and the entries read.
 //
 // IT NEVER LOGS THE BODY: the payload carries the titulaire's name (docs section 9's reason the name is
 // returned by section 8 and nowhere else). The transport is already silent; this stays the same.
+//
+// R288: a successful fetch is CACHED (the raw body); a NETWORK failure falls back to that cache, shown as a
+// DATED copy. A session failure does NOT fall back - the problem is the session, not connectivity, and a
+// stale document behind a dead session would mislead. A body that will not parse is neither returned nor
+// cached (a half-parsed document is never shown).
 
 /** The outcome of asking the server for a year's dossier. */
 sealed interface DossierResult {
     data class Loaded(val document: DossierDocument) : DossierResult
+
+    /** R288: the network was unavailable and the last cached copy was served instead - shown dated. */
+    data class Cached(val document: DossierDocument) : DossierResult
 
     /**
      * A non-401 response the client cannot turn into a document: a 4xx/5xx refusal envelope, or a body
@@ -24,31 +34,55 @@ sealed interface DossierResult {
      */
     data object Unreadable : DossierResult
 
-    /** Access expired and the refresh failed - an ordinary lapse (R210). */
+    /** Access expired and the refresh failed - an ordinary lapse (R210). Not an offline case. */
     data object SessionExpired : DossierResult
 
-    /** A replay ended the session (revoked/unknown on a still-held token), R210. */
+    /** A replay ended the session (revoked/unknown on a still-held token), R210. Not an offline case. */
     data object SessionEnded : DossierResult
 
     data object NoSession : DossierResult
 
+    /** The network was unavailable and there was no usable cache to fall back to. */
     data object NetworkError : DossierResult
 }
 
-class DossierApi(private val session: SessionManager) {
+class DossierApi(
+    private val get: suspend (String) -> AuthedOutcome,
+    private val cache: DossierCache,
+) {
     /**
-     * Fetch and parse one year's dossier. A 2xx body is parsed; a parse failure (a refusal envelope has
-     * no `taxYear`, so parseDossier throws) becomes [DossierResult.Unreadable] rather than a crash - a
-     * half-parsed document is never returned.
+     * Fetch and parse one year's dossier. A 2xx body is parsed and cached; a parse failure becomes
+     * [DossierResult.Unreadable] (and is not cached). A network failure falls back to the last cached copy
+     * as [DossierResult.Cached], or [DossierResult.NetworkError] when there is none.
      */
     suspend fun fetch(year: Int): DossierResult =
-        when (val outcome = session.authenticatedGet("/api/v1/dossier?year=$year")) {
-            is AuthedOutcome.Ok ->
-                runCatching { parseDossier(outcome.body) }
-                    .fold({ DossierResult.Loaded(it) }, { DossierResult.Unreadable })
+        when (val outcome = get("/api/v1/dossier?year=$year")) {
+            is AuthedOutcome.Ok -> parseAndCache(year, outcome.body)
+            AuthedOutcome.NetworkError -> fromCache(year)
             AuthedOutcome.SessionExpired -> DossierResult.SessionExpired
             AuthedOutcome.SessionEnded -> DossierResult.SessionEnded
             AuthedOutcome.NoSession -> DossierResult.NoSession
-            AuthedOutcome.NetworkError -> DossierResult.NetworkError
         }
+
+    private fun parseAndCache(
+        year: Int,
+        body: String,
+    ): DossierResult =
+        runCatching { parseDossier(body) }
+            .fold(
+                onSuccess = { document ->
+                    cache.save(year, body)
+                    DossierResult.Loaded(document)
+                },
+                onFailure = { DossierResult.Unreadable },
+            )
+
+    private fun fromCache(year: Int): DossierResult {
+        val cached = cache.load(year) ?: return DossierResult.NetworkError
+        return runCatching { parseDossier(cached) }
+            .fold(
+                onSuccess = { DossierResult.Cached(it) },
+                onFailure = { DossierResult.NetworkError },
+            )
+    }
 }

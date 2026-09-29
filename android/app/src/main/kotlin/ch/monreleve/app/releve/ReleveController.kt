@@ -96,6 +96,8 @@ class ReleveController(
         when (result) {
             is DossierResult.Loaded ->
                 ReleveState.Loaded(result.document, rulesFor(result.document), pendingCount, offline = false)
+            is DossierResult.Cached ->
+                ReleveState.Loaded(result.document, rulesFor(result.document), pendingCount, offline = true)
             DossierResult.Unreadable -> ReleveState.Failed(ReleveError.SERVER)
             DossierResult.SessionExpired -> ReleveState.Failed(ReleveError.SESSION_EXPIRED)
             DossierResult.SessionEnded -> ReleveState.Failed(ReleveError.SESSION_ENDED)

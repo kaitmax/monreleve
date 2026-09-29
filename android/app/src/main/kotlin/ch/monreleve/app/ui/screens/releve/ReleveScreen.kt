@@ -103,6 +103,8 @@ private fun DocumentBody(
         verticalArrangement = Arrangement.spacedBy(Spacing.space16),
     ) {
         Text(text = ReleveCopy.TITLE, style = FrontierType.h2)
+        // R288: when this is a cached copy shown offline, it says so first - dated, never presented as current.
+        if (loaded.offline) OfflineBanner(generatedAt = document.generatedAt)
         ProvisionalBanner(generatedAt = document.generatedAt, taxYear = document.taxYear)
         // R287: days still pending on this device are not in the server's document, and the releve says so -
         // exactly when something is pending, so a reader who sees two rates knows which one this is.
