@@ -40,6 +40,19 @@ object ReleveCopy {
         "Aucune journée n’a encore été enregistrée pour cette année$NB: ce taux ne reflète pas une " +
             "situation, mais une absence de saisie."
 
+    /**
+     * R287: the releve is the SERVER's computation over what it has received; days still pending on this
+     * device are not in it. Aujourd'hui's year panel includes them, so the two screens can differ - this
+     * line names why, so a reader who sees two rates trusts the document rather than neither. Shown exactly
+     * when something is pending (the screen gates on the count).
+     */
+    fun pendingNotSynced(count: Int): String {
+        val plural = if (count > 1) "s" else ""
+        val verbSync = if (count > 1) "ne sont pas encore synchronisées" else "n’est pas encore synchronisée"
+        val verbFigure = if (count > 1) "ne figurent pas" else "ne figure pas"
+        return "$count journée$plural enregistrée$plural sur cet appareil $verbSync et $verbFigure dans ce relevé."
+    }
+
     const val ERROR_SERVER = "Le relevé n’a pas pu être chargé pour le moment. Réessayez dans un instant."
     const val ERROR_NETWORK =
         "Le relevé n’a pas pu être chargé. Vérifiez votre connexion, puis réessayez."

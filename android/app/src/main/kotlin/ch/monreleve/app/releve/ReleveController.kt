@@ -2,11 +2,14 @@ package ch.monreleve.app.releve
 
 import ch.monreleve.app.calc.ruleSetFor
 import ch.monreleve.app.data.remote.DossierResult
+import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.dossier.DossierDocument
+import ch.monreleve.app.dossier.pendingEntriesForYear
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 // AN11 increment 1 (SPEC 11.4). The Releve screen's state, and the controller that fills it from the
@@ -52,13 +55,27 @@ enum class ReleveError { SESSION_EXPIRED, SESSION_ENDED, NO_SESSION, NETWORK, SE
 
 class ReleveController(
     private val fetch: suspend (Int) -> DossierResult,
+    private val repository: EntryRepository,
     private val taxYear: Int,
     private val scope: CoroutineScope,
 ) {
     private val mutableState = MutableStateFlow<ReleveState>(ReleveState.Loading)
     val state: StateFlow<ReleveState> = mutableState.asStateFlow()
 
+    // R287: the count of days recorded on this device but not yet synced, so absent from the server's
+    // document. Observed live from the repository (the one home, R206), and folded into a Loaded state as it
+    // changes - a day draining to the server lowers the count on screen without a refetch.
+    private var pendingCount = 0
+
     init {
+        scope.launch {
+            repository.observeAll().collect { entries ->
+                pendingCount = pendingEntriesForYear(entries, taxYear).size
+                mutableState.update { current ->
+                    if (current is ReleveState.Loaded) current.copy(pendingCount = pendingCount) else current
+                }
+            }
+        }
         load()
     }
 
@@ -78,7 +95,7 @@ class ReleveController(
     private fun toState(result: DossierResult): ReleveState =
         when (result) {
             is DossierResult.Loaded ->
-                ReleveState.Loaded(result.document, rulesFor(result.document), pendingCount = 0, offline = false)
+                ReleveState.Loaded(result.document, rulesFor(result.document), pendingCount, offline = false)
             DossierResult.Unreadable -> ReleveState.Failed(ReleveError.SERVER)
             DossierResult.SessionExpired -> ReleveState.Failed(ReleveError.SESSION_EXPIRED)
             DossierResult.SessionEnded -> ReleveState.Failed(ReleveError.SESSION_ENDED)

@@ -137,6 +137,14 @@ private val COMPLIANT =
         ),
     )
 
+// R287: three days pending on the device. The releve names them as absent from the server's document - the
+// count-0 baselines above show the line is absent otherwise (R119 by count, across the baseline pair).
+private val WITH_PENDING =
+    loaded(
+        document(declarable = 18.33, raw = 19.50, remainingFiscal = 52.0, remainingSocial = 76.5),
+        pendingCount = 3,
+    )
+
 private val OVER_CEILING =
     loaded(
         document(
@@ -196,6 +204,11 @@ class ReleveScreenScreenshotTest {
     @Test
     fun releveOverCeiling() {
         paparazzi.snapshot { host(OVER_CEILING) }
+    }
+
+    @Test
+    fun releveWithPending() {
+        paparazzi.snapshot { host(WITH_PENDING) }
     }
 
     @Test

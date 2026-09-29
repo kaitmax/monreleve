@@ -16,6 +16,7 @@ import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.RecordCommand
 import ch.monreleve.app.dossier.AggregatableEntry
 import ch.monreleve.app.dossier.LatenessForecast
+import ch.monreleve.app.dossier.pendingEntriesForYear
 import ch.monreleve.app.dossier.toTeleworkInput
 import ch.monreleve.app.onboarding.GranularityChoice
 import ch.monreleve.app.settings.Settings
@@ -218,7 +219,8 @@ class AujourdhuiController(
         val result = (calculateTelework(input) as? CalcResult.Ok)?.value ?: return null
         val fallback = result.warnings.filterIsInstance<Warning.RuleSetFallback>().firstOrNull()
         val rules = ruleSetFor(taxYear)
-        val pending = yearEntries.filter { it.syncState == SyncState.PENDING }
+        // R206: the one home for "pending days of this year", shared with the releve's R287 line.
+        val pending = pendingEntriesForYear(entries, taxYear)
 
         return YearPanel(
             result = result,

@@ -104,6 +104,15 @@ private fun DocumentBody(
     ) {
         Text(text = ReleveCopy.TITLE, style = FrontierType.h2)
         ProvisionalBanner(generatedAt = document.generatedAt, taxYear = document.taxYear)
+        // R287: days still pending on this device are not in the server's document, and the releve says so -
+        // exactly when something is pending, so a reader who sees two rates knows which one this is.
+        if (loaded.pendingCount > 0) {
+            Text(
+                text = ReleveCopy.pendingNotSynced(loaded.pendingCount),
+                style = FrontierType.caption,
+                color = LightColors.textSecondary,
+            )
+        }
         if (document.recordedEntries == 0) {
             Text(
                 text = ReleveCopy.EMPTY_RECORD_NOTE,

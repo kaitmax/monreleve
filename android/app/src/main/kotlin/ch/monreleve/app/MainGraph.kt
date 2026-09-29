@@ -64,6 +64,6 @@ object MainGraph {
         MainControllers(
             aujourdhui = AujourdhuiController(repository, settingsStore, taxYear, clock, scope, requestSync),
             calendar = CalendarController(repository, settingsStore, taxYear, clock, scope, requestSync),
-            releve = ReleveController(dossierFetch, taxYear, scope),
+            releve = ReleveController(dossierFetch, repository, taxYear, scope),
         )
 }
