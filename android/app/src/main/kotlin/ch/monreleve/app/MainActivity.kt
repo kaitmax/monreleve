@@ -170,7 +170,10 @@ private fun MainShell(
     requestSync: () -> Unit,
 ) {
     val aujourdhui = remember { AujourdhuiController(repository, store, taxYear, clock, scope, requestSync) }
-    val calendar = remember { CalendarController(repository, store, taxYear, clock, scope) }
+    // SPEC 13.2: the calendar's Save must enqueue the drain too - without this it records to Room but
+    // never syncs, which the walkthrough caught (R176/R204: the unit test injects requestSync and passes;
+    // only the wired path proves a calendar record reaches the server).
+    val calendar = remember { CalendarController(repository, store, taxYear, clock, scope, requestSync) }
     var tab by remember { mutableStateOf(AppTab.AUJOURDHUI) }
 
     val aujourdhuiState by aujourdhui.state.collectAsState()
