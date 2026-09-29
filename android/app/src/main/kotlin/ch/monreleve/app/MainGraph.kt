@@ -1,5 +1,6 @@
 package ch.monreleve.app
 
+import ch.monreleve.app.account.LocalStore
 import ch.monreleve.app.aujourdhui.AujourdhuiController
 import ch.monreleve.app.auth.BytesOutcome
 import ch.monreleve.app.calendar.CalendarController
@@ -71,11 +72,25 @@ object MainGraph {
         // AN12: the /api/v1/me PATCH seam (SessionSettingsSaver(session) in the app; a stub in tests), the
         // same seam onboarding uses - so the settings write has no second transport (R206).
         settingsSaver: SettingsSaver,
+        // AN12 increment 2: the server-side session revoke (SessionManager::revokeServerSession) and the
+        // device-wide erasure (R295). The Parametres export reuses the same exportBytes seam the Releve uses.
+        revokeServer: suspend () -> Unit,
+        localStore: LocalStore,
     ): MainControllers =
         MainControllers(
             aujourdhui = AujourdhuiController(repository, settingsStore, taxYear, clock, scope, requestSync),
             calendar = CalendarController(repository, settingsStore, taxYear, clock, scope, requestSync),
             releve = ReleveController(dossierFetch, exportBytes, repository, taxYear, scope),
-            parametres = ParametresController(settingsSaver, settingsStore, repository, taxYear, scope),
+            parametres =
+                ParametresController(
+                    settingsSaver,
+                    settingsStore,
+                    repository,
+                    taxYear,
+                    scope,
+                    exportBytes,
+                    revokeServer,
+                    localStore,
+                ),
         )
 }

@@ -23,11 +23,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
+import ch.monreleve.app.account.DeviceLocalStore
+import ch.monreleve.app.account.LocalStore
 import ch.monreleve.app.auth.BytesOutcome
 import ch.monreleve.app.auth.KeystoreTokenStore
+import ch.monreleve.app.auth.PendingSignInStore
 import ch.monreleve.app.auth.SessionManager
 import ch.monreleve.app.auth.SharedPrefsPendingSignInStore
 import ch.monreleve.app.auth.SignInController
+import ch.monreleve.app.auth.TokenStore
+import ch.monreleve.app.data.local.DossierCache
 import ch.monreleve.app.data.local.MonReleveDatabase
 import ch.monreleve.app.data.local.SharedPrefsDossierCache
 import ch.monreleve.app.data.remote.AuthApi
@@ -43,6 +48,7 @@ import ch.monreleve.app.onboarding.OnboardingController
 import ch.monreleve.app.onboarding.OnboardingPhase
 import ch.monreleve.app.onboarding.SessionSettingsSaver
 import ch.monreleve.app.onboarding.SettingsSaver
+import ch.monreleve.app.parametres.AccountExportKind
 import ch.monreleve.app.parametres.ParametresController
 import ch.monreleve.app.releve.ExportEvent
 import ch.monreleve.app.releve.ExportKind
@@ -61,6 +67,8 @@ import ch.monreleve.app.ui.screens.signin.RequestLinkScreen
 import ch.monreleve.app.ui.shell.AppBottomBar
 import ch.monreleve.app.ui.shell.AppTab
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.time.Clock
 import java.time.Year
 import java.time.ZoneId
@@ -94,7 +102,10 @@ class MainActivity : ComponentActivity() {
         val repository: EntryRepository = LocalEntryRepository(MonReleveDatabase.get(context).entryDao(), clock)
         // AN11: the Releve reads GET /api/v1/dossier through the session (R210 refresh handling included), and
         // caches the last body per year so an offline reader gets a dated copy rather than a blank screen (R288).
-        val dossierApi = DossierApi(session::authenticatedGet, SharedPrefsDossierCache(context))
+        val dossierCache = SharedPrefsDossierCache(context)
+        val dossierApi = DossierApi(session::authenticatedGet, dossierCache)
+        // AN12 increment 2 (R295): the device-wide erasure (built by buildLocalStore, below).
+        val localStore = buildLocalStore(context, tokenStore, settingsStore, dossierCache, pending)
         // R28: the tax year is the Paris calendar year, not the device's. The composition root is
         // the one place a clock is allowed; the engine and the aggregation stay clock-free.
         val taxYear = Year.now(ZoneId.of("Europe/Paris")).value
@@ -130,6 +141,11 @@ class MainActivity : ComponentActivity() {
                                 dossierFetch = dossierApi::fetch,
                                 exportBytes = session::authenticatedGetBytes,
                                 settingsSaver = SessionSettingsSaver(session),
+                                revokeServer = session::revokeServerSession,
+                                localStore = localStore,
+                                // R295: sign-out has wiped the local store; return to sign-in. A re-auth restarts
+                                // this activity, and `start` (settings kept, PARKAN-28) then lands on MAIN.
+                                onSignedOut = { destination = Destination.SIGN_IN },
                             )
                     }
                 }
@@ -200,16 +216,20 @@ private fun MainShell(
     dossierFetch: suspend (Int) -> DossierResult,
     exportBytes: suspend (String) -> BytesOutcome,
     settingsSaver: SettingsSaver,
+    revokeServer: suspend () -> Unit,
+    localStore: LocalStore,
+    onSignedOut: () -> Unit,
 ) {
     // R291: the controllers are built by MainGraph, the ONE construction site MainGraphWiringTest also
     // calls - so the graph the JVM test checks is the graph the app uses. SPEC 13.2: both day-writers are
     // built with requestSync, and the test fails if either is not (the AN10 calendar-never-synced bug,
     // which hid because this wiring lived inside a Composable no JVM test reaches, R176/R204). AN11 adds
-    // the Releve controller; AN12 adds the Parametres controller, wired with the /api/v1/me PATCH seam.
+    // the Releve controller; AN12 adds the Parametres controller with the PATCH, export and erasure seams.
     val controllers =
         remember {
             MainGraph.build(
                 repository, store, taxYear, clock, scope, requestSync, dossierFetch, exportBytes, settingsSaver,
+                revokeServer, localStore,
             )
         }
     var tab by remember { mutableStateOf(AppTab.AUJOURDHUI) }
@@ -220,10 +240,18 @@ private fun MainShell(
     val parametresState by controllers.parametres.state.collectAsState()
 
     // AC2 / R136: an export event carries the server-rendered file to the platform share sheet. Handled at
-    // the shell level (not inside the Releve tab) so a switch of tab after the tap does not cancel the hand-off.
+    // the shell level (not inside a tab) so a switch of tab after the tap does not cancel the hand-off. Both
+    // the Releve exports and the Parametres account export share the one hand-off (R206).
     val context = LocalContext.current
     LaunchedEffect(controllers.releve) {
         controllers.releve.exportEvents.collect { event -> handleExport(context, event) }
+    }
+    LaunchedEffect(controllers.parametres) {
+        controllers.parametres.exportEvents.collect { event -> handleExport(context, event) }
+    }
+    // R295: when sign-out completes (session revoked, local store wiped), leave the signed-in shell.
+    LaunchedEffect(controllers.parametres) {
+        controllers.parametres.accountEvents.collect { onSignedOut() }
     }
 
     Scaffold(bottomBar = { AppBottomBar(selected = tab, onSelect = { tab = it }) }) { padding ->
@@ -260,6 +288,26 @@ private fun MainShell(
     }
 }
 
+// AN12 increment 2 (R295): the device-wide erasure. clearAllTables() is derived from @Database, so it sweeps
+// every Room table (entry + daily_tally) with no per-DAO list to drift, and runs off the main thread (it
+// throws on it). Sign-out clears the record, cache, tokens and queued sync; deletion adds the settings and
+// pending sign-in (R289). Extracted from onCreate to keep it within its length budget.
+private fun buildLocalStore(
+    context: Context,
+    tokenStore: TokenStore,
+    settingsStore: SettingsStore,
+    dossierCache: DossierCache,
+    pending: PendingSignInStore,
+): LocalStore =
+    DeviceLocalStore(
+        tokenStore = tokenStore,
+        settingsStore = settingsStore,
+        dossierCache = dossierCache,
+        pendingSignIn = pending,
+        clearRecord = { withContext(Dispatchers.IO) { MonReleveDatabase.get(context).clearAllTables() } },
+        cancelSync = { SyncScheduler.cancel(context) },
+    )
+
 // AN12: the Parametres screen's callbacks, built from the controller's method references. A top-level helper
 // (not inline in MainShell) so the shell composable stays within its length budget; a plain mapping, not a
 // Composable, so it carries no state.
@@ -274,6 +322,11 @@ private fun parametresActions(controller: ParametresController): ParametresActio
         onSave = controller::save,
         onConfirmRateChange = controller::confirmSave,
         onCancelRateChange = controller::cancelSave,
+        onExportJson = { controller.exportData(AccountExportKind.JSON) },
+        onExportCsv = { controller.exportData(AccountExportKind.CSV) },
+        onRequestSignOut = controller::requestSignOut,
+        onConfirmSignOut = controller::confirmSignOut,
+        onCancelSignOut = controller::cancelSignOut,
     )
 
 // AC2 / R136: hand the server-rendered export to the platform. A Ready event's bytes are written to a

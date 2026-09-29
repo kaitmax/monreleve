@@ -44,4 +44,33 @@ object ParametresCopy {
     const val ERROR_CHANGE_CONFLICTS =
         "Cette modification est incompatible avec des journées déjà enregistrées, qui utilisent un décompte " +
             "différent."
+
+    // AN12 increment 2 - « Mes données » (AC2). Export goes through the platform share sheet.
+    const val DATA_HEADING = "Mes données"
+    const val EXPORT_JSON = "Exporter mes données (JSON)"
+    const val EXPORT_CSV = "Exporter mes saisies (CSV)"
+    const val EXPORT_HELPER = "Toutes vos saisies et leurs horodatages, tels que le serveur les conserve."
+
+    // AN12 increment 2 - « Compte » and the R295 sign-out.
+    const val ACCOUNT_HEADING = "Compte"
+    const val SIGN_OUT = "Se déconnecter"
+    const val SIGN_OUT_CONFIRM_TITLE = "Se déconnecter ?"
+    const val SIGN_OUT_CONFIRM_BODY =
+        "La déconnexion efface les données de cet appareil : vos journées enregistrées, le relevé en cache et " +
+            "votre session. Vos réglages de calcul sont conservés."
+    const val SIGN_OUT_CANCEL = "Rester connecté"
+
+    /**
+     * PARKAN-27: the unsynced-loss warning, naming the count in a sentence (R181 - the number is a live value,
+     * derived from the record, not a constant to type). Shown only when at least one recorded day has not yet
+     * synced: those days never reached the server and cannot be recovered once Room is wiped (R295).
+     */
+    fun unsyncedWarning(days: Int): String =
+        if (days == 1) {
+            "1 journée enregistrée sur cet appareil n’a pas encore été synchronisée : elle sera " +
+                "définitivement perdue."
+        } else {
+            "$days journées enregistrées sur cet appareil n’ont pas encore été synchronisées : elles seront " +
+                "définitivement perdues."
+        }
 }

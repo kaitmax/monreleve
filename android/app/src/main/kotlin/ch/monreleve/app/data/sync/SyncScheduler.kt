@@ -37,4 +37,11 @@ object SyncScheduler {
         WorkManager.getInstance(context)
             .enqueueUniqueWork(UNIQUE_WORK, ExistingWorkPolicy.APPEND_OR_REPLACE, request)
     }
+
+    // AN12 (R295 / R289). Cancel any queued drain so it cannot repopulate a store that sign-out or account
+    // deletion just cleared - a drain enqueued before the wipe would otherwise re-send rows read from a now
+    // empty (or since-refilled) queue. Cancelling by the same unique name reaches exactly this app's work.
+    fun cancel(context: Context) {
+        WorkManager.getInstance(context).cancelUniqueWork(UNIQUE_WORK)
+    }
 }

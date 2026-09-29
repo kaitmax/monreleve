@@ -1,24 +1,31 @@
 package ch.monreleve.app.parametres
 
+import ch.monreleve.app.account.LocalStore
+import ch.monreleve.app.auth.BytesOutcome
 import ch.monreleve.app.auth.PostOutcome
 import ch.monreleve.app.calc.CalcResult
 import ch.monreleve.app.calc.Canton
 import ch.monreleve.app.calc.ValidationError
 import ch.monreleve.app.calc.calculateTelework
 import ch.monreleve.app.data.local.EntryEntity
+import ch.monreleve.app.data.local.SyncState
 import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.dossier.toTeleworkInput
 import ch.monreleve.app.onboarding.DenominatorChoice
 import ch.monreleve.app.onboarding.GranularityChoice
 import ch.monreleve.app.onboarding.SettingsSaver
+import ch.monreleve.app.releve.ExportEvent
 import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
 import ch.monreleve.app.settings.mePatchBody
 import ch.monreleve.app.settings.toAggregatableUser
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -66,6 +73,22 @@ data class RateChange(
     val after: Double,
 )
 
+/** The two documents « Exporter mes données » offers (AC2): the complete JSON record and the CSV entries. */
+enum class AccountExportKind { JSON, CSV }
+
+/**
+ * PARKAN-27: the sign-out confirmation. R295 makes sign-out wipe the device's Room record, so a day recorded
+ * but not yet synced is lost - it never reached the server and cannot be recovered. The confirmation names how
+ * many, in words, before the person confirms (R289's rationale, extended to sign-out).
+ */
+data class SignOutPrompt(val unsyncedDays: Int)
+
+/** A completed account action the composition root must act on by leaving the signed-in shell. */
+sealed interface AccountEvent {
+    /** R295: the local store is cleared and the session revoked; return to sign-in. */
+    data object SignedOut : AccountEvent
+}
+
 data class ParametresState(
     val canton: Canton?,
     val employmentRate: String,
@@ -77,20 +100,46 @@ data class ParametresState(
     val error: SettingsError? = null,
     /** R290: set when saving would move the year's rate; the screen shows before/after and asks first. */
     val pendingRateChange: RateChange? = null,
+    /** PARKAN-27: set when sign-out is requested; the screen shows the confirmation naming the unsynced days. */
+    val signOutPrompt: SignOutPrompt? = null,
 )
 
 private const val HTTP_OK = 200
 private const val HTTP_OK_MAX = 299
 
-// One setter per field (five), plus save/confirm/cancel and their private helpers - a cohesive state holder
-// for one screen, the same shape as OnboardingController (which carries the same suppression).
-@Suppress("TooManyFunctions")
+private const val ACCOUNT_EXPORT_JSON = "/api/v1/account/export"
+private const val ACCOUNT_EXPORT_CSV = "/api/v1/account/export?format=csv"
+private const val JSON_MIME = "application/json"
+private const val CSV_MIME = "text/csv"
+private const val JSON_FALLBACK = "mes-donnees.json"
+private const val CSV_FALLBACK = "mes-donnees.csv"
+
+// The default LocalStore for the increment-1 settings tests, which never sign out or delete. The app and the
+// account tests inject a real one; this exists only so those settings tests need not name a seam they do not use.
+private object NoOpLocalStore : LocalStore {
+    override suspend fun clearForSignOut() = Unit
+
+    override suspend fun clearForDeletion() = Unit
+}
+
+// One setter per field (five), plus save/confirm/cancel/export/sign-out and their private helpers - a cohesive
+// state holder for one screen. The parameters are the screen's dependencies (the write, export, revoke and
+// erasure seams), listed rather than bundled; a holder would only move the list (the MainShell suppression's
+// reasoning).
+@Suppress("TooManyFunctions", "LongParameterList")
 class ParametresController(
     private val saver: SettingsSaver,
     private val store: SettingsStore,
     private val repository: EntryRepository,
     private val taxYear: Int,
     private val scope: CoroutineScope,
+    // AN12 increment 2. The account seams: the authenticated binary GET for « Exporter mes données », the
+    // server-side session revoke, and the device-wide erasure (LocalStore, R295). Defaulted to no-ops so the
+    // increment-1 SETTINGS tests that build the controller without them still compile; the app (through
+    // MainGraph.build) and the account tests always supply the real ones.
+    private val exportBytes: suspend (String) -> BytesOutcome = { BytesOutcome.NoSession },
+    private val revokeServer: suspend () -> Unit = {},
+    private val localStore: LocalStore = NoOpLocalStore,
 ) {
     // The settings the server currently holds, so R290's "before" is the SAVED rate, not the edited one.
     // Post-onboarding this is always present (the settings screen is unreachable before onboarding saves).
@@ -108,10 +157,91 @@ class ParametresController(
     private val mutableState = MutableStateFlow(stateOf(savedSettings))
     val state: StateFlow<ParametresState> = mutableState.asStateFlow()
 
+    // One-shot events (Channels, not StateFlows): handing a file to the share sheet, and leaving the shell on
+    // sign-out, each happen once per action and must not re-fire on recomposition. The ExportEvent type is the
+    // Releve's (R206): one export contract, one platform hand-off (MainActivity.handleExport).
+    private val exportChannel = Channel<ExportEvent>(Channel.BUFFERED)
+    val exportEvents: Flow<ExportEvent> = exportChannel.receiveAsFlow()
+    private val accountChannel = Channel<AccountEvent>(Channel.BUFFERED)
+    val accountEvents: Flow<AccountEvent> = accountChannel.receiveAsFlow()
+
     init {
         scope.launch {
             repository.observeAll().collect { entries = it }
         }
+    }
+
+    /**
+     * AC2: « Exporter mes données » fetches the FW26 account export (the complete JSON record, or the CSV
+     * entries) through the session and hands it to the platform share sheet - the same one-shot ExportEvent
+     * path the Releve export uses. The file is the server's render; the device never assembles it.
+     */
+    fun exportData(kind: AccountExportKind) {
+        scope.launch {
+            exportChannel.send(toExportEvent(kind, exportBytes(pathFor(kind))))
+        }
+    }
+
+    private fun pathFor(kind: AccountExportKind): String =
+        when (kind) {
+            AccountExportKind.JSON -> ACCOUNT_EXPORT_JSON
+            AccountExportKind.CSV -> ACCOUNT_EXPORT_CSV
+        }
+
+    private fun toExportEvent(
+        kind: AccountExportKind,
+        outcome: BytesOutcome,
+    ): ExportEvent =
+        when (outcome) {
+            is BytesOutcome.Ok ->
+                if (outcome.status in HTTP_OK..HTTP_OK_MAX) {
+                    ExportEvent.Ready(
+                        bytes = outcome.export.bytes,
+                        filename = outcome.export.filename ?: fallbackFilename(kind),
+                        mimeType = mimeFor(kind),
+                    )
+                } else {
+                    ExportEvent.Failed
+                }
+            BytesOutcome.NetworkError -> ExportEvent.RequiresConnectivity
+            BytesOutcome.SessionExpired, BytesOutcome.SessionEnded, BytesOutcome.NoSession -> ExportEvent.Failed
+        }
+
+    private fun mimeFor(kind: AccountExportKind): String =
+        when (kind) {
+            AccountExportKind.JSON -> JSON_MIME
+            AccountExportKind.CSV -> CSV_MIME
+        }
+
+    private fun fallbackFilename(kind: AccountExportKind): String =
+        when (kind) {
+            AccountExportKind.JSON -> JSON_FALLBACK
+            AccountExportKind.CSV -> CSV_FALLBACK
+        }
+
+    /**
+     * PARKAN-27: raise the sign-out confirmation, naming how many recorded days have not yet synced and will
+     * be lost when Room is wiped (R295). The count is of PENDING rows across every year - sign-out clears the
+     * whole device, not one tax year.
+     */
+    fun requestSignOut() {
+        val unsynced = entries.count { it.syncState == SyncState.PENDING }
+        mutableState.update { it.copy(signOutPrompt = SignOutPrompt(unsynced)) }
+    }
+
+    /** PARKAN-27: the person read the count and confirmed. Revoke the session, wipe the local store (R295). */
+    fun confirmSignOut() {
+        mutableState.update { it.copy(signOutPrompt = null) }
+        scope.launch {
+            revokeServer()
+            localStore.clearForSignOut()
+            accountChannel.send(AccountEvent.SignedOut)
+        }
+    }
+
+    /** PARKAN-27: the person kept the session; dismiss the confirmation, nothing is cleared. */
+    fun cancelSignOut() {
+        mutableState.update { it.copy(signOutPrompt = null) }
     }
 
     // Every field change clears the last error and any pending confirmation: an edit after a before/after

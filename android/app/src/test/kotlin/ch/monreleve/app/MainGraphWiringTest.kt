@@ -1,5 +1,6 @@
 package ch.monreleve.app
 
+import ch.monreleve.app.account.LocalStore
 import ch.monreleve.app.aujourdhui.RecordedKind
 import ch.monreleve.app.aujourdhui.Slot
 import ch.monreleve.app.auth.PostOutcome
@@ -54,6 +55,15 @@ private fun saver(): SettingsSaver =
         override suspend fun saveSettings(body: String): PostOutcome = PostOutcome.Ok(200, "{}")
     }
 
+// AN12: a stub device-erasure. Same reason - the graph just has to build; the sign-out/delete scopes are
+// proven in LocalStoreTest and ParametresAccountTest.
+private fun localStore(): LocalStore =
+    object : LocalStore {
+        override suspend fun clearForSignOut() = Unit
+
+        override suspend fun clearForDeletion() = Unit
+    }
+
 // The day-writers the graph builds, enumerated by TYPE off MainControllers' own properties (reflection),
 // never a hand-kept list: a controller added to the holder that implements DayWriter is covered here
 // without editing this test. KNOWN LIMIT: a day-writer the graph builds but does NOT store on
@@ -80,6 +90,8 @@ class MainGraphWiringTest : FunSpec({
                     dossierFetch = { DossierResult.NetworkError },
                     exportBytes = { ch.monreleve.app.auth.BytesOutcome.NetworkError },
                     settingsSaver = saver(),
+                    revokeServer = {},
+                    localStore = localStore(),
                 )
 
             val writers = dayWritersOf(controllers)
@@ -113,6 +125,8 @@ class MainGraphWiringTest : FunSpec({
                     dossierFetch = { DossierResult.NetworkError },
                     exportBytes = { ch.monreleve.app.auth.BytesOutcome.NetworkError },
                     settingsSaver = saver(),
+                    revokeServer = {},
+                    localStore = localStore(),
                 )
             advanceUntilIdle()
 

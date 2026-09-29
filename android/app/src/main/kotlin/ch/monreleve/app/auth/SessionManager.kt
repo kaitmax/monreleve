@@ -260,4 +260,16 @@ class SessionManager(
         if (pair != null) api.signOut(pair.accessToken)
         tokenStore.clear()
     }
+
+    /**
+     * Revoke the session on the server, best-effort, WITHOUT clearing any local storage. AN12/R295 gives ALL
+     * local clearing to the LocalStore - which clears the tokens along with the record, the cache and the
+     * queued sync - so a full sign-out revokes here and clears there, one owner each. A network failure is
+     * swallowed (as signOut's is): a device with no connectivity must still be able to sign out and wipe its
+     * local record.
+     */
+    suspend fun revokeServerSession() {
+        val pair = tokenStore.load() ?: return
+        api.signOut(pair.accessToken)
+    }
 }

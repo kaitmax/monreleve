@@ -21,4 +21,13 @@ data class ParametresActions(
     val onConfirmRateChange: () -> Unit,
     /** R290: the person saw the before/after and kept the current value. */
     val onCancelRateChange: () -> Unit,
+    /** AC2: export the complete record (JSON) or the entries (CSV) to the platform share sheet. */
+    val onExportJson: () -> Unit,
+    val onExportCsv: () -> Unit,
+    /** PARKAN-27: raise the sign-out confirmation (which names the unsynced days that will be lost). */
+    val onRequestSignOut: () -> Unit,
+    /** R295: the person confirmed; revoke the session and wipe the local store. */
+    val onConfirmSignOut: () -> Unit,
+    /** PARKAN-27: the person kept the session; dismiss the confirmation. */
+    val onCancelSignOut: () -> Unit,
 )

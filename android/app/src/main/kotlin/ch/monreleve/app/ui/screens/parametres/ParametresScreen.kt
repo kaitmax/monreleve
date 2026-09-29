@@ -54,7 +54,7 @@ fun ParametresScreen(
     ) {
         Text(text = ParametresCopy.TITLE, style = FrontierType.h1)
 
-        Text(text = ParametresCopy.SITUATION_HEADING, style = FrontierType.caption, color = LightColors.textSecondary)
+        SectionHeading(ParametresCopy.SITUATION_HEADING)
         SituationWarning()
 
         CantonField(state.canton, actions.onCantonChange, enabled = !busy)
@@ -74,10 +74,16 @@ fun ParametresScreen(
         if (state.phase == ParametresPhase.SAVED) {
             Text(text = ParametresCopy.SAVED_CONFIRMATION, style = FrontierType.bodyM, color = LightColors.success)
         }
+
+        DataSection(actions)
+        AccountSection(actions)
     }
 
     state.pendingRateChange?.let { change ->
         RateChangeDialog(change, actions.onConfirmRateChange, actions.onCancelRateChange)
+    }
+    state.signOutPrompt?.let { prompt ->
+        SignOutDialog(prompt, actions.onConfirmSignOut, actions.onCancelSignOut)
     }
 }
 

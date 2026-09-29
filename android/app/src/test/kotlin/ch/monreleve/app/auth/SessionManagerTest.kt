@@ -167,4 +167,17 @@ class SessionManagerTest : FunSpec({
             session.authenticatedGet("/api/v1/me") shouldBe AuthedOutcome.NoSession
         }
     }
+
+    test("revokeServerSession revokes on the server but does NOT clear local (R295: the LocalStore clears)") {
+        runTest {
+            val transport = RoutingTransport()
+            val store = MutableTokenStore(pair("v1"))
+            val session = manager(transport, store)
+            session.revokeServerSession()
+            transport.signOutCount.get() shouldBe 1
+            // R295 hands local clearing to the LocalStore, so the token survives THIS call - the sign-out flow
+            // clears it (and the record, cache and sync) immediately afterwards.
+            (store.load() != null) shouldBe true
+        }
+    }
 })
