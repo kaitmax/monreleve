@@ -1,26 +1,25 @@
 package ch.monreleve.app.ui.shell
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.painterResource
+import ch.monreleve.app.R
 import ch.monreleve.app.fr.NavCopy
 
-// AN10. The app's bottom navigation (SPEC 11). Two items TONIGHT - Aujourd'hui and Calendrier - because
-// those are the two screens that exist; a tab pointing at an unbuilt Releve or Parametres would be the
-// dead route R85 forbids (R282: never advertise what is not there). AN11 and AN12 each add their own
-// item when their screen lands. A pure UI component: no data layer (fence 5), copy from fr/, colours
-// and the active tint from FrontierTheme (active = brand).
+// AN10. The app's bottom navigation (SPEC 11). Two items - Aujourd'hui and Calendrier - because those
+// are the two screens that exist; a tab pointing at an unbuilt Releve or Parametres would be the dead
+// route R85 forbids (R282). AN11 and AN12 each add their own item when their screen lands. A pure UI
+// component: no data layer (fence 5), copy from fr/, colours and the active tint from FrontierTheme.
 //
-// ICONS ARE THE COMPOSE MATERIAL CORE SET, no new dependency (the ZoneBadge precedent: the core set is
-// bundled with material3; the extended set is a separate dependency this task does not add). FD6 draws
-// lucide `sun` and `calendar`; the core set has no `sun`, so Home stands in for Aujourd'hui and
-// DateRange for Calendrier - by role, not by exact glyph, named in the report AGAINST THE RULINGS. The
-// visible label carries each destination's name, so the icon is decorative (contentDescription null).
+// ICONS ARE LUCIDE (R293, AN10b), converted to vector drawables and committed - no runtime dependency
+// (R136). FD6 draws lucide `sun` (Aujourd'hui) and `calendar` (Calendrier); those exact glyphs now ship
+// as res/drawable/ic_sun and ic_calendar, replacing AN10's Home/DateRange stand-ins (PARKAN-23 reverses
+// PARKAN-21). The visible label carries each destination's name, so the icon is decorative
+// (contentDescription null). `file-text` (AN11 Releve) and `settings` (AN12 Parametres) are also
+// committed, ready for their tabs, but are NOT shown here - no tab for a screen that does not exist yet.
 
 @Composable
 fun AppBottomBar(
@@ -31,13 +30,13 @@ fun AppBottomBar(
         NavigationBarItem(
             selected = selected == AppTab.AUJOURDHUI,
             onClick = { onSelect(AppTab.AUJOURDHUI) },
-            icon = { Icon(imageVector = Icons.Filled.Home, contentDescription = null) },
+            icon = { Icon(painter = painterResource(R.drawable.ic_sun), contentDescription = null) },
             label = { Text(text = NavCopy.AUJOURDHUI) },
         )
         NavigationBarItem(
             selected = selected == AppTab.CALENDRIER,
             onClick = { onSelect(AppTab.CALENDRIER) },
-            icon = { Icon(imageVector = Icons.Filled.DateRange, contentDescription = null) },
+            icon = { Icon(painter = painterResource(R.drawable.ic_calendar), contentDescription = null) },
             label = { Text(text = NavCopy.CALENDRIER) },
         )
     }
