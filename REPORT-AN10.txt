@@ -1,0 +1,390 @@
+================================================================================
+REPORT-AN10.txt -- the calendar
+================================================================================
+
+--------------------------------------------------------------------------------
+SUMMARY (R273 first; whether the device walkthrough ran)
+--------------------------------------------------------------------------------
+R273: tasks/todo.md's AN10 is literally "Calendrier" - the calendar. The prompt's
+number and scope match the file, so the report is named AN10 and commit prefixes
+are "AN10". No renumbering.
+
+THE DEVICE WALKTHROUGH RAN, FOR REAL. AN5c's AC1 held (three consecutive runs to
+a signed-in Aujourd'hui), so per RUN-NIGHT the walkthrough is required, not parked.
+It was driven on the Pixel_10 emulator against the production container
+(monreleve:write on port 3000) using AN5c's R284 session injection, and every
+screen was opened and looked at. It found a real defect no unit test could (the
+calendar's sync was never wired) - see THE RECORD MADE VISIBLE and DEVIATIONS.
+
+WHAT WAS BUILT (six commits after the prompt's own; increments map to them):
+  1  ce1bf33  AN10: the month
+  2  698bbce  AN10: the edit sheet
+  3  645ad77  AN10: missing, late and modified, in words
+  4  6c22986  AN10: the calendar as a list at high text scale
+     4628897  AN10: park the calendar's open questions (PARKAN-19/20/21)
+  5  8c9124e  AN10: the calendar, seen
+     8284493  AN10: the edit sheet at 200 percent
+
+ALL THREE ACCEPTANCE CRITERIA MET:
+  AC1 -- a month of DayCells with its legend; tapping a past day opens the edit
+         sheet; saving goes through AN5's queue; the cell changes; future days are
+         not recordable; weekends and future days carry no quality bar. Built and
+         driven on the device (day 25 recorded through the sheet, cell changed).
+  AC2 -- the record is legible: a missing past working day reads as "Non
+         renseigne", a day recorded more than seven days late is marked late from
+         the SERVER's own firstRecordedAt (R216), and a day changed after it was
+         first recorded says so, with when. All three seen on the device.
+  AC3 -- at 200 percent text the grid becomes a list above a measured threshold,
+         and every row still says date, kind, quality and provenance in words.
+         The threshold was measured on the device (grid legible through 1.45; the
+         list takes over at 1.5) and both were looked at.
+
+--------------------------------------------------------------------------------
+PRECONDITIONS (R273, R0, R1, C2 handover)
+--------------------------------------------------------------------------------
+R0. Read REPORT-AN5c.txt and REPORT-AN5b.txt in full; SPEC 11.3 (the calendar)
+    verbatim, SPEC 6, 8, 20; DESIGN-SYSTEM sections 1, 2, 4; FD6.
+
+C2 handover at the top of the night: previous report (REPORT-AN5c.txt) committed
+and pushed; git clean and local main == origin/main at b1c1f90; no orphaned
+emulator, adb, container or port; nothing BLOCKING.
+
+R1. pnpm gate:clone GREEN on origin/main HEAD b1c1f90 at the start of the night.
+    ran     install, typecheck, lint, test, build, size, db:deploy, test:db,
+            test:container:write, from a clean clone.
+    claim   this commit builds and passes those suites from a clean checkout.
+    CI readiness: quiet -- the repository is private and CI_FULL is unset (the
+            carried FW24 combination).
+    A further gate:clone ran GREEN (exit 0) on the inc-1 HEAD ce1bf33 before its
+    push, and again on the inc-2..4 HEAD 6c22986 before that push. AN10 is
+    Android-only (no web/ bytes change), so gate:clone - which verifies the web
+    side - is invariant across these commits; each push was of an Android-only,
+    web-byte-identical commit on a gate:clone'd base. The FINAL gate:clone on the
+    report HEAD is in PUSH PROOF.
+
+--------------------------------------------------------------------------------
+RED-GREEN LEDGER (the plants that proved the tests bite; R178/R180)
+--------------------------------------------------------------------------------
+1. THE LATE-FROM-SERVER MAPPING (CalendarModel.qualityOf). Planted a swap of the
+   LATE/ON_TIME branches (wouldBeLate -> ON_TIME else LATE). CalendarModelTest went
+   RED on exactly the two load-bearing cases:
+     "a synced day recorded within the threshold reads as on time" FAILED
+     "a synced day recorded past the threshold reads as late ... (R216)" FAILED
+   Reverted; both green. The late display is bound to LatenessForecast (the same
+   fixture the server's late.ts is bound to, R206), so a one-digit threshold change
+   still fails both builds.
+2. THE FUTURE-DAY GUARD (CalendarController.openDay, AC1). Planted "if
+   (!day.recordable && false) return" (always allow). CalendarControllerTest went
+   RED on "a future day does not open the sheet ... (AC1)". Reverted; green.
+3. THE COPY-DUPLICATION GUARD fired on my own work (R206): PROVENANCE_MANUAL
+   "Saisie manuelle" duplicated AujourdhuiCopy.MODE_MANUAL. Folded - the sheet
+   references the one home - and the guard passed. A real fire, not a plant.
+4. THE REACHABILITY GUARD fired on my own work (R238): formatDayLong was first
+   called only from the controller (calendar/), not a surface (ui/design/dev). The
+   sheet now derives the title itself, so the surface produces the displayed text.
+   A real fire, not a plant.
+
+The model and screen code were written close to their tests (a deviation from
+strict test-first noted honestly); plants 1 and 2 prove the load-bearing tests are
+not vacuous, and the walkthrough (R176) is the acceptance instrument.
+
+--------------------------------------------------------------------------------
+THE MONTH (increment 1)
+--------------------------------------------------------------------------------
+calendar/CalendarModel.kt is the pure month model - no Android, no clock, no
+network. It turns the device's Room rows into one month's grid. R28: "today" is
+supplied as the Paris day string (the controller derives it via todayInParis); the
+model never touches a clock, so the month is identical whatever timezone the device
+is set to. CalendarControllerTest asserts this directly: a clock at 22:30 UTC on
+15 June yields a Paris "today" of the 16th (day 16 isToday, day 15 not), which a
+UTC device would get wrong.
+
+The grid is AN3's DayCells, Monday-first (L M M J V S D), leading blanks aligning
+day 1 to its weekday. Navigation is a chevron each side, bounded to the tax year
+and narrowed to the engine's period for a partial year: firstNavMonth is the
+activity start month (or January), and a mid-year start opens the calendar on that
+month with the previous chevron disabled (asserted). The kind legend
+(DayKindLegend) sits under the grid (R119), and a four-count summary (Suisse,
+Domicile, Mission, Non renseigne) reads the kind names from LegendCopy's one home
+(R206), never a second copy. The bottom nav (AppBottomBar) shows only the two
+screens that exist (R85/R282); Releve and Parametres join it in AN11/AN12.
+
+DayCell (design/) gained three states the calendar needs, each defaulted so no
+existing caller or baseline changed: RecordQuality.PENDING (a lettered cell with no
+bar - the quality is not yet a server fact, R216), isToday (the FD6 info-soft fill
++ brand number, via tokens, never a raw 2 dp outline which has no token), and
+provenance in the a11y announcement (SPEC 8). New baselines: dayCellPending,
+dayCellToday, calendrierMonth - all looked at (R184).
+
+--------------------------------------------------------------------------------
+THE EDIT SHEET (increment 2)
+--------------------------------------------------------------------------------
+Tapping a recordable day opens a ModalBottomSheet (24 dp top corners) whose content
+is CalendarEditSheetContent: the day title (formatDayLong, French weekday + month
+from a PINNED locale, never the device's), the kind chooser reusing Aujourd'hui's
+vocabulary (En Suisse / Domicile / Mission -> En France / Pays tiers / Declarer une
+absence -> reasons), a note field, and Enregistrer / Annuler.
+
+D16: nothing is written until the Save tap. The rows only change local selection;
+onSave records through the SAME EntryRepository Aujourd'hui uses (the mutation id
+born at the tap), then enqueues the drain (SPEC 13.2). No success animation - the
+sheet closes and the cell updates by observing the repository. A future or
+out-of-period day is not recordable, so openDay refuses it and its cell is inert
+(AC1). The sheet content is a standalone composable baselined directly, because a
+ModalBottomSheet's own scaffolding does not render reliably under Layoutlib. New
+baseline: calendrierEditSheet, looked at.
+
+--------------------------------------------------------------------------------
+THE RECORD MADE VISIBLE (increment 3, AC2)
+--------------------------------------------------------------------------------
+NOT BY COLOUR ALONE. A quality legend (RecordQualityLegend) names the three bar
+colours in words - "A temps", "Saisie tardive", "Non renseigne" - beside the kind
+legend. No corrected-line: the manual product has no detection, so a cell can never
+carry the corner mark, and a legend line for a feature the product lacks is what
+R282 forbids (named in FD6 AGAINST THE RULINGS).
+
+LATE COMES FROM THE SERVER'S ROW (R216). CalendarModel.serverLate is the ONE home
+for the rule: true only once a row is SYNCED and its own firstRecordedAt is more
+than the threshold after the day, by the SAME rule the server's late.ts uses
+(LatenessForecast.wouldBeLate, bound to fixtures/late-threshold-cases.json). Read by
+both the grid cell (qualityOf) and the edit sheet, so the two cannot disagree. A
+row the server has not yet seen is PENDING, never LATE.
+
+THE SHEET STATES THE FLAG OUT LOUD (SPEC 11.3), R216-split: a synced late day
+states the FACT ("Saisie tardive : enregistree plus de N jours apres la journee.
+Cette mention figure dans votre releve annuel."); a still-unrecorded backdated day
+PREDICTS ("...sera signalee comme saisie tardive des sa synchronisation..."). The
+threshold N is interpolated from LatenessForecast, never a typed 7 (R153/R181). The
+provenance block shows "Saisie manuelle" (one home, AujourdhuiCopy.MODE_MANUAL,
+R206), the server's first-recording timestamp, and - when the day was changed after
+that - the modification timestamp (both the server's own values, read Paris-side).
+Baselines regenerated (R135/R207): calendrierMonth (quality legend added),
+calendrierEditSheet (provenance block added), calendrierEditSheetLate (new). All
+looked at.
+
+--------------------------------------------------------------------------------
+THE LIST (increment 4, AC3) -- the measured threshold, and how
+--------------------------------------------------------------------------------
+Seven columns cannot hold 200 percent text, so above a font scale the grid becomes
+a list (CalendarList): one row per day, each saying date, kind, quality and
+provenance IN WORDS. The switch reads LocalDensity.fontScale against
+LIST_FONT_SCALE_THRESHOLD, a behavioural constant (not a design token). The word
+homes are reused (kind from LegendCopy, quality from CalendarCopy.qualityWord,
+provenance from AujourdhuiCopy).
+
+MEASURED ON THE DEVICE, not chosen. The emulator's system font_scale was swept and
+each result looked at:
+  1.45  the GRID: day numbers large but the seven columns still fit, the header,
+        both legends and the summary all readable. LEGIBLE - the last legible step
+        below the switch (shot cal-scale-1_45).
+  1.5   the LIST takes over - "Mardi 1 septembre 2026 / Non renseigne", one row per
+        day, weekends showing the date only (shot cal-list-1_5).
+  2.0   the LIST, each row large and legible with its words (shot cal-list-2_0, and
+        the calendrierListLarge Paparazzi baseline: on-time, late "Saisie tardive",
+        pending "En attente de synchronisation", missing "Non renseigne", weekend
+        date-only, absence).
+THE MEASURED FIGURE: the grid stays legible through fontScale 1.45; the list takes
+over at 1.5, which is the shipped threshold. New baseline: calendrierListLarge,
+looked at.
+
+THE EDIT SHEET AT 200 PERCENT (commit 8284493, the night's default-AND-2f
+discipline). The sheet was this task's main new surface and had only default
+coverage, so calendrierEditSheetLateLarge photographs its richest state (late +
+modified) at 2f: title, question, options, note and the late notice all wrap
+legibly; the content scrolls, so Enregistrer and the full provenance sit below the
+fixed viewport (seen at default in calendrierEditSheetLate and on the device in
+cal-10/cal-11). Looked at.
+
+--------------------------------------------------------------------------------
+WALKTHROUGH (every screen, seen; R176/R177) -- and the defect it found
+--------------------------------------------------------------------------------
+Driven on the Pixel_10 emulator against monreleve:write on port 3000, signed in via
+AN5c's injection (container + session set up by an5c-signedin.mjs --keep; the
+calendar driven ad-hoc with adb + uiautomator, shots in android/.an10-shots/,
+untracked like AN5c's). Every PNG opened and described:
+
+EVERY PNG BELOW WAS OPENED AND LOOKED AT (R184), not read from a text dump. The
+aborted first drive's shots (which showed no sheet, or Aujourd'hui at the wrong
+scale) were deleted; the folder holds only the correct, described shots.
+
+  cal-00-aujourdhui  the signed-in landing after injection ("Bonjour Camille").
+  cal-01-month-default  the month on the device: "Septembre 2026", L M M J V S D,
+    day 1 under Mardi (correct), every past weekday grey (Non renseigne), weekends
+    and the future no bar, today (29) info-soft filled with a brand number, both
+    legends, summary Suisse 0 / Domicile 0 / Mission 0 / Non renseigne 20 (the 20
+    past weekdays), bottom nav with Calendrier active. Matches the baseline.
+  cal-06-sheet-domicile / cal-07-recorded-domicile  the edit sheet opened on
+    "Vendredi 25 septembre 2026" with the four options and the note field, Domicile
+    selected; Enregistrer saved it. The cell became "D" with no bar (pending),
+    summary Domicile 1, and the content-desc read "Jour 25, Domicile, en attente de
+    synchronisation, saisie manuelle." - the TalkBack announcement (todo.md's a11y
+    criterion), on the device.
+  cal-08-backdated-forecast  day 15 (14 days old): the sheet showed the FORECAST
+    notice before saving - "Enregistree plus de 7 jours apres la journee : sera
+    signalee comme saisie tardive des sa synchronisation..." (R216 prediction,
+    threshold interpolated).
+
+  THE DEFECT (R176's purpose; R204). After recording day 25 and day 15, both stayed
+  "en attente de synchronisation" and the server DB stayed EMPTY - the sync never
+  fired. Cause: MainShell created CalendarController WITHOUT wiring requestSync, so
+  the calendar's Save recorded to Room but never enqueued the drain (SPEC 13.2). The
+  controller's own test passed because it injects requestSync; only the wired path,
+  driven end to end, proved a calendar record reaches the server. Fixed (one arg in
+  MainShell), rebuilt, reinstalled, re-driven:
+
+  server DB after the fix  Entry rows 2026-09-15 (CH) and 2026-09-25 (HOME), each
+    with a server-assigned firstRecordedAt of 2026-09-29 - the POST /entries round
+    trip, on the device.
+  cal-09-synced  day 15 shows "S" (red dot) + AMBER bar (Saisie tardive), day 25
+    shows "D" (blue dot) + GREEN bar (a temps). The late flag is the SERVER's own,
+    recomputed from its firstRecordedAt (R216) - the single strongest proof: a
+    backdated day, synced, comes back late from the server's timestamp. Summary
+    Suisse 1 / Domicile 1 / Non renseigne 18.
+  cal-10-late-sheet-fact  reopening day 15: the FACT notice ("Saisie tardive :
+    ... Cette mention figure dans votre releve annuel.") and "Premiere saisie
+    enregistree le 29.09.2026 a 04:13" (the server's own timestamp, Paris-side).
+  cal-11-modified-sheet  corrected day 25 (Domicile -> En Suisse): the server's
+    EntryEvent trail is CREATED (HOME) then MODIFIED (CH), append-only; the reopened
+    sheet shows "Premiere saisie enregistree le 29.09.2026 a 04:13" (IMMUTABLE,
+    unchanged) AND "Modifiee le 29.09.2026 a 04:20" (AC2: a day changed after first
+    recording says so, with when; firstRecordedAt preserved, SPEC 8).
+  cal-scale-1_45 / cal-list-1_5 / cal-list-2_0  the measurement above.
+
+R186: trackerExists was NOT flipped (product-state.ts untouched); this session
+shipped no release, and the injection is debug-only.
+
+--------------------------------------------------------------------------------
+FD6 AGAINST THE RULINGS (each divergence, and which side won)
+--------------------------------------------------------------------------------
+FD6 predates most rulings; where it and a ruling/SPEC disagree the ruling wins
+(R258), and the divergence is named, not restyled.
+
+1. FD6 draws a cantonal-holiday styling (display-only, no quality bar). NOT built.
+   R282/the boundary win: an unsourced holiday date in the APK is a false published
+   claim; an unrecorded holiday reads honestly as "Non renseigne". PARKAN-19.
+2. FD6's "3 px bar" and cell metrics vs AN3's DayCell (40 dp, 4 dp bar). The
+   inherited AN3 component wins (reused as-is; SPEC's ">= 44 dp cell" is an AN3
+   divergence, not reopened here). Named, not restyled.
+3. FD6's white card with a 1 px border. The Android build uses white-on-grey
+   CONTRAST (as every other Android component does); a 1 dp hairline has no token.
+   Contrast wins.
+4. FD6's bottom nav lucide "sun"/"calendar". Core Material Home/DateRange stand in
+   (no new dependency, the ZoneBadge precedent). PARKAN-21.
+5. FD6's edit-sheet "Absence" row vs Aujourd'hui's "Declarer une absence". The
+   shared record vocabulary wins (one chooser across both surfaces, R206).
+6. FD6's 52 px option rows vs 48 dp. The Android 48 dp minimum wins (no 52 token).
+7. FD6's dimmed adjacent-month day numbers in the leading/trailing cells. Empty
+   cells are shown instead (simpler, and the header + numbers make the month clear).
+8. FD6's missing-day banner ("N jours ouvres non renseignes -> Completer"). NOT
+   built; the summary's "Non renseigne" count and the grey bars carry the same fact.
+9. FD6's "Base de la detection" block in the sheet. NOT built - the manual product
+   has no detection tally (R282); omitted, not hinted at.
+10. The corrected corner mark and the "Detection corrigee" legend line. NOT shown -
+    no detection in the manual product (R282); the cell supports the mark for AN9.
+
+--------------------------------------------------------------------------------
+PARKED (PARKAN-<n>, in parking.md)
+--------------------------------------------------------------------------------
+PARKAN-19 -- the calendar ships no cantonal holidays table. Conservative: an
+  unrecorded holiday reads as "Non renseigne"; the official GE/VD table is owed.
+PARKAN-20 -- the mixed half-day cell shows the morning kind + the least-settled
+  quality; the edit sheet shows both portions in full.
+PARKAN-21 -- the bottom nav uses core Material icons, not lucide; the extended-set
+  dependency is owed when AN11's Releve tab forces the file-text glyph.
+Numbering: parking.md's persisted PARKAN sequence ends at PARKAN-4; AN5b/AN5c
+referenced PARKAN-16/17/18 in their reports without persisting them. AN10 numbers
+after the highest referenced (18), leaving the gap visible. NOTICED BUT NOT
+TOUCHING (C4): the AN5b/AN5c persistence gap.
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+1. THE WALKTHROUGH FOUND AND FIXED A DEFECT (an extra fix, not parked): MainShell
+   never wired requestSync into CalendarController, so a calendar record never
+   synced (SPEC 13.2). Fixed in increment 5 (one arg), re-verified by re-driving the
+   sync to the server DB. It is UNIMPLEMENTED SPEC, fixed rather than parked. A
+   one-arg change the operator can bounce.
+2. THE LATE-DERIVATION landed in increment 1's model (cohesive with the whole
+   quality mapping), and its legibility (the words legend, the sheet notices) in
+   increment 3 - the prompt splits them across "the month" and "in words". The
+   report maps them honestly.
+3. THE FONT-SCALE THRESHOLD (1.5) shipped in increment 4 as a reasoned value and
+   was CONFIRMED on the device in increment 5 (grid legible through 1.45, list at
+   1.5). No change was needed after the device measurement.
+4. THE MODIFY DRIVE'S first attempt failed on a shell arithmetic bug in the
+   ad-hoc adb driver (Enregistrer coordinates empty), not a product defect; the
+   second attempt landed (the EntryEvent MODIFIED trail confirms). AN5b's
+   stop-loss (a step failing twice is record-and-move-on) was not reached.
+
+--------------------------------------------------------------------------------
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------------------
+- The MainShell wiring defect (DEVIATIONS 1) has no JVM-testable guard: the wiring
+  is in a Composable, testable only via connectedDebugAndroidTest (a device, which
+  the JVM gate skips). The walkthrough (R176) is the current integration proof; a
+  connectedAndroidTest asserting the shell wires requestSync into BOTH controllers
+  is owed. A defect of the R204 class (units correct, no test crosses the wiring).
+- parking.md's PARKAN sequence has a 4 -> 19 gap and the AN5b/AN5c entries
+  16/17/18 were never persisted (see PARKED). An earlier task's omission, not AN10's.
+- android/scripts/an10-walkthrough.mjs (the throwaway drive helper) and
+  android/.an10-shots/ (the walkthrough PNGs) are left untracked, the AN5c
+  precedent.
+- todo.md's AC2 names "editing preserves detectedKind". A calendar edit re-records
+  through EntryRepository, which nulls the local serverId/firstRecordedAt only for
+  a brand-new day and keeps detectedKind from the RecordCommand; the SERVER
+  preserves detectedKind whenever a proposal existed (D17). No detected days exist
+  in the manual product, so this cannot bite tonight, but AN9 will want the
+  one-way trip (a local edit, then the sync response restoring the server's
+  detectedKind) named and tested.
+
+--------------------------------------------------------------------------------
+QUESTIONS
+--------------------------------------------------------------------------------
+1. The three PARKAN decisions (holidays table, mixed half-day cell, nav icons) each
+   name what the operator must supply to close them.
+2. The MainShell requestSync fix (DEVIATIONS 1): accept the one-arg wiring, and is a
+   connectedAndroidTest for the shell wiring wanted now or later?
+3. The font-scale threshold 1.5: accept, or is a different breakpoint preferred?
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+AN10 commits on origin/main:
+  ce1bf33  AN10: the month
+  698bbce  AN10: the edit sheet
+  645ad77  AN10: missing, late and modified, in words
+  6c22986  AN10: the calendar as a list at high text scale
+  4628897  AN10: park the calendar's open questions (PARKAN-19/20/21)
+  8c9124e  AN10: the calendar, seen
+  8284493  AN10: the edit sheet at 200 percent
+  <report commit follows -- it cannot name its own hash>
+
+CADENCE (AN5b/AN5c precedent, endorsed): AN10 is Android-only, so every commit is
+web-byte-identical and gate:clone (which verifies the web side) is invariant across
+them. gate:clone ran GREEN before the inc-1 push (ce1bf33) and before the inc-2..4
+push (6c22986); the parking and inc-5 and 2f-baseline commits are Android/doc-only
+on those gate:clone'd bases. Android :app:gate green on every increment
+(assembleDebug, testDebugUnitTest up to 738, checkTestFloor, ktlintCheck, detekt,
+verifyPaparazziDebug, checkReleaseCleartext, checkReleaseNoDebugInjection). The
+emulator and container were torn down before the final gate:clone (port 3000 free,
+no adb device).
+
+FINAL gate:clone on HEAD 8284493: GATE:CLONE PASSED.
+  ran     install, typecheck, lint, test, build, size, db:deploy, test:db,
+          test:container:write, from a clean clone (no .env, no prior node_modules,
+          no generated file the run did not produce itself).
+  claim   this commit builds and passes those suites from a clean checkout.
+  CI readiness: quiet -- the repository is private and CI_FULL is unset (the
+          carried FW24 combination).
+  NOT RUN in a clone (R133), making no claim: test:e2e, test:visual, test:runtime,
+          lighthouse, parity:check, test:container.
+  tree    DIRTY at the check - the untracked android/.an10-shots/ (the walkthrough
+          PNGs), android/scripts/an10-walkthrough.mjs (the throwaway driver) and
+          this uncommitted report. gate:clone clones HEAD, so none is in the run.
+
+THE REPORT-ONLY FINALIZATION COMMIT ("AN10: the report") follows 8284493 and
+changes only REPORT-AN10.txt at the repo root. It is web- and Android-byte-identical
+to 8284493, so the gate:clone above discharges R199 for it as well (the AN5c
+precedent). This is the last thing the session does for AN10.
+
+END OF REPORT-AN10.txt
