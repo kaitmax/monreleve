@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import ch.monreleve.app.calendar.CalendarDayUi
 import ch.monreleve.app.calendar.CalendarState
@@ -57,6 +59,13 @@ import ch.monreleve.app.fr.format.formatMonthYear
 
 private const val WEEK_LENGTH = 7
 
+// R271, AC3: the font scale at and above which the seven-column grid stops being legible and the screen
+// becomes a list. MEASURED on the device, not chosen: at 1.5x the two-digit day number and the letter
+// already crowd a ~45 dp column, and at 2.0x they overlap; 1.3x still reads. The figure and how it was
+// measured are recorded in REPORT-AN10.txt. A behavioural constant, not a design token (not a radius,
+// colour or spacing value), so it lives here rather than in Tokens.kt.
+private const val LIST_FONT_SCALE_THRESHOLD = 1.5f
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CalendrierScreen(
@@ -65,12 +74,18 @@ fun CalendrierScreen(
     modifier: Modifier = Modifier,
 ) {
     val monthView = state.monthView ?: return
+    val asList = LocalDensity.current.fontScale >= LIST_FONT_SCALE_THRESHOLD
     Column(
         modifier = modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(Spacing.space20),
         verticalArrangement = Arrangement.spacedBy(Spacing.space16),
     ) {
         MonthHeader(monthView, actions)
-        CalendarCard(monthView, actions.onDayClick)
+        if (asList) {
+            // R271: above the measured scale the grid cannot stay legible - one row per day instead.
+            CardSurface { CalendarList(monthView, actions.onDayClick) }
+        } else {
+            CalendarCard(monthView, actions.onDayClick)
+        }
         MonthSummaryRow(monthView.summary)
     }
 
@@ -117,11 +132,10 @@ private fun MonthHeader(
     }
 }
 
+// The white card both the grid and the high-scale list sit in: contrast on the grey canvas, no drawn
+// 1 px border (the Android components use contrast throughout; a 1 dp hairline has no token).
 @Composable
-private fun CalendarCard(
-    monthView: MonthView,
-    onDayClick: (String) -> Unit,
-) {
+private fun CardSurface(content: @Composable ColumnScope.() -> Unit) {
     Column(
         modifier =
             Modifier
@@ -130,7 +144,16 @@ private fun CalendarCard(
                 .background(LightColors.surface)
                 .padding(Spacing.space12),
         verticalArrangement = Arrangement.spacedBy(Spacing.space8),
-    ) {
+        content = content,
+    )
+}
+
+@Composable
+private fun CalendarCard(
+    monthView: MonthView,
+    onDayClick: (String) -> Unit,
+) {
+    CardSurface {
         WeekdayHeaderRow()
         MonthGrid(monthView, onDayClick)
         // R119: the kind legend sits with the grid, in the same file the fence scans. The quality legend

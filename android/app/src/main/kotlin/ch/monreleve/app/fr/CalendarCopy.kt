@@ -33,6 +33,21 @@ object CalendarCopy {
     const val QUALITY_ON_TIME = "À temps"
     const val QUALITY_LATE = "Saisie tardive"
 
+    /**
+     * A recorded day's quality as one word, for the high-scale list (R271, AC3): the same words the
+     * legend names, plus a pending one; NONE (weekend, future, out of period) has no quality to state.
+     * The three named colours reference their one home; the pending word is inline (no const, so no
+     * second scanned home for it).
+     */
+    fun qualityWord(qualityName: String): String? =
+        when (qualityName) {
+            "ON_TIME" -> QUALITY_ON_TIME
+            "LATE" -> QUALITY_LATE
+            "PENDING" -> "En attente de synchronisation"
+            "MISSING" -> NON_RENSEIGNE
+            else -> null
+        }
+
     // The sheet's provenance block (SPEC 11.3, FD6 A2): who recorded it, when it was first recorded, and
     // when it was changed. « Saisie manuelle » is not held here - it has one home already, AujourdhuiCopy
     // .MODE_MANUAL (R206), and the sheet references it. The timestamps are interpolated from the SERVER's

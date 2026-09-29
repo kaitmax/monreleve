@@ -155,6 +155,14 @@ class CalendrierScreenScreenshotTest {
         paparazzi.snapshot { host(CalendarState(monthView = month)) }
     }
 
+    // R271, AC3: at 200 % text the grid becomes a list, one row per day, each saying date, kind, quality
+    // and provenance in words. The switch is on the measured font scale (LIST_FONT_SCALE_THRESHOLD).
+    @Test
+    fun calendrierListLarge() {
+        paparazzi.unsafeUpdateConfig(DeviceConfig.PIXEL_5.copy(fontScale = 2f))
+        paparazzi.snapshot { host(CalendarState(monthView = month)) }
+    }
+
     // The edit sheet's content directly (a ModalBottomSheet's own scaffolding does not render reliably
     // under Layoutlib, so the content composable is baselined on its own).
     @Test
