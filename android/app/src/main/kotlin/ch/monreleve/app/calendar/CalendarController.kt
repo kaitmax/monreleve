@@ -1,5 +1,6 @@
 package ch.monreleve.app.calendar
 
+import ch.monreleve.app.DayWriter
 import ch.monreleve.app.aujourdhui.AbsenceChoice
 import ch.monreleve.app.aujourdhui.RecordedKind
 import ch.monreleve.app.aujourdhui.Slot
@@ -94,8 +95,10 @@ class CalendarController(
     private val taxYear: Int,
     private val clock: Clock,
     private val scope: CoroutineScope,
-    private val requestSync: () -> Unit = {},
-) {
+    // R291: a DayWriter, so MainGraphWiringTest enumerates this by type and asserts the app's graph
+    // builds it with a real requestSync. Default no-op only for the JVM tests that build it directly.
+    override val requestSync: () -> Unit = {},
+) : DayWriter {
     private val today: String = todayInParis(clock)
     private val settings: Settings? = settingsStore.load()
     private val granularity: GranularityChoice =

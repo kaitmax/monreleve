@@ -18,12 +18,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
-import ch.monreleve.app.aujourdhui.AujourdhuiController
 import ch.monreleve.app.auth.KeystoreTokenStore
 import ch.monreleve.app.auth.SessionManager
 import ch.monreleve.app.auth.SharedPrefsPendingSignInStore
 import ch.monreleve.app.auth.SignInController
-import ch.monreleve.app.calendar.CalendarController
 import ch.monreleve.app.data.local.MonReleveDatabase
 import ch.monreleve.app.data.remote.AuthApi
 import ch.monreleve.app.data.remote.UrlConnectionTransport
@@ -169,30 +167,31 @@ private fun MainShell(
     scope: CoroutineScope,
     requestSync: () -> Unit,
 ) {
-    val aujourdhui = remember { AujourdhuiController(repository, store, taxYear, clock, scope, requestSync) }
-    // SPEC 13.2: the calendar's Save must enqueue the drain too - without this it records to Room but
-    // never syncs, which the walkthrough caught (R176/R204: the unit test injects requestSync and passes;
-    // only the wired path proves a calendar record reaches the server).
-    val calendar = remember { CalendarController(repository, store, taxYear, clock, scope, requestSync) }
+    // R291: BOTH controllers are built by MainGraph, the ONE construction site MainGraphWiringTest also
+    // calls - so the graph the JVM test checks is the graph the app uses. SPEC 13.2: both are built with
+    // requestSync, and the test fails if either is not (the AN10 calendar-never-synced bug, which hid
+    // because this wiring lived inside a Composable no JVM test reaches, R176/R204).
+    val controllers = remember { MainGraph.build(repository, store, taxYear, clock, scope, requestSync) }
     var tab by remember { mutableStateOf(AppTab.AUJOURDHUI) }
 
-    val aujourdhuiState by aujourdhui.state.collectAsState()
-    val calendarState by calendar.state.collectAsState()
+    val aujourdhuiState by controllers.aujourdhui.state.collectAsState()
+    val calendarState by controllers.calendar.state.collectAsState()
 
     Scaffold(bottomBar = { AppBottomBar(selected = tab, onSelect = { tab = it }) }) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when (tab) {
-                AppTab.AUJOURDHUI -> AujourdhuiScreen(state = aujourdhuiState, onRecord = aujourdhui::record)
+                AppTab.AUJOURDHUI ->
+                    AujourdhuiScreen(state = aujourdhuiState, onRecord = controllers.aujourdhui::record)
                 AppTab.CALENDRIER ->
                     CalendrierScreen(
                         state = calendarState,
                         actions =
                             CalendarActions(
-                                onPreviousMonth = calendar::goPreviousMonth,
-                                onNextMonth = calendar::goNextMonth,
-                                onDayClick = calendar::openDay,
-                                onSave = calendar::save,
-                                onDismissSheet = calendar::closeSheet,
+                                onPreviousMonth = controllers.calendar::goPreviousMonth,
+                                onNextMonth = controllers.calendar::goNextMonth,
+                                onDayClick = controllers.calendar::openDay,
+                                onSave = controllers.calendar::save,
+                                onDismissSheet = controllers.calendar::closeSheet,
                             ),
                     )
             }
