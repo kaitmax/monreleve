@@ -78,6 +78,7 @@ class LocalStoreTest : FunSpec({
         val pending = FakePendingSignIn()
         var recordCleared = false
         var syncCancelled = false
+        var exportsCleared = false
         val store: LocalStore =
             DeviceLocalStore(
                 tokenStore = tokens,
@@ -86,10 +87,11 @@ class LocalStoreTest : FunSpec({
                 pendingSignIn = pending,
                 clearRecord = { recordCleared = true },
                 cancelSync = { syncCancelled = true },
+                clearExports = { exportsCleared = true },
             )
     }
 
-    test("R295: sign-out clears the record, the cache, the tokens and any queued sync") {
+    test("R295: sign-out clears the record, the cache, the tokens, queued sync and the exported files") {
         runTest {
             val f = Fixture()
             f.store.clearForSignOut()
@@ -98,6 +100,8 @@ class LocalStoreTest : FunSpec({
             f.cache.load(2026) shouldBe null
             f.tokens.load() shouldBe null
             f.syncCancelled.shouldBeTrue()
+            // The cacheDir/exports files hold the record in another form (the account JSON is the whole record).
+            f.exportsCleared.shouldBeTrue()
         }
     }
 
@@ -122,6 +126,7 @@ class LocalStoreTest : FunSpec({
             f.cache.load(2026) shouldBe null
             f.tokens.load() shouldBe null
             f.syncCancelled.shouldBeTrue()
+            f.exportsCleared.shouldBeTrue()
             // ...plus the settings and the pending sign-in.
             f.settings.load() shouldBe null
             f.pending.pending() shouldBe null

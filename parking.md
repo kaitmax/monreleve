@@ -1350,6 +1350,64 @@ year instead of the fixed taxYear), ReleveController (refetch on year change), a
 NEEDS:     an operator decision on whether past-year viewing is wanted, and if so which years the
 selector offers.
 
+## PARKAN-27 - sign-out shows a confirmation naming the unsynced loss  [AN12, 2026-09-29]
+
+QUESTION:  R295 makes sign-out wipe Room, destroying days recorded but not yet synced - they never reached
+the server and cannot be recovered. The AN12 prompt rules on the DELETE confirmation (R289) but is silent on
+a sign-out warning. Should sign-out warn before it wipes?
+
+TAKEN:     Sign-out shows a confirmation naming how many recorded days are unsynced, in words, before it
+wipes Room - R289's rationale extended to sign-out. Conservative and reversible: a silent wipe of unsynced
+days contradicts the product's core claim (an audit-defensible record), and the warning claims nothing that
+could be wrong and can be removed in one edit.
+
+NOT TAKEN: a silent sign-out. It loses unsynced days with no notice - the exact loss R289's confirmation
+exists to prevent, one action over.
+
+TOUCHES:   ParametresController.requestSignOut/confirmSignOut, SignOutPrompt, ui SignOutDialog,
+ParametresCopy.unsyncedWarning, ParametresAccountTest.
+
+NEEDS:     operator confirmation that the sign-out warning is wanted, or a ruling to drop it.
+
+## PARKAN-28 - sign-out keeps the calculation settings  [AN12, 2026-09-29]
+
+QUESTION:  R295 enumerates what sign-out clears - Room entries, the mutation queue, the cached releve, the
+tokens - but NOT the calculation settings. Should sign-out also clear the settings so an account switch on a
+shared device cannot inherit them?
+
+TAKEN:     Sign-out KEEPS the settings. R295's enumeration does not include them, and keeping them lets a
+re-sign-in land on a computable Aujourd'hui without re-onboarding (increment 5's walkthrough does exactly
+this). Deletion DOES clear them (a first-run state). Reversible: adding settingsStore.clear() to
+clearForSignOut is one line, no migration.
+
+NOT TAKEN: clearing settings on sign-out too - a cleaner account switch, but it diverges from R295's
+enumeration and from the prompt's "sign in again, record a day" narrative, and forces re-onboarding.
+
+TOUCHES:   DeviceLocalStore.clearForSignOut (add settingsStore.clear()), LocalStoreTest's "settings kept"
+assertion, MainActivity's start destination after re-auth.
+
+NEEDS:     an operator decision on whether the device is ever multi-user / account-switching - the reopened
+half of PARKAN-2.
+
+## PARKAN-29 - the licences screen is hand-authored, not a generated inventory  [AN12, 2026-09-29]
+
+QUESTION:  The licences screen credits the bundled polygon (ODbL) and the open-source components. A complete
+per-library licence inventory is normally produced by a plugin. Should the app ship one?
+
+TAKEN:     A hand-authored screen - the ODbL block (from the recorded source) plus the major components
+(Jetpack Compose, AndroidX including Room and WorkManager, Kotlin, kotlinx.coroutines) under Apache 2.0. An
+OSS-licences plugin (play-services-oss-licenses / licensee) is a new runtime/build dependency, which is R156
+stop-boundary territory. Reversible: adding a plugin later regenerates a complete list without touching the
+ODbL block.
+
+NOT TAKEN: a generated inventory. It adds a dependency and a build step for a completeness the manual product
+does not yet need.
+
+TOUCHES:   LicencesCopy, LicencesScreen, app/build.gradle.kts (if a plugin is added).
+
+NEEDS:     an operator decision on whether an exhaustive generated licence list is required for the Play
+release (AN14).
+
 ## STATUS LEDGER  [appended 2026-09-29]
 
 One line per Android-era entry, so the state of each is visible without
@@ -1374,3 +1432,6 @@ reading every section. Entries are not edited; this ledger is.
 | PARKAN-23 — Lucide vector drawables | **done** | R293, AN10b increment 4 |
 | PARKAN-24 — split cell's exact form | **open** | AN10b; conservative form shipped, awaits operator preference |
 | PARKAN-25 — only 400 isolates (not 409/413) | **open** | AN10b; conservative reading of R296 |
+| PARKAN-27 — sign-out warns of unsynced loss | **open** | AN12; conservative extension of R289, awaits operator confirmation |
+| PARKAN-28 — sign-out keeps the settings | **open** | AN12; conservative reading of R295's enumeration; reopens PARKAN-2's multi-user half |
+| PARKAN-29 — licences screen is hand-authored | **open** | AN12; a generated inventory is a new dependency (R156) |

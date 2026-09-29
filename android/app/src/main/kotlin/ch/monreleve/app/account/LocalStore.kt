@@ -29,9 +29,11 @@ interface LocalStore {
     suspend fun clearForDeletion()
 }
 
-// The Room clear and the sync cancel are lambdas (seams): MonReleveDatabase.clearAllTables() and the
-// WorkManager cancel both need an Android Context, so injecting them as functions keeps this class - and the
-// scope decision it encodes - JVM-testable against fakes. The prefs-backed stores are already interfaces.
+// The Room clear, the sync cancel and the exports delete are lambdas (seams): each needs an Android Context,
+// so injecting them as functions keeps this class - and the scope decision it encodes - JVM-testable against
+// fakes. The prefs-backed stores are already interfaces. The parameters ARE the device's stores; a holder
+// would only move the list (the MainShell suppression's reasoning).
+@Suppress("LongParameterList")
 class DeviceLocalStore(
     private val tokenStore: TokenStore,
     private val settingsStore: SettingsStore,
@@ -41,12 +43,21 @@ class DeviceLocalStore(
     private val clearRecord: suspend () -> Unit,
     /** Cancels the unique entries-sync work so a drain cannot repopulate a cleared queue. */
     private val cancelSync: () -> Unit,
+    /**
+     * Deletes the cacheDir/exports directory. A rendered export - the account JSON carries the ENTIRE record
+     * (entries, trail, sessions), the releve PDF/CSV the whole year - is written there for the share sheet and
+     * left on disk; it is the cached record in another form, the same class as the cached releve R295 names.
+     * So sign-out clears it, and deletion inherits it (R289: the ErasureCensusTest keys on prefs/DB names and
+     * is structurally blind to a file path, so this seam is the guard for it).
+     */
+    private val clearExports: () -> Unit,
 ) : LocalStore {
     override suspend fun clearForSignOut() {
         clearRecord()
         dossierCache.clear()
         tokenStore.clear()
         cancelSync()
+        clearExports()
     }
 
     override suspend fun clearForDeletion() {

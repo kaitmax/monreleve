@@ -13,6 +13,12 @@ import java.io.File
 //
 // The convention it rests on: every SharedPreferences file and the Room database name in this app carry the
 // « monreleve. » prefix, so this regex is their census the way a userId column was FW26's.
+//
+// KNOWN BLIND SPOT, covered elsewhere: the cacheDir/exports directory is a PATH, not a « monreleve.* » name,
+// so this census cannot see it. It holds rendered exports - the account JSON is the whole record - and is
+// erased by DeviceLocalStore's clearExports seam, asserted in LocalStoreTest and the ParametresAccountTest
+// negative sweep. A census keyed on names is structurally blind to a file path (R246's shape), so the seam,
+// not this test, is that file's guard.
 
 private val MAIN_DIR = File("src/main/kotlin/ch/monreleve/app")
 private val STORAGE_NAME = Regex(""""(monreleve\.[a-z]+)"""")

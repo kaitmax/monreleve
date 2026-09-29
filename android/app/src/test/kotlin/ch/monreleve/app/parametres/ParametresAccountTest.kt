@@ -130,6 +130,7 @@ private fun localStore(
         pendingSignIn = FakePendingSignIn(),
         clearRecord = {},
         cancelSync = {},
+        clearExports = {},
     )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -398,6 +399,7 @@ class ParametresAccountTest : FunSpec({
             val cache = FakeDossierCache()
             val pending = FakePendingSignIn()
             var recordCleared = false
+            var exportsCleared = false
             val real =
                 DeviceLocalStore(
                     tokenStore = tokens,
@@ -406,6 +408,7 @@ class ParametresAccountTest : FunSpec({
                     pendingSignIn = pending,
                     clearRecord = { recordCleared = true },
                     cancelSync = {},
+                    clearExports = { exportsCleared = true },
                 )
             val controller =
                 ParametresController(
@@ -424,6 +427,7 @@ class ParametresAccountTest : FunSpec({
             advanceUntilIdle()
 
             recordCleared.shouldBeTrue()
+            exportsCleared.shouldBeTrue()
             tokens.load() shouldBe null
             settings.load() shouldBe null
             cache.load(TAX_YEAR) shouldBe null

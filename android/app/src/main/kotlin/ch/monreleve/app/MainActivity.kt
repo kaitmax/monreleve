@@ -94,6 +94,11 @@ import java.time.ZoneId
  */
 private enum class Destination { SIGN_IN, ONBOARDING, MAIN }
 
+// AN12: the cacheDir subdirectory an export is written to before the share sheet. ONE home (R206): shareFile
+// writes here and the device erasure deletes here, so a rendered export - the account JSON is the whole record
+// - cannot outlive the account it belongs to (R289).
+private const val EXPORTS_DIR = "exports"
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -313,6 +318,7 @@ private fun buildLocalStore(
         pendingSignIn = pending,
         clearRecord = { withContext(Dispatchers.IO) { MonReleveDatabase.get(context).clearAllTables() } },
         cancelSync = { SyncScheduler.cancel(context) },
+        clearExports = { java.io.File(context.cacheDir, EXPORTS_DIR).deleteRecursively() },
     )
 
 // AN12: the Parametres screen's callbacks, built from the controller's method references. A top-level helper
@@ -393,7 +399,7 @@ private fun shareFile(
     context: Context,
     event: ExportEvent.Ready,
 ) {
-    val dir = java.io.File(context.cacheDir, "exports").apply { mkdirs() }
+    val dir = java.io.File(context.cacheDir, EXPORTS_DIR).apply { mkdirs() }
     val file = java.io.File(dir, event.filename)
     file.writeBytes(event.bytes)
     val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
