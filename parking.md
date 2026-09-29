@@ -1293,7 +1293,7 @@ reading every section. Entries are not edited; this ledger is.
 | PARKAN-1 — OS App Link verification | **open** | needs the domain and fingerprints |
 | PARKAN-2 — sign-out and the local store | **reversed** | R295: sign-out clears the local store; lands in AN12 |
 | PARKAN-3 — offline record-then-edit coalesces | **closed, ratified** | R275 |
-| PARKAN-4 — a 400 fails the whole batch | **amended** | R296: the batch is isolated item by item once; lands in AN11 increment 0 |
+| PARKAN-4 — a 400 fails the whole batch | **amended, done** | R296: a multi-item 400 is isolated item by item, once - LANDED in AN10b increment 5, not AN11 (the AN10b prompt placed it there and is the task authority; this line's earlier "AN11 increment 0" was stale, R273) |
 | PARKAN-16 — the 56 dp button | **closed** | R285 |
 | PARKAN-17 — the offline banner | **closed** | R286 |
 | PARKAN-18 — the escalation look-ahead window | **open, transcribed** | AN10b R294 from REPORT-AN5c.txt; 2-day window shipped (R286), awaits operator preference |

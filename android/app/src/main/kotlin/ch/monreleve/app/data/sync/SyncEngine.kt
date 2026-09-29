@@ -48,6 +48,10 @@ class SyncEngine(
             when (val step = syncBatch(batch)) {
                 is BatchResult.Wrote -> written += step.count
                 is BatchResult.Defect -> defects += step.count
+                is BatchResult.Isolated -> {
+                    written += step.written
+                    defects += step.defects
+                }
                 BatchResult.Retryable -> terminal = SyncOutcome.Retryable
                 BatchResult.Unauthenticated -> terminal = SyncOutcome.Unauthenticated
             }
@@ -76,10 +80,14 @@ class SyncEngine(
                 parseEntriesResponse(body)
                     ?.let { BatchResult.Wrote(reconcile(batch, it)) }
                     ?: BatchResult.Retryable
-            // A 400/409/413 is a payload the CLIENT built and the server refused: a client
-            // defect. Held as FAILED (loud, out of the queue) rather than retried forever -
-            // retrying a rejected payload is a request that can never succeed (R198).
-            HTTP_BAD_REQUEST -> BatchResult.Defect(markFailed(batch))
+            // R296: a 400 is a payload the CLIENT built and the server refused, but a MULTI-item batch
+            // does not say WHICH item is at fault - so retry each on its own, ONCE (isolate): the good
+            // ones sync, the refused one stays FAILED and named. A single-item batch is already isolated,
+            // so it goes straight to FAILED - re-sending a payload the server refused is a queue that can
+            // never drain (R198). 409 and 413 stay WHOLE-batch FAILED: isolating a 409 would replay the
+            // out-of-order hazard the ordering evidence guards against, and 413 is unreachable under the
+            // parity-tested batch/note caps.
+            HTTP_BAD_REQUEST -> if (batch.size > 1) isolate(batch) else BatchResult.Defect(markFailed(batch))
             HTTP_CONFLICT -> BatchResult.Defect(markFailed(batch))
             HTTP_PAYLOAD_TOO_LARGE -> BatchResult.Defect(markFailed(batch))
             else -> BatchResult.Retryable
@@ -109,6 +117,31 @@ class SyncEngine(
         return count
     }
 
+    // R296 isolation: one round trip per item, ONCE. Reuses syncBatch, so each item takes the same
+    // reconcile/markFailed path - a good item comes back 200 and syncs; the refused item comes back 400
+    // and, as a size-1 batch, is marked FAILED (never re-isolated - "once"). A transient fault
+    // (network/5xx) on an item leaves it PENDING and makes the run Retryable, so WorkManager drains the
+    // rest without ever re-sending the item the server already refused.
+    private suspend fun isolate(batch: List<EntryEntity>): BatchResult {
+        var written = 0
+        var defects = 0
+        var retry = false
+        for (item in batch) {
+            when (val step = syncBatch(listOf(item))) {
+                is BatchResult.Wrote -> written += step.count
+                is BatchResult.Defect -> defects += step.count
+                // A size-1 batch never isolates, so this is unreachable; folded in for exhaustiveness.
+                is BatchResult.Isolated -> {
+                    written += step.written
+                    defects += step.defects
+                }
+                BatchResult.Retryable -> retry = true
+                BatchResult.Unauthenticated -> return BatchResult.Unauthenticated
+            }
+        }
+        return if (retry) BatchResult.Retryable else BatchResult.Isolated(written, defects)
+    }
+
     private suspend fun markFailed(batch: List<EntryEntity>): Int {
         for (row in batch) {
             val current = dao.byDayPortion(row.dayDate, row.portion)
@@ -123,6 +156,9 @@ class SyncEngine(
         data class Wrote(val count: Int) : BatchResult
 
         data class Defect(val count: Int) : BatchResult
+
+        /** R296: a multi-item 400 retried item by item - some written, some held FAILED. */
+        data class Isolated(val written: Int, val defects: Int) : BatchResult
 
         data object Retryable : BatchResult
 

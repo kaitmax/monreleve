@@ -142,6 +142,76 @@ class SyncEngineTest {
         }
 
     @Test
+    fun aRejectedBatchIsIsolatedSoTheGoodItemsStillSync() =
+        runTest {
+            // R296: a 400 on a MULTI-item batch is retried item by item, ONCE. The good item syncs; the
+            // refused one stays FAILED and named. Insertion order is the isolation order (FakeEntryDao).
+            val dao =
+                FakeEntryDao().apply {
+                    seed("mut-1", "2027-06-18") // good
+                    seed("mut-2", "2027-06-19") // the one the server refuses
+                }
+            val good = serverRow("srv-1", "mut-1", "2027-06-18", "2027-06-18T10:00:05.000Z")
+            val refused = PostOutcome.Ok(status = 400, body = """{"code":"invalid_payload"}""")
+            // The batch of two (refused), then mut-1 alone (accepted), then mut-2 alone (refused again).
+            val poster = FakePoster(listOf(refused, okBody(1, 0, listOf(good)), refused))
+
+            val outcome = SyncEngine(dao, poster).sync()
+
+            assertEquals(SyncOutcome.Settled(written = 1, defects = 1), outcome)
+            assertEquals(SyncState.SYNCED, dao.row("2027-06-18").syncState)
+            assertEquals(SyncState.FAILED, dao.row("2027-06-19").syncState)
+            // The batch POST plus one isolation POST per item: the refused payload was sent exactly twice.
+            assertEquals(3, poster.bodies.size)
+            // And never again: both rows have left pending(), so a second drain sends nothing.
+            assertTrue("nothing left to retry", dao.pending().isEmpty())
+            SyncEngine(dao, poster).sync()
+            assertEquals("the refused payload is never re-sent", 3, poster.bodies.size)
+        }
+
+    @Test
+    fun anEntirelyBadBatchLeavesEveryItemFailed() =
+        runTest {
+            val dao =
+                FakeEntryDao().apply {
+                    seed("mut-1", "2027-06-18")
+                    seed("mut-2", "2027-06-19")
+                }
+            val refused = PostOutcome.Ok(status = 400, body = """{"code":"invalid_payload"}""")
+            // The batch of two, then each item alone - all refused.
+            val poster = FakePoster(listOf(refused, refused, refused))
+
+            val outcome = SyncEngine(dao, poster).sync()
+
+            assertEquals(SyncOutcome.Settled(written = 0, defects = 2), outcome)
+            assertEquals(SyncState.FAILED, dao.row("2027-06-18").syncState)
+            assertEquals(SyncState.FAILED, dao.row("2027-06-19").syncState)
+            assertEquals(3, poster.bodies.size)
+            assertTrue(dao.pending().isEmpty())
+        }
+
+    @Test
+    fun aServerErrorIsNotIsolatedButRetried() =
+        runTest {
+            // A 500 is the SERVER's problem, not the payload's: NOT isolated, retried with backoff as
+            // before. Isolating it would re-send perfectly good items one by one against a broken server.
+            val dao =
+                FakeEntryDao().apply {
+                    seed("mut-1", "2027-06-18")
+                    seed("mut-2", "2027-06-19")
+                }
+            val poster = FakePoster(listOf(PostOutcome.Ok(status = 500, body = "")))
+
+            val outcome = SyncEngine(dao, poster).sync()
+
+            assertEquals(SyncOutcome.Retryable, outcome)
+            // Only the single batch POST happened - no item-by-item isolation.
+            assertEquals(1, poster.bodies.size)
+            assertEquals(SyncState.PENDING, dao.row("2027-06-18").syncState)
+            assertEquals(SyncState.PENDING, dao.row("2027-06-19").syncState)
+        }
+
+    @Test
     fun aNetworkFaultIsRetryableAndLeavesRowsPending() =
         runTest {
             val dao = FakeEntryDao().apply { seed("mut-1", "2027-06-18") }
