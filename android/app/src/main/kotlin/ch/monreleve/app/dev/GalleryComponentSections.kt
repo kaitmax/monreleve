@@ -113,6 +113,16 @@ internal fun LazyListScope.dayCellSection() {
             DayCell(dayOfMonth = 14, kind = DayKind.MISSION, quality = RecordQuality.LATE, corrected = true)
             DayCell(dayOfMonth = 21, kind = DayKind.ABSENCE, quality = RecordQuality.NONE, corrected = false)
             DayCell(dayOfMonth = 28, kind = null, quality = RecordQuality.NONE, corrected = false)
+            // AN10: a recorded-but-unsynced day (no bar, quality not yet the server's) and today
+            // (fill + brand number). Both from the calendar, DayKind letters carrying the country.
+            DayCell(dayOfMonth = 4, kind = DayKind.DOMICILE, quality = RecordQuality.PENDING, corrected = false)
+            DayCell(
+                dayOfMonth = 15,
+                kind = DayKind.SUISSE,
+                quality = RecordQuality.ON_TIME,
+                corrected = false,
+                isToday = true,
+            )
         }
         // R119's shape, carried from increment 4's own text: a legend
         // wherever a DayCell grid exists, asserted by

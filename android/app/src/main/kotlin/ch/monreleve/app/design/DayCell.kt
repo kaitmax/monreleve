@@ -57,14 +57,25 @@ private val DOT_COLOURS =
         tertiary = LightColors.textTertiary,
     )
 
-/** WHETHER the record can be trusted - independent of WHERE (DayKind). */
-enum class RecordQuality { ON_TIME, LATE, MISSING, NONE }
+/**
+ * WHETHER the record can be trusted - independent of WHERE (DayKind).
+ *
+ * PENDING is a recorded day whose quality the SERVER has not yet fixed (R216): the client may
+ * predict lateness to warn (LatenessForecast), but it must not adjudicate the flag. Until the row
+ * syncs and the server returns its firstRecordedAt, on-time-versus-late is not yet a fact, so the
+ * cell draws no coloured bar - a lettered cell with no bar is already distinct from both an on-time
+ * cell (green bar) and an unrecorded one (grey bar). "Pending, never late" (AN10 increment 3).
+ */
+enum class RecordQuality { ON_TIME, LATE, PENDING, MISSING, NONE }
 
 private fun qualityColour(quality: RecordQuality): Color? =
     when (quality) {
         RecordQuality.ON_TIME -> LightColors.success
         RecordQuality.LATE -> LightColors.warning
         RecordQuality.MISSING -> LightColors.borderStrong
+        // PENDING: recorded, but the quality is not yet a server fact (R216) - no coloured bar,
+        // distinguished from NONE by the a11y announcement (DayCellCopy), not by colour.
+        RecordQuality.PENDING -> null
         // Weekend or future: no bar at all, not a fourth colour standing
         // in for "nothing to report" (SPEC 966: colour never conveys
         // meaning alone, and an absent bar is the honest absence of one).
@@ -72,9 +83,27 @@ private fun qualityColour(quality: RecordQuality): Color? =
     }
 
 /**
- * One calendar cell. `kind` null renders nothing recorded (D38); `corrected`
- * draws the corner mark a detected-then-edited day carries.
+ * WHO produced the record, in the UI's own vocabulary (R202) - the wire's Provenance enum
+ * (data/local) never enters design/ or ui/. In the manual product every entry is MANUAL; the
+ * detection cases exist for AN9+ and are carried so the cell renders them without a later change.
+ * Rendered in the cell's a11y announcement (SPEC 8: provenance is shown wherever an entry is,
+ * "never as an icon alone"); DETECTED_CORRECTED also draws the corner mark.
  */
+enum class DayProvenance { MANUAL, DETECTED_CONFIRMED, DETECTED_CORRECTED }
+
+/**
+ * One calendar cell. `kind` null renders nothing recorded (D38); `corrected`
+ * draws the corner mark a detected-then-edited day carries. `isToday` tints the
+ * cell (FD6: today's fill #EDF4FF, day number in brand) - via the info-soft and
+ * brand tokens, never a raw 2 dp outline, which has no token (adding one is
+ * ask-first, SPEC 20). `provenance` names who produced the record, in the a11y
+ * announcement (SPEC 8), null when the day is not recorded.
+ *
+ * The parameter list is long by design: SPEC 966 keeps the cell's signals on separate
+ * axes (date, kind, quality, corrected, today, provenance) and never merges two into
+ * one, so a holder would obscure exactly the separation the design requires.
+ */
+@Suppress("LongParameterList")
 @Composable
 fun DayCell(
     dayOfMonth: Int,
@@ -82,8 +111,11 @@ fun DayCell(
     quality: RecordQuality,
     corrected: Boolean,
     modifier: Modifier = Modifier,
+    isToday: Boolean = false,
+    provenance: DayProvenance? = null,
 ) {
-    val description = DayCellCopy.contentDescription(dayOfMonth, kind?.letter, quality.name, corrected)
+    val description =
+        DayCellCopy.contentDescription(dayOfMonth, kind?.letter, quality.name, corrected, isToday, provenance?.name)
 
     BoxWithConstraints(
         modifier =
@@ -91,7 +123,8 @@ fun DayCell(
                 .size(Spacing.space40)
                 .semantics { contentDescription = description },
     ) {
-        Box(modifier = Modifier.size(Spacing.space40)) {
+        val cellFill = if (isToday) Modifier.background(LightColors.infoBg) else Modifier
+        Box(modifier = Modifier.size(Spacing.space40).then(cellFill)) {
             // THE QUALITY BAR IS THE FIRST CHILD, DELIBERATELY - a Box's
             // later children paint OVER its earlier ones, and this needs
             // to sit behind the letter and the corrected mark rather than
@@ -118,6 +151,9 @@ fun DayCell(
             Text(
                 text = dayOfMonth.toString(),
                 style = FrontierType.caption,
+                // FD6: today's day number is brand-weighted; the tint plus the number colour
+                // carry "today" together, so it is not signalled by fill alone.
+                color = if (isToday) LightColors.brand else LightColors.textPrimary,
                 modifier = Modifier.align(Alignment.TopStart).padding(Spacing.space4),
             )
 

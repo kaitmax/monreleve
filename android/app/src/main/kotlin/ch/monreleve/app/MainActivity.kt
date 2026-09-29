@@ -3,8 +3,11 @@ package ch.monreleve.app
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -20,6 +23,7 @@ import ch.monreleve.app.auth.KeystoreTokenStore
 import ch.monreleve.app.auth.SessionManager
 import ch.monreleve.app.auth.SharedPrefsPendingSignInStore
 import ch.monreleve.app.auth.SignInController
+import ch.monreleve.app.calendar.CalendarController
 import ch.monreleve.app.data.local.MonReleveDatabase
 import ch.monreleve.app.data.remote.AuthApi
 import ch.monreleve.app.data.remote.UrlConnectionTransport
@@ -33,9 +37,12 @@ import ch.monreleve.app.onboarding.SessionSettingsSaver
 import ch.monreleve.app.settings.SettingsStore
 import ch.monreleve.app.settings.SharedPrefsSettingsStore
 import ch.monreleve.app.ui.screens.aujourdhui.AujourdhuiScreen
+import ch.monreleve.app.ui.screens.calendrier.CalendrierScreen
 import ch.monreleve.app.ui.screens.onboarding.OnboardingActions
 import ch.monreleve.app.ui.screens.onboarding.OnboardingScreen
 import ch.monreleve.app.ui.screens.signin.RequestLinkScreen
+import ch.monreleve.app.ui.shell.AppBottomBar
+import ch.monreleve.app.ui.shell.AppTab
 import kotlinx.coroutines.CoroutineScope
 import java.time.Clock
 import java.time.Year
@@ -48,11 +55,14 @@ import java.time.ZoneId
  *
  * AN5b increment 1 adds the manual-onboarding step between sign-in and Aujourd'hui. The start
  * destination is decided once at launch from two facts - is there a session, and has onboarding been
- * completed on this device - and onboarding flips to Aujourd'hui when the settings save. The
- * four-destination bottom nav is a later task; this routes the linear first-run path (R282: no mode
- * chooser anywhere on it).
+ * completed on this device - and onboarding flips to the main shell when the settings save.
+ *
+ * AN10 turns the single Aujourd'hui screen into the main shell: a bottom navigation over the screens
+ * that exist (Aujourd'hui, Calendrier), with both controllers created once and kept alive so switching
+ * tabs neither recomputes nor leaks a collector on lifecycleScope. Releve and Parametres join the shell
+ * when AN11/AN12 build them (R282: no tab for a screen that does not exist).
  */
-private enum class Destination { SIGN_IN, ONBOARDING, AUJOURDHUI }
+private enum class Destination { SIGN_IN, ONBOARDING, MAIN }
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -73,7 +83,7 @@ class MainActivity : ComponentActivity() {
             when {
                 !session.isSignedIn() -> Destination.SIGN_IN
                 !settingsStore.isOnboarded() -> Destination.ONBOARDING
-                else -> Destination.AUJOURDHUI
+                else -> Destination.MAIN
             }
 
         setContent {
@@ -84,10 +94,10 @@ class MainActivity : ComponentActivity() {
                         Destination.SIGN_IN -> SignInRoute(api, pending, lifecycleScope)
                         Destination.ONBOARDING ->
                             OnboardingRoute(session, settingsStore, taxYear, lifecycleScope) {
-                                destination = Destination.AUJOURDHUI
+                                destination = Destination.MAIN
                             }
-                        Destination.AUJOURDHUI ->
-                            AujourdhuiRoute(repository, settingsStore, taxYear, clock, lifecycleScope) {
+                        Destination.MAIN ->
+                            MainShell(repository, settingsStore, taxYear, clock, lifecycleScope) {
                                 // SPEC 13.2: recording enqueues the drain; WorkManager replays on connectivity.
                                 SyncScheduler.requestSync(context)
                             }
@@ -142,12 +152,15 @@ private fun OnboardingRoute(
     )
 }
 
-// The composition root wires six distinct dependencies into the one screen; bundling them into a data
-// class would only move the list. This file is not ui/ (the no-literal fence scans ui/ and dev/), so the
-// annotation is permitted here.
+// The main shell: the bottom navigation over the screens that exist, with BOTH controllers created once
+// (remember) and kept alive for the shell's whole life. Switching tabs changes only which screen reads
+// its already-computed state - it never rebuilds a controller, so no second collector is launched on
+// lifecycleScope (a controller's observe runs for the life of the scope, not the composable). The
+// composition root wires the dependencies; bundling them into a data class would only move the list.
+// Not ui/ (the no-literal fence scans ui/ and dev/), so the annotation is permitted here.
 @Suppress("LongParameterList")
 @Composable
-private fun AujourdhuiRoute(
+private fun MainShell(
     repository: EntryRepository,
     store: SettingsStore,
     taxYear: Int,
@@ -155,7 +168,24 @@ private fun AujourdhuiRoute(
     scope: CoroutineScope,
     requestSync: () -> Unit,
 ) {
-    val controller = remember { AujourdhuiController(repository, store, taxYear, clock, scope, requestSync) }
-    val state by controller.state.collectAsState()
-    AujourdhuiScreen(state = state, onRecord = controller::record)
+    val aujourdhui = remember { AujourdhuiController(repository, store, taxYear, clock, scope, requestSync) }
+    val calendar = remember { CalendarController(repository, store, taxYear, clock, scope) }
+    var tab by remember { mutableStateOf(AppTab.AUJOURDHUI) }
+
+    val aujourdhuiState by aujourdhui.state.collectAsState()
+    val calendarState by calendar.state.collectAsState()
+
+    Scaffold(bottomBar = { AppBottomBar(selected = tab, onSelect = { tab = it }) }) { padding ->
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+            when (tab) {
+                AppTab.AUJOURDHUI -> AujourdhuiScreen(state = aujourdhuiState, onRecord = aujourdhui::record)
+                AppTab.CALENDRIER ->
+                    CalendrierScreen(
+                        state = calendarState,
+                        onPreviousMonth = calendar::goPreviousMonth,
+                        onNextMonth = calendar::goNextMonth,
+                    )
+            }
+        }
+    }
 }

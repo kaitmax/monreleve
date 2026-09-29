@@ -149,6 +149,29 @@ class ComponentsScreenshotTest {
     }
 
     @Test
+    fun dayCellPending() {
+        // AN10: recorded but not yet synced - a lettered cell with no quality bar (the server has not
+        // fixed on-time-versus-late, R216), distinct from both an on-time and an unrecorded cell.
+        snapshot {
+            DayCell(dayOfMonth = 4, kind = DayKind.DOMICILE, quality = RecordQuality.PENDING, corrected = false)
+        }
+    }
+
+    @Test
+    fun dayCellToday() {
+        // AN10: today - the info-soft fill and the brand-weighted number (FD6), via tokens, no 2 dp outline.
+        snapshot {
+            DayCell(
+                dayOfMonth = 15,
+                kind = DayKind.SUISSE,
+                quality = RecordQuality.ON_TIME,
+                corrected = false,
+                isToday = true,
+            )
+        }
+    }
+
+    @Test
     fun dayKindLegend() {
         snapshot { DayKindLegend() }
     }

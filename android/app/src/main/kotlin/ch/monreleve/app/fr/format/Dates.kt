@@ -38,7 +38,9 @@ package ch.monreleve.app.fr.format
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
+import java.util.Locale
 
 /**
  * A timestamp is an instant, and the audience is cross-border workers
@@ -133,3 +135,28 @@ fun formatDateTime(
 
     return "$day$DATE_SEPARATOR$month$DATE_SEPARATOR$year$AT_SPACE$A_GRAVE$AT_SPACE$hour$TIME_SEPARATOR$minute"
 }
+
+// AN10 increment 1. The calendar's month header ("Juin 2026") and the edit sheet's day title
+// ("Lundi 15 juin 2026", FD6). These are the ONE place this file uses a Locale, and deliberately so:
+// a month or weekday NAME is locale data, unlike the numeric separators above, which avoid Locale
+// precisely because it would get a separator wrong. The Locale is PINNED to French, never inherited
+// from the device (the same trap Numbers.kt documents for Locale.getDefault()): the product is
+// single-locale French, so the names must be French on a device set to any language.
+//
+// The CLDR French forms are lower-case ("juin", "lundi"); the header and the title lead with a capital,
+// so the first letter is upper-cased here rather than trusting the formatter's casing.
+
+/** The pinned locale for every name this product prints. Never Locale.getDefault(). */
+private val FRENCH: Locale = Locale.FRENCH
+
+private val MONTH_YEAR: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM yyyy", FRENCH)
+
+private fun capitalizeFirst(text: String): String {
+    return if (text.isEmpty()) text else text[0].uppercaseChar() + text.substring(1)
+}
+
+/** "Juin 2026" from a tax year and a 1-12 month, French month name, leading capital (FD6 header). */
+fun formatMonthYear(
+    year: Int,
+    month: Int,
+): String = capitalizeFirst(LocalDate.of(year, month, 1).format(MONTH_YEAR))
