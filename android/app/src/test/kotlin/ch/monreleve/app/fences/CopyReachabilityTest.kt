@@ -160,6 +160,12 @@ private val UNREACHABLE: Map<String, String> =
         "ReleveCopy.EXPORT_FAILED" to
             "the toast shown when the server could not produce the export, raised by MainActivity's composition " +
             "root, which owns the Toast and the platform share - not a fr-surface directory this census scans",
+        // AN12 increment 4: the version line is FORMATTED in MainActivity from BuildConfig.VERSION_NAME/CODE,
+        // which the ui/ fence keeps out of ui/, and handed to the stateless screen as a ready string. So the
+        // fun is reached from the composition root, not a fr-surface directory - the ReleveCopy.EXPORT_* case.
+        "ParametresCopy.version" to
+            "the « nom (code) » version line, formatted by MainActivity from BuildConfig (not permitted in ui/) " +
+            "and passed to ParametresScreen as a ready string - reached from the composition root, not a surface",
     )
 
 class CopyReachabilityTest {

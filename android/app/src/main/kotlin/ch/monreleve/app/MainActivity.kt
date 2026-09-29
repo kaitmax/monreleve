@@ -2,6 +2,7 @@ package ch.monreleve.app
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -44,13 +45,16 @@ import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.LocalEntryRepository
 import ch.monreleve.app.data.sync.SyncScheduler
 import ch.monreleve.app.design.FrontierTheme
+import ch.monreleve.app.fr.ParametresCopy
 import ch.monreleve.app.fr.ReleveCopy
 import ch.monreleve.app.onboarding.OnboardingController
 import ch.monreleve.app.onboarding.OnboardingPhase
 import ch.monreleve.app.onboarding.SessionSettingsSaver
 import ch.monreleve.app.onboarding.SettingsSaver
 import ch.monreleve.app.parametres.AccountExportKind
+import ch.monreleve.app.parametres.LegalPage
 import ch.monreleve.app.parametres.ParametresController
+import ch.monreleve.app.parametres.ParametresState
 import ch.monreleve.app.releve.ExportEvent
 import ch.monreleve.app.releve.ExportKind
 import ch.monreleve.app.settings.SettingsStore
@@ -285,7 +289,7 @@ private fun MainShell(
                             ),
                     )
                 AppTab.PARAMETRES ->
-                    ParametresScreen(state = parametresState, actions = parametresActions(controllers.parametres))
+                    ParametresTab(parametresState, controllers.parametres) { openLegal(context, it) }
             }
         }
     }
@@ -314,7 +318,37 @@ private fun buildLocalStore(
 // AN12: the Parametres screen's callbacks, built from the controller's method references. A top-level helper
 // (not inline in MainShell) so the shell composable stays within its length budget; a plain mapping, not a
 // Composable, so it carries no state.
-private fun parametresActions(controller: ParametresController): ParametresActions =
+// AN12: the Parametres tab. Extracted from MainShell (its own length budget) so the shell's `when (tab)` stays
+// a line per destination. Reads the app version from BuildConfig here in the composition root, where it is
+// permitted, and hands it to the stateless screen as a formatted string (fence 5 / R181).
+@Composable
+private fun ParametresTab(
+    state: ParametresState,
+    controller: ParametresController,
+    onOpenLegal: (LegalPage) -> Unit,
+) {
+    ParametresScreen(
+        state = state,
+        actions = parametresActions(controller, onOpenLegal),
+        appVersion = ParametresCopy.version(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE.toString()),
+    )
+}
+
+// AN12 increment 4: open a legal page in the browser from the configured site URL. The host is
+// BuildConfig.API_BASE_URL - the emulator's host in debug, monreleve.ch in release - and the path is the
+// LegalPage's (a verified live web route). Lives in the composition root, where an Intent is permitted.
+private fun openLegal(
+    context: Context,
+    page: LegalPage,
+) {
+    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("${BuildConfig.API_BASE_URL}${page.path}"))
+    context.startActivity(intent)
+}
+
+private fun parametresActions(
+    controller: ParametresController,
+    onOpenLegal: (LegalPage) -> Unit,
+): ParametresActions =
     ParametresActions(
         onCantonChange = controller::onCantonChange,
         onEmploymentRateChange = controller::onEmploymentRateChange,
@@ -334,6 +368,7 @@ private fun parametresActions(controller: ParametresController): ParametresActio
         onConfirmDelete = controller::confirmDelete,
         onCancelDelete = controller::cancelDelete,
         onAcknowledgeDelete = controller::acknowledgeDelete,
+        onOpenLegal = onOpenLegal,
     )
 
 // AC2 / R136: hand the server-rendered export to the platform. A Ready event's bytes are written to a

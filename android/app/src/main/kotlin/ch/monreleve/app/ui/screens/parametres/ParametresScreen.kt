@@ -14,6 +14,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,8 +49,16 @@ private const val PERCENT_DECIMALS = 2
 fun ParametresScreen(
     state: ParametresState,
     actions: ParametresActions,
+    appVersion: String,
     modifier: Modifier = Modifier,
 ) {
+    // A local sub-screen: the licences screen (R280) opens over Parametres and « Retour » returns. UI-only
+    // navigation state, the same shape as a dropdown's expanded flag - it holds no data (fence 5).
+    var showLicences by remember { mutableStateOf(false) }
+    if (showLicences) {
+        LicencesScreen(onBack = { showLicences = false }, modifier = modifier)
+        return
+    }
     val busy = state.phase == ParametresPhase.SAVING
     Column(
         modifier = modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(Spacing.space20),
@@ -78,6 +90,7 @@ fun ParametresScreen(
         DataSection(actions)
         DeleteRow(actions.onRequestDelete)
         AccountSection(actions)
+        AboutSection(actions, appVersion, onOpenLicences = { showLicences = true })
     }
 
     state.pendingRateChange?.let { change ->

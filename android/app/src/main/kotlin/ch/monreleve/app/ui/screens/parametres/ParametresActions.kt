@@ -3,6 +3,7 @@ package ch.monreleve.app.ui.screens.parametres
 import ch.monreleve.app.calc.Canton
 import ch.monreleve.app.onboarding.DenominatorChoice
 import ch.monreleve.app.onboarding.GranularityChoice
+import ch.monreleve.app.parametres.LegalPage
 
 // AN12 increment 1. The Parametres screen's callbacks, bundled so the screen signature stays flat as later
 // increments add account actions (export, sign-out, deletion). The screen is stateless (fence 5): it reads a
@@ -38,4 +39,6 @@ data class ParametresActions(
     val onCancelDelete: () -> Unit,
     /** R289: the person read the outcome; leave for a first-run state (on success) or dismiss. */
     val onAcknowledgeDelete: () -> Unit,
+    /** AN12 increment 4: open a legal page in the browser from the configured site URL. */
+    val onOpenLegal: (LegalPage) -> Unit,
 )

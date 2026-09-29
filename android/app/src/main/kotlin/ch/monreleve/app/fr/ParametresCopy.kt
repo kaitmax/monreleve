@@ -121,4 +121,25 @@ object ParametresCopy {
         } else {
             "Votre compte et vos $entries saisies ont été supprimés définitivement du serveur et de cet appareil."
         }
+
+    // AN12 increment 4 - « À propos » (FD9). The legal pages open in the browser from the configured site URL;
+    // the licences screen opens in the app (R280). R282: nothing here names a mode, a reminder or detection.
+    const val ABOUT_HEADING = "À propos"
+    const val PRIVACY_ROW = "Politique de confidentialité"
+    const val TERMS_ROW = "Conditions générales d’utilisation"
+    const val LEGAL_ROW = "Mentions légales"
+    const val SOURCES_ROW = "Sources réglementaires"
+
+    // The row label IS the licences screen's title (R206 - one home, not the same literal twice).
+    const val LICENCES_ROW = LicencesCopy.TITLE
+    const val VERSION_ROW = "Version"
+
+    const val ABOUT_DISCLAIMER_1 = "Cette application enregistre et met en forme vos journées."
+    const val ABOUT_DISCLAIMER_2 = "Elle ne constitue pas un conseil fiscal."
+
+    /** The version line, « nom (code) », built by the composition root from BuildConfig (R181 - not typed). */
+    fun version(
+        name: String,
+        code: String,
+    ): String = "$name ($code)"
 }
