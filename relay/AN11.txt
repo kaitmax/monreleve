@@ -1,0 +1,125 @@
+AN11 SESSION PROMPT - Mon Releve
+THE RELEVE ON THE DEVICE
+Read relay/PHASE-4-PROTOCOL.txt and relay/R241-CONSIGNE.txt first.
+
+====================================================================
+R241 - CONTINUOUS EXECUTION
+====================================================================
+The only thing that ends this task is REPORT-AN11.txt, committed and
+pushed. Unclear? R156, a PARKAN-<n> entry in parking.md, continue.
+R270 applies. Ends early: R156's boundary (both engines and /v1 are
+frozen); a red gate you cannot fix; a path reaching a real person or
+third party; a degraded context.
+
+====================================================================
+PRE-STEP
+====================================================================
+R273. Check tasks/todo.md for this task's number and scope.
+
+R0. Read REPORT-AN10.txt in full. SPEC 11.4 (the releve) and SPEC 12
+    (the dossier) verbatim; SPEC 20; docs/api-v1.md section 8 (the
+    dossier payload) and the export routes;
+    prompts/design-frontier/FD7 - a visual reference; rulings win.
+
+R1. pnpm gate:clone green on a fresh clone of origin/main's HEAD.
+
+THE INSTRUMENT, as AN10: the device walkthrough is REQUIRED if AN5c's
+    AC1 held, and parked as OWED if it did not - said in the first
+    paragraph either way.
+
+R287 (new). THE RELEVE IS THE SERVER'S DOCUMENT, AND IT SAYS WHAT IT
+    DOES NOT CONTAIN. Aujourd'hui's year panel is computed ON THE
+    DEVICE and includes unsynced days. The releve renders
+    /api/v1/dossier - the SERVER's computation over what the server
+    has received. The two can differ, legitimately, whenever something
+    is pending. So the releve states it: "N jours enregistres sur cet
+    appareil ne sont pas encore synchronises et ne figurent pas dans
+    ce releve." Otherwise a person sees two different rates on two
+    screens and trusts neither.
+
+R288 (new). AN OFFLINE RELEVE IS A DATED COPY, NEVER A CURRENT ONE. The
+    last dossier fetched is cached and shown offline - with its
+    generation date and a line saying it may not reflect days recorded
+    since. It is never presented as current.
+
+CARRIED: R183 the document's footer is unconditional. R186 flags
+    assert user-facing capability - dossierExists's proxy needs a
+    RELEASED client, and a debug build on an emulator is not one, so
+    no flip. R224 both rates, the raw one when they differ. R230 the
+    CSV escapes, the PDF does not. R237 the CSV is attributable by
+    filename. R238 every copy string reachable. The vocabulary ban:
+    no certifie, atteste, conforme, valide, approuve.
+
+====================================================================
+CONTEXT
+====================================================================
+AN11 ONLY: the releve screen, and exporting the PDF and CSV from the
+device. The document itself is the server's (FW24-FW26) and is not
+rebuilt here: this screen shows it and hands it on.
+
+This is the screen a person opens when they need to give something to
+an accountant or the tax administration. Everything on it must be
+what the document says, in the document's own words.
+
+====================================================================
+ACCEPTANCE CRITERIA
+====================================================================
+AC1. The releve renders the server's dossier: identification, the rate
+     panel with both thresholds named, the monthly breakdown, the
+     annex with provenance in words - and every figure matches
+     /api/v1/dossier field by field.
+AC2. The PDF and the CSV export from the device and open: the PDF in a
+     viewer, the CSV in a spreadsheet-capable app, with the filename
+     R237 prescribes. Saving uses the platform (R136): the share sheet
+     or the Storage Access Framework, no storage permission.
+AC3. R287 and R288 hold on screen: pending days are named as absent
+     from the document; an offline copy is dated and says so.
+
+====================================================================
+INCREMENTS
+====================================================================
+1. RENDERING THE DOSSIER. Fetch, render, and a test comparing every
+   displayed figure with the payload - the device never recomputes a
+   figure the server provides (FW12's defect).
+   Commit: "AN11: the releve renders the server's dossier". Push.
+
+2. WHAT THE DOCUMENT DOES NOT CONTAIN (R287). The pending count, its
+   sentence, and a test that it appears exactly when something is
+   pending and not otherwise (R119 by count).
+   Commit: "AN11: the releve names what is not in it". Push.
+
+3. OFFLINE (R288). The cached copy, its date, its caveat.
+   Commit: "AN11: an offline releve is a dated copy". Push.
+
+4. EXPORT (AC2). PDF and CSV through the platform. The PDF comes from
+   /api/v1/export/pdf - rendered by the server's Chromium, never by the
+   device. Assert the downloaded PDF's text carries the titulaire and
+   none of the five banned words, as FW25b's produced-file assertions
+   do.
+   Commit: "AN11: export from the device". Push.
+
+5. THE WALKTHROUGH. On the emulator against the production container,
+   using AN5c's injection: open the releve with days pending, see the
+   R287 line; export the PDF and OPEN IT on the device; export the CSV;
+   go offline and see the dated copy. Every PNG opened and described,
+   default and 200 percent. Compare with FD7; name every conflict.
+   R186: no flag flips. gate:clone before the push.
+   Commit: "AN11: the releve, seen". Push.
+
+====================================================================
+OUT OF SCOPE
+====================================================================
+Parametres (AN12), notifications, automatic mode. Any change to the
+dossier service, the PDF route, either engine or /v1.
+
+====================================================================
+REPORT - REPORT-AN11.txt
+====================================================================
+SUMMARY (R273 first; whether the device walkthrough ran) /
+PRECONDITIONS / RED-GREEN LEDGER / RENDERING (field by field against
+the payload) / R287 / R288 / EXPORT (the PDF opened; the CSV opened;
+the produced-file assertions) / WALKTHROUGH / FD7 AGAINST THE RULINGS /
+FLAG DECISION / PARKED / DEVIATIONS / NOTICED BUT NOT TOUCHING /
+QUESTIONS / PUSH PROOF
+
+END OF AN11 PROMPT

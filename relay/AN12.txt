@@ -1,0 +1,136 @@
+AN12 SESSION PROMPT - Mon Releve
+PARAMETRES
+Read relay/PHASE-4-PROTOCOL.txt and relay/R241-CONSIGNE.txt first.
+
+====================================================================
+R241 - CONTINUOUS EXECUTION
+====================================================================
+The only thing that ends this task is REPORT-AN12.txt, committed and
+pushed. Unclear? R156, a PARKAN-<n> entry in parking.md, continue.
+R270 applies. Ends early: R156's boundary (both engines and /v1 are
+frozen); a red gate you cannot fix; a path reaching a real person or
+third party; a degraded context.
+
+====================================================================
+PRE-STEP
+====================================================================
+R273. Check tasks/todo.md for this task's number and scope.
+
+R0. Read REPORT-AN11.txt in full. SPEC 11.5 (parametres) verbatim;
+    SPEC 20; docs/api-v1.md for /me, account export and account
+    delete; REPORT-FW26.txt for the erasure path;
+    prompts/design-frontier/FD9 - a visual reference; rulings win.
+
+R1. pnpm gate:clone green on a fresh clone of origin/main's HEAD.
+
+THE INSTRUMENT, as AN10: the device walkthrough is REQUIRED if AN5c's
+    AC1 held, and parked as OWED if it did not.
+
+R289 (new). DELETING AN ACCOUNT ERASES THE DEVICE TOO, AND SAYS WHAT
+    WILL BE LOST. FW26 erases the server's rows in one transaction. The
+    device holds its own copy - Room's entries, the mutation queue, the
+    stored tokens, the cached releve - and all of it goes, in the same
+    user action. Days recorded but NOT YET SYNCED never reached the
+    server and cannot be recovered afterwards: the confirmation names
+    how many, in words, before the person confirms. Assert after
+    deletion that nothing of the account remains on the device - a
+    negative sweep, as FW26's server-side one.
+
+R290 (new). CHANGING A SETTING CHANGES THE WHOLE YEAR, AND THE SCREEN
+    SAYS SO. An employment rate, a method or a start date feeds the
+    denominator for every day already recorded. Before saving such a
+    change, show the rate as it is and as it would be. A setting that
+    silently moves a year's declarable rate is the most consequential
+    single tap in the app.
+
+R280 (carried, and it is discharged here). THE POLYGON'S ATTRIBUTION
+    IS VISIBLE NOW. The simplified border polygon ships in the APK
+    today, whatever the detection UI's future. The licences screen
+    carries the ODbL attribution for it, alongside the open-source
+    licences. That closes R280's NEEDS.
+
+R282 (carried). THE MANUAL PRODUCT NEVER MENTIONS WHAT IT LACKS. No
+    mode chooser, no automatic-mode toggle, no detection-consent
+    setting, no reminder settings - FCM is parked and automatic mode
+    waits for Checkpoint G. Assert none appears.
+
+CARRIED: R193 tokens are opaque and revocable. R196 no third copy of a
+    validation rule. R203 the trail outlives the row, not the account.
+    R238 every copy string reachable.
+
+====================================================================
+CONTEXT
+====================================================================
+AN12 ONLY: parametres - the person's settings, their data, their
+account, and the legal and licence information. It completes the
+manual product: after it, Checkpoint F is reached.
+
+====================================================================
+ACCEPTANCE CRITERIA
+====================================================================
+AC1. Settings edit through PATCH /api/v1/me, and a change that moves
+     the year's rate shows before and after before it is saved (R290).
+AC2. Export my data returns the FW26 export to the device through the
+     platform; delete my account erases the server AND the device, the
+     confirmation names unsynced days that will be lost, and a
+     negative sweep proves nothing remains locally (R289).
+AC3. The licences screen carries the polygon's ODbL attribution
+     (R280); the legal pages open; nothing mentions automatic mode,
+     detection consent or reminders (R282).
+
+====================================================================
+INCREMENTS
+====================================================================
+1. SETTINGS (R290). Canton, rate, method, granularity, start date. The
+   before-and-after rate, computed by the device engine over the
+   device's entries, shown before a consequential change is saved.
+   Commit: "AN12: settings, and what a change does to the year".
+   Push.
+
+2. YOUR DATA. Export through the platform. Sign out: revokes the
+   server session and clears the device's tokens (R193); the next
+   authenticated call is refused, asserted.
+   Commit: "AN12: export and sign-out". Push.
+
+3. DELETION (R289). The confirmation with the unsynced count; the
+   server erasure (FW26); the device erasure in the same action; the
+   local negative sweep. A partial erasure is worse than a refusal: if
+   the server step fails, the device keeps its data and says so.
+   Commit: "AN12: deleting the account, everywhere". Push.
+
+4. LEGAL AND LICENCES (R280, R282). Mentions legales, confidentialite
+   and CGU open from the configured site URL - in debug that is the
+   emulator's host; the real domain does not resolve yet, so name that
+   as PARKAN if a link cannot be checked. The licences screen with the
+   ODbL attribution. R282's absence assertion.
+   Commit: "AN12: legal pages and licences". Push.
+
+5. THE WALKTHROUGH. On the emulator against the production container,
+   using AN5c's injection: change the employment rate and see the
+   before-and-after; export; sign out and see the next call refused;
+   sign in again, record a day OFFLINE, then delete the account and see
+   the unsynced day named in the confirmation; after deletion confirm
+   on the device and in the container's database that nothing remains.
+   Every PNG opened and described, default and 200 percent. Compare
+   with FD9; name every conflict.
+   R186: no flag flips. gate:clone before the push.
+   Commit: "AN12: parametres, seen". Push.
+
+====================================================================
+OUT OF SCOPE
+====================================================================
+Notifications (AN13), the Play release (AN14), automatic mode. Any
+change to the erasure path, either engine or /v1.
+
+====================================================================
+REPORT - REPORT-AN12.txt
+====================================================================
+SUMMARY (R273 first; whether the device walkthrough ran; whether
+Checkpoint F is reached) / PRECONDITIONS / RED-GREEN LEDGER /
+SETTINGS AND R290 / EXPORT AND SIGN-OUT / DELETION (the confirmation,
+both erasures, the local negative sweep) / LEGAL AND LICENCES / R282 /
+WALKTHROUGH / FD9 AGAINST THE RULINGS / CHECKPOINT F (what the manual
+product now does end to end, and what it does not) / PARKED /
+DEVIATIONS / NOTICED BUT NOT TOUCHING / QUESTIONS / PUSH PROOF
+
+END OF AN12 PROMPT

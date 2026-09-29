@@ -1,0 +1,122 @@
+NIGHT SESSION - AN10, AN11, AN12 - Mon Releve
+THE MANUAL PRODUCT, COMPLETED
+Paste as the first message of a fresh Claude Code session at the
+repository root. relay/AN10.txt, AN11.txt and AN12.txt must be
+committed first.
+
+====================================================================
+WHAT THIS SESSION DOES
+====================================================================
+Three tasks, in order, each exactly as its own prompt file says:
+
+  1. relay/AN10.txt  ->  REPORT-AN10.txt   the calendar
+  2. relay/AN11.txt  ->  REPORT-AN11.txt   the releve
+  3. relay/AN12.txt  ->  REPORT-AN12.txt   parametres
+
+Together they reach CHECKPOINT F: a complete manual-mode app, the
+product that launches whether or not detection passes.
+
+The operator is asleep and reads parking.md in the morning. Nothing
+here relaxes any rule in those prompts, CLAUDE.md or
+relay/R241-CONSIGNE.txt. This file adds only how to move between
+tasks, and how to behave when something is unclear.
+
+====================================================================
+BEFORE AN10 - THE PRECONDITION
+====================================================================
+AN10 through AN12 all walk the running app on the emulator, and that
+needs AN5c's deterministic path past sign-in (R284).
+
+  - If REPORT-AN5c.txt is ABSENT from origin/main: execute
+    relay/AN5c.txt first, in full, and only then begin AN10.
+  - If it is present and its AC1 HELD (three consecutive runs): begin
+    AN10.
+  - If it is present and AC1 did NOT hold: begin AN10 anyway, but each
+    task's device walkthrough is PARKED as owed (PARKAN-<n>) and each
+    report says so in its first paragraph. Paparazzi renders you looked
+    at cover layout, and they are named as that and nothing more.
+
+====================================================================
+THE PARKING RULE IS THE POINT OF TONIGHT
+====================================================================
+R156. An open question does not stop the task. Take the conservative,
+reversible option - the one that claims less, ships less, and can be
+changed tomorrow without a migration, a correction to something
+published, or an app release - write a PARKAN-<n> entry in
+parking.md, and continue.
+
+Each entry, appended, newest last:
+  ## PARKAN-<n> - <one-line title>  [AN<task>, <date>]
+  QUESTION:  what was unclear, in two sentences.
+  TAKEN:     the conservative option, and why it is reversible.
+  NOT TAKEN: the alternative, and what switching would cost.
+  TOUCHES:   files, tests and baselines a switch would change.
+
+THE BOUNDARY IS NOT NEGOTIABLE. Stop and write the report if the
+decision would be PERMANENT (a Room schema version that ships, a URL,
+a /v1 field), would PUBLISH A FALSE OR UNSOURCED CLAIM, changes a
+gate or budget, adds a runtime dependency without a named reason,
+touches either engine or the /v1 contract, reaches a real person or
+third party, or leaves a gate red.
+
+Two sentences to keep in mind while alone:
+  - Shipping less is always available and always reversible.
+  - The manual product never mentions what it lacks (R282), so a
+    missing feature is omitted, not hinted at.
+
+====================================================================
+BETWEEN TASKS
+====================================================================
+C1. ONE AT A TIME, IN ORDER. Read the task's prompt in full, execute
+    every increment, write and push its report. Only then open the
+    next. Never read ahead.
+
+C2. THE HANDOVER CHECK, recorded at the top of the next report's
+    PRECONDITIONS:
+      - the previous report is committed and pushed;
+      - git status is clean and local main equals origin/main;
+      - pnpm gate:clone is GREEN on the pushed HEAD, with its claim
+        recorded (there is no CI - R257);
+      - no orphaned emulator, adb server, container or port (R179);
+      - the previous report carries nothing marked BLOCKING that R156
+        does not permit you to park.
+    If a check fails: STOP. Write REPORT-NIGHT-AN.txt saying which,
+    commit, push, end.
+
+C3. EACH PROMPT'S R0 AND R273 STILL APPLY. Re-read the earlier reports
+    from disk; do not rely on memory of having written them. Check
+    tasks/todo.md for each task's number.
+
+C4. NO CROSS-TASK REFACTORING. A defect noticed in AN10's output while
+    doing AN11 goes under NOTICED BUT NOT TOUCHING in AN11's report.
+
+C5. CONTEXT DISCIPLINE, and it matters more tonight than usual. Three
+    tasks with emulator work is a heavy session. Before each task,
+    re-read CLAUDE.md and that task's prompt from disk. IF YOU CANNOT
+    FIND A FILE YOU KNOW EXISTS, OR A COMMAND'S OUTPUT STOPS MATCHING
+    WHAT YOU EXPECT, STOP THE NIGHT with REPORT-NIGHT-AN.txt rather
+    than continue on a degraded context. Stopping after AN10 or AN11
+    with clean reports is a GOOD night; three tasks done on a fading
+    context is not.
+
+C6. THE GATE NEVER SLIPS. Every commit is green on the suites the
+    selector chooses. gate:clone before every push.
+
+C7. END OF NIGHT. After REPORT-AN12.txt is pushed, write
+    REPORT-NIGHT-AN.txt: one line per task (task, final commit,
+    gate:clone status); whether each device walkthrough ran; every
+    PARKAN-<n> added tonight with its title; every open question with
+    its task; WHETHER CHECKPOINT F IS REACHED, in one sentence; and
+    "Night complete. AN13 not started." Commit, push, end.
+
+====================================================================
+IF THE NIGHT STOPS EARLY
+====================================================================
+A stopped night is a correct outcome. The tree is clean, everything
+done so far is pushed, parking.md is current, and REPORT-NIGHT-AN.txt
+says where and why. The operator resumes by hand from the next prompt.
+
+====================================================================
+BEGIN
+====================================================================
+Check the precondition above, then open relay/AN10.txt.
