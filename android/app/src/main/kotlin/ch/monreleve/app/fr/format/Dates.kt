@@ -38,6 +38,7 @@ package ch.monreleve.app.fr.format
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.util.Locale
@@ -136,6 +137,32 @@ fun formatDateTime(
     return "$day$DATE_SEPARATOR$month$DATE_SEPARATOR$year$AT_SPACE$A_GRAVE$AT_SPACE$hour$TIME_SEPARATOR$minute"
 }
 
+// AN11 increment 1. The evidence annex's timestamp, as the DOCUMENT prints it (SPEC 12 item 5). It reads
+// the server's instant in UTC - "29.09.2026 04:13" - to match the PDF's own stamp() exactly
+// (web/app/releve/print/page.tsx uses getUTCDate/getUTCHours), because SPEC 12 makes the Android Releve
+// screen and the PDF "the same document" and the two must not disagree. This is DELIBERATELY different
+// from formatDateTime above, which reads Paris wall clock for the calendar's edit sheet: the calendar is
+// a working surface, the releve is the document. A plain space and a colon, no "a", matching the PDF.
+
+/** The releve annex stamp: the server's UTC instant as "dd.MM.yyyy HH:mm", matching the PDF (SPEC 12). */
+fun formatDossierStamp(iso: String): String {
+    val instant =
+        try {
+            Instant.parse(iso)
+        } catch (cause: DateTimeParseException) {
+            throw IllegalArgumentException("formatDossierStamp needs an ISO timestamp, received \"$iso\"", cause)
+        }
+
+    val zoned = instant.atZone(ZoneOffset.UTC)
+    val day = zoned.dayOfMonth.toString().padStart(2, '0')
+    val month = zoned.monthValue.toString().padStart(2, '0')
+    val year = zoned.year.toString().padStart(4, '0')
+    val hour = zoned.hour.toString().padStart(2, '0')
+    val minute = zoned.minute.toString().padStart(2, '0')
+
+    return "$day$DATE_SEPARATOR$month$DATE_SEPARATOR$year $hour$TIME_SEPARATOR$minute"
+}
+
 // AN10 increment 1. The calendar's month header ("Juin 2026") and the edit sheet's day title
 // ("Lundi 15 juin 2026", FD6). These are the ONE place this file uses a Locale, and deliberately so:
 // a month or weekday NAME is locale data, unlike the numeric separators above, which avoid Locale
@@ -150,6 +177,7 @@ fun formatDateTime(
 private val FRENCH: Locale = Locale.FRENCH
 
 private val MONTH_YEAR: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM yyyy", FRENCH)
+private val MONTH_NAME: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM", FRENCH)
 private val DAY_LONG: DateTimeFormatter = DateTimeFormatter.ofPattern("EEEE d MMMM yyyy", FRENCH)
 
 private fun capitalizeFirst(text: String): String {
@@ -161,6 +189,9 @@ fun formatMonthYear(
     year: Int,
     month: Int,
 ): String = capitalizeFirst(LocalDate.of(year, month, 1).format(MONTH_YEAR))
+
+/** "Janvier".."Décembre" from a 1-12 month, French, leading capital (the releve's monthly table, SPEC 12). */
+fun formatMonthName(month: Int): String = capitalizeFirst(LocalDate.of(2000, month, 1).format(MONTH_NAME))
 
 /** "Lundi 15 juin 2026" from an ISO YYYY-MM-DD day, French weekday and month, leading capital (FD6 title). */
 fun formatDayLong(isoDay: String): String {

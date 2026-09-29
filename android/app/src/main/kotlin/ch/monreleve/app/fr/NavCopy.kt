@@ -9,4 +9,8 @@ package ch.monreleve.app.fr
 object NavCopy {
     const val AUJOURDHUI = "Aujourd’hui"
     const val CALENDRIER = "Calendrier"
+
+    // AN11: the Releve tab and its screen land together (R282 - the tab is advertised the moment its screen
+    // exists, not before). Parametres joins in AN12.
+    const val RELEVE = "Relevé"
 }

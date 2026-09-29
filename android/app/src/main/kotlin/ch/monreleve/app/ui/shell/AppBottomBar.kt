@@ -15,11 +15,11 @@ import ch.monreleve.app.fr.NavCopy
 // component: no data layer (fence 5), copy from fr/, colours and the active tint from FrontierTheme.
 //
 // ICONS ARE LUCIDE (R293, AN10b), converted to vector drawables and committed - no runtime dependency
-// (R136). FD6 draws lucide `sun` (Aujourd'hui) and `calendar` (Calendrier); those exact glyphs now ship
-// as res/drawable/ic_sun and ic_calendar, replacing AN10's Home/DateRange stand-ins (PARKAN-23 reverses
-// PARKAN-21). The visible label carries each destination's name, so the icon is decorative
-// (contentDescription null). `file-text` (AN11 Releve) and `settings` (AN12 Parametres) are also
-// committed, ready for their tabs, but are NOT shown here - no tab for a screen that does not exist yet.
+// (R136). FD6/FD7 draw lucide `sun` (Aujourd'hui), `calendar` (Calendrier) and `file-text` (Releve); those
+// exact glyphs ship as res/drawable/ic_sun, ic_calendar and ic_file_text (AN10b committed ic_file_text for
+// this task). The visible label carries each destination's name, so the icon is decorative
+// (contentDescription null). `settings` (AN12 Parametres) is committed too but NOT shown - no tab for a
+// screen that does not exist yet (R282).
 
 @Composable
 fun AppBottomBar(
@@ -38,6 +38,12 @@ fun AppBottomBar(
             onClick = { onSelect(AppTab.CALENDRIER) },
             icon = { Icon(painter = painterResource(R.drawable.ic_calendar), contentDescription = null) },
             label = { Text(text = NavCopy.CALENDRIER) },
+        )
+        NavigationBarItem(
+            selected = selected == AppTab.RELEVE,
+            onClick = { onSelect(AppTab.RELEVE) },
+            icon = { Icon(painter = painterResource(R.drawable.ic_file_text), contentDescription = null) },
+            label = { Text(text = NavCopy.RELEVE) },
         )
     }
 }

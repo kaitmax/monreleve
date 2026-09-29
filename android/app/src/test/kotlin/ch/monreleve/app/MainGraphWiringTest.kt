@@ -3,6 +3,7 @@ package ch.monreleve.app
 import ch.monreleve.app.aujourdhui.RecordedKind
 import ch.monreleve.app.aujourdhui.Slot
 import ch.monreleve.app.calendar.SlotEdit
+import ch.monreleve.app.data.remote.DossierResult
 import ch.monreleve.app.data.repo.FakeEntryDao
 import ch.monreleve.app.data.repo.LocalEntryRepository
 import ch.monreleve.app.settings.Settings
@@ -66,6 +67,8 @@ class MainGraphWiringTest : FunSpec({
                     clock = fixedClock,
                     scope = this,
                     requestSync = { syncs++ },
+                    // The Releve controller is not a DayWriter; a stub fetch keeps this test about the sync wiring.
+                    dossierFetch = { DossierResult.NetworkError },
                 )
 
             val writers = dayWritersOf(controllers)
@@ -96,6 +99,7 @@ class MainGraphWiringTest : FunSpec({
                     clock = fixedClock,
                     scope = this,
                     requestSync = { syncs++ },
+                    dossierFetch = { DossierResult.NetworkError },
                 )
             advanceUntilIdle()
 

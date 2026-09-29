@@ -24,6 +24,8 @@ import ch.monreleve.app.auth.SharedPrefsPendingSignInStore
 import ch.monreleve.app.auth.SignInController
 import ch.monreleve.app.data.local.MonReleveDatabase
 import ch.monreleve.app.data.remote.AuthApi
+import ch.monreleve.app.data.remote.DossierApi
+import ch.monreleve.app.data.remote.DossierResult
 import ch.monreleve.app.data.remote.UrlConnectionTransport
 import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.LocalEntryRepository
@@ -39,6 +41,8 @@ import ch.monreleve.app.ui.screens.calendrier.CalendarActions
 import ch.monreleve.app.ui.screens.calendrier.CalendrierScreen
 import ch.monreleve.app.ui.screens.onboarding.OnboardingActions
 import ch.monreleve.app.ui.screens.onboarding.OnboardingScreen
+import ch.monreleve.app.ui.screens.releve.ReleveActions
+import ch.monreleve.app.ui.screens.releve.ReleveScreen
 import ch.monreleve.app.ui.screens.signin.RequestLinkScreen
 import ch.monreleve.app.ui.shell.AppBottomBar
 import ch.monreleve.app.ui.shell.AppTab
@@ -74,6 +78,8 @@ class MainActivity : ComponentActivity() {
         val pending = SharedPrefsPendingSignInStore(context)
         val clock = Clock.systemDefaultZone()
         val repository: EntryRepository = LocalEntryRepository(MonReleveDatabase.get(context).entryDao(), clock)
+        // AN11: the Releve reads GET /api/v1/dossier through the session (R210 refresh handling included).
+        val dossierApi = DossierApi(session)
         // R28: the tax year is the Paris calendar year, not the device's. The composition root is
         // the one place a clock is allowed; the engine and the aggregation stay clock-free.
         val taxYear = Year.now(ZoneId.of("Europe/Paris")).value
@@ -96,10 +102,18 @@ class MainActivity : ComponentActivity() {
                                 destination = Destination.MAIN
                             }
                         Destination.MAIN ->
-                            MainShell(repository, settingsStore, taxYear, clock, lifecycleScope) {
-                                // SPEC 13.2: recording enqueues the drain; WorkManager replays on connectivity.
-                                SyncScheduler.requestSync(context)
-                            }
+                            MainShell(
+                                repository,
+                                settingsStore,
+                                taxYear,
+                                clock,
+                                lifecycleScope,
+                                requestSync = {
+                                    // SPEC 13.2: recording enqueues the drain; WorkManager replays on connectivity.
+                                    SyncScheduler.requestSync(context)
+                                },
+                                dossierFetch = dossierApi::fetch,
+                            )
                     }
                 }
             }
@@ -166,16 +180,20 @@ private fun MainShell(
     clock: Clock,
     scope: CoroutineScope,
     requestSync: () -> Unit,
+    dossierFetch: suspend (Int) -> DossierResult,
 ) {
-    // R291: BOTH controllers are built by MainGraph, the ONE construction site MainGraphWiringTest also
-    // calls - so the graph the JVM test checks is the graph the app uses. SPEC 13.2: both are built with
-    // requestSync, and the test fails if either is not (the AN10 calendar-never-synced bug, which hid
-    // because this wiring lived inside a Composable no JVM test reaches, R176/R204).
-    val controllers = remember { MainGraph.build(repository, store, taxYear, clock, scope, requestSync) }
+    // R291: the controllers are built by MainGraph, the ONE construction site MainGraphWiringTest also
+    // calls - so the graph the JVM test checks is the graph the app uses. SPEC 13.2: both day-writers are
+    // built with requestSync, and the test fails if either is not (the AN10 calendar-never-synced bug,
+    // which hid because this wiring lived inside a Composable no JVM test reaches, R176/R204). AN11 adds
+    // the Releve controller, wired with the dossier fetch seam.
+    val controllers =
+        remember { MainGraph.build(repository, store, taxYear, clock, scope, requestSync, dossierFetch) }
     var tab by remember { mutableStateOf(AppTab.AUJOURDHUI) }
 
     val aujourdhuiState by controllers.aujourdhui.state.collectAsState()
     val calendarState by controllers.calendar.state.collectAsState()
+    val releveState by controllers.releve.state.collectAsState()
 
     Scaffold(bottomBar = { AppBottomBar(selected = tab, onSelect = { tab = it }) }) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
@@ -193,6 +211,11 @@ private fun MainShell(
                                 onSave = controllers.calendar::save,
                                 onDismissSheet = controllers.calendar::closeSheet,
                             ),
+                    )
+                AppTab.RELEVE ->
+                    ReleveScreen(
+                        state = releveState,
+                        actions = ReleveActions(onRetry = controllers.releve::load),
                     )
             }
         }

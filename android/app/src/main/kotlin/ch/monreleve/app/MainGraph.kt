@@ -2,7 +2,9 @@ package ch.monreleve.app
 
 import ch.monreleve.app.aujourdhui.AujourdhuiController
 import ch.monreleve.app.calendar.CalendarController
+import ch.monreleve.app.data.remote.DossierResult
 import ch.monreleve.app.data.repo.EntryRepository
+import ch.monreleve.app.releve.ReleveController
 import ch.monreleve.app.settings.SettingsStore
 import kotlinx.coroutines.CoroutineScope
 import java.time.Clock
@@ -31,6 +33,9 @@ interface DayWriter {
 class MainControllers(
     val aujourdhui: AujourdhuiController,
     val calendar: CalendarController,
+    // AN11: the Releve controller. NOT a DayWriter (it reads the server's document, it records nothing), so
+    // MainGraphWiringTest's requestSync census is unaffected - it filters by the DayWriter type.
+    val releve: ReleveController,
 )
 
 /**
@@ -52,9 +57,13 @@ object MainGraph {
         clock: Clock,
         scope: CoroutineScope,
         requestSync: () -> Unit,
+        // AN11: the Releve controller's fetch seam (DossierApi::fetch in the app; a stub in tests), the same
+        // lambda-seam idiom as requestSync. It reads GET /api/v1/dossier through the session.
+        dossierFetch: suspend (Int) -> DossierResult,
     ): MainControllers =
         MainControllers(
             aujourdhui = AujourdhuiController(repository, settingsStore, taxYear, clock, scope, requestSync),
             calendar = CalendarController(repository, settingsStore, taxYear, clock, scope, requestSync),
+            releve = ReleveController(dossierFetch, taxYear, scope),
         )
 }
