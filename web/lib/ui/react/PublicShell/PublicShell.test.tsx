@@ -35,16 +35,19 @@ import { LAST_REGULATORY_REVIEW, reviewNotice } from '@/lib/content/regulatory';
 import { LEGAL_COPY } from '@/lib/fr/legal';
 import { PRODUCT_STATE } from '@/lib/content/product-state';
 import {
+  CALCULATOR_PATH,
+  collapseLoneDisclosures,
   ctaHrefIfLive,
   ctaHrefIfOffered,
   visibleFooterColumns,
   visibleNav,
 } from '@/lib/content/routes';
+import { guideNavLinks } from '@/lib/guides/registry';
 import { formatDate } from '@/lib/ui/core';
 import { FOOTER_COLUMNS, SHELL_COPY, SHELL_NAV } from '@/lib/fr/shell';
-import type { NavLink } from '@/lib/fr/shell';
+import type { NavEntry, NavLink } from '@/lib/fr/shell';
 import { text } from '@/tests/support/markup';
-import { PublicShell } from './PublicShell';
+import { NavItem, PublicShell } from './PublicShell';
 
 // Testing Library registers cleanup only under vitest globals, which this repo
 // does not set. See FieldGroup.test.tsx.
@@ -53,7 +56,14 @@ afterEach(cleanup);
 const DIR = join(process.cwd(), 'lib', 'ui', 'react', 'PublicShell');
 const CHILD = 'Contenu de la page';
 
-const renderShell = () => render(<PublicShell>{CHILD}</PublicShell>);
+// THE REAL LIST, as every page renders it (FW33). The guide links are derived
+// on the server from the registry and handed in, so the test hands in the
+// same derivation rather than a literal list of seven labels.
+const renderShell = () =>
+  render(<PublicShell guideLinks={guideNavLinks()}>{CHILD}</PublicShell>);
+
+/** The nav as the shell renders it: gated, then lone disclosures collapsed. */
+const NAV: readonly NavEntry[] = collapseLoneDisclosures(visibleNav(SHELL_NAV));
 
 /**
  * Every leaf destination the nav offers, disclosure children included.
@@ -74,7 +84,7 @@ const renderShell = () => render(<PublicShell>{CHILD}</PublicShell>);
  * R171: a test names a role. The role here is "every destination the shell
  * actually offers", and visibleNav is the only thing that knows it.
  */
-const LEAVES: readonly NavLink[] = visibleNav(SHELL_NAV).flatMap((entry) => {
+const LEAVES: readonly NavLink[] = NAV.flatMap((entry) => {
   if (entry.children !== undefined) return [...entry.children];
 
   return entry.href === undefined ? [] : [{ label: entry.label, href: entry.href }];
@@ -148,14 +158,33 @@ describe('the wordmark', () => {
 });
 
 describe('the nav', () => {
-  it('offers every entry from lib/fr', () => {
+  it('offers every entry the shell derives from lib/fr', () => {
+    // FROM NAV, NOT SHELL_NAV, since FW33. SHELL_NAV's "Calculateurs" is a
+    // menu of two, one of them planned, so the shell renders its one live
+    // child under the child's own label - asserting the raw label here would
+    // require a button the shell is right not to render.
     renderShell();
 
-    for (const entry of SHELL_NAV) {
+    for (const entry of NAV) {
       // A disclosure is a button, a leaf is a link - so this asserts the
       // label is present either way rather than guessing the role.
       expect(screen.getAllByText(entry.label).length).toBeGreaterThan(0);
     }
+  });
+
+  it('renders a menu with one live child as a link to that child, under its label (H4)', () => {
+    // THE SHIPPED STATE. Opening a menu to find one item is a wasted
+    // interaction, and "Calculateurs" over one destination misnames it.
+    renderShell();
+
+    const nav = screen.getByRole('navigation', { name: SHELL_COPY.navLabel });
+    const only = SHELL_NAV[0]?.children?.[0];
+
+    expect(only?.href).toBe(CALCULATOR_PATH);
+    expect(within(nav).getByRole('link', { name: only?.label ?? '' }).getAttribute('href')).toBe(
+      CALCULATOR_PATH,
+    );
+    expect(within(nav).queryByRole('button', { name: SHELL_NAV[0]?.label ?? '' })).toBeNull();
   });
 
   it('links every leaf to its href', () => {
@@ -166,7 +195,10 @@ describe('the nav', () => {
     // Tab, which is the keyboard trap this component is mostly about - so
     // without this the test would be asserting the collapsed state and
     // failing against a correct component. The first version did exactly that.
-    for (const entry of SHELL_NAV) {
+    //
+    // NAV, not SHELL_NAV: only a disclosure the shell still renders can be
+    // opened. None ships today, and the loop costs nothing when one returns.
+    for (const entry of NAV) {
       if (entry.children === undefined) continue;
       fireEvent.click(screen.getByRole('button', { name: entry.label }));
     }
@@ -237,11 +269,41 @@ describe('the nav', () => {
   });
 });
 
-describe('the Calculateurs disclosure', () => {
-  const disclosure = () => screen.getByRole('button', { name: 'Calculateurs' });
+// ---------------------------------------------------------------------------
+// A DISCLOSURE, RENDERED DIRECTLY - and why it is no longer rendered through
+// the shell.
+//
+// Since FW33 no menu ships: Calculateurs has one live child, so the shell
+// renders it as a link. The disclosure code still exists and comes back on its
+// own the day /calculateur-lamal-cmu goes live, and a branch no render reaches
+// is a branch whose keyboard behaviour nobody is proving. So NavItem is
+// exported and handed SHELL_NAV's real, unfiltered menu - two children - which
+// is exactly the entry the shell will hand it on that day.
+//
+// NOT A TEST PROP ON PublicShell. That would give production a second channel
+// for the nav, and the one this component is built around is the list it
+// derives for itself.
+// ---------------------------------------------------------------------------
+
+describe('a disclosure with two children', () => {
+  const menu = SHELL_NAV.find((entry) => entry.children !== undefined);
+  const label = menu?.label ?? '';
+  const disclosure = () => screen.getByRole('button', { name: label });
+
+  const renderMenu = () =>
+    render(
+      <ul>
+        <NavItem entry={menu ?? { label }} />
+      </ul>,
+    );
+
+  it('is the real Calculateurs menu, with two children', () => {
+    // The fixture is SHELL_NAV itself, so it cannot drift from what ships.
+    expect(menu?.children?.length).toBe(2);
+  });
 
   it('starts collapsed, and says so', () => {
-    renderShell();
+    renderMenu();
 
     expect(disclosure().getAttribute('aria-expanded')).toBe('false');
   });
@@ -249,36 +311,29 @@ describe('the Calculateurs disclosure', () => {
   it('expands on click and updates aria-expanded', () => {
     // A disclosure that opens without updating the attribute announces
     // "collapsed" while showing its contents.
-    renderShell();
+    renderMenu();
     fireEvent.click(disclosure());
 
     expect(disclosure().getAttribute('aria-expanded')).toBe('true');
   });
 
   it('reveals its children only when expanded', () => {
-    // SCOPED TO THE HEADER NAV, and it has to be: the footer links to the same
-    // destinations by design - a test asserts that overlap below - so a
-    // document-wide query finds the footer's copy of this label while the
-    // disclosure is still collapsed. The first version of this test did
-    // exactly that and failed the moment the footer landed, against a
-    // correct component.
-    renderShell();
+    renderMenu();
 
-    const child = SHELL_NAV[0]?.children?.[0]?.label ?? '';
-    const nav = () => screen.getByRole('navigation', { name: SHELL_COPY.navLabel });
+    const child = menu?.children?.[0]?.label ?? '';
 
-    expect(within(nav()).queryByRole('link', { name: child })).toBeNull();
+    expect(screen.queryByRole('link', { name: child })).toBeNull();
 
     fireEvent.click(disclosure());
 
-    expect(within(nav()).getByRole('link', { name: child })).toBeDefined();
+    expect(screen.getByRole('link', { name: child })).toBeDefined();
   });
 
   it('closes on Escape and RETURNS FOCUS to the trigger', () => {
     // The half that gets forgotten. Closing a panel and dropping focus to
     // <body> puts a keyboard user back at the top of the document with no
     // indication anything happened.
-    renderShell();
+    renderMenu();
     fireEvent.click(disclosure());
     expect(disclosure().getAttribute('aria-expanded')).toBe('true');
 
@@ -286,6 +341,31 @@ describe('the Calculateurs disclosure', () => {
 
     expect(disclosure().getAttribute('aria-expanded')).toBe('false');
     expect(document.activeElement).toBe(disclosure());
+  });
+
+  it('carries its chevron inside the button, hidden from assistive technology', () => {
+    // FD11 draws "Calculateurs ▾". INSIDE the button, so it is part of the
+    // control rather than a separate glyph beside it; aria-hidden, so the
+    // name stays "Calculateurs" rather than gaining an arrow.
+    renderMenu();
+
+    const icon = disclosure().querySelector('svg');
+
+    expect(icon).not.toBeNull();
+    expect(icon?.getAttribute('aria-hidden')).toBe('true');
+    // DESIGN-SYSTEM: Lucide at a 1.75 stroke. lucide-react's default is 2, so
+    // an omitted prop ships the wrong weight silently.
+    expect(icon?.getAttribute('stroke-width')).toBe('1.75');
+  });
+
+  it('draws NO chevron on a plain link, because a caret on a link promises a menu', () => {
+    renderShell();
+
+    const nav = screen.getByRole('navigation', { name: SHELL_COPY.navLabel });
+
+    for (const link of within(nav).getAllByRole('link')) {
+      expect(link.querySelector('svg'), link.textContent ?? '').toBeNull();
+    }
   });
 });
 
@@ -399,6 +479,54 @@ describe('the stylesheet carries what jsdom cannot (R61)', () => {
     expect(scss).toContain('var(--colour-brand)');
     expect(scss).toContain('var(--colour-surface)');
   });
+
+  // FW33. These are stylesheet assertions rather than renders for R61's
+  // reason, and the CTA ones for a second reason: the CTA is not rendered
+  // while appExists is false, so no browser can measure it yet. The rules are
+  // what will position it the day it appears.
+  const [base = '', ...queries] = scss.split(/@media \(width >= bp\.\$breakpoint-md\) \{/);
+  const desktop = queries.join('\n');
+  const rule = (css: string, selector: string): string =>
+    css.match(new RegExp(`\\${selector}\\s*\\{([^}]*)\\}`))?.[1] ?? '';
+
+  it('keeps the CTA pushed right on a phone, where the nav is not displayed (FD2)', () => {
+    expect(rule(base, '.cta')).toMatch(/margin-left:\s*auto/);
+  });
+
+  it('moves the auto margin onto the nav on desktop, and resets the CTA', () => {
+    // BOTH HALVES. With an auto margin on the nav AND the CTA, the free space
+    // is split between them and the nav floats mid-bar.
+    expect(rule(desktop, '.nav')).toMatch(/margin-left:\s*auto/);
+    expect(rule(desktop, '.cta')).toMatch(/margin-left:\s*0/);
+  });
+
+  it('spaces the nav items 32 px apart (FD11 section 1)', () => {
+    expect(rule(scss, '.navList')).toContain('gap: var(--space-8)');
+  });
+
+  it('lays the footer out as equal columns: two on a phone, four on desktop', () => {
+    // A GRID OF EQUAL TRACKS, not space-between over intrinsic widths, which
+    // sized each column to its longest label. Two on a phone because the
+    // 44 px rows are D40 targets and cannot shrink.
+    const columns = [...scss.matchAll(/\.columns\s*\{([^}]*)\}/g)].map((match) => match[1] ?? '');
+
+    expect(columns).toHaveLength(2);
+    expect(columns[0]).toMatch(/grid-template-columns:\s*repeat\(2,/);
+    expect(columns[1]).toMatch(/grid-template-columns:\s*repeat\(4,/);
+    // In the RULES, not the file: the comment explaining the change names
+    // the value it replaced, and a test that fails on the explanation
+    // invites deleting the explanation.
+    expect(columns.join('\n')).not.toContain('space-between');
+  });
+
+  it('pads each footer link, so two wrapped labels do not run into one another', () => {
+    // FOUND BY CROPPING A BASELINE (R135), not by any gate. In two narrow
+    // columns a label like "Le droit d’option" wraps to two lines, which is
+    // exactly the 44 px row height - so with no padding, consecutive wrapped
+    // links touched and read as one run of text. The padding changes nothing
+    // on a one-line row, which the 44 px min-height already governs.
+    expect(rule(scss, '.footerLink')).toContain('padding-block: var(--space-2)');
+  });
 });
 
 describe('the footer', () => {
@@ -437,6 +565,54 @@ describe('the footer', () => {
         expect(found[0]?.getAttribute('href'), link.label).toBe(link.href);
       }
     }
+  });
+
+  /** The hrefs one footer column links, found by its heading. */
+  const columnHrefs = (heading: string): readonly string[] => {
+    const footer = screen.getByRole('contentinfo');
+    const column = within(footer).getByRole('heading', { name: heading }).parentElement;
+
+    return [...(column?.querySelectorAll('a') ?? [])].map((link) => link.getAttribute('href') ?? '');
+  };
+
+  const headingOf = (href: string): string =>
+    FOOTER_COLUMNS.find((column) => column.links.some((link) => link.href === href))?.heading ?? '';
+
+  it('lists every published guide under Guides, by its own label (H10, SPEC 9.2)', () => {
+    // SPEC 9.2: the footer is the full sitemap. The links are derived from
+    // the registry, so an eighth article reaches the footer on the day it is
+    // published - and the label is the article's own breadcrumbLabel.
+    renderShell();
+
+    const guides = FOOTER_COLUMNS.find((column) => column.guides === true);
+    const footer = screen.getByRole('contentinfo');
+
+    expect(guides, 'no column is marked as holding the guides').toBeDefined();
+    expect(guideNavLinks().length).toBeGreaterThan(0);
+
+    for (const link of guideNavLinks()) {
+      expect(columnHrefs(guides?.heading ?? ''), link.label).toContain(link.href);
+      expect(within(footer).getByRole('link', { name: link.label }).getAttribute('href')).toBe(
+        link.href,
+      );
+    }
+  });
+
+  it('links the two live pages it lacked: the alert list and the about page', () => {
+    renderShell();
+
+    expect(columnHrefs(headingOf('/alertes'))).toContain('/alertes');
+    expect(columnHrefs(headingOf('/a-propos'))).toContain('/a-propos');
+    // Both under the columns FD11 section 7 puts them in.
+    expect(headingOf('/alertes')).toBe(FOOTER_COLUMNS[0]?.heading);
+    expect(headingOf('/a-propos')).toBe(FOOTER_COLUMNS[2]?.heading);
+  });
+
+  it('files Sources under the product, not under the legal pages (FD11 section 7)', () => {
+    renderShell();
+
+    expect(headingOf('/sources')).toBe(FOOTER_COLUMNS[2]?.heading);
+    expect(columnHrefs(FOOTER_COLUMNS[3]?.heading ?? '')).not.toContain('/sources');
   });
 
   it('agrees with the header on where a shared label goes', () => {

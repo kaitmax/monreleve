@@ -18,6 +18,7 @@
 import { cleanup, render } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import CalculateurPage from '@/app/(public)/calculateur-teletravail-frontalier/page';
+import { guideNavLinks } from '@/lib/guides/registry';
 import { PublicShell } from '@/lib/ui/react/PublicShell/PublicShell';
 
 afterEach(cleanup);
@@ -41,7 +42,7 @@ describe('the JSON-LD in the rendered page', () => {
     // unescaped and "</script>" neutralised as s. If that ever changed,
     // the failure would be silent in every test that looks at the builders.
     const { container } = render(
-      <PublicShell>
+      <PublicShell guideLinks={guideNavLinks()}>
         <CalculateurPage />
       </PublicShell>,
     );
@@ -56,7 +57,7 @@ describe('the JSON-LD in the rendered page', () => {
 
   it('publishes exactly the questions the accordion renders', () => {
     const { container } = render(
-      <PublicShell>
+      <PublicShell guideLinks={guideNavLinks()}>
         <CalculateurPage />
       </PublicShell>,
     );
@@ -72,7 +73,7 @@ describe('the JSON-LD in the rendered page', () => {
 
   it('publishes exactly the answers the accordion renders', () => {
     const { container } = render(
-      <PublicShell>
+      <PublicShell guideLinks={guideNavLinks()}>
         <CalculateurPage />
       </PublicShell>,
     );

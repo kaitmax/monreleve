@@ -89,9 +89,10 @@
   display: none;
 }
 
+// 32 px apart, FD11 section 1 (it was 20 until FW33).
 .navList {
   display: flex;
-  gap: var(--space-5);
+  gap: var(--space-8);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -101,7 +102,14 @@
   position: relative;
 }
 
+// TEXT-PRIMARY, NOT FD11's #667085, by ruling H7: where a brief and
+// DESIGN-SYSTEM.md disagree, the design system wins, and its section 4 fixes
+// the web nav at #111827. inline-flex so a disclosure's caret sits on the
+// label's line.
 .navLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
   padding: 0;
   border: 0;
   background: none;
@@ -111,6 +119,12 @@
   font-weight: var(--type-body-m-weight);
   line-height: var(--type-body-m-line);
   text-decoration: none;
+}
+
+// The disclosure's caret. Only a real disclosure draws one (FW33).
+.chevron {
+  width: var(--size-icon-sm);
+  height: var(--size-icon-sm);
 }
 
 .submenu {
@@ -136,6 +150,11 @@
 // that.
 //
 // Compact 40 px below the breakpoint (FD2:31), the full 48 above.
+//
+// margin-left: auto HERE, AT THE BASE, because below the breakpoint the nav
+// is display: none and this margin is the only thing pushing the CTA to the
+// right edge, as FD2 draws it. The desktop query moves the auto margin onto
+// the nav and resets this one (FW33).
 .cta {
   display: inline-flex;
   align-items: center;
@@ -191,12 +210,20 @@
     display: none;
   }
 
+  // CENTRE-RIGHT (FD11 section 1), and the auto margin is what puts it there.
+  // Before FW33 the nav sat 12 px after the wordmark, the bar's gap, with the
+  // whole width of the page empty to its right.
   .nav {
     display: block;
+    margin-left: auto;
   }
 
+  // RESET, not left at auto: with an auto margin on both the nav and the CTA
+  // the free space is split between them and the nav floats mid-bar. The CTA
+  // follows the nav at the bar's gap instead.
   .cta {
     height: var(--size-button-height);
+    margin-left: 0;
   }
 }
 
@@ -215,12 +242,17 @@
   padding: var(--space-12) var(--layout-gutter-mobile);
 }
 
-// Mobile-first: four STACKED sections, which is what the prompt asks for
-// below the breakpoint. The four-column grid arrives with the media query.
+// TWO COLUMNS ON A PHONE, FOUR ON DESKTOP, both as grids of EQUAL tracks
+// (FW33). FD2:102 draws four stacked sections below the breakpoint; this
+// deviates from it on purpose, approved as H4. The footer now carries every
+// guide, and its 44 px rows are D40 touch targets that cannot shrink, so
+// halving the column count is the only honest way to keep it from running
+// several screens long. minmax(0, 1fr) rather than 1fr, so a long label wraps
+// inside its track instead of widening it.
 .columns {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-8);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-8) var(--space-6);
 }
 
 .columnHeading {
@@ -242,10 +274,16 @@
 // 44 px rows, so every footer link is a legal tap target on a phone - SPEC 16
 // and FD2 both require it of anything tappable, and a footer full of 20 px
 // rows is the classic place that rule is forgotten.
+//
+// PADDED SINCE FW33, and a crop found why. In the two narrow phone columns a
+// label wraps to two lines, which is exactly 44 px - so with no padding,
+// consecutive wrapped links touched and read as one run of text. On a one-line
+// row the min-height governs and the padding changes nothing.
 .footerLink {
   display: flex;
   align-items: center;
   min-height: var(--size-icon-button);
+  padding-block: var(--space-2);
   color: var(--colour-text-secondary);
   font-size: var(--type-body-size);
   font-weight: var(--type-body-weight);
@@ -278,9 +316,10 @@
     padding: var(--space-16) var(--layout-gutter-desktop);
   }
 
+  // EQUAL COLUMNS, where space-between over intrinsic widths had sized each
+  // one to its longest label.
   .columns {
-    flex-direction: row;
-    justify-content: space-between;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: var(--space-10);
   }
 }

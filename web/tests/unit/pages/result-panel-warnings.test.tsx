@@ -47,6 +47,7 @@ import { LEGAL_COPY } from '@/lib/fr/legal';
 import { PRODUCT_STATE } from '@/lib/content/product-state';
 import { CANTONS_BY_NAME } from '@/lib/fr/cantons';
 import { RESULT_COPY, WARNING_CODES, warningEntry } from '@/lib/fr/result';
+import { guideNavLinks } from '@/lib/guides/registry';
 import { PublicShell } from '@/lib/ui/react/PublicShell/PublicShell';
 import { type Status } from '@/lib/ui/core';
 
@@ -348,7 +349,7 @@ describe('the standing disclaimer is said once, not twice (increment 6)', () => 
 
   it('says it once inside main when there is a result', () => {
     const { container } = render(
-      <PublicShell>
+      <PublicShell guideLinks={guideNavLinks()}>
         <CalculateurPage />
       </PublicShell>,
     );
@@ -371,7 +372,7 @@ describe('the standing disclaimer is said once, not twice (increment 6)', () => 
     // The empty state has no panel, so the one occurrence has to be the
     // panel's absence rather than the page-level copy still being there.
     const { container } = render(
-      <PublicShell>
+      <PublicShell guideLinks={guideNavLinks()}>
         <CalculateurPage />
       </PublicShell>,
     );
@@ -386,7 +387,7 @@ describe('the standing disclaimer is said once, not twice (increment 6)', () => 
     // of counting one of two copies. The footer's is outside main, on every
     // page, and stays.
     const { container } = render(
-      <PublicShell>
+      <PublicShell guideLinks={guideNavLinks()}>
         <CalculateurPage />
       </PublicShell>,
     );

@@ -442,6 +442,37 @@ export function visibleNav<T extends GateableEntry>(
 }
 
 /**
+ * A disclosure left with ONE child renders as a plain link to that child,
+ * under the CHILD's label (FW33, approved as H4).
+ *
+ * Opening a menu to find a single item is a wasted interaction, and the menu's
+ * own label is plural - "Calculateurs" over one destination names something
+ * that is not there. The child's label is the honest one, and the mobile panel
+ * already flattens disclosures to their children, so desktop and mobile now
+ * agree on what the entry is called.
+ *
+ * APPLIED AFTER visibleNav, AND DELIBERATELY A SEPARATE FUNCTION. visibleNav
+ * answers "which links exist"; this answers "what shape the survivors take".
+ * Folding it into visibleNav would change that function's contract under
+ * regulatory-gate.test.ts, which asserts the disclosure itself survives the
+ * gate. It reads no registry, so it needs no routes parameter: it is handed
+ * the entries that survived and nothing else.
+ *
+ * DERIVED, SO THE MENU COMES BACK ON ITS OWN. The day /calculateur-lamal-cmu
+ * goes live, visibleNav leaves Calculateurs two children and this returns the
+ * disclosure unchanged, with no edit here or in the shell.
+ */
+export function collapseLoneDisclosures<T extends GateableEntry>(
+  entries: readonly T[],
+): readonly (T | GateableEntry)[] {
+  return entries.map((entry) => {
+    const only = entry.children?.length === 1 ? entry.children[0] : undefined;
+
+    return only === undefined ? entry : { label: only.label, href: only.href };
+  });
+}
+
+/**
  * The footer's columns with gated-and-closed links removed.
  *
  * EVERY COLUMN SURVIVES, even one that loses a link, because a column heading

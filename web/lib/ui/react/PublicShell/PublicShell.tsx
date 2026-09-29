@@ -42,21 +42,40 @@
 // IT EMITS NO h1. The page owns that (protocol item 8); a shell that emitted
 // one would give every page two.
 
-import { Menu, X } from 'lucide-react';
+import { ChevronDown, Menu, X } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
-import { ctaHrefIfOffered, visibleFooterColumns, visibleNav } from '@/lib/content/routes';
+import {
+  collapseLoneDisclosures,
+  ctaHrefIfOffered,
+  visibleFooterColumns,
+  visibleNav,
+} from '@/lib/content/routes';
 import { APP_NAME } from '@/lib/fr';
 import { LAST_REGULATORY_REVIEW, reviewNotice } from '@/lib/content/regulatory';
 import { LEGAL_COPY } from '@/lib/fr/legal';
 import { PRODUCT_STATE } from '@/lib/content/product-state';
 import { FOOTER_COLUMNS, SHELL_COPY, SHELL_NAV } from '@/lib/fr/shell';
-import type { NavEntry } from '@/lib/fr/shell';
+import type { FooterColumn, NavEntry, NavLink } from '@/lib/fr/shell';
 import styles from './PublicShell.module.scss';
 import { Wordmark } from './Wordmark';
 
 export interface PublicShellProps {
   readonly children: React.ReactNode;
+  /**
+   * Every published guide, for the footer's Guides column (FW33, H10).
+   *
+   * A PROP, AND REQUIRED, because this is a client component and the guide
+   * registry reads content/ from disk. The pages that render the shell are
+   * server components and pass guideNavLinks() from lib/guides/registry.ts.
+   * Required rather than defaulted: a default of [] would render a footer
+   * with no guides and no error, and a call site that forgot the prop would
+   * look finished. As it is, forgetting it is a type error.
+   */
+  readonly guideLinks: readonly NavLink[];
 }
+
+/** FD11: the Calculateurs caret, Lucide chevron-down at a 1.75 stroke. */
+const STROKE = 1.75;
 
 /**
  * One nav entry: a link, or a disclosure holding links.
@@ -64,8 +83,14 @@ export interface PublicShellProps {
  * The disclosure closes on Escape and puts focus back on its own trigger.
  * Without that, closing the panel drops focus to <body> and a keyboard user is
  * silently returned to the top of the document.
+ *
+ * EXPORTED SINCE FW33, for one reason: no disclosure ships today, because
+ * Calculateurs has one live child and renders as a link to it. The disclosure
+ * branch still exists and returns on its own the day a second child goes
+ * live, so the test suite and the workbench render it directly - it is the
+ * only way its keyboard behaviour and its caret stay proven meanwhile.
  */
-function NavItem({ entry }: { readonly entry: NavEntry }) {
+export function NavItem({ entry }: { readonly entry: NavEntry }) {
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
 
@@ -99,6 +124,9 @@ function NavItem({ entry }: { readonly entry: NavEntry }) {
         onClick={() => setOpen(!open)}
       >
         {entry.label}
+        {/* ONLY HERE, never on a plain link: a caret promises a menu, and
+            the lone-child link is not one. */}
+        <ChevronDown className={styles.chevron} aria-hidden="true" strokeWidth={STROKE} />
       </button>
 
       {/* Rendered only when open, rather than hidden with CSS: a panel that
@@ -157,10 +185,39 @@ const ctaHref = ctaHrefIfOffered(SHELL_COPY.ctaHref, PRODUCT_STATE.appExists);
  * proved directly in tests/unit/content/regulatory-gate.test.ts rather than
  * through this component, because the constant cannot be varied from here.
  */
-const NAV = visibleNav(SHELL_NAV);
-const FOOTER = visibleFooterColumns(FOOTER_COLUMNS);
+//
+// THEN LONE DISCLOSURES COLLAPSE (FW33, H4). A menu left with one live child
+// is a link to that child, under the child's own label - so today the header
+// offers "Calculateur de télétravail" by name rather than a one-item menu.
+const NAV: readonly NavEntry[] = collapseLoneDisclosures(visibleNav(SHELL_NAV));
 
-export function PublicShell({ children }: PublicShellProps) {
+/**
+ * The desktop nav's list, exported for the workbench's disclosure specimen so
+ * the specimen is styled by this file rather than by a copy of it.
+ */
+export function NavMenu({ entries }: { readonly entries: readonly NavEntry[] }) {
+  return (
+    <ul className={styles.navList}>
+      {entries.map((entry) => (
+        <NavItem key={entry.label} entry={entry} />
+      ))}
+    </ul>
+  );
+}
+
+/**
+ * The footer's columns, with the published guides appended to the one column
+ * that holds them, then filtered by the same R85/R54 rule as the rest.
+ */
+function footerColumns(guideLinks: readonly NavLink[]): readonly FooterColumn[] {
+  return visibleFooterColumns(
+    FOOTER_COLUMNS.map((column) =>
+      column.guides === true ? { ...column, links: [...column.links, ...guideLinks] } : column,
+    ),
+  );
+}
+
+export function PublicShell({ children, guideLinks }: PublicShellProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuTrigger = useRef<HTMLButtonElement>(null);
 
@@ -198,11 +255,7 @@ export function PublicShell({ children }: PublicShellProps) {
           </a>
 
           <nav className={styles.nav} aria-label={SHELL_COPY.navLabel}>
-            <ul className={styles.navList}>
-              {NAV.map((entry) => (
-                <NavItem key={entry.label} entry={entry} />
-              ))}
-            </ul>
+            <NavMenu entries={NAV} />
           </nav>
 
           {/* OUTSIDE the panel below, on every viewport - and rendered ONLY
@@ -258,7 +311,7 @@ export function PublicShell({ children }: PublicShellProps) {
       <footer className={styles.footer}>
         <div className={styles.footerInner}>
           <nav className={styles.columns} aria-label={SHELL_COPY.footerNavLabel}>
-            {FOOTER.map((column) => (
+            {footerColumns(guideLinks).map((column) => (
               <div className={styles.column} key={column.heading}>
                 <h2 className={styles.columnHeading}>{column.heading}</h2>
                 <ul className={styles.columnList}>

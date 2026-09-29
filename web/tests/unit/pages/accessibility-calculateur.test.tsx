@@ -39,6 +39,7 @@ import { readingAnchor } from '@/lib/content/provisional';
 import { CALCULATEUR_COPY } from '@/lib/fr/calculateur';
 import { RESULT_COPY } from '@/lib/fr/result';
 import { SHARE_COPY } from '@/lib/fr/params';
+import { guideNavLinks } from '@/lib/guides/registry';
 import { PublicShell } from '@/lib/ui/react/PublicShell/PublicShell';
 
 expect.extend(matchers);
@@ -56,7 +57,7 @@ afterEach(() => {
 const FORM = CALCULATEUR_COPY.form;
 const RESULT = CALCULATEUR_COPY.result;
 
-const mount = () => render(<PublicShell>{<CalculateurPage />}</PublicShell>);
+const mount = () => render(<PublicShell guideLinks={guideNavLinks()}>{<CalculateurPage />}</PublicShell>);
 
 /** Land on the page the way a shared link does: URL first, then render. */
 const arriveWith = (search: string) => {

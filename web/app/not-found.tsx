@@ -28,12 +28,13 @@
 
 import { NOT_FOUND_COPY } from '@/lib/fr';
 import { Container } from '@/lib/ui/react/Container/Container';
+import { guideNavLinks } from '@/lib/guides/registry';
 import { PublicShell } from '@/lib/ui/react/PublicShell/PublicShell';
 import styles from './not-found.module.scss';
 
 export default function NotFound() {
   return (
-    <PublicShell>
+    <PublicShell guideLinks={guideNavLinks()}>
       <main className={styles.page}>
         <Container width="article">
           <h1 className={styles.title}>{NOT_FOUND_COPY.heading}</h1>

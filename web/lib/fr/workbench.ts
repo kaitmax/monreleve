@@ -90,6 +90,9 @@ export const WORKBENCH = {
   shell: {
     title: 'PublicShell',
     desktop: 'En-tête et pied de page',
+    // FW33: no page renders a menu today, because Calculateurs has one live
+    // child and renders as a link to it. This is the menu as it returns.
+    navDisclosure: 'Le menu Calculateurs, tel qu’il s’affichera avec deux entrées',
   },
 
   legal: {

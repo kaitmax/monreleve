@@ -39,6 +39,7 @@ import { DataGrid } from './DataGrid/DataGrid';
 import { FieldGroup } from './FieldGroup/FieldGroup';
 import { LegalNote } from './LegalNote/LegalNote';
 import { MetricTile } from './MetricTile/MetricTile';
+import { guideNavLinks } from '@/lib/guides/registry';
 import { PublicShell } from './PublicShell/PublicShell';
 import { RateDisplay } from './RateDisplay/RateDisplay';
 import { ThresholdRail } from './ThresholdRail/ThresholdRail';
@@ -186,7 +187,7 @@ const STATES: readonly State[] = [
   // must report its own state, and an icon button whose only name is an
   // aria-label. The menu-open variant is included because a panel is exactly
   // where duplicate ids and orphaned aria references appear.
-  { name: 'PublicShell collapsed', node: <PublicShell>{CONTENT}</PublicShell> },
+  { name: 'PublicShell collapsed', node: <PublicShell guideLinks={guideNavLinks()}>{CONTENT}</PublicShell> },
 ];
 
 describe('every state of every component is free of axe violations (AC1)', () => {

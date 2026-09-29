@@ -30,6 +30,7 @@ import type { ReactNode } from 'react';
 import { OG_CARD } from '@/lib/content/og';
 import { canonicalsAvailable, siteOrigin } from '@/lib/content/site';
 import { APP_NAME, TITLE_TEMPLATE } from '@/lib/fr';
+import { guideNavLinks } from '@/lib/guides/registry';
 import { PublicShell } from '@/lib/ui/react/PublicShell/PublicShell';
 
 export const metadata: Metadata = {
@@ -121,5 +122,5 @@ export const metadata: Metadata = {
 };
 
 export default function PublicLayout({ children }: { children: ReactNode }) {
-  return <PublicShell>{children}</PublicShell>;
+  return <PublicShell guideLinks={guideNavLinks()}>{children}</PublicShell>;
 }

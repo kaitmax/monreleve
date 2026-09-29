@@ -52,6 +52,7 @@ import { PRODUCT_STATE } from '@/lib/content/product-state';
 import { RESULT_COPY } from '@/lib/fr/result';
 import { SHELL_COPY } from '@/lib/fr/shell';
 import type { Status } from '@/lib/ui/core';
+import { guideNavLinks } from '@/lib/guides/registry';
 import { PublicShell } from '@/lib/ui/react/PublicShell/PublicShell';
 
 afterEach(cleanup);
@@ -87,7 +88,7 @@ const PAGES: readonly Expected[] = [
     label: '/',
     render: () => {
       render(
-        <PublicShell>
+        <PublicShell guideLinks={guideNavLinks()}>
           <HomePage />
         </PublicShell>,
       );
@@ -99,7 +100,7 @@ const PAGES: readonly Expected[] = [
     label: '/calculateur-teletravail-frontalier',
     render: () => {
       render(
-        <PublicShell>
+        <PublicShell guideLinks={guideNavLinks()}>
           <CalculateurPage />
         </PublicShell>,
       );
@@ -114,7 +115,7 @@ const PAGES: readonly Expected[] = [
     label: '/alertes',
     render: () => {
       render(
-        <PublicShell>
+        <PublicShell guideLinks={guideNavLinks()}>
           <AlertesPage />
         </PublicShell>,
       );
@@ -129,7 +130,7 @@ const PAGES: readonly Expected[] = [
     label: '/a-propos',
     render: () => {
       render(
-        <PublicShell>
+        <PublicShell guideLinks={guideNavLinks()}>
           <AProposPage />
         </PublicShell>,
       );
@@ -144,7 +145,7 @@ const PAGES: readonly Expected[] = [
     label: '/tarifs',
     render: () => {
       render(
-        <PublicShell>
+        <PublicShell guideLinks={guideNavLinks()}>
           <TarifsPage />
         </PublicShell>,
       );
@@ -158,7 +159,7 @@ const PAGES: readonly Expected[] = [
     label: '/releve-annuel',
     render: () => {
       render(
-        <PublicShell>
+        <PublicShell guideLinks={guideNavLinks()}>
           <ReleveAnnuelPage />
         </PublicShell>,
       );
@@ -173,7 +174,7 @@ const PAGES: readonly Expected[] = [
     label: '/application',
     render: () => {
       render(
-        <PublicShell>
+        <PublicShell guideLinks={guideNavLinks()}>
           <ApplicationPage />
         </PublicShell>,
       );
@@ -194,7 +195,7 @@ const PAGES: readonly Expected[] = [
     label: '/sources',
     render: () => {
       render(
-        <PublicShell>
+        <PublicShell guideLinks={guideNavLinks()}>
           <SourcesPage />
         </PublicShell>,
       );
@@ -206,7 +207,7 @@ const PAGES: readonly Expected[] = [
     label: '/mentions-legales',
     render: () => {
       render(
-        <PublicShell>
+        <PublicShell guideLinks={guideNavLinks()}>
           <MentionsPage />
         </PublicShell>,
       );
@@ -218,7 +219,7 @@ const PAGES: readonly Expected[] = [
     label: '/confidentialite',
     render: () => {
       render(
-        <PublicShell>
+        <PublicShell guideLinks={guideNavLinks()}>
           <ConfidentialitePage />
         </PublicShell>,
       );
@@ -230,7 +231,7 @@ const PAGES: readonly Expected[] = [
     label: '/cgu',
     render: () => {
       render(
-        <PublicShell>
+        <PublicShell guideLinks={guideNavLinks()}>
           <CguPage />
         </PublicShell>,
       );
@@ -242,7 +243,7 @@ const PAGES: readonly Expected[] = [
     label: '/guides',
     render: () => {
       render(
-        <PublicShell>
+        <PublicShell guideLinks={guideNavLinks()}>
           <GuidesHubPage />
         </PublicShell>,
       );
@@ -256,7 +257,7 @@ const PAGES: readonly Expected[] = [
     label: '404',
     render: () => {
       render(
-        <PublicShell>
+        <PublicShell guideLinks={guideNavLinks()}>
           <NotFound />
         </PublicShell>,
       );
@@ -349,7 +350,7 @@ describe('the standing disclaimer, counted per region (R119, R124)', () => {
     // the number it qualifies (SPEC 9.3 item 6); the footer's is on every
     // page and survives with scripting off (SPEC 9.1 $legal-01).
     render(
-      <PublicShell>
+      <PublicShell guideLinks={guideNavLinks()}>
         <CalculateurPage />
       </PublicShell>,
     );
@@ -378,7 +379,7 @@ describe('the standing disclaimer, counted per region (R119, R124)', () => {
     // decides one of the two should go, this is where the decision is
     // recorded and not a test that quietly starts passing at 1.
     render(
-      <PublicShell>
+      <PublicShell guideLinks={guideNavLinks()}>
         <CalculateurPage />
       </PublicShell>,
     );
@@ -416,7 +417,7 @@ describe('the contextual link: exactly one, by Status (R119)', () => {
 
     for (const [name, days, missions] of STATES) {
       render(
-        <PublicShell>
+        <PublicShell guideLinks={guideNavLinks()}>
           <CalculateurPage />
         </PublicShell>,
       );
@@ -471,7 +472,7 @@ describe('the contextual link: exactly one, by Status (R119)', () => {
 
     for (const [status, days, missions] of STATES) {
       render(
-        <PublicShell>
+        <PublicShell guideLinks={guideNavLinks()}>
           <CalculateurPage />
         </PublicShell>,
       );
@@ -515,7 +516,7 @@ describe('the contextual link: exactly one, by Status (R119)', () => {
     // inside both thresholds - and until FW20 they were the one reader sent
     // to a page that did not exist.
     render(
-      <PublicShell>
+      <PublicShell guideLinks={guideNavLinks()}>
         <CalculateurPage />
       </PublicShell>,
     );
@@ -561,7 +562,7 @@ describe('the primary action: exactly one (R119)', () => {
     // The button is FD1's affordance for people who expect a form to have
     // one, and the panel appearing beneath it must not bring a second.
     render(
-      <PublicShell>
+      <PublicShell guideLinks={guideNavLinks()}>
         <CalculateurPage />
       </PublicShell>,
     );
@@ -591,7 +592,7 @@ describe('the primary action: exactly one (R119)', () => {
     // asks PRODUCT_STATE.appExists as well as the registry, and the pair below
     // asserts both halves.
     render(
-      <PublicShell>
+      <PublicShell guideLinks={guideNavLinks()}>
         <HomePage />
       </PublicShell>,
     );

@@ -28,6 +28,7 @@ import UnsubscribePage from '@/app/(public)/alertes/desinscription/[etat]/page';
 import { AlertCapture } from '@/lib/ui/react/AlertCapture/AlertCapture';
 import { ALERTES_COPY } from '@/lib/fr/alertes';
 import { CONFIRM_STATES, UNSUBSCRIBE_STATES } from '@/lib/alerts/status';
+import { guideNavLinks } from '@/lib/guides/registry';
 import { PublicShell } from '@/lib/ui/react/PublicShell/PublicShell';
 
 expect.extend(matchers);
@@ -45,7 +46,7 @@ describe('the capture card has no axe violations', () => {
     'as source=%s',
     async (source) => {
       const { container } = render(
-        <PublicShell>
+        <PublicShell guideLinks={guideNavLinks()}>
           <main>
             <AlertCapture source={source} />
           </main>
@@ -111,7 +112,7 @@ describe('the capture card has no axe violations', () => {
 describe('/alertes has no axe violations', () => {
   it('renders clean, under exactly one h1', async () => {
     const { container } = render(
-      <PublicShell>
+      <PublicShell guideLinks={guideNavLinks()}>
         <AlertesPage />
       </PublicShell>,
     );
@@ -124,7 +125,7 @@ describe('/alertes has no axe violations', () => {
 describe('the outcome pages have no axe violations', () => {
   it.each(Object.values(CONFIRM_STATES))('confirmation/%s', async (etat) => {
     const { container } = render(
-      <PublicShell>{await outcome(ConfirmationPage, etat)}</PublicShell>,
+      <PublicShell guideLinks={guideNavLinks()}>{await outcome(ConfirmationPage, etat)}</PublicShell>,
     );
 
     expect(await axe(container)).toHaveNoViolations();
@@ -136,7 +137,7 @@ describe('the outcome pages have no axe violations', () => {
 
   it.each(Object.values(UNSUBSCRIBE_STATES))('desinscription/%s', async (etat) => {
     const { container } = render(
-      <PublicShell>{await outcome(UnsubscribePage, etat)}</PublicShell>,
+      <PublicShell guideLinks={guideNavLinks()}>{await outcome(UnsubscribePage, etat)}</PublicShell>,
     );
 
     expect(await axe(container)).toHaveNoViolations();
@@ -151,7 +152,7 @@ describe('the outcome pages have no axe violations', () => {
 
     for (const etat of Object.values(CONFIRM_STATES)) {
       const { container } = render(
-        <PublicShell>{await outcome(ConfirmationPage, etat)}</PublicShell>,
+        <PublicShell guideLinks={guideNavLinks()}>{await outcome(ConfirmationPage, etat)}</PublicShell>,
       );
 
       headings.add(String(container.querySelector('h1')?.textContent));
@@ -160,7 +161,7 @@ describe('the outcome pages have no axe violations', () => {
 
     for (const etat of Object.values(UNSUBSCRIBE_STATES)) {
       const { container } = render(
-        <PublicShell>{await outcome(UnsubscribePage, etat)}</PublicShell>,
+        <PublicShell guideLinks={guideNavLinks()}>{await outcome(UnsubscribePage, etat)}</PublicShell>,
       );
 
       headings.add(String(container.querySelector('h1')?.textContent));

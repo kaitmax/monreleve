@@ -26,6 +26,7 @@ import { LAST_REGULATORY_REVIEW } from '@/lib/content/regulatory';
 import { CHECKPOINT_A, SOURCE_ENTRIES, SOURCE_IDS } from '@/lib/content/sources';
 import { currentTaxYear } from '@/lib/content/tax-year';
 import { SOURCES_COPY } from '@/lib/fr/sources';
+import { guideNavLinks } from '@/lib/guides/registry';
 import { PublicShell } from '@/lib/ui/react/PublicShell/PublicShell';
 import { formatDate, formatDays, formatPercent } from '@/lib/ui/core';
 import { complianceClaims } from '@/tests/support/vocabulary';
@@ -188,7 +189,7 @@ describe('SPEC section 20 vocabulary, on the page most likely to break it', () =
 describe('the assembled page', () => {
   it('has no axe violations inside the shell', async () => {
     const { container } = render(
-      <PublicShell>
+      <PublicShell guideLinks={guideNavLinks()}>
         <SourcesPage />
       </PublicShell>,
     );
@@ -198,7 +199,7 @@ describe('the assembled page', () => {
 
   it('has one h1 and skips no heading level', () => {
     const { container } = render(
-      <PublicShell>
+      <PublicShell guideLinks={guideNavLinks()}>
         <SourcesPage />
       </PublicShell>,
     );

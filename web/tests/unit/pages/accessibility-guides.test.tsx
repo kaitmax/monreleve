@@ -34,7 +34,7 @@ import * as matchers from 'vitest-axe/matchers';
 import GuidesHubPage from '@/app/(public)/guides/page';
 import { GUIDES_COPY } from '@/lib/fr/guides';
 import { anchorFor, headingsIn } from '@/lib/guides/headings';
-import { allGuides, publishedGuides } from '@/lib/guides/registry';
+import { allGuides, guideNavLinks, publishedGuides } from '@/lib/guides/registry';
 import type { Guide } from '@/lib/guides/registry';
 import { mdxComponents } from '@/lib/guides/mdx-components';
 import { MDX_OPTIONS } from '@/lib/guides/mdx-options';
@@ -144,7 +144,7 @@ describe('the article surface has no axe violations', () => {
     // A nav nested in a nav, a second main, a heading order broken by the
     // shell's own furniture - none of which is visible from the parts alone.
     const { container } = render(
-      <PublicShell>
+      <PublicShell guideLinks={guideNavLinks()}>
         <ArticleParts />
       </PublicShell>,
     );
@@ -156,7 +156,7 @@ describe('the article surface has no axe violations', () => {
 describe('the hub has no axe violations', () => {
   it('renders and passes, inside the shell', async () => {
     const { container } = render(
-      <PublicShell>
+      <PublicShell guideLinks={guideNavLinks()}>
         <GuidesHubPage />
       </PublicShell>,
     );

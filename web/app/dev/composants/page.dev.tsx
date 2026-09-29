@@ -33,7 +33,9 @@ import { DataGrid } from '@/lib/ui/react/DataGrid/DataGrid';
 import { FieldGroup } from '@/lib/ui/react/FieldGroup/FieldGroup';
 import { LegalNote } from '@/lib/ui/react/LegalNote/LegalNote';
 import { MetricTile } from '@/lib/ui/react/MetricTile/MetricTile';
-import { PublicShell } from '@/lib/ui/react/PublicShell/PublicShell';
+import { guideNavLinks } from '@/lib/guides/registry';
+import { NavMenu, PublicShell } from '@/lib/ui/react/PublicShell/PublicShell';
+import { SHELL_NAV } from '@/lib/fr/shell';
 import { RateDisplay } from '@/lib/ui/react/RateDisplay/RateDisplay';
 import { ThresholdRail } from '@/lib/ui/react/ThresholdRail/ThresholdRail';
 import { ZoneBadge } from '@/lib/ui/react/ZoneBadge/ZoneBadge';
@@ -364,9 +366,17 @@ export default function WorkbenchPage() {
             media query resolves to. */}
         <div className={styles.stack}>
           <Specimen id="shell-desktop" caption={WORKBENCH.shell.desktop}>
-            <PublicShell>
+            <PublicShell guideLinks={guideNavLinks()}>
               <p className={styles.sample}>{WORKBENCH.container.sample}</p>
             </PublicShell>
+          </Specimen>
+          {/* FW33. The shell collapses a menu with one live child into a
+              link, so no page shows the disclosure or its caret today. This
+              is SHELL_NAV's real, unfiltered menu - the entry the shell will
+              render the day its second child goes live - so the caret has a
+              visual record meanwhile. */}
+          <Specimen id="shell-nav-disclosure" caption={WORKBENCH.shell.navDisclosure}>
+            <NavMenu entries={SHELL_NAV.filter((entry) => entry.children !== undefined)} />
           </Specimen>
         </div>
       </section>

@@ -24,7 +24,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import matter from 'gray-matter';
-import { parseFrontmatter } from './frontmatter';
+import { CLUSTERS, parseFrontmatter } from './frontmatter';
 import type { Frontmatter } from './frontmatter';
 
 /** Where the articles live. Outside app/, because they are content. */
@@ -109,3 +109,32 @@ export function resetGuideCache(): void {
  * is a declared route in lib/content/routes.ts like every other page.
  */
 export const GUIDES_PATH = '/guides';
+
+/**
+ * Every published article as a link: its own breadcrumbLabel, its URL.
+ *
+ * THE FOOTER'S GUIDES COLUMN (FW33, H10), and it is derived for R181's reason.
+ * SPEC 9.2 makes the footer the full sitemap, and a list of seven labels typed
+ * into lib/fr/shell.ts would be seven transcriptions of names each article
+ * already gives itself - correct on the day they are typed, and silently wrong
+ * the day one is edited. It also means an eighth article reaches the footer on
+ * the day it is published, as it reaches the hub.
+ *
+ * IN THE HUB'S ORDER: CLUSTERS is already ['pillar', 'cluster', 'canton'],
+ * which is SPEC 9.5's order, and the sort is stable, so articles within a
+ * cluster keep the registry's order exactly as the hub renders them.
+ *
+ * SERVER-ONLY, like everything in this file: it reads content/ from disk.
+ * PublicShell is a client component and cannot call it, so the pages that
+ * render the shell pass the result in as a prop.
+ */
+export function guideNavLinks(): readonly { readonly label: string; readonly href: string }[] {
+  return [...publishedGuides()]
+    .sort(
+      (a, b) => CLUSTERS.indexOf(a.frontmatter.cluster) - CLUSTERS.indexOf(b.frontmatter.cluster),
+    )
+    .map((guide) => ({
+      label: guide.frontmatter.breadcrumbLabel,
+      href: `${GUIDES_PATH}/${guide.frontmatter.slug}`,
+    }));
+}

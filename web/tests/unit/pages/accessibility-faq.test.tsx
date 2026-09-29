@@ -29,6 +29,7 @@ import { axe } from 'vitest-axe';
 import * as matchers from 'vitest-axe/matchers';
 import CalculateurPage from '@/app/(public)/calculateur-teletravail-frontalier/page';
 import { FAQ_COPY } from '@/lib/fr/faq';
+import { guideNavLinks } from '@/lib/guides/registry';
 import { PublicShell } from '@/lib/ui/react/PublicShell/PublicShell';
 
 expect.extend(matchers);
@@ -37,7 +38,7 @@ afterEach(cleanup);
 
 const mount = () =>
   render(
-    <PublicShell>
+    <PublicShell guideLinks={guideNavLinks()}>
       <CalculateurPage />
     </PublicShell>,
   );

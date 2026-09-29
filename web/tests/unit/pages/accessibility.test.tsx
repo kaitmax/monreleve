@@ -42,6 +42,7 @@ import TarifsPage from '@/app/(public)/tarifs/page';
 import { ConfidentialiteContent } from '@/app/(public)/confidentialite/ConfidentialiteContent';
 import { MentionsLegalesContent } from '@/app/(public)/mentions-legales/MentionsLegalesContent';
 import { LEGAL_ENTITY, LEGAL_ENTITY_FIELDS, type LegalEntity } from '@/lib/content/legal-entity';
+import { guideNavLinks } from '@/lib/guides/registry';
 import { PublicShell } from '@/lib/ui/react/PublicShell/PublicShell';
 
 expect.extend(matchers);
@@ -100,7 +101,7 @@ describe('every page composed in the shell is free of axe violations', () => {
 
   for (const page of PAGES) {
     it(page.name, async () => {
-      const { container } = render(<PublicShell>{page.node}</PublicShell>);
+      const { container } = render(<PublicShell guideLinks={guideNavLinks()}>{page.node}</PublicShell>);
 
       expect(await axe(container)).toHaveNoViolations();
     });
@@ -115,7 +116,7 @@ describe('the heading structure of the assembled page', () => {
       // in its default rule set, and because the failure mode is specific: the
       // shell deliberately emits no h1 so that the page can, and a page that
       // forgot would leave the document with none at all.
-      const { container } = render(<PublicShell>{node}</PublicShell>);
+      const { container } = render(<PublicShell guideLinks={guideNavLinks()}>{node}</PublicShell>);
 
       const levels = [...container.querySelectorAll('h1, h2, h3, h4, h5, h6')].map((element) =>
         Number.parseInt(element.tagName.slice(1), 10),

@@ -63,6 +63,9 @@ const SPECIMENS = [
   'container-narrow',
   'container-article',
   'shell-desktop',
+  // FW33: the Calculateurs menu with its caret, which no page renders while
+  // the menu has one live child.
+  'shell-nav-disclosure',
 ] as const;
 
 test.beforeEach(async ({ page }) => {

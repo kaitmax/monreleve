@@ -33,6 +33,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import CalculateurPage from '@/app/(public)/calculateur-teletravail-frontalier/page';
 import AlertesPage from '@/app/(public)/alertes/page';
 import { CALCULATEUR_COPY } from '@/lib/fr/calculateur';
+import { guideNavLinks } from '@/lib/guides/registry';
 import { PublicShell } from '@/lib/ui/react/PublicShell/PublicShell';
 
 afterEach(cleanup);
@@ -80,7 +81,7 @@ describe('R137: the calculator page renders its sections in one order', () => {
     // says the result is NEVER gated. "Below" is not a property of the card;
     // it is a property of the page, which is why it is asserted here.
     const { container } = render(
-      <PublicShell>
+      <PublicShell guideLinks={guideNavLinks()}>
         <CalculateurPage />
       </PublicShell>,
     );
@@ -103,7 +104,7 @@ describe('R137: the calculator page renders its sections in one order', () => {
     // is the sort of quiet demotion that only shows up in a conversion
     // number.
     const { container } = render(
-      <PublicShell>
+      <PublicShell guideLinks={guideNavLinks()}>
         <CalculateurPage />
       </PublicShell>,
     );
@@ -125,7 +126,7 @@ describe('R137: the calculator page renders its sections in one order', () => {
     );
 
     const { container } = render(
-      <PublicShell>
+      <PublicShell guideLinks={guideNavLinks()}>
         <CalculateurPage />
       </PublicShell>,
     );
@@ -148,7 +149,7 @@ describe('R137: the calculator page renders its sections in one order', () => {
     window.history.replaceState(null, '', '/calculateur-teletravail-frontalier');
 
     const { container } = render(
-      <PublicShell>
+      <PublicShell guideLinks={guideNavLinks()}>
         <CalculateurPage />
       </PublicShell>,
     );
@@ -186,7 +187,7 @@ describe('R137: the calculator page renders its sections in one order', () => {
     );
 
     const { container } = render(
-      <PublicShell>
+      <PublicShell guideLinks={guideNavLinks()}>
         <CalculateurPage />
       </PublicShell>,
     );
@@ -202,7 +203,7 @@ describe('R137: the calculator page renders its sections in one order', () => {
 describe('R137: the standalone landing', () => {
   it('puts its capture card after the offer, under one h1', () => {
     const { container } = render(
-      <PublicShell>
+      <PublicShell guideLinks={guideNavLinks()}>
         <AlertesPage />
       </PublicShell>,
     );

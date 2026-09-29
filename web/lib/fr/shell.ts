@@ -118,6 +118,17 @@ export const SHELL_NAV: readonly NavEntry[] = [
 export interface FooterColumn {
   readonly heading: string;
   readonly links: readonly NavLink[];
+  /**
+   * Set on the one column that also lists every published guide (FW33, H10).
+   *
+   * THE GUIDES ARE NOT DECLARED HERE, and that is the point of the flag. SPEC
+   * 9.2 makes the footer the full sitemap; each article already names itself
+   * in its breadcrumbLabel, and typing seven of those names here would be
+   * seven transcriptions (R181). The registry derives them - guideNavLinks()
+   * in lib/guides/registry.ts - and the pages hand them to PublicShell, which
+   * appends them after this column's own links.
+   */
+  readonly guides?: true;
 }
 
 export const FOOTER_COLUMNS: readonly FooterColumn[] = [
@@ -126,26 +137,21 @@ export const FOOTER_COLUMNS: readonly FooterColumn[] = [
     links: [
       { label: 'Calculateur de télétravail', href: '/calculateur-teletravail-frontalier' },
       { label: 'Comparateur LAMal / CMU', href: '/calculateur-lamal-cmu' },
+      // FW33: live since FW14 and linked from nowhere but the calculator's
+      // result panel. FD11 section 7 files it here.
+      { label: 'Alertes e-mail', href: '/alertes' },
     ],
   },
   {
     heading: 'Guides',
-    links: [
-      { label: 'Tous les guides', href: '/guides' },
-      // R147/R153: THE LABEL NAMES THE RULE, THE SLUG KEEPS THE FIGURE.
-      // It read "Le seuil de 40 %" until FW18b. The slug may keep the number
-      // because SPEC 14 freezes slugs permanently - a stronger rule than this
-      // one - but nothing freezes an anchor's text, so in 2028 this footer
-      // would have offered a threshold that no longer exists.
-      //
-      // "Le plafond fiscal" is the article's own breadcrumbLabel, so the
-      // footer and the breadcrumb now agree on what the page is called.
-      //
-      // IT COSTS THE FIGURE AS ANCHOR TEXT, which is a real SEO trade and the
-      // reason to state it: the term survives in the slug, the article title
-      // and the h1, which are the stronger signals. Reversible in one string.
-      { label: 'Le plafond fiscal', href: '/guides/teletravail-frontalier-40-pourcent' },
-    ],
+    guides: true,
+    // R147/R153 STILL HOLD, and now mechanically. Until FW33 this column
+    // carried one typed link, "Le plafond fiscal" - the pillar's own
+    // breadcrumbLabel, retyped here so that the footer and the breadcrumb
+    // agreed on the name. They agreed because somebody kept them in step. The
+    // label now IS the breadcrumbLabel, read from the article, so the name
+    // cannot drift and never carries a figure the article does not.
+    links: [{ label: 'Tous les guides', href: '/guides' }],
   },
   {
     heading: 'Le produit',
@@ -153,6 +159,12 @@ export const FOOTER_COLUMNS: readonly FooterColumn[] = [
       { label: 'Le relevé', href: '/releve-annuel' },
       { label: "L’application", href: '/application' },
       { label: 'Tarifs', href: '/tarifs' },
+      // FW33: live since FW20, the page whose subject is who has checked the
+      // rules - and it was linked from no page's footer.
+      { label: 'À propos', href: '/a-propos' },
+      // MOVED FROM Légal IN FW33, to where FD11 section 7 files it. The
+      // register of sources is part of what the product is, not a legal page.
+      { label: 'Sources', href: '/sources' },
     ],
   },
   {
@@ -161,7 +173,6 @@ export const FOOTER_COLUMNS: readonly FooterColumn[] = [
       { label: 'Mentions légales', href: '/mentions-legales' },
       { label: 'Confidentialité', href: '/confidentialite' },
       { label: "Conditions d’utilisation", href: '/cgu' },
-      { label: 'Sources', href: '/sources' },
     ],
   },
 ];

@@ -25,6 +25,7 @@ import { currentTaxYear } from '@/lib/content/tax-year';
 import { CALCULATEUR_COPY } from '@/lib/fr/calculateur';
 import { LEGAL_COPY } from '@/lib/fr/legal';
 import { PRODUCT_STATE } from '@/lib/content/product-state';
+import { guideNavLinks } from '@/lib/guides/registry';
 import { PublicShell } from '@/lib/ui/react/PublicShell/PublicShell';
 import { formatPercent } from '@/lib/ui/core';
 
@@ -258,7 +259,7 @@ describe('ruling R113: the always-present path to /sources', () => {
     //
     // ONCE, not merely present. "Present" is what passed while there were two.
     const { container } = render(
-      <PublicShell>
+      <PublicShell guideLinks={guideNavLinks()}>
         <CalculateurPage />
       </PublicShell>,
     );
