@@ -1,0 +1,397 @@
+================================================================================
+REPORT-AN10b.txt -- AN10's six carried items, cleared before AN11
+================================================================================
+
+--------------------------------------------------------------------------------
+SUMMARY (R273 first)
+--------------------------------------------------------------------------------
+R273: tasks/todo.md has "## AN10: Calendrier" and no literal "AN10b". AN10b is
+AN10's RESIDUAL - the six items AN10's review left open, cleared in their own
+session so AN11 starts clean - exactly as AN5c was AN5's residual. No contradiction
+with the file; the report is named AN10b and commit prefixes are "AN10b" (the AN5c
+precedent). No register entry was renumbered (out of scope).
+
+R273 DISCREPANCY, RESOLVED: parking.md's STATUS LEDGER said R296 "lands in AN11
+increment 0"; this prompt placed R296 in AN10b increment 5 and is the task authority.
+R296 landed here, and the stale ledger line is corrected to say so (the more recent
+artifact wins, R273). See increment 5.
+
+ALL SIX ITEMS DONE, each on its own green Android gate, each pushed:
+  1  R294  every cited register id has a real entry (RED named PARKAN-18, then GREEN)
+  +  PARKAN-18 transcribed from REPORT-AN5c.txt, verbatim where the report states it
+  2  R291  controller wiring moved out of the Composable into MainGraph; a JVM test
+           enumerates every day-writing controller and asserts each is built with
+           requestSync - checking the graph the app actually uses (plant proven)
+  3  R292  a split half-day renders as SPLIT and TalkBack names both halves
+  4  R293  the Lucide glyphs ship as vector drawables, no runtime dependency
+  5  R296  a rejected (400) multi-item batch is isolated item by item, once
+  6  the walkthrough: the split cell, TalkBack, the Lucide nav, all seen on the device
+
+THE DEVICE WALKTHROUGH RAN, FOR REAL, on the Pixel_10 emulator against the
+production container (monreleve:write on port 3000, frontalier-postgres on 5436),
+using AN5c's R284 session injection with HALF_DAY granularity so the edit sheet
+offers a Matin and an Apres-midi chooser. A split half-day was recorded end to end,
+synced to the server, and read back; TalkBack read both halves; the nav's Lucide
+glyphs were seen. Batch isolation was NOT driven on the device (the client builds
+valid payloads) and rests on increment 5's tests, as the prompt pre-authorises.
+
+--------------------------------------------------------------------------------
+PRECONDITIONS (R273, R0, R1)
+--------------------------------------------------------------------------------
+R0. Read REPORT-AN10.txt and REPORT-AN5c.txt in full, and parking.md's "THE
+    NUMBERING, AND WHY THERE IS A GAP" section and STATUS LEDGER. Both were present
+    and committed at HEAD 80f24df (verified), so increment 1 could proceed. PARKAN-18
+    was an explicit "Not transcribed" placeholder there, as R0 expected.
+
+R1. pnpm gate:clone GREEN on origin/main HEAD 80f24df at the start.
+    ran     install, typecheck, lint, test, build, size, db:deploy, test:db,
+            test:container:write, from a clean clone.
+    claim   this commit builds and passes those suites from a clean checkout.
+    CI readiness: quiet - the repository is private and CI_FULL is unset (the
+            carried FW24 combination).
+    envelope commit 80f24df8325c24f6bdfe31e4dca04849b21d1169, clone removed, exit 0.
+
+CADENCE: every AN10b increment is Android-only or repo-root-doc-only (parking.md,
+docs/, the report) and changes NO web/ bytes, so each push is web-byte-identical to
+80f24df and that HEAD's gate:clone discharges R199 for it (the AN10/AN5c precedent).
+A FINAL gate:clone on the last code HEAD (01601f8) is in PUSH PROOF. Android
+:app:gate ran green before every increment's push.
+
+--------------------------------------------------------------------------------
+R294 -- EVERY CITED REGISTER ENTRY EXISTS (increment 1, commit 42b7a01)
+--------------------------------------------------------------------------------
+RegisterCoverageTest (a JVM test) scans every REPORT-*.txt at the repo root for
+PARK-<n> and PARKAN-<n> citations - the scope DERIVED from the reports on disk (a
+listFiles glob), never a hand-kept list - and fails if a cited id has no "## <id> -"
+heading in parking.md, OR if any entry still carries the "Not transcribed"
+placeholder (a heading with no content is a citation that resolves to a promise).
+This is the space R175 names: the reports and the register describe the same
+decisions from two sides and nothing checked they agree.
+
+AC1 - RED THEN GREEN, and the order is the proof:
+  RED (first run): "R294: parking.md does not cover every cited register entry:
+    - PARKAN-18 carries the "Not transcribed" placeholder in parking.md (cited by
+    REPORT-AN5c.txt, REPORT-NIGHT-AN.txt) - a heading with no content is a citation
+    that resolves to a promise, not an entry". It named EXACTLY PARKAN-18 - the only
+    open item - and the derived scope found the second citing report
+    (REPORT-NIGHT-AN.txt) the numbering note did not mention.
+  GREEN: after PARKAN-18 was transcribed (below) and the placeholder removed.
+
+The PARK4-<n> series (Phase4parking.md) is a different register and is deliberately
+NOT matched (the digit after PARK where PARK-/PARKAN- have a hyphen); the published
+"P<n>" register is likewise not "PARK-<n>". R283: parking.md and the repo-root
+reports are declared task inputs in app/build.gradle.kts, so an edit to either
+re-runs this - and REPORT-AN10b.txt entered the scan the moment it was written, so it
+was re-run after this report, before the final commit (R182). See PUSH PROOF.
+
+--------------------------------------------------------------------------------
+PARKAN-18 (as transcribed, and its source)
+--------------------------------------------------------------------------------
+SOURCE: REPORT-AN5c.txt DOES define PARKAN-18, in its PARKED section (lines 302-309).
+It is "the escalation look-ahead window": R286 says the pending line escalates before
+the threshold is crossed but does not set how far ahead APPROACHING begins; TAKEN two
+days (WARN_WINDOW_DAYS = 2L in AujourdhuiController), the conservative small
+look-ahead; NOT TAKEN a wider window; reversible (a client-only warning constant, no
+migration, no contract); NEEDS an operator preference on how many days' warning.
+
+Transcribed under the existing "## PARKAN-18 -" heading, verbatim where the report
+states it (the QUESTION / TAKEN / NOT TAKEN / NEEDS body), the placeholder paragraph
+removed and the heading given its real title. The STATUS LEDGER row was updated from
+"not transcribed | the next session" to record the transcription. Nothing was
+reconstructed from memory.
+
+--------------------------------------------------------------------------------
+R291 -- WIRING THE JVM CAN TEST (increment 2, commit 7345646)
+--------------------------------------------------------------------------------
+The AN10 bug (a calendar Save that recorded to Room but never synced) lived in
+MainShell, a Composable, where no JVM test reaches: CalendarController was built
+WITHOUT requestSync, and only the device walkthrough caught it. The controller's own
+test passed because it injects requestSync - the defect was in the WIRING.
+
+MOVED OUT OF THE COMPOSABLE: a plain Kotlin object, MainGraph, is now the ONE
+construction site for both day-writing controllers. MainShell calls
+remember { MainGraph.build(...) } and reads controllers.aujourdhui / .calendar.
+AujourdhuiController and CalendarController implement a DayWriter interface exposing
+requestSync.
+
+THE TEST CHECKS THE GRAPH THE APP USES, NOT A COPY: MainGraphWiringTest calls the
+SAME MainGraph.build the app calls. It ENUMERATES the day-writers by reflecting over
+MainControllers' own properties (not a hand-kept list), and asserts (a) each is built
+with the shared requestSync - invoking each fires the one spy, total == writer count
+- and (b) each requests a sync when it WRITES a day, driving the real record() and
+save() through the graph (R204: the entry point, not the module).
+
+THE PLANT (AC2, R180): building the calendar without requestSync in MainGraph.kt
+(verified present at line 53 by reading the file - MainGraph.kt was untracked so git
+diff could not show it) turned BOTH tests RED - the built-with assertion (syncs 1 !=
+writers 2) and the delivered-on-write assertion (a save fired no sync). Reverted;
+GREEN. Because there is one construction site, that omission fails the test AND
+breaks the app; they cannot diverge.
+
+KNOWN LIMITS (named, not closed): the MainActivity -> MainGraph seam (that the REAL
+SyncScheduler lambda is the one passed) stays JVM-untestable - the walkthrough's
+server-DB check covers it live (below); and a day-writer the graph builds but does
+NOT store on MainControllers would escape the reflection census. The defaults on the
+controllers' requestSync were kept (removing them would break seven existing direct
+constructions); the guarantee lives in the graph.
+
+--------------------------------------------------------------------------------
+R292 -- A SPLIT DAY SHOWS AS SPLIT (increment 3, commit 08a1522)
+--------------------------------------------------------------------------------
+PARKAN-22 reverses the AN10 collapse of the KIND (not the quality). A half-day pair
+whose two kinds DIFFER now renders as SPLIT: CalendarModel.cellOf carries a
+secondKind; DayCell shows BOTH letters at the bottom-left; the a11y announcement
+names both halves (matin <kind>, apres-midi <kind>); the 200 % list names both kind
+words, so the large-text reader gets the whole record the grid reader gets. A
+same-kind pair keeps one letter (already accurate, not "less"); a lone half is
+outside the ruling (unchanged). The QUALITY collapse is NOT reversed: one bar, the
+least-settled portion. (The exact form - one dot, two letters, one bar, the same-kind
+and lone-half decisions - is PARKAN-24.)
+
+TESTS REACH BOTH HALVES: CalendarModelTest asserts a different-kind pair yields
+secondKind and a same-kind pair yields null; ComponentLogicTest asserts the
+announcement names matin + apres-midi. RED PROOF: disabling the split in cellOf
+turned the model split test RED (secondKind expected SUISSE, got null) while the
+same-kind test stayed green; restored.
+
+BASELINES (R135/R207): the set was stated before recording and equalled what was
+produced - dayCellSplit (new), calendrierMonth and calendrierListLarge (the fixture
+gained the split day); nothing else changed. LOOKED AT (R184): dayCellSplit shows
+"S D" with a red morning dot and one green on-time bar; calendrierMonth shows day 5
+"S D" with the summary Suisse 1,5 / Domicile 2,5 (the split contributes 0.5 each);
+calendrierListLarge shows "Vendredi 5 juin 2026 / Suisse Domicile A temps".
+
+--------------------------------------------------------------------------------
+R293 -- LUCIDE ICONS, NO DEPENDENCY (increment 4, commit 7935d93)
+--------------------------------------------------------------------------------
+VERSION: lucide-static v1.48.0, fetched 2026-09-29 from
+unpkg.com/lucide-static@1.48.0. The eight needed SVGs - sun, calendar, file-text,
+settings, circle-check, triangle-alert, circle-x, octagon-alert - were converted to
+Android vector drawables (res/drawable/ic_*.xml), 24x24 stroke geometry preserved;
+Icon(tint) recolours the stroke. NO runtime dependency (R136): the drawables are
+plain XML committed to the repo.
+
+LICENCE: docs/lucide-icons.md records the version, the fetch date, the eight glyphs
+and the LICENSE verbatim for AN12's licences screen (R167: the instrument recorded).
+Lucide is ISC; per its own LICENSE some glyphs derive from Feather and additionally
+carry MIT - of the eight, calendar, triangle-alert (Feather alert-triangle), circle-x
+(Feather x-circle) and octagon-alert (Feather alert-octagon) are on that list. Both
+licences are recorded, which is more honest than claiming pure ISC.
+
+GLYPHS WIRED: the bottom nav shows ic_sun (Aujourd'hui) and ic_calendar (Calendrier),
+the exact glyphs FD6 draws, replacing AN10's Home/DateRange stand-ins (PARKAN-23
+reverses PARKAN-21). ZoneBadge shows circle-check / triangle-alert / circle-x /
+octagon-alert - the glyphs LucideIconName names, replacing AN3's Material core
+stand-ins. ic_file_text and ic_settings are committed for AN11/AN12 but NOT shown (no
+tab for a screen that does not exist yet, R282); the gate has no Android-lint
+unused-resource step, so they are green unused. material-icons core stays for
+CalendrierScreen's chevrons.
+
+BASELINES (R135/R207): the four zoneBadge* only (nav glyphs have no Paparazzi
+baseline). LOOKED AT (R184): circle-check (green), a real triangle-alert (amber), a
+real circle-x and a real octagon (red) now render, in place of the
+CheckCircle/Warning/Clear/Notifications stand-ins.
+
+--------------------------------------------------------------------------------
+R296 -- A REJECTED BATCH IS ISOLATED (increment 5, commit 01601f8)
+--------------------------------------------------------------------------------
+PARKAN-4 amended. On a 400 for a MULTI-item batch, SyncEngine now retries the batch
+item by item, ONCE (isolate, reusing syncBatch so each item takes the same
+reconcile/markFailed path): the good items sync, the refused item stays FAILED and is
+named (R198), and is never retried again - re-sending a payload the server refused is
+a queue that can never drain. A single-item batch is already isolated, so it goes
+straight to FAILED (unchanged). A 500 is the SERVER's problem: NOT isolated, retried
+with backoff as before. 409 and 413 stay whole-batch FAILED (PARKAN-25): isolating a
+409 would replay the out-of-order hazard the ordering evidence guards, and 413 is
+unreachable under the parity-tested caps. "Named as a client defect" is the FAILED
+state plus the defect count; no failure-reason column was added (a Room migration is a
+stop-and-ask boundary).
+
+THE THREE CASES (tests):
+  one bad among good - the good syncs, the bad stays FAILED; the refused payload
+    appears exactly twice (batch POST + one isolation POST) and never again (a second
+    drain sends nothing, both rows out of pending()).
+  an all-bad batch - every item FAILED, Settled(written 0, defects 2), three POSTs.
+  a 500 - NOT isolated, Retryable, rows left PENDING, ONE POST only (backoff, as
+    before).
+RED PROOF: disabling isolation turned the two isolation tests RED (whole-batch fail)
+while the 500 test stayed green; restored.
+
+R273 CORRECTION: the STATUS LEDGER's PARKAN-4 line said R296 "lands in AN11 increment
+0"; the AN10b prompt placed it in increment 5 and is the task authority, so it landed
+here - the ledger line now says so.
+
+--------------------------------------------------------------------------------
+WALKTHROUGH (R176/R177) -- what was seen, and what could not be driven
+--------------------------------------------------------------------------------
+Driven on the Pixel_10 headless emulator against the production container
+(monreleve:write on port 3000; R169 /api/health named "monreleve"; R179 port
+asserted free; frontalier-postgres on 5436), signed in via AN5c's R284 injection with
+HALF_DAY granularity PATCHed to /api/v1/me AND injected on the device, so the edit
+sheet offers a Matin and an Apres-midi chooser. Throwaway driver
+android/scripts/an10b-walkthrough.mjs, shots in android/.an10b-shots/ (both
+untracked, the AN10/AN5c precedent). EVERY PNG BELOW WAS OPENED AND LOOKED AT, at the
+default size and at 200 percent:
+
+  nav-01-aujourdhui (default): the signed-in Aujourd'hui ("Bonjour Camille", "Saisie
+    manuelle", the Matin/Apres-midi record buttons). THE BOTTOM NAV SHOWS THE LUCIDE
+    GLYPHS: a sun for Aujourd'hui (active, brand-tinted) and a calendar for Calendrier
+    - the real lucide sun (circle + rays) and calendar, not the Material stand-ins.
+  nav-02-calendrier and cal-00-month-before (default): the Calendrier tab, the empty
+    September 2026 month (every past weekday "Non renseigne", summary 0/0/0/20), the
+    Calendrier nav item now active (its lucide calendar glyph brand-tinted, the sun
+    inactive) - the two Lucide nav glyphs seen in both tab states.
+  split-01-sheet (default): tapping day 10 opens the edit sheet, expanded - "Jeudi 10
+    septembre 2026", "Ou avez-vous travaille ?", the Matin chooser (En Suisse /
+    Domicile / Mission / Declarer une absence / Note), all UNSELECTED, the month
+    dimmed behind it.
+  split-02-chosen (default): the HALF_DAY edit sheet, fully expanded - Matin with "En
+    Suisse" SELECTED (filled) and Apres-midi with "Domicile" SELECTED (filled), and
+    the late-forecast notice below.
+  split-03-saved (default): after Enregistrer, the sheet is gone and day 10 shows "S
+    D" (the SPLIT) with a red morning dot and an AMBER bar; summary Suisse 0,5 /
+    Domicile 0,5 / Non renseigne 19.
+  cal-01-month-split-synced (default): after the WorkManager drain, day 10 again shows
+    "S D" (both letters), the red morning dot and the AMBER bar (the server flagged it
+    late, recorded >7 days after the day, R216). The Lucide nav glyphs again.
+  cal-02-split-200pct and cal-03-split-200pct-day10 (200 percent): at 200 % the grid
+    becomes the list (R271); day 10 reads "Jeudi 10 septembre 2026 / Suisse Domicile
+    Saisie tardive / Saisie manuelle" - BOTH kinds named at large text, the whole
+    record. The Lucide nav glyphs render at 200 % too.
+
+  (The aborted first-drive shots - the sign-in screen a too-short injector wait left,
+  and walkthrough3's split-01 that caught the calendar mid-open - were overwritten by
+  the successful run; the folder holds only the correct, described shots, the AN10
+  deleted-shots precedent.)
+
+TALKBACK (the a11y announcement, the on-device content-desc dump - Paparazzi cannot
+assert semantics): day 10's cell reads "Jour 10, matin Suisse, apres-midi Domicile,
+enregistre en retard, saisie manuelle." - it names BOTH halves. R292's AC3 met on the
+device.
+
+THE SPLIT SYNCED TO THE SERVER (R204's proof end to end): the container DB Entry rows
+after the drain were dayDate 2026-09-09T23:00Z (Paris 2026-09-10) portion AM kind CH,
+and portion PM kind HOME - the two different-kind half-days the sheet recorded, POSTed
+and reconciled from the server. This also exercises the R291 wiring live: the
+calendar's Save reached the server, which the AN10 bug prevented.
+
+WHAT COULD NOT BE DRIVEN: batch isolation (R296). Producing a batch the server
+refuses as a 400 while its siblings are accepted needs either a malformed payload the
+client does not build or a server-side change, both out of scope; the prompt
+pre-authorises relying on increment 5's tests, which cover the three cases with a RED
+proof. So it was not driven on the device and rests on those tests.
+
+R186: NO flag flip. product-state.ts was not touched; this session shipped no release
+and the injection is debug-only (guards a/b, AN5c).
+
+--------------------------------------------------------------------------------
+PARKED (PARKAN-<n>, in parking.md)
+--------------------------------------------------------------------------------
+PARKAN-18 -- transcribed, not newly parked: the escalation look-ahead window, from
+  REPORT-AN5c.txt (see above). Still an open decision (2-day window shipped, awaits an
+  operator preference).
+PARKAN-24 -- the split half-day cell's exact form. Conservative: split only on
+  DIFFERENT kinds, two letters + one dot + one bar; same-kind keeps one letter; a lone
+  half unchanged. Reversible (cellOf / DayCell). NEEDS an operator preference.
+PARKAN-25 -- only a 400 isolates; 409 and 413 stay whole-batch. The conservative
+  reading of R296. Reversible (SyncEngine.handleOk / isolate). NEEDS an operator
+  decision if per-item recovery is ever wanted for 409/413.
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+1. The split-cell code was written before its test in increment 3 (the test-first
+   RED was shown via a plant that disabled the split, not by writing the test against
+   absent code). The plant is the honest proof the test bites. The DayCellCopy split
+   test was added after the copy change; its RED would be a compile error against the
+   old signature, so the model-side plant carries the proof.
+2. Increment 2's "confirm the app runs from the moved wiring" was discharged by the
+   increment-6 walkthrough (the calendar Save reached the server DB through MainGraph),
+   not by a separate emulator run in increment 2 - an explicit deferral, stated here
+   rather than left silent.
+3. The walkthrough driver (an10b-walkthrough.mjs) duplicates AN5c's provisioning
+   recipe. Accepted for a throwaway, the AN5c NOTICED-BUT-NOT-TOUCHING precedent; the
+   product code shares nothing.
+4. INSTRUMENT (not product): emulator.sh stop left BOTH emulator processes alive on
+   its first call this session (taskkill //PID //T //F reported them surviving); a
+   PowerShell Stop-Process -Force sweep over the same command-line match closed them,
+   and the recheck confirmed none remained (the R179 orphan-discipline family - named
+   so the next session knows taskkill can miss on this machine). Teardown is clean:
+   no adb device, port 3000 free, no orphan container or scratch DB before gate:clone.
+5. INSTRUMENT (not product): the first walkthrough run landed on sign-in because the
+   provision force-stopped the app before the injector had stored the session; the
+   fix is the an5c recipe (wait for the injector to be Displayed before force-stop),
+   applied in the throwaway driver. See NOTICED for the finding it surfaced upstream.
+
+--------------------------------------------------------------------------------
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------------------
+- The MainActivity -> MainGraph seam and the "day-writer not on MainControllers"
+  census gap are named under R291 as known limits; a connectedAndroidTest asserting
+  the real SyncScheduler lambda is owed (AN10's own noted item, still open).
+- android/.an10b-shots/ (the walkthrough PNGs), android/scripts/an10b-walkthrough.mjs
+  (the throwaway driver), and the carried-over android/.an10-shots/,
+  android/.an5c-ac2-shots/, android/scripts/an10-walkthrough.mjs are left untracked
+  (the AN5c/AN10 precedent).
+- ic_file_text and ic_settings are committed but unused until AN11/AN12 add their nav
+  items (R282); named under R293.
+- an5c-signedin.mjs's injector wait can NEVER match, and works only by accident
+  (R267, a second site named, not touched). Its waitForDisplayed greps the LONG
+  component form ("...app/ch.monreleve.app.debug.SessionInjectionActivity") while
+  logcat prints the SHORT form ("...app/.debug.SessionInjectionActivity"), so the grep
+  always times out at 30s - and it "works" only because the call IGNORES the return
+  and the 30s wall happens to give the injector time to store (R133's shape: a wait
+  that always times out reads as a wait that worked). The AN10b throwaway driver uses
+  the short form and does not throw. Not touched here: an5c-signedin.mjs is AN5c's
+  COMMITTED instrument and out of AN10b's scope; the fix (short form) is owed there.
+- MSYS path conversion mangles adb "/sdcard/..." paths from Git Bash (the relay
+  prompt's own warning, confirmed live: screencap/uiautomator dump failed until
+  MSYS_NO_PATHCONV=1 was set). An environment note, no code.
+
+--------------------------------------------------------------------------------
+QUESTIONS
+--------------------------------------------------------------------------------
+1. PARKAN-18: is a 2-day escalation look-ahead window right?
+2. PARKAN-24: should a same-kind half-day pair or a lone half render differently, and
+   should the dot or bar split too?
+3. PARKAN-25: is per-item recovery ever wanted for a 409 or a 413?
+4. The MainGraph -> MainActivity seam: is a connectedAndroidTest for the real
+   SyncScheduler lambda wanted now or with AN12's sign-out work?
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+AN10b commits on origin/main:
+  0b4bf3e  chore: the AN10b prompt
+  42b7a01  AN10b: every cited register entry exists (R294)
+  7345646  AN10b: wiring the JVM can test (R291)
+  08a1522  AN10b: a split day shows as split (R292)
+  7935d93  AN10b: Lucide icons, no dependency (R293)
+  01601f8  AN10b: a rejected batch is isolated (R296)
+  <report commit follows -- it cannot name its own hash>
+
+Android :app:gate green on every increment (assembleDebug, testDebugUnitTest up to
+747, checkTestFloor, ktlintCheck, detekt, verifyPaparazziDebug, checkReleaseCleartext,
+checkReleaseNoDebugInjection). The emulator and container were torn down before the
+final gate:clone (no adb device, port 3000 free, no orphan container/DB).
+
+FINAL gate:clone on HEAD 01601f858673a8929e3f74fd6e4cf8ca88ed2afb: GATE:CLONE PASSED.
+  ran     install, typecheck, lint, test, build, size, db:deploy, test:db,
+          test:container:write, from a clean clone (no .env, no prior node_modules,
+          no generated file the run did not produce itself). clone removed, exit 0.
+  claim   this commit builds and passes those suites from a clean checkout.
+  CI readiness: quiet - the repository is private and CI_FULL is unset (the carried
+          FW24 combination).
+  NOT RUN in a clone (R133), making no claim: test:e2e, test:visual, test:runtime,
+          lighthouse, parity:check, test:container.
+  tree    DIRTY at the check - the untracked walkthrough PNG dirs
+          (android/.an10b-shots/, .an10-shots/, .an5c-ac2-shots/), the throwaway
+          drivers (an10b-walkthrough.mjs, an10-walkthrough.mjs), and this uncommitted
+          report + parking.md edits. gate:clone clones HEAD, so none is in the run.
+
+THE REPORT-ONLY FINALIZATION COMMIT ("AN10b: seen, and the report") follows 01601f8
+and changes REPORT-AN10b.txt and parking.md (PARKAN-24/25 and the ledger) at the repo
+root - NO web/ bytes - so the gate:clone above discharges R199 for it (the AN10/AN5c
+precedent). This is the last thing the session does.
+
+END OF REPORT-AN10b.txt

@@ -1280,6 +1280,52 @@ ODbL.
 TOUCHES:   ui/shell/AppBottomBar.kt, a new drawable per icon, ZoneBadge's
 stand-in glyphs if Lucide equivalents exist, AN12's licences screen.
 
+## PARKAN-24 - the split half-day cell's exact form  [AN10b, 2026-09-29]
+
+QUESTION:  PARKAN-22 / R292 require a split half-day to show as split with TalkBack
+naming both halves, but leave the exact visual form a design choice. Several small
+choices had to be made without the operator: the same-kind pair, the lone half, the
+dot, the bar.
+
+TAKEN:     A split renders only when the day's two half-day portions have DIFFERENT
+kinds: the cell then shows BOTH letters at the bottom-left (morning then afternoon),
+keeps ONE country dot (the morning kind's) and ONE quality bar (the least-settled
+portion - the AN10 collapse PARKAN-22 did NOT reverse). A same-kind pair keeps one
+letter (already accurate, not "less"); a lone half (only AM or only PM) shows its one
+kind, unchanged - outside the ruling. TalkBack reads « matin <kind>, apres-midi
+<kind> », and the 200 % list names both kind words. Reversible: a pure display choice
+(CalendarModel.cellOf + DayCell), no migration, no contract.
+
+NOT TAKEN: splitting the dot or the bar too (two dots, two half-bars); rendering a
+split on ANY two half-rows including same-kind (visual noise for no gained truth); a
+distinct split glyph. Each is a same-file change to cellOf / DayCell.
+
+TOUCHES:   CalendarModel.cellOf, DayCell (KindMarkers), DayCellCopy, CalendarList,
+and the dayCellSplit / calendrierMonth / calendrierListLarge baselines.
+
+NEEDS:     an operator preference on whether a same-kind pair or a lone half should
+also render differently, and whether the dot or bar should split too.
+
+## PARKAN-25 - only a 400 is isolated item by item; 409 and 413 stay whole-batch  [AN10b, 2026-09-29]
+
+QUESTION:  R296 says a 400 batch is retried item by item, once. PARKAN-4 had grouped
+400 / 409 / 413 as client defects that failed the whole batch. R296 names only the
+400; what of 409 and 413?
+
+TAKEN:     Only a 400 isolates. A 409 (conflict) and a 413 (payload too large) stay
+whole-batch FAILED, unchanged. Isolating a 409 would re-send each conflicting mutation
+on its own and replay the out-of-order hazard docs/api-v1.md 6.4 guards against; a 413
+is unreachable under the batch and note caps the parity test pins. This is the
+conservative reading of R296 (which names the 400). Reversible: SyncEngine.handleOk /
+isolate only, no contract, no migration.
+
+NOT TAKEN: isolating 409 / 413 too. It would need a per-item conflict story for 409
+and gains nothing for 413 while the caps hold.
+
+TOUCHES:   SyncEngine.handleOk / isolate and SyncEngineTest.
+
+NEEDS:     an operator decision if per-item recovery is ever wanted for 409 / 413.
+
 ## STATUS LEDGER  [appended 2026-09-29]
 
 One line per Android-era entry, so the state of each is visible without
@@ -1300,3 +1346,7 @@ reading every section. Entries are not edited; this ledger is.
 | PARKAN-19 — no cantonal holidays table | **closed, ratified** | SPEC 7.2: holidays are absorbed into the 240-day basis; no verified source exists, so R146 means it is not written |
 | PARKAN-20 — split half-day shown as morning | **reversed** | PARKAN-22, R292 |
 | PARKAN-21 — core Material icons | **reversed** | PARKAN-23, R293 |
+| PARKAN-22 — split half-day shown as split | **done** | R292, AN10b increment 3 |
+| PARKAN-23 — Lucide vector drawables | **done** | R293, AN10b increment 4 |
+| PARKAN-24 — split cell's exact form | **open** | AN10b; conservative form shipped, awaits operator preference |
+| PARKAN-25 — only 400 isolates (not 409/413) | **open** | AN10b; conservative reading of R296 |
