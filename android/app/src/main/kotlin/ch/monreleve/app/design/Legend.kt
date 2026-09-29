@@ -17,14 +17,23 @@ package ch.monreleve.app.design
 // instruction (the relay names FlowRow), and the tension with R261 (prefer
 // stable Compose) is recorded in REPORT-AN4.txt.
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import ch.monreleve.app.fr.CalendarCopy
 import ch.monreleve.app.fr.LegendCopy
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -44,5 +53,40 @@ fun DayKindLegend(modifier: Modifier = Modifier) {
                 )
             }
         }
+    }
+}
+
+// AN10 increment 3 (AC2). The record-quality legend: the three bottom-bar colours named in words, so a
+// cell's quality is never carried by colour alone (SPEC 966, FD6 section 3). Sits beside DayKindLegend
+// under the grid. No « détection corrigée » entry: the manual product has no detection, so a cell can
+// never carry the corner mark, and a legend line for a feature the product lacks is what R282 forbids.
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun RecordQualityLegend(modifier: Modifier = Modifier) {
+    FlowRow(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(Spacing.space4),
+    ) {
+        QualityEntry(LightColors.success, CalendarCopy.QUALITY_ON_TIME)
+        QualityEntry(LightColors.warning, CalendarCopy.QUALITY_LATE)
+        QualityEntry(LightColors.borderStrong, CalendarCopy.NON_RENSEIGNE)
+    }
+}
+
+@Composable
+private fun QualityEntry(
+    colour: Color,
+    label: String,
+) {
+    Row(modifier = Modifier.padding(end = Spacing.space12), verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier =
+                Modifier
+                    .width(Spacing.space16)
+                    .height(Spacing.space4)
+                    .clip(RoundedCornerShape(Radius.pill))
+                    .background(colour),
+        )
+        Text(text = label, style = FrontierType.micro, modifier = Modifier.padding(start = Spacing.space4))
     }
 }

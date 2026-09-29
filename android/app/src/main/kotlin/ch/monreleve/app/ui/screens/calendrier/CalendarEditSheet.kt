@@ -1,5 +1,6 @@
 package ch.monreleve.app.ui.screens.calendrier
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,6 +19,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import ch.monreleve.app.aujourdhui.AbsenceChoice
 import ch.monreleve.app.aujourdhui.RecordedKind
 import ch.monreleve.app.aujourdhui.Slot
@@ -25,11 +27,13 @@ import ch.monreleve.app.calendar.EditableDay
 import ch.monreleve.app.calendar.EditableSlot
 import ch.monreleve.app.calendar.SlotEdit
 import ch.monreleve.app.design.FrontierType
+import ch.monreleve.app.design.LightColors
 import ch.monreleve.app.design.Radius
 import ch.monreleve.app.design.Size
 import ch.monreleve.app.design.Spacing
 import ch.monreleve.app.fr.AujourdhuiCopy
 import ch.monreleve.app.fr.CalendarCopy
+import ch.monreleve.app.fr.format.formatDateTime
 import ch.monreleve.app.fr.format.formatDayLong
 
 // AN10 increment 2. The day edit sheet's CONTENT (SPEC 11.3, FD6 A2), a standalone composable so a
@@ -73,6 +77,8 @@ fun CalendarEditSheetContent(
         drafts.forEach { draft ->
             SlotEditor(draft)
         }
+        LateNotice(day)
+        ProvenanceBlock(day)
         Button(
             onClick = {
                 onSave(drafts.mapNotNull { d -> d.kind?.let { SlotEdit(d.slot, it, d.absence, d.note) } })
@@ -144,6 +150,61 @@ private fun SlotEditor(draft: SlotDraft) {
             label = { Text(text = CalendarCopy.SHEET_NOTE_LABEL) },
             modifier = Modifier.fillMaxWidth(),
         )
+    }
+}
+
+// The late notice (SPEC 11.3, R216-split): a synced day states the FACT that the flag is in the dossier;
+// a still-unrecorded backdated day PREDICTS the flag. In a warning-soft box so the words are not the
+// only signal, but the words carry it (« Saisie tardive »), never colour alone (SPEC 966).
+@Composable
+private fun LateNotice(day: EditableDay) {
+    val text =
+        when {
+            day.alreadyLate -> CalendarCopy.lateNotice(day.lateThresholdDays)
+            day.wouldBeLate -> CalendarCopy.lateForecast(day.lateThresholdDays)
+            else -> return
+        }
+    Text(
+        text = text,
+        style = FrontierType.body,
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(Radius.md))
+                .background(LightColors.warningBg)
+                .padding(Spacing.space12),
+    )
+}
+
+// The provenance block (SPEC 11.3, FD6 A2): who recorded the day, when it was first recorded, and - if
+// it was changed after that - when. Only for a day the server has recorded (a firstRecordedAt exists);
+// a not-yet-synced day has no server timestamp to show. Every entry is « Saisie manuelle » (manual
+// product); the timestamps are the SERVER'S own (R216), read Paris-side by formatDateTime.
+@Composable
+private fun ProvenanceBlock(day: EditableDay) {
+    val recorded = day.slots.filter { it.firstRecordedAt != null }
+    if (recorded.isEmpty()) return
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.space4)) {
+        Text(text = CalendarCopy.PROVENANCE_HEADING, style = FrontierType.caption, color = LightColors.textSecondary)
+        // « Saisie manuelle » has one home (R206): AujourdhuiCopy.MODE_MANUAL, the same phrase the
+        // Aujourd'hui mode strip shows - the manual product's provenance and its mode are one word.
+        Text(text = AujourdhuiCopy.MODE_MANUAL, style = FrontierType.caption, color = LightColors.textSecondary)
+        recorded.forEach { slot ->
+            slot.firstRecordedAt?.let {
+                Text(
+                    text = CalendarCopy.firstRecordedLine(formatDateTime(it)),
+                    style = FrontierType.caption,
+                    color = LightColors.textSecondary,
+                )
+            }
+            slot.modifiedAt?.let {
+                Text(
+                    text = CalendarCopy.modifiedLine(formatDateTime(it)),
+                    style = FrontierType.caption,
+                    color = LightColors.textSecondary,
+                )
+            }
+        }
     }
 }
 

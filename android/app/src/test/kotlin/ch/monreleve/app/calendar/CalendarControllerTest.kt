@@ -2,12 +2,15 @@ package ch.monreleve.app.calendar
 
 import ch.monreleve.app.aujourdhui.RecordedKind
 import ch.monreleve.app.aujourdhui.Slot
+import ch.monreleve.app.data.local.EntryEntity
 import ch.monreleve.app.data.local.EntryKind
 import ch.monreleve.app.data.local.Portion
+import ch.monreleve.app.data.local.Provenance
 import ch.monreleve.app.data.local.SyncState
 import ch.monreleve.app.data.repo.FakeEntryDao
 import ch.monreleve.app.data.repo.LocalEntryRepository
 import ch.monreleve.app.data.repo.RecordCommand
+import ch.monreleve.app.dossier.LatenessForecast
 import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
 import io.kotest.core.spec.style.FunSpec
@@ -136,6 +139,54 @@ class CalendarControllerTest : FunSpec({
             syncRequests shouldBe 1
             // The sheet closes on save (no success animation; the cell updates by observation).
             controller.state.value.editing.shouldBeNull()
+        }
+    }
+
+    test("the sheet marks a synced late day, with when it was first recorded and changed (AC2)") {
+        runTest {
+            val dao = FakeEntryDao()
+            // Recorded 14 days after the day (server flag: late) and modified two days later.
+            dao.upsert(
+                EntryEntity(
+                    clientMutationId = "m1",
+                    dayDate = "2026-06-01",
+                    portion = Portion.FULL,
+                    kind = EntryKind.HOME,
+                    absenceReason = null,
+                    note = null,
+                    provenance = Provenance.MANUAL,
+                    detectedKind = null,
+                    detectedAt = null,
+                    clientClaimedAt = null,
+                    serverId = "srv1",
+                    firstRecordedAt = "2026-06-15T21:08:00Z",
+                    lastModifiedAt = "2026-06-17T10:00:00Z",
+                    syncState = SyncState.SYNCED,
+                ),
+            )
+            val controller = CalendarController(LocalEntryRepository(dao, june15), storeWith(), TAX_YEAR, june15, this)
+            advanceUntilIdle()
+            controller.openDay("2026-06-01")
+            val editing = controller.state.value.editing
+            editing.shouldNotBeNull()
+            editing.alreadyLate shouldBe true
+            editing.slots.first().late shouldBe true
+            editing.slots.first().modifiedAt shouldBe "2026-06-17T10:00:00Z"
+        }
+    }
+
+    test("a backdated empty day would be flagged late if recorded now - the R216 prediction, not the flag") {
+        runTest {
+            val repo = LocalEntryRepository(FakeEntryDao(), june15)
+            val controller = CalendarController(repo, storeWith(), TAX_YEAR, june15, this)
+            advanceUntilIdle()
+            // 2026-06-02 is thirteen days before today: past the seven-day threshold, nothing recorded.
+            controller.openDay("2026-06-02")
+            val editing = controller.state.value.editing
+            editing.shouldNotBeNull()
+            editing.alreadyLate shouldBe false
+            editing.wouldBeLate shouldBe true
+            editing.lateThresholdDays shouldBe LatenessForecast.BACKFILL_DAYS
         }
     }
 })

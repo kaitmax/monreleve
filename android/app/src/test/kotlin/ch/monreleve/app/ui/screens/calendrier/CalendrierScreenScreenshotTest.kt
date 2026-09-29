@@ -20,6 +20,7 @@ import ch.monreleve.app.data.local.Portion
 import ch.monreleve.app.data.local.Provenance
 import ch.monreleve.app.data.local.SyncState
 import ch.monreleve.app.design.FrontierTheme
+import ch.monreleve.app.dossier.LatenessForecast
 import ch.monreleve.app.onboarding.GranularityChoice
 import ch.monreleve.app.settings.Settings
 import org.junit.Rule
@@ -94,7 +95,8 @@ class CalendrierScreenScreenshotTest {
             onDismissSheet = {},
         )
 
-    // A day open in the edit sheet: a recorded Domicile with a note, DAY granularity (FD6 A2).
+    // A day open in the edit sheet: a recorded Domicile with a note, DAY granularity (FD6 A2). Recorded
+    // on time, so the provenance block shows the first-recording timestamp and no late notice.
     private val editingDay =
         EditableDay(
             isoDate = "2026-06-03",
@@ -111,6 +113,32 @@ class CalendrierScreenScreenshotTest {
                         firstRecordedAt = "2026-06-03T09:00:00Z",
                     ),
                 ),
+            alreadyLate = false,
+            wouldBeLate = false,
+            lateThresholdDays = LatenessForecast.BACKFILL_DAYS,
+        )
+
+    // A late, corrected-after-the-fact day (FD6 A2's own example): the late notice states the flag is in
+    // the dossier, and the provenance block shows both the first recording and the later modification.
+    private val editingLateDay =
+        EditableDay(
+            isoDate = "2026-06-03",
+            granularity = GranularityChoice.DAY,
+            slots =
+                listOf(
+                    EditableSlot(
+                        slot = Slot.FULL,
+                        kind = RecordedKind.DOMICILE,
+                        absence = null,
+                        note = "Réunion annulée, journée à domicile",
+                        late = true,
+                        modifiedAt = "2026-06-20T14:30:00Z",
+                        firstRecordedAt = "2026-06-15T21:08:00Z",
+                    ),
+                ),
+            alreadyLate = true,
+            wouldBeLate = true,
+            lateThresholdDays = LatenessForecast.BACKFILL_DAYS,
         )
 
     @Composable
@@ -135,6 +163,17 @@ class CalendrierScreenScreenshotTest {
             FrontierTheme {
                 Surface(color = MaterialTheme.colorScheme.background) {
                     CalendarEditSheetContent(day = editingDay, onSave = {}, onCancel = {})
+                }
+            }
+        }
+    }
+
+    @Test
+    fun calendrierEditSheetLate() {
+        paparazzi.snapshot {
+            FrontierTheme {
+                Surface(color = MaterialTheme.colorScheme.background) {
+                    CalendarEditSheetContent(day = editingLateDay, onSave = {}, onCancel = {})
                 }
             }
         }

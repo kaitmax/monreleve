@@ -37,6 +37,7 @@ import ch.monreleve.app.design.DayKindLegend
 import ch.monreleve.app.design.FrontierType
 import ch.monreleve.app.design.LightColors
 import ch.monreleve.app.design.Radius
+import ch.monreleve.app.design.RecordQualityLegend
 import ch.monreleve.app.design.Spacing
 import ch.monreleve.app.fr.CalendarCopy
 import ch.monreleve.app.fr.LegendCopy
@@ -132,8 +133,10 @@ private fun CalendarCard(
     ) {
         WeekdayHeaderRow()
         MonthGrid(monthView, onDayClick)
-        // R119: the legend sits with the grid, in the same file the fence scans.
+        // R119: the kind legend sits with the grid, in the same file the fence scans. The quality legend
+        // (AC2) names the bar colours in words, so quality is never carried by colour alone.
         DayKindLegend(modifier = Modifier.padding(top = Spacing.space4))
+        RecordQualityLegend()
     }
 }
 

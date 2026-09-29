@@ -10,6 +10,7 @@ import ch.monreleve.app.data.local.Portion
 import ch.monreleve.app.data.local.todayInParis
 import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.RecordCommand
+import ch.monreleve.app.dossier.LatenessForecast
 import ch.monreleve.app.onboarding.GranularityChoice
 import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
@@ -58,11 +59,18 @@ data class EditableSlot(
  * The day the edit sheet is open on. Built from the current rows; the sheet writes only on Save (D16).
  * The title is not held here: the sheet derives it from isoDate (formatDayLong), so the surface produces
  * the displayed text rather than the controller (R238's reachability model).
+ *
+ * The late signals are R216-split: `alreadyLate` is the SERVER'S fact (a synced row flagged late);
+ * `wouldBeLate` is the PREDICTION that recording this backdated day now would be flagged. The threshold
+ * is carried so the sheet interpolates it (R153/R181), never a typed 7.
  */
 data class EditableDay(
     val isoDate: String,
     val granularity: GranularityChoice,
     val slots: List<EditableSlot>,
+    val alreadyLate: Boolean,
+    val wouldBeLate: Boolean,
+    val lateThresholdDays: Int,
 )
 
 /** One Save-tap edit: a slot and what to record there (screen vocabulary; the controller maps to wire). */
@@ -84,7 +92,7 @@ class CalendarController(
     private val repository: EntryRepository,
     settingsStore: SettingsStore,
     private val taxYear: Int,
-    clock: Clock,
+    private val clock: Clock,
     private val scope: CoroutineScope,
     private val requestSync: () -> Unit = {},
 ) {
@@ -172,7 +180,16 @@ class CalendarController(
             } else {
                 listOf(editableSlot(Slot.FULL, rows))
             }
-        return EditableDay(isoDate = isoDate, granularity = granularity, slots = slots)
+        return EditableDay(
+            isoDate = isoDate,
+            granularity = granularity,
+            slots = slots,
+            alreadyLate = slots.any { it.late },
+            // The prediction (R216): would recording this backdated day now cross the threshold? True of
+            // the day's age, whether or not a row exists yet - so the warning shows before the first save.
+            wouldBeLate = LatenessForecast.wouldBeLate(LocalDate.parse(isoDate), clock.instant()),
+            lateThresholdDays = LatenessForecast.BACKFILL_DAYS,
+        )
     }
 
     private fun editableSlot(

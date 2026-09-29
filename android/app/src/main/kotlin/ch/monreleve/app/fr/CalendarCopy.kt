@@ -27,4 +27,31 @@ object CalendarCopy {
     const val SHEET_NOTE_LABEL = "Note (facultatif)"
     const val SHEET_SAVE = "Enregistrer"
     const val SHEET_CANCEL = "Annuler"
+
+    // The record made visible in words (AC2, not by colour alone). The quality legend names the three
+    // bar colours; NON_RENSEIGNE above is the grey bar's word.
+    const val QUALITY_ON_TIME = "À temps"
+    const val QUALITY_LATE = "Saisie tardive"
+
+    // The sheet's provenance block (SPEC 11.3, FD6 A2): who recorded it, when it was first recorded, and
+    // when it was changed. « Saisie manuelle » is not held here - it has one home already, AujourdhuiCopy
+    // .MODE_MANUAL (R206), and the sheet references it. The timestamps are interpolated from the SERVER's
+    // own values (R216/R181).
+    const val PROVENANCE_HEADING = "Origine de la saisie"
+
+    fun firstRecordedLine(timestamp: String): String = "Première saisie enregistrée le $timestamp"
+
+    fun modifiedLine(timestamp: String): String = "Modifiée le $timestamp"
+
+    // The late notice (SPEC 11.3: backfilling beyond the threshold is flagged, and the sheet says out
+    // loud that the flag appears in the annual document). Two phrasings, R216-split: a synced day states
+    // the FACT; a still-unrecorded backdated day PREDICTS. The threshold is interpolated, never a typed 7
+    // (R153/R181) - the caller passes LatenessForecast.BACKFILL_DAYS, carried through the state.
+    fun lateNotice(thresholdDays: Int): String =
+        "Saisie tardive : enregistrée plus de $thresholdDays jours après la journée. " +
+            "Cette mention figure dans votre relevé annuel."
+
+    fun lateForecast(thresholdDays: Int): String =
+        "Enregistrée plus de $thresholdDays jours après la journée : sera signalée comme saisie tardive " +
+            "dès sa synchronisation, et figurera alors dans votre relevé annuel."
 }
