@@ -48,9 +48,9 @@ object ReleveCopy {
      */
     fun pendingNotSynced(count: Int): String {
         val plural = if (count > 1) "s" else ""
-        val verbSync = if (count > 1) "ne sont pas encore synchronisées" else "n’est pas encore synchronisée"
+        val verbSync = if (count > 1) "ne sont pas encore synchronisés" else "n’est pas encore synchronisé"
         val verbFigure = if (count > 1) "ne figurent pas" else "ne figure pas"
-        return "$count journée$plural enregistrée$plural sur cet appareil $verbSync et $verbFigure dans ce relevé."
+        return "$count jour$plural enregistré$plural sur cet appareil $verbSync et $verbFigure dans ce relevé."
     }
 
     const val ERROR_SERVER = "Le relevé n’a pas pu être chargé pour le moment. Réessayez dans un instant."
