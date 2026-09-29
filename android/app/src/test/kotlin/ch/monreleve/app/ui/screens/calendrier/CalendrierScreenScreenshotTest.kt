@@ -186,4 +186,20 @@ class CalendrierScreenScreenshotTest {
             }
         }
     }
+
+    // The edit sheet at 200 percent (the night's baseline discipline: default AND fontScale 2f). The
+    // richest state (late + modified). The content scrolls, so the fixed viewport photographs the head
+    // (title, question, options) at 2f; the late notice and provenance sit below the fold here and are
+    // seen at default (calendrierEditSheetLate) and on the device (cal-10/cal-11).
+    @Test
+    fun calendrierEditSheetLateLarge() {
+        paparazzi.unsafeUpdateConfig(DeviceConfig.PIXEL_5.copy(fontScale = 2f))
+        paparazzi.snapshot {
+            FrontierTheme {
+                Surface(color = MaterialTheme.colorScheme.background) {
+                    CalendarEditSheetContent(day = editingLateDay, onSave = {}, onCancel = {})
+                }
+            }
+        }
+    }
 }
