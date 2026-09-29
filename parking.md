@@ -1095,3 +1095,84 @@ TOUCHES:   SyncEngine.handleOk / markFailed only.
 
 NEEDS:     an operator decision on whether per-item recovery is wanted. Until then,
 a 400 is loud (a visible FAILED state) and terminal, which the relay asked for.
+
+---
+
+Note on numbering: parking.md's persisted PARKAN sequence ends at PARKAN-4;
+AN5b and AN5c referenced PARKAN-16/17/18 in their reports (16 and 17 opened and
+closed in-session by R285/R286; 18 recorded in REPORT-AN5c.txt) but did not
+append them here. Rather than reuse those numbers, AN10 numbers after the highest
+referenced (PARKAN-18), leaving the gap visible. The AN5c persistence gap is
+NOTICED BUT NOT TOUCHING for AN10 (C4).
+
+## PARKAN-19 - the calendar ships no cantonal holidays table  [AN10, 2026-09-29]
+
+QUESTION:  SPEC 11.3 and FD6 style cantonal holidays as display-only (no quality
+bar, never "missing"), from a bundled dated table; todo.md's AN10 verification asks
+for a GE/VD holiday table spot-checked against an official list, with the file
+header citing it. Sourcing an official cantonal holiday list unattended, and
+shipping it inside the APK, risks publishing a wrong holiday as fact.
+
+TAKEN:     No holidays table. A public holiday that is a past weekday with no entry
+reads honestly as « Non renseigné » (it genuinely is not recorded); a person who was
+off records it as « Absence - jour ferie », which shows « A ». Reversible: adding
+assets/holidays.json later needs no migration, no published correction, no release
+that undoes anything - the calendar simply stops marking those days missing. Claims
+less (no unsourced holiday assertion in the shipped app).
+
+NOT TAKEN: Bundling a GE/VD holidays.json now. It would suppress the « missing » bar
+on holidays, but a wrong or unsourced date is a false claim inside the APK, which the
+boundary forbids parking past.
+
+TOUCHES:   a new assets/holidays.json (sourced + header-cited), CalendarModel's
+quality mapping (a holiday weekday -> NONE, not MISSING), the month summary's
+non-renseigne count, and the calendrierMonth baseline. No wire or schema change.
+
+NEEDS:     an official GE and VD holiday list for the tax year, and the operator's
+sign-off on the source, before the table can ship (Checkpoint-A-style).
+
+## PARKAN-20 - the mixed half-day cell shows the morning kind  [AN10, 2026-09-29]
+
+QUESTION:  With HALF_DAY granularity a day can hold an AM row and a PM row of
+different kinds and different sync states, but one grid cell shows one letter, one
+bar and one corner mark. SPEC and FD6 are silent on how to collapse two half-days
+into one cell.
+
+TAKEN:     The cell shows the MORNING portion's kind (deterministic by portion
+order) and the LEAST-settled quality (PENDING over LATE over ON_TIME); the edit
+sheet always shows both portions in full, so no truth is lost - the cell is a
+summary, the sheet is the record. Reversible: it is a pure-function display choice
+(CalendarModel.cellOf), no migration, no contract.
+
+NOT TAKEN: A split cell (two half-height bars, or two letters). More cell geometry
+for an opt-in granularity most users will not choose, and it fights the 40 dp cell
+at any text scale.
+
+TOUCHES:   CalendarModel.cellOf and its test; the calendrier baselines if a mixed
+half-day is added to a fixture.
+
+NEEDS:     an operator preference on whether a half-day pair should render split in
+the cell rather than summarised.
+
+## PARKAN-21 - the bottom nav uses core Material icons, not lucide  [AN10, 2026-09-29]
+
+QUESTION:  FD6 draws the bottom navigation with lucide `sun` (Aujourd'hui) and
+`calendar` (Calendrier); the Compose Material CORE icon set (bundled with material3,
+no new dependency) has `DateRange` but no `sun`, and the lucide/material-extended
+sets are separate dependencies. Adding a runtime dependency unattended is an
+ask-first boundary item.
+
+TAKEN:     Core icons stand in by role - Home for Aujourd'hui, DateRange for
+Calendrier - exactly the ZoneBadge precedent (core CheckCircle/Warning/Clear stand
+in for lucide glyphs). No new dependency. Reversible: swapping to lucide/extended
+later is an icon-reference change, no contract, no migration.
+
+NOT TAKEN: Adding androidx material-icons-extended (or a lucide port) for the exact
+glyphs. It is a runtime dependency this night does not add blind, and it matters
+more when AN11's `file-text` (Releve) lands, since core has no file glyph either.
+
+TOUCHES:   ui/shell/AppBottomBar.kt (the two icon references); AN11/AN12 when they
+add their nav items and may need the extended set for `file-text`/`settings`.
+
+NEEDS:     an operator decision on adding an icon dependency, ideally when AN11's
+Releve tab forces the `file-text` question.
