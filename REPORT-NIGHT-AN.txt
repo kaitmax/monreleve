@@ -1,0 +1,79 @@
+================================================================================
+REPORT-NIGHT-AN.txt -- the night session (AN10 -> AN11 -> AN12), stopped after AN10
+================================================================================
+
+The night ran AN10 to a clean, pushed finish and then STOPPED BY CHOICE, before
+starting AN11, on context discipline (RUN-NIGHT C5). Stopping after one task with a
+clean report is the outcome C5 names as a GOOD night; starting AN11 (a full task -
+the releve, the FW24 payload, exports, its own device walkthrough) on a context
+already heavy with AN10's emulator work risked dying mid-task with an orphaned
+emulator and unpushed work, which RUN-NIGHT calls worse than a clean stop.
+
+--------------------------------------------------------------------------------
+PER TASK
+--------------------------------------------------------------------------------
+AN10 (Calendrier)  -- DONE.
+  final commit    2b2664b ("AN10: the report"); last code commit 8284493.
+  gate:clone      PASSED on HEAD 8284493 (exit 0): install, typecheck, lint, test,
+                  build, size, db:deploy, test:db, test:container:write from a
+                  clean clone. The report commit is web/android-byte-identical to
+                  8284493, so that gate:clone discharges R199 for it (AN5c
+                  precedent). CI quiet (repo private, CI_FULL unset).
+  device walkthrough  RAN, FOR REAL (AN5c AC1 held). Driven on the Pixel_10
+                  emulator against the production container via AN5c's R284
+                  injection; every PNG opened and looked at. IT FOUND A REAL
+                  DEFECT: MainShell created CalendarController WITHOUT wiring
+                  requestSync, so a calendar Save recorded to Room but never
+                  synced (SPEC 13.2) - the unit test passed because it injects
+                  requestSync; only the driven path caught it (R176/R204). Fixed
+                  in increment 5 and re-verified by re-driving the sync to the
+                  server DB. The amber late cell (server flag, R216), the modified
+                  timestamps, and the fontScale measurement were all seen.
+
+AN11 (Releve + exports)  -- NOT STARTED.
+AN12 (Parametres)        -- NOT STARTED.
+
+--------------------------------------------------------------------------------
+PARKAN ENTRIES ADDED TONIGHT (parking.md)
+--------------------------------------------------------------------------------
+PARKAN-19 - the calendar ships no cantonal holidays table         [AN10]
+PARKAN-20 - the mixed half-day cell shows the morning kind         [AN10]
+PARKAN-21 - the bottom nav uses core Material icons, not lucide    [AN10]
+(Numbered after AN5c's PARKAN-18; parking.md's persisted PARKAN sequence had a
+4 -> 19 gap - AN5b/AN5c referenced 16/17/18 in their reports without persisting
+them, noted in parking.md and in REPORT-AN10.txt as NOTICED BUT NOT TOUCHING.)
+
+--------------------------------------------------------------------------------
+OPEN QUESTIONS (all AN10; full text in REPORT-AN10.txt)
+--------------------------------------------------------------------------------
+1. [AN10] The three PARKAN decisions above - each names what the operator must
+   supply to close it (an official GE/VD holiday list; a half-day cell preference;
+   an icon-dependency decision).
+2. [AN10] The MainShell requestSync fix (a one-arg wiring change): accept it, and
+   is a connectedAndroidTest for the shell wiring wanted now or later? The wiring
+   has no JVM-testable guard (it lives in a Composable); the walkthrough is the
+   current integration proof (R204 class).
+3. [AN10] The font-scale threshold 1.5 (grid legible through 1.45, list at 1.5):
+   accept, or is a different breakpoint preferred?
+
+--------------------------------------------------------------------------------
+CHECKPOINT F
+--------------------------------------------------------------------------------
+NOT reached: Checkpoint F is the complete manual product, which needs AN11 (the
+releve and its exports) and AN12 (parametres) as well as AN10's calendar; those
+two were not started tonight.
+
+--------------------------------------------------------------------------------
+STATE FOR THE RESUMING OPERATOR
+--------------------------------------------------------------------------------
+- git clean; local main == origin/main == 2b2664b.
+- Untracked, intentionally left (AN5c precedent): android/.an10-shots/ (the AN10
+  walkthrough PNGs), android/.an5c-ac2-shots/ (AN5c's), and
+  android/scripts/an10-walkthrough.mjs (the throwaway calendar drive helper).
+- No orphans: emulator stopped, no monreleve container, port 3000 free, no adb
+  device.
+- Resume by hand from relay/AN11.txt (then AN12).
+
+Night stopped after AN10. AN11, AN12 and AN13 not started.
+
+END OF REPORT-NIGHT-AN.txt
