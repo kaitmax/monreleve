@@ -1,0 +1,477 @@
+================================================================================
+REPORT-AN11.txt -- the releve on the device
+================================================================================
+
+--------------------------------------------------------------------------------
+SUMMARY (R273 first; whether the device walkthrough ran)
+--------------------------------------------------------------------------------
+R273: tasks/todo.md's AN11 is the Releve screen and exporting the PDF/CSV from
+the device. The prompt's number and scope match the file, so this report is named
+AN11 and commit prefixes are "AN11". No renumbering.
+
+THE DEVICE WALKTHROUGH RAN, FOR REAL, and was required (AN5c's AC1 held: three
+consecutive runs to a signed-in Aujourd'hui). It was driven on the Pixel_10
+headless emulator against the production container (monreleve:write on port 3000,
+frontalier-postgres on 5436), signed in via AN5c's R284 debug session injection,
+with a rich server dossier seeded directly (telework, Swiss, two missions, an
+absence, one late row). Every PNG below was OPENED and looked at, at the default
+size and at 200 percent.
+
+CONTEXT INHERITED. Increments 1-4 (the four AN11 commits 0cfc4cc..5a02443) were
+built by a PRIOR session that lost context before increment 5. This session picks
+up at increment 5 (the walkthrough) and the report, exactly as the prompt frames
+it. The AN11 code tip is 5a02443 and is not re-opened here (R270); a later doc-only
+commit (54c7090, a future-task spec) advanced main mid-session -- see PRECONDITIONS.
+What this session added is the walkthrough, one PARKAN entry the committed code
+already cited but had not persisted (PARKAN-26), and this report.
+
+ALL THREE ACCEPTANCE CRITERIA MET, each seen on the device:
+  AC1 -- the releve renders the SERVER's dossier: identification, the rate panel
+         with both thresholds named, the monthly breakdown, and the annex with
+         provenance in words. Every displayed figure matches /api/v1/dossier field
+         by field (the RENDERING table below).
+  AC2 -- the PDF exports from the device and OPENS in a viewer (rendered full, A4,
+         by the server's Chromium); the CSV exports with the R237 filename. Saving
+         uses the platform share sheet (R136), no storage permission. The CSV open
+         is not demonstrable on this emulator image (it ships no spreadsheet-capable
+         app) -- recorded honestly; the produced-file assertions carry the content.
+  AC3 -- R287 holds: a pending day is named as absent from the document, on the
+         LIVE server document (no offline banner). R288 holds: an offline copy is
+         a DATED copy that says it may not reflect recent days.
+
+--------------------------------------------------------------------------------
+PRECONDITIONS (R273, R0, R1, handover)
+--------------------------------------------------------------------------------
+R0. Read REPORT-AN10.txt in full; SPEC 11.4 (the releve) and SPEC 12 (the dossier)
+    verbatim; SPEC 20; docs/api-v1.md section 8 (the dossier payload) and the
+    export routes; prompts/design-frontier/FD7-releve-android-ios.md. Rulings win.
+
+HANDOVER at the start: previous work (5a02443) committed and pushed; git clean and
+local main == origin/main == 5a02443. A monreleve-an11 container and a Pixel_10
+emulator were found running (leftovers from the prior session's aborted walkthrough
+attempt): the container was removed and re-provisioned fresh by the driver; the
+emulator was reused for the drive and torn down at the end. No BLOCKING item.
+
+HEAD ADVANCED MID-SESSION (a benign, doc-only concurrency, recorded in full). While
+this session's walkthrough was running, local main advanced from 5a02443 to
+54c7090 "Spec: home page and public shell design (FW33, FW34)" -- a commit made in
+this shared working tree by the repository's own identity (kaitmax), i.e. the
+operator advancing the repo with a future-task spec (the R270 precedent: future-task
+files appearing mid-session are normal). It is DOC-ONLY: it changes exactly one file,
+docs/specs/2026-09-29-home-page-design.md (+514), and `git diff 5a02443 54c7090 --
+web/ android/` is EMPTY. So the web/android tree at HEAD is byte-identical to
+5a02443, 5a02443 is an ancestor of HEAD, and my AN11 work is intact in history. It
+did NOT touch parking.md or REPORT-AN11.txt (both still my uncommitted work).
+origin/main was still 5a02443 (54c7090 is local, not yet pushed), so this session's
+finalization push publishes 54c7090 (the operator's complete spec commit) together
+with the report commit -- collaboration on the shared main line, not a clobber; git's
+non-fast-forward guard protects the other work if it pushes first.
+
+R1 -- gate:clone. THREE runs, all recorded honestly; the byte-identity chain
+5a02443 == 54c7090 == the report commit (for everything gate:clone verifies) is what
+makes any one green run discharge R199 for the push:
+  ATTEMPT 1 (emulator up, HEAD 5a02443): GATE:CLONE FAILED - "pnpm test exited 1",
+    on a vitest fork-pool "Failed to start forks worker ... Timeout waiting for
+    worker to respond" for tests/unit/pages/singletons.test.tsx. NOT an assertion
+    failure and NOT a code regression: R227's resource envelope biting - a fresh
+    clone runs ~4x slower, and with the emulator (~2 GB), Docker and four Postgres
+    containers up, free RAM was ~1.6 GB and a worker fork timed out. Proven
+    environmental: (a) web/ is byte-identical to AN10b's green base (`git diff
+    01601f8..5a02443 -- web/` EMPTY); (b) the failure was worker STARTUP, not a test
+    verdict. The leaked clone dir was removed manually.
+  ATTEMPT 2 (emulator killed, HEAD had advanced to 54c7090): got FURTHER - install,
+    typecheck, lint, TEST, build and size all GREEN on the 54c7090 tree (which is the
+    5a02443 code) - then died at the scratch-database CREATE with
+    "duplicate key ... (datname)=(monreleve_gate_clone_54c70908) already exists". A
+    CONCURRENT gate:clone (the operator's parallel session, same HEAD -> same
+    scratch-DB name) had created it between this run's DROP-IF-EXISTS and CREATE. A
+    collision on a shared machine, not a code fault; this run proved the code green
+    through size on the exact tree the push carries.
+  ATTEMPT 3 (FINAL, clean: emulator down, no concurrent gate:clone, no leftover
+    scratch DB, HEAD 54c7090). Envelope in PUSH PROOF. It clones HEAD = 54c7090, so
+    it verifies the operator's spec commit's tree directly before the push; and since
+    the report commit is web/android-byte-identical to 54c7090 (only the two repo-root
+    docs differ), it discharges R199 for the report commit too (the AN10/AN10b/AN5c
+    CADENCE precedent).
+
+--------------------------------------------------------------------------------
+RED-GREEN LEDGER (R178/R180)
+--------------------------------------------------------------------------------
+CONTEXT-LOSS DISCLOSURE. Increments 1-4's RED runs belong to the prior session and
+were NOT witnessed here; they are NOT reconstructed (a reconstructed RED is
+fabricated evidence). Their tests are committed (ReleveControllerTest,
+DossierParseTest, DossierApiTest, ReleveViewTest, ReleveScreenScreenshotTest,
+CopyReachabilityTest) and are green at 5a02443.
+
+PRESENT-TENSE PLANT (this session), proving the load-bearing R287 screen gate bites:
+  PLANT: in ui/screens/releve/ReleveScreen.kt, the gate `if (loaded.pendingCount
+    > 0)` was changed to `if (loaded.pendingCount < 0)` (never true for a count),
+    verified landed by reading the file (line 115).
+  RED:   ./gradlew :app:verifyPaparazziDebug --tests "...ReleveScreenScreenshotTest"
+    -> "ReleveScreenScreenshotTest > releveWithPending FAILED
+        java.lang.AssertionError at ReleveScreenScreenshotTest.kt:221",
+    with the OTHER SIX snapshots (the count-0 states) still passing. So the failure
+    is specific to the state that must show the line - the gate, not the copy.
+  GREEN: reverted (source diff vs 5a02443 empty); verifyPaparazziDebug BUILD
+    SUCCESSFUL. R180: the plant was confirmed present before its result was read,
+    and confirmed absent after.
+
+--------------------------------------------------------------------------------
+RENDERING -- FIELD BY FIELD against /api/v1/dossier (AC1)
+--------------------------------------------------------------------------------
+The seeded server document (saved verbatim as .an11-shots/dossier.json) versus what
+the app rendered, compared field by field. Every figure matches; the device
+recomputes nothing the server provides (FW12's defect).
+
+  FIELD                payload                 rendered on screen (shot)
+  taxYear              2026                    "Annee 2026 entiere" period
+  period.fraction      1 (startDate null)      "Annee 2026 entiere" (fraction, not
+                                                startDate, drives it -- docs 8.2)
+  titulaire            Camille Rey             "Camille Rey"            (rel-01/r287-01)
+  canton               GE                      "GE"                     (rel-01)
+  employmentRate       100                     "100 %"                  (rel-01)
+  denominatorKind      SIMPLIFIED240           "Forfait de 240 jours"   (rel-01)
+                                                (240 from the RuleSet, not typed)
+  absenceDays          1                       "Absences declarees 1"   (rel-01)
+  generatedAt          server ISO instant      "29.09.2026 13:58" UTC-side (rel-02)
+  recordedEntries      64                      annex "64 entrees"       (rel-05)
+  tiles.workedDays     240                     "Jours ouvres 240"       (rel-01)
+  tiles.swissDays      20                      "Jours en Suisse * 20"   (red dot)
+  tiles.teleworkDays   41                      "Teletravail * 41"       (blue dot)
+  tiles.missionDays    2                       "Missions 2"             (rel-01)
+  zone.declarableRate  17.91                   "17,91 %" hero, "Taux a declarer a
+                                                l'AFC"                  (rel-02)
+  zone.rawRate         18                      "18,0 % Part de jours hors de Suisse"
+  zone.ratesDiffer     true                    BOTH rates shown + the rates-differ
+                                                note (R224)             (rel-02)
+  zone.remainingToFiscal 53                    "Jours restants avant le seuil
+                                                d'imposition 53"        (pdf-open-01)
+  zone.remainingToSocial 76.5                  "... securite sociale 76,5"
+  thresholds           0.4 / 0.499 (RuleSet)   "40 % pour l'imposition, 49,9 % pour
+                                                la securite sociale" + rail ticks
+  badge                remainingTo* >= 0       "Sous les deux seuils" (WORD)
+  months[1..12] cumul  8,33 / 16,66 / 16,66 /  identical on screen (rel-03/rel-06)
+                       16,66 / 17,08 / 17,91    and in the PDF (pdf-open-01):
+                       ... 17,91                Janvier 8,33% ... Decembre 17,91%
+  months missions      m6: FR 1, tiers 1       app merges to one "Miss." column
+                                                (Juin = 2); the PDF and annex SPLIT
+                                                them (Mission FR 1, Mission tiers 1)
+                                                -- FD7 s6 / MONTHS_MISSIONS_NOTE
+  annex provenance     provenance MANUAL,      "Domicile / Saisie manuelle *
+                       firstRecordedAt          Enregistre le 05.02.2026 18:00"
+                                                (rel-08, expanded), i.e. provenance
+                                                IN WORDS + the server's timestamp
+
+The two rates legitimately differ (17,91 declarable vs 18,0 raw), so R224's
+both-rates state is exercised live, with the rates-differ note explaining why.
+
+--------------------------------------------------------------------------------
+R287 -- THE RELEVE NAMES WHAT IT DOES NOT CONTAIN
+--------------------------------------------------------------------------------
+Shot r287-01-releve-pending (default): the LIVE server document with the line
+  "1 jour enregistre sur cet appareil n'est pas encore synchronise et ne figure
+  pas dans ce releve." -- singular form, correct grammar, and the word "jour"
+  (5a02443's wording fix, confirmed live). Crucially there is NO offline banner
+  above it: the on-screen proof that this is the live server document, not a cache
+  (OfflineBanner renders first when cached, R288). So a reader who sees Aujourd'hui's
+  higher rate and the releve's lower rate is told which is which.
+
+DETERMINISTIC, NO DRAIN RACE (the fix the prompt asked for). The prior session hit
+a race: it recorded a pending day, restarted the container, relaunched and tried to
+read the releve before WorkManager drained the row. This session does not restart
+before reading. ReleveController.load() fires only on init/retry, and the Room
+observer folds pendingCount onto the EXISTING Loaded state via copy() WITHOUT
+refetching (the controllers survive tab switches via MainShell's `remember`). So:
+the releve is loaded from the server (offline=false); the container is STOPPED (the
+server is unreachable but the device is still networked, so the enqueued SyncWorker
+runs and is refused - the row stays PENDING, never drained); a day is recorded on
+Aujourd'hui; switching back to the Releve tab shows the same server document with
+the pending line folded in. Driver booleans: r287line=true, offline-banner-absent
+=true. R119-by-count on the count is asserted in increment 2's committed test.
+
+--------------------------------------------------------------------------------
+R288 -- AN OFFLINE RELEVE IS A DATED COPY
+--------------------------------------------------------------------------------
+Shot r288-01-offline (default): with the container still down, a relaunch makes
+ReleveController.load() fail with a network error, fall back to the cached body, and
+render it as Cached (offline=true). The screen leads with the orange banner
+"Copie hors ligne / Ce releve n'a pas pu etre actualise. Voici la derniere copie
+enregistree, generee le 29.09.2026 ; elle peut ne pas refleter les journees
+enregistrees depuis." -- dated (the cached payload's own generatedAt, R181, not the
+device clock), and never presented as current. The R287 pending line also shows
+here (the pending row persists in Room), which is correct: a cached copy can both
+be dated AND miss unsynced days. Driver boolean: r288=true.
+
+--------------------------------------------------------------------------------
+EXPORT (AC2)
+--------------------------------------------------------------------------------
+THE PDF, OPENED ON THE DEVICE. Shot pdf-open-01: the produced PDF rendered full in
+the emulator's Google PDF viewer (com.google.android.apps.viewer.PdfViewerActivity,
+topResumedActivity confirmed) -- title, identification, the four tiles, the zone
+panel (17,91 % / rail / 18,0 % raw / rates-differ note / both thresholds / remaining
+53 and 76,5 / "Sous les deux seuils"), the monthly table with SEPARATE Mission FR /
+Mission tiers columns, and the annex. It is the server's Chromium render (SPEC 12),
+the same document as the app screen at A4 width. The share sheet (shot
+exp-01-pdf-chooser: "Sharing 1 file - releve-2026.pdf") is the platform hand-off
+(R136 / FileProvider, no storage permission).
+
+  NOTE ON HOW IT WAS OPENED (instrument, not product): a shell VIEW intent with a
+  file:// URI is refused by the Google viewer (it needs a content:// grant), so the
+  file was media-scanned into MediaStore Downloads and opened via its content://
+  URI. This is a test-harness detail; the PRODUCT hands the file to the share sheet
+  with a FileProvider content URI (MainActivity.shareFile), which is the same class
+  of URI. What is proven is that the produced file IS a real, openable PDF that a
+  device viewer renders as the document.
+
+THE PDF, ASSERTED AS BYTES (increment 4's produced-file assertions, committed):
+  the pulled file .an11-shots/export.pdf is 157750 bytes, server filename
+  "releve-2026.pdf"; ReleveControllerTest's committed export tests assert the
+  produced PDF text carries the titulaire and NONE of the five banned words.
+
+THE CSV. Shot exp-02-csv-chooser: the share sheet for the CSV. The pulled file
+  .an11-shots/export.csv is 9580 bytes, server filename "releve-2026-camille-rey.csv"
+  -- R237 attributable by filename (the titulaire in the name). Its header is
+  EXACTLY SPEC 12's stable column list:
+    dayDate,portion,kind,absenceReason,provenance,detectedKind,note,
+    firstRecordedAt,lastModifiedAt,clientClaimedAt,late
+  with a UTF-8 BOM and unlogged days present as bare-date rows (e.g.
+  "2026-01-01,,,,,,,,,,false"). R230: the CSV escapes; the PDF does not.
+
+  THE CSV OPEN IS NOT DEMONSTRABLE ON THIS EMULATOR (recorded honestly, advisor's
+  guidance). `cmd package query-activities -a VIEW -t text/csv` returns NONE on this
+  image (it ships no spreadsheet-capable app), so the shell VIEW intent is refused
+  ("unable to resolve Intent"). The produced-file byte assertions and the exact
+  column header above carry the CSV's content claim; installing a third-party viewer
+  was deliberately NOT done.
+
+--------------------------------------------------------------------------------
+WALKTHROUGH (R176/R177) -- every PNG opened and described, default and 200 percent
+--------------------------------------------------------------------------------
+Driver: android/scripts/an11-walkthrough.mjs (untracked throwaway, the AN5c/AN10b
+precedent). Shots in android/.an11-shots/ (untracked). The drive ran in three
+passes, described plainly because two instrument faults (below) split it:
+  DRIVE 1 captured the two AC3 proofs cleanly (r287-01, r288-01), then lost its
+    render/PDF/200 shots to a RAM-kill launch (the app was killed to the launcher on
+    a first relaunch) and a 15-min access-token expiry at the end (rel-2f showed
+    "Votre session a expire").
+  DRIVE 2 (focused re-drive, front-loaded so every live-server step ran on a fresh
+    session, with a robust waitForShell launch that re-issues am start until the nav
+    is up) captured the render, the exports and a clean 200 percent.
+  ANNEX_ONLY pass (fresh session) captured the app's EXPANDED annex.
+  The PDF open was captured by a direct content:// intent (above).
+
+EVERY PNG BELOW WAS OPENED AND LOOKED AT:
+
+  DEFAULT SIZE
+  rel-01-releve-top       the top: title "Releve annuel de teletravail", the
+    "Releve provisoire" banner (Annee en cours au 29.09.2026, complet apres le 31
+    decembre 2026), the identification card (Camille Rey / GE / 100 % / Forfait de
+    240 jours / Annee 2026 entiere / Absences 1 / generation date), the four tiles
+    (240 / *20 Suisse / *41 Teletravail / 2 Missions), and the R225 basis note.
+  rel-02-releve-zone      the zone panel: badge WORD "Sous les deux seuils" (green),
+    hero "17,91 %", "Taux a declarer a l'AFC", the rail with 40 % and 49,9 % ticks,
+    "18,0 % Part de jours hors de Suisse" (the raw rate, shown because they differ),
+    the full rates-differ note, and the two-thresholds sentence.
+  rel-03 / rel-06         the monthly table: Janvier 8,33 % ... Juin 17,91 %
+    (merged "Miss." = 2) ... Decembre 17,91 %, the missions note, the cumul note,
+    the annex card "Annexe / Detail des journees / 64 entrees / Afficher le detail
+    des journees", and both export buttons (Exporter en PDF navy, Exporter en CSV
+    outlined) with the legal footer beginning below.
+  rel-05-annex-collapsed / rel-05-annex-open  the annex COLLAPSED on screen (SPEC 12:
+    collapsed on screen, fully expanded in the PDF).
+  rel-07 / rel-08 / rel-09  the annex EXPANDED (tapped open): recorded rows each with
+    the kind and provenance IN WORDS -- "05.02.2026 Domicile / Saisie manuelle *
+    Enregistre le 05.02.2026 18:00" through the February telework block. This is the
+    evidence layer, inspectable, on the device.
+  exp-01-pdf-chooser      the PDF share sheet ("Sharing 1 file - releve-2026.pdf").
+  exp-02-csv-chooser      the CSV share sheet.
+  pdf-open-01             the PDF rendered full in the device's PDF viewer (above).
+  r287-00-recorded-pending  Aujourd'hui after recording the pending day.
+  r287-01-releve-pending  the R287 line on the live server document (above).
+  r288-01-offline         the R288 offline dated copy (above).
+
+  200 PERCENT (font_scale 2.0)
+  rel-2f-top     the title wraps to two lines; the provisional banner and every
+    identification row wrap cleanly ("Methode de calcul", "Periode couverte" wrap
+    across lines) with no overlap or truncation; the nav's three tabs still legible.
+  rel-2f-zone / rel-2f-months / rel-2f-annex  the zone, the monthly table and the
+    annex all legible and wrapping at 200 percent.
+
+TALKBACK / a11y: not re-exercised here (AN11 adds no new bespoke a11y semantics
+beyond the standard Text/Button roles the framework provides; the calendar's split
+announcement was AN10b's concern).
+
+SUPERSEDED SHOTS LEFT IN THE FOLDER (could not bulk-delete; harmless untracked, not
+described as proofs): rel-00-aujourdhui (drive 1's launcher home screen from the
+RAM-kill), rel-04-releve-annex-exports (a drive-1 name superseded by rel-04-annex-
+collapsed), r287-02-releve-after-drain (from the PRIOR session's aborted run),
+csv-open-01 (the refused CSV VIEW intent). The auto-mode classifier declined the
+bulk `rm` of pre-existing untracked artifacts; drive 2 overwrote the drive-1
+render/200 shots in place.
+
+--------------------------------------------------------------------------------
+FD7 AGAINST THE RULINGS (each conflict, and which side won)
+--------------------------------------------------------------------------------
+FD7-releve-android-ios.md predates most of the ruling register; where it and a
+ruling/SPEC disagree the ruling wins (R258's shape), and the divergence is named,
+not restyled (layout is not this task). Verified against the file and the shots:
+
+  1. FD7 s3/s5/s6/s7 draw white cards with a 1 px #E4E7EC border. The Android build
+     uses white-on-grey CONTRAST with no drawn hairline (a 1 dp border has no radius/
+     colour token; the AN10/FD6 decision). CONTRAST wins. Seen: every card sits on
+     the grey canvas by contrast (rel-01, rel-02).
+  2. FD7 s5 draws the status as an icon CHIP (lucide circle-check + a coloured hero).
+     SPEC 12 requires the status carried by a WORD (monochrome-photocopy), and the
+     badge inputs are derived from remainingTo* on the wire, never recomputed. The
+     WORD wins: "Sous les deux seuils" (rel-02). Seen.
+  3. FD7 s8 draws lucide file-down / table glyphs on the export buttons. The build
+     ships text-only buttons ("Exporter en PDF" / "Exporter en CSV"); the export
+     glyphs are not shipped (only ic_file_text for the nav, AN10b). TEXT wins. Seen
+     (rel-06).
+  4. FD7 s1 draws a YEAR-SELECTOR chip ("2027" + chevron) beside the title, i.e.
+     switching to a past year. The build shows ONLY the current tax year and no
+     selector -- a gap, parked as PARKAN-26 (the committed code already cited it).
+     The releve is therefore always the in-progress current year, which is why the
+     provisional banner is unconditional. Named, not built.
+  5. FD7 s10 draws a FOUR-item bottom nav (sun / calendar / file-text / settings).
+     The build has THREE tabs (Aujourd'hui, Calendrier, Releve); Parametres is AN12.
+     A gap, not a conflict (R282/R85: a tab is advertised the moment its screen
+     exists). The Releve tab uses the exact FD7 glyph, lucide file-text (seen,
+     brand-tinted active).
+  6. FD7 s6 keeps Mission FR and Mission tiers as SEPARATE monthly columns. The app
+     merges them into one "Miss." column at a phone's width (mergedMissionDays) and
+     says so (MONTHS_MISSIONS_NOTE); the PDF and the annex keep them separate. Seen:
+     Juin = 2 on the app (rel-06), Mission FR 1 / Mission tiers 1 in the PDF
+     (pdf-open-01). This is the todo.md/FD7 mobile-merge decision, not a divergence.
+  Where FD7 and the built copy AGREE (and the shots confirm): the provisional grey
+  banner, the identification rows, the four tiles with country dots on Suisse and
+  Teletravail, the rail with 40/49,9 ticks, the cumul monthly table, the collapsed
+  annex, and the three-line legal footer.
+
+--------------------------------------------------------------------------------
+FLAG DECISION (R186)
+--------------------------------------------------------------------------------
+NO flag flip. web/lib/content/product-state.ts was not touched. R186: a
+dossierExists/trackerExists proxy needs a RELEASED client; a debug build on an
+emulator is not one, and this session shipped no release (the injection is
+debug-only, guarded, AN5c). No product-state claim changed.
+
+--------------------------------------------------------------------------------
+PARKED (parking.md)
+--------------------------------------------------------------------------------
+PARKAN-26 -- the releve shows only the current tax year; no year selector. NOT a
+  new decision this session invented: ui/screens/releve/ReleveHeader.kt (committed
+  at increment 1) already cites "(PARKAN-26)" for the choice, but the entry was
+  never persisted in parking.md. Persisted now, in the QUESTION/TAKEN/NOT TAKEN/
+  TOUCHES/NEEDS form, so the citation resolves to an entry rather than a promise
+  (R294's shape). TAKEN: only the current Paris tax year, no selector, conservative
+  and client-only-reversible; NOT TAKEN: FD7 s1's year selector. NEEDS: an operator
+  decision on whether past-year viewing is wanted.
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+1. GATE:CLONE RAN TWICE. The first attempt flaked on a vitest worker-startup timeout
+   under RAM contention with the emulator up (R227); diagnosed environmental and
+   proven by web/ byte-identity to AN10b's green base. The definitive run is on the
+   clean machine after teardown (PUSH PROOF). Named, not hidden.
+2. THE WALKTHROUGH RAN IN THREE PASSES, not one, because of two instrument faults on
+   a RAM-tight emulator: a first-launch kill to the launcher (fixed with a robust
+   waitForShell that re-issues am start until the nav is up), and a 15-min
+   access-token expiry across a long drive (fixed by front-loading the live-server
+   steps onto a fresh session). Both are harness faults, not product defects. The
+   AC3 proofs (r287-01, r288-01) are from the first pass and were not re-shot.
+3. PROMPT-ORDER DEVIATION, named. The exports were driven BEFORE the offline
+   R287/R288 states (the prompt lists R287, then export, then R288). A server render
+   needs connectivity (SPEC 13.2), so the PDF/CSV must run with the container UP;
+   the deterministic pending state needs the container DOWN and not restored before
+   the photograph. Driving exports first, then the offline states, is the only order
+   that satisfies both. The states themselves are exactly as specified.
+4. THE PDF WAS OPENED VIA A content:// URI from the shell (MediaStore Downloads),
+   because the Google viewer refuses a file:// URI. A harness detail; the product's
+   own hand-off is a FileProvider content:// share (MainActivity.shareFile). Named
+   under EXPORT.
+5. THE CSV OPEN IS NOT DEMONSTRABLE on this emulator image (no spreadsheet app).
+   Recorded, not worked around by installing an APK (advisor's guidance). The
+   produced-file assertions carry the content.
+
+--------------------------------------------------------------------------------
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------------------
+- The walkthrough driver (an11-walkthrough.mjs) duplicates AN5c/AN10b's provisioning
+  recipe. Accepted for a throwaway (the AN5c NOTICED precedent); the product code
+  shares nothing.
+- The emulator/adb/uiautomator flakiness on this RAM-tight machine (null-root-node
+  dumps, LMK kills, the 15-min token window) is an environment property. It cost
+  three passes; the driver's waitForShell and front-loading make a future run
+  robust. No product change.
+- Superseded untracked shots remain in .an11-shots/ (listed under WALKTHROUGH); the
+  classifier declined a bulk rm of pre-existing untracked artifacts. Harmless, not
+  committed (gate:clone clones HEAD).
+- an5c-signedin.mjs's injector-wait short/long-form logcat mismatch (R267, named in
+  REPORT-AN10b.txt) is unchanged; this session's driver uses the short form and does
+  not depend on the wait's return. Owed on an5c-signedin.mjs, out of AN11's scope.
+
+--------------------------------------------------------------------------------
+QUESTIONS
+--------------------------------------------------------------------------------
+1. PARKAN-26: is past-year viewing (FD7 s1's year selector) wanted, and if so which
+   years should it offer?
+2. The CSV open cannot be shown on this emulator image (no spreadsheet app). Is a
+   device-side open demonstration wanted on a differently-provisioned image, or do
+   the produced-file byte assertions suffice?
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+AN11 code commits already on origin/main at the session start (HEAD 5a02443):
+  0cfc4cc  AN11: the releve renders the server's dossier
+  c3b4793  AN11: the releve names what is not in it
+  5f7bccd  AN11: an offline releve is a dated copy
+  316d189  AN11: export from the device
+  5a02443  AN11: the R287 line uses the prompt's wording (jours)
+Then, mid-session, the operator advanced local main with a doc-only spec commit
+(NOT this session's, but on the shared main line this push carries):
+  54c7090  Spec: home page and public shell design (FW33, FW34)   [docs only, +514]
+  <this session's finalization commit follows -- it cannot name its own hash>
+
+This session adds NO android/ or web/ code bytes: increment 5 is the walkthrough
+(untracked driver + untracked shots) plus REPORT-AN11.txt and parking.md's PARKAN-26
+at the repo root. The finalization commit "AN11: the releve, seen" is built on 54c7090
+and is web-and-Android-byte-identical to it (and to 5a02443: `git diff 5a02443 54c7090
+-- web/ android/` is EMPTY). THE PUSH PUBLISHES 54c7090 TOO -- the operator's complete,
+unpushed spec commit -- because it is the base of this commit on the shared main line;
+this is collaboration, not a clobber, and git's non-fast-forward guard protects the
+other work if it pushes first. The push was plain (never --force).
+
+Android :app:verifyPaparazziDebug GREEN on the final tree (the RED-GREEN plant
+reverted, source diff vs 5a02443 empty). RegisterCoverageTest (parking.md and the
+repo-root reports are declared task inputs) was re-run AFTER this report was written
+(R182), so it scanned this file's own PARKAN-26 citation and parking.md's new entry:
+GREEN (the only id REPORT-AN11.txt cites is PARKAN-26, which now has a full entry, no
+placeholder).
+
+FINAL gate:clone (attempt 3) on HEAD 54c7090 (clean machine: emulator down, no
+concurrent gate:clone, no leftover scratch DB), which clones HEAD and so verifies the
+tree this push carries: GATE:CLONE PASSED.
+  commit  54c709086f3e72f8fc4d65de7478fe4f30f967b0
+  clone   monreleve-clone-UwkRlu (removed), exit 0
+  ran     install, typecheck, lint, test, build, size, db:deploy, test:db,
+          test:container:write, from a clean clone (no .env, no prior node_modules,
+          no generated file the run did not produce itself). The scratch database
+          monreleve_gate_clone_54c70908 was created and migrated from empty by the
+          clone's own db:deploy.
+  claim   this commit builds and passes those suites from a clean checkout.
+  CI readiness: quiet - the repository is private and CI_FULL is unset (the carried
+          FW24 combination).
+  NOT RUN in a clone (R133), making no claim: test:e2e, test:visual, test:runtime,
+          lighthouse, parity:check, test:container.
+
+R132/R199 for the report commit: the finalization commit changes only REPORT-AN11.txt
+and parking.md at the repo root, which are OUTSIDE every web/db path gate:clone
+verifies, so this gate:clone on 54c7090 (byte-identical to the report commit in web/
+and android/) discharges R199 for it - no re-run required by the changed-path
+selection. parking.md and the repo-root reports ARE declared inputs of the Android
+RegisterCoverageTest, which is re-run below.
+
+END OF REPORT-AN11.txt

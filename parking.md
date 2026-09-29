@@ -1326,6 +1326,30 @@ TOUCHES:   SyncEngine.handleOk / isolate and SyncEngineTest.
 
 NEEDS:     an operator decision if per-item recovery is ever wanted for 409 / 413.
 
+## PARKAN-26 - the releve shows only the current tax year; no year selector  [AN11, 2026-09-29]
+
+QUESTION:  FD7 section 1 draws a year-selector chip (a pill « 2027 » with a chevron) beside
+the title, so a person could open a past year's releve. GET /api/v1/dossier already accepts
+?year= and refuses a future_year (docs section 8.3). Should the app ship the year selector, or
+show only the current tax year?
+
+TAKEN:     Only the current tax year is shown - taxYear is Year.now(Europe/Paris) in the
+composition root, and the releve fetches that one year. No selector chip. This is the
+conservative option: the releve is always the in-progress current year (which is why the
+provisional banner is unconditional), and the product never advertises a view it has not built
+(R282/R85). Reversible: a client-only addition - a chip that calls the existing dossierFetch(year)
+seam with a chosen year - needing no migration, no contract change, no published anchor.
+
+NOT TAKEN: the FD7 year selector. It would need a year-picker component, a rule for which years
+are offered (activity start .. current, never a future year), and the empty-record and offline
+states re-checked per year. A pure UI addition when it is wanted.
+
+TOUCHES:   ui/screens/releve/ReleveHeader.kt (the title row), MainActivity/MainGraph (a chosen
+year instead of the fixed taxYear), ReleveController (refetch on year change), and new baselines.
+
+NEEDS:     an operator decision on whether past-year viewing is wanted, and if so which years the
+selector offers.
+
 ## STATUS LEDGER  [appended 2026-09-29]
 
 One line per Android-era entry, so the state of each is visible without
