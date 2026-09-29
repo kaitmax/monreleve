@@ -37,6 +37,7 @@ import ch.monreleve.app.onboarding.SessionSettingsSaver
 import ch.monreleve.app.settings.SettingsStore
 import ch.monreleve.app.settings.SharedPrefsSettingsStore
 import ch.monreleve.app.ui.screens.aujourdhui.AujourdhuiScreen
+import ch.monreleve.app.ui.screens.calendrier.CalendarActions
 import ch.monreleve.app.ui.screens.calendrier.CalendrierScreen
 import ch.monreleve.app.ui.screens.onboarding.OnboardingActions
 import ch.monreleve.app.ui.screens.onboarding.OnboardingScreen
@@ -182,8 +183,14 @@ private fun MainShell(
                 AppTab.CALENDRIER ->
                     CalendrierScreen(
                         state = calendarState,
-                        onPreviousMonth = calendar::goPreviousMonth,
-                        onNextMonth = calendar::goNextMonth,
+                        actions =
+                            CalendarActions(
+                                onPreviousMonth = calendar::goPreviousMonth,
+                                onNextMonth = calendar::goNextMonth,
+                                onDayClick = calendar::openDay,
+                                onSave = calendar::save,
+                                onDismissSheet = calendar::closeSheet,
+                            ),
                     )
             }
         }

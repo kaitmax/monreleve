@@ -108,17 +108,31 @@ private fun Provenance.toDayProvenance(): DayProvenance =
     }
 
 /**
- * The quality of ONE recorded row. SYNCED reads the server's flag from its own firstRecordedAt (R216);
- * anything not yet SYNCED (pending or a client-defect FAILED) is PENDING - unsynced, so on-time versus
- * late is not yet a server fact.
+ * Would the server flag this row « saisie tardive »? The ONE home for the late-from-server rule (R216 /
+ * R206): true only once the row is SYNCED and its own firstRecordedAt is more than the threshold after
+ * the day, by the SAME rule the server's late.ts uses (LatenessForecast.wouldBeLate, fixture-bound). A
+ * pending row is not late - on-time-versus-late is not yet a server fact. Read by both the grid cell
+ * (qualityOf) and the edit sheet (CalendarController), so the two cannot disagree.
  */
 @Suppress("ReturnCount")
-private fun qualityOf(entry: EntryEntity): RecordQuality {
-    if (entry.syncState != SyncState.SYNCED) return RecordQuality.PENDING
-    val recordedAt = entry.firstRecordedAt?.let { parseServerInstant(it) } ?: return RecordQuality.PENDING
-    val day = LocalDate.parse(entry.dayDate)
-    return if (LatenessForecast.wouldBeLate(day, recordedAt)) RecordQuality.LATE else RecordQuality.ON_TIME
+fun serverLate(entry: EntryEntity): Boolean {
+    if (entry.syncState != SyncState.SYNCED) return false
+    val recordedAt = entry.firstRecordedAt?.let { parseServerInstant(it) } ?: return false
+    return LatenessForecast.wouldBeLate(LocalDate.parse(entry.dayDate), recordedAt)
 }
+
+/**
+ * The quality of ONE recorded row. SYNCED with a timestamp reads the server's flag (serverLate);
+ * anything not yet SYNCED (pending or a client-defect FAILED), or synced without a timestamp yet, is
+ * PENDING - unsynced, so on-time versus late is not yet a server fact.
+ */
+private fun qualityOf(entry: EntryEntity): RecordQuality =
+    when {
+        entry.syncState != SyncState.SYNCED -> RecordQuality.PENDING
+        entry.firstRecordedAt == null -> RecordQuality.PENDING
+        serverLate(entry) -> RecordQuality.LATE
+        else -> RecordQuality.ON_TIME
+    }
 
 /**
  * Combine a day's rows into the ONE letter, bar and mark a cell can show (PARKAN: the mixed half-day

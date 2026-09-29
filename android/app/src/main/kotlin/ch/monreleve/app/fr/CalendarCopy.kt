@@ -20,4 +20,11 @@ object CalendarCopy {
      * legend's grey bar (FD6 section 3), which are the same concept and must not become two strings.
      */
     const val NON_RENSEIGNE = "Non renseigné"
+
+    // The edit sheet (FD6 A2). The kind chooser reuses AujourdhuiCopy (one record vocabulary across the
+    // two surfaces); only the sheet's own chrome lives here.
+    const val SHEET_QUESTION = "Où avez-vous travaillé ?"
+    const val SHEET_NOTE_LABEL = "Note (facultatif)"
+    const val SHEET_SAVE = "Enregistrer"
+    const val SHEET_CANCEL = "Annuler"
 }

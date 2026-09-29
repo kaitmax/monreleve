@@ -7,7 +7,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
+import ch.monreleve.app.aujourdhui.RecordedKind
+import ch.monreleve.app.aujourdhui.Slot
 import ch.monreleve.app.calendar.CalendarState
+import ch.monreleve.app.calendar.EditableDay
+import ch.monreleve.app.calendar.EditableSlot
 import ch.monreleve.app.calendar.buildMonthView
 import ch.monreleve.app.data.local.AbsenceReason
 import ch.monreleve.app.data.local.EntryEntity
@@ -16,6 +20,7 @@ import ch.monreleve.app.data.local.Portion
 import ch.monreleve.app.data.local.Provenance
 import ch.monreleve.app.data.local.SyncState
 import ch.monreleve.app.design.FrontierTheme
+import ch.monreleve.app.onboarding.GranularityChoice
 import ch.monreleve.app.settings.Settings
 import org.junit.Rule
 import org.junit.Test
@@ -80,11 +85,39 @@ class CalendrierScreenScreenshotTest {
             month = 6,
         )
 
+    private val noopActions =
+        CalendarActions(
+            onPreviousMonth = {},
+            onNextMonth = {},
+            onDayClick = {},
+            onSave = { _, _ -> },
+            onDismissSheet = {},
+        )
+
+    // A day open in the edit sheet: a recorded Domicile with a note, DAY granularity (FD6 A2).
+    private val editingDay =
+        EditableDay(
+            isoDate = "2026-06-03",
+            granularity = GranularityChoice.DAY,
+            slots =
+                listOf(
+                    EditableSlot(
+                        slot = Slot.FULL,
+                        kind = RecordedKind.DOMICILE,
+                        absence = null,
+                        note = "Réunion annulée",
+                        late = false,
+                        modifiedAt = null,
+                        firstRecordedAt = "2026-06-03T09:00:00Z",
+                    ),
+                ),
+        )
+
     @Composable
     private fun host(state: CalendarState) {
         FrontierTheme {
             Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                CalendrierScreen(state = state, onPreviousMonth = {}, onNextMonth = {})
+                CalendrierScreen(state = state, actions = noopActions)
             }
         }
     }
@@ -92,5 +125,18 @@ class CalendrierScreenScreenshotTest {
     @Test
     fun calendrierMonth() {
         paparazzi.snapshot { host(CalendarState(monthView = month)) }
+    }
+
+    // The edit sheet's content directly (a ModalBottomSheet's own scaffolding does not render reliably
+    // under Layoutlib, so the content composable is baselined on its own).
+    @Test
+    fun calendrierEditSheet() {
+        paparazzi.snapshot {
+            FrontierTheme {
+                Surface(color = MaterialTheme.colorScheme.background) {
+                    CalendarEditSheetContent(day = editingDay, onSave = {}, onCancel = {})
+                }
+            }
+        }
     }
 }

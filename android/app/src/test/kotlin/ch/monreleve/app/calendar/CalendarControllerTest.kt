@@ -1,10 +1,17 @@
 package ch.monreleve.app.calendar
 
+import ch.monreleve.app.aujourdhui.RecordedKind
+import ch.monreleve.app.aujourdhui.Slot
+import ch.monreleve.app.data.local.EntryKind
+import ch.monreleve.app.data.local.Portion
+import ch.monreleve.app.data.local.SyncState
 import ch.monreleve.app.data.repo.FakeEntryDao
 import ch.monreleve.app.data.repo.LocalEntryRepository
+import ch.monreleve.app.data.repo.RecordCommand
 import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -83,6 +90,52 @@ class CalendarControllerTest : FunSpec({
             view.shouldNotBeNull()
             view.month shouldBe 7
             view.canGoPrev shouldBe false
+        }
+    }
+
+    val june15 = Clock.fixed(Instant.parse("2026-06-15T10:00:00Z"), ZoneId.of("Europe/Paris"))
+
+    test("tapping a recordable past day opens the edit sheet, prefilled from its row") {
+        runTest {
+            val repo = LocalEntryRepository(FakeEntryDao(), june15)
+            repo.record(RecordCommand(dayDate = "2026-06-11", kind = EntryKind.HOME))
+            val controller = CalendarController(repo, storeWith(), TAX_YEAR, june15, this)
+            advanceUntilIdle()
+            controller.openDay("2026-06-11")
+            val editing = controller.state.value.editing
+            editing.shouldNotBeNull()
+            editing.slots.first().kind shouldBe RecordedKind.DOMICILE
+        }
+    }
+
+    test("a future day does not open the sheet - future days cannot be recorded (AC1)") {
+        runTest {
+            val repo = LocalEntryRepository(FakeEntryDao(), june15)
+            val controller = CalendarController(repo, storeWith(), TAX_YEAR, june15, this)
+            advanceUntilIdle()
+            controller.openDay("2026-06-20")
+            controller.state.value.editing.shouldBeNull()
+        }
+    }
+
+    test("saving records the day through the queue and requests a sync (D16, SPEC 13.2)") {
+        runTest {
+            val dao = FakeEntryDao()
+            val repo = LocalEntryRepository(dao, june15)
+            var syncRequests = 0
+            val controller =
+                CalendarController(repo, storeWith(), TAX_YEAR, june15, this, requestSync = { syncRequests += 1 })
+            advanceUntilIdle()
+            controller.openDay("2026-06-10")
+            controller.save("2026-06-10", listOf(SlotEdit(Slot.FULL, RecordedKind.SUISSE, null, "reunion")))
+            advanceUntilIdle()
+            val row = dao.byDayPortion("2026-06-10", Portion.FULL)
+            row?.kind shouldBe EntryKind.CH
+            row?.note shouldBe "reunion"
+            row?.syncState shouldBe SyncState.PENDING
+            syncRequests shouldBe 1
+            // The sheet closes on save (no success animation; the cell updates by observation).
+            controller.state.value.editing.shouldBeNull()
         }
     }
 })

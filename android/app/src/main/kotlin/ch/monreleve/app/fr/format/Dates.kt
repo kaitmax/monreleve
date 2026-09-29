@@ -150,6 +150,7 @@ fun formatDateTime(
 private val FRENCH: Locale = Locale.FRENCH
 
 private val MONTH_YEAR: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM yyyy", FRENCH)
+private val DAY_LONG: DateTimeFormatter = DateTimeFormatter.ofPattern("EEEE d MMMM yyyy", FRENCH)
 
 private fun capitalizeFirst(text: String): String {
     return if (text.isEmpty()) text else text[0].uppercaseChar() + text.substring(1)
@@ -160,3 +161,17 @@ fun formatMonthYear(
     year: Int,
     month: Int,
 ): String = capitalizeFirst(LocalDate.of(year, month, 1).format(MONTH_YEAR))
+
+/** "Lundi 15 juin 2026" from an ISO YYYY-MM-DD day, French weekday and month, leading capital (FD6 title). */
+fun formatDayLong(isoDay: String): String {
+    require(ISO_DAY_SHAPE.matches(isoDay)) {
+        "formatDayLong needs an ISO YYYY-MM-DD day, received \"$isoDay\""
+    }
+    val parsed =
+        try {
+            LocalDate.parse(isoDay)
+        } catch (cause: DateTimeParseException) {
+            throw IllegalArgumentException("\"$isoDay\" is not a real calendar day in ISO YYYY-MM-DD form", cause)
+        }
+    return capitalizeFirst(parsed.format(DAY_LONG))
+}
