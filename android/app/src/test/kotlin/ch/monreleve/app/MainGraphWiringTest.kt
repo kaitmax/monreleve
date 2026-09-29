@@ -2,10 +2,12 @@ package ch.monreleve.app
 
 import ch.monreleve.app.aujourdhui.RecordedKind
 import ch.monreleve.app.aujourdhui.Slot
+import ch.monreleve.app.auth.PostOutcome
 import ch.monreleve.app.calendar.SlotEdit
 import ch.monreleve.app.data.remote.DossierResult
 import ch.monreleve.app.data.repo.FakeEntryDao
 import ch.monreleve.app.data.repo.LocalEntryRepository
+import ch.monreleve.app.onboarding.SettingsSaver
 import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
 import io.kotest.core.spec.style.FunSpec
@@ -45,6 +47,13 @@ private fun store(): SettingsStore =
         override fun clear() = Unit
     }
 
+// AN12: a stub /api/v1/me PATCH seam. The Parametres controller is not a DayWriter, so it is outside this
+// test's requestSync census; the saver just has to exist for the graph to build.
+private fun saver(): SettingsSaver =
+    object : SettingsSaver {
+        override suspend fun saveSettings(body: String): PostOutcome = PostOutcome.Ok(200, "{}")
+    }
+
 // The day-writers the graph builds, enumerated by TYPE off MainControllers' own properties (reflection),
 // never a hand-kept list: a controller added to the holder that implements DayWriter is covered here
 // without editing this test. KNOWN LIMIT: a day-writer the graph builds but does NOT store on
@@ -70,6 +79,7 @@ class MainGraphWiringTest : FunSpec({
                     // The Releve controller is not a DayWriter; stub seams keep this test about the sync wiring.
                     dossierFetch = { DossierResult.NetworkError },
                     exportBytes = { ch.monreleve.app.auth.BytesOutcome.NetworkError },
+                    settingsSaver = saver(),
                 )
 
             val writers = dayWritersOf(controllers)
@@ -102,6 +112,7 @@ class MainGraphWiringTest : FunSpec({
                     requestSync = { syncs++ },
                     dossierFetch = { DossierResult.NetworkError },
                     exportBytes = { ch.monreleve.app.auth.BytesOutcome.NetworkError },
+                    settingsSaver = saver(),
                 )
             advanceUntilIdle()
 

@@ -5,6 +5,8 @@ import ch.monreleve.app.auth.BytesOutcome
 import ch.monreleve.app.calendar.CalendarController
 import ch.monreleve.app.data.remote.DossierResult
 import ch.monreleve.app.data.repo.EntryRepository
+import ch.monreleve.app.onboarding.SettingsSaver
+import ch.monreleve.app.parametres.ParametresController
 import ch.monreleve.app.releve.ReleveController
 import ch.monreleve.app.settings.SettingsStore
 import kotlinx.coroutines.CoroutineScope
@@ -37,6 +39,9 @@ class MainControllers(
     // AN11: the Releve controller. NOT a DayWriter (it reads the server's document, it records nothing), so
     // MainGraphWiringTest's requestSync census is unaffected - it filters by the DayWriter type.
     val releve: ReleveController,
+    // AN12: the Parametres controller. NOT a DayWriter either (it edits settings and account state, it never
+    // records a day), so it is outside the requestSync census by the same DayWriter filter.
+    val parametres: ParametresController,
 )
 
 /**
@@ -63,10 +68,14 @@ object MainGraph {
         dossierFetch: suspend (Int) -> DossierResult,
         // AN11: the export seam (SessionManager::authenticatedGetBytes in the app), for the PDF and CSV.
         exportBytes: suspend (String) -> BytesOutcome,
+        // AN12: the /api/v1/me PATCH seam (SessionSettingsSaver(session) in the app; a stub in tests), the
+        // same seam onboarding uses - so the settings write has no second transport (R206).
+        settingsSaver: SettingsSaver,
     ): MainControllers =
         MainControllers(
             aujourdhui = AujourdhuiController(repository, settingsStore, taxYear, clock, scope, requestSync),
             calendar = CalendarController(repository, settingsStore, taxYear, clock, scope, requestSync),
             releve = ReleveController(dossierFetch, exportBytes, repository, taxYear, scope),
+            parametres = ParametresController(settingsSaver, settingsStore, repository, taxYear, scope),
         )
 }

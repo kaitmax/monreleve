@@ -15,11 +15,10 @@ import ch.monreleve.app.fr.NavCopy
 // component: no data layer (fence 5), copy from fr/, colours and the active tint from FrontierTheme.
 //
 // ICONS ARE LUCIDE (R293, AN10b), converted to vector drawables and committed - no runtime dependency
-// (R136). FD6/FD7 draw lucide `sun` (Aujourd'hui), `calendar` (Calendrier) and `file-text` (Releve); those
-// exact glyphs ship as res/drawable/ic_sun, ic_calendar and ic_file_text (AN10b committed ic_file_text for
-// this task). The visible label carries each destination's name, so the icon is decorative
-// (contentDescription null). `settings` (AN12 Parametres) is committed too but NOT shown - no tab for a
-// screen that does not exist yet (R282).
+// (R136). FD6/FD7/FD9 draw lucide `sun` (Aujourd'hui), `calendar` (Calendrier), `file-text` (Releve) and
+// `settings` (Parametres); those exact glyphs ship as res/drawable/ic_sun, ic_calendar, ic_file_text and
+// ic_settings. The visible label carries each destination's name, so the icon is decorative
+// (contentDescription null). AN12 shows the `settings` tab now that the Parametres screen exists (R282).
 
 @Composable
 fun AppBottomBar(
@@ -44,6 +43,12 @@ fun AppBottomBar(
             onClick = { onSelect(AppTab.RELEVE) },
             icon = { Icon(painter = painterResource(R.drawable.ic_file_text), contentDescription = null) },
             label = { Text(text = NavCopy.RELEVE) },
+        )
+        NavigationBarItem(
+            selected = selected == AppTab.PARAMETRES,
+            onClick = { onSelect(AppTab.PARAMETRES) },
+            icon = { Icon(painter = painterResource(R.drawable.ic_settings), contentDescription = null) },
+            label = { Text(text = NavCopy.PARAMETRES) },
         )
     }
 }

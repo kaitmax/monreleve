@@ -42,6 +42,8 @@ import ch.monreleve.app.fr.ReleveCopy
 import ch.monreleve.app.onboarding.OnboardingController
 import ch.monreleve.app.onboarding.OnboardingPhase
 import ch.monreleve.app.onboarding.SessionSettingsSaver
+import ch.monreleve.app.onboarding.SettingsSaver
+import ch.monreleve.app.parametres.ParametresController
 import ch.monreleve.app.releve.ExportEvent
 import ch.monreleve.app.releve.ExportKind
 import ch.monreleve.app.settings.SettingsStore
@@ -51,6 +53,8 @@ import ch.monreleve.app.ui.screens.calendrier.CalendarActions
 import ch.monreleve.app.ui.screens.calendrier.CalendrierScreen
 import ch.monreleve.app.ui.screens.onboarding.OnboardingActions
 import ch.monreleve.app.ui.screens.onboarding.OnboardingScreen
+import ch.monreleve.app.ui.screens.parametres.ParametresActions
+import ch.monreleve.app.ui.screens.parametres.ParametresScreen
 import ch.monreleve.app.ui.screens.releve.ReleveActions
 import ch.monreleve.app.ui.screens.releve.ReleveScreen
 import ch.monreleve.app.ui.screens.signin.RequestLinkScreen
@@ -125,6 +129,7 @@ class MainActivity : ComponentActivity() {
                                 },
                                 dossierFetch = dossierApi::fetch,
                                 exportBytes = session::authenticatedGetBytes,
+                                settingsSaver = SessionSettingsSaver(session),
                             )
                     }
                 }
@@ -194,19 +199,25 @@ private fun MainShell(
     requestSync: () -> Unit,
     dossierFetch: suspend (Int) -> DossierResult,
     exportBytes: suspend (String) -> BytesOutcome,
+    settingsSaver: SettingsSaver,
 ) {
     // R291: the controllers are built by MainGraph, the ONE construction site MainGraphWiringTest also
     // calls - so the graph the JVM test checks is the graph the app uses. SPEC 13.2: both day-writers are
     // built with requestSync, and the test fails if either is not (the AN10 calendar-never-synced bug,
     // which hid because this wiring lived inside a Composable no JVM test reaches, R176/R204). AN11 adds
-    // the Releve controller, wired with the dossier fetch and export seams.
+    // the Releve controller; AN12 adds the Parametres controller, wired with the /api/v1/me PATCH seam.
     val controllers =
-        remember { MainGraph.build(repository, store, taxYear, clock, scope, requestSync, dossierFetch, exportBytes) }
+        remember {
+            MainGraph.build(
+                repository, store, taxYear, clock, scope, requestSync, dossierFetch, exportBytes, settingsSaver,
+            )
+        }
     var tab by remember { mutableStateOf(AppTab.AUJOURDHUI) }
 
     val aujourdhuiState by controllers.aujourdhui.state.collectAsState()
     val calendarState by controllers.calendar.state.collectAsState()
     val releveState by controllers.releve.state.collectAsState()
+    val parametresState by controllers.parametres.state.collectAsState()
 
     // AC2 / R136: an export event carries the server-rendered file to the platform share sheet. Handled at
     // the shell level (not inside the Releve tab) so a switch of tab after the tap does not cancel the hand-off.
@@ -242,10 +253,28 @@ private fun MainShell(
                                 onExportCsv = { controllers.releve.export(ExportKind.CSV) },
                             ),
                     )
+                AppTab.PARAMETRES ->
+                    ParametresScreen(state = parametresState, actions = parametresActions(controllers.parametres))
             }
         }
     }
 }
+
+// AN12: the Parametres screen's callbacks, built from the controller's method references. A top-level helper
+// (not inline in MainShell) so the shell composable stays within its length budget; a plain mapping, not a
+// Composable, so it carries no state.
+private fun parametresActions(controller: ParametresController): ParametresActions =
+    ParametresActions(
+        onCantonChange = controller::onCantonChange,
+        onEmploymentRateChange = controller::onEmploymentRateChange,
+        onDenominatorChange = controller::onDenominatorChange,
+        onExactTotalChange = controller::onExactTotalChange,
+        onGranularityChange = controller::onGranularityChange,
+        onActivityStartDateChange = controller::onActivityStartDateChange,
+        onSave = controller::save,
+        onConfirmRateChange = controller::confirmSave,
+        onCancelRateChange = controller::cancelSave,
+    )
 
 // AC2 / R136: hand the server-rendered export to the platform. A Ready event's bytes are written to a
 // private cache file and shared through a FileProvider content URI (no storage permission), so a viewer or a

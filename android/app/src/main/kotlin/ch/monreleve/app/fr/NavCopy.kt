@@ -11,6 +11,11 @@ object NavCopy {
     const val CALENDRIER = "Calendrier"
 
     // AN11: the Releve tab and its screen land together (R282 - the tab is advertised the moment its screen
-    // exists, not before). Parametres joins in AN12.
+    // exists, not before).
     const val RELEVE = "Relevé"
+
+    // AN12: the Parametres tab. The label IS the screen's title, so it has ONE home (R206) - the nav label
+    // references ParametresCopy.TITLE rather than restating "Paramètres", which the duplication guard would
+    // otherwise flag as two constants holding the same string.
+    const val PARAMETRES = ParametresCopy.TITLE
 }
