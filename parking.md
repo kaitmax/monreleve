@@ -1176,3 +1176,119 @@ add their nav items and may need the extended set for `file-text`/`settings`.
 
 NEEDS:     an operator decision on adding an icon dependency, ideally when AN11's
 Releve tab forces the `file-text` question.
+
+---
+
+## THE NUMBERING, AND WHY THERE IS A GAP  [appended 2026-09-29]
+
+Two series share this file, and three Android sessions used them
+inconsistently. None of the numbers below is changed, because reports
+cite every one of them (R162's rule: the thing that is cited keeps its
+name).
+
+| Series | Holds | Runs |
+|---|---|---|
+| `PARK-<n>` | web and deployment decisions | 1–19 |
+| `PARKAN-<n>` | Android decisions | 1–4, 16–21 |
+
+**PARK-17, PARK-18 and PARK-19 are Android entries filed in the web
+series by AN3.** They keep those numbers because REPORT-AN3.txt cites
+them. They are closed — see the ledger at the end of this file.
+
+**PARKAN-5 to PARKAN-15 were never assigned.** That is a gap in the
+numbering, not a set of missing entries. Nothing cites them.
+
+**PARKAN-16, 17 and 18 were cited in REPORT-AN5b.txt and REPORT-AN5c.txt
+but never written here.** A report that cites an entry this file does not
+contain cannot be followed up, so they are backfilled below under the
+numbers the reports use.
+
+**From now on:** Android decisions are `PARKAN-<n>` only, starting at
+**PARKAN-24**. Web and deployment decisions continue at **PARK-20**.
+
+**What would have caught this — R294.** A test that scans every
+`REPORT-*.txt` for `PARK-<n>` and `PARKAN-<n>` and fails if any cited id
+has no entry in this file. The reports and the register describe the
+same thing from two sides, and nothing checked the space between them
+(R175). The scope is derived from the reports on disk, never listed.
+
+## PARKAN-16 - the 56 dp primary button  [AN5b, 2026-09-28 — backfilled 2026-09-29]
+
+QUESTION:  SPEC 11.2 specifies 56 dp large buttons; 56 was not in the
+spacing token set, and adding a sizing token was an ask-first item.
+
+TAKEN:     The record buttons used the 48 dp touch-target token, which
+meets the Android minimum, pending a sizing-token decision.
+
+STATUS:    CLOSED by R285 — 56 dp added as a port of R62's size family,
+cited to SPEC 11.2. Implemented in AN5c increment 3 per its prompt;
+confirm against REPORT-AN5c.txt.
+
+## PARKAN-17 - the offline banner  [AN5b, 2026-09-28 — backfilled 2026-09-29]
+
+QUESTION:  SPEC 11.2 mentions an offline banner, and no connectivity
+source was wired.
+
+TAKEN:     Offline was represented by the persistent pending line, which
+is what being offline produces: unsynced rows.
+
+STATUS:    CLOSED by R286 — no offline banner, because the app is
+offline-first and a network banner worries people about something that
+does not affect their record. The pending line instead escalates as the
+oldest unsynced day nears the late threshold, which comes from one value
+shared with the server. Implemented in AN5c increments 2–3 per its
+prompt; confirm against REPORT-AN5c.txt.
+
+## PARKAN-18 - cited in REPORT-AN5c.txt  [AN5c — backfilled 2026-09-29]
+
+**Not transcribed.** REPORT-AN10.txt records that AN5c cited PARKAN-18
+without persisting it. The operator did not have REPORT-AN5c.txt when this
+backfill was written, and an entry reconstructed from memory would be an
+unsourced claim in the register meant to prevent them. **The next session
+transcribes it from REPORT-AN5c.txt**, under this number, and removes this
+paragraph.
+
+## PARKAN-22 - SUPERSEDES PARKAN-20: a split half-day must show as split  [ruling R292, 2026-09-29]
+
+PARKAN-20 showed a half-day pair as the morning's kind. **That is
+reversed.** A cell must never show less than the record: a day that was
+Suisse in the morning and Domicile in the afternoon, shown as Suisse,
+misstates the day. The exact visual form is a design choice, but the cell
+must show that the day was split, and TalkBack must read both halves.
+
+TOUCHES:   DayCell, CalendarModel's cell mapping, the calendrier baselines
+(regenerated with this reason, R135).
+
+## PARKAN-23 - SUPERSEDES PARKAN-21: Lucide icons, imported as vector drawables  [ruling R293, 2026-09-29]
+
+PARKAN-21 used core Material icons in the bottom navigation. **That is
+reversed, without adding a dependency.** Lucide's SVGs are ISC-licensed:
+the handful the app needs — `sun`, `calendar`, `file-text`, `settings` —
+are converted to Android vector drawables and committed, so there is no
+runtime dependency (R136) and the design system's icon set is honoured.
+Their ISC attribution goes on AN12's licences screen, beside the polygon's
+ODbL.
+
+TOUCHES:   ui/shell/AppBottomBar.kt, a new drawable per icon, ZoneBadge's
+stand-in glyphs if Lucide equivalents exist, AN12's licences screen.
+
+## STATUS LEDGER  [appended 2026-09-29]
+
+One line per Android-era entry, so the state of each is visible without
+reading every section. Entries are not edited; this ledger is.
+
+| Entry | State | By |
+|---|---|---|
+| PARK-17 — rail tick labels at 200 % | **closed** | R271, AN4 increment 0 |
+| PARK-18 — DayCell and legend at 200 % | **closed** | R271 — legend in AN4, calendar list in AN10 |
+| PARK-19 — Breakpoints token | **closed, ratified** | R272 |
+| PARKAN-1 — OS App Link verification | **open** | needs the domain and fingerprints |
+| PARKAN-2 — sign-out and the local store | **reversed** | R295: sign-out clears the local store; lands in AN12 |
+| PARKAN-3 — offline record-then-edit coalesces | **closed, ratified** | R275 |
+| PARKAN-4 — a 400 fails the whole batch | **amended** | R296: the batch is isolated item by item once; lands in AN11 increment 0 |
+| PARKAN-16 — the 56 dp button | **closed** | R285 |
+| PARKAN-17 — the offline banner | **closed** | R286 |
+| PARKAN-18 | **not transcribed** | the next session |
+| PARKAN-19 — no cantonal holidays table | **closed, ratified** | SPEC 7.2: holidays are absorbed into the 240-day basis; no verified source exists, so R146 means it is not written |
+| PARKAN-20 — split half-day shown as morning | **reversed** | PARKAN-22, R292 |
+| PARKAN-21 — core Material icons | **reversed** | PARKAN-23, R293 |
