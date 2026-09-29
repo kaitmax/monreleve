@@ -1,0 +1,316 @@
+====================================================================
+REPORT-FW33 - THE PUBLIC SHELL
+====================================================================
+
+TASK      FW33, the shell slice of
+          docs/superpowers/specs/2026-09-29-home-page-design.md
+          (section 4). No relay/FW33.txt exists: the spec, approved
+          section by section, is the session prompt. Header, nav and
+          footer of every public page. No home-body change (FW34).
+COMMIT    62daf22 FW33: the public shell - nav, footer, and a menu of
+          one is a link
+RULINGS   H1-H10, recorded verbatim in the spec, section 2.1. The ones
+          this slice rests on:
+            H4  Section 1, the shell: "yes its look right / go"
+            H7  "DESIGN-SYSTEM wins (Recommended)" - nav stays
+                text-primary; H7 supersedes H4 on the nav colour
+            H10 "All seven guides (Recommended)" - the footer's Guides
+                column lists every published article
+          Also R85, R135, R154, R172, R177, R179, R181, R206, R207,
+          R211, D40, SPEC 9.2.
+
+====================================================================
+SUMMARY
+====================================================================
+The header's nav now sits centre-right, 32 px apart; the Calculateurs
+menu - which had one live child - renders as a link to that child
+under the child's own label; and the footer is four equal columns
+(two on a phone) carrying every published guide, the alert list, the
+about page, and Sources moved to Le produit.
+
+The one design problem the spec left open was how a CLIENT component
+gets the guide labels without typing them (R181). Answer: a new
+guideNavLinks() in lib/guides/registry.ts derives each link from the
+article's own breadcrumbLabel, and PublicShell takes it as a REQUIRED
+guideLinks prop. All 51 renders across 15 files pass it; forgetting it
+is a type error, not a footer silently missing its guides.
+
+Cropping a regenerated baseline found a defect no gate saw: in two
+narrow footer columns, labels that wrapped to two lines filled their
+44 px row exactly and ran into one another. Fixed with padding-block
+on .footerLink (one-line rows unchanged), with its own test first.
+
+====================================================================
+WHAT CHANGED
+====================================================================
+lib/content/routes.ts
+  collapseLoneDisclosures(entries): a disclosure with exactly one
+  child becomes { label: child.label, href: child.href }. Applied
+  AFTER visibleNav, which is unchanged - so regulatory-gate.test.ts,
+  which asserts the disclosure itself survives the gate, still holds.
+  Reads no registry, needs no routes parameter.
+lib/guides/registry.ts
+  guideNavLinks(): every published guide as { label:
+  breadcrumbLabel, href: /guides/<slug> }, sorted by CLUSTERS
+  (pillar, cluster, canton - SPEC 9.5's and the hub's order; the sort
+  is stable). Server-only, like the rest of the file.
+lib/fr/shell.ts
+  FooterColumn gains `guides?: true`. Outils + Alertes e-mail
+  (/alertes). Guides keeps only Tous les guides; the typed "Le plafond
+  fiscal" entry is gone - it is now derived. Le produit + A propos
+  (/a-propos) + Sources (moved from Legal). Labels are names, never
+  figures (R153).
+lib/ui/react/PublicShell/PublicShell.tsx
+  NAV = collapseLoneDisclosures(visibleNav(SHELL_NAV)). The
+  disclosure button gains a Lucide ChevronDown, aria-hidden, 1.75
+  stroke - only on a real disclosure. NavItem and a NavMenu wrapper
+  are exported. Required prop guideLinks; footerColumns() appends it
+  to the column marked `guides` and filters through
+  visibleFooterColumns.
+lib/ui/react/PublicShell/PublicShell.module.scss
+  .navList gap --space-8. .navLink inline-flex for the caret;
+  .chevron --size-icon-sm. md: .nav margin-left auto, .cta
+  margin-left 0; base .cta keeps margin-left auto (FD2, phone). Footer
+  .columns: grid repeat(2, minmax(0, 1fr)) base, repeat(4, ...) at md.
+  .footerLink padding-block --space-2.
+app/(public)/layout.tsx, app/not-found.tsx, app/dev/composants
+  pass guideLinks={guideNavLinks()}. The workbench gains a
+  shell-nav-disclosure specimen: SHELL_NAV's real two-child menu.
+lib/fr/workbench.ts
+  the specimen's caption.
+SPEC-frontalier-web.md 9.2
+  "Two corrections" -> "Three corrections"; the third records the
+  lone-child collapse, H4, and where it is derived.
+
+====================================================================
+RED RUNS (each guard failed before its code existed)
+====================================================================
+1. tests/unit/content/nav-collapse.test.ts (new)
+     5 failed: "collapseLoneDisclosures is not a function".
+     GREEN: 5 passed, and regulatory-gate.test.ts's 22 still pass.
+2. tests/unit/guides/nav-links.test.ts (new)
+     4 failed: "guideNavLinks is not a function". GREEN: 4 passed.
+3. lib/ui/react/PublicShell/PublicShell.test.tsx (rewritten parts)
+     12 failed | 33 passed, each for the expected reason:
+       lone-child link not found; NavItem undefined (not exported) x5
+       incl. the caret test; desktop .nav had no auto margin; navList
+       gap was --space-5; .columns was flex; no column marked guides;
+       /alertes and /a-propos absent; Sources under Legal.
+     One new test PASSED ON ITS FIRST RUN and is a PIN, not a guard:
+       "keeps the CTA pushed right on a phone" - the base .cta already
+       carried margin-left: auto. It stays so the FW33 margin move
+       cannot drop it.
+4. The footer-link padding test (added after the crop, below)
+     1 failed: .footerLink had no padding-block.
+5. e2e/shell-layout.spec.ts (new) - RUN AGAINST THE PRE-CHANGE CODE.
+     A local clone of 387c5c5 (HEAD before FW33) was built and served
+     on :3199, and the new spec run against it with FRONTALIER_PORT=
+     3199. 6 RED tests failed on the old values, 2 PINs passed:
+       nav right edge 694.9 px from the bar's content edge (<= 1)
+       nav gaps measured 20, 20, 20 (want 32)
+       lone-child link: element not found
+       footer column widths 176, 117, 89, 160 (want equal)
+       footer: /guides/attestation-employeur-teletravail absent
+       phone footer: columns stacked (want two per row)
+     PINS, passing by design: nav colour rgb(17, 24, 39); bar 64 px.
+     The old server's process tree was killed (R179) and the clone
+     deleted; :3199 verified free.
+
+====================================================================
+TESTS THAT CHANGED, DELIBERATELY
+====================================================================
+PublicShell.test.tsx
+  "offers every entry" and "links every leaf" iterate the RENDERED nav
+  (collapsed), not raw SHELL_NAV - raw "Calculateurs" is a button the
+  shell is now right not to render.
+  "the Calculateurs disclosure" -> "a disclosure with two children":
+  the four keyboard tests (aria-expanded, expand, children only when
+  open, Escape returns focus) render NavItem directly with SHELL_NAV's
+  real two-child menu, plus two new: the caret is inside the button,
+  aria-hidden, stroke-width 1.75; no plain nav link draws a caret.
+  New stylesheet assertions (R61): CTA margins per breakpoint, nav
+  gap, footer grid, footer link padding. New footer assertions: every
+  guideNavLinks() link, /alertes, /a-propos, Sources' column.
+tests/unit/pages/*.test.tsx (11 files), lib/ui/react/
+  accessibility.test.tsx - each <PublicShell> render passes
+  guideLinks={guideNavLinks()}. 51 renders rewritten by a script that
+  asserted each file's expected count before writing (R211).
+e2e/composants.visual.spec.ts - SPECIMENS gains shell-nav-disclosure.
+Unchanged and green: regulatory-gate.test.ts, the 44 px panel links,
+the 320 px checks of /, the review-date tests, the CTA gating.
+
+====================================================================
+BASELINES (R207, R135)
+====================================================================
+EXPECTED SET, written down before any run: the 69 files below, plus
+one new specimen. Compare-mode run: 70 failed = exactly those 69 +
+composants-shell-nav-disclosure.png ("A snapshot doesn't exist ...
+writing actual"); nothing outside the set. First update: "R135: 69
+baseline(s) regenerated BY THIS RUN", files on disk = the set.
+
+After the crop found the footer defect, a second update regenerated
+35 of the same 69 - the mobile shots only, which is exactly what a
+padding on wrapped two-line labels can change. Its "70 differ from
+HEAD but this run wrote 35" note is explained by the first run.
+
+PARK-15 CHECK: the second run printed "photographed: 56cbdac" - the
+other session had committed AN12 underneath it. Checked: 387c5c5..
+fc3b13e touches only android/, so the web tree photographed was the
+intended one.
+
+REASON for all 69: shell - nav alignment and spacing, lone
+Calculateurs child rendered as a link, footer grid, added live links,
+Sources moved, footer link padding.
+  calculateur-capture-erreur-{desktop,mobile}.png
+  calculateur-capture-succes-{desktop,mobile}.png
+  calculateur-erreur-{desktop,mobile}.png
+  calculateur-faq-ouverte-{desktop,mobile}.png
+  calculateur-lien-invalide-{desktop,mobile}.png
+  calculateur-lien-partage-{desktop,mobile}.png
+  calculateur-panneau-avis-provisoire-{desktop,mobile}.png
+  calculateur-panneau-bascule-sociale-{desktop,mobile}.png
+  calculateur-panneau-conforme-{desktop,mobile}.png
+  calculateur-panneau-regime-perdu-{desktop,mobile}.png
+  calculateur-rempli-{desktop,mobile}.png
+  calculateur-vide-{desktop,mobile}.png
+  composants-shell-desktop.png, composants-shell-mobile.png,
+  composants-shell-mobile-open.png
+  guides-article-{desktop,mobile}.png
+  guides-article-faq-ouverte-{desktop,mobile}.png
+  guides-attestation-{desktop,mobile}.png
+  guides-cluster-missions-{desktop,mobile}.png
+  guides-geneve-{desktop,mobile}.png
+  guides-hub-{desktop,mobile}.png
+  guides-pilier-{desktop,mobile}.png
+  page-404-{desktop,mobile}.png
+  page-a-propos-{desktop,mobile}.png
+  page-accueil-{desktop,mobile}.png
+  page-alertes-{desktop,mobile}.png
+  page-alertes-confirmee-{desktop,mobile}.png
+  page-alertes-desinscrit-{desktop,mobile}.png
+  page-alertes-lien-invalide-{desktop,mobile}.png
+  page-application-{desktop,mobile}.png
+  page-cgu-{desktop,mobile}.png
+  page-confidentialite-{desktop,mobile}.png
+  page-mentions-legales-{desktop,mobile}.png
+  page-releve-annuel-{desktop,mobile}.png
+  page-sources-{desktop,mobile}.png
+  page-tarifs-{desktop,mobile}.png
+NEW: composants-shell-nav-disclosure.png - the Calculateurs menu with
+its caret, which no page renders while the menu has one live child.
+
+CROPPED AND LOOKED AT: page-accueil-desktop, page-accueil-mobile,
+composants-shell-mobile-open (before and after the padding fix),
+composants-shell-nav-disclosure. The mobile-open crop is where the
+run-together wrapped labels were found.
+
+====================================================================
+SIZE (pnpm size, run explicitly - it is not in gate:changed)
+====================================================================
+                      before (KiB)       after (KiB)
+  every other route   ~107.6, A ~17.4    ~108.7, A ~16.3   (+1.1)
+  /                   107.5,  A 17.5     108.6,  A 16.4
+  /calculateur-...    121.3,  A 3.7      123.2,  A 1.8, B 2.4 spare
+All gated routes pass both gates. "Before" is the figure measured on
+HEAD's build during the spec's verification and matching REPORT-FW29;
+the before table itself was not re-captured (gate:clone's log keeps
+only its tail).
+
+====================================================================
+WALKTHROUGH (R176, R177) - pnpm dev on :3199, 1440 and 360 px
+====================================================================
+Driven: /, /guides, /calculateur-teletravail-frontalier, /sources,
+/guides/geneve, at both widths. Each: 200, stylesheet present (a rule
+declaring --colour-brand, R177), zero horizontal overflow.
+  nav, every page: Calculateur de teletravail / Guides / Le releve /
+  Tarifs (accented originals in lib/fr/shell.ts)
+  footer: Outils: Calculateur de teletravail | Alertes e-mail
+          Guides: Tous les guides | Le plafond fiscal | L'attestation
+            employeur | La declaration | Le droit d'option | Les jours
+            de mission | Le seuil social | Geneve
+          Le produit: Le releve | L'application | Tarifs | A propos |
+            Sources
+          Legal: Mentions legales | Confidentialite | Conditions
+            d'utilisation
+  19 distinct shell links followed: all 200.
+  Clicking the nav's calculator link lands on the calculator.
+  The mobile panel lists the same four labels as the desktop nav.
+The dev-server home screenshot agrees with page-accueil-desktop.png
+(the only differences: Next's dev indicator and host font rendering).
+The dev server's tree was killed (R179); :3199 verified free.
+
+====================================================================
+EXIT GATE
+====================================================================
+FRONTALIER_PORT=3199 pnpm gate:changed - selection pasted in 62daf22:
+  suites: typecheck, lint, test, build, test:visual, test:e2e,
+          test:db, test:late
+    typecheck exit 0 | lint exit 0 | test 2956 passed | build exit 0
+    test:visual 109 passed | test:e2e 292 passed | test:db 546 passed
+    test:late 10 passed
+The port was moved because, earlier today, the other session's
+monreleve-an11 container held :3000 (see NOTICED).
+
+====================================================================
+NOTICED BUT NOT TOUCHING
+====================================================================
+- THE CALCULATOR'S HEADROOM IS NOW 1.8 KiB (GATE A), 2.4 (GATE B).
+  FW33 cost +1.1 KiB on every route and +1.9 on the calculator - more
+  than one icon and three small functions suggest. Not investigated;
+  FW34's home body adds no client JS, but the next calculator task
+  will feel it.
+- R169's live-server identity check cannot tell a SIBLING instance of
+  this product from the one under test. The other session's
+  monreleve-an11 container (:3000, a different AUTH_SECRET) passed it,
+  and every live PDF test then got a 503 from print tokens it could
+  not verify - the first gate:clone of the spec commit failed that way
+  before FRONTALIER_PORT was moved.
+- PublicShell's Menu and X icons still omit strokeWidth 1.75 and ship
+  at lucide-react's default 2.
+- lib/fr/shell.ts types "Calculateur de teletravail" twice (nav child
+  and footer link); the "agrees with the header" test keeps them in
+  step, which R206 would call a comparison rather than one home.
+- The header CTA "Suivre mes jours" promises tracking but is gated on
+  appExists alone (inherited; for the release task).
+- gate:clone reports "the repository is private and CI_FULL is unset
+  - jobs will skip", which contradicts R248's recorded state.
+- The visual container logs "[scheduler] failed to start: connect
+  ECONNREFUSED 127.0.0.1:5436" on every run (pre-existing, no effect
+  on the suite).
+- web/Dockerfile still pins CHROMIUM_VERSION 153 (Coolify overrides).
+
+====================================================================
+DEVIATIONS
+====================================================================
+- NO SEPARATE IMPLEMENTATION PLAN. The user asked to continue
+  implementing after the spec was approved; the spec's sections 4 and
+  7-9 served as the plan.
+- NO SUBAGENTS. Every agent call in this session failed with "You've
+  hit your session limit"; all work was inline.
+- The e2e spec was written after the implementation, and its RED was
+  shown by running it against a build of the pre-change commit rather
+  than against the tree before editing. The unit guards were RED in
+  the ordinary order.
+- The required guideLinks prop touched 15 files outside the shell
+  (all mechanical, script-asserted). The alternative - a defaulted
+  prop - would have been a silent empty footer on any call site that
+  forgot it.
+- Collapsed-link label: the CHILD's label ("Calculateur de
+  teletravail"), per the spec. FD11 draws "Calculateurs" with a caret.
+
+====================================================================
+QUESTIONS
+====================================================================
+1. FW34 (the home body) is next. CLAUDE.md is one task per session:
+   continue in this session, or start a new one?
+2. The calculator's 1.8 KiB of GATE A headroom: acceptable, or should
+   FW33's +1.9 KiB there be investigated before anything else lands
+   on that route?
+
+====================================================================
+PUSH PROOF
+====================================================================
+gate:clone runs on the commit that carries this report, before the
+push; the push contains 62daf22 and this report's commit only. The
+result and the pushed hashes are quoted in the session's closing
+message.
