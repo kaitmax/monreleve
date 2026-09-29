@@ -1239,14 +1239,22 @@ oldest unsynced day nears the late threshold, which comes from one value
 shared with the server. Implemented in AN5c increments 2–3 per its
 prompt; confirm against REPORT-AN5c.txt.
 
-## PARKAN-18 - cited in REPORT-AN5c.txt  [AN5c — backfilled 2026-09-29]
+## PARKAN-18 - the escalation look-ahead window  [AN5c, 2026-09-28 — transcribed for AN10b 2026-09-29]
 
-**Not transcribed.** REPORT-AN10.txt records that AN5c cited PARKAN-18
-without persisting it. The operator did not have REPORT-AN5c.txt when this
-backfill was written, and an entry reconstructed from memory would be an
-unsourced claim in the register meant to prevent them. **The next session
-transcribes it from REPORT-AN5c.txt**, under this number, and removes this
-paragraph.
+Transcribed for AN10b (R294) from REPORT-AN5c.txt's PARKED section, verbatim
+where the report states it. The source report defines it as:
+
+QUESTION:  R286 says the pending line escalates "before" the threshold is
+crossed but does not set how far ahead APPROACHING begins.
+
+TAKEN:     two days (WARN_WINDOW_DAYS = 2L in AujourdhuiController) -- a small
+look-ahead that warns before the crossing without alarming early, the
+conservative choice (claims less). Reversible: a client-only warning constant,
+no migration, no contract.
+
+NOT TAKEN: a wider window (more warning, more noise).
+
+NEEDS:     an operator preference on how many days' warning is wanted.
 
 ## PARKAN-22 - SUPERSEDES PARKAN-20: a split half-day must show as split  [ruling R292, 2026-09-29]
 
@@ -1288,7 +1296,7 @@ reading every section. Entries are not edited; this ledger is.
 | PARKAN-4 — a 400 fails the whole batch | **amended** | R296: the batch is isolated item by item once; lands in AN11 increment 0 |
 | PARKAN-16 — the 56 dp button | **closed** | R285 |
 | PARKAN-17 — the offline banner | **closed** | R286 |
-| PARKAN-18 | **not transcribed** | the next session |
+| PARKAN-18 — the escalation look-ahead window | **open, transcribed** | AN10b R294 from REPORT-AN5c.txt; 2-day window shipped (R286), awaits operator preference |
 | PARKAN-19 — no cantonal holidays table | **closed, ratified** | SPEC 7.2: holidays are absorbed into the 240-day basis; no verified source exists, so R146 means it is not written |
 | PARKAN-20 — split half-day shown as morning | **reversed** | PARKAN-22, R292 |
 | PARKAN-21 — core Material icons | **reversed** | PARKAN-23, R293 |

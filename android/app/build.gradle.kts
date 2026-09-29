@@ -148,6 +148,20 @@ tasks.withType<Test> {
     inputs.dir("$projectDir/src/main/kotlin")
         .withPropertyName("scannedMainSource")
         .withPathSensitivity(PathSensitivity.RELATIVE)
+    // AN10b (R294): the register (parking.md) and every REPORT-*.txt at the repo root, read by
+    // RegisterCoverageTest to check that every PARK-/PARKAN- id a report cites has a real entry. The
+    // report set is enumerated at configuration time (the repo root's direct children only - no
+    // recursive walk into node_modules or build/), so a new report added tomorrow is declared the day
+    // it lands, and REPORT-AN10b.txt itself joins the input set the moment it is written (R283/R182).
+    val repoRootDir = rootProject.layout.projectDirectory.dir("..").asFile
+    val reportFiles =
+        repoRootDir
+            .listFiles { f -> f.isFile && f.name.startsWith("REPORT-") && f.name.endsWith(".txt") }
+            ?.toList()
+            ?: emptyList()
+    inputs.files(reportFiles + repoRootDir.resolve("parking.md"))
+        .withPropertyName("registerAndReports")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 dependencies {
