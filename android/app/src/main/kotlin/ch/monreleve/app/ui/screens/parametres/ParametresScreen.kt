@@ -142,19 +142,28 @@ private fun RateChangeDialog(
     )
 }
 
+// internal (not private) so ParametresDialogScreenshotTest can photograph it at 200 percent - the walkthrough
+// found the value fragmenting there when both texts were unconstrained in a SpaceBetween Row (k-02).
 @Composable
-private fun RateRow(
+internal fun RateRow(
     label: String,
     rate: Double,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.space8),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text = label, style = FrontierType.body, color = LightColors.textSecondary)
+        // The label takes the flexible space and WRAPS at a large font scale; the value has no weight, so it
+        // measures at its intrinsic width and stays intact on the right (never fragmented, R127/200 percent).
+        Text(
+            text = label,
+            style = FrontierType.body,
+            color = LightColors.textSecondary,
+            modifier = Modifier.weight(1f),
+        )
         // R181: the figure is DERIVED from the engine's rate, formatted here - never typed into copy.
-        Text(text = formatPercent(rate, PERCENT_DECIMALS), style = FrontierType.bodyM)
+        Text(text = formatPercent(rate, PERCENT_DECIMALS), style = FrontierType.bodyM, maxLines = 1)
     }
 }
 
