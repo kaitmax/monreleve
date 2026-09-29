@@ -28,6 +28,7 @@ import ch.monreleve.app.account.LocalStore
 import ch.monreleve.app.auth.BytesOutcome
 import ch.monreleve.app.auth.KeystoreTokenStore
 import ch.monreleve.app.auth.PendingSignInStore
+import ch.monreleve.app.auth.PostOutcome
 import ch.monreleve.app.auth.SessionManager
 import ch.monreleve.app.auth.SharedPrefsPendingSignInStore
 import ch.monreleve.app.auth.SignInController
@@ -143,8 +144,9 @@ class MainActivity : ComponentActivity() {
                                 settingsSaver = SessionSettingsSaver(session),
                                 revokeServer = session::revokeServerSession,
                                 localStore = localStore,
-                                // R295: sign-out has wiped the local store; return to sign-in. A re-auth restarts
-                                // this activity, and `start` (settings kept, PARKAN-28) then lands on MAIN.
+                                authenticatedPost = session::authenticatedPost,
+                                // R295/R289: sign-out or deletion has wiped the local store; return to first-run.
+                                // A re-auth restarts this activity, and `start` recomputes the destination.
                                 onSignedOut = { destination = Destination.SIGN_IN },
                             )
                     }
@@ -218,6 +220,7 @@ private fun MainShell(
     settingsSaver: SettingsSaver,
     revokeServer: suspend () -> Unit,
     localStore: LocalStore,
+    authenticatedPost: suspend (String, String) -> PostOutcome,
     onSignedOut: () -> Unit,
 ) {
     // R291: the controllers are built by MainGraph, the ONE construction site MainGraphWiringTest also
@@ -229,7 +232,7 @@ private fun MainShell(
         remember {
             MainGraph.build(
                 repository, store, taxYear, clock, scope, requestSync, dossierFetch, exportBytes, settingsSaver,
-                revokeServer, localStore,
+                revokeServer, localStore, authenticatedPost,
             )
         }
     var tab by remember { mutableStateOf(AppTab.AUJOURDHUI) }
@@ -327,6 +330,10 @@ private fun parametresActions(controller: ParametresController): ParametresActio
         onRequestSignOut = controller::requestSignOut,
         onConfirmSignOut = controller::confirmSignOut,
         onCancelSignOut = controller::cancelSignOut,
+        onRequestDelete = controller::requestDelete,
+        onConfirmDelete = controller::confirmDelete,
+        onCancelDelete = controller::cancelDelete,
+        onAcknowledgeDelete = controller::acknowledgeDelete,
     )
 
 // AC2 / R136: hand the server-rendered export to the platform. A Ready event's bytes are written to a

@@ -3,6 +3,7 @@ package ch.monreleve.app
 import ch.monreleve.app.account.LocalStore
 import ch.monreleve.app.aujourdhui.AujourdhuiController
 import ch.monreleve.app.auth.BytesOutcome
+import ch.monreleve.app.auth.PostOutcome
 import ch.monreleve.app.calendar.CalendarController
 import ch.monreleve.app.data.remote.DossierResult
 import ch.monreleve.app.data.repo.EntryRepository
@@ -76,6 +77,9 @@ object MainGraph {
         // device-wide erasure (R295). The Parametres export reuses the same exportBytes seam the Releve uses.
         revokeServer: suspend () -> Unit,
         localStore: LocalStore,
+        // AN12 increment 3 (R289): the authenticated POST (SessionManager::authenticatedPost) the account
+        // delete uses. The controller supplies the path and the body.
+        authenticatedPost: suspend (String, String) -> PostOutcome,
     ): MainControllers =
         MainControllers(
             aujourdhui = AujourdhuiController(repository, settingsStore, taxYear, clock, scope, requestSync),
@@ -91,6 +95,7 @@ object MainGraph {
                     exportBytes,
                     revokeServer,
                     localStore,
+                    authenticatedPost,
                 ),
         )
 }

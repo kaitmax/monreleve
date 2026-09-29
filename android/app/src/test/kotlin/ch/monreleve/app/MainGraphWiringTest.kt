@@ -92,6 +92,7 @@ class MainGraphWiringTest : FunSpec({
                     settingsSaver = saver(),
                     revokeServer = {},
                     localStore = localStore(),
+                    authenticatedPost = { _, _ -> PostOutcome.Ok(200, "{}") },
                 )
 
             val writers = dayWritersOf(controllers)
@@ -127,6 +128,7 @@ class MainGraphWiringTest : FunSpec({
                     settingsSaver = saver(),
                     revokeServer = {},
                     localStore = localStore(),
+                    authenticatedPost = { _, _ -> PostOutcome.Ok(200, "{}") },
                 )
             advanceUntilIdle()
 

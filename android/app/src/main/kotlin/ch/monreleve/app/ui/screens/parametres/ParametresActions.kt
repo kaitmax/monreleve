@@ -30,4 +30,12 @@ data class ParametresActions(
     val onConfirmSignOut: () -> Unit,
     /** PARKAN-27: the person kept the session; dismiss the confirmation. */
     val onCancelSignOut: () -> Unit,
+    /** R289: raise the deletion confirmation (names what is destroyed and requires the typed word). */
+    val onRequestDelete: () -> Unit,
+    /** R289: the person typed the word and confirmed; erase server then device. */
+    val onConfirmDelete: () -> Unit,
+    /** R289: the person backed out; nothing is destroyed. */
+    val onCancelDelete: () -> Unit,
+    /** R289: the person read the outcome; leave for a first-run state (on success) or dismiss. */
+    val onAcknowledgeDelete: () -> Unit,
 )

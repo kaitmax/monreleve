@@ -73,4 +73,52 @@ object ParametresCopy {
             "$days journées enregistrées sur cet appareil n’ont pas encore été synchronisées : elles seront " +
                 "définitivement perdues."
         }
+
+    // AN12 increment 3 - suppression du compte (D11, R289, FD9 A2). The destructive row and its confirmation.
+    const val DELETE_ROW = "Supprimer mon compte"
+    const val DELETE_ROW_HELPER = "Supprime définitivement votre compte, vos saisies et votre relevé."
+
+    // The dialog title IS the row's words (R206 - one home; a literal here would be the same string twice).
+    const val DELETE_TITLE = DELETE_ROW
+    const val DELETE_INTRO = "Cette action supprime définitivement :"
+    const val DELETE_ITEM_PROVENANCE = "l’origine de chaque saisie (détectée, corrigée, manuelle)"
+    const val DELETE_ITEM_RELEVE = "votre relevé annuel de télétravail"
+    const val DELETE_ITEM_ACCOUNT = "votre compte et votre adresse e-mail"
+    const val DELETE_IRREVERSIBLE =
+        "Cette action est irréversible. Votre relevé ne pourra pas être régénéré, même en réinstallant " +
+            "l’application."
+    const val DELETE_EXPORT_OFFER = "Vous pouvez d’abord exporter vos données."
+    const val DELETE_CONFIRM = "Supprimer définitivement"
+    const val DELETE_CANCEL = "Conserver mon compte"
+
+    /** FD9 A2's first destruction line: the recorded days and their timestamps, named with the count. */
+    fun deleteEntriesItem(days: Int): String =
+        if (days == 1) {
+            "1 saisie et son horodatage d’enregistrement"
+        } else {
+            "$days saisies et leurs horodatages d’enregistrement"
+        }
+
+    /** The typed-word gate. `word` is DELETE_CONFIRMATION (R206) - one home for the value the server compares. */
+    fun deleteTypePrompt(word: String): String = "Pour confirmer, saisissez $word."
+
+    // The outcome, surfaced afterwards (§14.1 / §14.3 - the receipt and the alert-list note are obligations).
+    const val DELETE_DONE_TITLE = "Compte supprimé"
+    const val DELETE_ALERT_REMAINS =
+        "Votre adresse reste inscrite aux alertes réglementaires. Le lien de désinscription figure dans " +
+            "ces e-mails."
+    const val DELETE_DONE_ACK = "Terminer"
+    const val DELETE_REFUSED =
+        "La suppression a échoué : votre compte et les données de cet appareil sont intacts. Vous pouvez réessayer."
+    const val DELETE_UNKNOWN =
+        "La suppression n’a pas pu être confirmée. Les données de cet appareil sont intactes ; vérifiez votre " +
+            "connexion avant de réessayer."
+    const val DELETE_ACK = "Fermer"
+
+    fun deleteDoneBody(entries: Int): String =
+        if (entries == 1) {
+            "Votre compte et votre saisie ont été supprimés définitivement du serveur et de cet appareil."
+        } else {
+            "Votre compte et vos $entries saisies ont été supprimés définitivement du serveur et de cet appareil."
+        }
 }

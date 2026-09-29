@@ -76,6 +76,7 @@ fun ParametresScreen(
         }
 
         DataSection(actions)
+        DeleteRow(actions.onRequestDelete)
         AccountSection(actions)
     }
 
@@ -84,6 +85,12 @@ fun ParametresScreen(
     }
     state.signOutPrompt?.let { prompt ->
         SignOutDialog(prompt, actions.onConfirmSignOut, actions.onCancelSignOut)
+    }
+    state.deletePrompt?.let { prompt ->
+        DeleteDialog(prompt, actions)
+    }
+    state.deleteOutcome?.let { outcome ->
+        DeleteOutcomeDialog(outcome, actions.onAcknowledgeDelete)
     }
 }
 

@@ -1,6 +1,7 @@
 package ch.monreleve.app.parametres
 
 import ch.monreleve.app.account.DeviceLocalStore
+import ch.monreleve.app.account.LocalStore
 import ch.monreleve.app.auth.AuthedOutcome
 import ch.monreleve.app.auth.BytesOutcome
 import ch.monreleve.app.auth.PendingSignInStore
@@ -99,6 +100,23 @@ private class StubTransport : HttpTransport {
 
 private class NoopSaver : SettingsSaver {
     override suspend fun saveSettings(body: String): PostOutcome = PostOutcome.Ok(200, "{}")
+}
+
+// A §14.1 receipt: `removed` is a map (two entries, an event), and alertSubscriptionRemains is present (§14.3).
+private const val RECEIPT_JSON =
+    """{"status":"ok","removed":{"User":1,"Entry":2,"EntryEvent":2},"alertSubscriptionRemains":true}"""
+
+private class SpyLocalStore : LocalStore {
+    var signOutCleared = false
+    var deletionCleared = false
+
+    override suspend fun clearForSignOut() {
+        signOutCleared = true
+    }
+
+    override suspend fun clearForDeletion() {
+        deletionCleared = true
+    }
 }
 
 private fun localStore(
@@ -265,6 +283,151 @@ class ParametresAccountTest : FunSpec({
             session.authenticatedGet("/api/v1/me") shouldBe AuthedOutcome.NoSession
             // ...and R295/PARKAN-28: the settings survived (a re-sign-in need not re-onboard).
             (settings.load() != null).shouldBeTrue()
+        }
+    }
+
+    test("R289: the delete confirmation names the recorded days and, separately, the unsynced ones") {
+        runTest {
+            val dao = FakeEntryDao()
+            val repo = LocalEntryRepository(dao, CLOCK)
+            for (day in 1..4) repo.record(RecordCommand(dayDate = "2026-03-0$day", kind = EntryKind.HOME))
+            val controller = ParametresController(NoopSaver(), MutableSettingsStore(), repo, TAX_YEAR, this)
+            advanceUntilIdle()
+
+            controller.requestDelete()
+
+            // Four recorded, none synced: both counts named for the confirmation.
+            controller.state.value.deletePrompt shouldBe DeletePrompt(recordedDays = 4, unsyncedDays = 4)
+        }
+    }
+
+    test("R289: confirming deletion sends SUPPRIMER, erases the device, surfaces the receipt, leaves for first-run") {
+        runTest {
+            val repo = LocalEntryRepository(FakeEntryDao(), CLOCK)
+            val spy = SpyLocalStore()
+            val posts = mutableListOf<Pair<String, String>>()
+            val controller =
+                ParametresController(
+                    NoopSaver(),
+                    MutableSettingsStore(),
+                    repo,
+                    TAX_YEAR,
+                    this,
+                    localStore = spy,
+                    authenticatedPost = { path, body ->
+                        posts += path to body
+                        PostOutcome.Ok(200, RECEIPT_JSON)
+                    },
+                )
+            advanceUntilIdle()
+
+            controller.requestDelete()
+            controller.confirmDelete()
+            advanceUntilIdle()
+
+            posts.single().first shouldBe "/api/v1/account/delete"
+            posts.single().second.contains("SUPPRIMER").shouldBeTrue()
+            // Device erased only after the server accepted (R289 / SPEC 14.2).
+            spy.deletionCleared.shouldBeTrue()
+            // The receipt is surfaced, alertSubscriptionRemains included (SPEC 14.3).
+            controller.state.value.deleteOutcome shouldBe
+                DeleteOutcome.Done(removedEntries = 2, alertSubscriptionRemains = true)
+
+            controller.acknowledgeDelete()
+            advanceUntilIdle()
+            controller.accountEvents.first() shouldBe AccountEvent.Deleted
+        }
+    }
+
+    test("R289: a server refusal is a partial-free failure - the device keeps its data (SPEC 14.2)") {
+        runTest {
+            val repo = LocalEntryRepository(FakeEntryDao(), CLOCK)
+            val spy = SpyLocalStore()
+            val controller =
+                ParametresController(
+                    NoopSaver(),
+                    MutableSettingsStore(),
+                    repo,
+                    TAX_YEAR,
+                    this,
+                    localStore = spy,
+                    authenticatedPost = { _, _ -> PostOutcome.Ok(400, "{}") },
+                )
+            advanceUntilIdle()
+
+            controller.requestDelete()
+            controller.confirmDelete()
+            advanceUntilIdle()
+
+            controller.state.value.deleteOutcome shouldBe DeleteOutcome.Refused
+            spy.deletionCleared shouldBe false
+        }
+    }
+
+    test("R289 / SPEC 14.6: a call that did not complete keeps the device intact and cannot claim the server") {
+        runTest {
+            val repo = LocalEntryRepository(FakeEntryDao(), CLOCK)
+            val spy = SpyLocalStore()
+            val controller =
+                ParametresController(
+                    NoopSaver(),
+                    MutableSettingsStore(),
+                    repo,
+                    TAX_YEAR,
+                    this,
+                    localStore = spy,
+                    authenticatedPost = { _, _ -> PostOutcome.NetworkError },
+                )
+            advanceUntilIdle()
+
+            controller.requestDelete()
+            controller.confirmDelete()
+            advanceUntilIdle()
+
+            controller.state.value.deleteOutcome shouldBe DeleteOutcome.Unknown
+            spy.deletionCleared shouldBe false
+        }
+    }
+
+    test("R289 negative sweep: after a real deletion, nothing of the account remains on the device") {
+        runTest {
+            val repo = LocalEntryRepository(FakeEntryDao(), CLOCK)
+            // Every device store seeded non-null: presence is proven before the sweep asserts absence (FW26's shape).
+            val tokens = MutableTokenStore()
+            val settings = MutableSettingsStore()
+            val cache = FakeDossierCache()
+            val pending = FakePendingSignIn()
+            var recordCleared = false
+            val real =
+                DeviceLocalStore(
+                    tokenStore = tokens,
+                    settingsStore = settings,
+                    dossierCache = cache,
+                    pendingSignIn = pending,
+                    clearRecord = { recordCleared = true },
+                    cancelSync = {},
+                )
+            val controller =
+                ParametresController(
+                    NoopSaver(),
+                    settings,
+                    repo,
+                    TAX_YEAR,
+                    this,
+                    localStore = real,
+                    authenticatedPost = { _, _ -> PostOutcome.Ok(200, RECEIPT_JSON) },
+                )
+            advanceUntilIdle()
+
+            controller.requestDelete()
+            controller.confirmDelete()
+            advanceUntilIdle()
+
+            recordCleared.shouldBeTrue()
+            tokens.load() shouldBe null
+            settings.load() shouldBe null
+            cache.load(TAX_YEAR) shouldBe null
+            pending.pending() shouldBe null
         }
     }
 })

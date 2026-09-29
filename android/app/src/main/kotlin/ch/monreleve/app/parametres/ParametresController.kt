@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 import java.time.LocalDate
 
 // AN12 increment 1 (SPEC 11.5, R290). The settings screen's state holder. Lives OUTSIDE ui/ (fence 5): it
@@ -87,6 +88,37 @@ data class SignOutPrompt(val unsyncedDays: Int)
 sealed interface AccountEvent {
     /** R295: the local store is cleared and the session revoked; return to sign-in. */
     data object SignedOut : AccountEvent
+
+    /** R289: the account was erased on the server and the device; return to a first-run state. */
+    data object Deleted : AccountEvent
+}
+
+/**
+ * R289: the account-deletion confirmation. It names what is destroyed - the recorded days and, separately,
+ * the unsynced ones that never reached the server and cannot be recovered afterwards (the R289 loss, in
+ * words), before the person types the confirmation word.
+ */
+data class DeletePrompt(
+    val recordedDays: Int,
+    val unsyncedDays: Int,
+)
+
+/**
+ * R289 / SPEC 14: the result of a delete, surfaced to the person. Done carries the receipt's entry count and
+ * alertSubscriptionRemains (§14.3 makes surfacing that a client obligation). Refused and Unknown BOTH keep the
+ * device's data - a partial erasure is worse than a refusal (§14.2) - and differ only in what they can claim:
+ * Refused is a server rollback (account intact, safe to retry), Unknown is a call that did not complete (the
+ * account MAY be gone, but this app cannot confirm - §14.6, not idempotent).
+ */
+sealed interface DeleteOutcome {
+    data class Done(
+        val removedEntries: Int,
+        val alertSubscriptionRemains: Boolean,
+    ) : DeleteOutcome
+
+    data object Refused : DeleteOutcome
+
+    data object Unknown : DeleteOutcome
 }
 
 data class ParametresState(
@@ -102,6 +134,10 @@ data class ParametresState(
     val pendingRateChange: RateChange? = null,
     /** PARKAN-27: set when sign-out is requested; the screen shows the confirmation naming the unsynced days. */
     val signOutPrompt: SignOutPrompt? = null,
+    /** R289: set when deletion is requested; the screen shows the confirmation naming what will be destroyed. */
+    val deletePrompt: DeletePrompt? = null,
+    /** R289: set after a delete attempt; the screen shows the receipt, or that the device data is intact. */
+    val deleteOutcome: DeleteOutcome? = null,
 )
 
 private const val HTTP_OK = 200
@@ -109,6 +145,15 @@ private const val HTTP_OK_MAX = 299
 
 private const val ACCOUNT_EXPORT_JSON = "/api/v1/account/export"
 private const val ACCOUNT_EXPORT_CSV = "/api/v1/account/export?format=csv"
+private const val ACCOUNT_DELETE_PATH = "/api/v1/account/delete"
+
+/**
+ * R289 / SPEC 14: the word the person types to confirm deletion, and the exact value sent as `confirm`. It is
+ * NOT copy in the fr/ sense - the server compares it byte-for-byte against its own DELETE_CONFIRMATION, so it
+ * is a protocol constant that happens to be French (§14). One home (R206): the screen's typed-word gate, the
+ * copy prompt, and the request body all read THIS.
+ */
+const val DELETE_CONFIRMATION = "SUPPRIMER"
 private const val JSON_MIME = "application/json"
 private const val CSV_MIME = "text/csv"
 private const val JSON_FALLBACK = "mes-donnees.json"
@@ -140,6 +185,10 @@ class ParametresController(
     private val exportBytes: suspend (String) -> BytesOutcome = { BytesOutcome.NoSession },
     private val revokeServer: suspend () -> Unit = {},
     private val localStore: LocalStore = NoOpLocalStore,
+    // AN12 increment 3 (R289): the authenticated POST (SessionManager::authenticatedPost) the delete uses. It
+    // takes (path, body) so the delete PATH stays in this file (R206) rather than leaking to the composition
+    // root. Defaulted for the settings tests; the account tests supply a fake.
+    private val authenticatedPost: suspend (String, String) -> PostOutcome = { _, _ -> PostOutcome.NoSession },
 ) {
     // The settings the server currently holds, so R290's "before" is the SAVED rate, not the edited one.
     // Post-onboarding this is always present (the settings screen is unreachable before onboarding saves).
@@ -242,6 +291,70 @@ class ParametresController(
     /** PARKAN-27: the person kept the session; dismiss the confirmation, nothing is cleared. */
     fun cancelSignOut() {
         mutableState.update { it.copy(signOutPrompt = null) }
+    }
+
+    /**
+     * R289: raise the deletion confirmation, naming the recorded days and, separately, the unsynced ones that
+     * cannot be recovered. Both counts are of the device's rows - the confirmation is shown before the call.
+     */
+    fun requestDelete() {
+        val recorded = entries.size
+        val unsynced = entries.count { it.syncState == SyncState.PENDING }
+        mutableState.update { it.copy(deletePrompt = DeletePrompt(recorded, unsynced)) }
+    }
+
+    /** R289: the person typed the word and confirmed. Delete on the server, then - only on success - the device. */
+    fun confirmDelete() {
+        mutableState.update { it.copy(deletePrompt = null) }
+        scope.launch {
+            val outcome = runDelete(authenticatedPost(ACCOUNT_DELETE_PATH, deleteBody()))
+            mutableState.update { it.copy(deleteOutcome = outcome) }
+        }
+    }
+
+    /**
+     * The server delete's result, mapped to a DeleteOutcome. ON SUCCESS ONLY does the device erase - a partial
+     * erasure where the device is wiped but the server rolled back is exactly what §14.2 forbids. A refusal
+     * (4xx/5xx) leaves both intact; a call that did not complete (network / dead session) leaves the device
+     * intact and cannot claim the server's state (§14.6).
+     */
+    private suspend fun runDelete(outcome: PostOutcome): DeleteOutcome =
+        when (outcome) {
+            is PostOutcome.Ok ->
+                if (outcome.status in HTTP_OK..HTTP_OK_MAX) {
+                    val receipt = parseReceipt(outcome.body)
+                    localStore.clearForDeletion()
+                    receipt
+                } else {
+                    DeleteOutcome.Refused
+                }
+            PostOutcome.SessionEnded, PostOutcome.NoSession, PostOutcome.SessionExpired, PostOutcome.NetworkError ->
+                DeleteOutcome.Unknown
+        }
+
+    /** R289: the person read the outcome. On a completed deletion, leave for a first-run state; otherwise dismiss. */
+    fun acknowledgeDelete() {
+        val outcome = mutableState.value.deleteOutcome
+        mutableState.update { it.copy(deleteOutcome = null) }
+        if (outcome is DeleteOutcome.Done) scope.launch { accountChannel.send(AccountEvent.Deleted) }
+    }
+
+    /** R289: the person backed out of the deletion. Nothing is destroyed. */
+    fun cancelDelete() {
+        mutableState.update { it.copy(deletePrompt = null) }
+    }
+
+    private fun deleteBody(): String = JSONObject().put("confirm", DELETE_CONFIRMATION).toString()
+
+    // §14.1: `removed` is a map (parse as one, never a fixed record); alertSubscriptionRemains is surfaced
+    // (§14.3). The entry count is the figure worth showing a person; the rest of the receipt is not printed.
+    private fun parseReceipt(body: String): DeleteOutcome.Done {
+        val json = JSONObject(body)
+        val removed = json.optJSONObject("removed")
+        return DeleteOutcome.Done(
+            removedEntries = removed?.optInt("Entry", 0) ?: 0,
+            alertSubscriptionRemains = json.optBoolean("alertSubscriptionRemains", false),
+        )
     }
 
     // Every field change clears the last error and any pending confirmation: an edit after a before/after
