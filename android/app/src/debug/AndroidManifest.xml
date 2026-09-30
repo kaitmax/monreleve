@@ -13,6 +13,11 @@
   generator, declared ONLY in this debug fragment so the merger never adds it to a release build.
   checkReleaseNoDebugInjection names "DebugSeeder" alongside "SessionInjection" and fails if either reaches
   the merged release manifest.
+
+  AN-AUDIT increment 2: the `audit` build type REUSES this fragment (build.gradle.kts sourceSets), so both
+  activities also appear in the audit APK - the release configuration made runnable against the local server.
+  The audit variant is NOT a release build; checkReleaseNoDebugInjection still proves both are absent from the
+  RELEASE variant, which is the only one that ships.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>

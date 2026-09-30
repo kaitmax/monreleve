@@ -54,6 +54,26 @@ android {
             // (src/release/res network security config denies it everywhere).
             buildConfigField("String", "API_BASE_URL", "\"https://monreleve.ch\"")
         }
+        // AN-AUDIT increment 2 (AC1). The RELEASE configuration MADE RUNNABLE against the local server, so
+        // the shipping config is exercised end to end for the first time (FW30's question). It INHERITS
+        // release wholesale via initWith - minify off (the AN14 deferral), the proguard files, debuggable
+        // false - and OVERRIDES only what a headless drive against `pnpm dev` needs:
+        //   - the auto DEBUG signature, so it installs (R250 forbids the RELEASE key, not the debug one);
+        //   - the LOCAL api url over cleartext to 10.0.2.2 (release points at https://monreleve.ch, which
+        //     does not resolve - PARKAN-1).
+        // It also REUSES src/debug wholesale (see sourceSets below): the injection (a real server session
+        // with no typed email, AN5b), the seeder (increment 1's dataset), and the debug network security
+        // config (cleartext to 10.0.2.2). Every difference from release is named in REPORT-AN-AUDIT.txt.
+        // checkReleaseCleartext and checkReleaseNoDebugInjection read the RELEASE variant and are UNTOUCHED
+        // by this variant - their green after this edit is the evidence that audit does not weaken them
+        // (FW14). This is NOT a release artifact: increment 3 reads every declaration from assembleRelease.
+        create("audit") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+            val frontalierPort = (project.findProperty("frontalierPort") as String?) ?: "3000"
+            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:$frontalierPort\"")
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -74,6 +94,14 @@ android {
     sourceSets {
         getByName("androidTest") {
             assets.srcDir("$projectDir/schemas")
+        }
+        // AN-AUDIT increment 2: the audit variant reuses the debug source set VERBATIM - one home, not
+        // copies (R206). The injection, the seeder and the cleartext-to-10.0.2.2 network security config are
+        // the debug files, compiled into the audit APK, so there is no second copy to drift from src/debug.
+        getByName("audit") {
+            kotlin.srcDir("src/debug/kotlin")
+            res.srcDir("src/debug/res")
+            manifest.srcFile("src/debug/AndroidManifest.xml")
         }
     }
 }

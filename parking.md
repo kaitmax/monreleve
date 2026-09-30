@@ -1427,6 +1427,41 @@ TOUCHES:   MainActivity.openLegal, a new toast string in ParametresCopy, CopyRea
 NEEDS:     an operator decision (or a follow-up, naturally AN14's Play-release hardening) on guarding the
 legal-link intent.
 
+## PARKAN-31 - the TRUE release build has never been exercised E2E against a real server  [AN-AUDIT, 2026-09-30]
+
+QUESTION:  AC1 asks for the release variant driven to a screen that decodes a server response. The shipping
+release build cannot be driven as-is: it is unsigned (no release key, R250), denies cleartext, and points at
+https://monreleve.ch, which does not resolve. So what actually exercises the release CODE, and what would
+exercise the shipping ARTIFACT end to end?
+
+TAKEN:     Exercised the release CONFIGURATION via a committed `audit` build type (build.gradle.kts): release
+build type inheriting minify-off/non-debuggable/proguard-files via initWith, overriding only the debug
+signature and a cleartext-to-10.0.2.2 local API URL, and reusing src/debug (injection + seeder). Drove it
+against the local container: GET /api/v1/me decoded, the MAIN shell rendered ("Bonjour Camille", the recorder,
+the Releve/Calendrier tabs), onboarding routed on a canton-null account, the sign-out dialog rendered. Because
+isMinifyEnabled=false (the AN14 deferral), the release bytecode EQUALS debug's - proven by class names present
+unobfuscated in the release dex (calc/EntryEntity/SyncEngine/detection) and no mapping.txt - so the audit
+drive exercises the same code the release ships. The TRUE release APK (unsigned) was ALSO built (7.01 MB,
+under the 12 MB budget), debug-signed as a copy, installed and launched: it renders the Connexion screen with
+no crash. Reversible: the audit variant is committed TEST TOOLING (like the seeder); deleting it changes
+nothing that ships, and the release guards (checkReleaseCleartext/checkReleaseNoDebugInjection) read the
+release variant and stay green - the audit variant does not weaken them.
+
+NOT TAKEN: driving the TRUE release APK end to end against a real server over HTTPS via the real magic-link ->
+App Link callback. Impossible at Checkpoint F: no release signing key (R250), monreleve.ch does not resolve,
+no assetlinks.json fingerprints (PARKAN-1), and R8 is off so there is no minified/obfuscated build to test at
+all. The classic R8 failure modes (a renamed serialised field, a stripped reflective lookup, a shrunk Room or
+Compose class) cannot be checked until minification is turned on.
+
+TOUCHES:   app/build.gradle.kts (the audit build type; release when AN14 sets isMinifyEnabled=true +
+proguard-rules.pro), src/release/res/xml/network_security_config.xml, the App Link callback and assetlinks.
+
+NEEDS:     from AN14 and the operator: (1) R8 enabled - isMinifyEnabled=true with real keep rules for the
+serialised /v1 payloads, Room entities, the engine and Compose; (2) a resolving monreleve.ch serving
+/.well-known/assetlinks.json with the release key's fingerprints (PARKAN-1); (3) the release signing key.
+Then re-run this drive against the TRUE release APK signed with the release key, over HTTPS, through the real
+magic-link -> App Link callback, and read the R8 mapping for anything kept that should not have been.
+
 ## STATUS LEDGER  [appended 2026-09-29]
 
 One line per Android-era entry, so the state of each is visible without
@@ -1455,3 +1490,4 @@ reading every section. Entries are not edited; this ledger is.
 | PARKAN-28 — sign-out keeps the settings | **reversed** | R297 (AN-AUDIT incr 0): sign-out clears the settings too; a re-sign-in restores them from GET /api/v1/me before the onboarding decision |
 | PARKAN-29 — licences screen is hand-authored | **closed** | R298 (AN-AUDIT incr 0): the list stays hand-written; a gate check (checkLicences) derives the release runtime deps from the build and fails on any not attributed - no plugin, no dependency. First run found guava/annotations/jspecify bundled but uncredited (R178); added |
 | PARKAN-30 — openLegal unguarded vs no browser | **closed** | R299 (AN-AUDIT incr 0): openLegal catches ActivityNotFoundException and shows the link's address (openLegalLink seam, LegalLinkTest); no crash on a browserless device |
+| PARKAN-31 — TRUE release never exercised E2E | **open, NEEDS** | AN-AUDIT incr 2: release CONFIG exercised via the committed audit variant (release=debug bytecode, minify off); TRUE release APK built (7.01 MB) + launched. Re-exercise the shipping artifact E2E needs AN14's R8, a resolving monreleve.ch + assetlinks, and the release key |
