@@ -327,3 +327,181 @@ queued days drain into the NEXT account that signs in on the same device.
   CallbackController), OR scope the local entry store to a userId and refuse to drain a queue whose userId does
   not match the current session. Structural (R255) -> an AN14/AN15 task; it is one of the three that most
   deserve a task of their own.
+
+## CODE QUALITY (increment 6, code-quality half)
+
+MEASURED BY A ZERO-JVM TEXT SCAN (R254). The emulator cannot boot on the audit machine (see UNEXAMINED /
+handoff) and every heavy JVM step (detekt, ktlint, the test suites) thrashes at ~2.5 GB free, so this half was
+measured by text analysis only, with each result verified by eye. The scanner is UNTRACKED
+(android/scripts/an-audit-codequality.mjs, beside the other AN-AUDIT drive scripts) so this commit is doc-only
+(R132 carve-out). Four dimensions, each with its instrument's blind spots named (R233):
+
+DUPLICATION (Kotlin <-> TypeScript, OUTSIDE the fixture-bound calc engine).
+- INSTRUMENT: enumerated every self-declared port from its header (grep "port of web" / "ports web" over
+  main Kotlin -> ~34 headers). Tie-status was then determined the ONLY way that distinguishes a real
+  drift-reddening tie from a comment: does the port's TEST perform a runtime read of the web source or a
+  shared fixture (the WireContractParityTest idiom - File(repoRoot(), "web/..."). readText())? The read census
+  (grep .readText across the test tree, then the web/fixtures path each targets) was VALIDATED by opening seven
+  candidates (DatesTest, NumbersTest, NumbersExhaustiveTest, ZonesTest header, RailGeometryTest header,
+  MetricCopyTest, StatusesTest) - every one with zero reads hand-asserts its values and only NAMES its web
+  source in a comment. A first, coarser grep that matched the path anywhere reported MetricCopyTest/StatusesTest/
+  AuthServerCodeTest as "tied"; opening them corrected that to comment-only - the audit's own R233/R252
+  discipline applied to its headline duplication claim.
+- MEASURED RESULT: the runtime cross-tree read-tie (a test that goes RED the moment the two languages drift)
+  exists on exactly two surfaces: (1) the entry-enum vocabulary and the batch limit, read from
+  web/lib/entries/schema.ts by WireContractParityTest and BatchLimitParityTest; (2) the fixture-bound engine,
+  aggregation, lateness, rate and denominator, read from fixtures/*.json by the calc/dossier conformance suites
+  - which is the area the prompt legitimately excludes. dossier/Aggregate.kt IS in this tied bucket
+  (AggregationConformanceTest reads the shared fixture), so it is not a finding.
+- FINDING F5 (severity LOW): every OTHER self-declared Kotlin port of a web TS module is defended by a
+  hand-copied behavioral or codepoint test that names its web source in a COMMENT but does not read it, so
+  cross-language drift is not mechanically caught. The untied set found: fr/format/Dates.kt (port of
+  web/lib/ui/core/format/date.ts, DatesTest), fr/format/Numbers.kt (number.ts, NumbersTest/NumbersExhaustiveTest),
+  design/ZonesTest's zones port (zones.ts), design/rail/RailGeometry.kt (ui/core/rail/geometry.ts,
+  RailGeometryTest), fr MetricCopy (fr/metrics.ts, MetricCopyTest), fr Statuses (fr/statuses.ts, StatusesTest),
+  and the auth server-code port (auth/bearer.ts, AuthServerCodeTest - classified from the read census, not
+  opened). A further remainder is named by a port header but referenced by NO parity test at all:
+  fr/rates.ts, fr/rail.ts, ui/core/period.ts, ui/core/zone-tokens.ts, dossier/service.ts,
+  releve/print/page.tsx, and the four React component ports (ThresholdRail.tsx, ZoneBadge.tsx, RateDisplay.tsx,
+  MetricTile.tsx) - UNEXAMINED individually beyond "no runtime tie found".
+  - WHY ONLY LOW: the highest-drift-risk surface, the enum vocabulary the server can extend unilaterally, IS
+    read-tied; the untied ports carry values frozen by SPEC 6.4 (Swiss dots, the "a" separator), by the wire
+    contract (R187 auth codes) or by copy the two products render differently anyway; and the hand-copied tests
+    are genuinely rigorous about what they DO assert - StatusesTest caught two invisible-character defects
+    (U+00A0 vs U+0020, U+2019 vs U+0027) by a one-time byte diff at authoring. The residual risk is a
+    SPEC-frozen value moving on the web side with the Kotlin port left behind and every Kotlin test still green.
+  - WHAT IT WOULD TAKE TO CLOSE: extend the WireContractParityTest read idiom (or the shared-fixture idiom) to
+    the formatting and copy ports - have DatesTest/NumbersTest/StatusesTest read their web counterpart at
+    runtime the way WireContractParityTest reads schema.ts - or accept the ports as SPEC-derived and record the
+    decision. Structural (R255); an AN14/AN15 item.
+
+DEAD CODE.
+- INSTRUMENT: a reference census over main Kotlin - top-level non-private declarations with zero references in
+  main (the declaration token discounted) - producing a SHORTLIST that was then hand-verified by reading each,
+  never cited by count. The census is BLIND to reflection, the Android manifest, the src/debug and dev source
+  sets, generated code and Compose @Preview; a zero-ref name is a candidate to read, not a finding. The
+  demonstrated manifest blind spot: CallbackActivity came up zero-ref and is CORRECTLY alive (the App Link
+  callback, invoked by the framework via its intent-filter - not dead).
+- MEASURED RESULT: six shortlist names, hand-verified. CallbackActivity - alive via manifest (above).
+  detectionPlaceholder() - a documented placeholder ("a real function replaces it at AN6"), referenced nowhere,
+  deliberate scaffolding. exportFieldRun (detection/FieldExport.kt) and isInWorkingWindow
+  (detection/WorkingWindow.kt) - referenced only by their own unit tests, never by main. MAX_NOTE_LENGTH
+  (data/sync/EntriesWire.kt) - declared in the main wire file but consumed only by the src/debug seeder and
+  tests; the production wire builder does not enforce it (the server does, and the client sends verbatim -
+  defensible). HYSTERESIS_SIGNIFICANT_MINUTES (detection/Tally.kt) - a genuinely unused non-private const val
+  (its sibling HYSTERESIS_PROVISIONAL_MINUTES is consumed in the same file); because detekt's UnusedPrivate*
+  rules are private-only, a non-private unused const escapes the gate - a real, if trivial, gap the census
+  caught. detekt runs buildUponDefaultConfig with only MagicNumber/MaxLineLength/FunctionNaming overridden and
+  the gate is green, so the default unused-PRIVATE-member rules hold; this const is outside their scope.
+- FINDING F6 (severity LOW): the on-device DETECTION pipeline ships in the release APK (R280) and is
+  unit-tested, but is NOT reachable from any production UI path. The only non-test importer of
+  ch.monreleve.app.detection in a shipping source set is the exported dev.DetectionReplayActivity - which is
+  itself F1 (a dev activity exported in release). No production code writes the Tally table (TallyDao exists;
+  no non-dev, non-test writer). This is forward-staging for AN6, not rot - but it is the audit-relevant edge of
+  F2: the shipping build declares ACCESS_FINE_LOCATION and bundles+tests a location-consuming detection feature
+  that NOTHING a normal user can reach uses, which is exactly the shape Play review scrutinises (a permission
+  claiming a feature the UI does not expose, R282).
+  - WHAT IT WOULD TAKE TO CLOSE: either wire detection into a production surface before release, or defer the
+    detection code AND ACCESS_FINE_LOCATION together to the task that ships the feature (AN6+), so the manifest
+    claims only features this build exposes; and delete or consume HYSTERESIS_SIGNIFICANT_MINUTES. Structural
+    (R255); ties to F1 and F2.
+
+THE FIVE LARGEST FUNCTIONS.
+- INSTRUMENT: block-bodied functions only, measured by brace-span after scrubbing comments and string/template
+  literals; the top five were each opened and the span confirmed by eye. One scanner artifact noted: the entry
+  "DrawScope at design/rail/ThresholdRail.kt:183" is the regex capturing the RECEIVER of an extension function,
+  not a function named DrawScope - excluded from the five.
+- MEASURED RESULT: NO FINDING. The five largest are each long for a structural reason, not tangled logic:
+  1. railGeometry (design/rail/RailGeometry.kt:161, 118 lines) - a pure RailData -> geometry transform, already
+     @Suppress("LongMethod","CyclomaticComplexMethod"); straight-line SVG layout math feeding one constructor,
+     no branching depth. The length is inherent and the author annotated the deliberate choice.
+  2. calculateTelework (calc/Calculate.kt:30, 76 lines) - the engine's public entry point; a linear
+     validate -> denominator -> mission cap -> waterfall -> assemble pipeline, ~40 of its lines a single
+     named-argument TeleworkResult(...) assembly. Engine, conformance-tested.
+  3. warningsFor (calc/Warnings.kt:12, 72 lines) - engine; the span is dominated by regulatory-citation
+     comments (each threshold's legal basis), the executable body a flat guard-and-append list one level deep.
+  4. onCreate (MainActivity.kt:110, 68 lines) - the composition root; length is dependency wiring (no DI
+     framework, by design) plus the top-level nav when-branch, not logic.
+  5. ParametresScreen (ui/screens/parametres/ParametresScreen.kt:49, 60 lines) - a declarative Compose tree
+     already decomposed into named sub-composables (CantonField, DataSection, AccountSection, ...) plus
+     dialog-hosting ?.let blocks; low complexity.
+
+RANDOM 20-TEST SAMPLE (R133 - could each actually fail?).
+- INSTRUMENT: population 164 @Test functions (159 src/test + 5 androidTest), drawn with a deterministic
+  mulberry32 shuffle, seed 20260930 (recorded so the draw reproduces). Verdicts are READ-BASED - does the
+  assertion bind to its subject, and would a plausible product mutation flip it - NOT mutation-proven: each
+  mutation would need a Kotlin edit and a JVM suite, which this RAM-starved, zero-JVM session cannot run. The
+  weaker claim is written as weaker (FW30's census caveat form). One sampled test is androidTest (instrumented)
+  and is emulator-blocked to run here.
+- RESULT: 20 of 20 CAN fail (no dead tautology like FW30's params/schema.test.ts). The texture: seven are
+  paparazzi bitmap baselines (host JVM) that CAN fail on any pixel drift but certify STABILITY, not CORRECTNESS
+  (FW13/R135 - they render distinct states/configs, no redundant pair in the sample); two are soft (below); two
+  share one structural gap (F7); one is not runnable here. The 20, with verdict:
+  1. androidTest data/local/MonReleveMigrationTest.kt:29 migratesFromVersion1ToVersion2 - CAN FAIL:
+     runMigrationsAndValidate checks the v2 schema, not merely no-throw. NOT RUN (androidTest, emulator-blocked).
+  2. account/ErasureCensusTest.kt:76 everyExemptionStatesWhyItIsNotAccountData - CAN FAIL but SHALLOW: asserts
+     reason.length > 20, a PROXY for "states why", not the reason's truth; a 21-char boilerplate passes. Same
+     shape as FW30's schema.test.ts finding (name promises meaning, code measures string length).
+  3. data/local/WireContractParityTest.kt:59 absenceReasonsMatchTheServer - CAN FAIL, strong: reads schema.ts,
+     order-exact; a missing file or array throws rather than passing, so it cannot pass vacuously.
+  4. data/repo/EntryRepositoryTest.kt:57 clientClaimedAtIsInTheFormatTheServerAccepts - CAN FAIL, strong: a
+     strict ISO-instant-with-offset regex bound to the server's zod .datetime({offset:true}) contract.
+  5. design/ComponentsScreenshotTest.kt:152 dayCellSplit - paparazzi; CAN FAIL on drift (split half-day cell).
+  6. design/ComponentsScreenshotTest.kt:196 confidenceTierLow - paparazzi; CAN FAIL on drift (LOW badge; MEDIUM/
+     HIGH siblings cover the variants).
+  7. design/RadiusTest.kt:15 everyDocumentedValueIsExact - CAN FAIL, strong: exact dp value per token (the value
+     IS the assertion, R171).
+  8. design/RadiusTest.kt:50 theObjectDeclaresNoFieldBeyondTheMapAndTheNineAccessors - CAN FAIL, strong and
+     exemplary: a Java-reflection field census that closes the "tenth token typed directly into the object"
+     evasion the other two Radius tests would miss.
+  9. detection/ClassificationTest.kt:26 insideOutsideAndBuffer - CAN FAIL, strong: three real points (Bern
+     INSIDE, Lyon OUTSIDE, a border vertex BUFFER) against the bundled Switzerland polygon.
+  10. detection/ClassificationTest.kt:33 classifyFixKeepsTheSideAndTheTimestampAndNoCoordinate - CAN FAIL on the
+     two things it asserts (classification, timestamp); the NAME's "AndNoCoordinate" is NOT asserted in the body
+     - it is true by TYPE CONSTRUCTION (ClassifiedFix has no coordinate field), so the name overclaims what the
+     test verifies. Soft.
+  11. detection/ProposalTest.kt:51 aThinnerOrBufferHeavyDayIsMedium - CAN FAIL, strong: a tier boundary, fenced
+     from both sides by the HIGH and LOW sibling cases.
+  12. fences/FencesTest.kt:91 calcImportsNothingFromAndroidOrOtherProjectPackages - CAN FAIL today; but NO
+     vacuity guard (see F7).
+  13. fences/FencesTest.kt:283 everyCardInUiIsThemedWithExplicitShapeAndElevation - CAN FAIL today (strengthened
+     against a spelled-out-default evasion, documented); same no-vacuity-guard gap (F7) plus a name-based limit
+     the test's own comment records.
+  14. fences/NoBareThresholdTest.kt:107 findsFilesToInspectSoTheGuardCannotPassVacuously - CAN FAIL, exemplary:
+     it asserts the scan found files (and one per scanned dir) - the presence guard FencesTest lacks.
+  15. fences/NoBareThresholdTest.kt:118 noScannedFileCarriesABareForbiddenFraction - CAN FAIL, strong:
+     vacuity-guarded by #14 and paired with a positive control (rulesKtDoesCarryThem - the forbidden list is
+     not matching nothing).
+  16. ui/screens/aujourdhui/AujourdhuiScreenScreenshotTest.kt:148 aujourdhuiEmptyLarge - paparazzi; CAN FAIL on
+     drift; a fontScale=2f (200 percent text) baseline.
+  17. ui/screens/onboarding/OnboardingScreenScreenshotTest.kt:69 onboardingEmpty - paparazzi; CAN FAIL on drift.
+  18. ui/screens/onboarding/OnboardingScreenScreenshotTest.kt:85 onboardingFilledExactLarge - paparazzi; CAN
+     FAIL on drift; distinct state+config (filled, 200 percent).
+  19. ui/screens/releve/ReleveScreenScreenshotTest.kt:204 releveDefault - paparazzi; CAN FAIL on drift (COMPLIANT).
+  20. ui/screens/releve/ReleveScreenScreenshotTest.kt:209 releveLarge - paparazzi; CAN FAIL on drift; same
+     COMPLIANT state at 200 percent text + taller screen = the large-font accessibility baseline.
+- FINDING F7 (severity LOW): FencesTest's eight fence tests have no vacuity guard. Their shared census helper
+  ktFiles(subpackage) returns emptyList() for a directory that does not exist, and every fence is an ABSENCE
+  assertion (no file under X does Y) - which an empty list satisfies. Today they fire (the directories are
+  populated), but the day calc/ or ui/ is renamed or moved, all eight pass on zero files, silently. The sibling
+  NoBareThresholdTest already shows the fix in this very package: findsFilesToInspectSoTheGuardCannotPassVacuously
+  asserts the scan is non-empty (R169's presence corollary, R175's space-between). ktFiles is PRIVATE to
+  FencesTest.kt, so no other file can guard it - every assertion that could is in that one file, and none does.
+  - WHAT IT WOULD TAKE TO CLOSE: add one test asserting ktFiles("calc"), ktFiles("ui"), ktFiles("detection")
+    are each non-empty, mirroring NoBareThresholdTest:107. Small and provable inside its own increment, but out
+    of this audit's record-only scope (R255).
+
+## ACCESSIBILITY (increment 6, accessibility half) - EMULATOR-DEFERRED
+
+NOT MEASURED THIS SESSION. A TalkBack pass (does each control announce what it is, its state, and on a day its
+kind/quality/provenance), in-situ touch-target sizes, token contrast measured on a rendered screen, and 200
+percent text end to end all require a running screen, and the emulator cannot boot on the audit machine (the
+Play-Store AVD needs ~7.37 GB free for a fresh userdata partition against ~7.28 GB free, with host RAM ~2 GB
+against the AVD's ~16 GB). The planned proxy - uiautomator dump of each node's content-desc - also needs the
+device. WHAT IS ALREADY COVERED, as a host-JVM proxy (R233 applied to the deferral itself): the *Large
+paparazzi baselines (onboardingFilledExactLarge, aujourdhuiEmptyLarge, releveLarge, and their siblings) render
+every screen at fontScale=2f, so 200 percent text has a committed visual record. WHAT REMAINS emulator-blocked:
+the TalkBack announcements, touch targets and contrast measured in situ. This half, and the increment-5
+remainder (the F4 on-device cross-account confirmation, the device-clock probe, storage-full / process-death /
+server-5xx resilience, and performance at the increment-1 volume), are OWED and listed in the successor
+handoff; they belong to a session with a working emulator.
