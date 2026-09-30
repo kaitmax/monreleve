@@ -284,7 +284,7 @@ FINDING F3 (severity LOW) - no FLAG_SECURE; the recents thumbnail shows the tax 
   previews) to hide the tax record, weighed against losing in-app screenshots and the screenshot-based audit
   instruments. Conservative today: leave it, and record the trade-off.
 
-## INTEGRITY AND RESILIENCE (increment 5, PARTIAL - see UNEXAMINED)
+## INTEGRITY AND RESILIENCE (increment 5)
 
 FINDING F4 (severity HIGH) - an expired or revoked session does NOT clear the offline queue, so one account's
 queued days drain into the NEXT account that signs in on the same device.
@@ -316,17 +316,146 @@ queued days drain into the NEXT account that signs in on the same device.
   calendar and Aujourd'hui read the unscoped local entry store, so A's record is on B's screen the moment B
   reaches the shell; (b) AFTER the drain, B's exported Releve annuel de teletravail - the audit-defensible
   document this product exists to produce - contains days B never worked.
-- MEASUREMENT STATUS (R233/R254): an on-device measurement was BUILT
-  (android/scripts/an-audit-crossaccount.mjs - A records offline behind a blockable proxy, A is revoked in
-  Postgres, B signs in, the queue drains, and a Postgres entriesByUser() reads which account owns A's offline
-  days) but did NOT run: the emulator could not boot on the audit machine because the disk was 99% full (the
-  Play-Store AVD needs ~7.37 GB free for a fresh userdata partition; ~7.28 GB was free, with active external
-  churn). THE SOURCE CHAIN IS CONCLUSIVE; the on-device confirmation is owed and is the successor's first task.
+- MEASUREMENT (R233/R254): CONFIRMED ON-DEVICE. android/scripts/an-audit-crossaccount.mjs ran against a scratch
+  Postgres + the write container on 3001 behind a blockable proxy on 3000. Sequence: A and B both sign in (real
+  /api/v1/auth/callback tokens) and PATCH settings; A records two PAST days OFFLINE (proxy blocked) via the dev
+  recorder -> both PENDING, 0 on A's server record; A is revoked server-side; B's real session is injected over
+  A's intact PENDING queue (the faithful post-expiry device state - StartupDecider SessionGone and the callback
+  both clear NO record); the proxy is unblocked; B records one day and the queue drains. The Postgres ORACLE
+  (entriesByUser, joining Entry.userId) then showed, verbatim:
+    entries after drain: ["anaudit-acct-b@example.com:2026-09-28","anaudit-acct-b@example.com:2026-09-29",
+                          "anaudit-acct-b@example.com:2026-10-01"]
+    B owns 3 day(s) (its own is 1); A owns 0; POST path during drain: /api/v1/entries; CROSS_ACCOUNT_LEAK = true
+  A's two offline Suisse days (2026-09-28, 2026-09-29) landed under account B's userId; B's own Domicile day is
+  2026-10-01; A owns ZERO rows on the server. This is exactly the predicted source chain: B owns A's offline
+  days, drained under B's token via POST /api/v1/entries.
+- MEASUREMENT CAVEAT (R233): the explicit server-side revoke deleted 0 session rows (revokeAllSessions found no
+  SessionToken/Session rows for A - the opaque-hashed-refresh model, D14/R209, does not populate the tables the
+  query targets), so the proof rests on the DEVICE-STATE reproduction (B's real token injected over A's intact
+  PENDING queue), which is precisely the state the SessionGone->SIGN_IN path and the callback produce - the
+  faithful post-expiry state. The leak is measured, not merely sourced.
+- FW30 VERDICT (advisor-ratified, carried verbatim): this confirms EXACTLY the source chain, so F4 stays HIGH,
+  is recorded here, and the audit CONTINUES to increments 6-7. It is NOT the FW30 immediate stop: it is a
+  state-machine integrity defect from a legitimate multi-user sequence (no attacker), there WAS a sign-in, and A
+  had no server data for B to READ. Only a categorically different result (a drain with NO sign-in, or B reading
+  A's SERVER data) would have reopened the stop question; neither occurred.
 - WHAT IT WOULD TAKE TO CLOSE: clear the record when a session ends for ANY reason (extend R295's
   clearForSignOut to the expiry/revocation paths in SessionManager, and to a user change at sign-in in
   CallbackController), OR scope the local entry store to a userId and refuse to drain a queue whose userId does
   not match the current session. Structural (R255) -> an AN14/AN15 task; it is one of the three that most
   deserve a task of their own.
+
+### THE DEVICE CLOCK (increment 5)
+
+The composition root reads the DEVICE clock in three places, each captured at Activity construction:
+MainActivity clock = Clock.systemDefaultZone() and taxYear = Year.now(Europe/Paris); AujourdhuiController today
+= todayInParis(clock). clientClaimedAt is the raw clock instant, sent verbatim; the late FLAG is the server's
+(R216). The clock was moved headless with `cmd alarm set-time <ms>` after `settings put global auto_time 0`
+(adb root and su are unavailable on the Play "user" image; cmd alarm set-time is not, and it moved the wall
+clock - R233: the subject WAS moved, verified by `adb shell date` at each state). Measured effects, across four
+clock states (real 2026-10-01, +8 days, 2027, 2020):
+
+- dayDate + clientClaimedAt FOLLOW THE CLOCK, VERBATIM. A day recorded at device instant 2026-09-30T22:38 UTC
+  was filed under Paris date 2026-10-01 (todayInParis) with clientClaimedAt "2026-09-30T22:38:09.736+00:00"
+  (read from Room). A day recorded under a skewed clock is filed under the skewed date and carries the skewed
+  instant. R216 holds: the client sends its instant verbatim; the server assigns lateness.
+- R286 PENDING WARNING follows the clock. The SAME pending 2026-10-01 day showed "En attente de
+  synchronisation" with NO escalation at the real clock; with the clock set +8 days (2026-10-09, tax year
+  unchanged, BACKFILL_DAYS = 7) it escalated to "dont 1 jour pas encore synchronise ; la plus ancienne depasse
+  7 jours et sera signalee comme saisie tardive des sa synchronisation" (OVERDUE). A fast clock makes a fresh
+  day look late; a slow clock would suppress a genuinely-late warning. The forecast is a clock-dependent
+  WARNING; the real flag is still the server's ("des sa synchronisation").
+- THE ON-DEVICE RATE follows the clock's YEAR (taxYear). Real clock (2026) -> 28,33 % "Taux a declarer a l'AFC"
+  / 40,9 % over 2026's entries. Clock = 2027 -> taxYear 2027 is empty -> "Aucune journee enregistree cette
+  annee pour le moment" (THE RATE VANISHES, though the 2026 record is intact and full). Clock = 2020 -> taxYear
+  2020's 262 seeded rows -> 37,50 % / 55,0 % (a DIFFERENT year's rate). So a wrong-year device clock shows the
+  wrong year's rate, or none - the figure the person relies on is only as trustworthy as the device clock.
+- R233 (did it observe its subject): yes - the clock was moved and verified by `adb shell date`; the effects
+  were read from the rendered screen and from Room at each of the four clock states.
+
+FINDING F8 (severity LOW) - "today" and taxYear are captured once at Activity construction and not refreshed
+while the Activity lives, so a session held open across midnight (or a clock change) can misdate a recorded day.
+- EVIDENCE: a day recorded in an Activity that had been launched under the 2020 clock was filed under
+  2020-06-01 EVEN AFTER the wall clock was restored to 2026 (clientClaimedAt showed the restored 2026 instant,
+  but dayDate followed the stale construction-time today=2020-06-01), because MainActivity.onCreate captures
+  today/taxYear once and the running Activity kept them. The same mechanism means a person who opens the app
+  before midnight and taps "today" after midnight, without the Activity being recreated, files the day under the
+  previous date.
+- WHY IT MATTERS / WHY ONLY LOW: this product's whole value is a correctly-dated, audit-defensible record, so a
+  misdated day is not cosmetic. But the real-world trigger is narrow (the process must stay warm and the
+  Activity not be recreated across the boundary) and it is self-correcting on the next relaunch, and a
+  clock-change trigger requires a wrong device clock (itself covered above). Measured under an artificial clock
+  jump; the real-midnight case is inferred from the same construction-time capture.
+- WHAT IT WOULD TAKE TO CLOSE: recompute today (and re-evaluate taxYear) at record time from the clock rather
+  than from a value captured at onCreate, or refresh them on Activity resume. Structural (R255).
+
+### RESILIENCE (increment 5)
+
+PROCESS DEATH (mid-write). `am kill` (SIGKILL) was fired immediately after a record, three times, then the app
+was relaunched. NO app FATAL in logcat; the recorded day persisted; `PRAGMA integrity_check` = ok on the pulled
+DB. Room/SQLite in WAL mode commits atomically, so a killed transaction rolls back whole - no partial row, no
+corruption. VERDICT: process death loses no committed data and cannot corrupt the store.
+
+STORAGE FULL. /data was filled with fallocate to 100 % (df: ~5 MB free) and the app was relaunched and driven:
+it started, reached Aujourd'hui, recorded a Domicile day ("Enregistre : Domicile / En attente de
+synchronisation") and recomputed the rate (28,75 %) - no crash, no error dialog, no data loss; integrity_check =
+ok after. The fill file was deleted immediately and /data recovered to 33 % used. R233 CAVEAT: a true zero-byte
+ENOSPC on the Room write was NOT forced - a KB-sized write still succeeds with 5 MB free, and driving /data to
+literally zero risks destabilising the OS the accessibility pass needs; what is measured is that the app
+tolerates a nearly-full disk gracefully. A genuine ENOSPC would abort the WAL transaction atomically (the same
+mechanism the process-death integrity result confirms).
+
+SERVER 500 / MALFORMED JSON.
+- GET path (MEASURED): a fault-server on the debug build's endpoint (10.0.2.2:3000) returning 500 to everything
+  was reached by the app's authenticated GET /api/v1/dossier?year=2026, which received 500 and was handled
+  gracefully - no crash; the Releve falls back to its cached copy (R288). A real "server returns 500" on a real
+  authenticated request path, on the shipping HTTP stack (UrlConnectionTransport + SessionManager).
+- OFFLINE / transport refused (MEASURED): a day recorded with nothing listening on 3000 stays PENDING ("En
+  attente de synchronisation"); no loss.
+- POST drain under 500 / garbage (NOT reproduced on-device this session - R233): the SyncWorker drains PENDING
+  rows via WorkManager (NetworkType.CONNECTED). With the INJECTED session the drain POST did not reach the
+  fault-server within the observation windows (WorkManager deferral; `cmd jobscheduler run` could not target the
+  rotating job id; an airplane-mode toggle and the DevRecorder "Synchroniser" did not force it either). The SAME
+  HTTP stack's GET-500 WAS observed handled gracefully, and the drain POST ITSELF was proven end-to-end in the
+  F4 crossaccount run (real tokens -> POST /api/v1/entries drained). The 500/garbled handling is JVM-tested:
+  SyncEngine.syncBatch maps a server error or a garbled body to Retryable -> SyncWorker Result.retry(), so rows
+  stay PENDING. Across EVERY fault exercised this session, no PENDING row was lost (final DB: 3592 rows, 3
+  non-synced intact) and no crash occurred.
+- VERDICT: nothing observed loses a recorded day or crashes the app. The write queue is durable across process
+  death, a full disk, a server 500 (GET) and being offline. The on-device POST-500 drain is owed as a small
+  confirmation, bounded by WorkManager scheduling on the emulator (not by any observed defect).
+
+## PERFORMANCE (increment 5)
+
+Measured on the seeded 3591-row / 10-year dataset (confirmed via node:sqlite: total 3591, years 2013..2026,
+2026 taxYear = 195 rows -> a real rate). HOST CONDITIONS (R233): the host was under heavy memory pressure the
+whole pass - free RAM 1112 MB at the start of the cold-start samples, 695 MB by the end, Android Studio (~1.9
+GB) open - so the emulator VM was swapping. The APP's own memory was NOT swapped (below), so the wall-clock
+timings are inflated by host swap and are reported as environment-limited, never as a clean baseline.
+
+- COLD START (am start -> ActivityTaskManager "Displayed"): 3 samples, force-stop between - +3s340ms, +3s220ms,
+  +3s265ms; MEDIAN 3.27 s. The app reaches a FULLY-RENDERED shell (the engine's 28,33 % rate, the mission
+  warning, the threshold rail all painted). ENVIRONMENT-LIMITED (host swap, 695-1112 MB free); the tight
+  clustering (3.22-3.34 s) is the notable part - the render is stable, the absolute number is host-inflated. A
+  brief "Aucune journee" empty-state flashed before the Room flow emitted on one relaunch under swap - a load
+  race (the year panel populated a few seconds later), an environment artifact, not a defect.
+- ON-DEVICE ENGINE OVER A FULL YEAR (MEASURED): computeYear runs the increment-2 aggregation + calculateTelework
+  over the tax year's rows on every entry change and renders at cold start - 28,33 % "Taux a declarer a l'AFC" /
+  40,9 % over 2026's 195 rows, with the mission-cap warning and the forecast ("Jours restants avant 40,0 % : 28",
+  "avant 49,9 % : 51,5"). The engine is <0.1 ms (FW5); no caching, recomputed live on every change.
+- CALENDAR at 10-year volume (MEASURED, with a design fact): the Calendrier is SCOPED TO THE TAX YEAR - the
+  back-chevron disables at January of the current year, so the 10-year seeded history is NOT browsable
+  month-by-month (the render cost is bounded to <=12 months, which is WHY it stays responsive at volume). A
+  fully-populated month renders with per-day kind (S/D/M), provenance underline and a per-month tally (Jan 2026:
+  Suisse 10 / Domicile 6 / Mission 6 / Non renseigne 0). Month navigation (dumpsys gfxinfo): 173 frames, 50th
+  percentile 44 ms, 90th 73 ms - responsive; 95th 650 ms / 99th 1200 ms are host-swap stalls. No crash across
+  the traversal. The full 3591-row dataset feeds the engine (above); the calendar view itself is year-bounded.
+- MEMORY (dumpsys meminfo, MEASURED - independent of host swap): holding 3591 rows, TOTAL PSS ~82 MB (RSS ~205
+  MB), TOTAL SWAP PSS 80 KB - the app itself is NOT swapped (Java Heap ~19 MB, Native ~14 MB); ~96 MB PSS after
+  extended navigation. A modest, healthy footprint at 10-year volume.
+- R233 (did it observe its subject): cold start read from the "Displayed" log; the engine and calendar from the
+  rendered screen; memory from meminfo - each names its instrument. Cold start is caveated environment-limited;
+  memory and the engine/calendar renders are clean app-local measurements.
 
 ## CODE QUALITY (increment 6, code-quality half)
 
