@@ -166,6 +166,11 @@ private val UNREACHABLE: Map<String, String> =
         "ParametresCopy.version" to
             "the « nom (code) » version line, formatted by MainActivity from BuildConfig (not permitted in ui/) " +
             "and passed to ParametresScreen as a ready string - reached from the composition root, not a surface",
+        // R299: the no-browser fallback toast is raised by MainActivity's openLegal (a Context/Toast concern the
+        // ui/ fence keeps out of ui/), so it is reached from the composition root, not a fr-surface directory.
+        "ParametresCopy.legalNoHandler" to
+            "the toast shown when no app can open a legal link (R299), raised by MainActivity's openLegal, which " +
+            "owns the Context and the Toast - reached from the composition root, not a fr-surface directory",
     )
 
 class CopyReachabilityTest {

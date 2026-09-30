@@ -58,6 +58,7 @@ import ch.monreleve.app.parametres.AccountExportKind
 import ch.monreleve.app.parametres.LegalPage
 import ch.monreleve.app.parametres.ParametresController
 import ch.monreleve.app.parametres.ParametresState
+import ch.monreleve.app.parametres.openLegalLink
 import ch.monreleve.app.releve.ExportEvent
 import ch.monreleve.app.releve.ExportKind
 import ch.monreleve.app.settings.SettingsStore
@@ -383,8 +384,13 @@ private fun openLegal(
     context: Context,
     page: LegalPage,
 ) {
-    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("${BuildConfig.API_BASE_URL}${page.path}"))
-    context.startActivity(intent)
+    // R299: a device with no browser (a managed profile, a kiosk) would crash on startActivity; openLegalLink
+    // catches that and shows the address instead. The launch and the fallback toast are the seams it wraps.
+    openLegalLink(
+        url = "${BuildConfig.API_BASE_URL}${page.path}",
+        open = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(it))) },
+        showAddress = { Toast.makeText(context, ParametresCopy.legalNoHandler(it), Toast.LENGTH_LONG).show() },
+    )
 }
 
 private fun parametresActions(

@@ -143,4 +143,13 @@ object ParametresCopy {
         name: String,
         code: String,
     ): String = "$name ($code)"
+
+    /**
+     * R299: the fallback shown when no app can open a legal link (a device with no browser). It names the
+     * address so the person can open it another way, rather than meeting a crash. A fun because the address is
+     * live data (R181), not a constant.
+     */
+    fun legalNoHandler(url: String): String =
+        "Aucune application ne peut ouvrir ce lien. " +
+            "Vous pouvez le consulter à l’adresse : $url"
 }

@@ -1454,4 +1454,4 @@ reading every section. Entries are not edited; this ledger is.
 | PARKAN-27 — sign-out warns of unsynced loss | **confirmed** | R297 (AN-AUDIT incr 0): the sign-out warning is wanted; kept |
 | PARKAN-28 — sign-out keeps the settings | **reversed** | R297 (AN-AUDIT incr 0): sign-out clears the settings too; a re-sign-in restores them from GET /api/v1/me before the onboarding decision |
 | PARKAN-29 — licences screen is hand-authored | **closed** | R298 (AN-AUDIT incr 0): the list stays hand-written; a gate check (checkLicences) derives the release runtime deps from the build and fails on any not attributed - no plugin, no dependency. First run found guava/annotations/jspecify bundled but uncredited (R178); added |
-| PARKAN-30 — openLegal unguarded vs no browser | **open** | AN12; edge-case crash, did not manifest (walkthrough had a browser) |
+| PARKAN-30 — openLegal unguarded vs no browser | **closed** | R299 (AN-AUDIT incr 0): openLegal catches ActivityNotFoundException and shows the link's address (openLegalLink seam, LegalLinkTest); no crash on a browserless device |
