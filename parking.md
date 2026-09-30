@@ -1408,6 +1408,25 @@ TOUCHES:   LicencesCopy, LicencesScreen, app/build.gradle.kts (if a plugin is ad
 NEEDS:     an operator decision on whether an exhaustive generated licence list is required for the Play
 release (AN14).
 
+## PARKAN-30 - openLegal is unguarded against a missing browser  [AN12, 2026-09-29]
+
+QUESTION:  The A propos legal rows call startActivity(ACTION_VIEW http...) with no try/catch. On a device
+with no http handler this throws ActivityNotFoundException and crashes the app. The walkthrough's emulator
+image HAD a browser, so it opened /confidentialite cleanly and did not throw - the crash did not manifest.
+
+TAKEN:     Left unguarded for now, and parked. The crash is an edge case (essentially every real Android
+device has a browser), the walkthrough proved the happy path, and a guard needs a toast + copy + an
+UNREACHABLE census entry for a case that did not occur. Conservative: adding scope late for a non-manifesting
+edge is the change to defer, not rush.
+
+NOT TAKEN: a try/catch around startActivity showing a toast ("aucun navigateur installe"). It is the correct
+robustness fix and small, but it expands the copy surface for an unreachable path.
+
+TOUCHES:   MainActivity.openLegal, a new toast string in ParametresCopy, CopyReachabilityTest UNREACHABLE.
+
+NEEDS:     an operator decision (or a follow-up, naturally AN14's Play-release hardening) on guarding the
+legal-link intent.
+
 ## STATUS LEDGER  [appended 2026-09-29]
 
 One line per Android-era entry, so the state of each is visible without
@@ -1435,3 +1454,4 @@ reading every section. Entries are not edited; this ledger is.
 | PARKAN-27 — sign-out warns of unsynced loss | **open** | AN12; conservative extension of R289, awaits operator confirmation |
 | PARKAN-28 — sign-out keeps the settings | **open** | AN12; conservative reading of R295's enumeration; reopens PARKAN-2's multi-user half |
 | PARKAN-29 — licences screen is hand-authored | **open** | AN12; a generated inventory is a new dependency (R156) |
+| PARKAN-30 — openLegal unguarded vs no browser | **open** | AN12; edge-case crash, did not manifest (walkthrough had a browser) |

@@ -1,0 +1,509 @@
+====================================================================
+REPORT-AN12 - PARAMETRES (the manual product's settings, data,
+account, legal and licences). Checkpoint F.
+====================================================================
+
+SUMMARY
+-------
+AN12 builds Parametres and completes the MANUAL PRODUCT: after it,
+CHECKPOINT F is reached. Five increments, each gated on the android
+gate (:app:gate) and pushed on its own green chain:
+
+  56cbdac  1  settings, and what a change does to the year (R290)
+  fc3b13e  2  export and sign-out (R295, PARKAN-27/28)
+  c59166e  3  deleting the account, everywhere (R289)
+  37bf032  4  legal pages and licences (R280 discharged, R282)
+  d68bc7b  5a the exported file is the record too (R289 exports fix,
+             found before the walkthrough) + parking (PARKAN-27/28/29)
+  2da00b6  5b the R290 rate rows stay legible at 200 percent (a
+             walkthrough finding, fixed and verified in-JVM)
+  <this>   5c parametres, seen - this report + PARKAN-30
+
+R273 (first): tasks/todo.md line 986 is "AN12: Parametres" - confirmed.
+todo.md's DESCRIPTION predates R282: it names a mode d'enregistrement,
+reminder time + opt-in, and alert-list opt-in. R282 (carried by the
+prompt, and rulings win) restricts the manual screen to the six
+calculation fields + data + account + legal, and todo.md's AC2
+("auto -> manual") is not applicable (automatic mode is not built).
+Recorded as a DEVIATION.
+
+THE DEVICE WALKTHROUGH RAN IN FULL. AC1 held (AN11 confirmed three
+consecutive runs to a signed-in Aujourd'hui), so it was REQUIRED. It
+drove every AN12 flow on the emulator against the production container,
+proved the sign-out and deletion server-side and device-side, and found
+one 200-percent layout defect - now fixed and verified in-JVM. See the
+WALKTHROUGH section.
+
+CHECKPOINT F is reached - see the CHECKPOINT F section.
+
+====================================================================
+PRECONDITIONS
+====================================================================
+R1 - gate:clone GREEN on a fresh clone of origin/main HEAD 387c5c5
+("Spec: record the four rulings (H7-H10)"), before any work:
+
+  GATE:CLONE PASSED
+  commit  387c5c567304f582145960c1e204c0126b7b42ad
+  clone   monreleve-clone-Fg2JuH (removed), exit 0
+  ran     install, typecheck, lint, test, build, size, db:deploy,
+          test:db, test:container:write - from a clean checkout (no
+          .env, no prior node_modules, no generated file the run did
+          not produce itself). The scratch DB monreleve_gate_clone_
+          387c5c56 was created and migrated from empty by the clone's
+          own db:deploy.
+  claim   this commit builds and passes those suites from a clean
+          checkout.
+  CI readiness: quiet - the repository is private and CI_FULL is unset
+          - jobs will skip (the carried FW24 combination).
+  NOT RUN (R133, making no claim): test:e2e, test:visual, test:runtime,
+          lighthouse, parity:check, test:container.
+
+R0 read: REPORT-AN11.txt; SPEC 11.5 (Parametres) verbatim; SPEC 20;
+docs/api-v1.md sections 9 (/me), 13 (account export), 14 (account
+delete); REPORT-FW26.txt (the erasure path); prompts/design-frontier/
+FD9. Rulings win over FD9 (see FD9 AGAINST THE RULINGS).
+
+Per-increment gate: the android gate (:app:gate) - assembleDebug,
+testDebugUnitTest (the fences, theme/radius/copy censuses included),
+checkTestFloor, ktlintCheck, detekt, verifyPaparazziDebug,
+checkReleaseCleartext, checkReleaseNoDebugInjection - GREEN before every
+push. gate:clone verifies the WEB/DB surface, which my android-only
+commits do not touch; but the operator's concurrent FW33 commits
+(folded into shared main by my rebases) DID change web/, so HEAD's web
+tree is NOT byte-identical to 387c5c5's, and the final gate:clone
+therefore re-verifies the combined tree (see NOTICED and PUSH PROOF).
+
+====================================================================
+RED-GREEN LEDGER
+====================================================================
+Three GENUINE REDs on real assertions (not compile errors), each shown
+red then green:
+
+1. ParametresControllerTest (increment 1). Against a save() that
+   persisted DIRECTLY (the deliberate omission), four R290 tests failed
+   on real assertions:
+     - "a change that MOVES the year's rate is not saved until confirmed"
+       -> "Expected value to not be null, but was null" (pendingRateChange)
+     - "the before/after are the device engine's rates ..."
+       -> "Expected value to not be null, but was null"
+     - "cancelling a consequential change discards it"
+       -> "expected:<0> but was:<1>" (saver.bodies)
+     - "a granularity switch the recorded days cannot support is refused"
+       -> "Expected CHANGE_CONFLICTS_WITH_RECORD but actual was null"
+   GREEN after the R290 gating (compute before/after over the device's
+   entries; refuse an engine-Err edit; ask before saving a rate move).
+
+2. LocalStoreTest (increment 2). Against the pre-R295 (PARKAN-2)
+   clearForSignOut that cleared the TOKENS ALONE, the R295 tests failed
+   because the record, the cache and the queued sync were left on the
+   device (recordCleared/exportsCleared false). GREEN once sign-out
+   cleared the full local store (settings kept, PARKAN-28).
+
+3. LocalStore + ParametresAccount negative sweep (increment 5 opening).
+   Against a clearForSignOut that did not delete cacheDir/exports, three
+   tests failed on exportsCleared - a rendered account export (the whole
+   record) surviving deletion. GREEN once the clearExports seam was
+   wired.
+
+HONEST NOTE: the account-flow tests (export events, sign-out flow,
+next-call-refused, the delete flow, partial-failure) were written
+alongside the code and are GREEN VERIFICATIONS, not red-first - the
+core R295/R289 properties got their genuine RED via LocalStore above.
+
+====================================================================
+SETTINGS AND R290
+====================================================================
+AC1. The settings screen edits canton, taux d'activite, methode (240 /
+exact + total), decompte (granularity) and debut d'activite, through
+PATCH /api/v1/me - the SAME SettingsSaver seam onboarding uses, so the
+settings write has no second transport (R206). Validation has no third
+copy of the rule (R196): the controller runs calculateTelework and
+accepts iff the engine does.
+
+R290 - a change that would move the year's declarable rate shows it
+BEFORE and AFTER before saving. The rate is computed by the DEVICE
+engine over the device's OWN entries (deviceDeclarableRate), the same
+path Aujourd'hui's year panel takes (R206) - so "moves the rate here"
+means exactly "moves the rate the person already sees, and, once
+synced, on the releve". save() computes both; when they differ it does
+NOT save - it exposes a pendingRateChange the screen shows (formatPercent
+over the engine's own figures, never typed - R181), and only confirmSave
+commits. When the year has no entries, or the rate does not move, it
+saves directly.
+
+THE GRANULARITY TRAP (advisor). A decompte switch to DAY against
+recorded half-days makes the recorded year uncountable
+(GranularityMismatch -> deviceDeclarableRate null). save() REFUSES it
+(CHANGE_CONFLICTS_WITH_RECORD) rather than reading the null as "nothing
+moved" and silently saving a setting that invalidates the year. Tested.
+
+====================================================================
+EXPORT AND SIGN-OUT
+====================================================================
+AC2 (export). "Exporter mes donnees" fetches the FW26 account export -
+the complete JSON record, or the CSV entries - through the session
+(authenticatedGetBytes) and hands it to the platform share sheet, the
+same one-shot ExportEvent path the Releve uses (R206). Paths
+/api/v1/account/export and ?format=csv. Offline -> RequiresConnectivity
+(SPEC 13.2); a server refusal -> Failed.
+
+SIGN-OUT CLEARS THE LOCAL STORE (R295), NOT THE TOKENS ALONE. A new
+LocalStore component (DeviceLocalStore) clears the Room record (which
+IS the mutation queue - the PENDING rows), the detection tally, the
+cached releve, the tokens, any queued sync, AND the exported files;
+the calculation settings are KEPT (PARKAN-28). SessionManager gained
+revokeServerSession (server revoke without local clear), so the revoke
+and the local wipe have one owner each. The next authenticated call is
+refused - proven at the JVM level through a REAL SessionManager sharing
+the token store (after confirm -> NoSession), and server-side in the
+walkthrough.
+
+PARKAN-27 - the sign-out confirmation names how many recorded days are
+unsynced (in words) before it wipes Room, extending R289's rationale to
+sign-out (a silent wipe of unsynced days contradicts the product's core
+claim). Parked for operator confirmation.
+
+====================================================================
+DELETION (R289)
+====================================================================
+"Supprimer mon compte" erases the server AND the device in one action.
+
+THE CONFIRMATION names what is destroyed - the recorded days and,
+SEPARATELY, the unsynced ones that never reached the server and cannot
+be recovered - the irreversibility, offers export first, and requires
+the typed word SUPPRIMER (one home, R206: the gate, the copy prompt and
+the request body all read DELETE_CONFIRMATION, the value the server
+compares).
+
+THE SERVER ERASURE. POST /api/v1/account/delete {"confirm":"SUPPRIMER"}
+(a POST, not a DELETE verb - SPEC 14) through the existing
+authenticatedPost; no new HTTP verb. The receipt is parsed - removed as
+a MAP (SPEC 14.1), alertSubscriptionRemains surfaced (SPEC 14.3).
+
+THE DEVICE ERASURE happens ONLY after the server accepts
+(clearForDeletion, the strict SUPERSET of sign-out that also clears the
+settings and the pending sign-in). A partial erasure where the device
+is wiped but the server rolled back is what SPEC 14.2 forbids. A server
+refusal (Refused) and a call that did not complete (Unknown, SPEC 14.6
+- not idempotent) BOTH keep the device intact and say so, in distinct
+copy.
+
+THE LOCAL NEGATIVE SWEEP, two guards (FW26's shape on the device):
+  - a controller test drives the REAL DeviceLocalStore through
+    confirmDelete and asserts every seeded store empty afterwards -
+    presence proven first;
+  - ErasureCensusTest reads every "monreleve.*" storage identifier out
+    of main source and requires each erased by deletion or exempted with
+    a reason, so a NEW store cannot escape the erasure the way a re-read
+    of the clear-list would let it. The cacheDir/exports directory is a
+    PATH, not a name, so the census is blind to it (R246's shape) - it
+    is covered by the clearExports seam instead, found before the
+    walkthrough (see the increment-5 opening commit).
+
+====================================================================
+LEGAL AND LICENCES (R280, R282)
+====================================================================
+Mentions legales, Confidentialite, CGU and Sources reglementaires open
+in the browser from the configured site URL - BuildConfig.API_BASE_URL,
+the emulator's host in debug and monreleve.ch in release - at their LIVE
+web slugs (lib/content/routes.ts: the three FW10 legal pages and FW12
+sources are status:'live'), so the slug is a verified fact, not a guess
+(R156 forbids parking a slug).
+
+R280 IS DISCHARGED. The simplified Swiss-border polygon ships in the
+APK today, so the licences screen carries its ODbL attribution now, not
+left to a future detection UI. The wording - "(c) OpenStreetMap
+contributors", ODbL 1.0, OSM relation 51701 - is taken from the notice
+that ships beside the data (switzerland.json.LICENSE.txt) and
+docs/detection-model.md (R181, derived, not typed from memory), shown
+beside the open-source licences (Compose, AndroidX/Room/WorkManager,
+Kotlin, kotlinx.coroutines under Apache 2.0). The polygon is named
+"donnees de frontiere", never a detection feature (R282). PARKAN-29 -
+the exhaustive per-library inventory needs a plugin (a new dependency,
+R156), so the screen hand-authors the major components.
+
+====================================================================
+R282
+====================================================================
+ParametresR282Test scans the Parametres and Licences copy (comments
+stripped, since the comments legitimately explain R282) and FAILS on
+"detection", "automatique", "rappel", "notification" or "consentement".
+The manual product names nothing it lacks. A second test proves the
+matcher fires on a planted "Detection automatique", so a green run means
+absence, not a broken scan (R133).
+
+====================================================================
+WALKTHROUGH
+====================================================================
+RAN IN FULL on the Pixel_10 headless emulator against the production
+container (monreleve:write, container monreleve-an12 on port 3000, wired
+to frontalier-postgres:5436, scratch DB monreleve_an12), a session
+injected via the AN5c SessionInjectionActivity. Driver
+android/scripts/an12-walkthrough.mjs and 19 PNGs in android/.an12-shots/
+stay UNTRACKED (AN5c/AN10b/AN11 precedent). R169 health check named THIS
+product before driving. The emulator was killed (adb emu kill) and the
+container removed (docker rm -f) before the final gate:clone; only the
+shared frontalier-postgres remains.
+
+I OPENED AND READ THE KEY SHOTS MYSELF (multimodal, R177 - a person
+looking, not the driver's word):
+
+  c-01 (R290, default). Dialog "Cette modification recalcule votre
+  annee", body naming "les journees deja enregistrees sur cet appareil",
+  then "Actuellement 0,41 %" and "Apres enregistrement 0,83 %", the
+  primary "Enregistrer la modification" and the text "Conserver la
+  valeur actuelle". The figures are the device engine's own over ONE
+  recorded HOME day: 1/240 at rate 100 = 0,41 %; 1/120 at rate 50 =
+  0,83 %. AC1 realized, and computed on the device.
+
+  e-01 (deletion, default). "Supprimer mon compte", "Cette action
+  supprime definitivement :", the four destruction lines (1 saisie et
+  son horodatage; l'origine de chaque saisie; votre releve annuel de
+  teletravail; votre compte et votre adresse e-mail), the RED
+  irreversibility sentence, "Vous pouvez d'abord exporter vos donnees"
+  with the two export buttons, "Pour confirmer, saisissez SUPPRIMER."
+  and an empty input, "Supprimer definitivement" correctly DISABLED
+  (grey, the word not yet typed), "Conserver mon compte". FD9 A2, less
+  the year on the releve line.
+
+  f-01 (licences). "(c) OpenStreetMap contributors", the ODbL body
+  naming relation 51701 and ODbL 1.0 with the opendatacommons link,
+  then "Logiciels libres" (Jetpack Compose, AndroidX/Room/WorkManager,
+  Kotlin, kotlinx.coroutines, Apache 2.0) with the apache link. R280
+  discharged, visibly.
+
+  k-02 (R290, 200 percent) - THE ONE DEFECT, now fixed. At fontScale 2
+  the "Apres enregistrement" value FRAGMENTED into unreadable pieces (a
+  "0" on one line, an "8" on another). See FINDINGS.
+
+OBSERVED, END TO END (the driver's readings, which the shots corroborate):
+  - R290: the before/after dialog raised only because a day was recorded
+    through Aujourd'hui FIRST (the rate is over ROOM entries; a
+    server-seeded dossier would not have raised it). 0,41 % -> 0,83 %.
+  - Export: the share sheet fired; cacheDir/exports held
+    mon-releve-donnees.json.
+  - Sign-out (R295): the confirmation named the local wipe and stated
+    "Vos reglages de calcul sont conserves" (PARKAN-28). SERVER PROOF of
+    "next call refused": GET /api/v1/me with the PRE-sign-out token ->
+    401 revoked_session, and the DB row DeviceSession.revokedReason =
+    SIGNED_OUT, revokedAt set (the authoritative proof, since an injected
+    token also nears a 15-min expiry). DEVICE after sign-out:
+    monreleve.auth.xml and monreleve.dossier.xml are empty (<map/>),
+    monreleve.settings.xml is STILL POPULATED (PARKAN-28 confirmed on the
+    device), and cacheDir/exports is GONE (the exports-erasure fix).
+  - Delete offline (R289): a day recorded with the container stopped
+    stayed PENDING; the delete confirmation showed the RED line "1
+    journee enregistree sur cet appareil n'a pas encore ete synchronisee
+    : elle sera definitivement perdue." (shot i-02, captured while still
+    offline). Typed SUPPRIMER, confirmed. Outcome "Compte supprime"
+    (alertSubscriptionRemains false - no subscription for this user).
+  - NEGATIVE SWEEP, both sides: SERVER after delete: 0 rows for the user
+    (User/Entry/EntryEvent/Device/DeviceSession); the pre-delete token
+    -> 401 unknown_token. DEVICE: every pref empty (<map/> for auth,
+    settings, dossier, pending) and cacheDir/exports absent - a true
+    first-run state. Presence was established first (the shots before the
+    wipe show the record).
+  - Legal link: the VIEW http handler was present on the image, so
+    "Politique de confidentialite" opened /confidentialite with NO
+    ActivityNotFoundException (shot g-01).
+
+FINDINGS
+  1. 200 percent R290 fragment (FIXED). k-02 showed the after-rate
+     "0,83 %" broken into "0" / "8" pieces at fontScale 2 - the
+     after-value, the point of the dialog, illegible. FIXED in the
+     commit "AN12: the R290 rate rows stay legible at 200 percent": the
+     label flexes (weight) and wraps, the value keeps its intrinsic
+     width and maxLines 1. Verified IN-JVM by a new paparazzi test at
+     fontScale 2 (its recorded 200 percent baseline shows "0,41 %" and
+     "0,83 %" both whole, which I opened and confirmed). Default scale
+     (c-01) was already clean.
+  2. Offline-sync race (expected, handled). Restarting the container to
+     confirm the delete let the offline day drain and sync; the
+     unsynced-loss screenshot (i-02) was captured while STILL OFFLINE,
+     so R289's confirmation claim holds - requestDelete needs no network.
+     The receipt's Entry count is server rows only; the unsynced day
+     never reached them.
+  3. openLegal is unguarded (PARKAN-30). startActivity(ACTION_VIEW) has
+     no try/catch; it did not throw here (a browser exists on the image)
+     but would ActivityNotFoundException on a device with none. Parked -
+     an edge case that did not manifest.
+
+====================================================================
+FD9 AGAINST THE RULINGS
+====================================================================
+FD9 is a visual reference; where it conflicts with the rulings, the
+rulings win, and each conflict is named:
+
+FORBIDDEN / UNBUILT PER R282 (omitted from the manual screen):
+  - The ENREGISTREMENT card - "Mode d'enregistrement / Detection
+    automatique" and "Rappel quotidien" - is a mode chooser + a reminder
+    setting, both forbidden by R282 (detection consent, reminders). Not
+    shown.
+  - "Alertes reglementaires" (alert-list opt-in) is not built - it is
+    not in AN12's increments and the manual product advertises nothing
+    it does not have (R85/R282). Not shown.
+
+OMITTED FOR A CONTRACT REASON:
+  - "Adresse e-mail" (FD9 COMPTE) is omitted: /api/v1/me does NOT return
+    the address (section 9 - the settings endpoint must not leak it), so
+    the device has no source for it. Showing it would need a second,
+    contradictory path.
+
+ADDED, BECAUSE THE PROMPT REQUIRES IT AND FD9 LACKS IT:
+  - A "Se deconnecter" row (COMPTE) - FD9 has no sign-out affordance,
+    and increment 2 requires one.
+  - A "Mentions legales" row (A propos) - FD9's A propos lists
+    Confidentialite, CGU, Sources and Version but not Mentions legales,
+    which the prompt requires.
+
+CHANGED, BECAUSE A LATER RULING POSTDATES FD9:
+  - The deletion sheet gains the unsynced-days loss line (R289 postdates
+    FD9's A2, which names only the recorded count).
+
+FIDELITY DIVERGENCES (functional equivalents, noted honestly):
+  - "votre releve annuel 2027" (FD9, with the year) ships as "votre
+    releve annuel de teletravail" - the delete list does not carry the
+    tax year in that line.
+  - FD9's delete row helper "Supprime definitivement vos 119 saisies"
+    (with the live count) ships as a static "Supprime definitivement
+    votre compte, vos saisies et votre releve"; the COUNT appears in the
+    confirmation dialog (DeletePrompt.recordedDays), not the row.
+  - The R290 and the sign-out/delete confirmations are Material3
+    AlertDialogs, where FD9 draws a bottom sheet for the deletion. The
+    typed-word gate, the destruction list and the destructive button are
+    all present; the container differs.
+  - The calculation fields are an onboarding-style FORM (dropdown +
+    text + radios), where FD9 draws a row-list with chevrons that open
+    editors. Same fields, same OnboardingCopy labels; the edit affordance
+    differs.
+
+====================================================================
+CHECKPOINT F - the manual product, end to end
+====================================================================
+WHAT IT NOW DOES:
+  - Sign in by magic link (opaque hashed tokens, rotation, replay ends
+    the session).
+  - Onboard: set the six calculation fields, PATCHed to /api/v1/me and
+    cached, so Aujourd'hui computes offline from the first launch.
+  - Record a day on Aujourd'hui (one tap) or the Calendrier (past days,
+    half-days, absences); every write enqueues the drain and syncs with
+    server-assigned timestamps; offline-first, the queue survives.
+  - Read the Releve annuel - the server-computed dossier rendered
+    natively, with the rail, the two thresholds and the remaining days;
+    export the PDF/CSV to the share sheet.
+  - Parametres: edit the settings, with a change that moves the year's
+    declarable rate shown before and after (R290); export the whole
+    record (JSON/CSV); sign out (the local store wiped, the session
+    revoked); delete the account (server and device erased, the
+    confirmation naming the unrecoverable unsynced days); open the legal
+    pages and the licences screen (ODbL attribution shown).
+
+WHAT IT DOES NOT DO (deliberately):
+  - No reminders / no FCM (AN13); no daily-reminder notification.
+  - No automatic detection mode, no mode chooser, no location, no map
+    (Checkpoint G).
+  - No Play Store release build (AN14).
+  - No past-year selector on the Releve (PARKAN-26 - only the current
+    tax year).
+  - No web signed-in area (D14).
+
+====================================================================
+PARKED
+====================================================================
+PARKAN-27 - sign-out shows a confirmation naming the unsynced loss.
+  Conservative extension of R289's rationale to sign-out; a silent wipe
+  of unsynced days contradicts the product's core claim. Reversible in
+  one edit. NEEDS operator confirmation.
+PARKAN-28 - sign-out KEEPS the calculation settings.
+  R295's enumeration (record, queue, cache, tokens) does not include the
+  settings; keeping them lets a re-sign-in skip re-onboarding. Deletion
+  DOES clear them. Reopens PARKAN-2's multi-user half. NEEDS an operator
+  decision on whether the device is ever multi-user / account-switching.
+PARKAN-29 - the licences screen is hand-authored, not a generated
+  inventory. A generated per-library list needs a plugin (a new
+  dependency, R156). NEEDS an operator decision for the Play release
+  (AN14).
+PARKAN-30 - openLegal is unguarded against a missing browser. A device
+  with no http handler would crash on a legal-link tap
+  (ActivityNotFoundException); it did not manifest (the walkthrough
+  image had a browser). A guard (try/catch + a toast) is the correct
+  fix but adds copy surface for an unreachable path. NEEDS an operator
+  decision, or naturally AN14's Play-release hardening.
+
+====================================================================
+DEVIATIONS
+====================================================================
+1. R295 SUPERSEDES THE PROMPT'S INCREMENT-2 TEXT (R209 shape). The AN12
+   prompt increment 2 says sign-out "clears the device's tokens (R193)".
+   That is PARKAN-2-era text: relay/AN12.txt was committed at b1c1f90,
+   before R295 existed, and never amended. R295 (minted after AN10's
+   review) REVERSED PARKAN-2 - sign-out clears the FULL local store.
+   Authoritative sources: parking.md STATUS LEDGER (PARKAN-2 reversed)
+   and relay/AN10b.txt line 39. The prompt's R0 says "rulings win", so
+   sign-out clears the Room record, the queue, the cached releve, the
+   tokens, queued sync and the exported files - settings kept
+   (PARKAN-28). This is exactly the R209 shape - a spec/prompt line
+   outliving the decision that superseded it - the second time in this
+   codebase (after Auth.js).
+
+2. THE EXPORTS-ERASURE FIX landed as a pre-walkthrough correctness
+   commit (d68bc7b), inside AN12 (R241 amends within the task). An
+   exported file - the account JSON is the whole record - was surviving
+   clearForDeletion; found before the walkthrough it would have leaked
+   through.
+
+2b. THE 200-PERCENT R290 FIX (2da00b6) landed as a walkthrough-finding
+   commit, inside AN12. The walkthrough is the instrument that finds
+   what the gate cannot (R176/R177); it found the after-rate fragmenting
+   at 200 percent, and the fix + its in-JVM paparazzi verification landed
+   the same session.
+
+3. todo.md's AN12 DESCRIPTION predates R282 (it names a mode
+   d'enregistrement with consent revocation, reminder time + opt-in, and
+   an alert-list opt-in) and its AC2 ("auto -> manual") assumes an
+   automatic mode that is not built. R282 (carried by the prompt) wins;
+   those are not on the manual screen.
+
+====================================================================
+NOTICED BUT NOT TOUCHING
+====================================================================
+- A CONCURRENT OPERATOR WEB SESSION ran throughout AN12 (FW33 - the home
+  page / public shell design): web/ files (PublicShell, layout, nav,
+  tests, baselines) and SPEC-frontalier-web.md were modified UNCOMMITTED
+  in the shared tree while I worked, and the operator ALSO pushed two
+  FW33 commits (62daf22 "the public shell", 612e43a "the report") to
+  origin/main mid-session. Every AN12 commit staged ONLY its own android
+  files (and parking.md) EXPLICITLY, by path - verified at each commit
+  that nothing outside android/ (and parking.md) was staged - so none of
+  the operator's work was swept into an android commit; my five commits
+  are android-only and their two are web-only, cleanly separated. My
+  fetch+rebase before each push folded their pushed FW33 commits into the
+  shared main, so HEAD (d68bc7b) now carries FW33's web changes as
+  ancestors. CONSEQUENCE for the gate: the web/db tree HEAD carries is
+  NOT byte-identical to 387c5c5's (FW33 changed web/), so the final
+  gate:clone verifies the COMBINED tree - my android is outside what
+  gate:clone checks, the operator's FW33 web is inside it - see PUSH
+  PROOF.
+- The untracked walkthrough driver (.mjs) and the PNG shots stay
+  untracked (AN5c/AN10b/AN11 precedent).
+- THE DELETION DESTRUCTION LIST names "l'origine de chaque saisie
+  (detectee, corrigee, manuelle)" - FD9 A2's verbatim copy, describing
+  the provenance FIELD's domain (D17). In the manual product every
+  saisie is "manuelle", so the other two values are not produced yet.
+  This is data-model vocabulary in a destruction list, not a feature or
+  a setting, and the R282 test (which targets feature-mentions:
+  "detection", not the past participle "detectee") passed. Left as FD9's
+  approved copy; flagged here for the operator in case the stricter
+  reading of R282 is wanted (then the line becomes "l'origine de chaque
+  saisie").
+
+====================================================================
+QUESTIONS
+====================================================================
+None blocking. The three open decisions are parked (PARKAN-27/28/29);
+each took the conservative, reversible option and continued (R156).
+
+====================================================================
+PUSH PROOF
+====================================================================
+[TO FILL AFTER THE FINAL gate:clone]
