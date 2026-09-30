@@ -283,3 +283,47 @@ FINDING F3 (severity LOW) - no FLAG_SECURE; the recents thumbnail shows the tax 
 - WHAT IT WOULD TAKE TO CLOSE: an AN14 decision on whether to set FLAG_SECURE (or exclude the app from recents
   previews) to hide the tax record, weighed against losing in-app screenshots and the screenshot-based audit
   instruments. Conservative today: leave it, and record the trade-off.
+
+## INTEGRITY AND RESILIENCE (increment 5, PARTIAL - see UNEXAMINED)
+
+FINDING F4 (severity HIGH) - an expired or revoked session does NOT clear the offline queue, so one account's
+queued days drain into the NEXT account that signs in on the same device.
+- THE R295 GAP, NAMED BY THE PROMPT: R295 made the SIGN-OUT BUTTON clear the record (the Room entries ARE the
+  mutation queue - a pending mutation is a row with syncState=PENDING). But an EXPIRED or REVOKED session is not
+  a sign-out, and nothing on that path clears the record.
+- EVIDENCE (established from source, which increment 2 PROVED byte-identical to what ships - minify off, no
+  mapping.txt, class names unobfuscated in the release dex - so the source chain below is the shipping chain):
+  1. SessionManager.applyRefresh: RefreshResult.Invalid (an expired/rotated-out refresh) -> tokenStore.clear()
+     ONLY (no record clear). SessionManager.onUnauthorized: a dead session (revoked_session/unknown_token, R210)
+     -> tokenStore.clear() ONLY.
+  2. StartupDecider.decideStartAfterSignIn: MeFetch.SessionGone -> StartDestination.SIGN_IN - no record clear.
+     MainActivity routes !session.isSignedIn() -> SIGN_IN; the clearRecord seam (MonReleveDatabase
+     .clearAllTables) is wired ONLY to DeviceLocalStore.clearForSignOut, i.e. the sign-out button.
+  3. CallbackController.exchange (the real sign-in): tokenStore.save(newPair) + pending.clear() - no record
+     clear. So account B signing in does not clear account A's rows.
+  4. EntryEntity has NO userId column (by design - "the token identifies the user"), so the local queue is not
+     scoped to an account.
+  5. SyncEngine.sync drains dao.pending() through AuthenticatedPoster, which loads the CURRENT token (B's) at
+     post time; server tenancy is assigned from the token (@@unique([userId, dayDate, portion])). So account
+     A's PENDING rows POST under account B's userId - A's fiscal days land in B's server record. SyncEngine's
+     own SyncOutcome.Unauthenticated doc comment states the drain mechanism verbatim - "Rows stay PENDING until
+     a fresh sign-in triggers another sync" - written without contemplating that the fresh sign-in may be a
+     DIFFERENT person. The code describes the defect in its own words.
+- SCENARIO: a shared, handed-over or resold device. A records days offline; A's refresh token expires or is
+  revoked server-side; A is dropped to the sign-in screen with the queue intact; B signs in; B's first sync
+  drains A's queue into B's account. A's days are attributed to B, and A's record is silently altered.
+- TWO CONSEQUENCES beyond the drain: (a) BEFORE any sync, B SEES A's leftover days rendered locally - the
+  calendar and Aujourd'hui read the unscoped local entry store, so A's record is on B's screen the moment B
+  reaches the shell; (b) AFTER the drain, B's exported Releve annuel de teletravail - the audit-defensible
+  document this product exists to produce - contains days B never worked.
+- MEASUREMENT STATUS (R233/R254): an on-device measurement was BUILT
+  (android/scripts/an-audit-crossaccount.mjs - A records offline behind a blockable proxy, A is revoked in
+  Postgres, B signs in, the queue drains, and a Postgres entriesByUser() reads which account owns A's offline
+  days) but did NOT run: the emulator could not boot on the audit machine because the disk was 99% full (the
+  Play-Store AVD needs ~7.37 GB free for a fresh userdata partition; ~7.28 GB was free, with active external
+  churn). THE SOURCE CHAIN IS CONCLUSIVE; the on-device confirmation is owed and is the successor's first task.
+- WHAT IT WOULD TAKE TO CLOSE: clear the record when a session ends for ANY reason (extend R295's
+  clearForSignOut to the expiry/revocation paths in SessionManager, and to a user change at sign-in in
+  CallbackController), OR scope the local entry store to a userId and refuse to drain a queue whose userId does
+  not match the current session. Structural (R255) -> an AN14/AN15 task; it is one of the three that most
+  deserve a task of their own.
