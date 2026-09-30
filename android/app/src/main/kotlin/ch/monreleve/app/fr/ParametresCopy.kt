@@ -56,8 +56,9 @@ object ParametresCopy {
     const val SIGN_OUT = "Se déconnecter"
     const val SIGN_OUT_CONFIRM_TITLE = "Se déconnecter ?"
     const val SIGN_OUT_CONFIRM_BODY =
-        "La déconnexion efface les données de cet appareil : vos journées enregistrées, le relevé en cache et " +
-            "votre session. Vos réglages de calcul sont conservés."
+        "La déconnexion efface les données de cet appareil : vos journées enregistrées, le relevé en cache, " +
+            "vos réglages de calcul et votre session. Vos réglages restent enregistrés sur le serveur et sont " +
+            "rétablis à la reconnexion."
     const val SIGN_OUT_CANCEL = "Rester connecté"
 
     /**

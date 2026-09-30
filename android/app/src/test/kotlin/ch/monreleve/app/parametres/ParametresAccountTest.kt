@@ -282,8 +282,9 @@ class ParametresAccountTest : FunSpec({
             controller.accountEvents.first() shouldBe AccountEvent.SignedOut
             // R295: the LocalStore cleared the token, so the next call has no session...
             session.authenticatedGet("/api/v1/me") shouldBe AuthedOutcome.NoSession
-            // ...and R295/PARKAN-28: the settings survived (a re-sign-in need not re-onboard).
-            (settings.load() != null).shouldBeTrue()
+            // ...and R297 (reverses PARKAN-28): the settings were cleared too. A re-sign-in restores them from
+            // GET /api/v1/me before the onboarding decision, so nothing of one person's setup outlives the next.
+            (settings.load() == null).shouldBeTrue()
         }
     }
 

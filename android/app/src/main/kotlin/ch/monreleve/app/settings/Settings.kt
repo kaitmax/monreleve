@@ -47,3 +47,29 @@ fun Settings.mePatchBody(): String =
         .put("granularity", granularity)
         .put("activityStartDate", activityStartDate ?: JSONObject.NULL)
         .toString()
+
+/**
+ * R297. Parse a GET /api/v1/me body into the six manual Settings, or null when the account has no settings on
+ * the server yet (which sends the person to onboarding). Presence keys on `canton`: it is the one field with
+ * no sensible server default, so a body without it is a not-yet-onboarded account. Reads ONLY the six manual
+ * fields (R282): reminderTime, reminderEnabled, loggingMode and detectionConsentAt are ignored. Null follows
+ * DossierPayload's convention (isNull, never optString, which coerces a JSON null to the string "null"). A
+ * malformed body yields null - the safe direction is onboarding, never a crash. This is the READ counterpart
+ * of mePatchBody above; both live here so the /api/v1/me vocabulary has one home (R206).
+ */
+fun parseMeSettings(body: String): Settings? =
+    runCatching {
+        val json = JSONObject(body)
+        val canton = json.stringOrNull("canton") ?: return@runCatching null
+        Settings(
+            canton = canton,
+            employmentRate = json.getInt("employmentRate"),
+            denominatorKind = json.getString("denominatorKind"),
+            exactTotalWorkDays = if (json.isNull("exactTotalWorkDays")) null else json.getInt("exactTotalWorkDays"),
+            granularity = json.getString("granularity"),
+            activityStartDate = json.stringOrNull("activityStartDate"),
+        )
+    }.getOrNull()
+
+/** DossierPayload's convention: a JSON null (or an absent key) reads as null, never the literal string "null". */
+private fun JSONObject.stringOrNull(key: String): String? = if (!has(key) || isNull(key)) null else getString(key)

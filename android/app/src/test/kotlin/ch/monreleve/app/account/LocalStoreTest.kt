@@ -105,13 +105,15 @@ class LocalStoreTest : FunSpec({
         }
     }
 
-    test("R295 / PARKAN-28: sign-out KEEPS the calculation settings and the pending sign-in") {
+    test("R297 (reverses PARKAN-28): sign-out CLEARS the calculation settings too; the pending sign-in is kept") {
         runTest {
             val f = Fixture()
             f.store.clearForSignOut()
 
-            // Settings survive so a re-sign-in lands on a computable Aujourd'hui without re-onboarding.
-            f.settings.load().shouldNotBeNull()
+            // R297: the settings are configuration the SERVER holds; clearing them on sign-out protects whoever
+            // holds the phone next, and re-signing in restores them from GET /api/v1/me before the onboarding
+            // decision. The pending sign-in is not R297's subject and is kept.
+            f.settings.load() shouldBe null
             f.pending.pending().shouldNotBeNull()
         }
     }
@@ -133,17 +135,18 @@ class LocalStoreTest : FunSpec({
         }
     }
 
-    test("deletion is a strict superset of sign-out (settings survive sign-out, not deletion)") {
+    test("deletion is a strict superset of sign-out (the pending sign-in survives sign-out, not deletion)") {
         runTest {
             val signOut = Fixture()
             signOut.store.clearForSignOut()
             val deletion = Fixture()
             deletion.store.clearForDeletion()
 
-            // The one difference between the two scopes, asserted directly so a future edit to either cannot
-            // quietly make them equal.
-            (signOut.settings.load() != null).shouldBeTrue()
-            (deletion.settings.load() == null).shouldBeTrue()
+            // R297 made sign-out clear the settings too, so the settings no longer distinguish the scopes. The
+            // one remaining difference is the pending sign-in, asserted directly so a future edit to either
+            // scope cannot quietly make them equal.
+            (signOut.pending.pending() != null).shouldBeTrue()
+            (deletion.pending.pending() == null).shouldBeTrue()
         }
     }
 })

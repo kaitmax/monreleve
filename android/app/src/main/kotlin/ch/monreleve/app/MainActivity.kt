@@ -10,6 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -20,6 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
@@ -40,6 +42,7 @@ import ch.monreleve.app.data.local.SharedPrefsDossierCache
 import ch.monreleve.app.data.remote.AuthApi
 import ch.monreleve.app.data.remote.DossierApi
 import ch.monreleve.app.data.remote.DossierResult
+import ch.monreleve.app.data.remote.ME_PATH
 import ch.monreleve.app.data.remote.UrlConnectionTransport
 import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.LocalEntryRepository
@@ -59,6 +62,9 @@ import ch.monreleve.app.releve.ExportEvent
 import ch.monreleve.app.releve.ExportKind
 import ch.monreleve.app.settings.SettingsStore
 import ch.monreleve.app.settings.SharedPrefsSettingsStore
+import ch.monreleve.app.startup.StartDestination
+import ch.monreleve.app.startup.decideStartAfterSignIn
+import ch.monreleve.app.startup.meFetchOf
 import ch.monreleve.app.ui.screens.aujourdhui.AujourdhuiScreen
 import ch.monreleve.app.ui.screens.calendrier.CalendarActions
 import ch.monreleve.app.ui.screens.calendrier.CalendrierScreen
@@ -92,7 +98,7 @@ import java.time.ZoneId
  * tabs neither recomputes nor leaks a collector on lifecycleScope. Releve and Parametres join the shell
  * when AN11/AN12 build them (R282: no tab for a screen that does not exist).
  */
-private enum class Destination { SIGN_IN, ONBOARDING, MAIN }
+private enum class Destination { SIGN_IN, RESOLVING, ONBOARDING, MAIN }
 
 // AN12: the cacheDir subdirectory an export is written to before the share sheet. ONE home (R206): shareFile
 // writes here and the device erasure deletes here, so a rendered export - the account JSON is the whole record
@@ -123,8 +129,11 @@ class MainActivity : ComponentActivity() {
         val start =
             when {
                 !session.isSignedIn() -> Destination.SIGN_IN
-                !settingsStore.isOnboarded() -> Destination.ONBOARDING
-                else -> Destination.MAIN
+                settingsStore.isOnboarded() -> Destination.MAIN
+                // R297: signed in but no local settings - a fresh account, or a re-sign-in after sign-out
+                // cleared them. Consult the server (GET /api/v1/me) before onboarding, so settings the server
+                // holds are restored rather than re-asked.
+                else -> Destination.RESOLVING
             }
 
         setContent {
@@ -133,6 +142,8 @@ class MainActivity : ComponentActivity() {
                     var destination by remember { mutableStateOf(start) }
                     when (destination) {
                         Destination.SIGN_IN -> SignInRoute(api, pending, lifecycleScope)
+                        Destination.RESOLVING ->
+                            ResolvingRoute(session, settingsStore) { destination = it }
                         Destination.ONBOARDING ->
                             OnboardingRoute(session, settingsStore, taxYear, lifecycleScope) {
                                 destination = Destination.MAIN
@@ -179,6 +190,31 @@ private fun SignInRoute(
         onSubmit = controller::submit,
         onRetry = controller::retry,
     )
+}
+
+// R297: signed in but no local settings. Consult GET /api/v1/me BEFORE the onboarding decision - the settings
+// are held by the server, so a re-sign-in after sign-out's wipe restores them rather than re-onboarding. The
+// decision itself is JVM-tested in StartupDeciderTest over fakes; this route is only the wiring and the loading
+// state (the DoD's loading state for a screen that waits on the network). Runs once (LaunchedEffect(Unit)).
+@Composable
+private fun ResolvingRoute(
+    session: SessionManager,
+    settingsStore: SettingsStore,
+    onResolved: (Destination) -> Unit,
+) {
+    LaunchedEffect(Unit) {
+        val decision = decideStartAfterSignIn({ meFetchOf(session.authenticatedGet(ME_PATH)) }, settingsStore)
+        onResolved(
+            when (decision) {
+                StartDestination.MAIN -> Destination.MAIN
+                StartDestination.ONBOARDING -> Destination.ONBOARDING
+                StartDestination.SIGN_IN -> Destination.SIGN_IN
+            },
+        )
+    }
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        CircularProgressIndicator()
+    }
 }
 
 @Composable

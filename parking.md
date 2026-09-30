@@ -1451,7 +1451,7 @@ reading every section. Entries are not edited; this ledger is.
 | PARKAN-23 — Lucide vector drawables | **done** | R293, AN10b increment 4 |
 | PARKAN-24 — split cell's exact form | **open** | AN10b; conservative form shipped, awaits operator preference |
 | PARKAN-25 — only 400 isolates (not 409/413) | **open** | AN10b; conservative reading of R296 |
-| PARKAN-27 — sign-out warns of unsynced loss | **open** | AN12; conservative extension of R289, awaits operator confirmation |
-| PARKAN-28 — sign-out keeps the settings | **open** | AN12; conservative reading of R295's enumeration; reopens PARKAN-2's multi-user half |
+| PARKAN-27 — sign-out warns of unsynced loss | **confirmed** | R297 (AN-AUDIT incr 0): the sign-out warning is wanted; kept |
+| PARKAN-28 — sign-out keeps the settings | **reversed** | R297 (AN-AUDIT incr 0): sign-out clears the settings too; a re-sign-in restores them from GET /api/v1/me before the onboarding decision |
 | PARKAN-29 — licences screen is hand-authored | **open** | AN12; a generated inventory is a new dependency (R156) |
 | PARKAN-30 — openLegal unguarded vs no browser | **open** | AN12; edge-case crash, did not manifest (walkthrough had a browser) |

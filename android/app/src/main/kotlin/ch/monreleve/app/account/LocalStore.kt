@@ -15,17 +15,20 @@ import ch.monreleve.app.settings.SettingsStore
 // detection tally, the cached releve, and any queued sync. The tokens go as well, so the next authenticated
 // call is refused.
 //
-// SETTINGS ARE KEPT ON SIGN-OUT (PARKAN-28). The six calculation settings are configuration, not the fiscal
-// record; keeping them lets a re-sign-in land on a computable Aujourd'hui without re-onboarding (which is what
-// increment 5's walkthrough does). Deletion clears them - a deleted account returns to a first-run state.
-// Whether sign-out should ALSO clear them for a cleaner account switch is PARKAN-28, a reversible one-line
-// change (add settingsStore.clear() to clearForSignOut).
+// R297 REVERSES PARKAN-28: SIGN-OUT NOW CLEARS THE SETTINGS TOO. The six calculation settings are held by the
+// server, so a re-sign-in restores them from GET /api/v1/me before the onboarding decision (StartupDecider) -
+// clearing them on sign-out costs the same person nothing and protects whoever holds the phone next. This
+// closes the multi-user half PARKAN-28 left open: after sign-out nothing of one person's setup outlives the
+// next. Deletion still adds the pending sign-in on top, so it remains a strict superset of sign-out.
 
 interface LocalStore {
-    /** R295: sign-out clears the record, the cache, the tokens and any queued sync. Settings are kept. */
+    /**
+     * R295 + R297: sign-out clears the record, the cache, the tokens, any queued sync, the exported files AND
+     * the settings. The pending sign-in is kept (it is not account data; deletion clears it).
+     */
     suspend fun clearForSignOut()
 
-    /** R289: deletion clears the sign-out set PLUS the settings and the pending sign-in - a first-run state. */
+    /** R289: deletion clears the sign-out set PLUS the pending sign-in - a first-run state. */
     suspend fun clearForDeletion()
 }
 
@@ -58,11 +61,13 @@ class DeviceLocalStore(
         tokenStore.clear()
         cancelSync()
         clearExports()
+        // R297: the settings go too. Restored from GET /api/v1/me on the next sign-in (StartupDecider).
+        settingsStore.clear()
     }
 
     override suspend fun clearForDeletion() {
+        // clearForSignOut() now also clears the settings (R297), so deletion adds only the pending sign-in.
         clearForSignOut()
-        settingsStore.clear()
         pendingSignIn.clear()
     }
 }
