@@ -5,9 +5,9 @@ finding carries SEVERITY, EVIDENCE (what was run and what it returned) and WHAT 
 full session report is REPORT-AN-AUDIT.txt. This audit BUILDS NOTHING new and FIXES ALMOST NOTHING (R255):
 increment 0's three operator-ruled fixes (R297-R299) landed before it; everything else is measured and parked.
 
-This file is WORK IN PROGRESS while the session runs. The SUMMARY, UNEXAMINED, FINDINGS BY SEVERITY and the
-three-that-deserve-a-task sections are assembled at the end (increment 7), after the security, resilience,
-performance, accessibility and code-quality passes.
+COMPLETE. The SUMMARY (below), and UNEXAMINED / FINDINGS BY SEVERITY / THE THREE THAT DESERVE A TASK (at the
+end) were assembled in increment 7, after the security, resilience, performance, accessibility and code-quality
+passes. The session report is REPORT-AN-AUDIT.txt at the repo root.
 
 STANDING FRAME - TWO APKS, TWO CLAIMS:
 - The TRUE RELEASE APK (assembleRelease, unsigned) is what ships; every declaration below is read from IT,
@@ -16,6 +16,37 @@ STANDING FRAME - TWO APKS, TWO CLAIMS:
   release CODE runnable against the local server. Because isMinifyEnabled=false, the release bytecode equals
   debug's, so the audit drive exercises the same code the release ships (AC1). Differences are named in THE
   RELEASE BUILD section.
+
+---
+
+## SUMMARY
+
+The one finding that gates a release is F4 (HIGH): an expired or revoked session does not clear the offline
+queue, so one account's queued days drain into the NEXT account that signs in on the same device. CONFIRMED
+ON-DEVICE this session - account A's two offline days landed under account B's server record (B owns 3, A owns
+0, CROSS_ACCOUNT_LEAK = true). It is NOT the FW30 immediate-stop (a legitimate multi-user sequence, no attacker;
+a sign-in occurred; A had no server data for B to read), but on a shared, resold or handed-over device it
+silently alters a stranger's audit-defensible tax record. It is #1 of the three findings that deserve a task.
+
+Otherwise the app is sound where it matters most: the per-app sandbox holds (a second app read NONE of the
+tokens, the database, the cached releve or an exported file); the running app sends NO coordinate (D18 verified
+from captured traffic) and logs no credential; the release APK carries no analytics/crash/ads SDK and no secret;
+the write queue is durable (process death, a full disk, a server 500 on a GET, and being offline all leave
+PENDING rows intact with DB integrity ok); the on-device engine reproduces the expected rates; and accessibility
+is strong (labels, roles, rich per-day announcements, 48 dp targets, AA contrast, 200 % text reflow).
+
+The remaining findings are one MEDIUM and six LOWs, all structural and parked (R255): F1 (MEDIUM) four dev-only
+activities exported in the release APK; F2/F6 the location permission plus a detection feature no shipping UI
+reaches; F3 no FLAG_SECURE on the tax record; F5 Kotlin<->TS ports not mechanically drift-tied; F7 a vacuity gap
+in the fence tests; F8 today/taxYear captured at Activity construction (a session across midnight can misdate a
+day).
+
+EVIDENCE STANDARD (self-audit, R254): the security, D18, resilience, clock, performance and accessibility
+sections are PROBED on-device or read from the built APK; the CODE QUALITY section is a weaker ZERO-JVM TEXT SCAN
+(read-based, not mutation-proven) and says so throughout. Two things were NOT reproduced on-device this session
+and are marked as such rather than claimed: the offline-queue POST-drain under a 500/malformed response
+(WorkManager deferral), and the TRUE R8-minified release end to end (R8 is off, monreleve.ch does not resolve, no
+release key exists - PARKAN-31).
 
 ---
 
@@ -677,3 +708,68 @@ VERDICT: strong accessibility semantics - labels, roles, state and rich per-day 
 touch targets meet 48 dp; token contrast meets AA; 200 % text reflows without loss. The residual is a
 sighted-TalkBack pass for spoken-utterance phrasing and traversal order (the one thing uiautomator cannot
 observe), and the Releve's data-level rendering (not loaded, no server this session).
+
+## UNEXAMINED
+
+- The TRUE release APK end to end against a real server (PARKAN-31): R8 is off (isMinifyEnabled=false, AN14),
+  monreleve.ch does not resolve, and no release signing key exists, so the shipping artifact cannot yet be driven
+  through the real magic-link -> App Link callback. The release CONFIG was exercised via the audit variant
+  (release bytecode = debug, minify off); the R8-minified path does not exist to test.
+- The offline-queue POST-drain under a 500 / malformed response, on-device: the SyncWorker did not drain to the
+  fault-server within the observation windows (WorkManager deferral; the injected session; a rotating scheduler
+  job id defeated `cmd jobscheduler run`). The drain POST itself IS proven (F4 crossaccount, real tokens), the
+  GET-500 path WAS observed handled gracefully, and the 500/garbled mapping is JVM-tested (SyncOutcome.Retryable);
+  the specific on-device write-drain-under-fault is owed.
+- A true zero-byte ENOSPC on the Room write: measured at ~5 MB free (100 % full - the write succeeded, no crash,
+  integrity ok); a literal zero was not forced, to avoid destabilising the OS the accessibility pass needed.
+- The Releve rendered with REAL dossier data: no server ran during the clock/resilience/accessibility passes, so
+  the Releve showed its offline error state; its populated layout was not re-measured this session (committed
+  paparazzi baselines cover it from prior tasks).
+- A sighted TalkBack session: uiautomator gives the labels/roles/state TalkBack speaks from, not its composed
+  spoken utterance or its traversal order.
+- Onboarding and Sign-in screens in situ this session: the device was driven signed-in throughout; both have
+  committed paparazzi baselines and were exercised in increment 0's drive and prior AN tasks.
+- Backup via a real `adb backup` restore: the rules EXCLUDE the auth/pending files (read from the APK), but the
+  headless confirmation dialog could not be tapped (increment 4).
+
+## FINDINGS BY SEVERITY
+
+HIGH
+- F4 - an expired/revoked session does not clear the offline queue; one account's queued days drain into the next
+  account on the same device. CONFIRMED ON-DEVICE (B owns A's offline days; A owns 0). #1 of the three.
+
+MEDIUM
+- F1 - four dev-only activities (Gallery, SignInProbe, DevRecorder, DetectionReplay) exported in the release APK.
+  None writes a day on launch alone (fuzz-confirmed, increment 4), but they are a real launchable attack surface.
+  #2 of the three.
+
+LOW
+- F2 - ACCESS_FINE_LOCATION ships; must be declared on the Play data-safety form (R282). Ties to F6.
+- F3 - no FLAG_SECURE; the recents thumbnail shows the tax record (personal data, not a credential; a deliberate
+  trade-off with a tested rationale for credentials, which the tax record falls outside).
+- F5 - Kotlin<->TypeScript ports outside the fixture-bound engine are defended by hand-copied tests that NAME
+  their web source in a comment but do not READ it, so cross-language drift is not mechanically caught (the
+  highest-drift surface, the enum vocabulary, IS read-tied).
+- F6 - the on-device detection pipeline ships and is unit-tested but is unreachable from any production UI (its
+  only shipping importer is the exported dev.DetectionReplayActivity, itself F1); the audit edge of F2. Part of
+  #3 of the three.
+- F7 - FencesTest's eight fence tests have no vacuity guard (ktFiles returns empty for a renamed dir, and every
+  fence is an absence assertion), so a moved calc//ui/ would pass all eight on zero files.
+- F8 - today/taxYear are captured once at Activity construction and not refreshed, so a session held open across
+  midnight (or a clock change) can misdate a recorded day. Self-correcting on relaunch.
+
+## THE THREE THAT DESERVE A TASK
+
+1. F4 (HIGH) - scope the offline queue to an account, or clear the record when a session ends for ANY reason
+   (the expiry/revocation paths, not just the sign-out button R295 already covers), and refuse to drain a queue
+   whose userId does not match the current session. This is the one finding that corrupts a stranger's
+   audit-defensible tax record, and it is confirmed on-device.
+2. F1 (MEDIUM) - release-hardening of the exported surface: move the four dev.* activities to src/debug (as the
+   injection and the seeder already are) or set them exported=false, and add a built-APK check that the release
+   manifest declares no ch.monreleve.app.dev.* component - the manifest analogue of
+   checkReleaseNoDebugInjection. Belongs with AN14.
+3. F2 + F6 together - decide detection before release: either wire the on-device detection pipeline into a
+   production surface AND declare ACCESS_FINE_LOCATION on the data-safety form, or DEFER the detection code and
+   the location permission together to the task that ships the feature, so the manifest claims only features this
+   build exposes (R282). A foreground location permission for a feature no user can reach is the single item most
+   likely to draw Play review.

@@ -1,0 +1,399 @@
+================================================================================
+REPORT-AN-AUDIT.txt - Mon Releve, the Android adversarial audit at Checkpoint F
+Pure ASCII. The detailed findings register is docs/audit-android.md; this is the
+session report. Every claim is backed by something RUN (R254): a probe sent, the
+built APK read, a trace captured, a timing measured, the DB read back.
+================================================================================
+
+SUMMARY
+--------------------------------------------------------------------------------
+THE ONE FINDING THAT GATES A RELEASE is F4 (HIGH): an expired or revoked session
+does not clear the offline queue, so one account's queued days drain into the
+NEXT account that signs in on the same device. CONFIRMED ON-DEVICE this session -
+account A's two offline days landed under account B's server record (Postgres
+oracle: B owns 3 days, A owns 0, CROSS_ACCOUNT_LEAK = true, drained via POST
+/api/v1/entries under B's token). It is NOT the FW30 immediate-stop (a legitimate
+multi-user sequence, no attacker; a sign-in occurred; A had no server data for B
+to read - the pre-decided, advisor-ratified branch), but on a shared, resold or
+handed-over device it silently alters a stranger's audit-defensible tax record.
+It is #1 of the three findings that deserve a task.
+
+OTHERWISE THE APP IS SOUND WHERE IT MATTERS MOST. The per-app sandbox holds (a
+second app installed on the device read NONE of the tokens, the database, the
+cached releve or an exported file). The running app sends NO coordinate (D18
+verified from captured traffic) and logs no credential. The release APK carries
+no analytics / crash / advertising SDK and no secret. The write queue is durable:
+process death, a full disk, a server 500 on a GET, and being offline all leave
+PENDING rows intact with DB integrity ok. The on-device engine reproduces the
+expected rates. Accessibility is strong (labels, roles, rich per-day
+announcements, 48 dp targets, AA contrast, 200 % text reflow).
+
+THE REMAINING FINDINGS are one MEDIUM and six LOWs, all structural and parked
+(R255): F1 (MEDIUM) four dev-only activities exported in the release APK; F2/F6
+the location permission plus a detection feature no shipping UI reaches; F3 no
+FLAG_SECURE on the tax record; F5 Kotlin<->TS ports not mechanically drift-tied;
+F7 a vacuity gap in the fence tests; F8 today/taxYear captured at Activity
+construction (a session across midnight can misdate a day).
+
+EVIDENCE STANDARD (self-audit, R254). The security, D18, resilience, clock,
+performance and accessibility sections are PROBED on-device or read from the
+built APK. The CODE QUALITY section is a WEAKER zero-JVM TEXT SCAN (read-based,
+not mutation-proven) and says so. Two things were NOT reproduced on-device this
+session and are marked as such, never claimed: the offline-queue POST-drain under
+a 500/malformed response (WorkManager deferral), and the TRUE R8-minified release
+end to end (R8 is off, monreleve.ch does not resolve, no release key - PARKAN-31).
+
+PRECONDITIONS
+--------------------------------------------------------------------------------
+- Task placement (R273): tasks/todo.md has AN14 (Play release prep, owns R8/App
+  Bundle/mapping) and AN15 (the planned final audit). This AN-AUDIT runs at
+  Checkpoint F, BEFORE AN13/14/15, named AN-AUDIT to avoid an R162 collision.
+- R1 baseline (prior session, dee25cb): pnpm gate:clone PASSED and :app:gate
+  PASSED. This session's authoritative clean-machine verification is the FINAL
+  gate:clone + :app:gate below (PUSH PROOF).
+- TWO APKS, TWO CLAIMS: the TRUE RELEASE APK (assembleRelease, unsigned) is what
+  ships and every declaration is read from IT (AC2); the AUDIT variant (a
+  committed `audit` build type = release config + debug network) makes the release
+  CODE runnable against a local server (AC1). isMinifyEnabled=false, so release
+  bytecode = debug's; the audit drive exercises the code the release ships.
+
+INCREMENT 0 - the three operator-ruled fixes (R297-R299)
+--------------------------------------------------------------------------------
+Landed before the audit proper, each test-first with a genuine RED, gated,
+committed (03dc71e, 293837f, 9955e1f).
+- R297: sign-out now CLEARS the calculation settings; a re-sign-in RESTORES them
+  from GET /api/v1/me BEFORE the onboarding decision (new StartupDecider). Both
+  branches driven on-device.
+- R298: a checkLicences Gradle task derives the licence list from the resolved
+  release runtime classpath; R178 found three uncredited bundled modules on first
+  run (added); an okio plant verified it fires.
+- R299: openLegalLink catches ActivityNotFoundException and shows the link's
+  address - no crash on a browserless device.
+
+THE DATASET (increment 1)
+--------------------------------------------------------------------------------
+A committed, deterministic DebugSeeder (R197) + a src/debug DebugSeederActivity
+that writes through the app's own EntryDao in one Room transaction; it joined both
+R284 injection guards (source scan + merged-release-manifest check), each proven
+with a verified-to-land plant (R180). Scenarios across disjoint years: a DECADE,
+a HALF_DAY year, an all-ABSENT year, an all-LATE year, and four pathological notes
+(10000-char, whitespace, RTL, emoji). CONFIRMED this session on-device: total
+3591 rows, years 2013..2026, 2026 tax year = 195 rows (a real rate); read back
+via node:sqlite on a binary-safe pull, and by the seeder's own dao.all() status
+line. generated == stored, no silent drop.
+
+THE RELEASE BUILD (increment 2, AC1)
+--------------------------------------------------------------------------------
+AC1 REFRAME (a confirmed known deferral, not a surprise): the release build is
+NOT R8-minified - build.gradle.kts sets isMinifyEnabled=false and proguard-rules
+is a placeholder. So the classic R8 failure modes cannot exist yet. The release
+CONFIG had still never been launched, so AC1 was exercised via the audit variant.
+Parked PARKAN-31 (re-exercise the shipping artifact once AN14 enables R8,
+monreleve.ch resolves + serves assetlinks, and a release key exists).
+- SIZE: TRUE release APK 7,348,435 bytes (7.01 MB), audit 7.02 MB - both well
+  under SPEC's 12 MB (a download-size caveat is an AN14/App-Bundle concern).
+- WHAT R8 REMOVED: nothing, measured three ways (config off; no mapping/ dir;
+  class names survive unobfuscated in the release dex).
+- AUDIT VARIANT differences named exactly: same minify-off / non-debuggable /
+  applicationId / proguard; different debug signature, a cleartext 10.0.2.2 api
+  url, and reuse of src/debug. The release guards (checkReleaseCleartext,
+  checkReleaseNoDebugInjection) stay green and the injection/seeder markers are
+  ABSENT from the release APK, PRESENT in the audit APK (R133 positive signal).
+- RUNNING IT: the TRUE release APK (debug-signed copy) renders the sign-in screen,
+  no crash; the audit variant against the local container DECODED GET /api/v1/me,
+  rendered the MAIN shell, routed canton-null->onboarding and canton=GE->MAIN -
+  the serialisation round-trip AC1 targets works on the release config.
+
+WHAT THE APK DECLARES (increment 3, AC2) - all from the BUILT release APK
+--------------------------------------------------------------------------------
+- PERMISSIONS: INTERNET (justified); ACCESS_FINE_LOCATION (detection ships +
+  polygon, but F2/F6 below); WAKE_LOCK / ACCESS_NETWORK_STATE /
+  RECEIVE_BOOT_COMPLETED / FOREGROUND_SERVICE + the auto receiver permission - all
+  transitive from androidx.work (the sync feature). ACCESS_BACKGROUND_LOCATION is
+  NOT declared (correct).
+- EXPORTED: MainActivity (LAUNCHER, ok), CallbackActivity (App Link, ok),
+  SystemJobService (framework, BIND_JOB_SERVICE-gated, ok), and FOUR dev.*
+  activities = FINDING F1. The debug injection + seeder are ABSENT from the
+  release APK (0 in manifest AND 0 in the dex).
+- HOSTS: only https://monreleve.ch; 10.0.2.2 ABSENT from the release dex; no
+  cleartext endpoint.
+- LIBRARIES: androidx / kotlin / kotlinx.coroutines / jetbrains / Guava / jspecify
+  - exactly the checkLicences set; NO third-party HTTP/JSON lib; NO analytics /
+  crash / ads SDK (firebase, crashlytics, sentry, admob... all 0).
+- SECRETS: none (AUTH_SECRET, AWS keys, PEM, client_secret, apikey... all absent).
+
+SECURITY AND PRIVACY, PROBED (increment 4)
+--------------------------------------------------------------------------------
+- TOKENS: a second app (ch.monreleve.probe, committed, signed with the SAME debug
+  key = a STRONGER attacker) ran a positive control (its own filesDir READ OK),
+  then FIVE reads across the victim sandbox - the AUTH tokens, the DOSSIER cache,
+  the SETTINGS, the ROOM db, the FileProvider export - ALL DENIED. NO LEAK; the
+  per-app UID sandbox holds. (This is the FW30 stop-rule surface; the result is
+  the safe one.)
+- INTENTS: junk + 8000-char extras at all four dev activities, and eight hostile
+  URIs at the callback (foreign host, cleartext, wrong path, missing/oversized
+  token, javascript:, malformed %, content://, null). Nothing signed in, wrote a
+  day, or crashed; monreleve.auth.xml stayed absent.
+- PENDING INTENTS: zero app-owned (the app creates none; only androidx.work's).
+- D18: a logging proxy captured every request in a full drive (incl. the detection
+  replay); presence-before-absence held (the expected POST /api/v1/entries was
+  captured), and a coordinate scan (keys + Geneva-plausible decimal pairs) found
+  NOTHING. The running app sends no coordinate.
+- LOGS: logcat scanned for the exact minted token/refresh/email values - none
+  appeared.
+- BACKUP: the rules EXCLUDE the auth + pending files from cloud backup AND device
+  transfer (read from the APK); the headless adb backup dialog could not be tapped
+  (noted, not passed off). The Room DB + cached dossier are NOT excluded (the
+  user's own data to their own backup - an AN14 data-safety note).
+- FINDING F3 (LOW): no FLAG_SECURE; the recents thumbnail shows the tax record.
+  The tested no-credential-on-screen rationale covers credentials, not the tax
+  RECORD (personal data) - a deliberate trade-off, LOW.
+
+INTEGRITY AND RESILIENCE (increment 5)
+--------------------------------------------------------------------------------
+FINDING F4 (HIGH) - one account's queue drains into another's. CONFIRMED
+ON-DEVICE. android/scripts/an-audit-crossaccount.mjs ran against a scratch
+Postgres + the write container behind a blockable proxy: A and B sign in (real
+callback tokens); A records two PAST days OFFLINE (PENDING, 0 on A's server); A is
+revoked; B's real session is injected over A's intact PENDING queue (the faithful
+post-expiry device state); the proxy unblocks; B records one day and the queue
+drains. Postgres entriesByUser() then showed, verbatim:
+  ["anaudit-acct-b:2026-09-28","anaudit-acct-b:2026-09-29","anaudit-acct-b:2026-10-01"]
+  B owns 3 (its own is 1); A owns 0; POST /api/v1/entries; CROSS_ACCOUNT_LEAK=true
+A's two offline Suisse days landed under B's userId; A owns ZERO server rows. The
+source chain (SessionManager clears only the token, StartupDecider/CallbackController
+clear NO record, EntryEntity has no userId, SyncEngine drains under the CURRENT
+token) is byte-identical to what ships (minify off). CAVEAT (R233): the explicit
+server-side revoke deleted 0 session rows (the opaque-hashed-refresh model does not
+populate those tables), so the proof rests on the device-state reproduction, which
+is exactly what SessionGone->SIGN_IN and the callback produce.
+
+THE DEVICE CLOCK. Moved headless with `cmd alarm set-time` (adb root/su blocked on
+the Play user image; verified by adb shell date). Measured across four states:
+- dayDate + clientClaimedAt FOLLOW THE CLOCK verbatim (a day recorded at device
+  instant 2026-09-30T22:38 UTC was filed under Paris date 2026-10-01 with that
+  instant). R216 holds: the client sends its instant; the server assigns lateness.
+- R286 PENDING WARNING follows the clock: the SAME pending day showed "En attente
+  de synchronisation" at the real clock and escalated to OVERDUE ("la plus ancienne
+  depasse 7 jours ... saisie tardive des sa synchronisation") at +8 days. The
+  forecast is clock-dependent; the real flag is still the server's.
+- THE ON-DEVICE RATE follows the clock's YEAR: 2026 -> 28,33 %; 2027 -> "Aucune
+  journee enregistree cette annee" (the rate VANISHES); 2020 -> 37,50 % (a
+  different year's rate). A wrong-year clock shows the wrong year's rate, or none.
+- FINDING F8 (LOW): today/taxYear are captured once at Activity construction and
+  not refreshed, so a session held open across midnight (or a clock change) can
+  misdate a recorded day (observed: a day filed under 2020-06-01 after the clock
+  was restored). Self-correcting on relaunch.
+
+RESILIENCE.
+- PROCESS DEATH: `am kill` (SIGKILL) x3 after a record; no FATAL, the day
+  persisted, PRAGMA integrity_check = ok. Room WAL commits atomically - no partial
+  row, no corruption.
+- STORAGE FULL: /data filled to 100 % (~5 MB free); the app launched, recorded a
+  day and recomputed the rate (28,75 %) - no crash, no loss, integrity ok. R233:
+  a true zero-byte ENOSPC was not forced (to protect the OS the a11y pass needed);
+  what is measured is graceful tolerance of a nearly-full disk.
+- SERVER 500 (GET): a fault-server returning 500 was reached by the app's
+  authenticated GET /api/v1/dossier; handled gracefully (cached fallback, R288),
+  no crash. OFFLINE: a recorded day stays PENDING; no loss.
+- POST-drain under 500/garbage: NOT reproduced on-device (WorkManager deferral;
+  rotating job id defeated `cmd jobscheduler run`). The drain POST itself is proven
+  (F4), the GET-500 was handled on the same HTTP stack, and the 500/garbled mapping
+  is JVM-tested (SyncOutcome.Retryable). Across EVERY fault, no PENDING row was
+  lost (final DB: 3592 rows, 3 non-synced intact) and no crash.
+- VERDICT: nothing observed loses a recorded day or crashes the app.
+
+PERFORMANCE (increment 5) - on the 3591-row / 10-year dataset
+--------------------------------------------------------------------------------
+HOST CONDITIONS (R233): heavy memory pressure throughout (free RAM 1112 -> 695 MB,
+Android Studio ~1.9 GB open), so the emulator VM was swapping; the APP's own memory
+was NOT swapped. Wall-clock timings are ENVIRONMENT-LIMITED, not a clean baseline.
+- COLD START (Displayed): 3.34 / 3.22 / 3.27 s, MEDIAN 3.27 s, to a FULLY-RENDERED
+  shell (rate + warning + rail painted). Tightly clustered (render stable); the
+  absolute number is host-inflated by swap.
+- ON-DEVICE ENGINE OVER A FULL YEAR: computeYear runs the aggregation +
+  calculateTelework over the tax year's rows on every change and renders at cold
+  start (28,33 % / 40,9 % over 195 rows, with the mission-cap warning and the
+  jours-restants forecast). Engine < 0.1 ms (FW5), recomputed live.
+- CALENDAR at volume (with a design fact): the Calendrier is SCOPED TO THE TAX
+  YEAR (the back-chevron disables at January), so the 10-year history is not
+  browsable month-by-month - the render is bounded to <=12 months, which is WHY it
+  stays responsive. A full month renders with per-day kind/provenance + a tally;
+  month navigation (gfxinfo): 173 frames, 50th 44 ms, 90th 73 ms (95th/99th
+  650/1200 ms are host-swap stalls). No crash. The full dataset feeds the engine.
+- MEMORY (meminfo, app-local, unaffected by host swap): TOTAL PSS ~82 MB (RSS
+  ~205 MB), SWAP PSS 80 KB - the app is not swapped. A modest footprint at volume.
+
+ACCESSIBILITY (increment 6)
+--------------------------------------------------------------------------------
+INSTRUMENT + BLIND SPOT (R233): uiautomator dump (streamed via /dev/tty; an earlier
+empty read was the Git-Bash MSYS path rewrite mangling /sdcard/..., R252 - the
+harness, not the app) gives each node's text, content-desc, role/class, state and
+bounds - the RAW MATERIAL TalkBack speaks from; it does NOT observe TalkBack's
+composed spoken utterance or traversal order (a sighted TalkBack session is owed).
+- ANNOUNCEMENTS: every control labelled; the rate carries a semantic content-desc
+  ("Taux de teletravail declarable 28,75 %, imposition en Suisse"); Calendrier day
+  cells announce day + KIND + STATE + PROVENANCE ("Aujourd'hui, Jour 1, Domicile,
+  en attente de synchronisation, saisie manuelle"); the selected radio is
+  RadioButton checked=true; the current nav tab is selected=true.
+- TOUCH TARGETS: all clickable nodes >= 48 dp (recorder 371x56, rows 371x48, nav
+  97x80, chevrons 48x48 exactly). Day cells are read-only but focusable via
+  content-desc.
+- CONTRAST IN SITU (WCAG, raw RGBA screencap): navy text 16.69:1, navy button
+  label 10.73:1, white-on-navy 11.40:1, green AFC rate 4.72:1, muted grey 4.68:1 -
+  ALL PASS AA. Light theme only (no dark mode by project rule).
+- 200 % TEXT: end to end, every screen reflows and scrolls, no clipping/overlap
+  (nav labels wrap mid-word - cosmetic). Complements the committed *Large paparazzi
+  baselines (fontScale=2f) - now a visual baseline AND an in-situ confirmation.
+
+CODE QUALITY (increment 6) - a ZERO-JVM TEXT SCAN, weaker than the probed sections
+--------------------------------------------------------------------------------
+Measured by text analysis, each result verified by eye (the emulator/JVM RAM
+budget precluded mutation testing). Four dimensions:
+- DUPLICATION (Kotlin<->TS, outside the fixture-bound engine): the runtime
+  cross-tree read-tie exists on exactly two surfaces (the entry-enum vocabulary +
+  batch limit read schema.ts; the fixture-bound engine reads fixtures/*.json).
+  FINDING F5 (LOW): every OTHER port is a hand-copied test that NAMES its web
+  source in a comment but does not READ it, so drift is not mechanically caught
+  (the highest-drift surface, the enum vocab, IS tied). Tie-status judged by a
+  runtime .readText, not a grep (a coarse grep falsely reported three as tied;
+  opening them corrected it - R233/R252).
+- DEAD CODE: a reference census, hand-verified. FINDING F6 (LOW): the on-device
+  detection pipeline ships (R280) + is unit-tested but is UNREACHABLE from any
+  production UI (its only shipping importer is the exported dev.DetectionReplay,
+  itself F1); the audit edge of F2. Plus an unused non-private const detekt's
+  private-only rule misses.
+- FIVE LARGEST FUNCTIONS: NO finding - each is long for a structural reason
+  (railGeometry @Suppress'd pure transform; calculateTelework/warningsFor engine;
+  onCreate composition root; ParametresScreen decomposed Compose).
+- 20-TEST SAMPLE (mulberry32 seed 20260930): 20/20 CAN fail (no dead tautology).
+  Two soft (an ErasureCensus length>20 proxy; a name-vs-body mismatch), two carry
+  FINDING F7 (LOW): FencesTest's eight fence tests have no vacuity guard, so a
+  renamed calc//ui/ would pass all eight on zero files. Verdicts READ-based, not
+  mutation-proven (stated as weaker).
+
+UNEXAMINED
+--------------------------------------------------------------------------------
+- The TRUE R8-minified release end to end against a real server (PARKAN-31): R8
+  off, monreleve.ch does not resolve, no release key - the shipping artifact can't
+  yet be driven through the real magic-link -> callback.
+- The offline-queue POST-drain under a 500/malformed response, on-device
+  (WorkManager deferral; the drain POST itself is proven in F4, GET-500 was handled
+  on the same stack, the mapping is JVM-tested).
+- A true zero-byte ENOSPC on the Room write (measured at ~5 MB free, not literal
+  zero, to protect the emulator).
+- The Releve rendered with REAL dossier data (no server ran during the later
+  passes; committed paparazzi baselines cover it).
+- A sighted TalkBack session (uiautomator gives labels/roles/state, not the spoken
+  utterance or traversal order).
+- Onboarding + Sign-in in situ this session (driven signed-in throughout; covered
+  by paparazzi baselines and increment 0's drive).
+- adb backup restore (the exclusion rules are read from the APK; the headless
+  confirm dialog could not be tapped).
+
+FINDINGS BY SEVERITY
+--------------------------------------------------------------------------------
+HIGH   F4  expired/revoked session does not clear the offline queue; one account's
+           days drain into the next on the same device. CONFIRMED on-device. #1.
+MEDIUM F1  four dev-only activities exported in the release APK (none writes a day
+           on launch alone; fuzz-confirmed). A launchable attack surface. #2.
+LOW    F2  ACCESS_FINE_LOCATION ships; must be on the data-safety form (R282).
+LOW    F3  no FLAG_SECURE; the recents thumbnail shows the tax record.
+LOW    F5  Kotlin<->TS ports outside the engine not mechanically drift-tied.
+LOW    F6  detection pipeline ships + tested but unreachable from any prod UI. #3.
+LOW    F7  FencesTest's eight fences have no vacuity guard.
+LOW    F8  today/taxYear captured at construction; a session across midnight can
+           misdate a day (self-correcting on relaunch).
+
+THE THREE THAT DESERVE A TASK
+--------------------------------------------------------------------------------
+1. F4 (HIGH) - scope the offline queue to an account, or clear the record when a
+   session ends for ANY reason (the expiry/revocation paths, not just the sign-out
+   button R295 already covers), and refuse to drain a queue whose userId does not
+   match the current session. The one finding that corrupts a stranger's tax
+   record; confirmed on-device.
+2. F1 (MEDIUM) - release-harden the exported surface: move the four dev.*
+   activities to src/debug or set exported=false, and add a built-APK check that
+   the release manifest declares no ch.monreleve.app.dev.* component (the manifest
+   analogue of checkReleaseNoDebugInjection). Belongs with AN14.
+3. F2 + F6 together - decide detection before release: wire it into a production
+   surface AND declare the location permission on the data-safety form, OR defer
+   the detection code and ACCESS_FINE_LOCATION together to the task that ships the
+   feature, so the manifest claims only features this build exposes (R282). The
+   single item most likely to draw Play review.
+
+PARKED
+--------------------------------------------------------------------------------
+- PARKAN-31 (open, NEEDS): re-exercise the TRUE release artifact end to end once
+  AN14 enables R8, monreleve.ch resolves + serves assetlinks, and a release key
+  exists. Carried unchanged.
+- No NEW PARKAN was filed this session (verified: PARKAN-31 is the highest in
+  parking.md; next id would be 32). F5/F6/F7/F8 are FINDINGS, not operator
+  questions, so - as F1-F4 did - they take no PARKAN id.
+
+DEVIATIONS
+--------------------------------------------------------------------------------
+- AC1 REFRAME: the release is not R8-minified (isMinifyEnabled=false, AN14),
+  parked PARKAN-31, exercised via the committed audit variant (release=debug
+  bytecode). Recorded in prior increments; carried.
+- A mergeDexAudit failure on the first chained build was stale incremental state;
+  a clean rebuild fixed it (prior increment).
+- STRAY EXTERNAL EDITS: android/gradle/libs.versions.toml and
+  .../releve/ReleveController.kt carry leading blank lines added by an external
+  actor/concurrent operator; they were NEVER mine, left in place, and EXCLUDED
+  from every commit (all staging was by explicit path). Recorded for the operator.
+- F4's on-device measurement was BLOCKED (disk exhaustion) in the prior session
+  and UNBLOCKED this session once the disk was freed; it is now confirmed.
+- The whole increment-5 remainder and the increment-6 accessibility half - deferred
+  as emulator-blocked by the prior session - were COMPLETED this session on the
+  freed emulator.
+- ENVIRONMENT CAVEATS (R233), each stated in place: performance is host-swap
+  environment-limited (RAM 695-1112 MB, Android Studio open); the F4 server-side
+  revoke deleted 0 session rows (proof rests on the device-state reproduction); the
+  storage-full test stopped at ~5 MB free rather than a literal zero; the POST-500
+  drain was not reproduced on-device (WorkManager deferral).
+- The clock probe incidentally surfaced F8 (today/taxYear cached at construction).
+
+QUESTIONS
+--------------------------------------------------------------------------------
+1. Does F4 gate the release, or is the shared/resold/handed-over-device scenario
+   out of the intended threat model? The audit's recommendation is that it gates:
+   it is HIGH, confirmed on-device, and corrupts a stranger's audit-defensible
+   record - but the scheduling call is the operator's (it is scoped as a task, not
+   a silent fix, per R255).
+2. F2 + F6: is on-device detection a Checkpoint-F shipping feature, or deferred? If
+   deferred, ACCESS_FINE_LOCATION and the detection code should defer WITH it
+   (R282), so the manifest claims only what this build exposes.
+No blocking questions; no product decision was invented (R270/R156).
+
+PUSH PROOF
+--------------------------------------------------------------------------------
+This session's three AN-AUDIT commits are all DOC-ONLY (R132 carve-out): each
+touches only docs/audit-android.md (and this REPORT); the drive/helper scripts
+(an-audit-crossaccount / faultserver / dbread / contrast .mjs) stay UNTRACKED, so
+no tested path changed and the per-commit gate is the FINAL clean-machine pair.
+- d2485ce  AN-AUDIT: integrity, resilience, performance   (increment 5, doc-only)
+- 2a9c8a3  AN-AUDIT: accessibility (the deferred half)     (increment 6, doc-only)
+- (this)   AN-AUDIT: the report                            (increment 7, doc-only)
+
+FINAL CLEAN-MACHINE VERIFICATION (emulator + qemu + any of my containers torn down
+first for RAM; run ONE AT A TIME). All three commits are doc-only, so the code
+state is identical across them; the gates were run on that state (HEAD 2a9c8a3,
+which the doc-only report commit does not change):
+- pnpm gate:clone : GATE:CLONE PASSED - "this commit builds and passes install,
+  typecheck, lint, test, build, size, db:deploy, test:db, test:container:write
+  from a clean checkout"; the git-clone temp dir was removed. The browser suites,
+  lighthouse, parity and test:container(CI) are NAMED as not-run-here with their
+  reasons (R133), not silently omitted.
+- ./gradlew :app:gate : BUILD SUCCESSFUL in 1m 55s (assembleDebug,
+  testDebugUnitTest, checkTestFloor, ktlint, detekt, verifyPaparazziDebug,
+  checkReleaseCleartext, checkReleaseNoDebugInjection, checkLicences). The emulator
+  instrument (scripts/emulator.sh) and connectedDebugAndroidTest are SKIPPED with
+  their reason (need a real device), per R133 - not silently omitted.
+git fetch before each push (operator pushes web concurrently; in sync each time);
+all staging by explicit path (the two stray files never entered a commit); both
+deliverables (docs/audit-android.md and REPORT-AN-AUDIT.txt) are pure ASCII.
+
+================================================================================
+END OF REPORT-AN-AUDIT.txt
+================================================================================
