@@ -349,6 +349,63 @@ tasks.register("checkReleaseNoDebugInjection") {
     }
 }
 
+// R298 (answers PARKAN-29). The licences list stays HAND-WRITTEN (LicencesCopy), and this check DERIVES the
+// obligation from the build: it resolves the app's RELEASE runtime dependencies and fails when one is not
+// covered by a component named on the licences screen. No plugin, no new dependency - Gradle already resolves
+// the classpath. The covered-prefix -> screen-phrase map is the ONE tie to the screen (R206): each phrase must
+// appear in LicencesCopy.kt (so removing an attribution fails here too), and each resolved module must match a
+// covered prefix (so a NEW dependency with no attribution fails here - which is how the first run found
+// guava/annotations/jspecify bundled but uncredited, R178). The resolution runs at EXECUTION time, and the
+// resolutionResult is used rather than resolvedArtifacts so no artifact is downloaded or transformed to read a
+// coordinate. R182: nothing produces its subject, so it needs no dependsOn to be correctly ordered.
+tasks.register("checkLicences") {
+    val licencesCopy = layout.projectDirectory.file("src/main/kotlin/ch/monreleve/app/fr/LicencesCopy.kt").asFile
+    val runtimeClasspath = configurations.named("releaseRuntimeClasspath")
+    inputs.file(licencesCopy)
+    inputs.files(runtimeClasspath)
+    doLast {
+        // A resolved module's group is covered by prefix P when group == P or group starts with "P." - a
+        // segment boundary, so "org.jetbrains.kotlin" does not swallow "org.jetbrains.kotlinx".
+        val covered =
+            linkedMapOf(
+                "androidx.compose" to "Jetpack Compose",
+                "androidx" to "AndroidX",
+                "com.google.guava" to "Guava",
+                "org.jetbrains.kotlinx" to "kotlinx.coroutines",
+                "org.jetbrains.kotlin" to "Kotlin",
+                "org.jetbrains" to "JetBrains",
+                "org.jspecify" to "JSpecify",
+            )
+        val copyText = licencesCopy.readText()
+
+        val missingPhrases = covered.values.filter { it !in copyText }
+        if (missingPhrases.isNotEmpty()) {
+            throw GradleException(
+                "checkLicences: LicencesCopy.kt no longer names " + missingPhrases.joinToString(", ") +
+                    " - the check credits these components, so the screen must too (R206).",
+            )
+        }
+
+        val modules =
+            runtimeClasspath.get().incoming.resolutionResult.allComponents
+                .map { it.id }
+                .filterIsInstance<org.gradle.api.artifacts.component.ModuleComponentIdentifier>()
+        val uncovered =
+            modules
+                .filter { id -> covered.keys.none { p -> id.group == p || id.group.startsWith("$p.") } }
+                .map { "${it.group}:${it.module}" }
+                .toSortedSet()
+        if (uncovered.isNotEmpty()) {
+            throw GradleException(
+                "checkLicences FAILED - release runtime dependencies with no entry on the licences screen (R298):\n" +
+                    uncovered.joinToString("\n") { "  - $it" } +
+                    "\nAdd each to LicencesCopy and this task's covered map, or remove the dependency.",
+            )
+        }
+        println("checkLicences OK: ${modules.size} release runtime modules, each attributed on the licences screen")
+    }
+}
+
 tasks.register("gate") {
     dependsOn(
         "assembleDebug",
@@ -359,6 +416,7 @@ tasks.register("gate") {
         "verifyPaparazziDebug",
         "checkReleaseCleartext",
         "checkReleaseNoDebugInjection",
+        "checkLicences",
     )
     doLast {
         println(
@@ -372,7 +430,9 @@ tasks.register("gate") {
             |     checkReleaseCleartext (AC3: the release build permits cleartext
             |     nowhere - merged manifest + network security config, R182),
             |     checkReleaseNoDebugInjection (R284 guard b: the debug session
-            |     injection is absent from the merged release manifest).
+            |     injection is absent from the merged release manifest),
+            |     checkLicences (R298: every release runtime dependency is
+            |     attributed on the licences screen, derived from the build).
             |SKIPPED, with reason:
             |  - scripts/emulator.sh / screenshot.sh / walkthrough.sh (the AC2
             |    instrument): needs a real AVD with hardware acceleration. Not a

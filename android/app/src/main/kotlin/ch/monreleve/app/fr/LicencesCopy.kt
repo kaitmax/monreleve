@@ -27,6 +27,6 @@ object LicencesCopy {
     const val OSS_BODY =
         "Cette application est construite avec des composants libres, notamment Jetpack Compose, les " +
             "bibliothèques AndroidX (dont Room et WorkManager), le langage Kotlin et kotlinx.coroutines, " +
-            "distribués sous licence Apache 2.0."
+            "ainsi que Guava, les annotations JetBrains et JSpecify, distribués sous licence Apache 2.0."
     const val APACHE_LINK = "https://www.apache.org/licenses/LICENSE-2.0"
 }
