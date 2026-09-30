@@ -620,17 +620,60 @@ RANDOM 20-TEST SAMPLE (R133 - could each actually fail?).
     are each non-empty, mirroring NoBareThresholdTest:107. Small and provable inside its own increment, but out
     of this audit's record-only scope (R255).
 
-## ACCESSIBILITY (increment 6, accessibility half) - EMULATOR-DEFERRED
+## ACCESSIBILITY (increment 6, accessibility half)
 
-NOT MEASURED THIS SESSION. A TalkBack pass (does each control announce what it is, its state, and on a day its
-kind/quality/provenance), in-situ touch-target sizes, token contrast measured on a rendered screen, and 200
-percent text end to end all require a running screen, and the emulator cannot boot on the audit machine (the
-Play-Store AVD needs ~7.37 GB free for a fresh userdata partition against ~7.28 GB free, with host RAM ~2 GB
-against the AVD's ~16 GB). The planned proxy - uiautomator dump of each node's content-desc - also needs the
-device. WHAT IS ALREADY COVERED, as a host-JVM proxy (R233 applied to the deferral itself): the *Large
-paparazzi baselines (onboardingFilledExactLarge, aujourdhuiEmptyLarge, releveLarge, and their siblings) render
-every screen at fontScale=2f, so 200 percent text has a committed visual record. WHAT REMAINS emulator-blocked:
-the TalkBack announcements, touch targets and contrast measured in situ. This half, and the increment-5
-remainder (the F4 on-device cross-account confirmation, the device-clock probe, storage-full / process-death /
-server-5xx resilience, and performance at the increment-1 volume), are OWED and listed in the successor
-handoff; they belong to a session with a working emulator.
+MEASURED on the running emulator (density 420 = 2.625 px/dp; 48 dp = 126 px), on the seeded, signed-in shell.
+INSTRUMENT + ITS BLIND SPOT (R233): `uiautomator dump` (streamed via `exec-out ... /dev/tty` - a device-path
+`/sdcard/...` argument is rewritten by the Git-Bash MSYS path conversion, which is why an earlier dump read
+empty; R252, the harness failed, not the app) reports each node's text, content-desc, class,
+clickable/checkable/selected state and bounds - the RAW MATERIAL TalkBack speaks from. It does NOT observe
+TalkBack's COMPOSED spoken utterance (how it concatenates label + role + state), its traversal ORDER, or
+live-region timing; those need a sighted TalkBack session. So this measures "is there a correct label, role and
+state for each control", not "what TalkBack says, in what order".
+
+ANNOUNCEMENTS - every shell screen exposes a label, and stateful controls expose their state:
+- Aujourd'hui (53 nodes): every button and line carries text (En Suisse / Domicile / Mission / Declarer une
+  absence / Enregistre : Domicile / En attente de synchronisation / Missions exposees / 28,75 % / Taux a
+  declarer a l'AFC ...), AND the graphical rate+rail carries a descriptive content-desc: "Taux de teletravail
+  declarable 28,75 %, imposition en Suisse." - a semantic sentence, not a bare number.
+- Calendrier - EXEMPLARY: each day cell has a content-desc announcing day, KIND, STATE and PROVENANCE, exactly
+  as the prompt asks: "Aujourd'hui, Jour 1, Domicile, en attente de synchronisation, saisie manuelle." and an
+  empty day "Jour 2, Non renseigne, sans objet."; the chevrons are "Mois precedent" / "Mois suivant".
+- Parametres (52 nodes): every control labelled with helper text (Canton de travail GE; Taux d'activite (%)
+  100; Methode de decompte; Decompte des journees), and the SELECTED option carries state - the active radio is
+  class RadioButton checked="true" (Forfait de 240 jours; Journees entieres), so TalkBack announces it as
+  selected.
+- Releve: the offline state is a labelled error with a retry ("Le releve n'a pas pu etre charge. Verifiez votre
+  connexion, puis reessayez." / "Reessayer") - not a blank or a crash (no server this session, so real data was
+  not loaded - noted in UNEXAMINED at the data level).
+- The current bottom-nav tab carries selected="true" on every screen (the active tab is announced as selected).
+- ONE minor note (not a finding): the recorder buttons (En Suisse/Domicile/Mission) do not carry their OWN
+  selected state; the current choice is conveyed by the adjacent "Enregistre : <kind>" line, so a TalkBack user
+  still learns it.
+
+TOUCH TARGETS - every clickable node measured from its bounds: all >= 48 dp. Recorder buttons 371x56 dp; the
+full-width rows 371x48 dp; nav items 97x80 dp; the month chevrons 48x48 dp (the minimum, met exactly). No
+sub-48 dp tap target found. The calendar day cells are NOT clickable (a read-only view) but ARE focusable via
+content-desc, so TalkBack reaches them.
+
+TOKEN CONTRAST IN SITU (WCAG, measured from a raw RGBA screencap - darkest vs lightest luminance pixel per text
+region; observes the actual rendered token colours, light theme only, as no dark mode exists by project rule):
+- Primary text navy rgb(17,24,39) on background rgb(247,248,250): 16.69:1 (AAA).
+- Navy button label rgb(23,59,99) on background: 10.73:1; white rgb(255,255,255) on the navy button: 11.40:1.
+- The green AFC rate rgb(21,128,61) on background: 4.72:1 - passes AA for normal text, comfortably for its large
+  display size.
+- Secondary/muted grey rgb(102,112,133) on background ("Taux a declarer a l'AFC", "Part de jours hors de
+  Suisse"): 4.68:1 - passes AA (>= 4.5) with little margin; worth watching if the muted token ever moves.
+- Every measured pair PASSES WCAG AA.
+
+200 PERCENT TEXT - end to end at font_scale 2.0: every shell screen reflows and scrolls; no text clipped,
+truncated or overlapping (headings wrap to two lines, helper cards grow, the radio selection stays visible). The
+one cosmetic quirk: the bottom-nav labels wrap mid-word ("Aujourd'/hui", "Calendri/er", "Paramet/res") -
+legible, not lost. This complements the committed host-JVM record: the *Large paparazzi baselines
+(onboardingFilledExactLarge, aujourdhuiEmptyLarge, releveLarge and siblings) already render every screen at
+fontScale=2f, so 200 % text now has BOTH a committed visual baseline AND an in-situ device confirmation.
+
+VERDICT: strong accessibility semantics - labels, roles, state and rich per-day descriptions are all present;
+touch targets meet 48 dp; token contrast meets AA; 200 % text reflows without loss. The residual is a
+sighted-TalkBack pass for spoken-utterance phrasing and traversal order (the one thing uiautomator cannot
+observe), and the Releve's data-level rendering (not loaded, no server this session).
