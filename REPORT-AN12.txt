@@ -506,4 +506,56 @@ each took the conservative, reversible option and continued (R156).
 ====================================================================
 PUSH PROOF
 ====================================================================
-[TO FILL AFTER THE FINAL gate:clone]
+The five increments were each committed on their own green :app:gate
+chain and pushed as the work proceeded. This report + PARKAN-30 is
+17169ab "AN12: parametres, seen"; this section is recorded in the
+follow-up commit "AN12: record the gate:clone push proof" (the AN3 shape
+- a report-only change carries no tested path).
+
+R199 - gate:clone GREEN on HEAD before the push:
+
+  GATE:CLONE PASSED
+  commit  17169ab49c8f87ead625e8598df00bc154fc6c00 ("AN12: parametres, seen")
+  clone   monreleve-clone-c5SQet (removed), exit 0, 08:12-08:23 UTC
+  ran     install, typecheck, lint, test, build, size, db:deploy,
+          test:db, test:container:write - from a clean checkout (no .env,
+          no prior node_modules, no generated file the run did not produce
+          itself). Scratch DB monreleve_gate_clone_17169ab4 created and
+          migrated from empty by the clone's own db:deploy.
+  claim   this commit builds and passes those suites from a clean checkout.
+  combined tree: 17169ab carries the operator's concurrent FW33 web
+          commits (62daf22, 612e43a) as ancestors, so this run verified
+          the COMBINED tree - the AN12 android surface is outside what
+          gate:clone checks (proven per-increment by :app:gate), FW33's
+          web surface is inside it, and both passed.
+  CI readiness: quiet - the repository is private and CI_FULL unset, so
+          jobs skip (the carried FW24 combination).
+  NOT RUN (R133, making no claim): test:e2e, test:visual, test:runtime,
+          lighthouse, parity:check, test:container - each needs a
+          browser, a Playwright container or a served build a clone
+          cannot provide; named with their reason, not silently omitted.
+
+The follow-up commit that carries this section changes only
+REPORT-AN12.txt - a report, no tested path - so R132's changed-path
+selection requires no re-run of gate:clone over it (the documented
+carve-out).
+
+COMMITS PUSHED, 387c5c5..HEAD (the AN12 android + report commits; the
+operator's FW33 web commits are interleaved in the shared main):
+  56cbdac  AN12: settings, and what a change does to the year
+  fc3b13e  AN12: export and sign-out
+  c59166e  AN12: deleting the account, everywhere
+  37bf032  AN12: legal pages and licences
+  d68bc7b  AN12: the exported file is the record too, and deletion clears it
+  2da00b6  AN12: the R290 rate rows stay legible at 200 percent
+  17169ab  AN12: parametres, seen (this report + PARKAN-30)
+  (this)   AN12: record the gate:clone push proof
+
+FINALIZATION NOTE. The AN12 working session reached the account rate
+limit after the final gate:clone had passed but before this proof was
+recorded. No work was lost - every increment was already pushed and this
+report was already written - and the task was closed out in a recovery
+step: the "parametres, seen" commit, this gate:clone, this proof, and the
+push. The gate:clone above is the authoritative verification of HEAD.
+
+CHECKPOINT F IS REACHED.
