@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  AN-AUDIT increment 4: the cross-app read probe. A single launcher activity in a separate app
+  (ch.monreleve.probe), so it installs under its own UID and attempts to read ch.monreleve.app's private data.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application android:label="AN-AUDIT probe">
+        <activity
+            android:name=".ProbeActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

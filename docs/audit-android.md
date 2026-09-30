@@ -208,3 +208,78 @@ form.
   accessed-on-device / not-collected / not-transmitted to match the manifest and the privacy notice.
 - WHAT IT WOULD TAKE TO CLOSE: an AN14 data-safety-form entry and a store-listing sentence, and a confirmation
   that foreground detection is a shipping feature (if detection is deferred, the permission should be too).
+
+## SECURITY AND PRIVACY, PROBED (increment 4)
+
+Probed on the DEBUG build (state checks need run-as, which the non-debuggable audit variant blocks); the
+release code is identical (minify off, dex-equal, increment 2) and the release exported surface was measured
+from the release APK (increment 3), so probing debug loses nothing and gains prefs/DB/traffic evidence.
+
+TOKENS - cross-app read (a second app, ch.monreleve.probe, committed as a Gradle module OUTSIDE :app).
+- PROBE: signed with the SAME debug key as the app, so it is a STRONGER attacker than a real third-party app
+  (it shares any signature-level permission). A POSITIVE CONTROL ran first and passed: "CONTROL own filesDir:
+  READ OK (probe works)". With the victim's monreleve.auth.xml confirmed present, the probe then tried five
+  reads across the sandbox and ALL were DENIED (FileNotFoundException): the AUTH tokens, the DOSSIER cache, the
+  SETTINGS, the ROOM db, and the FileProvider (content://ch.monreleve.app.fileprovider/exports/releve.pdf with
+  no grant).
+- VERDICT: NO LEAK. The per-app UID sandbox holds; a second app cannot read the tokens, the database, the
+  cached releve or an exported file. (This is the FW30 stop-rule surface - the result is the safe one.)
+
+INTENTS - hostile intents at every exported component and the App Link callback (nothing may sign in, write a
+day, or crash).
+- Fired junk + 8000-char oversized extras at all four dev activities (they launch, as exported components do);
+  fired eight hostile URIs at the callback: a foreign host, a cleartext scheme, a wrong path, a missing token,
+  an 8000-char oversized token, javascript:, malformed percent-encoding, a content:// URI, and null data.
+- RESULT: the intent-filter REJECTED the foreign host, the cleartext scheme, the wrong path, the javascript:
+  URI, the content:// URI and null data ("Activity not started, unable to resolve Intent"); the well-formed-
+  path callbacks launched CallbackActivity but, with an invalid or missing token, produced NO session. After
+  the whole fuzz: zero app crashes (no FATAL for ch.monreleve.app in logcat), and monreleve.auth.xml was ABSENT
+  - no session was written by any hostile intent, and no day was written.
+- VERDICT: nothing signed in, wrote a day, or crashed.
+
+PENDING INTENTS - zero app-owned. A source scan (grep PendingIntent app/src/main) returns nothing: the app
+creates no PendingIntent. The only PendingIntents in the build are androidx.work's, which the library creates
+with an explicit mutability flag on modern SDKs. The reminder settings (reminderTime/reminderEnabled in /me)
+are a stored preference with no scheduler wired yet (no AlarmManager/NotificationManager in main), consistent
+with there being no app-owned PendingIntent.
+
+D18 - no coordinate sent, proven from captured traffic. A logging reverse proxy recorded every request the app
+made during a full drive (inject, reach MAIN, record a Swiss day which triggers a sync, and drive the
+detection replay - the sharpest D18 surface). PRESENCE BEFORE ABSENCE (R169 corollary): the capture contained
+the expected POST /api/v1/entries, so the no-coordinate result is not an empty-capture artifact. The actual
+entry payload, verbatim:
+  {"entries":[{"clientMutationId":"...","dayDate":"2026-09-30","portion":"FULL","kind":"CH",
+   "provenance":"MANUAL","clientClaimedAt":"2026-09-30T16:59:05.681+00:00"}]}
+A coordinate scan of every captured body (coordinate-shaped KEYS lat/lng/geo/accuracy/bearing/altitude/speed,
+AND value pairs of Geneva-plausible decimals lat 43-47 / lng 5-8) found NOTHING. The engine's rates (39,16 /
+4,16) and the tally's integer minutes/fixCount are legal and out of those ranges. Reproduced identically
+across two runs. VERDICT: the running app sends no coordinate. This complements the source fence and the DDL
+scan (which prove it cannot be written) - this proves it is not sent.
+
+LOGS - logcat scanned during the same drive for the EXACT token/refresh/email values the harness minted (an
+advantage a generic scan lacks: it knows the real secrets). A positive control confirmed the app process
+logged something at all. RESULT: none of the three secret values appeared in logcat. VERDICT: no credential or
+address reaches a log line (consistent with the LogFenceTest source guard).
+
+BACKUP - two claims. The backup RULES (res/xml/backup_rules.xml for API 26-30, data_extraction_rules.xml for
+31+) EXCLUDE monreleve.auth.xml and monreleve.pending.xml from BOTH cloud-backup AND device-transfer, so a
+restored backup cannot resurrect a session or replay a queued mutation. The dynamic `adb backup` run against
+the debug build DECLINED headless (it requires an on-screen confirmation the headless emulator cannot tap,
+which itself yields nothing) - noted rather than passed off as rule-based exclusion (R233). NOTE: the Room DB
+and the cached dossier (monreleve.dossier.xml) are NOT excluded, so a backup carries the user's own tax record
+to their own account backup - defensible (it is their data, not a credential), but worth an explicit AN14
+data-safety decision.
+
+FINDING F3 (severity LOW) - no FLAG_SECURE; the recents thumbnail shows the tax record.
+- EVIDENCE: FLAG_SECURE appears in no app screen (source scan - only a rationale comment in LogFenceTest). The
+  recents thumbnail, captured via KEYCODE_APP_SWITCH, shows the full Aujourd'hui screen: "Bonjour Camille",
+  "Taux a declarer a l'AFC 0,00 %", "Sous les deux seuils", "Jours restants avant 40,0 % : 96".
+- WHY IT MATTERS / THE EXISTING POSITION: the project deliberately does NOT set FLAG_SECURE, with a tested
+  rationale (LogFenceTest.noRawTokenReachesTheUiLayer): no screen renders a token or the sign-in link, so there
+  is no CREDENTIAL to hide, and a black recents would also defeat the audit's own screenshots. That rationale
+  is sound for credentials. It does not cover the tax RECORD, which the thumbnail (and any screenshot) exposes
+  to someone with physical device access. This is personal data, not a credential, so it is a LOW finding and a
+  deliberate product trade-off rather than a defect.
+- WHAT IT WOULD TAKE TO CLOSE: an AN14 decision on whether to set FLAG_SECURE (or exclude the app from recents
+  previews) to hide the tax record, weighed against losing in-app screenshots and the screenshot-based audit
+  instruments. Conservative today: leave it, and record the trade-off.
