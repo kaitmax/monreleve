@@ -312,21 +312,23 @@ tasks.register("checkReleaseCleartext") {
     }
 }
 
-// R284 guard (b). The debug session injection (SessionInjectionActivity, declared only in
-// src/debug/AndroidManifest.xml) must never reach a release build. This reads the MERGED release
-// manifest (processReleaseManifest's output - the merger or a library could introduce a component the
-// source does not) and fails if the injection is present anywhere in it. R182: it dependsOn the task
-// that PRODUCES its subject, so it never runs before the merged manifest exists. The companion source
-// scan is NoDebugInjectionInMainTest (guard a); this is the merged-output guard, exactly the shape of
-// checkReleaseCleartext (AN4). Proven by planting the activity in src/main/AndroidManifest.xml and
-// watching it go red (R180), recorded in REPORT-AN5c.txt.
+// R284 guard (b). The debug-only tooling (SessionInjectionActivity and DebugSeederActivity, declared only in
+// src/debug/AndroidManifest.xml) must never reach a release build. This reads the MERGED release manifest
+// (processReleaseManifest's output - the merger or a library could introduce a component the source does not)
+// and fails if any tooling marker is present anywhere in it. R182: it dependsOn the task that PRODUCES its
+// subject, so it never runs before the merged manifest exists. The companion source scan is
+// NoDebugInjectionInMainTest (guard a); this is the merged-output guard, exactly the shape of
+// checkReleaseCleartext (AN4). Proven by planting each activity in src/main/AndroidManifest.xml and watching
+// it go red (R180) - SessionInjection in REPORT-AN5c.txt, DebugSeeder in REPORT-AN-AUDIT.txt.
 tasks.register("checkReleaseNoDebugInjection") {
     dependsOn("processReleaseManifest")
     doLast {
         // Strip XML comments before matching, the checkReleaseCleartext lesson: a guard that reads its
         // own documentation as a violation is the FW22 size-regex shape. The subject is the elements.
         val stripComments = { text: String -> text.replace(Regex("""(?s)<!--.*?-->"""), "") }
-        val marker = "SessionInjection"
+        // AN-AUDIT increment 1: two markers now. "SessionInjection" bypasses sign-in; "DebugSeeder" writes a
+        // dataset straight into Room. Either in a release build is the R284 defect.
+        val markers = listOf("SessionInjection", "DebugSeeder")
 
         val manifestDir = layout.buildDirectory.dir("intermediates/merged_manifest/release").get().asFile
         val mergedManifest = manifestDir.walkTopDown().firstOrNull { it.name == "AndroidManifest.xml" }
@@ -337,15 +339,16 @@ tasks.register("checkReleaseNoDebugInjection") {
             )
         }
         val manifestText = stripComments(mergedManifest.readText())
-        if (manifestText.contains(marker)) {
+        val found = markers.filter { manifestText.contains(it) }
+        if (found.isNotEmpty()) {
             throw GradleException(
-                "checkReleaseNoDebugInjection FAILED - the debug session injection ('$marker') is " +
-                    "present in the merged RELEASE manifest ($mergedManifest). It must exist only in " +
-                    "the debug source set (R284): a release build that could be handed a session " +
-                    "bypasses sign-in entirely.",
+                "checkReleaseNoDebugInjection FAILED - debug-only tooling ($found) is present in the " +
+                    "merged RELEASE manifest ($mergedManifest). It must exist only in the debug source set " +
+                    "(R284): a release build that could be handed a session bypasses sign-in entirely, and " +
+                    "one that could be told to seed writes days no user recorded.",
             )
         }
-        println("checkReleaseNoDebugInjection OK: no debug session injection in the merged release manifest")
+        println("checkReleaseNoDebugInjection OK: no debug tooling ($markers) in the merged release manifest")
     }
 }
 

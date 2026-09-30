@@ -8,11 +8,20 @@
 
   exported="true" so `adb shell am start -n` can reach it; no intent-filter, so it is never in the
   launcher and no App Link opens it. It is consumed in-app and never forwarded (android-intent-security).
+
+  DebugSeederActivity (AN-AUDIT increment 1) joins it here on the same terms: the deterministic dataset
+  generator, declared ONLY in this debug fragment so the merger never adds it to a release build.
+  checkReleaseNoDebugInjection names "DebugSeeder" alongside "SessionInjection" and fails if either reaches
+  the merged release manifest.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
         <activity
             android:name=".debug.SessionInjectionActivity"
+            android:exported="true"
+            android:theme="@style/Theme.MonReleve" />
+        <activity
+            android:name=".debug.DebugSeederActivity"
             android:exported="true"
             android:theme="@style/Theme.MonReleve" />
     </application>
