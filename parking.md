@@ -1489,6 +1489,83 @@ NEEDS:     from AN6 and the operator: the field-test build's definition (build t
 Play data-safety-form entry declaring location as accessed-on-device / not-collected / not-transmitted, to be
 added the task detection ships - not before, so the manifest never claims a feature the build does not expose.
 
+## PARKAN-33 - compileSdk stays 35 while targetSdk is 36  [AN14a, 2026-10-01]
+
+QUESTION:  Google Play requires new apps and app updates to target API 36 (Android 16) - verified from
+Google's own page (developer.android.com/google/play/requirements/target-sdk, fetched 2026-10-01, effective
+2026-08-31), and the AN14a prompt directs setting targetSdk. AGP normally wants compileSdk >= targetSdk, so
+targetSdk 36 would pull compileSdk to 36 - but paparazzi 1.3.5 cannot render API 36 (its layoutlib cannot
+match API 36 - cashapp/paparazzi#1877), which reds verifyPaparazziDebug. So what compileSdk ships with
+targetSdk 36 without a dependency upgrade mid-task?
+
+TAKEN:     targetSdk 36 + compileSdk 35 - the documented workaround. It builds clean on AGP 8.10.1 (no error,
+no warning), keeps paparazzi 1.3.5 green, and the BUILT release APK declares targetSdkVersion 36 (verified by
+aapt2 dump badging). targetSdk 36 is what Play enforces at upload; compileSdk is the SDK surface compiled
+against, and this app uses no API-36 symbol. Reversible until the first upload (AN14b): it is two numbers in
+build.gradle.kts.
+
+NOT TAKEN: compileSdk 36 with a paparazzi UPGRADE (to a version whose layoutlib supports API 36) plus a
+visual-baseline regeneration (R135/R207). That is a dependency change (R156/"Ask first") and a change to the
+visual record, out of AN14a's scope, and risky to do without the emulator to re-verify behaviour. Also not
+taken: keeping targetSdk 35, which Play would reject at upload. Switching to the compileSdk-36 path later costs
+the paparazzi version bump in libs.versions.toml and a reason-stated baseline regeneration - no change to the
+app's code.
+
+TOUCHES:   android/app/build.gradle.kts (compileSdk, targetSdk), android/gradle/libs.versions.toml (the
+paparazzi version, when upgraded), and the paparazzi snapshot baselines (regenerated when compileSdk moves to 36).
+
+NEEDS:     AN14b to upgrade paparazzi to a version with an API-36 layoutlib, set compileSdk 36 to align with
+targetSdk 36 (Google's recommended compileSdk == targetSdk), and regenerate the baselines with a stated reason -
+before or at the first Play upload. The API 35 -> 36 runtime behaviour changes are OWED an emulator pass
+(RAM-blocked this session; edge-to-edge was already handled from AN1's targetSdk 35).
+
+## PARKAN-34 - the app crashes on launch on API < 34 (LocalDate.ofInstant, no core-library desugaring)  [AN14a, 2026-10-02]
+
+QUESTION:  minSdk is 26, but the app calls LocalDate.ofInstant(Instant, ZoneId) - a java.time method Android
+added to the PLATFORM only at API 34 (Android 14). On any device below 34 the method does not exist, so the
+first Compose composition that computes "today" throws NoSuchMethodError and the shell dies on launch. AN14a's
+device drive found it on a PHYSICAL Galaxy S9 (SM-G960F, API 29): the MINIFIED audit build and the UNMINIFIED
+debug build crash IDENTICALLY. How is it fixed, and why did every gate miss it?
+
+EVIDENCE (AN14a increment 6, on-device 2026-10-02): launching MainActivity on the minified audit APK ->
+"java.lang.NoSuchMethodError: No static method ofInstant(Ljava/time/Instant;Ljava/time/ZoneId;)Ljava/time/
+LocalDate; in class Ljava/time/LocalDate; ... (declaration of 'java.time.LocalDate' appears in
+/apex/com.android.runtime/javalib/core-oj.jar)" - the DEVICE's platform LocalDate, not an app-dex class, lacks
+the method. The same launch on the UNMINIFIED debug APK on the same device throws the IDENTICAL error, which
+PROVES it is NOT an R8/minification break (R8 does not rename or remove platform classes/methods). The only
+call site is android/app/src/main/kotlin/ch/monreleve/app/data/local/CalendarDay.kt:31 (todayInParis); a source
+scan of src/main found NO other API-34 java.time method (OffsetDateTime.now, Clock.systemDefaultZone, ChronoUnit,
+YearMonth, Year, DayOfWeek, DateTimeFormatter.ofPattern are all API 26). R307's wire drive
+(dev.WireDumpActivity) does NOT hit this path and PASSED on-device.
+
+WHY EVERY GATE MISSED IT: the JVM unit tests and paparazzi run on the HOST JDK, where LocalDate.ofInstant exists
+(Java 9+), so they never see the API-level gap; the :app:gate runs ktlint + detekt but NOT Android Lint, whose
+NewApi check flags exactly "API-34 method, minSdk 26, no desugaring" at build time; and every prior on-device
+drive ran on an API-34+ emulator, where the method exists natively. So the defect was invisible to the whole
+pipeline until a real sub-34 device ran it.
+
+NOT TAKEN (this session, deliberately): no production source was changed. AN14a increment 6 is a narrow
+finalization ("not new scope"); the fix needs its own test-first mechanism (a source fence, an instrumented
+sub-34 test, or Android Lint on the gate - all new discipline a finalization is not sanctioned to create), and
+the general fix (desugaring) is an ask-first dependency (R156 / SPEC 20) in a session told not to ask. Reported,
+not hidden; left for a dedicated task.
+
+CANDIDATE FIXES (named, not applied): (a) the narrowest, behaviour-preserving call-site change -
+LocalDate.ofInstant(clock.instant(), PARIS) is exactly clock.instant().atZone(PARIS).toLocalDate(), which uses
+only API-26 methods - plus a source fence forbidding the API-34 java.time methods so the next one cannot ship;
+OR (b) core-library desugaring (coreLibraryDesugaringEnabled = true + the desugar_jdk_libs dependency), which
+backports the whole newer java.time surface and is the general fix - a dependency addition (ASK FIRST). EITHER
+way, add Android Lint (lintDebug / the NewApi check) to :app:gate so the class is caught at build time, not on a
+user's phone.
+
+TOUCHES:   android/app/src/main/kotlin/ch/monreleve/app/data/local/CalendarDay.kt (the call site);
+android/app/build.gradle.kts (compileOptions desugaring + the dependency, if (b); and a lint task on the gate);
+a new fence test, if (a).
+
+NEEDS:     an operator ruling on (a) vs (b) - a call-site fix + fence is a normal task; desugaring is ask-first -
+and the lint-on-gate addition, before any build is shipped to a device below API 34. Until then the shipping
+release crashes on launch for every user on API 26-33.
+
 ## STATUS LEDGER  [appended 2026-09-29]
 
 One line per Android-era entry, so the state of each is visible without
@@ -1517,6 +1594,7 @@ reading every section. Entries are not edited; this ledger is.
 | PARKAN-28 — sign-out keeps the settings | **reversed** | R297 (AN-AUDIT incr 0): sign-out clears the settings too; a re-sign-in restores them from GET /api/v1/me before the onboarding decision |
 | PARKAN-29 — licences screen is hand-authored | **closed** | R298 (AN-AUDIT incr 0): the list stays hand-written; a gate check (checkLicences) derives the release runtime deps from the build and fails on any not attributed - no plugin, no dependency. First run found guava/annotations/jspecify bundled but uncredited (R178); added |
 | PARKAN-30 — openLegal unguarded vs no browser | **closed** | R299 (AN-AUDIT incr 0): openLegal catches ActivityNotFoundException and shows the link's address (openLegalLink seam, LegalLinkTest); no crash on a browserless device |
-| PARKAN-31 — TRUE release never exercised E2E | **open, NEEDS** | AN-AUDIT incr 2: release CONFIG exercised via the committed audit variant (release=debug bytecode, minify off); TRUE release APK built (7.01 MB) + launched. Re-exercise the shipping artifact E2E needs AN14's R8, a resolving monreleve.ch + assetlinks, and the release key |
+| PARKAN-31 — TRUE release never exercised E2E | **open, NARROWED** | AN-AUDIT incr 2 + AN14a. R8 is ON and statically verified (checkMinifiedWireContract). AN14a incr 6 drove the MINIFIED audit variant on a PHYSICAL SM-G960F (API 29): the R307 runtime wire drive PASSED (minified serialiser emits all 10 /v1 request keys + 15 enum values), but the full end-to-end AC1 drive is BLOCKED by a pre-existing non-R8 launch crash (PARKAN-34). Still owed: AC1 end-to-end once PARKAN-34 is resolved, and the TRUE signed release vs a resolving monreleve.ch + assetlinks + release key (AN14b) |
+| PARKAN-34 — crashes on launch on API < 34 | **open, NEEDS** | AN14a incr 6 (on-device): LocalDate.ofInstant (API 34+) at CalendarDay.kt:31 with no core-library desugaring throws NoSuchMethodError on launch on API 26-33; minified AND unminified crash identically (NOT R8). Invisible to every gate (JVM/paparazzi run on host JDK; no Android Lint NewApi on :app:gate). Fix: call-site atZone().toLocalDate() + a fence, or desugaring (ask-first); add lint to the gate |
 | PARKAN-32 — where the location permission lives | **open, NEEDS** | AN-FIX incr 3 (R304): ACCESS_FINE_LOCATION moved from src/main to src/debug, so the release APK declares none (checkReleaseNoLocationPermission, aapt2) and debug/audit keep it; the AN6b field-test build's shape + the data-safety-form entry are AN6's to add when detection ships |
 | PARKAN-33 — compileSdk stays 35 while targetSdk is 36 | **open, NEEDS** | AN14a incr 5: Play requires new apps/updates to target API 36 (Google docs, fetched 2026-10-01, effective 2026-08-31), and the prompt directs setting it - done (the built release APK declares targetSdkVersion 36). compileSdk 36 would align them (Google's recommended compileSdk==targetSdk), but paparazzi 1.3.5 cannot render API 36 (cashapp/paparazzi#1877), so compileSdk 36 needs a paparazzi version upgrade + a visual-baseline regeneration (R135/R207) - a dependency change out of AN14a's scope. Conservative/reversible choice: targetSdk 36 + compileSdk 35, the documented workaround (built clean on AGP 8.10.1, no AGP error, paparazzi green). AN14b aligns compileSdk to 36 with the paparazzi upgrade before the first upload; reversible until then. The API 35->36 runtime behaviour changes are OWED an emulator pass (RAM-blocked) |

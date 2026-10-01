@@ -129,6 +129,20 @@ function androidSourceCalls(needle: string): boolean {
  * the application" true - nobody outside this machine can install an
  * unsigned build. See appExists's `last` field for why this proxy is
  * provisional.
+ *
+ * AN14a SHARPENED THIS, and it is exactly the "stronger marker" appExists.last
+ * forecast. AN14a added a release signingConfig that is CONDITIONAL on a key
+ * supplied through gradle properties / the environment (absent in a clean
+ * checkout, R250): `signingConfig = if (hasReleaseSigning) signingConfigs...
+ * else null`. The old `/signingConfig\s*=/` matched that line and read the
+ * build as signed when it is UNSIGNED (app-release-unsigned.apk) - a false
+ * positive that would have flipped appExists, trackerExists and dossierExists
+ * to true while nobody can install anything. So the proxy now requires an
+ * UNCONDITIONAL assignment to a signingConfigs entry - the right-hand side
+ * begins with `signingConfigs`, not with an `if`. The env-conditional seam
+ * stays false (the honest state: no key, so no installable build), and it flips
+ * only when the release is signed outright, which still needs the operator's
+ * key (AN14b, R250).
  */
 function androidReleaseIsSigned(): boolean {
   const buildFile = join(ANDROID, 'app', 'build.gradle.kts');
@@ -139,8 +153,9 @@ function androidReleaseIsSigned(): boolean {
 
   const source = readFileSync(buildFile, 'utf8');
   const releaseBlock = /release\s*\{([^}]*)\}/s.exec(source)?.[1] ?? '';
+  const assignment = /signingConfig\s*=\s*(.+)/.exec(releaseBlock)?.[1]?.trim() ?? '';
 
-  return /signingConfig\s*=/.test(releaseBlock);
+  return /^signingConfigs\b/.test(assignment);
 }
 
 const EVIDENCE: Record<keyof ProductState, Flag> = {

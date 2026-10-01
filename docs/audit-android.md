@@ -229,6 +229,15 @@ FINDING F1 (severity MEDIUM) - four dev-only activities are exported in the ship
   or set android:exported=false / gate them behind a debug BuildConfig, and add a built-APK check that the
   release manifest declares no ch.monreleve.app.dev.* component - the manifest analogue of
   checkReleaseNoDebugInjection. This is structural (R255) and belongs to AN14's release hardening.
+- CLOSED (AN14a increment 1, commit 41920a1). The four <activity> declarations moved from
+  src/main/AndroidManifest.xml to src/debug/AndroidManifest.xml, so the release the user installs declares
+  none while the debug and audit variants keep them for the walkthrough drivers. checkReleaseNoDevComponent
+  (new, wired into :app:gate) reads the BUILT release APK's manifest with aapt2 dump xmltree and fails on any
+  ch.monreleve.app.dev.* component - the built-APK partner of checkReleaseNoDebugInjection (AC2/R249). Its
+  FIRST run found the four live instances (R178 - the real proof F1 existed), then went GREEN after the move;
+  proven still able to fire by planting GalleryActivity back into src/main, confirming it landed in the built
+  APK, and seeing RED (R180). With R8 on (increment 2), the now-unreferenced dev.* Kotlin is also STRIPPED
+  from the release dex (usage.txt), so release carries neither the declaration nor the code.
 
 FINDING F2 (severity LOW, informational) - ACCESS_FINE_LOCATION ships and must be declared on the data-safety
 form.
@@ -736,10 +745,23 @@ observe), and the Releve's data-level rendering (not loaded, no server this sess
 
 ## UNEXAMINED
 
-- The TRUE release APK end to end against a real server (PARKAN-31): R8 is off (isMinifyEnabled=false, AN14),
-  monreleve.ch does not resolve, and no release signing key exists, so the shipping artifact cannot yet be driven
-  through the real magic-link -> App Link callback. The release CONFIG was exercised via the audit variant
-  (release bytecode = debug, minify off); the R8-minified path does not exist to test.
+- The TRUE release APK end to end against a real server (PARKAN-31) - NARROWED by AN14a. R8 is now ON
+  (isMinifyEnabled + isShrinkResources true for release and audit; AN14a increment 2), so the R8-minified path
+  NOW EXISTS and was exercised statically: the build held with no warning, the wire enum names and JSON keys all
+  survive the minification (checkMinifiedWireContract, from the minified dex, derived from docs/api-v1.md), R8
+  stripped the detection pipeline + dev.* code, and bundletool measured the minified download at ~1.26 MB. WHAT
+  STILL REMAINS under PARKAN-31: (a) the MINIFIED audit variant driven end to end (sign-in, record, sync, DB
+  read-back, dossier, releve, PDF/CSV) - ATTEMPTED on a physical SM-G960F (API 29) in AN14a increment 6 and
+  BLOCKED by the launch crash PARKAN-34 (LocalDate.ofInstant below API 34, pre-existing, NOT R8); owed on a
+  build that launches below API 34 (or on an API-34+ device, once PARKAN-34 is understood to be the gap);
+  (b) the R307 runtime half (an14a-wire.mjs drives dev.WireDumpActivity on the minified build and diffs the
+  EMITTED payload against the doc) - CLOSED on-device in increment 6 (all 10 request keys + 15 enum values
+  emitted; WireDumpActivity does not hit the crashing shell path); (c) the TRUE release APK (not the audit
+  variant) through the real magic-link -> App Link callback, which still needs a resolving monreleve.ch + served
+  assetlinks and a release signing key - the operator's (AN14b, R250). So PARKAN-31 is no longer "R8 is off and
+  the minified path does not exist"; it is "the minified path exists, is statically verified, and its wire is
+  confirmed emitted on-device; the full end-to-end drive is blocked by PARKAN-34, and the real-domain/real-key
+  path remains".
 - The offline-queue POST-drain under a 500 / malformed response, on-device: the SyncWorker did not drain to the
   fault-server within the observation windows (WorkManager deferral; the injected session; a rotating scheduler
   job id defeated `cmd jobscheduler run`). The drain POST itself IS proven (F4 crossaccount, real tokens), the
@@ -766,7 +788,10 @@ HIGH
 MEDIUM
 - F1 - four dev-only activities (Gallery, SignInProbe, DevRecorder, DetectionReplay) exported in the release APK.
   None writes a day on launch alone (fuzz-confirmed, increment 4), but they are a real launchable attack surface.
-  #2 of the three.
+  #2 of the three. CLOSED by AN14a increment 1 (commit 41920a1): the declarations moved to src/debug, release
+  declares none, and checkReleaseNoDevComponent reads the built APK and fails on any dev.* component (R178 live
+  proof + R180 plant). With R8 on, the dev.* code is also stripped from the release dex. See the F1 finding
+  above for the full closure.
 
 LOW
 - F2 - ACCESS_FINE_LOCATION ships; must be declared on the Play data-safety form (R282). Ties to F6.
@@ -794,7 +819,9 @@ LOW
 2. F1 (MEDIUM) - release-hardening of the exported surface: move the four dev.* activities to src/debug (as the
    injection and the seeder already are) or set them exported=false, and add a built-APK check that the release
    manifest declares no ch.monreleve.app.dev.* component - the manifest analogue of
-   checkReleaseNoDebugInjection. Belongs with AN14.
+   checkReleaseNoDebugInjection. Belongs with AN14. DONE - AN14a increment 1 (commit 41920a1): moved to
+   src/debug, checkReleaseNoDevComponent added (built-APK, aapt2), proven by the live first run (R178) and a
+   plant (R180). See the F1 finding and "AN14a" closure below.
 3. F2 + F6 together - decide detection before release: either wire the on-device detection pipeline into a
    production surface AND declare ACCESS_FINE_LOCATION on the data-safety form, or DEFER the detection code and
    the location permission together to the task that ships the feature, so the manifest claims only features this
@@ -850,3 +877,87 @@ flipped - these fixes change behaviour and manifests, not UI pixels.
   guard: everyCardInUiIsThemedWithExplicitShapeAndElevation finds ZERO Material3 Card(...) in ui/ - the project
   themes with Surface by design - so the files-non-empty guard is the right one there (a "found the elements"
   guard would wrongly fail the deliberate Surface-over-Card choice); recorded in the fence's comment.
+
+## AN14a - R8 ON, AND THE RELEASE HARDENED (2026-10-01)
+
+AN14a turned on R8/minification for the first time, closed F1, and hardened the release build with no Play
+account, signing key or resolving domain. R186: NO baseline was regenerated and no product-state flag flipped.
+
+- F1 (MEDIUM) - CLOSED (increment 1, commit 41920a1). The four dev.* activity declarations
+  (GalleryActivity, SignInProbeActivity, DevRecorderActivity, DetectionReplayActivity) moved from
+  src/main/AndroidManifest.xml to src/debug/AndroidManifest.xml, so the release the user installs declares none
+  while the debug/audit variants keep them for the walkthrough drivers (their Kotlin stays in src/main;
+  increment 2's R8 then strips it from the release dex as unreferenced). checkReleaseNoDevComponent (new, wired
+  into :app:gate) reads the BUILT release APK's manifest with aapt2 dump xmltree and fails on any
+  ch.monreleve.app.dev.* component - the built-APK partner of checkReleaseNoDebugInjection (AC2/R249). Its FIRST
+  run found the four live instances (R178); GREEN after the move; proven able to fire by planting GalleryActivity
+  back into src/main, confirming it landed in the built APK, and seeing RED (R180).
+
+- R8 ON (increment 2, commit a595e0a). isMinifyEnabled + isShrinkResources true for release AND audit. The
+  build HELD - no warning, no missing_rules.txt. The classic R8 failure modes did not appear: the /v1 wire is
+  manual org.json with string-literal keys (R8 never rewrites string contents) and enum values go out as
+  `.name` (the <clinit> literal R8 leaves intact though it renamed the enum classes and constant fields); no
+  reflection-based serialisation; WorkManager keeps SyncWorker UNRENAMED via its consumer rules; Room/Compose
+  ship consumer rules. APK 7,348,455 -> 1,498,332 bytes (~80% smaller). R8 removed 933 ch.monreleve classes
+  incl. the WHOLE detection pipeline and the dev.* code (correct: F1 removed detection's only release root -
+  R304/PARKAN-32's dormant feature is gone from the shipping artifact). MainActivity, CallbackActivity,
+  FileProvider survive.
+
+- KEEP RULES (increment 3, commit 554e3b3) - NONE, and that is the finding (R306). proguard-rules.pro is
+  deliberately empty of keep rules, with the reasoning and the discipline for any future rule (added only after
+  a concrete failure, each commented with the failure it fixes, no blanket package keep).
+
+- THE WIRE UNDER MINIFICATION (R307, increment 4, commit 904cb9a). checkMinifiedWireContract (new, :app:gate)
+  reads the MINIFIED release dex string pool and asserts every /v1 field key and enum value the contract names
+  SURVIVES R8 - the tokens DERIVED from docs/api-v1.md at execution time (fields:write/read markers; R206).
+  GREEN: all 28 tokens present. Plant (R180): a doc-side rename (dayDate -> dayDateZZZPLANT) went RED naming the
+  missing token (the entry keys are also Room columns, so a single-site wire rename cannot leave the dex - the
+  faithful artifact-side plant is the runtime half). RUNTIME half (presence-is-not-use, R133) - CLOSED
+  ON-DEVICE (AN14a increment 6, 2026-10-02, physical SM-G960F / API 29): dev.WireDumpActivity (src/debug)
+  serialises a fixture covering every enum value through the real minified EntriesWire and logs the JSON;
+  android/scripts/an14a-wire.mjs (SKIP_BUILD=1) installed the minified audit APK, launched it, read the JSON
+  back and asserted the emitted keys + enum values against docs/api-v1.md. RESULT: all 10 request field keys
+  and all 15 enum values were EMITTED by the minified serialiser (the 3 response-only keys - id,
+  firstRecordedAt, lastModifiedAt - are server-assigned, not in a request, and are covered by the static dex
+  check + the AC1 decode path). WireDumpActivity does NOT go through the Compose shell's "today" composition,
+  so it is unaffected by PARKAN-34's launch crash (see AC1 below).
+
+- SIZE / MAPPING / SIGNING / TARGET / VERSIONCODE (increment 5, commit fa648b1). SIZE (AC3), bundletool 1.18.3:
+  .aab 3.30 MB, per-device download 1.25-1.26 MB, universal APK 1.45 MB - all far under SPEC's 12 MB. The
+  border polygon asset (154 KB) ships though detection is R8-removed (isShrinkResources prunes res/, not
+  assets/). MAPPING: app/build/outputs/mapping/{release,audit}/mapping.txt, gitignored (not committed),
+  deobfuscates a user-reported stack trace (no crash SDK), archived per release (AN14b uploads to Play). SIGNING
+  (R250): a release signingConfig reading the keystore from gradle properties/env; absent -> no signingConfig ->
+  app-release-unsigned.apk. No key created. TARGET SDK 36 (Android 16), verified from Google's own page
+  (fetched 2026-10-01, effective 2026-08-31); compileSdk stays 35 because paparazzi 1.3.5 cannot render API 36
+  (cashapp/paparazzi#1877) - PARKAN-33 aligns it with a paparazzi upgrade in AN14b. VERSIONCODE: a monotonic
+  integer, +1 per upload, stays 1 until the first upload.
+
+- AC1 (increment 6, ATTEMPTED ON A PHYSICAL DEVICE, BLOCKED by a pre-existing crash - PARKAN-34). The MINIFIED
+  audit variant was driven on a physical Galaxy S9 (SM-G960F, API 29 / Android 10) instead of the emulator. The
+  full end-to-end flow (sign-in, record, sync, DB read-back, dossier, releve, PDF/CSV) could NOT be completed:
+  the Compose shell crashes on launch with java.lang.NoSuchMethodError on LocalDate.ofInstant(Instant, ZoneId),
+  a java.time method Android added to the platform only at API 34, called at CalendarDay.kt:31 while minSdk is
+  26 and no core-library desugaring is configured. This is NOT an R8 break - the UNMINIFIED debug build crashes
+  IDENTICALLY on the same device (R8 does not touch platform method resolution) - it is a pre-existing
+  API-level defect, surfaced for the first time by running on real sub-34 hardware (all prior drives were on an
+  API-34+ emulator). Both the F4 cross-account re-confirmation and AC1 depend on the shell coming up, so both
+  are blocked by this one crash; the F4 drive's screenshots (android/.an-audit-shots/) both show the device
+  home screen, and its oracle read zero entries (a vacuous CROSS_ACCOUNT_LEAK=false; SET_ASIDE_RELEASED=false).
+  Recorded as PARKAN-34 with the candidate fixes; no production source was changed this session (the fix needs
+  its own test-first mechanism and the general fix, desugaring, is ask-first). PARKAN-31 narrowed accordingly
+  (see UNEXAMINED). The R307 runtime half above (a separate, non-shell activity) DID pass on this device.
+
+- F4 RE-CONFIRMATION ON THE MINIFIED BUILD (increment 6) - NOT CLOSED, blocked by PARKAN-34. The plan was to
+  re-run android/scripts/an-fix-crossaccount.mjs (APP_APK = the minified audit APK, ANDROID_SERIAL = the device,
+  adb reverse tcp:3000 tcp:3000 bridging the device's 127.0.0.1:3000 to the host proxy) and require the FIXED
+  (R303) behaviour: CROSS_ACCOUNT_LEAK=false AND SET_ASIDE_RELEASED=true, with the Postgres oracle showing B
+  owning only B's day and A's set-aside days syncing under A after re-signin. The container + proxy + Postgres
+  oracle came up (R169 health named this product), but the shell crashes on launch (PARKAN-34), so NO day was
+  ever recorded: the oracle read zero entries at every stage (CROSS_ACCOUNT_LEAK=false VACUOUSLY,
+  SET_ASIDE_RELEASED=false), and the two drive screenshots both show the device home screen. A vacuous false is
+  NOT the required non-vacuous oracle, so F4-on-minified stays OWED behind PARKAN-34. (AN-FIX's own on-device
+  closure of F4 on the UNMINIFIED debug build at the emulator stands; this is only the minified re-confirmation.)
+  The bridge used for the drive (build.gradle.kts frontalierHost override + the 127.0.0.1 cleartext exception in
+  src/debug/res/xml/network_security_config.xml) is debug/audit-source-set only; the release still denies all
+  cleartext (checkReleaseCleartext).

@@ -136,8 +136,15 @@ android {
             isShrinkResources = true
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += listOf("release")
+            // AN14a increment 6. The host defaults to 10.0.2.2 (the emulator's host alias); a PHYSICAL
+            // device has no such alias, so the device drive overrides it with -PfrontalierHost=127.0.0.1 and
+            // bridges the host with `adb reverse tcp:3000 tcp:3000` (device 127.0.0.1 -> host 127.0.0.1).
+            // Same MINIFIED code either way - only the endpoint differs; this is still never the release (which
+            // points at https://monreleve.ch and denies all cleartext). The matching cleartext exception for
+            // 127.0.0.1 is in src/debug/res/xml/network_security_config.xml.
             val frontalierPort = (project.findProperty("frontalierPort") as String?) ?: "3000"
-            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:$frontalierPort\"")
+            val frontalierHost = (project.findProperty("frontalierHost") as String?) ?: "10.0.2.2"
+            buildConfigField("String", "API_BASE_URL", "\"http://$frontalierHost:$frontalierPort\"")
         }
     }
     compileOptions {

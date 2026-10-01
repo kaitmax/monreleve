@@ -42,7 +42,11 @@ const containerUrl = toolUrl.replace('@localhost:', '@host.docker.internal:');
 const SDK_DIR = readFileSync(join(ANDROID_DIR, 'local.properties'), 'utf8')
   .split(/\r?\n/).find((l) => l.startsWith('sdk.dir=')).slice('sdk.dir='.length).trim();
 const ADB = join(SDK_DIR, 'platform-tools', 'adb.exe');
-const APK = join(ANDROID_DIR, 'app', 'build', 'outputs', 'apk', 'debug', 'app-debug.apk');
+// APP_APK env override (AN14a): defaults to the debug APK (the original emulator run), but AN14a drives this on
+// a PHYSICAL device against the MINIFIED audit APK to confirm F4 survives R8 - APP_APK points at app-audit.apk,
+// ANDROID_SERIAL targets the device, and `adb reverse tcp:3000 tcp:3000` bridges the device's 127.0.0.1:3000 to
+// the host proxy (the app build points at 127.0.0.1 via -PfrontalierHost; same code, only the endpoint differs).
+const APK = process.env.APP_APK ?? join(ANDROID_DIR, 'app', 'build', 'outputs', 'apk', 'debug', 'app-debug.apk');
 const PROBE_APK = join(ANDROID_DIR, 'probe', 'build', 'outputs', 'apk', 'debug', 'probe-debug.apk');
 const PROBE_PKG = 'ch.monreleve.probe';
 const PROBE_MAIN = `${PROBE_PKG}/${PROBE_PKG}.ProbeActivity`;

@@ -51,10 +51,17 @@ function contractTokens() {
   const read = region('fields:read');
   const keysOf = (region) =>
     [...region.matchAll(/^\|\s*`([a-z][A-Za-z]+)`/gm)].map((m) => m[1]);
-  const keys = new Set([...keysOf(write), ...keysOf(read)]);
+  // WireDumpActivity serialises a REQUEST (entriesRequestBody), so the payload carries only the
+  // fields:write keys. The response-only keys (id, firstRecordedAt, lastModifiedAt) are server-ASSIGNED
+  // and never sent in a request - the client decodes them (parseEntriesResponse), which the static dex
+  // check (checkMinifiedWireContract) proves survive R8 and the AC1 end-to-end drive exercises when the
+  // synced row is read back. So the runtime request check asserts write keys + enum values; read-only
+  // keys are reported for the record, not required in the request.
+  const writeKeys = new Set(keysOf(write));
+  const readOnlyKeys = new Set(keysOf(read).filter((k) => !writeKeys.has(k)));
   // Enum values from the write region only (read adds the trail words CREATED/MODIFIED).
   const enums = new Set([...write.matchAll(/`([A-Z][A-Z_]+)`/g)].map((m) => m[1]));
-  return { keys, enums };
+  return { writeKeys, readOnlyKeys, enums };
 }
 
 // Every key and every string value anywhere in the emitted JSON.
@@ -78,7 +85,12 @@ async function main() {
   if (devices.length === 0) throw new Error('no booted device - run scripts/emulator.sh first');
 
   console.log('--- building + installing the MINIFIED audit variant ---');
-  run(GRADLEW, [':app:assembleAudit'], { cwd: ANDROID_DIR, stdio: 'inherit' });
+  // gradlew is a .bat on Windows; execFileSync cannot spawn a .bat without a shell (EINVAL), so run it
+  // through the shell there. Skippable when the audit APK is already current (e.g. a device re-drive):
+  // SKIP_BUILD=1 reuses the APK on disk and avoids the gradle daemon's RAM on a constrained host.
+  if (!process.env.SKIP_BUILD) {
+    run(GRADLEW, [':app:assembleAudit'], { cwd: ANDROID_DIR, stdio: 'inherit', shell: process.platform === 'win32' });
+  }
   adb(['install', '-r', AUDIT_APK]);
 
   adb(['logcat', '-c']);
@@ -96,15 +108,16 @@ async function main() {
 
   const payload = JSON.parse(line);
   const emitted = keysAndValues(payload);
-  const { keys: expectedKeys, enums: expectedEnums } = contractTokens();
+  const { writeKeys, readOnlyKeys, enums: expectedEnums } = contractTokens();
 
-  const missingKeys = [...expectedKeys].filter((k) => !emitted.keys.has(k));
+  const missingKeys = [...writeKeys].filter((k) => !emitted.keys.has(k));
   const missingEnums = [...expectedEnums].filter((v) => !emitted.values.has(v));
 
   console.log('\nEMITTED by the minified serialiser:');
   console.log(JSON.stringify(payload, null, 2));
   console.log(`\nkeys emitted: ${[...emitted.keys].sort().join(', ')}`);
   console.log(`enum values emitted: ${[...emitted.values].filter((v) => /^[A-Z][A-Z_]+$/.test(v)).sort().join(', ')}`);
+  console.log(`response-only keys (not in a request; static-dex + AC1-decode checked): ${[...readOnlyKeys].sort().join(', ')}`);
 
   if (missingKeys.length || missingEnums.length) {
     console.error(`\nR307 RUNTIME FAILED - the minified build did not emit contract tokens:`);
@@ -114,7 +127,7 @@ async function main() {
     return;
   }
   console.log(
-    `\nR307 RUNTIME OK: the minified serialiser emitted all ${expectedKeys.size} field keys and ` +
+    `\nR307 RUNTIME OK: the minified serialiser emitted all ${writeKeys.size} request field keys and ` +
     `${expectedEnums.size} enum values the doc names (keys + enum values match docs/api-v1.md).`,
   );
 }

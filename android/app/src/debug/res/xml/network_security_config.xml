@@ -13,6 +13,15 @@
 <network-security-config>
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="false">10.0.2.2</domain>
+        <!--
+          AN14a increment 6. 127.0.0.1 is the SECOND dev loopback alias, for a PHYSICAL device bridged with
+          `adb reverse tcp:3000 tcp:3000` (device 127.0.0.1 -> host 127.0.0.1): the emulator uses 10.0.2.2,
+          a real device has no such alias, so the device drive points at 127.0.0.1. DEBUG/AUDIT ONLY - this
+          file is src/debug/res, compiled into debug and audit and never the release (src/release/res denies
+          all cleartext, proven by checkReleaseCleartext). Both entries are dev loopback aliases and nothing
+          else; the base-config below still denies cleartext everywhere else.
+        -->
+        <domain includeSubdomains="false">127.0.0.1</domain>
     </domain-config>
     <base-config cleartextTrafficPermitted="false" />
 </network-security-config>
