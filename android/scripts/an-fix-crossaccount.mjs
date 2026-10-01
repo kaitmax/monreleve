@@ -275,7 +275,9 @@ try {
   // 1) Account A records days OFFLINE (proxy blocked) -> PENDING, never reaching A's server record.
   console.log('\n--- A records two past days OFFLINE (proxy blocked) ---');
   adb(['shell', 'pm', 'clear', PACKAGE]);
-  adb(['shell', 'am', 'start', '-n', INJECTOR, ...tokenExtras(aSession), ...settingsExtras()]);
+  // AN-FIX F4 / R303: the injection sets the ACCOUNT (email) the way the real callback does, so A's offline
+  // days are tagged A and B's later drain is scoped to B. Without this the fix would fail closed (UNOWNED).
+  adb(['shell', 'am', 'start', '-n', INJECTOR, ...tokenExtras(aSession), ...settingsExtras(), '--es', 'email', A]);
   await waitDisplayed('.debug.SessionInjectionActivity', 20); adb(['shell', 'am', 'force-stop', PACKAGE]); await sleep(1000);
   await relaunch(); await waitForShell(45);
   proxyBlocked = true;
@@ -293,13 +295,16 @@ try {
   //    injecting B tokens reproduces exactly the post-expiry device state (B token + A PENDING rows).
   console.log('\n--- revoke A server-side, B signs in on the same device (record kept) ---');
   console.log('  ' + await revokeAllSessions(A));
-  adb(['shell', 'am', 'start', '-n', INJECTOR, ...tokenExtras(bSession), ...settingsExtras()]);
+  adb(['shell', 'am', 'start', '-n', INJECTOR, ...tokenExtras(bSession), ...settingsExtras(), '--es', 'email', B]);
   await waitDisplayed('.debug.SessionInjectionActivity', 20); adb(['shell', 'am', 'force-stop', PACKAGE]); await sleep(1000);
 
   // 3) Online again; B is signed in; A PENDING rows are still local. Record a B day -> triggers the drain.
   console.log('\n--- back online; B records today; the queue drains ---');
   proxyBlocked = false; captured.length = 0;
   await relaunch(); await waitForShell(45);
+  // AN-FIX F4 / R303: B is on the MAIN shell with A's days still pending (tagged A, set aside). The shell
+  // reads observeAllForAccount(B), so it must show NONE of A's days. Capture it for the walkthrough.
+  await shot('b-main-shell-no-A-days');
   adb(['shell', 'am', 'start', '-n', RECORDER]); await sleep(2500);
   await tapText('Enregistrer Domicile', 'B day today (triggers drain)'); await sleep(10000);
   await tapText('Synchroniser', 'force sync'); await sleep(8000);
@@ -316,6 +321,25 @@ try {
   console.log(`  B owns ${RESULT.bOwnedDays} day(s) (its own is 1); A owns ${RESULT.aDaysUnderA}`);
   console.log(`  >>> CROSS-ACCOUNT LEAK (A days reached B): ${RESULT.CROSS_ACCOUNT_LEAK}`);
   await shot('x-after-drain');
+
+  // 4) A signs back in on the same device: the set-aside days must now sync UNDER A (R303 - nothing lost,
+  //    kept until their account returns). A's tokens are still valid (the opaque-hash revoke deleted 0 rows,
+  //    per the audit caveat), which is exactly the faithful "A signs back in" device state.
+  console.log('\n--- A signs back in; the set-aside days sync under A ---');
+  adb(['shell', 'am', 'start', '-n', INJECTOR, ...tokenExtras(aSession), ...settingsExtras(), '--es', 'email', A]);
+  await waitDisplayed('.debug.SessionInjectionActivity', 20); adb(['shell', 'am', 'force-stop', PACKAGE]); await sleep(1000);
+  await relaunch(); await waitForShell(45);
+  adb(['shell', 'am', 'start', '-n', RECORDER]); await sleep(2500);
+  await tapText('Synchroniser', 'A force sync'); await sleep(10000);
+  adb(['shell', 'am', 'force-stop', PACKAGE]); await sleep(1500);
+  RESULT.entriesAfterAResignin = await entriesByUser();
+  RESULT.aDaysUnderAFinal = RESULT.entriesAfterAResignin.filter((e) => e.startsWith(A + ':')).length;
+  RESULT.bOwnedDaysFinal = RESULT.entriesAfterAResignin.filter((e) => e.startsWith(B + ':')).length;
+  // The two set-aside days now belong to A; B still owns only its own day - no leak, nothing lost.
+  RESULT.SET_ASIDE_RELEASED = RESULT.aDaysUnderAFinal >= 2 && RESULT.bOwnedDaysFinal === 1;
+  console.log(`  entries after A re-signin: ${JSON.stringify(RESULT.entriesAfterAResignin)}`);
+  console.log(`  A owns ${RESULT.aDaysUnderAFinal} day(s); B owns ${RESULT.bOwnedDaysFinal}`);
+  console.log(`  >>> SET-ASIDE RELEASED (A's days synced under A, B still 1): ${RESULT.SET_ASIDE_RELEASED}`);
 
   console.log(`\n=== done. RESULT ${JSON.stringify(RESULT, null, 1)} ===`);
 } catch (cause) {

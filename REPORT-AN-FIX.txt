@@ -1,0 +1,299 @@
+================================================================================
+REPORT-AN-FIX.txt - Mon Releve, fixing what the Android audit found
+Pure ASCII. The detailed findings-and-closures register is docs/audit-android.md; this
+is the session report. AN-FIX fixes the audit's release-gating findings - F4, F2/F6, F8,
+F7 - and closed F3. Each fix is test-first: the RED shown before the code, the same case
+GREEN after. Increments 0-5 are committed on a green :app:gate and pushed; increment 6
+(this report) follows the final gate:clone + :app:gate.
+================================================================================
+
+SUMMARY
+--------------------------------------------------------------------------------
+R273 (placement, first): tasks/todo.md has AN14 (Play release prep) and AN15 (final
+audit) after Checkpoint F; this work is named AN-FIX to pair with AN-AUDIT and avoid an
+R162 number collision, exactly as the prompt directs. It is not placed elsewhere in
+todo.md.
+
+THE FINDING THAT MADE THIS TASK EXIST is F4 (HIGH): an expired or revoked session did
+not clear the offline queue, and the queue had no account, so one account's queued days
+drained into - and showed under - the NEXT account on the same device. Fixed by scoping
+the device's record to the account that recorded it (R303): a local-only, opaque
+account tag in the entry primary key, set at sign-in, drained and displayed per account,
+set aside (never lost) for an account that is not current, and released to that account
+when it signs back in. A real v2->v3 Room migration tags pre-F4 rows UNOWNED (never
+sent, never shown) rather than wiping or mis-attributing them.
+
+ALSO FIXED: F2/F6 (R304) - the release build declares no location permission until
+detection ships (proven from the built APK); F8 - "today" and the tax year are computed
+when used, not frozen at Activity construction, so a session across midnight no longer
+misdates a day; F7 - every fence asserts it scanned a non-empty set, so a fence pointed
+at a renamed directory fails instead of passing vacuously. F3 was CLOSED in increment 0
+(no screen shows a credential, so no FLAG_SECURE anywhere is correct). F1 and F5 are
+AN14's, out of scope.
+
+ONE PART IS OWED: the on-device emulator walkthrough (increment 6). The AVD booted but
+left 315 MB free with Android Studio holding 2 GB - the relay's "stop clean, hand off,
+the operator frees Android Studio" case. The AVD was torn down cleanly; no RAM heroics.
+The CODE is fully JVM-proven and the fix is byte-identical to what ships (minify off);
+the on-device GREEN reproduction, the v2->v3 migration test on a device, and the F8
+clock drive are OWED, with the reproduction script fully prepared and a handoff written
+(.claude/jobs/176996e5/tmp/an-fix-handoff-1.txt).
+
+PRECONDITIONS
+--------------------------------------------------------------------------------
+R1 baseline on origin/main HEAD 5707ff0 ("chore: the AN-FIX prompt", doc-only):
+- pnpm gate:clone : GATE:CLONE PASSED on commit 5707ff0a (scratch DB
+  monreleve_gate_clone_5707ff0a created, migrated and dropped; clone temp dir removed) -
+  "builds and passes install, typecheck, lint, test, build, size, db:deploy, test:db,
+  test:container:write from a clean checkout". The browser suites, lighthouse, parity and
+  CI container are NAMED not-run-here with reasons (R133).
+- ./gradlew :app:gate : BUILD SUCCESSFUL in 1m 12s (assembleDebug, testDebugUnitTest,
+  checkTestFloor, ktlintCheck, detekt, verifyPaparazziDebug, checkReleaseCleartext,
+  checkReleaseNoDebugInjection, checkLicences). Run with the two stray edits present,
+  confirming they are benign.
+
+F3 CLOSED (increment 0, commit dcc4b36)
+--------------------------------------------------------------------------------
+Recorded in docs/audit-android.md what IS true (R254), not the operator's premise. The
+premise "FLAG_SECURE stays on the screens that show credentials" presumes such screens
+exist; they do not. No FLAG_SECURE appears anywhere, and NO screen displays a credential:
+the sign-in is an emailed magic link (never shown), tokens live in the Keystore and are
+never rendered (LogFenceTest.noRawTokenReachesTheUiLayer asserts ui/ never holds a raw
+token). So "no FLAG_SECURE anywhere" is the correct state - there is no credential screen
+to protect - and the releve is DELIBERATELY screenshottable (the person's own document,
+to photograph or send to an accountant). F3 is closed as an accepted trade-off, not
+fixed; no FLAG_SECURE added.
+
+F4 (increments 1-2; RED commit bc068ce, fix commit 84fd75a)
+--------------------------------------------------------------------------------
+THE RED (test-first, R20). Increment 1 committed the failing suite "AN-FIX: F4, failing":
+AccountScopeTest's four cases fail against the still-unscoped drain/display -
+  syncSendsOnlyTheCurrentAccountsRows (SyncEngine drained dao.pending(), every account),
+  theDisplayShowsOnlyTheCurrentAccountsRows (repository observed dao.observeAll()),
+  aDifferentAccountsPendingDaysAreSetAside, unownedRowsAreNeverSentOrShown
+- plus ErasureCensusTest, which the new monreleve.account store trips until the fix wires
+  it into R295 sign-out clearing. 5 of 835 red, stated in the commit body. The ON-DEVICE
+RED (CROSS_ACCOUNT_LEAK=true: B owns A's two offline days, A owns 0) was captured by the
+audit at 943841a/d2485ce and is CITED, not re-captured (relay authorised).
+
+THE MIGRATION (R187/R303, no destructive fallback). EntryEntity gains a LOCAL-ONLY
+accountTag, and it joins the primary key: (accountTag, dayDate, portion), mirroring the
+server's @@unique([userId, dayDate, portion]) - the only shape under which one account's
+set-aside day and another's same (dayDate, portion) coexist without either overwriting
+the other. DATABASE_VERSION goes 2 -> 3 (NOT 1 -> 2: the DB was already at v2 for the
+AN6a tally; the prompt's "v1 -> v2" is shorthand - PARKED reasoning below). MIGRATION_2_3
+recreates the entry table (SQLite cannot alter a primary key in place) and copies every
+existing row across with accountTag = 'UNOWNED'. Its CREATE TABLE matches, column for
+column and in order, the createSql Room generates for schemas/3.json (verified by diff),
+so runMigrationsAndValidate passes. MonReleveMigrationTest now opens a GENUINE v2 database
+with one real row and runs the real migration, asserting the row SURVIVES and is tagged
+UNOWNED.
+
+HOW EXISTING ROWS WERE ASSIGNED - the two branches, each named:
+- UNOWNED branch (the real pre-F4 upgrade path): a pre-F4 row's account is UNRECOVERABLE
+  - the address was never persisted by pre-fix builds, /api/v1/me omits it (web/lib/me/
+  read.ts), and the tokens are opaque. So the migration tags every existing row UNOWNED:
+  held, never sent, never shown, never mis-attributed. NOT adopting them to whoever signs
+  in next is deliberate - adoption would be F4 reborn. (MonReleveMigrationTest's v2->v3
+  case takes this branch.)
+- OWNED branch (every row going forward): record() tags the row with the current account
+  at the tap, the way the mutation id is born at the tap. (AccountScopeTest and
+  CallbackControllerTest take this branch.)
+
+THE ACCOUNT IDENTITY (the new on-device design decision, with the operator's guardrails):
+- The only identity the device can know is the EMAIL the magic-link callback carries;
+  /api/v1/me deliberately omits it, and the tokens are opaque and rotate. Verified the
+  callback carries a non-blank email on the only release sign-in path: CallbackLink.parse
+  returns null unless token AND email are non-blank, so exchange() always has one; the
+  debug SessionInjectionActivity takes an explicit email extra.
+- FAIL CLOSED: accountTagOf returns null for a blank address (CallbackLink already rejects
+  blank), so a blank address sets NO tag rather than a shared blank one; a row recorded
+  with no active account is tagged UNOWNED (held), never mis-tagged.
+- COLLISION: the tag is a SHA-256 hex digest (256-bit) of the normalised address, so a
+  collision between two real people is not a practical concern. It is also opaque and
+  non-reversible, and never on the wire (EntriesWire omits it) - the raw address, a
+  credential in this product's threat model, never enters Room (which is not backup-
+  excluded) nor a backup (the account prefs ARE backup-excluded).
+
+THE FIX (commit 84fd75a). SyncEngine drains dao.pendingForAccount(current); a null
+account drains nothing. The repository observes dao.observeAllForAccount(current); a null
+account resolves to UNOWNED, which owns no real row, so the shell shows nothing rather
+than the previous account's days. CallbackController sets the tag at sign-in;
+DeviceLocalStore.clearForSignOut clears it (R303: R295 still clears everything);
+ErasureCensusTest covers monreleve.account; the backup rules exclude it.
+
+THE GREEN. JVM: AccountScopeTest's four cases pass; CallbackControllerTest asserts sign-in
+sets the tag; LocalStoreTest asserts sign-out and deletion clear it; :app:gate BUILD
+SUCCESSFUL (835 then 836 unit tests). ON-DEVICE GREEN (OWED, RAM-blocked, handoff):
+android/scripts/an-fix-crossaccount.mjs is prepared to report CROSS_ACCOUNT_LEAK=false (B
+owns 1, A owns 0 after B's drain) and SET_ASIDE_RELEASED=true (A signs back in -> A owns
+2, B still 1), with a shot of B's main shell holding none of A's days.
+
+A SIGNING BACK IN. AccountScopeTest.aDifferentAccountsPendingDaysAreSetAside proves it on
+the JVM: after B's context sees and sends none of A's two rows (they remain in the store),
+syncing under A's account posts both of A's rows. The on-device confirmation is the
+script's A-resignin phase (OWED).
+
+F2 AND F6 (increment 3, commit 5aaa4b1)
+--------------------------------------------------------------------------------
+THE BUILT-APK PERMISSION LIST, read with aapt2 (AC2 - from the APK, never source):
+- BEFORE: android.permission.INTERNET, android.permission.ACCESS_FINE_LOCATION (+ the
+  androidx.work transitive set).
+- AFTER: android.permission.INTERNET only (+ the androidx.work set). No ACCESS_*LOCATION.
+  ACCESS_FINE_LOCATION moved from src/main to src/debug, so the debug and audit builds
+  keep it and the release drops it; the debug APK still declares ACCESS_FINE_LOCATION
+  (the measurement build keeps what AN6b needs). The detection code and border polygon
+  stay in src/main, dormant.
+THE PLANTED CHECK (R180). checkReleaseNoLocationPermission (new, wired into :app:gate)
+reads the built release APK with aapt2 and fails on any ACCESS_*LOCATION. Planting
+ACCESS_FINE_LOCATION back into src/main/AndroidManifest.xml and rebuilding made it go RED
+naming "android.permission.ACCESS_FINE_LOCATION" read from app-release-unsigned.apk;
+reverted. F6 (detection unreachable from production UI) closes with F2: with no permission
+and detection dormant, the shipping manifest claims only features it exposes (R282).
+PARKAN-32 holds the AN6b field-build definition and the data-safety-form entry for when
+detection ships.
+
+F8 (increment 4, commit b0c1a71)
+--------------------------------------------------------------------------------
+"today" and the tax year are recomputed FROM THE CLOCK at use time, not frozen at Activity
+construction: AujourdhuiController.record reads todayInParis(clock) at the tap,
+computeYear reads a tax year refreshed from the clock, and refresh() (called on ON_RESUME
+by MainActivity) moves both. A fake-clock test (MovableClock) crosses 2026-12-31 23:30 ->
+2027-01-01 00:30 Paris on one live controller: today moves to 2027-01-01 on resume, the
+tax year moves to 2027 (the 2026 day leaves the current-year panel -> null, not the stale
+rate), and a tap files 2027-01-01. R20 RED shown first: with refresh() a no-op and record
+using the cached today (the pre-fix behaviour), the test failed (1 of 14); restored, it
+passes. The on-device clock-move drive is OWED (RAM-blocked, handoff); the fix is JVM-
+proven. (CalendarController also caches "today" but records the TAPPED day, so it cannot
+misdate a recorded day - cosmetic, left; see NOTICED.)
+
+F7 (increment 5, commit 6d9f635)
+--------------------------------------------------------------------------------
+Each of FencesTest's eight fences now asserts it scanned a non-empty set of files before
+its absence check, so a fence pointed at a renamed/moved directory FAILS instead of
+passing vacuously:
+  1 calcImportsNothingFromAndroidOrOtherProjectPackages - ktFiles("calc") non-empty
+  2 detectionNeverReferencesDataRemoteOrRetrofit        - ktFiles("detection") non-empty
+  3 noCoordinateTypeAppearsOutsideDetection             - allKtFilesExcept("detection")
+  4 uiAndDesignHaveNoRadiusColourOrSpacingLiteral...     - ui/+design/+dev/ non-empty
+  5 uiAndDevFilesCarryNoStringLiteral                    - ui/+dev/ non-empty
+  6 uiNeverReferencesDataRemoteOrDataLocalDirectly       - ktFiles("ui") non-empty
+  7 everyCardInUiIsThemedWithExplicitShapeAndElevation   - ktFiles("ui") non-empty
+  8 detectionNeverWritesAnEntry                          - ktFiles("detection") non-empty
+THE PLANT (R180). Fence 1's path changed to ktFiles("calc-PLANT-does-not-exist"); the
+plant landed (grepped) and the fence went RED at the non-empty assertion (FencesTest.kt:
+95); reverted.
+R267 SECOND SITE. LogFenceTest.noRawTokenReachesTheUiLayer had the same vacuity shape
+(if (uiDir.exists()) ... else emptyList()) and the audit named it; it now asserts the
+scan is non-empty too.
+FINDING (surfaced while writing the fence-7 guard, R178's shape): fence 7 finds ZERO
+Material3 Card(...) in ui/ - the project themes with Surface by design (the fence's own
+header says so), and CalendarCard/IdentificationCard/SectionCard are custom composables
+the \bCard\( scan does not match. So a "found the elements" guard would WRONGLY fail the
+deliberate Surface-over-Card choice; the files-non-empty guard is the right one there, and
+the fence still checks each Material Card the day one lands in ui/. Recorded in the fence's
+comment.
+
+WALKTHROUGH (OWED - RAM-blocked, R176/R177)
+--------------------------------------------------------------------------------
+The emulator walkthrough could not run on this machine. After `emulator.sh launch` +
+`wait-boot` (AVD Pixel_10 BOOTED, emulator-5554), free RAM was 315 MB with Android Studio
+holding 2 GB; the write container (~0.5 GB) plus node would have thrashed. Per the relay
+("if it thrashes, STOP THE DRIVE CLEANLY and say so in a handoff; the operator can close
+Android Studio to free ~2 GB; do NOT do disk/RAM heroics"), the AVD was torn down cleanly
+(emulator.sh stop killed both emulator.exe and qemu; no stray container). Free RAM then
+recovered to 5.8 GB for the final gates.
+
+PREPARED FOR THE OPERATOR / next session (handoff an-fix-handoff-1.txt):
+- F4 end to end: `node android/scripts/an-fix-crossaccount.mjs` - A records two days
+  offline, A's session expires, B signs in and sees none of A's days (b-main-shell-no-A-
+  days.png), B records and drains, the Postgres oracle (entriesByUser) reads BOTH accounts'
+  rows back -> CROSS_ACCOUNT_LEAK=false; then A signs back in -> SET_ASIDE_RELEASED=true
+  (A owns 2, B owns 1). The script sets the account at injection (email extra) and drives
+  the A-resignin phase.
+- The v2->v3 migration on a device:
+  `./gradlew :app:connectedDebugAndroidTest --tests "*MonReleveMigrationTest*"`.
+- F8 on-device: move the clock across midnight, resume, record, read the date from Room.
+Nothing is left to write - only RAM to run it. "Both accounts' rows read back" is the
+Postgres oracle the script already prints and reads.
+
+PARKED
+--------------------------------------------------------------------------------
+PARKAN-32 (new) - where the location permission lives until detection ships. The AN6b
+field-test build's definition (build type, server, signing) and the Play data-safety-form
+entry are AN6's to add; until then ACCESS_FINE_LOCATION lives in src/debug (the release
+has none; debug/audit keep it). Conservative and reversible: one <uses-permission> line in
+a source set. Also the v2-not-v1 version reconciliation: the prompt said "v1 -> v2"; the DB
+was already at v2 (AN6a tally), so the account change is v2 -> v3 - the only technically
+possible version. Recorded as a DEVIATION, not a PARKAN (it is a mechanical consequence,
+not an open product question).
+
+DEVIATIONS
+--------------------------------------------------------------------------------
+- The prompt's "v1 -> v2 migration" is v2 -> v3: the DB was already at v2 (AN6a's tally,
+  MIGRATION_1_2), so the account-tag change is a REAL v2 -> v3 migration. Same discipline
+  (genuine old DB, no destructive fallback, harness-tested); only the numbers differ.
+- The accountTag schema FIELD lands in the RED commit (increment 1), not the fix commit:
+  the three RED behaviour tests cannot express account-scoped behaviour without the field,
+  and test-first requires them to compile and fail first. The real v2->v3 MIGRATION and
+  all the WIRING (filters, callback, sign-out clearing) land in the fix commit as the
+  prompt directs. The RED commit ("AN-FIX: F4, failing") is intentionally red (R20/FW31),
+  pushed per the per-increment-push safety net; the fix commit restores green.
+- The on-device emulator walkthrough (increment 6) is OWED (RAM-blocked, handoff), not run.
+  All CODE is JVM-green; the on-device RED is cited; F2/F6 is proven from the built APK
+  (not the emulator). The relay explicitly authorises this stop.
+- STRAY EXTERNAL EDITS: android/gradle/libs.versions.toml and
+  android/app/src/main/kotlin/ch/monreleve/app/releve/ReleveController.kt carry leading
+  blank lines added by an external actor; NEVER mine, left in place, EXCLUDED from every
+  commit (all staging by explicit path).
+
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------------------
+- CalendarController caches "today" at construction like Aujourd'hui did, but it records
+  the TAPPED day (not "today"), so it cannot MISDATE a recorded day; its stale "today" is
+  cosmetic (default month, future-day guard). Left for a later pass - out of F8's "misdates
+  a recorded day" scope.
+- Fence 7 checks zero Material3 Cards today (Surface by design). The fence is correct and
+  the files-guard makes it non-vacuous w.r.t. the directory; the zero-Card state is
+  forward-staging, not a defect.
+- F1 (four dev.* activities exported in release) and F5 (Kotlin<->TS drift not tied) are
+  AN14's, explicitly out of this task's scope.
+
+QUESTIONS
+--------------------------------------------------------------------------------
+None blocking; no product decision invented (R270/R156). The one open item is operational,
+not a decision: run the prepared on-device walkthrough once ~4 GB is free (close Android
+Studio), per the handoff.
+
+PUSH PROOF
+--------------------------------------------------------------------------------
+Commits, each on a green :app:gate (except the deliberate RED increment 1), pushed to
+origin/main one per increment (the limit-bounce safety net), git fetch before each push,
+all staging by explicit path (the two stray files never entered a commit):
+  dcc4b36  AN-FIX: F3 closed, with its reason                 (incr 0, doc-only)
+  bc068ce  AN-FIX: F4, failing                                (incr 1, RED by design)
+  84fd75a  AN-FIX: F4, one account per phone's data (R303)    (incr 2, :app:gate green)
+  5aaa4b1  AN-FIX: no location permission in the release (R304)(incr 3, :app:gate green)
+  b0c1a71  AN-FIX: today is today, after midnight (F8)        (incr 4, :app:gate green)
+  6d9f635  AN-FIX: every fence can fail (F7)                  (incr 5, :app:gate green)
+  (this)   AN-FIX: seen, and the report                       (incr 6)
+
+FINAL CLEAN-MACHINE VERIFICATION (emulator torn down first; run one at a time). The report
+commit adds only this report, docs/audit-android.md and the reproduction script - no tested
+path - so the final code state is 6d9f635's:
+- ./gradlew :app:gate : BUILD SUCCESSFUL in 1m 39s (assembleDebug, testDebugUnitTest -
+  836 unit tests, checkTestFloor, ktlintCheck, detekt, verifyPaparazziDebug,
+  checkReleaseCleartext, checkReleaseNoDebugInjection, checkReleaseNoLocationPermission
+  [R304, new], checkLicences). RegisterCoverageTest read this report and resolved every
+  PARKAN id it cites (32, 31). The emulator instrument and connectedDebugAndroidTest are
+  SKIPPED with their reason (need a real device), per R133 - not silently omitted.
+- pnpm gate:clone      : GATE:CLONE PASSED on commit 6d9f635 - "this commit builds and
+  passes install, typecheck, lint, test, build, size, db:deploy, test:db,
+  test:container:write from a clean checkout"; the git-clone temp dir was removed. The
+  browser suites, lighthouse, parity and the CI container are NAMED not-run-here with
+  their reasons (R133). The report commit that carries this proof adds only this report,
+  docs/audit-android.md and the reproduction script - none a tested path - so 6d9f635 is
+  the final code state.
+================================================================================
+END OF REPORT-AN-FIX.txt
+================================================================================

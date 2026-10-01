@@ -800,3 +800,53 @@ LOW
    the location permission together to the task that ships the feature, so the manifest claims only features this
    build exposes (R282). A foreground location permission for a feature no user can reach is the single item most
    likely to draw Play review.
+
+## AN-FIX - FINDINGS CLOSED (2026-10-01)
+
+AN-FIX fixed the findings that gate a release: F4, F2/F6, F8 and F7 (F3 was closed in AN-FIX increment 0,
+above). F1 (dev activities exported in release) and F5 (Kotlin<->TS drift) stay for AN14 (out of this task's
+scope). Each fix is test-first (the RED shown before the code) and committed on a green :app:gate. The ONE
+piece that could not run on this machine is the on-device emulator walkthrough (increment 6): the AVD booted
+but left 315 MB free with Android Studio holding 2 GB, the relay's "stop clean, hand off, operator frees
+Android Studio" case; the AVD was torn down cleanly and the on-device GREEN confirmations are OWED (handoff:
+.claude/jobs/176996e5/tmp/an-fix-handoff-1.txt). R186: NO baseline was regenerated and no product-state flag
+flipped - these fixes change behaviour and manifests, not UI pixels.
+
+- F4 (HIGH) - CLOSED. One account's queued days can no longer drain into, or show under, another on the same
+  device. EntryEntity gains a LOCAL-ONLY accountTag in the primary key (accountTag, dayDate, portion),
+  mirroring the server's @@unique([userId, dayDate, portion]); the tag is an opaque SHA-256 digest of the
+  address the callback carries (never the address - /api/v1/me omits it, and an email is a credential here), set
+  at sign-in (CallbackController), cleared on sign-out (DeviceLocalStore, R295/R303), excluded from backup. The
+  sync worker drains dao.pendingForAccount(current); every screen reads dao.observeAllForAccount(current); a
+  different account's rows are SET ASIDE (kept, not sent, not shown) and sync under their own account on return;
+  UNOWNED rows (a pre-F4 migration, or a tap with no account) are excluded from both. A REAL v2->v3 Room
+  migration recreates the entry table and tags existing rows UNOWNED (no destructive fallback). EVIDENCE:
+  AccountScopeTest (4 behaviours, RED first then GREEN); CallbackControllerTest (sign-in sets the tag);
+  LocalStoreTest (sign-out/deletion clear it); RoomSchemaContractTest pins schemas/3.json; the migration DDL
+  matches 3.json exactly. The on-device RED was captured by the audit (CROSS_ACCOUNT_LEAK=true, 943841a/
+  d2485ce) and is cited. OWED on the emulator (handoff): the GREEN reproduction (CROSS_ACCOUNT_LEAK=false,
+  SET_ASIDE_RELEASED=true) via android/scripts/an-fix-crossaccount.mjs, and MonReleveMigrationTest's
+  v2->v3 case on a real device.
+- F2 (LOW) and F6 (LOW) - CLOSED (R304). ACCESS_FINE_LOCATION moved from src/main to src/debug, so the RELEASE
+  build declares no location permission while the detection-capable builds (debug/audit, and the AN6b field-test
+  build) keep it; the detection code and border polygon stay in src/main, dormant. A location permission for a
+  feature no shipping UI reaches is the item most likely to draw Play review (R282); removing it until detection
+  ships closes F6's audit edge too. EVIDENCE: checkReleaseNoLocationPermission reads the BUILT release APK with
+  aapt2 (AC2, not source) and fails on any ACCESS_*LOCATION; wired into :app:gate; the R180 plant (the
+  permission back in src/main) went RED naming ACCESS_FINE_LOCATION from the APK, reverted; the debug APK still
+  declares it. PARKAN-32 holds the AN6b field-build definition and the data-safety-form entry for when detection
+  ships.
+- F8 (LOW) - CLOSED. "today" and the tax year are recomputed FROM THE CLOCK at use time, not frozen at Activity
+  construction: AujourdhuiController.record reads todayInParis(clock) at the tap, computeYear reads a tax year
+  refreshed from the clock, and refresh() (called on ON_RESUME by MainActivity) moves both. EVIDENCE:
+  AujourdhuiControllerTest fake-clock test crossing 2026-12-31 23:30 -> 2027-01-01 00:30 Paris on one live
+  controller (RED first with the pre-fix behaviour); today and the tax year move on resume and a tap files the
+  new date. OWED on the emulator (handoff): the on-device clock-move drive. (CalendarController also caches
+  "today" at construction but records the TAPPED day, so it cannot misdate a recorded day - cosmetic, left.)
+- F7 (LOW) - CLOSED. Each of FencesTest's eight fences now asserts it scanned a non-empty set of files, so a
+  fence pointed at a renamed/moved directory FAILS instead of passing vacuously. EVIDENCE: the R180 plant
+  (fence 1 -> a non-existent directory) went RED at the non-empty assertion, reverted. R267 second site:
+  LogFenceTest.noRawTokenReachesTheUiLayer got the same guard. FINDING surfaced while writing the fence-7
+  guard: everyCardInUiIsThemedWithExplicitShapeAndElevation finds ZERO Material3 Card(...) in ui/ - the project
+  themes with Surface by design - so the files-non-empty guard is the right one there (a "found the elements"
+  guard would wrongly fail the deliberate Surface-over-Card choice); recorded in the fence's comment.
