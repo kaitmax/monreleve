@@ -47,7 +47,14 @@ android {
             buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:$frontalierPort\"")
         }
         release {
-            isMinifyEnabled = false
+            // AN14a increment 2. R8 ON for the first time (was false - the AN14 deferral AN-AUDIT parked as
+            // PARKAN-31). isMinifyEnabled runs R8 (shrink + obfuscate + optimize); isShrinkResources prunes
+            // unused resources (it requires minify). The keep rules live in proguard-rules.pro and each names
+            // the failure it fixes (R306). mapping.txt lands under build/outputs/mapping/release and is NOT
+            // committed - it is how a user-reported stack trace is deobfuscated (there is no crash SDK, by
+            // design); where it is kept is documented in REPORT-AN14a.txt (increment 5).
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
@@ -58,8 +65,13 @@ android {
         }
         // AN-AUDIT increment 2 (AC1). The RELEASE configuration MADE RUNNABLE against the local server, so
         // the shipping config is exercised end to end for the first time (FW30's question). It INHERITS
-        // release wholesale via initWith - minify off (the AN14 deferral), the proguard files, debuggable
-        // false - and OVERRIDES only what a headless drive against `pnpm dev` needs:
+        // release wholesale via initWith - the proguard files, debuggable false - and OVERRIDES only what a
+        // headless drive against `pnpm dev` needs. AN14a increment 2: R8 is now ON for release, and the audit
+        // variant inherits it via initWith; isMinifyEnabled/isShrinkResources are repeated below EXPLICITLY so
+        // the one variant we can actually drive under minification states its own R8 status (it is the build
+        // whose mapping.txt deobfuscates a drive trace). The audit variant is thus minified exactly as release
+        // is - the whole point of AN14a - and differs from release only in the signature, the api url, and the
+        // reuse of src/debug (every difference named in REPORT-AN14a.txt).
         //   - the auto DEBUG signature, so it installs (R250 forbids the RELEASE key, not the debug one);
         //   - the LOCAL api url over cleartext to 10.0.2.2 (release points at https://monreleve.ch, which
         //     does not resolve - PARKAN-1).
@@ -71,6 +83,10 @@ android {
         // (FW14). This is NOT a release artifact: increment 3 reads every declaration from assembleRelease.
         create("audit") {
             initWith(getByName("release"))
+            // R8 ON (AN14a increment 2). Inherited from release via initWith; stated explicitly because this
+            // is the variant AN14a drives under minification and reads a mapping.txt for.
+            isMinifyEnabled = true
+            isShrinkResources = true
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += listOf("release")
             val frontalierPort = (project.findProperty("frontalierPort") as String?) ?: "3000"
