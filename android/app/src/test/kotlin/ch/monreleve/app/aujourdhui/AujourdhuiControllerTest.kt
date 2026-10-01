@@ -39,6 +39,16 @@ private fun storeWith(
         override fun clear() = Unit
     }
 
+// F8 (AN-FIX): a clock whose instant can be MOVED, so a test can cross midnight and a tax-year boundary
+// while one controller instance stays alive - the exact condition the audit found misdates a recorded day.
+private class MovableClock(var now: Instant, private val zone: ZoneId) : Clock() {
+    override fun instant(): Instant = now
+
+    override fun getZone(): ZoneId = zone
+
+    override fun withZone(zone: ZoneId): Clock = MovableClock(now, zone)
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class AujourdhuiControllerTest : FunSpec({
     // 10:00 UTC is 12:00 in Paris in June - the same calendar day, so today is unambiguous.
@@ -200,6 +210,40 @@ class AujourdhuiControllerTest : FunSpec({
             val controller = AujourdhuiController(repo, storeWith("DAY"), TAX_YEAR, clock, this)
             advanceUntilIdle()
             controller.state.value.year?.lateThresholdDays shouldBe LatenessForecast.BACKFILL_DAYS
+        }
+    }
+
+    test("F8: across midnight AND the tax-year boundary, resume moves today and the tax year") {
+        runTest {
+            val paris = ZoneId.of("Europe/Paris")
+            // 2026-12-31 23:30 Paris (Paris is +01:00 in winter), one controller alive across the boundary.
+            val movable = MovableClock(Instant.parse("2026-12-31T22:30:00Z"), paris)
+            val dao = FakeEntryDao()
+            val repo = LocalEntryRepository(dao, movable)
+            // Seed a 2026 day BEFORE the controller: FakeEntryDao.observeAll is one-shot (Room's is hot), so the
+            // year panel only ever sees what exists at construction - the pattern the other tests here use.
+            repo.record(RecordCommand(dayDate = "2026-12-31", kind = EntryKind.CH))
+            val controller = AujourdhuiController(repo, storeWith("DAY"), 2026, movable, this)
+            advanceUntilIdle()
+
+            // Before midnight: today is 2026-12-31 and the current year's panel exists (2026 has the day).
+            controller.state.value.today shouldBe "2026-12-31"
+            controller.state.value.year.shouldNotBeNull()
+
+            // The app stays open; the clock crosses into the new day AND the new tax year; the Activity resumes.
+            movable.now = Instant.parse("2026-12-31T23:30:00Z") // = 2027-01-01 00:30 Paris
+            controller.refresh()
+            advanceUntilIdle()
+
+            // Resume moved today to the new day, and the tax year moved to 2027: the 2026-12-31 day is no longer
+            // in the current year, so with no 2027 entry the panel is null - the stale 2026 rate is NOT shown.
+            controller.state.value.today shouldBe "2027-01-01"
+            controller.state.value.year shouldBe null
+
+            // And a tap now files the NEW date (2027-01-01), not the construction-time 2026-12-31 - the F8 defect.
+            controller.record(RecordedKind.DOMICILE, Slot.FULL)
+            advanceUntilIdle()
+            dao.byDayPortion("2027-01-01", Portion.FULL).shouldNotBeNull()
         }
     }
 })

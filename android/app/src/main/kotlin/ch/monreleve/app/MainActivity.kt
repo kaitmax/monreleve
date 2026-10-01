@@ -15,6 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -24,7 +25,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.core.content.FileProvider
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.lifecycleScope
 import ch.monreleve.app.account.AccountStore
 import ch.monreleve.app.account.DeviceLocalStore
@@ -260,7 +264,9 @@ private fun OnboardingRoute(
 // lifecycleScope (a controller's observe runs for the life of the scope, not the composable). The
 // composition root wires the dependencies; bundling them into a data class would only move the list.
 // Not ui/ (the no-literal fence scans ui/ and dev/), so the annotation is permitted here.
-@Suppress("LongParameterList")
+// LongMethod suppressed for the same reason onCreate carries its length: this is the composition shell -
+// controller wiring, the export/account hand-off effects, and the F8 resume refresh - not tangled logic.
+@Suppress("LongParameterList", "LongMethod")
 @Composable
 private fun MainShell(
     repository: EntryRepository,
@@ -309,6 +315,18 @@ private fun MainShell(
     // R295: when sign-out completes (session revoked, local store wiped), leave the signed-in shell.
     LaunchedEffect(controllers.parametres) {
         controllers.parametres.accountEvents.collect { onSignedOut() }
+    }
+
+    // F8 (AN-FIX): on every resume, Aujourd'hui recomputes "today" and the tax year from the clock, so an app
+    // held open across midnight shows the new day - and records it - rather than the day it was opened.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer =
+            LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_RESUME) controllers.aujourdhui.refresh()
+            }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     Scaffold(bottomBar = { AppBottomBar(selected = tab, onSelect = { tab = it }) }) { padding ->

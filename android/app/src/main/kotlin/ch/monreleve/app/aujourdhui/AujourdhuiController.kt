@@ -172,7 +172,12 @@ class AujourdhuiController(
     // builds it with a real requestSync. Default no-op only for the JVM tests that build it directly.
     override val requestSync: () -> Unit = {},
 ) : DayWriter {
-    private val today: String = todayInParis(clock)
+    // F8 (AN-FIX): "today" and the tax year are RECOMPUTED FROM THE CLOCK at use time, not frozen at
+    // construction. They start at the current values and move on refresh() (resume) and at record time, so an
+    // Activity held open across midnight - or a tax-year boundary - no longer files a day under the stale date.
+    private var today: String = todayInParis(clock)
+    private var currentTaxYear: Int = taxYear
+    private var lastEntries: List<EntryEntity> = emptyList()
     private val settings: Settings? = settingsStore.load()
     private val granularity: GranularityChoice =
         if (settings?.granularity == "HALF_DAY") GranularityChoice.HALF_DAY else GranularityChoice.DAY
@@ -186,16 +191,34 @@ class AujourdhuiController(
         // on every change - the engine is < 0.1 ms (FW5), so there is no reason to cache a rate.
         scope.launch {
             repository.observeAll().collect { entries ->
-                val todays = entries.filter { it.dayDate == today }
-                mutableState.update {
-                    it.copy(
-                        fullDay = todays.firstOrNull { e -> e.portion == Portion.FULL }?.toDayEntry(),
-                        morning = todays.firstOrNull { e -> e.portion == Portion.AM }?.toDayEntry(),
-                        afternoon = todays.firstOrNull { e -> e.portion == Portion.PM }?.toDayEntry(),
-                        year = computeYear(entries),
-                    )
-                }
+                lastEntries = entries
+                emitState()
             }
+        }
+    }
+
+    /**
+     * F8 (AN-FIX): recompute "today" and the tax year FROM THE CLOCK and re-emit. MainActivity calls this on
+     * ON_RESUME, so an app held open across midnight (or a tax-year boundary) shows the new day the moment it
+     * resumes, rather than the date captured when the Activity was created. There is no repository change at
+     * midnight, so this re-emits the LAST entries through the refreshed today/taxYear.
+     */
+    fun refresh() {
+        today = todayInParis(clock)
+        currentTaxYear = LocalDate.parse(today).year
+        emitState()
+    }
+
+    private fun emitState() {
+        val todays = lastEntries.filter { it.dayDate == today }
+        mutableState.update {
+            it.copy(
+                today = today,
+                fullDay = todays.firstOrNull { e -> e.portion == Portion.FULL }?.toDayEntry(),
+                morning = todays.firstOrNull { e -> e.portion == Portion.AM }?.toDayEntry(),
+                afternoon = todays.firstOrNull { e -> e.portion == Portion.PM }?.toDayEntry(),
+                year = computeYear(lastEntries),
+            )
         }
     }
 
@@ -207,20 +230,22 @@ class AujourdhuiController(
     @Suppress("ReturnCount")
     private fun computeYear(entries: List<EntryEntity>): YearPanel? {
         val settings = settings ?: return null
-        val yearEntries = entries.filter { it.dayDate.startsWith("$taxYear-") }
+        // F8 (AN-FIX): the tax year is the clock's current Paris year (currentTaxYear), refreshed on resume,
+        // so a session open across 31 December shows the new year's position after midnight.
+        val yearEntries = entries.filter { it.dayDate.startsWith("$currentTaxYear-") }
         if (yearEntries.isEmpty()) return null
 
         val input =
             toTeleworkInput(
                 settings.toAggregatableUser(),
                 yearEntries.map { AggregatableEntry(it.dayDate, it.portion, it.kind) },
-                taxYear,
+                currentTaxYear,
             )
         val result = (calculateTelework(input) as? CalcResult.Ok)?.value ?: return null
         val fallback = result.warnings.filterIsInstance<Warning.RuleSetFallback>().firstOrNull()
-        val rules = ruleSetFor(taxYear)
+        val rules = ruleSetFor(currentTaxYear)
         // R206: the one home for "pending days of this year", shared with the releve's R287 line.
-        val pending = pendingEntriesForYear(entries, taxYear)
+        val pending = pendingEntriesForYear(entries, currentTaxYear)
 
         return YearPanel(
             result = result,
@@ -258,7 +283,9 @@ class AujourdhuiController(
         scope.launch {
             repository.record(
                 RecordCommand(
-                    dayDate = today,
+                    // F8 (AN-FIX): today is read FROM THE CLOCK at the tap, so a day tapped after midnight is
+                    // filed under the new date even if the Activity was created the previous day.
+                    dayDate = todayInParis(clock),
                     kind = kind.toEntryKind(),
                     portion = slot.toPortion(),
                     absenceReason = absence?.toReason(),
