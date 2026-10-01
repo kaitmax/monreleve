@@ -71,6 +71,8 @@ class RoomSchemaContractTest {
                     "firstRecordedAt" to ("TEXT" to false),
                     "lastModifiedAt" to ("TEXT" to false),
                     "syncState" to ("TEXT" to true),
+                    // AN-FIX F4 / R303: the local-only account tag, part of the primary key (v3).
+                    "accountTag" to ("TEXT" to true),
                 ),
             "daily_tally" to
                 mapOf(
@@ -111,7 +113,12 @@ class RoomSchemaContractTest {
 
     @Test
     fun primaryKeysAreAsFrozen() {
-        val expectedKeys = mapOf("entry" to listOf("dayDate", "portion"), "daily_tally" to listOf("dayDate"))
+        val expectedKeys =
+            mapOf(
+                // AN-FIX F4 / R303: accountTag joins the entry key, mirroring @@unique([userId, dayDate, portion]).
+                "entry" to listOf("accountTag", "dayDate", "portion"),
+                "daily_tally" to listOf("dayDate"),
+            )
         val entities = entities()
         for ((table, expected) in expectedKeys) {
             val primaryKey = entities.getValue(table).getJSONObject("primaryKey")

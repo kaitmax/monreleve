@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import ch.monreleve.app.BuildConfig
+import ch.monreleve.app.account.SharedPrefsAccountStore
 import ch.monreleve.app.auth.KeystoreTokenStore
 import ch.monreleve.app.auth.SessionManager
 import ch.monreleve.app.data.local.MonReleveDatabase
@@ -37,5 +38,9 @@ private fun buildSyncEngine(context: Context): SyncEngine {
     val dao = MonReleveDatabase.get(context).entryDao()
     val api = AuthApi(UrlConnectionTransport(), BuildConfig.API_BASE_URL)
     val session = SessionManager(api, KeystoreTokenStore(context))
-    return SyncEngine(dao, session)
+    // AN-FIX F4 / R303: the drain is scoped to the account signed in RIGHT NOW. An expired session that
+    // has not signed back in has no current account, so SyncEngine drains nothing (fail closed) rather
+    // than posting the previous account's queue under the next account's token.
+    val currentAccount = SharedPrefsAccountStore(context).current()
+    return SyncEngine(dao, session, currentAccount)
 }

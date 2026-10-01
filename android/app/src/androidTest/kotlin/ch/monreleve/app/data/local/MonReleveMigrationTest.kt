@@ -26,9 +26,11 @@ class MonReleveMigrationTest {
         )
 
     @Test
-    fun migratesFromVersion1ToVersion2() {
+    fun migratesFromVersion1ToLatest() {
+        // A genuine v1 database migrated ALL THE WAY to the current version through every real migration
+        // (MIGRATION_1_2 then MIGRATION_2_3), validated against the exported schema for DATABASE_VERSION.
         helper.createDatabase(TEST_DB, 1).close()
-        helper.runMigrationsAndValidate(TEST_DB, DATABASE_VERSION, true, MIGRATION_1_2)
+        helper.runMigrationsAndValidate(TEST_DB, DATABASE_VERSION, true, MIGRATION_1_2, MIGRATION_2_3)
     }
 
     private companion object {

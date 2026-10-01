@@ -1,5 +1,6 @@
 package ch.monreleve.app.data.repo
 
+import ch.monreleve.app.account.UNOWNED_ACCOUNT
 import ch.monreleve.app.data.local.AbsenceReason
 import ch.monreleve.app.data.local.EntryDao
 import ch.monreleve.app.data.local.EntryEntity
@@ -53,10 +54,16 @@ interface EntryRepository {
 class LocalEntryRepository(
     private val dao: EntryDao,
     private val clock: Clock,
+    // AN-FIX F4 / R303: the account that owns rows recorded and read through this repository. A null
+    // account (no active session) tags a row UNOWNED - held, never sent, never shown (fail closed).
+    private val currentAccount: String? = null,
     private val newMutationId: () -> String = { UUID.randomUUID().toString() },
 ) : EntryRepository {
     override suspend fun record(command: RecordCommand): EntryEntity {
-        val existing = dao.byDayPortion(command.dayDate, command.portion)
+        // The tap's account, stamped at the tap the way the mutation id is (R303). Fail closed to
+        // UNOWNED when there is no active account rather than leaving the row untagged.
+        val account = currentAccount ?: UNOWNED_ACCOUNT
+        val existing = dao.byAccountDayPortion(account, command.dayDate, command.portion)
         val entity =
             EntryEntity(
                 // Born at the tap, before any network call (D30/R219).
@@ -86,6 +93,8 @@ class LocalEntryRepository(
                 // Pending until sync acknowledges it. Re-recording a synced day sets it
                 // PENDING again, which is what makes the edit a new mutation to drain.
                 syncState = SyncState.PENDING,
+                // AN-FIX F4 / R303: born at the tap, the way the mutation id is.
+                accountTag = account,
             )
         // Persisted BEFORE any network. On a (dayDate, portion) collision this REPLACES
         // the row (coalescing): an edit made offline before the earlier mutation drained

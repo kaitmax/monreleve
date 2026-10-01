@@ -108,8 +108,12 @@ fun parseEntriesResponse(body: String): EntriesResponse? =
  * The synced local row FROM THE SERVER'S ROW (R217): pending clears in one round
  * trip from what the server holds, not from what the client sent. firstRecordedAt is
  * the server's immutable evidence moment; clientClaimedAt is echoed back verbatim.
+ *
+ * [accountTag] is the LOCAL account the row belongs to (AN-FIX F4 / R303). The server never returns it
+ * (it is not on the wire), so the reconcile carries the local row's own tag through, keeping the synced
+ * row scoped to the account that recorded it.
  */
-fun ServerEntry.toSyncedEntity(): EntryEntity =
+fun ServerEntry.toSyncedEntity(accountTag: String): EntryEntity =
     EntryEntity(
         clientMutationId = clientMutationId,
         dayDate = dayDate,
@@ -125,6 +129,7 @@ fun ServerEntry.toSyncedEntity(): EntryEntity =
         firstRecordedAt = firstRecordedAt,
         lastModifiedAt = lastModifiedAt,
         syncState = SyncState.SYNCED,
+        accountTag = accountTag,
     )
 
 private fun JSONObject.stringOrNull(key: String): String? = if (isNull(key)) null else getString(key)

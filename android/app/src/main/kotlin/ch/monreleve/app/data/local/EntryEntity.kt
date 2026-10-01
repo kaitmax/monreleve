@@ -1,6 +1,7 @@
 package ch.monreleve.app.data.local
 
 import androidx.room.Entity
+import ch.monreleve.app.account.UNOWNED_ACCOUNT
 
 // AN5 increment 1. The offline record of one declared day.
 //
@@ -10,19 +11,25 @@ import androidx.room.Entity
 // installs it; until then a pre-release migration costs nothing, which is why the
 // column set is only what AN5 needs and not a guess at AN8's.
 //
-// PRIMARY KEY (dayDate, portion), MIRRORING THE SERVER. The server's uniqueness is
-// @@unique([userId, dayDate, portion]); this device holds one signed-in user's
-// records, so (dayDate, portion) is the local identity. An edit to a day REPLACEs
-// the row on this key (increment 2), which coalesces record-then-edit-before-sync
-// into a single pending mutation - the property increment 4's ordering evidence
-// rests on: the queue structurally cannot hold two mutations for one (dayDate,
-// portion), so it can never emit them out of order, and the server's
-// two-items-for-one-day-in-a-batch refusal can never fire against this client.
+// PRIMARY KEY (accountTag, dayDate, portion), MIRRORING THE SERVER. The server's
+// uniqueness is @@unique([userId, dayDate, portion]); accountTag is the device's
+// local half of that userId (AN-FIX F4 / R303). An edit to a day REPLACEs the row
+// on this key, which coalesces record-then-edit-before-sync into a single pending
+// mutation PER ACCOUNT - the ordering evidence rests on the queue structurally
+// holding at most one mutation for one (account, dayDate, portion). Because the
+// account is IN the key, one account's set-aside day and another's same (dayDate,
+// portion) coexist without either overwriting the other (R303: nothing is lost).
 //
-// NO userId COLUMN, ON PURPOSE. The token identifies the user (AN4); a shared
-// device is out of scope for AN5, and sign-out clearing the store is a later
-// concern (parked). Adding userId later is exactly the migration the harness
-// exists to make safe.
+// THE accountTag COLUMN, ADDED IN AN-FIX (F4 / R303), REVERSES "NO userId COLUMN".
+// AN5 deliberately held no account column ("the token identifies the user"), which
+// F4 showed is false on a shared, resold or handed-over device: an expired session
+// is not a sign-out, so one account's queued days drained into the next account to
+// sign in. The column is LOCAL ONLY and OPAQUE - a SHA-256 tag of the account's
+// address (account/AccountTag.kt), never the address itself, and never on the wire
+// (EntriesWire omits it). It defaults to UNOWNED, the fail-closed sentinel for a
+// row whose account cannot be resolved; the real writers (EntryRepository, the
+// seeder, the sync reconcile) set it explicitly. Adding it is exactly the migration
+// the harness exists to make safe: a REAL v2 -> v3 migration, no destructive wipe.
 //
 // D18 - NO COORDINATE COLUMN, EVER. Enforced three ways: this file carries none;
 // FencesTest fence 2b scans data/local for coordinate-shaped names; and
@@ -39,7 +46,7 @@ import androidx.room.Entity
 //     server sends and never asserts it;
 //   - LOCAL ONLY (syncState), never on the wire.
 
-@Entity(tableName = "entry", primaryKeys = ["dayDate", "portion"])
+@Entity(tableName = "entry", primaryKeys = ["accountTag", "dayDate", "portion"])
 data class EntryEntity(
     /** D30. This device's id for the write that produced the current row, so a retry is recognised. */
     val clientMutationId: String,
@@ -61,4 +68,13 @@ data class EntryEntity(
     val firstRecordedAt: String?,
     val lastModifiedAt: String?,
     val syncState: SyncState,
+    /**
+     * LOCAL ONLY, NEVER ON THE WIRE (AN-FIX F4 / R303). The opaque account tag of the account that
+     * recorded this row (account/AccountTag.kt) - the device's half of the server's
+     * @@unique([userId, dayDate, portion]), and part of the primary key. Defaults to UNOWNED, the
+     * fail-closed sentinel for a row whose account could not be resolved (a pre-F4 migration, or a tap
+     * with no active account): an UNOWNED row is never sent and never shown. The real writers set it
+     * explicitly from the active account.
+     */
+    val accountTag: String = UNOWNED_ACCOUNT,
 )

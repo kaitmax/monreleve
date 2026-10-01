@@ -1,5 +1,6 @@
 package ch.monreleve.app.data.sync
 
+import ch.monreleve.app.account.UNOWNED_ACCOUNT
 import ch.monreleve.app.auth.AuthenticatedPoster
 import ch.monreleve.app.auth.PostOutcome
 import ch.monreleve.app.data.local.EntryEntity
@@ -66,10 +67,14 @@ class SyncEngineTest {
         mutId: String,
         day: String,
     ) {
-        rows[day to Portion.FULL] = pendingEntity(mutId, day)
+        val entity = pendingEntity(mutId, day)
+        // AN-FIX F4 / R303: the fake is keyed on the whole primary key; these single-account tests use
+        // the default UNOWNED tag, so (tag, day, portion) is the key.
+        rows[Triple(entity.accountTag, entity.dayDate, entity.portion)] = entity
     }
 
-    private fun FakeEntryDao.row(day: String): EntryEntity = rows[day to Portion.FULL]!!
+    // These single-account tests seed one FULL row per day, so matching on the day alone is unambiguous.
+    private fun FakeEntryDao.row(day: String): EntryEntity = rows.values.first { it.dayDate == day }
 
     private fun serverRow(
         id: String,
@@ -102,7 +107,7 @@ class SyncEngineTest {
             val server = serverRow("srv-1", "mut-1", "2027-06-18", "2027-06-18T10:00:05.000Z")
             val poster = FakePoster(listOf(okBody(1, 0, listOf(server))))
 
-            val outcome = SyncEngine(dao, poster).sync()
+            val outcome = SyncEngine(dao, poster, UNOWNED_ACCOUNT).sync()
 
             assertEquals(SyncOutcome.Settled(written = 1, defects = 0), outcome)
             val row = dao.row("2027-06-18")
@@ -120,7 +125,7 @@ class SyncEngineTest {
             val server = serverRow("srv-1", "mut-1", "2027-06-18", "2027-06-18T10:00:05.000Z")
             val poster = FakePoster(listOf(okBody(0, 1, listOf(server))))
 
-            SyncEngine(dao, poster).sync()
+            SyncEngine(dao, poster, UNOWNED_ACCOUNT).sync()
 
             assertEquals(SyncState.SYNCED, dao.row("2027-06-18").syncState)
         }
@@ -131,7 +136,7 @@ class SyncEngineTest {
             val dao = FakeEntryDao().apply { seed("mut-1", "2027-06-18") }
             val poster = FakePoster(listOf(PostOutcome.Ok(status = 400, body = """{"code":"invalid_payload"}""")))
 
-            val outcome = SyncEngine(dao, poster).sync()
+            val outcome = SyncEngine(dao, poster, UNOWNED_ACCOUNT).sync()
 
             assertEquals(SyncOutcome.Settled(written = 0, defects = 1), outcome)
             assertEquals(SyncState.FAILED, dao.row("2027-06-18").syncState)
@@ -156,7 +161,7 @@ class SyncEngineTest {
             // The batch of two (refused), then mut-1 alone (accepted), then mut-2 alone (refused again).
             val poster = FakePoster(listOf(refused, okBody(1, 0, listOf(good)), refused))
 
-            val outcome = SyncEngine(dao, poster).sync()
+            val outcome = SyncEngine(dao, poster, UNOWNED_ACCOUNT).sync()
 
             assertEquals(SyncOutcome.Settled(written = 1, defects = 1), outcome)
             assertEquals(SyncState.SYNCED, dao.row("2027-06-18").syncState)
@@ -165,7 +170,7 @@ class SyncEngineTest {
             assertEquals(3, poster.bodies.size)
             // And never again: both rows have left pending(), so a second drain sends nothing.
             assertTrue("nothing left to retry", dao.pending().isEmpty())
-            SyncEngine(dao, poster).sync()
+            SyncEngine(dao, poster, UNOWNED_ACCOUNT).sync()
             assertEquals("the refused payload is never re-sent", 3, poster.bodies.size)
         }
 
@@ -181,7 +186,7 @@ class SyncEngineTest {
             // The batch of two, then each item alone - all refused.
             val poster = FakePoster(listOf(refused, refused, refused))
 
-            val outcome = SyncEngine(dao, poster).sync()
+            val outcome = SyncEngine(dao, poster, UNOWNED_ACCOUNT).sync()
 
             assertEquals(SyncOutcome.Settled(written = 0, defects = 2), outcome)
             assertEquals(SyncState.FAILED, dao.row("2027-06-18").syncState)
@@ -202,7 +207,7 @@ class SyncEngineTest {
                 }
             val poster = FakePoster(listOf(PostOutcome.Ok(status = 500, body = "")))
 
-            val outcome = SyncEngine(dao, poster).sync()
+            val outcome = SyncEngine(dao, poster, UNOWNED_ACCOUNT).sync()
 
             assertEquals(SyncOutcome.Retryable, outcome)
             // Only the single batch POST happened - no item-by-item isolation.
@@ -217,7 +222,7 @@ class SyncEngineTest {
             val dao = FakeEntryDao().apply { seed("mut-1", "2027-06-18") }
             val poster = FakePoster(listOf(PostOutcome.NetworkError))
 
-            val outcome = SyncEngine(dao, poster).sync()
+            val outcome = SyncEngine(dao, poster, UNOWNED_ACCOUNT).sync()
 
             assertEquals(SyncOutcome.Retryable, outcome)
             assertEquals(SyncState.PENDING, dao.row("2027-06-18").syncState)
@@ -234,7 +239,7 @@ class SyncEngineTest {
                 }
             val poster = FakePoster(listOf(okBody(0, 0, emptyList()), okBody(0, 0, emptyList())))
 
-            SyncEngine(dao, poster, batchLimit = 2).sync()
+            SyncEngine(dao, poster, UNOWNED_ACCOUNT, batchLimit = 2).sync()
 
             assertEquals("three rows at a limit of two are two batches", 2, poster.bodies.size)
             assertEquals(2, JSONObject(poster.bodies[0]).getJSONArray("entries").length())
@@ -255,7 +260,7 @@ class SyncEngineTest {
                     onCall = { dao.seed("mut-2", "2027-06-18") },
                 )
 
-            val outcome = SyncEngine(dao, poster).sync()
+            val outcome = SyncEngine(dao, poster, UNOWNED_ACCOUNT).sync()
 
             assertEquals(SyncOutcome.Settled(written = 0, defects = 0), outcome)
             val row = dao.row("2027-06-18")

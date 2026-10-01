@@ -33,9 +33,16 @@ sealed interface SyncOutcome {
 class SyncEngine(
     private val dao: EntryDao,
     private val poster: AuthenticatedPoster,
+    // AN-FIX F4 / R303: the account whose queue this drains. The worker reads it from the AccountStore
+    // at drain time; a null account (no active session) drains NOTHING - fail closed.
+    private val currentAccount: String?,
     private val batchLimit: Int = MAX_BATCH_ITEMS,
 ) {
     suspend fun sync(): SyncOutcome {
+        // AN-FIX F4 / R303: no active account -> nothing to drain. An expired session that never signed
+        // back in has no account here, so its queue stays PENDING rather than draining under whoever is
+        // next.
+        if (currentAccount == null) return SyncOutcome.Unauthenticated
         var written = 0
         var defects = 0
         var terminal: SyncOutcome? = null
@@ -104,13 +111,16 @@ class SyncEngine(
         val sent = batch.associateBy { it.clientMutationId }
         var count = 0
         for (serverEntry in response.entries) {
-            if (!sent.containsKey(serverEntry.clientMutationId)) continue
-            val current = dao.byDayPortion(serverEntry.dayDate, Portion.valueOf(serverEntry.portion))
+            // AN-FIX F4 / R303: look up and write the synced row under the LOCAL account that sent it
+            // (the server never returns the tag), so reconcile stays within one account's rows.
+            val sentRow = sent[serverEntry.clientMutationId] ?: continue
+            val current =
+                dao.byAccountDayPortion(sentRow.accountTag, serverEntry.dayDate, Portion.valueOf(serverEntry.portion))
             if (current != null &&
                 current.clientMutationId == serverEntry.clientMutationId &&
                 current.syncState == SyncState.PENDING
             ) {
-                dao.upsert(serverEntry.toSyncedEntity())
+                dao.upsert(serverEntry.toSyncedEntity(sentRow.accountTag))
                 count++
             }
         }
@@ -144,7 +154,8 @@ class SyncEngine(
 
     private suspend fun markFailed(batch: List<EntryEntity>): Int {
         for (row in batch) {
-            val current = dao.byDayPortion(row.dayDate, row.portion)
+            // AN-FIX F4 / R303: the full-key lookup, so a FAILED mark stays within the sending account.
+            val current = dao.byAccountDayPortion(row.accountTag, row.dayDate, row.portion)
             if (current != null && current.clientMutationId == row.clientMutationId) {
                 dao.upsert(current.copy(syncState = SyncState.FAILED))
             }

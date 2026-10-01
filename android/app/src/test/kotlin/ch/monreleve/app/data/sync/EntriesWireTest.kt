@@ -128,11 +128,14 @@ class EntriesWireTest {
                 lastModifiedAt = null,
             )
 
-        val entity = serverEntry.toSyncedEntity()
+        // AN-FIX F4 / R303: the synced row carries the LOCAL account tag through (the server never
+        // returns it), so a reconciled row stays scoped to the account that recorded it.
+        val entity = serverEntry.toSyncedEntity("acct-tag-xyz")
         assertEquals(SyncState.SYNCED, entity.syncState)
         assertEquals("srv-1", entity.serverId)
         assertEquals("2027-06-18T10:00:05.000Z", entity.firstRecordedAt)
         assertEquals(EntryKind.HOME, entity.kind)
+        assertEquals("acct-tag-xyz", entity.accountTag)
         assertTrue(parseEntriesResponse("not json") == null)
     }
 }
