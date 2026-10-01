@@ -5,12 +5,17 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <!--
-      AN6a increment 5: on-device detection reads GPS fixes, classifies them against the
-      bundled polygon, and DISCARDS the coordinate (D18) - it is never stored, logged or sent.
-      FINE (foreground) only here; ACCESS_BACKGROUND_LOCATION (Play's restricted permission) is
-      an AN7 decision with the background-sampling spike, not requested yet.
+      AN-FIX F2/F6 (R304): NO LOCATION PERMISSION IN THE RELEASE BUILD UNTIL DETECTION SHIPS.
+      The manual product declares no location permission - asking for one claims a feature this
+      build does not expose (R282), and it is the single item most likely to draw Play review. The
+      on-device detection code and the bundled border polygon STAY in the repository (dormant), but
+      ACCESS_FINE_LOCATION now lives in src/debug/AndroidManifest.xml, so only the detection-capable
+      builds (debug/audit, and the build AN6b's field testers install) carry it. The BUILT release
+      APK is asserted to declare no location permission by the checkReleaseNoLocationPermission gate
+      task (read from the APK with aapt2, not from source). When detection ships (AN6+), the
+      permission and the data-safety-form entry move with it. PARKAN-32.
     -->
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
 
     <application
         android:allowBackup="true"

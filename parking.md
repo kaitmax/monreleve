@@ -1462,6 +1462,33 @@ serialised /v1 payloads, Room entities, the engine and Compose; (2) a resolving 
 Then re-run this drive against the TRUE release APK signed with the release key, over HTTPS, through the real
 magic-link -> App Link callback, and read the R8 mapping for anything kept that should not have been.
 
+## PARKAN-32 - where the location permission lives until detection ships  [AN-FIX, 2026-10-01]
+
+QUESTION:  R304 removes ACCESS_FINE_LOCATION from the RELEASE build and says it "moves to the build AN6b's
+testers install". That field-test build does not exist yet - AN6 defines its mechanism, distribution and
+signing (todo.md AN6 stage 2: the manual-mode build distributed to 20-30 frontaliers for two weeks with
+detection running silently). So where does the permission live NOW, so the release has none but the
+detection-capable builds keep it?
+
+TAKEN:     ACCESS_FINE_LOCATION moved to src/debug/AndroidManifest.xml. The debug and audit variants merge
+that fragment (the audit variant already reuses src/debug), so they keep the permission; the release variant
+does not include src/debug, so the BUILT release APK declares no location permission (proven from the APK by
+checkReleaseNoLocationPermission with aapt2, AC2). The detection code and the bundled border polygon STAY in
+src/main (dormant, R304). Reversible: it is one <uses-permission> line in a source set; when AN6 defines the
+field-test build it relocates there with the data-safety-form entry, changing nothing that the release ships.
+
+NOT TAKEN: creating a dedicated `measurement`/`fieldTest` build type now (initWith release for real HTTPS,
+its own manifest carrying the permission, its own signing). That is AN6's call - it owns the mechanism and the
+distribution - and a new build type adds signing and gate surface this task does not need. Switching to it
+later costs a build type and a source set, no change to the release or to the F4 work.
+
+TOUCHES:   android/app/src/main/AndroidManifest.xml (permission removed), src/debug/AndroidManifest.xml
+(permission added), app/build.gradle.kts (checkReleaseNoLocationPermission, wired into :app:gate).
+
+NEEDS:     from AN6 and the operator: the field-test build's definition (build type, server, signing), and the
+Play data-safety-form entry declaring location as accessed-on-device / not-collected / not-transmitted, to be
+added the task detection ships - not before, so the manifest never claims a feature the build does not expose.
+
 ## STATUS LEDGER  [appended 2026-09-29]
 
 One line per Android-era entry, so the state of each is visible without
@@ -1491,3 +1518,4 @@ reading every section. Entries are not edited; this ledger is.
 | PARKAN-29 — licences screen is hand-authored | **closed** | R298 (AN-AUDIT incr 0): the list stays hand-written; a gate check (checkLicences) derives the release runtime deps from the build and fails on any not attributed - no plugin, no dependency. First run found guava/annotations/jspecify bundled but uncredited (R178); added |
 | PARKAN-30 — openLegal unguarded vs no browser | **closed** | R299 (AN-AUDIT incr 0): openLegal catches ActivityNotFoundException and shows the link's address (openLegalLink seam, LegalLinkTest); no crash on a browserless device |
 | PARKAN-31 — TRUE release never exercised E2E | **open, NEEDS** | AN-AUDIT incr 2: release CONFIG exercised via the committed audit variant (release=debug bytecode, minify off); TRUE release APK built (7.01 MB) + launched. Re-exercise the shipping artifact E2E needs AN14's R8, a resolving monreleve.ch + assetlinks, and the release key |
+| PARKAN-32 — where the location permission lives | **open, NEEDS** | AN-FIX incr 3 (R304): ACCESS_FINE_LOCATION moved from src/main to src/debug, so the release APK declares none (checkReleaseNoLocationPermission, aapt2) and debug/audit keep it; the AN6b field-test build's shape + the data-safety-form entry are AN6's to add when detection ships |

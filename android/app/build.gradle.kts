@@ -1,3 +1,5 @@
+import java.io.ByteArrayOutputStream
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -437,6 +439,53 @@ tasks.register("checkLicences") {
     }
 }
 
+// AN-FIX F2/F6 (R304). The RELEASE build must declare NO location permission until detection ships
+// (asking for one claims a feature this build does not expose, R282 - the item most likely to draw Play
+// review). This reads the BUILT release APK's permissions with aapt2 (AC2: from the APK, not the source
+// manifest - a library or the merger could introduce one), and fails on any ACCESS_*LOCATION. The
+// permission lives in src/debug now, so the debug/audit builds keep it and only release drops it. R182:
+// it dependsOn assembleRelease, the task that PRODUCES its subject, so it never runs before the APK
+// exists. Proven by planting ACCESS_FINE_LOCATION back into src/main/AndroidManifest.xml and watching it
+// go red (R180), recorded in REPORT-AN-FIX.txt.
+tasks.register("checkReleaseNoLocationPermission") {
+    dependsOn("assembleRelease")
+    doLast {
+        val apkDir = layout.buildDirectory.dir("outputs/apk/release").get().asFile
+        val apk =
+            apkDir.walkTopDown().firstOrNull { it.isFile && it.extension == "apk" }
+                ?: throw GradleException(
+                    "checkReleaseNoLocationPermission: no release APK under $apkDir - assembleRelease produced none",
+                )
+        val buildToolsDir = File(android.sdkDirectory, "build-tools")
+        val aapt2 =
+            buildToolsDir.listFiles()
+                ?.sortedByDescending { it.name }
+                ?.firstNotNullOfOrNull { dir ->
+                    sequenceOf("aapt2", "aapt2.exe").map { File(dir, it) }.firstOrNull { it.exists() }
+                }
+                ?: throw GradleException("checkReleaseNoLocationPermission: no aapt2 under $buildToolsDir")
+        val stdout = ByteArrayOutputStream()
+        project.exec {
+            commandLine(aapt2.path, "dump", "permissions", apk.path)
+            standardOutput = stdout
+        }
+        val permissions = stdout.toString("UTF-8")
+        val location =
+            Regex("""android\.permission\.ACCESS_[A-Z_]*LOCATION""")
+                .findAll(permissions)
+                .map { it.value }
+                .toSortedSet()
+        if (location.isNotEmpty()) {
+            throw GradleException(
+                "checkReleaseNoLocationPermission FAILED - the BUILT release APK declares location " +
+                    "permission(s): $location (R304). The manual product must claim no location feature; the " +
+                    "permission belongs in src/debug (the detection-capable builds), not src/main.\nAPK: $apk",
+            )
+        }
+        println("checkReleaseNoLocationPermission OK: the built release APK declares no location permission ($apk)")
+    }
+}
+
 tasks.register("gate") {
     dependsOn(
         "assembleDebug",
@@ -447,6 +496,7 @@ tasks.register("gate") {
         "verifyPaparazziDebug",
         "checkReleaseCleartext",
         "checkReleaseNoDebugInjection",
+        "checkReleaseNoLocationPermission",
         "checkLicences",
     )
     doLast {
@@ -462,6 +512,8 @@ tasks.register("gate") {
             |     nowhere - merged manifest + network security config, R182),
             |     checkReleaseNoDebugInjection (R284 guard b: the debug session
             |     injection is absent from the merged release manifest),
+            |     checkReleaseNoLocationPermission (R304: the BUILT release APK
+            |     declares no location permission, read with aapt2 - AC2),
             |     checkLicences (R298: every release runtime dependency is
             |     attributed on the licences screen, derived from the build).
             |SKIPPED, with reason:

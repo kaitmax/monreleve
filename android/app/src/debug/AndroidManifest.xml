@@ -20,6 +20,17 @@
   RELEASE variant, which is the only one that ships.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+      AN-FIX F2/F6 (R304): the location permission lives HERE, not in src/main, so the RELEASE build
+      declares none (checkReleaseNoLocationPermission proves it from the built APK) while the
+      detection-capable builds keep it. The debug and audit variants merge this fragment (the audit
+      variant reuses src/debug), and the build AN6b's field testers install is built from a source set
+      that includes it. FINE (foreground) only; ACCESS_BACKGROUND_LOCATION stays an AN7 decision. The
+      coordinate is classified on-device and DISCARDED (D18) - never stored, logged or sent. PARKAN-32.
+    -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
     <application>
         <activity
             android:name=".debug.SessionInjectionActivity"
