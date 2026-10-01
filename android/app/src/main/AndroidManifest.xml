@@ -62,54 +62,16 @@
             </intent-filter>
         </activity>
         <!--
-          AN3 increment 6. The AC3 instrument (dev/GalleryScreen.kt). No
-          intent-filter - never appears in the launcher, never a SPEC 11
-          screen. Reached only by naming the component directly:
-            adb shell am start -n ch.monreleve.app/ch.monreleve.app.dev.GalleryActivity
-          See GalleryActivity.kt's own header for why it is exported.
+          AN14a F1. The four dev.* activities (GalleryActivity, SignInProbeActivity, DevRecorderActivity,
+          DetectionReplayActivity) MOVED to src/debug/AndroidManifest.xml. The AN-AUDIT found them exported
+          in the RELEASE APK - a launchable developer-tooling attack surface a user's install must not
+          carry (F1). Their declarations now live only in the debug fragment, so the debug and audit
+          variants keep them (the walkthrough drivers reach them by name) and release declares none. Their
+          Kotlin is left in src/main/kotlin/ch/monreleve/app/dev (it compiles into every variant), but with
+          no manifest root in release it is unreferenced there and R8 strips it once minification is on
+          (AN14a increment 2). checkReleaseNoDevComponent reads the BUILT release APK and fails on any
+          ch.monreleve.app.dev.* component (AC2/R249). See src/debug/AndroidManifest.xml for the declarations.
         -->
-        <activity
-            android:name=".dev.GalleryActivity"
-            android:exported="true"
-            android:theme="@style/Theme.MonReleve" />
-
-        <!--
-          AN4 increment 6. The AC1 walkthrough instrument (dev/SignInProbeActivity):
-          drives SessionManager against pnpm dev after sign-in. No intent-filter,
-          never in the launcher. Reached only by:
-            adb shell am start -n ch.monreleve.app/ch.monreleve.app.dev.SignInProbeActivity
-          exported for that adb reach; it holds no data and reads the session the
-          real callback already stored.
-        -->
-        <activity
-            android:name=".dev.SignInProbeActivity"
-            android:exported="true"
-            android:theme="@style/Theme.MonReleve" />
-
-        <!--
-          AN5 increment 5. The dev recorder (dev/DevRecorderActivity): records a day
-          through EntryRepository and shows its pending/synced state, so the AN5
-          walkthrough can drive a real write against the production container. No
-          intent-filter, never in the launcher. Reached only by:
-            adb shell am start -n ch.monreleve.app/ch.monreleve.app.dev.DevRecorderActivity
-          exported for that adb reach, the same status as the gallery and the probe.
-        -->
-        <activity
-            android:name=".dev.DevRecorderActivity"
-            android:exported="true"
-            android:theme="@style/Theme.MonReleve" />
-
-        <!--
-          AN6a increment 5. The detection replay (dev/DetectionReplayActivity): runs the seven
-          synthetic tracks through the real pipeline and shows the live geo-fix classification.
-          No intent-filter, never in the launcher. Reached only by:
-            adb shell am start -n ch.monreleve.app/ch.monreleve.app.dev.DetectionReplayActivity
-          exported for that adb reach, the same status as the gallery, the probe and the recorder.
-        -->
-        <activity
-            android:name=".dev.DetectionReplayActivity"
-            android:exported="true"
-            android:theme="@style/Theme.MonReleve" />
 
         <!--
           AN11: the FileProvider for exporting the Releve (AC2 / R136). The PDF/CSV is written to the private

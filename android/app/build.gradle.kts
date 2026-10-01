@@ -486,6 +486,58 @@ tasks.register("checkReleaseNoLocationPermission") {
     }
 }
 
+// AN14a F1 (AC2 / R249). The RELEASE build must declare NO developer tooling component. The AN-AUDIT
+// found four dev.* activities (GalleryActivity, SignInProbeActivity, DevRecorderActivity,
+// DetectionReplayActivity) exported in the release APK - a launchable attack surface (F1). They now live
+// in src/debug/AndroidManifest.xml, so the debug and audit variants keep them (the walkthrough drivers
+// reach them by name) and the release the user installs declares none. This is the BUILT-APK partner of
+// checkReleaseNoDebugInjection: that reads the merged manifest INTERMEDIATE, this reads what SHIPS -
+// R249 says a claim about what ships is checked against the APK, not the source. It dumps the built
+// release APK's manifest with aapt2 (the same tool and discovery as checkReleaseNoLocationPermission) and
+// fails on any ch.monreleve.app.dev.* component. R182: it dependsOn assembleRelease, the task that
+// PRODUCES its subject, so it never runs before the APK exists. Its FIRST run found the four live
+// instances (R178 - the real proof F1 existed); proven still able to fire by planting one dev activity
+// back into src/main and watching it go red (R180), recorded in REPORT-AN14a.txt.
+tasks.register("checkReleaseNoDevComponent") {
+    dependsOn("assembleRelease")
+    doLast {
+        val apkDir = layout.buildDirectory.dir("outputs/apk/release").get().asFile
+        val apk =
+            apkDir.walkTopDown().firstOrNull { it.isFile && it.extension == "apk" }
+                ?: throw GradleException(
+                    "checkReleaseNoDevComponent: no release APK under $apkDir - assembleRelease produced none",
+                )
+        val buildToolsDir = File(android.sdkDirectory, "build-tools")
+        val aapt2 =
+            buildToolsDir.listFiles()
+                ?.sortedByDescending { it.name }
+                ?.firstNotNullOfOrNull { dir ->
+                    sequenceOf("aapt2", "aapt2.exe").map { File(dir, it) }.firstOrNull { it.exists() }
+                }
+                ?: throw GradleException("checkReleaseNoDevComponent: no aapt2 under $buildToolsDir")
+        val stdout = ByteArrayOutputStream()
+        project.exec {
+            commandLine(aapt2.path, "dump", "xmltree", "--file", "AndroidManifest.xml", apk.path)
+            standardOutput = stdout
+        }
+        val manifest = stdout.toString("UTF-8")
+        val devComponents =
+            Regex("""ch\.monreleve\.app\.dev\.[A-Za-z0-9_]+""")
+                .findAll(manifest)
+                .map { it.value }
+                .toSortedSet()
+        if (devComponents.isNotEmpty()) {
+            throw GradleException(
+                "checkReleaseNoDevComponent FAILED - the BUILT release APK declares developer tooling " +
+                    "component(s): $devComponents (F1). The dev.* activities (gallery, sign-in probe, " +
+                    "recorder, detection replay) are a launchable attack surface and must live only in " +
+                    "src/debug (the debug/audit variants), never in the release the user installs.\nAPK: $apk",
+            )
+        }
+        println("checkReleaseNoDevComponent OK: the built release APK declares no dev.* component ($apk)")
+    }
+}
+
 tasks.register("gate") {
     dependsOn(
         "assembleDebug",
@@ -497,6 +549,7 @@ tasks.register("gate") {
         "checkReleaseCleartext",
         "checkReleaseNoDebugInjection",
         "checkReleaseNoLocationPermission",
+        "checkReleaseNoDevComponent",
         "checkLicences",
     )
     doLast {
@@ -514,6 +567,9 @@ tasks.register("gate") {
             |     injection is absent from the merged release manifest),
             |     checkReleaseNoLocationPermission (R304: the BUILT release APK
             |     declares no location permission, read with aapt2 - AC2),
+            |     checkReleaseNoDevComponent (AN14a F1: the BUILT release APK
+            |     declares no ch.monreleve.app.dev.* component, read with aapt2 -
+            |     AC2/R249), the built-APK partner of checkReleaseNoDebugInjection,
             |     checkLicences (R298: every release runtime dependency is
             |     attributed on the licences screen, derived from the build).
             |SKIPPED, with reason:

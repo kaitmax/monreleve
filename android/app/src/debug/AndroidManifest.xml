@@ -40,5 +40,38 @@
             android:name=".debug.DebugSeederActivity"
             android:exported="true"
             android:theme="@style/Theme.MonReleve" />
+
+        <!--
+          AN14a F1. The four dev.* activities MOVED here from src/main/AndroidManifest.xml. The AN-AUDIT
+          found them exported in the RELEASE APK (F1) - a launchable developer-tooling attack surface. They
+          are declared ONLY in this debug fragment now, so the manifest merger never adds them to a release
+          build, while the debug and audit variants (the audit variant reuses this fragment) keep them for
+          the walkthrough drivers. checkReleaseNoDevComponent reads the BUILT release APK and fails if any
+          ch.monreleve.app.dev.* component reaches it (AC2/R249). Their Kotlin stays in src/main/kotlin; with
+          a manifest root only here, R8 strips it from the release variant once minification is on (AN14a
+          increment 2). Each has no intent-filter - never in the launcher, reached only by `adb shell am
+          start -n ch.monreleve.app/ch.monreleve.app.dev.<Name>`, exported for that adb reach.
+
+          GalleryActivity       - AN3 increment 6, the component gallery (dev/GalleryScreen.kt).
+          SignInProbeActivity   - AN4 increment 6, drives SessionManager against pnpm dev after sign-in.
+          DevRecorderActivity   - AN5 increment 5, records a day through EntryRepository, shows pending/synced.
+          DetectionReplayActivity - AN6a increment 5, replays the synthetic tracks through the real pipeline.
+        -->
+        <activity
+            android:name=".dev.GalleryActivity"
+            android:exported="true"
+            android:theme="@style/Theme.MonReleve" />
+        <activity
+            android:name=".dev.SignInProbeActivity"
+            android:exported="true"
+            android:theme="@style/Theme.MonReleve" />
+        <activity
+            android:name=".dev.DevRecorderActivity"
+            android:exported="true"
+            android:theme="@style/Theme.MonReleve" />
+        <activity
+            android:name=".dev.DetectionReplayActivity"
+            android:exported="true"
+            android:theme="@style/Theme.MonReleve" />
     </application>
 </manifest>
