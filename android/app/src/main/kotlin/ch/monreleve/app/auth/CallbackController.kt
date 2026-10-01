@@ -1,5 +1,7 @@
 package ch.monreleve.app.auth
 
+import ch.monreleve.app.account.AccountStore
+import ch.monreleve.app.account.accountTagOf
 import ch.monreleve.app.data.remote.ApiFailure
 import ch.monreleve.app.data.remote.AuthApi
 import ch.monreleve.app.data.remote.CallbackResult
@@ -32,6 +34,11 @@ class CallbackController(
     private val tokenStore: TokenStore,
     private val pending: PendingSignInStore,
     private val scope: CoroutineScope,
+    // AN-FIX F4 / R303: the sign-in is the one place a NEW account becomes current. The address the
+    // link carried is the only account identity the device can know (/api/v1/me omits it), so the
+    // account tag is set here, from it, at the moment B signs in - which is exactly when A's pending
+    // days must stop being this device's current record.
+    private val accountStore: AccountStore,
 ) {
     private val mutableState = MutableStateFlow(CallbackState())
     val state: StateFlow<CallbackState> = mutableState.asStateFlow()
@@ -60,6 +67,11 @@ class CallbackController(
                 when (val result = api.exchangeCallback(parsed.token, parsed.email)) {
                     is CallbackResult.Signed -> {
                         tokenStore.save(result.pair)
+                        // AN-FIX F4 / R303: make this account current BEFORE clearing the pending address,
+                        // from the address the validated link carried. accountTagOf returns null only for a
+                        // blank address (which CallbackLink already rejects), so this fails closed rather
+                        // than setting a blank tag two people could share.
+                        accountTagOf(parsed.email)?.let { accountStore.setCurrent(it) }
                         pending.clear()
                         CallbackPhase.SIGNED
                     }

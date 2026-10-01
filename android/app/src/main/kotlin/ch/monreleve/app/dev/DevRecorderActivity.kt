@@ -23,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
+import ch.monreleve.app.account.SharedPrefsAccountStore
 import ch.monreleve.app.data.local.EntryEntity
 import ch.monreleve.app.data.local.EntryKind
 import ch.monreleve.app.data.local.MonReleveDatabase
@@ -59,6 +60,9 @@ class DevRecorderActivity : ComponentActivity() {
             LocalEntryRepository(
                 MonReleveDatabase.get(applicationContext).entryDao(),
                 clock,
+                // AN-FIX F4 / R303: the dev recorder tags and shows rows under the account signed in now,
+                // the same as the production shell - so the cross-account reproduction drives the real scope.
+                SharedPrefsAccountStore(applicationContext).current(),
             )
         val today = todayInParis(clock)
         setContent {

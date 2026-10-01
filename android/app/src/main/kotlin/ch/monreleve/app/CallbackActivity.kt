@@ -11,6 +11,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
+import ch.monreleve.app.account.SharedPrefsAccountStore
 import ch.monreleve.app.auth.CallbackController
 import ch.monreleve.app.auth.KeystoreTokenStore
 import ch.monreleve.app.auth.SharedPrefsPendingSignInStore
@@ -44,6 +45,7 @@ class CallbackActivity : ComponentActivity() {
                 tokenStore = KeystoreTokenStore(context),
                 pending = SharedPrefsPendingSignInStore(context),
                 scope = lifecycleScope,
+                accountStore = SharedPrefsAccountStore(context),
             )
         controller.handle(intent?.data?.toString())
         setContent {

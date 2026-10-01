@@ -10,6 +10,7 @@ import ch.monreleve.app.data.local.Provenance
 import ch.monreleve.app.data.local.SyncState
 import ch.monreleve.app.data.local.deviceClaimNow
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import java.time.Clock
 import java.util.UUID
 
@@ -104,7 +105,13 @@ class LocalEntryRepository(
         return entity
     }
 
-    override fun observePending(): Flow<List<EntryEntity>> = dao.observePending()
+    // AN-FIX F4 / R303: every screen reads through these, scoped to the CURRENT account, so an expired
+    // session is never a window onto the previous account's record (an expiry is not a sign-out, so R295's
+    // clearing never ran). A null account resolves to UNOWNED, which owns no real row, so the screens show
+    // nothing rather than another account's days.
+    override fun observePending(): Flow<List<EntryEntity>> =
+        dao.observeAllForAccount(currentAccount ?: UNOWNED_ACCOUNT)
+            .map { rows -> rows.filter { it.syncState == SyncState.PENDING } }
 
-    override fun observeAll(): Flow<List<EntryEntity>> = dao.observeAll()
+    override fun observeAll(): Flow<List<EntryEntity>> = dao.observeAllForAccount(currentAccount ?: UNOWNED_ACCOUNT)
 }

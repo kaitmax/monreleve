@@ -1,5 +1,7 @@
 package ch.monreleve.app.auth
 
+import ch.monreleve.app.account.AccountStore
+import ch.monreleve.app.account.accountTagOf
 import ch.monreleve.app.data.remote.AuthApi
 import ch.monreleve.app.data.remote.HttpRequest
 import ch.monreleve.app.data.remote.HttpResponse
@@ -50,6 +52,20 @@ private class RememberingPendingStore(initial: String?) : PendingSignInStore {
     }
 }
 
+private class FakeAccountStore : AccountStore {
+    var tag: String? = null
+
+    override fun current(): String? = tag
+
+    override fun setCurrent(tag: String) {
+        this.tag = tag
+    }
+
+    override fun clear() {
+        tag = null
+    }
+}
+
 private class CbTransport(
     private val response: HttpResponse = HttpResponse(200, ""),
     private val throwable: Throwable? = null,
@@ -65,27 +81,34 @@ private const val OK_BODY =
         """"accessExpiresAt":"2027-06-18T16:18:00.000Z","refreshExpiresAt":"2027-09-16T16:03:00.000Z"}"""
 private const val VALID_URI = "https://monreleve.ch/api/v1/auth/callback?token=tok&email=a%40b.ch"
 
+@Suppress("LongParameterList")
 private fun controller(
     scope: CoroutineScope,
     store: TokenStore,
     pending: PendingSignInStore,
     response: HttpResponse = HttpResponse(200, OK_BODY),
     throwable: Throwable? = null,
+    account: AccountStore = FakeAccountStore(),
 ): CallbackController {
-    return CallbackController(AuthApi(CbTransport(response, throwable), "http://10.0.2.2:3000"), store, pending, scope)
+    val api = AuthApi(CbTransport(response, throwable), "http://10.0.2.2:3000")
+    return CallbackController(api, store, pending, scope, account)
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CallbackControllerTest : FunSpec({
-    test("a valid link matching the pending email signs in, stores the pair, clears pending") {
+    test("a valid link matching the pending email signs in, stores the pair, clears pending, sets the account") {
         runTest {
             val store = FakeTokenStore()
             val pending = RememberingPendingStore("a@b.ch")
-            controller(this, store, pending).handle(VALID_URI)
+            val account = FakeAccountStore()
+            controller(this, store, pending, account = account).handle(VALID_URI)
             advanceUntilIdle()
             store.saved.shouldNotBeNull()
             store.saved?.accessToken shouldBe "acc"
             pending.cleared shouldBe true
+            // AN-FIX F4 / R303: sign-in makes this account current, as the opaque tag of the link's address.
+            account.current() shouldBe accountTagOf("a@b.ch")
+            account.current().shouldNotBeNull()
         }
     }
 

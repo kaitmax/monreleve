@@ -9,6 +9,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
+import ch.monreleve.app.account.SharedPrefsAccountStore
+import ch.monreleve.app.account.accountTagOf
 import ch.monreleve.app.auth.KeystoreTokenStore
 import ch.monreleve.app.design.FrontierTheme
 import ch.monreleve.app.design.Spacing
@@ -38,7 +40,13 @@ class SessionInjectionActivity : ComponentActivity() {
                 is InjectionResult.Valid -> {
                     KeystoreTokenStore(applicationContext).save(result.session)
                     result.settings?.let { SharedPrefsSettingsStore(applicationContext).save(it) }
-                    if (result.settings != null) "SESSION INJECTED + SETTINGS" else "SESSION INJECTED"
+                    // AN-FIX F4 / R303: the real callback sets the account from the link's address; this
+                    // instrument stands in for that, taking an `email` extra and setting the same opaque tag,
+                    // so an injected session is scoped the way a real sign-in is (the cross-account repro).
+                    val tag = intent?.getStringExtra("email")?.let { accountTagOf(it) }
+                    tag?.let { SharedPrefsAccountStore(applicationContext).setCurrent(it) }
+                    val base = if (result.settings != null) "SESSION INJECTED + SETTINGS" else "SESSION INJECTED"
+                    if (tag != null) "$base + ACCOUNT" else base
                 }
                 is InjectionResult.Refused -> "INJECTION REFUSED: ${result.field}"
             }

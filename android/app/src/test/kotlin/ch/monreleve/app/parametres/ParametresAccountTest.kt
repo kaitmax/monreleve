@@ -1,5 +1,6 @@
 package ch.monreleve.app.parametres
 
+import ch.monreleve.app.account.AccountStore
 import ch.monreleve.app.account.DeviceLocalStore
 import ch.monreleve.app.account.LocalStore
 import ch.monreleve.app.auth.AuthedOutcome
@@ -93,6 +94,18 @@ private class FakePendingSignIn(private var email: String? = "camille@example.fr
     }
 }
 
+private class FakeAccountStore(private var tag: String? = "acct-tag") : AccountStore {
+    override fun current(): String? = tag
+
+    override fun setCurrent(tag: String) {
+        this.tag = tag
+    }
+
+    override fun clear() {
+        tag = null
+    }
+}
+
 /** Answers any request 200: the revoke POST is all this transport needs to satisfy. */
 private class StubTransport : HttpTransport {
     override suspend fun execute(request: HttpRequest): HttpResponse = HttpResponse(200, "{}")
@@ -128,6 +141,7 @@ private fun localStore(
         settingsStore = settings,
         dossierCache = FakeDossierCache(),
         pendingSignIn = FakePendingSignIn(),
+        accountStore = FakeAccountStore(),
         clearRecord = {},
         cancelSync = {},
         clearExports = {},
@@ -407,6 +421,7 @@ class ParametresAccountTest : FunSpec({
                     settingsStore = settings,
                     dossierCache = cache,
                     pendingSignIn = pending,
+                    accountStore = FakeAccountStore(),
                     clearRecord = { recordCleared = true },
                     cancelSync = {},
                     clearExports = { exportsCleared = true },

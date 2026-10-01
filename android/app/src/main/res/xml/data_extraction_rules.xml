@@ -10,9 +10,12 @@
     <cloud-backup>
         <exclude domain="sharedpref" path="monreleve.auth.xml" />
         <exclude domain="sharedpref" path="monreleve.pending.xml" />
+        <!-- AN-FIX F4 / R303: the account scope, excluded from both channels like the token. -->
+        <exclude domain="sharedpref" path="monreleve.account.xml" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="sharedpref" path="monreleve.auth.xml" />
         <exclude domain="sharedpref" path="monreleve.pending.xml" />
+        <exclude domain="sharedpref" path="monreleve.account.xml" />
     </device-transfer>
 </data-extraction-rules>

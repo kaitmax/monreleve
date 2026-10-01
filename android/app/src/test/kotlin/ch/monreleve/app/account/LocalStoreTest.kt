@@ -70,12 +70,25 @@ private class FakePendingSignIn(private var email: String? = "camille@example.fr
     }
 }
 
+private class FakeAccountStore(private var tag: String? = "acct-tag") : AccountStore {
+    override fun current(): String? = tag
+
+    override fun setCurrent(tag: String) {
+        this.tag = tag
+    }
+
+    override fun clear() {
+        tag = null
+    }
+}
+
 class LocalStoreTest : FunSpec({
     class Fixture {
         val tokens = FakeTokenStore()
         val settings = FakeSettingsStore()
         val cache = FakeDossierCache()
         val pending = FakePendingSignIn()
+        val account = FakeAccountStore()
         var recordCleared = false
         var syncCancelled = false
         var exportsCleared = false
@@ -85,6 +98,7 @@ class LocalStoreTest : FunSpec({
                 settingsStore = settings,
                 dossierCache = cache,
                 pendingSignIn = pending,
+                accountStore = account,
                 clearRecord = { recordCleared = true },
                 cancelSync = { syncCancelled = true },
                 clearExports = { exportsCleared = true },
@@ -102,6 +116,8 @@ class LocalStoreTest : FunSpec({
             f.syncCancelled.shouldBeTrue()
             // The cacheDir/exports files hold the record in another form (the account JSON is the whole record).
             f.exportsCleared.shouldBeTrue()
+            // AN-FIX F4 / R303: the account tag that scoped the record is cleared too (no stale scope).
+            f.account.current() shouldBe null
         }
     }
 
@@ -132,6 +148,8 @@ class LocalStoreTest : FunSpec({
             // ...plus the settings and the pending sign-in.
             f.settings.load() shouldBe null
             f.pending.pending() shouldBe null
+            // ...and the account tag (deletion is a superset of sign-out).
+            f.account.current() shouldBe null
         }
     }
 

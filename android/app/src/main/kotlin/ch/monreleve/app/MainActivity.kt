@@ -26,8 +26,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
+import ch.monreleve.app.account.AccountStore
 import ch.monreleve.app.account.DeviceLocalStore
 import ch.monreleve.app.account.LocalStore
+import ch.monreleve.app.account.SharedPrefsAccountStore
 import ch.monreleve.app.auth.BytesOutcome
 import ch.monreleve.app.auth.KeystoreTokenStore
 import ch.monreleve.app.auth.PendingSignInStore
@@ -115,14 +117,20 @@ class MainActivity : ComponentActivity() {
         val session = SessionManager(api, tokenStore)
         val settingsStore: SettingsStore = SharedPrefsSettingsStore(context)
         val pending = SharedPrefsPendingSignInStore(context)
+        val accountStore = SharedPrefsAccountStore(context)
         val clock = Clock.systemDefaultZone()
-        val repository: EntryRepository = LocalEntryRepository(MonReleveDatabase.get(context).entryDao(), clock)
+        // AN-FIX F4 / R303: the record is scoped to the account signed in RIGHT NOW. A new account signs in
+        // through CallbackActivity, which restarts this activity, so onCreate re-reads the current tag; an
+        // expired session has no current account, so the shell shows nothing rather than the previous
+        // account's days.
+        val repository: EntryRepository =
+            LocalEntryRepository(MonReleveDatabase.get(context).entryDao(), clock, accountStore.current())
         // AN11: the Releve reads GET /api/v1/dossier through the session (R210 refresh handling included), and
         // caches the last body per year so an offline reader gets a dated copy rather than a blank screen (R288).
         val dossierCache = SharedPrefsDossierCache(context)
         val dossierApi = DossierApi(session::authenticatedGet, dossierCache)
         // AN12 increment 2 (R295): the device-wide erasure (built by buildLocalStore, below).
-        val localStore = buildLocalStore(context, tokenStore, settingsStore, dossierCache, pending)
+        val localStore = buildLocalStore(context, tokenStore, settingsStore, dossierCache, pending, accountStore)
         // R28: the tax year is the Paris calendar year, not the device's. The composition root is
         // the one place a clock is allowed; the engine and the aggregation stay clock-free.
         val taxYear = Year.now(ZoneId.of("Europe/Paris")).value
@@ -341,18 +349,23 @@ private fun MainShell(
 // every Room table (entry + daily_tally) with no per-DAO list to drift, and runs off the main thread (it
 // throws on it). Sign-out clears the record, cache, tokens and queued sync; deletion adds the settings and
 // pending sign-in (R289). Extracted from onCreate to keep it within its length budget.
+// The erasure's dependency list - these ARE the device's stores (the same reasoning as DeviceLocalStore's
+// own suppression); bundling them into a holder would only move the list.
+@Suppress("LongParameterList")
 private fun buildLocalStore(
     context: Context,
     tokenStore: TokenStore,
     settingsStore: SettingsStore,
     dossierCache: DossierCache,
     pending: PendingSignInStore,
+    accountStore: AccountStore,
 ): LocalStore =
     DeviceLocalStore(
         tokenStore = tokenStore,
         settingsStore = settingsStore,
         dossierCache = dossierCache,
         pendingSignIn = pending,
+        accountStore = accountStore,
         clearRecord = { withContext(Dispatchers.IO) { MonReleveDatabase.get(context).clearAllTables() } },
         cancelSync = { SyncScheduler.cancel(context) },
         clearExports = { java.io.File(context.cacheDir, EXPORTS_DIR).deleteRecursively() },

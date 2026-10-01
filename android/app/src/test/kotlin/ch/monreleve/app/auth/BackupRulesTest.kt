@@ -15,21 +15,27 @@ import java.io.File
 private const val TOKEN_PREFS = "monreleve.auth.xml"
 private const val PENDING_PREFS = "monreleve.pending.xml"
 
+// AN-FIX F4 / R303: the account scope is excluded on the same terms as the token.
+private const val ACCOUNT_PREFS = "monreleve.account.xml"
+
 class BackupRulesTest : FunSpec({
-    test("fullBackupContent (API 26-30) excludes the token and pending-sign-in SharedPreferences") {
+    test("fullBackupContent (API 26-30) excludes the token, pending-sign-in and account SharedPreferences") {
         val text = File("src/main/res/xml/backup_rules.xml").readText()
         text shouldContain "domain=\"sharedpref\""
         text shouldContain TOKEN_PREFS
         text shouldContain PENDING_PREFS
+        text shouldContain ACCOUNT_PREFS
     }
 
-    test("dataExtractionRules (API 31+) excludes both prefs from cloud backup AND device transfer") {
+    test("dataExtractionRules (API 31+) excludes all three prefs from cloud backup AND device transfer") {
         val text = File("src/main/res/xml/data_extraction_rules.xml").readText()
         val cloud = text.substringAfter("<cloud-backup>").substringBefore("</cloud-backup>")
         val transfer = text.substringAfter("<device-transfer>").substringBefore("</device-transfer>")
         cloud shouldContain TOKEN_PREFS
         cloud shouldContain PENDING_PREFS
+        cloud shouldContain ACCOUNT_PREFS
         transfer shouldContain TOKEN_PREFS
         transfer shouldContain PENDING_PREFS
+        transfer shouldContain ACCOUNT_PREFS
     }
 })

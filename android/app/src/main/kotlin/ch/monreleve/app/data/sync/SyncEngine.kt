@@ -46,11 +46,12 @@ class SyncEngine(
         var written = 0
         var defects = 0
         var terminal: SyncOutcome? = null
-        // Snapshot the queue and split into batches of at most the server's limit. Each
-        // batch is independent, so a network fault on a later batch leaves the earlier,
-        // already-reconciled ones done - partial progress is safe because a replay is
-        // harmless (R219).
-        for (batch in dao.pending().chunked(batchLimit)) {
+        // Snapshot ONLY THE CURRENT ACCOUNT'S queue (AN-FIX F4 / R303) and split into batches of at most
+        // the server's limit. Another account's set-aside rows (and UNOWNED rows) are not in this list, so
+        // they cannot post under this account's token. Each batch is independent, so a network fault on a
+        // later batch leaves the earlier, already-reconciled ones done - partial progress is safe because a
+        // replay is harmless (R219).
+        for (batch in dao.pendingForAccount(currentAccount).chunked(batchLimit)) {
             if (terminal != null) break
             when (val step = syncBatch(batch)) {
                 is BatchResult.Wrote -> written += step.count

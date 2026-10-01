@@ -32,6 +32,8 @@ private val ERASED_STORAGE =
         "monreleve.dossier",
         "monreleve.pending",
         "monreleve.db",
+        // AN-FIX F4 / R303: the account scope, cleared by DeviceLocalStore.clearForSignOut (and so deletion).
+        "monreleve.account",
     )
 
 // « monreleve.<x> » literals that are NOT device storage, each with the reason it needs no erasure. Asserted

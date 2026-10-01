@@ -10,4 +10,7 @@
 <full-backup-content>
     <exclude domain="sharedpref" path="monreleve.auth.xml" />
     <exclude domain="sharedpref" path="monreleve.pending.xml" />
+    <!-- AN-FIX F4 / R303: the account scope (an opaque tag of the address), excluded so a restored backup
+         carries no account identity; a restore lands on sign-in, and the fix scopes any restored rows. -->
+    <exclude domain="sharedpref" path="monreleve.account.xml" />
 </full-backup-content>
