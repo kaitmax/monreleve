@@ -89,8 +89,12 @@ class FencesTest {
     // ------------------------------------------------------------------
     @Test
     fun calcImportsNothingFromAndroidOrOtherProjectPackages() {
+        val files = ktFiles("calc")
+        // F7 (AN-FIX): an absence assertion over an EMPTY set passes vacuously, so a fence pointed at a
+        // renamed or moved directory would go green on zero files. Assert the scan found files first.
+        assertTrue("calc/ fence scanned no files - calc/ renamed or moved? (F7 vacuity guard)", files.isNotEmpty())
         val offenders = mutableListOf<String>()
-        for (file in ktFiles("calc")) {
+        for (file in files) {
             val text = stripComments(file.readText())
             if (Regex("""\bandroid\.\w""").containsMatchIn(text)) {
                 offenders += "${file.path}: references android.* (import or fully-qualified)"
@@ -122,8 +126,10 @@ class FencesTest {
     // ------------------------------------------------------------------
     @Test
     fun detectionNeverReferencesDataRemoteOrRetrofit() {
+        val files = ktFiles("detection")
+        assertTrue("detection/ fence scanned no files - detection/ renamed? (F7 vacuity guard)", files.isNotEmpty())
         val offenders = mutableListOf<String>()
-        for (file in ktFiles("detection")) {
+        for (file in files) {
             val text = stripComments(file.readText())
             if (Regex("""\bdata\.remote\b""").containsMatchIn(text) ||
                 Regex("""\bRetrofit\b""").containsMatchIn(text)
@@ -147,9 +153,11 @@ class FencesTest {
     // ------------------------------------------------------------------
     @Test
     fun noCoordinateTypeAppearsOutsideDetection() {
+        val files = allKtFilesExcept("detection")
+        assertTrue("D18 coordinate fence scanned no files - app root renamed? (F7 vacuity guard)", files.isNotEmpty())
         val offenders = mutableListOf<String>()
         val coordinatePattern = Regex("""\b(Location|LatLng|latitude|longitude)\b""")
-        for (file in allKtFilesExcept("detection")) {
+        for (file in files) {
             val text = stripComments(file.readText())
             val match = coordinatePattern.find(text)
             if (match != null) {
@@ -192,6 +200,7 @@ class FencesTest {
             )
         val scanned =
             (ktFiles("ui") + ktFiles("design") + ktFiles("dev")).filterNot { it.canonicalFile in tokenDefinitionFiles }
+        assertTrue("ui//design/ fence scanned no files - renamed? (F7 vacuity guard)", scanned.isNotEmpty())
 
         val offenders = mutableListOf<String>()
         for (file in scanned) {
@@ -229,8 +238,10 @@ class FencesTest {
     // ------------------------------------------------------------------
     @Test
     fun uiAndDevFilesCarryNoStringLiteral() {
+        val files = ktFiles("ui") + ktFiles("dev")
+        assertTrue("no-inline-string fence scanned no files - ui//dev/ renamed? (F7 vacuity guard)", files.isNotEmpty())
         val offenders = mutableListOf<String>()
-        for (file in ktFiles("ui") + ktFiles("dev")) {
+        for (file in files) {
             val text = stripComments(file.readText())
             val match = Regex(""""[^"]+"""").find(text)
             if (match != null) {
@@ -252,8 +263,10 @@ class FencesTest {
     @Test
     fun uiNeverReferencesDataRemoteOrDataLocalDirectly() {
         val forbidden = listOf("""\bdata\.remote\b""", """\bdata\.local\b""", """\bRetrofit\b""", """\bDao\b""")
+        val files = ktFiles("ui")
+        assertTrue("repository-only fence scanned no files - ui/ renamed? (F7 vacuity guard)", files.isNotEmpty())
         val offenders = mutableListOf<String>()
-        for (file in ktFiles("ui")) {
+        for (file in files) {
             val text = stripComments(file.readText())
             if (forbidden.any { Regex(it).containsMatchIn(text) }) {
                 offenders += "${file.path}: references data/remote, data/local, Retrofit or a Dao directly"
@@ -281,8 +294,16 @@ class FencesTest {
     // ------------------------------------------------------------------
     @Test
     fun everyCardInUiIsThemedWithExplicitShapeAndElevation() {
+        // F7 (AN-FIX) vacuity guard: assert the directory was scanned, so a renamed ui/ fails rather than
+        // passing on zero files. NOTE: this fence finds ZERO Material3 Card(...) calls today - the project
+        // themes with Surface by design (see this fence's header), and the custom CalendarCard/Identification
+        // Card/SectionCard composables are not the Material Card the \bCard\( scan matches. So a "found the
+        // element" guard would WRONGLY fail the deliberate Surface-over-Card choice; the files guard is the
+        // right one here, and the fence correctly checks each Material Card the day one is added to ui/.
+        val files = ktFiles("ui")
+        assertTrue("Material-default fence scanned no files - ui/ renamed? (F7 vacuity guard)", files.isNotEmpty())
         val offenders = mutableListOf<String>()
-        for (file in ktFiles("ui")) {
+        for (file in files) {
             val text = stripComments(file.readText())
             for (args in callArgumentSpans(text, "Card")) {
                 val isThemed = cardArgsAreThemed(args)
@@ -308,8 +329,10 @@ class FencesTest {
     @Test
     fun detectionNeverWritesAnEntry() {
         val forbidden = listOf("""\bEntryRepository\b""", """\bRecordCommand\b""")
+        val files = ktFiles("detection")
+        assertTrue("D16 fence scanned no files - detection/ renamed? (F7 vacuity guard)", files.isNotEmpty())
         val offenders = mutableListOf<String>()
-        for (file in ktFiles("detection")) {
+        for (file in files) {
             val text = stripComments(file.readText())
             if (forbidden.any { Regex(it).containsMatchIn(text) }) {
                 offenders += "${file.path}: detection/ reaches the entry-write path (D16 - a proposal is not a record)"

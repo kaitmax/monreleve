@@ -70,6 +70,10 @@ class LogFenceTest {
             } else {
                 emptyList()
             }
+        // F7 (AN-FIX, R267 - the second site named by the audit): this absence assertion over an EMPTY ui/
+        // would pass vacuously if ui/ were renamed. Assert the scan found files, as noCredentialShareALineWith
+        // ALogSink already does.
+        assertTrue("noRawToken fence scanned no ui/ files - ui/ renamed? (F7 vacuity guard)", scanned.isNotEmpty())
 
         val offenders = mutableListOf<String>()
         for (file in scanned) {
