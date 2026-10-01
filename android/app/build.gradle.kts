@@ -29,11 +29,56 @@ android {
     defaultConfig {
         applicationId = "ch.monreleve.app"
         minSdk = 26
-        targetSdk = 35
+        // AN14a increment 5. Google Play requires new apps and app updates to target Android 16 (API 36) or
+        // higher, EFFECTIVE 2026-08-31 (already in force). Verified from Google's own page, not memory or the
+        // prompt: https://developer.android.com/google/play/requirements/target-sdk - fetched 2026-10-01,
+        // verbatim: "New apps and app updates must target Android 16 (API level 36) or higher to be submitted
+        // to Google Play". An extension to 2026-11-01 is offered via Play Console; this app targets 36 now
+        // rather than relying on it. The API 35 -> 36 runtime behaviour changes (edge-to-edge is already
+        // handled from AN1's targetSdk 35) are OWED an emulator pass - the gate proves it compiles and the
+        // unit/paparazzi suites pass, not that every 36 behaviour is exercised on a device.
+        targetSdk = 36
+        // AN14a increment 5. versionCode MUST strictly increase with every Play upload, forever (Play rejects
+        // an upload whose code is <= the highest already uploaded), and the ceiling is 2_100_000_000. THE
+        // SCHEME: a plain monotonic integer, +1 per uploaded build, never reused and never decreased - the
+        // simplest rule that cannot be got wrong, and it leaves the whole 2.1-billion range. It is NOT derived
+        // from versionName (a semver bump must not force a code jump) nor from the wall clock (opaque, and two
+        // builds in one minute would collide). It stays 1 until the first upload (AN14b); reversible until
+        // then. When AN14b wires CI, the counter can move to a CI build number, which is still monotonic.
         versionCode = 1
         versionName = "0.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    // AN14a increment 5 (R250 - NO KEY IS CREATED HERE). The release signing config reads the keystore from
+    // Gradle properties OR the environment; when none is present it is NOT created and the release build gets
+    // no signingConfig, so it stays UNSIGNED - app-release-unsigned.apk, exactly as before this task. The real
+    // upload/signing key is the operator's to make (AN14b), supplied as RELEASE_STORE_FILE /
+    // RELEASE_STORE_PASSWORD / RELEASE_KEY_ALIAS / RELEASE_KEY_PASSWORD (a gradle property or an env var).
+    // gate:clone scrubs the environment and a clone carries no gradle.properties secret, so a clean checkout
+    // is unsigned BY CONSTRUCTION. The seam exists; the key does not.
+    val releaseStoreFile = (findProperty("RELEASE_STORE_FILE") as String?) ?: System.getenv("RELEASE_STORE_FILE")
+    val releaseStorePassword =
+        (findProperty("RELEASE_STORE_PASSWORD") as String?) ?: System.getenv("RELEASE_STORE_PASSWORD")
+    val releaseKeyAlias = (findProperty("RELEASE_KEY_ALIAS") as String?) ?: System.getenv("RELEASE_KEY_ALIAS")
+    val releaseKeyPassword =
+        (findProperty("RELEASE_KEY_PASSWORD") as String?) ?: System.getenv("RELEASE_KEY_PASSWORD")
+    val hasReleaseSigning =
+        releaseStoreFile != null &&
+            releaseStorePassword != null &&
+            releaseKeyAlias != null &&
+            releaseKeyPassword != null
+
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(releaseStoreFile!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
     }
 
     buildTypes {
@@ -60,6 +105,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            // AN14a increment 5. Signed only when a key is supplied (above); otherwise null -> unsigned
+            // (app-release-unsigned.apk). R250: no key is created here.
+            signingConfig = if (hasReleaseSigning) signingConfigs.getByName("release") else null
             // The real domain over HTTPS. No cleartext exists in this build
             // (src/release/res network security config denies it everywhere).
             buildConfigField("String", "API_BASE_URL", "\"https://monreleve.ch\"")
