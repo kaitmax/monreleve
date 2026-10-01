@@ -315,6 +315,31 @@ FINDING F3 (severity LOW) - no FLAG_SECURE; the recents thumbnail shows the tax 
   previews) to hide the tax record, weighed against losing in-app screenshots and the screenshot-based audit
   instruments. Conservative today: leave it, and record the trade-off.
 
+AN-FIX CLOSURE (F3 - CLOSED, NOT FIXED). The operator's framing was "FLAG_SECURE stays on the screens that show
+credentials", which presumes such screens exist. They do not, and this records what IS true rather than the
+premise (R254):
+- NO FLAG_SECURE appears anywhere in the app (re-confirmed: a source scan for FLAG_SECURE across src/main finds
+  only the rationale comment in LogFenceTest, no live FLAG_SECURE call on any Activity or Window).
+- NO screen displays a credential. The sign-in is an emailed magic link - the person never types or sees a
+  token on a screen; the request screen takes only an email address, and the callback is handled headlessly
+  (CallbackController/CallbackActivity render a phase, never the token). The tokens live in the Android Keystore
+  (KeystoreTokenStore) and are never rendered. LogFenceTest.noRawTokenReachesTheUiLayer asserts, as a standing
+  guard, that ui/ never holds a raw accessToken/refreshToken value - so there is no credential surface for
+  FLAG_SECURE to protect.
+- Therefore "no FLAG_SECURE anywhere" is the CORRECT state, not a gap: there is no credential screen, so there
+  is nothing a screenshot of a credential could leak. The operator's "keep FLAG_SECURE on the credential
+  screens" has no referent here; adding FLAG_SECURE to invent one would claim protection of a thing that is not
+  shown.
+- The releve annuel (and the Aujourd'hui tax figures) is DELIBERATELY screenshottable: it is the person's own
+  document, and photographing it or sending it to an accountant is the point of the product. FLAG_SECURE would
+  take that away and would also defeat the screenshot-based audit instruments (AC2/R176/R177). D18 already holds
+  (no coordinate is ever on a screen to capture), and the tax record on the recents thumbnail is the person's
+  own data on the person's own device - a LOW, deliberate trade-off, accepted.
+- DECISION: no FLAG_SECURE is added anywhere. F3 is closed as a recorded, accepted trade-off, not a defect to
+  fix. If AN14 later decides the recents thumbnail of the tax record warrants hiding, that is a product choice
+  weighed against in-app screenshots - but it is NOT a credential-protection gap, because no credential is
+  shown.
+
 ## INTEGRITY AND RESILIENCE (increment 5)
 
 FINDING F4 (severity HIGH) - an expired or revoked session does NOT clear the offline queue, so one account's
@@ -746,7 +771,9 @@ MEDIUM
 LOW
 - F2 - ACCESS_FINE_LOCATION ships; must be declared on the Play data-safety form (R282). Ties to F6.
 - F3 - no FLAG_SECURE; the recents thumbnail shows the tax record (personal data, not a credential; a deliberate
-  trade-off with a tested rationale for credentials, which the tax record falls outside).
+  trade-off with a tested rationale for credentials, which the tax record falls outside). CLOSED by AN-FIX
+  increment 0 (not fixed): no screen displays a credential, so no-FLAG_SECURE-anywhere is the correct state; the
+  releve is deliberately screenshottable. See "AN-FIX CLOSURE (F3)" above.
 - F5 - Kotlin<->TypeScript ports outside the fixture-bound engine are defended by hand-copied tests that NAME
   their web source in a comment but do not READ it, so cross-language drift is not mechanically caught (the
   highest-drift surface, the enum vocabulary, IS read-tied).
