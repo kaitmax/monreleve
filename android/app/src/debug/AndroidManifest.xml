@@ -73,5 +73,16 @@
             android:name=".dev.DetectionReplayActivity"
             android:exported="true"
             android:theme="@style/Theme.MonReleve" />
+
+        <!--
+          AN14a increment 4 - R307 runtime half. WireDumpActivity serialises a fixture covering every enum
+          value through the real (minified, in the audit variant) EntriesWire and logs the JSON. Declared
+          only here, so it never ships (checkReleaseNoDevComponent). Reached by:
+            adb shell am start -n ch.monreleve.app/ch.monreleve.app.dev.WireDumpActivity
+        -->
+        <activity
+            android:name=".dev.WireDumpActivity"
+            android:exported="true"
+            android:theme="@style/Theme.MonReleve" />
     </application>
 </manifest>

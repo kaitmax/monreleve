@@ -1,4 +1,5 @@
 import java.io.ByteArrayOutputStream
+import java.util.zip.ZipFile
 
 plugins {
     alias(libs.plugins.android.application)
@@ -65,13 +66,11 @@ android {
         }
         // AN-AUDIT increment 2 (AC1). The RELEASE configuration MADE RUNNABLE against the local server, so
         // the shipping config is exercised end to end for the first time (FW30's question). It INHERITS
-        // release wholesale via initWith - the proguard files, debuggable false - and OVERRIDES only what a
-        // headless drive against `pnpm dev` needs. AN14a increment 2: R8 is now ON for release, and the audit
-        // variant inherits it via initWith; isMinifyEnabled/isShrinkResources are repeated below EXPLICITLY so
-        // the one variant we can actually drive under minification states its own R8 status (it is the build
-        // whose mapping.txt deobfuscates a drive trace). The audit variant is thus minified exactly as release
-        // is - the whole point of AN14a - and differs from release only in the signature, the api url, and the
-        // reuse of src/debug (every difference named in REPORT-AN14a.txt).
+        // release wholesale via initWith - the proguard files, debuggable false, and from AN14a increment 2
+        // R8 ON (isMinifyEnabled/isShrinkResources are repeated below EXPLICITLY so the one variant we can
+        // actually drive under minification states its own R8 status - it is the build whose mapping.txt
+        // deobfuscates a drive trace). So the audit variant is minified exactly as release is, the whole point
+        // of AN14a. It OVERRIDES only what a headless drive against `pnpm dev` needs:
         //   - the auto DEBUG signature, so it installs (R250 forbids the RELEASE key, not the debug one);
         //   - the LOCAL api url over cleartext to 10.0.2.2 (release points at https://monreleve.ch, which
         //     does not resolve - PARKAN-1).
@@ -554,6 +553,115 @@ tasks.register("checkReleaseNoDevComponent") {
     }
 }
 
+// AN14a increment 4 - R307 (the STATIC half). The server rejects unknown keys (FW23), so if R8 renamed a
+// serialised /v1 field or an enum constant on the wire, every payload the MINIFIED build sends carries the
+// wrong key and the server refuses it - a loud failure (R296 isolates it) but a lost sync. A JVM unit test
+// cannot see this: it runs on UNMINIFIED code. This reads the MINIFIED release dex's string pool and asserts
+// every /v1 field key and enum value the contract names is PRESENT - the tokens that go on the wire are
+// org.json string-literal keys and `enum.name` <clinit> literals, neither of which R8 rewrites, so their
+// survival in the minified dex is the static evidence the wire held.
+//
+// R206 - the expected tokens are DERIVED from docs/api-v1.md at execution time, never retyped: the field
+// KEYS from the first column of the <!-- fields:write --> and <!-- fields:read --> marked tables, and the
+// enum VALUES (backtick ALL-CAPS tokens) from the write region, which lists every value of all four enums
+// (the read region adds the trail words CREATED/MODIFIED, which are not wire values, so enums come from
+// write only). Change a field name in the doc and this goes red until the client follows (R187). R283:
+// docs/api-v1.md is a declared input. R133/R178: proven able to fire by renaming "dayDate" in EntriesWire.kt,
+// confirming "day_date" lands and "dayDate" leaves the built dex, and seeing RED (R180) - recorded in
+// REPORT-AN14a.txt. This is PRESENCE in the shipping artifact; USE is the owed runtime half (dev.WireDumpActivity
+// driven on the minified audit variant), which the emulator RAM budget defers.
+tasks.register("checkMinifiedWireContract") {
+    dependsOn("assembleRelease")
+    val apiDoc = rootProject.layout.projectDirectory.file("../docs/api-v1.md").asFile
+    inputs.file(apiDoc)
+    doLast {
+        val apkDir = layout.buildDirectory.dir("outputs/apk/release").get().asFile
+        val apk =
+            apkDir.walkTopDown().firstOrNull { it.isFile && it.extension == "apk" }
+                ?: throw GradleException(
+                    "checkMinifiedWireContract: no release APK under $apkDir - assembleRelease produced none",
+                )
+
+        // The minified dex string pool: each dex string is a printable run bounded by its (non-printable,
+        // for our short tokens) ULEB128 length byte and its 0x00 terminator, so a maximal printable-ASCII
+        // run is one dex string - exact-matched, never substring-matched (which would let "portion" hide
+        // inside "proportional" and mask a rename).
+        val dexStrings = mutableSetOf<String>()
+        ZipFile(apk).use { zip ->
+            zip.entries().asSequence()
+                .filter { it.name.matches(Regex("""classes\d*\.dex""")) }
+                .forEach { entry ->
+                    val bytes = zip.getInputStream(entry).use { it.readBytes() }
+                    val run = StringBuilder()
+                    for (byte in bytes) {
+                        val code = byte.toInt() and 0xFF
+                        if (code in 0x20..0x7E) {
+                            run.append(code.toChar())
+                        } else {
+                            if (run.isNotEmpty()) {
+                                dexStrings += run.toString()
+                                run.setLength(0)
+                            }
+                        }
+                    }
+                    if (run.isNotEmpty()) dexStrings += run.toString()
+                }
+        }
+        if (dexStrings.isEmpty()) {
+            throw GradleException("checkMinifiedWireContract: no strings read from $apk - the dex scan is vacuous")
+        }
+
+        val doc = apiDoc.readText()
+
+        fun region(tag: String): String =
+            Regex("""<!-- $tag -->(.*?)<!-- /$tag -->""", RegexOption.DOT_MATCHES_ALL)
+                .find(doc)
+                ?.groupValues?.get(1)
+                ?: throw GradleException(
+                    "checkMinifiedWireContract: the <!-- $tag --> marked region is not in docs/api-v1.md - " +
+                        "the field list cannot be derived (R206); a renamed marker must fail, not pass vacuously",
+                )
+        val write = region("fields:write")
+        val read = region("fields:read")
+
+        fun keysOf(region: String): Set<String> =
+            Regex("""(?m)^\|\s*`([a-z][A-Za-z]+)`""")
+                .findAll(region)
+                .map { it.groupValues[1] }
+                .toSet()
+        val expectedKeys = keysOf(write) + keysOf(read)
+        val expectedEnums =
+            Regex("""`([A-Z][A-Z_]+)`""")
+                .findAll(write)
+                .map { it.groupValues[1] }
+                .toSet()
+        // F7's lesson: a scan that found nothing passes vacuously. The doc has 10+ write keys and 15 enum
+        // values; far fewer means the parse broke, not that the contract shrank.
+        if (expectedKeys.size < 10 || expectedEnums.size < 15) {
+            throw GradleException(
+                "checkMinifiedWireContract: derived only ${expectedKeys.size} keys and ${expectedEnums.size} " +
+                    "enum values from docs/api-v1.md - the field-list parse is vacuous (expected >= 10 and >= 15)",
+            )
+        }
+
+        val expected = (expectedKeys + expectedEnums).toSortedSet()
+        val missing = expected.filter { it !in dexStrings }
+        if (missing.isNotEmpty()) {
+            throw GradleException(
+                "checkMinifiedWireContract FAILED - the MINIFIED release dex is missing /v1 contract token(s) " +
+                    "R8 must not have renamed or removed: $missing. The server rejects unknown keys (FW23), so a " +
+                    "renamed field or enum value would make every payload the minified build sends unfilable " +
+                    "(R307).\nDerived from docs/api-v1.md; APK: $apk",
+            )
+        }
+        println(
+            "checkMinifiedWireContract OK: all ${expected.size} /v1 contract tokens (${expectedKeys.size} field " +
+                "keys + ${expectedEnums.size} enum values, derived from docs/api-v1.md) survive in the minified " +
+                "release dex",
+        )
+    }
+}
+
 tasks.register("gate") {
     dependsOn(
         "assembleDebug",
@@ -566,6 +674,7 @@ tasks.register("gate") {
         "checkReleaseNoDebugInjection",
         "checkReleaseNoLocationPermission",
         "checkReleaseNoDevComponent",
+        "checkMinifiedWireContract",
         "checkLicences",
     )
     doLast {
@@ -586,6 +695,9 @@ tasks.register("gate") {
             |     checkReleaseNoDevComponent (AN14a F1: the BUILT release APK
             |     declares no ch.monreleve.app.dev.* component, read with aapt2 -
             |     AC2/R249), the built-APK partner of checkReleaseNoDebugInjection,
+            |     checkMinifiedWireContract (AN14a R307 static half: every /v1 field
+            |     key and enum value, derived from docs/api-v1.md, survives in the
+            |     MINIFIED release dex - the wire R8 could have renamed on the server),
             |     checkLicences (R298: every release runtime dependency is
             |     attributed on the licences screen, derived from the build).
             |SKIPPED, with reason:
