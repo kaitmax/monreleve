@@ -222,7 +222,11 @@ D4-2-after-record.png - after tapping En Suisse on the minified build:
 ====================================================================
 WHAT YOU CHANGED ON THE PHONE (and undid)
 ====================================================================
-- svc power stayon usb (kept screen awake)        -> UNDONE (svc power stayon false).
+- stay-on-while-plugged-in (kept screen awake; set `svc power stayon usb` at
+  Step 0)                                          -> UNDONE: `settings put global
+  stay_on_while_plugged_in 0`, verified mStayOn=false in dumpsys power (the
+  `svc power stayon false` form did not take on this device, so the setting was
+  written directly).
 - settings global hide_error_dialogs 1 (set by the D4 driver so a crash dialog
   never blocks automation)                        -> UNDONE (set back to 0).
 - settings system accelerometer_rotation / user_rotation (D5 rotation test)
