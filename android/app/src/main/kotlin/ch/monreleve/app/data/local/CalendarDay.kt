@@ -2,7 +2,6 @@ package ch.monreleve.app.data.local
 
 import ch.monreleve.app.fr.format.DATE_TIME_ZONE
 import java.time.Clock
-import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -27,8 +26,13 @@ private val PARIS: ZoneId = ZoneId.of(DATE_TIME_ZONE)
  *
  * The clock supplies only the instant; the zone is pinned so a device set to any
  * timezone still records the Paris day.
+ *
+ * clock.instant().atZone(PARIS).toLocalDate() - NOT LocalDate.ofInstant(instant, zone): that overload was
+ * added in API 34, and on a minSdk-26 device with no coreLibraryDesugaring it throws NoSuchMethodError at
+ * launch (DEVICE-LOOP CRASH 1). Instant.atZone and ZonedDateTime.toLocalDate are both API 26 and compose to
+ * exactly what ofInstant is defined as. ApiLevelFenceTest guards the whole class.
  */
-fun todayInParis(clock: Clock): String = LocalDate.ofInstant(clock.instant(), PARIS).toString()
+fun todayInParis(clock: Clock): String = clock.instant().atZone(PARIS).toLocalDate().toString()
 
 // Explicit seconds, milliseconds and offset, always. OffsetDateTime.toString() and
 // the ISO_OFFSET_DATE_TIME formatter both OMIT the seconds field when it is zero,

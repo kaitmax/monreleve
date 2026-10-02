@@ -1,0 +1,123 @@
+DEVICE-LOOP SESSION REPORT - Mon Releve
+(in progress - a live ledger; the final HOW IT ENDED / PUSH PROOF close it)
+
+====================================================================
+THE PHONE
+====================================================================
+Serial   : 232bcd8c300c7ece
+Model    : SM-G960F (Samsung Galaxy S9)
+Android  : 10 (release "10")
+API      : 29
+Authorized, over USB. Target with -s 232bcd8c300c7ece / ANDROID_SERIAL.
+ADB      : C:/Users/KAMXKAM/AppData/Local/Android/Sdk/platform-tools/adb.exe
+
+STEP 0 (before changing anything):
+- adb devices -l -> model SM-G960F, Android 10, API 29. Recorded.
+- Build installed at start: NONE (ch.monreleve.app not installed -> the
+  starting state is a FRESH INSTALL, D1's subject).
+- Free disk on C: ~100 GB of 475 GB (80% used). No stale monreleve-clone-*
+  temp dirs (TEMP, /tmp both clean). Swept: none to sweep.
+- Phone kept awake: `adb shell svc power stayon usb` set. (UNDONE at end - see
+  WHAT YOU CHANGED ON THE PHONE.)
+- Tree clean at start. Start commit: cf53cb9 (local), origin/main = fa648b1.
+  cf53cb9 + 0c939c8 are local-only; the first green push carries them.
+
+====================================================================
+THE LEDGER
+====================================================================
+
+CRASH 1 - java.time.LocalDate.ofInstant NoSuchMethodError at launch of the
+          signed-in shell (Aujourd'hui).
+  CONFIRMED LIVE (not blind-fixed). The plain debug build COLD-launches fine
+  to the Connexion (sign-in) screen - that screen does not construct
+  AujourdhuiController, so todayInParis is not yet called. Injected a debug
+  session + settings (SessionInjectionActivity, R284 path) to route to the
+  signed-in shell, force-stopped, relaunched MainActivity. Process died.
+  TRACE (adb logcat -b crash -d, trimmed to the top):
+    FATAL EXCEPTION: main
+    Process: ch.monreleve.app, PID: 12444
+    java.lang.NoSuchMethodError: No static method
+      ofInstant(Ljava/time/Instant;Ljava/time/ZoneId;)Ljava/time/LocalDate;
+      in class Ljava/time/LocalDate; ... (core-oj.jar)
+      at ch.monreleve.app.data.local.CalendarDayKt.todayInParis(CalendarDay.kt:31)
+      at ch.monreleve.app.aujourdhui.AujourdhuiController.<init>(AujourdhuiController.kt:178)
+      at ch.monreleve.app.MainGraph.build(MainGraph.kt:85)
+      at ch.monreleve.app.MainActivityKt.MainShell(MainActivity.kt:293)
+  ROOT CAUSE: LocalDate.ofInstant(Instant, ZoneId) was added in API 34
+    (Android 14). minSdk = 26 and coreLibraryDesugaring is NOT enabled, so on
+    this API-29 device the method does not exist -> NoSuchMethodError the first
+    time todayInParis runs (AujourdhuiController and CalendarController both
+    call it at construction). Introduced in AN5 (b9d3abc); latent because every
+    prior drive used a high-API emulator.
+  SWEEP FOR SIBLINGS: grepped all of android/app/src for java.time usage. The
+    ONLY post-API-26 member in production code is this one ofInstant overload.
+    Every other call - LocalDate.parse/of, Instant.parse/atZone,
+    OffsetDateTime.now(Clock)/of/parse, LocalDate.now(ZoneId), ChronoUnit,
+    ZonedDateTime - is available since API 26. (Enumerated in the advisor note
+    below; the durable guard scans for the whole banned class, not just this
+    instance.)
+  TEST THAT REPRODUCED IT:
+    - STATIC guard (new, committed): android .../fences/ApiLevelFenceTest.kt -
+      a source-scanning fence in the project's established idiom (FencesTest.kt).
+      It bans the receiver-qualified java.time members added after minSdk 26 and
+      not desugared: LocalDate/LocalDateTime/LocalTime/OffsetTime .ofInstant
+      (all API 34). Anchored on the RECEIVER, not a bare ".ofInstant(", because
+      OffsetDateTime.ofInstant and ZonedDateTime.ofInstant are API-26-safe.
+      Scans src/main AND src/debug (both variants run on this phone). Vacuity
+      guard + documented known-limit per the idiom.
+      RED run (test-first): named exactly
+        src\main\...\data\local\CalendarDay.kt: calls LocalDate.ofInstant()
+      i.e. the real live instance (R178), not only a plant. GREEN after the fix.
+    - RUNTIME half (device-only; the JVM cannot reproduce it - desktop JDK HAS
+      ofInstant): the device steps ARE the test. Inject debug session+settings
+      -> relaunch MainActivity -> open Aujourd'hui. Before fix: process dies with
+      the NoSuchMethodError above. After fix: screen renders (see DONE/D3).
+  FIX (narrowest; removes the cause):
+    CalendarDay.kt todayInParis now
+      clock.instant().atZone(PARIS).toLocalDate().toString()
+    instead of LocalDate.ofInstant(clock.instant(), PARIS).toString().
+    Instant.atZone (API 26) + ZonedDateTime.toLocalDate (API 26) compose to
+    exactly what ofInstant is defined as. Unused `import java.time.LocalDate`
+    removed. CalendarDayTest passes UNCHANGED -> behavioural equivalence.
+  CRASH CLASS CLOSED - comprehensive sweep: `./gradlew :app:lintDebug` (Android
+    Lint NewApi, run once as a diagnostic) found ZERO NewApi findings anywhere in
+    our source. The hand grep and lint agree: LocalDate.ofInstant was the only
+    post-minSdk API member in production code. (Lint's 3 errors are unrelated and
+    pre-existing: a local.properties path-escape [uncommitted dev file], a
+    src/debug CoarseFineLocation on the detection permission, and a Compose
+    UnusedBoxWithConstraintsScope in DayCell.kt - see NOTICED BUT NOT TOUCHING.)
+  COMMIT: [pending - after :app:gate + gate:clone]
+
+====================================================================
+NOTICED BUT NOT TOUCHING
+====================================================================
+- Lint (diagnostic) flagged, all pre-existing and none a device crash on API 29,
+  none in scope for this crash loop:
+  * app/src/debug/AndroidManifest.xml:32 CoarseFineLocation - debug/detection
+    build requests ACCESS_FINE without ACCESS_COARSE. Release drops location
+    entirely (checkReleaseNoLocationPermission), so this is debug-only.
+  * design/DayCell.kt:139 UnusedBoxWithConstraintsScope (Compose lint hint).
+  * local.properties PropertyEscape - an uncommitted local SDK-path file.
+
+====================================================================
+ADVISOR DECISIONS
+====================================================================
+Q (guard design): NewApi lint wired into the gate, OR a source-scanning fence
+  test, as the durable guard for the device-only NoSuchMethodError?
+A: Fence test as the committed, gate-wired guard; run lint NewApi ONCE as a
+  diagnostic sweep, not a gate step. Reasons: comprehensiveness is a one-time
+  need (answered by a single lintDebug), regression protection is forever and
+  cheap (the fence rides testDebugUnitTest, already green on this machine); the
+  fences/ package + R269 are the house idiom for a check the toolchain cannot
+  express in-gate; only the fence has a RED/GREEN test-first story (R178 live
+  instance). Refinements taken: anchor on the receiver (not bare .ofInstant);
+  scan src/debug too; save the pre-fix APK before rebuild (D2); verify every
+  added API level against lint/docs, never recall.
+WHAT I DID: exactly that. Fence committed + gate-wired via testDebugUnitTest;
+  lint run once (zero NewApi); pre-fix APK saved to
+  android/.device-loop-shots/prefix-apk/ (untracked).
+
+====================================================================
+DONE - D1..D8
+====================================================================
+[pending]
