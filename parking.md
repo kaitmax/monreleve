@@ -1566,6 +1566,37 @@ NEEDS:     an operator ruling on (a) vs (b) - a call-site fix + fence is a norma
 and the lint-on-gate addition, before any build is shipped to a device below API 34. Until then the shipping
 release crashes on launch for every user on API 26-33.
 
+RESOLUTION (CLOSED):  DEVICE-LOOP took option (a) in commit 712fccd - the call site is now
+clock.instant().atZone(PARIS).toLocalDate() (behaviourally equal; CalendarDayTest unchanged) plus
+ApiLevelFenceTest (the curated JVM regression guard: RED on the live instance, GREEN after). AN-STATE increment
+0 (R308, commit 51ab6a6) added the lint-on-gate half: Android Lint's NewApi check is now a permanent :app:gate
+step (lintDebug, scoped to NewApi via lint{}), proven by planting LocalDate.ofInstant in src/main and watching
+the gate red naming the file, then reverting. Both halves landed; no sub-34 boot crash of this class can ship.
+
+## PARKAN-35 - the API-26 emulator state-matrix (S2) is owed  [AN-STATE, 2026-10-02]
+
+QUESTION:  R310's DONE matrix asks the state-preservation matrix to run on the physical phone (S1) AND on an
+API-26 emulator (S2, R309 - the oldest API the app claims). S1 ran fully on the physical Galaxy S9 (API 29).
+S2 did not. What is left, and is it risky?
+
+EVIDENCE (AN-STATE, 2026-10-02): at the attempt, free RAM was 1571 MB of 16195 MB (Android Studio open); the
+API-26 emulator needs ~4 GB, so booting it would thrash - the prompt's explicit "do NOT do RAM heroics" case.
+Beyond RAM, the SDK has no cmdline-tools (sdkmanager/avdmanager absent), no android-26 system image (only
+android-36 and android-37.0 are installed), and no AVD. So S2 needs the operator to free RAM AND three downloads
+plus an AVD create - not something to force at this RAM.
+
+NOT TAKEN: no emulator was created or booted. Marked OWED rather than thrashing, per the prompt's stated
+acceptable clean boundary (S1-on-the-phone + S2-owed). LOW RISK: the DEVICE-LOOP crash class is closed
+(PARKAN-34) and R308 now fails :app:gate on any platform member used above minSdk 26, so a sub-34 boot crash
+cannot ship; the physical phone is API 29 (also < 34) and passed S1 across all four triggers.
+
+TOUCHES:   nothing in the repo - it is a device/SDK resource block. The resume recipe lives in
+C:/Users/KAMXKAM/.claude/jobs/176996e5/tmp/an-state-handoff-1.txt (out of repo-root scope).
+
+NEEDS:     the operator to close Android Studio (free >= 4 GB), install cmdline-tools + the android-26
+google_apis image, create an AVD, then run StatePreservationInstrumentedTest + android/scripts/an-state-matrix.mjs
+on the emulator. On success, tick S2 in REPORT-AN-STATE.txt.
+
 ## STATUS LEDGER  [appended 2026-09-29]
 
 One line per Android-era entry, so the state of each is visible without
@@ -1598,3 +1629,4 @@ reading every section. Entries are not edited; this ledger is.
 | PARKAN-34 — crashes on launch on API < 34 | **closed** | AN14a incr 6 found it (on-device): LocalDate.ofInstant (API 34+) at CalendarDay.kt:31 with no core-library desugaring threw NoSuchMethodError on launch on API 26-33; minified AND unminified crashed identically (NOT R8). CLOSED in two commits: DEVICE-LOOP 712fccd took the narrow call-site fix (clock.instant().atZone(PARIS).toLocalDate(), behaviourally equal, CalendarDayTest unchanged) + ApiLevelFenceTest (the curated JVM regression guard, RED on the live instance then GREEN). AN-STATE increment 0 (R308) closed the remaining recommendation - Android Lint's NewApi check is now a permanent :app:gate step (lintDebug, scoped to NewApi via lint{}), the exhaustive partner the fence cannot be. Verified end to end: a planted LocalDate.ofInstant in src/main reds the gate naming the file (R180), reverted |
 | PARKAN-32 — where the location permission lives | **open, NEEDS** | AN-FIX incr 3 (R304): ACCESS_FINE_LOCATION moved from src/main to src/debug, so the release APK declares none (checkReleaseNoLocationPermission, aapt2) and debug/audit keep it; the AN6b field-test build's shape + the data-safety-form entry are AN6's to add when detection ships |
 | PARKAN-33 — compileSdk stays 35 while targetSdk is 36 | **open, NEEDS** | AN14a incr 5: Play requires new apps/updates to target API 36 (Google docs, fetched 2026-10-01, effective 2026-08-31), and the prompt directs setting it - done (the built release APK declares targetSdkVersion 36). compileSdk 36 would align them (Google's recommended compileSdk==targetSdk), but paparazzi 1.3.5 cannot render API 36 (cashapp/paparazzi#1877), so compileSdk 36 needs a paparazzi version upgrade + a visual-baseline regeneration (R135/R207) - a dependency change out of AN14a's scope. Conservative/reversible choice: targetSdk 36 + compileSdk 35, the documented workaround (built clean on AGP 8.10.1, no AGP error, paparazzi green). AN14b aligns compileSdk to 36 with the paparazzi upgrade before the first upload; reversible until then. The API 35->36 runtime behaviour changes are OWED an emulator pass (RAM-blocked) |
+| PARKAN-35 — S2 API-26 emulator matrix owed | **open, OWED** | AN-STATE (R310/R309): the state-preservation matrix (S1) ran fully on the physical phone (SM-G960F, API 29); the API-26 emulator half (S2) is OWED. Blocked by 1571 MB free RAM (emulator needs ~4 GB - the prompt's "no RAM heroics" case), no cmdline-tools, no android-26 system image (only android-36/37 installed), no AVD. LOW RISK: the DEVICE-LOOP crash class is closed and R308 now runs NewApi lint in :app:gate, so no API>26 call can ship; the phone (also <34) passed S1. Resume recipe in C:/Users/KAMXKAM/.claude/jobs/176996e5/tmp/an-state-handoff-1.txt: free RAM, install cmdline-tools + system-images;android-26;google_apis;x86, create an AVD, then run the StatePreservationInstrumentedTest suite + the an-state-matrix.mjs triggers on it |

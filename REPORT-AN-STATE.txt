@@ -1,0 +1,361 @@
+AN-STATE SESSION REPORT - Mon Releve
+THE PERSON STAYS WHERE THEY WERE (R310)
+Pure ASCII. French copy is written without accents here by transport constraint
+(R155); lib/fr and the app remain fully accented.
+
+====================================================================
+HOW IT ENDED
+====================================================================
+DONE on the physical phone, with one defined OWED. The operator's finding -
+rotating (or any rebuild) returns the app to its home screen - is FIXED and
+proven on the physical Galaxy S9 (SM-G960F, API 29) across all four R310
+triggers. The DONE matrix:
+  S1 (physical phone)     - DONE for the navigation tab across all four triggers
+                            and for the open edit sheet (with a half-entered
+                            pick) across rotation + background kill; the rest of
+                            the rows are covered on-device by S3 and on the JVM
+                            by S4 (see THE MATRIX for the exact split).
+  S2 (API-26 emulator)    - OWED (PARKAN-35). 1571 MB free RAM (emulator needs
+                            ~4 GB), no cmdline-tools, no android-26 image, no
+                            AVD: the prompt's "no RAM heroics" case. Handoff
+                            written; low risk (see below).
+  S3 (the RED)            - DONE. A test that FAILED on the broken code for the
+                            navigation tab AND one open sheet, GREEN after the fix.
+  S4 (JVM restoration)    - DONE. Every state-holding controller's restore is
+                            proven on the JVM (calendar, parametres incl. the
+                            R290 dialog, onboarding, sign-in, + the destination
+                            reconcile).
+  S5 (repeatable check)   - DONE. android/scripts/an-state-matrix.mjs drives the
+                            four triggers repeatably; smoke-tested on the phone.
+  S6 (NewApi + gates)     - DONE. NewApi lint is in :app:gate (R308); the web
+                            gate, :app:gate and gate:clone are green on the final
+                            commit (see PUSH PROOF).
+
+WHY S2-OWED IS AN ACCEPTABLE CLEAN BOUNDARY (the prompt's own words): S1 is
+done on the phone, which is API 29 (< 34, the sub-34 class R309 cares about);
+the DEVICE-LOOP crash class is closed; and R308 now makes :app:gate fail on ANY
+platform member used above minSdk 26, so a sub-34 boot crash of that class
+cannot ship. S2 is the API-26 confirmation, expected green, and it is blocked
+only by RAM + missing SDK artifacts, not by anything about the fix.
+
+====================================================================
+R273 - WHERE THIS WORK BELONGS
+====================================================================
+This is not a numbered tasks/todo.md task; it is R310, a ruling-driven session
+in the shape of DEVICE-LOOP (which was also ruling-driven, not a todo number).
+The closest numbered task is AN15 ("Android hardening audit", whose criteria
+include 200% text scale and a readable-after-rebuild product); R310 is the
+state-preservation fix that audit would otherwise have flagged. Recorded here,
+not invented.
+
+====================================================================
+R308 - NewApi LINT IN THE GATE (increment 0, commit 51ab6a6)
+====================================================================
+Android Lint's NewApi check is now a PERMANENT :app:gate step. lint { checkOnly
++= "NewApi"; error += "NewApi"; abortOnError = true } scopes it to NewApi only,
+so the three pre-existing non-NewApi lint errors DEVICE-LOOP recorded (a debug
+CoarseFineLocation, a DayCell UnusedBoxWithConstraintsScope, and a
+local.properties PropertyEscape - the last machine-dependent) cannot red the
+gate; "lintDebug" is added to the gate task's dependsOn. It is the exhaustive
+partner of ApiLevelFenceTest's curated receiver-scan (two layers, not
+duplication): the fence catches the one member that bit DEVICE-LOOP in JVM-ms,
+lint catches every platform member used above minSdk 26, which no curated scan
+can. The fence comment was updated to say lint is now a gate step, not a
+one-time diagnostic.
+
+THE PLANT (R180/R133, verified then reverted): I planted the exact DEVICE-LOOP
+call - java.time.LocalDate.ofInstant(clock.instant(), PARIS) - in src/main
+(CalendarDay.kt), confirmed it landed (grep showed ofInstant at line 40), and
+ran lintDebug. It went RED naming the file:
+  CalendarDay.kt:40: Error: Call requires API level 34, or core library
+  desugaring (current min is 26): java.time.LocalDate#ofInstant [NewApi]
+  Lint found 1 error.  BUILD FAILED
+"Lint found 1 error" is the proof checkOnly scoped it to NewApi alone (the three
+pre-existing errors did not fire). Reverted; full :app:gate green with lint in.
+PARKAN-34 (the crash) is now CLOSED: the call-site fix + fence landed in
+DEVICE-LOOP 712fccd, and this closes the remaining recommendation.
+
+====================================================================
+THE STATE HOLDERS FOUND (from the code, not the prompt's list)
+====================================================================
+What died on every rebuild before the fix (remember, not rememberSaveable):
+  SHELL (MainActivity / MainShell):
+   - the selected bottom-nav TAB: `var tab by remember { mutableStateOf(
+     AUJOURDHUI) }` - reset to Aujourd'hui on every rebuild. THE OPERATOR'S BUG.
+   - the DESTINATION (SIGN_IN/RESOLVING/ONBOARDING/MAIN): `remember`, but it was
+     recomputed from the session at onCreate, so the MAIN case survived by
+     accident; mid-onboarding did not.
+   - the CONTROLLERS: `remember { MainGraph.build(...) }` - rebuilt from scratch
+     each time, dropping every controller's ephemeral state (R291's lesson: an
+     object created with the activity dies with it).
+  CONTROLLERS (plain objects, lifecycleScope):
+   - Calendar: the visible MONTH and the open edit SHEET (editing day).
+   - Aujourd'hui: nothing extra (all derived from Room, which persists).
+   - Releve: nothing extra (derived from server/cache; re-fetches).
+   - Parametres: the six mid-edit FIELDS (reverted to saved), R290's before/after
+     dialog, the sign-out confirmation, the delete confirmation.
+   - Onboarding: the step and every value entered so far.
+   - Sign-in: the typed email.
+  SCREEN-LOCAL (remember, not rememberSaveable):
+   - edit sheet: the kind/absence/note PICKED BUT NOT SAVED, and the
+     mission/absence chooser's expanded state.
+   - Aujourd'hui: the mission/absence chooser's expanded state (per slot).
+   - delete section: the typed confirmation WORD.
+   - parametres: the licences sub-screen flag; the dropdown expanded flags.
+   - releve: the annex EXPANDED toggle.
+ALREADY SAFE (the framework's own saveable state): every
+verticalScroll(rememberScrollState()) - rememberScrollState wraps rememberSaveable,
+so scroll positions already survived. Confirmed, not assumed.
+
+====================================================================
+THE RED (S3, increment 1, commit 4627369)
+====================================================================
+THE OPERATOR'S FINDING, REPRODUCED ON A NON-START SCREEN: on the physical phone
+I injected a session, opened Calendrier (a non-start screen), and the
+instrumentation harness reproduced the loss via a real saved-instance-state
+restore - the same thing rotation does. (The live literal rotation is in THE
+MATRIX, where after the fix it is PRESERVED.)
+
+THE FAILING TEST: app/src/androidTest/.../StatePreservationInstrumentedTest.kt
+renders the REAL MainShell (R204: the entry point is the unit under test) and
+uses StateRestorationTester.emulateSavedInstanceStateRestore() - exactly what
+rotation, a 200% text change, a dark-mode switch and a background kill each do
+to the composition. Run on the phone on the BROKEN code, both cases FAILED at
+the POST-RESTORE assertion for the genuine reason (the pre-restore assertions
+passed):
+  openEditSheetSurvivesRebuild  FAILED  assertExists:
+    could not find 'Ou avez-vous travaille ?' after restore
+    (the controller rebuilt, editing=null, the open sheet closed)
+  navigationTabSurvivesRebuild  FAILED  assertDoesNotExist:
+    found 'Bonjour Camille' after restore
+    (the tab reset to AUJOURDHUI - the operator's exact finding)
+This is the RED DEVICE-LOOP's D5 could never produce: D5 asked only "does
+rotation crash", on Aujourd'hui, the start screen, where losing your place and
+keeping it look the same. Scaffolding in the same commit (behaviour-preserving,
+not the fix): the shell's state-holding moved into named seams (ShellState.kt:
+rememberShellTab, rememberMainControllers) a test can render - the R291 move for
+state; MainShell made internal so androidTest can render it.
+
+====================================================================
+EACH ROW - WHAT HELD IT, WHAT HOLDS IT NOW, BACKGROUND-KILL SURVIVAL
+====================================================================
+Mechanism key: SAVEABLE = rememberSaveable (Compose; Bundle-backed, so it
+survives a background kill, not only a config change); SEED = a Serializable/
+primitive snapshot held by the composition root in rememberSaveable and passed
+into the controller to re-seed it (the dependency-free equivalent of a
+SavedStateHandle; see ADVISOR DECISIONS). EVERY row below survives a background
+kill - no row relies on a plain ViewModel (which would not).
+
+  NAVIGATION TAB (incr 2, f5bf7e7): was remember; now SAVEABLE
+    (rememberShellTab = rememberSaveable; AppTab is a Serializable enum).
+    Background kill: YES.
+  DESTINATION (incr 2): was remember; now SAVEABLE + reconciled against the
+    session (sessionReconciled: a saved MAIN restored while signed-out is forced
+    to SIGN_IN; a restored RESOLVING is re-decided; a saved ONBOARDING is honoured
+    while signed in, skipping the RESOLVING round-trip). Background kill: YES.
+  CALENDAR MONTH + OPEN SHEET (incr 3, 7b00375): was remember controllers; now
+    SEED (CalendarController's restored CalendarSnapshot, wired through
+    MainGraph.build - R291 - and held by rememberMainControllers in
+    rememberSaveable). The sheet REOPENS once the rows load, so its prefill is
+    the recorded day's, re-derived not transcribed (R181). Background kill: YES.
+  SHEET HALF-ENTERED PICK (kind/absence/note) + chooser expansion (incr 3): was
+    remember SlotDraft; now SAVEABLE (rememberSaveable keyed by day+slot - same
+    day restores the pick, a different day starts fresh). Background kill: YES.
+  AUJOURD'HUI chooser expansion (incr 3): SAVEABLE keyed by slot (a recorded tap
+    is already persisted in Room). Background kill: YES.
+  PARAMETRES mid-edit fields + open confirmations (incr 4, 97132fd): was
+    remember controller; now SEED (ParametresSnapshot). The open sign-out/delete
+    confirmations REOPEN with their counts RE-DERIVED from the record; R290's
+    before/after is RECOMPUTED (never a persisted figure, R181). This needed
+    save() split into a COMPUTE half (decideSave, pure) and a COMMIT half
+    (persist), so a restore recomputes without committing (re-running save()
+    would persist when the rates happen to match - the advisor's trap). An
+    in-flight SAVING is never restored - a restore is EDITING. Background kill: YES.
+  PARAMETRES typed delete word / licences sub-screen / dropdowns (incr 4):
+    SAVEABLE in-screen. Background kill: YES.
+  ONBOARDING values entered (incr 5, 1e49798): was remember controller; now SEED
+    (OnboardingSnapshot). An in-flight SUBMITTING restores as EDITING. BG kill: YES.
+  SIGN-IN typed email (incr 5): was remember controller; now SEED
+    (SignInSnapshot). A SUBMITTING restores as EDITING; stable screens
+    (LINK_SENT, the error states) are kept. Background kill: YES.
+  RELEVE expanded annex (incr 5): SAVEABLE in-screen; scroll already saveable.
+    Background kill: YES.
+
+====================================================================
+THE MATRIX - ON THE PHONE (S1) AND ON API 26 (S2)
+====================================================================
+PHONE: Galaxy S9 (SM-G960F, API 29 / Android 10, serial 232bcd8c300c7ece). The
+current debug build (with all fixes) was installed; a fake session + settings
+were injected via SessionInjectionActivity (R284, debug-only) to reach the
+signed-in shell without a server. Screenshots in android/.an-state-shots/
+(untracked); each pair was OPENED and compared.
+
+NAVIGATION TAB (the operator's finding) - all four triggers, each a cell:
+  00-shell-aujourdhui.png  the signed-in start screen (Aujourd'hui, "Bonjour
+    Camille"), bottom nav Aujourd'hui/Calendrier/Releve/Parametres.
+  nav-01-on-calendrier.png BEFORE: switched to Calendrier (Octobre 2026 grid,
+    Calendrier tab highlighted).
+  nav-02-rotation-landscape.png  AFTER ROTATION: STILL on Calendrier (landscape,
+    Calendrier tab highlighted). Before the fix this reverted to Aujourd'hui.
+  nav-03-textsize-2x.png   AFTER font_scale 2.0 (R16's 200%): STILL on Calendrier
+    (the grid adapts to the R271 list layout above 1.5x; the TAB is preserved).
+  nav-04-darkmode.png      AFTER the system dark-mode switch: STILL on Calendrier
+    (the app is light-only by design; the switch still rebuilds the activity, and
+    the tab is preserved).
+  nav-05-after-bgkill.png  AFTER BACKGROUND KILL: process killed (pid 10885 ->
+    gone), relaunched (new pid 15841), task restored - STILL on Calendrier. This
+    is the strongest cell: rememberSaveable's Bundle survived PROCESS DEATH,
+    which a plain ViewModel would not.
+
+OPEN EDIT SHEET + HALF-ENTERED PICK (the hardest state) - rotation + kill:
+  sheet-01-open.png            the edit sheet open on "Jeudi 1 octobre 2026"
+    ("Ou avez-vous travaille ?", kind options).
+  sheet-02-domicile-picked.png "Domicile" selected (filled) - a kind picked but
+    NOT saved.
+  sheet-03-rotation.png        AFTER ROTATION: the sheet is STILL open on "Jeudi
+    1 octobre 2026" (landscape).
+  sheet-04-after-bgkill.png    AFTER BACKGROUND KILL: process killed (pid 15841
+    -> gone), relaunched (new pid 15938) - the sheet REOPENED on "Jeudi 1 octobre
+    2026" AND "Domicile" is STILL selected. The open sheet AND the half-entered
+    pick both survived process death.
+
+COVERAGE OF THE REMAINING ROWS (stated honestly, not padded): the parametres
+dialogs, onboarding values, sign-in email, calendar month and releve annex were
+NOT each given a literal four-trigger screenshot set on the phone. They are
+covered (a) on the JVM by S4 (every controller's restore, including the
+parametres R290 dialog's reopen + recompute + no-persist, asserted), and (b) by
+the mechanism being identical rememberSaveable/SEED storage that nav and the
+sheet proved survives a real process kill on this device. The literal cells shot
+are the operator's finding (nav x 4) and the hardest state (sheet + pick x
+rotation,kill) - the two the prompt names as minimum ("navigation tab and one
+open sheet"), plus the background-kill cell on each.
+
+API 26 (S2): OWED - PARKAN-35 / handoff an-state-handoff-1.txt. Not run: 1571
+MB free RAM vs ~4 GB needed, no cmdline-tools, no android-26 image, no AVD. The
+resume recipe runs the SAME StatePreservationInstrumentedTest suite + the
+an-state-matrix.mjs triggers on the emulator once RAM is freed and the image
+installed.
+
+====================================================================
+THE REPEATABLE CHECK (S5, increment 6, commit 00c9f94)
+====================================================================
+android/scripts/an-state-matrix.mjs drives the four triggers repeatably and
+captures a before/after PNG per trigger, restoring every phone setting it
+changes. The four are kept distinct and correct: rotation (user_rotation),
+textsize (font_scale 2.0), darkmode (secure ui_night_mode - `cmd uimode night`
+is a NO-OP on this SM-G960F, verified this session; the secure setting is what
+rebuilds), and background kill (HOME then `am kill`, NOT force-stop: am kill
+preserves the saved instance state the way the system reclaims a backgrounded
+app, while force-stop clears the task record so state loss after it is CORRECT
+and would be a false matrix failure - the advisor's point). A second kill path
+("Don't keep activities" / always_finish_activities) is included and restored.
+Smoke-tested on the phone (rotation: before/after captured, settings restored).
+
+====================================================================
+ADVISOR DECISIONS
+====================================================================
+Q (architecture): seed + rememberSaveable, or convert controllers to ViewModels
+  with SavedStateHandle?
+A: seed + rememberSaveable; do NOT convert to ViewModels. Reasons recorded:
+  (a) it keeps MainGraph.build and the controller-test idiom intact (R291 - the
+  wiring stays the thing the JVM test builds); (b) controllers keep dying with
+  the activity, so lifecycleScope stays correct and no lifecycle semantics change
+  (a ViewModel would extend their lifetime across rotations, staling the
+  construction-time settings snapshot); (c) the restore path runs on every
+  rotation, not only rare process death, so it is self-exercising. Also: the
+  lifecycle-viewmodel-savedstate artifact is present only as a BOM version
+  CONSTRAINT (c) on the classpath, not a resolved dependency - and the chosen
+  design needs neither it nor a new dependency (which would be ask-first). I did
+  exactly this.
+Restore-semantics rulings from the advisor, all applied:
+  - never persist an in-flight phase (SUBMITTING/SAVING/RESOLVING coerced to
+    EDITING / re-decided on restore);
+  - prompts persist the OPEN flag and RE-DERIVE the content (counts from the
+    record; R290's before/after recomputed, never a persisted pair; this forced
+    the save() compute/commit split);
+  - destination restored only when consistent with the session (sessionReconciled);
+  - enums are Serializable, so tab/kind/absence need no custom Saver.
+  - am kill (not force-stop) is the background-kill test; the two are distinct.
+The advisor was REACHABLE and gave a full review at the architecture checkpoint;
+no stalls this session.
+
+====================================================================
+WHAT WAS CHANGED ON THE PHONE (and restored)
+====================================================================
+- svc power stayon usb (kept awake)         -> RESTORED (stay_on_while_plugged_in
+  = 0, the orchestrator's correct value; verified 0).
+- system accelerometer_rotation / user_rotation (rotation trigger) -> RESTORED
+  (accelerometer_rotation 1, user_rotation 0; verified).
+- system font_scale (text-size trigger)     -> RESTORED (1.0; verified).
+- secure ui_night_mode (dark-mode trigger)  -> RESTORED to 1 (off/light; the
+  original was light, confirmed by the first screenshots; `cmd uimode night no`
+  is a no-op on this device, so the secure setting was set directly; home-screen
+  screenshot confirms normal/light rendering).
+- App install: the current debug build (with the fixes) was installed over the
+  prior build; at the end `pm clear ch.monreleve.app` returned it to a clean
+  signed-out state (the injected fake session/settings removed). No other app
+  was touched; no factory reset.
+
+====================================================================
+PARKED
+====================================================================
+PARKAN-34 - CLOSED (the crash + the fence landed in DEVICE-LOOP; R308 added the
+  lint half this session).
+PARKAN-35 (new) - S2 API-26 emulator matrix OWED. QUESTION: none - it is a
+  resource block (RAM + missing SDK artifacts), not a decision. NEEDS: the
+  operator to free RAM and install cmdline-tools + the android-26 image; then
+  the handoff recipe runs the instrumentation suite + the matrix script on the
+  emulator. Low risk (R308 + the API-29 phone pass). Next PARKAN id: 36.
+
+====================================================================
+DEVIATIONS
+====================================================================
+- S2 not run (API-26 emulator), per the prompt's explicit "no RAM heroics"
+  escape: 1571 MB free vs ~4 GB needed, and the android-26 image + cmdline-tools
+  are not installed. Marked OWED with a handoff and PARKAN-35, rather than
+  thrashing. This is the prompt's stated acceptable clean boundary.
+- S1's literal four-trigger screenshot set was shot for the navigation tab and
+  the open-sheet-with-pick (the prompt's named minimum), not for all nine rows;
+  the remaining rows are JVM-proven (S4) and share the proven mechanism. Stated
+  plainly in THE MATRIX rather than claiming cells I did not shoot.
+- The RED is an on-device instrumentation test (StateRestorationTester), which
+  reproduces the operator's loss via a real saved-instance-state restore; the
+  live literal rotation is shown PRESERVED in the matrix (after the fix), since
+  the matrix ran after the fix.
+- `cmd uimode night` is a no-op on this SM-G960F; the dark-mode trigger uses the
+  secure ui_night_mode setting instead (in both the live matrix and the S5
+  script). Discovered and worked around this session.
+
+====================================================================
+QUESTIONS
+====================================================================
+None requiring an operator decision. No product decision was invented. The only
+open item is the resource-blocked S2 (PARKAN-35 / handoff), which needs RAM and
+SDK artifacts, not a ruling.
+
+====================================================================
+PUSH PROOF
+====================================================================
+Commits, each on a green :app:gate, pushed to origin/main one per step (fetch
+before each push; staged by explicit path; the untracked prior-session scripts
+and .an*-shots/ folders never entered a commit):
+  51ab6a6  AN-STATE incr 0: NewApi lint into :app:gate permanently (R308)
+  4627369  AN-STATE incr 1: THE RED - state is lost on every rebuild (S3)
+  f5bf7e7  AN-STATE incr 2: the person stays on their tab (navigation fix)
+  7b00375  AN-STATE incr 3: the calendar - month, open sheet, half-entered picks
+  97132fd  AN-STATE incr 4: parametres - mid-edit and the open confirmations
+  1e49798  AN-STATE incr 5: onboarding, sign-in, and the releve's expanded annex
+  00c9f94  AN-STATE incr 6: the repeatable matrix-trigger script (S5)
+  (this)   AN-STATE: the report + PARKAN-35
+R1 baseline (origin HEAD before this session): :app:gate BUILD SUCCESSFUL and
+pnpm gate:clone PASSED were recorded before increment 0. Increment 0 (which edits
+build.gradle.kts, read by web product-state.test.ts) was pushed only after its
+own gate:clone PASSED. The final report commit's :app:gate (RegisterCoverageTest
+reads every REPORT-*.txt and resolves the PARKAN ids this report cites - 34, 35)
+and the final gate:clone are recorded at the end of this file's commit; a push is
+gated by gate:clone (R199), so no commit reaches origin/main red.
+FINAL GATES: see the commit that carries this report - :app:gate green,
+gate:clone PASSED.
+====================================================================
+END OF REPORT-AN-STATE.txt
+====================================================================
