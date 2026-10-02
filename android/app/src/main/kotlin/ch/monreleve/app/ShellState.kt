@@ -15,6 +15,7 @@ import ch.monreleve.app.auth.PostOutcome
 import ch.monreleve.app.calendar.CalendarSnapshot
 import ch.monreleve.app.data.remote.DossierResult
 import ch.monreleve.app.data.repo.EntryRepository
+import ch.monreleve.app.detection.DetectionScheduling
 import ch.monreleve.app.onboarding.SettingsSaver
 import ch.monreleve.app.parametres.ParametresSnapshot
 import ch.monreleve.app.settings.SettingsStore
@@ -97,6 +98,11 @@ fun rememberMainControllers(
                 restoredCalendar = CalendarSnapshot(savedMonth, savedEditingDay),
                 restoredParametres = savedParametres,
                 detectionModeStore = SharedPrefsDetectionModeStore(context),
+                // R315/incr 4: enabling auto mode starts the WorkManager sampler; disabling stops it at once
+                // and clears the day's cursor. The permission that lets a wake get a fix is granted by R316's
+                // flow before the enable call.
+                startSampling = { DetectionScheduling.startSampling(context) },
+                stopSampling = { DetectionScheduling.stopSampling(context) },
             )
         }
     // Keep the saved snapshots current from the controllers' observed state, so the LATEST month, open sheet,

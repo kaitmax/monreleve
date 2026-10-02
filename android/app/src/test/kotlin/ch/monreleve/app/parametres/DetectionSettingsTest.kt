@@ -79,11 +79,13 @@ class DetectionSettingsTest : FunSpec({
         body.contains("loggingMode").shouldBeFalse()
     }
 
-    test("R315: turning auto detection ON PATCHes the enable body, stores AUTO_DETECT, reflects it, no dialog") {
+    test("R315: turning auto detection ON PATCHes the enable body, stores AUTO_DETECT, starts sampling, no dialog") {
         runTest {
             val repo = LocalEntryRepository(FakeEntryDao(), AUTO_CLOCK)
             val saver = AutoRecordingSaver()
             val modeStore = ModeStoreFake()
+            var sampleStarts = 0
+            var sampleStops = 0
             val controller =
                 ParametresController(
                     saver = saver,
@@ -92,6 +94,8 @@ class DetectionSettingsTest : FunSpec({
                     taxYear = AUTO_TAX_YEAR,
                     scope = this,
                     modeStore = modeStore,
+                    startSampling = { sampleStarts++ },
+                    stopSampling = { sampleStops++ },
                 )
             advanceUntilIdle()
 
@@ -101,6 +105,9 @@ class DetectionSettingsTest : FunSpec({
             saver.bodies.single() shouldBe detectionConsentBody(true)
             modeStore.mode shouldBe LoggingMode.AUTO_DETECT
             controller.state.value.autoDetectionEnabled.shouldBeTrue()
+            // Enabling starts sampling and never stops it.
+            sampleStarts shouldBe 1
+            sampleStops shouldBe 0
             // SPEC 13: toggling is never a confirmation dialog away - no pending prompts are raised.
             controller.state.value.pendingRateChange.shouldBeNull()
             controller.state.value.signOutPrompt.shouldBeNull()

@@ -93,6 +93,7 @@ object MainGraph {
         // auto-detection toggle. Defaulted (in-memory / no-op) so the wiring and controller tests need not name
         // them; the app injects the SharedPreferences store (ShellState) and the real stop arrives in increment 4.
         detectionModeStore: DetectionModeStore = InMemoryDetectionModeStore(),
+        startSampling: () -> Unit = {},
         stopSampling: () -> Unit = {},
     ): MainControllers =
         MainControllers(
@@ -112,6 +113,7 @@ object MainGraph {
                     localStore,
                     authenticatedPost,
                     detectionModeStore,
+                    startSampling,
                     stopSampling,
                     restoredParametres,
                 ),

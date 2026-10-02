@@ -225,6 +225,7 @@ class ParametresController(
     // off (SPEC 13). Both defaulted so the increment-1 settings tests need not name them; the app injects the
     // SharedPreferences store and the real sampler-stop (the sampler arrives in increment 4).
     private val modeStore: DetectionModeStore = InMemoryDetectionModeStore(),
+    private val startSampling: () -> Unit = {},
     private val stopSampling: () -> Unit = {},
     // AN-STATE (R310): the state to restore after a rebuild (null = a fresh open). Seeds the six edited fields;
     // the open confirmations are reopened once the rows load (resolvePendingReopen), with counts re-derived and
@@ -537,8 +538,9 @@ class ParametresController(
                 is PostOutcome.Ok ->
                     if (outcome.status in HTTP_OK..HTTP_OK_MAX) {
                         modeStore.save(if (enable) LoggingMode.AUTO_DETECT else LoggingMode.MANUAL)
-                        // SPEC 13: revoking stops sampling immediately, before anything else.
-                        if (!enable) stopSampling()
+                        // SPEC 13: revoking stops sampling immediately; enabling starts it (the permission that
+                        // lets a wake get a fix is granted by R316's flow before this call).
+                        if (enable) startSampling() else stopSampling()
                         mutableState.update { it.copy(autoDetectionEnabled = enable, error = null) }
                     } else {
                         // The server refused (e.g. consent_required): the toggle does not move, and says so.
