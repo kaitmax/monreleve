@@ -131,6 +131,24 @@ records it. `FencesTest.detectionNeverWritesAnEntry` (fence 7) asserts detection
 references the entry-write path (EntryRepository/RecordCommand); the plant in REPORT-AN6a.txt
 shows it fires.
 
+## Only HIGH proposes in the product (AN-AUTO increment 1, R311)
+
+**R311 reverses SPEC 13.1/11.2's "MEDIUM proposes, LOW withholds".** In the PRODUCT a proposal
+is surfaced to the person **only when the tier is HIGH**; **MEDIUM and LOW both withhold** and
+show the not-sure message (R312, `fr/DetectionCopy.NOT_SURE`). Fewer proposals, fewer wrong ones:
+the field protocol names the one error no message can cover - a confident, *wrong* HIGH day
+(FALSE-CH, K1/R278) - so until the field test measures how often that happens, the product
+narrows what it proposes at all.
+
+- **The measurement build is unchanged.** `computeProposal` / `proposedKind` / `exportFieldRun`
+  still score HIGH and MEDIUM separately against the §3 table, so a field run is scored against
+  exactly what AN6a built. Only the PRODUCT changes.
+- **The product decision has one home (R206):** `detection/DetectionOutcome.detectionOutcome`
+  maps a `Proposal?` to `Proposed(proposal)` (HIGH only) or `NotSure` (MEDIUM, LOW, or a withheld
+  day). The Aujourd'hui auto surface and the seven-track replay both read it, so they cannot
+  disagree. `DetectionOutcomeTest` asserts each tier end to end, including that a MEDIUM day is
+  still scored by the measurement path **and** withheld by the product.
+
 ## Sampling and background mechanics (AN6a increment 5)
 
 **The entry point is `DetectionSession.onFix(latitude, longitude, epochMillis)`** — classify,
