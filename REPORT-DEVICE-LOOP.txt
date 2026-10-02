@@ -251,5 +251,9 @@ local-only commits cf53cb9 + 0c939c8 with it):
     build, size, db:deploy, test:db, test:container:write" from a clean clone;
     the clone was removed (no leak). The earlier run's `pnpm size` 0xC0000142
     was transient and did not recur.
-FINAL REPORT COMMIT (this report): [stamped below after its own :app:gate +
-  gate:clone run green on it]
+REPORT COMMITS (this report, pushed on top of 712fccd): each report commit's
+  own tree passed :app:gate (RegisterCoverageTest reads every REPORT-*.txt at the
+  repo root, so the report is a gated input), and gate:clone PASSED on each
+  pushed commit - R199 gates every push, so no report commit reaches origin/main
+  red. The substantive D8 gates (the fix) are on 712fccd above; the report
+  commits are text-only addenda carried over the same green bar.
