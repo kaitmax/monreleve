@@ -159,6 +159,23 @@ android {
         // AN4 increment 1: BuildConfig.API_BASE_URL carries the per-build-type base URL.
         buildConfig = true
     }
+    // R308 (AN-STATE increment 0). Android Lint's NewApi check, wired into :app:gate PERMANENTLY. The crash
+    // DEVICE-LOOP fixed was an API 34 method (LocalDate.ofInstant) called on an API 29 phone; ApiLevelFenceTest
+    // is the cheap forever regression guard for THAT member, but R211's warning stands - a guard against one
+    // mistake is not a guard against its class. NewApi catches EVERY platform member used above minSdk (26),
+    // which no curated source scan can. Two layers, not duplication: the fence runs on the JVM in milliseconds
+    // on every testDebugUnitTest; this is the comprehensive sweep DEVICE-LOOP ran once as a diagnostic.
+    //
+    // SCOPED TO NewApi (checkOnly), deliberately. DEVICE-LOOP's diagnostic lintDebug found three pre-existing,
+    // non-NewApi lint errors (a src/debug CoarseFineLocation, a Compose UnusedBoxWithConstraintsScope, and a
+    // local.properties PropertyEscape - the last exists on THIS machine but not in a clean clone, which would
+    // make the gate's verdict machine-dependent). checkOnly runs NewApi and nothing else, so the gate fails on
+    // a late-API call and on nothing pre-existing; broadening lint to the whole rule set is its own task.
+    lint {
+        checkOnly += "NewApi"
+        error += "NewApi"
+        abortOnError = true
+    }
     // AN5 increment 1: MigrationTestHelper reads the exported schema JSON at
     // runtime from the test APK's assets, so the schemas/ directory must be an
     // androidTest asset source. Without this the harness fails on-device with
@@ -731,6 +748,10 @@ tasks.register("gate") {
         "checkReleaseNoDevComponent",
         "checkMinifiedWireContract",
         "checkLicences",
+        // R308 (AN-STATE): Android Lint's NewApi check, scoped to NewApi only (lint{} above). The
+        // comprehensive partner of ApiLevelFenceTest - it catches every platform member used above minSdk 26,
+        // which the curated fence cannot. DEVICE-LOOP ran it once as a diagnostic; this makes it permanent.
+        "lintDebug",
     )
     doLast {
         println(
@@ -754,7 +775,10 @@ tasks.register("gate") {
             |     key and enum value, derived from docs/api-v1.md, survives in the
             |     MINIFIED release dex - the wire R8 could have renamed on the server),
             |     checkLicences (R298: every release runtime dependency is
-            |     attributed on the licences screen, derived from the build).
+            |     attributed on the licences screen, derived from the build),
+            |     lintDebug (R308: Android Lint's NewApi check, scoped to NewApi,
+            |     catches every platform member used above minSdk 26 - the
+            |     comprehensive partner of ApiLevelFenceTest's curated scan).
             |SKIPPED, with reason:
             |  - scripts/emulator.sh / screenshot.sh / walkthrough.sh (the AC2
             |    instrument): needs a real AVD with hardware acceleration. Not a

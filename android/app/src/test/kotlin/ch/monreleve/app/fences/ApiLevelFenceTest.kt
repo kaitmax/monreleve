@@ -28,8 +28,11 @@ import java.io.File
  * KNOWN LIMIT (stated, per the fences idiom): this is a CURATED list, not a
  * derivation of the whole API database. A text scan cannot know every java.time
  * (or platform) member added after API 26; the comprehensive sweep is Android
- * Lint's NewApi check, run once as a diagnostic in this loop (its result is in
- * the report). This fence is the cheap, forever regression guard for the class
+ * Lint's NewApi check, which R308 (AN-STATE) wired into :app:gate PERMANENTLY -
+ * scoped to NewApi only (lint{} in build.gradle.kts). DEVICE-LOOP ran it once as
+ * a diagnostic; it is now a forever gate step beside this fence (two layers, not
+ * duplication: this is the JVM-fast regression guard for the member that bit us,
+ * lintDebug is the exhaustive partner). This fence is the cheap, forever guard for the class
  * that actually bit us; extend BANNED below when lint or the docs name another
  * member added after minSdk and not desugared - each verified, never recalled.
  *
