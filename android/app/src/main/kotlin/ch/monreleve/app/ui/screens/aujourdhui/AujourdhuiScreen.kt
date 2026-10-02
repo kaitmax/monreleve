@@ -65,7 +65,7 @@ private const val THRESHOLD_DECIMALS = 1
 fun AujourdhuiScreen(
     state: AujourdhuiState,
     onRecord: (RecordedKind, Slot, AbsenceChoice?) -> Unit,
-    onConfirmDetected: (RecordedKind) -> Unit = {},
+    onConfirmDetected: (RecordedKind, Slot) -> Unit = { _, _ -> },
     onCorrectDetected: (RecordedKind, Slot, AbsenceChoice?, RecordedKind) -> Unit = { _, _, _, _ -> },
     modifier: Modifier = Modifier,
 ) {
@@ -82,7 +82,7 @@ fun AujourdhuiScreen(
 
         if (autoMode) {
             if (state.nearBorderNotice) NearBorderNotice()
-            AutoSection(state, onRecord, onConfirmDetected, onCorrectDetected)
+            AutoSection(state, AutoActions(onRecord, onConfirmDetected, onCorrectDetected))
         } else {
             Text(text = AujourdhuiCopy.QUESTION, style = FrontierType.h3)
             ManualSection(state, onRecord)

@@ -74,16 +74,15 @@ class RoomSchemaContractTest {
                     // AN-FIX F4 / R303: the local-only account tag, part of the primary key (v3).
                     "accountTag" to ("TEXT" to true),
                 ),
+            // R320: the four daily checks replace the continuous minutes tally. Each slot is a Classification
+            // name or NULL (MISSED); the tier is derived by the vote, never stored. No coordinate column.
             "daily_tally" to
                 mapOf(
                     "dayDate" to ("TEXT" to true),
-                    "minutesSwitzerland" to ("INTEGER" to true),
-                    "minutesElsewhere" to ("INTEGER" to true),
-                    "fixCount" to ("INTEGER" to true),
-                    "bufferFixCount" to ("INTEGER" to true),
-                    "windowStartMinuteOfDay" to ("INTEGER" to true),
-                    "windowEndMinuteOfDay" to ("INTEGER" to true),
-                    "tier" to ("TEXT" to false),
+                    "check1" to ("TEXT" to false),
+                    "check2" to ("TEXT" to false),
+                    "check3" to ("TEXT" to false),
+                    "check4" to ("TEXT" to false),
                 ),
         )
 

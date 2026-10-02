@@ -2,23 +2,22 @@ package ch.monreleve.app.data.local
 
 import androidx.room.Entity
 
-// AN6a increment 3. The day's detection tally, persisted. SPEC 13.1 is explicit about what
-// Room may hold here: minutes each side, fix count, buffer-fix count, the window, the tier -
-// "No location, no place name, no employer address." There is no coordinate column, and the
-// DDL scan (RoomSchemaContractTest, now over EVERY entity) proves it.
+// R320. The day's detection record, persisted. Under the four-window model a day holds the result of its FOUR
+// CHECKS (around 09:30 / 11:00 / 14:30 / 16:30 Paris): each slot is a Classification name - "INSIDE", "OUTSIDE",
+// or "BUFFER" - or NULL when that check was MISSED (no fix obtained inside its window). SPEC 13.1 is explicit about
+// what Room may hold: a conclusion per day, "no location, no place name, no employer address." There is no
+// coordinate column, and the DDL scan (RoomSchemaContractTest, over every entity) proves it.
 //
-// The tier is nullable and set at increment 4 (HIGH/MEDIUM/LOW from the tally); a LOW day
-// withholds its proposal. One row per calendar day (PK dayDate, an ISO Europe/Paris day, R28).
+// NO MINUTES, NO TIER COLUMN. The minutes-and-hysteresis tally is gone (R320 replaced it with the vote); the tier
+// is DERIVED from the four checks by the vote (Vote.kt), so it is never stored and cannot drift. One row per
+// calendar day (PK dayDate, an ISO Europe/Paris day, R28).
 
 @Entity(tableName = "daily_tally")
 data class TallyEntity(
     @androidx.room.PrimaryKey
     val dayDate: String,
-    val minutesSwitzerland: Int,
-    val minutesElsewhere: Int,
-    val fixCount: Int,
-    val bufferFixCount: Int,
-    val windowStartMinuteOfDay: Int,
-    val windowEndMinuteOfDay: Int,
-    val tier: String?,
+    val check1: String?,
+    val check2: String?,
+    val check3: String?,
+    val check4: String?,
 )

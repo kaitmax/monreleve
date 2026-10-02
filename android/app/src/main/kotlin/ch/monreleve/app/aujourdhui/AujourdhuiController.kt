@@ -17,15 +17,18 @@ import ch.monreleve.app.data.local.deviceClaimNow
 import ch.monreleve.app.data.local.todayInParis
 import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.RecordCommand
-import ch.monreleve.app.detection.DailyTally
+import ch.monreleve.app.detection.DayChecks
 import ch.monreleve.app.detection.DetectionOutcome
 import ch.monreleve.app.detection.InMemoryNearBorderNoticeStore
 import ch.monreleve.app.detection.NearBorderNoticeStore
-import ch.monreleve.app.detection.afterWorkingWindow
-import ch.monreleve.app.detection.computeProposal
+import ch.monreleve.app.detection.Proposal
+import ch.monreleve.app.detection.afterLastCheckWindow
+import ch.monreleve.app.detection.afternoonProposal
+import ch.monreleve.app.detection.dayProposal
 import ch.monreleve.app.detection.detectionOutcome
-import ch.monreleve.app.detection.expectedSamples
+import ch.monreleve.app.detection.morningProposal
 import ch.monreleve.app.detection.shouldSuggestManualForNearBorder
+import ch.monreleve.app.detection.toDayChecks
 import ch.monreleve.app.dossier.AggregatableEntry
 import ch.monreleve.app.dossier.LatenessForecast
 import ch.monreleve.app.dossier.pendingEntriesForYear
@@ -153,8 +156,12 @@ data class AujourdhuiState(
     val year: YearPanel? = null,
     /** AN-AUTO (R315): which mode records the person's days. MANUAL keeps the existing manual UI. */
     val loggingMode: LoggingMode = LoggingMode.MANUAL,
-    /** AN-AUTO (SPEC 11.2): today's auto surface - null in manual mode, or when today is already recorded. */
+    /** AN-AUTO (SPEC 11.2): today's auto surface for DAY granularity - null in manual mode, half-day, or recorded. */
     val auto: AutoDayState? = null,
+    /** R320: the morning's auto surface for HALF_DAY granularity (checks 1-2); null otherwise or when recorded. */
+    val autoMorning: AutoDayState? = null,
+    /** R320: the afternoon's auto surface for HALF_DAY granularity (checks 3-4); null otherwise or when recorded. */
+    val autoAfternoon: AutoDayState? = null,
     /** AN-AUTO (R313): render the near-border suggestion once (DetectionCopy.NEAR_BORDER). */
     val nearBorderNotice: Boolean = false,
 )
@@ -298,7 +305,16 @@ class AujourdhuiController(
         val fullDay = todays.firstOrNull { e -> e.portion == Portion.FULL }
         val morning = todays.firstOrNull { e -> e.portion == Portion.AM }
         val afternoon = todays.firstOrNull { e -> e.portion == Portion.PM }
-        val todayRecorded = fullDay != null || morning != null || afternoon != null
+        val autoMode = mode == LoggingMode.AUTO_DETECT
+        val halfDay = granularity == GranularityChoice.HALF_DAY
+        val checks = (lastTallies.firstOrNull { it.dayDate == today }?.toDayChecks()).orEmpty()
+        // R320: nothing is proposed until the day is concluded (after the last window, the evening) - "Votre
+        // journée vous sera proposée ce soir." ETAT C (a recorded slot) shows the recorded row, not a re-proposal.
+        val concluded = afterLastCheckWindow(clock)
+        // DAY granularity drives the single auto surface; HALF_DAY drives the morning and afternoon independently.
+        val dayAuto = slotAuto(autoMode && !halfDay && fullDay == null, dayProposal(checks), concluded)
+        val amAuto = slotAuto(autoMode && halfDay && morning == null, morningProposal(checks), concluded)
+        val pmAuto = slotAuto(autoMode && halfDay && afternoon == null, afternoonProposal(checks), concluded)
         mutableState.update {
             it.copy(
                 today = today,
@@ -307,24 +323,32 @@ class AujourdhuiController(
                 morning = morning?.toDayEntry(),
                 afternoon = afternoon?.toDayEntry(),
                 year = computeYear(lastEntries),
-                // ETAT C (a recorded day) shows the recorded row with its provenance line, not a re-proposal.
-                auto = if (mode == LoggingMode.AUTO_DETECT && !todayRecorded) computeAutoState() else null,
+                auto = dayAuto,
+                autoMorning = amAuto,
+                autoAfternoon = pmAuto,
                 nearBorderNotice = computeNearBorder(mode),
             )
         }
     }
 
+    /** A slot's auto surface when `enabled` (auto mode, the right granularity, and that slot not yet recorded). */
+    private fun slotAuto(
+        enabled: Boolean,
+        proposal: Proposal?,
+        concluded: Boolean,
+    ): AutoDayState? = if (enabled) autoStateFor(proposal, concluded) else null
+
     /**
-     * SPEC 11.2 ETATS A/B. The day's auto surface, from today's tally. Detecting (A) while the day is still
-     * running or nothing conclusive has accumulated; once the day is CONCLUDED (the Paris window has ended, or
-     * a full day's samples are in - the replay path), the proposal decides: HIGH -> ToConfirm (R311), else the
-     * not-sure message (R312). The coordinate never enters here - only the aggregate tally does.
+     * SPEC 11.2 ETATS A/B, R320. The auto surface for a slot, from its proposal (the day vote for day granularity,
+     * or a half's two checks for half-day). Detecting (A) while the day is still running; once CONCLUDED (after the
+     * last window), HIGH -> ToConfirm (R311), else the not-sure message (R312). The coordinate never enters - only
+     * the four checks do.
      */
-    private fun computeAutoState(): AutoDayState {
-        val todayTally = lastTallies.firstOrNull { it.dayDate == today }?.toDailyTally()
-        val concluded = afterWorkingWindow(clock) || (todayTally?.fixCount ?: 0) >= expectedSamples()
+    private fun autoStateFor(
+        proposal: Proposal?,
+        concluded: Boolean,
+    ): AutoDayState {
         if (!concluded) return AutoDayState.Detecting
-        val proposal = todayTally?.let { computeProposal(it, emptyList(), today) }
         return when (val outcome = detectionOutcome(proposal)) {
             is DetectionOutcome.Proposed -> AutoDayState.ToConfirm(outcome.proposal.kind.toRecordedKind())
             DetectionOutcome.NotSure -> AutoDayState.NotSure
@@ -332,15 +356,15 @@ class AujourdhuiController(
     }
 
     /**
-     * R313: tell a near-border resident ONCE, from the aggregate tally alone (buffer-fix share). Sticky for the
-     * life of this controller (it never flickers off as the stream re-emits), and persisted "told once" across
-     * relaunches via the notice store. Only in auto mode. No coordinate - shouldSuggestManualForNearBorder reads
-     * only counts.
+     * R313 (as R320 translates it): tell a near-border resident ONCE, from the day's four checks alone (how many
+     * land in the strip). Sticky for the life of this controller (never flickers off as the stream re-emits), and
+     * persisted "told once" across relaunches via the notice store. Only in auto mode. No coordinate -
+     * shouldSuggestManualForNearBorder reads only check sides.
      */
     private fun computeNearBorder(mode: LoggingMode): Boolean {
         if (mode != LoggingMode.AUTO_DETECT) return false
         if (!nearBorderActive && !nearBorderNoticeStore.hasShown()) {
-            if (shouldSuggestManualForNearBorder(lastTallies.map { it.toDailyTally() })) {
+            if (shouldSuggestManualForNearBorder(lastTallies.map { it.toDayChecks() })) {
                 nearBorderActive = true
                 nearBorderNoticeStore.markShown()
             }
@@ -348,13 +372,7 @@ class AujourdhuiController(
         return nearBorderActive
     }
 
-    private fun TallyEntity.toDailyTally(): DailyTally =
-        DailyTally(
-            minutesSwitzerland = minutesSwitzerland,
-            minutesElsewhere = minutesElsewhere,
-            fixCount = fixCount,
-            bufferFixCount = bufferFixCount,
-        )
+    private fun DayChecks?.orEmpty(): DayChecks = this ?: DayChecks(null, null, null, null)
 
     /**
      * The year's position, on the device: the year's rows -> the increment-2 aggregation -> the
@@ -436,8 +454,10 @@ class AujourdhuiController(
      * DETECTED_CONFIRMED and the detected kind (R202); detectedAt is the device's clock at the confirming tap.
      * Nothing was recorded before this tap - a proposal is never a record.
      */
-    fun confirmDetected(proposedKind: RecordedKind) =
-        recordDetected(proposedKind, Slot.FULL, null, Provenance.DETECTED_CONFIRMED, proposedKind)
+    fun confirmDetected(
+        proposedKind: RecordedKind,
+        slot: Slot = Slot.FULL,
+    ) = recordDetected(proposedKind, slot, null, Provenance.DETECTED_CONFIRMED, proposedKind)
 
     /**
      * R314 / R202 / D16: the person CORRECTED the proposal. The chosen kind (and slot/absence) is recorded with

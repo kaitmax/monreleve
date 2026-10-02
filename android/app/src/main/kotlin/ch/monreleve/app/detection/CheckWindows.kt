@@ -2,7 +2,6 @@ package ch.monreleve.app.detection
 
 import java.time.Clock
 import java.time.Instant
-import java.time.LocalTime
 import java.time.ZoneId
 
 // R320. THE FOUR DAILY CHECK WINDOWS, Europe/Paris, chosen to AVOID LUNCH - the least reliable moment of a
@@ -49,7 +48,8 @@ val CHECK_WINDOWS: List<CheckWindow> =
     )
 
 private fun parisMinuteOfDay(instant: Instant): Int {
-    val now = LocalTime.ofInstant(instant, PARIS)
+    // Instant.atZone / ZonedDateTime.toLocalTime are Java 8 (minSdk 26 safe); LocalTime.ofInstant is not (R308).
+    val now = instant.atZone(PARIS).toLocalTime()
     return now.hour * 60 + now.minute
 }
 

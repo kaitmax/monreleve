@@ -1,36 +1,41 @@
 package ch.monreleve.app.detection
 
-// AN6a increment 5. The real sampling path's entry point: fixes in, a proposal out.
+// R320. The sampling path's entry point for a replay: fixes in, the day's four checks (and the vote) out.
 //
-// onFix is THE UNIT UNDER TEST (R204/AC1). A synthetic track is replayed by calling onFix per
-// fix - on the emulator through LocationManager (position from `adb emu geo fix`, timestamp
-// from the replay's compressed schedule), and in the JVM regression test directly. Either way
-// the SAME pipeline runs: classify against the bundled polygon, accumulate, tally with
-// hysteresis, tier, proposal.
+// onFix is THE UNIT UNDER TEST (R204). A synthetic track is replayed by calling onFix per fix - on the phone
+// through the mock provider (MockProviderReplay), and in the JVM regression test directly. Either way the SAME
+// decision runs: each fix is assigned to the check window its instant falls in (checkWindowAt); the FIRST fix in a
+// window wins (a check runs anywhere inside its window); a fix outside every window is ignored - never a late
+// check. At day's end the four slots are the DayChecks the vote reads.
 //
-// THE SESSION NEVER HOLDS A COORDINATE. onFix hands (latitude, longitude) straight to
-// classifyFix, which returns a ClassifiedFix (side + timestamp, no position); only those are
-// kept. The coordinate's life is the onFix argument list - the confinement AC2 proves, at the
-// one place a whole day's fixes flow through.
+// THE SESSION NEVER HOLDS A COORDINATE. onFix hands (latitude, longitude) straight to classifyFix, which returns a
+// Classification (no position); only the per-window Classification is kept. The coordinate's life is the onFix
+// argument list - the confinement AC2 proves, at the one place a whole day's fixes flow through.
 
 class DetectionSession(private val border: BorderPolygon) {
-    private val fixes = mutableListOf<ClassifiedFix>()
+    private val checkByWindow = HashMap<Int, Classification>()
 
     fun onFix(
         latitude: Double,
         longitude: Double,
         epochMillis: Long,
     ) {
-        fixes.add(classifyFix(border, latitude, longitude, epochMillis))
+        val window = checkWindowAt(epochMillis) ?: return // outside any window: never recorded as a late check
+        if (checkByWindow.containsKey(window.index)) return // the first fix inside the window wins
+        checkByWindow[window.index] = classifyFix(border, latitude, longitude, epochMillis).classification
     }
 
-    fun tally(): DailyTally = computeTally(fixes)
+    fun checks(): DayChecks =
+        DayChecks(
+            check1 = checkByWindow[1],
+            check2 = checkByWindow[2],
+            check3 = checkByWindow[3],
+            check4 = checkByWindow[4],
+        )
 
-    fun proposal(dayDate: String): Proposal? = computeProposal(computeTally(fixes), fixes.toList(), dayDate)
-
-    fun fixCount(): Int = fixes.size
+    fun proposal(): Proposal? = dayProposal(checks())
 
     fun reset() {
-        fixes.clear()
+        checkByWindow.clear()
     }
 }

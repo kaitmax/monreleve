@@ -77,59 +77,68 @@ code change. Recorded as a **NEEDS** only if enclave accuracy ever matters.
 
 ---
 
-## Hysteresis and the daily tally (AN6a increment 3)
+## The four checks and the daily record (R320)
 
-**Hysteresis (D26), named in `detection/Tally.kt`.** A change of side is provisional until it
-has persisted **10 minutes** (`HYSTERESIS_PROVISIONAL_MINUTES`) and is significant after **30**
-(`HYSTERESIS_SIGNIFICANT_MINUTES`). Excursions shorter than 10 minutes are folded back into the
-preceding side — the GPS-flicker guard for someone living near Geneva. The tally's minute
-attribution turns on the 10-minute fold; the 30-minute mark is the stronger-confidence signal
-the tier reads (increment 4). `TallyComputerTest` proves the boundary (9 min folds, 10/11 min
-stand), oscillation folding, and that buffer time is attributed to neither side.
+**R320 replaced continuous sampling with FOUR CHECKS A DAY.** Continuous sampling was never fully
+realistic — Android 8+ delivers background location only a few times an hour — and four checks cost a
+fraction of the battery and make the disclosure plainer: the person is told exactly when their
+position is checked. AN6a's polygon and 150 m border-strip classifier are **unchanged**; only how a
+day is decided changed. The minutes-and-hysteresis tally, its `detection/Tally.kt`, `detection/LiveTally.kt`,
+the hysteresis constants and `WORKING_WINDOW_*` are removed.
 
-**Minutes come from the fixes' own timestamps**, never the wall clock: the gap after each fix is
-attributed to its side. This is what lets a compressed replay of a day (increment 5) produce the
-tally a real day would.
+**The four windows (`detection/CheckWindows.kt`), Europe/Paris, chosen to avoid lunch:**
 
-**The working window.** 07:00–19:00 Europe/Paris (`WORKING_WINDOW_START_MINUTE` /
-`WORKING_WINDOW_END_MINUTE`), pinned to Paris regardless of the device timezone (R28,
-`WorkingWindowTest`). Stored on each tally as minutes-of-day so a past tally keeps the window it
-was computed under.
+| Check | Centre | Window |
+|---|---|---|
+| 1 | 09:30 | 09:00–10:00 |
+| 2 | 11:00 | 10:30–11:30 |
+| 3 | 14:30 | 14:00–15:00 |
+| 4 | 16:30 | 16:00–17:00 |
 
-**The tally table (`daily_tally`), Room version 2.** Per day: `minutesSwitzerland`,
-`minutesElsewhere`, `fixCount`, `bufferFixCount`, the window, and `tier` (nullable, set at
-increment 4). **No coordinate column** — the DDL scan now iterates every table
-(`RoomSchemaContractTest.noColumnIsCoordinateShapedInAnyTable`), and the plant in
-REPORT-AN6a.txt shows it fires. `MIGRATION_1_2` creates the table; `MonReleveMigrationTest`
-runs and validates it against `schemas/2.json` on the emulator — the migration harness's first
-real execution.
+Each check runs **anywhere inside its window**; a check that cannot run inside its window is **MISSED,
+never taken late** — an 11:00 check delayed to 13:00 would sample lunch, which the windows exist to
+avoid. The window radius is `CHECK_WINDOW_RADIUS_MINUTES` = **30** minutes (a 60-minute window):
+WorkManager delivers background work no more often than every 15 minutes and cannot promise an exact
+time (the exact-alarm permission is restricted and is **not** requested, R320), so a window must hold
+several wake opportunities; 60 minutes holds about four and keeps the windows disjoint and clear of
+lunch (window 2 ends 11:30, window 3 opens 14:00). Pinned to Paris regardless of the device timezone
+(R28, `CheckWindowsTest`).
 
-## Tier thresholds, and the proposal (AN6a increment 4)
+**The record table (`daily_tally`), Room version 4.** Per day: `check1`…`check4`, each a Classification
+name (`INSIDE`/`OUTSIDE`/`BUFFER`) or **NULL** (MISSED). **No minutes, no tier column, no coordinate** —
+the tier is derived by the vote, so nothing stored can drift. The DDL scan iterates every table
+(`RoomSchemaContractTest.noColumnIsCoordinateShapedInAnyTable`). `MIGRATION_3_4` reshapes the table: it
+**drops the continuous-era rows explicitly** (a minutes tally cannot convert into four check slots, and
+only AN-AUTO's own test rows can exist — detection has never shipped) and leaves the entry table — the
+person's recorded days — untouched. `MonReleveMigrationTest` runs a genuine v3 database through it on the
+device and validates against `schemas/4.json` (R305/R187).
 
-**Tiers are ENCODED from `docs/field-protocol-AN6b.md` §3, not chosen (R276)**, in
-`detection/Proposal.kt`. `TierThresholdParityTest` reads the six numbers back out of that
-document and fails if the constants drift (R181):
+## The vote (R320)
 
-- **HIGH**: samples ≥ 50 % of expected, buffer ≤ 20 %, winning side ≥ 85 %.
-- **MEDIUM**: samples ≥ 25 % of expected, buffer ≤ 40 %, winning side ≥ 70 %.
+**A day is decided by a VOTE over its four checks (`detection/Vote.kt`).** The thresholds are **PROPOSED**
+(R276/R320): they are ratified by the operator and **freeze when the field test starts** — a threshold
+chosen after seeing data is tuned to pass. `VoteThresholdParityTest` reads them back out of this document
+and fails if the encoded constants drift (R181).
+
+- **HIGH**: `VOTE_MIN_CHECKS` = **3** checks taken, ALL on the same side, none in the strip.
+- **MEDIUM**: `VOTE_MIN_CHECKS` = **3** taken, `MEDIUM_MAX_DISSENT` = **1** on the other side or in the strip.
 - **LOW**: anything else — and **LOW withholds** (no proposal; the day stays *Non renseigné*).
 
-"Expected samples" is the window length over the sampling cadence (`SAMPLE_INTERVAL_MINUTES` =
-15, SPEC 13.1's WorkManager floor): a 12 h window expects 48.
+**One bad GPS reading can never decide a day on its own**: a lone dissenter drops HIGH to MEDIUM, two
+drop it to LOW. The winning side becomes the kind — INSIDE → *En Suisse* (CH), OUTSIDE → *Domicile*
+(HOME). A HIGH/MEDIUM voted day is a **full day** on that side. **Missions and absences are never
+detected** (a proposal is only ever CH or HOME).
 
-**The proposal.** HIGH/MEDIUM propose the winning side — INSIDE → *En Suisse* (CH), OUTSIDE →
-*Domicile* (HOME). SPEC 13.1 granularity: > 4 h is a full day, 2–4 h a half day (AM/PM from
-when the winning side's fixes fall), under 2 h is withheld. **Missions and absences are never
-detected** (`ProposalTest` asserts no tally yields MISSION_FR/MISSION_THIRD/ABSENT). A split
-day (neither side ≥ 70 %) is LOW, so it is withheld rather than guessed.
+**Half-day granularity (R320).** Each half is decided from ITS OWN two checks (AM = checks 1–2, PM =
+checks 3–4): both taken, both the same side, neither in the strip, or the half is **not sure**. `VoteTest`
+covers every case, including a missed check and a split day whose halves are each decided.
 
-**The tier is words plus segments, never a percentage (R27):** `Tier` is HIGH/MEDIUM/LOW and
-the display (AN8) renders those words beside the minute segments, never a confidence figure.
+**The tier is words plus segments, never a percentage (R27):** `Tier` is HIGH/MEDIUM/LOW and the display
+renders those words, never a confidence figure.
 
-**Nothing here writes an entry (D16).** A `Proposal` is a value; only the confirming tap
-records it. `FencesTest.detectionNeverWritesAnEntry` (fence 7) asserts detection/ never
-references the entry-write path (EntryRepository/RecordCommand); the plant in REPORT-AN6a.txt
-shows it fires.
+**Nothing here writes an entry (D16).** A `Proposal` is a value; only the confirming tap records it.
+`FencesTest.detectionNeverWritesAnEntry` (fence 7) asserts detection/ never references the entry-write
+path (EntryRepository/RecordCommand).
 
 ## Only HIGH proposes in the product (AN-AUTO increment 1, R311)
 
@@ -140,53 +149,48 @@ the field protocol names the one error no message can cover - a confident, *wron
 (FALSE-CH, K1/R278) - so until the field test measures how often that happens, the product
 narrows what it proposes at all.
 
-- **The measurement build is unchanged.** `computeProposal` / `proposedKind` / `exportFieldRun`
-  still score HIGH and MEDIUM separately against the §3 table, so a field run is scored against
-  exactly what AN6a built. Only the PRODUCT changes.
+- **The measurement build tests what ships (R320).** `exportFieldRun` scores each day by the SAME
+  vote (`voteTier` / `votedKind`) the product uses, so a field run validates the detector people
+  actually get. HIGH and MEDIUM are still scored separately in the export; only the PRODUCT narrows
+  what it surfaces.
 - **The product decision has one home (R206):** `detection/DetectionOutcome.detectionOutcome`
   maps a `Proposal?` to `Proposed(proposal)` (HIGH only) or `NotSure` (MEDIUM, LOW, or a withheld
-  day). The Aujourd'hui auto surface and the seven-track replay both read it, so they cannot
-  disagree. `DetectionOutcomeTest` asserts each tier end to end, including that a MEDIUM day is
-  still scored by the measurement path **and** withheld by the product.
+  day). The Aujourd'hui auto surface and the track replay both read it, so they cannot disagree.
+  `DetectionOutcomeTest` asserts each tier end to end, including that a MEDIUM day is still scored
+  by the vote **and** withheld by the product.
 
-## Near-border recognition (AN-AUTO increment 6, R313) — PROPOSED
+## Near-border recognition (R313, as R320 translates it) — PROPOSED
 
-**The app recognises someone who lives near the border from the tally alone — no coordinate.** The
-daily tally already counts how many fixes fell in the 150 m buffer (`bufferFixCount`). A working day
-is **near-border** when its buffer-fix share is **above `MEDIUM_BUFFER_SHARE` (0.40)** — the field
-protocol's MEDIUM ceiling, above which a day cannot even reach MEDIUM. When that holds on **≥ 3 of the
-last 5 working days with data**, the person is told **once** that detection is unreliable where they
-live and offered manual, respected either way (D19 — manual is a peer, automatic is never forced off).
+**The app recognises someone who lives near the border from the four checks alone — no coordinate.** A
+working day is **near-border** when `NEAR_BORDER_STRIP_CHECKS` = **2** or more of its four checks land in
+the 150 m strip — 50 %, above the protocol's 40 % MEDIUM ceiling, and a day a single bad reading cannot
+trigger. It is told on `NEAR_BORDER_DAYS_THRESHOLD` = **3** of the last five working days with data, over a
+window of `NEAR_BORDER_WINDOW_DAYS` = **5** working days. The person is told **once** that detection is
+unreliable where they live and offered manual, respected either way (D19 — manual is a peer, automatic is
+never forced off).
 
-- Constants, in `detection/NearBorder.kt`: `NEAR_BORDER_DAYS_THRESHOLD = 3`, `NEAR_BORDER_WINDOW_DAYS
-  = 5`, and the per-day test reuses `MEDIUM_BUFFER_SHARE` (already encoded from the field protocol §3).
-- **PROPOSED (R276).** The threshold reuses the protocol constant and is **frozen when the field test
-  starts** — a threshold chosen after seeing data is tuned to pass.
-- `NearBorderTest` proves the per-day rule (strictly above 0.40), the 3-of-5 trigger, and that
-  no-data days are excluded from the window. "Told once" and the choice are the UI's (increment 5).
+- Constants, in `detection/NearBorder.kt`: `NEAR_BORDER_STRIP_CHECKS`, `NEAR_BORDER_DAYS_THRESHOLD`,
+  `NEAR_BORDER_WINDOW_DAYS`.
+- **PROPOSED (R276).** Frozen when the field test starts — a threshold chosen after seeing data is tuned
+  to pass.
+- `NearBorderTest` proves the per-day rule, the 3-of-5 trigger, and that no-data days are excluded from
+  the window. "Told once" and the choice are the UI's.
 
-## Sampling and background mechanics (AN6a increment 5)
+## Sampling and background mechanics (R320)
 
-**The entry point is `DetectionSession.onFix(latitude, longitude, epochMillis)`** — classify,
-accumulate, and at day's end compute the tally and proposal. The seven synthetic tracks
-(`detection/SyntheticTracks.kt`, each a scenario with its expected result written first, R197)
-are replayed through it: on the emulator by `dev/DetectionReplayActivity` (loading the shipped
-asset polygon, showing each track's expected vs observed proposal and OK), and in the JVM
-regression by `DetectionSessionTest`. All seven pass; the tier shows in words, no percentage,
-no map (R27).
+**The entry point is `DetectionSession.onFix(latitude, longitude, epochMillis)`** — classify each fix,
+assign it to the check window its instant falls in (the first fix in a window wins; a fix outside every
+window is ignored, never a late check), and at day's end take the vote over the four checks. The
+synthetic tracks (`detection/SyntheticTracks.kt`, each a scenario with its expected result written
+first, R197) are replayed through it: on the phone by `dev/DetectionMockReplayActivity` through the real
+OS test-location provider, and in the JVM regression by `DetectionSessionTest`.
 
-**Assumed cadence: one fix per `SAMPLE_INTERVAL_MINUTES` (15).** SPEC 13.1's WorkManager floor.
-The tally attributes minutes from the fixes' own timestamps, so a compressed replay produces
-the tally a real day would.
-
-**The background sampling CLIENT is deliberately NOT built here — it is SPEC 13.1's spike (AN7).**
-AN6a proves the CLASSIFIER on synthetic tracks; which combination of WorkManager periodic work,
-geofences, or a foreground service meets the accuracy and battery budgets is what AN6b measures
-and AN7 wires. The `detection/LiveLocation.classifyCurrentLocation` bridge is built and
-`adb emu geo fix` sets the emulator position (verified: `OK`), but
-`LocationManager.getLastKnownLocation` returns null on the headless emulator without an active
-location-updates client — which is exactly the client AN7 owns. So the OS-location READ layer is
-noted, not demonstrated; the classifier pipeline it feeds is fully proven via the tracks.
+**The background client (`detection/SamplingWorker.kt`).** A single unique periodic WorkManager worker at
+the 15-minute floor (`SAMPLING_INTERVAL_MINUTES`); each wake does something ONLY when it lands inside a
+check window whose slot is still empty — it requests one GPS fix, classifies it, discards the coordinate
+(`awaitClassifiedFix`, D18), and writes the side into that window's slot (`recordCheck`). A wake outside
+every window does nothing. No geofencing, no Play Services, no exact-alarm permission (R320/R136). The
+battery and the real-world missed-check rate of this choice are A5's measurement.
 
 ## Battery measurement method (AN6a increment 6)
 
@@ -210,8 +214,9 @@ method matters as much as the figure (R233). From the android-profiler skill (do
 ## The scoring harness (AN6a increment 6, AC3)
 
 `android/scripts/score-field-run.mjs` scores a run: `--export <app export.json> --log <tester
-log.csv>`. It reads the app's export (`detection/exportFieldRun` - per day tier, proposed kind,
-minutes, fix and buffer counts; **no coordinate**, R277) and the tester's daily log (date,
+log.csv>`. It reads the app's export (`detection/exportFieldRun` - per day the vote tier, the voted
+kind, each of the four checks, and the taken/missed/strip counts; **no coordinate**, R277) and the
+tester's daily log (date,
 `Suisse`/`Domicile`/`Mission`/`Absent`, note - the fiche testeur format), and prints per kill
 criterion the count, the rate, and its **95 % confidence bound**. At zero errors the bound is the
 **exact one-sided binomial**, `1 - 0.05^(1/n)` (R279): the rule of three (`3/n`) is a large-n

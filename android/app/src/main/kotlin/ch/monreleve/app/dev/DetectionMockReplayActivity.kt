@@ -25,7 +25,7 @@ import ch.monreleve.app.design.FrontierType
 import ch.monreleve.app.design.Spacing
 import ch.monreleve.app.detection.DetectionOutcome
 import ch.monreleve.app.detection.SyntheticTracks
-import ch.monreleve.app.detection.computeProposal
+import ch.monreleve.app.detection.dayProposal
 import ch.monreleve.app.detection.detectionOutcome
 import ch.monreleve.app.detection.installTestLocationProvider
 import ch.monreleve.app.detection.loadBundledBorder
@@ -35,14 +35,14 @@ import ch.monreleve.app.fr.ReplayCopy
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
-// AN-AUTO increment 7. The DEBUG-ONLY mock-provider replay (A3). It runs the seven synthetic tracks through the
-// REAL background path on the PHYSICAL phone: detection/replayTrackThroughProvider feeds each point to the OS
-// test location provider, the classifier discards the coordinate (D18), and recordFix builds the tally - the
-// sampler's classify-and-persist path, with the SYNTHETIC timestamp so a day compresses into a replay. Each
+// AN-AUTO increment 7 / R320. The DEBUG-ONLY mock-provider replay (A3). It runs the synthetic tracks through the
+// REAL background path on the PHYSICAL phone: detection/replayTrackThroughProvider feeds each point to the OS test
+// location provider at its check-window time, the classifier discards the coordinate (D18), and the fix becomes that
+// window's check - the sampler's classify path, with the SYNTHETIC timestamp so a day compresses into a replay. Each
 // track's PRODUCT outcome under R311 is shown (Proposé for HIGH; Pas sûr for MEDIUM/LOW/withheld).
 //
-// NO COORDINATE REACHES THIS FILE (D18 / fence 2b): all Location handling lives in detection/; this activity
-// hands a SyntheticTrack and reads back a coordinate-free DailyTally. Dev-only, declared only in
+// NO COORDINATE REACHES THIS FILE (D18 / fence 2b): all Location handling lives in detection/; this activity hands a
+// SyntheticTrack and reads back a coordinate-free DayChecks. Dev-only, declared only in
 // src/debug/AndroidManifest.xml (checkReleaseNoDevComponent proves it absent from the release APK). Reached by:
 //   adb shell am start -n ch.monreleve.app/ch.monreleve.app.dev.DetectionMockReplayActivity
 // Requires the app set as the mock-location app first (restore to deny afterwards):
@@ -76,11 +76,11 @@ class DetectionMockReplayActivity : ComponentActivity() {
             }
             state.value =
                 SyntheticTracks.all.map { track ->
-                    val tally = replayTrackThroughProvider(applicationContext, manager, border, track)
+                    val checks = replayTrackThroughProvider(applicationContext, manager, border, track)
                     MockResult(
                         name = track.name,
                         expected = detectionOutcome(track.expected),
-                        actual = detectionOutcome(computeProposal(tally, emptyList(), track.dayDate)),
+                        actual = detectionOutcome(dayProposal(checks)),
                     )
                 }
             removeTestLocationProvider(manager)

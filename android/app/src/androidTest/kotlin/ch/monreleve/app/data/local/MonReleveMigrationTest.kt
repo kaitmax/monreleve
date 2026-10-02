@@ -30,9 +30,43 @@ class MonReleveMigrationTest {
     @Test
     fun migratesFromVersion1ToLatest() {
         // A genuine v1 database migrated ALL THE WAY to the current version through every real migration
-        // (MIGRATION_1_2 then MIGRATION_2_3), validated against the exported schema for DATABASE_VERSION.
+        // (MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4), validated against the exported schema for DATABASE_VERSION.
         helper.createDatabase(TEST_DB, 1).close()
-        helper.runMigrationsAndValidate(TEST_DB, DATABASE_VERSION, true, MIGRATION_1_2, MIGRATION_2_3)
+        helper.runMigrationsAndValidate(TEST_DB, DATABASE_VERSION, true, MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+    }
+
+    @Test
+    fun migratesFromVersion3ToVersion4DroppingOldTallyRowsAndKeepingEntries() {
+        // R320 / R305 / R187. A GENUINE v3 database carrying a continuous-era daily_tally row AND a real entry row,
+        // migrated to v4 by the REAL MIGRATION_3_4. The old tally shape cannot convert into the four check slots, so
+        // its rows are DROPPED explicitly; the entry table - the person's recorded days - must be UNTOUCHED.
+        helper.createDatabase(TEST_DB, 3).apply {
+            execSQL(
+                "INSERT INTO daily_tally (dayDate, minutesSwitzerland, minutesElsewhere, fixCount, bufferFixCount, " +
+                    "windowStartMinuteOfDay, windowEndMinuteOfDay, tier) VALUES " +
+                    "('2026-09-28', 400, 20, 30, 1, 420, 1140, 'HIGH')",
+            )
+            execSQL(
+                "INSERT INTO entry (clientMutationId, dayDate, portion, kind, absenceReason, note, provenance, " +
+                    "detectedKind, detectedAt, clientClaimedAt, serverId, firstRecordedAt, lastModifiedAt, " +
+                    "syncState, accountTag) VALUES ('mut-9', '2026-09-28', 'FULL', 'CH', NULL, NULL, 'MANUAL', " +
+                    "NULL, NULL, '2026-09-28T12:00:00.000+02:00', NULL, NULL, NULL, 'PENDING', 'acct-1')",
+            )
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, DATABASE_VERSION, true, MIGRATION_3_4)
+
+        // The old continuous-era tally row is GONE (the reshaped table starts empty; nothing to carry across).
+        db.query("SELECT COUNT(*) FROM daily_tally").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(0, cursor.getInt(0))
+        }
+        // The person's entry row is UNTOUCHED by the tally reshape.
+        db.query("SELECT accountTag FROM entry WHERE dayDate = '2026-09-28' AND portion = 'FULL'").use { cursor ->
+            assertTrue("the entry row must survive the daily_tally reshape", cursor.moveToFirst())
+            assertEquals("acct-1", cursor.getString(cursor.getColumnIndexOrThrow("accountTag")))
+        }
     }
 
     @Test

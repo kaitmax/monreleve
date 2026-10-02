@@ -25,6 +25,7 @@ import androidx.compose.ui.draw.clip
 import ch.monreleve.app.aujourdhui.AbsenceChoice
 import ch.monreleve.app.aujourdhui.AujourdhuiState
 import ch.monreleve.app.aujourdhui.AutoDayState
+import ch.monreleve.app.aujourdhui.DayEntry
 import ch.monreleve.app.aujourdhui.RecordedKind
 import ch.monreleve.app.aujourdhui.Slot
 import ch.monreleve.app.design.FrontierType
@@ -34,19 +35,22 @@ import ch.monreleve.app.design.Size
 import ch.monreleve.app.design.Spacing
 import ch.monreleve.app.fr.AujourdhuiCopy
 import ch.monreleve.app.fr.DetectionCopy
+import ch.monreleve.app.onboarding.GranularityChoice
 
-// AN-AUTO increment 5. The automatic-mode surfaces for Aujourd'hui (SPEC 11.2 ETATS A/B/C, R311-R314), split
-// out of AujourdhuiScreen.kt so neither file carries too many composables (the ParametresFields split, same
-// reasoning). Stateless (fence 5); every string from fr/ (the no-literal fence). It reuses the manual
-// RecordSection (internal) for the "enter it yourself" paths - a detected day can still be edited by hand.
+// AN-AUTO increment 5 / R320. The automatic-mode surfaces for Aujourd'hui (SPEC 11.2 ETATS A/B/C, R311-R314), split
+// out of AujourdhuiScreen.kt so neither file carries too many composables. Stateless (fence 5); every string from
+// fr/ (the no-literal fence). It reuses the manual RecordSection for the "enter it yourself" and correction paths.
 //
-// NO ACCURACY CLAIM. Only HIGH surfaces (R311) and the proposal is phrased "Proposition - verifiez"; there is
-// no "detection fiable" badge (the beta must not assert reliability it has not measured). D4b's addendum
-// confidence dot is deliberately dropped for that reason.
+// R320 - GRANULARITY. A day-granularity user sees one auto surface for the whole day; a half-day-granularity user
+// sees an independent surface for the morning (checks 1-2) and the afternoon (checks 3-4), each confirmed or
+// corrected on its own slot. The controller has already decided each slot's outcome (auto / autoMorning /
+// autoAfternoon); this file only renders it.
+//
+// NO ACCURACY CLAIM. Only HIGH surfaces (R311) and the proposal is phrased "Proposition - vérifiez"; there is no
+// "détection fiable" badge (a beta under measurement must not assert reliability it has not measured).
 
-// The cards here are a WHITE surface on the grey canvas (DESIGN-SYSTEM: card #FFFFFF on canvas #F7F8FA), so the
-// fill alone delineates them - no explicit 1 px border, which would need a raw .dp the ui/ token fence forbids
-// and no border-width token exists. The contrast is the design's own card-vs-canvas contrast.
+// The cards here are a WHITE surface on the grey canvas (DESIGN-SYSTEM: card #FFFFFF on canvas #F7F8FA), so the fill
+// alone delineates them - no explicit 1 px border, which would need a raw .dp the ui/ token fence forbids.
 
 // R313: the near-border suggestion, shown once (the controller gates the "once"). It offers manual without
 // disparaging detection (D19); the person keeps whichever mode they prefer, from Parametres.
@@ -64,30 +68,57 @@ internal fun NearBorderNotice() {
     )
 }
 
-// SPEC 11.2 ETATS A/B/C for automatic mode. ETAT C (a recorded day) shows the recorded row with its
-// provenance line - the same RecordSection the manual flow uses, so a detected day can still be edited.
+// The three record callbacks the auto surface routes through, bundled so a slot's composable carries one seam, not
+// three (fence 4 forbids an annotation's string argument in ui/, so the param count is kept low by design here).
+internal class AutoActions(
+    val onRecord: (RecordedKind, Slot, AbsenceChoice?) -> Unit,
+    val onConfirmDetected: (RecordedKind, Slot) -> Unit,
+    val onCorrectDetected: (RecordedKind, Slot, AbsenceChoice?, RecordedKind) -> Unit,
+)
+
+// SPEC 11.2 ETATS A/B/C for automatic mode, by granularity (R320). ETAT C (a recorded slot) shows the recorded row
+// with its provenance line - the same RecordSection the manual flow uses, so a detected day can still be edited.
 @Composable
 internal fun AutoSection(
     state: AujourdhuiState,
-    onRecord: (RecordedKind, Slot, AbsenceChoice?) -> Unit,
-    onConfirmDetected: (RecordedKind) -> Unit,
-    onCorrectDetected: (RecordedKind, Slot, AbsenceChoice?, RecordedKind) -> Unit,
+    actions: AutoActions,
 ) {
-    when {
-        state.fullDay != null -> RecordSection(Slot.FULL, state.fullDay, onRecord) // ETAT C
-        state.auto is AutoDayState.ToConfirm ->
-            ProposalCard(state.auto.kind, onConfirmDetected, onCorrectDetected)
-        state.auto is AutoDayState.NotSure -> NotSureBlock(onRecord)
-        state.auto is AutoDayState.Detecting -> DetectingBlock(onRecord)
-        else -> ManualSection(state, onRecord) // a half-day record, or defensive
+    if (state.granularity == GranularityChoice.HALF_DAY) {
+        Text(text = AujourdhuiCopy.MORNING, style = FrontierType.bodyM)
+        AutoSlot(Slot.MORNING, state.morning, state.autoMorning, actions)
+        Text(text = AujourdhuiCopy.AFTERNOON, style = FrontierType.bodyM)
+        AutoSlot(Slot.AFTERNOON, state.afternoon, state.autoAfternoon, actions)
+    } else {
+        AutoSlot(Slot.FULL, state.fullDay, state.auto, actions)
     }
 }
 
-// SPEC 11.2 ETAT A - the day is still running; a quiet, uncoloured strip, no spinner. "Saisir maintenant"
-// reveals the manual record options for a person who does not want to wait for the evening proposal.
+// One slot's auto surface: a recorded row (ETAT C), a proposal (ETAT B), the not-sure message, or "detection en
+// cours" (ETAT A). `recorded` wins - a confirmed/corrected slot shows its row, not a re-proposal (D16).
 @Composable
-private fun DetectingBlock(onRecord: (RecordedKind, Slot, AbsenceChoice?) -> Unit) {
-    var manualOpen by rememberSaveable { mutableStateOf(false) }
+private fun AutoSlot(
+    slot: Slot,
+    recorded: DayEntry?,
+    auto: AutoDayState?,
+    actions: AutoActions,
+) {
+    when {
+        recorded != null -> RecordSection(slot, recorded, actions.onRecord) // ETAT C
+        auto is AutoDayState.ToConfirm -> ProposalCard(auto.kind, slot, actions)
+        auto is AutoDayState.NotSure -> NotSureBlock(slot, actions.onRecord)
+        auto is AutoDayState.Detecting -> DetectingBlock(slot, actions.onRecord)
+        else -> RecordSection(slot, null, actions.onRecord) // defensive: no auto decision -> manual
+    }
+}
+
+// SPEC 11.2 ETAT A - the day is still running; a quiet, uncoloured strip, no spinner. "Saisir maintenant" reveals
+// the manual record options for a person who does not want to wait for the evening proposal.
+@Composable
+private fun DetectingBlock(
+    slot: Slot,
+    onRecord: (RecordedKind, Slot, AbsenceChoice?) -> Unit,
+) {
+    var manualOpen by rememberSaveable(slot) { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.space12)) {
         Column(
             modifier =
@@ -106,7 +137,7 @@ private fun DetectingBlock(onRecord: (RecordedKind, Slot, AbsenceChoice?) -> Uni
             )
         }
         if (manualOpen) {
-            RecordSection(Slot.FULL, null, onRecord)
+            RecordSection(slot, null, onRecord)
         } else {
             TextButton(onClick = { manualOpen = true }, modifier = Modifier.fillMaxWidth()) {
                 Text(text = DetectionCopy.ENTER_NOW)
@@ -115,15 +146,15 @@ private fun DetectingBlock(onRecord: (RecordedKind, Slot, AbsenceChoice?) -> Uni
     }
 }
 
-// SPEC 11.2 ETAT B - the proposal (R314). Phrased as a proposal to verify; Confirmer records it as detected,
-// Corriger reveals the full record options and records the person's choice as a correction (R202).
+// SPEC 11.2 ETAT B - the proposal (R314). Phrased as a proposal to verify; Confirmer records it as detected on this
+// slot, Corriger reveals the full record options and records the person's choice as a correction (R202).
 @Composable
 private fun ProposalCard(
     proposedKind: RecordedKind,
-    onConfirmDetected: (RecordedKind) -> Unit,
-    onCorrectDetected: (RecordedKind, Slot, AbsenceChoice?, RecordedKind) -> Unit,
+    slot: Slot,
+    actions: AutoActions,
 ) {
-    var correcting by rememberSaveable { mutableStateOf(false) }
+    var correcting by rememberSaveable(slot) { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.space8)) {
         Text(text = DetectionCopy.PROPOSAL_HEADING, style = FrontierType.bodyM)
         Column(
@@ -155,7 +186,7 @@ private fun ProposalCard(
             )
         }
         Button(
-            onClick = { onConfirmDetected(proposedKind) },
+            onClick = { actions.onConfirmDetected(proposedKind, slot) },
             shape = RoundedCornerShape(Radius.buttonLg),
             modifier = Modifier.fillMaxWidth().heightIn(min = Size.buttonLarge),
         ) {
@@ -169,30 +200,33 @@ private fun ProposalCard(
             Text(text = DetectionCopy.CORRECT)
         }
         if (correcting) {
-            // Corriger offers the full record options; whatever the person picks is recorded as a CORRECTION,
-            // keeping what detection had proposed (R202). It routes through onCorrectDetected, not onRecord.
+            // Corriger offers the full record options; whatever the person picks is recorded as a CORRECTION on this
+            // slot, keeping what detection had proposed (R202). It routes through onCorrectDetected, not onRecord.
             RecordSection(
-                slot = Slot.FULL,
+                slot = slot,
                 current = null,
-                onRecord = { kind, slot, absence -> onCorrectDetected(kind, slot, absence, proposedKind) },
+                onRecord = { kind, s, absence -> actions.onCorrectDetected(kind, s, absence, proposedKind) },
             )
         }
         Text(text = DetectionCopy.NOTHING_RECORDED_YET, style = FrontierType.caption, color = LightColors.textSecondary)
     }
 }
 
-// SPEC 11.2 ETAT B withheld (R312): the not-sure message, then the manual record options so the person can
-// enter the day themselves. Calm, never alarming, never a percentage (R27).
+// SPEC 11.2 ETAT B withheld (R312): the not-sure message, then the manual record options so the person can enter the
+// slot themselves. Calm, never alarming, never a percentage (R27).
 @Composable
-private fun NotSureBlock(onRecord: (RecordedKind, Slot, AbsenceChoice?) -> Unit) {
+private fun NotSureBlock(
+    slot: Slot,
+    onRecord: (RecordedKind, Slot, AbsenceChoice?) -> Unit,
+) {
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.space12)) {
         Text(text = DetectionCopy.NOT_SURE, style = FrontierType.bodyM)
-        RecordSection(Slot.FULL, null, onRecord)
+        RecordSection(slot, null, onRecord)
     }
 }
 
-// An 8 dp France-blue / Switzerland-red dot - which side, never a flag, never colour alone (the label carries
-// the meaning). DESIGN-SYSTEM: "6-8 px dots and chips only".
+// An 8 dp France-blue / Switzerland-red dot - which side, never a flag, never colour alone (the label carries the
+// meaning). DESIGN-SYSTEM: "6-8 px dots and chips only".
 @Composable
 private fun SideDot(kind: RecordedKind) {
     val color = if (kind == RecordedKind.SUISSE) LightColors.switzerlandMain else LightColors.franceMain

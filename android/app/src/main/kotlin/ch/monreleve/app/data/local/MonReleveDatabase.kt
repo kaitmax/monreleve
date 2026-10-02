@@ -32,7 +32,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 const val DATABASE_NAME = "monreleve.db"
 
-const val DATABASE_VERSION = 3
+const val DATABASE_VERSION = 4
 
 // Adds the daily_tally table. The DDL matches what Room generates for TallyEntity;
 // MigrationTestHelper.runMigrationsAndValidate fails if it drifts from schemas/2.json.
@@ -98,6 +98,32 @@ val MIGRATION_2_3 =
         }
     }
 
+// R320 / R305 / R187. Reshapes daily_tally from the continuous minutes-and-hysteresis tally (version 2/3) to the
+// four daily checks. The two shapes share no column and no meaning - a minutes tally cannot be converted into four
+// discrete check slots - and the only rows that can exist are from AN-AUTO's own on-device testing, because the
+// detection feature has never shipped. So the old rows are DROPPED EXPLICITLY rather than migrated: there is nothing
+// to carry across. The entry table - the person's recorded days - is NOT touched. The recreated daily_tally's
+// columns, affinities, nullability and key must match what Room generates for TallyEntity at v4;
+// MigrationTestHelper.runMigrationsAndValidate against schemas/4.json fails here, on the emulator, if the DDL drifts.
+// This is a real Migration, never a destructive fallback (R305).
+val MIGRATION_3_4 =
+    object : Migration(3, 4) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Drop the continuous-era tally and its rows explicitly (only AN-AUTO test rows can exist; nothing to
+            // convert into the four check slots). The entry table is untouched.
+            db.execSQL("DROP TABLE IF EXISTS `daily_tally`")
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `daily_tally` (" +
+                    "`dayDate` TEXT NOT NULL, " +
+                    "`check1` TEXT, " +
+                    "`check2` TEXT, " +
+                    "`check3` TEXT, " +
+                    "`check4` TEXT, " +
+                    "PRIMARY KEY(`dayDate`))",
+            )
+        }
+    }
+
 @Database(
     entities = [EntryEntity::class, TallyEntity::class],
     version = DATABASE_VERSION,
@@ -118,7 +144,7 @@ abstract class MonReleveDatabase : RoomDatabase() {
                     context.applicationContext,
                     MonReleveDatabase::class.java,
                     DATABASE_NAME,
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { instance = it }
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build().also { instance = it }
             }
     }
 }

@@ -47,19 +47,25 @@ The hard case is the whole point. A tester living 30 km from the border tests th
 
 ## 3. The pass criteria — proposed, to ratify before day one
 
-### Tier thresholds
+### The vote — four checks a day (R320)
 
-These decide HIGH, MEDIUM or LOW for each day from the tally. They're expressed as a **share of the samples expected** in the 07:00–19:00 working window, so they hold whatever sampling rate AN6a sets.
+Detection checks the position **four times a working day**, in windows around **09:30, 11:00, 14:30 and 16:30** Europe/Paris (each ±30 minutes, chosen to avoid lunch). Each check is *En Suisse*, *Domicile*, or *in the 150 m strip*, or **missed** if no fix was obtained inside its window — a check that cannot run inside its window is missed, **never taken late**. A day is then decided by a vote over its checks:
 
-| Tier | Samples received | Share of fixes in the 150 m buffer | Share of minutes on the winning side |
-|---|---|---|---|
-| **HIGH** | ≥ 50 % of expected | ≤ 20 % | ≥ 85 % |
-| **MEDIUM** | ≥ 25 % of expected | ≤ 40 % | ≥ 70 % |
-| **LOW** | anything else | — | — |
+| Tier | Checks taken | Agreement |
+|---|---|---|
+| **HIGH** | ≥ 3 | ALL on the same side, none in the strip |
+| **MEDIUM** | ≥ 3 | exactly one on the other side or in the strip |
+| **LOW** | anything else | — |
+
+One bad reading can never decide a day alone: a lone dissenter drops HIGH to MEDIUM, two drop it to LOW.
+
+**Half-day granularity:** each half is decided from its own two checks (morning = 09:30 + 11:00, afternoon = 14:30 + 16:30): both taken, both the same side, neither in the strip, or that half is not sure.
 
 **LOW withholds.** No proposal is made and the day stays *Non renseigné*. The person records it by hand.
 
 Missions and absences are never detected.
+
+These thresholds — the window times and width, the three-check minimum, the one-dissenter MEDIUM tolerance — are **proposed**; ratify or change them before day one, then they freeze (R276).
 
 ### Kill criteria
 
@@ -92,7 +98,7 @@ The tally records how many of each day's fixes landed in the buffer. That's what
 
 ## 5. Privacy — what the test collects
 
-**The measurement build is identical to production on privacy (R277).** It stores, per day: minutes on each side, number of fixes, number in the buffer, and the tier. **No coordinate is ever stored, logged or sent**, not even for debugging.
+**The measurement build is identical to production on privacy (R277).** It stores, per day: the result of each of the four checks (*En Suisse*, *Domicile*, *in the strip*, or missed). **No coordinate is ever stored, logged or sent**, not even for debugging.
 
 The tester's daily log is their own note of where they worked. It's still personal data — it says where someone was on each working day — so:
 

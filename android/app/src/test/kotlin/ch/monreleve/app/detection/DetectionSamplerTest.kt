@@ -3,18 +3,17 @@ package ch.monreleve.app.detection
 import ch.monreleve.app.data.local.TallyDao
 import ch.monreleve.app.data.local.TallyEntity
 import io.kotest.core.spec.style.FunSpec
-import io.kotest.matchers.nulls.shouldBeNull
+import io.kotest.matchers.booleans.shouldBeFalse
+import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 
-// AN-AUTO increment 4 (the sampler's persistence step). recordFix is what each WorkManager wake calls after a
-// (The 15-minute cadence constant lives in SyntheticTracks via trackPointInstant; no local time math is needed.)
-// fix is classified and its coordinate discarded: it loads the day's aggregate tally and the coordinate-free
-// cursor, folds the fix in (accumulateFix), and writes back the aggregate + cursor + the recomputed tier.
-// Across wakes it must reconstruct exactly the tally a single in-memory day would, and a new day must start
-// fresh (the cursor is per-day). No coordinate is read or stored here - only a Classification and a time.
+// R320 (the sampler's persistence step). recordCheck is what each WorkManager wake calls after a fix is classified
+// and its coordinate discarded: it writes the fix's side into ONE of the day's four check slots, preserving the
+// others. A MISSED window stays null, and a new day is a fresh row. No coordinate is read or stored here - only a
+// Classification and the window index.
 
 private class FakeTallyDao : TallyDao {
     val rows = mutableMapOf<String, TallyEntity>()
@@ -32,64 +31,47 @@ private class FakeTallyDao : TallyDao {
 
 class DetectionSamplerTest : FunSpec({
     val day = "2027-06-18"
-    val windowStart = WORKING_WINDOW_START_MINUTE
-    val windowEnd = WORKING_WINDOW_END_MINUTE
 
-    suspend fun record(
-        dao: TallyDao,
-        cursor: SamplingCursorStore,
-        side: Classification,
-        minuteOfDay: Int,
-    ) = recordFix(dao, cursor, day, windowStart, windowEnd, side, trackPointInstant(day, minuteOfDay))
-
-    test("recordFix across wakes reconstructs the same tally an in-memory day would") {
+    test("recordCheck fills one window slot and preserves the others across wakes") {
         runTest {
             val dao = FakeTallyDao()
-            val cursor = InMemorySamplingCursorStore()
-            // A clear Swiss day: INSIDE every 15 minutes, 08:00-18:00.
-            val minutes = (480..1080 step 15).toList()
-            for (m in minutes) record(dao, cursor, Classification.INSIDE, m)
+            recordCheck(dao, day, 1, Classification.INSIDE)
+            recordCheck(dao, day, 2, Classification.OUTSIDE)
+            recordCheck(dao, day, 4, Classification.BUFFER)
+            // window 3 was MISSED (no wake landed inside it with a fix)
 
-            val expectedFixes = minutes.map { ClassifiedFix(Classification.INSIDE, trackPointInstant(day, it)) }
-            val batch = computeTally(expectedFixes)
-            val stored = dao.byDay(day)!!
-            stored.minutesSwitzerland shouldBe batch.minutesSwitzerland
-            stored.minutesElsewhere shouldBe batch.minutesElsewhere
-            stored.fixCount shouldBe batch.fixCount
-            stored.bufferFixCount shouldBe batch.bufferFixCount
-            // The tier is recomputed and stored (HIGH for a clear full Swiss day).
-            stored.tier shouldBe Tier.HIGH.name
-            stored.windowStartMinuteOfDay shouldBe windowStart
-            stored.windowEndMinuteOfDay shouldBe windowEnd
+            val row = dao.byDay(day)!!
+            row.toDayChecks() shouldBe
+                DayChecks(Classification.INSIDE, Classification.OUTSIDE, null, Classification.BUFFER)
         }
     }
 
-    test("a new day starts a fresh tally and cursor (the cursor is per-day)") {
+    test("hasCheck reflects which windows already have a fix - the worker's idempotence guard") {
         runTest {
             val dao = FakeTallyDao()
-            val cursor = InMemorySamplingCursorStore()
-            record(dao, cursor, Classification.INSIDE, 480)
-            record(dao, cursor, Classification.INSIDE, 495)
+            dao.byDay(day).hasCheck(1).shouldBeFalse() // absent row -> nothing recorded
+            recordCheck(dao, day, 1, Classification.INSIDE)
+            dao.byDay(day).hasCheck(1).shouldBeTrue()
+            dao.byDay(day).hasCheck(2).shouldBeFalse()
+        }
+    }
 
-            // A fix on the NEXT day must not attribute a gap across the day boundary.
+    test("a new day is a fresh row, independent of the previous day's checks") {
+        runTest {
+            val dao = FakeTallyDao()
+            recordCheck(dao, day, 1, Classification.INSIDE)
             val day2 = "2027-06-19"
-            recordFix(dao, cursor, day2, windowStart, windowEnd, Classification.OUTSIDE, trackPointInstant(day2, 480))
-            val stored2 = dao.byDay(day2)!!
-            stored2.fixCount shouldBe 1
-            stored2.minutesSwitzerland shouldBe 0
-            stored2.minutesElsewhere shouldBe 0
+            recordCheck(dao, day2, 1, Classification.OUTSIDE)
+            dao.byDay(day2)!!.toDayChecks() shouldBe DayChecks(Classification.OUTSIDE, null, null, null)
+            dao.byDay(day)!!.toDayChecks() shouldBe DayChecks(Classification.INSIDE, null, null, null)
         }
     }
 
-    test("the cursor is coordinate-free and cleared on demand") {
+    test("an absent row reads as four missed checks") {
         runTest {
-            val cursor = InMemorySamplingCursorStore()
-            cursor.save(day, FixCursor(Classification.INSIDE, 123L))
-            cursor.load(day) shouldBe FixCursor(Classification.INSIDE, 123L)
-            // A different day reads no cursor (fresh day).
-            cursor.load("2027-06-19").shouldBeNull()
-            cursor.clear()
-            cursor.load(day).shouldBeNull()
+            val dao = FakeTallyDao()
+            val missed = DayChecks(null, null, null, null)
+            (dao.byDay(day)?.toDayChecks() ?: missed) shouldBe missed
         }
     }
 })

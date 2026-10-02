@@ -22,6 +22,19 @@ import kotlin.math.max
 //
 // NOTHING HERE WRITES AN ENTRY (D16). A Proposal is a value; only a confirming tap records.
 
+enum class Tier {
+    HIGH,
+    MEDIUM,
+    LOW,
+}
+
+/** A day's proposal. kind is only ever CH or HOME (missions/absences are never detected, R320). */
+data class Proposal(
+    val tier: Tier,
+    val kind: EntryKind,
+    val portion: Portion,
+)
+
 /** A day needs at least this many checks taken to reach HIGH or MEDIUM (PROPOSED, R320). */
 const val VOTE_MIN_CHECKS = 3
 

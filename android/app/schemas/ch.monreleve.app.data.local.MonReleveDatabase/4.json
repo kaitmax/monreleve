@@ -1,0 +1,147 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 4,
+    "identityHash": "b17b44697fd7516dfea88579b17cd659",
+    "entities": [
+      {
+        "tableName": "entry",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`clientMutationId` TEXT NOT NULL, `dayDate` TEXT NOT NULL, `portion` TEXT NOT NULL, `kind` TEXT NOT NULL, `absenceReason` TEXT, `note` TEXT, `provenance` TEXT NOT NULL, `detectedKind` TEXT, `detectedAt` TEXT, `clientClaimedAt` TEXT, `serverId` TEXT, `firstRecordedAt` TEXT, `lastModifiedAt` TEXT, `syncState` TEXT NOT NULL, `accountTag` TEXT NOT NULL, PRIMARY KEY(`accountTag`, `dayDate`, `portion`))",
+        "fields": [
+          {
+            "fieldPath": "clientMutationId",
+            "columnName": "clientMutationId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dayDate",
+            "columnName": "dayDate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "portion",
+            "columnName": "portion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "absenceReason",
+            "columnName": "absenceReason",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "provenance",
+            "columnName": "provenance",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "detectedKind",
+            "columnName": "detectedKind",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "detectedAt",
+            "columnName": "detectedAt",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "clientClaimedAt",
+            "columnName": "clientClaimedAt",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "serverId",
+            "columnName": "serverId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "firstRecordedAt",
+            "columnName": "firstRecordedAt",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastModifiedAt",
+            "columnName": "lastModifiedAt",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "syncState",
+            "columnName": "syncState",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "accountTag",
+            "columnName": "accountTag",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "accountTag",
+            "dayDate",
+            "portion"
+          ]
+        }
+      },
+      {
+        "tableName": "daily_tally",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`dayDate` TEXT NOT NULL, `check1` TEXT, `check2` TEXT, `check3` TEXT, `check4` TEXT, PRIMARY KEY(`dayDate`))",
+        "fields": [
+          {
+            "fieldPath": "dayDate",
+            "columnName": "dayDate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "check1",
+            "columnName": "check1",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "check2",
+            "columnName": "check2",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "check3",
+            "columnName": "check3",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "check4",
+            "columnName": "check4",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "dayDate"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'b17b44697fd7516dfea88579b17cd659')"
+    ]
+  }
+}

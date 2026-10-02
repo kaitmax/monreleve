@@ -7,6 +7,7 @@ import ch.monreleve.app.data.local.TallyEntity
 import ch.monreleve.app.data.repo.FakeEntryDao
 import ch.monreleve.app.data.repo.LocalEntryRepository
 import ch.monreleve.app.data.repo.RecordCommand
+import ch.monreleve.app.detection.Classification
 import ch.monreleve.app.detection.InMemoryNearBorderNoticeStore
 import ch.monreleve.app.settings.InMemoryDetectionModeStore
 import ch.monreleve.app.settings.LoggingMode
@@ -24,10 +25,11 @@ import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
 
-// AN-AUTO increment 5. The Aujourd'hui auto-mode state (SPEC 11.2 ETATS A/B/C, R311-R314). The controller
-// reads the logging mode and the day's tally and decides what the person sees: detection en cours (A), a
-// HIGH proposal to confirm/correct (B), the not-sure message (B withheld), or - once today is recorded -
-// the confirmed row (C). Only HIGH proposes (R311); confirm/correct record the provenance (R202/R314).
+// AN-AUTO increment 5 / R320. The Aujourd'hui auto-mode state (SPEC 11.2 ETATS A/B/C, R311-R314). The controller
+// reads the logging mode and the day's four checks and decides what the person sees: detection en cours (A) while
+// the day is still running, a HIGH proposal to confirm/correct (B) once concluded, the not-sure message (B
+// withheld), or - once today is recorded - the confirmed row (C). Only HIGH proposes (R311); confirm/correct record
+// the provenance (R202/R314). For half-day granularity each half is decided from its own two checks (R320).
 
 private const val TAX_YEAR = 2026
 private const val TODAY = "2026-06-15"
@@ -43,27 +45,21 @@ private fun store(granularity: String = "DAY"): SettingsStore =
 
 private fun tally(
     dayDate: String,
-    minutesSwitzerland: Int = 0,
-    minutesElsewhere: Int = 0,
-    fixCount: Int = 0,
-    bufferFixCount: Int = 0,
-): TallyEntity =
-    TallyEntity(
-        dayDate = dayDate,
-        minutesSwitzerland = minutesSwitzerland,
-        minutesElsewhere = minutesElsewhere,
-        fixCount = fixCount,
-        bufferFixCount = bufferFixCount,
-        windowStartMinuteOfDay = 420,
-        windowEndMinuteOfDay = 1140,
-        tier = null,
-    )
+    c1: Classification? = null,
+    c2: Classification? = null,
+    c3: Classification? = null,
+    c4: Classification? = null,
+): TallyEntity = TallyEntity(dayDate, c1?.name, c2?.name, c3?.name, c4?.name)
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AujourdhuiAutoControllerTest : FunSpec({
-    // 12:00 Paris: INSIDE the 07:00-19:00 working window (a day still in progress).
+    val i = Classification.INSIDE
+    val o = Classification.OUTSIDE
+    val b = Classification.BUFFER
+
+    // 12:00 Paris (10:00Z, summer): the day is still running - before the last check window (17:00 Paris).
     val insideWindow = Clock.fixed(Instant.parse("2026-06-15T10:00:00Z"), ZoneId.of("Europe/Paris"))
-    // 22:00 Paris: AFTER the window - the evening, when the day has a proposal to show.
+    // 22:00 Paris (20:00Z): AFTER the last window - the evening, when the day has a vote to show.
     val afterWindow = Clock.fixed(Instant.parse("2026-06-15T20:00:00Z"), ZoneId.of("Europe/Paris"))
 
     @Suppress("LongParameterList") // a test builder: the controller's seams, listed so each case reads at a glance
@@ -74,9 +70,10 @@ class AujourdhuiAutoControllerTest : FunSpec({
         tallies: List<TallyEntity> = emptyList(),
         scope: kotlinx.coroutines.CoroutineScope,
         noticeStore: InMemoryNearBorderNoticeStore = InMemoryNearBorderNoticeStore(),
+        settingsStore: SettingsStore = store(),
     ) = AujourdhuiController(
         repo,
-        store(),
+        settingsStore,
         TAX_YEAR,
         clock,
         scope,
@@ -95,11 +92,11 @@ class AujourdhuiAutoControllerTest : FunSpec({
         }
     }
 
-    test("auto mode, inside the window: detection en cours (ETAT A)") {
+    test("auto mode, before the last window: detection en cours (ETAT A)") {
         runTest {
             val repo = LocalEntryRepository(FakeEntryDao(), insideWindow)
-            // A partial Swiss tally, but the day is not over, so nothing is proposed yet.
-            val tallies = listOf(tally(TODAY, minutesSwitzerland = 120, fixCount = 8))
+            // Two Swiss checks already, but the day is not concluded, so nothing is proposed yet.
+            val tallies = listOf(tally(TODAY, c1 = i, c2 = i))
             val c = controller(repo, insideWindow, LoggingMode.AUTO_DETECT, tallies, this)
             advanceUntilIdle()
             c.state.value.auto shouldBe AutoDayState.Detecting
@@ -109,7 +106,7 @@ class AujourdhuiAutoControllerTest : FunSpec({
     test("auto mode, after the window, a HIGH Swiss day: proposes En Suisse to confirm (ETAT B, R311/R314)") {
         runTest {
             val repo = LocalEntryRepository(FakeEntryDao(), afterWindow)
-            val tallies = listOf(tally(TODAY, minutesSwitzerland = 600, minutesElsewhere = 0, fixCount = 48))
+            val tallies = listOf(tally(TODAY, i, i, i, i))
             val c = controller(repo, afterWindow, LoggingMode.AUTO_DETECT, tallies, this)
             advanceUntilIdle()
             val auto = c.state.value.auto
@@ -121,7 +118,7 @@ class AujourdhuiAutoControllerTest : FunSpec({
     test("auto mode, after the window, a HIGH home day: proposes Domicile") {
         runTest {
             val repo = LocalEntryRepository(FakeEntryDao(), afterWindow)
-            val tallies = listOf(tally(TODAY, minutesSwitzerland = 0, minutesElsewhere = 600, fixCount = 48))
+            val tallies = listOf(tally(TODAY, o, o, o, o))
             val c = controller(repo, afterWindow, LoggingMode.AUTO_DETECT, tallies, this)
             advanceUntilIdle()
             val auto = c.state.value.auto
@@ -130,23 +127,40 @@ class AujourdhuiAutoControllerTest : FunSpec({
         }
     }
 
-    test("auto mode, after the window, a buffer-heavy day withholds: the not-sure message (R311/R312)") {
+    test("auto mode, after the window, a MEDIUM day withholds: the not-sure message (R311/R312)") {
         runTest {
             val repo = LocalEntryRepository(FakeEntryDao(), afterWindow)
-            // Every fix in the 150 m buffer: LOW, nothing to attribute - withheld.
-            val tallies = listOf(tally(TODAY, fixCount = 48, bufferFixCount = 48))
+            // Three Swiss, one in the strip: MEDIUM -> withheld under R311.
+            val tallies = listOf(tally(TODAY, i, i, i, b))
             val c = controller(repo, afterWindow, LoggingMode.AUTO_DETECT, tallies, this)
             advanceUntilIdle()
             c.state.value.auto shouldBe AutoDayState.NotSure
         }
     }
 
-    test("auto mode, after the window, no fixes at all: also withheld, not a crash") {
+    test("auto mode, after the window, no fixes at all: withheld, not a crash") {
         runTest {
             val repo = LocalEntryRepository(FakeEntryDao(), afterWindow)
             val c = controller(repo, afterWindow, LoggingMode.AUTO_DETECT, emptyList(), this)
             advanceUntilIdle()
             c.state.value.auto shouldBe AutoDayState.NotSure
+        }
+    }
+
+    test("half-day granularity: each half is decided from its own two checks (R320)") {
+        runTest {
+            val repo = LocalEntryRepository(FakeEntryDao(), afterWindow)
+            // Morning both Swiss (proposes); afternoon one check missed (not sure).
+            val tallies = listOf(tally(TODAY, c1 = i, c2 = i, c3 = i, c4 = null))
+            val c =
+                controller(repo, afterWindow, LoggingMode.AUTO_DETECT, tallies, this, settingsStore = store("HALF_DAY"))
+            advanceUntilIdle()
+            val morning = c.state.value.autoMorning
+            morning.shouldBeInstanceOf<AutoDayState.ToConfirm>()
+            morning.kind shouldBe RecordedKind.SUISSE
+            c.state.value.autoAfternoon shouldBe AutoDayState.NotSure
+            // The whole-day auto surface is not used in half-day granularity.
+            c.state.value.auto shouldBe null
         }
     }
 
@@ -166,19 +180,31 @@ class AujourdhuiAutoControllerTest : FunSpec({
         }
     }
 
+    test("confirming a half-day proposal records that slot (R320)") {
+        runTest {
+            val dao = FakeEntryDao()
+            val repo = LocalEntryRepository(dao, afterWindow)
+            val c = controller(repo, afterWindow, LoggingMode.AUTO_DETECT, scope = this)
+            c.confirmDetected(RecordedKind.SUISSE, Slot.MORNING)
+            advanceUntilIdle()
+            val row = dao.byDayPortion(TODAY, Portion.AM)
+            row.shouldNotBeNull()
+            row.kind shouldBe EntryKind.CH
+            row.provenance shouldBe Provenance.DETECTED_CONFIRMED
+        }
+    }
+
     test("correcting a proposal records the chosen kind as DETECTED_CORRECTED, keeping what was proposed") {
         runTest {
             val dao = FakeEntryDao()
             val repo = LocalEntryRepository(dao, afterWindow)
             val c = controller(repo, afterWindow, LoggingMode.AUTO_DETECT, scope = this)
-            // Proposed Domicile; the person says it was actually En Suisse.
             c.correctDetected(RecordedKind.SUISSE, Slot.FULL, null, proposedKind = RecordedKind.DOMICILE)
             advanceUntilIdle()
             val row = dao.byDayPortion(TODAY, Portion.FULL)
             row.shouldNotBeNull()
             row.kind shouldBe EntryKind.CH
             row.provenance shouldBe Provenance.DETECTED_CORRECTED
-            // R202: the detected (proposed) kind is kept alongside the correction.
             row.detectedKind shouldBe EntryKind.HOME
         }
     }
@@ -209,7 +235,7 @@ class AujourdhuiAutoControllerTest : FunSpec({
             val dao = FakeEntryDao()
             val repo = LocalEntryRepository(dao, afterWindow)
             repo.record(RecordCommand(dayDate = TODAY, kind = EntryKind.HOME))
-            val tallies = listOf(tally(TODAY, minutesSwitzerland = 600, fixCount = 48))
+            val tallies = listOf(tally(TODAY, i, i, i, i))
             val c = controller(repo, afterWindow, LoggingMode.AUTO_DETECT, tallies, this)
             advanceUntilIdle()
             c.state.value.auto shouldBe null
@@ -236,18 +262,18 @@ class AujourdhuiAutoControllerTest : FunSpec({
         }
     }
 
-    // R313: near-border recognition from the tally (no coordinate), told ONCE.
+    // R313 under R320: near-border recognition from the four checks (no coordinate), told ONCE.
     test("3 of the last 5 with-data days near the border raises the notice once, then never again") {
         runTest {
             val repo = LocalEntryRepository(FakeEntryDao(), afterWindow)
-            // Five days: three buffer-heavy (share 0.5 > 0.40 MEDIUM ceiling), two clean.
+            // Five days: three with 2 checks in the strip (near-border), two clean.
             val tallies =
                 listOf(
-                    tally("2026-06-10", fixCount = 10, bufferFixCount = 5),
-                    tally("2026-06-11", minutesSwitzerland = 600, fixCount = 10, bufferFixCount = 0),
-                    tally("2026-06-12", fixCount = 10, bufferFixCount = 5),
-                    tally("2026-06-13", minutesSwitzerland = 600, fixCount = 10, bufferFixCount = 0),
-                    tally("2026-06-14", fixCount = 10, bufferFixCount = 5),
+                    tally("2026-06-10", b, b, i, i),
+                    tally("2026-06-11", i, i, i, i),
+                    tally("2026-06-12", b, b, i, i),
+                    tally("2026-06-13", i, i, i, i),
+                    tally("2026-06-14", b, b, i, i),
                 )
             val notice = InMemoryNearBorderNoticeStore()
             val c = controller(repo, afterWindow, LoggingMode.AUTO_DETECT, tallies, this, notice)
@@ -264,8 +290,7 @@ class AujourdhuiAutoControllerTest : FunSpec({
     test("a person comfortably inland never sees the near-border notice") {
         runTest {
             val repo = LocalEntryRepository(FakeEntryDao(), afterWindow)
-            val tallies =
-                (10..14).map { tally("2026-06-$it", minutesSwitzerland = 600, fixCount = 10, bufferFixCount = 0) }
+            val tallies = (10..14).map { tally("2026-06-$it", i, i, i, i) }
             val c = controller(repo, afterWindow, LoggingMode.AUTO_DETECT, tallies, this)
             advanceUntilIdle()
             c.state.value.nearBorderNotice shouldBe false
