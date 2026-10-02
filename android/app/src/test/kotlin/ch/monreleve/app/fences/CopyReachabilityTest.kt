@@ -178,6 +178,11 @@ private val UNREACHABLE: Map<String, String> =
         "DetectionCopy.NOT_SURE" to
             "the R312 not-sure message, rendered by the Aujourd'hui auto-mode withheld-day surface built in " +
             "AN-AUTO increment 5 (R314); no surface reaches it until that screen exists",
+        // AN-AUTO increment 6 (R313): the near-border suggestion, rendered by the Aujourd'hui auto-mode surface
+        // built in increment 5; no surface reaches it until that screen renders the near-border offer.
+        "DetectionCopy.NEAR_BORDER" to
+            "the R313 near-border suggestion, rendered by the Aujourd'hui auto-mode surface built in AN-AUTO " +
+            "increment 5; no surface reaches it until that screen shows the near-border offer",
     )
 
 class CopyReachabilityTest {

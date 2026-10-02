@@ -149,6 +149,22 @@ narrows what it proposes at all.
   disagree. `DetectionOutcomeTest` asserts each tier end to end, including that a MEDIUM day is
   still scored by the measurement path **and** withheld by the product.
 
+## Near-border recognition (AN-AUTO increment 6, R313) — PROPOSED
+
+**The app recognises someone who lives near the border from the tally alone — no coordinate.** The
+daily tally already counts how many fixes fell in the 150 m buffer (`bufferFixCount`). A working day
+is **near-border** when its buffer-fix share is **above `MEDIUM_BUFFER_SHARE` (0.40)** — the field
+protocol's MEDIUM ceiling, above which a day cannot even reach MEDIUM. When that holds on **≥ 3 of the
+last 5 working days with data**, the person is told **once** that detection is unreliable where they
+live and offered manual, respected either way (D19 — manual is a peer, automatic is never forced off).
+
+- Constants, in `detection/NearBorder.kt`: `NEAR_BORDER_DAYS_THRESHOLD = 3`, `NEAR_BORDER_WINDOW_DAYS
+  = 5`, and the per-day test reuses `MEDIUM_BUFFER_SHARE` (already encoded from the field protocol §3).
+- **PROPOSED (R276).** The threshold reuses the protocol constant and is **frozen when the field test
+  starts** — a threshold chosen after seeing data is tuned to pass.
+- `NearBorderTest` proves the per-day rule (strictly above 0.40), the 3-of-5 trigger, and that
+  no-data days are excluded from the window. "Told once" and the choice are the UI's (increment 5).
+
 ## Sampling and background mechanics (AN6a increment 5)
 
 **The entry point is `DetectionSession.onFix(latitude, longitude, epochMillis)`** — classify,
