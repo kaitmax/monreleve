@@ -34,6 +34,16 @@ data class DailyTally(
 )
 
 /**
+ * AN-AUTO increment 4. The minimal coordinate-free cursor the LIVE incremental tally (accumulateFix,
+ * LiveTally.kt) carries across WorkManager wakes: the PREVIOUS fix's side and timestamp. A single last value,
+ * never a history, never a coordinate (D18). It lives beside DailyTally because it is the tally's running state.
+ */
+data class FixCursor(
+    val lastSide: Classification,
+    val lastEpochMillis: Long,
+)
+
+/**
  * The tally for a day's classified fixes. `fixes` are whatever the sampler recorded inside the
  * working window; this attributes the minutes between them, folds sub-10-minute excursions,
  * and counts buffer fixes.
