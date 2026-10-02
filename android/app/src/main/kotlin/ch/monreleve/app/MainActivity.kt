@@ -3,10 +3,13 @@ package ch.monreleve.app
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -56,6 +59,10 @@ import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.LocalEntryRepository
 import ch.monreleve.app.data.sync.SyncScheduler
 import ch.monreleve.app.design.FrontierTheme
+import ch.monreleve.app.detection.BACKGROUND_LOCATION
+import ch.monreleve.app.detection.FINE_LOCATION
+import ch.monreleve.app.detection.locationFullyGranted
+import ch.monreleve.app.fr.DisclosureCopy
 import ch.monreleve.app.fr.ParametresCopy
 import ch.monreleve.app.fr.ReleveCopy
 import ch.monreleve.app.onboarding.OnboardingController
@@ -79,6 +86,7 @@ import ch.monreleve.app.startup.meFetchOf
 import ch.monreleve.app.ui.screens.aujourdhui.AujourdhuiScreen
 import ch.monreleve.app.ui.screens.calendrier.CalendarActions
 import ch.monreleve.app.ui.screens.calendrier.CalendrierScreen
+import ch.monreleve.app.ui.screens.disclosure.DisclosureScreen
 import ch.monreleve.app.ui.screens.onboarding.OnboardingActions
 import ch.monreleve.app.ui.screens.onboarding.OnboardingScreen
 import ch.monreleve.app.ui.screens.parametres.ParametresActions
@@ -292,7 +300,10 @@ private fun OnboardingRoute(
 // Not ui/ (the no-literal fence scans ui/ and dev/), so the annotation is permitted here.
 // LongMethod suppressed for the same reason onCreate carries its length: this is the composition shell -
 // controller wiring, the export/account hand-off effects, and the F8 resume refresh - not tangled logic.
-@Suppress("LongParameterList", "LongMethod")
+// CyclomaticComplexMethod suppressed for the same reason as LongMethod: this is the composition shell - the
+// tab `when`, the gated permission launchers (R316) and the resume-time revocation fallback are branches of
+// wiring, not tangled logic, and splitting them further would scatter the shell's one place of truth.
+@Suppress("LongParameterList", "LongMethod", "CyclomaticComplexMethod")
 @Composable
 internal fun MainShell(
     repository: EntryRepository,
@@ -333,6 +344,31 @@ internal fun MainShell(
     // the shell level (not inside a tab) so a switch of tab after the tap does not cancel the hand-off. Both
     // the Releve exports and the Parametres account export share the one hand-off (R206).
     val context = LocalContext.current
+
+    // AN-AUTO increment 3b (R316). Turning auto detection ON goes through the prominent disclosure (D5/SPEC 11.1)
+    // and then the OS permission prompt - never straight to setAutoDetection. The disclosure is an overlay held
+    // in shell state; the launchers request FINE first, then (API 29+) BACKGROUND as a SEPARATE step. Only when
+    // BOTH are granted does consent get recorded (setAutoDetection(true), which PATCHes /me and starts sampling).
+    // A deny at any step leaves manual mode and NEVER nags (no re-prompt).
+    var showDisclosure by rememberSaveable { mutableStateOf(false) }
+    val backgroundLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            showDisclosure = false
+            if (granted) controllers.parametres.setAutoDetection(true) // deny -> stay manual, no nag
+        }
+    val fineLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            when {
+                !granted -> showDisclosure = false // deny -> stay manual, no nag
+                // Android 10+ (API 29) asks for background SEPARATELY, as the disclosure warned.
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> backgroundLauncher.launch(BACKGROUND_LOCATION)
+                else -> {
+                    showDisclosure = false
+                    controllers.parametres.setAutoDetection(true)
+                }
+            }
+        }
+
     LaunchedEffect(controllers.releve) {
         controllers.releve.exportEvents.collect { event -> handleExport(context, event) }
     }
@@ -350,7 +386,17 @@ internal fun MainShell(
     DisposableEffect(lifecycleOwner) {
         val observer =
             LifecycleEventObserver { _, event ->
-                if (event == Lifecycle.Event.ON_RESUME) controllers.aujourdhui.refresh()
+                if (event == Lifecycle.Event.ON_RESUME) {
+                    controllers.aujourdhui.refresh()
+                    // R316: the person may have revoked the location permission in system settings while away.
+                    // If auto mode is on but the OS no longer grants what sampling needs, fall back to manual,
+                    // stop sampling, and say so plainly - no crash, no nag, and NO consent PATCH (they may re-grant).
+                    if (controllers.parametres.state.value.autoDetectionEnabled && !locationFullyGranted(context)) {
+                        controllers.parametres.onLocationPermissionRevoked()
+                        controllers.aujourdhui.refresh()
+                        Toast.makeText(context, DisclosureCopy.PERMISSION_REVOKED, Toast.LENGTH_LONG).show()
+                    }
+                }
             }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
@@ -401,8 +447,27 @@ internal fun MainShell(
                             ),
                     )
                 AppTab.PARAMETRES ->
-                    ParametresTab(parametresState, controllers.parametres) { openLegal(context, it) }
+                    ParametresTab(
+                        state = parametresState,
+                        controller = controllers.parametres,
+                        // R316: ON launches the disclosure (then the OS prompt); OFF stops at once, no dialog
+                        // (SPEC 13), straight through the controller.
+                        onToggleAuto = { enable ->
+                            if (enable) showDisclosure = true else controllers.parametres.setAutoDetection(false)
+                        },
+                        onOpenLegal = { openLegal(context, it) },
+                    )
             }
+        }
+    }
+
+    // R316/D5: the prominent disclosure, shown BEFORE the OS prompt, as a full-screen overlay over the shell.
+    if (showDisclosure) {
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            DisclosureScreen(
+                onAllow = { fineLauncher.launch(FINE_LOCATION) },
+                onStayManual = { showDisclosure = false },
+            )
         }
     }
 }
@@ -445,11 +510,12 @@ private fun buildLocalStore(
 private fun ParametresTab(
     state: ParametresState,
     controller: ParametresController,
+    onToggleAuto: (Boolean) -> Unit,
     onOpenLegal: (LegalPage) -> Unit,
 ) {
     ParametresScreen(
         state = state,
-        actions = parametresActions(controller, onOpenLegal),
+        actions = parametresActions(controller, onToggleAuto, onOpenLegal),
         appVersion = ParametresCopy.version(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE.toString()),
     )
 }
@@ -472,6 +538,7 @@ private fun openLegal(
 
 private fun parametresActions(
     controller: ParametresController,
+    onToggleAuto: (Boolean) -> Unit,
     onOpenLegal: (LegalPage) -> Unit,
 ): ParametresActions =
     ParametresActions(
@@ -494,7 +561,8 @@ private fun parametresActions(
         onCancelDelete = controller::cancelDelete,
         onAcknowledgeDelete = controller::acknowledgeDelete,
         onOpenLegal = onOpenLegal,
-        onToggleAutoDetection = controller::setAutoDetection,
+        // R316: the toggle is GATED - ON launches the disclosure first (the shell handles it), OFF is immediate.
+        onToggleAutoDetection = onToggleAuto,
     )
 
 // AC2 / R136: hand the server-rendered export to the platform. A Ready event's bytes are written to a

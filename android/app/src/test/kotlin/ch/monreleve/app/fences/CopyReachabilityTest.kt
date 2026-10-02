@@ -174,6 +174,12 @@ private val UNREACHABLE: Map<String, String> =
         // AN-AUTO increment 5 REMOVED the two detection entries that waited here: DetectionCopy.NOT_SURE is now
         // rendered by the Aujourd'hui auto NotSureBlock (ETAT B withheld) and DetectionCopy.NEAR_BORDER by the
         // near-border notice - both live surfaces, so the census reaches them directly.
+        // AN-AUTO increment 3b (R316): the permission-revoked message is a Toast raised by MainActivity's
+        // ON_RESUME (a Context/Toast concern the ui/ fence keeps out of ui/), so it is reached from the
+        // composition root, not a fr-surface directory this census scans - the ReleveCopy.EXPORT_* toast case.
+        "DisclosureCopy.PERMISSION_REVOKED" to
+            "the R316 toast shown when the location permission is revoked in system settings, raised by " +
+            "MainActivity's ON_RESUME fallback (a Context/Toast concern) - reached from the composition root",
     )
 
 class CopyReachabilityTest {

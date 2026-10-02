@@ -554,6 +554,18 @@ class ParametresController(
         }
     }
 
+    /**
+     * R316: the person revoked the location permission in system settings. Fall back to manual LOCALLY and stop
+     * sampling at once - NO /api/v1/me PATCH (consent is NOT withdrawn: they may re-grant, and auto-clearing the
+     * server stamp would turn an OS revocation into a consent decision it is not). The toggle reflects MANUAL;
+     * the composition root (MainActivity ON_RESUME) is the one caller, after locationFullyGranted returns false.
+     */
+    fun onLocationPermissionRevoked() {
+        modeStore.save(LoggingMode.MANUAL)
+        stopSampling()
+        mutableState.update { it.copy(autoDetectionEnabled = false) }
+    }
+
     private fun persist(settings: Settings) {
         mutableState.update { it.copy(phase = ParametresPhase.SAVING, error = null) }
         scope.launch {
