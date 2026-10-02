@@ -13,7 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -248,7 +248,9 @@ private fun RowScope.DataCell(
 
 @Composable
 internal fun AnnexSection(document: DossierDocument) {
-    var expanded by remember { mutableStateOf(false) }
+    // AN-STATE (R310): the annex's expanded state survives a rebuild (the matrix row "the releve's ... anything
+    // expanded"); the scroll position already survives via rememberScrollState (itself saveable).
+    var expanded by rememberSaveable { mutableStateOf(false) }
     SectionCard {
         Row(
             modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }.padding(vertical = Spacing.space8),

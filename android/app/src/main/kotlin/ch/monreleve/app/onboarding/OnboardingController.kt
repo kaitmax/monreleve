@@ -62,6 +62,25 @@ data class OnboardingState(
     val error: OnboardingError? = null,
 )
 
+/**
+ * AN-STATE (R310): the values entered so far, restored across a rebuild. Serializable, so the composition root's
+ * rememberSaveable keeps it through rotation, a text-size change, a dark-mode switch AND a background kill. Only
+ * the entered fields are restored - a restore is always EDITING, never an in-flight SUBMITTING (R181: a spinner
+ * attached to no request is a lie).
+ */
+data class OnboardingSnapshot(
+    val canton: Canton? = null,
+    val employmentRate: String = "",
+    val denominator: DenominatorChoice = DenominatorChoice.SIMPLIFIED240,
+    val exactTotalWorkDays: String = "",
+    val granularity: GranularityChoice = GranularityChoice.DAY,
+    val activityStartDate: String = "",
+) : java.io.Serializable {
+    companion object {
+        private const val serialVersionUID: Long = 1L
+    }
+}
+
 /** The one call onboarding needs from the session: PATCH /api/v1/me. A seam, so the controller is JVM-testable. */
 interface SettingsSaver {
     suspend fun saveSettings(body: String): PostOutcome
@@ -81,8 +100,22 @@ class OnboardingController(
     private val store: SettingsStore,
     private val taxYear: Int,
     private val scope: CoroutineScope,
+    // AN-STATE (R310): the entered values to restore after a rebuild (null = a fresh start).
+    restored: OnboardingSnapshot? = null,
 ) {
-    private val mutableState = MutableStateFlow(OnboardingState())
+    private val mutableState =
+        MutableStateFlow(
+            restored?.let {
+                OnboardingState(
+                    canton = it.canton,
+                    employmentRate = it.employmentRate,
+                    denominator = it.denominator,
+                    exactTotalWorkDays = it.exactTotalWorkDays,
+                    granularity = it.granularity,
+                    activityStartDate = it.activityStartDate,
+                )
+            } ?: OnboardingState(),
+        )
     val state: StateFlow<OnboardingState> = mutableState.asStateFlow()
 
     // Every field change also clears the last error, so a corrected field stops showing its message.

@@ -26,12 +26,39 @@ data class SignInState(
     val phase: SignInPhase = SignInPhase.EDITING,
 )
 
+/**
+ * AN-STATE (R310): the sign-in screen's state restored across a rebuild - the typed email and the phase.
+ * Serializable, so the composition root's rememberSaveable keeps it through rotation, a text-size change, a
+ * dark-mode switch AND a background kill. An in-flight SUBMITTING is coerced to EDITING on restore (R181: a
+ * spinner attached to no request is a lie); the stable result screens (LINK_SENT, the error states the person
+ * is reading) are kept.
+ */
+data class SignInSnapshot(
+    val email: String = "",
+    val phase: SignInPhase = SignInPhase.EDITING,
+) : java.io.Serializable {
+    companion object {
+        private const val serialVersionUID: Long = 1L
+    }
+}
+
 class SignInController(
     private val api: AuthApi,
     private val pending: PendingSignInStore,
     private val scope: CoroutineScope,
+    // AN-STATE (R310): the state to restore after a rebuild (null = a fresh open).
+    restored: SignInSnapshot? = null,
 ) {
-    private val mutableState = MutableStateFlow(SignInState())
+    private val mutableState =
+        MutableStateFlow(
+            restored?.let {
+                SignInState(
+                    email = it.email,
+                    // Never restore an in-flight submit as a live spinner; the rest are stable screens.
+                    phase = if (it.phase == SignInPhase.SUBMITTING) SignInPhase.EDITING else it.phase,
+                )
+            } ?: SignInState(),
+        )
     val state: StateFlow<SignInState> = mutableState.asStateFlow()
 
     fun onEmailChange(email: String) {

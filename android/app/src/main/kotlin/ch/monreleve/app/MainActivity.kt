@@ -42,6 +42,7 @@ import ch.monreleve.app.auth.PostOutcome
 import ch.monreleve.app.auth.SessionManager
 import ch.monreleve.app.auth.SharedPrefsPendingSignInStore
 import ch.monreleve.app.auth.SignInController
+import ch.monreleve.app.auth.SignInSnapshot
 import ch.monreleve.app.auth.TokenStore
 import ch.monreleve.app.data.local.DossierCache
 import ch.monreleve.app.data.local.MonReleveDatabase
@@ -59,6 +60,7 @@ import ch.monreleve.app.fr.ParametresCopy
 import ch.monreleve.app.fr.ReleveCopy
 import ch.monreleve.app.onboarding.OnboardingController
 import ch.monreleve.app.onboarding.OnboardingPhase
+import ch.monreleve.app.onboarding.OnboardingSnapshot
 import ch.monreleve.app.onboarding.SessionSettingsSaver
 import ch.monreleve.app.onboarding.SettingsSaver
 import ch.monreleve.app.parametres.AccountExportKind
@@ -199,8 +201,14 @@ private fun SignInRoute(
     pending: SharedPrefsPendingSignInStore,
     scope: CoroutineScope,
 ) {
-    val controller = remember { SignInController(api, pending, scope) }
+    // AN-STATE (R310): the typed email (and a stable phase) survive a rebuild. The snapshot is held in
+    // rememberSaveable and kept current from the controller's state; the seed re-creates the controller with it.
+    var saved by rememberSaveable { mutableStateOf<SignInSnapshot?>(null) }
+    val controller = remember { SignInController(api, pending, scope, restored = saved) }
     val state by controller.state.collectAsState()
+    LaunchedEffect(controller) {
+        controller.state.collect { saved = SignInSnapshot(it.email, it.phase) }
+    }
     RequestLinkScreen(
         state = state,
         onEmailChange = controller::onEmailChange,
@@ -242,8 +250,21 @@ private fun OnboardingRoute(
     scope: CoroutineScope,
     onDone: () -> Unit,
 ) {
-    val controller = remember { OnboardingController(SessionSettingsSaver(session), store, taxYear, scope) }
+    // AN-STATE (R310): the values entered so far survive a rebuild (rememberSaveable snapshot kept current from
+    // the controller's state; the seed re-creates the controller with it).
+    var saved by rememberSaveable { mutableStateOf<OnboardingSnapshot?>(null) }
+    val controller =
+        remember { OnboardingController(SessionSettingsSaver(session), store, taxYear, scope, restored = saved) }
     val state by controller.state.collectAsState()
+    LaunchedEffect(controller) {
+        controller.state.collect {
+            saved =
+                OnboardingSnapshot(
+                    it.canton, it.employmentRate, it.denominator, it.exactTotalWorkDays, it.granularity,
+                    it.activityStartDate,
+                )
+        }
+    }
     LaunchedEffect(state.phase) {
         if (state.phase == OnboardingPhase.SAVED) onDone()
     }

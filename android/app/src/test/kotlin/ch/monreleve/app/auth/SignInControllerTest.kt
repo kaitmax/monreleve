@@ -45,8 +45,14 @@ private fun controllerWith(
     response: HttpResponse = HttpResponse(202, ""),
     throwable: Throwable? = null,
     pending: PendingSignInStore = FakePendingStore(),
+    restored: SignInSnapshot? = null,
 ): SignInController {
-    return SignInController(AuthApi(ScriptedTransport(response, throwable), "http://10.0.2.2:3000"), pending, scope)
+    return SignInController(
+        AuthApi(ScriptedTransport(response, throwable), "http://10.0.2.2:3000"),
+        pending,
+        scope,
+        restored,
+    )
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -110,6 +116,25 @@ class SignInControllerTest : FunSpec({
             controller.retry()
             controller.state.value.phase shouldBe SignInPhase.EDITING
             controller.state.value.email shouldBe "a@b.ch"
+        }
+    }
+
+    // AN-STATE S4 (R310): the restore seed is proven on the JVM.
+    test("a restored snapshot reopens the typed email and a stable phase (R310)") {
+        runTest {
+            val controller =
+                controllerWith(this, restored = SignInSnapshot(email = "a@b.ch", phase = SignInPhase.LINK_SENT))
+            controller.state.value.email shouldBe "a@b.ch"
+            controller.state.value.phase shouldBe SignInPhase.LINK_SENT
+        }
+    }
+
+    test("a restored in-flight SUBMITTING becomes EDITING - no spinner attached to no request (R310)") {
+        runTest {
+            val controller =
+                controllerWith(this, restored = SignInSnapshot(email = "a@b.ch", phase = SignInPhase.SUBMITTING))
+            controller.state.value.email shouldBe "a@b.ch"
+            controller.state.value.phase shouldBe SignInPhase.EDITING
         }
     }
 })

@@ -213,4 +213,28 @@ class OnboardingControllerTest : FunSpec({
             store.saved shouldBe null
         }
     }
+
+    // AN-STATE S4 (R310): the restore seed is proven on the JVM - the values entered so far reopen.
+    test("a restored snapshot reopens the entered values (R310)") {
+        runTest {
+            val c =
+                OnboardingController(
+                    FakeSaver(),
+                    FakeStore(),
+                    TAX_YEAR,
+                    this,
+                    restored =
+                        OnboardingSnapshot(
+                            canton = Canton.VD,
+                            employmentRate = "80",
+                            denominator = DenominatorChoice.EXACT,
+                            exactTotalWorkDays = "210",
+                        ),
+                )
+            c.state.value.canton shouldBe Canton.VD
+            c.state.value.employmentRate shouldBe "80"
+            c.state.value.denominator shouldBe DenominatorChoice.EXACT
+            c.state.value.exactTotalWorkDays shouldBe "210"
+        }
+    }
 })
