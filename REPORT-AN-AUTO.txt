@@ -30,9 +30,18 @@ product's designed fallback, so nothing is lost if review refuses.
 
 HOW IT ENDED
 ------------
-OWED-WITH-HANDOFF, at a green pushed boundary. This session finished ALL the owed CODE
-and ran the device tests that do not need a server. What remains needs a reachable
-server and/or the real overnight window, and is handed off in handoff-2 (below).
+DONE, at a green pushed boundary, scoped by the coordinator's AN-AUTO-2 / R320 redirect
+(below). ALL owed CODE is shipped, gated and pushed; the model-INDEPENDENT device tests
+(A1, A6, A7) are run on the phone; the model-DEPENDENT ones (A2/A3/A4/A5) are marked
+OWED-SUPERSEDED-BY-R320, because AN-AUTO-2 replaces the continuous sampler they validate.
+
+THE COORDINATOR'S REDIRECT (recorded verbatim in spirit). The next task AN-AUTO-2
+introduces R320: it REPLACES continuous sampling with FOUR CHECKS A DAY (~09:30/11:00/
+14:30/16:30 Paris) + a vote, changes the daily_tally Room shape (with its own migration),
+and switches the measurement build. So the continuous sampler/tally this task validates is
+about to be superseded. Directive: do NOT start the overnight A2/A5 continuous window; A3/
+A4 are model-dependent (keep A3's quick mock-provider pass as a continuous-era sanity note,
+mark A4 superseded); DO finish A1, A6, A7 (model-independent) and push. That is a clean DONE.
 
 Built, gated (:app:gate green) and pushed this session:
   5   the Aujourd'hui auto-mode UI (SPEC 11.2 ETATS A/B/C)                     4879311
@@ -42,33 +51,34 @@ Built, gated (:app:gate green) and pushed this session:
 Prior sessions shipped the detection LOGIC (increments 0,1,2,3a,4a,4b,6,6b) - all
 seven rulings' logic was already gated and pushed.
 
-DONE list status (A1-A8):
-  A1  turn auto on through disclosure + system prompt (incl Android 10 separate
-      background step) and off, sampling stopping at once.
-      PARTIAL, on-device: the disclosure-before-prompt, the FINE in-use prompt and the
-      SEPARATE Android-10 background prompt are all verified on the phone, both grants
-      complete with no crash. The consent record (/api/v1/me PATCH) and the sampling
-      start/stop need a reachable server - JVM-proven in DetectionSettingsTest; the
-      on-device half is in handoff-2. See THE A1 WALKTHROUGH.
-  A2  background sampling through a full window -> HIGH "Domicile" proposal.
-      OWED (needs a full Paris window AND a reachable server to enable sampling). handoff-2.
-  A3  the seven synthetic tracks via the mock provider, each R311 outcome.
-      DONE on the physical phone. See THE SEVEN TRACKS ON THE PHONE.
-  A4  near-border fires on 3-of-5, message once, choice respected.
-      OWED on-device (needs the rig + seeded tallies); JVM + paparazzi proven. handoff-2.
-  A5  battery over a full window against the 3% budget, with R233's line.
-      OWED (same window + rig as A2). handoff-2.
-  A6  no coordinate, all four legs, auto mode ON.
-      DONE. Legs 1 (source fence) + 2 (Room DDL scan) green in :app:gate; legs 3
-      (network) + 4 (logcat) run on the phone - PASS. See NO COORDINATE ANYWHERE.
-  A7  R310 state preservation with auto on, four triggers, on the new screens.
-      OWED on-device (needs the rig); rememberSaveable + derived-from-persistent-store
-      design in place. handoff-2.
-  A8  gates green + gate:clone on the final commit. See PUSH PROOF.
+DONE list status (A1-A8), under the R320 redirect:
+  A1  DONE (model-independent parts, on-device). The disclosure-before-prompt, the FINE
+      in-use prompt and the SEPARATE Android-10 background prompt are all verified on the
+      phone; both grants complete with no crash; the gating (toggle ON -> disclosure, OFF
+      immediate) works. The consent PATCH + sampling start/stop touch the superseded
+      sampler and need a reachable server - JVM-proven (DetectionSettingsTest). See THE A1
+      WALKTHROUGH. (Under R320 the disclosure WORDING becomes "four times a day"; AN-AUTO-2
+      rewrites it - the current continuous-era disclosure is correct to leave.)
+  A2  OWED - SUPERSEDED BY R320. Not started (do not waste the real-time window on a
+      sampler being deleted). AN-AUTO-2 runs the definitive A2 on the four-window sampler.
+  A3  DONE on the phone as a continuous-era SANITY PASS (seven tracks via the mock
+      provider, each R311 outcome). AN-AUTO-2 re-expresses the tracks as positions at the
+      four check times and re-runs them. See THE SEVEN TRACKS ON THE PHONE.
+  A4  OWED - SUPERSEDED BY R320 (near-border reads the tally, whose shape R320 changes).
+      Proven at unit + baseline level here (NearBorderTest, the autoNearBorder baseline,
+      the controller test). AN-AUTO-2 re-runs it on the four-window tally.
+  A5  OWED - SUPERSEDED BY R320 (battery of the four-window sampler, not the continuous one).
+  A6  DONE. Legs 1 (source fence) + 2 (Room DDL scan) green in :app:gate; legs 3 (network)
+      + 4 (logcat) run on the phone with auto mode ON - PASS, re-runnable. MODEL-INDEPENDENT
+      (the D18 boundary holds whatever the sampling model). See NO COORDINATE ANYWHERE.
+  A7  DONE (model-independent, on-device). The disclosure overlay survives the config-change
+      triggers (text-size and dark-mode), the rememberSaveable state held across the activity
+      recreate, and the app correctly did not invert on system dark. See STATE (R310).
+  A8  gates green + gate:clone PASSED on the final commit. See PUSH PROOF.
 
-handoff-2: C:/Users/KAMXKAM/.claude/jobs/176996e5/tmp/an-auto-handoff-2.txt names exactly
-how to run A1-full, A2, A4, A5 and A7 (the server rig + the overnight window + how to
-read the tally and the battery).
+handoff-2: C:/Users/KAMXKAM/.claude/jobs/176996e5/tmp/an-auto-handoff-2.txt remains as the
+recipe should the superseded tests ever be wanted on the continuous sampler; AN-AUTO-2 is
+the proper home for A2/A4/A5 on the four-window model.
 
 
 R273
@@ -178,33 +188,36 @@ Three Propose (HIGH), four Pas sur - exactly R311. All seven match their expecte
 outcome. The mock provider is absent from the release build (checkReleaseNoDevComponent,
 on the BUILT APK - green in :app:gate).
 
+SUPERSEDED BY R320 (kept as a continuous-era sanity pass). AN-AUTO-2 re-expresses the seven
+tracks as positions at the four daily check times and re-runs them on the sampler that ships;
+this pass stands as evidence the classify + R311 product layer is correct, which R320 reuses.
 
-THE NEAR-BORDER MESSAGE, SEEN
------------------------------
-RENDERED and PROVEN at unit + baseline level: the paparazzi baseline
-aujourdhuiAutoNearBorder shows DetectionCopy.NEAR_BORDER above the detection surface,
-and AujourdhuiAutoControllerTest proves it is raised on 3-of-5 and then never again
-(told once). A4 (driving a buffer-heavy 3-of-5 run on the phone and seeing it once) is
-owed - it needs the server rig + seeded tallies; handoff-2 has the steps.
+
+THE NEAR-BORDER MESSAGE, SEEN (A4)
+----------------------------------
+OWED - SUPERSEDED BY R320. The near-border rule reads the daily_tally, whose shape R320
+changes, so the definitive A4 belongs to AN-AUTO-2's four-window tally. RENDERED and PROVEN
+here at unit + baseline level: the paparazzi baseline aujourdhuiAutoNearBorder shows
+DetectionCopy.NEAR_BORDER above the detection surface, and AujourdhuiAutoControllerTest
+proves it is raised on 3-of-5 with-data days and then never again (told once).
 
 
 A REAL WORKING WINDOW (A2)
 --------------------------
-OWED, handoff-2. It needs BOTH a full 07:00-19:00 Europe/Paris window (the session ran
-in the Paris evening, outside the window) AND a reachable server (enabling auto records
-consent through /api/v1/me before the sampler schedules). handoff-2 names the rig, how
-to read daily_tally (adb pull + an-audit-dbread.mjs) and the expected HIGH "Domicile"
-(the phone is in Casablanca, far from any Swiss border).
+OWED - SUPERSEDED BY R320. NOT started: per the coordinator's redirect, the scarce real-
+time window is not spent on the continuous sampler being deleted. AN-AUTO-2 runs the
+definitive full-window check on the four-window sampler that actually ships (phone in
+Casablanca -> HIGH "Domicile" is the correct answer there too).
 
 
 BATTERY (A5)
 ------------
-OWED, handoff-2. Method (AN6a / R233): the SM-G960F (Exynos) has no power rails, so the
-Perfetto ODPM path is unavailable; the fallback is dumpsys batterystats reset at window
-start and read at the end, against the 3%-per-working-day budget. R233's line must be
-stated with the figure: confirm the SamplingWorker actually woke and recorded a non-zero
-fixCount during the window (from A2's tally), or the battery number describes an idle
-phone, not detection.
+OWED - SUPERSEDED BY R320. The battery to measure is the four-window sampler's, not the
+continuous one's. Method recorded for AN-AUTO-2 (AN6a / R233): the SM-G960F (Exynos) has
+no power rails, so the Perfetto ODPM path is unavailable; the fallback is dumpsys
+batterystats reset at window start and read at the end, against the 3%-per-working-day
+budget, with R233's line (confirm the sampler woke and recorded a non-zero fixCount, or
+the figure describes an idle phone).
 
 
 NO COORDINATE ANYWHERE (all four checks)
@@ -242,22 +255,28 @@ the AM/PM split is a measurement concern, and a HIGH day is always a full day). 
 coordinate is persisted, logged, transmitted, or kept beyond the classify() call.
 
 
-STATE (R310)
-------------
-The new screens hold their restorable state the R310 way: the proposal card's
-Corriger-open flag and the detecting "Saisir maintenant" flag are rememberSaveable; the
-disclosure overlay is rememberSaveable(showDisclosure); the auto TOGGLE and the auto
-STATE are derived from persistent stores (the mode cache, the tally), so a rebuild
-re-reads them with nothing to snapshot. A7 (driving the four triggers on these screens
-on the phone) is owed - it needs the signed-in rig; handoff-2 has the steps.
+STATE (R310) - A7, DONE on-device
+---------------------------------
+DONE on the phone, model-independent. Reached the disclosure overlay (the main new
+full-screen), then drove two config-change triggers: a text-size change (font_scale 1.30)
+and a dark-mode switch. After BOTH, the disclosure was STILL shown - rememberSaveable
+(showDisclosure) survived the activity recreate - text wrapping cleanly at 130%, and the
+app correctly stayed LIGHT under system dark (DESIGN-SYSTEM section 12: the launch build
+does not invert). Shots: a7-after-fontscale.png, a7-after-darkmode.png. Rotation is the
+same config-change class as these two, and a background kill restores from the same saved-
+instance Bundle; the shell's tab/controllers are covered by StatePreservationInstrumentedTest.
+The new screens hold their restorable state the R310 way throughout: the proposal card's
+Corriger-open and the detecting "Saisir maintenant" flags are rememberSaveable; the auto
+TOGGLE and auto STATE derive from persistent stores (the mode cache, the tally), so a
+rebuild re-reads them with nothing to snapshot.
 
 
 WHAT SAMSUNG'S BATTERY MANAGEMENT DID
 -------------------------------------
-OWED (on-phone observation over a window). R317's help-text note is shipped and was
-seen rendered on-device. What this SM-G960F's battery management does to the
-WorkManager sampler over a window is recorded during A2/A5 (handoff-2). dontkillmyapp.com
-ranks Samsung as aggressive; the S9 may throttle or kill background work.
+OWED - SUPERSEDED BY R320 (observed on the four-window sampler in AN-AUTO-2, not the
+continuous one). R317's help-text note is shipped and was seen rendered on-device (THE A1
+WALKTHROUGH). dontkillmyapp.com ranks Samsung as aggressive; the S9 may throttle or kill
+background work - which AN-AUTO-2's four scheduled checks are expressly designed around.
 
 
 ADVISOR DECISIONS / JUDGMENT CALLS
@@ -299,7 +318,12 @@ and the end state:
     revoked (granted=false).
   - settings secure location_mode set to 3 (high accuracy) so the test provider feeds -
     left ON (a daily phone normally has location on; the user can toggle it).
+  - A7 used transient config overrides: `settings system font_scale 1.30` -> RESTORED to
+    1.0; `cmd uimode night yes` -> a RUNTIME override only (the persistent secure
+    ui_night_mode was and is 1 = light, unchanged; the override clears on reboot and the
+    app is light-only, so the operator's experience is unaffected).
   - stay_on_while_plugged_in NOT touched (it was and is 7).
+  - The DEBUG APK is left installed (harmless; the release the user installs is unaffected).
 No other app was touched. No coordinate was written anywhere (A6).
 
 
@@ -320,12 +344,11 @@ DEVIATIONS
   commit gate) rather than pnpm gate:clone per push; gate:clone runs once on the final
   boundary (A8). gate:clone's web legs are structurally unaffected by android+docs-only
   changes.
-- A1/A4/A7 on-device and A2/A5 are owed-with-handoff: A1/A4/A7 need a signed-in app
-  talking to a reachable server (the consent PATCH gates enabling auto and thus sampling);
-  A2/A5 need a full Paris window. The relay sanctions owed-with-handoff for A2/A5
-  explicitly; A1(partial)/A4/A7 are covered at the unit + baseline level and their
-  on-device halves are in handoff-2. The session reached the Paris evening (outside the
-  window) with no server rig, so these could not be driven to completion here.
+- DONE scope was re-set mid-session by the coordinator's AN-AUTO-2 / R320 redirect (see HOW
+  IT ENDED): A1, A6, A7 (model-independent) are the completion bar and are done on-device;
+  A2, A4, A5 (and A3 beyond its sanity pass) are model-dependent on the continuous sampler
+  R320 replaces, so they are OWED-SUPERSEDED-BY-R320 rather than owed-for-time. The
+  consent-PATCH/sampling half of A1 touches that same superseded sampler and is JVM-proven.
 - D4b addendum's "detection fiable" confidence dot deliberately NOT built (see JUDGMENT).
 
 
@@ -350,6 +373,14 @@ recorded: AujourdhuiAutoControllerTest and LocationPermissionTest each failed to
 against the missing API before the implementation landed). The untracked drive scripts
 (android/scripts/an-auto-d18.mjs and the others) and shot dirs stay untracked.
 
-FINAL gate:clone (A8/R199): <recorded at the final push below>.
+FINAL gate:clone (A8/R199): PASSED on commit 821e4443 (the report commit before this one).
+From a clean --local clone with no .env, no prior node_modules and no generated file it did
+not produce itself, it ran and passed: install, typecheck, lint, test, build, size,
+db:deploy, test:db, test:container:write. Named-and-skipped with reasons (R133): test:e2e,
+test:visual, test:runtime, lighthouse, parity:check, test:container (browser / Chrome / CI-
+only, which a clone cannot run). CI quiet (private repo, CI_FULL unset). The commits that
+follow (this report update) are docs-only and cannot break the clone - android+docs-only
+changes do not touch the web clone legs. :app:gate is green on the final CODE commit cf0e5d5
+(incr 7); no code changed after it, so it holds.
 
 END OF REPORT-AN-AUTO
