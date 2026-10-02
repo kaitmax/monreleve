@@ -10,22 +10,39 @@ import ch.monreleve.app.data.local.AbsenceReason
 import ch.monreleve.app.data.local.EntryEntity
 import ch.monreleve.app.data.local.EntryKind
 import ch.monreleve.app.data.local.Portion
+import ch.monreleve.app.data.local.Provenance
 import ch.monreleve.app.data.local.SyncState
+import ch.monreleve.app.data.local.TallyEntity
+import ch.monreleve.app.data.local.deviceClaimNow
 import ch.monreleve.app.data.local.todayInParis
 import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.RecordCommand
+import ch.monreleve.app.detection.DailyTally
+import ch.monreleve.app.detection.DetectionOutcome
+import ch.monreleve.app.detection.InMemoryNearBorderNoticeStore
+import ch.monreleve.app.detection.NearBorderNoticeStore
+import ch.monreleve.app.detection.afterWorkingWindow
+import ch.monreleve.app.detection.computeProposal
+import ch.monreleve.app.detection.detectionOutcome
+import ch.monreleve.app.detection.expectedSamples
+import ch.monreleve.app.detection.shouldSuggestManualForNearBorder
 import ch.monreleve.app.dossier.AggregatableEntry
 import ch.monreleve.app.dossier.LatenessForecast
 import ch.monreleve.app.dossier.pendingEntriesForYear
 import ch.monreleve.app.dossier.toTeleworkInput
 import ch.monreleve.app.onboarding.GranularityChoice
+import ch.monreleve.app.settings.DetectionModeStore
+import ch.monreleve.app.settings.InMemoryDetectionModeStore
+import ch.monreleve.app.settings.LoggingMode
 import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
 import ch.monreleve.app.settings.toAggregatableUser
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Clock
@@ -55,6 +72,30 @@ enum class Slot { FULL, MORNING, AFTERNOON }
 enum class AbsenceChoice { CONGE, MALADIE, FERIE, AUTRE }
 
 /**
+ * The screen's provenance of a recorded day (AN-AUTO, R202/R314). Orthogonal to the wire's Provenance (R202):
+ * the screen shows WHO/WHAT produced the record - a manual tap, or a detection the person confirmed or
+ * corrected - so the Aujourd'hui confirmed row can carry the provenance line (ETAT C). The ui fence keeps the
+ * wire Provenance out of ui/; this controller translates, once, here.
+ */
+enum class RecordedProvenance { MANUAL, DETECTED_CONFIRMED, DETECTED_CORRECTED }
+
+/**
+ * What the Aujourd'hui auto surface shows for TODAY when automatic detection is on and the day is not yet
+ * recorded (SPEC 11.2 ETATS A/B). Null on AujourdhuiState means manual mode OR a day already recorded (ETAT C,
+ * the recorded row carries the provenance line). Only HIGH proposes (R311); MEDIUM/LOW/no-data withhold.
+ */
+sealed interface AutoDayState {
+    /** ETAT A: the day is still running (or nothing is sampled yet); nothing is proposed. */
+    data object Detecting : AutoDayState
+
+    /** ETAT B: a HIGH-tier proposal to confirm or correct (R314). `kind` is the proposed side (SUISSE/DOMICILE). */
+    data class ToConfirm(val kind: RecordedKind) : AutoDayState
+
+    /** ETAT B withheld: the day cannot be proposed with confidence; the not-sure message (R312). */
+    data object NotSure : AutoDayState
+}
+
+/**
  * How close the OLDEST unsynced day is to the late-saisie threshold (R286). A WARNING state, not the
  * record: R216 - the dossier's « saisie tardive » flag is the server's, from its own observation; this
  * only escalates the pending line before the threshold is crossed. NONE while young, APPROACHING as it
@@ -76,6 +117,8 @@ data class DayEntry(
     val pending: Boolean,
     /** The server refused the client-built payload (R198): held, not retried, and SAID so, never silent. */
     val failed: Boolean,
+    /** How the day was recorded (R314): a manual tap, or a detection confirmed/corrected. */
+    val provenance: RecordedProvenance = RecordedProvenance.MANUAL,
 )
 
 /**
@@ -108,6 +151,12 @@ data class AujourdhuiState(
     val afternoon: DayEntry? = null,
     /** The year's position, or null when the year has no entries (AC3: no rate shown). */
     val year: YearPanel? = null,
+    /** AN-AUTO (R315): which mode records the person's days. MANUAL keeps the existing manual UI. */
+    val loggingMode: LoggingMode = LoggingMode.MANUAL,
+    /** AN-AUTO (SPEC 11.2): today's auto surface - null in manual mode, or when today is already recorded. */
+    val auto: AutoDayState? = null,
+    /** AN-AUTO (R313): render the near-border suggestion once (DetectionCopy.NEAR_BORDER). */
+    val nearBorderNotice: Boolean = false,
 )
 
 private fun EntryKind.toRecordedKind(): RecordedKind =
@@ -151,17 +200,29 @@ private fun Slot.toPortion(): Portion =
         Slot.AFTERNOON -> Portion.PM
     }
 
+private fun Provenance.toRecordedProvenance(): RecordedProvenance =
+    when (this) {
+        Provenance.MANUAL -> RecordedProvenance.MANUAL
+        Provenance.DETECTED_CONFIRMED -> RecordedProvenance.DETECTED_CONFIRMED
+        Provenance.DETECTED_CORRECTED -> RecordedProvenance.DETECTED_CORRECTED
+    }
+
 private fun EntryEntity.toDayEntry(): DayEntry =
     DayEntry(
         kind = kind.toRecordedKind(),
         absence = absenceReason?.toChoice(),
         pending = syncState == SyncState.PENDING,
         failed = syncState == SyncState.FAILED,
+        provenance = provenance.toRecordedProvenance(),
     )
 
 // The sync trigger is injected as a lambda (default no-op for JVM tests): the controller lives outside
 // ui/ but has no Context, and SyncScheduler.requestSync needs one. MainActivity, the composition root,
 // supplies { SyncScheduler.requestSync(applicationContext) }.
+// The dependency list is the controller's seams - the write path, the clock, the detection mode/tally/notice
+// stores - listed rather than bundled (the standing reasoning across the shell's controllers); the auto-mode
+// record/confirm/correct methods take the function count past the default threshold for the same reason.
+@Suppress("LongParameterList", "TooManyFunctions")
 class AujourdhuiController(
     private val repository: EntryRepository,
     private val settingsStore: SettingsStore,
@@ -171,6 +232,13 @@ class AujourdhuiController(
     // R291: a DayWriter, so MainGraphWiringTest enumerates this by type and asserts the app's graph
     // builds it with a real requestSync. Default no-op only for the JVM tests that build it directly.
     override val requestSync: () -> Unit = {},
+    // AN-AUTO increment 5 (R311-R315). The device's logging-mode cache (the same store Parametres toggles),
+    // the day's tally stream (Room's daily_tally, coordinate-free - SPEC 13.1), and the near-border "told
+    // once" flag (R313). All defaulted so the existing JVM tests and MainGraphWiringTest build unchanged;
+    // the app injects the SharedPreferences store, the DAO flow and the SharedPreferences notice store.
+    private val detectionModeStore: DetectionModeStore = InMemoryDetectionModeStore(),
+    detectionTallies: Flow<List<TallyEntity>> = emptyFlow(),
+    private val nearBorderNoticeStore: NearBorderNoticeStore = InMemoryNearBorderNoticeStore(),
 ) : DayWriter {
     // F8 (AN-FIX): "today" and the tax year are RECOMPUTED FROM THE CLOCK at use time, not frozen at
     // construction. They start at the current values and move on refresh() (resume) and at record time, so an
@@ -178,6 +246,12 @@ class AujourdhuiController(
     private var today: String = todayInParis(clock)
     private var currentTaxYear: Int = taxYear
     private var lastEntries: List<EntryEntity> = emptyList()
+    private var lastTallies: List<TallyEntity> = emptyList()
+
+    // AN-AUTO (R313): once the near-border notice is active for this controller instance it stays shown until a
+    // rebuild (never flickers off when the tally stream re-emits); markShown() persists "told once" across
+    // relaunches. See computeNearBorder.
+    private var nearBorderActive = false
     private val settings: Settings? = settingsStore.load()
     private val granularity: GranularityChoice =
         if (settings?.granularity == "HALF_DAY") GranularityChoice.HALF_DAY else GranularityChoice.DAY
@@ -192,6 +266,15 @@ class AujourdhuiController(
         scope.launch {
             repository.observeAll().collect { entries ->
                 lastEntries = entries
+                emitState()
+            }
+        }
+        // AN-AUTO: the day's tally stream (Room's daily_tally). The background sampler (a separate process)
+        // writes it; observing it lets ETAT A become ETAT B the moment the evening proposal is available,
+        // without a manual refresh. Coordinate-free by construction (SPEC 13.1 / D18).
+        scope.launch {
+            detectionTallies.collect { tallies ->
+                lastTallies = tallies
                 emitState()
             }
         }
@@ -211,16 +294,67 @@ class AujourdhuiController(
 
     private fun emitState() {
         val todays = lastEntries.filter { it.dayDate == today }
+        val mode = detectionModeStore.load()
+        val fullDay = todays.firstOrNull { e -> e.portion == Portion.FULL }
+        val morning = todays.firstOrNull { e -> e.portion == Portion.AM }
+        val afternoon = todays.firstOrNull { e -> e.portion == Portion.PM }
+        val todayRecorded = fullDay != null || morning != null || afternoon != null
         mutableState.update {
             it.copy(
                 today = today,
-                fullDay = todays.firstOrNull { e -> e.portion == Portion.FULL }?.toDayEntry(),
-                morning = todays.firstOrNull { e -> e.portion == Portion.AM }?.toDayEntry(),
-                afternoon = todays.firstOrNull { e -> e.portion == Portion.PM }?.toDayEntry(),
+                loggingMode = mode,
+                fullDay = fullDay?.toDayEntry(),
+                morning = morning?.toDayEntry(),
+                afternoon = afternoon?.toDayEntry(),
                 year = computeYear(lastEntries),
+                // ETAT C (a recorded day) shows the recorded row with its provenance line, not a re-proposal.
+                auto = if (mode == LoggingMode.AUTO_DETECT && !todayRecorded) computeAutoState() else null,
+                nearBorderNotice = computeNearBorder(mode),
             )
         }
     }
+
+    /**
+     * SPEC 11.2 ETATS A/B. The day's auto surface, from today's tally. Detecting (A) while the day is still
+     * running or nothing conclusive has accumulated; once the day is CONCLUDED (the Paris window has ended, or
+     * a full day's samples are in - the replay path), the proposal decides: HIGH -> ToConfirm (R311), else the
+     * not-sure message (R312). The coordinate never enters here - only the aggregate tally does.
+     */
+    private fun computeAutoState(): AutoDayState {
+        val todayTally = lastTallies.firstOrNull { it.dayDate == today }?.toDailyTally()
+        val concluded = afterWorkingWindow(clock) || (todayTally?.fixCount ?: 0) >= expectedSamples()
+        if (!concluded) return AutoDayState.Detecting
+        val proposal = todayTally?.let { computeProposal(it, emptyList(), today) }
+        return when (val outcome = detectionOutcome(proposal)) {
+            is DetectionOutcome.Proposed -> AutoDayState.ToConfirm(outcome.proposal.kind.toRecordedKind())
+            DetectionOutcome.NotSure -> AutoDayState.NotSure
+        }
+    }
+
+    /**
+     * R313: tell a near-border resident ONCE, from the aggregate tally alone (buffer-fix share). Sticky for the
+     * life of this controller (it never flickers off as the stream re-emits), and persisted "told once" across
+     * relaunches via the notice store. Only in auto mode. No coordinate - shouldSuggestManualForNearBorder reads
+     * only counts.
+     */
+    private fun computeNearBorder(mode: LoggingMode): Boolean {
+        if (mode != LoggingMode.AUTO_DETECT) return false
+        if (!nearBorderActive && !nearBorderNoticeStore.hasShown()) {
+            if (shouldSuggestManualForNearBorder(lastTallies.map { it.toDailyTally() })) {
+                nearBorderActive = true
+                nearBorderNoticeStore.markShown()
+            }
+        }
+        return nearBorderActive
+    }
+
+    private fun TallyEntity.toDailyTally(): DailyTally =
+        DailyTally(
+            minutesSwitzerland = minutesSwitzerland,
+            minutesElsewhere = minutesElsewhere,
+            fixCount = fixCount,
+            bufferFixCount = bufferFixCount,
+        )
 
     /**
      * The year's position, on the device: the year's rows -> the increment-2 aggregation -> the
@@ -293,6 +427,53 @@ class AujourdhuiController(
             )
             // SPEC 13.2: written to Room, then enqueued for replay on connectivity. The drain is
             // network-constrained (SyncScheduler), so this is a no-op cost offline and drains when online.
+            requestSync()
+        }
+    }
+
+    /**
+     * R314 / D16: the person CONFIRMED the proposal. One tap records a FULL day with provenance
+     * DETECTED_CONFIRMED and the detected kind (R202); detectedAt is the device's clock at the confirming tap.
+     * Nothing was recorded before this tap - a proposal is never a record.
+     */
+    fun confirmDetected(proposedKind: RecordedKind) =
+        recordDetected(proposedKind, Slot.FULL, null, Provenance.DETECTED_CONFIRMED, proposedKind)
+
+    /**
+     * R314 / R202 / D16: the person CORRECTED the proposal. The chosen kind (and slot/absence) is recorded with
+     * provenance DETECTED_CORRECTED, keeping detectedKind = what detection had proposed - so the releve and PDF
+     * can show "Detection corrigee" and an accountant can see the day came from detection and was changed.
+     */
+    fun correctDetected(
+        chosenKind: RecordedKind,
+        slot: Slot,
+        absence: AbsenceChoice?,
+        proposedKind: RecordedKind,
+    ) = recordDetected(chosenKind, slot, absence, Provenance.DETECTED_CORRECTED, proposedKind)
+
+    private fun recordDetected(
+        kind: RecordedKind,
+        slot: Slot,
+        absence: AbsenceChoice?,
+        provenance: Provenance,
+        detectedKind: RecordedKind,
+    ) {
+        scope.launch {
+            repository.record(
+                RecordCommand(
+                    dayDate = todayInParis(clock),
+                    kind = kind.toEntryKind(),
+                    portion = slot.toPortion(),
+                    absenceReason = absence?.toReason(),
+                    provenance = provenance,
+                    // R202: what detection proposed, kept alongside a correction. A proposal is only ever a
+                    // geographic side (CH/HOME); detectedKind is that side, never a mission or an absence.
+                    detectedKind = detectedKind.toEntryKind(),
+                    // The device's clock at the confirming/correcting tap, sent verbatim (never trusted as
+                    // evidence - the server assigns the recording timestamp).
+                    detectedAt = deviceClaimNow(clock),
+                ),
+            )
             requestSync()
         }
     }

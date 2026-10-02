@@ -8,9 +8,11 @@ import androidx.compose.ui.Modifier
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import ch.monreleve.app.aujourdhui.AujourdhuiState
+import ch.monreleve.app.aujourdhui.AutoDayState
 import ch.monreleve.app.aujourdhui.DayEntry
 import ch.monreleve.app.aujourdhui.PendingLateness
 import ch.monreleve.app.aujourdhui.RecordedKind
+import ch.monreleve.app.aujourdhui.RecordedProvenance
 import ch.monreleve.app.aujourdhui.YearPanel
 import ch.monreleve.app.calc.CalcResult
 import ch.monreleve.app.calc.Canton
@@ -21,6 +23,7 @@ import ch.monreleve.app.calc.calculateTelework
 import ch.monreleve.app.calc.ruleSetFor
 import ch.monreleve.app.design.FrontierTheme
 import ch.monreleve.app.onboarding.GranularityChoice
+import ch.monreleve.app.settings.LoggingMode
 import org.junit.Rule
 import org.junit.Test
 
@@ -130,6 +133,66 @@ class AujourdhuiScreenScreenshotTest {
             year = sampleYear(teleworkDays = 110.0),
         )
 
+    // AN-AUTO increment 5: the automatic-mode states (SPEC 11.2 ETATS A/B/C, R311-R314). loggingMode AUTO_DETECT
+    // switches the screen to the detection surface; `auto` drives A/B; a recorded detected day is ETAT C.
+    private val autoDetecting =
+        AujourdhuiState(
+            today = "2026-06-15",
+            granularity = GranularityChoice.DAY,
+            loggingMode = LoggingMode.AUTO_DETECT,
+            auto = AutoDayState.Detecting,
+        )
+
+    private val autoProposalSuisse =
+        AujourdhuiState(
+            today = "2026-06-15",
+            granularity = GranularityChoice.DAY,
+            loggingMode = LoggingMode.AUTO_DETECT,
+            auto = AutoDayState.ToConfirm(RecordedKind.SUISSE),
+        )
+
+    private val autoProposalDomicile =
+        AujourdhuiState(
+            today = "2026-06-15",
+            granularity = GranularityChoice.DAY,
+            loggingMode = LoggingMode.AUTO_DETECT,
+            auto = AutoDayState.ToConfirm(RecordedKind.DOMICILE),
+        )
+
+    private val autoNotSure =
+        AujourdhuiState(
+            today = "2026-06-15",
+            granularity = GranularityChoice.DAY,
+            loggingMode = LoggingMode.AUTO_DETECT,
+            auto = AutoDayState.NotSure,
+        )
+
+    // ETAT C: a detected day confirmed by the person - the recorded row carries the provenance line (R314).
+    private val autoConfirmed =
+        AujourdhuiState(
+            today = "2026-06-15",
+            granularity = GranularityChoice.DAY,
+            loggingMode = LoggingMode.AUTO_DETECT,
+            fullDay =
+                DayEntry(
+                    kind = RecordedKind.DOMICILE,
+                    absence = null,
+                    pending = true,
+                    failed = false,
+                    provenance = RecordedProvenance.DETECTED_CONFIRMED,
+                ),
+        )
+
+    // R313: the near-border suggestion, shown once above the detection surface.
+    private val autoNearBorder =
+        AujourdhuiState(
+            today = "2026-06-15",
+            granularity = GranularityChoice.DAY,
+            loggingMode = LoggingMode.AUTO_DETECT,
+            auto = AutoDayState.ToConfirm(RecordedKind.SUISSE),
+            nearBorderNotice = true,
+        )
+
     @Composable
     private fun host(state: AujourdhuiState) {
         FrontierTheme {
@@ -201,5 +264,42 @@ class AujourdhuiScreenScreenshotTest {
     fun aujourdhuiOverCeilingLarge() {
         paparazzi.unsafeUpdateConfig(DeviceConfig.PIXEL_5.copy(fontScale = 2f))
         paparazzi.snapshot { host(overCeiling) }
+    }
+
+    // AN-AUTO increment 5: the automatic-mode states (SPEC 11.2).
+    @Test
+    fun aujourdhuiAutoDetecting() {
+        paparazzi.snapshot { host(autoDetecting) }
+    }
+
+    @Test
+    fun aujourdhuiAutoProposalSuisse() {
+        paparazzi.snapshot { host(autoProposalSuisse) }
+    }
+
+    @Test
+    fun aujourdhuiAutoProposalDomicile() {
+        paparazzi.snapshot { host(autoProposalDomicile) }
+    }
+
+    @Test
+    fun aujourdhuiAutoProposalSuisseLarge() {
+        paparazzi.unsafeUpdateConfig(DeviceConfig.PIXEL_5.copy(fontScale = 2f))
+        paparazzi.snapshot { host(autoProposalSuisse) }
+    }
+
+    @Test
+    fun aujourdhuiAutoNotSure() {
+        paparazzi.snapshot { host(autoNotSure) }
+    }
+
+    @Test
+    fun aujourdhuiAutoConfirmed() {
+        paparazzi.snapshot { host(autoConfirmed) }
+    }
+
+    @Test
+    fun aujourdhuiAutoNearBorder() {
+        paparazzi.snapshot { host(autoNearBorder) }
     }
 }

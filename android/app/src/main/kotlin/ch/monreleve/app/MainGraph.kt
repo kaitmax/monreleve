@@ -6,8 +6,11 @@ import ch.monreleve.app.auth.BytesOutcome
 import ch.monreleve.app.auth.PostOutcome
 import ch.monreleve.app.calendar.CalendarController
 import ch.monreleve.app.calendar.CalendarSnapshot
+import ch.monreleve.app.data.local.TallyEntity
 import ch.monreleve.app.data.remote.DossierResult
 import ch.monreleve.app.data.repo.EntryRepository
+import ch.monreleve.app.detection.InMemoryNearBorderNoticeStore
+import ch.monreleve.app.detection.NearBorderNoticeStore
 import ch.monreleve.app.onboarding.SettingsSaver
 import ch.monreleve.app.parametres.ParametresController
 import ch.monreleve.app.parametres.ParametresSnapshot
@@ -16,6 +19,8 @@ import ch.monreleve.app.settings.DetectionModeStore
 import ch.monreleve.app.settings.InMemoryDetectionModeStore
 import ch.monreleve.app.settings.SettingsStore
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import java.time.Clock
 
 // AN10b increment 2 (R291). The composition root's controller wiring, moved OUT of the MainShell
@@ -95,9 +100,18 @@ object MainGraph {
         detectionModeStore: DetectionModeStore = InMemoryDetectionModeStore(),
         startSampling: () -> Unit = {},
         stopSampling: () -> Unit = {},
+        // AN-AUTO increment 5: the day's tally stream (Room's daily_tally, coordinate-free) and the near-border
+        // "told once" flag, which the Aujourd'hui auto surface reads. Defaulted so the wiring test builds; the
+        // app injects the DAO flow and the SharedPreferences store (ShellState, where a Context is available).
+        detectionTallies: Flow<List<TallyEntity>> = emptyFlow(),
+        nearBorderNoticeStore: NearBorderNoticeStore = InMemoryNearBorderNoticeStore(),
     ): MainControllers =
         MainControllers(
-            aujourdhui = AujourdhuiController(repository, settingsStore, taxYear, clock, scope, requestSync),
+            aujourdhui =
+                AujourdhuiController(
+                    repository, settingsStore, taxYear, clock, scope, requestSync,
+                    detectionModeStore, detectionTallies, nearBorderNoticeStore,
+                ),
             calendar =
                 CalendarController(repository, settingsStore, taxYear, clock, scope, requestSync, restoredCalendar),
             releve = ReleveController(dossierFetch, exportBytes, repository, taxYear, scope),

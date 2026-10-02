@@ -13,9 +13,11 @@ import ch.monreleve.app.account.LocalStore
 import ch.monreleve.app.auth.BytesOutcome
 import ch.monreleve.app.auth.PostOutcome
 import ch.monreleve.app.calendar.CalendarSnapshot
+import ch.monreleve.app.data.local.MonReleveDatabase
 import ch.monreleve.app.data.remote.DossierResult
 import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.detection.DetectionScheduling
+import ch.monreleve.app.detection.SharedPrefsNearBorderNoticeStore
 import ch.monreleve.app.onboarding.SettingsSaver
 import ch.monreleve.app.parametres.ParametresSnapshot
 import ch.monreleve.app.settings.SettingsStore
@@ -103,6 +105,11 @@ fun rememberMainControllers(
                 // flow before the enable call.
                 startSampling = { DetectionScheduling.startSampling(context) },
                 stopSampling = { DetectionScheduling.stopSampling(context) },
+                // AN-AUTO increment 5: the Aujourd'hui auto surface reads the day's tally (coordinate-free, Room's
+                // daily_tally) and the near-border "told once" flag. The DAO flow emits as the background sampler
+                // writes, so ETAT A becomes ETAT B without a manual refresh.
+                detectionTallies = MonReleveDatabase.get(context).tallyDao().observeAll(),
+                nearBorderNoticeStore = SharedPrefsNearBorderNoticeStore(context),
             )
         }
     // Keep the saved snapshots current from the controllers' observed state, so the LATEST month, open sheet,

@@ -55,3 +55,14 @@ fun insideWorkingWindow(clock: Clock): Boolean {
     val minuteOfDay = now.hour * 60 + now.minute
     return minuteOfDay in WORKING_WINDOW_START_MINUTE until WORKING_WINDOW_END_MINUTE
 }
+
+/**
+ * True once the Paris working window has ended for today (the evening, SPEC 11.2 ETAT B). The Aujourd'hui
+ * auto surface reads this to decide whether a day is concluded enough to show a proposal (or the not-sure
+ * message) rather than "detection en cours" - it does not show a withheld day while the day is still running.
+ */
+fun afterWorkingWindow(clock: Clock): Boolean {
+    val now = LocalTime.now(clock.withZone(ZoneId.of("Europe/Paris")))
+    val minuteOfDay = now.hour * 60 + now.minute
+    return minuteOfDay >= WORKING_WINDOW_END_MINUTE
+}

@@ -356,11 +356,28 @@ internal fun MainShell(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    Scaffold(bottomBar = { AppBottomBar(selected = tab, onSelect = { tab = it }) }) { padding ->
+    Scaffold(
+        bottomBar = {
+            AppBottomBar(
+                selected = tab,
+                onSelect = { selected ->
+                    // AN-AUTO: returning to Aujourd'hui re-reads the logging mode (toggled in Parametres) and
+                    // today's position, so a mode change made on another tab is reflected at once.
+                    if (selected == AppTab.AUJOURDHUI) controllers.aujourdhui.refresh()
+                    tab = selected
+                },
+            )
+        },
+    ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when (tab) {
                 AppTab.AUJOURDHUI ->
-                    AujourdhuiScreen(state = aujourdhuiState, onRecord = controllers.aujourdhui::record)
+                    AujourdhuiScreen(
+                        state = aujourdhuiState,
+                        onRecord = controllers.aujourdhui::record,
+                        onConfirmDetected = controllers.aujourdhui::confirmDetected,
+                        onCorrectDetected = controllers.aujourdhui::correctDetected,
+                    )
                 AppTab.CALENDRIER ->
                     CalendrierScreen(
                         state = calendarState,

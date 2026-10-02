@@ -26,6 +26,7 @@ import ch.monreleve.app.aujourdhui.RecordedKind
 import ch.monreleve.app.aujourdhui.Slot
 import ch.monreleve.app.aujourdhui.YearPanel
 import ch.monreleve.app.design.FrontierType
+import ch.monreleve.app.design.LightColors
 import ch.monreleve.app.design.MetricTile
 import ch.monreleve.app.design.Radius
 import ch.monreleve.app.design.RateDisplay
@@ -38,30 +39,34 @@ import ch.monreleve.app.design.rail.ThresholdRail
 import ch.monreleve.app.design.statusFor
 import ch.monreleve.app.design.zoneFor
 import ch.monreleve.app.fr.AujourdhuiCopy
+import ch.monreleve.app.fr.DetectionCopy
 import ch.monreleve.app.fr.Fr
 import ch.monreleve.app.fr.MetricCopy
 import ch.monreleve.app.fr.format.formatPercent
 import ch.monreleve.app.fr.format.formatSignedDays
 import ch.monreleve.app.onboarding.GranularityChoice
+import ch.monreleve.app.settings.LoggingMode
 
 // The threshold captions are derived from the RuleSet ceilings, never typed (R181): a fraction like
 // 0.40 becomes "40,0 %". PERCENT scales the fraction; THRESHOLD_DECIMALS matches SPEC 9.3's "40,0 %".
 private const val PERCENT = 100.0
 private const val THRESHOLD_DECIMALS = 1
 
-// AN5b increment 3. Recording a day (SPEC 11.2): one question, answered in one tap. Stateless - it
-// reads an AujourdhuiState and calls onRecord, which the controller turns into a write through
-// EntryRepository (D16, fence 5). It speaks the UI vocabulary only (RecordedKind/Slot/AbsenceChoice);
-// the wire enums never reach this file (the ui fence forbids it). No success animation, no "bravo":
-// the confirmation is the recorded row appearing (DESIGN-SYSTEM section 2). The mode strip names
-// "Saisie manuelle" with no Changer link (R282). The day's record buttons use the 56 dp large-action
-// size token (Size.buttonLarge, SPEC 11.2 / R285, closing PARKAN-16). The pending line escalates as the
-// oldest unsynced day nears the late threshold (R286), predicting only to warn (R216).
+// AN5b increment 3 / AN-AUTO increment 5. Recording a day (SPEC 11.2). Stateless (fence 5): it reads an
+// AujourdhuiState and calls back - onRecord for a manual tap, onConfirmDetected/onCorrectDetected for a
+// detection. The screen speaks the UI vocabulary only (RecordedKind/Slot/AbsenceChoice/provenance); the wire
+// enums never reach this file. No success animation (DESIGN-SYSTEM section 2).
+//
+// TWO MODES (SPEC 11.2). In MANUAL the mode strip names "Saisie manuelle" and the person taps the day in
+// themselves (the AN5b flow, unchanged). In AUTO_DETECT the screen shows the detection surface (ETATS A/B/C,
+// AujourdhuiAuto.kt) - only HIGH proposes (R311), and the app never records a day on its own (D16).
 
 @Composable
 fun AujourdhuiScreen(
     state: AujourdhuiState,
     onRecord: (RecordedKind, Slot, AbsenceChoice?) -> Unit,
+    onConfirmDetected: (RecordedKind) -> Unit = {},
+    onCorrectDetected: (RecordedKind, Slot, AbsenceChoice?, RecordedKind) -> Unit = { _, _, _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -69,19 +74,38 @@ fun AujourdhuiScreen(
         verticalArrangement = Arrangement.spacedBy(Spacing.space16),
     ) {
         Text(text = Fr.GREETING, style = FrontierType.h2)
-        Text(text = AujourdhuiCopy.MODE_MANUAL, style = FrontierType.caption)
-        Text(text = AujourdhuiCopy.QUESTION, style = FrontierType.h3)
+        val autoMode = state.loggingMode == LoggingMode.AUTO_DETECT
+        Text(
+            text = if (autoMode) DetectionCopy.MODE_AUTO else AujourdhuiCopy.MODE_MANUAL,
+            style = FrontierType.caption,
+        )
 
-        if (state.granularity == GranularityChoice.HALF_DAY) {
-            Text(text = AujourdhuiCopy.MORNING, style = FrontierType.bodyM)
-            RecordSection(Slot.MORNING, state.morning, onRecord)
-            Text(text = AujourdhuiCopy.AFTERNOON, style = FrontierType.bodyM)
-            RecordSection(Slot.AFTERNOON, state.afternoon, onRecord)
+        if (autoMode) {
+            if (state.nearBorderNotice) NearBorderNotice()
+            AutoSection(state, onRecord, onConfirmDetected, onCorrectDetected)
         } else {
-            RecordSection(Slot.FULL, state.fullDay, onRecord)
+            Text(text = AujourdhuiCopy.QUESTION, style = FrontierType.h3)
+            ManualSection(state, onRecord)
         }
 
         YearSection(state.year)
+    }
+}
+
+// The manual recording surface (SPEC 11.2, AN5b): the full day, or the two half-day slots. Internal so the
+// auto surface (AujourdhuiAuto.kt) can fall back to it.
+@Composable
+internal fun ManualSection(
+    state: AujourdhuiState,
+    onRecord: (RecordedKind, Slot, AbsenceChoice?) -> Unit,
+) {
+    if (state.granularity == GranularityChoice.HALF_DAY) {
+        Text(text = AujourdhuiCopy.MORNING, style = FrontierType.bodyM)
+        RecordSection(Slot.MORNING, state.morning, onRecord)
+        Text(text = AujourdhuiCopy.AFTERNOON, style = FrontierType.bodyM)
+        RecordSection(Slot.AFTERNOON, state.afternoon, onRecord)
+    } else {
+        RecordSection(Slot.FULL, state.fullDay, onRecord)
     }
 }
 
@@ -140,8 +164,9 @@ private fun YearSection(year: YearPanel?) {
     }
 }
 
+// Internal so the auto surface (AujourdhuiAuto.kt) reuses it for its "enter it yourself" and correction paths.
 @Composable
-private fun RecordSection(
+internal fun RecordSection(
     slot: Slot,
     current: DayEntry?,
     onRecord: (RecordedKind, Slot, AbsenceChoice?) -> Unit,
@@ -210,6 +235,11 @@ private fun RecordButton(
 private fun RecordedRow(entry: DayEntry) {
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.space4)) {
         Text(text = AujourdhuiCopy.recordedLabel(entry.kind.name, entry.absence?.name), style = FrontierType.bodyM)
+        // ETAT C (R314): the provenance line for a detected day - never abbreviated to an icon, shown wherever
+        // the entry is. Null for a manual day (no detection line).
+        DetectionCopy.provenanceLine(entry.provenance.name)?.let {
+            Text(text = it, style = FrontierType.caption, color = LightColors.textSecondary)
+        }
         if (entry.pending) Text(text = AujourdhuiCopy.PENDING, style = FrontierType.caption)
         if (entry.failed) {
             Text(

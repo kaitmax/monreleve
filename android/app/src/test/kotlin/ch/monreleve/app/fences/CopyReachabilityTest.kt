@@ -171,18 +171,9 @@ private val UNREACHABLE: Map<String, String> =
         "ParametresCopy.legalNoHandler" to
             "the toast shown when no app can open a legal link (R299), raised by MainActivity's openLegal, which " +
             "owns the Context and the Toast - reached from the composition root, not a fr-surface directory",
-        // AN-AUTO increment 1 (R312): the not-sure message shown when a day withholds (MEDIUM/LOW under
-        // R311). It is rendered by the Aujourd'hui auto-mode "a confirmer" surface, built in increment 5
-        // (R314); until that screen exists no ui/design/dev surface reaches it. This entry is removed when
-        // increment 5 renders it.
-        "DetectionCopy.NOT_SURE" to
-            "the R312 not-sure message, rendered by the Aujourd'hui auto-mode withheld-day surface built in " +
-            "AN-AUTO increment 5 (R314); no surface reaches it until that screen exists",
-        // AN-AUTO increment 6 (R313): the near-border suggestion, rendered by the Aujourd'hui auto-mode surface
-        // built in increment 5; no surface reaches it until that screen renders the near-border offer.
-        "DetectionCopy.NEAR_BORDER" to
-            "the R313 near-border suggestion, rendered by the Aujourd'hui auto-mode surface built in AN-AUTO " +
-            "increment 5; no surface reaches it until that screen shows the near-border offer",
+        // AN-AUTO increment 5 REMOVED the two detection entries that waited here: DetectionCopy.NOT_SURE is now
+        // rendered by the Aujourd'hui auto NotSureBlock (ETAT B withheld) and DetectionCopy.NEAR_BORDER by the
+        // near-border notice - both live surfaces, so the census reaches them directly.
     )
 
 class CopyReachabilityTest {
