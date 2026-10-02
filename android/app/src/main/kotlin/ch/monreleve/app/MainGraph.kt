@@ -5,6 +5,7 @@ import ch.monreleve.app.aujourdhui.AujourdhuiController
 import ch.monreleve.app.auth.BytesOutcome
 import ch.monreleve.app.auth.PostOutcome
 import ch.monreleve.app.calendar.CalendarController
+import ch.monreleve.app.calendar.CalendarSnapshot
 import ch.monreleve.app.data.remote.DossierResult
 import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.onboarding.SettingsSaver
@@ -80,10 +81,15 @@ object MainGraph {
         // AN12 increment 3 (R289): the authenticated POST (SessionManager::authenticatedPost) the account
         // delete uses. The controller supplies the path and the body.
         authenticatedPost: suspend (String, String) -> PostOutcome,
+        // AN-STATE (R310): the restorable state seeds, held by the composition root in rememberSaveable and
+        // passed here so the ONE construction site (R291) also decides each controller's restore. Defaulted to
+        // null (a fresh build) so the wiring test and the controller tests need not name them.
+        restoredCalendar: CalendarSnapshot? = null,
     ): MainControllers =
         MainControllers(
             aujourdhui = AujourdhuiController(repository, settingsStore, taxYear, clock, scope, requestSync),
-            calendar = CalendarController(repository, settingsStore, taxYear, clock, scope, requestSync),
+            calendar =
+                CalendarController(repository, settingsStore, taxYear, clock, scope, requestSync, restoredCalendar),
             releve = ReleveController(dossierFetch, exportBytes, repository, taxYear, scope),
             parametres =
                 ParametresController(

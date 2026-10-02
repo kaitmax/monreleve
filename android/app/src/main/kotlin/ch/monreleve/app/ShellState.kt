@@ -1,13 +1,17 @@
 package ch.monreleve.app
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import ch.monreleve.app.account.LocalStore
 import ch.monreleve.app.auth.BytesOutcome
 import ch.monreleve.app.auth.PostOutcome
+import ch.monreleve.app.calendar.CalendarSnapshot
 import ch.monreleve.app.data.remote.DossierResult
 import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.onboarding.SettingsSaver
@@ -70,10 +74,27 @@ fun rememberMainControllers(
     revokeServer: suspend () -> Unit,
     localStore: LocalStore,
     authenticatedPost: suspend (String, String) -> PostOutcome,
-): MainControllers =
-    remember {
-        MainGraph.build(
-            repository, store, taxYear, clock, scope, requestSync, dossierFetch, exportBytes, settingsSaver,
-            revokeServer, localStore, authenticatedPost,
-        )
+): MainControllers {
+    // AN-STATE (R310): the restorable state the controllers are seeded with, held here in rememberSaveable so it
+    // survives rotation, a text-size change, a dark-mode switch AND a background kill (the Bundle outlives
+    // process death). Int?/String? are stored by the default autoSaver, so no custom Saver is needed.
+    var savedMonth by rememberSaveable { mutableStateOf<Int?>(null) }
+    var savedEditingDay by rememberSaveable { mutableStateOf<String?>(null) }
+    val controllers =
+        remember {
+            MainGraph.build(
+                repository, store, taxYear, clock, scope, requestSync, dossierFetch, exportBytes, settingsSaver,
+                revokeServer, localStore, authenticatedPost,
+                restoredCalendar = CalendarSnapshot(savedMonth, savedEditingDay),
+            )
+        }
+    // Keep the saved snapshot current from the controller's observed state, so the LATEST month and open sheet
+    // are what a rebuild restores. Writing a snapshot MutableState from the collector is thread-safe.
+    LaunchedEffect(controllers) {
+        controllers.calendar.state.collect { s ->
+            savedMonth = s.monthView?.month
+            savedEditingDay = s.editing?.isoDate
+        }
     }
+    return controllers
+}

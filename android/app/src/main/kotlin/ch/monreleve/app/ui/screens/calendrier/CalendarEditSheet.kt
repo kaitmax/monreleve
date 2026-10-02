@@ -14,9 +14,11 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,11 +51,30 @@ import ch.monreleve.app.fr.format.formatDayLong
 // same (R206: the copy has one home). Only the sheet's own chrome (note, save, cancel) is CalendarCopy.
 
 /** One slot's live edit state, seeded from its current row; mutated by the rows until Save (D16). */
-private class SlotDraft(initial: EditableSlot) {
-    val slot: Slot = initial.slot
-    var kind by mutableStateOf(initial.kind)
-    var absence by mutableStateOf(initial.absence)
-    var note by mutableStateOf(initial.note.orEmpty())
+private class SlotDraft(
+    val slot: Slot,
+    kindState: MutableState<RecordedKind?>,
+    absenceState: MutableState<AbsenceChoice?>,
+    noteState: MutableState<String>,
+) {
+    var kind by kindState
+    var absence by absenceState
+    var note by noteState
+}
+
+// AN-STATE (R310): the draft's fields are rememberSaveable, keyed by day + slot - so a rebuild (rotation, a
+// text-size change, a dark-mode switch, a background kill) RESTORES a kind/absence/note picked but not yet
+// saved, while opening a DIFFERENT day starts fresh from that day's recorded rows. The matrix row "a kind,
+// portion or absence reason picked but not saved; a note half-typed" is exactly this state.
+@Composable
+private fun rememberSlotDraft(
+    isoDate: String,
+    initial: EditableSlot,
+): SlotDraft {
+    val kind = rememberSaveable(isoDate, initial.slot) { mutableStateOf(initial.kind) }
+    val absence = rememberSaveable(isoDate, initial.slot) { mutableStateOf(initial.absence) }
+    val note = rememberSaveable(isoDate, initial.slot) { mutableStateOf(initial.note.orEmpty()) }
+    return remember(isoDate, initial.slot, kind, absence, note) { SlotDraft(initial.slot, kind, absence, note) }
 }
 
 @Composable
@@ -63,7 +84,7 @@ fun CalendarEditSheetContent(
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val drafts = remember(day) { day.slots.map { SlotDraft(it) } }
+    val drafts = day.slots.map { rememberSlotDraft(day.isoDate, it) }
     Column(
         modifier =
             modifier
@@ -75,7 +96,7 @@ fun CalendarEditSheetContent(
         Text(text = formatDayLong(day.isoDate), style = FrontierType.h3)
         Text(text = CalendarCopy.SHEET_QUESTION, style = FrontierType.bodyM)
         drafts.forEach { draft ->
-            SlotEditor(draft)
+            SlotEditor(day.isoDate, draft)
         }
         LateNotice(day)
         ProvenanceBlock(day)
@@ -95,10 +116,14 @@ fun CalendarEditSheetContent(
 }
 
 @Composable
-private fun SlotEditor(draft: SlotDraft) {
+private fun SlotEditor(
+    isoDate: String,
+    draft: SlotDraft,
+) {
     val missionInitiallyOpen = draft.kind == RecordedKind.MISSION_FRANCE || draft.kind == RecordedKind.MISSION_THIRD
-    var missionOpen by remember { mutableStateOf(missionInitiallyOpen) }
-    var absenceOpen by remember { mutableStateOf(draft.kind == RecordedKind.ABSENCE) }
+    // AN-STATE (R310): the mission/absence chooser's expanded state survives a rebuild too, keyed by day+slot.
+    var missionOpen by rememberSaveable(isoDate, draft.slot) { mutableStateOf(missionInitiallyOpen) }
+    var absenceOpen by rememberSaveable(isoDate, draft.slot) { mutableStateOf(draft.kind == RecordedKind.ABSENCE) }
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.space8)) {
         if (draft.slot != Slot.FULL) {
             val label = if (draft.slot == Slot.MORNING) AujourdhuiCopy.MORNING else AujourdhuiCopy.AFTERNOON

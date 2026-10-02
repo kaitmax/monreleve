@@ -16,7 +16,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import ch.monreleve.app.aujourdhui.AbsenceChoice
@@ -146,8 +146,11 @@ private fun RecordSection(
     current: DayEntry?,
     onRecord: (RecordedKind, Slot, AbsenceChoice?) -> Unit,
 ) {
-    var missionOpen by remember { mutableStateOf(false) }
-    var absenceOpen by remember { mutableStateOf(false) }
+    // AN-STATE (R310): the mission/absence chooser's expanded state survives a rebuild, keyed by slot so the
+    // morning and afternoon choosers are independent. A recorded tap is already persisted (Room); this keeps
+    // the half-made choice - the chooser a person had opened - across rotation, text size, dark mode, a kill.
+    var missionOpen by rememberSaveable(slot) { mutableStateOf(false) }
+    var absenceOpen by rememberSaveable(slot) { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.space8)) {
         RecordButton(AujourdhuiCopy.SUISSE, current?.kind == RecordedKind.SUISSE) {
             onRecord(RecordedKind.SUISSE, slot, null)

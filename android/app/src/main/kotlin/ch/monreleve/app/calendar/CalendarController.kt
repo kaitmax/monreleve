@@ -89,6 +89,22 @@ data class CalendarState(
     val editing: EditableDay? = null,
 )
 
+/**
+ * AN-STATE (R310): the calendar's restorable state across a rebuild - the visible month and the ISO date of an
+ * open edit sheet. A plain data class (no compose); the composition root holds it in rememberSaveable so it
+ * survives rotation, a text-size change, a dark-mode switch AND a background kill. The sheet's HALF-ENTERED
+ * picks (kind/absence/note not yet saved) live in the sheet composable's own rememberSaveable, not here - this
+ * only reopens the sheet on the right day; the prefill is re-derived from the recorded rows (R181).
+ */
+data class CalendarSnapshot(
+    val month: Int? = null,
+    val editingDay: String? = null,
+)
+
+// AN-STATE: the restore seed is a seventh constructor parameter, over detekt's list threshold. These ARE the
+// controller's dependencies plus the one restorable seed; bundling them into a holder would only move the list
+// (the same reasoning MainGraph and ParametresController carry).
+@Suppress("LongParameterList")
 class CalendarController(
     private val repository: EntryRepository,
     settingsStore: SettingsStore,
@@ -98,13 +114,23 @@ class CalendarController(
     // R291: a DayWriter, so MainGraphWiringTest enumerates this by type and asserts the app's graph
     // builds it with a real requestSync. Default no-op only for the JVM tests that build it directly.
     override val requestSync: () -> Unit = {},
+    // AN-STATE (R310): the state to restore after a rebuild (null = a fresh open). Seeds the visible month and,
+    // via pendingEditingDay, reopens the edit sheet on the day it was open on - once the rows have loaded.
+    restored: CalendarSnapshot? = null,
 ) : DayWriter {
     private val today: String = todayInParis(clock)
     private val settings: Settings? = settingsStore.load()
     private val granularity: GranularityChoice =
         if (settings?.granularity == "HALF_DAY") GranularityChoice.HALF_DAY else GranularityChoice.DAY
     private var entries: List<EntryEntity> = emptyList()
-    private var visibleMonth: Int = initialMonth()
+
+    // AN-STATE: a restored month is clamped into the navigable range the same way initialMonth() is (a partial
+    // year starts mid-year), so a stale saved month can never land outside the year's bounds.
+    private var visibleMonth: Int = restored?.month?.let(::clampMonth) ?: initialMonth()
+
+    // AN-STATE: the day an edit sheet was open on, reopened once the rows load (recompute). Cleared after the
+    // first reopen so a later month change or save does not re-open it.
+    private var pendingEditingDay: String? = restored?.editingDay
 
     private val mutableState = MutableStateFlow(CalendarState())
     val state: StateFlow<CalendarState> = mutableState.asStateFlow()
@@ -116,6 +142,12 @@ class CalendarController(
                 recompute()
             }
         }
+    }
+
+    // AN-STATE: a restored month, clamped into the navigable range (the same bounds initialMonth uses).
+    private fun clampMonth(month: Int): Int {
+        val loaded = settings ?: return month.coerceIn(1, LAST_MONTH)
+        return month.coerceIn(firstNavMonth(loaded, taxYear), LAST_MONTH)
     }
 
     /** Open on the current month, clamped into the navigable range (a partial year starts mid-year). */
@@ -214,8 +246,15 @@ class CalendarController(
     private fun recompute() {
         val loaded = settings ?: return
         val yearEntries = entries.filter { it.dayDate.startsWith("$taxYear-") }
+        // AN-STATE (R310): reopen a sheet that was open before a rebuild, once the rows have loaded so the
+        // prefill is the recorded day's (R181), not an empty one. Cleared after the first reopen so a later
+        // month change or save does not re-raise it.
+        val reopened = pendingEditingDay?.let { day -> editableDay(day).also { pendingEditingDay = null } }
         mutableState.update {
-            it.copy(monthView = buildMonthView(yearEntries, loaded, taxYear, today, visibleMonth))
+            it.copy(
+                monthView = buildMonthView(yearEntries, loaded, taxYear, today, visibleMonth),
+                editing = reopened ?: it.editing,
+            )
         }
     }
 }

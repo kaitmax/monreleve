@@ -111,6 +111,40 @@ class CalendarControllerTest : FunSpec({
         }
     }
 
+    // AN-STATE S4 (R310). The restore seed is proven on the JVM, the SavedStateHandle-shaped half of R310: a
+    // controller built with a CalendarSnapshot reopens the same month and the same sheet - no device needed.
+    test("a restored visible month is reopened after a rebuild (R310)") {
+        runTest {
+            val repo = LocalEntryRepository(FakeEntryDao(), june15)
+            val controller =
+                CalendarController(repo, storeWith(), TAX_YEAR, june15, this, restored = CalendarSnapshot(month = 3))
+            advanceUntilIdle()
+            // without a restore the calendar opens on June (today); the seed moves it to March.
+            controller.state.value.monthView?.month shouldBe 3
+        }
+    }
+
+    test("a restored open edit sheet is reopened on that day, prefilled from its row (R310)") {
+        runTest {
+            val repo = LocalEntryRepository(FakeEntryDao(), june15)
+            repo.record(RecordCommand(dayDate = "2026-06-11", kind = EntryKind.HOME))
+            val controller =
+                CalendarController(
+                    repo,
+                    storeWith(),
+                    TAX_YEAR,
+                    june15,
+                    this,
+                    restored = CalendarSnapshot(month = 6, editingDay = "2026-06-11"),
+                )
+            advanceUntilIdle()
+            val editing = controller.state.value.editing
+            editing.shouldNotBeNull()
+            editing.isoDate shouldBe "2026-06-11"
+            editing.slots.first().kind shouldBe RecordedKind.DOMICILE
+        }
+    }
+
     test("a future day does not open the sheet - future days cannot be recorded (AC1)") {
         runTest {
             val repo = LocalEntryRepository(FakeEntryDao(), june15)
