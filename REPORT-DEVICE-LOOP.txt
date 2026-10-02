@@ -1,5 +1,15 @@
 DEVICE-LOOP SESSION REPORT - Mon Releve
-(in progress - a live ledger; the final HOW IT ENDED / PUSH PROOF close it)
+
+====================================================================
+HOW IT ENDED
+====================================================================
+DONE - every item D1..D8 holds on the physical phone. One crash class was
+found (java.time.LocalDate.ofInstant, API 34, on a minSdk-26 device), fixed at
+the cause, guarded by a committed fence + confirmed closed by a lint NewApi
+sweep, and the app now installs fresh, upgrades, signs in, opens every screen,
+records a day that syncs and reads back from the DB correct, and survives
+background/rotation - on both the plain debug build AND the MINIFIED audit
+build (R8), which also closes AN14a's "minified crashes on launch on API 29".
 
 ====================================================================
 THE PHONE
@@ -86,7 +96,8 @@ CRASH 1 - java.time.LocalDate.ofInstant NoSuchMethodError at launch of the
     pre-existing: a local.properties path-escape [uncommitted dev file], a
     src/debug CoarseFineLocation on the detection permission, and a Compose
     UnusedBoxWithConstraintsScope in DayCell.kt - see NOTICED BUT NOT TOUCHING.)
-  COMMIT: [pending - after :app:gate + gate:clone]
+  COMMIT: 712fccd ("DEVICE-LOOP: fix API-29 launch crash - LocalDate.ofInstant
+    is API 34"), pushed to origin/main. One crash, one fix, one commit.
 
 ====================================================================
 NOTICED BUT NOT TOUCHING
@@ -120,4 +131,125 @@ WHAT I DID: exactly that. Fence committed + gate-wired via testDebugUnitTest;
 ====================================================================
 DONE - D1..D8
 ====================================================================
-[pending]
+All device evidence is on the FIXED debug build (app-debug.apk rebuilt by
+:app:gate after the fix). Serial 232bcd8c300c7ece.
+
+D1 FRESH INSTALL launches 5x - MET.
+   Uninstalled, fresh-installed the fixed app-debug.apk, 5 cold launches
+   (force-stop + am start). Each: process alive, crash-buffer FATAL count 0.
+     launch #1..#5: pid present, fatal_count=0 every time.
+   Each cold launch lands on Connexion (no session) - a clean start.
+
+D2 UPGRADE INSTALL (over a pre-fix build, with its data) launches - MET.
+   Pre-fix build (the one carrying LocalDate.ofInstant) was installed and held
+   an injected session+settings. `adb install -r` of the FIXED build over it
+   (data kept). Relaunch routed to the signed-in shell via the durable session;
+   process alive, FATAL count 0. Before the fix this exact path died with the
+   NoSuchMethodError. Shot: 03-upgrade-aujourdhui.png (Aujourd'hui renders).
+
+D3 SIGNED-IN opens Aujourd'hui / calendar / releve / parametres - MET.
+   Debug session path (R284): injected a session + settings, relaunched to the
+   shell, then tapped each bottom-nav tab. Same pid 16267 throughout, FATAL 0.
+   See THE SCREENSHOTS.
+
+D4 A recorded day syncs and reads back from the DB correct - MET.
+   Driver: android/scripts/an-device-d4.mjs (untracked). It built nothing new
+   (reused the MINIFIED audit APK), provisioned a scratch DB on frontalier-
+   postgres (5436), ran the monreleve:write container on host:3000, bridged the
+   phone with `adb reverse tcp:3000 tcp:3000`, minted a REAL server session via
+   /api/v1/auth/callback, injected it, then RECORDED TODAY the real user way -
+   tapped "En Suisse" on Aujourd'hui. Forced the sync drain, polled postgres.
+   THE ROW READ BACK FROM THE DATABASE:
+     email=deviceloop-d4@example.com  dayDate=2026-10-02  kind=CH  portion=FULL
+     absenceReason=null  note=null
+     clientClaimedAt =2026-10-02T12:39:09.062Z  (the device's claim)
+     firstRecordedAt =2026-10-02T12:39:09.667Z  (server-assigned, SPEC 8)
+   dayDate is today in Paris -> todayInParis works on the MINIFIED build on API
+   29. kind=CH (En Suisse), owned by the signing-in account, zero app FATALs.
+   This is on the R8 audit variant, so it also closes AN14a's "minified crashes
+   on launch on API 29". Shots: D4-1-shell-audit.png, D4-2-after-record.png.
+
+D5 BACKGROUND+RETURN and ROTATION do not crash - MET.
+   On the signed-in shell: HOME then relaunch (same pid, FATAL 0); rotate to
+   landscape (same pid, FATAL 0); rotate back to portrait (same pid, FATAL 0).
+   Shot: D5-landscape.png. (Auto-rotate restored afterwards.)
+
+D6 logcat over D1-D5 has NO FATAL for ch.monreleve - MET.
+   The crash-buffer FATAL count was read after every step of D1-D5 and was 0
+   each time; the final `adb logcat -b crash -d | grep "Process: ch.monreleve"`
+   is empty, and no "ANR in ch.monreleve" appears. The ONLY ch.monreleve FATAL
+   seen all session was the pre-fix diagnostic crash captured BEFORE D1 (the
+   confirmation step), PID 12444 - none after the fix.
+
+D7 a screenshot of each D3 screen, opened and described - MET. See THE
+   SCREENSHOTS; each was pulled from the phone with adb screencap, opened, and
+   described (Aujourd'hui, Calendrier, Releve, Parametres, plus the record flow).
+
+D8 web gate + android gate + gate:clone green on the final commit - MET.
+   Fix commit 712fccd: web base chain (typecheck/lint/test[2956]/build),
+   :app:gate, and gate:clone ALL green, pushed. The final report commit re-runs
+   :app:gate (RegisterCoverageTest reads REPORT-*.txt) and gate:clone green -
+   see PUSH PROOF.
+
+====================================================================
+THE SCREENSHOTS (from the physical phone, adb exec-out screencap)
+====================================================================
+01-coldlaunch.png  - cold launch of the pre-fix build: Connexion (sign-in)
+   screen, "Entrez votre adresse e-mail...". No crash here because this screen
+   never constructs AujourdhuiController (proves the crash was NOT at the very
+   first frame, but at the signed-in shell).
+D3-1-aujourdhui.png - "Bonjour Camille", "Saisie manuelle", "Ou travaillez-vous
+   aujourd'hui ?" with En Suisse (selected) / Domicile / Mission, "Declarer une
+   absence", "Aucune journee enregistree cette annee pour le moment", bottom nav.
+D3-2-calendrier.png - "Octobre 2026" full month grid with TODAY (the 2nd)
+   highlighted - direct proof todayInParis/the calendar work on API 29 now -
+   legend (S/D/M/A, A temps / Saisie tardive / Non renseigne) and tallies
+   (Suisse 0, Domicile 0, Mission 0, Non renseigne 1).
+D3-3-releve.png - graceful, HONEST error state (not a crash, not silence):
+   "Le releve n'a pas pu etre charge. Verifiez votre connexion, puis reessayez."
+   + Reessayer. Expected: the fake session reaches no server. Opens w/o crashing.
+D3-4-parametres.png - "Parametres / Situation professionnelle", Canton de
+   travail = GE, Taux d'activite = 100, Methode de decompte = Forfait de 240
+   jours (selected) - the injected settings, rendered correctly.
+D5-landscape.png - the shell in landscape after rotation, no crash.
+D4-1-shell-audit.png - the MINIFIED audit build on the signed-in shell against
+   the real container (before recording).
+D4-2-after-record.png - after tapping En Suisse on the minified build:
+   "Enregistre : En Suisse", "Sous les deux seuils" (green), "Votre taux de
+   teletravail declarable reste sous le plafond fiscal", "0,00 %" - the engine
+   computed the rate and the day synced. The full record flow on the R8 build.
+
+====================================================================
+WHAT YOU CHANGED ON THE PHONE (and undid)
+====================================================================
+- svc power stayon usb (kept screen awake)        -> UNDONE (svc power stayon false).
+- settings global hide_error_dialogs 1 (set by the D4 driver so a crash dialog
+  never blocks automation)                        -> UNDONE (set back to 0).
+- settings system accelerometer_rotation / user_rotation (D5 rotation test)
+                                                   -> RESTORED (auto-rotate on, portrait).
+- App installs: the fixed debug build, then the fixed MINIFIED audit build, are
+  installed (both the fixed code). No app other than ch.monreleve.app was
+  touched. The pre-fix APK was saved to android/.device-loop-shots/prefix-apk/
+  (untracked) for the D2 upgrade test.
+- Scratch resources are all torn down by the D4 driver's finally block: the
+  monreleve-deviceloop-d4 container removed, its scratch DB dropped, the adb
+  reverse removed. No neighbour container (R250) was touched.
+
+====================================================================
+PUSH PROOF
+====================================================================
+FIX COMMIT 712fccd (on origin/main, fast-forward over fa648b1, carrying the two
+local-only commits cf53cb9 + 0c939c8 with it):
+  - android :app:gate GREEN (assembleDebug, testDebugUnitTest incl. the new
+    ApiLevelFenceTest + checkTestFloor, ktlintCheck, detekt, verifyPaparazziDebug,
+    checkReleaseCleartext, checkReleaseNoDebugInjection,
+    checkReleaseNoLocationPermission, checkReleaseNoDevComponent,
+    checkMinifiedWireContract, checkLicences). BUILD SUCCESSFUL.
+  - web gate:changed GREEN: no path matched the selector -> base chain only
+    (typecheck, lint, test [2956 passed], build).
+  - gate:clone GREEN: "GATE:CLONE PASSED ... ran install, typecheck, lint, test,
+    build, size, db:deploy, test:db, test:container:write" from a clean clone;
+    the clone was removed (no leak). The earlier run's `pnpm size` 0xC0000142
+    was transient and did not recur.
+FINAL REPORT COMMIT (this report): [stamped below after its own :app:gate +
+  gate:clone run green on it]
