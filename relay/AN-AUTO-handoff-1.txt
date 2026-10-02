@@ -1,0 +1,123 @@
+AN-AUTO HANDOFF 1  -  what is owed, and exactly how to do it
+============================================================
+Written 2026-10-02. origin/main at the stop: 5590575 (+ the report/handoff commit on
+top). Everything below is OWED (ran out of context budget), NOT blocked and NOT a dead
+end. The detection LOGIC for all seven rulings is shipped, tested and gated; what is
+left is UI rendering and on-phone tests.
+
+DEVICE: serial 232bcd8c300c7ece, SM-G960F (Galaxy S9), API 29. ADB =
+C:/Users/KAMXKAM/AppData/Local/Android/Sdk/platform-tools/adb.exe  (use -s 232bcd8c300c7ece).
+Window is 07:00-19:00 Europe/Paris = 06:00-18:00 Casablanca (Paris on summer time).
+
+------------------------------------------------------------
+A. OWED CODE
+------------------------------------------------------------
+INCR 5 - the Aujourd'hui auto-mode UI (SPEC 11.2 ETATS A/B/C, D4b-aujourdhui-auto-android.md):
+  - AujourdhuiController must read the logging mode (SharedPrefsDetectionModeStore /
+    LoggingMode) and, in AUTO_DETECT, drive three states:
+      A "detection en cours" (quiet strip, "Saisir maintenant", "Declarer une absence");
+      B "a confirmer": from the day's tally -> detectionOutcome(computeProposal(...)):
+          Proposed(HIGH) -> the proposal card "Proposition - verifiez" (R314) with
+            Confirmer -> record(provenance=DETECTED_CONFIRMED, detectedKind=proposed kind)
+            Corriger  -> the three-way choice -> record(provenance=DETECTED_CORRECTED,
+                         detectedKind=proposed kind) (R202; RecordCommand already carries
+                         provenance/detectedKind/detectedAt);
+          NotSure -> render DetectionCopy.NOT_SURE (R312), offer manual entry;
+      C "confirme": the confirmation row + provenance line (already in ReleveCopy words).
+  - Near-border (R313): when shouldSuggestManualForNearBorder(recent tallies from
+    TallyDao.all()) holds, render DetectionCopy.NEAR_BORDER ONCE (persist a once-flag in
+    the detection prefs; respect the choice either way, D19).
+  - REMOVE the two CopyReachabilityTest allowlist entries (DetectionCopy.NOT_SURE,
+    DetectionCopy.NEAR_BORDER) once the surface renders them.
+  - REGENERATE the AujourdhuiScreen paparazzi baseline (R135/R207: state the files + why).
+    The existing shots are manual-mode; add auto-mode shots. Crop and LOOK (R178).
+  - R310: add the new auto-state to the Parametres/Aujourd'hui snapshots if any is
+    half-entered across a rebuild (the proposal card itself is derived, so likely nothing
+    to snapshot beyond what exists).
+
+INCR 3b - the disclosure + permission + revocation UI (R316 UI half):
+  - A disclosure screen (D5 / SPEC 11.1 "Avant l'autorisation"), shown BEFORE the system
+    prompt, from fr/ (what the app does / records: une conclusion par jour, ni trajet ni
+    adresse ni historique / never: aucun partage employeur/administration), warning that
+    Android asks TWICE on 10+ (in-use then background), with "Autoriser la localisation"
+    and an equally-weighted "Rester en saisie manuelle" (D19). See the disclosure design
+    in docs/play-background-location.md (do NOT copy Google's "collects location" wording
+    - the app discards the fix).
+  - The permission launcher lives in MainActivity (ActivityResultContracts.
+    RequestMultiplePermissions): request ACCESS_FINE_LOCATION first, then (API 29+)
+    ACCESS_BACKGROUND_LOCATION as a SEPARATE step. On all-granted -> controller.
+    setAutoDetection(true) (which PATCHes consent + starts the sampler). On deny -> stay
+    manual, never nag.
+  - Revocation fallback: on MainActivity ON_RESUME, if mode == AUTO_DETECT and the
+    permission is no longer granted (ContextCompat.checkSelfPermission), switch the LOCAL
+    mode to MANUAL, DetectionScheduling.stopSampling(context), and show a plain message
+    (no crash, no nag). Do NOT auto-PATCH consent=false (the person may re-grant); record
+    that decision.
+  - The toggle in Parametres (already built) should, on turning ON, launch the disclosure
+    first rather than calling setAutoDetection(true) directly - gate the existing call.
+
+INCR 7 - the DEBUG-ONLY mock provider:
+  - A dev activity in src/debug (joins the dev.* set in src/debug/AndroidManifest.xml -
+    already covered by checkReleaseNoDevComponent, so it is proven absent from release on
+    the BUILT APK). It uses LocationManager.addTestProvider + setTestProviderLocation to
+    feed each SyntheticTracks point through the REAL background path
+    (awaitClassifiedFix -> recordFix). Requires the app set as the mock-location app:
+      adb -s 232bcd8c300c7ece shell appops set ch.monreleve.app android:mock_location allow
+    RESTORE afterwards: ... android:mock_location deny (or 'default').
+
+------------------------------------------------------------
+B. OWED DEVICE TESTS (DONE list A1-A7)
+------------------------------------------------------------
+Build + install the AUDIT variant (debug-signed, minified, local cleartext) OR a debug
+build. Grant the permission for tests without the owed disclosure UI:
+  adb -s 232bcd8c300c7ece shell pm grant ch.monreleve.app android.permission.ACCESS_FINE_LOCATION
+  adb -s 232bcd8c300c7ece shell pm grant ch.monreleve.app android.permission.ACCESS_BACKGROUND_LOCATION
+Keep awake during a window run:
+  adb -s 232bcd8c300c7ece shell svc power stayon usb
+RESTORE at the end (0 is correct):
+  adb -s 232bcd8c300c7ece shell settings put global stay_on_while_plugged_in 0
+  adb -s 232bcd8c300c7ece shell appops set ch.monreleve.app android:mock_location deny
+  adb -s 232bcd8c300c7ece shell pm revoke ch.monreleve.app android.permission.ACCESS_BACKGROUND_LOCATION
+  adb -s 232bcd8c300c7ece shell pm revoke ch.monreleve.app android.permission.ACCESS_FINE_LOCATION
+  (and reset any developer option toggled).
+
+A1 - turn auto on from Parametres through the disclosure + system prompt (incl. Android
+     10's separate background step) and off again, sampling stopping at once. (needs 3b)
+A2 - background sampling through a FULL window, tally accumulates, a HIGH "Domicile"
+     proposal appears on Aujourd'hui (phone in Casablanca). Read the tally via a dev
+     activity dumping TallyDao.all() / detection/exportFieldRun, OR adb-pull the DB and
+     read daily_tally. Expect fixCount > 0 and tier HIGH, kind HOME. START the sampling
+     and let it run overnight into tomorrow's window, phone plugged in and untouched.
+A3 - replay the seven SyntheticTracks through the background path via the mock provider
+     (incr 7); each gives its expected outcome under R311 (HIGH proposes; MEDIUM/LOW show
+     the not-sure message). Confirm the mock provider is absent from the release APK
+     (checkReleaseNoDevComponent already does, on the built APK).
+A4 - a buffer-heavy replay on 3 of 5 working days -> the near-border message once, the
+     choice offered and respected. (needs 5 + 7)
+A5 - battery over a full window (method in REPORT-AN-AUTO.txt / AN6a): dumpsys
+     batterystats reset at window start, read at end, against 3%/working-day. STATE R233's
+     line: confirm the SamplingWorker actually woke + recorded (non-zero fixCount), or the
+     figure describes an idle phone.
+A6 - NO COORDINATE, all four, with auto mode ON: (1) source fence + (2) Room DDL scan are
+     GREEN in :app:gate now; (3) network trace of a full walkthrough - inspect traffic,
+     no coordinate; (4) logcat during the walkthrough - no coordinate logged. Easiest: run
+     android/scripts/an-audit-walkthrough.mjs / an-audit-dbread.mjs (existing drive
+     scripts) with auto mode on, plus a logcat capture filtered for lat/lng/Location.
+A7 - R310 state preservation with auto mode on, across the four triggers, on the screens
+     this task adds (the auto states + disclosure). StateRestorationTester / the existing
+     StatePreservationInstrumentedTest pattern.
+
+------------------------------------------------------------
+C. FINAL STEPS
+------------------------------------------------------------
+- Per-increment: ./gradlew :app:ktlintFormat then :app:ktlintCheck :app:detekt ISOLATED,
+  then one :app:gate. Heavy gradle steps ONE AT A TIME (RAM). Commit+push per increment.
+- gate:clone before the final push (A8). If it crashes with Windows exit 3221225794
+  (0xC0000142, size step init - NOT a regression), sweep stale monreleve-clone-* temp
+  dirs and re-run once (FW32).
+- Update REPORT-AN-AUTO.txt: tick A1-A7, fill THE SEVEN TRACKS / NEAR-BORDER SEEN / REAL
+  WINDOW / BATTERY (with R233's observed-its-subject line) / NO COORDINATE legs 3-4 /
+  WHAT SAMSUNG DID / WHAT WAS CHANGED ON THE PHONE AND RESTORED.
+- D18 is absolute: if any design needs a coordinate to persist, STOP. Fail closed.
+
+END OF HANDOFF 1

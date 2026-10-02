@@ -1,0 +1,96 @@
+AN-AUTO HANDOFF 2  -  the device tests that still need a reachable server and/or a real window
+=============================================================================================
+Written 2026-10-02 ~23:30 Casablanca (= ~00:30 Paris 2026-10-03), AFTER the 07:00-19:00 Paris window.
+origin/main HEAD after this session: see PUSH PROOF in REPORT-AN-AUTO.txt (incr 5 -> 3b -> 7 -> report).
+
+WHAT IS ALREADY DONE (do not redo):
+  - ALL owed CODE: incr 5 (Aujourd'hui auto UI), incr 3b (disclosure + permission launcher + revocation),
+    incr 7 (debug mock provider). Each gated (:app:gate green) and pushed. Paparazzi baselines added +
+    cropped-and-looked (R178).
+  - A3 DONE on the physical phone: the seven tracks via the mock provider each give the R311 outcome
+    (3 Propose, 4 Pas sur). Shot: android/.an-auto-shots/a3-mock.png.
+  - A6 legs 3+4 DONE: node android/scripts/an-auto-d18.mjs  -> PASS (no coordinate in logcat/network with
+    the auto path driving 330+ real coordinates). Re-runnable. Shot/log: .an-auto-shots/a6-logcat.txt.
+  - A1 PARTIALLY DONE on-device: disclosure shown BEFORE the system prompt (a1-disclosure.png), the FINE
+    in-use prompt (a1-prompt-fine.png), and the SEPARATE Android-10 background prompt (a1-prompt-background2.png,
+    "acceder EN PERMANENCE", "Toujours autoriser") all verified, both grants complete with no crash. What is
+    LEFT for A1 is only the consent-PATCH + sampling start/stop, which needs a reachable /api/v1/me (below).
+
+DEVICE: serial 232bcd8c300c7ece, SM-G960F, Android 10 (API 29). ADB =
+C:/Users/KAMXKAM/AppData/Local/Android/Sdk/platform-tools/adb.exe  (-s 232bcd8c300c7ece).
+The DEBUG APK is installed. Phone was RESTORED at end of session: mock_location=deny, FINE+BACKGROUND revoked,
+stay_on untouched (was 7). location_mode was set to 3 (high accuracy) during testing and left on.
+
+WHY A1-full / A4 / A7 NEED A SERVER, and the one setup that gives it
+-------------------------------------------------------------------
+Turning auto detection ON records consent through /api/v1/me (R315/FW26). setAutoDetection(true) only flips the
+toggle and calls startSampling AFTER the PATCH returns 2xx. With a dummy injected session and no reachable
+server the PATCH is NetworkError, so the toggle stays off and the REAL sampler never schedules - which is why
+A1's enable/sampling, A2 (a full window of real sampling), A4 (near-border from real tallies) and A7 (state on
+the live auto screens) all need a signed-in app talking to a real server.
+
+THE RIG (reuse android/scripts/an-audit-walkthrough.mjs's recipe verbatim): it provisions the monreleve:write
+container + a scratch pg DB, obtains a REAL session from /api/v1/auth/callback, and injects it with
+SessionInjectionActivity so every screen talks to the real server. Build the image if absent (web side). Then:
+  1. Grant perms for the window run (the disclosure/prompt flow is already proven; for the window just grant):
+       adb -s 232bcd8c300c7ece shell pm grant ch.monreleve.app android.permission.ACCESS_FINE_LOCATION
+       adb -s 232bcd8c300c7ece shell pm grant ch.monreleve.app android.permission.ACCESS_BACKGROUND_LOCATION
+  2. Keep awake:  adb -s 232bcd8c300c7ece shell svc power stayon usb
+  3. In Parametres, toggle " Detection automatique (beta) " ON, pass the disclosure + both prompts (grant
+     "Toujours autoriser" for background). The PATCH now succeeds -> toggle ON -> DetectionScheduling.startSampling
+     enqueues the periodic SamplingWorker. Toggle OFF -> stopSampling cancels it at once (A1's off half).
+
+A2 - A FULL WINDOW (07:00-19:00 Europe/Paris = 06:00-18:00 Casablanca), real sampling -> HIGH "Domicile"
+-----------------------------------------------------------------------------------------------------
+With auto ON and the rig up, keep the phone plugged in and UNTOUCHED through a full Paris window. The phone is
+in Casablanca, far from any Swiss border, so every fix classifies OUTSIDE -> a HIGH "Domicile" proposal is the
+CORRECT answer and is itself the check. Read the tally two ways:
+  - adb pull the Room DB and read daily_tally:
+      adb -s 232bcd8c300c7ece shell run-as ch.monreleve.app cat databases/monreleve.db > a2-room.db
+      node android/scripts/an-audit-dbread.mjs a2-room.db   (adapt: SELECT * FROM daily_tally)
+      EXPECT today's row: fixCount > 0, minutesElsewhere >> minutesSwitzerland, bufferFixCount low, tier=HIGH.
+  - OR open Aujourd'hui in the evening (after 19:00 Paris): ETAT B shows the proposal card " Proposition -
+    verifiez " with "Domicile" (afterWorkingWindow is true, so the proposal surfaces).
+  R233 (did it observe its subject?): the figure is only meaningful if fixCount > 0 - i.e. the SamplingWorker
+  actually woke and recorded. If fixCount is 0, Samsung killed the worker (record that under WHAT SAMSUNG DID),
+  and A5's battery number describes an idle phone, not detection.
+
+A5 - BATTERY over the same window (AN6a's method, 3%/working-day budget)
+-----------------------------------------------------------------------
+  - At window start: adb -s 232bcd8c300c7ece shell dumpsys batterystats --reset
+  - Leave plugged in? No - battery % needs it on battery. AN6a's method: dumpsys batterystats, read the app's
+    estimated power over the window. The SM-G960F (Exynos) has NO power rails, so the Perfetto ODPM path is
+    unavailable; batterystats is the fallback (REPORT-AN6a.txt / the BATTERY (A5) section of REPORT-AN-AUTO.txt).
+  - State R233's line WITH the figure: confirm the worker woke + recorded non-zero fixCount (from A2), or the
+    battery figure is an idle phone, not detection.
+
+A4 - near-border fires once (3 of 5 working days), choice respected (needs incr 5 + 7 + the rig)
+-----------------------------------------------------------------------------------------------
+Fastest path: with the rig up and auto ON, seed daily_tally with 5 recent working-day rows, 3 of them
+buffer-heavy (bufferFixCount/fixCount > 0.40, the MEDIUM ceiling), 2 clean, then open Aujourd'hui:
+  - DetectionCopy.NEAR_BORDER renders ONCE above the detection surface (a relaunch does NOT re-show it -
+    SharedPrefsNearBorderNoticeStore persists "told once"; shared monreleve.detection prefs, cleared on sign-out).
+  - The choice is respected either way (D19): keep auto, or switch to manual in Parametres; auto is never forced
+    off. The UI is already proven by the autoNearBorder paparazzi baseline + NearBorderTest + the controller test
+    ("3 of the last 5 ... raises the notice once, then never again"); A4 is the on-device confirmation.
+Seeding daily_tally: easiest via a tiny debug helper or `adb ... run-as ... sqlite3` IF you push a sqlite3
+binary (the device has none). Or extend DebugSeederActivity to seed tallies. The RULE itself is JVM-proven.
+
+A7 - R310 state preservation with auto on, four triggers, on the NEW screens (needs the rig)
+-------------------------------------------------------------------------------------------
+On the live auto screens (the proposal card's Corriger-open state; the disclosure overlay; the near-border
+notice), drive the four triggers: rotation, text-size change, dark-mode switch, a background kill. The state is
+held by rememberSaveable (correcting/manualOpen/showDisclosure/showLicences) and derived from persistent stores
+(the mode cache, the tally), so it should survive all four. Mirror StatePreservationInstrumentedTest's
+StateRestorationTester pattern, OR drive by hand and screenshot before/after each trigger. Note the auto TOGGLE
+state is derived from the persistent mode cache, so it needs no snapshot (re-read on rebuild).
+
+RESTORE AT THE END (operator's phone):
+  adb -s 232bcd8c300c7ece shell settings put global stay_on_while_plugged_in 7   (its original value)
+  adb -s 232bcd8c300c7ece shell appops set ch.monreleve.app android:mock_location deny
+  adb -s 232bcd8c300c7ece shell pm revoke ch.monreleve.app android.permission.ACCESS_BACKGROUND_LOCATION
+  adb -s 232bcd8c300c7ece shell pm revoke ch.monreleve.app android.permission.ACCESS_FINE_LOCATION
+  (location_mode may be left on, as a daily phone normally is.)
+Record what Samsung's battery management did to the worker over the window (R317).
+
+END OF HANDOFF 2
