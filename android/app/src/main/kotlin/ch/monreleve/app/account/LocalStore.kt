@@ -3,6 +3,7 @@ package ch.monreleve.app.account
 import ch.monreleve.app.auth.PendingSignInStore
 import ch.monreleve.app.auth.TokenStore
 import ch.monreleve.app.data.local.DossierCache
+import ch.monreleve.app.settings.DetectionModeStore
 import ch.monreleve.app.settings.SettingsStore
 
 // AN12 increment 2 (R295) and increment 3 (R289). The ONE place the device's account data is cleared, so the
@@ -46,6 +47,10 @@ class DeviceLocalStore(
     // R295's sign-out still clears everything - set-aside rows included - so the next holder of the phone
     // inherits a first-run device, not the previous account's tag pointing at cleared rows.
     private val accountStore: AccountStore,
+    // AN-AUTO increment 2 (R315): the detection logging-mode cache (monreleve.detection). Cleared on sign-out
+    // and deletion so the next account on a shared device does not inherit AUTO_DETECT; restored from
+    // GET /api/v1/me on the next sign-in, like the calculation settings (R297).
+    private val detectionModeStore: DetectionModeStore,
     /** Clears the Room tables (entry + daily_tally) off the main thread - MonReleveDatabase.clearAllTables(). */
     private val clearRecord: suspend () -> Unit,
     /** Cancels the unique entries-sync work so a drain cannot repopulate a cleared queue. */
@@ -67,6 +72,9 @@ class DeviceLocalStore(
         clearExports()
         // R297: the settings go too. Restored from GET /api/v1/me on the next sign-in (StartupDecider).
         settingsStore.clear()
+        // R315: the detection mode cache goes too, restored from /me on the next sign-in. No account on a
+        // shared device inherits the previous person's AUTO_DETECT.
+        detectionModeStore.clear()
         // AN-FIX F4 / R303: the account tag goes too, so no stale scope outlives the record it scoped.
         accountStore.clear()
     }

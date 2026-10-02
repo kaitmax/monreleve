@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -88,6 +89,8 @@ fun ParametresScreen(
             Text(text = ParametresCopy.SAVED_CONFIRMATION, style = FrontierType.bodyM, color = LightColors.success)
         }
 
+        AutoDetectionSection(state.autoDetectionEnabled, actions.onToggleAutoDetection, enabled = !busy)
+
         DataSection(actions)
         DeleteRow(actions.onRequestDelete)
         AccountSection(actions)
@@ -106,6 +109,29 @@ fun ParametresScreen(
     state.deleteOutcome?.let { outcome ->
         DeleteOutcomeDialog(outcome, actions.onAcknowledgeDelete)
     }
+}
+
+// R315: « Détection automatique (beta) ». Opt-in, manual by default; a plain Switch, no confirmation dialog
+// (SPEC 13). The description and beta note state that both modes produce the same relevé (D19 - manual is never
+// the lesser option). The disclosure before the OS permission prompt is R316's (increment 3); this row records
+// the person's consent and reflects the mode. Emits into the parent Column, like the other sections.
+@Composable
+private fun AutoDetectionSection(
+    checked: Boolean,
+    onToggle: (Boolean) -> Unit,
+    enabled: Boolean,
+) {
+    SectionHeading(ParametresCopy.AUTO_HEADING)
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.space12),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(text = ParametresCopy.AUTO_LABEL, style = FrontierType.bodyM, modifier = Modifier.weight(1f))
+        Switch(checked = checked, onCheckedChange = onToggle, enabled = enabled)
+    }
+    Text(text = ParametresCopy.AUTO_DESCRIPTION, style = FrontierType.caption, color = LightColors.textSecondary)
+    Text(text = ParametresCopy.AUTO_BETA_NOTE, style = FrontierType.caption, color = LightColors.textSecondary)
 }
 
 @Composable

@@ -41,4 +41,6 @@ data class ParametresActions(
     val onAcknowledgeDelete: () -> Unit,
     /** AN12 increment 4: open a legal page in the browser from the configured site URL. */
     val onOpenLegal: (LegalPage) -> Unit,
+    /** R315: turn automatic detection (beta) on or off. Off stops sampling at once; neither way is a dialog. */
+    val onToggleAutoDetection: (Boolean) -> Unit,
 )

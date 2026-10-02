@@ -15,8 +15,12 @@ import ch.monreleve.app.onboarding.DenominatorChoice
 import ch.monreleve.app.onboarding.GranularityChoice
 import ch.monreleve.app.onboarding.SettingsSaver
 import ch.monreleve.app.releve.ExportEvent
+import ch.monreleve.app.settings.DetectionModeStore
+import ch.monreleve.app.settings.InMemoryDetectionModeStore
+import ch.monreleve.app.settings.LoggingMode
 import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
+import ch.monreleve.app.settings.detectionConsentBody
 import ch.monreleve.app.settings.mePatchBody
 import ch.monreleve.app.settings.toAggregatableUser
 import kotlinx.coroutines.CoroutineScope
@@ -138,6 +142,8 @@ data class ParametresState(
     val deletePrompt: DeletePrompt? = null,
     /** R289: set after a delete attempt; the screen shows the receipt, or that the device data is intact. */
     val deleteOutcome: DeleteOutcome? = null,
+    /** R315: whether automatic detection (beta) is on. MANUAL by default (D19); reflects the local mode cache. */
+    val autoDetectionEnabled: Boolean = false,
 )
 
 /**
@@ -214,6 +220,12 @@ class ParametresController(
     // takes (path, body) so the delete PATH stays in this file (R206) rather than leaking to the composition
     // root. Defaulted for the settings tests; the account tests supply a fake.
     private val authenticatedPost: suspend (String, String) -> PostOutcome = { _, _ -> PostOutcome.NoSession },
+    // AN-AUTO increment 2 (R315): the device's logging-mode cache, so the auto-detection toggle reflects and
+    // persists the mode (MANUAL by default), and the seam that stops sampling the instant auto mode is turned
+    // off (SPEC 13). Both defaulted so the increment-1 settings tests need not name them; the app injects the
+    // SharedPreferences store and the real sampler-stop (the sampler arrives in increment 4).
+    private val modeStore: DetectionModeStore = InMemoryDetectionModeStore(),
+    private val stopSampling: () -> Unit = {},
     // AN-STATE (R310): the state to restore after a rebuild (null = a fresh open). Seeds the six edited fields;
     // the open confirmations are reopened once the rows load (resolvePendingReopen), with counts re-derived and
     // R290's before/after recomputed - never persisted (R181).
@@ -238,7 +250,13 @@ class ParametresController(
     private var reopenSignOut = restored?.signOutOpen == true
     private var reopenDelete = restored?.deleteOpen == true
 
-    private val mutableState = MutableStateFlow(restored?.let(::stateOfSnapshot) ?: stateOf(savedSettings))
+    private val mutableState =
+        MutableStateFlow(
+            (restored?.let(::stateOfSnapshot) ?: stateOf(savedSettings))
+                // R315: the toggle opens reflecting the stored mode (MANUAL by default). Persistent, so a
+                // rebuild re-reads it; nothing to snapshot (R310).
+                .copy(autoDetectionEnabled = modeStore.load() == LoggingMode.AUTO_DETECT),
+        )
     val state: StateFlow<ParametresState> = mutableState.asStateFlow()
 
     // One-shot events (Channels, not StateFlows): handing a file to the share sheet, and leaving the shell on
@@ -504,6 +522,34 @@ class ParametresController(
     fun cancelSave() {
         pendingSettings = null
         mutableState.update { it.copy(pendingRateChange = null) }
+    }
+
+    /**
+     * R315: opt into or out of automatic detection (beta). Consent is timestamped BOTH WAYS through
+     * /api/v1/me (detectionConsentBody / FW26). On success the local mode cache follows; turning OFF also
+     * STOPS SAMPLING AT ONCE (SPEC 13 - never a window later, never a confirmation dialog away). The
+     * disclosure and OS permission that must precede an ENABLE are the screen's concern (R316, increment 3);
+     * this records the consent the person has given and reflects the mode.
+     */
+    fun setAutoDetection(enable: Boolean) {
+        scope.launch {
+            when (val outcome = saver.saveSettings(detectionConsentBody(enable))) {
+                is PostOutcome.Ok ->
+                    if (outcome.status in HTTP_OK..HTTP_OK_MAX) {
+                        modeStore.save(if (enable) LoggingMode.AUTO_DETECT else LoggingMode.MANUAL)
+                        // SPEC 13: revoking stops sampling immediately, before anything else.
+                        if (!enable) stopSampling()
+                        mutableState.update { it.copy(autoDetectionEnabled = enable, error = null) }
+                    } else {
+                        // The server refused (e.g. consent_required): the toggle does not move, and says so.
+                        mutableState.update { it.copy(error = SettingsError.SAVE_REFUSED) }
+                    }
+                PostOutcome.SessionEnded, PostOutcome.NoSession ->
+                    mutableState.update { it.copy(phase = ParametresPhase.SESSION_ENDED) }
+                PostOutcome.SessionExpired, PostOutcome.NetworkError ->
+                    mutableState.update { it.copy(phase = ParametresPhase.NETWORK_ERROR) }
+            }
+        }
     }
 
     private fun persist(settings: Settings) {

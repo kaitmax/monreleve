@@ -12,6 +12,8 @@ import ch.monreleve.app.onboarding.SettingsSaver
 import ch.monreleve.app.parametres.ParametresController
 import ch.monreleve.app.parametres.ParametresSnapshot
 import ch.monreleve.app.releve.ReleveController
+import ch.monreleve.app.settings.DetectionModeStore
+import ch.monreleve.app.settings.InMemoryDetectionModeStore
 import ch.monreleve.app.settings.SettingsStore
 import kotlinx.coroutines.CoroutineScope
 import java.time.Clock
@@ -87,6 +89,11 @@ object MainGraph {
         // null (a fresh build) so the wiring test and the controller tests need not name them.
         restoredCalendar: CalendarSnapshot? = null,
         restoredParametres: ParametresSnapshot? = null,
+        // AN-AUTO increment 2 (R315): the device's logging-mode cache and the sampler-stop seam for the
+        // auto-detection toggle. Defaulted (in-memory / no-op) so the wiring and controller tests need not name
+        // them; the app injects the SharedPreferences store (ShellState) and the real stop arrives in increment 4.
+        detectionModeStore: DetectionModeStore = InMemoryDetectionModeStore(),
+        stopSampling: () -> Unit = {},
     ): MainControllers =
         MainControllers(
             aujourdhui = AujourdhuiController(repository, settingsStore, taxYear, clock, scope, requestSync),
@@ -104,6 +111,8 @@ object MainGraph {
                     revokeServer,
                     localStore,
                     authenticatedPost,
+                    detectionModeStore,
+                    stopSampling,
                     restoredParametres,
                 ),
         )

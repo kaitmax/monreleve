@@ -14,10 +14,26 @@ package ch.monreleve.app.fr
 // and shows the two figures the DEVICE ENGINE computes (formatPercent over deviceDeclarableRate); it never
 // types a percentage. The warning names "l'ensemble de l'annee", not a threshold.
 //
-// R282 - NAMES NOTHING IT LACKS. No mode d'enregistrement, no rappel, no consentement, no automatic mode.
+// R315 REVERSES R282 FOR AUTOMATIC DETECTION. R282 kept the manual product from naming a feature it lacked;
+// the feature now exists (opt-in, labelled beta), so the choice appears here. NOWHERE does the app suggest
+// manual is the lesser option (D19): the description states both modes produce the same annual statement, and
+// the toggle defaults off. The rappel/consentement rows R282 excluded stay out - only auto detection arrives.
 
 object ParametresCopy {
     const val TITLE = "Paramètres"
+
+    // R315 - « Détection automatique (beta) ». Opt-in, manual by default, a plain Switch (no dialog, SPEC 13).
+    // The label carries the beta word; the description says it is optional and that manual is its equal, never
+    // its fallback. R27: no percentage. The disclosure before the OS prompt is D5/R316's (increment 3).
+    const val AUTO_HEADING = "Enregistrement"
+    const val AUTO_LABEL = "Détection automatique (beta)"
+    const val AUTO_DESCRIPTION =
+        "En option, l’application peut déterminer sur votre téléphone si votre journée a été passée en Suisse " +
+            "ou à domicile, et vous la proposer chaque soir à confirmer. La saisie manuelle produit exactement " +
+            "le même relevé annuel ; les deux se valent."
+    const val AUTO_BETA_NOTE =
+        "Fonction en bêta : sa fiabilité est en cours de mesure. L’application vous propose une journée " +
+            "seulement lorsqu’elle en est sûre, et vous indique quand elle ne l’est pas."
 
     // FD9's SITUATION PROFESSIONNELLE section: the settings that recompute the whole year, under a warning.
     const val SITUATION_HEADING = "Situation professionnelle"

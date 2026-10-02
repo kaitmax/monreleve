@@ -8,6 +8,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import ch.monreleve.app.account.LocalStore
 import ch.monreleve.app.auth.BytesOutcome
 import ch.monreleve.app.auth.PostOutcome
@@ -17,6 +18,7 @@ import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.onboarding.SettingsSaver
 import ch.monreleve.app.parametres.ParametresSnapshot
 import ch.monreleve.app.settings.SettingsStore
+import ch.monreleve.app.settings.SharedPrefsDetectionModeStore
 import ch.monreleve.app.ui.shell.AppTab
 import java.time.Clock
 
@@ -83,6 +85,10 @@ fun rememberMainControllers(
     var savedEditingDay by rememberSaveable { mutableStateOf<String?>(null) }
     // ParametresSnapshot is Serializable, so the default autoSaver stores it (no custom Saver).
     var savedParametres by rememberSaveable { mutableStateOf<ParametresSnapshot?>(null) }
+    // AN-AUTO increment 2 (R315): the device's logging-mode cache, built at the composition boundary where a
+    // Context is available (ui/ and the controllers may not touch one). Persistent across rebuilds by itself
+    // (SharedPreferences), so it needs no rememberSaveable.
+    val context = LocalContext.current
     val controllers =
         remember {
             MainGraph.build(
@@ -90,6 +96,7 @@ fun rememberMainControllers(
                 revokeServer, localStore, authenticatedPost,
                 restoredCalendar = CalendarSnapshot(savedMonth, savedEditingDay),
                 restoredParametres = savedParametres,
+                detectionModeStore = SharedPrefsDetectionModeStore(context),
             )
         }
     // Keep the saved snapshots current from the controllers' observed state, so the LATEST month, open sheet,

@@ -4,6 +4,8 @@ import ch.monreleve.app.auth.PendingSignInStore
 import ch.monreleve.app.auth.TokenPair
 import ch.monreleve.app.auth.TokenStore
 import ch.monreleve.app.data.local.DossierCache
+import ch.monreleve.app.settings.InMemoryDetectionModeStore
+import ch.monreleve.app.settings.LoggingMode
 import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
 import io.kotest.core.spec.style.FunSpec
@@ -89,6 +91,9 @@ class LocalStoreTest : FunSpec({
         val cache = FakeDossierCache()
         val pending = FakePendingSignIn()
         val account = FakeAccountStore()
+
+        // R315: start in AUTO_DETECT so clear() is observable as a reset to MANUAL.
+        val detectionMode = InMemoryDetectionModeStore(LoggingMode.AUTO_DETECT)
         var recordCleared = false
         var syncCancelled = false
         var exportsCleared = false
@@ -99,6 +104,7 @@ class LocalStoreTest : FunSpec({
                 dossierCache = cache,
                 pendingSignIn = pending,
                 accountStore = account,
+                detectionModeStore = detectionMode,
                 clearRecord = { recordCleared = true },
                 cancelSync = { syncCancelled = true },
                 clearExports = { exportsCleared = true },
@@ -131,6 +137,8 @@ class LocalStoreTest : FunSpec({
             // decision. The pending sign-in is not R297's subject and is kept.
             f.settings.load() shouldBe null
             f.pending.pending().shouldNotBeNull()
+            // R315: the detection mode cache is cleared too (restored from /me on re-sign-in).
+            f.detectionMode.load() shouldBe LoggingMode.MANUAL
         }
     }
 

@@ -22,6 +22,7 @@ import ch.monreleve.app.data.repo.LocalEntryRepository
 import ch.monreleve.app.data.repo.RecordCommand
 import ch.monreleve.app.onboarding.SettingsSaver
 import ch.monreleve.app.releve.ExportEvent
+import ch.monreleve.app.settings.InMemoryDetectionModeStore
 import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
 import io.kotest.core.spec.style.FunSpec
@@ -142,6 +143,7 @@ private fun localStore(
         dossierCache = FakeDossierCache(),
         pendingSignIn = FakePendingSignIn(),
         accountStore = FakeAccountStore(),
+        detectionModeStore = InMemoryDetectionModeStore(),
         clearRecord = {},
         cancelSync = {},
         clearExports = {},
@@ -422,6 +424,7 @@ class ParametresAccountTest : FunSpec({
                     dossierCache = cache,
                     pendingSignIn = pending,
                     accountStore = FakeAccountStore(),
+                    detectionModeStore = InMemoryDetectionModeStore(),
                     clearRecord = { recordCleared = true },
                     cancelSync = {},
                     clearExports = { exportsCleared = true },

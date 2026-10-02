@@ -71,6 +71,7 @@ import ch.monreleve.app.parametres.openLegalLink
 import ch.monreleve.app.releve.ExportEvent
 import ch.monreleve.app.releve.ExportKind
 import ch.monreleve.app.settings.SettingsStore
+import ch.monreleve.app.settings.SharedPrefsDetectionModeStore
 import ch.monreleve.app.settings.SharedPrefsSettingsStore
 import ch.monreleve.app.startup.StartDestination
 import ch.monreleve.app.startup.decideStartAfterSignIn
@@ -410,6 +411,8 @@ private fun buildLocalStore(
         dossierCache = dossierCache,
         pendingSignIn = pending,
         accountStore = accountStore,
+        // R315: clear the detection logging-mode cache on sign-out/deletion (restored from /me on re-sign-in).
+        detectionModeStore = SharedPrefsDetectionModeStore(context),
         clearRecord = { withContext(Dispatchers.IO) { MonReleveDatabase.get(context).clearAllTables() } },
         cancelSync = { SyncScheduler.cancel(context) },
         clearExports = { java.io.File(context.cacheDir, EXPORTS_DIR).deleteRecursively() },
@@ -474,6 +477,7 @@ private fun parametresActions(
         onCancelDelete = controller::cancelDelete,
         onAcknowledgeDelete = controller::acknowledgeDelete,
         onOpenLegal = onOpenLegal,
+        onToggleAutoDetection = controller::setAutoDetection,
     )
 
 // AC2 / R136: hand the server-rendered export to the platform. A Ready event's bytes are written to a
