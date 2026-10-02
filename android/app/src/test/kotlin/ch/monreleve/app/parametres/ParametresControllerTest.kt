@@ -7,6 +7,7 @@ import ch.monreleve.app.data.local.Portion
 import ch.monreleve.app.data.repo.FakeEntryDao
 import ch.monreleve.app.data.repo.LocalEntryRepository
 import ch.monreleve.app.data.repo.RecordCommand
+import ch.monreleve.app.onboarding.DenominatorChoice
 import ch.monreleve.app.onboarding.SettingsSaver
 import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
@@ -239,6 +240,101 @@ class ParametresControllerTest : FunSpec({
 
             controller.state.value.error.shouldNotBeNull()
             saver.bodies.size shouldBe 0
+        }
+    }
+
+    // AN-STATE S4 (R310). The restore seed is proven on the JVM - the SavedStateHandle-shaped half of R310.
+    test("a restored snapshot reopens the edited fields (R310)") {
+        runTest {
+            val dao = FakeEntryDao()
+            val repo = LocalEntryRepository(dao, CLOCK)
+            val store = InMemoryStore(settings(rate = 100))
+            val controller =
+                ParametresController(
+                    RecordingSaver(),
+                    store,
+                    repo,
+                    TAX_YEAR,
+                    this,
+                    restored = ParametresSnapshot(canton = Canton.VD, employmentRate = "80"),
+                )
+            advanceUntilIdle()
+            controller.state.value.canton shouldBe Canton.VD
+            controller.state.value.employmentRate shouldBe "80"
+        }
+    }
+
+    test("a restored sign-out confirmation reopens with the unsynced count re-derived (R310)") {
+        runTest {
+            val dao = FakeEntryDao()
+            val repo = repoWithTeleworkDays(dao) // 10 pending (never synced) rows
+            val store = InMemoryStore(settings(rate = 100))
+            val controller =
+                ParametresController(
+                    RecordingSaver(),
+                    store,
+                    repo,
+                    TAX_YEAR,
+                    this,
+                    restored = ParametresSnapshot(signOutOpen = true),
+                )
+            advanceUntilIdle()
+            val prompt = controller.state.value.signOutPrompt
+            prompt.shouldNotBeNull()
+            prompt.unsyncedDays shouldBe 10 // re-derived from the record, not transcribed (R181)
+        }
+    }
+
+    test("a restored delete confirmation reopens with counts re-derived (R310)") {
+        runTest {
+            val dao = FakeEntryDao()
+            val repo = repoWithTeleworkDays(dao)
+            val store = InMemoryStore(settings(rate = 100))
+            val controller =
+                ParametresController(
+                    RecordingSaver(),
+                    store,
+                    repo,
+                    TAX_YEAR,
+                    this,
+                    restored = ParametresSnapshot(deleteOpen = true),
+                )
+            advanceUntilIdle()
+            val prompt = controller.state.value.deletePrompt
+            prompt.shouldNotBeNull()
+            prompt.recordedDays shouldBe 10
+        }
+    }
+
+    test("a restored R290 confirmation RECOMPUTES before/after and does NOT persist (R310)") {
+        runTest {
+            val dao = FakeEntryDao()
+            val repo = repoWithTeleworkDays(dao) // the rate moves when denominator -> EXACT/120
+            val store = InMemoryStore(settings(rate = 100))
+            val saver = RecordingSaver()
+            val controller =
+                ParametresController(
+                    saver,
+                    store,
+                    repo,
+                    TAX_YEAR,
+                    this,
+                    // the edited fields that moved the rate, plus the flag that the confirm dialog was open.
+                    restored =
+                        ParametresSnapshot(
+                            canton = Canton.GE,
+                            employmentRate = "50",
+                            denominator = DenominatorChoice.EXACT,
+                            exactTotalWorkDays = "120",
+                            saveConfirmOpen = true,
+                        ),
+                )
+            advanceUntilIdle()
+            // the before/after is recomputed from the record, not a persisted pair ...
+            controller.state.value.pendingRateChange.shouldNotBeNull()
+            // ... and crucially the restore did NOT commit (no PATCH, no local save).
+            saver.bodies.size shouldBe 0
+            store.load()?.employmentRate shouldBe 100
         }
     }
 })

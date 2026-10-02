@@ -15,7 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,7 +39,8 @@ internal fun CantonField(
     onCantonChange: (Canton) -> Unit,
     enabled: Boolean,
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    // AN-STATE (R310): the dropdown's open state survives a rebuild (keyed by composition position per field).
+    var expanded by rememberSaveable { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.space8)) {
         Text(text = OnboardingCopy.CANTON_LABEL, style = FrontierType.bodyM)
         OutlinedButton(onClick = { expanded = true }, enabled = enabled, modifier = Modifier.fillMaxWidth()) {

@@ -140,6 +140,31 @@ data class ParametresState(
     val deleteOutcome: DeleteOutcome? = null,
 )
 
+/**
+ * AN-STATE (R310): the Parametres screen's restorable state across a rebuild - the six edited fields and WHICH
+ * confirmation was open, never the computed before/after and never a count (R181: a figure restored verbatim
+ * goes stale). Serializable, so the composition root's rememberSaveable stores it in the saved-instance-state
+ * Bundle, which survives a background kill. The open confirmations are REOPENED once the rows load, with their
+ * counts re-derived from the record and R290's before/after RECOMPUTED by the same engine path - never a
+ * persisted pair, never a re-run of save() (which would commit when the rates happen to match). An in-flight
+ * phase (SAVING) is not persisted: a restore starts in EDITING, a spinner attached to no request would be a lie.
+ */
+data class ParametresSnapshot(
+    val canton: Canton? = null,
+    val employmentRate: String = "",
+    val denominator: DenominatorChoice = DenominatorChoice.SIMPLIFIED240,
+    val exactTotalWorkDays: String = "",
+    val granularity: GranularityChoice = GranularityChoice.DAY,
+    val activityStartDate: String = "",
+    val saveConfirmOpen: Boolean = false,
+    val signOutOpen: Boolean = false,
+    val deleteOpen: Boolean = false,
+) : java.io.Serializable {
+    companion object {
+        private const val serialVersionUID: Long = 1L
+    }
+}
+
 private const val HTTP_OK = 200
 private const val HTTP_OK_MAX = 299
 
@@ -189,6 +214,10 @@ class ParametresController(
     // takes (path, body) so the delete PATH stays in this file (R206) rather than leaking to the composition
     // root. Defaulted for the settings tests; the account tests supply a fake.
     private val authenticatedPost: suspend (String, String) -> PostOutcome = { _, _ -> PostOutcome.NoSession },
+    // AN-STATE (R310): the state to restore after a rebuild (null = a fresh open). Seeds the six edited fields;
+    // the open confirmations are reopened once the rows load (resolvePendingReopen), with counts re-derived and
+    // R290's before/after recomputed - never persisted (R181).
+    restored: ParametresSnapshot? = null,
 ) {
     // The settings the server currently holds, so R290's "before" is the SAVED rate, not the edited one.
     // Post-onboarding this is always present (the settings screen is unreachable before onboarding saves).
@@ -203,7 +232,13 @@ class ParametresController(
     // the screen never carries a Settings.
     private var pendingSettings: Settings? = null
 
-    private val mutableState = MutableStateFlow(stateOf(savedSettings))
+    // AN-STATE: which confirmation to reopen once the rows have loaded (so its count/rate is derived from the
+    // record, R181). Each fires once, then clears.
+    private var reopenSaveConfirm = restored?.saveConfirmOpen == true
+    private var reopenSignOut = restored?.signOutOpen == true
+    private var reopenDelete = restored?.deleteOpen == true
+
+    private val mutableState = MutableStateFlow(restored?.let(::stateOfSnapshot) ?: stateOf(savedSettings))
     val state: StateFlow<ParametresState> = mutableState.asStateFlow()
 
     // One-shot events (Channels, not StateFlows): handing a file to the share sheet, and leaving the shell on
@@ -216,7 +251,41 @@ class ParametresController(
 
     init {
         scope.launch {
-            repository.observeAll().collect { entries = it }
+            repository.observeAll().collect {
+                entries = it
+                // AN-STATE (R310): reopen a confirmation that was open before a rebuild, now that the rows are
+                // loaded - so the sign-out/delete counts and R290's before/after are derived from the record,
+                // not transcribed (R181). Each reopen fires once.
+                resolvePendingReopen()
+            }
+        }
+    }
+
+    private fun resolvePendingReopen() {
+        if (reopenSignOut) {
+            reopenSignOut = false
+            requestSignOut()
+        }
+        if (reopenDelete) {
+            reopenDelete = false
+            requestDelete()
+        }
+        if (reopenSaveConfirm) {
+            reopenSaveConfirm = false
+            reopenSaveConfirmation()
+        }
+    }
+
+    // AN-STATE: re-raise R290's before/after after a rebuild by RECOMPUTING it from the restored edited fields
+    // and the current record (decideSave, the compute half) - never by re-running save() (the commit half),
+    // which would persist when the rates happen to match. If the change no longer moves the rate, the dialog
+    // simply does not reopen; the edited fields remain.
+    private fun reopenSaveConfirmation() {
+        val settings = validate(mutableState.value) ?: return
+        val decision = decideSave(settings)
+        if (decision is SaveDecision.Confirm) {
+            pendingSettings = settings
+            mutableState.update { it.copy(pendingRateChange = decision.change) }
         }
     }
 
@@ -376,40 +445,51 @@ class ParametresController(
 
     fun onActivityStartDateChange(value: String) = edit { copy(activityStartDate = value) }
 
+    // AN-STATE (R310): save() is split into a COMPUTE half (decideSave) and a COMMIT half (persist), so a
+    // restore can recompute R290's before/after without committing. decideSave is pure over (settings, entries,
+    // savedSettings); it never touches the state.
+    private sealed interface SaveDecision {
+        data object SaveDirectly : SaveDecision
+
+        data object Conflicts : SaveDecision
+
+        data class Confirm(val change: RateChange) : SaveDecision
+    }
+
+    @Suppress("ReturnCount")
+    private fun decideSave(settings: Settings): SaveDecision {
+        val yearEntries = entries.filter { it.dayDate.startsWith("$taxYear-") }
+        // No recorded year for a change to move: nothing to show before/after, so save directly.
+        if (yearEntries.isEmpty()) return SaveDecision.SaveDirectly
+        // The edited settings cannot be computed over the recorded days - a granularity switch against half-day
+        // rows returns GranularityMismatch. That is not "nothing moved": it invalidates the recorded year, so it
+        // is refused rather than saved (R290, the advisor's trap).
+        val after = deviceDeclarableRate(settings, entries, taxYear) ?: return SaveDecision.Conflicts
+        val before = deviceDeclarableRate(savedSettings, entries, taxYear)
+        // The rate does not move (or the stored settings cannot be computed to compare against): a change R290
+        // has nothing consequential to announce, so it saves without the dialog.
+        if (before == null || before == after) return SaveDecision.SaveDirectly
+        return SaveDecision.Confirm(RateChange(before, after))
+    }
+
     /**
      * Validate, then either save directly or, when the change would move the year's declarable rate, expose
      * the before/after for the screen to confirm first (R290). The rate is computed by the device engine over
      * the device's own entries - the same path Aujourd'hui takes (R206) - so "moves the rate here" means
      * exactly "moves the rate the person already sees on Aujourd'hui and, once synced, on the releve".
      */
-    @Suppress("ReturnCount")
     fun save() {
         val settings = validate(mutableState.value) ?: return
-        val yearEntries = entries.filter { it.dayDate.startsWith("$taxYear-") }
-        if (yearEntries.isEmpty()) {
-            // No recorded year for a change to move: nothing to show before/after, so save directly.
-            persist(settings)
-            return
-        }
-        val after = deviceDeclarableRate(settings, entries, taxYear)
-        if (after == null) {
-            // The edited settings cannot be computed over the recorded days - a granularity switch against
-            // half-day rows returns GranularityMismatch. That is not "nothing moved": it is a change that
-            // invalidates the recorded year, so it is refused rather than saved (R290, the advisor's trap).
-            fail(SettingsError.CHANGE_CONFLICTS_WITH_RECORD)
-            return
-        }
-        val before = deviceDeclarableRate(savedSettings, entries, taxYear)
-        if (before == null || before == after) {
-            // The rate does not move (or the stored settings cannot be computed to compare against): a change
-            // R290 has nothing consequential to announce, so it saves without the dialog.
-            persist(settings)
-            return
-        }
-        // R290: the change moves the year's rate. Hold it, and show the before/after; confirmSave() commits.
-        pendingSettings = settings
-        mutableState.update {
-            it.copy(pendingRateChange = RateChange(before, after), error = null, phase = ParametresPhase.EDITING)
+        when (val decision = decideSave(settings)) {
+            SaveDecision.SaveDirectly -> persist(settings)
+            SaveDecision.Conflicts -> fail(SettingsError.CHANGE_CONFLICTS_WITH_RECORD)
+            is SaveDecision.Confirm -> {
+                // R290: the change moves the year's rate. Hold it, and show the before/after; confirmSave() commits.
+                pendingSettings = settings
+                mutableState.update {
+                    it.copy(pendingRateChange = decision.change, error = null, phase = ParametresPhase.EDITING)
+                }
+            }
         }
     }
 
@@ -450,6 +530,18 @@ class ParametresController(
             }
         }
     }
+
+    // AN-STATE: the restored edited fields become the EDITING state; the open confirmations are added later by
+    // resolvePendingReopen (they need the rows). An in-flight phase is never restored - a restore is EDITING.
+    private fun stateOfSnapshot(s: ParametresSnapshot): ParametresState =
+        ParametresState(
+            canton = s.canton,
+            employmentRate = s.employmentRate,
+            denominator = s.denominator,
+            exactTotalWorkDays = s.exactTotalWorkDays,
+            granularity = s.granularity,
+            activityStartDate = s.activityStartDate,
+        )
 
     private fun stateOf(settings: Settings): ParametresState =
         ParametresState(

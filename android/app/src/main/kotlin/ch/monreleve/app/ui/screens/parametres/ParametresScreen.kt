@@ -16,7 +16,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,7 +54,8 @@ fun ParametresScreen(
 ) {
     // A local sub-screen: the licences screen (R280) opens over Parametres and « Retour » returns. UI-only
     // navigation state, the same shape as a dropdown's expanded flag - it holds no data (fence 5).
-    var showLicences by remember { mutableStateOf(false) }
+    // AN-STATE (R310): rememberSaveable so a rebuild keeps the reader on the licences sub-screen.
+    var showLicences by rememberSaveable { mutableStateOf(false) }
     if (showLicences) {
         LicencesScreen(onBack = { showLicences = false }, modifier = modifier)
         return

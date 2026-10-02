@@ -15,6 +15,7 @@ import ch.monreleve.app.calendar.CalendarSnapshot
 import ch.monreleve.app.data.remote.DossierResult
 import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.onboarding.SettingsSaver
+import ch.monreleve.app.parametres.ParametresSnapshot
 import ch.monreleve.app.settings.SettingsStore
 import ch.monreleve.app.ui.shell.AppTab
 import java.time.Clock
@@ -80,20 +81,41 @@ fun rememberMainControllers(
     // process death). Int?/String? are stored by the default autoSaver, so no custom Saver is needed.
     var savedMonth by rememberSaveable { mutableStateOf<Int?>(null) }
     var savedEditingDay by rememberSaveable { mutableStateOf<String?>(null) }
+    // ParametresSnapshot is Serializable, so the default autoSaver stores it (no custom Saver).
+    var savedParametres by rememberSaveable { mutableStateOf<ParametresSnapshot?>(null) }
     val controllers =
         remember {
             MainGraph.build(
                 repository, store, taxYear, clock, scope, requestSync, dossierFetch, exportBytes, settingsSaver,
                 revokeServer, localStore, authenticatedPost,
                 restoredCalendar = CalendarSnapshot(savedMonth, savedEditingDay),
+                restoredParametres = savedParametres,
             )
         }
-    // Keep the saved snapshot current from the controller's observed state, so the LATEST month and open sheet
-    // are what a rebuild restores. Writing a snapshot MutableState from the collector is thread-safe.
+    // Keep the saved snapshots current from the controllers' observed state, so the LATEST month, open sheet,
+    // edited fields and open confirmation are what a rebuild restores. Writing a snapshot MutableState from the
+    // collector is thread-safe. The parametres snapshot carries WHICH confirmation is open (a flag), never the
+    // computed before/after or a count - those are re-derived on restore (R181).
     LaunchedEffect(controllers) {
         controllers.calendar.state.collect { s ->
             savedMonth = s.monthView?.month
             savedEditingDay = s.editing?.isoDate
+        }
+    }
+    LaunchedEffect(controllers) {
+        controllers.parametres.state.collect { s ->
+            savedParametres =
+                ParametresSnapshot(
+                    canton = s.canton,
+                    employmentRate = s.employmentRate,
+                    denominator = s.denominator,
+                    exactTotalWorkDays = s.exactTotalWorkDays,
+                    granularity = s.granularity,
+                    activityStartDate = s.activityStartDate,
+                    saveConfirmOpen = s.pendingRateChange != null,
+                    signOutOpen = s.signOutPrompt != null,
+                    deleteOpen = s.deletePrompt != null,
+                )
         }
     }
     return controllers

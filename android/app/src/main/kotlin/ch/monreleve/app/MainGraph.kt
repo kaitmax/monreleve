@@ -10,6 +10,7 @@ import ch.monreleve.app.data.remote.DossierResult
 import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.onboarding.SettingsSaver
 import ch.monreleve.app.parametres.ParametresController
+import ch.monreleve.app.parametres.ParametresSnapshot
 import ch.monreleve.app.releve.ReleveController
 import ch.monreleve.app.settings.SettingsStore
 import kotlinx.coroutines.CoroutineScope
@@ -85,6 +86,7 @@ object MainGraph {
         // passed here so the ONE construction site (R291) also decides each controller's restore. Defaulted to
         // null (a fresh build) so the wiring test and the controller tests need not name them.
         restoredCalendar: CalendarSnapshot? = null,
+        restoredParametres: ParametresSnapshot? = null,
     ): MainControllers =
         MainControllers(
             aujourdhui = AujourdhuiController(repository, settingsStore, taxYear, clock, scope, requestSync),
@@ -102,6 +104,7 @@ object MainGraph {
                     revokeServer,
                     localStore,
                     authenticatedPost,
+                    restoredParametres,
                 ),
         )
 }

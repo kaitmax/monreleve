@@ -15,7 +15,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import ch.monreleve.app.design.FrontierType
@@ -50,7 +50,10 @@ internal fun DeleteDialog(
     prompt: DeletePrompt,
     actions: ParametresActions,
 ) {
-    var typed by remember { mutableStateOf("") }
+    // AN-STATE (R310): the typed confirmation word survives a rebuild while the delete dialog is open (the
+    // dialog itself is reopened by the controller's deleteOpen flag). Dismissing the dialog drops this slot, so
+    // reopening it fresh starts empty.
+    var typed by rememberSaveable { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = actions.onCancelDelete,
         title = { Text(text = ParametresCopy.DELETE_TITLE) },
