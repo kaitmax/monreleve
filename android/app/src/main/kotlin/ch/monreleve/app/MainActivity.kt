@@ -268,7 +268,7 @@ private fun OnboardingRoute(
 // controller wiring, the export/account hand-off effects, and the F8 resume refresh - not tangled logic.
 @Suppress("LongParameterList", "LongMethod")
 @Composable
-private fun MainShell(
+internal fun MainShell(
     repository: EntryRepository,
     store: SettingsStore,
     taxYear: Int,
@@ -288,14 +288,15 @@ private fun MainShell(
     // built with requestSync, and the test fails if either is not (the AN10 calendar-never-synced bug,
     // which hid because this wiring lived inside a Composable no JVM test reaches, R176/R204). AN11 adds
     // the Releve controller; AN12 adds the Parametres controller with the PATCH, export and erasure seams.
+    // AN-STATE (R310): the controllers and the selected tab are held by named seams (ShellState.kt) whose
+    // lifetime a test can drive, instead of inline `remember` that died with each rebuild and dropped the
+    // person back on Aujourd'hui. rememberMainControllers still builds through MainGraph.build (R291).
     val controllers =
-        remember {
-            MainGraph.build(
-                repository, store, taxYear, clock, scope, requestSync, dossierFetch, exportBytes, settingsSaver,
-                revokeServer, localStore, authenticatedPost,
-            )
-        }
-    var tab by remember { mutableStateOf(AppTab.AUJOURDHUI) }
+        rememberMainControllers(
+            repository, store, taxYear, clock, scope, requestSync, dossierFetch, exportBytes, settingsSaver,
+            revokeServer, localStore, authenticatedPost,
+        )
+    var tab by rememberShellTab()
 
     val aujourdhuiState by controllers.aujourdhui.state.collectAsState()
     val calendarState by controllers.calendar.state.collectAsState()
