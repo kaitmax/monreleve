@@ -1,0 +1,305 @@
+REPORT-AN-AUTO  -  Mon Releve, automatic detection as an opt-in beta
+====================================================================
+
+PLAY'S VERDICT, FIRST
+---------------------
+LIKELY REFUSED, as an opt-in alternative to manual entry (with sources + dates in
+docs/play-background-location.md).
+
+The reason sits above the mechanics: Google Play permits ACCESS_BACKGROUND_LOCATION
+only when it is CORE functionality, and this product's own design makes it NOT core.
+SPEC and the field protocol state repeatedly that manual mode produces EXACTLY the
+same annual statement (SPEC 11.1; D19; the Checkpoint-G fallback is "manual mode
+only"), so the Releve - the product's core purpose - is fully delivered without any
+location access. Google's policy: "If your app requests access to the location in the
+background but it's not important to the app's core functionality, you must remove it"
+(support.google.com/googleplay/android-developer/answer/9799150, fetched 2026-10-02).
+An opt-in alternative to a fully-working manual mode is exactly that case. The 2026
+Location Permissions policy update (effective 2026-10-28) makes the verdict firmer:
+location must be "central to the app's core purpose."
+
+NOT the problem: (1) Data Safety - Case 1, local-only, EXEMPT, because D18 transmits
+no coordinate (docs/android-skills.md 7.2); (2) the restricted-permission mechanics -
+a Play Console declaration + a <=30s demo video are producible but do not make the
+feature core. The disclosure and in-app wording were designed to meet the
+requirements as closely as the feature allows WITHOUT claiming collection the product
+does not do. The upload, the Declaration Form and the video are AN14b's; the operator
+takes the refusal risk knowingly, and the "manual mode only" path is already the
+product's designed fallback, so nothing is lost if review refuses.
+
+
+HOW IT ENDED
+------------
+DEGRADED CONTEXT - a clean stop at a pushed boundary, with a handoff. Eight
+increments were built test-first, each gated (:app:gate green) and pushed:
+
+  0   Play verdict checked first (docs/play-background-location.md)          6d78d31
+  1   R311 only HIGH proposes; R312 the not-sure message                     7d897b9
+  2   R315 the auto-detection setting, opt-in/beta, consent both ways        17de440
+  3a  R316 location permission returns to release, check rewritten           14468eb
+  4a  the live sampler's incremental, coordinate-free tally (LiveTally)      69d7c3e
+  4b  the WorkManager background sampler, classify-and-discard               8e30245
+  6   R313 near-border recognition from the tally, no coordinate             c73f9da
+  6b  R317 no battery-opt ask; the honest help-text note                     5590575
+
+ALL SEVEN RULINGS (R311-R317) have their LOGIC shipped, tested and gated. What is
+OWED (ran out of context budget, NOT a boundary or a dead end) is the user-visible
+Aujourd'hui auto UI (incr 5) that RENDERS the R312/R313/R314 copy and wires
+confirm/correct, the disclosure+permission+revocation UI (incr 3b, R316's UI half),
+the debug-only mock provider (incr 7), and ALL the on-phone tests (A1, A2, A3, A5,
+A6 device legs, A7). A full handoff with exact steps is at
+C:/Users/KAMXKAM/.claude/jobs/176996e5/tmp/an-auto-handoff-1.txt. Nothing was changed
+on the phone, so there is nothing to restore (see WHAT WAS CHANGED ON THE PHONE).
+
+
+R273
+----
+This work spans what tasks/todo.md calls AN7 (automatic mode / background client),
+AN8 (the Aujourd'hui auto UI) and AN9 (polish). It is ONE task here because the
+operator has decided to SHIP automatic detection as an opt-in beta BEFORE the field
+test (Checkpoint G) has run. Shipping before validating is acceptable on one
+condition, which every ruling serves: the app never claims an accuracy it has not
+measured. (Checked tasks/todo.md; AN7/AN8/AN9 are the mapped tasks.)
+
+
+EACH RULING AND ITS EVIDENCE
+----------------------------
+R311 - ONLY HIGH PROPOSES.  detection/DetectionOutcome.detectionOutcome maps a
+  Proposal? to Proposed(proposal) for HIGH only, else NotSure. The MEASUREMENT path
+  is unchanged - computeProposal/proposedKind/exportFieldRun still score HIGH and
+  MEDIUM for the field protocol. DetectionOutcomeTest proves each tier end to end,
+  including that a MEDIUM day is STILL scored by the measurement path AND withheld by
+  the product. Recorded in docs/detection-model.md. [SHIPPED, gated]
+
+R312 - THE NOT-SURE MESSAGE.  fr/DetectionCopy.NOT_SURE =
+  "Nous ne sommes pas certains de votre position ce jour-la. Indiquez-le vous-meme."
+  (accented in source). No percentage (R27, DetectionCopyTest), names what to do, not
+  alarming. Reachability (R238): forward-referenced in CopyReachabilityTest's
+  allowlist naming the owed incr-5 surface that renders it. [LOGIC+COPY SHIPPED;
+  RENDER owed incr 5]
+
+R313 - NEAR-BORDER FROM THE TALLY, NO COORDINATE.  detection/NearBorder.kt: a working
+  day is near-border when its buffer-fix share is strictly above MEDIUM_BUFFER_SHARE
+  (0.40, the protocol's MEDIUM ceiling); the person is told on >=3 of the last 5
+  working days WITH DATA (NEAR_BORDER_DAYS_THRESHOLD=3, NEAR_BORDER_WINDOW_DAYS=5).
+  Named constants cite + reuse the encoded protocol threshold, PROPOSED and frozen at
+  the field test (R276, docs/detection-model.md). NearBorderTest proves the per-day
+  rule, the 3-of-5 trigger, and that no-data days are excluded. The message
+  (DetectionCopy.NEAR_BORDER) offers manual without disparaging detection (D19).
+  [LOGIC+COPY SHIPPED; "told once" + render owed incr 5]
+
+R314 - A PROPOSAL IS A PROPOSAL.  Verified the releve/PDF already show provenance in
+  words: ReleveCopy "Detection confirmee" / "Detection corrigee" from
+  DETECTED_CONFIRMED / DETECTED_CORRECTED (annex meta line). The write path already
+  supports it (RecordCommand.provenance/detectedKind/detectedAt). What is OWED is the
+  Aujourd'hui "Proposition - verifiez" card with Confirmer (-> DETECTED_CONFIRMED) and
+  Corriger (-> DETECTED_CORRECTED + detectedKind), incr 5. [VERIFIED downstream; the
+  phrasing + confirm/correct UI owed incr 5]
+
+R315 - OPT-IN, BETA, MANUAL BY DEFAULT, CONSENT BOTH WAYS.  Parametres gains
+  "Detection automatique (beta)" (a plain Switch, no confirmation dialog, SPEC 13),
+  manual by default (D19); the description states both modes produce the same releve.
+  Consent both ways through /api/v1/me (FW26, no /v1 change): enable PATCHes
+  {loggingMode:AUTO_DETECT, detectionConsent:true}; disable PATCHes
+  {detectionConsent:false} (server clears the stamp and forces MANUAL, SPEC 9.3). Off
+  stops sampling AT ONCE. The client never sends detectionConsentAt. One home:
+  settings/DetectionMode.kt (R206). Mode cached on device (monreleve.detection),
+  cleared on sign-out/deletion (ErasureCensusTest + LocalStoreTest). R282 reversed for
+  auto detection (ParametresR282Test). DetectionSettingsTest proves both bodies,
+  enable (starts sampling)/disable (stops at once), no-dialog, manual default.
+  [SHIPPED, gated; the setting is live in Parametres]
+
+R316 - THE LOCATION PERMISSION RETURNS.  ACCESS_FINE_LOCATION +
+  ACCESS_BACKGROUND_LOCATION returned to src/main (every variant), reversing R304;
+  src/debug no longer declares FINE. The set is EXACTLY what coordinate-free
+  background detection needs (FINE for the 150 m buffer - COARSE cannot place a point
+  vs the border, so it is not declared; BACKGROUND for sampling while closed; no
+  FOREGROUND_SERVICE). checkReleaseNoLocationPermission -> checkReleaseLocationPermissions
+  asserts the built release APK declares EXACTLY {FINE, BACKGROUND} and nothing more,
+  BOTH directions (R196) - verified against the built APK. [RELEASE CHECK REWRITTEN +
+  MANIFEST SHIPPED, gated. The disclosure screen before the system prompt (D5), the
+  permission launcher, the Android-10 separate-background step, and the revocation ->
+  manual fallback are owed incr 3b + the on-phone A1 test.]
+
+R317 - NO BATTERY-OPTIMISATION ASK.  No manifest declares
+  REQUEST_IGNORE_BATTERY_OPTIMIZATIONS (BatteryOptimisationTest, verified empty across
+  main+debug). The honest alternative is in words: ParametresCopy.AUTO_BATTERY_NOTE,
+  rendered in the Parametres auto-detection section, says some phones (Samsung among
+  them) may interrupt background sampling and that manual entry is the fallback -
+  linking to nothing that changes a system setting. [SHIPPED, gated. What Samsung's
+  battery management ACTUALLY did is an on-phone observation, owed - see below.]
+
+
+THE SEVEN TRACKS ON THE PHONE
+-----------------------------
+OWED (incr 7 + A3). The seven synthetic tracks' BATCH outcomes remain proven on the
+JVM (AN6a's DetectionSessionTest, unchanged). The LIVE background path's correctness
+is proven at the unit level: LiveTallyTest and DetectionSamplerTest show the
+incremental accumulator (accumulateFix / recordFix across wakes) equals the batch
+computeTally at the sampling cadence. What is owed is replaying the seven tracks
+THROUGH the WorkManager background path ON THE PHONE via a DEBUG-ONLY mock provider
+(incr 7 is not yet built). Each must give its expected outcome under R311 (HIGH
+proposes; MEDIUM/LOW show the not-sure message). Handoff has the exact mock-provider +
+replay recipe.
+
+
+THE NEAR-BORDER MESSAGE, SEEN
+-----------------------------
+OWED (needs incr 5's Aujourd'hui surface to render DetectionCopy.NEAR_BORDER, then A4
+to drive a buffer-heavy 3-of-5 replay on the phone and see it once). The detection
+LOGIC (shouldSuggestManualForNearBorder) is shipped and tested (NearBorderTest).
+
+
+A REAL WORKING WINDOW (A2)
+--------------------------
+OWED, with handoff. It was outside the 07:00-19:00 Europe/Paris window for the whole
+session, and A2 also needs incr 3b (to grant the permission on-device) before the
+sampler can accumulate. The handoff names exactly how to: grant {FINE, BACKGROUND}
+(adb or the owed disclosure flow), enable auto mode, keep the phone plugged in and
+untouched through a full window, and read the tally (TallyDao / the field export,
+dumped via a dev activity) - expecting a HIGH "Domicile" since the phone is in
+Casablanca, far from any Swiss border.
+
+
+BATTERY (A5)
+------------
+OWED, with handoff. Method (AN6a / R233), recorded so it can be run the same way: on
+an ODPM device, a Perfetto system trace (long_background.pftxt shape), energy from the
+power_rails track (power_ma * duration, summed, mWh), SUSPEND confirmed via
+suspend_state, wakelocks via kernel_wakelock; the SM-G960F (Galaxy S9, Exynos) has no
+power rails, so the fallback is dumpsys batterystats reset at the window start and read
+at the end, against the 3%-per-working-day budget. R233's line - whether the
+measurement observed its subject - must be stated with the figure: a batterystats run
+MUST confirm the SamplingWorker actually woke and recorded fixes during the window
+(non-zero fixCount in the tally), or the battery number describes an idle phone, not
+detection.
+
+
+NO COORDINATE ANYWHERE (all four checks)
+----------------------------------------
+D18 is the hard boundary. Two of four checks are STATIC and GREEN now, WITH all the
+new sampler/cursor/tally/near-border code in place:
+
+  1. SOURCE FENCE (FencesTest.noCoordinateTypeAppearsOutsideDetection, fence 2b):
+     GREEN. No coordinate-shaped identifier (Location/LatLng/latitude/longitude)
+     appears outside detection/. Every location-touching file I added lives in
+     detection/ (LiveLocation, SamplingWorker, DetectionScheduling, DetectionSampler,
+     LiveTally, NearBorder). CoordinateConfinementTest also GREEN.
+  2. ROOM DDL SCAN (RoomSchemaContractTest.noColumnIsCoordinateShapedInAnyTable):
+     GREEN. No coordinate column in any table. The sampler stores ONLY the aggregate
+     tally in daily_tally (no schema change) and a coordinate-free cursor (day + side
+     + epoch) in the detection SharedPreferences - never a coordinate, never a
+     movement timeline.
+  3. NETWORK TRACE of a full walkthrough with auto mode ON: OWED (device). The sampler
+     makes NO network call by construction (detection/ fence forbids data.remote; the
+     worker touches only TallyDao + the border asset). Still to be DRIVEN on the phone
+     and the traffic inspected.
+  4. LOGCAT with auto mode ON: OWED (device). No coordinate is logged by construction
+     (the coordinate's whole life is the classify() call in awaitClassifiedFix). Still
+     to be OBSERVED on the phone.
+
+DESIGN NOTE (D18, fail-closed): the sampler cannot hold a day's fixes across
+WorkManager wakes and SPEC 13.1 forbids persisting the fix sequence, so the tally is
+accumulated incrementally from the aggregate + a cursor holding ONLY the previous
+fix's SIDE (INSIDE/OUTSIDE/BUFFER) and time - a single last value, not a history, not
+a coordinate. It shares the detection prefs file so sign-out/deletion and mode-off
+clear it. When the fix read failed in any way, the wake records NOTHING (a thin signal
+is withheld), never a guess. No coordinate is persisted, logged, transmitted, or kept
+beyond the classify() call.
+
+
+STATE (R310)
+------------
+OWED for the NEW screens (the Aujourd'hui auto states, incr 5; the disclosure screen,
+incr 3b) - they are not built yet, so there is nothing new to preserve across the four
+triggers. The auto-detection TOGGLE state is derived from the persistent mode cache
+(SharedPreferences), so a rebuild re-reads it with no snapshot needed - A7 for the
+Parametres toggle holds by construction, to be confirmed on-device alongside incr 5/3b.
+Existing screens' R310 behaviour is unaffected by this task.
+
+
+WHAT SAMSUNG'S BATTERY MANAGEMENT DID
+-------------------------------------
+OWED (on-phone observation). R317's help-text note is shipped. What this specific
+SM-G960F's battery management does to the WorkManager sampler over a window is to be
+observed during A2/A5 and recorded here (dontkillmyapp.com ranks Samsung as
+aggressive; the S9 may throttle/kill background work).
+
+
+ADVISOR DECISIONS
+-----------------
+The advisor was NOT consulted. The orchestrator's resume message directed skipping it
+("the advisor consult has been the mid-stream stall trigger all session ... SKIP it
+and execute. Your plan + the prompt's rulings are prescriptive enough"). Judgment
+calls were taken per the prompt + the fail-closed D18 default and recorded here:
+  - Background architecture: WorkManager periodic (15-min floor) + a single platform
+    GPS fix, NOT Play Services geofencing. Reason: geofencing needs play-services-
+    location (a new dependency = ask-first; R136 prefers the platform, no geo
+    dependency), and D31's geofence CONTINGENCY is built only if Checkpoint G triggers
+    it. GPS/FINE not NETWORK, because the 150 m buffer needs precision a balanced-power
+    fix cannot give. Recorded in SamplingWorker.kt and this report.
+  - Tally persistence: incremental aggregate + a coordinate-free cursor (fail-closed:
+    never persist anything coordinate-shaped), proven equal to the tested batch tally
+    at the sampling cadence (LiveTallyTest). No Room schema change (ask-first avoided).
+  - Permission set: EXACTLY {FINE, BACKGROUND}; COARSE deliberately omitted.
+
+
+WHAT WAS CHANGED ON THE PHONE AND RESTORED
+------------------------------------------
+NOTHING. No on-phone test was run this session (the device tests are owed). No phone
+setting (stay-awake, location permission state, developer options, mock-location app)
+was touched, so there is nothing to restore. The phone (serial 232bcd8c300c7ece, SM-
+G960F, API 29) was confirmed connected/authorized at the start and left untouched.
+The handoff's device steps include restoring every setting they change (svc power
+stayon -> settings put global stay_on_while_plugged_in 0; revoke any granted
+permission; clear the mock-location app) per the relay's restore discipline.
+
+
+PARKED
+------
+PARKAN-36 (new): a daily LOCAL notification for the proposal - OUT OF SCOPE by the
+  relay's decision ("a separate decision - park it"). Not built. Needs an operator
+  decision. (parking.md)
+PARKAN-32 (updated to closed/REVERSED): R316 reverses R304 - the location permission
+  returned to the release build; the gate check was rewritten.
+Out of scope, confirmed untouched: the web's auto-mode copy stays future-tense (R138);
+  the PRODUCT_STATE flags do not flip (R186 - no client released); the Play upload +
+  data-safety form (AN14b).
+
+
+DEVIATIONS
+----------
+- PROCESS: per the orchestrator's resume instruction, each increment ran :app:gate
+  (the android commit gate) rather than pnpm gate:clone per push; gate:clone runs once
+  on the final boundary (A8). gate:clone's web legs are structurally unaffected by
+  android+docs-only changes. [gate:clone result recorded under PUSH PROOF.]
+- INCREMENT ORDER: increment 3 was split (3a manifest+check shipped; 3b disclosure/
+  permission UI owed) and the sampler (incr 4) was built before 3b, because the D18-
+  critical sampler is what the orchestrator re-verifies and it is unit-testable without
+  the permission UI (on-device fixes use adb grant or the owed flow). The relay's 3->4
+  order is a guide; the DONE list is the bar.
+- SCOPE NOT REACHED (owed, not skipped): incr 5 (Aujourd'hui auto UI), incr 3b
+  (disclosure/permission/revocation UI), incr 7 (mock provider), device tests A1, A2,
+  A3, A5, A6 (network+logcat legs), A7. Full handoff provided.
+
+
+QUESTIONS
+---------
+1. Play (operator decision, surfaced first): given LIKELY REFUSED for background
+   location as an opt-in alternative, does the beta still go to Play review (accepting
+   the risk), or ship via another channel (sideload to field testers) while manual
+   mode is the Play product? docs/play-background-location.md has the full basis.
+2. R313 "told once": the persistence of the once-flag and whether re-crossing the
+   threshold after the person keeps auto re-notifies, is an incr-5 UX decision - parked
+   for the operator.
+
+
+PUSH PROOF
+----------
+origin/main advanced 277af61 -> 5590575 (then the report/handoff commit on top).
+Eight increment commits, each with :app:gate green (listed under HOW IT ENDED). Local
+== origin at each push; fetch-before-push each time; only this session's files staged
+by path. R1 baseline: the orchestrator verified gate:clone + :app:gate green on the
+starting HEAD. Final gate:clone: [RECORDED AT THE REPORT COMMIT - see the commit body].
+
+END OF REPORT-AN-AUTO

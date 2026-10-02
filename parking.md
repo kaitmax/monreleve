@@ -1597,6 +1597,29 @@ NEEDS:     the operator to close Android Studio (free >= 4 GB), install cmdline-
 google_apis image, create an AVD, then run StatePreservationInstrumentedTest + android/scripts/an-state-matrix.mjs
 on the emulator. On success, tick S2 in REPORT-AN-STATE.txt.
 
+## PARKAN-36 - a daily LOCAL notification for the proposal is a separate decision  [AN-AUTO, 2026-10-02]
+
+QUESTION:  SPEC 13.3 describes the daily reminder as carrying the detected proposal (« Journee detectee :
+Domicile. Confirmer ? ») with confirm/correct actions. Automatic detection now exists (opt-in, beta), so the
+proposal could be surfaced in a daily LOCAL notification (no server, no FCM) in addition to the Aujourd'hui
+card. Should it be, and when?
+
+EVIDENCE: the AN-AUTO relay places this OUT OF SCOPE explicitly: "A daily LOCAL notification for the proposal:
+a LOCAL notification needs no server, but it is a separate decision - park it with a PARKAN entry." The FCM
+reminder (SPEC 13.3) is server-scheduled and belongs to the reminder feature, which this task did not build
+(R282's reminder rows are still absent; ParametresR282Test still forbids « rappel »/« notification »). A local
+notification is a distinct UX decision (a compliance tool that nags gets uninstalled, SPEC 13.3) and touches a
+POST_NOTIFICATIONS runtime permission (API 33+), which is its own Play/UX consideration.
+
+NOT TAKEN: no notification channel, no POST_NOTIFICATIONS permission, no local scheduler was added. The
+proposal is surfaced only on Aujourd'hui (the owed incr-5 UI). Parked, not owed: this is a deliberate scope
+decision by the relay, not an unfinished item.
+
+TOUCHES:   nothing. If adopted later: a notification channel, POST_NOTIFICATIONS (API 33+), a WorkManager
+end-of-window trigger reading the day's DetectionOutcome, and confirm/correct actions - with the no-nag rule.
+
+NEEDS:     an operator decision on whether the beta surfaces a daily local notification at all, and its copy.
+
 ## STATUS LEDGER  [appended 2026-09-29]
 
 One line per Android-era entry, so the state of each is visible without
@@ -1627,6 +1650,7 @@ reading every section. Entries are not edited; this ledger is.
 | PARKAN-30 — openLegal unguarded vs no browser | **closed** | R299 (AN-AUDIT incr 0): openLegal catches ActivityNotFoundException and shows the link's address (openLegalLink seam, LegalLinkTest); no crash on a browserless device |
 | PARKAN-31 — TRUE release never exercised E2E | **open, NARROWED** | AN-AUDIT incr 2 + AN14a. R8 is ON and statically verified (checkMinifiedWireContract). AN14a incr 6 drove the MINIFIED audit variant on a PHYSICAL SM-G960F (API 29): the R307 runtime wire drive PASSED (minified serialiser emits all 10 /v1 request keys + 15 enum values), but the full end-to-end AC1 drive is BLOCKED by a pre-existing non-R8 launch crash (PARKAN-34). Still owed: AC1 end-to-end once PARKAN-34 is resolved, and the TRUE signed release vs a resolving monreleve.ch + assetlinks + release key (AN14b) |
 | PARKAN-34 — crashes on launch on API < 34 | **closed** | AN14a incr 6 found it (on-device): LocalDate.ofInstant (API 34+) at CalendarDay.kt:31 with no core-library desugaring threw NoSuchMethodError on launch on API 26-33; minified AND unminified crashed identically (NOT R8). CLOSED in two commits: DEVICE-LOOP 712fccd took the narrow call-site fix (clock.instant().atZone(PARIS).toLocalDate(), behaviourally equal, CalendarDayTest unchanged) + ApiLevelFenceTest (the curated JVM regression guard, RED on the live instance then GREEN). AN-STATE increment 0 (R308) closed the remaining recommendation - Android Lint's NewApi check is now a permanent :app:gate step (lintDebug, scoped to NewApi via lint{}), the exhaustive partner the fence cannot be. Verified end to end: a planted LocalDate.ofInstant in src/main reds the gate naming the file (R180), reverted |
-| PARKAN-32 — where the location permission lives | **open, NEEDS** | AN-FIX incr 3 (R304): ACCESS_FINE_LOCATION moved from src/main to src/debug, so the release APK declares none (checkReleaseNoLocationPermission, aapt2) and debug/audit keep it; the AN6b field-test build's shape + the data-safety-form entry are AN6's to add when detection ships |
+| PARKAN-32 — where the location permission lives | **closed, REVERSED** | AN-AUTO (R316, reverses R304): detection ships (opt-in, beta), so ACCESS_FINE_LOCATION + ACCESS_BACKGROUND_LOCATION returned to src/main (every variant); src/debug no longer declares FINE. checkReleaseNoLocationPermission became checkReleaseLocationPermissions, asserting the built release APK declares EXACTLY {FINE, BACKGROUND} and nothing more (both directions, R196). The data-safety-form entry stays Case 1 local-only (exempt) while D18 holds; the Play background-location declaration + demo video are AN14b's (docs/play-background-location.md) |
 | PARKAN-33 — compileSdk stays 35 while targetSdk is 36 | **open, NEEDS** | AN14a incr 5: Play requires new apps/updates to target API 36 (Google docs, fetched 2026-10-01, effective 2026-08-31), and the prompt directs setting it - done (the built release APK declares targetSdkVersion 36). compileSdk 36 would align them (Google's recommended compileSdk==targetSdk), but paparazzi 1.3.5 cannot render API 36 (cashapp/paparazzi#1877), so compileSdk 36 needs a paparazzi version upgrade + a visual-baseline regeneration (R135/R207) - a dependency change out of AN14a's scope. Conservative/reversible choice: targetSdk 36 + compileSdk 35, the documented workaround (built clean on AGP 8.10.1, no AGP error, paparazzi green). AN14b aligns compileSdk to 36 with the paparazzi upgrade before the first upload; reversible until then. The API 35->36 runtime behaviour changes are OWED an emulator pass (RAM-blocked) |
 | PARKAN-35 — S2 API-26 emulator matrix owed | **open, OWED** | AN-STATE (R310/R309): the state-preservation matrix (S1) ran fully on the physical phone (SM-G960F, API 29); the API-26 emulator half (S2) is OWED. Blocked by 1571 MB free RAM (emulator needs ~4 GB - the prompt's "no RAM heroics" case), no cmdline-tools, no android-26 system image (only android-36/37 installed), no AVD. LOW RISK: the DEVICE-LOOP crash class is closed and R308 now runs NewApi lint in :app:gate, so no API>26 call can ship; the phone (also <34) passed S1. Resume recipe in C:/Users/KAMXKAM/.claude/jobs/176996e5/tmp/an-state-handoff-1.txt: free RAM, install cmdline-tools + system-images;android-26;google_apis;x86, create an AVD, then run the StatePreservationInstrumentedTest suite + the an-state-matrix.mjs triggers on it |
+| PARKAN-36 — daily LOCAL notification for the proposal | **parked, by decision** | AN-AUTO: the relay places a daily local notification OUT OF SCOPE ("a separate decision - park it"). Not built: no channel, no POST_NOTIFICATIONS, no local scheduler. The proposal is surfaced only on Aujourd'hui (owed incr-5 UI). Needs an operator decision on whether the beta notifies daily and its copy |
