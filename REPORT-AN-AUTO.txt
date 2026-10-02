@@ -296,10 +296,19 @@ QUESTIONS
 
 PUSH PROOF
 ----------
-origin/main advanced 277af61 -> 5590575 (then the report/handoff commit on top).
-Eight increment commits, each with :app:gate green (listed under HOW IT ENDED). Local
-== origin at each push; fetch-before-push each time; only this session's files staged
-by path. R1 baseline: the orchestrator verified gate:clone + :app:gate green on the
-starting HEAD. Final gate:clone: [RECORDED AT THE REPORT COMMIT - see the commit body].
+origin/main advanced 277af61 -> 5590575 (then the report/handoff/follow-up commits on
+top). Eight increment commits, each with :app:gate green (listed under HOW IT ENDED).
+Local == origin at each push; fetch-before-push each time; only this session's files
+staged by path. R1 baseline: the orchestrator verified gate:clone + :app:gate green on
+the starting HEAD.
+
+FINAL gate:clone (A8/R199): PASSED (exit 0) on commit 5590775f... (5590575, the final
+CODE commit). From a clean --local clone with no .env, no prior node_modules and no
+generated file it did not produce itself, it ran and passed: install, typecheck, lint,
+test, build, size, db:deploy, test:db, test:container:write. Named-and-skipped with
+reasons (R133): test:e2e, test:visual, test:runtime, lighthouse, parity:check (browser
+/ Chrome / Node-matrix, which a clone cannot run). It reported CI quiet (private repo,
+CI_FULL unset). The report/handoff commits that follow are docs-only and cannot break
+the clone (android+docs-only changes do not touch the web clone legs).
 
 END OF REPORT-AN-AUTO
