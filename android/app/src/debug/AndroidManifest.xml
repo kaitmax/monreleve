@@ -71,6 +71,16 @@
             android:name=".dev.DetectionReplayActivity"
             android:exported="true"
             android:theme="@style/Theme.MonReleve" />
+        <!--
+          AN-AUTO increment 7: DetectionMockReplayActivity replays the seven synthetic tracks through the REAL
+          background path on the PHYSICAL phone, via a debug-only test location provider (A3). Declared only here,
+          so it never ships; checkReleaseNoDevComponent fails on any ch.monreleve.app.dev.* in the release APK.
+          Reached by: adb shell am start -n ch.monreleve.app/ch.monreleve.app.dev.DetectionMockReplayActivity
+        -->
+        <activity
+            android:name=".dev.DetectionMockReplayActivity"
+            android:exported="true"
+            android:theme="@style/Theme.MonReleve" />
 
         <!--
           AN14a increment 4 - R307 runtime half. WireDumpActivity serialises a fixture covering every enum
