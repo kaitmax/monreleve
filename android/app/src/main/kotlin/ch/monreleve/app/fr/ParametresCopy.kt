@@ -35,6 +35,14 @@ object ParametresCopy {
         "Fonction en bêta : sa fiabilité est en cours de mesure. L’application vous propose une journée " +
             "seulement lorsqu’elle en est sûre, et vous indique quand elle ne l’est pas."
 
+    // R317: do NOT ask for a battery-optimisation exemption (that permission is itself restricted on Play).
+    // Instead, say in words that the phone's battery management may stop background sampling, and link to
+    // nothing that changes a system setting on the person's behalf - manual entry is the fallback.
+    const val AUTO_BATTERY_NOTE =
+        "Certains téléphones (dont des Samsung) peuvent interrompre la détection en arrière-plan pour " +
+            "économiser la batterie. Si une journée n’est pas détectée, saisissez-la manuellement ; " +
+            "l’application ne modifie aucun réglage système à votre place."
+
     // FD9's SITUATION PROFESSIONNELLE section: the settings that recompute the whole year, under a warning.
     const val SITUATION_HEADING = "Situation professionnelle"
     const val SITUATION_WARNING =

@@ -132,6 +132,8 @@ private fun AutoDetectionSection(
     }
     Text(text = ParametresCopy.AUTO_DESCRIPTION, style = FrontierType.caption, color = LightColors.textSecondary)
     Text(text = ParametresCopy.AUTO_BETA_NOTE, style = FrontierType.caption, color = LightColors.textSecondary)
+    // R317: the honest battery-management note - no exemption asked, no system setting changed on their behalf.
+    Text(text = ParametresCopy.AUTO_BATTERY_NOTE, style = FrontierType.caption, color = LightColors.textSecondary)
 }
 
 @Composable
