@@ -526,22 +526,24 @@ tasks.register("checkLicences") {
     }
 }
 
-// AN-FIX F2/F6 (R304). The RELEASE build must declare NO location permission until detection ships
-// (asking for one claims a feature this build does not expose, R282 - the item most likely to draw Play
-// review). This reads the BUILT release APK's permissions with aapt2 (AC2: from the APK, not the source
-// manifest - a library or the merger could introduce one), and fails on any ACCESS_*LOCATION. The
-// permission lives in src/debug now, so the debug/audit builds keep it and only release drops it. R182:
-// it dependsOn assembleRelease, the task that PRODUCES its subject, so it never runs before the APK
-// exists. Proven by planting ACCESS_FINE_LOCATION back into src/main/AndroidManifest.xml and watching it
-// go red (R180), recorded in REPORT-AN-FIX.txt.
-tasks.register("checkReleaseNoLocationPermission") {
+// AN-AUTO (R316, REVERSES R304). Detection ships (opt-in, beta), so the RELEASE build DOES declare the
+// location permission - but it must declare EXACTLY what coordinate-free background detection needs and
+// NOTHING MORE. This reads the BUILT release APK's permissions with aapt2 (AC2: from the APK, not the
+// source manifest - a library or the merger could introduce one) and asserts the set of ACCESS_*LOCATION
+// permissions is EXACTLY {ACCESS_FINE_LOCATION, ACCESS_BACKGROUND_LOCATION}:
+//   - a MISSING one is a feature that cannot work (background sampling needs BACKGROUND; the buffer needs FINE);
+//   - an EXTRA one (e.g. ACCESS_COARSE_LOCATION) is scope the product does not need and Play scrutinises.
+// Both directions, because a check that only forbids extras passes an APK missing BACKGROUND, and one that
+// only requires the two passes an APK that also declares COARSE (R196's both-directions shape). R182: it
+// dependsOn assembleRelease, the task that PRODUCES its subject, so it never runs before the APK exists.
+tasks.register("checkReleaseLocationPermissions") {
     dependsOn("assembleRelease")
     doLast {
         val apkDir = layout.buildDirectory.dir("outputs/apk/release").get().asFile
         val apk =
             apkDir.walkTopDown().firstOrNull { it.isFile && it.extension == "apk" }
                 ?: throw GradleException(
-                    "checkReleaseNoLocationPermission: no release APK under $apkDir - assembleRelease produced none",
+                    "checkReleaseLocationPermissions: no release APK under $apkDir - assembleRelease produced none",
                 )
         val buildToolsDir = File(android.sdkDirectory, "build-tools")
         val aapt2 =
@@ -550,26 +552,37 @@ tasks.register("checkReleaseNoLocationPermission") {
                 ?.firstNotNullOfOrNull { dir ->
                     sequenceOf("aapt2", "aapt2.exe").map { File(dir, it) }.firstOrNull { it.exists() }
                 }
-                ?: throw GradleException("checkReleaseNoLocationPermission: no aapt2 under $buildToolsDir")
+                ?: throw GradleException("checkReleaseLocationPermissions: no aapt2 under $buildToolsDir")
         val stdout = ByteArrayOutputStream()
         project.exec {
             commandLine(aapt2.path, "dump", "permissions", apk.path)
             standardOutput = stdout
         }
         val permissions = stdout.toString("UTF-8")
-        val location =
+        val declaredLocation =
             Regex("""android\.permission\.ACCESS_[A-Z_]*LOCATION""")
                 .findAll(permissions)
                 .map { it.value }
                 .toSortedSet()
-        if (location.isNotEmpty()) {
+        val expected =
+            sortedSetOf(
+                "android.permission.ACCESS_FINE_LOCATION",
+                "android.permission.ACCESS_BACKGROUND_LOCATION",
+            )
+        if (declaredLocation != expected) {
+            val missing = expected - declaredLocation
+            val extra = declaredLocation - expected
             throw GradleException(
-                "checkReleaseNoLocationPermission FAILED - the BUILT release APK declares location " +
-                    "permission(s): $location (R304). The manual product must claim no location feature; the " +
-                    "permission belongs in src/debug (the detection-capable builds), not src/main.\nAPK: $apk",
+                "checkReleaseLocationPermissions FAILED (R316) - the BUILT release APK must declare EXACTLY " +
+                    "the location permissions coordinate-free background detection needs.\n" +
+                    "  expected: $expected\n  found:    $declaredLocation\n" +
+                    "  missing:  $missing (a feature that cannot work)\n" +
+                    "  extra:    $extra (scope the product does not need)\nAPK: $apk",
             )
         }
-        println("checkReleaseNoLocationPermission OK: the built release APK declares no location permission ($apk)")
+        println(
+            "checkReleaseLocationPermissions OK: the built release APK declares exactly $expected ($apk)",
+        )
     }
 }
 
@@ -580,7 +593,7 @@ tasks.register("checkReleaseNoLocationPermission") {
 // reach them by name) and the release the user installs declares none. This is the BUILT-APK partner of
 // checkReleaseNoDebugInjection: that reads the merged manifest INTERMEDIATE, this reads what SHIPS -
 // R249 says a claim about what ships is checked against the APK, not the source. It dumps the built
-// release APK's manifest with aapt2 (the same tool and discovery as checkReleaseNoLocationPermission) and
+// release APK's manifest with aapt2 (the same tool and discovery as checkReleaseLocationPermissions) and
 // fails on any ch.monreleve.app.dev.* component. R182: it dependsOn assembleRelease, the task that
 // PRODUCES its subject, so it never runs before the APK exists. Its FIRST run found the four live
 // instances (R178 - the real proof F1 existed); proven still able to fire by planting one dev activity
@@ -744,7 +757,7 @@ tasks.register("gate") {
         "verifyPaparazziDebug",
         "checkReleaseCleartext",
         "checkReleaseNoDebugInjection",
-        "checkReleaseNoLocationPermission",
+        "checkReleaseLocationPermissions",
         "checkReleaseNoDevComponent",
         "checkMinifiedWireContract",
         "checkLicences",
@@ -766,8 +779,9 @@ tasks.register("gate") {
             |     nowhere - merged manifest + network security config, R182),
             |     checkReleaseNoDebugInjection (R284 guard b: the debug session
             |     injection is absent from the merged release manifest),
-            |     checkReleaseNoLocationPermission (R304: the BUILT release APK
-            |     declares no location permission, read with aapt2 - AC2),
+            |     checkReleaseLocationPermissions (R316: the BUILT release APK
+            |     declares EXACTLY {ACCESS_FINE_LOCATION, ACCESS_BACKGROUND_LOCATION}
+            |     and nothing more, read with aapt2 - AC2),
             |     checkReleaseNoDevComponent (AN14a F1: the BUILT release APK
             |     declares no ch.monreleve.app.dev.* component, read with aapt2 -
             |     AC2/R249), the built-APK partner of checkReleaseNoDebugInjection,

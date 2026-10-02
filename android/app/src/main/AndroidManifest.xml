@@ -5,16 +5,25 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <!--
-      AN-FIX F2/F6 (R304): NO LOCATION PERMISSION IN THE RELEASE BUILD UNTIL DETECTION SHIPS.
-      The manual product declares no location permission - asking for one claims a feature this
-      build does not expose (R282), and it is the single item most likely to draw Play review. The
-      on-device detection code and the bundled border polygon STAY in the repository (dormant), but
-      ACCESS_FINE_LOCATION now lives in src/debug/AndroidManifest.xml, so only the detection-capable
-      builds (debug/audit, and the build AN6b's field testers install) carry it. The BUILT release
-      APK is asserted to declare no location permission by the checkReleaseNoLocationPermission gate
-      task (read from the APK with aapt2, not from source). When detection ships (AN6+), the
-      permission and the data-safety-form entry move with it. PARKAN-32.
+      AN-AUTO (R316, REVERSES R304): DETECTION SHIPS, SO THE LOCATION PERMISSION RETURNS TO THE RELEASE
+      BUILD. Automatic detection is opt-in and labelled beta (R315), but the feature now EXISTS in the
+      release, so the permission it needs is declared here in src/main (every variant), not hidden in
+      src/debug. The set is EXACTLY what background, coordinate-free detection needs and nothing more:
+        - ACCESS_FINE_LOCATION:       the 150 m border buffer needs precise fixes (D25); COARSE cannot
+                                      place a point relative to the border, so it is deliberately NOT
+                                      declared.
+        - ACCESS_BACKGROUND_LOCATION: sampling runs during the working window while the app is closed
+                                      (SPEC 13.1); on Android 10+ this is a SEPARATE runtime grant,
+                                      requested after FINE (D5 warns of the two dialogs).
+      No FOREGROUND_SERVICE: the sampler is WorkManager periodic work + a single fix, not a foreground
+      service, so no persistent notification and no service permission (SPEC 13.1's spike choice).
+      The coordinate is classified on-device and DISCARDED (D18) - never stored, logged or sent; the
+      restricted permission does not change that (Data Safety stays Case 1, local-only). The BUILT
+      release APK is asserted to declare EXACTLY {FINE, BACKGROUND} and nothing more by the
+      checkReleaseLocationPermissions gate task (read from the APK with aapt2, not from source).
     -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 
 
     <application
