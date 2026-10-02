@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import ch.monreleve.app.account.LocalStore
 import ch.monreleve.app.auth.BytesOutcome
 import ch.monreleve.app.auth.PostOutcome
@@ -30,9 +31,25 @@ import java.time.Clock
 // wiring test also calls - so the DayWriter/requestSync census is unaffected; the seam only decides the state's
 // LIFETIME, not the graph's shape.
 
-/** The selected bottom-navigation tab. The operator's finding: this reset to Aujourd'hui on every rebuild. */
+// AN-STATE (R310): a destination restored across a rebuild, reconciled against the current session. A saved
+// MAIN restored after a sign-out-while-backgrounded (or an expiry) would land an unsigned shell, so when the
+// recomputed `start` says SIGN_IN (no session) that wins. A restored in-flight RESOLVING is re-decided. A
+// saved ONBOARDING/MAIN is honoured while signed in - so a rotation mid-onboarding stays on onboarding rather
+// than re-running the RESOLVING network round-trip. Pure, so SessionReconciledTest covers it on the JVM.
+internal fun sessionReconciled(
+    saved: Destination,
+    start: Destination,
+): Destination = if (start == Destination.SIGN_IN || saved == Destination.RESOLVING) start else saved
+
+/**
+ * The selected bottom-navigation tab. The operator's finding: with `remember` this reset to Aujourd'hui on
+ * every rebuild. rememberSaveable keeps it across ALL FOUR triggers - rotation, a text-size change, a
+ * dark-mode switch and a background kill - because AppTab is an enum (Serializable), so the default autoSaver
+ * stores it in the saved-instance-state Bundle, which survives process death, not only a config change. No
+ * ViewModel is needed: the tab is pure UI selection, and saved state outlives the activity by construction.
+ */
 @Composable
-fun rememberShellTab(): MutableState<AppTab> = remember { mutableStateOf(AppTab.AUJOURDHUI) }
+fun rememberShellTab(): MutableState<AppTab> = rememberSaveable { mutableStateOf(AppTab.AUJOURDHUI) }
 
 /**
  * The shell's controllers, built once through MainGraph.build (R291 - the construction site the wiring test

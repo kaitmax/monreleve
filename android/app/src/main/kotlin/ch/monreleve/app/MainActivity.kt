@@ -21,6 +21,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -105,7 +106,7 @@ import java.time.ZoneId
  * tabs neither recomputes nor leaks a collector on lifecycleScope. Releve and Parametres join the shell
  * when AN11/AN12 build them (R282: no tab for a screen that does not exist).
  */
-private enum class Destination { SIGN_IN, RESOLVING, ONBOARDING, MAIN }
+internal enum class Destination { SIGN_IN, RESOLVING, ONBOARDING, MAIN }
 
 // AN12: the cacheDir subdirectory an export is written to before the share sheet. ONE home (R206): shareFile
 // writes here and the device erasure deletes here, so a rendered export - the account JSON is the whole record
@@ -152,7 +153,10 @@ class MainActivity : ComponentActivity() {
         setContent {
             FrontierTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    var destination by remember { mutableStateOf(start) }
+                    // AN-STATE (R310): the destination survives a rebuild, reconciled against the session (see
+                    // sessionReconciled). `start`, recomputed in onCreate from the session, is the authority.
+                    var destination by rememberSaveable { mutableStateOf(start) }
+                    LaunchedEffect(Unit) { destination = sessionReconciled(destination, start) }
                     when (destination) {
                         Destination.SIGN_IN -> SignInRoute(api, pending, lifecycleScope)
                         Destination.RESOLVING ->
