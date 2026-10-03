@@ -121,6 +121,41 @@ Each rule, and where it is enforced:
 
 ON-DEVICE WALKTHROUGH (R176): see "DEVICE DEMONSTRATION" below.
 
+DEVICE DEMONSTRATION (incr 3, on the physical SM-G960F)
+------------------------------------------------------
+The notification posts from the background and is session-independent, so it was driven directly through
+the REAL path. A debug-only dev activity (EveningNotifyActivity, src/debug, absent from release) calls the
+real maybeNotifyEvening(applicationContext, Clock.systemUTC()) - the decision, the state-gathering and the
+notifier - so it could be seen without waiting for a WorkManager wake on a real weekday evening (the
+WorkManager schedule that calls maybeNotifyEvening is standard and already proven by the sampler). Setup:
+  - system clock advanced to Mon 2026-10-05 18:00 Paris (`cmd alarm set-time`, no root needed), a WORKING
+    day AFTER the last window (today 2026-10-03 is a Saturday - non-working - so the real notification would
+    not have fired today anyway, which is itself the rule working);
+  - prefs loggingMode=AUTO_DETECT + evening.enabled=true; daily_tally[2026-10-05] = OUTSIDE x4 (-> HIGH
+    HOME); no entry for 2026-10-05 (the only entry is 2026-10-03).
+WHAT THE PHONE SHOWED (screenshots in android/.an-auto-shots/):
+  - incr3-notif-unlocked.png: the shade on "lun. 5 oct." 17:00 shows « Mon Relevé · Journée détectée :
+    Domicile / Confirmez ou corrigez votre journée. » with the sun icon - the PRIVATE content naming the
+    side (HOME -> Domicile, because Casablanca classifies OUTSIDE).
+  - dumpsys notification: id=1001, channel=monreleve.evening.proposal (name « Proposition du soir »),
+    VIS=PRIVATE with publicVersion=Notification(...VIS=PUBLIC...) - the lock-screen split is present: the
+    private notification is replaced by the public version on a locked phone, and the public version carries
+    only NotificationCopy.publicLines (« Mon Relevé » / « Une proposition vous attend ce soir. ») - nothing
+    about where (D18 on the lock screen). contentIntent = a startActivity PendingIntent.
+  - incr3-tap-opens.png: tapping the notification opened ch.monreleve.app/.MainActivity on the AUJOURD'HUI
+    tab (dumpsys mResumedActivity confirms MainActivity) - EXTRA_OPEN_AUJOURDHUI honoured. NOTHING was
+    recorded by the tap (D16): the only recorded day is still the pre-existing 2026-10-03 entry.
+  - Bonus, correct behaviour seen: because the prefs set AUTO_DETECT while the install's location permission
+    was not granted, the app's ON_RESUME fell back to manual and showed the R316 toast « Détection
+    automatique désactivée : l'autorisation de localisation a été retirée... » - the permission-revoked path
+    firing exactly as designed.
+NOT SEPARATELY SCREENSHOT (asserted by code + dumpsys instead): the "not sure" variant (empty checks ->
+NotificationCopy.privateLines(null) = « Journée à renseigner »), and the lock-screen PUBLIC rendering
+(secure-lockscreen screencap is blanked by the platform; the VIS=PRIVATE + publicVersion mechanism is
+confirmed in dumpsys and is what the platform acts on). The six SUPPRESSION gates (weekend, has-entry,
+not-concluded, already-notified, manual, opt-out) are proven by EveningNotificationDecisionTest, not
+re-driven on the phone.
+
 ADVISOR DECISIONS / JUDGMENT CALLS (advisor NOT consulted - orchestrator directive; it stalled)
 ----------------------------------------------------------------------------------------------
   - incr 1 provider fallback vs GPS-only: took the conservative-reversible fallback (the relay's preferred
@@ -141,13 +176,23 @@ ADVISOR DECISIONS / JUDGMENT CALLS (advisor NOT consulted - orchestrator directi
 
 PHONE SETTINGS CHANGED AND RESTORED
 -----------------------------------
-Device 232bcd8c300c7ece. See "DEVICE DEMONSTRATION" for the restore block actually run.
-  - auto_time: found 0 (a prior session left it manual, clock ~1 h behind) -> set to 1 (automatic), the
-    AN-AUTO-2 desired state. LEFT at 1.
-  - Installed the incr3 debug APK (debug-signed; the release a user installs is unaffected).
-  - The incr2 rig set hide_error_dialogs=1 and recorded one day (synced to the torn-down container); its
-    container/adb-reverse/scratch-DB are torn down. hide_error_dialogs restored to 0.
-  - Any test clock advance / seeded prefs+tally for the incr3 demo are restored in the demo's own block.
+Device 232bcd8c300c7ece. Verified after restore: auto_time=1, hide_error_dialogs=0,
+stay_on_while_plugged_in=0, mock_location denied (appops "No operations").
+  - auto_time: found 0 (a prior session left it manual, clock ~1 h behind) -> during the incr3 demo set 0
+    to hold `cmd alarm set-time`, then RESTORED to 1 (automatic), the AN-AUTO-2 desired state. LEFT at 1.
+  - system clock: advanced to Mon 2026-10-05 18:00 Paris for the incr3 demo, then RESTORED to automatic
+    (resynced to real time, Sat 2026-10-03).
+  - hide_error_dialogs: the incr2 rig set it to 1; RESTORED to 0.
+  - stay_on_while_plugged_in: AN-AUTO-2 left it at 2; set to 0.
+  - detection prefs (shared_prefs/monreleve.detection.xml): seeded for the demo, then REMOVED (mode defaults
+    MANUAL, evening off). Left over: the synthetic daily_tally[2026-10-05] row (a future-dated test row in
+    the DEBUG build's private DB - never shipped, affects nothing real) and the 2026-10-03 HOME entry from
+    the incr2 proof. Both are debug-app data, not phone settings.
+  - Installed the incr3 debug APK (debug-signed; the release a user installs is unaffected). The incr2 rig's
+    container / adb-reverse / scratch DB were torn down during incr2.
+  - Location/notification runtime permissions: not granted on the current install (the app correctly falls
+    back to manual - the R316 path seen in the demo). The field re-arm (auto enabled with permissions +
+    sampler enqueued) is the operator's, once the beta is ratified.
 
 PARKED
 ------
@@ -172,4 +217,28 @@ QUESTIONS
 
 PUSH PROOF
 ----------
-(to be finalized with the gate:clone record and the merge hash)
+Branch an-next off origin/main c7bac21 (its baseline). Commits, each on a GREEN :app:gate (the android
+verifier; records in the sections above):
+  3e74feb  incr 1  NETWORK_PROVIDER fallback (F-DETECT-GPS)
+  c3ef903  incr 2  one debuggable build reaches the server (-PfrontalierHost)
+  3adb718  incr 3  one evening LOCAL notification (eveningDecision + notifier + toggle)
+  d47b3b0          report + PARKAN-36 ledger update
+  79b1d00  incr 3  device-test tooling (EveningNotifyActivity, debug-only)
+  (+ this report finalization commit)
+
+gate:clone PASSED (R199/R300) on HEAD 79b1d00 (clone C:\...\monreleve-clone-0DAWrN, removed): from a
+clean `git clone --local` with no .env, no node_modules and no generated file it did not produce,
+postinstall generated the Prisma client, then it RAN install, typecheck, lint, test, build, size.
+NAMED-AND-SKIPPED with reasons (R133): test:e2e, test:visual, test:runtime, lighthouse, parity:check,
+test:container (browser/Chrome/container/CI concerns), and the DATABASE SUITES (DATABASE_URL unset in
+this worktree, so prisma/**, lib/db/**, tests/db/** are not covered). 2 lint WARNINGS, 0 errors (pre-
+existing). This is the WEB verifier; my changes are ANDROID-ONLY (nothing under prisma/lib/db/web), so
+gate:clone confirms the web still builds clean from a clean checkout and the android work is proven by
+:app:gate per increment.
+
+MERGE TO MAIN (R300, after gate:clone green): fetch origin/main, rebase the android commits onto it
+(android and web trees are disjoint, so the rebase is clean - no conflict), then push to main. The final
+origin/main HEAD after the merge is reported to the orchestrator with this session's closing message.
+Staged by path throughout: only android/** + REPORT-AN-NEXT.txt + parking.md; the untracked drive scripts
+(android/scripts/an-next-rig.mjs, an-auto-2-db.mjs, an-next-notif.mjs, uidrive.mjs) and .an-auto-shots/
+stay untracked.
