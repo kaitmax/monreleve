@@ -1,0 +1,77 @@
+FW33b SESSION PROMPT - Mon Releve
+WHAT FW33 LEFT: THE CALCULATOR'S 1.9 KIB, AND FOUR SMALL FIXES
+Paste into a fresh Claude Code session at the repository root.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+R241: the only thing that ends this session is REPORT-FW33b.txt,
+committed and pushed. Unclear? R156, a PARK-<n> entry from PARK-20,
+continue. Ends early: R156's boundary (both engines and /v1 are
+frozen); a red gate you cannot fix; a degraded context.
+R300: AN ANDROID SESSION MAY BE RUNNING AT THE SAME TIME. If anything
+else is pushing to main, work on a branch and merge only after your own
+gate:clone. R270 applies.
+
+R273. Check tasks/todo.md; say first if this belongs elsewhere.
+R0. Read REPORT-FW33.txt in full - SIZE and NOTICED especially.
+R1. pnpm gate:clone green on origin/main's HEAD.
+
+====================================================================
+1. R302 - WHERE DID THE CALCULATOR'S 1.9 KIB GO
+====================================================================
+FW33's shell change cost about 1.1 KiB on every page and 1.9 KiB on the
+calculator - more than an icon and a few small functions explain - and
+left the calculator 1.8 KiB under GATE A. A cost bigger than its change
+is a finding, not a budget decision.
+- FIRST, MEASURE THE REAL "BEFORE". FW33's before-figures came from
+  FW29, and FW31, FW32 and concurrent work landed since. Build the
+  commit just before FW33's first commit and measure every gated route.
+  Some of the 1.9 KiB may not be FW33's.
+- Then the two likely causes, measured, not argued:
+    the menu code - collapseLoneDisclosures, the NavMenu wrapper,
+    ChevronDown - shipping in the client bundle while the menu does not
+    render, so every page pays for a menu nobody sees;
+    the icon import - one way of importing from lucide-react pulls far
+    more than the icon used (R116).
+- Fix what is found, and report each route's size before and after. Do
+  NOT raise a gate.
+
+====================================================================
+2. R301 - THE SUITE IDENTIFIES THE INSTANCE, NOT JUST THE PRODUCT
+====================================================================
+In FW33 a second session's container passed R169's check - it was also
+this product - and every live PDF test got a 503 on tokens it could not
+verify. The harness sets a random value per run, the server echoes it
+from its health endpoint, and the suite refuses any server that does not
+echo it. Prove it: start a second instance without the value, point the
+suite at it, see it refused by name.
+
+====================================================================
+3. THREE SMALL FIXES FROM FW33's NOTICED
+====================================================================
+- R206: "Calculateur de teletravail" is typed twice in lib/fr/shell.ts
+  with a test checking the two match. One home, referenced.
+- R186: the header CTA "Suivre mes jours" is gated on appExists alone.
+  It promises tracking, so it depends on trackerExists - a released app
+  a person can record days with. Test both states.
+- AUTH_SECRET: SPEC section 18 says it was removed (R209), but FW33
+  describes a container failing on a different AUTH_SECRET for print
+  tokens. Find which is true. If the print-token secret has another
+  name, FW33's report used the wrong one: correct nothing but the
+  record. If AUTH_SECRET was reintroduced after R209, the SPEC line is
+  stale: correct the SPEC (R9) and say so.
+
+====================================================================
+4. THE WALKTHROUGH, AND THE REPORT
+====================================================================
+On the dev server: every public page with styles loaded, the header
+CTA in the state product-state implies, and the calculator working.
+Size table, gates, gate:clone, push.
+
+REPORT - REPORT-FW33b.txt: R273 / THE REAL BEFORE (measured) / WHERE
+THE 1.9 KIB WENT (each cause, measured) / SIZE BEFORE AND AFTER / R301
+(the second instance refused) / THE THREE FIXES / AUTH_SECRET (which was
+true) / WALKTHROUGH / PARKED / DEVIATIONS / QUESTIONS / PUSH PROOF
+
+END OF FW33b PROMPT

@@ -1,0 +1,28 @@
+FW34-RUN - Mon Releve
+RUN FW34 AS THE REPOSITORY DEFINES IT
+Paste into a fresh Claude Code session at the repository root, AFTER
+FW33b has been pushed (FW33b may change the shell FW34 builds on).
+
+The operator's chat side did not write FW34 and does not know its
+exact scope: it comes from the plan that produced FW33. So:
+
+1. FIND IT. Look for relay/FW34.txt, then tasks/todo.md's FW34. If
+   neither defines FW34, STOP and write a one-line REPORT-FW34.txt
+   saying so - do not invent a home page task.
+2. RUN IT exactly as that definition says, under the standing rules:
+   R241 - the only thing that ends the session is REPORT-FW34.txt,
+   committed and pushed; R156 for anything unclear; R300 - if another
+   session pushes to main, work on a branch; R273 - this note's claims
+   are to be verified; gate:clone before every push.
+3. CARRIED RULINGS THAT BIND A HOME PAGE, whatever FW34 says:
+   R282 the product never mentions a feature it does not have - and
+   automatic detection is a BETA in an unreleased app, so the web
+   speaks of it in the future tense (R138); R172 statements about the
+   product's own state come from product-state.ts; R186 a capability
+   flag means what a user can actually do; R302 - if FW34 adds browser
+   JavaScript to any route, report its cost against GATE A, and do not
+   raise a gate; R135/R207 regenerated baselines named with reasons;
+   R176 the walkthrough on the dev server, with styles loaded and every
+   link on the page followed.
+
+END OF FW34-RUN

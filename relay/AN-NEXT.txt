@@ -1,0 +1,112 @@
+AN-NEXT SESSION PROMPT - Mon Releve
+THE CLOCK QUESTION, THEN THE DEBUG HOST, THEN THE EVENING NOTIFICATION
+Paste into a fresh Claude Code session at the repository root. The
+physical phone (Galaxy S9, API 29) is connected and STILL ARMED from
+AN-AUTO-2 - do not reinstall anything before increment 1 is done.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+Do not stop to report progress or ask a question; judgment calls go to
+the advisors, whose decisions the operator trusts, recorded in the
+report. Ends in four ways, each with REPORT-AN-NEXT.txt committed and
+pushed: DONE; a HARD BOUNDARY; NO PROGRESS (the same failure surviving
+five fixes, an advisor's suggestion and three more attempts); or a
+DEGRADED CONTEXT.
+
+HARD BOUNDARIES: D18 absolute - no coordinate stored, logged, sent, or
+kept past its classification. D16 - nothing writes a day without a
+tap. No change to either engine or /v1. No signing key, store upload
+or real third party. Restore every phone setting changed. No red
+commit. R300: A WEB SESSION MAY BE RUNNING AT THE SAME TIME - if
+anything else is pushing to main, work on a branch and merge only
+after your own gate:clone. R270 applies.
+
+R273. Check tasks/todo.md for where this work belongs; say so first.
+R1. pnpm gate:clone and :app:gate green on origin/main's HEAD.
+
+====================================================================
+INCREMENT 1 - R322: MEASURE THE CLOCK BEFORE BLAMING IT
+====================================================================
+AN-AUTO-2's real-day read found no checks recorded after the first two
+windows had passed, and concluded the phone's clock was "racing" - on
+the strength of the session's own sense that only minutes had passed.
+An agent cannot feel time pass between commands, and a physical phone
+sets its clock from the network. The claim ended the task, so it is
+measured before it is believed (R322).
+
+If REPORT-AN-AUTO-2.txt already records this measurement, use its
+result and say so. Otherwise, ON THE CURRENT BUILD, BEFORE ANY INSTALL:
+1. Twice, with the HOST timing the gap (sleep 120 on the host):
+     adb shell 'cat /proc/uptime; date +%s'
+   with the host's own epoch time beside each. Compare the device's
+   uptime difference, its wall-clock difference, and the host's.
+2. If they agree, the hours really passed and the missing checks are a
+   DEFECT. Diagnose: dumpsys jobscheduler for ch.monreleve (scheduled?
+   last run? next run? constraints met?), the worker's logcat lines with
+   their times, how the four windows are computed in Europe/Paris and
+   converted to Africa/Casablanca, and why a run inside a window was or
+   was not accepted. Explain the "real today row" AN-AUTO-2 recorded and
+   its absence later.
+3. If the wall clock outruns uptime, the clock really jumps: check
+   settings global auto_time and auto_time_zone - AN-AUDIT changed the
+   clock for its tests - restore automatic time and re-arm.
+4. A DEFECT FOUND HERE IS THE MOST VALUABLE RESULT OF THE SESSION: if
+   checks do not fire on a plugged-in phone with the screen on - the
+   easiest conditions there are - they will not fire in a tester's
+   pocket. Fix it test-first (the failing case reproduced before the
+   fix), gate, commit, push, and re-arm.
+
+====================================================================
+INCREMENT 2 - R321: THE DEBUG BUILD REACHES A SERVER FROM A REAL PHONE
+====================================================================
+The debug build hardcodes 10.0.2.2, which exists only inside the
+emulator. On the S9, sessions installed the audit build to reach the
+server and then the debug build over it to read the database - it
+works, and it is fragile. The debug build accepts the same host
+setting the audit build does (-PfrontalierHost with adb reverse), so a
+single DEBUGGABLE build reaches the server from a physical phone.
+Debug-only cleartext stays limited to 10.0.2.2 and 127.0.0.1; the
+release cleartext check must still pass. Prove it: one debug build,
+signed in against the container over adb reverse, reading its own
+database with run-as. Commit, push.
+
+====================================================================
+INCREMENT 3 - R323: ONE EVENING NOTIFICATION FOR THE PROPOSAL
+====================================================================
+PARKAN-36. Without a notification, a proposal waits unseen until the
+person opens the app, and an unconfirmed day drifts toward late. FCM
+is parked, but a LOCAL notification needs no server. The operator may
+veto this; until then, build it to these rules:
+  - AT MOST ONE PER WORKING DAY, after the day concludes, and ONLY if
+    that day has no entry yet. Never on a non-working day. No second
+    reminder, no streak, no "you forgot".
+  - OPT-IN, separate from automatic mode, off by default, and it asks
+    for the notification permission only when switched on (Android 13
+    and later require it; the S9 is API 29, so test both the path that
+    asks and the path that does not).
+  - THE LOCK SCREEN SHOWS NOTHING PRIVATE. The proposal's kind - "En
+    Suisse" - says where someone was. The public version reads only
+    that a proposal is waiting; the private version, shown when the
+    phone is unlocked, may name it. Use the platform's private
+    visibility, with a public version.
+  - A "not sure" day gets the same single notification, inviting the
+    person to record the day themselves - never a guess.
+  - Tapping opens Aujourd'hui. Nothing is recorded from the
+    notification itself (D16).
+  - French from fr/, reachable (R238).
+Test it on the phone: switch it on, let a day conclude (the debug mock
+provider can produce a concluded day), see the notification on the
+lock screen and unlocked, tap it. Screenshots opened and described.
+Commit, push.
+
+====================================================================
+REPORT - REPORT-AN-NEXT.txt
+====================================================================
+R273 / THE CLOCK (the three differences, measured, and the verdict) /
+THE DEFECT IF ANY (cause, failing test, fix) / R321 (one build, proven
+on the phone) / R323 (each rule, seen on the phone, lock screen
+included) / ADVISOR DECISIONS / PHONE SETTINGS CHANGED AND RESTORED /
+PARKED / DEVIATIONS / QUESTIONS / PUSH PROOF
+
+END OF AN-NEXT PROMPT
