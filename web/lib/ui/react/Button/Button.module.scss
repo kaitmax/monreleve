@@ -1,0 +1,63 @@
+// web/lib/ui/react/Button/Button.module.scss
+// Tokens only; camelCase class names for CSS Module addressing.
+//
+// One base rule plus four [data-variant] rules. The base is the shared shape
+// (flex centring, the Body-M label per H8, reset of the <button> chrome); each
+// variant adds its height, fill, border and radius. See the component for the
+// variant table and the rulings.
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border: 0;
+  background: none;
+  color: var(--colour-text-primary);
+  font-family: inherit;
+
+  // H8: Body-M 15/500, the type every shipped button uses. Never a 15/600
+  // composed from --weight-semibold (R70).
+  font-size: var(--type-body-m-size);
+  font-weight: var(--type-body-m-weight);
+  line-height: var(--type-body-m-line);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.button[data-variant="primary"] {
+  min-width: var(--size-button-min-width);
+  height: var(--size-button-height);
+  padding: 0 var(--space-5);
+  border-radius: var(--radius-md);
+  background: var(--colour-brand);
+  color: var(--colour-surface);
+}
+
+.button[data-variant="primaryLarge"] {
+  min-width: var(--size-button-min-width);
+  height: var(--size-button-large-height);
+  padding: 0 var(--space-6);
+  border-radius: var(--radius-button-lg);
+  background: var(--colour-brand);
+  color: var(--colour-surface);
+}
+
+.button[data-variant="secondary"] {
+  min-width: var(--size-button-min-width);
+  height: var(--size-button-height);
+  padding: 0 var(--space-5);
+  border: var(--size-button-border) solid var(--colour-border-default);
+  border-radius: var(--radius-md);
+  background: var(--colour-surface);
+  color: var(--colour-text-primary);
+}
+
+// D40 and DESIGN-SYSTEM:59: a text button here is a tapped link, so its height
+// is the 44 px touch target rather than DESIGN-SYSTEM:53's 40. min-height, not
+// height, so a wrapped label grows the control instead of overflowing it.
+.button[data-variant="text"] {
+  min-height: var(--size-touch-target-web);
+  padding: 0;
+  color: var(--colour-brand);
+}

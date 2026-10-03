@@ -1,0 +1,17 @@
+// web/lib/ui/react/Card/Card.module.scss
+// Tokens only; camelCase class names for CSS Module addressing.
+//
+// FD11's card: white, 1 px border, radius 16, no shadow. Padding defaults to 24
+// and becomes 32 on [data-padding="spacious"] (see the component for why the
+// page, not DESIGN-SYSTEM:55's 16, sets these).
+
+.card {
+  padding: var(--space-6);
+  border: var(--size-card-border) solid var(--colour-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--colour-surface);
+}
+
+.card[data-padding="spacious"] {
+  padding: var(--space-8);
+}

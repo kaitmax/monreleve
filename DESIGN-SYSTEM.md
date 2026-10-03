@@ -36,6 +36,8 @@ LAYOUT WIDTHS (ruling R64): Desktop padding 32; public content max 1200. 1440 is
 
 SIZES — icons, dots and tick marks (ruling R62): `icon-sm` 16 · `icon` 20 · `icon-lg` 24 · `dot` 6 · `dot-lg` 8 · `tick` 2. Added because three components had otherwise borrowed a token that meant something else — a spinner's height for a chip icon, a spacing step for a legend dot — and a semantic alias is exactly what §4.1 removed from the radius scale. Sizes that a component measures in code (the rail's geometry) mirror these by test rather than referencing them, because an SVG geometry attribute resolves `var()` to zero when no cascade is present.
 
+ICON TILE (ruling H9): `size-icon-tile` 44 — the 44 × 44 info-soft square (radius `md`) holding a brand glyph at `icon-lg` 24, stroke 1.75, on FW34's three home destination cards and GuideCta's closing card. **Distinct in name from `size-icon-button`** (44, the icon-button touch target) even at an equal value today, per R68: an icon tile is not an icon button, and coupling them would resize every destination-card square the day the touch target moved. Added under SPEC §20's ask-first item "adding a token outside DESIGN-SYSTEM.md"; GuideCta's own note forecast the second site — "if a second appears, it needs a token rather than a third alias" of `size-icon-button`.
+
 RADIUS — a closed set of nine token names, never arbitrary (see §4.1):
   xs 4 · checkbox 6 · sm 8 · md 12 · button-lg 14 · lg 16 · xl 20 · 2xl 24 · pill 999.
   Component mapping (this is where it lives; there are no CSS aliases): Buttons and inputs md · Large primary button button-lg · Small badge sm · Checkbox checkbox · Card lg · Large status card xl · Bottom sheet 2xl (top corners) · Skeleton sm · Toast md · Chips/progress/confidence bars pill.

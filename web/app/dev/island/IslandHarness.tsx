@@ -37,11 +37,15 @@
 'use client';
 
 import { useState } from 'react';
+import { Calculator } from 'lucide-react';
 import { type Status, formatSignedDays } from '@/lib/ui/core';
 import { errorMessage } from '@/lib/fr/errors';
 import { ISLAND_HARNESS } from '@/lib/fr/workbench';
+import { Button } from '@/lib/ui/react/Button/Button';
+import { Card } from '@/lib/ui/react/Card/Card';
 import { Container } from '@/lib/ui/react/Container/Container';
 import { DataGrid } from '@/lib/ui/react/DataGrid/DataGrid';
+import { IconTile } from '@/lib/ui/react/IconTile/IconTile';
 import { FieldGroup } from '@/lib/ui/react/FieldGroup/FieldGroup';
 import { LegalNote } from '@/lib/ui/react/LegalNote/LegalNote';
 import { MetricTile } from '@/lib/ui/react/MetricTile/MetricTile';
@@ -124,6 +128,27 @@ export function IslandHarness() {
       </FieldGroup>
 
       <LegalNote />
+
+      {/* FW34 (H5): the three home-body primitives, so GATE I measures whatever
+          each drags into a client bundle. One instance is enough - the import
+          is what counts, not the props (see this file's header). */}
+      <Button variant="primary">{ISLAND_HARNESS.buttonLabel}</Button>
+      <Button variant="primaryLarge">{ISLAND_HARNESS.buttonLabel}</Button>
+      <Button variant="secondary">{ISLAND_HARNESS.buttonLabel}</Button>
+      <Button href="/calculateur-teletravail-frontalier" variant="text">
+        {ISLAND_HARNESS.buttonLabel}
+      </Button>
+
+      <Card>
+        <p>{ISLAND_HARNESS.cardSample}</p>
+      </Card>
+      <Card padding="spacious">
+        <p>{ISLAND_HARNESS.cardSample}</p>
+      </Card>
+
+      <IconTile>
+        <Calculator />
+      </IconTile>
     </Container>
   );
 }

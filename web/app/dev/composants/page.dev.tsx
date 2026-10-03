@@ -27,8 +27,12 @@ import { WORKBENCH_TITLE } from '@/lib/fr';
 import { errorMessage } from '@/lib/fr/errors';
 import { METRIC_COPY } from '@/lib/fr/metrics';
 import { WORKBENCH } from '@/lib/fr/workbench';
+import { ArrowRight, Calculator } from 'lucide-react';
 import { formatDays, formatPercent, formatSignedDays } from '@/lib/ui/core';
+import { Button } from '@/lib/ui/react/Button/Button';
+import { Card } from '@/lib/ui/react/Card/Card';
 import { Container } from '@/lib/ui/react/Container/Container';
+import { IconTile } from '@/lib/ui/react/IconTile/IconTile';
 import { DataGrid } from '@/lib/ui/react/DataGrid/DataGrid';
 import { FieldGroup } from '@/lib/ui/react/FieldGroup/FieldGroup';
 import { LegalNote } from '@/lib/ui/react/LegalNote/LegalNote';
@@ -377,6 +381,58 @@ export default function WorkbenchPage() {
               visual record meanwhile. */}
           <Specimen id="shell-nav-disclosure" caption={WORKBENCH.shell.navDisclosure}>
             <NavMenu entries={SHELL_NAV.filter((entry) => entry.children !== undefined)} />
+          </Specimen>
+        </div>
+      </section>
+
+      {/* FW34 (H5): the three components the home body needs. One specimen per
+          variant and padding, so a regenerated baseline is read per state. */}
+      <section className={styles.section}>
+        <h2>{WORKBENCH.button.title}</h2>
+        <div className={styles.specimens}>
+          <Specimen id="button-primary" caption={WORKBENCH.button.primary}>
+            <Button variant="primary">{WORKBENCH.button.label}</Button>
+          </Specimen>
+          <Specimen id="button-primary-large" caption={WORKBENCH.button.primaryLarge}>
+            <Button variant="primaryLarge">{WORKBENCH.button.label}</Button>
+          </Specimen>
+          <Specimen id="button-secondary" caption={WORKBENCH.button.secondary}>
+            <Button variant="secondary">{WORKBENCH.button.label}</Button>
+          </Specimen>
+          {/* The text variant takes its trailing arrow as a child (16 px, stroke
+              1.75), so Button imports no icon. */}
+          <Specimen id="button-text" caption={WORKBENCH.button.text}>
+            <Button variant="text" href="/calculateur-teletravail-frontalier">
+              {WORKBENCH.button.textLabel}
+              <ArrowRight size={16} strokeWidth={1.75} aria-hidden />
+            </Button>
+          </Specimen>
+        </div>
+      </section>
+
+      <section className={styles.section}>
+        <h2>{WORKBENCH.card.title}</h2>
+        <div className={styles.stack}>
+          <Specimen id="card-default" caption={WORKBENCH.card.default}>
+            <Card>
+              <p className={styles.sample}>{WORKBENCH.card.sample}</p>
+            </Card>
+          </Specimen>
+          <Specimen id="card-spacious" caption={WORKBENCH.card.spacious}>
+            <Card padding="spacious">
+              <p className={styles.sample}>{WORKBENCH.card.sample}</p>
+            </Card>
+          </Specimen>
+        </div>
+      </section>
+
+      <section className={styles.section}>
+        <h2>{WORKBENCH.iconTile.title}</h2>
+        <div className={styles.specimens}>
+          <Specimen id="icon-tile" caption={WORKBENCH.iconTile.sample}>
+            <IconTile>
+              <Calculator />
+            </IconTile>
           </Specimen>
         </div>
       </section>

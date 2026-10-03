@@ -40,6 +40,10 @@ import { FieldGroup } from './FieldGroup/FieldGroup';
 import { LegalNote } from './LegalNote/LegalNote';
 import { MetricTile } from './MetricTile/MetricTile';
 import { guideNavLinks } from '@/lib/guides/registry';
+import { Calculator } from 'lucide-react';
+import { Button } from './Button/Button';
+import { Card } from './Card/Card';
+import { IconTile } from './IconTile/IconTile';
 import { PublicShell } from './PublicShell/PublicShell';
 import { RateDisplay } from './RateDisplay/RateDisplay';
 import { ThresholdRail } from './ThresholdRail/ThresholdRail';
@@ -78,6 +82,10 @@ const RATE: Record<Zone, number> = {
 const RAIL_WIDTH = 376;
 
 const CONTENT = 'Contenu de la page';
+
+// FW34's three new components (H5). Labels in variables so no JSX text literal
+// trips react/jsx-no-literals; the glyph is a component child, not text.
+const BTN_LABEL = 'Ouvrir le calculateur';
 
 const HELPER = 'Journees entieres uniquement.';
 
@@ -188,16 +196,28 @@ const STATES: readonly State[] = [
   // aria-label. The menu-open variant is included because a panel is exactly
   // where duplicate ids and orphaned aria references appear.
   { name: 'PublicShell collapsed', node: <PublicShell guideLinks={guideNavLinks()}>{CONTENT}</PublicShell> },
+
+  // FW34's Button, Card and IconTile (H5), every state. Button renders as a
+  // link and as a button, in all four variants - eight states, because the
+  // element it emits is part of what axe evaluates (name, role).
+  ...(['primary', 'primaryLarge', 'secondary', 'text'] as const).flatMap((variant) => [
+    { name: `Button ${variant} link`, node: <Button variant={variant} href="/calculateur-teletravail-frontalier">{BTN_LABEL}</Button> },
+    { name: `Button ${variant} button`, node: <Button variant={variant}>{BTN_LABEL}</Button> },
+  ]),
+  { name: 'Card default', node: <Card>{CONTENT}</Card> },
+  { name: 'Card spacious', node: <Card padding="spacious">{CONTENT}</Card> },
+  { name: 'IconTile', node: <IconTile><Calculator /></IconTile> },
 ];
 
 describe('every state of every component is free of axe violations (AC1)', () => {
-  it('covers all five components, so a green run means what it says', () => {
-    // Without this the loop below could pass by shrinking. Twenty-nine states:
+  it('covers all components, so a green run means what it says', () => {
+    // Without this the loop below could pass by shrinking. Forty states:
     // seven rail, four badge, four rate, two metric, one legal, four field,
-    // three grid, three container, one shell.
-    expect(STATES).toHaveLength(29);
+    // three grid, three container, one shell, eight button (four variants x
+    // link/button), two card, one icon tile.
+    expect(STATES).toHaveLength(40);
 
-    const NAMES = ['ThresholdRail', 'ZoneBadge', 'RateDisplay', 'MetricTile', 'LegalNote', 'FieldGroup', 'DataGrid', 'Container', 'PublicShell'];
+    const NAMES = ['ThresholdRail', 'ZoneBadge', 'RateDisplay', 'MetricTile', 'LegalNote', 'FieldGroup', 'DataGrid', 'Container', 'PublicShell', 'Button', 'Card', 'IconTile'];
     for (const component of NAMES) {
       expect(STATES.some((state) => state.name.startsWith(component))).toBe(true);
     }

@@ -99,6 +99,29 @@ export const WORKBENCH = {
     title: 'LegalNote',
     standing: 'Mention légale permanente',
   },
+
+  // FW34's three home-body components (H5).
+  button: {
+    title: 'Button',
+    primary: 'Primaire',
+    primaryLarge: 'Primaire — grand',
+    secondary: 'Secondaire',
+    text: 'Lien avec flèche',
+    label: 'Calculer mes jours',
+    textLabel: 'Ouvrir le calculateur',
+  },
+
+  card: {
+    title: 'Card',
+    default: 'Carte — 24',
+    spacious: 'Carte — 32',
+    sample: 'Contenu de démonstration',
+  },
+
+  iconTile: {
+    title: 'IconTile',
+    sample: 'Tuile d’icône',
+  },
 } as const;
 
 /**
@@ -141,4 +164,6 @@ export const ISLAND_HARNESS = {
   gridCell: 'Cellule',
   fieldLabel: 'Champ de démonstration',
   fieldHelper: 'Le texte d’aide du champ.',
+  buttonLabel: 'Calculer mes jours',
+  cardSample: 'Contenu de démonstration',
 } as const;

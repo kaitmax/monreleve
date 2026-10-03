@@ -1,0 +1,27 @@
+// web/lib/ui/react/IconTile/IconTile.module.scss
+// Tokens only; camelCase class names for CSS Module addressing.
+//
+// FD11 §2 / DESIGN-SYSTEM.md (H9): a 44 x 44 info-soft square, radius 12,
+// holding a brand glyph at 24 px, stroke 1.75. The glyph's size, colour and
+// stroke are set HERE rather than by the caller, so the three home tiles and
+// any future one are identical without repeating props (see the component).
+
+.tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--size-icon-tile);
+  height: var(--size-icon-tile);
+  border-radius: var(--radius-md);
+  background: var(--colour-info-soft);
+  color: var(--colour-brand);
+
+  // The caller passes a bare glyph; the tile fixes its geometry and stroke so
+  // every tile matches. CSS overrides Lucide's width/height/stroke-width
+  // presentation attributes (24 px size, 1.75 stroke) regardless of defaults.
+  svg {
+    width: var(--size-icon-lg);
+    height: var(--size-icon-lg);
+    stroke-width: var(--icon-stroke);
+  }
+}

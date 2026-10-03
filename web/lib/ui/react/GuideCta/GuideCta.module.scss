@@ -13,16 +13,21 @@
   background: var(--colour-surface);
 }
 
-// FD13: a 44 x 44 square. --size-icon-button is that measurement and is named
-// for a touch target, which this is not - but R69's lesson is that a hairline
-// needed its own name because six sites aliased a card border for it. This is
-// one site. If a second appears, it needs a token rather than a third alias.
+// FD13: a 44 x 44 square. IT NOW DRAWS --size-icon-tile (H9), not
+// --size-icon-button. This note used to say "if a second appears, it needs a
+// token rather than a third alias"; FW34's home destination cards are that
+// second site, so the token exists and this stops aliasing the touch-target
+// token for a decorative square. The value is unchanged (44), so no pixel
+// moves and no guide baseline regenerates. The IconTile COMPONENT is not
+// pulled in here on purpose (see REPORT-FW34): migrating the markup would
+// churn the DOM on seven guide pages this slice does not rebaseline, for no
+// visual gain, and the token already removes the only defect the note named.
 .icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: var(--size-icon-button);
-  height: var(--size-icon-button);
+  width: var(--size-icon-tile);
+  height: var(--size-icon-tile);
   margin-bottom: var(--space-4);
   border-radius: var(--radius-md);
   background: var(--colour-info-soft);

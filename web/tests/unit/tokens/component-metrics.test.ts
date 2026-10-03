@@ -197,6 +197,28 @@ describe('the breakpoint is Sass-only, and that is not a style choice (R68)', ()
   });
 });
 
+describe('the icon-tile square (H9)', () => {
+  // H9: "May I add --size-icon-tile: 44px?" -> "Add --size-icon-tile
+  // (Recommended)". The home page's destination cards (FW34) and GuideCta each
+  // draw a 44 x 44 info-soft square holding a brand glyph. GuideCta's own note
+  // forecast this: "If a second appears, it needs a token rather than a third
+  // alias" of --size-icon-button, which is a TOUCH TARGET and not this.
+  it('exists and is 44 px', () => {
+    expect(pixels(TOKENS['--size-icon-tile'])).toBe(44);
+  });
+
+  it('is distinct from --size-icon-button, whose value it shares (R68)', () => {
+    // Equal in value today, separate in name: an icon tile is not an icon
+    // button. Coupling them means resizing the touch target silently resizes
+    // every destination-card square, which is the alias abuse R62/R68 remove.
+    expect(pixels(TOKENS['--size-icon-tile'])).toBe(pixels(TOKENS['--size-icon-button']));
+
+    for (const name of ['--size-icon-tile', '--size-icon-button']) {
+      expect(TOKENS[name], `${name} is not defined`).toBeDefined();
+    }
+  });
+});
+
 describe('the hairline rule (R69)', () => {
   it('exists and is one pixel', () => {
     expect(pixels(TOKENS['--size-rule'])).toBe(1);

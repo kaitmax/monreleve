@@ -224,6 +224,14 @@ $size-button-text-height: 40px;
 $size-button-min-width: 120px;
 $size-button-border: 1px;
 $size-icon-button: 44px;
+
+// THE ICON TILE, ruling H9 (SPEC 20 ask-first). A 44 x 44 info-soft square
+// holding a brand glyph: FW34's three destination-card tiles and GuideCta's
+// closing-card square. Named apart from $size-icon-button even though both are
+// 44 today, because an icon TILE is not an icon BUTTON (a touch target): R68's
+// "distinct names even where values coincide". GuideCta's own note forecast
+// this ("if a second appears, it needs a token rather than a third alias").
+$size-icon-tile: 44px;
 $size-spinner: 20px;
 $size-input-height: 48px;
 $size-input-padding-x: 14px;
@@ -489,6 +497,7 @@ $motion-toast-max: 5000ms;
   --size-button-min-width: #{$size-button-min-width};
   --size-button-border: #{$size-button-border};
   --size-icon-button: #{$size-icon-button};
+  --size-icon-tile: #{$size-icon-tile};
   --size-spinner: #{$size-spinner};
   --size-input-height: #{$size-input-height};
   --size-input-padding-x: #{$size-input-padding-x};

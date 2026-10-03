@@ -66,6 +66,15 @@ const SPECIMENS = [
   // FW33: the Calculateurs menu with its caret, which no page renders while
   // the menu has one live child.
   'shell-nav-disclosure',
+  // FW34 (H5): the three home-body components, one specimen per state. New
+  // baselines pass on the first run (there is nothing to diff against).
+  'button-primary',
+  'button-primary-large',
+  'button-secondary',
+  'button-text',
+  'card-default',
+  'card-spacious',
+  'icon-tile',
 ] as const;
 
 test.beforeEach(async ({ page }) => {
