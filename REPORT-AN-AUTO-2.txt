@@ -3,257 +3,234 @@ REPORT-AN-AUTO-2  -  Mon Releve, finishing automatic detection + the R320 redesi
 
 HOW IT ENDED
 ------------
-GREEN PUSHED BOUNDARY. ALL of R320's CODE is shipped, gated (:app:gate green on every
-increment) and pushed: the four-window sampler, the vote (day + half-day), the Room reshape
-with a real MIGRATION_3_4, the measurement build, the Aujourd'hui auto surface, and the
-disclosure's "four times a day" wording. DONE ON THE PHONE: A3 (the nine tracks via the mock
-provider, 9/9 under R311) and A6 legs 3-4 (D18 network/logcat, no coordinate). OWED-WITH-HANDOFF
-(a clean ending the prompt names): A1's enable-half, A2, A4, A5, A7 - they need a reachable
-server for the consent-gated legs and/or a REAL working-day window, which is tomorrow; the
-precise recipe is in relay/AN-AUTO-2-handoff-1.txt. The HARD BOUNDARY D18 holds in code, in the
-gate (legs 1-2) and on the phone (legs 3-4). No red commit.
+GREEN PUSHED BOUNDARY, DEVICE HALF LARGELY COMPLETE. All of R320's CODE was shipped, gated and pushed
+in the prior session (the four-window sampler, the vote day+half-day, the Room reshape + MIGRATION_3_4,
+the measurement build, the Aujourd'hui auto surface, the "four times a day" disclosure). THIS session
+finished the ON-DEVICE DONE list on the physical phone (SM-G960F, API 29, serial 232bcd8c300c7ece):
 
-Increments pushed this session (origin/main c6b2c64 -> ...):
-  incr 0   R319: the AN-AUTO handoffs copied into relay/            7c327a5
-  incr 0b/1 the four-window vote core (DayChecks + windows), JVM    4182d73
-  incr 0b/2 wire the vote through the product + migration + docs    7d2b130
-  step 1   the disclosure says four times a day (R320)              e3c5ab6
-  report + handoff; gate:clone record                              87ec310 / 846471d
-  A3/A6 on the phone: the mock-replay prime-read fix + report       (final)
+  A1 DONE  - disclosure before the system prompt (four-times line), the FINE in-use dialog, the SEPARATE
+             Android-10 background dialog, both granted no crash, enable's consent PATCH on the server,
+             the worker enqueued, toggle-off cancelling the worker + withdrawing consent, and the
+             revocation fallback to MANUAL with the plain toast. Screenshots cropped and looked at (R178).
+  A3 DONE  - (prior session) the nine tracks via the mock provider, 9/9 under R311; re-seen this session.
+  A4 DONE  - near-border notice shown ONCE with the choice (D19), flag persisted, absent on relaunch.
+  A6 DONE  - D18 re-checked on the FOUR-WINDOW mock-replay path: no coordinate in logcat or the Room DB.
+  A7 DONE (bar one state) - rememberSaveable survives rotation (disclosure overlay + Detecting manualOpen)
+             and process death (manualOpen via DKA + faithful launcher return); near-border "once" holds
+             across relaunch. The proposal-card Corriger-open state needs the concluded-day proposal and
+             is folded into the A2 evening read (handoff-2).
+  A2 + A5  - ARMED and OWED-WITH-HANDOFF (the clean ending the prompt names). The sampler is running for
+             real (worker enqueued, mode AUTO, perms granted, mock DENIED, plugged, batterystats reset at
+             04:31:55 Casablanca). The four windows are 08:30/10:00/13:30/15:30 Casablanca (= 09:30/11:00/
+             14:30/16:30 Paris); the day concludes 16:00 Casablanca. A session begun at 04:35 cannot span
+             to 16:00. The exact read recipe (tally via run-as, battery, R233/R317, the A7 proposal card,
+             and the phone restore) is in relay/AN-AUTO-2-handoff-2.txt. Never faked, never shortened.
+  A8       - gate:clone (web) + :app:gate (android) green on the final commit; recorded under PUSH PROOF.
+
+The HARD BOUNDARY D18 holds: in code, in the gate (legs 1-2), and on the phone (A6 legs 3-4, re-run this
+session on the four-window path). D16 holds (nothing writes a day without a tap). No red commit.
+
+THE TWO-VARIANT STRATEGY (a device constraint, recorded for the next session)
+-----------------------------------------------------------------------------
+On a PHYSICAL phone the two things this task needs pull opposite ways:
+  - the server (the enable consent PATCH, A1) needs the app to reach the local container. The DEBUG
+    variant hardcodes the emulator host 10.0.2.2, which does not resolve on a physical phone; only the
+    AUDIT variant honours -PfrontalierHost=127.0.0.1 + `adb reverse tcp:3000` (the an-device-d4 recipe).
+  - reading/seeding the Room DB and shared_prefs (A4 seed, A6 DB, A2 tally) needs run-as, which works
+    only on a DEBUGGABLE build. The audit variant (release-derived) is NOT debuggable.
+RESOLUTION (fail-safe, no code change): enable on AUDIT (real consent PATCH + startSampling enqueues the
+worker), then `install -r` the DEBUG apk over it. Both are debug-SIGNED, so install -r preserves app data
+(mode cache, the enqueued worker, the Room DB, perms); WorkManager reschedules the periodic worker on the
+debug launch (verified via jobscheduler). The result is the real enable AND a debuggable build to read
+from. The handoff's "debug APK" wording was for the no-server legs (A3/A6); the server legs needed audit.
 
 R273
 ----
-This finishes what AN-AUTO owed under the R320 redirect. tasks/todo.md maps this to AN7
-(automatic mode / background client), AN8 (the Aujourd'hui auto UI) and AN9 (polish); it is
-one task here because the operator decided to SHIP automatic detection as an opt-in beta
-before Checkpoint G, redesigned to four checks a day (R320). AN-AUTO deliberately left
-A2/A4/A5 as OWED-SUPERSEDED because R320 replaces the continuous sampler they tested; this
-task builds the four-window model those tests now belong to.
+Finishes what AN-AUTO owed under the R320 redirect. tasks/todo.md maps this to AN7 (automatic mode /
+background client), AN8 (the Aujourd'hui auto UI) and AN9 (polish); it is one task here because the
+operator decided to SHIP automatic detection as an opt-in beta before Checkpoint G, redesigned to four
+checks a day (R320). AN-AUTO left A2/A4/A5 as OWED-SUPERSEDED because R320 replaced the continuous sampler
+they tested; this task built and verified the four-window model those tests now belong to.
 
-R319 - THE HANDOFF
-------------------
-The AN-AUTO handoffs still existed in the temp folder and were copied into the repository and
-committed: relay/AN-AUTO-handoff-1.txt and relay/AN-AUTO-handoff-2.txt (incr 0, 7c327a5). This
-session's own device-test handoff is relay/AN-AUTO-2-handoff-1.txt, committed - never a temp folder.
+R319 - THE HANDOFFS
+-------------------
+In the repository, committed. relay/AN-AUTO-handoff-1.txt and -2.txt (AN-AUTO's, copied prior session);
+relay/AN-AUTO-2-handoff-1.txt (this task's device recipe); and NEW this session
+relay/AN-AUTO-2-handoff-2.txt (the exact A2/A5 + A7-proposal-card evening read + the phone restore block).
+Never a temp folder.
 
-R320 - THE WINDOWS, THE VOTE, THE MIGRATION, THE PROTOCOL (the operator's decision, done first)
-----------------------------------------------------------------------------------------------
-FOUR WINDOWS (detection/CheckWindows.kt), Europe/Paris, chosen to avoid lunch:
-  09:30  11:00  14:30  16:30, each +/- 30 minutes (a 60-minute window).
-WINDOW LENGTH, and why 60 minutes: WorkManager delivers background work no more often than
-every 15 minutes and cannot promise an exact time (the exact-alarm permission is restricted and
-is NOT requested, R320), so a window must hold several wake opportunities; 60 minutes holds about
-four at the 15-min cadence and keeps the windows disjoint and clear of lunch (window 2 ends 11:30,
-window 3 opens 14:00, so 11:30-14:00 is never sampled). A check runs anywhere inside its window;
-a check that cannot run inside its window is MISSED (null), NEVER taken late - a fix whose instant
-falls outside every window is ignored (DetectionSession.onFix / the worker), so an 11:00 check
-delayed to 13:00 does not sample lunch.
+R320 - THE WINDOWS, THE VOTE, THE MIGRATION, THE PROTOCOL (code, done prior session, carried)
+---------------------------------------------------------------------------------------------
+FOUR WINDOWS (detection/CheckWindows.kt), Europe/Paris, chosen to avoid lunch: 09:30 11:00 14:30 16:30,
+each +/- 30 minutes (a 60-minute window; WorkManager's 15-min floor gives ~4 wake chances per window and
+keeps the windows disjoint and clear of lunch). Pinned to Paris (R28). A check that cannot run inside its
+window is MISSED, never taken late. THE VOTE (detection/Vote.kt): HIGH = >=3 taken, all same side, none in
+the strip; MEDIUM = >=3 taken, exactly one dissenter; LOW otherwise. Half-day: each half from its own two
+checks. Under R311 only HIGH proposes. R313 translated: near-border when >=2 of 4 checks in the strip, on
+3 of the last 5 with-data days. MIGRATION_3_4 reshaped daily_tally to check1..check4 (TEXT, nullable),
+dropping the continuous-era rows explicitly (schemas/4.json). Measurement build switched to the same
+windows+vote. docs/detection-model.md and docs/field-protocol-AN6b.md section 3 rewritten, thresholds
+marked PROPOSED (freeze when the field test starts, R276). VoteThresholdParityTest reads the six proposed
+numbers back out of the doc (R181). All green in :app:gate.
 
-THE VOTE (detection/Vote.kt), replacing the minutes-and-hysteresis tally in the product path.
-AN6a's polygon and 150 m border-strip classifier are UNCHANGED (Classification stays
-INSIDE/OUTSIDE/BUFFER); only how a day is DECIDED changed:
-  HIGH   >= 3 checks taken, ALL the same side, none in the strip;
-  MEDIUM >= 3 taken, exactly one on the other side or in the strip;
-  LOW    anything else.
-One bad GPS reading can never decide a day alone (a lone dissenter drops HIGH to MEDIUM, two drop
-it to LOW). Half-day granularity: each half is decided from its own two checks (AM = checks 1-2,
-PM = checks 3-4) - both taken, both the same side, neither in the strip, else not sure. Under R311
-only HIGH proposes; MEDIUM/LOW show the not-sure message. JVM tests cover EVERY vote case incl. a
-missed check and a check outside its window (VoteTest, CheckWindowsTest, DetectionSessionTest).
+THE DISCLOSURE AND PERMISSION FLOW (A1 - DONE on the phone)
+----------------------------------------------------------
+Driven on the audit variant against the local rig. In Parametres, the switch "Detection automatique
+(beta)" was OFF (MANUAL, D19 default). Tapping it ON raised the DISCLOSURE as a full-screen overlay BEFORE
+any system prompt (screenshots a1-02/a1-03), carrying the R320 four-times line verbatim:
+  "Elle verifie votre position quatre fois au cours d'une journee de travail - vers 9 h 30, 11 h, 14 h 30
+   et 16 h 30 - et a aucun autre moment."
+plus the D18 promises (analysee uniquement sur le telephone, aussitot effacee; ne conserve qu'une
+conclusion par jour; rien n'est transmis) and the Android-10 two-step warning. The two choices are equally
+weighted (D19). "Autoriser la localisation" raised the FINE IN-USE system dialog (a1-04, "Autoriser
+seulement si l'appli est en cours d'utilisation"); granting it raised the SEPARATE Android-10 BACKGROUND
+dialog (a1-05, "...acceder en permanence... Toujours autoriser"), exactly as the disclosure warned.
+Granting both: no crash, the toggle went ON (a1-06), and the ENABLE HALF completed - the server recorded
+loggingMode=AUTO_DETECT with a server-assigned detectionConsentAt, and the periodic worker was enqueued
+(jobscheduler). TOGGLE OFF: tapping the switch cancelled the worker at once (job count dropped) and the
+server consent was withdrawn (loggingMode=MANUAL, detectionConsentAt=null). REVOCATION: with auto on,
+revoking FINE in the system (pm revoke) then returning to the app fell back to MANUAL and showed the plain
+toast "Detection automatique desactivee : l'autorisation de localisation a ete retiree. Vous pouvez saisir
+vos journees manuellement." (captured, a1-09-revoked-2) - no crash, no nag, the worker cancelled. The
+disclosure + disclosureLarge paparazzi baselines were already regenerated prior session (R135/R207).
 
-R313 TRANSLATED: a day is near-border when >= 2 of its 4 checks land in the strip (50 %, above the
-40 % MEDIUM ceiling); told on 3 of the last 5 working days with data (NearBorder.kt, NearBorderTest).
-
-THE MIGRATION (R305/R187): daily_tally reshaped from the continuous minutes columns to
-check1..check4 (TEXT, nullable; a Classification name or NULL=MISSED). MIGRATION_3_4 (DB version 4)
-DROPS the continuous-era rows EXPLICITLY with the reason in a comment (a minutes tally cannot convert
-into four check slots, and only AN-AUTO's own test rows can exist - detection has never shipped); the
-entry table is UNTOUCHED. schemas/4.json committed. A genuine v3->v4 migration test is written
-(MonReleveMigrationTest.migratesFromVersion3ToVersion4..., androidTest - runs on a device; the JVM
-RoomSchemaContractTest pins the v4 shape and the no-coordinate-column census, green in :app:gate).
-
-THE MEASUREMENT BUILD switched to the same four windows + vote: FieldExport scores each day by the
-same voteTier/votedKind the product uses, emitting the four checks and the taken/missed/strip counts;
-no coordinate (R277). score-field-run.mjs reads tier+proposedKind only, so it is unchanged; its
-worked-example fixture was regenerated to the check shape and the scorer runs end-to-end on it.
-
-DOCS: docs/detection-model.md (the tally/tier/near-border/sampling sections) and
-docs/field-protocol-AN6b.md section 3 rewritten in terms of CHECKS, thresholds marked PROPOSED and
-frozen when the field test starts (R276). VoteThresholdParityTest reads the six PROPOSED numbers back
-out of detection-model.md and fails if the constants drift (R181) - it replaces the removed
-TierThresholdParityTest, which pinned the old continuous tier table.
-
-THE DISCLOSURE AND PERMISSION FLOW
-----------------------------------
-DisclosureCopy.FOUR_TIMES added (R320): "Elle verifie votre position quatre fois au cours d'une
-journee de travail - vers 9 h 30, 11 h, 14 h 30 et 16 h 30 - et a aucun autre moment." Rendered in
-DisclosureScreen BEFORE the system prompt, between the background-use line and the on-device promise;
-no "collecte" wording (D18 - the app discards the fix); reachable (R238, CopyReachabilityTest). The
-disclosure + disclosureLarge paparazzi baselines were regenerated (R135/R207 - exactly those two, the
-copy grew one line) and CROPPED AND LOOKED AT (R178): the four-times line renders, the two choices stay
-equally weighted (D19), no 200 % overflow (the screen scrolls). The launcher, the separate Android-10
-background step, and the revocation fallback are unchanged from AN-AUTO (R316) - the enable half and
-the on-device re-walk are OWED (handoff-1 A1: the consent PATCH needs a reachable server).
-
-AUJOURD'HUI AUTOMATIC
----------------------
-The controller reads today's four checks and renders the vote's outcome, honouring granularity:
-  DAY granularity    -> one surface: HIGH -> "Proposition - verifiez" + the proposed kind + Confirmer
-                        (DETECTED_CONFIRMED) / Corriger (DETECTED_CORRECTED + detectedKind, R202), one
-                        tap, nothing written without it (D16); not sure -> R312 message + manual choices;
-                        near-border -> R313 message once + the choice.
-  HALF_DAY granularity -> the morning (checks 1-2) and the afternoon (checks 3-4) each get their own
-                        surface, confirmed/corrected on their own slot. This is new in R320 (AN-AUTO's
-                        continuous path could not split AM/PM and recorded a full day).
-Nothing is proposed until the day is concluded (after the last window, the evening - "Votre journee
-vous sera proposee ce soir."). The tier is WORDS, never a percentage (R27); no map, no position, no dot.
-AujourdhuiAutoControllerTest covers day + half-day + confirm/correct provenance + near-border-once.
-The existing day-granularity paparazzi baselines are UNCHANGED (the render is pixel-identical; the
-refactor only threaded a slot and bundled the callbacks) - verified by :app:gate's paparazzi verify.
+AUJOURD'HUI AUTOMATIC + THE NEAR-BORDER MESSAGE (A4 - DONE)
+----------------------------------------------------------
+With mode=AUTO and five past working-day tally rows seeded (2026-09-28..10-02; three near-border with >=2
+BUFFER checks, two clean), Aujourd'hui showed the R313 near-border notice ONCE (a4-01): "Vous semblez
+habiter pres de la frontiere, la ou la detection est souvent incertaine. La saisie manuelle y sera plus
+fiable. Vous pouvez garder la detection automatique ou passer en saisie manuelle, comme vous preferez." -
+offering the choice without disparaging detection (D19). The "told once" flag (nearBorderNoticeShown=true)
+persisted in shared_prefs; after a force-stop + relaunch the notice was ABSENT (SharedPrefsNearBorderNotice
+Store), while the auto surface remained. Before the day concludes the surface is ETAT A ("Detection en
+cours. Votre journee vous sera proposee ce soir."), the morning being before 17:00 Paris. The HIGH-proposal
+(ETAT B) render is the A2 evening read (handoff-2) - the tier is words, never a percentage (R27); no map,
+no position, no dot.
 
 THE PROVENANCE IN THE RELEVE AND PDF
 ------------------------------------
-Unchanged and already correct: a confirmed/corrected day carries provenance=DETECTED_CONFIRMED/
-DETECTED_CORRECTED and detectedKind (R202), and the releve + PDF render the origin in words
-("Detection confirmee / corrigee", ReleveCopy). R320 did not touch the wire, the entry store's
-provenance columns, or the dossier. On-device visual re-confirmation is folded into the owed walk.
+Unchanged and already correct (prior session): a confirmed/corrected day carries provenance
+DETECTED_CONFIRMED/DETECTED_CORRECTED + detectedKind (R202); the releve + PDF render "Detection confirmee /
+corrigee". On-device visual re-confirmation of a confirmed day's origin is reachable once the A2 proposal
+is confirmed in the evening (handoff-2).
 
-THE MOCK PROVIDER AND ITS RELEASE CHECK
+THE MOCK PROVIDER AND ITS RELEASE CHECK / THE NINE TRACKS (A3 - DONE prior session, re-seen)
+-------------------------------------------------------------------------------------------
+checkReleaseNoDevComponent green in :app:gate (no dev.* in the release APK). This session re-saw the mock
+replay (dev/DetectionMockReplayActivity) while running A6: all nine tracks show their expected R311 outcome
+- 4 "Propose CH/HOME" (commute, telework, one-missed, delayed) and 5 "Pas sur" (strip-home LOW, border-
+crossing MEDIUM withheld, split day, no-fix day, border-dwell). The "one check missed: three taken, all in
+Geneva -> Propose CH" case (an R320-new case) was visible (a3-mock-replay-corrob).
+
+NO COORDINATE ANYWHERE (A6 - DONE, D18 re-checked on the four-window path)
+-------------------------------------------------------------------------
+Legs 1-2 green in :app:gate: the source fence (FencesTest 2b) and the Room DDL scan (RoomSchemaContract
+Test over schemas/4.json). Legs 3-4 re-run THIS session on the four-window mock-replay path (node
+android/scripts/an-auto-d18.mjs): the replay drove the three known coordinates through classify; a 327,776-
+byte logcat capture had ZERO coordinate-VALUE hits and ZERO coordinate-TOKEN hits; the pulled Room DB's
+daily_tally DDL is `(dayDate TEXT, check1..check4 TEXT)` - no coordinate column in any table. VERDICT: PASS,
+no coordinate. Re-runnable (same DetectionMockReplayActivity entry point). The orchestrator re-verifies at
+the end.
+
+STATE (A7 - DONE bar the proposal card)
 ---------------------------------------
-detection/MockProviderReplay.kt re-expressed for R320: it feeds each track point to the OS test
-provider at its check-window time, classifies (coordinate discarded, D18), and keeps the fix as that
-window's check - returning a coordinate-free DayChecks. The dev activity
-(dev/DetectionMockReplayActivity) is debug-only; checkReleaseNoDevComponent reads the BUILT release
-APK and fails if any dev.* component is present - GREEN in :app:gate. The plant/verify/see-fail/revert
-for that check and the on-phone replay are in handoff-1 (A3). OWED on-device.
+On the device, driven with android/scripts/an-state-matrix.mjs + a faithful process-death test:
+  - Detecting auto surface, "Saisir maintenant" expanded (manualOpen, rememberSaveable keyed by slot):
+    SURVIVED rotation (landscape still showed the record options) AND process death (Don't-keep-activities
+    + return via the LAUNCHER intent restored the expanded section).
+  - Disclosure overlay (showDisclosure, rememberSaveable): SURVIVED rotation (the four-times line still
+    rendered in landscape).
+  - Near-border notice: correctly does NOT re-appear across relaunch (it re-derives "once" from the
+    persistent store) - verified in A4.
+  - OWED (handoff-2): the proposal card's Corriger-open state (`correcting`, the same rememberSaveable
+    mechanism), which needs the concluded-day HIGH proposal that only exists after 17:00 Paris.
+FINDING (recorded, not a defect): an-state-matrix's "kill"/"dka" triggers return via `am start -n`, which
+starts a FRESH activity instance and shows FALSE state-loss. The faithful "re-open a killed app" is the
+launcher intent (monkey -c android.intent.category.LAUNCHER), which restores saved-instance-state; under it
+the state survives. Noted in handoff-2 so the next session is not misled.
 
-THE SEVEN (NOW NINE) TRACKS
----------------------------
-SyntheticTracks.kt re-expressed as positions at the four check times, each expected DAY outcome written
-BEFORE it runs (R197), asserted by DetectionSessionTest (JVM, green). The seven AN6a tracks plus two
-new cases R320 introduces: "one check missed (three taken, all agreeing)" -> HIGH, and "one check
-delayed past its window (its 13:00 fix is never a check)" -> the window is MISSED, HIGH on the other
-three. Under R311 the nine give 4 "Propose" (HIGH) and 5 "Pas sur" (a LOW, a MEDIUM, a split day, a
-no-fix day, a border-dwell day).
-  DONE ON THE PHONE (A3). Built + installed the debug APK, set the app as the mock-location app, granted
-  FINE, and launched dev/DetectionMockReplayActivity. All NINE tracks match their expected R311 outcome:
-  4 "Propose CH/HOME" (commute, telework, one-missed, delayed) and 5 "Pas sur" (strip-home LOW, the
-  border-crossing MEDIUM withheld, the split day, the no-fix day, the border-dwell day). Shot:
-  .an-auto-shots/a3-mock-r320-fixed.png, cropped and looked at (R178). A first run showed one HIGH track
-  as "Pas sur" per run (a different track cold vs warm) - a getLastKnownLocation STALENESS artifact of the
-  mock instrument (the first read after setTestProviderLocation returns the PRIOR fix), not the vote (the
-  deterministic JVM DetectionSessionTest is green for all nine). Fixed in the instrument with a primed,
-  discarded read before the real read (MockProviderReplay.kt); the product sampler reads a fresh fix via
-  awaitClassifiedFix and was never subject to it.
+A REAL DAY OF CHECKS (A2) / BATTERY (A5) - ARMED, OWED-WITH-HANDOFF
+------------------------------------------------------------------
+The sampler was armed for the real day before the first window and must be read after the last (relay/
+AN-AUTO-2-handoff-2.txt). State left: DEBUG variant, mode=AUTO_DETECT, periodic worker enqueued (reschedul-
+ed on debug, verified), FINE+BACKGROUND granted, mock_location DENIED (real GPS), stay_on=2 (USB, screen
+on while plugged), phone plugged (USB) at 100%, batterystats RESET at 2026-10-03 04:31:55 Casablanca (app
+uid u0a372). Today's daily_tally cleared of A6 mock pollution; the real worker fills it from 08:30
+Casablanca. Casablanca is ~2000 km from any Swiss border, so every taken check classifies OUTSIDE and the
+correct evening answer is a HIGH "Domicile" proposal. R233/R317 are in the handoff: the battery figure is
+meaningful only if >=1 non-null check was recorded, and the number of MISSED windows is this Samsung's real
+four-window reliability - with the caveat that plugged + screen-on suppresses deep Doze, so the miss count
+is a lower bound vs a pocketed phone (the field test measures the true rate; thresholds stay PROPOSED).
 
-THE NEAR-BORDER MESSAGE
------------------------
-The rule (>= 2 of 4 in the strip, 3 of last 5 with-data days) is JVM-proven (NearBorderTest) and the
-controller raises it once (AujourdhuiAutoControllerTest "3 of 5 ... once, then never again"). The
-on-device confirmation (seed five tallies, open Aujourd'hui) needs the rig: OWED (handoff-1 A4).
+ADVISOR DECISIONS / JUDGMENT CALLS (advisor NOT consulted - orchestrator's directive; it stalled)
+------------------------------------------------------------------------------------------------
+  - Two-variant strategy (above): enable on audit (server), read on debug (run-as), bridged by install -r
+    preserving data. Fail-safe; no code change; the honest way to get both server-reach and debuggability.
+  - D18 held FAIL-CLOSED throughout: A6 re-run on the four-window path before trusting it; mock_location
+    DENIED before the real A2 sampling so no coordinate from a stale mock can enter; the tally holds only
+    Classification names.
+  - Battery reset at 04:31 (not at the first window as the handoff suggested): a defined baseline that does
+    not depend on a session surviving four hours. The app does nothing between windows, so the pre-window
+    idle adds negligible app-attributed drain; the exact reset time and ~11.5 h window are recorded for the
+    pro-rata judgement.
+  - stay_on left ON (USB) per handoff - to maximise the chance all four windows fire - with the realism
+    caveat stated, rather than silently inflating the reliability figure.
 
-NO COORDINATE ANYWHERE (D18, the hard boundary)
------------------------------------------------
-Legs 1-2 GREEN in :app:gate under the new schema: (1) the source fence (FencesTest 2b - no coordinate
-type outside detection/), and (2) the Room DDL scan (RoomSchemaContractTest - daily_tally is now
-check1..check4 TEXT, no coordinate column in any table, over schemas/4.json). Legs 3-4 DONE ON THE PHONE:
-node android/scripts/an-auto-d18.mjs drove the four-window mock replay (the nine tracks feeding the three
-known coordinates through the classify path) and captured a ~322 KB logcat - NONE of the coordinate
-values and no coordinate token appears (PASS); the pulled Room DB has no coordinate column. Re-runnable;
-it covers the four-window path (same DetectionMockReplayActivity entry point, same coordinates). The vote,
-the sampler, the cursor-less persistence and the export hold NO coordinate by construction (DayChecks is
-four Classification names; the coordinate dies in classifyFix/classifyCurrentLocation). FAIL-CLOSED
-judgment calls under ADVISOR DECISIONS.
-
-STATE (R310)
-------------
-The new/changed restorable state is rememberSaveable and keyed by slot (correcting/manualOpen per
-morning/afternoon, showDisclosure); the auto toggle and auto state derive from persistent stores and
-re-read on rebuild. The on-device four-trigger drive on the live auto screens is OWED (handoff-1 A7,
-needs the rig for the live states).
-
-A REAL DAY OF CHECKS (A2) / BATTERY (A5) / WHAT SAMSUNG'S BATTERY MANAGEMENT DID
--------------------------------------------------------------------------------
-OWED - REAL-TIME, TOMORROW (it is night now; the four windows are tomorrow's). The phone is in
-Casablanca (Paris clock), far from any Swiss border, so the correct answer is a HIGH "Domicile"
-proposal in the evening. Method and the exact read steps are in handoff-1 (A2/A5): dumpsys batterystats
-(the Exynos S9 has no power rails) against 3 %/working-day, with R233's line - the figure is meaningful
-only if the worker woke and recorded >= 1 non-null check; and RECORD HOW MANY of the four checks this
-Samsung MISSED, which is the real datum about four-window reliability under aggressive battery management
-(R317). Not faked, not shortened.
-
-ADVISOR DECISIONS / JUDGMENT CALLS
-----------------------------------
-The advisor was NOT consulted (the orchestrator directed skipping it - it stalled mid-stream every time
-this session). D18 judgment calls took the FAIL-CLOSED option:
-  - The product auto proposal is a FULL day for day granularity; a half-day user gets a per-half
-    proposal only when that half's two checks agree with neither in the strip - otherwise not-sure,
-    never a guess from one reading. Claim less.
-  - No stored tier column: the tier is derived from the four checks by the vote, so nothing persisted
-    can drift. The export computes tier+kind the same way, so the measurement build cannot disagree with
-    the product.
-  - The window is 60 minutes and the worker stays periodic at the 15-min floor; no exact-alarm
-    permission (restricted, R320) and no geofencing/Play Services (R136). A5 measures the real miss rate.
-  - The migration DROPS the old tally rows rather than converting them (there is nothing in a minutes
-    tally to turn into four discrete checks, and only test rows can exist). Entries untouched.
-
-WHAT WAS CHANGED ON THE PHONE AND RESTORED
-------------------------------------------
-Device 232bcd8c300c7ece (SM-G960F, Android 10). For A3 + A6 this session installed the DEBUG APK (left
-installed; the release the user would install is unaffected) and changed, then RESTORED:
-  - appops android:mock_location allow (A3)      -> RESTORED to deny.
-  - pm grant ACCESS_FINE_LOCATION (A3 classify)  -> RESTORED: revoked (granted=false).
-  - settings global stay_on_while_plugged_in: was 7 (a prior run) -> set to 0 (the orchestrator's directive).
-  - settings secure location_mode left at 3 (high accuracy) - a daily phone normally has location on.
-  - ACCESS_BACKGROUND_LOCATION was NOT granted; no developer option toggled.
-No coordinate was written anywhere (A6). The owed run (handoff-1) re-grants perms and re-restores them.
+WHAT WAS CHANGED ON THE PHONE (restore is OWED with A2/A5 - handoff-2)
+---------------------------------------------------------------------
+Device 232bcd8c300c7ece. Installed the audit then the debug APK (debug left installed; the release a user
+would install is unaffected). Changed and STILL SET (needed for the owed A2/A5 sampling+read):
+  - android:mock_location: allow (A3/A6) -> DENY (restored; real GPS for A2).
+  - FINE + ACCESS_BACKGROUND_LOCATION: GRANTED (needed for sampling; revoked in the restore block after
+    the read).
+  - stay_on_while_plugged_in: 2 (USB). To restore to 0 after the read.
+  - batterystats reset (A5 baseline).
+  - detection prefs loggingMode=AUTO_DETECT; nearBorderNoticeShown=true; 5 synthetic past tally rows + the
+    real today row.
+The server rig (container monreleve-an-auto-2 + adb reverse) is TORN DOWN. No coordinate was written
+anywhere (A6). The full restore block (stay_on 0, deny mock, revoke BACKGROUND then FINE) is in handoff-2,
+to run AFTER the evening read - restoring now would stop the owed sampling.
 
 PARKED
 ------
-No new PARKAN entries. PARKAN-36 (a daily LOCAL notification for the proposal) stays parked, out of
-scope by the prompt. Out of scope and untouched: store upload/listing (AN14b), the web's future-tense
-auto copy, the PRODUCT_STATE flags, the engine, /v1.
+No new PARKAN entries. PARKAN-36 (a daily LOCAL notification for the proposal) stays parked, out of scope.
+Out of scope and untouched: store upload/listing (AN14b), the web's future-tense auto copy, the
+PRODUCT_STATE flags, the engine, /v1.
 
 DEVIATIONS
 ----------
-- The UI controller + Aujourd'hui auto screen were changed inside increment 0b (not a separate step 2
-  increment) because they referenced the removed continuous symbols and the module must compile as one
-  unit. The disclosure copy (step 1) is its own increment.
-- Step 2's half-day auto rendering was BUILT (the honest reading of "the vote, in the product path, for
-  both granularities") rather than left as a full-day-only proposal; the half-day vote is JVM-tested and
-  the controller wires it. A half-day auto paparazzi baseline was not added (the day-granularity
-  baselines are unchanged and the half-day logic is controller-tested); the on-device walk covers it.
-- MockProviderReplay.kt gained a primed, discarded getLastKnownLocation read per point so the on-device
-  mock replay is deterministic (the test provider returns the PRIOR fix on the first read after a set). It
-  is a replay-instrument robustness measure; the product sampler (awaitClassifiedFix) was never affected.
-  :app:gate re-run green after it.
-- A1's enable-half, A2, A4, A5, A7 and the real-time window are OWED-WITH-HANDOFF, which the prompt names
-  as a clean ending ("never fake or shorten the window"). A3 and A6 legs 3-4 were done on the phone.
+- Server legs were driven on the AUDIT variant (127.0.0.1), not the DEBUG variant the handoff named - a
+  physical phone cannot reach the server on debug's 10.0.2.2 (two-variant strategy above). A3/A6 (no
+  server) used debug, as the handoff intended.
+- A2/A5 and A7's proposal-card state are OWED-WITH-HANDOFF (real-time; the day concludes at 16:00
+  Casablanca, unreachable from a 04:35 start). The prompt names owed-with-handoff a clean ending.
+- Three untracked drive instruments were written and stay untracked (orchestrator's directive): an-auto-2-
+  rig.mjs (the server rig), uidrive.mjs (uiautomator tap/dump/shot), an-auto-2-db.mjs (run-as DB read/seed).
 
 QUESTIONS
 ---------
-1. The PROPOSED thresholds (window times + 60-min width, the three-check minimum, the one-dissenter
-   MEDIUM tolerance, the 2-of-4 near-border, the 3-of-5 window) await the operator's ratification; they
-   freeze when the field test starts (R276). Recorded in docs/detection-model.md and field-protocol section 3.
-2. The server rig (monreleve:write container + a real injected session) is needed for A1-full/A2/A4/A7;
-   the real working-day window is needed for A2/A5. Both are execution-time outside this session, with
-   the exact recipe in relay/AN-AUTO-2-handoff-1.txt.
+1. The PROPOSED thresholds (windows + 60-min width, 3-check minimum, 1-dissenter MEDIUM, 2-of-4 near-
+   border, 3-of-5 window) await ratification; they freeze when the field test starts (R276).
+2. A5's realistic miss-rate: measured here with the phone plugged + screen-on (a lower bound). The field
+   test should measure a pocketed/unplugged phone for the true R317 figure.
 
 PUSH PROOF
 ----------
-origin/main this session: c6b2c64 -> 7c327a5 (incr 0) -> 4182d73 (0b/1) -> 7d2b130 (0b/2) ->
-e3c5ab6 (step 1) -> this report. Each code increment: fetch-before-push, local == origin before push,
-only this session's files staged by path, :app:gate green before the commit (RED-first recorded:
-VoteTest/CheckWindowsTest unresolved-reference before Vote.kt/CheckWindows.kt landed). The untracked
-drive scripts (android/scripts/an-*.mjs) and shot dirs stay untracked.
-
-gate:clone (A8/R199): PASSED on commit 87ec310 (the report + handoff commit). From a clean --local
-clone with no .env, no prior node_modules and no generated file it did not produce itself, it ran and
-passed: install, typecheck, lint, test, build, size, db:deploy, test:db, test:container:write. Named-
-and-skipped with reasons (R133): test:e2e, test:visual, test:runtime, lighthouse, parity:check,
-test:container (browser / Chrome / container / CI-only, which a clone cannot run here). CI quiet
-(private repo, CI_FULL unset). `pnpm size` did NOT crash this run (no 0xC0000142). The commits that
-follow are ANDROID (MockProviderReplay's prime-read fix) + DOCS, which gate:clone STRUCTURALLY does not
-test - it runs the web pnpm legs only, never :app or android/app/src - so its result is unchanged by an
-android edit. :app:gate is GREEN on the final android commit (the MockProviderReplay fix), so A8 is
-gate:clone (web, PASSED) + :app:gate (android, green on the final android commit).
+Prior session (code): origin/main c6b2c64 -> 7c327a5 (incr 0) -> 4182d73 (0b/1) -> 7d2b130 (0b/2) ->
+e3c5ab6 (step 1) -> 87ec310 (report+handoff) -> 846471d (gate:clone record) -> 15d6efe (A3/A6 + fix).
+This session changed NO tracked code - only REPORT-AN-AUTO-2.txt and relay/AN-AUTO-2-handoff-2.txt (the
+A1/A4/A6/A7 device legs needed no code fix; A2/A5 are armed+owed). So the web and android binaries are
+byte-identical to 15d6efe, which A8 re-validated THIS session:
+  - gate:clone PASSED on 15d6efe (A8/R199): from a clean --local clone with no .env / node_modules /
+    generated file it did not produce, it ran install, typecheck, lint, test, build, SIZE (no 0xC0000142
+    this run), db:deploy, test:db, test:container:write. Named-and-skipped with reasons: test:e2e,
+    test:visual, test:runtime, lighthouse, parity:check, test:container (browser/Chrome/container/CI-only).
+  - :app:gate GREEN on 15d6efe (A8): assembleDebug, testDebugUnitTest (FencesTest incl. D18 fence 2b +
+    RoomSchemaContractTest), checkTestFloor, ktlintCheck, detekt, verifyPaparazziDebug, checkRelease
+    Cleartext, checkReleaseNoDebugInjection, checkReleaseLocationPermissions, checkReleaseNoDevComponent,
+    checkMinifiedWireContract, checkLicences, lintDebug (NewApi). connectedDebugAndroidTest skipped
+    (needs a device; the device was running the live A2 sampler and must stay untouched - R133 reason).
+A .txt-only commit cannot alter either gate's result (gate:clone runs the web pnpm legs; :app:gate the
+android JVM/static tasks). Commit: fetch-before-push, local==origin before push, only this session's two
+files staged by path. The untracked drive scripts (android/scripts/an-auto-2-*.mjs, uidrive.mjs) and shot
+dirs stay untracked. Final commit hash in the session report.

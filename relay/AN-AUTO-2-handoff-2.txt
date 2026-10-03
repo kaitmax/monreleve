@@ -1,0 +1,81 @@
+AN-AUTO-2 HANDOFF 2 - reading A2/A5 after the real four-window day (R319)
+=========================================================================
+Written during AN-AUTO-2's device session (3 Oct 2026, ~04:35 Casablanca). A1, A4, A6 and A7 are
+DONE and verified on the phone (see REPORT-AN-AUTO-2.txt). A2 (a real day of four checks) and A5
+(battery) are REAL-TIME: the sampler was armed before the first window and must be READ after the last
+window. This file is the exact read recipe. A7's proposal-card Corriger-open state is folded in (it
+needs the concluded-day proposal, which only exists after 17:00 Paris).
+
+WHY OWED: the four windows are 09:30 / 11:00 / 14:30 / 16:30 Europe/Paris. On 3 Oct 2026 Paris is on
+summer time (CEST, UTC+2) and Casablanca is UTC+1, so the windows fall at 08:30 / 10:00 / 13:30 /
+15:30 CASABLANCA (device local). The day concludes (afterLastCheckWindow) at 17:00 Paris = 16:00
+Casablanca. A session begun at 04:35 cannot span to 16:00; this is the clean owed-with-handoff ending
+the prompt names ("never fake or shorten the window").
+
+STATE THE SAMPLER WAS LEFT IN (all verified at ~04:35 Casablanca):
+  - DEVICE 232bcd8c300c7ece (SM-G960F, API 29). ADB = C:/Users/KAMXKAM/AppData/Local/Android/Sdk/platform-tools/adb.exe
+    Use  -s 232bcd8c300c7ece .  For device paths from Git Bash, prefix  MSYS_NO_PATHCONV=1 .
+  - The DEBUG variant is installed (debuggable -> run-as works for reading the tally). It was enabled
+    through the REAL flow: auto turned on on the AUDIT variant (consent PATCH -> server AUTO_DETECT +
+    startSampling), then install -r debug preserved mode=AUTO_DETECT + the enqueued periodic worker +
+    perms + the Room DB. The worker reschedules on debug launch (verified: jobscheduler).
+  - mode = AUTO_DETECT (shared_prefs/monreleve.detection.xml). The periodic SamplingWorker is enqueued
+    (WorkManager, 15-min floor); it samples whenever a wake lands in a window, REGARDLESS of the mode
+    cache or any server (SamplingWorker checks neither). So sampling continues after the rig teardown.
+  - FINE + ACCESS_BACKGROUND_LOCATION granted. android:mock_location = DENY (real GPS, not mock).
+  - stay_on_while_plugged_in = 2 (USB): screen stays on while USB-plugged. Phone plugged (USB), 100%.
+  - android:batterystats RESET at 2026-10-03 04:31:55 Casablanca (A5 baseline). App uid = u0a372 (10372).
+  - daily_tally held 5 SYNTHETIC past rows from A4 (2026-09-28..10-02; harmless to today's vote) and
+    NO today row (today's mock pollution from A6 was cleared). Today (2026-10-03) fills from real fixes.
+  - The server rig (container monreleve-an-auto-2 + adb reverse) is TORN DOWN - not needed for sampling
+    or reading. monreleve.ch never resolved; it was the local test container only (R250, D18-safe).
+
+READ A2 (the four checks) - after 16:00 Casablanca / 17:00 Paris:
+  1. Tally (definitive, per-window):
+       cd "$(git rev-parse --show-toplevel)"
+       node android/scripts/an-auto-2-db.mjs read
+     Find the 2026-10-03 row. Each slot is OUTSIDE (a real fix anywhere in Casablanca is ~2000 km from
+     Switzerland -> OUTSIDE) or MISSED (null = no fix inside that window). Phone is far from any border,
+     so NO slot should be BUFFER. Record each of the four: taken (OUTSIDE) or MISSED.
+  2. UI (the proposal a person sees): open the app -> Aujourd'hui. After 16:00 Casablanca the day is
+     concluded. Expect ETAT B "Proposition - verifiez" -> "Domicile" (HIGH) IF >=3 checks are OUTSIDE
+     and none BUFFER; else the not-sure message (R312). Screenshot it.
+     node android/scripts/uidrive.mjs shot a2-proposal   (then Read the PNG).
+
+READ A5 (battery) + R233 + R317 - after the last window:
+       adb -s 232bcd8c300c7ece shell dumpsys batterystats | grep -iE "Estimated power|uid u0a372|ch.monreleve"
+     or dump the full "Estimated power use (mAh)" block and find uid u0a372 (ch.monreleve.app). That is
+     the app's MODELED drain since the 04:31:55 reset (the Exynos S9 has no power rails - modeled, not
+     measured). Convert to a % of the ~3000 mAh battery and compare to the 3%/working-day budget (R2);
+     the window here is ~11.5 h (04:31 -> ~16:00), longer than a working day, so pro-rate when judging.
+     R233: the figure is MEANINGFUL ONLY IF the worker woke and recorded >= 1 non-null check today. If
+     all four of today's slots are MISSED, Samsung killed the worker every window - record THAT under
+     WHAT SAMSUNG'S BATTERY MANAGEMENT DID, and the number is an idle phone, not detection.
+     R317: record HOW MANY of the four windows were MISSED - this Samsung's real four-window reliability.
+     CAVEAT to state: the phone was kept plugged + screen-on (stay_on USB), which suppresses deep Doze,
+     so the miss count is a LOWER BOUND vs a real pocketed/unplugged phone. The field test measures the
+     true rate (thresholds stay PROPOSED, R276).
+
+A7 - the proposal card's Corriger-open state (the one A7 trigger that needs the evening proposal):
+     Once Aujourd'hui shows the HIGH "Domicile" proposal, tap "Corriger" (reveals the record options),
+     then drive the four rebuild triggers and confirm the Corriger-open state survives:
+       ANDROID_SERIAL=232bcd8c300c7ece node android/scripts/an-state-matrix.mjs --label a7-proposal-corriger --trigger all
+     NOTE the matrix's "kill"/"dka" return via `am start -n` starts a FRESH instance (false state-loss);
+     the FAITHFUL re-open that restores saved-instance-state is the launcher intent:
+       adb -s 232bcd8c300c7ece shell monkey -p ch.monreleve.app -c android.intent.category.LAUNCHER 1
+     (This session proved rememberSaveable survives rotation AND process-death for the Detecting
+     manualOpen state and the disclosure overlay; the proposal card's `correcting` is the same mechanism.)
+
+RESTORE THE PHONE (operator's phone) - ONLY after A2/A5/A7 are read:
+       adb -s 232bcd8c300c7ece shell settings put global stay_on_while_plugged_in 0
+       adb -s 232bcd8c300c7ece shell appops set ch.monreleve.app android:mock_location deny   (already deny)
+       adb -s 232bcd8c300c7ece shell pm revoke ch.monreleve.app android.permission.ACCESS_BACKGROUND_LOCATION
+       adb -s 232bcd8c300c7ece shell pm revoke ch.monreleve.app android.permission.ACCESS_FINE_LOCATION
+     Leave no developer option toggled. The debug APK may stay installed (the release the user would
+     install is unaffected). Then tick A2/A5 (and A7's proposal-card line) in REPORT-AN-AUTO-2.txt.
+
+If the worker missed EVERY window (all four MISSED): that is a valid A5/R317 result (record it), but to
+CONFIRM the mechanism works at all, re-arm and observe one window live, OR drive the mock replay
+(an-auto-d18 path) which proves the classify->recordCheck path writes a check. Do not fake a window.
+
+END OF AN-AUTO-2 HANDOFF 2
