@@ -43,6 +43,7 @@ import { describe, expect, it } from 'vitest';
 import { PRODUCT_STATE, type ProductState } from '@/lib/content/product-state';
 import { HOME_COPY } from '@/lib/fr';
 import { A_PROPOS_COPY } from '@/lib/fr/a-propos';
+import { APPLICATION_COPY } from '@/lib/fr/application';
 import { LEGAL_COPY } from '@/lib/fr/legal';
 import { RELEVE_COPY } from '@/lib/fr/releve-annuel';
 import { TARIFS_COPY } from '@/lib/fr/tarifs';
@@ -307,6 +308,15 @@ const WIRING: ReadonlyArray<{
         file: 'index.ts',
         render: (s) => HOME_COPY.description(FISCAL, SOCIAL, s),
       },
+      // FW34 (§7.2 item 1): the hero lead's third sentence and card 3.
+      { where: '/ lead sentence 3', file: 'index.ts', render: (s) => HOME_COPY.lead.tracker(s) },
+      { where: '/ card 3', file: 'index.ts', render: (s) => HOME_COPY.cards.app.body(s) },
+      // §5.6: the recomposed /application description, recording clause.
+      {
+        where: '/application description',
+        file: 'application.ts',
+        render: (s) => APPLICATION_COPY.description(s),
+      },
       { where: '/a-propos lead', file: 'a-propos.ts', render: (s) => A_PROPOS_COPY.lead(s) },
       {
         where: '/releve-annuel stateBody',
@@ -324,6 +334,14 @@ const WIRING: ReadonlyArray<{
         where: '/tarifs positionDetail',
         file: 'tarifs.ts',
         render: (s) => TARIFS_COPY.positionDetail(s),
+      },
+      // FW34 (§7.2 item 1, §5.6): the home card 3 and the /application
+      // description, each carrying the export clause.
+      { where: '/ card 3', file: 'index.ts', render: (s) => HOME_COPY.cards.app.body(s) },
+      {
+        where: '/application description',
+        file: 'application.ts',
+        render: (s) => APPLICATION_COPY.description(s),
       },
       { where: '/releve-annuel description', file: 'releve-annuel.ts', render: (s) => RELEVE_COPY.description(s) },
       { where: '/releve-annuel lead', file: 'releve-annuel.ts', render: (s) => RELEVE_COPY.lead(s) },
@@ -366,6 +384,24 @@ const WIRING: ReadonlyArray<{
       },
     ],
   },
+  {
+    // FW34 (§7.2 item 1): appExists LEAVES NOT_YET_WIRED. The home hero's
+    // secondary action is actions.app at release and actions.guides before it,
+    // and card 3's availability clause is owned by appExists.
+    flag: 'appExists',
+    wired: [
+      {
+        where: '/ hero secondary action',
+        file: 'index.ts',
+        render: (s) => {
+          const action = s.appExists ? HOME_COPY.actions.app : HOME_COPY.actions.guides;
+
+          return `${action.label} ${action.href}`;
+        },
+      },
+      { where: '/ card 3', file: 'index.ts', render: (s) => HOME_COPY.cards.app.body(s) },
+    ],
+  },
 ];
 
 /**
@@ -376,10 +412,6 @@ const WIRING: ReadonlyArray<{
  * in its selection and then does not run it.
  */
 const NOT_YET_WIRED: ReadonlyArray<{ readonly flag: keyof ProductState; readonly why: string }> = [
-  {
-    flag: 'appExists',
-    why: '/application is FW20b increment 4, and it is the whole page rather than one sentence.',
-  },
   {
     flag: 'alertsExist',
     why: 'No page states whether the alert list exists; /alertes IS the statement.',
@@ -514,5 +546,38 @@ describe('no page claims a capability the module does not grant', () => {
         [],
       );
     }
+  });
+
+  // FW34 (§7.2 item 2): card 3 is built per flag, so its claims appear only in
+  // the state that has the capability - every flag true, and silent as shipped.
+  it('card 3 claims a capability only in the state that has it (R178)', () => {
+    const released: ProductState = {
+      ...PRODUCT_STATE,
+      appExists: true,
+      trackerExists: true,
+      dossierExists: true,
+    };
+
+    expect(
+      claimsIn(HOME_COPY.cards.app.body(released)).length,
+      'card 3 makes no claim with every flag true',
+    ).toBeGreaterThan(0);
+    expect(
+      claimsIn(HOME_COPY.cards.app.body(PRODUCT_STATE)),
+      'card 3 claims a capability in the shipped state',
+    ).toEqual([]);
+  });
+
+  // FW34 (§7.2 item 2, R178): the unfiltered scan reports the live instances -
+  // card 3 in index.ts and the recomposed description in application.ts - which
+  // the wiring above then permits. Proving the wiring is not vacuous.
+  it('the unfiltered scan finds the live instances in index.ts and application.ts', () => {
+    const files = new Set(scanFr().map((hit) => hit.file));
+
+    expect(files.has('index.ts'), 'card 3 should be a live instance in index.ts').toBe(true);
+    expect(
+      files.has('application.ts'),
+      'the recomposed description should be a live instance in application.ts',
+    ).toBe(true);
   });
 });

@@ -22,9 +22,7 @@
 // to find.
 
 import type { ProductState } from '@/lib/content/product-state';
-
-const NB = String.fromCharCode(0x00a0);
-const n = (mark: string): string => `${NB}${mark}`;
+import { frenchList, n } from './compose';
 
 /**
  * What this page prices, in the order a reader meets it, each behind the fact
@@ -45,24 +43,8 @@ const PRICED: ReadonlyArray<readonly [keyof ProductState, string]> = [
   ['comparatorExists', 'le comparateur'],
 ];
 
-/**
- * "A", "A et B", "A, B et C" - the third case is the only one with a comma.
- *
- * CONCATENATION RATHER THAN A TEMPLATE LITERAL, and R91's source scan is the
- * reason. Its second pass reads the quoted spans of each line, and a template
- * holding `?? ''` or a ternary puts an ASCII space before a "?" or a ":"
- * INSIDE the span - so the guard reports a French typography offence in what
- * is actually JavaScript syntax. Keeping operators out of template literals
- * costs nothing here and keeps the scan's signal clean.
- */
-function frenchList(items: readonly string[]): string {
-  if (items.length === 0) return '';
-  if (items.length === 1) return items[0] ?? '';
-
-  const last = items[items.length - 1] ?? '';
-
-  return items.slice(0, -1).join(', ') + ' et ' + last;
-}
+// frenchList moved to ./compose (R206): FW34's trust band joins publishers and
+// the home card joins guide topics with the same helper.
 
 const capitalise = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1);
 

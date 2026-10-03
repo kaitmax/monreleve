@@ -89,13 +89,20 @@ export interface LoggingMode {
 export const APPLICATION_COPY = {
   title: 'L’application',
 
+  // §5.6 (FW34): recomposed per flag. Recording belongs to trackerExists and
+  // export to dossierExists, not to appExists alone - the same defect card 3
+  // had. Each clause is INDEPENDENT (card 3's pattern), so a single flag flip
+  // changes the sentence, which is what product-state.test.ts WIRING asserts.
+  // The served (all-false) text is unchanged from the previous appExists:false
+  // branch. "Enregistrez vos journées" and "exportez un relevé" are the live
+  // instances the new claim patterns find (R178); the wiring then permits them.
   description: (state: ProductState): string =>
-    state.appExists
-      ? 'Enregistrez vos journées et exportez un relevé daté' +
-        n(':') +
-        ' les deux modes de saisie, et ce que l’application ne fait pas.'
-      : 'Ce que l’application fera, ce qu’elle ne fera jamais, et pourquoi ' +
-        'elle n’existe pas encore.',
+    (state.trackerExists
+      ? 'Enregistrez vos journées en un geste'
+      : 'Ce que l’application fera') +
+    (state.dossierExists
+      ? ', et exportez un relevé annuel horodaté.'
+      : ', ce qu’elle ne fera jamais, et pourquoi elle n’existe pas encore.'),
 
   /**
    * THE FIRST SENTENCE SAYS IT DOES NOT EXIST, before anything describes it -

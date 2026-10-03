@@ -755,11 +755,12 @@ describe('every colour rule in the five stylesheets, at the bar its size implies
       .sort();
 
     expect(nested).toEqual([
-      // FW20: the home page routes with two cards, and both text rules sit
-      // on the fill .door paints. They arrived here the same way the notice
-      // rules did - by failing this assertion rather than by being noticed.
-      '(public)/home .doorBody -> --colour-surface',
-      '(public)/home .doorLabel -> --colour-surface',
+      // FW34: the two (public)/home .door nested rules are GONE. The home body
+      // replaced the two doors with the hero/cards/pourquoi/trust/closing bands,
+      // and home.module.scss now paints NO background of its own - the Card
+      // component paints the surface. So no text rule in home.module.scss is
+      // nested; every one resolves against the page canvas, which still passes
+      // AA (the general contrast assertion in this file covers them).
       // FW13 added the link notice, whose three text rules sit on the fill
       // it paints. They arrived here by FAILING this assertion, which is
       // what naming the set is for: the derived scan found them without

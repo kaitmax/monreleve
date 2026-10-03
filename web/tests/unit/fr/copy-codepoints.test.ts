@@ -145,7 +145,7 @@ describe('the whitespace codepoints in French copy are on the record (R66)', () 
     expect(summary, summary.join(' | ')).toEqual([]);
   });
 
-  it('carries exactly the 43 the typography pass left there', () => {
+  it('carries exactly the 41 the typography pass left there', () => {
     // A count, so that a no-break space arriving or disappearing is a
     // deliberate edit here rather than a silent one. Per file, because a
     // total alone would let one move between files unnoticed.
@@ -165,13 +165,14 @@ describe('the whitespace codepoints in French copy are on the record (R66)', () 
       // than a drift, which means a deliberate one updates the number.
       'lib/fr/confidentialite.ts': 20,
       'lib/fr/errors.ts': 2,
-      // FW18b: FOUR BECAME TWO, and the two that left are the point. R147
-      // now reaches lib/fr, so the home description no longer types "40 %"
-      // and "49,9 %" - it takes them formatted, and formatPercent sets the
-      // no-break space. The codepoint did not disappear; it moved to the one
-      // producer SPEC 6.4 names, which is where the comment above says it
-      // belongs.
-      'lib/fr/index.ts': 2,
+      // FW18b took index.ts from four to two; FW34 takes it to ZERO, so it is
+      // gone from this map. The home body (HOME_COPY) replaced the placeholder's
+      // heading and intro - the two literal no-break spaces this file counted -
+      // and every no-break space it now needs (before the hero's "?", the trust
+      // band's ":" and ";") is built by n() from ./compose, the way the rest of
+      // the file already did. The codepoint did not disappear; it moved to the
+      // one producer, the movement FW18b/FW20b recorded for the figures and the
+      // releve description.
       // FW20 recorded one here, in the releve-annuel description - the page's
       // one literal, its other no-break spaces being built by n().
       //
@@ -208,7 +209,9 @@ describe('the whitespace codepoints in French copy are on the record (R66)', () 
     // the semicolon ending its sentence, and the per-file map above moved
     // in step. Two numbers, one change - if only one of them had needed
     // updating, the census would be measuring something other than it says.
-    expect(occurrences).toHaveLength(43);
+    // FW34: 43 -> 41. index.ts's two literal no-break spaces left with the
+    // placeholder heading and intro; the home body builds its own with n().
+    expect(occurrences).toHaveLength(41);
   });
 
   it('puts every one of them immediately before : ; ? ! or %', () => {

@@ -91,6 +91,31 @@ export const CLAIM_PATTERNS: readonly ClaimPattern[] = [
     flag: 'comparatorExists',
     pattern: /\b(?:publie|propose|offre)\b(?!\s+donc\s+pas)[^.]{0,20}\bcomparateur\b/i,
   },
+
+  // FW34, TAGGED BY THE CAPABILITY THEY ASSERT (§7.2 item 2). The home card 3
+  // and /application's recomposed description read per flag; these three stems
+  // are the imperative, present forms, so the FUTURE clauses ("vous y noterez",
+  // "exportera") do not match. Exact stems, each short enough to sit inside one
+  // source literal, because scanFr reads per line. They find live instances in
+  // index.ts and application.ts (R178), which the wiring then permits.
+  {
+    what: 'day recording, asserted as an action you take',
+    flag: 'trackerExists',
+    pattern: /\benregistrez vos journ[ée]es/i,
+  },
+  {
+    what: 'automatic detection, asserted as offered',
+    flag: 'trackerExists',
+    pattern: /\blaissez l’application les d[ée]tecter/i,
+  },
+  {
+    what: 'the annual statement, asserted as exportable by you',
+    flag: 'dossierExists',
+    // NO TRAILING \b after the accented final letter, the same ASCII-\b trap the
+    // dossierExists pattern above documents. "exportera" does not match - the
+    // stem is "exportez".
+    pattern: /\bexportez un relev[ée]/i,
+  },
 ];
 
 /** Every claim the given text makes, named. Empty is the passing case. */
@@ -167,6 +192,9 @@ export const PRODUCED_THE_RULE: readonly string[] = [
   'Le service met en forme un relevé annuel à partir de ces journées.',
   'Ce site publie un comparateur de coût.',
   'Chaque jour enregistré est horodaté par le service.',
+  // FW34: card 3 / the application description, true-branch (present/imperative).
+  'Enregistrez vos journées en un geste, ou laissez l’application les détecter et vous les proposer.',
+  'Exportez un relevé annuel horodaté.',
 ];
 
 /** Prose that mentions the same words WITHOUT claiming the capability. */
@@ -175,4 +203,8 @@ export const MUST_NOT_FLAG: readonly string[] = [
   'Le registre journalier et le document qui en découle ne sont pas construits.',
   'Ce site ne dispose d’aucune donnée de primes. Il ne publie donc pas de comparateur de coût.',
   'Ce document n’existe pas encore.',
+  // FW34: card 3 / the application description, flag-false branch (future). The
+  // patterns are tagged by capability, so the future forms must stay silent.
+  'Vous y noterez vos journées en un geste, ou elle vous proposera celles qu’elle aura détectées, que vous confirmerez.',
+  'Elle exportera un relevé annuel horodaté.',
 ];

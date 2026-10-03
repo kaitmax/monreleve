@@ -39,9 +39,7 @@
 // licence the document itself lacks.
 
 import type { ProductState } from '@/lib/content/product-state';
-
-const NB = String.fromCharCode(0x00a0);
-const n = (mark: string): string => `${NB}${mark}`;
+import { cardinal, n } from './compose';
 
 /**
  * SPEC 12's structure, top to bottom, in a reader's words.
@@ -76,27 +74,9 @@ const CONTENTS = [
   'Le pied de page légal, qui redit ce que le document est et n’est pas.',
 ] as const;
 
-/**
- * A small count in words, because French prose writes one out.
- *
- * SPEC 12 fixes the structure at six parts, so the range is not a guess about
- * the future; the numeral fallback exists so a seventh part reads oddly
- * rather than crashing, and the reader of that sentence will fix it.
- */
-const COUNTS: Readonly<Record<number, string>> = {
-  1: 'Une',
-  2: 'Deux',
-  3: 'Trois',
-  4: 'Quatre',
-  5: 'Cinq',
-  6: 'Six',
-  7: 'Sept',
-  8: 'Huit',
-  9: 'Neuf',
-  10: 'Dix',
-};
-
-const count = (howMany: number): string => COUNTS[howMany] ?? String(howMany);
+// The count in words (cardinal) moved to ./compose (R206): FW34 needs the same
+// helper for the home page, and it now takes the gender. "parties" is feminine,
+// so this file asks for "Une".
 
 export const RELEVE_COPY = {
   title: 'Le relevé annuel de télétravail',
@@ -144,7 +124,7 @@ export const RELEVE_COPY = {
     state.dossierExists ? 'Ce qu’il contient' : 'Ce qu’il contiendra',
 
   contentsIntro: (state: ProductState): string =>
-    `${count(CONTENTS.length)} parties, dans cet ordre.` +
+    `${cardinal(CONTENTS.length, 'une')} parties, dans cet ordre.` +
     (state.dossierExists ? '' : ' Rien de ce qui suit n’est encore produit.'),
 
   contents: CONTENTS,

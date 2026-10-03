@@ -1,89 +1,276 @@
 // web/app/(public)/home.module.scss
 // Tokens only; camelCase class names for CSS Module addressing.
 //
-// The home page's one job is to route (todo.md: "no hero theatre"), so there
-// is no hero, no illustration and no band of colour - two cards, side by side
-// where there is room and stacked where there is not.
+// THE HOME BODY (FW34, FD11). Five bands: a hero on canvas, three destination
+// Cards, a "Pourquoi une trace datee" band on canvas, a trust Card and a
+// closing Card. The Card component paints the surface, border and radius, so
+// this file paints NO background - which is why contrast.test.ts resolves every
+// text rule here against the page canvas, and the two former .door nested rules
+// are gone.
 //
-// IT REUSES NOTHING AND IS REUSED BY NOTHING. The guide cards live in
-// lib/ui/react because seven articles render them; these two exist once, on
-// one page, and a component would be a shared abstraction with a single
-// caller.
+// Inter-band rhythm is a single top margin per band (no bottom margins but the
+// closing's), so nothing double-spaces: hero has the top padding, each later
+// band a margin-top. The three-column grids and the side-by-side closing apply
+// from bp.$breakpoint-md; below it everything is one column.
 
 @use "../../lib/ui/core/styles/breakpoints" as bp;
 
-.page {
-  padding-block: var(--space-10);
+// ---------------------------------------------------------------------------
+// HERO
+// ---------------------------------------------------------------------------
+.hero {
+  padding-top: var(--space-20);
+}
+
+// The text column caps at the article measure; the right half stays empty
+// canvas (FD11). 680 is the nearest token to FD11's 640 (§5.5).
+.heroColumn {
+  max-width: var(--layout-article);
 }
 
 .title {
-  margin: 0 0 var(--space-4);
+  margin: 0 0 var(--space-5);
   color: var(--colour-text-primary);
   font-size: var(--type-hero-size);
   font-weight: var(--type-hero-weight);
   line-height: var(--type-hero-line);
 }
 
-.intro {
-  margin: 0 0 var(--space-10);
-  max-width: var(--layout-article);
+.lead {
+  margin: 0 0 var(--space-8);
   color: var(--colour-text-secondary);
-  font-size: var(--type-body-size);
-  font-weight: var(--type-body-weight);
-  line-height: var(--type-body-line);
+  font-size: var(--type-body-l-size);
+  font-weight: var(--type-body-l-weight);
+  line-height: var(--type-body-l-line);
 }
 
-// MOBILE FIRST: one column, so a phone needs no override. The two doors are
-// equal - neither is the recommended one - which is why they are a grid of
-// equal tracks rather than a primary and a secondary.
-.doors {
-  display: grid;
-  gap: var(--space-6);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-
-  @media (width >= bp.$breakpoint-md) {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-.door {
+// Mobile: stacked, full width (FD2:58, :94). From the breakpoint: a row, 12
+// apart.
+.actions {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  padding: var(--space-6);
-  border: var(--size-card-border) solid var(--colour-border-default);
-  border-radius: var(--radius-lg);
-  background: var(--colour-surface);
-}
 
-.doorLabel {
-  margin: 0;
-  color: var(--colour-text-primary);
+  > a {
+    width: 100%;
+  }
 
-  // THE THIRD TIME THIS EXACT DEFECT HAS SHIPPED TO A BASELINE. An anchor
-  // placed in a new context takes the global link colour, so both cards
-  // rendered their titles in default browser blue against grey prose. FW18b
-  // met it on the R160 chip and .breadcrumb met it before that; each time no
-  // gate objected and a crop found it (R135).
-  //
-  // color: inherit, the same line those two use. The underline stays: these
-  // are the page’s only two links and hiding that they are links would be
-  // the opposite problem.
-  font-size: var(--type-h3-size);
-  font-weight: var(--type-h3-weight);
-  line-height: var(--type-h3-line);
+  @media (width >= bp.$breakpoint-md) {
+    flex-direction: row;
 
-  a {
-    color: inherit;
+    > a {
+      width: auto;
+    }
   }
 }
 
-.doorBody {
+// ---------------------------------------------------------------------------
+// DESTINATION CARDS
+// ---------------------------------------------------------------------------
+.cardsBand {
+  margin-top: var(--space-20);
+}
+
+.cards {
+  display: grid;
+  gap: var(--space-6);
+
+  @media (width >= bp.$breakpoint-md) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+// Fills the Card (which stretches to the tallest in its grid row), so the link
+// pins to the bottom and the three cards are equal height.
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+  height: 100%;
+
+  > :last-child {
+    margin-top: auto;
+  }
+}
+
+.cardTitle {
+  margin: 0;
+  color: var(--colour-text-primary);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  line-height: var(--type-h3-line);
+}
+
+.cardText {
   margin: 0;
   color: var(--colour-text-secondary);
   font-size: var(--type-body-size);
   font-weight: var(--type-body-weight);
   line-height: var(--type-body-line);
+}
+
+// ---------------------------------------------------------------------------
+// POURQUOI UNE TRACE DATEE
+// ---------------------------------------------------------------------------
+.pourquoi {
+  margin-top: var(--space-20);
+}
+
+.pourquoiHeading {
+  margin: 0;
+  color: var(--colour-text-primary);
+  font-size: var(--type-h2-size);
+  font-weight: var(--type-h2-weight);
+  line-height: var(--type-h2-line);
+}
+
+.pourquoiGrid {
+  display: grid;
+  gap: var(--space-8);
+  margin-top: var(--space-10);
+
+  @media (width >= bp.$breakpoint-md) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.pourquoiItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+// The ornamental 01/02/03: H2 triple with tabular figures (H7 keeps Display for
+// statistics), in secondary (FD11's #D0D5DD fails R76).
+.numeral {
+  margin: 0;
+  color: var(--colour-text-secondary);
+  font-size: var(--type-h2-size);
+  font-weight: var(--type-h2-weight);
+  line-height: var(--type-h2-line);
+  font-variant-numeric: tabular-nums;
+}
+
+.pourquoiItemHeading {
+  margin: 0;
+  color: var(--colour-text-primary);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  line-height: var(--type-h3-line);
+}
+
+.pourquoiBody {
+  margin: 0;
+  color: var(--colour-text-secondary);
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  line-height: var(--type-body-line);
+}
+
+// ---------------------------------------------------------------------------
+// TRUST BAND (one Card, three columns split by 1 px rules)
+// ---------------------------------------------------------------------------
+.trust {
+  margin-top: var(--space-20);
+}
+
+.trustColumns {
+  display: grid;
+  gap: var(--space-8);
+
+  @media (width >= bp.$breakpoint-md) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.trustColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+
+  // Below the breakpoint the rule between columns is horizontal; from it,
+  // vertical (§7.2 item 12).
+  & + & {
+    padding-top: var(--space-8);
+    border-top: var(--size-rule) solid var(--colour-border-default);
+  }
+
+  @media (width >= bp.$breakpoint-md) {
+    & + & {
+      padding-top: 0;
+      padding-left: var(--space-8);
+      border-top: 0;
+      border-left: var(--size-rule) solid var(--colour-border-default);
+    }
+  }
+
+  > a {
+    margin-top: auto;
+  }
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--colour-text-secondary);
+  font-size: var(--type-eyebrow-size);
+  font-weight: var(--type-eyebrow-weight);
+  line-height: var(--type-eyebrow-line);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+}
+
+.trustStatus {
+  margin: 0;
+  color: var(--colour-text-primary);
+  font-size: var(--type-body-m-size);
+  font-weight: var(--type-body-m-weight);
+  line-height: var(--type-body-m-line);
+}
+
+// The review date, H2 triple with tabular figures, not an h2 element (§5.3).
+.verificationDate {
+  margin: 0;
+  color: var(--colour-text-primary);
+  font-size: var(--type-h2-size);
+  font-weight: var(--type-h2-weight);
+  line-height: var(--type-h2-line);
+  font-variant-numeric: tabular-nums;
+}
+
+.trustBody {
+  margin: 0;
+  color: var(--colour-text-secondary);
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  line-height: var(--type-body-line);
+}
+
+// ---------------------------------------------------------------------------
+// CLOSING STRIP (one Card)
+// ---------------------------------------------------------------------------
+.closing {
+  margin-top: var(--space-16);
+  margin-bottom: var(--space-20);
+}
+
+.closingInner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+
+  @media (width >= bp.$breakpoint-md) {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.closingLine {
+  margin: 0;
+  color: var(--colour-text-primary);
+  font-size: var(--type-body-l-size);
+  font-weight: var(--type-body-l-weight);
+  line-height: var(--type-body-l-line);
 }
