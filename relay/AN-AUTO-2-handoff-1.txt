@@ -1,0 +1,123 @@
+AN-AUTO-2 HANDOFF 1 - the device tests under R320 (four windows + vote)
+======================================================================
+Written during AN-AUTO-2. origin/main HEAD at writing: e3c5ab6 (0b + step 1 pushed).
+Everything below is the ON-DEVICE half of the DONE list (A1-A7) and the real-time window
+(A2/A5). The CODE is complete, gated (:app:gate green) and pushed: the four-window sampler,
+the vote, the Room reshape + MIGRATION_3_4, the measurement build, the Aujourd'hui auto
+surface (day + half-day), and the disclosure's "four times a day" wording.
+
+WHY OWED: the device legs need (a) the physical phone with build/install/drive/screenshot
+cycles, (b) for A1-full/A2/A4/A7 a REACHABLE server (the consent PATCH gate, handoff-2 of
+AN-AUTO), and (c) for A2/A5 a REAL working-day window - which is tomorrow (it is night now).
+These are execution-time outside one session's context, not blocked.
+
+DEVICE: serial 232bcd8c300c7ece, SM-G960F (Galaxy S9), Android 10 / API 29.
+ADB = C:/Users/KAMXKAM/AppData/Local/Android/Sdk/platform-tools/adb.exe  (use -s 232bcd8c300c7ece).
+Build+install the debug APK:  ./gradlew :app:installDebug   (or assembleDebug + adb install -r)
+
+THE FOUR WINDOWS, Europe/Paris:  09:30  11:00  14:30  16:30  (each +/- 30 min).
+  Casablanca currently shares the Paris clock (verify from the date). So the windows are the
+  SAME wall-clock times on the phone. The worker wakes on the 15-min WorkManager floor and
+  acts only inside a window whose slot is empty; a wake elsewhere does nothing.
+
+----------------------------------------------------------------------
+A3 - THE NINE TRACKS VIA THE MOCK PROVIDER (model-dependent, NO server needed)
+----------------------------------------------------------------------
+The vote is re-expressed as positions at the four check times; two new cases join the seven
+(a missed check; a check delayed past its window). Expected DAY outcomes under R311 are
+WRITTEN in detection/SyntheticTracks.kt and asserted in DetectionSessionTest (JVM, green).
+On the phone:
+  1. adb -s 232bcd8c300c7ece shell appops set ch.monreleve.app android:mock_location allow
+  2. adb -s 232bcd8c300c7ece shell am start -n ch.monreleve.app/ch.monreleve.app.dev.DetectionMockReplayActivity
+  3. The screen lists each track: expected vs actual outcome + OK. Expect 4 "Propose" (a,b,h,i
+     = HIGH) and 5 "Pas sur" (c LOW, d MEDIUM, e split, f no-fix, g train = withheld under R311).
+  4. Screenshot: adb ... exec-out screencap -p > a3-mock-r320.png ; open it (R178).
+  5. RESTORE: adb -s 232bcd8c300c7ece shell appops set ch.monreleve.app android:mock_location deny
+The mock provider is debug-only (dev/DetectionMockReplayActivity); checkReleaseNoDevComponent
+proves it absent from the BUILT release APK (green in :app:gate). The provider logic
+(detection/MockProviderReplay.kt) ships but is dead code in release (nothing reaches it, and
+addTestProvider throws without the mock-location appop). To exercise the relay's plant/verify/
+see-fail/revert: temporarily add a `<activity android:name=".dev.DetectionMockReplayActivity"/>`
+to app/src/main/AndroidManifest.xml, assembleRelease, run checkReleaseNoDevComponent -> it FAILS
+naming the dev component; revert.
+
+----------------------------------------------------------------------
+A6 - NO COORDINATE ANYWHERE, auto path ON (HARD BOUNDARY D18, model-independent)
+----------------------------------------------------------------------
+Four legs:
+  1. SOURCE FENCE: FencesTest (fence 2b) - no coordinate type outside detection/ - green in :app:gate.
+  2. ROOM DDL SCAN: RoomSchemaContractTest.noColumnIsCoordinateShapedInAnyTable over schemas/4.json
+     (daily_tally is now check1..check4 TEXT, no coordinate) - green in :app:gate.
+  3. NETWORK TRACE + 4. LOGCAT during a full mock replay (which drives 300+ REAL coordinates through
+     the classify path): run  node android/scripts/an-auto-d18.mjs  with the mock replay driving.
+     It greps a full logcat capture for lat/lng/Location/the known coordinate values and asserts NONE
+     appear. Re-runnable. MUST cover the FOUR-WINDOW path now (the replay feeds the four check times).
+     If an-auto-d18.mjs still references the continuous path, point it at DetectionMockReplayActivity
+     (unchanged entry point) - the coordinates it drives are the same three (Geneva/Annemasse/border).
+Expected: PASS, no coordinate value, no coordinate token.
+
+----------------------------------------------------------------------
+A1 - DISCLOSURE + PERMISSION + REVOCATION (needs a reachable server for the enable half)
+----------------------------------------------------------------------
+Disclosure wording now says "four times a day" (DisclosureCopy.FOUR_TIMES; paparazzi disclosure
++ disclosureLarge baselines regenerated and looked at). On the phone:
+  - In Parametres, toggle "Detection automatique (beta)" ON -> the DISCLOSURE appears BEFORE the
+    system prompt, now including the four-times line. Screenshot it.
+  - "Autoriser la localisation" -> the FINE in-use dialog, then (API 29) the SEPARATE background
+    dialog ("Toujours autoriser"). Both grants -> no crash.
+  - The enable half (consent PATCH -> startSampling) needs a reachable /api/v1/me: use AN-AUTO
+    handoff-2's rig (the monreleve:write container + a real injected session via
+    SessionInjectionActivity). Without it the PATCH is NetworkError and the toggle stays off
+    (honest). Toggle OFF -> stopSampling cancels the periodic worker at once.
+  - Revocation: with auto on, revoke the location permission in system settings; on ON_RESUME the
+    app falls back to MANUAL + a plain toast (DisclosureCopy.PERMISSION_REVOKED), no crash, no nag.
+
+----------------------------------------------------------------------
+A2 + A5 - A REAL DAY OF THE FOUR CHECKS + BATTERY (real-time, tomorrow; needs the server rig)
+----------------------------------------------------------------------
+With auto ON (server rig up) and the perms granted, keep the phone PLUGGED IN and UNTOUCHED
+across a full Paris day so all four windows pass. The phone is in Casablanca, far from any Swiss
+border -> every check classifies OUTSIDE -> expect a HIGH "Domicile" proposal in the evening.
+  - Grant for the run (disclosure already proven):
+      adb -s 232bcd8c300c7ece shell pm grant ch.monreleve.app android.permission.ACCESS_FINE_LOCATION
+      adb -s 232bcd8c300c7ece shell pm grant ch.monreleve.app android.permission.ACCESS_BACKGROUND_LOCATION
+      adb -s 232bcd8c300c7ece shell svc power stayon usb
+  - BATTERY (A5), AN6a's method (the Exynos S9 has no power rails, so dumpsys batterystats):
+      at the first window:  adb -s 232bcd8c300c7ece shell dumpsys batterystats --reset
+      after the last window: read the app's estimated drain; compare to the 3%/working-day budget.
+  - READ THE DAY (A2), two ways:
+      adb -s 232bcd8c300c7ece shell run-as ch.monreleve.app cat databases/monreleve.db > a2.db
+      then read daily_tally: EXPECT today's row with check1..check4 = OUTSIDE (or NULL where a
+      window was MISSED); OR open Aujourd'hui after 17:00 Paris -> ETAT B proposal card "Domicile".
+  - R233 (did it observe its subject?): the battery figure is only meaningful if the worker WOKE
+      and recorded >=1 check (a non-null check slot). If all four are NULL, Samsung killed the
+      worker across every window - record THAT under WHAT SAMSUNG DID; the battery is then an idle
+      phone, not detection. Record HOW MANY of the four checks were MISSED (this Samsung's real
+      four-window reliability, R317).
+
+----------------------------------------------------------------------
+A4 - NEAR-BORDER ONCE (needs the rig; the tally is now four checks)
+----------------------------------------------------------------------
+Seed daily_tally with 5 recent working-day rows, 3 of them with >= 2 of check1..check4 = BUFFER
+(near-border), 2 clean (INSIDE/OUTSIDE), then open Aujourd'hui -> DetectionCopy.NEAR_BORDER shows
+ONCE above the auto surface; a relaunch does not re-show it (SharedPrefsNearBorderNoticeStore).
+The RULE is JVM-proven (NearBorderTest + AujourdhuiAutoControllerTest "3 of 5 ... once, then never").
+
+----------------------------------------------------------------------
+A7 - R310 STATE on the new screens (needs the rig for the live auto states)
+----------------------------------------------------------------------
+Drive the four triggers (rotation, text-size, dark-mode, background kill) on: the disclosure
+overlay, the proposal card's Corriger-open state, the near-border notice. rememberSaveable holds
+correcting/manualOpen/showDisclosure (keyed by slot for half-day); the auto TOGGLE and the auto
+STATE derive from persistent stores, so they re-read on rebuild. Mirror StatePreservationInstrumentedTest.
+
+----------------------------------------------------------------------
+RESTORE AT THE END (operator's phone)
+----------------------------------------------------------------------
+  adb -s 232bcd8c300c7ece shell settings put global stay_on_while_plugged_in 0   (orchestrator's directive: restore to 0)
+  adb -s 232bcd8c300c7ece shell appops set ch.monreleve.app android:mock_location deny
+  adb -s 232bcd8c300c7ece shell pm revoke ch.monreleve.app android.permission.ACCESS_BACKGROUND_LOCATION
+  adb -s 232bcd8c300c7ece shell pm revoke ch.monreleve.app android.permission.ACCESS_FINE_LOCATION
+  (reset any developer option toggled.)
+
+END OF AN-AUTO-2 HANDOFF 1
