@@ -89,8 +89,20 @@ android {
             // shape on the Android side. Cleartext to this host is permitted only
             // by src/debug/res/xml/network_security_config.xml; the release sibling
             // denies all cleartext, proven by checkReleaseCleartext.
+            //
+            // R321 (AN-NEXT): the host is a gradle property too, defaulting to 10.0.2.2
+            // so the emulator path is unchanged. A PHYSICAL device has no 10.0.2.2 alias,
+            // so the device drive overrides it with -PfrontalierHost=127.0.0.1 and bridges
+            // with `adb reverse tcp:3000 tcp:3000` - exactly as the audit variant already
+            // does. This replaces the two-build workaround (audit to reach the server, then
+            // debug over it to read the DB with run-as): one DEBUGGABLE build now does both,
+            // because run-as needs debuggable and a physical device needs the host override.
+            // The 127.0.0.1 cleartext exception already lives in src/debug's network config
+            // (added in AN14a increment 6); the RELEASE build is untouched and still denies
+            // all cleartext (checkReleaseCleartext reads the release variant, not this one).
             val frontalierPort = (project.findProperty("frontalierPort") as String?) ?: "3000"
-            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:$frontalierPort\"")
+            val frontalierHost = (project.findProperty("frontalierHost") as String?) ?: "10.0.2.2"
+            buildConfigField("String", "API_BASE_URL", "\"http://$frontalierHost:$frontalierPort\"")
         }
         release {
             // AN14a increment 2. R8 ON for the first time (was false - the AN14 deferral AN-AUDIT parked as
