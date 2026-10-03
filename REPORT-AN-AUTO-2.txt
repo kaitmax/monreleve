@@ -234,3 +234,86 @@ A .txt-only commit cannot alter either gate's result (gate:clone runs the web pn
 android JVM/static tasks). Commit: fetch-before-push, local==origin before push, only this session's two
 files staged by path. The untracked drive scripts (android/scripts/an-auto-2-*.mjs, uidrive.mjs) and shot
 dirs stay untracked. Final commit hash in the session report.
+
+
+====================================================================
+R322 - THE REAL-DAY INVESTIGATION (2026-10-03, appended)
+====================================================================
+AN-AUTO-2-REALDAY PART A armed the phone for a real unplugged day. The
+read found NO daily_tally row for 2026-10-03 despite windows passing. The
+first reflex - "the environment's clock races, so the measurement cannot
+be done here" - was recorded as a hypothesis and then MEASURED before
+being believed (R322). It was WRONG. The real cause is a DEFECT that
+would otherwise have reached the field test.
+
+STEP 1 - THE CLOCK IS NORMAL (measured, not assumed).
+  Ran `adb shell 'cat /proc/uptime; date +%s'` twice around a real host
+  interval, host clock measuring the gap. Over the interval:
+     host wall-clock delta:   176 s
+     device uptime delta:     176 s   (monotonic - cannot be faked)
+     device wall-clock delta: 176 s
+  All three equal. Also auto_time=1, auto_time_zone=1 (automatic - the
+  AN-AUDIT clock test was restored), and host epoch == device epoch
+  (1791025966 at T0). The device clock is real; the hours between the
+  earlier checks (08:20 -> 11:06 -> 12:15 Casablanca) genuinely passed.
+  CONCLUSION: not the clock. Go to the worker (R322 step 1 -> 3).
+
+STEP 2 - not reached (the clock does not jump; auto_time already 1).
+
+STEP 3 - THE WORKER RUNS; THE WINDOW LOGIC IS CORRECT; THE FIX FAILS.
+  WORKER IS RUNNING. logcat: "WM-WorkerWrapper: Starting work for
+  ch.monreleve.app.detection.SamplingWorker" then "Worker result SUCCESS",
+  rescheduling (next job min-latency +14m59s = the 15-min floor). Standby
+  bucket = 20 (WORKING_SET), not RARE/RESTRICTED - Samsung is NOT
+  suppressing it. So NOT a scheduling defect and NOT R317 suppression.
+  WINDOW LOGIC IS CORRECT. CheckWindows.parisMinuteOfDay converts the
+  instant to Europe/Paris (instant.atZone(PARIS).toLocalTime, R28/R308-
+  safe) regardless of the device's Africa/Casablanca zone. The 12:17 CB
+  (=13:17 Paris) SUCCESS run correctly did nothing - 13:17 Paris is the
+  lunch gap between window 2 (ends 11:30 Paris) and window 3 (opens 14:00
+  Paris). Windows in CB today (Paris-1h, CEST until Oct 25): 08:00-09:00,
+  09:30-10:30, 13:00-14:00, 15:00-16:00.
+  THE FIX FAILS INDOORS - THIS IS THE DEFECT. SamplingWorker.doWork calls
+  awaitClassifiedFix(...) ?: return Result.success(): no fix -> MISSED ->
+  recordCheck is NEVER called -> no daily_tally row is created at all.
+  LiveLocation.awaitClassifiedFix requests LocationManager.GPS_PROVIDER
+  ONLY (line 88). Evidence the worker tried and GPS could not deliver:
+    - dumpsys location: "ch.monreleve.app: gps: Duration requested 2
+      total ... Last active 138 minutes ago" - the worker DID request
+      GPS fixes this morning, inside the windows.
+    - gps provider mStarted=false; last real gps fix et=+1d17h (~1.7 days
+      old); the system's fused location carries indoorProbability=0.889.
+      The phone sits indoors; GPS_PROVIDER gets no fix; the request times
+      out; awaitClassifiedFix returns null; the check is MISSED.
+    - A usable FUSED/wifi location EXISTS on the device (hAcc~14 via wifi)
+      but the sampler ignores it - it asks GPS_PROVIDER alone.
+
+THE "REAL ROW" QUESTION (R322 step 3). The daily_tally rows present
+  (2026-10-02 .. 09-28) are A4's directly-SEEDED near-border test data,
+  not real checks. Any rows AN-AUTO-2 recorded earlier came through the
+  debug MOCK provider, which REPLACES GPS_PROVIDER and feeds a fix, so
+  awaitClassifiedFix succeeded. With the mock provider denied (real GPS)
+  and the phone indoors, the real sampler obtains no fix -> no row. Every
+  existing row is a test-tooling artifact; the real GPS sampler has never
+  recorded a real indoor check.
+
+THE FINDING (F-DETECT-GPS, for the operator). GPS_PROVIDER-only fix
+  acquisition does not work indoors - and a telework day is spent indoors,
+  the exact day detection most needs to classify (home vs Switzerland). On
+  a real home day the sampler would record nothing, every day would fall
+  to "not sure" (R311/R312), and the person would always record manually.
+  That may be acceptable (manual is a peer, D19) but it means detection
+  contributes least in the commonest case, and A2's "HIGH Domicile" cannot
+  be produced by a stationary indoor phone. Options (a DESIGN decision,
+  not fixed here): (i) accept GPS-only - detection serves outdoor/commute
+  days, home days fall to manual; (ii) add a NETWORK_PROVIDER or fused
+  fallback for indoor coverage - still classify-and-discard, D18 intact,
+  but a provider/dependency + D18 review (R136 kept Play Services out).
+  Either way the fix path needs a short timeout/behaviour note so a MISSED
+  check is distinguishable from "worker never ran".
+
+MEASUREMENT CAVEAT (R233). A2 (a real four-check day) and A5 (battery off
+  the charger) STILL cannot be produced on this stationary indoor phone -
+  but for the DEFECT above, not the clock. A real A2 needs the phone where
+  GPS can fix (outdoors/by a window) or the provider change; A5 needs a
+  genuine off-charger day. Both are the field test's natural home.
