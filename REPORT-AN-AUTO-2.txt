@@ -226,4 +226,12 @@ only this session's files staged by path, :app:gate green before the commit (RED
 VoteTest/CheckWindowsTest unresolved-reference before Vote.kt/CheckWindows.kt landed). The untracked
 drive scripts (android/scripts/an-*.mjs) and shot dirs stay untracked.
 
-gate:clone (A8/R199): <to be filled on the final run>
+gate:clone (A8/R199): PASSED on commit 87ec310 (the report + handoff commit). From a clean --local
+clone with no .env, no prior node_modules and no generated file it did not produce itself, it ran and
+passed: install, typecheck, lint, test, build, size, db:deploy, test:db, test:container:write. Named-
+and-skipped with reasons (R133): test:e2e, test:visual, test:runtime, lighthouse, parity:check,
+test:container (browser / Chrome / container / CI-only, which a clone cannot run here). CI quiet
+(private repo, CI_FULL unset). `pnpm size` did NOT crash this run (no 0xC0000142). The ONE commit that
+follows (this line's own report update) is docs-only and cannot break the clone - android+docs changes
+do not touch the web clone legs. :app:gate is green on the last code commit (e3c5ab6, step 1); no app
+code changed after it.
