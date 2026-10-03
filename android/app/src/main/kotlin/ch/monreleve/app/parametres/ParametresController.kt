@@ -16,7 +16,9 @@ import ch.monreleve.app.onboarding.GranularityChoice
 import ch.monreleve.app.onboarding.SettingsSaver
 import ch.monreleve.app.releve.ExportEvent
 import ch.monreleve.app.settings.DetectionModeStore
+import ch.monreleve.app.settings.EveningNotificationStore
 import ch.monreleve.app.settings.InMemoryDetectionModeStore
+import ch.monreleve.app.settings.InMemoryEveningNotificationStore
 import ch.monreleve.app.settings.LoggingMode
 import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
@@ -144,6 +146,8 @@ data class ParametresState(
     val deleteOutcome: DeleteOutcome? = null,
     /** R315: whether automatic detection (beta) is on. MANUAL by default (D19); reflects the local mode cache. */
     val autoDetectionEnabled: Boolean = false,
+    /** R323: whether the evening proposal notification is on. Off by default; separate from auto detection. */
+    val eveningNotificationEnabled: Boolean = false,
 )
 
 /**
@@ -227,6 +231,10 @@ class ParametresController(
     private val modeStore: DetectionModeStore = InMemoryDetectionModeStore(),
     private val startSampling: () -> Unit = {},
     private val stopSampling: () -> Unit = {},
+    // R323 / PARKAN-36 (AN-NEXT): the evening proposal notification's opt-in store (off by default, separate from
+    // the detection toggle). Defaulted in-memory so the existing tests build; the app injects the SharedPreferences
+    // store (ShellState). Purely local - there is no /api/v1/me consent to reconcile, unlike the detection mode.
+    private val eveningNotificationStore: EveningNotificationStore = InMemoryEveningNotificationStore(),
     // AN-STATE (R310): the state to restore after a rebuild (null = a fresh open). Seeds the six edited fields;
     // the open confirmations are reopened once the rows load (resolvePendingReopen), with counts re-derived and
     // R290's before/after recomputed - never persisted (R181).
@@ -255,8 +263,12 @@ class ParametresController(
         MutableStateFlow(
             (restored?.let(::stateOfSnapshot) ?: stateOf(savedSettings))
                 // R315: the toggle opens reflecting the stored mode (MANUAL by default). Persistent, so a
-                // rebuild re-reads it; nothing to snapshot (R310).
-                .copy(autoDetectionEnabled = modeStore.load() == LoggingMode.AUTO_DETECT),
+                // rebuild re-reads it; nothing to snapshot (R310). R323: the evening-notification toggle likewise
+                // reflects its stored opt-in (off by default), persistent and re-read on rebuild.
+                .copy(
+                    autoDetectionEnabled = modeStore.load() == LoggingMode.AUTO_DETECT,
+                    eveningNotificationEnabled = eveningNotificationStore.isEnabled(),
+                ),
         )
     val state: StateFlow<ParametresState> = mutableState.asStateFlow()
 
@@ -552,6 +564,19 @@ class ParametresController(
                     mutableState.update { it.copy(phase = ParametresPhase.NETWORK_ERROR) }
             }
         }
+    }
+
+    /**
+     * R323 / PARKAN-36: opt into or out of the evening proposal notification (separate from automatic detection,
+     * OFF by default). Purely LOCAL - no /api/v1/me PATCH and no consent, because it is a device notification, not
+     * a server feature. The OS POST_NOTIFICATIONS prompt that must precede an ENABLE on Android 13+ is the
+     * screen's concern (MainActivity, the same disclosure-first discipline as detection); this persists the
+     * choice and reflects it. The decision to actually fire is the worker's (eveningDecision), which also requires
+     * automatic detection to be on - so enabling this while manual changes nothing until detection is on too.
+     */
+    fun setEveningNotification(enable: Boolean) {
+        eveningNotificationStore.setEnabled(enable)
+        mutableState.update { it.copy(eveningNotificationEnabled = enable) }
     }
 
     /**

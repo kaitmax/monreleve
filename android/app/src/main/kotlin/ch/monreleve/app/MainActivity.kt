@@ -60,7 +60,9 @@ import ch.monreleve.app.data.repo.LocalEntryRepository
 import ch.monreleve.app.data.sync.SyncScheduler
 import ch.monreleve.app.design.FrontierTheme
 import ch.monreleve.app.detection.BACKGROUND_LOCATION
+import ch.monreleve.app.detection.EXTRA_OPEN_AUJOURDHUI
 import ch.monreleve.app.detection.FINE_LOCATION
+import ch.monreleve.app.detection.POST_NOTIFICATIONS_PERMISSION
 import ch.monreleve.app.detection.locationFullyGranted
 import ch.monreleve.app.fr.DisclosureCopy
 import ch.monreleve.app.fr.ParametresCopy
@@ -369,6 +371,33 @@ internal fun MainShell(
             }
         }
 
+    // R323 / PARKAN-36. Turning the evening proposal notification ON asks POST_NOTIFICATIONS on Android 13+
+    // (API 33), then enables; below 33 (the S9 is 29) posting needs no grant, so it enables straight away. A deny
+    // leaves it off and never nags (the detection flow's discipline, one feature over). OFF is immediate.
+    val notificationLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) controllers.parametres.setEveningNotification(true) // deny -> stay off, no nag
+        }
+    val onToggleEvening: (Boolean) -> Unit = { enable ->
+        when {
+            !enable -> controllers.parametres.setEveningNotification(false)
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ->
+                notificationLauncher.launch(POST_NOTIFICATIONS_PERMISSION)
+            else -> controllers.parametres.setEveningNotification(true) // API < 33: no runtime permission to ask
+        }
+    }
+
+    // R323 / D16: a notification tap opens Aujourd'hui (and records nothing). The launch intent carries
+    // EXTRA_OPEN_AUJOURDHUI; consume it once on composition, select the tab and refresh today's surface.
+    LaunchedEffect(Unit) {
+        val activity = context as? android.app.Activity
+        if (activity?.intent?.getBooleanExtra(EXTRA_OPEN_AUJOURDHUI, false) == true) {
+            tab = AppTab.AUJOURDHUI
+            controllers.aujourdhui.refresh()
+            activity.intent.removeExtra(EXTRA_OPEN_AUJOURDHUI)
+        }
+    }
+
     LaunchedEffect(controllers.releve) {
         controllers.releve.exportEvents.collect { event -> handleExport(context, event) }
     }
@@ -455,6 +484,7 @@ internal fun MainShell(
                         onToggleAuto = { enable ->
                             if (enable) showDisclosure = true else controllers.parametres.setAutoDetection(false)
                         },
+                        onToggleEvening = onToggleEvening,
                         onOpenLegal = { openLegal(context, it) },
                     )
             }
@@ -511,11 +541,12 @@ private fun ParametresTab(
     state: ParametresState,
     controller: ParametresController,
     onToggleAuto: (Boolean) -> Unit,
+    onToggleEvening: (Boolean) -> Unit,
     onOpenLegal: (LegalPage) -> Unit,
 ) {
     ParametresScreen(
         state = state,
-        actions = parametresActions(controller, onToggleAuto, onOpenLegal),
+        actions = parametresActions(controller, onToggleAuto, onToggleEvening, onOpenLegal),
         appVersion = ParametresCopy.version(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE.toString()),
     )
 }
@@ -539,6 +570,7 @@ private fun openLegal(
 private fun parametresActions(
     controller: ParametresController,
     onToggleAuto: (Boolean) -> Unit,
+    onToggleEvening: (Boolean) -> Unit,
     onOpenLegal: (LegalPage) -> Unit,
 ): ParametresActions =
     ParametresActions(
@@ -563,6 +595,8 @@ private fun parametresActions(
         onOpenLegal = onOpenLegal,
         // R316: the toggle is GATED - ON launches the disclosure first (the shell handles it), OFF is immediate.
         onToggleAutoDetection = onToggleAuto,
+        // R323: ON asks POST_NOTIFICATIONS (API 33+) then enables; OFF is immediate (the shell handles the ask).
+        onToggleEveningNotification = onToggleEvening,
     )
 
 // AC2 / R136: hand the server-rendered export to the platform. A Ready event's bytes are written to a

@@ -16,7 +16,9 @@ import ch.monreleve.app.parametres.ParametresController
 import ch.monreleve.app.parametres.ParametresSnapshot
 import ch.monreleve.app.releve.ReleveController
 import ch.monreleve.app.settings.DetectionModeStore
+import ch.monreleve.app.settings.EveningNotificationStore
 import ch.monreleve.app.settings.InMemoryDetectionModeStore
+import ch.monreleve.app.settings.InMemoryEveningNotificationStore
 import ch.monreleve.app.settings.SettingsStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -105,6 +107,10 @@ object MainGraph {
         // app injects the DAO flow and the SharedPreferences store (ShellState, where a Context is available).
         detectionTallies: Flow<List<TallyEntity>> = emptyFlow(),
         nearBorderNoticeStore: NearBorderNoticeStore = InMemoryNearBorderNoticeStore(),
+        // R323 / PARKAN-36 (AN-NEXT): the evening proposal notification's opt-in store, read by the Parametres
+        // toggle. Defaulted in-memory so the wiring and controller tests build; the app injects the
+        // SharedPreferences store (ShellState, where a Context is available).
+        eveningNotificationStore: EveningNotificationStore = InMemoryEveningNotificationStore(),
     ): MainControllers =
         MainControllers(
             aujourdhui =
@@ -129,6 +135,7 @@ object MainGraph {
                     detectionModeStore,
                     startSampling,
                     stopSampling,
+                    eveningNotificationStore,
                     restoredParametres,
                 ),
         )

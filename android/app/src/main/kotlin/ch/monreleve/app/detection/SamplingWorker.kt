@@ -30,6 +30,11 @@ class SamplingWorker(
     @Suppress("ReturnCount") // each early return is a distinct "nothing to do this wake" path; all return success
     override suspend fun doWork(): Result {
         val clock = Clock.systemUTC()
+        // R323 / PARKAN-36: every wake also offers the evening proposal notification. It self-gates (opted in,
+        // auto mode, a concluded working day with no entry yet, not already fired today), so most wakes do
+        // nothing; the first wake after the last window posts it. It records nothing (D16) and reads no
+        // coordinate (D18) - only the day's four Classification checks and the entry rows.
+        maybeNotifyEvening(applicationContext, clock)
         val window = currentCheckWindow(clock) ?: return Result.success() // between windows, or lunch
         val dao = MonReleveDatabase.get(applicationContext).tallyDao()
         val dayDate = todayInParis(clock)

@@ -90,6 +90,15 @@ fun ParametresScreen(
         }
 
         AutoDetectionSection(state.autoDetectionEnabled, actions.onToggleAutoDetection, enabled = !busy)
+        // R323 / PARKAN-36: the evening proposal notification toggle, shown ONLY when detection is on - without
+        // detection there is nothing to propose, so offering it would be a switch that can never fire.
+        if (state.autoDetectionEnabled) {
+            EveningNotificationSection(
+                state.eveningNotificationEnabled,
+                actions.onToggleEveningNotification,
+                enabled = !busy,
+            )
+        }
 
         DataSection(actions)
         DeleteRow(actions.onRequestDelete)
@@ -134,6 +143,27 @@ private fun AutoDetectionSection(
     Text(text = ParametresCopy.AUTO_BETA_NOTE, style = FrontierType.caption, color = LightColors.textSecondary)
     // R317: the honest battery-management note - no exemption asked, no system setting changed on their behalf.
     Text(text = ParametresCopy.AUTO_BATTERY_NOTE, style = FrontierType.caption, color = LightColors.textSecondary)
+}
+
+// R323 / PARKAN-36. The evening proposal notification toggle (« Me prévenir le soir »). OPT-IN, off by default,
+// separate from detection; a plain Switch, no dialog. Turning it ON is routed through MainActivity, which asks the
+// POST_NOTIFICATIONS permission on Android 13+ before enabling. The description states the no-nag rules (once a
+// day, never the week-end). Emits into the parent Column, like AutoDetectionSection above it.
+@Composable
+private fun EveningNotificationSection(
+    checked: Boolean,
+    onToggle: (Boolean) -> Unit,
+    enabled: Boolean,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.space12),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(text = ParametresCopy.EVENING_LABEL, style = FrontierType.bodyM, modifier = Modifier.weight(1f))
+        Switch(checked = checked, onCheckedChange = onToggle, enabled = enabled)
+    }
+    Text(text = ParametresCopy.EVENING_DESCRIPTION, style = FrontierType.caption, color = LightColors.textSecondary)
 }
 
 @Composable

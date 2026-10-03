@@ -22,6 +22,7 @@ import ch.monreleve.app.onboarding.SettingsSaver
 import ch.monreleve.app.parametres.ParametresSnapshot
 import ch.monreleve.app.settings.SettingsStore
 import ch.monreleve.app.settings.SharedPrefsDetectionModeStore
+import ch.monreleve.app.settings.SharedPrefsEveningNotificationStore
 import ch.monreleve.app.ui.shell.AppTab
 import java.time.Clock
 
@@ -110,6 +111,9 @@ fun rememberMainControllers(
                 // writes, so ETAT A becomes ETAT B without a manual refresh.
                 detectionTallies = MonReleveDatabase.get(context).tallyDao().observeAll(),
                 nearBorderNoticeStore = SharedPrefsNearBorderNoticeStore(context),
+                // R323 / PARKAN-36: the evening proposal notification's opt-in store (shares monreleve.detection,
+                // so sign-out's clear sweeps it). The Parametres toggle reads/writes it; the worker reads it too.
+                eveningNotificationStore = SharedPrefsEveningNotificationStore(context),
             )
         }
     // Keep the saved snapshots current from the controllers' observed state, so the LATEST month, open sheet,

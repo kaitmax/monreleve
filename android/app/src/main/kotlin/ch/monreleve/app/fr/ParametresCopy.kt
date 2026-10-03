@@ -43,6 +43,17 @@ object ParametresCopy {
             "économiser la batterie. Si une journée n’est pas détectée, saisissez-la manuellement ; " +
             "l’application ne modifie aucun réglage système à votre place."
 
+    // R323 / PARKAN-36: the evening proposal toggle. OPT-IN, SEPARATE from detection, OFF by default. Worded as a
+    // « proposition » the person is prévenu of about once a day - never a « rappel » that nags (the rules forbid a
+    // second reminder or a « vous avez oublié »), which is also why ParametresR282Test (the parked FCM reminder
+    // must stay unnamed) needs no change: « prévenir », not « rappel » / « notification ». Shown only when
+    // detection is on - without it there is nothing to propose.
+    const val EVENING_LABEL = "Me prévenir le soir"
+    const val EVENING_DESCRIPTION =
+        "Quand la détection automatique est active, l’application peut vous prévenir le soir si une journée de " +
+            "travail n’a pas encore été enregistrée, pour que vous la confirmiez ou la corrigiez. Une seule fois " +
+            "par jour, jamais le week-end."
+
     // FD9's SITUATION PROFESSIONNELLE section: the settings that recompute the whole year, under a warning.
     const val SITUATION_HEADING = "Situation professionnelle"
     const val SITUATION_WARNING =

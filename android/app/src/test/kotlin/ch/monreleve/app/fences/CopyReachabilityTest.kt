@@ -180,6 +180,23 @@ private val UNREACHABLE: Map<String, String> =
         "DisclosureCopy.PERMISSION_REVOKED" to
             "the R316 toast shown when the location permission is revoked in system settings, raised by " +
             "MainActivity's ON_RESUME fallback (a Context/Toast concern) - reached from the composition root",
+        // R323 / PARKAN-36: the evening proposal notification copy is rendered by the background notifier
+        // (detection/EveningNotifier, a Context/NotificationManager concern the ui/ fence keeps out of ui/), so
+        // the census reaches it from the worker rather than a fr-surface directory - the ReleveCopy.EXPORT_*
+        // /Toast case. The Parametres TOGGLE copy (ParametresCopy.EVENING_*) is reached normally from
+        // ParametresScreen and is not listed here.
+        "NotificationCopy.CHANNEL_NAME" to
+            "the evening-notification channel name shown in system settings, used by EveningNotifier.ensureChannel " +
+            "(a NotificationManager concern the ui/ fence keeps out of ui/) - reached from the background notifier",
+        "NotificationCopy.CHANNEL_DESCRIPTION" to
+            "the evening-notification channel description in system settings, used by EveningNotifier.ensureChannel " +
+            "(a NotificationManager concern the ui/ fence keeps out of ui/) - reached from the background notifier",
+        "NotificationCopy.publicLines" to
+            "the LOCK-SCREEN (public) notification lines, built by EveningNotifier.post (a NotificationManager " +
+            "concern the ui/ fence keeps out of ui/) - reached from the background notifier, not a surface",
+        "NotificationCopy.privateLines" to
+            "the UNLOCKED (private) notification lines, built by EveningNotifier.post (a NotificationManager " +
+            "concern the ui/ fence keeps out of ui/) - reached from the background notifier, not a surface",
     )
 
 class CopyReachabilityTest {

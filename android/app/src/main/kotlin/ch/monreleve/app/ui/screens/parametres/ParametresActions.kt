@@ -43,4 +43,6 @@ data class ParametresActions(
     val onOpenLegal: (LegalPage) -> Unit,
     /** R315: turn automatic detection (beta) on or off. Off stops sampling at once; neither way is a dialog. */
     val onToggleAutoDetection: (Boolean) -> Unit,
+    /** R323: turn the evening proposal notification on or off. ON asks the notification permission (Android 13+). */
+    val onToggleEveningNotification: (Boolean) -> Unit,
 )
