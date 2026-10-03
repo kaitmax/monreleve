@@ -1,0 +1,90 @@
+AN-AUTO-2-REALDAY - Mon Releve
+THE REAL DAY OF CHECKS AND THE BATTERY, MEASURED THE WAY A PERSON USES
+THE PHONE
+Two short sessions, each pasted into a fresh Claude Code session at the
+repository root: PART A before the first window, PART B after the day
+has concluded. The phone (Galaxy S9) is connected for both.
+
+====================================================================
+WHY THIS REPLACES THE PLUGGED-IN READ
+====================================================================
+AN-AUTO-2 armed the phone PLUGGED IN with the screen kept on, and reset
+batterystats at that moment. Two problems, both about measuring the
+wrong thing (R233 - a measurement reports whether it observed its
+subject):
+
+  1. BATTERY. batterystats counts DISCHARGE. A phone on its charger all
+     day is not discharging, so a battery figure from that day says
+     almost nothing about the 3 percent budget. The figure must come
+     from a day OFF the charger.
+  2. MISSED CHECKS. Plugged in with the screen on, Android never enters
+     Doze, so the background work is not delayed. The report already
+     records the miss count as a lower bound. A person's phone is in a
+     pocket, screen off, unplugged - which is exactly when Samsung's
+     battery management delays background work (R317).
+
+And one thing to check before anything else:
+
+  3. THE DAY OF THE WEEK. The checks were armed on 2026-10-03, a
+     SATURDAY. If the sampler only runs on working days - which the
+     product's working-day logic suggests - a Saturday produces no
+     checks, and the read would find nothing for a reason that has
+     nothing to do with detection. Find out from the code.
+
+Nothing here changes code. Same rules as AN-AUTO-2: D18 and D16
+absolute, no red commit, restore every phone setting changed, R270, and
+advisors for judgment calls. Each part ends with its own short report,
+committed and pushed. Any handoff goes in relay/ (R319).
+
+====================================================================
+PART A - ARM IT FOR A REAL DAY (run before the first window)
+====================================================================
+1. THE DAY. From the code, establish whether the sampler and the vote
+   run on non-working days. State the answer and the file and line that
+   decide it. If it skips weekends and today is a weekend, STOP HERE:
+   say which day to use (the next working day) and end with a one-line
+   report. Do not change the code to sample on a weekend - that would
+   test a behaviour the product does not have.
+2. THE WINDOWS FOR THAT DAY. Compute the four check times in the
+   phone's local time from the date - Paris summer time ends on the
+   last Sunday of October, after which Paris and Casablanca share the
+   same clock. Do not take times from an earlier report.
+3. ARM. Confirm automatic mode is on, both location permissions are
+   granted, the worker is enqueued, and the mock provider is denied.
+   Restore stay_on_while_plugged_in to its original value - the phone
+   must be free to sleep normally.
+4. RESET THE BATTERY BASELINE, LAST: `adb shell dumpsys batterystats
+   --reset`, immediately before the operator unplugs. Record the time.
+5. END with a message that tells the operator plainly: unplug the phone
+   now, use it normally or leave it face-down and idle - screen off,
+   not charging - and plug it back in after the last check has
+   concluded, at the time you computed. Write that time.
+   Commit a short PART A note in relay/AN-AUTO-2-realday-A.txt. Push.
+
+====================================================================
+PART B - READ IT (run after the day has concluded)
+====================================================================
+1. Plug in. Confirm the phone was NOT charging during the day: read the
+   unplug and replug times from batterystats. If it charged for part of
+   the day, say for how long - the battery figure covers only the
+   discharge.
+2. Follow relay/AN-AUTO-2-handoff-2.txt's read recipe for the tally:
+   each of the four checks - taken inside its window, or missed - and
+   the day's outcome under R320's vote. In Casablanca, every taken check
+   should be outside Switzerland, so a HIGH "Domicile" is correct; a
+   missed check is the finding to record, with its window.
+3. THE BATTERY: the app's share of discharge across the unplugged day,
+   by AN6a's method, against the 3 percent budget - and R233's line on
+   whether the measurement observed the app at all.
+4. THE A7 STATE the handoff names: the proposal card's Corriger-open
+   state surviving a rotation and a background kill, now that a
+   concluded day has a proposal.
+5. RESTORE every phone setting the handoff lists. Gates and gate:clone
+   if anything was committed beyond the report.
+6. REPORT, appended to REPORT-AN-AUTO-2.txt as a dated section: each
+   check (taken or missed, with its window), the outcome, the battery
+   figure and how long the phone was off the charger, the A7 state, and
+   what Samsung's battery management did under real conditions.
+   Commit, push.
+
+END OF AN-AUTO-2-REALDAY
