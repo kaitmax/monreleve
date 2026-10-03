@@ -92,5 +92,17 @@
             android:name=".dev.WireDumpActivity"
             android:exported="true"
             android:theme="@style/Theme.MonReleve" />
+
+        <!--
+          AN-NEXT increment 3 (R323). EveningNotifyActivity runs the REAL evening-notification path
+          (maybeNotifyEvening) on demand, so the proposal notification can be seen on the physical phone
+          without the WorkManager wake and a real weekday evening. Declared only here, so it never ships
+          (checkReleaseNoDevComponent fails on any ch.monreleve.app.dev.* in the release APK). Reached by:
+            adb shell am start -n ch.monreleve.app/ch.monreleve.app.dev.EveningNotifyActivity
+        -->
+        <activity
+            android:name=".dev.EveningNotifyActivity"
+            android:exported="true"
+            android:theme="@style/Theme.MonReleve" />
     </application>
 </manifest>
