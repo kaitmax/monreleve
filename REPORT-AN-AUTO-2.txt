@@ -3,23 +3,23 @@ REPORT-AN-AUTO-2  -  Mon Releve, finishing automatic detection + the R320 redesi
 
 HOW IT ENDED
 ------------
-GREEN PUSHED BOUNDARY, with the on-device and real-time legs OWED-WITH-HANDOFF (a clean
-ending the prompt names explicitly). ALL of R320's CODE is shipped, gated (:app:gate green
-on every increment) and pushed: the four-window sampler, the vote (day + half-day), the
-Room reshape with a real MIGRATION_3_4, the measurement build, the Aujourd'hui auto surface,
-and the disclosure's "four times a day" wording. The DEVICE verification (A1 enable-half, A2,
-A3 on-phone, A4, A5, A6 legs 3-4, A7) and the real-time window (A2/A5) are owed with a precise
-recipe in relay/AN-AUTO-2-handoff-1.txt: they need the physical build/install/drive cycle, a
-reachable server for the consent-gated legs, and a REAL working-day window - which is tomorrow.
-The HARD BOUNDARY D18 holds in code and in the gate (legs 1-2: source fence + Room DDL scan,
-both green under the new schema). No red commit.
+GREEN PUSHED BOUNDARY. ALL of R320's CODE is shipped, gated (:app:gate green on every
+increment) and pushed: the four-window sampler, the vote (day + half-day), the Room reshape
+with a real MIGRATION_3_4, the measurement build, the Aujourd'hui auto surface, and the
+disclosure's "four times a day" wording. DONE ON THE PHONE: A3 (the nine tracks via the mock
+provider, 9/9 under R311) and A6 legs 3-4 (D18 network/logcat, no coordinate). OWED-WITH-HANDOFF
+(a clean ending the prompt names): A1's enable-half, A2, A4, A5, A7 - they need a reachable
+server for the consent-gated legs and/or a REAL working-day window, which is tomorrow; the
+precise recipe is in relay/AN-AUTO-2-handoff-1.txt. The HARD BOUNDARY D18 holds in code, in the
+gate (legs 1-2) and on the phone (legs 3-4). No red commit.
 
 Increments pushed this session (origin/main c6b2c64 -> ...):
   incr 0   R319: the AN-AUTO handoffs copied into relay/            7c327a5
   incr 0b/1 the four-window vote core (DayChecks + windows), JVM    4182d73
   incr 0b/2 wire the vote through the product + migration + docs    7d2b130
   step 1   the disclosure says four times a day (R320)              e3c5ab6
-  this report + handoff                                             (final)
+  report + handoff; gate:clone record                              87ec310 / 846471d
+  A3/A6 on the phone: the mock-replay prime-read fix + report       (final)
 
 R273
 ----
@@ -134,7 +134,17 @@ BEFORE it runs (R197), asserted by DetectionSessionTest (JVM, green). The seven 
 new cases R320 introduces: "one check missed (three taken, all agreeing)" -> HIGH, and "one check
 delayed past its window (its 13:00 fix is never a check)" -> the window is MISSED, HIGH on the other
 three. Under R311 the nine give 4 "Propose" (HIGH) and 5 "Pas sur" (a LOW, a MEDIUM, a split day, a
-no-fix day, a border-dwell day). On-phone replay + screenshot: OWED (handoff-1 A3).
+no-fix day, a border-dwell day).
+  DONE ON THE PHONE (A3). Built + installed the debug APK, set the app as the mock-location app, granted
+  FINE, and launched dev/DetectionMockReplayActivity. All NINE tracks match their expected R311 outcome:
+  4 "Propose CH/HOME" (commute, telework, one-missed, delayed) and 5 "Pas sur" (strip-home LOW, the
+  border-crossing MEDIUM withheld, the split day, the no-fix day, the border-dwell day). Shot:
+  .an-auto-shots/a3-mock-r320-fixed.png, cropped and looked at (R178). A first run showed one HIGH track
+  as "Pas sur" per run (a different track cold vs warm) - a getLastKnownLocation STALENESS artifact of the
+  mock instrument (the first read after setTestProviderLocation returns the PRIOR fix), not the vote (the
+  deterministic JVM DetectionSessionTest is green for all nine). Fixed in the instrument with a primed,
+  discarded read before the real read (MockProviderReplay.kt); the product sampler reads a fresh fix via
+  awaitClassifiedFix and was never subject to it.
 
 THE NEAR-BORDER MESSAGE
 -----------------------
@@ -146,11 +156,14 @@ NO COORDINATE ANYWHERE (D18, the hard boundary)
 -----------------------------------------------
 Legs 1-2 GREEN in :app:gate under the new schema: (1) the source fence (FencesTest 2b - no coordinate
 type outside detection/), and (2) the Room DDL scan (RoomSchemaContractTest - daily_tally is now
-check1..check4 TEXT, no coordinate column in any table, over schemas/4.json). Legs 3-4 (network trace +
-logcat during a full auto walkthrough) are OWED on-device: run android/scripts/an-auto-d18.mjs with the
-mock replay driving the four-window path (handoff-1 A6). FAIL-CLOSED judgment calls recorded under
-ADVISOR DECISIONS. The vote, the sampler, the cursor-less persistence and the export hold NO coordinate
-by construction (DayChecks is four Classification names; the coordinate dies in classifyFix/classifyCurrentLocation).
+check1..check4 TEXT, no coordinate column in any table, over schemas/4.json). Legs 3-4 DONE ON THE PHONE:
+node android/scripts/an-auto-d18.mjs drove the four-window mock replay (the nine tracks feeding the three
+known coordinates through the classify path) and captured a ~322 KB logcat - NONE of the coordinate
+values and no coordinate token appears (PASS); the pulled Room DB has no coordinate column. Re-runnable;
+it covers the four-window path (same DetectionMockReplayActivity entry point, same coordinates). The vote,
+the sampler, the cursor-less persistence and the export hold NO coordinate by construction (DayChecks is
+four Classification names; the coordinate dies in classifyFix/classifyCurrentLocation). FAIL-CLOSED
+judgment calls under ADVISOR DECISIONS.
 
 STATE (R310)
 ------------
@@ -186,10 +199,14 @@ this session). D18 judgment calls took the FAIL-CLOSED option:
 
 WHAT WAS CHANGED ON THE PHONE AND RESTORED
 ------------------------------------------
-Device 232bcd8c300c7ece. The on-device legs are OWED, so this session changed NOTHING on the phone
-beyond what the owed run will (handoff-1 lists each change and its restore). stay_on_while_plugged_in
-is 7 (a prior run left it so); the orchestrator's directive is to RESTORE it to 0 at the very end of
-the owed run, along with mock_location=deny and both location permissions revoked.
+Device 232bcd8c300c7ece (SM-G960F, Android 10). For A3 + A6 this session installed the DEBUG APK (left
+installed; the release the user would install is unaffected) and changed, then RESTORED:
+  - appops android:mock_location allow (A3)      -> RESTORED to deny.
+  - pm grant ACCESS_FINE_LOCATION (A3 classify)  -> RESTORED: revoked (granted=false).
+  - settings global stay_on_while_plugged_in: was 7 (a prior run) -> set to 0 (the orchestrator's directive).
+  - settings secure location_mode left at 3 (high accuracy) - a daily phone normally has location on.
+  - ACCESS_BACKGROUND_LOCATION was NOT granted; no developer option toggled.
+No coordinate was written anywhere (A6). The owed run (handoff-1) re-grants perms and re-restores them.
 
 PARKED
 ------
@@ -206,8 +223,12 @@ DEVIATIONS
   both granularities") rather than left as a full-day-only proposal; the half-day vote is JVM-tested and
   the controller wires it. A half-day auto paparazzi baseline was not added (the day-granularity
   baselines are unchanged and the half-day logic is controller-tested); the on-device walk covers it.
-- The on-device A-legs and the real-time window are OWED-WITH-HANDOFF, which the prompt names as a clean
-  ending ("never fake or shorten the window").
+- MockProviderReplay.kt gained a primed, discarded getLastKnownLocation read per point so the on-device
+  mock replay is deterministic (the test provider returns the PRIOR fix on the first read after a set). It
+  is a replay-instrument robustness measure; the product sampler (awaitClassifiedFix) was never affected.
+  :app:gate re-run green after it.
+- A1's enable-half, A2, A4, A5, A7 and the real-time window are OWED-WITH-HANDOFF, which the prompt names
+  as a clean ending ("never fake or shorten the window"). A3 and A6 legs 3-4 were done on the phone.
 
 QUESTIONS
 ---------
@@ -231,7 +252,8 @@ clone with no .env, no prior node_modules and no generated file it did not produ
 passed: install, typecheck, lint, test, build, size, db:deploy, test:db, test:container:write. Named-
 and-skipped with reasons (R133): test:e2e, test:visual, test:runtime, lighthouse, parity:check,
 test:container (browser / Chrome / container / CI-only, which a clone cannot run here). CI quiet
-(private repo, CI_FULL unset). `pnpm size` did NOT crash this run (no 0xC0000142). The ONE commit that
-follows (this line's own report update) is docs-only and cannot break the clone - android+docs changes
-do not touch the web clone legs. :app:gate is green on the last code commit (e3c5ab6, step 1); no app
-code changed after it.
+(private repo, CI_FULL unset). `pnpm size` did NOT crash this run (no 0xC0000142). The commits that
+follow are ANDROID (MockProviderReplay's prime-read fix) + DOCS, which gate:clone STRUCTURALLY does not
+test - it runs the web pnpm legs only, never :app or android/app/src - so its result is unchanged by an
+android edit. :app:gate is GREEN on the final android commit (the MockProviderReplay fix), so A8 is
+gate:clone (web, PASSED) + :app:gate (android, green on the final android commit).

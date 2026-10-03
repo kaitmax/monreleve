@@ -80,6 +80,10 @@ private fun classifyPointIntoSlots(
             elapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos()
         }
     manager.setTestProviderLocation(LocationManager.GPS_PROVIDER, location)
+    // getLastKnownLocation can return the PREVIOUS fix on the first read right after a set (a test-provider timing
+    // quirk); a primed, discarded read settles it so the real read reflects THIS point. Replay-only: the product
+    // sampler reads a fresh fix via awaitClassifiedFix (requestLocationUpdates) and is not subject to this.
+    classifyCurrentLocation(context, border)
     val classification = classifyCurrentLocation(context, border) ?: return
     slots[window.index] = classification
 }
