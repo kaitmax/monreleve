@@ -22,6 +22,12 @@ object DisclosureCopy {
         "Pour vous proposer vos journées, l’application utilise la localisation de votre téléphone pendant vos " +
             "heures de travail, en arrière-plan, même lorsque l’application est fermée."
 
+    // R320: detection checks the position FOUR TIMES a working day, not all day - stated plainly so the person
+    // knows exactly when their position is looked at, and that it is not checked at any other moment.
+    const val FOUR_TIMES =
+        "Elle vérifie votre position quatre fois au cours d’une journée de travail — vers 9 h 30, 11 h, 14 h 30 " +
+            "et 16 h 30 — et à aucun autre moment."
+
     // The privacy promise (D18): determined on-device, position discarded. No coordinate, route, address or history.
     const val ON_DEVICE =
         "Votre position est analysée uniquement sur votre téléphone pour déterminer si la journée s’est passée " +

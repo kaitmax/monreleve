@@ -38,6 +38,7 @@ fun DisclosureScreen(
     ) {
         Text(text = DisclosureCopy.TITLE, style = FrontierType.h2)
         Text(text = DisclosureCopy.USES_LOCATION, style = FrontierType.body)
+        Text(text = DisclosureCopy.FOUR_TIMES, style = FrontierType.body)
         Text(text = DisclosureCopy.ON_DEVICE, style = FrontierType.body)
         Text(text = DisclosureCopy.WHAT_IS_KEPT, style = FrontierType.body)
         Text(text = DisclosureCopy.NEVER_SHARED, style = FrontierType.body)
