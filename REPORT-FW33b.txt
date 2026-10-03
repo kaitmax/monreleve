@@ -1,0 +1,297 @@
+====================================================================
+REPORT-FW33b - THE CALCULATOR'S 1.9 KiB, AND FOUR SMALL FIXES
+====================================================================
+
+TASK      FW33b, the follow-up to FW33 (the public shell). Four items:
+          R302 (where did the calculator's 1.9 KiB go), R301 (the
+          suite identifies the INSTANCE, not just the product), and
+          three small fixes from FW33's NOTICED - R206, R186,
+          AUTH_SECRET. Relay: relay/FW33b.txt.
+BRANCH    fw33b, off origin/main HEAD c7bac21. Merged to main after
+          gate:clone (R300; a concurrent Android session shares main).
+RULINGS   R302, R301, R206, R186, R209, R9, R132, R169, R170, R177,
+          R199, R300. The advisor STALLED on every call this session
+          (relay said so); conservative options were taken and are
+          recorded under DEVIATIONS.
+
+====================================================================
+R273 - DOES THIS BELONG HERE
+====================================================================
+tasks/todo.md lists FW1-FW29 and AN1-AN15. FW33 and FW33b are both
+beyond that list: FW33 was the shell slice of
+docs/superpowers/specs/2026-09-29-home-page-design.md, and FW33b is
+its clean-up, driven by relay/FW33b.txt rather than a todo entry.
+Nothing in todo.md covers it; it is not misfiled, it is post-plan
+maintenance. Said first, per R273.
+
+====================================================================
+THE REAL BEFORE (measured, two fresh builds)
+====================================================================
+FW33's report quoted its "before" from FW29, and FW31/FW32 landed
+since. So the real before was MEASURED: commit 54c7090 (the spec
+commit, immediately before FW33's first code commit 62daf22) was
+built fresh and sized; the only web/ client-code diff between 54c7090
+and c7bac21 is FW33 itself (lockfile unchanged, no other feature
+touched app/ or lib/), so the before->after delta is purely FW33.
+
+Both builds are clean `pnpm build` runs (NOT a working-tree size read
+after a gate, which is what produced FW33's wrong figure - see below).
+
+  route          REAL BEFORE 54c7090    CURRENT c7bac21 (FW33)
+  calculator     121.3  (A 3.7 spare)   121.7  (A 3.3 spare)
+  every other    ~107.5 (A ~17.5)       ~107.9 (A ~17.1)
+  guides/[slug]  108.8                   109.2
+  /releve/print  101.9                   101.9  (unchanged)
+
+FW33's REAL cost is a UNIFORM +0.4 KiB on every public route,
+calculator included - not the +1.1/+1.9 FW33 reported.
+
+====================================================================
+WHERE THE 1.9 KiB WENT (each cause, measured)
+====================================================================
+IT LARGELY DID NOT GO ANYWHERE. ~1.5 of the reported 1.9 KiB was a
+MEASUREMENT ARTEFACT, not a bundle cost:
+
+- FW33 ran `pnpm size` in the WORKING TREE after `gate:changed`. That
+  gate's test:e2e/test:visual build the app with FRONTALIER_DEV_ROUTES=1,
+  which leaves a DEV-routes `.next` behind. R129 records that /dev/**
+  in the chunk graph regroups what every route loads and costs the
+  calculator ~1.6 KiB. So the stale `.next` the size step read was the
+  dev build, not the shipped one. (This is now captured in the
+  session memory note "size-measure-in-clean-clone", which already put
+  the real figure at +0.4 KiB; the two fresh builds above confirm it
+  independently.)
+
+The two likely causes the relay named, MEASURED not argued:
+
+(a) THE MENU CODE SHIPPING WHILE THE MENU DOES NOT RENDER. Real, and
+    it is the +0.4: FW33 added ChevronDown + collapseLoneDisclosures +
+    the NavMenu wrapper to the shared shell client bundle, and the
+    disclosure branch of NavItem now ships while no disclosure renders
+    in production (Calculateurs collapsed to a link). It is ~0.4 KiB,
+    uniform across routes, within budget (calculator A 3.3 spare). It
+    is also DELIBERATE: the disclosure "comes back on its own" the day
+    the comparator goes live (routes.ts collapseLoneDisclosures). Not
+    removed - ripping out a proven design property to reclaim 0.4 KiB,
+    while 3.3 KiB of headroom remains, is the wrong trade. Recorded.
+
+(b) THE lucide-react IMPORT (R116). DISPROVEN as a bloat source by
+    measurement. If a named icon import defeated tree-shaking the
+    calculator would be ~300+ KiB (the ZoneBadge namespace-import
+    incident was +207 KiB). It is 121.7. lucide-react tree-shakes
+    correctly here; next.config needs no optimizePackageImports change.
+
+CONCLUSION: no code change is warranted for R302. The 1.9 was a stale-
+.next measurement; the real cost is +0.4, explained and within budget.
+Not raising any gate (R2). The in-scope fixes below add +0.0 KiB.
+
+====================================================================
+SIZE BEFORE AND AFTER (fw33b changes)
+====================================================================
+                          BEFORE (c7bac21)   AFTER (fw33b)
+  /calculateur-...        121.7  (A 3.3)      121.7  (A 3.3)
+  every other public      ~107.9             ~107.9  (identical)
+  /guides/[slug]          109.2              109.2
+  /releve/print           101.9              101.9
+
+My changes are a dedup refactor (R206), a one-flag swap (R186), and a
+server-side health field + test harness wiring (R301). None reaches a
+client bundle: +0.0 KiB on every gated route. All pass both gates.
+
+====================================================================
+R301 - THE SUITE IDENTIFIES THE INSTANCE, NOT JUST THE PRODUCT
+====================================================================
+THE DEFECT. R169 makes /api/health NAME this product, which is what
+made reusing a port safe. It cannot tell a SIBLING instance of the
+SAME product - another session's container on the same port, built
+from a different checkout with a different AUTH_SECRET - from the one
+under test. FW33 hit exactly that: a sibling passed R169, then every
+live PDF test 503'd because the print token this process minted was
+signed with a key the sibling did not hold. R169 saw the right
+product and the wrong instance.
+
+THE FIX. A harness that starts a server for a live suite sets a
+per-run value; the server echoes it from /api/health; the suite
+refuses any server that does not echo it.
+  - lib/content/identity.ts: INSTANCE_ID_ENV ('FRONTALIER_INSTANCE_ID')
+    and instanceRefusal(expected, found) - a pure matcher. OPT-IN by
+    construction: no expectation set => no check, so an ordinary
+    `pnpm test:e2e` reusing its own warm server is untouched (R170).
+  - app/api/health/route.ts: echoes `instance` from the env (null when
+    unset). R169's `service` still first in the payload.
+  - e2e/global-setup.ts: after the service check, refuses by name
+    (R301) when an instance is expected and not echoed.
+  - scripts/container-e2e.mjs: mints a random instance per run, starts
+    the container with it (-e FRONTALIER_INSTANCE_ID=...) AND hands the
+    SAME value to the vitest process.
+  - tests/db/container-auth.test.ts, container-pdf.test.ts: refuse by
+    name in beforeAll when the container does not echo the value.
+
+PROOF (POSITIVE). gate:changed selected test:container:e2e (I changed
+the harness, R247). It built the image, started a real container with a
+per-run FRONTALIER_INSTANCE_ID, and ran the live suites against it:
+e2e 278 passed, and the auth+pdf round trip 9 passed - container-auth.
+test.ts and container-pdf.test.ts each refused unless the container
+echoed the value, and both passed, so the PDF print-token round trip
+that FW33 saw 503 on now runs against the right instance. exit 0.
+
+PROOF (NEGATIVE, the relay's). A second instance was started WITHOUT
+the value (next start on :3200, no FRONTALIER_INSTANCE_ID). Its
+/api/health answered {"service":"monreleve","instance":null,...} - it
+PASSES R169 (same product). The e2e suite was then pointed at it with
+an expectation set (FRONTALIER_PORT=3200 FRONTALIER_INSTANCE_ID=
+proof-run-7f3a9c), and global-setup refused BY NAME before any spec:
+
+    R301: the e2e suite refused to run.
+      expected  monreleve at http://localhost:3200
+      found     expected the instance this run started (proof-run-7f3a9c),
+                but the server answered (no instance marker)
+
+The sibling was then killed and :3200 verified free (R179).
+
+====================================================================
+THE THREE FIXES
+====================================================================
+R206 - ONE HOME FOR THE CALCULATOR LABEL. lib/fr/shell.ts typed
+"Calculateur de teletravail" (and "Comparateur LAMal / CMU") twice -
+once in the nav's Calculateurs menu, once in the footer's Outils
+column - with the "agrees with the header" test comparing the two.
+R206: one holds the text, the other references it; never two strings a
+test compares. Both tools are now single NavLink constants
+(TELEWORK_CALCULATOR, LAMAL_COMPARATOR) referenced by both lists.
+Proof is object IDENTITY (toContain uses ===): a copy, however equal
+today, is a different reference. RED without the dedup ("not the SAME
+object in the footer"), GREEN with it.
+
+R186 - THE CTA GATES ON trackerExists, NOT appExists. The header CTA
+reads "Suivre mes jours" - it promises TRACKING - but was gated on
+appExists alone (a released app, which can exist while nobody can
+record a day). PublicShell.tsx now gates it on PRODUCT_STATE.
+trackerExists (a released app a person can record days with; SPEC 8,
+flipped at AN14). Both flags are false today, so the render is
+unchanged; the distinction bites the day an app ships before its
+tracker. Both states tested: ctaHrefIfOffered(href, true/false), plus
+a source assertion that the shell reads trackerExists and no longer
+appExists (RED against the appExists shell, GREEN after).
+
+AUTH_SECRET - see next section.
+
+====================================================================
+AUTH_SECRET (which was true)
+====================================================================
+AUTH_SECRET WAS REINTRODUCED AFTER R209, so the SPEC line is stale and
+FW33's report used the RIGHT name.
+
+- R209 (FW23, commit 203f35f) withdrew Auth.js and SPEC section 18
+  recorded AUTH_SECRET and AUTH_URL as "removed ... read by nothing".
+- FW25 (commit 4ca198f, AFTER R209) wrote lib/export/print-token.ts,
+  which signs the short-lived PDF print token with
+  createHmac('sha256', process.env.AUTH_SECRET). So AUTH_SECRET HAS a
+  reader again. Confirmed by env-contract.test.ts (R250) asserting a
+  deployment must supply AUTH_SECRET "signs the print token", by
+  .env.example carrying it, and by container-e2e.mjs handing it to the
+  image for the live PDF round-trip.
+- The print-token secret's name IS AUTH_SECRET (not a different name),
+  so FW33's NOTICED was correct to call it that.
+
+CORRECTED THE SPEC (R9), and said so in the SPEC itself:
+  - SPEC section 18, the "removed (R209)" bullet: now records AUTH_URL
+    still removed (origin is a constant) and AUTH_SECRET reintroduced
+    by FW25 as the print-token key, a required deployment variable.
+  - SPEC section 18, the "Env additions for v2" line: named
+    PDF_TOKEN_SECRET for this key, but the implementation reused
+    AUTH_SECRET and nothing reads PDF_TOKEN_SECRET; corrected to name
+    AUTH_SECRET (which is itself the "variable read by nothing" defect
+    the original bullet warned about, one phantom over).
+
+====================================================================
+WALKTHROUGH (R176, R177)
+====================================================================
+Against `pnpm dev` on :3300 (dev takes PORT). /api/health answered
+{"service":"monreleve","instance":null,...} - dev sets no instance, so
+instance is null, which is the opt-in state (no check).
+
+All 13 public pages 200 with STYLES LOADED (the page's compiled CSS was
+fetched and carries --colour-brand, R177): /, /guides, /calculateur-
+teletravail-frontalier, /sources, /guides/geneve, /a-propos, /tarifs,
+/releve-annuel, /application, /alertes, /mentions-legales,
+/confidentialite, /cgu.
+
+The shell (home): the nav shows "Calculateur de teletravail" (the lone
+live child, collapsed from Calculateurs), "Guides", "Le releve",
+"Tarifs"; no plural "Calculateurs" menu BUTTON (collapsed to a link).
+The header CTA "Suivre mes jours" is ABSENT - trackerExists is false, so
+R186's gate withholds it, which is the state product-state implies.
+
+The calculator: /calculateur-teletravail-frontalier renders its form.
+
+The dev server's tree was killed afterwards (R179); :3300 verified free.
+
+====================================================================
+PARKED
+====================================================================
+- PublicShell's Menu and X icons still ship at lucide-react's default
+  strokeWidth 2 while ChevronDown uses 1.75 (FW33 NOTICED). A visual-
+  consistency nit, NOT size, and not one of FW33b's four items; left
+  untouched to respect scope (it would also force a baseline regen).
+- The e2e instance check is OPT-IN to preserve warm-server reuse
+  (R170). Making it mandatory per run would refuse our own warm server
+  across runs. The container harness, which never reuses, gets the full
+  random-per-run mechanism; the e2e path gets it when a harness opts in.
+
+====================================================================
+DEVIATIONS
+====================================================================
+- WORKTREE. The relay assigned the isolated worktree
+  agent-a716cf7ab99300b7b; I created branch fw33b and did all work in
+  the MAIN worktree (C:/Users/.../frontier work) instead, because an
+  early `cd` to the repo root (per the memory note "repo-root-is-
+  parent") landed there and it was already provisioned with
+  node_modules and a clean build. No work was lost: everything is on
+  branch fw33b, pushed to origin and resumable from anywhere; web/ and
+  android/ are disjoint so the concurrent Android session (its own
+  an-next worktree) is unaffected. main is pushed via `HEAD:main` (no
+  local main checkout needed) and the main worktree is restored to an
+  up-to-date `main` at the end.
+- ADVISOR NOT CONSULTED. The relay recorded that advisor calls stalled
+  every time this session and instructed taking the conservative option
+  and recording it. Done: R302 left as-measured (no speculative fix),
+  R301 made opt-in for the e2e path, the strokeWidth nit left alone.
+- TEST-FIRST SHOWN BY STASH. Implementation and tests were written
+  together, then the four implementation files were stashed and the new
+  tests run to capture the RED (10 failed for the expected reasons),
+  then restored for the GREEN. The RED reasons are quoted under R206,
+  R186 and R301.
+
+====================================================================
+QUESTIONS
+====================================================================
+1. The strokeWidth-2 Menu/X icons (PARKED) - fold into the next shell
+   task, or a dedicated visual pass? It needs a baseline regen.
+2. R302 found nothing to fix (the 1.9 was a measurement artefact). If
+   a real size fix was expected, the finding is that the premise was
+   false - confirmed by two fresh builds and the session memory note.
+
+====================================================================
+PUSH PROOF
+====================================================================
+COMMIT GATE (R132), FRONTALIER_PORT=3100 pnpm gate:changed. Selection:
+  11 paths matched; suites: typecheck, lint, test, build, test:e2e,
+  test:visual, test:container:e2e, test:db, test:late
+    typecheck exit 0 | lint exit 0 | test 2970 passed | build exit 0
+    test:e2e 292 passed | test:visual 108 passed (zero diff, no baseline
+    regenerated - this change alters no pixels) | test:container:e2e
+    exit 0 (R301 positive proof: e2e 278 + round trip 9 passed against a
+    container started with a per-run instance) | test:db 546 passed |
+    test:late 10 passed. GATE PASSED for the paths changed.
+  Carried in the code commit 0b3d9b4.
+
+PUSH GATE (R199), pnpm gate:clone, runs on the commit that carries THIS
+report (code + report), before the push to main. The report is a repo-
+root .txt that nothing under web/ imports, so it cannot change a
+gate:clone outcome; running it on the report-carrying HEAD keeps R199
+honest anyway. R300: the merge to main happens only after gate:clone is
+green, with a fetch-and-rebase onto origin/main first (a concurrent
+Android session shares main; web/ and android/ are disjoint). The
+gate:clone result and the pushed hashes are quoted in the session's
+closing message.
