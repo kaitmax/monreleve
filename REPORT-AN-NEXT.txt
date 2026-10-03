@@ -1,0 +1,175 @@
+REPORT-AN-NEXT  -  Mon Releve: the clock question, the debug host, the evening notification
+=============================================================================================
+
+HOW IT ENDED
+------------
+All three increments shipped, each on a green :app:gate, committed and pushed to branch an-next; then
+merged to main after a green gate:clone. Branch an-next off origin/main c7bac21; the concurrent web
+session (FW33b) pushes to main, so R300 applied: all work on a branch, android-only, merged after a
+clean gate:clone (PUSH PROOF below has the gate:clone record and the merge).
+
+  incr 1 (R322) - F-DETECT-GPS fixed: NETWORK_PROVIDER fallback.            commit 3e74feb
+  incr 2 (R321) - one debuggable build reaches the server from the phone.   commit c3ef903
+  incr 3 (R323) - one local evening notification for the proposal.          commit 3adb718
+
+HARD BOUNDARIES HELD: D18 (no coordinate stored/logged/sent/kept past classification - the network
+fallback classifies-and-discards exactly as GPS did, in detection/ only); D16 (nothing records a day
+without a tap - the notification only OPENS Aujourd'hui); no engine or /v1 change; no signing key/store/
+real third party; no red commit (every commit on a green :app:gate; the push on a green gate:clone).
+
+R273 - WHERE THIS WORK BELONGS
+------------------------------
+tasks/todo.md maps it to the detection family:
+  - incr 1 is AN7 (detection service - the sampler's fix acquisition); the fix is to the production
+    sampling path awaitClassifiedFix, which AN7 owns.
+  - incr 2 is AN7/test infrastructure: the debuggable build that lets AN7's sampler be driven and read
+    on a physical phone (the prior two-build workaround, retired).
+  - incr 3 is PARKAN-36 (a daily LOCAL notification for the proposal), adjacent to AN13 (notifications)
+    but deliberately NOT the parked FCM reminder: it is local, opt-in, and carries the detection
+    proposal. The operator may still veto it (the relay says so); built to the rules until then.
+
+THE CLOCK (R322) - MEASURED, NORMAL (using the recorded measurement, as the prompt allows)
+-----------------------------------------------------------------------------------------
+REPORT-AN-AUTO-2.txt (on origin at 2a77cd4, in this branch's history) already records the measurement,
+so this session used its result rather than re-measuring (R322's own "if already recorded, use it").
+The three differences, measured over a real ~176 s host interval with the host timing the gap:
+     host wall-clock delta:   176 s
+     device uptime delta:     176 s   (monotonic - cannot be faked)
+     device wall-clock delta: 176 s
+All three equal; auto_time=1, host epoch == device epoch. THE CLOCK IS NORMAL - not the cause. The
+hours between the earlier checks genuinely passed, so the missing checks are a DEFECT, diagnosed below.
+
+  (Side note found THIS session, not a contradiction: when I first read the device for the incr-3 test,
+  auto_time was 0 and the manual clock sat ~1 h behind the network; setting auto_time=1 resynced it. A
+  prior session had left it manual. I leave it on automatic - the AN-AUTO-2 desired state. This does not
+  change the R322 verdict: AN-AUTO-2 measured uptime==wallclock==host over its interval, which a 1 h
+  static offset does not affect.)
+
+THE DEFECT (R322) - F-DETECT-GPS, fixed test-first (incr 1)
+----------------------------------------------------------
+CAUSE (from AN-AUTO-2's diagnosis, re-confirmed LIVE this session before touching anything): the
+SamplingWorker runs every window (logcat SUCCESS, standby bucket WORKING_SET), and the Paris-window
+logic is correct, but LiveLocation.awaitClassifiedFix requested LocationManager.GPS_PROVIDER ALONE.
+Indoors - where a telework day is spent, the exact day detection most needs to classify - GPS returns
+no fix, awaitClassifiedFix times out and returns null, recordCheck is NEVER called, and no daily_tally
+row is written. Re-confirmed on the phone this session (no reinstall, read the current build): the
+pulled Room DB held rows for 2026-09-28..10-02 (the A4 seed) and NONE for 2026-10-03 (today), despite
+the worker having run all morning. The defect is live and reproduced.
+
+FAILING TEST FIRST: tests/.../detection/LiveLocationFallbackTest.kt exercises the extracted fallback
+ORCHESTRATION firstClassifiedFix(providers, fix). RED run (shown): "Unresolved reference
+'firstClassifiedFix' / 'FIX_PROVIDERS'" - the fallback did not exist. Then GREEN after the fix. Cases:
+GPS silent records nothing (the defect); the NETWORK fallback records when GPS is silent; GPS present
+short-circuits and NETWORK is never consulted (precision preferred for the 150 m buffer, D25).
+
+THE FIX (conservative, reversible - R156): awaitClassifiedFix now tries FIX_PROVIDERS = [gps, network]
+in order and stops at the first classified fix, via the pure firstClassifiedFix. GPS first (the buffer's
+precision); NETWORK (wifi/cell) as the indoor fallback. NETWORK works indoors, is already covered by the
+ACCESS_FINE_LOCATION grant, and needs NO new dependency - no Play Services / FusedLocationProviderClient
+(R136). Each provider's fix is classified and the coordinate discarded in the same breath (D18 intact;
+requestOneFix is the one place a coordinate briefly exists, as before). The dev-replay helper
+classifyCurrentLocation is left on GPS (the mock replay drives a GPS test provider) - the narrow change.
+RECORDED ALTERNATIVE (R156): accepting GPS-only remains the operator's option - detection would then
+serve outdoor/commute days and home days would fall to manual (a peer, D19). This fix is the
+conservative-reversible choice; it is one provider in a list and trivially reverted.
+
+R321 - ONE DEBUGGABLE BUILD REACHES THE SERVER FROM A REAL PHONE (incr 2)
+------------------------------------------------------------------------
+The debug buildType hardcoded 10.0.2.2 (the emulator alias), so a physical phone could not reach the
+server on debug; sessions used a two-build workaround (audit to reach the server, debug over it for
+run-as). Now the debug buildType accepts -PfrontalierHost (default 10.0.2.2, so the emulator path is
+unchanged), exactly like the audit variant. src/debug's network config already permits cleartext to BOTH
+10.0.2.2 and 127.0.0.1 (AN14a incr 6), so no network-config change was needed; the RELEASE build is
+untouched and still denies all cleartext.
+
+PROVEN on the physical SM-G960F (serial 232bcd8c300c7ece):
+  - BuildConfig.API_BASE_URL = "http://127.0.0.1:3000" when built with -PfrontalierHost=127.0.0.1 (read
+    from the generated BuildConfig.java) - the override DELIVERS.
+  - The debug APK installed; a REAL session obtained from the local monreleve:write container
+    (/api/v1/auth/callback returned a 43-char access token) and injected; the app launched to the
+    signed-in shell ("Bonjour Camille", screenshot .an-auto-shots/rig-shell.png).
+  - run-as read the build's OWN private data (databases/ + shared_prefs/) - it is debuggable.
+  - Recorded "Domicile" in the app; it synced over `adb reverse tcp:3000 tcp:3000` and appeared in the
+    container's Postgres Entry table (2026-10-03 | HOME | MANUAL). The debug build reaches the server end
+    to end. Rig torn down (container removed, scratch DB dropped, reverse removed).
+checkReleaseCleartext OK (release permits cleartext nowhere); checkReleaseLocationPermissions OK.
+
+R323 - ONE EVENING NOTIFICATION FOR THE PROPOSAL (incr 3, PARKAN-36)
+-------------------------------------------------------------------
+Each rule, and where it is enforced:
+  - AT MOST ONE per working day / after the day concludes / only if no entry yet / never on a non-working
+    day / only in auto mode / only when opted in: the PURE eveningDecision(EveningConditions, outcome),
+    unit-tested six ways (EveningNotificationDecisionTest, test-first RED->GREEN). "Working day" = weekday
+    (Mon-Fri), the calendar's existing WEEKEND convention (R206-adjacent). "At most one" = the store's
+    last-notified day. "Only in auto mode" is the conservative reading of "separate from automatic mode"
+    (judgment call below).
+  - OPT-IN, separate, off by default: EveningNotificationStore (SharedPrefs, shares monreleve.detection so
+    sign-out's clear sweeps it). The Parametres toggle « Me prevenir le soir » shows only when detection is
+    on (without detection there is nothing to propose). Asks POST_NOTIFICATIONS only when switched on and
+    only on API 33+ (MainActivity launcher); API < 33 (the S9 is 29) enables with no ask - both paths coded.
+  - LOCK SCREEN SHOWS NOTHING PRIVATE: the posted notification is VISIBILITY_PRIVATE with a PUBLIC VERSION
+    that reads only that a proposal waits (NotificationCopy.publicLines); unlocked it names the side (En
+    Suisse / Domicile, reused from AujourdhuiCopy, R206). Channel lockscreenVisibility = PRIVATE.
+  - A "not sure" day gets the SAME single notification inviting manual recording.
+  - Tapping opens Aujourd'hui (EXTRA_OPEN_AUJOURDHUI, consumed once in MainActivity); nothing is recorded
+    from it (D16). Fence 7 holds: the glue reads entries via the DAO, never EntryRepository/RecordCommand.
+  - Trigger: folded into the SamplingWorker's post-window wake (maybeNotifyEvening), self-gating - no new
+    scheduler, no new dependency (R136). French from fr/; notification copy reachable from the background
+    notifier and allowlisted in CopyReachabilityTest (the Toast pattern); the toggle copy is reached from
+    ParametresScreen. R282 untouched: the toggle is a « proposition », worded without « rappel »/
+    « notification », because the rules forbid a nagging reminder - it is not one.
+
+ON-DEVICE WALKTHROUGH (R176): see "DEVICE DEMONSTRATION" below.
+
+ADVISOR DECISIONS / JUDGMENT CALLS (advisor NOT consulted - orchestrator directive; it stalled)
+----------------------------------------------------------------------------------------------
+  - incr 1 provider fallback vs GPS-only: took the conservative-reversible fallback (the relay's preferred
+    narrow fix), with GPS-only recorded as the operator's alternative (R156). D18 held fail-closed:
+    classify-and-discard per provider, inside detection/.
+  - incr 3 "separate from automatic mode": read as a SEPARATE opt-in that still REQUIRES auto mode to fire
+    (the notification carries the detection proposal; a manual-mode daily reminder would be the parked FCM
+    feature R282 forbids naming). Conservative/fail-closed; recorded here.
+  - incr 3 R282 conflict: ParametresR282Test forbids « rappel »/« notification » in Parametres copy. Rather
+    than weaken the guard, the toggle is worded « Me prevenir le soir » / « proposition du soir » - accurate
+    (it is one evening proposition, not a nag) and leaves the guard intact. The system channel copy (which
+    does say "notification"-adjacent words) lives in NotificationCopy, which the guard does not scan and
+    which is never shown in Parametres.
+  - incr 3 "hasEntryToday": conservative - ANY recorded portion today suppresses the notification (never
+    nag a day with a record), read via entryDao across accounts on a single-user device.
+  - POST_NOTIFICATIONS kept as a string literal (not Manifest.permission.POST_NOTIFICATIONS) so no API-33
+    symbol is referenced on minSdk 26 and the NewApi gate stays clean - the FIX_PROVIDERS literal reasoning.
+
+PHONE SETTINGS CHANGED AND RESTORED
+-----------------------------------
+Device 232bcd8c300c7ece. See "DEVICE DEMONSTRATION" for the restore block actually run.
+  - auto_time: found 0 (a prior session left it manual, clock ~1 h behind) -> set to 1 (automatic), the
+    AN-AUTO-2 desired state. LEFT at 1.
+  - Installed the incr3 debug APK (debug-signed; the release a user installs is unaffected).
+  - The incr2 rig set hide_error_dialogs=1 and recorded one day (synced to the torn-down container); its
+    container/adb-reverse/scratch-DB are torn down. hide_error_dialogs restored to 0.
+  - Any test clock advance / seeded prefs+tally for the incr3 demo are restored in the demo's own block.
+
+PARKED
+------
+PARKAN-36 is no longer "parked, by decision" - it is BUILT (opt-in, off by default), pending the
+operator's veto/ratification. parking.md's ledger line updated accordingly. No new PARKAN entries.
+NOTICED BUT NOT TOUCHING: CalendarModel.kt keeps its own private WEEKEND set; isWorkingDay (new, in
+detection/) is a second small copy of the Sat/Sun fact - folding them is a cross-module refactor out of
+this task's scope (both are the frozen Sat/Sun fact).
+
+DEVIATIONS
+----------
+  - The three untracked drive instruments copied into android/scripts and used here stay untracked
+    (orchestrator directive): an-next-rig.mjs (the debug-APK server rig), an-auto-2-db.mjs (run-as DB
+    read/seed), an-next-notif.mjs (the incr3 notification-state seeder), uidrive.mjs.
+  - classifyCurrentLocation (dev-replay only) kept GPS-only; only the production awaitClassifiedFix got the
+    fallback (the narrow, conservative change).
+
+QUESTIONS
+---------
+  1. Does the operator ratify the evening notification (PARKAN-36), and the "requires auto mode" reading?
+  2. The incr1 fallback vs GPS-only (R156) and the PROPOSED detection thresholds still await the field test.
+
+PUSH PROOF
+----------
+(to be finalized with the gate:clone record and the merge hash)
