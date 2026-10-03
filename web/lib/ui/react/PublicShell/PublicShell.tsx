@@ -163,6 +163,16 @@ export function NavItem({ entry }: { readonly entry: NavEntry }) {
  * - a promise, not a broken link, which is the worse of the two because
  * nothing 404s and nothing looks wrong.
  *
+ * THE SECOND CONDITION IS trackerExists, NOT appExists (R186, FW33b). The
+ * button promises TRACKING - "Suivre mes jours" - so the thing it promises is
+ * a released app a person can actually record a day with, which is precisely
+ * what trackerExists names (SPEC 8; flipped at AN14, and only once BOTH a
+ * release and the entries path exist). appExists is weaker: an app can be
+ * released and still not let anyone record a day, and gating on it alone would
+ * put the promise back on every page one step too early. Both flags are false
+ * today, so nothing renders either way - the distinction bites the day an app
+ * ships before its tracker does, which is the exact gap R186 exists for.
+ *
  * IT IS EXACTLY THE DISTINCTION lib/content/product-state.ts calls
  * load-bearing: A PAGE EXISTING IS NOT THE THING EXISTING. /releve-annuel
  * has been live since FW20 with dossierExists false for the same reason.
@@ -172,7 +182,7 @@ export function NavItem({ entry }: { readonly entry: NavEntry }) {
  * said: "the day /application ships, this fails and says the count has to be
  * reconsidered rather than silently becoming 1." It did, and it did.
  */
-const ctaHref = ctaHrefIfOffered(SHELL_COPY.ctaHref, PRODUCT_STATE.appExists);
+const ctaHref = ctaHrefIfOffered(SHELL_COPY.ctaHref, PRODUCT_STATE.trackerExists);
 
 /**
  * RULING R54's third surface, computed at module scope for the same reason

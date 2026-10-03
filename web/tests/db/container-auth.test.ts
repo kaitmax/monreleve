@@ -47,6 +47,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { prisma } from '@/lib/db/client';
 import { issueMagicLink } from '@/lib/auth/magic-link';
+import { instanceRefusal } from '@/lib/content/identity';
 
 /**
  * Where the container is listening. Unset means this file has nothing to talk
@@ -110,12 +111,21 @@ describe.skipIf(BASE === undefined)('R249: the auth round trip, over HTTP, again
     // if it were written as an absence check, and the measured cost of not
     // doing this was 91 tests passing against another product.
     const health = await fetch(`${String(BASE)}/api/health`);
-    const body = (await health.json()) as { service?: string };
+    const body = (await health.json()) as { service?: string; instance?: unknown };
 
     expect(health.status).toBe(200);
     expect(body.service, `${String(BASE)} answered /api/health but did not name this product`).toBe(
       'monreleve',
     );
+
+    // R301: the right PRODUCT is not yet the right INSTANCE. scripts/container-
+    // e2e.mjs starts this container with a per-run FRONTALIER_INSTANCE_ID and
+    // hands this process the same value; a sibling container of the same product
+    // (which would pass the check above) does not echo it and is refused by
+    // name - the FW33 case where a sibling's AUTH_SECRET 503-ed every token.
+    const mismatch = instanceRefusal(process.env.FRONTALIER_INSTANCE_ID, body.instance);
+
+    expect(mismatch, mismatch ?? 'instance matches').toBeNull();
   });
 
   beforeEach(async () => {

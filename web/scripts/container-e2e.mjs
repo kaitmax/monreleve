@@ -39,6 +39,7 @@
 // image can serve.
 
 import { execFileSync, spawn } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 // ONE HOME FOR THE STRIPPING, not a second copy of the regex (R206). The
 // count patterns and the thing that makes them readable belong together.
@@ -48,6 +49,21 @@ const PORT = process.env.FRONTALIER_PORT ?? '3100';
 const IMAGE = process.env.CONTAINER_IMAGE ?? 'monreleve:e2e';
 const NAME = 'monreleve-e2e';
 const DB = `monreleve_container_e2e`;
+
+// RULING R301: THE SUITE IDENTIFIES THE INSTANCE, NOT JUST THE PRODUCT.
+//
+// R169 makes the suite refuse a server that does not NAME this product, which
+// is what makes reusing the port safe. It cannot tell a SIBLING instance of
+// this same product - another session's container on the same port, with a
+// different AUTH_SECRET - from the one started here. FW33 hit exactly that: a
+// sibling passed R169 and then 503-ed every print token, because the token this
+// process minted was signed with a key the sibling did not hold.
+//
+// So this run mints a value unique to itself, starts the container with it, and
+// hands the SAME value to the vitest process below. The container echoes it from
+// /api/health; container-auth.test.ts and container-pdf.test.ts refuse any
+// server that does not echo it. A sibling cannot, by construction.
+const INSTANCE_ID = `container-e2e-${randomBytes(8).toString('hex')}`;
 
 /**
  * The one spec whose premise the image contradicts by design.
@@ -275,6 +291,10 @@ try {
     'AUTH_SECRET=container-e2e-not-a-deployment-secret',
     '-e',
     `NEXT_PUBLIC_SITE_URL=${origin}`,
+    // R301: the per-run marker this container echoes from /api/health, so the
+    // live suites can tell it from a sibling of the same product.
+    '-e',
+    `FRONTALIER_INSTANCE_ID=${INSTANCE_ID}`,
     IMAGE,
   ]);
 
@@ -407,6 +427,10 @@ try {
             ...process.env,
             DATABASE_URL: toolUrl,
             CONTAINER_BASE_URL: `http://127.0.0.1:${PORT}`,
+            // R301: the SAME value the container was started with, so the two
+            // tests can refuse any server that does not echo it. A sibling that
+            // passed R169 (same product) fails here by name.
+            FRONTALIER_INSTANCE_ID: INSTANCE_ID,
             // THE SAME SECRET THE CONTAINER HOLDS. container-pdf.test.ts
             // mints a print token HERE and hands it to the CONTAINER's print
             // route, so the two processes must sign with the same key. The

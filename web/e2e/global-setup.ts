@@ -31,7 +31,7 @@
 // runs; the poll below exists for the seconds between "listening" and
 // "answering", not as a substitute for that ordering.
 
-import { SERVICE_NAME } from '../lib/content/identity';
+import { INSTANCE_ID_ENV, SERVICE_NAME, instanceRefusal } from '../lib/content/identity';
 import { BASE_URL } from './support/base-url';
 
 /** Long enough for a cold start behind `next build`, short enough to fail fast. */
@@ -41,6 +41,7 @@ const INTERVAL_MS = 500;
 interface HealthBody {
   readonly service?: unknown;
   readonly status?: unknown;
+  readonly instance?: unknown;
 }
 
 /**
@@ -162,6 +163,16 @@ export default async function globalSetup(): Promise<void> {
       if (body.service !== SERVICE_NAME) {
         refuse(`a server identifying as "${body.service}"`);
       }
+
+      // RULING R301: the right PRODUCT is not yet the right INSTANCE. When this
+      // run set FRONTALIER_INSTANCE_ID, the server it started echoes it; a
+      // sibling of this same product does not, and is refused BY NAME here
+      // rather than passing R169 and 503-ing on a token it cannot verify
+      // (FW33). With no expectation set this is a no-op, so warm reuse of our
+      // own server on an ordinary run is untouched.
+      const mismatch = instanceRefusal(process.env[INSTANCE_ID_ENV], body.instance);
+
+      if (mismatch !== null) refuse(mismatch, 'R301');
 
       await assertStyled();
 

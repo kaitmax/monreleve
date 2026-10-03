@@ -27,7 +27,7 @@
 //
 // R53 disallows /api/* in robots.txt, so this is never crawled.
 
-import { SERVICE_NAME } from '@/lib/content/identity';
+import { INSTANCE_ID_ENV, SERVICE_NAME } from '@/lib/content/identity';
 import { isProvisionalOrigin, isRuntime, servingWithoutOrigin, siteOrigin } from '@/lib/content/site';
 
 /** Per-request: the runtime marker means nothing to a prerendered response. */
@@ -63,6 +63,15 @@ export function GET(): Response {
       // APP_NAME rather than a second literal: the product has one name, and
       // an identity check comparing two strings that could drift is not one.
       service: SERVICE_NAME,
+      // WHICH instance, ruling R301. `service` (above) tells a caller this is
+      // the right PRODUCT; a sibling instance of the same product answers it
+      // identically. A harness that starts a server for a live suite sets
+      // FRONTALIER_INSTANCE_ID to a per-run value and then refuses any server
+      // that does not echo it here - which is how FW33's sibling container,
+      // passing R169 and then 503-ing on print tokens it could not verify,
+      // would be caught before a spec ran. null when no marker was set, which
+      // is every ordinary run.
+      instance: process.env[INSTANCE_ID_ENV] ?? null,
       status: degraded ? 'degraded' : 'ok',
       reasons,
       // Deliberately NOT the resolved origin when it is provisional: a health

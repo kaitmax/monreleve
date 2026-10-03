@@ -25,12 +25,14 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
+  INSTANCE_ID_ENV,
   MAIL_SUBDOMAIN,
   PRODUCTION_ORIGIN,
   SERVICE_NAME,
   SITE_DOMAIN,
   TEST_ORIGIN,
   asciiName,
+  instanceRefusal,
 } from '@/lib/content/identity';
 import { APP_NAME, TITLE_TEMPLATE } from '@/lib/fr';
 
@@ -84,6 +86,54 @@ describe('R188: three forms, one source', () => {
   it('composes the title template from the accented name', () => {
     expect(TITLE_TEMPLATE).toBe(`%s — ${APP_NAME}`);
     expect(TITLE_TEMPLATE).toContain('Mon Relevé');
+  });
+});
+
+describe('R301: the instance, not just the product', () => {
+  // R169 proves /api/health NAMES this product; a sibling of the same product
+  // passes it. instanceRefusal is the second question - WHICH instance - and
+  // both directions matter: a refusal that fired on everything would be as
+  // useless as one that fired on nothing.
+  it('names the env var the harness and the server share', () => {
+    // One home for the contract (R206): the route reads it, the suites check
+    // it, and this is the constant they agree on.
+    expect(INSTANCE_ID_ENV).toBe('FRONTALIER_INSTANCE_ID');
+  });
+
+  it('does not check when no instance was expected - warm reuse is untouched', () => {
+    // THE OPT-IN DIRECTION. An ordinary run sets nothing, so a reused warm
+    // server (instance null) is accepted - the whole reason reuse is kept.
+    expect(instanceRefusal(undefined, null)).toBeNull();
+    expect(instanceRefusal('', 'anything')).toBeNull();
+    expect(instanceRefusal(undefined, 'anything')).toBeNull();
+  });
+
+  it('accepts the server that echoes the value this run set', () => {
+    expect(instanceRefusal('run-abc', 'run-abc')).toBeNull();
+  });
+
+  it('refuses a sibling that answers without the marker, by name', () => {
+    // FW33's case: the sibling passed R169 and answered /api/health with no
+    // instance of ours. The message names what was expected and what was found.
+    const message = instanceRefusal('run-abc', null);
+
+    expect(message).not.toBeNull();
+    expect(message).toContain('run-abc');
+    expect(message).toContain('no instance marker');
+  });
+
+  it('refuses a sibling that echoes a DIFFERENT instance, by name', () => {
+    const message = instanceRefusal('run-abc', 'run-xyz');
+
+    expect(message).not.toBeNull();
+    expect(message).toContain('run-abc');
+    expect(message).toContain('run-xyz');
+  });
+
+  it('refuses a build predating the field (instance undefined in the body)', () => {
+    // A server too old to carry the field answers `instance: undefined`; that
+    // is a server this run did not start, so it is refused like any other.
+    expect(instanceRefusal('run-abc', undefined)).not.toBeNull();
   });
 });
 

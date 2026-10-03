@@ -21,6 +21,7 @@ import { describe, expect, it } from 'vitest';
 import {
   PUBLIC_ROUTES,
   ctaHrefIfLive,
+  ctaHrefIfOffered,
   isLive,
   type PublicRoute,
 } from '@/lib/content/routes';
@@ -81,6 +82,31 @@ describe('ctaHrefIfLive', () => {
   });
 });
 
+describe('ctaHrefIfOffered: both the target and the offer (R85 + R186)', () => {
+  // BOTH STATES OF THE OFFER, which is the half ctaHrefIfLive cannot carry.
+  // The header CTA promises day-tracking, so beyond "does the page exist" it
+  // asks "can the reader actually do the thing" - the `offered` argument the
+  // shell fills from PRODUCT_STATE.trackerExists.
+  it('returns the href when the target is live AND the capability is offered', () => {
+    expect(ctaHrefIfOffered('/application', true, [LIVE])).toBe('/application');
+  });
+
+  it('returns null when the target is live but the capability is NOT offered', () => {
+    // THE R186 CASE: the page exists, the thing it promises does not. A button
+    // that resolves to a real page but offers a capability the product lacks
+    // is a promise, which is worse than a broken link because nothing 404s.
+    expect(ctaHrefIfOffered('/application', false, [LIVE])).toBeNull();
+  });
+
+  it('returns null when offered but the target is only planned', () => {
+    expect(ctaHrefIfOffered('/application', true, [PLANNED])).toBeNull();
+  });
+
+  it('returns null when neither holds', () => {
+    expect(ctaHrefIfOffered('/application', false, [PLANNED])).toBeNull();
+  });
+});
+
 describe('the shipped state, stated so it cannot change silently', () => {
   it('has /application live, and the CTA still hidden - for a different reason', () => {
     // THIS BLOCK SAID THE OPPOSITE UNTIL FW20b, and how it changed is the
@@ -107,10 +133,15 @@ describe('the shipped state, stated so it cannot change silently', () => {
   it('means the header CTA has a target, and still renders nothing', () => {
     // BOTH HALVES, because either alone is now misleading. R85 is satisfied -
     // the href resolves - and the button is absent anyway.
+    //
+    // THE GATE IS trackerExists (R186), not appExists. The button promises
+    // tracking, so it waits for a released app a person can record days with.
+    // When this flag flips the shell renders the CTA and this test is the one
+    // to update - which is why the flag, not a hardcoded false, is asserted.
     expect(ctaHrefIfLive(SHELL_COPY.ctaHref)).toBe('/application');
     expect(
-      PRODUCT_STATE.appExists,
-      'the app now exists - the shell should render its CTA and this test is the one to update',
+      PRODUCT_STATE.trackerExists,
+      'the tracker now exists - the shell should render its CTA and this test is the one to update',
     ).toBe(false);
   });
 

@@ -41,6 +41,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { prisma } from '@/lib/db/client';
 import { issueMagicLink } from '@/lib/auth/magic-link';
+import { instanceRefusal } from '@/lib/content/identity';
 import { mintPrintToken } from '@/lib/export/print-token';
 import { renderPdf } from '@/lib/export/pdf';
 
@@ -67,10 +68,22 @@ function pageCount(bytes: Uint8Array): number {
 
 describe.skipIf(BASE === undefined)('R249: the PDF, in the image and here', () => {
   beforeAll(async () => {
-    // R169: what is answering, before anything is asserted about it.
-    const health = await fetch(`${String(BASE)}/api/health`);
+    // R169: WHAT is answering, before anything is asserted about it. R301:
+    // WHICH instance - this is the test FW33's 503 came from, where a sibling
+    // container with a different AUTH_SECRET passed the service check and then
+    // could not verify the print token minted below. The harness sets a per-run
+    // FRONTALIER_INSTANCE_ID on this container and on this process; a server
+    // that does not echo it is refused by name before a token is minted.
+    const body = (await (await fetch(`${String(BASE)}/api/health`)).json()) as {
+      service?: string;
+      instance?: unknown;
+    };
 
-    expect((await health.json()).service).toBe('monreleve');
+    expect(body.service).toBe('monreleve');
+
+    const mismatch = instanceRefusal(process.env.FRONTALIER_INSTANCE_ID, body.instance);
+
+    expect(mismatch, mismatch ?? 'instance matches').toBeNull();
 
     await prisma.user.deleteMany({ where: { email: EMAIL } });
     await prisma.verificationToken.deleteMany({ where: { identifier: EMAIL } });

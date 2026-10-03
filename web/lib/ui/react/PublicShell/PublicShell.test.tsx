@@ -234,7 +234,7 @@ describe('the nav', () => {
     // route, and it fails if the shell hides a button whose target is live.
     renderShell();
 
-    const expected = ctaHrefIfOffered(SHELL_COPY.ctaHref, PRODUCT_STATE.appExists);
+    const expected = ctaHrefIfOffered(SHELL_COPY.ctaHref, PRODUCT_STATE.trackerExists);
     const cta = screen.queryAllByRole('link', { name: SHELL_COPY.cta });
 
     if (expected === null) {
@@ -245,16 +245,22 @@ describe('the nav', () => {
     }
   });
 
-  it('is hidden TODAY, and the reason changed in FW20b', () => {
+  it('is hidden TODAY, and the reason is trackerExists (R186)', () => {
     // The state above, pinned, so "no CTA" cannot quietly become "the CTA
     // broke".
     //
     // IT USED TO SAY: "if this fails because /application went live, delete it
     // and the conditional above starts exercising the other branch."
     // /application DID go live, and deleting this would have been wrong. The
-    // page exists; the application does not. R85 is satisfied and the button
-    // still must not render, because it reads "Suivre mes jours" and the
-    // product cannot track a day.
+    // page exists; the thing it promises does not. R85 is satisfied and the
+    // button still must not render, because it reads "Suivre mes jours" and
+    // nobody can yet record a day.
+    //
+    // THE GATE IS trackerExists, NOT appExists (R186). The button promises
+    // TRACKING, so its condition is a released app a person can record days
+    // with - trackerExists - not merely that an app exists. Both are false
+    // today, so the render is the same; the source assertion below is what
+    // pins which flag the shell actually reads.
     //
     // BOTH HALVES, so neither can drift: the target resolves, and the offer is
     // withheld.
@@ -262,10 +268,29 @@ describe('the nav', () => {
 
     expect(ctaHrefIfLive(SHELL_COPY.ctaHref), 'the page exists').toBe('/application');
     expect(
-      ctaHrefIfOffered(SHELL_COPY.ctaHref, PRODUCT_STATE.appExists),
-      'the application does not',
+      ctaHrefIfOffered(SHELL_COPY.ctaHref, PRODUCT_STATE.trackerExists),
+      'the tracker does not',
     ).toBeNull();
     expect(screen.queryAllByRole('link', { name: SHELL_COPY.cta })).toHaveLength(0);
+  });
+
+  it('gates the CTA on trackerExists, not appExists (R186)', () => {
+    // WHILE BOTH FLAGS ARE FALSE THE RENDER CANNOT TELL THEM APART, so the
+    // wiring is pinned at the source. The button promises day-tracking and
+    // must wait for a release a person can record days with (trackerExists),
+    // never for a mere app existing (appExists) - which can be true while the
+    // tracker is not. This fails if the shell regresses to appExists.
+    const source = readFileSync(
+      join(process.cwd(), 'lib', 'ui', 'react', 'PublicShell', 'PublicShell.tsx'),
+      'utf8',
+    );
+
+    expect(source, 'the CTA gate must read trackerExists').toContain(
+      'ctaHrefIfOffered(SHELL_COPY.ctaHref, PRODUCT_STATE.trackerExists)',
+    );
+    expect(source, 'the CTA must no longer gate on appExists alone').not.toContain(
+      'PRODUCT_STATE.appExists',
+    );
   });
 });
 
@@ -418,7 +443,7 @@ describe('the mobile menu', () => {
     // target is not live.
     if (cta === undefined) {
       expect(
-        ctaHrefIfOffered(SHELL_COPY.ctaHref, PRODUCT_STATE.appExists),
+        ctaHrefIfOffered(SHELL_COPY.ctaHref, PRODUCT_STATE.trackerExists),
         'no CTA, and not because of R85 or R172',
       ).toBeNull();
     } else {
@@ -482,8 +507,8 @@ describe('the stylesheet carries what jsdom cannot (R61)', () => {
 
   // FW33. These are stylesheet assertions rather than renders for R61's
   // reason, and the CTA ones for a second reason: the CTA is not rendered
-  // while appExists is false, so no browser can measure it yet. The rules are
-  // what will position it the day it appears.
+  // while trackerExists is false (R186), so no browser can measure it yet. The
+  // rules are what will position it the day it appears.
   const [base = '', ...queries] = scss.split(/@media \(width >= bp\.\$breakpoint-md\) \{/);
   const desktop = queries.join('\n');
   const rule = (css: string, selector: string): string =>
@@ -613,6 +638,26 @@ describe('the footer', () => {
 
     expect(headingOf('/sources')).toBe(FOOTER_COLUMNS[2]?.heading);
     expect(columnHrefs(FOOTER_COLUMNS[3]?.heading ?? '')).not.toContain('/sources');
+  });
+
+  it('offers each tool as ONE home, not two copies kept in step (R206)', () => {
+    // R206: the nav's Calculateurs menu and the footer's Outils column must
+    // name the same two tools. Until FW33b each was typed in both lists and the
+    // "agrees with the header" test below compared the two labels - which only
+    // proves they were equal when somebody last looked. One object now holds
+    // each tool and both lists reference it, so object IDENTITY is the proof: a
+    // copy, however equal today, is a different reference and fails toContain.
+    const navTools = SHELL_NAV.find((entry) => entry.children !== undefined)?.children ?? [];
+    const outils = FOOTER_COLUMNS.find((column) => column.heading === 'Outils')?.links ?? [];
+
+    expect(navTools.length, 'the nav has no tools menu').toBeGreaterThan(0);
+
+    for (const tool of navTools) {
+      expect(
+        outils,
+        `${tool.label} is not the SAME object in the footer - R206 wants one home, not two copies`,
+      ).toContain(tool);
+    }
   });
 
   it('agrees with the header on where a shared label goes', () => {

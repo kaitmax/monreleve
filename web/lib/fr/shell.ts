@@ -84,13 +84,31 @@ export const SHELL_COPY = {
   ctaHref: '/application',
 } as const;
 
+// ---------------------------------------------------------------------------
+// THE TOOLS, ONE HOME EACH (R206, FW33b)
+// ---------------------------------------------------------------------------
+//
+// The two calculators appear TWICE in this file - in the nav's Calculateurs
+// menu and in the footer's Outils column. Until FW33b each was typed in both
+// places, and a test ("agrees with the header") compared the two labels to keep
+// them in step. R206: where two surfaces must say the same thing, ONE holds it
+// and the other references it - not two strings a test compares, because that
+// test only proves they were equal when somebody last looked. So each tool is
+// one object now, referenced by both lists; a drift is not caught, it is
+// impossible.
+const TELEWORK_CALCULATOR: NavLink = {
+  label: 'Calculateur de télétravail',
+  href: '/calculateur-teletravail-frontalier',
+};
+const LAMAL_COMPARATOR: NavLink = {
+  label: 'Comparateur LAMal / CMU',
+  href: '/calculateur-lamal-cmu',
+};
+
 export const SHELL_NAV: readonly NavEntry[] = [
   {
     label: 'Calculateurs',
-    children: [
-      { label: 'Calculateur de télétravail', href: '/calculateur-teletravail-frontalier' },
-      { label: 'Comparateur LAMal / CMU', href: '/calculateur-lamal-cmu' },
-    ],
+    children: [TELEWORK_CALCULATOR, LAMAL_COMPARATOR],
   },
   { label: 'Guides', href: '/guides' },
   { label: 'Le relevé', href: '/releve-annuel' },
@@ -135,8 +153,11 @@ export const FOOTER_COLUMNS: readonly FooterColumn[] = [
   {
     heading: 'Outils',
     links: [
-      { label: 'Calculateur de télétravail', href: '/calculateur-teletravail-frontalier' },
-      { label: 'Comparateur LAMal / CMU', href: '/calculateur-lamal-cmu' },
+      // THE SAME TWO OBJECTS the nav references (R206) - see TELEWORK_CALCULATOR
+      // and LAMAL_COMPARATOR above. One home, so the nav and the footer cannot
+      // disagree on a label or an href.
+      TELEWORK_CALCULATOR,
+      LAMAL_COMPARATOR,
       // FW33: live since FW14 and linked from nowhere but the calculator's
       // result panel. FD11 section 7 files it here.
       { label: 'Alertes e-mail', href: '/alertes' },

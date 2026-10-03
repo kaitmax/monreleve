@@ -58,6 +58,53 @@ export function asciiName(name: string): string {
 export const SERVICE_NAME = asciiName(APP_NAME);
 
 /**
+ * RULING R301: THE SUITE IDENTIFIES THE INSTANCE, NOT JUST THE PRODUCT.
+ *
+ * R169 (SERVICE_NAME, above) settles WHAT is answering: /api/health must name
+ * this product. It cannot settle WHICH ONE. A sibling instance of this same
+ * product - another session's container on the same port, built from a
+ * different checkout and holding a different AUTH_SECRET - answers /api/health
+ * with service=monreleve and passes R169 cleanly.
+ *
+ * FW33 ran into exactly that: a sibling container held :3000, the e2e suite
+ * reused it, and every live PDF test then got a 503 from print tokens it could
+ * not verify - the token this process minted was signed with a key the sibling
+ * did not hold. R169 saw the right product and the wrong instance, and the
+ * symptom (a 503 on a token) was as far from the cause (the wrong server) as a
+ * symptom gets.
+ *
+ * SO: a harness that starts a server for a live suite sets FRONTALIER_INSTANCE_ID
+ * to a value unique to THIS run; the server echoes it from /api/health; and the
+ * suite refuses any server that does not echo the value it set.
+ *
+ * OPT-IN BY CONSTRUCTION. With no expectation set there is no check, so an
+ * ordinary `pnpm test:e2e` that reuses a warm server of its own is untouched -
+ * which is the whole reason reuseExistingServer is worth keeping (R170). The
+ * check bites only when a harness has declared an expectation, which is the one
+ * situation in which a sibling can be taken for the subject.
+ */
+export const INSTANCE_ID_ENV = 'FRONTALIER_INSTANCE_ID';
+
+/**
+ * The reason to refuse a server, or null when it may be used.
+ *
+ * `expected` is the per-run value the harness set (undefined/empty = no
+ * expectation, so no check). `found` is whatever /api/health answered in its
+ * `instance` field: a string for one of our servers, null for one started
+ * without the marker, undefined for a build predating the field - each of which
+ * is a server this run did not start, and therefore refused.
+ */
+export function instanceRefusal(expected: string | undefined, found: unknown): string | null {
+  if (expected === undefined || expected === '') return null;
+  if (found === expected) return null;
+
+  const shown =
+    found === null || found === undefined ? '(no instance marker)' : JSON.stringify(found);
+
+  return `expected the instance this run started (${expected}), but the server answered ${shown}`;
+}
+
+/**
  * The domain, unaccented because DNS is.
  *
  * NOT YET REGISTERED, and that is the operator's to do - buying and
