@@ -1,0 +1,95 @@
+AN-AUTO-2-REALDAY -- PART A NOTE (arming for a real, unplugged day)
+Mon Releve / Android. Session: PART A only. No code change this session.
+Date: Saturday 2026-10-03. Device: SM-G960F (Galaxy S9), serial 232bcd8c300c7ece, API 29.
+
+====================================================================
+1. THE DAY-OF-WEEK GATE -- AUTHORITATIVE DETERMINATION
+====================================================================
+NOTHING in the detection path gates on the day of the week. The sampler,
+the vote, and the Aujourd'hui proposal all run on any day, Saturday
+included. Proceeding to arm for TODAY (Saturday 2026-10-03) -- a valid
+test of the four-window mechanism and of battery under real conditions.
+
+Evidence, by file:line:
+  - SamplingWorker.kt:33  -- each wake gates ONLY on currentCheckWindow(clock)
+                             (a Paris-time window); :36 gates ONLY on the day's
+                             slot being empty (hasCheck(window.index)).
+                             No DayOfWeek anywhere in doWork().
+  - CheckWindows.kt:57-60 (currentCheckWindow) and :72-74 (afterLastCheckWindow)
+                             operate purely on the Paris minute-of-day. No DayOfWeek.
+  - Vote.kt:84-134        -- voteTier / votedKind / dayProposal / halfProposal all
+                             operate on DayChecks (four Classifications). No DayOfWeek.
+                             ("working day" at Vote.kt:12 is descriptive prose, not logic.)
+  - AujourdhuiController.kt:313-317, 347-356 -- the proposal gate is
+                             autoMode && granularity && slot-not-recorded && concluded,
+                             where concluded = afterLastCheckWindow(clock). No DayOfWeek.
+  - DetectionScheduling.kt:26-34 -- the periodic enqueue has no day constraint
+                             (15-min floor, ExistingPeriodicWorkPolicy.KEEP).
+  - NearBorder.kt:34-37   -- the only "working day" in detection LOGIC (the A4
+                             near-border feature, a different concern) filters on
+                             hasData(), not on the day of the week.
+
+The ONLY DayOfWeek/WEEKEND code in the repo is the calendar UI
+(CalendarModel.kt:82/231/241, DayCell.kt:82, CalendarCopy.kt:38) -- it colours
+weekend cells and does not mark them MISSING. Unrelated to detection.
+
+====================================================================
+2. THE FOUR CHECK WINDOWS FOR TODAY (phone local time)
+====================================================================
+Windows are defined in Europe/Paris (centre +/- 30 min). On 2026-10-03
+Paris is on summer time (CEST = UTC+2); DST ends on the last Sunday of
+October (2026-10-25). The phone's timezone is Africa/Casablanca = UTC+1
+(verified from the device's own tz database: Paris 08:55 CEST == Casablanca
+07:55 +01 at the same instant). So TODAY Paris is 1 hour AHEAD of Casablanca;
+they do NOT yet share the clock -- they will only after 2026-10-25.
+(The orchestrator's inline "currently share the clock" note is wrong for
+today; the relay prose and the device agree they share only AFTER Oct 25.)
+
+Casablanca local = Paris - 1h:
+  Check 1:  centre 08:30  window 08:00-09:00   (Paris 09:30, 09:00-10:00)
+  Check 2:  centre 10:00  window 09:30-10:30   (Paris 11:00, 10:30-11:30)
+  Check 3:  centre 13:30  window 13:00-14:00   (Paris 14:30, 14:00-15:00)
+  Check 4:  centre 15:30  window 15:00-16:00   (Paris 16:30, 16:00-17:00)
+
+Armed at ~07:55 Casablanca -- before the first window. Good.
+
+====================================================================
+3. ARMING STATE (all confirmed on the device)
+====================================================================
+  - Automatic mode ON  -- confirmed via WorkManager diagnostics: the unique
+                           periodic work "monreleve.detection.sampling"
+                           (ch.monreleve.app.detection.SamplingWorker, Job 14)
+                           is ENQUEUED. startSampling runs only in auto mode (R315).
+  - FINE location        granted=true.
+  - BACKGROUND location  granted=true.
+  - Mock provider        DENIED -- appops android:mock_location default mode deny,
+                           no operations; secure mock_location = 0. Real GPS.
+  - Location services    ON (providers: gps,network).
+  - stay_on_while_plugged_in  RESTORED 2 -> 0 (verified 0). The phone is now
+                           free to sleep normally (Doze) for a realistic measurement.
+  - Battery at reset     USB powered, status FULL, level 100%.
+
+====================================================================
+4. BATTERYSTATS BASELINE RESET
+====================================================================
+`adb -s 232bcd8c300c7ece shell dumpsys batterystats --reset` -> "Battery stats reset."
+Reset time: ~07:55 Casablanca  (06:55 UTC / 08:55 Paris CEST), 2026-10-03.
+
+====================================================================
+5. OPERATOR INSTRUCTION
+====================================================================
+UNPLUG THE PHONE NOW. Use it normally, or leave it face-down and idle --
+screen OFF, NOT charging -- for the whole day.
+
+PLUG IT BACK IN after 16:00 Casablanca (= 17:00 Paris), i.e. after the last
+check window (16:30 Paris +/- 30 min) has concluded. For a safety margin,
+replug any time from ~16:30 Casablanca (17:30 Paris) onward. Replugging after
+16:00 Casablanca also lets PART B see a CONCLUDED day with its evening
+proposal (afterLastCheckWindow becomes true at 17:00 Paris = 16:00 Casablanca).
+
+Then the orchestrator runs PART B (the read) in a separate later session.
+
+Boundaries honoured: no code change (D18/D16 untouched -- arming only, no
+detection code); no coordinate touched. R132 carve-out: this is a doc-only
+note (relay/*.txt), which needs no gate -- the gate selects on code/app/ui
+paths, none of which changed.
