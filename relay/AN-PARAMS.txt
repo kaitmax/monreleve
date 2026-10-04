@@ -1,0 +1,141 @@
+AN-PARAMS SESSION PROMPT - Mon Releve
+PARAMETRES: ONE CLEAN SETTINGS LIST, SAME BEHAVIOUR
+Paste into a fresh Claude Code session at the repository root, AFTER
+AN-CAL2 has merged. The physical phone (Galaxy S9, API 29) is
+connected.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+Do not stop to report progress or ask a question; judgment calls go to
+the advisors, whose decisions the operator trusts, recorded in the
+report. Ends in four ways, each with REPORT-AN-PARAMS.txt committed and
+pushed: DONE; a HARD BOUNDARY; NO PROGRESS (the same failure surviving
+five fixes, an advisor's suggestion and three more attempts); or a
+DEGRADED CONTEXT. R300: if another session pushes to main, work on a
+branch. R270 applies.
+
+====================================================================
+THE LIMIT: PRESENTATION AND NAVIGATION ONLY
+====================================================================
+Same rule as AN-HOME. CHANGES: layout, the way settings are reached and
+edited, input controls, copy placement. DOES NOT CHANGE - a HARD
+BOUNDARY: what each setting stores, PATCH /api/v1/me, R290's
+before-and-after, R289's deletion confirmation, R295 and R297's
+sign-out behaviour, R315's consent handling, the Room schema, the
+engine, /v1, detection.
+THE PROOF: no test outside the UI layer and its baselines is modified,
+and every behaviour test passes unchanged. If one must change, stop
+and ask an advisor whether it is truly presentation.
+
+Design system unchanged: Material 3 components inside FrontierTheme,
+tokens only, Lucide icons. prompts/design-frontier/FD9 is an outdated
+sketch - loose inspiration at most.
+
+R273. Check tasks/todo.md; say first where this belongs.
+R0. Read REPORT-AN12.txt, REPORT-AN-HOME.txt and REPORT-AN-CAL2.txt if
+    present, DESIGN-SYSTEM.md, SPEC 11.5.
+R1. pnpm gate:clone and :app:gate green on origin/main's HEAD.
+
+====================================================================
+1. WHAT THE OPERATOR'S SCREENSHOTS SHOW
+====================================================================
+- THE START DATE IS TYPED AS AAAA-MM-JJ. The storage format (R28) is
+  leaking into the screen. Replace it with Material 3's date picker;
+  display the date in the Swiss format the product uses everywhere
+  (formatDate, dd.MM.yyyy); the stored value stays an ISO day string,
+  unchanged. "Toute l'annee" when empty. The helper text mentioning a
+  format goes.
+- THREE INPUT STYLES on one screen: a centred pill for the canton, an
+  outlined field with a floating label for the rate, an outlined field
+  with a placeholder for the date. One style for every field.
+- THE CANTON SHOWS "GE". Show the canton's name - "Geneve" with its
+  accent from fr/ - and its code only where useful.
+- THE SAVE BUTTON SITS MID-PAGE, and the screen mixes two ways of
+  saving: work settings need "Enregistrer les reglages", the detection
+  toggle applies at once. One model, below.
+- PERMANENT TEXT: an amber warning always visible, three paragraphs
+  under the detection toggle, long helpers under every field. An amber
+  box that is always there stops reading as a warning.
+- "(beta)" IN THE TITLE, "beta" WITH ITS ACCENT IN THE TEXT. French
+  writes it with the accent: correct the title, and add the
+  unaccented form to R155's forbidden-forms list so it cannot return.
+- THE TITLE is much larger than the other screens'. The four screens
+  share one header style; state which and apply it.
+- THE STRAY VERTICAL LINE on the left edge appears at the SAME place
+  on this screen and on the calendar, so it lives in the shared app
+  frame, not in either screen. If AN-CAL2 fixed it there, confirm it is
+  gone here; if AN-CAL2 fixed it only in the calendar, fix it in the
+  frame.
+
+====================================================================
+2. THE NEW LAYOUT: ONE LIST, EACH ROW SHOWING ITS VALUE
+====================================================================
+Material 3 list items, grouped under section headers:
+  VOTRE SITUATION: Canton de travail - Geneve; Taux d'activite -
+    100 %; Methode de decompte - Forfait de 240 jours; Decompte -
+    Journee or Demi-journee; Debut d'activite - Toute l'annee or the
+    date. Each value from the stored setting, formatted.
+  SAISIE: Detection automatique (beta, accented) as a switch with a
+    one-line summary and "En savoir plus"; the evening notification if
+    AN-NEXT built it.
+  COMPTE: the email; Se deconnecter.
+  VOS DONNEES: Exporter mes donnees; Supprimer mon compte - set apart,
+    in the error colour, never next to a harmless row.
+  A PROPOS: Mentions legales, Confidentialite, CGU, Sources, Licences,
+    and the app version.
+The list ends ABOVE the navigation bar: the last row must be fully
+reachable, at default size and at 200 percent.
+
+====================================================================
+3. ONE WAY OF SAVING
+====================================================================
+- A WORK-SETTING ROW OPENS AN EDIT SHEET with: the setting's control,
+  its explanation (the helper texts move here), R290's before-and-after
+  for the year - and the "these settings recalculate the year" message,
+  which is where it belongs, made concrete by the before-and-after -
+  then its own Enregistrer and Annuler. Annuler writes nothing.
+  The canton sheet keeps the hedged line about the 1983-accord cantons
+  that onboarding shows.
+- A SWITCH APPLIES AT ONCE, as it does now. Turning detection on still
+  goes through the full disclosure screen first (R316) - unchanged.
+- THE FLOATING "Enregistrer les reglages" BUTTON IS GONE.
+
+====================================================================
+4. TEXT MOVED, NEVER DELETED
+====================================================================
+The beta notice and the warning that some phones, Samsung among them,
+interrupt background detection are honest disclosures (R282, R312,
+R317). They move behind "En savoir plus" - a sheet or a screen with the
+full text, word for word as now - not out of the app. A test asserts
+each of those strings is still reachable (R238).
+
+====================================================================
+DONE
+====================================================================
+  P1. Every behaviour test passes unchanged; only UI code, copy, tokens
+      and baselines changed.
+  P2. Every defect in section 1 fixed and seen on the S9.
+  P3. Each work setting edited through its sheet, with the before-and-
+      after, saved, and the row showing the new value; Annuler writes
+      nothing.
+  P4. The date picked with the picker, stored as before, shown in Swiss
+      format.
+  P5. Every screen captured and opened at default size and 200 percent;
+      the last row reachable above the navigation bar; TalkBack reads
+      each row's title and value.
+  P6. R310: an open edit sheet survives rotation and a background kill.
+  P7. Baselines regenerated with reasons (R135, R207); copy from fr/,
+      reachable (R238); gates green and gate:clone passing.
+
+====================================================================
+REPORT - REPORT-AN-PARAMS.txt
+====================================================================
+HOW IT ENDED / R273 / WHAT CHANGED AND WHAT DID NOT (files touched) /
+EACH DEFECT (cause, fix, seen) / THE LIST / THE EDIT SHEETS / THE DATE
+PICKER / TEXT MOVED (where each paragraph now lives) / THE STRAY LINE
+(where it came from) / STATE / BASELINES / ADVISOR DECISIONS / PHONE
+SETTINGS CHANGED AND RESTORED / PARKED / DEVIATIONS / QUESTIONS /
+PUSH PROOF
+
+END OF AN-PARAMS PROMPT

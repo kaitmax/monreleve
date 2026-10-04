@@ -1,0 +1,140 @@
+AN-CAL2 SESSION PROMPT - Mon Releve
+THE CALENDAR: RECORD SEVERAL DAYS AT ONCE, AND FIX ITS LAYOUT
+Paste into a fresh Claude Code session at the repository root. The
+physical phone (Galaxy S9, API 29) is connected.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+Do not stop to report progress or ask a question; judgment calls go to
+the advisors, whose decisions the operator trusts, recorded in the
+report. Ends in four ways, each with REPORT-AN-CAL2.txt committed and
+pushed: DONE; a HARD BOUNDARY; NO PROGRESS (the same failure surviving
+five fixes, an advisor's suggestion and three more attempts); or a
+DEGRADED CONTEXT. R300: if another session pushes to main, work on a
+branch. R270 applies.
+
+HARD BOUNDARIES: no change to either engine, the /v1 contract, the
+Room schema, sync, or detection. D16 - nothing is written without the
+person's tap. D18 absolute. Single-day editing behaves exactly as now.
+Tokens only (DESIGN-SYSTEM.md, Material 3 inside FrontierTheme). No red
+commit. Restore every phone setting changed.
+
+R273. Check tasks/todo.md; say first where this belongs.
+R0. Read REPORT-AN10.txt, REPORT-AN10b.txt, DESIGN-SYSTEM.md sections
+    1 and 2, SPEC 11.3, docs/api-v1.md's batch limits.
+R1. pnpm gate:clone and :app:gate green on origin/main's HEAD.
+
+====================================================================
+1. FOUR LAYOUT DEFECTS, FROM THE OPERATOR'S SCREENSHOT
+====================================================================
+- THE MONTH COUNTS ROW. "Non renseigne" wraps to two lines and its
+  number sits lower and further right than the others. Rebuild the row
+  as five equal tiles - Suisse, Domicile, Mission, Absence, Non
+  renseigne - each number centred under its label, labels short enough
+  not to wrap at default size, and the tiles wrapping onto a second row
+  at 200 percent rather than squeezing.
+- ABSENCE HAS NO COUNT. The legend names four kinds; the counts must
+  show all of them.
+- A STRAY VERTICAL LINE on the left edge beside the counts: a card's
+  border drawn partly off-screen. IT APPEARS AT THE SAME POSITION ON THE
+  PARAMETRES SCREEN TOO, so it lives in the shared app frame, not in the
+  calendar. Find its cause there, fix it once, and confirm it is gone
+  from every screen.
+- THE BOTTOM NAVIGATION shows Material 3's default pink indicator pill
+  and a red icon. DESIGN-SYSTEM: the active item is the brand colour,
+  WITH NO PILL. This is stock Material 3 leaking past FrontierTheme -
+  fix it in the theme or the navigation component, so every screen is
+  corrected at once, and add a screenshot assertion so it cannot
+  return.
+
+====================================================================
+2. RECORDING SEVERAL DAYS AT ONCE - A NEW FEATURE
+====================================================================
+This adds behaviour, so it is built test-first like any feature.
+
+ENTERING SELECTION
+  - An explicit "Selectionner plusieurs jours" button. A long press on
+    a day may also start it, but never as the only way - nobody finds a
+    long press unaided.
+  - Tap days to toggle them; tap a first day then a last day to select
+    the range between. A holiday week is two taps, and is the most
+    common case.
+  - Future days cannot be selected, as single-day editing refuses them
+    today. Whatever single-day editing cannot record, selection cannot
+    either.
+  - Each selected cell shows it is selected in a way that does not rely
+    on colour alone, and TalkBack announces "selectionne" and the count.
+  - At 200 percent the calendar is a list (R271); selection works there
+    too, with a checkbox per row.
+
+THE ACTION PANEL, in the space now empty at the bottom of the screen
+  - Shows how many days are selected, the choices - En Suisse,
+    Domicile, Mission en France, Mission dans un pays tiers, Absent -
+    and Annuler. Absent asks for its reason, once, for all the days.
+  - Applies to WHOLE DAYS. Splitting a day into halves stays in the
+    single-day editor.
+
+ONE CONFIRMATION BEFORE ANYTHING IS WRITTEN (D16)
+  - It lists the days, and the choice.
+  - If some selected days already have a value: "N jours deja
+    renseignes seront modifies".
+  - If some are older than the late threshold: "Ces jours seront
+    marques "saisie tardive" dans votre releve". This is true - the
+    server flags them - so the person learns it before confirming,
+    not from the releve. THE THRESHOLD COMES FROM THE ONE SHARED VALUE
+    (R286); never a 7 typed here.
+  - Confirm writes; Annuler writes nothing.
+
+WHAT IS WRITTEN
+  - ONE MUTATION PER DAY, each with its own clientMutationId born at
+    the confirmation tap, each tagged with the account (R303), each
+    with clientClaimedAt = the confirmation tap (R275). A bulk entry is
+    exactly the same records as entering the days one by one - nothing
+    in the record says "bulk", because nothing about the evidence is
+    different.
+  - Sync batches them within the server's batch limit (the named
+    constant); a month never needs more than one or two batches. The
+    server refuses two items for the same day in one batch, and a
+    selection never contains a day twice - assert it.
+  - A rejected item is isolated as R296 already does.
+
+====================================================================
+3. THE EMPTY SPACE WHEN NOT SELECTING
+====================================================================
+- The five month tiles from section 1.
+- When the month has unrecorded past working days, a card: "N jours a
+  completer en <mois>" with the "Selectionner plusieurs jours" button.
+  It disappears when the month is complete - never an empty box.
+
+====================================================================
+DONE
+====================================================================
+  C1. The four defects fixed, seen on the S9, the navigation pill gone
+      from every screen.
+  C2. Selection: individual taps, a range in two taps, future days
+      refused, selection kept across rotation and a background kill
+      (R310).
+  C3. A holiday week recorded as Absent with one reason in a handful of
+      taps, on the phone, and read back from the server's database as
+      five separate rows with distinct ids and the account's tag.
+  C4. The confirmation shows the "already recorded" and "saisie
+      tardive" lines exactly when they apply, and Annuler writes
+      nothing.
+  C5. JVM tests for selection, range, the confirmation's lines, and one
+      mutation per day; the existing single-day tests pass UNCHANGED.
+  C6. Every screen captured on the S9 and opened, at default size and
+      200 percent; TalkBack announces selection; baselines regenerated
+      with reasons (R135, R207); copy from fr/, reachable (R238).
+  C7. Gates green and gate:clone passing on the final commit.
+
+====================================================================
+REPORT - REPORT-AN-CAL2.txt
+====================================================================
+HOW IT ENDED / R273 / THE FOUR DEFECTS (each cause, each fix, seen) /
+SELECTION / THE ACTION PANEL / THE CONFIRMATION (both conditional
+lines) / WHAT IS WRITTEN (the five rows read back) / THE EMPTY SPACE /
+STATE / ACCESSIBILITY / BASELINES / ADVISOR DECISIONS / PHONE SETTINGS
+CHANGED AND RESTORED / PARKED / DEVIATIONS / QUESTIONS / PUSH PROOF
+
+END OF AN-CAL2 PROMPT

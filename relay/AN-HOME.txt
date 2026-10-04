@@ -1,0 +1,178 @@
+AN-HOME SESSION PROMPT - Mon Releve
+AUJOURD'HUI: BETTER PRESENTATION AND MOTION, SAME BEHAVIOUR
+Paste into a fresh Claude Code session at the repository root. The
+physical phone (Galaxy S9, API 29) is connected.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+Do not stop to report progress or ask a question; judgment calls go to
+the advisors, whose decisions the operator trusts, recorded in the
+report. Ends in four ways, each with REPORT-AN-HOME.txt committed and
+pushed: DONE; a HARD BOUNDARY; NO PROGRESS (the same failure surviving
+five fixes, an advisor's suggestion and three more attempts); or a
+DEGRADED CONTEXT. R300: if another session pushes to main, work on a
+branch. R270 applies.
+
+====================================================================
+THE OPERATOR'S INSTRUCTION, AND ITS ONE HARD LIMIT
+====================================================================
+"Change nothing from the actual version except the presentation and
+the animation." So:
+
+  CHANGES: layout, visual hierarchy, spacing, the sections on the
+  Aujourd'hui screen, the transition when a person makes their choice,
+  and the copy those need.
+
+  DOES NOT CHANGE - and this is a HARD BOUNDARY no advisor overrides:
+  what a tap records, the mutation queue, sync, the Room schema, the
+  detection logic and its rulings (R311-R320), the engine, the /v1
+  contract, the account scoping (R303), what any other screen does.
+
+  THE PROOF that behaviour did not change: no test outside the UI layer
+  and its screenshot baselines is modified. Every existing behaviour
+  test passes UNCHANGED. If a non-UI test has to change for the new
+  design to work, that is a behaviour change: stop, record it, and ask
+  an advisor whether it is truly presentation-only before continuing.
+
+THE DESIGN SYSTEM DOES NOT CHANGE EITHER. DESIGN-SYSTEM.md - Frontier
+Work v1.0 - is the authority, and on Android it means Material 3
+COMPONENTS INSIDE FrontierTheme (D37): Material 3's behaviour and
+components, with Mon Releve's own colours, type, radii and Lucide
+icons. Not stock Material 3: no dynamic colour from the wallpaper, no
+default purple, no default shapes or card shadows. Every colour,
+radius, size and duration is a token; the fences reject anything else.
+prompts/design-frontier/FD4 is an OUTDATED visual sketch - it still
+says "FrontalierPro" and predates the rulings - so use it for nothing
+but loose inspiration.
+
+====================================================================
+PRE-STEP
+====================================================================
+R273. Check tasks/todo.md; say first where this belongs.
+R0. Read DESIGN-SYSTEM.md IN FULL (sections 1, 2 and the motion
+    tokens), SPEC 11.2, REPORT-AN-AUTO-2.txt, REPORT-AN-STATE.txt.
+R1. pnpm gate:clone and :app:gate green on origin/main's HEAD.
+
+====================================================================
+1. THE CHOICE: CLOSE THE OPTIONS, SHOW THE ANSWER, OFFER "MODIFIER"
+====================================================================
+The operator's main request. Today the choices stay on screen after a
+day is recorded. Instead:
+
+  BEFORE A CHOICE - the options as a VERTICAL list of Material 3 list
+  items in one white card with a 1 px border and no shadow. Vertical,
+  not side by side: four or five options in a row cannot fit at 200
+  percent text (R271). Every kind the product records stays: En Suisse,
+  Domicile, Mission en France, Mission dans un pays tiers, and Absent
+  with its reason - Absent may sit behind a secondary row, but it does
+  not disappear.
+
+  AFTER THE TAP - the options close and are replaced, in the same card,
+  by one compact line with the answer and a "Modifier" TEXT button
+  (a word, not a pencil alone - easier to find, and TalkBack reads it):
+    - with half-days, the line shows BOTH halves: "Matin : Domicile -
+      Apres-midi : En Suisse" - a single label would misstate a split
+      day (R292);
+    - the line tells the truth about syncing, as it does today:
+      "enregistre sur le telephone, en attente d'envoi" until the server
+      has it, then "enregistre" - persistent, never a toast;
+    - a day confirmed from a detection proposal says so, as it does
+      today ("propose par la detection, confirme par vous").
+
+  "MODIFIER" reopens the options with the current choice marked.
+  Choosing records exactly as today. An "Annuler" closes them again
+  WITHOUT writing anything.
+
+  THE MOTION - DESIGN-SYSTEM's tokens, not invented numbers: the
+  options fade out and the card's height shrinks to the answer line
+  over the 200 ms standard duration, no bounce. Reopening is the
+  reverse. Number changes in the year panel animate over 300 ms, as the
+  design system says. If motion tokens do not exist in Kotlin yet, add
+  them citing DESIGN-SYSTEM (R77) - never a duration typed inline.
+  NO CELEBRATION: no checkmark burst, no scaling, no confetti, no
+  "bravo" - DESIGN-SYSTEM forbids a success animation on logging. The
+  confirmation IS the answer appearing.
+
+  ACCESSIBILITY OF THE CHANGE: when the options close, TalkBack
+  announces the answer (a polite live region), and focus lands on the
+  answer line or its "Modifier" - never lost. With Android's "Remove
+  animations" setting on, the change is instant and nothing is left
+  half-drawn.
+
+  STATE (R310): whether the options are open for editing survives
+  rotation, a text-size change, dark mode and a background kill, like
+  every other state on the screen.
+
+====================================================================
+2. AUJOURD'HUI'S SECTIONS - USEFUL, FROM DATA THE APP ALREADY HAS
+====================================================================
+Order by what the person needs first. Every section uses data the app
+already holds and components that already exist; nothing here is a new
+feature, and each states only what is true (R172, R282, R146).
+
+  A. THE HEADER - a greeting and today's date in Europe/Paris, worked
+     out when used, not when the screen opened (F8).
+
+  B. TODAY - the choice card from section 1. In automatic mode, its
+     existing states, re-presented: day in progress ("Votre journee vous
+     sera proposee ce soir" with "Saisir maintenant"), the proposal
+     ("Proposition - verifiez", Confirmer as the filled button, Corriger
+     as the outlined one), not sure (the R312 message with the manual
+     choices), and the near-border notice once. WORDING STAYS AS BUILT.
+
+  C. TO ATTEND TO - shown ONLY when there is something, never as an
+     empty box: unrecorded past working days with a link to the
+     calendar; days still waiting to be sent; and R286's warning as the
+     oldest unsent day nears the late threshold. One card, most urgent
+     first. When there is nothing, the section is absent.
+
+  D. THE YEAR - the existing ZoneBadge, RateDisplay with the raw rate
+     when it differs (R224), the ThresholdRail, and the two remaining-
+     day tiles, negative named by threshold when over (R73). This is
+     the product's core answer; give it the visual weight of a hero
+     card.
+
+  E. THIS WEEK - Monday to Friday as five of the existing DayCells,
+     with the legend a DayCell grid always carries (R119). Tapping a day
+     opens it in the calendar. At high text scale it follows the
+     calendar's rule and becomes a list (R271).
+
+  F. THIS MONTH - recorded days by kind: Suisse, Domicile, Mission,
+     Absent - counts of what the person has recorded, labelled as such,
+     never a forecast.
+
+  NOT ADDED, on purpose: tips or advice with figures (a regulatory
+  statement needs a source, R146); a notification bell; streaks or
+  scores; a map or live position (D18, DESIGN-SYSTEM section 2); any
+  mention of a feature the build lacks (R282).
+
+====================================================================
+DONE
+====================================================================
+  H1. Every existing behaviour test passes unchanged; only UI code, its
+      copy, its tokens and its screenshot baselines changed.
+  H2. The choice closes into the answer line with "Modifier", reopens,
+      and "Annuler" writes nothing - for a full day AND a half-day pair,
+      pending AND synced, in manual AND after confirming a proposal.
+  H3. Sections A to F render from real data; C is absent when empty.
+  H4. On the S9: every state captured and opened, at default size and
+      at 200 percent, with animations on AND with "Remove animations"
+      on. TalkBack announces the answer after a choice.
+  H5. R310 holds for the editing state across the four triggers.
+  H6. Screenshot baselines regenerated, every file named with its
+      reason (R135, R207); no colour, radius, size or duration outside
+      the tokens; copy from fr/ and reachable (R238).
+  H7. Gates green and gate:clone passing on the final commit.
+
+====================================================================
+REPORT - REPORT-AN-HOME.txt
+====================================================================
+HOW IT ENDED / R273 / WHAT CHANGED AND WHAT DID NOT (the list of files
+touched, proving none outside the UI layer) / THE CHOICE TRANSITION
+(the tokens used, half-day and sync cases, Annuler, TalkBack, reduced
+motion) / EACH SECTION A TO F (what data it reads, seen on the phone) /
+STATE / BASELINES / ADVISOR DECISIONS / PHONE SETTINGS CHANGED AND
+RESTORED / PARKED / DEVIATIONS / QUESTIONS / PUSH PROOF
+
+END OF AN-HOME PROMPT
