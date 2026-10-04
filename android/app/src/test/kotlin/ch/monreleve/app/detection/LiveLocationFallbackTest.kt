@@ -26,7 +26,7 @@ class LiveLocationFallbackTest : FunSpec({
         }
     }
 
-    test("the NETWORK fallback records when GPS is silent indoors") {
+    test("the NETWORK fallback records when GPS is silent indoors, and names NETWORK as the provider (R324)") {
         runTest {
             val queried = mutableListOf<String>()
             val result =
@@ -34,7 +34,8 @@ class LiveLocationFallbackTest : FunSpec({
                     queried += provider
                     if (provider == "network") Classification.OUTSIDE else null
                 }
-            result shouldBe Classification.OUTSIDE
+            // R324: the side AND which provider produced it, so the tally can count how often network decided.
+            result shouldBe ProviderFix(Classification.OUTSIDE, FixProvider.NETWORK)
             queried shouldContainExactly listOf("gps", "network") // GPS tried first, then the fallback
         }
     }
@@ -47,9 +48,14 @@ class LiveLocationFallbackTest : FunSpec({
                     queried += provider
                     if (provider == "gps") Classification.INSIDE else error("network must not be consulted")
                 }
-            result shouldBe Classification.INSIDE
+            result shouldBe ProviderFix(Classification.INSIDE, FixProvider.GPS)
             queried shouldContainExactly listOf("gps")
         }
+    }
+
+    test("ofManagerProvider maps the platform strings: gps -> GPS, network -> NETWORK (R324)") {
+        FixProvider.ofManagerProvider("gps") shouldBe FixProvider.GPS
+        FixProvider.ofManagerProvider("network") shouldBe FixProvider.NETWORK
     }
 
     test("FIX_PROVIDERS tries GPS first, then NETWORK as the indoor fallback") {

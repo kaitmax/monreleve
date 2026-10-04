@@ -11,9 +11,12 @@ import java.time.Clock
 // DAY, not continuously: the worker wakes periodically, and each wake does something ONLY when it lands inside one
 // of the four check windows (CheckWindows.kt) whose slot is still empty.
 //
-// WHAT EACH WAKE DOES, and WHAT IT NEVER DOES. Inside a check window whose slot has no fix yet it requests ONE GPS
-// fix, classifies it against the bundled polygon, discards the coordinate (awaitClassifiedFix, D18), and writes the
-// side into that window's slot (recordCheck). A wake outside every window - including lunch - does NOTHING: a check
+// WHAT EACH WAKE DOES, and WHAT IT NEVER DOES. Inside a check window whose slot has no fix yet it requests ONE
+// fix (GPS first, then NETWORK as the indoor fallback - R322), classifies it against the bundled polygon reading
+// the fix's accuracy to decide whether it may assert a side (R324), discards the coordinate AND the accuracy value
+// (awaitClassifiedFix, D18), and writes the side into that window's slot while counting which provider produced it
+// (recordCheck - counts only, never a coordinate or an accuracy value, R324). A wake outside every window -
+// including lunch - does NOTHING: a check
 // that cannot run inside its window is MISSED, never taken late (an 11:00 check delayed to 13:00 would sample
 // lunch, which the windows exist to avoid). It NEVER records a day (D16 - only a confirming tap does); it only
 // fills the day's four checks the evening vote reads. No coordinate is read, stored, logged or sent at any point -
@@ -41,9 +44,11 @@ class SamplingWorker(
         if (dao.byDay(dayDate).hasCheck(window.index)) return Result.success() // this window already sampled today
 
         val border = loadBundledBorder(applicationContext)
-        // No fix inside the window -> this check stays MISSED (null); never taken late.
-        val classification = awaitClassifiedFix(applicationContext, border) ?: return Result.success()
-        recordCheck(dao, dayDate, window.index, classification)
+        // No fix inside the window -> this check stays MISSED (null); never taken late. The ProviderFix carries
+        // the side AND which provider produced it, so the tally can count GPS vs NETWORK (R324) - never the
+        // coordinate, never the accuracy value (D18).
+        val fix = awaitClassifiedFix(applicationContext, border) ?: return Result.success()
+        recordCheck(dao, dayDate, window.index, fix.classification, fix.provider)
         return Result.success()
     }
 }

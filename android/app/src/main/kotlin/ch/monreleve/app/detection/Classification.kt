@@ -29,13 +29,15 @@ data class ClassifiedFix(
 )
 
 /**
- * The one seam where a coordinate exists and then does not. The latitude and longitude are
- * arguments here and nowhere else; the ClassifiedFix returned carries no position. A BUFFER
- * fix is kept as BUFFER (counted, never guessed onto a side).
+ * The one seam where a coordinate exists and then does not. The latitude, longitude AND the fix's
+ * accuracy (R324) are arguments here and nowhere else; the ClassifiedFix returned carries no position
+ * and no accuracy value. A BUFFER fix is kept as BUFFER (counted, never guessed onto a side) - and a
+ * fix too coarse to resolve the border is a BUFFER for that reason too (BorderPolygon.classify).
  */
 fun classifyFix(
     border: BorderPolygon,
     latitude: Double,
     longitude: Double,
     epochMillis: Long,
-): ClassifiedFix = ClassifiedFix(border.classify(latitude, longitude), epochMillis)
+    accuracyMeters: Double,
+): ClassifiedFix = ClassifiedFix(border.classify(latitude, longitude, accuracyMeters), epochMillis)

@@ -37,18 +37,28 @@ const val DETECTION_REPLAY_REFRESH = "ch.monreleve.app.dev.DETECTION_REPLAY_REFR
 // (LiveLocationFallbackTest asserts the order and the fallback).
 internal val FIX_PROVIDERS: List<String> = listOf("gps", "network")
 
-// R322. The fallback ORCHESTRATION, pure and testable: try each provider in order and stop at the FIRST fix.
-// A null from every provider (disabled, or no fix within the budget) means the check is MISSED - exactly the
-// old behaviour when GPS alone was tried, now reached only after NETWORK has also been silent. It speaks only
-// in Classification; no coordinate crosses this seam (D18).
+// R322 / R324. The fallback ORCHESTRATION, pure and testable: try each provider in order and stop at the FIRST
+// fix, and REMEMBER WHICH PROVIDER produced it so the tally can count it (R324). A null from every provider
+// (disabled, or no fix within the budget) means the check is MISSED - exactly the old behaviour when GPS alone
+// was tried, now reached only after NETWORK has also been silent. It speaks only in ProviderFix (a side and a
+// provider label); no coordinate and no accuracy value crosses this seam (D18).
 internal suspend fun firstClassifiedFix(
     providers: List<String>,
     fixFromProvider: suspend (provider: String) -> Classification?,
-): Classification? {
+): ProviderFix? {
     for (provider in providers) {
-        fixFromProvider(provider)?.let { return it }
+        fixFromProvider(provider)?.let { return ProviderFix(it, FixProvider.ofManagerProvider(provider)) }
     }
     return null
+}
+
+// R324. A fix's accuracy radius in metres, or "unresolvable" when the platform reports none. FAIL-CLOSED: a fix
+// with no accuracy cannot be asserted precise, so it is treated as infinitely coarse (Double.MAX_VALUE), which
+// classify turns into BUFFER - "not sure" - rather than letting an unmeasured fix assert a side (R324). Read in
+// memory and handed straight to classify; never stored (D18).
+private fun Location.accuracyMetersOrUnresolvable(): Double {
+    // No stated accuracy -> treat the fix as infinitely coarse (fail-closed, R324), which classify turns into BUFFER.
+    return if (hasAccuracy()) accuracy.toDouble() else Double.MAX_VALUE
 }
 
 /**
@@ -66,7 +76,7 @@ fun classifyCurrentLocation(
     val manager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
     val location =
         if (granted && manager != null) manager.getLastKnownLocation(LocationManager.GPS_PROVIDER) else null
-    return location?.let { border.classify(it.latitude, it.longitude) }
+    return location?.let { border.classify(it.latitude, it.longitude, it.accuracyMetersOrUnresolvable()) }
 }
 
 // AN-AUTO increment 4, R322 (the indoor fix). The background sampler's fresh fix: ask each provider in
@@ -74,16 +84,16 @@ fun classifyCurrentLocation(
 // in the same breath (D18). GPS first for the 150 m buffer's precision (D25); NETWORK as the indoor fallback,
 // because GPS alone returns no fix indoors and left every check MISSED (see FIX_PROVIDERS). The whole life of a
 // coordinate is the `location.latitude`/`location.longitude` read handed straight to classify inside
-// requestOneFix - never returned, stored, logged or sent. Returns the first Classification, or null if there is
-// no permission, no manager, or no provider yields a fix within its timeout (the sampler then records nothing
-// for that wake - a thin signal is withheld). Each provider is given up to timeoutMillis, so a wake that must
-// fall through to NETWORK can take up to FIX_PROVIDERS.size * timeoutMillis; outdoors GPS answers first and
-// NETWORK is never consulted.
+// requestOneFix - never returned, stored, logged or sent. Returns the first ProviderFix (the side AND which
+// provider produced it, for the tally's counts - R324), or null if there is no permission, no manager, or no
+// provider yields a fix within its timeout (the sampler then records nothing for that wake - a thin signal is
+// withheld). Each provider is given up to timeoutMillis, so a wake that must fall through to NETWORK can take up
+// to FIX_PROVIDERS.size * timeoutMillis; outdoors GPS answers first and NETWORK is never consulted.
 suspend fun awaitClassifiedFix(
     context: Context,
     border: BorderPolygon,
     timeoutMillis: Long = DEFAULT_FIX_TIMEOUT_MILLIS,
-): Classification? {
+): ProviderFix? {
     val granted =
         ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
             PackageManager.PERMISSION_GRANTED
@@ -112,7 +122,10 @@ private suspend fun requestOneFix(
                 override fun onLocationChanged(location: Location) {
                     manager.removeUpdates(this)
                     if (!continuation.isActive) return
-                    val side = border.classify(location.latitude, location.longitude)
+                    // R324: the accuracy is read here, used to decide whether this fix may assert a side, and
+                    // discarded with the coordinate - only the Classification leaves (D18).
+                    val side =
+                        border.classify(location.latitude, location.longitude, location.accuracyMetersOrUnresolvable())
                     continuation.resume(side)
                 }
 

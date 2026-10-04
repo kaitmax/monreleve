@@ -1,0 +1,245 @@
+AN-NEXT-2 SESSION REPORT - Mon Releve
+NETWORK LOCATION: ACCURACY NEAR THE BORDER (R324), AND A PRECISE DISCLOSURE (R325)
+====================================================================
+
+HOW IT ENDED
+--------------------------------------------------------------------
+DONE. The limit-bounce WIP on an-next-2 (9d82a35) was verified as untrusted,
+finished test-first, and gated. R324 (the accuracy guard + provider counts)
+and R325 (the disclosure reword, android + web) are complete; both the JVM
+suites and the physical phone confirm them. :app:gate is green, the web R132
+selection ran, gate:clone is green, and an-next-2 is merged to main.
+
+The branch carried 14 partial files the prior agent had committed before the
+account limit bounced it mid-DetectionSamplerTest. The classifier guard
+(BorderPolygon.classify), the accuracy plumbing (Classification/DetectionSession/
+LiveLocation/SyntheticTracks), FixProvider, the TallyEntity columns and the
+MIGRATION_4_5 body were present and sound; what was MISSING and finished this
+session: the three R324 accuracy tests, the coarse-track re-run, schemas/5.json,
+the RoomSchemaContractTest contract, the MonReleveMigrationTest v4->v5 coverage,
+the FieldExport key-set test, the whole of R325 (android + web), the field
+scorer's provider surfacing, and the on-device drives.
+
+R273 - WHERE THIS BELONGS
+--------------------------------------------------------------------
+tasks/todo.md has no separate "AN-NEXT-2" line; this is a follow-on ruling
+(R324/R325) on the detection work of the AN6 family ("AN6: Detection accuracy
+spike", todo.md). It hardens the shipped on-device classifier - the 150 m strip
+now accounts for each fix's accuracy radius - and the pre-permission disclosure,
+ahead of the AN6b field test. The R324 threshold is PROPOSED (R276) and freezes
+when the field test starts, exactly like the vote thresholds AN6a recorded in
+docs/detection-model.md. It continues the AN-AUTO / AN-NEXT line (the NETWORK
+fallback AN-NEXT added is what R324 now bounds).
+
+R324 - A FIX IS CLASSIFIED ONLY IF IT IS PRECISE ENOUGH
+--------------------------------------------------------------------
+THE RULE (BorderPolygon.classify, detection/): a fix classifies to a side ONLY
+IF its accuracy radius is smaller than its distance to the border; otherwise it
+counts as BUFFER ("not sure"). Effectively the strip widens to max(150 m,
+accuracy). A fix with no stated accuracy is treated as imprecise (fail-closed,
+Double.MAX_VALUE in LiveLocation.accuracyMetersOrUnresolvable). The engines are
+untouched (D16): this lives in detection/, not calc/.
+
+TESTS (test-first; the RED shown):
+  - ClassificationTest (JVM): three cases DERIVED from the real polygon (R171,
+    no hand-typed metre figure) - a near-but-classifiable inside point is found
+    by walking inward from a border vertex until distance-to-edge is 200-1500 m:
+      * coarse fix near the border  -> BUFFER (not sure)
+      * same coarse radius far away (Bern) -> classifies INSIDE
+      * precise fix near the border -> classifies INSIDE
+      * a fix with no stated accuracy -> BUFFER (imprecise)
+    RED PROOF: with the guard line (`accuracyMeters >= distance -> BUFFER`)
+    commented out, EXACTLY the three accuracy-dependent tests failed
+    (aCoarseFixNearTheBorderIsNotSureAndAPreciseOneClassifies,
+    aFixWithNoStatedAccuracyIsTreatedAsImprecise, and the track re-run below);
+    the far-from-border and precise=0 cases stayed green. Guard restored -> all
+    green.
+  - DetectionSessionTest (JVM): the AN6a synthetic tracks RE-RUN with coarse
+    (10 km) fixes - every point sits within a few km of the Geneva border, so a
+    10 km radius reaches the border from all of them - WITHHOLD every proposal.
+    A non-vacuous companion asserts several of those same tracks DO propose at
+    precise accuracy, so the coarse withholding is the guard working.
+
+TRACKS ON THE PHYSICAL PHONE (SM-G960F, API 29) via the debug mock provider:
+  - A coarse-accuracy Intent extra was added to DetectionMockReplayActivity
+    (REPLAY_ACCURACY_EXTRA, a const in detection/ because fence 4 forbids a
+    string literal in dev/). `--ef ch.monreleve.app.dev.REPLAY_ACCURACY_METRES
+    10000` replays the nine tracks as NETWORK-grade fixes.
+  - COARSE 10 km: every track's ACTUAL outcome collapsed to "Pas sur" - the
+    four that propose at GPS precision ("Propose CH" x3, "Propose HOME") all
+    became "Pas sur" (ECHEC against the precise expectation, i.e. the guard
+    firing); the already-not-sure days stayed OK.
+    Screenshot: android/.an-auto-shots/an-next-2-r324-coarse.png
+  - PRECISE (default 5 m) for contrast: every track matched its expectation
+    (all OK). Screenshot: android/.an-auto-shots/an-next-2-r324-precise.png
+
+THE PROVIDER COUNTS (recorded, counts only - D18):
+  - TallyEntity gains gpsCheckCount / networkCheckCount (INTEGER NOT NULL
+    DEFAULT 0). recordCheck increments only when a window's slot was EMPTY, so
+    gpsCheckCount + networkCheckCount == checks taken even on a re-record
+    (DetectionSamplerTest, inherited + verified).
+  - THE MIGRATION IS REAL (R305/R187, no destructive fallback): MIGRATION_4_5
+    is two `ADD COLUMN ... INTEGER NOT NULL DEFAULT 0` steps; every existing
+    daily_tally row is preserved and reads zero. schemas/5.json was generated by
+    KSP and committed; DATABASE_VERSION = 5. RoomSchemaContractTest (JVM) pins
+    the two new columns and re-confirms noColumnIsCoordinateShapedInAnyTable over
+    every table. MonReleveMigrationTest (emulator/device) now runs the full
+    v1->v5 chain, adds a v4->v5 preservation test, and the v2/v3 tests migrate
+    all the way to v5.
+  - The field export (FieldExport.exportFieldRun) carries gpsChecks /
+    networkChecks; FieldExportTest pins the key set AND the no-coordinate
+    assertion. score-field-run.mjs prints the network share so the field test
+    can SEE how often network location decided a day (upper-bound.test.mjs
+    extended, 7/7 green).
+
+docs/detection-model.md: the accuracy rule and the provider counts are written
+up and marked PROPOSED (R276); the record-table section is bumped to Room v5.
+
+R325 - THE DISCLOSURE SAYS WHAT IS TRUE
+--------------------------------------------------------------------
+The old disclosure implied the position is worked out purely on the phone.
+With the NETWORK (Wi-Fi/cell) fallback AN-NEXT added, Android asks the system's
+location service to determine the position from nearby Wi-Fi and cell networks.
+The app still stores and sends nothing; the phone consults that service. The
+reword says so, naming "les reseaux Wi-Fi et cellulaires ... selon les reglages
+de localisation de votre telephone" (the reader controls it), and keeps the
+"l'application ne conserve ni n'envoie jamais votre position" promise.
+
+Each place reworded, and SEEN:
+  1) THE PHONE (android, DisclosureCopy.NETWORK_LOCATION, rendered in
+     DisclosureScreen - R238 reachable; DisclosureCopyTest is the positive
+     R154 proof; Paparazzi disclosure.png re-recorded, R135/R207 only that one
+     image). Verified LIVE on the SM-G960F (reached via the debug
+     SessionInjection, then Parametres -> Detection automatique toggle -> the
+     pre-permission disclosure overlay):
+       - default size: android/.an-auto-shots/an-next-2-r325-disclosure-default.png
+       - 200 percent (font_scale 2.0), scrolled to the clause:
+         android/.an-auto-shots/an-next-2-r325-disclosure-200-wifi.png
+         (and -200-top.png)
+  2) /confidentialite (web/lib/fr/confidentialite.ts, the automatic-mode item):
+     "sur votre appareil uniquement" became an honest determination clause in
+     FUTURE tense (R138, the app is unreleased). Keeps 'appareil' and 'polygone'
+     (the page's unit test). SEEN in the regenerated baseline
+     page-confidentialite-{desktop,mobile}.png.
+  3) THE PRIVACY MAP - the /application "Ce que l'application ne fera pas"
+     refusals (web/lib/fr/application.ts, the "aucune coordonnee" card). The
+     determination clause added in the page's existing future tense. SEEN in the
+     regenerated baseline page-application-{desktop,mobile}.png.
+  (On "the privacy map": no artefact in the repo is named that; it appears only
+   in the task prompt. Read conservatively - under-disclosing is the dangerous
+   direction - as the public map of what the app does with position, which is
+   the /application refusals section. Recorded as a deviation/decision below.)
+
+D18 - RE-CHECKED WITH NETWORK LOCATION IN PLAY
+--------------------------------------------------------------------
+  - SOURCE FENCE (FencesTest fence 2b): coordinate-shaped names confined to
+    detection/. Every "accuracy" reference outside detection/ is a COMMENT
+    (data/local explaining it is NOT stored) or the dev activity's coarse-replay
+    extra (read, passed to classify, never persisted). Green in :app:gate.
+  - ROOM DDL SCAN (RoomSchemaContractTest.noColumnIsCoordinateShapedInAnyTable):
+    schema 5 daily_tally = dayDate, check1..4, gpsCheckCount, networkCheckCount -
+    no coordinate and no accuracy column; entry table unchanged. Green.
+  - ACCURACY LIFE: read in BorderPolygon.classify / classifyFix and discarded
+    with the coordinate; ClassifiedFix carries no accuracy field
+    (CoordinateConfinementTest, green). Fail-closed when absent.
+  - NETWORK / WIRE: the detection path is local-only and makes no network call;
+    the tally and its provider counts never leave the device. The /v1 wire is
+    unchanged - no accuracy / provider / coordinate field key was added
+    (checkMinifiedWireContract green in :app:gate; the data/remote layer carries
+    none). The field export is a local file, counts only, no coordinate
+    (FieldExportTest.theExportCarriesNoCoordinate).
+  The orchestrator independently re-verifies the tally shape on merge; schema 5
+  and the DDL scan make the claim machine-checkable.
+
+ADVISOR DECISIONS
+--------------------------------------------------------------------
+The advisor was unavailable for the whole session (stalled), so per the relay
+the conservative / fail-closed option was taken and recorded at each judgement:
+  - A fix with no stated accuracy is treated as IMPRECISE (BUFFER), never
+    assumed precise (LiveLocation, fail-closed).
+  - "The privacy map" (unnamed in the repo) was read as the /application
+    public refusals and corrected there too - over-disclosing rather than
+    under-disclosing.
+  - The outdated "cumul de minutes" phrase in /confidentialite (an R320-era
+    relic) was LEFT verbatim rather than half-corrected under an R325 task
+    (NOTICED BUT NOT TOUCHING; parked).
+
+PHONE SETTINGS CHANGED AND RESTORED
+--------------------------------------------------------------------
+As found: font_scale=1.0, mock_location=deny, ACCESS_FINE_LOCATION granted=false,
+stay_on_while_plugged_in=7, auto_time=1.
+Changed during the drives and RESTORED:
+  - mock_location: deny -> allow (R324 coarse/precise replay) -> deny.
+  - ACCESS_FINE_LOCATION: granted via pm grant for the replay -> revoked (pm
+    clear) -> granted=false.
+  - font_scale: 1.0 -> 2.0 (R325 200 percent) -> 1.0.
+  - app data: a synthetic debug session was injected to reach Parametres, then
+    `pm clear` removed it (app left signed-out, clean).
+NOT changed: stay_on (7), auto_time (1) - left as found. Final verification
+re-read all five and confirmed the as-found state.
+
+PARKED (PARKAN ledger; next id was 37)
+--------------------------------------------------------------------
+  - PARKAN-37: /confidentialite still says "un cumul de minutes par journee"
+    (the pre-R320 minutes model; detection now keeps four checks). Out of R325's
+    scope; left verbatim. Fix belongs with an R320 copy sweep.
+  - PARKAN-38: "the privacy map" has no named artefact - interpreted as the
+    /application refusals. If the operator meant another surface, point it out.
+  - The R324 accuracy rule and provider-count model are PROPOSED (R276), not
+    parked: they freeze when the AN6b field test starts.
+
+DEVIATIONS
+--------------------------------------------------------------------
+  - Inherited WIP code pre-existed its tests. Honoured test-first by writing the
+    tests and proving RED via a temporary guard removal (recorded above), rather
+    than writing a test against code that did not yet exist.
+  - Paparazzi disclosureLarge.png did NOT change: at fontScale 2f the new
+    paragraph falls below the fixed PIXEL_5 viewport fold, so its pixels are
+    unchanged. The 200 percent proof is the SCROLLED physical-phone screenshot
+    instead (R178 > a fixed-viewport baseline).
+  - gate:clone's `pnpm size` may crash on Windows (exit 3221225794 = 0xC0000142);
+    handled per the relay (sweep stale clones, re-run) if it occurs - see PUSH
+    PROOF.
+
+QUESTIONS
+--------------------------------------------------------------------
+  - "The privacy map" surface (PARKAN-38): confirm the /application refusals was
+    the intended third surface.
+  - Operator ratification of the R324 PROPOSED accuracy rule at field-test start.
+
+PUSH PROOF
+--------------------------------------------------------------------
+BRANCH an-next-2 (on top of the inherited WIP, oldest first):
+  778b801  AN-NEXT-2: record the operator task definition (R241)
+  9d82a35  AN-NEXT-2: WIP R324/R325 (limit-bounce preservation - inherited)
+  8b1e1c8  AN-NEXT-2: finish R324 (accuracy guard + provider counts) + R325 android disclosure
+  eca52ad  AN-NEXT-2: dev mock-replay accepts a coarse accuracy for the on-device R324 drive
+  ac02132  AN-NEXT-2: R325 disclosure reword on the web (confidentialite + application refusals)
+  [this report commit]
+
+GATES (branch HEAD):
+  :app:gate            GREEN (assembleDebug, testDebugUnitTest incl. the fences +
+                       RoomSchemaContractTest + CopyReachabilityTest + the R324/R325
+                       tests, checkTestFloor, ktlintCheck, detekt, verifyPaparazziDebug,
+                       checkRelease* x4, checkMinifiedWireContract, checkLicences,
+                       lintDebug/NewApi). SKIPPED with reason: the emulator instrument
+                       and connectedDebugAndroidTest (need a device) - the migration's
+                       v4->v5 emulator test and the mock drive were exercised ON the
+                       physical SM-G960F instead.
+  gate:changed (web)   GREEN - R132 selection for lib/fr + baselines:
+                       typecheck, lint, test, build, test:visual, test:e2e, test:db,
+                       test:late. Measured: test 2970, test:visual 109, test:e2e 292,
+                       test:db 546, test:late 10.
+  gate:clone (web)     GREEN - "GATE:CLONE PASSED". Ran install, typecheck, lint,
+                       test, build, size, db:deploy, test:db, test:container:write
+                       from a clean --local clone of HEAD; swept no stale clones.
+                       `pnpm size` ran clean (no Windows 0xC0000142 crash this run).
+
+R300: origin/main advanced to f7b1be6 (chore: the android chain prompts) while this
+ran. No conflict - that commit touches only relay/AN-{HOME,CAL2,PARAMS}.txt and
+RUN-CHAIN-ANDROID.txt, disjoint from this branch - so an-next-2 merged --no-ff cleanly.
+
+MERGE: an-next-2 merged --no-ff into main (merge commit over f7b1be6), main pushed
+to origin, and the worktree left on main. Exact hashes in the closing message to the
+orchestrator. gate:clone and :app:gate were both green on the an-next-2 HEAD that was
+merged.

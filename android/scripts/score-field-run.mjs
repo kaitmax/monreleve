@@ -65,7 +65,7 @@ function parseLog(csv) {
 const agrees = (kind, actual) =>
   (kind === 'CH' && actual === 'Suisse') || (kind === 'HOME' && actual === 'Domicile');
 
-function score(exportRows, log, batteryMedian) {
+export function score(exportRows, log, batteryMedian) {
   const days = exportRows
     .map((row) => ({ ...row, actual: log.get(row.dayDate) }))
     .filter((day) => day.actual !== undefined);
@@ -131,7 +131,19 @@ function score(exportRows, log, batteryMedian) {
     pass: true,
     threshold: 'never',
   });
-  return { results, dayCount: days.length, workingCount: workingDays.length };
+  // AN-NEXT-2 / R324. How often the NETWORK (wifi/cell) fallback decided a check, across the matched days -
+  // COUNTS ONLY, read from daily_tally's gpsChecks/networkChecks (no coordinate, no accuracy value). It is a
+  // DIAGNOSTIC, not a kill criterion: it tells the reader whether the month's errors came from a provider that
+  // cannot resolve the border, which is the question R324 exists to let the field test ask.
+  const gpsChecks = days.reduce((sum, d) => sum + (d.gpsChecks ?? 0), 0);
+  const networkChecks = days.reduce((sum, d) => sum + (d.networkChecks ?? 0), 0);
+  const totalChecks = gpsChecks + networkChecks;
+  const provider = {
+    gpsChecks,
+    networkChecks,
+    networkShare: totalChecks === 0 ? null : networkChecks / totalChecks,
+  };
+  return { results, dayCount: days.length, workingCount: workingDays.length, provider };
 }
 
 // CLI only when invoked directly. `node --test upper-bound.test.mjs` imports upper95/score from
@@ -149,10 +161,15 @@ function main() {
 
   const exportRows = JSON.parse(readFileSync(exportPath, 'utf8'));
   const log = parseLog(readFileSync(logPath, 'utf8'));
-  const { results, dayCount, workingCount } = score(exportRows, log, batteryMedian);
+  const { results, dayCount, workingCount, provider } = score(exportRows, log, batteryMedian);
 
   console.log('\n=== field run score (R276) ===');
   console.log(`days matched: ${dayCount}   working days: ${workingCount}`);
+  // R324 diagnostic: how often network location decided a check this run.
+  console.log(
+    `checks by provider: GPS ${provider.gpsChecks}, NETWORK ${provider.networkChecks}` +
+      ` (network share ${pct(provider.networkShare)})`,
+  );
   console.log('a PASS means "not visibly broken", never proof - read the bounds.\n');
   let allPass = true;
   const unmeasured = [];

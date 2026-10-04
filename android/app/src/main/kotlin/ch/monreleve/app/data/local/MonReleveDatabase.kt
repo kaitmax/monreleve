@@ -29,10 +29,15 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 // it), so they are held as UNOWNED - never sent, never shown - rather than wiped (R303: deleting would
 // destroy days nobody decided to delete) or mis-attributed to whoever signs in next (that is F4
 // reborn). Still NO destructive fallback.
+//
+// VERSION 5 (AN-NEXT-2, R324). Adds the provider COUNTS to daily_tally (gpsCheckCount, networkCheckCount):
+// how often GPS vs the NETWORK (wifi/cell) fallback decided a day, so the field test can read it. MIGRATION_4_5
+// adds the two columns with DEFAULT 0 and KEEPS every existing row. Still a real Migration, still no destructive
+// fallback, and still no coordinate or accuracy value in the store (D18) - these are counts.
 
 const val DATABASE_NAME = "monreleve.db"
 
-const val DATABASE_VERSION = 4
+const val DATABASE_VERSION = 5
 
 // Adds the daily_tally table. The DDL matches what Room generates for TallyEntity;
 // MigrationTestHelper.runMigrationsAndValidate fails if it drifts from schemas/2.json.
@@ -124,6 +129,24 @@ val MIGRATION_3_4 =
         }
     }
 
+// AN-NEXT-2 / R324 / R305 / R187. Adds the provider COUNTS to daily_tally: gpsCheckCount and networkCheckCount,
+// how many of a day's checks came from GPS vs the NETWORK (wifi/cell) fallback. A REAL, NON-DESTRUCTIVE migration -
+// two ADD COLUMN steps, each INTEGER NOT NULL DEFAULT 0 (SQLite requires a default to add a NOT NULL column to a
+// table that may already hold rows) - so every existing daily_tally row is PRESERVED and reads as zero counts
+// until a v5 wake records one. It DROPS NOTHING and recreates nothing; the entry table is untouched. DEFAULT 0
+// matches @ColumnInfo(defaultValue = "0") on TallyEntity, so runMigrationsAndValidate against schemas/5.json (on
+// the emulator, MonReleveMigrationTest) passes rather than failing on a default mismatch. No coordinate, no
+// accuracy value - the counts are the only new facts, and they are counts (D18).
+val MIGRATION_4_5 =
+    object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Step 1: add the GPS check count, defaulting existing rows to 0 (they predate provider counting).
+            db.execSQL("ALTER TABLE `daily_tally` ADD COLUMN `gpsCheckCount` INTEGER NOT NULL DEFAULT 0")
+            // Step 2: add the NETWORK check count, same default for existing rows.
+            db.execSQL("ALTER TABLE `daily_tally` ADD COLUMN `networkCheckCount` INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+
 @Database(
     entities = [EntryEntity::class, TallyEntity::class],
     version = DATABASE_VERSION,
@@ -144,7 +167,9 @@ abstract class MonReleveDatabase : RoomDatabase() {
                     context.applicationContext,
                     MonReleveDatabase::class.java,
                     DATABASE_NAME,
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build().also { instance = it }
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    .build()
+                    .also { instance = it }
             }
     }
 }

@@ -32,21 +32,35 @@ private const val DEGREES_TO_RADIANS = Math.PI / 180.0
 /** A ring is a closed loop of [longitude, latitude] points; a polygon is an exterior ring then holes. */
 class BorderPolygon(private val polygons: List<List<List<DoubleArray>>>) {
     /**
-     * A fix in, one of INSIDE / OUTSIDE / BUFFER out (SPEC 13). BUFFER is any point within
-     * 150 m of the border, either side - counted and discarded, never guessed onto a side.
-     * The coordinate lives only in this call's arguments; the returned value carries none.
+     * A fix in, one of INSIDE / OUTSIDE / BUFFER out (SPEC 13), ACCOUNTING FOR THE FIX'S ACCURACY
+     * (AN-NEXT-2 / R324). The side is asserted only when the fix is precise enough to be sure of it:
+     * a fix classifies to a side ONLY IF its accuracy radius is smaller than its distance to the
+     * border; otherwise it counts as in the strip (BUFFER = "not sure" under the vote). This is the
+     * 150 m strip widened to max(150 m, accuracy): the base strip (D25) assumed GPS precision, and
+     * AN-NEXT's NETWORK (wifi/cell) fallback can be off by hundreds of metres, so a coarse fix near
+     * the border can no longer assert a side it cannot actually resolve - the confident-wrong
+     * "En Suisse" that understates telework (R278) is exactly what this closes.
+     *
+     * The accuracy is read HERE (in metres, the fix's 68 % radius) and discarded with the coordinate:
+     * neither the coordinate nor the accuracy value is assigned to a field, returned, logged or
+     * persisted (D18). Accuracy is ALWAYS required - there is no precision-assuming default - so no
+     * caller can silently treat a coarse network fix as a precise one.
      */
     fun classify(
         latitude: Double,
         longitude: Double,
-    ): Classification =
-        if (distanceToEdgeMeters(latitude, longitude) <= BUFFER_METERS) {
-            Classification.BUFFER
-        } else if (contains(latitude, longitude)) {
-            Classification.INSIDE
-        } else {
-            Classification.OUTSIDE
+        accuracyMeters: Double,
+    ): Classification {
+        val distance = distanceToEdgeMeters(latitude, longitude)
+        return when {
+            // Within the base 150 m strip either side of the line (D25): counted, never guessed.
+            distance <= BUFFER_METERS -> Classification.BUFFER
+            // The accuracy circle reaches the border: the side cannot be resolved (R324).
+            accuracyMeters >= distance -> Classification.BUFFER
+            contains(latitude, longitude) -> Classification.INSIDE
+            else -> Classification.OUTSIDE
         }
+    }
 
     /**
      * Point-in-polygon by ray casting, HOLE-AWARE: a point is inside Switzerland if it is

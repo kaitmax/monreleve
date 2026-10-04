@@ -33,6 +33,17 @@ object DisclosureCopy {
         "Votre position est analysée uniquement sur votre téléphone pour déterminer si la journée s’est passée " +
             "en Suisse ou à domicile, puis elle est aussitôt effacée."
 
+    // AN-NEXT-2 / R325. THE DISCLOSURE SAYS WHAT IS TRUE. AN-NEXT added a NETWORK (Wi-Fi/cell) fallback for the
+    // indoor telework days where GPS stays silent; with it, Android asks the system's location service to work out
+    // the position from nearby Wi-Fi and cell networks. The application still stores and sends nothing - but the
+    // phone does consult that service, so this says so plainly rather than implying the position never leaves the
+    // device at all. Named « réseaux Wi-Fi et cellulaires », not Google, because the reader controls it through the
+    // phone's own location settings, which is the actionable truth.
+    const val NETWORK_LOCATION =
+        "Pour déterminer votre position, Android peut utiliser les réseaux Wi-Fi et cellulaires à proximité, " +
+            "selon les réglages de localisation de votre téléphone. L’application, elle, ne conserve ni " +
+            "n’envoie jamais votre position."
+
     const val WHAT_IS_KEPT =
         "L’application ne conserve qu’une conclusion par jour : ni trajet, ni adresse, ni historique de vos " +
             "déplacements."

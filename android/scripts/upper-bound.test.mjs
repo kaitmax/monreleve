@@ -12,7 +12,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { upper95 } from './score-field-run.mjs';
+import { score, upper95 } from './score-field-run.mjs';
 
 // n -> the exact 1 - 0.05^(1/n), to 6 dp, computed independently of the implementation.
 const KNOWN_ZERO_ERROR = {
@@ -60,3 +60,39 @@ test('no data means no bound', () => {
   assert.equal(upper95(0, 0), null);
   assert.equal(upper95(3, 0), null);
 });
+
+// AN-NEXT-2 / R324. The scorer surfaces the provider share so the field test can see how often the NETWORK
+// (wifi/cell) fallback decided a check - counts only, read from the export's gpsChecks/networkChecks.
+test('the score surfaces how often network location decided a check (R324)', () => {
+  const log = 'date,actual\n2027-06-01,Suisse\n2027-06-02,Suisse\n';
+  const exportRows = [
+    { dayDate: '2027-06-01', tier: 'HIGH', proposedKind: 'CH', gpsChecks: 1, networkChecks: 3 },
+    { dayDate: '2027-06-02', tier: 'HIGH', proposedKind: 'CH', gpsChecks: 4, networkChecks: 0 },
+  ];
+  const { provider } = score(exportRows, parseLogForTest(log));
+  assert.equal(provider.gpsChecks, 5);
+  assert.equal(provider.networkChecks, 3);
+  assert.ok(Math.abs(provider.networkShare - 3 / 8) < 1e-9);
+});
+
+// A day with no matching log row is dropped before counting, and an all-GPS run reports a zero network share
+// rather than null - null is reserved for "no checks at all".
+test('network share is null only when there were no checks at all (R324)', () => {
+  const { provider } = score([], new Map());
+  assert.equal(provider.networkShare, null);
+  const allGps = score(
+    [{ dayDate: '2027-06-01', tier: 'HIGH', proposedKind: 'CH', gpsChecks: 4, networkChecks: 0 }],
+    new Map([['2027-06-01', 'Suisse']]),
+  ).provider;
+  assert.equal(allGps.networkShare, 0);
+});
+
+// A tiny log parser mirroring the module's own, kept here so the test does not depend on the CLI path.
+function parseLogForTest(csv) {
+  const map = new Map();
+  for (const line of csv.trim().split(/\r?\n/).slice(1)) {
+    const [date, actual] = line.split(',').map((c) => c.trim());
+    if (date) map.set(date, actual);
+  }
+  return map;
+}

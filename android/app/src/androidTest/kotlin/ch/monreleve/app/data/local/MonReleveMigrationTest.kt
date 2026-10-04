@@ -30,9 +30,48 @@ class MonReleveMigrationTest {
     @Test
     fun migratesFromVersion1ToLatest() {
         // A genuine v1 database migrated ALL THE WAY to the current version through every real migration
-        // (MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4), validated against the exported schema for DATABASE_VERSION.
+        // (MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5), validated against the exported schema
+        // for DATABASE_VERSION.
         helper.createDatabase(TEST_DB, 1).close()
-        helper.runMigrationsAndValidate(TEST_DB, DATABASE_VERSION, true, MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+        helper.runMigrationsAndValidate(
+            TEST_DB,
+            DATABASE_VERSION,
+            true,
+            MIGRATION_1_2,
+            MIGRATION_2_3,
+            MIGRATION_3_4,
+            MIGRATION_4_5,
+        )
+    }
+
+    @Test
+    fun migratesFromVersion4ToVersion5AddingProviderCountsAndKeepingChecks() {
+        // AN-NEXT-2 / R324 / R305 / R187. A GENUINE v4 database carrying a four-check daily_tally row, migrated to
+        // v5 by the REAL MIGRATION_4_5. The two provider-count columns are ADDED (ADD COLUMN ... DEFAULT 0); the
+        // existing row - its four checks - must SURVIVE and read as zero counts (it predates provider counting).
+        // No destructive fallback (R305): nothing is dropped or recreated.
+        helper.createDatabase(TEST_DB, 4).apply {
+            execSQL(
+                "INSERT INTO daily_tally (dayDate, check1, check2, check3, check4) VALUES " +
+                    "('2027-06-18', 'INSIDE', 'OUTSIDE', NULL, 'BUFFER')",
+            )
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, DATABASE_VERSION, true, MIGRATION_4_5)
+
+        db.query(
+            "SELECT check1, check2, check3, check4, gpsCheckCount, networkCheckCount FROM daily_tally " +
+                "WHERE dayDate = '2027-06-18'",
+        ).use { cursor ->
+            assertTrue("the v4 tally row must survive the provider-count migration", cursor.moveToFirst())
+            assertEquals("INSIDE", cursor.getString(cursor.getColumnIndexOrThrow("check1")))
+            assertEquals("OUTSIDE", cursor.getString(cursor.getColumnIndexOrThrow("check2")))
+            assertEquals("BUFFER", cursor.getString(cursor.getColumnIndexOrThrow("check4")))
+            // The new columns default to 0 for a pre-v5 row (no provider was counted when it was written).
+            assertEquals(0, cursor.getInt(cursor.getColumnIndexOrThrow("gpsCheckCount")))
+            assertEquals(0, cursor.getInt(cursor.getColumnIndexOrThrow("networkCheckCount")))
+        }
     }
 
     @Test
@@ -55,7 +94,7 @@ class MonReleveMigrationTest {
             close()
         }
 
-        val db = helper.runMigrationsAndValidate(TEST_DB, DATABASE_VERSION, true, MIGRATION_3_4)
+        val db = helper.runMigrationsAndValidate(TEST_DB, DATABASE_VERSION, true, MIGRATION_3_4, MIGRATION_4_5)
 
         // The old continuous-era tally row is GONE (the reshaped table starts empty; nothing to carry across).
         db.query("SELECT COUNT(*) FROM daily_tally").use { cursor ->
@@ -84,8 +123,10 @@ class MonReleveMigrationTest {
             close()
         }
 
-        // runMigrationsAndValidate validates the migrated schema against schemas/3.json AND returns the db.
-        val db = helper.runMigrationsAndValidate(TEST_DB, DATABASE_VERSION, true, MIGRATION_2_3)
+        // runMigrationsAndValidate validates the migrated schema against schemas/<DATABASE_VERSION>.json AND
+        // returns the db. The v2 row is carried across every migration in the chain to the current version.
+        val db =
+            helper.runMigrationsAndValidate(TEST_DB, DATABASE_VERSION, true, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
 
         // The pre-F4 row SURVIVED (R303: nothing is lost) and was tagged UNOWNED - its account is
         // unrecoverable, so it is held, never sent, never shown, never mis-attributed.

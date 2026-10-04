@@ -8,9 +8,10 @@ package ch.monreleve.app.detection
 // window wins (a check runs anywhere inside its window); a fix outside every window is ignored - never a late
 // check. At day's end the four slots are the DayChecks the vote reads.
 //
-// THE SESSION NEVER HOLDS A COORDINATE. onFix hands (latitude, longitude) straight to classifyFix, which returns a
-// Classification (no position); only the per-window Classification is kept. The coordinate's life is the onFix
-// argument list - the confinement AC2 proves, at the one place a whole day's fixes flow through.
+// THE SESSION NEVER HOLDS A COORDINATE. onFix hands (latitude, longitude, accuracyMeters) straight to classifyFix,
+// which returns a Classification (no position, no accuracy value); only the per-window Classification is kept. The
+// coordinate's AND the accuracy's life is the onFix argument list - the confinement AC2 proves, at the one place a
+// whole day's fixes flow through. The accuracy is read only to decide whether a coarse fix may assert a side (R324).
 
 class DetectionSession(private val border: BorderPolygon) {
     private val checkByWindow = HashMap<Int, Classification>()
@@ -19,10 +20,12 @@ class DetectionSession(private val border: BorderPolygon) {
         latitude: Double,
         longitude: Double,
         epochMillis: Long,
+        accuracyMeters: Double,
     ) {
         val window = checkWindowAt(epochMillis) ?: return // outside any window: never recorded as a late check
         if (checkByWindow.containsKey(window.index)) return // the first fix inside the window wins
-        checkByWindow[window.index] = classifyFix(border, latitude, longitude, epochMillis).classification
+        checkByWindow[window.index] =
+            classifyFix(border, latitude, longitude, epochMillis, accuracyMeters).classification
     }
 
     fun checks(): DayChecks =

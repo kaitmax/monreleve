@@ -75,6 +75,9 @@ class FieldExportTest {
                 "checksTaken",
                 "checksMissed",
                 "stripChecks",
+                // AN-NEXT-2 / R324: the provider counts the field scorer reads to see how often network decided.
+                "gpsChecks",
+                "networkChecks",
             ),
             day.keys().asSequence().toSet(),
         )
@@ -82,5 +85,26 @@ class FieldExportTest {
         assertEquals(3, day.getInt("checksTaken"))
         assertEquals(1, day.getInt("checksMissed"))
         assertEquals(1, day.getInt("stripChecks"))
+    }
+
+    // AN-NEXT-2 / R324. The provider counts flow through the export as COUNTS ONLY - two integers from
+    // daily_tally, never a coordinate or an accuracy value - so the field scorer can see how often the NETWORK
+    // (wifi/cell) fallback decided a day.
+    @Test
+    fun theExportCarriesTheProviderCounts() {
+        val i = Classification.INSIDE.name
+        val tally =
+            TallyEntity(
+                dayDate = "2027-06-01",
+                check1 = i,
+                check2 = i,
+                check3 = i,
+                check4 = i,
+                gpsCheckCount = 1,
+                networkCheckCount = 3,
+            )
+        val day = exportOf(listOf(tally)).getJSONObject(0)
+        assertEquals(1, day.getInt("gpsChecks"))
+        assertEquals(3, day.getInt("networkChecks"))
     }
 }

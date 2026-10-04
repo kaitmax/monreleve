@@ -58,14 +58,24 @@ fun trackPointInstant(
 /**
  * Replay a track through a fresh DetectionSession and return its DAY proposal. Lives in detection/ because it reads
  * the points' coordinates; the caller (the dev replay screen, or the JVM test) sees only the Proposal.
+ *
+ * accuracyMeters applies to EVERY fix in the track (AN-NEXT-2 / R324): 0.0 is a perfectly precise fix (the GPS-era
+ * behaviour), and a coarse value re-runs the same track as if each fix came from a NETWORK provider that cannot
+ * resolve the border within that radius. It is read by the classifier and discarded, never stored (D18).
  */
 fun replayTrack(
     border: BorderPolygon,
     track: SyntheticTrack,
+    accuracyMeters: Double = 0.0,
 ): Proposal? {
     val session = DetectionSession(border)
     for (point in track.points) {
-        session.onFix(point.latitude, point.longitude, trackPointInstant(track.dayDate, point.minuteOfDay))
+        session.onFix(
+            point.latitude,
+            point.longitude,
+            trackPointInstant(track.dayDate, point.minuteOfDay),
+            accuracyMeters,
+        )
     }
     return session.proposal()
 }
@@ -74,10 +84,16 @@ fun replayTrack(
 fun replayTrackChecks(
     border: BorderPolygon,
     track: SyntheticTrack,
+    accuracyMeters: Double = 0.0,
 ): DayChecks {
     val session = DetectionSession(border)
     for (point in track.points) {
-        session.onFix(point.latitude, point.longitude, trackPointInstant(track.dayDate, point.minuteOfDay))
+        session.onFix(
+            point.latitude,
+            point.longitude,
+            trackPointInstant(track.dayDate, point.minuteOfDay),
+            accuracyMeters,
+        )
     }
     return session.checks()
 }
