@@ -24,14 +24,25 @@ class ClassificationTest {
 
     @Test
     fun insideOutsideAndBuffer() {
-        assertEquals(Classification.INSIDE, border.classify(latitude = 46.9480, longitude = 7.4474))
-        assertEquals(Classification.OUTSIDE, border.classify(latitude = 45.7640, longitude = 4.8357))
-        assertEquals(Classification.BUFFER, border.classify(latitude = borderVertex[1], longitude = borderVertex[0]))
+        // Pure geometry: a perfectly precise fix (accuracy 0 m), so the side is decided by position alone.
+        assertEquals(Classification.INSIDE, border.classify(latitude = 46.9480, longitude = 7.4474, accuracyMeters = 0.0))
+        assertEquals(Classification.OUTSIDE, border.classify(latitude = 45.7640, longitude = 4.8357, accuracyMeters = 0.0))
+        assertEquals(
+            Classification.BUFFER,
+            border.classify(latitude = borderVertex[1], longitude = borderVertex[0], accuracyMeters = 0.0),
+        )
     }
 
     @Test
     fun classifyFixKeepsTheSideAndTheTimestampAndNoCoordinate() {
-        val fix = classifyFix(border, latitude = 46.9480, longitude = 7.4474, epochMillis = 1_777_000_000_000L)
+        val fix =
+            classifyFix(
+                border,
+                latitude = 46.9480,
+                longitude = 7.4474,
+                epochMillis = 1_777_000_000_000L,
+                accuracyMeters = 0.0,
+            )
         assertEquals(Classification.INSIDE, fix.classification)
         assertEquals(1_777_000_000_000L, fix.epochMillis)
     }

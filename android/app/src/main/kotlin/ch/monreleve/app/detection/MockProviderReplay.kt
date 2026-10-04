@@ -49,10 +49,11 @@ fun replayTrackThroughProvider(
     manager: LocationManager,
     border: BorderPolygon,
     track: SyntheticTrack,
+    accuracyMetres: Float = FIX_ACCURACY_METRES,
 ): DayChecks {
     val slots = HashMap<Int, Classification>()
     for (point in track.points) {
-        classifyPointIntoSlots(context, manager, border, track.dayDate, point, slots)
+        classifyPointIntoSlots(context, manager, border, track.dayDate, point, slots, accuracyMetres)
     }
     return DayChecks(slots[1], slots[2], slots[3], slots[4])
 }
@@ -67,6 +68,7 @@ private fun classifyPointIntoSlots(
     dayDate: String,
     point: TrackPoint,
     slots: MutableMap<Int, Classification>,
+    accuracyMetres: Float,
 ) {
     val epoch = trackPointInstant(dayDate, point.minuteOfDay)
     val window = checkWindowAt(epoch) ?: return
@@ -76,7 +78,7 @@ private fun classifyPointIntoSlots(
             latitude = point.latitude
             longitude = point.longitude
             time = epoch
-            accuracy = FIX_ACCURACY_METRES
+            accuracy = accuracyMetres
             elapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos()
         }
     manager.setTestProviderLocation(LocationManager.GPS_PROVIDER, location)

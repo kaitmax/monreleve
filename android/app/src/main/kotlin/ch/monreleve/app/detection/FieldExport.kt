@@ -12,6 +12,10 @@ import org.json.JSONObject
 // Per day: the vote tier, the voted kind (the SAME votedKind the product uses), each of the four checks, and the
 // counts for diagnosis (taken / missed / in the strip). NO COORDINATE (R277) - the export is check sides and
 // counts, exactly what Room holds; there is nothing else to leak.
+//
+// AN-NEXT-2 / R324: ALSO the provider counts - gpsChecks and networkChecks, how many of the day's checks came from
+// GPS vs the NETWORK (wifi/cell) fallback. COUNTS ONLY (two integers from daily_tally), so the field scorer can see
+// how often network location decided a day. Still no coordinate and still no accuracy value - these are counts.
 
 fun exportFieldRun(tallies: List<TallyEntity>): String {
     val array = JSONArray()
@@ -28,6 +32,8 @@ fun exportFieldRun(tallies: List<TallyEntity>): String {
         item.put("checksTaken", checks.taken().size)
         item.put("checksMissed", checks.missedCount())
         item.put("stripChecks", checks.stripCount())
+        item.put("gpsChecks", tally.gpsCheckCount)
+        item.put("networkChecks", tally.networkCheckCount)
         array.put(item)
     }
     return array.toString()
