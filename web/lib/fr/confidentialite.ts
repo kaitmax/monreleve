@@ -293,11 +293,21 @@ export const CONFIDENTIALITE_COPY = {
     'Aucune coordonnée géographique. Ni latitude, ni longitude, ni altitude, ' +
       'ni vitesse : jamais enregistrée, jamais transmise, jamais ' +
       'journalisée.',
-    'Si vous choisissez le mode automatique, la position est utilisée sur ' +
-      'votre appareil uniquement. Chaque relevé de position est comparé à un ' +
-      "polygone des frontières suisses embarqué dans l’application, puis " +
-      'abandonné immédiatement. Seul un cumul de minutes par journée est ' +
-      'conservé, sans aucune position.',
+    // R325 (AN-NEXT-2): the position’s DETERMINATION, said plainly. With the
+    // network fallback the app added for indoor days, Android may work the
+    // position out from nearby Wi-Fi and cell networks (the system’s location
+    // service), so « sur votre appareil uniquement » would claim more than is
+    // true. The app still keeps and sends nothing; the phone does consult that
+    // service, and the reader controls it through the phone’s own settings.
+    // Future tense for the determination clause (R138, the app is unreleased).
+    'Si vous choisissez le mode automatique, votre position est analysée sur ' +
+      'votre appareil. Pour la déterminer, Android pourra utiliser les réseaux ' +
+      'Wi-Fi et cellulaires à proximité, selon les réglages de localisation de ' +
+      'votre téléphone. L’application, elle, ne conservera ni n’enverra jamais ' +
+      'votre position. Chaque relevé de position est comparé à un polygone des ' +
+      "frontières suisses embarqué dans l’application, puis abandonné " +
+      'immédiatement. Seul un cumul de minutes par journée est conservé, sans ' +
+      'aucune position.',
     'Aucun historique de déplacement, aucun nom de lieu, aucune adresse ' +
       "d’employeur, aucune carte et aucune chronologie de vos trajets. Il n’y " +
       'a rien de tel à produire si cela vous était demandé un jour.',

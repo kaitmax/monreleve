@@ -200,9 +200,16 @@ export const APPLICATION_COPY = {
   refusals: [
     {
       heading: 'Elle n’enregistrera aucune coordonnée',
+      // R325 (AN-NEXT-2): the position's DETERMINATION, said plainly. The app's
+      // network fallback for indoor days means Android may work the position out
+      // from nearby Wi-Fi and cell networks (the system's location service), so
+      // the page says so rather than implying the position never leaves the
+      // phone at all. The app still keeps and sends nothing. Future tense (R138).
       body:
         'La position sera comparée à la frontière sur votre téléphone, puis ' +
-        'immédiatement oubliée. Une seule conclusion par jour sera ' +
+        'immédiatement oubliée. Pour la déterminer, Android pourra utiliser ' +
+        'les réseaux Wi-Fi et cellulaires à proximité, selon les réglages de ' +
+        'localisation de votre téléphone. Une seule conclusion par jour sera ' +
         'conservée' +
         n(':') +
         ' Suisse ou domicile.',
