@@ -1651,6 +1651,36 @@ TOUCHES:   web/lib/fr/application.ts (done); any other surface the operator may 
 
 NEEDS:     the operator to confirm the /application refusals was the intended third surface, or name another.
 
+## PARKAN-39 - Aujourd'hui sections C/E/F need a controller projection, which is the stop-and-ask line  [AN-HOME, 2026-10-04]
+
+QUESTION:  AN-HOME's sections C (« A traiter »: unrecorded past working days, days waiting to send, the R286
+late warning), E (« Cette semaine »: Monday-Friday DayCells + legend, tap opens the calendar) and F (« Ce
+mois »: recorded days by kind) each need data the Aujourd'hui UI does not have today - past-unrecorded days,
+the week's cells, the month's counts - which only the AujourdhuiController can derive from the entries it
+already loads (repository.observeAll). Surfacing them is a NON-UI change (the controller lives in aujourdhui/,
+has behaviour tests), and the AN-HOME relay's hard-boundary proof is "no test outside the UI layer and its
+baselines is modified; every existing behaviour test passes unchanged ... if a non-UI change is needed for the
+design, STOP, record it, and ask an advisor whether it is truly presentation-only". Is a READ-ONLY controller
+projection of already-held entries (no write, no sync, no schema, no engine, no detection, no /v1, no other
+screen) "presentation-only" and therefore in-bounds, or does it cross the boundary?
+
+EVIDENCE: the advisor was unreachable all session (orchestrator directive: it has stalled), so the decision
+could not be taken with it. R156 fail-closed: everything that needs NO controller change (sections 1, A, B,
+D - the operator's MAIN request included) was built, gated, pushed and driven on the phone; C/E/F were NOT
+started, to avoid autonomously adding controller behaviour the relay says to ask about first.
+
+NOT TAKEN: no controller field, no new AujourdhuiState data, no navigate-to-Calendrier lambda, no C/E/F UI.
+
+TOUCHES (when ruled in-bounds): AujourdhuiController.emitState + AujourdhuiState (3 read-only projections),
+a new JVM test file (NOT a change to AujourdhuiControllerTest - additive, keeps existing tests unchanged),
+CalendarModel.kt (widen cellOf/qualityOf visibility or add a public wrapper - the reusable pure mappers are
+there), AujourdhuiScreen.kt (3 sections), MainActivity.kt (one defaulted onNavigateToCalendrier = { tab =
+AppTab.CALENDRIER } at the single call site), and the aujourdhui baselines. The full map is in REPORT-AN-HOME.txt.
+
+NEEDS:     an advisor/operator ruling that a read-only Aujourd'hui-controller projection of already-held data
+is presentation-only (the relay's section 2 says these sections use "data the app already holds"); then the
+handoff in REPORT-AN-HOME.txt builds C/E/F and the branch merges.
+
 ## STATUS LEDGER  [appended 2026-09-29]
 
 One line per Android-era entry, so the state of each is visible without
@@ -1687,3 +1717,4 @@ reading every section. Entries are not edited; this ledger is.
 | PARKAN-36 — daily LOCAL notification for the proposal | **BUILT, pending operator veto** | AN-NEXT (R323): built to the rules - one LOCAL evening notification (no server/FCM), OPT-IN and OFF by default, separate from the detection toggle; at most one per working day after the day concludes, only if no entry yet, never on a non-working day, only in auto mode; lock screen shows only that a proposal waits (VISIBILITY_PRIVATE + public version), unlocked names the side; a not-sure day gets the same single notification; tapping opens Aujourd'hui, records nothing (D16). POST_NOTIFICATIONS asked only on enable (API 33+). Decision unit-tested (EveningNotificationDecisionTest, test-first), full path in :app:gate. The relay says the operator MAY VETO; built until then. Still needs the operator's ratification (and of the "requires auto mode" reading) |
 | PARKAN-37 — /confidentialite still says "cumul de minutes" | **open, OUT OF SCOPE** | AN-NEXT-2 (R325, NOTICED BUT NOT TOUCHING): the automatic-mode item in web/lib/fr/confidentialite.ts still reads « Seul un cumul de minutes par journée est conservé » - the pre-R320 minutes model (detection now keeps four discrete checks, no minutes). R325 corrected only the determination claim (the Wi-Fi/cell clause) and left this verbatim rather than half-fixing an R320-era relic under an R325 task. Belongs with an R320 copy sweep across the privacy surfaces |
 | PARKAN-38 — "the privacy map" has no named artefact | **open, interpreted** | AN-NEXT-2 (R325): the task prompt names "the privacy map" as a third R325 surface, but no file/component/doc in the repo carries that name (it appears only in relay/AN-NEXT-2.txt). Read conservatively as the PUBLIC map of what the app does with position - the /application « Ce que l'application ne fera pas » refusals (web/lib/fr/application.ts) - and corrected there (over-disclosing beats under-disclosing). If the operator meant another surface, name it |
+| PARKAN-39 — Aujourd'hui sections C/E/F need a controller projection | **open, OWED - stop-and-ask** | AN-HOME: sections C/E/F need read-only projections of already-held entries, which only the controller can derive - a NON-UI change the relay says to ask the advisor about first (presentation-only or not?). Advisor stalled; R156 fail-closed, built everything needing no controller change (sections 1/A/B/D) and owed C/E/F with a full handoff (REPORT-AN-HOME.txt). Needs a ruling, then builds + merges |
