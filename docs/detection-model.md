@@ -67,6 +67,27 @@ full-resolution boundary clipped to the Geneva window (lng 5.85–6.35, lat 46.0
 **Buffer distance.** **150 m** (D25) — `BorderPolygon.BUFFER_METERS`. A fix within 150 m of
 the border classifies as BUFFER, contributes to neither tally, and lowers the tier.
 
+**Accuracy guard (R324) — PROPOSED.** A fix is classified to a side ONLY IF its stated accuracy
+radius is **smaller than its distance to the border**; otherwise it counts as BUFFER ("not sure"),
+however the point itself falls. The base 150 m strip assumed GPS precision, but AN-NEXT added a
+NETWORK (Wi-Fi/cell) fallback for indoor telework days (GPS is silent indoors), and a network fix
+can be off by hundreds of metres — so a coarse fix near the border can no longer assert a confident
+wrong *En Suisse* that would understate telework (R278). The accuracy is read in memory at
+classification and **discarded with the coordinate** (D18) — never stored, logged or sent; a fix
+with no stated accuracy is treated as imprecise (fail-closed, `Double.MAX_VALUE`). Far from the
+border nothing changes. Effectively the strip widens to `max(150 m, accuracy)`.
+`ClassificationTest` pins the three cases (coarse-near → not sure, coarse-far → classifies,
+precise-near → classifies) and `DetectionSessionTest` re-runs the synthetic tracks with coarse
+fixes. **PROPOSED (R276):** it freezes with the other thresholds when the field test starts — a
+threshold chosen after seeing data is tuned to pass.
+
+**Provider counts (R324).** Each check's provider — GPS or NETWORK — is recorded in `daily_tally`
+as two aggregate **counts** (`gpsCheckCount`, `networkCheckCount`), **counts only**: never a
+per-check label, never a coordinate, never an accuracy value (D18). `gpsCheckCount + networkCheckCount`
+equals the number of checks taken. The field export carries them (`gpsChecks`/`networkChecks`) and
+`score-field-run.mjs` prints the network share, so the field test can see how often network location
+decided a day.
+
 **Enclave limitation, recorded honestly.** This `polygons.openstreetmap.fr` extract returns
 the outer boundary with **no interior rings**, so the German enclave of Büsingen and the
 Italian enclave of Campione are not cut out — a point inside either would classify as INSIDE
@@ -104,14 +125,17 @@ several wake opportunities; 60 minutes holds about four and keeps the windows di
 lunch (window 2 ends 11:30, window 3 opens 14:00). Pinned to Paris regardless of the device timezone
 (R28, `CheckWindowsTest`).
 
-**The record table (`daily_tally`), Room version 4.** Per day: `check1`…`check4`, each a Classification
-name (`INSIDE`/`OUTSIDE`/`BUFFER`) or **NULL** (MISSED). **No minutes, no tier column, no coordinate** —
-the tier is derived by the vote, so nothing stored can drift. The DDL scan iterates every table
-(`RoomSchemaContractTest.noColumnIsCoordinateShapedInAnyTable`). `MIGRATION_3_4` reshapes the table: it
-**drops the continuous-era rows explicitly** (a minutes tally cannot convert into four check slots, and
-only AN-AUTO's own test rows can exist — detection has never shipped) and leaves the entry table — the
-person's recorded days — untouched. `MonReleveMigrationTest` runs a genuine v3 database through it on the
-device and validates against `schemas/4.json` (R305/R187).
+**The record table (`daily_tally`), Room version 5.** Per day: `check1`…`check4`, each a Classification
+name (`INSIDE`/`OUTSIDE`/`BUFFER`) or **NULL** (MISSED), plus the two provider **counts**
+(`gpsCheckCount`, `networkCheckCount`, INTEGER NOT NULL DEFAULT 0 — R324). **No minutes, no tier column,
+no coordinate, no accuracy value** — the tier is derived by the vote, so nothing stored can drift. The
+DDL scan iterates every table (`RoomSchemaContractTest.noColumnIsCoordinateShapedInAnyTable`).
+`MIGRATION_3_4` reshapes the table (it **drops the continuous-era rows explicitly** — a minutes tally
+cannot convert into four check slots, and only AN-AUTO's own test rows can exist, detection having never
+shipped — and leaves the entry table untouched). `MIGRATION_4_5` adds the two provider-count columns with
+`ADD COLUMN … DEFAULT 0`, a **real, non-destructive** migration that preserves every existing row (a
+pre-v5 row reads as zero counts). `MonReleveMigrationTest` runs a genuine v1/v2/v3/v4 database through the
+chain on the device and validates against `schemas/5.json` (R305/R187).
 
 ## The vote (R320)
 

@@ -24,7 +24,8 @@ class DetectionSession(private val border: BorderPolygon) {
     ) {
         val window = checkWindowAt(epochMillis) ?: return // outside any window: never recorded as a late check
         if (checkByWindow.containsKey(window.index)) return // the first fix inside the window wins
-        checkByWindow[window.index] = classifyFix(border, latitude, longitude, epochMillis, accuracyMeters).classification
+        checkByWindow[window.index] =
+            classifyFix(border, latitude, longitude, epochMillis, accuracyMeters).classification
     }
 
     fun checks(): DayChecks =

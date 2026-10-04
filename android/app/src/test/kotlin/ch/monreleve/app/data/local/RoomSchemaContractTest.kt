@@ -76,6 +76,9 @@ class RoomSchemaContractTest {
                 ),
             // R320: the four daily checks replace the continuous minutes tally. Each slot is a Classification
             // name or NULL (MISSED); the tier is derived by the vote, never stored. No coordinate column.
+            // AN-NEXT-2 / R324: the provider COUNTS (gpsCheckCount, networkCheckCount) - INTEGER NOT NULL, how
+            // many of the day's checks came from GPS vs the NETWORK fallback. Counts only; still no coordinate
+            // and no accuracy column (noColumnIsCoordinateShapedInAnyTable proves it over every table).
             "daily_tally" to
                 mapOf(
                     "dayDate" to ("TEXT" to true),
@@ -83,6 +86,8 @@ class RoomSchemaContractTest {
                     "check2" to ("TEXT" to false),
                     "check3" to ("TEXT" to false),
                     "check4" to ("TEXT" to false),
+                    "gpsCheckCount" to ("INTEGER" to true),
+                    "networkCheckCount" to ("INTEGER" to true),
                 ),
         )
 

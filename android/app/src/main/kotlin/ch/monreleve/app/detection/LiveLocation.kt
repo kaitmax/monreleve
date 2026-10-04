@@ -56,7 +56,10 @@ internal suspend fun firstClassifiedFix(
 // with no accuracy cannot be asserted precise, so it is treated as infinitely coarse (Double.MAX_VALUE), which
 // classify turns into BUFFER - "not sure" - rather than letting an unmeasured fix assert a side (R324). Read in
 // memory and handed straight to classify; never stored (D18).
-private fun Location.accuracyMetersOrUnresolvable(): Double = if (hasAccuracy()) accuracy.toDouble() else Double.MAX_VALUE
+private fun Location.accuracyMetersOrUnresolvable(): Double {
+    // No stated accuracy -> treat the fix as infinitely coarse (fail-closed, R324), which classify turns into BUFFER.
+    return if (hasAccuracy()) accuracy.toDouble() else Double.MAX_VALUE
+}
 
 /**
  * The classification of the device's last known GPS fix, or null if there is no permission or no
@@ -121,7 +124,8 @@ private suspend fun requestOneFix(
                     if (!continuation.isActive) return
                     // R324: the accuracy is read here, used to decide whether this fix may assert a side, and
                     // discarded with the coordinate - only the Classification leaves (D18).
-                    val side = border.classify(location.latitude, location.longitude, location.accuracyMetersOrUnresolvable())
+                    val side =
+                        border.classify(location.latitude, location.longitude, location.accuracyMetersOrUnresolvable())
                     continuation.resume(side)
                 }
 

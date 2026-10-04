@@ -70,7 +70,12 @@ fun replayTrack(
 ): Proposal? {
     val session = DetectionSession(border)
     for (point in track.points) {
-        session.onFix(point.latitude, point.longitude, trackPointInstant(track.dayDate, point.minuteOfDay), accuracyMeters)
+        session.onFix(
+            point.latitude,
+            point.longitude,
+            trackPointInstant(track.dayDate, point.minuteOfDay),
+            accuracyMeters,
+        )
     }
     return session.proposal()
 }
@@ -83,7 +88,12 @@ fun replayTrackChecks(
 ): DayChecks {
     val session = DetectionSession(border)
     for (point in track.points) {
-        session.onFix(point.latitude, point.longitude, trackPointInstant(track.dayDate, point.minuteOfDay), accuracyMeters)
+        session.onFix(
+            point.latitude,
+            point.longitude,
+            trackPointInstant(track.dayDate, point.minuteOfDay),
+            accuracyMeters,
+        )
     }
     return session.checks()
 }
