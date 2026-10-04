@@ -117,6 +117,48 @@ object Breakpoints {
 }
 
 /**
+ * Motion durations in milliseconds (DESIGN-SYSTEM.md section 1: "MOTION: 200 ms
+ * standard, 250 enter/modal, 300 bottom sheet, numbers animate over 300 ms. No
+ * bounce, no parallax, no animated maps"). A token category distinct from
+ * Radius/Spacing/Elevation/Breakpoints/Size.
+ *
+ * Ported to Kotlin by AN-HOME, citing R77 (a token whose value already appears
+ * in a brief needs no separate value ruling) and the AN-HOME relay, which
+ * authorises adding the motion tokens here rather than typing a duration inline.
+ *
+ * A CLOSED SET, enforced like Radius (MotionTest.kt): the values are DERIVED from
+ * the one map, never typed independently, and a fifth name or a changed value
+ * fails. bottomSheetMillis and numbersMillis both read 300 and keep distinct
+ * names (R68: distinct names even where values coincide). Fence 8 (FencesTest)
+ * forbids a raw duration literal in ui//design/, so a duration reaches a call
+ * site only through one of these names.
+ */
+object Motion {
+    private val tokens: Map<String, Int> =
+        mapOf(
+            "standardMillis" to 200,
+            "enterMillis" to 250,
+            "bottomSheetMillis" to 300,
+            "numbersMillis" to 300,
+        )
+
+    /** 200 ms - the standard transition (the choice card's fade + height change, AN-HOME). */
+    val standardMillis: Int = tokens.getValue("standardMillis")
+
+    /** 250 ms - an enter/modal transition. */
+    val enterMillis: Int = tokens.getValue("enterMillis")
+
+    /** 300 ms - the bottom sheet. */
+    val bottomSheetMillis: Int = tokens.getValue("bottomSheetMillis")
+
+    /** 300 ms - a number change (the year panel's figures, AN-HOME). */
+    val numbersMillis: Int = tokens.getValue("numbersMillis")
+
+    /** For MotionTest.kt only (R8 shape ported) - never referenced by ui/ code. */
+    internal val allForTest: Map<String, Int> get() = tokens
+}
+
+/**
  * LIGHT colours (DESIGN-SYSTEM 1). Light ships first - DarkColors below is
  * defined but NOT wired into FrontierTheme (DESIGN-SYSTEM section 12 override;
  * AN0's edge-to-edge conflict).
