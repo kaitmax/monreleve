@@ -21,6 +21,12 @@ import android.os.SystemClock
 
 private const val FIX_ACCURACY_METRES = 5f
 
+// AN-NEXT-2 / R324. The dev replay's optional COARSE-accuracy Intent extra (a Float, metres). Lives here in
+// detection/ because fence 4 forbids a string literal in dev/; the dev activity reads it by this name to replay
+// the tracks as if each fix came from a NETWORK provider that cannot resolve the border within that radius, so the
+// accuracy guard can be demonstrated on the physical phone. Absent or <= 0 -> the precise GPS-era replay.
+const val REPLAY_ACCURACY_EXTRA = "ch.monreleve.app.dev.REPLAY_ACCURACY_METRES"
+
 /** Register the app's GPS test provider. Returns false when the app is not the mock-location app (appops). */
 @Suppress("DEPRECATION") // the long addTestProvider signature is the one available from minSdk 26
 fun installTestLocationProvider(manager: LocationManager): Boolean =

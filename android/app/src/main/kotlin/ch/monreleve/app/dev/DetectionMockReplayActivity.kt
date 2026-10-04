@@ -24,6 +24,7 @@ import ch.monreleve.app.design.FrontierTheme
 import ch.monreleve.app.design.FrontierType
 import ch.monreleve.app.design.Spacing
 import ch.monreleve.app.detection.DetectionOutcome
+import ch.monreleve.app.detection.REPLAY_ACCURACY_EXTRA
 import ch.monreleve.app.detection.SyntheticTracks
 import ch.monreleve.app.detection.dayProposal
 import ch.monreleve.app.detection.detectionOutcome
@@ -69,6 +70,10 @@ class DetectionMockReplayActivity : ComponentActivity() {
                 }
             }
         }
+        // AN-NEXT-2 / R324: an optional coarse accuracy radius (metres) passed as an Intent extra lets this replay
+        // the tracks as NETWORK-grade fixes - `--ef <REPLAY_ACCURACY_EXTRA> 10000` makes every fix near the Geneva
+        // border "not sure". Absent or <= 0 keeps the precise GPS-era replay (the AN6a demonstration).
+        val replayAccuracy = intent.getFloatExtra(REPLAY_ACCURACY_EXTRA, 0f)
         lifecycleScope.launch {
             if (!installTestLocationProvider(manager)) {
                 state.value = listOf(unavailable())
@@ -76,7 +81,12 @@ class DetectionMockReplayActivity : ComponentActivity() {
             }
             state.value =
                 SyntheticTracks.all.map { track ->
-                    val checks = replayTrackThroughProvider(applicationContext, manager, border, track)
+                    val checks =
+                        if (replayAccuracy > 0f) {
+                            replayTrackThroughProvider(applicationContext, manager, border, track, replayAccuracy)
+                        } else {
+                            replayTrackThroughProvider(applicationContext, manager, border, track)
+                        }
                     MockResult(
                         name = track.name,
                         expected = detectionOutcome(track.expected),
