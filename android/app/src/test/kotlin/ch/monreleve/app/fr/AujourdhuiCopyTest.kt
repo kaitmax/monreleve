@@ -33,4 +33,28 @@ class AujourdhuiCopyTest : FunSpec({
         note shouldContain "dépasse 7 jours"
         note shouldContain "sera signalée comme saisie tardive dès sa synchronisation"
     }
+
+    // AN-HOME section 1: the choice closes into the answer line. kindLabel is the kind ALONE (the sync status
+    // line carries « Enregistré »), so there is no « Enregistré : » prefix; answerHalfDay shows BOTH halves.
+    test("kindLabel returns the kind alone, with no Enregistré prefix") {
+        AujourdhuiCopy.kindLabel("SUISSE", null) shouldBe "En Suisse"
+        AujourdhuiCopy.kindLabel("DOMICILE", null) shouldBe "Domicile"
+        AujourdhuiCopy.kindLabel("MISSION_FRANCE", null) shouldBe "Mission (France)"
+        AujourdhuiCopy.kindLabel("MISSION_THIRD", null) shouldBe "Mission (pays tiers)"
+    }
+
+    test("kindLabel names the absence reason") {
+        AujourdhuiCopy.kindLabel("ABSENCE", null) shouldBe "Absence"
+        AujourdhuiCopy.kindLabel("ABSENCE", "CONGE") shouldBe "Absence — Congé"
+    }
+
+    test("answerHalfDay shows BOTH halves, never one label (R292)") {
+        AujourdhuiCopy.answerHalfDay("Domicile", "En Suisse") shouldBe
+            "Matin : Domicile — Après-midi : En Suisse"
+    }
+
+    test("the sync truth is persistent copy, pending distinct from synced (AN-HOME section 1)") {
+        AujourdhuiCopy.PENDING shouldBe "Enregistré sur le téléphone, en attente d’envoi"
+        AujourdhuiCopy.SYNCED shouldBe "Enregistré"
+    }
 })

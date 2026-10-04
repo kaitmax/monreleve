@@ -31,12 +31,23 @@ object AujourdhuiCopy {
     const val MORNING = "Matin"
     const val AFTERNOON = "Après-midi"
 
-    const val PENDING = "En attente de synchronisation"
+    // AN-HOME section 1 - the answer line's sync truth, persistent and never a toast (DESIGN-SYSTEM section 2):
+    // PENDING until the server has the day, then SYNCED. "Enregistré" alone means the server holds it; the
+    // pending form says plainly it is only on the phone so far. (RecorderCopy.STATE_PENDING shares PENDING,
+    // R206.)
+    const val PENDING = "Enregistré sur le téléphone, en attente d’envoi"
+    const val SYNCED = "Enregistré"
+
+    // AN-HOME section 1 - the choice closes into the answer line; « Modifier » (a word, not a pencil, so
+    // TalkBack reads it) reopens the options with the current choice marked, « Annuler » closes them again
+    // without writing anything. CANCEL references the one home for « Annuler » (CalendarCopy.SHEET_CANCEL,
+    // which had it first) rather than a second literal - R206, the CopyDuplicationTest guard.
+    const val MODIFIER = "Modifier"
+    const val CANCEL = CalendarCopy.SHEET_CANCEL
 
     // R198: a client-built payload the server refused is held, not retried forever - and the person is
     // TOLD, because a silently-failed sync is a day they believe is recorded and is not.
     const val SYNC_FAILED = "Enregistrement refusé par le serveur. Corrigez la journée et réessayez."
-    const val EDIT_HINT = "Touchez une réponse pour corriger la journée."
 
     // AC3 - the year panel never overclaims. An empty year says so rather than showing 0 %; a rate
     // that includes unsynced days says so; a partial year names that it covers the activity period.
@@ -75,9 +86,7 @@ object AujourdhuiCopy {
     /** Named when the engine used another year's barème (R11 / RULE_SET_FALLBACK). */
     fun fallbackNote(year: Int): String = "Barème $year appliqué (année en cours non encore publiée)."
 
-    private const val RECORDED_PREFIX = "Enregistré :"
-
-    /** The French label for an AbsenceChoice, by its `.name`. Serves the reason buttons and the recorded row. */
+    /** The French label for an AbsenceChoice, by its `.name`. Serves the reason buttons and the answer line. */
     fun absenceLabel(choiceName: String): String =
         when (choiceName) {
             "CONGE" -> "Congé"
@@ -87,20 +96,30 @@ object AujourdhuiCopy {
             else -> choiceName
         }
 
-    /** "Enregistré : En Suisse" - the recorded-state line, from a RecordedKind's `.name` and an optional reason. */
-    fun recordedLabel(
+    /**
+     * "En Suisse" / "Absence — Congé" - the recorded KIND alone (no « Enregistré : » prefix; the sync status
+     * line carries « Enregistré »), from a RecordedKind's `.name` and an optional reason. AN-HOME: this is the
+     * answer the choice closes into. Mapped by name (the DayCellCopy pattern) so fr/ imports no UI vocabulary.
+     */
+    fun kindLabel(
         kindName: String,
         absenceName: String?,
-    ): String {
-        val kind =
-            when (kindName) {
-                "SUISSE" -> SUISSE
-                "DOMICILE" -> DOMICILE
-                "MISSION_FRANCE" -> "Mission (France)"
-                "MISSION_THIRD" -> "Mission (pays tiers)"
-                "ABSENCE" -> if (absenceName == null) "Absence" else "Absence — ${absenceLabel(absenceName)}"
-                else -> kindName
-            }
-        return "$RECORDED_PREFIX $kind"
-    }
+    ): String =
+        when (kindName) {
+            "SUISSE" -> SUISSE
+            "DOMICILE" -> DOMICILE
+            "MISSION_FRANCE" -> "Mission (France)"
+            "MISSION_THIRD" -> "Mission (pays tiers)"
+            "ABSENCE" -> if (absenceName == null) "Absence" else "Absence — ${absenceLabel(absenceName)}"
+            else -> kindName
+        }
+
+    /**
+     * The half-day answer line showing BOTH halves - « Matin : Domicile — Après-midi : En Suisse » (R292: a
+     * single label would misstate a split day). Each half is already a kindLabel; this only joins them.
+     */
+    fun answerHalfDay(
+        morningLabel: String,
+        afternoonLabel: String,
+    ): String = "$MORNING : $morningLabel — $AFTERNOON : $afternoonLabel"
 }

@@ -1,5 +1,11 @@
 package ch.monreleve.app.ui.screens.aujourdhui
 
+import androidx.compose.animation.core.AnimationSpec
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -9,7 +15,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -19,6 +24,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import ch.monreleve.app.aujourdhui.AbsenceChoice
 import ch.monreleve.app.aujourdhui.AujourdhuiState
 import ch.monreleve.app.aujourdhui.DayEntry
@@ -28,6 +34,7 @@ import ch.monreleve.app.aujourdhui.YearPanel
 import ch.monreleve.app.design.FrontierType
 import ch.monreleve.app.design.LightColors
 import ch.monreleve.app.design.MetricTile
+import ch.monreleve.app.design.Motion
 import ch.monreleve.app.design.Radius
 import ch.monreleve.app.design.RateDisplay
 import ch.monreleve.app.design.Size
@@ -42,9 +49,10 @@ import ch.monreleve.app.fr.AujourdhuiCopy
 import ch.monreleve.app.fr.DetectionCopy
 import ch.monreleve.app.fr.Fr
 import ch.monreleve.app.fr.MetricCopy
+import ch.monreleve.app.fr.format.SignedDays
+import ch.monreleve.app.fr.format.formatDayLong
 import ch.monreleve.app.fr.format.formatPercent
 import ch.monreleve.app.fr.format.formatSignedDays
-import ch.monreleve.app.onboarding.GranularityChoice
 import ch.monreleve.app.settings.LoggingMode
 
 // The threshold captions are derived from the RuleSet ceilings, never typed (R181): a fraction like
@@ -73,7 +81,7 @@ fun AujourdhuiScreen(
         modifier = modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(Spacing.space20),
         verticalArrangement = Arrangement.spacedBy(Spacing.space16),
     ) {
-        Text(text = Fr.GREETING, style = FrontierType.h2)
+        Header(state.today)
         val autoMode = state.loggingMode == LoggingMode.AUTO_DETECT
         Text(
             text = if (autoMode) DetectionCopy.MODE_AUTO else AujourdhuiCopy.MODE_MANUAL,
@@ -92,28 +100,39 @@ fun AujourdhuiScreen(
     }
 }
 
-// The manual recording surface (SPEC 11.2, AN5b): the full day, or the two half-day slots. Internal so the
-// auto surface (AujourdhuiAuto.kt) can fall back to it.
+// Section A (AN-HOME): the greeting and today's date in Europe/Paris. The date is formatted from state.today,
+// which the controller recomputes from the clock on resume (F8) - so it is "worked out when used", not frozen
+// at construction. "Lundi 15 juin 2026", French, leading capital (formatDayLong).
+@Composable
+private fun Header(today: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.space4)) {
+        Text(text = Fr.GREETING, style = FrontierType.h2)
+        Text(text = formatDayLong(today), style = FrontierType.body, color = LightColors.textSecondary)
+    }
+}
+
+// The manual recording surface (SPEC 11.2, AN5b): the choice card (AN-HOME section 1) - the options when the
+// day is not yet recorded, closing into the answer line once it is. DAY shows one slot; HALF_DAY both halves.
 @Composable
 internal fun ManualSection(
     state: AujourdhuiState,
     onRecord: (RecordedKind, Slot, AbsenceChoice?) -> Unit,
 ) {
-    if (state.granularity == GranularityChoice.HALF_DAY) {
-        Text(text = AujourdhuiCopy.MORNING, style = FrontierType.bodyM)
-        RecordSection(Slot.MORNING, state.morning, onRecord)
-        Text(text = AujourdhuiCopy.AFTERNOON, style = FrontierType.bodyM)
-        RecordSection(Slot.AFTERNOON, state.afternoon, onRecord)
-    } else {
-        RecordSection(Slot.FULL, state.fullDay, onRecord)
-    }
+    ChoiceCard(state = state, onRecord = onRecord)
 }
 
 /**
  * The year's position (SPEC 11.2), in the web result panel's order (R137): badge, rate, rail, the two
- * remaining-days tiles. Every figure comes from the engine result the controller computed (FW12: NO
- * second arithmetic here); zoneFor/statusFor are pure display mappings, not a recomputed rate. AC3:
- * an empty year says so instead of 0 %, and the honesty notes are conditional on their condition.
+ * remaining-days tiles. Section D (AN-HOME): this is the product's core answer, so it is given the visual
+ * weight of a HERO status card (radius 20, padding 24 - DESIGN-SYSTEM FrontierStatusCard). Every figure comes
+ * from the engine result the controller computed (FW12: NO second arithmetic here); zoneFor/statusFor are pure
+ * display mappings, not a recomputed rate. AC3: an empty year says so instead of 0 %, and the honesty notes are
+ * conditional on their condition.
+ *
+ * NUMBER CHANGES animate over 300 ms (Motion.numbersMillis - DESIGN-SYSTEM "numbers animate over 300 ms"): the
+ * rate, the rail fill and the two day counts count toward their new value when a day is recorded. The ZONE
+ * (colour) and the tile LABELS come from the TARGET result, so only the figures move - no colour flicker, no
+ * label flip mid-animation. With "Remove animations" on the change is instant (snap()).
  */
 @Composable
 private fun YearSection(year: YearPanel?) {
@@ -121,17 +140,44 @@ private fun YearSection(year: YearPanel?) {
         Text(text = AujourdhuiCopy.EMPTY_YEAR, style = FrontierType.body)
         return
     }
+    YearHeroCard(year)
+}
+
+// The displayed day count animates, but its negative flag (which picks the « restants »/« au-dessus » label)
+// stays the TARGET's, so the label never flips mid-count. Block body so the formatter keeps the line short.
+private fun animatedDays(
+    target: Double,
+    animated: Float,
+): SignedDays {
+    return formatSignedDays(target).copy(text = formatSignedDays(animated.toDouble()).text)
+}
+
+@Composable
+private fun YearHeroCard(year: YearPanel) {
     val result = year.result
     val thresholds = ZoneThresholds(year.fiscalCeiling, year.socialCeiling)
     val zone = zoneFor(result.declarableRate, thresholds)
     val fiscalPct = formatPercent(year.fiscalCeiling * PERCENT, THRESHOLD_DECIMALS)
     val socialPct = formatPercent(year.socialCeiling * PERCENT, THRESHOLD_DECIMALS)
+    val numberSpec: AnimationSpec<Float> = if (rememberReduceMotion()) snap() else tween(Motion.numbersMillis)
+    val animRate by animateFloatAsState(result.declarableRate.toFloat(), numberSpec)
+    val animFiscal by animateFloatAsState(result.remainingToFiscal.toFloat(), numberSpec)
+    val animSocial by animateFloatAsState(result.remainingToSocial.toFloat(), numberSpec)
 
-    Column(verticalArrangement = Arrangement.spacedBy(Spacing.space16)) {
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(Radius.xl))
+                .background(LightColors.surface)
+                .border(Size.rule, LightColors.borderDefault, RoundedCornerShape(Radius.xl))
+                .padding(Spacing.space24),
+        verticalArrangement = Arrangement.spacedBy(Spacing.space16),
+    ) {
         ZoneBadge(statusFor(result))
-        RateDisplay(declarableRate = result.declarableRate, zone = zone, rawRate = result.rawRate)
+        RateDisplay(declarableRate = animRate.toDouble(), zone = zone, rawRate = result.rawRate)
         ThresholdRail(
-            percentage = result.declarableRate,
+            percentage = animRate.toDouble(),
             zone = zone,
             variant = RailVariant.INLINE,
             thresholds = thresholds,
@@ -140,28 +186,34 @@ private fun YearSection(year: YearPanel?) {
         MetricTile(
             label = MetricCopy.remaining(fiscalPct),
             overLabel = MetricCopy.over(fiscalPct),
-            days = formatSignedDays(result.remainingToFiscal),
+            days = animatedDays(result.remainingToFiscal, animFiscal),
         )
         MetricTile(
             label = MetricCopy.remaining(socialPct),
             overLabel = MetricCopy.over(socialPct),
-            days = formatSignedDays(result.remainingToSocial),
+            days = animatedDays(result.remainingToSocial, animSocial),
         )
-
-        if (year.unsyncedDays > 0) {
-            Text(
-                text =
-                    AujourdhuiCopy.pendingNote(
-                        year.unsyncedDays,
-                        year.pendingLateness.name,
-                        year.lateThresholdDays,
-                    ),
-                style = FrontierType.caption,
-            )
-        }
-        if (year.partialYear) Text(text = AujourdhuiCopy.PARTIAL_YEAR, style = FrontierType.caption)
-        year.fallbackYear?.let { Text(text = AujourdhuiCopy.fallbackNote(it), style = FrontierType.caption) }
+        YearNotes(year)
     }
+}
+
+// The honesty notes (AC3): shown only on their condition - unsynced count (R286 escalation), a partial year,
+// and a RuleSet fallback. Each is conditional on its own state, never a permanent line.
+@Composable
+private fun YearNotes(year: YearPanel) {
+    if (year.unsyncedDays > 0) {
+        Text(
+            text =
+                AujourdhuiCopy.pendingNote(
+                    year.unsyncedDays,
+                    year.pendingLateness.name,
+                    year.lateThresholdDays,
+                ),
+            style = FrontierType.caption,
+        )
+    }
+    if (year.partialYear) Text(text = AujourdhuiCopy.PARTIAL_YEAR, style = FrontierType.caption)
+    year.fallbackYear?.let { Text(text = AujourdhuiCopy.fallbackNote(it), style = FrontierType.caption) }
 }
 
 // Internal so the auto surface (AujourdhuiAuto.kt) reuses it for its "enter it yourself" and correction paths.
@@ -208,8 +260,6 @@ internal fun RecordSection(
                 }
             }
         }
-
-        current?.let { RecordedRow(it) }
     }
 }
 
@@ -228,26 +278,5 @@ private fun RecordButton(
         Button(onClick = onClick, shape = shape, modifier = sizing) { Text(text = label) }
     } else {
         OutlinedButton(onClick = onClick, shape = shape, modifier = sizing) { Text(text = label) }
-    }
-}
-
-@Composable
-private fun RecordedRow(entry: DayEntry) {
-    Column(verticalArrangement = Arrangement.spacedBy(Spacing.space4)) {
-        Text(text = AujourdhuiCopy.recordedLabel(entry.kind.name, entry.absence?.name), style = FrontierType.bodyM)
-        // ETAT C (R314): the provenance line for a detected day - never abbreviated to an icon, shown wherever
-        // the entry is. Null for a manual day (no detection line).
-        DetectionCopy.provenanceLine(entry.provenance.name)?.let {
-            Text(text = it, style = FrontierType.caption, color = LightColors.textSecondary)
-        }
-        if (entry.pending) Text(text = AujourdhuiCopy.PENDING, style = FrontierType.caption)
-        if (entry.failed) {
-            Text(
-                text = AujourdhuiCopy.SYNC_FAILED,
-                style = FrontierType.caption,
-                color = MaterialTheme.colorScheme.error,
-            )
-        }
-        Text(text = AujourdhuiCopy.EDIT_HINT, style = FrontierType.caption)
     }
 }

@@ -59,6 +59,25 @@ class AujourdhuiScreenScreenshotTest {
             morning = DayEntry(kind = RecordedKind.DOMICILE, absence = null, pending = false, failed = false),
         )
 
+    // AN-HOME section 1: a full day recorded and SYNCED - the choice is closed into the answer line, status
+    // « Enregistré » (not pending), with « Modifier ».
+    private val daySynced =
+        AujourdhuiState(
+            today = "2026-06-15",
+            granularity = GranularityChoice.DAY,
+            fullDay = DayEntry(kind = RecordedKind.SUISSE, absence = null, pending = false, failed = false),
+        )
+
+    // AN-HOME section 1: both halves recorded - the answer line shows BOTH (« Matin : Domicile — Après-midi :
+    // En Suisse », R292), closed, with one « Modifier ».
+    private val halfDayComplete =
+        AujourdhuiState(
+            today = "2026-06-15",
+            granularity = GranularityChoice.HALF_DAY,
+            morning = DayEntry(kind = RecordedKind.DOMICILE, absence = null, pending = false, failed = false),
+            afternoon = DayEntry(kind = RecordedKind.SUISSE, absence = null, pending = true, failed = false),
+        )
+
     // R198: a sync the server refused, held and SAID so (not silently dropped).
     private val syncFailed =
         AujourdhuiState(
@@ -221,6 +240,16 @@ class AujourdhuiScreenScreenshotTest {
     @Test
     fun aujourdhuiHalfDay() {
         paparazzi.snapshot { host(halfDay) }
+    }
+
+    @Test
+    fun aujourdhuiDaySynced() {
+        paparazzi.snapshot { host(daySynced) }
+    }
+
+    @Test
+    fun aujourdhuiHalfDayComplete() {
+        paparazzi.snapshot { host(halfDayComplete) }
     }
 
     @Test

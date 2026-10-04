@@ -340,4 +340,40 @@ class FencesTest {
         }
         assertTrue("D16 fence violated:\n${offenders.joinToString("\n")}", offenders.isEmpty())
     }
+
+    // ------------------------------------------------------------------
+    // Fence 8 (AN-HOME, R269) - no raw animation-duration literal in ui/
+    // or design/; a duration comes from the Motion token set, never typed
+    // inline ("never a duration typed inline", AN-HOME relay; DESIGN-SYSTEM
+    // section 1 motion values). PORTED BEFORE AN-HOME's animation code so it
+    // guards that code's own commits, not a frozen tree (R269) - the sibling
+    // of Fence 3 one category over (durations, not .dp).
+    //
+    // Tokens.kt is the one place the raw motion values (200/250/300) live,
+    // as the set's definition - excluded, exactly as Fence 3 excludes it.
+    //
+    // KNOWN LIMIT (same class as fences 2/3): a one-hop indirection
+    // (`val d = 200; tween(d)`) moves the literal off the call-site anchor
+    // and evades this text scan. Proven to fire by a planted `tween(200)`
+    // (R178/R180), reverted - there were no live instances when it landed.
+    // ------------------------------------------------------------------
+    @Test
+    fun uiAndDesignHaveNoRawAnimationDurationLiteral() {
+        val tokenDefinitionFiles = setOf(File(appSrcRoot, "design/Tokens.kt").canonicalFile)
+        val scanned =
+            (ktFiles("ui") + ktFiles("design") + ktFiles("dev")).filterNot { it.canonicalFile in tokenDefinitionFiles }
+        assertTrue("duration fence scanned no files - ui//design/ renamed? (F7 vacuity guard)", scanned.isNotEmpty())
+
+        val offenders = mutableListOf<String>()
+        for (file in scanned) {
+            val text = stripComments(file.readText())
+            if (Regex("""\btween\s*(<[^>]+>)?\s*\(\s*\d""").containsMatchIn(text)) {
+                offenders += "${file.path}: tween(...) with a raw numeric duration - use a Motion token"
+            }
+            if (Regex("""\b(durationMillis|delayMillis)\s*=\s*\d""").containsMatchIn(text)) {
+                offenders += "${file.path}: raw durationMillis/delayMillis literal - use a Motion token"
+            }
+        }
+        assertTrue("duration fence violated:\n${offenders.joinToString("\n")}", offenders.isEmpty())
+    }
 }
