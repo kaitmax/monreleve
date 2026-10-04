@@ -10,6 +10,42 @@ import { SHELL_COPY } from '../lib/fr/shell';
 import { formatDate } from '../lib/ui/core';
 import { currentTaxYear } from '../lib/content/tax-year';
 import { guideScope } from '../lib/guides/scope';
+import { PRODUCT_STATE } from '../lib/content/product-state';
+import { SOURCE_ENTRIES, SOURCE_IDS } from '../lib/content/sources';
+import { publishedGuides } from '../lib/guides/registry';
+import { presentTenseClaimsIn } from '../tests/support/present-tense';
+import { complianceClaims } from '../tests/support/vocabulary';
+
+// FD11's five card-2 topic slugs, in its order (mirrors app/(public)/page.tsx).
+const CARD_TWO_TOPICS = [
+  'teletravail-frontalier-40-pourcent',
+  'seuil-social-49-9-pourcent',
+  'jours-de-mission-hors-suisse',
+  'attestation-employeur-teletravail',
+  'droit-option-lamal-cmu',
+];
+
+const lowerFirst = (text: string): string => text.charAt(0).toLowerCase() + text.slice(1);
+
+/** The five card-2 topic labels the page derives, for the served-page checks. */
+function cardTwoTopicLabels(): string[] {
+  const published = publishedGuides();
+
+  return CARD_TWO_TOPICS.map((slug) => {
+    const guide = published.find((one) => one.frontmatter.slug === slug);
+
+    if (guide === undefined) throw new Error(`home.spec: topic slug not published: ${slug}`);
+
+    return lowerFirst(guide.frontmatter.breadcrumbLabel);
+  });
+}
+
+// innerText may or may not preserve U+00A0 across engines; the figure-delivery
+// checks (R154) are about the DIGITS being delivered, not the typography (that
+// is copy-codepoints' and R91's job), so both sides are compared with no-break
+// spaces flattened to ordinary ones.
+const NBSP = String.fromCharCode(0x00a0);
+const flat = (text: string): string => text.split(NBSP).join(' ');
 
 /**
  * The server these tests actually hit, which is NOT the origin the build is
@@ -44,11 +80,18 @@ test('/ responds 200 and renders its heading from lib/fr', async ({ page }) => {
   //
   // textContent keeps the codepoint - also measured - so this compares the
   // exact string, and the constant on the other side carries it too.
-  expect(await page.getByRole('heading', { level: 1 }).textContent()).toBe(HOME_COPY.heading);
+  // HOME_COPY.heading IS NOW A FUNCTION of the fiscal ceiling (FW34): it names
+  // the threshold ("...reste-t-il avant 40 % ?") and takes it formatted, so this
+  // reads the same value the page interpolates rather than a typed figure.
+  const { fiscal } = guideScope(currentTaxYear());
+
+  expect(await page.getByRole('heading', { level: 1 }).textContent()).toBe(
+    HOME_COPY.heading(fiscal),
+  );
 
   // And the codepoint itself, named, so a reader of a failure knows what to
   // look for. U+00A0 is indistinguishable from a space on screen and in a diff.
-  expect(HOME_COPY.heading).toContain(String.fromCharCode(0x00a0));
+  expect(HOME_COPY.heading(fiscal)).toContain(String.fromCharCode(0x00a0));
 });
 
 test('/ is wrapped in the public shell, header and footer both', async ({ page }) => {
@@ -204,4 +247,195 @@ test('the meta description delivers both thresholds, formatted (R147, R154)', as
   // The sentence around them is still the copy module's, and that it survived
   // is worth one assertion.
   expect(description).toContain('Calculez votre part de télétravail annuelle');
+});
+
+// ---------------------------------------------------------------------------
+// FW34: the home body, served.
+// ---------------------------------------------------------------------------
+
+test('card 3 makes no present-tense claim about an unreleased app (R138, §7.2 item 3)', async ({
+  page,
+}) => {
+  // The precondition: the app does not exist, so card 3 must be in the future.
+  // If this fails, the app shipped and the card needs re-reading, not the test.
+  expect(
+    PRODUCT_STATE.appExists,
+    'appExists is true: card 3 is now present tense and this check is stale',
+  ).toBe(false);
+
+  await page.goto('/');
+
+  const cards = await page.locator('[data-band="cards"]').innerText();
+
+  // Presence before the absence assertion (R169's corollary): card 3's body is
+  // actually on the page.
+  expect(cards).toContain('En préparation pour Android');
+
+  expect(presentTenseClaimsIn(cards)).toEqual([]);
+
+  // The detector is not merely decorative: a known present form fires.
+  expect(
+    presentTenseClaimsIn('Un geste par jour, et la journée est enregistrée.').length,
+  ).toBeGreaterThan(0);
+});
+
+test('the home page makes no compliance claim SPEC 20 forbids (§7.2 item 4)', async ({ page }) => {
+  await page.goto('/');
+
+  const main = await page.locator('main').innerText();
+
+  // Presence: the page rendered real prose before we assert an absence.
+  expect(main).toContain('Calculer mes jours');
+
+  expect(complianceClaims(main)).toEqual([]);
+
+  // Non-vacuity: the detector fires on a real forbidden claim.
+  expect(complianceClaims('Vos journées sont certifiées conformes.').length).toBeGreaterThan(0);
+});
+
+test('every threshold, count and figure is delivered into the page (R154, §7.2 item 5)', async ({
+  page,
+}) => {
+  await page.goto('/');
+
+  const { fiscal, social, a1Threshold } = guideScope(currentTaxYear());
+
+  // Every figure is a real one, so none of the toContain checks is vacuous.
+  for (const figure of [fiscal, social, a1Threshold]) expect(figure).toMatch(/\d/u);
+
+  // H1 and the hero lead.
+  const hero = flat(await page.locator('[data-band="hero"]').innerText());
+  const h1 = flat((await page.locator('h1').textContent()) ?? '');
+  expect(h1).toContain(flat(fiscal));
+  expect(hero).toContain(flat(fiscal));
+  expect(hero).toContain(flat(social));
+  expect(hero).toContain(flat(a1Threshold));
+
+  // Cards: card 1's two thresholds, card 2's count word and five topics.
+  const cards = await page.locator('[data-band="cards"]').innerText();
+  const cardsFlat = flat(cards);
+  expect(cardsFlat).toContain(flat(fiscal));
+  expect(cardsFlat).toContain(flat(social));
+  expect(cards).toContain('Sept'); // publishedGuides().length is 7 today
+  for (const topic of cardTwoTopicLabels()) expect(cards).toContain(topic);
+
+  // Trust band: the date, the publishers, the three counts.
+  const trust = await page.locator('[data-band="trust"]').innerText();
+  expect(trust).toContain(formatDate(LAST_REGULATORY_REVIEW ?? ''));
+  for (const publisher of new Set(SOURCE_ENTRIES.map((entry) => entry.sourceName))) {
+    expect(trust).toContain(publisher);
+  }
+  const transcribed = SOURCE_ENTRIES.filter((entry) => entry.status === 'transcribed').length;
+  const pending = SOURCE_ENTRIES.filter((entry) => entry.status === 'pending').length;
+  expect(trust).toContain(`${transcribed} des ${SOURCE_IDS.length}`);
+  expect(trust).toContain(`${pending} restent`);
+});
+
+test('the buttons meet D40, per band (§7.2 item 10)', async ({ page }) => {
+  await page.goto('/');
+
+  const heightOf = async (selector: string): Promise<number> =>
+    (await page.locator(selector).first().boundingBox())?.height ?? 0;
+
+  expect(await heightOf('[data-band="hero"] a[data-variant="primaryLarge"]')).toBeGreaterThanOrEqual(
+    55,
+  );
+  expect(await heightOf('[data-band="hero"] a[data-variant="secondary"]')).toBeGreaterThanOrEqual(
+    47,
+  );
+  expect(await heightOf('[data-band="closing"] a[data-variant="primary"]')).toBeGreaterThanOrEqual(
+    47,
+  );
+
+  const textLinks = page.locator('a[data-variant="text"]');
+  const count = await textLinks.count();
+
+  expect(count).toBeGreaterThan(0);
+  for (let index = 0; index < count; index += 1) {
+    const box = await textLinks.nth(index).boundingBox();
+
+    expect(box?.height ?? 0, `text link ${index} is below 44 px (D40)`).toBeGreaterThanOrEqual(43.5);
+  }
+});
+
+test('every body link is registered, live and answers 200 (R175, §7.2 item 11)', async ({
+  page,
+  request,
+}) => {
+  await page.goto('/');
+
+  const hrefs = await page
+    .locator('main a[href]')
+    .evaluateAll((anchors) => anchors.map((anchor) => anchor.getAttribute('href') ?? ''));
+
+  // The non-vacuity floor: hero 2, cards 3, trust 3, closing 1.
+  expect(hrefs.length).toBeGreaterThanOrEqual(9);
+
+  for (const href of hrefs) {
+    expect(href.startsWith('/'), `${href} is not an internal route`).toBe(true);
+  }
+
+  for (const href of new Set(hrefs)) {
+    const response = await request.get(href);
+
+    expect(response.status(), `${href} should answer 200`).toBe(200);
+  }
+});
+
+test.describe('below the breakpoint', () => {
+  test.use({ viewport: { width: 360, height: 800 } });
+
+  test('the hero actions stack full width, the cards and trust columns are one column (§7.2 item 12)', async ({
+    page,
+  }) => {
+    await page.goto('/');
+
+    // Hero actions: two buttons, same left edge, stacked, each near full width.
+    const heroButtons = page.locator('[data-band="hero"] a');
+
+    expect(await heroButtons.count()).toBe(2);
+
+    const first = await heroButtons.nth(0).boundingBox();
+    const second = await heroButtons.nth(1).boundingBox();
+
+    expect(first && second).toBeTruthy();
+    expect(Math.abs((first?.x ?? 0) - (second?.x ?? 0))).toBeLessThan(2);
+    expect(second?.y ?? 0).toBeGreaterThan((first?.y ?? 0) + 10);
+    expect(Math.abs((first?.width ?? 0) - (second?.width ?? 0))).toBeLessThan(2);
+    expect(first?.width ?? 0).toBeGreaterThan(200);
+
+    // Cards: three titles, all at the same x => one column.
+    const cardTitles = page.locator('[data-band="cards"] h3');
+
+    expect(await cardTitles.count()).toBe(3);
+
+    const cardXs = await cardTitles.evaluateAll((titles) =>
+      titles.map((title) => Math.round(title.getBoundingClientRect().x)),
+    );
+
+    expect(new Set(cardXs).size).toBe(1);
+
+    // Trust: three columns stacked, with HORIZONTAL rules (top border, no left).
+    const columns = await page.evaluate(() => {
+      const band = document.querySelector('[data-band="trust"]');
+      const eyebrows = Array.from(band?.querySelectorAll('h3') ?? []);
+
+      return eyebrows.map((eyebrow) => {
+        const column = eyebrow.parentElement as Element;
+        const style = getComputedStyle(column);
+
+        return {
+          top: Number.parseFloat(style.borderTopWidth),
+          left: Number.parseFloat(style.borderLeftWidth),
+          x: Math.round(column.getBoundingClientRect().x),
+        };
+      });
+    });
+
+    expect(columns.length).toBe(3);
+    expect(new Set(columns.map((column) => column.x)).size).toBe(1);
+    expect(columns[1]?.top ?? 0).toBeGreaterThan(0);
+    expect(columns[1]?.left ?? 0).toBe(0);
+    expect(columns[2]?.top ?? 0).toBeGreaterThan(0);
+  });
 });
