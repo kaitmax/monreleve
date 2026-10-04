@@ -1,5 +1,6 @@
 package ch.monreleve.app.ui.screens.aujourdhui
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,13 +16,16 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
 import ch.monreleve.app.aujourdhui.AbsenceChoice
 import ch.monreleve.app.aujourdhui.AujourdhuiState
 import ch.monreleve.app.aujourdhui.AutoDayState
@@ -30,12 +34,14 @@ import ch.monreleve.app.aujourdhui.RecordedKind
 import ch.monreleve.app.aujourdhui.Slot
 import ch.monreleve.app.design.FrontierType
 import ch.monreleve.app.design.LightColors
+import ch.monreleve.app.design.Motion
 import ch.monreleve.app.design.Radius
 import ch.monreleve.app.design.Size
 import ch.monreleve.app.design.Spacing
 import ch.monreleve.app.fr.AujourdhuiCopy
 import ch.monreleve.app.fr.DetectionCopy
 import ch.monreleve.app.onboarding.GranularityChoice
+import kotlinx.coroutines.delay
 
 // AN-AUTO increment 5 / R320. The automatic-mode surfaces for Aujourd'hui (SPEC 11.2 ETATS A/B/C, R311-R314), split
 // out of AujourdhuiScreen.kt so neither file carries too many composables. Stateless (fence 5); every string from
@@ -103,11 +109,66 @@ private fun AutoSlot(
     actions: AutoActions,
 ) {
     when {
-        recorded != null -> RecordSection(slot, recorded, actions.onRecord) // ETAT C
+        recorded != null -> AutoRecordedSlot(slot, recorded, actions.onRecord) // ETAT C
         auto is AutoDayState.ToConfirm -> ProposalCard(auto.kind, slot, actions)
         auto is AutoDayState.NotSure -> NotSureBlock(slot, actions.onRecord)
         auto is AutoDayState.Detecting -> DetectingBlock(slot, actions.onRecord)
         else -> RecordSection(slot, null, actions.onRecord) // defensive: no auto decision -> manual
+    }
+}
+
+// SPEC 11.2 ETAT C - a recorded detected (or corrected) day, closed into its answer line (AN-HOME section 1).
+// « Modifier » reopens the manual options routing through onRecord, exactly as the pre-AN-HOME ETAT C did
+// (editing a recorded day re-records it); the 1 px card, the motion, the polite live region and the R310
+// editing state are ChoiceCard's shared pieces, reused here per slot.
+@Composable
+private fun AutoRecordedSlot(
+    slot: Slot,
+    entry: DayEntry,
+    onRecord: (RecordedKind, Slot, AbsenceChoice?) -> Unit,
+) {
+    var editing by rememberSaveable(slot) { mutableStateOf(false) }
+    val reduceMotion = rememberReduceMotion()
+    val modifierFocus = remember { FocusRequester() }
+    var wasEditing by remember { mutableStateOf(editing) }
+    LaunchedEffect(editing) {
+        if (!editing && wasEditing) {
+            if (!reduceMotion) delay(Motion.standardMillis.toLong())
+            runCatching { modifierFocus.requestFocus() }
+        }
+        wasEditing = editing
+    }
+    ChoiceSurface {
+        AnimatedVisibility(
+            visible = editing,
+            enter = optionsEnter(reduceMotion),
+            exit = optionsExit(reduceMotion),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.space8)) {
+                RecordSection(
+                    slot = slot,
+                    current = entry,
+                    onRecord = { kind, s, absence ->
+                        editing = false
+                        onRecord(kind, s, absence)
+                    },
+                )
+                TextButton(onClick = { editing = false }, modifier = Modifier.fillMaxWidth()) {
+                    Text(text = AujourdhuiCopy.CANCEL)
+                }
+            }
+        }
+        AnimatedVisibility(
+            visible = !editing,
+            enter = answerEnter(reduceMotion),
+            exit = answerExit(reduceMotion),
+        ) {
+            RecordedAnswer(
+                parts = slotAnswerParts(entry),
+                onModifier = { editing = true },
+                modifierFocus = modifierFocus,
+            )
+        }
     }
 }
 

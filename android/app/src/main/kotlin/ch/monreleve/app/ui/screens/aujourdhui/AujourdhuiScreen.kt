@@ -9,7 +9,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -26,7 +25,6 @@ import ch.monreleve.app.aujourdhui.RecordedKind
 import ch.monreleve.app.aujourdhui.Slot
 import ch.monreleve.app.aujourdhui.YearPanel
 import ch.monreleve.app.design.FrontierType
-import ch.monreleve.app.design.LightColors
 import ch.monreleve.app.design.MetricTile
 import ch.monreleve.app.design.Radius
 import ch.monreleve.app.design.RateDisplay
@@ -44,7 +42,6 @@ import ch.monreleve.app.fr.Fr
 import ch.monreleve.app.fr.MetricCopy
 import ch.monreleve.app.fr.format.formatPercent
 import ch.monreleve.app.fr.format.formatSignedDays
-import ch.monreleve.app.onboarding.GranularityChoice
 import ch.monreleve.app.settings.LoggingMode
 
 // The threshold captions are derived from the RuleSet ceilings, never typed (R181): a fraction like
@@ -92,21 +89,14 @@ fun AujourdhuiScreen(
     }
 }
 
-// The manual recording surface (SPEC 11.2, AN5b): the full day, or the two half-day slots. Internal so the
-// auto surface (AujourdhuiAuto.kt) can fall back to it.
+// The manual recording surface (SPEC 11.2, AN5b): the choice card (AN-HOME section 1) - the options when the
+// day is not yet recorded, closing into the answer line once it is. DAY shows one slot; HALF_DAY both halves.
 @Composable
 internal fun ManualSection(
     state: AujourdhuiState,
     onRecord: (RecordedKind, Slot, AbsenceChoice?) -> Unit,
 ) {
-    if (state.granularity == GranularityChoice.HALF_DAY) {
-        Text(text = AujourdhuiCopy.MORNING, style = FrontierType.bodyM)
-        RecordSection(Slot.MORNING, state.morning, onRecord)
-        Text(text = AujourdhuiCopy.AFTERNOON, style = FrontierType.bodyM)
-        RecordSection(Slot.AFTERNOON, state.afternoon, onRecord)
-    } else {
-        RecordSection(Slot.FULL, state.fullDay, onRecord)
-    }
+    ChoiceCard(state = state, onRecord = onRecord)
 }
 
 /**
@@ -208,8 +198,6 @@ internal fun RecordSection(
                 }
             }
         }
-
-        current?.let { RecordedRow(it) }
     }
 }
 
@@ -228,26 +216,5 @@ private fun RecordButton(
         Button(onClick = onClick, shape = shape, modifier = sizing) { Text(text = label) }
     } else {
         OutlinedButton(onClick = onClick, shape = shape, modifier = sizing) { Text(text = label) }
-    }
-}
-
-@Composable
-private fun RecordedRow(entry: DayEntry) {
-    Column(verticalArrangement = Arrangement.spacedBy(Spacing.space4)) {
-        Text(text = AujourdhuiCopy.recordedLabel(entry.kind.name, entry.absence?.name), style = FrontierType.bodyM)
-        // ETAT C (R314): the provenance line for a detected day - never abbreviated to an icon, shown wherever
-        // the entry is. Null for a manual day (no detection line).
-        DetectionCopy.provenanceLine(entry.provenance.name)?.let {
-            Text(text = it, style = FrontierType.caption, color = LightColors.textSecondary)
-        }
-        if (entry.pending) Text(text = AujourdhuiCopy.PENDING, style = FrontierType.caption)
-        if (entry.failed) {
-            Text(
-                text = AujourdhuiCopy.SYNC_FAILED,
-                style = FrontierType.caption,
-                color = MaterialTheme.colorScheme.error,
-            )
-        }
-        Text(text = AujourdhuiCopy.EDIT_HINT, style = FrontierType.caption)
     }
 }

@@ -103,6 +103,15 @@ object Elevation {
 object Size {
     /** SPEC 11.2 / DESIGN-SYSTEM: the large primary action button height (the day's one-tap record). */
     val buttonLarge: Dp = 56.dp
+
+    /**
+     * The hairline rule / card border width. DESIGN-SYSTEM section 1 names it « `size-rule` 1 ... a
+     * hairline », distinct from the card radius or a spacing step. Ported to Kotlin by AN-HOME, which
+     * needs the « one white card with a 1 px border » section 1 calls for; the value is already in the
+     * brief, so R77 covers it (no separate value ruling) and the R285 / R272 precedent governs ratifying
+     * an Android token here rather than inventing one - it is NOT a new value, it is `size-rule` ported.
+     */
+    val rule: Dp = 1.dp
 }
 
 /**
