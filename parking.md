@@ -1620,6 +1620,37 @@ end-of-window trigger reading the day's DetectionOutcome, and confirm/correct ac
 
 NEEDS:     an operator decision on whether the beta surfaces a daily local notification at all, and its copy.
 
+## PARKAN-37 - /confidentialite still says "cumul de minutes"  [AN-NEXT-2, 2026-10-04]
+
+QUESTION:  the automatic-mode item in web/lib/fr/confidentialite.ts still reads « Seul un cumul de minutes par
+journee est conserve » - the pre-R320 minutes model. Detection now keeps four discrete checks, not a minute
+tally. When is this corrected?
+
+EVIDENCE: AN-NEXT-2 (R325) corrected only the determination claim (the Wi-Fi/cell determination clause) and
+left this verbatim rather than half-fixing an R320-era relic under an R325 task (NOTICED BUT NOT TOUCHING).
+
+NOT TAKEN: no edit to the "cumul de minutes" wording. Out of R325's scope; left verbatim.
+
+TOUCHES:   web/lib/fr/confidentialite.ts and the /confidentialite baseline; belongs with an R320 copy sweep
+across the privacy surfaces (confidentialite, application, the disclosure).
+
+NEEDS:     an R320 copy sweep that restates the detection model (four checks, no minutes) consistently.
+
+## PARKAN-38 - "the privacy map" has no named artefact  [AN-NEXT-2, 2026-10-04]
+
+QUESTION:  the AN-NEXT-2 task prompt named "the privacy map" as a third R325 surface, but no file, component or
+doc in the repo carries that name (it appears only in relay/AN-NEXT-2.txt). Which surface was meant?
+
+EVIDENCE: read conservatively as the PUBLIC map of what the app does with position - the /application « Ce que
+l'application ne fera pas » refusals (web/lib/fr/application.ts) - and corrected there (over-disclosing beats
+under-disclosing).
+
+NOT TAKEN: no other surface was changed under this name.
+
+TOUCHES:   web/lib/fr/application.ts (done); any other surface the operator may have meant.
+
+NEEDS:     the operator to confirm the /application refusals was the intended third surface, or name another.
+
 ## STATUS LEDGER  [appended 2026-09-29]
 
 One line per Android-era entry, so the state of each is visible without
