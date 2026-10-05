@@ -8,7 +8,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -29,21 +28,6 @@ import ch.monreleve.app.parametres.DeletePrompt
 // AN12 increment 3 (D11, R289, FD9 A2). The destructive account-deletion flow: a red row, a confirmation that
 // names what is destroyed and requires the typed word, and the outcome afterwards. Stateless except the typed
 // word, which is local to the open dialog (it must reset each time). Every string from fr/.
-
-/** The destructive row in « Mes données ». Red label (colour is never the only signal - the word is destructive). */
-@Composable
-internal fun DeleteRow(onRequestDelete: () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(Spacing.space4)) {
-        OutlinedButton(
-            onClick = onRequestDelete,
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = LightColors.error),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(text = ParametresCopy.DELETE_ROW)
-        }
-        Text(text = ParametresCopy.DELETE_ROW_HELPER, style = FrontierType.caption)
-    }
-}
 
 @Composable
 internal fun DeleteDialog(

@@ -1,30 +1,29 @@
 package ch.monreleve.app.ui.screens.parametres
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Switch
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import ch.monreleve.app.design.FrontierType
 import ch.monreleve.app.design.LightColors
-import ch.monreleve.app.design.Radius
 import ch.monreleve.app.design.Spacing
 import ch.monreleve.app.fr.OnboardingCopy
 import ch.monreleve.app.fr.ParametresCopy
@@ -34,18 +33,27 @@ import ch.monreleve.app.parametres.ParametresState
 import ch.monreleve.app.parametres.RateChange
 import ch.monreleve.app.parametres.SettingsError
 
-// AN12 increment 1 (SPEC 11.5, FD9 A1). The settings form. Stateless (fence 5): it reads a ParametresState
-// and calls back through ParametresActions, never touching the session or the store. Every string comes from
-// fr/ (R238 / the no-literal fence); the six field labels reuse OnboardingCopy (R206) - the same fields, the
-// same words. R282: five calculation fields, and nothing that names a mode this build does not have. The
-// field editors live in ParametresFields.kt (same package), split so neither file carries too many functions.
+// AN-PARAMS (SPEC 11.5, FD9). The settings screen, rebuilt as ONE clean list (ParametresSections) of Material 3
+// rows grouped under section headers, with each « Situation professionnelle » setting edited in its own sheet
+// (ParametresFields) and the floating « Enregistrer les réglages » gone. Presentation and navigation only - the
+// controller, /api/v1/me, R290's before/after, R289/R295/R315 and the data model are unchanged (a HARD BOUNDARY).
 //
-// R290 - the consequential-change dialog. When the controller computes that a save would move the year's
-// declarable rate, it exposes state.pendingRateChange; this screen shows the before and after (the device
-// engine's own figures, formatted here, never typed) and asks before the change is written.
+// ONE WAY OF SAVING. A sheet's controls bind LIVE to the controller's editing state; « Enregistrer » runs
+// save() and R290's before/after appears as the RateChangeDialog when the year's rate would move; « Annuler »
+// (or dismissing the sheet) reverts the controller to the committed snapshot and writes nothing. The committed
+// snapshot - the last SAVED values - is what the list rows display (so an in-flight edit never shows there) and
+// what the revert restores; it is updated only when a save succeeds (phase SAVED).
+//
+// R310 (P6): an open edit sheet survives rotation and a background kill. `editing` is rememberSaveable; the
+// in-progress edit itself lives in the controller's state, already persisted across both by ShellState's
+// ParametresSnapshot. The shared title uses the four screens' header style (FrontierType.h2 - ReleveScreen's
+// title and Aujourd'hui's greeting), down from the oversized h1 AN12 used.
 
 private const val PERCENT_DECIMALS = 2
 
+enum class EditTarget { CANTON, RATE, METHOD, GRANULARITY, START_DATE }
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ParametresScreen(
     state: ParametresState,
@@ -53,57 +61,115 @@ fun ParametresScreen(
     appVersion: String,
     modifier: Modifier = Modifier,
 ) {
-    // A local sub-screen: the licences screen (R280) opens over Parametres and « Retour » returns. UI-only
-    // navigation state, the same shape as a dropdown's expanded flag - it holds no data (fence 5).
-    // AN-STATE (R310): rememberSaveable so a rebuild keeps the reader on the licences sub-screen.
     var showLicences by rememberSaveable { mutableStateOf(false) }
     if (showLicences) {
         LicencesScreen(onBack = { showLicences = false }, modifier = modifier)
         return
     }
-    val busy = state.phase == ParametresPhase.SAVING
+
+    var editing by rememberSaveable { mutableStateOf<EditTarget?>(null) }
+    var saveAttempted by rememberSaveable { mutableStateOf(false) }
+    var showLearnMore by rememberSaveable { mutableStateOf(false) }
+    var showExport by rememberSaveable { mutableStateOf(false) }
+
+    // The committed (last SAVED) settings: what the rows show and what « Annuler » restores. Seeded from the
+    // loaded state (== saved at first composition); updated only on a successful save. rememberSaveable so a
+    // rebuild keeps the saved values while the controller keeps the in-flight edit (R310).
+    var committed by rememberSaveable { mutableStateOf(committedOf(state)) }
+
+    LaunchedEffect(state.phase) {
+        if (state.phase == ParametresPhase.SAVED && editing != null) {
+            committed = committedOf(state)
+            editing = null
+            saveAttempted = false
+        }
+    }
+
+    val saving = state.phase == ParametresPhase.SAVING
+    val sheetError = if (saveAttempted) sheetErrorFor(state) else null
+
+    fun revertAndClose() {
+        committed.canton?.let(actions.onCantonChange)
+        actions.onEmploymentRateChange(committed.employmentRate)
+        actions.onDenominatorChange(committed.denominator)
+        actions.onExactTotalChange(committed.exactTotalWorkDays)
+        actions.onGranularityChange(committed.granularity)
+        actions.onActivityStartDateChange(committed.activityStartDate)
+        actions.onCancelRateChange()
+        editing = null
+        saveAttempted = false
+    }
+
     Column(
         modifier = modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(Spacing.space20),
         verticalArrangement = Arrangement.spacedBy(Spacing.space16),
     ) {
-        Text(text = ParametresCopy.TITLE, style = FrontierType.h1)
-
-        SectionHeading(ParametresCopy.SITUATION_HEADING)
-        SituationWarning()
-
-        CantonField(state.canton, actions.onCantonChange, enabled = !busy)
-        RateField(state.employmentRate, actions.onEmploymentRateChange, enabled = !busy)
-        MethodField(state, actions.onDenominatorChange, actions.onExactTotalChange, enabled = !busy)
-        GranularityField(state.granularity, actions.onGranularityChange, enabled = !busy)
-        StartDateField(state.activityStartDate, actions.onActivityStartDateChange, enabled = !busy)
-
-        state.error?.let { ErrorText(errorCopy(it)) }
-        if (state.phase == ParametresPhase.NETWORK_ERROR) ErrorText(OnboardingCopy.ERROR_NETWORK)
-        if (state.phase == ParametresPhase.SESSION_ENDED) ErrorText(OnboardingCopy.ERROR_SESSION_ENDED)
-
-        Button(onClick = actions.onSave, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
-            Text(text = if (busy) ParametresCopy.SAVING else ParametresCopy.SAVE)
+        Text(text = ParametresCopy.TITLE, style = FrontierType.h2)
+        SituationSection(committed) {
+            editing = it
+            saveAttempted = false
         }
+        SaisieSection(
+            autoDetectionEnabled = state.autoDetectionEnabled,
+            eveningNotificationEnabled = state.eveningNotificationEnabled,
+            enabled = !saving,
+            onToggleAuto = actions.onToggleAutoDetection,
+            onToggleEvening = actions.onToggleEveningNotification,
+            onLearnMore = { showLearnMore = true },
+        )
+        CompteSection(onSignOut = actions.onRequestSignOut)
+        DonneesSection(onExport = { showExport = true }, onDelete = actions.onRequestDelete)
+        AProposSection(appVersion, actions.onOpenLegal, onOpenLicences = { showLicences = true })
+    }
 
-        if (state.phase == ParametresPhase.SAVED) {
-            Text(text = ParametresCopy.SAVED_CONFIRMATION, style = FrontierType.bodyM, color = LightColors.success)
+    ParametresOverlays(
+        editing = editing,
+        state = state,
+        actions = actions,
+        saving = saving,
+        sheetError = sheetError,
+        showLearnMore = showLearnMore,
+        showExport = showExport,
+        onSave = {
+            saveAttempted = true
+            actions.onSave()
+        },
+        onCancel = { revertAndClose() },
+        onDismissLearnMore = { showLearnMore = false },
+        onDismissExport = { showExport = false },
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Suppress("LongParameterList")
+@Composable
+private fun ParametresOverlays(
+    editing: EditTarget?,
+    state: ParametresState,
+    actions: ParametresActions,
+    saving: Boolean,
+    sheetError: String?,
+    showLearnMore: Boolean,
+    showExport: Boolean,
+    onSave: () -> Unit,
+    onCancel: () -> Unit,
+    onDismissLearnMore: () -> Unit,
+    onDismissExport: () -> Unit,
+) {
+    editing?.let { target ->
+        ModalBottomSheet(onDismissRequest = onCancel, sheetState = rememberModalBottomSheetState()) {
+            EditSheetBody(target, state, actions, saving, sheetError, onSave, onCancel)
         }
-
-        AutoDetectionSection(state.autoDetectionEnabled, actions.onToggleAutoDetection, enabled = !busy)
-        // R323 / PARKAN-36: the evening proposal notification toggle, shown ONLY when detection is on - without
-        // detection there is nothing to propose, so offering it would be a switch that can never fire.
-        if (state.autoDetectionEnabled) {
-            EveningNotificationSection(
-                state.eveningNotificationEnabled,
-                actions.onToggleEveningNotification,
-                enabled = !busy,
-            )
+    }
+    if (showLearnMore) {
+        ModalBottomSheet(onDismissRequest = onDismissLearnMore, sheetState = rememberModalBottomSheetState()) {
+            LearnMoreSheetContent(onClose = onDismissLearnMore)
         }
-
-        DataSection(actions)
-        DeleteRow(actions.onRequestDelete)
-        AccountSection(actions)
-        AboutSection(actions, appVersion, onOpenLicences = { showLicences = true })
+    }
+    if (showExport) {
+        ModalBottomSheet(onDismissRequest = onDismissExport, sheetState = rememberModalBottomSheetState()) {
+            ExportChooserContent(actions.onExportJson, actions.onExportCsv, onClose = onDismissExport)
+        }
     }
 
     state.pendingRateChange?.let { change ->
@@ -112,73 +178,64 @@ fun ParametresScreen(
     state.signOutPrompt?.let { prompt ->
         SignOutDialog(prompt, actions.onConfirmSignOut, actions.onCancelSignOut)
     }
-    state.deletePrompt?.let { prompt ->
-        DeleteDialog(prompt, actions)
+    state.deletePrompt?.let {
+        DeleteDialog(it, actions)
     }
     state.deleteOutcome?.let { outcome ->
         DeleteOutcomeDialog(outcome, actions.onAcknowledgeDelete)
     }
 }
 
-// R315: « Détection automatique (beta) ». Opt-in, manual by default; a plain Switch, no confirmation dialog
-// (SPEC 13). The description and beta note state that both modes produce the same relevé (D19 - manual is never
-// the lesser option). The disclosure before the OS permission prompt is R316's (increment 3); this row records
-// the person's consent and reflects the mode. Emits into the parent Column, like the other sections.
+@Suppress("LongParameterList")
 @Composable
-private fun AutoDetectionSection(
-    checked: Boolean,
-    onToggle: (Boolean) -> Unit,
-    enabled: Boolean,
+private fun EditSheetBody(
+    target: EditTarget,
+    state: ParametresState,
+    actions: ParametresActions,
+    saving: Boolean,
+    error: String?,
+    onSave: () -> Unit,
+    onCancel: () -> Unit,
 ) {
-    SectionHeading(ParametresCopy.AUTO_HEADING)
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(Spacing.space12),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(text = ParametresCopy.AUTO_LABEL, style = FrontierType.bodyM, modifier = Modifier.weight(1f))
-        Switch(checked = checked, onCheckedChange = onToggle, enabled = enabled)
+    when (target) {
+        EditTarget.CANTON ->
+            CantonSheetContent(state.canton, error, saving, actions.onCantonChange, onSave, onCancel)
+        EditTarget.RATE ->
+            RateSheetContent(state.employmentRate, error, saving, actions.onEmploymentRateChange, onSave, onCancel)
+        EditTarget.METHOD ->
+            MethodSheetContent(
+                state,
+                error,
+                saving,
+                actions.onDenominatorChange,
+                actions.onExactTotalChange,
+                onSave,
+                onCancel,
+            )
+        EditTarget.GRANULARITY ->
+            GranularitySheetContent(state.granularity, error, saving, actions.onGranularityChange, onSave, onCancel)
+        EditTarget.START_DATE ->
+            StartDateSheetContent(state.activityStartDate, error, saving, actions.onActivityStartDateChange, onSave, onCancel)
     }
-    Text(text = ParametresCopy.AUTO_DESCRIPTION, style = FrontierType.caption, color = LightColors.textSecondary)
-    Text(text = ParametresCopy.AUTO_BETA_NOTE, style = FrontierType.caption, color = LightColors.textSecondary)
-    // R317: the honest battery-management note - no exemption asked, no system setting changed on their behalf.
-    Text(text = ParametresCopy.AUTO_BATTERY_NOTE, style = FrontierType.caption, color = LightColors.textSecondary)
 }
 
-// R323 / PARKAN-36. The evening proposal notification toggle (« Me prévenir le soir »). OPT-IN, off by default,
-// separate from detection; a plain Switch, no dialog. Turning it ON is routed through MainActivity, which asks the
-// POST_NOTIFICATIONS permission on Android 13+ before enabling. The description states the no-nag rules (once a
-// day, never the week-end). Emits into the parent Column, like AutoDetectionSection above it.
-@Composable
-private fun EveningNotificationSection(
-    checked: Boolean,
-    onToggle: (Boolean) -> Unit,
-    enabled: Boolean,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(Spacing.space12),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(text = ParametresCopy.EVENING_LABEL, style = FrontierType.bodyM, modifier = Modifier.weight(1f))
-        Switch(checked = checked, onCheckedChange = onToggle, enabled = enabled)
-    }
-    Text(text = ParametresCopy.EVENING_DESCRIPTION, style = FrontierType.caption, color = LightColors.textSecondary)
-}
-
-@Composable
-private fun SituationWarning() {
-    Text(
-        text = ParametresCopy.SITUATION_WARNING,
-        style = FrontierType.caption,
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(Radius.md))
-                .background(LightColors.warningBg)
-                .padding(Spacing.space12),
+private fun committedOf(state: ParametresState): CommittedSettings =
+    CommittedSettings(
+        canton = state.canton,
+        employmentRate = state.employmentRate,
+        denominator = state.denominator,
+        exactTotalWorkDays = state.exactTotalWorkDays,
+        granularity = state.granularity,
+        activityStartDate = state.activityStartDate,
     )
-}
+
+private fun sheetErrorFor(state: ParametresState): String? =
+    when {
+        state.error != null -> errorCopy(state.error)
+        state.phase == ParametresPhase.NETWORK_ERROR -> OnboardingCopy.ERROR_NETWORK
+        state.phase == ParametresPhase.SESSION_ENDED -> OnboardingCopy.ERROR_SESSION_ENDED
+        else -> null
+    }
 
 @Composable
 private fun RateChangeDialog(
@@ -213,8 +270,6 @@ internal fun RateRow(
         horizontalArrangement = Arrangement.spacedBy(Spacing.space8),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // The label takes the flexible space and WRAPS at a large font scale; the value has no weight, so it
-        // measures at its intrinsic width and stays intact on the right (never fragmented, R127/200 percent).
         Text(
             text = label,
             style = FrontierType.body,
@@ -224,11 +279,6 @@ internal fun RateRow(
         // R181: the figure is DERIVED from the engine's rate, formatted here - never typed into copy.
         Text(text = formatPercent(rate, PERCENT_DECIMALS), style = FrontierType.bodyM, maxLines = 1)
     }
-}
-
-@Composable
-private fun ErrorText(message: String) {
-    Text(text = message, style = FrontierType.body, color = LightColors.error)
 }
 
 private fun errorCopy(error: SettingsError): String =

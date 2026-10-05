@@ -26,7 +26,22 @@ object ParametresCopy {
     // The label carries the beta word; the description says it is optional and that manual is its equal, never
     // its fallback. R27: no percentage. The disclosure before the OS prompt is D5/R316's (increment 3).
     const val AUTO_HEADING = "Enregistrement"
-    const val AUTO_LABEL = "Détection automatique (beta)"
+
+    // R206 - ONE HOME. « Détection automatique (bêta) » is DetectionCopy.MODE_AUTO (AN-NEXT-2 / R325 corrected
+    // it with its accent). AN12 had typed it unaccented here, so the two differed and the duplication guard did
+    // not see them; AN-PARAMS corrects the accent AND points this at the one home, so « bêta » cannot drift.
+    const val AUTO_LABEL = DetectionCopy.MODE_AUTO
+
+    // AN-PARAMS: the switch row shows ONE line; the full disclosure (AUTO_DESCRIPTION, AUTO_BETA_NOTE,
+    // AUTO_BATTERY_NOTE) moves behind « En savoir plus » (R282/R312/R317 honest disclosures are not deleted,
+    // only relocated - a test keeps each reachable, R238). Honest and modest: it PROPOSES, the person confirms.
+    const val AUTO_SUMMARY =
+        "En option, l’application peut déterminer vos journées sur le téléphone et vous les proposer à confirmer."
+
+    // AN-PARAMS: reveals the full detection disclosure (and any other relocated explanation) in a sheet. A
+    // generic affordance; « En savoir plus » has no prior home, so it is defined here where it is first used.
+    const val LEARN_MORE = "En savoir plus"
+
     const val AUTO_DESCRIPTION =
         "En option, l’application peut déterminer sur votre téléphone si votre journée a été passée en Suisse " +
             "ou à domicile, et vous la proposer chaque soir à confirmer. La saisie manuelle produit exactement " +
@@ -56,13 +71,30 @@ object ParametresCopy {
 
     // FD9's SITUATION PROFESSIONNELLE section: the settings that recompute the whole year, under a warning.
     const val SITUATION_HEADING = "Situation professionnelle"
+
+    // AN-PARAMS: shown as the « Début d’activité » row's value when no start date is stored - the person
+    // has worked (or will work) the whole year. The stored value stays an ISO day string (R28); this is the
+    // empty display only. The date itself is shown in the Swiss format (formatDate, dd.MM.yyyy) when present.
+    const val START_DATE_EMPTY = "Toute l’année"
+
+    // AN-PARAMS: the start date is now picked with Material 3's date picker, not typed as AAAA-MM-JJ (the
+    // storage format was leaking onto the screen). This labels the button that opens the picker and the
+    // picker's own confirm action; « Toute l’année » (START_DATE_EMPTY) clears it to the whole-year case.
+    const val START_DATE_PICK = "Choisir une date"
+
+    // AN-PARAMS: this « recalculates the year » warning is no longer an always-visible amber box (a permanent
+    // warning stops reading as one). It moves INTO each work-setting edit sheet, where it is made concrete by
+    // R290's before/after when a save would move the year's rate.
     const val SITUATION_WARNING =
         "Ces réglages recalculent l’ensemble de l’année en cours. Ils doivent correspondre à la méthode " +
             "appliquée par votre employeur."
 
-    const val SAVE = "Enregistrer les réglages"
+    // AN-PARAMS: the floating « Enregistrer les réglages » button is GONE (one way of saving - each work
+    // setting is edited and saved in its own sheet, which reuses CalendarCopy.SHEET_SAVE/SHEET_CANCEL,
+    // R206). SAVING stays - the sheet shows it while a save is in flight. The « Réglage enregistré »
+    // confirmation is dropped in favour of observation (the sheet closes, the row shows the new value -
+    // the CalendarEditSheet precedent, DESIGN-SYSTEM « no success animation »).
     const val SAVING = "Enregistrement en cours…"
-    const val SAVED_CONFIRMATION = "Réglage enregistré"
 
     // R290: shown BEFORE a consequential change is saved. The two figures come from the device engine over
     // the device's own entries; this copy names the effect, the screen renders the values.
@@ -82,6 +114,10 @@ object ParametresCopy {
 
     // AN12 increment 2 - « Mes données » (AC2). Export goes through the platform share sheet.
     const val DATA_HEADING = "Mes données"
+
+    // AN-PARAMS: one « Exporter mes données » row that opens a chooser offering the two documents below
+    // (the complete JSON record and the CSV entries). Distinct from EXPORT_JSON's value, so no duplication.
+    const val DATA_EXPORT_ROW = "Exporter mes données"
     const val EXPORT_JSON = "Exporter mes données (JSON)"
     const val EXPORT_CSV = "Exporter mes saisies (CSV)"
     const val EXPORT_HELPER = "Toutes vos saisies et leurs horodatages, tels que le serveur les conserve."
@@ -149,7 +185,12 @@ object ParametresCopy {
     const val DELETE_UNKNOWN =
         "La suppression n’a pas pu être confirmée. Les données de cet appareil sont intactes ; vérifiez votre " +
             "connexion avant de réessayer."
-    const val DELETE_ACK = "Fermer"
+
+    // AN-PARAMS: « Fermer » has ONE home (R206) - it dismisses the delete outcome dialog AND the two new
+    // information sheets (« En savoir plus », the export chooser). DELETE_ACK points at it rather than repeating
+    // the literal, so the duplication guard sees one string.
+    const val CLOSE = "Fermer"
+    const val DELETE_ACK = CLOSE
 
     fun deleteDoneBody(entries: Int): String =
         if (entries == 1) {
