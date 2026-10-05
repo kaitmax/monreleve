@@ -1,31 +1,24 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
   <!--
-    web/app/icon.svg
+    web/app/icon.svg - the browser-tab icon, Next's file convention.
 
-    THE TAB ICON. It exists because the increment 6 Lighthouse run found a 404
-    on /favicon.ico on every page load - "Browser errors were logged to the
-    console", best-practices 96. Every browser requests that path unprompted,
-    so the product was answering 404 to a request it makes itself.
+    THE RAIL MARK from the mon-releve-logo kit (identical geometry to
+    public/favicon.svg): a track filled to about a third, stopping short of the
+    40 % tick. It replaced the placeholder geometric glyph the LOGO task set out
+    to remove. Deep Alpine Blue #173B63 (DESIGN-SYSTEM.md).
 
-    THE SAME GEOMETRY AS Wordmark.tsx, deliberately: ruling R82 rejected the
-    full-colour logo file and said the placeholder geometric mark stays, so
-    this is that mark rather than a second one. Two marks would be exactly the
-    drift R82 exists to prevent.
+    A HEX IS ALLOWED HERE, where it was not in the placeholder, because this is
+    now a real two-tone image asset rather than a currentColor placeholder - an
+    .svg file is an image, not code, so the token rule that governs .tsx/.scss
+    does not reach it. The kit's build.py is the source; regenerate there.
 
-    stroke="currentColor" RATHER THAN A HEX. A raw colour outside tokens.scss
-    is forbidden and a standalone file cannot read a custom property;
-    currentColor resolves to the initial colour, black, which needs no token
-    and states no palette decision. The day the mark is designed, this file and
-    Wordmark.tsx change together.
-
-    THE COMMENT SITS INSIDE THE ROOT ELEMENT, and width/height are explicit,
-    because Next's metadata image loader could parse neither otherwise -
-    `next build` failed with "is not a valid image file" when this comment was
-    above the <svg> tag. Measured, not guessed.
-
-    No gradient, per R82; tests/unit/meta/no-gradients.test.ts names this file.
+    THE COMMENT SITS INSIDE THE ROOT ELEMENT and width/height are explicit, for
+    the reason the previous file recorded: Next's metadata image loader parsed
+    neither otherwise. No gradient (R82); tests/unit/meta/no-gradients.test.ts
+    names this file.
   -->
-  <path d="M10 2v16"/>
-  <path d="M3 7h5"/>
-  <path d="M12 13h5"/>
+  <rect width="192" height="192" rx="44" fill="#173B63"/>
+  <rect x="24" y="76" width="144" height="40" rx="20" fill="#FFFFFF" opacity="0.28"/>
+  <rect x="24" y="76" width="40" height="40" rx="20" fill="#FFFFFF"/>
+  <rect x="74" y="48" width="16" height="96" rx="8" fill="#FFFFFF"/>
 </svg>

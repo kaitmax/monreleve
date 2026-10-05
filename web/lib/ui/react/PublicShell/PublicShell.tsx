@@ -57,7 +57,6 @@ import { PRODUCT_STATE } from '@/lib/content/product-state';
 import { FOOTER_COLUMNS, SHELL_COPY, SHELL_NAV } from '@/lib/fr/shell';
 import type { FooterColumn, NavEntry, NavLink } from '@/lib/fr/shell';
 import styles from './PublicShell.module.scss';
-import { Wordmark } from './Wordmark';
 
 export interface PublicShellProps {
   readonly children: React.ReactNode;
@@ -258,10 +257,18 @@ export function PublicShell({ children, guideLinks }: PublicShellProps) {
           </button>
 
           <a className={styles.home} href="/" aria-label={SHELL_COPY.homeLabel}>
-            <span className={styles.mark}>
-              <Wordmark />
-            </span>
-            <span className={styles.name}>{APP_NAME}</span>
+            {/* The brand lockup (mon-releve-logo kit), replacing the FW9
+                placeholder mark + text. An <img> rather than inline SVG so the
+                mark's two brand colours stay in the .svg asset and out of this
+                component - the token rule forbids a raw hex in .tsx. Decorative
+                (alt=""), because the link already carries its accessible name
+                through aria-label; the mark is not announced twice, which is
+                why the placeholder was aria-hidden. */}
+            <img className={styles.lockup} src="/logo-lockup.svg" alt="" />
+            {/* The product name stays in the DOM as text, visually hidden: the
+                lockup shows it, but a name living only inside a picture is lost
+                to SEO and to a reader who cannot load the image. */}
+            <span className="u-visually-hidden">{APP_NAME}</span>
           </a>
 
           <nav className={styles.nav} aria-label={SHELL_COPY.navLabel}>
@@ -320,6 +327,11 @@ export function PublicShell({ children, guideLinks }: PublicShellProps) {
 
       <footer className={styles.footer}>
         <div className={styles.footerInner}>
+          {/* The brand lockup as the footer sign-off, decorative. NOT a link:
+              a second home link would add a duplicate destination to every
+              page's header/footer link census (e2e/routing.spec.ts). alt=""
+              for the same reason the header mark is decorative. */}
+          <img className={styles.footerLogo} src="/logo-lockup.svg" alt="" />
           <nav className={styles.columns} aria-label={SHELL_COPY.footerNavLabel}>
             {footerColumns(guideLinks).map((column) => (
               <div className={styles.column} key={column.heading}>

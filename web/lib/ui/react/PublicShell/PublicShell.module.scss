@@ -67,18 +67,15 @@
   text-decoration: none;
 }
 
-.mark {
-  display: inline-flex;
-  width: var(--size-icon);
-  height: var(--size-icon);
-}
-
-// Its own R70 pair - 17/26/600 - rather than Body-L's size with a weight
-// Body-L does not have.
-.name {
-  font-size: var(--type-wordmark-size);
-  font-weight: var(--type-wordmark-weight);
-  line-height: var(--type-wordmark-line);
+// The brand lockup (mon-releve-logo kit), replacing the FW9 placeholder mark
+// and its text name. Height is a token; width auto keeps the 477x96 aspect, so
+// no raw length is written. --size-icon-lg (24 px) sits the lockup in the
+// 56/64 px bar and, with no CTA rendered while trackerExists is false, well
+// inside 320 dp.
+.lockup {
+  display: block;
+  width: auto;
+  height: var(--size-icon-lg);
 }
 
 // Hidden below the breakpoint: the mobile panel carries these links instead.
@@ -240,6 +237,15 @@
   max-width: var(--layout-public);
   margin: 0 auto;
   padding: var(--space-12) var(--layout-gutter-mobile);
+}
+
+// The footer sign-off mark (mon-releve-logo kit), decorative. Height a token,
+// width auto for the 477x96 aspect; a space below it before the columns.
+.footerLogo {
+  display: block;
+  width: auto;
+  height: var(--size-icon-lg);
+  margin-bottom: var(--space-8);
 }
 
 // TWO COLUMNS ON A PHONE, FOUR ON DESKTOP, both as grids of EQUAL tracks
