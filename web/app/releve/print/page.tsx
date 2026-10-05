@@ -189,6 +189,11 @@ export default async function PrintPage({
 
   return (
     <main className={styles.sheet}>
+      {/* The brand mark (mon-releve-logo kit), in black for the document and
+          any black-and-white print. An <img> so the mark stays a file asset
+          out of this component; decorative (alt="") because the <h1> below
+          carries the document's title. */}
+      <img className={styles.logo} src="/logo-black.svg" alt="" />
       <h1 className={styles.title}>{COPY.title}</h1>
 
       <section className={styles.identification}>

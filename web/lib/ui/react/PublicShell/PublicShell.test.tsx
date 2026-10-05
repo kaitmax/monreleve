@@ -128,14 +128,17 @@ describe('the wordmark', () => {
     expect(container.textContent).toContain(APP_NAME);
   });
 
-  it('hides the mark itself from assistive technology', () => {
-    // It is a placeholder geometric shape; APP_NAME beside it carries the
-    // name, so announcing the glyph would say it twice.
+  it('keeps the brand mark out of assistive technology', () => {
+    // The mark is now the mon-releve-logo lockup, rendered as an <img> (the
+    // two-tone brand SVG stays a file asset, out of the component). The home
+    // link's aria-label carries the product name - the test above - so the
+    // image is decorative, alt="", and the name is not announced twice, the
+    // same reason the FW9 placeholder glyph was aria-hidden.
     const { container } = renderShell();
-    const mark = container.querySelector('a svg');
+    const mark = container.querySelector('a img');
 
     expect(mark).not.toBeNull();
-    expect(mark?.getAttribute('aria-hidden')).toBe('true');
+    expect(mark?.getAttribute('alt')).toBe('');
   });
 
   it('draws the mark in currentColor, with no gradient and no flag', () => {
@@ -485,9 +488,14 @@ describe('the stylesheet carries what jsdom cannot (R61)', () => {
     expect(scss).not.toContain('var(--size-card-border)');
   });
 
-  it('sets the wordmark from its own R70 pair, composing nothing', () => {
-    expect(scss).toContain('var(--type-wordmark-size)');
-    expect(scss).toContain('var(--type-wordmark-weight)');
+  it('sizes the brand lockup from a size token, keeping its aspect', () => {
+    // The FW9 wordmark was styled text set from the --type-wordmark-* pair; it
+    // is now the mon-releve-logo lockup image. Its height comes from a size
+    // token and its width is auto, so the 477x96 aspect holds and no raw length
+    // is written (R8). The styled-text pair is gone with the text it styled.
+    expect(scss).toContain('.lockup');
+    expect(scss).toContain('height: var(--size-icon-lg)');
+    expect(scss).not.toContain('var(--type-wordmark-size)');
   });
 
   it('switches at the one breakpoint, via the Sass variable', () => {

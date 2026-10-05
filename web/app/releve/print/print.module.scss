@@ -45,6 +45,16 @@
   line-height: var(--type-body-line);
 }
 
+// The document letterhead mark (mon-releve-logo kit, black). Height a token,
+// width auto for the 477x96 aspect so no raw length is written; a space below
+// it before the title.
+.logo {
+  display: block;
+  width: auto;
+  height: var(--size-icon-lg);
+  margin-bottom: var(--space-6);
+}
+
 .title {
   font-size: var(--type-h1-size);
   line-height: var(--type-h1-line);
