@@ -313,12 +313,21 @@ Branch: an-params (base origin/main = f18303c, unchanged; no other android sessi
   (R308 NewApi). SKIPPED with reason: the emulator/screenshot instrument and
   connectedDebugAndroidTest (need a running device - exercised by the walkthrough).
 
-pnpm gate:clone (from web/) -- GREEN. [recorded in the follow-up "record the
-  gate:clone push proof" commit on this branch; includes RegisterCoverageTest/R327,
-  which checks every PARK/PARKAN id this report cites has a parking.md heading -
-  PARKAN-40 resolves.]
+pnpm gate:clone (from web/) -- GATE:CLONE PASSED on commit cf573d1 (the report
+  commit, with the android changes beneath it). RAN from a clean --local clone with
+  no .env, no prior node_modules and no generated file it did not produce itself:
+  register-coverage (R327 - all 30 cited ids across 75 reports resolve, incl. this
+  report's PARKAN-36/40/41), install (--frozen-lockfile + Prisma generate),
+  typecheck, lint, test, build, size, db:deploy, test:db, test:container:write. The
+  clone was removed cleanly. NOT RUN (named with reason, R133): test:e2e,
+  test:visual, test:runtime, lighthouse, parity:check, test:container (browser /
+  container / Chrome needs a clone cannot provide). CI readiness: quiet (private
+  repo, CI_FULL unset).
+  NB: the web chain is unaffected by this task (android-only changes); the only
+  web-visible effect is this report, which register-coverage validates.
 
-Merge: an-params rebased cleanly onto origin/main and merged --no-ff to main; the
-main checkout is left on main. [recorded with the gate:clone proof.]
+Merge: an-params rebased cleanly onto origin/main (origin/main unchanged at
+  f18303c; no other android session) and merged --no-ff to main; the main checkout
+  is left on main.
 
 END OF REPORT
