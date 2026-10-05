@@ -62,41 +62,59 @@ private const val THRESHOLD_DECIMALS = 1
 
 // AN5b increment 3 / AN-AUTO increment 5. Recording a day (SPEC 11.2). Stateless (fence 5): it reads an
 // AujourdhuiState and calls back - onRecord for a manual tap, onConfirmDetected/onCorrectDetected for a
-// detection. The screen speaks the UI vocabulary only (RecordedKind/Slot/AbsenceChoice/provenance); the wire
-// enums never reach this file. No success animation (DESIGN-SYSTEM section 2).
+// detection, onNavigateToCalendrier for sections C/E/F. The screen speaks the UI vocabulary only
+// (RecordedKind/Slot/AbsenceChoice/provenance); the wire enums never reach this file. No success animation
+// (DESIGN-SYSTEM section 2).
 //
 // TWO MODES (SPEC 11.2). In MANUAL the mode strip names "Saisie manuelle" and the person taps the day in
 // themselves (the AN5b flow, unchanged). In AUTO_DETECT the screen shows the detection surface (ETATS A/B/C,
 // AujourdhuiAuto.kt) - only HIGH proposes (R311), and the app never records a day on its own (D16).
 
+/**
+ * The screen's callbacks, bundled the way every other screen bundles its own (CalendarActions, ReleveActions,
+ * AutoActions): one parameter instead of four, so the screen stays within the parameter budget and each call
+ * site reads as named fields. onConfirmDetected/onCorrectDetected default to no-ops (manual mode never calls
+ * them), and onNavigateToCalendrier defaults to {} so a preview or the screenshot host needs only onRecord.
+ */
+data class AujourdhuiActions(
+    val onRecord: (RecordedKind, Slot, AbsenceChoice?) -> Unit,
+    val onConfirmDetected: (RecordedKind, Slot) -> Unit = { _, _ -> },
+    val onCorrectDetected: (RecordedKind, Slot, AbsenceChoice?, RecordedKind) -> Unit = { _, _, _, _ -> },
+    val onNavigateToCalendrier: () -> Unit = {},
+)
+
 @Composable
 fun AujourdhuiScreen(
     state: AujourdhuiState,
-    onRecord: (RecordedKind, Slot, AbsenceChoice?) -> Unit,
-    onConfirmDetected: (RecordedKind, Slot) -> Unit = { _, _ -> },
-    onCorrectDetected: (RecordedKind, Slot, AbsenceChoice?, RecordedKind) -> Unit = { _, _, _, _ -> },
+    actions: AujourdhuiActions,
     modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(Spacing.space20),
         verticalArrangement = Arrangement.spacedBy(Spacing.space16),
     ) {
-        Header(state.today)
+        Header(state.today) // Section A
         val autoMode = state.loggingMode == LoggingMode.AUTO_DETECT
         Text(
             text = if (autoMode) DetectionCopy.MODE_AUTO else AujourdhuiCopy.MODE_MANUAL,
             style = FrontierType.caption,
         )
 
+        // Section B - today's choice (manual) or the detection surface (auto).
         if (autoMode) {
             if (state.nearBorderNotice) NearBorderNotice()
-            AutoSection(state, AutoActions(onRecord, onConfirmDetected, onCorrectDetected))
+            AutoSection(state, AutoActions(actions.onRecord, actions.onConfirmDetected, actions.onCorrectDetected))
         } else {
             Text(text = AujourdhuiCopy.QUESTION, style = FrontierType.h3)
-            ManualSection(state, onRecord)
+            ManualSection(state, actions.onRecord)
         }
 
-        YearSection(state.year)
+        // Ordered by what the person needs first (AN-HOME section 2): what to attend to, then the year's
+        // position (the core answer), then this week and this month. C/E/F live in AujourdhuiSections.kt.
+        AttendSection(state.attend, actions.onNavigateToCalendrier) // Section C
+        YearSection(state.year) // Section D
+        WeekSection(state.week, actions.onNavigateToCalendrier) // Section E
+        MonthSection(state.month) // Section F
     }
 }
 

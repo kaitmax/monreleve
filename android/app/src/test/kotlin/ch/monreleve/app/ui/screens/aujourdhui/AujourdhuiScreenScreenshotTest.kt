@@ -13,6 +13,7 @@ import ch.monreleve.app.aujourdhui.DayEntry
 import ch.monreleve.app.aujourdhui.PendingLateness
 import ch.monreleve.app.aujourdhui.RecordedKind
 import ch.monreleve.app.aujourdhui.RecordedProvenance
+import ch.monreleve.app.aujourdhui.ToAttendTo
 import ch.monreleve.app.aujourdhui.YearPanel
 import ch.monreleve.app.calc.CalcResult
 import ch.monreleve.app.calc.Canton
@@ -21,7 +22,12 @@ import ch.monreleve.app.calc.Granularity
 import ch.monreleve.app.calc.TeleworkInput
 import ch.monreleve.app.calc.calculateTelework
 import ch.monreleve.app.calc.ruleSetFor
+import ch.monreleve.app.calendar.CalendarDayUi
+import ch.monreleve.app.calendar.MonthSummary
+import ch.monreleve.app.design.DayKind
+import ch.monreleve.app.design.DayProvenance
 import ch.monreleve.app.design.FrontierTheme
+import ch.monreleve.app.design.RecordQuality
 import ch.monreleve.app.onboarding.GranularityChoice
 import ch.monreleve.app.settings.LoggingMode
 import org.junit.Rule
@@ -202,6 +208,85 @@ class AujourdhuiScreenScreenshotTest {
                 ),
         )
 
+    // AN-HOME sections C/E/F (R328). Hand-built projections so the baseline photographs the three sections
+    // rendering (the projection LOGIC is proven agreeing with CalendarModel in AujourdhuiSectionsTest). The
+    // existing states above leave attend/week/month at their defaults, so C/E/F are absent there and those
+    // baselines stay byte-identical (R207).
+    // A test fixture builder for one week-strip cell; iso is derived from the day (all in June 2026). Its
+    // parameters ARE the cell's varying fields, listed for readable call sites - a test fixture, not product.
+    @Suppress("LongParameterList")
+    private fun cell(
+        dayOfMonth: Int,
+        kind: DayKind?,
+        secondKind: DayKind?,
+        quality: RecordQuality,
+        isToday: Boolean,
+        recordable: Boolean,
+    ): CalendarDayUi =
+        CalendarDayUi(
+            dayOfMonth = dayOfMonth,
+            isoDate = "2026-06-%02d".format(dayOfMonth),
+            kind = kind,
+            secondKind = secondKind,
+            quality = quality,
+            corrected = false,
+            provenance = if (kind == null) null else DayProvenance.MANUAL,
+            isToday = isToday,
+            recordable = recordable,
+        )
+
+    private val weekCells =
+        listOf(
+            cell(15, DayKind.SUISSE, null, RecordQuality.ON_TIME, isToday = false, recordable = true),
+            cell(16, DayKind.DOMICILE, null, RecordQuality.ON_TIME, isToday = false, recordable = true),
+            // A split half-day (R292: both kinds), today, still pending.
+            cell(17, DayKind.SUISSE, DayKind.DOMICILE, RecordQuality.PENDING, isToday = true, recordable = true),
+            // A past working day not yet recorded - « Non renseigné ».
+            cell(18, null, null, RecordQuality.MISSING, isToday = false, recordable = true),
+            // Tomorrow: future, nothing to show.
+            cell(19, null, null, RecordQuality.NONE, isToday = false, recordable = false),
+        )
+
+    // Section C: both items present (unsent nearing the threshold, and unrecorded gaps), most urgent first.
+    private val attend =
+        ToAttendTo(
+            unrecordedThisMonth = 3,
+            unsyncedDays = 2,
+            pendingLateness = PendingLateness.APPROACHING,
+            lateThresholdDays = 7,
+        )
+
+    // Section F: this month's recorded days by kind (the same MonthSummary shape the calendar computes).
+    private val month = MonthSummary(suisse = 8.0, domicile = 5.0, mission = 2.0, nonRenseigne = 3.0, absent = 1.0)
+
+    // The full home with « À traiter »: a day recorded (B closed into the answer), C, then the year hero (D).
+    // The 1000 dp device viewport (paparazzi) holds A-D; E and F sit below the fold here, so they get their
+    // own state (weekAndMonth) where a compact top brings them into view - a baseline is a decision about
+    // where to look (R178), so there is one for C and one for E/F.
+    private val withSections =
+        AujourdhuiState(
+            today = "2026-06-17",
+            granularity = GranularityChoice.DAY,
+            fullDay = DayEntry(kind = RecordedKind.SUISSE, absence = null, pending = false, failed = false),
+            year = sampleYear(teleworkDays = 30.0),
+            attend = attend,
+            week = weekCells,
+            month = month,
+        )
+
+    // Sections E « Cette semaine » and F « Ce mois » brought into the viewport: a recorded day (compact B),
+    // no « À traiter » (attend null -> C absent), and an empty year (D is a one-liner), so the week strip and
+    // the month counts sit above the 1000 dp fold.
+    private val weekAndMonth =
+        AujourdhuiState(
+            today = "2026-06-17",
+            granularity = GranularityChoice.DAY,
+            fullDay = DayEntry(kind = RecordedKind.SUISSE, absence = null, pending = false, failed = false),
+            attend = null,
+            week = weekCells,
+            month = month,
+        )
+
     // R313: the near-border suggestion, shown once above the detection surface.
     private val autoNearBorder =
         AujourdhuiState(
@@ -216,7 +301,7 @@ class AujourdhuiScreenScreenshotTest {
     private fun host(state: AujourdhuiState) {
         FrontierTheme {
             Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                AujourdhuiScreen(state = state, onRecord = { _, _, _ -> })
+                AujourdhuiScreen(state = state, actions = AujourdhuiActions(onRecord = { _, _, _ -> }))
             }
         }
     }
@@ -330,5 +415,34 @@ class AujourdhuiScreenScreenshotTest {
     @Test
     fun aujourdhuiAutoNearBorder() {
         paparazzi.snapshot { host(autoNearBorder) }
+    }
+
+    // AN-HOME sections C/E/F (R328): the full home with « À traiter », the week strip (grid) and the month
+    // counts, at default scale.
+    @Test
+    fun aujourdhuiWithSections() {
+        paparazzi.snapshot { host(withSections) }
+    }
+
+    // At 200 %: A/B/C must stay legible with no horizontal overflow (R127's shape on Android).
+    @Test
+    fun aujourdhuiWithSectionsLarge() {
+        paparazzi.unsafeUpdateConfig(DeviceConfig.PIXEL_5.copy(fontScale = 2f))
+        paparazzi.snapshot { host(withSections) }
+    }
+
+    // Sections E and F at default scale: the five Monday-Friday DayCells with the kind + quality legends
+    // (R119), and the month's recorded-day counts by kind.
+    @Test
+    fun aujourdhuiWeekAndMonth() {
+        paparazzi.snapshot { host(weekAndMonth) }
+    }
+
+    // At 200 %: the week strip follows the calendar's rule and becomes a LIST (R271), each day in words, with
+    // no horizontal overflow.
+    @Test
+    fun aujourdhuiWeekAndMonthLarge() {
+        paparazzi.unsafeUpdateConfig(DeviceConfig.PIXEL_5.copy(fontScale = 2f))
+        paparazzi.snapshot { host(weekAndMonth) }
     }
 }

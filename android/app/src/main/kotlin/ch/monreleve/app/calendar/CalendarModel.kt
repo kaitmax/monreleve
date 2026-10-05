@@ -1,3 +1,9 @@
+// AN-HOME (R328): the model gained dayCellUi (the per-day mapper extracted so the month grid and the home's
+// week strip share one mapping) and weekdayCells (the week projection), taking the file one function past the
+// threshold. These are the calendar's cohesive pure mappers, one home for every count the calendar and the
+// home share - splitting the file would scatter that one home, which is the opposite of R328's intent.
+@file:Suppress("TooManyFunctions")
+
 package ch.monreleve.app.calendar
 
 import ch.monreleve.app.data.local.EntryEntity
@@ -63,6 +69,13 @@ data class MonthSummary(
     val domicile: Double,
     val mission: Double,
     val nonRenseigne: Double,
+    /**
+     * AN-HOME section F (R328): the month's recorded absences, counted the SAME way the working kinds are.
+     * It is NOT a working-day figure (D28) and NOT one of the calendar's four tiles - the grid ignores it;
+     * the home's « Ce mois » shows it as a recorded-days count, so its four tiles all come from THIS one
+     * function rather than the controller counting absences a second, driftable way (R328, FW12's defect).
+     */
+    val absent: Double = 0.0,
 )
 
 /** Everything one month's screen renders. */
@@ -79,6 +92,9 @@ data class MonthView(
 )
 
 private const val LAST_MONTH = 12
+
+// AN-HOME section E (R328): Monday to Friday, the five working days the week strip shows.
+private const val WEEKDAY_COUNT = 5
 private val WEEKEND = setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY)
 
 /**
@@ -226,33 +242,7 @@ fun buildMonthView(
     val days =
         (1..yearMonth.lengthOfMonth()).map { d ->
             val iso = "%04d-%02d-%02d".format(taxYear, month, d)
-            val date = LocalDate.of(taxYear, month, d)
-            val rows = byDay[iso].orEmpty()
-            val isWeekend = date.dayOfWeek in WEEKEND
-            val inPeriod = periodStart == null || !date.isBefore(periodStart)
-            val isPast = iso < today
-
-            val cell = cellOf(rows)
-            val quality =
-                when {
-                    rows.isNotEmpty() -> cell.quality
-                    // No entry: a past working day inside the period is missing; today is not (it is
-                    // still recordable), and weekends, future and out-of-period days carry no bar.
-                    inPeriod && isPast && !isWeekend -> RecordQuality.MISSING
-                    else -> RecordQuality.NONE
-                }
-
-            CalendarDayUi(
-                dayOfMonth = d,
-                isoDate = iso,
-                kind = cell.kind,
-                secondKind = cell.secondKind,
-                quality = quality,
-                corrected = cell.corrected,
-                provenance = cell.provenance,
-                isToday = iso == today,
-                recordable = inPeriod && iso <= today,
-            )
+            dayCellUi(LocalDate.of(taxYear, month, d), byDay[iso].orEmpty(), periodStart, today)
         }
 
     return MonthView(
@@ -266,6 +256,68 @@ fun buildMonthView(
     )
 }
 
+/**
+ * One day's grid cell, in the grid vocabulary. Extracted from buildMonthView so the month grid AND the
+ * home's week strip (weekdayCells, AN-HOME section E) run the SAME mapping - a day cannot read one way in
+ * the calendar and another on the home (R328, one way of counting). Pure: no clock, `today` is supplied.
+ */
+private fun dayCellUi(
+    date: LocalDate,
+    rows: List<EntryEntity>,
+    periodStart: LocalDate?,
+    today: String,
+): CalendarDayUi {
+    val iso = "%04d-%02d-%02d".format(date.year, date.monthValue, date.dayOfMonth)
+    val isWeekend = date.dayOfWeek in WEEKEND
+    val inPeriod = periodStart == null || !date.isBefore(periodStart)
+    val isPast = iso < today
+
+    val cell = cellOf(rows)
+    val quality =
+        when {
+            rows.isNotEmpty() -> cell.quality
+            // No entry: a past working day inside the period is missing; today is not (it is still
+            // recordable), and weekends, future and out-of-period days carry no bar.
+            inPeriod && isPast && !isWeekend -> RecordQuality.MISSING
+            else -> RecordQuality.NONE
+        }
+
+    return CalendarDayUi(
+        dayOfMonth = date.dayOfMonth,
+        isoDate = iso,
+        kind = cell.kind,
+        secondKind = cell.secondKind,
+        quality = quality,
+        corrected = cell.corrected,
+        provenance = cell.provenance,
+        isToday = iso == today,
+        recordable = inPeriod && iso <= today,
+    )
+}
+
+/**
+ * The five working-day cells (Monday to Friday) of the week containing `today`, in the grid vocabulary
+ * (AN-HOME section E, R328). Built from the SAME per-day mapper buildMonthView uses (dayCellUi), so the
+ * home's week strip and the calendar's month grid cannot disagree about a day. Pure: `today` is supplied,
+ * no clock. A week day in another month is mapped the same way - its kind/quality still read correctly.
+ */
+fun weekdayCells(
+    entries: List<EntryEntity>,
+    settings: Settings,
+    taxYear: Int,
+    today: String,
+): List<CalendarDayUi> {
+    val todayDate = LocalDate.parse(today)
+    val monday = todayDate.minusDays((todayDate.dayOfWeek.value - 1).toLong())
+    val periodStart = periodStartInYear(settings, taxYear)
+    val byDay = entries.groupBy { it.dayDate }
+    return (0 until WEEKDAY_COUNT).map { offset ->
+        val date = monday.plusDays(offset.toLong())
+        val iso = "%04d-%02d-%02d".format(date.year, date.monthValue, date.dayOfMonth)
+        dayCellUi(date, byDay[iso].orEmpty(), periodStart, today)
+    }
+}
+
 private fun summarise(
     days: List<CalendarDayUi>,
     byDay: Map<String, List<EntryEntity>>,
@@ -273,6 +325,7 @@ private fun summarise(
     var suisse = 0.0
     var domicile = 0.0
     var mission = 0.0
+    var absent = 0.0
     for (day in days) {
         for (row in byDay[day.isoDate].orEmpty()) {
             // A FULL day is one; AM and PM are half each, so a half-day pair sums to one (Aggregate.kt).
@@ -282,10 +335,18 @@ private fun summarise(
                 EntryKind.HOME -> domicile += portion
                 EntryKind.MISSION_FR -> mission += portion
                 EntryKind.MISSION_THIRD -> mission += portion
-                EntryKind.ABSENT -> Unit // D28: an absence is not a working-day figure.
+                // D28: an absence is not a working-day figure, so it is excluded from the three working
+                // counts and the rate; AN-HOME section F shows it only as a recorded-days count (R328).
+                EntryKind.ABSENT -> absent += portion
             }
         }
     }
     val nonRenseigne = days.count { it.quality == RecordQuality.MISSING }.toDouble()
-    return MonthSummary(suisse = suisse, domicile = domicile, mission = mission, nonRenseigne = nonRenseigne)
+    return MonthSummary(
+        suisse = suisse,
+        domicile = domicile,
+        mission = mission,
+        nonRenseigne = nonRenseigne,
+        absent = absent,
+    )
 }
