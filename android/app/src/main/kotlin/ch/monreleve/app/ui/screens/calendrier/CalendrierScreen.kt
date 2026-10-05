@@ -1,7 +1,8 @@
 package ch.monreleve.app.ui.screens.calendrier
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,6 +37,7 @@ import ch.monreleve.app.calendar.CalendarDayUi
 import ch.monreleve.app.calendar.CalendarState
 import ch.monreleve.app.calendar.MonthSummary
 import ch.monreleve.app.calendar.MonthView
+import ch.monreleve.app.calendar.SelectionState
 import ch.monreleve.app.design.DayCell
 import ch.monreleve.app.design.DayKindLegend
 import ch.monreleve.app.design.FrontierType
@@ -77,6 +79,7 @@ fun CalendrierScreen(
     modifier: Modifier = Modifier,
 ) {
     val monthView = state.monthView ?: return
+    val selection = state.selection
     val asList = LocalDensity.current.fontScale >= LIST_FONT_SCALE_THRESHOLD
     Column(
         modifier = modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(Spacing.space20),
@@ -85,15 +88,27 @@ fun CalendrierScreen(
         MonthHeader(monthView, actions)
         if (asList) {
             // R271: above the measured scale the grid cannot stay legible - one row per day instead.
-            CardSurface { CalendarList(monthView, actions.onDayClick) }
+            CardSurface { CalendarList(monthView, selection, actions) }
         } else {
-            CalendarCard(monthView, actions.onDayClick)
+            CalendarCard(monthView, selection, actions)
         }
         MonthSummaryRow(monthView.summary)
+        // AN-CAL2 (section 2-3): the bottom space holds the action panel while selecting, otherwise the
+        // « à compléter » card when the month has gaps - and nothing when it is complete (never an empty box).
+        if (selection.active) {
+            SelectionActionPanel(selectedCount = selection.days.size, actions = actions)
+        } else if (monthView.summary.nonRenseigne > 0) {
+            CompleteCard(
+                month = monthView.month,
+                unrecorded = monthView.summary.nonRenseigne.toInt(),
+                onStartSelection = actions.onStartSelection,
+            )
+        }
     }
 
+    // Single-day editing is UNCHANGED, and it never opens while selecting (the grid toggles instead).
     val editing = state.editing
-    if (editing != null) {
+    if (editing != null && !selection.active) {
         ModalBottomSheet(
             onDismissRequest = actions.onDismissSheet,
             sheetState = rememberModalBottomSheetState(),
@@ -105,6 +120,11 @@ fun CalendrierScreen(
                 onCancel = actions.onDismissSheet,
             )
         }
+    }
+
+    // AN-CAL2 (section 2, D16): the one confirmation before any bulk write.
+    state.bulkConfirmation?.let { confirmation ->
+        BulkConfirmationDialog(confirmation = confirmation, actions = actions)
     }
 }
 
@@ -154,11 +174,12 @@ private fun CardSurface(content: @Composable ColumnScope.() -> Unit) {
 @Composable
 private fun CalendarCard(
     monthView: MonthView,
-    onDayClick: (String) -> Unit,
+    selection: SelectionState,
+    actions: CalendarActions,
 ) {
     CardSurface {
         WeekdayHeaderRow()
-        MonthGrid(monthView, onDayClick)
+        MonthGrid(monthView, selection, actions)
         // R119: the kind legend sits with the grid, in the same file the fence scans. The quality legend
         // (AC2) names the bar colours in words, so quality is never carried by colour alone.
         DayKindLegend(modifier = Modifier.padding(top = Spacing.space4))
@@ -184,7 +205,8 @@ private fun WeekdayHeaderRow() {
 @Composable
 private fun MonthGrid(
     monthView: MonthView,
-    onDayClick: (String) -> Unit,
+    selection: SelectionState,
+    actions: CalendarActions,
 ) {
     // Leading empty cells align day 1 to its weekday (Monday-first); pad the last week to a full row.
     val slots: List<Int?> = List(monthView.leadingBlanks) { null } + monthView.days.map { it.dayOfMonth }
@@ -194,28 +216,37 @@ private fun MonthGrid(
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.space4), modifier = Modifier.fillMaxWidth()) {
                 week.forEach { dayOfMonth ->
                     val day = dayOfMonth?.let { d -> monthView.days.first { it.dayOfMonth == d } }
-                    GridCell(day, onDayClick)
+                    GridCell(day, selection, actions)
                 }
             }
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun RowScope.GridCell(
     day: CalendarDayUi?,
-    onDayClick: (String) -> Unit,
+    selection: SelectionState,
+    actions: CalendarActions,
 ) {
-    // A recordable day is tappable (its 48 dp slot is the touch target); an empty, future or
-    // out-of-period cell is inert (AC1: future days cannot be recorded).
-    val tappable =
+    // A recordable day is interactive (its 48 dp slot is the touch target); an empty, future or out-of-period
+    // cell is inert (AC1: future days cannot be recorded, so they cannot be selected either). Not selecting: a
+    // tap opens the edit sheet and a long press STARTS selection on that day (section 2). Selecting: a tap
+    // toggles the day (or fills a range, controller side).
+    val selecting = selection.active
+    val isSelected = day != null && day.isoDate in selection.days
+    val interaction =
         if (day != null && day.recordable) {
-            Modifier.clickable { onDayClick(day.isoDate) }
+            Modifier.combinedClickable(
+                onClick = { if (selecting) actions.onToggleDay(day.isoDate) else actions.onDayClick(day.isoDate) },
+                onLongClick = { if (!selecting) actions.onStartSelectionWithDay(day.isoDate) },
+            )
         } else {
             Modifier
         }
     Box(
-        modifier = Modifier.weight(1f).heightIn(min = Spacing.space48).then(tappable),
+        modifier = Modifier.weight(1f).heightIn(min = Spacing.space48).then(interaction),
         contentAlignment = Alignment.Center,
     ) {
         if (day != null) {
@@ -227,6 +258,7 @@ private fun RowScope.GridCell(
                 isToday = day.isToday,
                 provenance = day.provenance,
                 secondKind = day.secondKind,
+                selected = isSelected,
             )
         }
     }

@@ -149,6 +149,22 @@ class ComponentsScreenshotTest {
     }
 
     @Test
+    fun dayCellSelected() {
+        // AN-CAL2: a selected cell - the 1 dp brand ring + the Lucide circle-check at the top-end (the dot is
+        // suppressed so the check does not crowd it; the kind LETTER stays, so the kind is not lost). Not by
+        // colour alone: the ring and the check are shapes, and TalkBack announces « Sélectionné ».
+        snapshot {
+            DayCell(
+                dayOfMonth = 12,
+                kind = DayKind.SUISSE,
+                quality = RecordQuality.ON_TIME,
+                corrected = false,
+                selected = true,
+            )
+        }
+    }
+
+    @Test
     fun dayCellSplit() {
         // R292 / PARKAN-22: a split half-day - Suisse in the morning, Domicile in the afternoon - shows
         // BOTH letters, because a cell rendered as Suisse alone misstates the day. One quality bar still

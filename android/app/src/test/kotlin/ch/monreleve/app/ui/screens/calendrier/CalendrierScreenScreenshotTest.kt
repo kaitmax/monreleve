@@ -12,6 +12,7 @@ import ch.monreleve.app.aujourdhui.Slot
 import ch.monreleve.app.calendar.CalendarState
 import ch.monreleve.app.calendar.EditableDay
 import ch.monreleve.app.calendar.EditableSlot
+import ch.monreleve.app.calendar.SelectionState
 import ch.monreleve.app.calendar.buildMonthView
 import ch.monreleve.app.data.local.AbsenceReason
 import ch.monreleve.app.data.local.EntryEntity
@@ -98,6 +99,13 @@ class CalendrierScreenScreenshotTest {
             onDayClick = {},
             onSave = { _, _ -> },
             onDismissSheet = {},
+            onStartSelection = {},
+            onStartSelectionWithDay = {},
+            onToggleDay = {},
+            onCancelSelection = {},
+            onChooseBulk = { _, _ -> },
+            onConfirmBulk = {},
+            onCancelConfirmation = {},
         )
 
     // A day open in the edit sheet: a recorded Domicile with a note, DAY granularity (FD6 A2). Recorded
@@ -158,6 +166,39 @@ class CalendrierScreenScreenshotTest {
     @Test
     fun calendrierMonth() {
         paparazzi.snapshot { host(CalendarState(monthView = month)) }
+    }
+
+    // AN-CAL2 (section 2): selection mode - three days chosen (the ring + check on each cell) with the action
+    // panel beneath. The selected cells and the panel's choices are the new surface; the confirmation is a
+    // dialog verified on the device (C4).
+    @Test
+    fun calendrierSelecting() {
+        paparazzi.snapshot {
+            host(
+                CalendarState(
+                    monthView = month,
+                    selection =
+                        SelectionState(
+                            active = true,
+                            days = setOf("2026-06-02", "2026-06-03", "2026-06-04"),
+                            anchor = "2026-06-04",
+                        ),
+                ),
+            )
+        }
+    }
+
+    // AN-CAL2 (section 2): the action panel on its own, fully in frame (the full-screen shot above may push it
+    // below the fold). Three days chosen; the choices reuse Aujourd'hui's vocabulary (R206).
+    @Test
+    fun calendrierActionPanel() {
+        paparazzi.snapshot {
+            FrontierTheme {
+                Surface(color = MaterialTheme.colorScheme.background) {
+                    SelectionActionPanel(selectedCount = 3, actions = noopActions)
+                }
+            }
+        }
     }
 
     // R271, AC3: at 200 % text the grid becomes a list, one row per day, each saying date, kind, quality

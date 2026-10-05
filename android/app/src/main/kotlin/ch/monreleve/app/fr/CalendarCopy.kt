@@ -69,4 +69,61 @@ object CalendarCopy {
     fun lateForecast(thresholdDays: Int): String =
         "Enregistrée plus de $thresholdDays jours après la journée : sera signalée comme saisie tardive " +
             "dès sa synchronisation, et figurera alors dans votre relevé annuel."
+
+    // AN-CAL2 (section 2-3). Recording several days at once: the entry point, the action panel, the one
+    // confirmation (D16) and the « à compléter » card. The kind choices reuse AujourdhuiCopy (one record
+    // vocabulary, R206); only this flow's own chrome lives here.
+
+    /** The explicit entry point into selection, and the long-press hint (section 2). */
+    const val SELECT_MULTIPLE = "Sélectionner plusieurs jours"
+
+    /** The action panel / live-region count. */
+    fun selectedCount(count: Int): String = if (count == 1) "1 jour sélectionné" else "$count jours sélectionnés"
+
+    /** The « à compléter » card (section 3): unrecorded past working days of the month; hidden when none. */
+    fun daysToComplete(
+        count: Int,
+        monthName: String,
+    ): String =
+        if (count == 1) {
+            "1 jour à compléter en $monthName"
+        } else {
+            "$count jours à compléter en $monthName"
+        }
+
+    // The one confirmation before a bulk write (section 2, D16). It states the choice and the count, lists the
+    // days, and shows the two conditional lines exactly when they apply (C4). The confirm button reuses
+    // SHEET_SAVE (« Enregistrer » - the action IS a save, R206), the dismiss SHEET_CANCEL (« Annuler »).
+    const val CONFIRM_HEADING = "Confirmer l'enregistrement"
+
+    fun bulkSummary(
+        count: Int,
+        kindLabel: String,
+    ): String =
+        if (count == 1) {
+            "1 jour sera enregistré comme « $kindLabel »."
+        } else {
+            "$count jours seront enregistrés comme « $kindLabel »."
+        }
+
+    /** « déjà renseignés » line: shown only when some chosen days already hold a value (C4). */
+    fun alreadyRecordedNotice(count: Int): String =
+        if (count == 1) {
+            "1 jour déjà renseigné sera modifié."
+        } else {
+            "$count jours déjà renseignés seront modifiés."
+        }
+
+    /** « saisie tardive » line: shown only when some chosen days are older than the threshold (R286, C4). */
+    fun bulkLateNotice(
+        count: Int,
+        thresholdDays: Int,
+    ): String =
+        if (count == 1) {
+            "1 jour, enregistré plus de $thresholdDays jours après la journée, " +
+                "sera marqué « saisie tardive » dans votre relevé annuel."
+        } else {
+            "$count jours, enregistrés plus de $thresholdDays jours après la journée, " +
+                "seront marqués « saisie tardive » dans votre relevé annuel."
+        }
 }
