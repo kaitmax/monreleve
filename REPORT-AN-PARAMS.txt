@@ -1,0 +1,324 @@
+AN-PARAMS -- Parametres: one clean settings list, same behaviour
+================================================================================
+
+HOW IT ENDED
+--------------------------------------------------------------------------------
+DONE. The Parametres screen is rebuilt as ONE clean list of Material 3 rows
+grouped under section headers, each work-setting edited in its own sheet, the
+start date picked with the Material 3 date picker, and the floating "Enregistrer
+les reglages" gone. All seven acceptance criteria met and seen on the physical
+SM-G960F (API 29). :app:gate green; pnpm gate:clone green (recorded under PUSH
+PROOF). Presentation and navigation only: the controller, /api/v1/me, R290's
+before/after, R289 deletion, R295/R297 sign-out, R315 consent, the Room schema,
+the engine, /v1 and detection are untouched, and no behaviour test is modified.
+
+RECOVERED WIP: this task resumed from branch an-params. A PRIOR AGENT's
+uncommitted MODIFICATIONS to the existing files were LOST to an orchestrator
+`git checkout -f`; only five new files it had extracted survived (commit
+a6651a5). This session redid the lost integration: it wired those five extracted
+files into ParametresScreen/Fields/Sections and made the whole thing compile,
+lint, pass detekt, pass every test, and run on the phone. All inherited files
+were treated as untrusted and verified or rewritten.
+
+R273 -- WHERE THIS BELONGS
+--------------------------------------------------------------------------------
+tasks/todo.md ## AN12: Parametres (line 986), ui/screens/parametres/**. AN-PARAMS
+is the one-clean-list refinement of the AN12 settings screen - a presentation and
+navigation pass over the same controller and data model.
+
+WHAT CHANGED AND WHAT DID NOT
+--------------------------------------------------------------------------------
+Files touched (6, all UI-layer code + one copy annotation + one copy test):
+  - ui/screens/parametres/ParametresScreen.kt  REWRITTEN. Removed the duplicate
+    `enum class EditTarget`, `RateChangeDialog` and `RateRow` (each now has one
+    home). Added `ParametresSettingsColumn` (the list) so the screen function
+    stays under detekt's LongMethod threshold. The chrome every edit sheet shares
+    - error, in-flight flag, Enregistrer, Annuler - is bundled into an
+    `EditSheetFrame`, and the two info sheets' flags/dismissals into `InfoSheets`,
+    so ParametresOverlays (5 params) and EditSheetBody (4 params) carry NO
+    @Suppress - the no-inline-string fence (Fence 4) forbids a @Suppress's String
+    argument in ui/. `revertTo` extracted as a plain function.
+  - ui/screens/parametres/ParametresFields.kt  The four work-setting sheets
+    (Canton/Rate/Method/Granularity) and the shared `EditSheet` scaffold now take
+    an `EditSheetFrame` instead of (error, saving, onSave, onCancel), so each is
+    <=4 params. Removed this file's duplicate `StartDateSheetContent` and its
+    iso<->millis helpers (they live in ParametresDateField.kt). `EditSheet` is now
+    `internal` (ParametresDateField.kt calls it from the same package).
+  - ui/screens/parametres/ParametresSections.kt  Removed the duplicate
+    `LearnMoreSheetContent`, `ExportChooserContent` and their `SheetColumn` (they
+    live in ParametresInfoContent.kt). `SaisieSection` reduced from 6 to 3 params
+    - it reads the two toggle states and the in-flight flag from `state` and the
+    toggle callbacks from `actions`. Two over-long value helpers wrapped.
+  - ui/screens/parametres/ParametresEditTypes.kt  Added the `InfoSheets` bundle.
+  - fr/CantonCopy.kt  Added @Suppress("CyclomaticComplexMethod") to `name(canton)`
+    - the 26-arm exhaustive `when` IS the totality mechanism (a new canton is a
+    compile error here, not a bare code on screen); fr/ is outside Fence 4's
+    ui//dev/ scope, so the annotation's String argument is permitted here.
+  - test/fr/ParametresCopyAccentTest.kt  `stripAccents` converted to a block body
+    so detekt's MaxLineLength(120) and ktlint's longer limit (which re-joins short
+    lines) stop disagreeing. This is the Android port of R155's forbidden-forms
+    scan with FORBIDDEN=["beta"] - the enforcement point that keeps the unaccented
+    "beta" from ever returning to fr/ copy (the relay's ask).
+
+Inherited files KEPT (verified correct, not rewritten): ParametresDateField.kt,
+ParametresRateChange.kt, ParametresInfoContent.kt, ParametresListRows.kt,
+ParametresAccountSection.kt, ParametresDeleteSection.kt, ParametresActions.kt,
+fr/ParametresCopy.kt, test/ParametresListRowsTest.kt, test/fr/CantonCopyTest.kt,
+test/ParametresDialogScreenshotTest.kt (its RateRow baseline matched unchanged).
+
+What did NOT change (HARD BOUNDARY): parametres/ParametresController.kt and its
+state, /api/v1/me, R290's before/after compute+commit, R289 deletion, R295/R297
+sign-out, R315 consent, the Room schema, calc-engine, /v1, detection.
+MainActivity's ParametresScreen(state, actions, appVersion) call is unchanged -
+the public screen signature is the same.
+
+THE PROOF (no behaviour test touched): the only test files changed are a NEW
+copy-discipline test (ParametresCopyAccentTest, formatting only) and no other.
+Every controller/behaviour test (ParametresControllerTest, ParametresAccountTest,
+ParametresR282Test, the engine conformance suites, the fences, the censuses) runs
+UNCHANGED and passes - testDebugUnitTest green.
+
+EACH DEFECT (cause, fix, seen)
+--------------------------------------------------------------------------------
+1. START DATE TYPED AS AAAA-MM-JJ (storage format leaking onto the screen).
+   FIX: the AAAA-MM-JJ text field is gone; the start date is picked with Material
+   3's DatePicker (ParametresDateField.kt). The stored value stays an ISO day
+   string (R28); the sheet and the row show it in the Swiss format (formatDate,
+   dd.MM.yyyy) via startDateDisplay, or "Toute l'annee" when empty.
+   SEEN: p-20 (sheet shows "Toute l'annee" + "Choisir une date", no AAAA field),
+   p-21 (the picker), p-23 (after picking day 15 the sheet shows "15.10.2026").
+   The "AAAA" probe was ABSENT in the list dump.
+
+2. THREE INPUT STYLES on one screen (pill/floating-label/placeholder).
+   FIX: one list-row shape per purpose (ParametresListRows.kt: SettingRow,
+   ActionRow, SwitchRow, ValueRow). Each work setting is a value row that opens an
+   edit sheet; its control lives in the sheet, one style per field.
+   SEEN: p-01 (one card, five identical rows each "label / value / chevron").
+
+3. CANTON SHOWS "GE".  FIX: CantonCopy.name maps every canton to its accented
+   French name (presentation only, R181 - the engine keeps the GE code).
+   SEEN: p-01 shows "Canton de travail / Geneve".
+
+4. SAVE BUTTON MID-PAGE / two ways of saving.  FIX: the floating "Enregistrer les
+   reglages" is gone; each work setting is edited and saved in its own sheet
+   (Enregistrer/Annuler there), the detection toggle applies at once.
+   SEEN: the "Enregistrer les reglages" probe is ABSENT; p-10/p-12 show per-sheet
+   Enregistrer/Annuler.
+
+5. PERMANENT AMBER WARNING / long always-on helpers.  FIX: the "ces reglages
+   recalculent l'annee" warning moved INTO each edit sheet, made concrete by
+   R290's before/after; the long field helpers moved into their sheets; the full
+   detection disclosure moved behind "En savoir plus".
+   SEEN: p-10 (warning + helper inside the rate sheet), p-22 (disclosure).
+
+6. "(beta)" IN TITLE / "beta" vs "beta" with accent.  FIX: the detection label is
+   "Detection automatique (beta)" with the circumflex (one home,
+   DetectionCopy.MODE_AUTO, from AN-NEXT-2's R325 correction); the Android R155
+   forbidden-forms scan (ParametresCopyAccentTest, FORBIDDEN=["beta"]) now keeps
+   the unaccented form out of fr/.
+   SEEN: p-01 shows "Detection automatique (beta)" accented; the "(beta)"
+   unaccented probe is ABSENT.
+
+7. TITLE TOO LARGE.  FIX: the title uses FrontierType.h2 - the four screens' shared
+   header style (ReleveScreen's title, Aujourd'hui's greeting), down from AN12's h1.
+   SEEN: p-01 (title matches the other screens' scale).
+
+8. STRAY VERTICAL LINE on the left edge. See THE STRAY LINE below.
+
+THE LIST (section 2 of the relay)
+--------------------------------------------------------------------------------
+One scrollable list (ParametresSettingsColumn) of Material 3 rows under section
+headers, exactly as asked:
+  VOTRE SITUATION -> "Situation professionnelle": Canton de travail / Geneve;
+    Taux d'activite (%) / 100 %; Methode de decompte / Forfait de 240 jours;
+    Decompte des journees / Journees entieres; Debut d'activite (facultatif) /
+    Toute l'annee. Each value derived from the committed (last-saved) setting.
+  SAISIE -> "Enregistrement": Detection automatique (beta) as a switch with a
+    one-line summary and "En savoir plus"; the evening proposal switch appears
+    only when detection is on (R323/PARKAN-36).
+  COMPTE -> "Compte": Se deconnecter. (No email row - see DEVIATIONS.)
+  VOS DONNEES -> "Mes donnees": Exporter mes donnees; Supprimer mon compte set
+    apart in its own card in the error colour.
+  A PROPOS -> "A propos": Mentions legales, Politique de confidentialite,
+    Conditions generales d'utilisation, Sources reglementaires, Licences, Version.
+The last row is reachable above the navigation bar at default (p-02) AND at 200%
+(p-31: Version 0.1.0 (1) and the two disclaimers sit fully above the nav bar, text
+wraps - no horizontal scroll).
+
+THE EDIT SHEETS (section 3)
+--------------------------------------------------------------------------------
+A work-setting row opens a ModalBottomSheet carrying: the setting's control, its
+explanation (the helper text, moved here), the "ces reglages recalculent l'annee"
+warning, R290's before/after when a save would move the year's rate, and its own
+Enregistrer / Annuler. The controls bind live to the controller; Annuler reverts
+to the committed snapshot and writes nothing; a switch still applies at once.
+SEEN: p-10 (rate sheet: field 100 + helper + warning + Enregistrer), p-12 (method
+sheet: radios + helper + warning), Annuler leaves the row at "100 %" (p-11).
+R290 before/after FROM THE SHEET: p-51 - changing the rate 100->50 raised "Cette
+modification recalcule votre annee / Actuellement 28,75 % / Apres enregistrement
+49,16 % / Enregistrer la modification / Conserver la valeur actuelle", computed on
+the device from the seeded entries. (The persist step itself needs a backend - see
+DEVIATIONS.)
+
+THE DATE PICKER (section 1 + P4)
+--------------------------------------------------------------------------------
+"Choisir une date" opens Material 3's DatePicker (p-21). Picking day 15 and
+confirming stores the ISO day and the sheet shows it as "15.10.2026" (p-23) - the
+Swiss dd.MM.yyyy the product uses everywhere. "Toute l'annee" clears it to the
+whole-year case. Opened with no prior date and confirmed with no day selected, the
+picker is a safe no-op (keeps "Toute l'annee") - selectedDateMillis is null, so
+onChange never fires; no crash, no wrong value.
+
+TEXT MOVED, NEVER DELETED (section 4)
+--------------------------------------------------------------------------------
+The honest disclosures are relocated word for word, each still reachable (R238,
+CopyReachabilityTest green):
+  - AUTO_DESCRIPTION, AUTO_BETA_NOTE ("Fonction en beta ..."), AUTO_BATTERY_NOTE
+    ("Certains telephones (dont des Samsung) ... batterie ...") -> behind
+    "En savoir plus" (ParametresInfoContent.LearnMoreSheetContent). SEEN p-22:
+    all three present, "beta", "Samsung" and "batterie" all read back.
+  - the field helpers (RATE_HINT, METHOD_HELPER, CANTON_LIST_PROVISIONAL) ->
+    into their edit sheets.
+  - the "ces reglages recalculent l'annee" warning (SITUATION_WARNING) -> into
+    each edit sheet (ParametresFields.RecalcWarning).
+  - the export chooser copy -> ParametresInfoContent.ExportChooserContent.
+
+THE STRAY LINE (where it came from)
+--------------------------------------------------------------------------------
+It is NOT an app element; it is the Samsung Edge-panel handle, a SystemUI overlay -
+exactly the PARKAN-40 finding AN-CAL2 diagnosed, reproduced here on Parametres:
+  (a) the device's Edge panel is enabled:
+      cocktail_bar_enabled_cocktails = com.samsung.android.app.appsedge.edgepanel
+      .AppsEdgePanelProvider;
+  (b) edge_handler_position_percent = 76.91441 -> 0.7691 x 2220 = 1707 px, exactly
+      where the line sits (p-01);
+  (c) the Parametres window's uiautomator dump has NO app node with a left bound
+      < 30 px in that band - all app content is inside the 20 dp card padding.
+The relay asked whether AN-CAL2 fixed it in the shared frame or only in the
+calendar: AN-CAL2 established there is NOTHING in the frame to fix (it is a device
+overlay), and this session changed only the Parametres screen content, not the
+shared app frame. So no app fix is owed; it is PARKAN-40. To clear the screenshot
+artifact, disable the device's Edge panel (a device setting).
+
+STATE (P6, R310)
+--------------------------------------------------------------------------------
+An open edit sheet survives BOTH a config change and a background kill. Driven
+with AN-CAL2's proven technique (a font-scale change for the rotation class, then
+HOME + `am kill` + `monkey ... LAUNCHER` to resume the task from the saved-instance
+Bundle - NOT `am start -n`, which cold-launches a fresh task):
+  - p-41 after the config-change recreation: the rate sheet is still open (field
+    100, helper, warning).
+  - p-42 after process death: the app restored to the Parametres tab with the rate
+    sheet open and the edited value intact.
+`editing` is rememberSaveable; the in-flight edit lives in the controller's
+ParametresSnapshot (ShellState), already persisted across both.
+
+BASELINES
+--------------------------------------------------------------------------------
+NONE regenerated (so none to name under R135/R207). The only Parametres Paparazzi
+baseline is ParametresDialogScreenshotTest's RateRow (default + 200%); RateRow is
+byte-identical (it only moved from ParametresScreen.kt into ParametresRateChange.kt),
+so verifyPaparazziDebug matched the stored images with no --update-snapshots. The
+device PNGs under android/.an-params-shots/ are walkthrough evidence (untracked),
+not gated baselines.
+
+ADVISOR DECISIONS
+--------------------------------------------------------------------------------
+The advisor stalled all session (per the relay) and was NOT consulted; the
+conservative option was taken and recorded (R156):
+  1. COMPLETE the bundled-frame refactor rather than revert to a @Suppress-laden
+     simpler form. Fence 4 scans the whole ui/ file for any string literal, so
+     @Suppress("LongParameterList") in a ui/ file is a violation; the EditSheetFrame
+     / InfoSheets bundles are the mechanism that satisfies both Fence 4 AND detekt's
+     LongParameterList without any suppression. This is the direction the lost
+     agent was taking (the five extracted files), finished and made consistent.
+  2. The stray left-edge line = PARKAN-40 (Samsung Edge-panel handle), no app fix,
+     proven on this screen (see THE STRAY LINE).
+  3. The on-device persist (save -> server -> row shows new value) was NOT forced:
+     it needs a reachable backend and a real session, which this environment does
+     not provision (see DEVIATIONS); it is HARD-boundary-unchanged and was
+     server-proven in AN12.
+
+PHONE SETTINGS CHANGED AND RESTORED
+--------------------------------------------------------------------------------
+Changed by the drive and restored:
+  - font_scale: set to 2.0 (scale phase) and 1.3 (state config-change), RESTORED
+    to 1.0 (verified system font_scale=1).
+Verified at the relay's target end-state (not changed by this session, confirmed):
+  - always_finish_activities = 0 (the new state phase uses `am kill`, not
+    "don't keep activities", so it never set this).
+  - auto_time = 1, auto_time_zone = 1.
+  - stay_on_while_plugged_in: found 7, SET to 0 (the relay's target).
+  - mock_location: denied (secure mock_location=0; appops android:mock_location for
+    ch.monreleve.app = "Default mode: deny"). The parametres drive uses no location.
+  - animations on (window/transition/animator all 1).
+
+PARKED
+--------------------------------------------------------------------------------
+None new. The left-edge line is PARKAN-40 (AN-CAL2), confirmed on Parametres.
+(parking.md ledger stands at PARKAN-41; this task deferred nothing, so it added no
+new entry.)
+
+DEVIATIONS
+--------------------------------------------------------------------------------
+1. A prior agent's uncommitted modifications were lost to an orchestrator
+   `git checkout -f`; this session redid them (the integration of the five
+   extracted files). The goal was a clean green AN-PARAMS, not preserving every
+   inherited line - some inherited code was rewritten to make it consistent.
+2. ParametresSettingsColumn takes no `modifier` (it would be a 6th parameter and
+   detekt's LongParameterList fires at 6 in this project; a @Suppress is barred by
+   Fence 4). The sole caller (MainActivity) passes no modifier and the host shell
+   owns the screen padding, so nothing is lost; ParametresScreen's own `modifier`
+   still reaches the LicencesScreen branch. Reversible if a caller ever needs it.
+3. The on-device PERSIST (save -> /api/v1/me -> phase SAVED -> the row shows the
+   new value) was not demonstrated on the phone: the debug APK targets
+   http://10.0.2.2:3000 (the emulator's host alias, unreachable from a physical
+   device) and the walkthrough injects a fake session, so the PATCH cannot
+   authenticate. On tapping Enregistrer the sheet correctly shows "Enregistrement
+   impossible. Verifiez votre connexion" (the frame.error path, p-52). The persist
+   is HARD-boundary-unchanged (ParametresController) and was server-proven in AN12;
+   the committed-snapshot wiring's complement is shown (Annuler/edit leaves the row
+   unchanged). A backend + real sign-in (frontalierHost=127.0.0.1 + `adb reverse`)
+   would close it - see QUESTIONS.
+4. CompteSection shows NO email row (carried from AN12): the device stores only an
+   opaque account tag, never the address; surfacing an email would need a schema or
+   a /v1 read, both HARD boundaries, and "never claim more than the record supports".
+5. The walkthrough helper scripts/an-params-walkthrough.mjs (untracked, as every
+   prior task's walkthrough is) was fixed to: normalise the typographic apostrophe
+   and narrow/no-break spaces before matching; search both scroll directions and
+   skip zero-area nodes; use the proper kill-restore technique; and select a picker
+   day before confirming. It drives the app; it is not app code and is not committed.
+
+QUESTIONS
+--------------------------------------------------------------------------------
+1. Persist-to-row-update on a device with a real backend session is out of this
+   environment's provisioned scope; confirm it on a run with frontalierHost pointed
+   at a reachable server and a signed-in session (it is unchanged controller
+   behaviour, server-proven in AN12).
+2. The date picker's confirm is a safe no-op when opened with no prior date and no
+   day selected (keeps "Toute l'annee"). Left as-is (conservative). Should the
+   confirm be disabled until a day is picked? Minor UX only.
+
+PUSH PROOF
+--------------------------------------------------------------------------------
+Branch: an-params (base origin/main = f18303c, unchanged; no other android session).
+
+:app:gate  -- GREEN (BUILD SUCCESSFUL in 4m 37s). RAN: assembleDebug,
+  testDebugUnitTest (the fences incl. Fence 4 no-inline-string, the theme/radius
+  censuses, CopyReachabilityTest R238, ParametresCopyAccentTest R155, CantonCopyTest,
+  ParametresListRowsTest, every behaviour test), checkTestFloor, ktlintCheck, detekt,
+  verifyPaparazziDebug (RateRow baseline matched, unchanged), checkReleaseCleartext,
+  checkReleaseNoDebugInjection, checkReleaseLocationPermissions,
+  checkReleaseNoDevComponent, checkMinifiedWireContract, checkLicences, lintDebug
+  (R308 NewApi). SKIPPED with reason: the emulator/screenshot instrument and
+  connectedDebugAndroidTest (need a running device - exercised by the walkthrough).
+
+pnpm gate:clone (from web/) -- GREEN. [recorded in the follow-up "record the
+  gate:clone push proof" commit on this branch; includes RegisterCoverageTest/R327,
+  which checks every PARK/PARKAN id this report cites has a parking.md heading -
+  PARKAN-40 resolves.]
+
+Merge: an-params rebased cleanly onto origin/main and merged --no-ff to main; the
+main checkout is left on main. [recorded with the gate:clone proof.]
+
+END OF REPORT
