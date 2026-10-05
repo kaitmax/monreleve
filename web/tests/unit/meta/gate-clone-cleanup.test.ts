@@ -50,10 +50,14 @@ describe('gate-clone.mjs cleans up on every failure path (FW32, AC1)', () => {
     expect(tryBody).not.toContain('process.exit(');
   });
 
-  it('exactly three step-failure paths throw GateCloneFailure - the clone/HEAD mismatch, the steps loop, the database loop', () => {
+  it('exactly four step-failure paths throw GateCloneFailure - register-coverage (R327), the clone/HEAD mismatch, the steps loop, the database loop', () => {
     const matches = CODE.match(/throw new GateCloneFailure/g) ?? [];
 
-    expect(matches.length).toBe(3);
+    // R327 added the register-coverage step (web/scripts/register-coverage.mjs,
+    // the one definition RegisterCoverageTest.kt also runs). It throws like every
+    // other step-failure path so the finally's cleanup runs on its failure too -
+    // which is exactly the invariant FW32 AC1 guards, not a new exception to it.
+    expect(matches.length).toBe(4);
   });
 
   it('the catch sets exitCode for an expected failure and rethrows anything else', () => {
