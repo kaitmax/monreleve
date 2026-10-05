@@ -87,6 +87,27 @@ data class CalendarState(
     val monthView: MonthView? = null,
     /** The day the edit sheet is open on, or null when it is closed. */
     val editing: EditableDay? = null,
+    /** AN-CAL2: the multi-day selection (off until « Sélectionner plusieurs jours » or a long press starts it). */
+    val selection: SelectionState = SelectionState(),
+    /**
+     * AN-CAL2: the ONE confirmation shown before a bulk write (D16), or null when none is open. Transient - a
+     * rebuild closes it, with the selection restored beneath it (R310), so re-opening it is a single tap and its
+     * counts are re-derived rather than stored (R181).
+     */
+    val bulkConfirmation: BulkConfirmation? = null,
+)
+
+/**
+ * AN-CAL2 (section 2). The state of a multi-day selection. `active` is the selection MODE (the grid toggles
+ * instead of opening the sheet, the action panel shows); `days` are the chosen days, a Set so a day can never
+ * be in it twice (C3); `anchor` is the last singly-added day, so the next tap on another day fills the range
+ * between them (« a holiday week is two taps »). Future and out-of-period days are never added - whatever
+ * single-day editing cannot record, selection cannot either.
+ */
+data class SelectionState(
+    val active: Boolean = false,
+    val days: Set<String> = emptySet(),
+    val anchor: String? = null,
 )
 
 /**
@@ -99,12 +120,28 @@ data class CalendarState(
 data class CalendarSnapshot(
     val month: Int? = null,
     val editingDay: String? = null,
+    /** AN-CAL2 (R310): the multi-day selection, or null when not selecting. */
+    val selection: SelectionSnapshot? = null,
 )
+
+/**
+ * AN-CAL2 (R310): the restorable multi-day selection. Serializable, so the composition root's rememberSaveable
+ * stores it in the saved-instance-state Bundle, which survives a config change AND a background kill (C2).
+ * Null means "not selecting"; a present snapshot means selection mode is on, with these days and this anchor.
+ * The confirmation's two conditional lines are NOT stored - they are re-derived from the days on restore (R181).
+ */
+data class SelectionSnapshot(
+    val days: List<String>,
+    val anchor: String?,
+) : java.io.Serializable
 
 // AN-STATE: the restore seed is a seventh constructor parameter, over detekt's list threshold. These ARE the
 // controller's dependencies plus the one restorable seed; bundling them into a holder would only move the list
 // (the same reasoning MainGraph and ParametresController carry).
-@Suppress("LongParameterList")
+// AN-CAL2: TooManyFunctions suppressed - this is the calendar's ONE cohesive state holder (navigation, the edit
+// sheet AND now multi-day selection + the bulk confirmation), the same reason CalendarModel.kt suppresses it at
+// file level; splitting it would scatter the single source the screen observes (R328, one way of counting).
+@Suppress("LongParameterList", "TooManyFunctions")
 class CalendarController(
     private val repository: EntryRepository,
     settingsStore: SettingsStore,
@@ -132,7 +169,13 @@ class CalendarController(
     // first reopen so a later month change or save does not re-open it.
     private var pendingEditingDay: String? = restored?.editingDay
 
-    private val mutableState = MutableStateFlow(CalendarState())
+    // AN-CAL2 (R310): the multi-day selection restored after a rebuild, or empty for a fresh open.
+    private val initialSelection: SelectionState =
+        restored?.selection?.let {
+            SelectionState(active = true, days = it.days.toSet(), anchor = it.anchor)
+        } ?: SelectionState()
+
+    private val mutableState = MutableStateFlow(CalendarState(selection = initialSelection))
     val state: StateFlow<CalendarState> = mutableState.asStateFlow()
 
     init {
@@ -182,6 +225,113 @@ class CalendarController(
 
     fun closeSheet() {
         mutableState.update { it.copy(editing = null) }
+    }
+
+    // ----------------------------------------------------------------------------------------------
+    // AN-CAL2: multi-day selection (section 2). D16 holds - nothing here writes; selection only chooses.
+    // ----------------------------------------------------------------------------------------------
+
+    /**
+     * Enter selection mode. A long press may pass the pressed day so it is chosen at once; the button passes none.
+     */
+    fun startSelection(day: String? = null) {
+        val seed = day?.let { iso -> selectableDay(iso)?.isoDate }
+        mutableState.update {
+            it.copy(
+                selection =
+                    SelectionState(
+                        active = true,
+                        days = seed?.let { d -> setOf(d) } ?: emptySet(),
+                        anchor = seed,
+                    ),
+            )
+        }
+    }
+
+    /** Leave selection mode, discarding the selection. « Annuler » writes nothing (D16). */
+    fun cancelSelection() {
+        mutableState.update { it.copy(selection = SelectionState()) }
+    }
+
+    /**
+     * A tap on a day while selecting. Already selected -> removed (toggle off). Not selected with no anchor ->
+     * added as the anchor. Not selected with an anchor -> the recordable range between the anchor and this day
+     * is added (« a holiday week is two taps »), and the anchor clears so the next tap starts fresh. A day that
+     * single-day editing could not record (future, out of period) is refused, exactly as openDay refuses it.
+     */
+    fun tapDay(iso: String) {
+        val day = selectableDay(iso) ?: return
+        val sel = mutableState.value.selection
+        val next =
+            when {
+                day.isoDate in sel.days -> sel.copy(days = sel.days - day.isoDate, anchor = null)
+                sel.anchor == null -> sel.copy(days = sel.days + day.isoDate, anchor = day.isoDate)
+                else -> sel.copy(days = sel.days + recordableRange(sel.anchor, day.isoDate), anchor = null)
+            }
+        mutableState.update { it.copy(selection = next.copy(active = true)) }
+    }
+
+    /**
+     * The action panel's choice was made: compute the ONE confirmation (D16) from the chosen days, the rows
+     * already stored and the clock (the late count follows R286). Nothing is written yet - confirmBulk does that.
+     * Absent carries its reason, chosen once for all the days.
+     */
+    fun chooseBulk(
+        kind: RecordedKind,
+        absence: AbsenceChoice?,
+    ) {
+        val sel = mutableState.value.selection
+        if (!sel.active || sel.days.isEmpty()) return
+        val confirmation = bulkConfirmation(sel.days, entries, kind, absence, clock.instant())
+        mutableState.update { it.copy(bulkConfirmation = confirmation) }
+    }
+
+    /** Dismiss the confirmation back to the action panel, the selection intact. */
+    fun cancelBulkConfirmation() {
+        mutableState.update { it.copy(bulkConfirmation = null) }
+    }
+
+    /**
+     * Confirm the bulk write (D16 - this tap is the writer). ONE mutation PER DAY through the SAME repository
+     * single-day editing uses: each gets its own clientMutationId (born here), the account's tag (R303) and
+     * clientClaimedAt = this confirmation tap (R275) - a bulk entry is exactly the same rows as entering the days
+     * one by one, nothing says « bulk ». Then one requestSync; SyncEngine batches within MAX_BATCH_ITEMS and, as
+     * a day is a FULL portion recorded once, never carries a day twice (R296 isolation still applies per item).
+     */
+    fun confirmBulk() {
+        val confirmation = mutableState.value.bulkConfirmation ?: return
+        scope.launch {
+            for (iso in confirmation.days) {
+                repository.record(
+                    RecordCommand(
+                        dayDate = iso,
+                        kind = confirmation.kind.toEntryKind(),
+                        portion = Portion.FULL,
+                        absenceReason = confirmation.absence?.toReason(),
+                    ),
+                )
+            }
+            requestSync()
+        }
+        mutableState.update { it.copy(selection = SelectionState(), bulkConfirmation = null) }
+    }
+
+    /** A recordable day of the visible month by its ISO date, or null if it is absent, future or out of period. */
+    private fun selectableDay(iso: String): CalendarDayUi? =
+        mutableState.value.monthView?.days?.firstOrNull { it.isoDate == iso && it.recordable }
+
+    /** Every recordable day of the visible month between two ISO dates, inclusive (ISO strings sort by date). */
+    private fun recordableRange(
+        a: String,
+        b: String,
+    ): Set<String> {
+        val lo = minOf(a, b)
+        val hi = maxOf(a, b)
+        return mutableState.value.monthView?.days
+            ?.filter { it.recordable && it.isoDate in lo..hi }
+            ?.map { it.isoDate }
+            ?.toSet()
+            ?: emptySet()
     }
 
     /** Record the sheet's edits: one mutation per slot through the queue (D16 - the Save tap is the writer). */

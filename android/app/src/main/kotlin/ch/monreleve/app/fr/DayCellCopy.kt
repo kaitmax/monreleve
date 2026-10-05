@@ -48,22 +48,38 @@ object DayCellCopy {
         isToday: Boolean = false,
         provenanceName: String? = null,
         secondKindLetter: String? = null,
+        // AN-CAL2: in selection mode TalkBack must announce the cell is selected, not by colour alone
+        // (section 2). The word has one home (CalendarCopy.SELECTED, R206); the count is a separate live region.
+        selected: Boolean = false,
     ): String {
-        val morningName = kindLetter?.let { KIND_NAMES[it] }
-        val afternoonName = secondKindLetter?.let { KIND_NAMES[it] }
-        val kind =
-            when {
-                morningName != null && afternoonName != null -> "matin $morningName, après-midi $afternoonName"
-                morningName != null -> morningName
-                else -> "Non renseigné"
-            }
+        val kind = kindClause(kindLetter, secondKindLetter)
         val quality = QUALITY_NAMES[qualityName] ?: qualityName
         val today = if (isToday) "Aujourd’hui, " else ""
         val provenance = provenanceName?.let { PROVENANCE_NAMES[it] }?.let { ", $it" } ?: ""
         // "corrigé" already reads from DETECTED_CORRECTED provenance where both are set; keep the
         // explicit correction clause only when provenance is absent, so the phrase is not doubled.
         val correction = if (corrected && provenanceName == null) ", corrigé" else ""
+        val selection = if (selected) "$SELECTED. " else ""
 
-        return "${today}Jour $dayOfMonth, $kind, $quality$provenance$correction."
+        return "$selection${today}Jour $dayOfMonth, $kind, $quality$provenance$correction."
     }
+
+    // The kind clause: a split half-day names BOTH halves (R292), a whole day one kind, an unrecorded day
+    // « Non renseigné ». Extracted so contentDescription stays within its complexity budget.
+    private fun kindClause(
+        kindLetter: String?,
+        secondKindLetter: String?,
+    ): String {
+        val morningName = kindLetter?.let { KIND_NAMES[it] }
+        val afternoonName = secondKindLetter?.let { KIND_NAMES[it] }
+        return when {
+            morningName != null && afternoonName != null -> "matin $morningName, après-midi $afternoonName"
+            morningName != null -> morningName
+            else -> "Non renseigné"
+        }
+    }
+
+    // AN-CAL2: the a11y word for a selected cell, read first so TalkBack announces selection without relying on
+    // colour (section 2). Its home is here - the announcement is its only use - the DayCellCopy word pattern.
+    private const val SELECTED = "Sélectionné"
 }

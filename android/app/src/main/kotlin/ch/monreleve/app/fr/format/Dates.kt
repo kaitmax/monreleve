@@ -193,6 +193,9 @@ fun formatMonthYear(
 /** "Janvier".."Décembre" from a 1-12 month, French, leading capital (the releve's monthly table, SPEC 12). */
 fun formatMonthName(month: Int): String = capitalizeFirst(LocalDate.of(2000, month, 1).format(MONTH_NAME))
 
+/** "janvier".."décembre" - the French month name mid-sentence, not capitalised (AN-CAL2: « à compléter en juin »). */
+fun formatMonthNameLower(month: Int): String = LocalDate.of(2000, month, 1).format(MONTH_NAME)
+
 /** "Lundi 15 juin 2026" from an ISO YYYY-MM-DD day, French weekday and month, leading capital (FD6 title). */
 fun formatDayLong(isoDay: String): String {
     require(ISO_DAY_SHAPE.matches(isoDay)) {

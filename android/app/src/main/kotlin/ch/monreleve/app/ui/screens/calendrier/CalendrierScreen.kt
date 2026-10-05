@@ -1,11 +1,15 @@
 package ch.monreleve.app.ui.screens.calendrier
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.FlowRowScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -33,8 +37,8 @@ import ch.monreleve.app.calendar.CalendarDayUi
 import ch.monreleve.app.calendar.CalendarState
 import ch.monreleve.app.calendar.MonthSummary
 import ch.monreleve.app.calendar.MonthView
+import ch.monreleve.app.calendar.SelectionState
 import ch.monreleve.app.design.DayCell
-import ch.monreleve.app.design.DayKind
 import ch.monreleve.app.design.DayKindLegend
 import ch.monreleve.app.design.FrontierType
 import ch.monreleve.app.design.LightColors
@@ -42,7 +46,6 @@ import ch.monreleve.app.design.Radius
 import ch.monreleve.app.design.RecordQualityLegend
 import ch.monreleve.app.design.Spacing
 import ch.monreleve.app.fr.CalendarCopy
-import ch.monreleve.app.fr.LegendCopy
 import ch.monreleve.app.fr.format.formatDays
 import ch.monreleve.app.fr.format.formatMonthYear
 
@@ -76,6 +79,7 @@ fun CalendrierScreen(
     modifier: Modifier = Modifier,
 ) {
     val monthView = state.monthView ?: return
+    val selection = state.selection
     val asList = LocalDensity.current.fontScale >= LIST_FONT_SCALE_THRESHOLD
     Column(
         modifier = modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(Spacing.space20),
@@ -84,15 +88,27 @@ fun CalendrierScreen(
         MonthHeader(monthView, actions)
         if (asList) {
             // R271: above the measured scale the grid cannot stay legible - one row per day instead.
-            CardSurface { CalendarList(monthView, actions.onDayClick) }
+            CardSurface { CalendarList(monthView, selection, actions) }
         } else {
-            CalendarCard(monthView, actions.onDayClick)
+            CalendarCard(monthView, selection, actions)
         }
         MonthSummaryRow(monthView.summary)
+        // AN-CAL2 (section 2-3): the bottom space holds the action panel while selecting, otherwise the
+        // « à compléter » card when the month has gaps - and nothing when it is complete (never an empty box).
+        if (selection.active) {
+            SelectionActionPanel(selectedCount = selection.days.size, actions = actions)
+        } else if (monthView.summary.nonRenseigne > 0) {
+            CompleteCard(
+                month = monthView.month,
+                unrecorded = monthView.summary.nonRenseigne.toInt(),
+                onStartSelection = actions.onStartSelection,
+            )
+        }
     }
 
+    // Single-day editing is UNCHANGED, and it never opens while selecting (the grid toggles instead).
     val editing = state.editing
-    if (editing != null) {
+    if (editing != null && !selection.active) {
         ModalBottomSheet(
             onDismissRequest = actions.onDismissSheet,
             sheetState = rememberModalBottomSheetState(),
@@ -104,6 +120,11 @@ fun CalendrierScreen(
                 onCancel = actions.onDismissSheet,
             )
         }
+    }
+
+    // AN-CAL2 (section 2, D16): the one confirmation before any bulk write.
+    state.bulkConfirmation?.let { confirmation ->
+        BulkConfirmationDialog(confirmation = confirmation, actions = actions)
     }
 }
 
@@ -153,11 +174,12 @@ private fun CardSurface(content: @Composable ColumnScope.() -> Unit) {
 @Composable
 private fun CalendarCard(
     monthView: MonthView,
-    onDayClick: (String) -> Unit,
+    selection: SelectionState,
+    actions: CalendarActions,
 ) {
     CardSurface {
         WeekdayHeaderRow()
-        MonthGrid(monthView, onDayClick)
+        MonthGrid(monthView, selection, actions)
         // R119: the kind legend sits with the grid, in the same file the fence scans. The quality legend
         // (AC2) names the bar colours in words, so quality is never carried by colour alone.
         DayKindLegend(modifier = Modifier.padding(top = Spacing.space4))
@@ -183,7 +205,8 @@ private fun WeekdayHeaderRow() {
 @Composable
 private fun MonthGrid(
     monthView: MonthView,
-    onDayClick: (String) -> Unit,
+    selection: SelectionState,
+    actions: CalendarActions,
 ) {
     // Leading empty cells align day 1 to its weekday (Monday-first); pad the last week to a full row.
     val slots: List<Int?> = List(monthView.leadingBlanks) { null } + monthView.days.map { it.dayOfMonth }
@@ -193,28 +216,37 @@ private fun MonthGrid(
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.space4), modifier = Modifier.fillMaxWidth()) {
                 week.forEach { dayOfMonth ->
                     val day = dayOfMonth?.let { d -> monthView.days.first { it.dayOfMonth == d } }
-                    GridCell(day, onDayClick)
+                    GridCell(day, selection, actions)
                 }
             }
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun RowScope.GridCell(
     day: CalendarDayUi?,
-    onDayClick: (String) -> Unit,
+    selection: SelectionState,
+    actions: CalendarActions,
 ) {
-    // A recordable day is tappable (its 48 dp slot is the touch target); an empty, future or
-    // out-of-period cell is inert (AC1: future days cannot be recorded).
-    val tappable =
+    // A recordable day is interactive (its 48 dp slot is the touch target); an empty, future or out-of-period
+    // cell is inert (AC1: future days cannot be recorded, so they cannot be selected either). Not selecting: a
+    // tap opens the edit sheet and a long press STARTS selection on that day (section 2). Selecting: a tap
+    // toggles the day (or fills a range, controller side).
+    val selecting = selection.active
+    val isSelected = day != null && day.isoDate in selection.days
+    val interaction =
         if (day != null && day.recordable) {
-            Modifier.clickable { onDayClick(day.isoDate) }
+            Modifier.combinedClickable(
+                onClick = { if (selecting) actions.onToggleDay(day.isoDate) else actions.onDayClick(day.isoDate) },
+                onLongClick = { if (!selecting) actions.onStartSelectionWithDay(day.isoDate) },
+            )
         } else {
             Modifier
         }
     Box(
-        modifier = Modifier.weight(1f).heightIn(min = Spacing.space48).then(tappable),
+        modifier = Modifier.weight(1f).heightIn(min = Spacing.space48).then(interaction),
         contentAlignment = Alignment.Center,
     ) {
         if (day != null) {
@@ -226,30 +258,49 @@ private fun RowScope.GridCell(
                 isToday = day.isToday,
                 provenance = day.provenance,
                 secondKind = day.secondKind,
+                selected = isSelected,
             )
         }
     }
 }
 
+// AN-CAL2 defects 1-2. Five EQUAL tiles - Suisse, Domicile, Mission, Absence, Non renseigné - each number
+// centred UNDER its label, every tile reading from the one MonthSummary (monthSummaryTiles, R328). The
+// labels reserve two lines (minLines) so « Non renseigné » - which cannot fit one line in a fifth of a
+// 320 dp row at a legible size - wraps WITHOUT pushing its number lower than the others: every number sits
+// at the same baseline (the operator's « its number sits lower and further right » defect). At the list
+// font scale (200 %) the tiles WRAP onto a second row (maxItemsInEachRow drops) rather than squeezing.
+private const val SUMMARY_TILES_PER_ROW_LARGE = 3
+private const val SUMMARY_LABEL_LINES = 2
+
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun MonthSummaryRow(summary: MonthSummary) {
-    // The kind labels read from LegendCopy by the enum's own letter (never a string literal in ui/,
-    // and never a second copy of the names): the summary label and the legend key share one home.
-    Row(modifier = Modifier.fillMaxWidth()) {
-        SummaryItem(LegendCopy.forKind(DayKind.SUISSE.letter), summary.suisse)
-        SummaryItem(LegendCopy.forKind(DayKind.DOMICILE.letter), summary.domicile)
-        SummaryItem(LegendCopy.forKind(DayKind.MISSION.letter), summary.mission)
-        SummaryItem(CalendarCopy.NON_RENSEIGNE, summary.nonRenseigne)
+    val tiles = monthSummaryTiles(summary)
+    val perRow =
+        if (LocalDensity.current.fontScale >= LIST_FONT_SCALE_THRESHOLD) SUMMARY_TILES_PER_ROW_LARGE else tiles.size
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.space8),
+        verticalArrangement = Arrangement.spacedBy(Spacing.space8),
+        maxItemsInEachRow = perRow,
+    ) {
+        tiles.forEach { tile -> SummaryItem(tile) }
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun RowScope.SummaryItem(
-    label: String,
-    value: Double,
-) {
+private fun FlowRowScope.SummaryItem(tile: SummaryTile) {
     Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(text = label, style = FrontierType.caption, color = LightColors.textSecondary)
-        Text(text = formatDays(value), style = FrontierType.h3)
+        Text(
+            text = tile.label,
+            style = FrontierType.caption,
+            color = LightColors.textSecondary,
+            textAlign = TextAlign.Center,
+            minLines = SUMMARY_LABEL_LINES,
+            maxLines = SUMMARY_LABEL_LINES,
+        )
+        Text(text = formatDays(tile.value), style = FrontierType.h3, textAlign = TextAlign.Center)
     }
 }

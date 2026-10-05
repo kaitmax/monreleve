@@ -1,0 +1,359 @@
+================================================================================
+REPORT-AN-CAL2.txt -- the calendar: record several days at once, and its layout
+================================================================================
+
+--------------------------------------------------------------------------------
+HOW IT ENDED
+--------------------------------------------------------------------------------
+DONE. All seven acceptance criteria met. The four layout defects are addressed
+(three fixed in the app + seen on the SM-G960F; the fourth, the stray left-edge
+line, DIAGNOSED on the device as a Samsung system overlay, not an app defect -
+see THE FOUR DEFECTS and PARKAN-40). Multi-day selection is built test-first and
+driven on the phone: individual taps, a range in two taps, future days refused,
+selection kept across a config change AND a process death. A holiday week was
+recorded as Absent in a handful of taps and read back from the server's database
+as FIVE separate rows with distinct ids under the one account. :app:gate green
+on every increment; gate:clone green on the final commit (PUSH PROOF). Branch
+an-cal2 merged --no-ff to main.
+
+The advisor was UNREACHABLE the entire session (orchestrator directive: it has
+stalled). Every judgment call took the conservative option (R156) and is recorded
+here and in parking.md (PARKAN-40, PARKAN-41).
+
+--------------------------------------------------------------------------------
+R273 -- WHERE THIS BELONGS
+--------------------------------------------------------------------------------
+tasks/todo.md has "## AN10: Calendrier" and no literal "AN-CAL2". AN-CAL2 is a
+FURTHER enhancement of the calendar (AN10's screen): fixing its layout defects and
+adding multi-day recording - the same relationship AN10b had to AN10. No
+contradiction with the file; the report is named AN-CAL2 and commit prefixes are
+"AN-CAL2" (the AN10b/AN-HOME precedent). No todo.md entry was renumbered.
+
+--------------------------------------------------------------------------------
+PRECONDITIONS (R0, R1)
+--------------------------------------------------------------------------------
+R0. Read REPORT-AN10.txt, REPORT-AN10b.txt, DESIGN-SYSTEM.md sections 1-2, SPEC
+    11.3, docs/api-v1.md batch limits (MAX_BATCH_ITEMS 200 / 256 KiB body).
+R1. BASE origin/main HEAD 9091ec2.
+    :app:gate GREEN on 9091ec2 (BUILD SUCCESSFUL, 129 tasks).
+    pnpm gate:clone GREEN on 9091ec2 (GATE:CLONE PASSED; ran register-coverage,
+    install, typecheck, lint, test, build, size, db:deploy, test:db,
+    test:container:write; clone removed, exit 0).
+
+--------------------------------------------------------------------------------
+THE FOUR DEFECTS (each cause, each fix, seen)
+--------------------------------------------------------------------------------
+1. THE MONTH COUNTS ROW - "Non renseigne" wrapped and its number sat lower/right.
+   CAUSE: MonthSummaryRow was a plain Row of four Columns, each CenterHorizontally;
+   when "Non renseigne" wrapped to two lines its column grew taller and pushed its
+   number below the others.
+   FIX: rebuilt as FIVE equal tiles from the ONE MonthSummary (monthSummaryTiles,
+   a pure JVM-tested function - R328, one way of counting). A FlowRow with
+   maxItemsInEachRow = 5 at default and 3 at the list font scale (so the tiles WRAP
+   to a second row at 200 % rather than squeezing). Each tile's label reserves two
+   lines (minLines = maxLines = 2) so every NUMBER sits at one baseline whatever the
+   label's length. SEEN: calendrierMonth baseline + device cal-01 (Suisse/Domicile/
+   Mission/Absence/Non renseigne, numbers aligned). "Non renseigne" (13 chars) still
+   wraps to two lines - it cannot fit one line in a fifth of a 320-360 dp row at a
+   legible size - but ALIGNED, which was the operator's actual defect. See PARKAN-41.
+
+2. ABSENCE HAD NO COUNT.
+   CAUSE: the model already counted absences (MonthSummary.absent, added by AN-HOME)
+   but the calendar's row omitted the tile.
+   FIX: monthSummaryTiles adds the Absence tile (LegendCopy.forKind("A"), R206). The
+   legend's four kinds now all carry a count. TEST-FIRST: MonthSummaryTilesTest went
+   RED with four tiles (Absence missing), GREEN with five. SEEN: calendrierMonth
+   (Absence 1) + device cal-01 (Absence 0).
+
+3. THE STRAY VERTICAL LINE on the left edge - hypothesised "a card's border drawn
+   partly off-screen in the shared app frame".
+   CAUSE (diagnosed on the device): it is NOT an app element. It is the Samsung
+   Edge-panel HANDLE, a SystemUI overlay. Proven three ways on the SM-G960F:
+     (a) IDENTICAL content-independent position on Aujourd'hui, Calendrier AND
+         Parametres (an app card would sit at a different y on each screen);
+     (b) a uiautomator dump of the app window has NO node with left bound < 30 px in
+         that band - all app content is inside the 20 dp screen padding (the
+         Explorer's source audit confirmed no shared bordered card, no negative
+         offset, no x<0 content in the shell/frame);
+     (c) the device has an active Edge panel: settings system
+         cocktail_bar_enabled_cocktails = AppsEdgePanelProvider, and
+         edge_handler_position_percent = 76.91441, i.e. 0.769 x 2220 = 1707 px -
+         exactly where the line's bottom sits.
+   FIX: none in app code - there is nothing in the frame to fix (the hypothesised
+   off-screen card does not exist); the app frame is correct. Recorded as PARKAN-40.
+   To clear the screenshot artifact, disable the device's Edge panel (a device
+   setting, outside the app). CONSERVATIVE (R156, advisor stalled): I did not invent
+   an app layout change that removes nothing.
+
+4. THE BOTTOM NAVIGATION pill - Material 3's pink indicator pill + a red selected
+   icon.
+   CAUSE: AppBottomBar's NavigationBarItems set no `colors`, so M3 defaults applied:
+   the indicator used colorScheme.secondaryContainer (FrontierTheme maps that to
+   switzerlandSoft, a pale pink) and the selected icon/label used onSecondaryContainer
+   (switzerlandText, a red).
+   FIX: overrode the colours once in AppBottomBar (brandNavItemColors): indicator
+   Color.Transparent (no pill), selected icon/label LightColors.brand, unselected
+   textSecondary (DESIGN-SYSTEM section 1 BOTTOM NAV: "active = brand colour, inactive
+   = neutral. No oversized pill."). Fixed at the nav component, so every screen is
+   corrected at once. SCREENSHOT ASSERTION added so it cannot return:
+   AppBottomBarScreenshotTest / appBottomBarCalendrierActive. SEEN: the baseline
+   (Calendrier brand, no pill) + device cal-01/cal-03 (brand active item, no pill, on
+   every tab).
+
+--------------------------------------------------------------------------------
+SELECTION (C2)
+--------------------------------------------------------------------------------
+On CalendarController, test-first (CalendarSelectionTest):
+- startSelection() enters the mode empty; a long press seeds the pressed day.
+- tapDay(iso): toggles an individual day; with an anchor set, fills the recordable
+  range between the anchor and this day (a holiday week in two taps); clears the
+  anchor after a range so the next tap starts fresh.
+- Future / out-of-period days are refused (selectableDay checks `recordable`, the
+  SAME rule single-day openDay uses - whatever single-day editing cannot record,
+  selection cannot).
+- days is a Set, so a day is never selected twice (C3); an overlapping range does
+  not duplicate.
+RED proof (R178/R180): disabling the range branch and dropping the recordable guard
+reddened the range, future-refusal and no-dup tests; reverted.
+DEVICE (today = 5 Oct 2026, so only 1-5 are recordable): tap "Jour 1" -> one
+selected (anchor); tap "Jour 4" -> range 1..4 ("4 jours selectionnes", cells 1-4
+ringed + checked); tap "Jour 10" (future) -> REFUSED, count unchanged (cal-12/13/14).
+At 200 % the grid is a list (R271); a long press on a row enters selection and each
+recordable row gains a CHECKBOX (cal-21).
+
+--------------------------------------------------------------------------------
+THE ACTION PANEL
+--------------------------------------------------------------------------------
+SelectionActionPanel, in the space the "a completer" card otherwise holds. It states
+the count ("N jours selectionnes", a polite live region), offers the choices and
+"Annuler". The choices reuse Aujourd'hui's vocabulary EXACTLY as the edit sheet does
+(R206, one record surface): En Suisse, Domicile, Mission (nests into En France /
+Pays tiers), Declarer une absence (nests into its reasons - chosen ONCE for all the
+days). Whole days only (section 2: a split day stays in the single-day editor). A
+leaf choice opens the one confirmation; nothing is written in the panel.
+
+--------------------------------------------------------------------------------
+THE CONFIRMATION (both conditional lines) (C4)
+--------------------------------------------------------------------------------
+BulkConfirmation is a PURE function (JVM-tested, BulkConfirmationTest), computing the
+two CONDITIONAL lines from the chosen days, the stored rows, the choice and the
+clock:
+- "N jours deja renseignes seront modifies" - shown iff some chosen days already
+  hold a value (alreadyRecordedCount > 0).
+- "N jours ... plus de 7 jours apres la journee ... saisie tardive ..." - shown iff
+  some chosen days are older than the late threshold. The threshold comes from the
+  ONE shared value (LatenessForecast.BACKFILL_DAYS, R286/R153) - never a 7 typed in
+  the copy.
+RED proof: a zero-count stub reddened both conditional-count tests; GREEN with the
+real counts.
+DEVICE: October (days within 7 of today) -> confirmation lists the days + choice,
+NEITHER conditional line (correct - no day is late or already recorded). September
+(all days > 7 days old) -> the "saisie tardive" line appears, threshold 7
+interpolated (cal-31). "Annuler" on the confirmation wrote NOTHING and left the
+selection intact (cal-32).
+
+--------------------------------------------------------------------------------
+WHAT IS WRITTEN (the five rows read back) (C3)
+--------------------------------------------------------------------------------
+confirmBulk() writes ONE mutation PER DAY through the SAME repository single-day
+editing uses (record() per day, FULL portion): each gets its own clientMutationId
+(born at the confirmation tap), the account's tag (R303) and clientClaimedAt = the
+confirmation tap (R275, deviceClaimNow). Nothing in the record says "bulk" - a bulk
+entry is exactly the same rows as entering the days one by one. Then ONE requestSync;
+the existing SyncEngine batches within MAX_BATCH_ITEMS (200, parity-tested) and a
+month never needs more than one batch; R296 isolation still applies per item.
+JVM (CalendarBulkWriteTest): five days -> five rows, five distinct ids, all FULL, all
+ABSENT/FERIE, all tagged with the account, all carrying the confirmation tap's claim
+time; Annuler writes nothing; a bulk over an already-recorded day coalesces it. RED
+proof: recording only the first day reddened the per-day test; reverted.
+DEVICE READ-BACK (R204, end to end): provisioned a scratch Postgres + monreleve:write
+container, signed in a real account, bridged the SM-G960F with `adb reverse tcp:3000`,
+recorded a holiday week (Sept 7-11) as Absent/Jour ferie in a handful of taps, waited
+for the WorkManager drain, and read the server's Entry table:
+    ROWS = 5   DISTINCT clientMutationId = 5   DISTINCT userId = 1
+    dayDate 2026-09-07..09-11 (Paris), portion FULL, kind ABSENT, absenceReason FERIE,
+    all under userId cmuvaglsn... (email ancal2@example.com).
+Five separate rows, distinct ids, the account's tag - exactly C3. (A first run drained
+NOTHING because the injector sets the account tag only when an `email` extra is passed,
+R303 - without it the rows are UNOWNED, never sent; adding the extra fixed it. This is
+the R303 account-scoping that post-dates AN10b's own sync drive.)
+
+--------------------------------------------------------------------------------
+THE EMPTY SPACE
+--------------------------------------------------------------------------------
+When NOT selecting, below the five tiles: CompleteCard - "N jours a completer en
+<mois>" (lowercase month, formatMonthNameLower) + the "Selectionner plusieurs jours"
+button. Shown ONLY when the month has unrecorded past working days
+(summary.nonRenseigne > 0) - never an empty box; it disappears when the month is
+complete. SEEN: calendrierMonth + device cal-01 ("2 jours a completer en octobre").
+A long press on a day is the other entry point (section 2), so a complete month is
+still reachable for a bulk change.
+
+--------------------------------------------------------------------------------
+STATE (R310, C2)
+--------------------------------------------------------------------------------
+The selection survives a rebuild. SelectionSnapshot (Serializable) is carried in
+CalendarSnapshot and persisted in ShellState's rememberSaveable (the saved-instance
+Bundle, which outlives a config change AND process death); CalendarController seeds
+from it. JVM (CalendarSelectionTest): a controller built with a SelectionSnapshot
+restores the mode, the days and the anchor.
+DEVICE: with days 1-2 selected, a font-scale change (the rotation config-change class,
+AN-STATE's R310 trigger) KEPT the selection (cal-41, "Selectionne. Jour 1/2"); a
+process death (HOME -> am kill -> launcher resume via monkey) RESTORED it on the
+Calendrier tab (cal-42, "2 jours selectionnes", both cells selected). The confirmation
+is transient (a rebuild closes it with the selection restored beneath, so re-opening
+is one tap and its counts are re-derived, R181).
+
+--------------------------------------------------------------------------------
+ACCESSIBILITY
+--------------------------------------------------------------------------------
+Not by colour alone (SPEC 966). A selected grid cell shows a 1 dp brand RING + the
+Lucide circle-check glyph at the top-end (the kind dot is suppressed while selecting;
+the kind LETTER stays, so the kind is not lost) - two shape cues that read in
+greyscale. TalkBack announces it: DayCellCopy prepends "Selectionne." to the cell's
+description (one home for the word, DayCellCopy private const, R206). The panel's count
+is a polite live region. The 200 % list uses a Checkbox per recordable row (its
+checked state is a shape cue). DEVICE content-descs: "Selectionne. Jour 1, Non
+renseigne, non enregistre." etc.
+
+--------------------------------------------------------------------------------
+BASELINES (R135/R207, each cropped and looked at R178)
+--------------------------------------------------------------------------------
+Increment 1 (set stated, equal to output):
+  calendrierMonth (M) - five tiles, numbers aligned, Absence present.
+  appBottomBarCalendrierActive (new) - Calendrier brand, NO pill.
+Increment 4 (set stated, equal to output):
+  calendrierMonth (M) - the "a completer" card now renders below the summary.
+  calendrierListLarge (M) - the list row became a Row(checkbox?, words) - a benign
+    alignment shift, verified to read identically.
+  dayCellSelected (new) - the brand ring + circle-check, dot suppressed, letter kept.
+  calendrierActionPanel (new) - the panel's count + choices.
+  calendrierSelecting (new) - three cells ringed+checked + the panel.
+Every regenerated/new PNG was opened and described (see above); nothing else changed
+in either run (git showed exactly the stated set each time).
+
+--------------------------------------------------------------------------------
+ADVISOR DECISIONS / JUDGMENT CALLS (R156 - advisor stalled all session)
+--------------------------------------------------------------------------------
+The advisor was unreachable the whole session (orchestrator directive). Every call
+took the conservative option and is recorded:
+1. Defect 3 is a system overlay, not an app defect -> no app change (PARKAN-40).
+2. "Non renseigne" cannot fit one line in five tiles -> keep the full accented word,
+   reserve two label lines so numbers align; no unauthorised abbreviation (PARKAN-41).
+3. The action panel nests Mission/Absent (reusing Aujourd'hui's vocabulary, R206)
+   rather than forking flattened "Mission en France" strings.
+4. The bulk-confirm button reuses "Enregistrer" (SHEET_SAVE) - "Confirmer" would have
+   duplicated DetectionCopy.CONFIRM (R206, the CopyDuplication guard fired).
+5. clientClaimedAt per-day is deviceClaimNow at the confirmation moment (record()
+   unchanged - the shared write path; a fixed-clock test proves all five share the tap
+   time); I did NOT change record()'s signature (hard boundary: single-day unchanged).
+6. The confirmation is transient across a rebuild (selection restored beneath, one tap
+   to re-open) rather than persisting the open dialog - C2 names the selection, which
+   is restored.
+
+--------------------------------------------------------------------------------
+PHONE SETTINGS CHANGED AND RESTORED
+--------------------------------------------------------------------------------
+CHANGED during drives, all RESTORED:
+  font_scale: set 1.3 / 2.0 during drives -> restored 1.0.
+  edge_handler_position_percent: moved to 25 to diagnose defect 3 -> restored 76.91441.
+  cocktail_bar_enabled_cocktails: nulled to diagnose -> restored AppsEdgePanelProvider.
+  always_finish_activities: set 1 in one state-test attempt -> restored 0.
+  (A SystemUI force-stop was used once to apply an edge setting; it auto-restarted.)
+OBSERVED, NOT CHANGED BY THIS SESSION, then set to the documented resting value:
+  stay_on_while_plugged_in was 7 (pre-existing, not touched this session); the relay's
+  documented resting value is 0, so I set it to 0 to match the orchestrator's check.
+FINAL device state (verified): font_scale=1, auto_time=1, auto_time_zone=1,
+  always_finish_activities=0, stay_on_while_plugged_in=0, animator/window/transition=1,
+  edge_handler_position_percent=76.91441, adb reverse list empty, app uninstalled.
+CONTAINER/DB torn down: monreleve-ancal2 removed, scratch DB monreleve_ancal2 dropped,
+  port 3000 free.
+
+--------------------------------------------------------------------------------
+PARKED (PARKAN-<n>, in parking.md)
+--------------------------------------------------------------------------------
+PARKAN-40 -- the stray left-edge line is the Samsung Edge-panel handle (a SystemUI
+  overlay), not an app card border. No app fix; disable the device's Edge panel for
+  clean screenshots. Closed as a finding; awaits operator awareness.
+PARKAN-41 -- the "Non renseigne" counts tile wraps to two lines; the full accented
+  word is kept and the numbers aligned (minLines=2). An abbreviated one-line tile
+  label is an operator copy decision. Open, conservative, reversible.
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+1. DEFECT 3 was not "fixed in the app frame" as the relay hypothesised, because the
+   evidence proves it is a device system overlay, not an app element. Recorded rather
+   than papered over with a no-op layout change (PARKAN-40).
+2. "Non renseigne" wraps to two lines at default size (physically unavoidable in a
+   five-across row at a legible size); the misalignment the operator reported is fixed
+   (PARKAN-41).
+3. The device C3 read-back needed the account `email` extra on the injector (R303);
+   the first run drained nothing (UNOWNED rows). Diagnosed and fixed in the throwaway
+   driver; the product code is correct (the account is set at a real sign-in).
+4. The background-kill state test first used `am kill` + `am start -n` (a cold launch
+   that reset the tab); corrected to `am kill` + launcher resume (monkey), which
+   restores the saved-instance Bundle - the valid R310 process-death test.
+
+--------------------------------------------------------------------------------
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------------------
+- android/scripts/an-cal2-walkthrough.mjs and an-cal2-c3.mjs (throwaway drivers) and
+  android/.an-cal2-shots/ (the walkthrough PNGs) are left UNTRACKED (the AN10/AN5c/
+  AN-HOME precedent). The product code shares nothing with them.
+- A connectedAndroidTest asserting the shell wires the selection seams is owed the same
+  way AN10's MainShell wiring item is (R291 covers the day-writer graph; the new
+  selection callbacks are plain method references at the one call site). Not AN-CAL2's
+  scope; the walkthrough (R176) is the integration proof here.
+
+--------------------------------------------------------------------------------
+QUESTIONS
+--------------------------------------------------------------------------------
+1. PARKAN-40: confirm the stray line is the device's Samsung Edge panel (disable it in
+   device settings for clean screenshots); no app change is owed.
+2. PARKAN-41: is an abbreviated one-line label wanted for the "Non renseigne" tile, or
+   is the two-line-aligned form acceptable?
+3. The confirmation is transient across a rebuild (selection restored beneath). Accept,
+   or should the open confirmation itself persist?
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+AN-CAL2 commits on an-cal2 (then merged --no-ff to main):
+  bba5628  AN-CAL2: the counts row (five tiles, Absence counted) and the nav pill
+  02b7941  AN-CAL2: multi-day selection on the controller (C2)
+  032164f  AN-CAL2: the confirmation and the bulk write (C3, C4)
+  86e1e4f  AN-CAL2: the selection UI, action panel, confirmation and empty-space card
+  <report commit follows -- it cannot name its own hash>
+  <merge commit to main follows>
+
+Android :app:gate green on every increment (assembleDebug, testDebugUnitTest incl. the
+new MonthSummaryTilesTest/CalendarSelectionTest/BulkConfirmationTest/CalendarBulkWriteTest
+and the AppBottomBar/dayCellSelected/panel/selecting baselines, checkTestFloor,
+ktlintCheck, detekt, verifyPaparazziDebug, checkReleaseCleartext,
+checkReleaseNoDebugInjection, checkReleaseLocationPermissions, checkReleaseNoDevComponent,
+checkMinifiedWireContract, checkLicences, lintDebug). AujourdhuiSectionsTest (home ==
+calendar, R328) and every existing single-day calendar test pass UNCHANGED. The phone,
+container and scratch DB were torn down before the final gate:clone (port 3000 free, no
+adb reverse, app uninstalled).
+
+FINAL gate:clone on the report HEAD 500e8a5: GATE:CLONE PASSED.
+  ran     register-coverage, install, typecheck, lint, test, build, size, db:deploy,
+          test:db, test:container:write, from a clean clone (no .env, no prior
+          node_modules, no generated file the run did not produce itself). Clone
+          removed, exit 0. register-coverage (R327) confirms every PARKAN id cited in
+          this report (PARKAN-40, PARKAN-41) resolves to a parking.md heading.
+  claim   this commit builds and passes those suites from a clean checkout.
+  CI readiness: quiet - the repository is private and CI_FULL is unset (carried FW24).
+  NOT RUN in a clone (R133), no claim: test:e2e, test:visual, test:runtime,
+          lighthouse, parity:check, test:container.
+AN-CAL2 is Android-only (no web/ bytes changed from 9091ec2 except the repo-root
+report + parking.md), so gate:clone - which verifies the web side + register-coverage
+- is the right clean-checkout proof; the Android proof is :app:gate (green every
+increment). The report-only PUSH-PROOF addendum and the merge commit are
+web/android-byte-identical to 500e8a5, so this gate:clone discharges R199 for them
+(the AN10b/AN-HOME precedent).
+
+================================================================================
+END OF REPORT-AN-CAL2.txt
+================================================================================

@@ -469,6 +469,14 @@ internal fun MainShell(
                                 onDayClick = controllers.calendar::openDay,
                                 onSave = controllers.calendar::save,
                                 onDismissSheet = controllers.calendar::closeSheet,
+                                // AN-CAL2: the multi-day selection + bulk confirmation seams.
+                                onStartSelection = { controllers.calendar.startSelection() },
+                                onStartSelectionWithDay = { iso -> controllers.calendar.startSelection(iso) },
+                                onToggleDay = controllers.calendar::tapDay,
+                                onCancelSelection = controllers.calendar::cancelSelection,
+                                onChooseBulk = controllers.calendar::chooseBulk,
+                                onConfirmBulk = controllers.calendar::confirmBulk,
+                                onCancelConfirmation = controllers.calendar::cancelBulkConfirmation,
                             ),
                     )
                 AppTab.RELEVE ->
