@@ -337,7 +337,22 @@ calendar, R328) and every existing single-day calendar test pass UNCHANGED. The 
 container and scratch DB were torn down before the final gate:clone (port 3000 free, no
 adb reverse, app uninstalled).
 
-FINAL gate:clone on the report HEAD: <filled in PUSH PROOF ADDENDUM below after the run>.
+FINAL gate:clone on the report HEAD 500e8a5: GATE:CLONE PASSED.
+  ran     register-coverage, install, typecheck, lint, test, build, size, db:deploy,
+          test:db, test:container:write, from a clean clone (no .env, no prior
+          node_modules, no generated file the run did not produce itself). Clone
+          removed, exit 0. register-coverage (R327) confirms every PARKAN id cited in
+          this report (PARKAN-40, PARKAN-41) resolves to a parking.md heading.
+  claim   this commit builds and passes those suites from a clean checkout.
+  CI readiness: quiet - the repository is private and CI_FULL is unset (carried FW24).
+  NOT RUN in a clone (R133), no claim: test:e2e, test:visual, test:runtime,
+          lighthouse, parity:check, test:container.
+AN-CAL2 is Android-only (no web/ bytes changed from 9091ec2 except the repo-root
+report + parking.md), so gate:clone - which verifies the web side + register-coverage
+- is the right clean-checkout proof; the Android proof is :app:gate (green every
+increment). The report-only PUSH-PROOF addendum and the merge commit are
+web/android-byte-identical to 500e8a5, so this gate:clone discharges R199 for them
+(the AN10b/AN-HOME precedent).
 
 ================================================================================
 END OF REPORT-AN-CAL2.txt
