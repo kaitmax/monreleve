@@ -89,6 +89,12 @@ data class CalendarState(
     val editing: EditableDay? = null,
     /** AN-CAL2: the multi-day selection (off until « Sélectionner plusieurs jours » or a long press starts it). */
     val selection: SelectionState = SelectionState(),
+    /**
+     * AN-CAL2: the ONE confirmation shown before a bulk write (D16), or null when none is open. Transient - a
+     * rebuild closes it, with the selection restored beneath it (R310), so re-opening it is a single tap and its
+     * counts are re-derived rather than stored (R181).
+     */
+    val bulkConfirmation: BulkConfirmation? = null,
 )
 
 /**
@@ -263,6 +269,51 @@ class CalendarController(
                 else -> sel.copy(days = sel.days + recordableRange(sel.anchor, day.isoDate), anchor = null)
             }
         mutableState.update { it.copy(selection = next.copy(active = true)) }
+    }
+
+    /**
+     * The action panel's choice was made: compute the ONE confirmation (D16) from the chosen days, the rows
+     * already stored and the clock (the late count follows R286). Nothing is written yet - confirmBulk does that.
+     * Absent carries its reason, chosen once for all the days.
+     */
+    fun chooseBulk(
+        kind: RecordedKind,
+        absence: AbsenceChoice?,
+    ) {
+        val sel = mutableState.value.selection
+        if (!sel.active || sel.days.isEmpty()) return
+        val confirmation = bulkConfirmation(sel.days, entries, kind, absence, clock.instant())
+        mutableState.update { it.copy(bulkConfirmation = confirmation) }
+    }
+
+    /** Dismiss the confirmation back to the action panel, the selection intact. */
+    fun cancelBulkConfirmation() {
+        mutableState.update { it.copy(bulkConfirmation = null) }
+    }
+
+    /**
+     * Confirm the bulk write (D16 - this tap is the writer). ONE mutation PER DAY through the SAME repository
+     * single-day editing uses: each gets its own clientMutationId (born here), the account's tag (R303) and
+     * clientClaimedAt = this confirmation tap (R275) - a bulk entry is exactly the same rows as entering the days
+     * one by one, nothing says « bulk ». Then one requestSync; SyncEngine batches within MAX_BATCH_ITEMS and, as
+     * a day is a FULL portion recorded once, never carries a day twice (R296 isolation still applies per item).
+     */
+    fun confirmBulk() {
+        val confirmation = mutableState.value.bulkConfirmation ?: return
+        scope.launch {
+            for (iso in confirmation.days) {
+                repository.record(
+                    RecordCommand(
+                        dayDate = iso,
+                        kind = confirmation.kind.toEntryKind(),
+                        portion = Portion.FULL,
+                        absenceReason = confirmation.absence?.toReason(),
+                    ),
+                )
+            }
+            requestSync()
+        }
+        mutableState.update { it.copy(selection = SelectionState(), bulkConfirmation = null) }
     }
 
     /** A recordable day of the visible month by its ISO date, or null if it is absent, future or out of period. */
