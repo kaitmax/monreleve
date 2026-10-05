@@ -11,6 +11,10 @@ import ch.monreleve.app.calc.Canton
 // code leaking to the screen (CantonCopyTest asserts every member maps to a distinct, non-blank name).
 
 object CantonCopy {
+    // The 26-arm exhaustive `when` is the totality mechanism (a new canton is a compile error here, not a bare
+    // code on screen); its cyclomatic complexity is that totality, not a tangle to simplify. fr/ is outside the
+    // no-inline-string fence's ui//dev/ scope, so this annotation's String argument is permitted here.
+    @Suppress("CyclomaticComplexMethod")
     fun name(canton: Canton): String =
         when (canton) {
             Canton.AG -> "Argovie"

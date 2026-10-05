@@ -1,29 +1,18 @@
 package ch.monreleve.app.ui.screens.parametres
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
 import ch.monreleve.app.calc.Canton
 import ch.monreleve.app.design.FrontierType
 import ch.monreleve.app.design.LightColors
-import ch.monreleve.app.design.Size
-import ch.monreleve.app.design.Spacing
 import ch.monreleve.app.fr.CantonCopy
 import ch.monreleve.app.fr.OnboardingCopy
 import ch.monreleve.app.fr.ParametresCopy
 import ch.monreleve.app.fr.format.formatPercent
 import ch.monreleve.app.onboarding.DenominatorChoice
 import ch.monreleve.app.onboarding.GranularityChoice
+import ch.monreleve.app.parametres.ParametresPhase
+import ch.monreleve.app.parametres.ParametresState
 
 // AN-PARAMS. The five grouped sections of the settings list (SPEC 11.5 / FD9), each a section heading over a
 // white card of Material 3 rows. The « Situation professionnelle » rows open their edit sheets; the
@@ -75,35 +64,36 @@ internal fun SituationSection(
     }
 }
 
+// Reads the two toggle states and the in-flight flag from `state` and the toggle callbacks from `actions` (the
+// column has both), so it stays at three parameters rather than carrying each scalar - no @Suppress the
+// no-inline-string fence (Fence 4) forbids in ui/.
 @Composable
 internal fun SaisieSection(
-    autoDetectionEnabled: Boolean,
-    eveningNotificationEnabled: Boolean,
-    enabled: Boolean,
-    onToggleAuto: (Boolean) -> Unit,
-    onToggleEvening: (Boolean) -> Unit,
+    state: ParametresState,
+    actions: ParametresActions,
     onLearnMore: () -> Unit,
 ) {
+    val enabled = state.phase != ParametresPhase.SAVING
     SectionHeading(ParametresCopy.AUTO_HEADING)
     ParametresCard {
         SwitchRow(
             ParametresCopy.AUTO_LABEL,
             ParametresCopy.AUTO_SUMMARY,
-            autoDetectionEnabled,
-            onToggleAuto,
+            state.autoDetectionEnabled,
+            actions.onToggleAutoDetection,
             enabled,
         )
         RowDivider()
         ActionRow(ParametresCopy.LEARN_MORE, onClick = onLearnMore)
         // R323 / PARKAN-36: the evening proposal appears only when detection is on - without it there is nothing
         // to propose, so offering the switch would be one that can never fire.
-        if (autoDetectionEnabled) {
+        if (state.autoDetectionEnabled) {
             RowDivider()
             SwitchRow(
                 ParametresCopy.EVENING_LABEL,
                 ParametresCopy.EVENING_DESCRIPTION,
-                eveningNotificationEnabled,
-                onToggleEvening,
+                state.eveningNotificationEnabled,
+                actions.onToggleEveningNotification,
                 enabled,
             )
         }
@@ -161,66 +151,17 @@ internal fun AProposSection(
     Text(text = ParametresCopy.ABOUT_DISCLAIMER_2, style = FrontierType.caption, color = LightColors.textTertiary)
 }
 
-// « En savoir plus »: the full detection disclosure, relocated here VERBATIM (R282/R312/R317 honest disclosures
-// are moved, never deleted; CopyReachabilityTest keeps each reachable, R238). The title is the switch's own label.
-@Composable
-internal fun LearnMoreSheetContent(onClose: () -> Unit) {
-    SheetColumn {
-        Text(text = ParametresCopy.AUTO_LABEL, style = FrontierType.h3)
-        Text(text = ParametresCopy.AUTO_DESCRIPTION, style = FrontierType.body)
-        Text(text = ParametresCopy.AUTO_BETA_NOTE, style = FrontierType.body, color = LightColors.textSecondary)
-        Text(text = ParametresCopy.AUTO_BATTERY_NOTE, style = FrontierType.body, color = LightColors.textSecondary)
-        OutlinedButton(onClick = onClose, modifier = Modifier.fillMaxWidth()) {
-            Text(text = ParametresCopy.CLOSE)
-        }
-    }
-}
-
-// The export chooser: one « Exporter mes données » row opens this, offering the two documents (AC2) and the
-// helper that names what they contain. Tapping either hands the server's render to the platform share sheet.
-@Composable
-internal fun ExportChooserContent(
-    onExportJson: () -> Unit,
-    onExportCsv: () -> Unit,
-    onClose: () -> Unit,
-) {
-    SheetColumn {
-        Text(text = ParametresCopy.DATA_EXPORT_ROW, style = FrontierType.h3)
-        Text(text = ParametresCopy.EXPORT_HELPER, style = FrontierType.body)
-        Button(
-            onClick = {
-                onExportJson()
-                onClose()
-            },
-            modifier = Modifier.fillMaxWidth().heightIn(min = Size.buttonLarge),
-        ) {
-            Text(text = ParametresCopy.EXPORT_JSON)
-        }
-        OutlinedButton(onClick = {
-            onExportCsv()
-            onClose()
-        }, modifier = Modifier.fillMaxWidth()) {
-            Text(text = ParametresCopy.EXPORT_CSV)
-        }
-        TextButton(onClick = onClose, modifier = Modifier.fillMaxWidth()) {
-            Text(text = ParametresCopy.CLOSE)
-        }
-    }
-}
-
-@Composable
-private fun SheetColumn(content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(Spacing.space20),
-        verticalArrangement = Arrangement.spacedBy(Spacing.space16),
-        content = content,
-    )
-}
+// « En savoir plus » (the full detection disclosure, relocated VERBATIM) and the export chooser live in their
+// own file (ParametresInfoContent) so this file stays under detekt's TooManyFunctions threshold; the list rows
+// here only OPEN them. CopyReachabilityTest keeps each relocated string reachable (R238).
 
 private fun cantonValue(canton: Canton?): String = canton?.let(CantonCopy::name) ?: OnboardingCopy.CANTON_PLACEHOLDER
 
 // « 100 % » - the stored whole-number rate with the French percent (R181 - derived, never typed).
-private fun rateValue(rate: String): String = rate.toIntOrNull()?.let { formatPercent(it.toDouble(), PERCENT_WHOLE) } ?: rate
+private fun rateValue(rate: String): String {
+    val whole = rate.toIntOrNull() ?: return rate
+    return formatPercent(whole.toDouble(), PERCENT_WHOLE)
+}
 
 private fun methodValue(committed: CommittedSettings): String =
     if (committed.denominator == DenominatorChoice.EXACT) {
@@ -230,4 +171,8 @@ private fun methodValue(committed: CommittedSettings): String =
     }
 
 private fun granularityValue(granularity: GranularityChoice): String =
-    if (granularity == GranularityChoice.HALF_DAY) OnboardingCopy.GRANULARITY_HALF_DAY else OnboardingCopy.GRANULARITY_DAY
+    if (granularity == GranularityChoice.HALF_DAY) {
+        OnboardingCopy.GRANULARITY_HALF_DAY
+    } else {
+        OnboardingCopy.GRANULARITY_DAY
+    }

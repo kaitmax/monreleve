@@ -31,3 +31,16 @@ internal data class ParametresListCallbacks(
     val onExport: () -> Unit,
     val onOpenLicences: () -> Unit,
 )
+
+/**
+ * The two information sheets the list opens (« En savoir plus » and the export chooser): whether each is shown
+ * and how each is dismissed. Bundled so ParametresOverlays stays at or below five parameters without a @Suppress
+ * whose String argument the no-inline-string fence (Fence 4) forbids in ui/. The edit sheet's own dismiss is
+ * EditSheetFrame.onCancel, so it is not repeated here.
+ */
+internal data class InfoSheets(
+    val showLearnMore: Boolean,
+    val showExport: Boolean,
+    val onDismissLearnMore: () -> Unit,
+    val onDismissExport: () -> Unit,
+)

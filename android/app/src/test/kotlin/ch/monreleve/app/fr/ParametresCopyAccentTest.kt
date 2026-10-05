@@ -28,8 +28,10 @@ private val BLOCK_COMMENT = Regex("""/\*[\s\S]*?\*/""")
 private val STRING_LITERAL = Regex(""""((?:[^"\\]|\\.)*)"""")
 private val WORD = Regex("""\p{L}{3,}""")
 
-private fun stripAccents(word: String): String =
-    Normalizer.normalize(word, Normalizer.Form.NFD).replace(Regex("""\p{M}+"""), "")
+private fun stripAccents(word: String): String {
+    val decomposed = Normalizer.normalize(word, Normalizer.Form.NFD)
+    return decomposed.replace(Regex("""\p{M}+"""), "")
+}
 
 private fun frCopyStrings(): List<String> =
     FR_DIR.walkTopDown().filter { it.isFile && it.extension == "kt" }.flatMap { file ->
