@@ -13,6 +13,7 @@ import ch.monreleve.app.account.LocalStore
 import ch.monreleve.app.auth.BytesOutcome
 import ch.monreleve.app.auth.PostOutcome
 import ch.monreleve.app.calendar.CalendarSnapshot
+import ch.monreleve.app.calendar.SelectionSnapshot
 import ch.monreleve.app.data.local.MonReleveDatabase
 import ch.monreleve.app.data.remote.DossierResult
 import ch.monreleve.app.data.repo.EntryRepository
@@ -87,6 +88,9 @@ fun rememberMainControllers(
     // process death). Int?/String? are stored by the default autoSaver, so no custom Saver is needed.
     var savedMonth by rememberSaveable { mutableStateOf<Int?>(null) }
     var savedEditingDay by rememberSaveable { mutableStateOf<String?>(null) }
+    // AN-CAL2 (R310): the multi-day selection. SelectionSnapshot is Serializable, so the default autoSaver
+    // stores it in the Bundle, which outlives both a config change and a background kill (C2). Null = not selecting.
+    var savedSelection by rememberSaveable { mutableStateOf<SelectionSnapshot?>(null) }
     // ParametresSnapshot is Serializable, so the default autoSaver stores it (no custom Saver).
     var savedParametres by rememberSaveable { mutableStateOf<ParametresSnapshot?>(null) }
     // AN-AUTO increment 2 (R315): the device's logging-mode cache, built at the composition boundary where a
@@ -98,7 +102,7 @@ fun rememberMainControllers(
             MainGraph.build(
                 repository, store, taxYear, clock, scope, requestSync, dossierFetch, exportBytes, settingsSaver,
                 revokeServer, localStore, authenticatedPost,
-                restoredCalendar = CalendarSnapshot(savedMonth, savedEditingDay),
+                restoredCalendar = CalendarSnapshot(savedMonth, savedEditingDay, savedSelection),
                 restoredParametres = savedParametres,
                 detectionModeStore = SharedPrefsDetectionModeStore(context),
                 // R315/incr 4: enabling auto mode starts the WorkManager sampler; disabling stops it at once
@@ -124,6 +128,10 @@ fun rememberMainControllers(
         controllers.calendar.state.collect { s ->
             savedMonth = s.monthView?.month
             savedEditingDay = s.editing?.isoDate
+            // AN-CAL2 (R310): snapshot the selection while it is active, null when not - so a rebuild restores
+            // the chosen days and the anchor, and a cancelled selection restores as not-selecting.
+            savedSelection =
+                if (s.selection.active) SelectionSnapshot(s.selection.days.toList(), s.selection.anchor) else null
         }
     }
     LaunchedEffect(controllers) {
