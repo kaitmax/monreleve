@@ -1690,6 +1690,55 @@ asserting the home's projections equal CalendarModel's own output. Every test ou
 (additive state fields + an additive MonthSummary.absent, both defaulted). Driven on the SM-G960F and merged to
 main. The heading stays so the report's citation resolves (RegisterCoverageTest).
 
+## PARKAN-40 - the stray left-edge line is the Samsung Edge-panel handle, not an app card border  [AN-CAL2, 2026-10-05]
+
+QUESTION:  AN-CAL2 defect 3 - the operator's screenshot showed "a stray vertical line on the left edge beside
+the counts: a card's border drawn partly off-screen", at the same position on Parametres too, hypothesised to
+"live in the shared app frame". Is it an app defect to fix in the shared frame?
+
+EVIDENCE: it is NOT an app element. Proven on the SM-G960F three ways: (a) the line sits at the IDENTICAL
+content-independent position on Aujourd'hui, Calendrier AND Parametres - an app card would sit at a different
+y on each screen; (b) a uiautomator dump of the app window has NO node with a left bound < 30 px in that band
+(all app content is inside the 20 dp screen padding - the Explorer's source audit confirmed no shared bordered
+card, no negative offset, no x<0 content); (c) the device has an active Samsung Edge panel - `settings get
+system cocktail_bar_enabled_cocktails` = AppsEdgePanelProvider, and `edge_handler_position_percent` = 76.91441,
+i.e. 0.769 x 2220 = 1707 px, exactly where the line's bottom sits. It is the Edge-panel HANDLE, a SystemUI
+overlay drawn over every app at a user-configured position.
+
+TAKEN (R156, advisor stalled): no app-code change - there is nothing in the app frame to fix; the app's shared
+frame is correct. The finding is recorded; the overlay is the device's Edge panel. Moving the handle position
+and restarting SystemUI were used only to diagnose (settings restored).
+
+NOT TAKEN: inventing an app layout change that removes nothing (the hypothesised off-screen card does not
+exist), or disabling the device's Edge panel from app code (impossible - it is a system overlay).
+
+NEEDS: operator awareness that the screenshot artifact is the device's Samsung Edge panel; to get clean app
+screenshots, disable the Edge panel in the device's own settings (Settings > Display > Edge panels). No app
+change is owed. The heading stays so the report's citation resolves (RegisterCoverageTest).
+
+## PARKAN-41 - the « Non renseigne » counts tile wraps to two lines; an abbreviation is an operator copy call  [AN-CAL2, 2026-10-05]
+
+QUESTION:  AN-CAL2 defect 1 asked for five equal counts tiles with "labels short enough not to wrap at default
+size". Four labels (Suisse, Domicile, Mission, Absence) are single words that fit; « Non renseigne » is 13
+characters and cannot fit one line in a fifth of a 320-360 dp row at a legible size (measured on the S9 - it
+wraps to two lines). Abbreviating it (« Non rens. », « Manquant », ...) is a COPY change, a product decision.
+
+EVIDENCE: the operator's ACTUAL defect was "its number sits lower and further right than the others" - a
+MISALIGNMENT. Fixed by reserving two label lines on every tile (minLines = maxLines = 2), so every number sits
+at one baseline whatever the label's length; « Non renseigne » wraps cleanly to two centred lines with its
+number aligned. Seen on the device (cal-01) and in the calendrierMonth baseline. The deeper goal (alignment)
+is met; the literal remedy (a one-line label) is physically impossible for this word without a copy change.
+
+TAKEN (R156, advisor stalled): keep the full accented « Non renseigne » (R155), reserve two lines so the
+numbers align. The word is not abbreviated without authority (it has one home, CalendarCopy.NON_RENSEIGNE,
+shared with the quality legend - R206; abbreviating would fork it).
+
+NOT TAKEN: an abbreviated tile label (a new string, a second home for the concept, or a forked legend word).
+
+NEEDS: an operator copy decision IF a one-line tile is wanted - a shorter word for this tile alone, which
+would then be the tile's own copy. Reversible (SummaryTile label + CalendarCopy). The heading stays so the
+report's citation resolves (RegisterCoverageTest).
+
 ## STATUS LEDGER  [appended 2026-09-29]
 
 One line per Android-era entry, so the state of each is visible without
@@ -1727,3 +1776,5 @@ reading every section. Entries are not edited; this ledger is.
 | PARKAN-37 — /confidentialite still says "cumul de minutes" | **open, OUT OF SCOPE** | AN-NEXT-2 (R325, NOTICED BUT NOT TOUCHING): the automatic-mode item in web/lib/fr/confidentialite.ts still reads « Seul un cumul de minutes par journée est conservé » - the pre-R320 minutes model (detection now keeps four discrete checks, no minutes). R325 corrected only the determination claim (the Wi-Fi/cell clause) and left this verbatim rather than half-fixing an R320-era relic under an R325 task. Belongs with an R320 copy sweep across the privacy surfaces |
 | PARKAN-38 — "the privacy map" has no named artefact | **open, interpreted** | AN-NEXT-2 (R325): the task prompt names "the privacy map" as a third R325 surface, but no file/component/doc in the repo carries that name (it appears only in relay/AN-NEXT-2.txt). Read conservatively as the PUBLIC map of what the app does with position - the /application « Ce que l'application ne fera pas » refusals (web/lib/fr/application.ts) - and corrected there (over-disclosing beats under-disclosing). If the operator meant another surface, name it |
 | PARKAN-39 — Aujourd'hui sections C/E/F need a controller projection | **closed, RESOLVED** | AN-HOME C/E/F (R328): the operator ruled a READ-ONLY projection of already-held entries, built from CalendarModel's existing pure mappers, IS presentation (no write, no engine, no /v1, no schema, no detection). Built in AujourdhuiController; C/E/F shipped with the one-way-of-counting test (AujourdhuiSectionsTest) proving the home and the calendar count one way; every non-ui test passes unchanged; driven on the S9; merged to main. See the heading above + REPORT-AN-HOME.txt |
+| PARKAN-40 — the stray left-edge line is the Samsung Edge panel, not an app card | **closed, finding** | AN-CAL2 defect 3: proven on the SM-G960F to be the SystemUI Edge-panel handle (same position on 3 screens; no app node at x<30 in that band; `cocktail_bar_enabled_cocktails`=AppsEdgePanelProvider, `edge_handler_position_percent`=76.9≈1707 px = the line). No app-code fix; to clear the screenshot artifact, disable the device's Edge panel. Awaits operator awareness |
+| PARKAN-41 — « Non renseigne » counts tile wraps to two lines | **open, conservative** | AN-CAL2 defect 1: 13 chars cannot fit one line in a fifth of a 320-360 dp row at a legible size. Kept the full accented word (R155/R206) and reserved two label lines (minLines=2) so every number aligns - the operator's real defect (misalignment) is fixed. An abbreviated one-line tile label is an operator copy decision; reversible |
