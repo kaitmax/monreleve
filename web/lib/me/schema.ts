@@ -52,6 +52,13 @@ const TIME_OF_DAY = /^([01]\d|2[0-3]):[0-5]\d$/u;
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/u;
 
 const meObject = z.object({
+  // AN-ONBOARD: the holder's name, the document's titulaire. Settable here so
+  // onboarding's step 1 writes it (the column already existed; nothing wrote it
+  // from a client before). Trimmed, and non-empty once trimmed: the dossier and
+  // the PDF refuse to generate without a titulaire (R205), so a name that trims
+  // to nothing is refused at the door rather than stored to fail later. Capped so
+  // it stays a key the CSV/PDF filename can carry.
+  name: z.string().trim().min(1).max(120),
   canton: z.enum(CANTON_CODES),
   // INTEGER ONLY. The 1–100 bound belongs to the database (R196); saying it
   // again here is the third copy this file's header refuses.

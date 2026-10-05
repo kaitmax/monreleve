@@ -40,18 +40,30 @@ export const AUTH_EMAIL_COPY = {
      * The body, as lines. Kept as an array so a test can assert what is in it
      * without matching whitespace.
      *
-     * THE MINUTES ARE INTERPOLATED FROM THE TTL, never typed (R153/R181).
-     * Change MAGIC_LINK_TTL_MS and this sentence follows; type "15" here and
-     * it is a figure in a format that cannot interpolate, which is exactly
-     * what R153 forbids.
+     * TWO WAYS IN, ONE REQUEST (AN-ONBOARD). The link opens the app where the
+     * domain is verified; the six-digit code works from any device and does not
+     * depend on the domain. Both belong to the same single-use request and
+     * expire together, which is what the "valable ... et ne fonctionnent qu'une
+     * seule fois" line says. The code is on its own line so it reads clearly and
+     * a device can offer to copy it.
+     *
+     * THE CODE AND THE MINUTES ARE PER-REQUEST DATA, PASSED AS ARGUMENTS. They
+     * are not the stale-able constants R153 forbids typing: the minutes come from
+     * MAGIC_LINK_TTL_MS and the code is minted per request. A figure typed here
+     * would be the copy that still says the wrong thing in 2028 with every test
+     * green; these are computed, so they stay true.
      */
-    lines: (signInUrl: string, minutes: number): readonly string[] => [
+    lines: (signInUrl: string, code: string, minutes: number): readonly string[] => [
       `Bonjour,`,
       ``,
       `Voici votre lien de connexion${n(':')}`,
       signInUrl,
       ``,
-      `Il est valable ${minutes}${NB}minutes et ne fonctionne qu${APOS}une seule fois.`,
+      `Ou saisissez ce code dans l${APOS}application${n(':')}`,
+      code,
+      ``,
+      `Le lien et le code sont valables ${minutes}${NB}minutes et ne fonctionnent ` +
+        `qu${APOS}une seule fois.`,
       ``,
       `Ce lien ouvre l${APOS}application ${APP_NAME}, où vous notez vos journées ` +
         `de télétravail et de présence en Suisse.`,

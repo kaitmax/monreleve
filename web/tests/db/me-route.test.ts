@@ -73,14 +73,54 @@ describe('GET /api/v1/me', () => {
     expect(Object.keys(payload).sort()).toEqual([...ME_FIELDS].sort());
   });
 
-  it('never returns the email or the name, which are not settings', async () => {
-    // The account's identity is not part of its configuration, and a settings
-    // endpoint that carried it would be one more surface leaking the address
-    // this product treats as the sensitive fact (see api-v1 section 1.5).
+  it('returns the name, but never the email', async () => {
+    // AN-ONBOARD: the name is settable through /me and returned, so a re-sign-in
+    // on a new phone can SKIP the name step (R297). It is the owner's own data,
+    // behind their own bearer token. The EMAIL stays absent - it is the fact
+    // §1.5 goes to some length to keep a sign-in form from confirming, and a
+    // settings endpoint handing it back would be the same leak through a
+    // quieter door.
     const payload = await body(await GET(get()));
 
+    expect(payload.name).toBe('Camille Rey');
     expect(payload.email).toBeUndefined();
-    expect(payload.name).toBeUndefined();
+  });
+});
+
+describe('PATCH /api/v1/me — the holder name (AN-ONBOARD)', () => {
+  it('sets the name and returns it', async () => {
+    const response = await PATCH(patch({ name: 'Alex Dupont' }));
+
+    expect(response.status).toBe(200);
+    expect((await body(response)).name).toBe('Alex Dupont');
+
+    // And it persists to the next GET.
+    expect((await body(await GET(get()))).name).toBe('Alex Dupont');
+  });
+
+  it('trims surrounding whitespace', async () => {
+    await PATCH(patch({ name: '  Sam Bernard  ' }));
+
+    expect((await body(await GET(get()))).name).toBe('Sam Bernard');
+  });
+
+  it('refuses a blank name rather than storing one that fails the PDF', async () => {
+    // R205: the dossier/PDF refuse to generate without a titulaire, so a name
+    // that trims to nothing is refused at the door rather than stored to surface
+    // as a 422 later.
+    const response = await PATCH(patch({ name: '   ' }));
+
+    expect(response.status).toBe(400);
+  });
+
+  it('leaves the other settings alone when only the name changes', async () => {
+    await PATCH(patch({ name: 'Camille Martin' }));
+
+    const payload = await body(await GET(get()));
+
+    expect(payload.name).toBe('Camille Martin');
+    expect(payload.canton).toBe('GE');
+    expect(payload.employmentRate).toBe(100);
   });
 });
 

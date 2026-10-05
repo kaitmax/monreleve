@@ -95,6 +95,11 @@ describe('docs/api-v1.md documents exactly what the code accepts', () => {
       'invalid_token',
       'expired_token',
       'revoked_session',
+      // AN-ONBOARD: the six-digit code exchange refusals (§1.4 / §1.6).
+      'invalid_code',
+      'code_expired',
+      'too_many_attempts',
+      'rate_limited',
       'payload_too_large',
       'malformed_body',
       'coordinates_refused',

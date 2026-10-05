@@ -130,6 +130,8 @@ export async function requestMagicLink(
     subject: AUTH_EMAIL_COPY.signIn.subject,
     text: AUTH_EMAIL_COPY.signIn.lines(
       signInUrl(issued.token, email),
+      // AN-ONBOARD: the same request's six-digit code, carried beside the link.
+      issued.code,
       // FROM THE CONSTANT, NEVER TYPED. R153: an email template cannot
       // interpolate, so a figure written into the copy goes stale silently.
       // The copy takes it as an argument for exactly that reason.
