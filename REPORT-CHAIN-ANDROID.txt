@@ -4,107 +4,102 @@ REPORT-CHAIN-ANDROID - Mon Releve
 
 HOW IT ENDED
 ------------
-Chain stopped after AN-HOME: AN-HOME ended PARTIAL on an open scope
-question (see OPEN QUESTIONS). Tasks 3 (AN-CAL2) and 4 (AN-PARAMS) were
-NOT launched - the chain does not build the next task on an unfinished
-one. Two of four tasks ran; both are green and merged to origin/main.
+Chain complete. All four tasks ran, each a fresh agent with the handover
+check between, and all four are merged to origin/main at bdae687. The
+chain stopped once (after AN-HOME, on an open scope question) and the
+operator resumed it with rulings R327/R328; it then ran to the end.
 
-PER-TASK
---------
-1. AN-NEXT-2 (network-location accuracy R324 + precise disclosure R325)
-   - final commit: 0175a54 (merge to main). Ended DONE.
-   - gates: gate:clone PASSED (web legs) + :app:gate green on its branch.
-   - delivered: R324 accuracy guard (a fix is classified only if its
-     accuracy radius < distance to the border, else "not sure"; proven
-     RED-first by commenting the guard out; coarse fixes collapse
-     confident tracks to "Pas sure" on the physical S9) + provider
-     counts (gpsCheckCount/networkCheckCount - COUNTS only, never a
-     coordinate or accuracy value; real MIGRATION_4_5, schema 5); and
-     R325 disclosure reworded (phone + web /confidentialite + the
-     /application refusals), verified on-device at default and 200%.
-   - DEFECT IT INTRODUCED (found by AN-HOME, fixed in task 2): its
-     REPORT-AN-NEXT-2.txt cited PARKAN-37 and PARKAN-38 but parking.md
-     had NO heading for either, so RegisterCoverageTest (an android JVM
-     test) would fail. Its own :app:gate did not catch it (the citing
-     report was committed after the gate ran - R182 order), and
-     gate:clone does not run that android test. See THE RED BASE below.
+PER-TASK (final commit / how it ended / gate)
+---------------------------------------------
+1. AN-NEXT-2 (network accuracy R324 + precise disclosure R325)
+   - 0175a54 (merge). DONE. gate:clone + :app:gate green.
+   - R324 accuracy guard (classify only if accuracy radius < distance to
+     the border, else "not sure"; RED-first) + provider COUNTS
+     (gpsCheckCount/networkCheckCount, never a coordinate; MIGRATION_4_5);
+     R325 disclosure reworded, verified on-device.
+2. AN-HOME (Aujourd'hui presentation and motion) - two sessions
+   - partial-merge 40340a6 (sections 1/A/D + the choice-closes
+     interaction + Motion tokens), then completed at 9091ec2 (sections
+     C/E/F under R328 + R327). DONE.
+   - R328: C/E/F are read-only AujourdhuiController projections from
+     CalendarModel's pure mappers; ONE WAY OF COUNTING - home and
+     calendar share buildMonthView(...).summary, asserted by
+     AujourdhuiSectionsTest (home == calendar), FW12's defect closed.
+   - R327: the repo-wide register-coverage check wired into gate:clone as
+     ONE Node definition (web/scripts/register-coverage.mjs) that both
+     gate:clone runs and RegisterCoverageTest.kt shells out to (R206, no
+     drift). Proven green-then-red-by-name in a real git clone.
+3. AN-CAL2 (record several days at once; layout defects)
+   - f18303c (merge). DONE. gate:clone + :app:gate green.
+   - Counts row (five tiles incl. Absence, one source), multi-day
+     selection + bulk confirm (5 distinct mutations read back from the
+     DB), R310 across process death. The "stray line" was diagnosed as a
+     Samsung Edge-panel system overlay, NOT an app bug (PARKAN-40).
+4. AN-PARAMS (one clean settings list)
+   - bdae687 (merge). DONE. gate:clone + :app:gate green.
+   - One list from three input styles; AAAA-MM-JJ -> M3 date picker
+     (Swiss display, ISO storage); "GE" -> "Geneve"; per-sheet save;
+     "(beta)" -> "(bêta)" accented; title -> h2. Fence 4 satisfied with
+     ZERO @Suppress in ui/ (EditSheetFrame/InfoSheets bundles). Same
+     behaviour, no engine/v1 change.
 
-2. AN-HOME (Aujourd'hui presentation and motion)
-   - final commit: 40340a6 (merge to main). Ended PARTIAL (merged by the
-     orchestrator: green, lands the done work, fixes task 1's red base;
-     C/E/F owed, PARKAN-39).
-   - gates: :app:gate green on the merged HEAD, with RegisterCoverageTest
-     FORCE-RUN by the orchestrator (--rerun-tasks, 28 tasks, 3m40s,
-     SUCCESS) to confirm the red base is fixed; an-home is android-only
-     so the web gate:clone legs are unchanged-green from 0175a54.
-   - delivered: incr 0a fixes the inherited red base (PARKAN-37/38
-     headings, docs only); incr 0b Motion duration tokens + closed-set
-     MotionTest + Fence 8 (R269/R77, planted-and-reverted R178/R180);
-     SECTION 1 (the operator's main request) - the day choice CLOSES
-     into a compact answer line with Modifier/Annuler, D16 intact (the
-     record callback is still the only writer), half-days show both
-     halves (R292), token-based motion with snap() under reduce-motion,
-     TalkBack live region, editing-open survives rebuild (R310); plus
-     SECTION A (header date, F8) and SECTION D (year hero card). Driven
-     on the S9; 21 paparazzi baselines regenerated, each cropped and
-     looked at (R135/R207/R178). No test outside the ui/ layer changed.
-   - OWED (PARKAN-39): sections C (A traiter), E (Cette semaine), F (Ce
-     mois) - behind the open question below.
-
-THE RED BASE (a chain-level finding)
-------------------------------------
-origin/main was RED on :app:gate between tasks 1 and 2 and the
-orchestrator's task-1 handover check MISSED it: the handover trusted
-AN-NEXT-2's branch gate instead of re-running :app:gate on the merged
-HEAD, and the failing test (RegisterCoverageTest) is android-only -
-gate:clone, which the orchestrator did verify, does not run it.
-Correction adopted for the rest of this chain and future ones: the
-handover check RE-RUNS :app:gate on the actual merged HEAD, not a
-branch's gate. The red base itself is now fixed on origin/main
-(PARKAN-37/38/39 headings present; RegisterCoverageTest force-verified
-green at 40340a6).
+TWO INCIDENTS (recorded honestly)
+---------------------------------
+A. THE RED BASE. AN-NEXT-2 cited PARKAN-37/38 in its report without
+   adding the parking.md headings; RegisterCoverageTest (android-only,
+   not run by gate:clone) would fail, so main was red between tasks 1 and
+   2. The orchestrator's task-1 handover MISSED it (trusted the branch
+   gate). AN-HOME caught it on its base check and fixed it; the
+   orchestrator now RE-RUNS the register-coverage check on every merged
+   HEAD, and R327 put that check inside gate:clone so it can never hide
+   again.
+B. THE checkout -f. Finishing AN-PARAMS, the orchestrator saw a 0-byte
+   agent output file, wrongly concluded the agent had bounced at launch,
+   and ran `git checkout -f main` in the main dir - discarding a
+   STILL-RUNNING agent's uncommitted MODIFICATIONS to five files. The
+   agent's five NEW extracted files were untracked and survived
+   (salvaged to a6651a5); the WIP base (4f9f440) was safe on origin. A
+   fresh session redid the lost modifications and finished green. Net
+   cost: rework, no structural loss. Lesson: never a destructive git op
+   in the main dir without git status + stopping any live agent first;
+   agents commit to their branch early/often.
 
 ADVISOR DECISIONS
 -----------------
-The advisors stalled on every call this session (as FW33b already
-recorded). Both tasks took the conservative, reversible option (R156) on
-each judgment call and recorded it in their own reports. No advisor
-answer was obtained in the chain.
+The advisors stalled on every call for the whole chain. Every judgment
+call took the conservative, reversible option (R156) and recorded it in
+the task's own report. No advisor answer was obtained.
 
-PARKAN ENTRIES ADDED
---------------------
-PARKAN-37 (AN-NEXT-2): /confidentialite still says "cumul de minutes", a
-  pre-R320 relic, left out of R325's scope - belongs with an R320 copy
-  sweep.
-PARKAN-38 (AN-NEXT-2): the R325 "privacy map" correction was applied to
-  the public /application refusals, the conservative reading of an
-  artifact named only in the prompt - see OPEN QUESTIONS.
-PARKAN-39 (AN-HOME): sections C/E/F owed behind the open question below.
+PARKAN ENTRIES ADDED (all have parking.md headings)
+---------------------------------------------------
+PARKAN-37 (AN-NEXT-2): /confidentialite "cumul de minutes" relic - web
+  task (the operator mapped it: replace with the four daily checks R320).
+PARKAN-38 (AN-NEXT-2): the R325 "privacy map" - the operator ruled it is
+  the claim-to-test map behind /confidentialite; R325's new sentence gets
+  an entry there; the /application change stays. Web task.
+PARKAN-39 (AN-HOME): resolved - C/E/F built under R328.
+PARKAN-40 (AN-CAL2): the stray left-edge line is the Samsung Edge-panel
+  handle (system overlay), no app fix.
+PARKAN-41 (AN-CAL2): "Non renseigne" wraps to 2 lines (aligned).
 
-OPEN QUESTIONS (each with its task)
------------------------------------
-1. AN-HOME - IS A READ-ONLY AUJOURD'HUI-CONTROLLER PROJECTION OF
-   ALREADY-HELD ENTRIES "PRESENTATION-ONLY"? Sections C/E/F need
-   past-unrecorded / week / month figures that live in
-   AujourdhuiController, derivable from entries the app already holds via
-   CalendarModel's pure mappers. AN-HOME read the relay's
-   "presentation-only" scope conservatively and stopped rather than
-   assume a controller projection qualifies. A ruling unblocks C/E/F and
-   completes AN-HOME. THIS IS WHY THE CHAIN STOPPED.
-2. AN-NEXT-2 - was the public /application refusals the intended surface
-   for R325's "privacy map" correction (PARKAN-38)?
+OPEN QUESTIONS
+--------------
+None blocking. The AN-HOME scope question was answered by R328; AN-NEXT-2's
+"privacy map" question by PARKAN-38's ruling.
 
 PHONE SETTINGS (confirmed restored)
 -----------------------------------
-auto_time=1, auto_time_zone=1, stay_on_while_plugged_in=0,
-font_scale=1.0, always_finish_activities=0, mock_location=deny. No
-orphaned emulator/adb/container; the stale gradle daemon was stopped.
+auto_time=1, auto_time_zone=1, stay_on_while_plugged_in=0, font_scale=1.0,
+always_finish_activities=0, mock_location=deny, animations on. No orphaned
+emulator/adb/container; stale gradle daemons stopped.
 
-NOT IN THIS CHAIN (unchanged)
------------------------------
-AN-AUTO-2-REALDAY (needs a real off-charger working day). R326 (pnpm
-size measures only the build that ships) - web work, rides the next web
-task; FW34 remains parked on origin/fw34 with its WIP (home body + the
-e2e WIP), owed behind the operator's C/E/F-style ruling family.
+NOT IN THIS CHAIN (carried to the next WEB task)
+------------------------------------------------
+R326 (pnpm size measures only the build that ships); PARKAN-38's
+claim-to-test-map entry and the /confidentialite wording; PARKAN-37's
+"cumul de minutes" -> four daily checks (web + app); FW34's parked work
+on origin/fw34 (home body + e2e WIP). AN-AUTO-2-REALDAY still needs a real
+off-charger day. New operator items noticed and untouched:
+relay/SEED-RELEVE.txt and the mon-releve-logo assets.
 
-Chain stopped after AN-HOME: open scope question on sections C/E/F.
+Chain complete.
