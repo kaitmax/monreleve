@@ -1,0 +1,148 @@
+FW-VERIFY SESSION PROMPT - Mon Releve
+A VERIFICATION CODE ON EVERY RELEVE
+Paste into a fresh Claude Code session at the repository root.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+R241: the only thing that ends this session is REPORT-FW-VERIFY.txt,
+committed and pushed. Unclear? R156: conservative, reversible, a PARK
+entry, continue; judgment calls go to the advisors, and if none
+answers, the conservative option is taken and recorded. Ends early:
+R156's boundary; a red gate you cannot fix; a path reaching a real
+person; a degraded context. R300 if another session pushes to main.
+R270 applies.
+
+R273. Check tasks/todo.md; this is named FW-VERIFY to avoid a number
+    collision (R162). Say first if it belongs elsewhere.
+R1. pnpm gate:clone and :app:gate green on origin/main's HEAD.
+
+HARD BOUNDARIES: no change to either engine or to what the dossier
+computes; /v1 changes ADDITIVE ONLY (the freeze permits it); no real
+person contacted; zero cookies on public routes (FW22's rule) - the
+verification page included.
+
+====================================================================
+WHY, AND THE THREE RISKS IT ANSWERS
+====================================================================
+The operator plans to charge for the releve. Renaming an account cannot
+create someone else's year - one account holds one calendar, and a date
+holds one entry - so the real risks are:
+  1. EDITING THE DOWNLOADED PDF: anyone can change a name or a figure
+     with a free tool, and nothing in the app prevents it;
+  2. ONE PAID ACCOUNT SHARED by several people;
+  3. A NAME CHANGED AFTER THE FACT.
+A verification code on every releve answers all three: an accountant
+scans it and sees what the server actually issued.
+
+====================================================================
+THE RULINGS
+====================================================================
+R329. EVERY ISSUED RELEVE IS RECORDED. A new server table records each
+    releve the PDF route produces: an unguessable identifier (at least
+    128 random bits), the account, the tax year, a version number, the
+    name AS PRINTED, the figures as printed (rate to declare, telework
+    days, missions in France and in third states, the period), the
+    SHA-256 of the produced file, and when. Regenerating a releve
+    creates a NEW VERSION and marks the previous one superseded -
+    corrections are legitimate and are never limited.
+    The table is erased with the account, like every other row (R203,
+    FW26's erasure path and its negative sweep, which must now cover
+    it).
+
+R330. THE VERIFICATION PAGE SHOWS ONLY WHAT IS PRINTED ON THE RELEVE.
+    Its job is to CONFIRM a document, never to REVEAL anything new.
+    Releves get photographed, forwarded and left in shared folders, and
+    whoever holds one can scan the code. So the page shows: the name,
+    the rate to declare, telework days, missions in France and abroad,
+    the period, the generation date and the version - each exactly as
+    issued - and, if one exists, that a newer version was issued and
+    when (not its figures).
+    NEVER THE EMAIL, never the account, never anything not printed on
+    the document. A test asserts the account's email is ABSENT from the
+    page's HTML, as well as asserting the printed fields are present.
+    THE WORDING never says certifie, atteste, conforme, valide or
+    approuve (the vocabulary ban). It says what is true: something to
+    the effect of "Ce releve correspond a celui emis par Mon Releve le
+    <date>" - it vouches that the document is unaltered, not that its
+    contents are correct.
+    An unknown or withdrawn identifier gets one neutral page - "aucun
+    releve ne correspond a ce code, ou il a ete retire" - with no
+    difference in content or timing between "never existed" and
+    "erased", and the endpoint is rate-limited, so codes cannot be
+    discovered by guessing. noindex; no cookies; no client JavaScript
+    is needed.
+
+R331. NAME CHANGES ARE KEPT BY DATE, AND SHOWN BY DATE ONLY. The server
+    records WHEN a name changed - not the old value: each issued releve
+    already holds the name it was printed with, so the history exists
+    where it matters without a separate list of former names. A releve
+    for a tax year in which the name changed carries one line: "Nom
+    modifie le <date>". IT NEVER PRINTS A PREVIOUS NAME. People change
+    names for marriage, divorce or transition, and printing a former
+    name on a tax document would be a real harm. Tests assert a former
+    name appears on neither the document nor the verification page.
+
+R332. NO QR CODE UNTIL THE PERMANENT DOMAIN IS SET. A printed releve
+    carries its link for years. The QR code and the printed
+    verification address appear ONLY when a dedicated setting names the
+    permanent production origin; otherwise the PDF carries neither, and
+    the release audit lists it as a NEEDS item. A releve must never
+    point at localhost, a temporary host or a domain the operator may
+    not keep (R205: a thing is served only when it can be believed).
+
+R333. ONE PERSON PER ACCOUNT, IN THE TERMS. The CGU states that an
+    account and its releve belong to one person, and that the email is
+    the account's anchor. This is copy, with its source in the product's
+    own terms - no regulatory claim (R146).
+
+====================================================================
+THE WORK
+====================================================================
+0. R273, R1.
+1. THE ISSUANCE RECORD (R329): the table, a real migration, written
+   whenever the PDF route produces a file, versions and supersession,
+   and the erasure sweep extended to it. Test-first.
+2. NAME-CHANGE DATES (R331): the record, and the "Nom modifie le" line
+   in the releve's identification block when it applies.
+3. THE DOCUMENT: the code printed as text (for anyone who cannot scan),
+   the verification address, and the QR code - all under R332. R232
+   still holds - assertions are structural, on the PRODUCED file:
+   decode the QR from the rendered PDF and assert it carries the right
+   address and identifier (a QR-decoding library is a dev dependency;
+   name it and justify it, R136).
+4. THE VERIFICATION PAGE (R330), on the web, with its tests: the
+   printed fields present, the email absent, a former name absent, the
+   superseded notice, the neutral unknown page, the rate limit, no
+   cookie, noindex.
+5. THE PRIVACY NOTICE AND THE TERMS: what the issuance record holds, why,
+   how long (until account deletion), that the verification page shows
+   what is printed on the releve to whoever holds it, and that
+   name-change dates are kept - each sentence with its entry in the
+   privacy map (FW14, FW22, FW26). R333's line in the CGU.
+6. THE WALKTHROUGH: generate a releve for a seeded account, open the
+   PDF, scan or decode its code, open the page, compare every line
+   with the document. Regenerate and see the old version marked
+   superseded. Change the name, regenerate, and see "Nom modifie le"
+   with no former name anywhere. Delete the account and see the
+   neutral page. Every screen opened and described.
+   Gates, gate:clone, push.
+
+====================================================================
+OUT OF SCOPE
+====================================================================
+Payment itself. Identity checks (ID card, selfie). Any limit on how
+many releves a person may generate. Uploading a PDF to compare its
+fingerprint - park it as an idea. Either engine.
+
+====================================================================
+REPORT - REPORT-FW-VERIFY.txt
+====================================================================
+SUMMARY / R273 / THE ISSUANCE RECORD (fields, migration, erasure) /
+NAME CHANGES / THE DOCUMENT (the decoded QR) / THE VERIFICATION PAGE
+(each test, the email-absent and former-name-absent assertions) / R332
+(what the PDF shows today, without the permanent domain) / PRIVACY
+NOTICE AND TERMS (each sentence and its test) / WALKTHROUGH / PARKED /
+DEVIATIONS / QUESTIONS / PUSH PROOF
+
+END OF FW-VERIFY PROMPT

@@ -1,0 +1,172 @@
+SEED-RELEVE SESSION PROMPT - Mon Releve
+A YEAR OF REALISTIC DATA, TO SEE THE RELEVE - AND READ IT AGAINST WHAT
+THE AUTHORITIES ASK FOR
+Paste into a fresh Claude Code session at the repository root. The
+physical phone (Galaxy S9, API 29) is connected.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+Do not stop to report progress or ask a question; judgment calls go to
+the advisors, recorded in the report; if an advisor does not answer,
+take the conservative, reversible option (R156). Ends in four ways,
+each with REPORT-SEED-RELEVE.txt committed and pushed: DONE; a HARD
+BOUNDARY; NO PROGRESS; a DEGRADED CONTEXT. R300 if another session
+pushes to main. R270 applies.
+
+HARD BOUNDARIES:
+  - THE SEED WRITES ONLY TO A LOCAL DATABASE. It refuses any non-local
+    DATABASE_URL by name, as db:seed and the scheduler do (R243). It
+    never runs against a deployed database.
+  - NO REAL PERSON: seeded accounts use addresses on the reserved
+    .invalid domain (e.g. camille.martin@example.invalid), which can
+    never deliver.
+  - No change to either engine, the RuleSet, /v1, or the Room schema.
+  - D18: no coordinate anywhere in seeded data.
+
+R273. Check tasks/todo.md and the existing seed (pnpm db:seed, the demo
+    year from FW21/R222) first; reuse what exists rather than writing a
+    second seed for the same purpose (R206).
+R1. pnpm gate:clone and :app:gate green on origin/main's HEAD.
+
+====================================================================
+WHY THE SEED WRITES TO THE DATABASE, NOT THROUGH THE API
+====================================================================
+The server stamps firstRecordedAt itself, at the moment it receives an
+entry - that is the product's evidence model. A year sent through the
+API today would be stamped today, so EVERY day would be marked "saisie
+tardive". A realistic year needs entries whose server timestamps fall
+when a real person would have recorded them: most on the day itself,
+some a few days later, a few genuinely late. Only a direct seed into
+the local database can produce that, with an EntryEvent trail that
+matches each entry (the append-only triggers refuse updates and
+deletes, not inserts). Every timestamp is in the past - never after
+the moment the seed runs. A record stamped in the future is a world
+that cannot happen (R197).
+
+====================================================================
+WHICH YEARS
+====================================================================
+- The RuleSet covers 2026 only, and it is part of the frozen engine. A
+  COMPLETE twelve-month year has to be a past year, so:
+    2025, JANUARY TO DECEMBER - the full year. Its releve will carry
+      RULE_SET_FALLBACK, because 2025's rules are not encoded. That
+      warning is honest and stays. (The 40 percent rule with up to 10
+      mission days applied in 2025 under the transitional agreement and
+      continues under the 2026 amendment, but the app may only say so
+      once a 2025 RuleSet and its source row exist - not this task.)
+    2026, 1 JANUARY TO YESTERDAY - the current, provisional year, as a
+      real person sees it today.
+  A person in their second year has exactly this shape.
+- NO ENTRY AFTER YESTERDAY. Future days are refused by the product, and
+  a future-dated record is an impossible world.
+
+====================================================================
+THE ACCOUNTS - EACH A CONSISTENT SCENARIO (R197)
+====================================================================
+ACCOUNT 1 - camille.martin@example.invalid, "Camille Martin": Geneva,
+  100 percent, the 240-day simplified method, whole days.
+  - Manual mode through 2025 and until August 2026; automatic mode
+    (beta) from September 2026, with consent timestamped then - so
+    September's days are DETECTED_CONFIRMED, two of them
+    DETECTED_CORRECTED with their detectedKind (R202).
+  - About two telework days a week, most weeks - a rate comfortably
+    under 40 percent, around 35.
+  - Five weeks of holiday as Absent (conge), spread across the year.
+  - Geneva's public holidays as Absent (ferie): compute each year's
+    dates from a reliable algorithm (Good Friday, Easter Monday,
+    Ascension and Whit Monday move with Easter; the Jeune genevois is
+    the Thursday after the first Sunday of September) and list them in
+    the report.
+  - Three sick days as Absent (maladie).
+  - Missions: four in France and three in a third state per year -
+    seven, under the 10-day ceiling.
+  - Most days recorded the same evening; a handful recorded two to
+    six days later; FIVE recorded more than seven days later, so
+    "saisie tardive" appears; THREE modified after first being recorded,
+    so the trail shows a change.
+  - Two or three past working days left unrecorded, so "Non renseigne"
+    appears.
+
+ACCOUNT 2 - alex.dupont@example.invalid, "Alex Dupont": a year OVER the
+  thresholds, to see the warnings. If the existing demo year (FW21,
+  R222 - 42,70 percent, FISCAL_CEILING_EXCEEDED and A1_REQUIRED) is a
+  full year, attach it to this account rather than inventing another.
+  Otherwise build one: about 45 percent telework and TWELVE mission days
+  (over the 10-day ceiling), 2025 complete and 2026 to date.
+
+ACCOUNT 3 - sam.bernard@example.invalid, "Sam Bernard": HALF-DAY
+  granularity, 2026 to date only, with split days (morning one place,
+  afternoon another), so the releve's annex shows half-days.
+
+Each account's settings must agree with its entries. A day recorded as
+detected while the account was in manual mode is a contradiction the
+seed must not contain.
+
+====================================================================
+SEEING IT
+====================================================================
+1. Seed. Read each account's dossier back through /api/v1/dossier for
+   both years and record the headline figures - the declarable rate,
+   the days each side, missions France and third-state, absences - so
+   the report carries numbers, not impressions.
+2. On the phone, sign in as each account through the debug session path
+   (R284). Open the releve. Export the PDF and open it. Capture and
+   describe every screen, default size and 200 percent.
+3. TWO THINGS TO CHECK ON THE WAY:
+   - CAN THE APP SHOW LAST YEAR'S RELEVE? People file year N in the
+     spring of year N+1, so from January the releve they need is the
+     PREVIOUS year's. If the app only shows the current year, add a
+     year switch to the releve screen, reading /api/v1/dossier?year= -
+     a read-only view of data the server already holds (R328). If it
+     can already, say how.
+   - DOES THE APP PULL A YEAR FROM THE SERVER ON SIGN-IN? The seeded
+     days exist on the server, not in the phone's local store. If the
+     calendar and Aujourd'hui stay empty while the releve shows the
+     year, record it plainly: it is what a person signing in on a NEW
+     PHONE would see. Do not build a pull here - report it, with what
+     fixing it would take.
+
+====================================================================
+READ THE RELEVE AS AN ACCOUNTANT WOULD - AGAINST THIS LIST
+====================================================================
+The operator's chat side researched what the employer's annual
+declaration and the cantonal guidance contain. For each item, say
+whether the releve shows it - on screen and in the PDF - and where:
+  1. The period: the calendar year, or the exact dates for a partial
+     year.
+  2. The telework rate, calculated as telework days plus at most 10
+     mission days, over total working days - the formula the federal
+     tax administration gives employers.
+  3. The rate WITHOUT missions, because when it is 40 percent or less,
+     the rate reported can never exceed 40 percent, whatever the
+     missions.
+  4. Telework days from France, as a count.
+  5. Mission days, France and third states SEPARATELY, and how many are
+     counted in the rate (at most 10).
+  6. The basis: total working days, and the activity rate behind it.
+  7. Both thresholds, each named: 40 percent fiscal, 49,9 percent social
+     security (which applies with the employer's A1 telework
+     certificate).
+  8. The day-by-day calendar.
+  9. The person's name and the date the document was produced.
+ 10. That this is the person's own record, and that the official
+     declaration is the employer's.
+Report each as SHOWN / SHOWN DIFFERENTLY / MISSING. DO NOT ADD A
+MISSING ITEM IN THIS TASK unless it is pure presentation of a figure the
+dossier payload already carries - anything needing a new figure or a
+new field is a PARKAN entry with what it would take. The employer's
+name, in particular, is not stored: park it, do not add a field.
+
+====================================================================
+REPORT - REPORT-SEED-RELEVE.txt
+====================================================================
+HOW IT ENDED / R273 (what seed existed, and what was reused) / THE
+ACCOUNTS (each scenario and its settings) / THE HOLIDAY DATES COMPUTED /
+THE FIGURES READ BACK (per account, per year) / THE PHONE (every screen
+and the PDF, described) / LAST YEAR'S RELEVE (shown, or the switch
+added) / A NEW PHONE (does the app pull the year?) / THE TEN-ITEM
+READING (each: shown, shown differently, missing) / PARKED / DEVIATIONS
+/ QUESTIONS / PUSH PROOF
+
+END OF SEED-RELEVE PROMPT

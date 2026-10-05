@@ -1,0 +1,185 @@
+AN-ONBOARD SESSION PROMPT - Mon Releve
+SIGN-IN WITH A CODE, AND THE NEW ONBOARDING - BUILT AS DESIGNED
+Paste into a fresh Claude Code session at the repository root, after
+the Android chain (AN-HOME, AN-CAL2, AN-PARAMS) has finished - this
+task shares the theme and the screenshot baselines. The physical phone
+(Galaxy S9, API 29) is connected.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+Do not stop to report progress or ask a question; judgment calls go to
+the advisors, recorded in the report; if an advisor does not answer,
+take the conservative, reversible option (R156). Ends in four ways,
+each with REPORT-AN-ONBOARD.txt committed and pushed: DONE; a HARD
+BOUNDARY; NO PROGRESS; a DEGRADED CONTEXT. R300: if another session
+pushes to main, work on a branch. R270 applies.
+
+HARD BOUNDARIES:
+  - No change to either engine.
+  - /v1 changes ADDITIVE ONLY: new endpoints and new fields; nothing
+    renamed, removed or changing meaning. The App Link callback stays
+    exactly as R195 froze it - the code is an ADDITIONAL way in.
+  - No real person: every sign-in email in development and tests goes
+    to the fake outbox (FW14's boundary, R243). Test addresses use the
+    reserved .invalid domain.
+  - D16, D18 absolute. Restore every phone setting changed. No red
+    commit.
+
+R273. Check tasks/todo.md first; say where this belongs.
+R0. Read REPORT-AN4.txt (the sign-in this extends), REPORT-AN5b.txt
+    (the onboarding this replaces), REPORT-FW22.txt (the server's
+    sign-in), DESIGN-SYSTEM.md, and design/onboarding/README.md.
+R1. pnpm gate:clone and :app:gate green on origin/main's HEAD.
+
+====================================================================
+THE DESIGN IS DECIDED
+====================================================================
+The operator approved eleven screens on the design canvas. They are in
+the repository as design/onboarding/*.dc.html, with a README. THEY ARE
+THE REFERENCE FOR WHAT EACH SCREEN CONTAINS, ITS ORDER, ITS LAYOUT AND
+ITS COPY - copy WORD FOR WORD, moved into fr/ (R206, R238). Build them
+"as they are"; where you believe a screen should differ, build it as
+designed and say why in the report.
+
+They are HTML mock-ups, not code to port. Build in Compose, Material 3
+inside FrontierTheme, every colour, size, radius and duration from the
+tokens. A value in the mock-up with no token: use the nearest token and
+list it. The example person (Camille Martin, Geneve, 100 percent, from
+01.07.2026) is sample data, not copy. One operator edit to note: the
+final screen's button reads "Continuer", and it leads to Aujourd'hui.
+
+THE FLOW:
+  Bienvenue -> Connexion (email) -> Verifiez votre messagerie (code)
+  -> 1 Votre nom -> 2 Canton -> 3 Taux d'activite -> 4 Methode
+  -> 5 Toute l'annee ? -> 6 Mode de saisie -> 7 Rappel du soir
+  -> Tout est pret -> Aujourd'hui.
+  The welcome screen shows on a fresh install only. A signed-in person
+  whose settings are complete goes straight to Aujourd'hui. A person
+  who signs in again on a new phone and already has settings on the
+  server skips the steps they have answered (R297: settings come back
+  from GET /api/v1/me).
+
+====================================================================
+1. A SIX-DIGIT CODE ALONGSIDE THE LINK (SERVER, THEN APP)
+====================================================================
+WHY. The sign-in link can open the app only once monreleve.ch exists
+and its App Link is verified; until then it opens a browser and the
+sign-in fails. And people often read email on another device. A code
+in the same email works from anywhere and does not depend on the
+domain. It is the most important part of this task.
+
+THE SERVER, test-first:
+  - The same email carries the link AND a 6-digit code, both tied to
+    the same single-use sign-in request and expiring together. Using
+    either one consumes both.
+  - The code is stored HASHED, never in clear, and compared in constant
+    time.
+  - A limit on wrong attempts per request - after it, the request is
+    dead and the person asks for a new one - plus the existing rate
+    limits per address and per network source. State the numbers you
+    choose and why; six digits are safe ONLY with an attempt limit.
+  - A new endpoint to exchange email + code for the same session the
+    link gives - the same tokens, the same rotation and replay rules
+    (R193, R210). The response for an address that does not exist is
+    the same as for a wrong code: no enumeration (FW22).
+  - Each refusal named (R198): wrong code, expired, too many attempts,
+    rate-limited.
+  - The email template shows the code clearly, in French, beside the
+    link. In tests and development, read it from the fake outbox.
+  - docs/api-v1.md documents the endpoint; the document-and-schema
+    drift test covers it.
+
+THE APP:
+  - THE EMAIL SCREEN: one field, marked as an email address for
+    Android's autofill, so the phone suggests the owner's address
+    (verify the suggestion appears on the S9). THE APP NEVER STORES THE
+    LAST EMAIL: on a shared or handed-on phone it would be a trace of
+    the previous person (R295). The consent line links the CGU and the
+    privacy policy.
+  - THE CODE SCREEN: six boxes; each digit moves to the next box;
+    pasting a six-digit code fills all six; the sixth digit submits.
+    The address typed is shown, with "Modifier" back to the email
+    screen. "Ouvrir ma messagerie" opens the email app. Resending waits
+    out a visible countdown. Each refusal has its own French message;
+    wrong-code messages say how to recover, never just "erreur".
+  - The App Link callback keeps working exactly as before.
+
+====================================================================
+2. THE ONBOARDING STEPS
+====================================================================
+- PROGRESS: "Etape N sur 7" with the segmented bar; Back always works
+  and keeps what was entered.
+- 1 NAME: "tel qu'il figurera sur votre releve", with the small
+  preview. The PDF refuses to generate without the holder's name
+  (R205). FIND OUT FIRST whether the name is stored and settable today.
+  If it is not, add it - an additive /v1 field on /me, a real Room
+  migration if the phone keeps it, and its line in the privacy notice
+  and privacy map. If it already exists, use it.
+- 2 CANTON: the searchable list, the employer's canton.
+- 3 RATE: the quick choices, "Autre" revealing a field; validation
+  reuses the existing rules (R196) - no third copy.
+- 4 METHOD: the two explained choices.
+- 5 ALL YEAR?: "Oui" means no start date; "Non" reveals Material 3's
+  date picker, shown in Swiss format (dd.MM.yyyy), stored as the ISO
+  day string it always was (R28). Same stored data as today.
+- 6 RECORDING MODE: manual selected by default; choosing automatic
+  goes through the existing disclosure screen before the system
+  prompt (R316) and records consent as today (R315). The two are
+  presented as equals.
+- 7 EVENING REMINDER: "Oui, me le rappeler" turns on the R323
+  notification and asks Android's notification permission ONLY then,
+  and only where Android requires it (13 and later - the S9 runs 10,
+  so test both paths); "Pas maintenant" turns nothing on.
+- TOUT EST PRET: the releve's identification block - name, canton,
+  rate, method, period - from the values just saved, then "Continuer"
+  to Aujourd'hui.
+- SAVING: settings go to PATCH /api/v1/me exactly as today. Nothing
+  about what is stored or computed changes beyond the name, if it was
+  missing.
+
+====================================================================
+3. QUALITY
+====================================================================
+- R310: every screen keeps its state - typed text, choices, the code
+  digits, the open date picker - across rotation, a text-size change,
+  dark mode and a background kill.
+- 200 percent text on every screen; TalkBack reads each field, choice
+  and step, and the code boxes as "chiffre 1 sur 6" and so on.
+- Icons: the Lucide glyphs the screens use, added as vector drawables
+  (R293), their ISC attribution on the licences screen.
+- The logo from the logo kit, if installed; if not, install the mark
+  from it for these screens.
+- Screenshot baselines for every screen, regenerated with reasons
+  (R135, R207).
+
+====================================================================
+DONE
+====================================================================
+  O1. Server: the code, hashed, single-use with the link, attempt-
+      limited, rate-limited, no enumeration, each refusal named - all
+      test-first; the drift test covers the new endpoint.
+  O2. ON THE S9, against the production container: a fresh install
+      goes Bienvenue -> email -> code read from the fake outbox and
+      typed on the phone -> all seven steps -> Tout est pret ->
+      Aujourd'hui. Then sign out, sign in again with a code, and land
+      on Aujourd'hui with every step skipped.
+  O3. The existing App Link sign-in still works when fired with adb,
+      as AN4 proved it.
+  O4. The PDF generates with the name entered at step 1.
+  O5. Every screen captured on the phone and opened, at default size
+      and 200 percent; state kept across the four triggers.
+  O6. Gates green and gate:clone passing on the final commit.
+
+====================================================================
+REPORT - REPORT-AN-ONBOARD.txt
+====================================================================
+HOW IT ENDED / R273 / THE CODE ON THE SERVER (the limits chosen and why;
+each test) / THE NAME (was it stored before? what was added) / EACH
+SCREEN AGAINST ITS DESIGN FILE (built as designed, or how and why it
+differs) / TOKENS USED WHERE THE MOCK-UP HAD NONE / THE WALKTHROUGH
+(O2, O3, O4 - every screen described) / STATE AND ACCESSIBILITY /
+ADVISOR DECISIONS / PHONE SETTINGS CHANGED AND RESTORED / PARKED /
+DEVIATIONS / QUESTIONS / PUSH PROOF
+
+END OF AN-ONBOARD PROMPT
