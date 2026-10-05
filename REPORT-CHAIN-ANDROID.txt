@@ -39,7 +39,7 @@ PER-TASK (final commit / how it ended / gate)
    - bdae687 (merge). DONE. gate:clone + :app:gate green.
    - One list from three input styles; AAAA-MM-JJ -> M3 date picker
      (Swiss display, ISO storage); "GE" -> "Geneve"; per-sheet save;
-     "(beta)" -> "(bêta)" accented; title -> h2. Fence 4 satisfied with
+     "(beta)" gained its missing accent (e-circumflex); title -> h2. Fence 4 satisfied with
      ZERO @Suppress in ui/ (EditSheetFrame/InfoSheets bundles). Same
      behaviour, no engine/v1 change.
 
