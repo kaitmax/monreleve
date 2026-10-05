@@ -28,6 +28,7 @@ private const val KEY_DENOMINATOR_KIND = "denominatorKind"
 private const val KEY_EXACT_TOTAL = "exactTotalWorkDays"
 private const val KEY_GRANULARITY = "granularity"
 private const val KEY_ACTIVITY_START = "activityStartDate"
+private const val KEY_NAME = "name"
 private const val ABSENT_INT = -1
 
 class SharedPrefsSettingsStore(context: Context) : SettingsStore {
@@ -48,6 +49,7 @@ class SharedPrefsSettingsStore(context: Context) : SettingsStore {
             exactTotalWorkDays = if (exactTotal == ABSENT_INT) null else exactTotal,
             granularity = granularity,
             activityStartDate = prefs.getString(KEY_ACTIVITY_START, null),
+            name = prefs.getString(KEY_NAME, null),
         )
     }
 
@@ -59,6 +61,7 @@ class SharedPrefsSettingsStore(context: Context) : SettingsStore {
             .putInt(KEY_EXACT_TOTAL, settings.exactTotalWorkDays ?: ABSENT_INT)
             .putString(KEY_GRANULARITY, settings.granularity)
             .putString(KEY_ACTIVITY_START, settings.activityStartDate)
+            .putString(KEY_NAME, settings.name)
             .commit()
     }
 

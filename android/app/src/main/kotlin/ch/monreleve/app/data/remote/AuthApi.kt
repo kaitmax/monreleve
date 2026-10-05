@@ -50,6 +50,28 @@ sealed interface CallbackResult {
 }
 
 /**
+ * AN-ONBOARD: the outcome of exchanging a six-digit code. `Signed` carries the pair from a 200 - the same
+ * session the callback opens. Each refusal is its OWN result, because unlike the callback (one 400 for
+ * everything) the code endpoint names them so the screen can tell the person how to recover: `WrongCode`
+ * (check the digits or ask again), `Expired`, `TooManyAttempts` (the request is spent), `RateLimited`.
+ * `Failed` is the network/malformed/unknown-code case - an unrecognised code is preserved, never guessed
+ * into a known one (contract 6.5).
+ */
+sealed interface CodeExchangeResult {
+    data class Signed(val pair: TokenPair) : CodeExchangeResult
+
+    data object WrongCode : CodeExchangeResult
+
+    data object Expired : CodeExchangeResult
+
+    data object TooManyAttempts : CodeExchangeResult
+
+    data object RateLimited : CodeExchangeResult
+
+    data class Failed(val failure: ApiFailure) : CodeExchangeResult
+}
+
+/**
  * The outcome of a refresh. `Rotated` is a new pair; `Invalid` is the server's ONE
  * 401 answer for every unusable refresh token - unknown, expired, already rotated,
  * revoked, AND a detected replay - because the server refuses to say which
@@ -140,6 +162,36 @@ class AuthApi(
                     ?: CallbackResult.Failed(ApiFailure.Malformed("callback 200 carried no token pair"))
             HTTP_BAD_REQUEST -> CallbackResult.InvalidLink
             else -> CallbackResult.Failed(parseServerFailure(response.status, response.body))
+        }
+    }
+
+    /**
+     * AN-ONBOARD: exchange an address and a six-digit code for a token pair. Like the callback it opens the
+     * same session; unlike the callback it maps each NAMED refusal (docs/api-v1.md 1.4/1.6) to its own result.
+     * The code travels in the body of a POST to the app's OWN base url.
+     */
+    suspend fun exchangeCode(
+        email: String,
+        code: String,
+    ): CodeExchangeResult {
+        val response =
+            try {
+                transport.execute(
+                    HttpRequest(
+                        method = HttpMethod.POST,
+                        url = "$baseUrl/api/v1/auth/code",
+                        headers = mapOf("Content-Type" to "application/json"),
+                        body = JSONObject().put("email", email).put("code", code).toString(),
+                    ),
+                )
+            } catch (e: IOException) {
+                return CodeExchangeResult.Failed(ApiFailure.Network(e.message ?: "network unreachable"))
+            }
+        return when (response.status) {
+            HTTP_OK ->
+                parseTokenPair(response.body)?.let { CodeExchangeResult.Signed(it) }
+                    ?: CodeExchangeResult.Failed(ApiFailure.Malformed("code 200 carried no token pair"))
+            else -> codeRefusalOf(parseServerFailure(response.status, response.body))
         }
     }
 
@@ -318,6 +370,20 @@ internal fun filenameOf(headers: Map<String, String>): String? {
             ?: return null
     return FILENAME.find(disposition)?.groupValues?.get(1)?.trim()?.ifEmpty { null }
 }
+
+/**
+ * AN-ONBOARD: map a code-exchange refusal to its result. Branch on the RAW wire code, not AuthServerCode:
+ * these are exchange-specific refusals, outside the bearer/token code family, and an unrecognised one stays
+ * Failed with its raw code intact (contract 6.5).
+ */
+internal fun codeRefusalOf(failure: ApiFailure.Server): CodeExchangeResult =
+    when (failure.rawCode) {
+        "invalid_code" -> CodeExchangeResult.WrongCode
+        "code_expired" -> CodeExchangeResult.Expired
+        "too_many_attempts" -> CodeExchangeResult.TooManyAttempts
+        "rate_limited" -> CodeExchangeResult.RateLimited
+        else -> CodeExchangeResult.Failed(failure)
+    }
 
 /** The token pair carried by a callback or refresh 200, or null if the body is not that shape. */
 internal fun parseTokenPair(body: String): TokenPair? =
