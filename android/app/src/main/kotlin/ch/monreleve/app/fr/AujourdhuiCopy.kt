@@ -122,4 +122,48 @@ object AujourdhuiCopy {
         morningLabel: String,
         afternoonLabel: String,
     ): String = "$MORNING : $morningLabel — $AFTERNOON : $afternoonLabel"
+
+    // AN-HOME section C « À traiter » (R328): the action card, shown ONLY when there is something to act on
+    // (never an empty box). The lines are action-framed and derive from the SAME state the year panel's
+    // rate-honesty note derives from (YearPanel.unsyncedDays / .pendingLateness, one source, R181) - not a
+    // second copy of that sentence. Counts are runtime figures (R153); the late threshold is interpolated
+    // from the shared source (R153/R181), never typed.
+    const val ATTEND_HEADING = "À traiter"
+    const val ATTEND_SEE_CALENDAR = "Voir le calendrier"
+
+    /** « 3 jours non renseignés ce mois » - past working days this month with no entry (C's primary item). */
+    fun attendUnrecorded(days: Int): String {
+        val plural = if (days > 1) "s" else ""
+        return "$days jour$plural non renseigné$plural ce mois"
+    }
+
+    /**
+     * « 3 journées en attente d'envoi » - recorded days not yet sent (C). ESCALATES as the oldest nears the
+     * late-saisie threshold (R286): APPROACHING warns, OVERDUE says the threshold is passed. The threshold is
+     * interpolated (R153); latenessName is the PendingLateness `.name` (the DayCellCopy pattern), so fr/ needs
+     * no import of the controller's enum.
+     */
+    fun attendUnsent(
+        unsentDays: Int,
+        latenessName: String,
+        thresholdDays: Int,
+    ): String {
+        val plural = if (unsentDays > 1) "s" else ""
+        val base = "$unsentDays journée$plural en attente d’envoi"
+        return when (latenessName) {
+            "APPROACHING" -> "$base : reconnectez-vous avant le seuil de saisie tardive ($thresholdDays jours)."
+            "OVERDUE" -> "$base : le seuil de saisie tardive ($thresholdDays jours) est dépassé, reconnectez-vous."
+            else -> "$base."
+        }
+    }
+
+    // AN-HOME section E « Cette semaine » (R328): the Monday-Friday week strip's heading. The weekday letters,
+    // the kind legend words and the quality words are NOT held here - their one homes are CalendarCopy and
+    // LegendCopy (R206), and this section reads them, so the home and the calendar cannot drift apart.
+    const val WEEK_HEADING = "Cette semaine"
+
+    // AN-HOME section F « Ce mois » (R328): the recorded-days-by-kind heading. The four kind labels read from
+    // LegendCopy (R206, the same home the calendar's month tiles use), so « Ce mois » and the calendar name
+    // the kinds identically.
+    const val MONTH_HEADING = "Ce mois"
 }

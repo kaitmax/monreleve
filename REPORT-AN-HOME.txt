@@ -6,321 +6,319 @@ Pure ASCII. French copy is written here without accents by transport constraint
 ====================================================================
 HOW IT ENDED
 ====================================================================
-PARTIAL, GREEN, PUSHED - the operator's MAIN request is DONE and proven on the
-physical phone; three informational sections are OWED behind a stop-and-ask line.
+DONE, GREEN, MERGED TO MAIN. The operator's main request (section 1, the choice
+closing into the answer) and sections A/D landed earlier on origin/main; this
+session (chain task 2b) added the owed sections C/E/F under R328 and wired
+RegisterCoverageTest into gate:clone under R327. All of AN-HOME is now on main.
 
-  DONE (committed + pushed to origin/an-home, each on a green :app:gate, the
-  milestone on a green gate:clone):
-    - incr 0a: fixed an inherited RED base (R1 finding, below).
-    - incr 0b: Motion duration tokens + closed-set test + Fence 8 (R269/R77).
-    - incr 1: SECTION 1 - the choice CLOSES into the answer line (the operator's
-      main request), with Modifier/Annuler, half-day, sync truth, provenance,
-      motion, reduced motion, a polite live region + focus, and R310 editing state.
-    - incr 2: SECTION A (header date) + SECTION D (year hero card, 300 ms number
-      animation).
-    All four were driven on the Galaxy S9 (SM-G960F, API 29) - see EACH SECTION
-    and THE CHOICE TRANSITION.
+  This session (branch an-home-cef from origin/main 7fa1453), oldest first,
+  each on a green :app:gate, the branch HEAD on a green :app:gate AND gate:clone:
+    - incr 0 (R327): RegisterCoverageTest wired into gate:clone, ONE definition.
+    - C/E/F (R328): the three read-only Aujourd'hui sections + the one-way-of-
+      counting test; driven on the Galaxy S9 (SM-G960F, API 29).
+  PARKAN-39 (the stop-and-ask that owed C/E/F) is RESOLVED and closed.
 
-  OWED (PARKAN-39, a stop-and-ask, NOT started): SECTION C (A traiter), SECTION E
-  (Cette semaine) and SECTION F (Ce mois). Each needs data the Aujourd'hui UI does
-  not hold today (past-unrecorded days, the week's cells, the month's counts),
-  derivable only in AujourdhuiController - a NON-UI change the relay says to STOP
-  and ask an advisor about ("is it truly presentation-only?") before doing. The
-  advisor was unreachable all session (orchestrator directive: it has stalled), so
-  R156 fail-closed: everything that needs NO controller change was built and
-  proven; C/E/F were left owed with the full handoff below, rather than
-  autonomously crossing the hard boundary. The branch is NOT merged (H3 is not
-  met); origin/main is untouched, an-home carries the work for resume.
+  Advisor: UNREACHABLE all session (orchestrator directive: it has stalled). Every
+  judgment call below is the conservative option, recorded (R156).
 
 ====================================================================
 R273 - WHERE THIS WORK BELONGS
 ====================================================================
 Not a numbered tasks/todo.md task; it is the chain's AN-HOME refinement of
-Aujourd'hui, building on AN5b (manual UI) and AN9 (auto mode). The closest
-numbered tasks are AN5b ("Aujourd'hui manual UI") and AN9 ("Aujourd'hui - auto
-mode"); AN-HOME re-presents both without changing what a tap records. Recorded
-here, not invented.
+Aujourd'hui, building on AN5b (manual UI), AN9/AN-AUTO (auto mode) and AN10 (the
+calendar, whose CalendarModel this reuses). The closest numbered tasks are AN5b and
+AN9; AN-HOME re-presents both without changing what a tap records. R327 is gate
+infrastructure (the chain's first task to touch the gate after the inherited red).
 
 ====================================================================
-R1 - THE BASE WAS RED (inherited), FIXED FIRST (incr 0a, commit 3fc413e)
+INCREMENT 0 - R327: RegisterCoverageTest WIRED INTO gate:clone (ONE definition)
 ====================================================================
-:app:gate on origin/main (0175a54) FAILED: RegisterCoverageTest >
-everyCitedRegisterEntryHasARealEntry - REPORT-AN-NEXT-2.txt cites PARKAN-37 and
-PARKAN-38 but parking.md carried only STATUS LEDGER rows, not the required
-"## PARKAN-37 -" / "## PARKAN-38 -" heading sections. gate:clone runs only the web
-pnpm legs, so AN-NEXT-2's merge never ran this android JVM test and the red reached
-main. Minimal documentation fix: added the two missing heading sections,
-transcribed from the ledger rows and REPORT-AN-NEXT-2.txt. No product code. :app:gate
-then BUILD SUCCESSFUL. Recorded as a deviation; it is AN-NEXT-2's cleanup, but a red
-base blocks every commit (R132), so it had to be resolved to proceed.
+THE DEFECT: RegisterCoverageTest (every PARK-/PARKAN- id a REPORT cites must have a
+"## <id> -" heading in parking.md) ran ONLY in the Android suite
+(:app:testDebugUnitTest). gate:clone - the PUSH gate - does not run the Android
+suite, so a report commit citing a heading-less id could red :app:gate AFTER it had
+already left this machine through a push. AN-NEXT-2's PARKAN-37/38 did exactly that,
+and main went red between tasks.
+
+THE FIX (R206 - ONE definition, not a copy that can drift): the check is a
+REPOSITORY-WIDE DOCUMENT check (parking.md + the repo-root reports, no Android code
+but a path helper), so its LOGIC moved to one place both gates invoke as a
+subprocess - web/scripts/register-coverage.mjs (pure Node, fs only):
+  - gate:clone runs it FIRST (cheapest signal, before install), against the clone's
+    own copy of the script and documents;
+  - RegisterCoverageTest.kt now shells out to the SAME script via ProcessBuilder, so
+    :app:gate still enforces it. node is on PATH wherever :app:gate runs (this
+    machine; the ubuntu-latest Android CI job, where it is preinstalled); a missing
+    node fails LOUDLY (R133), never a silent pass.
+Gradle-in-the-clone was REJECTED (conservative, R156): the clone has no
+local.properties and ANDROID_HOME is unset, and a cold Android compile is far too
+heavy and fragile for a push gate. A Node definition both gates share is the single
+source with no language-boundary drift.
+
+PROVEN (R178/R180): node web/scripts/register-coverage.mjs is GREEN on HEAD (28
+cited ids across 73 reports), RED BY NAME on a planted heading-less id (written here
+as PARKAN-NNN so this report does not itself cite a real-looking id: the check named
+it "... is cited by REPORT-ZZ-PLANT.txt but has no ## <id> - heading in parking.md"),
+GREEN after the plant was reverted. The gate:clone step was proven the same way in a
+real `git clone --local` of HEAD: GREEN, then RED by name after planting the bad
+report IN THE CLONE, run exactly as gate:clone runs it (cwd=clone/web). The Kotlin
+test was GREEN clean and RED on the same plant via gradle. R283: the script is a
+declared :app:testDebugUnitTest input, so an edit to it re-runs the test.
+gate-clone-cleanup.test.ts updated 3 -> 4 GateCloneFailure throws: the new step
+throws like the others so cleanup runs on its failure too (FW32 AC1's invariant, not
+an exception). gate:clone's "ran" line and claim sentence now name register-coverage.
 
 ====================================================================
 WHAT CHANGED AND WHAT DID NOT (the proof behaviour did not change)
 ====================================================================
-FILES TOUCHED - product:
-  design/Tokens.kt               Motion object (durations) + Size.rule (1 dp border).
-  fr/AujourdhuiCopy.kt           answer-line copy (kindLabel, answerHalfDay, MODIFIER,
-                                 SYNCED, PENDING reworded, CANCEL->CalendarCopy ref;
-                                 recordedLabel renamed to kindLabel, EDIT_HINT removed).
-  ui/screens/aujourdhui/ChoiceCard.kt     NEW - the choice card (options <-> answer).
-  ui/screens/aujourdhui/ChoiceMotion.kt   NEW - the shared motion specs + reduce-motion.
-  ui/screens/aujourdhui/AujourdhuiScreen.kt  Header (section A), ChoiceCard wiring,
-                                 YearHeroCard + animated numbers (section D), RecordSection
-                                 stripped of its inline recorded row.
-  ui/screens/aujourdhui/AujourdhuiAuto.kt  ETAT C re-presented through AutoRecordedSlot
-                                 (the same answer card).
-FILES TOUCHED - tests / baselines / docs (all UI/copy/token layer or docs):
-  test/design/MotionTest.kt      NEW - the Motion closed-set + object census.
-  test/fences/FencesTest.kt      Fence 8 (no raw animation-duration literal in ui//design/).
-  test/fr/AujourdhuiCopyTest.kt  added kindLabel/answerHalfDay/sync-truth cases.
-  test/.../AujourdhuiScreenScreenshotTest.kt  +2 states; baselines regenerated.
-  21 aujourdhui paparazzi baselines regenerated.
-  parking.md                     PARKAN-37/38 headings (R1 fix) + PARKAN-39.
-  REPORT-AN-HOME.txt             this file.
+FILES TOUCHED THIS SESSION - R327 (gate infrastructure + one doc guard):
+  web/scripts/register-coverage.mjs    NEW - the one definition of the check.
+  web/scripts/gate-clone.mjs           runs register-coverage first; names it in the
+                                       ran/claim lines.
+  web/tests/unit/meta/gate-clone-cleanup.test.ts  3 -> 4 GateCloneFailure throws.
+  android/.../register/RegisterCoverageTest.kt  shells to the one definition.
+  android/app/build.gradle.kts         the script declared as a test input (R283).
 
-NOT TOUCHED (the hard boundary): the mutation queue, sync, the Room schema, the
-detection logic and R311-R320, the engine (web/lib/calc-engine and android .../calc),
-the /v1 contract, account scoping (R303), and every other screen. NO test outside
-the UI layer and its screenshot baselines was MODIFIED. Every existing behaviour
-test passed UNCHANGED - :app:gate (933+ tests, including AujourdhuiControllerTest,
-AujourdhuiAutoControllerTest and MainGraphWiringTest) is green on the final commit.
-The new tests are additive (MotionTest, Fence 8, the copy cases). D16 holds: the
-record callback is still the only writer; the card's open/close never writes.
+FILES TOUCHED THIS SESSION - C/E/F (presentation + the read-only projection):
+  aujourdhui/AujourdhuiController.kt    emitState computes three read-only
+                                       projections (ToAttendTo, week cells, month
+                                       summary) from entries it already holds; the
+                                       year panel is computed once and reused (R206).
+  calendar/CalendarModel.kt            MonthSummary.absent (additive, defaulted);
+                                       dayCellUi extracted (shared by the month grid
+                                       and the week strip); weekdayCells added.
+  ui/screens/aujourdhui/AujourdhuiScreen.kt  renders C/D/E/F in order; callbacks
+                                       bundle into AujourdhuiActions.
+  ui/screens/aujourdhui/AujourdhuiSections.kt  NEW - the C/E/F composables.
+  ui/screens/calendrier/CalendrierScreen.kt  LIST_FONT_SCALE_THRESHOLD made internal
+                                       so the week strip reuses the one home (R206).
+  fr/AujourdhuiCopy.kt                 C/E/F copy (headings, the two A-traiter lines,
+                                       the calendar link).
+  MainActivity.kt                      the Aujourd'hui call site passes
+                                       AujourdhuiActions with onNavigateToCalendrier.
+  test/.../AujourdhuiSectionsTest.kt   NEW - the one-way-of-counting test (additive).
+  test/.../AujourdhuiScreenScreenshotTest.kt  +4 states (host uses AujourdhuiActions).
+  4 NEW aujourdhui paparazzi baselines.
+  parking.md                           PARKAN-39 resolved (ledger + heading note).
+  REPORT-AN-HOME.txt                   this file.
+
+NOT TOUCHED (the hard boundary, D18/D16 absolute): the engine (web/lib/calc-engine
+and android .../calc), the /v1 contract, the Room schema, the mutation queue, sync,
+the detection logic and R311-R320, account scoping (R303), and every OTHER screen.
+NO test OUTSIDE the ui/ layer was MODIFIED for C/E/F - the one non-ui change is the
+AujourdhuiController projection, which R328 rules IS presentation (a read-only
+projection of already-held entries built from CalendarModel's existing pure mappers).
+Every existing behaviour test passed UNCHANGED:
+  - CalendarModelTest reads individual summary fields; MonthSummary.absent is
+    additive and defaulted, so it is untouched.
+  - AujourdhuiControllerTest and AujourdhuiAutoControllerTest read individual state
+    fields; the three new AujourdhuiState fields are defaulted, so they are untouched.
+D16 holds: record()/recordDetected() is still the sole writer; C/E/F only READ.
 
 ====================================================================
-THE CHOICE TRANSITION (section 1, the operator's main request)
+THE CHOICE TRANSITION (section 1, the operator's main request - landed earlier)
 ====================================================================
-BEFORE a choice: the options are one white card (1 px border via Size.rule, no
-shadow) - a vertical list (En Suisse / Domicile / Mission -> En France / Pays tiers;
-"Declarer une absence" the tertiary row -> conge/maladie/ferie/autre). Vertical, so
-it survives 200 % (R271). The existing SPEC 11.2 / R285 56 dp record BUTTONS were
-KEPT (they are already Material 3, already vertical); see ADVISOR DECISIONS for why
-I did not swap them for M3 ListItem.
-
-AFTER the tap: the options close and are replaced, IN THE SAME CARD, by one compact
-answer line + a "Modifier" TEXT button (a word, so TalkBack reads it):
-  - a full day: the kind ("En Suisse") + the sync truth.
-  - a half-day pair: BOTH halves - "Matin : Domicile - Apres-midi : En Suisse"
-    (R292, never one label); proven by the aujourdhuiHalfDayComplete baseline.
-  - sync truth, persistent, never a toast: "Enregistre sur le telephone, en attente
-    d'envoi" until synced, then "Enregistre" (aujourdhuiDaySynced baseline).
-  - a detected day keeps its provenance line ("Detecte automatiquement, confirme par
-    vous") - kept as built (section B), aujourdhuiAutoConfirmed baseline.
-
-MODIFIER reopens the options with the current choice marked; "Annuler" closes them
-again WITHOUT writing (it only flips the editing flag; the record callback is the
-only writer). Proven on the phone: tap En Suisse -> closed answer; Modifier -> options
-with En Suisse FILLED (marked) + Annuler; Annuler -> back to the answer, the year
-panel unchanged (no new write).
-
-MOTION - DESIGN-SYSTEM tokens only (ChoiceMotion.kt), never an invented number: the
-options fade + the card height shrinks to the answer over Motion.standardMillis
-(200 ms), no bounce; reopening is the reverse. Number changes in the year panel
-animate over Motion.numbersMillis (300 ms). NO celebration (no checkmark/scale/
-confetti) - the confirmation IS the answer appearing (DESIGN-SYSTEM section 2).
-
-REDUCED MOTION: rememberReduceMotion() reads Settings.Global.ANIMATOR_DURATION_SCALE;
-0 ("Remove animations") makes every transition snap() - instant, nothing half-drawn.
-Driven on the phone with animator_duration_scale 0: the answer rendered cleanly.
-
-ACCESSIBILITY: the answer is a POLITE live region (semantics { liveRegion =
-Polite }), so TalkBack announces it when the options close; focus lands on "Modifier"
-on that close (FocusRequester, best-effort after the enter settles, and only on a
-within-session close so a config change does not steal focus). TalkBack was NOT
-enabled in this driven run (it needs the accessibility service toggled + announcement
-capture, which the uiautomator harness does not read back); the live-region semantics
-are in the code and the "Modifier" is a word, not a pencil, so the announcement is a
-real sentence. This is the one H4 sub-item not literally captured - stated plainly.
-
-STATE (R310): the editing-open flag is rememberSaveable (Bundle-backed, like every
-other state after AN-STATE). Proven on the phone: reopened the options (Modifier),
-rotated to landscape - the options were STILL open and En Suisse STILL marked
-(home-07-rotated-editing.png). (The "Annuler" text-probe read ABSENT after rotation
-only because it sits below the landscape fold; the screenshot shows the card open.)
+Unchanged this session and already on main (commit 12f69a1): the options are a
+vertical list in one white card (1 px border via Size.rule, no shadow); after the
+tap they close into one compact answer line + a "Modifier" TEXT button. A half-day
+shows BOTH halves (R292); the sync truth is persistent, never a toast ("Enregistre
+sur le telephone, en attente d'envoi" -> "Enregistre"); a detected day keeps its
+provenance line. "Annuler" writes nothing. Motion uses DESIGN-SYSTEM tokens
+(ChoiceMotion.kt, 200 ms close / 300 ms numbers, no celebration); reduced motion
+snaps instantly. The answer is a polite live region; focus lands on "Modifier".
+R310: the editing-open flag is rememberSaveable. (Full detail in the git history of
+this file; this session did not change section 1.)
 
 ====================================================================
 EACH SECTION A TO F
 ====================================================================
-A. HEADER - DONE. Greeting ("Bonjour Camille") + today's date in Europe/Paris,
-   formatDayLong(state.today) -> "Dimanche 4 octobre 2026" on the phone. The date is
-   worked out when used (F8): the controller recomputes today from the clock on
-   resume; the UI formats state.today at render.
-B. TODAY - DONE. The choice card (section 1). In automatic mode the existing states
-   are re-presented unchanged (WORDING STAYS AS BUILT): Detecting ("Votre journee
-   vous sera proposee ce soir" + "Saisir maintenant"), the proposal (Confirmer/
-   Corriger), not-sure (R312), the near-border notice once. ETAT C now closes into
-   the same answer card. The 6 auto Detecting/Proposal/NotSure/NearBorder baselines
-   stayed BYTE-IDENTICAL through incr 1 (only their header changed in incr 2).
-C. A TRAITER - OWED (PARKAN-39). Needs the controller to surface unrecorded past
-   working days (not in state today) + the already-held unsynced count + R286 warning.
-D. THE YEAR - DONE. Given the visual weight of a HERO status card (radius 20, padding
-   24, 1 px border): ZoneBadge, RateDisplay (raw rate when it differs, R224),
-   ThresholdRail, the two remaining-day tiles (negative named by threshold, R73). No
-   second arithmetic (FW12). Numbers animate 300 ms, zone/label from the target (no
-   flicker). Seen on the phone (0,00 % after one En Suisse day; rail ticks 40/49,9).
-E. CETTE SEMAINE - OWED (PARKAN-39). Needs the week's DayCells (not in state) + the
-   legend + a navigate-to-Calendrier lambda (tap opens the calendar).
-F. CE MOIS - OWED (PARKAN-39). Needs the month's recorded-day counts by kind (not in
-   state).
+A. HEADER - DONE (earlier). Greeting + today's date in Europe/Paris
+   (formatDayLong(state.today)); on the phone this session: "Lundi 5 octobre 2026".
+   Worked out when used (F8): the controller recomputes today on resume.
+B. TODAY - DONE (earlier). The choice card (section 1); the auto states re-presented
+   unchanged (WORDING STAYS AS BUILT). ETAT C closes into the same answer card.
+C. A TRAITER - DONE (R328). A read-only ToAttendTo projection, shown ONLY when there
+   is something (null -> the section is ABSENT, never an empty box). Most urgent
+   first: the oldest unsent day, ESCALATING as it nears the late-saisie threshold
+   (R286), then the month's unrecorded working days with a "Voir le calendrier" link.
+   Reads: unsyncedDays + pendingLateness (reused from the year panel's ONE
+   computation, R206) and nonRenseigne (the current month's unrecorded count, from
+   CalendarModel.buildMonthView). On the phone: "1 journee en attente d'envoi." +
+   "2 jours non renseignes ce mois" + the link (today recorded pending; Oct 1-2 were
+   past working days with no entry).
+D. THE YEAR - DONE (earlier). The hero status card: ZoneBadge, RateDisplay (raw rate
+   when it differs, R224), ThresholdRail, the two remaining-day tiles; numbers
+   animate 300 ms. No second arithmetic (FW12). On the phone: 0,00 %, rail 40/49,9,
+   96 and 119,5 days, "dont 1 jour pas encore synchronise".
+E. CETTE SEMAINE - DONE (R328). Monday-Friday as five existing DayCells with the kind
+   AND quality legends (R119); tapping a day opens the calendar
+   (onNavigateToCalendrier). At >=1.5x text scale it becomes a LIST - the calendar's
+   OWN rule (LIST_FONT_SCALE_THRESHOLD, one home, R206/R271). Cells come from
+   CalendarModel.weekdayCells, which reuses the SAME per-day mapper (dayCellUi) the
+   month grid uses, so a day cannot read one way on the home and another in the
+   calendar. On the phone: L M M J V over days 5-9; day 5 (today) marked "S"
+   (Suisse), legends present.
+F. CE MOIS - DONE (R328). The month's recorded days by kind - Suisse, Domicile,
+   Mission, Absence - labelled as recorded counts (never a forecast). All four come
+   from the SAME MonthSummary the calendar's tiles use; the absence count is that
+   function's own absence tally (D28: not a working-day figure, shown only as a
+   recorded count). Labels read from LegendCopy (the calendar's one home, R206). On
+   the phone: Suisse 1, the rest 0 (today's recorded En Suisse).
 
-HANDOFF for C/E/F (precise, from a full read of the code, once PARKAN-39 is ruled
-in-bounds):
-  - AujourdhuiController.emitState computes three read-only projections from the
-    lastEntries it already collects (repository.observeAll): a past-unrecorded-
-    working-days count/list (C), five DayCell models Mon-Fri (E), four month counts
-    by kind (F). Add them to AujourdhuiState with DEFAULTS (safe: every controller
-    test reads individual fields, never a whole-state equals - verified).
-  - Reuse CalendarModel.kt's pure mappers (cellOf, qualityOf, serverLate, the
-    WEEKEND/isPast/inPeriod predicates) - widen their visibility or add a public
-    wrapper (they are private today). This is the "data the app already holds" the
-    relay section 2 names.
-  - Navigation (E, C): add onNavigateToCalendrier: () -> Unit = {} to AujourdhuiScreen
-    (mirrors the existing defaulted lambdas) and pass { tab = AppTab.CALENDRIER } at
-    the single call site in MainActivity.kt (tab is in scope there). MainGraphWiring
-    Test is reflection-over-DayWriter and does not break.
-  - New JVM test file (e.g. AujourdhuiSectionsTest.kt) test-first for the three
-    projections - ADDITIVE, so AujourdhuiControllerTest is not modified.
-  - New UI sections in AujourdhuiScreen.kt; C is ABSENT when empty; E becomes a list
-    above 1.5x text scale (the calendar's R271 rule). Regenerate baselines (R135/R207),
-    crop and look (R178).
+THE ONE CONDITION - ONE WAY OF COUNTING (R328, FW12's defect). The home and the
+calendar count ONE way, proven by a TEST, not by two calculations that happen to
+agree: AujourdhuiSectionsTest asserts the controller's "Ce mois" projection EQUALS
+buildMonthView(...).summary for identical inputs, that "A traiter"'s unrecorded count
+EQUALS that summary's nonRenseigne, and that "Cette semaine" EQUALS
+weekdayCells(...). Test-first: RED first (the state fields unwired -> defaults did
+not match the computed values), GREEN once emitState computed them.
 
 ====================================================================
 STATE (R310)
 ====================================================================
-The one new state AN-HOME adds is the choice card's editing-open flag (ChoiceCard and
-AutoRecordedSlot): rememberSaveable, so it survives rotation, a text-size change, dark
-mode and a background kill, like every other screen state after AN-STATE. Driven on
-the phone across rotation (DONE - options stayed open, choice stayed marked). The
-other three triggers share the identical rememberSaveable mechanism AN-STATE proved
-survives process death on this device.
+C/E/F add NO new saved state: they are pure read-only projections re-derived on every
+emitState from the entries the controller already observes, so they survive rotation,
+a text-size change, dark mode and a background kill exactly as the underlying entries
+do. The one editing-open flag (section 1) is rememberSaveable, proven earlier.
 
 ====================================================================
 BASELINES
 ====================================================================
-21 aujourdhui paparazzi baselines regenerated across two increments, each named with
-its reason and CROPPED AND LOOKED AT (R135/R207/R178), never blind-accepted:
-  incr 1 (the card + answer line): 13 modified + 2 new (aujourdhuiDaySynced,
-    aujourdhuiHalfDayComplete). The 6 auto Detecting/Proposal/NotSure/NearBorder
-    stayed BYTE-IDENTICAL (predicted and confirmed - R207).
-  incr 2 (header date on every state + hero card on year states): all 21 modified,
-    0 added/removed (predicted and confirmed).
-Looked at: RecordedPending (closed answer, pending), DaySynced (closed, synced),
-HalfDayComplete (both halves), Empty (options in card), EmptyLarge (200 % vertical,
-no overflow), AutoConfirmed (ETAT C closed), WithYear + WithYearLarge (header date +
-hero card, 200 % no overflow). No colour/radius/size/duration outside the tokens
-(Fence 3 + Fence 8 green); copy from fr/ and reachable (CopyReachabilityTest green);
-no duplicate copy (CopyDuplicationTest green).
+4 NEW aujourdhui paparazzi baselines, each named with its reason and CROPPED AND
+LOOKED AT (R135/R207/R178), never blind-accepted:
+  aujourdhuiWithSections      - A/B/C/D at default scale (C "A traiter" in view).
+  aujourdhuiWithSectionsLarge - the same at 200 % (C wraps, legible, no overflow).
+  aujourdhuiWeekAndMonth      - E (the week grid + both legends) and F, brought into
+                                the 1000 dp viewport by a compact top.
+  aujourdhuiWeekAndMonthLarge - the same at 200 %: E follows the calendar's rule and
+                                becomes a LIST (each day in words), no overflow (R271).
+0 EXISTING baselines modified (R207, predicted and confirmed): the existing states
+leave attend/week/month at their defaults, so C/E/F are absent there and every one of
+the 21 prior images is byte-identical. No colour/radius/size/duration outside the
+tokens (Fence 3 + Fence 8 green); no string literal in ui/ (Fence 4 green); copy from
+fr/ and reachable (CopyReachabilityTest green); no duplicate copy constant
+(CopyDuplicationTest green).
+
+====================================================================
+WALKTHROUGH (R176/R177/R178) - driven on the Galaxy S9 (SM-G960F, API 29)
+====================================================================
+Installed the fresh debug APK (from the green :app:gate's assembleDebug). A fake
+session + DAY settings were injected via SessionInjectionActivity (R284, debug-only,
+no email -> UNOWNED account, which the repository scopes to), then today was recorded
+by a real tap of "En Suisse" - a real pending write, so the answer line closed (B)
+and C/E/F populated from real data. Driven and OPENED at each scale:
+  DEFAULT: A "Bonjour Camille / Lundi 5 octobre 2026"; B the closed answer
+    "En Suisse / Enregistre sur le telephone, en attente d'envoi / Modifier"; C
+    "A traiter: 1 journee en attente d'envoi. / 2 jours non renseignes ce mois /
+    Voir le calendrier"; D 0,00 % with the rail, 96 and 119,5, "dont 1 jour pas
+    encore synchronise"; E "Cette semaine" L M M J V over days 5-9 (day 5 = today,
+    "S"), both legends; F "Ce mois" Suisse 1. Every section rendered and was read
+    back from the live view hierarchy.
+  200 %: C wrapped and stayed legible with no horizontal overflow; E became a LIST
+    ("Cette semaine" then one day per row); the page scrolled, never the body
+    sideways (R127's shape).
+  REMOVE ANIMATIONS (animator_duration_scale 0): the whole screen rendered cleanly,
+    nothing half-drawn; every section present.
+Each captured to android/.an-home-cef-shots (untracked). This is the dev path (the
+real app), and it AGREES with the paparazzi baselines (R177).
+NOT literally captured (stated plainly, harness limit, as in the earlier run): a
+TalkBack announcement - the a11y work is section 1's (live region + focus), unchanged
+this session; C/E/F add no new live region.
 
 ====================================================================
 ADVISOR DECISIONS / JUDGMENT CALLS (advisor NOT consulted - stalled; R156 recorded)
 ====================================================================
-The advisor was unreachable all session (orchestrator directive). Each call below is
-the conservative/fail-closed option, recorded:
-  - C/E/F OWED (PARKAN-39): a read-only controller projection is a non-UI change the
-    relay says to ask about; stalled advisor -> do not add it autonomously; build
-    everything needing no controller change and owe the rest. (The main request is
-    among what needs no controller change, so it was delivered.)
-  - KEPT the SPEC 11.2 / R285 56 dp record buttons rather than swapping to the relay's
-    "Material 3 list items": the buttons ARE Material 3 and ARE vertical; swapping to
-    ListItem would drop SPEC 11.2's "56 dp large primary button" + country dot, which
-    the HARD BOUNDARY ("the design system does not change") protects. The card + the
-    closing behaviour are what the operator actually asked for; both delivered.
-  - Size.rule (1 dp) added for the required "1 px border": the value is DESIGN-SYSTEM
-    section 1's "size-rule 1", so R77 covers it and the R285/R272 precedent governs
-    ratifying an Android token - NOT a new value, size-rule ported. (SPEC 20 ask-first
-    is about a token "outside DESIGN-SYSTEM.md"; this one is in it.)
-  - Motion tokens added citing R77 + the relay's explicit authorisation ("add them
-    citing DESIGN-SYSTEM (R77)"). Fence 8 ported BEFORE the animation code (R269),
-    proven to fire by a planted tween(200) then reverted (R178/R180).
-  - KEPT the as-built provenance wording ("Detecte automatiquement, confirme par
-    vous") rather than renaming to the relay's illustrative "propose par la detection,
-    confirme par vous": section B says WORDING STAYS AS BUILT, and the existing line
-    already says the day came from detection and was confirmed - the requirement. Less
-    copy churn, no DetectionCopyTest change.
-  - CANCEL references CalendarCopy.SHEET_CANCEL (the one home for "Annuler", which had
-    it first) rather than a second literal - R206 / CopyDuplicationTest.
-  - Number animation scoped to the rate, the rail fill and the two day counts; the
-    zone colour and the tile labels stay the TARGET's, so only figures move (no colour
-    flicker, no label flip). The day count animates but its negative flag (the label)
-    is the target's.
-  - Focus-on-close is best-effort (runCatching, after the enter settles, within-session
-    only). The live region is the load-bearing a11y mechanism.
+The advisor was unreachable all session. Each call is the conservative/single-source
+option, recorded:
+  - R327: a Node definition both gates shell to, rather than gradle-in-the-clone
+    (infeasible: no local.properties/ANDROID_HOME in the clone; too heavy for a push
+    gate) or a second Node re-implementation (R206 forbids the drift). ONE definition,
+    both suites invoke it.
+  - C/E/F scope: "Ce mois" and "A traiter"'s unrecorded count are the CURRENT month,
+    so the number the home shows equals the number the calendar shows when it opens
+    (coherent home<->calendar). "Cette semaine" is the week containing today.
+  - MonthSummary.absent added so F's four tiles ALL come from the one counting
+    function; the alternative (the controller counting absences separately) is exactly
+    the two-calculations-that-drift R328 forbids. Additive + defaulted, so
+    CalendarModelTest is untouched.
+  - "A traiter"'s unsent line is action-framed copy derived from the SAME state as the
+    year panel's rate-honesty note (year.unsyncedDays/pendingLateness, one source);
+    the year panel (section D, done) was left UNCHANGED rather than moving its note.
+  - To avoid an @Suppress STRING in a ui/ file (Fence 4 forbids any string literal in
+    ui/), the section composables moved to AujourdhuiSections.kt (function budget, as
+    the calendar splits CalendarList.kt) and the callbacks bundled into
+    AujourdhuiActions (parameter budget, as every other screen bundles). No fence
+    evasion, no suppression in ui/.
+  - "Absence" label reuses LegendCopy.forKind("A") (the calendar's one home, R206);
+    the relay's "Absent" is illustrative.
+  - Tapping a week day / the C link navigates to the Calendrier TAB (the handoff's
+    { tab = AppTab.CALENDRIER }); the day is visible in the current month there.
 
 ====================================================================
 PHONE SETTINGS CHANGED AND RESTORED (Galaxy S9, 232bcd8c300c7ece)
 ====================================================================
-Installed the current debug APK (install -r over the prior debug build - the release a
-user would install is unaffected). A fake session + DAY settings were injected via
-SessionInjectionActivity (R284, debug-only) to reach the signed-in Aujourd'hui without
-a server (manual mode needs none); isSignedIn() is tokenStore != null, so a fake pair
-is accepted for the offline manual walkthrough.
-Changed then RESTORED and VERIFIED:
+Installed the current debug APK (install -r over the prior debug build; the release a
+user would install is unaffected). Changed then RESTORED and VERIFIED:
   - system font_scale: 1.0 -> 2.0 (200 %) -> 1.0 (verified 1.0).
-  - global animator_duration_scale: 1 -> 0 (reduced motion) -> 1 (verified 1).
-  - system accelerometer_rotation/user_rotation: 1/0 -> 0/1 (landscape, R310) -> 1/0
-    (verified 1 and 0).
+  - global animator/transition/window_animation_scale: 1 -> 0 (reduced motion) -> 1
+    (verified 1).
   - app data: pm clear at the end -> clean signed-out state (the injected fake session
     removed).
 NOT changed (verified as-found at the end): auto_time=1, auto_time_zone=1,
-stay_on_while_plugged_in=0, always_finish_activities=0, mock_location deny. The
-orchestrator's between-task settings all read their expected defaults.
+accelerometer_rotation=0, always_finish_activities=0, stay_on_while_plugged_in,
+mock_location deny. The orchestrator's between-task settings all read their expected
+values.
 
 ====================================================================
 PARKED
 ====================================================================
-PARKAN-37 / PARKAN-38 - headings ADDED to parking.md this session (R1 fix); they were
-AN-NEXT-2's, cited by its report but never given headings. Not new work, just the
-missing ledger entries RegisterCoverageTest requires.
-PARKAN-39 (new) - sections C/E/F owed behind the stop-and-ask ruling (above). Next
-PARKAN id: 40.
+PARKAN-39 - RESOLVED and closed this session (R328): a read-only Aujourd'hui-
+controller projection of already-held entries IS presentation; C/E/F built, tested,
+driven and merged. The parking.md heading stays (the report cites PARKAN-39, so
+RegisterCoverageTest - now in gate:clone too - needs it).
+No new PARKAN opened. Next PARKAN id: 40 (verified against parking.md's ledger).
 
 ====================================================================
 DEVIATIONS
 ====================================================================
-- Inherited RED base fixed first (R1 / incr 0a) - AN-NEXT-2's parking.md gap, out of
-  AN-HOME's scope but blocking every commit; minimal doc fix, no product code.
-- Sections C/E/F NOT built (PARKAN-39) - a principled stop-and-ask boundary (non-UI
-  controller change + stalled advisor), which also fit the session's budget. The
-  branch is NOT merged; H3 is not met. Everything delivered is pure UI-layer.
-- The relay's "Material 3 list items" reading was not taken literally; the SPEC 11.2
-  56 dp buttons were kept (ADVISOR DECISIONS).
-- TalkBack announcement not literally captured on-device (harness limit); the
-  live-region semantics are in the code (THE CHOICE TRANSITION).
-- The on-device walkthrough used a fake injected session (no server), valid for the
-  manual-mode scope driven; the auto-mode ETAT C answer card is covered by the
-  regenerated paparazzi baseline (aujourdhuiAutoConfirmed), looked at.
-- Untracked drive helpers (android/scripts/uidrive.mjs) and shot dirs (.an-auto-shots)
-  stayed untracked (prior-session instruments; never entered a commit).
+- R327 modifies gate infrastructure and one non-ui doc guard (RegisterCoverageTest,
+  gate-clone.mjs, gate-clone-cleanup.test.ts, build.gradle.kts). This is increment
+  0's authorised scope, separate from C/E/F's hard boundary.
+- C/E/F add a read-only projection to AujourdhuiController (a non-ui file). R328 rules
+  this presentation; it is the one non-ui change, and no non-ui TEST was modified.
+- CalendrierScreen.LIST_FONT_SCALE_THRESHOLD widened private -> internal so the week
+  strip reuses the one home (R206). A visibility change only; no behaviour change, its
+  baseline unchanged.
+- TalkBack announcement not literally captured on-device (harness limit); C/E/F add no
+  new live region (the a11y work is section 1's, unchanged).
+- Untracked drive helpers (android/scripts/*.mjs, incl. an-home-cef-walkthrough.mjs)
+  and shot dirs (.an-home-cef-shots) stay untracked (session instruments; never
+  entered a commit).
 
 ====================================================================
 QUESTIONS
 ====================================================================
-1. PARKAN-39: is a READ-ONLY Aujourd'hui-controller projection of already-held entries
-   "presentation-only" (relay section 2: "data the app already holds") or a behaviour
-   change? A ruling unblocks sections C/E/F + the merge.
-2. "Material 3 list items" vs the SPEC 11.2 / R285 56 dp buttons - confirm the buttons
-   were the right keep (they satisfy vertical + Material 3; ListItem would drop 56 dp
-   + the country dot).
+None blocking. (The two earlier AN-HOME questions are resolved: PARKAN-39 was ruled
+in-bounds by R328; the SPEC 11.2 / R285 56 dp record buttons were kept, consistent
+with the done section 1.)
 
 ====================================================================
 PUSH PROOF
 ====================================================================
-origin/main unchanged at 0175a54 (no other session pushed; R300 not triggered).
-Branch an-home, oldest first, each commit on a green :app:gate:
-  3fc413e  AN-HOME incr 0a: fix inherited red base (parking.md PARKAN-37/38 headings)
-  d616991  AN-HOME incr 0b: Motion tokens + closed-set test + Fence 8 (R269/R77)
-  12f69a1  AN-HOME incr 1: the choice closes into the answer line (section 1)
-  ea1e22a  AN-HOME incr 2: Section A header date + Section D year hero card
-  (this)   AN-HOME: the report + PARKAN-39
-gate:clone PASSED on 12f69a1 (incr 1 milestone): from a clean --local clone with no
-.env / node_modules / generated file, it ran install, typecheck, lint, test, build,
-size, db:deploy, test:db, test:container:write (no 0xC0000142 this run). an-home was
-pushed at that point. The report commit adds parking.md (android-read by
-RegisterCoverageTest) + this .txt; its :app:gate and gate:clone are recorded on the
-commit that carries this file - a push is gated by gate:clone (R199), so no commit
-reaches origin red.
-FINAL GATES: see the commit that carries this report - :app:gate green, gate:clone
-PASSED.
+Branch an-home-cef, from origin/main 7fa1453. Commits, oldest first, each on a green
+:app:gate:
+  75427d9  AN-HOME incr 0 (R327): wire RegisterCoverageTest into gate:clone, one def
+  2284ed9  AN-HOME C/E/F (R328): A traiter / Cette semaine / Ce mois, one way of count
+  (this)   AN-HOME: the report + PARKAN-39 resolved
+FINAL GATES on the branch HEAD (the commit carrying this report + the parking.md
+resolution, both RegisterCoverageTest inputs):
+  :app:gate - BUILD SUCCESSFUL (re-runs RegisterCoverageTest over this report).
+  pnpm gate:clone - PASSED from a clean --local clone of HEAD; it now RUNS
+  register-coverage FIRST (R327) and reports it in the ran/claim lines, then install,
+  typecheck, lint, test, build, size, and the database suites against a scratch
+  database it creates and migrates.
+Then: fetched origin, rebased onto origin/main, merged --no-ff to main, pushed. The
+main checkout is left on main. origin/main carries all of AN-HOME.
 ====================================================================
 END OF REPORT-AN-HOME.txt
 ====================================================================

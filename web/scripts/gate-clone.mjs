@@ -552,6 +552,34 @@ try {
 
   const there = join(clone, 'web');
 
+  // R327: THE REGISTER-COVERAGE CHECK, the ONE definition RegisterCoverageTest.kt
+  // also shells out to (web/scripts/register-coverage.mjs). It was Android-only
+  // until now - it runs in :app:testDebugUnitTest, which this gate does not run at
+  // all - so a report commit citing a PARK-/PARKAN- id with no heading in
+  // parking.md could red :app:gate AFTER it had already left this machine through a
+  // push. AN-NEXT-2's PARKAN-37/38 did exactly that. It is pure Node (fs only), so
+  // it runs FIRST, the cheapest signal, before install, and exercises the CLONE's
+  // own copy of the script against the clone's documents.
+  {
+    const result = run(
+      'node scripts/register-coverage.mjs (R327 register coverage)',
+      'node',
+      ['scripts/register-coverage.mjs'],
+      there,
+      /register coverage: OK/,
+    );
+
+    if (!result.ok) {
+      console.error('');
+      console.error(`GATE:CLONE FAILED - ${result.why}`);
+      console.error('');
+      console.error('A report at the repo root cites a PARK-/PARKAN- id with no "## <id> -" heading');
+      console.error('in parking.md. This is the check that was Android-only (RegisterCoverageTest),');
+      console.error('so a report commit used to red :app:gate invisibly after the push (R327).');
+      throw new GateCloneFailure(result.why);
+    }
+  }
+
   // THE CHAIN. Ordered cheapest-signal-first, with build before size because
   // size reads .next, and the database last because it is the only step that
   // is handed a connection string.
@@ -707,7 +735,7 @@ try {
   // FW32, AC3: ONE SOURCE for what ran, shared by the "ran" line and the
   // claim sentence below it - so the two can never say something different
   // from each other, the way a hand-kept list drifts from what actually runs.
-  const ranSteps = `install, typecheck, lint, test, build, size${local === null ? '' : ', db:deploy, test:db'}${wroteInProduction ? ', test:container:write' : ''}`;
+  const ranSteps = `register-coverage, install, typecheck, lint, test, build, size${local === null ? '' : ', db:deploy, test:db'}${wroteInProduction ? ', test:container:write' : ''}`;
 
   console.log('');
   console.log('GATE:CLONE PASSED');

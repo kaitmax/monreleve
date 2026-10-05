@@ -85,6 +85,7 @@ import ch.monreleve.app.settings.SharedPrefsSettingsStore
 import ch.monreleve.app.startup.StartDestination
 import ch.monreleve.app.startup.decideStartAfterSignIn
 import ch.monreleve.app.startup.meFetchOf
+import ch.monreleve.app.ui.screens.aujourdhui.AujourdhuiActions
 import ch.monreleve.app.ui.screens.aujourdhui.AujourdhuiScreen
 import ch.monreleve.app.ui.screens.calendrier.CalendarActions
 import ch.monreleve.app.ui.screens.calendrier.CalendrierScreen
@@ -449,9 +450,14 @@ internal fun MainShell(
                 AppTab.AUJOURDHUI ->
                     AujourdhuiScreen(
                         state = aujourdhuiState,
-                        onRecord = controllers.aujourdhui::record,
-                        onConfirmDetected = controllers.aujourdhui::confirmDetected,
-                        onCorrectDetected = controllers.aujourdhui::correctDetected,
+                        actions =
+                            AujourdhuiActions(
+                                onRecord = controllers.aujourdhui::record,
+                                onConfirmDetected = controllers.aujourdhui::confirmDetected,
+                                onCorrectDetected = controllers.aujourdhui::correctDetected,
+                                // AN-HOME C/E/F (R328): « À traiter »'s link and a week-day tap open the calendar.
+                                onNavigateToCalendrier = { tab = AppTab.CALENDRIER },
+                            ),
                     )
                 AppTab.CALENDRIER ->
                     CalendrierScreen(

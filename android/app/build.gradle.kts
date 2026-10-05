@@ -291,6 +291,12 @@ tasks.withType<Test> {
     inputs.files(reportFiles + repoRootDir.resolve("parking.md"))
         .withPropertyName("registerAndReports")
         .withPathSensitivity(PathSensitivity.RELATIVE)
+    // R327: RegisterCoverageTest now shells out to the ONE definition of the register-coverage check,
+    // web/scripts/register-coverage.mjs, which gate:clone also runs - so an edit to the script re-runs
+    // this test rather than leaving it UP-TO-DATE (R283).
+    inputs.file(repoRootDir.resolve("web/scripts/register-coverage.mjs"))
+        .withPropertyName("registerCoverageScript")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 dependencies {

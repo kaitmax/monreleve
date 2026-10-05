@@ -6,6 +6,10 @@ import ch.monreleve.app.calc.TeleworkResult
 import ch.monreleve.app.calc.Warning
 import ch.monreleve.app.calc.calculateTelework
 import ch.monreleve.app.calc.ruleSetFor
+import ch.monreleve.app.calendar.CalendarDayUi
+import ch.monreleve.app.calendar.MonthSummary
+import ch.monreleve.app.calendar.buildMonthView
+import ch.monreleve.app.calendar.weekdayCells
 import ch.monreleve.app.data.local.AbsenceReason
 import ch.monreleve.app.data.local.EntryEntity
 import ch.monreleve.app.data.local.EntryKind
@@ -146,6 +150,27 @@ data class YearPanel(
     val fallbackYear: Int?,
 )
 
+/**
+ * Section C « À traiter » (AN-HOME, R328): what the person needs to act on, surfaced ONLY when there is
+ * something (null otherwise - the section is absent, never an empty box). A READ-ONLY projection of days
+ * the app already holds: nothing here records or sends anything, D16 holds, and it is pure presentation.
+ */
+data class ToAttendTo(
+    /**
+     * Past working days THIS MONTH with no entry - the SAME count as the calendar's « Non renseigné » for
+     * the current month, from CalendarModel.buildMonthView (R328: one way of counting, FW12's defect). The
+     * home and the calendar therefore show the same number for the month the calendar opens on.
+     */
+    val unrecordedThisMonth: Int,
+    /** Days of this year recorded on the phone but not yet sent - the SAME figure as YearPanel.unsyncedDays
+     *  (one computation, R206), so the two lines cannot drift. */
+    val unsyncedDays: Int,
+    /** How close the oldest unsent day is to the late-saisie threshold (R286). */
+    val pendingLateness: PendingLateness,
+    /** The late threshold, from the shared source (R206/R153), so copy interpolates it rather than typing it. */
+    val lateThresholdDays: Int,
+)
+
 data class AujourdhuiState(
     val today: String,
     val granularity: GranularityChoice,
@@ -154,6 +179,13 @@ data class AujourdhuiState(
     val afternoon: DayEntry? = null,
     /** The year's position, or null when the year has no entries (AC3: no rate shown). */
     val year: YearPanel? = null,
+    /** Section C (AN-HOME, R328): what to attend to, or null when there is nothing. */
+    val attend: ToAttendTo? = null,
+    /** Section E (AN-HOME, R328): the current week's Monday-Friday cells, in the grid vocabulary (read-only). */
+    val week: List<CalendarDayUi> = emptyList(),
+    /** Section F (AN-HOME, R328): this month's recorded-day counts - the SAME MonthSummary the calendar
+     *  computes (one way of counting). Null when the settings are unavailable. */
+    val month: MonthSummary? = null,
     /** AN-AUTO (R315): which mode records the person's days. MANUAL keeps the existing manual UI. */
     val loggingMode: LoggingMode = LoggingMode.MANUAL,
     /** AN-AUTO (SPEC 11.2): today's auto surface for DAY granularity - null in manual mode, half-day, or recorded. */
@@ -315,6 +347,15 @@ class AujourdhuiController(
         val dayAuto = slotAuto(autoMode && !halfDay && fullDay == null, dayProposal(checks), concluded)
         val amAuto = slotAuto(autoMode && halfDay && morning == null, morningProposal(checks), concluded)
         val pmAuto = slotAuto(autoMode && halfDay && afternoon == null, afternoonProposal(checks), concluded)
+        // AN-HOME sections C/E/F (R328). READ-ONLY projections of days the app already holds (D16 intact): the
+        // year panel is computed ONCE here so « À traiter » reuses its unsynced/lateness figures rather than a
+        // second count (R206), and the month summary + week strip come from CalendarModel - the SAME functions
+        // the calendar uses, so the home and the calendar cannot disagree about a count or a day (one way of
+        // counting). Everything is null/empty when there are no settings (defensive; validated at onboarding).
+        val yearPanel = computeYear(lastEntries)
+        val monthSummary = monthSummaryOf(lastEntries)
+        val weekCells =
+            if (settings == null) emptyList() else weekdayCells(lastEntries, settings, currentTaxYear, today)
         mutableState.update {
             it.copy(
                 today = today,
@@ -322,13 +363,49 @@ class AujourdhuiController(
                 fullDay = fullDay?.toDayEntry(),
                 morning = morning?.toDayEntry(),
                 afternoon = afternoon?.toDayEntry(),
-                year = computeYear(lastEntries),
+                year = yearPanel,
                 auto = dayAuto,
                 autoMorning = amAuto,
                 autoAfternoon = pmAuto,
                 nearBorderNotice = computeNearBorder(mode),
+                attend = computeAttend(monthSummary, yearPanel),
+                week = weekCells,
+                month = monthSummary,
             )
         }
+    }
+
+    /**
+     * Section F (AN-HOME, R328): this month's recorded-day counts, from the SAME function the calendar's month
+     * tiles use (buildMonthView.summary). « This month » is today's Paris month in the current tax year (both
+     * refreshed on resume, F8). Null when settings are unavailable.
+     */
+    private fun monthSummaryOf(entries: List<EntryEntity>): MonthSummary? {
+        val settingsNow = settings ?: return null
+        val month = LocalDate.parse(today).monthValue
+        return buildMonthView(entries, settingsNow, currentTaxYear, today, month).summary
+    }
+
+    /**
+     * Section C (AN-HOME, R328): what to attend to, or null when there is nothing (the section is then absent -
+     * never an empty box). « Unrecorded this month » is the calendar's own « Non renseigné » for the current
+     * month (monthSummary.nonRenseigne - one way of counting); the unsynced count and lateness are the year
+     * panel's already-computed figures (R206), so no line here is a second calculation.
+     */
+    private fun computeAttend(
+        monthSummary: MonthSummary?,
+        year: YearPanel?,
+    ): ToAttendTo? {
+        val unrecorded = monthSummary?.nonRenseigne?.toInt() ?: 0
+        val unsynced = year?.unsyncedDays ?: 0
+        val lateness = year?.pendingLateness ?: PendingLateness.NONE
+        if (unrecorded == 0 && unsynced == 0 && lateness == PendingLateness.NONE) return null
+        return ToAttendTo(
+            unrecordedThisMonth = unrecorded,
+            unsyncedDays = unsynced,
+            pendingLateness = lateness,
+            lateThresholdDays = year?.lateThresholdDays ?: LatenessForecast.BACKFILL_DAYS,
+        )
     }
 
     /** A slot's auto surface when `enabled` (auto mode, the right granularity, and that slot not yet recorded). */
