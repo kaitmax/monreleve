@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.FlowRowScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,7 +37,6 @@ import ch.monreleve.app.calendar.CalendarState
 import ch.monreleve.app.calendar.MonthSummary
 import ch.monreleve.app.calendar.MonthView
 import ch.monreleve.app.design.DayCell
-import ch.monreleve.app.design.DayKind
 import ch.monreleve.app.design.DayKindLegend
 import ch.monreleve.app.design.FrontierType
 import ch.monreleve.app.design.LightColors
@@ -42,7 +44,6 @@ import ch.monreleve.app.design.Radius
 import ch.monreleve.app.design.RecordQualityLegend
 import ch.monreleve.app.design.Spacing
 import ch.monreleve.app.fr.CalendarCopy
-import ch.monreleve.app.fr.LegendCopy
 import ch.monreleve.app.fr.format.formatDays
 import ch.monreleve.app.fr.format.formatMonthYear
 
@@ -231,25 +232,43 @@ private fun RowScope.GridCell(
     }
 }
 
+// AN-CAL2 defects 1-2. Five EQUAL tiles - Suisse, Domicile, Mission, Absence, Non renseigné - each number
+// centred UNDER its label, every tile reading from the one MonthSummary (monthSummaryTiles, R328). The
+// labels reserve two lines (minLines) so « Non renseigné » - which cannot fit one line in a fifth of a
+// 320 dp row at a legible size - wraps WITHOUT pushing its number lower than the others: every number sits
+// at the same baseline (the operator's « its number sits lower and further right » defect). At the list
+// font scale (200 %) the tiles WRAP onto a second row (maxItemsInEachRow drops) rather than squeezing.
+private const val SUMMARY_TILES_PER_ROW_LARGE = 3
+private const val SUMMARY_LABEL_LINES = 2
+
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun MonthSummaryRow(summary: MonthSummary) {
-    // The kind labels read from LegendCopy by the enum's own letter (never a string literal in ui/,
-    // and never a second copy of the names): the summary label and the legend key share one home.
-    Row(modifier = Modifier.fillMaxWidth()) {
-        SummaryItem(LegendCopy.forKind(DayKind.SUISSE.letter), summary.suisse)
-        SummaryItem(LegendCopy.forKind(DayKind.DOMICILE.letter), summary.domicile)
-        SummaryItem(LegendCopy.forKind(DayKind.MISSION.letter), summary.mission)
-        SummaryItem(CalendarCopy.NON_RENSEIGNE, summary.nonRenseigne)
+    val tiles = monthSummaryTiles(summary)
+    val perRow =
+        if (LocalDensity.current.fontScale >= LIST_FONT_SCALE_THRESHOLD) SUMMARY_TILES_PER_ROW_LARGE else tiles.size
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.space8),
+        verticalArrangement = Arrangement.spacedBy(Spacing.space8),
+        maxItemsInEachRow = perRow,
+    ) {
+        tiles.forEach { tile -> SummaryItem(tile) }
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun RowScope.SummaryItem(
-    label: String,
-    value: Double,
-) {
+private fun FlowRowScope.SummaryItem(tile: SummaryTile) {
     Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(text = label, style = FrontierType.caption, color = LightColors.textSecondary)
-        Text(text = formatDays(value), style = FrontierType.h3)
+        Text(
+            text = tile.label,
+            style = FrontierType.caption,
+            color = LightColors.textSecondary,
+            textAlign = TextAlign.Center,
+            minLines = SUMMARY_LABEL_LINES,
+            maxLines = SUMMARY_LABEL_LINES,
+        )
+        Text(text = formatDays(tile.value), style = FrontierType.h3, textAlign = TextAlign.Center)
     }
 }
