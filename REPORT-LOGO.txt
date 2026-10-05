@@ -1,0 +1,310 @@
+================================================================================
+REPORT-LOGO  -  install the mon-releve-logo kit (assets only)
+================================================================================
+Branch: logo  (base origin/main = 890a3a5)
+Scope:  ASSETS ONLY. No engine (web/lib/calc-engine, android .../calc) change,
+        no /v1 change, no product logic change. Brand mark install only.
+
+--------------------------------------------------------------------------------
+WHAT THE KIT IS
+--------------------------------------------------------------------------------
+relay/mon-releve-logo/ - the "rail" mark: a track filled to about a third,
+stopping short of the 40 % tick. Brand colour Deep Alpine Blue #173B63. Wordmark
+"Mon" (Inter Regular) + "Releve" (Inter SemiBold), outlined in every SVG so it
+renders without Inter installed. README.md is the install authority; build.py
+is the generator.
+
+--------------------------------------------------------------------------------
+ANDROID  -  adaptive launcher icon
+--------------------------------------------------------------------------------
+Copied the kit into android/app/src/main/res/ :
+  drawable/ic_launcher_background.xml    (M) was the green-robot template bg
+  drawable/ic_launcher_foreground.xml    (M) was the green-robot template fg
+  drawable/ic_launcher_monochrome.xml    (A) NEW - the Android 13+ themed layer
+  mipmap-anydpi-v26/ic_launcher.xml      (M) now <monochrome> -> ic_launcher_monochrome
+  mipmap-anydpi-v26/ic_launcher_round.xml(M) same
+
+Removed the OLD legacy launcher rasters (minSdk 26 supports adaptive icons
+natively, so no PNG/webp mipmaps are needed):
+  mipmap-{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}/ic_launcher.webp        (10 files, D)
+  mipmap-{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}/ic_launcher_round.webp
+  and the five now-empty mipmap-<density> directories.
+
+MANIFEST: NOT changed. AndroidManifest.xml already pointed
+  android:icon="@mipmap/ic_launcher" and android:roundIcon="@mipmap/ic_launcher_round",
+which on API 26+ resolve to the mipmap-anydpi-v26 adaptive XMLs. No edit needed.
+
+No Kotlin changed; no code references the removed rasters (grep of .kt/.xml).
+No Paparazzi screenshot renders the launcher icon, so no Paparazzi baseline is
+expected to change (confirmed: verifyPaparazziDebug in :app:gate).
+
+MONOCHROME LAYER IS UNTESTED ON A DEVICE. The <monochrome> layer drives the
+Android 13+ (API 33) themed-icon feature. The test device is an S9 (SM-G960F,
+API 29 / Android 10), which has NO themed icons, so the monochrome layer cannot
+be exercised on it. The standard (background+foreground) adaptive icon IS tested
+on the S9 (see ON-DEVICE below).
+
+--------------------------------------------------------------------------------
+WEB  -  favicons, manifest, lockup, print header
+--------------------------------------------------------------------------------
+web/public/ (tracked; only web/public/fonts/ is gitignored) - 9 new assets:
+  favicon.svg favicon-32.png favicon-16.png apple-touch-icon.png
+  icon-192.png icon-512.png icon-maskable-512.png
+  logo-lockup.svg   (header + footer)
+  logo-black.svg    (releve print header)
+
+web/app/layout.tsx (root layout <head>) - the three README <link> tags:
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+web/app/manifest.ts (NEW) - see DECISION 1. Minimal manifest wiring the kit's
+  icon-192 + icon-512 (purpose "any") and icon-maskable-512 (purpose "maskable").
+  name/short_name from lib/fr (APP_NAME), start_url "/". No colour literal, no
+  display/PWA behaviour. Next serves it at /manifest.webmanifest and emits the
+  <link rel="manifest"> tag.
+
+web/app/icon.svg (M) - the Next favicon convention file: the placeholder glyph
+  replaced by the kit rail mark (same geometry as public/favicon.svg) - see
+  DECISION 2.
+
+web/lib/ui/react/PublicShell/PublicShell.tsx (M)
+  Header: the placeholder <Wordmark/> + <span>APP_NAME</span> replaced by the
+          lockup as <img src="/logo-lockup.svg" alt="">, plus APP_NAME kept as a
+          u-visually-hidden text span. See DECISION 3.
+  Footer: a decorative lockup <img> added above the columns (NOT a link). See
+          DECISION 4.
+  The Wordmark import was dropped; Wordmark.tsx itself is retained (DECISION 5).
+
+web/lib/ui/react/PublicShell/PublicShell.module.scss (M)
+  Added .lockup (header) and .footerLogo (footer): height var(--size-icon-lg),
+  width auto (keeps the 477x96 aspect; no raw length). Removed the now-unused
+  .mark and .name rules.
+
+web/lib/ui/react/PublicShell/PublicShell.test.tsx (M) - two tests updated to the
+  new real-logo reality; see DECISION 3. The "name as text" guarantee is kept
+  green by the u-visually-hidden span (that test is UNCHANGED).
+
+web/app/releve/print/page.tsx (M) + print.module.scss (M)
+  Added the black mark <img src="/logo-black.svg" alt=""> as the document
+  letterhead above the <h1> title; .logo styled from tokens.
+
+Raw #173B63 lives only in the .svg image assets (favicon.svg, logo-lockup.svg,
+app/icon.svg) - images, not code. No raw hex/colour was introduced into any
+.tsx/.scss/.kt (lockup is referenced by file via <img>/url, never inlined).
+French appears only via lib/fr (APP_NAME); no string literal added to a
+component (alt="" is empty + decorative; the links carry aria-label=homeLabel).
+
+--------------------------------------------------------------------------------
+KIT SOURCE committed
+--------------------------------------------------------------------------------
+relay/mon-releve-logo/ committed in full (README.md, build.py, android/res,
+web/, print/, play/) so the regeneration path ("change build.py and rebuild")
+is preserved. play/play-store-512.png is left in the kit, out of scope here
+(it is the Play Console icon, AN14b).
+
+--------------------------------------------------------------------------------
+DECISIONS (conservative, R156 - advisor was not consulted per the prompt)
+--------------------------------------------------------------------------------
+DECISION 1 - no web manifest existed.
+  The prompt says "find the existing web manifest ... and wire these"; there was
+  none. The icon-192/512/maskable PNGs exist only to be referenced by a
+  manifest, so leaving them unreferenced would be a half-install. Conservative
+  resolution: create a MINIMAL app/manifest.ts (name + icons + start_url only -
+  no colour literal, no display/standalone PWA behaviour), which wires the icons
+  exactly as asked without claiming any app behaviour the task did not install.
+
+DECISION 2 - app/icon.svg updated to the new mark.
+  app/icon.svg is Next's favicon convention and was the placeholder glyph. Left
+  as-is, Next would keep emitting <link rel=icon href=/icon.svg> for the OLD
+  mark alongside the new /favicon.svg link, so the tab could still show the
+  placeholder. Replaced its content with the kit rail mark (no gradient; keeps
+  no-gradients.test green) so both the convention icon and the explicit link
+  resolve to the new logo. Not deleted: no-gradients.test asserts it exists.
+
+DECISION 3 - header lockup is an <img>, name kept as visually-hidden text, and
+  two shell tests updated.
+  The lockup is a two-tone brand image, so it cannot be inlined (that would put
+  #173B63 in a .tsx). It is referenced by file via <img alt="">; the link keeps
+  aria-label=homeLabel so the accessible name is unchanged. APP_NAME is kept in
+  the DOM as a u-visually-hidden <span>, so the "product name as text" guarantee
+  and its test stay GREEN unchanged (SEO/AT keep the text; only the visible
+  rendering became the lockup).
+  Two tests in PublicShell.test.tsx encoded the superseded placeholder design
+  and were updated to the new reality (the task explicitly replaces the
+  placeholder mark):
+    - "hides the mark ... from assistive technology": asserted an inline <a svg>
+      with aria-hidden; now asserts the <a img> brand mark is decorative (alt="")
+      - same guarantee (name not announced twice), new implementation.
+    - "sets the wordmark from its own R70 pair": asserted .name used the
+      --type-wordmark-* type pair; the styled text name is gone with the text it
+      styled, so it now asserts .lockup is sized from a size token (height
+      var(--size-icon-lg), width auto). The --type-wordmark-* tokens are
+      consequently unused (see NOTICED).
+
+DECISION 4 - footer lockup is decorative, not a link.
+  A second home link in the footer would add a duplicate destination to every
+  page's header/footer link census (e2e/routing.spec.ts). The footer lockup is a
+  decorative <img alt=""> above the columns; the footer bg is --colour-surface
+  (light), so logo-lockup.svg (not the -dark variant) is correct. logo-lockup-dark
+  is therefore not used.
+
+DECISION 5 - Wordmark.tsx retained on disk.
+  no-gradients.test and PublicShell.test both read Wordmark.tsx from disk (it
+  guards that the rejected flag-logo file was never reached for). Deleting it
+  would mean editing two meta tests; it is cheaper and safer to retain the file
+  and merely drop its import. It is unrendered now.
+
+--------------------------------------------------------------------------------
+VISUAL BASELINES  -  reason: new logo  (R135 / R207 / R184)
+--------------------------------------------------------------------------------
+Regenerated with pnpm test:visual:update inside
+mcr.microsoft.com/playwright:v1.63.0-noble, sole container, isolated distDir
+(R37/R98). The 109-spec visual run passed.
+
+--update rewrites every baseline; git diff shows EXACTLY 69 changed - every shot
+that renders the PublicShell (header+footer lockup) plus the full calculateur
+page shots. The 35 component-only shots (badges, rails, fields, grids,
+containers, metrics, og-card) did NOT change, because they render no shell. The
+changed set therefore equals what "new logo" explains, and nothing else.
+
+CROP-CHECKED (R178): composants-shell-desktop, composants-shell-mobile,
+page-accueil-mobile, calculateur-vide-desktop. In all: the lockup renders in the
+header AND the footer at desktop and mobile widths, the "Releve" accent is
+present, the mark is undistorted, and there is no 320/360 dp horizontal
+overflow. (The header CTA is not rendered while trackerExists is false, so the
+mobile bar is hamburger + lockup only - ample room.)
+
+The 69 regenerated baselines (all under web/tests/visual/baselines/):
+  calculateur-capture-erreur-desktop/-mobile
+  calculateur-capture-succes-desktop/-mobile
+  calculateur-erreur-desktop/-mobile
+  calculateur-faq-ouverte-desktop/-mobile
+  calculateur-lien-invalide-desktop/-mobile
+  calculateur-lien-partage-desktop/-mobile
+  calculateur-panneau-avis-provisoire-desktop/-mobile
+  calculateur-panneau-bascule-sociale-desktop/-mobile
+  calculateur-panneau-conforme-desktop/-mobile
+  calculateur-panneau-regime-perdu-desktop/-mobile
+  calculateur-rempli-desktop/-mobile
+  calculateur-vide-desktop/-mobile
+  composants-shell-desktop, composants-shell-mobile, composants-shell-mobile-open
+  guides-article-desktop/-mobile, guides-article-faq-ouverte-desktop/-mobile
+  guides-attestation-desktop/-mobile, guides-cluster-missions-desktop/-mobile
+  guides-geneve-desktop/-mobile, guides-hub-desktop/-mobile
+  guides-pilier-desktop/-mobile
+  page-404-desktop/-mobile
+  page-a-propos-desktop/-mobile, page-accueil-desktop/-mobile
+  page-alertes-desktop/-mobile, page-alertes-confirmee-desktop/-mobile
+  page-alertes-desinscrit-desktop/-mobile, page-alertes-lien-invalide-desktop/-mobile
+  page-application-desktop/-mobile, page-cgu-desktop/-mobile
+  page-confidentialite-desktop/-mobile, page-mentions-legales-desktop/-mobile
+  page-releve-annuel-desktop/-mobile, page-sources-desktop/-mobile
+  page-tarifs-desktop/-mobile
+
+No PDF/print SCREENSHOT baseline exists - no visual spec renders app/releve/print
+(it is token-gated + force-dynamic). The print route is covered by the db test
+tests/db/print-route.test.ts, which renders the page and asserts its copy; the
+added decorative <img> does not change any asserted string.
+
+--------------------------------------------------------------------------------
+GATES
+--------------------------------------------------------------------------------
+typecheck : PASS (pnpm typecheck)
+lint      : PASS, 0 errors (pnpm lint). 2 pre-existing warnings in untouched
+            calc-engine test files (benchmark.test.ts, verification-trace.test.ts),
+            not in any changed path.
+:app:gate : PASS - BUILD SUCCESSFUL in 5m10s, APPGATE_EXIT=0. Ran assembleDebug,
+            testDebugUnitTest, checkTestFloor, ktlintCheck, detekt,
+            verifyPaparazziDebug (UNCHANGED - the launcher icon is in no
+            screenshot), checkReleaseCleartext, checkReleaseNoDebugInjection,
+            checkReleaseLocationPermissions, checkReleaseNoDevComponent,
+            checkMinifiedWireContract, checkLicences, lintDebug. The emulator /
+            connectedDebugAndroidTest steps are skipped-with-reason (need a
+            device; R133) - the device drive below covers the icon.
+test:e2e  : PASS - 292 passed (3.4m), E2E_EXIT=0. Covers shell-layout header +
+            footer, routing.spec head/vocabulary, "the nav and footer link
+            nothing that 404s" (confirms the decorative footer lockup added no
+            link), and the composants AC2 mobile-header keyboard path.
+gate:clone: PASS - GATECLONE_EXIT=0, on HEAD 995e6dc from a clean --local clone.
+            Ran register-coverage, install, typecheck, lint, test, build, size,
+            db:deploy, test:db, test:container:write - all green with no .env, no
+            prior node_modules, no pre-generated file. RegisterCoverageTest ran
+            here (R327) and passed; this report cites no PARKAN id. The browser
+            suites (e2e, visual, runtime, lighthouse) are named NOT-RUN with
+            reasons (R133) - e2e and visual were run locally (above).
+            "CI readiness: quiet - repository is private and CI_FULL unset" is
+            the FW24 guard reporting the current combination (R248), informational.
+
+Note: the 69 baselines were regenerated and the full 109-spec visual suite
+passed in the container during test:visual:update (R37); a separate compare run
+right after an --update from the same tree would be self-referential.
+
+--------------------------------------------------------------------------------
+ON-DEVICE  (S9 / SM-G960F / API 29, serial 232bcd8c300c7ece)
+--------------------------------------------------------------------------------
+Installed the fresh debug APK over the existing one (adb install -r, same debug
+keystore, "Success"; the app's existing data was preserved - the app opened to
+"Bonjour Camille"). No Gradle re-run on the device (adb only), and no device
+setting was changed - only UI navigation. Left the device on its home screen.
+
+Launcher (app drawer): "Mon Releve" now shows the NEW adaptive icon - a Deep
+Alpine Blue (#173B63) rounded square with the white rail mark (track filled
+about a third, with the tick). The neighbouring "Vaccine App" still shows the
+default green-robot template, which is the before/after contrast: our app's icon
+WAS that green robot and is now the branded rail mark.
+
+App switcher (recents): the MonReleve card's header shows the same blue
+rail-mark icon beside the title "Mon Releve".
+
+So the standard adaptive icon (background + foreground) renders correctly on the
+S9. The MONOCHROME layer is UNTESTED on a device: API 29 (Android 10) has no
+themed-icon feature to exercise it; it is for Android 13+ (API 33) only.
+
+Screenshots captured (not committed - device artefacts):
+  00-current, 01-app-running, 02-recents, 03-recents-monreleve, 04-appdrawer.
+
+--------------------------------------------------------------------------------
+WALKTHROUGH (R176)
+--------------------------------------------------------------------------------
+ANDROID (on the S9, driven): installed the fresh APK, launched the app (opened
+to "Bonjour Camille" - runs, data intact), opened the app switcher and the app
+drawer. Both show the new blue rail-mark adaptive icon under "Mon Releve" (the
+neighbouring Vaccine App still shows the old green-robot template - the contrast
+our app no longer shows). See ON-DEVICE.
+
+WEB (served, driven against the running server; /api/health -> service
+"monreleve", so R169 is satisfied - this is our product, not a neighbour):
+  - Home head carries all four tags:
+      <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+      <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+      <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+      <link rel="manifest" href="/manifest.webmanifest">   (Next auto-emitted)
+  - Home HTML references /logo-lockup.svg TWICE (header + footer).
+  - Served 200: /favicon.svg /favicon-32.png /apple-touch-icon.png
+      /manifest.webmanifest /logo-lockup.svg /logo-black.svg /icon.svg
+      /icon-192.png /icon-maskable-512.png
+  - /manifest.webmanifest body: name/short_name "Mon Releve", start_url "/",
+      icons icon-192 (any), icon-512 (any), icon-maskable-512 (maskable).
+  Because these endpoints and the head reflect additions that did not exist
+  before this task, the live server is serving this task's code.
+
+VISUAL (rendered pages inspected, R178): the lockup renders in the PublicShell
+header and footer at desktop and mobile; the "Releve" accent is present; no
+distortion; no horizontal overflow at narrow widths. See VISUAL BASELINES.
+
+--------------------------------------------------------------------------------
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------------------
+- --type-wordmark-size/line/weight tokens (tokens.scss) are now unused (the
+  styled text name became the lockup image). Removing a token is an ask-first
+  tokens.scss change and out of scope; type-pairs.test still asserts their
+  values, so they are harmless. Left in place.
+- Many pre-existing UNTRACKED files sit in the tree from earlier sessions
+  (android/.an-*-shots/, android/scripts/an-*.mjs, design/onboarding/,
+  relay/AN-ONBOARD.txt, relay/FW-VERIFY.txt, relay/SEED-RELEVE.txt). They are
+  NOT part of this task and were deliberately left unstaged.
+- favicon-16.png is copied to public/ but not <link>-ed: the README specifies
+  only the three link tags (svg, 32, apple-touch). Left as-is to match the kit.
+
+================================================================================
