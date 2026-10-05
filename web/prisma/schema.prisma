@@ -463,6 +463,17 @@ model VerificationToken {
   token      String   @unique
   expires    DateTime
 
+  // AN-ONBOARD: a six-digit code carried in the SAME email as the link, tied to
+  // the same single-use request and expiring with it. Stored as a SHA-256 hash,
+  // never in clear, exactly as `token` is. Nullable so a row issued by any path
+  // that does not set one is still legal; the sign-in request always sets it.
+  code String?
+
+  // Wrong-code attempts against THIS request. Six digits are a million
+  // combinations, which is nothing to a script; the counter is what makes them
+  // safe. At the limit the request is dead and the person asks for a new one.
+  attempts Int @default(0)
+
   @@unique([identifier, token])
 }
 
