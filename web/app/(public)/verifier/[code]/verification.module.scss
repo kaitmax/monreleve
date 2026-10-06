@@ -1,0 +1,76 @@
+// web/app/(public)/verifier/[code]/verification.module.scss
+//
+// The verification page, styled from tokens only (R8). A confirmation document,
+// not marketing: a readable column, a vouch line that stands out, and the
+// printed fields in a plain description list.
+
+.page {
+  max-width: var(--layout-article);
+  margin: 0 auto;
+  padding: var(--space-12) var(--space-5);
+}
+
+.title {
+  font-size: var(--type-h1-size);
+  line-height: var(--type-h1-line);
+  font-weight: var(--type-h1-weight);
+  color: var(--colour-text-primary);
+  margin: 0 0 var(--space-4);
+}
+
+.intro {
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+  color: var(--colour-text-secondary);
+  margin: 0 0 var(--space-8);
+}
+
+.vouch {
+  font-size: var(--type-body-l-size);
+  line-height: var(--type-body-l-line);
+  font-weight: var(--type-body-l-weight);
+  color: var(--colour-text-primary);
+  background: var(--colour-success-soft);
+  border-radius: var(--radius-md);
+  padding: var(--space-5) var(--space-6);
+  margin: 0 0 var(--space-6);
+}
+
+.superseded {
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+  color: var(--colour-text-primary);
+  background: var(--colour-warning-soft);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-6);
+  margin: 0 0 var(--space-6);
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-3) var(--space-8);
+  margin: 0;
+
+  dt {
+    font-size: var(--type-caption-size);
+    line-height: var(--type-caption-line);
+    font-weight: var(--type-caption-weight);
+    color: var(--colour-text-secondary);
+  }
+
+  dd {
+    font-size: var(--type-body-size);
+    line-height: var(--type-body-line);
+    color: var(--colour-text-primary);
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.neutral {
+  font-size: var(--type-body-l-size);
+  line-height: var(--type-body-l-line);
+  color: var(--colour-text-secondary);
+  margin: 0;
+}
