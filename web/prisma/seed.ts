@@ -660,12 +660,746 @@ async function report(userId: string, stored: { kind: EntryKind; portion: EntryP
   }
 }
 
+// ===========================================================================
+// SEED-RELEVE: THREE SCENARIO ACCOUNTS, A REAL YEAR OF DATA TO SEE THE RELEVE
+// ===========================================================================
+//
+// The demo year above is a FIXTURE: fixed, deterministic, asserted against by
+// FW24/25/27 and demo-year.test.ts. These three accounts are a DEMONSTRATION:
+// two years of realistic data (2025 complete, 2026 to yesterday) a person can
+// open on the phone and read as a releve. They are SEPARATE from demo@example.com
+// so the fixture stays frozen (R273/R206) - this file extends the seed, it does
+// not rewrite it.
+//
+// WHY A DIRECT SEED, NOT THE API. The server stamps firstRecordedAt on receipt.
+// A year posted through the API today would be stamped today, so every day would
+// read "saisie tardive". Writing straight to the database is the only way to give
+// each day a server timestamp that falls when a real person would have recorded
+// it - most the same evening, some a few days later, a few genuinely late - with
+// an EntryEvent trail that matches (the append-only triggers refuse UPDATE and
+// DELETE, never INSERT).
+//
+// CLOCK-DEPENDENT BY DESIGN, UNLIKE THE DEMO YEAR. "2026 to yesterday" moves
+// every day, so these accounts read `new Date()`; the demo year does not and
+// stays pinned. R197: every timestamp is in the PAST - no entry is dated today or
+// later, and every recorded/event stamp is clamped strictly before the seed run.
+//
+// THE ADDRESSES ARE .invalid ON PURPOSE. RFC 6761 reserves it so test data can
+// never reach a real mailbox; these are people who do not exist.
+
+const MINUTE = 60 * 1000;
+
+/** The .invalid domain can never deliver - these accounts are not real people. */
+const CAMILLE_EMAIL = 'camille.martin@example.invalid';
+const ALEX_EMAIL = 'alex.dupont@example.invalid';
+const SAM_EMAIL = 'sam.bernard@example.invalid';
+
+/** UTC midnight of a Date. */
+function midnight(date: Date): Date {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+}
+
+function addDays(date: Date, days: number): Date {
+  return new Date(date.getTime() + days * DAY);
+}
+
+/** No day is after yesterday (R197). The cutoff is yesterday's UTC midnight. */
+function yesterday(): Date {
+  return addDays(midnight(new Date()), -1);
+}
+
+/** No stamp is after the seed run (R197). A minute of slack keeps it strictly past. */
+function clampPast(date: Date): Date {
+  const ceiling = Date.now() - MINUTE;
+
+  return date.getTime() > ceiling ? new Date(ceiling) : date;
+}
+
+/** The ISO day of the nth (1-based) `weekday` (0=Sun..6=Sat) in a month (1-based). */
+function weekdayDate(year: number, month1: number, nth: number, weekday: number): string {
+  let seen = 0;
+
+  for (let d = 1; d <= 31; d += 1) {
+    const date = new Date(Date.UTC(year, month1 - 1, d));
+
+    if (date.getUTCMonth() !== month1 - 1) break;
+
+    if (date.getUTCDay() === weekday) {
+      seen += 1;
+
+      if (seen === nth) return iso(date);
+    }
+  }
+
+  throw new Error(`no ${nth}th weekday ${weekday} in ${year}-${month1}`);
+}
+
+/** Easter Sunday, Meeus/Jones/Butcher (Gregorian). Returns a UTC-midnight Date. */
+function easterSunday(year: number): Date {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  const dayOfMonth = ((h + l - 7 * m + 114) % 31) + 1;
+
+  return new Date(Date.UTC(year, month - 1, dayOfMonth));
+}
+
+/** Jeûne genevois: the Thursday after the first Sunday of September. */
+function jeuneGenevois(year: number): string {
+  for (let d = 1; d <= 7; d += 1) {
+    const sunday = new Date(Date.UTC(year, 8, d));
+
+    if (sunday.getUTCDay() === 0) return iso(addDays(sunday, 4));
+  }
+
+  throw new Error(`no first Sunday of September in ${year}`);
+}
+
+/**
+ * Geneva's nine legal public holidays for a year, those falling on a weekday.
+ *
+ * Four move with Easter (Good Friday, Easter Monday, Ascension, Whit Monday);
+ * the Jeûne genevois is the Thursday after the first Sunday of September; the
+ * rest are fixed. A holiday on a weekend produces no weekday entry, so it is
+ * dropped here rather than written as an absence nobody would record.
+ */
+function genevaHolidayWeekdays(year: number): string[] {
+  const easter = easterSunday(year);
+
+  const all = [
+    `${year}-01-01`, // Nouvel An
+    iso(addDays(easter, -2)), // Vendredi saint
+    iso(addDays(easter, 1)), // Lundi de Paques
+    iso(addDays(easter, 39)), // Ascension
+    iso(addDays(easter, 50)), // Lundi de Pentecote
+    `${year}-08-01`, // Fete nationale
+    jeuneGenevois(year), // Jeune genevois
+    `${year}-12-25`, // Noel
+    `${year}-12-31`, // Restauration de la Republique
+  ];
+
+  return all.filter((d) => isWeekday(day(d)));
+}
+
+/** Monday to Friday of the week beginning at a Monday ISO day. */
+function congeWeek(mondayIso: string): string[] {
+  return [0, 1, 2, 3, 4].map((offset) => iso(addDays(day(mondayIso), offset)));
+}
+
+/**
+ * One planned entry, before it is written. editedFrom carries the value the day
+ * was FIRST recorded as, so the trail can show the change the row no longer does.
+ */
+interface Plan {
+  readonly date: string;
+  readonly portion: EntryPortion;
+  readonly kind: EntryKind;
+  readonly absenceReason: AbsenceReason | null;
+  readonly provenance: Provenance;
+  readonly detectedKind: EntryKind | null;
+  readonly detectedAt: Date | null;
+  readonly clientClaimedAt: Date | null;
+  readonly firstRecordedAt: Date;
+  readonly editedFrom: EntryKind | null;
+  readonly editedAt: Date | null;
+}
+
+/** An override for one date: a special kind, a recording delay, an edit, a split. */
+interface Override {
+  readonly kind?: EntryKind;
+  readonly absenceReason?: AbsenceReason;
+  readonly provenance?: Provenance;
+  readonly detectedKind?: EntryKind;
+  /** Days between the day itself and firstRecordedAt (late, or merely a few days). */
+  readonly recordedOffsetDays?: number;
+  /** The day was written offline on the day and reached the server later. */
+  readonly offline?: boolean;
+  /** The value the day was first recorded as; `kind` is the correction. */
+  readonly editedFrom?: EntryKind;
+  /** A half-day split: [AM kind, PM kind]. Requires HALF_DAY granularity. */
+  readonly split?: readonly [EntryKind, EntryKind];
+}
+
+interface YearPlan {
+  readonly start: string;
+  readonly end: string;
+  readonly defaultKind: (isoDay: string) => EntryKind;
+  readonly detection: boolean;
+  readonly consentIso: string | null;
+  readonly overrides: ReadonlyMap<string, Override>;
+  readonly gaps: ReadonlySet<string>;
+}
+
+const weekIndexOf = (isoDay: string): number => {
+  const date = day(isoDay);
+  const firstOfYear = Date.UTC(date.getUTCFullYear(), 0, 1);
+  const dayOfYear = Math.round((date.getTime() - firstOfYear) / DAY);
+
+  return Math.floor(dayOfYear / 7);
+};
+
+/** Insert into a map only if the key is free - first category wins (priority). */
+function putIfFree(map: Map<string, Override>, dates: readonly string[], value: Override): void {
+  for (const date of dates) {
+    if (!map.has(date)) map.set(date, value);
+  }
+}
+
+/** Build the ordinary-day entry (or half-day pair) for one date under a plan. */
+function planDay(isoDay: string, cfg: YearPlan): Plan[] {
+  const override = cfg.overrides.get(isoDay);
+
+  const eveningOf = (d: string): Date => at(`${d}T18:00:00.000`);
+
+  if (override?.split !== undefined) {
+    // A half-day pair: morning one place, afternoon another. Manual, same evening.
+    const recordedAt = clampPast(eveningOf(isoDay));
+
+    return (['AM', 'PM'] as const).map((portion, index) => ({
+      date: isoDay,
+      portion,
+      kind: override.split![index]!,
+      absenceReason: null,
+      provenance: 'MANUAL' as Provenance,
+      detectedKind: null,
+      detectedAt: null,
+      clientClaimedAt: null,
+      firstRecordedAt: recordedAt,
+      editedFrom: null,
+      editedAt: null,
+    }));
+  }
+
+  const kind = override?.kind ?? cfg.defaultKind(isoDay);
+  const absent = kind === 'ABSENT';
+  const absenceReason = absent ? (override?.absenceReason ?? 'AUTRE') : null;
+
+  let provenance: Provenance = 'MANUAL';
+  let detectedKind: EntryKind | null = null;
+  let detectedAt: Date | null = null;
+
+  if (!absent) {
+    if (override?.provenance !== undefined) {
+      provenance = override.provenance;
+      detectedKind = override.detectedKind ?? null;
+      detectedAt = detectedKind === null ? null : at(`${isoDay}T17:50:00.000`);
+    } else if (cfg.detection && cfg.consentIso !== null && isoDay >= cfg.consentIso) {
+      provenance = 'DETECTED_CONFIRMED';
+      detectedKind = kind;
+      detectedAt = at(`${isoDay}T17:50:00.000`);
+    }
+  }
+
+  const offset = override?.recordedOffsetDays ?? 0;
+  const firstRecordedAt = clampPast(
+    offset === 0 ? eveningOf(isoDay) : at(`${iso(addDays(day(isoDay), offset))}T09:12:00.000`),
+  );
+  const clientClaimedAt = override?.offline === true ? eveningOf(isoDay) : null;
+
+  const editedFrom = override?.editedFrom ?? null;
+  const editedAt =
+    editedFrom === null ? null : clampPast(at(`${iso(addDays(day(isoDay), 2))}T21:14:00.000`));
+
+  return [
+    {
+      date: isoDay,
+      portion: 'FULL',
+      kind,
+      absenceReason,
+      provenance,
+      detectedKind,
+      detectedAt,
+      clientClaimedAt,
+      firstRecordedAt,
+      editedFrom,
+      editedAt,
+    },
+  ];
+}
+
+/** Every planned entry for a year, in day order, skipping the gaps. */
+function planYear(cfg: YearPlan): Plan[] {
+  const plans: Plan[] = [];
+  const last = day(cfg.end);
+
+  for (
+    let cursor = day(cfg.start);
+    cursor.getTime() <= last.getTime();
+    cursor = addDays(cursor, 1)
+  ) {
+    if (!isWeekday(cursor)) continue;
+
+    const key = iso(cursor);
+
+    if (cfg.gaps.has(key)) continue;
+
+    plans.push(...planDay(key, cfg));
+  }
+
+  return plans;
+}
+
+/**
+ * Refuse a plan whose settings and entries contradict each other (R202).
+ *
+ * The seed for the demo year found this exact class once: AUTO_DETECT with a
+ * year of MANUAL days. Here the risk is the opposite - a detected day before the
+ * consent that made detection legal - so that is what this checks, plus the rule
+ * that an absence is never detected (detection knows a country, not a reason).
+ */
+function plansAgreeWithSettings(
+  email: string,
+  consentAt: Date | null,
+  plans: readonly Plan[],
+): void {
+  for (const plan of plans) {
+    if (plan.provenance === 'MANUAL') continue;
+
+    if (plan.kind === 'ABSENT') {
+      throw new Error(`${email}: ${plan.date} is a detected absence; detection cannot propose a reason.`);
+    }
+
+    if (consentAt === null) {
+      throw new Error(`${email}: ${plan.date} is detected but the account never gave consent.`);
+    }
+
+    if (day(plan.date).getTime() < midnight(consentAt).getTime()) {
+      throw new Error(`${email}: ${plan.date} is detected before consent on ${iso(consentAt)}.`);
+    }
+  }
+}
+
+interface ScenarioUser {
+  readonly email: string;
+  readonly name: string;
+  readonly granularity: 'DAY' | 'HALF_DAY';
+  readonly loggingMode: 'MANUAL' | 'AUTO_DETECT';
+  readonly detectionConsentAt: Date | null;
+  readonly activityStartDate: Date;
+}
+
+/** Create the person and write their planned years, with a matching event trail. */
+async function seedScenarioAccount(who: ScenarioUser, plans: readonly Plan[]): Promise<void> {
+  plansAgreeWithSettings(who.email, who.detectionConsentAt, plans);
+
+  // Idempotent, and it uses the one delete the append-only trigger permits:
+  // removing the person removes their entries and events together (D11).
+  await prisma.user.deleteMany({ where: { email: who.email } });
+
+  const tag = who.email.split('@')[0]!;
+
+  const user = await prisma.user.create({
+    data: {
+      email: who.email,
+      emailVerified: clampPast(at(`${iso(who.activityStartDate)}T09:00:00.000`)),
+      name: who.name,
+      canton: 'GE',
+      employmentRate: 100,
+      denominatorKind: 'SIMPLIFIED240',
+      granularity: who.granularity,
+      loggingMode: who.loggingMode,
+      detectionConsentAt: who.detectionConsentAt,
+      activityStartDate: who.activityStartDate,
+      reminderTime: '17:30',
+      reminderEnabled: true,
+    },
+  });
+
+  const byMutationId = new Map<string, Plan>();
+
+  const entryData = plans.map((plan) => {
+    const clientMutationId = `${tag}-${plan.date}-${plan.portion}`;
+
+    byMutationId.set(clientMutationId, plan);
+
+    return {
+      userId: user.id,
+      dayDate: day(plan.date),
+      portion: plan.portion,
+      kind: plan.kind,
+      absenceReason: plan.absenceReason,
+      clientMutationId,
+      note: null,
+      provenance: plan.provenance,
+      detectedKind: plan.detectedKind,
+      detectedAt: plan.detectedAt,
+      clientClaimedAt: plan.clientClaimedAt,
+      firstRecordedAt: plan.firstRecordedAt,
+    };
+  });
+
+  await prisma.entry.createMany({ data: entryData });
+
+  const stored = await prisma.entry.findMany({
+    where: { userId: user.id },
+    orderBy: [{ dayDate: 'asc' }, { portion: 'asc' }],
+  });
+
+  // THE CREATED EVENT, stamped when the server first heard. For an edited day it
+  // records the value the day was FIRST recorded as (editedFrom). The mutation id
+  // is read from the row (R181/R222); an edited day's events are legacy (null),
+  // because Entry.clientMutationId there is the LATER write's.
+  await prisma.entryEvent.createMany({
+    data: stored.map((entry) => {
+      const plan = byMutationId.get(entry.clientMutationId)!;
+      const edited = plan.editedFrom !== null;
+
+      return {
+        userId: entry.userId,
+        entryId: entry.id,
+        action: 'CREATED' as const,
+        kind: edited ? plan.editedFrom! : entry.kind,
+        provenance: entry.provenance,
+        detectedKind: entry.detectedKind,
+        dayDate: entry.dayDate,
+        portion: entry.portion,
+        recordedAt: entry.firstRecordedAt,
+        clientClaimedAt: entry.clientClaimedAt,
+        clientMutationId: edited ? null : entry.clientMutationId,
+      };
+    }),
+  });
+
+  // THE MODIFIED EVENTS, for the days a reader corrected after first recording.
+  for (const entry of stored) {
+    const plan = byMutationId.get(entry.clientMutationId)!;
+
+    if (plan.editedFrom === null) continue;
+
+    await prisma.entryEvent.create({
+      data: {
+        userId: entry.userId,
+        entryId: entry.id,
+        action: 'MODIFIED',
+        kind: entry.kind,
+        provenance: entry.provenance,
+        detectedKind: entry.detectedKind,
+        dayDate: entry.dayDate,
+        portion: entry.portion,
+        recordedAt: plan.editedAt ?? clampPast(addDays(entry.firstRecordedAt, 2)),
+        clientClaimedAt: entry.clientClaimedAt,
+        clientMutationId: null,
+      },
+    });
+  }
+
+  const events = await prisma.entryEvent.count({ where: { userId: user.id } });
+  const edits = plans.filter((plan) => plan.editedFrom !== null).length;
+  const late = plans.filter(
+    (plan) => plan.firstRecordedAt.getTime() - day(plan.date).getTime() > 7 * DAY,
+  ).length;
+
+  console.log(
+    `seeded: ${who.email} (${who.name}) - ${stored.length} entries, ${events} events, ` +
+      `${edits} edited, ${late} saisie tardive`,
+  );
+}
+
+/**
+ * ACCOUNT 1 - Camille Martin. Geneva, 100 %, simplified 240, whole days. Manual
+ * until September 2026, detection (beta) from then. About two telework days a
+ * week - comfortably under the 40 % ceiling. Missions, holidays, leave, sick
+ * days, late recordings and three corrections, across 2025 (full) and 2026 (to
+ * yesterday).
+ */
+function camilleYear(year: number, start: string, end: string): YearPlan {
+  const overrides = new Map<string, Override>();
+  const gaps = new Set<string>([
+    weekdayDate(year, 3, 4, 3), // a Wednesday in March
+    weekdayDate(year, 7, 1, 5), // a Friday in July
+    weekdayDate(year, 10, 2, 2), // a Tuesday in October
+  ]);
+
+  // Missions first - exact counts are part of the scenario, so they are protected.
+  putIfFree(
+    overrides,
+    [
+      weekdayDate(year, 2, 2, 2),
+      weekdayDate(year, 3, 2, 2),
+      weekdayDate(year, 5, 3, 3),
+      weekdayDate(year, 6, 1, 4),
+    ],
+    { kind: 'MISSION_FR' },
+  );
+  putIfFree(
+    overrides,
+    [weekdayDate(year, 1, 3, 4), weekdayDate(year, 4, 2, 3), weekdayDate(year, 6, 3, 2)],
+    { kind: 'MISSION_THIRD' },
+  );
+
+  // Three sick days.
+  for (const date of [weekdayDate(year, 2, 1, 3), weekdayDate(year, 5, 2, 1), weekdayDate(year, 11, 1, 4)]) {
+    putIfFree(overrides, [date], { kind: 'ABSENT', absenceReason: 'MALADIE' });
+  }
+
+  // The two detected-corrected days (2026 only, after consent).
+  if (year === 2026) {
+    putIfFree(overrides, [weekdayDate(year, 9, 2, 2)], {
+      kind: 'HOME',
+      provenance: 'DETECTED_CORRECTED',
+      detectedKind: 'CH',
+    });
+    putIfFree(overrides, [weekdayDate(year, 9, 3, 4)], {
+      kind: 'CH',
+      provenance: 'DETECTED_CORRECTED',
+      detectedKind: 'HOME',
+    });
+  }
+
+  // Three days corrected after first recording.
+  putIfFree(overrides, [weekdayDate(year, 3, 1, 1)], { kind: 'HOME', editedFrom: 'CH' });
+  putIfFree(overrides, [weekdayDate(year, 5, 1, 2)], { kind: 'HOME', editedFrom: 'CH' });
+  putIfFree(overrides, [weekdayDate(year, 6, 2, 3)], { kind: 'CH', editedFrom: 'HOME' });
+
+  // Geneva public holidays.
+  for (const holiday of genevaHolidayWeekdays(year)) {
+    putIfFree(overrides, [holiday], { kind: 'ABSENT', absenceReason: 'FERIE' });
+  }
+
+  // Five weeks of leave.
+  for (const monday of [
+    weekdayDate(year, 2, 3, 1),
+    weekdayDate(year, 4, 3, 1),
+    weekdayDate(year, 7, 2, 1),
+    weekdayDate(year, 8, 3, 1),
+    weekdayDate(year, 10, 1, 1),
+  ]) {
+    putIfFree(overrides, congeWeek(monday), { kind: 'ABSENT', absenceReason: 'CONGE' });
+  }
+
+  // Five days recorded more than a week late.
+  const lateDays: ReadonlyArray<readonly [string, number]> = [
+    [weekdayDate(year, 1, 2, 2), 9],
+    [weekdayDate(year, 2, 4, 4), 12],
+    [weekdayDate(year, 3, 3, 5), 15],
+    [weekdayDate(year, 4, 1, 3), 10],
+    [weekdayDate(year, 6, 2, 1), 18],
+  ];
+  for (const [date, offset] of lateDays) {
+    putIfFree(overrides, [date], { recordedOffsetDays: offset });
+  }
+
+  // A few recorded two to six days later; one of them written offline.
+  putIfFree(overrides, [weekdayDate(year, 1, 1, 3)], { recordedOffsetDays: 3 });
+  putIfFree(overrides, [weekdayDate(year, 5, 3, 1)], { recordedOffsetDays: 5, offline: true });
+  putIfFree(overrides, [weekdayDate(year, 6, 1, 2)], { recordedOffsetDays: 2 });
+
+  return {
+    start,
+    end,
+    detection: true,
+    consentIso: '2026-09-01',
+    defaultKind: (isoDay) => {
+      const weekday = day(isoDay).getUTCDay();
+
+      if (weekday === 4) return 'HOME'; // Thursday
+      if (weekday === 2 && weekIndexOf(isoDay) % 3 !== 0) return 'HOME'; // most Tuesdays
+
+      return 'CH';
+    },
+    overrides,
+    gaps,
+  };
+}
+
+/**
+ * ACCOUNT 2 - Alex Dupont. A year OVER the thresholds, adapting the demo year's
+ * over-ceiling character (R273): telework alone exceeds 40 %, so the regime is
+ * lost (FISCAL_CEILING_EXCEEDED, A1_REQUIRED) and credited missions fall to zero.
+ * Twelve mission days a year, over the ten-day cap (MISSION_CAP_EXCEEDED).
+ * Manual throughout - no detection.
+ */
+function alexYear(year: number, start: string, end: string): YearPlan {
+  const overrides = new Map<string, Override>();
+  const gaps = new Set<string>([weekdayDate(year, 5, 2, 3), weekdayDate(year, 9, 1, 1)]);
+
+  // Twelve missions a year (eight France, four third-state), all in the first
+  // half so the provisional 2026 carries them too. Over the ten-day cap.
+  putIfFree(
+    overrides,
+    [
+      weekdayDate(year, 1, 1, 2),
+      weekdayDate(year, 1, 3, 4),
+      weekdayDate(year, 2, 2, 3),
+      weekdayDate(year, 3, 1, 5),
+      weekdayDate(year, 3, 3, 1),
+      weekdayDate(year, 4, 2, 2),
+      weekdayDate(year, 5, 1, 4),
+      weekdayDate(year, 6, 2, 3),
+    ],
+    { kind: 'MISSION_FR' },
+  );
+  putIfFree(
+    overrides,
+    [
+      weekdayDate(year, 2, 1, 1),
+      weekdayDate(year, 4, 1, 3),
+      weekdayDate(year, 5, 3, 2),
+      weekdayDate(year, 6, 1, 5),
+    ],
+    { kind: 'MISSION_THIRD' },
+  );
+
+  // One edited day, one sick day.
+  putIfFree(overrides, [weekdayDate(year, 3, 2, 1)], { kind: 'HOME', editedFrom: 'CH' });
+  putIfFree(overrides, [weekdayDate(year, 10, 1, 2)], { kind: 'ABSENT', absenceReason: 'MALADIE' });
+
+  for (const holiday of genevaHolidayWeekdays(year)) {
+    putIfFree(overrides, [holiday], { kind: 'ABSENT', absenceReason: 'FERIE' });
+  }
+
+  // Two weeks of leave.
+  for (const monday of [weekdayDate(year, 7, 2, 1), weekdayDate(year, 8, 2, 1)]) {
+    putIfFree(overrides, congeWeek(monday), { kind: 'ABSENT', absenceReason: 'CONGE' });
+  }
+
+  // Two days recorded over a week late.
+  putIfFree(overrides, [weekdayDate(year, 2, 3, 1)], { recordedOffsetDays: 11 });
+  putIfFree(overrides, [weekdayDate(year, 4, 2, 4)], { recordedOffsetDays: 9 });
+
+  return {
+    start,
+    end,
+    detection: false,
+    consentIso: null,
+    defaultKind: (isoDay) => {
+      const weekday = day(isoDay).getUTCDay();
+
+      // Telework alone must clear the 40 % ceiling (regime lost) in BOTH years -
+      // and 2026 is the provisional year measured to yesterday against the full
+      // 240 basis, so it needs the higher share to cross by October. Monday,
+      // Tuesday and Thursday telework; Wednesday and Friday in Switzerland.
+      if (weekday === 1 || weekday === 2 || weekday === 4) return 'HOME';
+
+      return 'CH';
+    },
+    overrides,
+    gaps,
+  };
+}
+
+/**
+ * ACCOUNT 3 - Sam Bernard. Half-day granularity, 2026 only, starting partway
+ * through the year (a partial period, so the basis is a fraction of 240). Split
+ * days - a morning one place, an afternoon another - so the annex shows halves.
+ * Comfortably under the ceiling. Manual throughout.
+ */
+function samYear(start: string, end: string): YearPlan {
+  const overrides = new Map<string, Override>();
+  const gaps = new Set<string>([weekdayDate(2026, 6, 2, 5)]);
+
+  // Six split days, alternating which half is at home.
+  const splits: ReadonlyArray<readonly [string, readonly [EntryKind, EntryKind]]> = [
+    [weekdayDate(2026, 3, 2, 2), ['CH', 'HOME']],
+    [weekdayDate(2026, 4, 1, 4), ['HOME', 'CH']],
+    [weekdayDate(2026, 4, 3, 2), ['CH', 'HOME']],
+    [weekdayDate(2026, 5, 2, 3), ['HOME', 'CH']],
+    [weekdayDate(2026, 6, 1, 2), ['CH', 'HOME']],
+    [weekdayDate(2026, 7, 2, 4), ['CH', 'HOME']],
+  ];
+  for (const [date, split] of splits) {
+    putIfFree(overrides, [date], { split });
+  }
+
+  // One mission, one edited day, one sick day.
+  putIfFree(overrides, [weekdayDate(2026, 5, 1, 2)], { kind: 'MISSION_FR' });
+  putIfFree(overrides, [weekdayDate(2026, 6, 3, 3)], { kind: 'HOME', editedFrom: 'CH' });
+  putIfFree(overrides, [weekdayDate(2026, 6, 3, 5)], { kind: 'ABSENT', absenceReason: 'MALADIE' });
+
+  for (const holiday of genevaHolidayWeekdays(2026)) {
+    putIfFree(overrides, [holiday], { kind: 'ABSENT', absenceReason: 'FERIE' });
+  }
+
+  // One week of leave.
+  putIfFree(overrides, congeWeek(weekdayDate(2026, 8, 2, 1)), {
+    kind: 'ABSENT',
+    absenceReason: 'CONGE',
+  });
+
+  // Two days recorded over a week late.
+  putIfFree(overrides, [weekdayDate(2026, 3, 3, 3)], { recordedOffsetDays: 9 });
+  putIfFree(overrides, [weekdayDate(2026, 4, 2, 1)], { recordedOffsetDays: 10 });
+
+  return {
+    start,
+    end,
+    detection: false,
+    consentIso: null,
+    defaultKind: (isoDay) => (day(isoDay).getUTCDay() === 3 ? 'HOME' : 'CH'), // Wednesday at home
+    overrides,
+    gaps,
+  };
+}
+
+async function seedScenarioAccounts(): Promise<void> {
+  const cutoff = iso(yesterday());
+
+  // Camille and Alex are in their second year: 2025 complete, 2026 to yesterday.
+  const camillePlans = [
+    ...planYear(camilleYear(2025, '2025-01-01', '2025-12-31')),
+    ...planYear(camilleYear(2026, '2026-01-01', cutoff)),
+  ];
+  await seedScenarioAccount(
+    {
+      email: CAMILLE_EMAIL,
+      name: 'Camille Martin',
+      granularity: 'DAY',
+      loggingMode: 'AUTO_DETECT',
+      detectionConsentAt: at('2026-09-01T08:30:00.000'),
+      activityStartDate: day('2024-09-02'),
+    },
+    camillePlans,
+  );
+
+  const alexPlans = [
+    ...planYear(alexYear(2025, '2025-01-01', '2025-12-31')),
+    ...planYear(alexYear(2026, '2026-01-01', cutoff)),
+  ];
+  await seedScenarioAccount(
+    {
+      email: ALEX_EMAIL,
+      name: 'Alex Dupont',
+      granularity: 'DAY',
+      loggingMode: 'MANUAL',
+      detectionConsentAt: null,
+      activityStartDate: day('2024-01-08'),
+    },
+    alexPlans,
+  );
+
+  // Sam started partway through 2026 - a genuinely partial, provisional year.
+  const samStart = weekdayDate(2026, 3, 1, 1); // first Monday of March 2026
+  const samPlans = planYear(samYear(samStart, cutoff));
+  await seedScenarioAccount(
+    {
+      email: SAM_EMAIL,
+      name: 'Sam Bernard',
+      granularity: 'HALF_DAY',
+      loggingMode: 'MANUAL',
+      detectionConsentAt: null,
+      activityStartDate: day(samStart),
+    },
+    samPlans,
+  );
+}
+
 async function main(): Promise<void> {
   const subscribers = await seedAlertSubscribers();
 
   console.log(`seeded: ${subscribers} alert subscriber(s) in four states`);
 
   await seedDemoYear();
+  await seedScenarioAccounts();
 }
 
 try {
