@@ -83,6 +83,7 @@ import ch.monreleve.app.parametres.AccountExportKind
 import ch.monreleve.app.parametres.LegalPage
 import ch.monreleve.app.parametres.ParametresController
 import ch.monreleve.app.parametres.ParametresState
+import ch.monreleve.app.parametres.Site
 import ch.monreleve.app.parametres.openLegalLink
 import ch.monreleve.app.releve.ExportEvent
 import ch.monreleve.app.releve.ExportKind
@@ -734,9 +735,9 @@ private fun ParametresTab(
     )
 }
 
-// AN12 increment 4: open a legal page in the browser from the configured site URL. The host is
-// BuildConfig.API_BASE_URL - the emulator's host in debug, monreleve.ch in release - and the path is the
-// LegalPage's (a verified live web route). Lives in the composition root, where an Intent is permitted.
+// AN12 increment 4 / AN-LINKS: open a website page from the ONE site origin (Site.ORIGIN, R206) plus the
+// LegalPage's own path - never BuildConfig.API_BASE_URL, which is the API base and points at the emulator host
+// in debug. Lives in the composition root, where an Intent is permitted.
 private fun openLegal(
     context: Context,
     page: LegalPage,
@@ -744,7 +745,7 @@ private fun openLegal(
     // R299: a device with no browser (a managed profile, a kiosk) would crash on startActivity; openLegalLink
     // catches that and shows the address instead. The launch and the fallback toast are the seams it wraps.
     openLegalLink(
-        url = "${BuildConfig.API_BASE_URL}${page.path}",
+        url = Site.url(page),
         open = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(it))) },
         showAddress = { Toast.makeText(context, ParametresCopy.legalNoHandler(it), Toast.LENGTH_LONG).show() },
     )

@@ -1,0 +1,117 @@
+AN-LINKS SESSION PROMPT - Mon Releve
+THE APP'S LINKS TO THE WEBSITE, NOW THAT MONRELEVE.CH IS LIVE
+Paste into a fresh Claude Code session at the repository root, or run
+it as the last task of RUN-CHAIN-ONBOARD-VERIFY-SEED. The physical
+phone (Galaxy S9, API 29) is connected.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+Do not stop to report progress or ask a question; judgment calls go to
+the advisors, recorded in the report; if an advisor does not answer,
+take the conservative, reversible option (R156). Ends with
+REPORT-AN-LINKS.txt committed and pushed: DONE; a HARD BOUNDARY; NO
+PROGRESS; a DEGRADED CONTEXT. R300 if another session pushes to main.
+R270 applies.
+
+HARD BOUNDARIES: no change to either engine or /v1; DO NOT DEPLOY the
+website - if the live site is behind main, report it; deploying is the
+operator's decision. Restore every phone setting changed. No red
+commit.
+
+R273. The operator reports that monreleve.ch is live and working. That
+    is a claim to VERIFY, not assume - increment 0.
+R1. pnpm gate:clone and :app:gate green on origin/main's HEAD.
+
+====================================================================
+0. IS THE LIVE SITE THIS PRODUCT, AND WHICH VERSION?
+====================================================================
+A domain can answer 200 with a parking page. So, positive signals only
+(R133, R169):
+  - https://monreleve.ch/api/health answers, identifies this product by
+    its service field, and reports a version or commit. Compare it with
+    origin/main. If the site is behind, list which legal or privacy
+    copy differs - R325's network-location wording, for instance - so
+    the operator knows the app would link to older text.
+  - Each page the app will link to - /mentions-legales,
+    /confidentialite, /cgu, /sources, /a-propos - returns 200 WITH its
+    own heading and the site's stylesheet loaded. A 200 alone counts
+    for nothing.
+  - The certificate is valid and http redirects to https.
+Record all of it. If the site is not this product, stop: the app must
+never link to a page that might not be ours.
+
+====================================================================
+1. ONE ADDRESS, DEFINED ONCE
+====================================================================
+- The site's origin, https://monreleve.ch, is ONE constant in the app,
+  with each page's path beside it (R206). The release build uses it.
+  The debug build may use it too: these are public, read-only pages
+  holding no personal data. The API's base address is a separate
+  setting and does not change here.
+- A TEST CHECKS THAT EVERY PATH THE APP LINKS TO EXISTS AS A PAGE ON
+  THE WEBSITE, derived from the web app's routes (app/**/page.tsx),
+  never from a list (R246). Renaming a web page then breaks the build,
+  not a link in someone's hand. Plant a wrong path, verify it landed,
+  see the test fail, revert (R180).
+- FIND EVERY PLACE THE APP LINKS TO THE SITE - search the code, do not
+  assume - and route each through the constant: the A propos rows in
+  Parametres; the consent line on the sign-in screen ("Conditions
+  d'utilisation", "Politique de confidentialite") if AN-ONBOARD has
+  landed; anywhere else. List them in the report.
+
+====================================================================
+2. A PROPOS
+====================================================================
+The rows, each opening its page on monreleve.ch:
+  Mentions legales -> /mentions-legales
+  Confidentialite -> /confidentialite
+  Conditions d'utilisation -> /cgu
+  Sources -> /sources
+  A propos de Mon Releve -> /a-propos
+The Licences screen STAYS INSIDE THE APP: it lists the libraries
+bundled in this build, the polygon's ODbL and Lucide's ISC, which only
+the app can know. The version row stays.
+
+OPENING THEM: Android Custom Tabs, so the page opens inside the app's
+context with the brand colour in its toolbar. That needs
+androidx.browser - name it and justify it (R136). If no Custom Tabs
+provider exists, fall back to the system browser; if no browser exists
+at all, R299 applies: show the address so the person can open it
+elsewhere. Never a crash.
+
+====================================================================
+3. WHAT THE LIVE PAGES STILL LACK - REPORT, DO NOT INVENT
+====================================================================
+Now that the app links to these pages, two known gaps are public:
+  - /mentions-legales still needs a NAMED PUBLICATION DIRECTOR, which
+    French law requires (PARK-13's family);
+  - /confidentialite still needs the EU and Swiss REPRESENTATIVE
+    (GDPR article 27, nLPD article 14 - the lawyer's question).
+Confirm whether each is still missing on the live site, and list it
+first under NEEDS. Do not write a name, a representative or any legal
+fact the operator has not supplied (R146).
+
+====================================================================
+DONE
+====================================================================
+  L1. Increment 0's checks recorded: the product, its version against
+      main, each page's heading and styles, https.
+  L2. One origin constant; every link in the app routed through it;
+      the derived route test, planted and failing, then green.
+  L3. On the S9: each A propos row opens the right live page in a
+      Custom Tab, styled; the sign-in consent links too if present;
+      with no network, the honest fallback. Every screen opened and
+      described, at default size and 200 percent.
+  L4. Gates green, gate:clone passing.
+
+====================================================================
+REPORT - REPORT-AN-LINKS.txt
+====================================================================
+HOW IT ENDED / THE LIVE SITE (product, version against main, each page)
+/ EVERY LINK FOUND AND WHERE IT NOW POINTS / THE ROUTE TEST / CUSTOM
+TABS (dependency and fallbacks) / NEEDS (publication director;
+representative; anything the site lacks) / WALKTHROUGH / ADVISOR
+DECISIONS / PARKED / DEVIATIONS / QUESTIONS / PUSH PROOF
+
+END OF AN-LINKS PROMPT

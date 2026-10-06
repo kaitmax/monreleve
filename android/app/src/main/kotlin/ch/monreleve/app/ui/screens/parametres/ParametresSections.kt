@@ -143,6 +143,8 @@ internal fun AProposSection(
         RowDivider()
         ActionRow(ParametresCopy.SOURCES_ROW) { onOpenLegal(ch.monreleve.app.parametres.LegalPage.SOURCES) }
         RowDivider()
+        ActionRow(ParametresCopy.ABOUT_PAGE_ROW) { onOpenLegal(ch.monreleve.app.parametres.LegalPage.ABOUT) }
+        RowDivider()
         ActionRow(ParametresCopy.LICENCES_ROW, onClick = onOpenLicences)
         RowDivider()
         ValueRow(ParametresCopy.VERSION_ROW, appVersion)

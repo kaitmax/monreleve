@@ -255,6 +255,13 @@ tasks.withType<Test> {
     inputs.file(rootProject.layout.projectDirectory.file("../docs/field-protocol-AN6b.md"))
         .withPropertyName("fieldProtocolDoc")
         .withPathSensitivity(PathSensitivity.RELATIVE)
+    // AN-LINKS (R283/R246): the website's route tree (web/app), walked for page.tsx by AppSiteLinksTest to
+    // derive every page the site serves and fail if an app -> site link points at one that no longer exists.
+    // Declared so that renaming or removing a web page re-runs the test rather than leaving it UP-TO-DATE -
+    // which is the whole guarantee (rename a page, break this build, not a link in someone's hand).
+    inputs.dir(rootProject.layout.projectDirectory.dir("../web/app"))
+        .withPropertyName("websiteRoutes")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
     // In-module DATA read as text with no compile dependency: the exported Room schema
     // (RoomSchemaContractTest), the bundled border polygon (BorderPolygon/Classification/DetectionSession
     // tests), and the backup rules XML (BackupRulesTest). A manual edit to any of these recompiles
