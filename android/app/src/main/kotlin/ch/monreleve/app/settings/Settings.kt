@@ -96,4 +96,7 @@ fun parseMeSettings(body: String): Settings? =
     }.getOrNull()
 
 /** DossierPayload's convention: a JSON null (or an absent key) reads as null, never the literal string "null". */
-private fun JSONObject.stringOrNull(key: String): String? = if (!has(key) || isNull(key)) null else getString(key)
+internal fun JSONObject.stringOrNull(key: String): String? = if (!has(key) || isNull(key)) null else getString(key)
+
+/** The same convention for an integer field: an absent or JSON-null key reads as null rather than throwing. */
+internal fun JSONObject.intOrNull(key: String): Int? = if (!has(key) || isNull(key)) null else getInt(key)

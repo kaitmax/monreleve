@@ -18,7 +18,13 @@ interface SettingsStore {
 
     fun clear()
 
-    fun isOnboarded(): Boolean = load() != null
+    /**
+     * AN-ONBOARD-2 (R335): onboarded means COMPLETE - every field the releve needs, not merely "some settings
+     * exist". Keyed on the ONE completeness definition (ReleveCompleteness.toMeView/isComplete) the server path
+     * also uses, so a locally-cached account missing a name (the Q1 case) is sent back to finish onboarding
+     * rather than onto Aujourd'hui with a PDF that 422s.
+     */
+    fun isOnboarded(): Boolean = load()?.toMeView()?.isComplete() ?: false
 }
 
 private const val SETTINGS_PREFS = "monreleve.settings"
