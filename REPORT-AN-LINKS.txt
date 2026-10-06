@@ -307,8 +307,26 @@ before commit:
   c25a95d  AN-LINKS: open the links in a brand-coloured Custom Tab,
            with fallbacks
   <report commit>  AN-LINKS: the report
-All pushed to origin/an-links. The final pnpm gate:clone and the merge
-to main are the orchestrator's (deferred - gate:clone exceeds a
-sub-agent turn).
+All pushed to origin/an-links.
+
+FINALISATION (orchestrating session - gate:clone + merge)
+====================================================================
+:app:gate       GREEN on the merged HEAD (752d1e0): AppSiteLinksTest
+  (the derived route test), LegalLinkTest (R299 fallback),
+  RegisterCoverageTest, verifyPaparazziDebug (no baseline change),
+  checkLicences (androidx.browser attribution).
+pnpm gate:clone on the merged HEAD: PASSED register-coverage, install,
+  typecheck, lint, test, build, size, db:deploy, test:db.
+  test:container:write FAILED ONCE on a transient "fetch failed" (the
+  network was degraded all session - 10-36s registry fetches, a killed
+  test:visual install) and PASSED on re-run from the identical tree
+  (10/10). R174: a flaked sample is retried, not waved through. No code
+  regression - git diff shows AN-LINKS changed only android/, REPORT and
+  relay/, so the web tree is byte-identical to 9bbd225, whose full
+  gate:clone (incl. test:container:write) passed an hour before.
+Merged --no-ff to main (752d1e0) and pushed.
+WALKTHROUGH still deferred: the phone is disconnected. The device steps
+  in the WALKTHROUGH section are the one remaining piece, to run on
+  reconnect.
 
 END OF REPORT-AN-LINKS.txt
