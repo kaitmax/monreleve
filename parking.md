@@ -1739,6 +1739,27 @@ NEEDS: an operator copy decision IF a one-line tile is wanted - a shorter word f
 would then be the tile's own copy. Reversible (SummaryTile label + CalendarCopy). The heading stays so the
 report's citation resolves (RegisterCoverageTest).
 
+## PARKAN-42 - the mockups' light brand-tint surface has no token  [AN-ONBOARD, 2026-10-06]
+
+QUESTION: the approved onboarding mockups paint the small round icon badges (and the selected
+choice-card fill) in #EAF0F7 — a very light tint of the brand Deep Alpine Blue. DESIGN-SYSTEM.md §1
+has no "brand soft" token: the colour family is canvas / surface / text / border / brand (one solid)
+/ the France & Switzerland soft pairs / the four status soft pairs. Adding a tenth surface colour is a
+token addition, which SPEC §20 names an ask-first item.
+
+TAKEN (R156, advisor stalled all session): render the tint as `LightColors.brand.copy(alpha = …)`
+rather than inventing a hex or a token. The colour is DERIVED from the one brand token, so it moves
+with it and introduces no new value to maintain; the alpha is a rendering modifier on a token, not a
+second colour definition. The alpha literal lives at the component, the way an elevation or a divider
+opacity would.
+
+NOT TAKEN: a new `brandSoft` / `surfaceBrand` colour token (would need a value ruling and a place in
+§1), and a raw #EAF0F7 (forbidden — tokens only).
+
+NEEDS: an operator/design ruling IF a named brand-tint surface token is wanted (then every badge and
+selected card references it and the alpha goes away). Reversible: it is one derived expression per use
+site. The heading stays so the report's citation resolves (RegisterCoverageTest, R327).
+
 ## STATUS LEDGER  [appended 2026-09-29]
 
 One line per Android-era entry, so the state of each is visible without
@@ -1778,3 +1799,4 @@ reading every section. Entries are not edited; this ledger is.
 | PARKAN-39 — Aujourd'hui sections C/E/F need a controller projection | **closed, RESOLVED** | AN-HOME C/E/F (R328): the operator ruled a READ-ONLY projection of already-held entries, built from CalendarModel's existing pure mappers, IS presentation (no write, no engine, no /v1, no schema, no detection). Built in AujourdhuiController; C/E/F shipped with the one-way-of-counting test (AujourdhuiSectionsTest) proving the home and the calendar count one way; every non-ui test passes unchanged; driven on the S9; merged to main. See the heading above + REPORT-AN-HOME.txt |
 | PARKAN-40 — the stray left-edge line is the Samsung Edge panel, not an app card | **closed, finding** | AN-CAL2 defect 3: proven on the SM-G960F to be the SystemUI Edge-panel handle (same position on 3 screens; no app node at x<30 in that band; `cocktail_bar_enabled_cocktails`=AppsEdgePanelProvider, `edge_handler_position_percent`=76.9≈1707 px = the line). No app-code fix; to clear the screenshot artifact, disable the device's Edge panel. Awaits operator awareness |
 | PARKAN-41 — « Non renseigne » counts tile wraps to two lines | **open, conservative** | AN-CAL2 defect 1: 13 chars cannot fit one line in a fifth of a 320-360 dp row at a legible size. Kept the full accented word (R155/R206) and reserved two label lines (minLines=2) so every number aligns - the operator's real defect (misalignment) is fixed. An abbreviated one-line tile label is an operator copy decision; reversible |
+| PARKAN-42 — the mockups' light brand-tint surface has no token | **open, conservative** | AN-ONBOARD: the onboarding mockups paint icon badges and selected choice cards in #EAF0F7, a light tint of brand; DESIGN-SYSTEM §1 has no "brand soft" token and adding one is SPEC §20 ask-first. TAKEN (R156, advisor stalled): render it as `LightColors.brand.copy(alpha=…)` — derived from the one brand token, not a new value. NEEDS an operator/design ruling if a named brand-tint token is wanted; reversible (one derived expression per use site) |
