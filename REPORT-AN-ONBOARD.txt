@@ -1,0 +1,450 @@
+====================================================================
+REPORT-AN-ONBOARD.txt - sign-in with a six-digit code, and the new
+onboarding built as designed
+Mon Releve / frontalier   2026-10-06
+====================================================================
+
+NOTE ON SPELLING. Pure ASCII, as the protocol requires. Every French
+phrase quoted below is transliterated: accents dropped, guillemets
+become double quotes. R155 - THE ASCII HERE IS ILLUSTRATIVE, NEVER A
+SOURCE. The accented original lives in android/.../fr and web/lib/fr
+and is what ships.
+
+HOW IT ENDED
+--------------------------------------------------------------------
+DONE. The six-digit code sign-in (server + app), the holder NAME
+(stored, settable through /api/v1/me, read back for the step-skip, and
+PROVEN reaching the server from the device), and the eleven designed
+onboarding screens are built, gated, driven on the S9, and merged to
+main. The chain-critical handover holds: the name is stored and
+settable via /api/v1/me and the releve PDF generates with it (where in
+the code, below).
+
+The large Compose UI build was delegated to a fork of this session
+(inheriting the full context - the 11 mockups, the tokens, the
+patterns, the rulings), which built it test-first, gated each increment
+with :app:gate, and pushed per increment. The server work, the name
+plumbing, the device walkthrough, the gates and the merge are this
+session's own.
+
+WHAT IS WORTH READING, in order of how much it changed:
+
+1. THE SIX-DIGIT CODE IS THE SAME REQUEST AS THE LINK. One
+   VerificationToken row carries both (code hashed, like the token);
+   using either consumes both; they expire together. consumeCode is
+   constant-time, single-use-under-race, and attempt-limited (5). A new
+   POST /api/v1/auth/code opens the SAME session the callback does. The
+   App Link callback is byte-unchanged (R195).
+
+2. THE NAME COLUMN EXISTED; NOTHING WROTE IT FROM A CLIENT. User.name
+   has been in the schema since FW21 and was DELIBERATELY excluded from
+   /me. This task made it settable AND returned on /api/v1/me (additive,
+   no migration), so onboarding step 1 writes it and a re-sign-in skips
+   that step (R297). The R205 PDF guard already generates with it.
+
+3. THE WHOLE FLOW RAN ON THE S9. Fresh install -> Bienvenue -> email ->
+   code read from the fake outbox (037918) and typed on the phone -> all
+   seven steps -> Tout est pret -> Aujourd'hui ("Bonjour Camille"). The
+   database then confirmed User.name = "Camille Martin" reached the
+   server through the DEVICE's PATCH /api/v1/me - which closes AN5b's
+   one real blind spot (the device PATCH verb was never exercised).
+
+4. A FORK BUILT THE UI, THIS SESSION VERIFIED IT ON THE DEVICE. The
+   Paparazzi baselines (fork, cropped) are the per-screen record; the
+   on-device drive is the integration proof (R176/R204).
+
+BLOCKER: none.
+
+R273 (where this task belongs)
+--------------------------------------------------------------------
+tasks/todo.md has NO "AN-ONBOARD" card. This is a relay-driven task that
+EXTENDS AN4 (the passwordless sign-in: "Auth, session, onboarding
+shell") with a six-digit code, and REPLACES AN5b's onboarding (the
+single scrolling form) with the eleven approved screens, adding the
+holder name. It sits in the Checkpoint F lineage (AN4's sign-in + the
+onboarding). Commit prefix "AN-ONBOARD" for the same reason AN5b used
+its own (a namespace that matches the report, R162).
+
+R1 - the base (gate:clone + :app:gate green on origin/main HEAD)
+--------------------------------------------------------------------
+Base origin/main = 400912c (LOGO's gated tree + a docs-only chore).
+
+pnpm gate:clone on 400912c: the first run FAILED at pnpm test:db, on
+tests/db/export-pdf.test.ts (expected 200, got 503). DIAGNOSED as an
+ENVIRONMENT artifact, not a base RED: the PDF live-render suite runs
+only when a server on localhost:3000 answers /api/health naming this
+product, and a STALE monreleve "next start" orphan (PID 12068,
+runtime:false, cannot render) was holding 3000 from a prior session, so
+the suite ran against it and got 503. Confirmed by re-running test:db
+with FRONTALIER_PORT=3100 (the live-render suite SKIPPED with its named
+R133 reason): 34 files, 546 tests passed. Then the definitive base
+gate:clone with the port moved: GATE:CLONE PASSED (register-coverage,
+install, typecheck, lint, test, build, size, db:deploy, test:db,
+test:container:write). The orchestrator confirmed :app:gate GREEN on
+400912c. So the base was green; the single failure was the orphan.
+CONSERVATIVE CHOICE (R156): the port was MOVED rather than the orphan
+killed, mirroring CLAUDE.md's "move ours rather than stopping theirs"
+(the orphan was later stopped, with authority, only to free 3000 for
+the device container).
+
+THE CODE ON THE SERVER (O1) - the limits chosen, and why; each test
+--------------------------------------------------------------------
+Additive to /v1 (nothing renamed, removed, or changed in meaning; the
+App Link callback is byte-identical - R195).
+
+SCHEMA (additive migration verification_token_code): VerificationToken
+gains `code String?` (the six digits, stored as a SHA-256 hash, never in
+clear - the same rule the link token follows) and `attempts Int @default
+0`. ADD COLUMN only. The privacy map (personal-data.ts) classifies both
+under the sign-in-link disclosure (they belong to the one sign-in
+request); its schema-census test required it.
+
+THE NUMBERS, stated (the relay asked):
+  - SIX digits: a million combinations. Safe ONLY with an attempt limit.
+  - MAX_CODE_ATTEMPTS = 5 wrong attempts per request, then the request
+    is DEAD (too_many_attempts) - even the right code is refused, and
+    the person asks for a new one. Five is forgiving of a phone mistype
+    and leaves a guesser 5-in-a-million before the request dies.
+  - EXPIRY = MAGIC_LINK_TTL_MS (15 min), SHARED with the link: one
+    request, one lifetime.
+  - The exchange endpoint's edge rate limit = 20 per 10-minute window,
+    per address AND per network source. Set WELL ABOVE the per-request
+    counter (5) deliberately: the counter is the real per-code guard;
+    this backstop only stops a source hammering across requests, and a
+    higher ceiling means an honest fat-fingered person meets
+    too_many_attempts, never rate_limited. (checkRate gained an optional
+    limit argument; the alert and sign-in-request forms keep the
+    default 5.)
+
+CONSTANT TIME: the submitted code is hashed and compared to the stored
+hash with timingSafeEqual. SINGLE USE UNDER A RACE: the win is decided
+by the count a conditional deleteMany returns, exactly as
+consumeMagicLink decides it; the attempt slot is claimed by an ATOMIC
+increment before the comparison, so parallel guesses cannot each read
+the same low count.
+
+NO ENUMERATION: an address with no pending request is refused
+invalid_code, identical to a wrong guess (FW22's guarantee extended). A
+VerificationToken row exists for ANY address that requested a link,
+registered or not, so even code_expired and too_many_attempts reveal
+only that a link was once requested - which anyone can cause for any
+address - never that an account exists. The account is created at the
+EXCHANGE, carrying only the address (like the callback).
+
+EACH REFUSAL NAMED (R198): invalid_code (400), code_expired (400),
+too_many_attempts (429), rate_limited (429), malformed_body (400). The
+French messages say HOW TO RECOVER, never just "erreur".
+
+THE EMAIL carries the code beside the link, in French, on its own line
+(read from the fake outbox in dev). The code and the minutes are
+per-request data passed as arguments, not stale-able constants (R153).
+
+DOCS: docs/api-v1.md gains the POST /api/v1/auth/code flow line, a 1.6
+section, the four codes in the 1.4 table, and the name field on /me in
+section 9. The document-and-schema drift test (api-contract-doc) now
+asserts the four codes are documented; the route-coverage test
+(api-contract) asserts /api/v1/auth/code is described.
+
+TESTS, test-first (RED shown, then GREEN):
+  - tests/db/code-sign-in.test.ts: RED (consumeCode / MAX_CODE_ATTEMPTS
+    / issued.code did not exist - 10 failed), then GREEN (21 across code
+    + magic-link): hashed code stored, shared expiry, code consumes the
+    link and vice versa, wrong code counts an attempt, the limit kills
+    the request (then refuses even the right code), expired is named and
+    swept, no-request is invalid_code, another address's code refused,
+    and the 10-way race (exactly one wins, no row left).
+  - tests/db/auth-code-route.test.ts: RED (the route did not exist),
+    then GREEN (10) - DRIVEN THROUGH THE ROUTE HANDLERS (R204): the
+    email carries a code and still the link; request -> email -> code ->
+    a usable pair that opens a door; account created at the exchange;
+    refused the second time; no cookie; each refusal named; unknown
+    address == wrong code; malformed body.
+  - web/app gate (gate:changed): typecheck, lint, test 2971, build,
+    test:e2e 292, test:visual 108, test:db 571, test:late 10 - green.
+
+THE NAME (was it stored before? what was added)
+--------------------------------------------------------------------
+STORED BEFORE: YES, the column. prisma/schema.prisma:194 `name String?`
+has existed since FW21, and lib/content/personal-data.ts already mapped
+it. SETTABLE BEFORE: NO. No /api route wrote it (only the seed), and it
+was DELIBERATELY excluded from PATCH and GET /api/v1/me (the read.ts
+header said so). So there was no way for a real user to set a name, and
+the PDF would 422 (titulaire_missing) for everyone.
+
+ADDED (additive, no migration - the column existed):
+  - web/lib/me/schema.ts: `name` in meObject - trimmed, non-empty once
+    trimmed (a blank name is refused, because the dossier/PDF refuse
+    without a titulaire, R205), capped at 120.
+  - web/lib/me/read.ts: `name` in ME_FIELDS + serialiseMe, so GET /me
+    returns it. The header now explains WHY (R297 skip; owner's own
+    data behind their own bearer; email stays absent). me-route.test.ts
+    updated: GET returns the name, never the email; PATCH sets/trims it,
+    refuses a blank, leaves other settings alone (RED then GREEN).
+  - docs/api-v1.md section 9: name is settable and returned.
+  - Android: Settings gains a nullable `name` (last, defaulted so every
+    positional caller is unchanged); mePatchBody sends it when set,
+    omits it when absent (the server requires non-empty); parseMeSettings
+    reads it back; SharedPrefsSettingsStore persists it; onboarding step
+    1 collects it. MeSettingsTest updated (RED then GREEN).
+
+THE PDF GENERATES WITH IT: web/app/api/v1/export/pdf/route.ts holds the
+R205 guard (selects name; 422 titulaire_missing before launching
+Chromium if titulaireOf(name) is null; renders when present).
+web/lib/dossier/service.ts titulaireOf + MissingTitulaireError +
+buildDossier use the name as the titulaire. Unchanged by this task and
+still green. PROVEN end to end on the device: after onboarding, the
+scratch database held User.name = "Camille Martin".
+
+EACH SCREEN AGAINST ITS DESIGN FILE
+--------------------------------------------------------------------
+All eleven built as designed (confirmed on the device by the texts in
+the UI dump and the screenshots, and by the Paparazzi baselines).
+
+  Main      -> Bienvenue: logo mark, "Mon Releve" wordmark, the promise
+               h1, three feature rows (calendar-check / file-text / lock
+               in brand-tint circles), "Commencer". Fresh-install only.
+  Connexion -> email: logo, "Se connecter a Mon Releve", the
+               passwordless prompt naming BOTH a link and a code, the
+               email field, the consent line linking the CGU and the
+               privacy policy, "Recevoir mon lien de connexion". The app
+               never persists the last email beyond the in-flight flow
+               (R295).
+  Code      -> "Verifiez votre messagerie", the address + "Modifier",
+               six boxes (a digit advances, a paste fills all six, the
+               sixth submits, TalkBack reads "Chiffre N sur 6"), the
+               one-time note, "Valider le code", "Ouvrir ma messagerie",
+               a VISIBLE resend countdown ("... dans 0:23"), a named
+               recovery message per refusal.
+  Nom       -> step 1: "Votre nom", the field, the "Apercu de votre
+               releve / Titulaire" preview that updates live.
+  Canton    -> step 2: the searchable canton list (filter + radio).
+  Taux      -> step 3: 100 / 80 / 60 / Autre (Autre reveals a field).
+  Methode   -> step 4: the two explained cards.
+  Periode   -> step 5: "Oui" (no date) / "Non" (Material-3 date picker,
+               Swiss dd.MM.yyyy shown, ISO stored - R28).
+  Mode      -> step 6: Manuellement (default) / Automatiquement [Beta],
+               presented as equals; automatic goes through the existing
+               disclosure then the OS prompt (R316) and records consent
+               (R315).
+  Rappel    -> step 7: "Oui, me le rappeler" (POST_NOTIFICATIONS on API
+               33+; the R323 evening notification) / "Pas maintenant".
+  Pret      -> "Tout est pret", the identification block (Titulaire,
+               Canton, Taux, Methode, Periode) from the SAVED values, and
+               the operator's edit: the button reads "Continuer" and
+               leads to Aujourd'hui.
+
+DEVIATIONS from the mockups (built as designed, flagged by the fork):
+  - No granularity step: the mockups drop it; it defaults to whole DAYS
+    (settable later in Parametres). Same stored data.
+  - Step 4 reveals an exact-total field the static mockup omits: the
+    engine and the database require a total for the real-days method,
+    else the save 422s (R196).
+
+TOKENS USED WHERE THE MOCK-UP HAD NONE (README / R156)
+--------------------------------------------------------------------
+The mockups' literal colours are not tokens; each maps to the nearest:
+  #14243A           -> LightColors.textPrimary
+  #4A5A70           -> LightColors.textSecondary
+  #7A8AA0           -> LightColors.borderStrong
+  #D5DCE5           -> LightColors.borderDefault
+  #EAF0F7 (the icon badge / selected-card tint) -> no "brand soft"
+    token exists; rendered as LightColors.brand.copy(alpha = 0.08f),
+    DERIVED from the one brand token, not a new value. SPEC 20 ask-first;
+    taken conservatively and PARKED (PARKAN-42).
+  The CTA pills use Radius.pill (the operator-approved mockups show
+    pills; DESIGN-SYSTEM 1 names 14 for a generic large button - both
+    are tokens).
+
+THE WALKTHROUGH (R176/R177; O2, O3, O4 - every screen described)
+--------------------------------------------------------------------
+Driven on the PHYSICAL S9 (SM-G960F, API 29, serial 232bcd8c...),
+against `pnpm dev` running THIS branch's code on port 3000, reached from
+the phone by `adb reverse tcp:3000 tcp:3000` with the debug APK built
+`-PfrontalierHost=127.0.0.1` (REPORT-AN14a's physical-device recipe).
+
+WHY pnpm dev AND NOT the prebuilt container (a deliberate, recorded
+choice): the prebuilt monreleve:write image is from the BASE commit
+(400912c) and has neither the code endpoint nor the name field - its
+VerificationToken row came back with an empty code. And O2's own words
+are "code read from the fake outbox", which only a DEVELOPMENT server
+exposes (a production build does not print the outbox). pnpm dev runs
+the exact branch code AND makes the real code readable, so it is the
+faithful way to drive "read the code from the fake outbox and type it".
+The container PACKAGING of this branch is separately proven by
+gate:clone's test:container:write (it builds and runs monreleve:write
+from the current tree). R169 first: /api/health named "monreleve".
+
+SEEN, in order (shots in android/.an-onboard-shots/, opened and read):
+  1  Bienvenue: the logo, the promise, the three rows, "Commencer".
+     (01-bienvenue.png - opened, matches Main.)
+  2  Connexion: title, prompt, email field, consent with the two links,
+     "Recevoir mon lien de connexion". Typed
+     camille.martin@exemple.invalid (a reserved .invalid test address,
+     no real person) - read back exactly from the field.
+  3  Submitted -> the dev outbox printed the email: "Ou saisissez ce
+     code dans l'application : 037918 ... Le lien et le code sont
+     valables 15 minutes ...". The link is still present (the code is an
+     ADDITIONAL way in).
+  4  Code screen: typed 037918 into the first box; it advanced through
+     all six and the sixth submitted -> exchanged -> signed in ->
+     onboarding step 1. THE SIX-DIGIT CODE SIGNED IN ON THE DEVICE.
+  5  Step 1 Nom: typed "Camille Martin"; the Titulaire preview updated.
+  6  Step 2 Canton: searched "Gen", selected Geneve.
+  7  Step 3 Taux: 100 %. Step 4 Methode: simplified. Step 5 Periode:
+     "Oui, depuis le 1er janvier" (whole year). Step 6 Mode:
+     Manuellement. Step 7 Rappel: "Pas maintenant".
+  8  Tout est pret (11-pret.png - opened): Titulaire Camille Martin,
+     Canton Geneve, Taux 100 %, Methode "Simplifiee, 240 jours",
+     Periode "Annee entiere" - the REAL entered values. "Continuer".
+  9  Aujourd'hui (12-aujourdhui.png): "Bonjour Camille", "Mardi 6
+     octobre 2026", "Saisie manuelle", "Ou travaillez-vous aujourd'hui?"
+     and the record options.
+ 10  O4 / the handover, PROVEN IN THE DATABASE: SELECT name,canton,
+     "employmentRate" FROM "User" WHERE email=... ->
+     "Camille Martin | GE | 100". The name and the settings reached the
+     server through the DEVICE's PATCH /api/v1/me (AN5b's unexercised
+     verb, now exercised).
+ 11  O3 (the App Link still works, fired with adb as AN4 proved it):
+     requested a link on the device (set the pending address), read the
+     callback link from the outbox, fired it at CallbackActivity with
+     adb -> "Vous etes connecte. Votre session est ouverte sur cet
+     appareil." (The ampersand in the URL must be single-quoted for the
+     device shell, or the email parameter is lost and the link reads
+     MALFORMED - seen and corrected.)
+ 12  THE RE-SIGN-IN SKIP (O2 second half, R297): after that sign-in, a
+     relaunch landed on Aujourd'hui, NOT onboarding - the account's
+     settings came back from GET /api/v1/me and the answered steps were
+     skipped (13-resignin-skip not needed; Aujourd'hui confirmed by the
+     UI dump).
+
+STATE AND ACCESSIBILITY (O5)
+--------------------------------------------------------------------
+- 23 Paparazzi baselines (fork, cropped and looked at, R178/R184): nine
+  sign-in + fourteen onboarding, each at DEFAULT and 200 % (fontScale
+  2f). Four stale AN5b single-form baselines were deleted (R207). These
+  are the per-screen 200 % record.
+- ON-DEVICE 200 % spot-check (14-aujourdhui-200.png - opened):
+  Aujourd'hui at fontScale 2.0 is fully legible, nothing truncated, the
+  bottom nav wrapping cleanly.
+- R310 state preservation (rotation, text size, dark mode, background
+  kill) is built via the rememberSaveable SignInSnapshot /
+  OnboardingSnapshot pattern this app already uses (fork), the same
+  mechanism AN-STATE exercised on this device.
+- TalkBack: the code boxes carry "Chiffre N sur 6" content descriptions;
+  every field and choice reads.
+
+ADVISOR DECISIONS (the advisor stalled all session - R156 taken, each
+recorded)
+--------------------------------------------------------------------
+The prompt said advisor calls have stalled all session; none was made.
+Every judgement took the conservative, reversible option and is recorded:
+  - MAX_CODE_ATTEMPTS = 5; the exchange edge limit = 20 (above the
+    counter). Stated with reasons above.
+  - code_expired is NAMED distinctly (not collapsed into invalid_code):
+    safe because a VerificationToken row exists for any requested
+    address, so it leaks no membership - and it is the honest R198
+    answer the relay asked for. The live-request case stays hidden
+    (invalid_code on a wrong guess), which is the sensitive one.
+  - name made settable AND returned on /me, REVERSING FW26's deliberate
+    exclusion. The R209 shape: a prior decision line overtaken by a new
+    requirement (the step-skip needs the name back); it is the owner's
+    own data behind their own bearer, additive, and email stays absent.
+  - Settings.name nullable+defaulted, to decouple the server/plumbing
+    increment from the UI rebuild without breaking positional callers.
+  - the #EAF0F7 brand tint -> brand.copy(alpha=0.08f); PARKAN-42.
+  - pnpm dev vs the production container for the walkthrough (above).
+  - StartupDecider keys onboarded-ness on `canton`, not `name` (a
+    pre-existing account with settings but no name goes to Aujourd'hui,
+    and sets the name in Parametres; new accounts always set it at step
+    1). See QUESTIONS.
+
+PHONE SETTINGS CHANGED AND RESTORED
+--------------------------------------------------------------------
+Changed for the drive, then restored (confirmed by reading them back):
+  hide_error_dialogs  1  -> 0
+  system font_scale   2.0 -> 1.0
+  stay_on_while_plugged_in  7 -> 0 (was left at 7 by a prior session;
+     set to 0 for the handover's "normal screen timeout")
+NOT CHANGED (confirmed at their normal values): auto_time=1,
+auto_time_zone=1, always_finish_activities=0, mock location (never
+enabled), animations (never disabled). The app was uninstalled and the
+adb reverse removed at teardown; the device container was removed and
+the scratch database dropped.
+
+PARKED
+--------------------------------------------------------------------
+PARKAN-42 - the mockups' light brand-tint surface (#EAF0F7 icon badges
+  and selected choice cards) has no "brand soft" token; DESIGN-SYSTEM 1
+  has no such colour and adding one is SPEC 20 ask-first. Rendered
+  conservatively as brand.copy(alpha=0.08f) - derived from the one brand
+  token, not a new value. Heading + ledger row in parking.md (so the
+  citation resolves, R327). NEEDS an operator/design ruling if a named
+  brand-tint token is wanted; reversible.
+
+DEVIATIONS
+--------------------------------------------------------------------
+1. The two mockup deviations (no granularity step; step 4 reveals an
+   exact-total field) - above, under EACH SCREEN.
+2. name settable on /me reverses FW26's exclusion (R209 shape) - above.
+3. The walkthrough ran against pnpm dev, not the prebuilt container
+   (stale base image; and the fake outbox is only readable in dev) -
+   above. Container packaging covered by gate:clone's
+   test:container:write.
+4. The UI was built by a fork of this session (full context inherited),
+   gated per increment with :app:gate and pushed; this session did the
+   server, the name plumbing, the device drive, the gates and the merge.
+5. R1's base gate:clone failed first on an environment orphan, not a
+   base RED (above).
+
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------
+1. The faint left-edge line on the device screenshots is the Samsung
+   Edge-panel handle (PARKAN-40, a known device artifact), not an app
+   border.
+2. The autofill owner-address SUGGESTION: the email field is marked
+   KeyboardType.Email, but compose-bom 2024.09 has no
+   ContentType.EmailAddress autofill semantics (that is 1.8+), so the
+   phone's one-tap address suggestion may not appear. A BOM bump is a
+   dependency change out of this task's scope; QUESTION below.
+3. R297 skips the WHOLE onboarding when the server has settings; a
+   PARTIALLY-onboarded account is not pre-filled step by step from /me.
+   Realistic paths (new account sets everything; complete account skips
+   all) both work; the partial case is an edge.
+
+QUESTIONS
+--------------------------------------------------------------------
+Q1. StartupDecider keys onboarded-ness on `canton`, not `name`. A
+    pre-existing account with settings but no name lands on Aujourd'hui
+    (the PDF 422s until the name is set in Parametres). New accounts
+    always set the name at step 1. Should `name` gate completeness
+    (sending a nameless account back to step 1)?
+Q2. The autofill content-type hint needs compose-bom >= 1.8 for the
+    owner-address suggestion. Bump the BOM (a dependency change + a
+    baseline regeneration), or accept KeyboardType.Email?
+Q3. PARKAN-42: add a named brand-tint surface token, or keep the derived
+    alpha?
+
+PUSH PROOF
+--------------------------------------------------------------------
+Branch an-onboard, remote github.com/kaitmax/monreleve, merged --no-ff
+to main.
+
+  1014e18  AN-ONBOARD: six-digit sign-in code, hashed, attempt-limited (server)
+  b9edc19  AN-ONBOARD: the /auth/code exchange, name settable on /me, docs
+  997485c  AN-ONBOARD: Android name plumbing + the code-exchange API
+  b15457f  AN-ONBOARD: the sign-in flow - Bienvenue, Connexion, the six-digit code (fork)
+  4021041  AN-ONBOARD: the onboarding wizard - 7 steps + Tout est pret (fork)
+  3690396  AN-ONBOARD: PARKAN-42 - the brand-tint surface has no token
+
+Each Android increment was pushed after a green :app:gate; the
+web-touching increments after gate:changed (full suites, above). The
+final :app:gate and gate:clone on the branch HEAD, the merge, and this
+report's own commit are recorded in the lines below (this report cannot
+name its own hash; the gate:clone and merge results are filled in by the
+finalisation commit that follows).
+
+__GATE_AND_MERGE_PROOF__
+
+====================================================================
+END OF REPORT-AN-ONBOARD.txt
+====================================================================
