@@ -44,7 +44,7 @@ fun ChoiceCard(
             Modifier
                 .fillMaxWidth()
                 .background(
-                    if (selected) BrandCircle else LightColors.surface,
+                    if (selected) LightColors.brandSoft else LightColors.surface,
                     RoundedCornerShape(Radius.lg),
                 ).selectable(selected = selected, onClick = onClick)
                 .padding(Spacing.space16),
@@ -73,7 +73,7 @@ private fun BetaBadge(label: String) {
     Box(
         modifier =
             Modifier
-                .background(BrandCircle, RoundedCornerShape(Radius.pill))
+                .background(LightColors.brandSoft, RoundedCornerShape(Radius.pill))
                 .padding(horizontal = Spacing.space8, vertical = Spacing.space4),
     ) {
         Text(text = label, style = FrontierType.caption, color = LightColors.brand)

@@ -45,6 +45,7 @@ COLOUR — LIGHT:
   Text primary #111827 · secondary #667085 · tertiary #98A2B3 · disabled #C4C8D0
   Border default #E4E7EC · strong #D0D5DD
   Brand (Deep Alpine Blue) #173B63 — primary CTA, active nav, links, selected states. Not everywhere.
+  Brand soft (`brandSoft`) — the brand colour at 8 % alpha, DERIVED from Brand, not a new hue (R9/R337): the light brand-tint fill for onboarding icon badges and selected choice cards (#EAF0F7 in the mock-ups). Lives once in Tokens.kt; Fence 9 forbids open-coding `brand.copy(alpha=…)` anywhere else. Closes PARKAN-42.
   France #315FA8 (soft #EAF1FB, text #244A82) · Switzerland #D84B4B (soft #FCECEC, text #A93636) — small indicators, dots, chips only; never flags across the interface.
   Success #15803D on #EAF7EE · Warning #B7791F on #FFF7E6 · Error #C53030 on #FDECEC · Info #2563EB on #EDF4FF
 

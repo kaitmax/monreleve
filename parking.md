@@ -1789,6 +1789,14 @@ NEEDS: an operator/design ruling IF a named brand-tint surface token is wanted (
 selected card references it and the alpha goes away). Reversible: it is one derived expression per use
 site. The heading stays so the report's citation resolves (RegisterCoverageTest, R327).
 
+CLOSED (R337, AN-ONBOARD-2): the named token is wanted. `LightColors.brandSoft` is now defined once in
+design/Tokens.kt as `brand.copy(alpha = 0.08f)` - DERIVED from the one brand token, not a new hue (R9) -
+and recorded in DESIGN-SYSTEM.md section 1. Every use site (the onboarding icon badge, the selected
+choice card and the beta badge) references it; the open-coded alpha is gone. Fence 9 (FencesTest) fails
+on `brand.copy(alpha=…)` anywhere but Tokens.kt - its first run caught the live BrandCircle instance
+(R178), and a planted violation was verified to fire and reverted (R180). Pixel-neutral (brandSoft is the
+same value BrandCircle was), so no baseline moved for R337.
+
 ## STATUS LEDGER  [appended 2026-09-29]
 
 One line per Android-era entry, so the state of each is visible without
@@ -1828,4 +1836,4 @@ reading every section. Entries are not edited; this ledger is.
 | PARKAN-39 — Aujourd'hui sections C/E/F need a controller projection | **closed, RESOLVED** | AN-HOME C/E/F (R328): the operator ruled a READ-ONLY projection of already-held entries, built from CalendarModel's existing pure mappers, IS presentation (no write, no engine, no /v1, no schema, no detection). Built in AujourdhuiController; C/E/F shipped with the one-way-of-counting test (AujourdhuiSectionsTest) proving the home and the calendar count one way; every non-ui test passes unchanged; driven on the S9; merged to main. See the heading above + REPORT-AN-HOME.txt |
 | PARKAN-40 — the stray left-edge line is the Samsung Edge panel, not an app card | **closed, finding** | AN-CAL2 defect 3: proven on the SM-G960F to be the SystemUI Edge-panel handle (same position on 3 screens; no app node at x<30 in that band; `cocktail_bar_enabled_cocktails`=AppsEdgePanelProvider, `edge_handler_position_percent`=76.9≈1707 px = the line). No app-code fix; to clear the screenshot artifact, disable the device's Edge panel. Awaits operator awareness |
 | PARKAN-41 — « Non renseigne » counts tile wraps to two lines | **open, conservative** | AN-CAL2 defect 1: 13 chars cannot fit one line in a fifth of a 320-360 dp row at a legible size. Kept the full accented word (R155/R206) and reserved two label lines (minLines=2) so every number aligns - the operator's real defect (misalignment) is fixed. An abbreviated one-line tile label is an operator copy decision; reversible |
-| PARKAN-42 — the mockups' light brand-tint surface has no token | **open, conservative** | AN-ONBOARD: the onboarding mockups paint icon badges and selected choice cards in #EAF0F7, a light tint of brand; DESIGN-SYSTEM §1 has no "brand soft" token and adding one is SPEC §20 ask-first. TAKEN (R156, advisor stalled): render it as `LightColors.brand.copy(alpha=…)` — derived from the one brand token, not a new value. NEEDS an operator/design ruling if a named brand-tint token is wanted; reversible (one derived expression per use site) |
+| PARKAN-42 — the mockups' light brand-tint surface has no token | **closed** | R337 (AN-ONBOARD-2): the named token is wanted. `LightColors.brandSoft` = `brand.copy(alpha=0.08f)`, defined once in Tokens.kt (DERIVED, not a new hue, R9), recorded in DESIGN-SYSTEM §1; every use site references it and Fence 9 forbids the open-coded form elsewhere (RED on the live BrandCircle instance, R178; planted + reverted, R180). Pixel-neutral - no baseline moved |
