@@ -212,6 +212,22 @@ private val UNREACHABLE: Map<String, String> =
         "NotificationCopy.privateLines" to
             "the UNLOCKED (private) notification lines, built by EveningNotifier.post (a NotificationManager " +
             "concern the ui/ fence keeps out of ui/) - reached from the background notifier, not a surface",
+        // AN-NOTIF (R339): the record-from-notification copy is built by the background notifier
+        // (detection/EveningNotifier) and the recording receiver (notification/EveningActionReceiver), both
+        // NotificationManager/BroadcastReceiver concerns the ui/ fence keeps out of ui/ - reached from there,
+        // not a fr-surface directory this census scans (the ReleveCopy.EXPORT_* / NotificationCopy.* pattern).
+        "NotificationCopy.MANUAL_TITLE" to
+            "the manual-mode notification title « Où avez-vous travaillé aujourd'hui ? », built by EveningNotifier " +
+            "and the not-sure privateLines - a NotificationManager concern reached from the background notifier",
+        "NotificationCopy.AUTRE" to
+            "the « Autre… » notification button that opens the app on today, built by EveningNotifier (a " +
+            "NotificationManager concern the ui/ fence keeps out of ui/) - reached from the background notifier",
+        "NotificationCopy.autoProposalTitle" to
+            "the automatic HIGH-proposal notification title « Proposition : <côté> - vérifiez », built by " +
+            "EveningNotifier (a NotificationManager concern) - reached from the background notifier, not a surface",
+        "NotificationCopy.confirmation" to
+            "the post-tap confirmation « <côté> / Enregistré pour le <date> », built by EveningActionReceiver " +
+            "after it records (a BroadcastReceiver concern the ui/ fence keeps out of ui/) - reached from there",
     )
 
 class CopyReachabilityTest {
