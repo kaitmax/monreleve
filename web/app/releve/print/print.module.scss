@@ -217,6 +217,51 @@
   }
 }
 
+// FW-VERIFY (R332): the verification block. Present only when a permanent origin
+// is set; a bordered panel above the legal footer, with the QR, the address and
+// the printed code. Monochrome, like the rest of the document (SPEC 12).
+.verification {
+  border-top: var(--size-rule) solid var(--colour-text-primary);
+  padding-top: var(--space-4);
+  margin-top: var(--space-6);
+
+  h2 {
+    font-size: var(--type-h2-size);
+    line-height: var(--type-h2-line);
+    font-weight: var(--type-h2-weight);
+    color: var(--colour-text-primary);
+    margin: 0 0 var(--space-1);
+  }
+
+  p {
+    font-size: var(--type-caption-size);
+    line-height: var(--type-caption-line);
+    color: var(--colour-text-secondary);
+    margin: 0 0 var(--space-1);
+  }
+}
+
+.qr {
+  display: block;
+
+  // A PHYSICAL SIZE, not a design token, for the same reason the sheet's mm are:
+  // a QR has to be big enough to scan off paper (~25 mm is the practical floor
+  // for a phone camera at arm's length), which is a geometry fact about the
+  // printed page, not a spacing decision from DESIGN-SYSTEM section 1.
+  /* stylelint-disable scale-unlimited/declaration-strict-value */
+  width: 28mm;
+  height: 28mm;
+  /* stylelint-enable scale-unlimited/declaration-strict-value */
+  margin: var(--space-3) 0;
+}
+
+.verificationLine {
+  font-variant-numeric: tabular-nums;
+
+  // The code and address are long; let them wrap rather than overflow the sheet.
+  overflow-wrap: anywhere;
+}
+
 @page {
   size: a4;
   margin: 0;

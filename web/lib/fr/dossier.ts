@@ -352,4 +352,26 @@ export const DOSSIER_COPY = {
 
     notAdvice: `Ce document ne constitue pas un conseil fiscal.`,
   },
+
+  // --------------------------------------------------------------------
+  // 7. Verification block — FW-VERIFY (R329/R332)
+  // --------------------------------------------------------------------
+  //
+  // R332: this block appears ONLY when a permanent production origin is set
+  // (lib/verification/origin.ts). The code, the address and the QR all point at
+  // the same URL; the code is printed as TEXT for anyone who cannot scan. The
+  // address and code are VALUES the server supplies (an identifier and a URL),
+  // interpolated as data - R155 exempts identifiers, and the copy here is the
+  // labels, not the values.
+  verification: {
+    heading: 'Vérification',
+    lead:
+      `Ce relevé peut être vérifié en ligne, à l${APOS}adresse ci-dessous ou en ` +
+      `scannant le code. La page indique s${APOS}il correspond à celui émis par le service.`,
+    qrAlt: 'Code QR menant à la page de vérification de ce relevé',
+    // n(':') sets the no-break space French puts before the colon (R91), at
+    // runtime, so no literal lands in the source for the codepoint census.
+    addressLine: (url: string): string => `Adresse${n(':')} ${url}`,
+    codeLine: (code: string): string => `Code${n(':')} ${code}`,
+  },
 } as const;

@@ -171,6 +171,10 @@ export async function GET(request: Request): Promise<NextResponse> {
   target.searchParams.set('year', String(query.year));
   target.searchParams.set('token', printToken);
   target.searchParams.set('generatedAt', generatedAt.toISOString());
+  // FW-VERIFY (R332): the issued code travels to the print route, which prints it
+  // (and the address and QR) ONLY when a permanent origin is set. The record
+  // stores the code regardless; the document shows it only when it can be used.
+  target.searchParams.set('code', code);
 
   try {
     // ONE RENDER AT A TIME, with a bounded waiting room. A render costs a
