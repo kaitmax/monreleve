@@ -157,6 +157,14 @@ export const DISCLOSED_RECORDS = {
     'la date à laquelle vous avez confirmé votre adresse en ouvrant un lien ' +
     'de connexion.',
 
+  // FW-VERIFY (R331). The service records WHEN the name on your releves changed,
+  // and the notice says exactly that - the DATE, never the former value. The
+  // closed list makes it a line rather than a choice (R206): a stored column
+  // with no disclosure is a published falsehood.
+  nameChange:
+    'les dates auxquelles le nom figurant sur vos relevés a été modifié — ' +
+    'jamais l’ancienne valeur, seulement la date du changement ;',
+
   // FW-VERIFY (R329). Each releve produced leaves a record of WHAT WAS ISSUED,
   // and the closed list makes this a line rather than an option: a stored table
   // with no disclosure here is a published falsehood, not a gap (R206). It says
@@ -280,6 +288,8 @@ export const CONFIDENTIALITE_COPY = {
     // FW-VERIFY: the issuance record. It sits last because it is produced by an
     // explicit act - generating a releve - rather than held from sign-in.
     DISCLOSED_RECORDS.issuanceRecord,
+    // FW-VERIFY: the name-change dates (R331).
+    DISCLOSED_RECORDS.nameChange,
   ],
   // R138 AGAIN, AND ONLY CROPPING THE BASELINE FOUND IT. This paragraph said
   // « L’application ne communique qu’avec... » in the PRESENT TENSE about an

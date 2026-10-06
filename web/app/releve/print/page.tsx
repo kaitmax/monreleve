@@ -220,6 +220,12 @@ export default async function PrintPage({
               without it, so this is never empty. */}
           <dt>{COPY.header.name}</dt>
           <dd>{dossier.titulaire}</dd>
+          {/* R331: one line, the DATE only, when the name changed within this
+              tax year. A second <dd> under the Nom term - never a former name,
+              which the dossier does not carry. */}
+          {dossier.nameChangedAt === null ? null : (
+            <dd className={styles.note}>{COPY.header.nameChanged(day(dossier.nameChangedAt))}</dd>
+          )}
           <dt>{COPY.header.canton}</dt>
           <dd>{dossier.canton}</dd>
           <dt>{COPY.header.employmentRate}</dt>

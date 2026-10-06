@@ -337,6 +337,8 @@ describe('the FW21 migration on an FW14-era database', () => {
       'EntryEvent',
       // FW-VERIFY (R329): the issued-releve verification record.
       'IssuanceRecord',
+      // FW-VERIFY (R331): the name-change dates.
+      'NameChange',
       // FW27 increment 2.
       'ReminderSent',
       'Session',

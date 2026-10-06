@@ -125,5 +125,19 @@ export async function buildDossierFor(
     clientClaimedAt: row.clientClaimedAt,
   }));
 
-  return buildDossier(user, entries, year, generatedAt);
+  // R331: the latest name change WITHIN this tax year, so the document can show
+  // "Nom modifie le <date>". A COARSE UTC calendar-year window is deliberate -
+  // the line states the year in which the name changed, not a day boundary, and
+  // only the DATE is read, never the former name (there is no column for it).
+  const [latestChange] = await prisma.nameChange.findMany({
+    where: {
+      userId,
+      changedAt: { gte: new Date(Date.UTC(year, 0, 1)), lt: new Date(Date.UTC(year + 1, 0, 1)) },
+    },
+    orderBy: { changedAt: 'desc' },
+    take: 1,
+    select: { changedAt: true },
+  });
+
+  return buildDossier(user, entries, year, generatedAt, latestChange?.changedAt ?? null);
 }

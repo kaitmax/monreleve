@@ -90,7 +90,7 @@ export async function deleteAccount(userId: string): Promise<ErasureReceipt> {
     // COUNTED BEFORE, because after the cascade there is nothing left to count
     // and a receipt of zeros would be indistinguishable from a deletion that
     // did nothing.
-    const [entries, events, devices, sessions, issuances] = await Promise.all([
+    const [entries, events, devices, sessions, issuances, nameChanges] = await Promise.all([
       tx.entry.count({ where: { userId } }),
       tx.entryEvent.count({ where: { userId } }),
       tx.device.count({ where: { userId } }),
@@ -99,6 +99,8 @@ export async function deleteAccount(userId: string): Promise<ErasureReceipt> {
       // every other row. They cascade from User, so this is the count for the
       // receipt rather than a separate delete.
       tx.issuanceRecord.count({ where: { userId } }),
+      // FW-VERIFY (R331): the name-change dates go too.
+      tx.nameChange.count({ where: { userId } }),
     ]);
 
     // VerificationToken is keyed by ADDRESS, not by userId, so it does NOT
@@ -130,6 +132,7 @@ export async function deleteAccount(userId: string): Promise<ErasureReceipt> {
         Device: devices,
         DeviceSession: sessions,
         IssuanceRecord: issuances,
+        NameChange: nameChanges,
         VerificationToken: verifications.count,
       },
     };

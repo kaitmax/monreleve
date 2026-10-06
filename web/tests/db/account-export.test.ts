@@ -257,6 +257,19 @@ describe('FW-VERIFY: the issuance records are the caller own data, so they are e
     expect(payload.issuances[0]?.version).toBe(1);
     expect(payload.issuances[0]?.sha256).toBe('a'.repeat(64));
   });
+
+  it('carries the name-change DATES, and no former name (R331)', async () => {
+    await prisma.nameChange.create({ data: { userId } });
+
+    const payload = (await (await GET(get())).json()) as {
+      nameChanges: { changedAt: string }[];
+    };
+
+    expect(payload.nameChanges).toHaveLength(1);
+    expect(payload.nameChanges[0]?.changedAt).toBeTruthy();
+    // There is no name field to leak - the row never held one.
+    expect(JSON.stringify(payload.nameChanges)).not.toContain('name');
+  });
 });
 
 describe('R230: the CSV escapes a formula and the JSON does not', () => {

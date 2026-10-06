@@ -116,6 +116,9 @@ beforeEach(async () => {
       generatedAt: new Date('2026-04-01T09:00:00.000Z'),
     },
   });
+
+  // FW-VERIFY (R331): a name-change date, so the sweep covers it too.
+  await prisma.nameChange.create({ data: { userId } });
 });
 
 afterAll(async () => {
@@ -187,6 +190,8 @@ describe('AC3: the erasure', () => {
     expect(body.removed.VerificationToken).toBe(1);
     // FW-VERIFY: the issued-releve record goes with the account (R329).
     expect(body.removed.IssuanceRecord).toBe(1);
+    // FW-VERIFY: the name-change date goes too (R331).
+    expect(body.removed.NameChange).toBe(1);
   });
 
   it('revokes the tokens in the same transaction (R193)', async () => {

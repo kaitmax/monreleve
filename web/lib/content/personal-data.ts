@@ -255,4 +255,12 @@ export const PERSONAL_DATA: Readonly<Record<string, Disclosure>> = {
   'IssuanceRecord.sha256': 'issuanceRecord',
   'IssuanceRecord.generatedAt': 'issuanceRecord',
   'IssuanceRecord.createdAt': 'issuanceRecord',
+
+  // ---- FW-VERIFY: name-change dates (R331). Only the date and the user - the
+  // former name is deliberately not a column, so there is nothing here that
+  // could disclose one. The notice says the dates are kept and the former value
+  // is not.
+  'NameChange.id': 'nameChange',
+  'NameChange.userId': 'nameChange',
+  'NameChange.changedAt': 'nameChange',
 };

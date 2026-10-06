@@ -242,6 +242,10 @@ model User {
   /// FW-VERIFY (R329). One row per releve the PDF route has produced for this
   /// person. Cascades, so it joins FW26's negative sweep automatically.
   issuanceRecords IssuanceRecord[]
+
+  /// FW-VERIFY (R331). The dates this person's holder name changed - never the
+  /// former value. Cascades, like every other owned row.
+  nameChanges NameChange[]
 }
 
 /// D21. Replaces the PushSubscription a web-push design would have needed.
@@ -686,5 +690,34 @@ model IssuanceRecord {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, taxYear, version])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// FW-VERIFY: name-change dates (R331).
+//
+// THE SERVER RECORDS WHEN THE HOLDER NAME CHANGED, NEVER THE FORMER VALUE. Each
+// issued releve already holds the name it was printed with (IssuanceRecord.name),
+// so the history of names lives where it is actually needed; this table records
+// only the DATES, which is all the document's "Nom modifie le" line needs.
+//
+// PRINTING A FORMER NAME ON A TAX DOCUMENT WOULD BE A REAL HARM - people change
+// names for marriage, divorce or transition. So there is deliberately no column
+// here that could hold the old value: the harm is designed out rather than
+// guarded against. A releve for a tax year in which a change falls shows one
+// line, "Nom modifie le <date>", and never a previous name.
+//
+// IT CASCADES FROM User, so it joins FW26's negative sweep by carrying a userId.
+// ---------------------------------------------------------------------------
+model NameChange {
+  id     String @id @default(cuid())
+  userId String
+
+  /// Server clock at the moment of the change. Server-assigned, like every
+  /// stamp in this product - a client cannot name when it changed its name.
+  changedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
 }

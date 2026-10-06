@@ -64,6 +64,15 @@ export const DOSSIER_COPY = {
   // --------------------------------------------------------------------
   header: {
     name: 'Nom',
+
+    /**
+     * R331: a releve for a tax year in which the holder name changed carries
+     * ONE line, and it states only the DATE. It never prints a former name -
+     * people change names for marriage, divorce or transition, and a former
+     * name on a tax document is a real harm. The date arrives already formatted.
+     */
+    nameChanged: (date: string): string => `Nom modifié le ${date}`,
+
     canton: 'Canton de travail',
     employmentRate: `Taux d${APOS}activité`,
     method: 'Méthode de calcul',

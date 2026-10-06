@@ -96,6 +96,9 @@ export const EXPORTED = {
   // data too, and the export is the portable copy of it. It carries the code,
   // so the person keeps the means to verify documents they have already shared.
   IssuanceRecord: 'issuances',
+  // FW-VERIFY (R331). The dates the holder name changed are the person's data;
+  // the former value is not stored, so the export carries only the dates.
+  NameChange: 'nameChanges',
 } as const;
 
 /**
@@ -133,6 +136,7 @@ export interface AccountExport {
   readonly sessions: readonly Record<string, unknown>[];
   readonly reminders: readonly Record<string, unknown>[];
   readonly issuances: readonly Record<string, unknown>[];
+  readonly nameChanges: readonly Record<string, unknown>[];
 }
 
 const day = (value: Date): string => value.toISOString().slice(0, 10);
@@ -147,7 +151,8 @@ const instant = (value: Date | null): string | null =>
  * is the first thing somebody checking a record wants to do.
  */
 export async function buildAccountExport(userId: string): Promise<AccountExport> {
-  const [user, entries, trail, devices, sessions, reminders, issuances] = await Promise.all([
+  const [user, entries, trail, devices, sessions, reminders, issuances, nameChanges] =
+    await Promise.all([
     prisma.user.findUniqueOrThrow({ where: { id: userId }, select: ME_SELECT }),
     prisma.entry.findMany({
       where: { userId },
@@ -161,6 +166,7 @@ export async function buildAccountExport(userId: string): Promise<AccountExport>
       where: { userId },
       orderBy: [{ taxYear: 'asc' }, { version: 'asc' }],
     }),
+    prisma.nameChange.findMany({ where: { userId }, orderBy: { changedAt: 'asc' } }),
   ]);
 
   return {
@@ -240,6 +246,11 @@ export async function buildAccountExport(userId: string): Promise<AccountExport>
       periodStartDate: record.periodStartDate,
       sha256: record.sha256,
       generatedAt: record.generatedAt.toISOString(),
+    })),
+
+    // FW-VERIFY (R331): the dates only. There is no former name to carry.
+    nameChanges: nameChanges.map((change) => ({
+      changedAt: change.changedAt.toISOString(),
     })),
   };
 }

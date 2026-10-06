@@ -266,6 +266,18 @@ export interface Dossier {
    * ROWS, not days: a half-day pair is two of them. Named for what it counts.
    */
   readonly recordedEntries: number;
+  /**
+   * The date, as an ISO day, the holder name changed WITHIN this tax year, or
+   * null when it did not. R331: the document shows one line - "Nom modifie le
+   * <date>" - for a year in which the name changed, and NEVER a former name.
+   *
+   * DELIBERATELY NOT ON THE /v1 WIRE. Like `result`, it is a field of the
+   * document the print route reads directly; the /dossier API serialises only
+   * DOSSIER_RESPONSE_FIELDS, so this does not change the frozen contract. It is
+   * a DATE, never a name - the former value is not stored anywhere this could
+   * reach.
+   */
+  readonly nameChangedAt: string | null;
   /** Working days in the year with no entry at all - SPEC 12 item 5. */
   readonly result: TeleworkResult;
 }
@@ -409,6 +421,10 @@ export function buildDossier(
   entries: readonly AnnexEntry[],
   taxYear: number,
   generatedAt: Date = new Date(),
+  // R331: the latest name-change date WITHIN this tax year, or null. The former
+  // name is never passed - only when a change happened, so the document can say
+  // "Nom modifie le <date>" without ever naming a previous value.
+  nameChangedAt: Date | null = null,
 ): Dossier {
   const result = annualResult(user, entries, taxYear);
   const counts = countDays(entries);
@@ -473,6 +489,7 @@ export function buildDossier(
 
     absenceDays: counts.absenceDays,
     recordedEntries: entries.length,
+    nameChangedAt: nameChangedAt === null ? null : nameChangedAt.toISOString().slice(0, 10),
     result,
   };
 }
