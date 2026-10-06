@@ -1,25 +1,27 @@
 package ch.monreleve.app.fr
 
-// AN4 increment 3. The sign-in request screen (SPEC 11.1). Fully accented (R155),
-// typographic apostrophes (R126 / U+2019, matching RatesCopy's "l'AFC").
-// Reachable from ui/screens/signin/RequestLinkScreen.kt (R238).
+// AN-ONBOARD (was AN4). The email sign-in screen (design/onboarding/Connexion.dc.html). Fully accented
+// (R155), typographic apostrophes (R126 / U+2019). Reachable from ui/screens/signin/ConnexionScreen.kt
+// (R238).
 //
-// SENT_BODY says "si un compte existe" on purpose: the server does not reveal
-// whether an address is registered (docs/api-v1.md 1.5), and the client must not
-// either - ONE message whatever happened. Authored here as the client's own copy,
-// not lifted from the server's response string (R165).
+// After submit the flow moves to the CODE screen (CodeCopy), which is where "vérifiez votre messagerie"
+// now lives - so there is no "sent" state on this screen. The copy says nothing about whether the address
+// is registered (docs/api-v1.md 1.5); the server does not reveal it and the client must not either.
 
 object SignInCopy {
-    const val TITLE = "Connexion"
-    const val PROMPT = "Entrez votre adresse e-mail. Un lien de connexion vous y sera envoyé."
+    const val TITLE = "Se connecter à Mon Relevé"
+    const val PROMPT = "Pas de mot de passe : nous vous envoyons un lien et un code à usage unique."
     const val EMAIL_LABEL = "Adresse e-mail"
-    const val SUBMIT = "Recevoir le lien"
+    const val EMAIL_PLACEHOLDER = "prenom.nom@exemple.ch"
+    const val SUBMIT = "Recevoir mon lien de connexion"
     const val SUBMITTING = "Envoi en cours…"
 
-    const val SENT_TITLE = "Vérifiez votre boîte mail"
-    const val SENT_BODY =
-        "Si un compte existe pour cette adresse, un lien de connexion vient d’y être " +
-            "envoyé. Il est valable quelques minutes et ne fonctionne qu’une fois."
+    // The consent line, in parts so the two links are clickable (no literal in the composable). The privacy
+    // label reuses ParametresCopy.PRIVACY_ROW and "Retour"/the logo reuse LicencesCopy.BACK/Fr.LOGO (R206).
+    const val CONSENT_PREFIX = "En continuant, vous acceptez les "
+    const val CONSENT_CGU = "Conditions d’utilisation"
+    const val CONSENT_AND = " et la "
+    const val CONSENT_SUFFIX = "."
 
     const val RATE_LIMITED = "Trop de demandes de connexion. Patientez quelques minutes avant de réessayer."
     const val NETWORK_ERROR = "Connexion impossible. Vérifiez votre connexion, puis réessayez."

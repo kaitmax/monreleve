@@ -1,3 +1,5 @@
+@file:Suppress("TooManyFunctions")
+
 package ch.monreleve.app
 
 import android.content.Context
@@ -39,12 +41,16 @@ import ch.monreleve.app.account.DeviceLocalStore
 import ch.monreleve.app.account.LocalStore
 import ch.monreleve.app.account.SharedPrefsAccountStore
 import ch.monreleve.app.auth.BytesOutcome
+import ch.monreleve.app.auth.CodeController
+import ch.monreleve.app.auth.CodePhase
+import ch.monreleve.app.auth.CodeSnapshot
 import ch.monreleve.app.auth.KeystoreTokenStore
 import ch.monreleve.app.auth.PendingSignInStore
 import ch.monreleve.app.auth.PostOutcome
 import ch.monreleve.app.auth.SessionManager
 import ch.monreleve.app.auth.SharedPrefsPendingSignInStore
 import ch.monreleve.app.auth.SignInController
+import ch.monreleve.app.auth.SignInPhase
 import ch.monreleve.app.auth.SignInSnapshot
 import ch.monreleve.app.auth.TokenStore
 import ch.monreleve.app.data.local.DossierCache
@@ -96,7 +102,11 @@ import ch.monreleve.app.ui.screens.parametres.ParametresActions
 import ch.monreleve.app.ui.screens.parametres.ParametresScreen
 import ch.monreleve.app.ui.screens.releve.ReleveActions
 import ch.monreleve.app.ui.screens.releve.ReleveScreen
+import ch.monreleve.app.ui.screens.signin.CodeActions
+import ch.monreleve.app.ui.screens.signin.CodeScreen
 import ch.monreleve.app.ui.screens.signin.RequestLinkScreen
+import ch.monreleve.app.ui.screens.signin.SignInActions
+import ch.monreleve.app.ui.screens.signin.WelcomeScreen
 import ch.monreleve.app.ui.shell.AppBottomBar
 import ch.monreleve.app.ui.shell.AppTab
 import kotlinx.coroutines.CoroutineScope
@@ -128,6 +138,9 @@ internal enum class Destination { SIGN_IN, RESOLVING, ONBOARDING, MAIN }
 private const val EXPORTS_DIR = "exports"
 
 class MainActivity : ComponentActivity() {
+    // LongMethod suppressed as MainShell is: this is the composition root - store/seam construction and the
+    // one-screen router - not tangled logic. AN-ONBOARD's sign-in flow added the WELCOME/EMAIL/CODE branch.
+    @Suppress("LongMethod")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val context = applicationContext
@@ -172,7 +185,15 @@ class MainActivity : ComponentActivity() {
                     var destination by rememberSaveable { mutableStateOf(start) }
                     LaunchedEffect(Unit) { destination = sessionReconciled(destination, start) }
                     when (destination) {
-                        Destination.SIGN_IN -> SignInRoute(api, pending, lifecycleScope)
+                        Destination.SIGN_IN ->
+                            SignInRoute(
+                                api,
+                                tokenStore,
+                                pending,
+                                accountStore,
+                                lifecycleScope,
+                                onSignedIn = { destination = Destination.RESOLVING },
+                            )
                         Destination.RESOLVING ->
                             ResolvingRoute(session, settingsStore) { destination = it }
                         Destination.ONBOARDING ->
@@ -207,25 +228,95 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+// AN-ONBOARD: the sign-in flow is now three screens - Bienvenue (fresh install), the email request, and the
+// six-digit code - the second way in beside the App Link callback (R195 leaves the callback untouched). On a
+// code SIGNED it hands off to RESOLVING exactly as the callback's activity restart does: the start decision
+// (GET /api/v1/me) then routes to onboarding or the shell. The welcome is shown only while unsigned.
+private enum class SignInStep { WELCOME, EMAIL, CODE }
+
+// LongParameterList suppressed as MainShell/MainGraph are: this is the composition root wiring the sign-in
+// flow's stores and seams, not tangled logic (the ui/ screens bundle their callbacks into Actions instead,
+// which the no-literal fence requires there - this file is the root, where @Suppress is permitted).
+@Suppress("LongParameterList")
 @Composable
 private fun SignInRoute(
     api: AuthApi,
+    tokenStore: TokenStore,
     pending: SharedPrefsPendingSignInStore,
+    accountStore: AccountStore,
     scope: CoroutineScope,
+    onSignedIn: () -> Unit,
 ) {
-    // AN-STATE (R310): the typed email (and a stable phase) survive a rebuild. The snapshot is held in
-    // rememberSaveable and kept current from the controller's state; the seed re-creates the controller with it.
+    val context = LocalContext.current
+    var step by rememberSaveable { mutableStateOf(SignInStep.WELCOME) }
+    // AN-STATE (R310): the typed email and a stable phase survive a rebuild.
     var saved by rememberSaveable { mutableStateOf<SignInSnapshot?>(null) }
     val controller = remember { SignInController(api, pending, scope, restored = saved) }
     val state by controller.state.collectAsState()
-    LaunchedEffect(controller) {
-        controller.state.collect { saved = SignInSnapshot(it.email, it.phase) }
+    LaunchedEffect(controller) { controller.state.collect { saved = SignInSnapshot(it.email, it.phase) } }
+    // The request succeeded (one answer whatever the truth, docs 1.5) -> move to the code screen.
+    LaunchedEffect(state.phase) { if (state.phase == SignInPhase.LINK_SENT) step = SignInStep.CODE }
+
+    when (step) {
+        SignInStep.WELCOME -> WelcomeScreen(onStart = { step = SignInStep.EMAIL })
+        SignInStep.EMAIL ->
+            RequestLinkScreen(
+                state = state,
+                actions =
+                    SignInActions(
+                        onEmailChange = controller::onEmailChange,
+                        onSubmit = controller::submit,
+                        onRetry = controller::retry,
+                        onBack = { step = SignInStep.WELCOME },
+                        onOpenCgu = { openLegal(context, LegalPage.TERMS) },
+                        onOpenPrivacy = { openLegal(context, LegalPage.PRIVACY) },
+                    ),
+            )
+        SignInStep.CODE ->
+            CodeRoute(
+                api = api,
+                tokenStore = tokenStore,
+                pending = pending,
+                accountStore = accountStore,
+                email = state.email.trim(),
+                scope = scope,
+                onModify = { step = SignInStep.EMAIL },
+                onSignedIn = onSignedIn,
+            )
     }
-    RequestLinkScreen(
+}
+
+@Suppress("LongParameterList")
+@Composable
+private fun CodeRoute(
+    api: AuthApi,
+    tokenStore: TokenStore,
+    pending: SharedPrefsPendingSignInStore,
+    accountStore: AccountStore,
+    email: String,
+    scope: CoroutineScope,
+    onModify: () -> Unit,
+    onSignedIn: () -> Unit,
+) {
+    val context = LocalContext.current
+    // AN-STATE (R310): the typed digits and a stable phase survive a rebuild.
+    var saved by rememberSaveable { mutableStateOf<CodeSnapshot?>(null) }
+    val controller = remember { CodeController(api, tokenStore, pending, accountStore, email, scope, restored = saved) }
+    val state by controller.state.collectAsState()
+    LaunchedEffect(controller) { controller.state.collect { saved = CodeSnapshot(it.code, it.phase) } }
+    LaunchedEffect(state.phase) { if (state.phase == CodePhase.SIGNED) onSignedIn() }
+
+    CodeScreen(
+        email = email,
         state = state,
-        onEmailChange = controller::onEmailChange,
-        onSubmit = controller::submit,
-        onRetry = controller::retry,
+        actions =
+            CodeActions(
+                onCodeChange = controller::onCodeChange,
+                onSubmit = controller::submit,
+                onModify = onModify,
+                onResend = controller::resend,
+                onOpenMail = { openMail(context) },
+            ),
     )
 }
 
@@ -579,6 +670,17 @@ private fun openLegal(
         open = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(it))) },
         showAddress = { Toast.makeText(context, ParametresCopy.legalNoHandler(it), Toast.LENGTH_LONG).show() },
     )
+}
+
+// AN-ONBOARD: "Ouvrir ma messagerie" on the code screen opens the device's email app. Guarded like
+// openLegal (R299): a device with no email app shows the reason rather than crashing. Lives in the
+// composition root, where an Intent is permitted.
+private fun openMail(context: Context) {
+    val intent =
+        Intent(Intent.ACTION_MAIN).apply { addCategory(Intent.CATEGORY_APP_EMAIL) }
+    runCatching { context.startActivity(intent) }.onFailure {
+        Toast.makeText(context, ch.monreleve.app.fr.CodeCopy.NO_MAIL_APP, Toast.LENGTH_LONG).show()
+    }
 }
 
 private fun parametresActions(

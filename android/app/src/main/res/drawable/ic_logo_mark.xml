@@ -1,0 +1,8 @@
+<!-- Mon Releve brand mark (relay/mon-releve-logo/web/logo-mark.svg). Brand asset: the #173B63
+     and white are intrinsic to the logo, not themeable tokens (like the web logo-mark.svg). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="48dp" android:height="48dp" android:viewportWidth="192" android:viewportHeight="192">
+    <path android:pathData="M44,0 h104 a44,44 0 0 1 44,44 v104 a44,44 0 0 1 -44,44 h-104 a44,44 0 0 1 -44,-44 v-104 a44,44 0 0 1 44,-44 z" android:fillColor="#173B63" />
+    <path android:pathData="M44,84 h104 a12,12 0 0 1 0,24 h-104 a12,12 0 0 1 0,-24 z" android:fillColor="#FFFFFF" android:fillAlpha="0.28" />
+    <path android:pathData="M44,84 h16 a12,12 0 0 1 0,24 h-16 a12,12 0 0 1 0,-24 z" android:fillColor="#FFFFFF" />
+    <path android:pathData="M78,65 a5,5 0 0 1 10,0 v62 a5,5 0 0 1 -10,0 v-62 z" android:fillColor="#FFFFFF" />
+</vector>
