@@ -81,6 +81,13 @@ export const metadata: Metadata = {
  */
 const RAIL_WIDTH = 640;
 
+/** An ISO instant from the query, or undefined when it is absent or unparseable. */
+function parseInstant(iso: string): Date | undefined {
+  const date = new Date(iso);
+
+  return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
 /** A day, as the document prints it. */
 function day(iso: string): string {
   const [y, m, d] = iso.split('-');
@@ -150,6 +157,12 @@ export default async function PrintPage({
   const params = await searchParams;
   const rawYear = typeof params.year === 'string' ? params.year : '';
   const rawToken = typeof params.token === 'string' ? params.token : null;
+  // FW-VERIFY: the PDF route passes the instant it assigned, so the document's
+  // generation date matches the issuance record's exactly. Absent (a human
+  // opening the route directly) falls back to buildDossier's own clock. It is
+  // not signed: it only affects this person's own document, and a document with
+  // a hand-set date simply carries no issuance record, so it verifies as none.
+  const rawGeneratedAt = typeof params.generatedAt === 'string' ? params.generatedAt : null;
 
   if (!/^\d{4}$/u.test(rawYear)) notFound();
 
@@ -168,9 +181,12 @@ export default async function PrintPage({
   // here, but this page is also opened directly by a person, and a 500 on a
   // document that simply cannot exist is the wrong answer. Same 404 as every
   // other refusal on this route.
+  const generatedAt =
+    rawGeneratedAt === null ? undefined : parseInstant(rawGeneratedAt);
+
   let dossier;
   try {
-    dossier = await buildDossierFor(grant.userId, year);
+    dossier = await buildDossierFor(grant.userId, year, generatedAt);
   } catch (cause) {
     if (cause instanceof MissingTitulaireError) notFound();
     throw cause;

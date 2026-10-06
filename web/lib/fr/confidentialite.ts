@@ -156,6 +156,20 @@ export const DISCLOSED_RECORDS = {
   emailConfirmed:
     'la date à laquelle vous avez confirmé votre adresse en ouvrant un lien ' +
     'de connexion.',
+
+  // FW-VERIFY (R329). Each releve produced leaves a record of WHAT WAS ISSUED,
+  // and the closed list makes this a line rather than an option: a stored table
+  // with no disclosure here is a published falsehood, not a gap (R206). It says
+  // what the record holds and why it exists - to let whoever holds the document
+  // confirm it corresponds to what the service issued, which is the one claim
+  // the feature makes.
+  issuanceRecord:
+    'pour chaque relevé que vous générez, un enregistrement de ce qui a été ' +
+    'émis : un identifiant unique, l’année concernée, un numéro de version, ' +
+    'le nom tel qu’il figure sur le document, les chiffres imprimés et une ' +
+    'empreinte du fichier produit. Cet enregistrement permet à la personne qui ' +
+    'détient le relevé de confirmer qu’il correspond à celui émis par le ' +
+    'service, et il est conservé jusqu’à la suppression de votre compte ;',
 } as const;
 
 /**
@@ -263,6 +277,9 @@ export const CONFIDENTIALITE_COPY = {
     DISCLOSED_RECORDS.sessions,
     DISCLOSED_RECORDS.credentials,
     DISCLOSED_RECORDS.emailConfirmed,
+    // FW-VERIFY: the issuance record. It sits last because it is produced by an
+    // explicit act - generating a releve - rather than held from sign-in.
+    DISCLOSED_RECORDS.issuanceRecord,
   ],
   // R138 AGAIN, AND ONLY CROPPING THE BASELINE FOUND IT. This paragraph said
   // « L’application ne communique qu’avec... » in the PRESENT TENSE about an

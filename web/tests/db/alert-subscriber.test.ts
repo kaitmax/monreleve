@@ -174,6 +174,8 @@ describe('the row, and the constraint that keeps it one row', () => {
       // FW21 increments 2 and 3.
       'Entry',
       'EntryEvent',
+      // FW-VERIFY (R329): one row per issued releve - the verification record.
+      'IssuanceRecord',
       // FW27 increment 2: one row per person per day a reminder was sent,
       // which is what makes 'exactly one per day' a guarantee the database
       // keeps rather than a thing the job remembers.

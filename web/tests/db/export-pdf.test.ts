@@ -36,6 +36,7 @@ import { everyFontEmbedded, extractPdfText, fontNames } from './support/pdf-text
 import { buildDossierFor } from '@/lib/dossier/load';
 import { DOSSIER_COPY as COPY } from '@/lib/fr/dossier';
 import { MAX_QUEUED } from '@/lib/export/render-queue';
+import { sha256Hex } from '@/lib/issuance/record';
 
 /** Resolved once, at collection time, so the skip is visible in the report. */
 const LIVE = await liveOrigin();
@@ -291,6 +292,64 @@ describe.skipIf('skip' in LIVE)(`AC3 (through the route): ${LIVE_SUITE}`, () => 
 
     expect(body.code).toBe('renderer_busy');
     expect(busy[0]!.headers.get('retry-after')).toBe('30');
+  });
+});
+
+describe.skipIf('skip' in LIVE)(`FW-VERIFY R329 (through the route): ${LIVE_SUITE}`, () => {
+  // R204: the integration proof. The writer is tested in isolation in
+  // tests/db/issuance-record.test.ts; this proves the ROUTE writes a record
+  // when it produces a real file, with the SHA-256 of the bytes it returned -
+  // which only a real render can establish, so it is live-gated like AC1/AC2.
+  const origin = 'origin' in LIVE ? LIVE.origin : '';
+
+  it('records the issuance, with the hash of the file it returned', async () => {
+    await seed('2026-03-02');
+
+    const response = await GET(get('?year=2026', origin));
+
+    expect(response.status).toBe(200);
+
+    const bytes = new Uint8Array(await response.arrayBuffer());
+
+    const record = await prisma.issuanceRecord.findFirst({
+      where: { userId, taxYear: 2026, supersededAt: null },
+    });
+
+    expect(record).not.toBeNull();
+    expect(record?.version).toBe(1);
+    // THE HASH IS OF THE RETURNED BYTES. A record carrying some other file's
+    // fingerprint would verify nothing - this is the whole claim of R329.
+    expect(record?.sha256).toBe(sha256Hex(bytes));
+    // 128-bit code, and the name AS PRINTED (the fixture's titulaire).
+    expect(record?.code).toMatch(/^[0-9a-f]{32}$/u);
+    expect(record?.name).toBe('Camille Rey');
+  });
+
+  it('regenerating creates version 2 and supersedes version 1', async () => {
+    await seed('2026-03-02');
+
+    await GET(get('?year=2026', origin));
+    const second = await GET(get('?year=2026', origin));
+
+    expect(second.status).toBe(200);
+
+    const current = await prisma.issuanceRecord.findFirst({
+      where: { userId, taxYear: 2026, supersededAt: null },
+    });
+    const superseded = await prisma.issuanceRecord.findMany({
+      where: { userId, taxYear: 2026, supersededAt: { not: null } },
+    });
+
+    expect(current?.version).toBe(2);
+    expect(superseded).toHaveLength(1);
+    expect(superseded[0]?.version).toBe(1);
+
+    // AT MOST ONE CURRENT (R196), proven on the produced records.
+    const currentCount = await prisma.issuanceRecord.count({
+      where: { userId, taxYear: 2026, supersededAt: null },
+    });
+
+    expect(currentCount).toBe(1);
   });
 });
 

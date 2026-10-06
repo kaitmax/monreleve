@@ -92,6 +92,10 @@ export const EXPORTED = {
   // plainly their data, and it is the only place they can check that the
   // 'exactly one per day' promise was kept.
   ReminderSent: 'reminders',
+  // FW-VERIFY (R329). The record of every releve issued to this person is their
+  // data too, and the export is the portable copy of it. It carries the code,
+  // so the person keeps the means to verify documents they have already shared.
+  IssuanceRecord: 'issuances',
 } as const;
 
 /**
@@ -128,6 +132,7 @@ export interface AccountExport {
   readonly devices: readonly Record<string, unknown>[];
   readonly sessions: readonly Record<string, unknown>[];
   readonly reminders: readonly Record<string, unknown>[];
+  readonly issuances: readonly Record<string, unknown>[];
 }
 
 const day = (value: Date): string => value.toISOString().slice(0, 10);
@@ -142,7 +147,7 @@ const instant = (value: Date | null): string | null =>
  * is the first thing somebody checking a record wants to do.
  */
 export async function buildAccountExport(userId: string): Promise<AccountExport> {
-  const [user, entries, trail, devices, sessions, reminders] = await Promise.all([
+  const [user, entries, trail, devices, sessions, reminders, issuances] = await Promise.all([
     prisma.user.findUniqueOrThrow({ where: { id: userId }, select: ME_SELECT }),
     prisma.entry.findMany({
       where: { userId },
@@ -152,6 +157,10 @@ export async function buildAccountExport(userId: string): Promise<AccountExport>
     prisma.device.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
     prisma.deviceSession.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
     prisma.reminderSent.findMany({ where: { userId }, orderBy: { sentOn: 'asc' } }),
+    prisma.issuanceRecord.findMany({
+      where: { userId },
+      orderBy: [{ taxYear: 'asc' }, { version: 'asc' }],
+    }),
   ]);
 
   return {
@@ -212,6 +221,25 @@ export async function buildAccountExport(userId: string): Promise<AccountExport>
       lastUsedAt: instant(session.lastUsedAt),
       revokedAt: instant(session.revokedAt),
       revokedReason: session.revokedReason,
+    })),
+
+    // FW-VERIFY: every releve issued to this person, current and superseded.
+    // The code is included - it is the person's own, and keeping it is what
+    // lets them verify a document after an export.
+    issuances: issuances.map((record) => ({
+      code: record.code,
+      taxYear: record.taxYear,
+      version: record.version,
+      supersededAt: instant(record.supersededAt),
+      name: record.name,
+      declarableRate: record.declarableRate,
+      teleworkDays: record.teleworkDays,
+      missionDaysFrance: record.missionDaysFrance,
+      missionDaysThirdState: record.missionDaysThirdState,
+      periodFraction: record.periodFraction,
+      periodStartDate: record.periodStartDate,
+      sha256: record.sha256,
+      generatedAt: record.generatedAt.toISOString(),
     })),
   };
 }
