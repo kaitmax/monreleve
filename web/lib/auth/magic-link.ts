@@ -42,7 +42,7 @@
 // consumptions and requiring exactly one to succeed, and by an ablation in
 // REPORT-FW22.txt showing the read-then-delete version failing that test.
 
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 import { prisma } from '@/lib/db/client';
 
 /**
@@ -63,10 +63,46 @@ export const MAGIC_LINK_TTL_MS = 15 * 60 * 1000;
 /** Bytes of entropy in the token that travels in the email. */
 const TOKEN_BYTES = 32;
 
+/** Digits in the code that travels in the same email. */
+const CODE_DIGITS = 6;
+
+/**
+ * Wrong-code attempts allowed against one request before it is dead.
+ *
+ * FIVE, and the reasoning rather than a number somebody picked. Six digits are
+ * a million combinations; a guesser who gets five tries per request has a
+ * 5-in-a-million chance before the request dies and they must trigger a new
+ * email (which the per-address and per-network rate limits bound in turn). Five
+ * is also forgiving of a person who fat-fingers one box on a phone: enough
+ * retries that a mistype is not a lockout, few enough that guessing is hopeless.
+ */
+export const MAX_CODE_ATTEMPTS = 5;
+
 export interface IssuedMagicLink {
   /** The secret, which exists only in the email. Never stored. */
   readonly token: string;
+  /** The six-digit code, which exists only in the email. Never stored in clear. */
+  readonly code: string;
   readonly expires: Date;
+}
+
+/** Why a code exchange was refused. Each one is named for R198. */
+export type CodeRefusal = 'invalid_code' | 'code_expired' | 'too_many_attempts';
+
+/** The outcome of exchanging a code: the address on success, a named refusal otherwise. */
+export type CodeResult = { ok: true; email: string } | { ok: false; reason: CodeRefusal };
+
+/**
+ * A fresh six-digit code, leading zeros kept.
+ *
+ * `randomInt` draws from the CSPRNG and is uniform over [0, 1_000_000), so
+ * every code from "000000" to "999999" is equally likely - a `Math.random`
+ * here would be a predictable code, which is a guessable one.
+ */
+function generateCode(): string {
+  return randomInt(0, 10 ** CODE_DIGITS)
+    .toString()
+    .padStart(CODE_DIGITS, '0');
 }
 
 /**
@@ -93,19 +129,104 @@ function hash(token: string): string {
  */
 export async function issueMagicLink(email: string): Promise<IssuedMagicLink> {
   const token = randomBytes(TOKEN_BYTES).toString('base64url');
+  const code = generateCode();
   const expires = new Date(Date.now() + MAGIC_LINK_TTL_MS);
 
   // A previous unused link for the same address is replaced rather than left
   // alive. Two working links for one person is two chances for the older one
   // to be the one that leaks, and a reader who asks again has told us the
-  // first did not reach them.
+  // first did not reach them. Replacing the row also RESETS the attempt counter
+  // - asking again is exactly how a person recovers from a dead request.
   await prisma.verificationToken.deleteMany({ where: { identifier: email } });
 
   await prisma.verificationToken.create({
-    data: { identifier: email, token: hash(token), expires },
+    // Both secrets are hashed. The link token and the code are the SAME request:
+    // one row, one expiry, consumed in one breath by whichever arrives first.
+    data: { identifier: email, token: hash(token), code: hash(code), expires },
   });
 
-  return { token, expires };
+  return { token, code, expires };
+}
+
+/**
+ * Exchange an address and a six-digit code for the address, consuming the whole
+ * request - so the link in the same email no longer works either.
+ *
+ * NO ENUMERATION. An address with no pending request gets `invalid_code`, the
+ * same answer a wrong guess gets, so the endpoint cannot be used to test who has
+ * an account - the same guarantee the link callback keeps by collapsing its
+ * failures into one. (A VerificationToken row exists for ANY address that
+ * requested a link, registered or not, so even `code_expired` and
+ * `too_many_attempts` reveal only that a link was requested - which anyone can
+ * cause for any address - never that an account exists.)
+ *
+ * CONSTANT TIME. The submitted code is hashed and compared to the stored hash
+ * with `timingSafeEqual`, so the duration of a wrong answer does not leak how
+ * many leading digits were right.
+ *
+ * SINGLE USE UNDER A RACE. The win is decided by the count a conditional
+ * `deleteMany` returns, exactly as `consumeMagicLink` decides it, so two correct
+ * exchanges arriving together cannot both open a session.
+ */
+export async function consumeCode(email: string, code: string): Promise<CodeResult> {
+  const row = await prisma.verificationToken.findFirst({ where: { identifier: email } });
+
+  if (row === null || row.code === null) {
+    return { ok: false, reason: 'invalid_code' };
+  }
+
+  if (row.expires.getTime() <= Date.now()) {
+    // Swept on the way out, like an expired link: a dead request kept around is
+    // a record of a failed sign-in attempt held for no purpose.
+    await prisma.verificationToken.deleteMany({ where: { token: row.token } });
+
+    return { ok: false, reason: 'code_expired' };
+  }
+
+  // DEAD ALREADY. The counter has reached the limit on a previous call, so the
+  // request is spent whatever this code is - including the right one. The row is
+  // LEFT so the answer stays "too many attempts, ask for a new one" until it
+  // expires or a new request replaces it.
+  if (row.attempts >= MAX_CODE_ATTEMPTS) {
+    return { ok: false, reason: 'too_many_attempts' };
+  }
+
+  // Claim an attempt slot ATOMICALLY before comparing, so a burst of parallel
+  // guesses cannot each read the same low count and get more than the limit
+  // allows - each one gets a distinct incremented value from PostgreSQL.
+  let claimed;
+  try {
+    claimed = await prisma.verificationToken.update({
+      where: { token: row.token },
+      data: { attempts: { increment: 1 } },
+    });
+  } catch {
+    // The row vanished between the read and the update - another exchange
+    // consumed it. Nothing to grant.
+    return { ok: false, reason: 'invalid_code' };
+  }
+
+  if (claimed.attempts > MAX_CODE_ATTEMPTS) {
+    return { ok: false, reason: 'too_many_attempts' };
+  }
+
+  const matches =
+    claimed.code !== null &&
+    timingSafeEqual(Buffer.from(hash(code), 'hex'), Buffer.from(claimed.code, 'hex'));
+
+  if (!matches) {
+    return { ok: false, reason: 'invalid_code' };
+  }
+
+  // Correct. Consume the whole request in one statement; the count is the
+  // answer to "did I win the race".
+  const { count } = await prisma.verificationToken.deleteMany({ where: { token: row.token } });
+
+  if (count === 0) {
+    return { ok: false, reason: 'invalid_code' };
+  }
+
+  return { ok: true, email };
 }
 
 /**

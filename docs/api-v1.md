@@ -30,12 +30,19 @@ checked on the responses rather than trusted to the absence of cookie code.
 
 ```
 POST /api/v1/auth/magic-link    { email }              -> 202, always
-  (email arrives)
+  (email arrives, carrying a link AND a 6-digit code)
 GET  /api/v1/auth/callback?token=…&email=…             -> 200 { access, refresh }
+POST /api/v1/auth/code          { email, code }        -> 200 { access, refresh }
 POST /api/v1/auth/refresh       { refreshToken }       -> 200 { access, refresh }
 POST /api/v1/auth/sign-out      Authorization: Bearer  -> 200
 POST /api/v1/auth/revoke-all    Authorization: Bearer  -> 200
 ```
+
+The callback and `/api/v1/auth/code` are **two ways through one request**: the same
+email carries a link and a six-digit code, tied to the same single-use sign-in
+request and expiring together. Using either one consumes both. The code exists
+because the link opens the app only once `monreleve.ch` verifies the App Link, and
+because mail is often read on another device — see §1.6.
 
 ### 1.2 The callback is a state-changing `GET`, deliberately
 
@@ -92,8 +99,12 @@ A client that branches on the French breaks when the copy improves.
 | `rotated_token` | replaced by a rotation | refresh silently |
 | `revoked_session` | session ended | **sign in again — do not refresh** |
 | `invalid_link` | callback token unknown/expired/used/wrong address | ask for a new link |
+| `invalid_code` | wrong code, or no pending request for the address | check the digits, or ask for a new code |
+| `code_expired` | the request existed but its window passed | ask for a new code |
+| `too_many_attempts` | the per-request attempt limit was reached | ask for a new code |
+| `rate_limited` | too many exchange calls from this address/source | wait, then try again |
 | `invalid_refresh_token` | refresh token unusable, for any reason | sign in again |
-| `malformed_body` | body was not JSON | a client defect |
+| `malformed_body` | body was not JSON, or not `{ email, code }` | a client defect |
 
 **`expired_token` and `revoked_session` must stay distinct.** A client told
 `expired` when the session was revoked will refresh, be refused, and loop.
@@ -124,6 +135,34 @@ would confirm to a thief that the real client is active.
 **R198 is not "always say more".** It is "the boundary decides, and the
 decision is deliberate". §1.4 is where the client is entitled to know; §1.5 is
 where telling it would be the vulnerability.
+
+### 1.6 `POST /api/v1/auth/code` — the six-digit code
+
+`{ email, code }` → **200** with the same `{ access, refresh }` pair the callback
+returns, and the same `Cache-Control: no-store` and no cookie. It is an
+**additional** door, not a replacement: the App Link callback (§1.1, §1.2) is
+unchanged and frozen.
+
+- **The code and the link are one request.** The email carries both; they expire
+  together (fifteen minutes); using either consumes both. Exchanging the code
+  signs the person in and makes the link in that same email dead, and vice versa.
+- **Six digits are safe only with an attempt limit.** A million combinations is
+  nothing to a script, so each request allows **five** wrong attempts; after the
+  fifth the request is dead (`too_many_attempts`) — even the correct code is then
+  refused — and the person asks for a new code. That counter is the real guard.
+  A per-address and per-source edge limit (`rate_limited`) sits far above it as a
+  backstop against hammering, never in the way of an honest mistype.
+- **The code is stored hashed** (SHA-256, like the link token) and compared in
+  constant time. The table is never a list of valid codes.
+- **No enumeration (§1.5 extended).** An address with no pending request is
+  refused `invalid_code`, identical to a wrong guess, so the endpoint cannot be
+  used to test who has an account. A `VerificationToken` row exists for any
+  address that requested a link, registered or not (§1.5), so even `code_expired`
+  and `too_many_attempts` reveal only that a link was once requested — which
+  anyone can cause for any address — never that an account exists.
+- **The account is created at the exchange**, the first moment somebody has proven
+  they hold the code, exactly as the callback creates it, carrying only the
+  address so a first-time sign-in by code overwrites no settings.
 
 ---
 
@@ -808,19 +847,27 @@ parser.
 
 ## 9. `/api/v1/me` — settings
 
-`GET` returns the ten configuration fields. `PATCH` accepts any subset of them,
-refuses an unknown key rather than stripping it, and refuses an empty body.
+`GET` returns the configuration fields and the holder `name`. `PATCH` accepts any
+subset of them, refuses an unknown key rather than stripping it, and refuses an
+empty body.
 
-**`email` and `name` are not settings and are not returned.** The address is
-the fact §1.5 goes to some length to keep a sign-in form from confirming; a
-settings endpoint handing it back on every poll would be the same leak through
-a quieter door. The name *is* returned by §8, where it is the document's
-titulaire and the whole point — one surface with a reason, not a default.
+**`email` is not a setting and is not returned.** The address is the fact §1.5
+goes to some length to keep a sign-in form from confirming; a settings endpoint
+handing it back on every poll would be the same leak through a quieter door.
+
+**`name` IS settable and returned (AN-ONBOARD).** It is the document's titulaire
+(§8) and onboarding's first step; it is returned so a re-sign-in on a new phone
+can skip that step when a name already exists. It is the owner's own data behind
+their own bearer token — not the leak the email would be. A name that trims to
+nothing is refused (`invalid_body`): the dossier and the PDF refuse to generate
+without a titulaire (§8.3, §11.3), so it is caught at the door rather than stored
+to fail later.
 
 ### 9.1 The fields
 
 | field | `GET` | `PATCH` | notes |
 |---|---|---|---|
+| `name` | ✓ | ✓ | the titulaire; trimmed, non-empty, ≤ 120 chars |
 | `canton` | ✓ | ✓ | one of the 26 codes |
 | `employmentRate` | ✓ | ✓ | 1–100, enforced by the database |
 | `denominatorKind` | ✓ | ✓ | `SIMPLIFIED240` or `EXACT` |

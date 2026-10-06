@@ -165,4 +165,32 @@ export const AUTH_API_COPY = {
   signedOut: `Vous êtes déconnecté de cet appareil.`,
 
   revokedAll: `Vous êtes déconnecté de tous vos appareils.`,
+
+  /**
+   * AN-ONBOARD: the six-digit code exchange refusals.
+   *
+   * A WRONG-CODE MESSAGE SAYS HOW TO RECOVER, never just « erreur » (the relay's
+   * O1). The same message answers an unknown address as answers a wrong guess -
+   * no enumeration - which is why it does not say « ce code » as if one existed.
+   */
+  invalidCode:
+    `Ce code n${APOS}est pas valable. Vérifiez les six chiffres et réessayez, ou ` +
+    `demandez un nouveau code depuis l${APOS}application.`,
+
+  /** The request existed but its window passed. The link and the code expire together. */
+  codeExpired:
+    `Ce code a expiré. Les codes de connexion ne sont valables que quelques ` +
+    `minutes${n(';')} demandez-en un nouveau depuis l${APOS}application.`,
+
+  /**
+   * The per-request attempt limit was reached, so the request is dead - even for
+   * the right code. The person asks for a new one.
+   */
+  tooManyAttempts:
+    `Trop de tentatives pour ce code. Par sécurité, il n${APOS}est plus ` +
+    `valable${n(':')} demandez un nouveau code depuis l${APOS}application.`,
+
+  /** The edge's own per-address / per-network limit on the exchange endpoint. */
+  codeRateLimited:
+    `Trop de demandes depuis cet appareil. Patientez un instant avant de réessayer.`,
 } as const;

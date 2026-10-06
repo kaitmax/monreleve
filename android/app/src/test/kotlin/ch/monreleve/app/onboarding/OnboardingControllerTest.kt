@@ -5,7 +5,6 @@ import ch.monreleve.app.calc.Canton
 import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
 import io.kotest.core.spec.style.FunSpec
-import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.CoroutineScope
@@ -14,14 +13,10 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.json.JSONObject
 
-// AN5b increment 1. The onboarding controller's validation and save paths. Validation delegates the
-// range and the period to the engine (R196: no third copy of 1-100), so these tests drive the real
-// engine through the real increment-2 aggregation - the settings are valid iff calculateTelework
-// accepts what they produce.
-//
-// R282 is asserted directly: the PATCH body carries the six manual fields and NONE of loggingMode,
-// detectionConsent, reminderTime or reminderEnabled - a field the manual product does not offer is
-// not sent.
+// AN-ONBOARD. The onboarding WIZARD: per-step validation, navigation, and the save. Validation delegates the
+// range, the exact-total iff and the period to the engine (R196: no third copy), so these tests drive the real
+// engine through the real aggregation. The save now carries the NAME (chain-critical) and - only when the
+// person chose automatic after the disclosure - loggingMode + detectionConsent; manual sends neither.
 
 private const val TAX_YEAR = 2026
 
@@ -56,166 +51,134 @@ private fun controller(
     store: SettingsStore = FakeStore(),
 ): OnboardingController = OnboardingController(saver, store, TAX_YEAR, scope)
 
-/** A fully-valid draft: GE, 80%, simplified, full days, whole year. */
-private fun OnboardingController.fillValid() {
+/** Fill every step with a valid draft (GE, 80 %, simplified, whole year, manual) and trigger the save. */
+private fun OnboardingController.saveValidDraft(
+    mode: ModeChoice = ModeChoice.MANUAL,
+    reminder: Boolean = false,
+) {
+    onNameChange("Camille Martin")
+    next() // NOM -> CANTON
     onCantonChange(Canton.GE)
-    onEmploymentRateChange("80")
+    next() // CANTON -> TAUX
+    onRateChoiceChange(RateChoice.R80)
+    next() // TAUX -> METHODE
     onDenominatorChange(DenominatorChoice.SIMPLIFIED240)
-    onGranularityChange(GranularityChoice.DAY)
+    next() // METHODE -> PERIODE
+    onAllYearChange(true)
+    next() // PERIODE -> MODE
+    onModeChange(mode)
+    next() // MODE -> RAPPEL
+    onReminderChange(reminder)
+    next() // RAPPEL -> save
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class OnboardingControllerTest : FunSpec({
-    test("no canton chosen fails with CANTON_MISSING and never calls the server") {
+    test("step 1 refuses a blank name (NAME_MISSING) and does not advance") {
         runTest {
-            val saver = FakeSaver()
-            val c = controller(this, saver)
-            c.onEmploymentRateChange("80")
-            c.submit()
-            advanceUntilIdle()
+            val c = controller(this)
+            c.next()
+            c.state.value.error shouldBe OnboardingError.NAME_MISSING
+            c.state.value.step shouldBe OnboardingStep.NOM
+        }
+    }
+
+    test("step 2 refuses no canton (CANTON_MISSING)") {
+        runTest {
+            val c = controller(this)
+            c.onNameChange("Camille")
+            c.next() // -> CANTON
+            c.next() // no canton
             c.state.value.error shouldBe OnboardingError.CANTON_MISSING
-            saver.callCount shouldBe 0
+            c.state.value.step shouldBe OnboardingStep.CANTON
         }
     }
 
-    test("a non-numeric rate fails with RATE_INVALID") {
+    test("step 3 refuses a non-numeric rate (RATE_INVALID)") {
         runTest {
             val c = controller(this)
+            c.onNameChange("Camille")
+            c.next()
             c.onCantonChange(Canton.GE)
-            c.onEmploymentRateChange("huit")
-            c.submit()
-            advanceUntilIdle()
+            c.next() // -> TAUX
+            c.onCustomRateChange("huit")
+            c.next()
             c.state.value.error shouldBe OnboardingError.RATE_INVALID
         }
     }
 
-    test("a rate out of range is rejected by the engine, not a third copy of the bound (RATE_INVALID)") {
+    test("step 4 EXACT with a blank total fails (EXACT_TOTAL_MISSING)") {
         runTest {
             val c = controller(this)
+            c.onNameChange("Camille")
+            c.next()
             c.onCantonChange(Canton.GE)
-            c.onEmploymentRateChange("150")
-            c.submit()
-            advanceUntilIdle()
-            c.state.value.error shouldBe OnboardingError.RATE_INVALID
-        }
-    }
-
-    test("EXACT method with a blank total fails with EXACT_TOTAL_MISSING") {
-        runTest {
-            val c = controller(this)
-            c.onCantonChange(Canton.GE)
-            c.onEmploymentRateChange("100")
+            c.next()
+            c.onRateChoiceChange(RateChoice.R100)
+            c.next() // -> METHODE
             c.onDenominatorChange(DenominatorChoice.EXACT)
-            c.submit()
-            advanceUntilIdle()
+            c.next()
             c.state.value.error shouldBe OnboardingError.EXACT_TOTAL_MISSING
         }
     }
 
-    test("EXACT method with a zero total is rejected by the engine (EXACT_TOTAL_INVALID)") {
-        runTest {
-            val c = controller(this)
-            c.onCantonChange(Canton.GE)
-            c.onEmploymentRateChange("100")
-            c.onDenominatorChange(DenominatorChoice.EXACT)
-            c.onExactTotalChange("0")
-            c.submit()
-            advanceUntilIdle()
-            c.state.value.error shouldBe OnboardingError.EXACT_TOTAL_INVALID
-        }
-    }
-
-    test("an unparseable start date fails with START_DATE_INVALID") {
-        runTest {
-            val c = controller(this)
-            c.fillValid()
-            c.onActivityStartDateChange("31/12/2026")
-            c.submit()
-            advanceUntilIdle()
-            c.state.value.error shouldBe OnboardingError.START_DATE_INVALID
-        }
-    }
-
-    test("valid settings save to the server then cache locally and reach SAVED") {
+    test("a valid draft saves with the NAME, caches locally, and reaches READY") {
         runTest {
             val saver = FakeSaver()
             val store = FakeStore()
             val c = controller(this, saver, store)
-            c.fillValid()
-            c.submit()
+            c.saveValidDraft()
             advanceUntilIdle()
-            c.state.value.phase shouldBe OnboardingPhase.SAVED
+            c.state.value.phase shouldBe OnboardingPhase.READY
             saver.callCount shouldBe 1
-            store.saved.shouldNotBeNull()
+            store.saved?.name shouldBe "Camille Martin"
             store.saved?.canton shouldBe "GE"
             store.saved?.employmentRate shouldBe 80
-        }
-    }
-
-    test("the PATCH body carries the six manual fields and NOTHING the manual product lacks (R282)") {
-        runTest {
-            val saver = FakeSaver()
-            val c = controller(this, saver)
-            c.fillValid()
-            c.submit()
-            advanceUntilIdle()
             val body = JSONObject(saver.lastBody.shouldNotBeNull())
-            body.keys().asSequence().toList().shouldContainExactlyInAnyOrder(
-                "canton",
-                "employmentRate",
-                "denominatorKind",
-                "exactTotalWorkDays",
-                "granularity",
-                "activityStartDate",
-            )
+            body.getString("name") shouldBe "Camille Martin"
+            // Manual: no mode/consent sent (the server's MANUAL default stands).
             body.has("loggingMode") shouldBe false
             body.has("detectionConsent") shouldBe false
-            body.has("reminderTime") shouldBe false
-            body.has("reminderEnabled") shouldBe false
         }
     }
 
-    test("SIMPLIFIED240 sends a null exact total; a blank start date sends a null date (whole year)") {
+    test("choosing automatic sends loggingMode and detectionConsent together") {
         runTest {
             val saver = FakeSaver()
             val c = controller(this, saver)
-            c.fillValid()
-            c.submit()
+            c.saveValidDraft(mode = ModeChoice.AUTO_DETECT)
             advanceUntilIdle()
             val body = JSONObject(saver.lastBody.shouldNotBeNull())
-            body.isNull("exactTotalWorkDays") shouldBe true
-            body.isNull("activityStartDate") shouldBe true
+            body.getString("loggingMode") shouldBe "AUTO_DETECT"
+            body.getBoolean("detectionConsent") shouldBe true
         }
     }
 
-    test("a server-ended session does not cache locally and reaches SESSION_ENDED") {
+    test("a server-ended session does not cache and reaches SESSION_ENDED") {
         runTest {
-            val saver = FakeSaver(PostOutcome.SessionEnded)
             val store = FakeStore()
-            val c = controller(this, saver, store)
-            c.fillValid()
-            c.submit()
+            val c = controller(this, FakeSaver(PostOutcome.SessionEnded), store)
+            c.saveValidDraft()
             advanceUntilIdle()
             c.state.value.phase shouldBe OnboardingPhase.SESSION_ENDED
             store.saved shouldBe null
         }
     }
 
-    test("a network failure does not cache locally and reaches NETWORK_ERROR") {
+    test("Back returns to the previous step keeping what was entered") {
         runTest {
-            val saver = FakeSaver(PostOutcome.NetworkError)
-            val store = FakeStore()
-            val c = controller(this, saver, store)
-            c.fillValid()
-            c.submit()
-            advanceUntilIdle()
-            c.state.value.phase shouldBe OnboardingPhase.NETWORK_ERROR
-            store.saved shouldBe null
+            val c = controller(this)
+            c.onNameChange("Camille Martin")
+            c.next() // -> CANTON
+            c.onCantonChange(Canton.VD)
+            c.back() // -> NOM
+            c.state.value.step shouldBe OnboardingStep.NOM
+            c.state.value.name shouldBe "Camille Martin"
+            c.state.value.canton shouldBe Canton.VD
         }
     }
 
-    // AN-STATE S4 (R310): the restore seed is proven on the JVM - the values entered so far reopen.
-    test("a restored snapshot reopens the entered values (R310)") {
+    test("a restored snapshot reopens the entered values and the step (R310)") {
         runTest {
             val c =
                 OnboardingController(
@@ -225,16 +188,17 @@ class OnboardingControllerTest : FunSpec({
                     this,
                     restored =
                         OnboardingSnapshot(
+                            step = OnboardingStep.METHODE,
+                            name = "Alex Dupont",
                             canton = Canton.VD,
-                            employmentRate = "80",
-                            denominator = DenominatorChoice.EXACT,
-                            exactTotalWorkDays = "210",
+                            rateChoice = RateChoice.OTHER,
+                            customRate = "75",
                         ),
                 )
+            c.state.value.step shouldBe OnboardingStep.METHODE
+            c.state.value.name shouldBe "Alex Dupont"
             c.state.value.canton shouldBe Canton.VD
-            c.state.value.employmentRate shouldBe "80"
-            c.state.value.denominator shouldBe DenominatorChoice.EXACT
-            c.state.value.exactTotalWorkDays shouldBe "210"
+            c.state.value.employmentRate shouldBe "75"
         }
     }
 })

@@ -10,4 +10,7 @@ object Fr {
     const val APP_NAME = "Mon Relevé"
 
     const val GREETING = "Bonjour Camille"
+
+    /** The brand mark's content description (Bienvenue, Connexion, Tout est prêt) - one home (R206). */
+    const val LOGO = "Logo Mon Relevé"
 }

@@ -57,7 +57,17 @@ export interface RateDecision {
  * for a window to expire - the same reason the engine takes its clock as an
  * argument rather than reading one.
  */
-export function checkRate(client: string, now: number = Date.now()): RateDecision {
+export function checkRate(
+  client: string,
+  now: number = Date.now(),
+  // The window's own ceiling. Defaults to LIMIT (the alert and sign-in-request
+  // forms). AN-ONBOARD: the code-exchange endpoint passes a HIGHER one, because
+  // its real guard is the per-request attempt counter (5) and this edge limit is
+  // only a backstop against extreme abuse - set below LIMIT it would pre-empt the
+  // counter and refuse a fat-fingered but honest person before they ran out of
+  // tries.
+  limit: number = LIMIT,
+): RateDecision {
   if (windows.size > SWEEP_AT) {
     for (const [key, window] of windows) {
       if (window.resetAt <= now) windows.delete(key);
@@ -74,7 +84,7 @@ export function checkRate(client: string, now: number = Date.now()): RateDecisio
 
   current.count += 1;
 
-  if (current.count > LIMIT) {
+  if (current.count > limit) {
     return {
       allowed: false,
       retryAfter: Math.ceil((current.resetAt - now) / 1000),

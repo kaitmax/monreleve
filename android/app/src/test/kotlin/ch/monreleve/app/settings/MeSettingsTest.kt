@@ -43,4 +43,30 @@ class MeSettingsTest : FunSpec({
     test("R297: a malformed body yields null, never a crash (the safe direction is onboarding)") {
         parseMeSettings("not json at all") shouldBe null
     }
+
+    test("AN-ONBOARD: reads the holder name when /me carries it") {
+        val body =
+            """{"name":"Camille Martin","canton":"GE","employmentRate":100,"denominatorKind":"SIMPLIFIED240",
+                "exactTotalWorkDays":null,"granularity":"DAY","activityStartDate":null,"reminderTime":"17:30",
+                "reminderEnabled":false,"loggingMode":"MANUAL","detectionConsentAt":null}"""
+
+        parseMeSettings(body) shouldBe
+            Settings("GE", 100, "SIMPLIFIED240", null, "DAY", null, name = "Camille Martin")
+    }
+
+    test("AN-ONBOARD: a settings body with no name parses, with a null name (the name step is still owed)") {
+        val body =
+            """{"canton":"GE","employmentRate":100,"denominatorKind":"SIMPLIFIED240","exactTotalWorkDays":null,
+                "granularity":"DAY","activityStartDate":null}"""
+
+        parseMeSettings(body) shouldBe Settings("GE", 100, "SIMPLIFIED240", null, "DAY", null, name = null)
+    }
+
+    test("AN-ONBOARD: the PATCH body carries the name when set, and omits it when absent") {
+        val withName = Settings("GE", 100, "SIMPLIFIED240", null, "DAY", null, name = "Alex Dupont")
+        org.json.JSONObject(withName.mePatchBody()).getString("name") shouldBe "Alex Dupont"
+
+        val withoutName = Settings("GE", 100, "SIMPLIFIED240", null, "DAY", null)
+        org.json.JSONObject(withoutName.mePatchBody()).has("name") shouldBe false
+    }
 })

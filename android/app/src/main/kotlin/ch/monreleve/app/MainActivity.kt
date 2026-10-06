@@ -1,3 +1,5 @@
+@file:Suppress("TooManyFunctions")
+
 package ch.monreleve.app
 
 import android.content.Context
@@ -39,12 +41,16 @@ import ch.monreleve.app.account.DeviceLocalStore
 import ch.monreleve.app.account.LocalStore
 import ch.monreleve.app.account.SharedPrefsAccountStore
 import ch.monreleve.app.auth.BytesOutcome
+import ch.monreleve.app.auth.CodeController
+import ch.monreleve.app.auth.CodePhase
+import ch.monreleve.app.auth.CodeSnapshot
 import ch.monreleve.app.auth.KeystoreTokenStore
 import ch.monreleve.app.auth.PendingSignInStore
 import ch.monreleve.app.auth.PostOutcome
 import ch.monreleve.app.auth.SessionManager
 import ch.monreleve.app.auth.SharedPrefsPendingSignInStore
 import ch.monreleve.app.auth.SignInController
+import ch.monreleve.app.auth.SignInPhase
 import ch.monreleve.app.auth.SignInSnapshot
 import ch.monreleve.app.auth.TokenStore
 import ch.monreleve.app.data.local.DossierCache
@@ -67,6 +73,7 @@ import ch.monreleve.app.detection.locationFullyGranted
 import ch.monreleve.app.fr.DisclosureCopy
 import ch.monreleve.app.fr.ParametresCopy
 import ch.monreleve.app.fr.ReleveCopy
+import ch.monreleve.app.onboarding.ModeChoice
 import ch.monreleve.app.onboarding.OnboardingController
 import ch.monreleve.app.onboarding.OnboardingPhase
 import ch.monreleve.app.onboarding.OnboardingSnapshot
@@ -81,6 +88,7 @@ import ch.monreleve.app.releve.ExportEvent
 import ch.monreleve.app.releve.ExportKind
 import ch.monreleve.app.settings.SettingsStore
 import ch.monreleve.app.settings.SharedPrefsDetectionModeStore
+import ch.monreleve.app.settings.SharedPrefsEveningNotificationStore
 import ch.monreleve.app.settings.SharedPrefsSettingsStore
 import ch.monreleve.app.startup.StartDestination
 import ch.monreleve.app.startup.decideStartAfterSignIn
@@ -92,11 +100,16 @@ import ch.monreleve.app.ui.screens.calendrier.CalendrierScreen
 import ch.monreleve.app.ui.screens.disclosure.DisclosureScreen
 import ch.monreleve.app.ui.screens.onboarding.OnboardingActions
 import ch.monreleve.app.ui.screens.onboarding.OnboardingScreen
+import ch.monreleve.app.ui.screens.onboarding.PretScreen
 import ch.monreleve.app.ui.screens.parametres.ParametresActions
 import ch.monreleve.app.ui.screens.parametres.ParametresScreen
 import ch.monreleve.app.ui.screens.releve.ReleveActions
 import ch.monreleve.app.ui.screens.releve.ReleveScreen
+import ch.monreleve.app.ui.screens.signin.CodeActions
+import ch.monreleve.app.ui.screens.signin.CodeScreen
 import ch.monreleve.app.ui.screens.signin.RequestLinkScreen
+import ch.monreleve.app.ui.screens.signin.SignInActions
+import ch.monreleve.app.ui.screens.signin.WelcomeScreen
 import ch.monreleve.app.ui.shell.AppBottomBar
 import ch.monreleve.app.ui.shell.AppTab
 import kotlinx.coroutines.CoroutineScope
@@ -128,6 +141,9 @@ internal enum class Destination { SIGN_IN, RESOLVING, ONBOARDING, MAIN }
 private const val EXPORTS_DIR = "exports"
 
 class MainActivity : ComponentActivity() {
+    // LongMethod suppressed as MainShell is: this is the composition root - store/seam construction and the
+    // one-screen router - not tangled logic. AN-ONBOARD's sign-in flow added the WELCOME/EMAIL/CODE branch.
+    @Suppress("LongMethod")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val context = applicationContext
@@ -172,7 +188,15 @@ class MainActivity : ComponentActivity() {
                     var destination by rememberSaveable { mutableStateOf(start) }
                     LaunchedEffect(Unit) { destination = sessionReconciled(destination, start) }
                     when (destination) {
-                        Destination.SIGN_IN -> SignInRoute(api, pending, lifecycleScope)
+                        Destination.SIGN_IN ->
+                            SignInRoute(
+                                api,
+                                tokenStore,
+                                pending,
+                                accountStore,
+                                lifecycleScope,
+                                onSignedIn = { destination = Destination.RESOLVING },
+                            )
                         Destination.RESOLVING ->
                             ResolvingRoute(session, settingsStore) { destination = it }
                         Destination.ONBOARDING ->
@@ -207,25 +231,95 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+// AN-ONBOARD: the sign-in flow is now three screens - Bienvenue (fresh install), the email request, and the
+// six-digit code - the second way in beside the App Link callback (R195 leaves the callback untouched). On a
+// code SIGNED it hands off to RESOLVING exactly as the callback's activity restart does: the start decision
+// (GET /api/v1/me) then routes to onboarding or the shell. The welcome is shown only while unsigned.
+private enum class SignInStep { WELCOME, EMAIL, CODE }
+
+// LongParameterList suppressed as MainShell/MainGraph are: this is the composition root wiring the sign-in
+// flow's stores and seams, not tangled logic (the ui/ screens bundle their callbacks into Actions instead,
+// which the no-literal fence requires there - this file is the root, where @Suppress is permitted).
+@Suppress("LongParameterList")
 @Composable
 private fun SignInRoute(
     api: AuthApi,
+    tokenStore: TokenStore,
     pending: SharedPrefsPendingSignInStore,
+    accountStore: AccountStore,
     scope: CoroutineScope,
+    onSignedIn: () -> Unit,
 ) {
-    // AN-STATE (R310): the typed email (and a stable phase) survive a rebuild. The snapshot is held in
-    // rememberSaveable and kept current from the controller's state; the seed re-creates the controller with it.
+    val context = LocalContext.current
+    var step by rememberSaveable { mutableStateOf(SignInStep.WELCOME) }
+    // AN-STATE (R310): the typed email and a stable phase survive a rebuild.
     var saved by rememberSaveable { mutableStateOf<SignInSnapshot?>(null) }
     val controller = remember { SignInController(api, pending, scope, restored = saved) }
     val state by controller.state.collectAsState()
-    LaunchedEffect(controller) {
-        controller.state.collect { saved = SignInSnapshot(it.email, it.phase) }
+    LaunchedEffect(controller) { controller.state.collect { saved = SignInSnapshot(it.email, it.phase) } }
+    // The request succeeded (one answer whatever the truth, docs 1.5) -> move to the code screen.
+    LaunchedEffect(state.phase) { if (state.phase == SignInPhase.LINK_SENT) step = SignInStep.CODE }
+
+    when (step) {
+        SignInStep.WELCOME -> WelcomeScreen(onStart = { step = SignInStep.EMAIL })
+        SignInStep.EMAIL ->
+            RequestLinkScreen(
+                state = state,
+                actions =
+                    SignInActions(
+                        onEmailChange = controller::onEmailChange,
+                        onSubmit = controller::submit,
+                        onRetry = controller::retry,
+                        onBack = { step = SignInStep.WELCOME },
+                        onOpenCgu = { openLegal(context, LegalPage.TERMS) },
+                        onOpenPrivacy = { openLegal(context, LegalPage.PRIVACY) },
+                    ),
+            )
+        SignInStep.CODE ->
+            CodeRoute(
+                api = api,
+                tokenStore = tokenStore,
+                pending = pending,
+                accountStore = accountStore,
+                email = state.email.trim(),
+                scope = scope,
+                onModify = { step = SignInStep.EMAIL },
+                onSignedIn = onSignedIn,
+            )
     }
-    RequestLinkScreen(
+}
+
+@Suppress("LongParameterList")
+@Composable
+private fun CodeRoute(
+    api: AuthApi,
+    tokenStore: TokenStore,
+    pending: SharedPrefsPendingSignInStore,
+    accountStore: AccountStore,
+    email: String,
+    scope: CoroutineScope,
+    onModify: () -> Unit,
+    onSignedIn: () -> Unit,
+) {
+    val context = LocalContext.current
+    // AN-STATE (R310): the typed digits and a stable phase survive a rebuild.
+    var saved by rememberSaveable { mutableStateOf<CodeSnapshot?>(null) }
+    val controller = remember { CodeController(api, tokenStore, pending, accountStore, email, scope, restored = saved) }
+    val state by controller.state.collectAsState()
+    LaunchedEffect(controller) { controller.state.collect { saved = CodeSnapshot(it.code, it.phase) } }
+    LaunchedEffect(state.phase) { if (state.phase == CodePhase.SIGNED) onSignedIn() }
+
+    CodeScreen(
+        email = email,
         state = state,
-        onEmailChange = controller::onEmailChange,
-        onSubmit = controller::submit,
-        onRetry = controller::retry,
+        actions =
+            CodeActions(
+                onCodeChange = controller::onCodeChange,
+                onSubmit = controller::submit,
+                onModify = onModify,
+                onResend = controller::resend,
+                onOpenMail = { openMail(context) },
+            ),
     )
 }
 
@@ -254,6 +348,12 @@ private fun ResolvingRoute(
     }
 }
 
+// AN-ONBOARD: the onboarding WIZARD (steps 1-7) then "Tout est prêt". The composition root owns what ui/
+// cannot: the disclosure + OS permissions behind an automatic-mode choice (R316/R315) and the notification
+// permission behind the evening reminder (R323). A deny at any step leaves manual / reminder off, never nags.
+// LongMethod/CyclomaticComplexMethod/LongParameterList suppressed as the shell's are: this is wiring, and the
+// ui/ screens bundle their callbacks into Actions instead (the fence forbids @Suppress there, not here).
+@Suppress("LongMethod", "CyclomaticComplexMethod", "LongParameterList")
 @Composable
 private fun OnboardingRoute(
     session: SessionManager,
@@ -262,8 +362,8 @@ private fun OnboardingRoute(
     scope: CoroutineScope,
     onDone: () -> Unit,
 ) {
-    // AN-STATE (R310): the values entered so far survive a rebuild (rememberSaveable snapshot kept current from
-    // the controller's state; the seed re-creates the controller with it).
+    val context = LocalContext.current
+    val eveningStore = remember { SharedPrefsEveningNotificationStore(context) }
     var saved by rememberSaveable { mutableStateOf<OnboardingSnapshot?>(null) }
     val controller =
         remember { OnboardingController(SessionSettingsSaver(session), store, taxYear, scope, restored = saved) }
@@ -272,27 +372,96 @@ private fun OnboardingRoute(
         controller.state.collect {
             saved =
                 OnboardingSnapshot(
-                    it.canton, it.employmentRate, it.denominator, it.exactTotalWorkDays, it.granularity,
-                    it.activityStartDate,
+                    it.step, it.name, it.canton, it.rateChoice, it.customRate, it.denominator,
+                    it.exactTotalWorkDays, it.allYear, it.activityStartDate, it.mode, it.reminder,
                 )
         }
     }
-    LaunchedEffect(state.phase) {
-        if (state.phase == OnboardingPhase.SAVED) onDone()
+
+    // Automatic mode (step 6): the disclosure first (D5/R316), then FINE, then BACKGROUND on API 29+; consent
+    // (onModeChange(AUTO_DETECT)) is recorded only when ALL are granted, and the save then PATCHes it (R315).
+    var showDisclosure by rememberSaveable { mutableStateOf(false) }
+    val backgroundLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            showDisclosure = false
+            controller.onModeChange(if (granted) ModeChoice.AUTO_DETECT else ModeChoice.MANUAL)
+        }
+    val fineLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            when {
+                !granted -> {
+                    showDisclosure = false
+                    controller.onModeChange(ModeChoice.MANUAL)
+                }
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> backgroundLauncher.launch(BACKGROUND_LOCATION)
+                else -> {
+                    showDisclosure = false
+                    controller.onModeChange(ModeChoice.AUTO_DETECT)
+                }
+            }
+        }
+
+    // Evening reminder (step 7): "Oui" asks POST_NOTIFICATIONS on API 33+ (the S9 is 29, so it enables straight
+    // away), then enables the local R323 notification and saves; a deny saves with the reminder off.
+    val notificationLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) eveningStore.setEnabled(true)
+            controller.onReminderChange(granted)
+            controller.next()
+        }
+    val onReminderYes: () -> Unit = {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            notificationLauncher.launch(POST_NOTIFICATIONS_PERMISSION)
+        } else {
+            eveningStore.setEnabled(true)
+            controller.onReminderChange(true)
+            controller.next()
+        }
     }
+    val onReminderNo: () -> Unit = {
+        eveningStore.setEnabled(false)
+        controller.onReminderChange(false)
+        controller.next()
+    }
+
+    if (state.phase == OnboardingPhase.READY) {
+        val settings = store.load()
+        if (settings == null) onDone() else PretScreen(settings = settings, taxYear = taxYear, onContinue = onDone)
+        return
+    }
+
     OnboardingScreen(
         state = state,
         actions =
             OnboardingActions(
+                onNameChange = controller::onNameChange,
                 onCantonChange = controller::onCantonChange,
-                onEmploymentRateChange = controller::onEmploymentRateChange,
+                onRateChoiceChange = controller::onRateChoiceChange,
+                onCustomRateChange = controller::onCustomRateChange,
                 onDenominatorChange = controller::onDenominatorChange,
                 onExactTotalChange = controller::onExactTotalChange,
-                onGranularityChange = controller::onGranularityChange,
+                onAllYearChange = controller::onAllYearChange,
                 onActivityStartDateChange = controller::onActivityStartDateChange,
-                onSubmit = controller::submit,
+                onChooseManual = { controller.onModeChange(ModeChoice.MANUAL) },
+                onChooseAuto = { showDisclosure = true },
+                onReminderYes = onReminderYes,
+                onReminderNo = onReminderNo,
+                onNext = controller::next,
+                onBack = controller::back,
             ),
     )
+
+    if (showDisclosure) {
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            DisclosureScreen(
+                onAllow = { fineLauncher.launch(FINE_LOCATION) },
+                onStayManual = {
+                    showDisclosure = false
+                    controller.onModeChange(ModeChoice.MANUAL)
+                },
+            )
+        }
+    }
 }
 
 // The main shell: the bottom navigation over the screens that exist, with BOTH controllers created once
@@ -579,6 +748,17 @@ private fun openLegal(
         open = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(it))) },
         showAddress = { Toast.makeText(context, ParametresCopy.legalNoHandler(it), Toast.LENGTH_LONG).show() },
     )
+}
+
+// AN-ONBOARD: "Ouvrir ma messagerie" on the code screen opens the device's email app. Guarded like
+// openLegal (R299): a device with no email app shows the reason rather than crashing. Lives in the
+// composition root, where an Intent is permitted.
+private fun openMail(context: Context) {
+    val intent =
+        Intent(Intent.ACTION_MAIN).apply { addCategory(Intent.CATEGORY_APP_EMAIL) }
+    runCatching { context.startActivity(intent) }.onFailure {
+        Toast.makeText(context, ch.monreleve.app.fr.CodeCopy.NO_MAIL_APP, Toast.LENGTH_LONG).show()
+    }
 }
 
 private fun parametresActions(

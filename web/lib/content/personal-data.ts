@@ -200,6 +200,13 @@ export const PERSONAL_DATA: Readonly<Record<string, Disclosure>> = {
   'VerificationToken.identifier': 'signInLink',
   'VerificationToken.token': 'signInLink',
   'VerificationToken.expires': 'signInLink',
+  // AN-ONBOARD: the same email now also carries a six-digit code (stored hashed,
+  // like the token) and a wrong-attempt counter. Both belong to the one sign-in
+  // request the sentence above already discloses - the code is a second shape of
+  // the same hashed credential, and the counter is held only to kill a request
+  // being guessed at.
+  'VerificationToken.code': 'signInLink',
+  'VerificationToken.attempts': 'signInLink',
 
   // ---- FW21 RESIDUE, WITH NO ADAPTER BEHIND IT ANY MORE (R209). These were
   // written from the Auth.js Prisma adapter's published schema and verified
