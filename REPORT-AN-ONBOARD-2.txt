@@ -375,8 +375,23 @@ affect). Per-increment: the fast unit suites ran RED-then-GREEN as named
 above; R337's increment and the final increment each ran the full
 :app:gate GREEN.
 
-gate:clone and the merge are the ORCHESTRATOR's (deferred; turn length) -
-NOT merged, pending merge.
+gate:clone and the merge are the ORCHESTRATOR's (deferred; turn length).
+
+FINALISATION (orchestrating session - gate:clone + merge)
+====================================================================
+:app:gate       GREEN on a267442 (6m51s); the merged HEAD (4b70b8f) tree
+  is byte-identical to a267442 (clean --no-ff, main an ancestor), so it
+  carries over - the only difference is the merge commit, no code.
+pnpm gate:clone on the merged HEAD: PASSED register-coverage (33 cited
+  ids), install, typecheck, lint, test, build, size, db:deploy, test:db.
+  test:container:write FAILED on the same transient "fetch failed" that
+  hit AN-LINKS (degraded network all session) and PASSED standalone on
+  re-run (10/10). R174: a flaked sample is retried. No code regression -
+  AN-ONBOARD-2 changed no web/ file, so the web tree is byte-identical to
+  d01da3d, whose web tree passed test:container:write.
+Merged --no-ff to main (4b70b8f) and pushed.
+WALKTHROUGH still deferred (PARKAN-43): the phone is disconnected. The
+  on-device drive (prompt section 4) is the one remaining piece.
 
 ====================================================================
 END OF REPORT-AN-ONBOARD-2.txt
