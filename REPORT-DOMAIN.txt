@@ -1,0 +1,507 @@
+================================================================================
+REPORT-DOMAIN  -  monreleve.ch is live: what is deployed, and switching on
+                  what was waiting for it
+================================================================================
+Task:   DOMAIN (relay/DOMAIN.txt)
+Branch: domain  (off main @ 66d1423)
+Date:   2026-10-06
+Clients touched: web only (Android untouched; no :app:gate needed)
+
+--------------------------------------------------------------------------------
+HOW IT ENDED
+--------------------------------------------------------------------------------
+DONE, with one HARD, UNEXPECTED FINDING handed to the operator rather than
+fixed here (it is not this session's to fix): on the live site EVERY
+database-backed request returns HTTP 500. The code is at main; the database is
+not serving. That is item 1 of the checklist.
+
+Delivered and pushed to origin/domain:
+  - R338 built test-first and green (verification page gets its own rate-limit
+    bucket).
+  - docs/domain-checklist.md: every operator step, exact value, location, and a
+    proving command, most-urgent-first.
+  - parking.md: the PARK4-2 heading the checklist cites.
+  - This report.
+
+Fast suites run locally, all GREEN:
+  typecheck, lint (0 errors; 2 pre-existing warnings in a file I did not touch:
+  tests/unit/calc-engine/verification-trace.test.ts), test (175 files / 3009),
+  build, test:late (10), test:db (39 files: 593 passed, 25 skipped - the skips
+  are the live-server-only tests, named not hidden, R133).
+Deferred to the orchestrator: gate:clone (per the relay), and - per R132, since
+app/** changed - test:e2e + test:visual. The R338 change is the rate-limit KEY
+only; the page's rendered output is byte-identical (no markup/copy/token
+change), so visual baselines are unaffected. Flagged for the final gate.
+
+No advisor was consulted (the relay disabled it; it had stalled all session).
+R156/R270: every judgement call took the conservative, reversible option and is
+recorded below.
+
+--------------------------------------------------------------------------------
+R273  -  the operator says it is live; verified
+--------------------------------------------------------------------------------
+R1: the orchestrator confirmed gate:clone + :app:gate green on origin/main HEAD
+(66d1423) just before this session; one transient test:container:write "fetch
+failed" retried 10/10. I re-fetched and confirmed origin/main == 66d1423 and
+branched `domain` from it.
+
+Verified from OUTSIDE (HTTP/DNS/TLS/code), positive signals only (R133, R169):
+  - /api/health -> {"service":"monreleve","instance":null,"status":"ok",
+    "reasons":[],"origin":"https://monreleve.ch","runtime":true}. The `service`
+    field names THIS product (R169). No version/commit field exists - the health
+    route (app/api/health/route.ts) has none by design, so "compare by content"
+    is correct, not a gap.
+  - http://monreleve.ch -> 302 -> https://monreleve.ch. TLS valid (Let's
+    Encrypt, CN=monreleve.ch, notAfter 2027-01-03).
+  - /api/ready -> 200 {"ready":true,"checks":[{"name":"site-origin","ok":true}]}.
+
+--------------------------------------------------------------------------------
+WHAT IS DEPLOYED  (feature by feature, against main)
+--------------------------------------------------------------------------------
+The deployed CODE is at main. The DATABASE is the gap.
+
+  Feature                         | Deployed? | Evidence
+  --------------------------------|-----------|-------------------------------
+  Public pages + styles           | yes       | /, /mentions-legales,
+                                  |           | /confidentialite, /cgu,
+                                  |           | /sources, /a-propos all 200
+  FW-VERIFY verification page      | yes       | /verifier/<non-hex> -> 200
+                                  |           | neutral page (page code runs)
+  AN-ONBOARD code sign-in route    | yes       | POST /api/v1/auth/code exists
+                                  |           | (named refusals, see below)
+  R325/FW-VERIFY privacy wording   | yes       | /confidentialite names Resend
+                                  |           | and the issuance record
+  Canonicals w/ production origin  | yes       | see CANONICALS
+  --------------------------------|-----------|-------------------------------
+  DATABASE-backed operations      | BROKEN    | every DB read -> HTTP 500
+                                  |           | (see IS THE API LIVE)
+
+HEADLINE FINDING - the database returns 500 for every data-backed request.
+Measured, deterministic (not a network flake - these are server-rendered Next
+error pages returned reliably):
+  - /verifier/<32-hex code> -> 500 (3/3). The non-hex path, which short-circuits
+    BEFORE the query, is 200 - so the difference is precisely the DB call
+    (prisma.issuanceRecord.findUnique).
+  - POST /api/v1/auth/code, well-formed body -> 500 (consumeCode reads
+    prisma.verificationToken.findFirst).
+Two independent read paths fail: the LATEST table (IssuanceRecord, FW-VERIFY)
+AND an EARLY one (VerificationToken, FW22). That rules out "one migration
+missing" and points at the production database being UNREACHABLE or UNMIGRATED
+from the app container. Consequence while this holds: sign-in (code and link)
+and the verification page are broken; the alert form degrades to its
+"service indisponible" message (app/api/alertes/route.ts catches the DB error
+rather than 500-ing). This is checklist item 1 and the most urgent operator
+step. I cannot reach the production DB to diagnose further and do not claim to.
+
+--------------------------------------------------------------------------------
+IS THE API LIVE  (or only the website?)
+--------------------------------------------------------------------------------
+The /api/v1 surface IS live and deployed - it is not a static site:
+  - GET /api/v1/auth/magic-link -> 405 (POST-only route exists).
+  - POST /api/v1/auth/code with body {} -> 400
+    {"code":"malformed_body","message":"Requete illisible : le corps attendu
+    est du JSON."} - a NAMED refusal, proving the route and its handler run.
+  - GET /this-route-does-not-exist -> 404 (contrast; routing is real).
+BUT any API operation that touches the database returns 500 (above). So: the
+API code is live; the API's data layer is not.
+Probes used were refusal-only and send NO email (a malformed body and a
+well-formed code for a non-existent request); no email was sent to anyone, and
+OPERATOR_TEST_EMAIL was not set, so the email-send probes are checklist-only.
+
+--------------------------------------------------------------------------------
+CANONICALS
+--------------------------------------------------------------------------------
+PASS. The build was made with the production origin (FW28 freezes it at build
+time):
+  - Homepage: <link rel="canonical" href="https://monreleve.ch"/>
+  - /sitemap.xml -> 200, entries are https://monreleve.ch/... (/, /mentions-
+    legales, /confidentialite, ...).
+  - /api/health origin == https://monreleve.ch and status "ok" (not degraded),
+    which per README/R81 means NEXT_PUBLIC_SITE_URL was set at build.
+No localhost or foreign host anywhere. (deploy.md section 1 requires
+--build-arg NEXT_PUBLIC_SITE_URL=https://monreleve.ch; the evidence says it was.)
+
+--------------------------------------------------------------------------------
+ASSETLINKS  (/.well-known/assetlinks.json)
+--------------------------------------------------------------------------------
+LIVE STATE (2026-10-06): 404 {"status":"not_configured"} - the correct, honest
+state (R205): the file is withheld until real fingerprints exist, never an empty
+list. NOT YET CONFIGURED - no phone needed to establish this.
+
+SETTINGS the code reads (app/.well-known/assetlinks.json/route.ts):
+  ANDROID_PACKAGE_NAME               = ch.monreleve.app
+  ANDROID_SHA256_CERT_FINGERPRINTS   = uppercase, colon-separated SHA-256,
+                                       comma-separated for several.
+
+FINGERPRINT COMPUTED this session (debug keystore on the build machine,
+~/.android/debug.keystore, alias androiddebugkey, via Android Studio keytool):
+  EF:33:6D:B5:97:7C:F5:CB:FD:EF:24:30:50:82:FE:C0:A5:C0:1B:9D:11:8B:5A:56:7E:C0:17:44:45:E3:73:D1
+Shape matches the route's regex exactly (32 bytes, uppercase, colon-separated).
+
+CAVEAT (PARK4-2, stated plainly in the checklist): the debug key verifies DEBUG
+installs only. At the Play release (AN14b) the RELEASE upload key AND Google
+Play's APP-SIGNING key must BOTH be added, because Play re-signs the app it
+distributes. A statement listing only a debug (or only an upload) key verifies
+NOTHING for a Play install.
+
+S9 DEVICE TEST: DEFERRED - the phone is disconnected (thermal event). Nothing
+to verify on-device until the operator sets the fingerprints anyway; the device
+re-verification step is written in the checklist (adb shell pm get-app-links
+ch.monreleve.app). Tracked by PARKAN-31 (release vs real server owed) and
+PARKAN-43 (device drives deferred, phone disconnected).
+
+--------------------------------------------------------------------------------
+QR ORIGIN  (R332)
+--------------------------------------------------------------------------------
+MONRELEVE_VERIFICATION_ORIGIN is UNSET on production, so releves correctly print
+NO QR and NO address (lib/verification/origin.ts; the honest default until a
+permanent domain is committed). Checklist item 5: set it to
+https://monreleve.ch on the production server.
+
+Local proof mechanism: web/tests/db/verification-qr.test.ts decodes the QR out
+of the PRODUCED PDF bytes (jsqr) and asserts it equals
+verificationUrlFor(origin, code) = `${origin}/verifier/<code>`. With the origin
+set that is https://monreleve.ch/verifier/<code>. In this run that assertion is
+in the SKIPPED set (it needs a live PDF server + the origin env; skip named per
+R133, not hidden). The composition itself is trivial and unit-correct:
+verificationUrlFor('https://monreleve.ch', code) -> https://monreleve.ch/verifier/<code>.
+
+Unknown code -> neutral page ON LIVE: currently BROKEN (500), because the
+neutral page's lookup hits the database (headline finding). Once item 1 is
+fixed, /verifier/<32-hex unknown> returns the 200 neutral page.
+
+--------------------------------------------------------------------------------
+R338  -  the verification page's own rate-limit bucket
+--------------------------------------------------------------------------------
+DEFECT: lib/alerts/rate-limit.ts keeps one module-level window map keyed by the
+caller's key. The verification page (app/(public)/verifier/[code]/page.tsx) and
+the alert form (app/api/alertes/route.ts) BOTH keyed a window by the bare client
+address, so for one address they shared ONE bucket. A fiduciaire scanning
+several releves spent the alert form's five-attempt budget; a script hammering
+the alert form refused the verification page. (The auth routes already avoid
+this: app/api/v1/auth/code/route.ts keys `auth:code:ip:<addr>` "so the exchange
+does not share ... the alert form's buckets".)
+
+FIX: the verification page now keys `verify:ip:<addr>`. One line + comment.
+
+TEST-FIRST (tests/unit/pages/verification-rate-bucket.test.ts, R204/R175):
+drives the REAL VerifyPage (headers() and the DB lookup mocked) through its
+ceiling, then checks the alert form's bucket with the exact expression that
+route computes - checkRate(clientKey(headers)). Two assertions:
+  (a) exhausting the verify page leaves the alert form allowed;
+  (b) spending the alert-form allowance does not shrink the page's budget.
+RED before the fix (measured): (a) alert form refused (false); (b) verify
+budget 25, not 30 - exactly budget-minus-the-5-alert-hits, proving the shared
+counter. GREEN after the fix. Existing rate-limit.test.ts and verifier.test.tsx
+still pass.
+
+--------------------------------------------------------------------------------
+EMAIL  (Resend)
+--------------------------------------------------------------------------------
+DNS FOUND (measured 2026-10-06, authoritative NS = Cloudflare):
+  monreleve.ch apex TXT        : no SPF record
+  notifications.monreleve.ch   : no TXT (no SPF), no MX
+  _dmarc.monreleve.ch          : NXDOMAIN (no DMARC)
+  resend._domainkey.notif...   : no DKIM
+  => the Resend sending domain is NOT set up at all.
+
+SETTINGS NEEDED (by their real names):
+  RESEND_API_KEY  - the only email env var the code actually reads
+                    (lib/alerts/mailer.ts). With no key the mailer collects
+                    mail in memory and delivers nothing (FW28) -> on a live
+                    site, NOTHING IS SENT.
+  Sending domain  - notifications.monreleve.ch, to be verified in Resend; copy
+                    the SPF/DKIM/MX records Resend then shows into Cloudflare.
+  NOTE/DEVIATION FROM deploy.md: deploy.md section 8 N2 lists EMAIL_FROM as an
+  operator setting. The code does NOT read EMAIL_FROM from the environment - it
+  is a derived constant, "Mon Releve <alertes@notifications.monreleve.ch>"
+  (lib/fr/emails.ts). So the sender is fixed in code; there is nothing to set
+  for it. Recorded, not invented.
+
+THE ALERT FORM: it is on the live site. Right now, with the DB down, it degrades
+to "service indisponible" rather than accepting. Once the DB is fixed and while
+Resend is unconfigured, it would ACCEPT an address and send nothing - breaking
+its promise. Checklist's first email item: subscribe with your own address and
+confirm the mail arrives; until it does, consider hiding the form. The operator
+confirms receipt; this session cannot. OPERATOR_TEST_EMAIL unset, so no sign-in
+request was issued.
+
+THE PRIVACY NOTICE: ALREADY names Resend as a processor - no code change needed.
+  - In code: lib/fr/confidentialite.ts "Hebergement et prestataires" ->
+    "... Resend, pour l'envoi des messages ...".
+  - On live: confirmed the same sentence is served at /confidentialite.
+Section 5's "if it does not, add the sentence" branch does not apply.
+
+--------------------------------------------------------------------------------
+THE RELEASE BUILD  (section 6)
+--------------------------------------------------------------------------------
+DEFERRED, for two independent reasons:
+  1. The phone (Galaxy S9, API 29) is disconnected - the install-and-drive step
+     is impossible this session.
+  2. Even the parts that need only the server are blocked: the code sign-in
+     route is deployed but the live server returns 500 on it (DB down), so a
+     minified release pointed at https://monreleve.ch could not get past the
+     email/code screens to any success or named refusal.
+I did NOT build the minified release APK: with no phone and a 500-ing sign-in
+path it would prove nothing new, and the relay makes it optional ("you MAY
+build"). Tracked by PARKAN-31 (the TRUE release has never been exercised E2E
+against a real server) and PARKAN-43 (device drives deferred - phone gone).
+
+--------------------------------------------------------------------------------
+THE CHECKLIST, IN FULL  (docs/domain-checklist.md)
+--------------------------------------------------------------------------------
+# docs/domain-checklist.md - turning monreleve.ch on
+
+The site is live at https://monreleve.ch and the deployed code is at `main`
+(verified feature by feature - see below). What is not yet switched on is
+everything that needs a credential, a DNS record, or a deliberate setting the
+operator holds and this repository must never carry.
+
+This file is the operator's list. Every item names which setting, the exact
+value (or where to copy it from when only the operator's dashboard has it),
+where it goes, and a command that proves it worked. Ordered most urgent first.
+
+Nothing here was done by the session that wrote this file. It has no access to
+the production server, the DNS provider, the Resend dashboard, or any inbox, and
+it never claims an operator step was performed.
+
+> How the live site was read (2026-10-06). /api/health ->
+> {"service":"monreleve","status":"ok","origin":"https://monreleve.ch","runtime":true};
+> http:// -> 302 -> https://; TLS valid (Let's Encrypt). Every page that does
+> NOT touch the database serves correctly. Every page that DOES returns
+> HTTP 500 - which is item 1.
+
+## 1. The production database - every data-backed request returns 500 (MOST URGENT)
+
+Symptom, measured. On the live site:
+  /api/health, /api/ready, static pages, sitemap  (no DB)        -> 200 OK
+  /verifier/<non-hex> (rejected before the query)  (no DB)       -> 200 OK (neutral)
+  /verifier/<32-hex code> (issuanceRecord.findUnique)  (DB)      -> 500 (3/3)
+  POST /api/v1/auth/code well-formed (verificationToken.findFirst)(DB) -> 500
+
+Two independent read paths - the latest table (IssuanceRecord, FW-VERIFY) AND an
+early one (VerificationToken, FW22) - both 500. That rules out "one migration
+missing" and points at the database being unreachable or unmigrated from the app
+container. While this holds, sign-in (code and link) and the verification page
+are broken, and the alert form falls back to its "service indisponible" message
+(it catches the DB error rather than 500-ing).
+
+What to do (the operator, on the production host - this session cannot reach the DB):
+  1. Confirm DATABASE_URL is set and the app container can reach PostgreSQL
+     (host, port, credentials, network). deploy.md section 2 - the container
+     refuses to start without DATABASE_URL, and it IS running, so the string is
+     present; the question is whether it points at a reachable, migrated database.
+  2. Apply migrations as the deliberate pre-serve step in deploy.md section 4:
+       docker run --rm -e DATABASE_URL=... monreleve:prod \
+         node node_modules/prisma/build/index.js migrate deploy
+
+Proof it worked (both must flip from 500 to the values shown):
+  curl -s -o /dev/null -w "%{http_code}\n" \
+    https://monreleve.ch/verifier/0123456789abcdef0123456789abcdef   # expect 200
+  curl -s -X POST -H 'content-type: application/json' \
+    -d '{"email":"probe@example.invalid","code":"000000"}' \
+    https://monreleve.ch/api/v1/auth/code                            # expect 400 invalid_code, never 500
+
+## 2. The alert form sends email (do this the moment the DB is up)
+
+The alert form is on the live site. Once item 1 is fixed it will accept
+addresses; with no Resend key the mailer keeps every message in memory and
+delivers nothing (deploy.md section 2, FW28). An address accepted and silently
+unmailed breaks the promise the form makes, so this is the first email item.
+
+  Setting          Value                           Where
+  RESEND_API_KEY   from the Resend dashboard       production env
+
+The sender address is fixed in code as alertes@notifications.monreleve.ch
+(EMAIL_FROM, derived from MAIL_SUBDOMAIN) - it is NOT an environment variable,
+so there is nothing to set for it, but the sending domain
+notifications.monreleve.ch must be verified in Resend (item 3).
+  > deploy.md section 8 N2 lists EMAIL_FROM as an operator setting. The code
+  > does NOT read it from the environment (it imports the constant). Treat the
+  > sender as fixed; the only email key to set is RESEND_API_KEY.
+
+Proof (the operator does this with their own address - the session cannot):
+subscribe on https://monreleve.ch/alertes and confirm the confirmation email
+arrives. Until it does, consider hiding the alert form so it never accepts an
+address it cannot confirm.
+
+## 3. Resend sending domain + DNS (SPF, DKIM, DMARC)
+
+Measured 2026-10-06 (authoritative NS: Cloudflare): no SPF, DKIM, DMARC, or MX
+records resolve for monreleve.ch or notifications.monreleve.ch. The sending
+domain is not set up, so even with a key, double opt-in lands in spam and the
+list silently stops growing (deploy.md section 8 N3).
+
+What to do:
+  1. In Resend, add and verify the sending domain notifications.monreleve.ch.
+  2. Resend then shows the exact SPF (TXT), DKIM (TXT, e.g.
+     resend._domainkey.notifications...) and MX records. Copy them verbatim into
+     Cloudflare DNS. Do NOT invent them - the values are Resend's.
+  3. Add a DMARC record at _dmarc.monreleve.ch (at minimum
+     v=DMARC1; p=none; rua=mailto:<you>).
+
+Proof (each must return a record):
+  nslookup -type=TXT notifications.monreleve.ch 8.8.8.8                    # SPF
+  nslookup -type=TXT resend._domainkey.notifications.monreleve.ch 8.8.8.8  # DKIM
+  nslookup -type=TXT _dmarc.monreleve.ch 8.8.8.8                          # DMARC
+and the Resend dashboard shows the domain Verified.
+
+## 4. App-opening sign-in links - /.well-known/assetlinks.json
+
+Live state 2026-10-06: 404 {"status":"not_configured"} - correct and honest
+(R205): the file is withheld until real fingerprints exist, never served as an
+empty list. Not yet configured.
+
+  Setting                            Value                              Where
+  ANDROID_PACKAGE_NAME               ch.monreleve.app                   prod env
+  ANDROID_SHA256_CERT_FINGERPRINTS   uppercase colon-separated SHA-256  prod env
+
+The debug keystore fingerprint on the build machine today (computed this session
+from ~/.android/debug.keystore, alias androiddebugkey):
+  EF:33:6D:B5:97:7C:F5:CB:FD:EF:24:30:50:82:FE:C0:A5:C0:1B:9D:11:8B:5A:56:7E:C0:17:44:45:E3:73:D1
+
+This verifies debug installs only. At the Play release (AN14b) you MUST add two
+more fingerprints to the same comma-separated value:
+  - the release upload key (the key you sign the AAB with), and
+  - Google Play's app-signing key (Play re-signs the app it distributes -
+    Play Console -> App integrity -> App signing key certificate -> SHA-256).
+A statement listing only the debug key verifies nothing for a Play-store install
+(PARK4-2). Omit the debug key from production once the release keys exist, or
+keep it only if you still sideload debug builds against this origin.
+
+Proof:
+  curl -s https://monreleve.ch/.well-known/assetlinks.json    # expect a 200 JSON array:
+  #   relation ["delegate_permission/common.handle_all_urls"],
+  #   target.package_name == ch.monreleve.app,
+  #   target.sha256_cert_fingerprints == the fingerprint(s) above,
+  #   and NEVER an empty list.
+Then re-verify on the device (deferred this session - phone disconnected):
+reinstall so Android re-checks, open a real https://monreleve.ch callback link,
+and read the state with: adb shell pm get-app-links ch.monreleve.app
+
+## 5. QR codes on releves - MONRELEVE_VERIFICATION_ORIGIN
+
+The QR and the printed verification address appear on a releve only when this
+dedicated setting names the permanent origin (R332). Unset today, so releves
+carry no QR (the honest default).
+
+  Setting                        Value                  Where
+  MONRELEVE_VERIFICATION_ORIGIN  https://monreleve.ch   production env
+
+Separate from NEXT_PUBLIC_SITE_URL on purpose: a printed QR must point at a
+permanent domain, so this is its own deliberate switch (https only, bare origin,
+no localhost).
+
+Proof:
+  - Locally, with the setting exported, the produced PDF's QR decodes to
+    https://monreleve.ch/verifier/<code> - asserted by
+    web/tests/db/verification-qr.test.ts (reads the QR out of the PDF bytes).
+  - On the live site, once item 1 is fixed, an unknown code shows the neutral
+    page: curl -s -o /dev/null -w "%{http_code}\n"
+    https://monreleve.ch/verifier/0123456789abcdef0123456789abcdef  -> 200.
+  > This only works end to end once item 1 is fixed: generating a releve WRITES
+  > an IssuanceRecord, and scanning any real code READS one.
+
+## Already correct on the live site - no action
+
+  - Code is at main. Health payload, canonicals, sitemap, TLS, and the deployed
+    pages all match main by content. The API is live (not just the website):
+    GET /api/v1/auth/magic-link -> 405, POST /api/v1/auth/code with a bad body
+    -> 400 malformed_body.
+  - Canonicals use the production origin. Homepage
+    <link rel="canonical" href="https://monreleve.ch"/>; sitemap entries are
+    https://monreleve.ch/... . Built with
+    NEXT_PUBLIC_SITE_URL=https://monreleve.ch (deploy.md section 1).
+  - /confidentialite names Resend as a processor ("... prestataires
+    interviennent de facon limitee : Resend, pour l'envoi des messages ...") -
+    confirmed in code and on the live page. No change needed.
+
+--------------------------------------------------------------------------------
+UNTRACKED FILES LEFT ALONE  (R334)
+--------------------------------------------------------------------------------
+Reported, never removed or committed. These belong to other queued tasks and
+were NOT touched. Every commit used explicit `git add <path>`, never `.`/`-A`.
+  relay/AN-NOTIF.txt
+  web/scripts/_mint-readback.mjs
+  MonReleve/                 (incl. .seed-shots/)
+  android/.an-audit-shots/ .an-auto-shots/ .an-cal2-shots/ .an-home-cef-shots/
+  android/.an-onboard-shots/ .an-params-shots/ .an-state-shots/ .an10-shots/
+  android/.an10b-shots/ .an11-shots/ .an12-shots/ .an5c-ac2-shots/
+  android/.device-loop-shots/ .kotlin/
+  android/scripts/an-audit-*.mjs  an-auto-*.mjs  an-cal2-*.mjs  an-device-d4.mjs
+  android/scripts/an-home-cef-walkthrough.mjs  an-params-walkthrough.mjs
+  android/scripts/an10-walkthrough.mjs  an10b-walkthrough.mjs
+  android/scripts/an11-walkthrough.mjs  an12-walkthrough.mjs  uidrive.mjs
+(No worktree used: Windows path length makes it infeasible here. Work ran on
+branch `domain` sequentially, which satisfies R334's intent.)
+
+--------------------------------------------------------------------------------
+ADVISOR DECISIONS
+--------------------------------------------------------------------------------
+None - the advisor was disabled for this session (it had stalled all session;
+the relay instructed not to use it). R156/R270: each judgement call took the
+conservative, reversible option:
+  - DB-500: reported to the operator as an exact checklist step rather than
+    attempting any production change (DO NOT DEPLOY; no prod access).
+  - API probes: refusal-only, chosen so NO email could be sent (malformed body;
+    well-formed code for a non-existent request).
+  - Privacy notice: confirmed Resend already named -> made NO change rather than
+    a redundant one.
+  - R132 e2e/visual: the change is render-identical, so I did not regenerate any
+    baseline; flagged the selection for the orchestrator's final gate instead of
+    running the heavy suites in a degraded-network session.
+  - Release APK: not built (no phone, DB-500 sign-in) - the relay made it
+    optional and building it would prove nothing new.
+
+--------------------------------------------------------------------------------
+PARKED
+--------------------------------------------------------------------------------
+  PARK4-2   - formalised in parking.md (it was cited but had no heading): a
+              Digital Asset Links statement listing only a debug/upload key
+              verifies nothing for a Play install; both the release upload key
+              and Google Play's app-signing key must be added at AN14b.
+  PARKAN-31 - (existing) the TRUE signed release has never been exercised E2E
+              against a real server; still owed, now also gated on the DB.
+  PARKAN-43 - (existing) device drives deferred, phone disconnected.
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+  - UNEXPECTED FINDING beyond the prompt's assumptions: the prompt expected an
+    unknown code on live to return the neutral page; it returns 500 because the
+    DB is down. Reported as checklist item 1 rather than worked around.
+  - deploy.md section 8 N2 lists EMAIL_FROM as an operator setting; the code
+    does not read it from env (derived constant). Recorded in the checklist and
+    EMAIL section; not changed (out of scope, and changing deploy.md is not this
+    task).
+  - parking.md lives at the REPOSITORY ROOT, not tasks/parking.md as the relay
+    wrote. The PARK4-2 heading was added to the actual file (./parking.md).
+  - test:e2e / test:visual not run locally (R132 selects them for app/**). The
+    change is the rate-limit key only (render-identical), so baselines are
+    unaffected; deferred to the orchestrator's final gate. gate:clone deferred
+    to the orchestrator per the relay.
+
+--------------------------------------------------------------------------------
+QUESTIONS  (for the operator / orchestrator)
+--------------------------------------------------------------------------------
+  1. The DB-500 is the gating issue: is the production DATABASE_URL pointing at a
+     reachable database, and has `prisma migrate deploy` been run against it?
+     (Checklist item 1 has the exact proof commands.)
+  2. Should the alert form be hidden until the DB is up AND Resend is live, so it
+     never accepts an address it cannot confirm? (Product/operator call.)
+  3. Confirm the final gate owner runs test:e2e + test:visual for the app/**
+     change (expected no baseline change) alongside gate:clone.
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+Branch: origin/domain (off main @ 66d1423)
+  e959117  DOMAIN: record the session prompt
+  bace799  DOMAIN: R338 - the verification page gets its own rate-limit bucket
+  cd98b9c  DOMAIN: the operator checklist, and formalise PARK4-2
+  <this>   DOMAIN: the report
+All pushed to origin/domain. Fast suites green locally (typecheck, lint, test
+3009, build, test:late 10, test:db 593/25-skipped). gate:clone + e2e + visual +
+merge are the orchestrator's, per the relay.
+
+END OF REPORT-DOMAIN
