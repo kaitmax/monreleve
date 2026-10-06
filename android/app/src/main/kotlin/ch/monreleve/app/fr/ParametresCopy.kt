@@ -207,6 +207,10 @@ object ParametresCopy {
     const val LEGAL_ROW = "Mentions légales"
     const val SOURCES_ROW = "Sources réglementaires"
 
+    // AN-LINKS. The row that opens the website's own « À propos » page (/a-propos). It sits below the other
+    // legal rows and names the product so it is not confused with the section heading « À propos ».
+    const val ABOUT_PAGE_ROW = "À propos de Mon Relevé"
+
     // The row label IS the licences screen's title (R206 - one home, not the same literal twice).
     const val LICENCES_ROW = LicencesCopy.TITLE
     const val VERSION_ROW = "Version"

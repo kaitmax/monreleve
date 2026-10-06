@@ -12,6 +12,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.browser.customtabs.CustomTabColorSchemeParams
+import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -30,6 +32,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.core.content.FileProvider
@@ -65,6 +68,7 @@ import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.LocalEntryRepository
 import ch.monreleve.app.data.sync.SyncScheduler
 import ch.monreleve.app.design.FrontierTheme
+import ch.monreleve.app.design.LightColors
 import ch.monreleve.app.detection.BACKGROUND_LOCATION
 import ch.monreleve.app.detection.EXTRA_OPEN_AUJOURDHUI
 import ch.monreleve.app.detection.FINE_LOCATION
@@ -83,6 +87,7 @@ import ch.monreleve.app.parametres.AccountExportKind
 import ch.monreleve.app.parametres.LegalPage
 import ch.monreleve.app.parametres.ParametresController
 import ch.monreleve.app.parametres.ParametresState
+import ch.monreleve.app.parametres.Site
 import ch.monreleve.app.parametres.openLegalLink
 import ch.monreleve.app.releve.ExportEvent
 import ch.monreleve.app.releve.ExportKind
@@ -734,9 +739,9 @@ private fun ParametresTab(
     )
 }
 
-// AN12 increment 4: open a legal page in the browser from the configured site URL. The host is
-// BuildConfig.API_BASE_URL - the emulator's host in debug, monreleve.ch in release - and the path is the
-// LegalPage's (a verified live web route). Lives in the composition root, where an Intent is permitted.
+// AN12 increment 4 / AN-LINKS: open a website page from the ONE site origin (Site.ORIGIN, R206) plus the
+// LegalPage's own path - never BuildConfig.API_BASE_URL, which is the API base and points at the emulator host
+// in debug. Lives in the composition root, where an Intent is permitted.
 private fun openLegal(
     context: Context,
     page: LegalPage,
@@ -744,10 +749,33 @@ private fun openLegal(
     // R299: a device with no browser (a managed profile, a kiosk) would crash on startActivity; openLegalLink
     // catches that and shows the address instead. The launch and the fallback toast are the seams it wraps.
     openLegalLink(
-        url = "${BuildConfig.API_BASE_URL}${page.path}",
-        open = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(it))) },
+        url = Site.url(page),
+        open = { launchCustomTab(context, it) },
         showAddress = { Toast.makeText(context, ParametresCopy.legalNoHandler(it), Toast.LENGTH_LONG).show() },
     )
+}
+
+// AN-LINKS (R136): open a website page in an Android Custom Tab, so it opens inside the app's context with the
+// brand colour in the toolbar rather than as a bare browser hand-off. THE FALLBACK CHAIN, in one place:
+//   1. A Custom Tab is an ACTION_VIEW intent with extras, so a device that has an ordinary browser but no
+//      Custom Tabs provider gets the ordinary browser automatically - CustomTabsIntent does not require one.
+//   2. A device with NO browser at all makes startActivity throw ActivityNotFoundException, which openLegalLink
+//      (the caller's seam) catches to show the address instead of crashing (R299).
+// The toolbar colour is the brand token (DESIGN-SYSTEM), never a raw colour. Lives in the composition root,
+// where an Intent is permitted.
+private fun launchCustomTab(
+    context: Context,
+    url: String,
+) {
+    val colorScheme =
+        CustomTabColorSchemeParams.Builder()
+            .setToolbarColor(LightColors.brand.toArgb())
+            .build()
+    CustomTabsIntent.Builder()
+        .setDefaultColorSchemeParams(colorScheme)
+        .setShowTitle(true)
+        .build()
+        .launchUrl(context, Uri.parse(url))
 }
 
 // AN-ONBOARD: "Ouvrir ma messagerie" on the code screen opens the device's email app. Guarded like

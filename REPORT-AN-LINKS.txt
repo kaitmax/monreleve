@@ -1,0 +1,314 @@
+REPORT-AN-LINKS.txt
+AN-LINKS - The app's links to the website, now that monreleve.ch is live
+Branch: an-links (off main at 9bbd225). Date: 2026-10-06. Pure ASCII.
+
+====================================================================
+HOW IT ENDED
+====================================================================
+DONE for everything that does not need the phone, ended cleanly at a
+pushed point with the one remaining piece named:
+  - increment 0: the live site verified (R273) - product, version by
+    content, every linked page, https;
+  - one site origin defined once and every app -> site link routed
+    through it;
+  - the derived route test, planted and failing, then green (R180);
+  - Android Custom Tabs with the brand toolbar and the full fallback
+    chain (R136, R299);
+  - :app:gate GREEN after each increment.
+
+DEFERRED, and this is an acceptable end state, not a failure: the
+device walkthrough (prompt step L3). The Galaxy S9 (API 29) is
+DISCONNECTED - a thermal event dropped it off USB during a prior task.
+It is named in WALKTHROUGH with the exact steps to run on reconnect.
+
+The final pnpm gate:clone (~16 min, exceeds a sub-agent turn) is
+DEFERRED to the orchestrator, who merges. I did NOT run gate:clone and
+did NOT merge.
+
+R1 (the base is green): relied on the orchestrator's confirmed
+gate:clone + :app:gate GREEN on origin/main's HEAD; re-confirmed
+origin/main == 9bbd225 by fetch before branching.
+
+====================================================================
+THE LIVE SITE (product, version against main, each page)
+====================================================================
+VERIFIED, not assumed (R273). Positive signals only (R133/R169).
+
+PRODUCT. https://monreleve.ch/api/health answers:
+  {"service":"monreleve","instance":null,"status":"ok",
+   "reasons":[],"origin":"https://monreleve.ch","runtime":true}
+It identifies THIS product by its service field. It is this product.
+
+VERSION AGAINST MAIN. The health body carries NO version or commit
+field (only instance:null), so the deployed version CANNOT be compared
+to main through health - said plainly rather than papered over (R133).
+Compared BY CONTENT instead, and the content shows the live site is AT
+main (9bbd225) - FW-VERIFY IS deployed, the site is NOT behind main:
+  - /confidentialite carries FW-VERIFY's issuanceRecord bullet
+    ("pour chaque releve que vous generez, un enregistrement de ce qui
+    a ete emis ...") and its nameChange bullet ("les dates auxquelles
+    le nom figurant sur vos releves a ete modifie ..."), and the
+    "page de verification" link - all added in 9bbd225;
+  - /verifier/TESTCODE123 returns 200 and renders FW-VERIFY's page,
+    H1 "Verification d'un releve" (the verifier/[code] route was NEW
+    in 9bbd225);
+  - R325's network-location wording is present on /confidentialite
+    ("reseaux Wi-Fi et cellulaires a proximite, selon les reglages de
+    localisation ...").
+
+CORRECTION to the pre-task note. The orchestrator's signal "/verifier
+returns 404 -> FW-VERIFY not deployed -> site behind main" was a FALSE
+signal: /verifier is not a route. The page is /verifier/[code], so a
+bare /verifier 404s on main too. The real dynamic route
+/verifier/TESTCODE123 returns 200 on the live site and renders the
+FW-VERIFY verification page. So there is NO behind-main copy divergence
+to report, and the "the app would link to older text" risk does not
+arise. (Had the site been behind main I would have listed the diffs and
+NOT deployed; it is not, so there is nothing to list.)
+
+EACH LINKED PAGE. All five return HTTP 200 with their own French
+heading AND the site stylesheet (/_next/static/css/aa5d80503c2c7594.css)
+loaded - a 200 alone counts for nothing (R169):
+  /mentions-legales  200  H1 "Mentions legales"
+  /confidentialite   200  H1 "Politique de confidentialite"
+  /cgu               200  H1 "Conditions generales d'utilisation"
+  /sources           200  H1 "Sources et verifications"
+  /a-propos          200  H1 "A propos"
+(Headings are fully accented on the page; transliterated here for ASCII.)
+
+CERTIFICATE AND REDIRECT. http://monreleve.ch -> 302 ->
+https://monreleve.ch; curl raised no TLS error (certificate valid).
+
+====================================================================
+EVERY LINK FOUND AND WHERE IT NOW POINTS
+====================================================================
+Searched the code, not assumed. Every app -> website PAGE link now
+flows through ONE chokepoint, openLegal() in the composition root,
+which builds Site.url(page) = Site.ORIGIN ("https://monreleve.ch") +
+the LegalPage's own path:
+
+A propos rows (ui/screens/parametres/ParametresSections.kt):
+  Mentions legales                 -> LegalPage.LEGAL    -> /mentions-legales
+  Politique de confidentialite     -> LegalPage.PRIVACY  -> /confidentialite
+  Conditions generales d'utilisation -> LegalPage.TERMS  -> /cgu
+  Sources reglementaires           -> LegalPage.SOURCES  -> /sources
+  A propos de Mon Releve           -> LegalPage.ABOUT    -> /a-propos   (NEW this task)
+
+Sign-in consent line (MainActivity, RequestLinkScreen - AN-ONBOARD HAS
+landed, so these exist):
+  "Conditions d'utilisation"       -> onOpenCgu     -> LegalPage.TERMS   -> /cgu
+  "Politique de confidentialite"   -> onOpenPrivacy -> LegalPage.PRIVACY -> /confidentialite
+
+NOT site-page links (stated so the search is visible, not assumed):
+  - CallbackLink.HOST ("monreleve.ch") is the auth App Link CALLBACK
+    host (/api/v1/auth/callback), not a page. Site.ORIGIN now DERIVES
+    from it, so the public pages and the callback can never name two
+    domains (R206).
+  - LicencesCopy.ODBL_LINK / APACHE_LINK are EXTERNAL licence URLs
+    (opendatacommons.org, apache.org) shown as text on the in-app
+    Licences screen, which STAYS in-app (it lists the bundled
+    libraries, which only the app knows). Not website pages.
+  - BuildConfig.API_BASE_URL is the API base (the emulator host in
+    debug), a SEPARATE setting, deliberately untouched here.
+
+The Licences screen stays inside the app and the version row stays, as
+the prompt requires.
+
+====================================================================
+THE ROUTE TEST
+====================================================================
+app/src/test/kotlin/ch/monreleve/app/parametres/AppSiteLinksTest.kt
+
+  - Derives the WEBSITE's routes from web/app/**/page.tsx: walk for
+    files named page.tsx, drop the "page.tsx" leaf, drop Next route
+    groups (segments wrapped in parentheses, e.g. "(public)"), join
+    the rest. Never a hand-kept list (R246/R181). Renaming or removing
+    a web page makes this build go red, not a link in someone's hand.
+  - Derives the APP's linked paths from LegalPage.entries - the one
+    home for those paths - not a second copy.
+  - Asserts every app-linked path exists among the website routes.
+  - Guards against a vacuous walk (R133/R154): the derived set must
+    have >= 5 routes AND contain the known /confidentialite, or the
+    parse is broken.
+  - Also asserts Site.ORIGIN == "https://" + CallbackLink.HOST - the
+    derivation, so the two cannot drift onto different domains (R206),
+    not two literals compared.
+  - web/app is a DECLARED Gradle test input (build.gradle.kts, R283),
+    so a web page renamed in a later session re-runs this test rather
+    than leaving it UP-TO-DATE.
+
+PLANT / RED / REVERT (R180). Planted SOURCES("/sources-xyz") in
+LegalPage.kt; grep confirmed it landed (line 15); ran the test and it
+went RED - AssertionError at AppSiteLinksTest.kt:74, the "no page
+exists at that path on the website" assertion, because /sources-xyz is
+not a web route. Reverted to SOURCES("/sources"); test green again. The
+RED run is the proof the guard fires; it is not redundant with any
+planted-can-fire claim alone.
+
+====================================================================
+CUSTOM TABS (dependency and fallbacks)
+====================================================================
+DEPENDENCY (R136). androidx.browser 1.8.0 - the AndroidX library for
+the Custom Tabs protocol (no Google Play Services, no account). Its
+CustomTabsIntent + toolbar-colour API have existed since 1.2.0, so the
+feature needs nothing recent. 1.8.0, NOT the 1.10.0 latest stable
+(verified at developer.android.com/jetpack/androidx/releases/browser,
+fetched 2026-10-06): 1.8.0 is the mature stable that compiles against
+this project's compileSdk 35 with NO compileSdk bump - an out-of-scope
+build-config change - the same "mature stable, not bleeding edge"
+reasoning the catalog applies to work/kotest, and R156's conservative
+choice with the advisor unavailable. Covered by the existing AndroidX
+attribution on the licences screen; checkLicences stays green, so no
+licences change was needed.
+
+OPENING (MainActivity.launchCustomTab, composition root). The page
+opens inside the app's context with the brand token in the toolbar
+(LightColors.brand.toArgb(); never a raw colour - the token fence
+holds). setShowTitle(true).
+
+FALLBACK CHAIN, in one place (R299, never a crash):
+  1. A Custom Tab is an ACTION_VIEW intent with extras, so a device
+     with an ordinary browser but no Custom Tabs provider gets the
+     ordinary browser automatically - CustomTabsIntent does not require
+     a provider.
+  2. A device with NO browser at all makes startActivity throw
+     ActivityNotFoundException, which openLegalLink (the caller's seam)
+     catches to show the address instead (R299), proven JVM-side by
+     LegalLinkTest's two branches.
+Wired as openLegal's open seam, so BOTH the A propos rows AND the
+sign-in consent links open in a Custom Tab.
+
+====================================================================
+NEEDS (publication director; representative; anything the site lacks)
+====================================================================
+Confirmed against the live site and the main source (R146 - reported,
+never invented). Listed first, as the prompt asks:
+
+  1. EU REPRESENTATIVE (GDPR Art. 27): STILL MISSING. euRepresentative
+     = '' in web/lib/content/legal-entity.ts; the live /confidentialite
+     renders it as the visible placeholder "[A COMPLETER]". Awaiting
+     legal advice (R52/R138; PARK-13).
+  2. SWISS REPRESENTATIVE (nLPD Art. 14): STILL MISSING. chRepresentative
+     = ''; same visible placeholder. Same advice, same question.
+  3. DPO CONTACT (dpoContact): STILL MISSING. '' in legal-entity.ts;
+     flagged there as a FOURTH gap and raised as a question, not filled.
+
+CORRECTION to the prompt (R273 - verify, not assume). The publication
+director is NO LONGER missing. The operator supplied "Khalid Ait mouna"
+(legal-entity.ts, dated 18.09.2026), and the live /mentions-legales
+shows it. So that member of PARK-13's family is CLOSED on the live site.
+
+Because the app now links to these pages, these gaps are public - but
+each is an HONEST visible placeholder on the live site (R52), not a
+silent omission, so linking to them does not misrepresent. Deploying is
+the operator's decision; I did NOT deploy (HARD BOUNDARY). I wrote no
+name, no representative and no legal fact (R146).
+
+====================================================================
+WALKTHROUGH
+====================================================================
+DEFERRED - the phone is disconnected (thermal event dropped it off USB
+in a prior task). Prompt step L3 is the ONE remaining piece; to run on
+reconnect:
+  - Parametres > A propos: tap each of the five rows; confirm each
+    opens the matching monreleve.ch page in a Custom Tab with the brand
+    toolbar colour (Mentions legales, Confidentialite, CGU, Sources,
+    A propos de Mon Releve).
+  - Sign-in screen: tap "Conditions d'utilisation" and "Politique de
+    confidentialite"; confirm each opens in a Custom Tab.
+  - Airplane mode on: tap a row; confirm the Custom Tab's own offline
+    page appears (or, on a device with no browser, the address toast -
+    R299), never a crash.
+  - Repeat all of the above at font scale 200%.
+  - Restore any phone setting changed (airplane mode, font scale).
+
+The device-independent proofs all pass now: the JVM fallback
+(LegalLinkTest), the derived route test (AppSiteLinksTest), and
+:app:gate.
+
+====================================================================
+ADVISOR DECISIONS
+====================================================================
+None taken via the advisor: it was unavailable all session (orchestrator
+instruction: "No advisor (stalled all session; R156 conservative +
+recorded)"). At each judgement call I took the conservative, reversible
+option and recorded it (R156):
+  - androidx.browser 1.8.0 over the 1.10.0 latest, to avoid an
+    out-of-scope compileSdk bump;
+  - Site.ORIGIN derived from CallbackLink.HOST rather than a second
+    "monreleve.ch" literal (R206);
+  - reassessed the "site behind main" claim by content rather than
+    accepting the false 404 signal (R273).
+
+====================================================================
+PARKED
+====================================================================
+Nothing newly parked. Existing register entries referenced:
+  - PARK-13   - the legal-entity gaps (representatives, DPO) that are
+                still open on the live site;
+  - PARKAN-30 - openLegal's R299 missing-browser fallback, which the
+                Custom Tab now routes through unchanged.
+
+====================================================================
+DEVIATIONS
+====================================================================
+  - LIVE SITE vs the pre-task note: the site is AT main (FW-VERIFY
+    deployed), not behind it; the /verifier 404 was a false signal.
+    Verified by content (THE LIVE SITE).
+  - PUBLICATION DIRECTOR vs the prompt: no longer missing; the operator
+    supplied it (NEEDS).
+  - DEVICE vs the prompt ("the physical phone is connected"): it is
+    disconnected; the walkthrough is deferred (WALKTHROUGH).
+  - androidx.browser 1.8.0, not the 1.10.0 latest stable (CUSTOM TABS).
+
+====================================================================
+NOTICED BUT NOT TOUCHING
+====================================================================
+The working tree carries untracked files from a paused task
+(relay/AN-NOTIF.txt, relay/AN-ONBOARD-2.txt, relay/DOMAIN.txt,
+web/scripts/_mint-readback.mjs, MonReleve/, android/.an*-shots/,
+android/scripts/an-*.mjs). Left untouched; every commit used explicit
+`git add <path>` of this task's files only.
+
+REGISTER-COVERAGE REGEX DOES NOT MATCH THE PARK-<n> SERIES. The
+CITATION regex in web/scripts/register-coverage.mjs is the eight
+characters P,A,R,K,A,N,?,- followed by one-or-more digits. The "?"
+binds to the single preceding "N", so the pattern parses as "PARKA"
+plus an optional "N" - it matches the PARKAN-<n> series (and even a
+spurious PARKA-<n> form), but it does NOT match the PARK-<n> series at
+all. Verified with node: a PARK-<n> token returns null while a
+PARKAN-<n> token matches. The intended pattern is "PARK" plus an
+optional "AN" - a non-capturing group around the "AN" would fix it.
+Consequence: every PARK-<n> citation in every REPORT-*.txt (and the
+same check the Kotlin RegisterCoverageTest shells out to) goes
+UNCHECKED - a verifier silently not checking the series its own comment
+names ("PARK-12 or PARKAN-18"), the exact class the project guards
+against. Not touched: out of scope for AN-LINKS, and fixing the regex
+would turn a green check red across historical reports until each
+PARK-<n> they cite is reconciled, which is its own task. This report's
+PARK-13 references are accurate and resolve by hand (parking.md line
+589); PARKAN-30 is the one the check does verify, and it passes.
+
+====================================================================
+QUESTIONS
+====================================================================
+None blocking. Open for the operator (the lawyer's question, R146):
+whether the EU and Swiss representatives and a DPO contact are legally
+required, and if so their names - to fill euRepresentative,
+chRepresentative and dpoContact in web/lib/content/legal-entity.ts.
+
+====================================================================
+PUSH PROOF
+====================================================================
+Branch an-links, off main at 9bbd225. Commits, each :app:gate GREEN
+before commit:
+  915668c  AN-LINKS: one site origin, the A propos /a-propos row, the
+           derived route test
+  c25a95d  AN-LINKS: open the links in a brand-coloured Custom Tab,
+           with fallbacks
+  <report commit>  AN-LINKS: the report
+All pushed to origin/an-links. The final pnpm gate:clone and the merge
+to main are the orchestrator's (deferred - gate:clone exceeds a
+sub-agent turn).
+
+END OF REPORT-AN-LINKS.txt
