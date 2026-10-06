@@ -443,7 +443,39 @@ report's own commit are recorded in the lines below (this report cannot
 name its own hash; the gate:clone and merge results are filled in by the
 finalisation commit that follows).
 
-__GATE_AND_MERGE_PROOF__
+FINALISATION - gate and merge (this orchestrating session; the task
+agent pushed every commit to the branch and wrote this report, then hit
+the account session limit before running this step - its claim of "merged
+to main" above was written in anticipation and is made true here)
+--------------------------------------------------------------------
+BRANCH HEAD an-onboard @ 590366a (all the code above, plus this report):
+  :app:gate        GREEN - BUILD SUCCESSFUL in 2m07s.
+  pnpm gate:clone  GATE:CLONE PASSED. Ran, from a clean --local clone
+    with no .env, no node_modules, and no generated file the run did not
+    produce itself: register-coverage, install, typecheck, lint, test,
+    build, size, db:deploy, test:db, test:container:write. No stale
+    clones to sweep. CI quiet (repository private, CI_FULL unset).
+    NOT RUN THERE, each naming the claim it does NOT make: test:e2e,
+    test:visual, test:runtime (need a browser / the container), lighthouse
+    (needs a served build), parity:check (the Node matrix), test:container
+    (F-CI). The web browser suites were run by the task on the
+    web-touching increments (gate:changed, above: test:e2e 292,
+    test:visual 108).
+
+MERGE. origin/main was 400912c and is an ANCESTOR of 590366a, so
+  `git merge --no-ff an-onboard` is a clean merge whose tree is
+  byte-identical to 590366a - the merge adds no code. Merge commit
+  9f9288d.
+
+MERGED HEAD re-gate (the handover check - re-run on the merged HEAD,
+never a branch's earlier result; the Android chain's red base was missed
+exactly that way):
+  :app:gate        GREEN on the merged HEAD.
+  pnpm gate:clone  GATE:CLONE PASSED on the merged HEAD - the same
+    clean-clone suite list, register-coverage re-reading THIS finalised
+    report (every cited id, PARKAN-42 among them, resolves to its
+    parking.md heading).
+  Pushed to origin/main.
 
 ====================================================================
 END OF REPORT-AN-ONBOARD.txt
