@@ -27,6 +27,11 @@ data class Settings(
     val granularity: String,
     val activityStartDate: String?,
     val name: String? = null,
+    // AN-ONBOARD: the recording mode chosen at onboarding step 6. Null (the common manual path) leaves the
+    // server's MANUAL default; "AUTO_DETECT" is sent only after the disclosure and the OS permission, with
+    // detectionConsent true (R315/R316) - the same pair /api/v1/me enforces together.
+    val loggingMode: String? = null,
+    val detectionConsent: Boolean? = null,
 )
 
 /** The engine input's person half (increment 2). Aujourd'hui reads settings through this (increment 4). */
@@ -58,6 +63,11 @@ fun Settings.mePatchBody(): String =
         // requires a non-empty string, so a null would be refused. Onboarding always sends one; a settings
         // save that does not touch the name leaves the server's existing value standing.
         .apply { if (name != null) put("name", name) }
+        // AN-ONBOARD: the mode + consent are sent only when onboarding set them (automatic, after disclosure +
+        // permission). Omitted on the manual path, leaving the server's MANUAL default. /me enforces that
+        // AUTO_DETECT requires consent, so they always travel together.
+        .apply { if (loggingMode != null) put("loggingMode", loggingMode) }
+        .apply { if (detectionConsent != null) put("detectionConsent", detectionConsent) }
         .toString()
 
 /**

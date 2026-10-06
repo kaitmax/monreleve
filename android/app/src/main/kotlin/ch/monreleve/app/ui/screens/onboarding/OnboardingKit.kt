@@ -219,3 +219,6 @@ fun BottomActions(
 fun GapHeight(dp: androidx.compose.ui.unit.Dp) {
     Spacer(modifier = Modifier.height(dp))
 }
+
+// ChoiceCard lives in ChoiceCardText.kt (its own file, to stay within detekt's per-file function count and to
+// bundle its text within the parameter limit).

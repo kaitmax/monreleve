@@ -177,6 +177,15 @@ private val UNREACHABLE: Map<String, String> =
         "CodeCopy.NO_MAIL_APP" to
             "the toast shown when no email app is installed, raised by MainActivity's openMail, which owns the " +
             "Context and the Toast - reached from the composition root, not a fr-surface directory this scans",
+        // AN-ONBOARD: the "Tout est prêt" method and period VALUES are assembled by the onboarding package's
+        // summary formatter (OnboardingDates: readyMethod/readyPeriod), which must carry the "EXACT" and "– "
+        // literals the ui/ fence keeps out of ui/ - so they are reached from there, not a surface directory.
+        "OnboardingCopy.READY_METHOD_SIMPLIFIED" to
+            "the « Simplifiée, 240 jours » summary value, chosen by OnboardingDates.readyMethod (the onboarding " +
+            "package, where the method mapping lives) and shown by PretScreen - reached from there, not a surface",
+        "OnboardingCopy.READY_PERIOD_ALL" to
+            "the « Année entière » summary value, chosen by OnboardingDates.readyPeriod (the onboarding package " +
+            "that formats the ISO period into Swiss dates) and shown by PretScreen - reached there, not a surface",
         // AN-AUTO increment 5 REMOVED the two detection entries that waited here: DetectionCopy.NOT_SURE is now
         // rendered by the Aujourd'hui auto NotSureBlock (ETAT B withheld) and DetectionCopy.NEAR_BORDER by the
         // near-border notice - both live surfaces, so the census reaches them directly.

@@ -73,6 +73,7 @@ import ch.monreleve.app.detection.locationFullyGranted
 import ch.monreleve.app.fr.DisclosureCopy
 import ch.monreleve.app.fr.ParametresCopy
 import ch.monreleve.app.fr.ReleveCopy
+import ch.monreleve.app.onboarding.ModeChoice
 import ch.monreleve.app.onboarding.OnboardingController
 import ch.monreleve.app.onboarding.OnboardingPhase
 import ch.monreleve.app.onboarding.OnboardingSnapshot
@@ -87,6 +88,7 @@ import ch.monreleve.app.releve.ExportEvent
 import ch.monreleve.app.releve.ExportKind
 import ch.monreleve.app.settings.SettingsStore
 import ch.monreleve.app.settings.SharedPrefsDetectionModeStore
+import ch.monreleve.app.settings.SharedPrefsEveningNotificationStore
 import ch.monreleve.app.settings.SharedPrefsSettingsStore
 import ch.monreleve.app.startup.StartDestination
 import ch.monreleve.app.startup.decideStartAfterSignIn
@@ -98,6 +100,7 @@ import ch.monreleve.app.ui.screens.calendrier.CalendrierScreen
 import ch.monreleve.app.ui.screens.disclosure.DisclosureScreen
 import ch.monreleve.app.ui.screens.onboarding.OnboardingActions
 import ch.monreleve.app.ui.screens.onboarding.OnboardingScreen
+import ch.monreleve.app.ui.screens.onboarding.PretScreen
 import ch.monreleve.app.ui.screens.parametres.ParametresActions
 import ch.monreleve.app.ui.screens.parametres.ParametresScreen
 import ch.monreleve.app.ui.screens.releve.ReleveActions
@@ -345,6 +348,12 @@ private fun ResolvingRoute(
     }
 }
 
+// AN-ONBOARD: the onboarding WIZARD (steps 1-7) then "Tout est prêt". The composition root owns what ui/
+// cannot: the disclosure + OS permissions behind an automatic-mode choice (R316/R315) and the notification
+// permission behind the evening reminder (R323). A deny at any step leaves manual / reminder off, never nags.
+// LongMethod/CyclomaticComplexMethod/LongParameterList suppressed as the shell's are: this is wiring, and the
+// ui/ screens bundle their callbacks into Actions instead (the fence forbids @Suppress there, not here).
+@Suppress("LongMethod", "CyclomaticComplexMethod", "LongParameterList")
 @Composable
 private fun OnboardingRoute(
     session: SessionManager,
@@ -353,8 +362,8 @@ private fun OnboardingRoute(
     scope: CoroutineScope,
     onDone: () -> Unit,
 ) {
-    // AN-STATE (R310): the values entered so far survive a rebuild (rememberSaveable snapshot kept current from
-    // the controller's state; the seed re-creates the controller with it).
+    val context = LocalContext.current
+    val eveningStore = remember { SharedPrefsEveningNotificationStore(context) }
     var saved by rememberSaveable { mutableStateOf<OnboardingSnapshot?>(null) }
     val controller =
         remember { OnboardingController(SessionSettingsSaver(session), store, taxYear, scope, restored = saved) }
@@ -363,27 +372,96 @@ private fun OnboardingRoute(
         controller.state.collect {
             saved =
                 OnboardingSnapshot(
-                    it.canton, it.employmentRate, it.denominator, it.exactTotalWorkDays, it.granularity,
-                    it.activityStartDate,
+                    it.step, it.name, it.canton, it.rateChoice, it.customRate, it.denominator,
+                    it.exactTotalWorkDays, it.allYear, it.activityStartDate, it.mode, it.reminder,
                 )
         }
     }
-    LaunchedEffect(state.phase) {
-        if (state.phase == OnboardingPhase.SAVED) onDone()
+
+    // Automatic mode (step 6): the disclosure first (D5/R316), then FINE, then BACKGROUND on API 29+; consent
+    // (onModeChange(AUTO_DETECT)) is recorded only when ALL are granted, and the save then PATCHes it (R315).
+    var showDisclosure by rememberSaveable { mutableStateOf(false) }
+    val backgroundLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            showDisclosure = false
+            controller.onModeChange(if (granted) ModeChoice.AUTO_DETECT else ModeChoice.MANUAL)
+        }
+    val fineLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            when {
+                !granted -> {
+                    showDisclosure = false
+                    controller.onModeChange(ModeChoice.MANUAL)
+                }
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> backgroundLauncher.launch(BACKGROUND_LOCATION)
+                else -> {
+                    showDisclosure = false
+                    controller.onModeChange(ModeChoice.AUTO_DETECT)
+                }
+            }
+        }
+
+    // Evening reminder (step 7): "Oui" asks POST_NOTIFICATIONS on API 33+ (the S9 is 29, so it enables straight
+    // away), then enables the local R323 notification and saves; a deny saves with the reminder off.
+    val notificationLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) eveningStore.setEnabled(true)
+            controller.onReminderChange(granted)
+            controller.next()
+        }
+    val onReminderYes: () -> Unit = {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            notificationLauncher.launch(POST_NOTIFICATIONS_PERMISSION)
+        } else {
+            eveningStore.setEnabled(true)
+            controller.onReminderChange(true)
+            controller.next()
+        }
     }
+    val onReminderNo: () -> Unit = {
+        eveningStore.setEnabled(false)
+        controller.onReminderChange(false)
+        controller.next()
+    }
+
+    if (state.phase == OnboardingPhase.READY) {
+        val settings = store.load()
+        if (settings == null) onDone() else PretScreen(settings = settings, taxYear = taxYear, onContinue = onDone)
+        return
+    }
+
     OnboardingScreen(
         state = state,
         actions =
             OnboardingActions(
+                onNameChange = controller::onNameChange,
                 onCantonChange = controller::onCantonChange,
-                onEmploymentRateChange = controller::onEmploymentRateChange,
+                onRateChoiceChange = controller::onRateChoiceChange,
+                onCustomRateChange = controller::onCustomRateChange,
                 onDenominatorChange = controller::onDenominatorChange,
                 onExactTotalChange = controller::onExactTotalChange,
-                onGranularityChange = controller::onGranularityChange,
+                onAllYearChange = controller::onAllYearChange,
                 onActivityStartDateChange = controller::onActivityStartDateChange,
-                onSubmit = controller::submit,
+                onChooseManual = { controller.onModeChange(ModeChoice.MANUAL) },
+                onChooseAuto = { showDisclosure = true },
+                onReminderYes = onReminderYes,
+                onReminderNo = onReminderNo,
+                onNext = controller::next,
+                onBack = controller::back,
             ),
     )
+
+    if (showDisclosure) {
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            DisclosureScreen(
+                onAllow = { fineLauncher.launch(FINE_LOCATION) },
+                onStayManual = {
+                    showDisclosure = false
+                    controller.onModeChange(ModeChoice.MANUAL)
+                },
+            )
+        }
+    }
 }
 
 // The main shell: the bottom navigation over the screens that exist, with BOTH controllers created once

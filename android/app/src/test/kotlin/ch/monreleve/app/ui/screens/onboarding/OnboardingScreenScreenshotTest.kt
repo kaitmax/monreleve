@@ -10,19 +10,18 @@ import app.cash.paparazzi.Paparazzi
 import ch.monreleve.app.calc.Canton
 import ch.monreleve.app.design.FrontierTheme
 import ch.monreleve.app.onboarding.DenominatorChoice
-import ch.monreleve.app.onboarding.GranularityChoice
+import ch.monreleve.app.onboarding.ModeChoice
 import ch.monreleve.app.onboarding.OnboardingState
+import ch.monreleve.app.onboarding.OnboardingStep
+import ch.monreleve.app.onboarding.RateChoice
+import ch.monreleve.app.settings.Settings
 import org.junit.Rule
 import org.junit.Test
 
 /**
- * AN5b increment 1: baselines for the manual-onboarding screen (AC1's shape, a regression guard, not
- * the proof of correctness - that is increment 6's emulator walkthrough, R176/R177/R135). Captured
- * at the DEFAULT text size and at 200 percent (fontScale 2f), which is AC1's accessibility
- * requirement made a cheap, repeatable JVM snapshot rather than an emulator drive per increment.
- *
- * Two states: an empty form, and a filled EXACT-method form (so the canton consequence line and the
- * exact-total field both render). Device pinned to PIXEL_5 light, as the Aujourd'hui baseline is.
+ * AN-ONBOARD: baselines for the onboarding wizard (design/onboarding steps 1-7) and "Tout est prêt", at the
+ * default text size and at 200 percent (fontScale 2f) - the accessibility requirement as a cheap JVM snapshot.
+ * The emulator drive is the parent's walkthrough (R176). Device PIXEL_5 light, as the other baselines.
  */
 class OnboardingScreenScreenshotTest {
     @get:Rule
@@ -32,58 +31,104 @@ class OnboardingScreenScreenshotTest {
             theme = "android:Theme.Material.Light.NoActionBar",
         )
 
-    private val emptyState = OnboardingState()
-
-    private val filledExact =
-        OnboardingState(
-            canton = Canton.GE,
-            employmentRate = "80",
-            denominator = DenominatorChoice.EXACT,
-            exactTotalWorkDays = "220",
-            granularity = GranularityChoice.HALF_DAY,
-            activityStartDate = "2026-03-01",
+    private val noop =
+        OnboardingActions(
+            onNameChange = {},
+            onCantonChange = {},
+            onRateChoiceChange = {},
+            onCustomRateChange = {},
+            onDenominatorChange = {},
+            onExactTotalChange = {},
+            onAllYearChange = {},
+            onActivityStartDateChange = {},
+            onChooseManual = {},
+            onChooseAuto = {},
+            onReminderYes = {},
+            onReminderNo = {},
+            onNext = {},
+            onBack = {},
         )
 
+    private val base =
+        OnboardingState(name = "Camille Martin", canton = Canton.GE, rateChoice = RateChoice.R100)
+
+    private val tauxOtherState =
+        base.copy(step = OnboardingStep.TAUX, rateChoice = RateChoice.OTHER, customRate = "75")
+    private val methodeExactState =
+        base.copy(
+            step = OnboardingStep.METHODE,
+            denominator = DenominatorChoice.EXACT,
+            exactTotalWorkDays = "220",
+        )
+    private val periodePartialState =
+        base.copy(step = OnboardingStep.PERIODE, allYear = false, activityStartDate = "2026-07-01")
+    private val modeAutoState =
+        base.copy(step = OnboardingStep.MODE, mode = ModeChoice.AUTO_DETECT)
+
     @Composable
-    private fun host(state: OnboardingState) {
+    private fun step(state: OnboardingState) {
         FrontierTheme {
             Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                OnboardingScreen(
-                    state = state,
-                    actions =
-                        OnboardingActions(
-                            onCantonChange = {},
-                            onEmploymentRateChange = {},
-                            onDenominatorChange = {},
-                            onExactTotalChange = {},
-                            onGranularityChange = {},
-                            onActivityStartDateChange = {},
-                            onSubmit = {},
+                OnboardingScreen(state = state, actions = noop)
+            }
+        }
+    }
+
+    @Composable
+    private fun pret() {
+        FrontierTheme {
+            Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                PretScreen(
+                    settings =
+                        Settings(
+                            canton = "GE",
+                            employmentRate = 100,
+                            denominatorKind = "SIMPLIFIED240",
+                            exactTotalWorkDays = null,
+                            granularity = "DAY",
+                            activityStartDate = "2026-07-01",
+                            name = "Camille Martin",
                         ),
+                    taxYear = 2026,
+                    onContinue = {},
                 )
             }
         }
     }
 
-    @Test
-    fun onboardingEmpty() {
-        paparazzi.snapshot { host(emptyState) }
+    private fun large() = paparazzi.unsafeUpdateConfig(DeviceConfig.PIXEL_5.copy(fontScale = 2f))
+
+    @Test fun nom() = paparazzi.snapshot { step(base.copy(step = OnboardingStep.NOM)) }
+
+    @Test fun nomLarge() {
+        large()
+        paparazzi.snapshot { step(base.copy(step = OnboardingStep.NOM)) }
     }
 
-    @Test
-    fun onboardingEmptyLarge() {
-        paparazzi.unsafeUpdateConfig(DeviceConfig.PIXEL_5.copy(fontScale = 2f))
-        paparazzi.snapshot { host(emptyState) }
-    }
+    @Test fun canton() = paparazzi.snapshot { step(base.copy(step = OnboardingStep.CANTON)) }
 
-    @Test
-    fun onboardingFilledExact() {
-        paparazzi.snapshot { host(filledExact) }
-    }
+    @Test fun taux() = paparazzi.snapshot { step(base.copy(step = OnboardingStep.TAUX)) }
 
-    @Test
-    fun onboardingFilledExactLarge() {
-        paparazzi.unsafeUpdateConfig(DeviceConfig.PIXEL_5.copy(fontScale = 2f))
-        paparazzi.snapshot { host(filledExact) }
+    @Test fun tauxOther() = paparazzi.snapshot { step(tauxOtherState) }
+
+    @Test fun methode() = paparazzi.snapshot { step(base.copy(step = OnboardingStep.METHODE)) }
+
+    @Test fun methodeExact() = paparazzi.snapshot { step(methodeExactState) }
+
+    @Test fun periode() = paparazzi.snapshot { step(base.copy(step = OnboardingStep.PERIODE)) }
+
+    @Test fun periodePartial() = paparazzi.snapshot { step(periodePartialState) }
+
+    @Test fun mode() = paparazzi.snapshot { step(base.copy(step = OnboardingStep.MODE)) }
+
+    @Test fun modeAuto() = paparazzi.snapshot { step(modeAutoState) }
+
+    @Test fun rappel() = paparazzi.snapshot { step(base.copy(step = OnboardingStep.RAPPEL)) }
+
+    @Test fun pretDefault() = paparazzi.snapshot { pret() }
+
+    @Test fun pretLarge() {
+        large()
+        paparazzi.snapshot { pret() }
     }
 }
