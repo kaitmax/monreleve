@@ -1,0 +1,402 @@
+SEED-RELEVE - A YEAR OF REALISTIC DATA, TO SEE THE RELEVE
+=========================================================
+Branch: seed-releve (off origin/main 9bbd225). Date: 2026-10-06.
+Pure ASCII. All figures read back from the running server, never typed.
+
+
+====================================================================
+HOW IT ENDED
+====================================================================
+DONE (handed off for the final gate:clone + merge). The three scenario
+accounts are seeded and their two years read back through
+/api/v1/dossier; the releve was driven on the physical S9 for each
+account (releve screen + PDF, default size and 200 %); the last-year and
+new-phone questions were answered; the releve was read against the
+ten-item accountant list on screen and in the PDF.
+
+Per the orchestrator's operational guidance I ran the fast suites myself
+(typecheck, lint, test, build, test:db, test:late, and :app:gate) green
+per increment and DEFERRED the final `pnpm gate:clone` to the operator.
+R1: the operator ran gate:clone AND :app:gate GREEN on origin/main's HEAD
+(9bbd225) before this task; a fresh `git fetch` confirmed
+origin/main == 9bbd225 before branching.
+
+Advisor NOT called all session (it stalled; R156 conservative + recorded,
+R270 applies). Every judgment call below took the conservative, reversible
+option and is recorded.
+
+
+====================================================================
+R273 - WHAT SEED EXISTED, AND WHAT WAS REUSED
+====================================================================
+web/prisma/seed.ts already held (FW21/R222): four alert subscribers in
+four states, and the DEMO YEAR - demo@example.com, DEMO_YEAR=2026, a full
+deterministic year (261 entries) that FW24/FW25/FW27 and
+tests/db/demo-year.test.ts assert against (42,70 % declarable,
+FISCAL_CEILING_EXCEEDED + A1_REQUIRED). Its shape is a contract three tasks
+wide.
+
+REUSED, NOT REWRITTEN (R206): the seed was EXTENDED, not duplicated. The
+demo year, the alert subscribers, the local-DB guard (connectionString
+refuses a non-local host BY NAME) and the helpers (day/at/iso/isWeekday)
+are untouched; `seedScenarioAccounts()` was added beside `seedDemoYear()`
+and called from `main()`. The demo year stays frozen and deterministic;
+the three new accounts are a separate, clock-dependent demonstration.
+
+The demo year's OVER-THRESHOLD CHARACTER was ADAPTED for ACCOUNT 2 rather
+than inventing a new over-threshold shape: Alex teleworks most of the week
+so telework alone clears 40 %, the regime is lost, and
+FISCAL_CEILING_EXCEEDED + A1_REQUIRED fire - the demo person's two live
+warnings, now on a two-year account, plus MISSION_CAP_EXCEEDED from the
+twelve mission days the prompt's build-one branch names.
+
+
+====================================================================
+THE ACCOUNTS - EACH A CONSISTENT SCENARIO (R197/R202)
+====================================================================
+All three: canton GE, employmentRate 100, denominatorKind SIMPLIFIED240,
+emails on the reserved .invalid domain (can never deliver), holder NAME
+set (so the PDF generates - buildDossier refuses a nameless titulaire,
+R205). Every timestamp is in the PAST: no entry is dated today or later
+(cutoff = yesterday, UTC), and every firstRecordedAt and EntryEvent stamp
+is clamped strictly before the seed run. One CREATED event per entry,
+stamped at firstRecordedAt; edited days also carry a later MODIFIED event.
+No coordinate exists anywhere - the schema has no coordinate column (D18
+designed out, not guarded).
+
+ACCOUNT 1 - camille.martin@example.invalid, "Camille Martin"
+  GE, 100 %, 240-day simplified, WHOLE DAYS. Second-year worker
+  (activityStartDate 2024-09-02): 2025 complete, 2026 to yesterday.
+  - Manual until Sept 2026; AUTO_DETECT from then, consent timestamped
+    2026-09-01 08:30. So NO day is detected before September (R202): all
+    2025 and Jan-Aug 2026 days are MANUAL; Sept-Oct 2026 worked days are
+    DETECTED_CONFIRMED, and exactly TWO are DETECTED_CORRECTED (one
+    detected CH / recorded HOME, one detected HOME / recorded CH - the
+    overridden proposal kept on the row). An absence is never detected.
+  - Telework rule: Thursday every week, most Tuesdays (week index not a
+    multiple of 3). ~2 days/week, comfortably under 40 % (read back below).
+  - Five weeks of leave (CONGE), spread Feb/Apr/Jul/Aug/Oct. Three sick
+    days (MALADIE). Geneva public holidays (FERIE), computed per year.
+  - Seven missions a year: four MISSION_FR, three MISSION_THIRD (under the
+    ten-day cap, so all seven are credited while the regime applies).
+  - Recording latency: most the same evening; three a few days later (one
+    written offline, clientClaimedAt before firstRecordedAt); FIVE more
+    than seven days late ("Saisie tardive"); THREE corrected after first
+    recording (the trail holds the superseded value). Three working days
+    left unrecorded per year -> "Non renseigne".
+
+ACCOUNT 2 - alex.dupont@example.invalid, "Alex Dupont"
+  GE, 100 %, 240-day simplified, WHOLE DAYS, MANUAL throughout (no
+  detection, detectionConsentAt null; every entry MANUAL). Second-year
+  worker (activityStartDate 2024-01-08): 2025 complete, 2026 to yesterday.
+  - OVER the thresholds: telework Monday/Tuesday/Thursday, so telework
+    alone exceeds the 40 % ceiling and the regime is LOST. The 2026
+    provisional year is measured to yesterday against the full 240 basis,
+    so it needs the higher share to cross by October - which it does.
+  - TWELVE mission days a year (eight MISSION_FR, four MISSION_THIRD), all
+    in the first half so the provisional 2026 carries them too. Over the
+    ten-day cap -> MISSION_CAP_EXCEEDED; and because the regime is lost,
+    ZERO are credited (the waterfall excludes missions once telework alone
+    breaches the ceiling - an instructive case for item 5).
+  - Geneva holidays (FERIE), two weeks leave, one sick day, one edited
+    day, two late days, two gaps.
+
+ACCOUNT 3 - sam.bernard@example.invalid, "Sam Bernard"
+  GE, 100 %, 240-day simplified, HALF-DAY granularity, MANUAL throughout.
+  2026 ONLY, and a NEW worker: activityStartDate 2026-03-02 (first Monday
+  of March), so the period is a FRACTION of the year (0.8356) and the
+  basis is prorated to 201 days - exercising the partial-period path
+  (item 1's "exact dates for a partial year", item 6's prorated basis).
+  - SPLIT DAYS: six dates logged as a morning one place and an afternoon
+    another (AM/PM pairs, alternating which half is at home), so the annex
+    shows half-days. Wednesdays full HOME; the rest full CH.
+  - One mission, one week leave, one sick day, Geneva holidays from March
+    on, one edited day, two late days, one gap. Under the ceiling.
+
+Seed console summary (deterministic for 2025, clock-dependent for 2026):
+  camille.martin - 454 entries, 460 events, 6 edited, 9 saisie tardive
+  alex.dupont    - 455 entries, 457 events, 2 edited, 4 saisie tardive
+  sam.bernard    - 161 entries, 162 events, 1 edited, 2 saisie tardive
+
+
+====================================================================
+THE HOLIDAY DATES COMPUTED (Geneva, from the algorithm)
+====================================================================
+Good Friday / Easter Monday / Ascension / Whit Monday move with Easter
+(Meeus/Jones/Butcher); the Jeune genevois is the Thursday after the first
+Sunday of September; the rest are fixed. A holiday on a weekend produces
+no weekday entry (dropped); one after yesterday is not in the 2026 data.
+
+2025 (all nine fall on a weekday):
+  2025-01-01 Wed  Nouvel An
+  2025-04-18 Fri  Vendredi saint
+  2025-04-21 Mon  Lundi de Paques
+  2025-05-29 Thu  Ascension
+  2025-06-09 Mon  Lundi de Pentecote
+  2025-08-01 Fri  Fete nationale
+  2025-09-11 Thu  Jeune genevois
+  2025-12-25 Thu  Noel
+  2025-12-31 Wed  Restauration de la Republique
+
+2026:
+  2026-01-01 Thu  Nouvel An
+  2026-04-03 Fri  Vendredi saint
+  2026-04-06 Mon  Lundi de Paques
+  2026-05-14 Thu  Ascension
+  2026-05-25 Mon  Lundi de Pentecote
+  2026-08-01 Sat  Fete nationale       (weekend - no entry)
+  2026-09-10 Thu  Jeune genevois
+  2026-12-25 Fri  Noel                 (after the cutoff - not in 2026 data)
+  2026-12-31 Thu  Restauration         (after the cutoff - not in 2026 data)
+
+
+====================================================================
+THE FIGURES READ BACK (per account, per year, via GET /api/v1/dossier)
+====================================================================
+Read over HTTP against `pnpm dev` on :3000 (health named "monreleve",
+R169) with a bearer access token minted per account. Nothing typed.
+
+CAMILLE 2025 (full year)
+  period: Annee 2025 entiere (fraction 1).  titulaire Camille Martin.
+  tiles: jours ouvres 240, Suisse 143, teletravail 72, missions 7.
+  declarable 32,91 %   raw 33 %   (differ)   plafond fiscal 96 j.
+  restant avant fiscal 17 j    avant social 40,5 j.
+  absences 36   entrees enregistrees 258   lignes annexe 261.
+  warnings: RULE_SET_FALLBACK, A1_REQUIRED.
+    -> under the 40 % fiscal ceiling; RULE_SET_FALLBACK because 2025's
+       rules are not encoded (honest, stays); A1_REQUIRED because telework
+       (72/240 = 30 %) is at/over the 25 % framework-agreement threshold.
+
+CAMILLE 2026 (provisional, to yesterday)
+  period: Annee 2026 entiere (fraction 1).
+  tiles: jours ouvres 240, Suisse 106, teletravail 54, missions 7.
+  declarable 25,41 %   raw 25,5 %   plafond 96 j.
+  restant avant fiscal 35 j    avant social 58,5 j.
+  absences 29   entrees 196   annexe 261.   warnings: none.
+    -> a clean, compliant in-progress year (telework 54/240 = 22,5 %,
+       just under the 25 % A1 threshold - no warning; 2026's rules ARE
+       encoded, so no RULE_SET_FALLBACK).
+
+ALEX 2025 (full year)
+  tiles: jours ouvres 240, Suisse 91, teletravail 136, missions 12.
+  declarable 56,66 %   raw 61,7 %   plafond 96 j.
+  restant avant fiscal -40 j (40 j OVER)    avant social -16,5 j (OVER).
+  absences 20   entrees 259   annexe 261.
+  warnings: RULE_SET_FALLBACK, FISCAL_CEILING_EXCEEDED,
+            MISSION_CAP_EXCEEDED, SOCIAL_CEILING_EXCEEDED, A1_REQUIRED.
+    -> over BOTH ceilings; regime lost, so none of the 12 missions is
+       credited (0 of 12 counted); five warnings live at once.
+
+ALEX 2026 (provisional, to yesterday)
+  tiles: jours ouvres 240, Suisse 68, teletravail 100, missions 12.
+  declarable 41,66 %   raw 46,7 %   plafond 96 j.
+  restant avant fiscal -4 j (OVER)    avant social 19,5 j (under).
+  absences 16   entrees 196   annexe 261.
+  warnings: FISCAL_CEILING_EXCEEDED, MISSION_CAP_EXCEEDED, A1_REQUIRED.
+    -> over the fiscal ceiling, under the social one - a more nuanced
+       breach than 2025 (no SOCIAL_CEILING_EXCEEDED, no RULE_SET_FALLBACK).
+
+SAM 2026 (partial year, half-days)
+  period: Periode partielle / du 02.03.2026 (fraction 0,8356),
+          startDate 2026-03-02.
+  tiles: jours ouvres 201 (prorated basis), Suisse 111, teletravail 32,
+         missions 1.
+  declarable 16,41 %   raw 16,5 %   plafond fiscal 80,4 j.
+  restant avant fiscal 47 j    avant social 67 j.
+  absences 11   entrees 161   annexe 267 (split days add rows).
+  warnings: none.
+    -> the prorated basis (201, not 240) and the half-day annex are both
+       visible; comfortably under the ceiling.
+
+SAM 2025 (before he started): GET /api/v1/dossier?year=2025 returns
+  read_failed (500). Sam's activity starts in 2026, so the 2025 period
+  fraction is 0, which the engine rejects with PERIOD_OUT_OF_RANGE. This
+  is correct (there is no 2025 for Sam) and it bounds the year switch
+  below (see LAST YEAR'S RELEVE) - a past year is only offered within the
+  activity period.
+
+
+====================================================================
+THE PHONE (every screen, default size and 200 %, and the PDF)
+====================================================================
+[PENDING DEVICE CAPTURE - to be completed in the device-drive increment.]
+Plan: sign in as each account through the debug session path (R284,
+SessionInjectionActivity) against `pnpm dev` reached by `adb reverse
+tcp:3000 tcp:3000`; open the releve; export the PDF and open it; capture
+and describe every screen at the default font scale and at 200 %
+(font_scale 2.0). Then restore every device setting.
+
+
+====================================================================
+LAST YEAR'S RELEVE - CAN THE APP SHOW IT?
+====================================================================
+STATE CONFIRMED (from source): the app shows ONLY the current tax year.
+`taxYear = Year.now(Europe/Paris)` is computed once in MainActivity and
+threaded through MainGraph.build to every controller; ReleveController
+takes that one `taxYear` and `load()` always fetches it. There is no year
+selector. This is exactly PARKAN-26 (AN11), which deferred FD7's year
+chip as the conservative option and recorded it "NEEDS an operator
+decision on whether past-year viewing is wanted, and if so which years
+the selector offers."
+
+The DossierApi layer ALREADY supports any year: `DossierApi.fetch(year)`
+reads `/api/v1/dossier?year=$year` and caches per year; the controller's
+fetch seam is `suspend (Int) -> DossierResult`. Only the composition root
+pinning one year stops a past-year view.
+
+[DECISION + IMPLEMENTATION: to be finalized in the year-switch increment.]
+
+
+====================================================================
+A NEW PHONE - DOES THE APP PULL A YEAR FROM THE SERVER ON SIGN-IN?
+====================================================================
+NO (confirmed from source, to be confirmed on the device). The releve
+reads the SERVER's dossier (GET /api/v1/dossier), so after sign-in it
+shows the full seeded year. But the CALENDAR and AUJOURD'HUI read the
+LOCAL Room store (EntryRepository.observeAll), and there is no
+server-to-local pull anywhere: EntryRepository only `record`s locally and
+`observe`s; no code path downloads server entries into Room on sign-in.
+
+So a person signing in on a NEW PHONE sees: the releve populated (server
+read) while the calendar and Aujourd'hui are EMPTY until they record days
+on the device. This is reported, not fixed (the prompt says so).
+
+WHAT FIXING IT WOULD TAKE: a one-way GET of the year's entries (the
+server already serves them - the dossier annex carries every day) imported
+into Room on sign-in, idempotent on (dayDate, portion), with the
+server's firstRecordedAt/provenance preserved and clientMutationId
+mapped. It is a read-only hydrate of data the server already holds; the
+write path and the append-only trail are untouched. Scope: a new
+DossierApi/entries read + a Room upsert + a sign-in trigger + tests.
+
+
+====================================================================
+THE TEN-ITEM READING (each: SHOWN / SHOWN DIFFERENTLY / MISSING)
+====================================================================
+Read against the releve print page (web/app/releve/print/page.tsx, the
+PDF) and the Android releve screen (ReleveScreen/Header/Sections, which
+render the same /v1 payload). "Screen" = the phone; "PDF" = the export.
+
+1. THE PERIOD (calendar year, or exact dates for a partial year): SHOWN.
+   Header "Periode couverte": "Annee YYYY entiere" for a full year,
+   "Du DD.MM.YYYY au 31 decembre YYYY" for a partial one. Sam's partial
+   2026 renders the dated form; Camille/Alex render the full-year form.
+   On screen and in the PDF.
+
+2. THE TELEWORK RATE = (telework + at most 10 missions) / total work days:
+   SHOWN. This is the declarable rate - the large figure "Taux a declarer
+   a l'AFC" (2 decimals), positioned on the threshold rail. Screen + PDF.
+
+3. THE RATE WITHOUT MISSIONS (so it can never exceed 40 % when telework is
+   <= 40 %): SHOWN DIFFERENTLY. The CAP is embodied in the declarable rate
+   itself (the engine credits at most min(cap, headroom) mission days, so
+   telework + credited never exceeds the 40 % ceiling while the regime
+   applies). The standalone telework-only percentage is not a labelled
+   figure; it is derivable from the two tiles (Teletravail / Jours ouvres),
+   so it is pure presentation and could be added if wanted - noted under
+   PARKAN-49. The "Part de jours hors de Suisse" (raw rate) is shown when
+   it differs, but that is telework + ALL missions, not the without-
+   missions rate.
+
+4. TELEWORK DAYS FROM FRANCE, AS A COUNT: SHOWN. The "Teletravail" tile is
+   the count of HOME (telework-from-residence) days. Screen + PDF.
+
+5. MISSION DAYS, FRANCE AND THIRD-STATE SEPARATELY, AND HOW MANY COUNTED
+   (at most 10): SHOWN for the separation, MISSING for the credited count.
+   The monthly table has separate "Mission FR" and "Mission tiers" columns,
+   and the annex labels each mission day ("Mission en France" / "Mission
+   pays tiers"). The total "Missions" tile is FR+third combined. But how
+   many were CREDITED against the ceiling (creditedMissionDays, at most 10)
+   is NOT shown - it lives on the engine result, which the PDF has but does
+   not render and which is deliberately off the /v1 wire, so the screen
+   cannot show it. -> PARKAN-49 (needs an additive /v1 field + render).
+   Alex illustrates the gap: 12 missions logged, 0 credited (regime lost),
+   and the document does not state the 0.
+
+6. THE BASIS (total working days) AND THE ACTIVITY RATE BEHIND IT: SHOWN.
+   The "Jours ouvres" tile is the prorated basis (240 full year, 201 for
+   Sam's partial year) WITH a note that it is the retained basis, not a
+   row count; "Taux d'activite" in the header is the employment rate.
+   Screen + PDF.
+
+7. BOTH THRESHOLDS, EACH NAMED (40 % fiscal, 49,9 % social with the A1):
+   SHOWN. Zone sentence "Deux seuils s'appliquent: 40 % pour l'imposition,
+   49,9 % pour la securite sociale ...", both from the RuleSet. The rail
+   draws both ticks. Screen + PDF.
+
+8. THE DAY-BY-DAY CALENDAR: SHOWN. The annex ("Detail des journees") lists
+   every weekday of the year - each logged day with its nature, portion,
+   provenance and timestamps, each unlogged weekday as "Non renseigne",
+   each absence with its reason, each late day flagged "Saisie tardive".
+   The monthly table complements it. Screen (collapsible) + PDF (fully
+   expanded, SPEC 12).
+
+9. THE PERSON'S NAME AND THE DATE PRODUCED: SHOWN. Header "Nom" and "Date
+   de generation" (server-assigned). Screen + PDF. FW-VERIFY adds a
+   verification CODE printed as text on the PDF (and the /verifier page
+   shows what is printed, never the email) - but the code/QR block appears
+   ONLY when MONRELEVE_VERIFICATION_ORIGIN is set (R332); unset is the
+   default, so the code is ABSENT in this local run (EXPECTED, not a
+   finding).
+
+10. THAT THIS IS THE PERSON'S OWN RECORD, AND THE OFFICIAL DECLARATION IS
+    THE EMPLOYER'S: SHOWN DIFFERENTLY. The footer says the document is
+    "etabli sur la base des declarations de l'utilisateur, a des fins de
+    conservation de justificatifs" and "ne constitue pas un conseil
+    fiscal" - i.e. the person's own record. The second half (the OFFICIAL
+    annual declaration is the EMPLOYER's) is implicit, not stated in words,
+    and the employer is not named because the employer's name is not stored
+    (SPEC 8 has no such column). -> PARKAN-48 (the prompt directs parking
+    the employer name; adding a field is schema-ask-first).
+
+
+====================================================================
+PARKED
+====================================================================
+PARKAN-48 - the employer's name is not stored, so the releve cannot print
+  it (item 10). The prompt directs parking; adding a field is a schema
+  change (SPEC 20 ask-first). Heading in parking.md.
+PARKAN-49 - the releve does not print how many mission days were counted
+  toward the rate (creditedMissionDays, item 5), nor the standalone
+  telework-only rate (item 3, derivable). Surfacing the credit needs an
+  additive /v1 field; the telework-only rate is pure presentation.
+PARKAN-26 - the year selector (AN11). The prior conservative deferral;
+  see LAST YEAR'S RELEVE for how this task's directive resolves it.
+
+
+====================================================================
+DEVIATIONS
+====================================================================
+- The three scenario accounts are CLOCK-DEPENDENT (2026 to yesterday),
+  unlike the frozen demo year. Justified: R197 ("no entry after
+  yesterday") requires it, and no test pins their exact counts - the new
+  db test asserts the SHAPE (bands, thresholds, cases present), never a
+  figure. The demo year stays deterministic and untouched.
+- ACCOUNT 2 (Alex) teleworks three weekdays, higher than the prompt's
+  "about 45 %" (2025 reads 56,66 %). Reason: the provisional 2026 is
+  measured to yesterday against the FULL 240 basis, so it must cross 40 %
+  by October; three telework days keep BOTH years over the ceiling with
+  margin. The over-threshold CHARACTER (FISCAL_CEILING_EXCEEDED +
+  A1_REQUIRED, adapted from the demo year) is the requirement; the exact
+  percentage is secondary.
+- ACCOUNT 3 (Sam) starts 2026-03-02 (a partial period) rather than
+  Jan 1, to exercise item 1's "exact dates for a partial year" and item
+  6's prorated basis - both otherwise unexercised by the full-year
+  accounts.
+
+
+====================================================================
+QUESTIONS
+====================================================================
+- Should the releve surface the credited-mission count and/or the
+  telework-only rate (PARKAN-49)? Both are additive/derivable.
+- Should the releve name the employer and state in words that the
+  employer files the official declaration (PARKAN-48)?
+- Which years should the year switch offer, and how should the
+  provisional banner read for a CLOSED past year (PARKAN-26)?
+
+
+====================================================================
+PUSH PROOF
+====================================================================
+[to be completed - branch tip SHA and per-increment pushes]
