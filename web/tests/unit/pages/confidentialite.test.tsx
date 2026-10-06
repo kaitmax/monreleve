@@ -113,6 +113,34 @@ describe('retention, which is a number and therefore easy to lose', () => {
   });
 });
 
+describe('the issuance record and the verification page (R329, R330)', () => {
+  it('discloses what the issuance record holds and that the page shows only the printed fields', () => {
+    const text = pageText().toLowerCase();
+
+    // What it holds (R329) and the verification page behaviour (R330): it
+    // shows what is printed, and never the account.
+    expect(text).toContain('identifiant unique');
+    expect(text).toContain('page de vérification');
+    expect(text).toContain('jamais votre compte');
+  });
+
+  it('discloses that name-change DATES are kept, never the former value (R331)', () => {
+    const text = pageText().toLowerCase();
+
+    expect(text).toContain('modifié');
+    // "ancienne valeur" without the elided article, so the assertion carries no
+    // French elision literal outside lib/fr (R126).
+    expect(text).toContain('ancienne valeur');
+  });
+
+  it('states how long the issuance records and name-change dates are kept', () => {
+    const text = pageText().toLowerCase();
+
+    expect(text).toContain('relevés que vous générez');
+    expect(text).toContain('suppression de votre compte');
+  });
+});
+
 describe('the rights, and how to use them (D11)', () => {
   it('names the export and its formats', () => {
     const text = pageText();

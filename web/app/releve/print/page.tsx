@@ -39,6 +39,8 @@ import { DOSSIER_COPY as COPY } from '@/lib/fr/dossier';
 import { buildDossierFor } from '@/lib/dossier/load';
 import { MissingTitulaireError } from '@/lib/dossier/service';
 import { readPrintToken } from '@/lib/export/print-token';
+import { verificationOrigin, verificationUrlFor } from '@/lib/verification/origin';
+import QRCode from 'qrcode';
 import { ruleSetFor } from '@/lib/calc-engine';
 import { formatDays, formatPercent, formatSignedDays, zoneFor } from '@/lib/ui/core';
 import { ThresholdRail } from '@/lib/ui/react';
@@ -80,6 +82,13 @@ export const metadata: Metadata = {
  * leaves the rail inside the column at every printer margin we have seen.
  */
 const RAIL_WIDTH = 640;
+
+/** An ISO instant from the query, or undefined when it is absent or unparseable. */
+function parseInstant(iso: string): Date | undefined {
+  const date = new Date(iso);
+
+  return Number.isNaN(date.getTime()) ? undefined : date;
+}
 
 /** A day, as the document prints it. */
 function day(iso: string): string {
@@ -150,6 +159,16 @@ export default async function PrintPage({
   const params = await searchParams;
   const rawYear = typeof params.year === 'string' ? params.year : '';
   const rawToken = typeof params.token === 'string' ? params.token : null;
+  // FW-VERIFY: the PDF route passes the instant it assigned, so the document's
+  // generation date matches the issuance record's exactly. Absent (a human
+  // opening the route directly) falls back to buildDossier's own clock. It is
+  // not signed: it only affects this person's own document, and a document with
+  // a hand-set date simply carries no issuance record, so it verifies as none.
+  const rawGeneratedAt = typeof params.generatedAt === 'string' ? params.generatedAt : null;
+  // FW-VERIFY (R332): the PDF route passes the issued code. It is printed only
+  // when a permanent origin is set; absent that, the document carries no code,
+  // no address and no QR.
+  const rawCode = typeof params.code === 'string' ? params.code : null;
 
   if (!/^\d{4}$/u.test(rawYear)) notFound();
 
@@ -168,9 +187,12 @@ export default async function PrintPage({
   // here, but this page is also opened directly by a person, and a 500 on a
   // document that simply cannot exist is the wrong answer. Same 404 as every
   // other refusal on this route.
+  const generatedAt =
+    rawGeneratedAt === null ? undefined : parseInstant(rawGeneratedAt);
+
   let dossier;
   try {
-    dossier = await buildDossierFor(grant.userId, year);
+    dossier = await buildDossierFor(grant.userId, year, generatedAt);
   } catch (cause) {
     if (cause instanceof MissingTitulaireError) notFound();
     throw cause;
@@ -186,6 +208,21 @@ export default async function PrintPage({
   const headroomSocial = formatSignedDays(dossier.zone.remainingToSocial);
   const fiscal = formatPercent(rules.fiscalCeiling * 100, 0);
   const social = formatPercent(rules.socialCeiling * 100, 1);
+
+  // FW-VERIFY (R332): the verification block is present ONLY when a permanent
+  // origin is set AND a code was issued for this render. The QR, the address and
+  // the code text all point at the same URL. Absent the origin, all three are
+  // omitted - the default state, which the walkthrough and the release audit
+  // record as a NEEDS item.
+  const origin = verificationOrigin();
+  const verification =
+    origin === null || rawCode === null
+      ? null
+      : {
+          code: rawCode,
+          url: verificationUrlFor(origin, rawCode),
+          qr: await QRCode.toDataURL(verificationUrlFor(origin, rawCode), { margin: 1, width: 384 }),
+        };
 
   return (
     <main className={styles.sheet}>
@@ -204,6 +241,12 @@ export default async function PrintPage({
               without it, so this is never empty. */}
           <dt>{COPY.header.name}</dt>
           <dd>{dossier.titulaire}</dd>
+          {/* R331: one line, the DATE only, when the name changed within this
+              tax year. A second <dd> under the Nom term - never a former name,
+              which the dossier does not carry. */}
+          {dossier.nameChangedAt === null ? null : (
+            <dd className={styles.note}>{COPY.header.nameChanged(day(dossier.nameChangedAt))}</dd>
+          )}
           <dt>{COPY.header.canton}</dt>
           <dd>{dossier.canton}</dd>
           <dt>{COPY.header.employmentRate}</dt>
@@ -452,6 +495,24 @@ export default async function PrintPage({
         <p className={styles.note}>{COPY.annex.lateNote}</p>
         <p className={styles.note}>{COPY.annex.offlineNote}</p>
       </section>
+
+      {/* FW-VERIFY (R332): the verification block, present only when the
+          permanent origin is set. The QR, the address and the code text all
+          lead to the same page; the code is printed for anyone who cannot scan.
+          `img` with a data URI so the mark stays a value, not a network fetch. */}
+      {verification === null ? null : (
+        <section className={styles.verification}>
+          <h2>{COPY.verification.heading}</h2>
+          <p>{COPY.verification.lead}</p>
+          <img className={styles.qr} src={verification.qr} alt={COPY.verification.qrAlt} />
+          <p className={styles.verificationLine}>
+            {COPY.verification.addressLine(verification.url)}
+          </p>
+          <p className={styles.verificationLine}>
+            {COPY.verification.codeLine(verification.code)}
+          </p>
+        </section>
+      )}
 
       {/* R183: UNCONDITIONAL. The site footer branches on trackerExists
           because there the clause is a claim about a product state; here every

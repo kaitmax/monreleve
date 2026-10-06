@@ -227,6 +227,51 @@ describe('AC2: the export contains every row belonging to the caller', () => {
   });
 });
 
+describe('FW-VERIFY: the issuance records are the caller own data, so they are exported', () => {
+  it('carries every issued-releve record under its key', async () => {
+    await prisma.issuanceRecord.create({
+      data: {
+        code: 'export-issuance-code',
+        userId,
+        taxYear: 2026,
+        version: 1,
+        name: 'Camille Rey',
+        declarableRate: 39.16,
+        teleworkDays: 94,
+        missionDaysFrance: 6,
+        missionDaysThirdState: 2,
+        periodFraction: 1,
+        sha256: 'a'.repeat(64),
+        generatedAt: new Date('2026-04-01T09:00:00.000Z'),
+      },
+    });
+
+    const payload = (await (await GET(get())).json()) as {
+      issuances: { code: string; version: number; sha256: string }[];
+    };
+
+    // PRESENCE FIRST (R169): the fixture made one, so an empty array is a
+    // dropped table rather than an honest absence.
+    expect(payload.issuances).toHaveLength(1);
+    expect(payload.issuances[0]?.code).toBe('export-issuance-code');
+    expect(payload.issuances[0]?.version).toBe(1);
+    expect(payload.issuances[0]?.sha256).toBe('a'.repeat(64));
+  });
+
+  it('carries the name-change DATES, and no former name (R331)', async () => {
+    await prisma.nameChange.create({ data: { userId } });
+
+    const payload = (await (await GET(get())).json()) as {
+      nameChanges: { changedAt: string }[];
+    };
+
+    expect(payload.nameChanges).toHaveLength(1);
+    expect(payload.nameChanges[0]?.changedAt).toBeTruthy();
+    // There is no name field to leak - the row never held one.
+    expect(JSON.stringify(payload.nameChanges)).not.toContain('name');
+  });
+});
+
 describe('R230: the CSV escapes a formula and the JSON does not', () => {
   beforeEach(async () => {
     await prisma.entry.create({

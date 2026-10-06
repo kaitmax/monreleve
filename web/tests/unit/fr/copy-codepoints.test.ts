@@ -163,7 +163,13 @@ describe('the whitespace codepoints in French copy are on the record (R66)', () 
       // no-break space, before the semicolon that ends it. The count is
       // pinned so that a space arriving by accident is a failure rather
       // than a drift, which means a deliberate one updates the number.
-      'lib/fr/confidentialite.ts': 20,
+      // 20 -> 22 in FW-VERIFY: DISCLOSED_RECORDS.issuanceRecord added two,
+      // both R91 no-break spaces in new copy - one before the colon that
+      // introduces the list of what the issuance record holds, one before
+      // the semicolon that ends the bullet.
+      // 22 -> 23 in FW-VERIFY: DISCLOSED_RECORDS.nameChange added one, before
+      // the semicolon that ends the name-change-dates bullet (R331).
+      'lib/fr/confidentialite.ts': 23,
       'lib/fr/errors.ts': 2,
       // FW18b: FOUR BECAME TWO, and the two that left are the point. R147
       // now reaches lib/fr, so the home description no longer types "40 %"
@@ -208,7 +214,12 @@ describe('the whitespace codepoints in French copy are on the record (R66)', () 
     // the semicolon ending its sentence, and the per-file map above moved
     // in step. Two numbers, one change - if only one of them had needed
     // updating, the census would be measuring something other than it says.
-    expect(occurrences).toHaveLength(43);
+    // FW-VERIFY: 43 -> 45. DISCLOSED_RECORDS.issuanceRecord carries two,
+    // the colon and the semicolon of the new issuance disclosure, and the
+    // per-file map above moved in step for the same reason.
+    // FW-VERIFY: 45 -> 46. DISCLOSED_RECORDS.nameChange carries one more,
+    // the semicolon ending the name-change-dates bullet.
+    expect(occurrences).toHaveLength(46);
   });
 
   it('puts every one of them immediately before : ; ? ! or %', () => {

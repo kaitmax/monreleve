@@ -93,13 +93,25 @@ export async function PATCH(request: Request): Promise<NextResponse> {
   const { detectionConsent, ...settings } = parsed.data;
 
   // The state AFTER this request, needed to judge the consent rules against
-  // what the row will be rather than against what it was.
+  // what the row will be rather than against what it was. `name` joins the
+  // select so a genuine name CHANGE can be told from a first-time set (R331).
   const current = await prisma.user.findUnique({
     where: { id: auth.userId },
-    select: { loggingMode: true, detectionConsentAt: true },
+    select: { loggingMode: true, detectionConsentAt: true, name: true },
   });
 
   if (current === null) return refuse('read_failed', AUTH_API_COPY.readFailed, 500);
+
+  // R331: the server records WHEN the holder name changed, never the former
+  // value. A CHANGE is an existing non-empty name becoming a different one;
+  // setting a name for the first time (onboarding) is establishing, not
+  // changing, and must not leave a change date. `settings.name` is already
+  // trimmed and non-empty when present (the schema requires it).
+  const nameChanged =
+    settings.name !== undefined &&
+    current.name !== null &&
+    current.name.trim() !== '' &&
+    current.name.trim() !== settings.name;
 
   const consentAfter =
     detectionConsent === undefined
@@ -140,10 +152,23 @@ export async function PATCH(request: Request): Promise<NextResponse> {
   };
 
   try {
-    const row = await prisma.user.update({
-      where: { id: auth.userId },
-      data,
-      select: ME_SELECT,
+    // ONE TRANSACTION. The name write and the change record land together or
+    // not at all - a recorded change beside an unchanged name, or the reverse,
+    // would make the "Nom modifie le" line disagree with the name it annotates.
+    const row = await prisma.$transaction(async (tx) => {
+      const updated = await tx.user.update({
+        where: { id: auth.userId },
+        data,
+        select: ME_SELECT,
+      });
+
+      if (nameChanged) {
+        // The date only - never the former value (R331). changedAt defaults to
+        // the server clock.
+        await tx.nameChange.create({ data: { userId: auth.userId } });
+      }
+
+      return updated;
     });
 
     return NextResponse.json(serialiseMe(row), { status: 200, headers: HEADERS });

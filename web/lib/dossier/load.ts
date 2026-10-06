@@ -55,7 +55,16 @@ const SELECT = {
  * instant an hour before the day it names, and comparing one against a
  * `@db.Date` column appears to work.
  */
-export async function buildDossierFor(userId: string, year: number): Promise<Dossier> {
+export async function buildDossierFor(
+  userId: string,
+  year: number,
+  // FW-VERIFY: the instant printed on the document. The PDF route assigns it
+  // once and passes it both here and into the print URL, so the date printed on
+  // the file and the date stored in the issuance record are the same instant.
+  // Undefined keeps buildDossier's own `new Date()` default - the behaviour
+  // every existing caller relies on.
+  generatedAt?: Date,
+): Promise<Dossier> {
   const padded = String(year).padStart(4, '0');
 
   const user = await prisma.user.findUniqueOrThrow({
@@ -116,5 +125,19 @@ export async function buildDossierFor(userId: string, year: number): Promise<Dos
     clientClaimedAt: row.clientClaimedAt,
   }));
 
-  return buildDossier(user, entries, year);
+  // R331: the latest name change WITHIN this tax year, so the document can show
+  // "Nom modifie le <date>". A COARSE UTC calendar-year window is deliberate -
+  // the line states the year in which the name changed, not a day boundary, and
+  // only the DATE is read, never the former name (there is no column for it).
+  const [latestChange] = await prisma.nameChange.findMany({
+    where: {
+      userId,
+      changedAt: { gte: new Date(Date.UTC(year, 0, 1)), lt: new Date(Date.UTC(year + 1, 0, 1)) },
+    },
+    orderBy: { changedAt: 'desc' },
+    take: 1,
+    select: { changedAt: true },
+  });
+
+  return buildDossier(user, entries, year, generatedAt, latestChange?.changedAt ?? null);
 }

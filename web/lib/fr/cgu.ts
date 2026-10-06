@@ -52,6 +52,19 @@ export const CGU_COPY = {
       'seuils applicables. Ce calcul est une estimation indicative.',
   ],
 
+  // R333: an account and its releve belong to ONE person, and the email is the
+  // account anchor. Copy, sourced in the product own terms - no regulatory
+  // claim (R146), and no banned word.
+  oneAccountHeading: 'Un compte, une personne',
+  oneAccount: [
+    'Un compte et le relevé qu’il produit appartiennent à une seule ' +
+      'personne. Ils ne sont pas destinés à être partagés entre plusieurs ' +
+      'personnes.',
+    'Votre adresse e-mail est le point d’ancrage du compte. C’est par ' +
+      'elle que vous vous connectez, et c’est à elle que le compte est ' +
+      'rattaché.',
+  ],
+
   notHeading: "Ce que le service n’est pas",
 
   /**

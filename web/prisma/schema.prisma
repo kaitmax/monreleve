@@ -238,6 +238,14 @@ model User {
   devices  Device[]
   accounts Account[]
   sessions Session[]
+
+  /// FW-VERIFY (R329). One row per releve the PDF route has produced for this
+  /// person. Cascades, so it joins FW26's negative sweep automatically.
+  issuanceRecords IssuanceRecord[]
+
+  /// FW-VERIFY (R331). The dates this person's holder name changed - never the
+  /// former value. Cascades, like every other owned row.
+  nameChanges NameChange[]
 }
 
 /// D21. Replaces the PushSubscription a web-push design would have needed.
@@ -607,5 +615,109 @@ model ReminderSent {
   /// in the database, rather than being prevented by a caller remembering to
   /// check first.
   @@unique([userId, sentOn])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// FW-VERIFY: the issuance record (R329).
+//
+// EVERY ISSUED RELEVE IS RECORDED. The PDF route writes one of these rows each
+// time it produces a file: an unguessable code, the account, the tax year, a
+// version, the name AS PRINTED, the printed figures, the SHA-256 of the
+// produced file, and when. An accountant scans the code and sees what the
+// server actually issued - which answers the three risks a printable document
+// cannot answer on its own: an edited PDF, a shared account, a name changed
+// after the fact.
+//
+// REGENERATING IS LEGITIMATE AND NEVER LIMITED. A new issuance creates a new
+// version and marks the previous one superseded; the old row is kept, so the
+// history of what was issued survives. The superseded row's supersededAt is the
+// instant the newer version was issued, which is what the verification page
+// reads to say "a newer version was issued on <date>" without naming it.
+//
+// IT HOLDS THE FIGURES AS PRINTED, not a reference to today's dossier: a
+// document is a snapshot, and the verification page must show what the holder's
+// copy shows even after the account's days change. periodFraction and
+// periodStartDate are DossierPeriod's own fields, so the page derives the exact
+// same "Periode couverte" sentence the document printed (R181/R206).
+//
+// IT CASCADES FROM User (D11, R203): erasing a person erases their issuance
+// records, and because this model carries a userId it joins FW26's
+// schema-derived negative sweep without anyone listing it.
+// ---------------------------------------------------------------------------
+model IssuanceRecord {
+  id String @id @default(cuid())
+
+  /// The public, unguessable identifier printed on the document and carried in
+  /// the verification URL. 128 random bits, hex (see lib/issuance/record.ts).
+  /// Unique, so a scan resolves to exactly one issued document.
+  code String @unique
+
+  userId String
+
+  taxYear Int
+
+  /// Monotonic within (userId, taxYear). A regeneration is version + 1.
+  version Int
+
+  /// Null while this is the current version; set to the NEXT version's
+  /// generatedAt when it supersedes this one. A partial unique index in the
+  /// migration enforces at most one current row per (userId, taxYear), so the
+  /// "one current version" rule survives a writer that does not know it (R196).
+  supersededAt DateTime?
+
+  /// The figures AS PRINTED on the produced document.
+  name                  String
+  declarableRate        Float
+  teleworkDays          Float
+  missionDaysFrance     Float
+  missionDaysThirdState Float
+
+  /// The period, as DossierPeriod carries it, so the page renders the identical
+  /// sentence. periodStartDate is an ISO day, null on a whole year.
+  periodFraction  Float
+  periodStartDate String?
+
+  /// SHA-256 (hex) of the produced PDF file.
+  sha256 String
+
+  /// Server clock at issuance = the generation date printed on the document.
+  /// Server-assigned, like every other stamp in this product.
+  generatedAt DateTime
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, taxYear, version])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// FW-VERIFY: name-change dates (R331).
+//
+// THE SERVER RECORDS WHEN THE HOLDER NAME CHANGED, NEVER THE FORMER VALUE. Each
+// issued releve already holds the name it was printed with (IssuanceRecord.name),
+// so the history of names lives where it is actually needed; this table records
+// only the DATES, which is all the document's "Nom modifie le" line needs.
+//
+// PRINTING A FORMER NAME ON A TAX DOCUMENT WOULD BE A REAL HARM - people change
+// names for marriage, divorce or transition. So there is deliberately no column
+// here that could hold the old value: the harm is designed out rather than
+// guarded against. A releve for a tax year in which a change falls shows one
+// line, "Nom modifie le <date>", and never a previous name.
+//
+// IT CASCADES FROM User, so it joins FW26's negative sweep by carrying a userId.
+// ---------------------------------------------------------------------------
+model NameChange {
+  id     String @id @default(cuid())
+  userId String
+
+  /// Server clock at the moment of the change. Server-assigned, like every
+  /// stamp in this product - a client cannot name when it changed its name.
+  changedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
 }

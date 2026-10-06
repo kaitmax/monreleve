@@ -156,6 +156,28 @@ export const DISCLOSED_RECORDS = {
   emailConfirmed:
     'la date à laquelle vous avez confirmé votre adresse en ouvrant un lien ' +
     'de connexion.',
+
+  // FW-VERIFY (R331). The service records WHEN the name on your releves changed,
+  // and the notice says exactly that - the DATE, never the former value. The
+  // closed list makes it a line rather than a choice (R206): a stored column
+  // with no disclosure is a published falsehood.
+  nameChange:
+    'les dates auxquelles le nom figurant sur vos relevés a été modifié — ' +
+    'jamais l’ancienne valeur, seulement la date du changement ;',
+
+  // FW-VERIFY (R329). Each releve produced leaves a record of WHAT WAS ISSUED,
+  // and the closed list makes this a line rather than an option: a stored table
+  // with no disclosure here is a published falsehood, not a gap (R206). It says
+  // what the record holds and why it exists - to let whoever holds the document
+  // confirm it corresponds to what the service issued, which is the one claim
+  // the feature makes.
+  issuanceRecord:
+    'pour chaque relevé que vous générez, un enregistrement de ce qui a été ' +
+    'émis : un identifiant unique, l’année concernée, un numéro de version, ' +
+    'le nom tel qu’il figure sur le document, les chiffres imprimés et une ' +
+    'empreinte du fichier produit. Toute personne détenant le relevé peut en ' +
+    'vérifier le code sur la page de vérification, qui n’affiche alors que ce ' +
+    'qui figure sur le document et jamais votre compte ;',
 } as const;
 
 /**
@@ -263,6 +285,11 @@ export const CONFIDENTIALITE_COPY = {
     DISCLOSED_RECORDS.sessions,
     DISCLOSED_RECORDS.credentials,
     DISCLOSED_RECORDS.emailConfirmed,
+    // FW-VERIFY: the issuance record. It sits last because it is produced by an
+    // explicit act - generating a releve - rather than held from sign-in.
+    DISCLOSED_RECORDS.issuanceRecord,
+    // FW-VERIFY: the name-change dates (R331).
+    DISCLOSED_RECORDS.nameChange,
   ],
   // R138 AGAIN, AND ONLY CROPPING THE BASELINE FOUND IT. This paragraph said
   // « L’application ne communique qu’avec... » in the PRESENT TENSE about an
@@ -357,6 +384,12 @@ export const CONFIDENTIALITE_COPY = {
     'Les rapports techniques que le service produit en cas de panne sont ' +
       'débarrassés des adresses e-mail et du contenu des déclarations avant ' +
       "d’être enregistrés.",
+    // FW-VERIFY (R329/R331): how long the issuance records and the name-change
+    // dates are kept - the WHAT is disclosed above, the HOW LONG is here, as
+    // the history line does.
+    'Les relevés que vous générez, leur enregistrement et les dates de ' +
+      'changement du nom sont conservés jusqu’à la suppression de votre ' +
+      'compte.',
   ],
 
   hostingHeading: 'Hébergement et prestataires',

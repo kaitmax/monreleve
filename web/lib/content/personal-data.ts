@@ -233,4 +233,34 @@ export const PERSONAL_DATA: Readonly<Record<string, Disclosure>> = {
   'Session.sessionToken': 'credentials',
   'Session.userId': 'sessions',
   'Session.expires': 'sessions',
+
+  // ---- FW-VERIFY: the issuance record (R329). One row per produced releve,
+  // disclosed by the line that explains the verification code. Every column is
+  // about the document issued to this person, so every column is 'issuanceRecord'
+  // - including the opaque code and the file fingerprint, which carry nothing
+  // about the person but ARE stored, and the notice enumerates what is stored.
+  'IssuanceRecord.id': 'issuanceRecord',
+  'IssuanceRecord.code': 'issuanceRecord',
+  'IssuanceRecord.userId': 'issuanceRecord',
+  'IssuanceRecord.taxYear': 'issuanceRecord',
+  'IssuanceRecord.version': 'issuanceRecord',
+  'IssuanceRecord.supersededAt': 'issuanceRecord',
+  'IssuanceRecord.name': 'issuanceRecord',
+  'IssuanceRecord.declarableRate': 'issuanceRecord',
+  'IssuanceRecord.teleworkDays': 'issuanceRecord',
+  'IssuanceRecord.missionDaysFrance': 'issuanceRecord',
+  'IssuanceRecord.missionDaysThirdState': 'issuanceRecord',
+  'IssuanceRecord.periodFraction': 'issuanceRecord',
+  'IssuanceRecord.periodStartDate': 'issuanceRecord',
+  'IssuanceRecord.sha256': 'issuanceRecord',
+  'IssuanceRecord.generatedAt': 'issuanceRecord',
+  'IssuanceRecord.createdAt': 'issuanceRecord',
+
+  // ---- FW-VERIFY: name-change dates (R331). Only the date and the user - the
+  // former name is deliberately not a column, so there is nothing here that
+  // could disclose one. The notice says the dates are kept and the former value
+  // is not.
+  'NameChange.id': 'nameChange',
+  'NameChange.userId': 'nameChange',
+  'NameChange.changedAt': 'nameChange',
 };

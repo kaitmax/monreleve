@@ -88,6 +88,22 @@ describe('the obligations it puts on the reader', () => {
   });
 });
 
+describe('one account, one person (R333)', () => {
+  it('states that an account and its releve belong to one person', () => {
+    const text = pageText().toLowerCase();
+
+    expect(text).toContain('une seule personne');
+    expect(text).toContain('relevé');
+  });
+
+  it('names the email as the account anchor', () => {
+    const text = pageText().toLowerCase();
+
+    expect(text).toContain('adresse e-mail');
+    expect(text).toContain('ancrage');
+  });
+});
+
 describe('access and price (D3)', () => {
   it('states free in 2027 and paid from 2028', () => {
     const text = pageText();

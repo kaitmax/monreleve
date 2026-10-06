@@ -96,6 +96,29 @@ beforeEach(async () => {
       expires: new Date(Date.now() + 900_000),
     },
   });
+
+  // FW-VERIFY: an issued-releve record for this account, so the erasure sweep
+  // covers it with something to find rather than vacuously (R329: "erased with
+  // the account, like every other row ... which must now cover it").
+  await prisma.issuanceRecord.create({
+    data: {
+      code: `issuance-${counter}`,
+      userId,
+      taxYear: 2026,
+      version: 1,
+      name: 'Camille Rey',
+      declarableRate: 39.16,
+      teleworkDays: 94,
+      missionDaysFrance: 6,
+      missionDaysThirdState: 2,
+      periodFraction: 1,
+      sha256: 'f'.repeat(64),
+      generatedAt: new Date('2026-04-01T09:00:00.000Z'),
+    },
+  });
+
+  // FW-VERIFY (R331): a name-change date, so the sweep covers it too.
+  await prisma.nameChange.create({ data: { userId } });
 });
 
 afterAll(async () => {
@@ -165,6 +188,10 @@ describe('AC3: the erasure', () => {
     expect(body.removed.Entry).toBe(1);
     expect(body.removed.EntryEvent).toBe(1);
     expect(body.removed.VerificationToken).toBe(1);
+    // FW-VERIFY: the issued-releve record goes with the account (R329).
+    expect(body.removed.IssuanceRecord).toBe(1);
+    // FW-VERIFY: the name-change date goes too (R331).
+    expect(body.removed.NameChange).toBe(1);
   });
 
   it('revokes the tokens in the same transaction (R193)', async () => {

@@ -51,6 +51,8 @@ import { findLocationKeys } from '@/lib/entries/no-coordinates';
 import { parseReadQuery } from '@/lib/entries/read-query';
 import { prisma } from '@/lib/db/client';
 import { titulaireOf } from '@/lib/dossier/service';
+import { buildDossierFor } from '@/lib/dossier/load';
+import { figuresFromDossier, newVerificationCode, recordIssuance, sha256Hex } from '@/lib/issuance/record';
 import { mintPrintToken } from '@/lib/export/print-token';
 import {
   RendererFontlessError,
@@ -140,9 +142,39 @@ export async function GET(request: Request): Promise<NextResponse> {
     return refuse('not_configured', AUTH_API_COPY.readFailed, 503);
   }
 
+  // FW-VERIFY (R329): the instant and the code are assigned HERE, once. The
+  // instant is passed into the print URL so the document's generation date is
+  // the same instant the record stores; the code is generated now because it is
+  // printed on the document (R332-gated) and therefore has to exist before the
+  // file is rendered and hashed.
+  const generatedAt = new Date();
+  const code = newVerificationCode();
+
+  // The dossier the record's figures are read from. Built with the assigned
+  // instant so this and the print page produce the identical document. Any
+  // failure here is a data problem (no canton, say) - named rather than
+  // surfaced later as a misleading renderer failure (R198).
+  let dossier;
+
+  try {
+    dossier = await buildDossierFor(auth.userId, query.year, generatedAt);
+  } catch (cause) {
+    console.error(
+      '[export] pdf refused: the dossier could not be built',
+      cause instanceof Error ? cause.message : String(cause),
+    );
+
+    return refuse('dossier_incomplete', AUTH_API_COPY.readFailed, 422);
+  }
+
   const target = new URL('/releve/print', url.origin);
   target.searchParams.set('year', String(query.year));
   target.searchParams.set('token', printToken);
+  target.searchParams.set('generatedAt', generatedAt.toISOString());
+  // FW-VERIFY (R332): the issued code travels to the print route, which prints it
+  // (and the address and QR) ONLY when a permanent origin is set. The record
+  // stores the code regardless; the document shows it only when it can be used.
+  target.searchParams.set('code', code);
 
   try {
     // ONE RENDER AT A TIME, with a bounded waiting room. A render costs a
@@ -150,6 +182,31 @@ export async function GET(request: Request): Promise<NextResponse> {
     // difference between a document and an OOM kill - and an OOM kill takes
     // the database connection pool with it. See lib/export/render-queue.ts.
     const pdf = await withRenderSlot(() => renderPdf(target.toString()));
+
+    // EVERY ISSUED RELEVE IS RECORDED (R329). The hash is of the bytes about to
+    // be returned, so the record fingerprints exactly the file the person
+    // receives. A new version supersedes any current one for this year.
+    //
+    // IF RECORDING FAILS, THE DOCUMENT IS NOT RETURNED. An unrecorded releve is
+    // one nobody can verify, which defeats the feature - so a record failure is
+    // a refusal (R198: its own code), not a document handed out quietly.
+    try {
+      await recordIssuance({
+        userId: auth.userId,
+        taxYear: query.year,
+        code,
+        sha256: sha256Hex(pdf),
+        generatedAt,
+        figures: figuresFromDossier(dossier),
+      });
+    } catch (cause) {
+      console.error(
+        '[export] pdf produced but the issuance record failed; refusing to return an unrecorded releve:',
+        cause instanceof Error ? cause.message : String(cause),
+      );
+
+      return refuse('record_failed', AUTH_API_COPY.readFailed, 500);
+    }
 
     return new NextResponse(pdf as unknown as BodyInit, {
       status: 200,

@@ -81,6 +81,12 @@ const PAGES = [
   // pixels, and page-capture-erreur-mobile.png reproduced the same 497 here
   // before failing twice and passing on a retry.
 
+  // FW-VERIFY (R330): the public verification page, in its NEUTRAL state. A
+  // malformed code renders the neutral page without a database, so this baseline
+  // is deterministic in the container. The FOUND state needs a seeded record and
+  // is covered by tests/unit/pages/verifier.test.tsx plus the walkthrough.
+  { id: 'verifier-inconnu', path: '/verifier/aucun-code-de-ce-type' },
+
   { id: '404', path: '/cette-page-nexiste-pas' },
 ] as const;
 

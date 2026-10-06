@@ -997,6 +997,35 @@ the exemption cannot silently grow), or fold the constant into
 `ThresholdRailScreenshotTest.kt`'s own file and have `dev/` depend on the
 test source set - each is reversible without a migration.
 
+## PARK-20 - uploading a PDF to compare its fingerprint, as an idea  [FW-VERIFY, 2026-10-06]
+
+**The question.** The issuance record (R329) stores the SHA-256 of every
+produced file. A natural next feature is a public form where somebody uploads a
+PDF and the service recomputes its hash and says whether it matches the record
+for that code - turning "this document is unaltered" from a claim the scanner
+trusts into one a holder can check byte for byte.
+
+**The option taken: not built, parked as an idea.** FW-VERIFY's OUT OF SCOPE
+list names it explicitly ("Uploading a PDF to compare its fingerprint - park it
+as an idea"). The verification page the task does build (R330) already confirms
+what the server issued - the name, the figures, the period, the date, the
+version - which answers the three risks the task exists to answer (an edited
+PDF, a shared account, a name changed after the fact). The upload-and-compare
+step is a strengthening, not a gap.
+
+**What it would add, and what it would cost.** It catches the one case the
+field-comparison does not: a PDF edited to keep the same figures but altered
+elsewhere (a logo, a footnote, a different person's annex). Against that it adds
+an upload endpoint - a new attack surface that accepts arbitrary files - plus
+the question of what to do with the uploaded bytes (held? discarded? scanned?),
+which is a privacy decision this task should not make unasked.
+
+**To build later:** a POST route that accepts a file, streams it through
+SHA-256 without storing it, looks the digest up against IssuanceRecord.sha256,
+and reports match / no-match / unknown - with the same rate limit and neutral
+answers the verification page already uses. Reversible: nothing shipped depends
+on its absence.
+
 ## PARKAN-1 - the OS App Link verification is not, and cannot be, tested here  [AN4, 2026-09-28]
 
 QUESTION:  AC1/AC2 ask the callback to work end to end, but an Android App Link
