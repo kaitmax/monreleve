@@ -138,7 +138,7 @@ fun BackButton(
     }
 }
 
-/** The 7-segment step progress bar + "Étape N sur 7" label, as the onboarding steps draw it. */
+/** The segmented step progress bar (one segment per asked step) + "Étape N sur M" label (R335/R336). */
 @Composable
 fun StepProgress(
     step: Int,

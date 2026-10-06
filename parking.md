@@ -1797,6 +1797,48 @@ on `brand.copy(alpha=…)` anywhere but Tokens.kt - its first run caught the liv
 (R178), and a planted violation was verified to fire and reverted (R180). Pixel-neutral (brandSoft is the
 same value BrandCircle was), so no baseline moved for R337.
 
+## PARKAN-43 - AN-ONBOARD-2 device walkthrough deferred (phone disconnected)  [AN-ONBOARD-2, 2026-10-06]
+
+QUESTION: AN-ONBOARD-2's prompt section 4 asks for an on-device walkthrough on the Galaxy S9 (API 29):
+a fresh install through all eight onboarding steps; an account with no name asked only the name then
+Aujourd'hui with a PDF that generates; an account with no granularity asked only that; a complete
+account straight to Aujourd'hui; state kept across rotation and a background kill; default and 200 %.
+
+TAKEN: DEFERRED. The S9 dropped off USB after a thermal event before the session and did not return, so
+the physical-device drive could not run. Everything that does not need the device WAS done: the Paparazzi
+baselines (per-screen, default + 200 %, incl. the new granularity screen) and the JVM suites that drive
+the completeness, the plan, the subset run, the prefill and the granularity write end to end over fakes.
+
+NOT TAKEN: faking or claiming the walkthrough (R334: a report states only what has happened).
+
+TOUCHES: nothing in the tree - this is an on-device verification, not code. To run on reconnect: against
+pnpm dev, the four flows above + rotation + background kill (R310) + 200 %.
+
+NEEDS: the physical S9 reconnected (or an API-29 emulator with the state-preservation harness).
+
+## PARKAN-44 - stripComments strips block comments before line comments (fence helper blind spot)  [AN-ONBOARD-2, 2026-10-06]
+
+QUESTION: FencesTest.stripComments removes block comments (`/* ... */`) BEFORE line comments (`// ...`).
+A `//` line that contains `/*` - e.g. OnboardingKit.kt's header "design/onboarding/*.dc.html" - is then
+misread as the start of a block comment, and everything up to the next `*/` is deleted from the scanned
+text. Any fenced pattern sitting in that swallowed span is invisible to every fence (all nine share this
+helper).
+
+TAKEN: left as-is for this task and RECORDED. It surfaced when R337's R180 plant, first placed at line 47
+of OnboardingKit.kt (inside the swallowed span), produced a passing fence - a false negative R180's
+"verify the plant landed where intended" caught (a node reproduction showed the plant absent from the
+stripped text). The plant was re-placed after the last `*/`, fired RED, and was reverted. Fence 9 is
+sound for every realistic placement (the live BrandCircle instance proved it, R178).
+
+NOT TAKEN: reordering stripComments to strip line comments first (the fix). It changes the scan behaviour
+of ALL nine fences, which is out of R337's scope and risks turning an unrelated fence red or green in the
+same commit.
+
+TOUCHES: android/app/src/test/.../fences/FencesTest.kt (the shared stripComments helper) and, potentially,
+every fence's result. A follow-up task should reorder the two passes and re-run all fences.
+
+NEEDS: a small dedicated task to reorder stripComments and confirm every fence stays correct.
+
 ## STATUS LEDGER  [appended 2026-09-29]
 
 One line per Android-era entry, so the state of each is visible without
@@ -1837,3 +1879,5 @@ reading every section. Entries are not edited; this ledger is.
 | PARKAN-40 — the stray left-edge line is the Samsung Edge panel, not an app card | **closed, finding** | AN-CAL2 defect 3: proven on the SM-G960F to be the SystemUI Edge-panel handle (same position on 3 screens; no app node at x<30 in that band; `cocktail_bar_enabled_cocktails`=AppsEdgePanelProvider, `edge_handler_position_percent`=76.9≈1707 px = the line). No app-code fix; to clear the screenshot artifact, disable the device's Edge panel. Awaits operator awareness |
 | PARKAN-41 — « Non renseigne » counts tile wraps to two lines | **open, conservative** | AN-CAL2 defect 1: 13 chars cannot fit one line in a fifth of a 320-360 dp row at a legible size. Kept the full accented word (R155/R206) and reserved two label lines (minLines=2) so every number aligns - the operator's real defect (misalignment) is fixed. An abbreviated one-line tile label is an operator copy decision; reversible |
 | PARKAN-42 — the mockups' light brand-tint surface has no token | **closed** | R337 (AN-ONBOARD-2): the named token is wanted. `LightColors.brandSoft` = `brand.copy(alpha=0.08f)`, defined once in Tokens.kt (DERIVED, not a new hue, R9), recorded in DESIGN-SYSTEM §1; every use site references it and Fence 9 forbids the open-coded form elsewhere (RED on the live BrandCircle instance, R178; planted + reverted, R180). Pixel-neutral - no baseline moved |
+| PARKAN-43 — AN-ONBOARD-2 device walkthrough deferred | **open, deferred** | AN-ONBOARD-2: the S9 (API 29) dropped off USB after a thermal event, so the on-device walkthrough (prompt section 4) could not run. Everything that does not need the device was done (Paparazzi baselines incl. the new granularity screen; the completeness/plan/subset/prefill logic driven over JVM fakes). To run on reconnect: the four flows + rotation + background kill + 200 %. Not faked, not claimed (R334) |
+| PARKAN-44 — stripComments strips block before line comments (fence helper blind spot) | **open, recorded** | AN-ONBOARD-2: FencesTest.stripComments removes `/* */` before `// `, so a `//` line containing `/*` (OnboardingKit.kt's "onboarding/*.dc.html") is misread as a block comment and the text to the next `*/` is dropped from the scan - all nine fences share it. Surfaced by R337's R180 plant landing in a swallowed span (a false-negative R180 caught). Fence 9 is sound for realistic placements (R178). Fix (deferred, out of R337's scope): strip line comments first, re-run all fences |

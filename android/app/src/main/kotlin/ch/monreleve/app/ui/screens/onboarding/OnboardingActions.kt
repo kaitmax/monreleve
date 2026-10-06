@@ -2,6 +2,7 @@ package ch.monreleve.app.ui.screens.onboarding
 
 import ch.monreleve.app.calc.Canton
 import ch.monreleve.app.onboarding.DenominatorChoice
+import ch.monreleve.app.onboarding.GranularityChoice
 import ch.monreleve.app.onboarding.RateChoice
 
 /**
@@ -17,6 +18,7 @@ data class OnboardingActions(
     val onCustomRateChange: (String) -> Unit,
     val onDenominatorChange: (DenominatorChoice) -> Unit,
     val onExactTotalChange: (String) -> Unit,
+    val onGranularityChange: (GranularityChoice) -> Unit,
     val onAllYearChange: (Boolean) -> Unit,
     val onActivityStartDateChange: (String) -> Unit,
     val onChooseManual: () -> Unit,

@@ -95,7 +95,7 @@ import ch.monreleve.app.settings.SettingsStore
 import ch.monreleve.app.settings.SharedPrefsDetectionModeStore
 import ch.monreleve.app.settings.SharedPrefsEveningNotificationStore
 import ch.monreleve.app.settings.SharedPrefsSettingsStore
-import ch.monreleve.app.startup.StartDestination
+import ch.monreleve.app.startup.StartDecision
 import ch.monreleve.app.startup.decideStartAfterSignIn
 import ch.monreleve.app.startup.meFetchOf
 import ch.monreleve.app.ui.screens.aujourdhui.AujourdhuiActions
@@ -191,6 +191,9 @@ class MainActivity : ComponentActivity() {
                     // AN-STATE (R310): the destination survives a rebuild, reconciled against the session (see
                     // sessionReconciled). `start`, recomputed in onCreate from the session, is the authority.
                     var destination by rememberSaveable { mutableStateOf(start) }
+                    // R335: the onboarding prefill (the steps owed + their /me values) the RESOLVING step computes,
+                    // carried into OnboardingRoute. Saveable so a rebuild during onboarding keeps the same subset.
+                    var onboardingSeed by rememberSaveable { mutableStateOf<OnboardingSnapshot?>(null) }
                     LaunchedEffect(Unit) { destination = sessionReconciled(destination, start) }
                     when (destination) {
                         Destination.SIGN_IN ->
@@ -203,9 +206,18 @@ class MainActivity : ComponentActivity() {
                                 onSignedIn = { destination = Destination.RESOLVING },
                             )
                         Destination.RESOLVING ->
-                            ResolvingRoute(session, settingsStore) { destination = it }
+                            ResolvingRoute(session, settingsStore) { decision ->
+                                when (decision) {
+                                    StartDecision.Main -> destination = Destination.MAIN
+                                    StartDecision.SignIn -> destination = Destination.SIGN_IN
+                                    is StartDecision.Onboard -> {
+                                        onboardingSeed = decision.prefill
+                                        destination = Destination.ONBOARDING
+                                    }
+                                }
+                            }
                         Destination.ONBOARDING ->
-                            OnboardingRoute(session, settingsStore, taxYear, lifecycleScope) {
+                            OnboardingRoute(session, settingsStore, taxYear, lifecycleScope, seed = onboardingSeed) {
                                 destination = Destination.MAIN
                             }
                         Destination.MAIN ->
@@ -336,17 +348,10 @@ private fun CodeRoute(
 private fun ResolvingRoute(
     session: SessionManager,
     settingsStore: SettingsStore,
-    onResolved: (Destination) -> Unit,
+    onResolved: (StartDecision) -> Unit,
 ) {
     LaunchedEffect(Unit) {
-        val decision = decideStartAfterSignIn({ meFetchOf(session.authenticatedGet(ME_PATH)) }, settingsStore)
-        onResolved(
-            when (decision) {
-                StartDestination.MAIN -> Destination.MAIN
-                StartDestination.ONBOARDING -> Destination.ONBOARDING
-                StartDestination.SIGN_IN -> Destination.SIGN_IN
-            },
-        )
+        onResolved(decideStartAfterSignIn({ meFetchOf(session.authenticatedGet(ME_PATH)) }, settingsStore))
     }
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         CircularProgressIndicator()
@@ -365,11 +370,14 @@ private fun OnboardingRoute(
     store: SettingsStore,
     taxYear: Int,
     scope: CoroutineScope,
+    seed: OnboardingSnapshot?,
     onDone: () -> Unit,
 ) {
     val context = LocalContext.current
     val eveningStore = remember { SharedPrefsEveningNotificationStore(context) }
-    var saved by rememberSaveable { mutableStateOf<OnboardingSnapshot?>(null) }
+    // R335: the controller starts from the RESOLVING step's prefill (steps owed + /me values); a rebuild then
+    // restores the live edited snapshot (R310). Both arrive through `restored`, so there is one mechanism.
+    var saved by rememberSaveable { mutableStateOf(seed) }
     val controller =
         remember { OnboardingController(SessionSettingsSaver(session), store, taxYear, scope, restored = saved) }
     val state by controller.state.collectAsState()
@@ -379,11 +387,12 @@ private fun OnboardingRoute(
                 OnboardingSnapshot(
                     it.step, it.name, it.canton, it.rateChoice, it.customRate, it.denominator,
                     it.exactTotalWorkDays, it.allYear, it.activityStartDate, it.mode, it.reminder,
+                    it.granularity, it.steps,
                 )
         }
     }
 
-    // Automatic mode (step 6): the disclosure first (D5/R316), then FINE, then BACKGROUND on API 29+; consent
+    // Automatic mode (the Mode step): the disclosure first (D5/R316), then FINE, then BACKGROUND on API 29+; consent
     // (onModeChange(AUTO_DETECT)) is recorded only when ALL are granted, and the save then PATCHes it (R315).
     var showDisclosure by rememberSaveable { mutableStateOf(false) }
     val backgroundLauncher =
@@ -445,6 +454,7 @@ private fun OnboardingRoute(
                 onCustomRateChange = controller::onCustomRateChange,
                 onDenominatorChange = controller::onDenominatorChange,
                 onExactTotalChange = controller::onExactTotalChange,
+                onGranularityChange = controller::onGranularityChange,
                 onAllYearChange = controller::onAllYearChange,
                 onActivityStartDateChange = controller::onActivityStartDateChange,
                 onChooseManual = { controller.onModeChange(ModeChoice.MANUAL) },

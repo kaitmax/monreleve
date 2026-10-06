@@ -1,0 +1,383 @@
+====================================================================
+REPORT-AN-ONBOARD-2.txt - the missing granularity step, asking only
+what is missing, a named brand tint, and a standing session rule
+Mon Releve / frontalier   2026-10-06
+====================================================================
+
+NOTE ON SPELLING. Pure ASCII, as the protocol requires. Every French
+phrase quoted below is transliterated: accents dropped, guillemets
+become double quotes. R155 - THE ASCII HERE IS ILLUSTRATIVE, NEVER A
+SOURCE. The accented original lives in android/.../fr (OnboardingCopy
+etc.) and is what ships.
+
+HOW IT ENDED
+--------------------------------------------------------------------
+DONE, EXCEPT THE ON-DEVICE WALKTHROUGH (deferred - the phone is
+disconnected; see WALKTHROUGH). Everything that does not need the phone
+is built, gated and pushed to origin/an-onboard-2:
+  - R334 written into CLAUDE.md and relay/PHASE-4-PROTOCOL.txt (section 0);
+  - R336, the granularity step: onboarding is now EIGHT steps, "Etape N
+    sur 8", eight-segment bar, a "Comment comptez-vous vos journees ?"
+    step after Methode and before Periode;
+  - R335, completeness: ONE definition of what the releve needs, a
+    partial account asked ONLY its missing steps (prefilled from /me),
+    "Etape 1 sur N";
+  - R337, a named brand-tint token brandSoft + a fence on the open-coded
+    form; PARKAN-42 closed;
+  - the onboarding Paparazzi baselines regenerated (12 changed, 2 new),
+    reasons below, and two of them cropped and looked at (R135/R178).
+
+NOT DONE BY ME, BY DESIGN:
+  - the device walkthrough (prompt section 4) - the S9 is off USB after a
+    thermal event; PARKED (PARKAN-43), to run on reconnect;
+  - pnpm gate:clone (~16 min, exceeds a sub-agent turn) and the merge -
+    DEFERRED TO THE ORCHESTRATOR, as the relay instructs. NOT merged.
+    PENDING MERGE (R334: a report states only what has happened).
+
+Gates I ran myself: :app:gate GREEN on the branch HEAD (assembleDebug,
+testDebugUnitTest, checkTestFloor, ktlintCheck, detekt,
+verifyPaparazziDebug, the release checks, lintDebug). The fast unit
+suites were run per increment (RED-then-GREEN shown below).
+
+BLOCKER: none for the code. The walkthrough is blocked on hardware
+(phone disconnected), not on anything in the tree.
+
+R273 (where this task belongs; the two state questions, answered first)
+--------------------------------------------------------------------
+tasks/todo.md has NO "AN-ONBOARD-2" card - this is a relay-driven task
+that EXTENDS AN-ONBOARD (the eleven onboarding screens + six-digit code)
+with the granularity step the operator's design omitted, the
+ask-only-what-is-missing completeness rule, and the brand-tint token.
+Commit prefix "AN-ONBOARD-2" (a namespace matching the report, R162).
+
+  - FW-VERIFY: MERGED to main (confirmed by the orchestrator; origin/main
+    at d01da3d carries it).
+  - SEED-RELEVE: has NOT fully run. It is PAUSED on origin/seed-releve
+    (7e3a248): the seed + the dossier read-back are committed, but its
+    device walkthrough was deferred (phone disconnected). I did NOT touch
+    the seed-releve branch (R334).
+
+R1 - the base
+--------------------------------------------------------------------
+origin/main = d01da3d (AN-ONBOARD, FW-VERIFY and AN-LINKS all merged).
+The orchestrator ran gate:clone (passed; one transient
+test:container:write network flake, retried green) and :app:gate GREEN
+on it just before handing over; I relied on that for R1 and confirmed
+fetch -> origin/main == d01da3d before branching an-onboard-2.
+
+====================================================================
+R334 WRITTEN - a session never destroys what it did not create
+====================================================================
+R334 was added VERBATIM (word for word as the prompt states it) to:
+  - CLAUDE.md, under "Rules that are never relaxed", right after
+    "One task per session";
+  - relay/PHASE-4-PROTOCOL.txt, as a new "0." section ahead of the
+    carried rulings, so every later Phase-4 session reads it first.
+
+THE WORKTREE CLAUSE, AND ITS DEVIATION ON THIS MACHINE (recorded, not a
+relaxation of the rule). R334 says "every agent works in its OWN git
+worktree". This machine cannot use git worktrees: the Windows
+path-length limit truncates nested .claude/worktrees/ paths (documented
+in prior reports). So sessions run on a BRANCH in the main directory and
+tasks run SEQUENTIALLY - never two agents at once. That satisfies
+R334's INTENT (no agent clobbers another's live work) by scheduling
+rather than by worktree isolation; the destructive-command clause and
+the report-only clause still bind exactly as written. This session ran
+on branch an-onboard-2 in the main directory, alone.
+
+====================================================================
+R336 - THE MISSING STEP: WHOLE DAYS OR HALF-DAYS
+====================================================================
+Onboarding gains a step AFTER Methode and BEFORE "toute l'annee", so it
+is now EIGHT steps. OnboardingStep gained GRANULARITY in that position;
+ONBOARDING_STEPS is 8 and DEFAULT_STEPS is the ordered eight.
+
+THE STEP. "Comment comptez-vous vos journees ?" with two choice cards in
+the Methode pattern:
+  - "Journees entieres" (PRESELECTED) - "Chaque jour de teletravail
+    compte pour une journee complete."
+  - "Demi-journees" - "Vous pouvez enregistrer une demi-journee quand
+    vous ne teletravaillez qu'une partie du jour."
+plus the info line "Ce choix s'applique a toute l'annee de calcul."
+
+ONE HOME FOR THE CARD TITLES (R206). The titles reuse the EXISTING
+OnboardingCopy.GRANULARITY_DAY / GRANULARITY_HALF_DAY ("Journees
+entieres" / "Demi-journees"), the very labels Parametres already uses
+for this setting - the same words for the same setting on both screens.
+My first draft added singular GRANULARITY_DAY_TITLE = "Journee entiere",
+which CopyDuplicationTest caught as a duplicate of ReleveCopy.PORTION_FULL
+(RED), so I folded to the shared labels (only the descriptions are
+onboarding-specific). The accented originals carry their accents (R155).
+
+THE DATA. It writes the EXISTING granularity setting through PATCH
+/api/v1/me - no new field, no schema change, no /v1 change. The
+controller's buildSettings now reads the chosen granularity (DAY /
+HALF_DAY) where it previously hard-coded "DAY".
+
+PROGRESS. "Etape N sur M" and the segmented bar are now derived from the
+steps THIS run asks (state.steps), so the full flow reads "sur 8" and a
+partial flow reads its own total (R335).
+
+====================================================================
+R335 - COMPLETE MEANS WHAT THE RELEVE NEEDS; ASK ONLY WHAT IS MISSING
+====================================================================
+THE DEFECT (AN-ONBOARD Q1). StartupDecider treated an account as
+onboarded when it had a canton, so an older account with settings but no
+name landed on Aujourd'hui and its PDF was refused (R205).
+
+ONE DEFINITION, ONE PLACE (R206):
+android/.../settings/ReleveCompleteness.kt. COMPLETE = every field the
+releve needs. The required fields, in onboarding order, with each
+field's presence predicate over a GET /api/v1/me view (MeView):
+  - NAME        - a non-blank name
+  - CANTON      - a non-blank canton
+  - RATE        - employmentRate present
+  - METHOD      - denominatorKind present AND (not EXACT, or the exact
+                  total present)
+  - GRANULARITY - a non-blank granularity
+  - PERIOD      - the account exists (a non-blank canton)
+
+WHY PERIOD RIDES ON CANTON (R156 conservative, recorded). The period
+answer cannot be told apart from its default: activityStartDate = null
+is a valid "whole year" answer AND the server's default, so an existing
+account's period is always a resolved answer. The only honest signal the
+period was never asked is an account that was never set up - no canton.
+So PERIOD is satisfied once the account exists. A brand-new account (no
+canton) is sent the FULL eight-step flow regardless.
+
+ASK ONLY WHAT IS MISSING. onboardingPlanFor(view) returns Complete, or
+Onboard(prefill) where the prefill carries the ordered MISSING steps and
+every known value read from /me (never sent back through the whole flow).
+A brand-new account (no canton) runs all eight steps; a partial account
+runs only the missing releve-field steps and NEVER the mode/reminder
+steps (those are not releve fields and are not missing - a partial
+onboarding leaves the server's detection mode and consent UNTOUCHED, by
+keeping the prefill's mode MANUAL so mePatchBody omits loggingMode /
+detectionConsent). The progress bar counts only the asked steps:
+"Etape 1 sur 2", not "1 sur 8". A complete account goes straight to
+Aujourd'hui.
+
+THE LOCAL PATH USES THE SAME DEFINITION. SettingsStore.isOnboarded() now
+keys on load()?.toMeView()?.isComplete(), so a locally-cached account
+missing a name is sent to finish onboarding rather than onto Aujourd'hui
+(the Q1 fix on the device path too, not only the server path - R206: the
+two cannot drift).
+
+THE WIRING. decideStartAfterSignIn now returns StartDecision
+(Main | SignIn | Onboard(prefill)); MainActivity carries the prefill
+(rememberSaveable OnboardingSnapshot) into OnboardingRoute, which seeds
+the controller through the SAME `restored` seam R310 restore uses - one
+mechanism. The App Link callback and the code exchange are unchanged;
+/v1 is unchanged (additive reads only).
+
+TESTS (each named; test-first, RED then GREEN):
+  - ReleveCompletenessTest (settings): LISTS the six fields in order,
+    then: a complete view; missing only the name (the Q1 case); missing
+    only granularity; the EXACT method needing its total; missing several
+    (name + granularity, in order); a brand-new account (no canton);
+    parseMeView tolerance and the JSON-null trap; a local Settings maps
+    to a MeView and the SAME completeness applies. RED first (unresolved
+    MeView / ReleveField / missingReleveFields).
+  - StartupDeciderTest (startup), rewritten for StartDecision: complete
+    -> Main + restored; settings but no name -> Onboard asking ONLY NOM,
+    prefilled, nothing saved; no granularity -> Onboard asking ONLY
+    GRANULARITY; missing several -> [NOM, GRANULARITY]; brand-new ->
+    the full eight; a gone session -> SignIn; unreachable -> full flow,
+    nothing prefilled.
+  - OnboardingControllerTest (onboarding): the valid draft now walks the
+    granularity step and asserts granularity "DAY"; choosing demi-journee
+    sends "HALF_DAY"; a plan of only [NOM] asks one step, saves the
+    prefilled values, and never re-sends the mode.
+
+====================================================================
+R337 - A NAMED BRAND-TINT TOKEN
+====================================================================
+LightColors.brandSoft = brand.copy(alpha = 0.08f), defined ONCE in
+design/Tokens.kt - DERIVED from the one brand token, not a new hue (R9).
+Recorded in DESIGN-SYSTEM.md section 1. Every use site now references it
+(the onboarding icon badge, the selected choice card, the beta badge);
+the old BrandCircle = brand.copy(alpha = 0.08f) is gone.
+
+THE FENCE (Fence 9 in FencesTest). Fails on brand.copy(alpha= anywhere
+but design/Tokens.kt.
+  - RED on the LIVE instance first (R178 - the live instance is the
+    proof): the fence's first run failed at FencesTest.kt naming
+    OnboardingKit.kt's BrandCircle.
+  - THE PLANT, and what R180 caught. I planted brand.copy(alpha = 0.5f)
+    and the fence PASSED - a false negative. Cause: stripComments (the
+    shared fence helper) strips BLOCK comments before LINE comments, and
+    OnboardingKit.kt's header line "design/onboarding/*.dc.html" contains
+    "/*", so the helper misreads a block comment spanning the header down
+    to the next "*/" and SWALLOWED the plant at line 47. R180's
+    "verify the plant landed WHERE intended" is exactly what caught it: a
+    node reproduction of stripComments showed the plant ABSENT from the
+    scanned text. Re-placed after the last "*/" (verified visible by the
+    same reproduction), the plant fired RED, and was reverted.
+  - PIXEL-NEUTRAL: brandSoft is the same value BrandCircle was, so
+    verifyPaparazziDebug passed and NO baseline moved for R337.
+  - PARKAN-42 CLOSED (parking.md section + status-ledger row).
+
+The stripComments blind spot is a PRE-EXISTING limitation of the shared
+helper (all nine fences use it) - see PARKAN-44 and NOTICED.
+
+====================================================================
+PAPARAZZI BASELINES REGENERATED (R135 / R207)
+====================================================================
+REASON, stated before the record ran: R336 made onboarding eight steps,
+so every step screen's progress bar gains an eighth segment and the label
+reads "Etape N sur 8"; steps after Methode shift number (Periode 5->6,
+Mode 6->7, Rappel 7->8); and the granularity screen is new. Pret has no
+progress bar, so it does not change.
+
+EXPECTED == PRODUCED (R207). recordPaparazziDebug produced exactly:
+  12 CHANGED: canton, methode, methodeExact, mode, modeAuto, nom,
+    nomLarge, periode, periodePartial, rappel, taux, tauxOther
+  2 NEW:      granularite, granulariteLarge
+  2 UNCHANGED (not in the diff): pretDefault, pretLarge
+No non-onboarding baseline was touched.
+
+LOOKED AT (R135/R178 - a person cropping the image):
+  - granularite.png: "Etape 5 sur 8", eight-segment bar (5 filled), the
+    title and subtitle, both cards (Journees entieres selected with the
+    brandSoft tint fill, Demi-journees), the info line, "Continuer".
+  - periode.png: now "Etape 6 sur 8" (was 5 of 7), eight segments, 6
+    filled - the shift is correct.
+
+====================================================================
+WALKTHROUGH - DEFERRED (PARKAN-43)
+====================================================================
+NOT RUN. The Galaxy S9 (API 29) dropped off USB after a thermal event
+before this session and did not return. The walkthrough needs the
+physical device (prompt section 4: a fresh install through eight steps;
+an account with no name asked only the name then Aujourd'hui with a PDF
+that generates; an account with no granularity asked only that; a
+complete account straight to Aujourd'hui; state across rotation and a
+background kill, default and 200 percent).
+
+What IS proven without the device: the Paparazzi baselines are the
+per-screen record at default and 200 percent (fontScale 2f), including
+the new granularity screen; and the decision/controller logic is driven
+end to end over fakes in the JVM suites above (the completeness, the
+plan, the subset run, the prefill, the granularity write). The on-device
+INTEGRATION drive (R176/R204) is what remains, and it is PARKED, to run
+on reconnect. I did NOT fake or claim it (R334: a report states only
+what has happened).
+
+====================================================================
+ADVISOR DECISIONS (advisor disabled this session; R156 conservative,
+each recorded)
+====================================================================
+The orchestrator directed no advisor calls (stalled all session). Every
+judgement took the conservative, reversible option:
+  - PERIOD rides on canton (above) - the only honest, reversible reading
+    of an answer indistinguishable from its default.
+  - A partial onboarding leaves the detection mode/consent untouched
+    (prefill mode MANUAL -> loggingMode/consent omitted). Reversible.
+  - Card titles reuse the shared GRANULARITY_DAY / GRANULARITY_HALF_DAY
+    labels rather than new singular constants (R206; forced by
+    CopyDuplicationTest). The operator may prefer the singular wording;
+    reversible (see QUESTIONS).
+  - brandSoft = brand at 8 percent (the exact alpha PARKAN-42 shipped;
+    R337 authorises naming it). Reversible.
+  - Unreachable /me -> the full flow with nothing prefilled (matches the
+    prior behaviour; a save retries when online).
+  - The stripComments blind spot is NOT fixed here (it is a shared helper
+    all nine fences use; reordering its two passes changes their scan
+    behaviour - out of R337's scope). Recorded as PARKAN-44.
+
+PHONE SETTINGS RESTORED
+--------------------------------------------------------------------
+NONE CHANGED - the phone was disconnected for the whole session, so no
+device setting was touched and none needs restoring. (The walkthrough
+that would change settings is deferred.)
+
+UNTRACKED FILES FOUND AND LEFT ALONE (R334)
+--------------------------------------------------------------------
+These were present and untracked at the start and belong to other
+paused/queued tasks; I REPORTED them and touched NONE of them, and I
+committed only my own files plus my prompt, with explicit `git add`
+(never `git add .` / `-A`):
+  relay/DOMAIN.txt, relay/AN-NOTIF.txt
+  web/scripts/_mint-readback.mjs
+  MonReleve/ (the whole subdir, incl. MonReleve/.seed-shots/)
+  android/.kotlin/
+  android/.an-*-shots/ and .an10/.an10b/.an11/.an12/.an5c-ac2/
+    .device-loop shot directories (fifteen)
+  android/scripts/an-*.mjs and android/scripts/uidrive.mjs (twenty-two)
+The only untracked file I added is relay/AN-ONBOARD-2.txt (my prompt),
+committed in increment 1.
+
+PARKED
+--------------------------------------------------------------------
+PARKAN-42 - CLOSED by R337 (the named brandSoft token; above).
+PARKAN-43 - the AN-ONBOARD-2 device walkthrough, deferred: the S9 is
+  disconnected (thermal event). To run on reconnect, against pnpm dev,
+  the four flows + rotation + background kill + 200 percent.
+PARKAN-44 - stripComments (the shared fence helper) strips block comments
+  before line comments, so a "//" line containing "/*" (e.g.
+  OnboardingKit.kt's "design/onboarding/*.dc.html") is misread as a block
+  comment and the text to the next "*/" is removed from the scan. It
+  swallowed the R180 plant once (caught by R180). Pre-existing; all nine
+  fences share it. Fix: strip line comments first. Not done here (changes
+  every fence's scan behaviour - out of R337's scope).
+
+DEVIATIONS
+--------------------------------------------------------------------
+1. R334's worktree clause is infeasible on this machine (Windows path
+   length); ran on a branch, sequentially (above). Recorded in both the
+   rule's location and here.
+2. The device walkthrough is deferred (phone disconnected) - the one
+   piece of prompt section 4 not done; PARKAN-43.
+3. gate:clone and the merge are deferred to the orchestrator (turn-length
+   and the relay's instruction). NOT merged; pending merge.
+4. R180's plant initially landed in a stripComments blind spot and was
+   re-placed (above); PARKAN-44.
+5. The granularity card titles reuse the plural Parametres labels rather
+   than the prompt's singular suggestion, because R206/CopyDuplicationTest
+   forbids a second constant with the same value (above).
+
+QUESTIONS
+--------------------------------------------------------------------
+Q1. PERIOD completeness rides on canton (an existing account's period is
+    always a resolved answer). Is that the intended reading, or should a
+    specific "period answered" signal be added to /me?
+Q2. The granularity cards read "Journees entieres" / "Demi-journees"
+    (the shared Parametres labels), not the prompt's singular "Journee
+    entiere" / "Demi-journee". Keep the shared labels (R206), or add
+    distinct singular onboarding copy?
+Q3. AN-ONBOARD's Q3 (a named brand-tint token) is now ANSWERED by R337
+    (brandSoft). AN-ONBOARD's Q1 (should name gate completeness) is
+    ANSWERED by R335 (it does). AN-ONBOARD's Q2 (the compose-bom autofill
+    hint) is untouched - still open, out of this task's scope.
+
+PUSH PROOF
+--------------------------------------------------------------------
+Branch an-onboard-2, remote github.com/kaitmax/monreleve, off main
+d01da3d. NOT merged (the orchestrator runs the final gate:clone and the
+merge). Commits, in order:
+
+  738b0de  AN-ONBOARD-2: R334 into CLAUDE.md + PHASE-4-PROTOCOL.txt (section 0), + the prompt
+  5083bc7  AN-ONBOARD-2: R337 - name the brand tint (brandSoft), fence the open-coded form, close PARKAN-42
+  5f040c7  AN-ONBOARD-2: R335 completeness - one definition of what the releve needs
+  (final)  AN-ONBOARD-2: R336 the granularity step + R335 ask-only-missing wiring + baselines + report
+           This commit carries the code, the tests, the regenerated baselines, parking.md
+           (PARKAN-43/44) and this report; its SHA is the branch tip, reported to the
+           orchestrator separately (a report cannot name its own hash).
+
+GATES I RAN. The full :app:gate ran GREEN on the branch HEAD
+(assembleDebug, testDebugUnitTest incl. the fences, RegisterCoverageTest,
+CopyDuplicationTest and CopyReachabilityTest, verifyPaparazziDebug against
+the regenerated baselines, ktlintCheck, detekt, lintDebug and the release
+checks). The only edits after that green run were two comment-accuracy
+fixes (a stale "singular card titles" note and a "step 6" -> Mode step
+label), re-checked GREEN by ktlint + detekt (the only checks a comment can
+affect). Per-increment: the fast unit suites ran RED-then-GREEN as named
+above; R337's increment and the final increment each ran the full
+:app:gate GREEN.
+
+gate:clone and the merge are the ORCHESTRATOR's (deferred; turn length) -
+NOT merged, pending merge.
+
+====================================================================
+END OF REPORT-AN-ONBOARD-2.txt
+====================================================================
