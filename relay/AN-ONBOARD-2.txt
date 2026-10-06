@@ -1,0 +1,109 @@
+AN-ONBOARD-2 SESSION PROMPT - Mon Releve
+THE MISSING STEP, ASKING ONLY WHAT IS MISSING, AND A SESSION RULE
+Paste into a fresh Claude Code session at the repository root. The
+physical phone (Galaxy S9, API 29) is connected.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+Do not stop to report progress or ask a question; judgment calls go to
+the advisors, recorded in the report; if an advisor does not answer,
+take the conservative, reversible option (R156). Ends with
+REPORT-AN-ONBOARD-2.txt committed and pushed: DONE; a HARD BOUNDARY;
+NO PROGRESS; a DEGRADED CONTEXT. R270 applies.
+
+R334 (new, and it binds this session from its first command). A SESSION
+    NEVER DELETES, OVERWRITES OR RESETS ANYTHING IT DID NOT CREATE.
+    Two incidents prompted it: FW-VERIFY deleted relay/AN-LINKS.txt, an
+    operator file, because it was untracked and "not this task's"; and
+    the Android chain's orchestrator ran `git checkout -f` and wiped a
+    running agent's uncommitted work. So:
+      - an untracked or unexpected file is REPORTED, never removed;
+      - every agent works in its OWN git worktree; nothing destructive -
+        checkout -f, reset --hard, clean, rm - runs in a directory another
+        agent may be using, and never without git status first;
+      - A REPORT STATES ONLY WHAT HAS HAPPENED. AN-ONBOARD's report said
+        "merged to main" before the merge, because its agent hit the
+        session limit first. Write "pending merge" until it is true.
+
+HARD BOUNDARIES: no change to either engine; /v1 additive only; the
+App Link callback and the code exchange unchanged; D16, D18; restore
+every phone setting changed; no red commit; R300 and R334.
+
+R273. Check tasks/todo.md; and confirm whether FW-VERIFY is merged to
+    main and whether SEED-RELEVE has run - say both first.
+R0. Read REPORT-AN-ONBOARD.txt in full (Q1-Q3, DEVIATIONS, NOTICED),
+    design/onboarding/README.md, DESIGN-SYSTEM.md.
+R1. pnpm gate:clone and :app:gate green on origin/main's HEAD.
+
+====================================================================
+0. R334 INTO THE STANDING RULES
+====================================================================
+Add R334, word for word as above, to relay/PHASE-4-PROTOCOL.txt and to
+CLAUDE.md, so every later session reads it. Commit, push.
+
+====================================================================
+1. R336 - THE MISSING STEP: WHOLE DAYS OR HALF-DAYS
+====================================================================
+The approved design left out the granularity question - the operator's
+design error, not the build's. Everyone starts on whole days, and a
+half-day user must find the setting later; changing it after days are
+recorded alters the whole year (R290). So onboarding gains a step,
+AFTER the method and BEFORE "toute l'annee":
+  "Comment comptez-vous vos journees ?" - two choice cards in the same
+  pattern as the method step: "Journee entiere" (preselected) and
+  "Demi-journee", each with one line saying what it means. Copy from
+  fr/ with its accents; the wording is yours, honest and short.
+  It writes the existing granularity setting through PATCH
+  /api/v1/me - no new data.
+Onboarding becomes EIGHT steps: "Etape N sur 8", the segmented bar with
+eight segments. Baselines regenerated with the reason (R135, R207).
+
+====================================================================
+2. R335 - COMPLETE MEANS WHAT THE RELEVE NEEDS; ASK ONLY WHAT IS MISSING
+====================================================================
+Q1: StartupDecider treats an account as onboarded when it has a canton,
+so an older account with settings but no name lands on Aujourd'hui and
+its PDF is refused (R205). Instead:
+  - COMPLETE = every field the releve needs: name; canton; activity
+    rate; method, and the total of days for the exact method; whole or
+    half days; and the start-date answer. One definition, in one place
+    (R206), with a test listing each field.
+  - AN ACCOUNT MISSING ANY OF THEM IS ASKED ONLY THOSE QUESTIONS, in the
+    usual order, each pre-filled from GET /api/v1/me where a value
+    exists - never sent back through the whole flow. That also closes
+    AN-ONBOARD's partly-onboarded case (NOTICED 3).
+  - The progress bar counts only the questions actually asked: "Etape 1
+    sur 2", not "1 sur 8".
+  - A complete account goes straight to Aujourd'hui, as now.
+Tests: complete; missing only the name; missing only granularity;
+missing several; a brand-new account (all eight).
+
+====================================================================
+3. R337 - A NAMED BRAND-TINT TOKEN
+====================================================================
+PARKAN-42 rendered the designs' light brand tint as
+brand.copy(alpha=0.08f) at each use. Name it once: brandSoft, the brand
+colour at 8 percent, in Tokens.kt, recorded in DESIGN-SYSTEM.md section
+1 as derived from the brand colour, not a new hue (R9). Replace every
+use. A fence fails on brand.copy(alpha= anywhere outside Tokens.kt -
+plant one, verify it landed, see it fail, revert. Close PARKAN-42.
+
+====================================================================
+4. THE WALKTHROUGH, AND THE REPORT
+====================================================================
+On the S9, against the dev server: a fresh install through all eight
+steps; an account with no name, asked only for the name, then on to
+Aujourd'hui with a PDF that generates; an account with no granularity,
+asked only that; a complete account, straight to Aujourd'hui. Every
+screen opened and described, default size and 200 percent; state kept
+across rotation and a background kill (R310). Gates, gate:clone, merge
+after your own gate:clone, push.
+
+REPORT - REPORT-AN-ONBOARD-2.txt: HOW IT ENDED / R273 (FW-VERIFY merged?
+SEED-RELEVE run?) / R334 WRITTEN / R336 THE NEW STEP / R335 COMPLETENESS
+(the field list, each test) / R337 / WALKTHROUGH / ADVISOR DECISIONS /
+PHONE SETTINGS RESTORED / UNTRACKED FILES FOUND AND LEFT ALONE (R334) /
+PARKED / DEVIATIONS / QUESTIONS / PUSH PROOF
+
+END OF AN-ONBOARD-2 PROMPT
