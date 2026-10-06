@@ -66,18 +66,6 @@ object NotificationCopy {
      */
     fun publicLines(): NotificationLines = NotificationLines(Fr.APP_NAME, "Une journée à enregistrer.")
 
-    /**
-     * The UNLOCKED (private) lines for a day that cannot be proposed with confidence (R312): the manual question
-     * and the not-sure explanation, shown with the manual buttons. A HIGH proposal uses autoProposalTitle instead;
-     * manual mode uses MANUAL_TITLE with the date in words. `kindName` null means the not-sure invitation.
-     */
-    fun privateLines(kindName: String?): NotificationLines =
-        if (kindName == null) {
-            NotificationLines(MANUAL_TITLE, DetectionCopy.NOT_SURE)
-        } else {
-            NotificationLines("Journée détectée : ${sideLabel(kindName)}", "Confirmez ou corrigez votre journée.")
-        }
-
     // CH -> « En Suisse », HOME -> « Domicile » (AujourdhuiCopy, R206). A proposal is only ever CH or HOME.
     private fun sideLabel(kindName: String): String =
         when (kindName) {

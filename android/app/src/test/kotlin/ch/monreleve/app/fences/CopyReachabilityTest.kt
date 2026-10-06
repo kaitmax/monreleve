@@ -209,9 +209,6 @@ private val UNREACHABLE: Map<String, String> =
         "NotificationCopy.publicLines" to
             "the LOCK-SCREEN (public) notification lines, built by EveningNotifier.post (a NotificationManager " +
             "concern the ui/ fence keeps out of ui/) - reached from the background notifier, not a surface",
-        "NotificationCopy.privateLines" to
-            "the UNLOCKED (private) notification lines, built by EveningNotifier.post (a NotificationManager " +
-            "concern the ui/ fence keeps out of ui/) - reached from the background notifier, not a surface",
         // AN-NOTIF (R339): the record-from-notification copy is built by the background notifier
         // (detection/EveningNotifier) and the recording receiver (notification/EveningActionReceiver), both
         // NotificationManager/BroadcastReceiver concerns the ui/ fence keeps out of ui/ - reached from there,
