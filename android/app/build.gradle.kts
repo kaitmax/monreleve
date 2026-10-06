@@ -326,6 +326,10 @@ dependencies {
     // AN5 increment 3: the offline-queue drain (data/sync). CoroutineWorker + the
     // unique, network-constrained, backing-off work request.
     implementation(libs.androidx.work.runtime.ktx)
+    // AN-LINKS (R136): Android Custom Tabs for the app -> website links. The page opens in the app's context
+    // with the brand colour in the toolbar; a device with no Custom Tabs provider falls back to its browser
+    // (a Custom Tab is an ACTION_VIEW intent), and with no browser at all openLegalLink shows the address (R299).
+    implementation(libs.androidx.browser)
     testImplementation(libs.junit)
     // TEST-ONLY, justified by name (AN1 out-of-scope note): ThemeCensusTest.kt
     // reflects over androidx Typography/ColorScheme, library data classes with
