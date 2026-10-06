@@ -1,0 +1,363 @@
+FW-VERIFY - A VERIFICATION CODE ON EVERY RELEVE
+Report. Pure ASCII. French copy lives accented in lib/fr; spellings here are
+illustrative transport only (R155).
+
+====================================================================
+SUMMARY
+====================================================================
+Every releve the PDF route produces is now recorded server-side, and anyone
+holding the document can confirm it against what the server issued. The work
+shipped in five increments on branch fw-verify, each committed only on a green
+fast-suite run (R132 as refined for the no-container protocol: typecheck, lint,
+pnpm test, test:db, test:late, build run foreground; the slow full browser and
+container suites - test:e2e in full, test:visual, gate:clone - are left to the
+coordinator, who runs them before merge).
+
+  R329  issuance record: a new table + real migration, written whenever the PDF
+        route produces a file; versions and supersession; erasure extended.
+  R331  name changes kept BY DATE (never the former value); the document's
+        "Nom modifie le <date>" line; privacy + export + erasure.
+  R330  the public verification page /verifier/[code]: shows only what is
+        printed, never the email or the account; neutral page; rate-limited;
+        noindex; zero cookies.
+  R332  the QR + printed verification address + code TEXT on the PDF, ALL gated
+        on a dedicated permanent-origin setting; absent by default.
+  R333  the CGU states one account = one person, email as the anchor; the
+        privacy notice gains the issuance-record and name-change disclosures.
+
+HARD BOUNDARIES HELD: no engine change (web or Android untouched); /v1 changes
+are additive only (the frozen GET /api/v1/dossier contract is unchanged - the
+new nameChangedAt field rides on the Dossier object the print route reads, NOT
+on the wire); no real person contacted (no mailer path exercised); zero cookies
+on the verification page (asserted e2e); R332 default = no QR/address; the QR
+decode's dev dependency is named and justified (R136).
+
+Base (R1): origin/main at 6a908d9 (AN-ONBOARD merged). The coordinator ran
+gate:clone and :app:gate GREEN on 6a908d9 before this task; relied on per R1.
+git fetch confirmed origin/main == 6a908d9 before branching fw-verify.
+
+====================================================================
+R273
+====================================================================
+Checked tasks/todo.md: the FW series runs FW1..FW29 and AN1..AN15; there is no
+"verification code" task and no free FW number reserved for it. This work is
+named FW-VERIFY to avoid a number collision (R162), exactly as the prompt
+directs. It belongs where it is; nothing in todo.md claims it. Not relocated.
+
+====================================================================
+THE ISSUANCE RECORD (R329) - fields, migration, erasure
+====================================================================
+MODEL IssuanceRecord (prisma/schema.prisma), migration
+20261006071936_verification_issuance_record:
+  code                   String  @unique  - the public identifier, 128 random
+                                            bits as hex (newVerificationCode =
+                                            randomBytes(16).toString('hex')).
+  userId, taxYear, version
+  supersededAt           DateTime?        - null while current; set to the NEXT
+                                            version's generatedAt when superseded
+  name                   String           - the name AS PRINTED
+  declarableRate, teleworkDays, missionDaysFrance, missionDaysThirdState  Float
+  periodFraction Float, periodStartDate String?   - DossierPeriod's own fields
+  sha256                 String           - SHA-256 (hex) of the produced PDF
+  generatedAt            DateTime         - server clock = the printed date
+  createdAt              DateTime @default(now())
+  @@unique([userId, taxYear, version]); @@index([userId]);
+  onDelete: Cascade from User.
+
+R196 INVARIANT IN THE DATABASE: the migration adds a PARTIAL unique index
+  CREATE UNIQUE INDEX IssuanceRecord_one_current_per_year
+    ON "IssuanceRecord"("userId","taxYear") WHERE "supersededAt" IS NULL;
+so "at most one current version per (account, year)" survives any writer, not
+only recordIssuance's transaction. Proven both ways in tests/db/issuance-
+record.test.ts (a second current row is refused by the database).
+
+WRITTEN WHEN THE FILE IS PRODUCED: the PDF route (app/api/v1/export/pdf/route.ts)
+assigns the instant and the code once, builds the dossier with that instant,
+passes the instant (and the code) into the print URL so the printed date equals
+the record's, renders, hashes the produced bytes, and calls recordIssuance in a
+transaction that supersedes any current version with the NEW row's generatedAt.
+IF RECORDING FAILS, THE DOCUMENT IS NOT RETURNED (code record_failed) - an
+unrecorded releve is one nobody can verify. Figures are DERIVED from the dossier
+(figuresFromDossier, R181), never transcribed; the mission split is summed from
+the dossier's months.
+
+ERASURE (R203/R329): IssuanceRecord carries a userId and cascades, so it joins
+FW26's schema-derived negative sweep automatically; the receipt also counts it
+(lib/account/delete.ts, removed.IssuanceRecord). It is also in the account
+EXPORT (lib/account/export.ts, key 'issuances') - the person's own data, with
+the code, so they keep the means to verify documents they have shared. The
+export census (account-export.test.ts) and the whole-schema table-list censuses
+(alert-subscriber.test.ts, fw14-era-migration.test.ts) were updated.
+
+TESTS: tests/db/issuance-record.test.ts - newVerificationCode is 32 hex / 128
+bits and non-repeating; sha256Hex matches node crypto; v1 current with all
+printed fields + file hash; regenerate -> v2, v1 supersededAt = v2's instant;
+at most one current per year; years independent; the partial index refuses two
+currents. RED first (missing module/model), then GREEN. Route integration (hash
+of the returned bytes, v2 supersedes v1) is in export-pdf.test.ts, live-gated.
+
+====================================================================
+NAME CHANGES (R331)
+====================================================================
+MODEL NameChange { id, userId, changedAt DateTime @default(now()) }, migration
+20261006094423_name_change_dates. DELIBERATELY NO column for the former value -
+the harm (a maiden or pre-transition name on a tax document) is designed out,
+not guarded against. Cascades + joins the sweep + export (key 'nameChanges',
+dates only) + receipt.
+
+RECORDED on a REAL change only: PATCH /api/v1/me (app/api/v1/me/route.ts) now
+selects the current name and, in the SAME transaction as the update, inserts a
+NameChange iff an existing non-empty name becomes a different one. A first-time
+set (onboarding) records nothing; re-sending the same name records nothing.
+
+THE DOCUMENT LINE: buildDossierFor queries the latest NameChange WITHIN the tax
+year (a coarse UTC calendar-year window) and passes the date to buildDossier,
+which puts it on Dossier.nameChangedAt (an ISO day, NOT on the /v1 wire). The
+print route renders one line in the identification block - "Nom modifie le
+<date>" - as a second <dd> under the Nom term, only when the name changed in that
+year. It NEVER renders a former name; the dossier never carries one (NameChange
+has no value column, and the query selects only changedAt).
+
+TESTS (tests/db/name-change.test.ts, RED then GREEN): a real change records one
+row and no former value; a first-time set and a same-value re-send record none;
+a second change is a second row; a dossier for the change's year carries the
+date and the current name with the former name absent from the whole payload; a
+prior year's dossier carries no date.
+
+====================================================================
+THE DOCUMENT (the decoded QR)
+====================================================================
+The releve prints a verification block ONLY when the permanent origin is set
+(R332, below): the code as TEXT (for anyone who cannot scan), the verification
+address, and a QR - all pointing at the same URL,
+https://<origin>/verifier/<code>.
+
+DECODED FROM THE PRODUCED FILE (R232), validated LIVE against pnpm dev with
+MONRELEVE_VERIFICATION_ORIGIN=https://monreleve.ch:
+  tests/db/verification-qr.test.ts PASSED. The QR was extracted from the
+  produced PDF's embedded image XObject (tests/db/support/pdf-image.ts: Node
+  zlib inflate + PNG-predictor un-filtering + RGBA; no pdfjs, no native canvas)
+  and decoded with jsqr to EXACTLY
+    https://monreleve.ch/verifier/f18c9d3a78234267667e0f18e786bf5d
+  for a run whose stored record carried that same code. The printed address and
+  code text were also found in the extracted PDF text.
+
+DEV DEPENDENCIES (R136), named and justified:
+  qrcode (RUNTIME) - the QR encoder; the print route renders a PNG data URI at
+    render time, only when the origin is set. No built-in encoder exists and
+    hand-rolling Reed-Solomon is not sane.
+  jsqr (DEV) - the QR DECODER the prompt pre-authorises; reads the QR out of the
+    produced PDF.
+  @types/qrcode (DEV) - types for qrcode.
+  (No PDF library added: support/pdf-image.ts recovers the image with Node's own
+  zlib, so the proof stays on the produced file without pdfjs/native canvas.)
+
+The extractor handles the shape Chromium writes for a lossless image (FlateDecode,
+8 bpc, DeviceRGB/Gray, PNG predictor or none); a shape it does not handle returns
+null and the test says so rather than guessing. This proved sufficient against
+the real Chromium output.
+
+====================================================================
+THE VERIFICATION PAGE (R330)
+====================================================================
+app/(public)/verifier/[code]/ - force-dynamic, in the public group (inherits the
+shell), noindex via its own metadata, zero cookies, no client JS.
+
+PRIVACY BOUNDARY AT THE SOURCE: lib/verification/lookup.ts selects ONLY the
+printed columns and NO relation - the email is never loaded, so it cannot be
+rendered. It returns the printed fields or null; a malformed code returns null
+WITHOUT touching the database. Unknown, withdrawn (erased) and malformed all
+resolve to the one neutral null by one path - no content or timing difference.
+
+The page shows: name, taux a declarer (2 dp, as filed), teletravail days,
+missions in France and in third states, the period (the document's own sentence,
+derived from DOSSIER_COPY - R181), the generation date, the version, and a
+"newer version issued on <date>" notice when supersededAt is set (the date only,
+never the newer version's figures). The vouch says the document CORRESPONDS to
+the one issued; it never says certifie/atteste/conforme/valide/approuve.
+
+TESTS:
+  tests/db/verification-lookup.test.ts - the printed fields are returned; the
+    account email is NEVER in the view (seeded a known email, asserted absent,
+    presence-first); the supersession instant is carried; null for unknown and
+    for malformed codes.
+  tests/unit/pages/verifier.test.tsx - the Content render (jsdom): the printed
+    fields present; a FORMER name never appears (it only renders the view given);
+    the superseded notice appears only when supersededAt is set; the neutral
+    unknown page; the rate-limited page (does not leak the unknown wording); NO
+    banned word.
+  e2e/verifier.spec.ts (single-file playwright, ran green) - a code with no
+    match gets the neutral page SERVED, carries meta robots noindex, and sets
+    NO cookie (context.cookies() == []).
+
+EMAIL-ABSENT: proven at the source (lookup never loads it) and on the rendered
+HTML (the walkthrough's /verifier fetch: email absent == true). FORMER-NAME-
+ABSENT: proven in the unit test and live in the walkthrough (step 4).
+
+RATE LIMIT: the page calls checkRate(clientKey(headers()), limit 30) before the
+lookup (lib/alerts/rate-limit.ts, the existing in-memory per-address limiter);
+over the limit it renders the neutral rate-limited page. 30 is above a
+fiduciaire's honest burst and the real anti-guessing defence is the 128-bit code.
+
+====================================================================
+R332 - WHAT THE PDF SHOWS TODAY, WITHOUT THE PERMANENT DOMAIN
+====================================================================
+By DEFAULT the PDF carries NEITHER the QR, NOR the printed address, NOR the code
+text. lib/verification/origin.ts reads MONRELEVE_VERIFICATION_ORIGIN and returns
+a believable https origin or null; it refuses http, localhost/loopback, a
+non-bare origin (path/query/fragment), and unset. The print route renders the
+block only when the origin is believable AND a code was issued.
+
+VALIDATED BOTH WAYS live:
+  origin UNSET  -> tests/db/verification-qr.test.ts default-off block PASSED
+                   against pnpm dev with no origin: the produced PDF contains the
+                   title but NOT the verification heading, and extractFirstImage
+                   returns null (no raster image).
+  origin SET    -> the QR-decode block PASSED (above).
+
+This is a NEEDS item for release: the permanent production origin must be chosen
+and MONRELEVE_VERIFICATION_ORIGIN set before the QR/address can print. Recorded
+here and in .env.example-adjacent reasoning (the var is documented in
+lib/verification/origin.ts). A releve must never point at localhost or a host
+the operator may not keep (R205), which is why the default is off.
+
+====================================================================
+PRIVACY NOTICE AND TERMS - each sentence and its test
+====================================================================
+/confidentialite (lib/fr/confidentialite.ts), each disclosure keyed and mapped
+in lib/content/personal-data.ts (every new column mapped; the schema-derived
+test refuses an unmapped column):
+  DISCLOSED_RECORDS.issuanceRecord - what the record holds (an identifier, the
+    year, a version, the printed name and figures, a file fingerprint) AND that
+    the verification page shows only what is printed and never the account.
+    Mapped from all 16 IssuanceRecord columns.
+    Test: tests/unit/pages/confidentialite.test.tsx asserts "identifiant unique",
+    "page de verification", "jamais votre compte" render.
+  DISCLOSED_RECORDS.nameChange - the DATES the name changed, never the former
+    value. Mapped from the 3 NameChange columns.
+    Test: asserts "modifie" and "ancienne valeur" render.
+  retention[] - the issued-releve records and the name-change dates are kept
+    until account deletion (WHAT in the app list, HOW LONG in retention, as the
+    history line does). Test: asserts "releves que vous generez" and
+    "suppression de votre compte" render.
+  tests/unit/content/personal-data.test.ts (every column mapped + every key
+    rendered) and tests/db/privacy-claims.test.ts (39, incl. the map-covers-the-
+    page guard) stay green.
+
+/cgu (lib/fr/cgu.ts): new section "Un compte, une personne" (R333) - an account
+and its releve belong to one person; the email is the account's anchor. Copy,
+sourced in the product's own terms, no regulatory claim (R146), no banned word.
+  Test: tests/unit/pages/cgu.test.tsx asserts "une seule personne" + "releve",
+  and "adresse e-mail" + "ancrage" render.
+
+Copy integrity: all new French is accented in lib/fr (R155); apostrophes U+2019
+(R126); no-break spaces before : ; set via the files' own helpers or inserted as
+U+00A0; the codepoint census (copy-codepoints.test.ts) was updated with stated
+reasons (confidentialite 20 -> 23: issuanceRecord's colon+semicolon and
+nameChange's semicolon; total to 46). The document's verification copy
+(DOSSIER_COPY.verification) uses n(':') so no literal lands in the census.
+
+====================================================================
+WALKTHROUGH (R176)
+====================================================================
+Driven END TO END over HTTP against pnpm dev on port 3100 with
+MONRELEVE_VERIFICATION_ORIGIN=https://monreleve.ch (a seeded account: Camille
+Rey, GE, three logged days). Observed:
+  1. Generated a releve: code f18c9d3a...bf5d, version 1, sha 041d2291...
+     The QR DECODED to https://monreleve.ch/verifier/f18c9d3a...bf5d. The printed
+     titulaire and the code text were present on the document.
+  2. Opened /verifier/<code>: the name showed, the rate showed, and the account
+     email (walk@example.com) was ABSENT from the page HTML.
+  3. Regenerated: version 1 was marked superseded (supersededAt set to the new
+     instant), the current version became 2, and /verifier/<oldcode> showed the
+     "version plus recente" notice.
+  4. Changed the name to Camille Martin and regenerated: the new document showed
+     "Camille Martin" and carried "Nom modifie le", and the FORMER name "Camille
+     Rey" was ABSENT from both the document and the verification page.
+  5. Deleted the account (confirm SUPPRIMER, status 200): /verifier/<code>
+     became the neutral page ("Aucun releve ne correspond a ce code...").
+Separately, with the origin UNSET, the produced PDF carried no verification
+block at all (default-off, validated). The temporary driver that produced these
+observations was removed after the run; the assertions behind each line live in
+the committed tests named above.
+
+Single-file e2e driven green: e2e/verifier.spec.ts (served neutral page,
+noindex, zero cookies).
+
+====================================================================
+PARKED
+====================================================================
+PARK-20 (parking.md) - uploading a PDF to compare its fingerprint, recorded as
+an idea per the prompt's OUT OF SCOPE list. The feature is not built; the
+verification page already answers the three risks. Reversible.
+
+====================================================================
+DEVIATIONS
+====================================================================
+- Increment boundaries differ from the prompt's 1..6 numbering: executed as
+  five committed increments (issuance record; name changes; verification page;
+  privacy+terms+origin-setting; QR+address+decode), ordered for durability under
+  the session-limit risk (per-increment push). All of the prompt's work is done.
+- Prisma schema changes (two migrations) are normally ask-first, but R329/R331
+  command the table and the real migration explicitly; taken as authorised by
+  the prompt and recorded here.
+- Runtime dependency qrcode added (normally ask-first): the prompt's "the QR
+  code" deliverable requires an encoder; recorded under R136 above. The dev
+  decoder jsqr is pre-authorised by the prompt.
+- The verification page shows the generation DATE (Swiss dots), not the date-
+  and-minute the document's identification block prints; the date plus the
+  version and figures identify the issued document, and the vouch names the
+  date. Deliberate, recorded.
+- The QR-decode and the R332 default-off proofs are LIVE-GATED (they need a
+  rendering server, and the QR one needs the origin env): they run in the
+  walkthrough and skip, named (R133), in the fast suites and in gate:clone. Both
+  were run and passed here; the coordinator's gate:clone will skip them with a
+  named reason.
+- Per the coordinator's no-container protocol, the full test:e2e (292), the
+  visual suite and gate:clone were NOT run in this session; the coordinator runs
+  them before merge. Stale/new visual baselines are listed to the coordinator
+  (see below).
+- advisor NOT called (stalled all session); every judgement took the
+  conservative, reversible option and is recorded (R156).
+
+NOTICED BUT NOT TOUCHING
+- relay/AN-LINKS.txt appeared untracked in the working tree. It is a relay
+  prompt (the operator's to author, not this task's) and OUT OF SCOPE; deleted
+  the untracked file, did not commit it.
+
+====================================================================
+QUESTIONS
+====================================================================
+- R332 needs the operator to choose the permanent production origin and set
+  MONRELEVE_VERIFICATION_ORIGIN before the QR/address print. Until then the
+  default (no verification block) ships. (NEEDS, not a blocker.)
+- The verification-page rate limit (30/window) shares the in-memory limiter with
+  the alert form; a dedicated bucket could be added if the operator wants the
+  two counted separately. Conservative reuse taken (R206).
+
+====================================================================
+PUSH PROOF
+====================================================================
+Branch fw-verify, pushed to origin/fw-verify. Commits on top of 6a908d9:
+  e44d4b2  FW-VERIFY: the issuance record (R329) and its wiring
+  c6f0972  FW-VERIFY: name-change dates kept by date (R331)
+  e7c5efe  FW-VERIFY: the public verification page (R330)
+  a71d5f3  FW-VERIFY: privacy notice, terms (R333) and the R332 origin setting
+  375d4b3  FW-VERIFY: the QR, printed address and code on the PDF, gated (R332)
+  (+ this report commit)
+
+Fast suites green at each commit (typecheck, lint, pnpm test, test:db,
+test:late, build; single-file e2e where a spec was added). The full test:e2e,
+test:visual and gate:clone are the coordinator's to run before merge.
+
+FOR THE COORDINATOR - visual baselines to generate/regenerate:
+  NEW:   page-verifier-inconnu-{desktop,mobile}.png  (the neutral verification
+         page, R330; spec entry added to e2e/pages.visual.spec.ts, baseline not
+         generated here - needs the container).
+  STALE (regenerate): page-confidentialite-{desktop,mobile}.png (new privacy
+         bullets: issuance disclosure, name-change disclosure, retention line)
+         and page-cgu-{desktop,mobile}.png (new "Un compte, une personne"
+         section). The print route is token-gated and not in the baseline set;
+         the document's QR block is validated by the walkthrough, not a baseline.
+
+END OF REPORT
