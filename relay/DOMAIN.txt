@@ -1,0 +1,151 @@
+DOMAIN SESSION PROMPT - Mon Releve
+MONRELEVE.CH IS LIVE: CHECK WHAT IS DEPLOYED, AND SWITCH ON WHAT WAS
+WAITING FOR IT
+Paste into a fresh Claude Code session at the repository root, after
+AN-ONBOARD-2 has finished (both use the phone). The physical phone
+(Galaxy S9, API 29) is connected.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+Do not stop to report progress or ask a question; judgment calls go to
+the advisors, recorded in the report; if an advisor does not answer,
+take the conservative, reversible option (R156). Ends with
+REPORT-DOMAIN.txt committed and pushed: DONE; a HARD BOUNDARY; NO
+PROGRESS; a DEGRADED CONTEXT. R270 applies.
+
+R334: never delete, overwrite or reset what you did not create;
+untracked files are reported, not removed; your own worktree; a report
+states only what has happened.
+
+WHAT THIS SESSION CANNOT DO, AND MUST NOT PRETEND TO: it has no access
+to the production server's settings, the DNS provider, the Resend
+dashboard or the operator's inbox. Everything it can check from OUTSIDE
+- HTTP, DNS, the code - it checks and records. Everything that needs
+the operator, it writes as an exact step in docs/domain-checklist.md:
+which setting, which value, where, and the command that proves it
+worked. It never claims an operator step was done.
+
+HARD BOUNDARIES: no change to either engine or /v1 beyond additive; DO
+NOT DEPLOY; no email to anyone except an address the operator supplies
+in OPERATOR_TEST_EMAIL for this run, and only if that variable is set;
+no signing key created; no secret written into the repository.
+
+R273. The operator reports monreleve.ch is live. Verify it.
+R1. pnpm gate:clone and :app:gate green on origin/main's HEAD.
+
+====================================================================
+1. WHAT IS ACTUALLY DEPLOYED
+====================================================================
+Positive signals only (R133, R169):
+  - /api/health identifies this product and reports its version or
+    commit. Compare with origin/main and list what the live site lacks,
+    by feature: AN-ONBOARD's code sign-in, FW-VERIFY's verification
+    page, R325's privacy wording, and anything else.
+  - IS THE API LIVE, OR ONLY THE WEBSITE? Probe /api/v1 routes without
+    credentials and record each answer - a named refusal proves the
+    route exists; a 404 or a static page proves it does not.
+  - Every public page loads with its heading and stylesheet; https is
+    valid; http redirects to https.
+  - CANONICALS: the origin is fixed when the site is built (FW28), so
+    the deployed build must have been built with https://monreleve.ch.
+    Read the canonical, sitemap and Open Graph URLs on live pages; a
+    localhost or any other host is a finding.
+If the live site is behind main, the checklist names exactly what a
+deploy would bring. Deploying is the operator's decision.
+
+====================================================================
+2. SIGN-IN LINKS THAT OPEN THE APP - assetlinks.json
+====================================================================
+The route exists and answers 404 until fingerprints are configured
+(R205, FW22). Read from the code which setting holds them and what
+shape it requires.
+  - Compute the SHA-256 fingerprint of the certificate that signs the
+    builds on the operator's machine today (the debug keystore), and
+    write into the checklist: the setting's name, that value, and the
+    package name the code uses. State plainly that the RELEASE upload
+    key and Google Play's app-signing key must be added at the Play
+    release (AN14b), and that a statement listing only a debug key
+    verifies nothing for a Play install (PARK4-2's caveat).
+  - Once the operator has set it - check the live
+    /.well-known/assetlinks.json; if it still 404s, say "not yet
+    configured" and move on - verify its exact shape: the relation, the
+    package name, uppercase colon-separated SHA-256, and never an empty
+    list.
+  - If it is live, test on the S9: reinstall the debug build so Android
+    re-verifies, then open a real https://monreleve.ch callback link
+    from the phone and see whether the app opens. Use the commands
+    Android 10 offers to read the verification state, and record
+    exactly what they say.
+
+====================================================================
+3. QR CODES ON RELEVES - R332
+====================================================================
+Write into the checklist: MONRELEVE_VERIFICATION_ORIGIN =
+https://monreleve.ch, on the production server. Then, locally with that
+value set, generate a releve, decode its QR code and confirm it points
+at https://monreleve.ch/verifier/<code>. If the live site already has
+FW-VERIFY, confirm an unknown code there gets the neutral page.
+
+====================================================================
+4. R338 - THE VERIFICATION PAGE'S OWN RATE LIMIT
+====================================================================
+FW-VERIFY shares the in-memory rate limiter with the alert form. They
+are abused differently, and traffic on one must not block the other:
+give the verification page its own bucket. Test-first. Commit, push.
+
+====================================================================
+5. EMAIL - RESEND
+====================================================================
+The code sends through Resend - sign-in links and codes, and the alert
+list's double opt-in. With no key, the mailer deliberately keeps emails
+in memory (FW28), which on a live site means NOTHING IS SENT.
+  - From outside, read the DNS: SPF, DKIM and DMARC for monreleve.ch and
+    its sending subdomain. Record what resolves. Do not invent the
+    records: the exact values come from Resend's dashboard, and the
+    checklist says where to copy them from.
+  - From the code and docs/deploy.md, list the settings the production
+    server needs - the key, the sender address - by their real names.
+  - THE ALERT FORM ON THE LIVE SITE: if it is live and accepts an
+    address while nothing is sent, it breaks the promise it makes. The
+    checklist's first email item: sign up with your own address and
+    confirm the email arrives - and until it does, consider hiding the
+    form.
+  - If OPERATOR_TEST_EMAIL is set and the live API has the code
+    sign-in: request a sign-in for that address and record the
+    response. The operator confirms receipt; this session cannot.
+  - The privacy notice must name Resend as a processor. Check
+    /confidentialite; if it does not, add the sentence with its privacy
+    map entry (FW14, FW22, FW26) - a code change, not a deploy.
+
+====================================================================
+6. THE RELEASE BUILD AGAINST THE LIVE SERVER - only if the API is live
+====================================================================
+If section 1 shows the API live with the code sign-in: build the
+minified release-configuration variant (AN14a's audit variant) pointed
+at https://monreleve.ch, install it on the S9, and go as far as the
+live server allows without a real inbox - the email screen, the code
+screen, a named refusal for a wrong code. With OPERATOR_TEST_EMAIL set
+and the operator present, the full sign-in. This is the first time a
+minified build meets the real server (PARKAN-31). If the API is not
+live, say so and leave it.
+
+====================================================================
+DONE AND REPORT
+====================================================================
+  D1. What is deployed, against main, recorded feature by feature.
+  D2. docs/domain-checklist.md: every operator step, its exact value
+      and where it goes, and the command that proves it - ordered most
+      urgent first, the alert form's email at the top if it is live.
+  D3. assetlinks, the QR origin and email each checked as far as the
+      outside allows; R338 built and tested.
+  D4. Gates green, gate:clone passing, pushed.
+REPORT - REPORT-DOMAIN.txt: HOW IT ENDED / R273 / WHAT IS DEPLOYED /
+IS THE API LIVE / CANONICALS / ASSETLINKS (fingerprint computed; live
+state; the S9 test if possible) / QR ORIGIN / R338 / EMAIL (DNS found;
+settings needed; the alert form; the privacy notice) / THE RELEASE
+BUILD (or why not) / THE CHECKLIST, IN FULL / UNTRACKED FILES LEFT
+ALONE (R334) / ADVISOR DECISIONS / PARKED / DEVIATIONS / QUESTIONS /
+PUSH PROOF
+
+END OF DOMAIN PROMPT

@@ -1839,6 +1839,32 @@ every fence's result. A follow-up task should reorder the two passes and re-run 
 
 NEEDS: a small dedicated task to reorder stripComments and confirm every fence stays correct.
 
+## PARK4-2 - a Digital Asset Links statement listing only a debug/upload key verifies nothing for a Play install  [formalised by DOMAIN, 2026-10-06]
+
+FORMALISED HERE because docs/domain-checklist.md (section 4) cites PARK4-2 and it
+had no heading of its own - until now it was only cross-referenced (PARKAN-1's
+NEEDS at line ~1056, docs/api-v1.md section 4, and the assetlinks route comment
+"Parked as PARK4-2"). The id and its content are not new; the heading is.
+
+CAVEAT: Google Play re-signs an uploaded app with its OWN app-signing key, so the
+certificate that actually signs the installed APK is NOT the upload/release key and
+is NOT the debug key. /.well-known/assetlinks.json must therefore list, in
+ANDROID_SHA256_CERT_FINGERPRINTS:
+  - the debug key, for sideloaded debug builds against this origin (its SHA-256 is
+    in the checklist), AND at the Play release (AN14b):
+  - the release UPLOAD key (what the AAB is signed with), AND
+  - Google Play's APP-SIGNING key (Play Console -> App integrity -> App signing key
+    certificate -> SHA-256).
+A statement naming only one of these verifies for nobody who installs from Play,
+and the symptom ("the link opens a browser sometimes") is as far from the cause as
+a symptom gets (R205). The assetlinks route (app/.well-known/assetlinks.json) only
+validates SHAPE - uppercase colon-separated SHA-256, a valid package name, never an
+empty list; it cannot validate that the RIGHT keys were supplied, which is this
+operator judgement.
+
+NEEDS: at AN14b, append the release upload key and Play's app-signing key SHA-256 to
+ANDROID_SHA256_CERT_FINGERPRINTS. Until then only sideloaded debug installs verify.
+
 ## STATUS LEDGER  [appended 2026-09-29]
 
 One line per Android-era entry, so the state of each is visible without

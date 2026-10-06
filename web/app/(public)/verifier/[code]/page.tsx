@@ -55,7 +55,14 @@ export default async function VerifyPage({
   params: Promise<{ code: string }>;
 }): Promise<React.ReactElement> {
   const requestHeaders = await headers();
-  const decision = checkRate(clientKey(requestHeaders), Date.now(), VERIFY_RATE_LIMIT);
+  // R338: ITS OWN BUCKET. The alert form (app/api/alertes/route.ts) and this page
+  // both key a window by the client address. Keyed bare, they share ONE window per
+  // address, so a fiduciaire scanning several releves would spend the alert form's
+  // five-attempt budget, and a script hammering the alert form would refuse this
+  // page - traffic on one blocking the other. The auth routes already namespace
+  // for exactly this reason (app/api/v1/auth/code/route.ts: `auth:code:ip:`); this
+  // page gets `verify:ip:` so the two endpoints cannot refuse one another.
+  const decision = checkRate(`verify:ip:${clientKey(requestHeaders)}`, Date.now(), VERIFY_RATE_LIMIT);
 
   let state: VerificationState;
 
