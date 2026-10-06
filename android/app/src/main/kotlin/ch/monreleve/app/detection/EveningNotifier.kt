@@ -11,6 +11,7 @@ import androidx.core.app.NotificationManagerCompat
 import ch.monreleve.app.R
 import ch.monreleve.app.data.local.MonReleveDatabase
 import ch.monreleve.app.data.local.todayInParis
+import ch.monreleve.app.fr.AujourdhuiCopy
 import ch.monreleve.app.fr.NotificationCopy
 import ch.monreleve.app.settings.LoggingMode
 import ch.monreleve.app.settings.SharedPrefsDetectionModeStore
@@ -43,6 +44,12 @@ const val POST_NOTIFICATIONS_PERMISSION = "android.permission.POST_NOTIFICATIONS
 private const val CHANNEL_ID = "monreleve.evening.proposal"
 private const val EVENING_NOTIFICATION_ID = 1001
 private val PARIS: ZoneId = ZoneId.of("Europe/Paris")
+
+// AN-NOTIF (R339). How long the post-tap confirmation lingers before it disappears on its own. Eight seconds:
+// long enough to read the one-line « <côté> / Enregistré pour le <date> » and tap « Modifier » if the tap was a
+// mistake, short enough that it does not sit as a nag - the product is a support, not a reminder that persists.
+// Mistakes past the window are still fixable in the app (the prompt: no undo button is needed beyond Modifier).
+private const val CONFIRMATION_TIMEOUT_MS = 8_000L
 
 /**
  * Called on every background wake (SamplingWorker): if the person has opted in, automatic detection is on, today
@@ -117,6 +124,46 @@ object EveningNotifier {
                 .setAutoCancel(true)
                 .build()
         manager.notify(EVENING_NOTIFICATION_ID, notification)
+    }
+
+    /**
+     * AN-NOTIF (R339). After a tap records the day, the actionable notification becomes a one-line confirmation
+     * « <côté> / Enregistré pour le <date> » with a single « Modifier » button (opens the app on today), and
+     * disappears on its own after CONFIRMATION_TIMEOUT_MS. SAME id (EVENING_NOTIFICATION_ID), so it REPLACES the
+     * actionable notification rather than stacking (section 3: one per day). It says « Enregistré », never
+     * « envoyé » - the phone's record, as on Aujourd'hui; the sync state stays the app's business.
+     */
+    fun postConfirmation(
+        context: Context,
+        kindName: String,
+        dayDate: String,
+    ) {
+        ensureChannel(context)
+        val manager = NotificationManagerCompat.from(context)
+        if (!manager.areNotificationsEnabled()) return
+        val lines = NotificationCopy.confirmation(kindName, dayDate)
+        val notification =
+            baseBuilder(context)
+                .setContentTitle(lines.title)
+                .setContentText(lines.text)
+                // The side is private; a secure lock screen redacts it (no explicit public version), revealing
+                // nothing (D18). The side is harmless on an unlocked or PIN-less phone.
+                .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+                .addAction(R.drawable.ic_sun, AujourdhuiCopy.MODIFIER, openAujourdhui(context))
+                .setAutoCancel(true)
+                .setOnlyAlertOnce(true)
+                .setTimeoutAfter(CONFIRMATION_TIMEOUT_MS)
+                .build()
+        manager.notify(EVENING_NOTIFICATION_ID, notification)
+    }
+
+    /**
+     * AN-NOTIF (R339). Cancel today's evening notification. Recording the day by ANY path - the app, the
+     * calendar, another button - dismisses it (section 3), and a refused tap (wrong account / wrong day) dismisses
+     * it too. Cancelling by the one constant id reaches exactly this notification.
+     */
+    fun cancel(context: Context) {
+        NotificationManagerCompat.from(context).cancel(EVENING_NOTIFICATION_ID)
     }
 
     private fun baseBuilder(context: Context): NotificationCompat.Builder =
