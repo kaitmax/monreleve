@@ -501,7 +501,31 @@ Branch: origin/domain (off main @ 66d1423)
   cd98b9c  DOMAIN: the operator checklist, and formalise PARK4-2
   <this>   DOMAIN: the report
 All pushed to origin/domain. Fast suites green locally (typecheck, lint, test
-3009, build, test:late 10, test:db 593/25-skipped). gate:clone + e2e + visual +
-merge are the orchestrator's, per the relay.
+3009, build, test:late 10, test:db 593/25-skipped).
+
+FINALISATION (orchestrating session - gate + merge)
+--------------------------------------------------------------------------------
+VERIFIED on the merged HEAD (dc7c59b):
+  test:e2e        293 passed (R132 selects e2e because R338 touches app/**).
+  register-coverage  OK (33 cited ids across 81 reports).
+  :app:gate       N/A - DOMAIN changed 0 android files; android is byte-identical
+                  to 66d1423, which passed :app:gate.
+  Fast web suites green on the working tree (above).
+NOT RUN - BLOCKED BY MACHINE MEMORY, not by code:
+  gate:clone      crashed with Windows exit 3221225794 (0xC0000142,
+                  STATUS_DLL_INIT_FAILED) - a documented intermittent out-of-memory
+                  env crash. The machine had ~1.6 GB free of 16 GB (Brave, Android
+                  Studio, VS Code and Docker's WSL backend holding the rest).
+  test:visual     killed during the container's pnpm install (same memory pressure,
+                  compounded by a degraded network - 10-60s per registry fetch).
+                  R338 changes only the rate-limit BUCKET KEY (server-side, not
+                  rendered); e2e passed and the page's HTML is byte-identical, so no
+                  baseline change is expected.
+PUSHED ON THE OPERATOR'S EXPLICIT AUTHORISATION (R156), recorded here: the R338
+  change is small and additive (a rate-limit key + its unit test), adds no
+  dependency and no generated-file dependency, and passed every suite that could
+  run. The clean-clone gate:clone and test:visual REMAIN A NEEDS ITEM - to be run
+  when RAM is freed (close Brave/Studio/Code, keep Docker). Merged --no-ff to main
+  (dc7c59b) and pushed.
 
 END OF REPORT-DOMAIN
