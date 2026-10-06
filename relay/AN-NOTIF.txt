@@ -1,0 +1,165 @@
+AN-NOTIF SESSION PROMPT - Mon Releve
+RECORD THE DAY FROM THE NOTIFICATION, WITHOUT OPENING THE APP
+Paste into a fresh Claude Code session at the repository root. The
+physical phone (Galaxy S9, API 29) is connected.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+Do not stop to report progress or ask a question; judgment calls go to
+the advisors, recorded in the report; if an advisor does not answer,
+take the conservative, reversible option (R156). Ends with
+REPORT-AN-NOTIF.txt committed and pushed: DONE; a HARD BOUNDARY; NO
+PROGRESS; a DEGRADED CONTEXT. R300; R270.
+
+R334: never delete, overwrite or reset what you did not create;
+untracked files are reported, not removed; your own worktree; a report
+states only what has happened.
+
+HARD BOUNDARIES: no change to either engine, /v1 or the Room schema;
+D18; DO NOT CHANGE THE PHONE'S LOCK-SCREEN SECURITY (no PIN set or
+cleared - see section 5); restore every phone setting changed; no red
+commit.
+
+R273. Check tasks/todo.md; read REPORT-AN-NEXT.txt for the evening
+    notification R323 built, and REPORT-AN-AUTO-2.txt for the
+    automatic-mode outcomes.
+R1. pnpm gate:clone and :app:gate green on origin/main's HEAD.
+
+====================================================================
+WHY
+====================================================================
+The operator's decision: Mon Releve is a support, not something people
+should have to open every day. The evening notification lets a person
+record the day in one tap and get on with their evening.
+
+R339 (new, supersedes one line of R323). A NOTIFICATION BUTTON MAY
+    RECORD THE DAY. R323 said nothing is recorded from the notification
+    itself; that was a cautious default, and the operator has decided
+    otherwise. D16 still holds exactly: nothing is written without the
+    person's tap. A tap on a clearly labelled notification button IS
+    that tap - D16 never required the tap to happen inside the app.
+    The rest of R323 stands: at most one per working day, opt-in, only
+    when the day is not yet recorded, no second reminder, nothing
+    private on the lock screen.
+
+====================================================================
+1. WHAT THE NOTIFICATION SAYS AND OFFERS
+====================================================================
+MANUAL MODE - at the person's reminder time, on working days, only if
+the day has no entry:
+  title: "Ou avez-vous travaille aujourd'hui ?"   text: the date in words
+  buttons: [En Suisse]  [Domicile]  [Autre...]
+AUTOMATIC MODE - after the day's last check (or at the reminder time,
+whichever is later):
+  HIGH proposal: "Proposition : <kind> - verifiez"
+    buttons: [Confirmer]  [<the other likely kind>]  [Autre...]
+    Confirmer records DETECTED_CONFIRMED; the other kind records
+    DETECTED_CORRECTED with its detectedKind (R202).
+  NOT SURE: the R312 message and the manual buttons.
+  The near-border notice stays in the app.
+"Autre..." opens the app on today, for a mission, an absence or a split
+half-day. For a half-day account, the two kind buttons record the WHOLE
+day (both halves); a split day goes through "Autre...".
+All copy from fr/, with its accents, reachable (R238).
+
+====================================================================
+2. AFTER A TAP
+====================================================================
+- The day is recorded THROUGH THE SAME REPOSITORY PATH AS A TAP IN THE
+  APP - no second way of writing entries (R206, the ui/data fence). Its
+  clientMutationId is born at the tap (AN5), it carries the account tag
+  (R303) and clientClaimedAt is the tap (R275); it syncs like any
+  other entry, later if offline.
+- The notification changes to "<kind> - enregistre pour le <date>" with
+  one button, [Modifier], which opens the app on today, then disappears
+  on its own after a short delay - state the delay chosen and why. It
+  must not claim the day was SENT: "enregistre" is the phone's record,
+  as on Aujourd'hui; the sync state stays the app's business.
+- A wrong tap is fixed with Modifier, or in the app. No undo button is
+  needed beyond that.
+
+====================================================================
+3. WHAT MUST NEVER HAPPEN - each a test
+====================================================================
+- A RECORD FROM THE LOCK SCREEN. The notification is private: its
+  public version, shown on a secure lock screen, says only "Une journee
+  a enregistrer" and carries NO buttons. On Android 12 and later, each
+  recording button also requires the device to be unlocked
+  (setAuthenticationRequired). Someone picking up the phone must not be
+  able to write to the owner's tax record.
+- A RECORD FOR THE WRONG ACCOUNT. The button carries the account it was
+  shown for; if a different account is signed in when it is tapped,
+  nothing is written and the notification is dismissed (R303).
+- A RECORD FOR A FUTURE DAY, or for a day other than the one shown.
+- A STALE TAP OVERWRITING A NEWER ENTRY. Recording the day by ANY path -
+  the app, the calendar, another button - cancels that day's
+  notification. If a tap still arrives for a day that already has an
+  entry, nothing is written and the notification shows the existing
+  value.
+- MORE THAN ONE NOTIFICATION. One per day, for that day; a new one
+  replaces any earlier one rather than stacking.
+- A NOTIFICATION ON A NON-WORKING DAY, or when the reminder is off.
+
+====================================================================
+4. HOW IT IS BUILT
+====================================================================
+- Recording buttons use broadcast PendingIntents, immutable, handled by
+  a receiver that does its work off the main thread. "Autre..." and
+  "Modifier" open the app with an ACTIVITY PendingIntent directly:
+  Android 12+ forbids starting an activity from a receiver that a
+  notification launched.
+- The receiver's logic lives in a plain, JVM-testable class (R291), with
+  every case in section 3 tested there.
+- Scheduling stays inexact - "around" the reminder time - with no
+  exact-alarm permission (R320's reasoning).
+- Its own notification channel, "Rappel du soir", default importance,
+  so the person can silence it in Android's settings.
+- Do not mark it local-only: Android passes notification buttons to a
+  connected smartwatch automatically. Say in the report that this is
+  untested here.
+- A debug-only way to show the notification on demand, so testing does
+  not wait for the evening; absent from the release build, proven by a
+  check on the built APK (as R284's injection is).
+
+====================================================================
+5. ON THE PHONE
+====================================================================
+On the S9 against the dev server, with the debug trigger: manual mode -
+tap En Suisse from the shade with the app closed, see the confirmation,
+read the row back from the database (one entry, its own id, the account
+tag); tap Autre..., land on today; record in the app first, see the
+notification cancelled. Automatic mode - a HIGH proposal confirmed, one
+corrected with the other kind, a not-sure day; read each row and its
+provenance back. Airplane mode - tap, see it recorded, see it sync
+later. Every state captured and opened, default size and 200 percent.
+
+THE LOCK SCREEN: the S9 currently has no screen lock, and this session
+must not set one - a PIN left behind by a session that dies would lock
+the operator out. So: assert from the code and from `adb shell dumpsys
+notification` that the public version has no actions and that
+setAuthenticationRequired is set on Android 12+, and write the
+operator a two-line manual check for the report: set a PIN, wait for
+the notification, confirm the lock screen shows no buttons, remove the
+PIN.
+
+====================================================================
+DONE AND REPORT
+====================================================================
+  N1. Manual and automatic notifications, their buttons and the
+      confirmation, recording through the one repository path.
+  N2. Every case in section 3 tested on the JVM; the lock-screen
+      protections asserted from the code and dumpsys.
+  N3. Section 5's walkthrough on the S9, rows read back.
+  N4. The debug trigger absent from the release build, proven on the
+      built APK.
+  N5. Gates green, gate:clone passing, merged after your own gate:clone.
+REPORT - REPORT-AN-NOTIF.txt: HOW IT ENDED / R273 / R339 / THE
+NOTIFICATIONS (each mode, each button, the confirmation and its delay)
+/ WHAT MUST NEVER HAPPEN (each test) / THE WALKTHROUGH (rows read
+back) / THE LOCK SCREEN (what was asserted; the operator's manual
+check) / THE WATCH (untested) / UNTRACKED FILES LEFT ALONE (R334) /
+ADVISOR DECISIONS / PHONE SETTINGS RESTORED / PARKED / DEVIATIONS /
+QUESTIONS / PUSH PROOF
+
+END OF AN-NOTIF PROMPT
