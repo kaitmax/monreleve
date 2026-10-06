@@ -175,9 +175,9 @@ export const DISCLOSED_RECORDS = {
     'pour chaque relevé que vous générez, un enregistrement de ce qui a été ' +
     'émis : un identifiant unique, l’année concernée, un numéro de version, ' +
     'le nom tel qu’il figure sur le document, les chiffres imprimés et une ' +
-    'empreinte du fichier produit. Cet enregistrement permet à la personne qui ' +
-    'détient le relevé de confirmer qu’il correspond à celui émis par le ' +
-    'service, et il est conservé jusqu’à la suppression de votre compte ;',
+    'empreinte du fichier produit. Toute personne détenant le relevé peut en ' +
+    'vérifier le code sur la page de vérification, qui n’affiche alors que ce ' +
+    'qui figure sur le document et jamais votre compte ;',
 } as const;
 
 /**
@@ -384,6 +384,12 @@ export const CONFIDENTIALITE_COPY = {
     'Les rapports techniques que le service produit en cas de panne sont ' +
       'débarrassés des adresses e-mail et du contenu des déclarations avant ' +
       "d’être enregistrés.",
+    // FW-VERIFY (R329/R331): how long the issuance records and the name-change
+    // dates are kept - the WHAT is disclosed above, the HOW LONG is here, as
+    // the history line does.
+    'Les relevés que vous générez, leur enregistrement et les dates de ' +
+      'changement du nom sont conservés jusqu’à la suppression de votre ' +
+      'compte.',
   ],
 
   hostingHeading: 'Hébergement et prestataires',

@@ -65,6 +65,10 @@ export function CguContent({ entity }: CguContentProps) {
         <h2 className={styles.heading}>{COPY.objectHeading}</h2>
         <Bullets items={COPY.object} />
 
+        {/* R333: one account, one person; the email is the account's anchor. */}
+        <h2 className={styles.heading}>{COPY.oneAccountHeading}</h2>
+        <Bullets items={COPY.oneAccount} />
+
         {/* The boundary of what this product claims to be. Its own paragraph,
             first in its section, and asserted verbatim by the page test. */}
         <h2 className={styles.heading}>{COPY.notHeading}</h2>
