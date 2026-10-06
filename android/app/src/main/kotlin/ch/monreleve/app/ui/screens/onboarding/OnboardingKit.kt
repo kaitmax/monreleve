@@ -41,11 +41,8 @@ import ch.monreleve.app.design.Spacing
 //   DESIGN-SYSTEM §1's generic "large primary radius 14" is overridden by the operator-approved mockups
 //   for these onboarding screens; Radius.pill is an exact token, so this is a component-mapping choice,
 //   not a raw value.
-// - The icon-circle background (#EAF0F7 in the mockups) has no token; it is the brand at a low alpha, a
-//   derived brand tint rather than a new colour (PARKAN-42).
-
-/** The mockups' #EAF0F7 icon-circle fill: a faint brand tint (PARKAN-42 - no "brand soft" token yet). */
-val BrandCircle: Color = LightColors.brand.copy(alpha = 0.08f)
+// - The icon-circle background and the selected-card fill (#EAF0F7 in the mockups) use LightColors.brandSoft
+//   (R337, closes PARKAN-42): the named brand tint, DERIVED from the one brand token in design/Tokens.kt.
 
 /** The large primary action (56 dp, pill, brand fill) the mockups use for "Continuer" / "Commencer". */
 @Composable
@@ -112,7 +109,7 @@ fun IconCircle(
     iconSize: androidx.compose.ui.unit.Dp = Spacing.space24,
 ) {
     Box(
-        modifier = modifier.size(diameter).background(BrandCircle, RoundedCornerShape(Radius.pill)),
+        modifier = modifier.size(diameter).background(LightColors.brandSoft, RoundedCornerShape(Radius.pill)),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
@@ -141,7 +138,7 @@ fun BackButton(
     }
 }
 
-/** The 7-segment step progress bar + "Étape N sur 7" label, as the onboarding steps draw it. */
+/** The segmented step progress bar (one segment per asked step) + "Étape N sur M" label (R335/R336). */
 @Composable
 fun StepProgress(
     step: Int,

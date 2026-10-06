@@ -376,4 +376,51 @@ class FencesTest {
         }
         assertTrue("duration fence violated:\n${offenders.joinToString("\n")}", offenders.isEmpty())
     }
+
+    // ------------------------------------------------------------------
+    // Fence 9 (AN-ONBOARD-2, R337) - the light brand tint has ONE home:
+    // LightColors.brandSoft in design/Tokens.kt. No file anywhere else may
+    // write `brand.copy(alpha = ...)`, the derived-at-the-use-site form
+    // PARKAN-42 shipped before the token was named. Closing PARKAN-42 is
+    // naming the token once and fencing the open-coded form everywhere else,
+    // so a second use site cannot drift back to a bare alpha (R206: one text,
+    // one home).
+    //
+    // SCOPED TO THE WHOLE APP SOURCE, not just ui//design/: the brand token is
+    // a colour and `.copy(alpha=)` on it is a colour definition, so the only
+    // legitimate place for it is the token file itself. Tokens.kt is excluded
+    // exactly as Fence 3 excludes it - it IS the one home, where brandSoft is
+    // DEFINED as brand.copy(alpha = 0.08f).
+    //
+    // The guard's first run found the LIVE instance (OnboardingKit.kt's
+    // BrandCircle), which is the proof the class existed (R178); the planted
+    // violation is redundant but was run too (R180, reverted) - see
+    // REPORT-AN-ONBOARD-2.txt.
+    //
+    // KNOWN LIMIT (same class as fences 2/3): a one-hop indirection
+    // (`val c = LightColors.brand; c.copy(alpha = 0.5f)`) moves the receiver
+    // off the `brand.copy` anchor and evades this text scan.
+    // ------------------------------------------------------------------
+    @Test
+    fun theBrandTintHasOneHomeAndIsNotOpenCodedElsewhere() {
+        val tokensFile = File(appSrcRoot, "design/Tokens.kt").canonicalFile
+        val scanned =
+            appSrcRoot.walkTopDown()
+                .filter { it.isFile && it.extension == "kt" }
+                .filterNot { it.canonicalFile == tokensFile }
+                .toList()
+        assertTrue("brandSoft fence scanned no files - app root renamed? (F7 vacuity guard)", scanned.isNotEmpty())
+
+        val pattern = Regex("""\bbrand\.copy\s*\(\s*alpha\s*=""")
+        val offenders = mutableListOf<String>()
+        for (file in scanned) {
+            val text = stripComments(file.readText())
+            if (pattern.containsMatchIn(text)) {
+                offenders +=
+                    "${file.path}: brand.copy(alpha = ...) outside design/Tokens.kt - " +
+                    "use LightColors.brandSoft (R337)"
+            }
+        }
+        assertTrue("brandSoft fence violated:\n${offenders.joinToString("\n")}", offenders.isEmpty())
+    }
 }

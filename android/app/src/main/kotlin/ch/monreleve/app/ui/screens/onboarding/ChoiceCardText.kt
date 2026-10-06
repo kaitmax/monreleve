@@ -18,6 +18,9 @@ import ch.monreleve.app.design.FrontierType
 import ch.monreleve.app.design.LightColors
 import ch.monreleve.app.design.Radius
 import ch.monreleve.app.design.Spacing
+import ch.monreleve.app.fr.OnboardingCopy
+import ch.monreleve.app.onboarding.GranularityChoice
+import ch.monreleve.app.onboarding.OnboardingState
 
 // AN-ONBOARD. A selectable card's text, bundled so ChoiceCard stays within detekt's parameter limit. The file
 // is named for the data class (MatchingDeclarationName); the card composable lives beside it.
@@ -44,7 +47,7 @@ fun ChoiceCard(
             Modifier
                 .fillMaxWidth()
                 .background(
-                    if (selected) BrandCircle else LightColors.surface,
+                    if (selected) LightColors.brandSoft else LightColors.surface,
                     RoundedCornerShape(Radius.lg),
                 ).selectable(selected = selected, onClick = onClick)
                 .padding(Spacing.space16),
@@ -67,13 +70,38 @@ fun ChoiceCard(
     }
 }
 
+/**
+ * R336 (AN-ONBOARD-2): the granularity step - whole days or half-days, two choice cards in the Méthode pattern.
+ * Lives here beside ChoiceCard (its building block) rather than in OnboardingScreen.kt, which is at detekt's
+ * per-file function limit. Stateless; every string is an OnboardingCopy constant (no-literal fence).
+ */
+@Composable
+internal fun GranularityStep(
+    state: OnboardingState,
+    onGranularityChange: (GranularityChoice) -> Unit,
+) {
+    Text(text = OnboardingCopy.GRANULARITY_TITLE, style = FrontierType.h1, color = LightColors.textPrimary)
+    Text(text = OnboardingCopy.GRANULARITY_SUBTITLE, style = FrontierType.bodyL, color = LightColors.textSecondary)
+    ChoiceCard(
+        selected = state.granularity == GranularityChoice.DAY,
+        text = ChoiceCardText(OnboardingCopy.GRANULARITY_DAY, OnboardingCopy.GRANULARITY_DAY_DESC),
+        onClick = { onGranularityChange(GranularityChoice.DAY) },
+    )
+    ChoiceCard(
+        selected = state.granularity == GranularityChoice.HALF_DAY,
+        text = ChoiceCardText(OnboardingCopy.GRANULARITY_HALF_DAY, OnboardingCopy.GRANULARITY_HALF_DAY_DESC),
+        onClick = { onGranularityChange(GranularityChoice.HALF_DAY) },
+    )
+    InfoNote(text = OnboardingCopy.GRANULARITY_INFO)
+}
+
 /** The small "Bêta" pill the automatic-mode card carries. */
 @Composable
 private fun BetaBadge(label: String) {
     Box(
         modifier =
             Modifier
-                .background(BrandCircle, RoundedCornerShape(Radius.pill))
+                .background(LightColors.brandSoft, RoundedCornerShape(Radius.pill))
                 .padding(horizontal = Spacing.space8, vertical = Spacing.space4),
     ) {
         Text(text = label, style = FrontierType.caption, color = LightColors.brand)

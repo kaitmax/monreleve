@@ -187,6 +187,15 @@ object LightColors {
     /** Deep Alpine Blue - primary CTA, active nav, links, selected states. Not everywhere. */
     val brand = Color(0xFF173B63)
 
+    /**
+     * The light brand tint (R337, closes PARKAN-42): the brand colour at 8 %
+     * alpha, DERIVED from `brand` - not a new hue (R9). The onboarding icon
+     * badges and selected choice-card fills (#EAF0F7 in the mockups) use it.
+     * Named ONCE here so no file open-codes `brand.copy(alpha = ...)`; Fence 9
+     * (FencesTest) fails on that form anywhere but this file.
+     */
+    val brandSoft = brand.copy(alpha = 0.08f)
+
     val franceMain = Color(0xFF315FA8)
     val franceSoft = Color(0xFFEAF1FB)
     val franceText = Color(0xFF244A82)

@@ -6,8 +6,11 @@ package ch.monreleve.app.fr
 // method's own label, not a threshold (R153 governs thresholds, which this never prints).
 
 object OnboardingCopy {
-    /** "Étape N sur 7" - built here, not in a composable (fence 4). */
-    fun stepLabel(step: Int): String = "Étape $step sur 7"
+    /** "Étape N sur M" - built here, not in a composable (fence 4). The total is the steps this run asks (R335). */
+    fun stepLabel(
+        step: Int,
+        total: Int,
+    ): String = "Étape $step sur $total"
 
     const val CONTINUE = "Continuer"
     // "Retour" has one home: LicencesCopy.BACK (R206); the wizard references that.
@@ -67,7 +70,20 @@ object OnboardingCopy {
     const val METHOD_INFO = "En cas de doute, demandez à votre service des ressources humaines."
     const val EXACT_TOTAL_LABEL = "Nombre total de jours travaillés dans l’année"
 
-    // Step 5 - Toute l'année ?
+    // Step 5 - Comment comptez-vous vos journées ? (R336 - the granularity step the mockups dropped). Two cards
+    // in the Méthode pattern; the card titles reuse GRANULARITY_DAY/HALF_DAY above (the shared Paramètres labels,
+    // see below), and only the descriptions are onboarding-specific.
+    const val GRANULARITY_TITLE = "Comment comptez-vous vos journées ?"
+    const val GRANULARITY_SUBTITLE = "Choisissez l’unité avec laquelle vous comptez votre télétravail."
+
+    // The card titles reuse GRANULARITY_DAY / GRANULARITY_HALF_DAY above (shared with Paramètres - R206, one home,
+    // and the same words for the same setting across both screens); only the descriptions are onboarding-specific.
+    const val GRANULARITY_DAY_DESC = "Chaque jour de télétravail compte pour une journée complète."
+    const val GRANULARITY_HALF_DAY_DESC =
+        "Vous pouvez enregistrer une demi-journée quand vous ne télétravaillez qu’une partie du jour."
+    const val GRANULARITY_INFO = "Ce choix s’applique à toute l’année de calcul."
+
+    // Step 6 - Toute l'année ?
     const val PERIOD_TITLE = "Avez-vous travaillé toute l’année chez cet employeur ?"
     const val PERIOD_ALL_TITLE = "Oui, depuis le 1ᵉʳ janvier"
     const val PERIOD_ALL_DESC = "Votre relevé couvrira l’année entière."
@@ -75,7 +91,7 @@ object OnboardingCopy {
     const val PERIOD_PART_DESC = "Votre relevé couvrira la période à partir de votre arrivée."
     const val PERIOD_START_LABEL = "Date de début"
 
-    // Step 6 - Comment enregistrer vos journées ?
+    // Step 7 - Comment enregistrer vos journées ?
     const val MODE_TITLE = "Comment enregistrer vos journées ?"
     const val MODE_MANUAL_TITLE = "Manuellement"
     const val MODE_MANUAL_DESC = "Chaque jour, vous indiquez où vous avez travaillé. Un geste suffit."
@@ -86,7 +102,7 @@ object OnboardingCopy {
             "Rien n’est enregistré sans votre accord."
     const val MODE_INFO = "Les deux produisent exactement le même relevé. Vous pourrez changer à tout moment."
 
-    // Step 7 - Un rappel le soir ?
+    // Step 8 - Un rappel le soir ?
     const val REMINDER_TITLE = "Un rappel le soir ?"
     const val REMINDER_SUBTITLE =
         "Une seule notification par jour ouvré, uniquement si votre journée n’est pas encore enregistrée."

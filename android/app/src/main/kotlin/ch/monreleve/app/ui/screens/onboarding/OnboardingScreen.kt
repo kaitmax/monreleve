@@ -59,7 +59,10 @@ fun OnboardingScreen(
     modifier: Modifier = Modifier,
 ) {
     val submitting = state.phase == OnboardingPhase.SUBMITTING
-    val stepNumber = state.step.ordinal + 1
+    // R335: the number and total come from the steps THIS run asks (a subset for a partial account), so the
+    // label reads "Étape 1 sur 2" when only two questions are owed - not "1 sur 8".
+    val total = state.steps.size
+    val stepNumber = (state.steps.indexOf(state.step) + 1).coerceAtLeast(1)
     Column(modifier = modifier.fillMaxSize()) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.space8),
@@ -67,7 +70,7 @@ fun OnboardingScreen(
             horizontalArrangement = Arrangement.spacedBy(Spacing.space8),
         ) {
             BackButton(contentDescription = LicencesCopy.BACK, onBack = actions.onBack)
-            StepProgress(step = stepNumber, total = ONBOARDING_TOTAL, label = OnboardingCopy.stepLabel(stepNumber))
+            StepProgress(step = stepNumber, total = total, label = OnboardingCopy.stepLabel(stepNumber, total))
         }
         Column(
             modifier =
@@ -80,6 +83,7 @@ fun OnboardingScreen(
                 OnboardingStep.CANTON -> CantonStep(state, actions.onCantonChange)
                 OnboardingStep.TAUX -> TauxStep(state, actions.onRateChoiceChange, actions.onCustomRateChange)
                 OnboardingStep.METHODE -> MethodeStep(state, actions.onDenominatorChange, actions.onExactTotalChange)
+                OnboardingStep.GRANULARITY -> GranularityStep(state, actions.onGranularityChange)
                 OnboardingStep.PERIODE -> PeriodeStep(state, actions.onAllYearChange, actions.onActivityStartDateChange)
                 OnboardingStep.MODE -> ModeStep(state, actions.onChooseManual, actions.onChooseAuto)
                 OnboardingStep.RAPPEL -> RappelStep()
@@ -102,8 +106,6 @@ fun OnboardingScreen(
         }
     }
 }
-
-private const val ONBOARDING_TOTAL = 7
 
 @Composable
 private fun NomStep(

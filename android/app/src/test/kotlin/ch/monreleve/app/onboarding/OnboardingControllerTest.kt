@@ -63,7 +63,9 @@ private fun OnboardingController.saveValidDraft(
     onRateChoiceChange(RateChoice.R80)
     next() // TAUX -> METHODE
     onDenominatorChange(DenominatorChoice.SIMPLIFIED240)
-    next() // METHODE -> PERIODE
+    next() // METHODE -> GRANULARITY
+    onGranularityChange(GranularityChoice.DAY)
+    next() // GRANULARITY -> PERIODE
     onAllYearChange(true)
     next() // PERIODE -> MODE
     onModeChange(mode)
@@ -136,7 +138,71 @@ class OnboardingControllerTest : FunSpec({
             store.saved?.employmentRate shouldBe 80
             val body = JSONObject(saver.lastBody.shouldNotBeNull())
             body.getString("name") shouldBe "Camille Martin"
+            // R336: the granularity step is now part of the flow; whole days by default.
+            body.getString("granularity") shouldBe "DAY"
             // Manual: no mode/consent sent (the server's MANUAL default stands).
+            body.has("loggingMode") shouldBe false
+            body.has("detectionConsent") shouldBe false
+        }
+    }
+
+    test("R336: choosing demi-journée at the granularity step sends granularity HALF_DAY") {
+        runTest {
+            val saver = FakeSaver()
+            val c = controller(this, saver)
+            c.onNameChange("Camille")
+            c.next() // NOM -> CANTON
+            c.onCantonChange(Canton.GE)
+            c.next() // CANTON -> TAUX
+            c.onRateChoiceChange(RateChoice.R100)
+            c.next() // TAUX -> METHODE
+            c.onDenominatorChange(DenominatorChoice.SIMPLIFIED240)
+            c.next() // METHODE -> GRANULARITY
+            c.state.value.step shouldBe OnboardingStep.GRANULARITY
+            c.onGranularityChange(GranularityChoice.HALF_DAY)
+            c.next() // GRANULARITY -> PERIODE
+            c.onAllYearChange(true)
+            c.next() // PERIODE -> MODE
+            c.onModeChange(ModeChoice.MANUAL)
+            c.next() // MODE -> RAPPEL
+            c.onReminderChange(false)
+            c.next() // save
+            advanceUntilIdle()
+            JSONObject(saver.lastBody.shouldNotBeNull()).getString("granularity") shouldBe "HALF_DAY"
+        }
+    }
+
+    test("R335: a plan of only [NOM] asks one step, saves the prefilled values, and never re-sends the mode") {
+        runTest {
+            val saver = FakeSaver()
+            val store = FakeStore()
+            val c =
+                OnboardingController(
+                    saver,
+                    store,
+                    TAX_YEAR,
+                    this,
+                    restored =
+                        OnboardingSnapshot(
+                            step = OnboardingStep.NOM,
+                            name = "",
+                            canton = Canton.GE,
+                            rateChoice = RateChoice.R80,
+                            denominator = DenominatorChoice.SIMPLIFIED240,
+                            granularity = GranularityChoice.DAY,
+                            steps = listOf(OnboardingStep.NOM),
+                        ),
+                )
+            c.state.value.steps shouldBe listOf(OnboardingStep.NOM)
+            c.onNameChange("Alex Dupont")
+            c.next() // the only step -> save
+            advanceUntilIdle()
+            c.state.value.phase shouldBe OnboardingPhase.READY
+            store.saved?.name shouldBe "Alex Dupont"
+            store.saved?.canton shouldBe "GE"
+            store.saved?.employmentRate shouldBe 80
+            val body = JSONObject(saver.lastBody.shouldNotBeNull())
+            // A partial onboarding leaves the server's detection mode untouched.
             body.has("loggingMode") shouldBe false
             body.has("detectionConsent") shouldBe false
         }

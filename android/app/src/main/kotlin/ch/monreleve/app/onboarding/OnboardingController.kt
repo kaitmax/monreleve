@@ -27,10 +27,11 @@ import java.time.LocalDate
 // rate parseable); the 1-100 bound, the exact-total iff and the period are the engine's, applied at save by
 // building the settings' TeleworkInput with no entries and running calculateTelework.
 //
-// TWO DEVIATIONS FROM THE MOCKUPS, built as designed then noted: there is no granularity step (the mockups
-// drop it), so granularity defaults to whole DAYs; and step 4 (Méthode) shows no total field, but the engine
-// requires one for the real-days method, so choosing it reveals the total (the alternative is a save the
-// server refuses with exact_total_required).
+// R336 (AN-ONBOARD-2): the mockups dropped the granularity question (whole days vs half-days); it is now its own
+// step, after Méthode and before Période, writing the existing granularity setting (no new data). R335: the
+// wizard runs an ordered SUBSET of the steps - a complete account goes straight to Aujourd'hui, a partial one is
+// asked only the fields it is missing (state.steps), prefilled from /me. Step 4 (Méthode) still reveals a total
+// field the static mockup omits, because the engine requires one for the real-days method.
 
 enum class ModeChoice { MANUAL, AUTO_DETECT }
 
@@ -50,10 +51,16 @@ enum class OnboardingError {
     SAVE_REFUSED,
 }
 
-/** The seven wizard steps, in order; a successful save moves on to the "Tout est prêt" summary. */
-enum class OnboardingStep { NOM, CANTON, TAUX, METHODE, PERIODE, MODE, RAPPEL }
+/**
+ * The eight wizard steps, in order; a successful save moves on to the "Tout est prêt" summary. GRANULARITY
+ * (R336) sits after METHODE and before PERIODE - whole days or half-days, the question the mockups dropped.
+ */
+enum class OnboardingStep { NOM, CANTON, TAUX, METHODE, GRANULARITY, PERIODE, MODE, RAPPEL }
 
-const val ONBOARDING_STEPS = 7
+/** The full flow, in order (R336: eight steps). A partial onboarding (R335) runs an ordered subset of these. */
+val DEFAULT_STEPS: List<OnboardingStep> = OnboardingStep.entries.toList()
+
+const val ONBOARDING_STEPS = 8
 
 // DenominatorChoice and GranularityChoice are shared enums - see onboarding/Choices.kt.
 
@@ -66,11 +73,15 @@ data class OnboardingState(
     val customRate: String = "",
     val denominator: DenominatorChoice = DenominatorChoice.SIMPLIFIED240,
     val exactTotalWorkDays: String = "",
+    /** R336: whole days or half-days. Preselected whole days, as the step's default card. */
+    val granularity: GranularityChoice = GranularityChoice.DAY,
     /** true = whole year (no start date); false = reveals the date picker. */
     val allYear: Boolean = true,
     val activityStartDate: String = "",
     val mode: ModeChoice = ModeChoice.MANUAL,
     val reminder: Boolean = false,
+    /** R335: the ordered steps this run asks - the full flow, or the subset a partial account is missing. */
+    val steps: List<OnboardingStep> = DEFAULT_STEPS,
     val phase: OnboardingPhase = OnboardingPhase.EDITING,
     val error: OnboardingError? = null,
 ) {
@@ -101,9 +112,15 @@ data class OnboardingSnapshot(
     val activityStartDate: String = "",
     val mode: ModeChoice = ModeChoice.MANUAL,
     val reminder: Boolean = false,
+    // AN-ONBOARD-2: R336's granularity choice, and R335's step plan - carried so both a rebuild (R310) and the
+    // /me prefill (StartupDecider -> OnboardingRoute) restore the same subset flow with the same values.
+    val granularity: GranularityChoice = GranularityChoice.DAY,
+    val steps: List<OnboardingStep> = DEFAULT_STEPS,
 ) : java.io.Serializable {
     companion object {
-        private const val serialVersionUID: Long = 1L
+        // Bumped from 1L: the shape gained granularity + steps (AN-ONBOARD-2). rememberSaveable state is
+        // process-scoped, so this never deserialises a cross-version bundle; the bump records the change.
+        private const val serialVersionUID: Long = 2L
     }
 }
 
@@ -130,18 +147,21 @@ class OnboardingController(
     private val mutableState =
         MutableStateFlow(
             restored?.let {
+                val steps = it.steps.ifEmpty { DEFAULT_STEPS }
                 OnboardingState(
-                    step = it.step,
+                    step = if (it.step in steps) it.step else steps.first(),
                     name = it.name,
                     canton = it.canton,
                     rateChoice = it.rateChoice,
                     customRate = it.customRate,
                     denominator = it.denominator,
                     exactTotalWorkDays = it.exactTotalWorkDays,
+                    granularity = it.granularity,
                     allYear = it.allYear,
                     activityStartDate = it.activityStartDate,
                     mode = it.mode,
                     reminder = it.reminder,
+                    steps = steps,
                 )
             } ?: OnboardingState(),
         )
@@ -163,6 +183,8 @@ class OnboardingController(
 
     fun onExactTotalChange(value: String) = edit { copy(exactTotalWorkDays = value) }
 
+    fun onGranularityChange(choice: GranularityChoice) = edit { copy(granularity = choice) }
+
     fun onAllYearChange(allYear: Boolean) = edit { copy(allYear = allYear) }
 
     fun onActivityStartDateChange(value: String) = edit { copy(allYear = false, activityStartDate = value) }
@@ -173,11 +195,12 @@ class OnboardingController(
     fun onReminderChange(reminder: Boolean) = edit { copy(reminder = reminder) }
 
     fun back() {
-        val index = mutableState.value.step.ordinal
-        if (index > 0) mutableState.update { it.copy(step = OnboardingStep.entries[index - 1], error = null) }
+        val current = mutableState.value
+        val index = current.steps.indexOf(current.step)
+        if (index > 0) mutableState.update { it.copy(step = current.steps[index - 1], error = null) }
     }
 
-    /** Validate the current step; if it holds, advance - or, from the last step, save. */
+    /** Validate the current step; if it holds, advance through state.steps - or, from the last step, save. */
     fun next() {
         val current = mutableState.value
         val error = validateStep(current)
@@ -185,9 +208,9 @@ class OnboardingController(
             mutableState.update { it.copy(error = error) }
             return
         }
-        val index = current.step.ordinal
-        if (index < OnboardingStep.entries.lastIndex) {
-            mutableState.update { it.copy(step = OnboardingStep.entries[index + 1], error = null) }
+        val index = current.steps.indexOf(current.step)
+        if (index < current.steps.lastIndex) {
+            mutableState.update { it.copy(step = current.steps[index + 1], error = null) }
         } else {
             save(current)
         }
@@ -257,8 +280,8 @@ class OnboardingController(
                 employmentRate = rate,
                 denominatorKind = if (current.denominator == DenominatorChoice.EXACT) "EXACT" else "SIMPLIFIED240",
                 exactTotalWorkDays = exactTotal,
-                // No granularity step in the mockups: whole days by default (deviation, noted).
-                granularity = "DAY",
+                // R336: the granularity chosen at its step (whole days by default).
+                granularity = if (current.granularity == GranularityChoice.HALF_DAY) "HALF_DAY" else "DAY",
                 activityStartDate = startDate,
                 name = current.name.trim(),
                 loggingMode = if (auto) "AUTO_DETECT" else null,

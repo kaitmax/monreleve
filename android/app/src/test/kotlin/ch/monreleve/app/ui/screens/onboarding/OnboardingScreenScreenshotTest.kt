@@ -19,9 +19,14 @@ import org.junit.Rule
 import org.junit.Test
 
 /**
- * AN-ONBOARD: baselines for the onboarding wizard (design/onboarding steps 1-7) and "Tout est prêt", at the
- * default text size and at 200 percent (fontScale 2f) - the accessibility requirement as a cheap JVM snapshot.
- * The emulator drive is the parent's walkthrough (R176). Device PIXEL_5 light, as the other baselines.
+ * AN-ONBOARD: baselines for the onboarding wizard and "Tout est prêt", at the default text size and at 200
+ * percent (fontScale 2f) - the accessibility requirement as a cheap JVM snapshot. The emulator drive is the
+ * parent's walkthrough (R176). Device PIXEL_5 light, as the other baselines.
+ *
+ * AN-ONBOARD-2 (R336): the wizard is now EIGHT steps - a granularity step (whole days / half-days) after Méthode
+ * - so every step reads "Étape N sur 8" with an eight-segment bar, and `granularite`/`granulariteLarge` are new.
+ * The step state carries the full step list by default (OnboardingState.steps = DEFAULT_STEPS), so each card's
+ * number and total are computed the way the live wizard computes them.
  */
 class OnboardingScreenScreenshotTest {
     @get:Rule
@@ -39,6 +44,7 @@ class OnboardingScreenScreenshotTest {
             onCustomRateChange = {},
             onDenominatorChange = {},
             onExactTotalChange = {},
+            onGranularityChange = {},
             onAllYearChange = {},
             onActivityStartDateChange = {},
             onChooseManual = {},
@@ -114,6 +120,13 @@ class OnboardingScreenScreenshotTest {
     @Test fun methode() = paparazzi.snapshot { step(base.copy(step = OnboardingStep.METHODE)) }
 
     @Test fun methodeExact() = paparazzi.snapshot { step(methodeExactState) }
+
+    @Test fun granularite() = paparazzi.snapshot { step(base.copy(step = OnboardingStep.GRANULARITY)) }
+
+    @Test fun granulariteLarge() {
+        large()
+        paparazzi.snapshot { step(base.copy(step = OnboardingStep.GRANULARITY)) }
+    }
 
     @Test fun periode() = paparazzi.snapshot { step(base.copy(step = OnboardingStep.PERIODE)) }
 
