@@ -1901,6 +1901,53 @@ publicVersion with no actions + the action authentication-required flag. PLUS th
 check: set a PIN, confirm the lock screen shows only "Mon Releve / Une journee a enregistrer" with no buttons,
 remove the PIN.
 
+## PARKAN-48 - the employer's name is not stored, so the releve cannot print it  [SEED-RELEVE, 2026-10-06]
+
+QUESTION: reading the releve against an accountant's list (SEED-RELEVE item 10), the document says it
+is the person's OWN record (footer.declaration: « Document etabli sur la base des declarations de
+l'utilisateur ... »), but it never names the EMPLOYER whose annual declaration is the authoritative
+one. The employer's name is not a column on User (SPEC 8) - nothing in the data model holds it.
+
+TAKEN (R156, no advisor this session by operator instruction; the SEED-RELEVE prompt explicitly directs
+parking this): leave it out. The prompt's own words: "The employer's name, in particular, is not stored:
+park it, do not add a field." The releve is a justificatif of the person's own days; the employer files
+the official declaration separately, and this document does not claim to be that.
+
+NOT TAKEN: adding an `employer` field to User + the onboarding/settings flow + the /v1 /me contract +
+the releve header + the PDF + baselines. A schema change (SPEC 20 ask-first) for a field no engine
+figure uses.
+
+NEEDS: an operator decision on whether the releve should name the employer (and, if so, whether the
+document should also state in words that the employer's annual declaration is the official one - item
+10's second half is implicit today). Reversible: it is additive. The heading stays so the report's
+citation resolves (RegisterCoverageTest, R327). (Renumbered from PARKAN-43 on the SEED-RELEVE rebase
+onto main, where PARKAN-43 is AN-ONBOARD-2's device walkthrough.)
+
+## PARKAN-49 - the releve does not print how many mission days were counted toward the rate  [SEED-RELEVE, 2026-10-06]
+
+QUESTION: reading the releve against the accountant's list (SEED-RELEVE item 5), the document shows
+mission days France and third-state SEPARATELY (the monthly table's Mission FR / Mission tiers columns,
+and the annex's per-day Nature), and the total Missions tile. It does NOT show how many of them were
+CREDITED against the ceiling (at most 10) - `creditedMissionDays`. On Camille's under-ceiling year all
+seven count; on Alex's over-ceiling year the regime is lost and zero count - a fact an accountant reading
+item 5 would want stated, not inferred.
+
+TAKEN (R156, no advisor this session by operator instruction): leave it out this task.
+`creditedMissionDays` is on the engine `TeleworkResult` (`result`), which the PDF route HAS but does not
+render, and which is deliberately ABSENT from the /v1 wire (DOSSIER_RESPONSE_FIELDS omits `result` -
+R206/SPEC 14), so the Android screen cannot show it at all. Surfacing it is not pure presentation of a
+figure the payload already carries (the prompt's bar for adding) - the screen needs a new wire field.
+
+NOT TAKEN: adding `creditedMissionDays` (and perhaps `regimeApplies`) as ADDITIVE /v1 fields (R217 permits
+this under the SPEC 14 freeze), then rendering a "dont X imputees au plafond" line on the screen and the
+PDF, with copy in lib/fr + fr/ and new baselines. A focused follow-up, not a seed-task change.
+
+NEEDS: an operator decision on surfacing the mission-credit detail; and the same for item 3's standalone
+telework-only rate (telework / jours ouvres), which IS derivable from the two tiles the payload carries
+and so is pure presentation - addable without a new field if wanted. Reversible: both additive.
+(Renumbered from PARKAN-44 on the SEED-RELEVE rebase onto main, where PARKAN-44 is AN-ONBOARD-2's
+stripComments blind spot.)
+
 ## PARK4-2 - a Digital Asset Links statement listing only a debug/upload key verifies nothing for a Play install  [formalised by DOMAIN, 2026-10-06]
 
 FORMALISED HERE because docs/domain-checklist.md (section 4) cites PARK4-2 and it
