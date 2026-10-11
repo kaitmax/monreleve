@@ -262,4 +262,18 @@ NO NEW PAPARAZZI BASELINES were generated or changed (no ui/ composable was touc
 DEFERRED TO THE ORCHESTRATOR: the final `pnpm gate:clone` (web; no web code changed this session) and the
 merge to main. I do not merge.
 
+FINALISATION (orchestrating session - gate + merge)
+-----------------------------------------------------------------------------------
+NOTE on incr 5: the weekly account limit killed the task agent mid-commit of incr 5; the gate-verified code
+was re-committed on resume as 7cc4fa0, and the merged-HEAD :app:gate below re-verifies it independently.
+:app:gate       GREEN on the merged HEAD (67b55ec): BUILD SUCCESSFUL in 3m50s - the full suite incl.
+                EveningTapTest, EveningNotificationDecisionTest, EveningNotifierLockScreenTest,
+                CopyReachabilityTest, the release-APK absence check, lintDebug (NewApi), RegisterCoverageTest.
+register-coverage  OK (36 cited ids across 82 reports; PARKAN-36/45/46/47 resolve).
+gate:clone      NOT re-run: AN-NOTIF changed NO web/ file (diff is android + report + parking + relay only),
+                so the web tree is byte-identical to 428a113; the container-based clean-clone is also blocked
+                by machine memory right now (same as DOMAIN). It adds no signal over the android :app:gate
+                here. A full gate:clone remains a NEEDS item for when RAM is freed.
+Merged --no-ff to main (67b55ec) and pushed.
+
 END OF REPORT-AN-NOTIF
