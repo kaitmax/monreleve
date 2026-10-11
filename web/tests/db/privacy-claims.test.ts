@@ -37,6 +37,7 @@ import { POST } from '@/app/api/alertes/route';
 import { GET as exportRoute } from '@/app/api/v1/account/export/route';
 import { POST as deleteRoute } from '@/app/api/v1/account/delete/route';
 import { PATCH as mePatch } from '@/app/api/v1/me/route';
+import { POST as entriesPost } from '@/app/api/v1/entries/route';
 import { issueTokenPair } from '@/lib/auth/tokens';
 import { prisma } from '@/lib/db/client';
 import {
@@ -789,5 +790,62 @@ describe('CLAIM: the reminder is opt-in, and leaving takes no persuasion (D19)',
     // is the difference between a setting that is HONOURED and one that is
     // CONSULTED.
     expect((await runDailyReminders(AT_1730, transport)).considered).toBe(0);
+  });
+});
+
+// ===========================================================================
+// PARKAN-38: R325's SENTENCE JOINS THE MAP
+// ===========================================================================
+//
+// R325's « Ce qui n'est jamais enregistre » sentence promises that automatic
+// mode never keeps or sends a position. It lived on the page with no entry in
+// this claim-to-test map, so nothing bound the sentence to the code that makes
+// it true - the gap PARKAN-38 closes.
+//
+// A REGRESSION-PIN MAPPING (R133). The guarantee already holds: the sentence
+// is on the page (its position clause is untouched by PARKAN-37's four-checks
+// rewrite) and the API has refused coordinates since lib/entries/no-coordinates
+// shipped. Both halves pass on the first run; what the mapping adds is that a
+// change to EITHER - softening the sentence, or the boundary ceasing to refuse
+// - now fails here, exactly as every claim above. The « holds » half asserts
+// the SPECIFIC refusal (400 + coordinates_refused), not merely some 4xx, so a
+// boundary that started accepting coordinates could not pass it.
+
+describe('CLAIM (R325): automatic mode keeps and sends no position, and the API refuses one', () => {
+  it('is still on the page', () => {
+    // The position clause PARKAN-37 left intact. The four-checks rewrite
+    // changed only the tail that used to describe a « cumul de minutes ».
+    // Apostrophe-free substrings of the ONE source (CONFIDENTIALITE_COPY.never),
+    // read through the imported constant - the presence pattern every claim in
+    // this file uses (CLAIM 2 reads DISCLOSED_RECORDS.alertList the same way).
+    // Not a second copy to compare against (R206): there is one sentence, and
+    // the elided verb form is simply not quoted, which R126 requires here.
+    const never = CONFIDENTIALITE_COPY.never.join(' ');
+
+    expect(never).toContain('ne conservera ni');
+    expect(never).toContain('jamais votre position');
+  });
+
+  it('holds: a declaration carrying a coordinate is refused at the boundary', async () => {
+    const { token } = await accountWithData('r325@example.com');
+
+    const response = await entriesPost(
+      bearer(`${TEST_ORIGIN}/api/v1/entries`, token, {
+        method: 'POST',
+        body: JSON.stringify({
+          entries: [
+            {
+              clientMutationId: '00000000-0000-4000-8000-0000000003a5',
+              dayDate: '2026-04-07',
+              kind: 'CH',
+              latitude: 46.2,
+            },
+          ],
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ code: 'coordinates_refused' });
   });
 });

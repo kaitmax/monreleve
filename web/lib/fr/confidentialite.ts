@@ -327,14 +327,24 @@ export const CONFIDENTIALITE_COPY = {
     // true. The app still keeps and sends nothing; the phone does consult that
     // service, and the reader controls it through the phone’s own settings.
     // Future tense for the determination clause (R138, the app is unreleased).
+    //
+    // PARKAN-37 (R320): detection is FOUR CHECKS A DAY, not a minutes tally.
+    // The old sentence ended "Seul un cumul de minutes par journee est
+    // conserve" - a description of the continuous-sampling model R320 removed
+    // (detection/Tally.kt and the minutes-and-hysteresis tally are gone). The
+    // daily record now keeps, per check, only a conclusion (INSIDE/OUTSIDE/
+    // BUFFER = en Suisse / domicile / proche frontiere), never minutes and
+    // never a position. The Android strings are noted, not changed here.
     'Si vous choisissez le mode automatique, votre position est analysée sur ' +
       'votre appareil. Pour la déterminer, Android pourra utiliser les réseaux ' +
       'Wi-Fi et cellulaires à proximité, selon les réglages de localisation de ' +
       'votre téléphone. L’application, elle, ne conservera ni n’enverra jamais ' +
       'votre position. Chaque relevé de position est comparé à un polygone des ' +
       "frontières suisses embarqué dans l’application, puis abandonné " +
-      'immédiatement. Seul un cumul de minutes par journée est conservé, sans ' +
-      'aucune position.',
+      'immédiatement. Pour décider d’une journée, l’application vérifiera ' +
+      'votre position à quatre moments fixes de la journée. Pour chacun, elle ' +
+      'ne conservera que la conclusion, en Suisse, à domicile ou près de la ' +
+      'frontière, jamais une position.',
     'Aucun historique de déplacement, aucun nom de lieu, aucune adresse ' +
       "d’employeur, aucune carte et aucune chronologie de vos trajets. Il n’y " +
       'a rien de tel à produire si cela vous était demandé un jour.',
