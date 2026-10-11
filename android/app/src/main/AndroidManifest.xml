@@ -91,6 +91,18 @@
         -->
 
         <!--
+          AN-NOTIF (R339). The evening notification's RECORDING RECEIVER. A recording button fires an IMMUTABLE
+          broadcast PendingIntent to this receiver, which records the day through the one repository path (R206)
+          and turns the notification into a confirmation. It is a PRODUCTION component (it records days), so it
+          ships in every variant - unlike the dev.* tooling (checkReleaseNoDevComponent), this one belongs in
+          release. exported="false": only the app's OWN PendingIntents target it; nothing outside the app can
+          reach it (android-intent-security). D16 holds - a clearly labelled button tap IS the person's tap.
+        -->
+        <receiver
+            android:name=".notification.EveningActionReceiver"
+            android:exported="false" />
+
+        <!--
           AN11: the FileProvider for exporting the Releve (AC2 / R136). The PDF/CSV is written to the private
           cache and shared as a content URI with a per-share read grant - no storage permission, nothing but
           the exports/ subfolder exposed (res/xml/file_paths.xml). Authority is ${applicationId}.fileprovider,

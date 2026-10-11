@@ -71,6 +71,7 @@ import ch.monreleve.app.design.FrontierTheme
 import ch.monreleve.app.design.LightColors
 import ch.monreleve.app.detection.BACKGROUND_LOCATION
 import ch.monreleve.app.detection.EXTRA_OPEN_AUJOURDHUI
+import ch.monreleve.app.detection.EveningNotifier
 import ch.monreleve.app.detection.FINE_LOCATION
 import ch.monreleve.app.detection.POST_NOTIFICATIONS_PERMISSION
 import ch.monreleve.app.detection.locationFullyGranted
@@ -581,6 +582,18 @@ internal fun MainShell(
             controllers.aujourdhui.refresh()
             activity.intent.removeExtra(EXTRA_OPEN_AUJOURDHUI)
         }
+    }
+
+    // AN-NOTIF (R339): recording today by ANY in-app path - Aujourd'hui OR the calendar - dismisses today's
+    // evening notification (section 3: "recording the day by any path cancels that day's notification"). Both
+    // write through the ONE repository, which the Aujourd'hui controller observes, so "today became recorded" is
+    // the single signal covering both paths. cancel is idempotent (a no-op when none is showing); the LaunchedEffect
+    // key fires it only when the recorded-state flips. A notification BUTTON records through the receiver, which
+    // replaces the notification with its confirmation, so that path needs no cancel here.
+    val todayRecorded =
+        aujourdhuiState.fullDay != null || aujourdhuiState.morning != null || aujourdhuiState.afternoon != null
+    LaunchedEffect(todayRecorded) {
+        if (todayRecorded) EveningNotifier.cancel(context)
     }
 
     LaunchedEffect(controllers.releve) {

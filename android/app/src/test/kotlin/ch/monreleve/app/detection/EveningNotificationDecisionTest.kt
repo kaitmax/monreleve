@@ -44,8 +44,10 @@ class EveningNotificationDecisionTest : FunSpec({
         decide(optedIn = false).shouldBeNull()
     }
 
-    test("manual mode never notifies - the evening proposal needs detection running") {
-        decide(autoMode = false).shouldBeNull()
+    test("manual mode notifies with the manual question (R339) - no detection proposal needed") {
+        decide(autoMode = false) shouldBe EveningNotice.Manual
+        // The outcome is ignored in manual mode: there is no detection, so the question is asked regardless.
+        decide(autoMode = false, outcome = DetectionOutcome.NotSure) shouldBe EveningNotice.Manual
     }
 
     test("never on a non-working day") {

@@ -1,0 +1,265 @@
+REPORT-AN-NOTIF  -  Mon Releve: record the day from the evening notification (R339)
+===================================================================================
+
+HOW IT ENDED
+------------
+DONE AND PUSHED (code + JVM tests + the release-APK absence check + the code-side lock-screen assertions +
+this report), all on branch an-notif off origin/main 428a113, each increment on a GREEN :app:gate. The
+DEVICE half is handed off, by the operator's instruction, to a separate consolidated phone-work pass: the
+section-5 on-device walkthrough and the `adb shell dumpsys notification` lock-screen check are PARKED
+(PARKAN-46, PARKAN-47), with the code-side equivalents done now. The manual-mode PERIODIC TRIGGER (a
+reminder-time scheduler) is PARKED (PARKAN-45) - it needs a reminder-time setting that does not exist yet.
+
+This session was CODE-ONLY throughout (no on-device drive, no dumpsys, no phone settings touched - the
+operator is running the phone pass). The final `pnpm gate:clone` + merge are the orchestrator's (I do not
+merge). I changed NO web code, so gate:clone is unaffected by this work.
+
+  incr 1  (8c32927)  the receiver's pure tap decision (R291) + 12 JVM section-3 tests
+  incr 2  (dac70a9)  the notification copy that asks and confirms (R339/R206)
+  incr 3  (c6c75de)  the recording receiver + confirmation (R339/R206)
+  incr 4a (16bc21c)  the decision asks in manual mode too (R339)
+  incr 4b (862137c)  the notifier posts recording buttons, locked down (R339)
+  incr 5  (7cc4fa0)  cancel-on-record wiring (R339, section 3)
+  report  (the tip)  this report + PARKAN-45/46/47 (the commit after 7cc4fa0; the branch tip)
+
+HARD BOUNDARIES HELD: no change to either engine, /api/v1, or the Room schema; D18 (no coordinate stored,
+logged, sent, or read here - the glue reads only entry rows and Classification checks); D16 (nothing is
+written without the person's tap - a notification button tap IS that tap, R339); the phone's lock-screen
+security was NOT touched (no PIN set or cleared); no red commit (every commit on a green :app:gate).
+
+R273 - WHERE THIS WORK BELONGS
+------------------------------
+tasks/todo.md maps it to AN13 (Notifications) and PARKAN-36 (the local evening notification R323 built).
+R323 (REPORT-AN-NEXT.txt) built the opt-in evening notification that OPENED Aujourd'hui; this task makes
+its buttons RECORD the day (R339), through the same repository path as an in-app tap. REPORT-AN-AUTO-2.txt
+is the automatic-mode base this builds on (the four-window vote, the HIGH/MEDIUM/LOW tiers, R311/R320).
+
+R339 - RECORDED VERBATIM (the ratified product decision this task rests on)
+--------------------------------------------------------------------------
+R339 (new, supersedes one line of R323). A NOTIFICATION BUTTON MAY RECORD THE DAY. R323 said nothing is
+recorded from the notification itself; that was a cautious default, and the operator has decided otherwise.
+D16 still holds exactly: nothing is written without the person's tap. A tap on a clearly labelled
+notification button IS that tap - D16 never required the tap to happen inside the app. The rest of R323
+stands: at most one per working day, opt-in, only when the day is not yet recorded, no second reminder,
+nothing private on the lock screen.
+
+THE NOTIFICATIONS (each mode, each button, the confirmation and its delay)
+--------------------------------------------------------------------------
+All copy is from fr/ (NotificationCopy, with its accents), reachable (R238: allowlisted in
+CopyReachabilityTest as reached from the background notifier / receiver, the ReleveCopy.EXPORT_* pattern).
+"Confirmer" (DetectionCopy.CONFIRM), "Modifier" (AujourdhuiCopy.MODIFIER), the side labels "En Suisse"/
+"Domicile" (AujourdhuiCopy) and the not-sure message (DetectionCopy.NOT_SURE) keep their one homes (R206);
+the duplication guard (CopyDuplicationTest) stays green.
+
+MANUAL MODE (EveningNotice.Manual, R339 - new):
+  title  "Ou avez-vous travaille aujourd'hui ?"   text  the date in words (formatDayLong)
+  buttons  [En Suisse]  [Domicile]  [Autre...]
+  En Suisse / Domicile record a FULL day, provenance MANUAL. Autre... opens the app on today.
+
+AUTOMATIC MODE, HIGH proposal (EveningNotice.Proposed):
+  title  "Proposition : <cote> - verifiez"   text  the date in words
+  buttons  [Confirmer]  [<the other side>]  [Autre...]
+  Confirmer records the proposed side, provenance DETECTED_CONFIRMED, detectedKind = proposed (R202).
+  The other side records it with provenance DETECTED_CORRECTED, keeping detectedKind = proposed (R202).
+
+AUTOMATIC MODE, not sure (EveningNotice.NotSure):
+  title  "Ou avez-vous travaille aujourd'hui ?"   text  the R312 message (DetectionCopy.NOT_SURE)
+  buttons  the manual buttons  [En Suisse]  [Domicile]  [Autre...]
+
+THE ONE REPOSITORY PATH (R206). A recording button fires an IMMUTABLE BROADCAST PendingIntent (distinct
+request code per button) to EveningActionReceiver, which records through LocalEntryRepository.record - the
+SAME writer AujourdhuiController and the calendar use. So the clientMutationId is born at the tap (AN5), the
+account tag is stamped at the tap (R303), clientClaimedAt is the tap (R275), and detectedAt (for a
+confirm/correct) is the tap - exactly as for an in-app tap. It syncs like any other entry (requestSync),
+later if offline. There is no second way of writing entries.
+
+THE CONFIRMATION AND ITS DELAY. After a tap records the day, the actionable notification is REPLACED (same
+id, EVENING_NOTIFICATION_ID = 1001 - so it never stacks) by a one-line confirmation:
+  title  "<cote>"   text  "Enregistre pour le <date>"   one button  [Modifier]
+"Enregistre", never "envoye": it is the phone's record, as on Aujourd'hui; the sync state stays the app's
+business. [Modifier] opens the app on today (an ACTIVITY PendingIntent). The confirmation disappears on its
+own after CONFIRMATION_TIMEOUT_MS = 8 seconds (setTimeoutAfter). WHY 8 s: long enough to read the one line
+and tap Modifier if the tap was a mistake, short enough that it does not sit as a nag (the product is a
+support, not a reminder that persists). A mistake past the window is still fixable in the app - no undo
+button is needed beyond Modifier.
+
+WHY "Autre..." AND "Modifier" ARE ACTIVITY PendingIntents. Android 12+ forbids a receiver that a
+notification launched from starting an activity, so the two "open the app" actions are ACTIVITY
+PendingIntents built directly (openAujourdhui), not routed through the receiver. Only the RECORDING buttons
+are broadcasts.
+
+THE CHANNEL. Its own channel "Rappel du soir" (NotificationCopy.CHANNEL_NAME), IMPORTANCE_DEFAULT, so the
+person can silence it in Android's settings. lockscreenVisibility = PRIVATE. (The word "rappel" is in
+NotificationCopy, which ParametresR282Test does not scan; the Parametres toggle copy is untouched and still
+free of "rappel"/"notification".)
+
+NOT MARKED LOCAL-ONLY (deliberate, prompt section 4) - see THE WATCH below.
+
+WHAT MUST NEVER HAPPEN (each a test)
+------------------------------------
+Every section-3 case that is a DECISION is a branch in the pure, JVM-testable decideEveningTap (R291,
+notification/EveningTap.kt), tested in EveningTapTest (12 cases). The lock-screen protections are asserted
+from the code in EveningNotifierLockScreenTest. The at-most-one / non-working-day / reminder-off cases are
+in EveningNotificationDecisionTest.
+
+  - A RECORD FROM THE LOCK SCREEN. EveningNotifierLockScreenTest asserts, from EveningNotifier.kt:
+      * the PUBLIC (lock-screen) version carries NO actions (the publicVersion function has no addAction) and
+        says only the neutral "Mon Releve / Une journee a enregistrer." (D18 - never where someone was);
+      * every recording action calls setAuthenticationRequired(true) - on Android 12+/API 31+ the device
+        must be UNLOCKED to record (NotificationCompat gates it to 31+; a no-op below, where there is no
+        lock-screen action gate). Someone picking up the phone cannot write to the owner's tax record.
+    (The `dumpsys notification` confirmation that the posted notification actually renders this way is the
+    DEVICE half - PARKAN-47.)
+  - A RECORD FOR THE WRONG ACCOUNT (R303). The button carries the account it was shown for; decideEveningTap
+    refuses (WRONG_ACCOUNT, nothing written) if a different account - or no account - is signed in when it
+    is tapped, and the receiver then dismisses the notification. Tested: different account, and null account.
+  - A RECORD FOR A FUTURE DAY, or a day other than the one shown. decideEveningTap refuses (NOT_TODAY) unless
+    the shown day equals today. Tested: a notification left overnight (shown day < today), and a future day.
+  - A STALE TAP OVERWRITING A NEWER ENTRY. If the day already has an entry, decideEveningTap refuses
+    (ALREADY_RECORDED, nothing written) and the receiver shows the existing value. Tested. And recording the
+    day by ANY in-app path (Aujourd'hui or the calendar) cancels the notification (incr 5, see below).
+  - MORE THAN ONE NOTIFICATION. One id (1001) for the day; a new post REPLACES rather than stacks, and the
+    confirmation reuses the same id. "At most one per working day" is EveningNotificationDecisionTest
+    (alreadyNotified -> null), enforced by the store's last-notified day.
+  - A NOTIFICATION ON A NON-WORKING DAY, or when the reminder is off. EveningNotificationDecisionTest:
+    workingDay=false -> null; optedIn=false -> null (off by default).
+
+CANCEL ON RECORD (incr 5). MainShell cancels today's evening notification the moment today becomes recorded,
+by ANY in-app path. Both Aujourd'hui and the calendar write through the ONE repository, which the Aujourd'hui
+controller observes, so "today became recorded" is a single signal (a LaunchedEffect keyed on it); cancel is
+idempotent. A notification BUTTON records through the receiver, which replaces the notification with its
+confirmation, so that path needs no separate cancel.
+
+THE WALKTHROUGH (rows read back)
+--------------------------------
+DEFERRED to the operator's phone pass (PARKAN-46), by the operator's instruction - this session was
+code-only. What remains to drive on the S9 against the dev server, with the debug trigger
+(EveningNotifyActivity, which runs the real maybeNotifyEvening path):
+  - manual mode: tap En Suisse from the shade with the app closed; see the "<cote> / Enregistre pour le
+    <date>" confirmation; read the row back from the Room DB (one entry, its own clientMutationId, the
+    account tag, provenance MANUAL); tap Autre..., land on today; record in the app first, see the
+    notification cancelled.
+  - automatic mode: a HIGH proposal Confirmer'd (DETECTED_CONFIRMED + detectedKind); one corrected with the
+    other side (DETECTED_CORRECTED + detectedKind); a not-sure day (manual buttons). Read each row and its
+    provenance back.
+  - airplane mode: tap, see it recorded (phone's record), see it sync later.
+  - every state captured and opened at default size and 200 percent.
+
+THE LOCK SCREEN (what was asserted; the operator's manual check)
+---------------------------------------------------------------
+ASSERTED FROM THE CODE (EveningNotifierLockScreenTest, green in :app:gate):
+  - the public (lock-screen) version carries NO actions and names nothing private (D18);
+  - every recording action requires the device unlocked (setAuthenticationRequired(true), API 31+);
+  - recording buttons are immutable broadcast PendingIntents.
+DEFERRED (PARKAN-47): the `adb shell dumpsys notification` confirmation that the posted notification has
+VIS=PRIVATE with a publicVersion carrying no actions, and that the actions carry the authentication-required
+flag. (The S9 is API 29, below 31, so setAuthenticationRequired is a no-op there; the flag is confirmed from
+the code for the 31+ devices on which it matters, and dumpsys on a 31+ device is the device confirmation.)
+
+THE OPERATOR'S MANUAL LOCK-SCREEN CHECK (two lines, for a 31+ device; the S9 has no screen lock and this
+session did not set one - a PIN left behind by a session that dies would lock the operator out):
+  1. Set a PIN, trigger the evening notification (EveningNotifyActivity), lock the phone, and confirm the
+     lock screen shows only "Mon Releve / Une journee a enregistrer" with NO buttons.
+  2. Remove the PIN.
+
+THE WATCH (untested)
+--------------------
+The notification is deliberately NOT marked local-only (prompt section 4), so Android forwards its buttons to
+a connected smartwatch automatically. This is UNTESTED here - no watch was paired, and the session was
+code-only. Recording from a watch would go through the same broadcast PendingIntent and the same
+decideEveningTap guards (account, day, stale-tap), so the safety holds by construction, but the end-to-end
+watch path is unverified.
+
+UNTRACKED FILES LEFT ALONE (R334)
+---------------------------------
+Reported, never removed or committed. Not mine, from other tasks / the operator's environment:
+  - web/next-env.d.ts, web/tsconfig.json  (modified in the working tree before this session; left untouched)
+  - web/scripts/_mint-readback.mjs
+  - MonReleve/ (incl. .seed-shots/)
+  - android/.an-audit-shots/ .an-auto-shots/ .an-cal2-shots/ .an-home-cef-shots/ .an-onboard-shots/
+    .an-params-shots/ .an-state-shots/ .an10-shots/ .an10b-shots/ .an11-shots/ .an12-shots/ .an5c-ac2-shots/
+    .device-loop-shots/ .kotlin/
+  - android/scripts/an-*.mjs and uidrive.mjs (the drive instruments)
+  - .claude/worktrees/agent-aacfc4b0d2a3088e3/ (a leftover worktree)
+I staged ONLY my own files, by explicit path, every commit (never `git add .` or `-A`).
+
+ADVISOR DECISIONS / JUDGMENT CALLS (advisor NOT consulted - orchestrator directive; it stalled. R156/R270)
+---------------------------------------------------------------------------------------------------------
+  - MANUAL MODE NOTIFIES (R339 over R323's "only in auto mode"). The prompt's section 1 explicitly describes a
+    manual-mode notification. R323 gated on auto because its notification CARRIED a detection proposal
+    (nothing to propose without detection); R339's can ask the one question instead, so it serves the manual
+    user - the commonest "a support, not a daily chore" case. eveningDecision now branches on mode rather than
+    gating on it. Conservative and reversible (one branch).
+  - THE MANUAL-MODE PERIODIC TRIGGER IS PARKED (PARKAN-45), not built. It needs a reminder-TIME setting that
+    does not exist (SPEC 13.3's reminderTime is unbuilt; Settings.kt ignores it), a WorkManager periodic job,
+    and device verification - and the phone pass is separate. The auto-mode trigger (SamplingWorker ->
+    maybeNotifyEvening) exists and fires the Proposed/NotSure notices; the Manual notice is reachable via the
+    debug trigger now and a future scheduler. So the CONTENT + DECISION + RECEIVER for manual mode are built
+    and gate-verified; only its automatic firing is parked. Approved by the orchestrator.
+  - THE CONFIRMATION DELAY is 8 seconds (reasoned above). No advisor; conservative, reversible (one constant).
+  - hasEntry is read cross-account via entryDao().all() (the maybeNotifyEvening convention on a single-user
+    device); the account gate in decideEveningTap runs FIRST, so current == shown by the time hasEntry matters.
+  - setAuthenticationRequired is applied via NotificationCompat on all APIs (a no-op below 31), so no API-31
+    symbol is referenced and the NewApi lint gate stays clean - the FIX_PROVIDERS/POST_NOTIFICATIONS reasoning.
+
+PHONE SETTINGS RESTORED
+-----------------------
+None changed - this session never touched the phone (code-only; the operator runs the phone pass). No PIN
+set or cleared (the prompt's hard boundary).
+
+PARKED
+------
+  PARKAN-45  the manual-mode PERIODIC TRIGGER (a reminder-time scheduler). Content/decision/receiver built;
+             automatic firing in manual mode needs a reminder-time setting + WorkManager periodic job +
+             device verification.
+  PARKAN-46  the section-5 ON-DEVICE WALKTHROUGH (manual/auto/airplane; rows read back; every state at
+             default + 200%). Deferred to the operator's phone pass.
+  PARKAN-47  the `adb shell dumpsys notification` LOCK-SCREEN verification (public version no actions;
+             setAuthenticationRequired on a 31+ device) + the operator's manual PIN check. Deferred to the
+             phone pass. Code-side assertions are done (EveningNotifierLockScreenTest).
+NOTICED BUT NOT TOUCHING: a detection/ <-> notification/ package cross-reference exists (the notifier builds
+the receiver's intent; the receiver posts via the notifier) - benign in one Gradle module, compiles and
+passes ktlint/detekt; not refactored (out of scope, and no fence or rule forbids it).
+
+DEVIATIONS
+----------
+  - The manual-mode periodic trigger is PARKED rather than built (PARKAN-45, approved - see ADVISOR DECISIONS).
+  - The device walkthrough (PARKAN-46) and dumpsys (PARKAN-47) are deferred to a separate phone pass by the
+    operator's instruction; this session is code-only.
+  - EveningNotifier stays in detection/ (it never writes an entry, so Fence 7 holds); the recording receiver
+    and the RecordCommand-building decision live in a NEW package notification/ (Fence 7 forbids detection/
+    from reaching EntryRepository/RecordCommand).
+
+QUESTIONS
+---------
+  1. The manual-mode reminder TIME: PARKAN-45 needs a reminder-time setting (a picker in onboarding/Parametres)
+     before the manual-mode notification can fire automatically. Does the operator want a fixed default (e.g.
+     end of the working day) or a user-chosen time?
+  2. The confirmation's 8-second auto-dismiss: ratify, or prefer a different window?
+
+PUSH PROOF
+----------
+Branch an-notif off origin/main 428a113 (confirmed by fetch). Commits, each on a GREEN :app:gate:
+  8c32927  incr 1   the receiver's pure tap decision (R291) + 12 JVM section-3 tests
+  dac70a9  incr 2   the notification copy that asks and confirms
+  c6c75de  incr 3   the recording receiver + confirmation (full :app:gate green, 4m20s)
+  16bc21c  incr 4a  the decision asks in manual mode too
+  862137c  incr 4b  the notifier posts recording buttons, locked down (full :app:gate green, 4m50s)
+  7cc4fa0  incr 5   cancel-on-record wiring (full :app:gate green, 4m40s)
+  the tip  report   this report + PARKAN-45/46/47 (the commit after 7cc4fa0)
+
+:app:gate RAN (per increment): assembleDebug, testDebugUnitTest (1047 tests incl. EveningTapTest,
+EveningNotificationDecisionTest, EveningNotifierLockScreenTest, CopyReachabilityTest, CopyDuplicationTest),
+checkTestFloor, ktlintCheck, detekt, verifyPaparazziDebug (no baseline changed - no UI composable touched),
+checkReleaseCleartext, checkReleaseNoDebugInjection, checkReleaseLocationPermissions, checkReleaseNoDevComponent
+(THE RELEASE-APK ABSENCE CHECK: the debug-only trigger EveningNotifyActivity is a ch.monreleve.app.dev.*
+component, declared only in src/debug, and this task proves from the BUILT release APK with aapt2 that no
+ch.monreleve.app.dev.* component ships - the EveningActionReceiver, by contrast, is production and DOES ship),
+checkMinifiedWireContract, checkLicences, lintDebug (NewApi).
+
+NO NEW PAPARAZZI BASELINES were generated or changed (no ui/ composable was touched; R135 not engaged).
+
+DEFERRED TO THE ORCHESTRATOR: the final `pnpm gate:clone` (web; no web code changed this session) and the
+merge to main. I do not merge.
+
+END OF REPORT-AN-NOTIF
