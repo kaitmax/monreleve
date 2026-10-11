@@ -321,4 +321,156 @@ No defect found. No PARKAN change (AN-LINKS has no deferred-walkthrough
 PARKAN of its own; this is the confirmation its merged code works on the
 device).
 
-(Walkthroughs 3-4 follow in their own sections / commits.)
+====================================================================
+WALKTHROUGH 3 - AN-NOTIF (resolves PARKAN-46 largely; PARKAN-47)
+====================================================================
+Record the day from the evening notification: manual mode, automatic
+mode, offline + deferred sync, rows read back, and the dumpsys lock-screen
+check.
+
+SETUP AND A CONSTRAINT WORTH STATING. maybeNotifyEvening gates on six
+conditions (EveningNotificationDecision): opted in, a WORKING DAY (Mon-Fri,
+weekends excluded), no entry yet, the day concluded (Paris time past the
+last check window = 17:00), not already notified, and the mode selects what
+is said. Today is Sunday 2026-10-11 - a NON-working day - so the live path
+would never post today. Non-root adb cannot set the system date (`date` ->
+"Operation not permitted"), so the device date was moved to a WEEKDAY via
+the Settings date picker (auto date/time off; Paris time was already past
+17:00). auto_time/auto_time_zone restored to 1 afterwards. The opt-in
+(evening.enabled, default off, hidden in Parametres unless detection is on)
+and the mode (loggingMode) were set directly in the debug app's SharedPrefs
+(monreleve.detection) via `run-as` (a debug build). Session: Camille via
+the R284 debug session path. The debug trigger EveningNotifyActivity runs
+the real maybeNotifyEvening path on demand.
+
+MANUAL MODE (Friday 2026-10-09). evening.enabled=true, loggingMode absent
+(-> MANUAL). Triggered; app put to background (closed). The notification
+(dumpsys id=1001, actions=3, vis=PRIVATE) read, expanded in the shade:
+  title "Ou avez-vous travaille aujourd'hui ?"  text "Vendredi 9 octobre 2026"
+  buttons  [En Suisse]  [Domicile]  [Autre...]
+Tapped EN SUISSE with the app closed. The notification was REPLACED (same
+id 1001, now actions=1) by the confirmation:
+  title "En Suisse"   text "Enregistre pour le 09.10.2026"   button [Modifier]
+"Enregistre", not "envoye" (R339). The entry synced: POST /api/v1/entries
+200.
+ROW READ BACK (server Entry, joined to the user):
+  dayDate 2026-10-09, kind CH, provenance MANUAL,
+  clientMutationId a98429d2-44ec-4fde-b79e-d88cf325a816 (its own id, born at
+  the tap - AN5), clientClaimedAt 2026-10-09 15:24:20 (the tap).
+  THE ACCOUNT TAG (R303): the signed-in account's opaque tag, read from the
+  app's monreleve.account.xml, is
+  6b42a8054a62e29ba76a6847b40c373c60c1f2fcdf703410e87e2ca18a937e71
+  (accountTagOf camille.martin@example.invalid); the entry synced to
+  camille.martin's server user, so the account scoping held (a wrong-account
+  tap would have written nothing, decideEveningTap).
+
+"AUTRE..." LANDS ON TODAY (Thursday 2026-10-08). Triggered a fresh manual
+notification; tapped "Autre..." - it opened ch.monreleve.app/.MainActivity
+on AUJOURD'HUI for today ("Bonjour Camille / Jeudi 8 octobre 2026", the
+record buttons). Confirmed it opens the app on the shown day.
+
+RECORD-IN-APP-FIRST CANCELS THE NOTIFICATION (same Thursday). With the Oct-8
+notification still in the shade, recorded the day IN THE APP (Aujourd'hui ->
+En Suisse). The Mon Releve notification then DISAPPEARED from the shade -
+MainShell cancels today's evening notification the moment the day becomes
+recorded by any in-app path (R339 incr 5). Confirmed by the shade showing no
+Mon Releve notification afterwards.
+
+AUTOMATIC MODE - NOT SURE (Wednesday 2026-10-07). loggingMode=AUTO_DETECT,
+evening.enabled=true, no detection tally (empty Room). Triggered; expanded:
+  title "Ou avez-vous travaille aujourd'hui ?"
+  text  "Nous ne sommes pas certains de votre position ce j..." (the R312
+        not-sure message, DetectionCopy.NOT_SURE - NOT the date)
+  buttons  [En Suisse]  [Domicile]  [Autre...]
+This is the auto-mode branch of eveningDecision rendering on-device: with no
+HIGH proposal, it invites manual recording (DetectionOutcome.NotSure).
+
+AUTOMATIC MODE - HIGH PROPOSAL (DETECTED_CONFIRMED / DETECTED_CORRECTED):
+NOT REPRODUCIBLE ON-DEVICE, recorded honestly. detectionOutcome surfaces a
+Proposed notice only when a day's vote is HIGH (Tier.HIGH = >=3 agreeing
+detection checks, voteTier/dayProposal). That needs a seeded detection
+TALLY in Room (the SamplingWorker's output). There is no on-device sqlite3,
+the Room DB is WAL and cannot be hand-edited, and seeding the tally tables
+is infeasible in a verification pass without the detection sampler having
+run. So the Confirmer -> DETECTED_CONFIRMED and the-other-side ->
+DETECTED_CORRECTED (+ detectedKind, R202) buttons could not be driven on the
+phone. They are covered on the JVM: EveningTapTest asserts the decision and
+the DETECTED_CONFIRMED/DETECTED_CORRECTED provenance + detectedKind, and the
+notifier builds Confirmer/[other side] as immutable broadcasts
+(EveningNotifier.recordActions, EveningNotifierLockScreenTest). The on-device
+piece that remains for PARKAN-46 is this HIGH-proposal path, which needs
+either the sampler to have produced a HIGH day or a tally-seeding instrument.
+
+OFFLINE RECORD + DEFERRED SYNC (Wednesday 2026-10-07). The adb-reverse
+tunnel is over USB, so airplane mode alone does NOT take the app offline from
+the dev server; the reverse tunnel was REMOVED (and airplane mode on) to make
+the app genuinely unable to reach the server. Tapped En Suisse on the
+NotSure notification: the confirmation "En Suisse / Enregistre pour le
+07.10.2026" appeared - the LOCAL record succeeded offline - while the server
+still showed the day's older value (no sync). Then connectivity was restored
+(airplane off, WiFi on, reverse re-added) and the app reopened: the entry
+SYNCED - the server now shows 2026-10-07 CH MANUAL with clientMutationId
+10fd1223-5ee6-425b-8e11-77137c204a33 (POST /api/v1/entries 200). "Recorded
+offline, synced later" confirmed.
+  NOTE (seed interaction, not a defect): the seeded Camille account already
+  holds server entries for these dates, but maybeNotifyEvening gates on the
+  LOCAL Room (empty after a fresh sign-in), so the notification fires anyway
+  - the "new phone" shape SEED-RELEVE recorded. On sync, the
+  notification-recorded day supersedes the seeded server value for that day
+  (Oct 7 was a seeded ABSENT, now CH MANUAL); the append-only EntryEvent
+  trail keeps both.
+
+THE DUMPSYS LOCK-SCREEN CHECK (PARKAN-47). `adb shell dumpsys notification`
+on the posted actionable notification showed:
+  - id=1001, channel "Rappel du soir" (monreleve.evening.proposal),
+    importance 3 (DEFAULT);
+  - vis=PRIVATE on the main notification;
+  - publicVersion=Notification(... vis=PUBLIC ...) present as a SEPARATE
+    notification, and it carries NO actions (the summary lists no actions for
+    it; the main lists actions=3) - matching publicVersion() having no
+    addAction and publicLines() = "Mon Releve / Une journee a enregistrer.";
+  - the three actions: [0] "En Suisse" -> broadcastIntent, [1] "Domicile" ->
+    broadcastIntent (the two recording buttons are IMMUTABLE broadcasts),
+    [2] "Autre..." -> startActivity; contentIntent -> startActivity.
+  WHAT APPLIES ON API 29: setAuthenticationRequired(true) is applied in code
+  on every recording action via NotificationCompat, but it is a NO-OP below
+  API 31, so the S9 (API 29) cannot show the action auth-required flag in
+  dumpsys. The code-side assertion is EveningNotifierLockScreenTest; a 31+
+  device is needed for dumpsys to show the per-action unlock gate. The
+  channel's own mLockscreenVisibility read -1000 (NO_OVERRIDE) in dumpsys
+  (the channel pre-existed from an earlier run; ensureChannel does not update
+  an existing channel) - the per-NOTIFICATION vis=PRIVATE is what governs
+  redaction and it is set, so lock-screen redaction holds; noted as a minor
+  observation, not a defect.
+
+THE OPERATOR'S TWO-LINE MANUAL PIN CHECK (I did NOT set or clear any PIN -
+hard boundary R334). On a device with a screen lock:
+  1. Set a PIN; trigger the evening notification (the debug
+     EveningNotifyActivity, or wait for the real evening); lock the phone;
+     confirm the lock screen shows ONLY "Mon Releve / Une journee a
+     enregistrer." with NO buttons (the public version), and that tapping a
+     recording action on a 31+ device demands unlock first.
+  2. Remove the PIN.
+
+THE WATCH: untested (no watch paired), as AN-NOTIF noted.
+
+200 %: the notifications are OS-rendered chrome; font_scale 2.0 enlarges them
+system-wide. A dedicated 200 % notification capture was attempted but the
+200 % font reflowed the Settings date picker and the weekday change missed
+(it reverted to the real Sunday, a non-working day, so nothing posted); given
+the notification body is OS-rendered, this was not pursued further. The app
+SCREENS reached from the notification (Aujourd'hui) are covered at 200 % in
+WT1.
+
+WT3 RESULT: manual mode end to end (notification -> tap with the app closed
+-> confirmation -> row read back with its clientMutationId, account tag and
+MANUAL provenance), "Autre..." landing on today, record-in-app cancelling the
+notification, the auto-mode NotSure notice, offline record + deferred sync,
+and the dumpsys lock-screen protections (as far as API 29 allows) are all
+confirmed on the S9. REMAINING (recorded, not faked): the auto HIGH-proposal
+DETECTED_CONFIRMED/DETECTED_CORRECTED path (needs a seeded HIGH tally; JVM-
+covered) and the dumpsys action auth-flag (needs a 31+ device). PARKAN-46 is
+largely resolved (manual + NotSure + offline + rows); PARKAN-47's dumpsys is
+done for API 29 with the 31+ remainder and the operator PIN check recorded.
+
+(Walkthrough 4 follows in its own section / commit.)
