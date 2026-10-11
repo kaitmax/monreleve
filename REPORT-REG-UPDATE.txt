@@ -1,0 +1,534 @@
+REPORT-REG-UPDATE.txt
+Mon Releve / frontalier - REG-UPDATE session
+Branch: reg-update (off origin/main 0b2dd02)
+Date: 2026-10-11
+Pure ASCII. French quotations are transliterated (accents stripped); the
+accented originals live at the fetched URLs named below.
+
+====================================================================
+SUMMARY - SECTION 2 (P3) STOPPED. THE ENGINE IS FROZEN; I DID NOT TOUCH IT.
+====================================================================
+
+The P3 engine check against accord amiable clause 1(d) is a STOP.
+
+I fetched and transcribed the accord amiable FR-CH of 29 April 2026 myself
+(source A). Clause 1(d) says, verbatim and WITHOUT any condition on the
+denominator method:
+
+  "pour les salaries qui exercent leur activite pendant une periode
+   inferieure a l'annee civile et ceux qui exercent un emploi a temps
+   partiel pendant l'annee entiere, la limite annuelle de 10 jours est
+   ajustee proportionnellement et arrondie a l'unite superieure."
+
+The engine, under the EXACT denominator method, does NOT prorate the 10-day
+mission cap by the employment rate. web/lib/calc-engine/denominator.ts,
+missionCapFor:
+
+    const rateFactor = method.kind === 'exact' ? FULL_RATE : employmentRate;
+    return ceilProrated(rules.missionCapDays, rateFactor, periodFraction);
+
+Under 'exact', rateFactor is FULL_RATE (100 %), so employmentRate is ignored.
+
+FAILING CASE (written and run; see P3 below for the full test and output):
+  Input: employmentRate 80, exact method (totalWorkDays 192), whole year
+         (periodFraction 1), 12 mission days in France, 0 third-state,
+         0 telework, canton GE, taxYear 2026.
+  Engine result:   missionCap = 10 ; creditedMissionDays = 10.
+  Expected per 1(d): missionCap = ceil(10 * 0.80) = 8 ; credited = 8.
+  Assertion output: "expected 10 to be 8".
+
+Per the hard boundary, correcting the engine is the operator's separate
+decision, in its own task. This session reports and ends. BECAUSE THE STOP
+ENDS THE SESSION, and because section 1 (promote P1/P2 into docs rows) and
+section 3 (rewrite /sources + threshold copy) are coupled to the same page -
+and section 3's copy literally describes the exact-method mission-cap
+behaviour the operator is about to re-decide - I did NOT edit the engine,
+docs/regulatory-sources.md, the /sources copy, lib/fr, or any parking file.
+Every verified source transcription and every drafted row/copy change is
+carried in this report, ready to apply in the follow-up once the engine
+decision is taken. This is the conservative option (R156), recorded under
+DEVIATIONS.
+
+WHAT IS NONETHELESS SETTLED by my own fetches this session (for the follow-up):
+  - Source A (accord 29.04.2026): fetched, fully transcribed. 1(b), 1(d), 2,
+    3 verified verbatim.
+  - Source B (OFAS/BSV teletravail): fetched, transcribed. 49.9 %, the
+    25-49.9 % band, the exclusions, the A1 via ALPS (max 3 years).
+  - Source C (AFC Geneve, obligations employeur): fetched, transcribed. The
+    employer-document sentences are quoted below for the section-3 rewrite.
+  - Source D (Geneva LAMal premiums 2026): fetched; existence, date,
+    deductible and year recorded; NO reuse terms on the document.
+  - P1 (France before a third state): VERIFIED from accord 1(b); the engine
+    matches and a passing test covers it.
+  - P2 (49.9 %): VERIFIED for social security from B; CLEISS "moins de 50 %"
+    recorded beside it.
+
+====================================================================
+R273 - WHAT WAS CHECKED FIRST
+====================================================================
+
+  - tasks/todo.md: the mission-cap proration is named at FW4 (line 73,
+    "mission cap ceil proration") and FW4 line 78 ("mission-cap rounds up at
+    rates 1/50/80/100"). No REG-UPDATE task row; this runs from the relay
+    prompt. No todo row contradicts the finding.
+  - docs/regulatory-sources.md and its P1/P2/P3 rows: read in full. The three
+    STILL PROVISIONAL readings (P1 imputation order; P2 49,9 vs <50; P3
+    mission-cap proration under the exact method, ruling R19) are the subject
+    of this task.
+  - /sources as built: web/app/(public)/sources/page.tsx, renders the
+    constants table from RuleSet and the three readings from
+    PUBLISHED_PROVISIONAL_IDS = ['P1','P2','P3'] (lib/content/provisional.ts)
+    with copy from lib/fr/sources.ts.
+  - The engine's mission-cap code: web/lib/calc-engine/denominator.ts
+    (missionCapFor, ceilProrated), consumed by calculate.ts (the missionCap
+    passed into runWaterfall) and allowed-days.ts.
+  - R1 / gate:clone: the orchestrator confirmed the last full gate:clone (on
+    41ca989) PASSED and that origin/main (0b2dd02) carries no web-code change
+    since. origin/main == 0b2dd02 confirmed by fetch at session start. The
+    final gate:clone is DEFERRED to the operator per the relay prompt.
+
+====================================================================
+EACH SOURCE - FETCHED, PASSAGE TRANSCRIBED, ROW (drafted, not applied)
+====================================================================
+
+All quotations below were read by me this session from the URLs named. They
+are transliterated to ASCII here; the accented originals are at those URLs
+(and, for A and D, in the PDFs I downloaded and read page-by-page). NO row
+was written into docs/regulatory-sources.md this session (STOP; see SUMMARY).
+The rows are DRAFTED here for the operator's follow-up.
+
+--------------------------------------------------------------------
+SOURCE A - Accord amiable FR-CH, 29 April 2026 (ESTV PDF). VERIFIED.
+URL: https://www.estv.admin.ch/dam/fr/sd-web/Bibcb06jL1wG/
+     int-laender-fr-dba-ai-cdi-20260429-fr.pdf
+Fetched: 2026-10-11. Signed "A Berne, le 29 avril 2026", Pascal Duss (autorite
+competente suisse) and Martin Klam (autorite competente francaise).
+Title: "Accord amiable conclu entre les autorites competentes de la Suisse et
+de la France sur les modalites du regime applicable a l'exercice du
+teletravail dans le cadre de la Convention du 9 septembre 1966 ..."
+
+Preamble (verbatim, transliterated):
+  "Considerant que l'avenant du 27 juin 2023 a la Convention du 9 septembre
+   1966 ... est entre en vigueur le 24 juillet 2025 ;"
+
+Clause 1 chapeau:
+  "Pour l'application de la limite de 10 jours par annee de missions
+   temporaires exercees par le salarie pour le compte de son employeur dans
+   son Etat de residence ou dans un Etat tiers, les regles d'interpretation
+   suivantes sont applicables :"
+
+1(a):
+  "il est entendu que seules sont incluses dans l'expression << activites
+   exercees en teletravail depuis l'Etat de residence >> les missions
+   temporaires exercees par le salarie, dans son Etat de residence ou dans un
+   Etat tiers, pour le compte de son employeur, a hauteur de la fraction
+   respectant, a la fois, la limite annuelle de 10 jours, et celle de 40 % du
+   temps de travail par annee civile, apres imputation des autres jours de
+   teletravail, c'est-a-dire des jours de teletravail qui ne sont pas des
+   missions temporaires ;"
+
+1(b)  [confirms P1 - the imputation ORDER]:
+  "il est entendu qu'aux fins de l'application du a), les autres jours de
+   teletravail sont decomptes en priorite par rapport aux jours de missions
+   temporaires. Parmi les missions temporaires, celles exercees dans l'Etat
+   de residence du salarie sont prises en compte en priorite par rapport a
+   celles exercees dans un Etat tiers ;"
+
+1(c):
+  "il est entendu que la fraction des jours de missions temporaires excedant
+   au moins l'une des limites stipulees au a) n'est pas incluse dans
+   l'expression << activites exercees en teletravail depuis l'Etat de
+   residence >> ;"
+
+1(d)  [the P3 finding - mission-cap proration]:
+  "pour les salaries qui exercent leur activite pendant une periode
+   inferieure a l'annee civile et ceux qui exercent un emploi a temps partiel
+   pendant l'annee entiere, la limite annuelle de 10 jours est ajustee
+   proportionnellement et arrondie a l'unite superieure."
+
+2  [confirms the on-call PARK item]:
+  "Il est entendu que les periodes d'astreinte ne sont pas constitutives de
+   missions temporaires exercees par le salarie pour le compte de son
+   employeur dans son Etat de residence ou dans un Etat tiers. Elles ne sont
+   incluses dans l'expression << activites exercees en teletravail depuis
+   l'Etat de residence >> que si elles donnent lieu a une intervention
+   effective du salarie dans son Etat de residence."
+
+3  [effect date]:
+  "Le present accord entre en vigueur le jour suivant sa signature par les
+   deux autorites competentes. Ses dispositions prennent effet a la meme date
+   que celle de l'avenant a la Convention, signe le 27 juin 2023."
+  (The printed PDF has a typo, "avennt", for "avenant".)
+
+4 (denonciation): a minimum six-month notice before the end of a calendar
+  year; the accord then ceases to apply after that year.
+
+DRAFTED ROW for docs/regulatory-sources.md (new dated section, accented in
+the file): "ACCORD AMIABLE OF 29 APRIL 2026 - VERIFIED 11.10.2026", holding
+1(a)-(d), 2, 3 verbatim with the URL and fetch date. It supersedes, as the
+NAMED instrument (R167), the second-hand "interpretative agreement" the file
+still gestures at, and it now SPEAKS on P1 (1b) and P3 (1d) where Checkpoint A
+recorded "no source speaks".
+
+--------------------------------------------------------------------
+SOURCE B - OFAS / BSV, Teletravail. VERIFIED.
+URL: https://www.bsv.admin.ch/fr/teletravail
+Fetched: 2026-10-11. Page note: "Publie le 12 septembre 2025".
+
+  (1) the percentage limit:
+    "jusqu'a 50% de teletravail transfrontalier (au maximum 49.9% du temps[
+     de travail])"
+  (2) the band the agreement covers:
+    "L'accord multilateral s'applique au teletravail transfrontalier compris
+     entre ... entre 25% et 49.9% du temps de travail."
+  (3) who it does NOT apply to:
+    "personnes qui exercent, de maniere habituelle, egalement une activite
+     autre que du teletravail dans l'Etat de residence signataire de
+     l'accord"; "personnes exercant, de maniere habituelle, egalement une
+     activite dans l'UE resp. l'AELE en dehors de leur Etat de residence
+     signataire de l'accord"; "personnes travaillant pour un autre employeur
+     situe dans l'UE resp. l'AELE en plus de l'activite exercee pour leur
+     employeur suisse"; "travailleurs independants."
+  (4) the A1:
+    "les employeurs suisses doivent demander une attestation A1 (validite
+     maximale de 3 ans, renouvelable) a leur caisse de compensation AVS au
+     moyen de la plateforme ALPS"
+
+Confirms docs row 4 (socialCeiling 0.499, "au maximum 49.9%") and row 8
+(a1ThresholdRate 0.25, the 25 % floor of the framework agreement). DRAFTED:
+promote P2 to a verified row (see P2 below).
+
+--------------------------------------------------------------------
+SOURCE C - AFC Geneve, obligations de l'employeur. VERIFIED.
+URL: https://www.ge.ch/imposition-du-teletravail-personnes-frontalieres/
+     obligations-employeur-matiere-teletravail
+Fetched: 2026-10-11. Page update date shown: "23 avril 2026".
+
+  (1) tracking since 01.01.2026:
+    "L'employeur doit suivre les jours de teletravail et de missions
+     temporaires effectues par chacun de ses employes domicilies en France"
+  (2) first transmission:
+    "La premiere transmission interviendra en janvier 2027 pour les donnees
+     de 2026."
+  (3) where the rate goes (NOT necessarily the salary certificate):
+    "Non, ce n'est pas obligatoire. Ce taux doit figurer sur la liste
+     recapitulative (LR) d'impot a la source (version papier) ou etre
+     transmis via ELM ou ISeL"
+  (4) several employers:
+    "Vous devez declarer a l'AFC Geneve le taux de teletravail correspondant
+     aux jours travailles pour votre entreprise uniquement."
+  (5) change of residence during the year:
+    "Vous devez etablir deux attestations-quittances au titre de l'annee:
+     une concernant chaque periode de residence."
+  (6) leaving during the year:
+    "l'attestation 'en cas de rapports de travail de moins d'un an' (art. 5a
+     OIS) doit etre remise a l'employe s'il en fait la demande."
+
+On the employer-document point (for the section-3 rewrite): the salary
+certificate is NOT the required carrier of the rate - "Non, ce n'est pas
+obligatoire" - the rate belongs on the liste recapitulative / ELM / ISeL; and
+the "moins d'un an" attestation is handed to the employee "s'il en fait la
+demande" (on request), not automatically. These are the sentences the
+section-3 rewrite must track one by one.
+
+--------------------------------------------------------------------
+SOURCE D - Geneva LAMal premiums 2026 for residents of France. RECORDED
+(existence/date/deductible/year only; premiums NOT republished).
+URL: https://www.ge.ch/document/40783/telecharger
+Fetched: 2026-10-11 (PDF downloaded and read page-by-page).
+  Title: "Cotisations mensuelles assurance de base 2026" /
+         "Personnes domiciliees en France".
+  Publisher: Republique et canton de Geneve, Departement de la cohesion
+         sociale, Service de l'assurance-maladie.
+  Date on the document: 26.09.2025.
+  Year covered: 2026.
+  Franchise annuelle (deductible): "Adultes : CHF 300.- / Enfants : CHF 0.-".
+  Structure: columns "AVEC COUVERTURE ACCIDENT" and "SANS COUVERTURE
+  ACCIDENT", ages 26+, 19-25, 0-18, by caisse (N OFSP).
+  Reuse terms: NONE stated on the document. Per the relay prompt and R146
+  (the AN6a border-polygon discipline), premiums are NOT republished until
+  Geneva's reuse terms are read from ge.ch and recorded. PARK the comparator
+  (see PARKED).
+
+====================================================================
+THE UNCHECKED SOURCES - WHAT EACH ACTUALLY SAYS (and fetch status)
+====================================================================
+
+  URSSAF - frontalier health contribution (8 %, 25 % PASS, proration).
+    STATUS: NOT primary-verified. I could not reach a clean primary URSSAF /
+    CNTFS page this session; the consistent figures come from secondary sites
+    (hellofrontalier.ch, alptis.org, guidedufrontalier.com) and an Assemblee
+    nationale written question (q15/15-1097). What they say, consistently:
+    the 2026 maladie rate is 8 %; the assiette is the household revenus N-2;
+    a forfaitaire abattement of 25 % of the PASS applies (stated as 12 015
+    EUR for the 2026 PASS); the contribution prorates by days worked / 365.
+    NOT rowed - R146 forbids a row on secondary sources. This is a PARK-item
+    input (the LAMal/URSSAF comparator) and primary URSSAF verification is
+    future work, gated behind the reuse terms anyway.
+
+  Form 2047-SUISSE - LOCATED, not transcribed. Official form at
+    https://www.impots.gouv.fr/sites/default/files/formulaires/2047/2026/
+    2047_5489.pdf (millesime 2026, 1.3 MB). The impots.gouv.fr index
+    (https://www.impots.gouv.fr/formulaire/2047/...) confirms it is the annexe
+    to form 2047 for declaring income received abroad, Suisse-specific, with
+    three "cas" by status. The PDF body could not be rendered in this
+    environment (poppler/pdftoppm unavailable for a multi-page form), so I did
+    not transcribe headings verbatim. Recorded as located-but-not-transcribed.
+
+  ameli - droit d'option. VERIFIED (primary, ameli.fr).
+    URL: https://www.ameli.fr/assure/droits-demarches/europe-international/
+         travailleur-frontalier-suisse
+    Title: "Travailleur frontalier suisse : droits et prise en charge".
+    "Vous pouvez exercer votre droit d'option entre l'assurance maladie
+     suisse et l'assurance maladie francaise dans un delai de 3 mois a compter
+     de votre prise d'emploi en Suisse ou de votre domiciliation en France."
+    "A noter : l'option, une fois exercee, a un caractere irrevocable."
+    "Passe ce delai, vous etes obligatoirement affilie aupres de l'assurance
+     maladie suisse."
+    This CORROBORATES CLEISS rows D1 (three months), D3 (irrevocable) and D6
+    (automatic Swiss affiliation by default) already in
+    docs/regulatory-sources.md. CLEISS stays the authoritative publisher per
+    R167; ameli is a second primary French-public source and could be added
+    as a corroborating URL on those rows in the follow-up.
+
+  ESTV practical guide of 29 April 2026 - NOT located as a distinct document.
+    Search surfaced only secondary pages (fer-ge.ch, ge.ch) that reference
+    "an attestation and explanatory document on estv.admin.ch". The accord A
+    itself (dated 29 April 2026, fetched above) IS the primary ESTV instrument
+    and is fully verified; a separate "guide pratique" was not fetched. Not
+    rowed.
+
+  Amendment (avenant) of 27 June 2023 - CONFIRMED via accord A, not fetched
+    standalone. Accord A's preamble states the avenant "est entre en vigueur
+    le 24 juillet 2025", and clause 3 ties the accord's effect to "l'avenant a
+    la Convention, signe le 27 juin 2023". That is primary confirmation of two
+    of the three dates docs row 1 already records (signed 27.06.2023; in force
+    24.07.2025). The "applicable from 01.01.2026" date is unchanged from
+    Checkpoint A (ge.ch/admin.ch). The avenant's own text was not separately
+    fetched.
+
+====================================================================
+P1 - FRANCE BEFORE A THIRD STATE: VERIFIED. Engine matches.
+====================================================================
+
+Source: accord A, 1(b): "Parmi les missions temporaires, celles exercees dans
+l'Etat de residence du salarie sont prises en compte en priorite par rapport
+a celles exercees dans un Etat tiers." For a France-resident frontalier the
+Etat de residence IS France, so this is "France before a third state".
+
+Engine: web/lib/calc-engine/waterfall.ts imputes France first -
+  const creditedFrance = Math.min(missionDaysFrance, budget);
+  const creditedThirdState = Math.min(missionDaysThirdState, budget - creditedFrance);
+
+Fixture/test that covers it: web/tests/unit/calc-engine/waterfall.test.ts,
+describe "runWaterfall - France missions are imputed BEFORE third-state"
+(lines 104-146). "fills the budget from France first": telework 90, 4 France +
+8 third-state, budget 6 -> creditedFrance 4, creditedThirdState 2. "leaves
+third-state missions uncredited before France ones": 8 France + 4 third-state,
+budget 6 -> creditedFrance 6, creditedThirdState 0. I ran the calc-engine
+suite this session; these pass. (The Geneva fixtures themselves never split
+the two - case (c) is 24 France and 0 third-state - so the order was harmless
+in the reference calculation and is now independently verified by 1(b) + this
+test.)
+
+DRAFTED: in docs, move P1 from STILL PROVISIONAL to a verified row citing
+accord 1(b); on /sources, move P1 from "lectures en attente" to "what the
+texts now settle". NOT applied (STOP; coupled to section 3).
+
+====================================================================
+P2 - 49,9 %: VERIFIED for social security. CLEISS "moins de 50 %" recorded beside.
+====================================================================
+
+Source: accord/OFAS B: "jusqu'a 50% (au maximum 49.9%)". The engine's
+socialCeiling is 0.499 and the warning band stays strictly > 49,9 %, which
+OVER-WARNS between 49,9 and 50 - the safe direction for a signal that drives
+copy and no arithmetic (docs P2 / former ruling R32). That matches "au maximum
+49.9%".
+
+CLEISS / legal-text reading recorded BESIDE it, not hidden: the legal text is
+"moins de 50 %" (less than 50 %); 49,9 is the published maximum. docs row 4
+already states exactly this ("The legal text is less than 50%; 49,9 is the
+published maximum. The band stays > 49,9, which over-warns between 49,9 and
+50 - the safe direction"). So B confirms the published maximum and the <50
+reading is retained alongside it.
+
+DRAFTED: promote P2 to verified for social security (citing B) while keeping
+the "<50 vs 49,9" note; /sources moves P2 to "what the texts now settle",
+with the one-line note that the band intentionally over-warns up to 50.
+NOT applied (STOP; coupled to section 3).
+
+====================================================================
+P3 - THE ENGINE CASE AND ITS RESULT: STOP. THE READING THAT STAYS.
+====================================================================
+
+The passage (accord A, 1(d), verbatim above): the 10-day annual MISSION limit
+"est ajustee proportionnellement et arrondie a l'unite superieure" for (i)
+employees active less than a full calendar year AND (ii) part-time employees
+over the whole year. 1(d) does NOT condition this on how the working days are
+computed - it adjusts the 10-day limit itself, which is a quantity separate
+from the denominator (working days).
+
+The engine's behaviour (web/lib/calc-engine/denominator.ts, missionCapFor):
+under the EXACT method it sets rateFactor = FULL_RATE (100 %) and so does NOT
+prorate the cap by employmentRate. Only periodFraction reduces it. This is the
+PROVISIONAL R19 reading: "the supplied total already embodies the working-time
+rate, so prorating the cap by employmentRate again would count the reduction
+twice." That reasoning is about the DENOMINATOR; 1(d) prorates the LIMIT
+regardless.
+
+THE FAILING CASE (written as a vitest test, run, then removed so the committed
+tree stays green - a red test is a bounce; the operator's engine task will add
+it red->green):
+
+  // 80% part-time, EXACT method, whole year, 12 France missions
+  missionCapFor({ kind: 'exact', totalWorkDays: 192 }, 80, 1, RULES)
+      -> expected 8 (accord 1d: ceil(10 * 0.80)), ACTUAL 10
+  calculateTelework({ taxYear:2026, canton:'GE', employmentRate:80,
+      periodFraction:1, denominator:{kind:'exact',totalWorkDays:192},
+      granularity:'day', teleworkDays:0, missionDaysFrance:12,
+      missionDaysThirdState:0 })
+      -> value.missionCap        expected 8, ACTUAL 10
+      -> value.creditedMissionDays expected 8, ACTUAL 10
+
+  vitest output (stripped): both assertions "AssertionError: expected 10 to
+  be 8". Command: pnpm exec vitest run
+  tests/unit/calc-engine/_p3-accord-check.test.ts -> "Tests 2 failed (2)".
+
+CORROBORATION from the existing frozen suite (no new file needed to see it):
+web/tests/unit/calc-engine/mission-cap.test.ts, describe "missionCapFor under
+exact - prorates by the PERIOD ONLY (R19)", line 88:
+  expect(missionCapFor({ kind: 'exact', totalWorkDays: 200 }, 50, 1, RULES)).toBe(10);
+asserts a 50 % part-timer over a whole year on the exact method gets cap 10
+(its comment: "Before the ruling this returned 5, double-counting..."). I ran
+this file: "Test Files 1 passed (1) / Tests 15 passed (15)". The current
+engine behaviour is thus enshrined at 10 and passes - which is exactly the
+behaviour 1(d) contradicts.
+
+=> STOP. The engine computes something the now-verified text contradicts.
+   I did NOT touch the engine. The operator decides the correction (likely:
+   under 'exact', prorate the cap by employmentRate too, i.e. drop the
+   FULL_RATE carve-out so 'exact' and 'simplified240' agree on the cap; and
+   rewrite mission-cap.test.ts lines 83-110 accordingly). That is the
+   operator's call, in its own task.
+
+THE READING THAT STAYS A READING EITHER WAY: the COMBINED case - part-time AND
+less than a full year at once. 1(d) names the two situations SEPARATELY ("une
+periode inferieure a l'annee civile" and "temps partiel pendant l'annee
+entiere"), never combined. The engine, under simplified240, prorates by BOTH
+employmentRate and periodFraction when both apply (denominator.ts /
+mission-cap.test.ts line 79: rate 45, period 7/12 -> ceil(2.625) = 3). That
+combination is not something 1(d) authorises explicitly; it stays Mon Releve's
+own reading, to be stated plainly on /sources rather than presented as settled.
+
+====================================================================
+THE COPY CHANGED
+====================================================================
+
+NONE. No copy was changed this session (STOP; see SUMMARY and DEVIATIONS).
+The /sources page still reads "Trois lectures en attente d'un avis expert" and
+the threshold copy is unchanged.
+
+DRAFTED for the operator's follow-up (section 3), each tied to its row, to be
+applied AFTER the engine decision so the P3 wording matches the corrected
+engine:
+
+  1. /sources, replace the single "trois lectures en attente" framing with
+     two parts:
+       - "Ce que les textes officiels tranchent": P1 (accord 1b), P2 (OFAS B
+         / 49,9 % social), and - if the operator corrects the engine - the
+         mission-cap proration for part-time over the whole year (accord 1d).
+       - "Ce qui reste la lecture de Mon Releve": the COMBINED part-time +
+         partial-year case (1d names them separately); and, until the engine
+         is corrected, the exact-method cap. Each cites its row.
+  2. The "nothing obliges an employer to provide a telework document" section:
+     rewrite from source C sentence by sentence - the rate is not required on
+     the certificat de salaire ("Non, ce n'est pas obligatoire"; it goes on
+     the LR / ELM / ISeL); the "moins d'un an" attestation is given to the
+     employee "s'il en fait la demande"; with several employers each declares
+     its own days; a change of residence means two attestations-quittances.
+  3. SEPARATE THE TWO SYSTEMS wherever both thresholds appear (calculator
+     result, guides, releve explanations): "Fiscalite - 40 %" (governs where
+     salary is taxed) and "Securite sociale - 49,9 %" (governs social-security
+     affiliation; conditional on a valid A1, which the Swiss employer requests
+     via ALPS, max 3 years - source B), each with one governing line, so two
+     numbers never read as contradictory limits. Thresholds still come from
+     RuleSet (R147); copy/layout only. The claim tests that tie copy to rows
+     must pass after the edit.
+
+====================================================================
+PARKED
+====================================================================
+
+NOT applied this session (STOP; the parking register is a follow-up edit).
+DRAFTED, each with its source row:
+
+  - On-call / astreinte periods (accord A, clause 2): not missions unless
+    there is "une intervention effective du salarie dans son Etat de
+    residence". Recorded-not-built. Source: accord A, 2.
+  - One releve per employer when there are several (source C): "Vous devez
+    declarer ... correspondant aux jours travailles pour votre entreprise
+    uniquement." Supports a future employer field. Source: AFC Geneve C.
+  - A change of residence during the year (source C): "deux
+    attestations-quittances ... une concernant chaque periode de residence."
+    Source: AFC Geneve C.
+  - A LAMal / French-insurance comparator from D and URSSAF, once reuse terms
+    are read - this REOPENS PARK4-4 on a different footing than
+    opendata.swiss: the premium table D exists (ge.ch, 26.09.2025, franchise
+    CHF 300 adult / CHF 0 child, 2026) but carries no reuse terms, and the
+    French side can lean on URSSAF's official CMU figures (8 % on revenus N-2
+    less 25 % of the PASS) rather than a premium dataset. Sources: D + URSSAF
+    (URSSAF still to be primary-verified).
+
+====================================================================
+DEVIATIONS
+====================================================================
+
+  1. SECTION 2 (P3) IS A HARD STOP. The accord 1(d), verified by my own fetch,
+     contradicts the engine's exact-method mission-cap behaviour. I did not
+     touch the engine. Correcting it is the operator's separate decision.
+  2. REPORT-ONLY ON STOP (conservative, R156). I did not edit
+     docs/regulatory-sources.md (rows), the /sources copy, lib/fr, or the
+     parking register. Reasoning: the STOP ends the session; section 3's copy
+     describes the very exact-method behaviour the operator is about to change,
+     so writing it now would write copy the engine decision invalidates; and
+     promoting P1/P2 into docs rows while leaving the public /sources copy
+     saying "lectures en attente" would create a cross-surface mismatch I
+     could not fix without doing the blocked section-3 edit. All verified
+     transcriptions and all drafted rows/copy are carried in this report so no
+     work is lost. The temporary P3 test file was created, run, and removed; it
+     is not in the committed tree.
+  3. URSSAF not primary-verified (secondary sources only; no row written).
+  4. Form 2047-SUISSE located but not transcribed (PDF page rendering
+     unavailable in this environment).
+  5. ESTV "practical guide of 29 April 2026" not located as a distinct
+     document; the accord A is the primary ESTV instrument and is verified.
+  6. No advisor consulted: the advisor tool stalled all session (per the relay
+     prompt's standing note). The conservative option was taken and recorded
+     (R156).
+
+====================================================================
+QUESTIONS (for the operator's engine task)
+====================================================================
+
+  Q1. Engine correction: should the EXACT method prorate the 10-day mission
+      cap by employmentRate (as 1(d) reads), bringing 'exact' into line with
+      'simplified240' for the cap? If so, mission-cap.test.ts lines 83-110
+      ("prorates by the PERIOD ONLY") and the EXACT_METHOD note must be
+      rewritten, and fixtures/denominator-cases.json's missionCapCases
+      re-examined (the engine is gated on them; a value change is a question,
+      never a silent edit).
+  Q2. Does correcting the cap change any Geneva fixture? None of the six Geneva
+      cases is part-time over a whole year on the exact method, so I expect no
+      Geneva-fixture change - to be confirmed in the engine task.
+  Q3. Should the COMBINED part-time + partial-year case remain Mon Releve's
+      reading on /sources (1d treats the two situations separately)?
+  Q4. After the engine decision, re-run this task's sections 1, 3 and 4 (rows,
+      copy, parks) using the drafted content above.
+
+====================================================================
+PUSH PROOF
+====================================================================
+
+(Filled on commit+push below. The final gate:clone is DEFERRED to the
+operator per the relay prompt; this session changed no app/** or lib/fr/**
+pixels, so test:e2e and test:visual are not triggered by R132.)
