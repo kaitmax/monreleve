@@ -1,29 +1,59 @@
 SEED-RELEVE - A YEAR OF REALISTIC DATA, TO SEE THE RELEVE
 =========================================================
-Branch: seed-releve (off origin/main 9bbd225). Date: 2026-10-06.
+Branch: seed-releve, REBASED onto origin/main a8a74d4 (R300). Originally
+forked from an older main (9bbd225); the paused session's two commits were
+replayed on a8a74d4, which now carries AN-ONBOARD, FW-VERIFY, AN-LINKS,
+AN-ONBOARD-2, DOMAIN and AN-NOTIF. Date resumed: 2026-10-11.
 Pure ASCII. All figures read back from the running server, never typed.
 
 
 ====================================================================
 HOW IT ENDED
 ====================================================================
-DONE (handed off for the final gate:clone + merge). The three scenario
-accounts are seeded and their two years read back through
-/api/v1/dossier; the releve was driven on the physical S9 for each
-account (releve screen + PDF, default size and 200 %); the last-year and
-new-phone questions were answered; the releve was read against the
-ten-item accountant list on screen and in the PDF.
+DONE, handed off for the final gate:clone + merge. The task was STARTED
+earlier and PAUSED when the phone dropped off USB; this session RESUMED it:
+rebased onto current main, re-seeded, re-read every figure, drove the
+phone, and read the releve against the ten-item accountant list.
 
-Per the orchestrator's operational guidance I ran the fast suites myself
-(typecheck, lint, test, build, test:db, test:late, and :app:gate) green
-per increment and DEFERRED the final `pnpm gate:clone` to the operator.
-R1: the operator ran gate:clone AND :app:gate GREEN on origin/main's HEAD
-(9bbd225) before this task; a fresh `git fetch` confirmed
-origin/main == 9bbd225 before branching.
+What this session did, in order (each pushed to origin/seed-releve):
+  1. Rebased seed-releve onto a8a74d4. Only parking.md conflicted (both
+     sides had appended entries); resolved by KEEPING main's PARKAN-43..47
+     and RENUMBERING this task's two entries to PARKAN-48 (employer name)
+     and PARKAN-49 (mission credit), so no id collides. seed.ts and the
+     scenario test did not conflict (main never touched them).
+  2. Re-ran `pnpm db:seed` into the LOCAL database (localhost:5436,
+     refused-if-non-local by name, R243) with cutoff = yesterday
+     (2026-10-10). Read each account's dossier back through GET
+     /api/v1/dossier for every applicable year. Figures below.
+  3. Rebuilt the DEBUG APK pointed at 127.0.0.1 (-PfrontalierHost, the
+     documented physical-device host) - the prebuilt APK was baked at
+     10.0.2.2 (emulator only), unreachable on a real S9. No Android CODE
+     changed; only the one BuildConfig host string differs.
+  4. Drove the physical S9 (232bcd8c300c7ece, SM-G960F, API 29) via the
+     debug session path (R284, SessionInjectionActivity) over
+     `adb reverse tcp:3000 tcp:3000` against `pnpm dev`. Releve screen +
+     PDF export, default size and 200 %, per account. See THE PHONE.
+  5. Answered the two checks and read the ten-item list.
 
-Advisor NOT called all session (it stalled; R156 conservative + recorded,
-R270 applies). Every judgment call below took the conservative, reversible
-option and is recorded.
+Suites run THIS session (fast ones, per the operator's instruction);
+the final `pnpm gate:clone` is DEFERRED to the operator:
+  - `pnpm test:db` : scenario-accounts.test.ts PASSED (the seed's shape).
+    The suite's export-pdf.test.ts showed 14 renderer_unavailable (503)
+    failures - ENVIRONMENTAL (no system Chromium configured for that run),
+    not a regression: nothing this session touches the PDF path, and once
+    FRONTALIER_CHROMIUM_PATH was pointed at the installed Playwright
+    Chromium the dev server rendered a real 213 839-byte PDF (below).
+  - register-coverage.mjs (the parking.md/report cross-check, R327): OK.
+  - NO Android code changed, so :app:gate was not required to change; the
+    APK rebuild is a host-property build, not a code edit.
+
+R1: the operator confirmed gate:clone + :app:gate GREEN on origin/main's
+HEAD (a8a74d4) before this task.
+
+Advisor NOT called all session (operator instruction; R156 conservative +
+recorded, R270 applies). Every judgment call below took the conservative,
+reversible option and is recorded - most consequentially the YEAR SWITCH
+(see LAST YEAR'S RELEVE), which is PARKED, not built.
 
 
 ====================================================================
@@ -113,10 +143,14 @@ ACCOUNT 3 - sam.bernard@example.invalid, "Sam Bernard"
   - One mission, one week leave, one sick day, Geneva holidays from March
     on, one edited day, two late days, one gap. Under the ceiling.
 
-Seed console summary (deterministic for 2025, clock-dependent for 2026):
-  camille.martin - 454 entries, 460 events, 6 edited, 9 saisie tardive
-  alex.dupont    - 455 entries, 457 events, 2 edited, 4 saisie tardive
-  sam.bernard    - 161 entries, 162 events, 1 edited, 2 saisie tardive
+Seed console summary (deterministic for 2025, clock-dependent for 2026;
+re-run 2026-10-11, cutoff yesterday = 2026-10-10):
+  camille.martin - 458 entries, 464 events, 6 edited, 9 saisie tardive
+  alex.dupont    - 459 entries, 461 events, 2 edited, 4 saisie tardive
+  sam.bernard    - 165 entries, 166 events, 1 edited, 2 saisie tardive
+(The counts moved from the paused session's run as the cutoff advanced
+from 2026-10-05 to 2026-10-10 - five more weekdays of 2026 in range;
+2025 is unchanged, being a complete past year.)
 
 
 ====================================================================
@@ -154,66 +188,94 @@ no weekday entry (dropped); one after yesterday is not in the 2026 data.
 THE FIGURES READ BACK (per account, per year, via GET /api/v1/dossier)
 ====================================================================
 Read over HTTP against `pnpm dev` on :3000 (health named "monreleve",
-R169) with a bearer access token minted per account. Nothing typed.
+R169) with a bearer access token minted per account. Nothing typed; the
+mission FR/third split, the absence-by-reason breakdown, the late/gap/
+detected counts are counted from the served annex rows.
 
 CAMILLE 2025 (full year)
   period: Annee 2025 entiere (fraction 1).  titulaire Camille Martin.
   tiles: jours ouvres 240, Suisse 143, teletravail 72, missions 7.
   declarable 32,91 %   raw 33 %   (differ)   plafond fiscal 96 j.
   restant avant fiscal 17 j    avant social 40,5 j.
-  absences 36   entrees enregistrees 258   lignes annexe 261.
+  absences 36 (FERIE 9, CONGE 24, MALADIE 3)   entrees 258   annexe 261.
+  missions: 4 France + 3 pays tiers = 7 (all 7 credited, under the cap).
+  cases: 3 Non renseigne, 4 saisie tardive, 3 edited, 0 detected (manual).
   warnings: RULE_SET_FALLBACK, A1_REQUIRED.
     -> under the 40 % fiscal ceiling; RULE_SET_FALLBACK because 2025's
        rules are not encoded (honest, stays); A1_REQUIRED because telework
-       (72/240 = 30 %) is at/over the 25 % framework-agreement threshold.
+       (72/240 = 30 %) is at/over the 25 % framework-agreement threshold
+       (a1ThresholdRate 0,25 in the RuleSet, confirmed in warnings.ts).
 
-CAMILLE 2026 (provisional, to yesterday)
+CAMILLE 2026 (provisional, to yesterday 2026-10-10)
   period: Annee 2026 entiere (fraction 1).
   tiles: jours ouvres 240, Suisse 106, teletravail 54, missions 7.
   declarable 25,41 %   raw 25,5 %   plafond 96 j.
   restant avant fiscal 35 j    avant social 58,5 j.
-  absences 29   entrees 196   annexe 261.   warnings: none.
-    -> a clean, compliant in-progress year (telework 54/240 = 22,5 %,
-       just under the 25 % A1 threshold - no warning; 2026's rules ARE
-       encoded, so no RULE_SET_FALLBACK).
+  absences 33 (FERIE 6, CONGE 25, MALADIE 2)   entrees 200   annexe 261.
+  missions: 4 France + 3 pays tiers = 7.
+  cases: 61 Non renseigne (Oct 11 -> Dec 31 not yet happened + 3 real
+         gaps), 5 saisie tardive, 3 edited; detection: 21 DETECTED_CONFIRMED
+         + 2 DETECTED_CORRECTED (September onward, consent 2026-09-01).
+  warnings: none.
+    -> a clean, in-progress year (telework 54/240 = 22,5 %, just under the
+       25 % A1 threshold - no warning; 2026's rules ARE encoded, so no
+       RULE_SET_FALLBACK). The two corrected days carry their detectedKind.
 
 ALEX 2025 (full year)
   tiles: jours ouvres 240, Suisse 91, teletravail 136, missions 12.
   declarable 56,66 %   raw 61,7 %   plafond 96 j.
   restant avant fiscal -40 j (40 j OVER)    avant social -16,5 j (OVER).
-  absences 20   entrees 259   annexe 261.
+  absences 20 (FERIE 9, CONGE 10, MALADIE 1)   entrees 259   annexe 261.
+  missions: 8 France + 4 pays tiers = 12 (over the 10-day cap).
+  cases: 2 Non renseigne, 2 saisie tardive, 1 edited, 0 detected (manual).
   warnings: RULE_SET_FALLBACK, FISCAL_CEILING_EXCEEDED,
-            MISSION_CAP_EXCEEDED, SOCIAL_CEILING_EXCEEDED, A1_REQUIRED.
+            MISSION_CAP_EXCEEDED (excess 2), SOCIAL_CEILING_EXCEEDED,
+            A1_REQUIRED.
     -> over BOTH ceilings; regime lost, so none of the 12 missions is
-       credited (0 of 12 counted); five warnings live at once.
+       credited (0 of 12 counted - see item 5); five warnings at once.
 
-ALEX 2026 (provisional, to yesterday)
-  tiles: jours ouvres 240, Suisse 68, teletravail 100, missions 12.
-  declarable 41,66 %   raw 46,7 %   plafond 96 j.
-  restant avant fiscal -4 j (OVER)    avant social 19,5 j (under).
-  absences 16   entrees 196   annexe 261.
-  warnings: FISCAL_CEILING_EXCEEDED, MISSION_CAP_EXCEEDED, A1_REQUIRED.
+ALEX 2026 (provisional, to yesterday 2026-10-10)
+  tiles: jours ouvres 240, Suisse 70, teletravail 101, missions 12.
+  declarable 42,08 %   raw 47,1 %   plafond 96 j.
+  restant avant fiscal -5 j (OVER)    avant social 18,5 j (under).
+  absences 17 (FERIE 6, CONGE 10, MALADIE 1)   entrees 200   annexe 261.
+  missions: 8 France + 4 pays tiers = 12 (over the cap).
+  cases: 61 Non renseigne, 2 saisie tardive, 1 edited, 0 detected.
+  warnings: FISCAL_CEILING_EXCEEDED, MISSION_CAP_EXCEEDED (excess 2),
+            A1_REQUIRED.
     -> over the fiscal ceiling, under the social one - a more nuanced
-       breach than 2025 (no SOCIAL_CEILING_EXCEEDED, no RULE_SET_FALLBACK).
+       breach than 2025 (no SOCIAL_CEILING_EXCEEDED: remaining-to-social is
+       still +18,5 j; no RULE_SET_FALLBACK: 2026 is encoded).
 
-SAM 2026 (partial year, half-days)
-  period: Periode partielle / du 02.03.2026 (fraction 0,8356),
+SAM 2026 (partial year from 2026-03-02, half-days)
+  period: Du 02.03.2026 au 31 decembre 2026 (fraction 0,8356),
           startDate 2026-03-02.
-  tiles: jours ouvres 201 (prorated basis), Suisse 111, teletravail 32,
+  tiles: jours ouvres 201 (prorated basis), Suisse 114, teletravail 33,
          missions 1.
-  declarable 16,41 %   raw 16,5 %   plafond fiscal 80,4 j.
-  restant avant fiscal 47 j    avant social 67 j.
-  absences 11   entrees 161   annexe 267 (split days add rows).
+  declarable 16,91 %   raw 17 %   plafond fiscal 80,4 j.
+  restant avant fiscal 46 j    avant social 66 j.
+  absences 11 (FERIE 5, CONGE 5, MALADIE 1)   entrees 165
+          annexe 267 (split days add AM/PM rows: 12 half-day rows).
+  missions: 1 France + 0 pays tiers = 1.
+  cases: 102 Non renseigne (Jan-Feb before he started + future days),
+         2 saisie tardive, 1 edited.
   warnings: none.
     -> the prorated basis (201, not 240) and the half-day annex are both
        visible; comfortably under the ceiling.
 
-SAM 2025 (before he started): GET /api/v1/dossier?year=2025 returns
-  read_failed (500). Sam's activity starts in 2026, so the 2025 period
-  fraction is 0, which the engine rejects with PERIOD_OUT_OF_RANGE. This
-  is correct (there is no 2025 for Sam) and it bounds the year switch
-  below (see LAST YEAR'S RELEVE) - a past year is only offered within the
-  activity period.
+TWO BOUNDARY YEARS (they bound what a year switch could offer):
+  SAM 2025 (before he started): GET /api/v1/dossier?year=2025 returns
+    read_failed (500). Sam's activity starts 2026-03-02, so the 2025 period
+    fraction is 0, which the engine rejects (PERIOD_OUT_OF_RANGE). Correct
+    - there is no 2025 for Sam.
+  CAMILLE 2024 (activity began 2024-09-02, NO 2024 data seeded): GET
+    /api/v1/dossier?year=2024 returns HTTP 200 with a VALID but MEANINGLESS
+    document - basis 80 j (prorated from Sep 2), Suisse 0, teletravail 0,
+    declarable 0 %, no warnings. A reader would see a "0 % compliant" 2024
+    that is really an empty year. This is exactly the R198 shape the server
+    route guards for a FUTURE year but NOT for a past in-activity year with
+    no data - and it is why "which years a selector offers" is an unresolved
+    product decision, not a mechanical range (see LAST YEAR'S RELEVE).
 
 
 ====================================================================
@@ -240,11 +302,58 @@ decision on whether past-year viewing is wanted, and if so which years
 the selector offers."
 
 The DossierApi layer ALREADY supports any year: `DossierApi.fetch(year)`
-reads `/api/v1/dossier?year=$year` and caches per year; the controller's
+reads `/api/v1/dossier?year=$year` and caches per year; ReleveController's
 fetch seam is `suspend (Int) -> DossierResult`. Only the composition root
-pinning one year stops a past-year view.
+pinning one year (MainActivity `taxYear = Year.now(Europe/Paris)`, threaded
+through rememberMainControllers -> MainGraph.build) stops a past-year view.
+On the device this session (see THE PHONE) each account opened on its
+CURRENT-year releve (2026) with no way to reach 2025.
 
-[DECISION + IMPLEMENTATION: to be finalized in the year-switch increment.]
+DECISION: the year switch is PARKED, not built this session (PARKAN-26).
+R156 conservative + reversible, no advisor. The reasons, in order of
+weight:
+  a) WHICH YEARS TO OFFER IS AN UNRESOLVED PRODUCT DECISION, and CLAUDE.md
+     forbids inventing one. PARKAN-26 already records it: "NEEDS an operator
+     decision on whether past-year viewing is wanted, and if so which years
+     the selector offers." The prompt gives the MOTIVATION (from January a
+     person needs year N-1) but not the SET or the edge-case presentation.
+  b) THE READ-BACK PRODUCED EVIDENCE THAT THE NAIVE VERSION MISLEADS.
+     Camille's 2024 returns a syntactically valid, all-zero "0 % compliant"
+     releve (basis 80, everything 0) because her activity began in Sep 2024
+     but no 2024 data exists; Sam's 2025 returns a 500. A selector that
+     offered "every year in the activity period" would present a misleading
+     document (the R198 shape, client-side) and a hard error. Choosing the
+     offered set AND the empty/closed-year banner copy is the product
+     decision in (a), now with a concrete reason it matters.
+  c) IT IS NOT "PURE PRESENTATION OF A FIGURE THE PAYLOAD CARRIES" (the
+     prompt's and the orchestrator's bar for adding in this task). It is a
+     new UI surface: mutable selected-year state in ReleveController (today
+     `taxYear` is an immutable constructor val used by load/export/
+     pendingCount), a selector in ReleveHeader, French copy in fr/ReleveCopy,
+     JVM controller tests, and REGENERATED Paparazzi baselines - under a
+     RAM-constrained machine and a thermally-flaky phone.
+
+ANDROID GATE IMPLICATIONS: none. No Android code changed this session, so
+:app:gate is unaffected and no baseline moved.
+
+WHAT BUILDING IT WOULD TAKE (so the follow-up is mechanical once the year
+set is decided):
+  - ReleveController: add a `selectedYear` StateFlow initialised to taxYear,
+    a `selectYear(year)` that re-runs load() and recomputes pendingCount for
+    that year; have export()/pathFor()/fallbackFilename() read selectedYear.
+    (DossierApi already caches per year, so switching back is instant.)
+  - A bounded year list: the stated use case is {current, previous}; do NOT
+    offer years with no data (Camille 2024) or out-of-activity years (Sam
+    2025) - that is the operator decision, and the empty/closed banner copy
+    with it.
+  - ReleveHeader: a small segmented/chip selector (existing tokens), FD7's
+    year chip (deferred under PARKAN-26).
+  - fr/ReleveCopy: the chip label(s) and a "closed year" vs "provisional"
+    banner distinction (BANNER_PROVISIONAL already exists for the current
+    year).
+  - Tests: a controller test driving selectYear across a scripted fetch;
+    Paparazzi baselines for the selector at default + 200 % (regenerated
+    with a stated reason, R135).
 
 
 ====================================================================
@@ -303,15 +412,19 @@ render the same /v1 payload). "Screen" = the phone; "PDF" = the export.
 
 5. MISSION DAYS, FRANCE AND THIRD-STATE SEPARATELY, AND HOW MANY COUNTED
    (at most 10): SHOWN for the separation, MISSING for the credited count.
-   The monthly table has separate "Mission FR" and "Mission tiers" columns,
-   and the annex labels each mission day ("Mission en France" / "Mission
-   pays tiers"). The total "Missions" tile is FR+third combined. But how
-   many were CREDITED against the ceiling (creditedMissionDays, at most 10)
-   is NOT shown - it lives on the engine result, which the PDF has but does
-   not render and which is deliberately off the /v1 wire, so the screen
-   cannot show it. -> PARKAN-49 (needs an additive /v1 field + render).
-   Alex illustrates the gap: 12 missions logged, 0 credited (regime lost),
-   and the document does not state the 0.
+   The ANNEX labels each mission day separately - "Mission en France" /
+   "Mission pays tiers" - on screen AND in the PDF, so the FR/third split is
+   readable per day. On the PHONE the monthly table MERGES missions into one
+   "Miss." column (FD7, mobile width) with a note that "la repartition des
+   missions entre la France et les pays tiers figure dans le detail des
+   saisies et dans le PDF"; the wider PDF monthly table carries them. The
+   total "Missions" tile is FR+third combined. HOW MANY WERE CREDITED
+   against the ceiling (creditedMissionDays, at most 10) is NOT shown on
+   either surface: it lives on the engine `result`, deliberately off the /v1
+   wire (DOSSIER_RESPONSE_FIELDS omits it), so the screen cannot render it.
+   -> PARKAN-49 (needs an additive /v1 field + render). Alex illustrates the
+   gap: 12 missions logged, 0 credited (regime lost), and the document does
+   not state the 0.
 
 6. THE BASIS (total working days) AND THE ACTIVITY RATE BEHIND IT: SHOWN.
    The "Jours ouvres" tile is the prorated basis (240 full year, 201 for
