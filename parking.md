@@ -1839,6 +1839,68 @@ every fence's result. A follow-up task should reorder the two passes and re-run 
 
 NEEDS: a small dedicated task to reorder stripComments and confirm every fence stays correct.
 
+## PARKAN-45 - the manual-mode evening notification's periodic trigger (a reminder-time scheduler)  [AN-NOTIF, 2026-10-06]
+
+QUESTION: R339's evening notification now ASKS in manual mode (EveningNotice.Manual), but nothing FIRES it
+automatically in manual mode. R323's only trigger is the auto-mode SamplingWorker post-window wake, which does
+not run in manual mode, so a manual user would see the notification only via the debug trigger until a periodic
+scheduler exists.
+
+TAKEN (AN-NOTIF, R156, approved by the orchestrator): built the manual-mode CONTENT + DECISION + RECEIVER (all
+gate-verified on the JVM) and PARKED the automatic manual-mode trigger. The auto-mode trigger
+(SamplingWorker -> maybeNotifyEvening) is untouched and still fires the Proposed/NotSure notices.
+
+NOT TAKEN: a WorkManager periodic job around a reminder time. It needs (a) a reminder-TIME setting, which does
+not exist - SPEC 13.3 names reminderTime but Settings.kt ignores it, and there is no picker in
+onboarding/Parametres; (b) the periodic enqueue/cancel wiring on the evening-notification opt-in and on mode
+change; (c) on-device verification (the phone pass is separate, PARKAN-46).
+
+TOUCHES: a new reminder-time setting (onboarding/Parametres + a store), a WorkManager periodic request, the
+opt-in/mode-change wiring. maybeNotifyEvening already handles the Manual notice when called.
+
+NEEDS: an operator decision on the reminder TIME (a fixed default - e.g. end of the working day - or a
+user-chosen time), then a dedicated task to build and device-verify the scheduler.
+
+## PARKAN-46 - the AN-NOTIF on-device walkthrough (section 5)  [AN-NOTIF, 2026-10-06]
+
+QUESTION: the prompt's section 5 drives the notification on the S9 against the dev server - record from the
+shade in manual and automatic modes, read the rows back from Room, airplane-mode sync, every state at default
+and 200%. This session was CODE-ONLY (the operator runs a separate consolidated phone pass).
+
+TAKEN: deferred to the operator's phone pass. The debug trigger (EveningNotifyActivity, debug-only, proven
+absent from the release APK by checkReleaseNoDevComponent) runs the real maybeNotifyEvening path on demand. All
+correctness is gate-verified on the JVM (EveningTapTest's section-3 cases, the decision, the lock-screen source
+assertions).
+
+NOT TAKEN: the on-device drive itself (no device work this session, by the operator's instruction).
+
+TOUCHES: nothing in code - a device drive plus screenshots.
+
+NEEDS: the phone pass to drive manual (En Suisse from the shade, read the row back: one entry, its own
+clientMutationId, the account tag, provenance MANUAL; Autre... lands on today; record in-app first and see the
+notification cancelled), automatic (Confirmer -> DETECTED_CONFIRMED; the other side -> DETECTED_CORRECTED +
+detectedKind; a not-sure day), and airplane-mode (recorded, then synced later), each at default size and 200%.
+
+## PARKAN-47 - the AN-NOTIF dumpsys lock-screen verification  [AN-NOTIF, 2026-10-06]
+
+QUESTION: the prompt's section 3/5 asks that the lock-screen protections be confirmed on-device via
+`adb shell dumpsys notification` - that the posted notification is VIS=PRIVATE with a publicVersion carrying NO
+actions, and that each recording action carries the authentication-required flag (Android 12+/API 31+).
+
+TAKEN: the CODE-side half is done (EveningNotifierLockScreenTest asserts, from EveningNotifier.kt: the public
+version has no addAction and is VISIBILITY_PUBLIC; every recording action setAuthenticationRequired(true);
+recording buttons are immutable broadcasts). The dumpsys half is deferred to the phone pass.
+
+NOT TAKEN: the dumpsys drive. The S9 is API 29 (< 31), where setAuthenticationRequired is a no-op; the flag
+matters on a 31+ device, so a meaningful dumpsys confirmation of the unlock gate needs a 31+ device.
+
+TOUCHES: nothing in code - a device drive.
+
+NEEDS: on a 31+ device, trigger the notification, `adb shell dumpsys notification`, and confirm VIS=PRIVATE +
+publicVersion with no actions + the action authentication-required flag. PLUS the operator's two-line manual
+check: set a PIN, confirm the lock screen shows only "Mon Releve / Une journee a enregistrer" with no buttons,
+remove the PIN.
+
 ## PARK4-2 - a Digital Asset Links statement listing only a debug/upload key verifies nothing for a Play install  [formalised by DOMAIN, 2026-10-06]
 
 FORMALISED HERE because docs/domain-checklist.md (section 4) cites PARK4-2 and it
@@ -1907,3 +1969,6 @@ reading every section. Entries are not edited; this ledger is.
 | PARKAN-42 — the mockups' light brand-tint surface has no token | **closed** | R337 (AN-ONBOARD-2): the named token is wanted. `LightColors.brandSoft` = `brand.copy(alpha=0.08f)`, defined once in Tokens.kt (DERIVED, not a new hue, R9), recorded in DESIGN-SYSTEM §1; every use site references it and Fence 9 forbids the open-coded form elsewhere (RED on the live BrandCircle instance, R178; planted + reverted, R180). Pixel-neutral - no baseline moved |
 | PARKAN-43 — AN-ONBOARD-2 device walkthrough deferred | **open, deferred** | AN-ONBOARD-2: the S9 (API 29) dropped off USB after a thermal event, so the on-device walkthrough (prompt section 4) could not run. Everything that does not need the device was done (Paparazzi baselines incl. the new granularity screen; the completeness/plan/subset/prefill logic driven over JVM fakes). To run on reconnect: the four flows + rotation + background kill + 200 %. Not faked, not claimed (R334) |
 | PARKAN-44 — stripComments strips block before line comments (fence helper blind spot) | **open, recorded** | AN-ONBOARD-2: FencesTest.stripComments removes `/* */` before `// `, so a `//` line containing `/*` (OnboardingKit.kt's "onboarding/*.dc.html") is misread as a block comment and the text to the next `*/` is dropped from the scan - all nine fences share it. Surfaced by R337's R180 plant landing in a swallowed span (a false-negative R180 caught). Fence 9 is sound for realistic placements (R178). Fix (deferred, out of R337's scope): strip line comments first, re-run all fences |
+| PARKAN-45 — manual-mode evening notification periodic trigger | **open, approved** | AN-NOTIF (R339): the manual-mode notification's CONTENT + DECISION + RECEIVER are built and gate-verified, but its automatic firing in manual mode is parked - it needs a reminder-TIME setting (SPEC 13.3's reminderTime is unbuilt), a WorkManager periodic job, and device verification. The auto-mode trigger (SamplingWorker) is untouched. Needs the operator's reminder-time decision, then a scheduler task |
+| PARKAN-46 — AN-NOTIF on-device walkthrough (section 5) | **open, deferred** | AN-NOTIF: the section-5 drive on the S9 (manual/auto/airplane; read rows back; every state at default + 200%) is deferred to the operator's consolidated phone pass (this session was code-only). The debug trigger runs the real maybeNotifyEvening path; all correctness is JVM-gate-verified |
+| PARKAN-47 — AN-NOTIF dumpsys lock-screen verification | **open, deferred** | AN-NOTIF: the `adb shell dumpsys notification` confirmation (VIS=PRIVATE + publicVersion with no actions + the action auth-required flag) is deferred to the phone pass (needs a 31+ device - the S9 is API 29, where setAuthenticationRequired is a no-op). The code-side assertions are done (EveningNotifierLockScreenTest). Plus the operator's manual PIN check |
