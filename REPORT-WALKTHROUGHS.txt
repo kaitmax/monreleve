@@ -1,0 +1,626 @@
+====================================================================
+REPORT-WALKTHROUGHS.txt - the deferred DEVICE walkthroughs, on the
+physical Galaxy S9 (SM-G960F, API 29)
+Mon Releve / frontalier   2026-10-11
+====================================================================
+
+NOTE ON SPELLING. Pure ASCII, as the protocol requires (verified with
+iconv). Every French phrase quoted below is transliterated: accents
+dropped, guillemets become double quotes. R155 - THE ASCII HERE IS
+ILLUSTRATIVE, NEVER A SOURCE; the accented original lives in the app's
+fr/ (Fr.kt, OnboardingCopy, ReleveCopy, NotificationCopy, ...) and the
+web lib/fr, and is what ships.
+
+This is a VERIFICATION pass (not a build task): the four relay tasks
+AN-ONBOARD-2, AN-LINKS, AN-NOTIF and DOMAIN shipped their CODE on
+origin/main (41ca989) but deferred their on-device walkthroughs because
+the phone was disconnected. This session DRIVES the device and RECORDS
+what it shows. No product code was changed. Where a walkthrough revealed
+a real defect it is recorded as a FINDING / PARKAN entry, never fixed
+here.
+
+====================================================================
+HOW IT ENDED
+====================================================================
+Branch device-walkthroughs off origin/main 41ca989. Committed per
+walkthrough; the final gate:clone + merge are DEFERRED TO THE OPERATOR
+(per the prompt). No advisor this session (prompt instruction; R156
+conservative, each judgement recorded).
+
+WALKTHROUGH 1 (AN-ONBOARD-2, PARKAN-43): DONE on device.
+WALKTHROUGH 2 (AN-LINKS):                 see its section.
+WALKTHROUGH 3 (AN-NOTIF, PARKAN-46/47):   see its section.
+WALKTHROUGH 4 (DOMAIN section 6, PARKAN-31): see its section.
+
+Screenshots are kept OFF-REPO in android/.device-walkthroughs-shots/
+(untracked, as prior device tasks kept their shot dirs); this report is
+the durable record of what they show.
+
+====================================================================
+ENVIRONMENT
+====================================================================
+Device    : Galaxy S9 (SM-G960F, API 29), serial 232bcd8c300c7ece,
+            display override 1080x2220, density 480, clock 2026-10-11
+            (so taxYear = 2026). Battery ~19-20% throughout, charging
+            over USB (temperature ~34 C); it did NOT drop off USB this
+            session.
+Backend   : pnpm dev on :3000 (health service="monreleve", R169 passes),
+            DATABASE_URL -> localhost:5436/frontalier (frontalier-postgres,
+            healthy). FRONTALIER_CHROMIUM_PATH pointed at the installed
+            Playwright Chromium (chromium-1243) so the PDF route renders.
+Device<->host: adb reverse tcp:3000 tcp:3000 (device localhost:3000 ->
+            host :3000). The debug APK is the 127.0.0.1 build (the
+            physical-device host, -PfrontalierHost=127.0.0.1); reinstalled
+            with `adb install -r` from
+            android/app/build/outputs/apk/debug/app-debug.apk.
+Sign-in   : the debug session path (R284, SessionInjectionActivity):
+            adb am start the activity with accessToken / refreshToken /
+            accessExpiresAt / refreshExpiresAt + email extras, then
+            force-stop and relaunch so MainActivity re-reads the durable
+            session. Token pairs minted per account against the local DB
+            (a throwaway web/scripts/_wt-setup.mjs, same shape as the
+            untracked _mint-readback.mjs; see UNTRACKED FILES).
+Seeded    : Camille Martin / Alex Dupont / Sam Bernard (all COMPLETE),
+            plus demo@ and qr@ - confirmed in the DB.
+
+====================================================================
+WALKTHROUGH 1 - AN-ONBOARD-2 (resolves PARKAN-43)
+====================================================================
+The 8-step onboarding (incl. the new granularity step), ask-only-missing,
+a complete account straight to Aujourd'hui, a PDF that generates, and
+state kept across rotation and a background kill (R310). Default size and
+200 %.
+
+HOW THE PARTIAL STATES WERE PRODUCED, AND A FINDING ON WHAT IS
+REPRODUCIBLE AT ALL.
+The onboarding plan is computed server-side from GET /api/v1/me
+(StartupDecider.decideStartAfterSignIn -> onboardingPlanFor(parseMeView)).
+I probed the R196 database constraints EMPIRICALLY rather than assuming
+(web/scripts/_wt-setup.mjs), and all three illegal partial states were
+REJECTED by the database:
+  - granularity := NULL              -> REJECTED (column is NOT NULL,
+                                        default DAY);
+  - denominatorKind=EXACT with       -> REJECTED (CHECK
+    exactTotalWorkDays NULL             User_exactTotalWorkDays_iff_exact);
+  - employmentRate := 0              -> REJECTED (CHECK
+                                        User_employmentRate_range).
+CONSEQUENCE / FINDING: on the REAL server the only partial state an
+account can hold is a MISSING NAME (name is the one nullable releve field
+with no CHECK), or a missing canton (which routes to the full flow). The
+completeness branches for a missing GRANULARITY, METHOD or RATE guard
+states the database forbids, so they are reachable only with a synthetic
+MeView - which is exactly what the JVM suites ReleveCompletenessTest /
+StartupDeciderTest use. So the prompt's "an account missing only
+granularity, asked only that" is NOT reproducible on the real server
+without a schema change (which I did not make - verification pass, and it
+is the shared dev DB); it stays covered at the JVM level. I drove the
+reproducible cases instead and verified the granularity STEP itself in
+the fresh full flow (where every step is asked).
+
+Accounts created for this (minted sessions): wt-fresh@example.invalid
+(no canton, no name), wt-noname@example.invalid (canton GE, name NULL,
+else defaulted). Camille is the complete account.
+
+FLOW A - FRESH INSTALL -> THE FULL 8 STEPS (default size).
+pm clear (fresh-install state), inject wt-fresh (tokens only, no settings
+-> onboarding runs on device), relaunch. Every step opened and read:
+  Etape 1 sur 8  "Votre nom" - "Tel qu'il figurera sur votre releve,
+    comme sur vos documents officiels." Field "Prenom et nom"; a live
+    "Apercu de votre releve / Titulaire: <name>" card updated as I typed.
+  Etape 2 sur 8  "Canton de votre employeur" - search "Rechercher un
+    canton" + radio list; typing "Gen" filtered to "Geneve"; the note
+    "Le regime fiscal applicable depend du canton de votre employeur."
+    and "La liste des cantons concernes par l'accord de 1983 est en cours
+    de verification." Selected Geneve.
+  Etape 3 sur 8  "Votre taux d'activite" - 100 % (preselected) / 80 % /
+    60 % / Autre; note "Il sert a calculer le nombre de jours de travail
+    de votre annee."
+  Etape 4 sur 8  "Methode de decompte" - "Methode simplifiee" (preselected,
+    "Un forfait de 240 jours de travail par an, ajuste a votre taux
+    d'activite.") / "Nombre de jours reel"; note "En cas de doute,
+    demandez a votre service des ressources humaines."
+  Etape 5 sur 8  THE NEW GRANULARITY STEP (R336) - "Comment comptez-vous
+    vos journees ?" / "Choisissez l'unite avec laquelle vous comptez votre
+    teletravail." Two cards: "Journees entieres" (PRESELECTED - "Chaque
+    jour de teletravail compte pour une journee complete.") and
+    "Demi-journees" ("Vous pouvez enregistrer une demi-journee quand vous
+    ne teletravaillez qu'une partie du jour."); info "Ce choix s'applique
+    a toute l'annee de calcul." This matches AN-ONBOARD-2's R336 spec
+    exactly and is the piece PARKAN-43 most needed confirmed on device.
+  Etape 6 sur 8  "Avez-vous travaille toute l'annee chez cet employeur ?"
+    - "Oui, depuis le 1er janvier" (selected) / "Non, j'ai commence en
+    cours d'annee". (The progress bar shows 6 of 8 filled - the Periode
+    step correctly shifted 5->6, as the AN-ONBOARD-2 baseline note said.)
+  Etape 7 sur 8  "Comment enregistrer vos journees ?" - "Manuellement"
+    (selected) / "Automatiquement [Beta]"; note "Les deux produisent
+    exactement le meme releve. Vous pourrez changer a tout moment."
+  Etape 8 sur 8  "Un rappel le soir ?" - bell icon; "Une seule
+    notification par jour ouvre, uniquement si votre journee n'est pas
+    encore enregistree."; info "Sur l'ecran verrouille, la notification
+    n'indique jamais ou vous etiez."; buttons "Oui, me le rappeler" /
+    "Pas maintenant". Tapped "Oui, me le rappeler".
+  PRET ("Tout est pret") - summary card: "Releve annuel de teletravail
+    2026 / Titulaire Walkthrough / Canton de l'employeur Geneve / Taux
+    d'activite 100 % / Methode Simplifiee, 240 jours / Periode Annee
+    entiere", note "Votre taux a declarer apparaitra des votre premier
+    jour enregistre. Vous pourrez modifier ces informations dans
+    Parametres." Continuer -> AUJOURD'HUI.
+Every choice was reflected correctly on the Pret summary. The fresh
+8-step flow works end to end on the device.
+
+FLOW B - MISSING ONLY THE NAME -> ASKED ONLY THE NAME -> PDF GENERATES.
+pm clear, inject wt-noname (canton GE on the server, name NULL), relaunch.
+The app went straight to onboarding showing a SINGLE step:
+  Etape 1 sur 1  "Votre nom" - a single full progress segment. Only NOM
+    was asked; nothing else. Entered "Jean-Testeur", Continuer.
+  PRET - summary: "Titulaire Jean-Testeur / Canton Geneve / Taux 100 % /
+    Methode Simplifiee, 240 jours / Periode Annee entiere" - everything
+    except the name was PREFILLED from the server (not re-asked). This is
+    the R335 ask-only-missing behaviour, confirmed on device, and it
+    closes AN-ONBOARD's Q1 (an account with settings but no name used to
+    land on Aujourd'hui with a 422'd PDF).
+  Continuer -> AUJOURD'HUI, then the Releve tab: "Releve annuel de
+    teletravail", the provisional banner "Releve provisoire / Annee en
+    cours au 11.10.2026...", the empty-state note "Aucune journee n'a
+    encore ete enregistree pour cette annee : ce taux ne reflete pas une
+    situation, mais une absence de saisie.", header Nom Jean-Testeur /
+    Canton GE / Taux 100 % / Methode Forfait de 240 jours / Periode Annee
+    2026 entiere / Absences 0 / Date de generation 11.10.2026 14:42,
+    tiles Jours ouvres 240 / Jours en Suisse 0.
+  PDF: tapped "Exporter en PDF". The server rendered it
+    (GET /api/v1/export/pdf?year=2026 -> 200 in ~11 s, Chromium) and the
+    Android share sheet opened on "1 document / 178,3 Ko" with the PDF
+    icon. The PDF GENERATES for a name-only account - the point of the
+    flow (a nameless titulaire would be refused, R205).
+
+FLOW C - A COMPLETE ACCOUNT -> STRAIGHT TO AUJOURD'HUI.
+pm clear, inject Camille (complete on the server), relaunch: no
+onboarding at all - straight to Aujourd'hui ("Bonjour Camille / Dimanche
+11 octobre 2026 / Saisie manuelle", the three record buttons En Suisse /
+Domicile / Mission, "Declarer une absence", and the "A traiter - 7 jours
+non renseignes ce mois / Voir le calendrier" card). The complete-account
+path works.
+
+STATE ACROSS ROTATION AND A BACKGROUND KILL (R310).
+Reset wt-fresh to the partial state, re-ran the fresh flow, entered name
+"RotKillTest", selected canton Geneve, advanced to Etape 3 sur 8 (taux,
+100 % selected). Then:
+  - ROTATION: forced landscape (accelerometer_rotation 0, user_rotation 1).
+    The app rotated and STAYED on Etape 3 sur 8 with 100 % still selected;
+    the landscape layout rendered cleanly (no clipping). Rotated back.
+  - PROCESS DEATH: Home, then `am kill ch.monreleve.app` (pidof confirmed
+    EMPTY - the process was killed), then relaunched. The app RESTORED to
+    Etape 3 sur 8 with 100 % still selected.
+  - STATE, not just the step: navigated Back twice to Etape 1 sur 8 - the
+    name field still held "RotKillTest" and the live preview still read
+    "Titulaire: RotKillTest". So the accumulated onboarding state (name +
+    canton + taux) survived both a config change and process death. R310
+    confirmed.
+
+200 PERCENT (font_scale 2.0).
+  - Etape 1 "Votre nom" at 200 %: reflows, field + preview legible.
+  - Etape 5 granularity at 200 %: the title wraps to three lines, the
+    subtitle wraps, the "Journees entieres" card and its full description
+    render with the filled radio; the "Demi-journees" card sits below the
+    fold and the column scrolls vertically. No horizontal overflow, no
+    clipping.
+  - Aujourd'hui (Camille) at 200 %: greeting large, date wraps to two
+    lines, the three record buttons + "Declarer une absence" render, the
+    bottom-nav labels wrap ("Aujour d'hui", "Calendr ier", "Parame tres")
+    but stay legible - the same reflow the SEED-RELEVE pass noted. No
+    horizontal overflow. font_scale restored to 1.0 afterwards.
+
+FINDING WT1-F1 (new) - THE AUJOURD'HUI GREETING IS HARD-CODED
+"Bonjour Camille". PARKAN-50.
+On the fresh flow I set the name to "Walkthrough" (confirmed stored:
+the DB row wt-fresh has name "Walkthrough", and the Pret summary showed
+"Titulaire: Walkthrough"), yet Aujourd'hui greeted "Bonjour Camille". The
+cause is in the code, not the data: Fr.kt line 12 is
+`const val GREETING = "Bonjour Camille"`, rendered verbatim by
+AujourdhuiScreen.kt line 127 (`Text(text = Fr.GREETING, ...)`). The
+greeting is a fixed placeholder that ignores the signed-in account's
+name - every account sees "Bonjour Camille". It was never caught because
+the only account whose AUJOURD'HUI was screenshotted before (SEED-RELEVE)
+was Camille, for whom the hard-coded name happens to be correct. Recorded
+as PARKAN-50; NOT fixed (verification pass, no product code change).
+
+FINDING WT1-F2 (recorded above) - "MISSING ONLY GRANULARITY" (and
+missing method / rate) is not reproducible against the real server
+because the R196 database constraints forbid those states; proven by the
+three rejected probes. Covered at the JVM level (ReleveCompletenessTest /
+StartupDeciderTest). Not a defect - a note on the limit of what an
+on-device drive can exercise.
+
+PARKAN-43 RESOLVED: the AN-ONBOARD-2 device walkthrough ran. The eight
+steps (incl. the new granularity step), the ask-only-missing name flow
+with a generating PDF, the complete-account shortcut, R310 across rotation
+and a background kill, and the 200 % reflow are all confirmed on the S9.
+
+====================================================================
+WALKTHROUGH 2 - AN-LINKS
+====================================================================
+Each of the 5 "A propos" rows + the 2 sign-in consent links opens its
+LIVE monreleve.ch page in a brand-coloured Custom Tab; the airplane-mode
+behaviour.
+
+THE LIVE SITE (verified from the host first). monreleve.ch/api/health
+answers service="monreleve", origin="https://monreleve.ch", runtime=true
+- it is this product. All five pages return 200: /mentions-legales,
+/confidentialite, /cgu, /sources, /a-propos. The device has internet
+(ping 8.8.8.8 OK over WiFi); the Custom Tabs open over the device's WiFi,
+while the API stays on 127.0.0.1:3000 over the USB adb-reverse (a
+site-page link and an API call are different addresses - LegalPage.kt /
+Site.ORIGIN = https://CallbackLink.HOST, and the API base is separate).
+
+WHAT THE CODE DOES (confirmed in source). The 5 rows map through
+LegalPage: Confidentialite->/confidentialite, CGU->/cgu,
+Legal->/mentions-legales, Sources->/sources, About->/a-propos. The
+launcher (MainActivity.launchCustomTab) sets the toolbar to
+LightColors.brand.toArgb() - the brand token, never a raw colour. The
+R299 fallback chain: a missing Custom Tabs provider falls to the ordinary
+browser; a device with NO browser throws ActivityNotFoundException, which
+openLegalLink (LegalLink.kt) catches to SHOW THE ADDRESS instead of
+crashing.
+
+THE 5 "A PROPOS" ROWS (Parametres -> "A propos"). Section shows, in
+order: Mentions legales, Politique de confidentialite, Conditions
+generales d'utilisation, Sources reglementaires, A propos de Mon Releve,
+then Licences (stays in-app) and Version 0.1.0 (1). Each of the five was
+tapped; each opened a Chrome Custom Tab (dumpsys confirmed the resumed
+activity is com.android.chrome/...customtabs.CustomTabActivity, NOT a
+full browser), with the NAVY BRAND toolbar, the verified host line
+"monreleve.ch", and the Custom Tab chrome (close X, share, overflow):
+  - Mentions legales -> /mentions-legales : heading "Mentions legales",
+    "Editeur du site / Denomination sociale KAMELEO LTD / Forme juridique
+    Private limited company, registered in ...".
+  - Politique de confidentialite -> /confidentialite : heading "Politique
+    de confidentialite", the RGPD + LPD paragraph.
+  - Conditions generales d'utilisation -> /cgu : heading "Conditions
+    generales d'utilisation", "... Editeur / Le service est edite par :".
+  - Sources reglementaires -> /sources : heading "Sources et
+    verifications", "Derniere verification reglementaire : 09.09.2026",
+    the constants table ("Plafond fiscal ... 40 %").
+  - A propos de Mon Releve -> /a-propos : heading "A propos", "Personne
+    n'a valide ces regles" (the R160 reviewer-status section).
+All five show "monreleve.ch" as the verified Custom Tab host and the
+brand toolbar.
+
+THE 2 SIGN-IN CONSENT LINKS. Signed out (pm clear) -> the welcome screen
+("Vos jours de teletravail, prets pour votre declaration." + "Commencer")
+-> the Connexion screen ("Se connecter a Mon Releve", email field, the
+consent line "En continuant, vous acceptez les Conditions d'utilisation
+et la Politique de confidentialite."):
+  - "Conditions d'utilisation" -> Custom Tab /cgu (brand toolbar,
+    monreleve.ch, heading "Conditions generales d'utilisation").
+  - "Politique de confidentialite" -> Custom Tab /confidentialite (brand
+    toolbar, monreleve.ch, heading "Politique de confidentialite").
+Both confirmed via dumpsys as CustomTabActivity.
+
+AIRPLANE MODE (what was asked; and the honest limit). With airplane mode
+ON (status-bar plane icon; airplane_mode_on=1), tapping the CGU consent
+link STILL opened the Custom Tab (brand toolbar, host "monreleve.ch") -
+no crash - and Chrome then showed its own offline page
+(ERR_INTERNET_DISCONNECTED, the dinosaur / "Desactivez le mode Avion").
+So the behaviour is honest: it opens the tab and Chrome says plainly it
+cannot reach the page; nothing claims a false success.
+  NOTE on R299: the app's OWN in-app fallback (openLegalLink ->
+  showAddress) fires ONLY on ActivityNotFoundException - i.e. when NO app
+  can handle the intent (no browser: a kiosk / managed profile / disabled
+  browser), which airplane mode does NOT produce (Chrome is still
+  installed). That path is JVM-tested (LegalLinkTest) and is not
+  reproducible on this S9 without disabling every browser/Custom-Tabs
+  handler (the device has Chrome, and typically Samsung Internet) - too
+  invasive for a verification pass, so it stays JVM-covered. Airplane mode
+  restored OFF; WiFi re-enabled; internet confirmed back; adb reverse
+  intact.
+
+WT2 RESULT: all 5 A propos rows and both sign-in consent links open their
+correct LIVE monreleve.ch page in a brand-coloured Custom Tab; the
+airplane-mode case does not crash and shows Chrome's honest offline page.
+No defect found. No PARKAN change (AN-LINKS has no deferred-walkthrough
+PARKAN of its own; this is the confirmation its merged code works on the
+device).
+
+====================================================================
+WALKTHROUGH 3 - AN-NOTIF (resolves PARKAN-46 largely; PARKAN-47)
+====================================================================
+Record the day from the evening notification: manual mode, automatic
+mode, offline + deferred sync, rows read back, and the dumpsys lock-screen
+check.
+
+SETUP AND A CONSTRAINT WORTH STATING. maybeNotifyEvening gates on six
+conditions (EveningNotificationDecision): opted in, a WORKING DAY (Mon-Fri,
+weekends excluded), no entry yet, the day concluded (Paris time past the
+last check window = 17:00), not already notified, and the mode selects what
+is said. Today is Sunday 2026-10-11 - a NON-working day - so the live path
+would never post today. Non-root adb cannot set the system date (`date` ->
+"Operation not permitted"), so the device date was moved to a WEEKDAY via
+the Settings date picker (auto date/time off; Paris time was already past
+17:00). auto_time/auto_time_zone restored to 1 afterwards. The opt-in
+(evening.enabled, default off, hidden in Parametres unless detection is on)
+and the mode (loggingMode) were set directly in the debug app's SharedPrefs
+(monreleve.detection) via `run-as` (a debug build). Session: Camille via
+the R284 debug session path. The debug trigger EveningNotifyActivity runs
+the real maybeNotifyEvening path on demand.
+
+MANUAL MODE (Friday 2026-10-09). evening.enabled=true, loggingMode absent
+(-> MANUAL). Triggered; app put to background (closed). The notification
+(dumpsys id=1001, actions=3, vis=PRIVATE) read, expanded in the shade:
+  title "Ou avez-vous travaille aujourd'hui ?"  text "Vendredi 9 octobre 2026"
+  buttons  [En Suisse]  [Domicile]  [Autre...]
+Tapped EN SUISSE with the app closed. The notification was REPLACED (same
+id 1001, now actions=1) by the confirmation:
+  title "En Suisse"   text "Enregistre pour le 09.10.2026"   button [Modifier]
+"Enregistre", not "envoye" (R339). The entry synced: POST /api/v1/entries
+200.
+ROW READ BACK (server Entry, joined to the user):
+  dayDate 2026-10-09, kind CH, provenance MANUAL,
+  clientMutationId a98429d2-44ec-4fde-b79e-d88cf325a816 (its own id, born at
+  the tap - AN5), clientClaimedAt 2026-10-09 15:24:20 (the tap).
+  THE ACCOUNT TAG (R303): the signed-in account's opaque tag, read from the
+  app's monreleve.account.xml, is
+  6b42a8054a62e29ba76a6847b40c373c60c1f2fcdf703410e87e2ca18a937e71
+  (accountTagOf camille.martin@example.invalid); the entry synced to
+  camille.martin's server user, so the account scoping held (a wrong-account
+  tap would have written nothing, decideEveningTap).
+
+"AUTRE..." LANDS ON TODAY (Thursday 2026-10-08). Triggered a fresh manual
+notification; tapped "Autre..." - it opened ch.monreleve.app/.MainActivity
+on AUJOURD'HUI for today ("Bonjour Camille / Jeudi 8 octobre 2026", the
+record buttons). Confirmed it opens the app on the shown day.
+
+RECORD-IN-APP-FIRST CANCELS THE NOTIFICATION (same Thursday). With the Oct-8
+notification still in the shade, recorded the day IN THE APP (Aujourd'hui ->
+En Suisse). The Mon Releve notification then DISAPPEARED from the shade -
+MainShell cancels today's evening notification the moment the day becomes
+recorded by any in-app path (R339 incr 5). Confirmed by the shade showing no
+Mon Releve notification afterwards.
+
+AUTOMATIC MODE - NOT SURE (Wednesday 2026-10-07). loggingMode=AUTO_DETECT,
+evening.enabled=true, no detection tally (empty Room). Triggered; expanded:
+  title "Ou avez-vous travaille aujourd'hui ?"
+  text  "Nous ne sommes pas certains de votre position ce j..." (the R312
+        not-sure message, DetectionCopy.NOT_SURE - NOT the date)
+  buttons  [En Suisse]  [Domicile]  [Autre...]
+This is the auto-mode branch of eveningDecision rendering on-device: with no
+HIGH proposal, it invites manual recording (DetectionOutcome.NotSure).
+
+AUTOMATIC MODE - HIGH PROPOSAL (DETECTED_CONFIRMED / DETECTED_CORRECTED):
+NOT REPRODUCIBLE ON-DEVICE, recorded honestly. detectionOutcome surfaces a
+Proposed notice only when a day's vote is HIGH (Tier.HIGH = >=3 agreeing
+detection checks, voteTier/dayProposal). That needs a seeded detection
+TALLY in Room (the SamplingWorker's output). There is no on-device sqlite3,
+the Room DB is WAL and cannot be hand-edited, and seeding the tally tables
+is infeasible in a verification pass without the detection sampler having
+run. So the Confirmer -> DETECTED_CONFIRMED and the-other-side ->
+DETECTED_CORRECTED (+ detectedKind, R202) buttons could not be driven on the
+phone. They are covered on the JVM: EveningTapTest asserts the decision and
+the DETECTED_CONFIRMED/DETECTED_CORRECTED provenance + detectedKind, and the
+notifier builds Confirmer/[other side] as immutable broadcasts
+(EveningNotifier.recordActions, EveningNotifierLockScreenTest). The on-device
+piece that remains for PARKAN-46 is this HIGH-proposal path, which needs
+either the sampler to have produced a HIGH day or a tally-seeding instrument.
+
+OFFLINE RECORD + DEFERRED SYNC (Wednesday 2026-10-07). The adb-reverse
+tunnel is over USB, so airplane mode alone does NOT take the app offline from
+the dev server; the reverse tunnel was REMOVED (and airplane mode on) to make
+the app genuinely unable to reach the server. Tapped En Suisse on the
+NotSure notification: the confirmation "En Suisse / Enregistre pour le
+07.10.2026" appeared - the LOCAL record succeeded offline - while the server
+still showed the day's older value (no sync). Then connectivity was restored
+(airplane off, WiFi on, reverse re-added) and the app reopened: the entry
+SYNCED - the server now shows 2026-10-07 CH MANUAL with clientMutationId
+10fd1223-5ee6-425b-8e11-77137c204a33 (POST /api/v1/entries 200). "Recorded
+offline, synced later" confirmed.
+  NOTE (seed interaction, not a defect): the seeded Camille account already
+  holds server entries for these dates, but maybeNotifyEvening gates on the
+  LOCAL Room (empty after a fresh sign-in), so the notification fires anyway
+  - the "new phone" shape SEED-RELEVE recorded. On sync, the
+  notification-recorded day supersedes the seeded server value for that day
+  (Oct 7 was a seeded ABSENT, now CH MANUAL); the append-only EntryEvent
+  trail keeps both.
+
+THE DUMPSYS LOCK-SCREEN CHECK (PARKAN-47). `adb shell dumpsys notification`
+on the posted actionable notification showed:
+  - id=1001, channel "Rappel du soir" (monreleve.evening.proposal),
+    importance 3 (DEFAULT);
+  - vis=PRIVATE on the main notification;
+  - publicVersion=Notification(... vis=PUBLIC ...) present as a SEPARATE
+    notification, and it carries NO actions (the summary lists no actions for
+    it; the main lists actions=3) - matching publicVersion() having no
+    addAction and publicLines() = "Mon Releve / Une journee a enregistrer.";
+  - the three actions: [0] "En Suisse" -> broadcastIntent, [1] "Domicile" ->
+    broadcastIntent (the two recording buttons are IMMUTABLE broadcasts),
+    [2] "Autre..." -> startActivity; contentIntent -> startActivity.
+  WHAT APPLIES ON API 29: setAuthenticationRequired(true) is applied in code
+  on every recording action via NotificationCompat, but it is a NO-OP below
+  API 31, so the S9 (API 29) cannot show the action auth-required flag in
+  dumpsys. The code-side assertion is EveningNotifierLockScreenTest; a 31+
+  device is needed for dumpsys to show the per-action unlock gate. The
+  channel's own mLockscreenVisibility read -1000 (NO_OVERRIDE) in dumpsys
+  (the channel pre-existed from an earlier run; ensureChannel does not update
+  an existing channel) - the per-NOTIFICATION vis=PRIVATE is what governs
+  redaction and it is set, so lock-screen redaction holds; noted as a minor
+  observation, not a defect.
+
+THE OPERATOR'S TWO-LINE MANUAL PIN CHECK (I did NOT set or clear any PIN -
+hard boundary R334). On a device with a screen lock:
+  1. Set a PIN; trigger the evening notification (the debug
+     EveningNotifyActivity, or wait for the real evening); lock the phone;
+     confirm the lock screen shows ONLY "Mon Releve / Une journee a
+     enregistrer." with NO buttons (the public version), and that tapping a
+     recording action on a 31+ device demands unlock first.
+  2. Remove the PIN.
+
+THE WATCH: untested (no watch paired), as AN-NOTIF noted.
+
+200 %: the notifications are OS-rendered chrome; font_scale 2.0 enlarges them
+system-wide. A dedicated 200 % notification capture was attempted but the
+200 % font reflowed the Settings date picker and the weekday change missed
+(it reverted to the real Sunday, a non-working day, so nothing posted); given
+the notification body is OS-rendered, this was not pursued further. The app
+SCREENS reached from the notification (Aujourd'hui) are covered at 200 % in
+WT1.
+
+WT3 RESULT: manual mode end to end (notification -> tap with the app closed
+-> confirmation -> row read back with its clientMutationId, account tag and
+MANUAL provenance), "Autre..." landing on today, record-in-app cancelling the
+notification, the auto-mode NotSure notice, offline record + deferred sync,
+and the dumpsys lock-screen protections (as far as API 29 allows) are all
+confirmed on the S9. REMAINING (recorded, not faked): the auto HIGH-proposal
+DETECTED_CONFIRMED/DETECTED_CORRECTED path (needs a seeded HIGH tally; JVM-
+covered) and the dumpsys action auth-flag (needs a 31+ device). PARKAN-46 is
+largely resolved (manual + NotSure + offline + rows); PARKAN-47's dumpsys is
+done for API 29 with the 31+ remainder and the operator PIN check recorded.
+
+====================================================================
+WALKTHROUGH 4 - DOMAIN section 6 (PARKAN-31)
+====================================================================
+The first MINIFIED build against the REAL server: build the release
+configuration pointed at https://monreleve.ch, install on the S9, drive as
+far as the live server allows (the production DB is down).
+
+IS THE API LIVE? YES (probed from the host). The production auth routes
+respond: POST /api/v1/auth/magic-link -> 202 (empty body; short-circuits
+before the DB), /api/v1/auth/code -> 400 (empty) , /api/v1/auth/callback ->
+405 (it is a GET route), /api/v1/auth/refresh -> 500, revoke-all/sign-out ->
+401. So the API is deployed. WITH A REAL PAYLOAD the DB-backed routes 500:
+POST /api/v1/auth/magic-link {email:...} -> 500, and
+POST /api/v1/auth/code {email,code} -> 500 - the DB-down state DOMAIN found.
+
+THE BUILD. The RELEASE variant is the one that points at
+https://monreleve.ch (build.gradle.kts line 125) and is minified (R8:
+isMinifyEnabled + isShrinkResources); the "audit" variant points at the
+LOCAL host instead, so for "pointed at monreleve.ch" the release variant is
+the subject - the shipping config. `:app:assembleRelease` was built (R8 ran:
+a 33 MB mapping.txt under build/outputs/mapping/release). The artifact is
+app-release-UNSIGNED.apk by construction (R250 - no release key here), so it
+was debug-SIGNED (apksigner, the ~/.android/debug.keystore androiddebugkey,
+as PARKAN-31 did) to make it installable. Verified from the built dex before
+installing: it contains "https://monreleve.ch" (the sole API base - the
+release denies all cleartext, so no localhost/10.0.2.2), it contains current
+AN-NOTIF code ("Rappel du soir", "evening.proposal") so it is current with
+main 41ca989, and R8 ran (the mapping.txt). Installed on the S9 (uninstalled
+the debug build first); dumpsys shows flags WITHOUT DEBUGGABLE (the release
+build), versionName 0.1.0.
+
+THE DRIVE (against the live https://monreleve.ch over the device's WiFi -
+NOT the adb-reverse, which is irrelevant: the release points at
+monreleve.ch:443, not localhost):
+  - Launched: the WELCOME screen rendered with NO CRASH ("Mon Releve / Vos
+    jours de teletravail, prets pour votre declaration." + "Commencer") -
+    the minified build runs.
+  - Commencer -> the CONNEXION (email) screen: "Se connecter a Mon Releve",
+    "Pas de mot de passe : nous vous envoyons un lien et un code a usage
+    unique.", the "Adresse e-mail" field, "Recevoir mon lien de connexion",
+    the two consent links. Identical to the debug build - R8 did not break
+    the screen.
+  - Entered walkthrough-test@example.invalid, tapped "Recevoir mon lien de
+    connexion". The app made a REAL network request to https://monreleve.ch
+    and, after a round-trip, showed a NAMED REFUSAL, not a crash:
+      "Une erreur s'est produite. Reessayez."   with a "Reessayer" link.
+    This corresponds exactly to the server's 500 on
+    POST /api/v1/auth/magic-link {email} (DB down), confirmed by curl above.
+
+CONFIRMED: the minified release build TALKS TO THE REAL SERVER (its dex
+carries https://monreleve.ch as the only API base, and the request produced
+a real round-trip ending in the server's DB-down 500, surfaced as a named
+app error). This is the FIRST time a minified build has met the real server
+(PARKAN-31).
+
+THE DB-DOWN LIMITATION (recorded). Because the production DATABASE is down,
+the magic-link request itself returns 500, so the sign-in fails at the
+REQUEST step - the app does not reach the CODE-entry screen (that needs a
+200 from magic-link to proceed), and no email/code is issued. Both
+/api/v1/auth/magic-link and /api/v1/auth/code return 500 on a real payload.
+So "reach the email + code screens + a named refusal" was reached as far as
+the live server allows: the EMAIL screen and the NAMED REFUSAL are
+confirmed; the CODE screen is blocked by the server's DB-down 500 on the
+prior step (not an app fault).
+
+STILL OWED (PARKAN-31, not this pass): the TRUE release APK signed with the
+RELEASE upload key (R250 - no key created here) + Google Play's app-signing
+key, against a resolving /.well-known/assetlinks.json carrying those
+fingerprints (AN14b, PARK4-2), and the full magic-link -> App Link callback
+round-trip once the production DB is restored. This pass exercised the
+MINIFIED release CODE against the real server's HTTPS endpoint and a named
+refusal; the signed-with-release-key artifact and a healthy DB remain.
+
+WT4 RESULT: the minified release build (R8, https://monreleve.ch) was built,
+signed, installed and driven on the S9; it launches, reaches the email
+screen, talks to the real server, and shows a named refusal on the server's
+DB-down 500. PARKAN-31 advances (first minified build vs the real server);
+the release-key + assetlinks + healthy-DB remainder is recorded.
+
+====================================================================
+PHONE SETTINGS CHANGED AND RESTORED (R334)
+====================================================================
+  - font_scale: 1.0 -> 2.0 (WT1 200% captures, WT3 attempt) -> RESTORED 1.0.
+  - auto_time: 1 -> 0 (WT3, to set weekday dates) -> RESTORED 1.
+  - auto_time_zone: 1 -> 0 (WT3) -> RESTORED 1.
+  - system date: moved to weekdays (Fri 10-09 / Thu 10-08 / Wed 10-07) via
+    the Settings picker for the working-day notification gate -> auto_time
+    back on returns it to the real date (confirmed Sun 2026-10-11).
+  - accelerometer_rotation 1 -> 0, user_rotation 0 -> 1 (WT1 rotation test)
+    -> RESTORED (user_rotation 0, accelerometer_rotation left; rotation
+    behaves normally).
+  - airplane_mode_on: toggled 1 then 0 (WT2 fallback, WT3 offline) ->
+    RESTORED 0; WiFi re-enabled; internet confirmed.
+  - evening-notification opt-in + loggingMode: set via run-as in the debug
+    app's SharedPrefs (WT3) - wiped by the WT4 uninstall/reinstall.
+  NOT CHANGED (left as found, R334): always_finish_activities stayed 0 (I
+    used `am kill` for the R310 process-death test, not "Don't keep
+    activities"); mock_location untouched (denied); animations untouched;
+    stay_on_while_plugged_in left as found (pre-existing 7).
+  NO PIN/LOCK-SCREEN SECURITY was set or cleared (hard boundary).
+
+====================================================================
+UNTRACKED FILES FOUND AND LEFT ALONE (R334)
+====================================================================
+Reported, never removed or committed. Present and untracked at the start,
+belonging to other tasks / the environment:
+  - web/scripts/_mint-readback.mjs (SEED-RELEVE's throwaway minter)
+  - MonReleve/ (the subdir) and its shot dirs
+  - android/.an-*-shots/, .an10*/.an11*/.an12*/.an5c-ac2*/.device-loop-shots/,
+    android/.kotlin/ (fifteen-plus shot/cache dirs)
+  - android/scripts/an-*.mjs and android/scripts/uidrive.mjs (the drive
+    instruments from prior tasks; uidrive.mjs's wake/screencap helpers were
+    consulted but the driving here was done with direct adb)
+  - .claude/worktrees/agent-aacfc4b0d2a3088e3/ (a leftover worktree)
+A PRE-EXISTING tracked-file DELETION was present in the working tree before
+this session's first command and was NOT made by me: relay/SEED-RELEVE.txt
+shows as deleted (" D"). I left it exactly as found (did not stage it, did
+not restore it) and report it here.
+
+THE ONLY NEW UNTRACKED FILES I CREATED (NOT committed, reported):
+  - web/scripts/_wt-setup.mjs (my throwaway: the R196 constraint probes +
+    the partial-state account creation + session minting for WT1/WT3)
+  - android/.device-walkthroughs-shots/ (the screenshots for this report)
+I staged ONLY REPORT-WALKTHROUGHS.txt and parking.md, by explicit path,
+every commit (never `git add .` / `-A`).
+
+====================================================================
+PARKAN SUMMARY
+====================================================================
+  PARKAN-43 (AN-ONBOARD-2 walkthrough) - CLOSED, device-verified (WT1).
+  PARKAN-46 (AN-NOTIF walkthrough)     - LARGELY CLOSED (WT3): manual, auto
+    NotSure, offline+sync, rows read back; the auto HIGH-proposal path
+    remains (needs a seeded tally; JVM-covered).
+  PARKAN-47 (AN-NOTIF dumpsys)         - DONE for API 29 (WT3); the 31+
+    action auth-flag and the operator PIN check remain.
+  PARKAN-31 (TRUE release E2E)         - ADVANCED (WT4): first minified build
+    vs the real server + a named refusal; the release-key-signed artifact +
+    assetlinks + healthy DB remain (AN14b).
+  PARKAN-50 (hard-coded "Bonjour Camille" greeting) - NEW finding (WT1).
+
+====================================================================
+NEW FINDINGS
+====================================================================
+  WT1-F1 / PARKAN-50: the Aujourd'hui greeting is hard-coded
+    Fr.GREETING = "Bonjour Camille" (Fr.kt:12, AujourdhuiScreen.kt:127) and
+    ignores the signed-in account's name. Recorded, not fixed.
+  WT1-F2: on the REAL server only a MISSING NAME partial state is reachable;
+    missing granularity/method/rate are rejected by the R196 DB constraints
+    (proven by 3 probes), so those completeness branches are JVM-only.
+
+END OF WALKTHROUGHS - the final gate:clone + merge are the operator's.
