@@ -146,7 +146,7 @@ describe('what is verified and what is not', () => {
   });
 });
 
-describe('the three pending readings (R113)', () => {
+describe('the three readings, in two groups since the accord (R113, REG-APPLY)', () => {
   it('publishes all three, including the one with no input trigger', () => {
     const text = pageText();
 
@@ -158,14 +158,22 @@ describe('the three pending readings (R113)', () => {
     }
   });
 
+  it('groups them into what the texts now establish and what stays a reading', () => {
+    // Since the accord of 29 April 2026: P1 (imputation order, 1b) and P2 (49,9
+    // social, OFAS) move under the settled heading, and P3's combined case
+    // stays under the reading heading. Both headings and both intros render.
+    const text = pageText();
+
+    expect(text).toContain(SOURCES_COPY.settledHeading);
+    expect(text).toContain(SOURCES_COPY.settledIntro);
+    expect(text).toContain(SOURCES_COPY.readingHeading);
+    expect(text).toContain(SOURCES_COPY.readingIntro);
+  });
+
   it('publishes P2, which nothing on the calculator can surface', () => {
     // Named separately from the loop because this is the disclosure that had
     // nowhere to live: the notice is input-triggered and P2 has no trigger.
     expect(pageText()).toContain(SOURCES_COPY.provisional.P2.heading);
-  });
-
-  it('says an expert has not yet ruled', () => {
-    expect(pageText()).toContain(SOURCES_COPY.provisionalIntro);
   });
 });
 

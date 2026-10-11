@@ -179,36 +179,54 @@ sourced regulatory fact the engine depends on.
   step 3 exactly. A travel day with no work performed, or worked mostly in
   Switzerland, is not counted.
 
-### STILL PROVISIONAL — LEGAL REVIEW REQUIRED (3 items, was 5)
+### STILL PROVISIONAL — EXPERT LEGAL REVIEW PENDING (3 items, was 5)
 
-Each of these is a **reading** this codebase adopted where no source speaks.
-They go to the named expert reviewer, not to a website.
+> **UPDATE 2026-10-11 (REG-APPLY).** The accord amiable FR-CH of 29 April 2026
+> (fetched and transcribed below) now **provides a primary source** for two of
+> the three: it orders residence-state missions before third-state ones (1b,
+> P1) and it prorates the 10-day cap for part-time and partial-year employees
+> with no condition on the denominator method (1d, P3). These are no longer
+> *readings adopted where no source speaks*; they are **transcriptions from the
+> accord awaiting the same expert legal review** as every transcribed row. What
+> remains genuinely a reading is named under each item below.
 
-- ☐ **P1 — the France-before-third-state imputation ORDER.** ge.ch treats
-  *"France ou un autre État"* as a single pool in all six published cases and
-  never orders them. Our waterfall imputes France first, on no primary
-  source. **Harmless in the fixtures** — no published case splits the two —
-  **and real for a user who does.** This is what survives of the deleted
-  "29 April 2026 interpretative agreement": the citation was wrong, but the
-  question it was supposed to answer is still open.
+- ☐ **P1 — the France-before-third-state imputation ORDER. NOW SOURCED
+  (accord 1b).** ge.ch treats *"France ou un autre État"* as a single pool in
+  all six published cases and never orders them, but the accord amiable of
+  29 April 2026, 1(b), does: *"Parmi les missions temporaires, celles exercées
+  dans l'État de résidence du salarié sont prises en compte en priorité par
+  rapport à celles exercées dans un État tiers."* For a France-resident
+  frontalier the État de résidence is France, so this is France-before-a-third-
+  state, which is exactly what the waterfall does. **Harmless in the
+  fixtures** — no published case splits the two — and now sourced for the user
+  who does. Expert confirmation of the application is pending.
 
 - ☐ **P2 — the 49,9 versus < 50 edge under two-decimal truncation.**
-  49,95 % is legally below 50 and above the published 49,9, so the product
-  **over-warns** between the two. The band stays `> 49,9` because
-  over-warning is the safe direction for a signal that drives copy and no
-  arithmetic — and truncation really can produce 49,99, so this is a value
-  the engine reaches rather than a hypothetical. *Confirm that over-warning
-  is acceptable.* (Was ruling R32.)
+  OFAS/BSV confirms the published maximum: *"jusqu'à 50% (au maximum 49.9%)"*
+  (source B below). The 49,9 ceiling is therefore sourced; what stays a
+  **reading** is the product's choice to **over-warn** in the narrow band
+  between 49,9 and 50. 49,95 % is legally below 50 and above the published
+  49,9, and the band stays `> 49,9` because over-warning is the safe direction
+  for a signal that drives copy and no arithmetic — and truncation really can
+  produce 49,99. *Confirm that over-warning is acceptable.* (Was ruling R32.)
 
-- ☐ **P3 — mission-cap proration under the exact method (ruling R19).**
-  ge.ch prorates for part-time **and** partial year but does not address an
-  employer-supplied exact total. The interim reading stands: prorate by
-  `periodFraction` only under `exact`, and by both factors under
-  `simplified240`, because an exact total is the days actually worked and so
-  already embodies the working-time rate — prorating by `employmentRate`
-  again would count the same reduction twice and quietly cost a part-timer
-  mission days. `EXACT_METHOD_UNVERIFIED` fires on this path, and the site
-  keeps its `PROVISIONAL` marker.
+- ☐ **P3 — mission-cap proration under the exact method (was ruling R19).
+  SETTLED by accord 1(d); the engine was corrected.** ge.ch prorates for
+  part-time **and** partial year but did not address an employer-supplied exact
+  total, and the interim R19 reading prorated by `periodFraction` only under
+  `exact`. The accord 1(d) prorates the 10-day **limit** itself
+  *"proportionnellement et arrondie à l'unité supérieure"* for a part-time or
+  partial-year employee, **with no condition on the denominator method** — so
+  the exact method must prorate by `employmentRate` too. The engine was
+  corrected on the operator's ruling of 2026-10-11 ("fix the engine then apply
+  the copy"): `missionCapFor` now prorates by both factors under both methods,
+  and `mission-cap.test.ts` and `fixtures/denominator-cases.json` were updated
+  (`cap-exact-50-full` 10→5, `cap-exact-50-half-year` 5→3). The Geneva
+  conformance fixtures were unchanged (all are 100 % full-year). What remains
+  Mon Releve's own **reading** is the **COMBINED** case — part-time AND
+  partial-year at once — because 1(d) names the two situations separately and
+  does not authorise multiplying both factors explicitly.
+  `EXACT_METHOD_UNVERIFIED` still fires on the exact path.
 
 ### Resolved by this pass
 
@@ -417,6 +435,155 @@ Note for whoever returns to it: **URSSAF publishes an official simulator for
 the CMU contribution and CLEISS links it**, so the comparator never needed to
 compute the French side. That changes R157's arithmetic and should be weighed
 before any premium dataset is pursued.
+
+## ACCORD AMIABLE FR-CH OF 29 APRIL 2026, AND FOUR MORE SOURCES — VERIFIED 2026-10-11 (REG-APPLY)
+
+> **RE-FETCHED AND READ THIS SESSION.** Each source below was fetched again on
+> 2026-10-11 and read directly: the accord and the Geneva LAMal table as PDFs
+> (extracted with `pdftotext` and read page by page), the other three as HTML.
+> None relied on the REG-UPDATE report alone (R146). The accented originals live
+> at the URLs named; the quotations here are the primary text.
+
+### Source A — Accord amiable FR-CH, 29 April 2026. VERIFIED.
+
+- **Instrument (R167):** *« Accord amiable conclu entre les autorités
+  compétentes de la Suisse et de la France sur les modalités du régime
+  applicable à l'exercice du télétravail dans le cadre de la Convention du
+  9 septembre 1966 … »*
+- **URL (convenience, allowed to rot):**
+  https://www.estv.admin.ch/dam/fr/sd-web/Bibcb06jL1wG/int-laender-fr-dba-ai-cdi-20260429-fr.pdf
+- **Fetched:** 2026-10-11. Signed *« À Berne, le 29 avril 2026 »*, Pascal Duss
+  (autorité compétente suisse) and Martin Klam (autorité compétente française).
+
+Clause 1 chapeau: *« Pour l'application de la limite de 10 jours par année de
+missions temporaires exercées par le salarié pour le compte de son employeur
+dans son État de résidence ou dans un État tiers, les règles d'interprétation
+suivantes sont applicables : »*
+
+- **1(a):** *« il est entendu que seules sont incluses dans l'expression
+  « activités exercées en télétravail depuis l'État de résidence » les missions
+  temporaires exercées par le salarié, dans son État de résidence ou dans un
+  État tiers, pour le compte de son employeur, à hauteur de la fraction
+  respectant, à la fois, la limite annuelle de 10 jours, et celle de 40 % du
+  temps de travail par année civile, après imputation des autres jours de
+  télétravail, c'est-à-dire des jours de télétravail qui ne sont pas des
+  missions temporaires ; »*
+- **1(b)** *(sources P1 — the imputation order):* *« il est entendu qu'aux fins
+  de l'application du a), les autres jours de télétravail sont décomptés en
+  priorité par rapport aux jours de missions temporaires. Parmi les missions
+  temporaires, celles exercées dans l'État de résidence du salarié sont prises
+  en compte en priorité par rapport à celles exercées dans un État tiers ; »*
+- **1(c):** *« il est entendu que la fraction des jours de missions temporaires
+  excédant au moins l'une des limites stipulées au a) n'est pas incluse dans
+  l'expression « activités exercées en télétravail depuis l'État de
+  résidence » ; »*
+- **1(d)** *(sources the mission-cap proration — the engine was corrected to
+  match it, 2026-10-11):* *« pour les salariés qui exercent leur activité
+  pendant une période inférieure à l'année civile et ceux qui exercent un emploi
+  à temps partiel pendant l'année entière, la limite annuelle de 10 jours est
+  ajustée proportionnellement et arrondie à l'unité supérieure. »*
+- **2** *(sources the on-call PARK item):* *« Il est entendu que les périodes
+  d'astreinte ne sont pas constitutives de missions temporaires … Elles ne sont
+  incluses dans l'expression « activités exercées en télétravail depuis l'État
+  de résidence » que si elles donnent lieu à une intervention effective du
+  salarié dans son État de résidence. »*
+- **3** *(effect date):* *« Le présent accord entre en vigueur le jour suivant
+  sa signature par les deux autorités compétentes. Ses dispositions prennent
+  effet à la même date que celle de l'avenant à la Convention, signé le 27 juin
+  2023. »* (The printed PDF has a typo, *« avennt »*, for *« avenant »*.)
+- **4** *(dénonciation):* a minimum six-month notice before the end of a
+  calendar year; the accord then ceases to apply after that year.
+
+This accord is the **named instrument** behind rows 2 and 3 of the constants
+table (the 10-day cap and its proration) and behind P1 and P3. It is the
+primary source the earlier note (row 2) was reaching for when it recorded that
+a "29 April 2026 interpretative agreement" could not be found as a *separate*
+document: the accord itself, dated 29 April 2026, is that instrument.
+
+### Source B — OFAS / BSV, Télétravail. VERIFIED.
+
+- **URL:** https://www.bsv.admin.ch/fr/teletravail — **published 12 September
+  2025.** Fetched 2026-10-11.
+- The percentage limit: *« jusqu'à 50% de télétravail transfrontalier (au
+  maximum 49.9% du temps de travail) »* — confirms `socialCeiling` 0.499 and
+  **P2's published maximum**.
+- The band the multilateral agreement covers: *« … compris entre 25% et 49.9%
+  du temps de travail »* — confirms `a1ThresholdRate` 0.25.
+- Who it does NOT apply to: persons also doing a non-telework activity in their
+  residence state (*« visites régulières à des clients, activité accessoire
+  indépendante »*), persons with another EU/EFTA employer or activity outside
+  the residence state, and the self-employed.
+- The A1: requested by the Swiss employer *« au moyen de la plateforme ALPS
+  (Applicable Legislation Portal Switzerland) »*, *« validité maximale de 3 ans,
+  renouvelable »*.
+
+### Source C — AFC Genève, obligations de l'employeur en matière de télétravail. VERIFIED.
+
+- **URL:** https://www.ge.ch/imposition-du-teletravail-personnes-frontalieres/obligations-employeur-matiere-teletravail
+  — **page update date 23 April 2026.** Fetched 2026-10-11.
+- Tracking since 01.01.2026: *« L'employeur doit suivre les jours de télétravail
+  et de missions temporaires effectués par chacun de ses employés domiciliés en
+  France. »*
+- First transmission: *« La première transmission interviendra en janvier 2027
+  pour les données de 2026. »*
+- The rate is **NOT** required on the salary certificate: *« Non, ce n'est pas
+  obligatoire. Ce taux doit figurer sur la liste récapitulative (LR) d'impôt à
+  la source (version papier) ou être transmis via ELM ou ISeL. »*
+- Several employers: *« Vous devez déclarer à l'AFC Genève le taux de
+  télétravail correspondant aux jours travaillés pour votre entreprise
+  uniquement. »*
+- Change of residence during the year: *« Vous devez établir deux
+  attestations-quittances au titre de l'année : une concernant chaque période de
+  résidence. »*
+- Leaving during the year: *« L'attestation "en cas de rapports de travail de
+  moins d'un an" (art. 5a OIS) doit être remise à l'employé s'il en fait la
+  demande. »*
+
+These are the sentences the **employer-document** section of `/sources` is to
+track one by one: the rate belongs on the LR / ELM / ISeL rather than the
+certificat de salaire, and the "moins d'un an" attestation is handed over *on
+request*, not automatically. They also support a future **employer field** (one
+relevé per employer) and the **residence-change** PARK item.
+
+### Source D — Geneva LAMal premiums 2026 for residents of France. RECORDED (existence only).
+
+- **URL:** https://www.ge.ch/document/40783/telecharger — fetched 2026-10-11
+  (PDF, `pdftotext`). Title *« Cotisations mensuelles assurance de base 2026 »*
+  / *« Personnes domiciliées en France »*. PDF metadata: created 26.09.2025,
+  publisher République et canton de Genève.
+- **Franchise annuelle:** *« Adultes : CHF 300.- / Enfants : CHF 0.- »*. Year
+  covered: 2026. Columns *« AVEC COUVERTURE ACCIDENT »* / *« SANS COUVERTURE
+  ACCIDENT »*, ages 26+, 19-25, 0-18, by caisse (N° OFSP).
+- **Reuse terms: NONE stated on the document.** Per R146, the premiums are
+  **NOT republished**; only the document's existence, date, deductible and year
+  are recorded. This is a PARK input (the LAMal/URSSAF comparator), gated on the
+  reuse terms being read from ge.ch.
+
+### ameli — droit d'option (corroborates CLEISS). VERIFIED.
+
+- **URL:** https://www.ameli.fr/assure/droits-demarches/europe-international/travailleur-frontalier-suisse
+  — *« Travailleur frontalier suisse : droits et prise en charge »*. Fetched
+  2026-10-11.
+- *« Vous pouvez exercer votre droit d'option … dans un délai de 3 mois à
+  compter de votre prise d'emploi en Suisse ou de votre domiciliation en
+  France. »* — corroborates D1.
+- *« L'option, une fois exercée, a un caractère irrévocable. »* — corroborates
+  D3.
+- *« Passé ce délai, vous êtes obligatoirement affilié auprès de l'assurance
+  maladie suisse. »* — corroborates D6.
+- CLEISS stays the authoritative publisher (R167); ameli is a second
+  French-public source that corroborates rows D1, D3 and D6.
+
+### NOT rowed (could not be primary-verified this session)
+
+- **URSSAF** (frontalier CMU contribution, 8 % on revenus N-2 less 25 % of the
+  PASS): secondary sources only; no row (R146). A PARK input for the comparator.
+- **Form 2047-SUISSE:** located
+  (impots.gouv.fr, millésime 2026) but the multi-page PDF body was not
+  transcribed; recorded as located-not-transcribed.
+- **A separate ESTV "practical guide" of 29 April 2026:** not located as a
+  distinct document. The accord A itself is the primary ESTV instrument and is
+  verified above.
 
 ## COPY ITEMS FOR THE REVIEWER
 

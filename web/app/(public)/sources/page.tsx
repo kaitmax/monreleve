@@ -35,7 +35,12 @@
 import type { Metadata } from 'next';
 import { ruleSetFor } from '@/lib/calc-engine';
 import { SOURCE_IDS } from '@/lib/content/sources';
-import { PUBLISHED_PROVISIONAL_IDS, readingAnchor } from '@/lib/content/provisional';
+import {
+  MON_RELEVE_READING_IDS,
+  PUBLISHED_PROVISIONAL_IDS,
+  SETTLED_BY_TEXT_IDS,
+  readingAnchor,
+} from '@/lib/content/provisional';
 import { LAST_REGULATORY_REVIEW } from '@/lib/content/regulatory';
 import { SOURCE_ENTRIES } from '@/lib/content/sources';
 import { currentTaxYear } from '@/lib/content/tax-year';
@@ -206,12 +211,36 @@ export default function SourcesPage() {
           <p className={styles.note}>{COPY.pendingNote}</p>
         </section>
 
+        {/*
+          TWO GROUPS SINCE THE ACCORD OF 29 APRIL 2026 (REG-APPLY). The accord
+          1(b) sources the imputation order (P1), the OFAS confirms the 49,9
+          social maximum (P2), and 1(d) sources the mission-cap proration (P3's
+          single-factor part). So P1 and P2 are presented under "what the texts
+          now establish", pending only expert review; what stays a reading of
+          this site is P3's combined part-time-and-partial-year case. The
+          anchors do not move - every id keeps #lecture-PX via readingAnchor, so
+          the guides that link "la reference P1/P2" still resolve.
+        */}
         <section className={styles.section}>
-          <h2 className={styles.heading}>{COPY.provisionalHeading}</h2>
-          <p className={styles.prose}>{COPY.provisionalIntro}</p>
+          <h2 className={styles.heading}>{COPY.settledHeading}</h2>
+          <p className={styles.prose}>{COPY.settledIntro}</p>
 
           <dl className={styles.readings}>
-            {PUBLISHED_PROVISIONAL_IDS.map((id) => (
+            {SETTLED_BY_TEXT_IDS.map((id) => (
+              <div className={styles.reading} id={readingAnchor(id)} key={id}>
+                <dt className={styles.readingHeading}>{COPY.provisional[id].heading}</dt>
+                <dd className={styles.readingBody}>{COPY.provisional[id].body}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+
+        <section className={styles.section}>
+          <h2 className={styles.heading}>{COPY.readingHeading}</h2>
+          <p className={styles.prose}>{COPY.readingIntro}</p>
+
+          <dl className={styles.readings}>
+            {MON_RELEVE_READING_IDS.map((id) => (
               // THE ANCHOR R110's NOTICE LANDS ON. Derived from the id by
               // lib/content rather than written here, because the notice
               // builds the same fragment from the same function - two string

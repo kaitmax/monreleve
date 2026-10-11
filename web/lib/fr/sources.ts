@@ -188,12 +188,29 @@ export const SOURCES_COPY = {
   /** Rows that state a rule rather than hold a number. */
   noValue: 'règle, sans valeur chiffrée',
 
-  provisionalHeading: "Trois lectures en attente d’un avis expert",
+  settledHeading: 'Ce que les textes officiels établissent désormais',
 
-  provisionalIntro:
-    'Sur ces trois points, aucune source ne tranche. Le calculateur a retenu ' +
-    "une lecture, indiquée ci-dessous, et elle attend la validation d’un " +
-    'expert. Le résultat peut évoluer si la lecture retenue change.',
+  settledIntro:
+    'Deux points que le calculateur appliquait sans source primaire sont ' +
+    'désormais rattachés à un texte officiel, et un troisième a été corrigé ' +
+    'pour suivre ce texte' +
+    n(':') +
+    ' l’ordre d’imputation des missions et le plafond social, par l’accord ' +
+    'amiable franco-suisse du 29 avril 2026 et par l’autorité suisse' +
+    n(';') +
+    ' et la réduction du quota de missions pour un temps partiel ou une année ' +
+    'incomplète, au décompte exact comme à la base simplifiée. La transcription ' +
+    'est faite' +
+    n(';') +
+    ' la revue juridique de leur application reste attendue, comme pour chaque ' +
+    'ligne du tableau ci-dessus.',
+
+  readingHeading: 'Ce qui reste une lecture de ce site',
+
+  readingIntro:
+    'Sur le point ci-dessous, les textes ne tranchent pas explicitement. Le ' +
+    'calculateur a retenu une lecture, indiquée ici, et le résultat peut ' +
+    'évoluer si cette lecture change.',
 
   /**
    * P1, P2 and P3 in plain French, as R113 asks.
@@ -207,28 +224,42 @@ export const SOURCES_COPY = {
       heading: "L’ordre d’imputation des jours de mission",
       body:
         'Quand des jours de mission concernent à la fois la France et un pays ' +
-        'tiers, le calculateur impute la France en premier. Les cas publiés ' +
-        "traitent les deux comme un seul ensemble et ne donnent pas d’ordre. " +
-        'Sans effet sur les cas de référence, où les missions ne concernent ' +
-        "qu’un seul pays, et réel pour qui répartit les deux.",
+        'tiers, le calculateur impute la France en premier. L’accord amiable ' +
+        'franco-suisse du 29 avril 2026 (point 1b) prend en compte les ' +
+        "missions dans l’État de résidence avant celles dans un pays tiers, ce " +
+        'qui est précisément cet ordre. Les cas publiés par l’administration ' +
+        'genevoise traitaient les deux comme un seul ensemble' +
+        n(';') +
+        ' l’accord, lui, les ordonne. La revue juridique de son application ' +
+        'reste attendue.',
     },
     P2: {
-      heading: 'Le bord du plafond social, entre 49,9 et 50',
+      heading: 'Le plafond social de 49,9, et son bord entre 49,9 et 50',
       body:
-        'Le plafond publié est de 49,9 tandis que le texte parle de moins de ' +
-        '50. Le calculateur signale le dépassement au-delà de 49,9, ce qui ' +
-        "avertit un peu trop tôt dans cet intervalle. C’est le sens prudent " +
-        'pour un signal qui déclenche un texte et aucun calcul, et la ' +
-        'troncature à deux décimales atteint réellement ces valeurs.',
+        'L’autorité suisse publie un maximum de 49,9, que le calculateur ' +
+        'applique. Le texte de l’accord-cadre parle de moins de 50' +
+        n(';') +
+        ' entre les deux subsiste un intervalle étroit où un frontalier est en ' +
+        'dessous de ' +
+        'la limite légale et où le calculateur avertit quand même. Avertir un ' +
+        'peu tôt est le sens prudent pour un signal qui déclenche un texte et ' +
+        'aucun calcul, et la troncature à deux décimales atteint réellement ' +
+        'ces valeurs. Ce choix d’avertissement reste à confirmer.',
     },
     P3: {
       heading: 'La réduction du quota de missions au décompte exact',
       body:
-        'Les cas publiés réduisent le quota pour un temps partiel et pour une ' +
-        "année incomplète, mais ne traitent pas le cas d’un total fourni par " +
-        "l’employeur. Le calculateur réduit alors selon la seule fraction " +
-        "d’année, parce qu’un total exact correspond aux jours réellement " +
-        "travaillés et intègre donc déjà le taux d’activité.",
+        'L’accord du 29 avril 2026 (point 1d) réduit le quota de jours de ' +
+        'mission pour un temps partiel ou une année incomplète, arrondi vers le ' +
+        'haut, sans condition sur la méthode de décompte' +
+        n(':') +
+        ' le calculateur réduit donc le quota par le taux d’activité et par la ' +
+        'fraction d’année, au décompte exact comme à la base simplifiée. Ce que ' +
+        'l’accord ne tranche pas explicitement, c’est le cas combiné — temps ' +
+        'partiel ET année incomplète à la fois —, qu’il nomme comme deux ' +
+        'situations distinctes' +
+        n(';') +
+        ' appliquer les deux réductions ensemble reste la lecture de ce site.',
     },
   } satisfies Record<PublishedProvisionalId, ProvisionalEntry>,
 
