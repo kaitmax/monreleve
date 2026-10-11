@@ -1026,6 +1026,90 @@ and reports match / no-match / unknown - with the same rate limit and neutral
 answers the verification page already uses. Reversible: nothing shipped depends
 on its absence.
 
+## PARK-21 - on-call periods are not missions, and the product has no notion of them  [REG-APPLY, 2026-10-11]
+
+QUESTION:  The accord amiable of 29 April 2026, clause 2 (now a verified row in
+`docs/regulatory-sources.md`, source A), says on-call periods (astreinte) are
+NOT temporary missions unless they give rise to an effective intervention of the
+employee in their state of residence. The engine and the calculator have no
+concept of an on-call period, so a frontalier with on-call time has no guidance
+on whether any of it counts.
+
+TAKEN:     Recorded, not built. The rule is now in the register (source A,
+clause 2) and nothing in the product asserts or computes it. No engine change,
+no new input, no copy stating a rule the product cannot apply. Reversible: a
+future guide sentence (R146 case (a), the row now exists) or an on-call input
+can be added without moving any slug or anchor.
+
+NOT TAKEN: (a) An on-call input on the calculator - a UX and engine-adjacent
+change beyond this task, which is copy/register only. (b) A guide sentence
+stating the rule - deferrable now that the row exists, and a guide surface for
+it is a separate editorial choice.
+
+TOUCHES:   Later, a guide or a calculator field. The source row already exists
+(source A, clause 2).
+
+## PARK-22 - several employers each need their own tally, and there is one holder  [REG-APPLY, 2026-10-11]
+
+QUESTION:  Source C (AFC Geneve, now a verified row) says that with several
+employers you declare to the AFC *"le taux de teletravail correspondant aux
+jours travailles pour votre entreprise uniquement"* - each employer's days
+separately. The product models one holder with one set of days and has no
+employer field, so a frontalier with two Swiss employers cannot keep two
+tallies.
+
+TAKEN:     Recorded, not built. The fact is in the register (source C). No
+schema or engine change, and no copy promising a feature. Reversible: an
+employer field is additive to the record model.
+
+NOT TAKEN: Adding an employer dimension to the data model now - a Prisma schema
+change, which is an ask-first item and well beyond a copy/register task.
+
+TOUCHES:   Later, the record schema, the aggregation and the UI. The source row
+already exists (source C).
+
+## PARK-23 - a residence change mid-year needs two attestations, and the product has one period  [REG-APPLY, 2026-10-11]
+
+QUESTION:  Source C says a change of residence during the year means *"deux
+attestations-quittances au titre de l'annee : une concernant chaque periode de
+residence."* The product has no concept of a mid-year residence change; a user
+who moves has no guidance on splitting their year.
+
+TAKEN:     Recorded, not built. The fact is in the register (source C). No
+engine or schema change, no copy asserting the split. Reversible.
+
+NOT TAKEN: Modelling split residence periods now - a dossier and aggregation
+change beyond this task.
+
+TOUCHES:   Later, the dossier and aggregation. The source row already exists
+(source C).
+
+## PARK-24 - the LAMal/URSSAF comparator, reopened on a new footing (reopens PARK-4)  [REG-APPLY, 2026-10-11]
+
+QUESTION:  PARK-4 refused the LAMal/CMU comparator (R157 option 3) for two
+reasons: the premium data could not be licensed (opendata.swiss returned 403 so
+the reuse terms could not be read), and the irrevocable / three-month warning
+had no verified row. Both premises have moved. The droit d'option facts are now
+verified rows (D1-D10, CLEISS, corroborated by ameli this session), and the
+Geneva LAMal premium table is located and dated (source D: ge.ch, document of
+26.09.2025, franchise CHF 300 adult / CHF 0 child, year 2026).
+
+TAKEN:     Still not built, but the new footing is recorded for a future pass.
+Source D's premiums are NOT republished (R146): its reuse terms must be read
+from ge.ch first, and the French side's URSSAF CMU figures must be
+primary-verified before any row. The comparator stays `planned`. Reversible at
+zero cost - nothing was built.
+
+NOT TAKEN: (a) Republishing source D's premium figures now - R146 forbids it
+until the reuse terms are read. (b) Computing the French side from the secondary
+URSSAF figures seen this session (hellofrontalier, alptis, an Assemblee question)
+- R146 forbids a row on secondary sources. (c) Treating PARK-4 as closed - the
+blockers moved but are not gone, so PARK-4 stays and this reopens it rather than
+superseding it.
+
+TOUCHES:   As PARK-4's TOUCHES, plus: reading ge.ch's reuse terms for source D,
+and primary-verifying URSSAF, before either side gets a row.
+
 ## PARKAN-1 - the OS App Link verification is not, and cannot be, tested here  [AN4, 2026-09-28]
 
 QUESTION:  AC1/AC2 ask the callback to work end to end, but an Android App Link
