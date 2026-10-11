@@ -473,4 +473,154 @@ covered) and the dumpsys action auth-flag (needs a 31+ device). PARKAN-46 is
 largely resolved (manual + NotSure + offline + rows); PARKAN-47's dumpsys is
 done for API 29 with the 31+ remainder and the operator PIN check recorded.
 
-(Walkthrough 4 follows in its own section / commit.)
+====================================================================
+WALKTHROUGH 4 - DOMAIN section 6 (PARKAN-31)
+====================================================================
+The first MINIFIED build against the REAL server: build the release
+configuration pointed at https://monreleve.ch, install on the S9, drive as
+far as the live server allows (the production DB is down).
+
+IS THE API LIVE? YES (probed from the host). The production auth routes
+respond: POST /api/v1/auth/magic-link -> 202 (empty body; short-circuits
+before the DB), /api/v1/auth/code -> 400 (empty) , /api/v1/auth/callback ->
+405 (it is a GET route), /api/v1/auth/refresh -> 500, revoke-all/sign-out ->
+401. So the API is deployed. WITH A REAL PAYLOAD the DB-backed routes 500:
+POST /api/v1/auth/magic-link {email:...} -> 500, and
+POST /api/v1/auth/code {email,code} -> 500 - the DB-down state DOMAIN found.
+
+THE BUILD. The RELEASE variant is the one that points at
+https://monreleve.ch (build.gradle.kts line 125) and is minified (R8:
+isMinifyEnabled + isShrinkResources); the "audit" variant points at the
+LOCAL host instead, so for "pointed at monreleve.ch" the release variant is
+the subject - the shipping config. `:app:assembleRelease` was built (R8 ran:
+a 33 MB mapping.txt under build/outputs/mapping/release). The artifact is
+app-release-UNSIGNED.apk by construction (R250 - no release key here), so it
+was debug-SIGNED (apksigner, the ~/.android/debug.keystore androiddebugkey,
+as PARKAN-31 did) to make it installable. Verified from the built dex before
+installing: it contains "https://monreleve.ch" (the sole API base - the
+release denies all cleartext, so no localhost/10.0.2.2), it contains current
+AN-NOTIF code ("Rappel du soir", "evening.proposal") so it is current with
+main 41ca989, and R8 ran (the mapping.txt). Installed on the S9 (uninstalled
+the debug build first); dumpsys shows flags WITHOUT DEBUGGABLE (the release
+build), versionName 0.1.0.
+
+THE DRIVE (against the live https://monreleve.ch over the device's WiFi -
+NOT the adb-reverse, which is irrelevant: the release points at
+monreleve.ch:443, not localhost):
+  - Launched: the WELCOME screen rendered with NO CRASH ("Mon Releve / Vos
+    jours de teletravail, prets pour votre declaration." + "Commencer") -
+    the minified build runs.
+  - Commencer -> the CONNEXION (email) screen: "Se connecter a Mon Releve",
+    "Pas de mot de passe : nous vous envoyons un lien et un code a usage
+    unique.", the "Adresse e-mail" field, "Recevoir mon lien de connexion",
+    the two consent links. Identical to the debug build - R8 did not break
+    the screen.
+  - Entered walkthrough-test@example.invalid, tapped "Recevoir mon lien de
+    connexion". The app made a REAL network request to https://monreleve.ch
+    and, after a round-trip, showed a NAMED REFUSAL, not a crash:
+      "Une erreur s'est produite. Reessayez."   with a "Reessayer" link.
+    This corresponds exactly to the server's 500 on
+    POST /api/v1/auth/magic-link {email} (DB down), confirmed by curl above.
+
+CONFIRMED: the minified release build TALKS TO THE REAL SERVER (its dex
+carries https://monreleve.ch as the only API base, and the request produced
+a real round-trip ending in the server's DB-down 500, surfaced as a named
+app error). This is the FIRST time a minified build has met the real server
+(PARKAN-31).
+
+THE DB-DOWN LIMITATION (recorded). Because the production DATABASE is down,
+the magic-link request itself returns 500, so the sign-in fails at the
+REQUEST step - the app does not reach the CODE-entry screen (that needs a
+200 from magic-link to proceed), and no email/code is issued. Both
+/api/v1/auth/magic-link and /api/v1/auth/code return 500 on a real payload.
+So "reach the email + code screens + a named refusal" was reached as far as
+the live server allows: the EMAIL screen and the NAMED REFUSAL are
+confirmed; the CODE screen is blocked by the server's DB-down 500 on the
+prior step (not an app fault).
+
+STILL OWED (PARKAN-31, not this pass): the TRUE release APK signed with the
+RELEASE upload key (R250 - no key created here) + Google Play's app-signing
+key, against a resolving /.well-known/assetlinks.json carrying those
+fingerprints (AN14b, PARK4-2), and the full magic-link -> App Link callback
+round-trip once the production DB is restored. This pass exercised the
+MINIFIED release CODE against the real server's HTTPS endpoint and a named
+refusal; the signed-with-release-key artifact and a healthy DB remain.
+
+WT4 RESULT: the minified release build (R8, https://monreleve.ch) was built,
+signed, installed and driven on the S9; it launches, reaches the email
+screen, talks to the real server, and shows a named refusal on the server's
+DB-down 500. PARKAN-31 advances (first minified build vs the real server);
+the release-key + assetlinks + healthy-DB remainder is recorded.
+
+====================================================================
+PHONE SETTINGS CHANGED AND RESTORED (R334)
+====================================================================
+  - font_scale: 1.0 -> 2.0 (WT1 200% captures, WT3 attempt) -> RESTORED 1.0.
+  - auto_time: 1 -> 0 (WT3, to set weekday dates) -> RESTORED 1.
+  - auto_time_zone: 1 -> 0 (WT3) -> RESTORED 1.
+  - system date: moved to weekdays (Fri 10-09 / Thu 10-08 / Wed 10-07) via
+    the Settings picker for the working-day notification gate -> auto_time
+    back on returns it to the real date (confirmed Sun 2026-10-11).
+  - accelerometer_rotation 1 -> 0, user_rotation 0 -> 1 (WT1 rotation test)
+    -> RESTORED (user_rotation 0, accelerometer_rotation left; rotation
+    behaves normally).
+  - airplane_mode_on: toggled 1 then 0 (WT2 fallback, WT3 offline) ->
+    RESTORED 0; WiFi re-enabled; internet confirmed.
+  - evening-notification opt-in + loggingMode: set via run-as in the debug
+    app's SharedPrefs (WT3) - wiped by the WT4 uninstall/reinstall.
+  NOT CHANGED (left as found, R334): always_finish_activities stayed 0 (I
+    used `am kill` for the R310 process-death test, not "Don't keep
+    activities"); mock_location untouched (denied); animations untouched;
+    stay_on_while_plugged_in left as found (pre-existing 7).
+  NO PIN/LOCK-SCREEN SECURITY was set or cleared (hard boundary).
+
+====================================================================
+UNTRACKED FILES FOUND AND LEFT ALONE (R334)
+====================================================================
+Reported, never removed or committed. Present and untracked at the start,
+belonging to other tasks / the environment:
+  - web/scripts/_mint-readback.mjs (SEED-RELEVE's throwaway minter)
+  - MonReleve/ (the subdir) and its shot dirs
+  - android/.an-*-shots/, .an10*/.an11*/.an12*/.an5c-ac2*/.device-loop-shots/,
+    android/.kotlin/ (fifteen-plus shot/cache dirs)
+  - android/scripts/an-*.mjs and android/scripts/uidrive.mjs (the drive
+    instruments from prior tasks; uidrive.mjs's wake/screencap helpers were
+    consulted but the driving here was done with direct adb)
+  - .claude/worktrees/agent-aacfc4b0d2a3088e3/ (a leftover worktree)
+A PRE-EXISTING tracked-file DELETION was present in the working tree before
+this session's first command and was NOT made by me: relay/SEED-RELEVE.txt
+shows as deleted (" D"). I left it exactly as found (did not stage it, did
+not restore it) and report it here.
+
+THE ONLY NEW UNTRACKED FILES I CREATED (NOT committed, reported):
+  - web/scripts/_wt-setup.mjs (my throwaway: the R196 constraint probes +
+    the partial-state account creation + session minting for WT1/WT3)
+  - android/.device-walkthroughs-shots/ (the screenshots for this report)
+I staged ONLY REPORT-WALKTHROUGHS.txt and parking.md, by explicit path,
+every commit (never `git add .` / `-A`).
+
+====================================================================
+PARKAN SUMMARY
+====================================================================
+  PARKAN-43 (AN-ONBOARD-2 walkthrough) - CLOSED, device-verified (WT1).
+  PARKAN-46 (AN-NOTIF walkthrough)     - LARGELY CLOSED (WT3): manual, auto
+    NotSure, offline+sync, rows read back; the auto HIGH-proposal path
+    remains (needs a seeded tally; JVM-covered).
+  PARKAN-47 (AN-NOTIF dumpsys)         - DONE for API 29 (WT3); the 31+
+    action auth-flag and the operator PIN check remain.
+  PARKAN-31 (TRUE release E2E)         - ADVANCED (WT4): first minified build
+    vs the real server + a named refusal; the release-key-signed artifact +
+    assetlinks + healthy DB remain (AN14b).
+  PARKAN-50 (hard-coded "Bonjour Camille" greeting) - NEW finding (WT1).
+
+====================================================================
+NEW FINDINGS
+====================================================================
+  WT1-F1 / PARKAN-50: the Aujourd'hui greeting is hard-coded
+    Fr.GREETING = "Bonjour Camille" (Fr.kt:12, AujourdhuiScreen.kt:127) and
+    ignores the signed-in account's name. Recorded, not fixed.
+  WT1-F2: on the REAL server only a MISSING NAME partial state is reachable;
+    missing granularity/method/rate are rejected by the R196 DB constraints
+    (proven by 3 probes), so those completeness branches are JVM-only.
+
+END OF WALKTHROUGHS - the final gate:clone + merge are the operator's.
