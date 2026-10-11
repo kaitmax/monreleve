@@ -1,0 +1,179 @@
+================================================================================
+REPORT-FIX-GREETING  (PARKAN-50)
+The Aujourd'hui greeting is hard-coded "Bonjour Camille"
+================================================================================
+
+BRANCH:        fix-greeting   (off origin/main df859cb)
+BRANCH TIP:    a99915a79c4eba40c63f3dd77ac89cfd0f5f1c3a  (code)
+               + a docs commit on top (parking.md + this report; SHA in PUSH PROOF)
+GATE:          :app:gate  BUILD SUCCESSFUL (exit 0), incl. verifyPaparazziDebug
+WEB gate:clone DEFERRED to the orchestrator (no web code changed).
+
+--------------------------------------------------------------------------------
+1. THE BUG
+--------------------------------------------------------------------------------
+Fr.kt line 12 held  const val GREETING = "Bonjour Camille"  and
+AujourdhuiScreen.kt line 127 rendered it verbatim (Text(text = Fr.GREETING, ...)).
+The greeting was a fixed placeholder that never read the signed-in account's name.
+Found by the device-walkthroughs pass: a fresh account named "Walkthrough" (the DB
+row wt-fresh and the onboarding "Tout est pret" summary both showed "Walkthrough")
+was still greeted "Bonjour Camille". AN-ONBOARD already stores the holder name in
+Settings.name (set via /api/v1/me); the screen simply ignored it.
+
+--------------------------------------------------------------------------------
+2. THE FIX
+--------------------------------------------------------------------------------
+- Fr.greeting(holderName: String?) is a pure, JVM-testable function in fr/. It
+  greets the holder's FIRST name and falls back to "Bonjour" alone when there is
+  no name. First name = the first whitespace-delimited token after trimming; a
+  hyphenated first name ("Jean-Pierre") is kept whole. The "Bonjour" prefix and
+  the template are the only literals and they live in fr/ (Fence 4: no literal in
+  a composable; R153/R181: the name is interpolated DATA, never a hard-coded
+  person).
+- AujourdhuiState gained  holderName: String? = null  (defaulted; every call site
+  uses named args, so nothing positional broke).
+- AujourdhuiController sets holderName = settings?.name in BOTH the initial
+  MutableStateFlow value and the emitState() copy, so the first emission and every
+  refresh carry the name. settings is the controller's already-loaded
+  settingsStore.load().
+- AujourdhuiScreen.Header(today, holderName) reads state.holderName and renders
+  Fr.greeting(holderName). Fr.GREETING is removed.
+
+COPY DECISION (operator decision, taken under R156 - the advisor stalled all
+session and the task authorised a conservative, recorded choice):
+  * FIRST name, not full name. The historical "Bonjour Camille" is the first name
+    of "Camille Martin", so greeting by the first name preserves the intended
+    render while now reading real data.
+  * FALLBACK for a not-yet-named account = "Bonjour" alone (no stray or blank
+    name, no crash). A canton-without-a-name account (the AN-ONBOARD-2 partial
+    case) can reach Aujourd'hui, so the null/blank path is a real one.
+
+--------------------------------------------------------------------------------
+3. TEST-FIRST  (RED then GREEN)
+--------------------------------------------------------------------------------
+NEW TEST: app/src/test/kotlin/ch/monreleve/app/fr/GreetingTest.kt  (7 cases)
+  - greetsTheFirstNameOfAFullName        : greeting("Camille Martin") == "Bonjour Camille"
+  - greetsTheAccountThatExposedTheBug    : greeting("Walkthrough")    == "Bonjour Walkthrough"
+  - fallsBackToBonjourAloneWhenTheNameIsNull        : greeting(null) == "Bonjour"
+  - fallsBackToBonjourAloneWhenTheNameIsEmpty       : greeting("")   == "Bonjour"
+  - fallsBackToBonjourAloneWhenTheNameIsAllWhitespace: greeting("   ") == "Bonjour"
+  - trimsSurroundingWhitespaceAndTakesTheFirstToken : greeting("  Jean  Pierre  ") == "Bonjour Jean"
+  - keepsAHyphenatedFirstNameWhole       : greeting("Jean-Pierre Dupont") == "Bonjour Jean-Pierre"
+
+RED (before Fr.greeting existed):
+  ./gradlew :app:testDebugUnitTest --tests "ch.monreleve.app.fr.GreetingTest"
+  > Task :app:compileDebugUnitTestKotlin FAILED
+  e: .../fr/GreetingTest.kt:16:44 Unresolved reference 'greeting'.
+  e: .../fr/GreetingTest.kt:22:48 Unresolved reference 'greeting'.
+  e: .../fr/GreetingTest.kt:29:36 Unresolved reference 'greeting'.
+  (... all 7 call sites ...)
+  BUILD FAILED in 23s
+  -> the behaviour's test exists and fails because the function under test does
+     not yet exist. Canonical TDD RED.
+
+GREEN (after implementing Fr.greeting + wiring):
+  ./gradlew :app:testDebugUnitTest --tests "ch.monreleve.app.fr.GreetingTest" \
+                                   --tests "ch.monreleve.app.fences.CopyReachabilityTest"
+  BUILD SUCCESSFUL in 1m 4s
+  (CopyReachabilityTest included because its canary and the fr/ census both touch
+   the renamed symbol - see section 4.)
+
+--------------------------------------------------------------------------------
+4. OTHER FILES THE RENAME REQUIRED
+--------------------------------------------------------------------------------
+- CopyReachabilityTest.kt (R238 census): its positive-signal canary asserted
+  rendered(ui/) contains "Fr.GREETING". Updated to "Fr.greeting", which the
+  Header now references. The census itself (copyReferences) picks up Fr.greeting
+  as an object-member fun and confirms a surface reaches it; the private BONJOUR
+  const is excluded as private.
+- StatePreservationInstrumentedTest.kt (androidTest; not run by :app:gate, which
+  skips connectedDebugAndroidTest, but must keep compiling): its three
+  onNodeWithText(Fr.GREETING) locators became onNodeWithText(Fr.greeting(null)).
+  That fixture's settings has name = null, so the screen renders "Bonjour" - the
+  locator matches what the screen actually shows.
+
+--------------------------------------------------------------------------------
+5. PAPARAZZI BASELINES
+--------------------------------------------------------------------------------
+BASELINES REGENERATED: NONE (zero).
+
+Every AujourdhuiState fixture in AujourdhuiScreenScreenshotTest built without a
+name, so left alone they would render the new fallback "Bonjour" and change every
+baseline. Instead the screenshot host() wires the historical titulaire
+"Camille Martin" (state.copy(holderName = state.holderName ?: holderName)), so
+Fr.greeting("Camille Martin") == "Bonjour Camille" - the exact header these
+baselines have always shown. The render is byte-identical, so verifyPaparazziDebug
+PASSED with no diff and no baseline was rewritten (R207: regenerate only what the
+change explains; the change explains nothing here because the pixels did not move).
+
+This is also the Paparazzi-level proof of the wiring: had the Header still been
+hard-coded, or had the plumbing been broken (holderName not reaching the Header),
+the fixture's "Camille Martin" would not have produced "Bonjour Camille" and the
+baseline would have diffed. git status shows no snapshot changes.
+
+--------------------------------------------------------------------------------
+6. GATE
+--------------------------------------------------------------------------------
+./gradlew :app:gate   -> BUILD SUCCESSFUL in 6m 45s, GATE_EXIT=0
+RAN (per the gate's own printout): assembleDebug, testDebugUnitTest (fences +
+  theme/radius censuses + GreetingTest + CopyReachabilityTest), checkTestFloor,
+  ktlintCheck, detekt, verifyPaparazziDebug, checkReleaseCleartext,
+  checkReleaseNoDebugInjection, checkReleaseLocationPermissions,
+  checkReleaseNoDevComponent, checkMinifiedWireContract, checkLicences, lintDebug.
+SKIPPED, with reason (unchanged from the gate's standing list): the emulator
+  instrument scripts and connectedDebugAndroidTest (need a real device).
+
+--------------------------------------------------------------------------------
+7. DEVICE CHECK
+--------------------------------------------------------------------------------
+NOT PERFORMED. It is optional (the task: "nice, not required - Paparazzi +
+:app:gate are the gates"). The fix is proven by GreetingTest (the pure function,
+incl. the exact "Walkthrough" bug case and the null fallback) and by
+verifyPaparazziDebug (the data-driven render). No phone setting was touched; no
+adb-reverse or dev server was started, so there is nothing to restore and no
+orphan to clean up (R334).
+
+--------------------------------------------------------------------------------
+8. FILES CHANGED
+--------------------------------------------------------------------------------
+Code (commit a99915a):
+  M android/app/src/main/kotlin/ch/monreleve/app/fr/Fr.kt
+  M android/app/src/main/kotlin/ch/monreleve/app/aujourdhui/AujourdhuiController.kt
+  M android/app/src/main/kotlin/ch/monreleve/app/ui/screens/aujourdhui/AujourdhuiScreen.kt
+  A android/app/src/test/kotlin/ch/monreleve/app/fr/GreetingTest.kt
+  M android/app/src/test/kotlin/ch/monreleve/app/fences/CopyReachabilityTest.kt
+  M android/app/src/test/kotlin/ch/monreleve/app/ui/screens/aujourdhui/AujourdhuiScreenScreenshotTest.kt
+  M android/app/src/androidTest/kotlin/ch/monreleve/app/StatePreservationInstrumentedTest.kt
+Docs (docs commit):
+  M parking.md                (PARKAN-50 entry + STATUS LEDGER -> resolved, pending merge)
+  A REPORT-FIX-GREETING.txt   (this file)
+
+--------------------------------------------------------------------------------
+9. HARD BOUNDARIES / R334
+--------------------------------------------------------------------------------
+- No change to either engine, /v1, or the Room schema. D18/D16 untouched.
+- No red commit; the code commit is on a green :app:gate.
+- Committed ONLY my own files by explicit git add. The working tree's untracked
+  other-task files (MonReleve/, android/.an*-shots/, android/scripts/an-*.mjs,
+  web/scripts/_mint-readback.mjs, web/scripts/_wt-setup.mjs, android/.kotlin/)
+  were REPORTED, never added or removed.
+- Advisor NOT used (stalled all session; R156 conservative copy decision recorded
+  above and in parking.md).
+
+--------------------------------------------------------------------------------
+10. NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------------------
+- MainActivity.kt:612 emits a pre-existing deprecation warning (LocalLifecycleOwner
+  moved to lifecycle-runtime-compose). Unrelated to this fix; left as-is.
+- The many untracked other-task files listed above remain in the working tree.
+
+--------------------------------------------------------------------------------
+11. PUSH PROOF
+--------------------------------------------------------------------------------
+Code:  git push -u origin fix-greeting  -> [new branch] fix-greeting -> fix-greeting
+Docs:  see the final push line appended at commit time.
+
+HANDOFF: the orchestrator runs the final web gate:clone (no web code changed) and
+the merge to main. The parking.md entry and ledger say "resolved, pending merge"
+until that merge lands.
+================================================================================

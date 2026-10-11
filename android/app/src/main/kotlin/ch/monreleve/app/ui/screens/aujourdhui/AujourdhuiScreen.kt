@@ -93,7 +93,7 @@ fun AujourdhuiScreen(
         modifier = modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(Spacing.space20),
         verticalArrangement = Arrangement.spacedBy(Spacing.space16),
     ) {
-        Header(state.today) // Section A
+        Header(state.today, state.holderName) // Section A
         val autoMode = state.loggingMode == LoggingMode.AUTO_DETECT
         Text(
             text = if (autoMode) DetectionCopy.MODE_AUTO else AujourdhuiCopy.MODE_MANUAL,
@@ -122,9 +122,13 @@ fun AujourdhuiScreen(
 // which the controller recomputes from the clock on resume (F8) - so it is "worked out when used", not frozen
 // at construction. "Lundi 15 juin 2026", French, leading capital (formatDayLong).
 @Composable
-private fun Header(today: String) {
+private fun Header(
+    today: String,
+    holderName: String?,
+) {
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.space4)) {
-        Text(text = Fr.GREETING, style = FrontierType.h2)
+        // PARKAN-50: the greeting is the holder's first name (Fr.greeting), from state, not a hard-coded person.
+        Text(text = Fr.greeting(holderName), style = FrontierType.h2)
         Text(text = formatDayLong(today), style = FrontierType.body, color = LightColors.textSecondary)
     }
 }

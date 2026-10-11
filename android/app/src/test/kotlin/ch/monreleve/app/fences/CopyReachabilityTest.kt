@@ -261,7 +261,7 @@ class CopyReachabilityTest {
         // copy set both produce zero orphans. This proves the two are
         // distinguishable rather than trusting silence as success.
         val rendered = renderedText()
-        assertTrue("expected Fr.GREETING to be referenced somewhere in ui/", rendered.contains("Fr.GREETING"))
+        assertTrue("expected Fr.greeting to be referenced somewhere in ui/", rendered.contains("Fr.greeting"))
         assertTrue(
             "expected a made-up reference to be absent",
             !rendered.contains("Fr.THIS_IS_NOT_A_REAL_CONSTANT"),

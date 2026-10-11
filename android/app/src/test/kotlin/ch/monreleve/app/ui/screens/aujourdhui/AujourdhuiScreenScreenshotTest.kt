@@ -297,11 +297,21 @@ class AujourdhuiScreenScreenshotTest {
             nearBorderNotice = true,
         )
 
+    // PARKAN-50: the screenshot titulaire. The greeting is now DATA-driven (Fr.greeting reads the holder's
+    // name from state), so the host supplies one - « Camille Martin » -> « Bonjour Camille », the same header
+    // these baselines have always shown, now proving the wired path rather than a hard-coded person. Supplying
+    // the historical name keeps every baseline byte-identical (R207: no regeneration the change does not
+    // explain); a fixture that sets its own holderName keeps it (this only fills the ones left null).
+    private val holderName = "Camille Martin"
+
     @Composable
     private fun host(state: AujourdhuiState) {
         FrontierTheme {
             Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                AujourdhuiScreen(state = state, actions = AujourdhuiActions(onRecord = { _, _, _ -> }))
+                AujourdhuiScreen(
+                    state = state.copy(holderName = state.holderName ?: holderName),
+                    actions = AujourdhuiActions(onRecord = { _, _, _ -> }),
+                )
             }
         }
     }

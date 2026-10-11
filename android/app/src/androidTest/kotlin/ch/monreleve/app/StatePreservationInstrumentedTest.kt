@@ -109,17 +109,17 @@ class StatePreservationInstrumentedTest {
         restorer.setContent { Shell() }
 
         // Start is Aujourd'hui (the greeting shows). Switch to Calendrier (a non-start screen).
-        composeRule.onNodeWithText(Fr.GREETING).assertExists()
+        composeRule.onNodeWithText(Fr.greeting(null)).assertExists()
         composeRule.onNodeWithText(NavCopy.CALENDRIER).performClick()
         composeRule.waitForIdle()
-        composeRule.onNodeWithText(Fr.GREETING).assertDoesNotExist()
+        composeRule.onNodeWithText(Fr.greeting(null)).assertDoesNotExist()
 
         restorer.emulateSavedInstanceStateRestore()
         composeRule.waitForIdle()
 
         // The operator's finding: after the rebuild, the app must NOT have returned to Aujourd'hui.
         // Broken code resets the tab to AUJOURDHUI, so the greeting reappears -> this fails (RED).
-        composeRule.onNodeWithText(Fr.GREETING).assertDoesNotExist()
+        composeRule.onNodeWithText(Fr.greeting(null)).assertDoesNotExist()
     }
 
     @Test
