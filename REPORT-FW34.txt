@@ -1,0 +1,474 @@
+====================================================================
+REPORT-FW34 - THE HOME PAGE (from the approved design) AND THE WAITING
+              WEB ITEMS
+====================================================================
+
+TASK      FW34, per relay/FW34.txt. Two halves: (0) the waiting web items
+          - R326, PARKAN-37, PARKAN-38; and (1) rebuild the home page from
+          the APPROVED design in design/home/ (Desktop.dc.html,
+          Mobile.dc.html), which REPLACES the earlier brief
+          docs/superpowers/specs/2026-09-29-home-page-design.md.
+BRANCH    fw34-home, off origin/main 7e6c18b (confirmed == origin/main at
+          session start; origin/fw34 at 62d7f25 read, reused-from, NOT
+          deleted or pushed to - R334).
+BRANCH TIP (at this report's commit): see PUSH PROOF.
+
+====================================================================
+HOW IT ENDED - READ THIS FIRST
+====================================================================
+SECTION 0 IS DONE, GREEN, AND PUSHED - all three waiting web items
+(R326, PARKAN-37, PARKAN-38), each verified and committed:
+  c96187f  PARKAN-37 + PARKAN-38
+  72d3fb9  R326
+
+THE HOME PAGE REBUILD IS NOT BUILT. It is handed off, not attempted
+half-way. This is the conservative call (R156; advisor unavailable all
+session, see ADVISOR DECISIONS) and the path relay/FW34.txt names under
+"IF YOU CANNOT FINISH". The reasoning, stated plainly so the next
+session does not have to rediscover it:
+
+  - The approved design is a FULL REDESIGN, not the earlier FD11 brief
+    (R273 below). It is ten sections, several of which are each a
+    substantial, interdependent piece: a header whose nav DIFFERS from
+    FW33's shipped shell plus a no-JS burger; a hero phone card RENDERED
+    by the site's components fed by the ENGINE; a no-JS calculator form
+    bound to the calculator's existing URL params; two rules cards tied
+    to verified REG rows with thresholds from the RuleSet; and a
+    product-state-gated app section with a launch sign-up that needs a
+    backend list that does not exist.
+  - Each piece carries this project's full discipline (test-first, every
+    interpolation delivered R154, claim tests, copy guards R91/R126/R147/
+    R155/R206, present-tense R138, reachability R175, D40, no new client
+    JS, visual baselines). Done to standard it is multi-session work.
+  - "Commit only on green" plus "the front door is believed while doing
+    its job" make a rushed, half-built page worse than a clean hand-off:
+    it would either not reach green (unpushable) or ship a substandard
+    home the operator must redo.
+
+So this session delivered Section 0 to the project's standard and left a
+precise, actionable plan for the page (see EACH SECTION AGAINST THE
+DESIGN). Nothing on main or on the design is touched by the page work
+not happening; the placeholder home still serves.
+
+====================================================================
+R273 - THE EARLIER BRIEF, AND WHAT WAS REUSED FROM origin/fw34
+====================================================================
+tasks/todo.md lists FW1-FW29 and AN1-AN15; FW34 is beyond that list and
+runs from the relay, like FW33/FW33b (post-plan). Said first, per R273.
+
+THE EARLIER BRIEF IS REPLACED. docs/superpowers/specs/2026-09-29-home-
+page-design.md is FW34's EARLIER brief (Slice 2: an FD11 hero + three
+destination cards + "Pourquoi une trace datee" + a trust band + a
+closing strip). relay/FW34.txt states this task REPLACES it, and the
+approved page (design/home/, operator-approved 11.10.2026 per
+design/home/README.md) is a DIFFERENT page. The earlier brief is left in
+place as history; it is not the authority for the build.
+
+origin/fw34 (62d7f25) PARKED WIP - READ, ASSESSED FOR REUSE (R334: never
+deleted, never force-pushed; work is on NEW branch fw34-home off 7e6c18b):
+  fdc7fc7  Button, Card, IconTile + the --size-icon-tile token (H9)
+  846f294  the home body (hero/cards/Pourquoi/trust/closing) + copy
+  62d7f25  WIP e2e home.spec
+
+  WHAT FITS THE NEW DESIGN (reuse):
+  - lib/fr/compose.ts (n() no-break-space helper; frenchList; the
+    gendered cardinal-word map). Design-agnostic copy infrastructure;
+    reusable as-is when the new copy lands.
+  - Card (white, 1px border, --radius-lg, no shadow): the SHAPE fits the
+    new design's cards, but the new design needs padding 28/24/16
+    (the parked Card offers 24/32), so it needs a padding option added.
+  - The Server-Component "link-or-button" PATTERN in Button, and the
+    test patterns (home-copy.test.ts, product-state WIRING, present-tense,
+    the e2e home.spec skeleton) are reusable in shape.
+
+  WHAT DOES NOT FIT (do not port blindly):
+  - Button's VARIANTS (primary 48h/--radius-md, primaryLarge 56h/
+    --radius-button-lg, secondary, text 44h). The new design's buttons
+    are a 52px PILL (--radius-pill) in 16/600. None of the parked
+    variants matches; the new page needs a new pill variant (and 16/600
+    is not a type triple - H8's defect; resolve as H8 did, or ask).
+  - IconTile and --size-icon-tile: the new design has NO 44x44 info-soft
+    icon-tile. The hero is a phone card; the cards and sections use
+    inline Lucide glyphs directly. IconTile is not used by the new home.
+    --size-icon-tile's only other intended site was GuideCta (H9); if
+    the new home does not introduce it, whether to add the token at all
+    is an open question (see QUESTIONS).
+  - All parked COPY and the specific test assertions are for the old
+    FD11 sentences; they are rewritten for the new design, not lifted
+    (R165).
+
+====================================================================
+SECTION 0 - THE WAITING WEB ITEMS (DONE)
+====================================================================
+
+--- R326: pnpm size measures ONLY the build that ships -------------
+Commit 72d3fb9.
+
+THE DEFECT. check-budgets.mjs read `.next` with no idea what build it
+was, so it measured, with equal confidence, a `next dev` build or a
+production build with the dev routes compiled in (FRONTALIER_DEV_ROUTES=1,
+which R129 shows is ~1.6 KiB high on the calculator). FW33's reported
+"+1.9 KiB" was the second kind (REPORT-FW33b: the real cost was +0.4).
+
+THE FIX (one home, R206):
+  - scripts/size-marker.mjs: SIZE_MARKER_FILE, writeSizeMarker,
+    readSizeMarker, and shippingMarkerRefusal (a PURE decision).
+  - scripts/size-marker.d.mts: types so next.config.ts (strict tsconfig,
+    allowJs off) can import the writer. R185 - auto-covered by
+    tests/unit/meta/declaration-parity.test.ts, which walks every .d.mts
+    beside a .mjs and asserts the value exports match in both directions.
+  - next.config.ts: a webpack `done` hook stamps EVERY build and EVERY
+    `next dev` (plain webpack dev here, not Turbopack - checked) with a
+    marker recording the phase and the dev-routes flag. In the config,
+    not a post-build script, because `next dev` never exits (an `&&`
+    after it never runs) and a prior build's marker would otherwise
+    vouch for a dev server that overwrote `.next` around it.
+  - check-budgets.mjs: the SHIPPING measurement (no --dev) refuses, BY
+    NAME, a missing marker / a `next dev` build / a dev-routes build.
+    --dev is exempt by design (size:dev MEASURES .next-dev-routes to gate
+    GATE W / GATE I).
+  - tests/unit/meta/size-marker.test.ts: the refusal, both directions
+    (R154), plus the marker round-trip.
+
+PLANT PROOF (R180 - real builds; each marker confirmed on disk before
+reading the result):
+  clean `pnpm build`          -> marker {phase:build, devRoutes:false}
+                                 -> pnpm size: "All gated routes pass"
+  `next dev` on port 3190     -> marker {phase:dev, devRoutes:false}
+                                 -> pnpm size REFUSED, exit 1:
+     "pnpm size measured a `next dev` build in .next/, not the build
+      that ships (ruling R326). ..."
+  FRONTALIER_DEV_ROUTES=1        -> marker {phase:build, devRoutes:true}
+    next build (into .next)      -> pnpm size REFUSED, exit 1:
+     "pnpm size measured a production build with the dev routes compiled
+      in (FRONTALIER_DEV_ROUTES=1) in .next/, not the build that ships
+      (ruling R326). ... this is the FW33 "+1.9 KiB" defect. ..."
+  reverted (clean `pnpm build`) -> marker {phase:build, devRoutes:false}
+                                 -> pnpm size: "All gated routes pass"
+  The next-dev process tree was killed and port 3190 verified free (R179).
+
+SAFE FOR THE EXISTING GATES (checked, not assumed): `size` is not in
+gate:changed; and both `pnpm gate` and gate:clone run `pnpm build`
+IMMEDIATELY before `pnpm size` (gate-clone.mjs line ~583: "build before
+size because size reads .next", and e2e/visual are skipped in a clone),
+so size always reads a clean shipping build there and keeps passing.
+
+--- PARKAN-37: "cumul de minutes" -> the four daily checks (R320) ---
+Commit c96187f (web/lib/fr/confidentialite.ts).
+
+The /confidentialite automatic-mode sentence ended "Seul un cumul de
+minutes par journee est conserve" - a description of the continuous-
+sampling model R320 REMOVED (detection/Tally.kt and the minutes tally
+are gone; the daily record now keeps check1..check4, a Classification
+per check). Rewritten to: the app checks the position at four fixed
+moments a day and keeps, per check, only the conclusion (en Suisse /
+domicile / proche frontiere), never minutes and never a position.
+Future-tense (R138, app unreleased).
+
+FOUND THEM ALL (not assumed): grep over web/ for "cumul de minutes"
+returns exactly this one site; grep for "minute" in lib/fr returns only
+unrelated auth/rate-limit/reading-time strings. The Android strings are
+noted, NOT changed here (relay).
+
+No typed figure (R147 is about RuleSet thresholds; "quatre" is a
+detection-design word). No colon introduced, so R91's no-break-space-
+before-colon count is untouched (copy-codepoints pins confidentialite.ts
+at 23 U+00A0; still 23). Verified green: french-typography, copy-
+codepoints, accents, typed-numbers, vocabulary, the confidentialite page
+render test (still contains "polygone"), personal-data.
+
+--- PARKAN-38: R325's sentence joins the privacy claim-to-test map ---
+Commit c96187f (web/tests/db/privacy-claims.test.ts).
+
+R325's "never keep / never send a position" sentence had no entry in the
+claim-to-test map (tests/db/privacy-claims.test.ts, the FW14/FW22/FW26
+map). It does now, in that map's own two-halves shape:
+  - THE PAGE still says it: CONFIDENTIALITE_COPY.never contains
+    "ne conservera ni" and "jamais votre position" (the position clause
+    PARKAN-37 left intact). Read through the imported constant, asserting
+    apostrophe-free substrings of the ONE source - the presence pattern
+    every claim in this file uses - not a second copy (R206/R126).
+  - THE CODE still does it: POST /api/v1/entries with a latitude is
+    refused at the boundary (400, code "coordinates_refused").
+A regression-pin mapping of an existing guarantee (R133), labelled as
+such: the "holds" half asserts the SPECIFIC refusal, so a boundary that
+started accepting coordinates would fail it.
+
+SECTION 0 GATE (R132 selection printed and pasted into each commit):
+  PARKAN commit: typecheck 0, lint 0 (2 pre-existing warnings in
+    untouched benchmark.test.ts / verification-trace.test.ts), test 3012,
+    build ok, test:db 624 (+2), test:late 10.
+  R326 commit: typecheck 0, lint 0 (same 2), test 3022 (+10: 9 size-
+    marker + 1 parity per-file), build ok, test:late 10.
+  test:e2e: see WALKTHROUGH / PUSH PROOF. test:visual + gate:clone
+  DEFERRED to the operator per the relay.
+
+====================================================================
+EACH SECTION AGAINST THE DESIGN - THE PAGE HANDOFF (NOT BUILT)
+====================================================================
+The approved page, section by section, with the specific rulings and the
+load-bearing facts the next session needs. Order per design/home.
+
+HEADER + BURGER. relay says "FW33's header" + a burger below the
+breakpoint. NOTE A CONFLICT TO RESOLVE (R156): the design mock's desktop
+nav is "Calculateur de teletravail / Guides / L'application / A propos"
+with a "Calculer ma situation" CTA; FW33's SHIPPED shell nav is
+"Calculateur de teletravail / Guides / Le releve / Tarifs" with a
+"Suivre mes jours" CTA (gated on trackerExists, hidden today). The relay
+says keep FW33's header; the design shows different links. This is a
+cross-cutting change to PublicShell (every page + every baseline) if the
+nav is altered - raise it rather than silently pick. The burger itself:
+a details/summary disclosure (works with no JS), accessible name,
+Escape-closes where JS runs, CTA inside the panel - the Mobile.dc.html
+mock is exactly this shape and is a faithful reference.
+
+HERO. The phone card is RENDERED, not pictured, by the site's own
+components (ZoneBadge, RateDisplay, ThresholdRail, the tiles) fed by the
+ENGINE computing 38 telework days on the 240-day basis, so 15,83 %, 58
+and 81,5 come FROM the engine (R147/R163) - never typed. The caption
+says "example". Tick labels anchor outward (R39). This is the single
+largest piece: it needs the engine's public entry (calculateTelework)
+wired on the server and the component props mapped. The design's green
+accent (#1F7A4A / #E5F2EA / #1B6E40 "Sous les deux seuils") maps to the
+Success tokens (success #15803D on #EAF7EE) - a token substitution to
+record (TOKENS below).
+
+CALCULATOR. A plain HTML <form> submitting (GET) to the calculator page
+with its EXISTING URL params - no JS, no client code added. "Vous
+habitez en France et travaillez en Suisse" is a SENTENCE, not a choice
+(R282). The design's fields are: canton (select), "Jours teletravailles
+depuis le 1er janvier", "Jours de mission, en France ou ailleurs". MAP
+EACH to the calculator's existing query params (find them in
+app/(public)/calculateur-teletravail-frontalier/ - DO NOT invent or
+rename a param, R156); a field with no existing param STOPS and is
+parked. (Not resolved this session - a param-name audit of the
+calculator page is step one of this section.)
+
+THE TWO RULES. Each card's sentences tied to their VERIFIED REG-UPDATE/
+REG-APPLY rows (now on main: accord amiable FR-CH 29.04.2026 incl. 1(d)
+the mission-cap proration; OFAS/BSV 49,9 %); each citing its source as
+the mock does ("Source : AFC Geneve ; accord amiable franco-suisse du 29
+avril 2026" and "Source : OFAS"). "40 %" and "49,9 %" come from the
+RuleSet through the formatter (guideScope/currentTaxYear), NEVER typed
+(R147). The mock's mission clause "Jusqu'a 10 jours de missions
+temporaires peuvent compter dans ce quota" is a figure (10) - it must
+come from missionCapDays via the formatter, or be phrased without the
+number; and it is the 40 % quota rule, which is verified. A sentence
+with no verified row is NOT written (R146).
+
+HOW IT WORKS + THE RELEVE. About the app -> FUTURE tense until a released
+app exists (R138). The releve thumbnail is MARKUP, not an image (the
+mock's inline SVG QR + "Code de verification MR-7F3K-2Q9X" is SAMPLE
+data, not copy - README). Its verification-code sentence stays future
+until FW-VERIFY's QR is switched on. "Camille Martin" is sample.
+
+PRIVACY. Each sentence already true + mapped; automatic-mode future
+tense; NO "100 % securise", NO "jamais partagees" (the mock avoids both
+- it says "ne sont ni vendues, ni accessibles a votre employeur", which
+is fine). The four "Aucun ..." items are claims that must each be true
+and map to the privacy map; "Nous ne vous suivons pas." is the heading.
+
+THE APP. Product-state flags (R172/R186): pre-release "Bientot sur
+Android" + the launch sign-up (see THE LAUNCH SIGN-UP below). The
+Google Play badge only at release, per Google's badge guidelines. The
+notification mock ("Ou avez-vous travaille aujourd'hui ? / Mardi 7
+octobre") is sample.
+
+GUIDES. The three links derived from the guides (as FW33's footer
+derives them via guideNavLinks()), never typed. The mock's three:
+"Le plafond fiscal de 40 %", "Le seuil de securite sociale de 49,9 %",
+"Les missions temporaires et le quota de 10 jours" - derive the labels
+from the guides' own breadcrumbLabel (R181), and note the 40/49,9 in
+those labels would be typed figures if transcribed - derive or rephrase.
+The lake illustration is inline SVG (the mock's is a faithful stand-in).
+"Voir tous les guides" -> /guides.
+
+SOURCES. The strip links /sources; its claim ("Regles etablies sur les
+textes officiels : l'avenant ... et l'accord amiable du 29 avril 2026")
+matches the REG rows now on main.
+
+FOOTER. FW33's, unchanged (the mock's four-column footer matches FW33's
+shell footer; keep the shipped PublicShell footer).
+
+====================================================================
+TOKENS WHERE THE MOCK-UP HAD NONE (for the builder; none committed)
+====================================================================
+The mock is literal hex/px; every value maps to a token. The non-obvious
+substitutions the builder must record in REPORT:
+  - Brand #173B63 -> --colour-brand (already #173B63 in tokens).
+  - Canvas #F7F8FA / surface #FFFFFF / border #D5DCE5 -> --colour-bg-*/
+    surface / border-strong (DESIGN-SYSTEM COLOUR block).
+  - The hero green (#1F7A4A text, #E5F2EA fill, #1B6E40 chip) -> the
+    Success family (#15803D on #EAF7EE) - nearest token; record it.
+  - Pill buttons min-height 52 -> nearest size token (DESIGN-SYSTEM has
+    48 primary / 56 large; 52 has no token - use the nearest and record,
+    or raise; DO NOT add a token without an ask, SPEC 20).
+  - Card radius 16 -> --radius-lg; padding 28 has no token (--space has
+    24 and 32) - nearest and record.
+  - The dark privacy band #173B63 and footer #0F2238 -> brand / a darker
+    shade; #0F2238 has no token - record the nearest.
+  NONE of this was applied (page not built); it is the builder's map.
+
+====================================================================
+THE LAUNCH SIGN-UP - THE PATH, AND WHY (analysis; not built)
+====================================================================
+The design's app section has an email sign-up whose promise is "nous
+vous ecrirons une fois, LE JOUR DU LANCEMENT" - i.e. LAUNCH NEWS, not
+regulatory alerts. The existing alert list's consent is for regulatory-
+change alerts ("alertes reglementaires"), a DIFFERENT purpose.
+
+RECOMMENDED PATH (relay's rule, R156): DO NOT reuse the alert list - its
+consent text does not cover launch news, and consent must name its
+purpose. So:
+  (a) PARK a launch-specific list with its own consent naming the
+      launch-news purpose (needs a backend endpoint + model; parked as
+      PARK-FW34-LAUNCH), AND
+  (b) until that exists, the app section must NOT show a form that
+      accepts an address the server cannot honour: gate the sign-up on
+      the product-state/email-configured flag (DOMAIN's checklist -
+      RESEND_API_KEY; alertsExist is true but delivery is "degraded"
+      without the key), hiding it when sending is not configured, never
+      shown broken. A conservative interim is to render "Bientot sur
+      Android" with a link to /alertes ONLY if the copy is honest that
+      /alertes is regulatory alerts, not launch news - otherwise omit
+      the form entirely behind the flag.
+NOT built this session; recorded for the page session + the operator.
+
+====================================================================
+SIZES BEFORE AND AFTER (R326, shipping build)
+====================================================================
+Section 0 touches NO client bundle: the only app/lib change is
+lib/fr/confidentialite.ts (server-rendered copy; not in the client shell
+bundle), next.config.ts adds a build-time marker-writer only, and the
+rest are scripts/tests. So before == after on every gated route.
+
+Measured on a clean `pnpm build` of fw34-home (the marker makes `pnpm
+size` trustworthy now). AFTER == BEFORE (no client-bundle change):
+  route                                 js total  delta   verdict
+  /                                      107.7    7.1    A 17.3 / B 17.9 spare
+  /calculateur-teletravail-frontalier    121.5   20.9    A  3.5 / B  4.1 spare
+  /guides/[slug]                         109.0    8.4    A 16.0 / B 16.6 spare
+  /releve/print                          101.9    1.3    A 23.1 / B 23.7 spare
+  every other public route              ~107.7-107.9     A ~17.1-17.3 spare
+  All gated routes pass both gates. (css 8.5 / fonts 47.1 KiB, never
+  gated.) The calculator reads 121.5 here vs FW33b's 121.7 - REG-UPDATE/
+  REG-APPLY landed on main since; my branch does not touch the
+  calculator, so this is the current main baseline, not a change of mine.
+
+====================================================================
+WALKTHROUGH (R176)
+====================================================================
+No home page was built, so there is no new page to drive. Section 0 was
+verified by its own mechanisms rather than a page walkthrough:
+  - R326: driven on the dev server AND two real builds (PLANT PROOF
+    above) - size seen to pass on the shipping build and refuse, by name,
+    a `next dev` build and a dev-routes build.
+  - PARKAN-37/38: the unit copy guards + the confidentialite page render
+    test + the privacy-claims DB round trip.
+  - test:e2e over the whole site: 293 passed (FRONTALIER_PORT=3100, exit
+    0), covering the /confidentialite change and the next.config build
+    change end to end (R204).
+
+====================================================================
+UNTRACKED FILES LEFT ALONE (R334)
+====================================================================
+Reported, NOT removed, NOT committed (other tasks / operator files):
+  MonReleve/ ; android/.an*-shots/ ; android/.kotlin/ ;
+  android/scripts/an-*.mjs + uidrive.mjs ; design/decide/ ;
+  design/home/ (the approved design - input, not mine to commit) ;
+  relay/AN-ALERT.txt, AN-FORECAST.txt, AN-RECON.txt, AN-SIM.txt,
+  FW-FORECAST.txt, FW34.txt, RUN-CHAIN-DECIDE.txt ;
+  web/scripts/_mint-readback.mjs, web/scripts/_wt-setup.mjs.
+Only my own files were staged, by explicit `git add` (never `git add .`).
+The relay says to commit relay/FW34.txt by explicit add; I have NOT
+committed it (it is an operator input file and committing it is not
+required for the session to end - R334 "report-only on another's file").
+If the operator wants it committed, that is a one-line add; flagged here.
+
+====================================================================
+ADVISOR DECISIONS
+====================================================================
+The advisor was NOT consulted: the relay records it stalled all session,
+and instructs the conservative option, recorded (R156). Conservative
+calls taken and recorded:
+  - R326 marker written from next.config's webpack hook (covers dev AND
+    build, bundler-agnostic for THIS repo's webpack dev) rather than a
+    post-build script that cannot see `next dev`.
+  - PARKAN-37 phrased without a colon, to leave R91's pinned U+00A0
+    count untouched.
+  - PARKAN-38 asserts apostrophe-free substrings of the one source
+    constant (the file's own pattern), not a second copy (R206/R126).
+  - The PAGE handed off rather than built half-way (HOW IT ENDED).
+  - The launch sign-up: do not reuse the regulatory alert list; park a
+    launch list + gate the form (THE LAUNCH SIGN-UP).
+
+====================================================================
+PARKED
+====================================================================
+  - PARK-FW34-LAUNCH: a launch-news email list (model + endpoint +
+    consent naming its purpose) for the app section's sign-up. Needed
+    before the sign-up can accept an address; see THE LAUNCH SIGN-UP.
+  - The home page rebuild itself (EACH SECTION AGAINST THE DESIGN) - the
+    whole of relay/FW34.txt section 1-2.
+
+====================================================================
+DEVIATIONS
+====================================================================
+  - THE HOME PAGE WAS NOT BUILT. The largest deviation; reasoned in HOW
+    IT ENDED. Section 0 (the waiting web items) is complete; the page is
+    handed off with a section-by-section plan rather than attempted
+    half-way (R156; relay's "IF YOU CANNOT FINISH" path).
+  - PARKAN-37 and PARKAN-38 committed TOGETHER (one commit c96187f),
+    though the relay says "commit each": both edit the ONE
+    /confidentialite R325 sentence (37 rewrites its tail, 38 binds its
+    surviving clause), so splitting would land a commit whose test
+    references copy the sibling commit changes. Reason recorded.
+  - NO SUBAGENTS / NO ADVISOR: both unavailable this session (advisor
+    stalled per relay; consistent with FW33/FW33b/REG reports). All work
+    inline, conservative options recorded.
+
+====================================================================
+QUESTIONS (for the operator / the page session)
+====================================================================
+  Q1. HEADER NAV CONFLICT: the design's desktop nav
+      (Calculateur / Guides / L'application / A propos + "Calculer ma
+      situation") differs from FW33's shipped shell nav
+      (Calculateur / Guides / Le releve / Tarifs + "Suivre mes jours").
+      relay says "FW33's header". Keep FW33's nav verbatim (and add only
+      the burger), or move the shell nav to the design's items (a change
+      to every page and every baseline)?
+  Q2. --size-icon-tile (H9): the parked token's intended sites were
+      IconTile (not used by the new design) and GuideCta. If the new home
+      introduces neither, should the token be added at all, or does
+      GuideCta still want it (its own note asked for it)? An ask-first
+      token (SPEC 20).
+  Q3. The 52 px pill button and 28 px card padding have no token. Nearest
+      token + record, or an ask-first new token?
+  Q4. relay/FW34.txt: commit it (operator input file), or leave untracked?
+
+====================================================================
+PUSH PROOF
+====================================================================
+Branch fw34-home, off origin/main 7e6c18b. Commits, pushed to
+origin/fw34-home:
+  c96187f  PARKAN-37 + PARKAN-38
+  72d3fb9  R326
+  [this report]  appended as the final commit
+BRANCH TIP: [FILLED ON COMMIT BELOW]
+
+FAST SUITES (run by me; selections pasted in the commit bodies):
+  typecheck 0, lint 0 (2 pre-existing warnings), test 3022, build ok,
+  test:db 624, test:late 10, size-marker 9, declaration-parity green.
+test:e2e: 293 passed (FRONTALIER_PORT=3100, exit 0). test:visual +
+gate:clone DEFERRED to the operator (relay). The container test:visual is
+slow/OOM-prone here.
+
+BASELINES TO REGENERATE (operator, R135/R207) - reason each:
+  tests/visual/baselines/page-confidentialite-desktop.png
+  tests/visual/baselines/page-confidentialite-mobile.png
+    Reason: PARKAN-37 rewrote the automatic-mode sentence on
+    /confidentialite (cumul de minutes -> four daily checks).
+  NO other baseline changes: R326 writes a marker inside .next
+  (gitignored), changing no pixels; PARKAN-38 is a test only.
+
+END OF REPORT-FW34

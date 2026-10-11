@@ -1,5 +1,7 @@
 // web/next.config.ts
 import type { NextConfig } from 'next';
+import { join } from 'node:path';
+import { writeSizeMarker } from './scripts/size-marker.mjs';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -98,6 +100,39 @@ const nextConfig: NextConfig = {
   // own. Next's built-in pass would run ESLint a second time, with a different
   // configuration surface, and is deprecated in 15.5. One authority, not two.
   eslint: { ignoreDuringBuilds: true },
+
+  // RULING R326: THE BUILD STAMPS WHAT KIND OF BUILD IT IS, so `pnpm size`
+  // cannot measure the wrong one.
+  //
+  // webpack's `done` hook fires after every compilation - in `next build` AND
+  // in `next dev` (this project's dev is plain `next dev` on webpack, not
+  // Turbopack, so the hook runs in both). The marker it writes into the distDir
+  // records the phase (dev vs build) and whether FRONTALIER_DEV_ROUTES put
+  // /dev/** in the graph; check-budgets.mjs reads it and refuses the SHIPPING
+  // measurement of anything that is not a clean production build (size-marker.mjs).
+  //
+  // WHY IN THE CONFIG RATHER THAN A POST-BUILD SCRIPT. `next dev` never exits,
+  // so a `&& write-marker` after it never runs; and a prior `pnpm build`'s
+  // marker would otherwise sit in `.next` vouching for a dev server that
+  // overwrote everything around it - the exact stale-build hole R326 closes.
+  // The `done` hook is the one place that fires for both and writes AFTER the
+  // distDir exists.
+  webpack(config, { dev, dir }) {
+    const distDirRoot = join(dir, process.env.NEXT_DIST_DIR ?? '.next');
+
+    config.plugins.push({
+      apply(compiler: { hooks: { done: { tap: (name: string, fn: () => void) => void } } }) {
+        compiler.hooks.done.tap('FrontalierSizeMarker', () => {
+          writeSizeMarker(distDirRoot, {
+            dev,
+            devRoutes: process.env.FRONTALIER_DEV_ROUTES === '1',
+          });
+        });
+      },
+    });
+
+    return config;
+  },
 };
 
 export default nextConfig;
