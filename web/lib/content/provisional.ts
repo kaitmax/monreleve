@@ -56,6 +56,41 @@ export const PUBLISHED_PROVISIONAL_IDS = ['P1', 'P2', 'P3'] as const;
 export type PublishedProvisionalId = (typeof PUBLISHED_PROVISIONAL_IDS)[number];
 
 /**
+ * HOW /sources GROUPS THE THREE, after the accord of 29 April 2026 (REG-APPLY,
+ * 2026-10-11). The accord 1(b) sources the imputation order (P1), the OFAS
+ * confirms the 49,9 social maximum (P2), and 1(d) sources the mission-cap
+ * proration (P3's single-factor part) - so P1 and P2 are presented under "what
+ * the official texts now establish", pending only expert legal review. What
+ * stays a reading of this site is P3's COMBINED case - part-time AND partial
+ * year at once - which 1(d) names as two separate situations.
+ *
+ * THE ANCHORS DO NOT MOVE. All three keep #lecture-P1/P2/P3 (readingAnchor), so
+ * the guides that cite "la reference P1" and "la reference P2" still resolve;
+ * only the grouping and the copy changed. The two arrays partition
+ * PUBLISHED_PROVISIONAL_IDS, asserted below so a fourth reading must be placed.
+ */
+export const SETTLED_BY_TEXT_IDS = ['P1', 'P2'] as const;
+export const MON_RELEVE_READING_IDS = ['P3'] as const;
+
+export type SettledByTextId = (typeof SETTLED_BY_TEXT_IDS)[number];
+export type MonReleveReadingId = (typeof MON_RELEVE_READING_IDS)[number];
+
+/**
+ * The two groups together are exactly the published ids - no reading is in both
+ * and none is in neither. Expressed as mutually-assignable types so a reading
+ * added to PUBLISHED_PROVISIONAL_IDS without a group fails to compile.
+ */
+type EveryReadingIsGrouped = PublishedProvisionalId extends SettledByTextId | MonReleveReadingId
+  ? true
+  : never;
+type EveryGroupIsPublished = SettledByTextId | MonReleveReadingId extends PublishedProvisionalId
+  ? true
+  : never;
+
+export const READINGS_ARE_PARTITIONED: EveryReadingIsGrouped = true;
+export const GROUPS_ARE_PUBLISHED: EveryGroupIsPublished = true;
+
+/**
  * The subset check, at compile time.
  *
  * If PROVISIONAL_IDS ever gains an id that PUBLISHED_PROVISIONAL_IDS lacks,
@@ -111,10 +146,16 @@ export function provisionalFor(input: TeleworkInput): readonly ProvisionalId[] {
     touched.push('P1');
   }
 
-  // P3 - THE EXACT METHOD'S CAP PRORATION, ruling R19's open question:
-  // whether the cap is prorated under the exact method and by which factors.
-  // With a full-time contract over a whole year there is nothing to prorate,
-  // so the reading cannot change the answer and the notice would be noise.
+  // P3 - THE EXACT METHOD'S CAP PRORATION. The accord of 29 April 2026 (1d)
+  // settled the single-factor proration and the engine was corrected to match
+  // it (2026-10-11), so the cap now prorates by rate and period under both
+  // methods. What stays a reading of this site is the COMBINED case - part-time
+  // AND partial year at once - which 1(d) names as two separate situations. The
+  // notice still fires for an exact part-timer or incomplete year (the trigger
+  // is unchanged), pointing at /sources#lecture-P3, which now explains both the
+  // settled proration and the combined case. With a full-time contract over a
+  // whole year there is nothing to prorate, so the reading cannot change the
+  // answer and the notice would be noise.
   if (
     input.denominator.kind === 'exact' &&
     (input.employmentRate < FULL_TIME || input.periodFraction < WHOLE_YEAR)

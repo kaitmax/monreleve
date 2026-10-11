@@ -63,8 +63,8 @@ export function allowedTeleworkDays(
       // floor to the half-day - advisory, never overstate (R12)
       atFiscal: floorToHalfDay(totalWorkDays * rules.fiscalCeiling),
       atSocial: floorToHalfDay(totalWorkDays * rules.socialCeiling),
-      // ceil - favours the user (SPEC 7.2 step 4); period-only under the
-      // exact method (PROVISIONAL, ruling R19)
+      // ceil - favours the user (SPEC 7.2 step 4); prorated by both rate and
+      // period under both methods (accord FR-CH 29.04.2026, clause 1(d))
       missionCap: missionCapFor(
         input.denominator,
         input.employmentRate,

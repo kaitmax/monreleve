@@ -19,7 +19,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { missionCapFor } from '@/lib/calc-engine/denominator';
-import { ruleSetFor } from '@/lib/calc-engine';
+import { calculateTelework, ruleSetFor } from '@/lib/calc-engine';
 import type { DenominatorMethod } from '@/lib/calc-engine';
 
 const RULES = ruleSetFor(2026);
@@ -42,8 +42,13 @@ const fixture = JSON.parse(
 ) as CapFixture;
 
 describe('mission cap conformance suite (ruling R19, shared)', () => {
-  it('records that the interpretation is provisional', () => {
+  it('records that the accord settles the proration and only the combined case stays a reading', () => {
+    // The cap proration is now SETTLED by the accord 1(d); what remains
+    // PROVISIONAL (Mon Releve's reading) is the combined part-time + partial
+    // year case. The note must carry both, so neither reads as the whole truth.
+    expect(fixture.missionCapNote).toContain('1(d)');
     expect(fixture.missionCapNote).toContain('PROVISIONAL');
+    expect(fixture.missionCapNote).toContain('COMBINED');
   });
 
   for (const testCase of fixture.missionCapCases) {
@@ -80,32 +85,84 @@ describe('missionCapFor under simplified240 - prorates by BOTH factors', () => {
   });
 });
 
-describe('missionCapFor under exact - prorates by the PERIOD ONLY (R19)', () => {
-  it('ignores employmentRate, because the supplied total already reflects it', () => {
-    // The change R19 makes. Before the ruling this returned 5, double-counting
-    // the part-time reduction that the employer's own 200-day total already
-    // embodies.
-    expect(missionCapFor({ kind: 'exact', totalWorkDays: 200 }, 50, 1, RULES)).toBe(10);
-    expect(missionCapFor({ kind: 'exact', totalWorkDays: 120 }, 45, 1, RULES)).toBe(10);
-    expect(missionCapFor({ kind: 'exact', totalWorkDays: 24 }, 1, 1, RULES)).toBe(10);
+describe('missionCapFor under exact - prorates by BOTH factors (accord 1d)', () => {
+  // The change the accord makes. These three expectations were 10 under the old
+  // PROVISIONAL R19 reading (prorate by period only under exact, on the
+  // rationale that an employer-supplied total already embodies the rate). The
+  // accord amiable FR-CH of 29 April 2026, clause 1(d), prorates the 10-day
+  // LIMIT itself for a part-timer with NO condition on the denominator method,
+  // so the exact method now prorates by employmentRate like the simplified one.
+  // Operator ruling 2026-10-11.
+  it('prorates by employmentRate, now that the accord settles the question', () => {
+    expect(missionCapFor({ kind: 'exact', totalWorkDays: 200 }, 50, 1, RULES)).toBe(5); // was 10
+    expect(missionCapFor({ kind: 'exact', totalWorkDays: 120 }, 45, 1, RULES)).toBe(5); // ceil(4.5), was 10
+    expect(missionCapFor({ kind: 'exact', totalWorkDays: 24 }, 1, 1, RULES)).toBe(1); // ceil(0.1), was 10
   });
 
-  it('still prorates by the period, which the total does not embody', () => {
-    // A mid-year start is a fact about the calendar, not about the working
-    // rate, so an annual total for a half year still gets half the cap.
+  it('prorates by the period too', () => {
+    // A mid-year start is a fact about the calendar, so an annual total for a
+    // half year still gets half the cap - this never depended on the method.
     expect(missionCapFor({ kind: 'exact', totalWorkDays: 100 }, 100, 0.5, RULES)).toBe(5);
-    expect(missionCapFor({ kind: 'exact', totalWorkDays: 100 }, 50, 0.5, RULES)).toBe(5);
+  });
+
+  it('prorates by BOTH factors when both bind - the combined case (see note below)', () => {
+    // 1(d) names part-time and partial-year SEPARATELY; applying both factors at
+    // once is Mon Releve's reading, carried on /sources and in the fixture note.
+    // It matches what simplified240 already does when both bind.
+    expect(missionCapFor({ kind: 'exact', totalWorkDays: 100 }, 50, 0.5, RULES)).toBe(3); // ceil(2.5), was 5
+    expect(missionCapFor({ kind: 'exact', totalWorkDays: 120 }, 45, 7 / 12, RULES)).toBe(3); // ceil(2.625)
   });
 
   it('rounds up, as under the simplified basis', () => {
     expect(missionCapFor({ kind: 'exact', totalWorkDays: 100 }, 100, 7 / 12, RULES)).toBe(6); // ceil(5.833)
   });
 
-  it('agrees with simplified240 at full time and full year', () => {
-    // The two readings only diverge for a part-timer, which is why this went
-    // unnoticed until the interpretation was put in writing.
-    expect(missionCapFor({ kind: 'exact', totalWorkDays: 240 }, 100, 1, RULES)).toBe(
-      missionCapFor({ kind: 'simplified240' }, 100, 1, RULES),
-    );
+  it('agrees with simplified240 everywhere now, not only at full time', () => {
+    // The two readings used to diverge for a part-timer; after the accord they
+    // agree on every input, which is the whole point of the correction.
+    for (const [rate, period] of [
+      [100, 1],
+      [50, 1],
+      [80, 1],
+      [45, 7 / 12],
+      [1, 1],
+    ] as const) {
+      expect(missionCapFor({ kind: 'exact', totalWorkDays: 240 }, rate, period, RULES)).toBe(
+        missionCapFor({ kind: 'simplified240' }, rate, period, RULES),
+      );
+    }
+  });
+});
+
+describe('the accord amiable FR-CH of 29 April 2026, clause 1(d)', () => {
+  // 1(d): "pour les salaries qui exercent leur activite pendant une periode
+  // inferieure a l'annee civile et ceux qui exercent un emploi a temps partiel
+  // pendant l'annee entiere, la limite annuelle de 10 jours est ajustee
+  // proportionnellement et arrondie a l'unite superieure." It adjusts the
+  // 10-day LIMIT itself and sets NO condition on how the working days are
+  // counted, so the exact method must prorate the cap by employmentRate too.
+  // Operator ruling 2026-10-11: drop the exact-method FULL_RATE carve-out.
+  it('prorates the cap by employmentRate under the exact method: 80% gives 8', () => {
+    expect(missionCapFor({ kind: 'exact', totalWorkDays: 192 }, 80, 1, RULES)).toBe(8);
+  });
+
+  it('flows through calculateTelework: an 80% exact part-timer credits 8 mission days, not 10', () => {
+    const result = calculateTelework({
+      taxYear: 2026,
+      canton: 'GE',
+      employmentRate: 80,
+      periodFraction: 1,
+      denominator: { kind: 'exact', totalWorkDays: 192 },
+      granularity: 'day',
+      teleworkDays: 0,
+      missionDaysFrance: 12,
+      missionDaysThirdState: 0,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.value.missionCap).toBe(8); // ceil(10 * 0.80)
+    expect(result.value.creditedMissionDays).toBe(8); // 12 France missions, capped at 8
   });
 });

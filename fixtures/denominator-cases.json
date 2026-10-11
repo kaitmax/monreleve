@@ -80,7 +80,7 @@
       "verified_on": "2026-09-09"
     }
   ],
-  "missionCapNote": "PROVISIONAL (ruling R19), an interpretation and not a source. The 10-day mission sub-cap prorates for part-time and partial years, rounded up (SPEC 7.2 step 4). What no source addresses is how it prorates when the employer supplies an EXACT annual total. Interim reading: an exact total is the actual number of days worked and therefore already embodies the working-time rate, so prorating the cap by employmentRate as well would count the same reduction twice and quietly cost a part-timer mission days. Under exact the cap prorates by periodFraction ONLY; under simplified240 by both, because the 240-day basis is a full-time figure not yet reduced. Goes to the reviewer at Checkpoint A. EXACT_METHOD_UNVERIFIED already fires on this path.",
+  "missionCapNote": "The 10-day mission sub-cap prorates by employmentRate AND periodFraction, rounded UP (SPEC 7.2 step 4), under BOTH denominator methods. SETTLED by the accord amiable FR-CH of 29 April 2026, clause 1(d): for an employee working part-time over the whole year, or over less than a full calendar year, the 10-day annual limit is adjusted proportionally and rounded up, with NO condition on how the working days are counted. This REPLACES the former reading (ruling R19) that, under the exact method, prorated by periodFraction only on the rationale that an employer-supplied total already embodies the rate; the accord prorates the LIMIT regardless. What REMAINS PROVISIONAL - Mon Releve's own reading - is the COMBINED case: 1(d) names the two situations (part-time, partial-year) SEPARATELY, so applying BOTH factors when both bind at once (e.g. cap-exact-50-half-year below) is the product's interpretation, not something 1(d) authorises explicitly. Authorised by the operator ruling of 2026-10-11 ('fix the engine then apply the copy'). EXACT_METHOD_UNVERIFIED still fires on the exact path.",
   "missionCapCases": [
     {
       "id": "cap-simplified-50-full",
@@ -107,11 +107,11 @@
         1,
         1
       ],
-      "expectedMissionCap": 10,
-      "note": "PROVISIONAL. The rate is ignored: the 200-day total already embodies it. Before ruling R19 this returned 5.",
-      "source_url": "https://www.ge.ch/imposition-du-teletravail-personnes-frontalieres/regles-missions-temporaires-etranger",
-      "verified_by": "transcription: Claude via ge.ch; legal review pending",
-      "verified_on": "2026-09-09"
+      "expectedMissionCap": 5,
+      "note": "The exact method now prorates the cap by employmentRate too: ceil(10 * 0.50) = 5. This was 10 under the former R19 reading; the accord amiable FR-CH of 29 April 2026, clause 1(d), settles it with no condition on the denominator method. Operator ruling 2026-10-11.",
+      "source_url": "https://www.estv.admin.ch/dam/fr/sd-web/Bibcb06jL1wG/int-laender-fr-dba-ai-cdi-20260429-fr.pdf",
+      "verified_by": "accord amiable FR-CH 29.04.2026 clause 1(d); operator ruling 2026-10-11",
+      "verified_on": "2026-10-11"
     },
     {
       "id": "cap-exact-50-half-year",
@@ -123,11 +123,11 @@
         1,
         2
       ],
-      "expectedMissionCap": 5,
-      "note": "PROVISIONAL. The period still applies - a mid-year start is a fact about the calendar, not about the rate.",
-      "source_url": "https://www.ge.ch/imposition-du-teletravail-personnes-frontalieres/regles-missions-temporaires-etranger",
-      "verified_by": "transcription: Claude via ge.ch; legal review pending",
-      "verified_on": "2026-09-09"
+      "expectedMissionCap": 3,
+      "note": "The COMBINED case (Mon Releve's reading): part-time AND partial-year at once. 1(d) names the two situations separately; applying both factors gives ceil(10 * 0.50 * 0.50) = 3, matching simplified240. This was 5 under the former R19 reading (period only under exact). Operator ruling 2026-10-11.",
+      "source_url": "https://www.estv.admin.ch/dam/fr/sd-web/Bibcb06jL1wG/int-laender-fr-dba-ai-cdi-20260429-fr.pdf",
+      "verified_by": "accord amiable FR-CH 29.04.2026 clause 1(d); operator ruling 2026-10-11 (combined case: product reading)",
+      "verified_on": "2026-10-11"
     },
     {
       "id": "cap-agree-at-full-time",
@@ -140,11 +140,11 @@
         1
       ],
       "expectedMissionCap": 10,
-      "note": "The two readings diverge only for a part-timer, which is why this went unnoticed until the interpretation was written down.",
+      "note": "Full time, full year: the cap is 10 under both methods. After the accord the exact and simplified readings agree on EVERY input, not only this one - they diverged only for a part-timer before the correction.",
       "source_url": "https://www.ge.ch/imposition-du-teletravail-personnes-frontalieres/regles-missions-temporaires-etranger",
       "verified_by": "transcription: Claude via ge.ch; legal review pending",
       "verified_on": "2026-09-09"
     }
   ],
-  "verificationTrace": "Ruling R23, FILLED AT CHECKPOINT A on 2026-09-09. These cases were NOT individually published - they were found by scanning for divergence. What the 09.09.2026 pass verified is the RULES they encode: the 240-day basis and the cap proration, rounded up, both read off the source_url below (which cites the amicable agreement of 30 June 2023 for the proration). So each case is a consequence of a verified rule rather than a verified figure. The missionCapCases under the exact method remain PROVISIONAL - P3 in docs/regulatory-sources.md - because no source addresses an employer-supplied exact total."
+  "verificationTrace": "Ruling R23, FILLED AT CHECKPOINT A on 2026-09-09. These cases were NOT individually published - they were found by scanning for divergence. What the 09.09.2026 pass verified is the RULES they encode: the 240-day basis and the cap proration, rounded up, both read off the source_url below (which cites the amicable agreement of 30 June 2023 for the proration). So each case is a consequence of a verified rule rather than a verified figure. UPDATE 2026-10-11: the missionCapCases under the exact method were corrected per the accord amiable FR-CH of 29 April 2026, clause 1(d) (operator ruling 'fix the engine then apply the copy'): the cap now prorates by employmentRate under both methods, so cap-exact-50-full moved 10->5 and cap-exact-50-half-year moved 5->3. What remains Mon Releve's reading - see missionCapNote - is only the COMBINED part-time-and-partial-year case, which 1(d) names as two separate situations."
 }

@@ -51,9 +51,9 @@ export function calculateTelework(
   );
   const { totalWorkDays } = denominator;
 
-  // ceil - favours the user (SPEC 7.2 step 4). Prorates by both factors under
-  // the simplified basis and by the period only under the exact method
-  // (PROVISIONAL, ruling R19). Computed here rather than inside the waterfall
+  // ceil - favours the user (SPEC 7.2 step 4). Prorates by both employmentRate
+  // and periodFraction under both denominator methods (accord amiable FR-CH of
+  // 29 April 2026, clause 1(d)). Computed here rather than inside the waterfall
   // so the waterfall stays pure day arithmetic with no rounding of its own.
   const missionCap = missionCapFor(
     input.denominator,

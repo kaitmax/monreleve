@@ -33,9 +33,6 @@ const NORMALISE_FACTOR = 1e6;
  */
 const PERCENT = 1e2;
 
-/** A rate of 100 %, used where a factor must be neutral. */
-const FULL_RATE = 1e2;
-
 /**
  * Prorates a basis in days by employment rate and period, rounding UP.
  *
@@ -69,19 +66,25 @@ export function ceilProrated(
  *
  * ceil - favours the user (amicable agreement of 30 June 2023)
  *
- * PROVISIONAL (ruling R19) - an interpretation, not a source. It goes to the
- * reviewer at Checkpoint A and is listed in docs/regulatory-sources.md.
+ * The cap prorates by BOTH employmentRate and periodFraction, under BOTH
+ * denominator methods. Accord amiable FR-CH of 29 April 2026, clause 1(d): for
+ * an employee working part-time over the whole year, or over less than a full
+ * calendar year, "la limite annuelle de 10 jours est ajustee
+ * proportionnellement et arrondie a l'unite superieure" - and it sets NO
+ * condition on how the working days are counted. The cap is a quantity separate
+ * from the denominator, so the method does not enter here.
  *
- * Under 'simplified240' the cap prorates by BOTH employmentRate and
- * periodFraction, because the 240-day basis is a full-time figure that has not
- * yet been reduced.
+ * This replaces the former PROVISIONAL reading (ruling R19) that, under the
+ * exact method, prorated by periodFraction ONLY on the rationale that an
+ * employer-supplied total already embodies the working-time rate. The accord
+ * prorates the LIMIT regardless of that rationale. Authorised by the operator
+ * ruling of 2026-10-11 ("fix the engine then apply the copy"); see
+ * docs/regulatory-sources.md, accord 29.04.2026 clause 1(d).
  *
- * Under 'exact' it prorates by periodFraction ONLY. The employer's supplied
- * total is the actual number of days worked, so it already embodies the
- * working-time rate; prorating the cap by employmentRate as well would count
- * the same reduction twice and would quietly cost a part-timer mission days.
- * The period is a fact about the calendar rather than the rate, so it still
- * applies. EXACT_METHOD_UNVERIFIED already fires on this path.
+ * `method` is retained in the signature because both call sites hold it and the
+ * cap used to depend on it; it is now method-independent. EXACT_METHOD_UNVERIFIED
+ * still fires on the exact path, from resolveDenominator - the engine still
+ * cannot verify a total it did not derive.
  */
 export function missionCapFor(
   method: DenominatorMethod,
@@ -89,9 +92,7 @@ export function missionCapFor(
   periodFraction: number,
   rules: RuleSet,
 ): number {
-  const rateFactor = method.kind === 'exact' ? FULL_RATE : employmentRate;
-
-  return ceilProrated(rules.missionCapDays, rateFactor, periodFraction);
+  return ceilProrated(rules.missionCapDays, employmentRate, periodFraction);
 }
 
 /**
