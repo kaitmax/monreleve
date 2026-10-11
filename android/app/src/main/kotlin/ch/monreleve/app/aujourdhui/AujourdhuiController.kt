@@ -174,6 +174,9 @@ data class ToAttendTo(
 data class AujourdhuiState(
     val today: String,
     val granularity: GranularityChoice,
+    /** AN-HOME section A (PARKAN-50): the holder's name (Settings.name); its first name drives the greeting.
+     *  Null when the account has no name yet (AN-ONBOARD-2), greeted « Bonjour » alone. */
+    val holderName: String? = null,
     val fullDay: DayEntry? = null,
     val morning: DayEntry? = null,
     val afternoon: DayEntry? = null,
@@ -295,7 +298,8 @@ class AujourdhuiController(
     private val granularity: GranularityChoice =
         if (settings?.granularity == "HALF_DAY") GranularityChoice.HALF_DAY else GranularityChoice.DAY
 
-    private val mutableState = MutableStateFlow(AujourdhuiState(today = today, granularity = granularity))
+    private val mutableState =
+        MutableStateFlow(AujourdhuiState(today = today, granularity = granularity, holderName = settings?.name))
     val state: StateFlow<AujourdhuiState> = mutableState.asStateFlow()
 
     init {
@@ -359,6 +363,7 @@ class AujourdhuiController(
         mutableState.update {
             it.copy(
                 today = today,
+                holderName = settings?.name,
                 loggingMode = mode,
                 fullDay = fullDay?.toDayEntry(),
                 morning = morning?.toDayEntry(),
