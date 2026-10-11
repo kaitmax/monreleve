@@ -236,4 +236,89 @@ steps (incl. the new granularity step), the ask-only-missing name flow
 with a generating PDF, the complete-account shortcut, R310 across rotation
 and a background kill, and the 200 % reflow are all confirmed on the S9.
 
-(Walkthroughs 2-4 follow in their own sections / commits.)
+====================================================================
+WALKTHROUGH 2 - AN-LINKS
+====================================================================
+Each of the 5 "A propos" rows + the 2 sign-in consent links opens its
+LIVE monreleve.ch page in a brand-coloured Custom Tab; the airplane-mode
+behaviour.
+
+THE LIVE SITE (verified from the host first). monreleve.ch/api/health
+answers service="monreleve", origin="https://monreleve.ch", runtime=true
+- it is this product. All five pages return 200: /mentions-legales,
+/confidentialite, /cgu, /sources, /a-propos. The device has internet
+(ping 8.8.8.8 OK over WiFi); the Custom Tabs open over the device's WiFi,
+while the API stays on 127.0.0.1:3000 over the USB adb-reverse (a
+site-page link and an API call are different addresses - LegalPage.kt /
+Site.ORIGIN = https://CallbackLink.HOST, and the API base is separate).
+
+WHAT THE CODE DOES (confirmed in source). The 5 rows map through
+LegalPage: Confidentialite->/confidentialite, CGU->/cgu,
+Legal->/mentions-legales, Sources->/sources, About->/a-propos. The
+launcher (MainActivity.launchCustomTab) sets the toolbar to
+LightColors.brand.toArgb() - the brand token, never a raw colour. The
+R299 fallback chain: a missing Custom Tabs provider falls to the ordinary
+browser; a device with NO browser throws ActivityNotFoundException, which
+openLegalLink (LegalLink.kt) catches to SHOW THE ADDRESS instead of
+crashing.
+
+THE 5 "A PROPOS" ROWS (Parametres -> "A propos"). Section shows, in
+order: Mentions legales, Politique de confidentialite, Conditions
+generales d'utilisation, Sources reglementaires, A propos de Mon Releve,
+then Licences (stays in-app) and Version 0.1.0 (1). Each of the five was
+tapped; each opened a Chrome Custom Tab (dumpsys confirmed the resumed
+activity is com.android.chrome/...customtabs.CustomTabActivity, NOT a
+full browser), with the NAVY BRAND toolbar, the verified host line
+"monreleve.ch", and the Custom Tab chrome (close X, share, overflow):
+  - Mentions legales -> /mentions-legales : heading "Mentions legales",
+    "Editeur du site / Denomination sociale KAMELEO LTD / Forme juridique
+    Private limited company, registered in ...".
+  - Politique de confidentialite -> /confidentialite : heading "Politique
+    de confidentialite", the RGPD + LPD paragraph.
+  - Conditions generales d'utilisation -> /cgu : heading "Conditions
+    generales d'utilisation", "... Editeur / Le service est edite par :".
+  - Sources reglementaires -> /sources : heading "Sources et
+    verifications", "Derniere verification reglementaire : 09.09.2026",
+    the constants table ("Plafond fiscal ... 40 %").
+  - A propos de Mon Releve -> /a-propos : heading "A propos", "Personne
+    n'a valide ces regles" (the R160 reviewer-status section).
+All five show "monreleve.ch" as the verified Custom Tab host and the
+brand toolbar.
+
+THE 2 SIGN-IN CONSENT LINKS. Signed out (pm clear) -> the welcome screen
+("Vos jours de teletravail, prets pour votre declaration." + "Commencer")
+-> the Connexion screen ("Se connecter a Mon Releve", email field, the
+consent line "En continuant, vous acceptez les Conditions d'utilisation
+et la Politique de confidentialite."):
+  - "Conditions d'utilisation" -> Custom Tab /cgu (brand toolbar,
+    monreleve.ch, heading "Conditions generales d'utilisation").
+  - "Politique de confidentialite" -> Custom Tab /confidentialite (brand
+    toolbar, monreleve.ch, heading "Politique de confidentialite").
+Both confirmed via dumpsys as CustomTabActivity.
+
+AIRPLANE MODE (what was asked; and the honest limit). With airplane mode
+ON (status-bar plane icon; airplane_mode_on=1), tapping the CGU consent
+link STILL opened the Custom Tab (brand toolbar, host "monreleve.ch") -
+no crash - and Chrome then showed its own offline page
+(ERR_INTERNET_DISCONNECTED, the dinosaur / "Desactivez le mode Avion").
+So the behaviour is honest: it opens the tab and Chrome says plainly it
+cannot reach the page; nothing claims a false success.
+  NOTE on R299: the app's OWN in-app fallback (openLegalLink ->
+  showAddress) fires ONLY on ActivityNotFoundException - i.e. when NO app
+  can handle the intent (no browser: a kiosk / managed profile / disabled
+  browser), which airplane mode does NOT produce (Chrome is still
+  installed). That path is JVM-tested (LegalLinkTest) and is not
+  reproducible on this S9 without disabling every browser/Custom-Tabs
+  handler (the device has Chrome, and typically Samsung Internet) - too
+  invasive for a verification pass, so it stays JVM-covered. Airplane mode
+  restored OFF; WiFi re-enabled; internet confirmed back; adb reverse
+  intact.
+
+WT2 RESULT: all 5 A propos rows and both sign-in consent links open their
+correct LIVE monreleve.ch page in a brand-coloured Custom Tab; the
+airplane-mode case does not crash and shows Chrome's honest offline page.
+No defect found. No PARKAN change (AN-LINKS has no deferred-walkthrough
+PARKAN of its own; this is the confirmation its merged code works on the
+device).
+
+(Walkthroughs 3-4 follow in their own sections / commits.)
