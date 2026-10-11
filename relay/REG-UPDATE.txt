@@ -1,0 +1,148 @@
+REG-UPDATE SESSION PROMPT - Mon Releve
+THE PENDING READINGS, SETTLED BY OFFICIAL TEXTS - AND WHAT STILL ISN'T
+Paste into a fresh Claude Code session at the repository root.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+R241: the only thing that ends this session is REPORT-REG-UPDATE.txt,
+committed and pushed. Unclear? R156; judgment calls go to the advisors,
+and if none answers, the conservative option is taken and recorded.
+R334: never delete, overwrite or reset what you did not create; your
+own worktree; a report states only what has happened. R300; R270.
+
+HARD BOUNDARIES:
+  - THE ENGINE IS FROZEN. If a source shows the engine computes
+    something the text contradicts, that is a STOP: write it up in full
+    with the passage, the engine's behaviour and a failing case, and
+    end. Correcting the engine is the operator's decision, in its own
+    task.
+  - R146 STILL GOVERNS EVERY WORD: a regulatory statement is either
+    traceable to a verified row in docs/regulatory-sources.md, or
+    written as an open question, or not written. A source enters a row
+    only after you have fetched it YOURSELF and transcribed the exact
+    passage - never on the strength of this prompt, a chat or another
+    AI's summary.
+  - The vocabulary ban holds: no certifie, atteste, conforme, valide,
+    approuve.
+  - DO NOT DEPLOY. The live site's copy changes on the operator's next
+    deploy.
+
+R273. Check tasks/todo.md; read docs/regulatory-sources.md and its
+    P1/P2/P3 rows, /sources as built, and the engine's mission-cap code.
+R1. pnpm gate:clone green on origin/main's HEAD.
+
+====================================================================
+WHAT THE OPERATOR'S CHAT SIDE ALREADY CHECKED - VERIFY IT AGAIN
+====================================================================
+These were fetched and read on 11.10.2026. Fetch each yourself,
+transcribe the passage, and add or update its row with the URL, the
+date fetched and the exact words:
+  A. Accord amiable FR-CH of 29 April 2026 (ESTV PDF):
+     https://www.estv.admin.ch/dam/fr/sd-web/Bibcb06jL1wG/int-laender-fr-dba-ai-cdi-20260429-fr.pdf
+     - 1(b): other telework days count before mission days; among
+       missions, the state of residence before a third state.
+     - 1(d): for employees active less than a full calendar year, and
+       for part-time employees over the whole year, the 10-day limit is
+       adjusted proportionally and rounded UP.
+     - 2: on-call periods are not missions unless there is an actual
+       intervention from the state of residence.
+     - 3: effect from the same date as the amendment of 27 June 2023.
+  B. OFAS - Teletravail: https://www.bsv.admin.ch/fr/teletravail
+     - up to 50 percent, at most 49.9 percent of working time;
+     - the agreement covers telework between 25 and 49.9 percent;
+     - who it does NOT apply to (other habitual activity in the state of
+       residence; another EU/EFTA employer; the self-employed);
+     - the employer requests an A1 through ALPS, valid at most 3 years.
+  C. AFC Geneve - obligations de l'employeur:
+     https://www.ge.ch/imposition-du-teletravail-personnes-frontalieres/obligations-employeur-matiere-teletravail
+     - since 01.01.2026 employers track telework and mission days of
+       employees living in France; first transmission January 2027 for
+       2026;
+     - the rate goes on the withholding-tax summary list (or ELM/ISeL),
+       not necessarily the salary certificate;
+     - several employers: each declares the rate for its own days;
+     - a change of residence during the year: two attestations;
+     - leaving during the year: the special attestation, on request.
+  D. Geneva LAMal premiums 2026 for residents of France:
+     https://www.ge.ch/document/40783/telecharger
+     - record only that the table exists, its date, its deductible, and
+       that it covers 2026. Do NOT republish premiums until Geneva's
+       reuse terms are read from ge.ch and recorded (R146's discipline,
+       as for the border polygon in AN6a).
+STILL UNCHECKED - fetch, verify, and add only if they say what is
+claimed: the URSSAF page on the frontalier health contribution (8
+percent, the 25 percent PASS allowance, proration); the 2047-SUISSE
+form; ameli on the droit d'option (three months, irrevocable); the
+ESTV practical guide of 29 April 2026; the amendment of 27 June 2023.
+A source that does not say what was claimed is reported as such.
+
+====================================================================
+1. P1 AND P2: PROMOTE
+====================================================================
+- P1 (France before a third state) is now a VERIFIED row from A 1(b).
+  The engine already does this - confirm with the fixture that covers
+  it, and say so.
+- P2 (49.9 percent) is VERIFIED for social security from B. The engine's
+  boundary - compliant up to and including 49.9 - matches "au maximum
+  49.9%". CLEISS's "moins de 50 %" is recorded beside it, not hidden.
+
+====================================================================
+2. P3: CHECK THE ENGINE AGAINST 1(d) - AND STOP IF IT DIFFERS
+====================================================================
+1(d) reduces the 10-day MISSION CAP for part-time employees over the
+whole year, whatever method computes the working days. The site
+currently says that with the exact method "ce total integre deja le
+temps partiel" - true of the DENOMINATOR (working days), but the mission
+cap is a separate quantity.
+  - Read the engine: for a part-time employee on the EXACT method, does
+    it reduce the 10-day cap? Write a case and run it - e.g. 80 percent,
+    exact method, 12 mission days: the text gives a cap of 8.
+  - If the engine already reduces it: P3's mission-cap half is VERIFIED;
+    record the case as a fixture-style example in the report.
+  - IF IT DOES NOT: STOP (hard boundary). Report the passage, the
+    engine's result, the expected result and the failing case. The
+    operator decides the engine correction.
+  - EITHER WAY, ONE CASE STAYS A READING: part-time AND less than a full
+    year. 1(d) names the two situations separately, never combined. Keep
+    it marked as Mon Releve's own reading - the combination the engine
+    uses, stated plainly - not as settled.
+
+====================================================================
+3. THE WEBSITE'S COPY
+====================================================================
+- /sources: replace "Trois lectures en attente d'un avis expert" with
+  two honest parts - what the official texts now settle (P1, P2, the
+  mission-cap proration if section 2 passed), each citing its row; and
+  what remains Mon Releve's reading (the combined case; the exact-method
+  denominator), named as such.
+- The section saying nothing obliges an employer to provide a telework
+  document: rewrite it from C, sentence by sentence against its row.
+- SEPARATE THE TWO SYSTEMS wherever both thresholds appear - the
+  calculator's result, guides, the releve's explanations: "Fiscalite -
+  40 %" and "Securite sociale - 49,9 %", each with one line on what it
+  governs, so two numbers never read as contradictory limits. The
+  thresholds still come from the RuleSet (R147); this is copy and
+  layout only. With the social side, B's conditions and the A1.
+- Every changed sentence keeps or gains its source row; the claim
+  tests that tie copy to rows pass.
+
+====================================================================
+4. RECORDED, NOT BUILT
+====================================================================
+PARK each, with its source row: on-call periods (A 2); one releve per
+employer when there are several (C) - which supports an employer field;
+a change of residence during the year (C); a LAMal / French insurance
+comparator from D and URSSAF, once reuse terms are read - this
+reopens PARK4-4 on a different footing than opendata.swiss.
+
+====================================================================
+REPORT - REPORT-REG-UPDATE.txt
+====================================================================
+SUMMARY (and, if section 2 stopped, that FIRST) / R273 / EACH SOURCE
+(fetched, passage transcribed, row added - or why not) / THE UNCHECKED
+SOURCES (what each actually says) / P1 / P2 / P3 (the engine case and
+its result; the reading that stays) / THE COPY CHANGED (each sentence
+and its row) / PARKED / DEVIATIONS / QUESTIONS / PUSH PROOF
+
+END OF REG-UPDATE PROMPT
