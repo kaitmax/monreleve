@@ -37,6 +37,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEV_DIST_DIR } from './dev-routes.mjs';
 import { refuseIfTreeLocked } from './tree-lock.mjs';
+import { readSizeMarker, shippingMarkerRefusal } from './size-marker.mjs';
 
 const WEB_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 /**
@@ -60,13 +61,34 @@ const DEV_GATES_ONLY = process.argv.includes('--dev');
  * passing NEXT_DIST_DIR, so the two never read each other and neither can
  * be mistaken for the other (R98).
  */
-const NEXT_DIR = join(WEB_ROOT, process.env.NEXT_DIST_DIR ?? (DEV_GATES_ONLY ? DEV_DIST_DIR : '.next'));
+const NEXT_DIST_LABEL = process.env.NEXT_DIST_DIR ?? (DEV_GATES_ONLY ? DEV_DIST_DIR : '.next');
+const NEXT_DIR = join(WEB_ROOT, NEXT_DIST_LABEL);
 
 const FONT_DIR = join(WEB_ROOT, 'public', 'fonts');
 
 const KIB = 1024;
 
 refuseIfTreeLocked('pnpm size');
+
+// RULING R326: THE SHIPPING MEASUREMENT REFUSES A BUILD IT CANNOT VOUCH FOR.
+//
+// The ordinary `pnpm size` run - no --dev, no NEXT_DIST_DIR override - produces
+// the number that goes into a session report, so it must be the build that
+// ships. next.config.ts stamps every build and every `next dev` with a marker
+// saying what it is; a dev-server build, or a production build with the dev
+// routes compiled in, is refused BY NAME here rather than measured. FW33's
+// "+1.9 KiB" was the second kind, read out of a stale dev-routes `.next`.
+//
+// THE --dev PATH IS EXEMPT BY DESIGN: `pnpm size:dev` MEASURES the dev-routes
+// build (.next-dev-routes) on purpose, to gate GATE W and GATE I (R129).
+if (!DEV_GATES_ONLY) {
+  const refusal = shippingMarkerRefusal(readSizeMarker(NEXT_DIR), NEXT_DIST_LABEL);
+
+  if (refusal !== null) {
+    console.error(refusal);
+    process.exit(1);
+  }
+}
 
 // THE FRAMEWORK FLOOR.
 //
