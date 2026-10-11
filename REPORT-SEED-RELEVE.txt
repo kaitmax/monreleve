@@ -281,12 +281,92 @@ TWO BOUNDARY YEARS (they bound what a year switch could offer):
 ====================================================================
 THE PHONE (every screen, default size and 200 %, and the PDF)
 ====================================================================
-[PENDING DEVICE CAPTURE - to be completed in the device-drive increment.]
-Plan: sign in as each account through the debug session path (R284,
-SessionInjectionActivity) against `pnpm dev` reached by `adb reverse
-tcp:3000 tcp:3000`; open the releve; export the PDF and open it; capture
-and describe every screen at the default font scale and at 200 %
-(font_scale 2.0). Then restore every device setting.
+Device: Galaxy S9 (SM-G960F, API 29), 232bcd8c300c7ece, clock 2026-10-11
+(so taxYear = 2026). Each account signed in through the debug session path
+(R284, SessionInjectionActivity: accessToken/refreshToken/expiries + the
+six settings + email), force-stopped, relaunched so MainActivity re-reads
+the durable session. Server: `pnpm dev` on :3000 with FRONTALIER_CHROMIUM_PATH
+set (so the PDF renders), reached from the phone over `adb reverse tcp:3000
+tcp:3000` to 127.0.0.1 (the APK was rebuilt at that host - see HOW IT ENDED).
+Screenshots captured with `exec-out screencap`; 21 shots, kept off-repo.
+
+CAMILLE (2026 current year), default size:
+  - Aujourd'hui: "Bonjour Camille / Dimanche 11 octobre 2026 / Saisie
+    manuelle", the three record buttons + "Declarer une absence", and
+    "A traiter - 7 jours non renseignes ce mois / Voir le calendrier".
+    (The mode reads "Saisie manuelle" because the debug Settings carry no
+    loggingMode field - a debug-injection artifact, not a data fact; the
+    SERVER dossier has Camille's September detection, which the releve shows.)
+  - Releve, top: title "Releve annuel de teletravail"; the PROVISIONAL
+    banner "Releve provisoire / Annee en cours au 11.10.2026. Le releve sera
+    complet apres le 31 decembre 2026."; header Nom Camille Martin, Canton
+    GE, Taux d'activite 100 %, Methode "Forfait de 240 jours", Periode
+    "Annee 2026 entiere", Absences declarees 33, Date de generation
+    11.10.2026 13:37.
+  - Tiles: Jours ouvres 240, Jours en Suisse 106 (red dot), Teletravail 54
+    (blue dot), Missions 7, with the note "Base de calcul retenue pour
+    l'annee, et non le nombre de journees saisies."
+  - Zone: badge "Sous les deux seuils" (green); "25,41 % / Taux a declarer
+    a l'AFC"; the rail with the 25,41 % marker and ticks at 40 % and 49,9 %;
+    then "25,5 % / Part de jours hors de Suisse" and the two-rate note;
+    "Deux seuils s'appliquent : 40 % pour l'imposition, 49,9 % pour la
+    securite sociale ..."; "Jours restants avant le seuil d'imposition 35",
+    "... de securite sociale 58,5".
+  - Monthly table "Repartition mensuelle": columns Mois / Suisse / Dom. /
+    Miss. / Cumul (missions MERGED to one "Miss." column on mobile) with the
+    note that the France/pays-tiers split is in the annex and the PDF, and
+    the cumul note.
+  - Annexe "Detail des journees - 200 entrees", collapsible; expanded it
+    shows per-day rows: date + nature (Suisse / Domicile / Mission en France
+    / Mission pays tiers), second line "Saisie manuelle - Enregistre le
+    DD.MM.YYYY HH:MM"; "13.01.2026 Domicile - Saisie tardive - Enregistre le
+    22.01.2026 09:12" (the late flag, orange); "02.03.2026 Domicile - ... -
+    Modifie le 04.03.2026 21:14" (the edited-day trail); "10.03.2026 Mission
+    en France" and "15.01.2026 Mission pays tiers" (FR/third separated).
+  - Buttons "Exporter en PDF" / "Exporter en CSV".
+  - Footer: "Chaque journee de ce releve porte un horodatage attribue par le
+    serveur au moment de sa reception. / Document etabli sur la base des
+    declarations de l'utilisateur, a des fins de conservation de
+    justificatifs. / Ce document ne constitue pas un conseil fiscal."
+
+CAMILLE at 200 % (font_scale 2.0): the releve reflows - large text, the
+  thresholds sentence and zone read cleanly, the page scrolls vertically
+  with NO horizontal overflow and NO clipping. The nav labels wrap
+  ("Aujour d'hui", "Calendr ier", "Parame tres") but stay legible. The
+  header's two-column rows wrap the LABEL text hard when the value is long
+  (e.g. "Me tho de de cal cul", "Peri od e co uv ert e") while the VALUE
+  ("Forfait de 240 jours", "Annee 2026 entiere", "33") stays intact on one
+  line - a minor presentation nit, no data lost. (This same label-wrap also
+  shows at DEFAULT size for Sam, whose "Periode couverte" value is the long
+  dated string - see below.) font_scale restored to 1.0 after.
+
+ALEX (2026), default: the OVER-threshold state. Tiles 240 / 70 / 101 / 12;
+  badge "Seuil d'imposition depasse" (amber); "42,08 % / Taux a declarer a
+  l'AFC" in amber; the rail bar amber and PAST the 40 % tick; "47,1 % / Part
+  de jours hors de Suisse"; "Jours au-dessus du seuil d'imposition 5" (RED);
+  "Jours restants avant le seuil de securite sociale 18,5"; the "Au-dela de
+  ce seuil, une part de votre remuneration devient imposable en France ..."
+  note. So FISCAL_CEILING_EXCEEDED renders as the amber badge + red
+  days-over; MISSION_CAP_EXCEEDED and the credited-0-of-12 are NOT a
+  separate on-screen line (PARKAN-49).
+
+SAM (2026 partial, half-days), default: header Periode couverte "Du
+  02.03.2026 au 31 decembre 2026" (the dated partial-period form); Jours
+  ouvres 201 (the PRORATED basis, not 240); Suisse 114. Annexe "165 entrees";
+  expanded, a split day renders as TWO rows: "21.04.2026 Suisse - Matin -
+  Saisie manuelle ..." and "21.04.2026 Domicile - Apres-midi - Saisie
+  manuelle ..." - the half-day annex, visible.
+
+THE PDF, on the device: tapped "Exporter en PDF" on Sam's releve. The
+  server rendered (Chromium), the app received the bytes, and the Android
+  share sheet opened on "releve-2026.pdf" (PDF icon) with Quick Share, Mon
+  Drive, Dropbox etc. - the full export path works end to end. Separately,
+  the same route was driven over HTTP (curl, Camille 2025) and returned a
+  213 839-byte, valid %PDF-1.4 file, and each render created a real
+  IssuanceRecord (FW-VERIFY): 3 records, e.g. Sam 2026 code c768b9e9...,
+  Camille 2025 code 144b7f54..., each with name, declarableRate and sha256.
+  THE VERIFICATION CODE DID NOT PRINT on the document (see item 9 and the
+  finding below) because MONRELEVE_VERIFICATION_ORIGIN is unset here.
 
 
 ====================================================================
@@ -359,12 +439,19 @@ set is decided):
 ====================================================================
 A NEW PHONE - DOES THE APP PULL A YEAR FROM THE SERVER ON SIGN-IN?
 ====================================================================
-NO (confirmed from source, to be confirmed on the device). The releve
-reads the SERVER's dossier (GET /api/v1/dossier), so after sign-in it
-shows the full seeded year. But the CALENDAR and AUJOURD'HUI read the
-LOCAL Room store (EntryRepository.observeAll), and there is no
-server-to-local pull anywhere: EntryRepository only `record`s locally and
-`observe`s; no code path downloads server entries into Room on sign-in.
+NO - confirmed from source AND on the device. The releve reads the SERVER's
+dossier (GET /api/v1/dossier), so after sign-in it shows the full seeded
+year. But the CALENDAR and AUJOURD'HUI read the LOCAL Room store
+(EntryRepository.observeAll), and there is no server-to-local pull anywhere:
+EntryRepository only `record`s locally and `observe`s; no code path
+downloads server entries into Room on sign-in.
+
+CONFIRMED ON THE DEVICE: signed in as Sam (server dossier has 165 entries),
+the RELEVE showed the full partial year, while the CALENDAR (October 2026)
+showed Suisse 0, Domicile 0, Mission 0, Absence 0, Non renseigne 7 - every
+recorded tally ZERO - and Aujourd'hui read "A traiter - 7 jours non
+renseignes ce mois". The local store is empty; the only days the calendar
+knows are this month's past working days, all "Non renseigne".
 
 So a person signing in on a NEW PHONE sees: the releve populated (server
 read) while the calendar and Aujourd'hui are EMPTY until they record days
@@ -385,6 +472,9 @@ THE TEN-ITEM READING (each: SHOWN / SHOWN DIFFERENTLY / MISSING)
 Read against the releve print page (web/app/releve/print/page.tsx, the
 PDF) and the Android releve screen (ReleveScreen/Header/Sections, which
 render the same /v1 payload). "Screen" = the phone; "PDF" = the export.
+Every item below was CONFIRMED ON THE DEVICE this session (see THE PHONE)
+unless noted; the PDF side is read from the print page, with the real
+213 KB render and the on-device share sheet as the end-to-end proof.
 
 1. THE PERIOD (calendar year, or exact dates for a partial year): SHOWN.
    Header "Periode couverte": "Annee YYYY entiere" for a full year,
@@ -444,13 +534,25 @@ render the same /v1 payload). "Screen" = the phone; "PDF" = the export.
    The monthly table complements it. Screen (collapsible) + PDF (fully
    expanded, SPEC 12).
 
-9. THE PERSON'S NAME AND THE DATE PRODUCED: SHOWN. Header "Nom" and "Date
-   de generation" (server-assigned). Screen + PDF. FW-VERIFY adds a
-   verification CODE printed as text on the PDF (and the /verifier page
-   shows what is printed, never the email) - but the code/QR block appears
-   ONLY when MONRELEVE_VERIFICATION_ORIGIN is set (R332); unset is the
-   default, so the code is ABSENT in this local run (EXPECTED, not a
-   finding).
+9. THE PERSON'S NAME AND THE DATE PRODUCED: SHOWN. Header "Nom" (Camille
+   Martin on device) and "Date de generation" (server-assigned, 11.10.2026
+   13:37 on device). Screen + PDF. FW-VERIFY creates a real IssuanceRecord
+   on every PDF render (confirmed: 3 records, each with code, name,
+   declarableRate and sha256, e.g. Sam 2026 code c768b9e9..., Camille 2025
+   code 144b7f54...) - the server side works.
+   CORRECTION / FINDING ON THE PRINTED CODE: the prompt expected "the code
+   prints as TEXT, only the QR stays absent until the origin is set." That is
+   NOT what the code does. In app/releve/print/page.tsx the WHOLE
+   verification block - heading, QR, address line AND the code line - is a
+   single section gated on `verification !== null`, and `verification` is null
+   whenever verificationOrigin() is null (R332). MONRELEVE_VERIFICATION_ORIGIN
+   is unset in this local env, so ALL THREE are absent: the PDF carries no
+   code text, no address and no QR. The record exists and /verifier/<code>
+   would resolve it, but the code is not ON the document, so a reader cannot
+   obtain it here. This is arguably more correct than the prompt described
+   (R205: don't print a code that points at an unconfigured origin), but it
+   means the prompt's "code prints as text" is inaccurate - reported, not
+   fixed (no code change, and the origin is an operator/deploy setting).
 
 10. THAT THIS IS THE PERSON'S OWN RECORD, AND THE OFFICIAL DECLARATION IS
     THE EMPLOYER'S: SHOWN DIFFERENTLY. The footer says the document is
@@ -496,6 +598,39 @@ DEVIATIONS
   Jan 1, to exercise item 1's "exact dates for a partial year" and item
   6's prorated basis - both otherwise unexercised by the full-year
   accounts.
+- APK REBUILT AT 127.0.0.1. The prebuilt debug APK was baked at
+  http://10.0.2.2:3000 (the emulator host alias), which a PHYSICAL S9
+  cannot reach. Rebuilt `:app:assembleDebug -PfrontalierHost=127.0.0.1`
+  (the documented device-drive path, build.gradle.kts) and installed it;
+  the device reaches the host over `adb reverse tcp:3000`. NO Android code
+  changed - only the one BuildConfig host string differs; the build output
+  app-debug.apk is now the 127.0.0.1 build (rebuild without the flag to
+  restore the emulator build). :app:gate unaffected.
+- PDF RENDERER configured for the dev server. `pnpm dev` was (re)started
+  with FRONTALIER_CHROMIUM_PATH pointing at the installed Playwright
+  Chromium (chromium-1243\chrome-win64\chrome.exe), so the PDF route
+  renders locally. Without it, /api/v1/export/pdf returns
+  renderer_unavailable (503) - which is why test:db's export-pdf.test.ts
+  showed 14 such 503s before the path was set (environmental, not a
+  regression). This is an env var on the dev process, no file changed.
+- DEVICE SETTINGS. The ONLY setting changed was font_scale (1.0 -> 2.0
+  for the 200 % captures -> restored to 1.0). auto_time/auto_time_zone (1),
+  always_finish_activities (0) were left untouched (already at the restore
+  values). stay_on_while_plugged_in reads 7 (not 0): PRE-EXISTING, not set
+  by this session - per R334 left as found and reported, not reset. adb
+  reverse was removed (no orphan tunnel). The app is left signed in as the
+  last account (Sam) via the debug session - a debug-build artifact,
+  harmless.
+- 200 % / LONG-VALUE LABEL WRAP (minor, NOT fixed). In the releve header's
+  two-column rows, a long VALUE forces the LABEL column narrow and the label
+  wraps hard - at 200 % for every row, and even at DEFAULT size for Sam's
+  "Periode couverte" (value "Du 02.03.2026 au 31 decembre 2026"). All values
+  stay intact and readable; nothing clips; the page scrolls vertically only.
+  A presentation nit for a future UI pass, out of this task's scope.
+- ADVISOR not called (operator instruction; R156/R270). The throwaway
+  read-back/mint helper (web/scripts/_mint-readback.mjs) and the seed-shots
+  are UNTRACKED and NOT committed (R334); the /tmp read-back summariser is
+  off-repo.
 
 
 ====================================================================
@@ -507,9 +642,37 @@ QUESTIONS
   employer files the official declaration (PARKAN-48)?
 - Which years should the year switch offer, and how should the
   provisional banner read for a CLOSED past year (PARKAN-26)?
+- FW-VERIFY: is the printed-code behaviour intended? Today the code TEXT,
+  the address and the QR are ALL gated together on
+  MONRELEVE_VERIFICATION_ORIGIN (item 9), so with the origin unset the
+  document carries no verifiable code at all. If the intent is that the code
+  TEXT should print even without a configured origin (as the prompt assumed),
+  that is a small print-page change; if the current all-or-nothing gating is
+  intended (R205), the prompt's description should be corrected. Either way
+  the origin must be set in the deployed env for the code/QR to appear.
 
 
 ====================================================================
 PUSH PROOF
 ====================================================================
-[to be completed - branch tip SHA and per-increment pushes]
+Branch origin/seed-releve, rebased onto origin/main a8a74d4 (R300), pushed
+per increment:
+  1. fa15493  SEED-RELEVE: three scenario accounts (rebased)
+  2. ee4454d  SEED-RELEVE: read-back figures + report draft; parking.md
+              conflict resolved, PARKAN renumbered 48/49 (rebase tip,
+              force-pushed over the old 7e3a248)
+  3. b564859  SEED-RELEVE: fresh read-back figures + honest status; year
+              switch PARKED
+  4. <this commit>  SEED-RELEVE: the phone drive, the ten-item reading, the
+              new-phone + last-year answers, the verification-code finding
+The branch tip SHA is the commit carrying this report; the orchestrator runs
+the final `pnpm gate:clone` + :app:gate and merges.
+
+Suites this session: `pnpm test:db` scenario-accounts.test.ts PASSED;
+register-coverage.mjs OK (PARKAN-48/49 resolve). export-pdf.test.ts's 14
+503s were environmental (no Chromium for that run) and are proven renderable
+(213 KB PDF + the on-device share sheet). No Android code changed, so
+:app:gate did not need to re-run for a code change; the APK rebuild is a
+host-property build. The final gate:clone is DEFERRED to the operator.
+NOTICED BUT NOT TOUCHING: an IssuanceRecord "Camille Rey" 2026 (rate 0,41)
+from a prior test run sits in the local DB - not this task's, left as found.
