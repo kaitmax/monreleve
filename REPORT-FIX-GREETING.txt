@@ -176,4 +176,18 @@ Docs:  see the final push line appended at commit time.
 HANDOFF: the orchestrator runs the final web gate:clone (no web code changed) and
 the merge to main. The parking.md entry and ledger say "resolved, pending merge"
 until that merge lands.
+
+FINALISATION (orchestrating session - gate + merge)
+--------------------------------------------------------------------------------
+:app:gate       GREEN on the merged HEAD (9096c4a): BUILD SUCCESSFUL in 2m29s -
+                re-verifies GreetingTest + the full suite + Paparazzi (no baseline
+                moved).
+register-coverage  OK (39 cited ids across 85 reports).
+gate:clone      NOT re-run: the fix changed ZERO web/ files (diff is android + its
+                tests + parking + report), so the web tree is byte-identical to
+                df859cb, whose web was clean-clone-verified as part of 41ca989's
+                full gate:clone PASS. The android fix is verified by :app:gate above,
+                which gate:clone does not run. register-coverage (the only
+                report-sensitive check) is green.
+Merged --no-ff to main (9096c4a) and pushed. PARKAN-50 resolved.
 ================================================================================
