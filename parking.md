@@ -1974,6 +1974,32 @@ operator judgement.
 NEEDS: at AN14b, append the release upload key and Play's app-signing key SHA-256 to
 ANDROID_SHA256_CERT_FINGERPRINTS. Until then only sideloaded debug installs verify.
 
+## PARKAN-50 - the Aujourd'hui greeting is hard-coded "Bonjour Camille"  [device-walkthroughs, 2026-10-11]
+
+QUESTION: the Aujourd'hui header greets every signed-in account with the SAME name.
+On the device-walkthroughs fresh-onboarding flow the holder name was set to
+"Walkthrough" (confirmed: the DB row wt-fresh has name "Walkthrough", and the
+onboarding "Tout est pret" summary showed "Titulaire: Walkthrough"), yet Aujourd'hui
+greeted "Bonjour Camille". The cause is in the code, not the data.
+
+TAKEN: RECORDED, not fixed (this is a verification pass - no product code change,
+R334). Fr.kt line 12 is `const val GREETING = "Bonjour Camille"`, and
+AujourdhuiScreen.kt line 127 renders it verbatim (`Text(text = Fr.GREETING, ...)`).
+The greeting is a fixed placeholder that never read the holder name; every account
+sees "Bonjour Camille". It escaped notice because the only account whose AUJOURD'HUI
+was screenshotted previously (SEED-RELEVE) was Camille, for whom the hard-coded name
+is coincidentally correct.
+
+NOT TAKEN: wiring the greeting to the real holder name (from GET /api/v1/me's `name`,
+which Aujourd'hui/the releve already read) and rendering "Bonjour <prenom>" - a small
+UI change with a copy constant that must interpolate the name (R153/R181: name the
+rule's INPUT, do not hard-code a value), its own JVM/Paparazzi coverage, and a
+baseline regeneration. A focused follow-up, not a verification-pass change.
+
+NEEDS: an operator decision on the greeting copy (does it use the first name only, or
+the full holder name; and the empty-name fallback), then a dedicated task. Reversible:
+additive to the copy + the Aujourd'hui state.
+
 ## STATUS LEDGER  [appended 2026-09-29]
 
 One line per Android-era entry, so the state of each is visible without
@@ -2014,8 +2040,9 @@ reading every section. Entries are not edited; this ledger is.
 | PARKAN-40 — the stray left-edge line is the Samsung Edge panel, not an app card | **closed, finding** | AN-CAL2 defect 3: proven on the SM-G960F to be the SystemUI Edge-panel handle (same position on 3 screens; no app node at x<30 in that band; `cocktail_bar_enabled_cocktails`=AppsEdgePanelProvider, `edge_handler_position_percent`=76.9≈1707 px = the line). No app-code fix; to clear the screenshot artifact, disable the device's Edge panel. Awaits operator awareness |
 | PARKAN-41 — « Non renseigne » counts tile wraps to two lines | **open, conservative** | AN-CAL2 defect 1: 13 chars cannot fit one line in a fifth of a 320-360 dp row at a legible size. Kept the full accented word (R155/R206) and reserved two label lines (minLines=2) so every number aligns - the operator's real defect (misalignment) is fixed. An abbreviated one-line tile label is an operator copy decision; reversible |
 | PARKAN-42 — the mockups' light brand-tint surface has no token | **closed** | R337 (AN-ONBOARD-2): the named token is wanted. `LightColors.brandSoft` = `brand.copy(alpha=0.08f)`, defined once in Tokens.kt (DERIVED, not a new hue, R9), recorded in DESIGN-SYSTEM §1; every use site references it and Fence 9 forbids the open-coded form elsewhere (RED on the live BrandCircle instance, R178; planted + reverted, R180). Pixel-neutral - no baseline moved |
-| PARKAN-43 — AN-ONBOARD-2 device walkthrough deferred | **open, deferred** | AN-ONBOARD-2: the S9 (API 29) dropped off USB after a thermal event, so the on-device walkthrough (prompt section 4) could not run. Everything that does not need the device was done (Paparazzi baselines incl. the new granularity screen; the completeness/plan/subset/prefill logic driven over JVM fakes). To run on reconnect: the four flows + rotation + background kill + 200 %. Not faked, not claimed (R334) |
+| PARKAN-43 — AN-ONBOARD-2 device walkthrough deferred | **closed, device-verified** | device-walkthroughs (2026-10-11, REPORT-WALKTHROUGHS.txt WT1): ran on the S9 (API 29). Fresh full 8 steps incl. the new granularity step 5; missing-name account asked ONLY the name (Etape 1 sur 1) then Aujourd'hui + a generating PDF (178 KB); complete account straight to Aujourd'hui; R310 state kept across rotation AND a background kill (am kill, pidof empty, restored to step 3 with name preserved); 200 % reflows. FINDINGS: the Aujourd'hui greeting is hard-coded "Bonjour Camille" (PARKAN-50); "missing only granularity/method/rate" is NOT reproducible on the real server (R196 constraints reject those rows - proven by 3 probes), so those completeness branches stay JVM-only |
 | PARKAN-44 — stripComments strips block before line comments (fence helper blind spot) | **open, recorded** | AN-ONBOARD-2: FencesTest.stripComments removes `/* */` before `// `, so a `//` line containing `/*` (OnboardingKit.kt's "onboarding/*.dc.html") is misread as a block comment and the text to the next `*/` is dropped from the scan - all nine fences share it. Surfaced by R337's R180 plant landing in a swallowed span (a false-negative R180 caught). Fence 9 is sound for realistic placements (R178). Fix (deferred, out of R337's scope): strip line comments first, re-run all fences |
 | PARKAN-45 — manual-mode evening notification periodic trigger | **open, approved** | AN-NOTIF (R339): the manual-mode notification's CONTENT + DECISION + RECEIVER are built and gate-verified, but its automatic firing in manual mode is parked - it needs a reminder-TIME setting (SPEC 13.3's reminderTime is unbuilt), a WorkManager periodic job, and device verification. The auto-mode trigger (SamplingWorker) is untouched. Needs the operator's reminder-time decision, then a scheduler task |
 | PARKAN-46 — AN-NOTIF on-device walkthrough (section 5) | **open, deferred** | AN-NOTIF: the section-5 drive on the S9 (manual/auto/airplane; read rows back; every state at default + 200%) is deferred to the operator's consolidated phone pass (this session was code-only). The debug trigger runs the real maybeNotifyEvening path; all correctness is JVM-gate-verified |
 | PARKAN-47 — AN-NOTIF dumpsys lock-screen verification | **open, deferred** | AN-NOTIF: the `adb shell dumpsys notification` confirmation (VIS=PRIVATE + publicVersion with no actions + the action auth-required flag) is deferred to the phone pass (needs a 31+ device - the S9 is API 29, where setAuthenticationRequired is a no-op). The code-side assertions are done (EveningNotifierLockScreenTest). Plus the operator's manual PIN check |
+| PARKAN-50 — Aujourd'hui greeting hard-coded "Bonjour Camille" | **open, finding** | device-walkthroughs (2026-10-11): Fr.kt:12 `GREETING = "Bonjour Camille"` is rendered verbatim by AujourdhuiScreen.kt:127, ignoring the signed-in account's name (proven: wt-fresh name "Walkthrough" in the DB and on the Pret summary, but Aujourd'hui greeted "Camille"). Escaped notice because the only prior Aujourd'hui screenshot (SEED-RELEVE) was Camille's. Needs an operator copy decision (first name vs full name; empty-name fallback), then a focused task. Not fixed here (verification pass) |

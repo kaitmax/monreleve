@@ -1,0 +1,239 @@
+====================================================================
+REPORT-WALKTHROUGHS.txt - the deferred DEVICE walkthroughs, on the
+physical Galaxy S9 (SM-G960F, API 29)
+Mon Releve / frontalier   2026-10-11
+====================================================================
+
+NOTE ON SPELLING. Pure ASCII, as the protocol requires (verified with
+iconv). Every French phrase quoted below is transliterated: accents
+dropped, guillemets become double quotes. R155 - THE ASCII HERE IS
+ILLUSTRATIVE, NEVER A SOURCE; the accented original lives in the app's
+fr/ (Fr.kt, OnboardingCopy, ReleveCopy, NotificationCopy, ...) and the
+web lib/fr, and is what ships.
+
+This is a VERIFICATION pass (not a build task): the four relay tasks
+AN-ONBOARD-2, AN-LINKS, AN-NOTIF and DOMAIN shipped their CODE on
+origin/main (41ca989) but deferred their on-device walkthroughs because
+the phone was disconnected. This session DRIVES the device and RECORDS
+what it shows. No product code was changed. Where a walkthrough revealed
+a real defect it is recorded as a FINDING / PARKAN entry, never fixed
+here.
+
+====================================================================
+HOW IT ENDED
+====================================================================
+Branch device-walkthroughs off origin/main 41ca989. Committed per
+walkthrough; the final gate:clone + merge are DEFERRED TO THE OPERATOR
+(per the prompt). No advisor this session (prompt instruction; R156
+conservative, each judgement recorded).
+
+WALKTHROUGH 1 (AN-ONBOARD-2, PARKAN-43): DONE on device.
+WALKTHROUGH 2 (AN-LINKS):                 see its section.
+WALKTHROUGH 3 (AN-NOTIF, PARKAN-46/47):   see its section.
+WALKTHROUGH 4 (DOMAIN section 6, PARKAN-31): see its section.
+
+Screenshots are kept OFF-REPO in android/.device-walkthroughs-shots/
+(untracked, as prior device tasks kept their shot dirs); this report is
+the durable record of what they show.
+
+====================================================================
+ENVIRONMENT
+====================================================================
+Device    : Galaxy S9 (SM-G960F, API 29), serial 232bcd8c300c7ece,
+            display override 1080x2220, density 480, clock 2026-10-11
+            (so taxYear = 2026). Battery ~19-20% throughout, charging
+            over USB (temperature ~34 C); it did NOT drop off USB this
+            session.
+Backend   : pnpm dev on :3000 (health service="monreleve", R169 passes),
+            DATABASE_URL -> localhost:5436/frontalier (frontalier-postgres,
+            healthy). FRONTALIER_CHROMIUM_PATH pointed at the installed
+            Playwright Chromium (chromium-1243) so the PDF route renders.
+Device<->host: adb reverse tcp:3000 tcp:3000 (device localhost:3000 ->
+            host :3000). The debug APK is the 127.0.0.1 build (the
+            physical-device host, -PfrontalierHost=127.0.0.1); reinstalled
+            with `adb install -r` from
+            android/app/build/outputs/apk/debug/app-debug.apk.
+Sign-in   : the debug session path (R284, SessionInjectionActivity):
+            adb am start the activity with accessToken / refreshToken /
+            accessExpiresAt / refreshExpiresAt + email extras, then
+            force-stop and relaunch so MainActivity re-reads the durable
+            session. Token pairs minted per account against the local DB
+            (a throwaway web/scripts/_wt-setup.mjs, same shape as the
+            untracked _mint-readback.mjs; see UNTRACKED FILES).
+Seeded    : Camille Martin / Alex Dupont / Sam Bernard (all COMPLETE),
+            plus demo@ and qr@ - confirmed in the DB.
+
+====================================================================
+WALKTHROUGH 1 - AN-ONBOARD-2 (resolves PARKAN-43)
+====================================================================
+The 8-step onboarding (incl. the new granularity step), ask-only-missing,
+a complete account straight to Aujourd'hui, a PDF that generates, and
+state kept across rotation and a background kill (R310). Default size and
+200 %.
+
+HOW THE PARTIAL STATES WERE PRODUCED, AND A FINDING ON WHAT IS
+REPRODUCIBLE AT ALL.
+The onboarding plan is computed server-side from GET /api/v1/me
+(StartupDecider.decideStartAfterSignIn -> onboardingPlanFor(parseMeView)).
+I probed the R196 database constraints EMPIRICALLY rather than assuming
+(web/scripts/_wt-setup.mjs), and all three illegal partial states were
+REJECTED by the database:
+  - granularity := NULL              -> REJECTED (column is NOT NULL,
+                                        default DAY);
+  - denominatorKind=EXACT with       -> REJECTED (CHECK
+    exactTotalWorkDays NULL             User_exactTotalWorkDays_iff_exact);
+  - employmentRate := 0              -> REJECTED (CHECK
+                                        User_employmentRate_range).
+CONSEQUENCE / FINDING: on the REAL server the only partial state an
+account can hold is a MISSING NAME (name is the one nullable releve field
+with no CHECK), or a missing canton (which routes to the full flow). The
+completeness branches for a missing GRANULARITY, METHOD or RATE guard
+states the database forbids, so they are reachable only with a synthetic
+MeView - which is exactly what the JVM suites ReleveCompletenessTest /
+StartupDeciderTest use. So the prompt's "an account missing only
+granularity, asked only that" is NOT reproducible on the real server
+without a schema change (which I did not make - verification pass, and it
+is the shared dev DB); it stays covered at the JVM level. I drove the
+reproducible cases instead and verified the granularity STEP itself in
+the fresh full flow (where every step is asked).
+
+Accounts created for this (minted sessions): wt-fresh@example.invalid
+(no canton, no name), wt-noname@example.invalid (canton GE, name NULL,
+else defaulted). Camille is the complete account.
+
+FLOW A - FRESH INSTALL -> THE FULL 8 STEPS (default size).
+pm clear (fresh-install state), inject wt-fresh (tokens only, no settings
+-> onboarding runs on device), relaunch. Every step opened and read:
+  Etape 1 sur 8  "Votre nom" - "Tel qu'il figurera sur votre releve,
+    comme sur vos documents officiels." Field "Prenom et nom"; a live
+    "Apercu de votre releve / Titulaire: <name>" card updated as I typed.
+  Etape 2 sur 8  "Canton de votre employeur" - search "Rechercher un
+    canton" + radio list; typing "Gen" filtered to "Geneve"; the note
+    "Le regime fiscal applicable depend du canton de votre employeur."
+    and "La liste des cantons concernes par l'accord de 1983 est en cours
+    de verification." Selected Geneve.
+  Etape 3 sur 8  "Votre taux d'activite" - 100 % (preselected) / 80 % /
+    60 % / Autre; note "Il sert a calculer le nombre de jours de travail
+    de votre annee."
+  Etape 4 sur 8  "Methode de decompte" - "Methode simplifiee" (preselected,
+    "Un forfait de 240 jours de travail par an, ajuste a votre taux
+    d'activite.") / "Nombre de jours reel"; note "En cas de doute,
+    demandez a votre service des ressources humaines."
+  Etape 5 sur 8  THE NEW GRANULARITY STEP (R336) - "Comment comptez-vous
+    vos journees ?" / "Choisissez l'unite avec laquelle vous comptez votre
+    teletravail." Two cards: "Journees entieres" (PRESELECTED - "Chaque
+    jour de teletravail compte pour une journee complete.") and
+    "Demi-journees" ("Vous pouvez enregistrer une demi-journee quand vous
+    ne teletravaillez qu'une partie du jour."); info "Ce choix s'applique
+    a toute l'annee de calcul." This matches AN-ONBOARD-2's R336 spec
+    exactly and is the piece PARKAN-43 most needed confirmed on device.
+  Etape 6 sur 8  "Avez-vous travaille toute l'annee chez cet employeur ?"
+    - "Oui, depuis le 1er janvier" (selected) / "Non, j'ai commence en
+    cours d'annee". (The progress bar shows 6 of 8 filled - the Periode
+    step correctly shifted 5->6, as the AN-ONBOARD-2 baseline note said.)
+  Etape 7 sur 8  "Comment enregistrer vos journees ?" - "Manuellement"
+    (selected) / "Automatiquement [Beta]"; note "Les deux produisent
+    exactement le meme releve. Vous pourrez changer a tout moment."
+  Etape 8 sur 8  "Un rappel le soir ?" - bell icon; "Une seule
+    notification par jour ouvre, uniquement si votre journee n'est pas
+    encore enregistree."; info "Sur l'ecran verrouille, la notification
+    n'indique jamais ou vous etiez."; buttons "Oui, me le rappeler" /
+    "Pas maintenant". Tapped "Oui, me le rappeler".
+  PRET ("Tout est pret") - summary card: "Releve annuel de teletravail
+    2026 / Titulaire Walkthrough / Canton de l'employeur Geneve / Taux
+    d'activite 100 % / Methode Simplifiee, 240 jours / Periode Annee
+    entiere", note "Votre taux a declarer apparaitra des votre premier
+    jour enregistre. Vous pourrez modifier ces informations dans
+    Parametres." Continuer -> AUJOURD'HUI.
+Every choice was reflected correctly on the Pret summary. The fresh
+8-step flow works end to end on the device.
+
+FLOW B - MISSING ONLY THE NAME -> ASKED ONLY THE NAME -> PDF GENERATES.
+pm clear, inject wt-noname (canton GE on the server, name NULL), relaunch.
+The app went straight to onboarding showing a SINGLE step:
+  Etape 1 sur 1  "Votre nom" - a single full progress segment. Only NOM
+    was asked; nothing else. Entered "Jean-Testeur", Continuer.
+  PRET - summary: "Titulaire Jean-Testeur / Canton Geneve / Taux 100 % /
+    Methode Simplifiee, 240 jours / Periode Annee entiere" - everything
+    except the name was PREFILLED from the server (not re-asked). This is
+    the R335 ask-only-missing behaviour, confirmed on device, and it
+    closes AN-ONBOARD's Q1 (an account with settings but no name used to
+    land on Aujourd'hui with a 422'd PDF).
+  Continuer -> AUJOURD'HUI, then the Releve tab: "Releve annuel de
+    teletravail", the provisional banner "Releve provisoire / Annee en
+    cours au 11.10.2026...", the empty-state note "Aucune journee n'a
+    encore ete enregistree pour cette annee : ce taux ne reflete pas une
+    situation, mais une absence de saisie.", header Nom Jean-Testeur /
+    Canton GE / Taux 100 % / Methode Forfait de 240 jours / Periode Annee
+    2026 entiere / Absences 0 / Date de generation 11.10.2026 14:42,
+    tiles Jours ouvres 240 / Jours en Suisse 0.
+  PDF: tapped "Exporter en PDF". The server rendered it
+    (GET /api/v1/export/pdf?year=2026 -> 200 in ~11 s, Chromium) and the
+    Android share sheet opened on "1 document / 178,3 Ko" with the PDF
+    icon. The PDF GENERATES for a name-only account - the point of the
+    flow (a nameless titulaire would be refused, R205).
+
+FLOW C - A COMPLETE ACCOUNT -> STRAIGHT TO AUJOURD'HUI.
+pm clear, inject Camille (complete on the server), relaunch: no
+onboarding at all - straight to Aujourd'hui ("Bonjour Camille / Dimanche
+11 octobre 2026 / Saisie manuelle", the three record buttons En Suisse /
+Domicile / Mission, "Declarer une absence", and the "A traiter - 7 jours
+non renseignes ce mois / Voir le calendrier" card). The complete-account
+path works.
+
+STATE ACROSS ROTATION AND A BACKGROUND KILL (R310).
+Reset wt-fresh to the partial state, re-ran the fresh flow, entered name
+"RotKillTest", selected canton Geneve, advanced to Etape 3 sur 8 (taux,
+100 % selected). Then:
+  - ROTATION: forced landscape (accelerometer_rotation 0, user_rotation 1).
+    The app rotated and STAYED on Etape 3 sur 8 with 100 % still selected;
+    the landscape layout rendered cleanly (no clipping). Rotated back.
+  - PROCESS DEATH: Home, then `am kill ch.monreleve.app` (pidof confirmed
+    EMPTY - the process was killed), then relaunched. The app RESTORED to
+    Etape 3 sur 8 with 100 % still selected.
+  - STATE, not just the step: navigated Back twice to Etape 1 sur 8 - the
+    name field still held "RotKillTest" and the live preview still read
+    "Titulaire: RotKillTest". So the accumulated onboarding state (name +
+    canton + taux) survived both a config change and process death. R310
+    confirmed.
+
+200 PERCENT (font_scale 2.0).
+  - Etape 1 "Votre nom" at 200 %: reflows, field + preview legible.
+  - Etape 5 granularity at 200 %: the title wraps to three lines, the
+    subtitle wraps, the "Journees entieres" card and its full description
+    render with the filled radio; the "Demi-journees" card sits below the
+    fold and the column scrolls vertically. No horizontal overflow, no
+    clipping.
+  - Aujourd'hui (Camille) at 200 %: greeting large, date wraps to two
+    lines, the three record buttons + "Declarer une absence" render, the
+    bottom-nav labels wrap ("Aujour d'hui", "Calendr ier", "Parame tres")
+    but stay legible - the same reflow the SEED-RELEVE pass noted. No
+    horizontal overflow. font_scale restored to 1.0 afterwards.
+
+FINDING WT1-F1 (new) - THE AUJOURD'HUI GREETING IS HARD-CODED
+"Bonjour Camille". PARKAN-50.
+On the fresh flow I set the name to "Walkthrough" (confirmed stored:
+the DB row wt-fresh has name "Walkthrough", and the Pret summary showed
+"Titulaire: Walkthrough"), yet Aujourd'hui greeted "Bonjour Camille". The
+cause is in the code, not the data: Fr.kt line 12 is
+`const val GREETING = "Bonjour Camille"`, rendered verbatim by
+AujourdhuiScreen.kt line 127 (`Text(text = Fr.GREETING, ...)`). The
+greeting is a fixed placeholder that ignores the signed-in account's
+name - every account sees "Bonjour Camille". It was never caught because
+the only account whose AUJOURD'HUI was screenshotted before (SEED-RELEVE)
+was Camille, for whom the hard-coded name happens to be correct. Recorded
+as PARKAN-50; NOT fixed (verification pass, no product code change).
+
+FINDING WT1-F2 (recorded above) - "MISSING ONLY GRANULARITY" (and
+missing method / rate) is not reproducible against the real server
+because the R196 database constraints forbid those states; proven by the
+three rejected probes. Covered at the JVM level (ReleveCompletenessTest /
+StartupDeciderTest). Not a defect - a note on the limit of what an
+on-device drive can exercise.
+
+PARKAN-43 RESOLVED: the AN-ONBOARD-2 device walkthrough ran. The eight
+steps (incl. the new granularity step), the ask-only-missing name flow
+with a generating PDF, the complete-account shortcut, R310 across rotation
+and a background kill, and the 200 % reflow are all confirmed on the S9.
+
+(Walkthroughs 2-4 follow in their own sections / commits.)
