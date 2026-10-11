@@ -1,0 +1,320 @@
+Mon Releve / frontalier - REG-APPLY session
+Branch: reg-apply (off origin/main cfbde7e)
+Date: 2026-10-11
+Pure ASCII. French quotations are transliterated (accents stripped); the
+accented originals live in the files edited and at the URLs named.
+
+====================================================================
+OPERATOR RULING (verbatim) - the authority for the engine change
+====================================================================
+
+"fix the engine then apply the copy." The engine is normally FROZEN (SPEC 20);
+the operator explicitly authorized THIS specific correction: the mission cap
+must prorate for part-time employees regardless of the denominator method, per
+the accord FR-CH 29 April 2026 clause 1(d). This authorization covers ONLY this
+cap-proration fix - no other engine change.
+
+====================================================================
+SUMMARY
+====================================================================
+
+PHASE 1 (engine) DONE. The Geneva conformance gate HELD byte-identical, so
+PHASE 2 proceeded. Delivered, each its own commit, pushed to origin/reg-apply:
+
+  1 (bf4771f) - the engine cap-proration fix (test-first RED->GREEN).
+  2a (db586d2) - the accord applied to docs/regulatory-sources.md and to
+                 /sources (the two-part split), plus the jours-de-mission guide
+                 P1 copy. Phase 1 had made the /sources P3 copy FALSE; it now
+                 describes the corrected engine.
+  2b (444a2f8) - four parks from the newly verified sources.
+
+DEFERRED to the operator (see DEFERRED section, with a precise scope):
+  - The TWO-SYSTEMS separation (Fiscalite 40 vs Securite sociale 49,9) across
+    the calculator result / guides / releve. It is a wide, cross-surface copy
+    and layout change that must stay consistent on every surface and involves
+    placement decisions the prompt does not fully specify; it also regenerates
+    visual baselines across those surfaces. Deferred as its own focused pass
+    rather than started half-done. Nothing is inconsistent by deferring - the
+    result panel already separates the two systems in prose today.
+  - test:visual (R132) for the /sources and guide pixel changes - DEFERRED per
+    the relay prompt; baselines named below.
+  - The final gate:clone - DEFERRED per the relay prompt.
+
+====================================================================
+PHASE 1 - THE ENGINE FIX (test-first; Geneva fixtures a hard gate)
+====================================================================
+
+TEST-FIRST (RED). Added to web/tests/unit/calc-engine/mission-cap.test.ts a new
+describe "the accord amiable FR-CH of 29 April 2026, clause 1(d)" with the
+operator's case: 80% employment, EXACT method (totalWorkDays 192), whole year,
+12 France missions -> mission cap 8. Ran:
+
+  pnpm exec vitest run tests/unit/calc-engine/mission-cap.test.ts
+  -> Tests 2 failed | 15 passed. Both new assertions:
+     "AssertionError: expected 10 to be 8" (missionCapFor and, through
+     calculateTelework, value.missionCap and value.creditedMissionDays).
+  The rest of the file (incl. the old "exact - PERIOD ONLY (R19)" block) passed
+  against the current engine, so the RED is a clean behaviour gap, not a
+  compile error.
+
+THE FIX. web/lib/calc-engine/denominator.ts, missionCapFor: dropped the
+exact-method FULL_RATE carve-out so the cap prorates by employmentRate under
+BOTH methods:
+
+  before: const rateFactor = method.kind === 'exact' ? FULL_RATE : employmentRate;
+          return ceilProrated(rules.missionCapDays, rateFactor, periodFraction);
+  after:  return ceilProrated(rules.missionCapDays, employmentRate, periodFraction);
+
+Removed the now-unused FULL_RATE constant. The `method` parameter is retained
+(both call sites hold it; lint after-used and tsc noUnusedParameters-off both
+pass). ceilProrated / periodFraction / round-up unchanged. Updated the stale
+comments in denominator.ts, calculate.ts and allowed-days.ts to cite accord
+1(d) instead of the former PROVISIONAL R19 period-only reading.
+
+REWROTE the enshrined cases. mission-cap.test.ts "exact - prorates by BOTH
+factors (accord 1d)" with the new expectations, each stating the change:
+  exact 200 @ 50% full year : 10 -> 5   (ceil(10*0.50))
+  exact 120 @ 45% full year : 10 -> 5   (ceil(4.5))
+  exact  24 @  1% full year : 10 -> 1   (ceil(0.1))
+  exact 100 @ 50% half year :  5 -> 3   (ceil(10*0.50*0.50) - the combined case)
+  (full-time / period-only / round-up cases unchanged); added a case asserting
+  exact == simplified240 on EVERY input now, not only at full time.
+
+FIXTURE. fixtures/denominator-cases.json missionCapCases (the engine is gated on
+it; a value change is a question, and the operator's ruling is the answer):
+  cap-exact-50-full      : expectedMissionCap 10 -> 5
+  cap-exact-50-half-year : expectedMissionCap  5 -> 3  (combined case)
+  missionCapNote rewritten: the proration is SETTLED by accord 1(d) under both
+  methods; what remains PROVISIONAL (this site's reading) is the COMBINED
+  part-time-and-partial-year case, which 1(d) names as two separate situations.
+  verified_by / verified_on / source_url on the two changed cases now cite the
+  accord (2026-10-11); verificationTrace records the correction. The missionCap
+  conformance test's "records provisional" assertion was updated to require the
+  note to carry both "1(d)" and "PROVISIONAL" and "COMBINED".
+
+HARD GATE - GENEVA FIXTURES UNCHANGED (PROVEN).
+  fixtures/geneva-cases.json: git diff --stat shows NO change (byte-identical,
+  untouched). All six published cases run GREEN with the fix:
+    pnpm exec vitest run tests/unit/calc-engine/fixtures.test.ts -> 20 passed,
+    cases a,b,c,d,e,special all produce their published results, incl. case c
+    declarableRate 39,16 and special 4,16.
+  WHY UNAFFECTED (confirmed, not assumed): every Geneva case is employmentRate
+  100 and periodFraction 1, where ceilProrated(10, 100, 1) = 10 under both the
+  old and new code - the cap was never touched by employment at 100%. The
+  float-denominator cases use resolveDenominator, not missionCapFor, so they are
+  independent of the fix.
+
+FULL ENGINE SUITE GREEN: pnpm exec vitest run tests/unit/calc-engine
+  -> 23 files, 465 tests passed. Blast radius confirmed limited to
+  mission-cap.test.ts + the fixture: every other exact-method test runs at
+  employmentRate 100 or with zero missions (allowed-days, boundaries,
+  calculate, derivation-disagreement, result-panel-tiles, zones), so none
+  changed its expected cap.
+
+====================================================================
+PHASE 2 - APPLY THE COPY
+====================================================================
+
+EACH SOURCE RE-FETCHED THIS SESSION (R146) - none relied on the report alone:
+
+  A  accord FR-CH 29.04.2026 (ESTV PDF). WebFetch could not render the PDF body,
+     so it was extracted locally with pdftotext and read clause by clause. 1(a),
+     1(b), 1(c), 1(d), 2, 3, 4 confirmed verbatim; signed "A Berne, le 29 avril
+     2026", Pascal Duss / Martin Klam; the "avennt" typo in clause 3 is present.
+     1(d) verbatim: "pour les salaries qui exercent leur activite pendant une
+     periode inferieure a l'annee civile et ceux qui exercent un emploi a temps
+     partiel pendant l'annee entiere, la limite annuelle de 10 jours est ajustee
+     proportionnellement et arrondie a l'unite superieure."
+  B  OFAS/BSV bsv.admin.ch/fr/teletravail. WebFetch OK. "jusqu'a 50% (au maximum
+     49.9%)", the 25%-49.9% band, the exclusions, the A1 via ALPS (max 3 years).
+     Published 12.09.2025.
+  C  AFC Geneve, obligations-employeur. WebFetch OK, verbatim: tracking since
+     01.01.2026; first transmission Jan 2027 for 2026; rate NOT required on the
+     certificat de salaire ("Non, ce n'est pas obligatoire" - LR / ELM / ISeL);
+     several employers each declare their own days; residence change = two
+     attestations-quittances; "moins d'un an" attestation (art. 5a OIS) on
+     request. Page update 23.04.2026.
+  D  Geneva LAMal premiums 2026 (ge.ch/document/40783). WebFetch metadata +
+     pdftotext body: "Cotisations mensuelles assurance de base 2026",
+     "Personnes domiciliees en France", franchise "Adultes : CHF 300.- /
+     Enfants : CHF 0.-", created 26.09.2025. NO reuse terms -> premiums NOT
+     republished (existence/date/deductible/year only).
+  ameli travailleur-frontalier-suisse. WebFetch OK, verbatim: 3-month window,
+     irrevocable, automatic Swiss affiliation after the deadline. Corroborates
+     CLEISS D1, D3, D6.
+  NOT rowed (as the prompt requires): URSSAF (secondary only), form 2047-SUISSE
+  (located, body not transcribed), the separate ESTV "practical guide" (not
+  found as a distinct document; the accord A is the primary ESTV instrument).
+
+ROWS ADDED to docs/regulatory-sources.md (new dated section
+"ACCORD AMIABLE FR-CH OF 29 APRIL 2026, AND FOUR MORE SOURCES - VERIFIED
+2026-10-11 (REG-APPLY)"): A (1a-d, 2, 3, 4 verbatim, URL, fetch date,
+signatories), B, C, D, ameli, plus a "NOT rowed" note. The STILL-PROVISIONAL
+P1/P2/P3 bullets were updated in place: 1(b) sources P1, OFAS sources P2's 49,9
+basis, and 1(d) settled P3's proration (engine corrected). Required strings
+("TRANSCRIPTION VERIFIED", "day-classification rule", "1983-accord canton
+list") preserved, so claims.test.ts stays green.
+
+PROMOTION OF P1/P2 - HANDLED WITHOUT TOUCHING PERMANENT ANCHORS. P1, P2, P3 are
+PUBLISHED readings with anchors #lecture-P1/P2/P3 (R162: an anchor is a URL SPEC
+14 makes permanent) cited by two live guides ("la reference P1/P2"). Turning P1
+or P2 into verified SOURCE ROWS would move those anchors and change the
+claim-key universe - a model and permanence decision parking.md's own boundary
+classes as a STOP, and one the prompt directs the outcome of but not the
+mechanism. So the anchors and PUBLISHED_PROVISIONAL_IDS are UNCHANGED; instead
+/sources now groups the three readings into two parts and the copy states what
+each text now establishes, with "expert legal review pending" as the honest
+caveat (the product's standing "transcrit != valide" distinction). If the
+operator wants P1/P2 to become full verified rows (and the anchors retired),
+that is a follow-up with its own model migration.
+
+/sources (web/lib/fr/sources.ts, web/app/(public)/sources/page.tsx): the single
+"Trois lectures en attente d'un avis expert" section became TWO:
+  "Ce que les textes officiels etablissent desormais" - P1 (imputation order,
+     accord 1b), P2 (49,9 social, OFAS; with the one-line over-warning note),
+     and the mission-cap proration (accord 1d, engine now matches).
+  "Ce qui reste une lecture de ce site" - P3's COMBINED part-time-and-partial-
+     year case (1d names the two separately) and the exact-method rationale.
+  lib/content/provisional.ts gained SETTLED_BY_TEXT_IDS=['P1','P2'] and
+  MON_RELEVE_READING_IDS=['P3'], type-asserted to partition
+  PUBLISHED_PROVISIONAL_IDS. The P3 body (which phase 1 made FALSE - it said the
+  exact method prorates "selon la seule fraction d'annee") now describes the
+  corrected engine. Figures stay out of copy (R147): "10 jours" removed from the
+  P3 body; 49,9/50 kept only without a percent sign (as the old P2 copy did).
+  sources.test.tsx updated for the two-group structure (provisionalIntro ->
+  settledIntro/readingIntro). The calculator notice copy (lib/fr/provisional.ts)
+  was NOT touched - its P1/P3 wording already matches the corrected engine.
+
+GUIDE jours-de-mission-hors-suisse.mdx: the P1 prose and claim `says` said the
+order "n'est pas tranche par les sources publiees" - now FALSE. Rewritten to
+cite accord 1(b); the claim stays `unresolved: true` (expert review pending), so
+the claims mechanism and the Avertissement/sources link still hold.
+
+EMPLOYER-DOCUMENT ("nothing obliges an employer to provide a telework document")
+- source C recorded in the register (above). The /sources attestation entry was
+left as-is: source C is about what the employer DECLARES to the AFC, and the
+entry's specific point (whether YOU are owed a document) stands - C confirms it
+rather than overturning it, and that entry lives under "Ce que ce site ne sait
+pas", whose intro says these have no verifiable source. A fuller in-place
+rewrite would move the entry out of the unknowns model (UNKNOWN_IDS union + its
+tests); recorded under DEFERRED. PARK-1 (the attestation guide stays
+conditional) therefore STANDS.
+
+PARKS (parking.md, PARK-21..24, each citing its source row):
+  PARK-21 on-call/astreinte are not missions unless an effective intervention
+          occurs (accord A, clause 2) - recorded, not built.
+  PARK-22 several employers each need their own tally; the product has one
+          holder (source C) - supports a future employer field.
+  PARK-23 a mid-year residence change needs two attestations-quittances
+          (source C) - the product has one period.
+  PARK-24 reopens PARK-4's LAMal/URSSAF comparator on a new footing: the droit
+          d'option facts are now verified rows and the Geneva premium table
+          (D) is located, but D has no reuse terms and URSSAF is secondary, so
+          nothing is republished (R146). PARK-4 stays; this reopens it.
+
+====================================================================
+GATES RUN
+====================================================================
+
+PHASE 1 (R132 selection via `gate:changed --print`: typecheck, lint, test,
+build, test:db - calc-engine files map to the database layer):
+  typecheck PASS; lint PASS (2 pre-existing warnings, files I did not touch);
+  test PASS 3012; build PASS; test:db PASS 622/25-skip (3 render specs skipped,
+  no live server - R133-compliant); test:late PASS 10. e2e/visual NOT selected.
+
+PHASE 2a (R132: app/** + lib/fr/** change -> adds test:e2e, test:visual):
+  typecheck PASS; lint PASS; test PASS 3012; build PASS; test:e2e PASS 293
+  (incl. all e2e/sources.spec.ts and the calculateur provisional-notice
+  navigation to #lecture-P1). test:visual DEFERRED to operator (see BASELINES).
+
+PHASE 2b: parking.md - markdown only, no suite selected; no code reads it.
+
+====================================================================
+BASELINES CHANGED (test:visual DEFERRED - regenerate with these reasons)
+====================================================================
+
+Definite:
+  tests/visual/baselines/page-sources-desktop.png
+  tests/visual/baselines/page-sources-mobile.png
+    Reason: the /sources provisional section was split into two sections
+    (settled vs reading) with new headings, intros and rewritten bodies.
+Likely (the P1 Avertissement text changed; confirm on regen):
+  tests/visual/baselines/guides-cluster-missions-desktop.png
+  tests/visual/baselines/guides-cluster-missions-mobile.png
+    Reason: jours-de-mission-hors-suisse.mdx P1 prose rewritten to cite accord
+    1(b).
+Run `pnpm test:visual:update`, crop and read each (R135/R207), and paste the
+exact produced set into the merge commit.
+
+====================================================================
+DEFERRED (for the operator) - precise, actionable scope
+====================================================================
+
+1. THE TWO-SYSTEMS SEPARATION. Present, wherever BOTH thresholds appear, a
+   labelled pair: "Fiscalite - 40 %" (governs where salary is taxed) and
+   "Securite sociale - 49,9 %" (governs social-security affiliation; conditional
+   on a valid A1, requested by the Swiss employer via ALPS, max 3 years -
+   source B), each with one governing line. Figures from the RuleSet (R147), not
+   typed. Surfaces named by the prompt: the calculator result (web/lib/fr/
+   result.ts warnings + web/lib/fr/rail.ts band legend; both thresholds already
+   render on the rail and in the headroom), the two threshold guides
+   (teletravail-frontalier-40-pourcent, seuil-social-49-9-pourcent), and the
+   releve explanations (web/lib/fr/releve-annuel.ts, web/lib/fr/dossier.ts).
+   WHY DEFERRED: it is a wide cross-surface copy+layout change that must read
+   consistently on every surface (R206/R165), it involves a placement decision
+   (where a two-system legend sits) the prompt does not specify, and it
+   regenerates visual baselines across the calculator, guides and releve. Doing
+   one surface only would be the inconsistent half-application the prompt warns
+   against. Nothing is broken by deferring: result.ts already says the social
+   seuil "est distinct du seuil fiscal", the A1_REQUIRED body already names the
+   A1, and the rail already labels "les deux seuils".
+2. A fuller in-place rewrite of the /sources attestation entry from source C
+   (moving it out of the "unknowns" model). Needs the UNKNOWN_IDS union + its
+   tests reworked. PARK-1 stands meanwhile.
+3. Promoting P1/P2 from published readings to verified SOURCE ROWS (retiring
+   #lecture-P1/#lecture-P2). A model + permanent-anchor migration; see PHASE 2.
+
+====================================================================
+PARKED / DEVIATIONS / QUESTIONS
+====================================================================
+
+PARKED: PARK-21..24 above (parking.md).
+
+DEVIATIONS:
+  1. Two-systems separation deferred (DEFERRED #1). Conservative (R156): the
+     widest, under-specified, visual-heavy piece, left as its own pass rather
+     than started half-consistent.
+  2. P1/P2 kept as published readings rather than promoted to verified rows, to
+     avoid moving permanent anchors #lecture-P1/P2 cited by live guides
+     (PHASE 2). The copy is honest ("settled by text, expert review pending").
+  3. Attestation entry left in the unknowns model (DEFERRED #2); PARK-1 stands.
+  4. No advisor consulted - the advisor stalled all session per the relay
+     prompt; the conservative option was taken and recorded (R156).
+  5. `method` kept as an unused parameter of missionCapFor (lint/tsc both pass);
+     retained because both call sites hold it and the uniform signature is
+     documented. Dropping it is a larger, non-minimal change.
+
+NOTICED BUT NOT TOUCHING (R334 - other-task untracked files, reported, NOT
+removed): MonReleve/, android/.an*-shots/, android/.kotlin/, android/scripts/
+an-*.mjs + uidrive.mjs, design/home-design(.zip), relay/FW34.txt,
+web/scripts/_mint-readback.mjs, web/scripts/_wt-setup.mjs. Also two pre-existing
+lint warnings (unused eslint-disable directives in benchmark.test.ts and
+verification-trace.test.ts), in files this task did not edit.
+
+QUESTIONS:
+  Q1. Should P1/P2 become full verified SOURCE ROWS (and #lecture-P1/P2 be
+      retired with redirects), or stay published readings as left here?
+  Q2. For the two-systems legend, where should it sit on the calculator result
+      (a dedicated legend block, or augmenting the existing rail labels)?
+
+====================================================================
+PUSH PROOF
+====================================================================
+
+Branch reg-apply, off cfbde7e. Commits, all pushed to origin/reg-apply:
+  bf4771f  phase 1  engine cap-proration fix
+  db586d2  phase 2a accord applied to the register and /sources
+  444a2f8  phase 2b four parks
+  (this report appended as the final commit)
+The final gate:clone is DEFERRED to the operator per the relay prompt, as is
+test:visual (baselines named above) and the two-systems separation.
