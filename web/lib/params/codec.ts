@@ -27,8 +27,10 @@ import { CANTON_NAMES } from '@/lib/fr/cantons';
 import { remainingYearFraction } from '@/lib/ui/core';
 import {
   GRANULARITY_CODES,
+  granularityCode,
   type GranularityCode,
   METHOD_CODES,
+  methodCode,
   type MethodCode,
   PARAM_NAMES,
   PARAM_SCHEMA,
@@ -167,20 +169,17 @@ function render(name: ParamName, input: TeleworkInput): string | null {
       return String(input.missionDaysThirdState);
 
     case 'methode':
-      return input.denominator.kind === 'exact' ? 'exact' : '240';
+      return methodCode(input.denominator.kind);
 
     case 'total':
       return input.denominator.kind === 'exact'
         ? String(input.denominator.totalWorkDays)
         : null;
 
-    case 'decompte': {
-      const code = (Object.keys(GRANULARITY_CODES) as GranularityCode[]).find(
-        (key) => GRANULARITY_CODES[key] === input.granularity,
-      );
-
-      return code ?? null;
-    }
+    case 'decompte':
+      // BOTH DIRECTIONS LIVE IN schema.ts SINCE R351, because the calculator
+      // form is now a second caller: its radio values must be these codes.
+      return granularityCode(input.granularity);
 
     case 'debut':
       return isoDayForFraction(input.periodFraction, input.taxYear);
@@ -235,7 +234,30 @@ export function decode(params: URLSearchParams, taxYear: number): DecodeResult {
     if (!known.has(name) && !ignored.includes(name)) ignored.push(name);
   }
 
-  const read = (name: ParamName): string | null => params.get(name);
+  /**
+   * AN EMPTY CONTROL IS AN ABSENT VALUE, NOT AN UNREADABLE ONE (R351).
+   *
+   * This read `params.get(name)` until the calculator became a real GET
+   * form, and a browser submits EVERY named control whether the reader
+   * touched it or not. So `?canton=GE&tt=84&total=&debut=` is the ordinary
+   * shape of "they left the date blank", and reporting those two in
+   * `invalid` tells the reader two values could not be read when they never
+   * typed any.
+   *
+   * IT ALSO REMOVES AN INCONSISTENCY THAT WAS ALREADY THERE. `mfr=` has
+   * always decoded as zero with no complaint, because readDays treats it as
+   * nothing; `taux=` and `debut=` came back invalid. Same input, two
+   * answers, decided by which reader happened to be written first.
+   *
+   * SPEC 9.4's rule is unchanged: an invalid VALUE still falls back and
+   * still surfaces the notice. `taux=abc` is a value and is still reported;
+   * the empty string is the absence of one.
+   */
+  const read = (name: ParamName): string | null => {
+    const raw = params.get(name);
+
+    return raw === null || raw === '' ? null : raw;
+  };
 
   const canton = read('canton');
   const tt = read('tt');

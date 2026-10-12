@@ -85,6 +85,33 @@ export const UNASSIGNED_TASK = 'UNASSIGNED';
  */
 export const CALCULATOR_PATH = '/calculateur-teletravail-frontalier';
 
+/**
+ * The server-rendered result, and its path is FROZEN (R351, authorised by the
+ * operator with the ruling).
+ *
+ * WHY IT IS ITS OWN ROUTE rather than the calculator answering for itself.
+ * FW13 increment 2 measured that ANY use of searchParams on the calculator -
+ * in the page or in generateMetadata, even behind a Suspense boundary - makes
+ * that route dynamic and emits <title> and the canonical into the BODY. This
+ * is SPEC 14's target-query page, and AC3's noindex would land in the body
+ * too, where it is ignored, leaving param URLs indexable. So the calculator
+ * stays static exactly as FW13 built it, and the computing happens here.
+ *
+ * FROZEN MEANS WHAT SPEC 14 MEANS BY IT: a form's action is a published
+ * address the moment a reader bookmarks where it lands, so renaming this
+ * costs a 301 forever. tests/unit/content/result-path.test.ts asserts the
+ * literal, so a rename is a deliberate act with a failing test in front of it
+ * rather than a refactor nobody noticed.
+ *
+ * DELIBERATELY ABSENT FROM PUBLIC_ROUTES. The sitemap is generated from that
+ * registry and this page must never appear in it: it holds no content of its
+ * own, only an answer to someone's figures. Its noindex arrives as
+ * middleware's X-Robots-Tag, UNCONDITIONALLY - not on the calculator's "only
+ * when there is a query" rule, because even this path's bare form is a
+ * parameterised view.
+ */
+export const RESULT_PATH = `${CALCULATOR_PATH}/resultat`;
+
 export const PUBLIC_ROUTES: readonly PublicRoute[] = [
   // ---- live today -------------------------------------------------------
   { path: '/', status: 'live', task: 'FW10 placeholder, FW20 real', changeFrequency: 'weekly', priority: 1 },

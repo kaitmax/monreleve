@@ -84,6 +84,42 @@ export interface BaselineOptions {
 }
 
 /**
+ * THE POINTER IS PARKED BEFORE EVERY CAPTURE (R352).
+ *
+ * Playwright leaves the mouse wherever the last click put it, and a full-page
+ * screenshot photographs the resulting :hover state. Nothing chose that - it
+ * is the position the previous action happened to end at - so the hover state
+ * of whatever a spec last touched was being written into the visual record as
+ * though it were the product.
+ *
+ * R345 ONE LEVEL OVER: a default is a setting nobody chose. That ruling is
+ * about `threshold`, which Playwright defaults to 0.2 while nobody writes the
+ * word; this is the pointer, which Playwright leaves somewhere while nobody
+ * says where. Both are answered the same way - state the value you want.
+ *
+ * MEASURED, AND THE EVIDENCE IS LIVE RATHER THAN PLANTED (R178). Chromium
+ * paints a checked radio rgb(0,117,255) normally and rgb(0,92,200) under the
+ * pointer. A scan of the stored baselines found the SAME scenario recorded
+ * both ways: calculateur-rempli-desktop held the hovered colour and
+ * calculateur-rempli-mobile the plain one, as did
+ * calculateur-panneau-bascule-sociale in its two widths, while
+ * calculateur-panneau-avis-provisoire held one hovered radio beside two plain
+ * ones. Those files disagree about the appearance of a control for a reason
+ * that has nothing to do with the product, and FW-RESULTAT is where it
+ * surfaced: two mobile baselines flipped to the hovered colour under a change
+ * that moved no pixel of layout - the diff was 76 pixels inside one 13x13
+ * radio, at identical coordinates, with the page the same height to the pixel.
+ *
+ * (0,0) RATHER THAN ANY OTHER CORNER, and it was checked rather than assumed:
+ * document.elementFromPoint(0, 0) on the calculator at 390 px is the layout
+ * Container, a plain div with no hover rule. A bottom-right park was measured
+ * too and gives the same plain colour; the top-left is preferred because it is
+ * the one point whose occupant does not change with the page height.
+ */
+async function parkPointer(page: Page): Promise<void> {
+  await page.mouse.move(0, 0);
+}
+/**
  * A full-page baseline, with R128's assertion attached.
  *
  * The screenshot comparison runs first: if it fails, the dimension check is
@@ -95,6 +131,7 @@ export async function expectPageBaseline(
   name: string,
   options: BaselineOptions = {},
 ): Promise<void> {
+  await parkPointer(page);
   await expect(page).toHaveScreenshot(name, { fullPage: true, ...options });
 
   const viewport = page.viewportSize();
@@ -131,6 +168,12 @@ export async function expectElementBaseline(
   locator: Locator,
   name: string,
 ): Promise<void> {
+  // BOTH HELPERS PARK, because the defect is the pointer rather than the
+  // capture mode, and this is the one a disclosure specimen goes through:
+  // composants.visual.spec.ts clicks a <summary> and shoots the shell
+  // immediately, so the pointer is resting on that summary. Parking one
+  // helper and not the other is the half-applied fix R267 is about.
+  await parkPointer(locator.page());
   await expect(locator).toHaveScreenshot(name);
 
   const viewport = locator.page().viewportSize();

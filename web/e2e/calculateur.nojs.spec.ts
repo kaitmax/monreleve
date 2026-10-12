@@ -140,11 +140,20 @@ test.describe('with JavaScript disabled (AC3)', () => {
 
 test.describe('with JavaScript disabled, a link carries no result (FW13)', () => {
   test('shows the empty state, not a wrong answer', async ({ page }) => {
-    // THE COST OF THE RULING, STATED. The island reads the URL on mount, so
-    // with no scripting there is no prefill - and the page says so rather than
-    // showing a default calculation that is not the sender's scenario. SPEC
-    // 9.3 requires the PAGE to be meaningful without JavaScript, not the
-    // calculation, and it still is: every explanatory paragraph is served.
+    // THE COST OF THE RULING, AND SINCE R351 IT IS NO LONGER PAID BY THE
+    // READER. The island reads the URL on mount, so with no scripting this
+    // page has no prefill and says so rather than showing a default
+    // calculation that is not the sender's scenario. That has not changed
+    // and this assertion is unchanged with it: the calculator is static by
+    // FW13's measured ruling and must stay that way.
+    //
+    // WHAT CHANGED IS WHERE THE ANSWER LIVES. The form on this page now
+    // submits by GET to /calculateur-teletravail-frontalier/resultat, which
+    // computes the same figures on the server from the same codec and the
+    // same engine. So "no result HERE" is a statement about this route
+    // rather than about the product, and e2e/resultat.nojs.spec.ts asserts
+    // the other half - a real 39,16 % with scripting off. Neither file
+    // states the arrangement on its own.
     await page.goto(GENEVA_C_URL);
 
     const main = (await page.locator('main').textContent()) ?? '';

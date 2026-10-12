@@ -24,6 +24,7 @@ import {
   type TeleworkResult,
 } from '@/lib/calc-engine';
 import { HERO_EXAMPLE_TELEWORK_DAYS, heroExampleInput, HOME_GUIDE_SLUGS } from '@/lib/content/home';
+import { RESULT_PATH } from '@/lib/content/routes';
 import { currentTaxYear } from '@/lib/content/tax-year';
 import { guideScope } from '@/lib/guides/scope';
 import { publishedGuides } from '@/lib/guides/registry';
@@ -111,12 +112,18 @@ describe('each rule cites a source that is actually verified (R146, R167)', () =
 });
 
 describe('the calculator is a no-JS form to the existing params (R156)', () => {
-  it('submits GET to the calculator page', () => {
+  it('submits GET to the page that ANSWERS the params (R351)', () => {
     const { container } = render(<HomePage />);
     const form = container.querySelector('form');
 
     expect(form?.getAttribute('method')?.toLowerCase()).toBe('get');
-    expect(form?.getAttribute('action')).toBe('/calculateur-teletravail-frontalier');
+    // IT POINTED AT THE CALCULATOR UNTIL R351, which was honest while the
+    // form was built and the calculator did not calculate. That route is
+    // static by FW13 ruling and its island reads the URL on mount, so with
+    // scripting off this form handed its reader a page that could not
+    // answer - measured on a production build: the params arrived, the
+    // page showed the same empty state as the bare path.
+    expect(form?.getAttribute('action')).toBe(RESULT_PATH);
   });
 
   it('every field maps to a param the calculator already knows - none invented', () => {

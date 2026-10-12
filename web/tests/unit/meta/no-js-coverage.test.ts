@@ -97,14 +97,32 @@ function discovered(): string[] {
  */
 const COVERAGE: Readonly<Record<string, string | { readonly why: string }>> = {
   'app/(public)/page.tsx': 'home.nojs.spec.ts',
+
+  // THE CENSUS HAS NOW CORRECTED ITS AUTHOR TWICE, IN OPPOSITE DIRECTIONS,
+  // AND THAT IS THE WHOLE ARGUMENT FOR DISCOVERING SURFACES RATHER THAN
+  // LISTING THEM.
+  //
+  // The first time, this entry existed and the file did not match: it had
+  // been classified on the assumption that the calculator has a form, and
+  // the run reported it classified-but-not-discovered. The note that
+  // replaced it read "It has none: the calculator is a client island", which
+  // was true, and explained that SPEC 9.3 asks the PAGE to be meaningful
+  // without scripting rather than the calculation to run.
+  //
+  // The second time is R351. The island is now wrapped in a real GET form
+  // that submits to /calculateur-teletravail-frontalier/resultat, so the
+  // file matches on its own merits and a no-JS reader has a journey through
+  // it that ends in a figure. A hand-kept list would have gone on saying the
+  // calculator has no form, in a comment that was accurate when written.
+  //
+  // TWO SPECS ANSWER FOR IT and the string names the one that drives the
+  // FORM. calculateur.nojs.spec.ts still asserts the other half - that this
+  // route itself renders no result, which FW13 made a ruling and R351 did
+  // not touch.
+  'app/(public)/calculateur-teletravail-frontalier/CalculatorForm.tsx': 'resultat.nojs.spec.ts',
+
   // The alert sign-up: the calculator's POST form, and the journey the
-  // operator named. CalculatorForm.tsx itself is NOT here, and that is this
-  // census correcting its author - it was classified on the assumption that
-  // the calculator has a form, and the first run reported it as classified-
-  // but-not-discovered. It has none: the calculator is a client island, and
-  // SPEC 9.3 asks its PAGE to be meaningful without scripting rather than its
-  // calculation to run. That claim is about served copy, not a mechanism, so
-  // it is not discoverable here - calculateur.nojs.spec.ts asserts it anyway.
+  // operator named.
   'lib/ui/react/AlertCapture/AlertCapture.tsx': 'calculateur.nojs.spec.ts',
   'lib/ui/react/PublicShell/PublicShell.tsx': 'burger.nojs.spec.ts',
   'lib/ui/react/Faq/Faq.tsx': 'faq.nojs.spec.ts',

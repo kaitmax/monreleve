@@ -292,4 +292,93 @@ export const CALCULATEUR_COPY = {
     calculate: 'Calculer',
 
   },
+
+  /**
+   * THE RESULT PAGE (R351) - the one surface this calculator can answer on
+   * without JavaScript.
+   *
+   * WHY IT EXISTS. The calculator is a client island and its route is STATIC
+   * by a recorded ruling (FW13 increment 2): reading searchParams on that
+   * page moves <title> and the canonical out of <head> and into the body,
+   * where AC3's noindex is ignored. So the island decodes the URL on mount,
+   * and a reader with no scripting is handed a form that cannot answer. This
+   * page answers, on the server, from the SAME parameters.
+   *
+   * NOTHING HERE RESTATES THE RESULT. The figures, the rail and the warnings
+   * are ResultPanel's, rendered from the same engine call the island makes
+   * (R206). These are the strings the PAGE needs and the panel does not have:
+   * its own name, why the reader is here, and the way back.
+   */
+  resultat: {
+    title: 'Votre résultat',
+
+    /** What the page DID, never what the figure means - that is the panel's. */
+    description:
+      'Le résultat calculé à partir des chiffres transmis dans l’adresse, ' +
+      'sans JavaScript et sans inscription.',
+
+    heading: 'Votre part de télétravail',
+
+    /**
+     * Shown when the address carries nothing the engine can read - the bare
+     * path, or a link whose parameters a mail client mangled. It does not say
+     * "erreur": nothing has gone wrong, there is simply nothing to compute.
+     */
+    empty:
+      'Cette adresse ne contient aucun chiffre à calculer. Indiquez votre ' +
+      'situation dans le calculateur.',
+
+    /**
+     * Shown when the parameters were read and the engine refused them. The
+     * reasons come from the engine through errorMessage(), never from here;
+     * this is only the sentence that frames them.
+     */
+    invalid: `Ces chiffres ne permettent pas un calcul${n(':')}`,
+
+    /**
+     * THE LAST LINE OF THE LINK NOTICE, AND THE ONLY LINE OF IT WRITTEN HERE.
+     *
+     * PARAM_NOTICE owns the rest - the lead, the list of values that could
+     * not be read, the list of params the calculator does not use - because
+     * those three sentences are true on any surface that reads the URL, and
+     * one text has one home (R206).
+     *
+     * ITS advice LINE IS NOT. It reads "vous pouvez corriger les champs
+     * ci-dessus", which is true on the calculator, where the fields are
+     * above the notice, and false here: this page has no fields at all.
+     * Lifting it would be FD13 inline card again - the best sentence in the
+     * set, true in exactly one place (R165) - so this surface writes its own.
+     */
+    noticeAdvice:
+      'Rouvrez le calculateur pour saisir ces valeurs vous-même' +
+      `${n(';')} le résultat se mettra à jour.`,
+
+    /**
+     * THE WAY BACK, carrying the same parameters. A reader changing a number
+     * lands on the calculator with their scenario already in it - which is
+     * what the island's decode-on-mount does, so for a scripted visitor this
+     * link is the whole interactive calculator.
+     */
+    modify: 'Modifier mes chiffres',
+
+    /**
+     * THE ONE THING THIS PAGE CANNOT ANSWER, SAID RATHER THAN HIDDEN.
+     *
+     * The calculator asks whether the reader had missions outside
+     * Switzerland and reveals two count fields when they say yes. The
+     * reveal is JavaScript, so a reader without it can answer the question
+     * and has nowhere to put the numbers - the form submits, and the engine
+     * computes from zero mission days.
+     *
+     * That is the SILENTLY WRONG ANSWER the question exists to prevent, so
+     * it is not left silent: this names the limit and the way round it.
+     */
+    missionsNotCounted:
+      'Vous avez indiqué avoir effectué des missions hors de Suisse. Ce ' +
+      `calcul ne les compte pas, faute du nombre de jours${n(':')} ouvrez le ` +
+      'calculateur pour les saisir.',
+
+    /** For an address that carried nothing: the plain way in. */
+    open: 'Ouvrir le calculateur',
+  },
 } as const;

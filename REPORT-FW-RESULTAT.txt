@@ -1,0 +1,742 @@
+====================================================================
+REPORT-FW-RESULTAT.txt - R351: the no-JavaScript result route, and
+the calculator's inputs as a real GET form
+Mon Releve / frontalier   2026-10-12
+====================================================================
+
+NOTE ON SPELLING. Pure ASCII, as the protocol requires. Every French
+phrase quoted below is transliterated: accents dropped, guillemets
+become double quotes. R155 - THE ASCII HERE IS ILLUSTRATIVE, NEVER A
+SOURCE; the accented original lives in web/lib/fr and is what ships.
+
+TASK. R351, pasted by the operator, replacing R350. Two pieces:
+  (1) CLAUDE.md's worktree clause corrected (R349).
+  (2) Results without JavaScript get their own route,
+      /calculateur-teletravail-frontalier/resultat - server-rendered,
+      computing from the SAME URL parameters through the SAME engine.
+      The home form and the calculator's inputs submit to it by GET;
+      the island still enhances the calculator for scripted visitors;
+      the calculator page stays STATIC, measured before and after.
+
+SCOPE. WEB ONLY. The operator runs the AN-* Android work in Android
+Studio; nothing under android/ was read, changed or run in this
+session.
+
+====================================================================
+HOW IT ENDED
+====================================================================
+Worktree  : C:/wt/fw-resultat, branch fw-resultat off main ade5004.
+            Lock file .session-lock.json present throughout (R349).
+            Worktrees are feasible on this machine - that is what the
+            CLAUDE.md correction records, and this session is the
+            first to run in one. A second, throwaway worktree was
+            created for the before-size measurement and removed.
+
+CONCURRENCY: main moved while this ran. It was ade5004 at branch time
+            and is 5afb92e now - four ENGINE-PARITY commits from
+            another session, which also holds the shared checkout on
+            branch an-forecast-2. Nothing in that directory was read,
+            written or reset by this session (R334, R349). This branch
+            is integrated onto the new main BEFORE gate:clone, so the
+            clone verifies what will actually be on main - one of
+            those commits changes gate:clone itself.
+
+See THE GATE and WHAT IS NOT DONE at the end of this file.
+
+====================================================================
+THE MEASUREMENT R351 ASKED FOR: THE CALCULATOR'S HEAD, BEFORE/AFTER
+====================================================================
+Both measured on a PRODUCTION build (pnpm build + next start -p 3197)
+with NEXT_PUBLIC_SITE_URL=https://monreleve.ch, because R81 omits the
+canonical when no origin is configured and a localhost measurement
+would have been vacuous on the very property under test.
+
+                               BEFORE          AFTER
+  <title> in <head>            true            true
+  canonical in <head>          true            true
+  canonical href               https://monreleve.ch/calculateur-
+                               teletravail-frontalier  (identical)
+  canonical in <body>          false           false
+  head bytes, bare path        3429            3429
+  head bytes, param URL        3429            3429
+  X-Robots-Tag, param URL      noindex, follow noindex, follow
+  X-Robots-Tag, bare path      absent          absent
+
+  BUILD OUTPUT, AFTER:
+    o /calculateur-teletravail-frontalier           Static   123 kB
+    f /calculateur-teletravail-frontalier/resultat  Dynamic  104 kB
+
+  UNCHANGED, as R351 requires. The route is still prerendered, its
+  head is byte-for-byte the same size, and the noindex header still
+  arrives only where there is a query.
+
+  WHY THIS IS THE THING TO MEASURE. FW13 increment 2 built five
+  arrangements and measured each: ANY use of searchParams on that
+  route - page, generateMetadata, or a Suspense child - makes it
+  dynamic and emits <title> and <link rel="canonical"> into the BODY.
+  It is SPEC 14's target-query page, so that is not a trade worth
+  making. R351 moved the ANSWER instead of the calculator, and this
+  table is the evidence that the move cost the calculator nothing.
+
+====================================================================
+THE PREMISE, VERIFIED BEFORE ANYTHING WAS BUILT
+====================================================================
+R350/R351 asked first to ESTABLISH, with JavaScript off, whether the
+calculator renders a result from its URL parameters on the server.
+
+  MEASURED, production build of main, no scripting:
+    GET /calculateur-teletravail-frontalier?canton=GE&tt=84&mfr=24
+        &decompte=dj
+    -> 200, 38 591 bytes, NO figure, the same empty state as the bare
+       path, parameters not echoed into any field.
+
+  So the home page's form - which pointed here - handed its reader a
+  page that could not answer. FW34's own walkthrough claim was
+  accurate and properly qualified ("with JS off it shows the static
+  shell, as SPEC 9.3 requires"); what nobody had asked was whether
+  SENDING A READER THERE FROM A FORM was still the right thing.
+
+  A FALSE POSITIVE I NEARLY REPORTED. A first probe tested the served
+  HTML for a "digits comma digits percent" pattern and said "carries a
+  figure: true" on the calculator. It matches the STATIC copy
+  "49,9 %" - the social ceiling, which the explanatory prose names.
+  The corrected probe enumerates EVERY such match in the response: the
+  calculator serves exactly one, "49,9 %", and never "39,16".
+
+====================================================================
+WHAT WAS BUILT
+====================================================================
+NEW ROUTE  app/(public)/calculateur-teletravail-frontalier/resultat/
+           page.tsx + resultat.module.scss
+
+  It computes NOTHING itself. decode() is SPEC 9.4's codec, the same
+  pure function the island calls on mount; calculateTelework() is the
+  same engine entry; ResultPanel is the same component rendering the
+  same figures in SPEC 9.3's order. A reader with scripting and a
+  reader without are answered by ONE implementation (R206) - the only
+  difference is which machine ran it.
+
+  It is allowed to be dynamic because it has nothing to protect: no
+  canonical worth having, no place in the sitemap, and a noindex that
+  arrives as a header.
+
+FROZEN PATH  web/lib/content/routes.ts exports RESULT_PATH, and
+           tests/unit/content/result-path.test.ts (6 tests) asserts
+           the literal, that it is a child of the calculator, that it
+           is absent from PUBLIC_ROUTES and from sitemapPaths(), that
+           the middleware's literals EQUAL the constants, and that the
+           matcher is literal rather than a ":path*" prefix.
+
+           WHY A PATH NOTHING LINKS BECOMES PERMANENT. SPEC 14 freezes
+           a slug once published, and "published" usually means a
+           crawler saw it. This one is never crawled - noindex, absent
+           from the sitemap - yet it is at least as frozen, because a
+           FORM ACTION is an address a reader lands on and bookmarks.
+
+MIDDLEWARE The result page is noindex UNCONDITIONALLY, and the
+           difference from the calculator is the point: the calculator
+           is a real page that happens to accept a query, so it is
+           indexable bare and noindex when parameterised. /resultat is
+           nothing BUT an answer to someone's figures.
+
+THE FORM   The island's fieldset is wrapped in
+           <form method="get" action={RESULT_PATH} onSubmit={...}>,
+           every control carries its SPEC 9.4 name, and "Calculer" is
+           a real submit. onSubmit preventDefaults, so a scripted
+           visitor never leaves the page - the answer is already below
+           and recomputed on every keystroke.
+
+SHARED LINKS are untouched, as R351 requires. The share row builds its
+           URL from window.location and encode(), pointing at the
+           calculator; the diff of CalculatorForm.tsx contains zero
+           lines matching "share".
+
+====================================================================
+THE DEFECT THE FORM WORK FOUND, MEASURED
+====================================================================
+Giving the controls their names was the easy half. The RADIO VALUES
+were the defect.
+
+  Before: <input type="radio" name="decompte" value="halfDay">
+          <input type="radio" name="methode"  value="simplified240">
+
+  Those are the ENGINE's names. SPEC 9.4's codes are j/dj/h and
+  240/exact. Run through decode():
+
+    decompte=halfDay       -> invalid:["decompte"], falls back to day
+    methode=simplified240  -> invalid:["methode"],  falls back to 240
+
+  So a reader who chose half-days would have been shown the WHOLE-DAY
+  answer. Measured on the real page, before the notice existed:
+
+    /resultat?canton=GE&tt=84&mfr=24&decompte=halfDay
+    -> 39,16 %   (the whole-day answer), no notice, no word that
+       anything had been dropped.
+
+  It was invisible until now because the group was a pure UI control:
+  nothing serialised those values, so nothing could be wrong with them.
+  Wrapping the fieldset in a form turned them into a wire format.
+
+  Both directions now come from ONE place: granularityCode() and
+  methodCode() are exported from lib/params/schema.ts, encode() uses
+  them (it had the reverse mapping inline), and the island's radio
+  values are built by calling them. A second map in the island would
+  have been exactly the duplication R206 names.
+
+====================================================================
+THREE MORE THINGS A SUBMITTED FORM BROKE, AND WHAT WAS DONE
+====================================================================
+1. EMPTY CONTROLS. A browser submits EVERY named control, touched or
+   not. decode() read params.get(name) directly, so "?...&total=
+   &debut=" reported total and debut in "invalid" - telling a reader
+   two values could not be read when they never typed any.
+
+   It was already inconsistent: "mfr=" has always decoded as zero with
+   no complaint, because readDays treats it as nothing; "taux=",
+   "total=" and "debut=" came back invalid. Same input, two answers,
+   decided by which reader happened to be written first.
+
+   FIXED in decode()'s read(): an empty string is an ABSENT value, not
+   an unreadable one. SPEC 9.4's rule is unchanged - "taux=abc" is a
+   VALUE and is still reported and still falls back. No existing test
+   asserted empty-is-invalid; every invalid-value test uses non-empty
+   garbage ("taux=abc", "canton=XX"), and hostile-params.test.tsx's
+   "every value empty" case asserts invariants rather than specific
+   names, so all of them still hold.
+
+2. THE PARAM NOTICE WAS NOT ON THE RESULT PAGE AT ALL. My first
+   version branched only on "input === null", so it would have
+   rendered a figure over a silently dropped value - R351's own
+   premise, one route over. The notice now renders there, reusing
+   PARAM_NOTICE's lead and its two list sentences (R206) and writing
+   its OWN last line, because the calculator's advice reads "vous
+   pouvez corriger les champs ci-dessus" and this page has no fields
+   at all (R165).
+
+3. THE MISSION QUESTION. The calculator asks about missions OUTSIDE
+   the accordion because SPEC 9.3 says a user with missions who never
+   opens it gets a silently wrong answer. The two count fields are
+   revealed by the island, so with no scripting a reader can answer
+   "Oui" and has nowhere to put the numbers - and the engine computes
+   from zero.
+
+   Two consequences, both handled:
+   - "missions" is a form control the engine does not read, so
+     decode() correctly reports it as unknown. Printing it in the
+     notice would tell a reader who had just answered that question
+     that the calculator ignores it. FORM_ONLY_PARAMS
+     (lib/params/schema.ts) exempts it, asserted to contain exactly
+     that one name AND nothing the codec actually reads - both
+     directions, because an exemption list that swallowed every
+     unknown param would pass the first check perfectly.
+   - Where missions were DECLARED and no count arrived, the result
+     page says so rather than counting zero in silence. Conditional on
+     the condition (R225): nothing is shown when the counts arrived.
+
+====================================================================
+TEST-FIRST: THE RED RUNS, AND WHERE THE DISCIPLINE WAS NOT CLEAN
+====================================================================
+RED 1 - the calculator's form, the one that matters.
+  e2e/resultat.nojs.spec.ts "the calculator page form submits to the
+  result page and gets a figure", run with the island untouched:
+
+    Error: expect(page).toHaveURL(expected) failed
+    Received string: "http://localhost:3197/calculateur-teletravail-
+                      frontalier"
+    13 x locator resolved to <html lang="fr">...
+
+  With scripting off, clicking Calculer did nothing and the URL never
+  left the calculator. 1 failed, 6 passed. GREEN after the form work.
+
+RED 2 - the param notice, measured on the real product rather than
+  planted. The production server still held the pre-notice build:
+
+    ?canton=GE&tt=84&mfr=24&decompte=halfDay
+      notice element : false     figure shown : 39,16
+    ?canton=GE&taux=&tt=84&missions=Non
+      notice element : false     figure shown : 35,00
+
+  R178: where live instances are available they are the proof, and a
+  planted case is redundant.
+
+RED 3 - the form's vocabulary, and this one is CORRECTED HERE because a
+  first draft of this report overstated it. It said the test failed on
+  its first run naming the two radios. It did not: the radio values had
+  already been converted by the time that test existed, so its first run
+  named "canton" and "debut" - the empty-control defect - and nothing
+  else. The radio defect was found by the decode probe and by the 3197
+  server, both quoted above, never by this test.
+
+  What the test DID catch on its own first run was real and unanticipated:
+
+    AssertionError: expected [ 'canton', 'debut' ] to deeply equal []
+      at tests/unit/params/form-vocabulary.test.tsx:96
+
+  A report states only what happened (R334).
+
+WHERE IT WAS NOT CLEAN, STATED PLAINLY. The result ROUTE itself was
+written before its spec. Its RED is the measured premise at the top of
+this report - the calculator serving no figure on main - rather than a
+failing assertion in this repository. result-path.test.ts likewise
+passed on its first run. Neither is presented as test-first.
+
+====================================================================
+THE GUARDS THAT FIRED, AND WHAT EACH ONE CAUGHT
+====================================================================
+Eight suites went red on changes already made. None was a false alarm;
+each needed a decision rather than a bumped number.
+
+  tests/unit/pages/home.test.tsx
+      "submits GET to the calculator page" - the old R156 expectation.
+      Rewritten to assert RESULT_PATH, with the reason recorded.
+
+  tests/unit/pages/param-metadata.test.ts
+      "is scoped to one route" - the matcher now has two. Rewritten to
+      name both and to say why they are literals, not a prefix.
+
+  tests/unit/pages/calculateur-result.test.tsx
+      "does not submit, so a stray Enter cannot reload the page" -
+      this asserted the ruling R351 replaces. Its reasoning was SOUND
+      for the page it was written on: a submit that reloaded that
+      route would have thrown away everything typed, because the
+      island reads the URL only on mount and there was no
+      server-rendered answer to land on. There is one now. Replaced by
+      TWO tests - the button IS a submit, AND the island cancels it -
+      where the second dispatches a real cancelable submit event and
+      asserts defaultPrevented, rather than inspecting the handler for
+      existence.
+
+  tests/unit/meta/no-js-coverage.test.ts   (R346 - this session's own
+      guard, from FW-SHELL-BURGER)
+      CalculatorForm.tsx is now DISCOVERED as a no-JS surface and was
+      unclassified. THE CENSUS HAS NOW CORRECTED ITS AUTHOR TWICE, IN
+      OPPOSITE DIRECTIONS: the first time the entry existed and the
+      file did not match, because the calculator had no form, and the
+      note that replaced it said so; now the file matches on its own
+      merits. A hand-kept list would have gone on saying the
+      calculator has no form, in a comment that was accurate the day
+      it was written.
+
+  tests/unit/tokens/contrast.test.ts
+      Two new container-nested rules, NAMED rather than counted. Added
+      with the reason: they are the calculator's own notice rendered
+      on a second surface. Their contrast assertions passed; only the
+      named-list assertion failed.
+
+  tests/unit/tokens/var-references.test.ts
+      --size-notice-accent uses 6 -> 7. The seventh is that same
+      notice. It arrived by failing this assertion, which is what
+      counting is for: a notice that had quietly picked a DIFFERENT
+      accent would have left the number alone.
+
+  tests/unit/fr/copy-codepoints.test.ts
+      lib/fr/calculateur.ts gained a literal U+00A0. That file's
+      convention is the n() helper, never a literal, so the COPY was
+      rewritten to follow it rather than the census being widened.
+
+  e2e/home.nojs.spec.ts
+      Two tests asserted the home form's old destination. Updated, and
+      the third STRENGTHENED: it checked "not a blank shell" - over
+      400 characters, one h1 - which would still pass on a page
+      showing an empty state. It now asserts a FIGURE, which is the
+      claim R351 makes and the old destination could not carry.
+
+====================================================================
+WALKTHROUGH (R176) - driven with JavaScript OFF, production build
+====================================================================
+ 1. HOME, card submitted untouched
+    -> /resultat?canton=GE&tt=38&mfr=0
+       h1 "Votre part de teletravail", figure 15,83 %
+
+ 2. CALCULATOR, Geneva + 84 days, submitted
+    -> /resultat?canton=GE&taux=100&tt=84&missions=Non
+       figure 35,00 %, no notice
+       (accordion absent without scripting, as expected - see LIMITS)
+
+ 3. "Modifier mes chiffres"
+    -> /calculateur-teletravail-frontalier?canton=GE&taux=100&tt=84
+       &missions=Non , h1 "Calculateur de teletravail frontalier"
+
+ 4. /resultat bare
+    -> "Cette adresse ne contient aucun chiffre a calculer. Indiquez
+        votre situation dans le calculateur." + "Ouvrir le
+        calculateur"
+
+ 5. A MANGLED LINK: decompte=halfDay + fbclid
+    -> "Lien incomplet / Ces valeurs du lien n'ont pas pu etre lues et
+        ont repris leur valeur par defaut : decompte. / Ces parametres
+        ne sont pas utilises par le calculateur : fbclid. / Rouvrez le
+        calculateur pour saisir ces valeurs vous-meme ; le resultat se
+        mettra a jour."
+       AND it still answers: 39,16 %.
+
+ 6. MISSIONS DECLARED, no counts
+    -> "Vous avez indique avoir effectue des missions hors de Suisse.
+        Ce calcul ne les compte pas, faute du nombre de jours : ouvrez
+        le calculateur pour les saisir."
+       params notice: absent - missions is not called unused.
+
+ 7. ENGINE REFUSAL (tt=400, taux=10)
+    -> "Ces chiffres ne permettent pas un calcul : Le total des jours
+        declares depasse le nombre de jours travailles dans la
+        periode." + "Modifier mes chiffres"
+
+WHAT THE WALKTHROUGH CAUGHT THAT NOTHING ELSE DID. In steps 4 and 7
+the h1 read "Votre part de teletravail" - above "Cette adresse ne
+contient aucun chiffre a calculer", and above the engine's refusal.
+Each half was correct and the pair was not: a heading promising a
+figure on a page that has none. Every test in the file passed, and a
+baseline would have photographed both and certified them. This is
+R176's stated purpose, met on its first use in this task.
+
+FIXED: the heading is COPY.heading only when there is a real answer,
+and COPY.title ("Votre resultat") otherwise - not a fourth string,
+because that text is already this page's <title> (R206). Three e2e
+cases now assert the heading per state, plus a non-vacuity check that
+the two constants differ (R133).
+
+====================================================================
+THE VISUAL SUITE: A PREDICTION THAT WAS WRONG, AND WHAT IT FOUND
+====================================================================
+R207 asks for the regeneration set to be stated BEFORE the command
+runs. The prediction was ZERO: .page is block layout, the new <form>
+is an unstyled block whose child margin collapses through it, and
+"type" is not a rendered property.
+
+THE RUN SAID 2 failed, 109 passed:
+    [visual] mobile > rempli
+    [visual] mobile > panneau-bascule-sociale
+
+Both desktop counterparts PASSED. R207 says a file outside the
+expectation stops the regeneration and is investigated, so it was.
+
+WHAT THE PIXELS SAID. Both diffs are the SAME 13x13 region at the same
+coordinates - x 124..136, y 964..976 - 76 pixels each, with both
+images 390x5821 and 390x5777 respectively, expected and actual
+IDENTICAL IN SIZE. Nothing moved. Cropping and looking at it (R135):
+the missions "Oui" radio, checked in both, painted a different blue.
+
+    expected  rgb(0,117,255)        actual  rgb(0,92,200)
+
+Those are Chromium's plain and HOVERED accent colours for a checked
+radio. Proven locally rather than assumed, on a built server at 390 px:
+
+    pointer left on the radio      centre rgb(0,92,200)
+    pointer parked at (0,0)        centre rgb(0,117,255)
+    pointer at bottom-right        centre rgb(0,117,255)
+
+THE SUITE PHOTOGRAPHS WHATEVER HOVER STATE THE LAST INTERACTION LEFT.
+Playwright leaves the mouse where the last click put it, baseline.ts
+parks it nowhere, and a full-page capture records the consequence.
+
+AND IT HAD ALREADY COST SOMETHING, which is the evidence rather than a
+plant (R178). Counting those two colours across all 24 calculateur
+baselines found the SAME SCENARIO STORED BOTH WAYS:
+
+    baseline                              plain#0075FF  hover#005CC8
+    rempli-desktop                                   0            37
+    rempli-mobile                                   37             0
+    panneau-bascule-sociale-desktop                  0            37
+    panneau-bascule-sociale-mobile                  37             0
+    erreur-desktop                                   0            37
+    erreur-mobile                                   37             0
+    panneau-avis-provisoire-desktop                 74            37
+    panneau-avis-provisoire-mobile                  74            37
+
+Three scenarios recorded hovered at one width and plain at the other,
+and one recorded a hovered radio beside two plain ones. Those files
+disagree about the appearance of a control for a reason that has
+nothing to do with the product.
+
+WHY THE TWO FAILURES WERE NOT SIMPLY REGENERATED. R207 permits
+regenerating only the files THE CHANGE EXPLAINS, and this change
+explains nothing about a radio's hover state: it moved no pixel of
+layout, and the page is the same height to the pixel. Writing those
+two images under this task's name would have recorded "the product now
+paints this radio darker", which is false - exactly the certified-
+but-unexamined rewrite R135 exists to prevent.
+
+SO THE VARIABLE WAS REMOVED INSTEAD (R352). baseline.ts parks the
+pointer at (0,0) before every capture, in BOTH helpers - the element
+one too, because composants.visual.spec.ts clicks a <summary> and
+shoots the shell immediately, and parking one and not the other is the
+half-applied fix R267 is about. (0,0) was checked rather than assumed:
+document.elementFromPoint(0, 0) there is the layout Container, a plain
+div with no hover rule.
+
+IT IS R345 ONE LEVEL OVER. That ruling - two tasks old - says a default
+is a setting nobody chose, and was written about Playwright defaulting
+"threshold" to 0.2 while nobody writes the word. This is the pointer:
+Playwright leaves it somewhere while nobody says where. Same answer -
+state the value you want.
+
+THE REGENERATION SET, STATED BEFORE THE COMMAND RAN (R207):
+  EXPECTED TO CHANGE - the five above holding a hovered radio:
+    calculateur-rempli-desktop
+    calculateur-panneau-bascule-sociale-desktop
+    calculateur-erreur-desktop
+    calculateur-panneau-avis-provisoire-desktop
+    calculateur-panneau-avis-provisoire-mobile
+  POSSIBLY, and not detectable by the colour scan because the control
+  is not a radio - the three shots whose last action is a <summary>
+  click: composants-shell-mobile-open, the calculateur FAQ-open pair,
+  and the guides FAQ-open shots.
+  EXPECTED NOT TO CHANGE - the two that failed, which should now render
+  plain again and MATCH the baselines they already have:
+    calculateur-rempli-mobile
+    calculateur-panneau-bascule-sociale-mobile
+
+PRODUCED - pnpm test:visual:update, 111 passed, and its R135 list:
+    tests/visual/baselines/calculateur-erreur-desktop.png
+    tests/visual/baselines/calculateur-panneau-avis-provisoire-desktop.png
+    tests/visual/baselines/calculateur-panneau-avis-provisoire-mobile.png
+    tests/visual/baselines/calculateur-panneau-bascule-sociale-desktop.png
+    tests/visual/baselines/calculateur-rempli-desktop.png
+
+THE PRODUCED SET EQUALS THE EXPECTED SET EXACTLY - five files, named
+in advance from a colour scan rather than read off the run. The
+"possibly" group did not change: no <summary> in this suite carries a
+hover rule that reaches a pixel.
+
+AND THE TWO FAILURES WERE NOT REWRITTEN. 111 passed where the previous
+run was 109 passed / 2 failed, so calculateur-rempli-mobile and
+calculateur-panneau-bascule-sociale-mobile now MATCH THE BASELINES THEY
+ALREADY HAD. That is the whole argument for fixing the variable instead
+of regenerating: the images this task would have overwritten turned out
+to be the correct ones.
+
+EVERY REWRITE WAS VERIFIED, NOT ASSUMED. Each regenerated file was
+diffed against its predecessor: 133 pixels changed in each, all of them
+inside ONE 13x13 region, with the core transition being exactly
+rgb(0,92,200) -> rgb(0,117,255) on 37 pixels and the remaining ~96 the
+antialiased rim of the same radio. No file changed size.
+
+    calculateur-erreur-desktop                 13x13 at (496,822)
+    calculateur-panneau-avis-provisoire-desktop 13x13 at (576,1295)
+    calculateur-panneau-avis-provisoire-mobile  13x13 at (204,1569)
+    calculateur-panneau-bascule-sociale-desktop 13x13 at (496,798)
+    calculateur-rempli-desktop                 13x13 at (496,798)
+
+AND ONE WAS CROPPED AND LOOKED AT (R135), calculateur-rempli-desktop:
+the previous baseline paints the checked "Oui" radio a darker blue, the
+regenerated one the plain accent, and every other pixel in the crop -
+the helper line above, the "Non" and "Oui" labels, their positions - is
+identical. A mechanical check says "only these pixels moved"; looking
+is what says the thing that moved is a radio and not a layout.
+
+====================================================================
+R267: THE FINDING THAT NAMED A SECOND SITE
+====================================================================
+The mission-question fix above was applied to the RESULT page only, and
+the second surface was reachable by a path this report had already
+printed - walkthrough step 3, "Modifier mes chiffres", which carried
+"&missions=Non" back to the calculator.
+
+The island decodes whatever it finds on mount and renders the same
+PARAM_NOTICE. So a reader who followed the back link would have been
+told "ces parametres ne sont pas utilises par le calculateur :
+missions" about the question they had just answered - the exact wrong
+sentence the result-page fix exists to prevent, on the other page.
+
+WHAT WAS CHANGED, both halves:
+  - strayParams() is now a function in lib/params/schema.ts and BOTH
+    surfaces call it. The filter was inline on the result page, which is
+    how one surface got it and the other did not.
+  - the back link is REBUILT rather than echoed: encode(decoded.input)
+    where there is an input - the same function the share row uses, so
+    the link a reader follows back has the same shape as the link they
+    would have shared - and the raw query with the form-only names
+    removed where there is not.
+
+AND THE TEST FOR IT COULD NOT LIVE WHERE I FIRST PUT IT. The assertion
+was written into resultat.nojs.spec.ts, where it would have been
+meaningless: the calculator's link notice is rendered by the island
+from a mount effect, so with JavaScript OFF it never renders under any
+circumstances, and "the calculator does not name missions" is satisfied
+by a page that names nothing ever (R169's absence corollary). It moved
+to a new e2e/resultat.spec.ts in the chromium project, where the island
+runs, with a non-vacuity case asserting the notice DOES still fire for
+a genuinely stray param.
+
+A FOURTH THING, FOUND IN THE SAME PASS. missionsUncounted did not
+require a result, so "?missions=Oui" alone rendered "ce calcul ne les
+compte pas" above "cette adresse ne contient aucun chiffre a calculer"
+- a note about arithmetic nobody did. Gated on a successful outcome;
+R225's condition is that the RESULT raises the question.
+
+====================================================================
+LIMITS, STATED RATHER THAN HIDDEN
+====================================================================
+1. THE ADVANCED ACCORDION DOES NOT OPEN WITHOUT SCRIPTING. It is
+   rendered only when open, so with no JavaScript "methode", "total",
+   "decompte" and "debut" are never in the form and the codec's
+   defaults apply. A no-JS submit from the calculator therefore
+   carries canton, taux, tt and missions, which is the core
+   calculation.
+
+   The radio-value fix is consequently LATENT rather than live on that
+   path today - and it is still the right fix: the attributes are a
+   wire format now, and they would have been wrong the moment the
+   accordion became reachable. form-vocabulary.test.tsx opens the
+   accordion and asserts them.
+
+   NOT CHANGED HERE. Making it a <details>/<summary> would touch the
+   disclosure button's aria-expanded/aria-controls, its analytics
+   event and the keyboard tests that assert a closed section
+   contributes no tab stops. Out of R351's scope.
+
+2. A NO-JS READER WHO ANSWERS "Oui" TO MISSIONS CANNOT ENTER THE
+   COUNTS, so the result is computed from zero mission days. The page
+   now SAYS so (walkthrough step 6) rather than leaving it silent.
+   Rendering the count fields always and hiding them with CSS was
+   considered and rejected: a display:none control is still submitted,
+   so a reader who typed 12 and then chose "Non" would submit 12 while
+   unable to see it - the same silently wrong answer in the other
+   direction.
+
+3. "required" ON THE CANTON SELECT was considered and rejected. It
+   would make the browser refuse a submit with no canton, which is
+   right for a no-JS reader - but constraint validation runs BEFORE
+   the submit event, so with scripting ON the island's onSubmit would
+   never fire and the Calculer button would stop scrolling to the
+   result region. The codec change in item 1 above covers the case
+   instead: "canton=" is absent rather than invalid, so the result
+   page shows its empty state and the way back, with no misleading
+   notice.
+
+4. THE NOTICE ON /resultat IS NOT DISMISSIBLE. SPEC 9.4 asks for a
+   dismissible notice; dismissing is a state change and this page runs
+   no script, so the control would be a button that does nothing -
+   worse than no control. The requirement is discharged on the
+   calculator, which is the surface SPEC 9.4 names, and the notice
+   here is three lines above a result it blocks nothing of. RECORDED
+   AS AN INTERPRETATION; if the operator wants it, a CSS :target
+   dismiss is about six lines and the precedent exists (AlertCapture
+   reveals its status that way).
+
+====================================================================
+NOTICED BUT NOT TOUCHING
+====================================================================
+A. NO VISUAL BASELINE COVERS /resultat. e2e/pages.visual.spec.ts
+   enumerates a HAND-KEPT list of paths and calculateur.visual.spec.ts
+   only ever visits CALCULATOR_PATH, so the page that now carries the
+   no-JS answer is photographed by nothing. It is also the one page
+   whose baseline would need a query to be meaningful, which is why
+   the hand-kept list cannot simply absorb it. Worth a task; not this
+   one.
+
+B. TWO TESTS IN e2e/calculateur.nojs.spec.ts SIT OUTSIDE THEIR
+   describe BLOCK, at two-space indentation - "shows the error without
+   JavaScript" and "accepts a subscription without JavaScript". They
+   run correctly (a top-level test is valid) and eslint does not
+   enforce indentation here, so nothing is red. They arrived in
+   FW-SHELL-BURGER's move of the no-JS assertions and are mine; left
+   alone as out of scope.
+
+C. TWO PRE-EXISTING LINT WARNINGS, neither mine and neither touched:
+   tests/unit/calc-engine/benchmark.test.ts:81 and
+   tests/unit/calc-engine/verification-trace.test.ts:83, both "unused
+   eslint-disable directive (no problems reported from no-console)".
+   0 errors; the warnings do not fail the gate.
+
+D. R179 DOES NOT COVER A SERVER A SESSION STARTED BY HAND. The rule is
+   written about a harness killing the tree IT spawned; this gate was
+   failed by an orphan a session left behind while probing, serving a
+   different build of the same product. R169 passed it because the
+   answer named this product, which is exactly what R169 is for.
+   The gap is between "our product" and "the build under test": a
+   build id or a start token in /api/health, compared against the
+   build the run just made, would close it. Not this task.
+
+E. THE CALCULATOR IS THE TIGHTEST ROUTE IN THE PRODUCT, and this task
+   added imports and attributes to its island, so the delta is
+   MEASURED rather than asserted. Both figures come from a full build
+   followed by pnpm size - the before from a throwaway worktree of
+   main at 5afb92e, because a working-tree size run after other work
+   can read a stale .next and has misreported a delta here before.
+
+     /calculateur-teletravail-frontalier   first-load   route chunk
+       before (main 5afb92e)                121.6 KiB     21.0 KiB
+       after  (this branch)                 121.9 KiB     21.3 KiB
+       delta                                 +0.3 KiB      +0.3 KiB
+
+     GATE A spare falls from 3.4 KiB to 3.1 KiB. The new route costs
+     109.0 KiB, which is 8.4 KiB of its own over the 100.6 KiB
+     framework floor, and passes with 16.0 KiB spare.
+
+   gate:clone runs size from a clean clone and is the authoritative
+   figure; its output is in THE GATE below.
+
+====================================================================
+WHAT IS NOT DONE
+====================================================================
+1. FW-FORECAST'S RHYTHM IS NOT ASSERTED, BECAUSE IT DOES NOT EXIST ON
+   THE WEB YET. R351 ends: "R346's nojs project then asserts a real
+   figure on the result page - for the plain calculation and for
+   FW-FORECAST's rhythm." The plain calculation is done and asserted
+   (39,16 % with scripting off, plus the two form journeys). The
+   rhythm half has nothing to point at: AN-FORECAST's work on main is
+   the Kotlin/Room side - the imagined-days function, the shared
+   forecast fixture and the account-tagged weekly-rhythm store - and no
+   web route, codec param or copy for a rhythm exists in this
+   repository. Writing an assertion now would be an absence assertion
+   satisfied by absence, which is the defect R154 and R169 exist to
+   forbid.
+
+   WHAT THE NEXT TASK NEEDS. A rhythm reaching /resultat means new
+   params in SPEC 9.4's codec, which is a spec change and an ask-first
+   item. The route, the notice, the form-only exemption and the
+   vocabulary test are all in place to carry them.
+
+2. NO VISUAL BASELINE FOR /resultat - see NOTICED item A.
+
+3. THE ADVANCED ACCORDION STILL NEEDS JAVASCRIPT - see LIMITS item 1.
+
+====================================================================
+THE GATE
+====================================================================
+pnpm gate:changed, FRONTALIER_PORT=3197. GATE PASSED for the paths
+changed. 22 paths matched; the printed selection:
+
+  suites: typecheck, lint, test, build, test:e2e, test:visual,
+          test:db, test:late
+  a11y:   covered by pnpm test - test:a11y's three files are a subset
+          of its globs, so requiring it separately is a second run
+
+  measured:
+    typecheck   exit 0
+    lint        exit 0  (0 errors, 2 pre-existing warnings - NOTICED C)
+    test        3128 passed
+    build       exit 0
+    test:e2e     322 passed
+    test:visual  111 passed
+    test:db      624 passed
+    test:late     10 passed
+
+WHY test:visual AND test:db WERE SELECTED, since neither is obvious:
+the five regenerated baselines match "a baseline, which is the record
+test:visual compares against (R144)", and lib/content/routes.ts and
+lib/params/schema.ts are inside the database layer's import closure.
+e2e/baseline.ts matched as a spec file. The selector found all of that
+from the diff, which is the point of R132 making it mechanical.
+
+THE FIRST RUN FAILED, AND THE CAUSE WAS MINE RATHER THAN THE CODE'S.
+test:e2e went red with 285 passed and every one of the 16 public pages
+failing routing.spec.ts's "carries a self-referencing canonical".
+
+A next start I had launched by hand for the hover probe was still
+holding port 3197, and Playwright's reuseExistingServer attached to it.
+That server came from a plain pnpm build with no NEXT_PUBLIC_SITE_URL,
+so R81 correctly omitted every canonical - the suite was asserting
+against a DIFFERENT BUILD of the right product.
+
+R169 cannot catch this and is not meant to: it asks whether the server
+NAMES this product, and this one did. "It is our product" and "it is
+the build we just made" are different claims, and only the first has a
+guard. R179 states the missing half - a harness kills the tree it
+spawned and asserts the port free before it starts - and it is written
+about scripts/visual.mjs creating an orphan. Here the orphan was
+created by a session probing by hand, which R179 does not cover and
+arguably should. Raised in NOTICED, not fixed here.
+
+The port was freed and the gate re-run; that run is the one above.

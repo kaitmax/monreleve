@@ -35,7 +35,7 @@
 
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, Minus, Plus } from 'lucide-react';
 import {
   type Canton,
@@ -49,6 +49,15 @@ import {
 } from '@/lib/calc-engine';
 import { provisionalFor, readingAnchor } from '@/lib/content/provisional';
 import { decode, encode, isoDayForFraction } from '@/lib/params/codec';
+import {
+  GRANULARITY_CODES,
+  granularityCode,
+  type GranularityCode,
+  methodCode,
+  type ParamName,
+  strayParams,
+} from '@/lib/params/schema';
+import { RESULT_PATH } from '@/lib/content/routes';
 import { writeHandoff } from '@/lib/params/handoff';
 import { CALCULATEUR_COPY } from '@/lib/fr/calculateur';
 import { PARAM_NOTICE, SHARE_COPY } from '@/lib/fr/params';
@@ -405,7 +414,12 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
 
     if (decoded.input !== null) setState(stateFrom(decoded.input));
 
-    setLink({ ignored: decoded.ignored, invalid: decoded.invalid });
+    // THE SAME FILTER THE RESULT PAGE USES (R206, R267). `missions` is a
+    // control of this very form, so naming it as a param the calculator
+    // does not use would be telling the reader their own answer was
+    // discarded. It reaches this URL by the result page’s back link, and
+    // by any link a reader has bookmarked since.
+    setLink({ ignored: strayParams(decoded.ignored), invalid: decoded.invalid });
 
     if (
       decoded.input !== null &&
@@ -726,6 +740,13 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
   /** A number field with its two stepper buttons. Four of these exist. */
   const numericField = (config: {
     readonly id: string;
+    /**
+     * SPEC 9.4's name for this field, and the reason it is required rather
+     * than optional: with no scripting the browser builds the query from
+     * these attributes alone, and a field with no name is a field the
+     * reader filled in and nobody received.
+     */
+    readonly name: ParamName;
     readonly stateKey:
       | 'employmentRate'
       | 'teleworkDays'
@@ -768,6 +789,7 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
           */}
           <input
             {...control}
+            name={config.name}
             type="text"
             inputMode="decimal"
             className={styles.number}
@@ -859,315 +881,373 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
       });
   };
 
+  /**
+   * WHAT A SCRIPTED READER GETS INSTEAD OF A NAVIGATION.
+   *
+   * The form is real and its action answers, so a reader with no JavaScript
+   * submits and lands on /resultat. With JavaScript the answer is already on
+   * screen and recomputed on every keystroke, so leaving for a server
+   * rendering of the same figures would be a downgrade: preventDefault, then
+   * do what the Calculer button has always done.
+   *
+   * BY ID, NOT BY REF, since increment 1. The live region is rendered by the
+   * island while there is nothing to show and by ResultPanel once there is,
+   * so a ref attached in one branch is null in the other - and the button
+   * would silently stop moving focus exactly when there was finally a result
+   * to move it to.
+   */
+  const onSubmit = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault();
+
+    const region = document.getElementById(RESULT_ID);
+
+    if (region === null) return;
+
+    // Guarded rather than called: jsdom implements no layout and has no
+    // scrollIntoView, so an unguarded call turns every test that presses this
+    // button into a TypeError.
+    if (typeof region.scrollIntoView === 'function') {
+      region.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    region.focus();
+  };
+
   return (
     <>
-      <fieldset className={styles.card}>
-        <legend className={styles.legend}>{COPY.legend}</legend>
+      {/*
+        R351: A REAL FORM, SUBMITTING BY GET TO THE PAGE THAT ANSWERS.
 
-        <FieldGroup
-          id="canton"
-          label={COPY.canton.label}
-          helper={COPY.canton.helper}
-          error={errorFor('canton')}
-        >
-          {(control) => (
-            <select
-              {...control}
-              className={styles.select}
-              value={state.canton}
-              onChange={(event) => {
-                set('canton', event.target.value as Canton | '');
-              }}
-            >
-              <option value="">{COPY.canton.placeholder}</option>
-              {CANTONS_BY_NAME.map(([code, name]) => (
-                <option key={code} value={code}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          )}
-        </FieldGroup>
+        This fieldset held nine controls and no form element, so with
+        scripting off a reader could fill every one of them and had no way
+        to send them anywhere. Measured on a production build of main: the
+        Calculer button was type="button", and clicking it left the URL on
+        the calculator.
 
-        {numericField({
-          id: 'taux-activite',
-          stateKey: 'employmentRate',
-          field: 'employmentRate',
-          label: COPY.rate.label,
-          helper: COPY.rate.helper,
-          decrease: COPY.rate.decrease,
-          increase: COPY.rate.increase,
-          step: RATE.step,
-          min: RATE.min,
-          max: RATE.max,
-        })}
+        THE ISLAND STILL WINS WHEN IT IS THERE. onSubmit preventDefaults, so
+        a scripted visitor never leaves the page - the result is already
+        below, recomputed on every keystroke, and navigating away from a
+        live answer to a server-rendered copy of it would be a downgrade.
+        The form is the FALLBACK, and it is the browser rather than this
+        component that uses it.
 
-        {numericField({
-          id: 'jours-teletravail',
-          stateKey: 'teleworkDays',
-          field: 'teleworkDays',
-          label: COPY.days.label,
-          helper: COPY.days.helper,
-          decrease: COPY.days.decrease,
-          increase: COPY.days.increase,
-          step: DAYS.step,
-          min: DAYS.min,
-          max: null,
-        })}
+        action is RESULT_PATH, never this route. FW13 measured what reading
+        searchParams here costs - <title> and canonical leave <head> on SPEC
+        14's target-query page - and R351 moved the answer instead.
+      */}
+      <form method="get" action={RESULT_PATH} onSubmit={onSubmit}>
+        <fieldset className={styles.card}>
+          <legend className={styles.legend}>{COPY.legend}</legend>
 
-        {/*
-          THE MISSION QUESTION, above the accordion and never inside it. SPEC
-          9.3's one exception to progressive disclosure, because a user with
-          missions who never opens the accordion gets a silently wrong answer.
-        */}
-        <RadioGroup
-          name="missions"
-          legend={COPY.missions.question}
-          helper={COPY.missions.helper(fiscalCeiling(taxYear))}
-          value={state.hasMissions ? COPY.missions.yes : COPY.missions.no}
-          options={[
-            { value: COPY.missions.no, label: COPY.missions.no },
-            { value: COPY.missions.yes, label: COPY.missions.yes },
-          ]}
-          onChange={(value) => {
-            const yes = value === COPY.missions.yes;
-
-            // SPEC 15: how common missions actually are. A BOOLEAN, never a
-            // count - how many mission days somebody declared is their
-            // fiscal position, and the question SPEC asks is answered by
-            // the yes.
-            track(missionsDeclared(yes));
-
-            // RESET ON "Non", not merely hide. A hidden field keeps its value
-            // and keeps feeding the calculation, so answering Oui, typing 12
-            // and thinking better of it would compute from 12 mission days the
-            // user can no longer see - the exact "silently wrong answer" this
-            // question exists to prevent, reintroduced by the reveal.
-            setState((current) => ({
-              ...current,
-              hasMissions: yes,
-              missionDaysFrance: yes ? current.missionDaysFrance : NO_DAYS,
-              missionDaysThirdState: yes ? current.missionDaysThirdState : NO_DAYS,
-            }));
-          }}
-        />
-
-        {!state.hasMissions ? null : (
-          <div className={styles.revealed}>
-            {numericField({
-              id: 'missions-france',
-              stateKey: 'missionDaysFrance',
-              field: 'missionDaysFrance',
-              label: COPY.missions.france.label,
-              helper: COPY.missions.fieldHelper,
-              decrease: COPY.days.decrease,
-              increase: COPY.days.increase,
-              step: DAYS.step,
-              min: DAYS.min,
-              max: null,
-            })}
-            {numericField({
-              id: 'missions-pays-tiers',
-              stateKey: 'missionDaysThirdState',
-              field: 'missionDaysThirdState',
-              label: COPY.missions.thirdState.label,
-              helper: COPY.missions.fieldHelper,
-              decrease: COPY.days.decrease,
-              increase: COPY.days.increase,
-              step: DAYS.step,
-              min: DAYS.min,
-              max: null,
-            })}
-          </div>
-        )}
-
-        <button
-          type="button"
-          className={styles.disclosure}
-          aria-expanded={advancedOpen}
-          aria-controls={ADVANCED_SECTION_ID}
-          onClick={() => {
-            setAdvancedOpen((open) => {
-              // SPEC 15 asks whether progressive disclosure WORKS, so the
-              // event is the opening. Firing on close as well would count
-              // one reader twice and make the ratio meaningless.
-              if (!open) track(accordionOpened(ADVANCED_SECTION_ID));
-
-              return !open;
-            });
-          }}
-        >
-          <ChevronDown
-            size={ICON}
-            strokeWidth={STROKE}
-            aria-hidden="true"
-            className={advancedOpen ? styles.chevronOpen : styles.chevron}
-          />
-          <span>{COPY.advanced.summary}</span>
-        </button>
-
-        {/*
-          NOT RENDERED WHEN CLOSED, and the first version of this comment
-          overclaimed why. It said a display:none control "is still focusable",
-          which a probe disproved: hiding this panel with the hidden attribute
-          instead kept the keyboard test green, because hidden implies
-          display:none and display:none really does take descendants out of the
-          tab order.
-
-          So the honest reason is narrower. Not rendering cannot be got wrong,
-          where hiding can: visibility, opacity, height 0 and aria-hidden alone
-          all leave a focusable control behind, and each is one careless edit
-          away from the correct version. There is also no state to keep in sync
-          - no aria-hidden to toggle, nothing to remember to untoggle.
-
-          Increment 5's keyboard path asserts that a closed accordion
-          contributes no tab stops, which is the property that matters. It does
-          NOT distinguish this implementation from a correct display:none one,
-          and the probe is why that is stated rather than assumed.
-        */}
-        <div id={ADVANCED_SECTION_ID}>
-          {!advancedOpen ? null : (
-            <div className={styles.advanced}>
-              <RadioGroup
-                name="methode"
-                legend={COPY.method.label}
-                helper={COPY.method.helper(formatDays(rules.simplifiedBasisDays))}
-                value={state.method}
-                options={[
-                  { value: 'simplified240', label: COPY.method.simplified },
-                  { value: 'exact', label: COPY.method.exact },
-                ]}
-                onChange={(value) => {
-                  const exact = value === 'exact';
-
-                  // PREFILLED FROM THE RULE SET when the exact method is
-                  // chosen, and this is an interpretation the report records.
-                  // SPEC 9.3 says the user supplies the total; an empty field
-                  // reaches the engine as NaN, which it reports as "cannot be
-                  // negative" - a wrong message about a field nobody has typed
-                  // in yet. The simplified basis is the number the calculation
-                  // was already using, so starting there states the default
-                  // rather than inventing one.
-                  setState((current) => ({
-                    ...current,
-                    method: exact ? 'exact' : 'simplified240',
-                    exactTotal:
-                      exact && current.exactTotal === ''
-                        ? String(rules.simplifiedBasisDays)
-                        : current.exactTotal,
-                  }));
+          <FieldGroup
+            id="canton"
+            label={COPY.canton.label}
+            helper={COPY.canton.helper}
+            error={errorFor('canton')}
+          >
+            {(control) => (
+              <select
+                {...control}
+                name="canton"
+                className={styles.select}
+                value={state.canton}
+                onChange={(event) => {
+                  set('canton', event.target.value as Canton | '');
                 }}
-              />
+              >
+                <option value="">{COPY.canton.placeholder}</option>
+                {CANTONS_BY_NAME.map(([code, name]) => (
+                  <option key={code} value={code}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </FieldGroup>
 
-              {state.method !== 'exact' ? null : (
+          {numericField({
+            id: 'taux-activite',
+            name: 'taux',
+            stateKey: 'employmentRate',
+            field: 'employmentRate',
+            label: COPY.rate.label,
+            helper: COPY.rate.helper,
+            decrease: COPY.rate.decrease,
+            increase: COPY.rate.increase,
+            step: RATE.step,
+            min: RATE.min,
+            max: RATE.max,
+          })}
+
+          {numericField({
+            id: 'jours-teletravail',
+            name: 'tt',
+            stateKey: 'teleworkDays',
+            field: 'teleworkDays',
+            label: COPY.days.label,
+            helper: COPY.days.helper,
+            decrease: COPY.days.decrease,
+            increase: COPY.days.increase,
+            step: DAYS.step,
+            min: DAYS.min,
+            max: null,
+          })}
+
+          {/*
+            THE MISSION QUESTION, above the accordion and never inside it. SPEC
+            9.3's one exception to progressive disclosure, because a user with
+            missions who never opens the accordion gets a silently wrong answer.
+          */}
+          <RadioGroup
+            name="missions"
+            legend={COPY.missions.question}
+            helper={COPY.missions.helper(fiscalCeiling(taxYear))}
+            value={state.hasMissions ? COPY.missions.yes : COPY.missions.no}
+            options={[
+              { value: COPY.missions.no, label: COPY.missions.no },
+              { value: COPY.missions.yes, label: COPY.missions.yes },
+            ]}
+            onChange={(value) => {
+              const yes = value === COPY.missions.yes;
+
+              // SPEC 15: how common missions actually are. A BOOLEAN, never a
+              // count - how many mission days somebody declared is their
+              // fiscal position, and the question SPEC asks is answered by
+              // the yes.
+              track(missionsDeclared(yes));
+
+              // RESET ON "Non", not merely hide. A hidden field keeps its value
+              // and keeps feeding the calculation, so answering Oui, typing 12
+              // and thinking better of it would compute from 12 mission days the
+              // user can no longer see - the exact "silently wrong answer" this
+              // question exists to prevent, reintroduced by the reveal.
+              setState((current) => ({
+                ...current,
+                hasMissions: yes,
+                missionDaysFrance: yes ? current.missionDaysFrance : NO_DAYS,
+                missionDaysThirdState: yes ? current.missionDaysThirdState : NO_DAYS,
+              }));
+            }}
+          />
+
+          {!state.hasMissions ? null : (
+            <div className={styles.revealed}>
+              {numericField({
+                id: 'missions-france',
+                name: 'mfr',
+                stateKey: 'missionDaysFrance',
+                field: 'missionDaysFrance',
+                label: COPY.missions.france.label,
+                helper: COPY.missions.fieldHelper,
+                decrease: COPY.days.decrease,
+                increase: COPY.days.increase,
+                step: DAYS.step,
+                min: DAYS.min,
+                max: null,
+              })}
+              {numericField({
+                id: 'missions-pays-tiers',
+                name: 'mtiers',
+                stateKey: 'missionDaysThirdState',
+                field: 'missionDaysThirdState',
+                label: COPY.missions.thirdState.label,
+                helper: COPY.missions.fieldHelper,
+                decrease: COPY.days.decrease,
+                increase: COPY.days.increase,
+                step: DAYS.step,
+                min: DAYS.min,
+                max: null,
+              })}
+            </div>
+          )}
+
+          <button
+            type="button"
+            className={styles.disclosure}
+            aria-expanded={advancedOpen}
+            aria-controls={ADVANCED_SECTION_ID}
+            onClick={() => {
+              setAdvancedOpen((open) => {
+                // SPEC 15 asks whether progressive disclosure WORKS, so the
+                // event is the opening. Firing on close as well would count
+                // one reader twice and make the ratio meaningless.
+                if (!open) track(accordionOpened(ADVANCED_SECTION_ID));
+
+                return !open;
+              });
+            }}
+          >
+            <ChevronDown
+              size={ICON}
+              strokeWidth={STROKE}
+              aria-hidden="true"
+              className={advancedOpen ? styles.chevronOpen : styles.chevron}
+            />
+            <span>{COPY.advanced.summary}</span>
+          </button>
+
+          {/*
+            NOT RENDERED WHEN CLOSED, and the first version of this comment
+            overclaimed why. It said a display:none control "is still focusable",
+            which a probe disproved: hiding this panel with the hidden attribute
+            instead kept the keyboard test green, because hidden implies
+            display:none and display:none really does take descendants out of the
+            tab order.
+
+            So the honest reason is narrower. Not rendering cannot be got wrong,
+            where hiding can: visibility, opacity, height 0 and aria-hidden alone
+            all leave a focusable control behind, and each is one careless edit
+            away from the correct version. There is also no state to keep in sync
+            - no aria-hidden to toggle, nothing to remember to untoggle.
+
+            Increment 5's keyboard path asserts that a closed accordion
+            contributes no tab stops, which is the property that matters. It does
+            NOT distinguish this implementation from a correct display:none one,
+            and the probe is why that is stated rather than assumed.
+          */}
+          <div id={ADVANCED_SECTION_ID}>
+            {!advancedOpen ? null : (
+              <div className={styles.advanced}>
+                <RadioGroup
+                  name="methode"
+                  legend={COPY.method.label}
+                  helper={COPY.method.helper(formatDays(rules.simplifiedBasisDays))}
+                  /*
+                    THE VALUES ARE SPEC 9.4 CODES, NOT THE ENGINE’S NAMES.
+                    Until R351 these read `simplified240` and `exact`, which
+                    was invisible while the group was a UI control; now the
+                    fieldset is inside a GET form, so each `value` is what
+                    the browser puts in the URL. Measured: `methode=
+                    simplified240` reaches decode() as unreadable, falls back
+                    to the default and reports itself in `invalid`.
+
+                    methodCode() rather than a literal, so the form and the
+                    codec cannot disagree about the vocabulary (R206).
+                  */
+                  value={methodCode(state.method)}
+                  options={[
+                    { value: methodCode('simplified240'), label: COPY.method.simplified },
+                    { value: methodCode('exact'), label: COPY.method.exact },
+                  ]}
+                  onChange={(value) => {
+                    const exact = value === methodCode('exact');
+
+                    // PREFILLED FROM THE RULE SET when the exact method is
+                    // chosen, and this is an interpretation the report records.
+                    // SPEC 9.3 says the user supplies the total; an empty field
+                    // reaches the engine as NaN, which it reports as "cannot be
+                    // negative" - a wrong message about a field nobody has typed
+                    // in yet. The simplified basis is the number the calculation
+                    // was already using, so starting there states the default
+                    // rather than inventing one.
+                    setState((current) => ({
+                      ...current,
+                      method: exact ? 'exact' : 'simplified240',
+                      exactTotal:
+                        exact && current.exactTotal === ''
+                          ? String(rules.simplifiedBasisDays)
+                          : current.exactTotal,
+                    }));
+                  }}
+                />
+
+                {state.method !== 'exact' ? null : (
+                  <FieldGroup
+                    id="total-jours"
+                    label={COPY.method.totalLabel}
+                    helper={COPY.method.totalHelper}
+                    error={errorFor('exactTotal')}
+                  >
+                    {(control) => (
+                      <input
+                        {...control}
+                        name="total"
+                        type="text"
+                        inputMode="decimal"
+                        className={styles.number}
+                        value={state.exactTotal}
+                        onChange={(event) => {
+                          set('exactTotal', event.target.value);
+                        }}
+                      />
+                    )}
+                  </FieldGroup>
+                )}
+
+                <RadioGroup
+                  name="decompte"
+                  legend={COPY.decompte.label}
+                  helper={COPY.decompte.helper}
+                  /* SPEC 9.4 codes, for the reason above: `decompte=halfDay`
+                     falls back to whole days and answers a different
+                     question without saying so. */
+                  value={granularityCode(state.granularity)}
+                  options={[
+                    { value: granularityCode('day'), label: COPY.decompte.day },
+                    { value: granularityCode('halfDay'), label: COPY.decompte.halfDay },
+                    { value: granularityCode('hours'), label: COPY.decompte.hours },
+                  ]}
+                  onChange={(value) => {
+                    set('granularity', GRANULARITY_CODES[value as GranularityCode]);
+                  }}
+                />
+
                 <FieldGroup
-                  id="total-jours"
-                  label={COPY.method.totalLabel}
-                  helper={COPY.method.totalHelper}
-                  error={errorFor('exactTotal')}
+                  id="debut-activite"
+                  label={COPY.start.label}
+                  helper={COPY.start.helper}
+                  error={errorFor('startDay')}
                 >
                   {(control) => (
                     <input
                       {...control}
-                      type="text"
-                      inputMode="decimal"
-                      className={styles.number}
-                      value={state.exactTotal}
+                      name="debut"
+                      type="date"
+                      className={styles.date}
+                      value={state.startDay}
                       onChange={(event) => {
-                        set('exactTotal', event.target.value);
+                        set('startDay', event.target.value);
                       }}
                     />
                   )}
                 </FieldGroup>
-              )}
+              </div>
+            )}
+          </div>
 
-              <RadioGroup
-                name="decompte"
-                legend={COPY.decompte.label}
-                helper={COPY.decompte.helper}
-                value={state.granularity}
-                options={[
-                  { value: 'day', label: COPY.decompte.day },
-                  { value: 'halfDay', label: COPY.decompte.halfDay },
-                  { value: 'hours', label: COPY.decompte.hours },
-                ]}
-                onChange={(value) => {
-                  set('granularity', value as Granularity);
-                }}
-              />
-
-              <FieldGroup
-                id="debut-activite"
-                label={COPY.start.label}
-                helper={COPY.start.helper}
-                error={errorFor('startDay')}
-              >
-                {(control) => (
-                  <input
-                    {...control}
-                    type="date"
-                    className={styles.date}
-                    value={state.startDay}
-                    onChange={(event) => {
-                      set('startDay', event.target.value);
-                    }}
-                  />
-                )}
-              </FieldGroup>
+          {unplaced.length === 0 ? null : (
+            <div className={styles.otherErrors}>
+              <p className={styles.otherErrorsLabel}>{COPY.otherErrorsLabel}</p>
+              <ul className={styles.otherErrorsList}>
+                {unplaced.map((error) => (
+                  <li key={error.code}>{errorMessage(error)}</li>
+                ))}
+              </ul>
             </div>
           )}
-        </div>
 
-        {unplaced.length === 0 ? null : (
-          <div className={styles.otherErrors}>
-            <p className={styles.otherErrorsLabel}>{COPY.otherErrorsLabel}</p>
-            <ul className={styles.otherErrorsList}>
-              {unplaced.map((error) => (
-                <li key={error.code}>{errorMessage(error)}</li>
-              ))}
-            </ul>
-          </div>
-        )}
+          {/*
+            FD1 PUTS A PRIMARY BUTTON HERE and, for a scripted reader, the
+            result is already live - so this one navigates rather than
+            computes: it scrolls the result into view and takes focus there. A
+            form full of numbers with no button at all reads as unfinished.
 
-        {/*
-          FD1 PUTS A PRIMARY BUTTON HERE and the result is already live, so
-          this one navigates rather than computes: it scrolls the result into
-          view and takes focus there. A form full of numbers with no button at
-          all reads as unfinished, and a button that recomputed what is
-          already computed would be a lie about how the page works.
-
-          type="button". A submit would reload the page on Enter and lose
-          everything typed, which on a form with no persistence is the worst
-          available outcome.
-        */}
-        <button
-          type="button"
-          className={styles.calculate}
-          onClick={() => {
-            /*
-              BY ID, NOT BY REF, since increment 1. The live region is
-              rendered by the island while there is nothing to show and by
-              ResultPanel once there is, so a ref attached in one branch is
-              null in the other - and the button would silently stop moving
-              focus exactly when there was finally a result to move it to.
-            */
-            const region = document.getElementById(RESULT_ID);
-
-            if (region === null) return;
-
-            // Guarded rather than called: jsdom implements no layout and has
-            // no scrollIntoView, so an unguarded call turns every test that
-            // presses this button into a TypeError.
-            if (typeof region.scrollIntoView === 'function') {
-              region.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-
-            region.focus();
-          }}
-        >
-          {RESULT.calculate}
-        </button>
-      </fieldset>
+            type="submit" SINCE R351, AND THE OLD COMMENT ARGUED THE OPPOSITE.
+            It read: "a submit would reload the page on Enter and lose
+            everything typed, which on a form with no persistence is the worst
+            available outcome". That was true of a submit with nowhere to go.
+            It is not true of this one: the destination now ANSWERS, so the
+            reload a reader gets on Enter is their result rather than a blank
+            form - and onSubmit preventDefaults before any of that happens
+            when there is scripting to do it. The argument is recorded rather
+            than deleted because it was right about the arrangement it was
+            written for.
+          */}
+          <button type="submit" className={styles.calculate}>
+            {RESULT.calculate}
+          </button>
+        </fieldset>
+      </form>
 
       {/*
         THE RESULT AREA, and it is rendered by TWO components depending on

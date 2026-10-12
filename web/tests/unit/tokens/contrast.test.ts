@@ -797,6 +797,15 @@ describe('every colour rule in the five stylesheets, at the bar its size implies
       '(public)/calculateur-teletravail-frontalier/ResultPanel .warningBody -> --colour-warning-soft',
       '(public)/calculateur-teletravail-frontalier/ResultPanel .warningHeading -> --colour-warning-soft',
 
+      // R351'S RESULT PAGE, and these two are the calculator's own notice
+      // rendered on a second surface. A reader can meet the SAME sentences
+      // either way round - the island renders them from a shared link, the
+      // result page from a submitted form - so the two blocks name the same
+      // tokens deliberately, and this list is where a drift between them
+      // would show as one entry moving and its twin staying put.
+      '(public)/calculateur-teletravail-frontalier/resultat/resultat .noticeBody -> --colour-warning-soft',
+      '(public)/calculateur-teletravail-frontalier/resultat/resultat .noticeLead -> --colour-warning-soft',
+
       // FW16's hub: three text rules inside the card each entry paints. They
       // arrived the same way the link notice did - by failing this
       // assertion - and one of them arrived WRONG: .entryDate was

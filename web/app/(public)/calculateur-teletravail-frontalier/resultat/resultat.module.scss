@@ -1,0 +1,85 @@
+// web/app/(public)/calculateur-teletravail-frontalier/resultat/resultat.module.scss
+//
+// Tokens only. The page is a heading, a state sentence or the panel, and a way
+// back - ResultPanel brings its own styles, so there is deliberately nothing
+// here that could restyle a figure.
+
+.page {
+  padding-block: var(--space-10);
+}
+
+.title {
+  margin: 0 0 var(--space-6);
+  color: var(--colour-text-primary);
+  font-size: var(--type-h1-size);
+  font-weight: var(--type-h1-weight);
+  line-height: var(--type-h1-line);
+}
+
+.state {
+  margin: 0 0 var(--space-4);
+  max-width: var(--layout-article);
+  color: var(--colour-text-secondary);
+  font-size: var(--type-body-l-size);
+  font-weight: var(--type-body-l-weight);
+  line-height: var(--type-body-l-line);
+}
+
+// THE LINK NOTICE, AND IT IS THE CALCULATOR’S OWN TREATMENT, TOKEN FOR TOKEN.
+// A reader can meet this notice on either surface - the island renders it
+// from a shared link, this page renders it from a submitted form - and the
+// same sentences in two different colours would read as two different
+// things. The text is shared through PARAM_NOTICE (R206); CSS modules are
+// per-file, so the appearance is shared the only way it can be, by naming
+// the same tokens. Any drift is visible in the two blocks side by side.
+.notice {
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  max-width: var(--layout-article);
+  border-left: var(--size-notice-accent) solid var(--colour-warning);
+  border-radius: var(--radius-sm);
+  background: var(--colour-warning-soft);
+}
+
+.noticeLead {
+  margin: 0 0 var(--space-1);
+  color: var(--colour-text-primary);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-caption-line);
+}
+
+// overflow-wrap, and this is the one line that is NOT the island’s. This is
+// the only element on the page whose content a stranger chose: PARAM_NOTICE
+// prints param names taken from the URL, and a 24-character invented name
+// has to wrap rather than widen the page at 320 dp (R127).
+.noticeBody {
+  margin: 0 0 var(--space-1);
+  overflow-wrap: anywhere;
+  color: var(--colour-text-primary);
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-line);
+}
+
+// The engine's refusals. A list because there can be several, and each is one
+// sentence the form would have shown beside its own field.
+.errors {
+  margin: 0 0 var(--space-6);
+  padding-left: var(--space-5);
+  color: var(--colour-text-primary);
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  line-height: var(--type-body-line);
+}
+
+// 44 px, because the way back is the only control on this page and D40 covers
+// anything a reader taps.
+.actions {
+  display: flex;
+  align-items: center;
+  min-height: var(--size-touch-target-web);
+  margin: var(--space-6) 0 0;
+  font-size: var(--type-body-m-size);
+  font-weight: var(--type-body-m-weight);
+  line-height: var(--type-body-m-line);
+}

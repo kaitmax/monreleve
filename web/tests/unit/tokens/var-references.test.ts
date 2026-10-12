@@ -159,9 +159,15 @@ describe('every var() resolves to a token that exists', () => {
       '$size-notice-accent: 4px;',
     );
 
-    // SIX SITES, FOUR FILES - the calculator form carries three of them - so
-    // the count is of USES rather than of files, which is what Q42's census
-    // counted.
+    // SEVEN SITES, FIVE FILES - the calculator form carries three of them -
+    // so the count is of USES rather than of files, which is what Q42's
+    // census counted.
+    //
+    // THE SEVENTH IS R351'S RESULT PAGE, which renders the calculator's own
+    // link notice on a second surface and so draws the same accent. It
+    // arrived here by failing this assertion, which is the whole value of
+    // counting: a notice that had quietly picked a different accent would
+    // have left this number alone.
     const uses = FILES.reduce(
       (total, file) =>
         total +
@@ -170,7 +176,7 @@ describe('every var() resolves to a token that exists', () => {
       0,
     );
 
-    expect(uses, 'the token is defined and nothing uses it').toBe(6);
+    expect(uses, 'the token is defined and nothing uses it').toBe(7);
   });
 
   it("draws the total row's rule from its own token, not the input one (Q48)", () => {

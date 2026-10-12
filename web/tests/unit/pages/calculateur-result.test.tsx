@@ -222,12 +222,41 @@ describe('the Calculer button (FD1)', () => {
     expect(document.activeElement).toBe(region);
   });
 
-  it('does not submit, so a stray Enter cannot reload the page', () => {
+  it('IS a submit since R351, because the form now has somewhere to go', () => {
+    // THIS TEST ASSERTED THE OPPOSITE UNTIL R351, and the reasoning it
+    // carried was sound for the page it was written on: "does not submit, so
+    // a stray Enter cannot reload the page". A submit that reloaded this
+    // route would have thrown away everything typed, because the island
+    // reads the URL only on mount and there was no server-rendered answer to
+    // land on.
+    //
+    // There is one now. The form posts by GET to the result page, so the
+    // reload a no-JS reader gets IS their answer - and the next test is what
+    // keeps the old worry from coming true for everybody else.
     setUp();
 
     expect(screen.getByRole('button', { name: RESULT.calculate }).getAttribute('type')).toBe(
-      'button',
+      'submit',
     );
+  });
+
+  it('and the island cancels it, so a scripted reader never leaves the page', () => {
+    // THE HALF THAT CANNOT BE READ OFF THE MARKUP. A submit button plus an
+    // action is a navigation unless something stops it, and "something stops
+    // it" is the claim - so the event is dispatched and its cancellation
+    // asserted, rather than the handler being inspected for existence.
+    setUp();
+
+    const form = document.querySelector('form');
+
+    expect(form).not.toBeNull();
+
+    const submitted = new Event('submit', { bubbles: true, cancelable: true });
+    const wentThrough = form?.dispatchEvent(submitted);
+
+    // dispatchEvent returns false exactly when preventDefault was called.
+    expect(wentThrough).toBe(false);
+    expect(submitted.defaultPrevented).toBe(true);
   });
 });
 

@@ -27,6 +27,7 @@
 // add one by accident.
 
 import { NextResponse, type NextRequest } from 'next/server';
+import { RESULT_PATH } from '@/lib/content/routes';
 
 /** Header and value, spelled out so the test can assert both. */
 export const ROBOTS_HEADER = 'X-Robots-Tag';
@@ -48,7 +49,13 @@ export function middleware(request: NextRequest): NextResponse {
   //
   // The RULE still holds; it is the parser that holds it, and the test
   // asserts that rather than this line.
-  if (request.nextUrl.search !== '') {
+  // THE RESULT PAGE IS NOINDEX UNCONDITIONALLY (R351), and the difference
+  // from the rule above is the whole point. The calculator is a real page
+  // that happens to accept a query, so it is indexable bare and noindex when
+  // parameterised. /resultat is nothing BUT an answer to someone's figures:
+  // its bare path renders an empty state, no version of it is worth indexing,
+  // and so the query is not what decides.
+  if (request.nextUrl.pathname === RESULT_PATH || request.nextUrl.search !== '') {
     response.headers.set(ROBOTS_HEADER, ROBOTS_NOINDEX);
   }
 
@@ -56,13 +63,21 @@ export function middleware(request: NextRequest): NextResponse {
 }
 
 /**
- * The calculator only.
+ * The calculator and its result page, and nothing else.
  *
  * SPEC 9.4's contract is about the calculator's URL, and a matcher that caught
  * every route would put noindex on any page somebody happened to append a
  * tracking parameter to - including the home page, which is exactly the kind
  * of quiet de-indexing nobody notices until traffic goes.
+ *
+ * R351 ADDS ONE PATH, NOT A PREFIX. '/calculateur-teletravail-frontalier/:path*'
+ * would catch every future child of the calculator, which is the same broad
+ * failure one paragraph up. The two paths are written as LITERALS because Next
+ * evaluates this config at build time and cannot read an imported constant
+ * here; tests/unit/content/result-path.test.ts asserts they equal
+ * CALCULATOR_PATH and RESULT_PATH, so the literals cannot drift from the
+ * constants the rest of the product builds its links from.
  */
 export const config = {
-  matcher: ['/calculateur-teletravail-frontalier'],
+  matcher: ['/calculateur-teletravail-frontalier', '/calculateur-teletravail-frontalier/resultat'],
 };

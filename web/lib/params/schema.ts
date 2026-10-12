@@ -115,6 +115,45 @@ export const PARAM_SCHEMA: Readonly<Record<ParamName, ParamSpec>> = {
 };
 
 /** SPEC 9.4's three-value code for Granularity, and back. */
+/**
+ * PARAMS A FORM SUBMITS THAT THE ENGINE DOES NOT READ.
+ *
+ * `missions` is the calculator's yes/no question. It is a real control -
+ * it reveals the two mission-count fields, and SPEC 9.3 puts it outside the
+ * accordion precisely so nobody misses it - but it carries no value the
+ * engine wants: the COUNTS do. A browser submits every named control, so it
+ * arrives in the query and decode() correctly reports it as a param it does
+ * not know.
+ *
+ * WITHOUT THIS LIST THE READER IS TOLD SOMETHING FALSE. The notice would
+ * say "ces parametres ne sont pas utilises par le calculateur : missions"
+ * to somebody who had just answered that question - that sentence is for a
+ * tracking parameter a platform appended, and this is not one.
+ *
+ * ASSERTED EMPTY OF EVERYTHING ELSE (R206). A second entry is a second
+ * param a reader can be shown no explanation for, so it has to survive its
+ * own argument rather than join an established habit.
+ */
+export const FORM_ONLY_PARAMS = ['missions'] as const;
+
+/**
+ * decode()’s `ignored` with the form’s own controls taken out.
+ *
+ * ONE FILTER, BOTH SURFACES, AND THE SECOND ONE IS WHY THIS IS A FUNCTION.
+ * The result page was written with this filter inline and the island was
+ * not, which left the wrong sentence reachable by a path the walkthrough had
+ * already driven: the result page’s "Modifier mes chiffres" link carries the
+ * query back to the calculator, the island decodes it on mount, and a reader
+ * who had just answered the mission question would be told the calculator
+ * does not use it. Fixing one surface and leaving the other is the half-
+ * applied finding R267 is about.
+ */
+export function strayParams(ignored: readonly string[]): string[] {
+  const formOnly: readonly string[] = FORM_ONLY_PARAMS;
+
+  return ignored.filter((name) => !formOnly.includes(name));
+}
+
 export const GRANULARITY_CODES = {
   j: 'day',
   dj: 'halfDay',
@@ -130,3 +169,35 @@ export const METHOD_CODES = {
 } as const satisfies Record<string, TeleworkInput['denominator']['kind']>;
 
 export type MethodCode = keyof typeof METHOD_CODES;
+
+/**
+ * THE TABLES READ BACKWARDS, EXPORTED, so that nothing has to write them out
+ * a second time.
+ *
+ * encode() needed this direction from the start and did it inline. R351 gave
+ * it a second caller: the calculator form submits by GET, so every radio’s
+ * `value` attribute has to BE the code the URL carries - a control named
+ * `decompte` whose value is `halfDay` reaches decode() as unreadable, falls
+ * back to whole days, and answers a different question in silence (measured).
+ *
+ * A SECOND MAP IN THE ISLAND WOULD BE THE DEFECT R206 NAMES: two descriptions
+ * of one vocabulary, correct on the day they are written. These derive from
+ * the same object decode() reads, so a fourth granularity cannot reach one
+ * side without reaching the other.
+ */
+export function granularityCode(granularity: TeleworkInput['granularity']): GranularityCode {
+  const code = (Object.keys(GRANULARITY_CODES) as GranularityCode[]).find(
+    (key) => GRANULARITY_CODES[key] === granularity,
+  );
+
+  // UNREACHABLE BY CONSTRUCTION - the table is `satisfies Record<_,
+  // Granularity>` and its keys cover the union - but TypeScript cannot see
+  // that through `find`, and a non-null assertion here would be the one
+  // place a fourth granularity could land without a compile error.
+  return code ?? 'j';
+}
+
+/** The same, for the denominator method. */
+export function methodCode(kind: TeleworkInput['denominator']['kind']): MethodCode {
+  return kind === 'exact' ? 'exact' : '240';
+}

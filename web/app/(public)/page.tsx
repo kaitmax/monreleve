@@ -46,6 +46,7 @@ import { publishedGuides } from '@/lib/guides/registry';
 import { formatDays } from '@/lib/ui/core';
 import { Container } from '@/lib/ui/react/Container/Container';
 import { HeroPhone } from './HeroPhone';
+import { RESULT_PATH } from '@/lib/content/routes';
 import styles from './home.module.scss';
 
 const ICON = 20;
@@ -54,8 +55,16 @@ const ICON_STEP = 26;
 const ICON_PRIVACY = 28;
 const STROKE = 1.75;
 
-/** The calculator page the home form hands off to (its existing route). */
-const CALCULATOR_PATH = '/calculateur-teletravail-frontalier';
+// THE PATH IS IMPORTED from lib/content/routes, not declared here: this
+// file used to carry its own copy of the calculator path, which is one
+// route with two homes (R206).
+//
+// AND IT IS RESULT_PATH ALONE SINCE R351. The card is a form, and a form
+// goes where its answer is; the calculator itself is reached from the nav,
+// and from the result page’s own "Modifier mes chiffres" link.
+// This file declared its own copy of the calculator's slug - a second literal
+// of a path SPEC 14 freezes, which is the transcription R181 forbids and the
+// exact shape R206 exists to remove. It was correct the day it was typed.
 const ALERTS_PATH = '/alertes';
 const GUIDES_PATH = '/guides';
 const SOURCES_PATH = '/sources';
@@ -147,8 +156,16 @@ export default function HomePage() {
               <p className={styles.note}>{HOME_COPY.calculator.note}</p>
             </div>
 
-            {/* A plain GET form to the calculator's existing params. No JS. */}
-            <form className={styles.calcCard} method="get" action={CALCULATOR_PATH}>
+            {/* A plain GET form carrying the calculator's existing params, and
+                since R351 it submits to the page that ANSWERS them.
+
+                IT USED TO POINT AT THE CALCULATOR, which was honest when it
+                was built and did not calculate: that route is a client island
+                under FW13's static-route ruling, so with scripting off this
+                form handed its reader a page that could not answer. Measured
+                on a production build before R351 - the parameters arrived and
+                the page showed the same empty state as the bare path. */}
+            <form className={styles.calcCard} method="get" action={RESULT_PATH}>
               <div className={styles.field}>
                 <label className={styles.fieldLabel} htmlFor="home-canton">
                   {HOME_COPY.calculator.cantonLabel}

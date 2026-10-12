@@ -28,7 +28,7 @@
 import { TEST_ORIGIN } from '../../../lib/content/identity';
 import { describe, expect, it, vi } from 'vitest';
 import { generateMetadata } from '@/app/(public)/calculateur-teletravail-frontalier/page';
-import { CALCULATOR_PATH } from '@/lib/content/routes';
+import { CALCULATOR_PATH, RESULT_PATH } from '@/lib/content/routes';
 import { NextRequest } from 'next/server';
 import { ROBOTS_HEADER, ROBOTS_NOINDEX, middleware } from '@/middleware';
 
@@ -168,13 +168,18 @@ describe('AC3: the canonical names the bare path, from every URL', () => {
 });
 
 describe('the middleware touches the calculator and nothing else', () => {
-  it('is scoped to one route', async () => {
+  it('is scoped to the two routes that read params, and no others', async () => {
     // A matcher catching every route would put noindex on any page somebody
     // appended a tracking parameter to - including the home page. That is the
     // kind of quiet de-indexing nobody notices until the traffic goes.
     const { config } = await import('@/middleware');
 
-    expect(config.matcher).toEqual([CALCULATOR_PATH]);
+    // TWO SINCE R351, AND STILL LITERALS RATHER THAN A PREFIX. The result
+    // page is noindex on every URL it has, so it joins the matcher; a
+    // '/calculateur-teletravail-frontalier/:path*' would have covered it
+    // and every future child of the calculator with it, which is the same
+    // broad failure this test was written against one level down.
+    expect(config.matcher).toEqual([CALCULATOR_PATH, RESULT_PATH]);
   });
 
   it('sets nothing else on the response', async () => {
