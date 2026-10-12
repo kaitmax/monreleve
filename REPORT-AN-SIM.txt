@@ -1,0 +1,310 @@
+REPORT-AN-SIM.txt
+Mon Releve - AN-SIM (task 2 of RUN-CHAIN-DECIDE)
+The simulator: test a change before making it.
+
+====================================================================
+HOW IT ENDED
+====================================================================
+DONE. The simulator is built as designed (design/decide/Simulation.dc.html),
+reached from Prevision's live "Tester un changement" primary button (R85),
+labelled a projection (R340), and backed by the engine through the shared
+aggregation (R281) - no arithmetic in a component (FW12). Every projection
+runs the EXISTING engine on an imagined year: no engine change, no /v1
+change, no Room schema change.
+
+This session CONTINUED an-sim from 833aba2 (the prior AN-SIM agent hit the
+session limit after two increments: 7eb6b73 the engine path + controller,
+833aba2 the screen + copy + 8 Paparazzi baselines). This session finished
+the integration:
+  e1a5fee  the nav wiring, the live entry point and the R310 restore
+           threading (+ 4 regenerated Prevision baselines)
+  cb09864  satisfy ktlint and detekt on e1a5fee (fix-forward, see PUSH PROOF)
+Branch tip: cb09864 on origin/an-sim.
+
+:app:gate verdict: BUILD SUCCESSFUL in 5m 54s on cb09864 (assembleDebug,
+testDebugUnitTest 1108 tests, checkTestFloor, ktlintCheck, detekt,
+verifyPaparazziDebug, the five release checks, checkMinifiedWireContract,
+checkLicences, lintDebug).
+The JVM suites run by me (inside :app:gate's testDebugUnitTest, 1108 tests):
+SimulationConformanceTest, SimulationR340Test, SimulationControllerTest,
+SimulationCopyTest, MainGraphWiringTest, and the forecast suites - all pass.
+pnpm gate:clone is DEFERRED to the orchestrator as instructed.
+
+====================================================================
+R273 - WHERE THIS TASK BELONGS IN tasks/todo.md
+====================================================================
+As AN-FORECAST recorded: tasks/todo.md ends at AN15 and knows nothing of the
+DECIDE chain; the Android series on disk already overtook it. AN-SIM is the
+second of the paid-tools group (AN-FORECAST, AN-SIM, AN-ALERT, AN-RECON) in
+Phase 7, "Complete the app". It depends on AN-FORECAST (the imagined year,
+the rhythm store, the Prevision screen it is reached from) and AN2/AN5b (the
+engine and the shared aggregation, R281). todo.md is an operator file; not
+edited (out of scope).
+
+====================================================================
+EACH SCENARIO (inputs, engine result checked)
+====================================================================
+Each scenario is a change to the imagined year, run through the EXISTING
+engine (dossier.simulationResults, shared with the forecast, R281/R206) and
+shown against the current projection. The controller parses the raw inputs;
+an empty or invalid field is a no-op (the simulated figure equals the
+baseline), never a crash. Figures are from the engine, never the UI (R340).
+
+  ONE MORE DAY AT HOME EACH WEEK (EXTRA_WEEKDAY). The person picks a weekday
+    that is not already a home day. SimChange.ExtraWeekday(day). The design's
+    own example (70 recorded, Domicile Tue/Thu, adding Friday from 9 Oct
+    2026) is the simExtraWeekday baseline: 39,16 % -> 43,75 %, 9 days over
+    the fiscal ceiling, 14,5 before social - the engine's numbers, matching
+    the design's sample figures.
+  EXTRA TELEWORK DAYS THIS MONTH (EXTRA_MONTH_DAYS). A number.
+    SimChange.ExtraMonthDays(n>=0).
+  A DIFFERENT EMPLOYMENT RATE (RATE). A number 1..100, seeded to the current
+    rate so nothing changes until it is edited. SimChange.Rate; the engine
+    applies R290's basis change - REUSED, never a second copy (R206).
+  MISSIONS (MISSIONS). A count in France and a count in a third state.
+    SimChange.Missions(france, third); the engine applies the 10-day limit,
+    its proration and its order (France first) exactly as for the record.
+The unit witness SimulationR340Test runs all four changes and asserts the
+engine produces a result and the recorded list is returned unchanged.
+
+====================================================================
+THE NOT-COVERED CASES (said on the screen ALWAYS)
+====================================================================
+SimulationCopy.NOT_COVERED is rendered on every state of the screen (an
+InfoNote under the card): "Ce simulateur ne couvre pas le teletravail depuis
+un autre pays que la France, un second employeur ni un changement de
+residence en cours d'annee." A case outside the model never produces a
+confident number (AN-SIM section 1).
+
+====================================================================
+THE BUTTONS
+====================================================================
+  "Revenir a ma prevision" - always the primary (SimulationCopy.RETURN);
+    returns to Prevision.
+  "Adopter ce rythme" (SimulationCopy.ADOPT) - ONLY for EXTRA_WEEKDAY with a
+    weekday chosen (state.canAdopt). Adopting routes through the
+    ForecastController's setDay (the rhythm's ONE home, R206/R341), then
+    returns to Prevision so the forecast is seen to change. Still a
+    projection: setDay persists only the local weekly rhythm (a planning
+    preference), never a day record (R340/D16).
+  "Modifier mon taux dans les Parametres" (SimulationCopy.CHANGE_RATE) - ONLY
+    for the RATE scenario; opens the Parametres tab, where R290's before/after
+    confirmation fires when the rate is actually changed. The simulator never
+    changes the rate itself.
+  MISSIONS and EXTRA_MONTH_DAYS have no "adopt" - they are recorded as days
+    when they happen, not adopted as a rhythm.
+Neutral wording: the screen shows the consequence and never advises.
+
+THE CONSEQUENCE SENTENCE (R146). Only the verified fiscal row from
+docs/regulatory-sources.md is stated: "Au-dela de 40 %, vos jours de
+teletravail deviennent imposables en France. Source : AFC Geneve." The 40 %
+is an already-formatted percentage from the RuleSet fiscal ceiling (R181 -
+name the rule, never type its value). The social threshold has no
+sentence-level consequence row, so none is written (R160 - never more than
+the record supports).
+
+====================================================================
+R340 - A PROJECTION IS NEVER A RECORD (the "nothing written" test)
+====================================================================
+THE LABEL (in the UI, not colour alone): the screen is titled "Simulation"
+(top bar), the compared figures are labelled "Votre projection" (current)
+and "Avec ce changement" (simulated), the scenario chips render the selected
+one FILLED and the rest OUTLINED (a shape difference, not colour alone), and
+the not-covered note is always on screen. No figure on the screen can be
+read as a recorded one.
+
+THE "NOTHING WRITTEN" PROOFS (the chain's between-tasks handover):
+  Unit witness (green): dossier/SimulationR340Test.kt - computing a
+    simulation returns the recorded list unchanged; simulationResults takes
+    values and returns values, with NO seam to the entries table, the
+    mutation queue, the server, the releve, the PDF or the annex.
+  Controller witness (green): forecast/SimulationControllerTest.kt - the
+    "running every scenario writes to no store (R340)" test drives all four
+    scenarios and every input against a CountingRhythmRepository (saveCount
+    0, clearCount 0) and a ThrowingEntryRepository (record() throws if the
+    write path is ever reached); it is never reached. A second test
+    ("a restored snapshot reopens the same scenario and its inputs, R310")
+    proves the R310 restore seam also writes nothing.
+  Store-level proof on the device: see WALKTHROUGH (the handover deliverable).
+The SimulationController has NO save/record seam at all; adopting a weekday
+is the ForecastController's setDay (R341), wired at the shell. So the ONLY
+local write any simulator action can make is the weekly_rhythm row that
+adopt persists - proven on the device below.
+
+====================================================================
+WALKTHROUGH ON THE S9 (adb 232bcd8c300c7ece)
+====================================================================
+Driven by android/scripts/an-sim-walkthrough.mjs (untracked, left untracked
+like its AN-* siblings) against the debug APK :app:gate built. Session +
+settings (GE/100/SIMPLIFIED240/DAY) + account tag + NAME injected through the
+R284 debug seams (the same NAME-into-settings-prefs step AN-FORECAST
+documented, so start = MAIN); the DECADE scenario seeded 2551 entries.
+
+DRIVEN, each described (shots in android/.an-sim-shots/, untracked, each
+cropped and looked at, R178):
+  - Parametres -> "Votre rythme habituel" -> set Suisse Mon/Wed/Fri, Domicile
+    Tue/Thu (the design rhythm). weekly_rhythm = 1.
+  - Prevision -> the LIVE "Tester un changement" primary button -> the
+    SIMULATOR. THE ENTRY POINT WORKS (R85).
+  - 01-sim-default: "Simulation" top bar, "Et si... ?", the four scenario
+    chips (selected FILLED, the rest OUTLINED - not colour alone, R340),
+    "Quel jour en plus ? Lundi", and the card: "Votre projection 10,00 %"
+    (neutral) beside "Avec ce changement 14,58 %" (its zone colour), the
+    two-segment rail, "Sous les deux seuils". Every figure the engine's.
+  - Changed the input: tapped "Des missions", entered 5 in "Missions en
+    France". The simulated figure recomputed to "Avec ce changement 12,08 %"
+    - the engine applying the mission change, live.
+  - 03-sim-extra-weekday / "Adopter ce rythme": adopting Monday returned to
+    Prevision with the forecast CHANGED to "Fin decembre, projection
+    14,58 %" (was 10,00 %) - and 14,58 % equals the simulator's own "Avec ce
+    changement" for that same change (internal consistency, R176). The
+    "Tester un changement" button is still live on the returned screen.
+  - 200 % (font_scale 2.0): the simulator legible, the scenario chips WRAP
+    their text (FlowRow), NO horizontal overflow, content scrolls, the
+    buttons pinned. Restored to 1.0. (NOTICED below: the long "Revenir a ma
+    prevision" primary label clips on the narrow S9 at 200 %.)
+  Shots: 01-sim-default, 02-sim-missions, 03-sim-extra-weekday,
+  04-prevision-after-adopt, 05-sim-200, 06-sim-missions-200 (untracked).
+
+R340 STORE-LEVEL PROOF (the handover deliverable). monreleve.db was read
+BEFORE the simulator was opened, AFTER opening it, and AFTER computing a
+missions simulation:
+  entry   2551 -> 2551 -> 2551   (unchanged)
+  pending 0    -> 0    -> 0       (the mutation queue, unchanged)
+  tally   0    -> 0    -> 0       (unchanged)
+  rhythm  1    -> 1    -> 1       (unchanged)
+COMPUTING A SIMULATION WROTE NOTHING TO ANY STORE: PASS. The releve, the PDF
+and the annex have no seam from the simulation path at all (the unit and
+controller witnesses prove that by construction), so there was nothing to
+read back for them; the server is never called (the simulation is all local
+engine).
+
+R341 ADOPT PROOF. After "Adopter ce rythme": entry 2551, pending 0, tally 0
+all UNCHANGED; only the weekly_rhythm row was updated (its count stays 1 -
+one row per account, updated in place, which is why the forecast moved from
+10,00 % to 14,58 %). ADOPTING WROTE ONLY THE RHYTHM (a planning preference,
+R341), NEVER THE RECORD (D16/R340): PASS.
+
+NOTICED (not blocking; shared-component, device-specific; flagged for the
+orchestrator): on the narrow S9 at 200 % the pinned "Revenir a ma prevision"
+primary button clips its label to "Revenir a ma" - the shared single-line
+PrimaryButton (onboarding) used app-wide, not an AN-SIM surface; the Pixel 5
+Paparazzi baseline (simExtraWeekdayLarge) renders the same label in full at
+2f, so it is width-specific. TalkBack announces the full accessible name
+regardless of the visual clip. Changing PrimaryButton is out of AN-SIM's
+scope (it would reflow every screen); recorded rather than silently altered.
+
+====================================================================
+UNTRACKED FILES LEFT ALONE (R334)
+====================================================================
+Reported, never removed, never committed: MonReleve/ (the orchestrator's
+scratch dir), android/.an*-shots/ (several, plus .an-sim-shots this
+walkthrough writes), android/.kotlin/, android/scripts/an-*.mjs (many, plus
+android/scripts/an-sim-walkthrough.mjs this session WROTE as its own
+device-drive helper - left untracked like its AN-* siblings, e.g.
+an-forecast-walkthrough.mjs), relay/*.txt operator files, web/scripts/_*.mjs.
+Only this task's own files were committed, by explicit `git add` (and
+`git add -f` for the ch/monreleve/ Kotlin files - see DEVIATIONS).
+
+====================================================================
+ADVISOR DECISIONS
+====================================================================
+The advisor was NOT used (the orchestrator recorded it had stalled all
+session; R156). Conservative, reversible, instruction-following choices,
+recorded:
+  - The simulator is built WORD FOR WORD as the approved design, inside
+    AN-FORECAST's ForecastRoute overlay. The rate chip reads "Un autre taux"
+    rather than the design's sample "Passer a 80 %" (every figure in the
+    design is sample data, per the design README), and the zone badge reuses
+    the engine-derived ZoneBadge(statusFor) as the Prevision screen also
+    chose (correct for every status, not only the one the mock-up draws).
+    Recorded as a deliberate difference, the same AN-FORECAST already made.
+  - The RATE scenario's secondary action opens the Parametres tab (where
+    R290's confirmation fires) rather than mutating the rate from the
+    simulator: the simulator records and changes nothing itself (R340).
+  - commit-then-gate order: e1a5fee was committed before :app:gate ran (the
+    chain's per-increment commit+push discipline, and durability on a
+    session-limit-prone box), then failed detekt+ktlint; cb09864 fixed it
+    forward rather than force-pushing (R300/R334). Honest disclosure here.
+
+====================================================================
+PHONE SETTINGS RESTORED
+====================================================================
+Only font_scale was changed (to 2.0 for the 200 % shots) and restored to
+1.0 by the walkthrough. mock_location was never touched (D18 - no coordinate
+anywhere). always_finish_activities was never touched.
+VERIFIED after the run (adb settings get):
+  font_scale=1.0, auto_time=1, auto_time_zone=1,
+  always_finish_activities=0, mock_location=0,
+  stay_on_while_plugged_in=7 (pre-existing, left as found - as AN-FORECAST
+  recorded).
+
+====================================================================
+PARKED
+====================================================================
+No new PARKAN. The PARKAN register is the orchestrator's.
+
+====================================================================
+DEVIATIONS
+====================================================================
+  - .gitignore (operator file) has `MonReleve/`, which on this
+    case-insensitive Windows filesystem ALSO matches the `ch/monreleve/`
+    path component, so every Kotlin file under ch/monreleve/ is ignored.
+    Committed with `git add -f`; NOT fixed (editing an operator file is out
+    of scope). Carried from AN-FORECAST's report; flagged again.
+  - e1a5fee was a red commit (detekt + ktlint), fixed forward by cb09864.
+    Recorded under ADVISOR DECISIONS and PUSH PROOF rather than hidden by a
+    force-push (R300: never force-push; R334: never overwrite).
+  - SimulationController carries a class @Suppress("LongParameterList") for
+    its 7th (restore) dependency, the same shape CalendarController's
+    restorable constructor already carries.
+
+====================================================================
+QUESTIONS
+====================================================================
+  None blocking. The product code is complete and the gate is green; the
+  one operational item is the .gitignore ch/monreleve/ match (an operator
+  file), carried from AN-FORECAST.
+
+====================================================================
+PUSH PROOF
+====================================================================
+Branch: an-sim, continued from 833aba2 (the prior AN-SIM agent's tip).
+
+Commits pushed to origin/an-sim this session:
+  e1a5fee  AN-SIM: the nav wiring, the live entry point and R310 restore
+           (R85, R310, R207)
+  cb09864  AN-SIM: satisfy ktlint and detekt on the nav-wiring commit (R132)
+
+Diff touches ONLY android/ (app source, one test, four regenerated Prevision
+baselines). No web/, no fixtures/, no /v1, no server or Room schema. New/
+changed ch/monreleve/ files were `git add -f`'d (the .gitignore match).
+
+BASELINES REGENERATED (R135 / R207): four Prevision states where the bottom
+actions render with a projection, because the live "Tester un changement"
+primary button replaced AN-FORECAST's lone "Modifier mon rythme" text link
+(AN-FORECAST omitted the button under R85 while the simulator did not exist):
+  previsionCompliant, previsionCompliantLarge, previsionOverFiscal,
+  previsionWithUnrecorded
+The two invitation states (previsionInvitation(+Large)) show INVITE_CTA and
+stayed byte-identical - exactly the record task's output (R207). Each
+regenerated image was cropped and looked at (R178): the button renders above
+the text link; the figures are unchanged and engine-derived.
+
+The 8 SIMULATOR baselines (simExtraWeekday(+Large), simRate, simMissions,
+simExtraDays, simInvitation(+Large)) landed in 833aba2 and are unchanged
+this session (the nav wiring does not touch the simulator's own pixels).
+
+Checks run by me:
+  :app:gate              BUILD SUCCESSFUL in 5m 54s on cb09864 (assembleDebug,
+                         testDebugUnitTest 1108, checkTestFloor, ktlintCheck,
+                         detekt, verifyPaparazziDebug, the five release checks,
+                         checkMinifiedWireContract, checkLicences, lintDebug).
+  :app:ktlintCheck + :app:detekt  BUILD SUCCESSFUL (the two cb09864 fixed).
+  on-device walkthrough  PASS - the simulator reached from the live "Tester
+                         un changement", the engine "Projection" shown, and
+                         the R340 store proof (computing wrote nothing) +
+                         R341 adopt proof (only the rhythm moved) both PASS.
+  pnpm gate:clone        DEFERRED to the orchestrator (as instructed).
+
+END OF REPORT-AN-SIM.txt
