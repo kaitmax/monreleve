@@ -119,13 +119,13 @@ import ch.monreleve.app.ui.screens.releve.ReleveActions
 import ch.monreleve.app.ui.screens.releve.ReleveScreen
 import ch.monreleve.app.ui.screens.rythme.RythmeActions
 import ch.monreleve.app.ui.screens.rythme.RythmeScreen
-import ch.monreleve.app.ui.screens.simulation.SimulationActions
-import ch.monreleve.app.ui.screens.simulation.SimulationScreen
 import ch.monreleve.app.ui.screens.signin.CodeActions
 import ch.monreleve.app.ui.screens.signin.CodeScreen
 import ch.monreleve.app.ui.screens.signin.RequestLinkScreen
 import ch.monreleve.app.ui.screens.signin.SignInActions
 import ch.monreleve.app.ui.screens.signin.WelcomeScreen
+import ch.monreleve.app.ui.screens.simulation.SimulationActions
+import ch.monreleve.app.ui.screens.simulation.SimulationScreen
 import ch.monreleve.app.ui.shell.AppBottomBar
 import ch.monreleve.app.ui.shell.AppTab
 import kotlinx.coroutines.CoroutineScope
