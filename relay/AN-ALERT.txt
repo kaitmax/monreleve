@@ -1,0 +1,105 @@
+AN-ALERT SESSION PROMPT - Mon Releve
+ONE ALERT WHEN THE FORECAST WOULD CROSS A THRESHOLD
+Paste into a fresh Claude Code session at the repository root, or run it
+from RUN-CHAIN-DECIDE.txt. The physical phone (Galaxy S9, API 29) is
+connected.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+Do not stop to report progress or ask a question; judgment calls go to
+the advisors, recorded in the report; if an advisor does not answer,
+take the conservative, reversible option (R156). Ends with
+REPORT-AN-ALERT.txt committed and pushed: DONE; a HARD BOUNDARY; NO
+PROGRESS; a DEGRADED CONTEXT. R334: never delete, overwrite or reset
+what you did not create; untracked files reported, not removed; your
+own worktree; a report states only what has happened. R300; R270.
+
+HARD BOUNDARIES: NO CHANGE TO EITHER ENGINE - every projection runs the
+existing engine on an imagined year; no change to /v1 or the server's
+schema; D16 (nothing written without a tap) and D18; restore every phone
+setting changed; no red commit.
+
+R340 (new, and it governs this whole series). A PROJECTION IS NEVER A
+    RECORD. A forecast or a simulation is computed in memory from the
+    recorded days plus imagined ones, and:
+      - it is NEVER written to the entries, the mutation queue, the
+        server, the releve, the PDF or the annex - a test asserts that
+        computing one leaves every store unchanged;
+      - it is LABELLED "Projection" wherever it appears, drawn visibly
+        differently from recorded figures (not by colour alone), with
+        its assumptions in words;
+      - its figures come from THE ENGINE, through the shared aggregation
+        (R281) - never arithmetic in the UI (FW12's defect).
+    The releve's value is that it records only what happened.
+
+R273. Check tasks/todo.md first; say where this belongs.
+R0. Read design/decide/README.md and the design file(s) named below;
+    DESIGN-SYSTEM.md; the reports of the tasks before this one in the
+    series.
+R1. pnpm gate:clone and :app:gate green on origin/main's HEAD.
+THE DESIGN IS DECIDED: build the screens as designed - contents, order,
+hierarchy, copy word for word into fr/ (R206, R238, R155) - with tokens
+only; a value with no token: the nearest, listed. Where you believe a
+screen should differ, build it as designed and say why. Every figure in
+the design files is SAMPLE DATA.
+
+It builds on AN-FORECAST. If that task has not landed, stop.
+
+====================================================================
+1. WHEN
+====================================================================
+- The forecast is recomputed when the record or the rhythm changes, and
+  once a day after the day's checks conclude.
+- An alert is sent THE FIRST TIME the projection crosses a threshold -
+  40 percent, or 49,9 percent - and NOT again while it stays crossed.
+  If it falls back under and later crosses again, that is a new
+  crossing. The last state per threshold is kept on the phone.
+- NEVER TWO MON RELEVE NOTIFICATIONS ON THE SAME DAY. If the evening
+  reminder is due that day, the alert's sentence joins that one
+  notification - the record buttons stay (AN-NOTIF) - rather than
+  arriving separately.
+- OPT-IN, contextual: offered once on the forecast screen ("Me prevenir
+  si mon rythme approche d'un seuil"), with its own switch in
+  Parametres. Off until switched on. Android's notification permission
+  only when it is switched on and Android requires it.
+
+====================================================================
+2. WHAT IT SAYS
+====================================================================
+- Private content: "Votre rythme prevu depasserait le seuil
+  d'imposition" (or de securite sociale), and that it is a projection.
+  Tapping opens the forecast.
+- THE LOCK SCREEN SHOWS NOTHING PRIVATE: its public version says only
+  that there is information about the year - no figure, no threshold
+  (R323's rule).
+- Its own channel, "Seuils", so it can be silenced separately.
+
+====================================================================
+3. TESTS AND THE PHONE
+====================================================================
+JVM tests: first crossing notifies; staying crossed does not; falling
+back and re-crossing notifies; the same-day merge with the evening
+reminder; opt-out sends nothing. On the S9, a debug-only trigger (absent
+from the release build, proven on the built APK) produces each case;
+read each notification; `adb shell dumpsys notification` shows the
+public version carries nothing private. Do not set a screen lock (the
+operator's manual check, as in AN-NOTIF).
+
+====================================================================
+ALWAYS
+====================================================================
+- R310: every new screen keeps its state across rotation, a text-size
+  change, dark mode and a background kill.
+- 200 percent text; TalkBack reads each figure with its label, and
+  says "projection" where it is one.
+- Baselines regenerated with reasons (R135, R207).
+- Gates green, gate:clone passing, merged after your own gate:clone.
+
+REPORT - REPORT-AN-ALERT.txt: HOW IT ENDED / R273 / WHEN (each rule, its test) / THE SAME-DAY MERGE / THE LOCK SCREEN / R340 (the
+"nothing written" test) / WALKTHROUGH ON THE S9 (every screen opened and
+described, default and 200 percent) / UNTRACKED FILES LEFT ALONE (R334)
+/ ADVISOR DECISIONS / PHONE SETTINGS RESTORED / PARKED / DEVIATIONS /
+QUESTIONS / PUSH PROOF
+
+END OF AN-ALERT PROMPT

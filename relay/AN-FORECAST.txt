@@ -1,0 +1,119 @@
+AN-FORECAST SESSION PROMPT - Mon Releve
+THE WEEKLY RHYTHM, AND THE YEAR-END FORECAST
+Paste into a fresh Claude Code session at the repository root, or run it
+from RUN-CHAIN-DECIDE.txt. The physical phone (Galaxy S9, API 29) is
+connected.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+Do not stop to report progress or ask a question; judgment calls go to
+the advisors, recorded in the report; if an advisor does not answer,
+take the conservative, reversible option (R156). Ends with
+REPORT-AN-FORECAST.txt committed and pushed: DONE; a HARD BOUNDARY; NO
+PROGRESS; a DEGRADED CONTEXT. R334: never delete, overwrite or reset
+what you did not create; untracked files reported, not removed; your
+own worktree; a report states only what has happened. R300; R270.
+
+HARD BOUNDARIES: NO CHANGE TO EITHER ENGINE - every projection runs the
+existing engine on an imagined year; no change to /v1 or the server's
+schema; D16 (nothing written without a tap) and D18; restore every phone
+setting changed; no red commit.
+
+R340 (new, and it governs this whole series). A PROJECTION IS NEVER A
+    RECORD. A forecast or a simulation is computed in memory from the
+    recorded days plus imagined ones, and:
+      - it is NEVER written to the entries, the mutation queue, the
+        server, the releve, the PDF or the annex - a test asserts that
+        computing one leaves every store unchanged;
+      - it is LABELLED "Projection" wherever it appears, drawn visibly
+        differently from recorded figures (not by colour alone), with
+        its assumptions in words;
+      - its figures come from THE ENGINE, through the shared aggregation
+        (R281) - never arithmetic in the UI (FW12's defect).
+    The releve's value is that it records only what happened.
+
+R273. Check tasks/todo.md first; say where this belongs.
+R0. Read design/decide/README.md and the design file(s) named below;
+    DESIGN-SYSTEM.md; the reports of the tasks before this one in the
+    series.
+R1. pnpm gate:clone and :app:gate green on origin/main's HEAD.
+THE DESIGN IS DECIDED: build the screens as designed - contents, order,
+hierarchy, copy word for word into fr/ (R206, R238, R155) - with tokens
+only; a value with no token: the nearest, listed. Where you believe a
+screen should differ, build it as designed and say why. Every figure in
+the design files is SAMPLE DATA.
+
+DESIGN FILES: design/decide/Rythme.dc.html, Prevision.dc.html.
+
+====================================================================
+1. THE WEEKLY RHYTHM
+====================================================================
+- Monday to Friday, each "Suisse" or "Domicile" - whole days; for a
+  half-day account a day counts for both halves. Nothing preselected
+  the first time.
+- R341 (new). THE RHYTHM STAYS ON THE PHONE. It is a planning
+  preference, not location data and not a record: stored in Room,
+  tagged with the account (R303), cleared on sign-out like the rest of
+  the account's local data (R295). No new server field, so no change to
+  the privacy notice. Re-entering five taps on a new phone is the
+  accepted cost.
+- Reached from the forecast screen, and from Parametres
+  ("Votre rythme habituel"), in the existing settings list.
+
+====================================================================
+2. THE FORECAST
+====================================================================
+- THE IMAGINED YEAR: the recorded entries, plus, for every working day
+  AFTER TODAY to 31 December (Europe/Paris, R28), the rhythm's kind.
+  Today counts only if it is recorded. Past days left unrecorded are
+  NOT imagined: the screen says how many, in words. Future public
+  holidays and leave are NOT deducted - on the 240-day basis that
+  overstates telework, so the forecast warns early, never late; the
+  screen says so, as designed.
+- THE CALCULATION: build those imagined rows in memory, run them
+  through the shared aggregation and the engine. The forecast's
+  date logic is new code: put it in one plain, JVM-tested function, and
+  bind it with a shared fixture file, fixtures/forecast-cases.json - a
+  handful of cases (a rhythm, a date, the expected count of imagined
+  days and the engine's rate) - so that the web forecast is held to the
+  same contract (R281's pattern). IF THE FILE ALREADY EXISTS -
+  FW-FORECAST landed first - CONSUME IT, never fork it; add cases to it
+  if needed, and both suites must pass.
+- THE SCREEN as designed: today's figure from the record beside the
+  December projection; the rail with the recorded part solid and the
+  projected part lighter, with its legend; the zone badge for the
+  projection; the two remaining-day tiles; the assumptions; "Une
+  projection ne figure jamais dans votre releve" (R340).
+- With no rhythm set, the screen invites setting one rather than
+  showing an empty projection.
+- An entry point from Aujourd'hui's year card ("Voir ma prevision"),
+  under it, not replacing it.
+- PARK the paid tier: these screens will be part of the paid tools;
+  no paywall is built here.
+
+====================================================================
+3. THE PHONE
+====================================================================
+Set a rhythm, open the forecast, check every figure against the engine
+run by hand for that date; record a day and see the forecast move;
+clear the rhythm and see the invitation. Sign out and in: the rhythm is
+gone (R341), the record is not.
+
+====================================================================
+ALWAYS
+====================================================================
+- R310: every new screen keeps its state across rotation, a text-size
+  change, dark mode and a background kill.
+- 200 percent text; TalkBack reads each figure with its label, and
+  says "projection" where it is one.
+- Baselines regenerated with reasons (R135, R207).
+- Gates green, gate:clone passing, merged after your own gate:clone.
+
+REPORT - REPORT-AN-FORECAST.txt: HOW IT ENDED / R273 / THE RHYTHM (storage, scoping) / THE FORECAST (the imagined-days function, the fixture, each case) / THE ENTRY POINTS / R340 (the
+"nothing written" test) / WALKTHROUGH ON THE S9 (every screen opened and
+described, default and 200 percent) / UNTRACKED FILES LEFT ALONE (R334)
+/ ADVISOR DECISIONS / PHONE SETTINGS RESTORED / PARKED / DEVIATIONS /
+QUESTIONS / PUSH PROOF
+
+END OF AN-FORECAST PROMPT

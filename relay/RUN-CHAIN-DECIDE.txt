@@ -1,0 +1,54 @@
+RUN-CHAIN-DECIDE - Mon Releve
+FOUR TASKS, IN ORDER, WITHOUT STOPPING
+Paste into the orchestrating Claude Code session at the repository
+root. The physical phone (Galaxy S9, API 29) is connected. Committed
+first: relay/AN-FORECAST.txt, AN-SIM.txt, AN-ALERT.txt, AN-RECON.txt,
+and design/decide/.
+
+====================================================================
+THE ORDER, AND WHY
+====================================================================
+  1. AN-FORECAST  the weekly rhythm and the year-end forecast
+  2. AN-SIM       the simulator - built on the forecast's imagined year
+  3. AN-ALERT     the threshold alert - triggered by the forecast
+  4. AN-RECON     the employer comparison - ready for January 2027
+Before starting: no other session may be using the phone or running
+another chain on main. design/decide/ must be committed; if it is not,
+stop and say so. gate:clone and :app:gate on origin/main first.
+
+====================================================================
+HOW
+====================================================================
+Each task as its own fresh agent, in its own worktree, one at a time
+(R334). This session stays light: launch, wait, check, launch. If it
+cannot launch agents, run them in sequence and stop cleanly when the
+context degrades. Nobody stops to report or ask; the advisors decide,
+and when they do not answer, the conservative option is taken and
+recorded. R270.
+
+====================================================================
+BETWEEN TASKS
+====================================================================
+  - the report committed and pushed; DONE, or a clean pushed end with
+    what remains named;
+  - the branch merged after its own gate:clone; tree clean; local main
+    equals origin/main;
+  - gate:clone AND :app:gate RE-RUN ON THE MERGED HEAD;
+  - no orphaned emulator, adb, container or port; the phone back to
+    normal (automatic time and timezone, normal timeout, animations on,
+    font scale 1.0, "Don't keep activities" off, mock location denied);
+  - R340 checked: the task's "nothing written" test exists and passes.
+A failed check, NO PROGRESS or a hard boundary STOPS the chain - except
+that AN-RECON does not depend on AN-SIM or AN-ALERT: if one of those
+stops, AN-RECON may still run after AN-FORECAST, and the report says so.
+
+====================================================================
+WHEN IT ENDS
+====================================================================
+REPORT-CHAIN-DECIDE.txt: one line per task (final commit, how it ended,
+both gates on the merged HEAD); advisor decisions and conservative
+fallbacks; PARK and PARKAN entries; open questions; phone settings
+restored; "Chain complete." or "Chain stopped after <task>: <reason>."
+Commit, push, end.
+
+BEGIN with the checks, then launch AN-FORECAST.

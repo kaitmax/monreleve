@@ -1,0 +1,75 @@
+FW-SHELL-BURGER SESSION PROMPT - Mon Releve
+THE BURGER MENU IN THE SHARED HEADER, AND TOKENS CHOSEN BY MEANING
+Paste into a fresh Claude Code session at the repository root, AFTER
+FW34 has been pushed to main. Web only; its own worktree.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+R241: the only thing that ends this session is REPORT-FW-SHELL-BURGER.txt,
+committed and pushed. Unclear? R156; the advisors decide, and if none
+answers, the conservative option is taken and recorded. R334: never
+delete, overwrite or reset what you did not create; your own worktree;
+a report states only what has happened. R300; R270.
+HARD BOUNDARIES: no engine or /v1 change; no URL changed; no gate
+raised; DO NOT DEPLOY.
+
+R273. Read REPORT-FW34-PAGE.txt (its Q1 and TOKENS sections),
+    REPORT-FW33.txt (the shell), design/home/Mobile.dc.html (the approved
+    burger), DESIGN-SYSTEM.md.
+R1. pnpm gate:clone green on origin/main's HEAD. THE VISUAL SUITE NEEDS
+    ABOUT 4 GB OF FREE MEMORY: if the container is killed for memory,
+    stop and say so - never push with baselines missing.
+
+====================================================================
+1. THE BURGER - IN THE SHELL, FOR EVERY PAGE
+====================================================================
+The operator asked for a burger menu at phone width. FW34 kept FW33's
+header unchanged (its Q1), so it is built here, in the SHARED header:
+  - Below the breakpoint token (R68's family - no new number), the
+    navigation folds into a menu button that WORKS WITHOUT JAVASCRIPT
+    (a details/summary disclosure is enough), as in design/home's phone
+    view.
+  - The button has an accessible name and a visible focus ring; the
+    panel holds the same links as the desktop navigation, in the same
+    order, plus "Calculer ma situation"; links are at least 44 px tall;
+    Escape closes it where JavaScript runs; it closes when a link is
+    followed.
+  - Above the breakpoint, the desktop navigation exactly as now.
+  - No client JavaScript is required; if a small enhancement is added
+    (Escape, closing on navigation), report its size on every gated
+    route (R326) and stay inside the gates.
+  - EVERY PAGE'S phone-width baseline changes: regenerate them all, each
+    file named with the reason "shared header: burger menu" (R135, R207),
+    and list them before running, so the run matches the list.
+
+====================================================================
+2. R344 - A TOKEN IS CHOSEN BY MEANING, NOT BY VALUE
+====================================================================
+FW34 matched some design values to tokens by number: the home page's
+phone frame uses --size-toc-column because it happens to be 280. If the
+table of contents widens, the phone frame changes for no reason.
+  - Go through FW34's TOKENS list. Keep each mapping whose token MEANS
+    what it is used for (--size-button-large-height for a button is
+    fine). For each that does not, add a NAMED COMPONENT TOKEN for it -
+    R77 permits one whose value comes from the approved design - and use
+    that instead.
+  - Record R344 in DESIGN-SYSTEM.md beside R77 (R9).
+
+====================================================================
+DONE AND REPORT
+====================================================================
+  B1. The burger in the shared header, working with JavaScript off, by
+      keyboard and by touch, on every page.
+  B2. R344 applied to FW34's tokens; R344 recorded.
+  B3. Walkthrough on the dev server at 390 px and desktop, JavaScript on
+      and off, on the home page and three other pages; screenshots
+      opened and described.
+  B4. Every phone baseline regenerated against its list; gates green;
+      gate:clone passing; merged after your own gate:clone.
+REPORT - REPORT-FW-SHELL-BURGER.txt: HOW IT ENDED / R273 / THE BURGER /
+R344 (each mapping kept or replaced) / SIZES / BASELINES (the list, and
+the run against it) / WALKTHROUGH / UNTRACKED FILES LEFT ALONE (R334) /
+ADVISOR DECISIONS / PARKED / DEVIATIONS / QUESTIONS / PUSH PROOF
+
+END OF FW-SHELL-BURGER PROMPT

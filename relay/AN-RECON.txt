@@ -1,0 +1,126 @@
+AN-RECON SESSION PROMPT - Mon Releve
+DOES YOUR EMPLOYER HAVE THE SAME FIGURE? - READY FOR JANUARY
+Paste into a fresh Claude Code session at the repository root, or run it
+from RUN-CHAIN-DECIDE.txt. The physical phone (Galaxy S9, API 29) is
+connected.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+Do not stop to report progress or ask a question; judgment calls go to
+the advisors, recorded in the report; if an advisor does not answer,
+take the conservative, reversible option (R156). Ends with
+REPORT-AN-RECON.txt committed and pushed: DONE; a HARD BOUNDARY; NO
+PROGRESS; a DEGRADED CONTEXT. R334: never delete, overwrite or reset
+what you did not create; untracked files reported, not removed; your
+own worktree; a report states only what has happened. R300; R270.
+
+HARD BOUNDARIES: NO CHANGE TO EITHER ENGINE - every projection runs the
+existing engine on an imagined year; no change to /v1 or the server's
+schema; D16 (nothing written without a tap) and D18; restore every phone
+setting changed; no red commit.
+
+R340 (new, and it governs this whole series). A PROJECTION IS NEVER A
+    RECORD. A forecast or a simulation is computed in memory from the
+    recorded days plus imagined ones, and:
+      - it is NEVER written to the entries, the mutation queue, the
+        server, the releve, the PDF or the annex - a test asserts that
+        computing one leaves every store unchanged;
+      - it is LABELLED "Projection" wherever it appears, drawn visibly
+        differently from recorded figures (not by colour alone), with
+        its assumptions in words;
+      - its figures come from THE ENGINE, through the shared aggregation
+        (R281) - never arithmetic in the UI (FW12's defect).
+    The releve's value is that it records only what happened.
+
+R273. Check tasks/todo.md first; say where this belongs.
+R0. Read design/decide/README.md and the design file(s) named below;
+    DESIGN-SYSTEM.md; the reports of the tasks before this one in the
+    series.
+R1. pnpm gate:clone and :app:gate green on origin/main's HEAD.
+THE DESIGN IS DECIDED: build the screens as designed - contents, order,
+hierarchy, copy word for word into fr/ (R206, R238, R155) - with tokens
+only; a value with no token: the nearest, listed. Where you believe a
+screen should differ, build it as designed and say why. Every figure in
+the design files is SAMPLE DATA.
+
+DESIGN FILE: design/decide/Employeur.dc.html.
+
+WHY NOW. From January 2027, Swiss employers transmit each frontalier's
+telework rate for 2026, and employees receive their attestation (AFC
+Geneve, verified in REG-UPDATE). The question everyone will have that
+month is whether the employer's figure matches theirs. A day-by-day,
+timestamped record is exactly what answers it.
+
+====================================================================
+0. TWO THINGS THE COMPARISON NEEDS FIRST
+====================================================================
+- THE YEAR SWITCH (PARKAN-26, parked by SEED-RELEVE). People file year N
+  in the spring of N+1, so from January the releve they need is last
+  year's - and this task compares a completed year. On the releve
+  screen: every tax year that has days, NEWEST FIRST, opening on the
+  current year, the previous year one tap away. A read-only view of what
+  /api/v1/dossier?year= already serves (R328). R310 for the chosen year.
+- PARKAN-49 - WHAT THE RELEVE DOES NOT YET PRINT: how many mission days
+  were COUNTED against the 10-day limit (France and third state), and
+  the rate WITHOUT missions - items 3 and 5 of the accountant's list,
+  and the "missions" cause below depends on them. Add them to the
+  dossier payload as ADDITIVE /v1 fields computed by the engine (never
+  arithmetic in a component), documented in docs/api-v1.md with the
+  drift test; render them on the releve screen and in the PDF, in the
+  identification or rate block, as the releve's other figures are.
+  Commit each, push.
+
+====================================================================
+1. THE COMPARISON
+====================================================================
+- For a COMPLETED year only - the current year has no employer figure
+  yet. The person enters the rate from their attestation, French
+  format with a comma, two decimals.
+- R342 (new). THE EMPLOYER'S FIGURE STAYS ON THE PHONE, tagged with the
+  account and cleared on sign-out (R303, R295) - no new server field.
+- IT IS COMPARED WITH THE SERVER'S DOSSIER for that year - the releve's
+  figure (R287) - never with a phone-side calculation. If days are still
+  unsynced, the screen says so, as the releve does.
+- THE GAP in points, and "environ N jours" on the year's basis (240, or
+  the exact total) - computed in one tested function, rounded down to
+  the half-day, never UI arithmetic.
+
+====================================================================
+2. WHERE THE GAP MAY COME FROM - ONLY FACTS FROM THE RECORD
+====================================================================
+Each line is a fact the app can check in the person's own record:
+  - missions recorded, and how many counted against the 10-day limit;
+  - the calculation method the record uses;
+  - working days left unrecorded that year;
+  - and, from the verified row, that with several employers each
+    declares the rate for its own days only.
+Each opens the relevant days. Never a guess about the employer.
+"Votre releve ne dit pas qui a raison" - the app never says who is
+right. The vocabulary ban holds.
+
+====================================================================
+3. THE PHONE
+====================================================================
+With a seeded account (SEED-RELEVE's), enter an employer figure equal
+to, above and below the record's; read each gap and each cause against
+the dossier; confirm nothing reached the server (R342) and that a
+current-year comparison is refused with an explanation.
+
+====================================================================
+ALWAYS
+====================================================================
+- R310: every new screen keeps its state across rotation, a text-size
+  change, dark mode and a background kill.
+- 200 percent text; TalkBack reads each figure with its label, and
+  says "projection" where it is one.
+- Baselines regenerated with reasons (R135, R207).
+- Gates green, gate:clone passing, merged after your own gate:clone.
+
+REPORT - REPORT-AN-RECON.txt: HOW IT ENDED / R273 / THE COMPARISON (source, the gap function, rounding) / THE CAUSES (each, from the record) / R342 / R340 (the
+"nothing written" test) / WALKTHROUGH ON THE S9 (every screen opened and
+described, default and 200 percent) / UNTRACKED FILES LEFT ALONE (R334)
+/ ADVISOR DECISIONS / PHONE SETTINGS RESTORED / PARKED / DEVIATIONS /
+QUESTIONS / PUSH PROOF
+
+END OF AN-RECON PROMPT
