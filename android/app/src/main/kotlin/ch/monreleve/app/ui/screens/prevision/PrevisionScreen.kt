@@ -136,7 +136,13 @@ private fun ForecastCard(projection: Projection) {
         verticalArrangement = Arrangement.spacedBy(Spacing.space16),
     ) {
         FigureRow(projection, projectedZone)
-        ProjectionRail(projection, projectedZone)
+        ProjectionRail(
+            solidRate = projection.currentRate,
+            softRate = projection.projectedRate,
+            fiscalCeiling = projection.fiscalCeiling,
+            socialCeiling = projection.socialCeiling,
+            zone = projectedZone,
+        )
         Legend(projectedZone)
         ZoneBadge(statusFor(projection.projected))
         TileRow(projection, fiscalPct, socialPct)
@@ -179,8 +185,10 @@ private fun FigureRow(
     }
 }
 
+// AN-SIM: internal (not private) so the simulator reuses it (R206) - the same two-figure comparison, with its
+// own labels and colours.
 @Composable
-private fun Figure(
+internal fun Figure(
     label: String,
     value: String,
     colour: Color,
@@ -216,8 +224,9 @@ private fun TileRow(
 
 // Figure-first tile in a soft box (design): the headroom figure, then its label. A negative headroom (SPEC 7.2
 // step 6) swaps to the over-label and turns red - the figure's sign is a word, never a minus glyph.
+// AN-SIM: internal (not private) so the simulator reuses it (R206) - the same remaining/over-threshold tile.
 @Composable
-private fun RemainingTile(
+internal fun RemainingTile(
     days: SignedDays,
     label: String,
     overLabel: String,
