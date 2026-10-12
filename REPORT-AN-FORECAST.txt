@@ -1,0 +1,349 @@
+REPORT-AN-FORECAST.txt
+Mon Releve - AN-FORECAST (task 1 of RUN-CHAIN-DECIDE)
+The weekly rhythm, and the year-end forecast.
+
+====================================================================
+HOW IT ENDED
+====================================================================
+DONE. The two Compose screens (the weekly rhythm and the year-end
+forecast) are built as designed, wired into the shell behind their two
+entry points, labelled "Projection" and drawn visibly apart from recorded
+figures (R340), and backed by the engine through the shared aggregation
+(R281) - no arithmetic in a component (FW12). The foundation that was
+already on main (fixtures/forecast-cases.json, dossier/Forecast.kt, the
+account-tagged weekly-rhythm Room store) was CONSUMED, never rebuilt.
+
+Branch: an-forecast-2, off origin/main 5afb92e (the ENGINE-PARITY base).
+  Four feature commits (0d0594e, 2e62886, 788e52c, 4d20886) + this report
+  commit on top; the branch-tip SHA is in the hand-off message.
+
+:app:gate GREEN on the branch tip (assembleDebug, testDebugUnitTest incl.
+FencesTest + the theme/radius censuses, checkTestFloor, ktlintCheck,
+detekt, verifyPaparazziDebug, the five release checks, checkLicences,
+lintDebug). The JVM forecast suites (ForecastConformanceTest,
+ForecastR340Test, ForecastUnrecordedTest, ForecastControllerTest,
+PrevisionCopyTest, RhythmMappingTest, RoomSchemaContractTest,
+MainGraphWiringTest) pass. pnpm gate:clone is DEFERRED to the orchestrator
+as instructed.
+
+====================================================================
+R273 - WHERE THIS TASK BELONGS IN tasks/todo.md
+====================================================================
+As the partial report recorded: tasks/todo.md ends at AN15 and knows
+nothing of the DECIDE chain; the real Android series on disk
+(AN-HOME, AN-PARAMS, AN-CAL2, ...) already overtook it. AN-FORECAST is a
+new capability in Phase 7 ("Complete the app"), the first of the paid-tools
+group (AN-SIM, AN-ALERT, AN-RECON) of RUN-CHAIN-DECIDE. It depends on AN2
+(the engine), AN5b (the shared aggregation, R281) and AN-HOME (the year
+card it links from). todo.md is an operator file; not edited (out of scope).
+
+====================================================================
+THE RHYTHM (storage, scoping)
+====================================================================
+The storage was delivered by the foundation (RhythmKind / RhythmEntity /
+RhythmDao / RhythmRepository, DB v5->v6 with MIGRATION_5_6, schemas/6.json)
+and CONSUMED unchanged: Room, account-tagged (R303), cleared on sign-out
+with the rest of the account's local data (R295), no server field so the
+privacy notice is unchanged (R341).
+
+NEW this session, the screen + controller side:
+  ui/screens/rythme/RythmeScreen.kt - Monday..Friday, each Suisse/Domicile,
+    NOTHING preselected the first time (both toggles outlined). Selected
+    renders filled (brand), unselected outlined - the choice is visible
+    without colour alone (R340), the AujourdhuiScreen RecordButton idiom.
+    The screen speaks RhythmChoice (a UI enum), never the wire RhythmKind
+    (the ui/ repository-only fence, FencesTest fence 5).
+  forecast/ForecastController.kt - the rhythm is SEEDED ONCE from Room and
+    then held in memory, PERSISTED on each setDay (R341). Seeding once (not
+    collecting the rhythm Flow forever) avoids a Room re-emission racing an
+    in-flight edit to an older value; a process death re-seeds from Room
+    (where setDay persisted it), so R310 needs no Serializable snapshot -
+    Room IS the restore store.
+
+====================================================================
+THE FORECAST (the imagined-days function, the fixture, each case)
+====================================================================
+The imagined-days function + the shared fixture were delivered by the
+foundation and CONSUMED: dossier/Forecast.kt (imaginedEntriesToYearEnd +
+forecastResults) and fixtures/forecast-cases.json (five cases), both
+unchanged. ForecastConformanceTest (JVM) still reads that file; FW-FORECAST
+reads the SAME file (R281).
+
+NEW date logic this session (section 2's "past days left unrecorded"):
+  dossier/Forecast.kt :: unrecordedPastWorkdays(recordedDays, today,
+    taxYear, activityStartIso) - the count of weekdays from the start of
+    the year (or the activity start, whichever is later) through today
+    with no recorded entry. Pure (today is the only clock, R28), weekdays
+    only, holidays not deducted (warns early, not late). It is NOT a rate
+    figure, so it is bound by a direct JVM test (ForecastUnrecordedTest,
+    four cases) rather than the shared fixture, which binds the RATE
+    contract. The screen shows it in words only when it is greater than zero.
+
+THE SCREEN (ui/screens/prevision/PrevisionScreen.kt + PrevisionRail.kt),
+every figure from the engine (Projection), formatted via the same helpers
+the Releve/Aujourd'hui screens use (formatPercent, formatSignedDays) and
+mapped to a zone/status by the pure zoneFor/statusFor (not a recomputed
+rate):
+  - the "Projection" badge (R340);
+  - today's figure from the record beside the December projection, the
+    current neutral and the projected in its zone colour (the design's
+    pairing);
+  - the two-segment rail: the recorded part SOLID, the projected part SOFT
+    (the lighter band-background token) - a shape/opacity difference, not
+    colour alone (R340), with the fiscal and social ceilings ticked and a
+    legend (enregistre / projete);
+  - the engine-derived zone badge (ZoneBadge(statusFor));
+  - the two remaining-day tiles (remainingToFiscal / remainingToSocial),
+    a negative headroom swapping to the "au-dessus de" over-label and
+    turning red (SPEC 7.2 step 6), never a minus glyph;
+  - the assumptions in words (the domicile-days phrase, the engine's
+    imagined-day count, the method+basis), the unrecorded-past note when
+    there is one, and "Une projection ne figure jamais dans votre releve";
+  - with NO rhythm set, the invitation ("Indiquer mon rythme"), never an
+    empty projection.
+The compliant screenshot REPRODUCES THE DESIGN'S OWN EXAMPLE from the
+engine: 70 recorded + Domicile Tue/Thu (Suisse the rest) from 9 Oct 2026
+-> 29,16 % today, 39,16 % projected, 59 jours ouvres, 2 jours de marge.
+
+====================================================================
+THE ENTRY POINTS
+====================================================================
+Both wired, both live (R85):
+  - Aujourd'hui year card: "Voir ma prevision", a text link UNDER
+    YearNotes inside YearHeroCard (a new onNavigateToForecast on
+    AujourdhuiActions) - not replacing the notes.
+  - Parametres: "Votre rythme habituel", an ActionRow in SituationSection
+    (a new onOpenRhythm on ParametresActions), opening the rhythm editor.
+  - Prevision <-> Rythme move between each other ("Modifier mon rythme" /
+    "Voir ma prevision"); the back arrow and system back close the overlay.
+R85: the Prevision design's secondary CTA "Tester un changement" (the
+simulator) is a DEAD target until AN-SIM, so it is OMITTED here, as the
+partial report instructed the screen author.
+
+NAVIGATION MODEL: the two screens are NOT bottom-nav tabs; they are a
+nullable ForecastRoute overlay over the shell (rememberSaveable, R310),
+rendered full-screen over the Scaffold (hiding the bottom bar, as the
+design draws them), with a BackHandler. The ForecastController is built by
+MainGraph.build (the ONE construction site, R291) with the same account
+tag as the entry repository, threaded onCreate -> MainShell ->
+rememberMainControllers; MainGraphWiringTest covers the new parameter.
+
+====================================================================
+R340 - A PROJECTION IS NEVER A RECORD
+====================================================================
+THE LABEL (in the UI): the Prevision screen carries the "Projection"
+badge, the "Fin decembre, projection" label on the projected figure, the
+solid/soft two-segment rail with its legend, and the "Une projection ne
+figure jamais dans votre releve" line - so no figure there can be read as
+a recorded one, and the distinction is never colour alone.
+
+THE "NOTHING WRITTEN" PROOFS:
+  Unit witness (foundation, green): dossier/ForecastR340Test.kt - a
+    recording RhythmRepository counts zero save/clear during a compute and
+    the recorded list is returned unchanged; forecastResults takes values
+    and returns values, with no seam to the entries table, the mutation
+    queue, the server, the releve, the PDF or the annex.
+  Controller witness (new, green): forecast/ForecastControllerTest.kt -
+    computing a projection leaves the rhythm store's save count at 0; only
+    setDay persists the rhythm (R341); an empty rhythm yields the
+    invitation (projection == null), not an empty projection.
+  Store-level proof on the device: see WALKTHROUGH.
+
+====================================================================
+WALKTHROUGH ON THE S9 (adb 232bcd8c300c7ece)
+====================================================================
+Driven by android/scripts/an-forecast-walkthrough.mjs (untracked, left
+untracked like its AN-* siblings) against the debug APK the gate built.
+Session + settings (GE/100/SIMPLIFIED240/DAY) + account tag were injected
+through the R284 debug seams; the DECADE scenario seeded 2551 entries.
+
+DEVIATION recorded here, because it was NOT needed by the sibling
+walkthroughs: NAME is now a releve-completeness field (missingReleveFields
+/ isComplete, added after those scripts ran), and SessionInjectionActivity
+does not set it - so an injected account lands on ONBOARDING, not the
+shell. The walkthrough writes the name straight into the settings prefs
+the inject just wrote (run-as cp), so isOnboarded() is true and start=MAIN.
+This is a WALKTHROUGH-INSTRUMENT gap (the inject seam owes a `name` extra),
+not a product defect; flagged for whoever maintains the debug seams.
+
+DRIVEN, each described:
+  - Aujourd'hui (the shell): "Bonjour Camille / Lundi 12 octobre 2026".
+    (The year card's "Voir ma prevision" link is below the fold on the S9
+    viewport; it is proven present + placed by aujourdhuiWithYear.png and
+    rendered correct on the device.)
+  - Parametres -> "Votre rythme habituel" -> the Rythme screen. THE
+    SETTINGS ENTRY POINT WORKS.
+  - Five taps: Suisse Lundi/Mercredi/Vendredi, Domicile Mardi/Jeudi.
+    Selected renders FILLED (brand), unselected OUTLINED - the choice is
+    visible without colour alone (R340); "Domicile" sits on one line;
+    "Soit 2 jours par semaine a domicile."
+  - "Voir ma prevision" -> the Prevision screen: the "Projection" badge,
+    "Si vous gardez ce rythme", "Aujourd'hui, votre releve" 0,00 % beside
+    "Fin decembre, projection" 10,00 % (projected in its zone colour), the
+    TWO-SEGMENT RAIL (recorded solid + projected soft) with the legend and
+    the 40 %/49,9 % ticks, the "Sous les deux seuils" badge, the tiles
+    "72 jours de marge avant 40 %" / "95,5 jours avant 49,9 %", the
+    "Hypotheses : domicile le mardi et le jeudi, 58 jours ouvres jusqu'au
+    31 decembre, methode simplifiee (240 jours). ..." line, and "Une
+    projection ne figure jamais dans votre releve". EVERY figure is the
+    engine's (0,00 -> 10,00; 72 and 95,5 are remainingToFiscal/Social).
+  - 200 % (font_scale 2.0): both screens legible, NO horizontal overflow,
+    content scrolls, the CTA pinned. Restored to 1.0.
+  Shots: android/.an-forecast-shots/{01-aujourdhui, 02-rythme-empty,
+  03-rythme-set, 04-prevision, 05-rythme-200, 06-prevision-200}.png
+  (untracked). All cropped and looked at.
+
+R340 STORE-LEVEL PROOF (the handover deliverable). monreleve.db was read
+BEFORE setting the rhythm, AFTER setting it, and AFTER computing the
+forecast:
+  entry        2551 -> 2551 -> 2551   (unchanged)
+  pending      0    -> 0    -> 0       (the mutation queue, unchanged)
+  daily_tally  0    -> 0    -> 0       (unchanged)
+  weekly_rhythm 0   -> 1    -> 1       (the rhythm SET - the ONE allowed
+                                        write, a planning preference, R341)
+COMPUTING THE FORECAST WROTE NOTHING TO THE RECORD: PASS. The releve, the
+PDF and the annex have no seam from the forecast path at all (the unit and
+controller witnesses prove that by construction), so there was nothing to
+read back for them; the server is never called (the forecast is all local
+engine).
+
+NOTICED (not a defect): the on-device "current" rate is 0,00 % because the
+DECADE seed's 2026 rows under this account carry no telework(HOME) day; the
+projection (10,00 %) is still engine-computed from the imagined Tue/Thu.
+Does not affect R340 or the screens.
+
+====================================================================
+BASELINES REGENERATED (R135 / R207)
+====================================================================
+TEN NEW baselines (default + 200 %), each a new screen state:
+  rythme_RythmeScreenScreenshotTest_{rythmeEmpty, rythmeEmptyLarge,
+    rythmeSet, rythmeSetLarge}
+  prevision_PrevisionScreenScreenshotTest_{previsionCompliant,
+    previsionCompliantLarge, previsionOverFiscal, previsionWithUnrecorded,
+    previsionInvitation, previsionInvitationLarge}
+THREE EXISTING baselines regenerated, with the reason: AujourdhuiScreen's
+year hero card gained the "Voir ma prevision" entry point under the year
+notes, so the three DEFAULT-scale year-card states where the new link
+entered the captured viewport changed:
+  aujourdhui_AujourdhuiScreenScreenshotTest_{aujourdhuiWithYear,
+    aujourdhuiPendingApproaching, aujourdhuiPendingOverdue}
+The Large/tall year-card states (withYearLarge, pendingOverdueLarge,
+overCeiling(+Large), withSections(+Large)) were NOT regenerated: the link
+sits below the 1000 dp fold there, so those baselines stayed byte-identical
+(R207 - only the files the change explains). Every new baseline was cropped
+and looked at (R178): the figures reproduce the design, 200 % does not
+overflow horizontally, "Domicile" sits on one line, and the over-fiscal
+case shows the amber band with the red "Regime non applicable" badge
+(SPEC 6.2: zone and status are different things) and the swapped over-label.
+
+====================================================================
+UNTRACKED FILES LEFT ALONE (R334)
+====================================================================
+Reported, never removed, never committed: MonReleve/ (the orchestrator's
+scratch dir), android/.an*-shots/ (several, plus the new .an-forecast-shots
+this walkthrough writes), android/.kotlin/, android/scripts/an-*.mjs (many,
+plus android/scripts/an-forecast-walkthrough.mjs this session WROTE as its
+own device-drive helper - left untracked like its siblings), relay/AN-PULL.txt,
+relay/FW-FORECAST.txt, web/scripts/_*.mjs. Only this task's own files were
+committed, by explicit `git add` (and `git add -f` for the new Kotlin files -
+see DEVIATIONS: the .gitignore catches ch/monreleve/ on Windows).
+
+====================================================================
+ADVISOR DECISIONS
+====================================================================
+The advisor was NOT used (the orchestrator recorded it had stalled all
+session; R156). Conservative, reversible, instruction-following choices,
+recorded here:
+  - The rail's "projected lighter" colour: there is no success-at-35%-alpha
+    token and minting one is SPEC 20 ask-first, so the projected band uses
+    the DEFINED lighter-band-background token per zone (successBg /
+    warningBg / errorBg), with the solid/soft contrast + legend + label
+    carrying R340's "not colour alone". (The partial report pre-cleared
+    successBg for the compliant case; extended to the warning/error bands.)
+  - The Prevision zone badge reuses the existing ZoneBadge(statusFor) rather
+    than the design's compact single-line badge, so it is engine-derived for
+    ALL statuses (the design shows one) and does not duplicate status copy
+    (R206); the design's "avec N jours de marge" margin is already in the
+    tile below. Recorded as a deliberate difference from the design's badge.
+  - Where the design and the prompt tension (the design has no "past days
+    unrecorded" line; prompt section 2 requires it), the line is ADDED as a
+    conditional honesty note, invisible in the clean design case, per section 2.
+
+====================================================================
+PHONE SETTINGS RESTORED
+====================================================================
+Captured before the walkthrough: auto_time=1, auto_time_zone=1,
+font_scale=1.0, always_finish_activities=0, mock_location=0 (denied),
+stay_on_while_plugged_in=7 (pre-existing, left as found).
+Only font_scale was changed (to 2.0 for the 200 % shots) and restored to
+1.0. always_finish_activities and mock_location were never touched.
+VERIFIED after the run: auto_time=1, auto_time_zone=1, font_scale=1.0,
+always_finish_activities=0, mock_location=0, stay_on_while_plugged_in=7.
+
+====================================================================
+PARKED
+====================================================================
+  PARKAN (carried from the partial report, still the orchestrator's):
+  nothing new. The .gitignore MonReleve/ pattern matching ch/monreleve/ on
+  Windows is flagged below under DEVIATIONS (operator file, not edited).
+
+====================================================================
+DEVIATIONS
+====================================================================
+  - .gitignore (operator file, carried from 24f3d77 and present on
+    5afb92e) has `MonReleve/` at line 46, which on this case-insensitive
+    Windows filesystem ALSO matches the `ch/monreleve/` path component, so
+    every NEW Kotlin file under ch/monreleve/ is ignored. Committed with
+    `git add -f`; NOT fixed (editing .gitignore is out of scope and it is
+    an operator file). Flagged for the orchestrator.
+  - Tokens for values with no exact token (listed, nearest chosen): the day
+    legend uses a layout WEIGHT rather than the design's 92 px (off the
+    4 dp spacing scale); the rail height is Spacing.space12 (12, design 10);
+    the dual figures use FrontierType.h2 (24, design 30) - chosen so two
+    figures sit side by side legibly at 200 % without horizontal overflow
+    (verified on the baseline); the top-bar title uses FrontierType.h3
+    (20/600, design 17/600 - no 17/600 token). Every colour/radius/spacing
+    is a token (FencesTest fence 3); every string is from fr/ (fence 4).
+  - The day toggles use a tighter contentPadding than the Material default
+    so "Domicile" fits on one line in the narrow pill (the design's look).
+  - The Prevision screen was split into PrevisionScreen.kt + PrevisionRail.kt
+    to stay within detekt's per-file function budget (the ReleveSections
+    split idiom); ParametresTab and ForecastController.projectionOf carry a
+    @Suppress for LongParameterList / ReturnCount, as the composition root
+    and AujourdhuiController.computeYear already do.
+
+====================================================================
+QUESTIONS
+====================================================================
+  None blocking. The one operational item is the .gitignore ch/monreleve/
+  match above (an operator file); the product code is complete and green.
+
+====================================================================
+PUSH PROOF
+====================================================================
+Branch: an-forecast-2, off 5afb92e (the R1 base: origin/main, ENGINE-PARITY
++ the AN-FORECAST foundation, confirmed by the orchestrator).
+
+Commits (pushed to origin/an-forecast-2):
+  0d0594e  AN-FORECAST: bring over the R340 nothing-written unit witness
+  2e62886  AN-FORECAST: unrecordedPastWorkdays, the forecast's past-days count
+  788e52c  AN-FORECAST: the weekly-rhythm and year-end-forecast screens
+  4d20886  AN-FORECAST: the ForecastController, the nav wiring and the two
+           entry points
+  (+ this report commit on top)
+
+Diff touches ONLY android/ (no web/, no fixtures/, no /v1, no server or Room
+schema beyond the foundation's R341 rhythm). New ch/monreleve/ files were
+added with `git add -f` (the .gitignore MonReleve/ match, see DEVIATIONS).
+
+Checks run by me:
+  :app:gate                 GREEN - BUILD SUCCESSFUL in 7m42s, 0 failures
+                            (assembleDebug, testDebugUnitTest, checkTestFloor,
+                            ktlintCheck, detekt, verifyPaparazziDebug, the
+                            five release checks, checkLicences, lintDebug).
+  on-device walkthrough     the two screens + the R340 store proof (PASS).
+  pnpm gate:clone           DEFERRED to the orchestrator (as instructed).
+
+The branch-tip SHA (this report commit) is in the hand-off message.
+
+END OF REPORT-AN-FORECAST.txt
