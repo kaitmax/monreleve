@@ -104,5 +104,17 @@
             android:name=".dev.EveningNotifyActivity"
             android:exported="true"
             android:theme="@style/Theme.MonReleve" />
+
+        <!--
+          AN-ALERT. ThresholdAlertActivity runs the REAL threshold-alert path (maybeAlertThreshold) on demand,
+          so each WHEN case (first crossing, staying crossed, fall-back-then-re-cross, the same-day merge,
+          opt-out) can be produced on the physical phone without a background wake. Declared only here, so it
+          never ships (checkReleaseNoDevComponent fails on any ch.monreleve.app.dev.* in the release APK).
+          Reached by: adb shell am start -n ch.monreleve.app/ch.monreleve.app.dev.ThresholdAlertActivity
+        -->
+        <activity
+            android:name=".dev.ThresholdAlertActivity"
+            android:exported="true"
+            android:theme="@style/Theme.MonReleve" />
     </application>
 </manifest>
