@@ -1,0 +1,402 @@
+FW-SHELL-BURGER SESSION REPORT - Mon Releve
+
+====================================================================
+HOW IT ENDED
+====================================================================
+DONE. B1, B2, B3 and B4 all hold. The phone menu is a details/summary
+disclosure that works with JavaScript disabled, on every page; R344 is
+applied to FW34's token mappings and recorded in DESIGN-SYSTEM.md; the
+walkthrough was driven with scripting on AND off at two widths; and all
+39 regenerated baselines match a stated list.
+
+THE TASK ALSO FOUND, MEASURED AND FIXED A DEFECT IN THE VISUAL SUITE
+ITSELF: it was certifying as unchanged a header that had changed on 34
+pages. That is the most important thing in this report and it has its
+own section below.
+
+PRECONDITION. The prompt says to run after FW34 is pushed. It was not:
+local main carried FW34's page merge and four commits unpushed, because
+REPORT-FW34-PAGE.txt deferred test:visual and the final gate:clone to
+the operator. Those two steps were completed first (the two named
+page-accueil baselines, compare-mode proof, gate:clone green) and FW34
+was pushed as f01ed65 before this task began.
+
+====================================================================
+R273 - WHAT WAS READ
+====================================================================
+REPORT-FW34-PAGE.txt (its Q1 and TOKENS sections), REPORT-FW33.txt (the
+shell), design/home/Mobile.dc.html (the approved burger - a real
+details/summary with a 44 px summary and a 300 px panel of 48 px rows),
+DESIGN-SYSTEM.md, relay/FW-SHELL-BURGER.txt.
+
+VERIFIED RATHER THAN ASSUMED (R273): FW34's Q1 says the home page kept
+FW33's shell unchanged and that "the relay's no-JS burger is therefore
+NOT built". Confirmed in the source: PublicShell was still a useState
+disclosure.
+
+====================================================================
+1. THE BURGER
+====================================================================
+WHAT WAS WRONG. The phone menu had been a React useState disclosure
+since FW9: the panel was rendered as `{menuOpen ? <div/> : null}`. With
+scripting disabled the button was inert and a phone reader had no
+navigation at all. Every existing check passed, because jsdom runs the
+handler and Playwright's default context runs the script - the two
+environments that cannot see the defect.
+
+WHAT IT IS NOW. A native details/summary in the SHARED header, so every
+page gets it:
+  - summary: 44 x 44, --radius-md, 1 px --colour-border-strong, the
+    Lucide menu glyph at --size-icon-lg in --colour-brand, aria-label
+    "Ouvrir le menu". list-style: none AND ::-webkit-details-marker are
+    both suppressed - the two engines hide the disclosure triangle
+    through different properties, and without both a stray arrow sits
+    beside the hamburger.
+  - panel: absolute (design/home), so opening it does not push the page
+    down; --size-menu-panel-width, --radius-lg, 1 px border.
+  - rows: SHELL_NAV's entries in SHELL_NAV's order, 44 px each with a
+    rule between and none under the last, then MENU_ACTION
+    ("Calculer ma situation") as a 48 px brand-filled action.
+  - above the breakpoint the WHOLE disclosure is display:none, not just
+    the summary: with details/summary the panel is in the markup whether
+    or not it is open, so hiding the button alone would leave an opened
+    panel on screen after a resize.
+  - Escape remains a script - a progressive enhancement over markup that
+    already works without it - and returns focus to the summary.
+
+MENU_ACTION's HREF IS DERIVED, NOT TYPED. It reads TELEWORK_CALCULATOR's
+own path, the object the nav and footer already share, so the menu
+cannot come to point somewhere other than the navigation above it
+(R206). SPEC 14 freezes that slug, which is exactly why it is not
+retyped. Only the label is new copy.
+
+TWO THINGS GIVEN UP, BOTH DELIBERATE AND BOTH RECORDED IN THE SOURCE:
+  - The trigger no longer renames itself "Fermer le menu". A summary
+    cannot, without the script this exists to do without. It costs
+    nothing a reader relies on: the browser reports expanded/collapsed
+    from the element itself, which is more than a swapped label ever
+    told anyone. SHELL_COPY.menuClose is now unused by the component and
+    is left in lib/fr (nothing else referenced it).
+  - The panel takes its own landmark name, SHELL_COPY.menuNavLabel
+    ("Menu principal"). Both navigations are in the document at every
+    width - the inapplicable one is display:none, so a browser keeps it
+    out of the accessibility tree - and two navigation landmarks
+    announced by the same name is a defect the moment a stylesheet fails
+    to load, which is the state this whole task is about.
+
+POSITION KEPT, NOT MOVED. design/home draws the hamburger on the RIGHT;
+FD2 draws it first/left and FW9's comment records that as deliberate
+("the thing that reveals the navigation before the navigation"). The
+prompt names the fold behaviour, not the position, so the conservative
+option was taken: FD2's position stands. Recorded under DEVIATIONS.
+
+TEST-FIRST (e2e/burger.spec.ts, javaScriptEnabled: false):
+  RED  4 failed | 1 passed. The four are every JS-off claim - the panel
+       never appears, because clicking a React onClick does nothing
+       without scripting. The one that passed is the desktop case, which
+       is correct today and is labelled as such.
+  GREEN 6 passed, after the implementation.
+  The sixth test was added during the task: a 320 dp check that OPENS
+  the panel. narrow.spec.ts, guides-narrow.spec.ts and the composants
+  overflow check all measure a page whose menu is SHUT, so the widest
+  element in the product had never been measured at the floor SPEC 16
+  states. That is R175's unexamined space.
+
+A LOCATOR CORRECTION WORTH RECORDING: a <summary> has no stable mapped
+ARIA role across engines, so getByRole('button') finds nothing even when
+the markup is correct. Both the e2e and the unit tests query the element
+and assert the accessible NAME directly.
+
+====================================================================
+2. THE VISUAL SUITE WAS CERTIFYING CHANGES IT COULD NOT SEE
+====================================================================
+THE SYMPTOM. With the burger built, pnpm test:visual reported 3 failed /
+108 passed. The header had changed on every page; 34 phone baselines
+should have failed. The run was repeated and reported 3 failed / 108
+passed again - deterministic, not a flake.
+
+WHY IT WAS NOT ACCEPTED. The container had plainly rendered the change:
+its failure artefact for composants-shell-mobile-open showed the new
+bordered button and the new panel. Yet composants-shell-mobile - the
+same specimen, the same viewport, 1.7 s apart in the same run - passed
+against a baseline showing the old borderless hamburger. Cropping the
+two at identical dimensions (312x1255) showed a bordered button against
+a borderless one. Independently, the computed style on a served page
+gave `1px solid rgb(208, 213, 221)` in `rgb(23, 59, 99)` at 44 px, on
+/tarifs as well as /.
+
+THE CAUSE. playwright.config.ts set no expect.toHaveScreenshot, so
+Playwright's DEFAULT applied: threshold 0.2, a 20 % per-pixel colour
+allowance (its own types: "defaults `threshold` value to 0.2"). A pixel
+counts as different only when its YIQ delta exceeds the threshold. The
+pixels this change touched sit under it:
+    new border --colour-border-strong on white   delta 0.119
+    glyph --colour-brand over --colour-text-primary  delta 0.098
+So every pixel of the burger's header change was inside the vendor's
+default tolerance, and 34 baselines were certified unchanged.
+
+WHY NO GUARD CAUGHT IT. tests/unit/meta/visual-zero-tolerance.test.ts
+asserts R114 - "a visual baseline runs at zero tolerance" - by scanning
+for the words maxDiffPixels / maxDiffPixelRatio / threshold / mask, and
+its last test required playwright.config.ts to contain NONE of them. So
+`threshold: 0`, the one line that makes the claim true, was the one line
+the guard rejected. Declining to configure a tolerance is not zero
+tolerance; it is the vendor's. An absence assertion satisfied by
+absence (R154's class).
+
+WHY IT WAS BLOCKING RATHER THAN A SIDE QUEST. --update-snapshots only
+rewrites a baseline whose comparison FAILS. The 34 could therefore not
+be regenerated at all: the picture was frozen. B4 ("every phone baseline
+regenerated against its list") was unachievable without fixing this.
+This is the guard file's OWN header story - maxDiffPixels: 600 freezing
+six calculator baselines in FW13 - one layer down: FW13 removed the
+explicit allowances and never set the default to zero, closing the
+explicit hatch and leaving the implicit one open.
+
+THE FIX, test-first:
+  1. The config guard was REPLACED, not supplemented (R268 - two tests
+     bounding one property is a reader's trap). It now reads the VALUES
+     off the config object - expect.toHaveScreenshot.threshold === 0 and
+     maxDiffPixels === 0 - rather than grepping the source, because a
+     scan cannot tell `threshold: 0` from `threshold: 0.2`.
+     RED: "playwright.config.ts sets no expect.toHaveScreenshot, so
+     Playwright applies its own threshold of 0.2".
+  2. playwright.config.ts now states threshold: 0, maxDiffPixels: 0.
+     GREEN, 9 passed.
+  3. The compare then reported 39 failed where 3 had been.
+The per-spec half of the guard is unchanged: per-call tolerances are
+still forbidden, and stylePath remains R114's sanctioned answer to
+genuine environmental instability.
+
+R267 - SECOND SITES CHECKED. playwright.runtime.config.ts takes no
+screenshots (no toHaveScreenshot caller outside e2e/*.visual.spec.ts and
+this guard), so it needs nothing today; if it ever captures one it would
+inherit the same default, which is worth knowing. e2e/baseline.ts's
+header claimed a tolerance "is a compile error rather than a test
+failure" - true of call sites, and never true of the project, since a
+type cannot reach a default nobody wrote. It now says so.
+
+THIS DESERVES A RULING NUMBER, which is the operator's to assign. The
+proposed statement: A DEFAULT IS A SETTING NOBODY CHOSE. Where a tool
+applies a tolerance, a timeout or a limit unless configured, the project
+STATES the value it wants and a test asserts that VALUE - never the
+absence of the word. A guard that forbids writing the setting forbids
+fixing it.
+
+====================================================================
+3. R344 - A TOKEN IS CHOSEN BY MEANING
+====================================================================
+Recorded in DESIGN-SYSTEM.md beside R77, with its own paragraph and the
+explicit limit that it is not a licence to mint a token per declaration:
+a value belonging to a scale takes the scale's step, and the radius set
+stays closed at nine names.
+
+FW34's TOKENS list, gone through entry by entry.
+
+REPLACED (the name did not mean the use):
+  .phone max-width      --size-toc-column (280)
+                     -> --size-phone-frame-width (300)
+     The hero's phone card is a PICTURE OF THE APPLICATION. It was sized
+     by the guides' table-of-contents column because that token happens
+     to carry 280, so widening the table of contents would have resized
+     the illustration. The prompt names this one.
+  .phoneCaption max-width  same swap - it means "as wide as the phone".
+  .phone border         --space-2 (8) -> --size-phone-bezel (10)
+     A SPACING step used as a stroke width: a category error before it
+     is a value one.
+Both take the approved design's figure (R77), not the nearest token's,
+so the substitutions' 280 and 8 become 300 and 10.
+--size-menu-panel-width (300) is the burger's own, and is a second name
+for the same number on purpose (R68: distinct names where values
+coincide) - a menu panel and a phone frame move independently.
+
+KEPT, each because the name means the use:
+  --size-button-large-height on a button; --size-input-height on an
+  input; --size-toast-min-width on the phone card's notification (a
+  notification is what a toast is); --radius-2xl on a frame radius (the
+  radius set is closed, R64/section 4.1); the spacing and type scales,
+  which are scales.
+  --colour-france-soft on the hero eyebrow: the eyebrow reads "Pour les
+  frontaliers France - Suisse", so the France tint means its use. The
+  alternative - a new brand-soft COLOUR - is a palette addition rather
+  than a component dimension, and is not what R344 authorises.
+
+====================================================================
+4. SIZES (R326)
+====================================================================
+Measured on a fresh build, against the figures gate:clone recorded for
+f01ed65:
+  /sources        107.9 -> 108.0 KiB JS,  CSS 10.3 -> 10.5
+  /tarifs         107.9 -> 108.0,         CSS 10.3 -> 10.5
+  /releve-annuel  107.9 -> 108.0,         CSS 10.3 -> 10.5
+  /releve/print   101.9 -> 101.9 (no shell), CSS 10.3 -> 10.5
+  /verifier/[code] 107.7 -> 107.8,        CSS 10.8 -> 10.9
+So +0.1 KiB JS and +0.2 KiB CSS per route. The calculator keeps 3.4 KiB
+of GATE A and 4.0 of GATE B. All gated routes pass both gates; no gate
+was raised. The before-table for the remaining routes was not captured
+(gate:clone's log keeps only its tail), so the delta is stated from the
+five rows that were.
+
+====================================================================
+5. BASELINES (R135, R207)
+====================================================================
+STATED BEFORE RUNNING: 37 = every *-mobile.png (36, reason "shared
+header: burger menu") + page-accueil-desktop.png (reason "R344: phone
+frame 280->300, bezel 8->10").
+
+THE RUN PRODUCED 39, and the two extras were investigated rather than
+absorbed into the burger's reason:
+  composants-badge-regime.png     48 of 147 840 px differ, max channel
+                                  delta 15, mean 3.8
+  composants-container-narrow.png 19 of 142 912 px differ, max channel
+                                  delta 1, mean 1.0
+For comparison this task's own change measured 320 px at max delta 60.
+Both extras are sub-visual renderer drift - an order of magnitude under
+a real change - held invisible until now by the same 0.2 default. They
+are regenerated under THAT reason, never under the burger's.
+
+WRITTEN: exactly 39, matching the amended list file for file; git
+reports 39 modified baselines.
+
+DETERMINISM PROVEN AFTER THE FACT, because zero tolerance is only sound
+if the container renders identically run to run: a second compare
+against the new baselines passed 111/111. The noise was historical drift
+between those two baselines' original environment and now, not per-run
+flakiness. If it ever does recur, R114's answer is stylePath, not an
+allowance.
+
+CROPPED AND READ: the four regenerated phone headers sampled
+(page-tarifs, page-sources, guides-hub, page-404) all carry the bordered
+button consistently; composants-shell-mobile-open shows the panel
+overlaying rather than pushing content down; page-accueil-mobile and
+-desktop show the wider phone frame. No defect found.
+
+====================================================================
+6. WALKTHROUGH (R176, R177)
+====================================================================
+pnpm dev on 3199, driven at 390 and 1440, with JavaScript ON and OFF,
+over /, /guides, /calculateur-teletravail-frontalier and /sources.
+Every route: 200, stylesheet present (a rule declaring --colour-brand
+was fetched before anything was measured, R177), zero horizontal
+overflow.
+
+  js=on  phone   summary 44x44, label "Ouvrir le menu", 5 panel links
+  js=off phone   identical - the whole point
+  js=on/off desktop  summary hidden, desktop navigation present
+  opened (both)  panel 300 px; rows: Calculateur de teletravail 44,
+                 Guides 44, Le releve 44, Tarifs 44, Calculer ma
+                 situation 48
+  js=on          Escape closes it and focus returns to SUMMARY
+
+Screenshots were opened and read: with scripting off the panel overlays
+the hero rather than displacing it, separators sit between rows and none
+under the last, and the action renders as a filled button.
+
+The dev server's tree was killed afterwards and :3199 verified free
+(R179).
+
+====================================================================
+UNTRACKED FILES LEFT ALONE (R334)
+====================================================================
+Thirteen untracked paths outside android/ were present and NONE was
+removed, moved or committed:
+  MonReleve/            design/decide/        design/home/
+  relay/AN-ALERT.txt    relay/AN-FORECAST.txt relay/AN-RECON.txt
+  relay/AN-SIM.txt      relay/FW-FORECAST.txt relay/FW-SHELL-BURGER.txt
+  relay/RUN-CHAIN-DECIDE.txt
+  web/scripts/_mint-readback.mjs   web/scripts/_wt-setup.mjs
+  (plus the android/.*-shots directories and android/scripts/*.mjs)
+The two web/scripts helpers were swept in by a `git add -A -- web` and
+were UNSTAGED before the commit: they are not this task's and not mine.
+design/home/ is the approved design this task was built from and is
+still untracked; the operator may want it committed.
+
+====================================================================
+ADVISOR DECISIONS
+====================================================================
+Q: The visual suite reports 3 changed baselines where 37 should change,
+   deterministically. Fixing it means setting a project-wide
+   threshold: 0 and inverting a guard that currently forbids exactly
+   that. Is that in scope for this task, or parked?
+A: Proceed - it is on B4's critical path (frozen baselines cannot
+   regenerate) and it tightens a gate rather than raising one. Replace
+   the config guard rather than supplement it (R268); assert the VALUE,
+   not the text. Run the compare before touching any baseline: if the 34
+   still pass, the diagnosis is incomplete, because Playwright's
+   comparator also has an anti-aliasing heuristic. Expect MORE than 37
+   and treat each extra as a finding - crop it, name what changed, and
+   regenerate it under its own reason, never under the burger's. Check
+   R267 second sites (playwright.runtime.config.ts, other
+   toHaveScreenshot callers, e2e/baseline.ts's header claim). The
+   walkthrough opened the panel at 390 only; at the 320 floor gutter 20
+   + panel 300 is exactly the viewport edge and min-width can only grow,
+   so add a JS-off 320 test that opens it.
+WHAT I DID: exactly that, in that order. The compare after the fix
+reported 39 failed (not 3), which confirmed the diagnosis before any
+baseline was written; the two extras were measured and attributed
+separately; the three second sites were checked (two needed nothing, one
+had an overstated comment, now corrected); and the 320 open-panel test
+is burger.spec.ts's sixth.
+
+====================================================================
+PARKED
+====================================================================
+- SHELL_COPY.menuClose ("Fermer le menu") is now referenced by nothing.
+  Left in lib/fr rather than deleted: removing copy is not this task's,
+  and a future JS-enhanced close button would want it.
+- design/home/ is untracked. The task was built from it (R273 names it),
+  and nothing in the repository records the approved design.
+- playwright.runtime.config.ts would inherit the same vendor defaults if
+  it ever took a screenshot. Nothing to fix today.
+
+====================================================================
+DEVIATIONS
+====================================================================
+- NO WORKTREE. The prompt asks for "its own worktree"; CLAUDE.md records
+  that git worktrees are infeasible on this machine (the Windows
+  path-length limit truncates nested .claude/worktrees/ paths) and that
+  sessions run on a BRANCH in the main directory instead, sequentially.
+  This ran on branch fw-shell-burger. No other session was running
+  (checked), so R300 is satisfied by scheduling.
+- SCOPE ADDITION: playwright.config.ts and
+  tests/unit/meta/visual-zero-tolerance.test.ts were changed. Reason:
+  B4 is unachievable without it - the baselines were frozen. It tightens
+  the gate; it does not raise one.
+- FW34's PUSH was completed by this session before the task began
+  (two deferred baselines, gate:clone, push as f01ed65). The prompt
+  required FW34 to be pushed first and it was not.
+- THE BURGER'S POSITION follows FD2 (first/left), not design/home
+  (right). The prompt specifies the fold behaviour, not the position.
+- The panel's links follow the prompt ("the same links as the desktop
+  navigation, in the same order, plus Calculer ma situation") rather
+  than design/home's list, which shows "L'application" and "A propos"
+  instead of "Le releve" and "Tarifs".
+
+====================================================================
+QUESTIONS
+====================================================================
+1. The visual-tolerance finding needs a ruling number and wording. The
+   proposed statement is in section 2.
+2. Should design/home/ be committed? It is the approved design three
+   tasks have now been built from, and it is untracked.
+3. composants-badge-regime and composants-container-narrow drifted
+   sub-visually at some point before this task. Their cause was not
+   chased (they are renderer-level, 1 and 15 units). Worth a look if
+   they move again.
+
+====================================================================
+PUSH PROOF
+====================================================================
+Branch fw-shell-burger, off origin/main f01ed65.
+  b456b91  FW-SHELL-BURGER: the burger works without JavaScript, and
+           the visual suite can see it   (53 paths: 14 source/config,
+           39 baselines)
+  [this report]
+gate:changed on b456b91, pasted in that commit:
+  suites: typecheck, lint, test, build, test:visual, test:e2e, test:db,
+          test:late
+  typecheck 0 | lint 0 | test 3093 | build 0 | test:visual 111 |
+  test:e2e 299 | test:db 624 | test:late 10
+gate:clone and the merge to main are recorded in the closing message.
+
+END OF REPORT-FW-SHELL-BURGER
