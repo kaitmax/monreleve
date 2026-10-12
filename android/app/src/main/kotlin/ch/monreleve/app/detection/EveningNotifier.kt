@@ -14,6 +14,8 @@ import ch.monreleve.app.data.local.EntryKind
 import ch.monreleve.app.data.local.MonReleveDatabase
 import ch.monreleve.app.data.local.Provenance
 import ch.monreleve.app.data.local.todayInParis
+import ch.monreleve.app.data.repo.LocalRhythmRepository
+import ch.monreleve.app.forecast.projectedThresholdCrossing
 import ch.monreleve.app.fr.AujourdhuiCopy
 import ch.monreleve.app.fr.DetectionCopy
 import ch.monreleve.app.fr.NotificationCopy
@@ -21,10 +23,15 @@ import ch.monreleve.app.fr.NotificationLines
 import ch.monreleve.app.fr.format.formatDayLong
 import ch.monreleve.app.notification.EveningTap
 import ch.monreleve.app.notification.eveningRecordIntent
+import ch.monreleve.app.settings.AlertThreshold
 import ch.monreleve.app.settings.LoggingMode
 import ch.monreleve.app.settings.SharedPrefsDetectionModeStore
 import ch.monreleve.app.settings.SharedPrefsEveningNotificationStore
+import ch.monreleve.app.settings.SharedPrefsSettingsStore
+import ch.monreleve.app.settings.SharedPrefsThresholdAlertStore
+import kotlinx.coroutines.flow.first
 import java.time.Clock
+import java.time.LocalDate
 import java.time.ZoneId
 
 // R323 / PARKAN-36, extended by AN-NOTIF (R339). The evening notification's ANDROID GLUE: it gathers the day's
@@ -47,6 +54,9 @@ import java.time.ZoneId
 /** The launch-intent extra that tells MainActivity to open the Aujourd'hui tab (a notification tap, D16). */
 const val EXTRA_OPEN_AUJOURDHUI = "ch.monreleve.app.OPEN_AUJOURDHUI"
 
+/** AN-ALERT. The launch-intent extra that tells MainActivity to open the forecast (a threshold-alert tap). */
+const val EXTRA_OPEN_FORECAST = "ch.monreleve.app.OPEN_FORECAST"
+
 // android.permission.POST_NOTIFICATIONS (Android 13+, API 33). A literal, not Manifest.permission.POST_NOTIFICATIONS,
 // so no API-33 symbol is referenced on minSdk 26 (the NewApi gate stays clean) - the permission name is a frozen
 // platform value, the same reasoning as FIX_PROVIDERS' provider literals. Requested only when the person turns the
@@ -54,6 +64,12 @@ const val EXTRA_OPEN_AUJOURDHUI = "ch.monreleve.app.OPEN_AUJOURDHUI"
 const val POST_NOTIFICATIONS_PERMISSION = "android.permission.POST_NOTIFICATIONS"
 
 private const val CHANNEL_ID = "monreleve.evening.proposal"
+
+// AN-ALERT: the threshold alert's OWN channel, so it can be silenced apart from the evening reminder.
+private const val ALERT_CHANNEL_ID = "monreleve.threshold.alert"
+
+// AN-ALERT (never two Mon Releve notifications a day): the alert and the evening reminder SHARE this id, so
+// posting one replaces the other rather than stacking - at most one Mon Releve notification exists at a time.
 private const val EVENING_NOTIFICATION_ID = 1001
 private val PARIS: ZoneId = ZoneId.of("Europe/Paris")
 
@@ -70,6 +86,9 @@ private const val REQUEST_OPEN = 0
 private const val REQUEST_RECORD_PRIMARY = 1
 private const val REQUEST_RECORD_SECONDARY = 2
 
+// AN-ALERT: a distinct request code so the forecast-opening PendingIntent never collides with openAujourdhui's.
+private const val REQUEST_OPEN_FORECAST = 3
+
 /**
  * Called on every background wake (SamplingWorker): if the person has opted in, automatic detection is on, today
  * is a working day that has concluded with no entry yet, and it has not already fired today, post the single
@@ -85,25 +104,81 @@ suspend fun maybeNotifyEvening(
 
     val today = todayInParis(clock)
     val db = MonReleveDatabase.get(context)
+    val (conditions, outcome) =
+        gatherEveningConditions(context, clock, today, db, alreadyNotified = eveningStore.lastNotifiedDay() == today)
+    val notice = eveningDecision(conditions, outcome) ?: return
+
+    // R303: the notification is shown FOR the account signed in now; the buttons carry it, and the receiver
+    // refuses the write if a different account is signed in when a button is tapped.
+    val account = SharedPrefsAccountStore(context).current()
+    // AN-ALERT (never two Mon Releve notifications a day): if a threshold alert already fired today, its
+    // sentence JOINS this one notification (composeDaily -> Merged) and the record buttons stay; otherwise the
+    // reminder posts alone, unchanged.
+    val composition = composeDaily(notice, SharedPrefsThresholdAlertStore(context).activeThresholdToday(today))
+    EveningNotifier.postDaily(context, composition, today, account)
+    eveningStore.markNotified(today) // at most one per working day
+}
+
+/**
+ * AN-ALERT. The threshold alert: when the person has opted in, recompute the year-end forecast on the imagined
+ * year (the EXISTING engine, R281/R340 - never UI arithmetic) and, THE FIRST TIME it would cross a threshold,
+ * post one notification. The last crossing state per threshold is kept on the phone, so staying crossed is
+ * silent and a fall-back-then-re-cross fires again (decideThresholdAlert). NEVER TWO MON RELEVE NOTIFICATIONS A
+ * DAY: if the evening reminder applies today, the alert's sentence joins it with its record buttons kept;
+ * otherwise the alert posts alone, opening the forecast. It records NOTHING (D16/R340) and reads no coordinate
+ * (D18) - only the entry rows, the rhythm and the settings, all by value through the engine.
+ */
+@Suppress("ReturnCount")
+suspend fun maybeAlertThreshold(
+    context: Context,
+    clock: Clock,
+) {
+    val alertStore = SharedPrefsThresholdAlertStore(context)
+    if (!alertStore.isEnabled()) return // OPT-OUT SENDS NOTHING
+
+    val today = todayInParis(clock)
+    val todayDate = LocalDate.parse(today)
+    val db = MonReleveDatabase.get(context)
+    val account = SharedPrefsAccountStore(context).current()
+    val settings = SharedPrefsSettingsStore(context).load() ?: return
+    val rhythm = LocalRhythmRepository(db.rhythmDao(), account).observe().first()
+    val current = projectedThresholdCrossing(settings, db.entryDao().all(), rhythm, todayDate, todayDate.year)
+
+    val decision = decideThresholdAlert(optedIn = true, current = current, previous = alertStore.crossing())
+    alertStore.saveCrossing(decision.newState) // keep the last state whether or not it fires
+    val threshold = decision.alert ?: return // no NEW crossing this evaluation
+
+    // A new crossing. Merge with the evening reminder when it applies today (alreadyNotified ignored, so a
+    // reminder already shown is replaced by the merged one with its buttons kept), else post the alert alone.
+    val (conditions, outcome) = gatherEveningConditions(context, clock, today, db, alreadyNotified = false)
+    val eveningNotice = eveningDecision(conditions, outcome)
+    EveningNotifier.postDaily(context, composeDaily(eveningNotice, threshold), today, account)
+    alertStore.markAlerted(today, threshold)
+    if (eveningNotice != null) SharedPrefsEveningNotificationStore(context).markNotified(today)
+}
+
+// AN-NOTIF / AN-ALERT. Gather the evening reminder's six conditions and today's detection outcome in one place
+// (R206), so maybeNotifyEvening and the alert's same-day merge read them identically - the only difference is
+// [alreadyNotified], which the merge sets false (it wants "does the reminder apply", not "has it fired yet").
+private suspend fun gatherEveningConditions(
+    context: Context,
+    clock: Clock,
+    today: String,
+    db: MonReleveDatabase,
+    alreadyNotified: Boolean,
+): Pair<EveningConditions, DetectionOutcome> {
     val checks = db.tallyDao().byDay(today)?.toDayChecks() ?: DayChecks(null, null, null, null)
     val conditions =
         EveningConditions(
-            optedIn = true,
+            optedIn = SharedPrefsEveningNotificationStore(context).isEnabled(),
             autoMode = SharedPrefsDetectionModeStore(context).load() == LoggingMode.AUTO_DETECT,
             workingDay = isWorkingDay(clock.instant().atZone(PARIS).toLocalDate().dayOfWeek.value),
             // Conservative: ANY recorded portion today suppresses the notification (never nag a recorded day).
             hasEntryToday = db.entryDao().all().any { it.dayDate == today },
             dayConcluded = afterLastCheckWindow(clock),
-            alreadyNotified = eveningStore.lastNotifiedDay() == today,
+            alreadyNotified = alreadyNotified,
         )
-    val notice = eveningDecision(conditions, detectionOutcome(dayProposal(checks))) ?: return
-
-    // R303: the notification is shown FOR the account signed in now; the buttons carry it, and the receiver
-    // refuses the write if a different account is signed in when a button is tapped.
-    val account = SharedPrefsAccountStore(context).current()
-    EveningNotifier.ensureChannel(context)
-    EveningNotifier.post(context, notice, today, account)
-    eveningStore.markNotified(today) // at most one per working day
+    return conditions to detectionOutcome(dayProposal(checks))
 }
 
 // TooManyFunctions suppressed: this is the notification's cohesive builder set (the channel, the actionable post
@@ -132,6 +207,10 @@ object EveningNotifier {
         notice: EveningNotice,
         shownForDay: String,
         shownForAccount: String?,
+        // AN-ALERT: the threshold alert's sentence to JOIN this reminder (the same-day merge). Null = the
+        // reminder alone. It is added to the UNLOCKED text only; the public (lock-screen) version is unchanged,
+        // so the merge never reveals the threshold on a locked phone (R323).
+        alertSentence: String? = null,
     ) {
         val manager = NotificationManagerCompat.from(context)
         // On API 33+ a denied POST_NOTIFICATIONS makes this disabled; respect it rather than posting into a void.
@@ -146,11 +225,85 @@ object EveningNotifier {
                 .setPublicVersion(publicVersion(context))
                 .setContentIntent(openAujourdhui(context))
                 .setAutoCancel(true)
+        alertSentence?.let {
+            builder.setStyle(NotificationCompat.BigTextStyle().bigText("${content.text}\n\n$it"))
+        }
         recordActions(context, notice, shownForDay, shownForAccount).forEach { builder.addAction(it) }
         // "Autre…" opens the app on today (a mission, an absence, a split half-day) - an ACTIVITY PendingIntent,
         // never a broadcast (Android 12+ forbids a receiver that a notification launched from starting an activity).
         builder.addAction(R.drawable.ic_sun, NotificationCopy.AUTRE, openAujourdhui(context))
         manager.notify(EVENING_NOTIFICATION_ID, builder.build())
+    }
+
+    /**
+     * AN-ALERT. Post the ONE Mon Releve notification for today, from the composed decision (never two a day):
+     * the alert alone (opens the forecast, its own channel), the reminder alone, or the reminder with the
+     * alert's sentence joined and its record buttons kept. The alert's sentence has one home - NotificationCopy
+     * .alertTitle (R206).
+     */
+    fun postDaily(
+        context: Context,
+        composition: DailyNotification,
+        shownForDay: String,
+        shownForAccount: String?,
+    ) {
+        when (composition) {
+            DailyNotification.None -> Unit
+            is DailyNotification.Alert -> postAlert(context, composition.threshold)
+            is DailyNotification.Evening -> {
+                ensureChannel(context)
+                post(context, composition.notice, shownForDay, shownForAccount)
+            }
+            is DailyNotification.Merged -> {
+                ensureChannel(context)
+                post(
+                    context,
+                    composition.notice,
+                    shownForDay,
+                    shownForAccount,
+                    NotificationCopy.alertTitle(composition.threshold.name),
+                )
+            }
+        }
+    }
+
+    /**
+     * AN-ALERT. The threshold alert alone: PRIVATE content naming the seuil (unlocked), a PUBLIC lock-screen
+     * version that says only that there is information about the year (no figure, no threshold, R323), NO
+     * record buttons, and a tap that opens the forecast. Same id as the reminder, so the two never coexist.
+     */
+    fun postAlert(
+        context: Context,
+        threshold: AlertThreshold,
+    ) {
+        ensureAlertChannel(context)
+        val manager = NotificationManagerCompat.from(context)
+        if (!manager.areNotificationsEnabled()) return
+        val notification =
+            alertBaseBuilder(context)
+                .setContentTitle(NotificationCopy.alertTitle(threshold.name))
+                .setContentText(NotificationCopy.ALERT_PROJECTION_NOTE)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(NotificationCopy.ALERT_PROJECTION_NOTE))
+                .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+                .setPublicVersion(alertPublicVersion(context))
+                .setContentIntent(openForecast(context))
+                .setAutoCancel(true)
+                .build()
+        manager.notify(EVENING_NOTIFICATION_ID, notification)
+    }
+
+    /** AN-ALERT. The threshold alert's channel « Seuils » (idempotent). Private on the lock screen. */
+    fun ensureAlertChannel(context: Context) {
+        val channel =
+            NotificationChannel(
+                ALERT_CHANNEL_ID,
+                NotificationCopy.ALERT_CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_DEFAULT,
+            ).apply {
+                description = NotificationCopy.ALERT_CHANNEL_DESCRIPTION
+                lockscreenVisibility = Notification.VISIBILITY_PRIVATE
+            }
+        context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 
     /** The unlocked (private) title and text, by mode (R339): the question (manual), the proposal (auto HIGH),
@@ -249,6 +402,17 @@ object EveningNotifier {
             .build()
     }
 
+    // AN-ALERT. The alert's lock-screen (public) version: says only that there is information about the year -
+    // NO figure, NO threshold, NO actions (R323). The threshold named in the private version never appears here.
+    private fun alertPublicVersion(context: Context): Notification {
+        val lines = NotificationCopy.alertPublicLines()
+        return alertBaseBuilder(context)
+            .setContentTitle(lines.title)
+            .setContentText(lines.text)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .build()
+    }
+
     private fun sideLabel(kind: EntryKind): String =
         when (kind) {
             EntryKind.CH -> AujourdhuiCopy.SUISSE
@@ -305,6 +469,28 @@ object EveningNotifier {
         NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_sun)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+
+    // AN-ALERT: the alert's builder on its own channel « Seuils ».
+    private fun alertBaseBuilder(context: Context): NotificationCompat.Builder =
+        NotificationCompat.Builder(context, ALERT_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_sun)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+
+    // AN-ALERT: the alert tap OPENS the forecast (D16: it records nothing). A distinct request code from
+    // openAujourdhui so the two activity PendingIntents never collide; EXTRA_OPEN_FORECAST forces the forecast.
+    private fun openForecast(context: Context): PendingIntent {
+        val intent =
+            context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
+                putExtra(EXTRA_OPEN_FORECAST, true)
+                addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            }
+        return PendingIntent.getActivity(
+            context,
+            REQUEST_OPEN_FORECAST,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+    }
 
     // D16: the tap only OPENS Aujourd'hui; it records nothing. The launcher intent targets MainActivity without
     // detection/ importing it, and EXTRA_OPEN_AUJOURDHUI forces the Aujourd'hui tab even on a warm resume.

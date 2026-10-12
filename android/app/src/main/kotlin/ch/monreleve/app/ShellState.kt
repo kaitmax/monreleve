@@ -26,6 +26,7 @@ import ch.monreleve.app.parametres.ParametresSnapshot
 import ch.monreleve.app.settings.SettingsStore
 import ch.monreleve.app.settings.SharedPrefsDetectionModeStore
 import ch.monreleve.app.settings.SharedPrefsEveningNotificationStore
+import ch.monreleve.app.settings.SharedPrefsThresholdAlertStore
 import ch.monreleve.app.ui.shell.AppTab
 import java.time.Clock
 
@@ -126,6 +127,10 @@ fun rememberMainControllers(
                 // R323 / PARKAN-36: the evening proposal notification's opt-in store (shares monreleve.detection,
                 // so sign-out's clear sweeps it). The Parametres toggle reads/writes it; the worker reads it too.
                 eveningNotificationStore = SharedPrefsEveningNotificationStore(context),
+                // AN-ALERT: the threshold alert's store (shares monreleve.detection, so sign-out sweeps the
+                // opt-in and the crossing state). The Parametres toggle and Prevision offer read/write it; the
+                // alert evaluation reads it too.
+                thresholdAlertStore = SharedPrefsThresholdAlertStore(context),
             )
         }
     // Keep the saved snapshots current from the controllers' observed state, so the LATEST month, open sheet,

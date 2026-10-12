@@ -2,6 +2,7 @@ package ch.monreleve.app.ui.screens.prevision
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -65,6 +66,8 @@ data class PrevisionActions(
     val onModifyRhythm: () -> Unit = {},
     // AN-SIM: open the simulator ("Tester un changement"), now live (R85).
     val onTestChange: () -> Unit = {},
+    // AN-ALERT: opt into the threshold alert from the contextual offer (the permission prompt is the shell's).
+    val onEnableAlert: () -> Unit = {},
     val onBack: () -> Unit = {},
 )
 
@@ -72,6 +75,9 @@ data class PrevisionActions(
 fun PrevisionScreen(
     state: ForecastState,
     actions: PrevisionActions,
+    // AN-ALERT: whether the threshold alert is already on. The offer is shown ONCE, only while it is off and a
+    // projection exists; enabling it (or the Parametres switch) hides the offer.
+    alertEnabled: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val projection = state.projection
@@ -92,6 +98,8 @@ fun PrevisionScreen(
             } else {
                 Text(text = PrevisionCopy.TITLE, style = FrontierType.h1)
                 ForecastCard(projection)
+                // AN-ALERT: the contextual opt-in offer, below the forecast, only while the alert is off.
+                if (!alertEnabled) AlertOfferRow(onEnable = actions.onEnableAlert)
             }
         }
         BottomActions {
@@ -106,6 +114,32 @@ fun PrevisionScreen(
                 }
             }
         }
+    }
+}
+
+// AN-ALERT: the contextual opt-in offer for the threshold alert. A bordered, tappable row (the bell icon + the
+// offer copy); tapping runs onEnable, which the shell routes through the notification-permission prompt. Shown
+// only while the alert is off, so it is offered once and then disappears (R340: it posts nothing - it opts in).
+@Composable
+private fun AlertOfferRow(onEnable: () -> Unit) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(Radius.md))
+                .border(Size.rule, LightColors.borderDefault, RoundedCornerShape(Radius.md))
+                .clickable(onClick = onEnable)
+                .padding(Spacing.space16),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.space12),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.ic_bell),
+            contentDescription = null,
+            tint = LightColors.brand,
+            modifier = Modifier.size(Spacing.space20),
+        )
+        Text(text = PrevisionCopy.ALERT_OFFER, style = FrontierType.body, color = LightColors.textPrimary)
     }
 }
 

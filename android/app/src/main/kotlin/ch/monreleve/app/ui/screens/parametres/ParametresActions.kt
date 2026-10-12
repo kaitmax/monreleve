@@ -45,6 +45,8 @@ data class ParametresActions(
     val onToggleAutoDetection: (Boolean) -> Unit,
     /** R323: turn the evening proposal notification on or off. ON asks the notification permission (Android 13+). */
     val onToggleEveningNotification: (Boolean) -> Unit,
+    /** AN-ALERT: turn the threshold alert on or off. ON asks the notification permission (Android 13+). */
+    val onToggleThresholdAlert: (Boolean) -> Unit = {},
     /** AN-FORECAST: open the weekly-rhythm editor (« Votre rythme habituel »), reached from the settings list. */
     val onOpenRhythm: () -> Unit = {},
 )

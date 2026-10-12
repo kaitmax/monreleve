@@ -116,10 +116,13 @@ class PrevisionScreenScreenshotTest {
     private val invitation = ForecastState()
 
     @Composable
-    private fun host(state: ForecastState) {
+    private fun host(
+        state: ForecastState,
+        alertEnabled: Boolean = false,
+    ) {
         FrontierTheme {
             Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                PrevisionScreen(state = state, actions = PrevisionActions())
+                PrevisionScreen(state = state, actions = PrevisionActions(), alertEnabled = alertEnabled)
             }
         }
     }
@@ -143,6 +146,15 @@ class PrevisionScreenScreenshotTest {
     @Test
     fun previsionWithUnrecorded() {
         paparazzi.snapshot { host(withUnrecorded) }
+    }
+
+    // AN-ALERT: the contextual opt-in offer « Me prévenir si mon rythme approche d'un seuil » renders below the
+    // forecast while the alert is OFF (the default host above, on compliant/overFiscal/withUnrecorded).
+    @Test
+    fun previsionAlertEnabled() {
+        // With the alert already ON, the offer is NOT shown (it is offered once) - the only diff from
+        // previsionCompliant, which proves the offer is present there and absent here.
+        paparazzi.snapshot { host(compliant, alertEnabled = true) }
     }
 
     @Test

@@ -74,10 +74,12 @@ import ch.monreleve.app.design.FrontierTheme
 import ch.monreleve.app.design.LightColors
 import ch.monreleve.app.detection.BACKGROUND_LOCATION
 import ch.monreleve.app.detection.EXTRA_OPEN_AUJOURDHUI
+import ch.monreleve.app.detection.EXTRA_OPEN_FORECAST
 import ch.monreleve.app.detection.EveningNotifier
 import ch.monreleve.app.detection.FINE_LOCATION
 import ch.monreleve.app.detection.POST_NOTIFICATIONS_PERMISSION
 import ch.monreleve.app.detection.locationFullyGranted
+import ch.monreleve.app.detection.maybeAlertThreshold
 import ch.monreleve.app.forecast.RhythmChoice
 import ch.monreleve.app.fr.DisclosureCopy
 import ch.monreleve.app.fr.ParametresCopy
@@ -598,6 +600,33 @@ internal fun MainShell(
         }
     }
 
+    // AN-ALERT. Turning the threshold alert ON asks POST_NOTIFICATIONS on Android 13+ (API 33) then enables;
+    // below 33 (the S9 is 29) posting needs no grant, so it enables straight away. A deny leaves it off and
+    // never nags (the evening reminder's discipline, one feature over). OFF is immediate. It needs no detection.
+    val alertNotificationLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) controllers.parametres.setThresholdAlert(true) // deny -> stay off, no nag
+        }
+    val onToggleThresholdAlert: (Boolean) -> Unit = { enable ->
+        when {
+            !enable -> controllers.parametres.setThresholdAlert(false)
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ->
+                alertNotificationLauncher.launch(POST_NOTIFICATIONS_PERMISSION)
+            else -> controllers.parametres.setThresholdAlert(true) // API < 33: no runtime permission to ask
+        }
+    }
+
+    // AN-ALERT. The in-app trigger (section 1: recompute on record/rhythm change). The ForecastController
+    // already recomputes the projection on every record and rhythm change; keyed on its projected rate and the
+    // opt-in, this re-evaluates the crossing off the main thread. maybeAlertThreshold self-gates (opt-in, a new
+    // crossing) and posts NOTHING unless a threshold is newly crossed (R340: computing writes nothing). The
+    // once-a-day background pass is the SamplingWorker's.
+    LaunchedEffect(forecastState.projection?.projectedRate, parametresState.thresholdAlertEnabled) {
+        if (parametresState.thresholdAlertEnabled) {
+            withContext(Dispatchers.IO) { maybeAlertThreshold(context, clock) }
+        }
+    }
+
     // R323 / D16: a notification tap opens Aujourd'hui (and records nothing). The launch intent carries
     // EXTRA_OPEN_AUJOURDHUI; consume it once on composition, select the tab and refresh today's surface.
     LaunchedEffect(Unit) {
@@ -606,6 +635,11 @@ internal fun MainShell(
             tab = AppTab.AUJOURDHUI
             controllers.aujourdhui.refresh()
             activity.intent.removeExtra(EXTRA_OPEN_AUJOURDHUI)
+        }
+        // AN-ALERT: a threshold-alert tap opens the forecast overlay (R340: it records nothing - it only reads).
+        if (activity?.intent?.getBooleanExtra(EXTRA_OPEN_FORECAST, false) == true) {
+            forecastRoute = ForecastRoute.PREVISION
+            activity.intent.removeExtra(EXTRA_OPEN_FORECAST)
         }
     }
 
@@ -723,6 +757,8 @@ internal fun MainShell(
                             if (enable) showDisclosure = true else controllers.parametres.setAutoDetection(false)
                         },
                         onToggleEvening = onToggleEvening,
+                        // AN-ALERT: ON asks POST_NOTIFICATIONS (API 33+) then enables; OFF is immediate.
+                        onToggleThresholdAlert = onToggleThresholdAlert,
                         onOpenLegal = { openLegal(context, it) },
                         // AN-FORECAST: « Votre rythme habituel » in the settings list opens the rhythm editor.
                         onOpenRhythm = { forecastRoute = ForecastRoute.RYTHME },
@@ -760,8 +796,12 @@ internal fun MainShell(
                                 onModifyRhythm = { forecastRoute = ForecastRoute.RYTHME },
                                 // AN-SIM: the live simulator entry point (R85).
                                 onTestChange = { forecastRoute = ForecastRoute.SIMULATION },
+                                // AN-ALERT: the contextual opt-in offer enables the alert (via the OS prompt).
+                                onEnableAlert = { onToggleThresholdAlert(true) },
                                 onBack = { forecastRoute = null },
                             ),
+                        // AN-ALERT: the offer is shown only while the alert is off (read from Parametres state).
+                        alertEnabled = parametresState.thresholdAlertEnabled,
                     )
                 // AN-SIM: the simulator. Adopting routes through the ForecastController's setDay (the rhythm's
                 // one home, R206/R341) and returns to Prevision so the forecast is seen to change; the rate's
@@ -846,12 +886,21 @@ private fun ParametresTab(
     controller: ParametresController,
     onToggleAuto: (Boolean) -> Unit,
     onToggleEvening: (Boolean) -> Unit,
+    onToggleThresholdAlert: (Boolean) -> Unit,
     onOpenLegal: (LegalPage) -> Unit,
     onOpenRhythm: () -> Unit,
 ) {
     ParametresScreen(
         state = state,
-        actions = parametresActions(controller, onToggleAuto, onToggleEvening, onOpenLegal, onOpenRhythm),
+        actions =
+            parametresActions(
+                controller,
+                onToggleAuto,
+                onToggleEvening,
+                onToggleThresholdAlert,
+                onOpenLegal,
+                onOpenRhythm,
+            ),
         appVersion = ParametresCopy.version(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE.toString()),
     )
 }
@@ -906,10 +955,14 @@ private fun openMail(context: Context) {
     }
 }
 
+// LongParameterList suppressed as the composition root's helpers are: a plain pass-through of the screen's
+// callbacks (now with the threshold-alert toggle), not tangled logic.
+@Suppress("LongParameterList")
 private fun parametresActions(
     controller: ParametresController,
     onToggleAuto: (Boolean) -> Unit,
     onToggleEvening: (Boolean) -> Unit,
+    onToggleThresholdAlert: (Boolean) -> Unit,
     onOpenLegal: (LegalPage) -> Unit,
     onOpenRhythm: () -> Unit,
 ): ParametresActions =
@@ -937,6 +990,8 @@ private fun parametresActions(
         onToggleAutoDetection = onToggleAuto,
         // R323: ON asks POST_NOTIFICATIONS (API 33+) then enables; OFF is immediate (the shell handles the ask).
         onToggleEveningNotification = onToggleEvening,
+        // AN-ALERT: ON asks POST_NOTIFICATIONS (API 33+) then enables the threshold alert; OFF is immediate.
+        onToggleThresholdAlert = onToggleThresholdAlert,
         // AN-FORECAST: open the weekly-rhythm editor (the forecast overlay), from the settings list.
         onOpenRhythm = onOpenRhythm,
     )

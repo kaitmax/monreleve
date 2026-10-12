@@ -66,6 +66,34 @@ object NotificationCopy {
      */
     fun publicLines(): NotificationLines = NotificationLines(Fr.APP_NAME, "Une journée à enregistrer.")
 
+    // AN-ALERT. The threshold alert's own channel, so it can be silenced apart from the evening reminder.
+    const val ALERT_CHANNEL_NAME = "Seuils"
+
+    const val ALERT_CHANNEL_DESCRIPTION =
+        "Une alerte lorsque votre rythme prévu dépasserait un seuil fiscal ou social."
+
+    /**
+     * AN-ALERT. The private (unlocked) alert title, by threshold. Keyed by the AlertThreshold name (FISCAL /
+     * SOCIAL) the same way autoProposalTitle is keyed by the EntryKind name, so fr/ carries no runtime import.
+     * The conditional « dépasserait » frames it as a projection, not a record (R340 / « never claim more than
+     * the record supports »). The figure is NOT typed - the notification states the seuil by name, not its value.
+     */
+    fun alertTitle(thresholdName: String): String =
+        if (thresholdName == "FISCAL") {
+            "Votre rythme prévu dépasserait le seuil d’imposition"
+        } else {
+            "Votre rythme prévu dépasserait le seuil de sécurité sociale"
+        }
+
+    // AN-ALERT. The alert's second line (unlocked): that it is a projection, and that a tap opens the forecast.
+    const val ALERT_PROJECTION_NOTE = "C’est une projection de fin d’année : touchez pour voir votre prévision."
+
+    /**
+     * AN-ALERT (R323). The LOCK-SCREEN (public) alert lines: only that there is information about the year -
+     * NO figure, NO threshold named (nothing private). The title is the product name (Fr.APP_NAME, R206).
+     */
+    fun alertPublicLines(): NotificationLines = NotificationLines(Fr.APP_NAME, "Une information sur votre année.")
+
     // CH -> « En Suisse », HOME -> « Domicile » (AujourdhuiCopy, R206). A proposal is only ever CH or HOME.
     private fun sideLabel(kindName: String): String =
         when (kindName) {

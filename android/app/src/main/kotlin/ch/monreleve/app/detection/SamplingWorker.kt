@@ -33,6 +33,12 @@ class SamplingWorker(
     @Suppress("ReturnCount") // each early return is a distinct "nothing to do this wake" path; all return success
     override suspend fun doWork(): Result {
         val clock = Clock.systemUTC()
+        // AN-ALERT: the once-a-day threshold check (section 1: "once a day after the day's checks conclude").
+        // Runs BEFORE the evening reminder so a new crossing that coincides with the reminder posts ONE merged
+        // notification (never two a day) and marks the reminder shown, which the reminder then skips. It
+        // self-gates on the opt-in and a NEW crossing, records nothing (D16/R340) and reads no coordinate (D18)
+        // - only the recorded days, the rhythm and the settings, by value through the engine.
+        maybeAlertThreshold(applicationContext, clock)
         // R323 / PARKAN-36: every wake also offers the evening proposal notification. It self-gates (opted in,
         // auto mode, a concluded working day with no entry yet, not already fired today), so most wakes do
         // nothing; the first wake after the last window posts it. It records nothing (D16) and reads no

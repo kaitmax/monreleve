@@ -225,6 +225,25 @@ private val UNREACHABLE: Map<String, String> =
         "NotificationCopy.confirmation" to
             "the post-tap confirmation « <côté> / Enregistré pour le <date> », built by EveningActionReceiver " +
             "after it records (a BroadcastReceiver concern the ui/ fence keeps out of ui/) - reached from there",
+        // AN-ALERT: the threshold-alert copy is rendered by the background notifier (detection/EveningNotifier,
+        // a NotificationManager concern the ui/ fence keeps out of ui/) - reached from there, not a fr-surface
+        // directory this census scans (the NotificationCopy.* pattern). The Parametres TOGGLE and the Prevision
+        // OFFER copy (ParametresCopy.ALERT_*, PrevisionCopy.ALERT_OFFER) are reached normally from their screens.
+        "NotificationCopy.ALERT_CHANNEL_NAME" to
+            "the threshold-alert channel name « Seuils » shown in system settings, used by " +
+            "EveningNotifier.ensureAlertChannel - reached from the background notifier, not a surface",
+        "NotificationCopy.ALERT_CHANNEL_DESCRIPTION" to
+            "the threshold-alert channel description in system settings, used by EveningNotifier.ensureAlertChannel " +
+            "(a NotificationManager concern the ui/ fence keeps out of ui/) - reached from the background notifier",
+        "NotificationCopy.alertTitle" to
+            "the unlocked alert title naming the seuil (fiscal/social), built by EveningNotifier.postAlert and the " +
+            "same-day merge - a NotificationManager concern reached from the background notifier, not a surface",
+        "NotificationCopy.ALERT_PROJECTION_NOTE" to
+            "the alert's second line (it is a projection; a tap opens the forecast), built by " +
+            "EveningNotifier.postAlert (a NotificationManager concern) - reached from the background notifier",
+        "NotificationCopy.alertPublicLines" to
+            "the LOCK-SCREEN (public) alert lines naming no figure or threshold (R323), built by " +
+            "EveningNotifier.alertPublicVersion - reached from the background notifier, not a surface",
     )
 
 class CopyReachabilityTest {

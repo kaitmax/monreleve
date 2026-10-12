@@ -23,7 +23,9 @@ import ch.monreleve.app.settings.DetectionModeStore
 import ch.monreleve.app.settings.EveningNotificationStore
 import ch.monreleve.app.settings.InMemoryDetectionModeStore
 import ch.monreleve.app.settings.InMemoryEveningNotificationStore
+import ch.monreleve.app.settings.InMemoryThresholdAlertStore
 import ch.monreleve.app.settings.SettingsStore
+import ch.monreleve.app.settings.ThresholdAlertStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
@@ -129,6 +131,10 @@ object MainGraph {
         // toggle. Defaulted in-memory so the wiring and controller tests build; the app injects the
         // SharedPreferences store (ShellState, where a Context is available).
         eveningNotificationStore: EveningNotificationStore = InMemoryEveningNotificationStore(),
+        // AN-ALERT: the threshold alert's opt-in store, read by the Parametres toggle and the Prevision offer.
+        // Defaulted in-memory so the wiring and controller tests build; the app injects the SharedPreferences
+        // store (ShellState, where a Context is available).
+        thresholdAlertStore: ThresholdAlertStore = InMemoryThresholdAlertStore(),
     ): MainControllers =
         MainControllers(
             aujourdhui =
@@ -154,6 +160,7 @@ object MainGraph {
                     startSampling,
                     stopSampling,
                     eveningNotificationStore,
+                    thresholdAlertStore,
                     restoredParametres,
                 ),
             forecast = ForecastController(rhythmRepository, repository, settingsStore, taxYear, clock, scope),
