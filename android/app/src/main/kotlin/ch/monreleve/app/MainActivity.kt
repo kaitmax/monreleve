@@ -78,6 +78,7 @@ import ch.monreleve.app.detection.EveningNotifier
 import ch.monreleve.app.detection.FINE_LOCATION
 import ch.monreleve.app.detection.POST_NOTIFICATIONS_PERMISSION
 import ch.monreleve.app.detection.locationFullyGranted
+import ch.monreleve.app.forecast.RhythmChoice
 import ch.monreleve.app.fr.DisclosureCopy
 import ch.monreleve.app.fr.ParametresCopy
 import ch.monreleve.app.fr.ReleveCopy
@@ -123,6 +124,8 @@ import ch.monreleve.app.ui.screens.signin.CodeScreen
 import ch.monreleve.app.ui.screens.signin.RequestLinkScreen
 import ch.monreleve.app.ui.screens.signin.SignInActions
 import ch.monreleve.app.ui.screens.signin.WelcomeScreen
+import ch.monreleve.app.ui.screens.simulation.SimulationActions
+import ch.monreleve.app.ui.screens.simulation.SimulationScreen
 import ch.monreleve.app.ui.shell.AppBottomBar
 import ch.monreleve.app.ui.shell.AppTab
 import kotlinx.coroutines.CoroutineScope
@@ -148,9 +151,9 @@ import java.time.ZoneId
  */
 internal enum class Destination { SIGN_IN, RESOLVING, ONBOARDING, MAIN }
 
-// AN-FORECAST: the two forecast screens reached from within the shell (not bottom-nav tabs) - a small overlay
-// route beside the AppTab state, null when a tab is showing.
-internal enum class ForecastRoute { RYTHME, PREVISION }
+// AN-FORECAST: the forecast screens reached from within the shell (not bottom-nav tabs) - a small overlay
+// route beside the AppTab state, null when a tab is showing. AN-SIM adds the simulator, reached from Prevision.
+internal enum class ForecastRoute { RYTHME, PREVISION, SIMULATION }
 
 // AN12: the cacheDir subdirectory an export is written to before the share sheet. ONE home (R206): shareFile
 // writes here and the device erasure deletes here, so a rendered export - the account JSON is the whole record
@@ -543,6 +546,7 @@ internal fun MainShell(
     // held in rememberSaveable so a rotation or a background kill keeps the open screen (R310). Null = on a tab.
     var forecastRoute by rememberSaveable { mutableStateOf<ForecastRoute?>(null) }
     val forecastState by controllers.forecast.state.collectAsState()
+    val simulationState by controllers.simulation.state.collectAsState()
 
     val aujourdhuiState by controllers.aujourdhui.state.collectAsState()
     val calendarState by controllers.calendar.state.collectAsState()
@@ -732,7 +736,10 @@ internal fun MainShell(
     // « Modifier mon rythme » / « Voir ma prevision » move between the two. R340: computing the projection the
     // Prevision screen shows writes nothing; only setting the rhythm (RythmeScreen) persists, through the controller.
     forecastRoute?.let { route ->
-        BackHandler { forecastRoute = null }
+        // AN-SIM: system back from the simulator returns to Prevision (the on-screen arrow and "Revenir a ma
+        // prevision" both do too), since the simulator is a sub-screen of Prevision; the other routes close to
+        // the tab beneath.
+        BackHandler { forecastRoute = if (route == ForecastRoute.SIMULATION) ForecastRoute.PREVISION else null }
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             when (route) {
                 ForecastRoute.RYTHME ->
@@ -751,7 +758,34 @@ internal fun MainShell(
                         actions =
                             PrevisionActions(
                                 onModifyRhythm = { forecastRoute = ForecastRoute.RYTHME },
+                                // AN-SIM: the live simulator entry point (R85).
+                                onTestChange = { forecastRoute = ForecastRoute.SIMULATION },
                                 onBack = { forecastRoute = null },
+                            ),
+                    )
+                // AN-SIM: the simulator. Adopting routes through the ForecastController's setDay (the rhythm's
+                // one home, R206/R341) and returns to Prevision so the forecast is seen to change; the rate's
+                // link opens Parametres, where R290's before/after confirmation fires. R340: computing writes
+                // nothing - the SimulationController has no record seam.
+                ForecastRoute.SIMULATION ->
+                    SimulationScreen(
+                        state = simulationState,
+                        actions =
+                            SimulationActions(
+                                onSelectScenario = controllers.simulation::selectScenario,
+                                onInputsChange = controllers.simulation::updateInputs,
+                                onAdopt = {
+                                    simulationState.inputs.extraWeekday?.let {
+                                        controllers.forecast.setDay(it, RhythmChoice.DOMICILE)
+                                    }
+                                    forecastRoute = ForecastRoute.PREVISION
+                                },
+                                onChangeRate = {
+                                    forecastRoute = null
+                                    tab = AppTab.PARAMETRES
+                                },
+                                onReturn = { forecastRoute = ForecastRoute.PREVISION },
+                                onBack = { forecastRoute = ForecastRoute.PREVISION },
                             ),
                     )
             }

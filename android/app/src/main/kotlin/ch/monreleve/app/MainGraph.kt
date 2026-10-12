@@ -13,6 +13,8 @@ import ch.monreleve.app.data.repo.RhythmRepository
 import ch.monreleve.app.detection.InMemoryNearBorderNoticeStore
 import ch.monreleve.app.detection.NearBorderNoticeStore
 import ch.monreleve.app.forecast.ForecastController
+import ch.monreleve.app.forecast.SimulationController
+import ch.monreleve.app.forecast.SimulationSnapshot
 import ch.monreleve.app.onboarding.SettingsSaver
 import ch.monreleve.app.parametres.ParametresController
 import ch.monreleve.app.parametres.ParametresSnapshot
@@ -60,6 +62,9 @@ class MainControllers(
     // AN-FORECAST: the forecast controller. NOT a DayWriter - it writes only the local weekly rhythm (a
     // planning preference, R341), never a day record (R340), so the requestSync census does not include it.
     val forecast: ForecastController,
+    // AN-SIM: the simulation controller. NOT a DayWriter - it has NO save/record seam at all (R340); adopting a
+    // weekday is the ForecastController's setDay, so the requestSync census does not include it either.
+    val simulation: SimulationController,
 )
 
 /**
@@ -104,6 +109,11 @@ object MainGraph {
         // null (a fresh build) so the wiring test and the controller tests need not name them.
         restoredCalendar: CalendarSnapshot? = null,
         restoredParametres: ParametresSnapshot? = null,
+        // AN-SIM (R310): the simulator's restorable selection (scenario + inputs), held by the composition root in
+        // rememberSaveable and passed here so the ONE construction site (R291) also decides its restore. Defaulted
+        // to null (a fresh build) so the wiring and controller tests need not name it. The computed view is NOT
+        // restored - it is recomputed from the record and the rhythm (R181).
+        restoredSimulation: SimulationSnapshot? = null,
         // AN-AUTO increment 2 (R315): the device's logging-mode cache and the sampler-stop seam for the
         // auto-detection toggle. Defaulted (in-memory / no-op) so the wiring and controller tests need not name
         // them; the app injects the SharedPreferences store (ShellState) and the real stop arrives in increment 4.
@@ -147,5 +157,18 @@ object MainGraph {
                     restoredParametres,
                 ),
             forecast = ForecastController(rhythmRepository, repository, settingsStore, taxYear, clock, scope),
+            // AN-SIM: shares the rhythm (the repo flow) and the record with the forecast; computes in memory,
+            // writes nothing (R340). Reads the SAME rhythmRepository and repository as the forecast controller.
+            // Seeded with restoredSimulation so the open scenario and its inputs survive a rebuild (R310).
+            simulation =
+                SimulationController(
+                    rhythmRepository,
+                    repository,
+                    settingsStore,
+                    taxYear,
+                    clock,
+                    scope,
+                    restoredSimulation,
+                ),
         )
 }
