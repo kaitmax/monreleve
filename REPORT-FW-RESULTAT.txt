@@ -648,7 +648,28 @@ D. R179 DOES NOT COVER A SERVER A SESSION STARTED BY HAND. The rule is
    build id or a start token in /api/health, compared against the
    build the run just made, would close it. Not this task.
 
-E. THE CALCULATOR IS THE TIGHTEST ROUTE IN THE PRODUCT, and this task
+E. CLAUDE.md SAYS CI RUNS; THE MACHINE SAYS IT DOES NOT. R248 reads
+   "CI runs again, because the allowance stopped binding when the
+   repository went public. CI_FULL is set." gate:clone measured the
+   opposite on this commit:
+
+     CI readiness: quiet - the repository is private and CI_FULL is
+     unset - jobs will skip.
+
+   THE GUARD IS WORKING AND THE RULE HAS GONE STALE, which is
+   precisely the case R248 wrote itself for: "If the repository goes
+   private later, the guard names the condition itself rather than
+   leaving a vendor's sentence to be interpreted." It names it.
+
+   WHAT IT MEANS FOR THIS PUSH: no CI job will run on it, so
+   gate:clone is once again the ONLY answer to "does this work on a
+   machine that is not mine?" - R199's original framing, which R248
+   had downgraded to belt-and-braces. It passed, so the claim stands
+   on its own; it is just carrying more weight than CLAUDE.md thinks.
+   Correcting R248 is a decision about the repository, not a code
+   change, so it is raised rather than made.
+
+F. THE CALCULATOR IS THE TIGHTEST ROUTE IN THE PRODUCT, and this task
    added imports and attributes to its island, so the delta is
    MEASURED rather than asserted. Both figures come from a full build
    followed by pnpm size - the before from a throwaway worktree of
@@ -657,15 +678,50 @@ E. THE CALCULATOR IS THE TIGHTEST ROUTE IN THE PRODUCT, and this task
 
      /calculateur-teletravail-frontalier   first-load   route chunk
        before (main 5afb92e)                121.6 KiB     21.0 KiB
-       after  (this branch)                 121.9 KiB     21.3 KiB
-       delta                                 +0.3 KiB      +0.3 KiB
+       after  (this branch)                 122.0 KiB     21.4 KiB
+       delta                                 +0.4 KiB      +0.4 KiB
 
-     GATE A spare falls from 3.4 KiB to 3.1 KiB. The new route costs
-     109.0 KiB, which is 8.4 KiB of its own over the 100.6 KiB
-     framework floor, and passes with 16.0 KiB spare.
+     GATE A spare falls from 3.4 KiB to 3.0 KiB. The new route costs
+     109.0 KiB, 8.4 KiB of its own over the 100.6 KiB framework
+     floor, and passes with 16.0 KiB spare.
+
+     A FIRST ATTEMPT AT THIS REPORTED +0.3 KiB AND WAS NOT A VALID
+     COMPARISON. Its "after" came from a build carrying
+     NEXT_PUBLIC_SITE_URL, taken for the canonical measurement, while
+     the "before" was a plain build - and a NEXT_PUBLIC_ value is
+     inlined wherever it is referenced, so the two builds were not
+     the same build. Re-measured with the same plain pnpm build on
+     both sides. The figure moved by 0.1 KiB, which is small enough
+     that only the method makes it worth stating.
 
    gate:clone runs size from a clean clone and is the authoritative
    figure; its output is in THE GATE below.
+
+====================================================================
+THE PUSH
+====================================================================
+pnpm gate:clone. GATE:CLONE PASSED.
+
+  commit ce6d8c43f5f3594cdf3ff8b438443044d9537e5b
+  ran    register-coverage, fixture-coverage, install, typecheck,
+         lint, test, build, size, db:deploy, test:db,
+         test:container:write
+  claim  this commit builds and passes those from a clean checkout -
+         a machine with no .env, no prior node_modules and no
+         generated file the run did not produce itself.
+
+NOT RUN THERE, each with the claim it is therefore NOT making, as the
+harness prints them (R133): test:e2e and test:runtime need a browser
+download, test:visual needs the container, lighthouse needs Chrome and
+a served build, parity:check needs the Node matrix, test:container is
+selected locally. All of test:e2e, test:visual and the walkthrough did
+run on this machine and are recorded above.
+
+INTEGRATED BEFORE THE CLONE, NOT AFTER. main moved from ade5004 to
+5afb92e mid-task, and one of those four commits changes gate:clone
+itself, so this branch was rebased onto origin/main FIRST and the
+clone then verified what will actually be on main. Rebase was clean -
+the two sessions touched disjoint trees, Kotlin against web.
 
 ====================================================================
 WHAT IS NOT DONE
