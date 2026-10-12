@@ -304,6 +304,18 @@ tasks.withType<Test> {
     inputs.file(repoRootDir.resolve("web/scripts/register-coverage.mjs"))
         .withPropertyName("registerCoverageScript")
         .withPathSensitivity(PathSensitivity.RELATIVE)
+    // ENGINE-PARITY (R348): FixtureCoverageTest shells out to the ONE definition of the
+    // fixture-section coverage census, web/scripts/fixture-coverage.mjs, which gate:clone also runs. The
+    // census scans the web test tree (web/tests) to decide which fixture sections that engine consumes;
+    // fixtures/ is already declared above (sharedFixtures), and the Android test tree is a source input
+    // of this task by compilation. Declaring the script and web/tests makes an edit to either re-run this
+    // rather than leaving it UP-TO-DATE (R283) - derived from the files, never a list (R246).
+    inputs.file(repoRootDir.resolve("web/scripts/fixture-coverage.mjs"))
+        .withPropertyName("fixtureCoverageScript")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.dir(repoRootDir.resolve("web/tests"))
+        .withPropertyName("webTestTree")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 dependencies {

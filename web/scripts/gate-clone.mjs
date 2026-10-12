@@ -580,6 +580,33 @@ try {
     }
   }
 
+  // R348: THE FIXTURE-SECTION COVERAGE CENSUS, the ONE definition FixtureCoverageTest.kt
+  // also shells out to (web/scripts/fixture-coverage.mjs). Every top-level section of every shared
+  // fixture under fixtures/ must be consumed by every engine whose test suite reads that file, so a
+  // change to a shared fixture fails in BOTH engines' suites (R283) rather than silently in one - the
+  // mission-cap near-miss REG-APPLY almost shipped. Pure Node (fs only), so it runs FIRST, before
+  // install, against the CLONE's own fixtures and test trees (web/tests and the Android test tree).
+  {
+    const result = run(
+      'node scripts/fixture-coverage.mjs (R348 fixture coverage)',
+      'node',
+      ['scripts/fixture-coverage.mjs'],
+      there,
+      /fixture coverage: OK/,
+    );
+
+    if (!result.ok) {
+      console.error('');
+      console.error(`GATE:CLONE FAILED - ${result.why}`);
+      console.error('');
+      console.error('A shared fixture section under fixtures/ is read by one engine and not the other');
+      console.error('that reads its file, or a fixture is an orphan. A change to such a section would');
+      console.error('fail silently in one engine - the mission-cap near-miss (R348). The one definition');
+      console.error('is web/scripts/fixture-coverage.mjs; FixtureCoverageTest also runs it in :app:gate.');
+      throw new GateCloneFailure(result.why);
+    }
+  }
+
   // THE CHAIN. Ordered cheapest-signal-first, with build before size because
   // size reads .next, and the database last because it is the only step that
   // is handed a connection string.
@@ -735,7 +762,7 @@ try {
   // FW32, AC3: ONE SOURCE for what ran, shared by the "ran" line and the
   // claim sentence below it - so the two can never say something different
   // from each other, the way a hand-kept list drifts from what actually runs.
-  const ranSteps = `register-coverage, install, typecheck, lint, test, build, size${local === null ? '' : ', db:deploy, test:db'}${wroteInProduction ? ', test:container:write' : ''}`;
+  const ranSteps = `register-coverage, fixture-coverage, install, typecheck, lint, test, build, size${local === null ? '' : ', db:deploy, test:db'}${wroteInProduction ? ', test:container:write' : ''}`;
 
   console.log('');
   console.log('GATE:CLONE PASSED');
