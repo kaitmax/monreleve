@@ -1,0 +1,58 @@
+AN-PULL SESSION PROMPT - Mon Releve
+A NEW PHONE SHOWS THE PERSON'S YEAR
+Paste into a fresh Claude Code session at the repository root, after
+ENGINE-PARITY. The physical phone (Galaxy S9, API 29) is connected.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+Do not stop to report progress or ask a question; judgment calls go to
+the advisors, recorded in the report; if an advisor does not answer,
+take the conservative, reversible option (R156). R334: never delete,
+overwrite or reset what you did not create; untracked files reported,
+not removed; your own worktree; a report states only what has happened.
+R300; R270. Restore every phone setting changed. No red commit.
+Ends with REPORT-AN-PULL.txt committed and pushed.
+HARD BOUNDARIES: no change to either engine; /v1 additive only (GET
+/api/v1/entries?year= already exists - use it); D16, D18.
+
+R273. Check tasks/todo.md. Read REPORT-SEED-RELEVE.txt's "A NEW PHONE"
+    section and REPORT-AN-FIX.txt (account scoping).
+R1. pnpm gate:clone and :app:gate green on origin/main's HEAD.
+
+====================================================================
+WHY
+====================================================================
+SEED-RELEVE confirmed there is no server-to-phone pull. Someone who
+changes phone or reinstalls sees their releve (the server's) but an
+empty calendar and an empty Aujourd'hui, and would reasonably think
+their record was lost.
+
+R347 (new). ON SIGN-IN, THE APP DOWNLOADS THE ACCOUNT'S YEAR.
+  - The current and the previous tax year, from GET /api/v1/entries,
+    into the local store, tagged with the signed-in account (R303), with
+    the server's values - provenance, detectedKind, firstRecordedAt,
+    recordedAt - exactly as stored. It is not a new record: nothing is
+    queued, nothing is sent back.
+  - A DAY ALREADY WAITING TO SYNC ON THE PHONE IS KEPT: it is the newer
+    choice and will sync. The download never overwrites a pending row.
+  - Rows SET ASIDE for another account (R303) are never touched or shown.
+  - Also on app start when a year the server has is empty locally - a
+    cheap check, not a full download every time.
+  - A failed download leaves the local store as it was and says so in
+    words; the person can retry.
+
+TESTS (test-first): a fresh install receives both years; a pending day
+survives the download; another account's set-aside rows are untouched;
+a failed download changes nothing; the download writes nothing to the
+mutation queue (R340's shape - assert it).
+THE PHONE: uninstall, reinstall, sign in as a SEED-RELEVE account
+(camille.martin@example.invalid via R284); the calendar and Aujourd'hui
+show the year, and Aujourd'hui's rate equals the releve's (R281). Record
+a day offline, sign out and in, see it kept. Every screen opened and
+described.
+
+REPORT - REPORT-AN-PULL.txt: HOW IT ENDED / R273 / R347 (each rule, its
+test) / THE PHONE / UNTRACKED FILES LEFT ALONE / ADVISOR DECISIONS /
+PHONE SETTINGS RESTORED / PARKED / DEVIATIONS / QUESTIONS / PUSH PROOF
+END OF AN-PULL PROMPT

@@ -1,0 +1,76 @@
+ENGINE-PARITY SESSION PROMPT - Mon Releve
+THE MISSION-CAP CORRECTION, ON BOTH ENGINES - AND EVERY SHARED FIXTURE
+READ BY BOTH
+Paste into a fresh Claude Code session at the repository root. Run it
+BEFORE any other Android task.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+Do not stop to report progress or ask a question; judgment calls go to
+the advisors, recorded in the report; if an advisor does not answer,
+take the conservative, reversible option (R156). R334: never delete,
+overwrite or reset what you did not create; untracked files reported,
+not removed; your own worktree; a report states only what has happened.
+R300; R270. Restore every phone setting changed. No red commit.
+Ends with REPORT-ENGINE-PARITY.txt committed and pushed.
+
+THE OPERATOR'S AUTHORISATION. REG-APPLY recorded the operator's ruling:
+"fix the engine then apply the copy" - the mission cap prorates for
+part-time employees whatever the denominator method, per accord FR-CH
+29 April 2026 clause 1(d). The two engines implement ONE set of rules,
+so that authorisation covers bringing the Kotlin engine to the same
+rule - running this task is the operator's confirmation. IT COVERS
+NOTHING ELSE: any other engine difference found is a STOP, reported in
+full.
+
+R273. Check tasks/todo.md. Confirm REG-APPLY is merged to main; if not,
+    stop and say so.
+R1. pnpm gate:clone and :app:gate green on origin/main's HEAD.
+
+====================================================================
+1. IS THE ANDROID ENGINE ALREADY CORRECT? - CHECK FIRST
+====================================================================
+REG-APPLY changed web/lib/calc-engine/denominator.ts (missionCapFor) and
+fixtures/denominator-cases.json (missionCapCases: cap-exact-50-full
+10 -> 5, cap-exact-50-half-year 5 -> 3). Its report never mentions the
+Kotlin engine, yet :app:gate stayed green afterwards. So either:
+  (a) the Kotlin engine was also corrected - say where, and end;
+  (b) the Kotlin engine still has the old rule AND its suite does not
+      read missionCapCases - a contract gap: the phone's year panel and
+      the server's releve would disagree for a part-time employee on the
+      exact method with missions;
+  (c) something else - report it.
+Run the failing case on Kotlin: 80 percent, exact method (192 days),
+whole year, 12 France missions - expected cap 8.
+
+====================================================================
+2. IF (b): FIX IT, TEST-FIRST
+====================================================================
+- First make the Kotlin suite READ missionCapCases: RED, with the two
+  changed cases failing by name.
+- Then the same correction as missionCapFor, in the Kotlin engine's
+  equivalent - nothing more. GREEN. Geneva's six cases byte-identical.
+
+====================================================================
+3. R348 - EVERY SECTION OF EVERY SHARED FIXTURE, READ BY BOTH ENGINES
+====================================================================
+A test - in gate:clone's reach, like the register check (R327) - lists
+every top-level section of every file in fixtures/ and fails if either
+engine's suite does not consume it. Derived from the files, never a list
+(R246). Plant a new section, see it fail by name, remove it. Then a
+one-digit plant in missionCapCases must fail BOTH builds in an ordinary
+incremental run (R283).
+
+====================================================================
+4. THE LIVE CHECK
+====================================================================
+On the S9 against pnpm dev, an account at 80 percent on the exact method
+with 12 missions: Aujourd'hui's year panel and the server's dossier show
+the same rate (R281's live comparison).
+
+REPORT - REPORT-ENGINE-PARITY.txt: HOW IT ENDED / WHICH CASE, (a) (b) or
+(c) / THE FIX IF ANY (RED, GREEN, Geneva unchanged) / R348 (the census
+and its plants) / THE LIVE CHECK / PARKED / DEVIATIONS / QUESTIONS /
+PUSH PROOF
+END OF ENGINE-PARITY PROMPT

@@ -17,6 +17,30 @@ another chain on main. design/decide/ must be committed; if it is not,
 stop and say so. gate:clone and :app:gate on origin/main first.
 
 ====================================================================
+CARRIED FROM FW-SHELL-BURGER / INCREMENT 0 - READ BEFORE CONTINUING
+====================================================================
+R349 - A SESSION CLAIMS ITS WORKTREE MECHANICALLY. At start, write a
+lock file holding this session's identity into your own worktree; refuse
+to run git in any worktree holding another session's lock, or with staged
+or uncommitted changes you did not make. Finding another session's work:
+stop touching git there and report it - never commit, stash, reset or
+clean it (R334, R131). Remove your lock at the end.
+
+R350 (FW-FORECAST, increment 1) - THE CALCULATOR IS A REAL FORM. Its
+inputs sit in a <form> that submits by GET to its own page with the
+existing URL parameters, so the page calculates with JavaScript off; the
+island enhances that form instead of replacing it. R346's nojs project
+must then pass on the calculator page itself - rhythm included - not only
+on the home page's form. Report the size before and after (R326).
+
+ORDER: ENGINE-PARITY runs before AN-SIM.
+
+WHY R349 EXISTS, in one line: while increment 0 was being staged, another
+session committed that work as its own and pushed it to main with no
+gate:clone. Both R334 and R131 already forbade it, and neither is
+enforced by anything.
+
+====================================================================
 HOW
 ====================================================================
 Each task as its own fresh agent, in its own worktree, one at a time

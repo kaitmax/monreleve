@@ -37,3 +37,10 @@ web/public/fonts/
 # tsconfig.parity.json so the codepoint parity check can run on a Node that
 # vitest refuses to install on. Build output, never committed.
 web/dist-parity/
+
+# A Claude session working directory that keeps appearing at the repository
+# root (.claude/ settings + a scheduled-tasks lock + .seed-shots/). FW32
+# deleted it once under R264 and it came back. Ignored rather than removed:
+# it is not this repository's, and R334 forbids deleting what a session did
+# not create.
+MonReleve/

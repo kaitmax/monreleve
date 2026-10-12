@@ -1,0 +1,150 @@
+FW-FORECAST SESSION PROMPT - Mon Releve
+A FREE YEAR-END FORECAST IN THE WEB CALCULATOR
+Paste into a fresh Claude Code session at the repository root. Web only
+- it may run alongside Android work in its own worktree. Run it after
+FW34 if FW34 is in progress: both touch the calculator's surroundings.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+R241: the only thing that ends this session is REPORT-FW-FORECAST.txt,
+committed and pushed. Unclear? R156; the advisors decide, and if none
+answers, the conservative option is taken and recorded. R334: never
+delete, overwrite or reset what you did not create; your own worktree;
+a report states only what has happened. R300; R270.
+
+====================================================================
+CARRIED FROM FW-SHELL-BURGER / INCREMENT 0 - READ BEFORE CONTINUING
+====================================================================
+R349 - A SESSION CLAIMS ITS WORKTREE MECHANICALLY. At start, write a
+lock file holding this session's identity into your own worktree; refuse
+to run git in any worktree holding another session's lock, or with staged
+or uncommitted changes you did not make. Finding another session's work:
+stop touching git there and report it - never commit, stash, reset or
+clean it (R334, R131). Remove your lock at the end.
+
+R350 (FW-FORECAST, increment 1) - THE CALCULATOR IS A REAL FORM. Its
+inputs sit in a <form> that submits by GET to its own page with the
+existing URL parameters, so the page calculates with JavaScript off; the
+island enhances that form instead of replacing it. R346's nojs project
+must then pass on the calculator page itself - rhythm included - not only
+on the home page's form. Report the size before and after (R326).
+
+ORDER: ENGINE-PARITY runs before AN-SIM.
+
+WHY R349 EXISTS, in one line: while increment 0 was being staged, another
+session committed that work as its own and pushed it to main with no
+gate:clone. Both R334 and R131 already forbade it, and neither is
+enforced by anything.
+
+HARD BOUNDARIES: NO CHANGE TO EITHER ENGINE; no change to /v1; no
+existing URL parameter renamed or removed; no gate raised; DO NOT
+DEPLOY; the vocabulary ban; R146 for every regulatory sentence.
+
+R273. Check tasks/todo.md. Read the calculator route and its URL
+    parameters, docs on its share links, design/decide/Prevision.dc.html
+    (the app's forecast screen - the visual reference for the result
+    block), and REPORT-AN-FORECAST.txt if it exists.
+R1. pnpm gate:clone green on origin/main's HEAD.
+
+R340 (carried). A PROJECTION IS NEVER A RECORD: labelled "Projection",
+    drawn visibly differently from the current figure (not by colour
+    alone), its assumptions in words, its figures from the engine -
+    never arithmetic in a component (FW12's defect).
+
+R343 (new - the operator's explicit go-ahead for a permanent change).
+    THE CALCULATOR GAINS URL PARAMETERS FOR THE RHYTHM, and optionally
+    for missions planned until 31 December. URL parameters are
+    permanent: shared links will carry them for years (R156). The
+    operator authorises adding them here. Choose names in the SAME STYLE
+    as the calculator's existing parameters, document them in the
+    calculator's URL contract as FROZEN from the first deploy, and add
+    a test that fails if any of them is renamed. Existing parameters and
+    existing share links keep working exactly as now.
+
+====================================================================
+1. THE QUESTION
+====================================================================
+- "Quels jours teletravaillez-vous d'habitude ?" - Monday to Friday as
+  checkboxes, with real labels; none checked by default. Optional: with
+  none checked, the calculator shows today's position only, as now.
+- Optional: "Missions prevues d'ici le 31 decembre" - a number. The
+  engine applies the 10-day limit, its proration and France-first order
+  as it always does.
+- Copy in lib/fr, accents and all (R206, R155, R238).
+
+====================================================================
+2. THE CALCULATION - ONE CONTRACT FOR WEB AND APP
+====================================================================
+- THE IMAGINED YEAR: the days the person entered so far, plus, for every
+  working day AFTER TODAY to 31 December (Europe/Paris, R28), the
+  rhythm's kind. Public holidays and leave are NOT deducted: on the
+  240-day basis that overstates telework, so the projection warns
+  early, never late - and the page says so.
+- The date logic lives in ONE plain, unit-tested TypeScript function,
+  then the existing aggregation and engine run as for any calculation.
+- SHARED FIXTURE: fixtures/forecast-cases.json. If AN-FORECAST created
+  it, CONSUME IT - never fork it; add cases if needed, and both the web
+  and the Android suites must pass. If it does not exist yet, CREATE it
+  in the same shape AN-FORECAST describes (a rhythm, a date, the
+  expected count of imagined days, the engine's rate). A one-digit plant
+  in it must fail the web suite (and the Android one, if it consumes
+  it) - planted, verified, reverted (R180, R283).
+- "TODAY" IS THE DAY THE PAGE IS REQUESTED. The result must never be
+  served from a cache with an old date: render it per request, and
+  state the date on the page ("Projection au <date>"). A shared link
+  opened later recalculates for that day. Test it with a fixed clock.
+
+====================================================================
+3. THE RESULT
+====================================================================
+- Beside the calculator's existing result, when a rhythm is given: the
+  current figure and the December projection, the rail with the current
+  part solid and the projected part lighter (and a legend), the zone for
+  the projection, the two remaining-day tiles (R73 when over), and the
+  assumptions - as on the app's forecast screen, built from the site's
+  own components.
+- Thresholds from the RuleSet through the formatter, never typed (R147).
+  Any consequence sentence only from a verified row (R146).
+- One line, true and unpushy, under the result: the app will keep this
+  projection up to date from the days it records - in the FUTURE TENSE
+  until a released app exists (R138), driven by the product-state flags
+  (R172).
+- THE SHARE LINK carries the new parameters, and opening it reproduces
+  the projection for the day it is opened.
+
+====================================================================
+4. BUDGETS AND QUALITY
+====================================================================
+- NO NEW CLIENT JAVASCRIPT: the result is drawn by the server, and the
+  whole calculator - rhythm included - works with JavaScript off. The
+  calculator route has the least headroom (3,3 KiB): report every gated
+  route's size from the shipping build (R326), before and after. Do not
+  raise a gate.
+- The accessibility suite on the calculator; 200 percent zoom; the
+  checkboxes and their legend read correctly by a screen reader.
+- Visual baselines regenerated with reasons (R135, R207).
+
+====================================================================
+DONE AND REPORT
+====================================================================
+  W1. The rhythm question, the optional missions, the new parameters
+      documented as frozen with their rename test.
+  W2. The forecast from the engine, its date function tested, the
+      shared fixture created or consumed, the plant failing.
+  W3. "Today" per request, proven with a fixed clock; the share link
+      reproducing the projection.
+  W4. THE WALKTHROUGH on the dev server, desktop and 390 px, JavaScript
+      on and off: a calculation without a rhythm (unchanged), with one,
+      with missions planned, a shared link reopened; every screenshot
+      opened and described.
+  W5. Sizes before and after; gates green; gate:clone passing; merged
+      after your own gate:clone.
+REPORT - REPORT-FW-FORECAST.txt: HOW IT ENDED / R273 / R343 (the
+parameter names chosen and where they are documented) / THE DATE
+FUNCTION / THE FIXTURE (created or consumed; the plant) / "TODAY" / THE
+RESULT AGAINST THE APP'S SCREEN / SIZES / WALKTHROUGH / UNTRACKED FILES
+LEFT ALONE (R334) / ADVISOR DECISIONS / PARKED / DEVIATIONS / QUESTIONS
+/ PUSH PROOF
+
+END OF FW-FORECAST PROMPT
