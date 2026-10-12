@@ -9,8 +9,10 @@ import ch.monreleve.app.calendar.CalendarSnapshot
 import ch.monreleve.app.data.local.TallyEntity
 import ch.monreleve.app.data.remote.DossierResult
 import ch.monreleve.app.data.repo.EntryRepository
+import ch.monreleve.app.data.repo.RhythmRepository
 import ch.monreleve.app.detection.InMemoryNearBorderNoticeStore
 import ch.monreleve.app.detection.NearBorderNoticeStore
+import ch.monreleve.app.forecast.ForecastController
 import ch.monreleve.app.onboarding.SettingsSaver
 import ch.monreleve.app.parametres.ParametresController
 import ch.monreleve.app.parametres.ParametresSnapshot
@@ -55,6 +57,9 @@ class MainControllers(
     // AN12: the Parametres controller. NOT a DayWriter either (it edits settings and account state, it never
     // records a day), so it is outside the requestSync census by the same DayWriter filter.
     val parametres: ParametresController,
+    // AN-FORECAST: the forecast controller. NOT a DayWriter - it writes only the local weekly rhythm (a
+    // planning preference, R341), never a day record (R340), so the requestSync census does not include it.
+    val forecast: ForecastController,
 )
 
 /**
@@ -71,6 +76,9 @@ object MainGraph {
     @Suppress("LongParameterList")
     fun build(
         repository: EntryRepository,
+        // AN-FORECAST: the account-tagged weekly-rhythm store (R341), built in the composition root with the
+        // SAME account tag as [repository] so the rhythm is scoped to the account signed in now (R303).
+        rhythmRepository: RhythmRepository,
         settingsStore: SettingsStore,
         taxYear: Int,
         clock: Clock,
@@ -138,5 +146,6 @@ object MainGraph {
                     eveningNotificationStore,
                     restoredParametres,
                 ),
+            forecast = ForecastController(rhythmRepository, repository, settingsStore, taxYear, clock, scope),
         )
 }

@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -66,6 +67,8 @@ import ch.monreleve.app.data.remote.ME_PATH
 import ch.monreleve.app.data.remote.UrlConnectionTransport
 import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.LocalEntryRepository
+import ch.monreleve.app.data.repo.LocalRhythmRepository
+import ch.monreleve.app.data.repo.RhythmRepository
 import ch.monreleve.app.data.sync.SyncScheduler
 import ch.monreleve.app.design.FrontierTheme
 import ch.monreleve.app.design.LightColors
@@ -109,8 +112,12 @@ import ch.monreleve.app.ui.screens.onboarding.OnboardingScreen
 import ch.monreleve.app.ui.screens.onboarding.PretScreen
 import ch.monreleve.app.ui.screens.parametres.ParametresActions
 import ch.monreleve.app.ui.screens.parametres.ParametresScreen
+import ch.monreleve.app.ui.screens.prevision.PrevisionActions
+import ch.monreleve.app.ui.screens.prevision.PrevisionScreen
 import ch.monreleve.app.ui.screens.releve.ReleveActions
 import ch.monreleve.app.ui.screens.releve.ReleveScreen
+import ch.monreleve.app.ui.screens.rythme.RythmeActions
+import ch.monreleve.app.ui.screens.rythme.RythmeScreen
 import ch.monreleve.app.ui.screens.signin.CodeActions
 import ch.monreleve.app.ui.screens.signin.CodeScreen
 import ch.monreleve.app.ui.screens.signin.RequestLinkScreen
@@ -141,6 +148,10 @@ import java.time.ZoneId
  */
 internal enum class Destination { SIGN_IN, RESOLVING, ONBOARDING, MAIN }
 
+// AN-FORECAST: the two forecast screens reached from within the shell (not bottom-nav tabs) - a small overlay
+// route beside the AppTab state, null when a tab is showing.
+internal enum class ForecastRoute { RYTHME, PREVISION }
+
 // AN12: the cacheDir subdirectory an export is written to before the share sheet. ONE home (R206): shareFile
 // writes here and the device erasure deletes here, so a rendered export - the account JSON is the whole record
 // - cannot outlive the account it belongs to (R289).
@@ -166,6 +177,10 @@ class MainActivity : ComponentActivity() {
         // account's days.
         val repository: EntryRepository =
             LocalEntryRepository(MonReleveDatabase.get(context).entryDao(), clock, accountStore.current())
+        // AN-FORECAST (R341/R303): the weekly rhythm, scoped to the SAME account as the record - the planning
+        // preference stays on the phone and is cleared on sign-out with the rest of the account's local data.
+        val rhythmRepository: RhythmRepository =
+            LocalRhythmRepository(MonReleveDatabase.get(context).rhythmDao(), accountStore.current())
         // AN11: the Releve reads GET /api/v1/dossier through the session (R210 refresh handling included), and
         // caches the last body per year so an offline reader gets a dated copy rather than a blank screen (R288).
         val dossierCache = SharedPrefsDossierCache(context)
@@ -224,6 +239,7 @@ class MainActivity : ComponentActivity() {
                         Destination.MAIN ->
                             MainShell(
                                 repository,
+                                rhythmRepository,
                                 settingsStore,
                                 taxYear,
                                 clock,
@@ -495,6 +511,7 @@ private fun OnboardingRoute(
 @Composable
 internal fun MainShell(
     repository: EntryRepository,
+    rhythmRepository: RhythmRepository,
     store: SettingsStore,
     taxYear: Int,
     clock: Clock,
@@ -518,10 +535,14 @@ internal fun MainShell(
     // person back on Aujourd'hui. rememberMainControllers still builds through MainGraph.build (R291).
     val controllers =
         rememberMainControllers(
-            repository, store, taxYear, clock, scope, requestSync, dossierFetch, exportBytes, settingsSaver,
-            revokeServer, localStore, authenticatedPost,
+            repository, rhythmRepository, store, taxYear, clock, scope, requestSync, dossierFetch, exportBytes,
+            settingsSaver, revokeServer, localStore, authenticatedPost,
         )
     var tab by rememberShellTab()
+    // AN-FORECAST: the two forecast sub-screens (not bottom-nav tabs) are a nullable overlay over the shell,
+    // held in rememberSaveable so a rotation or a background kill keeps the open screen (R310). Null = on a tab.
+    var forecastRoute by rememberSaveable { mutableStateOf<ForecastRoute?>(null) }
+    val forecastState by controllers.forecast.state.collectAsState()
 
     val aujourdhuiState by controllers.aujourdhui.state.collectAsState()
     val calendarState by controllers.calendar.state.collectAsState()
@@ -654,6 +675,8 @@ internal fun MainShell(
                                 onCorrectDetected = controllers.aujourdhui::correctDetected,
                                 // AN-HOME C/E/F (R328): « À traiter »'s link and a week-day tap open the calendar.
                                 onNavigateToCalendrier = { tab = AppTab.CALENDRIER },
+                                // AN-FORECAST: the year card's « Voir ma prevision » opens the forecast overlay.
+                                onNavigateToForecast = { forecastRoute = ForecastRoute.PREVISION },
                             ),
                     )
                 AppTab.CALENDRIER ->
@@ -697,6 +720,39 @@ internal fun MainShell(
                         },
                         onToggleEvening = onToggleEvening,
                         onOpenLegal = { openLegal(context, it) },
+                        // AN-FORECAST: « Votre rythme habituel » in the settings list opens the rhythm editor.
+                        onOpenRhythm = { forecastRoute = ForecastRoute.RYTHME },
+                    )
+            }
+        }
+    }
+
+    // AN-FORECAST: the forecast sub-screens, a full-screen overlay over the shell (hiding the bottom nav, as the
+    // design draws them). The on-screen back arrow and the system back both close the overlay to the tab beneath;
+    // « Modifier mon rythme » / « Voir ma prevision » move between the two. R340: computing the projection the
+    // Prevision screen shows writes nothing; only setting the rhythm (RythmeScreen) persists, through the controller.
+    forecastRoute?.let { route ->
+        BackHandler { forecastRoute = null }
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            when (route) {
+                ForecastRoute.RYTHME ->
+                    RythmeScreen(
+                        state = forecastState,
+                        actions =
+                            RythmeActions(
+                                onSetDay = controllers.forecast::setDay,
+                                onViewForecast = { forecastRoute = ForecastRoute.PREVISION },
+                                onBack = { forecastRoute = null },
+                            ),
+                    )
+                ForecastRoute.PREVISION ->
+                    PrevisionScreen(
+                        state = forecastState,
+                        actions =
+                            PrevisionActions(
+                                onModifyRhythm = { forecastRoute = ForecastRoute.RYTHME },
+                                onBack = { forecastRoute = null },
+                            ),
                     )
             }
         }
@@ -747,6 +803,9 @@ private fun buildLocalStore(
 // AN12: the Parametres tab. Extracted from MainShell (its own length budget) so the shell's `when (tab)` stays
 // a line per destination. Reads the app version from BuildConfig here in the composition root, where it is
 // permitted, and hands it to the stateless screen as a formatted string (fence 5 / R181).
+// AN-FORECAST adds onOpenRhythm; LongParameterList suppressed as the composition root is (the shell's own
+// reasoning): this is a plain pass-through of the screen's callbacks, not tangled logic.
+@Suppress("LongParameterList")
 @Composable
 private fun ParametresTab(
     state: ParametresState,
@@ -754,10 +813,11 @@ private fun ParametresTab(
     onToggleAuto: (Boolean) -> Unit,
     onToggleEvening: (Boolean) -> Unit,
     onOpenLegal: (LegalPage) -> Unit,
+    onOpenRhythm: () -> Unit,
 ) {
     ParametresScreen(
         state = state,
-        actions = parametresActions(controller, onToggleAuto, onToggleEvening, onOpenLegal),
+        actions = parametresActions(controller, onToggleAuto, onToggleEvening, onOpenLegal, onOpenRhythm),
         appVersion = ParametresCopy.version(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE.toString()),
     )
 }
@@ -817,6 +877,7 @@ private fun parametresActions(
     onToggleAuto: (Boolean) -> Unit,
     onToggleEvening: (Boolean) -> Unit,
     onOpenLegal: (LegalPage) -> Unit,
+    onOpenRhythm: () -> Unit,
 ): ParametresActions =
     ParametresActions(
         onCantonChange = controller::onCantonChange,
@@ -842,6 +903,8 @@ private fun parametresActions(
         onToggleAutoDetection = onToggleAuto,
         // R323: ON asks POST_NOTIFICATIONS (API 33+) then enables; OFF is immediate (the shell handles the ask).
         onToggleEveningNotification = onToggleEvening,
+        // AN-FORECAST: open the weekly-rhythm editor (the forecast overlay), from the settings list.
+        onOpenRhythm = onOpenRhythm,
     )
 
 // AC2 / R136: hand the server-rendered export to the platform. A Ready event's bytes are written to a

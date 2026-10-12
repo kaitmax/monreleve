@@ -49,6 +49,7 @@ import ch.monreleve.app.fr.AujourdhuiCopy
 import ch.monreleve.app.fr.DetectionCopy
 import ch.monreleve.app.fr.Fr
 import ch.monreleve.app.fr.MetricCopy
+import ch.monreleve.app.fr.RythmeCopy
 import ch.monreleve.app.fr.format.SignedDays
 import ch.monreleve.app.fr.format.formatDayLong
 import ch.monreleve.app.fr.format.formatPercent
@@ -81,6 +82,8 @@ data class AujourdhuiActions(
     val onConfirmDetected: (RecordedKind, Slot) -> Unit = { _, _ -> },
     val onCorrectDetected: (RecordedKind, Slot, AbsenceChoice?, RecordedKind) -> Unit = { _, _, _, _ -> },
     val onNavigateToCalendrier: () -> Unit = {},
+    // AN-FORECAST: the year card's « Voir ma prevision », under the year notes (not replacing them).
+    val onNavigateToForecast: () -> Unit = {},
 )
 
 @Composable
@@ -112,7 +115,7 @@ fun AujourdhuiScreen(
         // Ordered by what the person needs first (AN-HOME section 2): what to attend to, then the year's
         // position (the core answer), then this week and this month. C/E/F live in AujourdhuiSections.kt.
         AttendSection(state.attend, actions.onNavigateToCalendrier) // Section C
-        YearSection(state.year) // Section D
+        YearSection(state.year, actions.onNavigateToForecast) // Section D
         WeekSection(state.week, actions.onNavigateToCalendrier) // Section E
         MonthSection(state.month) // Section F
     }
@@ -157,12 +160,15 @@ internal fun ManualSection(
  * label flip mid-animation. With "Remove animations" on the change is instant (snap()).
  */
 @Composable
-private fun YearSection(year: YearPanel?) {
+private fun YearSection(
+    year: YearPanel?,
+    onNavigateToForecast: () -> Unit,
+) {
     if (year == null) {
         Text(text = AujourdhuiCopy.EMPTY_YEAR, style = FrontierType.body)
         return
     }
-    YearHeroCard(year)
+    YearHeroCard(year, onNavigateToForecast)
 }
 
 // The displayed day count animates, but its negative flag (which picks the « restants »/« au-dessus » label)
@@ -175,7 +181,10 @@ private fun animatedDays(
 }
 
 @Composable
-private fun YearHeroCard(year: YearPanel) {
+private fun YearHeroCard(
+    year: YearPanel,
+    onNavigateToForecast: () -> Unit,
+) {
     val result = year.result
     val thresholds = ZoneThresholds(year.fiscalCeiling, year.socialCeiling)
     val zone = zoneFor(result.declarableRate, thresholds)
@@ -216,6 +225,11 @@ private fun YearHeroCard(year: YearPanel) {
             days = animatedDays(result.remainingToSocial, animSocial),
         )
         YearNotes(year)
+        // AN-FORECAST: the entry point to the year-end forecast, under the notes (R85: live now that the
+        // forecast screen exists). A text link, subordinate to the card's figures - not a second primary action.
+        TextButton(onClick = onNavigateToForecast, modifier = Modifier.fillMaxWidth()) {
+            Text(text = RythmeCopy.VIEW_FORECAST)
+        }
     }
 }
 

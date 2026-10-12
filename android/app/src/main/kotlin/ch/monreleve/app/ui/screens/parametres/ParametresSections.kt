@@ -8,6 +8,7 @@ import ch.monreleve.app.design.LightColors
 import ch.monreleve.app.fr.CantonCopy
 import ch.monreleve.app.fr.OnboardingCopy
 import ch.monreleve.app.fr.ParametresCopy
+import ch.monreleve.app.fr.RythmeCopy
 import ch.monreleve.app.fr.format.formatPercent
 import ch.monreleve.app.onboarding.DenominatorChoice
 import ch.monreleve.app.onboarding.GranularityChoice
@@ -45,6 +46,7 @@ internal data class CommittedSettings(
 internal fun SituationSection(
     committed: CommittedSettings,
     onEdit: (EditTarget) -> Unit,
+    onOpenRhythm: () -> Unit,
 ) {
     SectionHeading(ParametresCopy.SITUATION_HEADING)
     ParametresCard {
@@ -61,6 +63,9 @@ internal fun SituationSection(
         SettingRow(OnboardingCopy.START_DATE_LABEL, startDateDisplay(committed.activityStartDate)) {
             onEdit(EditTarget.START_DATE)
         }
+        RowDivider()
+        // AN-FORECAST: the weekly rhythm (a planning preference, R341) opens its own editor, not an edit sheet.
+        ActionRow(RythmeCopy.TITLE, onClick = onOpenRhythm)
     }
 }
 

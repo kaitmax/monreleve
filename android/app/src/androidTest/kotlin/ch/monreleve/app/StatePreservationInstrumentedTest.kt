@@ -16,6 +16,8 @@ import ch.monreleve.app.data.local.EntryEntity
 import ch.monreleve.app.data.remote.DossierResult
 import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.RecordCommand
+import ch.monreleve.app.data.repo.RhythmRepository
+import ch.monreleve.app.data.repo.WeeklyRhythm
 import ch.monreleve.app.design.FrontierTheme
 import ch.monreleve.app.fr.CalendarCopy
 import ch.monreleve.app.fr.Fr
@@ -25,6 +27,7 @@ import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import org.junit.Rule
 import org.junit.Test
 import java.time.Clock
@@ -79,6 +82,14 @@ class StatePreservationInstrumentedTest {
         FrontierTheme {
             MainShell(
                 repository = FakeRepo(),
+                rhythmRepository =
+                    object : RhythmRepository {
+                        override fun observe(): Flow<WeeklyRhythm> = flowOf(WeeklyRhythm())
+
+                        override suspend fun save(rhythm: WeeklyRhythm) = Unit
+
+                        override suspend fun clear() = Unit
+                    },
                 store = store(),
                 taxYear = 2026,
                 clock = fixedClock,
