@@ -35,9 +35,16 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 // adds the two columns with DEFAULT 0 and KEEPS every existing row. Still a real Migration, still no destructive
 // fallback, and still no coordinate or accuracy value in the store (D18) - these are counts.
 
+// VERSION 6 (AN-FORECAST, R341 / R303). Adds the weekly_rhythm table: one row per account (PK accountTag)
+// holding Monday..Friday each as a RhythmKind (SUISSE/DOMICILE) or NULL. The rhythm is a LOCAL planning
+// preference, not a record and not on the wire (R340/R341) - no server field. MIGRATION_5_6 creates the
+// table and KEEPS every existing row in entry and daily_tally. clearAllTables() (derived from @Database)
+// sweeps weekly_rhythm with the record on sign-out/deletion (R295), so the rhythm never outlives its
+// account. A real Migration, no destructive fallback.
+
 const val DATABASE_NAME = "monreleve.db"
 
-const val DATABASE_VERSION = 5
+const val DATABASE_VERSION = 6
 
 // Adds the daily_tally table. The DDL matches what Room generates for TallyEntity;
 // MigrationTestHelper.runMigrationsAndValidate fails if it drifts from schemas/2.json.
@@ -147,8 +154,28 @@ val MIGRATION_4_5 =
         }
     }
 
+// AN-FORECAST (R341 / R303 / R187). Creates weekly_rhythm (one row per account), leaving entry and
+// daily_tally untouched. The DDL must match what Room generates for RhythmEntity at v6;
+// MigrationTestHelper.runMigrationsAndValidate against schemas/6.json fails here, on the device, if it
+// drifts. A real, non-destructive Migration (R305).
+val MIGRATION_5_6 =
+    object : Migration(5, 6) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `weekly_rhythm` (" +
+                    "`accountTag` TEXT NOT NULL, " +
+                    "`monday` TEXT, " +
+                    "`tuesday` TEXT, " +
+                    "`wednesday` TEXT, " +
+                    "`thursday` TEXT, " +
+                    "`friday` TEXT, " +
+                    "PRIMARY KEY(`accountTag`))",
+            )
+        }
+    }
+
 @Database(
-    entities = [EntryEntity::class, TallyEntity::class],
+    entities = [EntryEntity::class, TallyEntity::class, RhythmEntity::class],
     version = DATABASE_VERSION,
     exportSchema = true,
 )
@@ -156,6 +183,8 @@ abstract class MonReleveDatabase : RoomDatabase() {
     abstract fun entryDao(): EntryDao
 
     abstract fun tallyDao(): TallyDao
+
+    abstract fun rhythmDao(): RhythmDao
 
     companion object {
         @Volatile
@@ -167,7 +196,7 @@ abstract class MonReleveDatabase : RoomDatabase() {
                     context.applicationContext,
                     MonReleveDatabase::class.java,
                     DATABASE_NAME,
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                     .build()
                     .also { instance = it }
             }
