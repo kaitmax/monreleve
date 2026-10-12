@@ -32,7 +32,9 @@ private val VALID_BODY =
       "months": [],
       "annex": [],
       "absenceDays": 3,
-      "recordedEntries": 5
+      "recordedEntries": 5,
+      "creditedMissionDays": 1,
+      "rateWithoutMissions": 42.08
     }
     """.trimIndent()
 

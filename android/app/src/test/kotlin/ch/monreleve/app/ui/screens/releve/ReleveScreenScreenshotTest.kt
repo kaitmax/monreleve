@@ -94,6 +94,10 @@ private fun document(
     remainingSocial: Double,
     recordedEntries: Int = ANNEX.count { it.recorded },
     warnings: List<DossierWarning> = emptyList(),
+    // PARKAN-49: default to the no-credited case (rate without missions == the declarable rate), which is
+    // coherent for every state; COMPLIANT overrides to show one credited mission reducing the rate.
+    creditedMissions: Double = 0.0,
+    rateWithoutMissions: Double = declarable,
 ): DossierDocument =
     DossierDocument(
         taxYear = 2026,
@@ -118,6 +122,8 @@ private fun document(
         annex = ANNEX,
         absenceDays = 3.0,
         recordedEntries = recordedEntries,
+        creditedMissionDays = creditedMissions,
+        rateWithoutMissions = rateWithoutMissions,
     )
 
 private fun loaded(
@@ -134,6 +140,10 @@ private val COMPLIANT =
             remainingFiscal = 52.0,
             remainingSocial = 76.5,
             warnings = listOf(DossierWarning.ExactMethodUnverified),
+            // PARKAN-49: one mission credited, so the rate without it (17,92) sits below the declarable rate -
+            // the baseline shows both new figures with a visible difference.
+            creditedMissions = 1.0,
+            rateWithoutMissions = 17.92,
         ),
     )
 

@@ -31,6 +31,19 @@ data class DossierDocument(
     val absenceDays: Double,
     /** How many annex rows carry an entry (not a gap). Distinguishes a compliant year from an empty one. */
     val recordedEntries: Int,
+    /**
+     * PARKAN-49 (docs section 8.1, additive /v1). How many mission days were COUNTED against the annual cap -
+     * France and third state together, the same total the `missionDays` tile sums. The SERVER's engine figure,
+     * read through (FW12): when the regime is lost this is 0 though the tile shows twelve, which is the fact
+     * the "missions" cause reads from the record. Never recomputed on the device.
+     */
+    val creditedMissionDays: Double,
+    /**
+     * PARKAN-49 (docs section 8.1, additive /v1). The declarable rate WITHOUT the missions - telework alone,
+     * from the engine (R281 on the server), so it never exceeds the fiscal ceiling while telework is under it.
+     * `rateWithoutMissions <= declarableRate` always; equal when no mission day is credited.
+     */
+    val rateWithoutMissions: Double,
 )
 
 /**

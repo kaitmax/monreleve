@@ -110,5 +110,9 @@ fun parseDossier(body: String): DossierDocument {
         annex = parseAnnex(json.arr("annex")),
         absenceDays = json.getDouble("absenceDays"),
         recordedEntries = json.getInt("recordedEntries"),
+        // PARKAN-49, additive /v1 (docs section 8.1). Read from the wire like every other figure - a missing
+        // key throws (org.json), never defaults to a plausible 0, the same contract as the rest of the parser.
+        creditedMissionDays = json.getDouble("creditedMissionDays"),
+        rateWithoutMissions = json.getDouble("rateWithoutMissions"),
     )
 }

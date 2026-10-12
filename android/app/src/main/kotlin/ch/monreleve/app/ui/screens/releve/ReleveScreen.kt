@@ -134,7 +134,7 @@ private fun DocumentBody(
             style = FrontierType.caption,
             color = LightColors.textTertiary,
         )
-        ZonePanel(document.zone, loaded.rules)
+        ZonePanel(document.zone, loaded.rules, document.creditedMissionDays, document.rateWithoutMissions)
         MonthlyTable(document.months)
         AnnexSection(document)
         ExportButtons(onExportPdf = actions.onExportPdf, onExportCsv = actions.onExportCsv)

@@ -37,6 +37,44 @@ import ch.monreleve.app.releve.ReleveRules
 // basis arrive via ReleveRules (the controller read them from the year's RuleSet, R181).
 
 private const val EMPLOYMENT_DECIMALS = 0
+private const val RATE_WITHOUT_MISSIONS_DECIMALS = 2
+
+/**
+ * PARKAN-49 (items 3 and 5 of the accountant's list): the rate WITHOUT the missions and the count of mission
+ * days COUNTED against the cap, rendered beside the declarable rate as the PDF renders them (SPEC 12, the same
+ * document at two widths). Both are the SERVER's engine figures carried on the DossierDocument; nothing here
+ * recomputes them (FW12). Lives here rather than in ReleveSections for detekt's per-file budget (the split idiom).
+ */
+@Composable
+internal fun MissionFigures(
+    rateWithoutMissions: Double,
+    creditedMissionDays: Double,
+) {
+    FigureRow(
+        value = formatPercent(rateWithoutMissions, RATE_WITHOUT_MISSIONS_DECIMALS),
+        caption = ReleveCopy.RATE_WITHOUT_MISSIONS,
+        note = ReleveCopy.RATE_WITHOUT_MISSIONS_NOTE,
+    )
+    FigureRow(
+        value = formatDays(creditedMissionDays),
+        caption = ReleveCopy.CREDITED_MISSIONS,
+        note = ReleveCopy.CREDITED_MISSIONS_NOTE,
+    )
+}
+
+// One secondary figure: the big value, its caption, and the note that explains it - the rawRate block's shape.
+@Composable
+private fun FigureRow(
+    value: String,
+    caption: String,
+    note: String,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.space4)) {
+        Text(text = value, style = FrontierType.h3.tabularNums())
+        Text(text = caption, style = FrontierType.caption, color = LightColors.textSecondary)
+        Text(text = note, style = FrontierType.body, color = LightColors.textSecondary)
+    }
+}
 
 @Composable
 internal fun OfflineBanner(generatedAt: String) {

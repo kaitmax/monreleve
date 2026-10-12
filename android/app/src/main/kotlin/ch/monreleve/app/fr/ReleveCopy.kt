@@ -170,6 +170,19 @@ object ReleveCopy {
     const val WARNING_EXACT_UNVERIFIED =
         "La base en jours ouvrés a été renseignée par vous et n’est pas vérifiée par ce service."
 
+    // PARKAN-49: the two figures the accountant's list asked for (items 3 and 5), rendered beside the
+    // declarable rate as the PDF renders them. Ported word-for-word from web/lib/fr/dossier.ts (SPEC 12,
+    // the same document at two widths). Additive /v1 fields, both computed by the engine.
+
+    /** Item 3: the declarable rate with the missions removed (telework alone). */
+    const val RATE_WITHOUT_MISSIONS = "Taux sans les missions"
+    const val RATE_WITHOUT_MISSIONS_NOTE = "Le télétravail seul, sans les jours de mission."
+
+    /** Item 5: how many mission days were counted against the annual cap. */
+    const val CREDITED_MISSIONS = "Jours de mission comptés dans le taux"
+    const val CREDITED_MISSIONS_NOTE =
+        "Au-delà de la limite annuelle, les jours de mission ne sont pas comptés dans le taux à déclarer."
+
     // ------------------------------------------------------------------
     // 4. The monthly table - SPEC 12 item 4. Missions merged to one column on mobile (todo.md AN11, FD7).
     // ------------------------------------------------------------------

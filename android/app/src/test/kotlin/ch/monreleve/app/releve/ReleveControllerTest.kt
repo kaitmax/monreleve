@@ -55,6 +55,8 @@ private fun document(): DossierDocument =
         annex = emptyList(),
         absenceDays = 3.0,
         recordedEntries = 5,
+        creditedMissionDays = 1.0,
+        rateWithoutMissions = 42.29,
     )
 
 private fun entry(

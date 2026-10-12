@@ -65,6 +65,11 @@ private const val CUMUL_WEIGHT = 1.4f
 internal fun ZonePanel(
     zone: DossierZone,
     rules: ReleveRules,
+    // PARKAN-49: the two additive /v1 figures from the DossierDocument, rendered here beside the rate as the
+    // PDF does (web/app/releve/print/page.tsx). Scalars rather than the whole document, so the panel stays
+    // the figures it draws. Both are the SERVER's engine values; nothing here recomputes them (FW12).
+    creditedMissionDays: Double,
+    rateWithoutMissions: Double,
 ) {
     val thresholds = ZoneThresholds(rules.fiscalCeiling, rules.socialCeiling)
     val band = zoneFor(zone.declarableRate, thresholds)
@@ -111,6 +116,8 @@ internal fun ZonePanel(
                 Text(text = ReleveCopy.RATES_DIFFER_NOTE, style = FrontierType.body, color = LightColors.textSecondary)
             }
         }
+        // PARKAN-49 items 3 and 5, rendered beside the rate as the PDF renders them (SPEC 12, same document).
+        MissionFigures(rateWithoutMissions = rateWithoutMissions, creditedMissionDays = creditedMissionDays)
         Text(text = ReleveCopy.thresholds(fiscalPct, socialPct), style = FrontierType.body)
         MetricRow(ReleveCopy.REMAINING_FISCAL_LABEL, ReleveCopy.OVER_FISCAL_LABEL, zone.remainingToFiscal)
         MetricRow(ReleveCopy.REMAINING_SOCIAL_LABEL, ReleveCopy.OVER_SOCIAL_LABEL, zone.remainingToSocial)
