@@ -69,6 +69,14 @@ object ParametresCopy {
             "travail n’a pas encore été enregistrée, pour que vous la confirmiez ou la corrigiez. Une seule fois " +
             "par jour, jamais le week-end."
 
+    // AN-ALERT: the threshold alert toggle. OPT-IN, OFF by default, SEPARATE from detection and the evening
+    // reminder (it reads the forecast, not the position). R153/R181: a const cannot reach the RuleSet, so the
+    // description names the seuils rather than typing « 40 % » / « 49,9 % ».
+    const val ALERT_LABEL = "M’avertir si j’approche d’un seuil"
+    const val ALERT_DESCRIPTION =
+        "Une alerte la première fois que votre rythme prévu dépasserait le seuil fiscal ou le seuil de sécurité " +
+            "sociale. Une projection, jamais votre relevé."
+
     // FD9's SITUATION PROFESSIONNELLE section: the settings that recompute the whole year, under a warning.
     const val SITUATION_HEADING = "Situation professionnelle"
 

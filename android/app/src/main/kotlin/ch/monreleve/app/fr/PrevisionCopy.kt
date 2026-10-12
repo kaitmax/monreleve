@@ -90,6 +90,9 @@ object PrevisionCopy {
     const val INVITE_BODY = "Indiquez votre rythme habituel pour voir votre projection de fin d’année."
     const val INVITE_CTA = "Indiquer mon rythme"
 
+    /** AN-ALERT: the contextual opt-in offer, shown on the forecast while the alert is off. Tapping enables it. */
+    const val ALERT_OFFER = "Me prévenir si mon rythme approche d’un seuil"
+
     /** Monday = 0 .. Friday = 4. Private, so the reachability census does not require a surface reference. */
     private val LOWER_DAYS = listOf("lundi", "mardi", "mercredi", "jeudi", "vendredi")
 }

@@ -102,6 +102,16 @@ internal fun SaisieSection(
                 enabled,
             )
         }
+        // AN-ALERT: the threshold alert is NOT gated on detection - it reads the forecast, not the position - so
+        // its switch is always offered here (its own switch, the Prevision screen offers the same opt-in once).
+        RowDivider()
+        SwitchRow(
+            ParametresCopy.ALERT_LABEL,
+            ParametresCopy.ALERT_DESCRIPTION,
+            state.thresholdAlertEnabled,
+            actions.onToggleThresholdAlert,
+            enabled,
+        )
     }
 }
 

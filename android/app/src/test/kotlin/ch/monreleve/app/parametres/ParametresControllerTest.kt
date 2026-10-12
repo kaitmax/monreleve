@@ -9,6 +9,7 @@ import ch.monreleve.app.data.repo.LocalEntryRepository
 import ch.monreleve.app.data.repo.RecordCommand
 import ch.monreleve.app.onboarding.DenominatorChoice
 import ch.monreleve.app.onboarding.SettingsSaver
+import ch.monreleve.app.settings.InMemoryThresholdAlertStore
 import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
 import io.kotest.core.spec.style.FunSpec
@@ -335,6 +336,28 @@ class ParametresControllerTest : FunSpec({
             // ... and crucially the restore did NOT commit (no PATCH, no local save).
             saver.bodies.size shouldBe 0
             store.load()?.employmentRate shouldBe 100
+        }
+    }
+
+    test("AN-ALERT: the threshold-alert toggle flips the store and the state, off by default") {
+        runTest {
+            val dao = FakeEntryDao()
+            val repo = LocalEntryRepository(dao, CLOCK)
+            val store = InMemoryStore(settings())
+            val alertStore = InMemoryThresholdAlertStore()
+            val controller =
+                ParametresController(RecordingSaver(), store, repo, TAX_YEAR, this, thresholdAlertStore = alertStore)
+            advanceUntilIdle()
+
+            controller.state.value.thresholdAlertEnabled shouldBe false
+
+            controller.setThresholdAlert(true)
+            alertStore.isEnabled().shouldBeTrue()
+            controller.state.value.thresholdAlertEnabled.shouldBeTrue()
+
+            controller.setThresholdAlert(false)
+            alertStore.isEnabled() shouldBe false
+            controller.state.value.thresholdAlertEnabled shouldBe false
         }
     }
 })

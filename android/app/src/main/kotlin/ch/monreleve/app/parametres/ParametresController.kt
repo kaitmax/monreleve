@@ -19,9 +19,11 @@ import ch.monreleve.app.settings.DetectionModeStore
 import ch.monreleve.app.settings.EveningNotificationStore
 import ch.monreleve.app.settings.InMemoryDetectionModeStore
 import ch.monreleve.app.settings.InMemoryEveningNotificationStore
+import ch.monreleve.app.settings.InMemoryThresholdAlertStore
 import ch.monreleve.app.settings.LoggingMode
 import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
+import ch.monreleve.app.settings.ThresholdAlertStore
 import ch.monreleve.app.settings.detectionConsentBody
 import ch.monreleve.app.settings.mePatchBody
 import ch.monreleve.app.settings.toAggregatableUser
@@ -148,6 +150,8 @@ data class ParametresState(
     val autoDetectionEnabled: Boolean = false,
     /** R323: whether the evening proposal notification is on. Off by default; separate from auto detection. */
     val eveningNotificationEnabled: Boolean = false,
+    /** AN-ALERT: whether the threshold alert is on. Off by default; separate from detection and the reminder. */
+    val thresholdAlertEnabled: Boolean = false,
 )
 
 /**
@@ -235,6 +239,10 @@ class ParametresController(
     // the detection toggle). Defaulted in-memory so the existing tests build; the app injects the SharedPreferences
     // store (ShellState). Purely local - there is no /api/v1/me consent to reconcile, unlike the detection mode.
     private val eveningNotificationStore: EveningNotificationStore = InMemoryEveningNotificationStore(),
+    // AN-ALERT: the threshold-alert opt-in store (off by default, separate from detection and the evening
+    // reminder). Purely LOCAL - there is no /api/v1/me consent to reconcile, as it is a device notification.
+    // Defaulted in-memory so the existing tests build; the app injects the SharedPreferences store (ShellState).
+    private val thresholdAlertStore: ThresholdAlertStore = InMemoryThresholdAlertStore(),
     // AN-STATE (R310): the state to restore after a rebuild (null = a fresh open). Seeds the six edited fields;
     // the open confirmations are reopened once the rows load (resolvePendingReopen), with counts re-derived and
     // R290's before/after recomputed - never persisted (R181).
@@ -268,6 +276,9 @@ class ParametresController(
                 .copy(
                     autoDetectionEnabled = modeStore.load() == LoggingMode.AUTO_DETECT,
                     eveningNotificationEnabled = eveningNotificationStore.isEnabled(),
+                    // AN-ALERT: the alert toggle reflects its stored opt-in (off by default), persistent and
+                    // re-read on rebuild, the same shape as the evening one.
+                    thresholdAlertEnabled = thresholdAlertStore.isEnabled(),
                 ),
         )
     val state: StateFlow<ParametresState> = mutableState.asStateFlow()
@@ -577,6 +588,19 @@ class ParametresController(
     fun setEveningNotification(enable: Boolean) {
         eveningNotificationStore.setEnabled(enable)
         mutableState.update { it.copy(eveningNotificationEnabled = enable) }
+    }
+
+    /**
+     * AN-ALERT: opt into or out of the threshold alert (separate from detection and the evening reminder, OFF
+     * by default). Purely LOCAL - no /api/v1/me PATCH and no consent, because it is a device notification, not
+     * a server feature. The OS POST_NOTIFICATIONS prompt that must precede an ENABLE on Android 13+ is the
+     * screen's concern (MainActivity, the same disclosure-first discipline as the evening reminder); this
+     * persists the choice and reflects it. The alert needs no detection (it reads the forecast, not the
+     * position), so enabling it works whatever the detection mode.
+     */
+    fun setThresholdAlert(enable: Boolean) {
+        thresholdAlertStore.setEnabled(enable)
+        mutableState.update { it.copy(thresholdAlertEnabled = enable) }
     }
 
     /**
