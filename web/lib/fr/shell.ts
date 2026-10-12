@@ -45,6 +45,18 @@ export const SHELL_COPY = {
   menuOpen: 'Ouvrir le menu',
   menuClose: 'Fermer le menu',
 
+  /**
+   * The phone panel's own landmark name (FW-SHELL-BURGER).
+   *
+   * NOT "Navigation principale", which the desktop bar already carries. Both
+   * are in the document at every width - the one that does not apply is
+   * display:none, so a browser keeps it out of the accessibility tree - and
+   * two navigation landmarks announced by the same name is a defect the
+   * moment a stylesheet fails to load, which is the state this whole task is
+   * about.
+   */
+  menuNavLabel: 'Menu principal',
+
   /** <footer> is a landmark too, and two navs need two names. */
   footerNavLabel: 'Navigation de pied de page',
 
@@ -114,6 +126,24 @@ export const SHELL_NAV: readonly NavEntry[] = [
   { label: 'Le relevé', href: '/releve-annuel' },
   { label: 'Tarifs', href: '/tarifs' },
 ];
+
+/**
+ * The phone menu's own action, below the desktop navigation's destinations.
+ *
+ * FW-SHELL-BURGER adds it: the desktop bar offers the calculator as a nav
+ * entry and, when `appExists` is true, the CTA beside it; the phone panel has
+ * neither until it is opened, so the one thing a reader came to do is named at
+ * the foot of the list.
+ *
+ * THE LABEL IS NEW COPY; THE HREF IS NOT. It is TELEWORK_CALCULATOR's own
+ * path, read from the object the nav and the footer already share, so the
+ * menu cannot come to point somewhere else than the navigation above it
+ * (R206). SPEC 14 freezes that slug, which is exactly why it is not retyped.
+ */
+export const MENU_ACTION: NavLink = {
+  label: 'Calculer ma situation',
+  href: TELEWORK_CALCULATOR.href,
+};
 
 // ---------------------------------------------------------------------------
 // THE FOOTER

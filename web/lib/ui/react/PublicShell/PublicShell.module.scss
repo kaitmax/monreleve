@@ -38,9 +38,21 @@
   padding: 0 var(--layout-gutter-mobile);
 }
 
+// The disclosure itself. position: relative so the panel can hang off it -
+// the panel is absolutely positioned (design/home's phone view) rather than
+// pushing the page down, so opening the menu never reflows what is behind it.
+.menu {
+  position: relative;
+}
+
 // A 44 px tap target, which SPEC 16 and FD2 both require of everything
 // tappable. The glyph inside is --size-icon-lg; the button is bigger than the
 // glyph on purpose.
+//
+// list-style: none AND ::-webkit-details-marker, both: a <summary> draws a
+// disclosure triangle by default, and the two engines suppress it through
+// different properties. Without both, the hamburger renders with a stray
+// arrow beside it.
 .menuButton {
   display: inline-flex;
   align-items: center;
@@ -48,11 +60,30 @@
   width: var(--size-icon-button);
   height: var(--size-icon-button);
   padding: 0;
-  border: 0;
+  border: var(--size-rule) solid var(--colour-border-strong);
   border-radius: var(--radius-md);
   background: none;
-  color: var(--colour-text-primary);
+  color: var(--colour-brand);
+  list-style: none;
+  cursor: pointer;
 }
+
+.menuButton::-webkit-details-marker {
+  display: none;
+}
+
+// THE FOCUS RING IS THE BROWSER'S, DELIBERATELY NOT SUPPRESSED, and that is a
+// decision rather than an omission. There is no focus-ring token in the system
+// and no ring in the approved design, so declaring one here would mean either
+// inventing a token or borrowing --size-input-border-focus, which means an
+// input's border and not a button's outline - the by-value aliasing R344
+// forbids. The engine's own :focus-visible ring follows border-radius and is
+// visible against the surface.
+//
+// THE RISK IS SUPPRESSION, NOT ABSENCE: FieldGroup writes `outline: none` and
+// draws a thicker border instead, and that pattern copied onto a summary would
+// leave a keyboard reader with nothing. e2e/burger.spec.ts focuses the summary
+// in a real browser and fails if the computed outline is none.
 
 .menuButton svg {
   width: var(--size-icon-lg);
@@ -168,9 +199,26 @@
   white-space: nowrap;
 }
 
+// THE PANEL HANGS OFF THE DISCLOSURE (design/home's phone view): absolute, so
+// opening the menu does not push the page down and shift what the reader was
+// looking at. It was a full-width block under the bar until FW-SHELL-BURGER.
+//
+// LEFT-ANCHORED, not right: FD2 puts the hamburger first in the bar, so the
+// panel opens below it rather than across the header from it.
 .mobilePanel {
-  padding: var(--space-4) var(--layout-gutter-mobile) var(--space-6);
-  border-top: var(--size-rule) solid var(--colour-border-default);
+  position: absolute;
+  z-index: 1;
+
+  // The summary's own height, so the panel starts where the button ends; the
+  // margin below is the gap. Not calc(100% + ...): stylelint's strict-value
+  // list covers `top`, and a calc is a raw value however it is assembled.
+  top: var(--size-icon-button);
+  left: 0;
+  margin-top: var(--space-2);
+  min-width: var(--size-menu-panel-width);
+  padding: var(--space-2) var(--space-4) var(--space-4);
+  border: var(--size-rule) solid var(--colour-border-default);
+  border-radius: var(--radius-lg);
   background: var(--colour-surface);
 }
 
@@ -182,16 +230,43 @@
   list-style: none;
 }
 
-// 44 px per row, so every link in the panel is a legal tap target.
+// 44 px per row, so every link in the panel is a legal tap target. The rule
+// between rows is design/home's; the last row has none, so the list does not
+// end on a line with nothing under it.
 .mobileLink {
   display: flex;
   align-items: center;
   min-height: var(--size-icon-button);
+  border-bottom: var(--size-rule) solid var(--colour-border-default);
   color: var(--colour-text-primary);
   font-size: var(--type-body-l-size);
   font-weight: var(--type-body-l-weight);
   line-height: var(--type-body-l-line);
   text-decoration: none;
+}
+
+.mobileList li:last-child .mobileLink {
+  border-bottom: 0;
+}
+
+// THE ACTION, at the foot of the list: the one thing a reader came to do,
+// which the phone bar cannot show until the menu is open. The brand fill is
+// the shell CTA's, so the header has one way of drawing a primary action.
+.mobileAction {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--size-button-height);
+  margin-top: var(--space-3);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--colour-brand);
+  color: var(--colour-surface);
+  font-size: var(--type-body-m-size);
+  font-weight: var(--type-body-m-weight);
+  line-height: var(--type-body-m-line);
+  text-decoration: none;
+  white-space: nowrap;
 }
 
 @media (width >= bp.$breakpoint-md) {
@@ -201,9 +276,11 @@
     padding: 0 var(--layout-gutter-desktop);
   }
 
-  // The nav appears and the hamburger goes away. The panel cannot be open at
-  // this width because the trigger that opens it is not rendered.
-  .menuButton {
+  // The nav appears and the hamburger goes away. The whole disclosure is
+  // hidden, not just its summary: with details/summary the panel is in the
+  // markup whether or not it is open, so hiding the button alone would leave
+  // an opened panel on screen at desktop width after a resize.
+  .menu {
     display: none;
   }
 

@@ -44,7 +44,7 @@ import {
 } from '@/lib/content/routes';
 import { guideNavLinks } from '@/lib/guides/registry';
 import { formatDate } from '@/lib/ui/core';
-import { FOOTER_COLUMNS, SHELL_COPY, SHELL_NAV } from '@/lib/fr/shell';
+import { FOOTER_COLUMNS, MENU_ACTION, SHELL_COPY, SHELL_NAV } from '@/lib/fr/shell';
 import type { NavEntry, NavLink } from '@/lib/fr/shell';
 import { text } from '@/tests/support/markup';
 import { NavItem, PublicShell } from './PublicShell';
@@ -397,31 +397,77 @@ describe('a disclosure with two children', () => {
   });
 });
 
-describe('the mobile menu', () => {
-  const trigger = () => screen.getByRole('button', { name: SHELL_COPY.menuOpen });
+// ---------------------------------------------------------------------------
+// THE MOBILE MENU IS A details/summary DISCLOSURE SINCE FW-SHELL-BURGER, not a
+// useState one, so these tests changed with it:
+//
+//   - the trigger is queried as an ELEMENT. A <summary> has no stable mapped
+//     ARIA role, so getByRole('button') finds nothing even when the markup is
+//     right (measured in Chromium, and the reason e2e/burger.spec.ts does the
+//     same).
+//   - THE PANEL IS ALWAYS IN THE DOM. It is hidden by the disclosure rather
+//     than by a branch, which is the whole point: with no script, the markup
+//     still carries the navigation. So nothing here "opens" it first.
+//   - aria-expanded is GONE and is not replaced. The browser reports a
+//     details' open state from the element itself; writing the attribute by
+//     hand would be a second, scripted answer to a question the markup
+//     already answers - and it is exactly what could not be kept in sync
+//     without JavaScript.
+//   - the trigger no longer RENAMES itself to "Fermer le menu" for the same
+//     reason. SHELL_COPY.menuClose stays in lib/fr (nothing else used it) and
+//     is unused by this component; noted in the report.
+//
+// What a browser must answer instead - that it opens with scripting disabled,
+// that every row is 44 px, that the focus ring survives - is in
+// e2e/burger.spec.ts, which runs with javaScriptEnabled: false.
+// ---------------------------------------------------------------------------
 
-  it('has a 44 px tap target named in words', () => {
+describe('the mobile menu', () => {
+  const trigger = (container: HTMLElement) => container.querySelector('summary');
+
+  it('is a native disclosure, named in words, with the panel inside it', () => {
     // SPEC 16 and FD2: every tappable target >= 44 px. The size is a token
     // assertion (jsdom computes no layout); what is checked here is that the
-    // icon button is not an unnamed glyph.
-    renderShell();
+    // icon button is not an unnamed glyph, and that it is a real disclosure.
+    const { container } = renderShell();
+    const summary = trigger(container);
 
-    expect(trigger()).toBeDefined();
-    expect(trigger().getAttribute('aria-expanded')).toBe('false');
+    expect(summary).not.toBeNull();
+    expect(summary?.getAttribute('aria-label')).toBe(SHELL_COPY.menuOpen);
+    expect(summary?.closest('details')).not.toBeNull();
   });
 
-  it('opens, renames itself, and closes on Escape with focus returned', () => {
-    renderShell();
-    fireEvent.click(trigger());
+  it('carries the panel in the markup whether or not it is open', () => {
+    // THE CLAIM THE WHOLE TASK IS ABOUT, at the level jsdom can answer: the
+    // links exist without anything being clicked. Before FW-SHELL-BURGER this
+    // was `{menuOpen ? ... : null}` and the panel was simply absent.
+    const { container } = renderShell();
+    const details = container.querySelector('details');
+    const panel = container.querySelector('[data-mobile-panel]');
 
-    const open = screen.getByRole('button', { name: SHELL_COPY.menuClose });
+    expect(details?.hasAttribute('open'), 'the menu starts open').toBe(false);
+    expect(panel, 'the panel is behind a branch, not a disclosure').not.toBeNull();
+    expect(panel?.querySelectorAll('a').length).toBeGreaterThan(0);
+    expect(details?.contains(panel ?? null)).toBe(true);
+  });
 
-    expect(open.getAttribute('aria-expanded')).toBe('true');
+  it('offers the calculator action under the navigation entries', () => {
+    const { container } = renderShell();
+    const panel = container.querySelector('[data-mobile-panel]');
+    const action = [...(panel?.querySelectorAll('a') ?? [])].at(-1);
 
-    fireEvent.keyDown(open, { key: 'Escape' });
+    expect(action?.textContent).toBe(MENU_ACTION.label);
+    expect(action?.getAttribute('href')).toBe(MENU_ACTION.href);
+  });
 
-    expect(trigger().getAttribute('aria-expanded')).toBe('false');
-    expect(document.activeElement).toBe(trigger());
+  it('names its panel something other than the desktop navigation', () => {
+    // Two navigation landmarks called the same thing is a defect the moment a
+    // stylesheet fails - and with no CSS both are in the tree.
+    const { container } = renderShell();
+    const panel = container.querySelector('[data-mobile-panel]');
+
+    expect(panel?.getAttribute('aria-label')).toBe(SHELL_COPY.menuNavLabel);
+    expect(SHELL_COPY.menuNavLabel).not.toBe(SHELL_COPY.navLabel);
   });
 
   it('keeps the CTA OUTSIDE the panel', () => {
@@ -430,8 +476,6 @@ describe('the mobile menu', () => {
     // structurally - the CTA must not be a descendant of the panel - because
     // asserting it is "visible" would pass in jsdom either way.
     const { container } = renderShell();
-
-    fireEvent.click(trigger());
 
     const panel = container.querySelector('[data-mobile-panel]');
     const cta = screen.queryAllByRole('link', { name: SHELL_COPY.cta })[0];
@@ -458,8 +502,6 @@ describe('the mobile menu', () => {
     // What a Tab-traversal test would lean on, asserted where it can be:
     // every leaf is reachable from the panel once it is open.
     const { container } = renderShell();
-
-    fireEvent.click(trigger());
 
     const panel = container.querySelector('[data-mobile-panel]');
 

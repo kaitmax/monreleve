@@ -42,9 +42,15 @@ test.describe('the header, on desktop', () => {
   }) => {
     // Before FW33 it sat 12 px after the wordmark, the bar's gap, with the
     // page's width empty to its right.
-    const edges = await page.evaluate(() => {
+    //
+    // THE DESKTOP NAV BY NAME, not `header nav ul` (R171: a test names the
+    // thing it means). FW-SHELL-BURGER put a second nav in the header - the
+    // phone menu's panel, which comes FIRST in the DOM because FD2 draws the
+    // hamburger first - so the loose selector started measuring a list that
+    // is display:none at this width, and reported a correct header as broken.
+    const edges = await page.evaluate((navLabel) => {
       const bar = document.querySelector('header > div');
-      const list = document.querySelector('header nav ul');
+      const list = document.querySelector(`header nav[aria-label="${navLabel}"] ul`);
 
       if (bar === null || list === null) return null;
 
@@ -52,7 +58,7 @@ test.describe('the header, on desktop', () => {
       const padding = Number.parseFloat(getComputedStyle(bar).paddingRight);
 
       return { content: box.right - padding, nav: list.getBoundingClientRect().right };
-    });
+    }, SHELL_COPY.navLabel);
 
     expect(edges, 'no bar or no nav list was found').not.toBeNull();
     expect(Math.abs((edges?.content ?? 0) - (edges?.nav ?? 0))).toBeLessThanOrEqual(1);

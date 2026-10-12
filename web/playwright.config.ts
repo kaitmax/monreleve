@@ -44,6 +44,30 @@ export default defineConfig({
   // everyone, which is only safe BECAUSE of R37.
   snapshotPathTemplate: '{testDir}/../tests/visual/baselines/{arg}{ext}',
 
+  // RULING R114 - ZERO TOLERANCE, STATED. Playwright counts a pixel as
+  // different only when its YIQ delta exceeds the threshold, and DEFAULTS
+  // that threshold to 0.2: a 20 % per-pixel colour allowance which applies
+  // while nobody writes the word. Declining to configure a tolerance is
+  // therefore not zero tolerance - it is the vendor's.
+  //
+  // MEASURED, in FW-SHELL-BURGER. A 1 px border (--colour-border-strong on
+  // white, delta 0.119) and a recoloured glyph (brand over text-primary,
+  // delta 0.098) were added to the header of every page. Both sit under 0.2,
+  // so the suite reported 108 passed / 3 failed twice in a row, certifying 34
+  // phone baselines as unchanged against a header that had visibly changed -
+  // and, because --update-snapshots only rewrites a FAILING comparison, those
+  // 34 could not be regenerated at all. The picture was frozen, which is this
+  // file's maxDiffPixels: 600 story from FW13 one layer down.
+  //
+  // maxDiffPixels is already 0 by default and is written anyway: the two
+  // hatches are read together, and a value nobody states is a value nobody
+  // checks. tests/unit/meta/visual-zero-tolerance.test.ts asserts BOTH are 0
+  // by reading this object, not by grepping this file - a scan cannot tell
+  // `threshold: 0` from `threshold: 0.2`.
+  expect: {
+    toHaveScreenshot: { threshold: 0, maxDiffPixels: 0 },
+  },
+
   projects: [
     {
       name: 'chromium',

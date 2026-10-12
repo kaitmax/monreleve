@@ -180,7 +180,7 @@ test.describe('the mobile header', () => {
   test('menu open', async ({ page }) => {
     const shell = page.getByTestId('shell-desktop');
 
-    await shell.getByRole('button', { name: 'Ouvrir le menu' }).click();
+    await shell.locator('summary').click();
 
     // The panel must be in the shot, so wait for it rather than trusting the
     // click to have settled before the capture.

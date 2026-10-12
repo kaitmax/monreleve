@@ -83,19 +83,52 @@ describe('every visual spec compares at zero tolerance (R114)', () => {
     }
   });
 
-  it('has no project-wide tolerance in the Playwright config either', () => {
-    // A default in expect.toHaveScreenshot would apply to every baseline at
-    // once and would be invisible from the specs, which is worse than a local
-    // one.
-    const config = readFileSync(join(WEB, 'playwright.config.ts'), 'utf8');
-    const code = config
-      .split(String.fromCharCode(10))
-      .filter((line) => !line.trim().startsWith('//'))
-      .join(String.fromCharCode(10));
+  // -------------------------------------------------------------------------
+  // THE CONFIG STATES ZERO. IT DOES NOT MERELY DECLINE TO STATE A TOLERANCE.
+  //
+  // THIS TEST USED TO ASSERT THE OPPOSITE, and that is the defect it now
+  // exists to prevent. It read "has no project-wide tolerance in the
+  // Playwright config either" and forbade the WORD `threshold` anywhere in
+  // playwright.config.ts - so the one line that makes R114 true,
+  // `threshold: 0`, was the one line it rejected.
+  //
+  // WHAT IT COST, MEASURED (FW-SHELL-BURGER). Playwright counts a pixel as
+  // different only when its YIQ delta exceeds the threshold, and DEFAULTS
+  // THAT THRESHOLD TO 0.2 - a 20 % per-pixel colour allowance that is in
+  // force precisely while nobody writes the word. The burger put a 1 px
+  // border (--colour-border-strong on white, delta 0.119) and a recoloured
+  // glyph (brand over text-primary, delta 0.098) into the header of EVERY
+  // page. Both sit under 0.2, so `pnpm test:visual` reported 108 passed /
+  // 3 failed - twice, deterministically - certifying 34 phone baselines as
+  // unchanged while the rendered header had visibly changed. Cropping the
+  // stored baseline beside the live render showed a bordered button against
+  // a borderless one at identical dimensions.
+  //
+  // AND THE PICTURE WAS FROZEN, which is the half that makes it serious:
+  // --update-snapshots only rewrites a baseline whose comparison FAILS, so
+  // those 34 could not be regenerated at all. That is this file's own header
+  // story - maxDiffPixels: 600 freezing six calculator baselines - one layer
+  // down: FW13 removed the explicit allowances and never set the default to
+  // zero, so the explicit hatch was closed and the implicit one left open.
+  //
+  // AN ABSENCE ASSERTION IS SATISFIED BY ABSENCE. The rule is R154's: prove
+  // the mechanism DELIVERS, never that nobody opted out of it. So the value
+  // is read from the config object rather than grepped out of its source - a
+  // string scan cannot tell `threshold: 0` from `threshold: 0.2`, which is
+  // the only distinction that matters here.
+  it('sets a project-wide ZERO tolerance, which the default does not', async () => {
+    const config = (await import('@/playwright.config')).default;
+    const screenshot = config.expect?.toHaveScreenshot;
 
-    for (const option of FORBIDDEN_OPTIONS) {
-      expect(code.includes(option), `playwright.config.ts sets ${option}`).toBe(false);
-    }
+    expect(
+      screenshot,
+      'playwright.config.ts sets no expect.toHaveScreenshot, so Playwright ' +
+        "applies its own threshold of 0.2 - a 20 % per-pixel colour allowance " +
+        'that R114 forbids and that no spec-level scan can see.',
+    ).toBeDefined();
+
+    expect(screenshot?.threshold, 'threshold must be exactly 0 (R114)').toBe(0);
+    expect(screenshot?.maxDiffPixels, 'maxDiffPixels must be exactly 0 (R114)').toBe(0);
   });
 
   it('still allows stylePath, which removes causes rather than hiding them', () => {

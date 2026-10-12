@@ -209,9 +209,9 @@
 .phone {
   box-sizing: border-box;
   width: 100%;
-  max-width: var(--size-toc-column);
+  max-width: var(--size-phone-frame-width);
   padding: var(--space-5) var(--space-4) var(--space-6);
-  border: var(--space-2) solid var(--colour-text-primary);
+  border: var(--size-phone-bezel) solid var(--colour-text-primary);
   border-radius: var(--radius-2xl);
   background: var(--colour-canvas);
 }
@@ -260,7 +260,7 @@
 }
 
 .phoneCaption {
-  max-width: var(--size-toc-column);
+  max-width: var(--size-phone-frame-width);
   margin: 0;
   color: var(--colour-text-secondary);
   font-size: var(--type-caption-size);

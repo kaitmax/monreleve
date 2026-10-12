@@ -42,7 +42,7 @@
 // IT EMITS NO h1. The page owns that (protocol item 8); a shell that emitted
 // one would give every page two.
 
-import { ChevronDown, Menu, X } from 'lucide-react';
+import { ChevronDown, Menu } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 import {
   collapseLoneDisclosures,
@@ -54,7 +54,7 @@ import { APP_NAME } from '@/lib/fr';
 import { LAST_REGULATORY_REVIEW, reviewNotice } from '@/lib/content/regulatory';
 import { LEGAL_COPY } from '@/lib/fr/legal';
 import { PRODUCT_STATE } from '@/lib/content/product-state';
-import { FOOTER_COLUMNS, SHELL_COPY, SHELL_NAV } from '@/lib/fr/shell';
+import { FOOTER_COLUMNS, MENU_ACTION, SHELL_COPY, SHELL_NAV } from '@/lib/fr/shell';
 import type { FooterColumn, NavEntry, NavLink } from '@/lib/fr/shell';
 import styles from './PublicShell.module.scss';
 
@@ -227,34 +227,103 @@ function footerColumns(guideLinks: readonly NavLink[]): readonly FooterColumn[] 
 }
 
 export function PublicShell({ children, guideLinks }: PublicShellProps) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuTrigger = useRef<HTMLButtonElement>(null);
+  // NO STATE FOR THE MENU ANY MORE: details/summary owns "open", so React
+  // holding a second copy of it would be two answers to one question. The ref
+  // exists only for Escape, which is a progressive enhancement - with no
+  // script the disclosure still opens, closes and reports itself correctly.
+  const menu = useRef<HTMLDetailsElement>(null);
 
   const closeMenu = useCallback(() => {
-    setMenuOpen(false);
-    menuTrigger.current?.focus();
+    const element = menu.current;
+
+    if (element === null || !element.open) return;
+
+    element.open = false;
+    // Focus goes back to the summary, not to <body>: closing a panel and
+    // dropping focus to the top of the document is the keyboard trap this
+    // component has been guarded against since FW9.
+    element.querySelector('summary')?.focus();
   }, []);
 
   return (
     <>
       <header className={styles.header}>
         <div className={styles.bar}>
-          {/* The hamburger sits FIRST in the DOM, which is where FD2 draws it
+          {/* THE PHONE MENU, AND IT NEEDS NO SCRIPT (FW-SHELL-BURGER).
+
+              It was a useState disclosure from FW9 until this task: the panel
+              was `{menuOpen ? <div/> : null}`, so with scripting off the button
+              was inert and a phone reader had no navigation at all. Every gate
+              passed, because jsdom runs the handler and Playwright's default
+              context runs the script - neither environment can see it.
+
+              details/summary is the browser's own disclosure: open state,
+              keyboard operation and the expanded state it reports to a screen
+              reader are all native, and the panel's links are in the markup
+              whether or not the script arrives. design/home's phone view draws
+              exactly this.
+
+              THE NAME DOES NOT CHANGE WITH THE STATE, and that is the one
+              thing given up. The button used to rename itself "Fermer le
+              menu"; a summary cannot, without the script this exists to do
+              without. It costs nothing a reader relies on: the browser
+              announces expanded/collapsed from the element itself, which is
+              more than a swapped label ever told anyone.
+
+              The hamburger sits FIRST in the DOM, which is where FD2 draws it
               and also the order a screen reader should meet it: the thing that
               reveals the navigation before the navigation. */}
-          <button
-            ref={menuTrigger}
-            type="button"
-            className={styles.menuButton}
-            aria-expanded={menuOpen}
-            aria-label={menuOpen ? SHELL_COPY.menuClose : SHELL_COPY.menuOpen}
-            onClick={() => setMenuOpen(!menuOpen)}
+          <details
+            ref={menu}
+            className={styles.menu}
             onKeyDown={(event) => {
-              if (event.key === 'Escape' && menuOpen) closeMenu();
+              if (event.key === 'Escape') closeMenu();
             }}
           >
-            {menuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
-          </button>
+            <summary className={styles.menuButton} aria-label={SHELL_COPY.menuOpen}>
+              <Menu aria-hidden="true" />
+            </summary>
+
+            {/* The SAME list as the desktop bar, so the two cannot drift, and
+                ALWAYS RENDERED - the disclosure hides it, not a branch. The
+                nested menu is flattened: on a phone a menu inside a menu is
+                two taps to reach a link.
+
+                ITS OWN ACCESSIBLE NAME. The desktop nav is also in the
+                document at this width (display:none, so out of the tree in a
+                browser) and shares the landmark role; two navigations called
+                the same thing is a defect the moment a stylesheet fails. */}
+            <nav
+              className={styles.mobilePanel}
+              data-mobile-panel
+              aria-label={SHELL_COPY.menuNavLabel}
+            >
+              <ul className={styles.mobileList}>
+                {NAV.flatMap((entry) =>
+                  entry.children !== undefined
+                    ? entry.children.map((child) => (
+                        <li key={child.href}>
+                          <a className={styles.mobileLink} href={child.href}>
+                            {child.label}
+                          </a>
+                        </li>
+                      ))
+                    : [
+                        <li key={entry.href}>
+                          <a className={styles.mobileLink} href={entry.href}>
+                            {entry.label}
+                          </a>
+                        </li>,
+                      ],
+                )}
+                <li key={MENU_ACTION.href}>
+                  <a className={styles.mobileAction} href={MENU_ACTION.href}>
+                    {MENU_ACTION.label}
+                  </a>
+                </li>
+              </ul>
+            </nav>
+          </details>
 
           <a className={styles.home} href="/" aria-label={SHELL_COPY.homeLabel}>
             {/* The brand lockup (mon-releve-logo kit), replacing the FW9
@@ -289,38 +358,6 @@ export function PublicShell({ children, guideLinks }: PublicShellProps) {
           )}
         </div>
 
-        {menuOpen ? (
-          <div
-            className={styles.mobilePanel}
-            data-mobile-panel
-            onKeyDown={(event) => {
-              if (event.key === 'Escape') closeMenu();
-            }}
-          >
-            {/* The SAME list as the desktop bar, so the two cannot drift. The
-                disclosure is expanded here rather than nested: on a phone a
-                menu inside a menu is two taps to reach a link. */}
-            <ul className={styles.mobileList}>
-              {NAV.flatMap((entry) =>
-                entry.children !== undefined
-                  ? entry.children.map((child) => (
-                      <li key={child.href}>
-                        <a className={styles.mobileLink} href={child.href}>
-                          {child.label}
-                        </a>
-                      </li>
-                    ))
-                  : [
-                      <li key={entry.href}>
-                        <a className={styles.mobileLink} href={entry.href}>
-                          {entry.label}
-                        </a>
-                      </li>,
-                    ],
-              )}
-            </ul>
-          </div>
-        ) : null}
       </header>
 
       {children}

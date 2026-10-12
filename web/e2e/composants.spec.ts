@@ -117,7 +117,7 @@ test.describe('the mobile header keyboard path (AC2)', () => {
     // who cannot have it. ctaHrefIfOffered asks both questions, and it is one
     // function precisely so this spec and the shell cannot drift apart - they
     // did, and this test caught it four minutes into the gate.
-    const trigger = shell(page).getByRole('button', { name: 'Ouvrir le menu' });
+    const trigger = shell(page).locator('summary');
     const cta = shell(page).getByRole('link', { name: 'Suivre mes jours' });
 
     await expect(trigger).toBeVisible();
@@ -171,27 +171,26 @@ test.describe('the mobile header keyboard path (AC2)', () => {
   });
 
   test('Escape closes the panel and returns focus to the trigger', async ({ page }) => {
-    const trigger = shell(page).getByRole('button', { name: 'Ouvrir le menu' });
+    // THE DISCLOSURE'S OWN STATE SINCE FW-SHELL-BURGER. The panel is a
+    // details/summary, so "open" is an attribute on the element rather than
+    // an aria-expanded the component writes - and Escape is the one part that
+    // is still a script, a progressive enhancement over markup that already
+    // works without it.
+    const trigger = shell(page).locator('summary');
+    const details = shell(page).locator('details').first();
 
     await trigger.click();
-
-    const open = shell(page).getByRole('button', { name: 'Fermer le menu' });
-
-    await expect(open).toHaveAttribute('aria-expanded', 'true');
+    await expect(details).toHaveAttribute('open', '');
 
     await page.keyboard.press('Escape');
 
-    await expect(shell(page).getByRole('button', { name: 'Ouvrir le menu' })).toHaveAttribute(
-      'aria-expanded',
-      'false',
-    );
-    await expect(shell(page).getByRole('button', { name: 'Ouvrir le menu' })).toBeFocused();
+    await expect(details).not.toHaveAttribute('open', '');
+    await expect(trigger).toBeFocused();
   });
-
   test('every panel link is reachable and at least 44 px tall', async ({ page }) => {
     // SPEC 16 and FD2 both require it of anything tappable, and a real browser
     // is the only place a box can be measured.
-    await shell(page).getByRole('button', { name: 'Ouvrir le menu' }).click();
+    await shell(page).locator('summary').click();
 
     const panel = shell(page).locator('[data-mobile-panel]');
     const links = panel.getByRole('link');

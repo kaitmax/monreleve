@@ -333,6 +333,30 @@ $size-offline-banner: 36px;
 // ruled on it when FW16 found no token carrying 280 (SPEC 20: adding a
 // token is ask-first).
 $size-toc-column: 280px;
+
+// RULING R344, and this token is the ruling's own first instance. The phone
+// menu's panel is 300 px in design/home's phone view, and no token carried
+// 300. The tempting move was to reach for one that happens to be close -
+// --size-toc-column is 280 and --size-toast-min-width is 320 - which is how
+// FW34's phone frame came to be sized by the guides' table-of-contents
+// column. A token is chosen by MEANING: a menu panel is not a column of
+// prose and not a toast, so it gets its own name, with its value taken from
+// the approved design (R77).
+$size-menu-panel-width: 300px;
+
+// R344's other two instances, both from FW34's hero phone card. The card is a
+// PICTURE OF THE APPLICATION, so its dimensions are its own: the frame was
+// sized by --size-toc-column because that token happens to be 280, which means
+// the guides' table of contents would have resized the illustration. The bezel
+// was drawn with --space-2 - a SPACING token used as a stroke width, which is
+// a category error before it is a value one.
+//
+// BOTH TAKE THE APPROVED DESIGN'S VALUE (R77), not the nearest token's: 300
+// and 10, where the substitutions gave 280 and 8. Same number as
+// $size-menu-panel-width above, and deliberately a second name - R68 keeps
+// distinct names where values coincide, because the two move independently.
+$size-phone-frame-width: 300px;
+$size-phone-bezel: 10px;
 $size-toast-min-width: 320px;
 $size-toast-max-width: 420px;
 $size-progress-height: 8px;
@@ -513,6 +537,9 @@ $motion-toast-max: 5000ms;
   --size-bottom-nav-height: #{$size-bottom-nav-height};
   --size-offline-banner: #{$size-offline-banner};
   --size-toc-column: #{$size-toc-column};
+  --size-menu-panel-width: #{$size-menu-panel-width};
+  --size-phone-frame-width: #{$size-phone-frame-width};
+  --size-phone-bezel: #{$size-phone-bezel};
   --size-toast-min-width: #{$size-toast-min-width};
   --size-toast-max-width: #{$size-toast-max-width};
   --size-progress-height: #{$size-progress-height};

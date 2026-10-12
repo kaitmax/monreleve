@@ -68,6 +68,15 @@ export function pngSize(file: string): { readonly width: number; readonly height
  * these two makes them unreachable: a tolerance is a compile error rather
  * than a test failure, and stylePath stays available because R114 explicitly
  * keeps it as the way environmental instability is handled.
+ *
+ * THAT IS TRUE OF CALL SITES AND WAS NEVER TRUE OF THE PROJECT. A type can
+ * only refuse what a caller writes; it cannot reach the default Playwright
+ * applies when nobody writes anything, which is threshold 0.2 - a 20 %
+ * per-pixel colour allowance. FW-SHELL-BURGER measured the cost: 34 phone
+ * baselines certified unchanged against a header that had visibly changed.
+ * playwright.config.ts now states `threshold: 0, maxDiffPixels: 0`, and
+ * tests/unit/meta/visual-zero-tolerance.test.ts asserts those VALUES rather
+ * than the absence of the words.
  */
 export interface BaselineOptions {
   readonly animations?: 'disabled' | 'allow';
