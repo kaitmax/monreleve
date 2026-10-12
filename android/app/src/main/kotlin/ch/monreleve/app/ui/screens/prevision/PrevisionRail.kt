@@ -26,26 +26,31 @@ import ch.monreleve.app.design.Size
 import ch.monreleve.app.design.Spacing
 import ch.monreleve.app.design.ZONE_BAND_COLOUR
 import ch.monreleve.app.design.Zone
-import ch.monreleve.app.forecast.Projection
 import ch.monreleve.app.fr.PrevisionCopy
 
 // AN-FORECAST. The forecast card's two-segment rail and its legend, split from PrevisionScreen.kt to keep each
 // file within detekt's per-file function budget (the ReleveSections split idiom). R340: the recorded part is
 // SOLID and the projected part SOFT (a shape difference, not colour alone), with the fiscal and social ceilings
 // marked; every figure is the engine's, passed in. 0..100 % scale, as the design draws it.
+//
+// AN-SIM: ProjectionRail takes RAW rates rather than a Projection, so the simulator reuses it unchanged (R206) -
+// Prevision passes (today's recorded, the projection); the simulator passes (today's recorded, the simulated).
 
 private const val PERCENT = 100.0
 private const val TICK_WIDTH = 2
 
 @Composable
 internal fun ProjectionRail(
-    projection: Projection,
-    projectedZone: Zone,
+    solidRate: Double,
+    softRate: Double,
+    fiscalCeiling: Double,
+    socialCeiling: Double,
+    zone: Zone,
 ) {
-    val recordedFrac = frac(projection.currentRate)
-    val projectedFrac = frac(projection.projectedRate)
-    val solid = ZONE_BAND_COLOUR.getValue(projectedZone)
-    val soft = softZoneColour(projectedZone)
+    val recordedFrac = frac(solidRate)
+    val projectedFrac = frac(softRate)
+    val solid = ZONE_BAND_COLOUR.getValue(zone)
+    val soft = softZoneColour(zone)
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         val full = maxWidth
         Box(modifier = Modifier.fillMaxWidth().height(Spacing.space12)) {
@@ -56,11 +61,11 @@ internal fun ProjectionRail(
                         .clip(RoundedCornerShape(Radius.pill))
                         .background(LightColors.borderDefault),
             )
-            // Projected (soft) under the recorded (solid) part; the recorded sits on top from the start.
+            // Soft segment under the solid part; the solid sits on top from the start.
             RailSegment(fraction = projectedFrac, colour = soft)
             RailSegment(fraction = recordedFrac, colour = solid)
-            Tick(offsetX = full * projection.fiscalCeiling.toFloat())
-            Tick(offsetX = full * projection.socialCeiling.toFloat())
+            Tick(offsetX = full * fiscalCeiling.toFloat())
+            Tick(offsetX = full * socialCeiling.toFloat())
         }
     }
 }

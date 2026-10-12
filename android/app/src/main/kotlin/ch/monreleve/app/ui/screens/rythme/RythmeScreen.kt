@@ -89,17 +89,21 @@ fun RythmeScreen(
     }
 }
 
-// Shared with the Prevision screen: the back arrow and the section name. The title is "Prevision" on both
-// (the design's own header), so the copy has one home (PrevisionCopy.NAV_TITLE).
+// Shared with the Prevision and Simulation screens: the back arrow and the section name. The title defaults to
+// "Prevision" (the rhythm and forecast screens, the design's own header, one home in PrevisionCopy.NAV_TITLE);
+// the simulator passes "Simulation" (AN-SIM).
 @Composable
-internal fun ForecastTopBar(onBack: () -> Unit) {
+internal fun ForecastTopBar(
+    onBack: () -> Unit,
+    title: String = PrevisionCopy.NAV_TITLE,
+) {
     Row(
         modifier = Modifier.fillMaxWidth().heightIn(min = Spacing.space64).padding(horizontal = Spacing.space8),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Spacing.space4),
     ) {
         BackButton(contentDescription = LicencesCopy.BACK, onBack = onBack)
-        Text(text = PrevisionCopy.NAV_TITLE, style = FrontierType.h3)
+        Text(text = title, style = FrontierType.h3)
     }
 }
 
