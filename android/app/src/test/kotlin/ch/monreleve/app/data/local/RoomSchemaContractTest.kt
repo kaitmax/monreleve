@@ -89,6 +89,17 @@ class RoomSchemaContractTest {
                     "gpsCheckCount" to ("INTEGER" to true),
                     "networkCheckCount" to ("INTEGER" to true),
                 ),
+            // AN-FORECAST / R341: the weekly rhythm, one row per account (PK accountTag). Each weekday is a
+            // RhythmKind name (SUISSE/DOMICILE) or NULL. Local-only, never on the wire; no coordinate column.
+            "weekly_rhythm" to
+                mapOf(
+                    "accountTag" to ("TEXT" to true),
+                    "monday" to ("TEXT" to false),
+                    "tuesday" to ("TEXT" to false),
+                    "wednesday" to ("TEXT" to false),
+                    "thursday" to ("TEXT" to false),
+                    "friday" to ("TEXT" to false),
+                ),
         )
 
     @Test
@@ -122,6 +133,8 @@ class RoomSchemaContractTest {
                 // AN-FIX F4 / R303: accountTag joins the entry key, mirroring @@unique([userId, dayDate, portion]).
                 "entry" to listOf("accountTag", "dayDate", "portion"),
                 "daily_tally" to listOf("dayDate"),
+                // AN-FORECAST / R341: one rhythm per account.
+                "weekly_rhythm" to listOf("accountTag"),
             )
         val entities = entities()
         for ((table, expected) in expectedKeys) {
