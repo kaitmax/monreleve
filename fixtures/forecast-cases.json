@@ -1,0 +1,150 @@
+{
+  "_comment": [
+    "AN-FORECAST (R340, R281). THE ONE FORECAST CONTRACT, bound on both sides.",
+    "A weekly rhythm plus a fixed 'today' go in; the imagined working days to 31 December come out,",
+    "and the recorded days plus those imagined days, run through the SHARED aggregation (toTeleworkInput)",
+    "and the engine (calculateTelework), produce the projection rate. The Kotlin side reads this file",
+    "through ch.monreleve.app.dossier.imaginedEntriesToYearEnd + toTeleworkInput + calculateTelework;",
+    "the web side (FW-FORECAST) reads the SAME file through its own date function and engine. A one-digit",
+    "change here fails BOTH suites (the plant, verified and reverted, is recorded in REPORT-AN-FORECAST.txt).",
+    "",
+    "R340: A PROJECTION IS NEVER A RECORD. These rows are computed in memory and nothing here is ever",
+    "written to the entries, the mutation queue, the server, the releve, the PDF or the annex.",
+    "",
+    "rhythm: Monday..Friday, each assigned the kind worked that weekday (HOME = Domicile / teletravail,",
+    "CH = Suisse). A weekday the rhythm leaves OUT is not a worked day and is imagined as nothing. The",
+    "kinds use the engine's EntryKind names so both languages speak one vocabulary.",
+    "",
+    "today: the day the projection is requested (a fixed clock in the test). The imagined set is every",
+    "working day STRICTLY AFTER today to 31 December; today itself is never imagined (it is recorded or",
+    "it is not). Public holidays and leave are NOT deducted - on the 240-day basis that overstates",
+    "telework, so the projection warns early, never late (the screen says so).",
+    "",
+    "recorded: the days already recorded by 'today' (the full row shape, as aggregation-cases.json).",
+    "",
+    "expected.imaginedWorkingDays: all imagined rows (HOME + CH weekdays in range).",
+    "expected.imaginedTeleworkDays: the HOME rows among them.",
+    "expected.currentRate: the engine's declarableRate on the RECORDED days alone (today's figure).",
+    "expected.declarableRate: the engine's declarableRate on recorded + imagined (the December projection).",
+    "Both rates are the AFC declarable rate (truncated to two decimals), a percentage. Every case here is",
+    "under 40% at GE / 100% / simplified240, so declarableRate = truncate(teleworkDays / 240 x 100, 2)."
+  ],
+  "commonUser": {
+    "canton": "GE",
+    "employmentRate": 100,
+    "denominatorKind": "SIMPLIFIED240",
+    "exactTotalWorkDays": null,
+    "granularity": "DAY",
+    "activityStartDate": null
+  },
+  "taxYear": 2026,
+  "cases": [
+    {
+      "id": "rythme-mardi-jeudi-depuis-octobre",
+      "note": "The design's own example: Domicile Tuesday+Thursday, Suisse otherwise, requested 9 October 2026. 59 jours ouvres remain, 24 of them Tuesdays/Thursdays. No days recorded here, so the projection is 24 telework / 240.",
+      "today": "2026-10-09",
+      "rhythm": {
+        "MONDAY": "CH",
+        "TUESDAY": "HOME",
+        "WEDNESDAY": "CH",
+        "THURSDAY": "HOME",
+        "FRIDAY": "CH"
+      },
+      "recorded": [],
+      "expected": {
+        "imaginedWorkingDays": 59,
+        "imaginedTeleworkDays": 24,
+        "currentRate": 0.0,
+        "declarableRate": 10.0
+      }
+    },
+    {
+      "id": "rythme-complet-fin-dannee",
+      "note": "All five weekdays Domicile, requested 24 December 2026 (a Thursday). Five weekdays remain (Fri 25, Mon 28, Tue 29, Wed 30, Thu 31) - holidays not deducted - all telework.",
+      "today": "2026-12-24",
+      "rhythm": {
+        "MONDAY": "HOME",
+        "TUESDAY": "HOME",
+        "WEDNESDAY": "HOME",
+        "THURSDAY": "HOME",
+        "FRIDAY": "HOME"
+      },
+      "recorded": [],
+      "expected": {
+        "imaginedWorkingDays": 5,
+        "imaginedTeleworkDays": 5,
+        "currentRate": 0.0,
+        "declarableRate": 2.08
+      }
+    },
+    {
+      "id": "enregistre-plus-imagine",
+      "note": "Three days already recorded at Domicile plus five imagined Domicile days: the projection combines record and rhythm. 3/240 today becomes 8/240 by December.",
+      "today": "2026-12-24",
+      "rhythm": {
+        "MONDAY": "HOME",
+        "TUESDAY": "HOME",
+        "WEDNESDAY": "HOME",
+        "THURSDAY": "HOME",
+        "FRIDAY": "HOME"
+      },
+      "recorded": [
+        { "dayDate": "2026-01-05", "portion": "FULL", "kind": "HOME", "absenceReason": null, "provenance": "MANUAL" },
+        { "dayDate": "2026-01-06", "portion": "FULL", "kind": "HOME", "absenceReason": null, "provenance": "MANUAL" },
+        { "dayDate": "2026-01-07", "portion": "FULL", "kind": "HOME", "absenceReason": null, "provenance": "MANUAL" }
+      ],
+      "expected": {
+        "imaginedWorkingDays": 5,
+        "imaginedTeleworkDays": 5,
+        "currentRate": 1.25,
+        "declarableRate": 3.33
+      }
+    },
+    {
+      "id": "les-jours-suisses-ne-bougent-pas-le-taux",
+      "note": "Ten days recorded at Domicile, a rhythm of five Suisse days: the imagined CH days are worked days (counted in imaginedWorkingDays) but add no telework, so the projection equals today's figure. Proves a Suisse rhythm does not move the rate.",
+      "today": "2026-12-24",
+      "rhythm": {
+        "MONDAY": "CH",
+        "TUESDAY": "CH",
+        "WEDNESDAY": "CH",
+        "THURSDAY": "CH",
+        "FRIDAY": "CH"
+      },
+      "recorded": [
+        { "dayDate": "2026-01-05", "portion": "FULL", "kind": "HOME", "absenceReason": null, "provenance": "MANUAL" },
+        { "dayDate": "2026-01-06", "portion": "FULL", "kind": "HOME", "absenceReason": null, "provenance": "MANUAL" },
+        { "dayDate": "2026-01-07", "portion": "FULL", "kind": "HOME", "absenceReason": null, "provenance": "MANUAL" },
+        { "dayDate": "2026-01-08", "portion": "FULL", "kind": "HOME", "absenceReason": null, "provenance": "MANUAL" },
+        { "dayDate": "2026-01-09", "portion": "FULL", "kind": "HOME", "absenceReason": null, "provenance": "MANUAL" },
+        { "dayDate": "2026-01-12", "portion": "FULL", "kind": "HOME", "absenceReason": null, "provenance": "MANUAL" },
+        { "dayDate": "2026-01-13", "portion": "FULL", "kind": "HOME", "absenceReason": null, "provenance": "MANUAL" },
+        { "dayDate": "2026-01-14", "portion": "FULL", "kind": "HOME", "absenceReason": null, "provenance": "MANUAL" },
+        { "dayDate": "2026-01-15", "portion": "FULL", "kind": "HOME", "absenceReason": null, "provenance": "MANUAL" },
+        { "dayDate": "2026-01-16", "portion": "FULL", "kind": "HOME", "absenceReason": null, "provenance": "MANUAL" }
+      ],
+      "expected": {
+        "imaginedWorkingDays": 5,
+        "imaginedTeleworkDays": 0,
+        "currentRate": 4.16,
+        "declarableRate": 4.16
+      }
+    },
+    {
+      "id": "rythme-partiel-mardi-jeudi",
+      "note": "A partial rhythm (only Tuesday and Thursday set, the other weekdays left out) requested 24 December 2026: only the Tuesday (29) and Thursday (31) are imagined - two working days, both telework.",
+      "today": "2026-12-24",
+      "rhythm": {
+        "TUESDAY": "HOME",
+        "THURSDAY": "HOME"
+      },
+      "recorded": [],
+      "expected": {
+        "imaginedWorkingDays": 2,
+        "imaginedTeleworkDays": 2,
+        "currentRate": 0.0,
+        "declarableRate": 0.83
+      }
+    }
+  ]
+}
