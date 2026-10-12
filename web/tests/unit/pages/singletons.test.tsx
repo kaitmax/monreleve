@@ -94,7 +94,11 @@ const PAGES: readonly Expected[] = [
       );
     },
     contextualLinks: 0,
-    primaryActions: 0,
+    // FW34: the rebuilt home has a calculator section whose submit button is
+    // "Calculer" (design/home) - the page's one primary action, which is what
+    // R119 counts. The hero's other calls to action are anchors (they navigate
+    // to #calcul, #app and /alertes), so they are not buttons and not counted.
+    primaryActions: 1,
   },
   {
     label: '/calculateur-teletravail-frontalier',

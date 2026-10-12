@@ -5,7 +5,7 @@
 import { expect, test } from '@playwright/test';
 import { BASE_URL } from './support/base-url';
 import { LAST_REGULATORY_REVIEW, reviewNotice } from '../lib/content/regulatory';
-import { HOME_COPY } from '../lib/fr';
+import { HOME_COPY } from '../lib/fr/home';
 import { SHELL_COPY } from '../lib/fr/shell';
 import { formatDate } from '../lib/ui/core';
 import { currentTaxYear } from '../lib/content/tax-year';
@@ -44,11 +44,14 @@ test('/ responds 200 and renders its heading from lib/fr', async ({ page }) => {
   //
   // textContent keeps the codepoint - also measured - so this compares the
   // exact string, and the constant on the other side carries it too.
-  expect(await page.getByRole('heading', { level: 1 }).textContent()).toBe(HOME_COPY.heading);
+  expect(await page.getByRole('heading', { level: 1 }).textContent()).toBe(
+    HOME_COPY.hero.heading,
+  );
 
   // And the codepoint itself, named, so a reader of a failure knows what to
   // look for. U+00A0 is indistinguishable from a space on screen and in a diff.
-  expect(HOME_COPY.heading).toContain(String.fromCharCode(0x00a0));
+  // The hero headline carries it before its question mark (R91).
+  expect(HOME_COPY.hero.heading).toContain(String.fromCharCode(0x00a0));
 });
 
 test('/ is wrapped in the public shell, header and footer both', async ({ page }) => {

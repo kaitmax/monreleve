@@ -41,7 +41,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { PRODUCT_STATE, type ProductState } from '@/lib/content/product-state';
-import { HOME_COPY } from '@/lib/fr';
+import { HOME_COPY } from '@/lib/fr/home';
 import { A_PROPOS_COPY } from '@/lib/fr/a-propos';
 import { LEGAL_COPY } from '@/lib/fr/legal';
 import { RELEVE_COPY } from '@/lib/fr/releve-annuel';
@@ -304,7 +304,10 @@ const WIRING: ReadonlyArray<{
     wired: [
       {
         where: '/ description',
-        file: 'index.ts',
+        // FW34: the home copy moved to lib/fr/home.ts, so the trackerExists
+        // claim in the description's branch lives there now. The scan keys on
+        // the file, so this names home.ts or the claim reads as unwired.
+        file: 'home.ts',
         render: (s) => HOME_COPY.description(FISCAL, SOCIAL, s),
       },
       { where: '/a-propos lead', file: 'a-propos.ts', render: (s) => A_PROPOS_COPY.lead(s) },

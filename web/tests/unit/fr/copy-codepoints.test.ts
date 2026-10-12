@@ -145,7 +145,7 @@ describe('the whitespace codepoints in French copy are on the record (R66)', () 
     expect(summary, summary.join(' | ')).toEqual([]);
   });
 
-  it('carries exactly the 43 the typography pass left there', () => {
+  it('carries exactly the no-break spaces the typography pass left there', () => {
     // A count, so that a no-break space arriving or disappearing is a
     // deliberate edit here rather than a silent one. Per file, because a
     // total alone would let one move between files unnoticed.
@@ -174,10 +174,14 @@ describe('the whitespace codepoints in French copy are on the record (R66)', () 
       // FW18b: FOUR BECAME TWO, and the two that left are the point. R147
       // now reaches lib/fr, so the home description no longer types "40 %"
       // and "49,9 %" - it takes them formatted, and formatPercent sets the
-      // no-break space. The codepoint did not disappear; it moved to the one
-      // producer SPEC 6.4 names, which is where the comment above says it
-      // belongs.
-      'lib/fr/index.ts': 2,
+      // no-break space.
+      //
+      // FW34: TWO BECAME ZERO, so index.ts leaves the map entirely. The home
+      // copy grew into lib/fr/home.ts, taking the two no-break spaces with it
+      // (the heading's "?" and the intro's colon) - and home.ts builds its
+      // no-break spaces with the n() helper, so they are produced at runtime
+      // and the SOURCE carries none. index.ts now holds only APP_NAME, the
+      // title template and the 404, none of which sets a mark.
       // FW20 recorded one here, in the releve-annuel description - the page's
       // one literal, its other no-break spaces being built by n().
       //
@@ -219,7 +223,10 @@ describe('the whitespace codepoints in French copy are on the record (R66)', () 
     // per-file map above moved in step for the same reason.
     // FW-VERIFY: 45 -> 46. DISCLOSED_RECORDS.nameChange carries one more,
     // the semicolon ending the name-change-dates bullet.
-    expect(occurrences).toHaveLength(46);
+    // FW34: 46 -> 44. index.ts lost its two no-break spaces when the home copy
+    // moved to home.ts, which builds them with n() (runtime, not source). The
+    // per-file map above dropped index.ts in step - two numbers, one change.
+    expect(occurrences).toHaveLength(44);
   });
 
   it('puts every one of them immediately before : ; ? ! or %', () => {
