@@ -1,0 +1,154 @@
+FW34 SESSION PROMPT - Mon Releve
+THE HOME PAGE, REBUILT FROM THE APPROVED DESIGN - AND THE WEB ITEMS
+THAT HAVE BEEN WAITING
+Paste into a fresh Claude Code session at the repository root, AFTER
+REG-UPDATE has finished: the "two rules" section cites the source rows
+REG-UPDATE writes. Web only - it may run alongside Android work in its
+own worktree.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+R241: the only thing that ends this session is REPORT-FW34.txt,
+committed and pushed. Unclear? R156; judgment calls go to the advisors,
+and if none answers, the conservative option is taken and recorded.
+R334: never delete, overwrite or reset what you did not create - THE
+fw34 BRANCH INCLUDED: read it, reuse from it, never delete or
+force-push it; untracked files reported, not removed; your own
+worktree; a report states only what has happened. R300; R270.
+
+HARD BOUNDARIES: no change to either engine or /v1; no URL parameter
+renamed or invented (they are permanent, R156 - use the calculator's
+existing ones); no gate raised; DO NOT DEPLOY; the vocabulary ban.
+
+R273. Check tasks/todo.md. Read docs/superpowers/specs/2026-09-29-home-
+    page-design.md (FW34's EARLIER brief, Slice 2) and the work parked on
+    origin/fw34 - this task REPLACES that brief: say so first, and reuse
+    whatever on fw34 fits the new design (components, the
+    --size-icon-tile token, tests).
+R0. Read design/home/README.md, REPORT-FW33.txt, REPORT-FW33b.txt,
+    REPORT-REG-UPDATE.txt, DESIGN-SYSTEM.md.
+R1. pnpm gate:clone green on origin/main's HEAD.
+
+====================================================================
+0. THE WEB ITEMS THAT HAVE BEEN WAITING
+====================================================================
+- R326: pnpm size measures only the build that ships - it refuses a
+  next-dev build AND a production build with the dev routes compiled in,
+  by a marker the build writes. FW33's "1.9 KiB" was the second kind.
+  Plant each, see it refused by name.
+- PARKAN-37: every "cumul de minutes" description of detection, on the
+  web, becomes the four daily checks (R320). Find them all; the app side
+  is noted, not changed here.
+- PARKAN-38: R325's sentence on /confidentialite gets its entry in the
+  privacy map - the claim-to-test map behind that page (FW14, FW22,
+  FW26).
+- If REG-UPDATE did any of these already, confirm and move on.
+Commit each, push.
+
+====================================================================
+1. THE DESIGN IS DECIDED
+====================================================================
+design/home/Desktop.dc.html and Mobile.dc.html are the approved page.
+Build it "as it is": section order, contents, hierarchy, and copy WORD
+FOR WORD into lib/fr (R206, R238, R155's accents). Never literal values
+from the HTML - every colour, size and radius from the tokens; a value
+with no token: the nearest token, listed in the report. Where you
+believe the page should differ, build it as designed and say why.
+
+THE SECTIONS, in order:
+  header (FW33's, with the burger at phone width) / hero / calculator /
+  the two rules / how it works / the releve / privacy / the app / guides
+  / sources / footer (FW33's, unchanged).
+
+====================================================================
+2. WHAT EACH SECTION MUST GET RIGHT
+====================================================================
+HEADER AND BURGER - FW33's header stays. Below the breakpoint token
+(R68's family; no new number), the links fold into a menu button that
+WORKS WITHOUT JAVASCRIPT - a details/summary disclosure is enough. The
+button has an accessible name, the panel is reachable by keyboard and
+closes with Escape where JavaScript runs, and the "Calculer ma
+situation" call to action sits inside the panel. Above the breakpoint,
+the desktop navigation as now.
+
+HERO - the headline and copy as designed. THE PHONE CARD IS RENDERED,
+NOT PICTURED: the site's own components (ZoneBadge, RateDisplay,
+ThresholdRail, the tiles), fed by THE ENGINE computing the example -
+38 telework days on the 240-day basis - so 15,83 %, 58 and 81,5 come
+from the engine and can never drift from it (R147, R163). Its caption
+says it is an example, as designed. The rail's tick labels anchor
+outward (R39).
+
+CALCULATOR - a plain HTML form that submits to the calculator page with
+its EXISTING URL parameters, so it works without JavaScript and adds no
+client code to the home page. "Vous habitez en France et travaillez en
+Suisse" is a sentence, not a choice - France is the only case supported
+(R282). If the calculator has no parameter for a field the form needs,
+that is a permanent decision: STOP that field and park it.
+
+THE TWO RULES - each card's sentences tied to their verified rows
+(REG-UPDATE), each citing its source as designed. "40 %" and "49,9 %"
+come from the RuleSet through the formatter, never typed (R147). If a
+sentence has no verified row, it is not written (R146).
+
+HOW IT WORKS AND THE RELEVE - about the app, so in the FUTURE TENSE
+until a released app exists (R138), as designed. The releve thumbnail
+is markup, not an image; its verification-code sentence is true only
+once FW-VERIFY's QR is switched on - keep the future tense until then.
+
+PRIVACY - each sentence already true by design and mapped in the
+privacy map; the automatic-mode sentence in the future tense. No
+"100 % securise", no "jamais partagees".
+
+THE APP - driven by the product-state flags (R172, R186): before release,
+"Bientot sur Android" and the launch sign-up as designed; at release,
+the Google Play badge, used as Google's badge guidelines require. THE
+LAUNCH SIGN-UP: reuse the existing alert list ONLY if its consent text
+covers launch news; otherwise the button links to the alert sign-up
+page and a launch-specific list is parked - consent must name its
+purpose. And it must never accept an address the server cannot email:
+if sending is not configured (DOMAIN's checklist), the form is hidden
+by the same flag mechanism, not shown broken.
+
+GUIDES - the three links come from the guides themselves, as FW33's
+footer derives them, never typed. The lake illustration is inline SVG;
+a photo later only with its licence recorded.
+
+SOURCES - the line links /sources; its claim matches REG-UPDATE's rows.
+
+====================================================================
+3. BUDGETS AND QUALITY
+====================================================================
+- The home page adds NO client JavaScript beyond what it has now; report
+  every gated route's size from the shipping build (R326), before and
+  after. Do not raise a gate.
+- Lighthouse and the accessibility suite on the home page at desktop and
+  phone widths; contrast 4.5:1; 200 percent zoom; keyboard through the
+  burger.
+- Visual baselines for the home page and the shell regenerated, each file
+  named with its reason (R135, R207).
+- The claim tests that tie copy to source rows pass for every new
+  sentence.
+
+====================================================================
+DONE AND REPORT
+====================================================================
+  H1. Section 0's items done or confirmed.
+  H2. The page built as designed, section by section, with the burger
+      working without JavaScript.
+  H3. The phone card computed by the engine; the thresholds from the
+      RuleSet; no typed figure.
+  H4. THE WALKTHROUGH on the dev server, R176: desktop and 390 px wide;
+      the burger opened and closed by mouse, keyboard and with
+      JavaScript off; the calculator form submitted with JavaScript off,
+      landing on its result; every link on the page followed; every
+      screenshot opened and described.
+  H5. Gates green, gate:clone passing, merged after your own gate:clone.
+REPORT - REPORT-FW34.txt: HOW IT ENDED / R273 (the earlier brief, what
+was reused from fw34) / SECTION 0 / EACH SECTION AGAINST THE DESIGN /
+TOKENS WHERE THE MOCK-UP HAD NONE / THE LAUNCH SIGN-UP (which path, and
+why) / SIZES BEFORE AND AFTER / WALKTHROUGH / UNTRACKED FILES LEFT ALONE
+(R334) / ADVISOR DECISIONS / PARKED / DEVIATIONS / QUESTIONS / PUSH PROOF
+
+END OF FW34 PROMPT

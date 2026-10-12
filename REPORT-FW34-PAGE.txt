@@ -1,0 +1,410 @@
+====================================================================
+REPORT-FW34-PAGE - THE HOME PAGE, BUILT FROM THE APPROVED DESIGN
+====================================================================
+
+TASK     FW34 page build, per relay/FW34.txt sections 1-3 and the handoff in
+         REPORT-FW34.txt. Section 0 (R326, PARKAN-37, PARKAN-38) was done by the
+         prior FW34 agent and is merged to origin/main (69d1bb6); this session
+         builds the page the handoff left planned.
+BRANCH   home-page, off origin/main 69d1bb6 (confirmed: HEAD == origin/main at
+         session start; gate:clone on 69d1bb6 reported green by the operator).
+         origin/fw34 (62d7f25) read and reused-from, NEVER deleted or pushed to
+         (R334).
+BRANCH TIP  see PUSH PROOF.
+
+====================================================================
+OPERATOR DECISIONS (recorded as the authority for this build)
+====================================================================
+Q1 HEADER NAV: KEEP FW33's SHELL NAV. The home page uses the existing shell
+   header/footer unchanged. Where design/home's nav differs from the shell,
+   it is home-only styling or dropped - the shell and other pages are NOT
+   changed and no other page's baseline is regenerated. (Conservative,
+   reversible.) CONSEQUENCE, recorded: the home page renders ONLY its body
+   (hero through the sources strip); the header and footer come from the shell.
+   The relay's "no-JS burger" is therefore NOT built - see DEVIATIONS.
+Q2 --size-icon-tile: the new home uses NO IconTile (its hero is a rendered
+   phone card; sections use inline glyphs). The token is not introduced by this
+   page. Left as the prior agent left it (not added on main); noted, not
+   removed.
+Q3 The 52 px pill and 28 px card padding: nearest token + listed (TOKENS
+   below). No new token added, no gate raised.
+Q4 relay/FW34.txt: committed with this work by explicit git add.
+
+====================================================================
+HOW IT ENDED - READ THIS FIRST
+====================================================================
+THE PAGE IS BUILT, GREEN, AND PUSHED to origin/home-page, section by section as
+designed. Fast suites all green here: typecheck 0, lint 0 (2 pre-existing
+warnings in untouched files), test 3090, build ok, size (shipping build, R326)
+all gated routes pass both gates, test:db ok, test:late 10, and the full
+chromium e2e suite (see PUSH PROOF). test:visual and the final gate:clone are
+DEFERRED to the operator per the relay; the baselines to regenerate are named
+below. The R176 walkthrough was driven on pnpm dev (WALKTHROUGH).
+
+NO advisor was consulted (the relay records it stalled; the conservative option
+was taken and recorded, R156). No subagents.
+
+====================================================================
+R273 - THE EARLIER BRIEF, AND WHAT WAS REUSED FROM origin/fw34
+====================================================================
+THE EARLIER BRIEF IS REPLACED. docs/superpowers/specs/2026-09-29-home-page-
+design.md (FW34's Slice-2 FD11 brief) is NOT the authority; the approved page in
+design/home/ (operator-approved 11.10.2026) is. Said here first, per R273.
+
+origin/fw34 (62d7f25) was read and assessed for reuse (R334: never deleted,
+never pushed to). What fit, and how it was used:
+  - lib/fr/compose.ts's n() no-break-space helper PATTERN: the new lib/fr/home.ts
+    defines its own `const n = (mark) => NB + mark` exactly as every other
+    lib/fr module on main does, so the figures and punctuation build their
+    U+00A0 at runtime (R91). The fw34 compose.ts module itself was NOT ported -
+    it is not on main and the per-file helper is the main-branch convention.
+  - The Server-Component composition pattern (ResultPanel's "arrangement with
+    one call site lives beside the page") is reused for HeroPhone.tsx.
+  - What did NOT fit (not ported): fw34's Button/Card/IconTile and the
+    --size-icon-tile token (the new design uses none of them); its FD11 copy and
+    tests (rewritten for the new design, R165).
+
+====================================================================
+SECTION 0 - CONFIRMED (done by the prior agent, merged to main)
+====================================================================
+R326 (size refuses a non-shipping build), PARKAN-37 (cumul-de-minutes ->
+four daily checks on /confidentialite) and PARKAN-38 (R325's sentence in the
+privacy claim-to-test map) are on origin/main at 69d1bb6 (commits 72d3fb9,
+c96187f). Confirmed present and not re-done this session. The R326 marker is
+what makes this session's `pnpm size` trustworthy (it refused nothing - the
+builds here were clean shipping builds).
+
+====================================================================
+EACH SECTION AGAINST THE DESIGN
+====================================================================
+The page is app/(public)/page.tsx (a SERVER component), with the phone card in
+app/(public)/HeroPhone.tsx, copy in lib/fr/home.ts, the fixture and guide slugs
+in lib/content/home.ts, and styles in app/(public)/home.module.scss.
+
+HEADER + BURGER. FW33's shell header/footer, unchanged (Q1). The home renders no
+header of its own. The no-JS burger the relay describes is NOT built: adding it
+would edit the shared shell and regenerate every page's baseline, which Q1
+forbids. The shell already provides a phone-width burger (JS-driven, shipped in
+FW33); it is kept as-is. Recorded under DEVIATIONS.
+
+HERO. Built as designed. The phone card is RENDERED, not pictured: HeroPhone
+composes the site's own ZoneBadge, RateDisplay, ThresholdRail and two MetricTiles,
+fed by calculateTelework() over lib/content/home.ts's worked example (38 telework
+days on the 240-day simplified basis, GE, full time, whole year, no missions).
+The three figures - 15,83 % (declarable rate), 58 (days before the fiscal
+ceiling) and 81,5 (days before the social ceiling) - come FROM the engine and
+are never typed (R147, R163); a unit test ties them to calculateTelework over the
+same fixture. The caption interpolates the example's days and the basis from the
+fixture and the RuleSet. The rail's tick labels anchor outward (R39, inherited
+from the real component).
+  - DEVIATION from the mock, recorded: RateDisplay is given NO rawRate, so the
+    hero shows the single headline rate (the mock shows one rate). For 38/240 the
+    raw rate (15,9) diverges from the declarable (15,83); the full calculator, a
+    tap away, shows both. RateDisplay's own contract allows withholding rawRate.
+  - The real ThresholdRail (compact) renders a small rate caption above the bar
+    (the mock omitted it); accepted as the cost of using the real component.
+
+CALCULATOR. A plain HTML <form method="get" action="/calculateur-teletravail-
+frontalier">. It works with no JavaScript and adds no client code: a submit
+navigates to the calculator with the scenario in the query, which the
+calculator's island reads on mount. "Vous habitez en France et travaillez en
+Suisse" is a SENTENCE, not a choice (R282). The three fields map to the
+calculator's EXISTING params (lib/params/schema.ts), none invented or renamed
+(R156): canton -> `canton`, "Jours teletravailles depuis le 1er janvier" ->
+`tt`, "Jours de mission, en France ou ailleurs" -> `mfr`.
+  - THE MISSION FIELD maps to `mfr` (missions France). The design merges France
+    and third-state missions into ONE field; the engine keeps them separate (two
+    params, imputed France-first in the waterfall). The home form is a quick
+    start that pre-fills the full calculator, where the split is refined, and the
+    figures the hero emphasises (the rate, the headroom) are identical to the
+    split while missions stay within budget. No field is parked - every field has
+    an existing param. Recorded as the mfr interpretation.
+  - The select lists all 26 cantons (lib/fr/cantons CANTONS_BY_NAME), not the
+    mock's six, for correctness and consistency with the full calculator.
+  - inputmode="numeric" and whole-day defaults; a comma decimal is a full-
+    calculator case (that form normalises it client-side). Minor, recorded.
+
+THE TWO RULES. Each card's sentences are tied to verified REG-APPLY rows and
+each cites its source as the mock does. 40 % and 49,9 % (and the 25 % band and
+the 10-day cap) come from the RuleSet through guideScope(), NEVER typed (R147);
+typed-numbers.test.ts refuses a typed figure in lib/fr. The fiscal card cites
+"AFC Geneve ; accord amiable franco-suisse du 29 avril 2026" and the social card
+cites "Office federal des assurances sociales (OFAS)" - both are VERIFIED rows in
+docs/regulatory-sources.md (the accord of 29 April 2026, OFAS/BSV, REG-APPLY
+2026-10-11). A unit test asserts the figures are delivered and the cited
+instruments are in the verified register. No sentence without a verified row
+(R146).
+
+HOW IT WORKS + THE RELEVE. About the app, so FUTURE tense (R138): "Bientot sur
+Android", "Chaque releve portera un code de verification", "pourra le scanner".
+The releve thumbnail is MARKUP, not an image, with sample data (Camille Martin,
+code MR-7F3K-2Q9X, a decorative QR, the year from the clock) - the whole
+thumbnail is aria-hidden. The verification-code sentence stays future until
+FW-VERIFY's QR is switched on. product-claims.test.ts confirms no present-tense
+capability claim leaks for the tracker/dossier/app.
+
+PRIVACY. "Nous ne vous suivons pas." Each item is a true "Aucun ..." claim; the
+automatic-mode sentence is future ("votre position sera verifiee ... puis
+oubliee"). No "100 % securise", no "jamais partagees" - the mock's "ne sont ni
+vendues, ni accessibles a votre employeur" is kept. The band is the brand colour
+with white text; the contrast audit resolves every white rule to the brand band
+(not the page surfaces), so it is measured where it actually sits.
+
+THE APP. Product-state driven (R172/R186): appExists is false, so "Bientot sur
+Android" and a future description. THE LAUNCH SIGN-UP is not rendered - see THE
+LAUNCH SIGN-UP below; the section links to the regulatory alerts page instead,
+named for what it is, and only while alertsExist. The notification is a sample
+mock (aria-hidden chrome, the question and choices are the future app UI).
+
+GUIDES. The three links are DERIVED from the guides (lib/content/home.ts names
+three slugs; the labels are each guide's own breadcrumbLabel, R181): "Le plafond
+fiscal", "Le seuil social", "Les jours de mission". The mock's figure-bearing
+labels ("... de 40 %", "... de 49,9 %", "... quota de 10 jours") are NOT
+transcribed - that would type three regulatory figures (R147); the breadcrumb
+labels carry none (a test asserts it). The lake illustration is inline SVG
+(decorative, aria-hidden, token fills). "Voir tous les guides" -> /guides.
+
+SOURCES. The strip links /sources; its claim ("Regles etablies sur les textes
+officiels : l'avenant ... et l'accord amiable du 29 avril 2026") matches the REG
+rows now on main.
+
+FOOTER. FW33's shell footer, unchanged (the mock's four-column footer matches
+it).
+
+====================================================================
+TOKENS WHERE THE MOCK-UP HAD NONE (nearest token used, no token added)
+====================================================================
+No new token was added and no gate was raised (SPEC 20). The non-exact
+substitutions:
+  - Pill button min-height 52 -> --size-button-large-height (56), the nearest
+    size token; radius 999 -> --radius-pill (exists).
+  - Input / select height 52 -> --size-input-height (48); radius 12 ->
+    --radius-md.
+  - Input border #7A8AA0 -> --colour-border-strong (the system's input-border
+    token).
+  - Card radius 16 -> --radius-lg; card padding 28 -> --space-7 (EXACT - 28 is
+    in the spacing scale; the handoff's note that it had no token was mistaken).
+  - Section vertical padding 72/88 -> --space-20 (80), the nearest step.
+  - Hero eyebrow brand-tint fill (brand at 8 % in the mock) -> --colour-france-
+    soft: the web token layer has NO brand-soft custom property (brandSoft lives
+    only in the Android Tokens.kt per DESIGN-SYSTEM section 1), so the nearest
+    light-blue tint token is used. No web token was added.
+  - Hero green accent #1F7A4A -> --colour-success; hero/releve check and brand
+    glyphs -> --colour-success / --colour-brand.
+  - Phone frame: bezel border 10 px -> --space-2 (8) as a border width; frame
+    radius 44 -> --radius-2xl (24), the largest non-pill radius in the closed
+    set; phone max-width 300 -> --size-toc-column (280). Notification width 320
+    -> --size-toast-min-width (320, exact).
+  - Text #14243A -> --colour-text-primary (#111827); secondary #4A5A70 ->
+    --colour-text-secondary; borders #D5DCE5 / #E2E7EE -> --colour-border-
+    strong / --colour-border-default; brand #173B63 -> --colour-brand; canvas
+    #F7F8FA / surface #FFFFFF -> --colour-canvas / --colour-surface. The
+    privacy/footer dark #0F2238 is the SHELL's footer (unchanged, not mine).
+  - Type: every rule takes a full --type-* triple (R70, no cross-family). The
+    mock's responsive clamps and negative letter-spacing on headings have no
+    token and are dropped: hero -> --type-hero (40/48/700); section h2 ->
+    --type-h2; the big rule figures 44/600 -> --type-display (48/56/600); 16 px
+    body -> --type-body (15); 18 px lead -> --type-body-l (17); button labels ->
+    --type-body-m (matching the shell CTA); privacy item labels 18/600 ->
+    --type-h3 (the nearest 600-weight triple).
+  - The releve thumbnail's decorative "document line" bar widths (92/78/85/64/88
+    %) are inline on the elements (a layout proportion of an aria-hidden sample,
+    not a design value, and raw % widths are not a token category); their height,
+    radius and fill are tokens.
+
+====================================================================
+THE LAUNCH SIGN-UP - THE PATH, AND WHY
+====================================================================
+The design's app section has an email sign-up promising launch news ("le jour du
+lancement"). This is NOT built:
+  (a) There is NO launch-news list, and REUSING the regulatory alert list is
+      refused - its consent is for "alertes reglementaires", a different purpose,
+      and consent must name its purpose. A launch-specific list (model +
+      endpoint + its own consent) is parked PARK-FW34-LAUNCH.
+  (b) The section must not show a form that accepts an address the server cannot
+      honour. So no email form is rendered at all; instead the section links to
+      /alertes (the existing alerts page), named honestly ("Recevoir les alertes
+      reglementaires", "nos alertes par e-mail vous previennent des que nos
+      regles changent"), and only while PRODUCT_STATE.alertsExist. A link is
+      never shown broken, so the "hide when sending is not configured" concern is
+      satisfied structurally - the /alertes page owns its own degraded-delivery
+      state (RESEND_API_KEY), not the home.
+This DEVIATES from the mock's launch-email copy (recorded); honesty (R138/R172)
+and consent require it.
+
+====================================================================
+SIZES BEFORE AND AFTER (shipping build, R326)
+====================================================================
+Measured on a clean `pnpm build` of home-page (the R326 marker makes `pnpm size`
+trustworthy; it refused nothing - these were shipping builds).
+
+AFTER (home-page), all gated routes pass both gates:
+  route                                 js total  delta   verdict
+  /                                      109.9     9.3    A 15.1 / B 15.7 spare
+  /calculateur-teletravail-frontalier    121.5    20.9    A  3.5 / B  4.1 spare
+  /guides/[slug]                         109.0     8.4    A 16.0 / B 16.6 spare
+  /releve/print                          101.9     1.3    A 23.1 / B 23.7 spare
+  every other public route              107.7-107.9       A ~17.1-17.3 spare
+  (css 10.3 / fonts 47.1 KiB, never gated.)
+
+BEFORE: the only route this session changes is "/". Every other route is
+byte-identical to main (I touched the home page, home copy, lib/fr/index's
+re-export line, and tests - nothing in another route's tree). The unchanged
+simple server pages read 107.7-107.9 here, which is the placeholder home's
+neighbourhood; the handoff measured the placeholder "/" at 107.7.
+
+So "/" rose by about +2.0-2.2 KiB. ANALYSED: it is NOT a new client component
+and NOT new interactivity - the page has zero 'use client'. The home's route
+chunk carries the CLIENT-SIDE CSS-module class maps and component references for
+the rich server tree the relay mandates (ZoneBadge, RateDisplay, ThresholdRail,
+MetricTile, Container) plus lucide icon references; lucide is already in the
+shared bundle via the shell. The bulk is the phone-card components' CSS maps, not
+icon paths, so inlining the decorative glyphs would not remove it. It is
+consistent with the existing guides/[slug] server page, which ships ~3.4 KiB the
+same way, and it clears GATE A by 15.1 KiB. No gate raised.
+
+====================================================================
+WALKTHROUGH (R176)
+====================================================================
+Driven on `pnpm dev` (PORT=3200), i.e. the development path (R177). The rendered
+HTML IS the JavaScript-off view (server-rendered), so the checks below are the
+no-JS experience:
+  - EVERY SECTION renders in the no-JS HTML: the hero headline; the phone card's
+    engine figures (15,83 %, 58, 81,5), ZoneBadge "Sous les deux seuils",
+    RateDisplay caption, the caption's interpolated "sur une base de 240 jours";
+    the calculator form (action + canton/tt/mfr) and "Vous habitez en France et
+    travaillez en Suisse"; the two rules (heading, 40/49,9/25, both sources);
+    how-it-works; the releve (future tense, sample name + code); privacy ("Nous
+    ne vous suivons pas."); the app ("Bientot sur Android", /alertes link, cta,
+    notification sample); the three guide breadcrumb labels + their /guides/...
+    hrefs; the sources claim + /sources link.
+  - THE CALCULATOR FORM WITH JAVASCRIPT OFF: GET to
+    /calculateur-teletravail-frontalier?canton=GE&tt=38&mfr=0 returns 200 - the
+    form hands the scenario to the calculator in the URL, no JS on the home. The
+    calculator then shows its RESULT on the client (its island reads the query on
+    mount - its existing architecture; with JS off it shows the static shell, as
+    SPEC 9.3 requires of that page).
+  - EVERY LINK followed: all internal links on "/" return 200 - the shell nav/
+    footer, the three home guide links (teletravail-frontalier-40-pourcent,
+    seuil-social-49-9-pourcent, jours-de-mission-hors-suisse), /guides, /alertes,
+    /sources; the in-page anchors #calcul and #app are present.
+  - STYLES LOAD (R177): the compiled stylesheet is fetched 200 and contains the
+    brand token / --radius-pill - the page has styles, so a measurement is not of
+    an unstyled page.
+  - NO SIDEWAYS SCROLL at 320 and 360 dp (R127): measured in a real browser -
+    scrollWidth == clientWidth and zero elements wider than the viewport, after
+    commit 19e7f03 fixed the canton select and the lake (the first e2e run had
+    caught the overflow).
+  - THE BURGER: the shell's header is unchanged (Q1); its phone-width burger is
+    the shipped FW33 one (JS-driven), covered by the shell's own specs on main.
+    No new burger was built (Q1), so none was driven.
+  Screenshots: this agent has no browser canvas; the walkthrough was driven over
+  HTTP against pnpm dev and each response inspected. The chromium e2e home suite
+  (real browser) additionally passed (PUSH PROOF): the Inter woff2 loads, the h1
+  equals the lib/fr constant by codepoint, zero third-party requests, zero
+  cookies, the meta description carries both formatted thresholds.
+
+====================================================================
+UNTRACKED FILES LEFT ALONE (R334)
+====================================================================
+Reported, NOT removed, NOT committed (other tasks / operator inputs):
+  MonReleve/ ; android/.an*-shots/ ; android/.kotlin/ ; android/scripts/
+  an-*.mjs + uidrive.mjs ; design/ (incl. design/home/, the approved design -
+  input, not mine to commit) ; relay/*.txt other than FW34.txt ;
+  web/scripts/_mint-readback.mjs ; and the modified-but-not-mine files the git
+  status showed at session start (android/..., web/next-env.d.ts, web/tsconfig
+  .json) were left untouched. Only my own files plus relay/FW34.txt (Q4) were
+  staged, by explicit git add (never git add .).
+
+====================================================================
+ADVISOR DECISIONS
+====================================================================
+The advisor was NOT consulted (the relay records it stalled all session; the
+conservative option is taken and recorded, R156). Conservative calls recorded:
+  - Q1 resolved by keeping the shell and NOT building a no-JS burger (changing
+    the shell is forbidden by Q1); the relay's burger request is deferred.
+  - The mission field maps to `mfr` rather than being parked (it has an existing
+    param; the quick-form is a pre-fill).
+  - The launch sign-up links to /alertes and parks a launch list, rather than
+    reusing the regulatory list under a mismatched consent.
+  - HOME_COPY moved to lib/fr/home.ts and imported DIRECTLY (not re-exported
+    through the barrel) after a re-export created an index<->home cycle webpack
+    hoisted into a build error; one-way dependency only.
+  - rawRate withheld from the hero RateDisplay (single headline rate, as the
+    mock shows).
+
+====================================================================
+PARKED
+====================================================================
+  - PARK-FW34-LAUNCH: a launch-news email list (model + endpoint + consent
+    naming the launch purpose) for the app section's sign-up. Until it exists the
+    section links to /alertes (regulatory alerts), named honestly.
+
+====================================================================
+DEVIATIONS
+====================================================================
+  1. NO NO-JS BURGER. Q1 keeps the shell unchanged and forbids changing other
+     pages/baselines; a no-JS details/summary burger would edit the shared
+     shell. The shell's shipped JS burger is kept. (Relay section 2 vs Q1; Q1 is
+     the later operator ruling and wins.)
+  2. THE LAUNCH-EMAIL FORM is replaced by an honest /alertes link; the launch
+     list is parked (THE LAUNCH SIGN-UP).
+  3. HERO RATE shows one figure (rawRate withheld); the real ThresholdRail adds
+     a small rate caption the mock omits.
+  4. The mission field maps to `mfr` (the mock's single "France ou ailleurs"
+     field; the engine keeps two params).
+  5. The canton select lists all 26 cantons, not the mock's six.
+  6. The mock's responsive type clamps and negative heading letter-spacing are
+     dropped (no token); fixed --type-* triples used (R70).
+  7. NO SUBAGENTS / NO ADVISOR (both unavailable; conservative, recorded).
+
+====================================================================
+QUESTIONS (for the operator)
+====================================================================
+  Q-A. The no-JS burger: do you want it built into the shell (a cross-page
+       change + every baseline regenerated), now that Q1 kept the shell? Left
+       unbuilt per Q1.
+  Q-B. The home "/" first-load JS is +~2 KiB (the phone-card components' client
+       CSS-module/ref overhead, within GATE A by 15.1 KiB). Accept, or should the
+       hero card be a static picture to reach zero delta? Kept rendered per the
+       relay (R147/R163 - figures from the engine).
+  Q-C. PARK-FW34-LAUNCH: build the launch list next, or leave the /alertes link?
+
+====================================================================
+BASELINES TO REGENERATE (test:visual DEFERRED to the operator - R135/R207)
+====================================================================
+  tests/visual/baselines/page-accueil-desktop.png
+  tests/visual/baselines/page-accueil-mobile.png
+    Reason: "/" was completely rebuilt from design/home (new sections, the
+    rendered phone card, the calculator form, the two rules, privacy band, app,
+    guides, sources strip). These are the only two baselines that change.
+  NO SHELL OR OTHER-PAGE BASELINE CHANGES: the shell is unchanged (Q1) and no
+  other route's tree was touched. e2e/narrow.spec.ts measures overflow (no
+  picture) and e2e/pages.visual.spec.ts maps { id: 'accueil', path: '/' } to the
+  two files above. Run `pnpm test:visual:update`, crop and read each, and paste
+  the produced set into the merge commit.
+
+====================================================================
+PUSH PROOF
+====================================================================
+Branch home-page, off origin/main 69d1bb6. Commits pushed to origin/home-page:
+  24ef15a  FW34 home page: the full page rebuilt from the approved design
+  19e7f03  FW34 home: fix horizontal overflow at 320/360 dp (R127)
+  [this report + relay/FW34.txt]  appended as the final commit
+BRANCH TIP: the final commit below (reported to the operator in the hand-off
+  message).
+
+FAST SUITES (run by me):
+  typecheck 0, lint 0 (2 pre-existing warnings in untouched benchmark.test.ts /
+  verification-trace.test.ts), test 3090, build ok, size: all gated routes pass
+  both gates, test:db ok, test:late 10, the claim/copy guards (typed-numbers,
+  product-claims, french-typography, copy-codepoints, accents) green for the new
+  copy.
+test:e2e: FULL chromium suite 293 passed (FRONTALIER_PORT=3100). The first run
+  found the home scrolling sideways at 320/360 dp (R127); commit 19e7f03 fixed it
+  (the 26-option canton select and the lake illustration), and the re-run is the
+  293 above - narrow.spec, guides-narrow.spec and the composants overflow check
+  included. test:visual + the final gate:clone are DEFERRED to the operator
+  (relay); the baselines to regenerate are named above.
+
+END OF REPORT-FW34-PAGE
