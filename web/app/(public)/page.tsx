@@ -423,7 +423,12 @@ export default function HomePage() {
         <Container width="public">
           <div className={styles.guidesGrid}>
             <div className={styles.lake} aria-hidden="true">
-              <svg viewBox="0 0 480 220" width="100%" height="220" preserveAspectRatio="xMidYMid slice">
+              <svg
+                className={styles.lakeSvg}
+                viewBox="0 0 480 220"
+                width="100%"
+                preserveAspectRatio="xMidYMid meet"
+              >
                 <rect width="480" height="220" className={styles.lakeSky} />
                 <polygon points="0,150 90,70 160,130 250,50 340,120 420,80 480,110 480,220 0,220" className={styles.lakeFar} />
                 <polygon points="0,170 120,110 210,160 300,105 400,150 480,130 480,220 0,220" className={styles.lakeNear} />
