@@ -1,0 +1,337 @@
+REPORT-AN-ALERT.txt
+Mon Releve - AN-ALERT (task 3 of RUN-CHAIN-DECIDE)
+One alert when the year-end forecast would cross a threshold.
+
+(Pure ASCII by transport constraint, R155/R168. The authoritative, fully accented
+copy lives in android/.../fr/ - NotificationCopy, ParametresCopy, PrevisionCopy.)
+
+====================================================================
+HOW IT ENDED
+====================================================================
+DONE. The threshold alert is built as designed: one notification the FIRST time the
+year-end FORECAST would cross a regulatory threshold (40 % fiscal OR 49,9 % social),
+not again while it stays crossed, a fall-back-then-re-cross counting as a new
+crossing; opt-in (a contextual offer on the forecast screen plus its own switch in
+Parametres, off until on); the private content names the seuil while the lock screen
+carries nothing private (R323); its own channel "Seuils"; and NEVER two Mon Releve
+notifications the same day - when the evening reminder is due, the alert's sentence
+joins that one notification with its record buttons kept (AN-NOTIF merge). Every
+projection runs the EXISTING engine on an imagined year (R281) - no UI arithmetic -
+and a projection/alert is NEVER a record (R340).
+
+Branch: an-alert, off origin/main 9b160f7 (confirmed still at 9b160f7 - no rebase
+needed, R300). Branch tip: ca2fea1 (this report commits on top).
+
+:app:gate GREEN on every increment (assembleDebug, testDebugUnitTest incl. the new
+suites, checkTestFloor, ktlintCheck, detekt, verifyPaparazziDebug, the five release
+checks incl. checkReleaseNoDevComponent, checkMinifiedWireContract, checkLicences,
+lintDebug):
+  incr 1  9e84625  3m51s
+  incr 2  e0d76e4  4m1s
+  incr 3  6ecc446  5m17s
+  incr 4  a7ef32e  3m58s
+  incr 5  ca2fea1  2m1s
+pnpm gate:clone is DEFERRED to the orchestrator as instructed.
+
+====================================================================
+R273 - WHERE THIS TASK BELONGS IN tasks/todo.md
+====================================================================
+As AN-FORECAST and AN-SIM recorded: tasks/todo.md ends at Checkpoint E and knows
+nothing of the DECIDE chain; the Android series on disk already overtook it. AN-ALERT
+is the third of the paid-tools group (AN-FORECAST, AN-SIM, AN-ALERT, AN-RECON) in
+Phase 7 "Complete the app". It depends on AN-FORECAST (the imagined year, the rhythm
+store, the Prevision screen it offers from), AN-NOTIF (the evening reminder it merges
+with) and AN2/AN5b (the engine and the shared aggregation, R281). todo.md is an
+operator file; not edited (out of scope).
+
+====================================================================
+WHEN (each rule, its test)
+====================================================================
+The pure decision is decideThresholdAlert(optedIn, current, previous) in
+detection/ThresholdAlertDecision.kt. The crossing is projectedThresholdCrossing /
+crossingOf in forecast/ThresholdForecast.kt - it runs the EXISTING engine
+(dossier.forecastResults, R281) on the imagined year and reads its declarable rate
+against the RuleSet ceilings (R181 - the thresholds come from the RuleSet, never
+typed). Each WHEN rule has a JVM test and an on-device case.
+
+JVM (detection/ThresholdAlertDecisionTest.kt - test-first: RED on unresolved refs,
+then GREEN):
+  - "the first crossing of the fiscal threshold notifies"   not-crossed -> crossed = alert.
+  - "staying crossed does not notify again"                  crossed -> crossed = null.
+  - "falling back under then re-crossing notifies again"     crossed -> not-crossed (null,
+       state saved not-crossed) then -> crossed = alert (a new crossing).
+  - "crossing the social threshold notifies for social".
+  - "both thresholds crossing at once announces the graver social threshold".
+  - "opted out sends nothing and leaves the state untouched" optedIn=false = null,
+       state unchanged (so re-opting-in later evaluates from the last opted-in state).
+  - "no rhythm means no projection and no alert"             current=null = null.
+JVM (forecast/ThresholdForecastTest.kt):
+  - "crossingOf is inclusive on the compliant side (R32)"    40.00 not crossed, 40.01
+       crosses fiscal; 49.90 not crossed, 49.91 crosses social (same strict-> as zoneFor).
+  - "an all-suisse rhythm crosses neither threshold"         0 % via the real engine.
+  - "a three-day-a-week domicile rhythm crosses both thresholds"  ~65 % via the real
+       engine (teleworkDays stays under the 240 total, so the year is accepted).
+  - "no rhythm yields no crossing".
+
+The last crossing state per threshold is kept on the phone (settings/ThresholdAlert.kt
+- ThresholdAlertStore, sharing monreleve.detection so sign-out/deletion sweeps it,
+R289/R295/R303). The forecast is recomputed when the record or the rhythm changes
+(a MainShell LaunchedEffect keyed on the projected rate + the opt-in runs
+maybeAlertThreshold off the main thread) and once a day after the checks conclude
+(SamplingWorker, before the evening reminder). maybeAlertThreshold self-gates and
+posts NOTHING unless a threshold is newly crossed.
+
+ON-DEVICE (debug trigger ThresholdAlertActivity, post count as the discriminator -
+a post increments the system's per-day post_frequency count):
+  1 first crossing   POSTED (count 1->2)   (expect true)   PASS
+  2 staying crossed  NOT posted (2->2)      (expect false)  PASS
+  3a fall back       NOT posted (2->2)      (expect false)  PASS
+  3b re-cross        POSTED (2->3)          (expect true)   PASS
+  4 same-day merge   POSTED (3->4)          (expect true)   PASS
+  5 opt-out          NOT posted (4->4)      (expect false)  PASS
+
+====================================================================
+THE SAME-DAY MERGE
+====================================================================
+NEVER TWO MON RELEVE NOTIFICATIONS THE SAME DAY. The alert and the evening reminder
+SHARE notification id 1001, so at most one exists at a time, and both route through
+ONE composeDaily / EveningNotifier.postDaily (R206 - one home for the merge rule):
+  - both due   -> the evening reminder with the alert's sentence joined and the record
+                  buttons KEPT (NotificationCopy.alertTitle, the alert's one home);
+  - one due    -> that one;
+  - neither    -> nothing.
+JVM (detection/ThresholdAlertDecisionTest.kt): composeDaily tested four ways - Merged,
+Alert alone, Evening alone, None.
+maybeAlertThreshold, on a new crossing, computes the evening notice (ignoring the
+once-a-day gate, so a reminder already shown is replaced by the merged one with its
+buttons) and posts the composed result; maybeNotifyEvening, when it posts, joins any
+alert that already fired today. In SamplingWorker the alert runs BEFORE the reminder,
+so a coinciding crossing posts ONE merged notification and the reminder then skips.
+
+ON-DEVICE case 4 (a concluded working day - the S9 clock was 23:16 Paris, past the
+17:00 last check window - with no entry, evening opted in): ONE notification,
+channel=monreleve.evening.proposal, ACTIONS=3 (the record buttons En Suisse / Domicile
+/ Autre KEPT), title "Ou avez-vous travaille aujourd'hui ?" with the date AND the
+joined alert sentence "Votre rythme prevu depasser..." (screenshot notif-04-merge.png).
+vis=PRIVATE with a publicVersion. The post count rose by exactly one.
+
+====================================================================
+THE LOCK SCREEN (R323 - nothing private)
+====================================================================
+The alert is VISIBILITY_PRIVATE with a separate PUBLIC version that names no figure
+and no threshold - only that there is information about the year.
+CODE (detection/ThresholdAlertNotifierTest.kt, in :app:gate):
+  - the lock-screen (public) lines carry no "seuil", no digit, no "%";
+  - the private (unlocked) title DOES name the seuil (so the redaction is real, not
+    vacuous);
+  - the public version uses alertPublicLines and NOT the threshold title; no actions;
+  - the alert opens the forecast and posts on the shared id (never two a day).
+DEVICE (adb shell dumpsys notification --noredact): the posted alert is
+  StatusBarNotification(pkg=ch.monreleve.app ... id=1001 ...
+    Notification(channel=monreleve.threshold.alert ... vis=PRIVATE
+      publicVersion=Notification(channel=monreleve.threshold.alert ... vis=PUBLIC ...)))
+confirming the private/public split and the own channel "Seuils". The public version's
+TEXT is not expanded by this Samsung ROM's dumpsys (it dumps the structure, not the
+redacted extras); its content is proven by the code test above. The operator's manual
+PIN check (set a PIN, lock, confirm only the neutral public line shows, remove the PIN)
+remains for a secured/31+ device, as in AN-NOTIF - I did NOT set a screen lock.
+The private content, read in the shade (screenshot notif-01-first-crossing.png):
+  "Mon Releve - Votre rythme prevu depasserait le seuil d'imp.. / C'est une projection
+   de fin d'annee : touchez pour voi.." - names the seuil, says it is a projection,
+   and the tap opens the forecast (EXTRA_OPEN_FORECAST, wired in MainActivity).
+
+====================================================================
+R340 - A PROJECTION/ALERT IS NEVER A RECORD (the "nothing written" test)
+====================================================================
+THE COMPUTE IS PURE: projectedThresholdCrossing / crossingOf and decideThresholdAlert
+/ composeDaily take values and return values (no store, no DAO, no network, no clock
+but the parameter). The engine run inside is forecastResults, which ForecastR340Test
+(foundation, green) proves writes nothing.
+THE SOURCE SCAN (detection/ThresholdAlertR340Test.kt, NEW, in :app:gate): asserts the
+alert's files (ThresholdForecast, ThresholdAlertDecision, settings/ThresholdAlert,
+EveningNotifier) contain NO entry-write seam (.record( / .upsert( / RecordCommand), so
+a future edit that tried to record a day from the alert path turns it red. It composes
+with Fence 7 (detection/ never references EntryRepository/RecordCommand).
+THE DEVICE STORE PROOF (the handover deliverable). monreleve.db was read after all
+WHEN cases (7 alert triggers, several notifications posted, including the merge):
+  entry        0   (unchanged - no day recorded)
+  pending      0   (the mutation queue - unchanged)
+  daily_tally  0   (unchanged)
+  weekly_rhythm 1  (the rhythm set via the UI - a planning preference, R341, the ONE
+                    allowed local write; NOT a record)
+COMPUTING AND FIRING THE ALERT WROTE NOTHING TO THE RECORD: PASS. The server is never
+called (the alert is all local engine); the releve, the PDF and the annex have no seam
+from the alert path at all.
+
+====================================================================
+WALKTHROUGH ON THE S9 (adb 232bcd8c300c7ece, API 29)
+====================================================================
+Driven by android/scripts/an-alert-walkthrough.mjs (UNTRACKED, left untracked like its
+AN-* siblings) against the debug APK :app:gate built. Session + settings + account +
+NAME injected through the R284 debug seams (the AN-FORECAST name-into-settings-prefs
+step, so start = MAIN). The crossing is controlled by the employmentRate in the
+settings prefs: it is late in the year (device clock Mon 12 Oct 2026), so few days
+remain to imagine; a smaller simplified total (employmentRate 55 -> 132 days) makes a
+fixed all-domicile rhythm cross 40 % (~44 %), a full total (100 -> 240) keeps it under
+(~24 %). No DECADE seed -> the account's record is empty, so the alert's reading and
+the Prevision screen agree.
+
+DEBUG-ONLY TRIGGER, PROVEN ON THE BUILT APK (aapt2 dump xmltree):
+  DEBUG   app-debug.apk        declares ch.monreleve.app.dev.ThresholdAlertActivity.
+  RELEASE app-release-unsigned.apk  declares ZERO ch.monreleve.app.dev.* components.
+(checkReleaseNoDevComponent asserts the same in the gate.)
+
+DRIVEN, each described (shots in android/.an-alert-shots/, cropped and looked at, R178):
+  - Parametres -> "Votre rythme habituel" -> set every weekday Domicile (01-rythme-domicile).
+  - "Voir ma prevision" -> Prevision: "Projection", "Si vous gardez ce rythme",
+    "Aujourd'hui, votre releve" 0,00 % beside "Fin decembre, projection" 43,93 %
+    (over the 40 % fiscal ceiling - "Regime non applicable", "5,5 jours au-dessus de
+    40 %", "7,5 jours avant 49,9 %"). Scrolling to the bottom of the card reveals the
+    CONTEXTUAL OFFER: a bordered, tappable row with a bell icon and "Me prevenir si mon
+    rythme approche d'un seuil" (02-prevision-offer). OFFER VISIBLE: true.
+  - Tapping the offer opts in (API 29 needs no permission) and the offer DISAPPEARS
+    (03-prevision-after-optin). OFFER HIDDEN AFTER OPT-IN: true.
+  - Parametres "Enregistrement": the ALERT SWITCH "M'avertir si j'approche d'un seuil"
+    with its description "Une alerte la premiere fois que votre rythme prevu depasserait
+    le seuil fiscal ou le seuil de securite sociale. Une projection, jamais votre
+    releve." - its own switch, ungated by detection (05-parametres-alert-switch).
+  - The five WHEN cases through the debug trigger (notif-01..05, dumpsys per case):
+    first crossing posts the alert ("Votre rythme prevu depasserait le seuil d'imp..",
+    channel Seuils, vis=PRIVATE + publicVersion); staying crossed posts nothing; fall
+    back posts nothing; re-cross posts; the same-day merge posts ONE notification with
+    the record buttons (actions=3) and the alert sentence joined; opt-out posts nothing.
+  - 200 % (font_scale 2.0): Parametres (06) and Prevision (07) legible, NO horizontal
+    overflow, content scrolls, the bottom buttons pinned. The offer sits below the
+    forecast card (scroll-reachable, as AN-FORECAST's "Voir ma prevision" link does).
+    font_scale restored to 1.0.
+
+====================================================================
+BASELINES REGENERATED (R135 / R207)
+====================================================================
+Prevision only (the offer renders below the forecast while the alert is off), each
+cropped and looked at (R178):
+  previsionCompliant       REGEN - the offer now renders below the card at default scale.
+  previsionOverFiscal      REGEN - same.
+  previsionAlertEnabled    NEW   - the compliant screen with alertEnabled=true, proving
+                                   the offer HIDES once opted in (R154 positive signal).
+NOT regenerated (byte-identical, R207): previsionCompliantLarge, previsionWithUnrecorded
+(the offer falls below the captured viewport there), previsionInvitation(+Large) (no
+projection -> no offer). No Parametres baseline exists for the sections list (only the
+rate dialog, unaffected), so the alert row has no baseline; it is covered on-device.
+
+====================================================================
+UNTRACKED FILES LEFT ALONE (R334)
+====================================================================
+Reported, never removed, never committed: MonReleve/ (the orchestrator's scratch dir),
+android/.an*-shots/ (several, plus the new .an-alert-shots this walkthrough writes),
+android/.kotlin/, android/scripts/an-*.mjs (many, plus android/scripts/an-alert-
+walkthrough.mjs this session WROTE as its own device-drive helper - left untracked like
+its siblings), relay/*.txt operator files, web/ working-tree changes present before this
+session. Only this task's own files were committed, by explicit `git add` (and
+`git add -f` for the ch/monreleve/ Kotlin + snapshot files - see DEVIATIONS).
+
+====================================================================
+ADVISOR DECISIONS
+====================================================================
+The advisor was NOT used (the orchestrator recorded it had stalled all session; R156).
+Conservative, reversible, instruction-following choices, recorded:
+  - TRIGGERS. The in-app "recompute on record/rhythm change" is a MainShell
+    LaunchedEffect keyed on the projected rate + the opt-in, calling maybeAlertThreshold
+    off the main thread (no new WorkManager plumbing); the once-a-day background trigger
+    is the SamplingWorker; the walkthrough's debug trigger is ThresholdAlertActivity.
+    maybeAlertThreshold self-gates and the engine computes the crossing, so firing from
+    the foreground posts nothing unless a threshold is newly crossed (R340).
+  - BOTH THRESHOLDS AT ONCE -> announce the GRAVER (social). Crossing 49,9 % always
+    implies 40 % is crossed, and losing the Swiss regime is the worse consequence; the
+    fiscal state is still recorded so it does not alert again while it stays crossed.
+  - THE ALERT'S CHANNEL is "Seuils", its own channel (silenced apart from the evening
+    reminder); the two notifications SHARE id 1001 so there are never two a day.
+  - THE PARAMETRES SWITCH sits in "Enregistrement" (with the notification toggles) and
+    is UNGATED by detection - the alert reads the forecast, not the position, so it needs
+    no location consent. R153: its description names the seuils, never a typed value.
+  - THE PREVISION OFFER sits BELOW the forecast card (scroll-reachable), so it does not
+    reorder the approved design hierarchy; the design has no offer, so it is added
+    minimally at the end (above the existing buttons). Recorded; trivial to move higher.
+  - THE ALERT READS ENTRIES via db.entryDao().all() (the maybeNotifyEvening single-
+    user-device convention); on a real device this equals the account's record (sign-out
+    clears the DB, R295), and the walkthrough confirmed the alert and the Prevision
+    screen agree. If strict account-scoping is wanted it is a one-line change
+    (observeAllForAccount) - flagged under QUESTIONS, not blocking.
+
+====================================================================
+PHONE SETTINGS RESTORED
+====================================================================
+Only font_scale was changed (to 2.0 for the 200 % shots) and restored to 1.0. NO
+screen lock was set (the operator's manual check; a PIN left behind would lock the
+operator out). mock_location was never touched (D18). VERIFIED after the run:
+  font_scale=1.0, auto_time=1, auto_time_zone=1, always_finish_activities=0,
+  mock_location=0, stay_on_while_plugged_in=7 (pre-existing, left as found),
+  no secure screen lock set.
+
+====================================================================
+PARKED
+====================================================================
+No new PARKAN blocking item. The operator's manual PIN lock-screen check (set/remove a
+PIN on a secured device and confirm only the neutral public line shows) remains, the
+same deferral AN-NOTIF recorded (PARKAN-47 family); the code-side lock-screen assertion
+(ThresholdAlertNotifierTest) and the dumpsys structural proof are done. The PARKAN
+register is the orchestrator's.
+
+====================================================================
+DEVIATIONS
+====================================================================
+  - .gitignore (operator file) has `MonReleve/`, which on this case-insensitive Windows
+    filesystem ALSO matches the `ch/monreleve/` path component, so every Kotlin file
+    (and the Paparazzi snapshots under the same tree) is ignored. Committed with
+    `git add -f`; NOT fixed (editing an operator file is out of scope). Carried from
+    AN-FORECAST / AN-SIM.
+  - The ktlint function-signature rule and detekt MaxLineLength conflicted on two
+    expression-body one-liners (ktlint wants them joined, detekt rejects >120 chars);
+    resolved by shortening the content (settings/ThresholdAlert.kt activeThresholdToday
+    via takeIf; NotificationCopy.alertPublicLines shorter text). Recorded.
+  - WALKTHROUGH INSTRUMENT CHOICES (device setup only, not product changes): the merge
+    test set evening.enabled=true via run-as prefs, because the Parametres evening SWITCH
+    is gated behind auto-detection in the UI while the evening DECISION only needs the
+    opt-in flag (R339's Manual branch needs no auto mode); and the crossing was tuned via
+    employmentRate in the settings prefs (the late-year date leaves few imagined days).
+    Git-Bash mangles `/data/local/tmp` paths for inline adb, so the .mjs (Node
+    execFileSync) does all device writes.
+
+====================================================================
+QUESTIONS
+====================================================================
+  1. The alert reads entries cross-account (db.entryDao().all(), the maybeNotifyEvening
+     convention). On a single-user device this equals the account's record; strict
+     account-scoping (observeAllForAccount) is a one-line change if preferred. Not
+     blocking.
+  2. The Prevision offer placement (below the forecast card, scroll-reachable) - ratify,
+     or prefer it above the card for more prominence? (Below keeps the approved hierarchy
+     intact.)
+
+====================================================================
+PUSH PROOF
+====================================================================
+Branch: an-alert, off origin/main 9b160f7 (confirmed still at 9b160f7 on finish - no
+rebase, R300). Branch tip: ca2fea1 (this report commits on top).
+
+Commits pushed to origin/an-alert (each on a GREEN :app:gate):
+  9e84625  incr 1  the threshold-alert core (decision, merge rule, engine crossing, store)
+  e0d76e4  incr 2  the alert notifier, its own channel, the same-day merge glue
+  6ecc446  incr 3  the opt-in - the Parametres switch and the Prevision offer
+  a7ef32e  incr 4  the background trigger (SamplingWorker) and the debug-only trigger
+  ca2fea1  incr 5  the R340 source-scan test (the alert never records a day)
+  (+ this report commit)
+
+Diff touches ONLY android/ (app source, tests, four/one snapshot files, the debug
+manifest) and this report. No web/, no fixtures/, no /v1, no server or Room schema. New
+ch/monreleve/ files were `git add -f`'d (the .gitignore match).
+
+Checks run by me:
+  :app:gate              GREEN per increment (see HOW IT ENDED; last 2m1s on ca2fea1).
+  built-APK dev check    ThresholdAlertActivity present in debug, ABSENT in release (aapt2).
+  on-device walkthrough  all five WHEN cases PASS, the same-day merge PASS, the R340
+                         store proof (entry/pending/tally unchanged) PASS, the dumpsys
+                         lock-screen split (vis=PRIVATE + publicVersion) confirmed.
+  pnpm gate:clone        DEFERRED to the orchestrator (as instructed).
+
+END OF REPORT-AN-ALERT.txt
