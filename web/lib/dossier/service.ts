@@ -166,10 +166,18 @@ export class MissingTitulaireError extends Error {
  * into a contract SPEC 14 freezes, which is the drift R206 exists to prevent
  * arriving where it is most expensive to undo.
  *
- * Its genuinely unique fields - regime, missionCap, creditedMissionDays and
- * the two taxed-day counts - are not in SPEC 12's document structure. R217
- * permits ADDITIVE response fields under the freeze, so any of them can be
- * added later as its own named field rather than as a nested duplicate.
+ * Its genuinely unique fields - regime, missionCap and the two taxed-day
+ * counts - are not in SPEC 12's document structure. R217 permits ADDITIVE
+ * response fields under the freeze, so any of them can be added later as its
+ * own named field rather than as a nested duplicate.
+ *
+ * TWO OF THEM NOW ARE (PARKAN-49): `creditedMissionDays` - items 3 and 5 of the
+ * accountant's list, how many mission days were counted against the annual cap -
+ * and `rateWithoutMissions`, the declarable rate the engine returns for the
+ * same person with their missions removed. Both are ADDITIVE and R217-legal: a
+ * client built per docs section 6.5 ignores keys it does not know, so no field
+ * is renamed, removed or re-meant. The first is read straight off the engine
+ * `result`; the second is a second engine run (R281), never arithmetic here.
  *
  * ONE HOME (R206): the route iterates this list, the contract test reads it,
  * and the payload cannot gain a field that the document does not describe.
@@ -188,6 +196,9 @@ export const DOSSIER_RESPONSE_FIELDS = [
   'annex',
   'absenceDays',
   'recordedEntries',
+  // PARKAN-49, additive under the freeze (R217). Both computed by the engine.
+  'creditedMissionDays',
+  'rateWithoutMissions',
 ] as const;
 
 /**
@@ -266,6 +277,23 @@ export interface Dossier {
    * ROWS, not days: a half-day pair is two of them. Named for what it counts.
    */
   readonly recordedEntries: number;
+  /**
+   * PARKAN-49, item 5 of the accountant's list. How many mission days were
+   * COUNTED against the annual cap - France and third state together, the same
+   * total the `missionDays` tile sums. It is `result.creditedMissionDays` read
+   * through, never a second count: when the regime is lost it is 0 though the
+   * tile shows twelve, which is exactly the fact the document could not state
+   * before (12 logged, 0 counted).
+   */
+  readonly creditedMissionDays: number;
+  /**
+   * PARKAN-49, item 3. The declarable rate WITHOUT the missions - telework
+   * alone, so it can never exceed the fiscal ceiling when telework is under it.
+   * Computed by the ENGINE on the same person with their mission rows removed
+   * (R281), never arithmetic over the tiles: `rateWithoutMissions <=
+   * declarableRate` always, with equality when no mission day is credited.
+   */
+  readonly rateWithoutMissions: number;
   /**
    * The date, as an ISO day, the holder name changed WITHIN this tax year, or
    * null when it did not. R331: the document shows one line - "Nom modifie le
@@ -447,6 +475,18 @@ export function buildDossier(
   // until somebody changes one of them.
   const { periodFraction } = toTeleworkInput(user, entries, taxYear);
 
+  // PARKAN-49: the rate WITHOUT the missions, COMPUTED BY THE ENGINE (R281), not
+  // arithmetic over the tiles. The same person, the same denominator and period,
+  // with the mission rows removed - so the engine returns telework alone. A
+  // second run rather than a division keeps the one-computation rule (FW12): a
+  // rate divided here would agree with the engine until the day one of them
+  // changed its truncation.
+  const rateWithoutMissions = annualResult(
+    user,
+    entries.filter((entry) => entry.kind !== 'MISSION_FR' && entry.kind !== 'MISSION_THIRD'),
+    taxYear,
+  ).declarableRate;
+
   return {
     taxYear,
     period: {
@@ -489,6 +529,9 @@ export function buildDossier(
 
     absenceDays: counts.absenceDays,
     recordedEntries: entries.length,
+    // PARKAN-49, both additive (R217) and both from the engine.
+    creditedMissionDays: result.creditedMissionDays,
+    rateWithoutMissions,
     nameChangedAt: nameChangedAt === null ? null : nameChangedAt.toISOString().slice(0, 10),
     result,
   };
