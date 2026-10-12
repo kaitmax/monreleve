@@ -67,6 +67,42 @@ private const val MONDAY_VALUE = 1
 private const val FRIDAY_VALUE = 5
 
 /**
+ * How many WEEKDAYS from the start of the year (or the activity start, whichever is later) up to and
+ * INCLUDING [today] carry no recorded entry. The forecast screen states this in words (AN-FORECAST
+ * section 2): past days left unrecorded are NOT imagined - they are neither in [recordedDays] nor in the
+ * imagined set (which starts the day AFTER today) - so without saying how many, a reader could read the
+ * projection as if those days were accounted for.
+ *
+ * Holidays and leave are NOT deducted here either, for the same reason imaginedEntriesToYearEnd does not
+ * deduct them: on the 240-day basis an un-deducted count overstates what is missing, so the nudge warns
+ * early rather than hiding a gap. Pure: [today] is the only clock (R28), resolved once by the caller.
+ */
+fun unrecordedPastWorkdays(
+    recordedDays: Set<String>,
+    today: LocalDate,
+    taxYear: Int,
+    activityStartIso: String?,
+): Int {
+    var start = LocalDate.of(taxYear, 1, 1)
+    if (activityStartIso != null) {
+        val activityStart = LocalDate.parse(activityStartIso)
+        if (activityStart.isAfter(start)) start = activityStart
+    }
+    var last = today
+    val yearEnd = LocalDate.of(taxYear, 12, 31)
+    if (last.isAfter(yearEnd)) last = yearEnd
+    if (start.isAfter(last)) return 0
+
+    var count = 0
+    var day = start
+    while (!day.isAfter(last)) {
+        if (day.dayOfWeek.value in MONDAY_VALUE..FRIDAY_VALUE && day.toString() !in recordedDays) count++
+        day = day.plusDays(1)
+    }
+    return count
+}
+
+/**
  * The two engine results a forecast shows: today's figure from the record alone, and the December
  * projection from the record plus the imagined days. Both run through the ONE aggregation and the ONE
  * engine (R281, R340), so the screen reads figures rather than computing them.
