@@ -82,6 +82,9 @@ object PrevisionCopy {
 
     const val R340_NOTE = "Une projection ne figure jamais dans votre relevé."
 
+    /** AN-SIM: the live entry point to the simulator (R85 - omitted while the simulator did not exist). */
+    const val TEST_CHANGE = "Tester un changement"
+
     const val MODIFY_RHYTHM = "Modifier mon rythme"
 
     const val INVITE_BODY = "Indiquez votre rythme habituel pour voir votre projection de fin d’année."

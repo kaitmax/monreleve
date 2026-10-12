@@ -20,6 +20,7 @@ import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.RhythmRepository
 import ch.monreleve.app.detection.DetectionScheduling
 import ch.monreleve.app.detection.SharedPrefsNearBorderNoticeStore
+import ch.monreleve.app.forecast.SimulationSnapshot
 import ch.monreleve.app.onboarding.SettingsSaver
 import ch.monreleve.app.parametres.ParametresSnapshot
 import ch.monreleve.app.settings.SettingsStore
@@ -95,6 +96,10 @@ fun rememberMainControllers(
     var savedSelection by rememberSaveable { mutableStateOf<SelectionSnapshot?>(null) }
     // ParametresSnapshot is Serializable, so the default autoSaver stores it (no custom Saver).
     var savedParametres by rememberSaveable { mutableStateOf<ParametresSnapshot?>(null) }
+    // AN-SIM (R310): the simulator's open scenario and its inputs. SimulationSnapshot is Serializable, so the
+    // default autoSaver stores it in the Bundle, which outlives a config change AND a background kill. Null = the
+    // simulator has not been opened (or its state has not settled). The computed view is NOT stored (R181).
+    var savedSimulation by rememberSaveable { mutableStateOf<SimulationSnapshot?>(null) }
     // AN-AUTO increment 2 (R315): the device's logging-mode cache, built at the composition boundary where a
     // Context is available (ui/ and the controllers may not touch one). Persistent across rebuilds by itself
     // (SharedPreferences), so it needs no rememberSaveable.
@@ -106,6 +111,7 @@ fun rememberMainControllers(
                 settingsSaver, revokeServer, localStore, authenticatedPost,
                 restoredCalendar = CalendarSnapshot(savedMonth, savedEditingDay, savedSelection),
                 restoredParametres = savedParametres,
+                restoredSimulation = savedSimulation,
                 detectionModeStore = SharedPrefsDetectionModeStore(context),
                 // R315/incr 4: enabling auto mode starts the WorkManager sampler; disabling stops it at once
                 // and clears the day's cursor. The permission that lets a wake get a fix is granted by R316's
@@ -150,6 +156,14 @@ fun rememberMainControllers(
                     signOutOpen = s.signOutPrompt != null,
                     deleteOpen = s.deletePrompt != null,
                 )
+        }
+    }
+    // AN-SIM (R310): snapshot the simulator's chosen scenario and its raw inputs, so a rebuild reopens the same
+    // scenario with the same half-entered values. The computed view is left out by construction - it is recomputed
+    // from the record and the rhythm on restore (R181), never stored.
+    LaunchedEffect(controllers) {
+        controllers.simulation.state.collect { s ->
+            savedSimulation = SimulationSnapshot(scenario = s.scenario, inputs = s.inputs)
         }
     }
     return controllers
