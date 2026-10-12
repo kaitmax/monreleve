@@ -74,6 +74,7 @@ import ch.monreleve.app.design.FrontierTheme
 import ch.monreleve.app.design.LightColors
 import ch.monreleve.app.detection.BACKGROUND_LOCATION
 import ch.monreleve.app.detection.EXTRA_OPEN_AUJOURDHUI
+import ch.monreleve.app.detection.EXTRA_OPEN_FORECAST
 import ch.monreleve.app.detection.EveningNotifier
 import ch.monreleve.app.detection.FINE_LOCATION
 import ch.monreleve.app.detection.POST_NOTIFICATIONS_PERMISSION
@@ -606,6 +607,11 @@ internal fun MainShell(
             tab = AppTab.AUJOURDHUI
             controllers.aujourdhui.refresh()
             activity.intent.removeExtra(EXTRA_OPEN_AUJOURDHUI)
+        }
+        // AN-ALERT: a threshold-alert tap opens the forecast overlay (R340: it records nothing - it only reads).
+        if (activity?.intent?.getBooleanExtra(EXTRA_OPEN_FORECAST, false) == true) {
+            forecastRoute = ForecastRoute.PREVISION
+            activity.intent.removeExtra(EXTRA_OPEN_FORECAST)
         }
     }
 
