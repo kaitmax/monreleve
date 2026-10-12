@@ -120,7 +120,7 @@ internal fun ParametresSettingsColumn(
         verticalArrangement = Arrangement.spacedBy(Spacing.space16),
     ) {
         Text(text = ParametresCopy.TITLE, style = FrontierType.h2)
-        SituationSection(committed, callbacks.onEdit)
+        SituationSection(committed, callbacks.onEdit, actions.onOpenRhythm)
         SaisieSection(state, actions, callbacks.onLearnMore)
         CompteSection(onSignOut = actions.onRequestSignOut)
         DonneesSection(onExport = callbacks.onExport, onDelete = actions.onRequestDelete)

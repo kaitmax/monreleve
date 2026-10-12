@@ -8,6 +8,8 @@ import ch.monreleve.app.calendar.SlotEdit
 import ch.monreleve.app.data.remote.DossierResult
 import ch.monreleve.app.data.repo.FakeEntryDao
 import ch.monreleve.app.data.repo.LocalEntryRepository
+import ch.monreleve.app.data.repo.RhythmRepository
+import ch.monreleve.app.data.repo.WeeklyRhythm
 import ch.monreleve.app.onboarding.SettingsSaver
 import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
@@ -16,6 +18,8 @@ import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.ints.shouldBeGreaterThanOrEqual
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import java.time.Clock
@@ -64,6 +68,17 @@ private fun localStore(): LocalStore =
         override suspend fun clearForDeletion() = Unit
     }
 
+// AN-FORECAST: a stub rhythm store. The ForecastController is not a DayWriter, so it is outside this test's
+// requestSync census; the repository just has to exist for the graph to build.
+private fun rhythmRepository(): RhythmRepository =
+    object : RhythmRepository {
+        override fun observe(): Flow<WeeklyRhythm> = flowOf(WeeklyRhythm())
+
+        override suspend fun save(rhythm: WeeklyRhythm) = Unit
+
+        override suspend fun clear() = Unit
+    }
+
 // The day-writers the graph builds, enumerated by TYPE off MainControllers' own properties (reflection),
 // never a hand-kept list: a controller added to the holder that implements DayWriter is covered here
 // without editing this test. KNOWN LIMIT: a day-writer the graph builds but does NOT store on
@@ -81,6 +96,7 @@ class MainGraphWiringTest : FunSpec({
             val controllers =
                 MainGraph.build(
                     repository = LocalEntryRepository(FakeEntryDao(), fixedClock),
+                    rhythmRepository = rhythmRepository(),
                     settingsStore = store(),
                     taxYear = TAX_YEAR,
                     clock = fixedClock,
@@ -118,6 +134,7 @@ class MainGraphWiringTest : FunSpec({
             val controllers =
                 MainGraph.build(
                     repository = LocalEntryRepository(dao, fixedClock),
+                    rhythmRepository = rhythmRepository(),
                     settingsStore = store(),
                     taxYear = TAX_YEAR,
                     clock = fixedClock,

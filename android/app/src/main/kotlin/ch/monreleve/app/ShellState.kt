@@ -17,6 +17,7 @@ import ch.monreleve.app.calendar.SelectionSnapshot
 import ch.monreleve.app.data.local.MonReleveDatabase
 import ch.monreleve.app.data.remote.DossierResult
 import ch.monreleve.app.data.repo.EntryRepository
+import ch.monreleve.app.data.repo.RhythmRepository
 import ch.monreleve.app.detection.DetectionScheduling
 import ch.monreleve.app.detection.SharedPrefsNearBorderNoticeStore
 import ch.monreleve.app.onboarding.SettingsSaver
@@ -71,6 +72,7 @@ fun rememberShellTab(): MutableState<AppTab> = rememberSaveable { mutableStateOf
 @Composable
 fun rememberMainControllers(
     repository: EntryRepository,
+    rhythmRepository: RhythmRepository,
     store: SettingsStore,
     taxYear: Int,
     clock: Clock,
@@ -100,8 +102,8 @@ fun rememberMainControllers(
     val controllers =
         remember {
             MainGraph.build(
-                repository, store, taxYear, clock, scope, requestSync, dossierFetch, exportBytes, settingsSaver,
-                revokeServer, localStore, authenticatedPost,
+                repository, rhythmRepository, store, taxYear, clock, scope, requestSync, dossierFetch, exportBytes,
+                settingsSaver, revokeServer, localStore, authenticatedPost,
                 restoredCalendar = CalendarSnapshot(savedMonth, savedEditingDay, savedSelection),
                 restoredParametres = savedParametres,
                 detectionModeStore = SharedPrefsDetectionModeStore(context),
