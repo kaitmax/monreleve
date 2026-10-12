@@ -118,8 +118,8 @@ class SimulationControllerTest : FunSpec({
         runTest {
             val rhythmRepo =
                 CountingRhythmRepository(WeeklyRhythm(tuesday = RhythmKind.DOMICILE, thursday = RhythmKind.DOMICILE))
-            // A rebuild (rotation / text-size / dark mode / background kill): the composition root hands the saved
-            // scenario + inputs back through MainGraph.build. The controller reopens on that selection, not the default.
+            // A rebuild (rotation / text-size / dark mode / kill): the composition root hands the saved scenario
+            // + inputs back through MainGraph.build, so the controller reopens on that selection, not the default.
             val restored = SimulationSnapshot(scenario = SimScenario.RATE, inputs = SimInputs(targetRate = "80"))
             val controller =
                 SimulationController(rhythmRepo, ThrowingEntryRepository(), settingsStore, 2026, clock, this, restored)

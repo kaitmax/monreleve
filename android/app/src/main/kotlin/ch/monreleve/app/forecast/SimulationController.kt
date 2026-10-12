@@ -41,6 +41,9 @@ private val WEEKDAYS =
 private const val MIN_RATE = 1
 private const val MAX_RATE = 100
 
+// LongParameterList suppressed as CalendarController's is: the restorable `restored` seed is the 7th
+// constructor dependency (R310), the same shape the calendar/parametres controllers already carry.
+@Suppress("LongParameterList")
 class SimulationController(
     rhythmRepo: RhythmRepository,
     entryRepo: EntryRepository,

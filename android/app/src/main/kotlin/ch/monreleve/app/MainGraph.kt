@@ -162,7 +162,13 @@ object MainGraph {
             // Seeded with restoredSimulation so the open scenario and its inputs survive a rebuild (R310).
             simulation =
                 SimulationController(
-                    rhythmRepository, repository, settingsStore, taxYear, clock, scope, restoredSimulation,
+                    rhythmRepository,
+                    repository,
+                    settingsStore,
+                    taxYear,
+                    clock,
+                    scope,
+                    restoredSimulation,
                 ),
         )
 }
