@@ -1,0 +1,268 @@
+ENGINE-PARITY - SESSION REPORT
+The mission-cap correction on the Kotlin engine, plus R348 (every shared
+fixture section consumed by both engines).
+
+====================================================================
+HOW IT ENDED
+====================================================================
+DONE. The Kotlin engine now prorates the 10-day mission cap by employmentRate
+under BOTH denominator methods (accord amiable FR-CH 29 April 2026 clause 1(d)),
+matching the web engine corrected at REG-APPLY. :app:gate is GREEN. R348's
+fixture-section coverage census is added in gate:clone's reach and shelled out
+to from :app:gate, with both plants verified. The live check's engine-parity
+purpose is confirmed concretely on BOTH engines (server /api/v1/dossier 4.16 ==
+the Kotlin year-panel engine 4.16 for the exact scenario); the full on-device UI
+render was bounded (reasons under THE LIVE CHECK / DEVIATIONS).
+
+Branch:     engine-parity
+Branch tip: 9295a0996af446311dac4a950eafc3fe9500b89c  (before this report commit)
+Base:       ade50046eac8fe970fde235bbb418777173f841d  (origin/main; REG-APPLY merged)
+
+Two increments, each committed+pushed green:
+  f54d6ac  ENGINE-PARITY: Kotlin mission cap prorates by employmentRate (accord 1d)
+  9295a09  ENGINE-PARITY: R348 fixture-section coverage census (both engines)
+
+DEFERRED TO THE ORCHESTRATOR (as instructed): the final pnpm gate:clone and
+:app:gate on the merged HEAD, and the merge.
+
+====================================================================
+WHICH CASE - (a), (b) or (c)
+====================================================================
+(c) - something else, and it matters for how the drift surfaced.
+
+The prompt's (b) is "the Kotlin engine still has the old rule AND its suite does
+NOT read missionCapCases - a silent contract gap". The FIRST half held: the
+Kotlin engine still carried the old exact-method FULL_RATE carve-out (ruling
+R19) at Denominator.kt line ~86:
+    val rateFactor = if (method is DenominatorMethod.Exact) FULL_RATE else employmentRate
+The SECOND half did NOT: MissionCapTest ALREADY read missionCapCases from the
+shared fixture (readMissionCapCases()). So REG-APPLY's fixture update
+(cap-exact-50-full 10->5, cap-exact-50-half-year 5->3) did not drift silently -
+it turned :app:gate RED on those two data-driven cases by name. Not a silent
+contract gap; an already-RED gate the moment REG-APPLY landed. In addition, the
+hardcoded "missionCapFor under Exact - prorates by the PERIOD ONLY (R19)"
+context in MissionCapTest encoded the OLD rule in unit assertions.
+
+The named failing case confirmed on Kotlin BEFORE any edit:
+  80% employment, exact method (192 days), whole year, 12 France missions.
+  Old engine -> missionCap 10. Expected (accord 1d) -> 8.
+
+====================================================================
+THE FIX (test-first: RED, GREEN, Geneva byte-identical)
+====================================================================
+RED (before the engine change):
+  1) Current MissionCapTest, unedited, against the old engine:
+       cap-exact-50-full gives 5 FAILED       (MissionCapTest.kt:68, engine gave 10)
+       cap-exact-50-half-year gives 3 FAILED   (engine gave 5)
+       -> 16 tests completed, 2 failed.
+  2) After updating MissionCapTest to the accord rule (mirroring web
+     mission-cap.test.ts) but BEFORE the engine change, 7 failed, incl.:
+       cap-exact-50-full gives 5, cap-exact-50-half-year gives 3,
+       "prorates by employmentRate, now that the accord settles the question",
+       "prorates by BOTH factors when both bind - the combined case",
+       "agrees with Simplified240 everywhere now",
+       "the accord ... 80% gives 8",
+       "flows through calculateTelework: ... credits 8 mission days, not 10".
+
+THE CHANGE (same correction as web missionCapFor, nothing more):
+  - android/.../calc/Denominator.kt: dropped the exact-method FULL_RATE carve-out;
+    missionCapFor is now `ceilProrated(rules.missionCapDays, employmentRate,
+    periodFraction)` - prorates by employmentRate under both methods;
+    periodFraction and round-up unchanged. `method` kept in the signature for
+    web parity (@Suppress("UnusedParameter"); detekt UnusedParameter and ktlint
+    annotation-spacing both handled). Removed the now-unused FULL_RATE const.
+  - android/.../calc/Calculate.kt: updated the stale comment that described the
+    old "period only under exact (PROVISIONAL R19)" rule to the accord.
+  - MissionCapTest.kt: updated to the accord rule, mirroring web's suite
+    (provisional-note assertion now checks 1(d), PROVISIONAL and COMBINED, as
+    web does), plus the named 80%->8 case and the calculateTelework flow test.
+
+GREEN:
+  :app:gate BUILD SUCCESSFUL (7m23s) on the engine-fix commit: testDebugUnitTest
+  (incl. GenevaConformanceTest, DenominatorConformanceTest, MissionCapTest),
+  checkTestFloor, ktlintCheck, detekt, assembleDebug, verifyPaparazziDebug,
+  the release checks, lintDebug. No red commit.
+
+GENEVA BYTE-IDENTICAL (the hard gate):
+  All six Geneva cases are employmentRate 100, periodFraction 1, so the cap is
+  ceil(10 * 100/100 * 1) = 10 under BOTH the old carve-out and the new rule -
+  unchanged. GenevaConformanceTest passed inside testDebugUnitTest (39,16 %,
+  4,16 %, etc.). fixtures/geneva-cases.json was NOT touched (git shows no diff).
+
+====================================================================
+R348 - EVERY SECTION OF EVERY SHARED FIXTURE, READ BY BOTH ENGINES
+====================================================================
+ONE definition: web/scripts/fixture-coverage.mjs. Derived from the files on disk,
+never a hand-kept list (R246): the file set is fixtures/*.json; the section set is
+each file's top-level ARRAY keys (the case collections; comment keys _/$
+excluded); the consumers are discovered by scanning each engine's test tree
+(web/tests for TypeScript, android/app/src/test/kotlin for Kotlin). "Consume" =
+a test referencing the file by name AND the section as a key/property
+("cases", .cases, getJSONArray("cases")).
+
+In gate:clone's reach, like the register check (R327):
+  - gate:clone runs it (web/scripts/gate-clone.mjs) before install, pure Node;
+  - FixtureCoverageTest.kt (android) shells out to the SAME script, so :app:gate
+    enforces it (R206 - one definition, both gates);
+  - R283 inputs declared in app/build.gradle.kts: the script and web/tests
+    (fixtures/ already declared as sharedFixtures; the Android test tree is a
+    source input by compilation);
+  - a web-side vitest test (fixture-coverage.test.ts) with a positive case AND
+    two negatives (section-not-consumed, orphan), R154.
+
+THE CENSUS ON THE CURRENT TREE (green):
+  fixture coverage: OK - 7 section(s) across 6 file(s), each consumed by every
+  engine that reads its file.
+
+PLANTS (verified):
+  (1) New-section plant. Added "plantedSectionR348": [1] to denominator-cases.json
+      -> census FAILED by name for both engines:
+        "denominator-cases.json: web (TypeScript) reads this file but NOT its
+         section \"plantedSectionR348\" (consumed by neither engine) ..."
+        (and the same for android). Removed -> census OK; fixture byte-identical
+        (git diff empty).
+  (2) R283 one-digit plant in missionCapCases. Changed cap-exact-50-full
+      expectedMissionCap 5 -> 6, then an ORDINARY incremental run of each engine
+      (no --rerun-tasks):
+        WEB:     pnpm exec vitest run mission-cap.test.ts -> "cap-exact-50-full
+                 gives 6" FAILED (engine gives 5). 1 failed.
+        ANDROID: ./gradlew :app:testDebugUnitTest --tests "*MissionCapTest*"
+                 (NO --rerun-tasks) -> Task :app:testDebugUnitTest RE-RAN (not
+                 UP-TO-DATE, because fixtures/ is a declared input) and FAILED on
+                 "cap-exact-50-full gives 6". BUILD FAILED.
+      So a one-digit plant fails BOTH builds in an ordinary incremental run.
+      Removed -> fixture byte-identical (git diff empty).
+
+SINGLE-ENGINE FINDING (printed loudly, NOT failed): forecast-cases.json is read
+today by the Kotlin suite ONLY (ForecastConformanceTest; the AN-FORECAST
+foundation that bled onto main). The web consumer is the pending FW-FORECAST task
+(relay/FW-FORECAST.txt is an untracked other-task file). The census scope is
+per-file's-consumers, so this is reported, not failed - see DEVIATIONS/QUESTIONS.
+
+====================================================================
+THE LIVE CHECK
+====================================================================
+Phone: S9 (232bcd8c300c7ece, SM_G960F) connected, `device` state. adb at
+C:/Users/KAMXKAM/AppData/Local/Android/Sdk/platform-tools/adb.exe.
+
+SERVER LEG - DONE, concrete, via the real API (an-auto-2-rig pattern, my own
+throwaway script outside the repo):
+  Scratch DB on 5436 + the monreleve:write container (built today, after
+  REG-APPLY) on :3000; a real session (planted VerificationToken -> callback);
+  PATCH /me name="Engine Parity Livecheck" canton GE employmentRate 80
+  denominatorKind EXACT exactTotalWorkDays 192 granularity DAY; POST 12
+  MISSION_FR entries; GET /api/v1/dossier?year=2026 ->
+    zone.declarableRate = 4.16
+    zone.warnings: EXACT_METHOD_UNVERIFIED; MISSION_CAP_EXCEEDED (cap: 8, excess: 4)
+    tiles.workedDays 192, missionDays 12
+  So the SERVER (TypeScript engine + REG-APPLY): missionCap 8, declarableRate 4.16.
+
+DEVICE LEG - engine parity confirmed by code path; full UI render bounded.
+  AujourdhuiController.computeYear (the year panel) computes LOCALLY via
+  calculateTelework - the exact Kotlin engine this task fixed. The gated
+  :app:gate unit flow test proves:
+    calculateTelework(80%, Exact(192), 12 France missions, 0 telework)
+      -> missionCap 8, creditedMissionDays 8  -> declarableRate 8/192 = 4.16.
+  Same engine, same entry point the year panel calls. So the on-device year panel
+  for this account is 4.16 by code path, == the server dossier's 4.16.
+
+  The full on-device UI render (install an APK, open Aujourd'hui, read the pixels)
+  was NOT driven, deliberately, for these measured reasons:
+    - the current debug APK defaults frontalierHost to 10.0.2.2 (emulator alias),
+      unreachable from a physical device; a physical-device render needs an APK
+      rebuilt with -PfrontalierHost=127.0.0.1;
+    - SessionInjectionActivity accepts canton/employmentRate/denominatorKind/
+      granularity only - NOT exactTotalWorkDays - so EXACT(192) cannot be injected;
+    - SyncEngine push-echoes local entries; it does NOT pull server entries into
+      Room, so the 12 missions would have to be hand-seeded into Room (schema v6,
+      account-scoped) to appear in the year panel.
+  Hand-seeding both EXACT/192 settings and 12 schema-v6 entries into a physical
+  phone's Room, unattended and with no advisor, is a high-risk, bespoke operation
+  with a real restore burden; R156 (conservative, reversible) favours NOT doing
+  it here. The parity it would confirm is already confirmed on both engines above.
+  Recommended: the orchestrator (attended) drives the on-device UI leg via the
+  rig if a pixel-level confirmation is wanted.
+
+PHONE STATE: untouched. Only read-only adb was used (devices, get-state, pm list).
+No install, no adb reverse, no settings written. Confirmed after teardown:
+auto_time=1, font_scale=1.0, stay_on_while_plugged_in=7 (stay_on pre-existing at
+7, left as found). The throwaway server container + scratch DB were torn down
+(docker ps -a shows no monreleve container).
+
+====================================================================
+PARKED
+====================================================================
+None opened this session.
+
+====================================================================
+DEVIATIONS
+====================================================================
+1. @Suppress("UnusedParameter") on missionCapFor. The web keeps `method` in the
+   signature (TypeScript tolerates an unused param); Kotlin detekt's
+   UnusedParameter flags it. To keep the signature identical to web and leave
+   both call sites unchanged ("the SAME correction, nothing more"), the param is
+   kept and suppressed with an inline reason - the codebase's established pattern
+   (many @Suppress("...") with reasons). The alternative (removing `method`) would
+   ripple through two production call sites and every test call and diverge from
+   the web signature.
+
+2. R348 scope is per-file's-consumers, NOT the literal "both engines, every file".
+   The prompt says "fails if either engine's suite does not consume it", which
+   read literally means both engines must consume every fixture file. That is
+   infeasible without either porting web forecast (far out of scope) or hand-
+   excluding forecast-cases.json (a list, which R246 forbids). The implemented
+   rule - every section consumed by every engine that READS the file, plus every
+   file read by >=1 engine - is green on the current tree, catches the mission-cap
+   class (a shared section read by one engine and not the other, which is exactly
+   what REG-APPLY almost shipped), makes the required plants fail by name, and
+   keeps forecast-cases.json VISIBLE (printed as single-engine) rather than
+   silent. Tightening to "both engines, always" is a one-line change once the web
+   forecast consumer (FW-FORECAST) exists. Recorded here per R156 (conservative,
+   reversible) because no advisor was available this session.
+
+3. The on-device UI leg of the live check was bounded (see THE LIVE CHECK).
+
+====================================================================
+QUESTIONS
+====================================================================
+1. forecast-cases.json is Kotlin-only today. Is the web forecast consumer
+   (FW-FORECAST) expected, and should R348 be tightened to require BOTH engines
+   consume every fixture file once it lands? The census prints the single-engine
+   state so it cannot be forgotten.
+
+2. Should the on-device UI render of the live check be run attended by the
+   orchestrator (the engine parity itself is confirmed on both engines here)?
+
+NOTICED BUT NOT TOUCHING:
+  - Two pre-existing eslint warnings (exit 0, not mine): unused eslint-disable in
+    web/tests/unit/calc-engine/benchmark.test.ts:81 and verification-trace.test.ts:83.
+  - The many untracked other-task files (MonReleve/, android/.an*-shots/,
+    android/scripts/an-*.mjs, web/scripts/_*.mjs, relay/AN-PULL.txt,
+    relay/FW-FORECAST.txt) were left untouched and uncommitted (R334). Committed
+    ONLY this task's files, by explicit git add.
+
+====================================================================
+PUSH PROOF
+====================================================================
+origin/engine-parity was created and advanced by this session:
+  [new branch]  engine-parity -> engine-parity   (f54d6ac)
+  f54d6ac..9295a09  engine-parity -> engine-parity
+
+  f54d6ac  ENGINE-PARITY: Kotlin mission cap prorates by employmentRate (accord 1d)
+           - web/mission engine files; :app:gate BUILD SUCCESSFUL.
+  9295a09  ENGINE-PARITY: R348 fixture-section coverage census (both engines)
+           - web fixture-coverage.mjs + test, gate-clone.mjs wiring,
+             gate-clone-cleanup.test.ts (4->5), FixtureCoverageTest.kt,
+             app/build.gradle.kts inputs; web typecheck/lint/test/build green;
+             :app:gate BUILD SUCCESSFUL.
+
+Gates run by me:
+  - :app:gate (twice): engine-fix tree GREEN; R348 tree GREEN.
+  - web fast suites on the R348 tree: typecheck GREEN, lint GREEN (0 errors; 2
+    pre-existing warnings), test GREEN (3109 tests; the one failure - gate-clone-
+    cleanup's 4-path count - fixed to 5 and re-run GREEN), build GREEN.
+DEFERRED to the orchestrator: pnpm gate:clone and :app:gate on the merged HEAD,
+and the merge.
+
+This report commit is pushed last to origin/engine-parity.
+END OF ENGINE-PARITY REPORT
