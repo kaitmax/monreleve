@@ -51,8 +51,8 @@ import ch.monreleve.app.ui.screens.rythme.ForecastTopBar
 // the assumptions are stated in words, and the "Une projection ne figure jamais dans votre releve" line is
 // always shown. Every figure comes from the engine (Projection), never computed here (FW12): zoneFor/statusFor
 // are pure display mappings, formatPercent/formatSignedDays format, and the remaining-day tiles read the
-// engine result. R85: the design's "Tester un changement" simulator link is a dead target until AN-SIM, so it
-// is OMITTED here. Stateless (fence 5), tokens only.
+// engine result. R85: the design's "Tester un changement" primary button opens the simulator - a LIVE target
+// since AN-SIM, so it is shown (it was omitted while the simulator did not exist). Stateless (fence 5), tokens only.
 
 private const val PERCENT = 100.0
 private const val FISCAL_DECIMALS = 0
@@ -63,6 +63,8 @@ private const val TILE_WEIGHT = 1f
 
 data class PrevisionActions(
     val onModifyRhythm: () -> Unit = {},
+    // AN-SIM: open the simulator ("Tester un changement"), now live (R85).
+    val onTestChange: () -> Unit = {},
     val onBack: () -> Unit = {},
 )
 
@@ -96,7 +98,12 @@ fun PrevisionScreen(
             if (projection == null) {
                 PrimaryButton(label = PrevisionCopy.INVITE_CTA, onClick = actions.onModifyRhythm)
             } else {
-                TertiaryButton(label = PrevisionCopy.MODIFY_RHYTHM, onClick = actions.onModifyRhythm)
+                // AN-SIM: "Tester un changement" (primary) opens the simulator - now a live target (R85);
+                // "Modifier mon rythme" stays the secondary text link.
+                Column(verticalArrangement = Arrangement.spacedBy(Spacing.space12)) {
+                    PrimaryButton(label = PrevisionCopy.TEST_CHANGE, onClick = actions.onTestChange)
+                    TertiaryButton(label = PrevisionCopy.MODIFY_RHYTHM, onClick = actions.onModifyRhythm)
+                }
             }
         }
     }

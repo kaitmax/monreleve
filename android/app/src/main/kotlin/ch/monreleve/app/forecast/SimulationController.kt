@@ -48,14 +48,17 @@ class SimulationController(
     taxYear: Int,
     private val clock: Clock,
     scope: CoroutineScope,
+    // AN-SIM (R310): the restorable selection, seeded on a rebuild (rotation / text-size / dark mode / kill) so the
+    // scenario and its inputs survive; the view is recomputed, never stored (R181). Null on a fresh build.
+    restored: SimulationSnapshot? = null,
 ) {
     private val settings: Settings? = settingsStore.load()
     private var today: LocalDate = LocalDate.parse(todayInParis(clock))
     private var currentTaxYear: Int = taxYear
     private var rhythm: WeeklyRhythm = WeeklyRhythm()
     private var entries: List<EntryEntity> = emptyList()
-    private var scenario: SimScenario = SimScenario.EXTRA_WEEKDAY
-    private var inputs: SimInputs = SimInputs()
+    private var scenario: SimScenario = restored?.scenario ?: SimScenario.EXTRA_WEEKDAY
+    private var inputs: SimInputs = restored?.inputs ?: SimInputs()
 
     private val mutableState = MutableStateFlow(SimulationState())
     val state: StateFlow<SimulationState> = mutableState.asStateFlow()

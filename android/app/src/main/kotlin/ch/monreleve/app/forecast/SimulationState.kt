@@ -31,7 +31,18 @@ data class SimInputs(
     val missionsFrance: String = "",
     /** MISSIONS: missions in a third state. */
     val missionsThird: String = "",
-)
+) : java.io.Serializable
+
+/**
+ * The simulator's restorable selection (R310): the scenario and its inputs, so a rotation, a text-size change, a
+ * dark-mode switch or a background kill reopens the same scenario with the same inputs. Serializable, so the
+ * composition root's rememberSaveable stores it in the saved-instance-state Bundle, which outlives process death.
+ * The computed view is NOT stored - it is recomputed from the record and the rhythm on restore (R181).
+ */
+data class SimulationSnapshot(
+    val scenario: SimScenario,
+    val inputs: SimInputs,
+) : java.io.Serializable
 
 data class SimulationState(
     val scenario: SimScenario = SimScenario.EXTRA_WEEKDAY,

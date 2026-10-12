@@ -114,6 +114,25 @@ class SimulationControllerTest : FunSpec({
         }
     }
 
+    test("a restored snapshot reopens the same scenario and its inputs (R310)") {
+        runTest {
+            val rhythmRepo =
+                CountingRhythmRepository(WeeklyRhythm(tuesday = RhythmKind.DOMICILE, thursday = RhythmKind.DOMICILE))
+            // A rebuild (rotation / text-size / dark mode / background kill): the composition root hands the saved
+            // scenario + inputs back through MainGraph.build. The controller reopens on that selection, not the default.
+            val restored = SimulationSnapshot(scenario = SimScenario.RATE, inputs = SimInputs(targetRate = "80"))
+            val controller =
+                SimulationController(rhythmRepo, ThrowingEntryRepository(), settingsStore, 2026, clock, this, restored)
+            advanceUntilIdle()
+
+            controller.state.value.scenario shouldBe SimScenario.RATE
+            controller.state.value.inputs.targetRate shouldBe "80"
+            // Restoring recomputes the view from the record and the rhythm; it writes nothing (R181, R340).
+            controller.state.value.view.shouldNotBeNull()
+            rhythmRepo.saveCount shouldBe 0
+        }
+    }
+
     test("the rate field is seeded to the current rate, and the weekday to the first available day") {
         runTest {
             val rhythmRepo =
