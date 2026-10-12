@@ -37,7 +37,9 @@ const summary = (page: Page) => page.getByRole('banner').locator('summary');
 const panel = (page: Page) => page.getByRole('banner').locator('[data-mobile-panel]');
 
 test.describe('the phone menu with JavaScript OFF', () => {
-  test.use({ viewport: PHONE, javaScriptEnabled: false });
+  // The nojs PROJECT supplies javaScriptEnabled: false (R346). Only the
+  // viewport is this suite's own.
+  test.use({ viewport: PHONE });
 
   test('opens from the markup alone, and shows every destination', async ({ page }) => {
     await goToServedPage(page, '/');

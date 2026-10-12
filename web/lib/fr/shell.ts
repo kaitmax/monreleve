@@ -41,9 +41,20 @@ export const SHELL_COPY = {
   /** <nav aria-label>. A second nav arrives with the footer, so it is named. */
   navLabel: 'Navigation principale',
 
-  /** The mobile disclosure trigger: a 44x44 icon button still needs a name. */
+  /**
+   * The phone disclosure's trigger: a 44x44 icon button still needs a name.
+   *
+   * ITS PAIR IS GONE, and the absence is the point. `menuClose` ("Fermer le
+   * menu") existed because FW9's useState hamburger renamed itself when open.
+   * FW-SHELL-BURGER made the menu a details/summary, which cannot rename
+   * itself without the script the change exists to do without - and does not
+   * need to, because the browser reports expanded/collapsed from the element.
+   * The string then reached no surface at all, which is R238's case, and it
+   * named no state it was waiting for, which is the only thing that would
+   * have earned it a place on that census's allow-list. So it was removed
+   * rather than declared. tests/unit/fr/shell-reachable.test.ts found it.
+   */
   menuOpen: 'Ouvrir le menu',
-  menuClose: 'Fermer le menu',
 
   /**
    * The phone panel's own landmark name (FW-SHELL-BURGER).

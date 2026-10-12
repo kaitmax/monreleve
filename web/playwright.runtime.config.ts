@@ -33,6 +33,17 @@ export default defineConfig({
     baseURL: BASE_URL,
     trace: 'on-first-retry',
   },
+
+  // RULING R345, and this config takes no screenshots TODAY - which is the
+  // whole reason it is here. A config that says nothing about tolerance has
+  // accepted Playwright's 0.2 by default, so the first baseline anyone adds
+  // to this suite would inherit the allowance that let a 1 px border change
+  // on every page pass as "unchanged" (FW-SHELL-BURGER). R267: a finding that
+  // names a second site is not closed until that site is checked.
+  expect: {
+    toHaveScreenshot: { threshold: 0, maxDiffPixels: 0 },
+  },
+
   projects: [{ name: 'runtime-guard', use: { ...devices['Desktop Chrome'] } }],
 
   webServer: {

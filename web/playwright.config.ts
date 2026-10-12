@@ -79,7 +79,29 @@ export default defineConfig({
       // configured server, where it asserts the opposite of what is true.
       // Exactly the ESLint flat-config trap - a narrower scope silently
       // deleting a broader rule - one config file over.
-      testIgnore: ['**/*.visual.spec.ts', '**/*.runtime.spec.ts'],
+      testIgnore: ['**/*.visual.spec.ts', '**/*.runtime.spec.ts', '**/*.nojs.spec.ts'],
+    },
+    {
+      // RULING R346: a "works without JavaScript" claim is backed by a test,
+      // and the policy lives HERE rather than in each spec.
+      //
+      // It was per-test until FW-FORECAST's increment 0: seven blocks across
+      // four files each set javaScriptEnabled: false for themselves, some by
+      // test.use and some by building their own context. Nothing then said
+      // which surfaces make the claim, so a journey could claim it and have
+      // no test - and the home page's own GET form was exactly that, written
+      // in FW34 and never driven with scripting off.
+      //
+      // THE FILENAME IS THE ENUMERATION (R246). A spec that ends .nojs.spec.ts
+      // is collected here and nowhere else, so tomorrow's no-JS journey -
+      // FW-FORECAST's rhythm among them - is enumerated on the day it is
+      // written rather than added to a list somebody maintains.
+      // tests/unit/meta/no-js-coverage.test.ts closes the other half: it
+      // DISCOVERS the product's no-JS mechanisms and fails on one that no
+      // spec here covers.
+      name: 'nojs',
+      use: { ...devices['Desktop Chrome'], javaScriptEnabled: false },
+      testMatch: '**/*.nojs.spec.ts',
     },
     {
       // Not part of `pnpm test:e2e`: these must never run outside the

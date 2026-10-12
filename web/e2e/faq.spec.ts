@@ -55,24 +55,4 @@ test.describe('the inline FAQ', () => {
     await expect(summaries.nth(2)).toBeFocused();
   });
 
-  test('serves every answer with JavaScript disabled', async ({ browser }) => {
-    // THE ASSERTION THE STRUCTURED DATA DEPENDS ON. increment 3 publishes
-    // these answers as FAQPage; a claim a reader cannot see is cloaking, and
-    // "cannot see" includes a crawler that runs no script. A context with
-    // JavaScript off is the closest thing to that reader.
-    const context = await browser.newContext({ javaScriptEnabled: false });
-    const page = await context.newPage();
-
-    await page.goto(CALCULATOR_PATH);
-
-    const answers = await page.locator('[data-faq] details > p').allTextContents();
-
-    expect(answers.length).toBe(3);
-
-    for (const answer of answers) {
-      expect(answer.length).toBeGreaterThan(80);
-    }
-
-    await context.close();
-  });
 });

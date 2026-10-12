@@ -116,19 +116,41 @@ describe('every visual spec compares at zero tolerance (R114)', () => {
   // is read from the config object rather than grepped out of its source - a
   // string scan cannot tell `threshold: 0` from `threshold: 0.2`, which is
   // the only distinction that matters here.
-  it('sets a project-wide ZERO tolerance, which the default does not', async () => {
-    const config = (await import('@/playwright.config')).default;
+  // EVERY Playwright config, not only the one that happens to take the
+  // screenshots today (R267). playwright.runtime.config.ts captures none, so
+  // it was outside the finding - and "outside the finding" is exactly how a
+  // second site stays open until somebody reads the report back. A config
+  // that is silent about tolerance is a config that has accepted 0.2, whether
+  // or not it has yet taken a picture.
+  const CONFIGS = ['playwright.config', 'playwright.runtime.config'] as const;
+
+  it('finds every Playwright config, so the census below is not vacuous', () => {
+    const onDisk = readdirSync(WEB).filter(
+      (name) => name.startsWith('playwright.') && name.endsWith('.config.ts'),
+    );
+
+    expect(onDisk.length, 'no Playwright config found at the package root').toBeGreaterThan(0);
+    expect(
+      onDisk.map((name) => name.replace(/\.ts$/u, '')).sort(),
+      'a Playwright config exists that this test does not read - classify it',
+    ).toEqual([...CONFIGS].sort());
+  });
+
+  it.each(CONFIGS)('%s sets a project-wide ZERO tolerance, which the default does not', async (
+    name,
+  ) => {
+    const config = (await import(`@/${name}`)).default;
     const screenshot = config.expect?.toHaveScreenshot;
 
     expect(
       screenshot,
-      'playwright.config.ts sets no expect.toHaveScreenshot, so Playwright ' +
-        "applies its own threshold of 0.2 - a 20 % per-pixel colour allowance " +
-        'that R114 forbids and that no spec-level scan can see.',
+      `${name}.ts sets no expect.toHaveScreenshot, so Playwright applies its ` +
+        'own threshold of 0.2 - a 20 % per-pixel colour allowance that R114 ' +
+        'forbids and that no spec-level scan can see.',
     ).toBeDefined();
 
-    expect(screenshot?.threshold, 'threshold must be exactly 0 (R114)').toBe(0);
-    expect(screenshot?.maxDiffPixels, 'maxDiffPixels must be exactly 0 (R114)').toBe(0);
+    expect(screenshot?.threshold, 'threshold must be exactly 0 (R114, R345)').toBe(0);
+    expect(screenshot?.maxDiffPixels, 'maxDiffPixels must be exactly 0 (R114, R345)').toBe(0);
   });
 
   it('still allows stylePath, which removes causes rather than hiding them', () => {

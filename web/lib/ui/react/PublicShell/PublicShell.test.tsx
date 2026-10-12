@@ -414,8 +414,10 @@ describe('a disclosure with two children', () => {
 //     already answers - and it is exactly what could not be kept in sync
 //     without JavaScript.
 //   - the trigger no longer RENAMES itself to "Fermer le menu" for the same
-//     reason. SHELL_COPY.menuClose stays in lib/fr (nothing else used it) and
-//     is unused by this component; noted in the report.
+//     reason. SHELL_COPY.menuClose was then reachable from no surface at all
+//     and named no state it was waiting for, so FW-FORECAST's increment 0
+//     removed it under R238 - see tests/unit/fr/shell-reachable.test.ts,
+//     which is the census that found it.
 //
 // What a browser must answer instead - that it opens with scripting disabled,
 // that every row is 44 px, that the focus ring survives - is in

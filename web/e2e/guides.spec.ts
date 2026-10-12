@@ -148,21 +148,6 @@ test.describe('the article template', () => {
     expect(toc.width).toBe(280);
   });
 
-  test('serves the whole article with JavaScript disabled', async ({ browser }) => {
-    // R136: content ships zero client JavaScript, so content must not NEED
-    // any. A crawler that runs no script and a reader on a bad connection see
-    // the same article.
-    const context = await browser.newContext({ javaScriptEnabled: false });
-    const page = await context.newPage();
-
-    await page.goto(FIXTURE);
-
-    await expect(page.locator('h1')).toBeVisible();
-    await expect(page.locator('[data-prose] h2').first()).toBeVisible();
-    await expect(page.locator('[data-prose] a').first()).toBeVisible();
-
-    await context.close();
-  });
 
   test('lists every section, and every anchor lands on a heading', async ({ page }) => {
     // THE FAILURE THIS CATCHES is a table of contents that looks complete
@@ -198,19 +183,6 @@ test.describe('the article template', () => {
     expect(outline).toEqual(document_);
   });
 
-  test('the outline needs no JavaScript either', async ({ browser }) => {
-    const context = await browser.newContext({ javaScriptEnabled: false });
-    const page = await context.newPage();
-
-    await page.goto(FIXTURE);
-
-    // R136: the outline is links and CSS. No active-item highlight ships -
-    // see TableOfContents.module.scss for why - so there is nothing here
-    // that a script would have had to turn on.
-    await expect(page.locator('[data-toc] a').first()).toBeVisible();
-
-    await context.close();
-  });
 
   test('links the calculator twice, inline THEN the end card (SPEC 9.5)', async ({
     page,
