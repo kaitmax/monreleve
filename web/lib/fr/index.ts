@@ -6,8 +6,6 @@
 // argument, exactly as one naming a threshold takes the formatted figure. The
 // flags are facts; this file holds words.
 
-import type { ProductState } from '@/lib/content/product-state';
-
 /**
  * THE PRODUCT NAME, accented, and the single source R188 names.
  *
@@ -34,89 +32,17 @@ export const WORKBENCH_TITLE = 'Composants — workbench';
 
 
 // ---------------------------------------------------------------------------
-// THE PLACEHOLDER HOME (FW10 increment 1). The real homepage is FW20; this
-// exists so the public shell is visible and so / is not a blank route while
-// the legal pages are built around it.
+// THE HOME PAGE (FW34). Its copy lives in lib/fr/home.ts - a dedicated module
+// per page, the way calculateur.ts and sources.ts are. Import it directly:
+// `import { HOME_COPY } from '@/lib/fr/home'`.
 //
-// TODO-COPY: realistic French, not reviewed. It makes the product's claim in
-// one sentence and promises nothing the engine cannot compute.
+// NOT RE-EXPORTED HERE, and the reason is a build error, not a preference.
+// home.ts imports APP_NAME from this barrel (home -> index); re-exporting
+// HOME_COPY from home would close the loop (index -> home -> index), and
+// webpack's production bundling hoisted the two into a temporal-dead-zone
+// "Cannot access 'd' before initialization" when /api/health pulled the chain
+// in. One direction only - home depends on the barrel, the barrel on nothing.
 // ---------------------------------------------------------------------------
-
-export const HOME_COPY = {
-  heading: 'Combien de jours de télétravail vous reste-t-il ?',
-
-  /**
-   * The meta description, and it was MISSING until the increment 6 Lighthouse
-   * run said so - SEO 91, "Document does not have a meta description", on the
-   * one page the whole SEO strategy points at. The three legal pages each had
-   * one; the home page, which FW20 rewrites, had none, and nothing would have
-   * noticed.
-   *
-   * SPEC 14 wants the thresholds named in the description, and they are -
-   * but R147 says a figure is never TYPED, so both arrive as arguments,
-   * already formatted, exactly as CALCULATEUR_COPY.description takes its own.
-   *
-   * IT WAS A CONSTANT WITH THE FIGURES IN IT until FW18b, and it is the
-   * clearest case the extended scan found: the description of the one page
-   * the whole SEO strategy points at, promising two thresholds by value, in a
-   * file whose five neighbours each carry a comment explaining why that must
-   * not be done.
-   *
-   * AND IT TOOK THE STATE FOR THE SAME REASON, in FW20b. It ended "puis tenez
-   * le registre horodaté de vos journées" - an instruction to use a register
-   * that does not exist, on the sentence Google prints under the product's
-   * name. It is the FOURTH instance of the defect R172 was issued about and
-   * the one FW20's read-through could not have found: a read-through reads
-   * pages, and a meta description is never on one.
-   */
-  description: (fiscal: string, social: string, state: ProductState): string =>
-    'Calculez votre part de télétravail annuelle et les jours qui vous ' +
-    `restent avant les seuils de ${fiscal} et ${social}` +
-    (state.trackerExists ? ', puis tenez le registre horodaté de vos journées.' : '.'),
-
-  // THE PRODUCT NAMES ITSELF HERE, so it derives. It read "frontalier
-  // calcule..." until FW20c - the product name typed into prose, which is the
-  // occurrence R188's scan is for.
-  intro:
-    `${APP_NAME} calcule votre part de télétravail annuelle et le nombre de jours ` +
-    "qu’il vous reste avant les deux seuils qui comptent : celui de l’imposition " +
-    'et celui de la sécurité sociale.',
-
-  /**
-   * THE HOME PAGE'S ONE JOB (todo.md): "route to the calculator or the
-   * guides", with no hero theatre.
-   *
-   * TWO DOORS, NOT A FUNNEL. A reader arrives either knowing what they need
-   * to compute or not knowing what the rules are, and those want different
-   * pages. A single call to action sends the second group into a form they
-   * cannot fill.
-   *
-   * EACH ONE SAYS WHAT IS BEHIND IT AND WHAT IT COSTS IN TIME, because the
-   * decision being made here is which of two things to spend the next
-   * minute on. "En savoir plus" tells a reader nothing.
-   *
-   * NO FIGURE (R147), and none is wanted: naming the thresholds is the
-   * guides' job and quoting them here would be a third place they live.
-   */
-  doors: [
-    {
-      href: '/calculateur-teletravail-frontalier',
-      label: 'Calculer mes jours',
-      body:
-        'Vous savez combien de jours vous avez télétravaillé. Le calculateur ' +
-        'vous dit où vous en êtes des deux seuils et combien de jours il vous ' +
-        'reste. Une minute, sans inscription.',
-    },
-    {
-      href: '/guides',
-      label: 'Comprendre les règles',
-      body:
-        'Sept guides sur le plafond fiscal, le seuil social, les jours de ' +
-        'mission, le droit d’option et le cas genevois. Chaque règle citée ' +
-        'renvoie à son texte d’origine.',
-    },
-  ],
-} as const;
 
 /**
  * The title template. Next composes a page's own title into this, and the

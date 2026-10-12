@@ -1,89 +1,876 @@
 // web/app/(public)/home.module.scss
 // Tokens only; camelCase class names for CSS Module addressing.
 //
-// The home page's one job is to route (todo.md: "no hero theatre"), so there
-// is no hero, no illustration and no band of colour - two cards, side by side
-// where there is room and stacked where there is not.
+// The home page (FW34), rebuilt from design/home. Every colour, size, radius
+// and type value is a token. Where the mock-up carried a value no token names,
+// the nearest token is used and recorded in REPORT-FW34-PAGE (TOKENS WHERE THE
+// MOCK-UP HAD NONE) - e.g. section padding 88 -> --space-20 (80); the pill
+// button height 52 -> --size-button-large-height (56); card padding 28 ->
+// --space-7 (exact); the phone frame radius 44 -> --radius-2xl (24); the hero
+// eyebrow's brand-tint fill -> --colour-france-soft (web has no brand-soft).
 //
-// IT REUSES NOTHING AND IS REUSED BY NOTHING. The guide cards live in
-// lib/ui/react because seven articles render them; these two exist once, on
-// one page, and a component would be a shared abstraction with a single
-// caller.
+// TYPE PAIRS WITHIN A FAMILY (R70): every rule takes its font-size, line-height
+// and font-weight from ONE --type-* family, never composed across two.
+//
+// line-height IS A TOKEN, not a ratio: stylelint policies line-height, so each
+// one is var(--type-*-line) rather than 1.5. The mock's negative letter-spacing
+// on the headings is dropped - there is no token for it (only --tracking-eyebrow
+// exists).
 
 @use "../../lib/ui/core/styles/breakpoints" as bp;
 
-.page {
-  padding-block: var(--space-10);
+// ---------------------------------------------------------------------------
+// SHARED
+// ---------------------------------------------------------------------------
+
+// .privacyEyebrow keeps the .privacy prefix so the contrast audit resolves it
+// to the brand band it sits on (R76/R121's nested resolution), not to the page
+// surfaces - a white eyebrow measured against white would fail.
+.eyebrow,
+.privacyEyebrow {
+  font-size: var(--type-eyebrow-size);
+  font-weight: var(--type-eyebrow-weight);
+  line-height: var(--type-eyebrow-line);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
 }
 
-.title {
-  margin: 0 0 var(--space-4);
+.eyebrow {
+  color: var(--colour-brand);
+}
+
+.privacyEyebrow {
+  color: var(--colour-surface);
+}
+
+.sectionHeading {
+  margin: 0;
+  color: var(--colour-text-primary);
+  font-size: var(--type-h2-size);
+  font-weight: var(--type-h2-weight);
+  line-height: var(--type-h2-line);
+}
+
+.lead {
+  margin: 0;
+  color: var(--colour-text-secondary);
+  font-size: var(--type-body-l-size);
+  font-weight: var(--type-body-l-weight);
+  line-height: var(--type-body-l-line);
+}
+
+.note {
+  margin: 0;
+  color: var(--colour-text-secondary);
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  line-height: var(--type-body-line);
+}
+
+.sectionHead {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: var(--layout-article);
+  margin-bottom: var(--space-10);
+}
+
+// The pill buttons. 52 in the mock has no token; the nearest is the large
+// primary height (56). Pill radius exists. The shell owns the header CTA; these
+// are the body's.
+.pillPrimary,
+.pillSecondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  min-height: var(--size-button-large-height);
+  padding: 0 var(--space-6);
+  border: var(--size-button-border) solid var(--colour-brand);
+  border-radius: var(--radius-pill);
+  font-size: var(--type-body-m-size);
+  font-weight: var(--type-body-m-weight);
+  line-height: var(--type-body-m-line);
+  text-decoration: none;
+}
+
+.pillPrimary {
+  background: var(--colour-brand);
+  color: var(--colour-surface);
+}
+
+.pillSecondary {
+  background: var(--colour-surface);
+  color: var(--colour-brand);
+}
+
+// ---------------------------------------------------------------------------
+// HERO
+// ---------------------------------------------------------------------------
+
+.hero {
+  background: var(--colour-surface);
+  padding-block: var(--space-20);
+}
+
+.heroGrid {
+  display: grid;
+  gap: var(--space-12);
+  align-items: start;
+
+  @media (width >= bp.$breakpoint-md) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.heroText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.eyebrowPill {
+  align-self: flex-start;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--colour-france-soft);
+  color: var(--colour-brand);
+  font-size: var(--type-body-m-size);
+  font-weight: var(--type-body-m-weight);
+  line-height: var(--type-body-m-line);
+}
+
+.heroHeading {
+  margin: 0;
   color: var(--colour-text-primary);
   font-size: var(--type-hero-size);
   font-weight: var(--type-hero-weight);
   line-height: var(--type-hero-line);
 }
 
-.intro {
-  margin: 0 0 var(--space-10);
-  max-width: var(--layout-article);
+.heroLead {
+  margin: 0;
+  color: var(--colour-text-secondary);
+  font-size: var(--type-body-l-size);
+  font-weight: var(--type-body-l-weight);
+  line-height: var(--type-body-l-line);
+}
+
+.heroBullets,
+.checkList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.heroBullet,
+.checkItem {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  color: var(--colour-text-primary);
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  line-height: var(--type-body-line);
+}
+
+.bulletIcon {
+  flex-shrink: 0;
+  color: var(--colour-success);
+}
+
+.bulletIconBrand {
+  flex-shrink: 0;
+  color: var(--colour-brand);
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+// ---------------------------------------------------------------------------
+// THE PHONE CARD (hero)
+// ---------------------------------------------------------------------------
+
+.phoneColumn,
+.notifColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.phone {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--size-toc-column);
+  padding: var(--space-5) var(--space-4) var(--space-6);
+  border: var(--space-2) solid var(--colour-text-primary);
+  border-radius: var(--radius-2xl);
+  background: var(--colour-canvas);
+}
+
+.phoneHeader,
+.notifHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.phoneMark {
+  flex-shrink: 0;
+  width: var(--size-icon);
+  height: var(--size-icon);
+  border-radius: var(--radius-sm);
+  background: var(--colour-brand);
+}
+
+.phoneTitle {
+  color: var(--colour-text-primary);
+  font-size: var(--type-body-m-size);
+  font-weight: var(--type-body-m-weight);
+  line-height: var(--type-body-m-line);
+}
+
+.phoneCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border: var(--size-card-border) solid var(--colour-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--colour-surface);
+}
+
+.phoneRail {
+  margin-top: var(--space-2);
+}
+
+.phoneTiles {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+.phoneCaption {
+  max-width: var(--size-toc-column);
+  margin: 0;
+  color: var(--colour-text-secondary);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  line-height: var(--type-caption-line);
+  text-align: center;
+}
+
+// ---------------------------------------------------------------------------
+// CALCULATOR
+// ---------------------------------------------------------------------------
+
+.calc {
+  background: var(--colour-canvas);
+  padding-block: var(--space-20);
+}
+
+.calcGrid {
+  display: grid;
+  gap: var(--space-12);
+  align-items: start;
+
+  @media (width >= bp.$breakpoint-md) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.calcIntro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.calcCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+  padding: var(--space-7);
+  border: var(--size-card-border) solid var(--colour-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--colour-surface);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.fieldRow {
+  display: grid;
+  gap: var(--space-4);
+
+  @media (width >= bp.$breakpoint-md) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.fieldLabel {
+  color: var(--colour-text-primary);
+  font-size: var(--type-label-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-label-line);
+}
+
+// WIDTH 100% + MIN-WIDTH 0, so the canton select (26 options, one as long as
+// "Appenzell Rhodes-Exterieures") cannot set a min-content width that pushes the
+// card past 320 dp (R127). Its long option clips in the closed state and shows
+// in full when opened. The grid items above also carry min-width: 0.
+.select,
+.input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  height: var(--size-input-height);
+  padding: 0 var(--size-input-padding-x);
+  border: var(--size-input-border) solid var(--colour-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--colour-surface);
+  color: var(--colour-text-primary);
+  font-family: inherit;
+  font-size: var(--type-body-l-size);
+  font-weight: var(--type-body-l-weight);
+  line-height: var(--type-body-l-line);
+}
+
+// ---------------------------------------------------------------------------
+// THE TWO RULES
+// ---------------------------------------------------------------------------
+
+.rules {
+  background: var(--colour-surface);
+  padding-block: var(--space-20);
+}
+
+.ruleCards {
+  display: grid;
+  gap: var(--space-6);
+
+  @media (width >= bp.$breakpoint-md) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.ruleCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-7);
+  border: var(--size-card-border) solid var(--colour-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--colour-surface);
+}
+
+.ruleTag {
+  color: var(--colour-text-secondary);
+  font-size: var(--type-body-m-size);
+  font-weight: var(--type-body-m-weight);
+  line-height: var(--type-body-m-line);
+}
+
+.ruleFigure {
+  color: var(--colour-brand);
+  font-size: var(--type-display-size);
+  font-weight: var(--type-display-weight);
+  line-height: var(--type-display-line);
+  font-variant-numeric: tabular-nums;
+}
+
+.ruleBody {
+  margin: 0;
+  color: var(--colour-text-primary);
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  line-height: var(--type-body-line);
+}
+
+.ruleSource {
+  color: var(--colour-text-secondary);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  line-height: var(--type-caption-line);
+}
+
+// ---------------------------------------------------------------------------
+// HOW IT WORKS
+// ---------------------------------------------------------------------------
+
+.how {
+  background: var(--colour-canvas);
+  padding-block: var(--space-20);
+}
+
+.steps {
+  display: grid;
+  gap: var(--space-10);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  @media (width >= bp.$breakpoint-md) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.stepTop {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.stepNumber {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-8);
+  height: var(--space-8);
+  border-radius: var(--radius-pill);
+  background: var(--colour-brand);
+  color: var(--colour-surface);
+  font-size: var(--type-body-m-size);
+  font-weight: var(--type-body-m-weight);
+  line-height: var(--type-body-m-line);
+}
+
+.stepIcon {
+  color: var(--colour-brand);
+}
+
+.stepTitle {
+  margin: 0;
+  color: var(--colour-text-primary);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  line-height: var(--type-h3-line);
+}
+
+.stepBody {
+  margin: 0;
   color: var(--colour-text-secondary);
   font-size: var(--type-body-size);
   font-weight: var(--type-body-weight);
   line-height: var(--type-body-line);
 }
 
-// MOBILE FIRST: one column, so a phone needs no override. The two doors are
-// equal - neither is the recommended one - which is why they are a grid of
-// equal tracks rather than a primary and a secondary.
-.doors {
+// ---------------------------------------------------------------------------
+// THE RELEVE
+// ---------------------------------------------------------------------------
+
+.releve {
+  background: var(--colour-surface);
+  padding-block: var(--space-20);
+}
+
+.releveGrid {
   display: grid;
-  gap: var(--space-6);
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  gap: var(--space-12);
+  align-items: start;
 
   @media (width >= bp.$breakpoint-md) {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 }
 
-.door {
+.releveThumb {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-4);
   padding: var(--space-6);
   border: var(--size-card-border) solid var(--colour-border-default);
   border-radius: var(--radius-lg);
   background: var(--colour-surface);
 }
 
-.doorLabel {
-  margin: 0;
+.releveThumbHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.releveWordmark {
+  color: var(--colour-text-secondary);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  line-height: var(--type-caption-line);
+}
+
+.releveRow {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-top: var(--size-rule) solid var(--colour-border-default);
+  border-bottom: var(--size-rule) solid var(--colour-border-default);
+}
+
+.releveHolderLabel {
+  color: var(--colour-text-secondary);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  line-height: var(--type-caption-line);
+}
+
+.releveHolderName {
   color: var(--colour-text-primary);
+  font-size: var(--type-label-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-label-line);
+}
 
-  // THE THIRD TIME THIS EXACT DEFECT HAS SHIPPED TO A BASELINE. An anchor
-  // placed in a new context takes the global link colour, so both cards
-  // rendered their titles in default browser blue against grey prose. FW18b
-  // met it on the R160 chip and .breadcrumb met it before that; each time no
-  // gate objected and a crop found it (R135).
-  //
-  // color: inherit, the same line those two use. The underline stays: these
-  // are the page’s only two links and hiding that they are links would be
-  // the opposite problem.
-  font-size: var(--type-h3-size);
-  font-weight: var(--type-h3-weight);
-  line-height: var(--type-h3-line);
+.releveBars {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
 
-  a {
-    color: inherit;
+// The bar widths are a decorative "document lines" placeholder (the thumbnail
+// is aria-hidden sample). They vary per line and have no token - a layout
+// proportion, not a design value - so they are inline on the elements, which
+// is where the mock set them too. The height, radius and fill are tokens.
+.releveBar {
+  height: var(--size-progress-height);
+  border-radius: var(--radius-xs);
+  background: var(--colour-border-default);
+}
+
+.releveVerify {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: var(--space-2);
+}
+
+.releveQr {
+  flex-shrink: 0;
+  fill: var(--colour-text-primary);
+}
+
+.releveCode {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.releveCodeLabel {
+  color: var(--colour-text-primary);
+  font-size: var(--type-label-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-label-line);
+}
+
+.releveCodeValue {
+  color: var(--colour-text-secondary);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  line-height: var(--type-caption-line);
+  font-variant-numeric: tabular-nums;
+}
+
+.releveText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+// ---------------------------------------------------------------------------
+// PRIVACY (dark brand band)
+// ---------------------------------------------------------------------------
+
+.privacy {
+  background: var(--colour-brand);
+  padding-block: var(--space-20);
+}
+
+.privacyHead {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: var(--layout-article);
+  margin-bottom: var(--space-10);
+}
+
+.privacyHeading {
+  margin: 0;
+  color: var(--colour-surface);
+  font-size: var(--type-h2-size);
+  font-weight: var(--type-h2-weight);
+  line-height: var(--type-h2-line);
+}
+
+.privacyLead {
+  margin: 0;
+  color: var(--colour-surface);
+  font-size: var(--type-body-l-size);
+  font-weight: var(--type-body-l-weight);
+  line-height: var(--type-body-l-line);
+}
+
+.privacyItems {
+  display: grid;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+
+  @media (width >= bp.$breakpoint-md) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
-.doorBody {
-  margin: 0;
+.privacyItem {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  color: var(--colour-surface);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  line-height: var(--type-h3-line);
+}
+
+.privacyIcon {
+  color: var(--colour-surface);
+}
+
+// ---------------------------------------------------------------------------
+// THE APP
+// ---------------------------------------------------------------------------
+
+.app {
+  background: var(--colour-canvas);
+  padding-block: var(--space-20);
+}
+
+.appGrid {
+  display: grid;
+  gap: var(--space-12);
+  align-items: start;
+
+  @media (width >= bp.$breakpoint-md) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.appText {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.notif {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--size-toast-min-width);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: var(--size-card-border) solid var(--colour-border-default);
+  border-radius: var(--radius-xl);
+  background: var(--colour-surface);
+}
+
+.notifApp {
+  color: var(--colour-text-secondary);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  line-height: var(--type-caption-line);
+}
+
+.notifQuestion {
+  color: var(--colour-text-primary);
+  font-size: var(--type-body-m-size);
+  font-weight: var(--type-body-m-weight);
+  line-height: var(--type-body-m-line);
+}
+
+.notifDate {
   color: var(--colour-text-secondary);
   font-size: var(--type-body-size);
   font-weight: var(--type-body-weight);
   line-height: var(--type-body-line);
+}
+
+.notifChoices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+
+.notifChoice {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--size-icon-button);
+  padding: 0 var(--space-3);
+  color: var(--colour-brand);
+  font-size: var(--type-body-m-size);
+  font-weight: var(--type-body-m-weight);
+  line-height: var(--type-body-m-line);
+}
+
+// ---------------------------------------------------------------------------
+// GUIDES
+// ---------------------------------------------------------------------------
+
+.guides {
+  background: var(--colour-surface);
+  padding-block: var(--space-20);
+}
+
+.guidesGrid {
+  display: grid;
+  gap: var(--space-12);
+  align-items: start;
+
+  @media (width >= bp.$breakpoint-md) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.lake {
+  overflow: hidden;
+  border: var(--size-card-border) solid var(--colour-border-default);
+  border-radius: var(--radius-lg);
+  line-height: 0;
+}
+
+// Width-scaled (height follows the 480:220 viewBox), so the illustration's
+// rects never exceed the container at 320 dp - R127. The mock used a fixed-
+// height cover crop, which kept its rects at 480 px wide; scaling by width
+// instead makes the banner shorter on a narrow phone and keeps it inside the
+// viewport.
+.lakeSvg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.lakeSky {
+  fill: var(--colour-canvas);
+}
+
+.lakeFar {
+  fill: var(--colour-border-strong);
+}
+
+.lakeNear {
+  fill: var(--colour-text-tertiary);
+}
+
+.lakeWater {
+  fill: var(--colour-border-default);
+}
+
+.guidesText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.guideLinks {
+  display: flex;
+  flex-direction: column;
+}
+
+.guideLink {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--size-icon-button);
+  padding: var(--space-3) 0;
+  border-top: var(--size-rule) solid var(--colour-border-default);
+  color: var(--colour-text-primary);
+  font-size: var(--type-body-m-size);
+  font-weight: var(--type-body-m-weight);
+  line-height: var(--type-body-m-line);
+  text-decoration: none;
+}
+
+// A dedicated class rather than a `.guideLink svg` descendant rule, so the
+// contrast audit reads one selector per block (it splits on whitespace).
+.guideArrow {
+  flex-shrink: 0;
+  color: var(--colour-brand);
+}
+
+.guidesAll {
+  align-self: flex-start;
+  min-height: var(--size-icon-button);
+  display: inline-flex;
+  align-items: center;
+  color: var(--colour-brand);
+  font-size: var(--type-body-m-size);
+  font-weight: var(--type-body-m-weight);
+  line-height: var(--type-body-m-line);
+  text-decoration: none;
+}
+
+// ---------------------------------------------------------------------------
+// SOURCES STRIP
+// ---------------------------------------------------------------------------
+
+.sourcesStrip {
+  background: var(--colour-canvas);
+  padding-block: var(--space-10);
+  border-top: var(--size-rule) solid var(--colour-border-default);
+}
+
+.sourcesRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.sourcesIcon {
+  flex-shrink: 0;
+  color: var(--colour-brand);
+}
+
+.sourcesClaim {
+  flex: 1 1 var(--layout-article);
+  color: var(--colour-text-primary);
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  line-height: var(--type-body-line);
+}
+
+.sourcesLink {
+  min-height: var(--size-icon-button);
+  display: inline-flex;
+  align-items: center;
+  color: var(--colour-brand);
+  font-size: var(--type-body-m-size);
+  font-weight: var(--type-body-m-weight);
+  line-height: var(--type-body-m-line);
+  text-decoration: none;
 }
