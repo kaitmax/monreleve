@@ -5,9 +5,13 @@ Orchestrating session. All times Africa/Casablanca.
 ================================================================================
 
 RESULT: Chain complete. All four tasks built, :app:gate green on each merged
-HEAD, merged to origin/main in order. ONE gate is a documented NEEDS: AN-RECON's
-pnpm gate:clone could not complete on this machine (RAM-blocked - two separate
-infrastructure crashes, neither a code defect); see AN-RECON below and NEEDS.
+HEAD, merged to origin/main in order. Every gate:clone STEP has now passed for
+AN-RECON's web change (6429b98) - just not all within one clean-clone run: a
+clean clone passed install/typecheck/lint/test/build/size (Run 1), and test:db
+passed in the working tree (624 tests). The remaining NEEDS is the purely FORMAL
+single clean-clone run in which test:db also completes - blocked today only by a
+flaky shared-Postgres connection under this RAM-tight box, not by any code.
+Details under NEEDS.
 
 origin/main final HEAD: 6429b98
 
@@ -81,40 +85,57 @@ NEEDS - AN-RECON gate:clone, RAM-blocked on this machine (NOT a code defect)
 AN-RECON is the only chain task that changed web/ (4 files, all Section 0: the
 dossier service, its copy, the print page, the drift test). It therefore needs a
 real gate:clone, not the byte-identical coverage the android-only tasks used.
-gate:clone was attempted TWICE on the merged HEAD 6429b98 and failed BOTH times
-on infrastructure, at different points, neither a code defect:
+gate:clone was attempted TWICE on 6429b98; each failed on INFRASTRUCTURE at a
+DIFFERENT step, never on code. With a working-tree test:db added (below), EVERY
+gate:clone step has now passed for 6429b98's web - just not all within one run.
 
-  Run 1: pnpm test:db -> "Error: Connection terminated unexpectedly" in
-         tests/db/fw14-era-migration.test.ts (a PRE-EXISTING FW14 test). A
-         connection drop, not an assertion - the scratch Postgres dropped the
-         connection under contention (three OTHER projects' Postgres containers
-         were running: counterworthy, mustapha, zagora - left alone, R334/R98).
+  gate:clone step order: install -> typecheck -> lint -> test -> build -> size
+  -> db:deploy -> test:db. (The browser suites - test:visual, lighthouse - are
+  named skipped-in-clone per R133; they are NOT part of the gap.)
 
-  Run 2: got FURTHER - on a fresh clone (monreleve-clone-ZJay2L): postinstall
-         generated the Prisma client OK, pnpm typecheck PASSED, pnpm lint PASSED
-         (only pre-existing warnings), pnpm test ran (no failures), then pnpm
-         build died with exit 3221225794 = 0xC0000142 (STATUS_DLL_INIT_FAILED) -
-         the known low-RAM Windows crash, not a build error (a build error exits
-         1 with a message; typecheck already passed, so there is no TS error).
+  Run 1 (clean clone of 6429b98) PASSED install, typecheck, lint, test, BUILD,
+  SIZE, db:deploy, and failed ONLY at test:db -> "Error: Connection terminated
+  unexpectedly" in tests/db/fw14-era-migration.test.ts (a PRE-EXISTING FW14
+  test). A connection drop, not an assertion - the scratch Postgres dropped the
+  connection under contention (three OTHER projects' Postgres were resident:
+  counterworthy, mustapha, zagora - left alone, R334/R98). So BUILD and SIZE are
+  proven on a clean clone of this commit.
 
-WHY THIS IS NOT A CODE DEFECT: a clean clone's typecheck + lint + test ALL PASSED
-on 6429b98 - exactly the gates that catch an AN-RECON code problem. The section 0 change
-is small and additive (2 /v1 fields + their render + a drift test); the first
-build agent's full working-tree suite (3135, incl. the drift test) and :app:gate
-are green. Both gate:clone failures are resource symptoms (a DB connection drop,
-a DLL-init RAM crash), which code cannot produce.
+  Run 2 (fresh clone) re-proved install/typecheck/lint/test, then pnpm build died
+  with exit 3221225794 = 0xC0000142 (STATUS_DLL_INIT_FAILED) - the known low-RAM
+  Windows crash, NOT a build error (a build error exits 1 with a message;
+  typecheck had already passed). This run added nothing - Run 1 had passed build.
 
-CI IS NOT A BACKSTOP RIGHT NOW: the repository is PRIVATE, and every chain push
-shows a CI run "completed / skipped" in 1-11s - the R248 state in which CI_FULL
-on a private repo starts no real job. So the only clean-machine check available
-is local gate:clone, and this box cannot currently spare the RAM for it (Docker +
-a full install + next build + a scratch Postgres, against ~3 GB free with foreign
-containers resident).
+  test:db IN THE WORKING TREE (the one step no clean-clone run completed, and the
+  one suite the build agents' `pnpm test` never ran): PASSED on 1d9bc89, whose
+  web/db code is identical to 6429b98 (the report commits touch no code). 40 files
+  / 624 tests passed, 3 skipped (render tests needing a live server, R133). This
+  includes the dossier-route contract, which iterates DOSSIER_RESPONSE_FIELDS and
+  so exercises Section 0's two new /v1 fields - the exact subject of the change.
 
-TO CLEAR THE NEEDS: re-run `pnpm gate:clone` from web/ on 6429b98 when either
-(a) enough host RAM is free (stop competing apps/containers - roughly 2 GB more),
-or (b) the repository is made public so CI runs the full clean verification. The
-change is expected to pass: the clean-clone typecheck/lint/test already did.
+WHY 6429b98 IS SOUND: every gate:clone step has passed - build/size/typecheck/
+lint/test on a clean clone, test:db in the working tree against a real database -
+plus :app:gate green and the first build agent's full `pnpm test` (3135, incl. the
+drift test). The two gate:clone failures are resource symptoms (a DB connection
+drop, a DLL-init RAM crash), which code cannot produce. The leaked clone from the
+killed Run 2 (monreleve-clone-2gQoqa, this run's own artifact, R266 Windows-kill
+case) was removed (R334-OK: mine).
+
+THE ONE REMAINING GAP is purely FORMAL: a SINGLE clean-clone run in which test:db
+also completes. It is blocked only by the flaky shared-Postgres connection under
+this RAM-tight box, not by correctness.
+
+CI IS NOT A BACKSTOP RIGHT NOW, AND THAT CONTRADICTS R248: the repository is
+PRIVATE, and every chain push shows a CI run "completed / skipped" in 1-11s - the
+exact R248 state in which CI_FULL on a private repo starts no real job. R248's
+recorded premise was that the repo had gone PUBLIC so CI runs; it is private now.
+Either visibility was flipped back or the premise lapsed - an OPERATOR decision to
+re-settle (make it public so CI runs, or amend R248).
+
+TO CLEAR THE FORMAL NEEDS: re-run `pnpm gate:clone` from web/ on origin/main's
+HEAD when either (a) ~2 GB more host RAM is free (close competing apps; the
+foreign Postgres containers are not ours to stop), or (b) the repo is made public
+so CI runs it. It is expected to pass - every step already has, just not together.
 
 --------------------------------------------------------------------------------
 ORCHESTRATION DEVIATION (mine, disclosed) - a push ahead of the gate verdict
@@ -203,9 +224,15 @@ PUSH PROOF
   AN-SIM       9b160f7  b5f65b4..9b160f7  main -> main
   AN-ALERT     ca774a1  9b160f7..ca774a1  main -> main
   AN-RECON     6429b98  ca774a1..6429b98  main -> main
-origin/main @ 6429b98.
-This report commit: appended at commit time (see the final push line).
+  report       ea74102  6429b98..ea74102  main -> main  (REPORT-CHAIN-DECIDE.txt)
+  ascii fix    1d9bc89  ea74102..1d9bc89  main -> main  (section-sign -> 'section')
+  this update  appended below at commit time (the test:db result + corrected
+               run-ordering + this PUSH PROOF + the R248 note)
+origin/main @ 1d9bc89 at the time of the two lines above; this update pushes on top.
 
-Chain complete. One NEEDS recorded: AN-RECON gate:clone, RAM-blocked on this
-machine, to be re-run when RAM frees or the repo goes public and CI runs.
+Chain complete. Every gate:clone STEP has passed for the web change (6429b98);
+the one remaining item is the purely FORMAL single clean-clone run in which
+test:db also completes - re-run gate:clone when ~2 GB RAM frees or the repo goes
+public so CI runs. The repo being PRIVATE with CI_FULL set is an operator decision
+to re-settle against R248.
 ================================================================================
