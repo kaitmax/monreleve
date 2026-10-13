@@ -1,0 +1,101 @@
+================================================================================
+REPORT-BRANCHES.txt
+BRANCH-CONSOLIDATE - every branch accounted for
+Orchestrating session. All times Africa/Casablanca / UTC as noted.
+STATUS: IN PROGRESS - section 1 (inventory) committed first, per the prompt.
+================================================================================
+
+--------------------------------------------------------------------------------
+1. THE INVENTORY (as found, before any action - R273: checked against git)
+--------------------------------------------------------------------------------
+origin/main @ 18c7fbc   local main @ c059abe (2 behind: FW-FORECAST's 2 commits)
+
+NOTE - origin/main MOVED during this session: it was c059abe (this session's own
+RUN-CHAIN-DECIDE report) at 12:11 UTC; a concurrent FW-FORECAST session pushed
+7c6e5ae + 18c7fbc at 12:20 UTC (R343: the weekly rhythm + a server-drawn year-end
+projection; web). 18c7fbc is "FW-FORECAST: REPORT", a done-state (R241). As of
+13:14 UTC (~54 min later) no further pushes; no R349 lock file exists anywhere;
+all registered worktrees are clean. See the CONCURRENCY note below.
+
+BRANCHES (34 local). AHEAD/BEHIND vs origin/main; IN-MAIN = tip is an ancestor:
+
+  BRANCH                  TIP      AHEAD BEHIND  IN-MAIN   CLASS
+  an-alert                111eb0b      0    15   YES        A
+  an-cal2                 8211425      0   135   YES        A
+  an-forecast             29f1fa1      4    42   no         C  (-> an-forecast-2)
+  an-forecast-2           062ad27      0    30   YES        A
+  an-home                 274f0c9      0   147   YES        A
+  an-home-cef             5c0403a      0   142   YES        A
+  an-links                18fb540      0   101   YES        A
+  an-next                 e6eb0fc      0   160   YES        A
+  an-next-2               dfc0de3      0   154   YES        A
+  an-notif                3804cd5      0    80   YES        A
+  an-onboard              590366a      0   114   YES        A
+  an-onboard-2            a267442      0    95   YES        A
+  an-params               0f8df4b      0   129   YES        A
+  an-recon                b235c32      0     6   YES        A
+  an-sim                  5b4685e      0    22   YES        A
+  device-walkthroughs     8157275      0    69   YES        A
+  domain                  ca800b4      0    89   YES        A
+  engine-parity           3386328      0    36   YES        A
+  fix-greeting            aebb736      0    66   YES        A
+  fw-forecast             18c7fbc      0     0   YES (==HEAD) A
+  fw-forecast-inc0        a3cfe36      0    44   YES        A
+  fw-resultat             b5f65b4      0    27   YES        A
+  fw-verify               b2c7009      0   105   YES        A
+  fw33b                   33b4a6d      0   166   YES        A
+  fw34                    62d7f25      3   166   no         C  (-> home-page)
+  fw34-home               c47a6cb      0    53   YES        A
+  home-page               7999779      0    48   YES        A
+  logo                    31e9569      0   123   YES        A
+  main                    c059abe      0     2   YES        - (local, ff to origin)
+  reg-apply               130df8f      0    58   YES        A
+  reg-update              abf9754      0    63   YES        A
+  seed-releve             1ba46e4      0    74   YES        A
+  worktree-agent-a3d7680f61139e338  e6eb0fc  0 160 YES      A
+  worktree-agent-aacfc4b0d2a3088e3  c7bac21  0 168 YES      A
+
+R273 CORRECTIONS to the prompt's guesses: the prompt listed seed-releve and
+device-walkthroughs as likely class B ("pending merge") and reg-update as class C
+("stopped, re-done by reg-apply"). git shows ALL THREE are fully contained in main
+(0 ahead) = class A, already merged. There are NO class B branches and NO class D
+branches. Only two branches are ahead of main, both class C (superseded).
+
+WORKTREES (git worktree list):
+  C:/Users/KAMXKAM/Downloads/frontier work   c059abe [main]   (this session; main checkout)
+  C:/wt/fw-forecast                          18c7fbc [fw-forecast]   clean (0 non-ignored dirty)
+  C:/wt/fw-resultat                          b5f65b4 [fw-resultat]   clean (0 non-ignored dirty)
+  .claude/worktrees/agent-a3d7680f61139e338  c059abe (detached-ish)  only UNTRACKED helpers, no tracked changes
+  (NOTE: .claude/worktrees/agent-a3d7680f61139e338 is NOT in `git worktree list`
+   output - it is an orphan directory git can still read; branches
+   worktree-agent-* above are its/another orphan's refs.)
+
+STASHES: none.
+LOCK FILES: no R349 session lock anywhere (checked C:/wt and the tree). Only
+  gradle's buildOutputCleanup.lock and MonReleve/.claude/scheduled_tasks.lock
+  (neither a session worktree lock).
+EXISTING archive/* TAGS: none (local or origin).
+UNTRACKED in the main checkout (~43, R334 - reported, left alone): MonReleve/,
+  android/.an*-shots/, android/.device-*-shots/, android/.kotlin/,
+  android/scripts/an-*.mjs, web/scripts/_mint*.mjs, relay/AN-PULL.txt,
+  relay/FW-FORECAST.txt, relay/BRANCH-CONSOLIDATE.txt, and device helpers.
+
+--------------------------------------------------------------------------------
+PRE-FLIGHT BLOCKERS (recorded before deciding to act)
+--------------------------------------------------------------------------------
+R1 (green base): :app:gate is runnable on 18c7fbc (FW-FORECAST changed web, not
+  android). pnpm gate:clone is RAM-BLOCKED on this box (documented all session:
+  two infra crashes - a shared-Postgres connection drop and a 0xC0000142 low-RAM
+  build crash - never a code defect). CRUCIAL: there are NO class B merges, so
+  R1's purpose (protect a merge onto main) has nothing to protect here - the only
+  operations are archive-tag + delete, which are pure ref ops and do not change
+  main's content.
+
+CONCURRENCY ("NO OTHER SESSION may be running"): origin/main advanced under this
+  session (c059abe -> 18c7fbc) at 12:20 UTC, ~54 min before the inventory. That
+  was a concurrent FW-FORECAST session, which ended with its REPORT (R241). No
+  R349 lock exists; worktrees are clean; no push since. By R349's own signal
+  ("a lock, not ListAgents, says a session is running") no session is running.
+
+(This report is completed below after the proceed/stop decision.)
+================================================================================
