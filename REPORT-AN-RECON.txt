@@ -1,0 +1,351 @@
+REPORT-AN-RECON.txt - Mon Releve (task 4 of RUN-CHAIN-DECIDE)
+"Does your employer have the same figure?" - the comparison, the year
+switch it needs, and the causes - built, tested, pushed.
+
+(Pure ASCII by transport constraint, R155/R168. The authoritative, fully
+accented copy lives in android/.../fr/ComparisonCopy.kt + ReleveCopy.kt.)
+
+====================================================================
+HOW IT ENDED
+====================================================================
+COMPLETE through sections 0, 1 and 2 (the year switch, the comparison, the
+causes), each on a GREEN :app:gate and pushed to origin/an-recon. Section 3
+(the on-device S9 walkthrough) is recorded in WALKTHROUGH below.
+
+Branch an-recon, off origin/main ca774a1 (confirmed; orchestrator re-checks
+R300 before merge). Tip: 44c7a34. Commits this session, each gate-green and
+pushed per increment:
+  38e301e  the year switch on the releve (PARKAN-26)
+  45566e9  the comparison engine - gap, causes, phone store (R340/R342)
+  44c7a34  the comparison screen, causes, and releve entry (R340/R342)
+  (+ this report commit on top)
+
+PROVENANCE OF THE YEAR SWITCH (R334, recorded honestly). On starting, the
+main checkout's working tree already carried ~368 lines of UNCOMMITTED
+year-switch work (PARKAN-26) across ten tracked files - a prior dead
+AN-RECON agent that hit its limit before committing. The launch message
+believed the tree clean ("nothing recoverable"); it was not. R334 forbids
+resetting work this session did not create, and resetting uncommitted work
+is IRREVERSIBLE loss (R156 conservative), so that work was PRESERVED, not
+destroyed: reviewed, its one compile error fixed (a missing EntryEntity
+import), five detekt/ktlint issues resolved, its two baselines regenerated
+and looked at, verified green, and committed with that provenance stated in
+the commit body (38e301e). It was NOT rebuilt from scratch and is NOT
+claimed as this session's authored work.
+
+====================================================================
+R273 - WHERE THIS TASK BELONGS IN tasks/todo.md
+====================================================================
+As AN-FORECAST/AN-SIM/AN-ALERT recorded: tasks/todo.md ends at Checkpoint E
+and knows nothing of the DECIDE chain; the Android series on disk overtook
+it. AN-RECON is the fourth and last paid-tool of Phase 7. It depends on
+AN2/AN5b (engine + aggregation), AN11 (the releve screen, DossierApi
+per-year cache), SEED-RELEVE (the seeded account, PARKAN-26/49) and
+REG-UPDATE (the AFC Geneve employer-attestation facts). todo.md is an
+operator file; not edited (out of scope).
+
+====================================================================
+SECTION 0 - PARKAN-49 (DONE in the prior session, 4e74973/fe38658) AND
+            PARKAN-26 THE YEAR SWITCH (DONE this session, 38e301e)
+====================================================================
+PARKAN-49 (the two additive /v1 fields creditedMissionDays +
+rateWithoutMissions) was closed before this session and is unchanged.
+
+THE YEAR SWITCH (PARKAN-26, 38e301e): the releve screen offers every tax
+year that has days, newest first, opening on the current year, the previous
+one a tap away; a read-only view of GET /api/v1/dossier?year= (R328). R310
+keeps the chosen year across rotation / text-size / dark / background kill
+(a rememberSaveable at the composition root, re-seeded into the controller).
+A completed past year reads with a DISTINCT caption ("Releve de l'annee
+close"), not "annee en cours". The selector renders only when more than one
+year has days, so a single-year account sees the document exactly as before.
+  - ReleveController: selectedYear StateFlow (restorable), selectYear(year)
+    that re-fetches + recomputes the pending count for that year, export
+    paths follow selectedYear; probeAvailableYears() probes {current,
+    current-1} and offers a past year only when recordedEntries > 0.
+  - ReleveScreen: YearSelector chips (the simulator chip idiom - filled
+    selected, outlined rest; `selected` announced for TalkBack), the
+    ClosedYearBanner.
+  - Four ReleveControllerTest cases + two Paparazzi baselines
+    (releveClosedYear, releveClosedYearLarge).
+
+====================================================================
+THE COMPARISON (section 1): DONE - source, the gap function, rounding
+====================================================================
+Built from design/decide/Employeur.dc.html word for word (copy in
+fr/ComparisonCopy.kt, fully accented). Engine in 45566e9, screen+wiring in
+44c7a34.
+
+THE SCREEN (ui/screens/comparison/ComparisonScreen.kt): top bar
+"Comparaison"; H1 "Votre employeur a-t-il le meme chiffre ?"; the lead; the
+attestation field "Taux indique par votre employeur pour <annee>" (French
+format, comma, optional percent/NBSP); the pairing card "Votre releve <X> %"
+beside "Votre employeur <Y> %"; the gap "Ecart : N,NN points, soit environ M
+jours." (the figure part bold, as the design draws); the causes; the info
+line "Votre releve ne dit pas qui a raison : il montre, jour par jour, ce
+qui a ete enregistre et quand."; and the primary CTA "Voir mes journees jour
+par jour". Reached from a "Comparer avec mon employeur" button on the releve
+(every year).
+
+COMPLETED YEAR ONLY. The current year is REFUSED WITH AN EXPLANATION (no
+input, no gap, no causes): "La comparaison porte sur une annee terminee.
+L'attestation de <annee> n'existe pas encore ; votre employeur la
+transmettra en janvier <annee+1>." This is why the year switch comes first.
+
+THE RATE IS THE SERVER'S DOSSIER figure for the year - the releve's
+declarableRate (R287), read from the releve's Loaded state the overlay is
+opened over; NEVER a phone-side calculation. If days are still unsynced
+(pendingCount > 0), the screen says so (reuses ReleveCopy.pendingNotSynced).
+
+THE GAP, in ONE TESTED PURE FUNCTION (dossier/EmployerComparison.kt,
+employerGap), never UI arithmetic:
+    points      = |employerRate - releveRate|, two decimals (HALF_UP, so an
+                  exact difference like 41,25 - 39,16 = 2,09 is recovered,
+                  never truncated to 2,08)
+    environDays = floor(points / 100 * basisDays * 2) / 2   (DOWN to the
+                  half-day, so "environ" never overstates)
+    basisDays   = dossier.tiles.workedDays (the server's prorated basis for
+                  the year, SPEC 7.4 - open Q3, confirmed below)
+The JVM test pins the design sample (sample data): 41,25 % vs 39,16 % on a
+240 basis -> 2,09 points, environ 5,0 jours; plus the floor-to-half-day
+(1,00 point on a 155 basis -> 1,5, not 2,0), equal-figures -> zero, and an
+employer figure BELOW the releve -> positive (absolute). formatPoints (the
+two-decimal HALF_UP points formatter) was added to fr/format/Numbers.kt with
+its own test.
+
+====================================================================
+THE CAUSES (section 2): DONE - each, from the record only
+====================================================================
+dossier/EmployerComparison.kt comparisonCauses, rendered by
+ComparisonScreen's CauseRow. Each is a FACT from the person's own record,
+never a guess about the employer:
+  - LES MISSIONS (only when mission days are logged): "<missionDays> jours
+    dans votre releve, tous comptes : la limite est de <cap>." The counted
+    figure is PARKAN-49's creditedMissionDays (so the regime-lost case reads
+    "12 jours ... 0 comptes"); the cap is the year's RuleSet missionCapDays
+    (added to ReleveRules; name the rule, interpolate the figure, R153/R147).
+    Opens the day-by-day record.
+  - LA METHODE DE CALCUL (always): "Votre releve utilise la methode
+    simplifiee, <basis> jours." or, for EXACT, "... les jours ouvres
+    communiques par votre employeur." Opens the record.
+  - DES JOURNEES NON RENSEIGNEES (only when any): "<N> jours ouvres sans
+    saisie dans votre releve." N = annex rows with recorded == false (the
+    server's annex universe is the weekdays, so the count is the unrecorded
+    working days directly, R206). Opens the record.
+  - PLUSIEURS EMPLOYEURS (always, general context - NOT a count): "Avec
+    plusieurs employeurs, chacun declare le taux correspondant a ses propres
+    jours." From the verified AFC Geneve row (REG-UPDATE source C). Not
+    tappable (there is no second-employer datum in the record).
+  - "Votre releve ne dit pas qui a raison" - the app never says who is right.
+    The vocabulary ban (certifie/atteste/conforme/valide/approuve) holds.
+
+====================================================================
+R342 - THE EMPLOYER FIGURE STAYS ON THE PHONE
+====================================================================
+settings/EmployerFigure.kt. The attestation rate is kept phone-only,
+account-tagged ("employer.<accountTag>.<year>"), in the monreleve.detection
+SharedPreferences file - the same file the detection mode, evening opt-in
+and threshold alert share, so DeviceLocalStore.clearForSignOut() ->
+SharedPrefsDetectionModeStore.clear() sweeps it on sign-out and deletion
+(R289/R295/R303). No new /v1 field; EntriesWire omits it; sync never sees
+it; there is NO code path that sends it. The tag is read live from
+AccountStore (passed as a () -> String? supplier so settings/ carries no
+dependency on account/); fail closed to null -> no read, no write (R303).
+  PROOF (unit): EmployerFigureStoreTest - a figure saved under one account
+  is invisible to another, is kept per year, fail-closed with no account,
+  and gone after the sweep. ErasureCensusTest is the file's guard (it
+  requires every "monreleve.*" store to be erased by deletion;
+  monreleve.detection is listed). The on-device "nothing reached the server"
+  proof is in WALKTHROUGH.
+
+====================================================================
+R340 - A PROJECTION IS NEVER A RECORD (the "nothing written" test)
+====================================================================
+ComparisonR340Test: computing a comparison (buildComparison, employerGap,
+comparisonCauses) takes values and returns values - it leaves the record
+handed in unchanged and writes to NO store (entries, queue, server, releve,
+PDF, annex). The only write in the whole feature is the person's explicit
+entry of the employer figure, to the phone-only store (R342) - computing the
+gap never writes it (the test asserts the store stays empty while many
+comparisons are computed). The server /v1 fields delivered in PARKAN-49 are
+server reads, not projections, so R340 does not attach to them.
+
+====================================================================
+WALKTHROUGH ON THE S9 (adb 232bcd8c300c7ece, API 29)
+====================================================================
+RUN on SEED-RELEVE's account camille.martin (GE, 100%, 240-day; 2025
+complete, 2026 to-yesterday). Setup: rebuilt the debug APK at 127.0.0.1
+(-PfrontalierHost), installed it; the dev server's dossier first refused
+with "the dossier needs a canton" (the dev DB had drifted), so the DB was
+re-seeded with the project's own `pnpm db:seed` (the intended fixture
+refresh - deterministic for 2025, the completed year the comparison uses);
+started `pnpm dev`, `adb reverse tcp:3000`; obtained a REAL session for
+camille (POST /api/v1/auth/magic-link -> the dev server logs the link ->
+GET /api/v1/auth/callback -> the token pair) and injected it through the
+debug SessionInjectionActivity (R284). Screens captured to
+android/ (host /tmp/an-recon-wt/*.png this run).
+
+WHAT WAS DRIVEN AND SHOWN (real server data, not a fixture):
+  - The app launched with the injected session: "Bonjour Camille", today,
+    the real Aujourd'hui surface. The integration the JVM/Paparazzi tests
+    cannot reach (MainActivity's overlay wiring + the real SharedPrefs store
+    with a Context) runs.
+  - THE YEAR SWITCH works. The releve opened on 2026 with the provisional
+    banner ("Annee en cours au 13.10.2026..."), and the selector offered
+    TWO chips - 2026 (selected) and 2025 - newest first, exactly the
+    {current, previous} both-have-days case.
+  - Tapping 2025 switched the whole document: the DISTINCT closed-year
+    banner ("Releve de l'annee close / L'annee 2025 est terminee. Ce releve
+    est complet."), 2025's identification (Annee 2025 entiere, 240 jours
+    ouvres, 143 Suisse) and the 2025 monthly cumul ending 32,91 %.
+  - The "Comparer avec mon employeur" button renders on the releve.
+  - The COMPARISON overlay opened for 2025 with causes derived from
+    camille's OWN record: "Les missions - 7 jours dans votre releve, tous
+    comptes : la limite est de 10." (camille's seven 2025 missions, all
+    credited) and "La methode de calcul - ... methode simplifiee, 240 ...".
+  - An employer figure (35,00) was entered in the attestation field.
+
+R342 PROVEN ON THE DEVICE (the point of the run): the dev server's
+write-request count was 2 BEFORE entering the figure (the two magic-link
+POSTs that acquired the session) and STILL 2 AFTER - the only other server
+traffic the whole run was GET /api/v1/dossier (reads) and GET /callback.
+Entering the employer figure sent NOTHING to the server; it stayed on the
+phone (R342). The same unchanged write-count also proves NO day was recorded
+during the run (recording posts to the sync endpoint), so camille's record
+is untouched.
+
+NOT COMPLETED ON-DEVICE, and why, and what covers it: the gap pair-card
+render with a figure, the current-year refusal screen, and the 200% drive
+were NOT captured on the device. Dismissing the keyboard with ESC
+backgrounded the app, and the short-lived access token plus the refresh
+rotation ended the injected session on the next dossier fetch, so sustained
+figure-entry driving could not be held without re-acquiring a session each
+time. These three are the SAME behaviours the Paparazzi baselines photograph
+at real Compose rendering - comparisonWithGap (the pair card + "Ecart : 2,09
+points, soit environ 5 jours."), comparisonWithGapLarge (200%), and
+comparisonRefused (the current-year explanation) - and the gap for equal/
+above/below is pinned by EmployerComparisonTest. The on-device run proved the
+integration + R342; the baselines + JVM tests prove the rendering + the
+arithmetic. Recorded as a deviation, not hidden.
+
+====================================================================
+UNTRACKED FILES LEFT ALONE (R334)
+====================================================================
+Reported, never removed, never committed: the orphan worktree
+.claude/worktrees/agent-a3d7680f61139e338/ (another task's - NOT touched);
+MonReleve/ (scratch); android/.an*-shots/ and android/scripts/an-*.mjs
+(many, prior sessions); android/.kotlin/; relay/*.txt operator files; the
+pre-existing web/ working-tree changes. Only this task's own files were
+committed, by explicit `git add -f` (the .gitignore MonReleve/ rule matches
+the ch/monreleve/ path on this case-insensitive filesystem, so even tracked
+files there need -f).
+
+====================================================================
+ADVISOR DECISIONS (advisor NOT used - stalled all session, R156)
+====================================================================
+Conservative, reversible, recorded choices:
+  - The orphaned year-switch work was PRESERVED and built on, not reset
+    (R334; resetting uncommitted work is irreversible loss). Provenance
+    stated in the commit and above.
+  - No ComparisonController in MainGraph: the comparison is a composition-
+    root overlay holding the input in rememberSaveable + the phone store,
+    with the gap/causes computed by the pure buildComparison. Fewer moving
+    parts (R291 untouched, no MainGraphWiringTest change), and the
+    arithmetic still lives in ONE tested pure function (FW12/R340).
+  - The employer figure PIGGYBACKS on monreleve.detection (the AN-ALERT
+    idiom the relay sanctioned), so it is swept by an existing path and the
+    ErasureCensus already covers it - no DeviceLocalStore/census churn.
+  - formatPoints is reached transitively via ComparisonCopy, so it is an
+    UNREACHABLE entry in CopyReachabilityTest with that reason (not a direct
+    surface caller, like NotificationCopy's notifier-only copy).
+  - The day-by-day CTA uses a heightIn pill, not the fixed-height
+    PrimaryButton, so the design's long label stays readable (wraps) at
+    200% instead of clipping (R310). The design COPY is kept word for word.
+
+====================================================================
+PHONE SETTINGS RESTORED
+====================================================================
+Verified as-found after the run: font_scale = 1.0 (unchanged - 200% was not
+driven on-device), always_finish_activities = 0 (unchanged), mock_location /
+D18 untouched. NO screen lock was set. No day was recorded (server
+write-count stayed 2). adb reverse tcp:3000 was removed; the dev server was
+stopped and port 3000 freed. The debug APK (built at 127.0.0.1) remains
+installed, as SEED-RELEVE's run left one; the injected session is ended
+(harmless). Nothing else to restore.
+
+====================================================================
+OPEN QUESTIONS - RESOLVED
+====================================================================
+  Q1 THE YEAR SET: resolved conservatively. No years-list endpoint, so the
+     controller probes {current, current-1} and offers a past year only when
+     its dossier has recordedEntries > 0 (SEED-RELEVE: an empty or
+     read-failed past year is not offered); the current year is always
+     offered. The stated use case ("last year's releve from January") is the
+     {current, previous} pair.
+  Q2 THE CLOSED-YEAR BANNER: confirmed. A completed past year reads "Releve
+     de l'annee close" / "L'annee <N> est terminee. Ce releve est complet.",
+     distinct from the current year's provisional banner.
+  Q3 THE GAP BASIS: confirmed dossier.tiles.workedDays - the server's
+     prorated basis for the year (240 for a full simplified year, the exact
+     or prorated total otherwise). Never UI arithmetic.
+
+====================================================================
+PARKED
+====================================================================
+  PARKAN-49 - CLOSED (prior session).
+  PARKAN-26 - CLOSED this session (the year switch).
+  No new PARKAN. The register is the orchestrator's.
+
+====================================================================
+DEVIATIONS
+====================================================================
+  - The year-switch source was found uncommitted from a prior dead agent and
+    built on, not rebuilt (R334; see PROVENANCE). Honest attribution in
+    38e301e's body.
+  - The comparison is reached from the releve (ReleveActions.onCompareEmployer),
+    per the handoff architecture; the design file's back-arrow points at
+    Prevision, which is a standalone-mockup navigation context. Contents,
+    order, hierarchy and copy are built as designed; the back arrow returns
+    to the releve.
+  - The design's cause rows open per-cause filtered views; the three
+    record-derived causes and the CTA open the day-by-day record (the
+    calendar, which shows every day with its kind marker). Per-cause
+    filtering is not implemented - noted, not hidden.
+  - The two fontScale=2f releve baselines (releveLarge, releveClosedYearLarge)
+    clip the document tail at the annex (a pre-existing Paparazzi content-
+    height characteristic; the export buttons and footer were never captured
+    there either), so adding the compare button left them byte-identical.
+    The button is verified at 100% (releveDefault + releveClosedYear) and the
+    comparison screen at 100% AND 200%. NOTICED BUT NOT TOUCHING: raising the
+    capture to show the full 200% releve document is a pre-existing item.
+  - The S9 walkthrough proved the integration (launch, year switch,
+    comparison overlay with real causes) and R342 (zero write-requests) on
+    the device; the gap pair-card render, the current-year refusal and the
+    200% drive were not captured on-device (session-machinery friction:
+    access-token expiry + refresh rotation ended the injected session), and
+    are covered by the Paparazzi baselines + EmployerComparisonTest. See
+    WALKTHROUGH.
+  - The dev DB was re-seeded with `pnpm db:seed` to restore camille's canton
+    (the dossier needs it); this is the intended fixture mechanism (R334: a
+    deterministic regeneration of SEED-RELEVE's own fixture for 2025, not the
+    destruction of unique work). It invalidated the first injected session's
+    tokens, so a second session was acquired - noted above.
+  - gate:clone and the final merge are DEFERRED to the orchestrator, as the
+    launch message directs.
+
+====================================================================
+PUSH PROOF
+====================================================================
+Branch an-recon, off origin/main ca774a1. Pushed per increment:
+  38e301e  the year switch (PARKAN-26) - :app:gate BUILD SUCCESSFUL 6m05s
+  45566e9  the comparison engine + store + R340/R342 tests - 2m37s
+  44c7a34  the comparison screen + causes + releve entry - 6m24s
+Web suites: none run - this task is Android-only (no web/ source changed).
+gate:clone + the merge: DEFERRED to the orchestrator (R1).
+
+END OF REPORT-AN-RECON.txt. The build is complete (year switch + comparison +
+causes), green on three independent :app:gate runs, and pushed. The S9
+walkthrough proved the on-device integration and R342 (nothing reaches the
+server); the gap render / refusal / 200% are covered by the Paparazzi
+baselines and EmployerComparisonTest (see WALKTHROUGH). gate:clone and the
+merge are the orchestrator's (R1).

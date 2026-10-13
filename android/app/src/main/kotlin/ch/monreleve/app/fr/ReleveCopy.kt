@@ -82,6 +82,21 @@ object ReleveCopy {
     ): String = "Année en cours au $generatedDay. Le relevé sera complet après le 31 décembre $year."
 
     // ------------------------------------------------------------------
+    // PARKAN-26: the year switch. A completed past year reads differently from the current provisional one -
+    // "année close", not "année en cours" (R156 open-question 2). The selector offers every year with days,
+    // newest first (R328: a read-only view of what /api/v1/dossier?year= already serves).
+    // ------------------------------------------------------------------
+    const val BANNER_CLOSED_TITLE = "Relevé de l’année close"
+
+    fun bannerClosedBody(year: Int): String = "L’année $year est terminée. Ce relevé est complet."
+
+    /** The selector's heading, so the year chips carry a label (TalkBack reads it before the years). */
+    const val YEAR_SELECTOR_LABEL = "Année du relevé"
+
+    /** One year chip's label - the year itself. In fr/ so the ui/ no-literal fence stays satisfied. */
+    fun yearLabel(year: Int): String = year.toString()
+
+    // ------------------------------------------------------------------
     // 1. Header - SPEC 12 item 1
     // ------------------------------------------------------------------
     const val HEADER_NAME = "Nom"
@@ -169,6 +184,19 @@ object ReleveCopy {
     /** EXACT_METHOD_UNVERIFIED (docs section 8.2). The fallback-bareme warning reuses AujourdhuiCopy.fallbackNote. */
     const val WARNING_EXACT_UNVERIFIED =
         "La base en jours ouvrés a été renseignée par vous et n’est pas vérifiée par ce service."
+
+    // PARKAN-49: the two figures the accountant's list asked for (items 3 and 5), rendered beside the
+    // declarable rate as the PDF renders them. Ported word-for-word from web/lib/fr/dossier.ts (SPEC 12,
+    // the same document at two widths). Additive /v1 fields, both computed by the engine.
+
+    /** Item 3: the declarable rate with the missions removed (telework alone). */
+    const val RATE_WITHOUT_MISSIONS = "Taux sans les missions"
+    const val RATE_WITHOUT_MISSIONS_NOTE = "Le télétravail seul, sans les jours de mission."
+
+    /** Item 5: how many mission days were counted against the annual cap. */
+    const val CREDITED_MISSIONS = "Jours de mission comptés dans le taux"
+    const val CREDITED_MISSIONS_NOTE =
+        "Au-delà de la limite annuelle, les jours de mission ne sont pas comptés dans le taux à déclarer."
 
     // ------------------------------------------------------------------
     // 4. The monthly table - SPEC 12 item 4. Missions merged to one column on mobile (todo.md AN11, FD7).
@@ -313,6 +341,9 @@ object ReleveCopy {
     const val EXPORT_PDF = "Exporter en PDF"
     const val EXPORT_CSV = "Exporter en CSV"
     const val EXPORT_CHOOSER_TITLE = "Partager le relevé"
+
+    /** AN-RECON: opens the employer comparison for the year on screen (« a-t-il le même chiffre ? »). */
+    const val COMPARE_EMPLOYER = "Comparer avec mon employeur"
 
     /** SPEC 13.2: the export is a server render and requires connectivity - said plainly, never silent. */
     const val EXPORT_REQUIRES_CONNECTIVITY =

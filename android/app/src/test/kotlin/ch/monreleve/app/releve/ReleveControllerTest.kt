@@ -55,6 +55,8 @@ private fun document(): DossierDocument =
         annex = emptyList(),
         absenceDays = 3.0,
         recordedEntries = 5,
+        creditedMissionDays = 1.0,
+        rateWithoutMissions = 42.29,
     )
 
 private fun entry(
@@ -291,6 +293,117 @@ class ReleveControllerTest : FunSpec({
 
             controller.export(ExportKind.PDF)
             controller.exportEvents.first() shouldBe ExportEvent.Failed
+        }
+    }
+
+    // PARKAN-26: the year switch. The current year is always offered; a past year only when it has days.
+    test("PARKAN-26: a past year is offered only when it has days (recordedEntries > 0)") {
+        runTest {
+            // 2025 has days -> offered, newest first; the current year is selected and provisional.
+            val withPrev =
+                ReleveController(
+                    fetch = { year -> DossierResult.Loaded(document().copy(taxYear = year, recordedEntries = 4)) },
+                    exportBytes = { BytesOutcome.NetworkError },
+                    repository = repoOf(),
+                    taxYear = TAX_YEAR,
+                    scope = this,
+                )
+            advanceUntilIdle()
+            val loaded = withPrev.state.value.shouldBeInstanceOf<ReleveState.Loaded>()
+            loaded.availableYears shouldBe listOf(2026, 2025)
+            loaded.selectedYear shouldBe 2026
+            loaded.isCurrentYear shouldBe true
+
+            // 2025 returns a valid but EMPTY document (SEED-RELEVE's Camille-2024 shape) -> NOT offered.
+            val emptyPrev =
+                ReleveController(
+                    fetch = { year ->
+                        DossierResult.Loaded(
+                            document().copy(taxYear = year, recordedEntries = if (year == 2025) 0 else 5),
+                        )
+                    },
+                    exportBytes = { BytesOutcome.NetworkError },
+                    repository = repoOf(),
+                    taxYear = TAX_YEAR,
+                    scope = this,
+                )
+            advanceUntilIdle()
+            emptyPrev.state.value.shouldBeInstanceOf<ReleveState.Loaded>().availableYears shouldBe listOf(2026)
+        }
+    }
+
+    test("PARKAN-26: a past year that read-fails is not offered (SEED-RELEVE Sam-2025 shape)") {
+        runTest {
+            val controller =
+                ReleveController(
+                    // 2025 is out of activity -> the route 500s -> Unreadable -> not offered.
+                    fetch = { year ->
+                        if (year == 2025) DossierResult.Unreadable else DossierResult.Loaded(document())
+                    },
+                    exportBytes = { BytesOutcome.NetworkError },
+                    repository = repoOf(),
+                    taxYear = TAX_YEAR,
+                    scope = this,
+                )
+            advanceUntilIdle()
+            controller.state.value.shouldBeInstanceOf<ReleveState.Loaded>().availableYears shouldBe listOf(2026)
+        }
+    }
+
+    test("PARKAN-26: selectYear switches the fetched year, recomputes pending, and the export path follows") {
+        runTest {
+            var requestedPath: String? = null
+            val repo =
+                repoOf(
+                    entry("2026-06-15", SyncState.PENDING),
+                    entry("2026-06-16", SyncState.PENDING),
+                    entry("2025-06-15", SyncState.PENDING),
+                )
+            val controller =
+                ReleveController(
+                    fetch = { year -> DossierResult.Loaded(document().copy(taxYear = year, recordedEntries = 5)) },
+                    exportBytes = { path ->
+                        requestedPath = path
+                        BytesOutcome.Ok(200, ExportBytes(byteArrayOf(1), filename = null))
+                    },
+                    repository = repo,
+                    taxYear = TAX_YEAR,
+                    scope = this,
+                )
+            advanceUntilIdle()
+            // On the current year: two 2026 days pending.
+            controller.state.value.shouldBeInstanceOf<ReleveState.Loaded>().pendingCount shouldBe 2
+
+            controller.selectYear(2025)
+            advanceUntilIdle()
+            val loaded = controller.state.value.shouldBeInstanceOf<ReleveState.Loaded>()
+            loaded.selectedYear shouldBe 2025
+            loaded.document.taxYear shouldBe 2025
+            loaded.isCurrentYear shouldBe false
+            // The pending count recomputes for 2025 (one pending 2025 day).
+            loaded.pendingCount shouldBe 1
+
+            controller.export(ExportKind.PDF)
+            controller.exportEvents.first().shouldBeInstanceOf<ExportEvent.Ready>()
+            requestedPath shouldBe "/api/v1/export/pdf?year=2025"
+        }
+    }
+
+    test("PARKAN-26: selectYear ignores a year the selector does not offer (R328 read-only)") {
+        runTest {
+            val controller =
+                ReleveController(
+                    fetch = { year -> DossierResult.Loaded(document().copy(taxYear = year, recordedEntries = 5)) },
+                    exportBytes = { BytesOutcome.NetworkError },
+                    repository = repoOf(),
+                    taxYear = TAX_YEAR,
+                    scope = this,
+                )
+            advanceUntilIdle()
+            controller.selectYear(2020) // never offered
+            advanceUntilIdle()
+            controller.selectedYear.value shouldBe 2026
+            controller.state.value.shouldBeInstanceOf<ReleveState.Loaded>().selectedYear shouldBe 2026
         }
     }
 })

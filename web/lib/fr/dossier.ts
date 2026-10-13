@@ -237,6 +237,24 @@ export const DOSSIER_COPY = {
      */
     overFiscal: `Jours au-dessus du seuil d${APOS}imposition`,
     overSocial: 'Jours au-dessus du seuil de sécurité sociale',
+
+    // ========================================================================
+    // PARKAN-49: THE TWO FIGURES THE ACCOUNTANT'S LIST ASKED FOR (items 3 and 5)
+    // ========================================================================
+    //
+    // Both are ADDITIVE /v1 fields computed by the engine, rendered here beside
+    // the declarable rate. They are what a reader needs to answer the January
+    // question - does the employer have the same figure? - from their own record.
+
+    /** Item 3: the declarable rate with the missions removed (telework alone). */
+    rateWithoutMissions: 'Taux sans les missions',
+    rateWithoutMissionsNote: `Le télétravail seul, sans les jours de mission.`,
+
+    /** Item 5: how many mission days were counted against the annual cap. */
+    creditedMissions: 'Jours de mission comptés dans le taux',
+    creditedMissionsNote:
+      `Au-delà de la limite annuelle, les jours de mission ne sont pas comptés ` +
+      `dans le taux à déclarer.`,
   },
 
   // --------------------------------------------------------------------

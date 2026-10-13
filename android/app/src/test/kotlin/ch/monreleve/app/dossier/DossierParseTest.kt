@@ -84,7 +84,9 @@ private val PAYLOAD =
         }
       ],
       "absenceDays": 3,
-      "recordedEntries": 5
+      "recordedEntries": 5,
+      "creditedMissionDays": 1,
+      "rateWithoutMissions": 42.08
     }
     """.trimIndent()
 
@@ -110,6 +112,14 @@ class DossierParseTest : FunSpec({
         // The proof the fixture disagrees with a count: 240 worked days against five recorded rows. A device
         // that counted would never reach 240 here.
         document.recordedEntries shouldBe 5
+    }
+
+    test("PARKAN-49: the credited missions and the rate without missions are the server's, not a count") {
+        // R120: both disagree with a naive count. One mission is logged (tiles.missionDays == 1) and all of
+        // it is credited here (1), while the rate without missions (42,08) sits BELOW the declarable rate
+        // (42,70) - a device that counted or recomputed would not reach these exact wire values.
+        document.creditedMissionDays shouldBe 1.0
+        document.rateWithoutMissions shouldBe 42.08
     }
 
     test("the zone carries both rates and both headrooms verbatim (R224, R239)") {

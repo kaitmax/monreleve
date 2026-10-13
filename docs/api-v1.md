@@ -803,6 +803,8 @@ the one an auditor reads.
 | `annex` | every entry **and every working day without one** |
 | `absenceDays` | D28: counted once here and in no other figure |
 | `recordedEntries` | how many annex rows carry an entry |
+| `creditedMissionDays` | how many mission days were **counted against the annual cap** — France and third state together. Additive (PARKAN-49) |
+| `rateWithoutMissions` | the declarable rate with the **missions removed** — telework alone. Additive (PARKAN-49) |
 
 ### 8.2 What a client may assume
 
@@ -825,6 +827,20 @@ the one an auditor reads.
   `zone`'s figures, and two sources for one figure inside a frozen contract is
   the drift this document exists to prevent. Its unique fields may be added
   later as named fields (§6.3's additive rule permits it).
+- **`creditedMissionDays` is how many missions the rate COUNTED, not how many
+  were logged.** The `missionDays` tile is the total recorded; this is how many
+  of them fell under the annual cap *and* the ceiling headroom. When the regime
+  is lost the two diverge at their most instructive — twelve logged, zero
+  counted — and a client that shows the tile without this cannot say why the
+  rate did not move. It is the engine's `creditedMissionDays`; a client must not
+  recompute it.
+- **`rateWithoutMissions` is telework alone, and `rateWithoutMissions <=
+  declarableRate` always.** It is the declarable rate the engine returns for the
+  same person with the mission rows removed, so it can never exceed the fiscal
+  ceiling while telework is under it. Equality means no mission day was
+  credited. A client renders it beside `declarableRate`; it does **not** divide
+  the tiles to obtain it — that is a second implementation of a figure the
+  engine already produced (FW12).
 
 ### 8.3 Refusals
 

@@ -203,6 +203,82 @@ describe('the annex is an evidence record', () => {
   });
 });
 
+/** A year well under the ceiling, so the missions have headroom and are credited. */
+function creditedMissionsYear(): AnnexEntry[] {
+  const entries: AnnexEntry[] = [];
+
+  // 20 telework days: 20/240 = 8,33 %, far under the 96-day fiscal ceiling, so
+  // every mission below the cap is credited.
+  for (let d = 1; d <= 20; d += 1) {
+    entries.push(entry(`2026-02-${String(d).padStart(2, '0')}`, 'HOME'));
+  }
+
+  // 5 France missions: under the 10-day cap, all fit in the headroom, so all 5
+  // are credited.
+  for (let d = 1; d <= 5; d += 1) {
+    entries.push(entry(`2026-04-${String(d).padStart(2, '0')}`, 'MISSION_FR'));
+  }
+
+  return entries;
+}
+
+describe('PARKAN-49: the credited missions and the rate without missions travel (additive /v1)', () => {
+  it('surfaces creditedMissionDays FROM THE ENGINE, never recomputed', () => {
+    // R181: the field is the engine's own `result.creditedMissionDays`, read
+    // through, not a second count. On this fixture 5 missions sit under both the
+    // cap and the headroom, so all 5 are credited.
+    const dossier = buildDossier(USER, creditedMissionsYear(), 2026);
+
+    expect(dossier.creditedMissionDays).toBe(dossier.result.creditedMissionDays);
+    expect(dossier.creditedMissionDays).toBe(5);
+  });
+
+  it('reports ZERO credited when the regime is lost, which is the instructive case', () => {
+    // divergentYear's telework alone sits at the 40 % ceiling, so there is no
+    // headroom and none of the 12 missions is credited - the Alex case the
+    // document must be able to state (12 logged, 0 counted).
+    const dossier = buildDossier(USER, divergentYear(), 2026);
+
+    expect(dossier.tiles.missionDays).toBeGreaterThan(0);
+    expect(dossier.creditedMissionDays).toBe(0);
+  });
+
+  it('computes rateWithoutMissions THROUGH THE ENGINE, with the missions removed', () => {
+    // R281: it is the declarable rate the engine returns for the SAME person
+    // with their mission rows taken out - never UI arithmetic on the tiles.
+    const withMissions = buildDossier(USER, creditedMissionsYear(), 2026);
+    const withoutMissions = buildDossier(
+      USER,
+      creditedMissionsYear().filter(
+        (e) => e.kind !== 'MISSION_FR' && e.kind !== 'MISSION_THIRD',
+      ),
+      2026,
+    );
+
+    expect(withMissions.rateWithoutMissions).toBe(withoutMissions.zone.declarableRate);
+  });
+
+  it('is LOWER than the declarable rate when missions are credited, EQUAL when none are', () => {
+    // BOTH DIRECTIONS. Credited missions add to the declarable numerator, so
+    // the rate without them is strictly lower; with none credited the two
+    // coincide, which is the "it can never exceed the ceiling when telework is
+    // under it" property the accountant's list names.
+    const credited = buildDossier(USER, creditedMissionsYear(), 2026);
+
+    expect(credited.rateWithoutMissions).toBeLessThan(credited.zone.declarableRate);
+
+    const noMissions = buildDossier(
+      USER,
+      Array.from({ length: 10 }, (_, i) =>
+        entry(`2026-05-${String(i + 1).padStart(2, '0')}`, 'HOME'),
+      ),
+      2026,
+    );
+
+    expect(noMissions.rateWithoutMissions).toBe(noMissions.zone.declarableRate);
+  });
+});
+
 describe('the months and the year agree', () => {
   it('ends December on the annual declarable rate', () => {
     const dossier = buildDossier(USER, divergentYear(), 2026);

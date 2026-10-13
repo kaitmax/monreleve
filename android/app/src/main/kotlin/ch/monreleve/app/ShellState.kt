@@ -69,8 +69,12 @@ fun rememberShellTab(): MutableState<AppTab> = rememberSaveable { mutableStateOf
 /**
  * The shell's controllers, built once through MainGraph.build (R291 - the construction site the wiring test
  * checks). Held here so their state's lifetime is decided in one testable place rather than inline in MainShell.
+ *
+ * LongMethod suppressed as MainShell is (MainActivity): this is the composition root's state holder - the
+ * rememberSaveable seeds and the snapshot collectors, one per controller - not tangled logic. Each feature
+ * (calendar, parametres, simulation, the releve's year) adds a seed + a collector here by construction.
  */
-@Suppress("LongParameterList")
+@Suppress("LongParameterList", "LongMethod")
 @Composable
 fun rememberMainControllers(
     repository: EntryRepository,
@@ -101,6 +105,10 @@ fun rememberMainControllers(
     // default autoSaver stores it in the Bundle, which outlives a config change AND a background kill. Null = the
     // simulator has not been opened (or its state has not settled). The computed view is NOT stored (R181).
     var savedSimulation by rememberSaveable { mutableStateOf<SimulationSnapshot?>(null) }
+    // PARKAN-26 (R310): the releve's selected year. An Int? stored by the default autoSaver, so it survives a
+    // rotation, a text-size change, a dark-mode switch AND a background kill (the Bundle outlives process death).
+    // Null = a fresh build opens on the current year.
+    var savedSelectedYear by rememberSaveable { mutableStateOf<Int?>(null) }
     // AN-AUTO increment 2 (R315): the device's logging-mode cache, built at the composition boundary where a
     // Context is available (ui/ and the controllers may not touch one). Persistent across rebuilds by itself
     // (SharedPreferences), so it needs no rememberSaveable.
@@ -113,6 +121,7 @@ fun rememberMainControllers(
                 restoredCalendar = CalendarSnapshot(savedMonth, savedEditingDay, savedSelection),
                 restoredParametres = savedParametres,
                 restoredSimulation = savedSimulation,
+                restoredSelectedYear = savedSelectedYear,
                 detectionModeStore = SharedPrefsDetectionModeStore(context),
                 // R315/incr 4: enabling auto mode starts the WorkManager sampler; disabling stops it at once
                 // and clears the day's cursor. The permission that lets a wake get a fix is granted by R316's
@@ -170,6 +179,11 @@ fun rememberMainControllers(
         controllers.simulation.state.collect { s ->
             savedSimulation = SimulationSnapshot(scenario = s.scenario, inputs = s.inputs)
         }
+    }
+    // PARKAN-26 (R310): snapshot the releve's selected year from its own flow, so a rebuild reopens the same year.
+    // Read from the controller's flow (not the Loaded state) so it is captured even while the document is Loading.
+    LaunchedEffect(controllers) {
+        controllers.releve.selectedYear.collect { savedSelectedYear = it }
     }
     return controllers
 }

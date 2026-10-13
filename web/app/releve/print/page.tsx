@@ -373,6 +373,22 @@ export default async function PrintPage({
           </p>
         ) : null}
 
+        {/* PARKAN-49, items 3 and 5 of the accountant's list. Both are ADDITIVE
+            /v1 fields from the engine (never computed here) rendered as the
+            releve's other rate figures are. The rate without missions carries
+            two decimals like the declarable rate it sits beside (R224/R97); the
+            credited count is a day figure. */}
+        <p className={styles.rawRate}>
+          <span>{formatPercent(dossier.rateWithoutMissions, 2)}</span>{' '}
+          {COPY.zone.rateWithoutMissions}
+          <span className={styles.note}>{COPY.zone.rateWithoutMissionsNote}</span>
+        </p>
+
+        <p className={styles.rawRate}>
+          <span>{formatDays(dossier.creditedMissionDays)}</span> {COPY.zone.creditedMissions}
+          <span className={styles.note}>{COPY.zone.creditedMissionsNote}</span>
+        </p>
+
         <p className={styles.thresholds}>{COPY.zone.thresholds(fiscal, social)}</p>
 
         {/* R239: HOW FAR, which is the question this product exists to answer
