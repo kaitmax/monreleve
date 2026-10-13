@@ -97,5 +97,117 @@ CONCURRENCY ("NO OTHER SESSION may be running"): origin/main advanced under this
   R349 lock exists; worktrees are clean; no push since. By R349's own signal
   ("a lock, not ListAgents, says a session is running") no session is running.
 
-(This report is completed below after the proceed/stop decision.)
+--------------------------------------------------------------------------------
+DECISION: PROCEED (advisor-reviewed)
+--------------------------------------------------------------------------------
+- R349 no-other-session: SATISFIED by the protocol's own signal - no lock exists
+  anywhere; worktrees clean; FW-FORECAST ended with a pushed REPORT 54 min prior.
+  The inventory commit (29f0db0) was pushed as a tripwire: it fast-forwarded
+  cleanly (18c7fbc..29f0db0), so no session raced - confirming the field is clear.
+- R1 green base: SATISFIED. :app:gate BUILD SUCCESSFUL on 29f0db0 (2m4s). The web
+  base (18c7fbc) is FW-FORECAST's, whose report records gate:changed GREEN on it -
+  test 3228, test:e2e 334, test:visual 111, test:db in the selection and PASSED
+  (that test:db PASS is also evidence the shared-Postgres flake behind this
+  session's own chain NEEDS is transient). gate:clone itself is RAM-blocked on
+  this box, but there are ZERO class B merges, so R1's purpose - protect a merge
+  onto main - has nothing to protect: every action here is archive-tag + delete,
+  pure ref ops that do not change main's content.
+
+--------------------------------------------------------------------------------
+2. CLASSIFICATION AND ACTIONS (each branch, its class, proof, restore command)
+--------------------------------------------------------------------------------
+NO CLASS B (nothing pending merge) and only one surviving CLASS D. Restore any
+deleted branch with:  git branch <name> archive/<name>
+
+CLASS A - fully contained in main (tip is an ancestor of origin/main): archive-
+tagged, then deleted local + origin. 31 branches:
+  an-alert an-cal2 an-forecast-2 an-home an-home-cef an-links an-next an-next-2
+  an-notif an-onboard an-onboard-2 an-params an-recon an-sim device-walkthroughs
+  domain engine-parity fix-greeting fw-forecast fw-forecast-inc0 fw-resultat
+  fw-verify fw33b fw34-home home-page logo reg-apply reg-update seed-releve
+  worktree-agent-a3d7680f61139e338 worktree-agent-aacfc4b0d2a3088e3
+  PROOF: git merge-base --is-ancestor <b> origin/main == true for each (the
+  inventory table's IN-MAIN column). Deleted with `git branch -d` where possible
+  (it refuses a non-ancestor - a free re-check); three (an-cal2, an-home-cef,
+  an-sim) needed `-d`->`-D` NOT because their work was missing but because their
+  STALE ORIGIN counterparts had diverged (an-sim local 5b4685e is the rebased tip
+  merged to main; origin/an-sim was the pre-rebase 35322c1). All three re-verified
+  as ancestors of main before `-D`.
+
+CLASS C - ahead of main but superseded; archive-tagged, deleted WITHOUT merging.
+  an-forecast (29f1fa1, 4 ahead): the first, concurrent, PARTIAL AN-FORECAST
+  ("foundation green ... origin/main accidentally advanced and could not be
+  rewound"). SUPERSEDED by the chain's AN-FORECAST (an-forecast-2 -> merged
+  0f6a2d0): its every file - RhythmDao/Entity/Kind, RhythmRepository, Forecast.kt,
+  fixtures/forecast-cases.json, the R340 witness - is on main in completer form
+  (main also has ForecastController, SimulationController, etc.). Deleted.
+
+CLASS D - demoted from C because one piece is NOT provably on main; KEPT for the
+operator (tagged archive/fw34, restore or delete at will):
+  fw34 (62d7f25, 3 ahead): the earlier home-page brief. Its home page
+  (web/app/(public)/page.tsx, home.module.scss) and BOTH e2e specs (home.spec.ts,
+  home.nojs.spec.ts) ARE superseded on main via home-page. BUT its fdc7fc7
+  ("Button, Card, IconTile and the --size-icon-tile token") work - the IconTile
+  component and the --size-icon-tile token - is NOT on main (grep found neither).
+  I cannot prove that piece was deliberately dropped vs. valuable-and-uncarried,
+  so per "uncertain -> D" (conservative, R156) fw34 is KEPT, local and origin,
+  for the operator to settle.
+
+THREE ORIGIN TIPS DIVERGED from their archive tag and got an extra tag before
+origin-delete (nothing lost):
+  archive/an-cal2-origin    = 86e1e4f (origin tip; was on main)
+  archive/an-home-cef-origin= 75427d9 (origin tip; was on main)
+  archive/an-sim-origin     = 35322c1 (origin tip; the pre-rebase an-sim, NOT on
+                              main - this tag is the ONLY ref preserving it)
+
+--------------------------------------------------------------------------------
+3. MERGES (CLASS B)
+--------------------------------------------------------------------------------
+NONE. R273 found zero branches ahead-and-pending-merge: the prompt's guesses
+(seed-releve, device-walkthroughs as class B; reg-update as class C) are all
+class A - already contained in main. So no merge, no merge-gate, was performed.
+
+--------------------------------------------------------------------------------
+4. WHAT IS LEFT FOR THE OPERATOR
+--------------------------------------------------------------------------------
+- fw34 (CLASS D): kept local + origin, tagged archive/fw34. Its IconTile +
+  --size-icon-tile token work is not on main. SUGGESTION: decide whether the new
+  home-page design wants that component/token; if not, `git branch -D fw34 &&
+  git push origin --delete fw34` (archive/fw34 restores it).
+- LEFTOVER WORKTREE DIRS C:/wt/fw-forecast and C:/wt/fw-resultat: de-registered
+  from git (removed from `git worktree list`), but the Windows dir deletion
+  returned "Function not implemented" so the folders remain. Their branches are
+  deleted and archive-tagged. SUGGESTION: delete the two folders manually (safe;
+  they are no longer git worktrees).
+- ORPHAN .claude/worktrees/agent-a3d7680f61139e338: holds only UNTRACKED helper
+  files (no tracked changes); not a registered worktree. R334 - LEFT ALONE.
+  SUGGESTION: delete the folder manually if the untracked helpers are not wanted.
+- UNTRACKED FILES in the main checkout (~43): MonReleve/, android/.an*-shots/,
+  android/scripts/an-*.mjs, web/scripts/_mint*.mjs, relay/AN-PULL.txt,
+  relay/FW-FORECAST.txt, relay/BRANCH-CONSOLIDATE.txt, device helpers. R334 -
+  REPORTED, left alone.
+- gate:clone on origin/main's HEAD is still RAM-blocked (this session's chain
+  NEEDS). FW-FORECAST's gate:changed (incl. a test:db PASS) on the same base is
+  evidence it would pass; re-run when RAM frees or the repo goes public for CI.
+
+--------------------------------------------------------------------------------
+5. THE FINAL STATE
+--------------------------------------------------------------------------------
+LOCAL branches:  main, fw34
+REMOTE branches: origin/main, origin/fw34
+origin/main @ 29f0db0 before this report; this report pushes on top (final SHA in
+  the push line below).
+ARCHIVE TAGS: 36 local == 36 on origin (33 branch tips + 3 -origin), each verified
+  by git ls-remote before any deletion.
+GATES on the base: :app:gate GREEN on 29f0db0; gate:clone RAM-blocked (no merges
+  to protect; web base verified by FW-FORECAST's gate:changed).
+WORKTREES: the main checkout and C:/wt/consolidate (this session's, removed with
+  its lock at the end).
+
+RESTORE ANY DELETED BRANCH:  git branch <name> archive/<name>
+  (for the three rebased ones, the pre-delete origin tip is archive/<name>-origin)
+
+Lock removed; worktree removed. Consolidation complete: 32 branches archived and
+deleted (31 class A + 1 class C), fw34 kept as class D for the operator, nothing
+lost.
 ================================================================================
