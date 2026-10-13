@@ -342,6 +342,9 @@ object ReleveCopy {
     const val EXPORT_CSV = "Exporter en CSV"
     const val EXPORT_CHOOSER_TITLE = "Partager le relevé"
 
+    /** AN-RECON: opens the employer comparison for the year on screen (« a-t-il le même chiffre ? »). */
+    const val COMPARE_EMPLOYER = "Comparer avec mon employeur"
+
     /** SPEC 13.2: the export is a server render and requires connectivity - said plainly, never silent. */
     const val EXPORT_REQUIRES_CONNECTIVITY =
         "L’export nécessite une connexion. Reconnectez-vous à Internet, puis réessayez."

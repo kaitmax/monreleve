@@ -80,10 +80,13 @@ import ch.monreleve.app.detection.FINE_LOCATION
 import ch.monreleve.app.detection.POST_NOTIFICATIONS_PERMISSION
 import ch.monreleve.app.detection.locationFullyGranted
 import ch.monreleve.app.detection.maybeAlertThreshold
+import ch.monreleve.app.dossier.buildComparison
+import ch.monreleve.app.dossier.parseEmployerRate
 import ch.monreleve.app.forecast.RhythmChoice
 import ch.monreleve.app.fr.DisclosureCopy
 import ch.monreleve.app.fr.ParametresCopy
 import ch.monreleve.app.fr.ReleveCopy
+import ch.monreleve.app.fr.format.formatPercent
 import ch.monreleve.app.onboarding.ModeChoice
 import ch.monreleve.app.onboarding.OnboardingController
 import ch.monreleve.app.onboarding.OnboardingPhase
@@ -98,8 +101,11 @@ import ch.monreleve.app.parametres.Site
 import ch.monreleve.app.parametres.openLegalLink
 import ch.monreleve.app.releve.ExportEvent
 import ch.monreleve.app.releve.ExportKind
+import ch.monreleve.app.releve.ReleveState
+import ch.monreleve.app.settings.EmployerFigureStore
 import ch.monreleve.app.settings.SettingsStore
 import ch.monreleve.app.settings.SharedPrefsDetectionModeStore
+import ch.monreleve.app.settings.SharedPrefsEmployerFigureStore
 import ch.monreleve.app.settings.SharedPrefsEveningNotificationStore
 import ch.monreleve.app.settings.SharedPrefsSettingsStore
 import ch.monreleve.app.startup.StartDecision
@@ -109,6 +115,8 @@ import ch.monreleve.app.ui.screens.aujourdhui.AujourdhuiActions
 import ch.monreleve.app.ui.screens.aujourdhui.AujourdhuiScreen
 import ch.monreleve.app.ui.screens.calendrier.CalendarActions
 import ch.monreleve.app.ui.screens.calendrier.CalendrierScreen
+import ch.monreleve.app.ui.screens.comparison.ComparisonActions
+import ch.monreleve.app.ui.screens.comparison.ComparisonScreen
 import ch.monreleve.app.ui.screens.disclosure.DisclosureScreen
 import ch.monreleve.app.ui.screens.onboarding.OnboardingActions
 import ch.monreleve.app.ui.screens.onboarding.OnboardingScreen
@@ -175,6 +183,10 @@ class MainActivity : ComponentActivity() {
         val settingsStore: SettingsStore = SharedPrefsSettingsStore(context)
         val pending = SharedPrefsPendingSignInStore(context)
         val accountStore = SharedPrefsAccountStore(context)
+        // AN-RECON (R342): the employer attestation figure stays on the phone, account-tagged, in the
+        // monreleve.detection file that sign-out already sweeps. The tag is read live from accountStore, so a
+        // re-sign-in under a different account cannot read the previous one's figure (fail closed when null).
+        val employerStore: EmployerFigureStore = SharedPrefsEmployerFigureStore(context) { accountStore.current() }
         val clock = Clock.systemDefaultZone()
         // AN-FIX F4 / R303: the record is scoped to the account signed in RIGHT NOW. A new account signs in
         // through CallbackActivity, which restarts this activity, so onCreate re-reads the current tag; an
@@ -259,6 +271,7 @@ class MainActivity : ComponentActivity() {
                                 revokeServer = session::revokeServerSession,
                                 localStore = localStore,
                                 authenticatedPost = session::authenticatedPost,
+                                employerStore = employerStore,
                                 // R295/R289: sign-out or deletion has wiped the local store; return to first-run.
                                 // A re-auth restarts this activity, and `start` recomputes the destination.
                                 onSignedOut = { destination = Destination.SIGN_IN },
@@ -528,6 +541,7 @@ internal fun MainShell(
     revokeServer: suspend () -> Unit,
     localStore: LocalStore,
     authenticatedPost: suspend (String, String) -> PostOutcome,
+    employerStore: EmployerFigureStore,
     onSignedOut: () -> Unit,
 ) {
     // R291: the controllers are built by MainGraph, the ONE construction site MainGraphWiringTest also
@@ -547,6 +561,9 @@ internal fun MainShell(
     // AN-FORECAST: the two forecast sub-screens (not bottom-nav tabs) are a nullable overlay over the shell,
     // held in rememberSaveable so a rotation or a background kill keeps the open screen (R310). Null = on a tab.
     var forecastRoute by rememberSaveable { mutableStateOf<ForecastRoute?>(null) }
+    // AN-RECON: the employer comparison, a full-screen overlay over the releve for the year it holds. Null = not
+    // open; held in rememberSaveable so a rotation or a background kill keeps it open on the same year (R310).
+    var comparisonYear by rememberSaveable { mutableStateOf<Int?>(null) }
     val forecastState by controllers.forecast.state.collectAsState()
     val simulationState by controllers.simulation.state.collectAsState()
 
@@ -747,7 +764,10 @@ internal fun MainShell(
                                 onExportCsv = { controllers.releve.export(ExportKind.CSV) },
                                 // PARKAN-26: switch the releve to another year the selector offers (R328 read-only).
                                 onSelectYear = controllers.releve::selectYear,
-                                // AN-RECON: onCompareEmployer (the comparison overlay) is wired in a later step.
+                                // AN-RECON: open the comparison overlay for the year on screen.
+                                onCompareEmployer = {
+                                    (releveState as? ReleveState.Loaded)?.let { comparisonYear = it.selectedYear }
+                                },
                             ),
                     )
                 AppTab.PARAMETRES ->
@@ -831,6 +851,53 @@ internal fun MainShell(
                                 onBack = { forecastRoute = ForecastRoute.PREVISION },
                             ),
                     )
+            }
+        }
+    }
+
+    // AN-RECON: the employer comparison, a full-screen overlay over the releve. It reads the releve's current
+    // Loaded document for the year it holds (R287: the server's figure, never a phone-side calc) and the
+    // employer figure from the phone store (R342). Computing the gap writes nothing (R340); only the person's
+    // typed figure is persisted, to the account-scoped phone store. Back closes it; a cause or "voir mes
+    // journees" opens the day-by-day record.
+    comparisonYear?.let { year ->
+        val loaded = releveState as? ReleveState.Loaded
+        BackHandler { comparisonYear = null }
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            if (loaded != null) {
+                var employerInput by
+                    rememberSaveable(year) {
+                        mutableStateOf(employerStore.figureFor(year)?.let { formatPercent(it, 2) } ?: "")
+                    }
+                val employerRate = parseEmployerRate(employerInput)
+                val view =
+                    remember(loaded.document, loaded.pendingCount, loaded.isCurrentYear, employerRate) {
+                        buildComparison(
+                            document = loaded.document,
+                            isCurrentYear = loaded.isCurrentYear,
+                            daysUnsynced = loaded.pendingCount,
+                            missionCap = loaded.rules.missionCapDays,
+                            simplifiedBasisDays = loaded.rules.simplifiedBasisDays,
+                            employerRate = employerRate,
+                        )
+                    }
+                ComparisonScreen(
+                    view = view,
+                    employerInput = employerInput,
+                    employerRate = employerRate,
+                    actions =
+                        ComparisonActions(
+                            onInputChange = { text ->
+                                employerInput = text
+                                parseEmployerRate(text)?.let { employerStore.save(year, it) }
+                            },
+                            onViewDays = {
+                                comparisonYear = null
+                                tab = AppTab.CALENDRIER
+                            },
+                            onBack = { comparisonYear = null },
+                        ),
+                )
             }
         }
     }

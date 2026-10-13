@@ -157,6 +157,15 @@ private fun DocumentBody(
         ZonePanel(document.zone, loaded.rules, document.creditedMissionDays, document.rateWithoutMissions)
         MonthlyTable(document.months)
         AnnexSection(document)
+        // AN-RECON: opens the employer comparison for the year on screen. Shown on every year; a current-year
+        // comparison is refused with an explanation on the comparison screen (no attestation exists yet).
+        OutlinedButton(
+            onClick = actions.onCompareEmployer,
+            shape = RoundedCornerShape(Radius.md),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(text = ReleveCopy.COMPARE_EMPLOYER)
+        }
         ExportButtons(onExportPdf = actions.onExportPdf, onExportCsv = actions.onExportCsv)
         LegalFooter()
     }

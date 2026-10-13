@@ -79,6 +79,7 @@ private fun digits(
     value: Double,
     minimumFractionDigits: Int,
     maximumFractionDigits: Int,
+    rounding: RoundingMode = RoundingMode.DOWN,
 ): String {
     val format = DecimalFormat("#,##0", DecimalFormatSymbols(Locale.ROOT))
 
@@ -92,7 +93,7 @@ private fun digits(
     format.maximumFractionDigits = maximumFractionDigits
     format.isGroupingUsed = true
     format.groupingSize = 3
-    format.roundingMode = RoundingMode.DOWN
+    format.roundingMode = rounding
 
     return format.format(value)
 }
@@ -132,6 +133,17 @@ fun formatDays(value: Double): String {
     requireFinite(value, "formatDays")
 
     return digits(value, 0, 1)
+}
+
+/**
+ * AN-RECON: a count of percentage POINTS, always two decimals (the gap between two two-decimal rates). Rounded
+ * HALF_UP, not DOWN: the gap is an exact two-decimal difference (41,25 - 39,16 = 2,09), so the float error in
+ * its representation is recovered rather than truncated - 2,0899999 must read "2,09", never "2,08".
+ */
+fun formatPoints(value: Double): String {
+    requireFinite(value, "formatPoints")
+
+    return digits(value, 2, 2, RoundingMode.HALF_UP)
 }
 
 /** A day count whose sign the caller renders itself. */

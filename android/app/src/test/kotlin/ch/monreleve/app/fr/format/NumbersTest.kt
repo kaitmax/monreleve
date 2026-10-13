@@ -135,6 +135,26 @@ class NumbersTest : FunSpec({
         }
     }
 
+    context("formatPoints") {
+        test("renders two decimals of percentage points") {
+            formatPoints(2.09) shouldBe "2${COMMA}09"
+        }
+
+        test("rounds HALF_UP so an exact gap is recovered, not truncated to a point less") {
+            // 41,25 - 39,16 = 2,09, but the double is ~2,0899999; it must read 2,09, never 2,08.
+            formatPoints(41.25 - 39.16) shouldBe "2${COMMA}09"
+        }
+
+        test("keeps both decimals, including trailing zeros") {
+            formatPoints(2.0) shouldBe "2${COMMA}00"
+            formatPoints(0.0) shouldBe "0${COMMA}00"
+        }
+
+        test("rejects a non-finite value") {
+            runCatching { formatPoints(Double.NaN) }.isFailure shouldBe true
+        }
+    }
+
     context("the test file itself") {
         test("contains no literal NBSP or NNBSP in its own source") {
             val source =

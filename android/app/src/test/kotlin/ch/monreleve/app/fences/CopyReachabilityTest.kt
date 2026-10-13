@@ -147,6 +147,14 @@ private fun renderedText(): String = SURFACE_DIRS.flatMap { ktFiles(it) }.joinTo
  */
 private val UNREACHABLE: Map<String, String> =
     mapOf(
+        // AN-RECON: formatPoints is a fr/format helper for the gap's percentage-points figure. It is reached
+        // from a surface, but TRANSITIVELY: ComparisonScreen renders ComparisonCopy.gapHeadline, which formats the
+        // points through formatPoints - so the helper itself is never named in a surface directory, only in fr/.
+        // The same shape as the other format helpers, except they also have a direct surface caller and this one
+        // does not. Not on the wire, not a projection record.
+        "formatPoints" to
+            "the gap's percentage-points formatter, called by ComparisonCopy.gapHeadline (itself rendered by " +
+            "ComparisonScreen); a fr/format helper reached transitively through fr/, never named by a surface",
         // AN11: the export hand-off strings are rendered by the composition root (MainActivity's share sheet
         // and toasts), which needs an Activity Context, an Intent and a FileProvider - none permitted in ui/,
         // and it carries file-path literals the no-literal fence forbids there. So this copy is reachable, but
