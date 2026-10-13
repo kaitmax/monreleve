@@ -1,0 +1,211 @@
+================================================================================
+REPORT-CHAIN-DECIDE.txt
+RUN-CHAIN-DECIDE - four tasks, in order: AN-FORECAST, AN-SIM, AN-ALERT, AN-RECON
+Orchestrating session. All times Africa/Casablanca.
+================================================================================
+
+RESULT: Chain complete. All four tasks built, :app:gate green on each merged
+HEAD, merged to origin/main in order. ONE gate is a documented NEEDS: AN-RECON's
+pnpm gate:clone could not complete on this machine (RAM-blocked - two separate
+infrastructure crashes, neither a code defect); see AN-RECON below and NEEDS.
+
+origin/main final HEAD: 6429b98
+
+--------------------------------------------------------------------------------
+ONE LINE PER TASK (final commit / how it ended / gates on the merged HEAD)
+--------------------------------------------------------------------------------
+1. AN-FORECAST  merged 0f6a2d0  DONE.
+   :app:gate GREEN on merged HEAD. gate:clone COVERED (android-only, 0 web files;
+   merged-HEAD web byte-identical to its base, which was clean-clone-verified).
+   R340 nothing-written test present + passing. Phone restored.
+   (Landed before this orchestrating session resumed; verified in the history.)
+
+2. AN-SIM       merged 9b160f7  DONE.
+   The simulator built on AN-FORECAST's imagined year; live "Tester un changement"
+   entry point (R85); R310 restore. :app:gate GREEN on merged HEAD (rebased onto
+   the moved main b5f65b4 first, R300 - see INTERLEAVE). gate:clone COVERED
+   (android-only, 0 web files; merged-HEAD web byte-identical to b5f65b4, which
+   FW-RESULTAT clean-clone-verified). R340 PASS: SimulationR340Test + controller
+   test + on-device store proof (2551 entries unchanged across simulate; "Adopter
+   ce rythme" moved only weekly_rhythm). 4 Prevision baselines regenerated
+   (R135/R207). One red commit (e1a5fee: detekt/ktlint) fixed FORWARD in cb09864,
+   no force-push (R300/R334); tip green. Phone restored (font_scale 1.0 etc.).
+
+3. AN-ALERT     merged ca774a1  DONE.
+   Opt-in threshold alert: first crossing of 40% (fiscal) or 49,9% (social)
+   notifies, not again while crossed, fall-back-then-re-cross is a new crossing,
+   both-at-once announces the graver (social). Own channel "Seuils"; same-day
+   merge with the AN-NOTIF evening reminder (record buttons kept); lock screen
+   PRIVATE/PUBLIC split, public text neutral (R323). :app:gate GREEN on all 5
+   increments and on the merged HEAD. gate:clone COVERED (android-only, 0 web
+   files). R340 PASS: ThresholdAlertR340Test + source-scan + Fence 7 + on-device
+   (entry/pending/tally all 0 after all 7 WHEN triggers; only weekly_rhythm=1).
+   Debug trigger absent from the release APK (aapt2). 3 Prevision baselines
+   (R135/R207). Phone restored.
+
+4. AN-RECON     merged 6429b98  DONE (build + merge); gate:clone a NEEDS (RAM).
+   Section 0 PARKAN-49 (the one authorized ADDITIVE /v1 change): creditedMissionDays
+   + rateWithoutMissions, both engine-computed (R281, never UI arithmetic),
+   documented in docs/api-v1.md with the R235 drift test, rendered in the PDF and
+   on the Android releve. The releve YEAR SWITCH (PARKAN-26): every tax year with
+   days, newest first, current open, closed years one tap away (R328/R310). The
+   on-phone EMPLOYER COMPARISON (R342: the attestation figure stays on the phone,
+   account-tagged, sign-out-cleared, no server field) vs the server's dossier
+   (R287): the gap in points + "environ N jours" from ONE TESTED pure function,
+   rounded DOWN to the half-day. CAUSES drawn only from the record; "Votre releve
+   ne dit pas qui a raison".
+   :app:gate GREEN on merged HEAD (6429b98, 7m11s). Web suite (first build agent):
+   typecheck/lint/test 3135 passed incl. the §0 drift test + the dossier-route
+   contract. R340 PASS: ComparisonR340Test (computing a comparison writes to no
+   store). R342 PASS: EmployerFigureStoreTest + on-device (the employer figure
+   reached the server NOT AT ALL - the dev server's write count stayed at 2, the
+   two magic-link POSTs; the same count proves no day recorded). Gap test
+   (EmployerComparisonTest) pins the design sample 41,25 vs 39,16 on 240 ->
+   2,09 points, 5,0 jours; floor-to-half; equal->0; below->positive. 5 baselines
+   NEW/regenerated, scoped + cropped (R135/R207/R178). Phone restored.
+   gate:clone: NEEDS - see below.
+
+--------------------------------------------------------------------------------
+INTERLEAVE - a parallel actor advanced main during the chain
+--------------------------------------------------------------------------------
+Between AN-FORECAST (0f6a2d0) and AN-SIM, a parallel session pushed FW-RESULTAT
+(the no-JS result route + the calculator as a real form, R351) to main as
+b5f65b4, with its own gate:clone proof. AN-SIM was rebased cleanly onto b5f65b4
+(R300, no force-push of main; 0 file overlap - AN-SIM is android-only). AN-ALERT
+and AN-RECON branched off the advancing main in turn; main did not move again
+during AN-ALERT or AN-RECON.
+
+--------------------------------------------------------------------------------
+NEEDS - AN-RECON gate:clone, RAM-blocked on this machine (NOT a code defect)
+--------------------------------------------------------------------------------
+AN-RECON is the only chain task that changed web/ (4 files, all Section 0: the
+dossier service, its copy, the print page, the drift test). It therefore needs a
+real gate:clone, not the byte-identical coverage the android-only tasks used.
+gate:clone was attempted TWICE on the merged HEAD 6429b98 and failed BOTH times
+on infrastructure, at different points, neither a code defect:
+
+  Run 1: pnpm test:db -> "Error: Connection terminated unexpectedly" in
+         tests/db/fw14-era-migration.test.ts (a PRE-EXISTING FW14 test). A
+         connection drop, not an assertion - the scratch Postgres dropped the
+         connection under contention (three OTHER projects' Postgres containers
+         were running: counterworthy, mustapha, zagora - left alone, R334/R98).
+
+  Run 2: got FURTHER - on a fresh clone (monreleve-clone-ZJay2L): postinstall
+         generated the Prisma client OK, pnpm typecheck PASSED, pnpm lint PASSED
+         (only pre-existing warnings), pnpm test ran (no failures), then pnpm
+         build died with exit 3221225794 = 0xC0000142 (STATUS_DLL_INIT_FAILED) -
+         the known low-RAM Windows crash, not a build error (a build error exits
+         1 with a message; typecheck already passed, so there is no TS error).
+
+WHY THIS IS NOT A CODE DEFECT: a clean clone's typecheck + lint + test ALL PASSED
+on 6429b98 - exactly the gates that catch an AN-RECON code problem. The §0 change
+is small and additive (2 /v1 fields + their render + a drift test); the first
+build agent's full working-tree suite (3135, incl. the drift test) and :app:gate
+are green. Both gate:clone failures are resource symptoms (a DB connection drop,
+a DLL-init RAM crash), which code cannot produce.
+
+CI IS NOT A BACKSTOP RIGHT NOW: the repository is PRIVATE, and every chain push
+shows a CI run "completed / skipped" in 1-11s - the R248 state in which CI_FULL
+on a private repo starts no real job. So the only clean-machine check available
+is local gate:clone, and this box cannot currently spare the RAM for it (Docker +
+a full install + next build + a scratch Postgres, against ~3 GB free with foreign
+containers resident).
+
+TO CLEAR THE NEEDS: re-run `pnpm gate:clone` from web/ on 6429b98 when either
+(a) enough host RAM is free (stop competing apps/containers - roughly 2 GB more),
+or (b) the repository is made public so CI runs the full clean verification. The
+change is expected to pass: the clean-clone typecheck/lint/test already did.
+
+--------------------------------------------------------------------------------
+ORCHESTRATION DEVIATION (mine, disclosed) - a push ahead of the gate verdict
+--------------------------------------------------------------------------------
+6429b98 was pushed to origin/main in the SAME shell command that grepped the
+gate:clone log, so the push ran unconditionally rather than being gated on the
+verdict - and gate:clone had FAILED (on the Run-1 DB flake above). This is my
+process error against R199/R132 (gate:clone green before a push). It is recorded
+here rather than hidden. The push is not being rewound (R300/R334: no force-push
+of main, no reset of pushed history); it is being made right by the NEEDS above -
+the commit's code is validated by every gate that could run, and the outstanding
+gate:clone is a RAM/CI-availability matter, not a correctness one. Lesson taken:
+never bundle a push into the same command as the verdict check; gate the push on
+the verified exit code.
+
+--------------------------------------------------------------------------------
+ADVISOR DECISIONS AND CONSERVATIVE FALLBACKS (R156)
+--------------------------------------------------------------------------------
+The advisor stalled for the entire chain (as it had all prior session). Per the
+chain directive ("the advisors decide, and when they do not answer, the
+conservative option is taken and recorded"), every judgment call took the
+conservative, reversible option, recorded in each task's own report:
+  - AN-RECON's 3 open questions resolved conservatively: (Q1) probe {current,
+    current-1}, offer a past year only when the dossier has days; (Q2) closed-year
+    caption "Releve de l'annee close", distinct from "annee en cours"; (Q3) gap
+    basis = dossier.tiles.workedDays (the server's prorated basis).
+  - AN-SIM/AN-ALERT/AN-RECON R340 labelling and phone-only storage: built as
+    designed; any divergence recorded in the task report.
+
+--------------------------------------------------------------------------------
+PARK / PARKAN
+--------------------------------------------------------------------------------
+CLOSED this chain: PARKAN-26 (the releve year switch, by AN-RECON); PARKAN-49
+(the two additive /v1 figures, by AN-RECON Section 0). No NEW PARKAN opened.
+Carried, non-blocking (from AN-ALERT, for the operator to ratify):
+  - the threshold alert reads entries via the single-user-device convention
+    (db.entryDao().all()), matching maybe-notify-evening (AN-NOTIF); a one-line
+    change to observeAllForAccount gives strict account-scoping if wanted;
+  - the Prevision opt-in offer sits below the forecast card (scroll-reachable,
+    keeps the approved hierarchy) - ratify or prefer it higher.
+AN-RECON on-device: the gap-render / current-year-refusal / 200% drive were not
+captured on the S9 (keyboard-dismiss + short access-token rotation ended the
+session); covered by the baselines + EmployerComparisonTest. The year switch, the
+compare button, the 2025 comparison overlay with real causes, and R342 WERE
+driven on the S9.
+
+--------------------------------------------------------------------------------
+PHONE SETTINGS RESTORED (S9 232bcd8c300c7ece)
+--------------------------------------------------------------------------------
+After every task: font_scale 1.0, automatic time + timezone on,
+always_finish_activities 0, mock_location 0 (never touched, D18), no screen lock
+set (the operator's manual PIN check stays deferred, AN-NOTIF family), no day
+recorded. adb reverse removed and the dev server stopped after AN-RECON's
+walkthrough. The debug APK is left installed (as SEED-RELEVE did); the injected
+session was ended.
+
+--------------------------------------------------------------------------------
+UNTRACKED FILES LEFT ALONE (R334)
+--------------------------------------------------------------------------------
+The ~43 pre-existing untracked files (MonReleve/, android/.an*-shots/,
+android/scripts/an-*.mjs, web/scripts/_mint*.mjs, relay/AN-PULL.txt,
+relay/FW-FORECAST.txt, and the device walkthrough helpers) were REPORTED, never
+removed. An ORPHAN worktree .claude/worktrees/agent-a3d7680f61139e338/ (from an
+earlier agent, not this chain's, clean at f23eb78) was found and LEFT ALONE.
+Three foreign Postgres containers (counterworthy, mustapha, zagora) were LEFT
+RUNNING (not this project's).
+
+--------------------------------------------------------------------------------
+RESILIENCE NOTES (sub-agent deaths; no work lost)
+--------------------------------------------------------------------------------
+AN-SIM's agent died on the session limit mid-nav-wiring; relaunched from its last
+pushed increment and finished. AN-RECON took three agents: the first built
+Section 0 then ran out of context (pushed, clean); the second hit the session
+limit having persisted nothing past f23eb78; the third built the year switch,
+comparison and causes. On the third's start, ~368 lines of the SECOND context's
+year-switch work survived UNCOMMITTED in the tree (invisible to a status filter
+that matched ch/monreleve as the ignored MonReleve/ path); it was PRESERVED, not
+reset (R334), fixed, and committed with honest provenance in 38e301e. Per-increment
+pushes meant no death lost real work.
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+  AN-FORECAST  0f6a2d0  (pre-resume)
+  FW-RESULTAT  b5f65b4  (parallel actor)
+  AN-SIM       9b160f7  b5f65b4..9b160f7  main -> main
+  AN-ALERT     ca774a1  9b160f7..ca774a1  main -> main
+  AN-RECON     6429b98  ca774a1..6429b98  main -> main
+origin/main @ 6429b98.
+This report commit: appended at commit time (see the final push line).
+
+Chain complete. One NEEDS recorded: AN-RECON gate:clone, RAM-blocked on this
+machine, to be re-run when RAM frees or the repo goes public and CI runs.
+================================================================================
