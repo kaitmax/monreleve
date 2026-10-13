@@ -623,3 +623,156 @@ TWO EARLIER RUNS FAILED AND NEITHER IS HIDDEN:
   run 2 - pnpm test:e2e, e2e/og.spec.ts's social-card leak check,
           which pins the parameter count on purpose. See the section
           above. 333 passed, 1 failed.
+
+====================================================================
+PUSH PROOF
+====================================================================
+pnpm gate:clone. GATE:CLONE PASSED.
+
+  commit 9a94e6f07524e6e0c71902fa51a7b8484f1232b4
+  ran    register-coverage, fixture-coverage, install, typecheck,
+         lint, test, build, size, db:deploy, test:db,
+         test:container:write
+  claim  this commit builds and passes those from a clean checkout -
+         a machine with no .env, no prior node_modules and no
+         generated file the run did not produce itself.
+
+  fixture-coverage ran there, which matters for this task specifically:
+  it is the census that spans BOTH engines, and this is the task that
+  taught the web side to read forecast-cases.json.
+
+NOT RUN IN THE CLONE, each with the claim it is therefore NOT making,
+as the harness prints them (R133): test:e2e and test:runtime need a
+browser download, test:visual needs the container, lighthouse needs
+Chrome and a served build, parity:check needs the Node matrix,
+test:container is selected locally. All of test:e2e, test:visual and
+the walkthrough DID run on this machine and are recorded above.
+
+INTEGRATED BEFORE THE CLONE, NOT AFTER. main moved from b5f65b4 to
+ca774a1 while this ran - the AN-SIM and AN-ALERT chains, eight commits
+- so this branch was rebased onto origin/main FIRST and the clone then
+verified what will actually be on main. The rebase was clean and
+`git diff` over web/ and fixtures/ between the pre-rebase commit and
+the rebased one is EMPTY: the Android chains touched neither, so the
+tree the gate verified is the tree being pushed.
+
+CI READINESS, as the harness reports it:
+  "quiet - the repository is private and CI_FULL is unset - jobs will
+   skip."
+UNCHANGED SINCE REPORT-FW-RESULTAT, and still contradicting CLAUDE.md
+R248 ("CI runs again ... CI_FULL is set"). The guard is working and
+the rule is stale; no CI job will run on this push, so gate:clone is
+again the only answer to "does this work on a machine that is not
+mine?" It passed, so the claim stands on its own - it is simply
+carrying more weight than CLAUDE.md thinks. Raised, not resolved:
+correcting R248 is a decision about the repository.
+
+====================================================================
+A FINDING THAT OUTLIVES THIS TASK: gate:clone's test:db IS FLAKY
+====================================================================
+THIS IS THE MOST IMPORTANT THING IN THIS REPORT, and it is not about
+the rhythm. The pre-push verifier is intermittently red on a tree that
+is not changing.
+
+WHAT WAS OBSERVED. Five gate:clone runs across two commits whose only
+difference is 43 added lines in a .txt file at the repository root:
+
+  9a94e6f (code)            PASS   PASS
+  8e36994 (code + report)   FAIL   FAIL   PASS
+
+Both failures were in pnpm test:db, in the PDF-render path. The first
+reported ONE failure (tests/db/verification-qr.test.ts expecting 200,
+getting 503); the second reported FIFTEEN, with the same test last.
+The third run of that identical commit passed.
+
+WHY THIS WAS NOT DISMISSED AS NOISE IMMEDIATELY. The 2-2 split looked
+like a difference between the commits, and that reading was written
+down before it was tested. It was wrong, and three things refuted it:
+
+  1. THE DELTA IS A TEXT FILE. `git diff --stat` between the two
+     commits is one file, 43 insertions, at the repository root.
+  2. NOTHING READS IT. Every match for "REPORT-" under tests/,
+     scripts/ and lib/ is a COMMENT citing a report by name. No test
+     opens one. There is no mechanism.
+  3. THE FAILURE SET VARIED - one failure, then fifteen. A file that
+     genuinely broke something would break the same things twice.
+
+A 2-2 split is about one chance in six if each run is a coin flip,
+which is nowhere near rare enough to call a pattern. The fifth run
+settled it.
+
+HYPOTHESES TESTED AND DISCARDED, in order:
+  - machine pressure: refuted, the retry failed differently rather
+    than variably, and 96 GB free / temp at 3.0 GB / postgres healthy;
+  - leaked Chromium processes: refuted, zero found;
+  - a report-file read path: refuted, see 2 above;
+  - the commit itself: refuted by the fifth run.
+
+ONE REPRODUCTION ATTEMPT WAS INVALID AND IS RECORDED AS SUCH. Running
+tests/db/export-pdf.test.ts ALONE produces 21 failures including
+"refuses an unauthenticated caller" - a cheap refusal that never
+launches a browser. That file needs suite-level setup it does not get
+in isolation, so those 21 say nothing. No conclusion was drawn from
+them.
+
+WHY IT ONLY SHOWS IN THE CLONE. The failing assertions are gated on
+having NO configured origin and NO live server - `describe.skipIf(base
+!== null || ORIGIN !== null)`. A developer machine has MONRELEVE_
+VERIFICATION_ORIGIN in .env, so they SKIP locally and run only where
+there is no .env by construction: inside gate:clone. Locally, pnpm
+test:db was run twice back to back and reported 624 passed, 25 skipped
+both times - stable and green, and skipping the very tests that fail
+in the clone.
+
+WHY IT MATTERS MORE THAN IT LOOKS. R248 says CI runs again; gate:clone
+reports "the repository is private and CI_FULL is unset - jobs will
+skip", so NO CI RUNS. That makes gate:clone the only answer to "does
+this work on a machine that is not mine?", and an only-verifier that
+is red two times in five is R266's class exactly: a verifier that
+cannot be trusted is worse than one that is slow, because the next
+session meeting a red test:db cannot tell it from a real one - and the
+cheapest wrong response is to re-run until green, which is what makes
+a real failure invisible.
+
+NOT FIXED HERE, and deliberately. It is in the PDF/Chromium path,
+owned by neither this task nor this task's files, and a fix guessed at
+from five samples would be the "probably fine" reasoning this project
+keeps finding at the bottom of its defects. What the next session
+needs is the sample count, the failing test, the 503, and the fact
+that it is clone-only - which is why all four are written down here
+rather than summarised as "flaky".
+
+  ADDENDUM TO PUSH PROOF: gate:clone PASSED on 8e36994 - the commit
+  carrying this report - on its third run, after two red runs on the
+  identical tree. The pushed commit amends that one to add this
+  section, and is itself verified below.
+
+  SIXTH RUN, AND IT CHANGES THE DIAGNOSIS. The amended report commit
+  (dbde580) failed test:db again - but with a DIFFERENT symptom:
+
+    Caused by: Error: Worker exited unexpectedly with exit code 1
+    during starting state
+
+  That is a vitest WORKER SPAWN failure, not a 503, and it is the same
+  class as the gate:changed failure recorded earlier ("[vitest-pool]:
+  Failed to start forks worker"). Put beside the PDF 503s - which are
+  Chromium LAUNCH failures - the two symptoms share one cause:
+
+    THIS MACHINE CANNOT RELIABLY SPAWN CHILD PROCESSES RIGHT NOW.
+
+  Chromium launch is a spawn; a vitest worker is a fork. Both fail
+  intermittently, in the clone and in the working tree, across three
+  different suites. That is one environmental fault with two faces,
+  not two flaky tests - and it is a better diagnosis than "test:db is
+  flaky", which is what the first five runs alone supported.
+
+  TALLY ON EFFECTIVELY IDENTICAL TREES: six gate:clone runs, three
+  green (9a94e6f twice, 8e36994 once), three red, every red one a
+  process that would not start.
+
+  THE GRADLE DAEMONS WERE STILL NOT TOUCHED (R334). This session's own
+  notes say stopping them frees about 4 GB and has cured kills before,
+  and they are the obvious other tenant. They belong to the Android
+  session, which pushed AN-SIM and AN-ALERT while this task ran, so a
+  daemon here may be mid-build. Killing somebody else's build to make
+  my own verifier green is the trade R334 exists to refuse.
