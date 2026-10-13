@@ -311,3 +311,191 @@ test.describe('R351: the forms reach it', () => {
     await expect(page.locator('[data-notice="params"]')).toHaveCount(0);
   });
 });
+
+test.describe('R343/R346: the projection is a REAL figure, with scripting off', () => {
+  // THE CLAIM THE RULING MAKES: "R346's nojs project asserts a real projected
+  // figure there - not merely a served page." So these assert a percentage,
+  // not the presence of a block: a projection section rendering an empty state
+  // would satisfy "the page has a projection" perfectly.
+  const RHYTHM = `${RESULT_PATH}?canton=GE&tt=0&rythme=ma&rythme=je`;
+
+  test('renders a projected rate from a rhythm in the URL', async ({ page }) => {
+    await page.goto(RHYTHM);
+
+    const block = page.locator('[data-projection]');
+
+    await expect(block).toHaveCount(1);
+
+    const text = (await block.textContent()) ?? '';
+
+    // A RATE, IN TWO ASSERTIONS, for the reason home.nojs.spec.ts gives: the
+    // figure carries U+00A0 before its percent sign (R91), and spelling a
+    // no-break space inside a regex is how an assertion passes while looking
+    // for the wrong string.
+    expect(text, 'the projection carried no figure').toMatch(/[0-9]+,[0-9]+/u);
+    expect(text).toContain('%');
+  });
+
+  test('projects HIGHER than today, because days were added', async ({ page }) => {
+    // The one assertion here that could not pass by accident. A projection
+    // that merely echoed the current figure, or rendered a hard-coded number,
+    // fails it: tt=0 with a two-day rhythm must project strictly above zero.
+    await page.goto(RHYTHM);
+
+    const block = page.locator('[data-projection]');
+    const current = (await block.locator('[data-projection-current]').textContent()) ?? '';
+    const rates = ((await block.textContent()) ?? '').match(/[0-9]+,[0-9]+/gu) ?? [];
+
+    expect(current).toContain('0,00');
+    expect(rates.length).toBeGreaterThan(1);
+    expect(Number((rates[1] ?? '0').replace(',', '.'))).toBeGreaterThan(0);
+  });
+
+  test('names the day it was computed for (R28)', async ({ page }) => {
+    await page.goto(RHYTHM);
+
+    const text = (await page.locator('[data-projection]').textContent()) ?? '';
+
+    // The day is whatever day the suite runs on, so the assertion is the
+    // SHAPE - a date in the product's own format - rather than a literal that
+    // would need editing tomorrow (R171).
+    expect(text).toMatch(/[0-9]{2}\.[0-9]{2}\.[0-9]{4}/u);
+  });
+
+  test('says what it assumes, and that it is never a record (R340)', async ({ page }) => {
+    await page.goto(RHYTHM);
+
+    const text = (await page.locator('[data-projection]').textContent()) ?? '';
+
+    expect(text).toContain(CALCULATEUR_COPY.projection.label);
+    expect(text).toContain(CALCULATEUR_COPY.projection.assumptions.holidays);
+    expect(text).toContain(CALCULATEUR_COPY.projection.neverRecorded);
+  });
+
+  test('draws no projection when no rhythm was given', async ({ page }) => {
+    // The other direction (R196). A block rendered unconditionally would pass
+    // every assertion above.
+    await page.goto(`${RESULT_PATH}?${GENEVA_QUERY}`);
+
+    await expect(page.locator('[data-projection]')).toHaveCount(0);
+  });
+
+  test('falls back and says so when the rhythm cannot be read', async ({ page }) => {
+    await page.goto(`${RESULT_PATH}?canton=GE&tt=0&rythme=lundi`);
+
+    await expect(page.locator('[data-projection]')).toHaveCount(0);
+
+    const notice = page.locator('[data-notice="params"]');
+
+    await expect(notice).toHaveCount(1);
+    expect((await notice.textContent()) ?? '').toContain(PARAM_NOTICE.invalid(['rythme']));
+  });
+
+  test('is never cached, because the answer depends on what day it is', async ({ page }) => {
+    // A response cached in October and served in November imagines days that
+    // have since passed unrecorded - wrong, and wrong in the direction that
+    // flatters.
+    const response = await page.goto(RHYTHM);
+
+    expect(response?.headers()['cache-control'] ?? '').toContain('no-store');
+  });
+});
+
+test.describe('R343: the calculator form carries the rhythm, with scripting off', () => {
+  test('checking two days and submitting lands on a real projection', async ({ page }) => {
+    // THE WHOLE JOURNEY, which is the only thing that proves the checkboxes,
+    // the parameter, the codec, the date function and the engine are joined up
+    // (R204). Every one of them has its own test and not one of them can say a
+    // reader gets an answer.
+    await page.goto(CALCULATOR_PATH);
+
+    await page.getByLabel(CALCULATEUR_COPY.form.canton.label).selectOption('GE');
+    await page.getByLabel(CALCULATEUR_COPY.form.days.label).fill('0');
+    await page.getByLabel(CALCULATEUR_COPY.projection.days.TUESDAY).check();
+    await page.getByLabel(CALCULATEUR_COPY.projection.days.THURSDAY).check();
+    await page.getByRole('button', { name: CALCULATEUR_COPY.result.calculate }).click();
+
+    const landed = new URL(page.url());
+
+    expect(landed.pathname).toBe(RESULT_PATH);
+    expect(landed.searchParams.getAll('rythme')).toEqual(['ma', 'je']);
+
+    const block = page.locator('[data-projection]');
+
+    await expect(block).toHaveCount(1);
+    expect((await block.textContent()) ?? '').toMatch(/[0-9]+,[0-9]+/u);
+  });
+
+  test('serves the five checkboxes, unchecked, from the server', async ({ page }) => {
+    // R169's presence corollary: with scripting off nothing hydrates, so a
+    // checkbox in this page was put there by the server - and the journey
+    // above would be meaningless against a page that served none.
+    await page.goto(CALCULATOR_PATH);
+
+    const boxes = page.locator('input[type="checkbox"][name="rythme"]');
+
+    await expect(boxes).toHaveCount(5);
+
+    for (let index = 0; index < 5; index += 1) {
+      await expect(boxes.nth(index)).not.toBeChecked();
+    }
+  });
+});
+
+test.describe('R343: the projection counts EVERY checked day, not the first', () => {
+  // THE DEFECT THIS EXISTS FOR, found by driving the journey rather than by a
+  // test (R176). The result page rebuilds a URLSearchParams from Next's
+  // searchParams object, and that code took `value[0]` for an array - correct
+  // while every parameter was single-valued, and silently wrong the moment
+  // `rythme` began to repeat. A two-day rhythm projected from one day.
+  //
+  // EVERY ASSERTION ALREADY IN THIS FILE PASSED THROUGHOUT. "A projection
+  // block is present" was true; "it contains a rate" was true; "it projects
+  // higher than today" was true, because one day is also higher than none.
+  // The figure was simply wrong, and nothing was looking at its value.
+  //
+  // SO THIS COMPARES TWO RESPONSES rather than pinning a number: the day the
+  // suite runs on decides the arithmetic, so a literal would need editing
+  // tomorrow (R171). Two days must project strictly further than one.
+  const rateOf = async (page: import('@playwright/test').Page, query: string): Promise<number> => {
+    await page.goto(`${RESULT_PATH}?${query}`);
+
+    const text = (await page.locator('[data-projection]').textContent()) ?? '';
+    const rates = text.match(/[0-9]+,[0-9]+/gu) ?? [];
+
+    expect(rates.length, `no projected rate for ${query}`).toBeGreaterThan(1);
+
+    return Number((rates[1] ?? '0').replace(',', '.'));
+  };
+
+  test('two days project further than one, and one further than none', async ({ page }) => {
+    const one = await rateOf(page, 'canton=GE&tt=0&rythme=ma');
+    const two = await rateOf(page, 'canton=GE&tt=0&rythme=ma&rythme=je');
+
+    expect(one).toBeGreaterThan(0);
+    expect(two).toBeGreaterThan(one);
+  });
+
+  test('the order of the values does not change the answer', async ({ page }) => {
+    // A reader editing a shared link by hand, or a platform reordering the
+    // query, must get the same projection.
+    const forwards = await rateOf(page, 'canton=GE&tt=0&rythme=ma&rythme=je');
+    const backwards = await rateOf(page, 'canton=GE&tt=0&rythme=je&rythme=ma');
+
+    expect(backwards).toBe(forwards);
+  });
+
+  test('the way back carries every checked day (R267)', async ({ page }) => {
+    // The other half of the same journey, and the other half of the same
+    // defect: the back link is rebuilt with encode(), so it dropped the
+    // rhythm entirely until FW-FORECAST and then dropped all but one day.
+    await page.goto(`${RESULT_PATH}?canton=GE&tt=84&rythme=ma&rythme=je`);
+
+    const href = await page
+      .getByRole('link', { name: CALCULATEUR_COPY.resultat.modify })
+      .getAttribute('href');
+    const back = new URL(href ?? '', 'http://localhost');
+
+    expect(back.searchParams.getAll('rythme')).toEqual(['ma', 'je']);
+  });
+});

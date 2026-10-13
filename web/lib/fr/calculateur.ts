@@ -266,6 +266,97 @@ export const CALCULATEUR_COPY = {
    * full panel - badge, rail, four tiles, warnings, links - so the wording
    * here says only what one rate can honestly say.
    */
+  /**
+   * FW-FORECAST / R343: the weekly rhythm, and the projection it feeds.
+   *
+   * R340 GOVERNS EVERY STRING HERE: a projection is never a record. The
+   * figures are labelled as a projection, the assumptions are written out in
+   * words rather than implied, and one line says outright that nothing here
+   * reaches the releve. The Android screen carries the same three devices,
+   * which is deliberate - a reader meeting the projection on the site and
+   * then in the app must not have to work out whether they mean the same
+   * thing.
+   */
+  projection: {
+    question: `Quels jours télétravaillez-vous d’habitude${n('?')}`,
+
+    /**
+     * UNDER THE QUESTION, because the question is optional and a reader who
+     * does not answer it must not feel they have skipped something.
+     */
+    helper:
+      'Cochez vos jours habituels pour voir où vous arrivez au 31 décembre. ' +
+      'Sans réponse, le calcul montre votre position actuelle, comme avant.',
+
+    /** The five weekdays, as a reader names them. */
+    days: {
+      MONDAY: 'lundi',
+      TUESDAY: 'mardi',
+      WEDNESDAY: 'mercredi',
+      THURSDAY: 'jeudi',
+      FRIDAY: 'vendredi',
+    },
+
+    /** The badge. R340: labelled, and never by colour alone. */
+    label: 'Projection',
+
+    heading: 'Fin décembre, projection',
+
+    /** Today’s figure, named so the two cannot be confused. */
+    current: 'Aujourd’hui',
+
+    /**
+     * THE DAY IT WAS COMPUTED FOR, on the page (R28). A shared link opened
+     * in November must not show October’s projection, and the only way a
+     * reader can tell is if the page says which day it answered.
+     */
+    asOf: (day: string): string => `Projection au ${day}`,
+
+    assumptionsHeading: 'Ce que cette projection suppose',
+
+    /**
+     * IN WORDS, NOT IMPLIED (R340). Each line is something a reader could
+     * disagree with, which is the point: a projection whose assumptions are
+     * invisible reads as a measurement.
+     */
+    assumptions: {
+      rhythm:
+        'Vos jours habituels se répètent chaque semaine jusqu’au 31 décembre.',
+      holidays:
+        `Les jours fériés et les congés ne sont pas déduits${n(':')} la projection ` +
+        'annonce donc un peu tôt plutôt que trop tard.',
+      today:
+        `La journée d’aujourd’hui n’est pas imaginée${n(':')} elle est déjà ` +
+        'enregistrée, ou elle ne l’est pas.',
+    },
+
+    /**
+     * R340, said plainly and on the surface that shows the figure. The app
+     * screen carries the same sentence.
+     */
+    neverRecorded: 'Une projection ne figure jamais dans votre relevé.',
+
+    /**
+     * THE APP LINE, IN THE FUTURE TENSE UNTIL ONE IS RELEASED (R138), and
+     * the tense is chosen by PRODUCT_STATE rather than by whoever edits this
+     * file next (R172).
+     */
+    app: (released: boolean): string =>
+      released
+        ? `L’application tient cette projection à jour à partir des journées ` +
+          `qu’elle enregistre.`
+        : `L’application tiendra cette projection à jour à partir des ` +
+          `journées qu’elle enregistre.`,
+
+    /**
+     * ON THE CALCULATOR, where there is no projection to draw. R351 put the
+     * answer on its own route and the projection is drawn by the server, so
+     * a reader who has checked some days is told where it appears rather
+     * than left wondering why nothing happened.
+     */
+    onTheResult: 'Votre projection apparaît avec le résultat.',
+  },
+
   result: {
     heading: 'Votre part de télétravail',
 

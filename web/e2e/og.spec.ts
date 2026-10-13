@@ -31,12 +31,17 @@ import { SOCIAL_HEIGHT, SOCIAL_WIDTH } from '../lib/ui/core/rail/geometry';
 const CARD = '/opengraph-image.png';
 
 /**
- * A full nine-param URL: every parameter SPEC 9.4 defines, carrying a
- * plausible position rather than a placeholder. R120 - a fixture that cannot
- * disagree with the bare request proves nothing, so these values are a real
- * shared calculation, the kind that would carry somebody's exposure.
+ * A URL carrying EVERY parameter SPEC 9.4 defines, each with a plausible
+ * position rather than a placeholder. R120 - a fixture that cannot disagree
+ * with the bare request proves nothing, so these values are a real shared
+ * calculation, the kind that would carry somebody's exposure.
+ *
+ * TEN SINCE R343, and `rythme` is appended rather than set because it is the
+ * one parameter that repeats: five checkboxes share one name. A rhythm is as
+ * much a disclosure as a day count - it says which days of the week somebody
+ * is at home - so it belongs in the fixture this test leaks-checks with.
  */
-const NINE = new URLSearchParams({
+const EVERY_PARAM = new URLSearchParams({
   canton: 'GE',
   taux: '100',
   tt: '84',
@@ -47,6 +52,9 @@ const NINE = new URLSearchParams({
   decompte: 'j',
   debut: '2026-03-01',
 });
+
+EVERY_PARAM.append('rythme', 'ma');
+EVERY_PARAM.append('rythme', 'je');
 
 test.describe('the social card', () => {
   test('R142 PRECONDITION: the same request twice returns identical bytes', async ({
@@ -70,14 +78,20 @@ test.describe('the social card', () => {
     ).toBe(true);
   });
 
-  test('a nine-param URL and the bare path return the same bytes (AC1)', async ({ request }) => {
-    // The nine names are read from the schema, so a tenth parameter added to
-    // the product arrives here rather than being remembered.
-    expect(PARAM_NAMES.length).toBe(9);
-    for (const name of PARAM_NAMES) expect(NINE.has(name)).toBe(true);
+  test('a fully-loaded URL and the bare path return the same bytes (AC1)', async ({
+    request,
+  }) => {
+    // THE NAMES ARE READ FROM THE SCHEMA, so a parameter added to the product
+    // arrives here rather than being remembered - and one did: R343 added
+    // `rythme` and this assertion is what reported it, exactly as its own
+    // comment promised. The count is still pinned rather than loosened to
+    // `>= 1`, because the point is that a new disclosure cannot reach a
+    // social card without somebody deciding it is covered.
+    expect(PARAM_NAMES.length).toBe(10);
+    for (const name of PARAM_NAMES) expect(EVERY_PARAM.has(name)).toBe(true);
 
     const bareResponse = await request.get(CARD);
-    const sharedResponse = await request.get(`${CARD}?${NINE.toString()}`);
+    const sharedResponse = await request.get(`${CARD}?${EVERY_PARAM.toString()}`);
 
     // NON-VACUITY, AND IT CAUGHT ITSELF ON THE RED RUN. With no card in the
     // tree both requests returned the SAME 404 HTML page, so the comparison

@@ -45,7 +45,16 @@ const serialise = (form: HTMLFormElement): URLSearchParams => {
   for (const control of form.querySelectorAll<
     HTMLInputElement | HTMLSelectElement
   >('input[name], select[name]')) {
-    if (control instanceof HTMLInputElement && control.type === 'radio' && !control.checked) {
+    // UNCHECKED RADIOS **AND** CHECKBOXES ARE NOT SUBMITTED, which is the
+    // browser rule this helper exists to reproduce. It skipped radios only
+    // until R343 put five checkboxes in the form, and an unchecked checkbox
+    // sent here would have decoded as a rhythm nobody chose - the helper
+    // asserting a scenario the browser cannot produce.
+    if (
+      control instanceof HTMLInputElement &&
+      (control.type === 'radio' || control.type === 'checkbox') &&
+      !control.checked
+    ) {
       continue;
     }
 
@@ -128,6 +137,43 @@ describe('R351: the form is a real GET form to the page that answers', () => {
     expect(decoded.input?.teleworkDays).toBe(84);
     expect(decoded.input?.missionDaysFrance).toBe(24);
     expect(decoded.input?.granularity).toBe('halfDay');
+  });
+});
+
+describe('R343: the rhythm checkboxes speak the same vocabulary', () => {
+  it('submits nothing for the rhythm when no day is checked', () => {
+    // The prompt: "none checked by default", and "with none checked, the
+    // calculator shows today's position only, as now." A form that sent
+    // five unchecked boxes would project a rhythm the reader never gave.
+    const query = serialise(openedForm());
+
+    expect(query.getAll('rythme')).toEqual([]);
+  });
+
+  it('submits one value per checked day, which decode reads back', () => {
+    const form = openedForm();
+
+    fireEvent.click(screen.getByLabelText(CALCULATEUR_COPY.projection.days.TUESDAY));
+    fireEvent.click(screen.getByLabelText(CALCULATEUR_COPY.projection.days.THURSDAY));
+
+    const query = serialise(form);
+
+    expect(query.getAll('rythme')).toEqual(['ma', 'je']);
+
+    const decoded = decode(query, YEAR);
+
+    expect(decoded.rhythm).toEqual({ TUESDAY: 'HOME', THURSDAY: 'HOME' });
+    expect(decoded.invalid).toEqual([]);
+  });
+
+  it('is five checkboxes, one per weekday, sharing one name', () => {
+    // R133: the assertions above would pass on a form with a single box.
+    const boxes = [
+      ...openedForm().querySelectorAll<HTMLInputElement>('input[type="checkbox"][name="rythme"]'),
+    ];
+
+    expect(boxes.length).toBe(5);
+    expect(boxes.map((box) => box.value)).toEqual(['lu', 'ma', 'me', 'je', 've']);
   });
 });
 

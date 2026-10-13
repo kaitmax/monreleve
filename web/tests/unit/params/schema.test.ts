@@ -22,8 +22,8 @@
 import { describe, expect, it } from 'vitest';
 import { PARAM_NAMES, PARAM_SCHEMA } from '@/lib/params/schema';
 
-describe('the nine param names are frozen (SPEC 9.4)', () => {
-  it('is exactly the nine, in the order SPEC 9.4 tabulates them', () => {
+describe('the ten param names are frozen (SPEC 9.4, R343)', () => {
+  it('is exactly the ten, in the order the URL contract tabulates them', () => {
     // ORDER IS PART OF IT, because encode walks this list to build the query
     // string: a shared URL reads canton first and debut last, the way the
     // table does. A reordering would produce different URLs for identical
@@ -38,6 +38,21 @@ describe('the nine param names are frozen (SPEC 9.4)', () => {
       'total',
       'decompte',
       'debut',
+
+      // R343, AND THIS LINE IS THE RENAME TEST THE RULING ASKS FOR.
+      //
+      // "Document them in the calculator's URL contract as FROZEN from the
+      // first deploy, and add a test that fails if any of them is renamed."
+      // Editing the string below breaks every link that has ever carried a
+      // rhythm, and the break is silent for the reader: they see a
+      // calculator full of defaults and assume they mis-copied it. A
+      // rename therefore has to be a deliberate act with this failure in
+      // front of it.
+      //
+      // IT ARRIVED LAST, AFTER debut, and that is part of the contract too:
+      // encode walks this list, so appending rather than inserting means
+      // every URL shared before R343 still encodes byte-for-byte the same.
+      'rythme',
     ]);
   });
 
@@ -95,7 +110,20 @@ describe('no personal data is representable (SPEC 20, AC3)', () => {
     }
   });
 
-  it('maps every param to a field of TeleworkInput and nothing else', () => {
+  it('maps every param into the engine input or the closed forecast set', () => {
+    // R343 ADDED THE FIRST PARAM THAT DOES NOT MAP INTO TeleworkInput, and
+    // the argument below is extended rather than dropped. `rythme` is an
+    // input to the PROJECTION, not to the engine, so TeleworkInput has no
+    // field for it - and widening that type to make this test pass would
+    // have been the wrong repair twice over, since it is the engine public
+    // API and SPEC 20 makes changing it an ask-first item.
+    //
+    // WHAT REPLACES IT IS NARROWER, NOT LOOSER. A forecast field value space
+    // is closed and enumerable: the rhythm is three symbols in five
+    // positions, 243 legal strings, and rhythm.test.ts walks every one of
+    // them. A format with 243 legal values cannot hold a name, an address or
+    // a salary whatever anybody types - a stronger guarantee than "it maps
+    // to a numeric field", not a weaker one.
     // The stronger statement, and the one that survives a param being added
     // with an innocuous name: every key maps into the engine's input, which
     // holds days, rates and a canton. There is no field on it that could
@@ -112,11 +140,27 @@ describe('no personal data is representable (SPEC 20, AC3)', () => {
       'periodFraction',
     ];
 
+    // ASSERTED EMPTY OF EVERYTHING ELSE (R206 corollary). The forecast set is
+    // spelled out here rather than imported as a list to iterate, so a second
+    // forecast field is a deliberate act that must survive this line rather
+    // than the second entry in an established habit.
+    const FORECAST_FIELDS = ['rhythm'];
+
     for (const name of PARAM_NAMES) {
-      expect(ENGINE_FIELDS, `${name} maps to ${PARAM_SCHEMA[name]?.field}`).toContain(
-        PARAM_SCHEMA[name]?.field,
-      );
+      expect(
+        [...ENGINE_FIELDS, ...FORECAST_FIELDS],
+        `${name} maps to ${PARAM_SCHEMA[name]?.field}`,
+      ).toContain(PARAM_SCHEMA[name]?.field);
     }
+
+    // AND ONLY ONE PARAM TAKES THE NEW ROUTE. Without this, widening the
+    // accepted set above would let any param claim to be a forecast field and
+    // escape the engine-input argument entirely.
+    const forecastParams = PARAM_NAMES.filter((name) =>
+      FORECAST_FIELDS.includes(PARAM_SCHEMA[name]?.field ?? ''),
+    );
+
+    expect(forecastParams).toEqual(['rythme']);
   });
 
   it('covers every field of TeleworkInput except the tax year', () => {

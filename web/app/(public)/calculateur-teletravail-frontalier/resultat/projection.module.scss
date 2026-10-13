@@ -1,0 +1,105 @@
+// web/app/(public)/calculateur-teletravail-frontalier/resultat/projection.module.scss
+//
+// The projection block. Tokens only.
+//
+// IT IS DRAWN DIFFERENTLY FROM THE CURRENT RESULT, AND NOT BY COLOUR ALONE
+// (R340). The block has its own border and surface, its own label in words,
+// and its own heading - so a screenshot in greyscale, or a reader who cannot
+// distinguish the two fills, still meets a thing that announces what it is.
+
+.block {
+  margin: var(--space-8) 0 0;
+  padding: var(--space-5);
+  max-width: var(--layout-article);
+  border: var(--size-input-border) dashed var(--colour-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--colour-surface);
+}
+
+// THE WORD, not a colour. Uppercase and letter-spaced so it reads as a label
+// rather than as a sentence that happens to be short.
+.label {
+  margin: 0 0 var(--space-1);
+  color: var(--colour-text-secondary);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-caption-line);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+}
+
+.heading {
+  margin: 0 0 var(--space-1);
+  color: var(--colour-text-primary);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  line-height: var(--type-h3-line);
+}
+
+.asOf {
+  margin: 0 0 var(--space-4);
+  color: var(--colour-text-secondary);
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-line);
+}
+
+// Today's figure, named. Smaller than the projection it is being compared
+// with, because the projection is what this block is about.
+.current {
+  display: flex;
+  gap: var(--space-2);
+  align-items: baseline;
+  margin: 0 0 var(--space-3);
+  color: var(--colour-text-secondary);
+  font-size: var(--type-body-m-size);
+  line-height: var(--type-body-m-line);
+}
+
+.currentRate {
+  color: var(--colour-text-primary);
+  font-weight: var(--type-label-weight);
+}
+
+.rail {
+  margin: var(--space-4) 0;
+}
+
+.tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-5);
+}
+
+.assumptionsHeading {
+  margin: 0 0 var(--space-2);
+  color: var(--colour-text-primary);
+  font-size: var(--type-body-m-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-body-m-line);
+}
+
+.assumptions {
+  margin: 0 0 var(--space-4);
+  padding-left: var(--space-5);
+  color: var(--colour-text-secondary);
+  font-size: var(--type-body-m-size);
+  line-height: var(--type-body-m-line);
+}
+
+// R340's sentence. Given the weight of a statement rather than a footnote,
+// because it is the one line that says what this block is not.
+.never {
+  margin: 0 0 var(--space-2);
+  color: var(--colour-text-primary);
+  font-size: var(--type-body-m-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-body-m-line);
+}
+
+.app {
+  margin: 0;
+  color: var(--colour-text-secondary);
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-line);
+}

@@ -758,6 +758,9 @@ The growth mechanic: someone pastes their scenario into a group; others adjust i
 | `total` | >0 | — | `denominator.totalWorkDays`, exact only |
 | `decompte` | `j` \| `dj` \| `h` | `j` | `granularity` |
 | `debut` | `YYYY-MM-DD` | — | `periodFraction` |
+| `rythme` | `lu` \| `ma` \| `me` \| `je` \| `ve`, repeatable | — | the weekly rhythm — not an engine field |
+
+`rythme` is **R343**, added by the operator's explicit authorisation and **frozen from its first deploy** like the nine above it. It is the one parameter that does not map into `TeleworkInput`: it carries the weekly rhythm the year-end projection is imagined from, and the projection is rendered by `/calculateur-teletravail-frontalier/resultat`, never by the calculator. It **repeats** — five checkboxes share one name, so a browser submits `?rythme=ma&rythme=je` with no JavaScript — and it carries telework days only, because the question asked is binary per day and a day worked in Switzerland cannot move either rate. Absent means no rhythm and therefore no projection, which is exactly what the calculator did before the parameter existed.
 
 Rules: **names are frozen once published** — links live in Facebook threads for years and a renamed param breaks them silently. **No personal data, ever** — days and rates only, never a name, salary, or employer. Unknown params ignored; invalid values fall back to default and surface a dismissible notice, never a blank page (Facebook mangles URLs; degrading beats 404). Every param-bearing URL carries `noindex` and a canonical to the bare path. `?` present but empty behaves exactly like the bare path. **Round-trip property test:** for any valid `TeleworkInput`, `decode(encode(input)) === input`, 10,000 generated cases — the one test protecting every link ever shared.
 

@@ -1,0 +1,625 @@
+====================================================================
+REPORT-FW-FORECAST.txt - R343: the weekly rhythm, and a free
+year-end projection rendered by the server
+Mon Releve / frontalier   2026-10-13
+====================================================================
+
+NOTE ON SPELLING. Pure ASCII, as the protocol requires. Every French
+phrase quoted below is transliterated: accents dropped, guillemets
+become double quotes. R155 - THE ASCII HERE IS ILLUSTRATIVE, NEVER A
+SOURCE; the accented original lives in web/lib/fr and is what ships.
+
+TASK. relay/FW-FORECAST.txt, as amended by the operator's pasted
+extension of R343 to /resultat. Web only: the operator runs the AN-*
+Android work in Android Studio and nothing under android/ was read,
+changed or run here.
+
+====================================================================
+HOW IT ENDED
+====================================================================
+Worktree  : C:/wt/fw-forecast, branch fw-forecast off main b5f65b4,
+            lock file .session-lock.json present throughout (R349).
+
+See THE GATE, WHAT IS NOT DONE and PUSH PROOF at the end.
+
+====================================================================
+TWO QUESTIONS PUT TO THE OPERATOR BEFORE ANY CODE
+====================================================================
+Both were permanent decisions that the prompt did not settle, and
+both were answered before anything was written.
+
+1. WHERE A SCRIPTED READER SEES THE PROJECTION. The prompt's section
+   3 puts it "beside the calculator's existing result" - written under
+   R350, when the calculator submitted to ITSELF. R351 moved results
+   to their own route and the pasted extension says the projection is
+   "drawn by the server". Those agree about the no-JS path and say
+   nothing about the scripted one.
+   ANSWERED: /resultat only. The island carries the controls and
+   decodes the parameter so links and repopulation work; it draws no
+   projection, and one line in its result area says where the
+   projection appears.
+
+2. WHICH ENGINE FIELD "missions prevues" FEEDS. R343 delegates the
+   NAMES to this session. It does not say whether a planned-mission
+   count feeds missionDaysFrance, missionDaysThirdState, or splits -
+   and nothing establishes it: Android has no such concept and the
+   shared fixture has no case for one. The prompt's "France-first
+   order as it always does" describes the engine's CAP, not a field.
+   ANSWERED: ship the rhythm alone. Planned missions become their own
+   increment with their own frozen parameter once the field question
+   is settled. The prompt calls them optional twice.
+
+====================================================================
+R273 - WHERE THIS TASK BELONGS
+====================================================================
+tasks/todo.md ends at AN15 and knows nothing of the DECIDE chain, as
+REPORT-AN-FORECAST.txt already recorded; FW-FORECAST is not in it.
+todo.md is an operator file and was not edited (out of scope).
+
+READ BEFORE STARTING: the calculator route and its URL parameters,
+SPEC 9.4's contract, lib/params/{schema,codec}.ts, lib/dossier/
+aggregate.ts, fixtures/forecast-cases.json, REPORT-AN-FORECAST.txt,
+and design/decide/Prevision.dc.html (confirmed present).
+
+====================================================================
+R343 - THE PARAMETER, AND WHY IT IS THE SHAPE IT IS
+====================================================================
+THE NAME IS `rythme`. Lowercase, French, a whole word where the word
+is short - the style of `methode` and `decompte` beside it. Not in
+schema.test.ts's forbidden-words list, and it could not be: see the
+privacy note below.
+
+DOCUMENTED AS FROZEN in SPEC-frontalier-web.md section 9.4, in the
+table with the nine, plus a paragraph stating that it is R343, frozen
+from its first deploy, that it does not map into TeleworkInput, that
+it repeats, and that absent means no projection.
+
+THE RENAME TEST R343 ASKS FOR IS IN TWO PLACES, because there are two
+things to freeze:
+  tests/unit/params/schema.test.ts  - the NAME, in the ten-element
+      frozen list, with a comment saying what editing it costs.
+  tests/unit/params/rhythm.test.ts  - what its VALUES mean, as an
+      exact map: lu/ma/me/je/ve. A rename of a CODE breaks exactly as
+      many links as a rename of the parameter.
+
+IT REPEATS, AND THE FIRST DESIGN DID NOT - A CORRECTION MADE BEFORE
+ANYTHING SHIPPED. The first version was positional: `rythme=sdsds`,
+five characters, one per weekday, three symbols so a day could be
+teleworked, worked in Switzerland, or not worked at all. It was
+shorter, more expressive, matched the Android rhythm model exactly,
+and it CANNOT BE PRODUCED BY AN HTML FORM. A checkbox submits its own
+name and value or nothing; five of them cannot agree on one string
+without JavaScript to assemble it. R346 requires the rhythm to work
+with scripting OFF, so a format that only works hydrated is the wrong
+format, and it was replaced with `?rythme=ma&rythme=je` - five
+checkboxes, one name, the browser building the query itself.
+
+WHAT THAT COSTS, STATED RATHER THAN GLOSSED: the URL carries telework
+days only. The web question is binary per day, so a day left
+unchecked is simply not a telework day and the URL cannot say whether
+it was worked in Switzerland or not worked at all. THAT IS LOSSLESS
+FOR THE RATE, and the shared fixture establishes it rather than
+reasoning: `les-jours-suisses-ne-bougent-pas-le-taux` imagines five
+Swiss days and expects the rate NOT to move. The Rhythm TYPE still
+carries both kinds because the fixture does; it is the URL that is
+narrower than the type, which is the right way round.
+
+THE PRIVACY ARGUMENT WAS EXTENDED, NOT BROKEN. schema.ts rested it on
+"every param maps to a field of TeleworkInput, which holds days, a
+rate, a canton and a method - there is nowhere for a name to go".
+`rythme` is the first parameter that does not map there. Widening
+TeleworkInput to make that sentence true again would have been wrong
+twice over: it is the engine's public API and SPEC 20 makes changing
+it an ask-first item. So ParamSpec.field is now EngineField |
+ForecastField, and schema.test.ts asserts BOTH halves - every param
+maps into one of the two sets, AND the forecast set contains exactly
+`rythme`. The replacement is narrower than what it replaces: the
+value space is five legal codes, and a format with five legal values
+cannot carry an identity whatever anybody types.
+
+EVERY LINK SHARED BEFORE TODAY IS UNCHANGED, asserted literally:
+`expect(encode(BASE).toString()).toBe('canton=GE&tt=84')`. encode
+takes the rhythm as an optional second argument defaulting to none,
+so the share row, the island and the result page were not touched and
+still produce the byte-identical string.
+
+====================================================================
+THE DATE FUNCTION
+====================================================================
+lib/forecast/imagined.ts - imaginedEntriesToYearEnd(rhythm, today,
+taxYear). One plain function, no clock of its own, no arithmetic
+beyond a calendar walk.
+
+IT RETURNS ENTRY ROWS, NOT A COUNT, and that is the design decision
+worth recording. A count would be smaller and would be a second
+engine: the denominator, the proration, the half-day arithmetic and
+the mission cap all live in toTeleworkInput and calc-engine, and a
+function returning "24 telework days" invites its caller to divide by
+240 - FW12's defect, R340's rule. Rows go in the same door recorded
+ones do, which is also what makes the shared fixture checkable step
+for step rather than at the final percentage.
+
+UTC THROUGHOUT for the walk, for the reason the codec's own date
+arithmetic gives: a Date advanced by local days crosses a DST
+boundary twice a year and silently gains or loses one.
+
+CLAMPED AT BOTH ENDS to the tax year, so a link opened in a later
+year cannot imagine days outside the year whose denominator is being
+used.
+
+====================================================================
+THE FIXTURE - CONSUMED, NEVER FORKED
+====================================================================
+fixtures/forecast-cases.json was created by AN-FORECAST and is
+consumed unchanged. Its own header names this side as a consumer:
+"the web side (FW-FORECAST) reads the SAME file through its own date
+function and engine."
+
+THE WEB PATH IS THE KOTLIN PATH, step for step:
+  imagined rows -> concatenated with the recorded rows
+                -> toTeleworkInput (lib/dossier/aggregate.ts, R281)
+                -> calculateTelework
+
+tests/unit/forecast/imagined-fixture.test.ts drives all five cases
+and asserts imaginedWorkingDays, imaginedTeleworkDays, currentRate
+and declarableRate, plus that nothing before or including "today" is
+ever imagined and nothing outside the tax year is. 31 tests.
+
+THE PLANT (R180, R283), and R180 was followed in the order it
+specifies - the plant was VERIFIED BEFORE ITS RESULT WAS READ:
+
+  PLANT VERIFIED: cases[0].expected.imaginedWorkingDays 59 -> 58
+                  (id rythme-mardi-jeudi-depuis-octobre)
+  RED           : AssertionError: expected 59 to be 58
+                  1 failed | 30 passed
+  REVERTED      : now 59; git status on fixtures/ clean.
+
+One digit, one failing assertion, and the other thirty still green -
+which is what says the suite reads the file rather than a copy of it.
+The plant window was kept to seconds because the Android session
+shares this file and was active on main throughout.
+
+====================================================================
+TWO ROUTES TO ONE NUMBER, ASSERTED TO AGREE
+====================================================================
+The fixture walks entry ROWS, because a dossier has rows. THE
+CALCULATOR HAS NONE: a reader typed "84 jours" into a form and the
+web side never knew which 84 days those were. So lib/forecast/
+project.ts adds the imagined telework days to the count it was given
+and runs the same engine.
+
+That is exactly the shape that becomes two engines when nobody checks
+(FW12, R340), so tests/unit/forecast/project.test.ts drives every
+fixture case through BOTH and asserts the resulting TeleworkInputs
+are equal FIELD FOR FIELD - not merely that the rates round to the
+same percentage, because two different inputs can round alike and the
+first scenario that does not would be a defect in production.
+
+====================================================================
+"TODAY"
+====================================================================
+R28/R55 extended from the year to the day. lib/content/tax-year.ts
+gains currentDayInParis(now = new Date()), built the way
+currentTaxYear already was: Intl with the pinned zone, formatToParts
+so nothing depends on CLDR ordering, en-CA because its short date is
+ISO and needs no reordering.
+
+It returns UTC MIDNIGHT OF THE PARIS DAY, deliberately: everything
+downstream does its arithmetic in UTC, and handing back a Paris-local
+instant would reintroduce the boundary the function exists to remove.
+
+tests/unit/content/paris-day.test.ts fixes six instants, including
+both sides of the boundary in BOTH seasons - an implementation that
+added a fixed hour passes the winter case and fails the summer one,
+which is the bug that survives every test written in January - and
+the 31 December case where Paris is already next year.
+
+PER REQUEST, NOT FROM A CACHE. /resultat declares force-dynamic, and
+e2e asserts the response carries no-store. A response cached in
+October and served in November imagines days that have since passed
+unrecorded - wrong, and wrong in the direction that flatters.
+The page prints "Projection au <date>" so a reader can tell which day
+was answered.
+
+====================================================================
+THE RESULT AGAINST THE APP'S SCREEN
+====================================================================
+R340's four devices, and not one of them is colour:
+  1. the block is LABELLED "Projection", in words, in its own heading
+     ("Fin decembre, projection");
+  2. it names the day it was computed for;
+  3. its assumptions are three sentences a reader can disagree with -
+     the rhythm repeats to 31 December; holidays and leave are not
+     deducted, so it warns early rather than late; today is not
+     imagined;
+  4. "Une projection ne figure jamais dans votre releve."
+The Android screen carries the same four, which is why the wording
+was matched rather than reinvented.
+
+IT COMPUTES NOTHING. Every figure comes from project(), which runs
+the engine; there is no division or subtraction in the component.
+
+TWO TILES, NOT FOUR. The panel above shows four; the Swiss and French
+taxed-day tiles describe days already worked, and projecting them
+would state where a reader WILL have paid tax - a claim about the
+future in the one register this product keeps in the past tense.
+
+====================================================================
+WALKTHROUGH (R176, R177) - JS ON and OFF, 1280 and 390
+====================================================================
+IT FOUND TWO DEFECTS THAT THE WHOLE SUITE DID NOT, which is the
+clearest case this session can make for the instrument.
+
+FIRST PASS, JS OFF and JS ON, desktop and phone:
+  5 checkboxes served, 0 checked, question visible      - as specified
+  no rhythm   -> /resultat, no projection, 35,00 %      - unchanged
+  with rhythm -> /resultat?...&rythme=ma&rythme=je
+                 today 35,00 %, projected 39,58 %,
+                 "Projection au 13.10.2026",
+                 never-a-record line present
+  shared link reopened -> projection present
+  BACK -> "Modifier mes chiffres" -> rythme []  <-- DEFECT 1
+          boxes re-checked 0 of 5
+  JS ON: url follows form -> rythme []          <-- DEFECT 2
+
+DEFECT 1 - THE BACK LINK DROPPED THE RHYTHM. FW-RESULTAT rebuilt that
+link with encode(decoded.input), which was complete when the only
+thing a link carried was an engine scenario. Following it landed the
+reader on a calculator with every box unchecked and their projection
+gone, having touched nothing.
+
+DEFECT 2 - THE ADDRESS BAR NEVER LEARNED THE RHYTHM. The island's
+URL effect had dependencies [input, hasResult]. Checking a day
+changes NEITHER - the rhythm is not part of TeleworkInput, and it
+cannot change today's figure - so the effect never re-ran: the query
+kept no rythme, and the share button copied a link that projected
+nothing.
+
+SECOND PASS, after both fixes, FOUND A THIRD:
+  back href rythme ["ma"]                        <-- DEFECT 3
+  boxes re-checked 1 of 5
+
+DEFECT 3 - A TWO-DAY RHYTHM PROJECTED FROM ONE DAY. The result page
+rebuilds a URLSearchParams from Next's searchParams object, and that
+loop took `value[0]` for an array - correct while every parameter was
+single-valued, silently wrong the moment one repeated.
+
+  EVERY E2E ASSERTION PASSED THROUGHOUT. "A projection block is
+  present" was true. "It contains a rate" was true. "It projects
+  higher than today" was true, because one day is also higher than
+  none. The figure was simply wrong and nothing was looking at its
+  VALUE. Three assertions now compare two responses - two days must
+  project strictly further than one, and the order of the values must
+  not change the answer - rather than pinning a literal that the
+  day the suite runs on would invalidate tomorrow (R171).
+
+THIRD PASS, both modes, everything correct:
+  JS OFF: projection 35,00 -> 44,58, as of 13.10.2026,
+          back href ["ma","je"], boxes 0 of 5 (see LIMITS 1)
+  JS ON : url follows form ["ma","je"], projection note on the
+          calculator, projection 35,00 -> 44,58, back href
+          ["ma","je"], boxes re-checked 2 of 5
+
+====================================================================
+LIMITS, STATED RATHER THAN HIDDEN
+====================================================================
+1. WITH SCRIPTING OFF, RETURNING TO THE CALCULATOR LEAVES THE BOXES
+   UNCHECKED even though the URL carries the rhythm. This is FW13's
+   existing ruling applying to a new field, not a new defect: the
+   calculator route is STATIC and cannot read searchParams, so no
+   field is prefilled without scripting - calculateur.nojs.spec.ts
+   has asserted exactly that for every other field since FW13. The
+   rhythm is in the URL, the result page reads it, and the projection
+   is correct; only the form's own checkboxes cannot show it.
+
+2. PLANNED MISSIONS ARE NOT BUILT - deferred by the operator's answer
+   above, with the field question unresolved. No parameter was
+   reserved for them: reserving a name nobody has agreed the meaning
+   of is how a frozen contract acquires an entry that means whatever
+   the next edit makes it mean.
+
+3. THE PROJECTION RAIL IS SINGLE-SEGMENT. The prompt's section 3 asks
+   for "the rail with the current part solid and the projected part
+   lighter (and a legend)". ThresholdRail takes one percentage, and a
+   second segment is an additive change to a shared lib/ui component
+   with its own baselines. The block shows both figures and the rail
+   at the PROJECTED rate; the two-segment rail with its legend is NOT
+   done and is the clearest remaining piece of section 3.
+
+====================================================================
+NOTICED BUT NOT TOUCHING
+====================================================================
+A. THE NEW WORKTREE HAD NO .env, so the alert-capture e2e test failed
+   with #alerte-indisponible until one was copied from this session's
+   previous worktree. It is gitignored and uncommitted. Worth saying
+   because the failure looks like a product defect and is not: R349
+   gives every session its own worktree, and a fresh worktree has no
+   .env by construction - the same property gate:clone relies on.
+
+B. tests/unit/calc-engine/{benchmark,verification-trace}.test.ts
+   still carry the two unused eslint-disable directives reported in
+   REPORT-FW-RESULTAT. Not mine, not touched, still warnings only.
+
+====================================================================
+R177 - THE DEV PATH, DRIVEN AND COMPARED
+====================================================================
+The three passes above ran against a production build. R177 requires
+the walkthrough to run against pnpm dev as well, because "a suite that
+only ever sees built output cannot tell you the development path is
+broken, and every session is developed on that path". It was run, and
+the two paths agree exactly.
+
+  R177's has-styles precondition, asserted before anything was read:
+    stylesheets fetched      3
+    total bytes              69 805
+    carries a design token   true
+  A Lighthouse run against a page whose CSS failed to load reports a
+  perfect score, so this is checked first rather than assumed.
+
+  DEV, JS OFF, 390: 5 checkboxes served; projection 35,00 -> 44,58;
+                    "Projection au 13.10.2026"; never-a-record line
+                    present; back href rythme ["ma","je"]
+  DEV, JS ON, 390 : url follows the form ["ma","je"]; projection note
+                    on the calculator; projection 35,00 -> 44,58;
+                    back href rythme ["ma","je"]
+
+  IDENTICAL TO THE BUILT PATH, figure for figure.
+
+ONE THING THE WALKTHROUGH SCRIPT GOT WRONG, recorded because the rule
+is that a report states what happened. Its "assumption: holidays"
+probe read false in both modes. The probe was an ASCII substring test
+against accented French and was simply the wrong check; the served
+HTML was then read directly and carries all three assumptions, the
+never-a-record line, and the app line in the FUTURE tense because
+PRODUCT_STATE.appExists is false:
+
+  "Vos jours habituels se repetent chaque semaine jusqu'au 31
+   decembre."
+  "Les jours feries et les conges ne sont pas deduits : la projection
+   annonce donc un peu tot plutot que trop tard."
+  "La journee d'aujourd'hui n'est pas imaginee : elle est deja
+   enregistree, ou elle ne l'est pas."
+  "Une projection ne figure jamais dans votre releve."
+  "L'application tiendra cette projection a jour a partir des journees
+   qu'elle enregistre."
+
+The e2e suite asserts those strings against lib/fr rather than by
+substring, which is why it was green while the probe was not.
+
+====================================================================
+SIZES (R326, R2) - EVERY FIGURE FROM A FULL BUILD
+====================================================================
+Measured like-for-like: a plain pnpm build on both sides, in this
+worktree, with no NEXT_PUBLIC_SITE_URL on either (a NEXT_PUBLIC_ value
+is inlined wherever referenced, so a build carrying one is a different
+build - the mistake REPORT-FW-RESULTAT records making).
+
+  /calculateur-teletravail-frontalier   first-load   route chunk
+    before (main b5f65b4)                 122.0 KiB    21.4 KiB
+    after  (this branch)                  122.8 KiB    22.2 KiB
+    delta                                  +0.8 KiB     +0.8 KiB
+
+  GATE A spare: 3.0 KiB -> 2.2 KiB. NO GATE WAS RAISED.
+
+WHERE THE 0.8 KiB WENT, measured in two steps rather than attributed:
+  +0.7 KiB arrived with the CODEC, before the island was touched at
+     all - lib/params/codec.ts now imports lib/params/rhythm.ts, and
+     the island imports the codec.
+  +0.1 KiB is the five checkboxes themselves.
+That split is worth recording because the intuition is backwards: the
+visible feature is the cheap half.
+
+  /calculateur-teletravail-frontalier/resultat   105 KiB, A 16 spare
+  Every other gated route unchanged. All gated routes pass both gates.
+
+THE PROJECTION ITSELF COSTS THE CALCULATOR NOTHING, which is the point
+of the pasted ruling's "the projection is drawn by the server": the
+block, its rail, its tiles and its four paragraphs are rendered by
+/resultat, a dynamic route with 16 KiB of headroom.
+
+====================================================================
+ADVISOR DECISIONS
+====================================================================
+Consulted once, before any code, after orientation. Five of its points
+were taken and one was overtaken by events:
+
+  TAKEN - resolve the R350/R351 conflict with the operator rather than
+     inferring it; do not build an island projection and do not
+     silently omit one. Put as question 1 above.
+  TAKEN - the planned-mission FIELD is a product decision R343 does not
+     delegate; ask or defer. Put as question 2 above; deferred.
+  TAKEN - the rhythm needs three states per weekday in the TYPE, which
+     the fixture's partial case settles; derive the mapping from the
+     engine's kind names rather than typing a second table.
+  TAKEN - do not widen TeleworkInput; the codec needs the rhythm
+     beside the input, not inside it.
+  TAKEN - consume the fixture through the same path Kotlin does, and
+     assert the calculator's count path agrees with it.
+  OVERTAKEN - its suggestion to keep one positional parameter string.
+     That was sound until the form was written and could not produce
+     one without JavaScript; the parameter repeats instead, and the
+     reasoning is recorded in lib/params/rhythm.ts's header.
+
+====================================================================
+UNTRACKED FILES LEFT ALONE (R334)
+====================================================================
+Nothing was deleted, reset or overwritten that this session did not
+create. The android/.an-*-shots/ directories and android/scripts/an-*
+files belong to the Android sessions and were not touched, listed or
+cleaned. web/.env was COPIED IN from this session's own previous
+worktree (see NOTICED A); it is gitignored and uncommitted.
+
+Temporary scripts this session wrote and removed itself:
+web/.fc-walk.mjs, web/.fc-walk2.mjs, web/.fc-w3.mjs,
+web/.fc-dev-walk.mjs - all deleted after use, none committed.
+
+====================================================================
+DEVIATIONS
+====================================================================
+1. THE PROJECTION RAIL IS SINGLE-SEGMENT, against the prompt's section
+   3. See LIMITS 3; it is the clearest remaining piece.
+2. PLANNED MISSIONS ARE NOT BUILT, by the operator's answer. See
+   LIMITS 2.
+3. THE FIRST PARAMETER DESIGN WAS REPLACED before it shipped. Recorded
+   as a correction rather than a deviation, since nothing was
+   published under the old shape.
+
+====================================================================
+QUESTIONS
+====================================================================
+1. WHICH ENGINE FIELD SHOULD "missions prevues d'ici le 31 decembre"
+   FEED? Still open, and still a product decision. The parameter name
+   is unreserved on purpose: reserving a name whose meaning nobody has
+   agreed is how a frozen contract acquires an entry that means
+   whatever the next edit makes it mean.
+
+2. SHOULD ThresholdRail GAIN A SECOND SEGMENT? It would make the
+   prompt's "current part solid, projected part lighter, with a
+   legend" true, and it is an additive change to a shared lib/ui
+   component with its own baselines - small, but a design-system
+   change rather than a page change.
+
+3. WITH SCRIPTING OFF, SHOULD THE CALCULATOR PRE-CHECK THE BOXES FROM
+   THE URL? It cannot today: the route is static by FW13's measured
+   ruling and no field is prefilled without scripting. Making the
+   rhythm the exception would mean reading searchParams on that route,
+   which is the thing FW13 measured and refused.
+
+====================================================================
+VISUAL BASELINES (R135, R207, R184)
+====================================================================
+THE SET WAS STATED BEFORE THE COMMAND RAN: all 24 calculateur-*
+baselines, because the form gains a fieldset on every shot; and
+nothing else, because the island renders on no other route and the
+composants workbench does not mount it (checked, not assumed).
+
+PRODUCED: exactly those 24, 111 passed. The expectation and the
+output are equal, so nothing was rewritten that was not explained.
+
+  calculateur-{vide,rempli,erreur}-{desktop,mobile}
+  calculateur-{lien-partage,lien-invalide}-{desktop,mobile}
+  calculateur-{panneau-conforme,panneau-regime-perdu}-{d,m}
+  calculateur-{panneau-bascule-sociale,panneau-avis-provisoire}-{d,m}
+  calculateur-{faq-ouverte,capture-succes,capture-erreur}-{d,m}
+
+THE REASON: the rhythm question is a new fieldset in the calculator's
+form - a legend, a helper paragraph and five checkboxes - placed after
+the mission question and before the advanced accordion. Everything
+below it moves down by its height.
+
+VERIFIED MECHANICALLY BEFORE BEING BELIEVED. Every one of the 24 is
+the SAME WIDTH as its predecessor - so nothing overflows sideways
+(R127/R128) - and the height delta is ONE CONSTANT PER WIDTH:
+
+  desktop  +110 px on all 12
+  mobile   +188 px on all 12
+
+A change that had leaked into anything else would have produced
+varying deltas. The first differing row is likewise constant per shot
+type (829 or 1097 desktop, 995 or 1335 mobile), which is where the
+fieldset was inserted.
+
+AND ONE WAS CROPPED AND LOOKED AT (R135), calculateur-vide-mobile at
+y=960: the question reads "Quels jours teletravaillez-vous
+d'habitude ?" with its no-break space, the helper reads "Cochez vos
+jours habituels pour voir ou vous arrivez au 31 decembre. Sans
+reponse, le calcul montre votre position actuelle, comme avant.", and
+five unchecked boxes read lundi / mardi / mercredi / jeudi /
+vendredi, wrapping 3 + 2 at 390 px.
+
+ONE THING LOOKING RAISED, AND IT IS NOT A DEFECT. The gap between the
+two wrapped rows is larger than a row gap would explain. It is
+.choice's min-height: var(--size-touch-target-web) - 44 px per row
+under D40 - with a 20 px label centred in it. The airiness is the tap
+target doing its job, and narrowing it would break D40. Recorded
+because a mechanical check cannot tell "correct and airy" from
+"wrong", and this is exactly what R135 says only looking catches.
+
+====================================================================
+THE GUARDS THAT FIRED ON ONE PARAMETER
+====================================================================
+Adding `rythme` tripped three independent guards, in three different
+suites, each written by a different task. None was a false alarm and
+none was a bumped number: each needed a decision about whether the new
+parameter was covered.
+
+1. tests/unit/params/schema.test.ts - THE FROZEN LIST.
+   "is exactly the nine, in the order SPEC 9.4 tabulates them" went
+   red naming `rythme`, which is what schema.ts's own header promises:
+   "tests/unit/params/schema.test.ts asserts the list element by
+   element so the asking is unavoidable." Updated to ten, with the
+   rename-cost comment R343 asks for.
+
+2. tests/unit/params/schema.test.ts - THE PRIVACY PROOF.
+   "maps every param to a field of TeleworkInput and nothing else"
+   went red because `rythme` maps to `rhythm`. This is the one that
+   mattered: the honest repair was to widen the PROOF, not the type.
+   See the R343 section above.
+
+3. e2e/og.spec.ts - THE SOCIAL-CARD LEAK CHECK.
+   "a nine-param URL and the bare path return the same bytes" asserts
+   the OpenGraph card is byte-identical whether or not the URL carries
+   a calculation - a user's exposure must not leak into a social
+   thread. It pins PARAM_NAMES.length, and its comment says why: "The
+   nine names are read from the schema, so a tenth parameter added to
+   the product arrives here rather than being remembered."
+   IT ARRIVED. The fixture now carries every parameter including two
+   repeated `rythme` values, and the count is still PINNED rather than
+   loosened to ">= 1" - a rhythm says which days of the week somebody
+   is at home, which is as much a disclosure as a day count, and a new
+   disclosure must not reach a social card without somebody deciding
+   it is covered.
+
+WHAT THIS SAYS ABOUT THE DESIGN. A parameter is not one fact in one
+file. It is a frozen name, a value vocabulary, a privacy claim, a
+leak surface and a form control, and three separate suites held three
+of those. None of them could have been found by reading the diff.
+
+====================================================================
+ONE GATE FAILURE THAT WAS NOT A DEFECT
+====================================================================
+The gate's first full run failed at `pnpm test` with
+"[vitest-pool]: Failed to start forks worker ... Timeout waiting for
+worker to respond" - four workers, while 182 files and 3102 tests
+passed. Not an assertion: machine pressure. vitest spawns one worker
+per file (182 of them, ~1.6 s startup each) and this machine was also
+holding two Gradle daemons.
+
+RE-RUN CLEAN: 186 files, 3228 tests passed.
+
+THE DAEMONS WERE LEFT ALONE, DELIBERATELY. This session's own notes
+record that stopping them frees about 4 GB and has cured kills before,
+and it would plausibly have helped here. They belong to the Android
+session, and a daemon mid-build is exactly the live work R334 forbids
+disturbing. The non-invasive fix - re-running once this session's own
+servers had exited - was enough, and the invasive one was never worth
+the risk of killing somebody else's build to save a retry.
+
+====================================================================
+THE GATE
+====================================================================
+pnpm gate:changed, FRONTALIER_PORT=3198. GATE PASSED for the paths
+changed. 39 paths matched; the printed selection:
+
+  suites: typecheck, lint, test, build, test:e2e, test:visual,
+          test:db, test:late
+  a11y:   covered by pnpm test - test:a11y's three files are a subset
+          of its globs, so requiring it separately is a second run
+
+  measured:
+    typecheck   exit 0
+    lint        exit 0  (0 errors; the two pre-existing calc-engine
+                        warnings from REPORT-FW-RESULTAT remain)
+    test        3228 passed
+    build       exit 0
+    test:e2e     334 passed
+    test:visual  111 passed
+    test:db      624 passed
+    test:late     10 passed
+
+TWO EARLIER RUNS FAILED AND NEITHER IS HIDDEN:
+  run 1 - pnpm test, [vitest-pool] worker spawn timeouts. Machine
+          pressure, not an assertion. See the section above.
+  run 2 - pnpm test:e2e, e2e/og.spec.ts's social-card leak check,
+          which pins the parameter count on purpose. See the section
+          above. 333 passed, 1 failed.

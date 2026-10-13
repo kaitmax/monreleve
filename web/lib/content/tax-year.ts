@@ -50,3 +50,41 @@ export function currentTaxYear(now: Date = new Date()): number {
 
   return Number.parseInt(year, 10);
 }
+
+/**
+ * Formats the whole day, in the pinned zone. Same construction, same reason.
+ */
+const DAY_IN_PARIS = new Intl.DateTimeFormat('en-CA', {
+  timeZone: DATE_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+/**
+ * The calendar DAY in Europe/Paris at `now`, as that day's UTC midnight.
+ *
+ * WHY THE PROJECTION NEEDS IT (FW-FORECAST). The imagined year starts the
+ * day after today, so "today" decides how many working days are left - and a
+ * host in UTC at 23:30 on a Sunday is already Monday in Paris. Getting it
+ * wrong by one costs the reader a whole working day of projection, every
+ * evening, for the two hours a day the two zones disagree.
+ *
+ * UTC MIDNIGHT OF THE PARIS DAY, deliberately. The value is a calendar day
+ * rather than an instant: everything downstream - the imagined-days walk, the
+ * fixture, the codec - does its arithmetic in UTC so no zone can shift a
+ * boundary, and handing back a Paris-local instant would reintroduce exactly
+ * the boundary this function exists to remove.
+ *
+ * en-CA, BECAUSE ITS SHORT DATE IS ISO. fr-FR formats 09/10/2026, which needs
+ * reordering before it can be parsed, and reordering is where a day and a
+ * month change places. formatToParts for the same reason currentTaxYear uses
+ * it: the parts are named, so nothing depends on CLDR ordering at all.
+ */
+export function currentDayInParis(now: Date = new Date()): Date {
+  const parts = DAY_IN_PARIS.formatToParts(now);
+  const part = (type: Intl.DateTimeFormatPartTypes): number =>
+    Number.parseInt(parts.find((candidate) => candidate.type === type)?.value ?? '', 10);
+
+  return new Date(Date.UTC(part('year'), part('month') - 1, part('day')));
+}

@@ -40,7 +40,11 @@
 import type { Metadata } from 'next';
 import { calculateTelework, ruleSetFor } from '@/lib/calc-engine';
 import { CALCULATOR_PATH } from '@/lib/content/routes';
-import { currentTaxYear } from '@/lib/content/tax-year';
+import { currentDayInParis, currentTaxYear } from '@/lib/content/tax-year';
+import { PRODUCT_STATE } from '@/lib/content/product-state';
+import { project } from '@/lib/forecast/project';
+import { formatDate, formatPercent } from '@/lib/ui/core';
+import { Projection } from './Projection';
 import { decode } from '@/lib/params/codec';
 import { encode } from '@/lib/params/codec';
 import { FORM_ONLY_PARAMS, strayParams } from '@/lib/params/schema';
@@ -54,6 +58,22 @@ import styles from './resultat.module.scss';
 const COPY = CALCULATEUR_COPY.resultat;
 
 /**
+ * A ceiling as the tiles name it.
+ *
+ * THE SAME SHAPE ResultPanel USES, and for the same reason: 40 % reads as
+ * "40 %" and 49,9 % as "49,9 %", so the decimal count follows the value
+ * rather than being fixed. Duplicated rather than imported because
+ * ResultPanel keeps it private; noted here so the next reader knows the
+ * two exist (R206 would prefer one home, and this is the smaller evil
+ * than widening that component's exports for a four-line helper).
+ */
+const ceiling = (rate: number): string => {
+  const percent = rate * 100;
+
+  return formatPercent(percent, Number.isInteger(percent) ? 0 : 1);
+};
+
+/**
  * NO CANONICAL AND NO OG CARD, and that is this route's whole licence to read
  * the URL. The layout adds them only when a real origin is configured (R81);
  * here they would point at a page that must not be indexed in the first place.
@@ -61,6 +81,23 @@ const COPY = CALCULATEUR_COPY.resultat;
  * header is the instruction a crawler obeys, and this makes the page's own
  * intent readable to somebody looking at the source.
  */
+/**
+ * NEVER FROM A CACHE, BECAUSE THE ANSWER DEPENDS ON WHAT DAY IT IS.
+ *
+ * The projection counts the working days from tomorrow to 31 December, so
+ * a response cached on 9 October and served on 10 November is wrong by a
+ * month - and wrong in the direction that flatters, since it imagines days
+ * that have since passed unrecorded. Awaiting searchParams already makes
+ * this route dynamic; stating it as well means the guarantee survives a
+ * future edit that stops reading them.
+ *
+ * IT COSTS THIS ROUTE NOTHING. force-dynamic broke the CALCULATOR when
+ * FW13 measured it - a streamed route emits <title> and canonical into the
+ * body - and this page has neither to protect: it is noindex on every URL
+ * and absent from the sitemap.
+ */
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: COPY.title,
   description: COPY.description,
@@ -88,12 +125,38 @@ export default async function ResultatPage({
   const query = new URLSearchParams();
 
   for (const [name, value] of Object.entries(params)) {
-    if (typeof value === 'string') query.set(name, value);
-    else if (Array.isArray(value) && typeof value[0] === 'string') query.set(name, value[0]);
+    if (typeof value === 'string') {
+      query.set(name, value);
+      continue;
+    }
+
+    // EVERY VALUE, NOT THE FIRST. This kept value[0] until FW-FORECAST, and
+    // it was correct while every param was single-valued. `rythme` repeats -
+    // five checkboxes share one name - so taking the first collapsed a
+    // two-day rhythm to one day and projected from it, silently: the page
+    // still rendered a projection, still rendered a plausible percentage,
+    // and the figure was wrong. Found by driving the journey (R176), not by
+    // a test - the e2e assertion said "a rate appears", which it did.
+    if (Array.isArray(value)) {
+      for (const entry of value) if (typeof entry === 'string') query.append(name, entry);
+    }
   }
 
   const decoded = decode(query, year);
+
+  // R28: the day in Europe/Paris, resolved on the server and passed down.
+  // A clock inside the projection would read the host zone, and a host in
+  // UTC at 23:30 is already tomorrow in Paris - a whole working day of
+  // projection, wrong every evening.
+  const today = currentDayInParis();
   const outcome = decoded.input === null ? null : calculateTelework(decoded.input);
+
+  // ONCE, NOT PER USE. project() runs the engine twice, and calling it
+  // again inside the JSX would run it four times to render one block -
+  // and would make the null check and the render two separate opinions
+  // about whether there is a projection.
+  const projection =
+    decoded.input === null ? null : project(decoded.input, decoded.rhythm, today);
 
   // THE CALCULATOR’S OWN CONTROLS ARE NOT STRAY PARAMS. decode() is right
   // to report `missions`: the engine does not read it. The NOTICE would be
@@ -150,7 +213,14 @@ export default async function ResultatPage({
 
           return kept.toString();
         })()
-      : encode(decoded.input).toString();
+      : // THE RHYTHM GOES BACK TOO, AND THE WALKTHROUGH IS WHY (R343).
+        //
+        // This read encode(decoded.input) until FW-FORECAST, which was
+        // complete when the only thing a link carried was an engine
+        // scenario. It silently dropped the rhythm: following "Modifier
+        // mes chiffres" landed the reader on a calculator with every box
+        // unchecked and their projection gone, having touched nothing.
+        encode(decoded.input, decoded.rhythm).toString();
   const back = backQuery === '' ? CALCULATOR_PATH : `${CALCULATOR_PATH}?${backQuery}`;
 
   return (
@@ -237,6 +307,23 @@ export default async function ResultatPage({
           <>
             {/* The island's own panel, with the island's own arguments. */}
             <ResultPanel result={outcome.value} thresholds={rules} />
+
+            {/*
+              THE PROJECTION, when a rhythm arrived (R343, FW-FORECAST).
+              project() returns null for an empty rhythm, so a reader who
+              did not answer the question sees exactly what they saw
+              before it existed.
+            */}
+            {projection === null ? null : (
+              <Projection
+                appReleased={PRODUCT_STATE.appExists}
+                day={formatDate(today.toISOString().slice(0, 10))}
+                fiscal={ceiling(rules.fiscalCeiling)}
+                projection={projection}
+                social={ceiling(rules.socialCeiling)}
+                thresholds={rules}
+              />
+            )}
             <p className={styles.actions}>
               {/* Carrying the query, so a scripted reader lands on the
                   calculator with their scenario already decoded - which is

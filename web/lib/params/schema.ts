@@ -27,6 +27,7 @@
 
 import type { TeleworkInput } from '@/lib/calc-engine';
 
+
 /**
  * The nine names, in SPEC 9.4's tabulated order.
  *
@@ -44,6 +45,7 @@ export const PARAM_NAMES = [
   'total',
   'decompte',
   'debut',
+  'rythme',
 ] as const;
 
 export type ParamName = (typeof PARAM_NAMES)[number];
@@ -61,9 +63,32 @@ export type EngineField =
   | 'denominator.kind'
   | 'denominator.totalWorkDays';
 
+/**
+ * A field of the FORECAST rather than of the engine input (R343).
+ *
+ * WHY THIS TYPE EXISTS AT ALL. Until the rhythm, every parameter mapped
+ * into TeleworkInput, and this file's header rested the privacy argument on
+ * exactly that: the engine input holds days, a rate, a canton and a method,
+ * so there is nowhere for a name to go. The rhythm is not an engine input -
+ * it is what the projection imagines the rest of the year from - so that
+ * sentence no longer covers the whole set on its own.
+ *
+ * THE ARGUMENT IS EXTENDED RATHER THAN DROPPED, and it comes out stronger.
+ * A forecast field's value space is closed and enumerable: the rhythm is
+ * three symbols in five positions, 243 legal strings, every one of them
+ * checked by rhythm.test.ts. A format with 243 legal values cannot carry an
+ * identity whatever anybody types. schema.test.ts asserts both halves - that
+ * every parameter maps into one of the two sets, and that this set stays
+ * tiny (R206: asserted, never merely small).
+ */
+export type ForecastField = 'rhythm';
+
 export interface ParamSpec {
-  /** The TeleworkInput field this param carries. */
-  readonly field: EngineField;
+  /**
+   * The field this param carries: a TeleworkInput field for the nine that
+   * reach the engine, or a forecast field for the rhythm (R343).
+   */
+  readonly field: EngineField | ForecastField;
   /**
    * What an ABSENT param means, as the string a present one would have had -
    * or null where SPEC 9.4's table leaves the default column empty, which is
@@ -112,6 +137,21 @@ export const PARAM_SCHEMA: Readonly<Record<ParamName, ParamSpec>> = {
 
   // No default: a whole year, expressed as the absence of a start date.
   debut: { field: 'periodFraction', fallback: null },
+
+  // R343, AND THE OPERATOR AUTHORISED IT IN THOSE WORDS: "THE CALCULATOR
+  // GAINS URL PARAMETERS FOR THE RHYTHM ... URL parameters are permanent:
+  // shared links will carry them for years (R156). The operator authorises
+  // adding them here."
+  //
+  // THE NAME IS IN THE STYLE OF THE NINE ABOVE: lowercase, French, and a
+  // whole word where the word is short - `methode`, `decompte`, `rythme`.
+  //
+  // THE DEFAULT IS NO RHYTHM, not five Swiss days. The question is optional
+  // and an absent answer must behave exactly as the calculator did before
+  // this parameter existed: a current figure and no projection. encode
+  // compares against this string and omits it, so every link shared before
+  // today keeps the shape it has.
+  rythme: { field: 'rhythm', fallback: null },
 };
 
 /** SPEC 9.4's three-value code for Granularity, and back. */

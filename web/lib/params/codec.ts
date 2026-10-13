@@ -25,6 +25,8 @@
 import { type Canton, type TeleworkInput } from '@/lib/calc-engine';
 import { CANTON_NAMES } from '@/lib/fr/cantons';
 import { remainingYearFraction } from '@/lib/ui/core';
+import type { Rhythm } from '@/lib/forecast/imagined';
+import { parseRhythmDays, renderRhythmDays } from './rhythm';
 import {
   GRANULARITY_CODES,
   granularityCode,
@@ -57,6 +59,16 @@ export interface DecodeResult {
   readonly ignored: readonly string[];
   /** Known params whose value could not be read; each fell back. */
   readonly invalid: readonly string[];
+  /**
+   * The weekly rhythm the link carried, or {} where it carried none (R343).
+   *
+   * BESIDE `input`, NOT INSIDE IT, and never null. The rhythm is an input to
+   * the PROJECTION rather than to the engine, so it does not belong in
+   * TeleworkInput - and an empty rhythm is a complete answer ("I did not say"),
+   * which is different from a scenario that cannot be computed at all. A
+   * caller that ignores this field behaves exactly as it did before R343.
+   */
+  readonly rhythm: Rhythm;
 }
 
 /**
@@ -150,7 +162,14 @@ export function isoDayForFraction(fraction: number, taxYear: number): string | n
 
   return remainingYearFraction(candidate, taxYear) === fraction ? candidate : null;
 }
-/** The string a param would carry for this input, or null to omit it. */
+/**
+ * The string a param would carry for this scenario, or null to omit it.
+ *
+ * THE RHYTHM IS NOT RENDERED HERE, although it is a param. It can carry
+ * several values and this function returns one string, so encode appends
+ * its days itself; the case below returns null and the exhaustiveness
+ * check stays honest - a tenth param is still a compile error.
+ */
 function render(name: ParamName, input: TeleworkInput): string | null {
   switch (name) {
     case 'canton':
@@ -184,6 +203,13 @@ function render(name: ParamName, input: TeleworkInput): string | null {
     case 'debut':
       return isoDayForFraction(input.periodFraction, input.taxYear);
 
+    case 'rythme':
+      // RENDERED BY encode ITSELF, because this one param can carry
+      // several values and this function returns one string. Returning
+      // null here keeps the exhaustiveness check honest - a tenth param
+      // is still a compile error - while encode appends the days.
+      return null;
+
     default: {
       // Exhaustiveness: a tenth param is a compile error here rather than a
       // value silently missing from every URL.
@@ -203,11 +229,27 @@ function render(name: ParamName, input: TeleworkInput): string | null {
  * rather than a parsed value, so "omit the default" and "write the value"
  * cannot disagree about what the default renders as.
  */
-export function encode(input: TeleworkInput): URLSearchParams {
+/**
+ * THE RHYTHM IS OPTIONAL AND DEFAULTS TO NONE, which is what keeps every
+ * existing caller correct without being touched: the share row, the island
+ * and the result page all call encode(input), render writes '-----', and
+ * PARAM_SCHEMA omits it as the default. A link made today by somebody who
+ * never answered the rhythm question is byte-for-byte the link they would
+ * have got last week.
+ */
+export function encode(input: TeleworkInput, rhythm: Rhythm = {}): URLSearchParams {
   const params = new URLSearchParams();
 
   for (const name of PARAM_NAMES) {
     const value = render(name, input);
+
+    if (name === 'rythme') {
+      // APPENDED, ONE VALUE PER DAY, in weekday order. An empty rhythm
+      // appends nothing, which is how "omit the default" works for a
+      // parameter whose default is the absence of any value at all.
+      for (const code of renderRhythmDays(rhythm)) params.append(name, code);
+      continue;
+    }
 
     if (value === null) continue;
     if (value === PARAM_SCHEMA[name].fallback) continue;
@@ -258,6 +300,19 @@ export function decode(params: URLSearchParams, taxYear: number): DecodeResult {
 
     return raw === null || raw === '' ? null : raw;
   };
+
+  // THE RHYTHM READS LIKE EVERY OTHER PARAM: absent means the default, a
+  // value that cannot be read falls back AND is named in `invalid`, so a
+  // mangled link says so rather than silently projecting nothing (SPEC 9.4).
+  // THE RHYTHM REPEATS, so it is the one param read with getAll rather
+  // than through read(): five checkboxes share one name, and a browser
+  // submits `?rythme=ma&rythme=je`. read() takes the first value, which
+  // would silently reduce every rhythm to a single day.
+  const rhythmRaw = params.getAll('rythme');
+  const parsedRhythm = parseRhythmDays(rhythmRaw);
+  const rhythm = parsedRhythm ?? {};
+
+  if (parsedRhythm === null) invalid.push('rythme');
 
   const canton = read('canton');
   const tt = read('tt');
@@ -329,7 +384,7 @@ export function decode(params: URLSearchParams, taxYear: number): DecodeResult {
   }
 
   if (canton === null || !isCanton(canton) || teleworkDays === null) {
-    return { input: null, ignored, invalid };
+    return { input: null, ignored, invalid, rhythm };
   }
 
   return {
@@ -348,5 +403,6 @@ export function decode(params: URLSearchParams, taxYear: number): DecodeResult {
     },
     ignored,
     invalid,
+    rhythm,
   };
 }

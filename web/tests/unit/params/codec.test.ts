@@ -252,3 +252,77 @@ describe('decode is total: it never throws and always says what it ignored', () 
     expect(decode(new URLSearchParams('canton=GE&tt=1'), TAX_YEAR).input).not.toBeNull();
   });
 });
+
+describe('R343: the rhythm survives the whole codec, not just its own helpers', () => {
+  // rhythm.test.ts walks all 32 rhythms through renderRhythmDays and
+  // parseRhythmDays. That proves the two helpers agree with each other; it
+  // says nothing about whether encode actually APPENDS what it rendered, or
+  // whether decode reads the repeated values rather than the first one.
+  //
+  // Those are the two defects this shape invites, and neither is visible one
+  // layer down (R204): a `params.set` in place of `params.append` keeps the
+  // last day only, and a `params.get` in place of `getAll` keeps the first.
+  // Both leave every helper test green.
+  const BASE: TeleworkInput = {
+    taxYear: TAX_YEAR,
+    canton: 'GE',
+    employmentRate: 100,
+    teleworkDays: 84,
+    missionDaysFrance: 0,
+    missionDaysThirdState: 0,
+    denominator: { kind: 'simplified240' },
+    granularity: 'day',
+    periodFraction: 1,
+  };
+
+  it('round-trips every rhythm the form can produce, through a real query string', () => {
+    const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'] as const;
+    let checked = 0;
+
+    for (let mask = 0; mask < 2 ** DAYS.length; mask += 1) {
+      const rhythm = Object.fromEntries(
+        DAYS.filter((_, index) => (mask & (1 << index)) !== 0).map((day) => [day, 'HOME']),
+      );
+      // THROUGH THE STRING, not through the URLSearchParams object: a shared
+      // link is text, and text is what a mail client rewrites.
+      const query = encode(BASE, rhythm).toString();
+      const back = decode(new URLSearchParams(query), TAX_YEAR);
+
+      expect(back.rhythm, query).toEqual(rhythm);
+      expect(back.invalid, query).toEqual([]);
+      checked += 1;
+    }
+
+    expect(checked).toBe(32);
+  });
+
+  it('keeps every checked day, not merely the first or the last', () => {
+    // The two defects named above, as one assertion with a rhythm whose first
+    // and last days differ.
+    const query = encode(BASE, { MONDAY: 'HOME', WEDNESDAY: 'HOME', FRIDAY: 'HOME' }).toString();
+
+    expect(new URLSearchParams(query).getAll('rythme')).toEqual(['lu', 'me', 've']);
+  });
+
+  it('omits the parameter entirely when no day is checked', () => {
+    expect(encode(BASE, {}).toString()).not.toContain('rythme');
+    expect(encode(BASE).toString()).not.toContain('rythme');
+  });
+
+  it('leaves every link made before R343 byte-for-byte unchanged', () => {
+    // THE PROMISE THE RULING MAKES: "Existing parameters and existing share
+    // links keep working exactly as now." encode with no rhythm must produce
+    // exactly what it produced before the parameter existed, which is what
+    // the default argument is for.
+    expect(encode(BASE).toString()).toBe('canton=GE&tt=84');
+  });
+
+  it('names a rhythm it could not read, and still computes the rest', () => {
+    const back = decode(new URLSearchParams('canton=GE&tt=84&rythme=lundi'), TAX_YEAR);
+
+    expect(back.invalid).toContain('rythme');
+    expect(back.rhythm).toEqual({});
+    expect(back.input).not.toBeNull();
+    expect(back.ignored).toEqual([]);
+  });
+});

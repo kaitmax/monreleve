@@ -49,6 +49,8 @@ import {
 } from '@/lib/calc-engine';
 import { provisionalFor, readingAnchor } from '@/lib/content/provisional';
 import { decode, encode, isoDayForFraction } from '@/lib/params/codec';
+import type { Rhythm, Weekday } from '@/lib/forecast/imagined';
+import { RHYTHM_DAY_CODES } from '@/lib/params/rhythm';
 import {
   GRANULARITY_CODES,
   granularityCode,
@@ -202,7 +204,29 @@ interface FormState {
   readonly exactTotal: string;
   readonly granularity: Granularity;
   readonly startDay: string;
+  /**
+   * The weekly rhythm (R343), which the island CARRIES but does not draw.
+   *
+   * It is here so the checkboxes are controlled, so a shared link
+   * re-checks them on mount, and so the share row writes them into the
+   * URL. The PROJECTION itself is rendered by /resultat on the server -
+   * this route has the least headroom in the product and the projection
+   * is a block of figures, a rail and four paragraphs.
+   */
+  readonly rhythm: Rhythm;
 }
+
+/**
+ * The weekdays in the order the rhythm writes them.
+ *
+ * READ OFF RHYTHM_DAY_CODES rather than typed again, so the form and the
+ * URL cannot disagree about the order - which is part of the contract, since
+ * two links to the same rhythm have to be the same string (R181).
+ */
+const WEEKDAYS_IN_ORDER = Object.keys(RHYTHM_DAY_CODES) as readonly Weekday[];
+
+/** The rhythm helper, named so the group can point at it. */
+const RHYTHM_HELPER_ID = 'rythme-helper';
 
 const NO_DAYS = String(DAYS.min);
 
@@ -220,6 +244,9 @@ const INITIAL: FormState = {
   exactTotal: '',
   granularity: DEFAULT_GRANULARITY,
   startDay: '',
+  // NOTHING CHECKED, as the prompt requires: the question is optional and a
+  // reader who skips it must get exactly what they got before it existed.
+  rhythm: {},
 };
 
 /**
@@ -241,6 +268,9 @@ function stateFrom(input: TeleworkInput): FormState {
   const startDay = isoDayForFraction(input.periodFraction, input.taxYear);
 
   return {
+    // NOT CARRIED BY TeleworkInput, so it cannot come from here. The mount
+    // effect sets it from decoded.rhythm in a second pass, immediately after.
+    rhythm: {},
     canton: input.canton,
     employmentRate: String(input.employmentRate),
     teleworkDays: String(input.teleworkDays),
@@ -413,6 +443,11 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
     const decoded = decode(new URLSearchParams(query), taxYear);
 
     if (decoded.input !== null) setState(stateFrom(decoded.input));
+
+    // SEPARATELY FROM THE INPUT, because a rhythm is not part of it: a
+    // link may carry a rhythm and no scenario, or a scenario and no
+    // rhythm, and stateFrom only knows about the engine fields.
+    setState((current) => ({ ...current, rhythm: decoded.rhythm }));
 
     // THE SAME FILTER THE RESULT PAGE USES (R206, R267). `missions` is a
     // control of this very form, so naming it as a param the calculator
@@ -638,7 +673,7 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
     if (input === null) return undefined;
 
     const timer = setTimeout(() => {
-      const query = encode(input).toString();
+      const query = encode(input, state.rhythm).toString();
       const next =
         query === '' ? window.location.pathname : `?${query}`;
 
@@ -651,7 +686,19 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
     return () => {
       clearTimeout(timer);
     };
-  }, [input, hasResult]);
+    // state.rhythm IS A DEPENDENCY, AND THE WALKTHROUGH IS WHY.
+    //
+    // Checking a day changes neither `input` (the rhythm is not part of
+    // TeleworkInput) nor `hasResult` (a rhythm cannot make the engine
+    // answer differently today), so with those two alone the effect never
+    // re-ran: the address bar kept a query with no rythme in it, the share
+    // button copied it, and a reader who had checked two days sent a link
+    // that projected nothing.
+    //
+    // Its identity is stable across other edits - set() spreads `current`
+    // and keeps the same rhythm object - so this does not re-arm the timer
+    // on every keystroke.
+  }, [input, hasResult, state.rhythm]);
 
   /**
    * AC2: THE CAPTURE CARD POSTS THE SCENARIO WITH IT, so subscribing does
@@ -678,7 +725,7 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
 
     if (field === null) return;
 
-    field.value = input === null ? '' : encode(input).toString();
+    field.value = input === null ? '' : encode(input, state.rhythm).toString();
   }, [input]);
 
 
@@ -1061,6 +1108,55 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
             </div>
           )}
 
+          {/*
+            R343: THE WEEKLY RHYTHM, AND IT IS FIVE PLAIN CHECKBOXES.
+
+            OUTSIDE THE ACCORDION, like the mission question above it and
+            for the same reason: the accordion is not rendered when closed,
+            so anything inside it cannot be answered without scripting at
+            all. A question whose whole purpose is to work with JavaScript
+            off cannot live behind a disclosure that needs JavaScript.
+
+            ONE NAME, FIVE BOXES. A browser submits `?rythme=ma&rythme=je`
+            by itself, which is why the parameter repeats rather than
+            packing five states into one string - see lib/params/rhythm.ts
+            for the version that did and why it could not survive.
+
+            NO PROJECTION IS DRAWN HERE. The answer appears on /resultat,
+            rendered by the server; the line under the result says so.
+          */}
+          <fieldset className={styles.group}>
+            <legend className={styles.groupLegend}>{CALCULATEUR_COPY.projection.question}</legend>
+            <p className={styles.groupHelper} id={RHYTHM_HELPER_ID}>
+              {CALCULATEUR_COPY.projection.helper}
+            </p>
+            <div className={styles.choices} aria-describedby={RHYTHM_HELPER_ID}>
+              {WEEKDAYS_IN_ORDER.map((weekday) => (
+                <label className={styles.choice} key={weekday}>
+                  <input
+                    type="checkbox"
+                    name="rythme"
+                    value={RHYTHM_DAY_CODES[weekday]}
+                    checked={state.rhythm[weekday] === 'HOME'}
+                    onChange={(event) => {
+                      const { checked } = event.target;
+
+                      setState((current) => {
+                        const rhythm = { ...current.rhythm };
+
+                        if (checked) rhythm[weekday] = 'HOME';
+                        else delete rhythm[weekday];
+
+                        return { ...current, rhythm };
+                      });
+                    }}
+                  />
+                  <span>{CALCULATEUR_COPY.projection.days[weekday]}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
           <button
             type="button"
             className={styles.disclosure}
@@ -1421,7 +1517,29 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
           </div>
         </section>
       ) : (
-        <ResultPanel result={result} thresholds={rules} />
+        // A FRAGMENT, because this branch now renders two things. The
+        // panel was the whole branch until R343 put a line underneath it.
+        <>
+          <ResultPanel result={result} thresholds={rules} />
+
+          {/*
+            WHERE THE PROJECTION IS (R343). A reader who has checked some days
+            and sees nothing change has been given a control with no visible
+            effect, which reads as a broken form rather than as a deliberate
+            split. The projection is drawn by the server on /resultat - this
+            route is static by FW13 ruling and has the least headroom in the
+            product - so the form says so rather than leaving them to guess.
+
+            CONDITIONAL ON THE CONDITION (R225): only once a day is checked.
+            A line that always appeared would be noise on the result of
+            somebody who never answered the question.
+          */}
+          {Object.keys(state.rhythm).length === 0 ? null : (
+            <p className={styles.projectionNote} data-projection-note>
+              {CALCULATEUR_COPY.projection.onTheResult}
+            </p>
+          )}
+        </>
       )}
     </>
   );

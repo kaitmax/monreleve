@@ -444,3 +444,13 @@
     margin: 0;
   }
 }
+
+// R343: where the projection is, shown once a rhythm is given. A caption
+// rather than a notice - nothing has gone wrong, and the reader is being told
+// where to look rather than warned.
+.projectionNote {
+  margin: var(--space-3) 0 0;
+  color: var(--colour-text-secondary);
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-line);
+}
