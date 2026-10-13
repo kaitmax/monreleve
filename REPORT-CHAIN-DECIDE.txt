@@ -55,7 +55,7 @@ ONE LINE PER TASK (final commit / how it ended / gates on the merged HEAD)
    rounded DOWN to the half-day. CAUSES drawn only from the record; "Votre releve
    ne dit pas qui a raison".
    :app:gate GREEN on merged HEAD (6429b98, 7m11s). Web suite (first build agent):
-   typecheck/lint/test 3135 passed incl. the §0 drift test + the dossier-route
+   typecheck/lint/test 3135 passed incl. the section 0 drift test + the dossier-route
    contract. R340 PASS: ComparisonR340Test (computing a comparison writes to no
    store). R342 PASS: EmployerFigureStoreTest + on-device (the employer figure
    reached the server NOT AT ALL - the dev server's write count stayed at 2, the
@@ -98,7 +98,7 @@ on infrastructure, at different points, neither a code defect:
          1 with a message; typecheck already passed, so there is no TS error).
 
 WHY THIS IS NOT A CODE DEFECT: a clean clone's typecheck + lint + test ALL PASSED
-on 6429b98 - exactly the gates that catch an AN-RECON code problem. The §0 change
+on 6429b98 - exactly the gates that catch an AN-RECON code problem. The section 0 change
 is small and additive (2 /v1 fields + their render + a drift test); the first
 build agent's full working-tree suite (3135, incl. the drift test) and :app:gate
 are green. Both gate:clone failures are resource symptoms (a DB connection drop,
