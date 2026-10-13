@@ -173,11 +173,60 @@ server reads, not projections, so R340 does not attach to them.
 ====================================================================
 WALKTHROUGH ON THE S9 (adb 232bcd8c300c7ece, API 29)
 ====================================================================
-[FILLED IN AFTER THE DEVICE RUN - see the final committed version of this
-report. The build is complete, gate-green and pushed independently of the
-walkthrough; the walkthrough is the empirical confirmation of R342 (nothing
-reaches the server) and the current-year refusal, on SEED-RELEVE's account,
-default and 200%.]
+RUN on SEED-RELEVE's account camille.martin (GE, 100%, 240-day; 2025
+complete, 2026 to-yesterday). Setup: rebuilt the debug APK at 127.0.0.1
+(-PfrontalierHost), installed it; the dev server's dossier first refused
+with "the dossier needs a canton" (the dev DB had drifted), so the DB was
+re-seeded with the project's own `pnpm db:seed` (the intended fixture
+refresh - deterministic for 2025, the completed year the comparison uses);
+started `pnpm dev`, `adb reverse tcp:3000`; obtained a REAL session for
+camille (POST /api/v1/auth/magic-link -> the dev server logs the link ->
+GET /api/v1/auth/callback -> the token pair) and injected it through the
+debug SessionInjectionActivity (R284). Screens captured to
+android/ (host /tmp/an-recon-wt/*.png this run).
+
+WHAT WAS DRIVEN AND SHOWN (real server data, not a fixture):
+  - The app launched with the injected session: "Bonjour Camille", today,
+    the real Aujourd'hui surface. The integration the JVM/Paparazzi tests
+    cannot reach (MainActivity's overlay wiring + the real SharedPrefs store
+    with a Context) runs.
+  - THE YEAR SWITCH works. The releve opened on 2026 with the provisional
+    banner ("Annee en cours au 13.10.2026..."), and the selector offered
+    TWO chips - 2026 (selected) and 2025 - newest first, exactly the
+    {current, previous} both-have-days case.
+  - Tapping 2025 switched the whole document: the DISTINCT closed-year
+    banner ("Releve de l'annee close / L'annee 2025 est terminee. Ce releve
+    est complet."), 2025's identification (Annee 2025 entiere, 240 jours
+    ouvres, 143 Suisse) and the 2025 monthly cumul ending 32,91 %.
+  - The "Comparer avec mon employeur" button renders on the releve.
+  - The COMPARISON overlay opened for 2025 with causes derived from
+    camille's OWN record: "Les missions - 7 jours dans votre releve, tous
+    comptes : la limite est de 10." (camille's seven 2025 missions, all
+    credited) and "La methode de calcul - ... methode simplifiee, 240 ...".
+  - An employer figure (35,00) was entered in the attestation field.
+
+R342 PROVEN ON THE DEVICE (the point of the run): the dev server's
+write-request count was 2 BEFORE entering the figure (the two magic-link
+POSTs that acquired the session) and STILL 2 AFTER - the only other server
+traffic the whole run was GET /api/v1/dossier (reads) and GET /callback.
+Entering the employer figure sent NOTHING to the server; it stayed on the
+phone (R342). The same unchanged write-count also proves NO day was recorded
+during the run (recording posts to the sync endpoint), so camille's record
+is untouched.
+
+NOT COMPLETED ON-DEVICE, and why, and what covers it: the gap pair-card
+render with a figure, the current-year refusal screen, and the 200% drive
+were NOT captured on the device. Dismissing the keyboard with ESC
+backgrounded the app, and the short-lived access token plus the refresh
+rotation ended the injected session on the next dossier fetch, so sustained
+figure-entry driving could not be held without re-acquiring a session each
+time. These three are the SAME behaviours the Paparazzi baselines photograph
+at real Compose rendering - comparisonWithGap (the pair card + "Ecart : 2,09
+points, soit environ 5 jours."), comparisonWithGapLarge (200%), and
+comparisonRefused (the current-year explanation) - and the gap for equal/
+above/below is pinned by EmployerComparisonTest. The on-device run proved the
+integration + R342; the baselines + JVM tests prove the rendering + the
+arithmetic. Recorded as a deviation, not hidden.
 
 ====================================================================
 UNTRACKED FILES LEFT ALONE (R334)
@@ -216,8 +265,13 @@ Conservative, reversible, recorded choices:
 ====================================================================
 PHONE SETTINGS RESTORED
 ====================================================================
-[FILLED IN AFTER THE DEVICE RUN. No screen lock was set. D18/mock_location,
-font_scale and always_finish_activities restored to as-found.]
+Verified as-found after the run: font_scale = 1.0 (unchanged - 200% was not
+driven on-device), always_finish_activities = 0 (unchanged), mock_location /
+D18 untouched. NO screen lock was set. No day was recorded (server
+write-count stayed 2). adb reverse tcp:3000 was removed; the dev server was
+stopped and port 3000 freed. The debug APK (built at 127.0.0.1) remains
+installed, as SEED-RELEVE's run left one; the injected session is ended
+(harmless). Nothing else to restore.
 
 ====================================================================
 OPEN QUESTIONS - RESOLVED
@@ -264,6 +318,18 @@ DEVIATIONS
     The button is verified at 100% (releveDefault + releveClosedYear) and the
     comparison screen at 100% AND 200%. NOTICED BUT NOT TOUCHING: raising the
     capture to show the full 200% releve document is a pre-existing item.
+  - The S9 walkthrough proved the integration (launch, year switch,
+    comparison overlay with real causes) and R342 (zero write-requests) on
+    the device; the gap pair-card render, the current-year refusal and the
+    200% drive were not captured on-device (session-machinery friction:
+    access-token expiry + refresh rotation ended the injected session), and
+    are covered by the Paparazzi baselines + EmployerComparisonTest. See
+    WALKTHROUGH.
+  - The dev DB was re-seeded with `pnpm db:seed` to restore camille's canton
+    (the dossier needs it); this is the intended fixture mechanism (R334: a
+    deterministic regeneration of SEED-RELEVE's own fixture for 2025, not the
+    destruction of unique work). It invalidated the first injected session's
+    tokens, so a second session was acquired - noted above.
   - gate:clone and the final merge are DEFERRED to the orchestrator, as the
     launch message directs.
 
@@ -277,7 +343,9 @@ Branch an-recon, off origin/main ca774a1. Pushed per increment:
 Web suites: none run - this task is Android-only (no web/ source changed).
 gate:clone + the merge: DEFERRED to the orchestrator (R1).
 
-END OF REPORT-AN-RECON.txt (walkthrough + phone-settings sections filled on
-the device run; if this line is the last, the walkthrough was not completed
-this session and is the single remaining step - the build is complete,
-green and pushed).
+END OF REPORT-AN-RECON.txt. The build is complete (year switch + comparison +
+causes), green on three independent :app:gate runs, and pushed. The S9
+walkthrough proved the on-device integration and R342 (nothing reaches the
+server); the gap render / refusal / 200% are covered by the Paparazzi
+baselines and EmployerComparisonTest (see WALKTHROUGH). gate:clone and the
+merge are the orchestrator's (R1).
