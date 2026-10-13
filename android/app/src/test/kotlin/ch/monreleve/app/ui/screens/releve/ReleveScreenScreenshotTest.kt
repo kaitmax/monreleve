@@ -29,7 +29,8 @@ import org.junit.Test
 // The figures are a hand-built display fixture: the screen recomputes nothing, so a coherent DossierDocument
 // is all it needs. 2026's RuleSet ceilings (0,4 / 0,499) are supplied as ReleveRules, as the controller does.
 
-private val RULES_2026 = ReleveRules(fiscalCeiling = 0.4, socialCeiling = 0.499, simplifiedBasisDays = 240)
+private val RULES_2026 =
+    ReleveRules(fiscalCeiling = 0.4, socialCeiling = 0.499, simplifiedBasisDays = 240, missionCapDays = 10)
 
 @Suppress("LongParameterList") // a display fixture builder; the columns are the point
 private fun month(

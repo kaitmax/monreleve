@@ -32,12 +32,14 @@ import kotlinx.coroutines.launch
 
 /**
  * The RuleSet figures the zone payload does not carry: the two ceilings (fractions, for the rail and the
- * band test) and the simplified basis (for the method line). From the year's RuleSet, never typed (R153).
+ * band test), the simplified basis (for the method line), and the mission cap (AN-RECON: for the comparison's
+ * "missions" cause - "la limite est de N"). From the year's RuleSet, never typed (R153).
  */
 data class ReleveRules(
     val fiscalCeiling: Double,
     val socialCeiling: Double,
     val simplifiedBasisDays: Int,
+    val missionCapDays: Int,
 )
 
 sealed interface ReleveState {
@@ -251,7 +253,7 @@ class ReleveController(
 
     private fun rulesFor(document: DossierDocument): ReleveRules {
         val rules = ruleSetFor(document.taxYear)
-        return ReleveRules(rules.fiscalCeiling, rules.socialCeiling, rules.simplifiedBasisDays)
+        return ReleveRules(rules.fiscalCeiling, rules.socialCeiling, rules.simplifiedBasisDays, rules.missionCapDays)
     }
 
     private fun toState(result: DossierResult): ReleveState =
