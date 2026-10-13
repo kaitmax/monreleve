@@ -745,6 +745,9 @@ internal fun MainShell(
                                 onRetry = controllers.releve::load,
                                 onExportPdf = { controllers.releve.export(ExportKind.PDF) },
                                 onExportCsv = { controllers.releve.export(ExportKind.CSV) },
+                                // PARKAN-26: switch the releve to another year the selector offers (R328 read-only).
+                                onSelectYear = controllers.releve::selectYear,
+                                // AN-RECON: onCompareEmployer (the comparison overlay) is wired in a later step.
                             ),
                     )
                 AppTab.PARAMETRES ->

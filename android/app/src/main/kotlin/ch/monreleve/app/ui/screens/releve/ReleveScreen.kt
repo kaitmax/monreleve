@@ -3,6 +3,9 @@ package ch.monreleve.app.ui.screens.releve
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -17,6 +20,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import ch.monreleve.app.design.FrontierType
 import ch.monreleve.app.design.LightColors
 import ch.monreleve.app.design.Radius
@@ -109,7 +114,22 @@ private fun DocumentBody(
         Text(text = ReleveCopy.TITLE, style = FrontierType.h2)
         // R288: when this is a cached copy shown offline, it says so first - dated, never presented as current.
         if (loaded.offline) OfflineBanner(generatedAt = document.generatedAt)
-        ProvisionalBanner(generatedAt = document.generatedAt, taxYear = document.taxYear)
+        // PARKAN-26: a provisional banner for the live current year, a distinct "année close" caption for a
+        // completed past year (R156 open-question 2 - a closed year is complete, not "année en cours").
+        if (loaded.isCurrentYear) {
+            ProvisionalBanner(generatedAt = document.generatedAt, taxYear = document.taxYear)
+        } else {
+            ClosedYearBanner(year = loaded.selectedYear)
+        }
+        // PARKAN-26: the year selector sits above the identification card (FD7's deferred year chip). It is drawn
+        // only when more than one year has days, so a single-year account sees the document exactly as before.
+        if (loaded.availableYears.size > 1) {
+            YearSelector(
+                years = loaded.availableYears,
+                selected = loaded.selectedYear,
+                onSelect = actions.onSelectYear,
+            )
+        }
         // R287: days still pending on this device are not in the server's document, and the releve says so -
         // exactly when something is pending, so a reader who sees two rates knows which one this is.
         if (loaded.pendingCount > 0) {
@@ -164,6 +184,50 @@ private fun ExportButtons(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text(text = ReleveCopy.EXPORT_CSV)
+        }
+    }
+}
+
+// PARKAN-26: the year selector above the identification card. The chip idiom the simulator's scenario chips use
+// (selected filled brand, the rest outlined) - the choice is visible without colour alone, and `selected` is
+// announced for TalkBack. Newest first (the controller sorts them), the current year selected by default.
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun YearSelector(
+    years: List<Int>,
+    selected: Int,
+    onSelect: (Int) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.space8)) {
+        Text(text = ReleveCopy.YEAR_SELECTOR_LABEL, style = FrontierType.caption, color = LightColors.textSecondary)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.space8)) {
+            for (year in years) {
+                YearChip(
+                    label = ReleveCopy.yearLabel(year),
+                    isSelected = year == selected,
+                    onClick = { onSelect(year) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun YearChip(
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+) {
+    val shape = RoundedCornerShape(Radius.pill)
+    val sizing = Modifier.heightIn(min = Spacing.space48).semantics { this.selected = isSelected }
+    val padding = PaddingValues(horizontal = Spacing.space16)
+    if (isSelected) {
+        Button(onClick = onClick, shape = shape, contentPadding = padding, modifier = sizing) {
+            Text(text = label, style = FrontierType.bodyM)
+        }
+    } else {
+        OutlinedButton(onClick = onClick, shape = shape, contentPadding = padding, modifier = sizing) {
+            Text(text = label, style = FrontierType.bodyM)
         }
     }
 }

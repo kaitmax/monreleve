@@ -111,6 +111,10 @@ object MainGraph {
         // null (a fresh build) so the wiring test and the controller tests need not name them.
         restoredCalendar: CalendarSnapshot? = null,
         restoredParametres: ParametresSnapshot? = null,
+        // PARKAN-26 (R310): the releve's restorable selected year, held by the composition root in rememberSaveable
+        // and passed here so the ONE construction site (R291) also decides its restore. Null = a fresh build (opens
+        // on the current year). The screen's figures are re-fetched for that year, never stored (R328 read-only).
+        restoredSelectedYear: Int? = null,
         // AN-SIM (R310): the simulator's restorable selection (scenario + inputs), held by the composition root in
         // rememberSaveable and passed here so the ONE construction site (R291) also decides its restore. Defaulted
         // to null (a fresh build) so the wiring and controller tests need not name it. The computed view is NOT
@@ -144,7 +148,7 @@ object MainGraph {
                 ),
             calendar =
                 CalendarController(repository, settingsStore, taxYear, clock, scope, requestSync, restoredCalendar),
-            releve = ReleveController(dossierFetch, exportBytes, repository, taxYear, scope),
+            releve = ReleveController(dossierFetch, exportBytes, repository, taxYear, scope, restoredSelectedYear),
             parametres =
                 ParametresController(
                     settingsSaver,

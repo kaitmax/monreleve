@@ -82,6 +82,21 @@ object ReleveCopy {
     ): String = "Année en cours au $generatedDay. Le relevé sera complet après le 31 décembre $year."
 
     // ------------------------------------------------------------------
+    // PARKAN-26: the year switch. A completed past year reads differently from the current provisional one -
+    // "année close", not "année en cours" (R156 open-question 2). The selector offers every year with days,
+    // newest first (R328: a read-only view of what /api/v1/dossier?year= already serves).
+    // ------------------------------------------------------------------
+    const val BANNER_CLOSED_TITLE = "Relevé de l’année close"
+
+    fun bannerClosedBody(year: Int): String = "L’année $year est terminée. Ce relevé est complet."
+
+    /** The selector's heading, so the year chips carry a label (TalkBack reads it before the years). */
+    const val YEAR_SELECTOR_LABEL = "Année du relevé"
+
+    /** One year chip's label - the year itself. In fr/ so the ui/ no-literal fence stays satisfied. */
+    fun yearLabel(year: Int): String = year.toString()
+
+    // ------------------------------------------------------------------
     // 1. Header - SPEC 12 item 1
     // ------------------------------------------------------------------
     const val HEADER_NAME = "Nom"

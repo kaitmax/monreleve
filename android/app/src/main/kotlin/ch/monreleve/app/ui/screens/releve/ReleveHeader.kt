@@ -110,6 +110,20 @@ internal fun ProvisionalBanner(
 }
 
 @Composable
+internal fun ClosedYearBanner(year: Int) {
+    // PARKAN-26: a COMPLETED past year, drawn with a distinct caption - "année close", not the provisional
+    // "année en cours" (R156 open-question 2). SectionCard is ReleveScreen's one home for the white card.
+    SectionCard {
+        Text(text = ReleveCopy.BANNER_CLOSED_TITLE, style = FrontierType.bodyM)
+        Text(
+            text = ReleveCopy.bannerClosedBody(year),
+            style = FrontierType.caption,
+            color = LightColors.textSecondary,
+        )
+    }
+}
+
+@Composable
 internal fun IdentificationCard(
     document: DossierDocument,
     rules: ReleveRules,

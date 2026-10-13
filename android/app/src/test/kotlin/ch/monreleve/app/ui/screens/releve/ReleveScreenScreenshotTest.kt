@@ -126,11 +126,20 @@ private fun document(
         rateWithoutMissions = rateWithoutMissions,
     )
 
+// LongParameterList suppressed: this is the test fixture builder for ReleveState.Loaded, which PARKAN-26's
+// three year-switch fields take past the default threshold; each maps one-to-one to a state field, not logic.
+@Suppress("LongParameterList")
 private fun loaded(
     document: DossierDocument,
     pendingCount: Int = 0,
     offline: Boolean = false,
-): ReleveState.Loaded = ReleveState.Loaded(document, RULES_2026, pendingCount, offline)
+    // PARKAN-26: the year-switch fields. Default to a single-year account (no selector, provisional banner), so
+    // every existing baseline renders exactly as before - only the closed-year baseline below drives the selector.
+    availableYears: List<Int> = listOf(document.taxYear),
+    selectedYear: Int = document.taxYear,
+    isCurrentYear: Boolean = true,
+): ReleveState.Loaded =
+    ReleveState.Loaded(document, RULES_2026, pendingCount, offline, selectedYear, availableYears, isCurrentYear)
 
 private val COMPLIANT =
     loaded(
@@ -181,6 +190,23 @@ private val EMPTY_YEAR =
             remainingSocial = 119.8,
             recordedEntries = 0,
         ),
+    )
+
+// PARKAN-26: a COMPLETED past year, reached via the year selector. Two years have days, so the selector renders
+// (2026 and 2025, newest first, 2025 chosen); the banner reads the distinct "année close" caption, not the
+// provisional one. Camille-2025-shaped figures (declarable 32,91 %). The annex rows are the shared display
+// fixture; the point of this baseline is the selector + closed banner layout, cropped and looked at (R178).
+private val CLOSED_YEAR =
+    loaded(
+        document(
+            declarable = 32.91,
+            raw = 33.00,
+            remainingFiscal = 17.0,
+            remainingSocial = 40.5,
+        ).copy(taxYear = 2025),
+        availableYears = listOf(2026, 2025),
+        selectedYear = 2025,
+        isCurrentYear = false,
     )
 
 private const val TALL = 7200
@@ -244,5 +270,17 @@ class ReleveScreenScreenshotTest {
     @Test
     fun releveFailed() {
         paparazzi.snapshot { host(ReleveState.Failed(ReleveError.NETWORK)) }
+    }
+
+    // PARKAN-26: the year selector + the "année close" banner on a completed past year.
+    @Test
+    fun releveClosedYear() {
+        paparazzi.snapshot { host(CLOSED_YEAR) }
+    }
+
+    @Test
+    fun releveClosedYearLarge() {
+        paparazzi.unsafeUpdateConfig(DeviceConfig.PIXEL_5.copy(screenHeight = TALLER, fontScale = 2f))
+        paparazzi.snapshot { host(CLOSED_YEAR) }
     }
 }
