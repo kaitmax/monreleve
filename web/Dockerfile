@@ -200,11 +200,35 @@ WORKDIR /app
 # renders cleanly is precisely the failure nobody notices.
 RUN set -eux; \
     apt-get update; \
-    apt-get install -y --no-install-recommends \
-      "chromium=${CHROMIUM_VERSION}" \
-      fonts-liberation \
-      tzdata \
-      ca-certificates; \
+    # THE PIN IS TRIED FIRST, so apt never installs a version this image did
+    # not ask for. If that fails, the failure is DIAGNOSED rather than left as
+    # apt's bare "Version ... was not found" - which is what an operator saw on
+    # 2026-10-14 when Debian dropped the pinned build and the deploy stopped.
+    if ! apt-get install -y --no-install-recommends \
+           "chromium=${CHROMIUM_VERSION}" \
+           fonts-liberation \
+           tzdata \
+           ca-certificates; then \
+      echo "" >&2; \
+      echo "R249: chromium ${CHROMIUM_VERSION} is not installable from this archive." >&2; \
+      echo "" >&2; \
+      echo "      WHY THIS HAPPENS ON A COMMIT THAT TOUCHED NOTHING. Debian keeps" >&2; \
+      echo "      only the NEWEST point release in bookworm-security, so the day a" >&2; \
+      echo "      new Chromium ships the pinned one leaves the mirror and every" >&2; \
+      echo "      build begins failing - including deploys of commits that built" >&2; \
+      echo "      yesterday. Nothing in this repository changed." >&2; \
+      echo "" >&2; \
+      echo "      Versions the archive offers right now:" >&2; \
+      apt-cache madison chromium >&2 || echo "      (apt-cache madison returned nothing)" >&2; \
+      echo "" >&2; \
+      echo "      TO FIX, set BOTH of these to one of the versions above - they" >&2; \
+      echo "      are two sources of truth and the second one wins:" >&2; \
+      echo "        1. ARG CHROMIUM_VERSION in web/Dockerfile" >&2; \
+      echo "        2. the CHROMIUM_VERSION env var in Coolify (build-time)," >&2; \
+      echo "           which is passed as a build arg and OVERRIDES the file" >&2; \
+      echo "" >&2; \
+      exit 1; \
+    fi; \
     installed="$(dpkg-query -W -f='${Version}' chromium)"; \
     if [ "$installed" != "${CHROMIUM_VERSION}" ]; then \
       echo "R249: chromium resolved to ${installed}, this image pins ${CHROMIUM_VERSION}." >&2; \

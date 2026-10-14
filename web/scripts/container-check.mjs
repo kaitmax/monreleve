@@ -454,6 +454,132 @@ console.log(
     `${'and names the degraded feature'.padEnd(40)}`,
 );
 
+/**
+ * R154 / R249: THE PIN'S FAILURE IS DIAGNOSED, NOT MERELY DETECTED.
+ *
+ * The Dockerfile's own header promised this and did not deliver it. It said a
+ * hard pin "turns every security update upstream into a BUILD FAILURE WITH NO
+ * DIAGNOSIS", and that this design avoids that because "the install is
+ * attempted, and the INSTALLED version is compared against it. Drift stops the
+ * build with a message naming both versions."
+ *
+ * THAT COMPARISON COULD NEVER RUN. `apt-get install chromium=${VERSION}` is a
+ * hard pin, so when Debian drops the pinned build - which bookworm-security
+ * guarantees, because it carries only the newest point release - apt exits 100
+ * before the comparison is reached, and the operator sees:
+ *
+ *     E: Version '154.0.8037.92-1~deb12u1' for 'chromium' was not found
+ *
+ * which is exactly the undiagnosed failure the comment says is impossible
+ * here. It is not hypothetical: it took production's deploy down on
+ * 2026-10-14 and cost a session to diagnose.
+ *
+ * SO THE TEST DRIVES THE FAILURE RATHER THAN THE SUCCESS. A build with an
+ * impossible pin must fail - the browser still cannot move without a commit -
+ * AND it must say what happened, what the archive actually offers, and which
+ * two places to edit. Asserting only "the build fails" would pass against the
+ * old behaviour, which is the whole defect.
+ *
+ * --target runner, so the deps and builder stages are not rebuilt: only the
+ * chromium layer depends on CHROMIUM_VERSION, so every other layer is a cache
+ * hit and this costs an apt-get update.
+ */
+if (SHOULD_BUILD) {
+  const IMPOSSIBLE = '0.0.0.0-no-such-chromium';
+  let output = '';
+  let built = false;
+
+  console.log('\nprobing the pin guard (R154: the diagnosis is the behaviour under test)');
+
+  try {
+    execFileSync(
+      'docker',
+      [
+        'build',
+        '--target',
+        'runner',
+        '--build-arg',
+        `NEXT_PUBLIC_SITE_URL=${BUILD_ORIGIN}`,
+        '--build-arg',
+        `CHROMIUM_VERSION=${IMPOSSIBLE}`,
+        '-t',
+        'monreleve:pin-probe',
+        '.',
+      ],
+      { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', timeout: 900_000 },
+    );
+    built = true;
+  } catch (cause) {
+    output = `${cause.stdout ?? ''}${cause.stderr ?? ''}`;
+  }
+
+  // R133's positive half: a build that SUCCEEDS with an impossible pin means
+  // the guard is gone entirely, and every assertion below would pass
+  // vacuously against an empty string.
+  if (built) {
+    failures.push(
+      'the image built with an impossible chromium pin - R249 is not enforced at all',
+    );
+  } else if (output.trim() === '') {
+    failures.push('the failing build printed nothing - no diagnosis can be asserted');
+  }
+
+  /*
+    ONLY STEP-PREFIXED LINES COUNT, AND THE FIRST VERSION OF THIS TEST DID NOT
+    KNOW THAT. It asserted against the whole build output and reported three of
+    five checks passing against the UNFIXED Dockerfile - because BuildKit
+    echoes the failing RUN command verbatim in its error, so every string
+    inside that command ("R249", the pinned version) appears in the output
+    whether or not a single line of the guard ever executed. "bookworm-security"
+    matched too, out of apt-get update's own repository list.
+
+    A test that reads a command's SOURCE and calls it OUTPUT proves nothing
+    about what ran. BuildKit prefixes real output with "#<step> <elapsed> ", and
+    the echoed command carries no such prefix - so that prefix is the only
+    reliable discriminator, and the assertions below are made against the
+    prefixed subset alone. Measured against the unfixed Dockerfile: zero
+    step-prefixed lines mentioning R249.
+  */
+  const emitted = output
+    .split('\n')
+    .filter((line) => /^#\d+\s+\d+\.\d+\s/.test(line))
+    .join('\n');
+
+  /**
+   * Annotated, because a bare array of pairs widens to (string | RegExp)[] and
+   * the destructured names then carry both types. The gate caught it.
+   *
+   * @type {ReadonlyArray<readonly [string, RegExp]>}
+   */
+  const PIN_CHECKS = [
+    ['the guard actually ran and printed', /R249/],
+    ['names the pin that could not be installed', new RegExp(IMPOSSIBLE.replace(/\./g, '\\.'))],
+    ['explains why a pinned build disappears', /bookworm-security/],
+    ['lists a real version the archive offers', /chromium\s*\|\s*\d+\.\d+\.\d+/],
+    ['names BOTH places the version is set', /Coolify/],
+  ];
+
+  for (const [what, want] of PIN_CHECKS) {
+    const ok = want.test(emitted);
+
+    checks += 1;
+    console.log(`  ${ok ? 'ok  ' : 'FAIL'}  ${what.padEnd(40)}`);
+    if (!ok) {
+      failures.push(
+        `pin diagnosis: no step-prefixed build output matched ${want} - ` +
+          'an operator reading this failure cannot tell what to change',
+      );
+    }
+  }
+
+  try {
+    execFileSync('docker', ['image', 'rm', '-f', 'monreleve:pin-probe'], { stdio: 'ignore' });
+  } catch {
+    // the probe image may never have been created; nothing to clean up
+  }
+}
+
+
 // R133: PRINT A COUNT. A suite that reports nothing must not read as a pass,
 // and gate-selection.mjs reads this line back.
 if (failures.length > 0) {
