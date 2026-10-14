@@ -133,14 +133,28 @@ export const PRODUCTION_ORIGIN = `https://${SITE_DOMAIN}`;
 export const TEST_ORIGIN = `https://${asciiName(APP_NAME)}.example`;
 
 /**
- * The sending subdomain for transactional mail.
+ * The domain transactional and list mail is sent from.
  *
- * A SUBDOMAIN RATHER THAN THE APEX, and lib/fr/emails.ts already argued why:
- * SPF and DKIM records for a sending subdomain can change without touching
- * the records the apex uses for everything else, so a deliverability problem
- * stays contained. The DNS records are an operator task (FW28).
+ * THE APEX, AND THIS SUPERSEDES A RECORDED DECISION (operator, 2026-10-14).
+ * It read:
  *
- * It is here rather than in lib/fr because it is a host, not copy - the same
- * split R188 draws between the accented name and the domain.
+ *   export const MAIL_SUBDOMAIN = `notifications.${SITE_DOMAIN}`;
+ *
+ * argued as "a subdomain rather than the apex ... SPF and DKIM records for a
+ * sending subdomain can change without touching the records the apex uses for
+ * everything else, so a deliverability problem stays contained. The DNS
+ * records are an operator task (FW28)."
+ *
+ * THE REASONING WAS SOUND AND THE SUBDOMAIN WAS NEVER CREATED. That last
+ * sentence was the whole risk: the containment only exists once somebody adds
+ * the records, and nobody did. notifications.monreleve.ch returned NXDOMAIN,
+ * Resend had no such domain, and every send was refused 403 "domain is not
+ * verified" - while the alert form told the reader it had worked, because the
+ * mailer swallows a provider refusal. Measured in production on 2026-10-14.
+ *
+ * The apex already carries verified DKIM and SPF, so mail sent from it works
+ * today rather than after a DNS task that had been outstanding since FW28.
+ * The containment argument is given up knowingly: a deliverability problem on
+ * this domain now also touches the apex's reputation.
  */
-export const MAIL_SUBDOMAIN = `notifications.${SITE_DOMAIN}`;
+export const MAIL_DOMAIN = SITE_DOMAIN;

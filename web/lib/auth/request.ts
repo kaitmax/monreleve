@@ -33,6 +33,7 @@ import { z } from 'zod';
 import { checkRate, clientKey } from '@/lib/alerts/rate-limit';
 import { sendMail } from '@/lib/alerts/mailer';
 import { AUTH_EMAIL_COPY } from '@/lib/fr/auth';
+import { AUTH_EMAIL_FROM } from '@/lib/fr/emails';
 import { PRODUCTION_ORIGIN } from '@/lib/content/identity';
 import { MAGIC_LINK_TTL_MS, issueMagicLink } from '@/lib/auth/magic-link';
 
@@ -126,6 +127,9 @@ export async function requestMagicLink(
   const issued = await issueMagicLink(email);
 
   const delivered = await sendMail({
+    // TRANSACTIONAL: a sign-in link is not list mail, and must not look
+    // like it (R245).
+    from: AUTH_EMAIL_FROM,
     to: email,
     subject: AUTH_EMAIL_COPY.signIn.subject,
     text: AUTH_EMAIL_COPY.signIn.lines(

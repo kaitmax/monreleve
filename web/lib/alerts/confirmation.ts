@@ -8,6 +8,7 @@
 // require the first to exist.
 
 import { EMAIL_COPY } from '@/lib/fr/emails';
+import { EMAIL_FROM } from '@/lib/fr/emails';
 import { siteOrigin } from '@/lib/content/site';
 import { sendMail } from '@/lib/alerts/mailer';
 import { issueUnsubscribeToken } from '@/lib/alerts/confirm';
@@ -65,6 +66,8 @@ export async function sendConfirmation(email: string, token: string): Promise<bo
   const off = unsubscribeUrl(unsubscribeToken);
 
   return sendMail({
+    // LIST MAIL: it carries List-Unsubscribe below (R245).
+    from: EMAIL_FROM,
     to: email,
     subject: EMAIL_COPY.confirmation.subject,
     text: EMAIL_COPY.confirmation.lines(confirmUrl(token), off).join('\n'),

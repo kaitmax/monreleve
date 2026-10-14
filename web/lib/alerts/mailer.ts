@@ -22,9 +22,18 @@
 // once, by design, naming what is missing.
 
 import { Resend } from 'resend';
-import { EMAIL_FROM } from '@/lib/fr/emails';
 
 export interface Message {
+  /**
+   * WHO THE MESSAGE IS FROM, REQUIRED RATHER THAN DEFAULTED.
+   *
+   * There are two senders - alertes@ for the list, notifications@ for the
+   * sign-in link (R245) - and a default here would mean the wrong one is
+   * chosen by forgetting rather than by deciding. Required makes a new caller
+   * a compile error instead of a message that looks right and is filed as
+   * list mail by the recipient.
+   */
+  readonly from: string;
   readonly to: string;
   readonly subject: string;
   /** Plain text. See lib/fr/emails.ts for why there is no HTML part. */
@@ -136,7 +145,7 @@ export async function sendMail(message: Message): Promise<boolean> {
 
   try {
     const { error } = await resend(key).emails.send({
-      from: EMAIL_FROM,
+      from: message.from,
       to: message.to,
       subject: message.subject,
       text: message.text,

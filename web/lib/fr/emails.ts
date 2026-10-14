@@ -23,7 +23,7 @@
 // TODO-COPY: realistic French, not reviewed.
 
 import { APP_NAME } from '@/lib/fr';
-import { MAIL_SUBDOMAIN } from '@/lib/content/identity';
+import { MAIL_DOMAIN } from '@/lib/content/identity';
 import { ALERTES_COPY } from '@/lib/fr/alertes';
 
 /** Written once, in the copy module the pages use (R126). */
@@ -90,4 +90,22 @@ export const EMAIL_COPY = {
 // `.fr` host in the repository - notifications.frontalier.fr - which was a
 // FOURTH form of the product identity hiding in a string nobody renders on
 // a page. R171 applies to a mail host exactly as to a canonical.
-export const EMAIL_FROM = `${APP_NAME} <alertes@${MAIL_SUBDOMAIN}>`;
+//
+// TWO SENDERS SINCE 2026-10-14, NAMED BY THE OPERATOR, and the split is not
+// cosmetic. sendMail serves BOTH the alert list and the sign-in link, and
+// R245 already separates those two kinds of mail by their headers:
+// List-Unsubscribe belongs on list mail and is wrong on a sign-in message.
+// Sending both from one address contradicts that split in the one field every
+// mail client shows before the subject - a reader who receives a sign-in link
+// from "alertes@" has been told it is list mail.
+export const EMAIL_FROM = `${APP_NAME} <alertes@${MAIL_DOMAIN}>`;
+
+/**
+ * The sender for transactional mail: the sign-in link and the sign-in code.
+ *
+ * SEPARATE FROM EMAIL_FROM so the two cannot drift into one another, and
+ * required at every call site rather than defaulted - see Message.from in
+ * lib/alerts/mailer.ts for why a default here would be the silent-wrong-value
+ * class this project keeps finding.
+ */
+export const AUTH_EMAIL_FROM = `${APP_NAME} <notifications@${MAIL_DOMAIN}>`;

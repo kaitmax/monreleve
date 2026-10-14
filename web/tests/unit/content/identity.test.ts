@@ -24,9 +24,10 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { AUTH_EMAIL_FROM, EMAIL_FROM } from '@/lib/fr/emails';
 import {
   INSTANCE_ID_ENV,
-  MAIL_SUBDOMAIN,
+  MAIL_DOMAIN,
   PRODUCTION_ORIGIN,
   SERVICE_NAME,
   SITE_DOMAIN,
@@ -72,7 +73,34 @@ describe('R188: three forms, one source', () => {
     expect(SITE_DOMAIN).toBe('monreleve.ch');
     expect(SITE_DOMAIN.startsWith(SERVICE_NAME)).toBe(true);
     expect(PRODUCTION_ORIGIN).toBe('https://monreleve.ch');
-    expect(MAIL_SUBDOMAIN).toBe('notifications.monreleve.ch');
+    // THE APEX, NOT A SUBDOMAIN, and that is a decision the operator took
+    // on 2026-10-14 after the subdomain broke every alert email. See
+    // MAIL_DOMAIN's own comment for what it supersedes.
+    expect(MAIL_DOMAIN).toBe('monreleve.ch');
+    expect(MAIL_DOMAIN).toBe(SITE_DOMAIN);
+  });
+
+  it('sends list mail and transactional mail from DIFFERENT apex addresses', () => {
+    // TWO ADDRESSES, ONE DOMAIN. The operator named both on 2026-10-14.
+    //
+    // WHY THEY MUST DIFFER rather than share one sender: sendMail serves the
+    // alert list AND the sign-in link, and R245 already separates those two
+    // kinds of mail by their headers - List-Unsubscribe belongs on the first
+    // and is wrong on the second. A reader who gets a sign-in link from
+    // "alertes@" has been told it is list mail by the one field every mail
+    // client shows before the subject.
+    expect(EMAIL_FROM).toContain('alertes@monreleve.ch');
+    expect(AUTH_EMAIL_FROM).toContain('notifications@monreleve.ch');
+
+    // NEITHER IS ON A SUBDOMAIN. notifications.monreleve.ch was the earlier
+    // design, was never created in DNS, and silently refused every send with
+    // a Resend 403 while the form told the reader it had worked.
+    expect(EMAIL_FROM).not.toContain('notifications.monreleve.ch');
+    expect(AUTH_EMAIL_FROM).not.toContain('notifications.monreleve.ch');
+
+    // R133: both assertions above pass if the two constants are the same
+    // string, which would put sign-in links back on the alerts sender.
+    expect(EMAIL_FROM).not.toBe(AUTH_EMAIL_FROM);
   });
 
   it('reserves the test origin under RFC 2606', () => {
