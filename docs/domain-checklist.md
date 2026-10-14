@@ -10,9 +10,13 @@ value** (or where to copy it from when only the operator's dashboard has it),
 **where it goes**, and **a command that proves it worked**. Ordered **most urgent
 first**.
 
-Nothing here was done by the session that wrote this file. It has no access to the
+Nothing here was done by the session that WROTE this file: it had no access to the
 production server, the DNS provider, the Resend dashboard, or any inbox, and it
-never claims an operator step was performed.
+never claimed an operator step was performed.
+
+**Item 1 was since done, on 2026-10-14, by a session the operator granted server
+access to.** Its entry records what was run and what was measured. Every other
+item is still outstanding and still needs the operator.
 
 (This file is kept pure ASCII on purpose: REPORT-DOMAIN.txt embeds it verbatim and
 that report must be ASCII. Accented French words are written unaccented here.)
@@ -21,53 +25,91 @@ that report must be ASCII. Accented French words are written unaccented here.)
 > `{"service":"monreleve","status":"ok","origin":"https://monreleve.ch","runtime":true}`;
 > `http://` -> `302` -> `https://`; TLS valid (Let's Encrypt). Every page that does
 > **not** touch the database serves correctly. Every page that **does** returns
-> **HTTP 500** - which is item 1.
+> **HTTP 500** - which was item 1.
+>
+> **Re-read 2026-10-14, after the migrations ran.** The data-backed paths now
+> answer: `/verifier/<32 hex>` -> `200`, `POST /api/v1/auth/code` -> `400
+> invalid_code`. `/api/health` is unchanged at `200` - and that is the point of
+> the note under item 1, because it read `200` throughout the outage too.
 
 ---
 
-## 1. The production database - every data-backed request returns 500  (MOST URGENT)
+## 1. The production database - DONE 2026-10-14 (was: every data-backed request returns 500)
 
-**Symptom, measured.** On the live site:
+**Status: fixed and verified.** The database was reachable all along and simply
+**unmigrated** - it held zero tables in any schema. 13 migrations were applied
+with `prisma migrate deploy`; sign-in and the verification page work.
 
-| Request | Touches the DB? | Result |
+**How it was diagnosed, since the original guess here was half right.** This
+item said the database was "unreachable or unmigrated" and told the operator to
+check `DATABASE_URL` first. The container logs settled it in one read:
+
+```
+Invalid `prisma.issuanceRecord.findUnique()` invocation:
+The table `public.IssuanceRecord` does not exist in the current database.
+  code: 'P2021',
+```
+
+`P2021` means Prisma **connected and executed** - so `DATABASE_URL` was correct
+and the database was reachable. Only the tables were missing. Reading the logs
+first would have skipped the whole connectivity investigation; it is the first
+thing to do next time, not the last.
+
+**What was run** - see `deploy.md` section 4, whose command was **corrected at
+the same time because the one printed here could never have worked**: the
+runtime image is Next standalone and carries no Prisma CLI, and Prisma 7 keeps
+the datasource in `prisma.config.ts`, which that image does not carry either.
+The working procedure stages the migrations out of the image, the CLI out of a
+throwaway `node:22` container, and the config out of the repository.
+
+**Proof it worked** - both flipped, measured against the live site:
+
+| Probe | Before | After |
 |---|---|---|
-| `/api/health`, `/api/ready`, static pages, sitemap | no | 200 OK |
-| `/verifier/<non-hex>` (rejected before the query) | no | 200 OK (neutral page) |
-| `/verifier/<32-hex code>` (`issuanceRecord.findUnique`) | **yes** | **500** (3/3) |
-| `POST /api/v1/auth/code` well-formed (`verificationToken.findFirst`) | **yes** | **500** |
-
-Two independent read paths - the latest table (`IssuanceRecord`, FW-VERIFY) **and**
-an early one (`VerificationToken`, FW22) - both 500. That rules out "one migration
-missing" and points at the database being **unreachable or unmigrated** from the
-app container. While this holds, **sign-in (code and link) and the verification
-page are broken**, and the alert form falls back to its "service indisponible"
-message (it catches the DB error rather than 500-ing).
-
-**What to do** (the operator, on the production host - this session cannot reach the DB):
-
-1. Confirm `DATABASE_URL` is set and the app container can reach PostgreSQL
-   (host, port, credentials, network). deploy.md section 2 - the container refuses
-   to start without `DATABASE_URL`, and it *is* running, so the string is present;
-   the question is whether it points at a reachable, migrated database.
-2. Apply migrations as the deliberate pre-serve step in **deploy.md section 4**:
-
-   ```
-   docker run --rm -e DATABASE_URL=... monreleve:prod \
-     node node_modules/prisma/build/index.js migrate deploy
-   ```
-
-**Proof it worked** (both must flip from 500 to the values shown):
+| `/verifier/<32 hex>` | 500 | **200** |
+| `POST /api/v1/auth/code` (well-formed) | 500 | **400 `invalid_code`** |
+| `/api/health` | 200 | 200 (unchanged) |
 
 ```
 curl -s -o /dev/null -w "%{http_code}\n" \
-  https://monreleve.ch/verifier/0123456789abcdef0123456789abcdef      # expect 200 (neutral page)
+  https://monreleve.ch/verifier/0123456789abcdef0123456789abcdef      # 200
 
 curl -s -X POST -H 'content-type: application/json' \
   -d '{"email":"probe@example.invalid","code":"000000"}' \
-  https://monreleve.ch/api/v1/auth/code                               # expect 400 invalid_code, never 500
+  https://monreleve.ch/api/v1/auth/code                               # 400 invalid_code
 ```
 
+In the database: `_prisma_migrations` reports **13 finished, 0 failed or
+rolled back**, and `public` now holds 14 tables including `IssuanceRecord` and
+`VerificationToken` - the two the 500s named.
+
+**And the log was checked the only way that proves anything.** The app's log
+buffer still contains the old `P2021` lines, so "no errors in the log" would
+have been false. Instead: count the `P2021` occurrences, send six fresh
+requests to both data-backed endpoints, count again. **Unchanged at 5** - the
+remaining lines are history, and nothing new is failing.
+
+**Nothing was backed up, and that was a decision rather than an oversight.**
+The database held zero relations in any schema (checked with
+`information_schema.tables`, not just `\dt` on `public`), so there was nothing
+to lose and the migration was purely additive. On a database with rows, take
+the dump first.
+
+**Two things this left behind**, neither fixed here:
+
+- **The deploy health check cannot see this class of failure.** The
+  application's Coolify health check is disabled (`health_check_enabled:
+  false`), and `/api/health` returns `status: ok` without touching the
+  database - which is exactly why the site sat with a dead data layer while
+  reporting itself healthy. A check that only proves something is listening
+  proves nothing about what (R169). Worth its own task.
+- **The host key now needs rotating.** The migration was run over SSH with the
+  Coolify-stored host key ("localhost's key"), fetched through the Coolify API
+  at `http://164.132.85.231:8000` - **plaintext HTTP**. It is root on the whole
+  VPS, not MonReleve-scoped.
+
 ---
+
 
 ## 2. The alert form sends email  (do this the moment the DB is up)
 

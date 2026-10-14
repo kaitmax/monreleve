@@ -117,16 +117,76 @@ proves something is listening proves nothing about **what**.
 The migrations travel **inside the image**, so the version being deployed and
 the migrations applied for it are one artefact.
 
+Run them as a **separate, deliberate step** before the new version serves. They
+are not run on boot, because a server that migrates on boot migrates once per
+replica, concurrently.
+
+### The command, corrected after it was run for real (2026-10-14)
+
+This section used to say:
+
 ```
 docker run --rm -e DATABASE_URL=... monreleve:prod \
   node node_modules/prisma/build/index.js migrate deploy
 ```
 
-Run it as a **separate, deliberate step** before the new version serves. It is
-not run on boot, because a server that migrates on boot migrates once per
-replica, concurrently.
+**That cannot work, and nothing found out until the production database turned
+out to be unmigrated** - every data-backed request on the live site returned
+500 for roughly a week. Two things are wrong with it, both measured against the
+running container rather than reasoned about:
+
+1. **The runtime image has no Prisma CLI.** `next.config.ts` emits
+   `output: 'standalone'` and the runner stage copies the traced bundle plus
+   `prisma/`, so the *migrations* ship inside the image and the *tool that
+   applies them* does not. Measured:
+   `ls node_modules/prisma/build/index.js` -> `No such file or directory`.
+2. **The schema carries no connection URL.** Prisma 7 moved it out of
+   `schema.prisma` into `prisma.config.ts` - that file's own header explains
+   why - and `prisma.config.ts` is **not** copied into the runner stage. A CLI
+   run against the image alone therefore has no datasource at all.
+
+What works: the image supplies the migrations, a throwaway container supplies
+the CLI, and the repository supplies the config.
+
+```sh
+APP=$(docker ps --format '{{.Names}}' | grep ^pkptabevr1nhtyygrq0mc8qx)
+WORK=/tmp/mr-prisma
+
+rm -rf "$WORK" && mkdir -p "$WORK"
+docker cp "$APP":/app/prisma "$WORK/prisma"    # migrations, out of the image
+rm -f "$WORK/prisma/seed.ts"                   # production is never seeded
+# and the datasource, out of the repository:
+#   scp web/prisma.config.ts root@<host>:"$WORK/prisma.config.ts"
+
+# the URL comes from the running container - keep it in a variable, never echo it
+DB=$(docker inspect "$APP" --format '{{range .Config.Env}}{{println .}}{{end}}' \
+       | sed -n 's/^DATABASE_URL=//p')
+
+docker run --rm --network coolify -e DATABASE_URL="$DB" \
+  -v "$WORK":/work -w /work node:22 \
+  sh -lc 'npm i --no-audit --no-fund --loglevel=error prisma@7.10.0 \
+          && npx prisma migrate status'
+
+# only then swap `migrate status` for `migrate deploy`
+
+rm -rf "$WORK"
+```
+
+`node:22` rather than `node:22-slim`: slim ships no OpenSSL and Prisma warns
+that it "failed to detect the libssl/openssl version to use". The warning is
+survivable for a read-only `migrate status`; it is not worth carrying into the
+command that writes.
+
+**Run `migrate status` before `migrate deploy`, every time.** It is read-only,
+it proves the config file loaded, and it names the database it resolved to. On
+2026-10-14 it printed `Datasource "db": PostgreSQL database "postgres", schema
+"public" at "poxl2l4x0p0fxd85or0itnxo:5432"` - which is how the right database
+was confirmed before a single statement was written to it. Two Postgres
+containers on this host have near-identical generated names and one of them
+belongs to another project; `migrate status` is what tells them apart.
 
 ---
+
 
 ## 5. Backups, and a restore that has actually been performed
 
