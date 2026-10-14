@@ -62,7 +62,7 @@
 # the fix is a one-line commit to this ARG. That is exactly the property the
 # ruling asks for: the browser cannot move without a commit.
 ARG NODE_IMAGE=node:22-bookworm-slim
-ARG CHROMIUM_VERSION=153.0.8010.52-1~deb12u1
+ARG CHROMIUM_VERSION=155.0.8059.39-1~deb12u1
 
 # ---------------------------------------------------------------------------
 # deps - node_modules from the lockfile, and nothing else
