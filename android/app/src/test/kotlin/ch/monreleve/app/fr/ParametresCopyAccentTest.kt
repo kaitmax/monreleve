@@ -21,7 +21,14 @@ import java.text.Normalizer
 
 private val FORBIDDEN = listOf("beta")
 
-private val FR_DIR = File("src/main/kotlin/ch/monreleve/app/fr")
+// KMP-0 increment 5: fr copy moved to :shared's commonMain, except the two formatter-dependent files and
+// fr/format (which stay in :app). DetectionCopy (the « bêta » this guard watches) is in :shared now, so the
+// scan covers both fr locations.
+private val FR_DIRS =
+    listOf(
+        File("../shared/src/commonMain/kotlin/ch/monreleve/app/fr"),
+        File("src/main/kotlin/ch/monreleve/app/fr"),
+    )
 
 private val LINE_COMMENT = Regex("""//[^\n]*""")
 private val BLOCK_COMMENT = Regex("""/\*[\s\S]*?\*/""")
@@ -34,10 +41,13 @@ private fun stripAccents(word: String): String {
 }
 
 private fun frCopyStrings(): List<String> =
-    FR_DIR.walkTopDown().filter { it.isFile && it.extension == "kt" }.flatMap { file ->
-        val withoutComments = file.readText().replace(BLOCK_COMMENT, " ").replace(LINE_COMMENT, " ")
-        STRING_LITERAL.findAll(withoutComments).map { it.groupValues[1] }
-    }.toList()
+    FR_DIRS
+        .filter { it.exists() }
+        .flatMap { dir -> dir.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList() }
+        .flatMap { file ->
+            val withoutComments = file.readText().replace(BLOCK_COMMENT, " ").replace(LINE_COMMENT, " ")
+            STRING_LITERAL.findAll(withoutComments).map { it.groupValues[1] }.toList()
+        }
 
 /** Every forbidden unaccented form found in a piece of rendered copy. */
 private fun formsIn(text: String): List<String> =

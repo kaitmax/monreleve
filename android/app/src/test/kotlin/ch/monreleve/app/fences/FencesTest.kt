@@ -89,7 +89,16 @@ class FencesTest {
     // ------------------------------------------------------------------
     @Test
     fun calcImportsNothingFromAndroidOrOtherProjectPackages() {
-        val files = ktFiles("calc")
+        // KMP-0: calc moved to :shared's commonMain (same package). This repo-level fence follows it there,
+        // belt-and-braces beside :shared's own commonMain metadata compile + CommonMainFenceTest, which reject
+        // java./android./androidx. AND any non-common (hence any other-project) import at the compiler level.
+        val calcDir = File("../shared/src/commonMain/kotlin/ch/monreleve/app/calc")
+        val files =
+            if (calcDir.exists()) {
+                calcDir.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+            } else {
+                emptyList()
+            }
         // F7 (AN-FIX): an absence assertion over an EMPTY set passes vacuously, so a fence pointed at a
         // renamed or moved directory would go green on zero files. Assert the scan found files first.
         assertTrue("calc/ fence scanned no files - calc/ renamed or moved? (F7 vacuity guard)", files.isNotEmpty())

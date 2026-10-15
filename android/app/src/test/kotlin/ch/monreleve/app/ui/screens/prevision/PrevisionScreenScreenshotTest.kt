@@ -8,18 +8,20 @@ import androidx.compose.ui.Modifier
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import ch.monreleve.app.calc.ruleSetFor
-import ch.monreleve.app.data.local.EntryKind
-import ch.monreleve.app.data.local.Portion
 import ch.monreleve.app.design.FrontierTheme
 import ch.monreleve.app.dossier.AggregatableEntry
 import ch.monreleve.app.dossier.AggregatableUser
+import ch.monreleve.app.dossier.EntryKind
+import ch.monreleve.app.dossier.Portion
 import ch.monreleve.app.dossier.forecastResults
 import ch.monreleve.app.forecast.ForecastState
 import ch.monreleve.app.forecast.Projection
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.plus
 import org.junit.Rule
 import org.junit.Test
 import java.time.DayOfWeek
-import java.time.LocalDate
 
 // AN-FORECAST. Baselines for the year-end forecast screen (R135/R207), default and 200 % (fontScale 2f).
 // A regression guard, not the proof of correctness - the on-device walkthrough is (R176). Every figure comes
@@ -39,10 +41,10 @@ class PrevisionScreenScreenshotTest {
 
     private fun recordedHome(count: Int): List<AggregatableEntry> {
         val rows = mutableListOf<AggregatableEntry>()
-        var day = LocalDate.of(2026, 1, 1)
+        var day = LocalDate(2026, 1, 1)
         while (rows.size < count) {
             if (day.dayOfWeek.value in 1..5) rows.add(AggregatableEntry(day.toString(), Portion.FULL, EntryKind.HOME))
-            day = day.plusDays(1)
+            day = day.plus(1, DateTimeUnit.DAY)
         }
         return rows
     }

@@ -2,12 +2,12 @@ package ch.monreleve.app.forecast
 
 import ch.monreleve.app.calc.ruleSetFor
 import ch.monreleve.app.data.local.EntryEntity
-import ch.monreleve.app.data.local.EntryKind
+import ch.monreleve.app.data.local.toAggregatable
 import ch.monreleve.app.data.local.todayInParis
 import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.RhythmRepository
 import ch.monreleve.app.data.repo.WeeklyRhythm
-import ch.monreleve.app.dossier.AggregatableEntry
+import ch.monreleve.app.dossier.EntryKind
 import ch.monreleve.app.dossier.SimChange
 import ch.monreleve.app.dossier.simulationResults
 import ch.monreleve.app.settings.Settings
@@ -18,9 +18,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.datetime.LocalDate
 import java.time.Clock
 import java.time.DayOfWeek
-import java.time.LocalDate
 
 // AN-SIM (R340, R281, R28, R310). The one place a simulation is RUN - it drives the pure engine path
 // (dossier.simulationResults) and holds no UI. R340 - A PROJECTION IS NEVER A RECORD: computing a simulation
@@ -126,7 +126,7 @@ class SimulationController(
         val recorded =
             entries
                 .filter { it.dayDate.startsWith("$currentTaxYear-") }
-                .map { AggregatableEntry(it.dayDate, it.portion, it.kind) }
+                .map { it.toAggregatable() }
         val results =
             simulationResults(
                 settings.toAggregatableUser(),

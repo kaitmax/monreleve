@@ -129,11 +129,14 @@ internal fun IdentificationCard(
     rules: ReleveRules,
 ) {
     val method = ReleveCopy.methodLabel(document.denominatorKind, rules.simplifiedBasisDays)
+    // startDate captured locally: DossierPeriod now lives in :shared, and Kotlin cannot smart-cast a
+    // public property across modules - the local val restores the null-check narrowing (KMP-0 6e, no behaviour change).
+    val startDate = document.period.startDate
     val period =
         when {
             document.period.fraction >= 1.0 -> ReleveCopy.periodFullYear(document.taxYear)
-            document.period.startDate == null -> ReleveCopy.periodPartial(document.taxYear)
-            else -> ReleveCopy.periodFromDate(formatDate(document.period.startDate), document.taxYear)
+            startDate == null -> ReleveCopy.periodPartial(document.taxYear)
+            else -> ReleveCopy.periodFromDate(formatDate(startDate), document.taxYear)
         }
     SectionCard {
         IdRow(ReleveCopy.HEADER_NAME, document.titulaire)

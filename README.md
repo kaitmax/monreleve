@@ -223,6 +223,8 @@ frontalier/
 
 **Pre-code. Phase 1 (Foundation) starts with FW1.** See `relay/PHASE-1.md` for the runbook and `relay/FW1.txt` for the first session prompt.
 
+**iOS enters scope (D41 / R367).** An iOS app is now planned, built with **Kotlin Multiplatform**, starting with **manual mode first**. The platform-free code — the calculation engine, the French copy, and the dossier/forecast logic — lives in a shared `:shared` module with the iOS targets declared, so it compiles for iOS **without changing the Android app**. iOS auto-detection is a later, separate task with its own measurement gate.
+
 Human gates that no task may pass on its own:
 
 | Gate | When | What |

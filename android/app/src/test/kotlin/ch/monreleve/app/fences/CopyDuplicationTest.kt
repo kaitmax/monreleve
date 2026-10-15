@@ -20,14 +20,19 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
-private val FR_DIR = File("src/main/kotlin/ch/monreleve/app/fr")
+// KMP-0 increment 5: the French copy moved to :shared's commonMain, EXCEPT the two files that call the JVM
+// formatters (ComparisonCopy, NotificationCopy) and fr/format itself, which stay in :app. So fr copy now lives
+// in TWO places and this repo-wide duplication guard scans both, catching a duplicate that spans the split.
+private val FR_DIRS =
+    listOf(
+        File("../shared/src/commonMain/kotlin/ch/monreleve/app/fr"),
+        File("src/main/kotlin/ch/monreleve/app/fr"),
+    )
 
 private fun frFiles(): List<File> =
-    if (!FR_DIR.exists()) {
-        emptyList()
-    } else {
-        FR_DIR.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
-    }
+    FR_DIRS
+        .filter { it.exists() }
+        .flatMap { dir -> dir.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList() }
 
 /** A top-level or object-member `const val NAME = "value"` declaration. */
 private val CONST_STRING = Regex("""const\s+val\s+(\w+)\s*=\s*"((?:[^"\\]|\\.)*)"""")

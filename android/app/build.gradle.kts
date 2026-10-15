@@ -319,6 +319,10 @@ tasks.withType<Test> {
 }
 
 dependencies {
+    // KMP-0 increment 1 (R368). The platform-free Kotlin Multiplatform module. :app resolves its Android
+    // target variant. Package names are unchanged across the move, so code that moves into :shared keeps its
+    // ch.monreleve.app.* package and no import in :app changes.
+    implementation(project(":shared"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -520,10 +524,24 @@ tasks.register("checkReleaseNoDebugInjection") {
 // resolutionResult is used rather than resolvedArtifacts so no artifact is downloaded or transformed to read a
 // coordinate. R182: nothing produces its subject, so it needs no dependsOn to be correctly ordered.
 tasks.register("checkLicences") {
-    val licencesCopy = layout.projectDirectory.file("src/main/kotlin/ch/monreleve/app/fr/LicencesCopy.kt").asFile
+    // KMP-0 increment 5: the French copy (incl. LicencesCopy) moved to :shared's commonMain. The check still
+    // lives in :app (it resolves :app's RELEASE runtime classpath), reading the copy file from its new home.
+    val licencesCopy =
+        rootProject.layout.projectDirectory
+            .file("shared/src/commonMain/kotlin/ch/monreleve/app/fr/LicencesCopy.kt")
+            .asFile
     val runtimeClasspath = configurations.named("releaseRuntimeClasspath")
     inputs.file(licencesCopy)
-    inputs.files(runtimeClasspath)
+    // KMP-0 increment 1. :shared is now on this classpath - a Kotlin Multiplatform project dependency whose
+    // android variant exposes many secondary artifact variants with NO single default, so a plain
+    // inputs.files(releaseRuntimeClasspath) cannot pick one and fails resolution (AGP's own tasks use artifact
+    // views; this custom task did not). The licence CHECK below is unaffected: it reads the dependency GRAPH
+    // (resolutionResult.allComponents), which resolves unambiguously, and it already excludes project
+    // dependencies (it filters ModuleComponentIdentifier), so :shared is not an attribution obligation. Only
+    // the up-to-date INPUT tracking forced artifact resolution; a lenient artifact view keeps that tracking
+    // (a dependency change still re-runs this, R283) while skipping the one ambiguous project artifact. This
+    // weakens nothing - the obligation is still derived from every EXTERNAL module in the graph.
+    inputs.files(runtimeClasspath.get().incoming.artifactView { lenient(true) }.files)
     doLast {
         // A resolved module's group is covered by prefix P when group == P or group starts with "P." - a
         // segment boundary, so "org.jetbrains.kotlin" does not swallow "org.jetbrains.kotlinx".
@@ -806,6 +824,19 @@ tasks.register("gate") {
         // comprehensive partner of ApiLevelFenceTest - it catches every platform member used above minSdk 26,
         // which the curated fence cannot. DEVICE-LOOP ran it once as a diagnostic; this makes it permanent.
         "lintDebug",
+        // KMP-0 increment 1 (R368/R369): the platform-free :shared module is governed by the SAME gate the
+        // app is, so a session cannot red the shared engine and still commit. CI runs `./gradlew gate` and
+        // gate:clone is unchanged, so both pick these up WITHOUT a web or CI edit (the hard boundary: they
+        // call the Android gate exactly as before).
+        //   - compileCommonMainKotlinMetadata: compiles commonMain as COMMON code against the common stdlib
+        //     only, which rejects any java./android. reference - the platform-free proof on this Windows host
+        //     (Kotlin/Native cannot build the iOS targets here; those are declared and printed as skipped).
+        //   - testDebugUnitTest: runs :shared's commonTest + Android unit-test source set on the JVM.
+        //   - ktlintCheck, detekt: the same style and static-analysis fences :app runs, over :shared's sources.
+        ":shared:compileCommonMainKotlinMetadata",
+        ":shared:testDebugUnitTest",
+        ":shared:ktlintCheck",
+        ":shared:detekt",
     )
     doLast {
         println(
@@ -833,7 +864,14 @@ tasks.register("gate") {
             |     attributed on the licences screen, derived from the build),
             |     lintDebug (R308: Android Lint's NewApi check, scoped to NewApi,
             |     catches every platform member used above minSdk 26 - the
-            |     comprehensive partner of ApiLevelFenceTest's curated scan).
+            |     comprehensive partner of ApiLevelFenceTest's curated scan),
+            |     :shared:compileCommonMainKotlinMetadata (KMP-0 R369: the
+            |     platform-free module's commonMain compiled AS COMMON code,
+            |     rejecting any java./android. reference - the platform-free proof
+            |     on this Windows host), :shared:testDebugUnitTest (its commonTest
+            |     + Android unit-test source set on the JVM), :shared:ktlintCheck
+            |     and :shared:detekt (the same style and static-analysis fences,
+            |     over the shared sources).
             |SKIPPED, with reason:
             |  - scripts/emulator.sh / screenshot.sh / walkthrough.sh (the AC2
             |    instrument): needs a real AVD with hardware acceleration. Not a
@@ -843,6 +881,14 @@ tasks.register("gate") {
             |  - connectedDebugAndroidTest (the instrumented canary,
             |    CanaryInstrumentedTest.kt): same reason, needs a running device.
             |    Exercised by the emulator instrument, not this gate.
+            |  - :shared's iOS compilations (KMP-0 R369/R133): compileKotlinIosArm64
+            |    and compileKotlinIosSimulatorArm64 (plus their link and test tasks).
+            |    Kotlin/Native cannot produce iOS binaries off a Mac, so these
+            |    targets are DECLARED (R368) but not compiled on this Windows host.
+            |    The platform-free guarantee is proved instead by the common
+            |    metadata compilation above, which is host-independent; the day the
+            |    iOS targets build on a Mac, the same commonMain and the Geneva
+            |    conformance test in commonTest (R370) compile and run for iOS too.
             """.trimMargin(),
         )
     }

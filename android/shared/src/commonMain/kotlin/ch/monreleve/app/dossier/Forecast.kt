@@ -3,9 +3,11 @@ package ch.monreleve.app.dossier
 import ch.monreleve.app.calc.CalcResult
 import ch.monreleve.app.calc.TeleworkResult
 import ch.monreleve.app.calc.calculateTelework
-import ch.monreleve.app.data.local.EntryKind
-import ch.monreleve.app.data.local.Portion
-import java.time.LocalDate
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.isoDayNumber
+import kotlinx.datetime.plus
 
 // AN-FORECAST (R340, R281, R28). THE YEAR-END FORECAST, computed in memory and NEVER written.
 //
@@ -41,24 +43,24 @@ import java.time.LocalDate
  * Pure: the only "clock" is the [today] parameter (R28 - the caller resolves Europe/Paris once).
  */
 fun imaginedEntriesToYearEnd(
-    rhythm: Map<java.time.DayOfWeek, EntryKind>,
+    rhythm: Map<DayOfWeek, EntryKind>,
     today: LocalDate,
     taxYear: Int,
 ): List<AggregatableEntry> {
-    val yearEnd = LocalDate.of(taxYear, 12, 31)
-    val firstOfYear = LocalDate.of(taxYear, 1, 1)
-    var day = today.plusDays(1)
-    if (day.isBefore(firstOfYear)) day = firstOfYear
+    val yearEnd = LocalDate(taxYear, 12, 31)
+    val firstOfYear = LocalDate(taxYear, 1, 1)
+    var day = today.plus(1, DateTimeUnit.DAY)
+    if (day < firstOfYear) day = firstOfYear
 
     val rows = mutableListOf<AggregatableEntry>()
-    while (!day.isAfter(yearEnd)) {
-        // Monday..Friday only (value 1..5); a rhythm map holds only weekday keys, and the weekend is
+    while (day <= yearEnd) {
+        // Monday..Friday only (isoDayNumber 1..5); a rhythm map holds only weekday keys, and the weekend is
         // never a worked day whatever the map says.
-        if (day.dayOfWeek.value in MONDAY_VALUE..FRIDAY_VALUE) {
+        if (day.dayOfWeek.isoDayNumber in MONDAY_VALUE..FRIDAY_VALUE) {
             val kind = rhythm[day.dayOfWeek]
             if (kind != null) rows.add(AggregatableEntry(day.toString(), Portion.FULL, kind))
         }
-        day = day.plusDays(1)
+        day = day.plus(1, DateTimeUnit.DAY)
     }
     return rows
 }
@@ -83,21 +85,21 @@ fun unrecordedPastWorkdays(
     taxYear: Int,
     activityStartIso: String?,
 ): Int {
-    var start = LocalDate.of(taxYear, 1, 1)
+    var start = LocalDate(taxYear, 1, 1)
     if (activityStartIso != null) {
         val activityStart = LocalDate.parse(activityStartIso)
-        if (activityStart.isAfter(start)) start = activityStart
+        if (activityStart > start) start = activityStart
     }
     var last = today
-    val yearEnd = LocalDate.of(taxYear, 12, 31)
-    if (last.isAfter(yearEnd)) last = yearEnd
-    if (start.isAfter(last)) return 0
+    val yearEnd = LocalDate(taxYear, 12, 31)
+    if (last > yearEnd) last = yearEnd
+    if (start > last) return 0
 
     var count = 0
     var day = start
-    while (!day.isAfter(last)) {
-        if (day.dayOfWeek.value in MONDAY_VALUE..FRIDAY_VALUE && day.toString() !in recordedDays) count++
-        day = day.plusDays(1)
+    while (day <= last) {
+        if (day.dayOfWeek.isoDayNumber in MONDAY_VALUE..FRIDAY_VALUE && day.toString() !in recordedDays) count++
+        day = day.plus(1, DateTimeUnit.DAY)
     }
     return count
 }
@@ -122,7 +124,7 @@ data class ForecastResults(
 fun forecastResults(
     user: AggregatableUser,
     recorded: List<AggregatableEntry>,
-    rhythm: Map<java.time.DayOfWeek, EntryKind>,
+    rhythm: Map<DayOfWeek, EntryKind>,
     today: LocalDate,
     taxYear: Int,
 ): ForecastResults? {

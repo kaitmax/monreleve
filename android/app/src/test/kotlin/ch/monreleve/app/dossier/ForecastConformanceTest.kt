@@ -1,14 +1,12 @@
 package ch.monreleve.app.dossier
 
 import ch.monreleve.app.calc.fixtureFile
-import ch.monreleve.app.data.local.EntryKind
-import ch.monreleve.app.data.local.Portion
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.doubles.plusOrMinus
 import io.kotest.matchers.shouldBe
+import kotlinx.datetime.LocalDate
 import org.json.JSONObject
 import java.time.DayOfWeek
-import java.time.LocalDate
 
 // AN-FORECAST (R340, R281). Reads fixtures/forecast-cases.json - the SAME file the web forecast
 // (FW-FORECAST) reads - and runs each case through the Kotlin date function (imaginedEntriesToYearEnd)
@@ -121,7 +119,7 @@ class ForecastConformanceTest : FunSpec({
             val imagined = imaginedEntriesToYearEnd(case.rhythm, case.today, taxYear)
             imagined.forEach { row ->
                 val date = LocalDate.parse(row.dayDate)
-                (date.isAfter(case.today)) shouldBe true
+                (date > case.today) shouldBe true
                 (date.dayOfWeek.value in 1..5) shouldBe true
                 (date.year) shouldBe taxYear
             }

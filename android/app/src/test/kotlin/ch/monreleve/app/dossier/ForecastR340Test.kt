@@ -1,7 +1,5 @@
 package ch.monreleve.app.dossier
 
-import ch.monreleve.app.data.local.EntryKind
-import ch.monreleve.app.data.local.Portion
 import ch.monreleve.app.data.local.RhythmKind
 import ch.monreleve.app.data.repo.RhythmRepository
 import ch.monreleve.app.data.repo.WeeklyRhythm
@@ -12,7 +10,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
 
 // AN-FORECAST (R340). A PROJECTION IS NEVER A RECORD - the unit witness.
 //

@@ -3,11 +3,11 @@ package ch.monreleve.app.forecast
 import ch.monreleve.app.calc.ruleSetFor
 import ch.monreleve.app.data.local.EntryEntity
 import ch.monreleve.app.data.local.RhythmKind
+import ch.monreleve.app.data.local.toAggregatable
 import ch.monreleve.app.data.local.todayInParis
 import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.RhythmRepository
 import ch.monreleve.app.data.repo.WeeklyRhythm
-import ch.monreleve.app.dossier.AggregatableEntry
 import ch.monreleve.app.dossier.forecastResults
 import ch.monreleve.app.dossier.unrecordedPastWorkdays
 import ch.monreleve.app.settings.Settings
@@ -19,9 +19,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.datetime.LocalDate
 import java.time.Clock
 import java.time.DayOfWeek
-import java.time.LocalDate
 
 // AN-FORECAST (R340, R341, R281, R28, R310). The one place a forecast is RUN - it drives the pure engine path
 // (dossier.forecastResults) and holds no UI. R340 - A PROJECTION IS NEVER A RECORD: computing a projection
@@ -96,7 +96,7 @@ class ForecastController(
         val recorded =
             entries
                 .filter { it.dayDate.startsWith("$currentTaxYear-") }
-                .map { AggregatableEntry(it.dayDate, it.portion, it.kind) }
+                .map { it.toAggregatable() }
         val results =
             forecastResults(
                 settings.toAggregatableUser(),

@@ -4,8 +4,6 @@ import ch.monreleve.app.calc.Canton
 import ch.monreleve.app.calc.DenominatorMethod
 import ch.monreleve.app.calc.Granularity
 import ch.monreleve.app.calc.fixtureFile
-import ch.monreleve.app.data.local.EntryKind
-import ch.monreleve.app.data.local.Portion
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import org.json.JSONObject

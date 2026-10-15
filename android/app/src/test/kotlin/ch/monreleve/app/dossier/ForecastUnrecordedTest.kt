@@ -2,7 +2,7 @@ package ch.monreleve.app.dossier
 
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
 
 // AN-FORECAST (section 2). unrecordedPastWorkdays - the figure the forecast screen states in words so a
 // reader does not read the projection as if the days they forgot to record were already counted. Weekdays

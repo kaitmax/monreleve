@@ -4,6 +4,8 @@ import ch.monreleve.app.aujourdhui.AbsenceChoice
 import ch.monreleve.app.aujourdhui.RecordedKind
 import ch.monreleve.app.data.local.EntryEntity
 import ch.monreleve.app.dossier.LatenessForecast
+import kotlinx.datetime.toKotlinInstant
+import kotlinx.datetime.toKotlinLocalDate
 import java.time.Instant
 import java.time.LocalDate
 
@@ -32,12 +34,13 @@ fun bulkConfirmation(
 ): BulkConfirmation {
     val days = selectedDays.sorted()
     val recordedDays = entries.map { it.dayDate }.toSet()
+    val nowInstant = now.toKotlinInstant()
     return BulkConfirmation(
         days = days,
         kind = kind,
         absence = absence,
         alreadyRecordedCount = days.count { it in recordedDays },
-        lateCount = days.count { LatenessForecast.wouldBeLate(LocalDate.parse(it), now) },
+        lateCount = days.count { LatenessForecast.wouldBeLate(LocalDate.parse(it).toKotlinLocalDate(), nowInstant) },
         lateThresholdDays = LatenessForecast.BACKFILL_DAYS,
     )
 }

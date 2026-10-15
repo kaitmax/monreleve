@@ -217,7 +217,7 @@ class WarningsTest : FunSpec({
             // comment is a claim the code no longer makes true (R154's
             // shape).
             val source =
-                File(repoRoot(), "android/app/src/main/kotlin/ch/monreleve/app/calc/Warnings.kt")
+                File(repoRoot(), "android/shared/src/commonMain/kotlin/ch/monreleve/app/calc/Warnings.kt")
                     .readText()
             val a1Block = source.substring(maxOf(0, source.indexOf("A1Required") - 1800))
 

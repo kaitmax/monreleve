@@ -1,14 +1,14 @@
 package ch.monreleve.app.dossier
 
 import ch.monreleve.app.calc.Warning
-import ch.monreleve.app.data.local.EntryKind
-import ch.monreleve.app.data.local.Portion
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.doubles.plusOrMinus
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.plus
 import java.time.DayOfWeek
-import java.time.LocalDate
 
 // AN-SIM (R340, R281). THE SIMULATOR'S ENGINE PATH, hand-checked against the design's own example.
 //
@@ -39,10 +39,10 @@ private val RHYTHM =
 
 private fun recordedHome(count: Int): List<AggregatableEntry> {
     val rows = mutableListOf<AggregatableEntry>()
-    var day = LocalDate.of(TAX_YEAR, 1, 1)
+    var day = LocalDate(TAX_YEAR, 1, 1)
     while (rows.size < count) {
         if (day.dayOfWeek.value in 1..5) rows.add(AggregatableEntry(day.toString(), Portion.FULL, EntryKind.HOME))
-        day = day.plusDays(1)
+        day = day.plus(1, DateTimeUnit.DAY)
     }
     return rows
 }

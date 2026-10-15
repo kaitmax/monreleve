@@ -11,10 +11,12 @@ import java.io.File
 // absence of only those, over the actual rendered strings (comments stripped first - they legitimately explain
 // R282/R315 and name the detection UI).
 
+// KMP-0 increment 5: ParametresCopy and LicencesCopy moved to :shared's commonMain (the French copy's new
+// home). This guard reads them from there, relative to :app's test working directory.
 private val COPY_FILES =
     listOf(
-        File("src/main/kotlin/ch/monreleve/app/fr/ParametresCopy.kt"),
-        File("src/main/kotlin/ch/monreleve/app/fr/LicencesCopy.kt"),
+        File("../shared/src/commonMain/kotlin/ch/monreleve/app/fr/ParametresCopy.kt"),
+        File("../shared/src/commonMain/kotlin/ch/monreleve/app/fr/LicencesCopy.kt"),
     )
 
 // The features the product does NOT have, by the words they would appear as. R315 removed « détection » and

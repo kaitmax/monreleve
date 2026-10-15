@@ -1,0 +1,338 @@
+================================================================================
+REPORT-KMP-0 : A SHARED KOTLIN MULTIPLATFORM MODULE (Android only; no iOS built)
+================================================================================
+Branch: kmp-0   Base: origin/main 0ddc646 (unchanged this session, no rebase)
+Worktree: C:/wt/kmp-0   Agent: claude-opus-4-8[1m]   Date: 2026-10-15
+
+STATUS: COMPLETE. Increments 0-8 are DONE, GREEN, and PUSHED to origin/kmp-0.
+The calc engine, the French copy, and the platform-free dossier/forecast logic now
+live in a :shared Kotlin Multiplatform module (commonMain), with the Android app
+provably unchanged. The FULL :app:gate and gate:clone on the final HEAD, and the
+merge to main, are the OPERATOR's to run (as instructed). The S9 on-device R374
+comparison could NOT be run - no device is attached (see R374).
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+KMP IS VIABLE on the CURRENT toolchain (Kotlin 2.0.21 / AGP 8.10.1) - NO version
+upgrade was needed or made. A :shared KMP module exists with an Android target plus
+iosArm64 + iosSimulatorArm64 DECLARED. Moved to commonMain (same package names, so
+NO :app import changed): the calc engine, the French copy (except the JVM-formatter
+files), and the dossier/forecast pure logic. The ONE new runtime dependency is
+kotlinx-datetime 0.6.1 (R371), used only in the moved files; :app keeps java.time.
+
+Commits (all on origin/kmp-0), 0-5 by the prior agent, 6-8 this session:
+  758a026  inc 1   the empty :shared module, wired into :app and :app:gate
+  7f3ca76  inc 2   the commonMain platform-free fence (R369), red/green proven
+  ac8afc0  inc 3   fixtures reach commonTest without file access (R370)
+  56bf338  inc 4   move the calc engine to :shared commonMain; Geneva on common code
+  8d02489  inc 5   move the French copy (fr) to :shared commonMain (partial, DEVIATIONS)
+  72324ee  (report handoff: inc 0-5 done; file-level plan for 6-8)
+  f035670  inc 6a  kotlinx-datetime pin + shared Paris-day util + DST tests (RED-proven)
+  036ab2a  inc 6b  move LatenessForecast to :shared, java.time -> kotlinx-datetime
+  b5c4e70  inc 6c-1 the shared aggregation vocabulary (EntryKind, Portion), R372 option D
+  cbc77d4  inc 6c-2 move the dossier aggregation to :shared, separated from Room (R372)
+  d808d05  inc 6d  move Forecast + Simulation to :shared, java.time -> kotlinx-datetime
+  dfffee9  inc 6e  move DossierDocument + EmployerComparison to :shared
+  3a10583  inc 6d/6e FIX  commit the kotlinx Forecast/Simulation git mv left unstaged
+  9cde732  inc 7   retire the duplicate :app Kotest GenevaConformanceTest (R373)
+  <inc 8>  inc 8   R367 wording in SPEC (D41) + README; this finalized report
+
+--------------------------------------------------------------------------------
+R273 (task registry / number collision)
+--------------------------------------------------------------------------------
+tasks/todo.md ends at AN15 and carries NO KMP entry; there is no number collision.
+KMP-0 is an operator-initiated task carrying the R367 ruling. It belongs here.
+
+--------------------------------------------------------------------------------
+R1 (base gate green before the first change)
+--------------------------------------------------------------------------------
+:app:gate is GREEN on origin/main HEAD 0ddc646 (prior agent ran it 17m15s, GATE_EXIT=0,
+"test floor OK: 1162 unit tests observed"; the operator also ran a full :app:gate GREEN
+on the tip 72324ee, 9m23s, Paparazzi untouched, before this session continued). gate:clone
+is RAM-blocked on this box (documented every prior session: a 0xC0000142 low-RAM build
+crash + a shared-Postgres flake, never a code defect); DEFERRED to the operator.
+
+--------------------------------------------------------------------------------
+R373 (nothing lost - test counts, per package, before/after)
+--------------------------------------------------------------------------------
+BEFORE (main baseline, all in :app, from the green base-gate JUnit XML):
+  calc 338 / fr 111 / dossier 53 / forecast 10 ; WHOLE :app 1162 ; :shared did not exist.
+
+AFTER (final, measured this session from the JUnit XML):
+  :app      calc 325 / fr 111 / dossier 53 / forecast 10 ; WHOLE :app 1153.
+  :shared   8  (SharedModuleTest 1, CommonMainFenceTest 1, FixtureGeneratorTest 2,
+               ParisDayDstTest 2, calc GenevaConformanceTest 2 - the Geneva cases on
+               COMMON code).
+  WHOLE = 1153 + 8 = 1161. checkTestFloor GREEN (1153 >= 10; floor is 10, a zero-run
+  sanity guard, not a ceiling).
+
+The only per-package change is calc 338 -> 325 (-13) and whole 1162 -> 1161 (-1). This
+is NOT lost coverage; it is increment 7 (R373's deletion clause) retiring the duplicate
+Kotest GenevaConformanceTest. ARITHMETIC: the Kotest version was 13 DISCRETE tests (1
+ids-check + 6 cases x 2); the surviving :shared commonTest version is 2 LOOPING @Test
+methods over the SAME 6 cases x the SAME 4 fields + the SAME day-partition invariant,
+and it ALSO runs on iOS the day those targets build. kotlin.test has no dynamic
+test-per-case generation (Kotest's `cases.forEach { test() }`), so the method count
+drops while the case coverage is identical and strictly wider in reach. See increment 7
+and NOTICED. New tests added this session: ParisDayDstTest (+2), EntryVocabularyBindingTest
+(+4, counted in :app 1153), the :shared harness (+6).
+
+--------------------------------------------------------------------------------
+THE MODULE (setup chosen and why - R368 / R136)
+--------------------------------------------------------------------------------
+Chosen: com.android.library + org.jetbrains.kotlin.multiplatform with androidTarget(),
+plus iosArm64() and iosSimulatorArm64() DECLARED. NOT the newer
+com.android.kotlin.multiplatform.library plugin. (Full R136 reasoning in the catalog
+comment and the inc-1 section of this report's history: the long-established, most
+documented KMP+Android combination, reusing AGP 8.10.1 with no version bump.) PROVEN
+EMPIRICALLY: configures and compiles on Kotlin 2.0.21 / AGP 8.10.1; :app:gate green
+with :shared wired in. :app depends on it (implementation(project(":shared"))); the
+gate runs :shared:compileCommonMainKotlinMetadata (the platform-free proof),
+:shared:testDebugUnitTest, :shared:ktlintCheck, :shared:detekt, naming the skipped iOS
+compilations (R133/R369). CI and gate:clone pick :shared up with no web/CI edit.
+
+--------------------------------------------------------------------------------
+R369 (platform-free fence - red then green; skipped iOS)   [unchanged from inc 2]
+--------------------------------------------------------------------------------
+TWO LAYERS guard commonMain: (1) compileCommonMainKotlinMetadata rejects java.* at the
+compiler level; (2) CommonMainFenceTest text-scans src/commonMain for java/javax/android/
+androidx imports (it catches what the android target's desugared classpath would accept).
+Both proven RED on a planted java.time import, reverted (inc 2). kotlinx.* is allowed, so
+the moved files' kotlinx-datetime imports pass. The gate prints the disabled iOS targets
+and names compileKotlinIosArm64 / compileKotlinIosSimulatorArm64 as skipped with the
+reason (Kotlin/Native cannot build iOS off a Mac).
+
+--------------------------------------------------------------------------------
+R370 (fixtures reach common tests; both conformance runs)  [unchanged from inc 3/4]
+--------------------------------------------------------------------------------
+generateFixtureConstants turns each repo-root fixtures/*.json into a Kotlin String
+constant (FixtureJson) that commonTest compiles; fixtures/ is the declared input. A
+dependency-free common JSON reader (commonTest Json.kt) parses them on every target. The
+Geneva conformance runs on COMMON code (FixtureJson.GENEVA_CASES_JSON). FixtureCoverageTest
+and fixture-coverage.mjs keep working.
+
+--------------------------------------------------------------------------------
+EACH MOVE (files; what changed)
+--------------------------------------------------------------------------------
+inc 4 calc (13 files) -> :shared/commonMain/.../calc, same package. kotlin.math only ->
+  compiles AS COMMON. :app compiles with zero source edits; three :app source-scan fences
+  repointed to :shared (FencesTest calc-scan, NoBareThresholdTest, WarningsTest).
+inc 5 fr (30 files) -> :shared/commonMain/.../fr, same package. Pure string constants.
+  STAYED in :app: fr/format (Dates.kt, Numbers.kt - JVM DecimalFormat/DateTimeFormatter +
+  CLDR French names), ComparisonCopy, NotificationCopy (they call fr.format). Copy fences
+  repointed to scan BOTH fr locations. (QUESTION 1, now settled - see QUESTIONS.)
+
+inc 6 - dossier + forecast (R371, R372). Sub-increments, each <100 lines, gated, pushed:
+  6a  kotlinx-datetime 0.6.1 pinned (api() in :shared); shared dossier/ParisDay.kt
+      (parisDayOf/todayInParis, the kotlinx twin of :app data.local.todayInParis);
+      commonTest dossier/ParisDayDstTest.kt written FIRST (the Paris/DST tests). No file
+      moved.
+  6b  LatenessForecast.kt -> :shared (git rename), java.time -> kotlinx-datetime; the five
+      :app call sites map at the boundary (.toKotlinLocalDate()/.toKotlinInstant());
+      LatenessConformanceTest stays in :app, now parsing with kotlinx (same 7 cases).
+  6c-1 shared EntryKind + Portion enums in :shared dossier (R372 option D vocabulary).
+  6c-2 Aggregate.kt -> :shared (AggregatableEntry/AggregatableUser/DayCounts + countDays/
+      toTeleworkInput/remainingYearFraction) over the shared enums, java.time -> kotlinx;
+      :app EntryAggregation.kt (EntryEntity.toAggregatable + EntryKind/Portion.toShared,
+      exhaustive); five inline construction sites -> it.toAggregatable();
+      RhythmRepository.toEntryKindMap() yields the shared EntryKind; EntryVocabularyBindingTest.
+  6d  Forecast.kt + Simulation.kt -> :shared (git rename), java.time -> kotlinx; controllers
+      resolve `today` as kotlinx; ThresholdForecast (STAYS in :app) converts at its call.
+  6e  DossierDocument.kt + EmployerComparison.kt -> :shared (pure); one :app smart-cast
+      fix (ReleveHeader captures period.startDate locally - a public property cannot be
+      smart-cast across modules).
+  FIX (3a10583)  6d's two git mv moved the pre-edit (java.time) index blob and left the
+      kotlinx working-tree edits unstaged, so d808d05/dfffee9 committed java.time into
+      commonMain. The fast checks passed because Gradle compiles the WORKING TREE, not the
+      committed blob (the clean-tree/R131 class). Fixed by staging the working-tree content;
+      HEAD now matches what was tested, and the fence/metadata are green on the clean tree.
+  STAYED in :app (R372 / DEVIATIONS): the controllers (hold repos/stores), DossierPayload
+  (org.json, KMP-1), PendingDays (SyncState - local-only sync vocabulary), ThresholdForecast
+  (returns a settings type; moving crossingOf alone would drag settings.ThresholdCrossing).
+
+inc 7  retire the duplicate :app Kotest calc/GenevaConformanceTest (R373/R268). The :shared
+  commonTest version asserts the SAME six cases (a,b,c,d,e,special), the SAME four fields
+  (declarableRate, swissTaxedDays, frenchTaxedDays, regimeApplies), and the SAME day-partition
+  invariant, and is green - so the duplicate is retired. Count arithmetic under R373 above.
+
+inc 8  R367 wording: SPEC-frontalier-web.md section 2 gains a v2.3 subsection with D41 (iOS
+  enters scope, Kotlin Multiplatform, manual mode first); README.md "Where we are" gains the
+  same note. Wording only, no other spec change. This finalized report. R374 proofs below.
+
+--------------------------------------------------------------------------------
+R371 (java.time -> kotlinx-datetime in moved code only)
+--------------------------------------------------------------------------------
+PINNED: kotlinx-datetime 0.6.1 (R136 in the version catalog). Compatible with Kotlin
+2.0.21 (a regular multiplatform library; its klib metadata is consumable by this
+compiler), released 2024-08 (far over two weeks old). 0.6.x (not 0.7.x) on purpose:
+through 0.6.x, DayOfWeek/Month are JVM TYPEALIASES to java.time - 0.7.0 made them
+multiplatform enums. VALIDATED EMPIRICALLY: it resolves, compileCommonMainKotlinMetadata
+and :shared tests are green, and :app passes its java.time.DayOfWeek rhythm keys and
+SimChange.ExtraWeekday into the shared kotlinx signatures with NO conversion and compiles
+green - which only holds if the typealias holds. api() in :shared so :app sees the
+calendar types for the boundary mapping.
+
+PARIS/DST TESTS (commonTest dossier/ParisDayDstTest.kt), written FIRST (6a):
+  - parisDayOf resolves the correct Paris calendar day near midnight and across BOTH 2026
+    DST changes (spring-forward Sun 29 Mar, fall-back Sun 25 Oct): e.g. 2026-01-15T23:30Z
+    -> 2026-01-16 (CET, +1); 2026-07-15T22:30Z -> 2026-07-16 (CEST, +2); 2026-03-28T23:30Z
+    -> 2026-03-29; 2026-10-24T22:30Z -> 2026-10-25; 2026-10-25T23:30Z -> 2026-10-26.
+  - plus the kotlinx arithmetic semantics the move relies on: daysUntil == ChronoUnit.DAYS
+    .between (364 from 1 Jan to 31 Dec 2026), plus(1,DAY) as a pure calendar step across a
+    DST date, isoDayNumber 1=Monday (29 Mar -> 7, 30 Mar -> 1).
+  RED THEN GREEN (R180 verified plant): with the correct Europe/Paris zone the suite is
+  GREEN; switching PARIS_ZONE to UTC fails exactly the five near-midnight cases where the
+  Paris day differs from the UTC day ("expected 2026-01-16 but was 2026-01-15"); reverted.
+  A DST test that still passes under UTC asserts nothing - that is the point of the plant.
+EVERY date conversion in the moved files is exact and DST-invariant (a LocalDate carries no
+offset): LocalDate.of -> LocalDate(); plusDays -> plus(n,DAY); isBefore/isAfter -> </>;
+dayOfWeek.value -> isoDayNumber; toEpochDay -> toEpochDays; ChronoUnit.DAYS.between ->
+daysUntil; toEpochMilli -> toEpochMilliseconds. daysUntilLate keeps its Long return
+(kotlinx daysUntil is Int) so a caller's inference cannot silently shift.
+
+--------------------------------------------------------------------------------
+R372 (dossier + forecast by separating, not dragging Room)
+--------------------------------------------------------------------------------
+SHARED TYPES (in :shared commonMain, package ch.monreleve.app.dossier):
+  AggregatableEntry(dayDate, portion: Portion, kind: EntryKind)  - the day record.
+  AggregatableUser(canton, employmentRate, denominatorKind, exactTotalWorkDays,
+                   granularity, activityStartDate)  - plain strings/ints, no enums.
+  EntryKind { CH, HOME, MISSION_FR, MISSION_THIRD, ABSENT } and Portion { FULL, AM, PM }
+  - the aggregation's platform-free vocabulary (option D). SAME names and order as
+  data.local's wire enums, which STAY in :app (the web wire contract + the Room column
+  type; dragging them to :shared would pull Room/KSP across the boundary).
+
+THE :app BOUNDARY MAPPING (:app maps Room rows + stores to the shared types):
+  data/local/EntryAggregation.kt: EntryEntity.toAggregatable(); EntryKind.toShared();
+    Portion.toShared() - each an EXHAUSTIVE `when`, so a new wire value is a compile error
+    until mapped. One home for the row mapping (R206), replacing five inline constructions.
+  data/repo/RhythmRepository.toEntryKindMap(): yields the shared EntryKind (via toShared).
+  settings/Settings.toAggregatableUser(): Settings -> AggregatableUser (already existed).
+  ThresholdForecast (STAYS): converts today.toKotlinLocalDate() at its forecastResults call.
+NO DRIFT, compiler-forced BOTH ways (a new data.local value breaks toShared's `when`; a new
+shared value breaks countDays' `when`) + EntryVocabularyBindingTest asserts the two enums'
+names match in order - the twin of WireContractParityTest, one boundary over.
+The controllers (ForecastController, SimulationController) and the UI STAY in :app.
+
+--------------------------------------------------------------------------------
+R374 (the Android app is provably the same)
+--------------------------------------------------------------------------------
+Run on the final Android state (unchanged since inc 7; inc 8 is docs only):
+  verifyPaparazziDebug          GREEN, NO baseline/snapshot re-recorded (git shows no
+                                change under app/src/test/snapshots) - the screens are
+                                pixel-identical after the move.
+  checkMinifiedWireContract     OK - all 28 /v1 contract tokens survive minification.
+  checkReleaseCleartext         OK (in the green release-check chain).
+  checkReleaseNoDebugInjection  OK.
+  checkReleaseLocationPermissions OK - exactly ACCESS_FINE_LOCATION + ACCESS_BACKGROUND_LOCATION.
+  checkReleaseNoDevComponent    OK - no dev.* component in the release APK.
+  checkLicences                 OK - 101 release runtime modules (was 99; +2 for
+                                kotlinx-datetime, each attributed on the licences screen;
+                                no allowlist edit needed).
+  The release APK (minified) assembled successfully with :shared linked in.
+Per-increment fast checks were GREEN throughout (compileCommonMainKotlinMetadata +
+:shared tests + :app compile main/test + ktlint + detekt), plus the directly-affected
+behaviour suites re-run green at each step (AggregationConformance 9, ForecastConformance
+7, SimulationConformance 4, Lateness 7, the R340 + controller tests).
+DEFERRED TO THE OPERATOR (as instructed): the FULL :app:gate and gate:clone on the final
+HEAD, and the merge to main.
+S9 ON-DEVICE COMPARISON: NOT DONE. `adb devices` lists no device attached. The install /
+record-a-day / open-the-Releve / run-the-forecast walkthrough and the screen-by-screen
+comparison with the origin/main build are owed when a device is connected.
+
+--------------------------------------------------------------------------------
+WHAT KMP-1 INHERITS (left in :app that iOS will need, by package)
+--------------------------------------------------------------------------------
+  dossier/  DossierPayload (org.json parse/serialise) -> kotlinx.serialization or expect/
+            actual; PendingDays (filters by SyncState, a local-only Room column) -> an
+            iOS store equivalent. The pure document/comparison/aggregation/forecast logic
+            is ALREADY in :shared.
+  forecast/ ForecastController, SimulationController, their State, and ThresholdForecast
+            (hold repos/stores/settings) - :app controllers by design (R372); iOS needs
+            its own controllers over the shared pure logic (forecastResults/simulationResults).
+  fr/format French date/number formatting (DecimalFormat, DateTimeFormatter + CLDR French
+            names), ComparisonCopy, NotificationCopy - iOS needs a multiplatform formatting
+            story (an i18n lib or expect/actual). OUT OF SCOPE for KMP-0 (QUESTION 1).
+  data/     Room, org.json, the repositories, todayInParis (java.time) - a shared
+            todayInParis twin already exists (dossier/ParisDay.kt) for iOS.
+  detection, auth, ui, notification - platform clients, later tasks.
+
+--------------------------------------------------------------------------------
+DEVIATIONS (all recorded, conservative, reversible - R156)
+--------------------------------------------------------------------------------
+1. fr is a PARTIAL move (inc 5). fr/format + ComparisonCopy + NotificationCopy stay in
+   :app (JVM/CLDR formatting has no common/kotlinx equivalent, and an i18n lib is out of
+   scope). Settled by the operator (QUESTION 1 resolved).
+2. FAST-CHECK working mode (operator's R156 adaptation): per-increment verification is
+   :shared:compileCommonMainKotlinMetadata + :shared:testDebugUnitTest + (ktlint/detekt) +
+   :app:compileDebugKotlin (+ compileDebugUnitTestKotlin for signature-changing increments)
+   + the directly-affected :app test classes; the operator runs the FULL :app:gate at
+   checkpoints. This mode's gap bit twice and both were caught and fixed this session:
+   (a) 6b's line-length (:app detekt not in the fast check) - fixed in 6c-2;
+   (b) the git mv unstaged-content defect - fixed in 3a10583. Both are fixed and the final
+   HEAD is verified against the clean tree.
+3. calc/fr/dossier/forecast UNIT tests stayed in :app (R373 permits "may move"); they
+   exercise the moved code via :app -> :shared. Only the Geneva CONFORMANCE test is in
+   commonTest (R370), and its Kotest duplicate is retired (inc 7).
+4. Source-scanning fences coupled to a moved package were REPOINTED in :app (calc fences
+   inc 4; copy fences inc 5), not moved - they also scan non-moved :app source.
+5. PendingDays STAYS in :app: it filters EntryEntity by SyncState, the local-only sync
+   vocabulary (never on the wire) - a Room-row query, not platform-free domain logic.
+   (The inc-6 file plan listed it under 6e; separating it is the conservative reading of
+   R372's "data do not move".)
+6. ThresholdForecast STAYS whole in :app: its one pure function (crossingOf) returns
+   settings.ThresholdCrossing, so moving it would drag that settings type across; the
+   repo/store-touching projectedThresholdCrossing stays by R372 regardless.
+7. Increment 7 drops the raw per-package calc count (338 -> 325) and whole (1162 -> 1161)
+   by retiring the 13-discrete-test Kotest Geneva for the 2-looping-method commonTest one.
+   Same case/field/invariant coverage, strictly wider reach (iOS). checkTestFloor (the
+   enforced gate, floor 10) is green. See R373 and QUESTIONS.
+
+--------------------------------------------------------------------------------
+PARKED / OPEN ITEMS
+--------------------------------------------------------------------------------
+  - commonTest PORTS of the remaining conformance tests (Lateness, Forecast, Simulation,
+    Aggregation) are PARKED. They stay in :app (Kotest), exercising the shared code; only
+    Geneva was ported (R370 named it). Porting them is mechanical (the FixtureJson + common
+    JSON reader machinery exists) and would let iOS run them too - a natural KMP-1 follow-up.
+  - A :shared checkTestFloor is NOT added; the :app floor (>=10) still guards. Add one when
+    :shared gains more moved tests.
+  - gate:clone and the FULL :app:gate on the final HEAD, and the merge to main, are the
+    operator's (RAM-blocked / instructed).
+  - android/local.properties was created in this worktree (sdk.dir; gitignored, not committed).
+
+--------------------------------------------------------------------------------
+QUESTIONS (for the operator)
+--------------------------------------------------------------------------------
+1. (RESOLVED by the operator before this session) fr/format + ComparisonCopy +
+   NotificationCopy stay in :app; CLDR French formatting has no in-scope common equivalent.
+2. (VALIDATED) kotlinx-datetime 0.6.1 is the pin, confirmed empirically (resolves,
+   compiles, DayOfWeek typealias holds).
+3. (FOR CONFIRMATION) Increment 7's retirement of the Kotest Geneva drops the raw test
+   count by 13 (whole 1162 -> 1161) while preserving the exact case/field/invariant
+   coverage in commonTest. This reads against R373's "every number equal or higher" but is
+   authorised by R373's own deletion clause + the operator's explicit increment-7
+   instruction, and checkTestFloor is green. Flagged for the record; no action taken beyond
+   documenting the arithmetic.
+
+--------------------------------------------------------------------------------
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------------------
+  - The README "Where we are" still opens "Pre-code. Phase 1 starts with FW1", which is
+    stale against the large body of work on main. Left as-is beyond the R367 note (out of
+    this task's scope; wording-only was the instruction).
+  - kotlinx-datetime brings +2 licence-graph modules (99 -> 101), all auto-attributed.
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+Every increment was pushed on green; origin/kmp-0 verified by `git rev-parse origin/kmp-0`
+after each push. Base origin/main unchanged (0ddc646) throughout; no rebase; main never
+force-pushed. The 6d/6e git-mv defect was fixed FORWARD (3a10583), not by force-push.
+Tips: ...9cde732 (inc 7). The inc-8 commit (SPEC D41 + README + this report) is the final
+origin/kmp-0 tip; its SHA is reported to the operator in the session message (it cannot
+contain its own hash). The FULL :app:gate + gate:clone on that tip + the merge to main are
+the operator's to run.
+
+END OF REPORT-KMP-0

@@ -26,7 +26,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
-private val CALC_DIR = File("src/main/kotlin/ch/monreleve/app/calc")
+// KMP-0: calc moved to :shared's commonMain (same package). This repo-wide threshold fence follows it there
+// (relative to :app's test working directory), so Rules.kt is still the single exempt source and the ui/design/
+// dev scans are unchanged.
+private val CALC_DIR = File("../shared/src/commonMain/kotlin/ch/monreleve/app/calc")
 private val UI_DIR = File("src/main/kotlin/ch/monreleve/app/ui")
 private val DESIGN_DIR = File("src/main/kotlin/ch/monreleve/app/design")
 private val DEV_DIR = File("src/main/kotlin/ch/monreleve/app/dev")
