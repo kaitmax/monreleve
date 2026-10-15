@@ -97,6 +97,13 @@ kotlin {
     iosSimulatorArm64()
 
     sourceSets {
+        // KMP-0 increment 6 (R371). kotlinx-datetime is api() so :app receives the shared calendar types
+        // transitively: the moved dossier/forecast functions take kotlinx.datetime.LocalDate/DayOfWeek, and
+        // :app maps its java.time values to them at the boundary (R372). The ONE new runtime dependency the
+        // hard boundary permits; :app keeps java.time for everything that stays.
+        commonMain.dependencies {
+            api(libs.kotlinx.datetime)
+        }
         commonTest {
             // KMP-0 increment 3 (R370): the generated fixture constants are a commonTest source dir. Passing
             // the task provider wires both the directory and the task dependency, so the constants are
