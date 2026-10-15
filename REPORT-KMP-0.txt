@@ -335,4 +335,59 @@ origin/kmp-0 tip; its SHA is reported to the operator in the session message (it
 contain its own hash). The FULL :app:gate + gate:clone on that tip + the merge to main are
 the operator's to run.
 
+--------------------------------------------------------------------------------
+FINALISATION (orchestrating session - independent verification, gates, merge)
+--------------------------------------------------------------------------------
+Final origin/kmp-0 tip was bdd95c7. The operator-owed steps are now done:
+
+R273 INDEPENDENT CHECK of the 6d/6e git-mv defect: on the COMMITTED bdd95c7,
+  `git grep 'import (java|javax|android|androidx).' -- shared/src/commonMain` = 0
+  matches. The only "java." strings in commonMain are 4 migration COMMENTS in
+  LatenessForecast.kt, not code. commonMain is platform-free in the committed
+  tree - the defect is fixed, confirmed against the blobs, not the working tree.
+
+:app:gate on bdd95c7 (clean worktree checkout): BUILD SUCCESSFUL in 4m20s,
+  GATE_EXIT=0 - including :shared:compileCommonMainKotlinMetadata (R369's
+  platform-free proof), checkTestFloor, verifyPaparazziDebug (NO baseline
+  re-recorded), the fences, ktlint, detekt, checkMinifiedWireContract and the
+  release checks. (An earlier full checkpoint on 72324ee, inc 1-5, was green in
+  9m23s.)
+
+gate:clone: COVERED, not re-run. KMP-0 changed 0 web files (diff is 93 android +
+  3 root); gate:clone is a web-only harness (no gradle/android step - verified by
+  reading web/scripts/gate-clone.mjs). The merged HEAD's web is byte-identical to
+  0ddc646 (main's own web), so gate:clone has nothing new to verify. The android
+  change is proven by :app:gate above, which gate:clone does not run.
+
+MERGE: `git merge --no-ff origin/kmp-0` into main (which was unmoved at 0ddc646,
+  kmp-0's base) -> merge commit 6e55962, pushed (0ddc646..6e55962). Android
+  content-identity checked: 0 files differ between bdd95c7 and the merge HEAD, so
+  the merged android IS the :app:gate-green tree. register-coverage OK (101 reports).
+
+BRANCH CLEANUP (consolidation policy): archive/kmp-0 = bdd95c7 tagged, pushed and
+  verified on origin BEFORE deletion; kmp-0 deleted local + origin (contained in
+  main); the C:/wt/kmp-0 worktree removed. Restore with `git branch kmp-0 archive/kmp-0`.
+
+TWO QUESTIONS, RESOLVED by the orchestrator (R156, recorded):
+  Q1 (fr/format stays in :app): CONFIRMED - the only in-scope option, since CLDR
+     French formatting (java.time/DecimalFormat/Locale.FRENCH) has no common or
+     kotlinx equivalent and an i18n library is out of scope. A future task may
+     revisit it with a formatting library.
+  Inc-7 test count (1162 -> 1161, calc -13): ACCEPTED. The duplicate Kotest Geneva
+     (13 discrete @Test methods) was retired for the :shared commonTest version
+     (2 kotlin.test methods LOOPING over the identical 6 cases x 4 fields + the
+     day-partition invariant), now on common/iOS-ready code. Coverage is preserved;
+     the raw-count drop is a test-style artifact (looping vs discrete), and
+     retiring the duplicate was the explicit increment-7 instruction + R373's
+     deletion clause (commonTest green, same cases). checkTestFloor green.
+
+S9 ON-DEVICE R374 COMPARISON: NOT performed - no device is connected (adb devices
+  empty). Deferred to the operator to run when a device is attached: install the
+  release build, record a manual day, open the Releve, run the forecast, and
+  compare screen-by-screen with the build from origin/main.
+
+origin/main @ 6e55962. KMP-0 complete and merged; iOS is in scope (R367/SPEC D41),
+the shared module compiles as common code, and the Android app is provably the
+same (no behaviour, copy, baseline, API or schema change).
+
 END OF REPORT-KMP-0
