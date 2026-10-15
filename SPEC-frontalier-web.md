@@ -118,6 +118,12 @@ Additive. None reverses a v2 decision; D16 and D18 in particular are reaffirmed.
 | D39 | **Dark mode tokens adopted; light ships first**, dark after launch. | — (reaffirms v1 §6.1) | The PDF is always light; dark doubles QA on the least valuable surface. |
 | D40 | **Touch targets: 44 px web, 48 dp Android.** | v1 §16 (48 everywhere) | Frontier §68 plus the Android platform guideline. |
 
+### v2.3 decisions — iOS and the shared module
+
+| # | Decision | Reverses | Rationale |
+|---|---|---|---|
+| D41 | **iOS enters scope, built with Kotlin Multiplatform, manual mode first.** The platform-free code — the calculation engine, the French copy, and the dossier/forecast logic — moves into a shared Kotlin Multiplatform module (`:shared`) with an Android target and the iOS targets declared, so it compiles for iOS **without changing the Android app**. iOS launches with **manual mode only**, a peer under the spec (D19), not a reduced product. iOS auto-detection is a later, separate task with its own measurement gate. | — (new) | R367 (owner's decision). The engine and copy are already language-neutral (D20); a shared module is the smallest step to a second client that cannot drift from the first. |
+
 Everything else — the calculation, the rounding rules, the zone/status distinction, the URL param contract, the design tokens, the linking mesh, the timestamps-as-evidence model — is carried over unchanged.
 
 ---
