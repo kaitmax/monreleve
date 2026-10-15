@@ -50,6 +50,11 @@ import { clearOutbox, readOutbox } from '@/lib/alerts/mailer';
 import { confirmByToken, unsubscribeByToken } from '@/lib/alerts/confirm';
 import { recordSubscription } from '@/lib/alerts/record';
 import { purgeUnconfirmed, PURGE_AFTER_DAYS } from '@/lib/alerts/purge';
+import {
+  CODE_ATTEMPT_WINDOW_MS,
+  MAX_CODE_ATTEMPTS_PER_DAY,
+  claimCodeAttempt,
+} from '@/lib/auth/magic-link';
 import { resetRateLimit } from '@/lib/alerts/rate-limit';
 import { POST as registerDevice } from '@/app/api/v1/devices/route';
 import { runDailyReminders } from '@/lib/reminders/job';
@@ -57,6 +62,9 @@ import { FakeTransport } from '@/lib/reminders/transport';
 
 /** Written once: a literal escape in a heredoc has bitten this session three times. */
 const NEWLINE = String.fromCharCode(10);
+
+/** An address of this file's own, so the budget tie does not share a fixture. */
+const BUDGET_EMAIL = 'budget-claim@example.com';
 
 // R171: the origin is a ROLE - "what the build was configured with" - and
 // FW20c made it one constant. It was a literal in thirteen files, which is
@@ -847,5 +855,62 @@ describe('CLAIM (R325): automatic mode keeps and sends no position, and the API 
 
     expect(response.status).toBe(400);
     expect(await response.json()).toMatchObject({ code: 'coordinates_refused' });
+  });
+});
+
+describe('CLAIM (R358/R361): the attempt fingerprints are erased after twenty-four hours', () => {
+  // ==========================================================================
+  // THE SENTENCE AND THE CONSTANT, TIED (R163, R181)
+  // ==========================================================================
+  //
+  // /confidentialite spells the duration out in words - "au bout de
+  // vingt-quatre heures" - because that is the sentence a French reader
+  // expects and "au bout de 24 heures" is not. A spelled-out number cannot
+  // interpolate from CODE_ATTEMPT_WINDOW_MS, so the tie is a test rather than
+  // an expression, which is exactly the remedy R163 names for a passage that
+  // cannot hold one.
+  //
+  // IT FAILS LOUDLY RATHER THAN SILENTLY, which is the half worth writing
+  // down. The map is asserted to CONTAIN the window's hours before the
+  // sentence is searched: move the constant to thirty-six and the test fails
+  // saying the spelling is unknown, instead of passing because a lookup
+  // returned undefined and `toContain(undefined)` was never reached.
+  const SPELLED: Readonly<Record<number, string>> = {
+    12: 'douze heures',
+    24: 'vingt-quatre heures',
+    36: 'trente-six heures',
+    48: 'quarante-huit heures',
+    72: 'soixante-douze heures',
+  };
+
+  it('is still on the page, with the duration the constant names', () => {
+    const hours = CODE_ATTEMPT_WINDOW_MS / (60 * 60 * 1000);
+
+    expect(Object.keys(SPELLED).map(Number)).toContain(hours);
+    expect(DISCLOSED_RECORDS.codeAttempts).toContain(SPELLED[hours]);
+  });
+
+  it('holds: an attempt older than the window stops counting', async () => {
+    await prisma.codeAttempt.deleteMany();
+    await prisma.verificationToken.deleteMany();
+
+    // Spend the budget, then age every attempt past the window.
+    for (let i = 0; i < MAX_CODE_ATTEMPTS_PER_DAY; i += 1) {
+      await claimCodeAttempt(BUDGET_EMAIL);
+    }
+
+    expect(await claimCodeAttempt(BUDGET_EMAIL)).toBe(false);
+
+    await prisma.codeAttempt.updateMany({
+      data: { attemptedAt: new Date(Date.now() - CODE_ATTEMPT_WINDOW_MS - 60_000) },
+    });
+
+    expect(await claimCodeAttempt(BUDGET_EMAIL)).toBe(true);
+
+    // And the aged rows are gone rather than merely ignored - the page says
+    // "effacées", which is a claim about the table and not about the count.
+    const remaining = await prisma.codeAttempt.count();
+
+    expect(remaining).toBe(1);
   });
 });

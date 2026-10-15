@@ -78,6 +78,47 @@ const CODE_DIGITS = 6;
  */
 export const MAX_CODE_ATTEMPTS = 5;
 
+/**
+ * Code attempts allowed against one ADDRESS per rolling window, across every
+ * code issued inside it.
+ *
+ * TEN, AND THE ARITHMETIC RATHER THAN A NUMBER SOMEBODY PICKED.
+ * MAX_CODE_ATTEMPTS above is five per REQUEST, and `issueMagicLink` deletes the
+ * previous row on every new request - so asking for a fresh email resets it to
+ * zero. Five per code, and codes are free: the per-code limit was never the
+ * ceiling, and no test could see that because every test was about one code.
+ *
+ * What remained was the code route's in-memory window, 20 per 10 minutes:
+ * 2 880 guesses a day against one chosen address, out of 10^6 - roughly 0.3 %
+ * a day and about 8 % over a month of sustained effort. And weaker than it
+ * reads, because an in-memory Map empties on every deploy or restart, so the
+ * attacker's real limit was "how often do they deploy".
+ *
+ * Ten per address per 24 h, counted in PostgreSQL, makes that month about
+ * 0.03 %. Ten is also well clear of an honest person: somebody who exhausts
+ * one code's five tries, asks for a new one and fat-fingers it twice is at
+ * seven, and the LINK in the same email never touches this budget at all.
+ */
+export const MAX_CODE_ATTEMPTS_PER_DAY = 10;
+
+/**
+ * The window the ten are counted over: twenty-four hours, ROLLING.
+ *
+ * Rolling rather than a calendar day, because a day that resets at midnight
+ * hands an attacker twenty attempts across a boundary they can simply wait
+ * for.
+ *
+ * IT IS ALSO THE NUMBER /confidentialite STATES for how long the attempt
+ * fingerprints are kept. That page spells the duration out in words, because
+ * "au bout de vingt-quatre heures" is the sentence a French reader expects and
+ * "au bout de 24 heures" is not. So the two are tied by a test rather than by
+ * an expression (R163): tests/db/privacy-claims.test.ts reads the sentence,
+ * converts the written number back to hours, and requires it to equal this
+ * constant. Move this to 48 and that test fails - which is the property, and
+ * the reason this comment does not claim an interpolation that is not there.
+ */
+export const CODE_ATTEMPT_WINDOW_MS = 24 * 60 * 60 * 1000;
+
 export interface IssuedMagicLink {
   /** The secret, which exists only in the email. Never stored. */
   readonly token: string;
@@ -149,6 +190,111 @@ export async function issueMagicLink(email: string): Promise<IssuedMagicLink> {
 }
 
 /**
+ * Fingerprint of an address, for the budget table.
+ *
+ * NORMALISED FIRST, because the budget is per PERSON and a person is not two
+ * people for having typed a capital letter. The code route already normalises
+ * before it calls in; this does it again rather than trusting a caller, since
+ * the cost of being wrong is a budget somebody can reset with Shift.
+ *
+ * SHA-256 AND NOT THE ADDRESS, which is the whole reason the table is
+ * publishable (R361). It answers "has this address spent its budget" for an
+ * address somebody already holds, and cannot answer "which addresses have
+ * tried" for anybody reading the table. See the model's note in schema.prisma.
+ *
+ * Exported because the erasure path has to delete by the same key, and a
+ * second implementation of it there would be a second definition (R206).
+ */
+export function codeAttemptKey(email: string): string {
+  return createHash('sha256').update(email.trim().toLowerCase()).digest('hex');
+}
+
+/**
+ * The advisory-lock class this module owns.
+ *
+ * The TWO-ARGUMENT form of pg_advisory_xact_lock is a different lock space
+ * from the one-argument form, so this cannot collide with pg-boss's locks
+ * however its keys are chosen; the class then separates this module's locks
+ * from any other two-argument lock a future caller adds.
+ */
+const CODE_ATTEMPT_LOCK_CLASS = 0x46434150;
+
+/**
+ * Claim one slot of the address's rolling budget. True if there was one.
+ *
+ * ============================================================================
+ * WHY A TRANSACTION AND A LOCK, AND NOT ONE CLEVER STATEMENT
+ * ============================================================================
+ *
+ * The obvious implementation is a single conditional insert:
+ *
+ *     INSERT INTO "CodeAttempt" ... SELECT ... WHERE (SELECT count(*) ...) < 10
+ *
+ * One statement, atomic, and WRONG under load for a reason that is easy to
+ * miss: READ COMMITTED fixes the statement's snapshot before it runs, so two
+ * bursts arriving together each count the rows that were committed BEFORE
+ * either began. Both see nine, both insert, and the budget is eleven. An
+ * advisory lock inside the same statement does not rescue it - by the time the
+ * lock is acquired the snapshot is already taken, and the count is of a world
+ * that no longer exists.
+ *
+ * It has to be two statements in one transaction: take the lock, THEN count
+ * under a fresh snapshot. That is what this does, and the thirty-parallel
+ * burst in tests/db/code-budget.test.ts is what proves it - it granted all
+ * thirty before this function existed.
+ *
+ * THE LOCK IS PER ADDRESS, so two people signing in at the same moment never
+ * wait for each other; only a burst against ONE address serialises, which is
+ * precisely the case this exists to bound.
+ *
+ * EXPIRED ROWS FOR THIS ADDRESS GO ON THE WAY IN. The scheduled sweep is the
+ * backstop for addresses that never come back; doing it here as well means an
+ * address under sustained attack never accumulates more than the window's
+ * worth, and that the count below is of the window exactly rather than of the
+ * window plus whatever the sweep has not reached yet.
+ */
+export async function claimCodeAttempt(
+  email: string,
+  now: number = Date.now(),
+): Promise<boolean> {
+  const key = codeAttemptKey(email);
+  const cutoff = new Date(now - CODE_ATTEMPT_WINDOW_MS);
+
+  return prisma.$transaction(
+    async (tx) => {
+      // Released when the transaction ends, however it ends - including by the
+      // connection dying, which a manually released lock would not survive.
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(${CODE_ATTEMPT_LOCK_CLASS}::int4, hashtext(${key})::int4)`;
+
+      await tx.codeAttempt.deleteMany({
+        where: { emailHash: key, attemptedAt: { lt: cutoff } },
+      });
+
+      const spent = await tx.codeAttempt.count({
+        where: { emailHash: key, attemptedAt: { gte: cutoff } },
+      });
+
+      if (spent >= MAX_CODE_ATTEMPTS_PER_DAY) {
+        return false;
+      }
+
+      // The stamp is the SERVER's, like every stamp in this product: the
+      // default on the column, never a value computed here.
+      await tx.codeAttempt.create({ data: { emailHash: key } });
+
+      return true;
+    },
+    // STATED RATHER THAN INHERITED (R345). Prisma's defaults are 2 s to wait
+    // for a pool connection and 5 s to finish. A burst against one address
+    // serialises on the advisory lock, so the last of thirty waits for
+    // twenty-nine sub-millisecond transactions - comfortably inside both
+    // defaults, and these are written down so that stays a decision rather
+    // than a vendor's number nobody chose.
+    { maxWait: 10_000, timeout: 10_000 },
+  );
+}
+
+/**
  * Exchange an address and a six-digit code for the address, consuming the whole
  * request - so the link in the same email no longer works either.
  *
@@ -169,6 +315,28 @@ export async function issueMagicLink(email: string): Promise<IssuedMagicLink> {
  * exchanges arriving together cannot both open a session.
  */
 export async function consumeCode(email: string, code: string): Promise<CodeResult> {
+  // THE BUDGET IS CLAIMED BEFORE ANYTHING IS READ (R358, R359).
+  //
+  // Before the row, not merely before the comparison, and the order is the
+  // design rather than an accident of where the line landed:
+  //
+  //   IT MAKES THE REFUSAL IDENTICAL IN EVERY CASE. An attempt against an
+  //   address with no outstanding request costs a slot exactly like a wrong
+  //   guess against a live one. Spending the slot only when a row exists would
+  //   make the budget itself an oracle for "has a code been requested here".
+  //
+  //   IT IS THE STRICTER READING. An attempt is an attempt; a guesser does not
+  //   get a free one for aiming at a request that has already expired.
+  //
+  // THE PERSON THIS LOCKS OUT STILL HAS A WAY IN, which is what makes a
+  // per-address budget acceptable at all: the LINK in the same email never
+  // touches this budget, so somebody whose ten were spent by an attacker taps
+  // the link instead. That is also why `too_many_attempts` must keep saying
+  // what to do next rather than only that the door is shut.
+  if (!(await claimCodeAttempt(email))) {
+    return { ok: false, reason: 'too_many_attempts' };
+  }
+
   const row = await prisma.verificationToken.findFirst({ where: { identifier: email } });
 
   if (row === null || row.code === null) {
