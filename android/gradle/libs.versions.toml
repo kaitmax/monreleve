@@ -82,6 +82,10 @@ junit-vintage-engine = { group = "org.junit.vintage", name = "junit-vintage-engi
 json-org = { group = "org.json", name = "json", version.ref = "jsonOrg" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
+# KMP-0 increment 1 (R368). The multiplatform common-test assertion library (kotlin.test), used by
+# :shared's commonTest. Versioned with the Kotlin compiler (kotlin = 2.0.21) because kotlin-test ships
+# in lockstep with the compiler, the same reasoning kotlin-reflect above follows.
+kotlin-test = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.ref = "kotlin" }
 # AN5: the offline record store. room-runtime + room-ktx (suspend DAO, Flow) in
 # main; room-compiler runs under KSP; room-testing is androidTest-only, for the
 # MigrationTestHelper harness R187 requires from the first version.
@@ -94,6 +98,18 @@ androidx-browser = { group = "androidx.browser", name = "browser", version.ref =
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
+# KMP-0 increment 1 (R368/R136). :shared is a Kotlin Multiplatform library with an Android target.
+# The setup chosen is com.android.library + org.jetbrains.kotlin.multiplatform with androidTarget() -
+# NOT the newer com.android.kotlin.multiplatform.library plugin. Why (R136 evidence, R156 conservative):
+#   - this is the long-established, most-documented KMP+Android combination, stable across AGP 8.x and
+#     Kotlin 2.0.x, so it adds no "bleeding edge" risk on top of the module being new (the AN2/AN5
+#     mature-stable-not-latest discipline);
+#   - its source-set names (androidMain, androidUnitTest) let the existing Kotest specs move into
+#     :shared's Android unit-test source set unchanged (R373), and testDebugUnitTest runs them on the JVM;
+#   - com.android.library reuses the SAME AGP 8.10.1 already on the classpath - no version bump (the hard
+#     boundary), where com.android.kotlin.multiplatform.library would be a second, newer AGP component.
+android-library = { id = "com.android.library", version.ref = "agp" }
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
