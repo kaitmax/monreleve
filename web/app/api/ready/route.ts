@@ -17,8 +17,9 @@ import { readiness } from '@/lib/content/readiness';
 /** Per-request: it reads the runtime marker, which a prerendered response cannot. */
 export const dynamic = 'force-dynamic';
 
-export function GET(): Response {
-  const result = readiness();
+// ASYNC SINCE R353: the database check has to ask the database.
+export async function GET(): Promise<Response> {
+  const result = await readiness();
 
   return Response.json(result, {
     // 503 rather than 500: the service is temporarily unable to handle the

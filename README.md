@@ -142,8 +142,29 @@ the running version serving, which is the outcome anyone would want.
 
 `/api/ready` reports a **list of named checks**, passing ones included, because
 a deploy log that shows which checks ran is what makes it possible to notice
-one silently ceasing to be evaluated. The database check joins it when there is
-a database; it is deliberately not stubbed until then.
+one silently ceasing to be evaluated. Today there are two: **site-origin** and
+**database** (R353).
+
+The **database** check passes only when the database is both REACHABLE (a
+`SELECT 1` inside 2 s) and MIGRATED (every migration this build ships is
+recorded finished in `_prisma_migrations`, none rolled back). Either half
+failing returns 503, which stops a deploy and leaves the running version up.
+It reports one of four codes - `unreachable`, `timeout`, `unmigrated`,
+`migration_failed` - and **never** the driver error, the host, the port or a
+migration name: `/api/ready` is unauthenticated, so the detail goes to the
+server log instead (R354).
+
+| code | what the operator does |
+|---|---|
+| `unreachable` | start the database service; check `DATABASE_URL` resolves from inside the container |
+| `timeout` | the database is slow or unreachable across the network; it may still be starting |
+| `unmigrated` | run `prisma migrate deploy` (docs/deploy.md section 4), then redeploy |
+| `migration_failed` | a migration is recorded rolled back; resolve it against the database before serving |
+
+Outside a serving process the database check is **not evaluated** rather than
+passed: it stays in the list with `ok: null`, so `pnpm build` and CI still
+need no database (R355) and a check that stopped running cannot hide as a
+pass.
 
 The site still serves — degraded is not broken. Build-time fallback stays, so
 `pnpm build` and CI need no environment, and `/api/ready` answers **200** there

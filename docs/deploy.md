@@ -96,6 +96,24 @@ that is running perfectly and logging nothing.
 | Path | Answers | Point it at |
 |---|---|---|
 | `/api/ready` | 200 ready, **503 while degraded** | Coolify's **deploy** health check |
+
+**`/api/ready` checks the database (R353).** It answers 503 unless the
+database is reachable (`SELECT 1` inside 2 s) **and** carries every migration
+this build ships. The body names one of `unreachable`, `timeout`,
+`unmigrated`, `migration_failed` - never the driver error, the host, the port
+or a migration name, because this endpoint is unauthenticated (R354); the
+detail is in the container log.
+
+For `unmigrated`, the fix is section 4 of this document. For `unreachable`,
+check the database service is up and that `DATABASE_URL` resolves from inside
+the container. **A failing readiness check stops the deploy and leaves the
+running version serving** - that is the point of pointing Coolify here rather
+than at `/api/health`.
+
+`/api/health` deliberately does **not** check the database: an orchestrator
+restarts what fails liveness, and a restart cannot repair a database, so a
+liveness check that waited on a slow one would crash-loop the container while
+the previous version stayed down.
 | `/api/health` | 200 whenever the process answers | a restart policy, if any |
 
 **They are not interchangeable, and R83 is why.** Readiness returning 503 stops

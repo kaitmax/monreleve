@@ -1,0 +1,268 @@
+====================================================================
+REPORT-FW-READY.txt - R353-R357: readiness knows about the database
+Mon Releve / frontalier   2026-10-15
+====================================================================
+
+NOTE ON SPELLING. Pure ASCII, as the protocol requires. French phrases
+are transliterated; the accented originals live in web/lib/fr (R155).
+
+====================================================================
+SUMMARY
+====================================================================
+/api/ready gained a "database" check that passes only when the
+database is REACHABLE and MIGRATED. Either half failing returns 503,
+which stops a Coolify deploy and leaves the running version serving.
+
+THE GAP THIS CLOSES WAS NOT HYPOTHETICAL AND WAS MEASURED THE SAME
+DAY. Production's database was reachable but unmigrated: every
+data-backed request returned 500 - sign-in, the alert form,
+/verifier/<code> - while /api/ready answered 200 with its single
+site-origin check and a deploy would have sailed through. The deploy
+gate R83 built for exactly this case could not see it.
+
+Proven end to end in the walkthrough below: with the database stopped
+/api/ready is 503 "unreachable"; with an empty schema it is 503
+"unmigrated"; after prisma migrate deploy it is 200. Throughout,
+/api/health stays 200 and the public pages serve.
+
+====================================================================
+R273 - WHERE THIS BELONGS
+====================================================================
+FW-READY is not a task in tasks/todo.md by that name; the prompt says
+so and asks where it belongs. It belongs to FW28, todo.md lines 598
+and 702 - the task that built the Dockerfile, /api/health, /api/ready
+and docs/deploy.md, and whose own description already names "Coolify's
+deploy health check points at /api/ready, NOT /api/health (ruling
+R83)". FW28 shipped; this extends its endpoint. todo.md is an operator
+file and was not edited (out of scope).
+
+====================================================================
+R1 - gate:clone ON origin/main's HEAD
+====================================================================
+SATISFIED WITH EVIDENCE RATHER THAN RE-RUN. origin/main is dcac1df,
+and dcac1df is the exact commit gate:clone verified immediately before
+it was pushed, earlier in this same session:
+
+  GATE:CLONE PASSED
+    commit  dcac1df4c04d66293d2365032ef128c4bae34830
+
+Re-running it would have measured the same tree a second time.
+
+====================================================================
+WHAT THE RUNNER IMAGE CONTAINS (R353b, with the evidence)
+====================================================================
+THE MIGRATIONS DIRECTORY IS IN THE IMAGE, so the check compares
+against it and nothing is generated at build time.
+
+  web/Dockerfile:292
+    COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+
+VERIFIED ON THE RUNNING PRODUCTION CONTAINER, not only read off the
+Dockerfile - earlier in this session, for the migration work:
+
+  $ docker exec <app> sh -lc 'ls -1 prisma/'
+    migrations
+    schema.prisma
+    seed.ts
+  migrations: 14 entries (13 migration directories + migration_lock.toml)
+
+So expectedMigrations() reads prisma/migrations from disk at probe
+time. A hand-kept list is what the ruling forbids and for the obvious
+reason: a list somebody maintains disagrees with the migrations the
+first time somebody forgets. A directory listing cannot.
+
+(The same container also proved the OTHER half of FW28's image claim
+false: node_modules/prisma/build/index.js does NOT exist in the runner
+- Next standalone traces only what the server imports - which is why
+docs/deploy.md section 4's command could never have run. Fixed in
+cbbf481 earlier today, separately.)
+
+====================================================================
+THE INCREMENTS
+====================================================================
+1. RED FIRST. tests/unit/content/readiness.test.ts gained a block
+   covering every ruling with the probe INJECTED, so no database is
+   needed to test the DECISION readiness() makes:
+     reachable+migrated -> ready
+     each of unreachable / timeout / unmigrated / migration_failed
+       -> not ready, and the reason named
+     marker absent -> not evaluated, and NOT a plain pass
+     the no-leak assertion (R354)
+   RED: 10 failed - "expected undefined to be true", "the check stays
+   in the list: expected undefined to be defined". There was no
+   database check to find.
+
+2. GREEN. lib/content/readiness.ts:
+     - ReadinessReason: the four fixed codes
+     - DatabaseProbe, injectable, defaulting to the real probe
+     - readiness() is async; the route awaits it
+     - ok becomes boolean | null (see R355 below)
+     - databaseProbe(): SELECT 1 raced against a 2 s timeout, then the
+       migration comparison
+   Unit tests: 16 passed.
+
+3. DATABASE SUITE. tests/db/readiness-database.test.ts - the probe
+   itself against a real PostgreSQL, because the interesting states
+   cannot be faked: a missing migration row, a rolled-back one, and
+   the migrated control. Every case restores what it changed in
+   afterEach, so a test that dies cannot leave the next run reporting
+   a false "unmigrated".
+   tests/db/readiness-route.test.ts - the same contract through the
+   ROUTE HANDLERS (R204), because readiness() can be perfect while the
+   route forgets to await it and serves a Promise.
+   test:db: 624 -> 634 passed.
+
+4. DOCS. README.md's readiness section and docs/deploy.md's endpoint
+   table now carry the four reason codes and what the operator does
+   for each. The README sentence the prompt names - "The database
+   check joins it when there is a database; it is deliberately not
+   stubbed until then" - is gone: there has been a database since
+   FW14 and the check now exists.
+
+====================================================================
+R355 - THE THIRD STATE, AND WHY ok IS NULLABLE
+====================================================================
+`ok` is now `true | false | null`.
+
+A check that did not run must not report `ok: true`, because a check
+nobody ran reading as a check that passed is the exact shape this
+project keeps finding (R133, R154). It must also not be DROPPED from
+the list, because then a check that silently stopped being evaluated
+becomes invisible - which is the reason the list reports its passes at
+all.
+
+So: `ok: null`, present in the list, with a detail saying it was not
+evaluated and why. `ready` is computed as `every(check.ok !== false)`,
+so a null does not block (pnpm build and CI need no database) and
+cannot be mistaken for a pass.
+
+====================================================================
+R356 - HEALTH DOES NOT CHECK THE DATABASE, AND THAT IS A DECISION
+====================================================================
+R356 PERMITS health to add "database" to its degraded reasons ("MAY").
+It does not, and the reasoning is recorded in the test rather than
+only here. R83's own argument, one level down:
+
+  AN ORCHESTRATOR RESTARTS WHAT FAILS LIVENESS.
+
+A liveness endpoint that queries the database fails when the database
+is merely SLOW, and the restart that follows cannot repair a database.
+The container crash-loops while the previous version stays down -
+precisely the failure R83 exists to prevent, reintroduced through the
+body instead of the status code. A database problem belongs to
+readiness, where failing stops a DEPLOY and leaves the running version
+serving.
+
+ASSERTED BY TIMING, because "it did not query" is otherwise invisible:
+tests/db/readiness-route.test.ts requires /api/health to answer in
+under 100 ms, which a handler awaiting even a fast local SELECT would
+not, and which against a stopped database would sit on the 2 s budget.
+The walkthrough confirms it with the database actually stopped.
+
+====================================================================
+THE NO-LEAK TEST (R354)
+====================================================================
+Three, at three levels, because the leak can be reintroduced at any:
+
+  unit  - a probe is handed a realistic driver error containing a
+          connection string; the serialised readiness body must not
+          contain the host, the password, the port or "postgres://",
+          and MUST still contain "database" and "unreachable" (R133:
+          every absence assertion above passes against an empty body).
+  db    - the probe's own return value must not contain the migration
+          name it logged, nor anything from DATABASE_URL.
+  route - the response body from the real handler, same assertions.
+
+The migration name goes to the server log and never to the body: a
+migration name describes the schema, and /api/ready is unauthenticated.
+
+====================================================================
+WALKTHROUGH - all four states, bodies verbatim
+====================================================================
+Built image served locally with FRONTALIER_RUNTIME=1 and a real origin.
+
+1. DATABASE UP AND MIGRATED
+   /api/ready 200
+   {"ready":true,"checks":[{"name":"site-origin","ok":true},
+    {"name":"database","ok":true}]}
+
+2. DATABASE STOPPED  (docker stop frontalier-postgres)
+   /api/ready 503
+   {"ready":false,"checks":[{"name":"site-origin","ok":true},
+    {"name":"database","ok":false,"reason":"unreachable","detail":
+    "The database did not answer. Check the database service is
+    running and that DATABASE_URL points at it from inside the
+    container. Ruling R353."}]}
+   /api/health 200  status=ok  reasons=[]        <- R356
+   R357, public pages with the database down:
+     /                                            200
+     /guides/teletravail-frontalier-40-pourcent   200
+     /calculateur-teletravail-frontalier          200
+
+3. DATABASE UP, SCHEMA EMPTY
+   A SEPARATE scratch database was created for this so the dev one was
+   never emptied; it was dropped afterwards.
+   /api/ready 503
+   {"ready":false,"checks":[{"name":"site-origin","ok":true},
+    {"name":"database","ok":false,"reason":"unmigrated","detail":
+    "The database is reachable but does not have every migration this
+    version ships. Run prisma migrate deploy as docs/deploy.md section
+    4 describes, then redeploy. Ruling R353."}]}
+
+   THIS IS THE PRODUCTION STATE FROM THIS MORNING, and it is the one
+   that matters: reachable, so a naive connectivity check passes, and
+   unmigrated, so every data-backed request 500s.
+
+4. AFTER prisma migrate deploy ON THAT SCRATCH DATABASE
+   All migrations have been successfully applied.
+   /api/ready 200
+   {"ready":true,"checks":[{"name":"site-origin","ok":true},
+    {"name":"database","ok":true}]}
+
+CLEANUP: both servers killed, scratch database dropped, dev database
+confirmed "Database schema is up to date!".
+
+====================================================================
+OPERATOR STEPS FOR PRODUCTION
+====================================================================
+NOTHING IS REQUIRED. Production's database was migrated earlier today
+(13 migrations, 0 failed), so the new check will pass on the next
+deploy. What changes is what happens NEXT time:
+
+  - a deploy against an unmigrated database now STOPS at the gate
+    instead of going live and 500-ing;
+  - Coolify's deploy health check must point at /api/ready, which
+    docs/deploy.md already specifies. NOTE: the application's health
+    check is currently DISABLED in Coolify (health_check_enabled:
+    false, observed via the API). Until it is enabled, this check
+    cannot stop anything. That is an operator setting, not a code
+    change, and is raised rather than altered.
+
+If /api/ready ever answers 503 "unmigrated": run docs/deploy.md
+section 4 (corrected in cbbf481) and redeploy.
+
+====================================================================
+DEVIATIONS
+====================================================================
+1. R356's optional health reason was NOT taken. Reasoning above; the
+   conservative reading, and recorded in a test rather than a comment.
+2. The e2e assertion in home.spec.ts was widened, not merely relaxed.
+   It asserted checks.every(ok), which cannot express "not evaluated".
+   It now asserts the R355 property directly - the database check is
+   PRESENT and explicitly null - which is a stronger claim than the
+   one it replaced.
+
+====================================================================
+PARKED
+====================================================================
+PARK: Coolify's health check for the application is disabled, so no
+readiness result currently gates a deploy. Enabling it is an operator
+action; the endpoint is ready for it.
+
+====================================================================
+QUESTIONS
+====================================================================
+1. Should /api/ready's database check also run during the container's
+   own HEALTHCHECK (Dockerfile line ~167 currently probes /api/ready)?
+   It already does, by virtue of pointing there - worth confirming the
+   2 s budget sits inside the container healthcheck's own timeout.

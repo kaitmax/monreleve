@@ -171,11 +171,28 @@ test('/api/ready is 200 and ready when the process is not marked as serving', as
   // endpoint over, and it would block the pipeline for a condition that
   // publishes nothing.
   const response = await request.get('/api/ready');
-  const body = (await response.json()) as { ready: boolean; checks: { ok: boolean }[] };
+  const body = (await response.json()) as {
+    ready: boolean;
+    checks: { name: string; ok: boolean | null }[];
+  };
 
   expect(response.status()).toBe(200);
   expect(body.ready).toBe(true);
-  expect(body.checks.every((check) => check.ok)).toBe(true);
+
+  // NOTHING FAILED - but a plain truthiness check over every ok is no
+  // longer the way to say so.
+  // R353 added the database check and R355 gives it a third state: this
+  // server is NOT marked as serving, so the check is NOT EVALUATED and
+  // reports ok: null. Null must not block (a build needs no database) and
+  // must not read as a pass (a check that stopped running would hide).
+  expect(body.checks.every((check) => check.ok !== false)).toBe(true);
+
+  // And that is asserted directly, because it is the property R355 exists
+  // for: present in the list, explicitly not evaluated.
+  const database = body.checks.find((check) => check.name === 'database');
+
+  expect(database, 'the check stays listed so its absence is visible').toBeDefined();
+  expect(database?.ok).toBeNull();
 });
 
 test('the meta description delivers both thresholds, formatted (R147, R154)', async ({ page }) => {
