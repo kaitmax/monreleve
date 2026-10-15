@@ -721,3 +721,51 @@ model NameChange {
 
   @@index([userId])
 }
+
+// ---------------------------------------------------------------------------
+// RULING R358/R361: THE PERSISTENT CODE BUDGET.
+//
+// consumeCode already allows 5 attempts per issued code - but issueMagicLink
+// DELETES the previous row on every new request, so asking for a new email
+// RESETS that counter. The real ceiling was therefore the code route's
+// in-memory per-address window: about 2 880 guesses a day against one chosen
+// address, from a space of 10^6. Roughly 0.3 % a day and about 8 % over a
+// month of sustained effort - and weaker than it reads, because the in-memory
+// Map empties on every deploy or restart.
+//
+// This table is the budget that survives both: 10 attempts per address per
+// rolling 24 hours, counted across EVERY code issued in that window. A month
+// of sustained attack is then about 0.03 %.
+//
+// WHAT IT DELIBERATELY DOES NOT STORE (R361). No IP, no user agent, no user
+// id, no code, and NOT THE ADDRESS - only the SHA-256 of the normalised
+// address. The table can answer "has this address spent its budget" and
+// cannot answer "which addresses have tried", because the hash is only
+// reversible for an address somebody already holds. It is therefore not a
+// list of who attempted to sign in.
+//
+// NO RELATION TO User, ON PURPOSE. Attempts are counted for ANY address,
+// registered or not - a foreign key would make the row's existence depend on
+// registration, which is exactly the enumeration signal docs/api-v1.md 1.5
+// forbids. FW26's erasure path deletes by hash instead, which is why that
+// path has to compute the hash it is deleting.
+//
+// Rows older than 24 hours are deleted by the existing purge job (FW26).
+// ---------------------------------------------------------------------------
+model CodeAttempt {
+  id String @id @default(cuid())
+
+  /// SHA-256 of the normalised address (trimmed, lower-cased), hex.
+  /// NEVER the address itself - see the note above.
+  emailHash String
+
+  /// Server clock at the moment the slot was claimed. Server-assigned, like
+  /// every stamp in this product.
+  attemptedAt DateTime @default(now())
+
+  /// The window query is always (emailHash, attemptedAt >= cutoff), and the
+  /// purge is always (attemptedAt < cutoff). One composite index serves the
+  /// first; attemptedAt alone serves the second.
+  @@index([emailHash, attemptedAt])
+  @@index([attemptedAt])
+}

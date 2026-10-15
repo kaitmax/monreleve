@@ -43,6 +43,7 @@
 // `$transaction` or not at all.
 
 import { prisma } from '@/lib/db/client';
+import { codeAttemptKey } from '@/lib/auth/magic-link';
 
 export interface ErasureReceipt {
   /** Rows destroyed, by table, so a caller can report what happened. */
@@ -111,6 +112,21 @@ export async function deleteAccount(userId: string): Promise<ErasureReceipt> {
       where: { identifier: user.email },
     });
 
+    // CodeAttempt is keyed by a HASH of the address, not by userId, so it
+    // does not cascade either - and it is personal data this product has
+    // disclosed on /confidentialite, which means an erasure that left it
+    // behind would contradict the page. Deleted by the same key the budget
+    // claims with (R206: one home for the fingerprint, not a second sha256
+    // computed here).
+    //
+    // IT COSTS NOTHING IN SECURITY. Clearing a budget this way requires
+    // already holding a valid token for the account and destroying that
+    // account to do it - and the budget protects the code entry for an
+    // address, which a person who holds the account does not need to attack.
+    const attempts = await tx.codeAttempt.deleteMany({
+      where: { emailHash: codeAttemptKey(user.email) },
+    });
+
     // READ, NOT DELETED. A subscription to the alert list is a separate
     // consent under a separate identity - see the receipt's own note - and it
     // is reported rather than silently kept.
@@ -134,6 +150,7 @@ export async function deleteAccount(userId: string): Promise<ErasureReceipt> {
         IssuanceRecord: issuances,
         NameChange: nameChanges,
         VerificationToken: verifications.count,
+        CodeAttempt: attempts.count,
       },
     };
   });

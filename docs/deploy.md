@@ -72,6 +72,40 @@ did not go out* into a crash-loop (R83).
 | `RESEND_API_KEY` | confirmation mail is collected in memory and delivered to nobody |
 | `FCM_PROJECT_ID` / `FCM_CLIENT_EMAIL` / `FCM_PRIVATE_KEY` | the daily reminder job is **not scheduled at all**, reported by name |
 | `ANDROID_PACKAGE_NAME` / `ANDROID_SHA256_CERT_FINGERPRINTS` | `/.well-known/assetlinks.json` is withheld entirely (R205) |
+| `TRUSTED_PROXY_HOPS` | defaults to **1** (Traefik only). See below - the default is correct for this deployment |
+
+### `TRUSTED_PROXY_HOPS` — which `X-Forwarded-For` entry is the real client (R362)
+
+Rate limiting buckets callers by address, and the address comes from
+`X-Forwarded-For`. **Proxies append**, so the header reads
+`<whatever the client sent>, <what hop 1 saw>, <what hop 2 saw>, …` — the
+**rightmost** entries are the ones our own infrastructure wrote and the
+leftmost is attacker-controlled.
+
+`TRUSTED_PROXY_HOPS` is how many proxies append before the request reaches
+the app. The code takes the **n-th entry from the right**. Default `1`:
+Coolify's Traefik, with nothing in front of it. Put a CDN in front and it
+becomes `2`.
+
+> This was wrong until FW-CODE-CAP, and the consequence was real: the code
+> took the **first** entry, so any caller could choose their own rate-limit
+> bucket — or share everyone else's — by sending one header. The per-IP
+> limit was advisory against exactly the person it exists to stop.
+
+**How to verify the count on the VPS**, which cannot be checked from the
+repository — the number depends on what is actually in front of the app:
+
+1. From a machine whose public address you know, request any page.
+2. Read the container log for that request and print the raw header:
+   `docker logs <app container> | grep -i x-forwarded-for` (or add a
+   temporary log line if the header is not already recorded).
+3. Count the entries and find the position of **your real address** from the
+   right. That position is `TRUSTED_PROXY_HOPS`.
+
+If your address is the **last** entry, the default of `1` is correct and
+nothing needs setting. If the value is wrong, rate limiting still works —
+it just buckets on the wrong thing, which is why this is worth checking
+once rather than assuming.
 
 ### Set by the image — do not set these in the host
 

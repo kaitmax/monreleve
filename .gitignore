@@ -44,3 +44,8 @@ web/dist-parity/
 # it is not this repository's, and R334 forbids deleting what a session did
 # not create.
 MonReleve/
+
+# R349: the per-worktree session lock. Operational state, never repository
+# content - it was committed once by a `git add -A` run from web/, which
+# stages the whole repository and not the current directory.
+.session-lock.json

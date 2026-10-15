@@ -45,6 +45,14 @@ const EMAIL = 'connexion@example.com';
 beforeEach(async () => {
   await prisma.verificationToken.deleteMany();
   await prisma.user.deleteMany();
+  // FW-CODE-CAP: the per-address budget (R358) OUTLIVES a request on purpose,
+  // so it also outlives a test in this file unless it is cleared here. Two
+  // tests below failed the moment the budget became real - not because either
+  // was wrong, but because each spends attempts against the same address and
+  // the sixth test in the file was starting with the first five already gone.
+  // That is the behaviour the budget exists to have; this is the fixture
+  // catching up with it.
+  await prisma.codeAttempt.deleteMany();
 });
 
 afterAll(async () => {

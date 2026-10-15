@@ -28,6 +28,7 @@ import { prisma } from '@/lib/db/client';
 import { isSchedulerRunning, startScheduler, stopScheduler } from '@/lib/scheduler/boss';
 import {
   PURGE_CRON,
+  CODE_ATTEMPT_QUEUE,
   PURGE_QUEUE,
   REMINDER_CRON,
   REMINDER_QUEUE,
@@ -77,7 +78,7 @@ afterEach(async () => {
   // flake with no visible cause, arriving in a different file from the one
   // that created it.
   if (running !== null) {
-    for (const queue of [PURGE_QUEUE, REMINDER_QUEUE]) {
+    for (const queue of [PURGE_QUEUE, CODE_ATTEMPT_QUEUE, REMINDER_QUEUE]) {
       await running.unschedule(queue).catch(() => undefined);
       await running.deleteAllJobs(queue).catch(() => undefined);
     }
@@ -102,6 +103,9 @@ describe('what gets registered', () => {
     const registration = await registerJobs(boss, UNCONFIGURED);
 
     expect(registration.scheduled).toContain(PURGE_QUEUE);
+    // FW-CODE-CAP: the attempt sweep needs a database and nothing else, so it
+    // is scheduled in exactly the cases the thirty-day purge is.
+    expect(registration.scheduled).toContain(CODE_ATTEMPT_QUEUE);
 
     const schedule = await boss.getSchedule(PURGE_QUEUE);
 
@@ -135,7 +139,7 @@ describe('what gets registered', () => {
 
     const registration = await registerJobs(boss, DEVELOPMENT);
 
-    expect(registration.scheduled).toEqual([PURGE_QUEUE, REMINDER_QUEUE]);
+    expect(registration.scheduled).toEqual([PURGE_QUEUE, CODE_ATTEMPT_QUEUE, REMINDER_QUEUE]);
     expect(registration.skipped).toEqual([]);
 
     const schedule = await boss.getSchedule(REMINDER_QUEUE);
@@ -150,8 +154,8 @@ describe('what gets registered', () => {
 
     const second = await registerJobs(boss, DEVELOPMENT);
 
-    expect(second.scheduled).toEqual([PURGE_QUEUE, REMINDER_QUEUE]);
-    expect(await boss.getSchedules()).toHaveLength(2);
+    expect(second.scheduled).toEqual([PURGE_QUEUE, CODE_ATTEMPT_QUEUE, REMINDER_QUEUE]);
+    expect(await boss.getSchedules()).toHaveLength(3);
   });
 
   it('names the skip in the line a log carries', () => {
