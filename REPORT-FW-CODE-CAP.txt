@@ -504,7 +504,20 @@ DEVIATIONS
    asserting a mechanism nothing delivers is R154 exactly, and writing one
    while fixing R154 elsewhere is worth recording.
 
-4. AUTH_API_COPY.invalidCode WAS NOT CHANGED. It also says "demandez un
+4. I COMMITTED THE SESSION LOCK, AND IT WAS PUSHED. .session-lock.json is
+   R349 operational state and belongs in no commit. It went in with 3/7
+   because `git add -A` run from web/ stages the WHOLE repository rather than
+   the current directory - a thing I believed was scoped to the cwd and is
+   not. Found while releasing the lock at the end: git status reported it as
+   a tracked deletion rather than an untracked file disappearing.
+
+   Corrected forward in 7/7 rather than by rewriting history: the file is
+   untracked and .gitignore now names it, so the next session cannot repeat
+   it. The four commits that carry it keep carrying it; a force-push to tidy
+   a mistake of mine over a branch somebody may already have fetched is a
+   worse trade than the stray file.
+
+5. AUTH_API_COPY.invalidCode WAS NOT CHANGED. It also says "demandez un
    nouveau code", which is wrong in exactly one case: the wrong guess that was
    the tenth. The prompt's increment 5 asks for ONE sentence, about
    too_many_attempts; this is a narrower instance in a different string and
