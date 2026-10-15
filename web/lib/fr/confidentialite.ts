@@ -95,6 +95,20 @@ export const DISCLOSED_RECORDS = {
     'le lien lui-même. Tant que ce lien n’a pas été ouvert, aucun compte ' +
     'n’existe, et si personne ne l’ouvre il ne reste rien.',
 
+  // FW-CODE-CAP (R361). SAID BECAUSE SOMETHING IS KEPT, not because it is
+  // interesting: a six-digit code can be guessed, so the attempts are
+  // counted per address and the count has to outlive a restart. What is
+  // kept is an EMPREINTE - the address is never stored here - and it is
+  // kept for 24 hours. The sentence says all three, because the
+  // enumeration this belongs to is closed and a column it does not cover
+  // makes the page false rather than merely incomplete.
+  codeAttempts:
+    'Lorsqu’un code à six chiffres est saisi pour cette adresse, le ' +
+    'service enregistre une empreinte de l’adresse — jamais l’adresse ' +
+    'elle-même — et l’heure de chaque tentative, afin d’empêcher qu’un ' +
+    'code soit deviné à force d’essais. Ces traces sont effacées au bout ' +
+    'de vingt-quatre heures.',
+
   // --- Recorded for an account, under « pour votre compte et pour lui seul ».
   email:
     'votre adresse e-mail, qui sert aussi à vous connecter, par un lien ' +
@@ -248,6 +262,12 @@ export const CONFIDENTIALITE_COPY = {
     WEB_STATEMENTS.twoCases,
     DISCLOSED_RECORDS.alertList,
     DISCLOSED_RECORDS.signInLink,
+
+    // FW-CODE-CAP (R361). BESIDE THE SIGN-IN LINK because it is the same
+    // moment in the same flow: a reader who has just read what is kept when
+    // a link is requested should read what is kept when a code is typed,
+    // without having to find a different section.
+    DISCLOSED_RECORDS.codeAttempts,
 
     // R138: a privacy claim is written in the tense that matches the code.
     // Present tense from FW10 for analytics that do not exist; the future

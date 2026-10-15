@@ -171,6 +171,14 @@ export const PERSONAL_DATA: Readonly<Record<string, Disclosure>> = {
   // added to the notice in the same change - the enumeration is closed, so
   // storing these without a line there would have been a published
   // falsehood rather than a gap.
+  // FW-CODE-CAP (R358/R361): the persistent code budget. The hash is a
+  // fingerprint OF personal data, so it is disclosed as personal data -
+  // NOT_PERSONAL is asserted empty on purpose, and "it is only a hash"
+  // is exactly the argument that would open it.
+  'CodeAttempt.id': 'codeAttempts',
+  'CodeAttempt.emailHash': 'codeAttempts',
+  'CodeAttempt.attemptedAt': 'codeAttempts',
+
   'ReminderSent.id': 'reminderLog',
   'ReminderSent.userId': 'reminderLog',
   'ReminderSent.sentOn': 'reminderLog',

@@ -165,6 +165,12 @@ describe('the row, and the constraint that keeps it one row', () => {
       // row read back. P4-1 is closed, and the transcription was right.
       'Account',
       'AlertSubscriber',
+      // FW-CODE-CAP (R358/R361): the persistent six-digit-code budget, 10
+      // attempts per address per 24 h. It stores only the SHA-256 of the
+      // normalised address and the time, and has NO relation to User - a
+      // foreign key would make a row exist only for registered addresses,
+      // which is the enumeration signal docs/api-v1.md 1.5 forbids.
+      'CodeAttempt',
       // D21, replacing the PushSubscription a web-push design would need.
       'Device',
       // FW22 increment 3: one sign-in on one device, and the credentials

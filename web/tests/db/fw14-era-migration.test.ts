@@ -331,6 +331,10 @@ describe('the FW21 migration on an FW14-era database', () => {
     expect(tables).toEqual([
       'Account',
       'AlertSubscriber',
+      // FW-CODE-CAP (R358): the persistent code budget. Additive, like every
+      // table above it - the point of this test is that a migration adds
+      // alongside rather than instead.
+      'CodeAttempt',
       'Device',
       'DeviceSession',
       'Entry',
