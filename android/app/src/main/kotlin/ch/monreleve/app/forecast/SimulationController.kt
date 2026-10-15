@@ -18,9 +18,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.datetime.LocalDate
 import java.time.Clock
 import java.time.DayOfWeek
-import java.time.LocalDate
 
 // AN-SIM (R340, R281, R28, R310). The one place a simulation is RUN - it drives the pure engine path
 // (dossier.simulationResults) and holds no UI. R340 - A PROJECTION IS NEVER A RECORD: computing a simulation

@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
 
 // AN-FORECAST (R340). A PROJECTION IS NEVER A RECORD - the unit witness.
 //

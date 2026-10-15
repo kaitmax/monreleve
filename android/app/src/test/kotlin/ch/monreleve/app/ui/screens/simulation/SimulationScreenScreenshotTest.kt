@@ -19,10 +19,12 @@ import ch.monreleve.app.forecast.SimInputs
 import ch.monreleve.app.forecast.SimScenario
 import ch.monreleve.app.forecast.SimulationState
 import ch.monreleve.app.forecast.SimulationView
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.plus
 import org.junit.Rule
 import org.junit.Test
 import java.time.DayOfWeek
-import java.time.LocalDate
 
 // AN-SIM. Baselines for the simulator (R135/R207), default and 200 % (fontScale 2f). A regression guard, not
 // the proof of correctness - the on-device walkthrough is (R176). Every figure comes from the REAL engine
@@ -53,10 +55,10 @@ class SimulationScreenScreenshotTest {
 
     private fun recordedHome(count: Int): List<AggregatableEntry> {
         val rows = mutableListOf<AggregatableEntry>()
-        var day = LocalDate.of(2026, 1, 1)
+        var day = LocalDate(2026, 1, 1)
         while (rows.size < count) {
             if (day.dayOfWeek.value in 1..5) rows.add(AggregatableEntry(day.toString(), Portion.FULL, EntryKind.HOME))
-            day = day.plusDays(1)
+            day = day.plus(1, DateTimeUnit.DAY)
         }
         return rows
     }
