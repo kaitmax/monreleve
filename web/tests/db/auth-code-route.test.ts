@@ -374,3 +374,35 @@ describe('R225/R360: the refusal tells the person the one thing that still works
     expect((await signedIn.json()) as { accessToken?: string }).toHaveProperty('accessToken');
   });
 });
+
+describe('R377: a wrong code points at the link too, because a new code may not help', () => {
+  // THE SAME DECISION AS R360, ONE CASE NARROWER. invalidCode also said
+  // "demandez un nouveau code". That is true in almost every case and false
+  // in exactly one: the wrong guess that was the tenth of the day, where the
+  // per-address budget is now spent and the new code is refused on arrival.
+  //
+  // FW-CODE-CAP raised it and did not change it, because its own increment 5
+  // was scoped to ONE sentence. The operator ruled it in FW-FOLLOWUP.
+  //
+  // Asserted at the surface that raises the question (R225), holding the KEY
+  // rather than a copy of the sentence (R206).
+  it('serves the sentence itself on a wrong guess', async () => {
+    await askForCode();
+
+    const real = codeFromOutbox();
+    const response = await exchangeCode(submitCode(real === '000000' ? '111111' : '000000'));
+
+    expect(response.status).toBe(400);
+
+    const json = (await response.json()) as { code: string; message: string };
+
+    expect(json.code).toBe('invalid_code');
+    expect(json.message).toBe(AUTH_API_COPY.invalidCode);
+  });
+
+  it('points at the link and no longer promises a new code', () => {
+    // The literals are the assertion, as in the R360 pair above.
+    expect(AUTH_API_COPY.invalidCode).toContain('lien');
+    expect(AUTH_API_COPY.invalidCode).not.toContain('nouveau code');
+  });
+});

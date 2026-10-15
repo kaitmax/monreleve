@@ -90,8 +90,69 @@ function allowed(email: string, headers: Headers): boolean {
   return byAddress.allowed && byIp.allowed;
 }
 
+/**
+ * The origin a sign-in link is minted on.
+ *
+ * PRODUCTION IS BYTE-FOR-BYTE UNCHANGED (R378). A link in a real email must
+ * name the production host, because that is the host App Links verify
+ * against: /.well-known/assetlinks.json is served from monreleve.ch, and a
+ * link on any other origin opens a browser instead of the app. Nothing here
+ * may change that, which is why the condition below FAILS CLOSED - anything
+ * other than a confirmed dev server lands on PRODUCTION_ORIGIN.
+ *
+ * WHAT CHANGES IS `next dev` ONLY, and it changes because of a measured cost:
+ * FW-CODE-CAP's walkthrough read a link out of the dev server's terminal,
+ * followed it, and sent a request to the LIVE SITE, which answered 400
+ * knowing nothing of a local token. A link a developer cannot follow is a
+ * link that gets followed somewhere else.
+ *
+ * ==========================================================================
+ * THE CONDITION IS TWO THINGS, NOT ONE
+ * ==========================================================================
+ *
+ * NODE_ENV ALONE IS NOT ENOUGH EVIDENCE, and this repository has already paid
+ * for that lesson: `next build` sets NODE_ENV=production too, so an earlier
+ * guard keyed on it broke every local build (tasks/todo.md, the
+ * FRONTALIER_RUNTIME entry). The test here runs the other way round -
+ * development rather than production - so `next build` and `next start` are
+ * both correctly excluded. But "NODE_ENV happens to say development" is a
+ * weak thing to hang a production URL on.
+ *
+ * SO THE RUNTIME MARKER IS CHECKED TOO. The Dockerfile's runner stage sets
+ * FRONTALIER_RUNTIME=1 and `next dev` does not, so requiring its ABSENCE
+ * means a container whose NODE_ENV was set wrong by hand still mints
+ * production links. Two independent conditions, and the dangerous direction
+ * needs both of them to be wrong at once.
+ *
+ * THE PORT COMES FROM THE ENVIRONMENT (R170), not from the request: `pnpm
+ * dev` takes PORT, so a dev server moved off 3000 still mints a link that
+ * resolves to itself.
+ */
+/**
+ * The three variables this decision reads, and nothing else.
+ *
+ * NARROWER THAN NodeJS.ProcessEnv ON PURPOSE. This repository augments that
+ * type to REQUIRE NODE_ENV, so a test could not pass `{}` - and "nothing is
+ * set at all" is precisely the case that must land on the production origin.
+ * Taking only what is read also means a reader can see the whole input to the
+ * branch without leaving this file.
+ */
+export interface SignInEnv {
+  readonly NODE_ENV?: string;
+  readonly FRONTALIER_RUNTIME?: string;
+  readonly PORT?: string;
+}
+
+export function signInOrigin(env: SignInEnv = process.env): string {
+  const isDevServer = env.NODE_ENV === 'development' && env.FRONTALIER_RUNTIME !== '1';
+
+  if (!isDevServer) return PRODUCTION_ORIGIN;
+
+  return `http://localhost:${env.PORT ?? '3000'}`;
+}
+
 function signInUrl(token: string, email: string): string {
-  const url = new URL('/api/v1/auth/callback', PRODUCTION_ORIGIN);
+  const url = new URL('/api/v1/auth/callback', signInOrigin());
 
   url.searchParams.set('token', token);
   url.searchParams.set('email', email);

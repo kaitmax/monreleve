@@ -313,13 +313,50 @@ ENV NODE_ENV=production \
 USER nextjs
 EXPOSE 3000
 
-# The readiness endpoint, NOT liveness (R83). Coolify's DEPLOY health check
-# points here: /api/ready returns 503 while degraded, which stops a bad deploy
-# and leaves the running version serving. /api/health returns 200 whenever the
-# process answers, because an orchestrator RESTARTS what fails liveness and a
-# restart cannot supply a missing environment variable.
+# ============================================================================
+# R375: A RUNTIME HEALTH SIGNAL IS LIVENESS
+# ============================================================================
+#
+# THIS USED TO PROBE /api/ready, under this comment:
+#
+#     # The readiness endpoint, NOT liveness (R83). Coolify's DEPLOY health
+#     # check points here: /api/ready returns 503 while degraded, which stops
+#     # a bad deploy and leaves the running version serving. /api/health
+#     # returns 200 whenever the process answers, because an orchestrator
+#     # RESTARTS what fails liveness and a restart cannot supply a missing
+#     # environment variable.
+#
+# Every sentence in it is true, and it is describing the WRONG PROBE.
+# Coolify's deploy health check is configured in Coolify and runs ONCE, when a
+# version is released; this instruction runs every 10 seconds for the entire
+# life of the container. They are two different checks and only the first is
+# about readiness.
+#
+# R83 SAID SO ALREADY, in the sentence after the one quoted above: "Wire the
+# restart policy, if any, at /api/health." So this was never a ruling being
+# followed - it was one being half-applied to the probe it does not govern.
+# R375 records the correction, because a citation left standing reads as
+# agreement.
+#
+# IT WAS HARMLESS UNTIL FW-READY, which is why it survived. While /api/ready
+# could not fail at runtime the two endpoints answered alike in a healthy
+# container. R353-R357 made /api/ready check the DATABASE, so from that commit
+# a database outage marks the SERVING container unhealthy every 10 seconds -
+# and anything routing or restarting on Docker health may then take the whole
+# site down, including the pages R357 exists to keep serving without a
+# database.
+#
+# THE ARGUMENT DOES NOT DEPEND ON WHAT COOLIFY DOES with an unhealthy
+# container, which is why this is a ruling and not an investigation. Whatever
+# consumes the signal, a probe that runs continuously is a liveness probe, and
+# a liveness probe that fails on a degraded dependency asks for a restart that
+# cannot fix it.
+#
+# tests/unit/meta/healthcheck-target.test.ts asserts both directions, and
+# docs/deploy.md states the split: container -> /api/health, Coolify's deploy
+# check -> /api/ready.
 HEALTHCHECK --interval=10s --timeout=5s --start-period=20s --retries=3 \
-  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/api/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 # R250: THE PREFLIGHT IS THE ENTRYPOINT, so a misconfigured container never
 # becomes a serving one. It refuses on a PLACEHOLDER at any severity and on an
