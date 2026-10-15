@@ -183,12 +183,36 @@ export const AUTH_API_COPY = {
     `minutes${n(';')} demandez-en un nouveau depuis l${APOS}application.`,
 
   /**
-   * The per-request attempt limit was reached, so the request is dead - even for
-   * the right code. The person asks for a new one.
+   * ONE SENTENCE FOR TWO REFUSALS, and that is the whole constraint on it.
+   *
+   * `too_many_attempts` now has two causes, and a caller cannot tell them
+   * apart - deliberately, because the code and the status are unchanged
+   * (R358):
+   *
+   *   THE PER-CODE LIMIT (five against one issued code). Asking for a new
+   *   code works, as long as the address has budget left.
+   *
+   *   THE PER-ADDRESS BUDGET (ten in twenty-four hours, FW-CODE-CAP). Asking
+   *   for a new code does NOT work - the new code is refused too.
+   *
+   * So the sentence this used to carry - "demandez un nouveau code depuis
+   * l'application" - became advice that fails in a whole class of cases, in
+   * the message whose job (R198) is to say how to recover. One constant
+   * rendered for two refusals has to be true for both (R165).
+   *
+   * IT POINTS AT THE LINK, which is the one recovery that works in both: the
+   * magic link travels in the same email and never touches this budget.
+   * consumeMagicLink does not read the attempt counter, and the budget is
+   * spent only by the code exchange.
+   *
+   * IT ALSO STOPS CLAIMING WHICH CODE IS DEAD. "Trop de tentatives pour ce
+   * code" is false under the budget, where every code for the address is
+   * refused; "ce code n'est plus accepté" is true in both and claims no more
+   * than the record supports.
    */
   tooManyAttempts:
-    `Trop de tentatives pour ce code. Par sécurité, il n${APOS}est plus ` +
-    `valable${n(':')} demandez un nouveau code depuis l${APOS}application.`,
+    `Trop de tentatives. Par sécurité, ce code n${APOS}est plus accepté${n(':')} ` +
+    `utilisez le lien de connexion contenu dans le même e-mail.`,
 
   /** The edge's own per-address / per-network limit on the exchange endpoint. */
   codeRateLimited:

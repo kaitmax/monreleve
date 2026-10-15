@@ -19,6 +19,9 @@ import { resetRateLimit } from '@/lib/alerts/rate-limit';
 import { POST as requestLink } from '@/app/api/v1/auth/magic-link/route';
 import { POST as exchangeCode } from '@/app/api/v1/auth/code/route';
 import { POST as signOut } from '@/app/api/v1/auth/sign-out/route';
+import { GET as callback } from '@/app/api/v1/auth/callback/route';
+import { AUTH_API_COPY } from '@/lib/fr/auth-api';
+import { MAX_CODE_ATTEMPTS_PER_DAY } from '@/lib/auth/magic-link';
 
 const EMAIL = 'frontalier@example.com';
 const ORIGIN = 'https://monreleve.ch';
@@ -276,5 +279,98 @@ describe('FW-CODE-CAP (R358/R361): exhausting the budget tells a caller nothing'
     }
 
     expect(await prisma.codeAttempt.count()).toBe(3);
+  });
+});
+
+describe('R225/R360: the refusal tells the person the one thing that still works', () => {
+  // ==========================================================================
+  // THE COPY IS ASSERTED WHERE THE QUESTION IS RAISED, NOT WHERE IT IS WRITTEN
+  // ==========================================================================
+  //
+  // "The constant exists and is good French" is a claim about a constant, and
+  // the constant was never the thing in doubt. The question a person has at
+  // this exact moment is "what do I do now", and it is raised by a 429 - so
+  // that is where the answer is asserted.
+  //
+  // IT MATTERS MORE THAN USUAL HERE because the sentence that was there gave
+  // advice this task made false. `too_many_attempts` has two causes now and
+  // the caller cannot tell them apart: after the per-code five, asking for a
+  // new code works; after the per-address ten, it does not. The old sentence
+  // said to ask for a new code.
+
+  /** Spend the whole budget, then answer correctly - the case that used to sign in. */
+  async function exhaustBudget(email: string, ip: string): Promise<Response> {
+    for (let i = 0; i < MAX_CODE_ATTEMPTS_PER_DAY; i += 1) {
+      await exchangeCode(
+        new Request(`${ORIGIN}/api/v1/auth/code`, {
+          method: 'POST',
+          body: JSON.stringify({ email, code: '000000' }),
+          headers: { 'content-type': 'application/json', 'x-forwarded-for': ip },
+        }),
+      );
+    }
+
+    await requestLink(
+      new Request(`${ORIGIN}/api/v1/auth/magic-link`, {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+        headers: { 'content-type': 'application/json', 'x-forwarded-for': ip },
+      }),
+    );
+
+    return exchangeCode(
+      new Request(`${ORIGIN}/api/v1/auth/code`, {
+        method: 'POST',
+        body: JSON.stringify({ email, code: codeFromOutbox() }),
+        headers: { 'content-type': 'application/json', 'x-forwarded-for': ip },
+      }),
+    );
+  }
+
+  it('serves the sentence itself, not merely the code, when the budget is spent', async () => {
+    const response = await exhaustBudget('plafond@example.com', '203.0.113.31');
+
+    expect(response.status).toBe(429);
+
+    const json = (await response.json()) as { code: string; message: string };
+
+    expect(json.code).toBe('too_many_attempts');
+    // R206: the test holds the KEY, not a copy of the sentence.
+    expect(json.message).toBe(AUTH_API_COPY.tooManyAttempts);
+  });
+
+  it('points at the link and no longer promises a new code', () => {
+    // THE LITERALS HERE ARE THE ASSERTION, which is the one case R206 allows
+    // one. "Mentions a link" and "does not promise a new code" are properties
+    // of the sentence, and a property has to be written down to be checked -
+    // the same justification as R155's curated list of forbidden forms.
+    expect(AUTH_API_COPY.tooManyAttempts).toContain('lien');
+    expect(AUTH_API_COPY.tooManyAttempts).not.toContain('nouveau code');
+  });
+
+  it('and the advice WORKS: the link in the same email still signs in', async () => {
+    // R154: the mechanism is proven to DELIVER, not proven not to fail. A
+    // sentence pointing at a link nobody tried is a sentence that reads well.
+    //
+    // This is also what makes a per-address budget acceptable at all. Ten
+    // attempts can be spent by somebody who is not the owner of the address,
+    // and without this the budget would be a way to lock a person out of
+    // their own account for a day.
+    const response = await exhaustBudget('secours@example.com', '203.0.113.32');
+
+    expect(response.status).toBe(429);
+
+    // The same email, the other half of it.
+    const [message] = readOutbox();
+    const link = (message?.text ?? '')
+      .split(String.fromCharCode(10))
+      .find((row) => row.startsWith('http'));
+
+    expect(link, 'the email carried no link').toBeDefined();
+
+    const signedIn = await callback(new Request(link as string));
+
+    expect(signedIn.status).toBe(200);
+    expect((await signedIn.json()) as { accessToken?: string }).toHaveProperty('accessToken');
   });
 });
