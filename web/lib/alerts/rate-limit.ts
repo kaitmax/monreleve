@@ -20,6 +20,20 @@
 // NOT A DEFENCE AGAINST A BOTNET, and it does not pretend to be. A thousand
 // addresses get a thousand windows. What it stops is the cheap version, which
 // is the version that actually happens.
+//
+// AND SINCE FW-CODE-CAP IT IS NO LONGER THE LAST WORD ON THE CODE EXCHANGE
+// (R363). Everything above was written when this was the only thing standing
+// between a guesser and a six-digit code, and read that way it was a
+// guarantee - which it never was, because the Map empties on every deploy.
+// The durable ceiling now lives in PostgreSQL: MAX_CODE_ATTEMPTS_PER_DAY in
+// lib/auth/magic-link.ts, ten attempts per address per rolling twenty-four
+// hours, counted across every code issued in the window and claimed
+// atomically.
+//
+// SO READ THIS FILE AS THE FIRST FILTER AND NOT THE GUARANTEE. It is cheap,
+// it runs before any query, and it stops a source hammering the endpoint;
+// what it cannot do is survive a restart, which is exactly the property the
+// table was added to supply. Nothing here changed - the reading of it did.
 
 /** Attempts allowed per window, per client. */
 const LIMIT = 5;

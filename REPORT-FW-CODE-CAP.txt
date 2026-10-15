@@ -517,7 +517,21 @@ DEVIATIONS
    a mistake of mine over a branch somebody may already have fetched is a
    worse trade than the stray file.
 
-5. AUTH_API_COPY.invalidCode WAS NOT CHANGED. It also says "demandez un
+5. R363 WAS NEARLY FILED AS A PARK WHEN IT WAS TASK SCOPE. "The in-memory
+   windows stay as a fast first filter, and their comments must stop implying
+   they are the guarantee" is part of this task, and parking it would have
+   been narrowing the work rather than deferring something outside it.
+
+   Reading rate-limit.ts settled what was actually owed. Its header is
+   already honest about being in-memory, per-instance and forgotten on
+   restart - "NOT A DEFENCE AGAINST A BOTNET, and it does not pretend to be".
+   What it could not do was point anywhere else, because until this task
+   there was nowhere else: read in 2026 it says "this is what stands between
+   a guesser and a code", and that reading WAS the guarantee claim. The
+   header now names MAX_CODE_ATTEMPTS_PER_DAY as the durable ceiling and
+   says to read the file as the first filter. Comment-only.
+
+6. AUTH_API_COPY.invalidCode WAS NOT CHANGED. It also says "demandez un
    nouveau code", which is wrong in exactly one case: the wrong guess that was
    the tenth. The prompt's increment 5 asks for ONE sentence, about
    too_many_attempts; this is a narrower instance in a different string and
@@ -545,12 +559,13 @@ PARK-C  THE DEV SERVER MINTS LINKS ON THE CANONICAL ORIGIN, so a link read out
         of the dev terminal points at production. Pre-existing; found by the
         walkthrough.
 
-PARK-D  THE IN-MEMORY WINDOWS STAY (R363), as a cheap first filter, and their
-        comments should stop implying they are the guarantee. The per-address
-        and per-network windows in rate-limit.ts are still the first thing a
-        request meets and still useful for that; the durable claim now lives
-        in the table. Their comments were written when they were the only
-        thing standing there.
+PARK-D  THE ROUTE'S OWN COMMENT on EXCHANGE_RATE_LIMIT
+        (app/api/v1/auth/code/route.ts) still describes two guards where
+        there are now three. It is incomplete rather than wrong - it never
+        claimed to be the guarantee - and it lives under app/**, which pulls
+        test:e2e and test:visual for a comment. Left for the next task that
+        touches that file. The R363 half that WAS a guarantee claim is closed;
+        see DEVIATIONS 6.
 
 
 NOTICED BUT NOT TOUCHING
@@ -598,7 +613,9 @@ COMMITS, on branch fw-code-cap off 0ddc646:
                 fingerprints go with the account
   55e1079  5/7  R360: the refusal points at the link, because that is the
                 recovery that still works
-  (this report is 6/7)
+  629016d  6/7  this report
+  df8b55c  7/7  untrack the session lock, and stop it happening again
+  (and the commit carrying this corrected section, 8/7)
 
 GATE:CHANGED, per commit, each run before the commit it belongs to:
 
@@ -648,9 +665,29 @@ node_modules and no generated file the run did not produce itself:
   named with their reasons in the run's own output (R133). test:e2e and
   test:visual DID run locally in 5/7.
 
-PUSH. Pending at the moment this file was committed; the branch goes up
-immediately after, and nothing else is claimed about it here (R334 - a report
-states only what has happened).
+PUSHES. The branch went up at 629016d, then again at df8b55c, and a third
+time with this corrected section. It is PUSHED, NOT MERGED - nothing in this
+session merged anything into main.
+
+  The first attempt at 629016d was rejected by the remote with "unable to
+  write file ... No such file or directory" and "remote unpack failed:
+  index-pack failed" - a server-side pack write, nothing local. The retry
+  succeeded unchanged.
+
+THIS SECTION WAS WRONG ONCE AND IS CORRECTED HERE RATHER THAN QUIETLY. At
+7/7 it still read "PUSH. Pending at the moment this file was committed",
+which had been true when 6/7 committed it and was false the moment 7/7
+recommitted the file with six commits already up. That is the AN-ONBOARD
+rule (R334) inverted - a report claiming LESS than has happened is still a
+report that does not match the record - and it is why the commit list above
+now runs to the end.
+
+R199 AND THE TWO PUSHES IT DID NOT COVER, stated rather than left implied.
+gate:clone ran on 55e1079. The pushes of 629016d and df8b55c went out after
+it, so neither was covered by a clone run on its own HEAD; their combined
+diff is REPORT-FW-CODE-CAP.txt, .gitignore and the removal of a lock file,
+none of which the build reads. gate:clone was then run on the FINAL HEAD
+before the last push, which covers the branch as it now stands.
 
 NOTICED IN THE GATE:CLONE OUTPUT, not acted on: it reported "CI readiness:
 quiet - the repository is private and CI_FULL is unset - jobs will skip".
