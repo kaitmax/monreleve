@@ -21,6 +21,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.datetime.toKotlinInstant
+import kotlinx.datetime.toKotlinLocalDate
 import java.time.Clock
 import java.time.LocalDate
 
@@ -372,7 +374,8 @@ class CalendarController(
             alreadyLate = slots.any { it.late },
             // The prediction (R216): would recording this backdated day now cross the threshold? True of
             // the day's age, whether or not a row exists yet - so the warning shows before the first save.
-            wouldBeLate = LatenessForecast.wouldBeLate(LocalDate.parse(isoDate), clock.instant()),
+            wouldBeLate =
+                LatenessForecast.wouldBeLate(LocalDate.parse(isoDate).toKotlinLocalDate(), clock.instant().toKotlinInstant()),
             lateThresholdDays = LatenessForecast.BACKFILL_DAYS,
         )
     }

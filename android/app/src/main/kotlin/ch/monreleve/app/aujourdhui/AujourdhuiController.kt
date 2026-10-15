@@ -52,6 +52,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.datetime.toKotlinInstant
+import kotlinx.datetime.toKotlinLocalDate
 import java.time.Clock
 import java.time.LocalDate
 
@@ -503,8 +505,10 @@ class AujourdhuiController(
     private fun latenessOf(oldestPendingDay: String?): PendingLateness {
         if (oldestPendingDay == null) return PendingLateness.NONE
         val day = LocalDate.parse(oldestPendingDay)
-        if (LatenessForecast.wouldBeLate(day, clock.instant())) return PendingLateness.OVERDUE
-        val daysUntil = LatenessForecast.daysUntilLate(day, LocalDate.parse(today))
+        if (LatenessForecast.wouldBeLate(day.toKotlinLocalDate(), clock.instant().toKotlinInstant())) {
+            return PendingLateness.OVERDUE
+        }
+        val daysUntil = LatenessForecast.daysUntilLate(day.toKotlinLocalDate(), LocalDate.parse(today).toKotlinLocalDate())
         return if (daysUntil <= WARN_WINDOW_DAYS) PendingLateness.APPROACHING else PendingLateness.NONE
     }
 

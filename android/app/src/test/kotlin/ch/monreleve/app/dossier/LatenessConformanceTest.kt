@@ -3,9 +3,9 @@ package ch.monreleve.app.dossier
 import ch.monreleve.app.calc.fixtureFile
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
 import org.json.JSONObject
-import java.time.Instant
-import java.time.LocalDate
 
 // AN5c increment 2 (R286/R206). The Kotlin side of the ONE late threshold, bound to the server side by
 // fixtures/late-threshold-cases.json - the SAME file web/tests/unit/entries/late-fixture.test.ts reads.

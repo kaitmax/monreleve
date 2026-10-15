@@ -1,11 +1,15 @@
 package ch.monreleve.app.dossier
 
-import java.time.Instant
-import java.time.LocalDate
-import java.time.temporal.ChronoUnit
+import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.daysUntil
 
 // AN5c increment 2 (R286). The CLIENT'S lateness forecast, used ONLY to warn - the pending line
 // escalates as the oldest unsynced day nears the backfill threshold (SPEC 11.3), before it is crossed.
+//
+// KMP-0 increment 6b (R371, R372): moved to :shared commonMain and migrated from java.time to
+// kotlinx-datetime (java.time stays in :app). Package unchanged (ch.monreleve.app.dossier), so no :app
+// import changes; the five :app call sites map their java.time values to the shared types at the boundary.
 //
 // R216 - THE CLIENT MAY PREDICT; IT MUST NOT ADJUDICATE. The « saisie tardive » flag the dossier
 // prints is computed by the SERVER from its own firstRecordedAt (web/lib/entries/late.ts), never here.
@@ -31,18 +35,22 @@ object LatenessForecast {
     fun wouldBeLate(
         dayDate: LocalDate,
         observedAt: Instant,
-    ): Boolean = observedAt.toEpochMilli() - startOfStoredDayUtcMs(dayDate) > BACKFILL_MS
+    ): Boolean = observedAt.toEpochMilliseconds() - startOfStoredDayUtcMs(dayDate) > BACKFILL_MS
 
     /**
      * Whole days remaining before a still-pending day dated [dayDate] would cross the threshold, as of
      * [asOf] (the Paris day). Zero or negative means it would already be flagged - the OVERDUE case.
+     *
+     * Returned as Long (as the java.time version was): kotlinx-datetime's daysUntil is Int, so the result
+     * is widened explicitly rather than letting a caller's inference silently shift from Long to Int.
      */
     fun daysUntilLate(
         dayDate: LocalDate,
         asOf: LocalDate,
-    ): Long = BACKFILL_DAYS - ChronoUnit.DAYS.between(dayDate, asOf)
+    ): Long = (BACKFILL_DAYS - dayDate.daysUntil(asOf)).toLong()
 
-    // toEpochDay() is whole days since 1970-01-01 UTC, so * MS_PER_DAY is UTC midnight of dayDate in
+    // toEpochDays() is whole days since 1970-01-01 UTC, so * MS_PER_DAY is UTC midnight of dayDate in
     // epoch millis - the same instant the server's Date.UTC(y, m, d) produces (web/lib/entries/late.ts).
-    private fun startOfStoredDayUtcMs(dayDate: LocalDate): Long = dayDate.toEpochDay() * MS_PER_DAY
+    // (Int days * Long ms promotes to Long; the product cannot overflow at this domain's dates.)
+    private fun startOfStoredDayUtcMs(dayDate: LocalDate): Long = dayDate.toEpochDays() * MS_PER_DAY
 }
