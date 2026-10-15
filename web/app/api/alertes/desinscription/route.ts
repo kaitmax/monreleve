@@ -48,6 +48,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { unsubscribeByToken } from '@/lib/alerts/confirm';
 import { UNSUBSCRIBE_PATH, UNSUBSCRIBE_STATES } from '@/lib/alerts/status';
+import { relativeRedirect } from '@/lib/http/redirect';
 
 /**
  * Take somebody off the list, and never claim it happened when it may not
@@ -67,10 +68,9 @@ async function unsubscribe(token: string): Promise<keyof typeof UNSUBSCRIBE_STAT
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const state = UNSUBSCRIBE_STATES[await unsubscribe(request.nextUrl.searchParams.get('token') ?? '')];
 
-  return NextResponse.redirect(
-    new URL(`${UNSUBSCRIBE_PATH}/${state}`, request.nextUrl.origin),
-    303,
-  );
+  // RELATIVE, for the same reason as the confirm route beside it (R364):
+  // the server's view of its own address is not the reader's.
+  return relativeRedirect(`${UNSUBSCRIBE_PATH}/${state}`);
 }
 
 /**
