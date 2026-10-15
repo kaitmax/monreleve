@@ -1,8 +1,10 @@
 package ch.monreleve.app.dossier
 
 import ch.monreleve.app.calc.TeleworkResult
-import java.time.DayOfWeek
-import java.time.LocalDate
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.plus
 
 // AN-SIM (R340, R281, R28). THE SIMULATOR: test a change before making it. Computed IN MEMORY from the
 // recorded days plus imagined ones, and NEVER written anywhere.
@@ -109,19 +111,19 @@ private fun extraEntriesFor(
     taxYear: Int,
 ): List<AggregatableEntry> =
     when (change) {
-        is SimChange.ExtraMonthDays -> imaginedRows(change.count, EntryKind.HOME, LocalDate.of(taxYear, today.month, 1))
+        is SimChange.ExtraMonthDays -> imaginedRows(change.count, EntryKind.HOME, LocalDate(taxYear, today.month, 1))
         is SimChange.Missions ->
-            imaginedRows(change.france, EntryKind.MISSION_FR, today.plusDays(1)) +
-                imaginedRows(change.thirdState, EntryKind.MISSION_THIRD, today.plusDays(1))
+            imaginedRows(change.france, EntryKind.MISSION_FR, today.plus(1, DateTimeUnit.DAY)) +
+                imaginedRows(change.thirdState, EntryKind.MISSION_THIRD, today.plus(1, DateTimeUnit.DAY))
         else -> emptyList()
     }
 
-/** [count] full-day rows of [kind], dated from [from] forward (LocalDate.plusDays always yields a valid day). */
+/** [count] full-day rows of [kind], dated from [from] forward (LocalDate.plus always yields a valid day). */
 private fun imaginedRows(
     count: Int,
     kind: EntryKind,
     from: LocalDate,
 ): List<AggregatableEntry> =
     (0 until count.coerceAtLeast(0)).map { i ->
-        AggregatableEntry(from.plusDays(i.toLong()).toString(), Portion.FULL, kind)
+        AggregatableEntry(from.plus(i, DateTimeUnit.DAY).toString(), Portion.FULL, kind)
     }
