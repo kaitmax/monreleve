@@ -294,6 +294,55 @@ export async function claimCodeAttempt(
   );
 }
 
+/** What one sweep of the attempt table did (R244: what it considered, not that it ran). */
+export interface CodeAttemptSweep {
+  /** The moment a row had to be older than, ISO. */
+  readonly cutoff: string;
+  /** Every attempt row in the table, whatever its age. */
+  readonly considered: number;
+  readonly deleted: number;
+}
+
+/**
+ * Delete attempt fingerprints that have left the window.
+ *
+ * WHY A SWEEP AS WELL AS THE DELETE IN `claimCodeAttempt`. That one removes
+ * the expired rows of the address it is claiming for, which covers every
+ * address that comes back. An address that was attempted once and never again
+ * would keep its row for as long as the table lives - and /confidentialite
+ * says those traces are erased after twenty-four hours, which is a claim about
+ * the TABLE, not about which rows are counted.
+ *
+ * IT IS HOURLY RATHER THAN DAILY, and that is the whole reason it is its own
+ * queue instead of a second statement inside the thirty-day purge. A daily
+ * sweep at 03:17 leaves a row created at 04:00 in the table for forty-seven
+ * hours, and the page would then be saying something untrue for most of a day.
+ *
+ * `now` is a parameter so the boundary is testable without waiting a day
+ * (R171: the role is "the moment this sweep represents").
+ */
+export async function purgeCodeAttempts(now: number = Date.now()): Promise<CodeAttemptSweep> {
+  const cutoff = new Date(now - CODE_ATTEMPT_WINDOW_MS);
+
+  // COUNTED BEFORE THE DELETE: afterwards the rows are gone, and a census of
+  // what survived cannot show a query that matched everything or nothing.
+  const considered = await prisma.codeAttempt.count();
+
+  const { count: deleted } = await prisma.codeAttempt.deleteMany({
+    where: { attemptedAt: { lt: cutoff } },
+  });
+
+  return { cutoff: cutoff.toISOString(), considered, deleted };
+}
+
+/** One line for a log, since nobody is watching when this runs. */
+export function describeCodeAttemptSweep(sweep: CodeAttemptSweep): string {
+  return (
+    `[code-attempts] older than ${sweep.cutoff}: ` +
+    `considered ${sweep.considered}, deleted ${sweep.deleted}`
+  );
+}
+
 /**
  * Exchange an address and a six-digit code for the address, consuming the whole
  * request - so the link in the same email no longer works either.

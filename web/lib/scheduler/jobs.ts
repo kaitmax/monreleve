@@ -31,6 +31,7 @@
 
 import type { PgBoss } from 'pg-boss';
 import { describePurge, purgeUnconfirmed } from '@/lib/alerts/purge';
+import { describeCodeAttemptSweep, purgeCodeAttempts } from '@/lib/auth/magic-link';
 import { describePushSender, resolvePushSender } from '@/lib/push/resolve';
 import type { EnvLike } from '@/lib/push/resolve';
 import { DevicePushTransport } from '@/lib/push/transport';
@@ -39,6 +40,7 @@ import { tagged } from '@/lib/scheduler/instance';
 
 export const REMINDER_QUEUE = 'daily-reminder';
 export const PURGE_QUEUE = 'purge-unconfirmed';
+export const CODE_ATTEMPT_QUEUE = 'purge-code-attempts';
 
 /**
  * Both expressions are read in Paris, because both are about a LOCAL day.
@@ -65,6 +67,19 @@ export const REMINDER_CRON = '*/5 * * * *';
 
 /** Daily, at an unremarkable hour with nobody waiting on it. */
 export const PURGE_CRON = '17 3 * * *';
+
+/**
+ * Hourly, and the hour is the point rather than a cadence somebody liked.
+ *
+ * /confidentialite says the attempt fingerprints are erased after twenty-four
+ * hours. On the daily cron above, a row written at 04:00 would sit in the
+ * table until 03:17 the day after next - forty-seven hours - and the sentence
+ * would be false for most of a day. Hourly bounds it at twenty-five.
+ *
+ * It is cheap enough to say so: one indexed DELETE over a table that holds at
+ * most a day of attempts.
+ */
+export const CODE_ATTEMPT_CRON = '23 * * * *';
 
 export interface JobRegistration {
   readonly scheduled: readonly string[];
@@ -100,6 +115,23 @@ export async function registerJobs(
   // row may live rather than about a particular minute.
   await boss.schedule(PURGE_QUEUE, PURGE_CRON, null, { tz: SCHEDULE_TZ, missed: 'once' });
   scheduled.push(PURGE_QUEUE);
+
+  // ---------------------------------------------------------------------
+  // The attempt-fingerprint sweep, which needs nothing but a database either.
+  // ---------------------------------------------------------------------
+  await boss.createQueue(CODE_ATTEMPT_QUEUE);
+
+  await boss.work(CODE_ATTEMPT_QUEUE, async () => {
+    console.log(tagged(describeCodeAttemptSweep(await purgeCodeAttempts())));
+  });
+
+  // `once`, like the purge above and for the same reason: the promise is about
+  // how long a row may live, not about a particular minute.
+  await boss.schedule(CODE_ATTEMPT_QUEUE, CODE_ATTEMPT_CRON, null, {
+    tz: SCHEDULE_TZ,
+    missed: 'once',
+  });
+  scheduled.push(CODE_ATTEMPT_QUEUE);
 
   // ---------------------------------------------------------------------
   // The reminder, which needs somewhere to send.

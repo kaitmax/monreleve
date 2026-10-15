@@ -20,6 +20,7 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { prisma } from '@/lib/db/client';
 import { issueTokenPair } from '@/lib/auth/tokens';
 import { authenticate } from '@/lib/auth/bearer';
+import { claimCodeAttempt } from '@/lib/auth/magic-link';
 import { POST } from '@/app/api/v1/account/delete/route';
 
 const ORIGIN = 'https://monreleve.ch';
@@ -55,6 +56,10 @@ beforeEach(async () => {
   // the same non-cascading fact the erasure path has to handle, showing up
   // first in the test that forgot it.
   await prisma.verificationToken.deleteMany();
+  // FW-CODE-CAP: CodeAttempt is keyed by a HASH of the address and does not
+  // cascade either, so it accumulates across runs exactly as the rows above
+  // did - the same non-cascading fact, one table over.
+  await prisma.codeAttempt.deleteMany();
 
   userId = (
     await prisma.user.create({
@@ -96,6 +101,11 @@ beforeEach(async () => {
       expires: new Date(Date.now() + 900_000),
     },
   });
+
+  // FW-CODE-CAP: an attempt fingerprint for this address, for the same reason
+  // the issuance record below is seeded - an erasure assertion with nothing to
+  // find is satisfied by absence (R169's corollary).
+  await claimCodeAttempt('erase@example.com');
 
   // FW-VERIFY: an issued-releve record for this account, so the erasure sweep
   // covers it with something to find rather than vacuously (R329: "erased with
@@ -188,6 +198,9 @@ describe('AC3: the erasure', () => {
     expect(body.removed.Entry).toBe(1);
     expect(body.removed.EntryEvent).toBe(1);
     expect(body.removed.VerificationToken).toBe(1);
+    // FW-CODE-CAP: the attempt fingerprints are keyed by a hash of the address
+    // and do not cascade, so they are deleted explicitly or not at all.
+    expect(body.removed.CodeAttempt).toBe(1);
     // FW-VERIFY: the issued-releve record goes with the account (R329).
     expect(body.removed.IssuanceRecord).toBe(1);
     // FW-VERIFY: the name-change date goes too (R331).

@@ -28,8 +28,11 @@ import {
   CODE_ATTEMPT_WINDOW_MS,
   MAX_CODE_ATTEMPTS,
   MAX_CODE_ATTEMPTS_PER_DAY,
+  claimCodeAttempt,
   consumeCode,
+  describeCodeAttemptSweep,
   issueMagicLink,
+  purgeCodeAttempts,
 } from '@/lib/auth/magic-link';
 
 const EMAIL = 'budget@example.com';
@@ -187,5 +190,64 @@ describe('the slot is claimed atomically, so a burst cannot overspend', () => {
     // And the table agrees with the answers, which is the half that catches a
     // claim that was granted and then not recorded.
     expect(await prisma.codeAttempt.count()).toBe(MAX_CODE_ATTEMPTS_PER_DAY);
+  });
+});
+
+describe('the fingerprints are swept, not merely ignored', () => {
+  it('deletes an attempt past the window and keeps one inside it', async () => {
+    // R196: a sweep that deletes EVERYTHING passes the first half perfectly.
+    await claimCodeAttempt(EMAIL);
+    await claimCodeAttempt(OTHER);
+
+    await prisma.codeAttempt.updateMany({
+      where: { emailHash: { not: '' } },
+      data: { attemptedAt: new Date(Date.now() - CODE_ATTEMPT_WINDOW_MS - 60_000) },
+    });
+
+    // ...and then one fresh row, so the sweep has something to spare.
+    //
+    // A THIRD ADDRESS, and the first draft of this test used EMAIL and failed
+    // on it: claimCodeAttempt deletes the expired rows OF THE ADDRESS IT IS
+    // CLAIMING FOR before it counts, so claiming for EMAIL again swept row one
+    // away and the sweep below saw two rows rather than three. The behaviour
+    // is right and the expectation was wrong - which is the test catching the
+    // author's model of the code rather than the code.
+    await claimCodeAttempt('troisieme@example.com');
+
+    const sweep = await purgeCodeAttempts();
+
+    expect(sweep.considered).toBe(3);
+    expect(sweep.deleted).toBe(2);
+    expect(await prisma.codeAttempt.count()).toBe(1);
+  });
+
+  it('sweeps for addresses that never come back, which the claim path cannot', async () => {
+    // The delete inside claimCodeAttempt only ever touches the address it is
+    // claiming for. An address attempted once and never again is exactly the
+    // row that would otherwise outlive the sentence on /confidentialite.
+    await claimCodeAttempt('passante@example.com');
+
+    await prisma.codeAttempt.updateMany({
+      data: { attemptedAt: new Date(Date.now() - CODE_ATTEMPT_WINDOW_MS - 60_000) },
+    });
+
+    // A hundred claims for somebody else would not reach it.
+    await claimCodeAttempt(EMAIL);
+
+    expect(await prisma.codeAttempt.count()).toBe(2);
+    expect((await purgeCodeAttempts()).deleted).toBe(1);
+    expect(await prisma.codeAttempt.count()).toBe(1);
+  });
+
+  it('says what it considered and what it removed, for a log nobody is watching', () => {
+    const line = describeCodeAttemptSweep({
+      cutoff: '2026-10-14T12:00:00.000Z',
+      considered: 7,
+      deleted: 3,
+    });
+
+    expect(line).toContain('considered 7');
+    expect(line).toContain('deleted 3');
+    expect(line).toContain('2026-10-14T12:00:00.000Z');
   });
 });
