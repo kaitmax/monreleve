@@ -100,6 +100,29 @@ export function resetRateLimit(): void {
 }
 
 /**
+ * How many proxies this deployment trusts to have appended to
+ * X-Forwarded-For. Default 1: Coolify's Traefik, and nothing in front of it.
+ *
+ * AN ENVIRONMENT VARIABLE BECAUSE IT IS A FACT ABOUT THE DEPLOYMENT, not
+ * about this code. Put a CDN in front of Traefik and the real peer moves one
+ * entry left; nothing in the repository can know that happened.
+ *
+ * docs/deploy.md records how an operator verifies the count against the real
+ * VPS - one logged request, compared with the client's actual address. This
+ * session cannot reach that host and does not claim the count is right there.
+ */
+function trustedProxyHops(): number {
+  const raw = process.env.TRUSTED_PROXY_HOPS;
+  const parsed = Number.parseInt(raw ?? '', 10);
+
+  // A TYPO MUST NOT WIDEN THE BUCKET. "two", "0" and "-1" all fall back to
+  // the default rather than being coerced into something that silently
+  // reads the wrong entry - an operator mistake here is a security change,
+  // so it fails to the strict, documented value.
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
+}
+
+/**
  * Who is asking, as well as we can tell behind a reverse proxy.
  *
  * NOT LOGGED, NOT STORED. The address is used as a Map key for ten minutes
@@ -107,24 +130,43 @@ export function resetRateLimit(): void {
  * identify the reader, and an access log keyed by IP would be a different
  * claim from the one that page makes.
  *
- * x-forwarded-for is set by our own proxy (SPEC 18) and can be forged by a
- * client talking to the origin directly. The FIRST entry is the one the proxy
- * appends for the real peer; taking the last would let a client name its own
- * bucket by sending a header.
+ * ============================================================================
+ * THE n-TH ENTRY FROM THE RIGHT (R362), AND THIS FILE USED TO SAY THE OPPOSITE
+ * ============================================================================
+ *
+ * The comment here read: "The FIRST entry is the one the proxy appends for
+ * the real peer; taking the last would let a client name its own bucket by
+ * sending a header." That is backwards, and it had the consequence it
+ * describes.
+ *
+ * PROXIES APPEND. A client that sends `X-Forwarded-For: 9.9.9.9` and connects
+ * to Traefik produces `9.9.9.9, <real peer>`. So the FIRST entry is exactly
+ * the value the client chose, and reading it meant any caller could select
+ * its own rate-limit bucket - or share one with everybody else - by setting a
+ * header. Per-IP limiting was advisory against precisely the person it exists
+ * to stop, which is why FW-CODE-CAP counts the real ceiling as "whatever the
+ * attacker says it is".
+ *
+ * The RIGHTMOST entries are the ones our own infrastructure wrote. With n
+ * trusted hops, the n-th from the right is the address the outermost trusted
+ * proxy actually observed.
+ *
+ * SHORTER THAN n IS 'unknown', not a guess. A header with fewer entries than
+ * the deployment says it should have means the request did not arrive the way
+ * the configuration claims; inventing an entry would invent a bucket.
  */
 export function clientKey(headers: Headers): string {
-  const forwarded = headers.get('x-forwarded-for');
+  const entries = (headers.get('x-forwarded-for') ?? '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry !== '');
 
-  // THE FIRST ENTRY, AND IT CAN STILL BE EMPTY. A header of "," is non-empty
-  // and its first entry is not - checking the header alone let that through
-  // and returned "", which is a real Map key and therefore a silent bucket
-  // nobody named. Found by the test that asked for a non-empty key rather
-  // than for a correct one.
-  const first = (forwarded ?? '').split(',')[0]?.trim() ?? '';
+  const hops = trustedProxyHops();
+  const candidate = entries[entries.length - hops];
 
-  if (first !== '') return first;
+  if (candidate !== undefined && candidate !== '') return candidate;
 
-  // No proxy header: everything shares one bucket, which is strict rather
+  // No usable header: everything shares one bucket, which is strict rather
   // than lax, and correct for a local or misconfigured deployment.
   return 'unknown';
 }
