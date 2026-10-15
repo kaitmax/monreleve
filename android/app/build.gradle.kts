@@ -524,7 +524,12 @@ tasks.register("checkReleaseNoDebugInjection") {
 // resolutionResult is used rather than resolvedArtifacts so no artifact is downloaded or transformed to read a
 // coordinate. R182: nothing produces its subject, so it needs no dependsOn to be correctly ordered.
 tasks.register("checkLicences") {
-    val licencesCopy = layout.projectDirectory.file("src/main/kotlin/ch/monreleve/app/fr/LicencesCopy.kt").asFile
+    // KMP-0 increment 5: the French copy (incl. LicencesCopy) moved to :shared's commonMain. The check still
+    // lives in :app (it resolves :app's RELEASE runtime classpath), reading the copy file from its new home.
+    val licencesCopy =
+        rootProject.layout.projectDirectory
+            .file("shared/src/commonMain/kotlin/ch/monreleve/app/fr/LicencesCopy.kt")
+            .asFile
     val runtimeClasspath = configurations.named("releaseRuntimeClasspath")
     inputs.file(licencesCopy)
     // KMP-0 increment 1. :shared is now on this classpath - a Kotlin Multiplatform project dependency whose
