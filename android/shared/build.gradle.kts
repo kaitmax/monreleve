@@ -36,7 +36,23 @@ kotlin {
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
+        // KMP-0 increment 2 (R369). The commonMain platform-free FENCE lives in the Android unit-test source
+        // set, because it reads the commonMain source files as TEXT (java.io.File), which commonTest cannot do
+        // portably. kotlin.test is declared here explicitly rather than relied on transitively from commonTest.
+        androidUnitTest.dependencies {
+            implementation(libs.kotlin.test)
+        }
     }
+}
+
+// KMP-0 increment 2 (R369/R283). The fence test (CommonMainFenceTest) reads shared/src/commonMain as TEXT, so
+// a NEW commonMain file carrying a forbidden import must RE-RUN the fence rather than leaving the test task
+// UP-TO-DATE - the same R283 discipline :app applies to its source-scanning fences. Declaring the tree as a
+// test input makes the text-scanning assertion re-run on any commonMain edit, not only the ones that recompile.
+tasks.withType<Test>().configureEach {
+    inputs.dir(layout.projectDirectory.dir("src/commonMain/kotlin"))
+        .withPropertyName("commonMainSourceForFence")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 android {
