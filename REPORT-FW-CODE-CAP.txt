@@ -1,0 +1,648 @@
+REPORT-FW-CODE-CAP
+==================
+
+TASK   FW-CODE-CAP - the six-digit code exchange gets a ceiling that survives
+       a restart, and the rate limiter stops trusting the caller.
+BASE   0ddc646 (FW-READY / R353-R357)
+BRANCH fw-code-cap, worktree C:/wt/fw-code-cap (R349), lock held and released
+
+
+SUMMARY
+-------
+
+Two defects, one layer apart, both invisible to a green suite.
+
+R362 - THE RATE LIMITER BUCKETED ON A VALUE THE CALLER CHOSE. clientKey read
+the FIRST X-Forwarded-For entry. Proxies APPEND, so the first entry is
+whatever the client sent and the last is what our own Traefik wrote. Any
+caller could therefore pick its own rate-limit bucket - or share somebody
+else's - by sending one header. Every per-IP limit in the product was
+advisory against exactly the person it exists to stop.
+
+  THE SUITE ASSERTED THE BUG. tests/unit/alerts/rate-limit.test.ts contained
+  "takes the FIRST x-forwarded-for entry, not the last", expecting 9.9.9.9,
+  with a comment reasoning it out: "the proxy appends the real peer; anything
+  before it was sent by the client". The first half of that sentence is true
+  and the conclusion inverts it.
+
+R358/R359 - THE PER-CODE LIMIT WAS NEVER THE CEILING. consumeCode allows five
+attempts against one issued code, and tests/db/code-sign-in.test.ts proves
+that limit exactly. But issueMagicLink DELETES the previous row on every new
+request, so asking for a new email resets the counter to zero. Five per code,
+and codes are free.
+
+  What actually bounded a guesser was the route's in-memory window: 20 per 10
+  minutes, about 2 880 guesses a day against one chosen address out of 10^6 -
+  roughly 0.3 % a day, about 8 % over a month of sustained effort - and
+  weaker than that, because an in-memory Map empties on every deploy, so the
+  attacker's real limit was how often we ship.
+
+  NO TEST COULD SEE IT. Every test was asking about ONE code.
+
+The fix is a CodeAttempt table: 10 attempts per address per rolling 24 hours,
+counted across every code issued in the window, claimed atomically before the
+code is compared. A month of sustained attack becomes about 0.03 %.
+
+NOTHING HERE IS A NEW REFUSAL FOR A CLIENT. The code (too_many_attempts) and
+the status (429) are unchanged - deliberately, and that is also what forced
+the copy change in increment 5: one sentence now answers two different
+refusals and has to be true for both.
+
+
+R273 - WHAT WAS READ BEFORE ANYTHING WAS WRITTEN
+------------------------------------------------
+
+CLAUDE.md, README.md, relay/FW-CODE-CAP.txt, SPEC 10 and 20, docs/api-v1.md
+1.5, and the four files the task turns on: lib/alerts/rate-limit.ts,
+lib/auth/magic-link.ts, app/api/v1/auth/code/route.ts, lib/fr/auth-api.ts.
+
+
+R1 - THE GREEN BASE
+-------------------
+
+gate:clone PASSED on 0ddc646 before the first increment.
+:app:gate BUILD SUCCESSFUL in 2m 18s on the same commit.
+
+
+R362 - EVERY CALLER WHOSE KEY CHANGED
+--------------------------------------
+
+clientKey has three callers, and the bucket each one computes changed:
+
+  app/api/alertes/route.ts:161       the alert-subscription form, per source
+  app/api/v1/auth/code/route.ts:55   the code exchange, per source
+  lib/auth/request.ts:76             the sign-in request, per source
+
+None of them needed editing - the key is computed in one place (R206), which
+is why this was a four-line fix in one file.
+
+THE SHAPE OF THE FIX. The code takes the n-th entry FROM THE RIGHT, where n is
+TRUSTED_PROXY_HOPS, defaulting to 1 - Coolify's Traefik with nothing in front
+of it. An empty or absent header still yields 'unknown', unchanged.
+
+WHY A COUNT RATHER THAN AN ALLOW-LIST OF PROXY ADDRESSES. The addresses are
+container-internal and change on every redeploy; the number of hops does not.
+A list would be a second thing to keep in step with the deployment, and the
+failure mode of a stale list is silent.
+
+THE PRE-EXISTING TEST WAS REWRITTEN, NOT DELETED. It now asserts the fix and
+carries the old reasoning verbatim together with what is wrong with it,
+because the next person to read "the proxy appends the real peer" will find it
+persuasive for the same reason it was persuasive the first time.
+
+
+THE TABLE
+---------
+
+prisma/migrations/20261015104441_code_attempt_budget/migration.sql
+
+  model CodeAttempt {
+    id          String   @id @default(cuid())
+    emailHash   String                       -- SHA-256 of the normalised address, hex
+    attemptedAt DateTime @default(now())     -- server clock, like every stamp here
+    @@index([emailHash, attemptedAt])        -- serves the window query
+    @@index([attemptedAt])                   -- serves the sweep
+  }
+
+WHAT IT DELIBERATELY DOES NOT STORE (R361). No IP, no user agent, no user id,
+no code, and NOT THE ADDRESS - only its SHA-256. The table can answer "has
+this address spent its budget" for an address somebody already holds, and
+cannot answer "which addresses have tried". It is therefore not a list of who
+attempted to sign in.
+
+NO RELATION TO User, ON PURPOSE. A foreign key would make a row's existence
+depend on registration, which is the enumeration signal docs/api-v1.md 1.5
+forbids. The erasure path deletes by hash instead.
+
+THE PRIVACY ENUMERATION IS CLOSED, so a column it does not cover makes
+/confidentialite false rather than merely incomplete. All three columns are
+mapped in lib/content/personal-data.ts to a new codeAttempts disclosure, and
+that disclosure is rendered on the page - the mapping alone is a claim about a
+constant (R225).
+
+  NOT_PERSONAL stays empty and is asserted empty. "It is only a hash" is
+  exactly the argument that would have opened it, and a hash OF personal data
+  is personal data.
+
+
+THE BUDGET (R358, R359)
+-----------------------
+
+MAX_CODE_ATTEMPTS_PER_DAY = 10 and CODE_ATTEMPT_WINDOW_MS = 24 h, named beside
+MAX_CODE_ATTEMPTS with the arithmetic above in the comment.
+
+CLAIMED BEFORE THE ROW IS READ, not merely before the comparison:
+
+  - it makes the refusal identical in every case. An attempt against an
+    address with no outstanding request costs a slot exactly like a guess
+    against a live one. Spending it only when a row exists would make the
+    budget itself an oracle for "has a code been asked for here".
+  - it is the stricter reading. An attempt is an attempt.
+  - the person it locks out still has the LINK, which never touches this
+    budget - which is what makes a per-address budget acceptable at all,
+    since ten attempts can be spent by somebody who is not the owner.
+
+ATOMIC VIA A TRANSACTION AND A PER-ADDRESS ADVISORY LOCK. The obvious
+implementation - one conditional INSERT ... WHERE (SELECT count(*)) < 10 - is
+one statement, atomic, and wrong under load: READ COMMITTED fixes the
+statement's snapshot before it runs, so two bursts each count the rows
+committed before either began, both see nine, both insert. An advisory lock
+INSIDE the same statement does not rescue it either, because by the time the
+lock is held the snapshot is already taken. It has to be two statements in one
+transaction: take the lock, THEN count under a fresh snapshot.
+
+  The lock is per address, in the TWO-argument form, so it cannot collide with
+  pg-boss's single-argument locks whatever keys those use. Prisma's maxWait
+  and timeout are STATED at 10 s rather than inherited (R345).
+
+EACH TEST, AND THE RED RUN IT CAME FROM (tests/db/code-budget.test.ts,
+5 failed | 5 passed before the implementation):
+
+  x refuses the eleventh attempt even when the code is CORRECT
+      expected { ok: true, ... } to deeply equal { ok: false, ... }
+  x counts every attempt, whichever code it was aimed at
+      expected +0 to be 10
+  x still counts an attempt made an hour inside the window
+      expected { ok: true, ... } to deeply equal { ok: false, ... }
+  x keeps every attempt on the record after a correct code is accepted
+      expected +0 to be 4
+  x grants exactly ten slots to a burst of thirty parallel guesses
+      expected 30 to be 10
+
+  THE BURST IS THE HEADLINE: all thirty parallel guesses were compared.
+
+  FOUR OF THE FIVE GREEN TESTS IN THAT RUN WERE GREEN BECAUSE NOTHING REFUSED
+  ANYTHING. "leaves the ninth and tenth inside the budget", "is per address",
+  "stops counting an attempt older than the window" all hold trivially when
+  there is no budget at all. That is R169's corollary, and it is why the five
+  red ones are the evidence rather than the tally.
+
+THE BURST RESULT AFTER THE FIX: compared 10, refused 20, rows 10.
+
+  The burst runs with NO outstanding code, deliberately. With one issued, the
+  per-code counter would stop the comparisons at five and the test would pass
+  while proving nothing about the budget. With none, the only thing that can
+  distinguish the thirty answers is whether the slot was granted - so "no more
+  than ten were ever compared" is proven as "exactly ten slots were granted",
+  and a comparison requires a slot.
+
+A SUCCESS DOES NOT REFUND: three wrong guesses plus one accepted code leaves
+four rows. A budget that cleared on success is a budget an attacker resets by
+signing in to an address they do hold.
+
+THE WINDOW ROLLS, PROVEN BOTH WAYS (R196): an attempt aged past the window
+stops counting; one aged to an hour INSIDE it still counts. A budget that
+refuses everything passes the first half perfectly.
+
+THE EXISTING SUITE NEEDED ITS FIXTURE WIDENED, AND THAT IS THE BEHAVIOUR.
+Two tests in tests/db/code-sign-in.test.ts failed the moment the budget became
+real - not because either was wrong, but because each spends attempts against
+the same address and the sixth test in the file was starting with the first
+five already gone. The budget outliving a request is the point of it; the
+fixture had to catch up. Same for auth-code-route.test.ts and
+account-delete.test.ts.
+
+
+ENUMERATION, PURGE, ERASURE (R361)
+----------------------------------
+
+ENUMERATION, asserted AT THE ROUTE rather than against consumeCode (R204),
+because what a caller sees is a status and a body, and the status comes from
+the route's switch and not from the function. Eleven attempts against an
+address with an account and eleven against one without, compared as whole
+responses - status and parsed body, every one. Eleven, because the run then
+crosses all three answers: five comparisons, five refusals from the per-code
+counter, and the eleventh from the budget.
+
+  A second test asserts that an address nobody ever requested a code for still
+  spends budget, which is the property that makes the first one true.
+
+PURGE. claimCodeAttempt already deletes the expired rows OF THE ADDRESS IT IS
+CLAIMING FOR before it counts, so every address that comes back is cleaned
+continuously. The scheduled sweep is the backstop for an address attempted
+once and never again - exactly the row the claim path can never reach.
+
+  IT IS HOURLY AND HAS ITS OWN QUEUE. See DEVIATIONS.
+
+ERASURE. CodeAttempt is keyed by a hash of the address and does not cascade
+from User, like VerificationToken beside it, so it is deleted explicitly or
+not at all. deleteAccount deletes by the same key the budget claims with
+(R206: not a second sha256 computed in the erasure path), inside the same
+transaction, and the receipt names CodeAttempt.
+
+  The fixture seeds a row before the receipt is asserted - an erasure
+  assertion with nothing to find is satisfied by absence (R169's corollary,
+  and the reason the issuance record beside it is seeded too).
+
+  IT COSTS NOTHING IN SECURITY. Clearing a budget this way requires already
+  holding a valid access token for the account and destroying that account to
+  do it.
+
+ABLATIONS, because a test that passed on its first run is evidence of nothing:
+
+  erasure delete removed     -> account-delete: expected +0 to be 1
+  sweep delete removed       -> code-budget: expected +0 to be 2, +0 to be 1
+  claim moved after the read -> auth-code-route: expected +0 to be 3
+
+One of my own expectations was wrong before those ablations and the suite
+caught it: the first sweep test claimed for an address that already had an
+aged row, the claim path swept it, and the sweep saw two rows where the test
+said three. The behaviour was right and my model of it was not.
+
+
+COPY (R360) - THE DECISION, VERBATIM
+------------------------------------
+
+too_many_attempts has TWO causes now, and a caller cannot tell them apart -
+deliberately, because R358 leaves the code and the status unchanged:
+
+  the per-code five   -> asking for a new code WORKS (if budget remains)
+  the per-address ten -> asking for a new code DOES NOT WORK
+
+The sentence that was there said to ask for a new code. That is advice which
+fails in a whole class of cases, in the message whose entire job (R198) is to
+say how to recover - and one constant rendered for two refusals has to be true
+for both (R165).
+
+  BEFORE  Trop de tentatives pour ce code. Par securite, il n'est plus
+          valable : demandez un nouveau code depuis l'application.
+
+  AFTER   Trop de tentatives. Par securite, ce code n'est plus accepte :
+          utilisez le lien de connexion contenu dans le meme e-mail.
+
+Both are transliterated here because a report is ASCII. The accented originals
+are in lib/fr/auth-api.ts and are the authority (R155, R168).
+
+WHY THE LINK. It is the one recovery that works in both cases: it travels in
+the same email, consumeMagicLink does not read the attempt counter, and the
+budget is spent only by the code exchange. It also stops claiming WHICH code
+is dead - "pour ce code" is false under the budget, where every code for the
+address is refused.
+
+R225: asserted at the surface that raises the question, not at the constant.
+The budget is exhausted through the route and the 429's message is required to
+BE the constant. R206: the test holds the key, not a copy of the sentence.
+
+R154: and the advice is proven to DELIVER. A third test follows the link out
+of that same email after the 429 and requires a 200 carrying an access token.
+A sentence pointing at a link nobody tried is a sentence that reads well.
+
+ABLATION: with the old sentence restored, the guard fails -
+  expected 'Trop de tentatives pour ce code. Par ...' to contain 'lien'
+
+
+PRIVACY NOTICE - THE SENTENCE AND ITS TEST
+------------------------------------------
+
+Added to DISCLOSED_RECORDS and rendered in the page's web: list:
+
+  Lorsqu'un code a six chiffres est saisi pour cette adresse, le service
+  enregistre une empreinte de l'adresse - jamais l'adresse elle-meme - et
+  l'heure de chaque tentative, afin d'empecher qu'un code soit devine a force
+  d'essais. Ces traces sont effacees au bout de vingt-quatre heures.
+
+(ASCII here; the accented original is lib/fr/confidentialite.ts.)
+
+IT SAYS ALL THREE THINGS the table does: what is kept (a fingerprint, never
+the address), why (so a code cannot be guessed by repetition), and for how
+long.
+
+TIED TO THE CONSTANT BY A TEST, NOT BY AN EXPRESSION (R163). The page spells
+the duration out in words, because "au bout de vingt-quatre heures" is the
+sentence a French reader expects and "au bout de 24 heures" is not. A
+spelled-out number cannot interpolate, so tests/db/privacy-claims.test.ts
+converts the written number back to hours and requires it to equal
+CODE_ATTEMPT_WINDOW_MS.
+
+  IT FAILS LOUDLY RATHER THAN SILENTLY, which is the half worth having. The
+  spelling map is asserted to CONTAIN the window's hours before the sentence
+  is searched. Proven by planting both failures:
+
+    window set to 48 h -> expected '...' to contain 'quarante-huit heures'
+    window set to 30 h -> expected [ 12, 24, 36, 48, 72 ] to include 30
+
+  Without the first assertion the 30 h case would have looked up undefined and
+  passed on a vacuous toContain.
+
+  The plant was verified in the file before the result was read (R180), and
+  the constant restored afterwards.
+
+The second claim in that block is behavioural, not textual: it spends the
+budget, ages every row past the window, and requires both that the budget
+frees up AND that the rows are gone - because the page says "effacees", which
+is a claim about the table and not about which rows are counted.
+
+
+ANDROID
+-------
+
+NO ANDROID FILE WAS CHANGED. git diff 0ddc646..HEAD -- android/ is empty.
+
+THE HANDLING IS UNCHANGED AND CORRECT, which is what this task had to prove:
+
+  - codeRefusalOf (AuthApi.kt:380-387) branches on the RAW wire code, and
+    "too_many_attempts" -> CodeExchangeResult.TooManyAttempts is untouched.
+  - the status is still 429 and the code string is still too_many_attempts,
+    so nothing the client branches on moved.
+  - Android NEVER reads the server's French message. Grepping CodeScreen.kt
+    and CodeController.kt for .message finds nothing; the only .message in
+    AuthApi.kt is e.message on a network exception. So the increment-5 copy
+    change cannot reach the Android UI at all.
+
+  :app:gate BUILD SUCCESSFUL in 10m 23s, 129 actionable tasks executed, run in
+  this worktree at HEAD. (The worktree needed android/local.properties copied
+  in - it is gitignored, so a fresh worktree has none. Nothing was
+  overwritten: the file did not exist there.)
+
+BUT A CHANGE IS REQUIRED, AND THIS IS THE STOP-AND-ASK
+......................................................
+
+The prompt says: if Android WOULD have to change, stop and ask. It would -
+not in its handling, but in its COPY, and I have not touched it.
+
+  android/app/src/main/kotlin/ch/monreleve/app/fr/CodeCopy.kt:50-51
+
+    const val ERROR_TOO_MANY =
+        "Trop de tentatives. Par securite, ce code n'est plus valable ;
+         demandez-en un nouveau."
+
+  (ASCII here; the file is accented.)
+
+Android renders this string for CodePhase.TOO_MANY, which is reached from
+exactly the two causes above. "Demandez-en un nouveau" is now false whenever
+the per-address budget is what fired - the new code is refused too - and
+Android cannot distinguish the two causes, by design.
+
+  This is the same defect the web sentence had, in a second home. R206 would
+  say one text, one home; the Android client has its own fr/ layer by
+  existing architecture, which is not mine to change in this task.
+
+PROPOSED REPLACEMENT, for the human to accept or reject:
+
+    const val ERROR_TOO_MANY =
+        "Trop de tentatives. Par securite, ce code n'est plus accepte ;
+         utilisez le lien de connexion contenu dans le meme e-mail."
+
+  It mirrors the web decision and is true in both cases for the same reason:
+  the link never touches the budget. The walkthrough below demonstrates that
+  end to end.
+
+UNTIL IT IS CHANGED, the Android app tells a person in the budget case to do
+the one thing that cannot work. That is a copy defect, not a security one -
+the budget itself is correct and the link still signs them in.
+
+
+WALKTHROUGH (R176, R177 - against pnpm dev, not the built output)
+-----------------------------------------------------------------
+
+Server: PORT=3100 pnpm dev. R169 precondition checked first -
+/api/health answered {"service":"monreleve",...}, so the suite was pointed at
+this product and not a neighbour. Port asserted free before start, and the
+tree killed afterwards with the port asserted free again (R179).
+
+  --- request 1: POST /api/v1/auth/magic-link -> 202
+      {"status":"accepted","message":"Si un compte existe pour cette
+       adresse, un lien de connexion vient d'y etre envoye. ..."}
+      the email carries code 466652 and a link
+      attempt  1 (wrong) -> 400 invalid_code
+      attempt  2 (wrong) -> 400 invalid_code
+      attempt  3 (wrong) -> 400 invalid_code
+      attempt  4 (wrong) -> 400 invalid_code
+
+  --- request 2: POST /api/v1/auth/magic-link -> 202
+      the email carries code 095163 and a link
+      attempt  5 (wrong) -> 400 invalid_code
+      attempt  6 (wrong) -> 400 invalid_code
+      attempt  7 (wrong) -> 400 invalid_code
+      attempt  8 (wrong) -> 400 invalid_code
+
+  --- request 3: POST /api/v1/auth/magic-link -> 202
+      the email carries code 547446 and a link
+      attempt  9 (wrong) -> 400 invalid_code
+      attempt 10 (wrong) -> 400 invalid_code
+
+  --- request 4: POST /api/v1/auth/magic-link -> 202
+      the email carries code 634658 - the CORRECT one - and a link
+      attempt 11 (CORRECT) -> 429
+      {"status":"error","code":"too_many_attempts","message":"Trop de
+       tentatives. Par securite, ce code n'est plus accepte : utilisez le
+       lien de connexion contenu dans le meme e-mail."}
+
+  --- the recovery the refusal points at, in that same email
+      http://localhost:3100/api/v1/auth/callback?token=<redacted>&email=...
+      -> 200
+      {"status":"ok","accessToken":"<43 chars>","refreshToken":"<43 chars>",
+       "accessExpiresAt":"2026-10-15T13:43:38.172Z"}
+
+Ten wrong guesses across THREE successive requests, each of which reset the
+per-code counter and none of which reset the budget. The eleventh was refused
+although the code was right. The link in the same email then signed in.
+
+WHAT THE WALKTHROUGH CAUGHT THAT NO TEST DID. The link the dev server MINTS
+carries the canonical origin, https://monreleve.ch, not localhost - so the
+first run of the final step fetched production, which answered 400 knowing
+nothing of a local token. Nothing was changed there and no mail was sent (no
+RESEND_API_KEY locally, so the message is printed to the dev terminal), but it
+is a real request this walkthrough made to the live site and it belongs in the
+record rather than quietly re-run. The step was repeated with the origin
+rewritten to the server under test, which is the result above.
+
+  It is a pre-existing property of the dev path, not something this task
+  introduced, and it is filed under NOTICED BUT NOT TOUCHING.
+
+
+OPERATOR STEPS
+--------------
+
+1. TRUSTED_PROXY_HOPS on the VPS. NOTHING NEEDS SETTING if the current
+   deployment is unchanged - the default is 1, which is Coolify's Traefik with
+   nothing in front of it. Set it only if a CDN or second proxy is added.
+
+   HOW TO VERIFY THE COUNT, which cannot be checked from the repository
+   because it depends on what is actually in front of the app (the procedure
+   is in docs/deploy.md, added in increment 1):
+
+     a. from a machine whose public address you know, request any page;
+     b. read the container log for that request and print the raw header:
+        docker logs <app container> | grep -i x-forwarded-for
+     c. count the entries and find the position of YOUR REAL ADDRESS from the
+        RIGHT. That position is TRUSTED_PROXY_HOPS.
+
+   If your address is the last entry, 1 is correct. If the value is wrong,
+   rate limiting still works - it just buckets on the wrong thing, which is
+   why this is worth checking once rather than assuming.
+
+2. The migration. 20261015104441_code_attempt_budget runs with the rest on
+   deploy; it creates one table and two indexes and takes no lock on existing
+   data.
+
+3. Nothing else. No new environment variable is REQUIRED, no secret, no
+   third-party service.
+
+
+DEVIATIONS
+----------
+
+1. THE SWEEP IS HOURLY AND HAS ITS OWN QUEUE. The prompt says "purge job",
+   singular, and the existing one is daily at 03:17. Folding the attempt sweep
+   into it would leave a row written at 04:00 in the table for forty-seven
+   hours - and /confidentialite says those traces are erased after
+   twenty-four. A published sentence that nothing enforces is the outcome this
+   codebase exists not to produce, so the sweep runs hourly (bounding it at
+   twenty-five) in CODE_ATTEMPT_QUEUE. PURGE_CRON and the thirty-day purge are
+   untouched. tests/db/scheduled-jobs.test.ts's ordered census now counts
+   three.
+
+2. THE CONSTANTS WERE ADDED BEFORE THE RED RUN. Two export const declarations
+   and their comments, so the RED would be BEHAVIOURAL rather than an import
+   error - five assertions about what the system does, instead of one about a
+   missing name. No behaviour was written until the RED was recorded.
+
+3. MY OWN COMMENT NAMED A TEST THAT DID NOT EXIST YET. The constant's
+   docstring described the privacy-claims tie before it was written. Caught
+   and closed in the same increment rather than committed - a comment
+   asserting a mechanism nothing delivers is R154 exactly, and writing one
+   while fixing R154 elsewhere is worth recording.
+
+4. AUTH_API_COPY.invalidCode WAS NOT CHANGED. It also says "demandez un
+   nouveau code", which is wrong in exactly one case: the wrong guess that was
+   the tenth. The prompt's increment 5 asks for ONE sentence, about
+   too_many_attempts; this is a narrower instance in a different string and
+   widening the task to it was not mine to decide. Parked below.
+
+
+PARKED
+------
+
+PARK-A  AUTH_API_COPY.invalidCode promises a new code, which fails when the
+        wrong guess was the tenth of the day. One sentence, same shape as the
+        increment-5 decision.
+
+PARK-B  THE SELECTOR DOES NOT REACH ROUTE BEHAVIOUR THROUGH lib/auth/**.
+        Increments 1-4 changed what POST /api/v1/auth/code DOES without
+        touching app/**, so test:e2e and test:visual were not selected. They
+        ran in increment 5 only because lib/fr/** is in the trigger list.
+        Nothing is wrong today - no e2e spec exercises auth/code - but the
+        space between "changed a route's behaviour" and "the route's suite
+        ran" is unexamined, which is R175's shape inside the selector itself.
+        Raised, not fixed: changing the selection rules is its own task with
+        its own census (R246, R247, R251).
+
+PARK-C  THE DEV SERVER MINTS LINKS ON THE CANONICAL ORIGIN, so a link read out
+        of the dev terminal points at production. Pre-existing; found by the
+        walkthrough.
+
+PARK-D  THE IN-MEMORY WINDOWS STAY (R363), as a cheap first filter, and their
+        comments should stop implying they are the guarantee. The per-address
+        and per-network windows in rate-limit.ts are still the first thing a
+        request meets and still useful for that; the durable claim now lives
+        in the table. Their comments were written when they were the only
+        thing standing there.
+
+
+NOTICED BUT NOT TOUCHING
+------------------------
+
+- app/api/v1/auth/code/route.ts's comment on EXCHANGE_RATE_LIMIT still reads
+  "the per-code guard is consumeCode's five-attempt limit; this edge window
+  exists only to stop a source hammering the endpoint across many requests".
+  True, and now incomplete - there is a third guard between them. PARK-D.
+
+- The dev-server origin behaviour above (PARK-C).
+
+
+QUESTIONS
+---------
+
+Q1 THE ANDROID STRING. CodeCopy.kt:50-51 now gives advice that fails under the
+   budget. I have not touched android/ - the prompt makes it stop-and-ask and
+   you have the Android side. The proposed replacement is in ANDROID above.
+   Accept it, reword it, or say it waits.
+
+Q2 PARK-A, invalidCode. One sentence, and it is the same decision as
+   increment 5 one case narrower. Worth a follow-up now, or does it ride with
+   the next copy pass?
+
+Q3 THE BUDGET IS A DENIAL-OF-SERVICE SURFACE, bounded on purpose. Anybody can
+   spend a known address's ten attempts and lock its owner out of CODE entry
+   for up to twenty-four hours. The LINK is unaffected, which is why this was
+   judged acceptable and why the refusal copy now points there. If that
+   trade is wrong, the alternative is a per-source component in the budget
+   key, which weakens it against a distributed attacker. Confirm the trade.
+
+
+PUSH PROOF
+----------
+
+COMMITS, on branch fw-code-cap off 0ddc646:
+
+  5078cff  1/7  R362: the rate-limit key is the address the PROXY wrote
+  0cfa910  2/7  R361: the CodeAttempt table, and the privacy sentence that
+                had to come with it
+  35df54f  3/7  R358/R359: ten code attempts per address per day, claimed
+                atomically
+  5c4acd6  4/7  R361: identical answers, an hourly sweep, and the
+                fingerprints go with the account
+  55e1079  5/7  R360: the refusal points at the link, because that is the
+                recovery that still works
+  (this report is 6/7)
+
+GATE:CHANGED, per commit, each run before the commit it belongs to:
+
+  1/7  typecheck, lint, test, build, test:db
+  2/7  typecheck, lint, test, build, test:db, test:visual
+  3/7  typecheck, lint, test (3252), build, test:db (644 -> 646)
+  4/7  typecheck, lint, test (3252), build, test:db (651)
+  5/7  typecheck, lint, test (3252), build, test:e2e (334),
+       test:visual (111), test:db (654), test:late (10)
+
+  The selection printed for 5/7, pasted as R132 requires:
+    web/lib/fr/auth-api.ts          -> lib/fr/**
+    web/lib/fr/auth-api.ts          -> the database layer
+    web/tests/db/auth-code-route.test.ts -> the database layer
+
+  ZERO BASELINES WERE REGENERATED in 5/7 - test:visual 111 passed. The change
+  is an API response message, which no page renders, and the run confirms it
+  rather than the reasoning standing alone (R135, R207).
+
+ONE GATE RUN FAILED AND WAS NOT A DEFECT, recorded because the failure mode is
+worth knowing. The first 3/7 gate reported GATE FAILED at pnpm test with
+"182 passed, 3116 tests, 4 errors". The same tree, same command, run on its
+own: 186 files, 3252 tests, exit 0. Four worker processes had died - the
+machine was at 0.42 GB free with Android Studio holding about 4 GB. Re-run
+after the pressure eased: 3252 passed. Nothing was changed between the two
+runs.
+
+  AND THE TASK NOTIFICATION SAID "exit code 0" FOR THAT FAILING RUN. The
+  verdict was read from the log, never from the notification.
+
+:app:gate  BUILD SUCCESSFUL in 10m 23s, 129 actionable tasks executed, at
+           HEAD in this worktree. No Android file changed.
+
+GATE:CLONE PASSED on 55e1079, from a clean checkout with no .env, no prior
+node_modules and no generated file the run did not produce itself:
+
+  ran   register-coverage, fixture-coverage, install, typecheck, lint, test,
+        build, size, db:deploy, test:db, test:container:write
+
+  db:deploy is the one that matters most for this task: the new migration
+  applies to a scratch database the run creates itself, so the CodeAttempt
+  table is proven to be created by the migration rather than by a client that
+  already existed on this machine.
+
+  NOT RUN THERE, with the claim each is therefore not making: test:e2e,
+  test:visual, test:runtime, lighthouse, parity:check, test:container - all
+  named with their reasons in the run's own output (R133). test:e2e and
+  test:visual DID run locally in 5/7.
+
+PUSH. Pending at the moment this file was committed; the branch goes up
+immediately after, and nothing else is claimed about it here (R334 - a report
+states only what has happened).
+
+NOTICED IN THE GATE:CLONE OUTPUT, not acted on: it reported "CI readiness:
+quiet - the repository is private and CI_FULL is unset - jobs will skip".
+R248 records that CI runs again because the repository went public and
+CI_FULL is set. One of those two is out of date. It does not affect anything
+in this task - gate:clone answers the same question locally - but it means
+no CI job will run on this branch, and somebody should decide which state is
+the intended one.
