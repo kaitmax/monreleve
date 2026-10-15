@@ -34,12 +34,13 @@ fun bulkConfirmation(
 ): BulkConfirmation {
     val days = selectedDays.sorted()
     val recordedDays = entries.map { it.dayDate }.toSet()
+    val nowInstant = now.toKotlinInstant()
     return BulkConfirmation(
         days = days,
         kind = kind,
         absence = absence,
         alreadyRecordedCount = days.count { it in recordedDays },
-        lateCount = days.count { LatenessForecast.wouldBeLate(LocalDate.parse(it).toKotlinLocalDate(), now.toKotlinInstant()) },
+        lateCount = days.count { LatenessForecast.wouldBeLate(LocalDate.parse(it).toKotlinLocalDate(), nowInstant) },
         lateThresholdDays = LatenessForecast.BACKFILL_DAYS,
     )
 }

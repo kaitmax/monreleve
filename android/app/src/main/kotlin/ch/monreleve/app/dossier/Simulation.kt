@@ -1,8 +1,6 @@
 package ch.monreleve.app.dossier
 
 import ch.monreleve.app.calc.TeleworkResult
-import ch.monreleve.app.data.local.EntryKind
-import ch.monreleve.app.data.local.Portion
 import java.time.DayOfWeek
 import java.time.LocalDate
 

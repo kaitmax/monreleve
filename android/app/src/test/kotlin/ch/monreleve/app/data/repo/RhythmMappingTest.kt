@@ -1,7 +1,7 @@
 package ch.monreleve.app.data.repo
 
-import ch.monreleve.app.data.local.EntryKind
 import ch.monreleve.app.data.local.RhythmKind
+import ch.monreleve.app.dossier.EntryKind
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import java.time.DayOfWeek

@@ -375,7 +375,10 @@ class CalendarController(
             // The prediction (R216): would recording this backdated day now cross the threshold? True of
             // the day's age, whether or not a row exists yet - so the warning shows before the first save.
             wouldBeLate =
-                LatenessForecast.wouldBeLate(LocalDate.parse(isoDate).toKotlinLocalDate(), clock.instant().toKotlinInstant()),
+                LatenessForecast.wouldBeLate(
+                    LocalDate.parse(isoDate).toKotlinLocalDate(),
+                    clock.instant().toKotlinInstant(),
+                ),
             lateThresholdDays = LatenessForecast.BACKFILL_DAYS,
         )
     }

@@ -8,11 +8,11 @@ import androidx.compose.ui.Modifier
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import ch.monreleve.app.calc.ruleSetFor
-import ch.monreleve.app.data.local.EntryKind
-import ch.monreleve.app.data.local.Portion
 import ch.monreleve.app.design.FrontierTheme
 import ch.monreleve.app.dossier.AggregatableEntry
 import ch.monreleve.app.dossier.AggregatableUser
+import ch.monreleve.app.dossier.EntryKind
+import ch.monreleve.app.dossier.Portion
 import ch.monreleve.app.dossier.forecastResults
 import ch.monreleve.app.forecast.ForecastState
 import ch.monreleve.app.forecast.Projection

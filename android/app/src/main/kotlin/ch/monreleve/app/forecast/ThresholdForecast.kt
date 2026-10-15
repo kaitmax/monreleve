@@ -2,8 +2,8 @@ package ch.monreleve.app.forecast
 
 import ch.monreleve.app.calc.ruleSetFor
 import ch.monreleve.app.data.local.EntryEntity
+import ch.monreleve.app.data.local.toAggregatable
 import ch.monreleve.app.data.repo.WeeklyRhythm
-import ch.monreleve.app.dossier.AggregatableEntry
 import ch.monreleve.app.dossier.forecastResults
 import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.ThresholdCrossing
@@ -52,7 +52,7 @@ fun projectedThresholdCrossing(
     val recorded =
         entries
             .filter { it.dayDate.startsWith("$taxYear-") }
-            .map { AggregatableEntry(it.dayDate, it.portion, it.kind) }
+            .map { it.toAggregatable() }
     val results =
         forecastResults(
             settings.toAggregatableUser(),

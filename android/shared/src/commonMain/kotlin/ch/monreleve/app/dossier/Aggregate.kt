@@ -4,10 +4,8 @@ import ch.monreleve.app.calc.Canton
 import ch.monreleve.app.calc.DenominatorMethod
 import ch.monreleve.app.calc.Granularity
 import ch.monreleve.app.calc.TeleworkInput
-import ch.monreleve.app.data.local.EntryKind
-import ch.monreleve.app.data.local.Portion
-import java.time.LocalDate
-import java.time.temporal.ChronoUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.daysUntil
 
 // AN5b increment 2 (R281). Database rows become a TeleworkInput - the Kotlin side of the ONE
 // aggregation. This is the port of web/lib/dossier/aggregate.ts, and it is deliberately a SECOND
@@ -17,6 +15,12 @@ import java.time.temporal.ChronoUnit
 // invisible because every fixture agreed with it. A one-digit change in the shared fixture fails
 // BOTH builds.
 //
+// KMP-0 increment 6c (R372, R371): moved to :shared commonMain, separated from Room. It takes the plain
+// shared types (AggregatableEntry/AggregatableUser over the dossier EntryKind/Portion vocabulary), never
+// EntryEntity or SettingsStore; :app maps its Room rows and settings to these at the boundary
+// (EntryEntity.toAggregatable, Settings.toAggregatableUser). java.time became kotlinx-datetime (:app keeps
+// java.time); daysUntil is ChronoUnit.DAYS.between, locked by ParisDayDstTest.
+//
 // IT COUNTS. IT DOES NOT CALCULATE. Nothing here divides, rounds, or compares against a threshold;
 // it turns rows into the engine's input and hands them over. calculateTelework (calc/) does the
 // arithmetic, once.
@@ -25,7 +29,7 @@ import java.time.temporal.ChronoUnit
 // mission - it is not part of the calculation at all. It is filtered here, and the conformance test
 // asserts the engine input is identical with and without absence rows.
 //
-// PURE (no android/androidx, no clock). java.time.LocalDate is calendar-only arithmetic on explicit
+// PURE (no android/androidx, no clock). kotlinx.datetime.LocalDate is calendar-only arithmetic on explicit
 // dates - R28 clean, the same guarantee the TypeScript side gets from UTC-midnight day math.
 
 /** Exactly the entry columns the aggregation reads (dayDate is along for the ride / diagnosis). */
@@ -152,10 +156,10 @@ fun remainingYearFraction(
         start.year < taxYear -> 1.0
         start.year > taxYear -> 0.0
         else -> {
-            val firstOfYear = LocalDate.of(taxYear, 1, 1)
-            val lastOfYear = LocalDate.of(taxYear, 12, 31)
-            val daysInYear = ChronoUnit.DAYS.between(firstOfYear, lastOfYear) + 1
-            val remaining = ChronoUnit.DAYS.between(start, lastOfYear) + 1
+            val firstOfYear = LocalDate(taxYear, 1, 1)
+            val lastOfYear = LocalDate(taxYear, 12, 31)
+            val daysInYear = firstOfYear.daysUntil(lastOfYear) + 1
+            val remaining = start.daysUntil(lastOfYear) + 1
             remaining.toDouble() / daysInYear.toDouble()
         }
     }

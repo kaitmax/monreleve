@@ -143,7 +143,10 @@ private fun Provenance.toDayProvenance(): DayProvenance =
 fun serverLate(entry: EntryEntity): Boolean {
     if (entry.syncState != SyncState.SYNCED) return false
     val recordedAt = entry.firstRecordedAt?.let { parseServerInstant(it) } ?: return false
-    return LatenessForecast.wouldBeLate(LocalDate.parse(entry.dayDate).toKotlinLocalDate(), recordedAt.toKotlinInstant())
+    return LatenessForecast.wouldBeLate(
+        LocalDate.parse(entry.dayDate).toKotlinLocalDate(),
+        recordedAt.toKotlinInstant(),
+    )
 }
 
 /**

@@ -18,6 +18,7 @@ import ch.monreleve.app.data.local.Provenance
 import ch.monreleve.app.data.local.SyncState
 import ch.monreleve.app.data.local.TallyEntity
 import ch.monreleve.app.data.local.deviceClaimNow
+import ch.monreleve.app.data.local.toAggregatable
 import ch.monreleve.app.data.local.todayInParis
 import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.RecordCommand
@@ -33,7 +34,6 @@ import ch.monreleve.app.detection.detectionOutcome
 import ch.monreleve.app.detection.morningProposal
 import ch.monreleve.app.detection.shouldSuggestManualForNearBorder
 import ch.monreleve.app.detection.toDayChecks
-import ch.monreleve.app.dossier.AggregatableEntry
 import ch.monreleve.app.dossier.LatenessForecast
 import ch.monreleve.app.dossier.pendingEntriesForYear
 import ch.monreleve.app.dossier.toTeleworkInput
@@ -474,7 +474,7 @@ class AujourdhuiController(
         val input =
             toTeleworkInput(
                 settings.toAggregatableUser(),
-                yearEntries.map { AggregatableEntry(it.dayDate, it.portion, it.kind) },
+                yearEntries.map { it.toAggregatable() },
                 currentTaxYear,
             )
         val result = (calculateTelework(input) as? CalcResult.Ok)?.value ?: return null
@@ -504,11 +504,9 @@ class AujourdhuiController(
     @Suppress("ReturnCount")
     private fun latenessOf(oldestPendingDay: String?): PendingLateness {
         if (oldestPendingDay == null) return PendingLateness.NONE
-        val day = LocalDate.parse(oldestPendingDay)
-        if (LatenessForecast.wouldBeLate(day.toKotlinLocalDate(), clock.instant().toKotlinInstant())) {
-            return PendingLateness.OVERDUE
-        }
-        val daysUntil = LatenessForecast.daysUntilLate(day.toKotlinLocalDate(), LocalDate.parse(today).toKotlinLocalDate())
+        val day = LocalDate.parse(oldestPendingDay).toKotlinLocalDate()
+        if (LatenessForecast.wouldBeLate(day, clock.instant().toKotlinInstant())) return PendingLateness.OVERDUE
+        val daysUntil = LatenessForecast.daysUntilLate(day, LocalDate.parse(today).toKotlinLocalDate())
         return if (daysUntil <= WARN_WINDOW_DAYS) PendingLateness.APPROACHING else PendingLateness.NONE
     }
 

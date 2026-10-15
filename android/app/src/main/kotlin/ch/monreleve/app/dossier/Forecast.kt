@@ -3,8 +3,6 @@ package ch.monreleve.app.dossier
 import ch.monreleve.app.calc.CalcResult
 import ch.monreleve.app.calc.TeleworkResult
 import ch.monreleve.app.calc.calculateTelework
-import ch.monreleve.app.data.local.EntryKind
-import ch.monreleve.app.data.local.Portion
 import java.time.LocalDate
 
 // AN-FORECAST (R340, R281, R28). THE YEAR-END FORECAST, computed in memory and NEVER written.

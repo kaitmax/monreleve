@@ -3,7 +3,7 @@ package ch.monreleve.app.parametres
 import ch.monreleve.app.calc.CalcResult
 import ch.monreleve.app.calc.calculateTelework
 import ch.monreleve.app.data.local.EntryEntity
-import ch.monreleve.app.dossier.AggregatableEntry
+import ch.monreleve.app.data.local.toAggregatable
 import ch.monreleve.app.dossier.toTeleworkInput
 import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.toAggregatableUser
@@ -39,7 +39,7 @@ fun deviceDeclarableRate(
     val input =
         toTeleworkInput(
             settings.toAggregatableUser(),
-            yearEntries.map { AggregatableEntry(it.dayDate, it.portion, it.kind) },
+            yearEntries.map { it.toAggregatable() },
             taxYear,
         )
     return (calculateTelework(input) as? CalcResult.Ok)?.value?.declarableRate

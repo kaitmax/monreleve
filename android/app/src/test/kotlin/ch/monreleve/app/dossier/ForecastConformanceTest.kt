@@ -1,8 +1,6 @@
 package ch.monreleve.app.dossier
 
 import ch.monreleve.app.calc.fixtureFile
-import ch.monreleve.app.data.local.EntryKind
-import ch.monreleve.app.data.local.Portion
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.doubles.plusOrMinus
 import io.kotest.matchers.shouldBe
