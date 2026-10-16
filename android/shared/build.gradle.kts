@@ -122,6 +122,11 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+            // KMP-1 increment 4 (R383). runTest, to drive the moved AuthApi's suspend functions in commonTest
+            // through an in-memory HttpTransport fake - so the auth client's behaviour is proven on COMMON code,
+            // not only through the Android transport. TEST-ONLY, and NOT a new version: it reuses the coroutines
+            // pin (1.8.1) :app already declares; runTest is kotlinx-coroutines-test's common API since 1.6.
+            implementation(libs.kotlinx.coroutines.test)
         }
         // KMP-0 increment 2 (R369). The commonMain platform-free FENCE lives in the Android unit-test source
         // set, because it reads the commonMain source files as TEXT (java.io.File), which commonTest cannot do
