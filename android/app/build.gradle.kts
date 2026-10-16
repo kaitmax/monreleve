@@ -893,3 +893,80 @@ tasks.register("gate") {
         )
     }
 }
+
+// ============================================================================
+// R393: THE GATE REFUSES TO START WHEN THE TREE IT WOULD BUILD IS NOT THE TREE
+// THAT WILL BE COMMITTED
+// ============================================================================
+//
+// KMP-0 commits d808d05 and dfffee9 committed `java.time` imports into
+// commonMain - exactly what the platform-free fence (R369) exists to forbid -
+// and every check was green while they did it.
+//
+// Nothing was wrong with the fence. The sequence was:
+//
+//     git mv <file> shared/...                  the move is STAGED
+//     <edit it to use kotlinx-datetime>         the edit is UNSTAGED
+//     ./gradlew :app:gate                       compiles the WORKING TREE: green
+//     git commit                                commits the INDEX: no edit
+//
+// Gradle compiled what was on disk; git committed what was in the index. Each
+// tool was correct about its own input, and no single one of them was in a
+// position to notice they had diverged.
+//
+// IT RUNS IN whenReady, NOT AS A dependsOn TASK, and that is the difference
+// between "refuses to start" and "fails eventually". dependsOn gives no
+// ordering guarantee against the gate's other dependencies, so a compile could
+// run - and a stale build directory be produced - before a doLast ever fired.
+// The task graph is resolved before ANY task executes, so this is the last
+// moment at which nothing has happened yet.
+//
+// UNTRACKED FILES ARE NOT A FAILURE: local.properties, .kotlin/, a session
+// lock and a scratch APK are all untracked, all normal, and none can reach a
+// commit by accident. `git diff` with no arguments is precisely "tracked files
+// whose working-tree content differs from the index", which is the gap that
+// produced the defect. STAGED changes are not a failure either - once staged,
+// the tree and the index agree, which is the whole point.
+gradle.taskGraph.whenReady {
+    val gateIsRunning = allTasks.any { it.path == ":app:gate" || it.name == "gate" }
+
+    if (!gateIsRunning) return@whenReady
+
+    val out = ByteArrayOutputStream()
+    val result =
+        providers.exec {
+            commandLine("git", "diff", "--name-only")
+            isIgnoreExitValue = true
+        }
+
+    val dirty =
+        result.standardOutput.asText
+            .get()
+            .lines()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+
+    out.close()
+
+    if (dirty.isNotEmpty()) {
+        throw GradleException(
+            buildString {
+                appendLine("")
+                appendLine("GATE REFUSED TO START (R393): unstaged changes to tracked files.")
+                appendLine("")
+                appendLine("Gradle compiles the WORKING TREE. A commit writes the INDEX. While")
+                appendLine("these differ, \"the gate passed\" is a statement about code that is")
+                appendLine("not the code being committed - which is how KMP-0 (d808d05, dfffee9)")
+                appendLine("committed java.time into commonMain with every check green.")
+                appendLine("")
+                appendLine("${dirty.size} file(s) differ from the index:")
+                dirty.forEach { appendLine("    $it") }
+                appendLine("")
+                appendLine("Stage them (git add) and run the gate again. Untracked files are not")
+                appendLine("the problem and are not listed.")
+            },
+        )
+    }
+
+    logger.lifecycle("[clean-worktree] OK: no unstaged changes to tracked files (R393)")
+}
