@@ -1,18 +1,19 @@
 package ch.monreleve.app.dossier
 
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertThrows
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFails
+import kotlin.test.assertFalse
+import kotlin.test.assertIs
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
-// KMP-1 increment 2 (R381). GOLDEN TESTS for the dossier wire read, captured against TODAY's org.json code
-// BEFORE parseDossier moves to :shared (increment 6). parseDossier READS, it does not compute (docs/api-v1.md
-// 8): every figure is taken from the payload verbatim. The move swaps org.json for kotlinx.serialization; these
-// expectations - every figure, the warning polymorphism (code -> sealed DossierWarning), a null startDate, and
-// "a truncated body throws rather than returning a plausible zero" - must hold UNCHANGED afterwards. The
-// DossierDocument types already live in :shared (KMP-0); only the parse moves.
+// KMP-1 increment 6 (R381). The dossier-wire GOLDENS, moved to commonTest with the SAME expected fixture data,
+// now over the MOVED (kotlinx tree) parseDossier on COMMON code - so iOS runs them. parseDossier READS, it does
+// not compute (docs/api-v1.md 8): every figure is taken verbatim. The expectations - every figure, the warning
+// polymorphism (code -> sealed DossierWarning), a null startDate, and "a truncated body THROWS rather than
+// returning a plausible zero" - are byte-identical to the pre-move :app copy; only the harness (kotlin.test here,
+// JUnit there) is re-homed.
 
 private val VALID_BODY =
     """
@@ -115,13 +116,11 @@ class DossierWireGoldenTest {
     fun goldenWarningPolymorphismMapsEachCodeToItsType() {
         val warnings = parseDossier(RICH_BODY).zone.warnings
         assertEquals(3, warnings.size)
-        val fallback = warnings[0]
-        assertTrue(fallback is DossierWarning.RuleSetFallback)
-        assertEquals(2026, (fallback as DossierWarning.RuleSetFallback).appliedYear)
-        assertTrue(warnings[1] is DossierWarning.ExactMethodUnverified)
-        val other = warnings[2]
-        assertTrue(other is DossierWarning.Other)
-        assertEquals("SOME_FUTURE_WARNING", (other as DossierWarning.Other).code)
+        val fallback = assertIs<DossierWarning.RuleSetFallback>(warnings[0])
+        assertEquals(2026, fallback.appliedYear)
+        assertIs<DossierWarning.ExactMethodUnverified>(warnings[1])
+        val other = assertIs<DossierWarning.Other>(warnings[2])
+        assertEquals("SOME_FUTURE_WARNING", other.code)
     }
 
     @Test
@@ -161,6 +160,6 @@ class DossierWireGoldenTest {
 
     @Test
     fun goldenATruncatedBodyThrowsRatherThanReturningAPlausibleZero() {
-        assertThrows(Exception::class.java) { parseDossier("{ truncated") }
+        assertFails { parseDossier("{ truncated") }
     }
 }
