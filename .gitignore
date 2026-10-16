@@ -43,7 +43,18 @@ web/dist-parity/
 # deleted it once under R264 and it came back. Ignored rather than removed:
 # it is not this repository's, and R334 forbids deleting what a session did
 # not create.
-MonReleve/
+#
+# ANCHORED WITH A LEADING SLASH (FW-FOLLOWUP). Unanchored, this pattern
+# matches a directory of that name at ANY depth - and git's ignore matching is
+# case-INSENSITIVE here (core.ignorecase=true on Windows), so it was silently
+# ignoring every Kotlin source directory under
+# android/*/src/*/kotlin/ch/monreleve/. Already-tracked files were unaffected,
+# because .gitignore does not apply to tracked paths; only NEW ones vanished,
+# which is the worst version of this bug - nothing fails, the file is simply
+# not in the commit. Found when this task's CodeCopyTest.kt would not stage.
+# The comment above says "at the repository root", so the anchor is what was
+# meant all along.
+/MonReleve/
 
 # R349: the per-worktree session lock. Operational state, never repository
 # content - it was committed once by a `git add -A` run from web/, which

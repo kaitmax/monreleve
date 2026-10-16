@@ -127,9 +127,30 @@ that is running perfectly and logging nothing.
 
 ## 3. Ports and the health checks
 
-| Path | Answers | Point it at |
+There are **three** consumers and two endpoints, so the table names all three
+rather than leaving one to be inferred.
+
+| Path | Who points at it | When it runs |
 |---|---|---|
-| `/api/ready` | 200 ready, **503 while degraded** | Coolify's **deploy** health check |
+| `/api/ready` | Coolify's **deploy** health check | once, at release |
+| `/api/health` | the **container's own `HEALTHCHECK`** (R375) | every 10 s, for the container's life |
+| `/api/health` | a restart policy, if any | on the orchestrator's schedule |
+
+**The container's `HEALTHCHECK` is a liveness probe, and that is R375.** It
+used to probe `/api/ready`, under a comment citing R83 and describing
+Coolify's check — but Coolify's check and the Dockerfile's instruction are two
+different things, and only the first is about readiness. It was harmless until
+FW-READY made `/api/ready` check the database; from that commit a database
+outage would have marked the **serving** container unhealthy every ten
+seconds, which is the opposite of what R357 wants. R83 had already said so in
+its own second sentence: *"Wire the restart policy, if any, at
+`/api/health`."*
+
+> **Coolify's deploy health check is currently DISABLED**, so the deploy gate
+> described below **does not exist yet**: a release goes live whether or not
+> the new version is ready. Enabling it, pointed at `/api/ready`, is an
+> operator step and nothing in this repository can do it. (FW-READY parked
+> this; it is still open.)
 
 **`/api/ready` checks the database (R353).** It answers 503 unless the
 database is reachable (`SELECT 1` inside 2 s) **and** carries every migration
@@ -148,7 +169,6 @@ than at `/api/health`.
 restarts what fails liveness, and a restart cannot repair a database, so a
 liveness check that waited on a slow one would crash-loop the container while
 the previous version stayed down.
-| `/api/health` | 200 whenever the process answers | a restart policy, if any |
 
 **They are not interchangeable, and R83 is why.** Readiness returning 503 stops
 a deploy and leaves the running version serving — the outcome wanted. Liveness

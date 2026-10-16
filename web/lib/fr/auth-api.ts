@@ -175,7 +175,7 @@ export const AUTH_API_COPY = {
    */
   invalidCode:
     `Ce code n${APOS}est pas valable. Vérifiez les six chiffres et réessayez, ou ` +
-    `demandez un nouveau code depuis l${APOS}application.`,
+    `utilisez le lien de connexion contenu dans le même e-mail.`,
 
   /** The request existed but its window passed. The link and the code expire together. */
   codeExpired:

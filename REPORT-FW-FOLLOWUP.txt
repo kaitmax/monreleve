@@ -1,0 +1,448 @@
+REPORT-FW-FOLLOWUP
+==================
+
+TASK   FW-FOLLOWUP - four small things FW-READY and FW-CODE-CAP left open.
+BASE   d204fa0 (origin/main, containing fw-code-cap)
+BRANCH fw-followup, worktree C:/wt/fw-followup (R349), lock held and released
+
+
+SUMMARY
+-------
+
+Four items, each a decision the earlier tasks raised and did not take.
+
+ITEM 1 (R375) was the one with teeth. The container's own HEALTHCHECK probed
+/api/ready, which FW-READY had just taught to check the DATABASE - so from
+that commit a database outage would mark the SERVING container unhealthy
+every ten seconds, and anything routing or restarting on Docker health could
+take the site down, including the pages R357 exists to keep serving without a
+database. It now probes /api/health, and the image proves the split.
+
+ITEMS 2 and 3 (R376, R377) finished a copy decision FW-CODE-CAP could only
+half-make. The per-address budget means "ask for a new code" is advice that
+fails once the budget is spent, and the client cannot tell the two causes
+apart. Three sentences now point at the link instead - two in Android, which
+FW-CODE-CAP stopped to ask about rather than editing, and one on the web it
+had raised and left.
+
+ITEM 4 (R378) stops a dev server minting links to production. FW-CODE-CAP's
+own walkthrough followed one and reached the live site.
+
+
+R273 - WHAT WAS READ BEFORE ANYTHING WAS WRITTEN
+------------------------------------------------
+
+relay/FW-FOLLOWUP.txt, REPORT-FW-CODE-CAP.txt and its QUESTIONS, FW-READY's
+parked items via docs/deploy.md, the Dockerfile's HEALTHCHECK comment,
+REPORT-FW28.txt on the health-check split, tasks/todo.md's FRONTALIER_RUNTIME
+entry, lib/auth/request.ts, lib/content/identity.ts, lib/fr/auth-api.ts and
+the Android CodeCopy/CodeScreen/AuthApi chain.
+
+
+R1 - THE GREEN BASE, INCLUDING THE MERGE-BASE CHECK
+---------------------------------------------------
+
+  git merge-base --is-ancestor origin/fw-code-cap origin/main   ->  YES
+
+It was NOT an ancestor when this session began, and the prompt says to stop if
+it is not. The operator instructed the merge; it was made, gate:clone'd and
+pushed first. See DEVIATIONS 1.
+
+  gate:clone  PASSED on d204fa0 (origin/main's HEAD)
+  :app:gate   BUILD SUCCESSFUL in 10m 37s on the same commit, 218 tasks
+
+
+ITEM 1 - THE CONTAINER'S HEALTHCHECK (R375)
+-------------------------------------------
+
+THE ORIGINAL REASONING, FOUND AND QUOTED. The Dockerfile carried:
+
+    # The readiness endpoint, NOT liveness (R83). Coolify's DEPLOY health
+    # check points here: /api/ready returns 503 while degraded, which stops a
+    # bad deploy and leaves the running version serving. /api/health returns
+    # 200 whenever the process answers, because an orchestrator RESTARTS what
+    # fails liveness and a restart cannot supply a missing environment
+    # variable.
+
+EVERY SENTENCE IN IT IS TRUE AND IT DESCRIBES THE WRONG PROBE. Coolify's
+deploy check is configured in Coolify and runs ONCE, at release; the
+Dockerfile instruction runs every ten seconds for the life of the container.
+Two different checks, and only the first is about readiness.
+
+IT WAS NOT A RULING BEING FOLLOWED. R83's own next sentence, as
+tasks/todo.md records it, says "Wire the restart policy, if any, at
+/api/health" - which is exactly what a Docker HEALTHCHECK is. So this was one
+ruling half-applied to the probe it does not govern, and R375 records the
+correction rather than leaving the citation to read as agreement. REPORT-FW28
+states the split as an operator instruction (deploy -> /api/ready, restart ->
+/api/health) and never rules on the Dockerfile.
+
+IT WAS HARMLESS UNTIL FW-READY, which is why it survived review. While
+/api/ready could not fail at runtime the two endpoints answered alike in a
+healthy container. R353-R357 gave /api/ready a database check.
+
+NO TEST ASSERTED THE TARGET - there was none to update. The new one is
+tests/unit/meta/healthcheck-target.test.ts, RED against the shipped line in
+both directions before the fix:
+
+    AssertionError: expected 'HEALTHCHECK --interval=10s --timeout=...'
+      to contain '/api/health'
+    AssertionError: expected 'HEALTHCHECK --interval=10s --timeout=...'
+      not to contain '/api/ready'
+
+Both directions, because "contains /api/health" alone is satisfied by a
+command that probes both. A third test pins that the interval, timeout and
+retries are still stated rather than inherited from Docker's defaults (R345),
+since the proof below is expressed in terms of interval x retries.
+
+PROOF IN THE IMAGE. monreleve:liveness, built from this branch, started with
+DATABASE_URL pointing at a port where nothing listens, left for 60 s - past
+start-period 20 s plus interval 10 s x 3 retries:
+
+  docker inspect  ->  healthy (failing streak 0)
+
+  GET /api/ready   ->  HTTP/1.1 503 Service Unavailable
+    {"ready":false,"checks":[{"name":"site-origin","ok":true},
+     {"name":"database","ok":false,"reason":"timeout",
+      "detail":"The database did not answer within the readiness budget..."}]}
+
+  GET /api/health  ->  HTTP/1.1 200 OK
+    {"service":"monreleve",...,"status":"ok","reasons":[],"runtime":true}
+
+  GET /            ->  200     (a page R357 says must keep serving)
+
+THE REASON CODE IS `timeout`, NOT `unreachable` as the prompt predicted. A
+dead port on host.docker.internal drops packets rather than refusing them, so
+the probe exhausts its 2 s budget instead of failing fast. Both are valid
+ReadinessReason values from FW-READY and the distinction is real: `unreachable`
+would need a host that actively refuses. Recorded as measured rather than as
+expected.
+
+docs/deploy.md section 3 now names all THREE consumers - Coolify's deploy
+check, the container's HEALTHCHECK, and a restart policy - with when each
+runs. It also records that Coolify's check is currently DISABLED, so the
+deploy gate does not exist yet (FW-READY's parked item, still open).
+
+  While editing it I found the table was malformed: the /api/health row sat
+  after a paragraph, outside the table, so it rendered as a stray line of
+  pipes. Fixed in passing.
+
+
+ITEM 2 - THE ANDROID REFUSAL COPY (R376)
+----------------------------------------
+
+THE FILE MOVED. KMP-0 landed on main while fw-code-cap was in progress and
+moved the French copy into the shared module, so this is now
+android/shared/src/commonMain/kotlin/ch/monreleve/app/fr/CodeCopy.kt. The
+prompt's path is elided (android/.../fr/CodeCopy.kt) so it still matches, but
+the item edits a Kotlin Multiplatform commonMain file rather than an :app one.
+
+  ERROR_WRONG_CODE
+    BEFORE  Ce code n'est pas valable. Verifiez les six chiffres et
+            reessayez, ou demandez un nouveau code.
+    AFTER   Ce code n'est pas valable. Verifiez les six chiffres et
+            reessayez, ou utilisez le lien de connexion contenu dans le meme
+            e-mail.
+
+  ERROR_TOO_MANY
+    BEFORE  Trop de tentatives. Par securite, ce code n'est plus valable ;
+            demandez-en un nouveau.
+    AFTER   Trop de tentatives. Par securite, ce code n'est plus accepte ;
+            utilisez le lien de connexion contenu dans le meme e-mail.
+
+  ERROR_EXPIRED  unchanged, and the reason is in the file: requesting a code
+                 spends no budget, only an EXCHANGE does, so "demandez-en un
+                 nouveau" is still true there.
+
+ASCII here; the file is accented, with its own typography - the curly
+apostrophe and the plain space before the semicolon it already used (R155,
+R168).
+
+TESTS. android/app/src/test/.../fr/CodeCopyTest.kt: each of the two points at
+the link; NEITHER contains "nouveau code" or "un nouveau"; and - the other
+direction (R196) - ERROR_EXPIRED still says "demandez-en un nouveau" and does
+NOT mention the link. Without that last one the file would read as "no
+refusal may mention a new code", which is a different and wrong rule.
+
+ONE PAPARAZZI BASELINE WAS REGENERATED, named before the command ran (R207):
+
+  ch.monreleve.app.ui.screens.signin_SignInScreensScreenshotTest_codeWrong.png
+
+It was the only failure (0.190560 %), it renders ERROR_WRONG_CODE, and the
+diff image was cropped and looked at (R135): the ONLY change is that sentence,
+now wrapping to three lines instead of two, with no overflow and nothing else
+on the screen moved. Regenerated by the targeted move of that one file, not by
+a blanket re-record, and `git status` afterwards showed exactly one modified
+baseline as predicted.
+
+:app:gate  BUILD SUCCESSFUL, 218 tasks.
+
+  It failed twice first, both mine and both caught by the gate: detekt
+  MaxLineLength on the two new strings (split into concatenated literals,
+  which stay compile-time constants), then the baseline above.
+
+
+ITEM 3 - THE WEB invalidCode SENTENCE (R377)
+--------------------------------------------
+
+  BEFORE  Ce code n'est pas valable. Verifiez les six chiffres et reessayez,
+          ou demandez un nouveau code depuis l'application.
+  AFTER   Ce code n'est pas valable. Verifiez les six chiffres et reessayez,
+          ou utilisez le lien de connexion contenu dans le meme e-mail.
+
+The same decision as R360, one case narrower: "demandez un nouveau code" is
+true in almost every case and false in exactly one - the wrong guess that was
+the tenth of the day, where the budget is now spent and the new code is
+refused on arrival. FW-CODE-CAP raised it and left it because its increment 5
+was scoped to one sentence.
+
+ASSERTED AT THE ROUTE, as R360's was (R225): tests/db/auth-code-route.test.ts
+exhausts nothing special - it simply submits a wrong guess - and requires the
+400 body's message to BE AUTH_API_COPY.invalidCode (R206: the test holds the
+key, not a copy of the sentence), plus that the sentence contains "lien" and
+not "nouveau code". 17 tests in that file pass.
+
+ITEMS 2 AND 3 ARE BOTH NEEDED AND NEITHER COVERS THE OTHER. Android never
+reads the server's French `message` - CodeScreen maps a CodePhase to a
+CodeCopy constant, and the only `.message` in AuthApi.kt is on a network
+exception. That was established in FW-CODE-CAP and is why its web-side fix
+could not reach the app.
+
+
+ITEM 4 - A LOCAL SERVER MINTS LOCAL LINKS (R378)
+------------------------------------------------
+
+WHY PRODUCTION_ORIGIN WAS CHOSEN. lib/content/identity.ts records it only as
+"the production origin, for FW28's environment checklist", and lib/auth/
+request.ts used it with no note at the call site. The substantive reason is
+the one the prompt states: App Links verify against the production host -
+/.well-known/assetlinks.json is served from monreleve.ch - so a link on any
+other origin opens a browser instead of the app. That reasoning is now written
+at the call site, where it was missing.
+
+THE CONDITION, AND WHY IT IS TWO THINGS:
+
+    NODE_ENV === 'development'  AND  FRONTALIER_RUNTIME !== '1'
+
+NODE_ENV ALONE IS NOT ENOUGH EVIDENCE, and the repository has already paid for
+that: `next build` sets NODE_ENV=production too, and an earlier guard keyed on
+it broke every local build (tasks/todo.md's FRONTALIER_RUNTIME entry). Here
+the test runs the other way round - development rather than production - so
+`next build` and `next start` are both correctly excluded. But "NODE_ENV
+happens to say development" is a weak thing to hang a production URL on, so
+the runtime marker is checked too: the Dockerfile's runner stage sets
+FRONTALIER_RUNTIME=1 and `next dev` does not. A container whose NODE_ENV was
+set wrong by hand still mints production links. The dangerous direction needs
+both conditions to be wrong at once.
+
+IT FAILS CLOSED. Anything that is not a confirmed dev server gets
+PRODUCTION_ORIGIN, including an empty environment.
+
+SHOWN TRUE UNDER pnpm dev AND FALSE UNDER THE BUILT SERVER,
+tests/unit/auth/sign-in-origin.test.ts, 7 tests, `env` passed as a PARAMETER
+so no case leaks into another file (R171):
+
+  NODE_ENV=production                              -> https://monreleve.ch
+  NODE_ENV=production + FRONTALIER_RUNTIME=1       -> https://monreleve.ch
+  {} (nothing set)                                 -> https://monreleve.ch
+  NODE_ENV=development + FRONTALIER_RUNTIME=1      -> https://monreleve.ch
+  NODE_ENV=development                             -> http://localhost:3000
+  NODE_ENV=development + PORT=3100                 -> http://localhost:3100
+
+plus one test pinning PRODUCTION_ORIGIN to the literal https://monreleve.ch,
+because the other five read the constant and would all still pass if it moved
+- and the host App Links verify against is a published fact, not a setting.
+
+THE PORT COMES FROM THE ENVIRONMENT (R170), not from the request, so a dev
+server moved off 3000 mints a link that resolves to itself.
+
+NOTHING IS LOAD-BEARING ON THE DEV ORIGIN as far as this session could
+establish: no test reads the minted host, and App Link verification is a
+property of the production host only.
+
+WALKTHROUGH, against pnpm dev on PORT=3150:
+
+  /api/health  ->  {"service":"monreleve",...,"runtime":false}
+  POST /api/v1/auth/magic-link  ->  202
+  the link the dev server printed:
+      http://localhost:3150/api/v1/auth/callback?token=<redacted>&email=...
+  host of the link to be followed: localhost
+  GUARD: local - safe to follow
+  following it  ->  200, {"status":"ok","accessToken":...,"refreshToken":...}
+
+No request left this machine. Before FW-FOLLOWUP that same link read
+https://monreleve.ch and following it reached the live site, which is how
+FW-CODE-CAP's walkthrough found this.
+
+The port was asserted free before the server started and after its tree was
+killed (R179).
+
+
+OPERATOR - VERBATIM FROM THE PROMPT, PLUS WHAT WAS MEASURED
+------------------------------------------------------------
+
+- Enable Coolify's health check, pointed at /api/ready. Until then the deploy
+  gate does not exist: a release goes live whether or not the new version is
+  ready. Now recorded in docs/deploy.md section 3 as well.
+
+- TRUSTED_PROXY_HOPS: monreleve.ch's DNS is on Cloudflare. If the record is
+  PROXIED (orange cloud), the default of 1 buckets every visitor on a
+  Cloudflare edge address; set it to 2 and verify with docs/deploy.md's
+  procedure. If DNS-only (grey cloud), 1 is right.
+
+- FW-CODE-CAP QUESTIONS 3: the operator CONFIRMS the trade - the per-address
+  budget may lock code entry for 24 h; the link is unaffected. Recorded as
+  confirmed; no change was made.
+
+- CI state. R248 records the repository as public with CI_FULL on; gate:clone
+  prints the opposite. MEASURED TODAY, from this session's runs:
+
+      CI readiness: quiet - the repository is private and CI_FULL is unset
+      - jobs will skip.
+
+  No repository setting was changed. It means no CI job runs on these
+  branches, and gate:clone is the only thing answering "does this work on a
+  machine that is not mine".
+
+
+PARKED
+------
+
+PARK-F1  The code screen's footer offers "Rien recu ? Renvoyer un code",
+         seen in the regenerated baseline. That button makes the same promise
+         the two sentences just stopped making: once the per-address budget is
+         spent, a resent code is refused on arrival. R376 names exactly two
+         strings and this is a third surface, so it was not touched. It is the
+         same finding one control over, and R267 says a finding that names a
+         second site is not closed until that site is checked.
+
+PARK-F3  NOTHING GUARDS THE .gitignore CLASS fixed in DEVIATIONS 4. A
+         pattern that silently swallows new source files fails in the one
+         direction no test looks: the file is absent, so there is nothing to
+         assert about it. A guard would check that no path under a tracked
+         source root is ignored - cheap, and not written here because it is a
+         new mechanism rather than one of the four items.
+
+PARK-F2  FW-REDIRECT's PARK-R1: app/api/v1/export/pdf/route.ts:170 builds an
+         absolute URL from the request origin for Chromium. Out of scope here
+         and still open.
+
+
+DEVIATIONS
+----------
+
+1. THE MERGE WAS PART OF THIS SESSION. The prompt says to run after
+   fw-code-cap is merged and to STOP if origin/main does not contain it. It
+   did not. The operator instructed the merge rather than deferring, so it was
+   made in the main checkout - the only place main is checked out - verified
+   conflict-free with git merge-tree beforehand, gate:clone'd on the merge
+   commit, and pushed. Recorded because it is work this prompt did not
+   authorise on its own.
+
+2. ITEM 2's FILE HAS MOVED since the prompt was written. See ITEM 2. The
+   elided path still matches; the module does not.
+
+3. THE R375 REASON CODE IS `timeout`, NOT `unreachable`. See ITEM 1. Reported
+   as measured.
+
+4. .gitignore WAS SILENTLY SWALLOWING EVERY NEW KOTLIN SOURCE FILE, and this
+   task's own test is how it surfaced. `git add` refused CodeCopyTest.kt:
+
+       .gitignore:46:MonReleve/   android/app/src/test/kotlin/ch/monreleve/
+                                  app/fr/CodeCopyTest.kt
+
+   The pattern was added to ignore a stray Claude session directory AT THE
+   REPOSITORY ROOT - its own comment says so. Unanchored, it matches a
+   directory of that name at any depth, and git's ignore matching is
+   case-INSENSITIVE here (core.ignorecase=true on Windows), so `MonReleve/`
+   matched `ch/monreleve/`.
+
+   ALREADY-TRACKED FILES WERE UNAFFECTED, because .gitignore does not apply to
+   tracked paths - which is why every existing test in that package is in the
+   repository and nobody had noticed. Only NEW files vanished, and they
+   vanished SILENTLY: nothing fails, the file is simply not in the commit.
+
+   Fixed by anchoring to `/MonReleve/`, which is strictly narrower and is what
+   the comment already described. No directory of that name exists anywhere in
+   the tree today, so nothing that was being ignored stops being ignored.
+
+   OUT OF THE FOUR ITEMS, and done anyway: the alternative was committing this
+   task with `git add -f` and leaving the next Android task to lose a file
+   without noticing. PARK-F3 covers the guard this still lacks.
+
+5. THE R378 PRODUCTION TESTS PASSED ON THEIR FIRST RUN and are worth less
+   than the others because of it: before the change, signInOrigin did not
+   exist and the call site named PRODUCTION_ORIGIN unconditionally, so every
+   production case was true by construction. The two dev cases are the new
+   behaviour and the four production cases are a fence around it. Stated
+   rather than presented as six equal proofs.
+
+
+QUESTIONS
+---------
+
+Q1 PARK-F1, the "Renvoyer un code" button. One control, same defect class as
+   the two sentences. Fix it now or with the next Android copy pass?
+
+Q2 The CI disagreement above. R248's premise or gate:clone's reading - which
+   is the intended state? Nothing in these tasks depends on it, but no CI runs
+   until it is settled.
+
+Q3 Two items from your last instruction are still unidentified and were not
+   attempted: "the S9 comparison" and "the clean-working-directory guard".
+   Nothing in relay/, parking.md, tasks/todo.md or the source matches either
+   by name. The nearest S9 comparison is PARKAN-34's minified-vs-unminified
+   launch crash, which is already closed and cited as evidence. For the guard,
+   pnpm test:clean-tree exists but means coverage with public/ moved aside -
+   if the intent is enforcing R349's clause (refuse to run git in a worktree
+   carrying changes this session did not make), say so and it is a small task.
+
+
+PUSH PROOF
+----------
+
+BRANCH fw-followup off d204fa0, one commit carrying all four items (they
+share a report and three of the four are one decision in three places).
+
+GATE:CHANGED, measured:
+
+    typecheck       exit 0
+    lint            exit 0
+    test            3262 passed
+    build           exit 0
+    test:container  21 passed      <- selected by the Dockerfile change (R251)
+    test:e2e        334 passed
+    test:visual     111 passed
+    test:db         656 passed
+    test:late       10 passed
+
+  test:container is the one worth naming: R375 edits the Dockerfile, which
+  decides whether the image serves at all, and R251 maps that file to this
+  suite. Without it a change to the HEALTHCHECK would have run the base chain
+  only.
+
+  NO WEB BASELINE WAS REGENERATED - test:visual 111 unchanged. The one
+  Paparazzi baseline that WAS regenerated is named in ITEM 2.
+
+:app:gate  BUILD SUCCESSFUL, 218 tasks, with the copy change and the
+           regenerated baseline.
+
+ONE GATE RUN FAILED AND IT WAS A REAL DEFECT, not an environment:
+
+    tests/unit/auth/sign-in-origin.test.ts(41,25): error TS2345:
+    Argument of type '{}' is not assignable to parameter of type 'ProcessEnv'.
+      Property 'NODE_ENV' is missing in type '{}'
+
+  This repository augments NodeJS.ProcessEnv to REQUIRE NODE_ENV, so the test
+  for "nothing is set at all" - the case that must land on the production
+  origin - could not be written against that type. Fixed by narrowing the
+  parameter to the three variables the function actually reads, which is a
+  better signature than the one it replaced.
+
+  vitest had run the same file green beforehand, because vitest does not
+  typecheck. That is the second time in two tasks the gate caught what the
+  test runner could not.
+
+GATE:CLONE AND THE PUSH FOLLOW THIS COMMIT. Their results are recorded in the
+message of the commit that carries them rather than predicted here (R334 - at
+the moment this file was written, neither had happened).
