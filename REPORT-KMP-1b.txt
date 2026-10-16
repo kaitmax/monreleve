@@ -346,6 +346,50 @@ DEVIATIONS
    The alternative was to keep AuthApi catching Exception, which is the defect.
    Recorded rather than resolved silently.
 
+   THE OPERATOR ACCEPTED THIS READING ON ONE CONDITION: that the diff of the six
+   touches only the throw lines. It does. The complete diff of all six against
+   06a805a, every changed line:
+
+     SignInControllerTest.kt
+       -import java.io.IOException
+       +import ch.monreleve.app.data.remote.TransportException
+       -  val controller = controllerWith(this, throwable = IOException("no route"))
+       +  val controller = controllerWith(this, throwable = TransportException("no route"))
+
+     AuthApiCodeTest.kt
+       -import java.io.IOException
+       -  AuthApi(CodeFakeTransport(throwable = IOException("x")), CODE_BASE)...
+       +  AuthApi(CodeFakeTransport(throwable = TransportException("x")), CODE_BASE)...
+
+     AuthApiRequestLinkTest.kt
+       -import java.io.IOException
+       -  val api = AuthApi(FakeTransport(throwable = IOException("no route")), BASE_URL)
+       +  val api = AuthApi(FakeTransport(throwable = TransportException("no route")), BASE_URL)
+
+     AuthApiCallbackTest.kt
+       -import java.io.IOException
+       -  AuthApi(CallbackFakeTransport(throwable = IOException("x")), CB_BASE).exchangeCallback(...)
+       +  AuthApi(CallbackFakeTransport(throwable = TransportException("x")), CB_BASE)
+       +      .exchangeCallback(...)                      <- wrapped: the type name is 7 chars longer
+
+     CallbackControllerTest.kt
+       +import ch.monreleve.app.data.remote.TransportException
+       -  controller(this, FakeTokenStore(), RememberingPendingStore("a@b.ch"), throwable = IOException("x"))
+       +  controller(                                     <- wrapped, same reason
+       +      this, FakeTokenStore(), RememberingPendingStore("a@b.ch"),
+       +      throwable = TransportException("x"),
+       +  )
+
+     AuthWireGoldenTest.kt (the golden)
+       -  val r = AuthApi(FakeTransport(error = RuntimeException("no route")), BASE).requestMagicLink(...)
+       +  val r = AuthApi(FakeTransport(error = TransportException("no route")), BASE).requestMagicLink(...)
+       (plus the replaced comment explaining why)
+
+   SO: four import swaps, six throw lines, two line-wraps forced by a type name
+   seven characters longer, and comments. NO expected value, NO fixture, NO
+   assertion, NO golden body changed. The 29 goldens still assert the same bytes
+   and the same accept/refuse decisions they did on 06a805a.
+
 2. R389's .editorconfig: I overwrote an existing tracked file before reading it
    and restored it from git. See ITEM 2.
 
