@@ -85,5 +85,6 @@ data class EntriesResponse(
  * mandatory field throws MissingFieldException (coerceInputValues=false), which runCatching turns into null -
  * reproducing org.json's getInt/getString throwing on an absent key, caught to null.
  */
-fun parseEntriesResponse(body: String): EntriesResponse? =
-    runCatching { wireJson.decodeFromString<EntriesResponse>(body) }.getOrNull()
+private fun decodeEntriesResponse(body: String) = wireJson.decodeFromString<EntriesResponse>(body)
+
+fun parseEntriesResponse(body: String): EntriesResponse? = runCatching { decodeEntriesResponse(body) }.getOrNull()

@@ -145,6 +145,43 @@ private data class AuthTokenPairWire(
     val refreshExpiresAt: String,
 )
 
+// ============================================================================
+// THE FIRST @Suppress IN THIS REPOSITORY, AND THE ARGUMENT FOR IT
+// ============================================================================
+//
+// There is no detekt baseline file here and no other suppression anywhere, so
+// this is a deliberate act rather than the second entry in an established
+// habit - and it has to survive its own argument (the shape CLAUDE.md uses
+// for NOT_PERSONAL and for every other exemption list).
+//
+// WHAT DETEKT IS OBJECTING TO. Eight `catch (e: Exception)` sites, one per
+// endpoint, each translating a transport failure into ApiFailure.Network.
+//
+// WHY IT CANNOT BE NARROWED. In :app this was `catch (e: IOException)`.
+// commonMain cannot name java.io.IOException - that is the entire point of
+// the module - and Kotlin's common stdlib has no transport-failure supertype
+// to put in its place. A multiplatform seam receives whatever the PLATFORM
+// transport throws: an IOException on Android, an NSError-derived throwable
+// through the Darwin client on iOS. The common code cannot enumerate those
+// types, so the only honest common catch is the broad one.
+//
+// WHAT IT DOES NOT SWALLOW. CancellationException is caught and rethrown
+// FIRST at every one of the eight sites, so structured-concurrency
+// cancellation still propagates. That is the failure mode a broad catch
+// usually causes in coroutine code, and it is closed here.
+//
+// WHAT IT DOES COST, stated rather than glossed: a programming error inside
+// the try - an NPE, an IllegalStateException - is reported to the caller as
+// ApiFailure.Network rather than crashing. On Android the behaviour is
+// unchanged from before KMP-1, because the only thing the Android transport
+// throws is an IOException. On a future iOS transport the same bug would read
+// as "network unreachable". That is a real trade and the alternative - an
+// expect/actual for "is this a transport failure" - is a mechanism KMP-2 can
+// add when a second platform exists to need it.
+//
+// SUPPRESSED AT THE CLASS, not at eight sites: one place to read the reason,
+// and one place to delete when the expect/actual arrives.
+@Suppress("TooGenericExceptionCaught")
 class AuthApi(
     private val transport: HttpTransport,
     private val baseUrl: String,

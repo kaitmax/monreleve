@@ -44,9 +44,19 @@ private fun JsonObject.bool(key: String): Boolean = getValue(key).jsonPrimitive.
 
 private fun JsonObject.str(key: String): String = getValue(key).jsonPrimitive.content
 
-/** A nullable string field: absent or JSON null both become Kotlin null (never the literal "null"). */
-private fun JsonObject.stringOrNull(key: String): String? =
-    this[key]?.let { if (it is JsonNull) null else it.jsonPrimitive.content }
+/**
+ * A nullable string field: absent or JSON null both become Kotlin null (never the literal "null").
+ *
+ * A BLOCK BODY, not an expression one, and deliberately. ktlint pulls a body expression onto the
+ * signature line whenever it fits ktlint's own limit, and the result here is 121 characters - one
+ * over the 120 detekt enforces, which :app has always respected. The two tools deadlock on the
+ * expression form; a block body is outside that rule and every line stays short.
+ */
+private fun JsonObject.stringOrNull(key: String): String? {
+    val value = this[key] ?: return null
+
+    return if (value is JsonNull) null else value.jsonPrimitive.content
+}
 
 /** Map each JSON object in an array. Keeps the three list parsers below to one short line each. */
 private fun <T> JsonArray.mapObjects(f: (JsonObject) -> T): List<T> = map { f(it.jsonObject) }

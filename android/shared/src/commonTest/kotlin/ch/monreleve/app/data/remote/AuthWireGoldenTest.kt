@@ -41,8 +41,10 @@ private const val PAIR_BODY =
 
 private fun keysOf(body: String): Set<String> = wireJson.parseToJsonElement(body).jsonObject.keys
 
-private fun valueOf(body: String, key: String): String? =
-    wireJson.parseToJsonElement(body).jsonObject[key]?.jsonPrimitive?.content
+private fun valueOf(
+    body: String,
+    key: String,
+): String? = wireJson.parseToJsonElement(body).jsonObject[key]?.jsonPrimitive?.content
 
 class AuthWireGoldenTest {
     // ----- REQUEST BODIES: exact key set + values (a stray key is a 400) -----
@@ -194,8 +196,10 @@ class AuthWireGoldenTest {
     @Test
     fun goldenEachCodeRefusalMapsToItsResultAndAnUnknownKeepsItsRawCode() =
         runTest {
-            suspend fun code(c: String, status: Int = 400) =
-                AuthApi(FakeTransport(HttpResponse(status, """{"code":"$c"}""")), BASE).exchangeCode("e", "0")
+            suspend fun code(
+                c: String,
+                status: Int = 400,
+            ) = AuthApi(FakeTransport(HttpResponse(status, """{"code":"$c"}""")), BASE).exchangeCode("e", "0")
             assertEquals(CodeExchangeResult.WrongCode, code("invalid_code"))
             assertEquals(CodeExchangeResult.Expired, code("code_expired"))
             assertEquals(CodeExchangeResult.TooManyAttempts, code("too_many_attempts", 429))

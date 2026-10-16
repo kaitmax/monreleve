@@ -27,8 +27,9 @@ private fun row(): EntryWrite =
 
 private fun envelopeKeys(body: String): Set<String> = wireJson.parseToJsonElement(body).jsonObject.keys
 
-private fun itemKeys(body: String): Set<String> =
-    wireJson.parseToJsonElement(body).jsonObject["entries"]!!.jsonArray[0].jsonObject.keys
+// Reuses item() below (top-level functions may be used before their declaration), which
+// keeps this inside the 120-column limit :app has always respected.
+private fun itemKeys(body: String): Set<String> = item(body).keys
 
 private fun item(body: String) = wireJson.parseToJsonElement(body).jsonObject["entries"]!!.jsonArray[0].jsonObject
 
@@ -73,6 +74,7 @@ class EntriesWireGoldenTest {
             ),
             obj.keys,
         )
+
         fun str(key: String) = obj[key]!!.jsonPrimitive.content
         assertEquals("mut-1", str("clientMutationId"))
         assertEquals("2027-06-18", str("dayDate"))

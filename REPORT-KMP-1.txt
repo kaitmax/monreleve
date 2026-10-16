@@ -342,6 +342,34 @@ session, so judgment calls were taken conservatively and recorded)
    checkpoints (after AuthApi inc 4, after DossierApi inc 6, and the final) and the final
    gate:clone + merge. Every git mv of a file then edited was staged by name and verified
    staged == working tree (git diff --quiet) before commit (the KMP-0 unstaged-blob lesson).
+7. DETEKT FIX (post-gate), and the fast-check GAP it exposed. The operator's first full
+   :app:gate on 546cd27 was GREEN except ONE task: :shared:detekt, 8 x TooGenericExceptionCaught
+   on AuthApi's eight `catch (e: Exception)` blocks (DEVIATION 4 - the IOException -> Exception
+   migration). THE GAP: the fast-check ran :shared:compileCommonMainKotlinMetadata +
+   :shared:testDebugUnitTest + :app:compileDebugKotlin but NOT :shared:detekt or
+   :shared:ktlintCheck, so :shared style was never covered the way :app's is - detekt slipped
+   through. Both are now part of the fast-check going forward.
+   THE FIX (behaviour UNCHANGED - the broad catch is correct, DEVIATION 4): a single
+   class-level @Suppress("TooGenericExceptionCaught") on AuthApi with a documented comment
+   block stating why it cannot be narrowed (commonMain has no java.io.IOException and no
+   transport-failure supertype; a multiplatform seam receives platform-specific throwables),
+   what it does NOT swallow (CancellationException is rethrown first at every site), and its
+   cost. The exception -> ApiFailure MAPPING is untouched. The project's @Suppress convention
+   is matched (function-level dominant, file/class-level for inherent whole-unit properties as
+   in DossierPayload's @file:Suppress; the class is the one place to read the reason and the
+   one place to delete when a KMP-2 expect/actual replaces it). Four ktlint tidy-ups rode along
+   (EntriesWire/DossierPayload one-line joins; the two commonTest goldens re-wrapped to the
+   120-col limit), so :shared:ktlintCheck is green too.
+   PROVENANCE / R334 (flagged honestly): this fix was already present as UNCOMMITTED work in
+   the worktree when the session resumed (its AuthApi comment is written in the operator's own
+   CLAUDE.md-referencing style). The session did NOT author it. On resuming it ALSO failed to
+   run `git status` first and added 8 redundant function-level @Suppress annotations on top of
+   the class-level fix; those 8 (and a spacing slip they introduced) were fully REVERTED, so
+   the committed change is the pre-existing fix alone, verified GREEN (:shared:detekt +
+   :shared:ktlintCheck + compile + :shared:testDebugUnitTest + :app:compileDebugKotlin), and
+   committed per the coordinator's explicit instruction with this attribution. See QUESTION 3.
+   (A transient KSP incremental-cache corruption - NoSuchFileException under app/build/kspCaches
+   - was cleared by deleting that regenerated cache dir; not a code issue.)
 
 --------------------------------------------------------------------------------
 QUESTIONS (for the operator)
@@ -352,6 +380,11 @@ QUESTIONS (for the operator)
    move now, DossierResult is pure and can follow in a quick patch.
 2. CONFIRM: no advisor was available this session (it stalled on every call, per the
    coordinator); all judgment calls were taken conservatively and recorded here (R156).
+3. CONFIRM the detekt-fix provenance (DEVIATION 7): the class-level @Suppress + comment and
+   the four ktlint tidy-ups were found UNCOMMITTED in the worktree on resuming (operator style).
+   The session reverted its own redundant 8-annotation attempt, verified the pre-existing fix
+   GREEN, and committed it per the explicit commit+push instruction. If that fix was NOT yours,
+   this is an R334 flag to investigate; if it was, no action needed.
 
 --------------------------------------------------------------------------------
 PUSH PROOF
