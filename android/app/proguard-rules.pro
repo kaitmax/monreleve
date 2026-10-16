@@ -11,12 +11,18 @@
 # anyway would turn minification off by another name and hide the next real breakage
 # (R306). Every reason this codebase escapes R8's usual victims, each checked:
 #
-#  - THE /v1 WIRE IS MANUAL org.json WITH STRING-LITERAL KEYS. EntriesWire.kt builds
-#    the request with item.put("dayDate", ...) etc. R8 NEVER rewrites the CONTENT of
-#    a string literal, so every JSON key survives untouched (clientMutationId,
-#    dayDate, portion, kind, provenance, absenceReason, note, detectedKind,
-#    detectedAt, clientClaimedAt, written, duplicates, entries - all present in the
-#    minified dex string pool).
+#  - THE /v1 WIRE KEYS ARE COMPILE-TIME STRING LITERALS, NOT REFLECTED FIELD NAMES.
+#    KMP-1 moved the wire code to :shared and replaced org.json with kotlinx.serialization,
+#    but the keys still survive as LITERALS. For the @Serializable DTOs (EntryWrite,
+#    ServerEntry, EntriesResponse, the auth request/pair DTOs) the serialization COMPILER
+#    PLUGIN emits each field name as a string into the generated $serializer descriptor
+#    (addElement("dayDate")), and R8 never rewrites the CONTENT of a string literal. The
+#    reads kept on the JSON tree (parseServerFailure, parseDossier) use "code"/"dayDate"/...
+#    literals too. So every /v1 key still lands in the minified dex string pool
+#    (clientMutationId, dayDate, portion, kind, provenance, absenceReason, note,
+#    detectedKind, detectedAt, clientClaimedAt, id, firstRecordedAt, lastModifiedAt,
+#    written, duplicates, entries) - proven on each HEAD by checkMinifiedWireContract (R307),
+#    which passed with this file still empty of keep rules after the KMP-1 move.
 #  - ENUM VALUES ON THE WIRE SURVIVE. The values go out as `enum.name` and come back
 #    via `Enum.valueOf(...)` (WireEnums.kt: EntryKind, Portion, AbsenceReason,
 #    Provenance). R8 renamed the enum CLASSES (EntryKind -> R1.h) and the constant
@@ -26,9 +32,15 @@
 #    AUTRE, MANUAL, DETECTED_CONFIRMED, DETECTED_CORRECTED all survive in the dex. The
 #    default proguard-android-optimize.txt also keeps `values()`/`valueOf()` on every
 #    enum, which blocks the enum-unboxing optimisation that could otherwise erase them.
-#  - NO REFLECTION-BASED SERIALISATION. No kotlinx.serialization, Gson, Moshi or any
-#    library that reads field names by reflection (which R8 DOES rename). The AN-AUDIT
-#    confirmed zero third-party HTTP/JSON libraries in the release APK.
+#  - SERIALISATION IS COMPILE-TIME (kotlinx.serialization), NOT REFLECTION. KMP-1 added
+#    kotlinx.serialization for the moved :shared wire code. It is NOT the reflection kind
+#    (Gson/Moshi) that reads field names at runtime and that R8 renames: its serializers are
+#    generated at compile time, and the library ships CONSUMER ProGuard rules (in its own
+#    artifact) that keep every @Serializable class's generated serializer - exactly like the
+#    WorkManager/Room/Compose consumer rules noted below. Those kept serializers carry the
+#    field-name literals, so NO rule is needed HERE; verified by checkMinifiedWireContract
+#    passing on this HEAD with this file still empty of keep rules. No Gson/Moshi or any
+#    runtime-reflection JSON library is present.
 #  - PLATFORM HTTP. data/remote wraps HttpsURLConnection; nothing is instantiated by
 #    name or proxied.
 #  - LIBRARY CONSUMER RULES COVER THE ONE REFLECTION PATH THAT EXISTS. WorkManager
