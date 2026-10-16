@@ -5,7 +5,7 @@ import org.junit.Test
 import java.io.File
 
 /**
- * R379: :app:gate refuses to start when the working tree differs from the index.
+ * R393: :app:gate refuses to start when the working tree differs from the index.
  *
  * WHAT THIS DEFECT LOOKED LIKE. KMP-0 commits d808d05 and dfffee9 committed `java.time` imports
  * into commonMain - the one thing R369's platform-free fence exists to forbid - with every check
@@ -50,8 +50,8 @@ class CleanWorktreeGuardTest {
     @Test
     fun theGuardIsStillPresent() {
         assertTrue(
-            "R379: the clean-worktree guard is gone from app/build.gradle.kts",
-            buildScript.contains("GATE REFUSED TO START (R379)"),
+            "R393: the clean-worktree guard is gone from app/build.gradle.kts",
+            buildScript.contains("GATE REFUSED TO START (R393)"),
         )
     }
 
@@ -62,7 +62,7 @@ class CleanWorktreeGuardTest {
         // build directory be produced - before a doLast ever fired. The task graph is resolved
         // before ANY task executes, which is the last moment at which nothing has happened yet.
         assertTrue(
-            "R379: the guard no longer runs in gradle.taskGraph.whenReady, so it no longer " +
+            "R393: the guard no longer runs in gradle.taskGraph.whenReady, so it no longer " +
                 "refuses to START - it would fail somewhere in the middle instead",
             buildScript.contains("gradle.taskGraph.whenReady"),
         )
@@ -78,7 +78,7 @@ class CleanWorktreeGuardTest {
         // Untracked files must stay out of it: local.properties, .kotlin/ and a session lock are
         // all untracked, all normal, and none can reach a commit by accident.
         assertTrue(
-            "R379: the guard no longer reads `git diff --name-only`",
+            "R393: the guard no longer reads `git diff --name-only`",
             buildScript.contains("\"git\", \"diff\", \"--name-only\""),
         )
     }
@@ -88,7 +88,7 @@ class CleanWorktreeGuardTest {
         // It must not fire on an ordinary `./gradlew assembleDebug` during development: a guard
         // that blocks every build while somebody is editing would be switched off the same day.
         assertTrue(
-            "R379: the guard no longer scopes itself to the gate task",
+            "R393: the guard no longer scopes itself to the gate task",
             buildScript.contains(":app:gate"),
         )
     }

@@ -1,7 +1,8 @@
 REPORT-FW-GATE-CLEAN
 ====================
 
-TASK   R379 - the gates refuse to start when the tree they would test is not
+TASK   R393 (renumbered from R379 before merge - R379 was already taken by
+       KMP-1 for "what moves to :shared commonMain") - the gates refuse to start when the tree they would test is not
        the tree that will be committed.
 BASE   d204fa0 (origin/main)
 BRANCH fw-gate-clean, worktree C:/wt/fw-gate-clean (R349), lock released
@@ -66,7 +67,7 @@ about code that is not being committed.
 
 RED, with one unstaged edit to a tracked file:
 
-    GATE REFUSED TO START (R379): unstaged changes to tracked files.
+    GATE REFUSED TO START (R393): unstaged changes to tracked files.
 
     This gate compiles and tests the WORKING TREE. A commit writes the
     INDEX. While these differ, "the gate passed" is a statement about code
@@ -83,7 +84,7 @@ RED, with one unstaged edit to a tracked file:
 
 GREEN, same tree with the edit reverted:
 
-    [clean-worktree] OK: no unstaged changes to tracked files (R379)
+    [clean-worktree] OK: no unstaged changes to tracked files (R393)
     exit=0
 
 TEST: web/tests/unit/meta/clean-worktree-guard.test.ts, 6 tests. Each builds
@@ -121,7 +122,7 @@ editing would be switched off the same day.
 
 RED, with one unstaged edit to a tracked file:
 
-    GATE REFUSED TO START (R379): unstaged changes to tracked files.
+    GATE REFUSED TO START (R393): unstaged changes to tracked files.
     1 file(s) differ from the index:
         android/shared/src/commonMain/kotlin/ch/monreleve/app/fr/CodeCopy.kt
     Stage them (git add) and run the gate again. Untracked files are not
@@ -132,7 +133,7 @@ THREE SECONDS, and that number is the evidence rather than decoration: a full
 
 GREEN, same tree with the edit reverted:
 
-    [clean-worktree] OK: no unstaged changes to tracked files (R379)
+    [clean-worktree] OK: no unstaged changes to tracked files (R393)
     BUILD SUCCESSFUL in 3m 46s
     218 actionable tasks
 

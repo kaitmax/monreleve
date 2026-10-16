@@ -1,6 +1,6 @@
 // web/tests/unit/meta/clean-worktree-guard.test.ts
 //
-// R379: `pnpm gate` refuses to start when the working tree differs from the
+// R393: `pnpm gate` refuses to start when the working tree differs from the
 // index.
 //
 // ============================================================================
@@ -55,7 +55,7 @@ function scratchRepo(): string {
 
   git('init', '--quiet');
   git('config', 'user.email', 'r379@example.com');
-  git('config', 'user.name', 'R379');
+  git('config', 'user.name', 'R393');
   writeFileSync(join(dir, 'tracked.txt'), 'original\n', 'utf8');
   git('add', 'tracked.txt');
   git('commit', '--quiet', '-m', 'one file');
@@ -69,7 +69,7 @@ function runGuard(cwd: string): { status: number; stderr: string; stdout: string
   return { status: result.status ?? -1, stderr: result.stderr, stdout: result.stdout };
 }
 
-describe('R379: the guard refuses exactly the state that produced the defect', () => {
+describe('R393: the guard refuses exactly the state that produced the defect', () => {
   it('passes on a clean tree', () => {
     const run = runGuard(scratchRepo());
 
@@ -128,7 +128,7 @@ describe('R379: the guard refuses exactly the state that produced the defect', (
   });
 });
 
-describe('R379: the guard is actually wired into the gate', () => {
+describe('R393: the guard is actually wired into the gate', () => {
   it('runs as the FIRST step of pnpm gate', () => {
     // A guard nobody calls is a comment (CLAUDE.md). And the position
     // matters: it has to refuse before the chain spends ten minutes proving

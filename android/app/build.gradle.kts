@@ -895,7 +895,7 @@ tasks.register("gate") {
 }
 
 // ============================================================================
-// R379: THE GATE REFUSES TO START WHEN THE TREE IT WOULD BUILD IS NOT THE TREE
+// R393: THE GATE REFUSES TO START WHEN THE TREE IT WOULD BUILD IS NOT THE TREE
 // THAT WILL BE COMMITTED
 // ============================================================================
 //
@@ -952,7 +952,7 @@ gradle.taskGraph.whenReady {
         throw GradleException(
             buildString {
                 appendLine("")
-                appendLine("GATE REFUSED TO START (R379): unstaged changes to tracked files.")
+                appendLine("GATE REFUSED TO START (R393): unstaged changes to tracked files.")
                 appendLine("")
                 appendLine("Gradle compiles the WORKING TREE. A commit writes the INDEX. While")
                 appendLine("these differ, \"the gate passed\" is a statement about code that is")
@@ -968,5 +968,5 @@ gradle.taskGraph.whenReady {
         )
     }
 
-    logger.lifecycle("[clean-worktree] OK: no unstaged changes to tracked files (R379)")
+    logger.lifecycle("[clean-worktree] OK: no unstaged changes to tracked files (R393)")
 }

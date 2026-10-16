@@ -1,6 +1,6 @@
 // web/scripts/require-clean-worktree.mjs
 //
-// R379: A GATE REFUSES TO START WHEN THE TREE IT WOULD TEST IS NOT THE TREE
+// R393: A GATE REFUSES TO START WHEN THE TREE IT WOULD TEST IS NOT THE TREE
 // THAT WILL BE COMMITTED.
 //
 // ============================================================================
@@ -78,14 +78,14 @@ function unstagedPaths() {
 const dirty = unstagedPaths();
 
 if (dirty.length === 0) {
-  console.log('[clean-worktree] OK: no unstaged changes to tracked files (R379)');
+  console.log('[clean-worktree] OK: no unstaged changes to tracked files (R393)');
   process.exit(OK);
 }
 
 console.error(
   [
     '',
-    'GATE REFUSED TO START (R379): unstaged changes to tracked files.',
+    'GATE REFUSED TO START (R393): unstaged changes to tracked files.',
     '',
     'This gate compiles and tests the WORKING TREE. A commit writes the',
     'INDEX. While these differ, "the gate passed" is a statement about code',
