@@ -403,4 +403,70 @@ Tips: ...e82d3fe (inc 7). The inc-8 commit (this report) is the final origin/kmp
 SHA is reported to the operator in the session message (a file cannot contain its own hash).
 THE FULL :app:gate + gate:clone on that tip + the merge to main are the OPERATOR's to run.
 
+--------------------------------------------------------------------------------
+FINALISATION (orchestrating session - prerequisites, detekt fix, gate, merge)
+--------------------------------------------------------------------------------
+R1 PREREQUISITES: at the start, origin/main (d204fa0) contained kmp-0 and
+  fw-code-cap but NOT fw-redirect or fw-followup - R1 blocked KMP-1. Both were
+  complete and handed off (reports pushed, clean worktrees), so (operator-
+  authorised) I merged them first: fw-redirect (web-only) and fw-followup (web +
+  3 android incl. a commonMain CodeCopy.kt + baseline) -> main 9809944, with a
+  full :app:gate GREEN (10m11s) and each branch's own gate:clone PASS confirmed
+  in its report. R1 then satisfied (all four ancestors of 9809944).
+
+THE DETEKT BLOCKER AND FIX: the first full :app:gate on 546cd27 passed everything
+  (checkMinifiedWireContract 28 tokens, checkTestFloor 1157, Paparazzi untouched)
+  except :shared:detekt - 8 TooGenericExceptionCaught in the moved AuthApi.kt
+  (catch(Exception)->Network, necessary because commonMain has no java.io.
+  IOException and the HttpTransport seam's exceptions are platform-specific). The
+  agent's fast-check had not run :shared:detekt (DEVIATION 7). Fixed in 800549d by
+  a class-level @Suppress("TooGenericExceptionCaught") with a reason (the project's
+  NOT_PERSONAL @Suppress-with-reason convention) - no behaviour change, the
+  exception->ApiFailure mapping untouched. :shared:detekt + :shared:ktlintCheck are
+  now in the fast-check.
+
+  PROVENANCE (QUESTION 3, resolved): the @Suppress fix was found UNCOMMITTED in
+  C:/wt/kmp-1 on resume and flagged "not mine". It IS the agent's own prior work:
+  C:/wt/kmp-1 is KMP-1's exclusive worktree (R349 isolation - no other session
+  writes there), and this is the partial-staging class (the @Suppress was added
+  during the AuthApi move but a staging slip left it in the working tree and out
+  of 546cd27's commit - which is exactly why 546cd27's committed blob failed detekt
+  while the agent's working-tree fast-check passed). NOT another session's work; no
+  R334 breach. The fix is correct and now committed (800549d).
+
+QUESTION 2 (DossierApi class stays in :app), CONFIRMED: only the pure parseDossier
+  moved; the DossierApi class orchestrates :app-only seams - correct per R379
+  ("DossierApi.kt's PURE PARTS"). KMP-2 inherits the class.
+
+INDEPENDENT R273 BYTE-FOR-BYTE CHECK on 800549d: commonMain has 0 org.json imports
+  AND 0 java/javax/android imports (the migration is complete and the KMP-0 fence
+  holds); the @Suppress added no import. The 29 commonMain goldens + checkMinified
+  WireContract (28 tokens on the minified dex) are the proof the bytes are unchanged.
+
+:app:gate on 800549d: BUILD SUCCESSFUL in 3m52s, GATE_EXIT=0 (apps closed freed the
+  RAM that killed three earlier attempts) - checkMinifiedWireContract, :shared:detekt,
+  checkTestFloor (1157), verifyPaparazziDebug (NO baseline re-recorded), ktlint,
+  the release checks, the metadata compile. gate:clone: COVERED - KMP-1 changed 0
+  web files; the merged HEAD's web is byte-identical to 9809944 (each prerequisite's
+  own gate:clone PASSED). gate:clone is a web-only harness; the android change is
+  proven by :app:gate.
+
+MERGE: `git merge --no-ff origin/kmp-1` into main (unmoved at 9809944) -> c70c4f5,
+  pushed. Android content-identity: 0 files differ between 800549d and the merge
+  HEAD. register-coverage OK (105 reports). archive/kmp-1 = 800549d tagged, pushed,
+  verified on origin; kmp-1 deleted local + origin; worktree removed. Restore with
+  `git branch kmp-1 archive/kmp-1`.
+
+R385 / R374: no device connected - the goldens + the minified round-trip are the
+  proof (as R385 allows); KMP-0's owed R374 release-vs-0ddc646 comparison remains
+  OPEN, carried to the next device session.
+
+NOTED (R334, left alone): android/.kotlin/ (Kotlin daemon build cache) is untracked
+  and not gitignored - a .gitignore gap worth a follow-up, not touched here.
+
+origin/main @ c70c4f5. KMP-1 complete and merged; the wire + API client now live in
+:shared, org.json -> kotlinx.serialization, bytes proven unchanged. KMP-2 (Room,
+the stores, SyncEngine, the DossierApi class, UrlConnectionTransport's iOS impl)
+inherits a common wire layer.
+
 END OF REPORT-KMP-1
