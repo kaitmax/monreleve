@@ -1,0 +1,373 @@
+================================================================================
+REPORT-KMP-1 : THE WIRE AND THE API CLIENT MOVE TO :shared, BYTE FOR BYTE
+================================================================================
+Branch: kmp-1    Base: origin/main 9809944 (unchanged this session; no rebase)
+Worktree: C:/wt/kmp-1    Agent: claude-opus-4-8[1m]    Date: 2026-10-16
+Android only. No iOS source written this session.
+
+STATUS: COMPLETE for the session's scope. Increments 1-8 are DONE, GREEN under the
+RAM-adapted fast-check mode, and PUSHED to origin/kmp-1. The server-talking code
+(the HTTP seam, AuthApi, ApiFailure/AuthServerCode/AuthPaths, TokenPair, the entries
+wire DTOs, and DossierPayload's parse) now lives in :shared commonMain, org.json
+replaced by kotlinx.serialization IN THE MOVED FILES ONLY, with THE BYTES ON THE WIRE
+PROVEN UNCHANGED by goldens captured against the org.json code before the move. The
+FULL :app:gate, gate:clone, and the merge to main are the OPERATOR's to run (as
+instructed). No device is attached, so the golden tests are R385's proof (see R385).
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+KMP-1 moves the code that talks to the server to :shared commonMain (same package
+names, so NO :app import changed), and replaces org.json with kotlinx.serialization
+only in the files that moved. :app keeps org.json for everything that stays
+(UrlConnectionTransport, the stores, SessionManager, controllers, SyncEngine/Worker,
+DossierCache, every EntryEntity<->DTO mapping, detection, BorderPolygon, Settings).
+
+THE #1 CONSTRAINT held: the bytes on the wire do not change. Every request body is
+the same JSON (same keys, same absent-vs-null, same number forms) and every response
+accepted/refused today is still accepted/refused. This is proven by GOLDEN TESTS
+(R381) captured against the current org.json code BEFORE anything moved, which then
+passed UNCHANGED against the kotlinx code after each move, and by the existing
+contract checks staying green without being edited (R382), including
+checkMinifiedWireContract (all 28 /v1 tokens) on the MINIFIED release build.
+
+ONE Json configuration backs it all (WireJson.kt), every flag chosen to reproduce
+org.json. The @Serializable DTOs are used for the flat shapes (auth requests, the
+token pair, the entries request/response), so the Json flags genuinely govern their
+bytes; the JSON tree API is used only where a discriminated union or deliberate
+tolerance demanded it (parseDossier's warning polymorphism, parseServerFailure).
+
+Commits (all on origin/kmp-1):
+  c4682a9  inc 1  pin kotlinx.serialization + apply its plugin to :shared (nothing uses it yet)
+  69e4428  inc 2  golden wire tests against the org.json code; RED plant shown + reverted
+  0b3bb42  inc 3  move the four import-free wire types (Http/AuthServerCode/AuthPaths/TokenPair)
+  5968cd4  inc 4  move AuthApi + ApiFailure to :shared, org.json -> kotlinx; R383 commonTest fake
+  d6a70da  inc 5  move the entries wire DTOs + encode/decode; EntryEntity mapping stays in :app
+  a577ff2  inc 6  move DossierPayload.parseDossier (org.json -> kotlinx tree)
+  e82d3fe  inc 7  R382 minified build green with NO R8 rule; correct the stale ProGuard note
+  <inc 8>  inc 8  this report (its own SHA is reported in the session message; a file cannot
+                  contain its own hash)
+
+--------------------------------------------------------------------------------
+R273 (task registry / number collision)
+--------------------------------------------------------------------------------
+tasks/todo.md ends at AN15 and carries NO KMP entry; there is no number collision.
+KMP-1 is the operator-initiated successor to KMP-0 (REPORT-KMP-0 "WHAT KMP-1
+INHERITS"), carrying R379-R385. It belongs here.
+
+--------------------------------------------------------------------------------
+R1 (base green; origin/main contains the predecessors)
+--------------------------------------------------------------------------------
+origin/main HEAD = 9809944 at session start (unchanged throughout; no rebase needed).
+merge-base --is-ancestor of origin/main, each checked:
+  kmp-0:        archived, not a branch. Its final tip bdd95c7 IS an ancestor of
+                origin/main, and its merge commit 6e55962 IS an ancestor (restore with
+                git branch kmp-0 archive/kmp-0). So kmp-0's content IS in main.
+  fw-code-cap:  ANCESTOR (OK)
+  fw-redirect:  ANCESTOR (OK)
+  fw-followup:  ANCESTOR (OK)
+:app:gate and gate:clone green on 9809944: the OPERATOR ran :app:gate GREEN on this
+HEAD (10m11s) and confirmed the gate:clone components PASSED, with android unchanged
+from KMP-0's verified tree. Per instruction, NOT re-run here (the slow base gate).
+
+--------------------------------------------------------------------------------
+PINS (R380 / R136)
+--------------------------------------------------------------------------------
+  kotlinx-serialization-json = 1.7.3   (runtime, [versions] kotlinx-serialization)
+    - HIGHEST compatible with Kotlin 2.0.x: 1.8.0-RC moved to Kotlin 2.1.0 (the
+      kotlinx.serialization CHANGELOG); 1.7.3 "uses Kotlin 2.0.20 by default". This
+      project is pinned to Kotlin 2.0.21 (the hard boundary: no Kotlin upgrade), so
+      1.7.3 is the highest runtime that works with NO toolchain bump.
+    - Released 2024-10, far more than two weeks old (R380).
+    - "mature stable, not bleeding edge" (the datetime/work/kotest discipline): the
+      settled last-of-line for 2.0.x.
+    - Verified via the CHANGELOG, not guessed (the AN2 Kotest-5.9.1 discipline).
+    - Declared implementation() in :shared, NOT api(): :app's COMPILE classpath never
+      sees kotlinx.serialization (its remaining code keeps org.json); only the moved
+      :shared files use it. It still reaches :app's RUNTIME classpath transitively, so
+      the release APK carries it and checkMinifiedWireContract (R307) exercises it.
+  kotlin-serialization plugin = org.jetbrains.kotlin.plugin.serialization @ 2.0.21
+    - Pinned to the Kotlin version (version.ref = kotlin) because the serialization
+      plugin ships in LOCKSTEP with the compiler - a plugin built for another compiler
+      cannot run in this one (the same reasoning kotlin-reflect/kotlin-test follow).
+    - Applied to :shared only.
+  EMPIRICALLY VALIDATED: :shared:compileCommonMainKotlinMetadata compiles the moved
+  code AS COMMON on 2.0.21, :shared tests are green, and the minified release build
+  round-trips every golden (checkMinifiedWireContract OK).
+
+TEST-ONLY enabler (R383): :shared commonTest gains kotlinx-coroutines-test (runTest),
+versioned to the EXISTING coroutines pin 1.8.1 (NO new version, no production dep) -
+the minimal way to drive AuthApi's suspend functions on common code.
+
+--------------------------------------------------------------------------------
+THE Json CONFIGURATION (WireJson.kt - one config, every flag vs org.json)
+--------------------------------------------------------------------------------
+  explicitNulls = false
+    org.json NEVER wrote a key for a null optional (the code did x?.let{put(...)}),
+    so a null was an ABSENT key, never "x":null. The server's zod is .optional() (absent
+    allowed) and NOT .nullable() (literal null -> 400). explicitNulls=false omits a null
+    property on ENCODE (reproducing the omission) and reads an absent nullable key as null
+    on DECODE - exactly org.json's `if (isNull(key)) null else ...` for both absent and
+    explicit-null.
+  encodeDefaults = false
+    org.json wrote precisely the keys the code put(). The request DTOs give their
+    always-sent fields NO default, so encodeDefaults=false can never drop one; it only
+    affects a nullable optional at its null default, which explicitNulls already omits.
+  ignoreUnknownKeys = true
+    org.json read only the keys it named and ignored the rest. Contract 6.5 makes this a
+    CLIENT OBLIGATION (so the server can add a response field without breaking the client).
+  isLenient = false
+    org.json parsed the strict JSON the server sends; strict parsing of a real server body
+    gives the identical accept/refuse decision, and a malformed body is refused by both.
+  coerceInputValues = false
+    org.json never coerced null/invalid to a default - a missing required field threw
+    (getString on an absent key), caught by runCatching to null / Malformed. false keeps
+    that: a missing mandatory field throws MissingFieldException. Coercing would invent a
+    value org.json never produced.
+
+UNKNOWN RESPONSE KEYS, case by case (R380): org.json ignored them everywhere (it read
+only named keys), so ignoreUnknownKeys=true matches for every response - the token pair,
+the entries response, and (via explicit tree reads) parseServerFailure and parseDossier.
+No decoder refused on an unknown key today, so none does now.
+
+--------------------------------------------------------------------------------
+GOLDENS (R381) - the list, and the RED plant
+--------------------------------------------------------------------------------
+Captured in :app against the org.json code (inc 2), then re-homed to :shared commonTest
+with the SAME expected fixture data as each function moved (inc 4-6), so iOS runs them.
+Requests are compared SEMANTICALLY: parsed JSON equal AND the exact key set equal AND
+absent-vs-null equal (org.json key order is not a contract).
+
+AuthWireGoldenTest (commonTest, 18 tests): magic-link/code/refresh request bodies (exact
+  key sets + values), the callback GET query (URL-encoded byte-for-byte: t+o+k, a%40b.ch),
+  authenticated POST/PATCH/GET HttpRequest shape (Bearer + Content-Type, body verbatim),
+  every success + documented refusal (callback Signed/Malformed/InvalidLink; refresh
+  Rotated/Invalid; magic-link Sent/RateLimited/Failed; each code refusal invalid_code/
+  code_expired/too_many_attempts/rate_limited + unknown keeps its raw code), the
+  network-failure branch (R383), parseServerFailure tolerance (non-JSON 502, explicit-null
+  code), and the full AuthServerCode.fromWire mapping.
+EntriesWireGoldenTest (commonTest, 6 tests): the request body exact key sets (envelope;
+  minimal row = the required five; one-optional row; all-optionals row) with null optionals
+  and server fields ABSENT; the response parse with null handling; a malformed body -> null.
+DossierWireGoldenTest (commonTest, 5 tests): parseDossier every figure verbatim, the
+  warning polymorphism (RULE_SET_FALLBACK with appliedYear / EXACT_METHOD_UNVERIFIED /
+  Other), a prorated period with a startDate, month + annex rows including an UNLOGGED day,
+  and a truncated body THROWS (never a plausible 0).
+
+THE RED PLANT (R180): item.put("stray","RED-PLANT") was added to entriesRequestBody; the
+three exact-key-set goldens went RED (run: 6 tests, 3 failed - precisely the key-set
+assertions), then it was reverted and EntriesWire.kt confirmed byte-identical to HEAD
+(git diff --quiet). A golden that cannot fail asserts nothing.
+
+--------------------------------------------------------------------------------
+EACH MOVE (files; test counts before and after)
+--------------------------------------------------------------------------------
+Per-increment fast check (the operator's RAM-adapted mode): :shared:compileCommonMain-
+KotlinMetadata + :shared:testDebugUnitTest + :app:compileDebugKotlin (+ the directly
+affected :app test classes). The operator runs the FULL :app:gate at the checkpoints.
+
+inc 3  Http.kt, AuthServerCode.kt, AuthPaths.kt (data/remote) + TokenPair.kt (auth) ->
+  :shared commonMain, SAME package (no :app import changed). All four are import-free, so
+  commonMain compiles them AS common. One cross-module compile fix: UrlConnectionTransport
+  (stays in :app) captured request.body into a local val - a public property in another
+  module cannot be smart-cast (the KMP-0 class). No behaviour change.
+
+inc 4  AuthApi.kt + ApiFailure.kt -> :shared commonMain, org.json -> kotlinx.
+  - ApiFailure: the sealed interface is unchanged; parseServerFailure's org.json becomes
+    the kotlinx tree API, matched case-for-case (non-JSON -> Server(status,null,null);
+    absent/explicit-null field -> null; a primitive's text via .content; a non-scalar
+    swallowed to null).
+  - AuthApi: request bodies are @Serializable DTOs encoded by wireJson; the token-pair
+    response decodes into a @Serializable wire DTO and maps to the plain TokenPair (the
+    credential type stays un-annotated). java.net.URLEncoder -> a byte-for-byte common
+    encoder; java.io.IOException -> catch CancellationException (rethrow) then Exception
+    -> Network (commonMain cannot name a JVM exception; a multiplatform transport throws
+    platform types, so the seam maps any non-cancellation failure to Network, the same
+    outcome the IOException catch gave); String(bytes,UTF_8) -> bytes.decodeToString().
+  - New WireJson.kt (the one Json config). New commonTest AuthWireGoldenTest (R381 moved
+    + R383 fake): 18 tests, 0 failures on common code.
+  :app AuthApiCallbackTest/AuthApiCodeTest/AuthApiRequestLinkTest + TokenPairTest stay
+  UNEDITED and green against the shared AuthApi (R382).
+
+inc 5  the entries wire half -> :shared data/sync/EntriesWire.kt: MAX_BATCH_ITEMS/
+  MAX_NOTE_LENGTH/ENTRIES_PATH, @Serializable EntryWrite, encodeEntries, @Serializable
+  ServerEntry + EntriesResponse, parseEntriesResponse. The EntryEntity <-> DTO mapping
+  STAYS in :app (renamed EntriesWire.kt -> EntriesMapping.kt): toEntryWrite(),
+  entriesRequestBody (now maps rows then calls the shared encode - signature unchanged, so
+  SyncEngine is untouched), toSyncedEntity. commonTest EntriesWireGoldenTest: 6 tests, 0
+  failures. :app EntriesWireTest + BatchLimitParityTest + WireContractParityTest stay
+  UNEDITED and green (R382).
+
+inc 6  DossierPayload.parseDossier -> :shared commonMain, org.json -> kotlinx tree (the
+  warning polymorphism). DossierApi.kt (class + DossierResult) STAYS in :app - it
+  orchestrates AuthedOutcome (SessionManager) and the DossierCache store seam, both :app;
+  the pure, iOS-needed part is the parse (see DEVIATIONS). commonTest DossierWireGoldenTest:
+  5 tests, 0 failures. :app DossierApiTest stays UNEDITED and green (R382).
+
+TEST COUNTS:
+  :shared  BEFORE (KMP-0): 8.  AFTER (KMP-1): 37  (+29: the moved goldens -
+           AuthWireGoldenTest 18, EntriesWireGoldenTest 6, DossierWireGoldenTest 5).
+           The 8 pre-existing :shared tests are unchanged.
+  :app     The pre-existing wire tests (AuthApi* x3, EntriesWireTest, DossierApiTest,
+           WireContractParityTest, BatchLimitParityTest, TokenPairTest) all STAY and are
+           green UNEDITED against the shared code (R382). The inc-2 goldens were added to
+           :app then MOVED to commonTest, so the main :app baseline count is unchanged;
+           the operator's full :app:gate reports the exact figure.
+
+--------------------------------------------------------------------------------
+R382 (the existing contract checks, the minified round trip, any R8 rule)
+--------------------------------------------------------------------------------
+All green WITHOUT being edited to pass (verified per-increment and at inc 7):
+  WireContractParityTest   (the :app data.local enums vs web/lib/entries/schema.ts) - OK
+  BatchLimitParityTest     (MAX_BATCH_ITEMS/MAX_NOTE_LENGTH now resolve from :shared, same
+                            package, vs the server constant) - OK
+  AuthApiCallbackTest / AuthApiCodeTest / AuthApiRequestLinkTest - OK
+  EntriesWireTest          (the EntryEntity path: :app mapping + shared encode) - OK
+  DossierApiTest           (drives DossierApi, which calls the shared parseDossier) - OK
+  checkMinifiedWireContract (the MINIFIED release dex) - OK:
+    "all 28 /v1 contract tokens (13 field keys + 15 enum values, derived from
+     docs/api-v1.md) survive in the minified release dex"
+    assembleRelease + minifyReleaseWithR8 ran in 9m41s, BUILD SUCCESSFUL.
+
+R8 RULES ADDED: NONE. The @Serializable field names survive minification because (a) the
+serialization compiler plugin emits each name as a string literal in the generated
+$serializer descriptor (R8 never rewrites literal CONTENT) and (b) kotlinx.serialization
+ships CONSUMER ProGuard rules that keep those serializers - the same mechanism as the
+WorkManager/Room/Compose consumer rules. proguard-rules.pro stayed EMPTY of keep rules
+(R306: a rule is added only after a build shows a concrete failure; none did).
+The proguard-rules.pro COMMENT was corrected (R267/R154): it previously asserted "No
+kotlinx.serialization" and explained wire survival via org.json string literals, both made
+false by the move. The edit is COMMENT-ONLY (R8 ignores comments; the minified output is
+byte-identical and the 28 tokens still survive) and adds no keep rule.
+
+NO existing check had its ASSERTION changed. UrlConnectionTransport keeps its own :app
+tests unchanged (R383).
+
+--------------------------------------------------------------------------------
+R384 INVENTORY (kotlinx-datetime 0.6.1 JVM-typealias reliance)
+--------------------------------------------------------------------------------
+KMP-1 ADDED ZERO new reliance: the moved wire code uses no dates. The inventory below is
+KMP-0's, confirmed unchanged - the later 0.7.x upgrade task needs it. 0.6.x's DayOfWeek
+(and Month) are JVM TYPEALIASES to java.time.*, which is why :app's java.time.DayOfWeek
+crosses into the shared kotlinx signatures with NO conversion:
+
+  :shared commonMain (uses kotlinx.datetime.DayOfWeek):
+    dossier/Forecast.kt     rhythm: Map<DayOfWeek, EntryKind>  (two signatures)
+    dossier/Simulation.kt   SimChange.ExtraWeekday(val day: DayOfWeek); rhythm maps
+    fr/RythmeCopy.kt         references DayOfWeek.ordinal in a comment (no hard dep)
+  :app (uses java.time.DayOfWeek and passes it INTO the shared kotlinx signatures - the
+  reliance is that the two DayOfWeek types are IDENTICAL via the typealias):
+    data/repo/RhythmRepository.kt   toEntryKindMap(): Map<DayOfWeek, EntryKind> -> Forecast/Simulation
+    forecast/ForecastController.kt  DayOfWeek maps/args -> shared forecast
+    forecast/ForecastState.kt       rhythmDays: Map<DayOfWeek, RhythmChoice>
+    forecast/SimulationController.kt List<DayOfWeek> weekdays -> shared simulation
+    forecast/SimulationState.kt      extraWeekday: DayOfWeek?; availableWeekdays
+    ui/screens/rythme/RythmeScreen.kt java.time.DayOfWeek in the UI (feeds controllers)
+    calendar/CalendarModel.kt        WEEKEND = {SATURDAY, SUNDAY} (internal, java.time)
+    detection/EveningNotificationDecision.kt  comment only (uses Int, not the type)
+  The 0.7.0 upgrade (DayOfWeek/Month became multiplatform enums) will need an explicit
+  conversion at each :app boundary site above. Out of scope for KMP-1 (no datetime change).
+
+--------------------------------------------------------------------------------
+R385 (the on-device round trip; the owed R374)
+--------------------------------------------------------------------------------
+NO DEVICE OR EMULATOR IS ATTACHED (adb devices: empty). So, as R385 directs, the GOLDEN
+TESTS ARE THE PROOF: 29 wire goldens run on COMMON code (0 failures) and the minified
+release build round-trips all 28 /v1 tokens, which together prove the request bytes and
+the response accept/refuse decisions are unchanged - the properties the device round trip
+would observe. The local-stack sign-in / record-two-days / sync / fetch-dossier walkthrough
+is owed when a device is connected.
+KMP-0's owed R374 comparison (release build of HEAD vs the 0ddc646 build, screen by screen)
+STAYS OPEN - it also needs a device, and none is attached.
+
+--------------------------------------------------------------------------------
+WHAT KMP-2 INHERITS
+--------------------------------------------------------------------------------
+Still in :app, needing a device and/or this session's wire types first:
+  - DossierApi.kt (the class + DossierResult): orchestrates AuthedOutcome + DossierCache;
+    iOS writes its own fetch over the shared parseDossier. DossierResult (pure, over the
+    shared DossierDocument) is a clean candidate to move with the shared controller work.
+  - SessionManager + AuthedOutcome, the auth controllers (Callback/Code/SignIn), SignInProbe:
+    hold stores/state; AuthedOutcome is a pure outcome type embedded in SessionManager that
+    could be extracted to :shared when the controllers are tackled.
+  - UrlConnectionTransport: the Android HttpTransport impl; iOS implements the (now shared)
+    HttpTransport over NSURLSession in iosMain, on a Mac.
+  - SyncEngine/Scheduler/Worker, DossierCache (SharedPrefs), KeystoreTokenStore, the
+    repositories, Room, EntryEntity and every EntryEntity<->DTO mapping, PendingDays, the
+    settings/token stores - the on-device store (KMP-2 needs a device for migration tests).
+  - fr/format, ComparisonCopy, NotificationCopy (JVM/CLDR formatting) - KMP-0's open item.
+  The HTTP seam, AuthApi, the failures, TokenPair, the entries wire DTOs and the dossier
+  parse are now ALL in :shared, so iOS's next task has the wire contract ready.
+
+--------------------------------------------------------------------------------
+PARKED
+--------------------------------------------------------------------------------
+  - DossierResult (the dossier-fetch outcome vocabulary) stays in :app with DossierApi;
+    move it with the shared-controller work in KMP-2 (it is pure, over the shared
+    DossierDocument).
+  - AuthedOutcome stays in :app (inside SessionManager); extract to :shared when the auth
+    controllers are addressed.
+  - The on-device round trip (R385) and KMP-0's R374 comparison: owed when a device attaches.
+  - android/local.properties was created in this worktree (sdk.dir; gitignored, not committed).
+
+--------------------------------------------------------------------------------
+DEVIATIONS (all recorded, conservative, reversible - R156; advisor unavailable all
+session, so judgment calls were taken conservatively and recorded)
+--------------------------------------------------------------------------------
+1. ApiFailure.kt moved in inc 4, not inc 3. The relay's inc-3 list names it, but its file
+   carries parseServerFailure (JSON), which cannot exist in commonMain unconverted. Per the
+   relay's OWN inc3/inc4 principle (inc 3 = no JSON; inc 4 = org.json -> kotlinx) it rode
+   with AuthApi's conversion as one unit (fewer touches of wire code). The sealed interface
+   is unchanged; only parseServerFailure converted.
+2. DossierApi.kt (class + DossierResult) STAYS WHOLE in :app; only DossierPayload.parseDossier
+   moved. "DossierApi.kt's pure parts" (R379) is read as the parse: the class orchestrates
+   AuthedOutcome (SessionManager, :app) and the DossierCache store seam (:app), which iOS
+   replaces with its own, exactly as KMP-0 left the forecast controllers in :app. The parse
+   is what iOS needs and what moved. Reversible; flagged as a QUESTION.
+3. Approach: @Serializable DTOs for the flat shapes (so the R380 Json flags genuinely
+   govern the bytes) + the JSON TREE API only where a discriminated union / tolerance
+   demanded it (parseDossier warnings, parseServerFailure). TokenPair (the credential) is
+   decoded via a @Serializable wire DTO and left UN-annotated, so no serialization machinery
+   is attached to the credential type.
+4. commonMain cannot name java.io.IOException: AuthApi now catches CancellationException
+   (rethrow) then Exception -> Network. A broader catch than IOException, but the correct
+   multiplatform seam behaviour (platform transports throw platform types) and the same
+   outcome for the only exception the Android transport throws. No test observes a
+   non-IOException non-cancellation throw, so all stay green.
+5. TEST-ONLY dependency added to :shared commonTest: kotlinx-coroutines-test (runTest),
+   reusing the existing coroutines 1.8.1 pin (no new version), the minimal enabler R383
+   requires to drive AuthApi's suspend functions on common code.
+6. FAST-CHECK working mode (the operator's R156 adaptation, as in KMP-0): per-increment
+   verification is the fast check above; the operator runs the FULL :app:gate at the
+   checkpoints (after AuthApi inc 4, after DossierApi inc 6, and the final) and the final
+   gate:clone + merge. Every git mv of a file then edited was staged by name and verified
+   staged == working tree (git diff --quiet) before commit (the KMP-0 unstaged-blob lesson).
+
+--------------------------------------------------------------------------------
+QUESTIONS (for the operator)
+--------------------------------------------------------------------------------
+1. DossierApi.kt reading (DEVIATION 2): is keeping the class + DossierResult in :app, and
+   moving only parseDossier, the intended reading of "DossierApi.kt's pure parts"? It is the
+   conservative choice (the class holds :app-only seams). If the outcome vocabulary should
+   move now, DossierResult is pure and can follow in a quick patch.
+2. CONFIRM: no advisor was available this session (it stalled on every call, per the
+   coordinator); all judgment calls were taken conservatively and recorded here (R156).
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+Every increment was committed on its fast-check green and pushed to origin/kmp-1; each push
+was confirmed in the push output (<old>..<new> kmp-1 -> kmp-1). Base origin/main unchanged
+(9809944) throughout; no rebase; main never touched. No git mv of an edited file was
+committed without git diff --quiet confirming index == working tree. Paths were staged BY
+NAME (never git add -A); the session lock (.kmp-1-session.lock) and android/local.properties
+were never staged. One early misstep was caught and repaired: two inc-1 edits landed in the
+shared main checkout by mistake, were moved to C:/wt/kmp-1 as a patch, and the main checkout
+was restored to clean (only the two files I had edited) - reported, nothing of another
+session touched (R334).
+
+Tips: ...e82d3fe (inc 7). The inc-8 commit (this report) is the final origin/kmp-1 tip; its
+SHA is reported to the operator in the session message (a file cannot contain its own hash).
+THE FULL :app:gate + gate:clone on that tip + the merge to main are the OPERATOR's to run.
+
+END OF REPORT-KMP-1
