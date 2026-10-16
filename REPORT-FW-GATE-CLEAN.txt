@@ -1,0 +1,249 @@
+REPORT-FW-GATE-CLEAN
+====================
+
+TASK   R379 - the gates refuse to start when the tree they would test is not
+       the tree that will be committed.
+BASE   d204fa0 (origin/main)
+BRANCH fw-gate-clean, worktree C:/wt/fw-gate-clean (R349), lock released
+
+
+SUMMARY
+-------
+
+KMP-0 commits d808d05 and dfffee9 committed `java.time` imports into
+commonMain - the one thing R369's platform-free fence exists to forbid - and
+every check was green while they did it.
+
+NOTHING WAS WRONG WITH THE FENCE. The sequence was:
+
+    git mv <file> shared/...              the move is STAGED
+    <edit it to use kotlinx-datetime>     the edit is UNSTAGED
+    ./gradlew :app:gate                   compiles the WORKING TREE: green
+    git commit                            commits the INDEX: no edit in it
+
+Gradle compiled what was on disk. Git committed what was in the index. Each
+tool was correct about its own input, and none of them was positioned to
+notice they had diverged.
+
+So the guard is not a stricter fence. It is the one assertion neither tool
+could make: that the two agree before anything is tested. After it,
+"the gate passed" always means "what will be committed passed".
+
+
+THE CHECK, AND WHY IT IS `git diff --quiet` AND NOTHING CLEVERER
+-----------------------------------------------------------------
+
+`git diff` with no revision argument is exactly "tracked files whose
+working-tree content differs from the index" - the gap that produced the
+defect. `--quiet` makes it an exit code.
+
+UNTRACKED FILES ARE NOT A FAILURE, deliberately. `.env`, `local.properties`,
+`android/.kotlin/`, a session lock and a scratch APK are all untracked, all
+normal, and none of them can reach a commit by accident. A guard that fired on
+them would be switched off within a week.
+
+STAGED CHANGES ARE NOT A FAILURE EITHER, and that is the point rather than a
+concession: once staged, the tree and the index agree, so the build reads what
+the commit will write.
+
+IT DOES NOT BREAK SUITE SELECTION. `pnpm gate:changed` derives its selection
+from `git diff --name-only HEAD`, which compares against the COMMIT and
+therefore sees staged changes too. Checked before the guard was written,
+because a guard that forced everything to be staged and then left the selector
+seeing nothing would have run the base chain only and read as a pass.
+
+IT NAMES THE FILES. A refusal that says "the tree is dirty" sends somebody to
+`git status`, which lists untracked files too and buries the one line that
+matters.
+
+
+THE WEB GATE (pnpm gate)
+------------------------
+
+web/scripts/require-clean-worktree.mjs, wired as the FIRST step of the `gate`
+script so it refuses before the chain spends ten minutes proving something
+about code that is not being committed.
+
+RED, with one unstaged edit to a tracked file:
+
+    GATE REFUSED TO START (R379): unstaged changes to tracked files.
+
+    This gate compiles and tests the WORKING TREE. A commit writes the
+    INDEX. While these differ, "the gate passed" is a statement about code
+    that is not the code being committed - which is how KMP-0 (d808d05,
+    dfffee9) committed java.time into commonMain with every check green.
+
+    1 file(s) differ from the index:
+        web/lib/content/identity.ts
+
+    Stage them (git add) and run the gate again, or stash what you did not
+    mean to keep. Untracked files are not the problem and are not listed.
+
+    exit=1
+
+GREEN, same tree with the edit reverted:
+
+    [clean-worktree] OK: no unstaged changes to tracked files (R379)
+    exit=0
+
+TEST: web/tests/unit/meta/clean-worktree-guard.test.ts, 6 tests. Each builds
+its OWN scratch git repository and runs the real script as a child process -
+the entry point, not an imported function (R204). A test that depended on the
+state of the tree it runs in would pass or fail according to whether the
+person running it had saved a file.
+
+    clean tree                         -> exit 0
+    unstaged change to a tracked file  -> exit 1, and NAMES the file
+    the same change, STAGED            -> exit 0
+    untracked files only               -> exit 0
+    not a git repository at all        -> exit 0
+    `gate` script starts with the guard
+
+The last one is there because a guard nobody calls is a comment, and the
+position matters as much as the presence.
+
+
+THE ANDROID GATE (:app:gate)
+----------------------------
+
+android/app/build.gradle.kts, in `gradle.taskGraph.whenReady`.
+
+IT IS NOT A dependsOn TASK, and that is the difference between "refuses to
+start" and "fails eventually". `dependsOn` gives no ordering guarantee against
+the gate's other dependencies, so a compile could run - and a stale build
+directory be produced - before a `doLast` ever fired. The task graph is
+resolved before ANY task executes, which is the last moment at which nothing
+has happened yet.
+
+IT IS SCOPED TO THE GATE. An ordinary `./gradlew assembleDebug` during
+development is untouched; a guard that blocked every build while somebody was
+editing would be switched off the same day.
+
+RED, with one unstaged edit to a tracked file:
+
+    GATE REFUSED TO START (R379): unstaged changes to tracked files.
+    1 file(s) differ from the index:
+        android/shared/src/commonMain/kotlin/ch/monreleve/app/fr/CodeCopy.kt
+    Stage them (git add) and run the gate again. Untracked files are not
+    BUILD FAILED in 3s
+
+THREE SECONDS, and that number is the evidence rather than decoration: a full
+:app:gate is three to ten minutes, so nothing was compiled before it refused.
+
+GREEN, same tree with the edit reverted:
+
+    [clean-worktree] OK: no unstaged changes to tracked files (R379)
+    BUILD SUCCESSFUL in 3m 46s
+    218 actionable tasks
+
+TEST: android/app/src/test/.../fences/CleanWorktreeGuardTest.kt, 4 tests,
+confirmed to have RUN rather than been skipped (tests="4" skipped="0").
+
+    WHY IT READS THE BUILD SCRIPT INSTEAD OF EXERCISING THE GUARD, stated in
+    the file so nobody reads it as laziness: a JUnit test runs INSIDE the
+    build it would have to drive. It cannot start a second Gradle, and a
+    guard that fires in `taskGraph.whenReady` has by definition already
+    decided before any test executes. The behaviour is proven empirically
+    above; what the test holds is the part that rots silently - that the
+    guard is still wired, still in `whenReady` rather than demoted to a
+    `dependsOn`, still reading `git diff --name-only`, and still scoped to
+    the gate.
+
+
+WHAT WENT WRONG WHILE BUILDING IT
+---------------------------------
+
+THE FIRST RED ATTEMPT TESTED NOTHING, and the guard was right to stay quiet.
+I appended a comment to `app/src/main/kotlin/ch/monreleve/app/fr/SignInCopy.kt`
+to create an unstaged change - but that file lives in `shared/`, not `app/`,
+and `>>` CREATES a file that does not exist. So I made a new UNTRACKED file,
+`git diff --name-only` correctly reported nothing, and the gate correctly did
+not refuse. It then failed four minutes later on ktlint: "File 'SignInCopy.kt'
+should not be empty".
+
+  Two things worth keeping from that. The guard behaved exactly as specified -
+  untracked files are not its business - and my `||` fallback could never have
+  fired, because `>>` cannot fail on a missing path. The second red attempt
+  checked `git ls-files --error-unmatch` FIRST, so the target was proven
+  tracked before the edit was made (R180: verify the plant).
+
+THE STRAY FILE WAS REMOVED after confirming it was untracked and therefore
+mine (R334). ktlint then kept failing on it for one more run from stale
+incremental state; cleared `app/build/intermediates/ktLint` and the ktlint
+reports, after which the task passed.
+
+THE .gitignore BUG BIT AGAIN, exactly as FW-FOLLOWUP predicted it would:
+
+    .gitignore:46:MonReleve/   android/app/src/test/kotlin/ch/monreleve/
+                               app/fences/CleanWorktreeGuardTest.kt
+
+This branch is off `main`, which does not yet carry FW-FOLLOWUP's anchor fix
+(`/MonReleve/`). Staged with `git add -f` here rather than duplicating that
+one-line change on two branches and conflicting at merge. IF FW-FOLLOWUP IS
+NOT MERGED, every new Kotlin file keeps vanishing silently.
+
+
+SCOPE - WHAT WAS NOT GUARDED, AND WHY IT IS A QUESTION
+-------------------------------------------------------
+
+`pnpm gate:changed` IS NOT GUARDED. The instruction named `:app:gate` and
+`pnpm gate`, and those are what this delivers.
+
+It is worth raising rather than quietly extending, because `gate:changed` is
+the gate R132 actually requires before every commit - so the defect class this
+ruling closes is still open on the command most used. Extending it is one
+line. It is NOT done here because it changes the everyday workflow: every
+session would have to `git add` before gating, and that is a workflow decision
+rather than a bug fix. See QUESTIONS.
+
+
+PARKED
+------
+
+PARK-G1  `pnpm gate:clone` is unaffected by design: it clones HEAD, so it
+         never reads the working tree. It already prints the dirty paths. No
+         change needed, recorded so the omission reads as a decision.
+
+
+DEVIATIONS
+----------
+
+1. THE FULL `pnpm gate` CHAIN WAS NOT RUN TO COMPLETION ON GREEN. Its first
+   step - the guard - was run green and red directly, and the suites behind it
+   are the same ones `pnpm gate:changed` ran for this commit. A full `pnpm
+   gate` duplicates them at considerably greater cost and would prove nothing
+   this report does not already show. Stated rather than omitted (R133).
+
+2. `git add -f` WAS USED for the Kotlin test. See the .gitignore note above.
+
+
+QUESTIONS
+---------
+
+Q1 Should `pnpm gate:changed` carry the same guard? It is the gate R132
+   requires before every commit, so the hole this ruling closes is still open
+   there. The cost is that every session must stage before gating.
+
+Q2 ITEM 3, the S9 on-device R374 comparison, was NOT performed: no device is
+   attached (`adb devices` lists none). It needs the phone. The procedure is
+   recorded in REPORT-KMP-0 and nothing here changes it.
+
+
+PUSH PROOF
+----------
+
+GATE:CHANGED  typecheck 0, lint 0, test 3258 passed, build 0.
+              Selection matched the two web files; no path reaches app/**,
+              lib/fr/** or the database layer, so e2e, visual and db were
+              not selected and this commit makes no claim about them.
+
+:app:gate     BUILD SUCCESSFUL in 1m 41s, 218 actionable tasks, with the
+              guard printing its OK line and CleanWorktreeGuardTest running
+              4 tests, 0 skipped (confirmed from the results XML, because a
+              suite that runs nothing exits 0 and reads like a pass - R133).
+
+RED/GREEN for each gate is in the two sections above, with the refusal text
+and the timings.
+
+GATE:CLONE AND THE PUSH FOLLOW THIS COMMIT. Their results are recorded in the
+message of the commit that carries them rather than predicted here (R334).
