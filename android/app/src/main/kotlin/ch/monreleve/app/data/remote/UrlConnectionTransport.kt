@@ -37,9 +37,12 @@ class UrlConnectionTransport(
                 connection.instanceFollowRedirects = false
                 request.headers.forEach { (key, value) -> connection.setRequestProperty(key, value) }
 
-                if (request.body != null) {
+                // KMP-1: HttpRequest.body is now a public property in :shared, so it cannot be smart-cast
+                // across the module boundary - capture it locally first (the KMP-0 cross-module cast fix).
+                val requestBody = request.body
+                if (requestBody != null) {
                     connection.doOutput = true
-                    connection.outputStream.use { it.write(request.body.toByteArray(Charsets.UTF_8)) }
+                    connection.outputStream.use { it.write(requestBody.toByteArray(Charsets.UTF_8)) }
                 }
 
                 val status = connection.responseCode

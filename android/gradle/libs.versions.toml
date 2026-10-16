@@ -30,6 +30,24 @@ coroutines = "1.8.1"
 # compileCommonMainKotlinMetadata + :shared tests are green on 2.0.21 - not trusted
 # from a matrix (the AN2 Kotest discipline).
 kotlinx-datetime = "0.6.1"
+# KMP-1 increment 1 (R380/R136). kotlinx.serialization is the multiplatform JSON
+# runtime the MOVED wire code (data/remote, the data/sync wire DTOs, the dossier
+# parse) uses in place of org.json - a JVM library, which is the ONE thing holding
+# those already-platform-neutral files back from commonMain. org.json STAYS in :app
+# for the files that stay (BorderPolygon, Settings, detection assets - R379).
+# 1.7.3, not the 1.8.x line, chosen for one concrete reason, not taste:
+#   - 1.8.0-RC moved to Kotlin 2.1.0 (the kotlinx.serialization CHANGELOG); through
+#     all of 1.7.x the runtime is built against and compatible with Kotlin 2.0.x.
+#     This project is pinned to Kotlin 2.0.21 (the hard boundary: no Kotlin upgrade),
+#     so 1.7.3 is the HIGHEST runtime that works with NO toolchain bump.
+#   - the "mature stable, not bleeding edge" discipline the catalog applies to
+#     datetime/work/kotest/browser: 1.7.3 is the settled last-of-line for 2.0.x.
+# Released 2024-10 (far more than two weeks old, R380). Verified via the
+# kotlinx.serialization CHANGELOG (1.8.0-RC "based on Kotlin 2.1.0"; 1.7.3 "uses
+# Kotlin 2.0.20 by default"), not guessed - the AN2 Kotest-5.9.1 discipline. The
+# serialization COMPILER PLUGIN is pinned to the Kotlin version in [plugins] below,
+# because it ships in lockstep with the compiler (as kotlin-reflect/kotlin-test do).
+kotlinx-serialization = "1.7.3"
 # AN5: KSP must start with the Kotlin version (compiler-plugin API); 1.0.28 is the
 # last for Kotlin 2.0.21. Room 2.7.2 targets Kotlin 2.0 and recommends KSP2.
 # Verified by web search (mvnrepository KSP, developer.android.com/room), not
@@ -107,6 +125,14 @@ kotlinx-datetime = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime",
 # :shared's commonTest. Versioned with the Kotlin compiler (kotlin = 2.0.21) because kotlin-test ships
 # in lockstep with the compiler, the same reasoning kotlin-reflect above follows.
 kotlin-test = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.ref = "kotlin" }
+# KMP-1 increment 1 (R380). The multiplatform JSON runtime for :shared commonMain -
+# org.json's replacement in the moved wire code. Declared implementation() in :shared
+# (NOT api, unlike kotlinx-datetime), so it is NOT leaked onto :app's compile
+# classpath: :app's remaining code keeps org.json and never sees kotlinx.serialization,
+# while the moved files (now in :shared) use it. It still reaches :app's RUNTIME
+# classpath transitively, so the release APK carries it and R8 processes it
+# (checkMinifiedWireContract, R307).
+kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 # AN5: the offline record store. room-runtime + room-ktx (suspend DAO, Flow) in
 # main; room-compiler runs under KSP; room-testing is androidTest-only, for the
 # MigrationTestHelper harness R187 requires from the first version.
@@ -131,6 +157,12 @@ android-application = { id = "com.android.application", version.ref = "agp" }
 #     boundary), where com.android.kotlin.multiplatform.library would be a second, newer AGP component.
 android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+# KMP-1 increment 1 (R380/R136). The kotlinx.serialization compiler plugin, applied to
+# :shared only. Pinned to the Kotlin version (2.0.21) because the serialization plugin
+# ships in lockstep with the compiler - a plugin built for another compiler cannot run
+# in this one. It generates the @Serializable serializers the moved wire DTOs use; the
+# runtime library (kotlinx-serialization-json) is versioned independently above.
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }

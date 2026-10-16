@@ -10,6 +10,10 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.multiplatform)
+    // KMP-1 increment 1 (R380). The kotlinx.serialization compiler plugin, applied to :shared so the moved
+    // wire DTOs can be @Serializable. Nothing uses it yet in this increment - the DTOs land with the moves
+    // (increments 4-6); applying it now, separately, keeps the toolchain change its own reviewable commit.
+    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ktlint)
     alias(libs.plugins.detekt)
 }
@@ -103,6 +107,12 @@ kotlin {
         // hard boundary permits; :app keeps java.time for everything that stays.
         commonMain.dependencies {
             api(libs.kotlinx.datetime)
+            // KMP-1 increment 1 (R380). The JSON runtime for the moved wire code. implementation(), NOT api():
+            // :app must not see kotlinx.serialization on its compile classpath (its remaining code keeps
+            // org.json); only :shared's moved files use it. Nothing imports it yet - the DTOs arrive with the
+            // moves (increments 4-6). It reaches :app's runtime classpath transitively, so the release APK
+            // carries it and checkMinifiedWireContract (R307) exercises the minified result.
+            implementation(libs.kotlinx.serialization.json)
         }
         commonTest {
             // KMP-0 increment 3 (R370): the generated fixture constants are a commonTest source dir. Passing
@@ -112,6 +122,11 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+            // KMP-1 increment 4 (R383). runTest, to drive the moved AuthApi's suspend functions in commonTest
+            // through an in-memory HttpTransport fake - so the auth client's behaviour is proven on COMMON code,
+            // not only through the Android transport. TEST-ONLY, and NOT a new version: it reuses the coroutines
+            // pin (1.8.1) :app already declares; runTest is kotlinx-coroutines-test's common API since 1.6.
+            implementation(libs.kotlinx.coroutines.test)
         }
         // KMP-0 increment 2 (R369). The commonMain platform-free FENCE lives in the Android unit-test source
         // set, because it reads the commonMain source files as TEXT (java.io.File), which commonTest cannot do
