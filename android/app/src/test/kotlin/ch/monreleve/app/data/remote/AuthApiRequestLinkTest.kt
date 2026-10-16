@@ -12,7 +12,6 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import java.io.IOException
 
 private class FakeTransport(
     private val response: HttpResponse = HttpResponse(200, ""),
@@ -41,7 +40,7 @@ class AuthApiRequestLinkTest : FunSpec({
     }
 
     test("a network failure is a distinct Failed(Network), never read as a refusal") {
-        val api = AuthApi(FakeTransport(throwable = IOException("no route")), BASE_URL)
+        val api = AuthApi(FakeTransport(throwable = TransportException("no route")), BASE_URL)
         val result = api.requestMagicLink("a@b.ch")
         result.shouldBeInstanceOf<MagicLinkResult.Failed>()
         result.failure.shouldBeInstanceOf<ApiFailure.Network>()

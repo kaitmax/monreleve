@@ -211,9 +211,19 @@ class AuthWireGoldenTest {
     @Test
     fun goldenANetworkFailureIsFailedNetworkNotARefusal() =
         runTest {
-            // R383 branch: the transport throws a non-cancellation exception; AuthApi maps it to Network
-            // (commonMain cannot name java.io.IOException - it catches Exception, rethrowing CancellationException).
-            val r = AuthApi(FakeTransport(error = RuntimeException("no route")), BASE).requestMagicLink("a@b.ch")
+            // KMP-1b (R387): THE FAKE NOW THROWS WHAT A TRANSPORT IS CONTRACTED TO THROW.
+            //
+            // This asserted that ANY exception from the transport became Failed(Network) -
+            // it threw RuntimeException("no route") - which is the broad-catch behaviour
+            // R387 removes: a RuntimeException from a transport is a BUG in that transport,
+            // and reporting it to the reader as "network unreachable" sends them to check
+            // their wifi. CancellationTest asserts it now propagates.
+            //
+            // THE CLAIM HERE IS UNCHANGED - a network failure is Failed(Network) and never
+            // read as a server refusal. Only the way the fake SIGNALS "the network failed"
+            // moved, from a stand-in exception to the seam's documented TransportException
+            // (R386).
+            val r = AuthApi(FakeTransport(error = TransportException("no route")), BASE).requestMagicLink("a@b.ch")
             assertIs<ApiFailure.Network>(assertIs<MagicLinkResult.Failed>(r).failure)
         }
 

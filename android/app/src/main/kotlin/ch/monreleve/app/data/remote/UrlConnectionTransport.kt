@@ -2,6 +2,7 @@ package ch.monreleve.app.data.remote
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URI
 
@@ -50,6 +51,17 @@ class UrlConnectionTransport(
                     if (status in HTTP_OK_MIN..HTTP_OK_MAX) connection.inputStream else connection.errorStream
                 val body = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() } ?: ""
                 HttpResponse(status = status, body = body)
+            } catch (e: IOException) {
+                // R386: THE SEAM OWNS THE TRANSLATION. This is the only code that knows
+                // what "the network did not work" looks like on this platform, so it is
+                // the only code that should say so. AuthApi then catches TransportException
+                // and nothing wider, which is what stopped a bug inside its try blocks
+                // being reported to the reader as "network unreachable" (R387).
+                //
+                // THE CAUSE IS KEPT. It is the only remaining way to see which
+                // IOException this was, and a log saying "unreachable" with no cause is a
+                // support conversation that cannot start.
+                throw TransportException(e.message ?: "network unreachable", e)
             } finally {
                 connection.disconnect()
             }
