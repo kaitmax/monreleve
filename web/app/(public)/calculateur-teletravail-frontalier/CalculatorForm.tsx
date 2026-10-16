@@ -502,6 +502,22 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
    */
   const [canShare, setCanShare] = useState(false);
 
+  /**
+   * Whether Calculer has been pressed while the canton was still empty (R380).
+   *
+   * IT IS STATE AND NOT A DERIVED VALUE, because what it records is not "the
+   * canton is empty" - which the form knows at every keystroke - but "the
+   * reader has ASKED for an answer and cannot be given one". Those differ by
+   * an event, and only the second is an error.
+   *
+   * The header of this file already names the gap: "nothing is validated
+   * until a canton exists, because that is what it takes to build an input at
+   * all". The canton field has been wired to errorFor since FW11 and could
+   * never receive anything, because the engine that produces errors cannot
+   * run without the very field in question.
+   */
+  const [submittedWithoutCanton, setSubmittedWithoutCanton] = useState(false);
+
   useEffect(() => {
     setCanShare(
       typeof navigator !== 'undefined' && typeof navigator.share === 'function',
@@ -752,6 +768,14 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
   }
 
   const errorFor = (field: FieldKey): string | undefined => {
+    // R380: the one error the engine cannot report, because it cannot run
+    // without the field it would report on. Routed through errorFor rather
+    // than passed separately at the call site so the canton field keeps ONE
+    // source of error text (R206) and FieldGroup keeps doing the aria work.
+    if (field === 'canton' && submittedWithoutCanton && state.canton === '') {
+      return COPY.canton.missing;
+    }
+
     const hit = errors.find((error) => fieldFor(error) === field);
 
     return hit === undefined ? undefined : errorMessage(hit);
@@ -945,6 +969,20 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
    */
   const onSubmit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
+
+    // R380: NO CANTON, NO ANSWER - and now the form says which field.
+    //
+    // It returns before moving focus to the result region, because the
+    // region has nothing to say: with no canton there is no input, so no
+    // calculation. Sending focus there would announce the neutral "choose a
+    // canton" line while leaving the field that needs attention unmarked and
+    // off-screen, which is the behaviour this ruling exists to replace.
+    if (state.canton === '') {
+      setSubmittedWithoutCanton(true);
+      document.getElementById('canton')?.focus();
+
+      return;
+    }
 
     const region = document.getElementById(RESULT_ID);
 
