@@ -126,7 +126,14 @@ class MonReleveMigrationTest {
         // runMigrationsAndValidate validates the migrated schema against schemas/<DATABASE_VERSION>.json AND
         // returns the db. The v2 row is carried across every migration in the chain to the current version.
         val db =
-            helper.runMigrationsAndValidate(TEST_DB, DATABASE_VERSION, true, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+            helper.runMigrationsAndValidate(
+                TEST_DB,
+                DATABASE_VERSION,
+                true,
+                MIGRATION_2_3,
+                MIGRATION_3_4,
+                MIGRATION_4_5,
+            )
 
         // The pre-F4 row SURVIVED (R303: nothing is lost) and was tagged UNOWNED - its account is
         // unrecoverable, so it is held, never sent, never shown, never mis-attributed.

@@ -470,7 +470,9 @@ tasks.register("checkReleaseCleartext") {
                     problems.joinToString("\n") { "  - $it" },
             )
         }
-        println("checkReleaseCleartext OK: release permits cleartext nowhere (merged manifest + network security config)")
+        println(
+            "checkReleaseCleartext OK: release permits cleartext nowhere (merged manifest + network security config)",
+        )
     }
 }
 

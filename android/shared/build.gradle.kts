@@ -45,7 +45,8 @@ val generateFixtureConstants by tasks.registering {
             "generateFixtureConstants: no *.json under ${sharedFixturesDir.asFile} - nothing to generate"
         }
 
-        fun constName(file: File): String = file.nameWithoutExtension.replace(Regex("[^A-Za-z0-9]"), "_").uppercase() + "_JSON"
+        fun constName(file: File): String =
+            file.nameWithoutExtension.replace(Regex("[^A-Za-z0-9]"), "_").uppercase() + "_JSON"
 
         // Escape the raw JSON into a single Kotlin string literal: backslash and quote first, then the
         // dollar sign (so Kotlin never reads $x as interpolation), then newlines/tabs; carriage returns are
