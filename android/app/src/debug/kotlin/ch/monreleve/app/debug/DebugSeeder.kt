@@ -171,9 +171,17 @@ private fun weekdays(
         .toList()
 }
 
-private fun claimAt(date: LocalDate): String = OffsetDateTime.of(date, LocalTime.of(RECORD_HOUR, 0), CLAIM_OFFSET).format(CLAIM_FORMAT)
+private fun claimAt(date: LocalDate): String =
+    OffsetDateTime.of(
+        date,
+        LocalTime.of(RECORD_HOUR, 0),
+        CLAIM_OFFSET,
+    ).format(CLAIM_FORMAT)
 
-private fun idOf(vararg parts: String): String = UUID.nameUUIDFromBytes(parts.joinToString("|").toByteArray()).toString()
+private fun idOf(vararg parts: String): String =
+    UUID.nameUUIDFromBytes(
+        parts.joinToString("|").toByteArray(),
+    ).toString()
 
 private fun syncedRow(
     tag: String,
@@ -252,7 +260,10 @@ private fun failedNoteRow(
     )
 }
 
-private fun fromCodepoints(vararg codepoints: Int): String = codepoints.joinToString("") { String(Character.toChars(it)) }
+private fun fromCodepoints(vararg codepoints: Int): String =
+    codepoints.joinToString("") {
+        String(Character.toChars(it))
+    }
 
 // One of every whitespace codepoint, including NBSP (U+00A0), figure/narrow spaces and the ideographic space -
 // exactly the characters Character.isWhitespace does NOT recognise, which is what makes them worth storing.

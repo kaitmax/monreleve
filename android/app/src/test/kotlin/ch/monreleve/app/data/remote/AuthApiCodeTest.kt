@@ -9,7 +9,6 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import java.io.IOException
 
 private class CodeFakeTransport(
     private val response: HttpResponse = HttpResponse(200, ""),
@@ -69,7 +68,7 @@ class AuthApiCodeTest : FunSpec({
 
     test("a network failure is Failed(Network)") {
         val result =
-            AuthApi(CodeFakeTransport(throwable = IOException("x")), CODE_BASE).exchangeCode("a@b.ch", "481234")
+            AuthApi(CodeFakeTransport(throwable = TransportException("x")), CODE_BASE).exchangeCode("a@b.ch", "481234")
         result.shouldBeInstanceOf<CodeExchangeResult.Failed>()
         result.failure.shouldBeInstanceOf<ApiFailure.Network>()
     }

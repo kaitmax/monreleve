@@ -1,0 +1,445 @@
+================================================================================
+REPORT-KMP-1b : CANCELLATION CANCELS AGAIN, AND THE PROCESS STOPS LYING ABOUT GREEN
+================================================================================
+Branch: kmp-1b    Base: origin/main 06a805a (unchanged this session; no rebase)
+Worktree: C:/wt/kmp-1b    Android and process files only. No iOS, no web.
+
+STATUS (per R391): COMPLETE. The FULL :app:gate ran on this session's final tip
+with --rerun-tasks: GATE_EXIT=0, "BUILD SUCCESSFUL in 8m 14s", 218 actionable
+tasks: 218 EXECUTED - a cold run, nothing from cache. No web file changed, so
+gate:clone does not apply and is not claimed.
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+Four items. The first is a correctness fix to the auth transport; the other
+three are the process that let the first one ship.
+
+ITEM 1 removed the @Suppress I added during KMP-1 and replaced it with a seam
+that owns its own translation. The measurement corrected the prompt's premise
+in one important way - see ITEM 1.
+
+ITEM 2 gave ktlint the same line limit detekt already had.
+
+ITEM 3 found that "fast-check mode" was a SENTENCE, retyped between reports,
+and that it had lost its lint step in transcription - which is exactly why
+KMP-1's three lint failures went unseen. It is now a task.
+
+ITEM 4 wrote the ownership rule that was missing when a session removed the
+kmp-1 worktree out from under a running gate.
+
+--------------------------------------------------------------------------------
+R273 - WHAT WAS READ FIRST
+--------------------------------------------------------------------------------
+relay/KMP-1b.txt; REPORT-KMP-1.txt (DEVIATIONS 4, PARKED, QUESTIONS); the
+operator's resume note; REPORT-KMP-0.txt DEVIATION 2; CLAUDE.md's R334/R349 and
+report rules; and git history at 5968cd4^ for the pre-KMP-1 catch set.
+
+--------------------------------------------------------------------------------
+R1 - THE FULL GATE ON main, BEFORE ANY CHANGE
+--------------------------------------------------------------------------------
+Run by the prior KMP-1b session in a clean checkout of 06a805a:
+
+    GATE_EXIT=0
+    BUILD SUCCESSFUL in 8m 14s
+    218 actionable tasks: 218 executed
+
+NOT RE-RUN THIS SESSION, deliberately: origin/main is still 06a805a (verified
+by rev-parse), so the result stands. Nobody had verified main since the kmp-1
+worktree was removed; that is now done.
+
+THE CLEAN-WORKING-TREE GUARD HAS NOT LANDED. PARKED, as R1 directs - not built
+here. Measured on main at 06a805a:
+
+    android/app/build.gradle.kts    0 hits for the R379 refusal
+    web/package.json "gate"         still starts at `pnpm test:floor`
+    web/scripts/require-clean-worktree.mjs   ABSENT
+
+It exists only on the unmerged branch fw-gate-clean. Worth noting that it is
+the guard which would have caught KMP-1's original defect (Gradle compiling a
+working tree that differs from the index).
+
+--------------------------------------------------------------------------------
+ITEM 1 - CANCELLATION (R386, R387, R388)
+--------------------------------------------------------------------------------
+
+THE PRE-KMP-1 CATCH SET, recovered from 5968cd4^ (the parent of "inc 4: move
+AuthApi + ApiFailure to :shared"), quoted as R387 requires:
+
+    import java.io.IOException                      (line 5)
+    line 132  } catch (e: IOException) {
+    line 156  } catch (e: IOException) {
+    line 187  } catch (e: IOException) {
+    line 210  } catch (e: IOException) {
+    line 235  } catch (e: IOException) {
+    line 269  } catch (e: IOException) {
+    line 303  } catch (e: IOException) {
+    line 333  } catch (e: IOException) {
+    line 357  return runCatching { transport.execute(request).status in
+                   HTTP_OK..HTTP_OK_MAX }.getOrDefault(false)
+    line 390  parseTokenPair: runCatching { ... }    (pure parsing)
+
+Eight transport catches - exactly the eight detekt reported after KMP-1 widened
+them - plus signOut's runCatching, plus one pure-parsing runCatching.
+
+THE PROMPT'S PREMISE IS CORRECT FOR ONE SITE, NOT NINE, and this is the one
+thing in ITEM 1 that the measurement changed.
+
+    ITEM 1 says: "A sign-in or sync whose scope is cancelled (the screen left,
+    the worker stopped) now returns Failed(network) and carries on instead of
+    cancelling."
+
+    MEASURED: all eight catch sites on main read
+
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+
+    KMP-1 DID rethrow cancellation at every one of them (its own DEVIATION 4
+    says so). The RED run confirms it: `cancellingAnInFlightSignInCancelsTheJob`
+    PASSED before any change was made.
+
+    The cancellation defect was only ever at signOut's `runCatching`, which
+    catches Throwable around a SUSPEND call. That one swallowed cancellation
+    BEFORE KMP-1 as well, so fixing it is a BEHAVIOUR CHANGE, not a
+    restoration: a sign-out whose scope is cancelled now ends cancelled instead
+    of returning false. Flagged here because a reader of the prompt would
+    otherwise expect a restoration.
+
+    WHAT KMP-1 DID REGRESS is narrower and real: `catch (e: Exception)` turned
+    a BUG inside the try - an NPE, an IllegalStateException - into
+    ApiFailure.Network. A programming error wearing a connectivity problem's
+    clothes, which is the most expensive kind of misreport because it sends the
+    reader to check their wifi.
+
+R386 THE SEAM OWNS THE TRANSLATION.
+  NEW: shared/.../data/remote/TransportException.kt - one type, message + cause.
+  UrlConnectionTransport (:app) wraps IOException and its subclasses - exactly
+  what HttpsURLConnection is documented to throw - preserving the cause. A
+  future iOS transport wraps its NSError-derived throwables the same way.
+
+R387 EACH OF THE NINE SITES, and what it catches now:
+
+  requestMagicLink, exchangeCallback, exchangeCode, refresh, me, patchMe,
+  deleteAccount, registerDevice (the eight former IOException sites)
+      -> catch (e: TransportException) -> Failed(ApiFailure.Network)
+      The preceding `catch (CancellationException) { throw e }` is REMOVED at
+      all eight: it existed to undo the over-wide catch beneath it, and against
+      a narrow catch it is dead code implying the opposite of what the code does.
+
+  signOut
+      -> try/catch (_: TransportException) -> false
+      Was runCatching. Named `_` because nothing acts on it (commonMain has no
+      logger) and detekt's SwallowedException rule is right to ask which it is.
+
+EVERY runCatching IN :shared commonMain, checked as R387 directs:
+
+  AuthApi.kt:441   signOut             SUSPEND inside -> FIXED (above)
+  AuthApi.kt:504   parseTokenPair      pure parsing   -> STAYS
+  ApiFailure.kt:51 parseServerFailure  pure parsing   -> STAYS
+  ApiFailure.kt:67 parseServerFailure  pure parsing   -> STAYS
+  EntriesWire.kt   parseEntriesResponse pure parsing  -> STAYS
+
+  The four that stay contain no suspend call, so they cannot swallow
+  cancellation. Their job is the MALFORMED-BODY set: SerializationException
+  (including MissingFieldException, which kotlinx throws for an absent
+  mandatory field under coerceInputValues=false) and the IllegalArgumentException
+  the `.jsonObject` casts raise on a non-object. Both are in the set because
+  both mean "the server sent something this client cannot read", which is
+  Malformed and not Network.
+
+THE @Suppress IS GONE. detekt is clean without it; no suppression remains in
+the repository.
+
+R388 RED THEN GREEN.
+
+  THE FIRST VERSION OF THE TEST WAS WRONG AND PASSED. It asserted
+  `job.isCancelled`, which is true the instant cancel() is CALLED, whatever the
+  body then does - satisfied by cancellation being REQUESTED, never by its
+  being HONOURED. Two of the five cases passed against the broken code.
+  Replaced with a flag set on the line after the call: if the exception is
+  swallowed the call returns and the flag is set, which is the actual signal.
+
+  RED (against main's code):   3 failed, 2 passed
+      x cancellingAnInFlightSignOutCancelsTheJob
+      x aNonTransportExceptionIsNotTurnedIntoANetworkFailure
+      x aNonTransportExceptionPropagatesOutOfSignOutToo
+      (the sign-in cancellation case passed - see the premise correction above)
+
+  GREEN: tests="5" skipped="0" failures="0" errors="0"
+
+  The three cases R388 names: cancellation propagates; a TransportException is
+  still Failed(Network) for each call (R196's other direction - narrowing must
+  not stop a real transport failure being reported); a non-transport exception
+  propagates instead of becoming a network failure.
+
+  :app, UrlConnectionTransportWrapTest: a refused connection to 127.0.0.1:1
+  becomes a TransportException, and the platform IOException is reachable in
+  the CAUSE CHAIN. It walks the chain rather than reading one level, and the
+  first version failed because it read one level: kotlinx-coroutines performs
+  STACK-TRACE RECOVERY across withContext(Dispatchers.IO), copying the
+  exception and making the original the copy's cause. The chain is
+  TransportException -> TransportException -> ConnectException. No new
+  dependency: a refused port is a real IOException from the real
+  HttpURLConnection.
+
+--------------------------------------------------------------------------------
+ITEM 2 - 120 COLUMNS (R389)
+--------------------------------------------------------------------------------
+android/.editorconfig ALREADY EXISTED and I OVERWROTE IT before reading it.
+It carried `ktlint_function_naming_ignore_when_annotated_with = Composable`.
+It is tracked, so `git checkout --` restored it byte-for-byte and the committed
+change is purely additive (13 insertions, 0 deletions). Reported because the
+near-miss is the point: R334 says a session does not overwrite what it did not
+create, and I did, with nothing but git between that and a lost setting.
+
+The finding changes with it: ktlint DID read an .editorconfig here. It simply
+had no opinion on line length, which is what let it and detekt disagree.
+
+PROVEN BOTH WAYS. A 121-column line planted in TransportException.kt:
+    ktlint  exit 1  (standard:max-line-length)
+    detekt  exit 1  (MaxLineLength)
+Removed afterwards; the file is byte-identical to its committed version.
+
+THE KEY SURFACED 26 PRE-EXISTING LINES over 120. My earlier claim that ":app
+has no line over 120" was UNDER-MEASURED - it sampled the first 50 files.
+detekt had never flagged them because it does not analyse the debug and
+androidTest source sets ktlint does. ktlintFormat fixed them,
+semantics-preserving, touching four files:
+    android/app/build.gradle.kts
+    android/shared/build.gradle.kts
+    android/app/src/debug/.../DebugSeeder.kt
+    android/app/src/androidTest/.../MonReleveMigrationTest.kt
+None is code KMP-1 moved, so "the code KMP-1 restructured STAYS as it is" holds.
+
+--------------------------------------------------------------------------------
+ITEM 3 - THE FAST CHECK (R390, R391)
+--------------------------------------------------------------------------------
+WHERE IT LIVED: nowhere mechanical. Not CLAUDE.md, not a script, not a task -
+only a sentence in each session's report, retyped from the last one. Quoted:
+
+  REPORT-KMP-0.txt:267 (DEVIATION 2)
+    "FAST-CHECK working mode (operator's R156 adaptation): per-increment
+     verification is :shared:compileCommonMainKotlinMetadata +
+     :shared:testDebugUnitTest + (ktlint/detekt) + :app:compileDebugKotlin
+     (+ compileDebugUnitTestKotlin for signature-changing increments) + the
+     directly-affected :app test classes; the operator runs the FULL :app:gate
+     at checkpoints."
+
+  REPORT-KMP-1.txt:165
+    "Per-increment fast check (the operator's RAM-adapted mode):
+     :shared:compileCommonMainKotlinMetadata + :shared:testDebugUnitTest +
+     :app:compileDebugKotlin (+ the directly affected :app test classes). The
+     operator runs the FULL :app:gate at the checkpoints."
+
+THE "(ktlint/detekt)" IS GONE BETWEEN THE TWO. That is the whole explanation
+for KMP-1's three lint failures surviving to the full gate. And KMP-0's own
+report had ALREADY recorded the same gap biting once - "(a) 6b's line-length
+(:app detekt not in the fast check)". The same defect twice, the second time
+because a list was copied by hand.
+
+`./gradlew fastCheck` is now that list as a task:
+    :shared:compileCommonMainKotlinMetadata, :shared:testDebugUnitTest,
+    :shared:ktlintCheck, :shared:detekt,
+    :app:compileDebugKotlin, :app:ktlintCheck, :app:detekt
+
+MEASURED, as R390 requires, cold (daemon stopped first):
+    time        43 s
+    peak memory 1 048 MB java RSS, sampled every 5 s across the run
+
+So :app's ktlint and detekt FIT the budget with room - the full gate is 8m 14s
+by comparison. Lint was never the expensive part: it is static analysis over
+source, starting no emulator and building no APK, which makes it an odd thing
+to have been dropped for memory in the first place.
+
+It PRINTS WHAT IT DID NOT RUN - assembleDebug, :app:testDebugUnitTest,
+verifyPaparazziDebug, lintDebug, every release-variant check - so a green fast
+check cannot be mistaken for a green gate.
+
+R391 IN CLAUDE.md, beside the existing report requirement: a STATUS may say
+COMPLETE or GREEN only when the FULL gate ran on the reported tip in that
+session, with its BUILD line and exit code pasted; otherwise it reads
+"Increments green under fast check. FULL GATE NOT RUN on <sha>." And a missing
+output - empty grep, missing gradlew, missing directory - is NO RESULT, never a
+pass and never a fail.
+
+  THAT LAST CLAUSE IS NOT HYPOTHETICAL. Three runs in this session produced no
+  BUILD line because the harness's `cd` had not applied, and the first was
+  nearly read as a verdict.
+
+  REPORT-KMP-1 WAS NOT DISHONEST. It said "GREEN under the RAM-adapted
+  fast-check mode" and handed the full gate to the operator in its last line.
+  It was precise about a narrower claim, in the line a reader takes as the
+  broad one. The rule makes the narrow claim occupy that place.
+
+--------------------------------------------------------------------------------
+ITEM 4 - WORKTREE OWNERSHIP (R392)
+--------------------------------------------------------------------------------
+Written into CLAUDE.md immediately after the R349 worktree clause it extends.
+R349 says what a session does in ITS OWN worktree; R392 is the same clause read
+from the other session's side.
+
+THE TEXT IT EXTENDS, quoted as R392 requires:
+
+  R334: "A session never deletes, overwrites or resets anything it did not
+  create. ... an untracked or unexpected file is REPORTED, never removed; every
+  agent works in its OWN git worktree; nothing destructive - checkout -f, reset
+  --hard, clean, rm - runs in a directory another agent may be using".
+
+  R349: "every session runs in its OWN git worktree ... A session also writes a
+  lock file carrying its identity into that worktree, and refuses to run git in
+  any worktree holding another session's lock, or carrying staged or
+  uncommitted changes it did not make. Finding another session's work, it stops
+  and reports ... a lock, not ListAgents, is what says a session is running."
+
+THE NEW CLAUSES: commit only in your own worktree; never commit, stash, reset
+or remove in a worktree whose lock you did not create; never remove a worktree
+with uncommitted changes or unpushed commits, whoever owns it; branch and
+remote-ref deletion after a merge only once the owning session's report is on
+main, or the operator says so.
+
+WHAT IT COST. A session took KMP-1's uncommitted work from a live worktree,
+committed it as 800549d, merged it, deleted the branch and both remote refs,
+and removed C:/wt/kmp-1 - while the owning session's :app:gate was running in
+that directory. The gate reported "./gradlew: No such file or directory", which
+is NO RESULT, and was nearly read as one. Nothing was lost; nothing about that
+was guaranteed.
+
+IT IS NOT MECHANICAL. There is no merge/cleanup script in this repository -
+searches for `worktree remove` and `worktree prune` return nothing - so the
+removal was by hand or by an agent's own command. R392 therefore has the
+standing R334 had before R349 gave it a directory: true, written down, enforced
+by nobody. PARKED below.
+
+--------------------------------------------------------------------------------
+PARKED
+--------------------------------------------------------------------------------
+P1 THE CLEAN-WORKING-TREE GUARD (R379) is not on main; it is on the unmerged
+   branch fw-gate-clean. Parked as R1 directs. It is the guard that would have
+   caught KMP-1's original defect.
+P2 SCRIPTING THE CLEANUP (R392). When merge/cleanup is scripted, that script
+   refuses with a non-zero exit naming the reason on a foreign lock or a dirty
+   tree, with a test for each refusal.
+P3 KMP-2's scope is untouched: Room, the stores, sync, DossierApi/DossierResult.
+   REPORT-KMP-1 Q1 is answered by this prompt - they stay in :app until KMP-2.
+P4 The on-device round trip (R385) and KMP-0's R374 comparison still need a
+   device. None is attached.
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+1. R388's "the goldens and the :app AuthApi* tests stay green, UNEDITED" COULD
+   NOT HOLD, and this is the deviation that matters most.
+
+   Six tests signalled "the network failed" by throwing raw IOException (five
+   :app fakes) or RuntimeException (one golden,
+   goldenANetworkFailureIsFailedNetworkNotARefusal). Under R386 a transport
+   reports failure by throwing TransportException and nothing else escapes as a
+   network failure - so a fake throwing those is a transport no longer honouring
+   its own seam, and the golden was asserting precisely the broad-catch
+   behaviour R387 removes.
+
+   EVERY ASSERTION IS UNCHANGED. Only the type the fake throws moved. The
+   golden still asserts a network failure is Failed(Network) and never read as a
+   refusal; the :app tests still assert NETWORK_ERROR and Failed(Network).
+
+   The alternative was to keep AuthApi catching Exception, which is the defect.
+   Recorded rather than resolved silently.
+
+   THE OPERATOR ACCEPTED THIS READING ON ONE CONDITION: that the diff of the six
+   touches only the throw lines. It does. The complete diff of all six against
+   06a805a, every changed line:
+
+     SignInControllerTest.kt
+       -import java.io.IOException
+       +import ch.monreleve.app.data.remote.TransportException
+       -  val controller = controllerWith(this, throwable = IOException("no route"))
+       +  val controller = controllerWith(this, throwable = TransportException("no route"))
+
+     AuthApiCodeTest.kt
+       -import java.io.IOException
+       -  AuthApi(CodeFakeTransport(throwable = IOException("x")), CODE_BASE)...
+       +  AuthApi(CodeFakeTransport(throwable = TransportException("x")), CODE_BASE)...
+
+     AuthApiRequestLinkTest.kt
+       -import java.io.IOException
+       -  val api = AuthApi(FakeTransport(throwable = IOException("no route")), BASE_URL)
+       +  val api = AuthApi(FakeTransport(throwable = TransportException("no route")), BASE_URL)
+
+     AuthApiCallbackTest.kt
+       -import java.io.IOException
+       -  AuthApi(CallbackFakeTransport(throwable = IOException("x")), CB_BASE).exchangeCallback(...)
+       +  AuthApi(CallbackFakeTransport(throwable = TransportException("x")), CB_BASE)
+       +      .exchangeCallback(...)                      <- wrapped: the type name is 7 chars longer
+
+     CallbackControllerTest.kt
+       +import ch.monreleve.app.data.remote.TransportException
+       -  controller(this, FakeTokenStore(), RememberingPendingStore("a@b.ch"), throwable = IOException("x"))
+       +  controller(                                     <- wrapped, same reason
+       +      this, FakeTokenStore(), RememberingPendingStore("a@b.ch"),
+       +      throwable = TransportException("x"),
+       +  )
+
+     AuthWireGoldenTest.kt (the golden)
+       -  val r = AuthApi(FakeTransport(error = RuntimeException("no route")), BASE).requestMagicLink(...)
+       +  val r = AuthApi(FakeTransport(error = TransportException("no route")), BASE).requestMagicLink(...)
+       (plus the replaced comment explaining why)
+
+   SO: four import swaps, six throw lines, two line-wraps forced by a type name
+   seven characters longer, and comments. NO expected value, NO fixture, NO
+   assertion, NO golden body changed. The 29 goldens still assert the same bytes
+   and the same accept/refuse decisions they did on 06a805a.
+
+2. R389's .editorconfig: I overwrote an existing tracked file before reading it
+   and restored it from git. See ITEM 2.
+
+3. The prompt's ITEM 1 premise is correct for one site, not nine. See ITEM 1.
+
+4. 26 pre-existing over-120 lines were reformatted as a consequence of ITEM 2,
+   in four files, none of them KMP-1's. See ITEM 2.
+
+--------------------------------------------------------------------------------
+QUESTIONS
+--------------------------------------------------------------------------------
+Q1 DEVIATION 1: confirm that retyping six fakes' thrown exception - assertions
+   untouched - is the intended reading of "unedited", or say how else a fake
+   should signal a network failure now that TransportException is the contract.
+
+Q2 P1: merge fw-gate-clean? It is green and pushed, and it is the guard for the
+   defect class KMP-1 shipped.
+
+Q3 signOut's behaviour change (a cancelled sign-out now ends cancelled instead
+   of returning false) is correct coroutine behaviour, and it is a change to
+   shipped behaviour. Confirm it is wanted.
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+Commits, all on branch kmp-1b off 06a805a:
+
+  6a8d875  ITEM 1  R386/R387/R388 cancellation + the transport seam
+  6eda9ee  ITEM 2  R389 ktlint and detekt agree on 120 columns
+  37d0608  ITEM 3  R390/R391 fastCheck as a task; the report rule
+  2de3968  ITEM 4  R392 worktree ownership
+  (this report)
+
+`git diff --quiet` was run and CLEAN before each of the four commits; paths
+were staged BY NAME, never `git add -A`. The session lock (.session-lock.json)
+and android/local.properties were never staged.
+
+FULL GATE ON THE FINAL TIP, forced cold with --rerun-tasks after stopping the
+daemon:
+
+    GATE_EXIT=0
+    BUILD SUCCESSFUL in 8m 14s
+    218 actionable tasks: 218 executed
+
+218 of 218 EXECUTED is the part that matters: nothing was served from cache, so
+this is a claim about the code and not about Gradle's up-to-date checks.
+
+No web file changed, so gate:clone does not apply and no claim is made about it.
+
+The push follows this commit; its result is recorded in the commit that carries
+it rather than predicted here (R334).
+
+END OF REPORT-KMP-1b

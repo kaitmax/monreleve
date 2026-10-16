@@ -11,7 +11,6 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import java.io.IOException
 
 private class CallbackFakeTransport(
     private val response: HttpResponse = HttpResponse(200, ""),
@@ -56,7 +55,8 @@ class AuthApiCallbackTest : FunSpec({
 
     test("a network failure is Failed(Network)") {
         val result =
-            AuthApi(CallbackFakeTransport(throwable = IOException("x")), CB_BASE).exchangeCallback("tok", "a@b.ch")
+            AuthApi(CallbackFakeTransport(throwable = TransportException("x")), CB_BASE)
+                .exchangeCallback("tok", "a@b.ch")
         result.shouldBeInstanceOf<CallbackResult.Failed>()
         result.failure.shouldBeInstanceOf<ApiFailure.Network>()
     }

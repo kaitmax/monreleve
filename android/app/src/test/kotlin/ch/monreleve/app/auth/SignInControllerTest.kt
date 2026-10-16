@@ -4,12 +4,12 @@ import ch.monreleve.app.data.remote.AuthApi
 import ch.monreleve.app.data.remote.HttpRequest
 import ch.monreleve.app.data.remote.HttpResponse
 import ch.monreleve.app.data.remote.HttpTransport
+import ch.monreleve.app.data.remote.TransportException
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
-import java.io.IOException
 
 // AN4 increment 3. The request-screen state transitions, driven through the real
 // AuthApi against a scripted transport. The one that matters is 202 -> LINK_SENT:
@@ -98,7 +98,7 @@ class SignInControllerTest : FunSpec({
 
     test("a network failure moves to NETWORK_ERROR, distinct from a server refusal") {
         runTest {
-            val controller = controllerWith(this, throwable = IOException("no route"))
+            val controller = controllerWith(this, throwable = TransportException("no route"))
             controller.onEmailChange("a@b.ch")
             controller.submit()
             advanceUntilIdle()

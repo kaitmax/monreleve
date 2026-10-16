@@ -6,6 +6,7 @@ import ch.monreleve.app.data.remote.AuthApi
 import ch.monreleve.app.data.remote.HttpRequest
 import ch.monreleve.app.data.remote.HttpResponse
 import ch.monreleve.app.data.remote.HttpTransport
+import ch.monreleve.app.data.remote.TransportException
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -14,7 +15,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
-import java.io.IOException
 
 // AN4 increment 4 (AC2). The callback state machine, driven with fakes so it runs
 // as a JVM test. The two that matter most are MISMATCH (a valid link for an
@@ -154,7 +154,12 @@ class CallbackControllerTest : FunSpec({
     test("a network failure is NETWORK_ERROR") {
         runTest {
             val controller =
-                controller(this, FakeTokenStore(), RememberingPendingStore("a@b.ch"), throwable = IOException("x"))
+                controller(
+                    this,
+                    FakeTokenStore(),
+                    RememberingPendingStore("a@b.ch"),
+                    throwable = TransportException("x"),
+                )
             controller.handle(VALID_URI)
             advanceUntilIdle()
             controller.state.value.phase shouldBe CallbackPhase.NETWORK_ERROR

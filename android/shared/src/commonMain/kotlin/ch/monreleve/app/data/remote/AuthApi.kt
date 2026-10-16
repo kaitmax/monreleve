@@ -4,7 +4,6 @@ import ch.monreleve.app.auth.TokenPair
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
-import kotlin.coroutines.cancellation.CancellationException
 
 // AN4 increment 3+. The typed calls onto the frozen auth contract (R195), built
 // on the increment-1 transport seam and error mapping. requestMagicLink is
@@ -15,10 +14,11 @@ import kotlin.coroutines.cancellation.CancellationException
 // bodies are @Serializable DTOs so the Json flags (explicitNulls/encodeDefaults, WireJson.kt) govern their bytes;
 // the token-pair response decodes into a @Serializable wire DTO and maps to the plain TokenPair (the credential
 // type stays un-annotated). THE BYTES DO NOT CHANGE - proven by the commonTest goldens (R381). java.net.URLEncoder
-// became a byte-for-byte common encoder (encode, below) and java.io.IOException became "catch CancellationException,
-// rethrow; then catch Exception -> Network": commonMain cannot name a JVM exception, and a multiplatform transport
-// throws platform-specific types, so the seam maps any non-cancellation failure to Network - the same outcome the
-// IOException catch produced for the only exception the Android transport throws (R156, recorded).
+// became a byte-for-byte common encoder (encode, below), and java.io.IOException became TransportException
+// (R386): commonMain cannot name a JVM exception, so the TRANSPORT translates its platform failure into one
+// common type and this file catches that and nothing wider. KMP-1 first tried "catch CancellationException,
+// rethrow; then catch Exception", which needed a @Suppress and reported a bug inside the try as a network
+// failure; KMP-1b replaced it (R387).
 
 private const val HTTP_OK = 200
 private const val HTTP_ACCEPTED = 202
@@ -145,43 +145,20 @@ private data class AuthTokenPairWire(
     val refreshExpiresAt: String,
 )
 
-// ============================================================================
-// THE FIRST @Suppress IN THIS REPOSITORY, AND THE ARGUMENT FOR IT
-// ============================================================================
+// R387: THE CATCHES NAME WHAT THEY MEAN, so there is no @Suppress here any more.
 //
-// There is no detekt baseline file here and no other suppression anywhere, so
-// this is a deliberate act rather than the second entry in an established
-// habit - and it has to survive its own argument (the shape CLAUDE.md uses
-// for NOT_PERSONAL and for every other exemption list).
+// KMP-1 widened all eight transport catches from `java.io.IOException` to
+// `Exception`, because commonMain cannot name the former. That silenced detekt
+// with a class-level @Suppress("TooGenericExceptionCaught") and cost two real
+// things: a bug inside the try (an NPE, an IllegalStateException) was reported
+// to the caller as "network unreachable", and the suppression would have hidden
+// the next wide catch somebody added.
 //
-// WHAT DETEKT IS OBJECTING TO. Eight `catch (e: Exception)` sites, one per
-// endpoint, each translating a transport failure into ApiFailure.Network.
-//
-// WHY IT CANNOT BE NARROWED. In :app this was `catch (e: IOException)`.
-// commonMain cannot name java.io.IOException - that is the entire point of
-// the module - and Kotlin's common stdlib has no transport-failure supertype
-// to put in its place. A multiplatform seam receives whatever the PLATFORM
-// transport throws: an IOException on Android, an NSError-derived throwable
-// through the Darwin client on iOS. The common code cannot enumerate those
-// types, so the only honest common catch is the broad one.
-//
-// WHAT IT DOES NOT SWALLOW. CancellationException is caught and rethrown
-// FIRST at every one of the eight sites, so structured-concurrency
-// cancellation still propagates. That is the failure mode a broad catch
-// usually causes in coroutine code, and it is closed here.
-//
-// WHAT IT DOES COST, stated rather than glossed: a programming error inside
-// the try - an NPE, an IllegalStateException - is reported to the caller as
-// ApiFailure.Network rather than crashing. On Android the behaviour is
-// unchanged from before KMP-1, because the only thing the Android transport
-// throws is an IOException. On a future iOS transport the same bug would read
-// as "network unreachable". That is a real trade and the alternative - an
-// expect/actual for "is this a transport failure" - is a mechanism KMP-2 can
-// add when a second platform exists to need it.
-//
-// SUPPRESSED AT THE CLASS, not at eight sites: one place to read the reason,
-// and one place to delete when the expect/actual arrives.
-@Suppress("TooGenericExceptionCaught")
+// Each site now catches TransportException - the type the SEAM throws (R386) -
+// and nothing wider. The explicit `catch (CancellationException) { throw e }`
+// that used to precede each one is gone with it: it was there to undo the
+// over-wide catch below it, and with a narrow catch it is dead code that
+// implies the opposite of what the code now does.
 class AuthApi(
     private val transport: HttpTransport,
     private val baseUrl: String,
@@ -197,9 +174,7 @@ class AuthApi(
                         body = wireJson.encodeToString(MagicLinkRequest(email)),
                     ),
                 )
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
+            } catch (e: TransportException) {
                 return MagicLinkResult.Failed(ApiFailure.Network(e.message ?: "network unreachable"))
             }
         return when (response.status) {
@@ -223,9 +198,7 @@ class AuthApi(
         val response =
             try {
                 transport.execute(HttpRequest(method = HttpMethod.GET, url = url))
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
+            } catch (e: TransportException) {
                 return CallbackResult.Failed(ApiFailure.Network(e.message ?: "network unreachable"))
             }
         return when (response.status) {
@@ -256,9 +229,7 @@ class AuthApi(
                         body = wireJson.encodeToString(CodeRequest(email, code)),
                     ),
                 )
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
+            } catch (e: TransportException) {
                 return CodeExchangeResult.Failed(ApiFailure.Network(e.message ?: "network unreachable"))
             }
         return when (response.status) {
@@ -281,9 +252,7 @@ class AuthApi(
                         body = wireJson.encodeToString(RefreshRequest(refreshToken)),
                     ),
                 )
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
+            } catch (e: TransportException) {
                 return RefreshResult.Failed(ApiFailure.Network(e.message ?: "network unreachable"))
             }
         return when (response.status) {
@@ -308,9 +277,7 @@ class AuthApi(
                         headers = mapOf("Authorization" to "Bearer $accessToken"),
                     ),
                 )
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
+            } catch (e: TransportException) {
                 return AuthedResult.Failed(ApiFailure.Network(e.message ?: "network unreachable"))
             }
         return if (response.status == HTTP_UNAUTHORIZED) {
@@ -344,9 +311,7 @@ class AuthApi(
                         body = body,
                     ),
                 )
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
+            } catch (e: TransportException) {
                 return AuthedResult.Failed(ApiFailure.Network(e.message ?: "network unreachable"))
             }
         return if (response.status == HTTP_UNAUTHORIZED) {
@@ -380,9 +345,7 @@ class AuthApi(
                         body = body,
                     ),
                 )
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
+            } catch (e: TransportException) {
                 return AuthedResult.Failed(ApiFailure.Network(e.message ?: "network unreachable"))
             }
         return if (response.status == HTTP_UNAUTHORIZED) {
@@ -412,9 +375,7 @@ class AuthApi(
                         headers = mapOf("Authorization" to "Bearer $accessToken"),
                     ),
                 )
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
+            } catch (e: TransportException) {
                 return AuthedResult.Failed(ApiFailure.Network(e.message ?: "network unreachable"))
             }
         return if (response.status == HTTP_UNAUTHORIZED) {
@@ -438,7 +399,21 @@ class AuthApi(
                 url = "$baseUrl/api/v1/auth/sign-out",
                 headers = mapOf("Authorization" to "Bearer $accessToken"),
             )
-        return runCatching { transport.execute(request).status in HTTP_OK..HTTP_OK_MAX }.getOrDefault(false)
+        // R387: NOT runCatching. `transport.execute` is a SUSPEND function and
+        // runCatching catches Throwable, so this swallowed CancellationException -
+        // before KMP-1 as well as after, making it the one site here whose fix is a
+        // BEHAVIOUR CHANGE rather than a restoration. A sign-out whose scope is
+        // cancelled now ends cancelled instead of reporting `false`.
+        return try {
+            transport.execute(request).status in HTTP_OK..HTTP_OK_MAX
+        } catch (_: TransportException) {
+            // Sign-out is best-effort: the local session is cleared regardless, and the
+            // server expires the token anyway, so "unreachable" means "not confirmed"
+            // and nothing more. The exception is named `_` because nothing here acts on
+            // it - commonMain has no logger - and detekt's SwallowedException rule is
+            // right to ask which of those two it is.
+            false
+        }
     }
 }
 

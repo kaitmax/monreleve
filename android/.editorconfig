@@ -6,3 +6,16 @@ root = true
 # the same, standard detekt/Compose interaction handled in
 # config/detekt/detekt.yml's naming > FunctionNaming > ignoreAnnotated.
 ktlint_function_naming_ignore_when_annotated_with = Composable
+
+# KMP-1b (R389). THE FILE EXISTED; THIS KEY DID NOT, and its absence is what let
+# ktlint and detekt disagree. detekt enforces MaxLineLength 120
+# (config/detekt/detekt.yml); ktlint fell back to its own default, so KMP-1 met the
+# deadlock head-on - ktlint's function-signature rule PULLS a body expression onto the
+# signature line whenever it fits KTLINT's limit, producing a 121-column line detekt
+# then rejects. Code was restructured to escape that, not to read better.
+#
+# 120 IS NOT A NEW NUMBER: it is detekt's setting and the house standard - :app had no
+# line over 120 before KMP-1, so every author has been writing to it already. This only
+# makes ktlint read the same figure. Nothing else is added: another key would be a
+# second opinion about code this task was not asked to restyle.
+max_line_length = 120

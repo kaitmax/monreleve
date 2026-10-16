@@ -5,8 +5,10 @@ import ch.monreleve.app.data.remote.AuthServerCode
 import ch.monreleve.app.data.remote.AuthedResult
 import ch.monreleve.app.data.remote.ExportBytes
 import ch.monreleve.app.data.remote.RefreshResult
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 // AN4 increment 5. Holds the session: refresh (single-flight), the authenticated
 // call flow, and sign-out. Lives in auth/, not ui/ (fence 5).
@@ -254,11 +256,32 @@ class SessionManager(
             Attempt.NetworkError -> BytesOutcome.NetworkError
         }
 
-    /** End the session: revoke server-side (best-effort), then clear local storage unconditionally. */
+    /**
+     * End the session: revoke server-side (best-effort), then clear local storage UNCONDITIONALLY.
+     *
+     * THE WIPE IS NonCancellable, AND KMP-1b IS WHY. This used to read
+     *
+     *     if (pair != null) api.signOut(pair.accessToken)
+     *     tokenStore.clear()
+     *
+     * and it was only safe by accident: api.signOut wrapped the call in runCatching, which
+     * swallowed CancellationException, so the clear below it still ran. KMP-1b (R387) made
+     * cancellation propagate - correctly - and that turned the accident into a security
+     * regression: a person taps sign out, leaves the screen, the scope is cancelled mid-request
+     * and THE TOKENS STAY ON THE DEVICE.
+     *
+     * The revoke is still attempted first, because it needs the token this clear destroys. What
+     * changed is that the clear can no longer be skipped: a finally inside NonCancellable runs
+     * whether the revoke returned, threw, or was cancelled. Signing out is a promise about the
+     * device, and it is the half that must not depend on the network.
+     */
     suspend fun signOut() {
         val pair = tokenStore.load()
-        if (pair != null) api.signOut(pair.accessToken)
-        tokenStore.clear()
+        try {
+            if (pair != null) api.signOut(pair.accessToken)
+        } finally {
+            withContext(NonCancellable) { tokenStore.clear() }
+        }
     }
 
     /**
