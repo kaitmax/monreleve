@@ -28,6 +28,7 @@ import ch.monreleve.app.settings.detectionConsentBody
 import ch.monreleve.app.settings.mePatchBody
 import ch.monreleve.app.settings.toAggregatableUser
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,6 +37,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.time.LocalDate
 
@@ -393,9 +395,28 @@ class ParametresController(
     fun confirmSignOut() {
         mutableState.update { it.copy(signOutPrompt = null) }
         scope.launch {
-            revokeServer()
-            localStore.clearForSignOut()
-            accountChannel.send(AccountEvent.SignedOut)
+            // KMP-1b: THE LOCAL WIPE CANNOT BE CANCELLED, and before KMP-1b it could have been.
+            //
+            // This read revokeServer(); clearForSignOut(); send(SignedOut) - three cancellable
+            // steps in that order. It was safe only by accident: AuthApi.signOut wrapped its
+            // call in runCatching, which swallowed CancellationException, so the two steps after
+            // it still ran. R387 made cancellation propagate, which is correct and which turned
+            // the accident into a security regression on THIS button: tap Se deconnecter, leave
+            // the screen, the scope is cancelled mid-request - and the record, the cache, the
+            // tokens and the queued sync all stay on the device.
+            //
+            // The revoke stays first because it needs the token the wipe destroys. The wipe and
+            // the event move into a finally inside NonCancellable, so they run whether the
+            // revoke returned, threw, or was cancelled. Signing out is a promise about the
+            // DEVICE; the server half is best-effort and always was.
+            try {
+                revokeServer()
+            } finally {
+                withContext(NonCancellable) {
+                    localStore.clearForSignOut()
+                    accountChannel.send(AccountEvent.SignedOut)
+                }
+            }
         }
     }
 
