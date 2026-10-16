@@ -895,3 +895,71 @@ tasks.register("gate") {
         )
     }
 }
+
+// ============================================================================
+// R390: THE FAST CHECK IS A TASK, BECAUSE AS PROSE IT LOST A STEP
+// ============================================================================
+//
+// The "RAM-adapted fast-check mode" is the operator's R156 adaptation for a
+// machine that cannot hold the full gate: a per-increment subset, with the FULL
+// :app:gate run at checkpoints. It had no mechanical definition at all - it
+// lived as a sentence in each session's report, retyped from the last one.
+//
+// IT LOST A STEP IN TRANSCRIPTION, and that is the whole argument for this task.
+//
+//   REPORT-KMP-0 DEVIATION 2:  ":shared:compileCommonMainKotlinMetadata +
+//                               :shared:testDebugUnitTest + (ktlint/detekt) +
+//                               :app:compileDebugKotlin ..."
+//
+//   REPORT-KMP-1 DEVIATION 6:  ":shared:compileCommonMainKotlinMetadata +
+//                               :shared:testDebugUnitTest +
+//                               :app:compileDebugKotlin ..."
+//
+// The "(ktlint/detekt)" is gone. KMP-1 then shipped three lint failures its
+// per-increment checks could not have seen - two ktlint, one detekt - and they
+// surfaced only when the full gate finally ran. KMP-0's own report had ALREADY
+// recorded that gap biting once (6b's line length, ":app detekt not in the fast
+// check"), so this is the same defect twice, the second time because a list was
+// copied by hand.
+//
+// WHAT IS IN IT AND WHY. The cheap checks that would have caught all three, plus
+// the compile and unit steps the mode always had. Lint is CHEAP - it is static
+// analysis over source, it starts no emulator and builds no APK - so there is no
+// reason it was ever the thing dropped for memory.
+//
+// WHAT IS DELIBERATELY NOT IN IT: assembleDebug, verifyPaparazziDebug, lintDebug,
+// and the release-variant checks. Those are what make the full gate expensive,
+// and they are what the checkpoints are for. A fast check that grows into the
+// gate is a fast check nobody runs.
+tasks.register("fastCheck") {
+    group = "verification"
+    description = "The per-increment subset (R390). The FULL :app:gate still runs at checkpoints."
+
+    dependsOn(
+        ":shared:compileCommonMainKotlinMetadata",
+        ":shared:testDebugUnitTest",
+        ":shared:ktlintCheck",
+        ":shared:detekt",
+        "compileDebugKotlin",
+        "ktlintCheck",
+        "detekt",
+    )
+
+    doLast {
+        println(
+            """
+            |
+            |FAST CHECK (R390) - the per-increment subset, NOT the gate.
+            |RAN: :shared:compileCommonMainKotlinMetadata, :shared:testDebugUnitTest,
+            |     :shared:ktlintCheck, :shared:detekt, :app:compileDebugKotlin,
+            |     :app:ktlintCheck, :app:detekt
+            |NOT RUN, and therefore NOT CLAIMED: assembleDebug, testDebugUnitTest (:app),
+            |     verifyPaparazziDebug, lintDebug, and every release-variant check
+            |     (checkReleaseCleartext, checkMinifiedWireContract, ...).
+            |
+            |A GREEN FAST CHECK IS NOT A GREEN GATE (R391). Report it as
+            |"increments green under fast check. FULL GATE NOT RUN on <sha>."
+            """.trimMargin(),
+        )
+    }
+}

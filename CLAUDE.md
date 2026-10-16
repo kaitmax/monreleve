@@ -214,6 +214,13 @@ Anything not covered by those: **ask**. Never invent a product decision.
 - **Never claim more than the record supports.** *Déclaré, enregistré, horodaté* — never *certifié, attesté, conforme*.
 - **SPEC §20 "Ask first" items stop and ask.** Any runtime dependency in `calc-engine`; any change to a constant, a rounding rule or the engine's public API; adding a token outside `DESIGN-SYSTEM.md`; raising a size budget; any third-party script. Record the ruling verbatim in the report.
 - **Every session ends with a report.** `REPORT-<TASK>.txt` at the repo root, pure ASCII, committed and pushed, in the format the session prompt specifies. The session is not done until it exists.
+- **A report does not say GREEN for a gate that did not run (R391).** A STATUS line may read COMPLETE or GREEN **only** when the FULL `:app:gate` — and `gate:clone` where web changed — ran **on the reported tip, in this session**, with its `BUILD` line and exit code pasted into the report. Otherwise the status reads, in this shape:
+
+      Increments green under fast check. FULL GATE NOT RUN on <sha>.
+
+  - **A missing output is NO RESULT, never a pass and never a fail.** An empty grep, a missing `gradlew`, a missing directory, a command whose `cd` did not apply — each is recorded as NO RESULT and the run is repeated. Three separate runs in KMP-1b produced no `BUILD` line because the harness was in the wrong directory, and the first of them was nearly read as a verdict.
+  - **It exists because REPORT-KMP-1 said "STATUS: COMPLETE … GREEN under the RAM-adapted fast-check mode"** and handed the full gate to the operator in its last line. When that gate was finally run it was RED three ways — two ktlint, one detekt — none of which the per-increment checks could have seen. The report was not dishonest; it was *precise about a narrower claim* in a line a reader takes as the broad one. The fix is that the narrow claim has to be spelled out where the broad one would have gone.
+  - **The fast check is `./gradlew fastCheck` and nothing else (R390).** It is a task rather than a sentence because, as a sentence, it lost a step: KMP-0's report defined it with `(ktlint/detekt)` and KMP-1's retyped it without, which is exactly why KMP-1's three lint failures went unseen. Measured at 43 s and 1 048 MB peak, so `:app`'s ktlint and detekt fit the memory budget with room.
 
 ---
 
