@@ -1,0 +1,350 @@
+REPORT-FW-REDIRECT
+==================
+
+TASK   FW-REDIRECT - no redirect points at the container's own address.
+BASE   d204fa0 (main, with fw-code-cap merged)
+BRANCH fw-redirect, worktree C:/wt/fw-redirect (R349), lock held and released
+
+
+SUMMARY
+-------
+
+The confirmation email linked to /api/alertes/confirm?token=..., which
+confirmed the subscription and then redirected the browser to
+
+    https://0.0.0.0:3000/alertes/confirmation/confirmee
+
+an address no browser can open. The same was true of the unsubscribe link.
+Both are in every alert email, so every subscriber who confirmed or
+unsubscribed hit it. The subscription WAS recorded; only the page after it
+failed.
+
+CAUSE. Both routes built their Location with
+
+    NextResponse.redirect(new URL(path, request.nextUrl.origin), 303)
+
+and inside the image `request.nextUrl.origin` IS http://0.0.0.0:3000, because
+the standalone server is started with ENV HOSTNAME="0.0.0.0" so that it binds
+every interface behind the proxy. The server's view of its own address is not
+the reader's view of it.
+
+THE FIX ALREADY EXISTED, ONE FILE OVER. app/api/alertes/route.ts met this
+exact defect during FW28 and fixed it with a relative Location - its comment
+block still reads "4 of 284 e2e specs, green against next start, failing
+against the image". Its two siblings were never moved over. A fix that lives
+in one route is a fix the next route does not get, which is the whole
+argument for R364 putting it in one module.
+
+
+R273 - WHAT WAS READ BEFORE ANYTHING WAS WRITTEN
+------------------------------------------------
+
+relay/FW-REDIRECT.txt, CLAUDE.md, tasks/todo.md (nothing there claims this
+work; the name does not collide - R162), app/api/alertes/route.ts and its
+FW28 comment block, both sibling routes, lib/alerts/status.ts,
+lib/alerts/confirm.ts.
+
+
+R1 - THE GREEN BASE
+-------------------
+
+gate:clone PASSED on d204fa0, origin/main's HEAD, before the first increment.
+That commit is the merge of fw-code-cap, which this session also performed at
+the operator's instruction; its own gate:clone passed before it was pushed.
+
+
+THE FENCE (R365) - RED, THEN GREEN
+----------------------------------
+
+tests/unit/meta/redirect-origin.test.ts.
+
+RED ON ITS FIRST RUN, naming both live routes. No plant was needed - the
+shipped instances are the proof (R178):
+
+  AssertionError: a redirect built from the request's own origin, which is
+  http://0.0.0.0:3000 inside the image:
+    app/api/alertes/confirm/route.ts:44        return NextResponse.redirect(
+    app/api/alertes/desinscription/route.ts:70 return NextResponse.redirect(
+  expected [ { ... }, { ... } ] to deeply equal []
+
+GREEN after the fix, 6 tests.
+
+IT SCANS STATEMENTS, NOT LINES, and that is the difference between a guard
+and a guard-shaped object. The shipped defect spans four lines:
+
+    return NextResponse.redirect(
+      new URL(`${CONFIRMATION_PATH}/${state}`, request.nextUrl.origin),
+      303,
+    );
+
+A line-by-line scan finds the sink on one line and the origin on another and
+reports neither - passing over the exact code it was written for.
+
+IT BLANKS COMMENT-ONLY LINES, and that was not a convenience. Its first run
+after the fix flagged lib/http/redirect.ts, whose header QUOTES the broken
+call in order to explain it. The two ways out were to blank comments or to
+reword the explanation around the scanner, and rewording is evasion (R181):
+it leaves the fence unable to tell prose from code and teaches the next
+author to describe a defect vaguely so the guard stays quiet. Only WHOLE-LINE
+comments are blanked, asserted both ways, so a trailing comment cannot hide a
+call on a line that also carries code.
+
+IT TESTS ITSELF BEFORE ITS VERDICT IS TRUSTED. Three tests: that the regexes
+match the shipped shape, that reading a query parameter off the request stays
+legal, and that the file set it walks is non-empty (R169's presence
+corollary - "no offences" is satisfied by scanning nothing).
+
+WHY A SOURCE SCAN AND NOT A BEHAVIOUR TEST. A behaviour test cannot see this.
+Under `next start` the origin is http://localhost:3000 and every assertion
+about the Location passes. The value only becomes wrong when HOSTNAME is
+0.0.0.0, which is the image. The shape of the code is the same everywhere.
+
+
+THE FIX (R364)
+--------------
+
+  web/lib/http/redirect.ts        new - relativeRedirect, the one home
+  web/app/api/alertes/route.ts    local copy deleted, imports the module
+  web/app/api/alertes/confirm/route.ts         uses it
+  web/app/api/alertes/desinscription/route.ts  uses it
+
+Status 303 and the target paths and states are unchanged. The POST handler on
+the unsubscribe route is untouched - it answers 200 with plain text and has
+no redirect, because there is no browser at the other end.
+
+TESTS. web/tests/db/redirect-location.test.ts, 5 tests, driving the route
+HANDLERS (R204 - the entry point is the unit under test) for every state
+each route can reach: confirmee, invalide and no-token-at-all for confirm;
+ok and invalide for unsubscribe. Each asserts status 303, the exact target,
+and that the Location is a path with no host - against a request whose origin
+IS http://0.0.0.0:3000, so the old code would fail every one.
+
+THIS FILE'S ABSENCE IS WHY THE BUG SHIPPED. tests/db/confirm-unsubscribe.ts
+asserts what the lib does to the row, thoroughly and in both directions. The
+e2e suite asserts the confirmation page renders. Between them sat the Location
+header that carries a reader from the first to the second, and nothing
+asserted it. R175 exactly: a property fenced from two sides with the middle
+unexamined - and the middle is where the subscriber was sent to 0.0.0.0.
+
+THREE DEFECTS IN MY OWN TEST CODE, each caught by a tool rather than by me:
+a plain Request cast to the handler's parameter type compiles and then throws
+on `nextUrl`; the unsubscribe token is minted at CONFIRMATION, so the
+confirmation token correctly yielded 'invalide'; and `recordSubscription`
+returns a union whose other branch carries no token, which the gate's
+typecheck caught after vitest had run the file green (vitest does not
+typecheck).
+
+
+OTHER USES OF THE REQUEST ORIGIN (R365's census)
+------------------------------------------------
+
+Every occurrence in app/ and lib/, tests excluded, with why each is safe.
+
+THREE ARE COMMENTS, not code: app/api/alertes/confirm/route.ts:45,
+app/api/alertes/route.ts:112 and :227. All three document this defect.
+
+FIVE READ QUERY PARAMETERS ONLY - `new URL(request.url)` used solely for
+`.searchParams`, never for `.origin`. Safe by the prompt's own test: reading
+query parameters off the request is fine; building a URL a browser or an
+email will follow is not.
+
+  app/api/v1/account/export/route.ts:45    format + unknown-key census
+  app/api/v1/auth/callback/route.ts:37     token + email
+  app/api/v1/dossier/route.ts:51           coordinate-key refusal
+  app/api/v1/entries/route.ts:167          coordinate-key refusal
+  app/api/v1/export/csv/route.ts:52        coordinate-key refusal
+
+ONE BUILDS AN ABSOLUTE URL FROM THE REQUEST ORIGIN, and it is the one finding
+of this census:
+
+  app/api/v1/export/pdf/route.ts:170
+    const target = new URL('/releve/print', url.origin);
+    ...
+    const pdf = await withRenderSlot(() => renderPdf(target.toString()));
+
+WHY IT IS SAFE TODAY, stated rather than assumed. The URL is never sent to a
+browser or put in an email: it is handed to the headless Chromium running in
+the SAME container, which navigates to it. Inside that container
+http://0.0.0.0:3000 is loopback, so the navigation resolves to the server
+making the request. Nothing outside the container ever receives this address.
+
+WHY IT IS NOT THE SAME FIX. Chromium needs an ABSOLUTE URL; there is no
+relative form of "navigate to this page". So R364's answer does not apply and
+inventing one here would be worse than the fragility.
+
+IT IS PARKED, NOT CLOSED - see PARK-R1. It breaks the day PDF rendering moves
+to its own container or behind any network hop, and the symptom would be a
+PDF export that fails only in production.
+
+
+THE IMAGE PROOF (R366)
+----------------------
+
+Raw headers, from containers started on port 3130 against a migrated
+database, both answering /api/health with "service":"monreleve" first (R169)
+and the port asserted free before and after (R179).
+
+BEFORE - monreleve:fw28, built 28 hours earlier, PRE-FIX, with a REAL token
+from a seeded subscriber:
+
+  --- GET /api/alertes/confirm?token=<real>
+  HTTP/1.1 303 See Other
+  location: http://0.0.0.0:3000/alertes/confirmation/confirmee
+
+  --- GET /api/alertes/desinscription?token=<real>
+  HTTP/1.1 303 See Other
+  location: http://0.0.0.0:3000/alertes/desinscription/ok
+
+Both in the CONFIRMED and OK states - the states a real subscriber reaches,
+not an error path. This is the live bug, reproduced.
+
+AFTER - monreleve:redirect, built from this branch, same database, same
+seeded subscriber, fresh tokens:
+
+  --- GET /api/alertes/confirm?token=<real>
+  HTTP/1.1 303 See Other
+  location: /alertes/confirmation/confirmee
+
+  --- GET /api/alertes/desinscription?token=<real>
+  HTTP/1.1 303 See Other
+  location: /alertes/desinscription/ok
+
+AND FOLLOWED, each in one request so the single-use token is spent once:
+
+  confirm     final url: http://127.0.0.1:3130/alertes/confirmation/confirmee
+              status:    200
+  unsubscribe final url: http://127.0.0.1:3130/alertes/desinscription/ok
+              status:    200
+
+The browser resolved the relative Location against the host it actually
+asked - 127.0.0.1:3130 - which is the property the fix exists to produce.
+
+ONE THING WORTH NOT GLOSSING. An earlier follow landed on
+/alertes/confirmation/invalide rather than /confirmee. That was not a
+mismatch: the preceding header-only request had already spent the single-use
+token, exactly as lib/alerts/confirm.ts is designed to. The run above was
+re-seeded and followed in ONE request to show the confirmed state end to end.
+
+INCIDENTALLY, R250 FIRED CORRECTLY. The first attempt started
+monreleve:fw28 with NEXT_PUBLIC_SITE_URL=https://monreleve.example and the
+entrypoint refused: "this image was BUILT for https://container-check.example
+... Static routes bake their canonicals at build time". The container exited 1
+rather than serving wrong canonicals. That is the refusal matrix doing its
+job, met by accident.
+
+THE E2E MODE THAT RUNS AGAINST THE IMAGE ALREADY EXISTS, so R366's "add both
+flows to it" needed no new harness: scripts/container-e2e.mjs points the whole
+e2e suite at the built container (R249). web/e2e/alertes-redirect.spec.ts adds
+four tests - the Location of both routes, and that following each lands on a
+page that renders its outcome heading - so they run against `next start` in
+`pnpm test:e2e` AND against the image in `pnpm test:container:e2e`.
+
+  THE SPEC USES AN UNISSUED TOKEN, and that proves the same thing: the
+  Location is assembled by one helper in one call, and the state decides only
+  the last path segment. Seeding from inside a Playwright spec would mean
+  giving the e2e suite database credentials it has never had, to vary a
+  segment that cannot change the thing under test. The seeded states are
+  proven above and in tests/db/redirect-location.test.ts.
+
+
+PARKED
+------
+
+PARK-R1  app/api/v1/export/pdf/route.ts:170 builds an absolute URL from the
+         request origin for Chromium to navigate to. Safe today (loopback,
+         same container, never leaves it) and not fixable by R364's relative
+         form, because a navigation needs an absolute URL. It breaks if PDF
+         rendering is ever moved to its own container or behind a network
+         hop. The durable answer is an explicit loopback origin or a
+         configured internal base, not the request's own view of itself.
+
+PARK-R2  The e2e suite cannot seed a database, so no spec exercises the
+         CONFIRMED or OK states against the image. Covered here by the
+         container run and by the db tests. Giving the e2e suite credentials
+         is a decision with a wider blast radius than this task.
+
+
+DEVIATIONS
+----------
+
+1. THE MERGE OF fw-code-cap WAS PERFORMED IN THIS SESSION, in the main
+   checkout rather than a worktree, because that is where main is checked
+   out and a merge has to happen there. The operator instructed it. R1's
+   precondition for both this task and FW-FOLLOWUP depended on it:
+   origin/main did not contain fw-code-cap, and FW-FOLLOWUP's R1 says to stop
+   if it does not. gate:clone was run on the merge commit before it was
+   pushed.
+
+2. main HAD MOVED 17 COMMITS while fw-code-cap was in progress - the KMP-0
+   work, which moved the Kotlin sources into a :shared module. The merge was
+   verified conflict-free with git merge-tree before it was made, and
+   fw-code-cap touches only web/, docs/, .gitignore and its own report, so
+   there was no overlap. Noted because FW-FOLLOWUP ITEM 2 names
+   android/.../fr/CodeCopy.kt, which now lives at
+   android/shared/src/commonMain/kotlin/ch/monreleve/app/fr/CodeCopy.kt. The
+   prompt's path is elided, so it still matches - but that item now edits a
+   KMP shared-module file rather than an :app one.
+
+3. THE GATE VERDICT LINE WAS TRUNCATED TWICE by my own `tail` on the
+   gate:changed and gate:clone output - "GATE PASSED" prints ABOVE the
+   selection block. Resolved without re-running: a failing gate:clone exits
+   before printing its "NOT RUN HERE" epilogue (scripts/gate-clone.mjs:768 vs
+   :797), and a failing gate:changed prints no "measured:" block at all, as
+   its own typecheck failure in this task demonstrated. Both verdicts were
+   therefore established from the structure of the output rather than assumed
+   from an exit code - the task notification reported "exit code 0" for runs
+   that had failed.
+
+
+QUESTIONS
+---------
+
+Q1 PARK-R1, the PDF route. Worth a follow-up now, or does it wait until
+   something actually moves the renderer? It is the last request-origin use
+   in the tree and the only one the fence does not cover, because it is not a
+   redirect.
+
+Q2 PARK-R2. Should the e2e suite get database access so the confirmed and
+   unsubscribed states can be exercised against the image directly? It would
+   close a real gap and it widens what that suite can touch.
+
+
+PUSH PROOF
+----------
+
+COMMITS, on branch fw-redirect off d204fa0:
+
+  4683180  1/2  R364/R365: every redirect is relative, and the class is fenced
+  (this report and the image spec are 2/2)
+
+GATE:CHANGED, each run before the commit it belongs to.
+
+  1/2  8 paths matched - the three routes under app/**, and all of
+       lib/http/redirect.ts, the routes and tests/db/** through the database
+       layer. Suites: typecheck, lint, test, build, test:e2e, test:visual,
+       test:db, test:late.
+       measured: typecheck 0, lint 0, test 3258, build 0, test:e2e 334,
+       test:visual 111, test:db 659, test:late 10.
+
+  2/2  measured: typecheck 0, lint 0, test 3258, build 0, test:e2e 338.
+       The e2e count moves 334 -> 338: the four tests in
+       e2e/alertes-redirect.spec.ts.
+
+  NO BASELINE WAS REGENERATED. test:visual passed 111 unchanged in 1/2; this
+  task renders no new pixels (R135, R207).
+
+ONE GATE RUN FAILED AND IT WAS A REAL DEFECT, not an environment: 1/2's first
+gate failed at typecheck with
+
+    tests/db/redirect-location.test.ts(88,49): error TS2345:
+    Argument of type 'string | undefined' is not assignable to parameter of
+    type 'string'.
+
+vitest had run the same file green, because vitest does not typecheck. Fixed
+by asserting the token rather than casting it, so a future change that stops
+issuing one fails saying that instead of sending the route an empty string.
+
+GATE:CLONE AND THE PUSH FOLLOW THIS COMMIT. Their results are recorded in the
+message of the commit that carries them, rather than predicted here (R334 - a
+report states only what has happened, and at the moment this file was written
+neither had).

@@ -25,6 +25,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { confirmByToken } from '@/lib/alerts/confirm';
 import { CONFIRMATION_PATH, CONFIRM_STATES } from '@/lib/alerts/status';
+import { relativeRedirect } from '@/lib/http/redirect';
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const token = request.nextUrl.searchParams.get('token') ?? '';
@@ -41,8 +42,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     state = CONFIRM_STATES.unknown;
   }
 
-  return NextResponse.redirect(
-    new URL(`${CONFIRMATION_PATH}/${state}`, request.nextUrl.origin),
-    303,
-  );
+  // RELATIVE, because request.nextUrl.origin is http://0.0.0.0:3000 inside
+  // the image and this link is in every confirmation email (R364).
+  return relativeRedirect(`${CONFIRMATION_PATH}/${state}`);
 }

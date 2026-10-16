@@ -29,6 +29,7 @@
 // a page about tax compliance is a convincing place to start a phishing hop.
 
 import { NextResponse, type NextRequest } from 'next/server';
+import { relativeRedirect } from '@/lib/http/redirect';
 import { CALCULATOR_PATH } from '@/lib/content/routes';
 import { ALERTES_PATH } from '@/lib/content/alertes';
 import {
@@ -146,11 +147,6 @@ function back(
   url.hash = statusFragment(status);
 
   return relativeRedirect(`${url.pathname}${url.search}${url.hash}`);
-}
-
-/** A 303 whose Location carries no host (see `back`). */
-function relativeRedirect(target: string): NextResponse {
-  return new NextResponse(null, { status: 303, headers: { Location: target } });
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
