@@ -1,0 +1,223 @@
+================================================================================
+REPORT-KMP-2 : STOPPED AT R1. NO DEVICE, NO SESSION.
+================================================================================
+Branch: kmp-2    Base: origin/main 935adac (unchanged; no rebase)
+Worktree: C:/wt/kmp-2    Android only.
+
+================================================================================
+STATUS (per R391)
+================================================================================
+NOT STARTED. No code was changed, nothing was committed beyond this report, and
+no claim is made about any ruling R394-R401.
+
+R1 requires FOUR preconditions and says "ALL FOUR, OR STOP BEFORE THE FIRST
+CHANGE". Three pass. The fourth - a device or emulator - does not, and the
+prompt's own words are "NO DEVICE, NO SESSION: this task's proof is on-device,
+and its two owed device checks have already been deferred twice."
+
+So the session stopped before the first change, which is the instruction rather
+than a judgement call.
+
+THE FULL :app:gate WAS RUN, but on origin/main's HEAD as R1(c) requires - NOT on
+any work of this session, because there is none.
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+KMP-2 moves the Room database to :shared. Its hard boundary is that the database
+is the one part of the app whose mistakes survive a reinstall: the identity
+hashes, the five migrations' SQL and the schema files must come through
+byte-identical, and R398's real test is that an EXISTING INSTALL UPGRADES IN
+PLACE without losing a day.
+
+That test cannot be simulated. Neither can R397's migration suite, which is
+androidTest and runs on a device, nor R399's two owed checks. Beginning the move
+without a device would produce exactly the report R391 exists to prevent: the
+migrations would compile, the hash test would pass, and the one thing that
+matters - an existing install still opens - would be unverified while the STATUS
+line said GREEN.
+
+--------------------------------------------------------------------------------
+R273 - WHAT WAS READ
+--------------------------------------------------------------------------------
+relay/KMP-2.txt in full. REPORT-KMP-1.txt's "WHAT KMP-2 INHERITS", quoted below.
+REPORT-KMP-0.txt's "WHAT KMP-1 INHERITS". REPORT-KMP-1b.txt - which has NO
+"WHAT KMP-n INHERITS" section (it was a process-and-correctness task, not a move),
+so its PARKED list is the inheritance and is carried below.
+
+WHAT KMP-2 INHERITS, from REPORT-KMP-1 lines 284-301, abbreviated to the part
+this task touches:
+
+  "SyncEngine/Scheduler/Worker, DossierCache (SharedPrefs), KeystoreTokenStore,
+   the repositories, Room, EntryEntity and every EntryEntity<->DTO mapping,
+   PendingDays, the settings/token stores - the on-device store (KMP-2 needs a
+   device for migration tests)."
+
+  The predecessor said so plainly: KMP-2 needs a device. That is not a new
+  discovery of this session; it was recorded one task ago.
+
+FROM REPORT-KMP-1b's PARKED, still open and relevant here:
+  - P1 the clean-tree guard: NOW MERGED (fw-gate-clean), and R1(b) below proves
+    it live. P1 is closed by this session's precondition check.
+  - P2 scripting the merge/cleanup refusal (R392) - still open, out of scope.
+  - P4 the on-device round trip (R385) and KMP-0's R374 comparison - STILL OPEN,
+    and KMP-2's R399 is where they were to be closed. Deferred a THIRD time, by
+    the same cause each time: no device.
+
+--------------------------------------------------------------------------------
+R1 - THE FOUR PRECONDITIONS
+--------------------------------------------------------------------------------
+
+(a) origin/main CONTAINS fw-gate-clean AND kmp-1b                        PASS
+
+    git merge-base --is-ancestor origin/fw-gate-clean origin/main  -> contained
+    git merge-base --is-ancestor origin/kmp-1b       origin/main  -> contained
+
+    Both were merged by the preceding session: fw-gate-clean at ba18a78 (first,
+    so that kmp-1b would land under the guard), kmp-1b at 935adac.
+
+(b) THE CLEAN-TREE GUARD IS LIVE                                          PASS
+
+    Planted one unstaged edit to a tracked file and ran the gate:
+
+      $ printf '\n// R1(b) probe: an unstaged edit\n' >> \
+          android/shared/src/commonMain/kotlin/ch/monreleve/app/fr/CodeCopy.kt
+      $ git diff --name-only
+      android/shared/src/commonMain/kotlin/ch/monreleve/app/fr/CodeCopy.kt
+
+      $ ./gradlew :app:gate
+      GATE REFUSED TO START (R393): unstaged changes to tracked files.
+      1 file(s) differ from the index:
+          android/shared/src/commonMain/kotlin/ch/monreleve/app/fr/CodeCopy.kt
+      BUILD FAILED in 36s
+
+    REVERTED: git checkout -- <the file>; git diff --quiet is clean.
+
+    THIRTY-SIX SECONDS is the part worth recording. The guard runs in
+    gradle.taskGraph.whenReady, so it refuses before anything compiles; a full
+    :app:gate is eight to twelve minutes. It was merged roughly an hour before
+    this check and this is its first run on main.
+
+    NOTE THE NUMBER: the guard is R393, not R379. It was renumbered before the
+    merge because R379 is KMP-1's "what moves to :shared commonMain" (R162).
+
+(c) FULL :app:gate GREEN ON origin/main's HEAD                            PASS
+
+      GATE_EXIT=0
+      BUILD SUCCESSFUL in 11m 59s
+      218 actionable tasks: 218 executed
+
+    Run on 935adac, which IS origin/main's HEAD, with --rerun-tasks after
+    stopping the daemon. 218 of 218 EXECUTED: nothing from cache, so this is a
+    claim about the code and not about Gradle's up-to-date checks.
+
+(d) adb devices LISTS THE S9 OR AN EMULATOR                               FAIL
+
+      $ adb devices -l
+      * daemon not running; starting now at tcp:5037
+      * daemon started successfully
+      List of devices attached
+      (nothing)
+
+    No device attached. No emulator running. No AVD defined
+    ($SDK/emulator/emulator.exe -list-avds returns nothing;
+     ~/.android/avd does not exist).
+
+    WHY ONE WAS NOT SIMPLY CREATED, since the prompt accepts an emulator:
+
+      The system images ARE present - 5.2 GB under $SDK/system-images, including
+      android-36/google_apis_playstore/x86_64 and
+      android-37.0/google_apis_playstore_ps16k/x86_64.
+
+      But the SDK has NO cmdline-tools directory, so there is no avdmanager:
+          $ find "$SDK" -maxdepth 4 -name "avdmanager*"   -> nothing
+          $ ls "$SDK"
+          build-tools emulator emulator.backup extras fonts icons licenses
+          platform-tools platforms skins sources system-images
+
+      The two ways past that are installing cmdline-tools (a download) or
+      hand-writing ~/.android/avd/<name>.ini and config.ini. Neither was done:
+      the first is an unprompted download, the second is a fragile system change
+      of exactly the kind R334's caution is about, and neither was asked for.
+
+    AND A SECOND REASON TO PREFER THE REAL DEVICE: R399 closes R374, which wants
+    a day recorded between 23:00 and 00:30 Paris with the device clock moved and
+    restored - the real-clock behaviour after KMP-0's java.time ->
+    kotlinx-datetime move. An emulator can be made to show a clock; it is a
+    weaker witness for the thing that check exists to test.
+
+    FREE RAM AT THE CHECK: 1.78 GB of 15.82. Recorded because this machine has
+    already killed vitest workers and a Gradle run at comparable levels, so an
+    emulator plus a Gradle build would be tight even once an AVD exists.
+
+--------------------------------------------------------------------------------
+WHAT WOULD UNBLOCK THIS, IN ORDER OF PREFERENCE
+--------------------------------------------------------------------------------
+1. ATTACH THE S9. It satisfies R1(d), and it is the right witness for R399/R374's
+   near-midnight check and for R398's "an existing install upgrades in place".
+2. CREATE AN AVD IN ANDROID STUDIO (Device Manager). The android-36 image is
+   already downloaded, so this needs no network. It satisfies R1(d) as written.
+   Watch the memory: see the RAM note above.
+3. INSTALL cmdline-tools, after which avdmanager can create one headlessly.
+
+Once a device is listed, R1(a)-(c) above still stand on 935adac and do not need
+repeating unless origin/main has moved.
+
+--------------------------------------------------------------------------------
+WHAT WAS AND WAS NOT TOUCHED
+--------------------------------------------------------------------------------
+NOT TOUCHED: every ruling R394-R401. No file moved to :shared. No migration
+rewritten. No schema file moved. No build file edited. No version changed.
+
+TOUCHED, and reverted within the same minute: one tracked file, as R1(b)'s
+planted probe. git diff --quiet confirms the tree is clean.
+
+CREATED: C:/wt/kmp-2 (this worktree, branch kmp-2 off 935adac), its session lock,
+and android/local.properties copied in (gitignored, not committed).
+
+--------------------------------------------------------------------------------
+PARKED
+--------------------------------------------------------------------------------
+P1 EVERY RULING OF KMP-2 (R394-R401) is unstarted and waits on a device.
+P2 R399's two checks - R374 (KMP-0) and R385 (KMP-1) - are now deferred a THIRD
+   time, each time for the same reason. They have been owed since KMP-0.
+P3 The SDK has no cmdline-tools. Worth installing regardless of this task: it is
+   what makes an emulator creatable without the Studio GUI, which matters for any
+   unattended device work.
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+1. THIS REPORT WAS WRITTEN LATE. The precondition findings were given to the
+   operator conversationally when the session stopped, and the artifact was not
+   produced until the operator asked where it was. R241 says the report is what
+   ENDS the session - including a session that ends at R1 - and the prompt's own
+   report skeleton has a slot for "R1 (all four)". Telling the operator in a
+   message is not the same as leaving a record, and the difference only shows up
+   later, when the message is gone and the file is what remains.
+
+--------------------------------------------------------------------------------
+QUESTIONS
+--------------------------------------------------------------------------------
+Q1 Which device do you want this run against - the S9, or an AVD? If the AVD,
+   the near-midnight half of R374 is weaker and should be said so in that
+   report, or left owed for the S9.
+Q2 Should cmdline-tools be installed (P3)? It is a download, which is why it was
+   not done unprompted.
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+One commit: this report. No code commit exists because no code changed.
+
+:app:gate was run twice this session, both on origin/main's HEAD and neither on
+work of this session:
+  - R1(b)'s refusal run:  BUILD FAILED in 36s, by the guard, as intended
+  - R1(c)'s green run:    GATE_EXIT=0, BUILD SUCCESSFUL in 11m 59s, 218/218
+
+gate:clone does not apply: no web file changed.
+
+The push follows this commit; its result is recorded in the commit that carries
+it rather than predicted here (R334).
+
+END OF REPORT-KMP-2
