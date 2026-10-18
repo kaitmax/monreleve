@@ -197,6 +197,89 @@ DEVIATIONS
    later, when the message is gone and the file is what remains.
 
 --------------------------------------------------------------------------------
+OPERATOR RULINGS - ANSWERED AFTER THIS REPORT WAS FILED
+--------------------------------------------------------------------------------
+Recorded here rather than left in a message, which is this report's own
+DEVIATION 1 repeating itself one turn later.
+
+Q1 ANSWERED: THE S9 - and the operator's reasoning CORRECTS this report's.
+
+  This report argued an emulator is a weaker witness for R374's near-midnight
+  check. The operator's reading is better and is the one to follow: that check
+  depends on the CLOCK and the TIME ZONE, and an emulator with its clock moved
+  reproduces both faithfully. An emulator would have served R374.
+
+  The S9 matters for R398 instead. "An existing install upgrades in place" is
+  most convincing on real Android 10 Samsung storage, not on an image created
+  for the test - and it costs no RAM on a machine at 1.78 GB free, which an
+  emulator would.
+
+  Right device, wrong reason in this report. Corrected rather than left to read
+  as though it had been agreed.
+
+Q2 ANSWERED: YES, install cmdline-tools - Android Studio SDK Manager, SDK Tools,
+  Android SDK Command-line Tools. An operator click, not a download this session
+  decides on alone. PARKED P3 closes when it is ticked.
+
+--------------------------------------------------------------------------------
+CORRECTION TO R398 AND R399 - THE PROMPT IS WRONG, THE BUILD FILE HAS THE ANSWER
+--------------------------------------------------------------------------------
+R398 says to install "the RELEASE build of origin/main" and sign in against the
+local stack. THAT CANNOT WORK: the release build is hard-wired to
+https://monreleve.ch, and the same prompt forbids production.
+
+USE THE audit BUILD TYPE FOR BOTH COMMITS. Verified in
+android/app/build.gradle.kts this session rather than taken on faith:
+
+  line 143   create("audit")
+  line 147   isMinifyEnabled = true        - minified exactly as release is
+  line 149   signingConfig = debug         - DEBUG-SIGNED; see the warning below
+  line 104   frontalierHost property, default "10.0.2.2" (emulator loopback)
+  line 152   comment: "device has no such alias, so the device drive overrides
+             it with -PfrontalierHost=127.0.0.1"
+  line  96   comment names adb reverse tcp:3000 tcp:3000 as the bridge
+
+  For the S9:  build audit with -PfrontalierHost=127.0.0.1
+               bridge with     adb reverse tcp:3000 tcp:3000
+
+BEFORE INSTALLING ANYTHING, RECORD WHAT IS ALREADY ON THE PHONE:
+
+    adb shell dumpsys package ch.monreleve.app | findstr versionName
+    (and its signature)
+
+  debug, audit and release all share the application id ch.monreleve.app and are
+  signed differently. An install -r REFUSES across a signature change, and the
+  only way through is an uninstall, which DELETES THAT INSTALL'S LOCAL DATA.
+
+  audit is debug-signed (line 149), so it replaces a debug-signed install
+  cleanly and collides with a release-signed one.
+
+  IF AN INSTALL MUST BE REMOVED FOR A SIGNATURE MISMATCH: STOP AND ASK FIRST.
+  And before the session starts, open the app on the phone and SYNC anything
+  still pending - that data cannot be recovered from this side.
+
+--------------------------------------------------------------------------------
+RESUME NOTE - TO GO AT THE TOP OF relay/KMP-2.txt WHEN THIS RESUMES
+--------------------------------------------------------------------------------
+  A previous KMP-2 session stopped at R1(d), no device; see REPORT-KMP-2.txt.
+  Do not redo R1(a)-(c) if origin/main is still 935adac. Re-check only (d).
+  Take over C:/wt/kmp-2 on branch kmp-2, clean, after the previous session's
+  lock is released. If its lock is still present, stop and ask (R392).
+
+  CORRECTION TO R398 AND R399. The release build points at
+  https://monreleve.ch and must not be used. Use the audit build type for both
+  commits: minified, built with -PfrontalierHost=127.0.0.1, bridged with
+  adb reverse tcp:3000 tcp:3000.
+
+  Before installing anything, record what is installed on the device:
+  adb shell dumpsys package ch.monreleve.app | findstr versionName, and its
+  signature. If an install must be removed because of a signature mismatch,
+  STOP and ask first. Its local data would be lost.
+
+THE LOCK IS RELEASED. C:/wt/kmp-2 is on branch kmp-2 off 935adac, clean, with no
+lock file, so a resuming session takes it over with no R392 conflict.
+
+--------------------------------------------------------------------------------
 QUESTIONS
 --------------------------------------------------------------------------------
 Q1 Which device do you want this run against - the S9, or an AVD? If the AVD,
