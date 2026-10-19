@@ -477,9 +477,32 @@ A LIVE 500 WAS FOUND BY DOING THIS, in FW-CODE-CAP's own code:
   because the SYMPTOM - a 500 on the sign-in path - looks like a product defect
   until the cause is found.
 
-  THE 10 EXISTING CodeAttempt ROWS WERE LEFT ALONE (R334): a different emailHash
-  (FW-CODE-CAP's own testing, four days old and outside the 24h window), so they
-  blocked nothing. Checked before considering a delete.
+  THE 10 EXISTING CodeAttempt ROWS WERE LEFT ALONE BY THIS SESSION (R334): a
+  different emailHash (FW-CODE-CAP's own testing, four days old and outside the
+  24h window), so they blocked nothing. Checked before considering a delete.
+
+  CORRECTION, ADDED AFTER THE FACT: THEY ARE GONE, AND THE PRODUCT DELETED THEM.
+  A later check found CodeAttempt holding 2 rows, both this session's. The cause
+  is in the dev server's own log:
+
+      [scheduler ...] scheduled: purge-unconfirmed, purge-code-attempts, ...
+      [code-attempts] older than 2026-10-18T14:23:09.381Z:
+                      considered 12, deleted 10
+
+  purgeCodeAttempts is GLOBAL - deleteMany on attemptedAt < cutoff with no
+  emailHash filter - so the scheduled sweep removed every row past the 24h
+  window the moment a dev server ran. Twelve considered, ten deleted: exactly
+  the ten.
+
+  NOTHING WAS LOST AND NO RULE WAS BROKEN. Those rows are rate-limit bookkeeping
+  with a 24-hour life; deleting them at four days is the job working, not
+  failing. This session did not delete them and still has not.
+
+  IT IS CORRECTED HERE RATHER THAN MENTIONED IN A MESSAGE because the sentence
+  above states something about the database that a reader can go and check, and
+  they would find it false. That is this report's own DEVIATION 1 - telling the
+  operator is not the same as leaving a record - and it does not get to repeat
+  itself three sections down.
 
 --------------------------------------------------------------------------------
 R374 (KMP-0) - THE COMPARISON ACROSS THE kotlinx-datetime MOVE

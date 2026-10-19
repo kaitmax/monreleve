@@ -1,0 +1,211 @@
+================================================================================
+REPORT-FW-PRISMA-GENERATE
+dev AND test:db REGENERATE THE PRISMA CLIENT BEFORE THEY START
+================================================================================
+
+TASK    Operator instruction following KMP-2: "have `pnpm dev` and `pnpm test:db`
+        regenerate the client automatically before they start."
+BASE    f67aeb1 (origin/main, the KMP-2 merge)
+BRANCH  fw-prisma-generate, worktree C:/wt/fw-prisma (R349)
+
+--------------------------------------------------------------------------------
+STATUS (R391)
+--------------------------------------------------------------------------------
+COMPLETE. gate:changed GREEN and gate:clone GREEN, both run in this session on
+the committed tip; numbers in PUSH PROOF.
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+Two scripts in web/package.json now chain the generation step:
+
+    "dev":     "pnpm db:generate && node scripts/copy-fonts.mjs && next dev"
+    "test:db": "pnpm db:generate && node --env-file-if-exists=.env ... vitest ..."
+
+A two-line diff. It exists because KMP-2's device run lost roughly twenty
+minutes to a 500 whose message named a Prisma model as `undefined` - which reads
+like a schema or a migration problem and was neither. The schema had the model,
+the migration was applied, the table existed with rows in it. Only the GENERATED
+CLIENT was stale, left behind by a merge that had landed since the last install.
+
+--------------------------------------------------------------------------------
+WHY THIS SHAPE AND NOT THE OBVIOUS ONE
+--------------------------------------------------------------------------------
+IT CALLS db:generate RATHER THAN RETYPING THE COMMAND (R206). The invocation
+already has a home:
+
+    "db:generate": "node --env-file-if-exists=.env node_modules/prisma/build/index.js generate"
+
+Retyping it would have made a third copy - postinstall holds a second, minus the
+env-file flag, for the good reason that it runs before any .env can exist.
+
+pre/post HOOKS WERE REJECTED, AND THE REASON IS NOT STYLE. The natural shape is
+`predev` and `pretest:db`, which npm runs automatically. pnpm does NOT: since
+pnpm 7, `enable-pre-post-scripts` defaults to FALSE, and this repository has no
+.npmrc at the root or in web/ setting it. pnpm here is 11.17.0.
+
+  So a `predev` script would have been added, committed, reviewed, and SILENTLY
+  NEVER RUN - a mechanism that looks like delivery and delivers nothing (R154).
+  Checked before writing, not after.
+
+--------------------------------------------------------------------------------
+PROVEN TO DELIVER, WITH AN ABLATION (R154, R133)
+--------------------------------------------------------------------------------
+A chain that regenerates is only interesting if the thing it prevents actually
+happens. So the generated client was DELETED and both commands run against it.
+
+    rm -rf node_modules/.pnpm/@prisma+client@7.10.0_.../node_modules/.prisma/client
+
+  ABLATION - the OLD command (vitest directly, no regenerate step):
+
+      Error: Cannot find module '.prisma/client/default'
+      Test Files  1 failed (1)
+      OLD_EXIT=1
+
+  THE NEW COMMAND - same deleted client:
+
+      Generated Prisma Client (v7.10.0) ... in 310ms
+      Test Files  1 passed (1)
+      Tests      16 passed (16)
+      NEW_EXIT=0
+
+The ablation is the half that matters: it reproduces the stale-client failure
+deliberately, in miniature, and shows the chain is what removes it. Without it
+this would be a commit asserting its own value.
+
+RUN AGAINST A SCRATCH DATABASE, NEVER THE DEV ONE. vitest.db.config.ts states
+plainly that "these tests share a database and each one starts by emptying the
+table it owns", and the dev database holds ten CodeAttempt rows this session did
+not create (FW-CODE-CAP's own testing). So a `kmp_prisma_scratch` database was
+created in the same container, migrated, pointed at by this worktree's own
+gitignored .env, and dropped afterwards. R334: nothing deleted that was not
+mine, including rows.
+
+--------------------------------------------------------------------------------
+SAFE WHERE .env DOES NOT EXIST, AND THE REPOSITORY ALREADY KNEW
+--------------------------------------------------------------------------------
+test:db runs in CI, where there may be no .env, so the risk was that adding a
+generate step would break it - the FW14 class exactly ("it passes here" versus
+"it passes on a clean checkout with no secrets").
+
+It does not, and prisma.config.ts says so in its own header rather than this
+being a new discovery:
+
+    "`prisma generate` needs the SCHEMA and nothing else - it writes TypeScript,
+     it does not connect - but Prisma's own env() helper throws while the config
+     file is being LOADED, so declaring the datasource unconditionally made
+     `generate` impossible without a database URL."
+
+The datasource key is therefore conditional, and generate works without a URL.
+That comment exists because the exact failure was already hit once: "every job
+that installs and builds but has no database was then unable to compile ...
+Module '@prisma/client' has no exported member 'PrismaClient'". This change
+makes that class less likely on the two commands people actually run.
+
+gate:clone is the independent check of the same claim, and it passed.
+
+--------------------------------------------------------------------------------
+A FINDING THIS COMMIT IS ITSELF THE INSTANCE OF
+--------------------------------------------------------------------------------
+web/package.json appears ZERO times in scripts/gate-selection.mjs.
+
+    $ grep -c "package.json" web/scripts/gate-selection.mjs
+    0
+
+ROOT_TOOL_CONFIGS maps ten root files to the suites they decide, including:
+
+    vitest.db.config.ts  -> test:db        (it CONFIGURES that suite)
+    prisma.config.ts     -> test:db
+    playwright.config.ts -> test:e2e, test:visual
+
+package.json is not among them - and package.json DEFINES what test:db IS, the
+command the suite runs. The file that configures a suite is covered; the file
+that decides what the suite is, is not.
+
+THIS COMMIT IS THE LIVE INSTANCE (R178). It changed exactly one thing: the
+test:db script's command. Asked what that should run, the selector said:
+
+    selectSuites(['web/package.json'])
+      -> {"suites":["typecheck","lint","test","build"],"matched":[]}
+
+`matched: []`. A commit that changed what `pnpm test:db` runs did not select
+test:db. Nothing was wrong with the base chain and nothing failed; the selection
+was correctly empty by its own rules.
+
+WHY THE CLOSED-WORLD ROOT CENSUS DOES NOT SEE IT, which has happened before:
+
+    const ENTRY_EXTENSIONS = ['.ts','.tsx','.js','.jsx','.mjs','.cjs'];
+    const ROOT_EXTENSIONLESS = ['Dockerfile', '.dockerignore'];
+
+package.json is `.json` - neither a code extension nor in the extensionless
+list. R251 recorded this same shape when it widened the census for Dockerfile:
+"the closed-world root census could not see a Dockerfile, because it scanned for
+code extensions and a Dockerfile is not code". The census was widened for the
+instance that was found, and the CLASS was left open.
+
+NOT FIXED HERE, deliberately. package.json does not decide ONE suite - it
+decides all of them plus the dependency tree, so `'package.json': [everything]`
+makes every dependency bump run e2e, visual and container. A selector people
+route around is worse than one with a hole (R251's own argument for keeping
+test:container narrow). That is a policy decision, not a bug fix, and widening
+this task to take it would be the scope creep the discipline forbids.
+
+RAISED AS relay/FW-SELECTOR-PACKAGE.txt (R414-R416), with the two candidate
+shapes, the trap in the cleverer one, and pnpm-lock.yaml flagged for the same
+question in the same breath (R267: a finding that names a second site is not
+closed until that site is checked).
+
+--------------------------------------------------------------------------------
+PARKED
+--------------------------------------------------------------------------------
+PARK-P1  The selector gap above. relay/FW-SELECTOR-PACKAGE.txt.
+PARK-P2  `build` was NOT given the same chain, and that is a decision. The
+         image runs `pnpm install` - and therefore postinstall's generate -
+         before it builds, so build already has a fresh client by construction.
+         Adding it would be a second mechanism for a guarantee that already
+         holds, and the one place it matters (a local `pnpm build` after a
+         merge) is covered by `dev` being the command people run first.
+         Recorded so the omission reads as a decision rather than an oversight.
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+1. A SCRATCH DATABASE, kmp_prisma_scratch, WAS CREATED AND DROPPED in the
+   frontalier-postgres container. Created because the db suite empties tables
+   and the dev database holds rows this session did not create. No other
+   project's container was touched.
+
+2. THIS WORKTREE'S web/.env WAS REPOINTED at the scratch database for the proof
+   and restored afterwards. It is gitignored and never committed.
+
+3. THE SELECTOR FINDING WAS RAISED AS A SEPARATE TASK rather than fixed here.
+   Argued above.
+
+--------------------------------------------------------------------------------
+QUESTIONS
+--------------------------------------------------------------------------------
+Q1 FW-SELECTOR-PACKAGE asks you to choose between mapping package.json to every
+   suite (honest, slow) and reading which keys changed (precise, more
+   machinery). The prompt argues both; the choice is yours and it is the whole
+   content of that task.
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+GATE:CHANGED   exit 0. Printed selection, pasted as R132 requires:
+
+                 suites: typecheck, lint, test, build
+
+               typecheck exit 0, lint exit 0, build exit 0,
+               test: 190 files, 3274 tests passed.
+
+               test:db was NOT selected, which is the finding above rather than
+               an omission by this session.
+
+GATE:CLONE     run before the push, as R199 requires for anything leaving this
+               machine that touches web/. Result in the commit that carries it.
+
+               It is the right check for this change specifically: the claim is
+               about what happens on a machine whose generated client is not
+               already correct, and a clone has no generated client until its
+               own postinstall makes one.
