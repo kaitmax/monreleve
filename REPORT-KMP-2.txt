@@ -1,0 +1,812 @@
+================================================================================
+REPORT-KMP-2
+THE DATABASE MOVES TO :shared, AND EVERY EXISTING INSTALL STILL OPENS
+================================================================================
+
+TASK    KMP-2, relay/KMP-2.txt. Rulings R394-R401.
+BASE    935adac (origin/main, unchanged throughout; no rebase)
+BRANCH  kmp-2, worktree C:/wt/kmp-2 (R349), lock held for the session
+DEVICE  SM-G960F (Samsung Galaxy S9), Android 10, API 29, serial 232bcd8c300c7ece
+
+This report REPLACES the stop report filed when the session halted at R1(d) with
+no device. The S9 was attached and the session resumed. Everything that stop
+report established is carried forward below, attributed to it where it was its
+work rather than this run's.
+
+================================================================================
+STATUS (R391)
+================================================================================
+Increments 1, 2 and 3 COMPLETE. The FULL :app:gate was run IN THIS SESSION on
+each increment's own tip and was GREEN each time; BUILD lines and exit codes are
+in PUSH PROOF.
+
+STEPS 2-6 - THE MOVE ITSELF - ARE STOPPED. Not failed, not skipped, not deferred
+for convenience: Room 2.7.x KMP cannot be consumed by Kotlin 2.0.21 at all. That
+requires a Kotlin version change, which the hard boundary reserves to the
+operator. Evidence under R400; the question is Q1.
+
+THE DATABASE HAS NOT MOVED. No file under app/src/main/ changed in this session.
+MonReleveDatabase.kt is byte-identical to main's.
+
+R398 WAS NOT RUN, and the reason is recorded instead of a result.
+
+R399'S TWO OWED DEVICE CHECKS ARE CLOSED. R374 and R385 had been owed since
+KMP-0 and KMP-1 and deferred three times for want of a device. Both ran on the
+S9 this session, against the local stack, and both passed.
+
+================================================================================
+SUMMARY
+================================================================================
+The session answered R395's design question from two independent directions, then
+found it could not begin the move.
+
+What it did instead is not filler. Reaching R395's device proof required :app's
+androidTest source set to compile, and it did not - two defects, one cause, both
+sitting on main. The migration suite, on the one component whose mistakes survive
+a reinstall, could not run AT ALL. That is fixed; the gate now compiles that
+source set so it cannot rot again; the migrations' SQL is recorded statement by
+statement so the move cannot alter it silently; and R397's matrix is written and
+green on the phone.
+
+And with the phone finally attached, the two device checks that had been owed
+since KMP-0 and KMP-1 were closed - including the one that matters most for a
+product whose whole claim is an audit-defensible timestamp: the device's clock
+was moved nine hours forward and the server's recorded stamp did not follow it.
+
+Three commits, each gated green:
+
+  95cf891  the gate compiles the source set where both defects hid
+  7b7aed1  the migrations' SQL, recorded so the move cannot change it
+  1df9a4f  R397's matrix: the start version nobody tested, and every step
+
+================================================================================
+R273 - WHAT WAS READ
+================================================================================
+relay/KMP-2.txt in full. REPORT-KMP-1.txt's "WHAT KMP-2 INHERITS". REPORT-KMP-0's
+"WHAT KMP-1 INHERITS". REPORT-KMP-1b.txt, which has NO "WHAT KMP-n INHERITS"
+section (it was a process-and-correctness task, not a move), so its PARKED list is
+the inheritance.
+
+WHAT KMP-2 INHERITS, from REPORT-KMP-1, abbreviated to what this task touches:
+
+  "SyncEngine/Scheduler/Worker, DossierCache (SharedPrefs), KeystoreTokenStore,
+   the repositories, Room, EntryEntity and every EntryEntity<->DTO mapping,
+   PendingDays, the settings/token stores - the on-device store (KMP-2 needs a
+   device for migration tests)."
+
+  The predecessor said so plainly: KMP-2 needs a device. Recorded one task ago.
+
+FROM REPORT-KMP-1b's PARKED:
+  - P1 the clean-tree guard: MERGED (fw-gate-clean); R1(b) proved it live.
+  - P2 scripting the merge/cleanup refusal (R392) - still open, out of scope.
+  - P4 R385 and KMP-0's R374 - the device is attached this time. See R399.
+
+================================================================================
+R1 - THE FOUR PRECONDITIONS
+================================================================================
+(a), (b) and (c) WERE ESTABLISHED BY THE STOP SESSION ON 935adac, and are quoted
+rather than re-run. origin/main is STILL 935adac - verified at the start of this
+run and again before the push - so they stand. Saying which session ran a check is
+the point of R391; re-stating them as this session's work would be the broad claim
+in place of the narrow one.
+
+(a) ORIGIN/MAIN CONTAINS fw-gate-clean AND kmp-1b                          PASS
+    git merge-base --is-ancestor, both contained. fw-gate-clean at ba18a78
+    (merged first, so kmp-1b landed under the guard), kmp-1b at 935adac.
+
+(b) THE CLEAN-TREE GUARD IS LIVE                                           PASS
+    One unstaged edit to a tracked file:
+      GATE REFUSED TO START (R393): unstaged changes to tracked files.
+      1 file(s) differ from the index:
+          android/shared/src/commonMain/kotlin/ch/monreleve/app/fr/CodeCopy.kt
+      BUILD FAILED in 36s
+    Reverted. THIRTY-SIX SECONDS is the evidence: the guard runs in
+    gradle.taskGraph.whenReady, so it refuses before anything compiles.
+    The ruling is R393, not R379 - renumbered before merge because R379 is
+    KMP-1's "what moves to :shared commonMain" (R162).
+
+    CONFIRMED AGAIN INCIDENTALLY THIS SESSION: every gate run below was preceded
+    by staging, because the guard refuses otherwise. It is load-bearing in
+    practice, not just in its own test.
+
+(c) FULL :app:gate GREEN ON origin/main's HEAD                             PASS
+      GATE_EXIT=0, BUILD SUCCESSFUL in 11m 59s, 218 actionable tasks: 218
+      executed. Run with --rerun-tasks after stopping the daemon, so 218 of 218
+      EXECUTED: a claim about the code, not about Gradle's up-to-date checks.
+
+(d) adb devices LISTS THE S9                          PASS - THIS SESSION
+      232bcd8c300c7ece  device product:starltexx model:SM_G960F device:starlte
+        ro.product.model          SM-G960F
+        ro.product.manufacturer   samsung
+        ro.build.version.release  10
+        ro.build.version.sdk      29
+
+    IT IS THE S9. SM-G960F is the Galaxy S9. Independently confirmed by the test
+    harness, which named its own results directory from the device:
+      app/build/outputs/androidTest-results/connected/debug/"SM-G960F - 10"/
+
+================================================================================
+R395 - WHICH migrate() DOES ROOM 2.7.2 CALL? THE QUESTION THAT DECIDES THE DESIGN
+================================================================================
+ANSWER: the CONNECTION form, migrate(connection: SQLiteConnection).
+CONSEQUENCE: ONE body, written against SQLiteConnection, serves Android and iOS.
+             NOT a stop. Nothing needs two copies of the SQL.
+
+EVIDENCE 1 - DOCUMENTARY. Room 2.7.2's Migration.android.kt, read from the Gradle
+cache sources jar - the exact artefact this build resolves:
+
+    open fun migrate(db: SupportSQLiteDatabase) { throw NotImplementedError(...) }
+
+    actual open fun migrate(connection: SQLiteConnection) {
+        if (connection is SupportSQLiteConnection) {
+            // Compatibility mode
+            migrate(connection.db)
+        } else { throw NotImplementedError(...) }
+    }
+
+and the KDoc on the Support form says it outright:
+
+    "This function is only called when Room is configured without a driver. If a
+     driver is set using [setDriver], then only the version that receives a
+     [SQLiteConnection] is called."
+
+Read precisely: migrate(connection) is ALWAYS the entry point. The Support form
+runs only as a DELEGATION out of it, and only while the migration has not itself
+overridden the connection form.
+
+EVIDENCE 2 - THE DEVICE. A probe was planted in MIGRATION_1_2, in BOTH overrides,
+run on the S9, and removed. The harness's own logcat capture:
+
+    13:51:18.241 14469 14492 I SQLiteOpenHelper: DB version upgrading from 1 to 6
+    13:51:18.241 14469 14492 E R395PROBE: CONNECTION FORM ENTERED,
+                          connection=androidx.room.driver.SupportSQLiteConnection
+    13:51:18.241 14469 14492 E R395PROBE: SUPPORT FORM ENTERED
+
+THE TWO LINES DO NOT SAY ROOM CALLS BOTH FORMS, and that is the one way this
+evidence could be misread. Room entered the CONNECTION form, handing it a
+SupportSQLiteConnection - the compatibility mode the source names. The SUPPORT
+line exists ONLY because the probe's own connection override ended with
+super.migrate(connection), which is the delegation branch quoted above. Same
+thread (14492), same millisecond. A migration that overrides the connection form
+and does not call super never reaches the Support form at all.
+
+COUNTS: one fire of each, the EXPECTED number rather than a dropped log. The probe
+was on MIGRATION_1_2 only, and exactly one test (migratesFromVersion1ToLatest)
+starts at version 1.
+
+A THIRD CONFIRMATION arrived by accident while wiring Room into :shared: Room's
+KSP output for a commonMain @Database imports androidx.sqlite.SQLiteConnection and
+androidx.sqlite.execSQL. The extension the rewritten migrations need is a
+commonMain API - established from Room's own generated code rather than from docs.
+
+PROBE REMOVED. MonReleveDatabase.kt is byte-identical to HEAD; the only residual
+R395PROBE strings are under android/app/build/ (untracked output).
+
+================================================================================
+EACH MOVE - NOTHING MOVED
+================================================================================
+No file moved to :shared. Step 2 (wire Room, move nothing) is the step that
+stopped; steps 3-6 sit behind it.
+
+Everything this branch changes, in full:
+    android/app/build.gradle.kts
+    android/app/src/androidTest/.../StatePreservationInstrumentedTest.kt
+    android/app/src/androidTest/.../data/local/MonReleveMigrationTest.kt
+    android/app/src/test/.../data/local/MigrationSqlVerbatimTest.kt   (new)
+    android/app/src/test/resources/migration-sql.txt                  (new)
+    REPORT-KMP-2.txt
+
+    git diff origin/main...HEAD -- web/   is EMPTY.
+    Nothing under app/src/main/ changed. The database is untouched.
+
+TEST COUNTS:
+    :app unit tests        1164 -> 1166  (+2, MigrationSqlVerbatimTest)
+    :shared unit tests     42   -> 42    (unchanged)
+    MonReleveMigrationTest 4    -> 9     (on-device)
+
+WHAT WOULD MOVE, mapped while reading so the next session does not re-derive it:
+    TO :shared commonMain - MonReleveDatabase.kt (with the five migrations),
+      EntryEntity, RhythmEntity, TallyEntity, EntryDao, RhythmDao, TallyDao,
+      CalendarDay, RhythmKind, WireEnums.
+    STAYS IN :app - the database BUILDER, DossierCache.kt, and a finding worth
+      recording: EntryAggregation.kt, which R394 does not name. It is the boundary
+      mapping between data.local's wire enums and :shared's dossier enums, NO DAO
+      references it, and it compiles in :app either way. It is exactly the file
+      R394 means by "list where they map, for a later cleanup":
+        EntryKind.CH / HOME / MISSION_FR / MISSION_THIRD / ABSENT -> dossier.EntryKind
+        Portion.FULL / AM / PM                                    -> dossier.Portion
+        EntryEntity.toAggregatable()
+
+================================================================================
+R396 - THE IDENTITY HASHES
+================================================================================
+NOT EXERCISED: nothing moved and no schema was regenerated. schemas/1.json-6.json
+are untouched. RoomSchemaContractTest is unedited and green in every gate below.
+
+ONE FACT WORTH CARRYING, read off the phone before this session's first install:
+
+    user_version      6
+    identity_hash     a08f54541b97835cb850e7d8e4b1cf2d
+
+That is a THIRD witness for R396 beyond 6.json and the generated _Impl - it is
+what an install in the field actually holds. A legitimate literal under R171,
+because the value IS the assertion.
+
+================================================================================
+R397 - THE MIGRATION TESTS ON THE DEVICE
+================================================================================
+MonReleveMigrationTest went from 4 tests to 9, green on the S9.
+
+WHY MORE WERE NEEDED. The four that existed each take a start version STRAIGHT
+THROUGH to DATABASE_VERSION, which is how a real install upgrades. R397 names two
+gaps, and both were real:
+
+  - NO TEST STARTED AT VERSION 5 - the shape immediately before the current one,
+    so the version most likely to be sitting on a phone that has not opened the
+    app in a while. No coverage at all.
+  - NO STEP WAS VALIDATED AT ITS OWN INTERMEDIATE VERSION. Running 1->6 asserts
+    the END state against schemas/6.json. It never asserts the database is a VALID
+    v2 after MIGRATION_1_2. A migration producing a wrong v2, and a later one
+    happening to correct it, passes the whole chain and fails nobody - until a
+    device stopped at v2 opens.
+
+ADDED: step1To2, step2To3, step3To4, step4To5, each validated at its OWN
+intermediate version; and migratesFromVersion5ToVersion6, which is BOTH the
+missing start version AND R397's individual 5->6 step, since 5 and 6 are adjacent.
+One test rather than two identical ones (R268).
+
+EVERY TEST INSERTS ROWS BEFORE MIGRATING and asserts what survives, because a
+migration that drops a table and recreates it empty satisfies every schema
+assertion perfectly (R133). The 5->6 test asserts absenceReason and the free-text
+note specifically: the two fields a person cannot reconstruct if they are lost.
+
+GREEN, ON THE DEVICE:
+    Starting 9 tests on SM-G960F - 10
+    Finished 9 tests on SM-G960F - 10
+    tests="9" failures="0" errors="0" skipped="0"
+    BUILD SUCCESSFUL in 52s, TEST_EXIT=0
+
+THE RED, planted and verified before the result was read (R180):
+  `monday` -> `Monday`, ONE character, in MIGRATION_5_6's DDL. Confirmed by diff
+  to have landed in the migration body, not in a comment or a test.
+
+    tests="9" failures="5" errors="0"
+    Migration didn't properly handle:  weekly_rhythm
+
+  The five are EXACTLY the paths that reach version 6; the four step tests that
+  stop short still PASSED. That the failure is localised to the step that was
+  altered is the part worth keeping - a plant that reddened all nine would have
+  proved much less. Reverted; MonReleveDatabase.kt byte-identical to HEAD.
+
+WHAT R397 STILL OWES: all of this runs against the CURRENT, UNMOVED migrations.
+"Against the MOVED migrations" cannot be done while the move is blocked.
+
+================================================================================
+R395'S SECOND HALF - THE SQL CANNOT CHANGE BY A CHARACTER
+================================================================================
+app/src/test/resources/migration-sql.txt records every statement each migration
+executes, in order: 10 statements, 1 / 4 / 2 / 2 / 1.
+
+THE FIXTURE IS GENERATED, NEVER TYPED (R181). A hand-transcribed expectation is
+correct the day it is written and silently wrong afterwards - the exact defect
+this test exists to catch, reproduced inside the test meant to prevent it. It is
+the output of RUNNING the five migrations against a recording proxy.
+
+Regeneration is an explicit opt-in (-PrecordMigrationSql=true) and the recording
+run ALWAYS fails, so it can never be mistaken for a pass (R135).
+
+PROVEN TO BITE: the same one-character plant failed
+everyMigrationExecutesExactlyTheRecordedSql in the JVM gate.
+
+A SECOND TEST ASSERTS THE RECORDER RECORDS (R154). Without it a double that
+captured nothing would compare equal to an empty fixture - an absence assertion
+satisfied by absence. The proxy also REFUSES any unmodelled SupportSQLiteDatabase
+call rather than silently dropping it (R133); it threw on none, which establishes
+that the bodies only ever call execSQL.
+
+WHEN THE MIGRATIONS MOVE, the test switches from driving the Support form to
+driving the connection form and THE FIXTURE DOES NOT CHANGE. git then proves
+verbatim-ness by itself: the diff of migration-sql.txt must be empty.
+
+TWO MECHANISM DEFECTS FOUND WHILE WIRING IT, both fixed and both worth recording
+because each produced a convincing false signal:
+  - a -D system property does NOT survive the Gradle daemon into a forked test
+    JVM. The opt-in was silently ignored and the recording run merely looked like
+    an ordinary failure. Switched to a PROJECT property, the idiom this build file
+    already uses for the device-drive overrides.
+  - inputs.file() on a not-yet-existing fixture makes Gradle REFUSE to run the very
+    task that creates it. inputs.files() tolerates absence; the TEST reports the
+    missing fixture with a message naming how to generate it (R133), which is the
+    better place for that failure. The R283 input declaration is kept either way,
+    so editing the fixture re-runs the comparison instead of leaving the task
+    UP-TO-DATE with the assertion unrun.
+
+================================================================================
+R400 - THE iOS TARGETS, AND WHY THE MOVE STOPPED
+================================================================================
+THE WIRING IS CORRECT AND WAS PROVEN TO DELIVER, which is why the stop is a
+toolchain fact rather than a guess. With KSP applied to :shared, room-runtime on
+commonMain, and the Room compiler added per target:
+
+    kspDebugKotlinAndroid, kspReleaseKotlinAndroid,
+    kspKotlinIosArm64, kspKotlinIosSimulatorArm64          all four tasks exist
+
+and a temporary @Entity/@Dao/@Database probe in commonMain made Room GENERATE:
+
+    ProbeDao_Impl.kt, ProbeDatabase_Impl.kt, ProbeDatabaseConstructor.kt
+
+Real Room output, not a classpath check (R154). @ConstructedBy with an
+`expect object` worked exactly as R394 describes.
+    :shared:kspDebugKotlinAndroid        BUILD SUCCESSFUL
+    :shared:compileDebugKotlinAndroid    BUILD SUCCESSFUL
+
+AND THEN:
+
+    :shared:compileCommonMainKotlinMetadata   BUILD FAILED
+
+    w: KLIB resolver: Skipping '...androidx.room-room-runtime-2.7.2-commonMain
+       -A5a4aw.klib'. Incompatible ABI version. The current default is '1.8.0',
+       found '1.201.0'. The library was produced by '2.1.10' compiler.
+    e: KLIB resolver: Could not find "...room-runtime-2.7.2-commonMain..."
+
+That task IS R369's platform-free proof and IS in :app:gate, so this is a RED
+GATE. It is also a true blocker for the iOS goal rather than a gate artefact: iOS
+cannot build without a metadata compilation.
+
+WHY NO DEPENDENCY PIN FIXES IT - two layers, and the second is in the artefact:
+  LAYER 1  room-common:2.7.2 and androidx.sqlite:sqlite:2.5.1 CONSTRAIN
+           kotlin-stdlib to 2.1.10, and Gradle conflict resolution raises the
+           whole metadata classpath from the project's 2.0.21. Traced with
+           dependencyInsight on metadataCommonMainCompileClasspath. THIS LAYER IS
+           PINNABLE: forcing stdlib 2.0.21 on the metadata configurations cleared
+           it entirely.
+  LAYER 2  and then room-runtime's OWN commonMain klib failed, "produced by
+           '2.1.10' compiler". That is the published artefact. No resolution
+           strategy can recompile someone else's klib.
+
+ROOM 2.7.1 AND 2.7.0 WERE BOTH TESTED: both BUILD FAILED, and 2.7.0 still
+constrains stdlib to 2.1.10. There is no patch move inside the 2.7 line that
+avoids this - and a Room version change is forbidden regardless.
+
+SO THE ONLY ROUTE IS KOTLIN >= 2.1, and it is not one line:
+    kotlin = "2.0.21"        -> 2.1.10 or later (to read ABI 1.201.0)
+    ksp    = "2.0.21-1.0.28" -> the matching KSP for that Kotlin
+    the kotlin-compose plugin already tracks the `kotlin` ref, so it moves too
+...which recompiles every Compose screen and all of :app.
+
+NOT ATTEMPTED, DELIBERATELY. It is precisely the change the hard boundary reserves
+to the operator, and a half-finished toolchain migration is the one state worse
+than a clean stop. Reconnaissance - the Room-version probes above - is not the
+same as making the change.
+
+THE TREE WAS LEFT CLEAN. The step-2 wiring is reverted, not committed, because a
+change that reds the gate is not committed (R132). It is preserved verbatim at
+scratchpad/shared-build-step2.kts.bak and re-applies in one copy.
+
+WHAT REMAINS UNPROVEN UNTIL A MAC RUNS IT: that Room's compiler actually generates
+a working implementation for iosArm64 and iosSimulatorArm64. The wiring is
+declared and the Android half is proven; only a Mac executes the iOS half.
+
+================================================================================
+R398 - NOT RUN, AND THE REASON RATHER THAN A RESULT
+================================================================================
+R398's claim is that an existing install still opens AFTER THE DATABASE MOVES.
+Nothing moved. Running it against this tip would install one build over another,
+observe the days are still there, and prove NOTHING about what R398 exists to
+check - an absence assertion satisfied by absence (R154), on the one component
+that cannot be un-shipped.
+
+So it is OWED, whole, and it is the FIRST thing KMP-2b should do after the move.
+
+WHAT WAS ESTABLISHED FOR IT, so the next session does not rediscover it:
+  - `audit` inherits debuggable=false from release via initWith, so `run-as`
+    CANNOT read its database. R398's "after" evidence must be SCREENSHOTS, which
+    R398 explicitly allows. Decided before the install, not discovered after it.
+  - the audit variant reads -PfrontalierHost AND -PfrontalierPort, so a neighbour
+    holding 3000 is handled with -PfrontalierPort=3100 and a matching adb reverse,
+    without stopping anyone else's server.
+  - `create("audit")` exists at BOTH 935adac and 0ddc646, so either serves as a
+    before-build on the physical phone. Checked, not assumed.
+
+================================================================================
+R399 - THE TWO OWED DEVICE CHECKS
+================================================================================
+BOTH CLOSED. They had been owed since KMP-0 and KMP-1 and deferred three times,
+each time for the same reason: no device.
+
+Both were driven against the `audit` build - minified, R8 on, debug-signed,
+-PfrontalierHost=127.0.0.1 - per the operator's correction to the prompt, with
+`adb reverse tcp:3000 tcp:3000` to a local `pnpm dev` and frontalier-postgres.
+
+NEVER AGAINST PRODUCTION, verified in the BUILT MINIFIED DEX rather than assumed:
+every API URL in classes.dex is http://127.0.0.1:3000/api/v1/... (auth/callback,
+auth/code, auth/magic-link, auth/refresh, auth/sign-out). The two `monreleve.ch`
+strings are the App Link intent-filter host (android:host, autoVerify=true),
+confirmed from the merged manifest - a declaration of which links the app can
+OPEN, not an endpoint.
+  ONE CAVEAT STATED RATHER THAN GLOSSED: autoVerify makes ANDROID fetch
+  https://monreleve.ch/.well-known/assetlinks.json at install time. A read-only
+  GET of a public file, by the system rather than the app, carrying no user
+  data, and it happens for any install of this app.
+
+--------------------------------------------------------------------------------
+R385 (KMP-1) - THE ROUND TRIP
+--------------------------------------------------------------------------------
+Signed in BY CODE against the local stack, recorded days, synced, fetched the
+dossier. THE SERVER LOG, every request accepted, which is R385's own wording:
+
+    POST /api/v1/auth/magic-link   202
+    POST /api/v1/auth/code         200
+    GET  /api/v1/me                200
+    GET  /api/v1/dossier?year=2025 200
+    GET  /api/v1/dossier?year=2026 200
+    POST /api/v1/entries           200
+
+AND THE ROWS REACHED THE SERVER DATABASE, with server-assigned stamps:
+
+    dayDate    | portion | kind | firstRecordedAt
+    2026-10-19 | PM      | CH   | 2026-10-19 14:18:30.74
+    2026-10-19 | AM      | HOME | 2026-10-19 14:16:41.532
+
+A SECOND DAY (ven 16 oct, matin Domicile) was recorded on the device and is
+visibly selected in its day sheet, but had not reached the server when last
+checked. Recorded as observed rather than explained away: a back-dated entry
+appears to be queued by the sync scheduler rather than sent immediately.
+
+A LIVE 500 WAS FOUND BY DOING THIS, in FW-CODE-CAP's own code:
+
+    TypeError: Cannot read properties of undefined (reading 'deleteMany')
+        at lib\auth\magic-link.ts:269:28      (tx.codeAttempt.deleteMany)
+     POST /api/v1/auth/code 500
+
+  DIAGNOSING IT TOOK THREE NO RESULTS, and R391 earned its keep on each:
+    `\dt | grep code`    -> nothing, because the psql user was wrong (role
+                            "postgres" does not exist here; it is `frontalier`)
+    `\d code_attempt`    -> not found, because the table is "CodeAttempt",
+                            quoted and case-sensitive
+    node_modules/.prisma -> nothing, because Prisma 7 generates into the pnpm
+                            store
+  Every one of those would have read as "absent" if taken at face value. The
+  truth: the schema has CodeAttempt, migration 20261015104441_code_attempt_budget
+  IS applied, and the table EXISTS with 10 rows. Only the GENERATED CLIENT was
+  stale - generated before FW-CODE-CAP merged.
+
+  NOT A PRODUCT DEFECT: a fresh install runs postinstall -> prisma generate.
+  This is local staleness, and it is exactly the class gate:clone exists to
+  catch. `pnpm prisma generate` fixed it; sign-in then returned 200. Recorded
+  because the SYMPTOM - a 500 on the sign-in path - looks like a product defect
+  until the cause is found.
+
+  THE 10 EXISTING CodeAttempt ROWS WERE LEFT ALONE (R334): a different emailHash
+  (FW-CODE-CAP's own testing, four days old and outside the 24h window), so they
+  blocked nothing. Checked before considering a delete.
+
+--------------------------------------------------------------------------------
+R374 (KMP-0) - THE COMPARISON ACROSS THE kotlinx-datetime MOVE
+--------------------------------------------------------------------------------
+BEFORE  audit build of 0ddc646, the commit before KMP-0's java.time ->
+        kotlinx-datetime move
+AFTER   audit build of this branch's tip, installed with `adb install -r` OVER
+        it. No uninstall, no data clear.
+
+THE UPGRADE PRESERVED EVERYTHING: the session, and the split day still reading
+"Matin : Domicile - Apres-midi : En Suisse / Enregistre".
+
+SCREEN BY SCREEN, every computed value identical:
+
+    field                 0ddc646              HEAD
+    -------------------   ------------------   ------------------
+    Jours ouvres          240                  240
+    Teletravail           0,5                  0,5
+    Missions              0                    0
+    Verdict               Sous les deux seuils Sous les deux seuils
+    Taux a declarer AFC   0,20 %               0,20 %
+    Part hors de Suisse   0,3 %                0,3 %
+    Jours en Suisse       0                    0,5    <- see below
+
+THE ONE DIFFERENCE IS NOT A DIFFERENCE, and the document says so itself. The
+before-shot's "Jours en Suisse 0" was read off a releve whose own "Date de
+generation" line said 19.10.2026 14:18 - and the PM/CH entry reached the server
+at 14:18:30. It was a document generated BEFORE that entry existed. Regenerated
+at 14:27, it reads 0,5. Recorded as observed first and explained after, rather
+than reported as a defect.
+
+THE NEAR-MIDNIGHT CHECK, which is what R374 exists for. Device moved to
+Europe/Paris (it lives on Africa/Casablanca, an hour apart), auto_time and
+auto_time_zone off, app force-stopped and relaunched at each point:
+
+    23:40:03 CEST, Mon 19 Oct   app says "Lundi 19 octobre 2026"    CORRECT
+    00:15:03 CEST, Tue 20 Oct   app says "Mardi 20 octobre 2026"    CORRECT,
+                                and offers a fresh, empty day
+
+A DAY RECORDED INSIDE THE WINDOW, at 00:15 Paris, and what the server stored:
+
+    dayDate    | portion | kind | clientClaimedAt         | firstRecordedAt
+    2026-10-20 | AM      | HOME | 2026-10-19 22:15:28.694 | 2026-10-19 14:30:18.246
+
+  dayDate = 2026-10-20: the entry lands on the day the PERSON is in at 00:15
+  Paris, not the previous one. The java.time -> kotlinx-datetime move did not
+  move the day boundary. That is the question R374 was deferred three times to
+  answer, and the answer is that nothing changed.
+
+  AND A SECOND THING, which R374 did not ask for and is worth more:
+  firstRecordedAt reads 14:30 - THE SERVER'S REAL CLOCK - while the device's own
+  clock said 00:15 the next day, nine hours ahead. The phone's clock was moved
+  and the audit timestamp did not follow it. SPEC's central promise, that every
+  recorded day carries a server-assigned timestamp, demonstrated end to end
+  against a device actively lying about the time.
+
+THE DEVICE WAS FULLY RESTORED, verified field by field against originals that
+were written to disk BEFORE the first change was made:
+    persist.sys.timezone     Africa/Casablanca
+    auto_time                1
+    auto_time_zone           1
+    accelerometer_rotation   1   (turned off during the drive - the phone
+                                  rotated to landscape mid-drive and moved every
+                                  tap coordinate with it)
+    device date              Mon Oct 19 15:30:46 +01 2026, matching the host
+
+================================================================================
+R401 - THE GATE MOVES WITH THE CODE
+================================================================================
+NOT EXERCISED for :shared's database, because no database code moved there.
+
+WHAT DID CHANGE IN THE GATE is this session's own finding:
+
+    compileDebugAndroidTestKotlin is now a :app:gate dependency.
+
+:app:gate listed connectedDebugAndroidTest as skipped-with-reason, honestly,
+because RUNNING it needs a device. But COMPILING it does not, and nothing in the
+gate did. ktlint DID scan those files - so the source set was being style-checked
+while never being type-checked, which is exactly why the rot was silent.
+
+TWO DEFECTS WERE SITTING THERE, both on main, found rather than planted (R178):
+
+  (a) StatePreservationInstrumentedTest.kt:112 - no value passed for parameter
+      'employerStore'. COMPILE-TIME. The source set had not compiled since that
+      parameter was added.
+  (b) MonReleveMigrationTest never supplied MIGRATION_5_6 although
+      DATABASE_VERSION is 6. All four of its tests died at builder time with
+      "A migration from N to 6 was required but not found". RUN-TIME. The
+      migration suite could not run AT ALL - on the one component whose mistakes
+      survive a reinstall.
+
+STATED PRECISELY, BECAUSE IT WOULD OTHERWISE READ AS MORE THAN IT IS: the new gate
+task closes (a) and CANNOT close (b). A test missing a migration compiles
+perfectly and fails only when executed against a real database. That is the
+argument FOR R397 - every migration path run on the device - not a substitute.
+
+RED then GREEN on the live instance:
+    RED   > Task :app:compileDebugAndroidTestKotlin FAILED
+          e: StatePreservationInstrumentedTest.kt:112:17 No value passed for
+             parameter 'employerStore'.
+          BUILD FAILED in 31s
+    GREEN BUILD SUCCESSFUL in 5s
+
+fastCheck still covers :shared's lint (KMP-1b): :shared:ktlintCheck and
+:shared:detekt are unchanged in its dependsOn.
+
+================================================================================
+WHAT KMP-3 INHERITS
+================================================================================
+THE WHOLE OF KMP-2'S MOVE, which did not happen. KMP-3's own scope
+(SessionManager, the token store, the settings store, DossierCache, SyncEngine,
+DossierApi) is UNCHANGED and sits behind the same wall: anything of it that
+touches the database needs Room in commonMain, and so needs the same metadata
+compilation.
+
+THE TOOLCHAIN QUESTION COMES FIRST. Until Kotlin moves to >= 2.1, nothing that
+depends on Room can enter commonMain. That is not an opinion; it is what the KLIB
+ABI version says.
+
+CARRIED FORWARD, READY TO USE:
+  - the R400 wiring, verbatim, at scratchpad/shared-build-step2.kts.bak
+  - migration-sql.txt, which turns "the SQL did not change" into a git diff
+  - MonReleveMigrationTest's 9 tests, which become the move's acceptance test
+  - the EntryAggregation.kt enum mapping, listed under EACH MOVE
+  - the device's own identity_hash, a08f54541b97835cb850e7d8e4b1cf2d
+
+================================================================================
+PARKED
+================================================================================
+PARK-K1  The Kotlin >= 2.1 toolchain move. Q1. Everything else in KMP-2 is behind
+         it.
+PARK-K2  R392's merge/cleanup scripting - still unscripted, inherited from
+         KMP-1b's P2, untouched here.
+PARK-K3  EntryAggregation.kt and the duplicate EntryKind/Portion enums - the
+         collapse R394 defers. The mapping is listed under EACH MOVE.
+PARK-K4  The KGP/AGP compatibility warning is ALREADY LIVE today, before any bump:
+         "The applied Android Gradle Plugin version (8.10.1) is higher than the
+         maximum known to the Kotlin Gradle Plugin." Recorded because a Kotlin
+         bump will change which warnings appear, and this one pre-dates it, so it
+         must not be read afterwards as something the bump caused.
+PARK-K5  cmdline-tools, from the stop report's P3 - an operator click in Android
+         Studio's SDK Manager. Not needed once the S9 is attached, still worth
+         having for unattended device work.
+PARK-K6  A BACK-DATED ENTRY NEVER REACHED THE SERVER. The 16 October morning was
+         recorded on the device and is visibly selected in its sheet. It is NOT
+         in the server database. Checked again after the drive ended, so this is
+         a fact rather than the "hadn't synced yet when I looked" it started as:
+
+             dayDate    | portion | kind | firstRecordedAt
+             2026-10-19 | AM      | HOME | 2026-10-19 14:16:41.532
+             2026-10-19 | PM      | CH   | 2026-10-19 14:18:30.74
+             2026-10-20 | AM      | HOME | 2026-10-19 14:30:18.246
+             (3 rows - no 2026-10-16)
+
+         It had roughly FIFTEEN MINUTES with a reachable server, while the three
+         same-day entries each posted within seconds of the tap.
+
+         STILL NOT A DIAGNOSIS. It may be correct - a scheduler that batches
+         non-urgent work, or a constraint this drive did not satisfy (the app
+         spent much of that time in the foreground, which is usually the
+         favourable case, not the unfavourable one). Nothing here establishes
+         which, and the sync engine is KMP-3's territory. What has changed is
+         that the next session inherits a reproducible fact instead of a
+         suspicion: record a back-dated day, wait, and see whether it arrives.
+PARK-K7  THE GENERATED PRISMA CLIENT GOES STALE SILENTLY on a long-lived
+         checkout. The symptom is a 500 whose message names a Prisma model as
+         `undefined`, which reads like a schema or migration problem and is
+         neither. gate:clone would catch it on any commit touching web/; nothing
+         catches it for someone merely RUNNING the dev server after a merge.
+
+================================================================================
+DEVIATIONS
+================================================================================
+1. TWO androidTest FIXES THE PROMPT DID NOT ASK FOR. Not scope creep: R395's
+   device half and R397 both require that source set to run, and it did not
+   compile. Full detail under R401.
+
+2. compileDebugAndroidTestKotlin WAS ADDED TO THE GATE, beyond the literal task
+   and deliberately. R251: where no suite covers a file, the answer is a suite
+   rather than an exemption. R269: the scan goes in before the code it guards.
+
+3. THE APP WAS UNINSTALLED FROM THE PHONE BY THE TEST RUN. AGP's
+   connectedAndroidTest installs the app and test APKs, runs, and uninstalls both.
+   Its own behaviour - not a signature conflict, not an explicit uninstall by this
+   session, and not anticipated.
+   WHAT WAS LOST: the database recorded BEFORE the run - user_version 6,
+   identity_hash a08f54541b97835cb850e7d8e4b1cf2d, and an `entry` table of ZERO
+   rows. No recorded day, nothing pending to sync. That this is stated as fact
+   rather than hoped is entirely because the count was read first.
+   The operator's precaution named a SIGNATURE MISMATCH as the stop-and-ask
+   condition, and this was not that. Reported because an install was removed.
+
+4. THE WEB SERVER FOR THE DEVICE CHECKS RAN FROM THE MAIN CHECKOUT, not this
+   worktree, to avoid a second full pnpm install. Verified legitimate:
+   `git diff origin/main...HEAD -- web/` is EMPTY - this branch changes android/
+   and the report only. The main checkout held no session lock.
+
+5. A SECOND WORKTREE, C:/wt/kmp2base, was created at 0ddc646 for R374's
+   before-build, with its own lock naming this session. It makes no commits.
+   C:/wt/fw-ready is ALSO at 0ddc646 and was deliberately NOT used: no lock, but
+   not this session's to build in (R392).
+
+6. scripts/uidrive.mjs WAS COPIED into this worktree from the main checkout, where
+   it is untracked. Copied, never moved; the original untouched (R334).
+   NOW COMMITTED, on the operator's instruction: it is what made R374 and R385
+   runnable at all, and the next device task should not rewrite it. Its header
+   was rewritten first - it still described itself as untracked, and the
+   hard-coded serial now says why it has an ANDROID_SERIAL override (a script
+   that silently drove whichever device adb listed first would be R169's defect
+   on a phone). Reviewed for secrets, absolute user paths and personal data
+   before committing: none. No gate task lints android/scripts/*.mjs.
+
+7. THE SCREENSHOT DIRECTORIES ARE NOW GITIGNORED, and the pattern covers more
+   than the one named. The operator named android/.an-auto-shots/; SEVENTEEN
+   such directories had accumulated untracked, so `/android/.*-shots/` closes
+   the class rather than one instance (R267). Widened deliberately, not quietly:
+   a `git status` that opens with a screen of noise is a status nobody reads,
+   and that is how FW-VERIFY deleted an operator file it had misread as its own.
+   android/.kotlin/ - Kotlin's incremental build cache - went in beside it.
+
+   THE FIRST CHECK OF THAT PATTERN WAS A FALSE NEGATIVE, worth recording because
+   it is this session's recurring class. `git check-ignore android/.an10-shots`
+   said NOT ignored; the pattern was right and the TEST was wrong - a
+   trailing-slash pattern matches directories only, and those siblings do not
+   exist in this worktree, so git could not know they were directories. With a
+   trailing slash on the queried path all four match. A check whose subject does
+   not exist answers a different question than the one asked (R391).
+
+8. THE PROVEN ROOM WIRING WAS RESCUED OUT OF %TEMP% into
+   docs/kmp/room-shared-wiring.kts.txt, on the operator's instruction. It is
+   .txt so Gradle never evaluates it. KMP-2 proved that configuration works and
+   could not commit it - a change that reds the gate is not committed (R132) -
+   so its only copy was in a scratchpad a cleanup task can wipe. The file
+   carries what was proven, what was not, and why no dependency pin fixes it,
+   so the next session starts from evidence rather than from the diff.
+
+9. relay/KMP-UP.txt's R403 NOW POINTS AT THAT FILE, on the operator's
+   instruction. It is an untracked operator file in the main checkout; edited
+   there because that is where it lives, never moved or removed (R334).
+
+10. `pnpm prisma generate` WAS RUN in the main checkout. Not a code change - it
+   regenerates a build artefact - but it changed a shared directory, so it is
+   stated. Without it the sign-in code path 500s on this machine, which is what
+   blocked R385. See R399 for the diagnosis.
+
+11. FOUR DEVICE SETTINGS WERE CHANGED AND RESTORED: persist.sys.timezone,
+   auto_time, auto_time_zone, accelerometer_rotation. Every original was written
+   to disk BEFORE the first change (scratchpad/DEVICE-RESTORE-RECORD.txt), so the
+   phone could be put back even if this session had died mid-drive. All four were
+   restored and verified field by field; the device clock matches the host again.
+
+12. A TEST EMAIL, kmp2@example.ch, WAS USED FOR SIGN-IN. Never the operator's own
+   address, which has no business in a test account on a dev database.
+
+13. THE SECOND DAY FOR R385 (ven 16 oct) WAS RECORDED ON THE DEVICE AND NEVER
+   REACHED THE SERVER. R385 says "records two days, syncs": two days were
+   recorded and THREE ENTRIES SYNCED (19 AM, 19 PM, 20 AM), so the claim holds
+   on entries, while the one back-dated day did not arrive at all. Confirmed
+   after the drive ended rather than left as "not yet" - see PARK-K6, which
+   carries the query and what it does and does not establish.
+
+================================================================================
+QUESTIONS
+================================================================================
+Q1 (BLOCKING - the whole of KMP-2's move is behind it)
+   Room 2.7.x KMP cannot be consumed by Kotlin 2.0.21. Its commonMain KLIB was
+   produced by the 2.1.10 compiler (ABI 1.201.0); the 2.0.21 metadata compiler
+   reads 1.8.0. Room 2.7.1 and 2.7.0 were both tested and fail the same way, and
+   the stdlib layer that IS pinnable is not the layer that blocks.
+
+   A. MOVE THE TOOLCHAIN. kotlin -> 2.1.x, ksp -> its match (the Compose plugin
+      already tracks the kotlin ref). This recompiles every screen, so "no
+      Paparazzi baseline re-recorded" and checkMinifiedWireContract become things
+      to RE-PROVE rather than assume. Probably its own session.
+
+   B. KMP-2 LANDS WHAT IS NOT BLOCKED - what this report delivers - and the move
+      becomes KMP-2b after a toolchain session.
+
+   There is no option C. It is not a configuration that can be coaxed.
+
+Q2 Should MigrationSqlVerbatimTest move to :shared when the migrations do, or stay
+   in :app? It uses java.lang.reflect.Proxy, which commonTest cannot. My reading:
+   the TEST stays in :app's JVM source set while the MIGRATIONS move - and that is
+   the arrangement that makes the git diff of migration-sql.txt the proof. Raised
+   rather than assumed.
+
+================================================================================
+PUSH PROOF
+================================================================================
+:app:gate, run IN THIS SESSION on each increment's own tip:
+
+  95cf891  BUILD SUCCESSFUL in 6m 26s   GATE_EXIT=0   227 tasks   0 failures
+           1164 :app unit tests, 42 :shared
+  7b7aed1  BUILD SUCCESSFUL in 6m 15s   GATE_EXIT=0   227 tasks   0 failures
+           MigrationSqlVerbatimTest ran INSIDE the gate: tests=2 skipped=0
+  1df9a4f  BUILD SUCCESSFUL in 46s      GATE_EXIT=0   227 tasks   0 failures
+
+and once more on the FINAL TIP, after the report commit:
+
+  0da08ed  BUILD SUCCESSFUL in 2m 18s   GATE_EXIT=0   227 tasks   0 failures
+
+227 actionable tasks against main's 218: the difference is
+compileDebugAndroidTestKotlin and its upstream.
+
+0da08ed IS THE LAST COMMIT CARRYING CODE. Anything after it in this branch
+changes REPORT-KMP-2.txt alone, so the gate above remains the claim about every
+line of code on this branch - stated so the absence of a gate line against a
+later report-only commit reads as a decision rather than an omission (R133).
+
+ON-DEVICE, SM-G960F Android 10:
+  MonReleveMigrationTest   tests="9" failures="0" errors="0" skipped="0"
+  the planted RED          tests="9" failures="5", localised to the 5->6 paths
+
+  R385  every request accepted: magic-link 202, code 200, me 200,
+        dossier 200 (x2), entries 200; rows in the server database with
+        server-assigned firstRecordedAt
+  R374  0ddc646 vs HEAD identical on every computed value (240 / 0,5 / 0 /
+        Sous les deux seuils / 0,20 % / 0,3 %); upgraded in place with
+        `adb install -r`, no uninstall, nothing lost; the day boundary correct
+        at 23:40 and 00:15 Paris; an entry recorded at 00:15 stored as
+        dayDate 2026-10-20 with the SERVER's 14:30 stamp, not the device's
+
+gate:clone was NOT run, and that is a decision rather than an omission (R133):
+its subject is the web package, and no web file changed on this branch - the diff
+against origin/main for web/ is empty.
+
+THE PUSH FOLLOWS THIS COMMIT. Its result is recorded in the commit that carries it
+rather than predicted here (R334).
+
+END OF REPORT-KMP-2

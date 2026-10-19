@@ -60,3 +60,22 @@ web/dist-parity/
 # content - it was committed once by a `git add -A` run from web/, which
 # stages the whole repository and not the current directory.
 .session-lock.json
+
+# KMP-2: the on-device walkthrough screenshots, and Kotlin's build cache.
+#
+# Every device task writes its PNGs to android/.<task>-shots/ - the helper
+# android/scripts/uidrive.mjs puts them there. Seventeen such directories had
+# accumulated untracked, so every `git status` in this repository opened with a
+# screen of them and a real untracked file had to be spotted among the noise.
+# That is how FW-VERIFY came to delete an operator file it had misread as its
+# own: a status listing nobody can read is a status nobody checks.
+#
+# ANCHORED AND SUFFIX-MATCHED (FW-FOLLOWUP's lesson, one pattern over): the
+# leading slash keeps this at android/ rather than any depth, and `-shots`
+# cannot collide with a source directory the way an unanchored `MonReleve/`
+# did. The screenshots are evidence FOR A REPORT, not repository content: they
+# are read while the task runs and quoted in the report afterwards.
+/android/.*-shots/
+
+# Kotlin 2.x's incremental build cache. Build output, never committed.
+/android/.kotlin/

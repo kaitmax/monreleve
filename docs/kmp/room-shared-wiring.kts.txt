@@ -1,0 +1,302 @@
+========================================================================
+ROOM WIRED INTO :shared - THE WORKING CONFIGURATION, PROVEN BY KMP-2
+========================================================================
+
+WHAT THIS IS
+    The complete android/shared/build.gradle.kts as KMP-2 left it, with Room's
+    compiler wired for every target. It is the starting point for KMP-UP's
+    R403 probe and for KMP-2b's move.
+
+WHY IT IS A .txt AND NOT A .kts
+    So Gradle never evaluates it. It is a record, not a build file. Copy its
+    body over android/shared/build.gradle.kts to re-apply it.
+
+WHY IT EXISTS AT ALL
+    KMP-2 proved this configuration WORKS and then could not commit it,
+    because it reds the gate on Kotlin 2.0.21 (see below). A change that reds
+    the gate is not committed (R132) - so the only copy lived in a temp
+    scratchpad that Windows can wipe at any time. Putting it here is the
+    operator's instruction and the obvious fix: a proven configuration should
+    not be one cleanup task away from being re-derived from scratch.
+
+WHAT WAS PROVEN, AND WHAT WAS NOT
+    PROVEN on Kotlin 2.0.21 / KSP 2.0.21-1.0.28 / Room 2.7.2 / AGP 8.10.1:
+      - all four KSP tasks exist: kspDebugKotlinAndroid, kspReleaseKotlinAndroid,
+        kspKotlinIosArm64, kspKotlinIosSimulatorArm64
+      - a throwaway @Entity/@Dao/@Database probe in :shared commonMain made
+        Room GENERATE ProbeDao_Impl.kt, ProbeDatabase_Impl.kt and
+        ProbeDatabaseConstructor.kt - real output, not a classpath check (R154)
+      - @ConstructedBy with an `expect object` worked as R394 describes
+      - :shared:kspDebugKotlinAndroid        BUILD SUCCESSFUL
+      - :shared:compileDebugKotlinAndroid    BUILD SUCCESSFUL
+
+    NOT PROVEN, and this is why KMP-2 stopped:
+      - :shared:compileCommonMainKotlinMetadata   BUILD FAILED
+
+          w: KLIB resolver: Skipping '...androidx.room-room-runtime-2.7.2
+             -commonMain-A5a4aw.klib'. Incompatible ABI version. The current
+             default is '1.8.0', found '1.201.0'. The library was produced by
+             '2.1.10' compiler.
+
+        That task IS R369's platform-free proof and IS in :app:gate, so it is a
+        red gate - and a true blocker for iOS, which cannot build without a
+        metadata compilation.
+
+      - that Room's compiler generates WORKING iOS implementations. Only a Mac
+        executes kspKotlinIosArm64 / kspKotlinIosSimulatorArm64.
+
+WHY NO DEPENDENCY PIN FIXES IT - two layers, the second in the artefact
+    LAYER 1  room-common:2.7.2 and androidx.sqlite:sqlite:2.5.1 CONSTRAIN
+             kotlin-stdlib to 2.1.10; Gradle conflict resolution raises the
+             whole metadata classpath from the project's 2.0.21. THIS LAYER IS
+             PINNABLE - forcing stdlib 2.0.21 on the metadata configurations
+             cleared it entirely.
+    LAYER 2  and then room-runtime's OWN commonMain klib failed, "produced by
+             '2.1.10' compiler". That is the published artefact. No resolution
+             strategy can recompile someone else's klib.
+
+    Room 2.7.1 and 2.7.0 were both tested: both BUILD FAILED, and 2.7.0 still
+    constrains stdlib to 2.1.10. There is no patch move inside the 2.7 line
+    that avoids it.
+
+SO THE PRECONDITION IS KOTLIN >= 2.1, which is KMP-UP's whole subject.
+
+THREE THINGS TO KEEP WHEN RE-APPLYING
+    1. The ksp-arg form, NOT the androidx.room Gradle plugin. :app chose the arg
+       form deliberately ("adds no second plugin, works under KSP1") and two
+       modules declaring the same thing two ways is the drift R206 forbids.
+    2. implementation(), not api(), for room-runtime: :app declares it itself,
+       so nothing about its compile classpath changes when the database moves.
+    3. The iOS ksp entries are DECLARED, never built on Windows. That is R400's
+       point - the day a Mac builds this, no build file changes.
+
+========================================================================
+THE FILE, VERBATIM AS KMP-2 LEFT IT
+========================================================================
+// KMP-0 increment 1 (R368). The platform-free module. Kotlin Multiplatform with an Android target plus the
+// iOS targets DECLARED now (iosArm64, iosSimulatorArm64), so the day iOS is built (R367) the shared engine,
+// strings and dossier logic already compile for it. PACKAGE NAMES DO NOT CHANGE when code moves here from
+// :app (ch.monreleve.app.calc stays ch.monreleve.app.calc), so no import in :app changes - the diff is file
+// moves plus these build files.
+//
+// SETUP (R368/R136): com.android.library + org.jetbrains.kotlin.multiplatform, chosen for the reasons in
+// the version catalog's comment on android-library. No version upgrade (the hard boundary): this reuses the
+// AGP 8.10.1 and Kotlin 2.0.21 already on the classpath.
+plugins {
+    alias(libs.plugins.android.library)
+    alias(libs.plugins.kotlin.multiplatform)
+    // KMP-1 increment 1 (R380). The kotlinx.serialization compiler plugin, applied to :shared so the moved
+    // wire DTOs can be @Serializable. Nothing uses it yet in this increment - the DTOs land with the moves
+    // (increments 4-6); applying it now, separately, keeps the toolchain change its own reviewable commit.
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ktlint)
+    alias(libs.plugins.detekt)
+    // KMP-2 increment 2 (R400). KSP, so Room's compiler can process @Entity/@Dao/@Database in this
+    // module. Applied on its own, with NOTHING moved yet, so the toolchain change is reviewable
+    // separately from the code that will depend on it. Version from the catalog (ksp 2.0.21-1.0.28) -
+    // the hard boundary forbids a version change, and this is not one.
+    alias(libs.plugins.ksp)
+}
+
+// KMP-2 increment 2 (R400/R206). WHERE ROOM EXPORTS THIS MODULE'S SCHEMAS. The ksp-arg form, NOT the
+// androidx.room Gradle plugin - :app chose the arg form deliberately (its own comment: "adds no second
+// plugin, works under KSP1") and two modules declaring the same thing two ways is the drift R206 exists
+// to prevent. The directory is created when the database actually moves here (increment 5, R396); until
+// then this module declares no @Database and Room exports nothing.
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
+// KMP-0 increment 3 (R370). THE FIXTURES REACH COMMON TESTS WITHOUT FILE ACCESS. commonTest cannot read a
+// file on iOS the way the JVM does, so each repo-root fixtures/*.json is turned into a Kotlin String constant
+// that commonTest compiles. fixtures/ is the DECLARED INPUT (the same "sharedFixtures" rule :app's Test tasks
+// use), so a fixture edit re-runs the generator and a stale constant cannot ship. The generated file lives
+// under build/generated (ktlint/detekt skip it) and is wired into the commonTest source set below.
+val sharedFixturesDir = rootProject.layout.projectDirectory.dir("../fixtures")
+val generatedFixturesDir = layout.buildDirectory.dir("generated/fixtures/kotlin")
+
+val generateFixtureConstants by tasks.registering {
+    inputs.dir(sharedFixturesDir)
+        .withPropertyName("sharedFixtures")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    outputs.dir(generatedFixturesDir)
+    doLast {
+        val packageDir =
+            generatedFixturesDir.get().asFile.resolve("ch/monreleve/app/shared/fixtures")
+        packageDir.mkdirs()
+        val jsonFiles =
+            sharedFixturesDir.asFile
+                .listFiles { f -> f.isFile && f.extension == "json" }
+                ?.sortedBy { it.name }
+                ?: emptyList()
+        // R169 presence: the generator must not emit an empty object from a wrong directory.
+        check(jsonFiles.isNotEmpty()) {
+            "generateFixtureConstants: no *.json under ${sharedFixturesDir.asFile} - nothing to generate"
+        }
+
+        fun constName(file: File): String =
+            file.nameWithoutExtension.replace(Regex("[^A-Za-z0-9]"), "_").uppercase() + "_JSON"
+
+        // Escape the raw JSON into a single Kotlin string literal: backslash and quote first, then the
+        // dollar sign (so Kotlin never reads $x as interpolation), then newlines/tabs; carriage returns are
+        // dropped so the constant is identical on every OS.
+        fun escape(raw: String): String =
+            raw
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("$", "\\$")
+                .replace("\r", "")
+                .replace("\n", "\\n")
+                .replace("\t", "\\t")
+
+        val out = StringBuilder()
+        out.appendLine("package ch.monreleve.app.shared.fixtures")
+        out.appendLine()
+        out.appendLine("// GENERATED by :shared's generateFixtureConstants task (KMP-0 R370). DO NOT EDIT.")
+        out.appendLine("// Source of truth: the repo-root fixtures/*.json, the SAME files the TypeScript engine")
+        out.appendLine("// reads (R206). Regenerated whenever fixtures/ changes, so a constant cannot go stale.")
+        out.appendLine()
+        out.appendLine("internal object FixtureJson {")
+        jsonFiles.forEach { file ->
+            out.appendLine("    const val ${constName(file)}: String = \"${escape(file.readText())}\"")
+        }
+        out.appendLine()
+        out.appendLine("    val ALL: Map<String, String> =")
+        out.appendLine("        mapOf(")
+        jsonFiles.forEach { file ->
+            out.appendLine("            \"${file.name}\" to ${constName(file)},")
+        }
+        out.appendLine("        )")
+        out.appendLine("}")
+        packageDir.resolve("FixtureJson.kt").writeText(out.toString())
+    }
+}
+
+kotlin {
+    // The Android target. matches :app's JVM target 17; its testDebugUnitTest runs commonTest + the
+    // Android unit-test source set on the JVM (where moved Kotest specs live, R373).
+    androidTarget {
+        compilations.all {
+            kotlinOptions {
+                jvmTarget = "17"
+            }
+        }
+    }
+    // R369: the iOS targets are DECLARED now but NOT compiled on this Windows host - Kotlin/Native cannot
+    // produce iOS binaries off a Mac. The proof the moved code is platform-free is the COMMON METADATA
+    // compilation (compileCommonMainKotlinMetadata), which compiles commonMain against the common stdlib only
+    // and so rejects any java./android. reference; that task runs in :app:gate. The iOS compile tasks are
+    // printed in the gate's "skipped, with reason" list rather than silently omitted (R133).
+    iosArm64()
+    iosSimulatorArm64()
+
+    sourceSets {
+        // KMP-0 increment 6 (R371). kotlinx-datetime is api() so :app receives the shared calendar types
+        // transitively: the moved dossier/forecast functions take kotlinx.datetime.LocalDate/DayOfWeek, and
+        // :app maps its java.time values to them at the boundary (R372). The ONE new runtime dependency the
+        // hard boundary permits; :app keeps java.time for everything that stays.
+        commonMain.dependencies {
+            api(libs.kotlinx.datetime)
+            // KMP-1 increment 1 (R380). The JSON runtime for the moved wire code. implementation(), NOT api():
+            // :app must not see kotlinx.serialization on its compile classpath (its remaining code keeps
+            // org.json); only :shared's moved files use it. Nothing imports it yet - the DTOs arrive with the
+            // moves (increments 4-6). It reaches :app's runtime classpath transitively, so the release APK
+            // carries it and checkMinifiedWireContract (R307) exercises the minified result.
+            implementation(libs.kotlinx.serialization.json)
+            // KMP-2 increment 2 (R400). room-runtime IS the multiplatform artefact at 2.7 - it publishes
+            // -android, -iosarm64 and -iossimulatorarm64 - so commonMain can hold the entities, DAOs and
+            // the database itself. No new catalog entry and no version change: this is the same
+            // androidx.room 2.7.2 :app already depends on.
+            //
+            // implementation(), not api(): :app declares room-runtime itself, so nothing about its
+            // compile classpath changes when the database moves here.
+            implementation(libs.androidx.room.runtime)
+        }
+        commonTest {
+            // KMP-0 increment 3 (R370): the generated fixture constants are a commonTest source dir. Passing
+            // the task provider wires both the directory and the task dependency, so the constants are
+            // regenerated before commonTest compiles.
+            kotlin.srcDir(generateFixtureConstants)
+        }
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
+            // KMP-1 increment 4 (R383). runTest, to drive the moved AuthApi's suspend functions in commonTest
+            // through an in-memory HttpTransport fake - so the auth client's behaviour is proven on COMMON code,
+            // not only through the Android transport. TEST-ONLY, and NOT a new version: it reuses the coroutines
+            // pin (1.8.1) :app already declares; runTest is kotlinx-coroutines-test's common API since 1.6.
+            implementation(libs.kotlinx.coroutines.test)
+        }
+        // KMP-0 increment 2 (R369). The commonMain platform-free FENCE lives in the Android unit-test source
+        // set, because it reads the commonMain source files as TEXT (java.io.File), which commonTest cannot do
+        // portably. kotlin.test is declared here explicitly rather than relied on transitively from commonTest.
+        androidUnitTest.dependencies {
+            implementation(libs.kotlin.test)
+        }
+    }
+}
+
+// KMP-2 increment 2 (R400). THE iOS TARGETS ARE DECLARED FOR ROOM, NOT BUILT. KSP runs per TARGET, not per
+// source set, so the Room compiler is added to each target's own configuration - the documented Room KMP
+// form. The two iOS entries cannot run on this Windows host (Kotlin/Native needs a Mac for an iOS target),
+// which is the point of declaring them NOW: the day a Mac builds this, no build file changes.
+//
+// WHAT REMAINS UNPROVEN UNTIL A MAC RUNS IT, stated plainly rather than implied by silence (R133):
+// that Room's compiler actually GENERATES a working implementation for iosArm64 and iosSimulatorArm64.
+// This file declares the wiring; only a Mac executes it. The Android half is proven by the gate.
+//
+// NO KSP MODE CHANGE. ksp.useKSP2 is not set anywhere and is not set here - the hard boundary forbids it.
+// Room 2.7 ADDED KSP2 support and recommends it; it does not require it, so KSP1 (what ksp 2.0.21-1.0.28
+// selects by default) stands. If Room's compiler ever demands KSP2, that is a STOP and a question, never
+// a flag quietly flipped.
+dependencies {
+    add("kspAndroid", libs.androidx.room.compiler)
+    add("kspIosArm64", libs.androidx.room.compiler)
+    add("kspIosSimulatorArm64", libs.androidx.room.compiler)
+}
+
+// KMP-0 increment 2 (R369/R283). The fence test (CommonMainFenceTest) reads shared/src/commonMain as TEXT, so
+// a NEW commonMain file carrying a forbidden import must RE-RUN the fence rather than leaving the test task
+// UP-TO-DATE - the same R283 discipline :app applies to its source-scanning fences. Declaring the tree as a
+// test input makes the text-scanning assertion re-run on any commonMain edit, not only the ones that recompile.
+tasks.withType<Test>().configureEach {
+    inputs.dir(layout.projectDirectory.dir("src/commonMain/kotlin"))
+        .withPropertyName("commonMainSourceForFence")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+}
+
+android {
+    namespace = "ch.monreleve.app.shared"
+    compileSdk = 35
+
+    defaultConfig {
+        minSdk = 26
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+}
+
+// ktlint skips generated output, matching :app (KMP-1 and the fixtures generator will write generated Kotlin
+// under build/generated; it is not ours to format).
+ktlint {
+    filter {
+        exclude { element -> element.file.path.contains("generated") }
+    }
+}
+
+detekt {
+    buildUponDefaultConfig = true
+    config.setFrom("$rootDir/config/detekt/detekt.yml")
+    // A KMP module does not use the JVM src/main layout detekt's default `detekt` task scans, so without
+    // this the task reports NO-SOURCE and silently checks nothing (the FW-class defect of a guard that
+    // passes vacuously). Point it at the multiplatform source sets explicitly. Dirs that do not exist yet
+    // (androidMain, androidUnitTest) are harmless - detekt just finds no files there until code moves in.
+    source.setFrom(
+        layout.projectDirectory.dir("src/commonMain/kotlin"),
+        layout.projectDirectory.dir("src/commonTest/kotlin"),
+        layout.projectDirectory.dir("src/androidMain/kotlin"),
+        layout.projectDirectory.dir("src/androidUnitTest/kotlin"),
+    )
+}
