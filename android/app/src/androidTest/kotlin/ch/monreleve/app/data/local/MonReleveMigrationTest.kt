@@ -41,6 +41,7 @@ class MonReleveMigrationTest {
             MIGRATION_2_3,
             MIGRATION_3_4,
             MIGRATION_4_5,
+            MIGRATION_5_6,
         )
     }
 
@@ -58,7 +59,7 @@ class MonReleveMigrationTest {
             close()
         }
 
-        val db = helper.runMigrationsAndValidate(TEST_DB, DATABASE_VERSION, true, MIGRATION_4_5)
+        val db = helper.runMigrationsAndValidate(TEST_DB, DATABASE_VERSION, true, MIGRATION_4_5, MIGRATION_5_6)
 
         db.query(
             "SELECT check1, check2, check3, check4, gpsCheckCount, networkCheckCount FROM daily_tally " +
@@ -94,7 +95,15 @@ class MonReleveMigrationTest {
             close()
         }
 
-        val db = helper.runMigrationsAndValidate(TEST_DB, DATABASE_VERSION, true, MIGRATION_3_4, MIGRATION_4_5)
+        val db =
+            helper.runMigrationsAndValidate(
+                TEST_DB,
+                DATABASE_VERSION,
+                true,
+                MIGRATION_3_4,
+                MIGRATION_4_5,
+                MIGRATION_5_6,
+            )
 
         // The old continuous-era tally row is GONE (the reshaped table starts empty; nothing to carry across).
         db.query("SELECT COUNT(*) FROM daily_tally").use { cursor ->
@@ -133,6 +142,7 @@ class MonReleveMigrationTest {
                 MIGRATION_2_3,
                 MIGRATION_3_4,
                 MIGRATION_4_5,
+                MIGRATION_5_6,
             )
 
         // The pre-F4 row SURVIVED (R303: nothing is lost) and was tagged UNOWNED - its account is

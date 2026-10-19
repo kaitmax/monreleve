@@ -826,6 +826,19 @@ tasks.register("gate") {
         // comprehensive partner of ApiLevelFenceTest - it catches every platform member used above minSdk 26,
         // which the curated fence cannot. DEVICE-LOOP ran it once as a diagnostic; this makes it permanent.
         "lintDebug",
+        // KMP-2 (R251/R269): COMPILE the androidTest source set. RUNNING it needs a device, which is
+        // why connectedDebugAndroidTest is skipped-with-reason below - but COMPILING it does not, and
+        // nothing in this gate did. That gap is not hypothetical: KMP-2 found TWO defects sitting in
+        // this source set, both invisible for exactly this reason.
+        //   - StatePreservationInstrumentedTest passed no employerStore argument, so the source set
+        //     had not compiled since that parameter was added;
+        //   - MonReleveMigrationTest never supplied MIGRATION_5_6 though DATABASE_VERSION is 6, so
+        //     all four of its tests died at builder time with "A migration from N to 6 was required
+        //     but not found" - the migration suite unable to run at all, on the one component whose
+        //     mistakes survive a reinstall.
+        // A suite this gate cannot RUN is still a suite it can COMPILE. R251: where no suite covers
+        // a file, the answer is a suite rather than an exemption.
+        "compileDebugAndroidTestKotlin",
         // KMP-0 increment 1 (R368/R369): the platform-free :shared module is governed by the SAME gate the
         // app is, so a session cannot red the shared engine and still commit. CI runs `./gradlew gate` and
         // gate:clone is unchanged, so both pick these up WITHOUT a web or CI edit (the hard boundary: they
@@ -873,7 +886,11 @@ tasks.register("gate") {
             |     on this Windows host), :shared:testDebugUnitTest (its commonTest
             |     + Android unit-test source set on the JVM), :shared:ktlintCheck
             |     and :shared:detekt (the same style and static-analysis fences,
-            |     over the shared sources).
+            |     over the shared sources),
+            |     compileDebugAndroidTestKotlin (KMP-2 R251: the androidTest
+            |     source set COMPILED - not run, which needs a device - so a
+            |     test that no longer builds fails HERE rather than rotting
+            |     unseen, which is how two defects survived in it).
             |SKIPPED, with reason:
             |  - scripts/emulator.sh / screenshot.sh / walkthrough.sh (the AC2
             |    instrument): needs a real AVD with hardware acceleration. Not a
@@ -881,8 +898,13 @@ tasks.register("gate") {
             |    it and looking at the PNG (R176/R177), which an unattended gate
             |    task cannot do.
             |  - connectedDebugAndroidTest (the instrumented canary,
-            |    CanaryInstrumentedTest.kt): same reason, needs a running device.
-            |    Exercised by the emulator instrument, not this gate.
+            |    CanaryInstrumentedTest.kt; MonReleveMigrationTest; the state
+            |    preservation tests): EXECUTION needs a running device, so it is
+            |    exercised by the emulator instrument and by a device run, not by
+            |    this gate. COMPILATION needs no device and is NOT skipped - see
+            |    compileDebugAndroidTestKotlin above. The distinction is the whole
+            |    point: while the gate skipped both, this source set stopped
+            |    compiling and nothing said so (KMP-2).
             |  - :shared's iOS compilations (KMP-0 R369/R133): compileKotlinIosArm64
             |    and compileKotlinIosSimulatorArm64 (plus their link and test tasks).
             |    Kotlin/Native cannot produce iOS binaries off a Mac, so these

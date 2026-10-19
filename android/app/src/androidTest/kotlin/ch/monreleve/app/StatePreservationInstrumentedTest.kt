@@ -23,6 +23,7 @@ import ch.monreleve.app.fr.CalendarCopy
 import ch.monreleve.app.fr.Fr
 import ch.monreleve.app.fr.NavCopy
 import ch.monreleve.app.onboarding.SettingsSaver
+import ch.monreleve.app.settings.InMemoryEmployerFigureStore
 import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
 import kotlinx.coroutines.flow.Flow
@@ -109,6 +110,12 @@ class StatePreservationInstrumentedTest {
                         override suspend fun clearForDeletion() = Unit
                     },
                 authenticatedPost = { _, _ -> PostOutcome.NoSession },
+                // KMP-2: this argument was MISSING and the androidTest source set did not
+                // compile on main. InMemoryEmployerFigureStore is main source, documented as
+                // "the default for JVM tests and a safe fallback" - this test asserts state
+                // preservation across a rebuild and never reads an employer figure, so an
+                // empty in-memory store is the right double rather than a new fake.
+                employerStore = InMemoryEmployerFigureStore(),
                 onSignedOut = {},
             )
         }
