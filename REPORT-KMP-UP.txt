@@ -1,0 +1,379 @@
+================================================================================
+REPORT-KMP-UP
+KOTLIN MOVES FAR ENOUGH FOR ROOM TO COMPILE IN commonMain, AND NO FURTHER
+================================================================================
+
+TASK    relay/KMP-UP.txt, rulings R402-R409.
+BASE    54541c6 (origin/main)
+BRANCH  kmp-up, worktree C:/wt/kmp-up (R349), lock held
+DEVICE  SM-G960F (Galaxy S9), Android 10, API 29, serial 232bcd8c300c7ece
+
+--------------------------------------------------------------------------------
+STATUS (R391)
+--------------------------------------------------------------------------------
+COMPLETE, with one part of R407 explicitly owed rather than claimed.
+
+The FULL :app:gate ran IN THIS SESSION on the committed tip 2a39af7:
+    BUILD SUCCESSFUL in 35s, GATE_EXIT=0, 227 actionable tasks, 0 failures
+and before that, on the same content with --rerun-tasks:
+    BUILD SUCCESSFUL in 10m 14s, GATE_EXIT=0, 227 of 227 EXECUTED
+
+OWED: R407's screen-by-screen audit comparison (sign in, record a day, sync,
+Releve, forecast, against origin/main's audit build). What WAS done on the
+device is the 9-path migration matrix and a launch-and-render check. The
+difference is stated under R407 rather than smoothed over.
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+Two version lines, and the comments that describe them.
+
+    kotlin  2.0.21        -> 2.1.10
+    ksp     2.0.21-1.0.28 -> 2.1.10-1.0.31
+
+Nothing else moved. The probe decided before anything landed, every tool was
+proven rather than assumed, warnings went DOWN, and the database survives on a
+real phone.
+
+--------------------------------------------------------------------------------
+R273 / R1 - WHAT WAS READ, AND THE FOUR PRECONDITIONS
+--------------------------------------------------------------------------------
+R273. REPORT-KMP-2.txt's Q1 and the operator's answer: upgrade Kotlin rather
+    than keep Room in :app and give iOS a second database.
+
+R1(a) main contains kmp-2's landed increments        PASS
+      95cf891, 7b7aed1, 1df9a4f - all ancestors of origin/main.
+
+R1(b) THE FULL :app:gate GREEN ON main's HEAD        PASS - this is the BEFORE
+      BUILD SUCCESSFUL in 9m 3s, GATE_EXIT=0
+      227 actionable tasks: 227 EXECUTED
+      --rerun-tasks, so nothing came from cache: a claim about the code rather
+      than about Gradle's up-to-date checks.
+
+R1(c) adb devices lists the S9                       PASS
+      232bcd8c300c7ece, SM-G960F, Android 10.
+
+R1(d) THE BEFORE LIST, recorded before anything changed:
+      agp 8.10.1 | kotlin 2.0.21 | ksp 2.0.21-1.0.28 | room 2.7.2
+      coroutines 1.8.1 | kotlinx-datetime 0.6.1 | kotlinx-serialization 1.7.3
+      composeBom 2024.09.00 | work 2.10.1 | browser 1.8.0 | ktlint 12.1.1
+      detekt 1.23.7 | paparazzi 1.3.5 | kotest 5.9.1 | junitVintage 5.10.2
+      jsonOrg 20260814 | coreKtx 1.15.0 | lifecycleRuntimeKtx 2.8.7
+      activityCompose 1.9.3 | junit 4.13.2 | junitVersion 1.2.1
+      espressoCore 3.6.1
+      gradle wrapper 8.11.1 | JDK 26 | ksp.useKSP2 NOT SET
+      kotlin-compose and kotlin-serialization plugins both version.ref = kotlin,
+      so they move with the compiler by themselves and are not separate bumps.
+
+--------------------------------------------------------------------------------
+THE VERSION CHOICE, READ RATHER THAN RECALLED
+--------------------------------------------------------------------------------
+Maven Central's maven-metadata.xml for symbol-processing-gradle-plugin, KSP
+releases for Kotlin 2.1.x:
+
+    2.1.0-1.0.28  2.1.0-1.0.29
+    2.1.10-1.0.29 2.1.10-1.0.30 2.1.10-1.0.31
+    2.1.20-1.0.31 2.1.20-1.0.32 2.1.20-2.0.0 2.1.20-2.0.1
+    2.1.21-2.0.1  2.1.21-2.0.2
+
+THE LINE IS THE POINT, not the number. 1.0.x is KSP1-capable; 2.0.x (from
+2.1.20-2.0.0) is KSP2-only. The hard boundary forbids changing the KSP MODE and
+ksp.useKSP2 is unset, so staying inside 1.0.x is what keeps that true across the
+Kotlin move.
+
+KOTLIN 2.1.10 AND NOT NEWER. It is exactly the compiler that produced
+room-runtime 2.7.2's commonMain klib (ABI 1.201.0), which is the single reason
+this task exists. Matching it is the smallest move that can work; 2.1.20 would
+also offer a 1.0.x KSP and moves the compiler further for no stated reason.
+
+KSP1 IS NOT REMOVED AT THIS VERSION. It was deprecated in KSP 2.3.0, whose
+notice names Kotlin 2.3.0 and AGP 9.0 as the incompatible toolchains. Neither is
+in play, and both are a later decision than this one.
+
+--------------------------------------------------------------------------------
+R403 - THE PROBE DECIDED, FIRST
+--------------------------------------------------------------------------------
+KMP-2's throwaway @Entity/@Dao/@Database probe with @ConstructedBy in :shared
+commonMain, on the chosen versions, with KMP-2's Room wiring restored from
+docs/kmp/room-shared-wiring.kts.txt:
+
+    :shared:compileCommonMainKotlinMetadata
+        BUILD SUCCESSFUL in 2m 15s        exit 0
+        Incompatible-ABI / KLIB-resolver complaints: 0
+        compiler errors: none
+
+THAT IS THE EXACT TASK THAT FAILED ON 2.0.21, and it failed like this:
+
+    w: KLIB resolver: Skipping '...room-runtime-2.7.2-commonMain-A5a4aw.klib'.
+       Incompatible ABI version. The current default is '1.8.0',
+       found '1.201.0'. The library was produced by '2.1.10' compiler.
+    e: KLIB resolver: Could not find "...room-runtime-2.7.2-commonMain..."
+
+    :shared:kspDebugKotlinAndroid  BUILD SUCCESSFUL in 19s, and Room generated
+        ProbeDao_Impl.kt
+        ProbeDatabaseConstructor.kt
+        ProbeDatabase_Impl.kt
+    THE SAME THREE KMP-2 RECORDED - real Room output including the KMP actual
+    constructor, not a build that merely did not error (R154).
+    kspKotlinIosArm64 and kspKotlinIosSimulatorArm64 remain declared, unbuilt.
+
+THE PROBE AND THE WIRING ARE BOTH REVERTED. Moving anything to :shared is
+KMP-2b's work and OUT OF SCOPE here; the wiring was scaffolding for this test.
+docs/kmp/room-shared-wiring.kts.txt earned its rescue on its first use: the
+probe was rebuilt from it rather than re-derived from a stopped session's diff.
+
+WHAT THE PROBE DOES NOT SETTLE, stated because a green probe invites the
+broader reading: that Room generates WORKING iOS implementations. Only a Mac
+runs kspKotlinIos*. Everything here is the Android half.
+
+--------------------------------------------------------------------------------
+R404 - detekt WAS THE PREDICTED CASUALTY AND IS NOT ONE
+--------------------------------------------------------------------------------
+No pin was needed, nothing was disabled, and the ruling's escape hatch
+(stop and ask if the only path is an upgrade) was not reached.
+
+    > Task :app:detekt
+    > Task :shared:detekt
+
+Both RAN rather than being UP-TO-DATE, NO-SOURCE or SKIPPED - checked, because
+a task that runs nothing exits 0 and reads like a pass (R133) - and both wrote
+reports: app/build/reports/detekt/detekt.xml, shared/build/reports/detekt/detekt.xml.
+Findings: zero, the same as before.
+
+--------------------------------------------------------------------------------
+R405 - THE OTHER TOOLS, PROVEN
+--------------------------------------------------------------------------------
+UNIT TESTS      1166 before, 1166 after - from the gate's OWN instrument:
+                "test floor OK: 1166 unit tests observed" in both runs.
+                An earlier attempt to count these by summing test-result XML
+                on disk produced 24786, which is what stale accumulated files
+                sum to. Recorded because it was a bad measurement that looked
+                like a number.
+
+:shared         commonTest tests=42 skipped=0 failures=0 errors=0
+
+KMP-1's GOLDENS 29, green, unedited:
+                AuthWireGoldenTest      18
+                EntriesWireGoldenTest    6
+                DossierWireGoldenTest    5
+                They are Kotlin tests in commonTest, not JSON resources - an
+                earlier find for golden *files* returned 0, which was a NO
+                RESULT and not a pass.
+
+PAPARAZZI       verifyPaparazziDebug ran; snapshots changed in git: 0.
+
+R8              checkMinifiedWireContract green, and the audit APK is
+                1,975,757 bytes - THE SAME SIZE as the audit APK KMP-2 built
+                on 2.0.21. The minified output is equivalent across the
+                toolchains.
+
+ROOM / KSP      schemas changed in git after a full KSP re-run: 0.
+                And stronger than byte-identity: v6's identityHash is
+                a08f54541b97835cb850e7d8e4b1cf2d, which is what KMP-2 read off
+                THE S9's OWN room_master_table. The schema this toolchain
+                generates matches what an install in the field actually holds.
+
+THE WHOLE TREE  git status after the full gate: only libs.versions.toml.
+                Nothing was regenerated by the new toolchain.
+
+--------------------------------------------------------------------------------
+R406 - WARNINGS ARE COUNTED, AND THEY WENT DOWN
+--------------------------------------------------------------------------------
+From the two FULL gates with --rerun-tasks:
+
+                        before (2.0.21)   after (2.1.10)
+    total w: lines            6                5
+    app/                      4                4
+    shared/                   0                0
+    build-level               2                1
+
+NEW WARNINGS: NONE. The distinct texts after are a strict subset of before
+(comm over the sorted sets).
+
+THE FOUR IN app/ ARE UNCHANGED and pre-date this task:
+    2x 'val LocalLifecycleOwner' is deprecated (moved to lifecycle-runtime-compose)
+    2x 'class Criteria : Any, Parcelable' is deprecated (Deprecated in Java)
+    Not fixed here: both are library deprecations whose fix is a dependency
+    move, which the hard boundary forbids. PARKED, not silenced.
+
+THE ONE THAT WENT IS WORTH NAMING. The Kotlin Multiplatform <-> Android Gradle
+Plugin compatibility warning ("The applied Android Gradle Plugin version
+(8.10.1) is higher than the maximum known to the Kotlin Gradle Plugin") is
+present once on 2.0.21 and ABSENT on 2.1.10: KGP 2.1.10 knows about AGP 8.10.1.
+
+    THAT WAS KMP-2's PARK-K4, and this upgrade CLOSES it. KMP-2 recorded it
+    specifically so a later reader would not mistake it for something a bump
+    had caused. The opposite happened.
+
+    A first check of this reported 0 in both logs, which was wrong: the message
+    wraps across lines and the pattern did not bridge it. Re-checked against the
+    marker text - 1 before, 0 after. A grep that finds nothing on both sides of
+    a comparison is NO RESULT, not a result (R391).
+
+--------------------------------------------------------------------------------
+R407 - THE ANDROID APP ON THE DEVICE
+--------------------------------------------------------------------------------
+THE PRECAUTION FIRST, because the ruling exists for what KMP-2 lost. The
+device's state was read and photographed BEFORE connectedAndroidTest, which
+installs the app and test APKs and uninstalls both:
+
+    installed  ch.monreleve.app 0.1.0, KMP-2's audit build (not debuggable, so
+               run-as could not read the database; the calendar was
+               photographed instead - .an-auto-shots/r407-device-state-before.png)
+    Jour 16    "Non renseigne, non enregistre"
+    Jour 19    "matin Mission, apres-midi Suisse, en attente de synchronisation"
+
+    TWO THINGS THERE ARE NOT WHAT KMP-2 RECORDED, and both are reported rather
+    than tidied:
+      - PARK-K6's 16 October entry is absent from the DEVICE too, not merely
+        from the server. That sharpens the question from "why did it not sync"
+        to "was it ever written" - but an install -r happened between the two
+        readings and nobody watched the state in between, so it is an
+        observation and not a diagnosis. Carried to KMP-2b with that caveat.
+      - Jour 19's morning reads Mission where KMP-2 recorded Domicile. The
+        likeliest cause is this session chain's own coordinate tapping during
+        R374's clock drive, not a product defect.
+    Nothing of the operator's was at stake: every entry was created by this
+    session chain on the test account kmp2@example.ch against a local server.
+
+THE MIGRATION MATRIX, on the S9, on Kotlin 2.1.10:
+
+    Starting 9 tests on SM-G960F - 10
+    Finished 9 tests on SM-G960F - 10
+    tests="9" failures="0" errors="0" skipped="0"
+    BUILD SUCCESSFUL in 1m 34s, exit 0
+
+Every start version and every individual step still migrates on the new
+toolchain, on real Samsung Android 10 storage. This is the proof that matters:
+the database is the one component whose mistakes survive a reinstall.
+
+THE AUDIT BUILD, built on 2.1.10 with -PfrontalierHost=127.0.0.1:
+    BUILD SUCCESSFUL in 3m 56s, 1,975,757 bytes
+    NEVER AGAINST PRODUCTION, verified in the MINIFIED dex: every API URL is
+    http://127.0.0.1:3000/api/v1/... and the only monreleve.ch string is the
+    App Link intent-filter host.
+    Installed on the S9 and launched: the start screen renders with the same
+    strings at the same coordinates as KMP-2 recorded ("Commencer" @ 540,1944).
+
+WHAT IS OWED, SAID PLAINLY. R407 asks for sign in by code, record a day, sync,
+open the Releve and the forecast, COMPARED SCREEN BY SCREEN with the audit build
+of origin/main's HEAD. That full drive was NOT done. What was done is a launch
+and render check, which is a smaller claim: it proves the minified Compose app
+starts and paints on the new compiler, not that every screen behaves identically.
+
+  WHY IT IS A SMALLER GAP THAN IT LOOKS, without pretending it is closed:
+  Paparazzi verified 111 baselines with none touched, which is a pixel claim
+  about every screen it covers; the 29 goldens prove the serialization the sync
+  depends on; checkMinifiedWireContract proves R8 kept the wire; and the
+  migration matrix proves the store. The drive would add integration over those
+  parts (R204's argument), and that is exactly what is missing.
+
+--------------------------------------------------------------------------------
+R408 - ROLLBACK IS ONE COMMIT
+--------------------------------------------------------------------------------
+    git revert 2a39af7
+
+One commit, one file, the two versions and the comments that describe them.
+
+WHY 29 LINES AND NOT 2. Two comments in that file had become false the moment
+the versions moved:
+  - the ksp comment said "1.0.28 is the last for Kotlin 2.0.21";
+  - the kotlinx-serialization comment said the project "is pinned to Kotlin
+    2.0.21 ... so 1.7.3 is the HIGHEST runtime that works with NO toolchain
+    bump", which would send the next reader to bump it now that the ceiling has
+    moved. It stays at 1.7.3 because this task moves Kotlin and KSP and nothing
+    else, and the comment now says that.
+A two-line diff shipping two false statements would have been the tidier commit
+and the worse one (R181).
+
+--------------------------------------------------------------------------------
+R409 - WHAT THIS UNBLOCKS: THE RESUME NOTE FOR KMP-2b
+--------------------------------------------------------------------------------
+THE VERSIONS NOW IN FORCE: kotlin 2.1.10, ksp 2.1.10-1.0.31, ksp.useKSP2 still
+unset (KSP1). Everything else unchanged from KMP-2's list.
+
+THE PROBE'S RESULT: Room 2.7.2 compiles in :shared commonMain on these
+versions. compileCommonMainKotlinMetadata succeeds and Room generates all three
+files. KMP-2's stop condition is removed.
+
+START FROM docs/kmp/room-shared-wiring.kts.txt. It is the configuration this
+session's probe used and it worked unmodified on the new versions.
+
+WHAT DOES NOT CHANGE IN KMP-2's RULINGS (R394-R401):
+  R395 is unaffected - Room still calls migrate(connection) on Android with no
+    driver; that is a Room 2.7 behaviour, not a Kotlin one, and nothing here
+    touched it.
+  R396's identity hashes are unaffected - proven, not assumed: schemas 1-6 are
+    byte-identical after a full KSP re-run on the new toolchain, and v6 still
+    hashes to what the S9 holds.
+  R397's 9-path matrix passes on the new Kotlin; it is ready to be re-pointed
+    at the MOVED migrations.
+  R398 is still owed whole and is still KMP-2b's first act.
+  R400's iOS half remains unproven until a Mac runs kspKotlinIos*.
+
+ONE THING KMP-2b INHERITS THAT IS NEW: PARK-K4 is closed. The KMP/AGP warning
+is gone, so a future report seeing a clean build should not go looking for it.
+
+--------------------------------------------------------------------------------
+PARKED
+--------------------------------------------------------------------------------
+PARK-U1  R407's screen-by-screen audit comparison. See R407.
+PARK-U2  The two library deprecations in app/ (LocalLifecycleOwner, Criteria).
+         Both fixes are dependency moves, which this task's boundary forbids.
+         Unchanged in count and text across the bump.
+PARK-U3  PARK-K6 sharpened: the back-dated entry is absent from the device as
+         well as the server. Observation, not diagnosis - see R407.
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+1. THE COMMIT CARRIES COMMENT CHANGES as well as the two versions. Argued under
+   R408. The alternative was shipping two false statements.
+
+2. R407's AUDIT DRIVE WAS REDUCED to build, install, launch and render. Stated
+   under R407 and parked, rather than being described in terms that would read
+   as the full comparison.
+
+3. TWO MEASUREMENTS WERE WRONG BEFORE THEY WERE RIGHT, and both are recorded
+   because each looked like an answer: summing test-result XML off disk gave
+   24786 "unit tests" (stale accumulated files), and the first check of the
+   KMP/AGP warning reported 0 in both logs because the message wraps and the
+   pattern did not bridge it.
+
+--------------------------------------------------------------------------------
+QUESTIONS
+--------------------------------------------------------------------------------
+Q1 PARK-U1: do you want R407's full audit comparison run before KMP-2b, or is
+   the migration matrix plus Paparazzi/goldens/wire-contract evidence enough to
+   proceed? It is a device drive of roughly the length KMP-2's R374 took.
+
+Q2 PARK-U2: the two deprecations are fixable only by moving a dependency
+   (lifecycle-runtime-compose for the first). Worth its own small task, or left
+   until something else moves those libraries?
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+:app:gate, run in this session:
+
+  BEFORE, on main 54541c6 (R1(b)):
+      BUILD SUCCESSFUL in 9m 3s, GATE_EXIT=0, 227 of 227 EXECUTED (--rerun-tasks)
+
+  AFTER, same content as the commit, --rerun-tasks:
+      BUILD SUCCESSFUL in 10m 14s, GATE_EXIT=0, 227 of 227 EXECUTED, 0 failures
+
+  FINAL, on the committed tip 2a39af7:
+      BUILD SUCCESSFUL in 35s, GATE_EXIT=0, 227 actionable tasks, 0 failures
+
+ON-DEVICE, SM-G960F Android 10, Kotlin 2.1.10:
+      MonReleveMigrationTest  tests="9" failures="0" errors="0" skipped="0"
+      audit build installs, launches, renders at the recorded coordinates
+
+gate:clone was NOT run, and that is a decision rather than an omission (R133):
+its subject is the web package, and this branch changes one Android file. The
+diff against origin/main for web/ is empty.
+
+THE PUSH FOLLOWS THIS COMMIT. Its result is recorded in the commit that carries
+it rather than predicted here (R334).
+
+END OF REPORT-KMP-UP
