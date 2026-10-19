@@ -515,6 +515,59 @@ export const ROOT_ENTRY_POINTS = Object.freeze([
  * test:e2e alone would have been the same under-statement this ruling exists
  * to remove, one file over.
  */
+/**
+ * Every suite this selector can emit. FW-SELECTOR-PACKAGE, R414.
+ *
+ * FOR THE FILES THAT DECIDE WHETHER ANYTHING RUNS AT ALL. package.json
+ * defines what every suite IS - the command `pnpm <suite>` resolves to -
+ * and pnpm-lock.yaml decides what each one runs AGAINST. Neither names a
+ * suite it belongs to, because they belong to all of them.
+ *
+ * THE OPERATOR RULED THIS RATHER THAN LEAVING IT TO JUDGEMENT, and the
+ * reasoning is worth keeping where the list is:
+ *
+ *   A dependency bump can break anything, and NOTHING IN THE DIFF TELLS
+ *   YOU WHAT. A selector that tried to be clever here - full run for a
+ *   scripts change, something narrower for dependencies - is exactly how
+ *   the next uncovered file gets through.
+ *
+ *   They are RARE. Dependencies are not bumped daily, so the full matrix
+ *   on each one costs little in total.
+ *
+ *   The other side is NOT KNOWING, which is the outcome every gate in
+ *   this repository exists to prevent.
+ *
+ * IF BUMPS EVER BECOME FREQUENT ENOUGH TO HURT, revisit it WITH
+ * MEASUREMENTS rather than with an intuition about cost. That condition is
+ * part of the ruling, not a softening of it.
+ *
+ * WRITTEN OUT RATHER THAN DERIVED, because the constants it would derive
+ * from are declared below this point and a const cannot be read before it
+ * is initialised. The list is therefore ASSERTED complete against those
+ * constants and against every selector pattern, so a suite added anywhere
+ * and not added here fails rather than being quietly left out (R154).
+ */
+export const EVERY_SUITE = Object.freeze([
+  'typecheck',
+  'lint',
+  'test',
+  'build',
+  'test:e2e',
+  'test:visual',
+  'test:runtime',
+  'test:db',
+  'test:late',
+  'test:container',
+  'test:container:e2e',
+  'test:container:scheduler',
+  'test:container:restore',
+  'test:container:write',
+  // Made selectable by this task: tsconfig.parity.json configures it, and a
+  // config whose suite cannot be selected is the hole R247 is about. It runs
+  // in `pnpm gate` and in gate:clone already; it simply could not be CHOSEN.
+  'parity:check',
+]);
+
 export const ROOT_TOOL_CONFIGS = Object.freeze({
   // FOUND BY THE CHECK, NOT BY THE AUTHOR. `.stylelintrc.mjs` is a dotfile,
   // so the hand survey of the root that produced this list - an `ls` - did
@@ -531,6 +584,71 @@ export const ROOT_TOOL_CONFIGS = Object.freeze({
   'prisma.config.ts': ['test:db'],
   'vitest.config.ts': ['test'],
   'vitest.db.config.ts': ['test:db'],
+
+  // THE TWO THAT DECIDE WHETHER ANYTHING RUNS AT ALL (R414). Every entry
+  // above names the one suite it configures; these name all of them,
+  // because that is what they decide. See EVERY_SUITE for the ruling.
+  //
+  // THIS COMMIT IS THE INSTANCE THAT FOUND IT (R178): a change to
+  // package.json's `test:db` script - what that suite RUNS - selected
+  // typecheck, lint, test and build, and matched no rule at all.
+  // vitest.db.config.ts, which merely CONFIGURES test:db, was mapped.
+  // The file that configures a suite was covered; the file that decides
+  // what the suite IS was not.
+  'package.json': EVERY_SUITE,
+  'pnpm-lock.yaml': EVERY_SUITE,
+
+  // ==========================================================================
+  // FOUND BY THE WIDENED CENSUS, NOT BY THE AUTHOR (R178, R416)
+  // ==========================================================================
+  //
+  // The ruling named package.json and pnpm-lock.yaml. Teaching the census to
+  // see data files surfaced SIX MORE at this root, every one of them
+  // previously selecting nothing beyond the base chain. That is the class
+  // R416 asks to close rather than the instance, and these are the evidence
+  // that the class was real.
+
+  // THE SAME CLASS AS THE TWO ABOVE, and FW14 measured it. Its own header
+  // records that an unanswered dependency build script made "every `pnpm
+  // run` and every `pnpm exec`" die inside pnpm's dependency-status check:
+  // `pnpm typecheck` stopped working and the message was about build
+  // scripts. A file that can stop every suite from starting belongs to all
+  // of them. Leaving it out because the ruling did not name it is the
+  // half-applied finding R267 forbids.
+  'pnpm-workspace.yaml': EVERY_SUITE,
+
+  // EVERY TYPESCRIPT TOOL RESOLVES THROUGH IT, which is wider than it looks:
+  // not only typecheck and build, but vitest, and the e2e specs too -
+  // e2e/application.spec.ts and e2e/guides.spec.ts import through the `@/`
+  // alias this file defines. Break the alias and nothing compiles anywhere,
+  // including the image.
+  'tsconfig.json': EVERY_SUITE,
+
+  // `typecheck` is literally `tsc --noEmit && tsc -p tsconfig.scripts.json`.
+  // A narrow, provable obligation - which is the shape the doc above asks
+  // for: the suites that MUST run, not everything the file touches.
+  'tsconfig.scripts.json': ['typecheck'],
+
+  // IT CONFIGURES A CHECK THAT RUNS AND COULD NOT BE CHOSEN. parity:check
+  // is in `pnpm gate` and in gate:clone's step list, so it is not unused -
+  // but gate:changed had no way to select it, so editing this file ran the
+  // base chain and the parity check went unrun until push. `null` would
+  // have been the easy answer and a false one: null means the file
+  // configures nothing that is run. The answer is a suite (R251).
+  'tsconfig.parity.json': ['parity:check'],
+
+  // READ BY tests/unit/content/identity.test.ts, which is in `test`. Also by
+  // scripts/lighthouse.mjs, which no gate runs - so `test` is the whole
+  // obligation rather than a partial one.
+  'identity.json': ['test'],
+
+  // NULL, AND THE CLAIM IS CHECKED RATHER THAN ASSUMED. It configures
+  // `pnpm lighthouse`, and lighthouse appears in no gate, no gate:clone step
+  // and no CI workflow - it is run by a person, deliberately (R174 runs it
+  // three times and asserts a median, which is not a thing a gate does).
+  // So it configures no suite that is RUN, which is exactly what null means
+  // here. If lighthouse ever joins a gate, this entry is where that shows.
+  'lighthouserc.json': null,
 });
 
 /** Extensions Next will route to. */
@@ -548,6 +666,34 @@ const ENTRY_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'];
 const ROOT_EXTENSIONLESS = ['Dockerfile', '.dockerignore'];
 
 /**
+ * Root files that are DATA rather than code and still decide what runs.
+ * FW-SELECTOR-PACKAGE, R416.
+ *
+ * SEPARATE FROM ENTRY_EXTENSIONS ON PURPOSE. That list is also what the
+ * import-graph walk follows, and a walk that started following .json
+ * would be a different and much larger change than widening a census of
+ * one directory.
+ *
+ * WHY THIS SET. R251 widened the census for `Dockerfile` because "the
+ * closed-world root census could not see a Dockerfile - it scanned for
+ * code extensions and a Dockerfile is not code". That closed the INSTANCE
+ * and left the CLASS open: package.json is .json, which is not code
+ * either, and it decides what every suite is. The class is "a root file
+ * that decides what runs and is not code", and at this root that is
+ * configuration and lockfiles - .json, .yaml, .yml, .toml.
+ *
+ * WHAT IT STILL DOES NOT SEE, and why that is not an omission: the root
+ * also holds `.env`, `.env.example`, `.gitignore` and two `.tsbuildinfo`
+ * files. None matches these extensions. The first two are secrets and a
+ * sample of them, which decide nothing about which suite runs; the last
+ * two are generated output. If a future root file is none of those and
+ * still decides something, it arrives as a new extension and this list is
+ * where it goes - which is the same argument R246 made for its own
+ * convention list, against the person writing it.
+ */
+const ROOT_CONFIG_EXTENSIONS = ['.json', '.yaml', '.yml', '.toml'];
+
+/**
  * Every root file that can determine what runs, for the closed-world check.
  *
  * Named `rootCodeFiles` when it only looked at extensions; it now answers the
@@ -562,6 +708,7 @@ export function rootCodeFiles(root) {
       (entry) =>
         entry.isFile() &&
         (ENTRY_EXTENSIONS.some((extension) => entry.name.endsWith(extension)) ||
+          ROOT_CONFIG_EXTENSIONS.some((extension) => entry.name.endsWith(extension)) ||
           ROOT_EXTENSIONLESS.includes(entry.name)),
     )
     .map((entry) => entry.name)
@@ -840,6 +987,65 @@ export const SELECTOR_PATTERNS = Object.freeze([
     label: 'playwright.runtime.config.ts, which is the runtime project (R247)',
     suites: RUNTIME_SUITES,
     matches: (path) => path === 'playwright.runtime.config.ts',
+  },
+  {
+    // ========================================================================
+    // THE TWO FILES THAT DECIDE WHETHER ANY SUITE RUNS AT ALL (R414)
+    // ========================================================================
+    //
+    // Every other root config above names the one suite it configures.
+    // These name all of them: package.json DEFINES what each suite is - the
+    // command `pnpm <suite>` resolves to - and pnpm-lock.yaml decides what
+    // every one of them runs against.
+    //
+    // FOUND BY A COMMIT THAT CHANGED `test:db` AND DID NOT RUN IT (R178).
+    // FW-PRISMA-GENERATE edited the test:db script so it regenerates the
+    // Prisma client first - a change to what that suite RUNS - and the
+    // selector answered with the base chain and `matched: []`. Meanwhile
+    // vitest.db.config.ts, which merely CONFIGURES test:db, was mapped.
+    // The file that configures a suite was covered; the file that decides
+    // what the suite IS was not.
+    //
+    // EVERY SUITE, AND NOT A CLEVERER RULE. The tempting version reads which
+    // keys moved - scripts["test:db"] selects test:db, dependencies selects
+    // everything - and it is the version that fails: a script can change what
+    // a DIFFERENT suite does (db:generate is chained into test:db; gate:changed
+    // is itself a script), so key-to-suite is not a function. A dependency
+    // bump can break anything and nothing in the diff says what. These files
+    // change rarely, so the full matrix costs little in total - and the other
+    // side is not knowing, which is what every gate here exists to prevent.
+    label: 'package.json and the lockfile, which decide what every suite is (R414)',
+    suites: EVERY_SUITE,
+    matches: (path) => path === 'package.json' || path === 'pnpm-lock.yaml',
+  },
+  {
+    // R416. pnpm-workspace.yaml can stop every `pnpm run` from starting
+    // (FW14), and tsconfig.json defines the alias every tool resolves
+    // through - including the e2e specs. Same obligation as the two above,
+    // reached by the same argument.
+    label: 'pnpm-workspace.yaml and tsconfig.json, which decide whether anything compiles (R416)',
+    suites: EVERY_SUITE,
+    matches: (path) => path === 'pnpm-workspace.yaml' || path === 'tsconfig.json',
+  },
+  {
+    // R416. The narrow, provable obligations: one config, one suite.
+    label: 'tsconfig.scripts.json, which typecheck compiles against (R416)',
+    suites: ['typecheck'],
+    matches: (path) => path === 'tsconfig.scripts.json',
+  },
+  {
+    // R416. parity:check runs in `pnpm gate` and gate:clone but could not be
+    // SELECTED by gate:changed, so a change to its config went unchecked
+    // until push. A suite rather than an exemption (R251).
+    label: 'tsconfig.parity.json, which the format-parity build compiles against (R416)',
+    suites: ['parity:check'],
+    matches: (path) => path === 'tsconfig.parity.json',
+  },
+  {
+    // R416. The service identity, asserted by a unit test.
+    label: 'identity.json, which a unit test asserts (R416)',
+    suites: ['test'],
+    matches: (path) => path === 'identity.json',
   },
   {
     // R251. The image and the thing that decides whether it serves.
