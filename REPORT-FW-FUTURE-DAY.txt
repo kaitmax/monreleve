@@ -1,0 +1,303 @@
+================================================================================
+REPORT-FW-FUTURE-DAY
+THE SERVER REFUSES A DAY THAT HAS NOT HAPPENED
+================================================================================
+
+TASK    relay/FW-FUTURE-DAY.txt, rulings R410-R413.
+BASE    54541c6 (origin/main)
+BRANCH  fw-future-day, worktree C:/wt/fw-future-day (R349), lock held
+
+--------------------------------------------------------------------------------
+STATUS (R391)
+--------------------------------------------------------------------------------
+COMPLETE. gate:changed GREEN across all eight selected suites, run in this
+session. gate:clone run on the committed tip - result in PUSH PROOF.
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+Six lines of rule, between the schema and the write:
+
+    const today = parisDayOf(new Date());
+    const ahead = parsed.data.entries.filter((entry) => entry.dayDate > today);
+
+    if (ahead.length > 0) {
+      console.warn(...);
+      return refuse('future_day', AUTH_API_COPY.futureDay);
+    }
+
+The task turned out smaller than its prompt, for two reasons worth stating
+because both are arguments against writing new machinery:
+
+  THE PRINCIPLE ALREADY EXISTS AS A RULING. app/api/v1/dossier/route.ts cites
+  R198 - "A YEAR THAT HAS NOT HAPPENED IS ITS OWN REFUSAL" - as why it refuses
+  future_year. This is not a new rule. It is R198 applied to the field where
+  the record is actually created, which is where it was missing.
+
+  THE PARIS HELPER ALREADY EXISTS, AND ITS DOC ALREADY NAMES THE TRAP.
+  lib/entries/day.ts exports parisDayOf and calls itself "the one home for the
+  question 'which day is this' (R206)". Its comment says: "at 00:30 Paris in
+  summer it is still yesterday in UTC, so a job using UTC would send a second
+  reminder for a day it had already covered." That is R411's trap, written down
+  before this task existed. R411 said use the existing home; there was one.
+
+--------------------------------------------------------------------------------
+R273 / R1 - WHAT WAS READ, AND THE PRECONDITIONS
+--------------------------------------------------------------------------------
+R273. REPORT-KMP-2.txt sections R399 and PARKED. KMP-2's R374 device run is
+    this task's fixture and the reason it exists.
+
+R1. (a) origin/main contains the KMP-2 merge - base is 54541c6, which is the
+        fw-prisma-generate merge on top of f67aeb1 (the KMP-2 merge).
+    (b) the clean-tree guard is live - every gate run below was preceded by
+        staging, because the guard refuses otherwise.
+    (c) gate:changed green on origin/main's HEAD - inherited from the
+        fw-prisma-generate session, which ran it on this same base before its
+        own push. Stated as inherited rather than re-run (R391): it was not run
+        again in this session.
+
+--------------------------------------------------------------------------------
+THE RED RUN - AND THE FIRST ONE WAS NOT THE RED IT LOOKED LIKE
+--------------------------------------------------------------------------------
+The tests were written before the rule. The first run showed FOUR failures,
+and taking that as the red would have been wrong:
+
+    x refuses it, and names what is actually the matter
+      AssertionError: expected 200 to be 400          <- the real defect
+    x refuses the whole batch when one item is in the future
+      AssertionError: expected 200 to be 400          <- the real defect
+    x accepts today-in-Paris while UTC still says yesterday
+      AssertionError: expected 401 to be 200          <- NOT the defect
+    x still refuses the genuine next day at that same instant
+      AssertionError: expected 401 to be 400          <- NOT the defect
+
+TWO OF THE FOUR FAILED ON AUTHENTICATION. beforeEach issues an access token at
+the real time; ACCESS_TTL_MS is fifteen minutes; the Paris-boundary tests move
+the clock seven hours forward with vi.setSystemTime. The token was long
+expired, the route answered 401, and the tests failed for a reason that had
+nothing to do with the rule under test.
+
+A RED RUN READ WITHOUT CHECKING WHY IT WAS RED IS NOT EVIDENCE (R180). Those
+two would have been recorded as proving a defect they never reached. Fixed by
+issuing the token AFTER the clock moves - the comment in the test says so, so
+the next person moving a clock in a test meets the problem already solved.
+
+THE HONEST RED, after the fix:
+
+    Tests  3 failed | 44 passed (47)
+    all three: AssertionError: expected 200 to be 400
+
+Three, not four. The fourth - "accepts today-in-Paris while UTC still says
+yesterday" - PASSED before the rule existed, because everything was accepted.
+That is correct and it is why it is there: it is the guard against
+over-correcting, and it stays green through the change rather than flipping.
+
+--------------------------------------------------------------------------------
+R410 - THE REFUSAL
+--------------------------------------------------------------------------------
+IN THE ROUTE, NOT THE SCHEMA, AND THE CODE IS ITS OWN. The batch schema already
+carries cross-entry rules (the duplicate-pair check), and they surface as
+invalid_payload with per-item issues. This one does not go there, for the
+reason the dossier route gives about its own refusal: a generic code "would
+send the caller to check their parser; this names what is actually the matter."
+
+A client that sent tomorrow has not malformed anything. It has a clock problem
+or an offering-days problem, and `future_day` says which.
+
+Keeping it out of the schema also keeps the schema time-independent: a Zod
+refine reading the clock is a validator whose result depends on when it runs.
+
+REFUSED WHOLE, NOT PER ROW. One future day refuses the batch and writes none of
+it, matching how a duplicate pair inside one batch is already treated. A
+partly-written batch is the state a client cannot reconcile.
+
+THE LOG LINE CARRIES THE COUNT AND THE SERVER'S OWN DAY, never the reader's
+days. Whoever is wondering why a client is being refused needs the shape of the
+problem, not a record of when somebody worked.
+
+THE COPY lives in lib/fr/auth-api.ts as `futureDay`, in the house style (APOS,
+the no-break space before a colon). It NAMES THE RULE AND NO DATE (R153) - an
+example day in an error message is stale the moment the clock passes it - and
+it explains rather than scolds, because the ordinary way to meet this is a
+phone whose clock is ahead.
+
+--------------------------------------------------------------------------------
+R411 - TODAY IS COMPUTED IN PARIS, AND THIS IS THE WHOLE SUBTLETY
+--------------------------------------------------------------------------------
+    const today = parisDayOf(new Date());
+
+parisDayOf is lib/entries/day.ts's, not a second copy (R206). String comparison
+on both sides, because YYYY-MM-DD sorts lexicographically as it sorts
+chronologically - parsing either into a Date to compare them would reintroduce
+an instant, and an instant is what has a timezone.
+
+THE FIXTURE IS KMP-2'S OWN, not invented for the test (R171):
+
+    2026-10-19T22:15:28.694Z  is  00:15 on 2026-10-20 in Paris
+
+That is the entry the S9 produced. A rule computing today in UTC would read 19
+October, call the 20th the future, and REFUSE THE VERY ENTRY THAT FOUND THE
+DEFECT - every night, for the two hours a day the zones disagree.
+
+BOTH SIDES OF THAT BOUNDARY ARE ASSERTED at the same pinned instant:
+    2026-10-20 at 00:15 Paris   ACCEPTED   (today for the reader)
+    2026-10-21 at 00:15 Paris   REFUSED    (genuinely tomorrow)
+The second exists so that a rule which simply added a day of slack everywhere
+cannot pass the first.
+
+--------------------------------------------------------------------------------
+R412 - BOTH DIRECTIONS, AND THE ACCEPTED HALF IS THE ONE THAT MATTERS
+--------------------------------------------------------------------------------
+A rule that refused everything would pass the rejection tests perfectly (R196).
+
+  REFUSED
+    two days ahead of now (future in every zone on earth)
+    one future item inside an otherwise valid batch - whole batch refused,
+      and prisma.entry.count asserted 0, so a refusal that still wrote
+      would fail
+    2026-10-21 at the pinned 00:15-Paris instant
+
+  ACCEPTED
+    today in Paris
+    yesterday
+    a backfill eight days old - AND STILL FLAGGED LATE, asserted with
+      isLate on the stored row, so this rule cannot be mistaken for a
+      change to the backfill threshold
+    2026-10-20 at the pinned 00:15-Paris instant
+
+ALL THROUGH THE ROUTE HANDLER (R204). The rule sits between the schema and the
+write; a test of either alone would not see it.
+
+--------------------------------------------------------------------------------
+R413 - late.ts IS NOT PATCHED, AND THE LINK IS GUARDED
+--------------------------------------------------------------------------------
+NOTHING IN late.ts CHANGED except a comment. The function answers "how long
+AFTER a day was it recorded", which is the only question SPEC 11.3 asks, and a
+day that has not happened is not a late one - it is not a recordable one. A
+defensive branch there would be a second rule in a second place (R206) and
+would make the real one look optional, which is how it would come to be
+removed.
+
+THE COMMENT names R410, states that the negative case is unreachable, and tells
+a reader who thinks it looks like a bug exactly where to check.
+
+THE TEST IS A SOURCE SCAN, deliberately, and it was ABLATED to prove it bites:
+with `refuse('future_day'` renamed in the route, late.test.ts failed -
+
+    x is unreachable because the write path refuses it - and fails here if
+      that stops being true
+    AssertionError: expected '// web/app/api/v1/entries/route.ts...' to
+      contain 'refuse(\'future_day\''
+
+Restored; 10 passed. What is unguarded without it is not the BEHAVIOUR - that
+is proven through the route handler where it lives - but the LINK: delete the
+rule from the route and that suite's tests go with it, leaving this module's
+negative case reachable and nothing saying so.
+
+EXISTING ROWS, QUERIED BEFORE AND AFTER:
+
+    select count(*) from "Entry" where "dayDate" > current_date;
+      local dev database:  1
+
+That one row is KMP-2's own test entry, 2026-10-20 written on 2026-10-19. It is
+the only future-dated row anywhere this session can see.
+
+  PRODUCTION IS NOT VISIBLE FROM HERE and no backfill was attempted (out of
+  scope, and correctly so). RECOMMENDATION: run the same query against
+  production before assuming it is zero. If any exist, they are almost
+  certainly the same shape - a device clock ahead of the server - and the
+  honest remedy is NOT to delete them: a recorded day is the reader's, and the
+  product's whole argument is that it does not quietly change the record. The
+  question to answer first is how many, and whether any is flagged on time in
+  a document that has already been exported.
+
+--------------------------------------------------------------------------------
+A SECOND SITE, FOUND WHILE READING THE PRECEDENT (R267)
+--------------------------------------------------------------------------------
+THE DOSSIER ROUTE'S future_year HAS THE SAME PARIS/UTC DEFECT, one unit
+coarser:
+
+    app/api/v1/dossier/route.ts:89
+    if (query.year > new Date().getUTCFullYear()) {
+      return refuse('future_year', AUTH_API_COPY.invalidYear);
+    }
+
+At 00:30 Paris on 1 January, UTC still reads 31 December of the previous year,
+so a request for the year that has just started would be refused as the future.
+The Android client asks for the current year on open (KMP-2's device log shows
+GET /api/v1/dossier?year=2026 and ?year=2025), so this is reachable - narrowly,
+for two hours, once a year, on the one day somebody might well open the app to
+look at the year that just ended.
+
+NOT FIXED HERE. This task's own prompt scoped that route out as "already
+works", which was written before this was found. Changing scope mid-task is
+what the discipline forbids, and the fix is one line plus a test, which is a
+task rather than an aside.
+
+IT IS RECORDED RATHER THAN MENTIONED because a finding that names a second site
+is not closed until that site is checked (R267), and REPORT-FW31's own
+nine-pattern finding is what that ruling is made of.
+
+--------------------------------------------------------------------------------
+PARKED
+--------------------------------------------------------------------------------
+PARK-F1  The dossier route's future_year, above. One line plus a test.
+PARK-F2  The future-dated rows question for production. The query is in R413.
+PARK-F3  THE RULE IS NOT ENFORCED IN THE DATABASE, only in the route. R196 says
+         an invariant SPEC states about the data is enforced where the database
+         can express it, so that the rule survives a writer who does not know
+         it exists - and this product already has other writers (the seed, a
+         migration, a future admin path). A CHECK constraint cannot express
+         "not after today" in PostgreSQL, because it is not immutable, so this
+         is not a simple omission - it would need a trigger. Recorded as a
+         decision with its reason rather than left silent.
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+1. A SCRATCH DATABASE, fw_future_day_scratch, was created, migrated, used and
+   dropped. tests/db empties the tables it owns, and the dev database holds
+   rows this session did not create (R334).
+
+2. R1(c) WAS INHERITED, NOT RE-RUN. Stated above rather than claimed.
+
+3. THE FIRST RED RUN WAS MISREAD-ADJACENT and is reported in full rather than
+   quietly fixed. Two tests failing on an expired token would have been
+   recorded as proof of the defect.
+
+--------------------------------------------------------------------------------
+QUESTIONS
+--------------------------------------------------------------------------------
+Q1 PARK-F1, the dossier route. Same class, one line. Fold into
+   FW-SELECTOR-PACKAGE's session, or its own?
+Q2 PARK-F3: is a trigger wanted for the database-level half of R196, or is the
+   route rule accepted as the enforcement point? The client already refuses
+   these too, so the route is the second of three layers rather than the only
+   one.
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+GATE:CHANGED   exit 0. Printed selection, pasted as R132 requires:
+
+                 suites: typecheck, lint, test, build, test:e2e,
+                         test:visual, test:db, test:late
+
+                 typecheck   exit 0
+                 lint        exit 0
+                 test        3276 passed
+                 build       exit 0
+                 test:e2e     338 passed
+                 test:visual  111 passed
+                 test:db      668 passed
+                 test:late     10 passed
+
+               test:visual passed with NO baseline regenerated, which is the
+               expected result: this change adds a refusal on a write path and
+               alters no page (R135).
+
+GATE:CLONE     run AFTER the commit, on the committed tip. The ordering is
+               stated because the preceding session got it wrong: gate:clone
+               clones HEAD, so run against a staged-but-uncommitted change it
+               tests the parent and reports a pass that means nothing (R182).
+               Result in the commit that carries the push.

@@ -114,6 +114,22 @@ export const AUTH_API_COPY = {
     `champs en cause accompagne cette réponse.`,
 
   /**
+   * A day that has not happened yet. FW-FUTURE-DAY, R410.
+   *
+   * IT NAMES THE RULE AND NO DATE (R153). An example day in an error message
+   * is stale the moment the clock passes it, and the reader already knows
+   * which day they sent.
+   *
+   * IT IS NOT AN ACCUSATION. The ordinary way to meet this is a phone whose
+   * clock is ahead, or an app offering a day it should not - neither of which
+   * is the reader doing something wrong, so the sentence explains the rule
+   * rather than scolding.
+   */
+  futureDay:
+    `Cette journée n${APOS}a pas encore eu lieu${n(':')} une journée ne peut être ` +
+    `enregistrée qu${APOS}à partir du jour même.`,
+
+  /**
    * Two items for one day in one batch, or one client id used twice.
    *
    * IT NAMES THE CLIENT'S MISTAKE RATHER THAN OUR FAILURE. « Latest server

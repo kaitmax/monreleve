@@ -32,6 +32,7 @@ import { findLocationKeys } from '@/lib/entries/no-coordinates';
 import { writeEntries } from '@/lib/entries/write';
 import { parseReadQuery } from '@/lib/entries/read-query';
 import { readYear } from '@/lib/entries/read';
+import { parisDayOf } from '@/lib/entries/day';
 
 /**
  * NEVER CACHED, AND SAID TWICE ON PURPOSE.
@@ -105,6 +106,53 @@ export async function POST(request: Request): Promise<NextResponse> {
       },
       { status: 400 },
     );
+  }
+
+  // ==========================================================================
+  // A DAY THAT HAS NOT HAPPENED IS ITS OWN REFUSAL (R410, and R198 one
+  // endpoint over, which is where this reasoning already lives)
+  // ==========================================================================
+  //
+  // The schema proves `dayDate` is a REAL calendar day. It has no upper
+  // bound, so tomorrow parses perfectly - and KMP-2 found what happens next:
+  // late.ts measures how long AFTER a day it was recorded, so for a day that
+  // has not started the gap is NEGATIVE, which is not greater than seven
+  // days, so the entry is classified ON TIME. The green marker, on a day
+  // nobody has worked.
+  //
+  // SPEC 11.2 ALREADY SAYS WHAT A FUTURE DAY IS, and it is none of the three
+  // qualities: the calendar bar is green, amber, grey, and NO BAR for
+  // weekends, holidays and future days. This implements that, rather than
+  // inventing a rule.
+  //
+  // THE CLIENT ALREADY REFUSES THESE (CalendarModel: "in the engine's period
+  // and not in the future: the only days a tap may record"). That is exactly
+  // why the server needs it too - the device's clock is not the authority
+  // here, any more than it is for `firstRecordedAt`.
+  //
+  // TODAY IS COMPUTED IN PARIS (R411). In UTC this rule would refuse a
+  // perfectly ordinary entry every night: at 00:15 Paris it is still
+  // yesterday in UTC, so the day the reader is actually in would read as the
+  // future. `parisDayOf` is the one home for that question (R206) - the same
+  // module the reminder job uses, for the same reason.
+  //
+  // STRING COMPARISON, deliberately: both sides are YYYY-MM-DD, which sorts
+  // lexicographically as it sorts chronologically. Parsing either into a
+  // Date to compare them would reintroduce an instant, and an instant is
+  // what has a timezone.
+  const today = parisDayOf(new Date());
+  const ahead = parsed.data.entries.filter((entry) => entry.dayDate > today);
+
+  if (ahead.length > 0) {
+    // THE COUNT AND THE SERVER'S OWN DAY, never the reader's days. The log
+    // is for whoever is wondering why a client is being refused, and it does
+    // not need a record of when anybody worked.
+    console.warn(`[entries] payload refused: ${ahead.length} day(s) after ${today}`);
+
+    // REFUSED WHOLE, matching how the schema treats a duplicate pair inside
+    // one batch: a partly-written batch is the state a client cannot
+    // reconcile, and this is a client bug rather than a per-row condition.
+    return refuse('future_day', AUTH_API_COPY.futureDay);
   }
 
   const result = await writeEntries(auth.userId, parsed.data.entries);
