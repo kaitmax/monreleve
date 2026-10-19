@@ -77,6 +77,30 @@ const LATE_BACKFILL_MS = LATE_BACKFILL_DAYS * MS_PER_DAY;
  * "beyond 7 days", and a boundary written as `>=` would flag a day recorded
  * exactly a week later - which is the ordinary case of somebody catching up on
  * the following Monday.
+ *
+ * ============================================================================
+ * THE ARITHMETIC GOES NEGATIVE FOR A DAY THAT HAS NOT HAPPENED, AND THAT IS
+ * NOT FIXED HERE. IT IS FIXED AT THE DOOR (R410/R413).
+ * ============================================================================
+ *
+ * `firstRecordedAt - startOfStoredDay(dayDate)` is NEGATIVE when the day has
+ * not started, and a negative number is not greater than seven days - so this
+ * returns false and the entry reads as ON TIME. The green marker, on a day
+ * nobody has worked. KMP-2 produced exactly one: a phone at 00:15 Paris wrote
+ * 2026-10-20 while the server clock said 2026-10-19.
+ *
+ * NOTHING IS WRONG WITH THE SUBTRACTION. This function answers "how long AFTER
+ * a day was it recorded", which is the only question SPEC 11.3 asks, and a day
+ * that has not happened is not a late one - it is not a recordable one.
+ *
+ * SO THE WRITE PATH REFUSES IT (`future_day`, app/api/v1/entries/route.ts),
+ * and this input cannot arrive. A defensive branch here would be a second rule
+ * in a second place (R206) and would make the real one look optional - which
+ * is how it would come to be removed.
+ *
+ * IF YOU ARE HERE BECAUSE THE NEGATIVE CASE LOOKS LIKE A BUG: it is reachable
+ * only if that refusal has gone. tests/unit/entries/late.test.ts asserts the
+ * refusal is still in the route, and will fail before this does.
  */
 export function isLate(dayDate: Date, firstRecordedAt: Date): boolean {
   return firstRecordedAt.getTime() - startOfStoredDay(dayDate) > LATE_BACKFILL_MS;

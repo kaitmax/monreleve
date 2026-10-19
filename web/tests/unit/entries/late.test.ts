@@ -3,6 +3,8 @@
 // SPEC 11.3's backfill threshold, in its one home. FW24 increment 4.
 
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { LATE_BACKFILL_DAYS, isLate, latenessInDays } from '@/lib/entries/late';
 
 const day = (iso: string): Date => new Date(`${iso}T00:00:00.000Z`);
@@ -81,5 +83,38 @@ describe('how late, for copy that wants to say it', () => {
         expect(flagged, `${days} days old and not flagged`).toBe(true);
       }
     }
+  });
+});
+
+describe('a day that has not happened (R413)', () => {
+  // THIS SUITE DOES NOT ASSERT A FIX. It records that the arithmetic goes
+  // negative, and that the input is kept away from it at the door - so that a
+  // later reader who notices the negative case does not "repair" it here and
+  // quietly remove the need for the server rule.
+
+  // KMP-2's own fixture: a phone at 00:15 Paris wrote 2026-10-20 while the
+  // server clock read 2026-10-19T14:30Z. Not invented for this test (R171).
+  const notYetHappened = day('2026-10-20');
+  const serverSawItFirst = at('2026-10-19T14:30:18.246Z');
+
+  it('reads as on time, which is why it must never arrive', () => {
+    expect(isLate(notYetHappened, serverSawItFirst)).toBe(false);
+    expect(latenessInDays(notYetHappened, serverSawItFirst)).toBeLessThan(0);
+  });
+
+  it('is unreachable because the write path refuses it - and fails here if that stops being true', () => {
+    // A SOURCE SCAN, deliberately, and not a second behavioural test. The
+    // behaviour is proven where it lives, through the route handler, in
+    // tests/db/entries-route.test.ts (R204). What is unguarded without this is
+    // the LINK: delete the rule from the route and that suite's own tests go
+    // with it, leaving this module's negative case reachable and nothing
+    // saying so.
+    const route = readFileSync(
+      join(process.cwd(), 'app/api/v1/entries/route.ts'),
+      'utf8',
+    );
+
+    expect(route).toContain("refuse('future_day'");
+    expect(route).toContain('parisDayOf');
   });
 });

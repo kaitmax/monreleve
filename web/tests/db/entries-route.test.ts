@@ -13,11 +13,12 @@
 // route that did not exist for three increments, and every module test passed
 // throughout.
 
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { prisma } from '@/lib/db/client';
 import { issueTokenPair } from '@/lib/auth/tokens';
 import { MAX_BATCH_BODY_BYTES } from '@/lib/entries/schema';
 import { ENTRY_READ_FIELDS } from '@/lib/entries/read';
+import { isLate } from '@/lib/entries/late';
 import { POST } from '@/app/api/v1/entries/route';
 
 const ORIGIN = 'https://monreleve.ch';
@@ -806,5 +807,168 @@ describe('R219: a replay is recognised by the TRAIL, not by the current row', ()
     expect(replay.written).toBe(0);
     expect(replay.duplicates).toBe(1);
     expect(await prisma.entry.count({ where: { userId } })).toBe(1);
+  });
+});
+
+// ============================================================================
+// FW-FUTURE-DAY (R410-R412): A DAY THAT HAS NOT HAPPENED IS REFUSED
+// ============================================================================
+//
+// KMP-2's device check moved a phone to 00:15 Paris on 20 October to test the
+// day boundary. The boundary was right; the SERVER took the entry anyway, and
+// at that moment 2026-10-20 was tomorrow by the server's own clock. It was
+// then classified ON TIME - the green marker - because late.ts measures how
+// long AFTER a day it was recorded, and for a day that has not started that
+// difference is negative.
+//
+// SPEC 11.2 already says what a future day is, and it is not on time: the
+// record-quality bar is green, amber, grey, and NO BAR for weekends, holidays
+// and future days. A future day carries no record quality at all.
+//
+// R198 ALREADY RULED THIS, one endpoint over: "a year that has not happened is
+// its own refusal" is why the dossier route refuses `future_year`. This is the
+// same ruling applied to the field where the record is actually created.
+//
+// THROUGH THE ROUTE HANDLER (R204), because that is what a client calls. The
+// rule sits between the schema and the write, and a test of either alone would
+// not see it.
+
+/** Two days ahead of now, which is in the future in every zone on earth. */
+function wellAfterToday(): string {
+  return new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+/**
+ * Today in Paris, computed from the platform rather than from the code under
+ * test - a test that asked the implementation what today is would agree with
+ * it however wrong it was (R171).
+ */
+function todayInParis(at: Date = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Paris',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(at);
+}
+
+function shiftDay(day: string, by: number): string {
+  const date = new Date(`${day}T00:00:00.000Z`);
+
+  date.setUTCDate(date.getUTCDate() + by);
+
+  return date.toISOString().slice(0, 10);
+}
+
+describe('a day that has not happened (R410)', () => {
+  it('refuses it, and names what is actually the matter', async () => {
+    const response = await POST(post({ entries: [item({ dayDate: wellAfterToday() })] }));
+
+    expect(response.status).toBe(400);
+
+    // NOT `invalid_payload`. The dossier route's own comment gives the reason:
+    // a generic code "would send the caller to check their parser; this names
+    // what is actually the matter."
+    expect(await json(response)).toMatchObject({ status: 'error', code: 'future_day' });
+
+    // AND NOTHING WAS WRITTEN. A refusal that still stored the row would be
+    // the worst of both.
+    expect(await prisma.entry.count({ where: { userId } })).toBe(0);
+  });
+
+  it('refuses the whole batch when one item is in the future, writing none of it', async () => {
+    // ALL OR NOTHING, matching how the schema already treats a duplicate pair
+    // inside one batch: a partially-written batch is the state a client cannot
+    // reconcile.
+    const response = await POST(
+      post({ entries: [item(), item({ dayDate: wellAfterToday() })] }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(await json(response)).toMatchObject({ code: 'future_day' });
+    expect(await prisma.entry.count({ where: { userId } })).toBe(0);
+  });
+});
+
+describe('the days that must still be accepted (R412)', () => {
+  // THE REJECTION HALF PROVES THE RULE IS STRICT, NEVER THAT IT IS RIGHT
+  // (R196). A rule that refused everything would pass the two tests above
+  // perfectly.
+
+  it('accepts today', async () => {
+    const response = await POST(post({ entries: [item({ dayDate: todayInParis() })] }));
+
+    expect(response.status).toBe(200);
+    expect(await prisma.entry.count({ where: { userId } })).toBe(1);
+  });
+
+  it('accepts yesterday', async () => {
+    const response = await POST(
+      post({ entries: [item({ dayDate: shiftDay(todayInParis(), -1) })] }),
+    );
+
+    expect(response.status).toBe(200);
+  });
+
+  it('accepts a backfill eight days old, and it is still late (late.ts untouched)', async () => {
+    const dayDate = shiftDay(todayInParis(), -8);
+
+    expect((await POST(post({ entries: [item({ dayDate })] }))).status).toBe(200);
+
+    const row = await prisma.entry.findFirstOrThrow({ where: { userId } });
+
+    // R413: the backfill flag keeps working exactly as before. This rule is
+    // about days that have not happened, not about how far back one may reach.
+    expect(isLate(row.dayDate, row.firstRecordedAt)).toBe(true);
+  });
+});
+
+describe('the Paris boundary (R411) - the case that discovered the defect', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('accepts today-in-Paris while UTC still says yesterday', async () => {
+    // 2026-10-19T22:15Z IS 00:15 ON THE 20th IN PARIS. This is exactly the
+    // instant KMP-2's device run produced, and it is an ordinary moment to
+    // record the day you are in.
+    //
+    // A RULE THAT COMPUTED TODAY IN UTC WOULD REFUSE THIS - it would read 19
+    // October and call the 20th the future - which would break the very case
+    // that found the defect, every night, for the two hours a day the zones
+    // disagree. `toFake: ['Date']` only: faking timers wholesale would stall
+    // the database driver.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-19T22:15:28.694Z'));
+
+    expect(todayInParis()).toBe('2026-10-20');
+
+
+    // THE TOKEN IS ISSUED AFTER THE CLOCK MOVES, and the first run of this
+    // test is why it says so. beforeEach issues one at the real time; jumping
+    // the clock seven hours forward put it past its fifteen-minute life, so
+    // the route answered 401 and the test failed for a reason with nothing to
+    // do with the rule under test. A red run read without checking WHY it was
+    // red would have been recorded as proof of the defect (R180).
+    const fresh = (await issueTokenPair(userId)).accessToken;
+
+    const response = await POST(post({ entries: [item({ dayDate: '2026-10-20' })] }, fresh));
+
+    expect(response.status).toBe(200);
+  });
+
+  it('still refuses the genuine next day at that same instant', async () => {
+    // The other side of the same boundary: 00:15 Paris on the 20th does NOT
+    // make the 21st recordable. Without this, a rule that simply added a day
+    // of slack everywhere would pass the test above.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-19T22:15:28.694Z'));
+
+    const fresh = (await issueTokenPair(userId)).accessToken;
+
+    const response = await POST(post({ entries: [item({ dayDate: '2026-10-21' })] }, fresh));
+
+    expect(response.status).toBe(400);
+    expect(await json(response)).toMatchObject({ code: 'future_day' });
   });
 });
