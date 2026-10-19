@@ -728,8 +728,17 @@ PUSH PROOF
            MigrationSqlVerbatimTest ran INSIDE the gate: tests=2 skipped=0
   1df9a4f  BUILD SUCCESSFUL in 46s      GATE_EXIT=0   227 tasks   0 failures
 
+and once more on the FINAL TIP, after the report commit:
+
+  0da08ed  BUILD SUCCESSFUL in 2m 18s   GATE_EXIT=0   227 tasks   0 failures
+
 227 actionable tasks against main's 218: the difference is
 compileDebugAndroidTestKotlin and its upstream.
+
+0da08ed IS THE LAST COMMIT CARRYING CODE. Anything after it in this branch
+changes REPORT-KMP-2.txt alone, so the gate above remains the claim about every
+line of code on this branch - stated so the absence of a gate line against a
+later report-only commit reads as a decision rather than an omission (R133).
 
 ON-DEVICE, SM-G960F Android 10:
   MonReleveMigrationTest   tests="9" failures="0" errors="0" skipped="0"
