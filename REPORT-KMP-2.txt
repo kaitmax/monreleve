@@ -623,13 +623,27 @@ PARK-K4  The KGP/AGP compatibility warning is ALREADY LIVE today, before any bum
 PARK-K5  cmdline-tools, from the stop report's P3 - an operator click in Android
          Studio's SDK Manager. Not needed once the S9 is attached, still worth
          having for unattended device work.
-PARK-K6  A BACK-DATED ENTRY DID NOT SYNC PROMPTLY. The 16 October morning was
-         recorded on the device and is visibly selected in its sheet, but had not
-         reached the server minutes later, while same-day entries posted within
-         seconds. It may be correct - a scheduler batching non-urgent work - and
-         it may not. It is an OBSERVATION, not a diagnosis: nothing here
-         establishes which, and the sync engine is KMP-3's territory. Worth one
-         look before KMP-3 moves it.
+PARK-K6  A BACK-DATED ENTRY NEVER REACHED THE SERVER. The 16 October morning was
+         recorded on the device and is visibly selected in its sheet. It is NOT
+         in the server database. Checked again after the drive ended, so this is
+         a fact rather than the "hadn't synced yet when I looked" it started as:
+
+             dayDate    | portion | kind | firstRecordedAt
+             2026-10-19 | AM      | HOME | 2026-10-19 14:16:41.532
+             2026-10-19 | PM      | CH   | 2026-10-19 14:18:30.74
+             2026-10-20 | AM      | HOME | 2026-10-19 14:30:18.246
+             (3 rows - no 2026-10-16)
+
+         It had roughly FIFTEEN MINUTES with a reachable server, while the three
+         same-day entries each posted within seconds of the tap.
+
+         STILL NOT A DIAGNOSIS. It may be correct - a scheduler that batches
+         non-urgent work, or a constraint this drive did not satisfy (the app
+         spent much of that time in the foreground, which is usually the
+         favourable case, not the unfavourable one). Nothing here establishes
+         which, and the sync engine is KMP-3's territory. What has changed is
+         that the next session inherits a reproducible fact instead of a
+         suspicion: record a back-dated day, wait, and see whether it arrives.
 PARK-K7  THE GENERATED PRISMA CLIENT GOES STALE SILENTLY on a long-lived
          checkout. The symptom is a 500 whose message names a Prisma model as
          `undefined`, which reads like a schema or migration problem and is
@@ -669,28 +683,63 @@ DEVIATIONS
    not this session's to build in (R392).
 
 6. scripts/uidrive.mjs WAS COPIED into this worktree from the main checkout, where
-   it is untracked. Copied, never moved; the original untouched (R334). Left
-   untracked here too, matching how it lives in main.
+   it is untracked. Copied, never moved; the original untouched (R334).
+   NOW COMMITTED, on the operator's instruction: it is what made R374 and R385
+   runnable at all, and the next device task should not rewrite it. Its header
+   was rewritten first - it still described itself as untracked, and the
+   hard-coded serial now says why it has an ANDROID_SERIAL override (a script
+   that silently drove whichever device adb listed first would be R169's defect
+   on a phone). Reviewed for secrets, absolute user paths and personal data
+   before committing: none. No gate task lints android/scripts/*.mjs.
 
-7. `pnpm prisma generate` WAS RUN in the main checkout. Not a code change - it
+7. THE SCREENSHOT DIRECTORIES ARE NOW GITIGNORED, and the pattern covers more
+   than the one named. The operator named android/.an-auto-shots/; SEVENTEEN
+   such directories had accumulated untracked, so `/android/.*-shots/` closes
+   the class rather than one instance (R267). Widened deliberately, not quietly:
+   a `git status` that opens with a screen of noise is a status nobody reads,
+   and that is how FW-VERIFY deleted an operator file it had misread as its own.
+   android/.kotlin/ - Kotlin's incremental build cache - went in beside it.
+
+   THE FIRST CHECK OF THAT PATTERN WAS A FALSE NEGATIVE, worth recording because
+   it is this session's recurring class. `git check-ignore android/.an10-shots`
+   said NOT ignored; the pattern was right and the TEST was wrong - a
+   trailing-slash pattern matches directories only, and those siblings do not
+   exist in this worktree, so git could not know they were directories. With a
+   trailing slash on the queried path all four match. A check whose subject does
+   not exist answers a different question than the one asked (R391).
+
+8. THE PROVEN ROOM WIRING WAS RESCUED OUT OF %TEMP% into
+   docs/kmp/room-shared-wiring.kts.txt, on the operator's instruction. It is
+   .txt so Gradle never evaluates it. KMP-2 proved that configuration works and
+   could not commit it - a change that reds the gate is not committed (R132) -
+   so its only copy was in a scratchpad a cleanup task can wipe. The file
+   carries what was proven, what was not, and why no dependency pin fixes it,
+   so the next session starts from evidence rather than from the diff.
+
+9. relay/KMP-UP.txt's R403 NOW POINTS AT THAT FILE, on the operator's
+   instruction. It is an untracked operator file in the main checkout; edited
+   there because that is where it lives, never moved or removed (R334).
+
+10. `pnpm prisma generate` WAS RUN in the main checkout. Not a code change - it
    regenerates a build artefact - but it changed a shared directory, so it is
    stated. Without it the sign-in code path 500s on this machine, which is what
    blocked R385. See R399 for the diagnosis.
 
-8. FOUR DEVICE SETTINGS WERE CHANGED AND RESTORED: persist.sys.timezone,
+11. FOUR DEVICE SETTINGS WERE CHANGED AND RESTORED: persist.sys.timezone,
    auto_time, auto_time_zone, accelerometer_rotation. Every original was written
    to disk BEFORE the first change (scratchpad/DEVICE-RESTORE-RECORD.txt), so the
    phone could be put back even if this session had died mid-drive. All four were
    restored and verified field by field; the device clock matches the host again.
 
-9. A TEST EMAIL, kmp2@example.ch, WAS USED FOR SIGN-IN. Never the operator's own
+12. A TEST EMAIL, kmp2@example.ch, WAS USED FOR SIGN-IN. Never the operator's own
    address, which has no business in a test account on a dev database.
 
-10. THE SECOND DAY FOR R385 (ven 16 oct) WAS RECORDED ON THE DEVICE BUT HAD NOT
-   SYNCED when last checked. R385 says "records two days, syncs" - two days were
-   recorded, and three entries synced (19 AM, 19 PM, 20 AM), so the claim holds
-   on entries while one back-dated day's sync is unconfirmed. Stated at the
-   granularity it was actually observed.
+13. THE SECOND DAY FOR R385 (ven 16 oct) WAS RECORDED ON THE DEVICE AND NEVER
+   REACHED THE SERVER. R385 says "records two days, syncs": two days were
+   recorded and THREE ENTRIES SYNCED (19 AM, 19 PM, 20 AM), so the claim holds
+   on entries, while the one back-dated day did not arrive at all. Confirmed
+   after the drive ended rather than left as "not yet" - see PARK-K6, which
+   carries the query and what it does and does not establish.
 
 ================================================================================
 QUESTIONS
