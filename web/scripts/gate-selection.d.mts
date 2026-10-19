@@ -98,6 +98,15 @@ export declare const LATE_SUITES: readonly string[];
  * A file that determines what runs, or whether it runs, belongs to a suite.
  */
 export declare const CONTAINER_SUITES: readonly string[];
+/**
+ * Every suite the selector can emit. R414.
+ *
+ * Declared here because R185 requires it: an export this file does not know
+ * about is a compile error on correct code, landing on whoever adds the NEXT
+ * export rather than whoever forgot this one. declaration-parity.test.ts
+ * caught this one before it could do that.
+ */
+export declare const EVERY_SUITE: readonly string[];
 export declare const SELECTOR_PATTERNS: readonly SelectorPattern[];
 export declare const SUITE_COUNTS: Readonly<Record<string, RegExp>>;
 

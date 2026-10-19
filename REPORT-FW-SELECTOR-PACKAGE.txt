@@ -1,0 +1,387 @@
+================================================================================
+REPORT-FW-SELECTOR-PACKAGE
+THE FILE THAT DEFINES EVERY SUITE NOW BELONGS TO EVERY SUITE
+================================================================================
+
+TASK    relay/FW-SELECTOR-PACKAGE.txt, rulings R414-R416.
+BASE    54541c6 (origin/main)
+BRANCH  fw-selector-package, worktree C:/wt/fw-selector (R349), lock held
+
+--------------------------------------------------------------------------------
+STATUS (R391)
+--------------------------------------------------------------------------------
+COMPLETE. gate:changed GREEN on this change, run in this session.
+
+ONE THING THIS SESSION DID NOT MAKE GREEN, and it is not this change's:
+test:container:e2e is RED on main and was red before this task. It is reported
+in full under R415 and parked as PARK-S3. This change is what made it
+SELECTABLE, which is how it was found.
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+web/package.json appeared ZERO times in scripts/gate-selection.mjs. It now maps
+to every suite, and so do three more files that were found on the way.
+
+THE TASK WAS LARGER THAN ITS BRIEF, in exactly the way R416 said it would be.
+The ruling named two files. Teaching the census to see data files surfaced
+EIGHT unclassified root configs, every one of them previously selecting nothing
+beyond the base chain. Six needed classifying, and one of those turned out to
+configure a check that gate:changed could not select at all.
+
+--------------------------------------------------------------------------------
+R273 / R1
+--------------------------------------------------------------------------------
+R273. REPORT-FW-PRISMA-GENERATE.txt, which carries the live instance: a commit
+    that changed what `pnpm test:db` RUNS, and did not run it.
+
+R1. (a) origin/main contains the FW-PRISMA-GENERATE commit - base 54541c6 IS
+        that merge.
+    (b) the clean-tree guard is live - staging preceded every gate run, because
+        the guard refuses otherwise.
+    (c) gate:changed green on origin/main's HEAD - inherited from the
+        FW-PRISMA-GENERATE session on this same base. Stated as inherited
+        rather than claimed as this session's work (R391).
+
+--------------------------------------------------------------------------------
+THE RED RUNS - ALL THREE CAME FROM GUARDS THAT ALREADY EXISTED
+--------------------------------------------------------------------------------
+No new test was needed to go red. The repository's own guards found every step,
+which is worth recording as evidence that they work rather than as a convenience.
+
+RED 1 - R247's test, "a config selects the suite it configures". Adding
+package.json and pnpm-lock.yaml to ROOT_TOOL_CONFIGS and nothing else:
+
+    + "package.json does not select test:e2e",
+    + "package.json does not select test:visual",
+    + "package.json does not select test:runtime",
+    + "package.json does not select test:db",
+    + "package.json does not select test:late",
+    + "package.json does not select test:container",
+    + "package.json does not select test:container:e2e",
+    ... and the same ten for pnpm-lock.yaml
+
+RED 2 - the closed-world classification census, once widened (R416):
+
+    + "identity.json",
+    + "lighthouserc.json",
+    + "pnpm-workspace.yaml",
+    + "tsconfig.json",
+    + "tsconfig.parity.json",
+    + "tsconfig.scripts.json",
+
+RED 3 - declaration-parity.test.ts, R185's own mechanism, on adding a new
+export without declaring it:
+
+    scripts/gate-selection.mjs exports these and scripts/gate-selection.d.mts
+    does not declare them: expected [ 'EVERY_SUITE' ] to deeply equal []
+
+  R185 EXISTS FOR EXACTLY THIS and said so: "An omitted export is not a type
+  that disagrees - it is a compile error on correct code, landing on whoever
+  adds the NEXT export rather than whoever forgot the last one." It caught mine
+  before it could do that.
+
+A FOURTH GUARD FIRED and is reported under R416: the null-exemption test, which
+refuses a second exemption that has not been argued.
+
+--------------------------------------------------------------------------------
+R414 - BOTH FILES MAPPED, AND THE MAP ASSERTED
+--------------------------------------------------------------------------------
+    'package.json': EVERY_SUITE,
+    'pnpm-lock.yaml': EVERY_SUITE,
+
+plus a selector pattern, because the map is a DECLARATION and the patterns are
+the MECHANISM - R247's test is what ties them together, and it was the thing
+that went red until the pattern existed.
+
+    selectSuites(['web/package.json'])
+      -> typecheck, lint, test, build, test:e2e, test:visual, test:runtime,
+         test:db, test:late, test:container, test:container:e2e,
+         test:container:scheduler, test:container:restore,
+         test:container:write, parity:check
+
+EVERY_SUITE IS WRITTEN OUT RATHER THAN DERIVED, and that is a constraint rather
+than a preference: ROOT_TOOL_CONFIGS needs it, the group constants are declared
+after that point, and a const cannot be read before it is initialised. A list
+that cannot be derived has to be CHECKED, so three tests assert it:
+
+    - it contains every suite any selector pattern can emit
+    - it contains every suite named by a group constant
+    - it names nothing `pnpm` cannot run
+
+  THE THIRD IS NOT SYMMETRY FOR ITS OWN SAKE. The runner executes
+  `pnpm ${suite}`, so a name in this list that is not a script would fail the
+  whole chain on the day somebody bumps a dependency - the least convenient
+  moment for the selector to be wrong about itself.
+
+  ABLATED TO PROVE THEY BITE: removing 'test:runtime' from EVERY_SUITE failed
+  the first two by name. Restored.
+
+pnpm-lock.yaml IS NOT AN AFTERTHOUGHT. It went in with package.json rather than
+after it, because it is the other file that decides what every suite runs
+against and leaving it for later is the half-applied finding R267 forbids.
+
+--------------------------------------------------------------------------------
+R415 - THE COST, MEASURED, BECAUSE THAT IS THE RULING'S OWN CONDITION
+--------------------------------------------------------------------------------
+THE RULING: both files map to every suite. No cleverness, no reading of which
+keys moved. The operator's reasoning, recorded in the code beside the list:
+
+  - A dependency bump can break anything, and NOTHING IN THE DIFF TELLS YOU
+    WHAT. A selector that tried to be clever - full run for a scripts change,
+    something narrower for dependencies - is exactly how the next uncovered
+    file gets through.
+  - They are RARE, so the full matrix on each one costs little in total.
+  - The other side is NOT KNOWING, which every gate here exists to prevent.
+
+AND THE CONDITION ATTACHED TO IT: revisit WITH MEASUREMENTS if bumps ever become
+frequent enough to hurt. Without a number that condition has nothing to revisit,
+so here is the number.
+
+THE RUN: a real package.json change (its `version` field, reverted afterwards)
+staged alongside this task's own files, timed end to end.
+
+    selected   15 suites - typecheck, lint, test, build, test:e2e,
+               test:visual, test:runtime, test:db, test:late, test:container,
+               test:container:e2e, test:container:scheduler,
+               test:container:restore, test:container:write, parity:check
+
+    ELAPSED    2580 seconds - 43 MINUTES
+    REACHED    11 of 15 suites, then STOPPED
+    EXIT       1
+
+IT DID NOT COMPLETE, and the reason is not this change. It stopped at
+test:container:e2e on a PRE-EXISTING failure - see the section below. So 43
+minutes is a FLOOR rather than the full cost: the three suites after it did not
+run. The honest number to carry forward is "at least 43 minutes, and the image
+build dominates it".
+
+  FOR SCALE, measured separately: test:container:e2e ALONE, with the image
+  already cached, is 418 seconds. The 43 minutes is mostly the first build of
+  the image plus the browser suites, not the container specs.
+
+WHAT THE NUMBER IS FOR. The ruling's condition is "revisit WITH MEASUREMENTS if
+bumps ever become frequent enough to hurt". This is the baseline any argument to
+narrow the rule has to beat. At one or two dependency bumps a month it is
+plainly affordable; at one a day it would not be, and that is the threshold to
+watch rather than a feeling about cost.
+
+WHY THE CLEVER VERSION IS NOT MERELY MORE WORK BUT WRONG, stated in the code so
+the next person does not re-derive it: a script can change what a DIFFERENT
+suite does. db:generate is chained into test:db by FW-PRISMA-GENERATE, and
+gate:changed is itself a script. Key-to-suite is not a function, so a rule that
+read keys would be a worse rule wearing a better one's clothes.
+
+--------------------------------------------------------------------------------
+WHAT THE FIRST FULL RUN FOUND: A SUITE NOBODY WAS RUNNING IS RED
+--------------------------------------------------------------------------------
+THIS IS THE TASK DEMONSTRATING ITSELF. test:container:e2e could not be SELECTED
+by gate:changed before this change. It is not in gate:clone's step list. And
+gate:clone reports "the repository is private and CI_FULL is unset - jobs will
+skip", so CI is not running it either, although .github/workflows/ci.yml:574
+calls it. Three mechanisms, none of them exercising it. It is red.
+
+    1) [chromium] e2e/home.spec.ts:166
+       /api/ready is 200 and ready when the process is not marked as serving
+
+       Error: expect(received).toBeNull()
+       Received: true
+       > 195 |   expect(database?.ok).toBeNull();
+
+    1 failed | 323 passed
+
+THE CAUSE, from the spec's own comment. R355 gives the database check a third
+state: when the process is NOT marked as serving the check is not evaluated and
+reports ok: null, so that a build needing no database is not blocked and a
+check that stopped running cannot read as a pass. On the host that holds. IN
+THE CONTAINER THE PROCESS IS SERVING, so the check IS evaluated and returns
+true. The spec encodes a host assumption and is run unchanged against the
+container.
+
+PROVEN PRE-EXISTING RATHER THAN ASSUMED. This session's work was stashed, the
+tree verified clean at 54541c6, and the suite run again:
+
+    ON_MAIN_EXIT=1, 1 failed | 323 passed, the SAME spec, same line.
+
+Saying "my diff cannot touch /api/ready" would have been true and would not
+have been evidence. Parked as PARK-S3; it is an e2e-context question, not a
+selector one.
+
+TWO THINGS I MISREAD ON THE WAY, recorded because the first would have been a
+confident false alarm:
+
+  THE LOG LOOKS LIKE CHROMIUM IS BROKEN AND IT IS NOT. The build output carries
+  a long "R249: chromium ... is not installable from this archive" block, which
+  is the Dockerfile ECHOING ITS OWN ERROR SCRIPT as docker prints the RUN
+  command. The layer immediately after it reads "#14 CACHED". Nothing failed
+  there. A grep for "error" finds that text on every successful build.
+
+  "ok AUTH_SECRET = the placeholder   exit 1" IS A PASS. It is the container
+  refusal matrix asserting the entrypoint REFUSES bad configuration; exit 1 is
+  the expected result being recorded.
+
+WHY THE CLEVER VERSION IS NOT MERELY MORE WORK BUT WRONG, stated in the code so
+the next person does not re-derive it: a script can change what a DIFFERENT
+suite does. db:generate is chained into test:db by FW-PRISMA-GENERATE, and
+gate:changed is itself a script. Key-to-suite is not a function, so a rule that
+read keys would be a worse rule wearing a better one's clothes.
+
+--------------------------------------------------------------------------------
+R416 - THE CENSUS CLOSES THE CLASS, AND ITS FIRST RUN IS THE EVIDENCE
+--------------------------------------------------------------------------------
+WHAT IT COULD NOT SEE, AND WHY. The census scanned ENTRY_EXTENSIONS - the code
+extensions - plus a two-name list of extensionless files. R251 added that list
+for `Dockerfile`, recording the reason: "the closed-world root census could not
+see a Dockerfile, because it scanned for code extensions and a Dockerfile is not
+code." That closed the INSTANCE. package.json is .json, which is not code
+either, and the CLASS stayed open.
+
+WHAT IT COVERS NOW: .json, .yaml, .yml, .toml, in a list of its own -
+ROOT_CONFIG_EXTENSIONS - deliberately NOT added to ENTRY_EXTENSIONS, because
+that list is also what the import-graph walk follows and a walk that started
+following .json would be a far larger change than widening a census of one
+directory.
+
+WHAT IT STILL DOES NOT SEE, named rather than left silent: the root also holds
+.env, .env.example, .gitignore and two .tsbuildinfo files. None matches those
+extensions. The first two are secrets and a sample of them; the last two are
+generated output; none decides which suite runs. A future root file that is
+none of those and still decides something arrives as a new extension, and the
+list is where it goes - which is the argument R246 made for its own convention
+list, made here against the person writing this one.
+
+ITS FIRST RUN FOUND SIX MORE, all previously selecting the base chain only:
+
+  pnpm-workspace.yaml   -> EVERY SUITE. The same class as the two the ruling
+      named, and FW14 measured it: that file's own header records that an
+      unanswered dependency build script made "every `pnpm run` and every
+      `pnpm exec`" die inside pnpm's dependency-status check - `pnpm typecheck`
+      stopped working and the message was about build scripts. A file that can
+      stop every suite from starting belongs to all of them.
+
+  tsconfig.json         -> EVERY SUITE. Every TypeScript tool resolves through
+      it, which is wider than it first looks: not only typecheck and build but
+      vitest, AND the e2e specs - e2e/application.spec.ts and e2e/guides.spec.ts
+      import through the `@/` alias it defines. Break the alias and nothing
+      compiles anywhere, including the image.
+
+  tsconfig.scripts.json -> ['typecheck']. `typecheck` is literally
+      `tsc --noEmit && tsc -p tsconfig.scripts.json`. A narrow, provable
+      obligation, which is the shape ROOT_TOOL_CONFIGS asks for.
+
+  tsconfig.parity.json  -> ['parity:check'], AND THIS ONE IS THE FINDING.
+      It looked exempt and was not. parity:check runs in `pnpm gate` and in
+      gate:clone's step list - so it is not unused - but gate:changed had no
+      way to SELECT it. Editing this file ran the base chain and the parity
+      check went unrun until push. `null` was the easy answer and a false one:
+      null means the file configures nothing that is run. The answer is a
+      suite (R251), so parity:check is now selectable and joins EVERY_SUITE.
+
+  identity.json         -> ['test']. Read by tests/unit/content/identity.test.ts,
+      and by scripts/lighthouse.mjs which no gate runs - so `test` is the whole
+      obligation rather than a partial one.
+
+  lighthouserc.json     -> null, AND THE GUARD MADE ME ARGUE IT. The
+      null-exemption test pins the exempt list to exactly ['next-env.d.ts'],
+      with the message "Any other exemption needs its own argument." It went
+      red on this entry, which is the mechanism working: a second exemption has
+      to be a deliberate act. The argument, now written where it is asserted:
+      `lighthouse` appears in package.json as its own script and NOWHERE else -
+      not in `gate`, not in gate-clone.mjs's step list, not in a workflow. R174
+      runs it three times and asserts a median, which is a person driving an
+      instrument rather than a gate. Checked by grep, not assumed.
+
+EVERY ROOT FILE IS NOW CLASSIFIED - 21 of them, each either an entry point with
+a rule or a tool config with an obligation.
+
+--------------------------------------------------------------------------------
+PARKED
+--------------------------------------------------------------------------------
+PARK-S1  scripts/** IS NOT MAPPED, and this change is itself an instance: a
+         change to scripts/gate-selection.mjs selects the base chain only.
+         NOT A HOLE, and the reason is worth stating so nobody closes it
+         twice: the selector's own correctness is asserted by 412 tests under
+         tests/unit/meta/, which run in `test` - which IS the base chain. The
+         coverage is real; it simply arrives by a different route. If a script
+         is ever added that no unit test exercises, that is when this becomes
+         a gap.
+PARK-S3  test:container:e2e IS RED ON MAIN. e2e/home.spec.ts:166 asserts the
+         /api/ready database check reports ok: null "when the process is not
+         marked as serving" - true on the host, false in the container, where
+         it IS serving. The spec is run unchanged in both contexts. Three
+         mechanisms could have caught it and none was exercising the suite:
+         gate:changed could not select it until this commit, gate:clone does
+         not list it, and CI is skipping (private, CI_FULL unset).
+         THE FIX IS NOT OBVIOUS AND IS NOT A SELECTOR QUESTION: either the
+         spec learns which context it is in, or /api/ready is asserted
+         differently per context. Both are decisions about what readiness
+         MEANS, which belongs with whoever owns R353-R355.
+PARK-S2  pnpm-workspace.yaml, tsconfig.json: mapped to EVERY_SUITE on this
+         session's judgement, beyond the two files the ruling named. Argued
+         above; flagged here because it is judgement rather than instruction.
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+1. SIX FILES BEYOND THE RULING WERE CLASSIFIED. Not scope creep: R416 asks the
+   census to close the class, and a widened census that found files and left
+   them unclassified would not compile - the closed-world test fails until
+   every root file is classified. Classifying them WAS the ruling.
+
+2. parity:check WAS MADE SELECTABLE, which adds a suite to the selector's
+   vocabulary. Argued under R416. The alternative was to record a hole as a
+   decision.
+
+3. A SECOND null EXEMPTION WAS ADDED, which the guard required be defended.
+   The argument is in the test.
+
+4. THE LABEL CENSUS WAS REGENERATED FROM THE MODULE, not retyped (R181). The
+   test pins all 26 pattern labels; typing five new ones by hand into a sorted
+   list is the transcription that goes wrong silently.
+
+5. A TEST FILE WAS CORRUPTED AND RESTORED MID-TASK. A regex intended to match
+   the gate-selection import matched the FIRST `import {` in the file - the
+   node:fs one - and merged everything between. Caught immediately
+   ("describe is not defined"), restored with `git checkout --`, and redone
+   with a single-line anchor. Reported because the restore also silently
+   reverted an earlier correct edit, which had to be reapplied - the kind of
+   thing that is invisible later if nobody writes it down.
+
+--------------------------------------------------------------------------------
+QUESTIONS
+--------------------------------------------------------------------------------
+Q1 PARK-S2: pnpm-workspace.yaml and tsconfig.json were mapped to every suite on
+   my reading that they are the same class as the two you named. If you want
+   the ruling applied literally - those two files and no others - say so and
+   they narrow to provable obligations instead.
+
+Q2 parity:check is now a selectable suite. It has no SUITE_COUNTS floor, so it
+   is checked by exit code alone, like typecheck and lint. Is that right, or
+   should it carry a count?
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+GATE:CHANGED   exit 0 on this change. Printed selection, as R132 requires:
+
+                 suites: typecheck, lint, test, build
+
+               typecheck exit 0, lint exit 0, build exit 0,
+               test 3277 passed (3274 before, +3 for the EVERY_SUITE
+               completeness tests).
+
+               ONLY THE BASE CHAIN, and that is correct rather than ironic:
+               scripts/** is not mapped, and the selector's own correctness is
+               asserted by 412 tests under tests/unit/meta/ which run in
+               `test`. See PARK-S1.
+
+THE 15-SUITE RUN    is reported under R415 as the measurement, not as this
+               commit's gate. It exited 1 on a pre-existing failure in
+               test:container:e2e, proven pre-existing by re-running it on a
+               clean 54541c6 with this work stashed.
+
+GATE:CLONE     run AFTER the commit, on the committed tip. Ordering stated
+               because an earlier session in this chain got it wrong:
+               gate:clone clones HEAD, so run against a staged-but-uncommitted
+               change it tests the parent and reports a pass that means
+               nothing (R182). Result in the commit that carries the push.

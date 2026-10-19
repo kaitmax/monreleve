@@ -30,6 +30,12 @@ import { join, relative, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   BASE_SUITES,
+  BROWSER_SUITES,
+  CONTAINER_SUITES,
+  DATABASE_SUITES,
+  EVERY_SUITE,
+  LATE_SUITES,
+  RUNTIME_SUITES,
   PACKAGE_ROOT,
   REPO_ROOT,
   changedPaths,
@@ -402,7 +408,7 @@ describe('the database layer selects its own suite (FW14)', () => {
 });
 
 describe('the pattern list is the ruling, stated once', () => {
-  it('is exactly the twenty-one names R132 now carries', () => {
+  it('is exactly the twenty-six names R132 now carries', () => {
     // R63's shape: if a pattern were dropped, every table row above that
     // does not use it would still pass. This pins the list itself.
     //
@@ -418,13 +424,16 @@ describe('the pattern list is the ruling, stated once', () => {
       'a visual spec, which test:e2e deliberately ignores (R144)',
       'app/**',
       'guide content, which IS rendered HTML (R140)',
+      'identity.json, which a unit test asserts (R416)',
       'lib/fr/**',
       'lib/ui/**',
       'middleware.ts, which sets a header on a rendered response (R246)',
       'modules whose output reaches rendered HTML (R140)',
       'next.config.ts, which decides what every route is (R246)',
+      'package.json and the lockfile, which decide what every suite is (R414)',
       'playwright.config.ts, which defines both browser projects (R247)',
       'playwright.runtime.config.ts, which is the runtime project (R247)',
+      'pnpm-workspace.yaml and tsconfig.json, which decide whether anything compiles (R416)',
       'the container e2e harness, which defines that suite (R247)',
       'the container, and what decides whether it serves (R251)',
       'the database layer (prisma/**, lib/db/**, tests/db/**, and anything test:db imports)',
@@ -432,6 +441,8 @@ describe('the pattern list is the ruling, stated once', () => {
       'the restore probe, which defines that suite (R247)',
       'the scheduler probe, which defines that suite (R247)',
       'the token layer (lib/ui/core/styles/**)',
+      'tsconfig.parity.json, which the format-parity build compiles against (R416)',
+      'tsconfig.scripts.json, which typecheck compiles against (R416)',
     ]);
   });
 
@@ -856,5 +867,59 @@ describe('R234: a path selects the UNION of every pattern it matches', () => {
 
     expect(suites).toContain('test:db');
     expect(suites).toContain('test:e2e');
+  });
+});
+
+describe('EVERY_SUITE is asserted complete, not argued (R414)', () => {
+  // IT IS WRITTEN OUT RATHER THAN DERIVED, because the constants it would
+  // derive from are declared after ROOT_TOOL_CONFIGS needs it, and a const
+  // cannot be read before it is initialised. A list that cannot be derived has
+  // to be CHECKED, or it becomes a second description of the suites that drifts
+  // from the first (R181) - and the drift is silent, because a missing suite
+  // shows up only as a gate that quietly did less.
+
+  it('contains every suite any selector pattern can emit', () => {
+    const fromPatterns = new Set(SELECTOR_PATTERNS.flatMap((pattern) => pattern.suites));
+    const missing = [...fromPatterns].filter((suite) => !EVERY_SUITE.includes(suite)).sort();
+
+    expect(
+      missing,
+      'a suite a pattern can select but EVERY_SUITE does not name means a ' +
+        'package.json or lockfile change would NOT run it - which is the hole ' +
+        'R414 closes, reopening one suite at a time.',
+    ).toEqual([]);
+  });
+
+  it('contains every suite named by a group constant', () => {
+    // The groups are the other way a suite enters the vocabulary. One added to
+    // a group and to no pattern yet would still have to run on a bump.
+    const fromGroups = new Set([
+      ...BASE_SUITES,
+      ...BROWSER_SUITES,
+      ...DATABASE_SUITES,
+      ...RUNTIME_SUITES,
+      ...LATE_SUITES,
+      ...CONTAINER_SUITES,
+    ]);
+    const missing = [...fromGroups].filter((suite) => !EVERY_SUITE.includes(suite)).sort();
+
+    expect(missing).toEqual([]);
+  });
+
+  it('names nothing pnpm cannot run', () => {
+    // THE OTHER DIRECTION, and not symmetry for its own sake: the runner
+    // executes `pnpm ${suite}`, so a name here that is not a script would fail
+    // the whole chain on the day somebody bumps a dependency - the least
+    // convenient moment for the selector to be wrong about itself.
+    const scripts = (
+      JSON.parse(readFileSync(join(PACKAGE_ROOT, 'package.json'), 'utf8')) as {
+        scripts: Record<string, string>;
+      }
+    ).scripts;
+
+    expect(
+      EVERY_SUITE.filter((suite) => !scripts[suite]),
+      'EVERY_SUITE names a suite pnpm cannot run',
+    ).toEqual([]);
   });
 });
