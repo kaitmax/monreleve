@@ -1,0 +1,154 @@
+package ch.monreleve.app.data.local
+
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import java.io.File
+import java.lang.reflect.Proxy
+
+/**
+ * KMP-2 (R395 / R181 / R206). THE MIGRATIONS' SQL DOES NOT CHANGE BY A CHARACTER WHEN THEY MOVE.
+ *
+ * KMP-2 rewrites every migration body from the Android-only SupportSQLiteDatabase form to Room 2.7's
+ * SQLiteConnection form, because common code cannot see SupportSQLiteDatabase. That rewrite touches
+ * every line of SQL in the app's one component whose mistakes survive a reinstall, so the hard
+ * boundary is that the STATEMENTS are identical before and after.
+ *
+ * THE FIXTURE IS GENERATED, NEVER TYPED (R181). A hand-transcribed expectation is correct on the day
+ * it is written and silently wrong afterwards - the exact defect this test exists to catch, reproduced
+ * inside the test meant to prevent it. So migration-sql.txt is produced by RUNNING the migrations at
+ * main's HEAD against a recorder and dumping what they asked for. Regenerating it is an explicit act
+ * (-PrecordMigrationSql=true), never automatic: a fixture that rewrites itself certifies whatever
+ * the code currently does, which is R135's defect.
+ *
+ * WHAT IT ACTUALLY PROVES. Each migration is run against a recording double that executes nothing and
+ * remembers every statement in order. The recording is compared to the fixture string for string. A
+ * reordered statement, a renamed column, a changed default or one lost space fails here, in the JVM
+ * gate, before any device opens a database it cannot migrate.
+ *
+ * WHY A java.lang.reflect.Proxy RATHER THAN A HAND-WRITTEN FAKE. SupportSQLiteDatabase declares some
+ * forty members; a hand-written double is forty TODO() bodies that must be maintained against an
+ * interface we do not own. The proxy records execSQL, answers the handful of calls a migration makes
+ * on the way through, and REFUSES everything else loudly - so a migration that starts doing something
+ * this test does not model fails rather than being silently half-recorded (R133).
+ */
+class MigrationSqlVerbatimTest {
+    /** The migrations in the order a version-1 database meets them. */
+    private val migrations: List<Pair<String, Migration>> =
+        listOf(
+            "MIGRATION_1_2" to MIGRATION_1_2,
+            "MIGRATION_2_3" to MIGRATION_2_3,
+            "MIGRATION_3_4" to MIGRATION_3_4,
+            "MIGRATION_4_5" to MIGRATION_4_5,
+            "MIGRATION_5_6" to MIGRATION_5_6,
+        )
+
+    private val fixture = File("src/test/resources/migration-sql.txt")
+
+    @Test
+    fun everyMigrationExecutesExactlyTheRecordedSql() {
+        val actual = render(captureAll())
+
+        if (System.getProperty("migration.sql.record") == "true") {
+            fixture.parentFile?.mkdirs()
+            fixture.writeText(actual)
+            error(
+                "RECORDED ${fixture.absolutePath} (${actual.lines().size} lines). This mode WRITES the " +
+                    "fixture and always fails, so a recording run can never be mistaken for a passing one. " +
+                    "Re-run without -PrecordMigrationSql to assert against it.",
+            )
+        }
+
+        // R133: a missing fixture is a failure, not a pass. An absent file would otherwise make every
+        // assertion below vacuous.
+        assertTrue(
+            "the migration SQL fixture is missing at ${fixture.absolutePath}; it is generated with " +
+                "`gradlew :app:testDebugUnitTest --tests '*MigrationSqlVerbatimTest*' " +
+                "-PrecordMigrationSql=true` and committed",
+            fixture.exists(),
+        )
+
+        assertEquals(
+            "a migration's SQL changed. KMP-2's hard boundary is that the five migrations' statements " +
+                "do not change by a character - a changed statement cannot be un-shipped from a device " +
+                "that has already run it. If the change is deliberate, say so in the report and " +
+                "regenerate the fixture explicitly.",
+            fixture.readText().normalise(),
+            actual.normalise(),
+        )
+    }
+
+    @Test
+    fun theRecordingActuallyRecordsSomething() {
+        // R154: a mechanism is proven to DELIVER, not proven not to fail. Without this, a recorder that
+        // captured nothing at all would make the comparison above pass against an empty fixture.
+        val captured = captureAll()
+        assertEquals("every migration must be captured", migrations.size, captured.size)
+        captured.forEach { (name, statements) ->
+            assertTrue("$name recorded no SQL at all - the recorder is not wired to it", statements.isNotEmpty())
+        }
+        assertTrue(
+            "the capture must contain real DDL",
+            captured.any { (_, statements) -> statements.any { it.contains("CREATE TABLE", ignoreCase = true) } },
+        )
+    }
+
+    // ---------------------------------------------------------------- capture
+
+    private fun captureAll(): List<Pair<String, List<String>>> = migrations.map { (name, m) -> name to capture(m) }
+
+    private fun capture(migration: Migration): List<String> {
+        val recorded = mutableListOf<String>()
+        migration.migrate(recordingDatabase(recorded))
+        return recorded
+    }
+
+    private fun recordingDatabase(sink: MutableList<String>): SupportSQLiteDatabase =
+        Proxy.newProxyInstance(
+            SupportSQLiteDatabase::class.java.classLoader,
+            arrayOf(SupportSQLiteDatabase::class.java),
+        ) { _, method, args ->
+            when (method.name) {
+                // The one call a migration body is expected to make.
+                "execSQL" -> {
+                    sink += args!![0] as String
+                    null
+                }
+                // Harmless bookkeeping a migration may touch; answered, not recorded.
+                "beginTransaction", "setTransactionSuccessful", "endTransaction", "close" -> null
+                "inTransaction" -> true
+                "isOpen" -> true
+                "toString" -> "RecordingSupportSQLiteDatabase"
+                "hashCode" -> System.identityHashCode(this)
+                "equals" -> false
+                else ->
+                    throw UnsupportedOperationException(
+                        "a migration called SupportSQLiteDatabase.${method.name}(), which this recorder " +
+                            "does not model. Recording it as nothing would silently drop part of the " +
+                            "migration from the comparison, so it fails instead (R133).",
+                    )
+            }
+        } as SupportSQLiteDatabase
+
+    // ---------------------------------------------------------------- render
+
+    private fun render(captured: List<Pair<String, List<String>>>): String =
+        buildString {
+            appendLine("# GENERATED by MigrationSqlVerbatimTest (KMP-2, R395). DO NOT EDIT BY HAND.")
+            appendLine("# Every statement each migration executes, in order, exactly as it is passed to SQLite.")
+            appendLine("# Regenerate only with a stated reason: -PrecordMigrationSql=true (R135/R207).")
+            captured.forEach { (name, statements) ->
+                appendLine()
+                appendLine("== $name (${statements.size} statement(s))")
+                statements.forEach { statement ->
+                    appendLine("--")
+                    appendLine(statement)
+                }
+            }
+        }
+
+    /** Line endings are a checkout artefact on Windows, never a migration change. */
+    private fun String.normalise(): String = replace("\r\n", "\n").trimEnd()
+}

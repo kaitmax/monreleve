@@ -230,6 +230,24 @@ detekt {
 // the exit code.
 tasks.withType<Test> {
     useJUnitPlatform()
+    // KMP-2 (R395). Gradle FORKS a JVM for tests, so a -D on the Gradle command line does not reach
+    // them. MigrationSqlVerbatimTest regenerates its fixture only on an explicit opt-in, so that
+    // opt-in has to be forwarded deliberately - without this line the flag is silently ignored and
+    // the recording run looks like an ordinary failure.
+    // A PROJECT property (-P), not a -D: this build file already uses project.findProperty for the
+    // device-drive overrides, and a -D does not reliably survive the daemon into a forked test JVM.
+    if (project.findProperty("recordMigrationSql") == "true") {
+        systemProperty("migration.sql.record", "true")
+    }
+    // R283, the same discipline the block below applies to every other file a test reads: the
+    // migration SQL fixture is a DECLARED INPUT, so editing it re-runs the comparison instead of
+    // leaving the task UP-TO-DATE with the assertion unrun.
+    // inputs.files, not inputs.file: a REQUIRED input that does not exist makes Gradle refuse to run
+    // the task - including the recording run that creates it. The TEST asserts the fixture is present,
+    // with a message naming how to generate it (R133), which is the better place for that failure.
+    inputs.files(layout.projectDirectory.file("src/test/resources/migration-sql.txt"))
+        .withPropertyName("migrationSqlFixture")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
     // ANY FILE A TEST READS IS A DECLARED TASK INPUT (R283). A test reading a file Gradle does not
     // track as an input passes UP-TO-DATE after that file changes: the assertion goes unrun and a
     // divergence ships green. AN5b found this on the shared fixtures (the Kotlin task skipped at 3s
