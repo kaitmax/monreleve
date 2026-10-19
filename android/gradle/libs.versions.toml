@@ -1,6 +1,16 @@
 [versions]
 agp = "8.10.1"
-kotlin = "2.0.21"
+# KMP-UP (R402-R409). MOVED FROM 2.0.21 FOR EXACTLY ONE REASON: Room 2.7.2's
+# commonMain KLIB was produced by the 2.1.10 compiler and carries ABI version
+# 1.201.0, which Kotlin 2.0.21's metadata compiler cannot read - it defaults to
+# 1.8.0. KMP-2 stopped there. Room 2.7.1 and 2.7.0 fail identically, and the
+# stdlib layer that IS pinnable is not the layer that blocks.
+#
+# 2.1.10 AND NOT NEWER: it is the compiler that built that klib, so it is the
+# smallest move that can work rather than the newest available. The Compose and
+# serialization COMPILER PLUGINS track this ref and move with it by themselves;
+# nothing else in this file moved.
+kotlin = "2.1.10"
 coreKtx = "1.15.0"
 junit = "4.13.2"
 junitVersion = "1.2.1"
@@ -38,8 +48,11 @@ kotlinx-datetime = "0.6.1"
 # 1.7.3, not the 1.8.x line, chosen for one concrete reason, not taste:
 #   - 1.8.0-RC moved to Kotlin 2.1.0 (the kotlinx.serialization CHANGELOG); through
 #     all of 1.7.x the runtime is built against and compatible with Kotlin 2.0.x.
-#     This project is pinned to Kotlin 2.0.21 (the hard boundary: no Kotlin upgrade),
-#     so 1.7.3 is the HIGHEST runtime that works with NO toolchain bump.
+#     This project WAS pinned to Kotlin 2.0.21 when that was written, which made
+#     1.7.3 the highest runtime available with no toolchain bump. KMP-UP moved the
+#     compiler to 2.1.10, so that particular ceiling is gone - and 1.7.3 STAYS,
+#     because KMP-UP's hard boundary moves Kotlin and KSP and nothing else. The
+#     reason to revisit it is now the second argument below, not this one.
 #   - the "mature stable, not bleeding edge" discipline the catalog applies to
 #     datetime/work/kotest/browser: 1.7.3 is the settled last-of-line for 2.0.x.
 # Released 2024-10 (far more than two weeks old, R380). Verified via the
@@ -48,11 +61,19 @@ kotlinx-datetime = "0.6.1"
 # serialization COMPILER PLUGIN is pinned to the Kotlin version in [plugins] below,
 # because it ships in lockstep with the compiler (as kotlin-reflect/kotlin-test do).
 kotlinx-serialization = "1.7.3"
-# AN5: KSP must start with the Kotlin version (compiler-plugin API); 1.0.28 is the
-# last for Kotlin 2.0.21. Room 2.7.2 targets Kotlin 2.0 and recommends KSP2.
-# Verified by web search (mvnrepository KSP, developer.android.com/room), not
-# guessed - the AN2 Kotest 5.9.1 discipline.
-ksp = "2.0.21-1.0.28"
+# AN5: KSP must start with the Kotlin version (compiler-plugin API).
+#
+# KMP-UP: 1.0.31 is the newest of the 1.0.x line for Kotlin 2.1.10, AND THE LINE
+# IS THE POINT. The 1.0.x releases are KSP1-capable; the 2.0.x releases (from
+# 2.1.20-2.0.0 onward) are KSP2-only. The hard boundary forbids changing the KSP
+# MODE, and ksp.useKSP2 is unset, so staying inside 1.0.x is what keeps that true
+# across the Kotlin move. Read off Maven Central's maven-metadata.xml rather than
+# recalled - the AN2 Kotest 5.9.1 discipline.
+#
+# KSP1 IS NOT REMOVED AT THIS VERSION. It was deprecated in KSP 2.3.0, whose
+# notice names Kotlin 2.3.0 and AGP 9.0 as the incompatible toolchains. Neither
+# is in play here, and both are a later decision than this one.
+ksp = "2.1.10-1.0.31"
 room = "2.7.2"
 # AN5 increment 3: the offline-queue drain. The relay mandates WorkManager
 # ("network-constrained, with backoff"), and the server's own schema.ts names it
