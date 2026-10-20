@@ -323,6 +323,12 @@ PARK-U2  The two library deprecations in app/ (LocalLifecycleOwner, Criteria).
          Unchanged in count and text across the bump.
 PARK-U3  PARK-K6 sharpened: the back-dated entry is absent from the device as
          well as the server. Observation, not diagnosis - see R407.
+         CLOSED 20 OCTOBER 2026 WITH PARK-K6, same cause: the row was tagged
+         UNOWNED at the write, so R303 held it - never sent, never shown, gone
+         at the next launch, which is precisely the device absence recorded
+         here. THE SHARPENING WAS THE USEFUL PART: "absent from the server"
+         admits a sync explanation and "absent from the device too" does not.
+         See REPORT-AN-ACCOUNT-TAG.txt; fixed in f319e0b.
 
 --------------------------------------------------------------------------------
 DEVIATIONS

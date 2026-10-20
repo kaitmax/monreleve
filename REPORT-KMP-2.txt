@@ -667,6 +667,28 @@ PARK-K6  A BACK-DATED ENTRY NEVER REACHED THE SERVER. The 16 October morning was
          which, and the sync engine is KMP-3's territory. What has changed is
          that the next session inherits a reproducible fact instead of a
          suspicion: record a back-dated day, wait, and see whether it arrives.
+
+         CLOSED 20 OCTOBER 2026 BY AN-ACCOUNT-TAG (REPORT-AN-ACCOUNT-TAG.txt,
+         merged as f319e0b). It was neither the scheduler nor an unsatisfied
+         constraint, and the BACK-DATING WAS NEVER THE DISTINGUISHING FEATURE.
+         The row was written in the same app session as a sign-in, and the
+         repository held the account as a STRING read once when the screen was
+         built - by the screen that also hosts sign-in, so the value it read was
+         null. The row was therefore tagged UNOWNED, and R303 then did exactly
+         what it says: held, never sent, never shown. That is the whole symptom,
+         including the part this entry could not see - PARK-U3 later found the
+         same day absent from the DEVICE, which is what an UNOWNED row looks
+         like at the next launch.
+
+         WHAT THE CLOSURE RESTS ON, stated rather than implied: the 16 October
+         row itself is gone, so its tag cannot be read back now. It rests on the
+         mechanism reproducing this symptom exactly on the same phone - a day
+         recorded without restarting after a code sign-in, UNOWNED, unsent,
+         unshown - and on the fixed build posting that same sequence on the
+         first attempt. A SECOND DEVICE RUN CLOSED IT, NOT MORE THOUGHT ABOUT
+         SYNC: this entry's own posture - "still not a diagnosis" - was right on
+         the evidence it had, and the evidence that settled it came from running
+         the product again rather than from reasoning about it.
 PARK-K7  THE GENERATED PRISMA CLIENT GOES STALE SILENTLY on a long-lived
          checkout. The symptom is a 500 whose message names a Prisma model as
          `undefined`, which reads like a schema or migration problem and is
