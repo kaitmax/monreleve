@@ -32,9 +32,28 @@ import java.io.File
  * freezes the answer at composition.
  */
 class AccountCaptureFenceTest {
+    /**
+     * KMP-3 (R452). TWO TREES, BECAUSE THE CODE THIS GUARDS NOW LIVES IN TWO MODULES.
+     *
+     * The fence was written when every account-reading file was in :app. KMP-3 moved SyncEngine,
+     * SessionManager, DossierApi and the settings contracts into :shared commonMain, and a fence
+     * still walking one tree would have gone on passing - over a shrinking fraction of the code it
+     * was written to cover, with nothing saying so. That is ErasureCensusTest's KMP-2b failure
+     * exactly (DATABASE_NAME moved to :shared and the census walked :app only), one task and one
+     * guard later, which is the argument for repointing EVERY source-scanning fence the moment
+     * anything crosses rather than when it is noticed.
+     *
+     * The second root is relative to :app's project directory, the way the first one is.
+     */
+    private val roots: List<File> =
+        listOf(
+            File("src/main/kotlin"),
+            File("../shared/src/commonMain/kotlin"),
+        )
+
     private val sources: List<File> =
-        File("src/main/kotlin")
-            .walkTopDown()
+        roots
+            .flatMap { it.walkTopDown() }
             .filter { it.isFile && it.extension == "kt" }
             .toList()
 
@@ -46,6 +65,30 @@ class AccountCaptureFenceTest {
         assertTrue(
             "the walk must reach MainActivity, which is where the defect was",
             sources.any { it.name == "MainActivity.kt" },
+        )
+    }
+
+    @Test
+    fun `the walk reaches BOTH trees, each named by a file only it can hold`() {
+        // Each root is asserted on its own. A COMBINED count stays comfortably over any threshold
+        // with one root missing entirely, which is how a fence quietly stops covering half of what
+        // it claims. Each root is also pinned by a file only IT contains, so a root that resolved
+        // to the wrong directory fails rather than passing over somebody else's sources.
+        for (root in roots) {
+            assertTrue("the fence root does not exist: ${root.path}", root.isDirectory)
+            assertTrue(
+                "the fence root holds no Kotlin: ${root.path}",
+                root.walkTopDown().any { it.isFile && it.extension == "kt" },
+            )
+        }
+        assertTrue(
+            "the :app tree is not being walked - MainActivity.kt, where the defect was, is not in it",
+            sources.any { it.name == "MainActivity.kt" },
+        )
+        assertTrue(
+            "the :shared commonMain tree is not being walked - SyncEngine.kt is not in it. KMP-3 " +
+                "moved the drain there, and a fence that cannot see the drain guards nothing.",
+            sources.any { it.name == "SyncEngine.kt" },
         )
     }
 
