@@ -7,6 +7,8 @@
 // SETUP (R368/R136): com.android.library + org.jetbrains.kotlin.multiplatform, chosen for the reasons in
 // the version catalog's comment on android-library. No version upgrade (the hard boundary): this reuses the
 // AGP 8.10.1 and Kotlin 2.0.21 already on the classpath.
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.multiplatform)
@@ -114,10 +116,12 @@ kotlin {
     // The Android target. matches :app's JVM target 17; its testDebugUnitTest runs commonTest + the
     // Android unit-test source set on the JVM (where moved Kotest specs live, R373).
     androidTarget {
-        compilations.all {
-            kotlinOptions {
-                jvmTarget = "17"
-            }
+        // KMP-2b: the SAME target, 17, through the compilerOptions DSL. compilations.all { kotlinOptions }
+        // is deprecated and the Kotlin Gradle plugin says so on every build that configures compilerOptions
+        // - which this file now does, for the flag above. R406 counts warnings; adding one while removing
+        // two would be a wash nobody chose. The value does not move, only the DSL that sets it.
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
         }
     }
     // R369: the iOS targets are DECLARED now but NOT compiled on this Windows host - Kotlin/Native cannot
