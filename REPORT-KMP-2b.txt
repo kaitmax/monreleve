@@ -26,13 +26,21 @@ on disk under its DISCARDED- name and is listed under R422.
 --------------------------------------------------------------------------------
 STATUS (R391)
 --------------------------------------------------------------------------------
-THE MOVE IS COMPLETE AND GATED. R417-R420 ARE DONE AND PROVEN ON THE PHONE.
-R421 IS NOT RUN, and its result is NO RESULT rather than a pass or a fail
-(R391): the S9 left the USB bus in the middle of the matrix run - "Starting 0
-tests ... closed" - and did not come back across thirteen minutes, four adb
-server restarts and a thirty-minute watch. Re-seating the cable is an operator
-action. The full account, what the device is probably left holding, and what is
-still owed are under R421; the device half of R422 is owed with it.
+COMPLETE. R417 to R422 are all done and all proven on the S9.
+
+R421 FAILED TO RUN ON ITS FIRST ATTEMPT, and that attempt is kept in the record
+rather than deleted: the phone left the USB bus mid-run, "Starting 0 tests ...
+closed", which is NO RESULT and never a pass (R391). The operator re-plugged it
+and this session finished the ruling: the nine-path matrix green on the MOVED
+migrations, KMP-2's planted RED repeated and localised to exactly the five paths
+that reach version 6, the plant reverted and the revert proven, and the after APK
+reinstalled. The device half of R422 is closed with it.
+
+NO CODE CHANGED IN THAT RESUMPTION. The whole of android/ is byte-identical to
+the pushed tip - git diff HEAD finds nothing there, and the moved database file
+hashes to 015afeef4831e875 both as the committed blob and as the file on disk.
+That is the only reason this STATUS does not claim a newer gate than the one
+below (R391): there is no newer code for a gate to have an opinion about.
 
 The FULL :app:gate ran IN THIS SESSION on the last code commit,
 680bed0, with --rerun-tasks:
@@ -82,11 +90,16 @@ Four commits, each gated:
   a990f97  the database, the five migrations and the schemas move
   680bed0  the two guards whose subject moved, and the warning count held
 
-AND ONE THING IS OWED, NOT DONE: R421 - the nine-path migration matrix against
-the MOVED migrations, its planted RED, and the reinstall after it. The phone left
-the USB bus mid-run; zero tests started and zero reported, which is NO RESULT.
-What already speaks to the same property, and what does not, is set out there
-rather than implied by the silence.
+AND THE MIGRATIONS THEMSELVES RAN ON THE PHONE, after a false start. The USB
+link dropped mid-matrix the first time - NO RESULT, kept in the record - and on
+the second attempt all nine paths passed against the MOVED migrations, with
+KMP-2's one-character plant reddening exactly the five that reach version 6 and
+leaving the four that stop short green. The accident even paid for itself: the
+build the failed run had left on the phone was DEBUGGABLE, so the database could
+be read at ROW LEVEL for the first time in this task - seven rows, one account
+tag, the free-text note intact, the v6 rhythm table populated, and
+room_master_table holding exactly the identity hash R396 pins. R418 could not
+get that; this did.
 
 Two guards had to follow the code, and one of them found itself: ErasureCensusTest
 went RED on this task's own gate because the database NAME had moved out of the
@@ -280,6 +293,10 @@ initWith, so `run-as ch.monreleve.app` cannot read
 "if it is NOT debuggable, say so and rely on the screens plus the server's rows
 for the synced days - do not change the build to make it debuggable" - and the
 build was NOT changed.
+  IT WAS CAPTURED IN THE END, by an accident rather than by a method: the matrix
+  run that failed on its first attempt left the DEBUG build on the phone over this
+  same data, and that one IS debuggable. The rows, the identity hash and the v6
+  rhythm table are under R421.
 
 SCREENS, in android/.an-auto-shots/ (gitignored):
     kmp2b-device-state-before.png, kmp2b-pre-signout-calendar.png,
@@ -820,129 +837,194 @@ BECAUSE IT COST AN HOUR AND WOULD COST THE NEXT READER THE SAME.
   kmp2b-after-08-synced.png and kmp2b-after-09-calendar-synced.png (after).
 
 --------------------------------------------------------------------------------
-R421 - NOT RUN. THE PHONE LEFT THE USB BUS AND DID NOT COME BACK.
+R421 - THE MATRIX ON THE MOVED MIGRATIONS, AND THE PLANTED RED
 --------------------------------------------------------------------------------
-THE RESULT IS "NO RESULT", WHICH IS NEITHER A PASS NOR A FAIL (R391), and the
-whole of what happened is below rather than a verdict.
+IT WAS NOT RUN ON THE FIRST ATTEMPT. The phone left the USB bus in the middle of
+it - "Starting 0 tests ... Finished 0 tests", then AdbCommandRejectedException:
+closed in onBeforeAll and "device not found" in onAfterAll, BUILD FAILED in 54s.
+Zero tests started and zero reported: NO RESULT, never a pass and never a fail
+(R391). That attempt is recorded rather than deleted, because it is the third
+time this machine's USB link dropped in one session and the next person should
+expect it rather than be surprised by it.
 
-THE LAST READ BEFORE ANYTHING THAT UNINSTALLS, taken as R421 requires, at 13:13
-UTC / 14:13 device:
-    the after build (audit, 680bed0) installed, opening, signed in as
-    kmp2b-move@example.ch
-    SEVEN days, all synced, the calendar reading
-      9 Domicile enregistre en retard / 14 Suisse a temps / 15 Absence a temps /
-      16 Suisse a temps / 19 Domicile a temps / 20 Suisse a temps
-    the server holding the matching seven rows
-    screen kmp2b-r421-last-read.png
-  The database itself could not be read: the audit build is not debuggable, as
-  R418 records. So the last read is screens plus the server's rows, which is what
-  R418's own constraint leaves available.
+The operator re-plugged the phone and this session resumed. Everything below is
+the second attempt, measured from the device rather than assumed.
 
-THEN THE MATRIX WAS STARTED and the device vanished in the middle of it:
+THE STATE THE PHONE WAS FOUND IN, read before anything was touched:
+    ch.monreleve.app        installed, lastUpdateTime 14:14:07,
+                            flags=[ DEBUGGABLE HAS_CODE ... ]
+    ch.monreleve.app.test   installed
+    stay_on_while_plugged_in 2      timezone Africa/Casablanca
+    auto_time 1   auto_time_zone 1   airplane_mode_on 0
+    adb reverse --list      EMPTY (the daemon restart had already dropped it)
+  WHICH SETTLES THE ONE THING THE FIRST ATTEMPT LEFT UNVERIFIED. The report's
+  "most likely but unverified" reading was right: AGP had installed BOTH APKs
+  before the link dropped, and the uninstall is the call that threw. The DEBUGGABLE
+  flag is the proof - the app on the phone was the DEBUG build, put there at
+  14:14:07, seconds before the drop.
+
+AND THAT ACCIDENT HANDED THIS TASK THE ONE PIECE OF EVIDENCE R418 COULD NOT GET.
+The audit build is not debuggable, so `run-as` could not read the database and
+R418 had to rely on screens plus the server's rows. The build sitting on the phone
+now WAS debuggable, over the same data, so the database was pulled before anything
+uninstalled it - `adb exec-out run-as ... cat`, never `adb shell`, which
+CRLF-corrupts binary - and read with node:sqlite:
+
+    PRAGMA user_version      6
+    room_master_table        id=42
+                             identity_hash a08f54541b97835cb850e7d8e4b1cf2d
+    tables                   android_metadata, daily_tally, entry,
+                             room_master_table, weekly_rhythm
+
+  THAT HASH IS THE WHOLE OF R396, READ OFF THE PHONE AFTER THE MOVE. It is the
+  value KMP-2 read off this same phone BEFORE any of this work, the value
+  schemas/6.json carries, and the value RoomSchemaContractTest now pins. Room
+  compares it at open time; the database created by the before-build and opened by
+  the after-build holds exactly it.
+
+    dayDate     portion kind    absenceReason note         syncState  accountTag
+    2026-10-09  AM      HOME    -             -            SYNCED     8dabb3b2...
+    2026-10-14  AM      CH      -             -            SYNCED     8dabb3b2...
+    2026-10-15  AM      ABSENT  CONGE         "Conge pose" SYNCED     8dabb3b2...
+    2026-10-16  PM      CH      -             -            SYNCED     8dabb3b2...
+    2026-10-19  AM      HOME    -             -            SYNCED     8dabb3b2...
+    2026-10-20  AM      CH      -             -            SYNCED     8dabb3b2...
+    2026-10-20  PM      CH      -             -            SYNCED     8dabb3b2...
+    every row carries a serverId; every firstRecordedAt is the SERVER's stamp
+    weekly_rhythm   one row, 8dabb3b2..., SUISSE/SUISSE/SUISSE/DOMICILE/DOMICILE
+    daily_tally     0 rows
+
+  SEVEN ROWS, ONE ACCOUNT TAG, THE NOTE INTACT, AND THE v6 TABLE POPULATED - at
+  the storage layer rather than through a screen. The screens said this; the bytes
+  now say it too. And a THIRD build opened the same store: the before audit build
+  wrote it, the after audit build opened it (R420), and the after DEBUG build
+  opened it here, showing the same six calendar cells.
+
+THE MATRIX, ON THE MOVED MIGRATIONS, ON THE S9:
     ./gradlew :app:connectedDebugAndroidTest
         -Pandroid.testInstrumentationRunnerArguments.class=ch.monreleve.app.data.local.MonReleveMigrationTest
 
-    Starting 0 tests on SM-G960F - 10
-    Finished 0 tests on SM-G960F - 10
-    Exception thrown during onBeforeAll invocation of plugin
-        AndroidAdditionalTestOutputPlugin: closed
-    com.android.ddmlib.AdbCommandRejectedException: closed
-    Exception thrown during onAfterAll invocation of plugin
-        AndroidTestApkInstallerPlugin: device '232bcd8c300c7ece' not found
-    BUILD FAILED in 54s, TEST_EXIT=1
+    Starting 9 tests on SM-G960F - 10
+    Finished 9 tests on SM-G960F - 10
+    BUILD SUCCESSFUL in 1m 18s, TEST_EXIT=0
+    tests="9" failures="0" errors="0" skipped="0"   (read from the JUnit XML, and
+    the file contains zero <failure> and zero <error> elements)
 
-  "Starting 0 tests" IS NOT A FILTER MISS AND NOT A GREEN RUN. The harness lost
-  the device before the instrumentation started - "closed" in onBeforeAll is the
-  adb connection going away, not a test result - so zero tests ran and zero tests
-  reported. A 0/0 that exits non-zero is the shape R391 calls NO RESULT, and it
-  is recorded as one rather than read either way.
+  THE NINE, NAMED, so "9" is a set rather than a number:
+    migratesFromVersion1ToLatest
+    migratesFromVersion2ToVersion3AssigningExistingRowsUnowned
+    migratesFromVersion3ToVersion4DroppingOldTallyRowsAndKeepingEntries
+    migratesFromVersion4ToVersion5AddingProviderCountsAndKeepingChecks
+    migratesFromVersion5ToVersion6AddingTheRhythmTableAndKeepingEverything
+    step1To2CreatesTheTallyTableAndLeavesEntriesAlone
+    step2To3TagsExistingEntriesUnownedAndKeepsTheTally
+    step3To4ReshapesTheTallyAndKeepsEntries
+    step4To5AddsProviderCountsWithoutDisturbingTheChecks
+  Five start versions driven straight through to 6, and four steps validated at
+  their OWN intermediate version. Every one of them now executes a migration body
+  written against SQLiteConnection, in :shared commonMain, on real Samsung Android
+  10 storage. THIS IS ALSO R395's DEVICE HALF, obtained without planting a log
+  line: the connection-form bodies demonstrably run on the phone, so no probe had
+  to be added and removed.
 
-THE DEVICE DID NOT RETURN. `adb devices` listed nothing for the next 13 minutes,
-across four `adb kill-server` / `start-server` cycles and a 30-minute watch. This
-is the third time this session that the USB link dropped - it also took the
-device away between R1(b) and R1(d), and it silently removed the `adb reverse`
-in the middle of R420 - so it is a condition of this machine rather than a
-one-off. Re-seating the cable is an operator action and nothing here can do it.
+THE PLANTED RED, KMP-2's repeated verbatim: ONE character of MIGRATION_5_6's DDL,
+`monday` -> `Monday`. Verified before any result was read (R180) - the script
+reads the file back, names the line, and asserts the edit landed inside
+MIGRATION_5_6's BODY and not in a comment:
+    PLANT VERIFIED at .../MonReleveDatabase.kt:187
+      line                     "`Monday` TEXT, " +
+      in MIGRATION_5_6's body: true
+      is a comment:            false
+    and the whole diff was the one line, nothing else.
 
-WHAT THE DEVICE IS LEFT HOLDING, stated as uncertainty rather than guessed:
-  - AGP's installer plugin runs BEFORE the tests, so the DEBUG app APK and the
-    androidTest APK were most likely installed over the audit build (install -r,
-    which preserves data) in the seconds before the link dropped;
-  - the UNINSTALL half (onAfterAll) demonstrably did NOT complete - it is the
-    call that threw "device not found" - so both APKs are probably still there;
-  - the Room database is probably untouched: `install -r` preserves app data, and
-    MonReleveMigrationTest creates its OWN test database and never opens
-    monreleve.db. But zero tests ran, so nothing wrote anything either way.
-  NONE OF THAT IS VERIFIED, because verifying it needs the device. It is written
-  as the most likely state and labelled as such.
+    tests="9" failures="5" errors="0" skipped="0"
+    Migration didn't properly handle:  weekly_rhythm
 
-WHAT IS THEREFORE STILL OWED, whole:
-  - R397's matrix against the MOVED migrations: every step 1->2 ... 5->6 and
-    every start version straight to 6, with rows in each table.
-  - KMP-2's planted RED repeated on the moved migrations: one character of
-    MIGRATION_5_6's DDL (`monday` -> `Monday`), expecting failures=5 localised to
-    the paths that reach v6 and the four step tests still green, then reverted.
-    The plant script is written and verifies its own landing (R180) -
-    scratchpad/kmp2b/r421-plant.mjs - so the next session re-runs rather than
-    re-derives.
-  - the reinstall of the after APK afterwards.
+    FAILED  migratesFromVersion1ToLatest
+    FAILED  migratesFromVersion2ToVersion3AssigningExistingRowsUnowned
+    FAILED  migratesFromVersion3ToVersion4DroppingOldTallyRowsAndKeepingEntries
+    FAILED  migratesFromVersion4ToVersion5AddingProviderCountsAndKeepingChecks
+    FAILED  migratesFromVersion5ToVersion6AddingTheRhythmTableAndKeepingEverything
+    passed  step1To2CreatesTheTallyTableAndLeavesEntriesAlone
+    passed  step2To3TagsExistingEntriesUnownedAndKeepsTheTally
+    passed  step3To4ReshapesTheTallyAndKeepsEntries
+    passed  step4To5AddsProviderCountsWithoutDisturbingTheChecks
 
-WHAT IS NOT OWED, AND WHY THE MOVE IS NOT UNPROVEN WITHOUT IT. The matrix is the
-proof that the MIGRATIONS still work after the rewrite to the connection form.
-Three other things already speak to that, and they are not substitutes but they
-are not nothing either:
-  - MigrationSqlVerbatimTest drives all five MOVED migrations through the
-    CONNECTION form and compares every statement, in order, with a fixture
-    recorded from the SUPPORT form at main's HEAD. The fixture's git diff against
-    origin/main is empty. The SQL is identical; what the matrix would add is that
-    SQLite on a real device accepts the sequence - which it did before the move,
-    on the same statements, nine paths green (REPORT-KMP-2, REPORT-KMP-UP).
-  - RoomSchemaContractTest pins v6's identity hash to the value this phone's own
-    room_master_table held, so the schema the migrations must land on is
-    unchanged.
-  - AND THE STRONGEST ONE IS R420 ITSELF: a database created by the before build
-    was opened by the after build on this phone, with every row intact. Room
-    verifies its identity hash at open time; had the moved @Database generated a
-    different schema, the app would have thrown "Room cannot verify the data
-    integrity" instead of showing seven days.
-  What is NOT covered is the one case R397 exists for: a device sitting at an
-  OLDER version that has to run the moved migrations to reach 6. That is exactly
-  what is owed.
+  EXACTLY THE FIVE PATHS THAT REACH VERSION 6, and exactly the four that stop
+  short still green. That localisation is the part worth keeping: a plant that
+  reddened all nine would have proved only that something broke.
+
+REVERTED, AND THE REVERT PROVEN RATHER THAN ASSERTED:
+    REVERT VERIFIED at .../MonReleveDatabase.kt:187, "`monday` TEXT, " +,
+      in MIGRATION_5_6's body, not a comment
+    `git diff HEAD -- android/` is EMPTY - the whole of android/ is byte-identical
+      to the pushed tip
+    sha256 of the committed blob and of the working file agree: 015afeef4831e875
+    the matrix re-run on the reverted code: tests="9" failures="0" errors="0"
+    the JVM guards re-run: MigrationSqlVerbatimTest 2/0/0/0,
+      RoomSchemaContractTest 6/0/0/0
+  So the plant left nothing behind, and NO CODE CHANGED in this resumption - which
+  is why no new full gate is claimed below (R391): 680bed0's gate still governs
+  every line of code on this branch, and the byte-identity above is the proof that
+  it still does.
+
+AFTERWARDS, THE PHONE WAS PUT BACK TO A WORKING APP:
+  connectedAndroidTest uninstalled BOTH packages this time - its own behaviour,
+  the one KMP-2 met as its deviation 3 - so `pm list packages` named neither
+  ch.monreleve.app nor ch.monreleve.app.test. That also disposed of the stray test
+  package the failed first attempt had left: AGP removed it, not this session.
+  Then kmp2b-AFTER-680bed0-audit.apk was installed with `adb install -r`:
+    Success; `pm list packages` -> ch.monreleve.app alone
+    flags=[ HAS_CODE ALLOW_CLEAR_USER_DATA ALLOW_BACKUP ] - no DEBUGGABLE, so it
+      is the AUDIT build again and not the debug one the matrix left behind
+    launched, pid 24462, welcome screen rendered
+    crash check as in R420: the pattern fires on known crash shapes (2 of 2) and
+      finds 0 in the real capture
+
+WHAT DATA THE PHONE HOLDS NOW: NONE. The uninstall took the app's data with it,
+so the database, the session and the settings are gone and the app opens on
+"Commencer" - signed out, empty, a fresh install. That is the expected outcome of
+R421 rather than a loss: every row it held was this session's own, and all seven
+are on the server, where the record lives.
 
 --------------------------------------------------------------------------------
-R422 - LEFT AS FOUND, WITH THE DEVICE HALF OWED
+R422 - LEFT AS FOUND
 --------------------------------------------------------------------------------
-THE DEVICE. Everything below was true while the phone was still attached, and
-none of it was changed by this session except the one line that says so:
+THE DEVICE, every line read back from the phone after the work was finished
+rather than asserted:
 
-    persist.sys.timezone   Africa/Casablanca   NEVER changed - read at the start
-                           and never written. KMP-2 had to move the clock for
-                           R374; this session did not, and must not have:
-                           fw-future-day refuses a dayDate after the server's
+    installed              ch.monreleve.app, and nothing else - the after audit
+                           build (kmp2b-AFTER-680bed0-audit.apk), reinstalled
+                           after the matrix, launched, rendering, pid 24462.
+                           ch.monreleve.app.test is GONE - connectedAndroidTest's
+                           own uninstall removed it, which also disposed of the
+                           stray the failed first attempt had left behind.
+    data it holds          NONE. The uninstall took the app's data with it, so the
+                           app opens on "Commencer": signed out, empty, a fresh
+                           install. Every row it held was this session's own and
+                           all seven are on the server.
+    stay_on_while_plugged_in  0   RESTORED. This session set it to 2 (USB) so Doze
+                           could not defer a WorkManager drain and make an
+                           environment delay read as a sync defect. THE ORIGINAL
+                           VALUE WAS NOT READ BEFORE IT WAS WRITTEN - this
+                           session's lapse, recorded as one. 0 is the Android
+                           default AND the phone's observed behaviour (it was
+                           locked and asleep when this session found it), so 0 is
+                           an inference from two directions, not a value recovered.
+    persist.sys.timezone   Africa/Casablanca   NEVER changed - read at the start,
+                           read again at the end, never written. KMP-2 had to move
+                           the clock for R374; this session did not, and must not
+                           have: fw-future-day refuses a dayDate after the server's
                            Paris today, so a moved clock would have made R418's
-                           recording fail BY DESIGN.
-    auto_time              1                   NEVER changed
-    auto_time_zone         1                   NEVER changed
-    airplane mode          off                 NEVER turned on. R418's offline
-                           half was done by removing the host-side adb reverse,
-                           which touches nothing on the phone.
-    stay_on_while_plugged_in   SET TO 2 (USB) BY THIS SESSION, while a
-                           WorkManager backoff elapsed, so Doze could not defer
-                           the drain and make an environment delay read as a sync
-                           defect. IT IS NOT RESTORED, because the device left
-                           the bus before it could be: `svc power stayon false`
-                           is the one command owed, and 0 is both the Android
-                           default and what the phone was doing before (it was
-                           locked and asleep when this session found it).
-                           THE ORIGINAL VALUE WAS NOT READ BEFORE IT WAS WRITTEN,
-                           which is this session's lapse and is recorded as one
-                           rather than smoothed over; the inference above is an
-                           inference.
-    adb reverse            OWED. It was live when the link dropped. It does not
-                           survive a disconnect, so it is almost certainly gone
-                           already; `adb reverse --remove-all` is owed for
-                           certainty.
-    what is installed      OWED and UNVERIFIED - see R421.
+                           recording fail BY DESIGN and look like a defect here.
+    auto_time              1   NEVER changed
+    auto_time_zone         1   NEVER changed
+    airplane_mode_on       0   NEVER turned on. R418's offline half was done by
+                           removing the host-side adb reverse, which touches
+                           nothing on the phone.
+    adb reverse --list     EMPTY, after `adb reverse --remove-all`
+    clocks at the end      HOST   Tue Oct 20 14:01:11 UTC 2026
+                           DEVICE Tue Oct 20 15:01:10 +01 2026   (consistent, real)
 
 THE MACHINE.
     THE THREE APK COPIES, ALL KEPT AND NONE DELETED - the operator decides:
@@ -976,10 +1058,11 @@ THE MACHINE.
     netstat named as holding the port, with no shell wrapper above it to leave an
     orphan behind (R179). It is NOT restarted, deliberately: every step that
     needed it is finished - R418 recorded seven days against it and R420 watched
-    the last of them drain at 14:11 - and R421, the one thing still owed, is a
-    migration matrix that runs entirely on the device and never opens a socket.
-    Restarting it now would undo this very ruling and leave a server running that
-    nobody is watching.
+    the last of them drain at 14:11 - and R421, which was finished afterwards, is
+    a migration matrix that runs entirely on the device and never opens a socket.
+    Restarting it would have undone this very ruling for nothing, and left a
+    server running that nobody was watching. It was never restarted and the port
+    was free throughout the R421 work, re-checked at the end.
 
     THE DEV DATABASE, stated rather than cleaned (none of it is this session's to
     delete, and EntryEvent is append-only by design):
@@ -1170,11 +1253,18 @@ DEVIATIONS
    that produced it, because the alternative is a reader finding two extra writes
    in the audit trail and no explanation.
 
-10. THE SESSION DID NOT FINISH R421, and that is the one acceptance item left
-   open. It is not a judgement call or a descoping: the phone stopped being
-   addressable. The report says so in STATUS, in SUMMARY and in R421, with what
-   is owed listed and the plant script left ready, rather than letting a reader
-   infer completeness from four green gates.
+10. R421 TOOK TWO ATTEMPTS AND A CABLE. The first ended with the phone off the
+   bus and was filed as NO RESULT, with the owed list written out and the plant
+   script left ready rather than letting a reader infer completeness from four
+   green gates. The operator re-plugged the phone and this session finished it.
+   BOTH ATTEMPTS ARE IN THE RECORD, because the first one is the evidence for
+   how unreliable this USB link is, and the second one alone would hide that.
+
+11. THE FAILED FIRST ATTEMPT IS WHY THE DATABASE COULD BE READ AT ALL. It left
+   the DEBUG build on the phone over the same data, and the debug build is
+   debuggable where the audit build is not - so `run-as` worked and R418's one
+   acknowledged gap (screens and server rows instead of rows) was closed on the
+   way past. Recorded as what it is: a windfall from a fault, not a method.
 
 --------------------------------------------------------------------------------
 QUESTIONS
@@ -1224,7 +1314,9 @@ was re-run after it was written rather than assumed (R182 - a check runs after t
 thing it checks for can exist):
 
     :app:testDebugUnitTest --tests '*RegisterCoverageTest*'
-    BUILD SUCCESSFUL in 1m 49s, EXIT=0, --rerun-tasks
+    BUILD SUCCESSFUL, EXIT=0, --rerun-tasks (the duration is deliberately not
+    quoted: it is the one number that changes when this line is re-read, and the
+    claim is the result, not the clock)
     TEST-ch.monreleve.app.register.RegisterCoverageTest.xml:
       tests="1" skipped="0" failures="0" errors="0"
     Read from the run made AFTER this report reached its final text, not from an
@@ -1255,12 +1347,24 @@ moved:
            (logcat with three positive controls), every day identical including
            the free-text note, the Releve's every computed value identical, and
            the forecast computing from a weekly_rhythm row that survived
-    R421   NOT RUN. The device left the USB bus mid-run:
-           "Starting 0 tests ... Finished 0 tests" then
-           AdbCommandRejectedException: closed / device not found.
-           BUILD FAILED in 54s, TEST_EXIT=1 - recorded as NO RESULT (R391),
-           never as a pass and never as a fail. Still owed, in full, with the
-           plant script written and ready.
+    R421   FIRST ATTEMPT: NO RESULT - the device left the USB bus mid-run,
+           "Starting 0 tests ... Finished 0 tests", AdbCommandRejectedException:
+           closed, BUILD FAILED in 54s. Never read as a pass or a fail (R391).
+           SECOND ATTEMPT, after the operator re-plugged the phone:
+             the matrix     tests="9" failures="0" errors="0" skipped="0"
+                            BUILD SUCCESSFUL in 1m 18s, TEST_EXIT=0
+             planted RED    tests="9" failures="5", "Migration didn't properly
+                            handle:  weekly_rhythm", and the five are EXACTLY
+                            the paths that reach version 6; the four step tests
+                            that stop short all passed
+             reverted       verified by line (R180); android/ byte-identical to
+                            the pushed tip; the matrix re-run green 9/0/0/0;
+                            MigrationSqlVerbatimTest 2/0/0/0 and
+                            RoomSchemaContractTest 6/0/0/0 green
+             reinstalled    the after audit APK, launched, no crash
+             the database   read at row level before any uninstall: user_version
+                            6, identity_hash a08f54541b97835cb850e7d8e4b1cf2d,
+                            seven rows, one account tag, the note, the v6 rhythm
 
 gate:clone was NOT run, and that is a decision rather than an omission (R133):
 its subject is the web package, and `git diff origin/main...HEAD -- web/` is
