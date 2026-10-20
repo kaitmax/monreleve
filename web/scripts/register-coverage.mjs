@@ -25,14 +25,36 @@
 //
 // THE SCOPE IS DERIVED FROM THE REPORTS ON DISK, NEVER A HAND-KEPT LIST. A new
 // report added tomorrow is scanned the day it lands. Every REPORT-*.txt at the
-// repo root is read, every PARK-<n> and PARKAN-<n> it cites is collected, and
+// repo root is read, every id of this register it cites is collected, and
 // parking.md must cover each - both that a "## <id> -" heading exists AND that the
 // entry under it is real rather than a "Not transcribed" placeholder, because a
 // heading with no content is a citation that resolves to a promise, not an entry.
 //
-// The PARK4-<n> series (Phase4parking.md) is a DIFFERENT register and is not
-// matched: "PARK4-2" has a digit where PARK-<n> / PARKAN-<n> have a hyphen, so the
-// pattern below excludes it. The published "P<n>" register is likewise not matched.
+// R442 (FW-PARK-IDS): WHAT "AN ID OF THIS REGISTER" MEANS, AND WHAT IT USED TO
+// MEAN. This header used to say "every PARK-<n> and PARKAN-<n>", and the pattern
+// below said `/\bPARKAN?-\d+\b/g`. Those are not the same thing: `PARKAN?` is the
+// five letters PARKA followed by an OPTIONAL N, so what it matched was
+// PARKAN-<n> and PARKA-<n> - never `PARK-12`, and never a lettered id. At
+// 5e87a4a it reported "39 cited id(s) across 115 report(s)" and all thirty-nine
+// were PARKAN-<n>: the whole PARK-<n> series and every PARK-<letter><n> were
+// invisible to the check that exists to make a citation followable. A comment
+// asserting behaviour nothing delivers is R154's defect; this one asserted it
+// for long enough that twenty-eight lettered ids accumulated with no entry.
+//
+// THE SHAPES ARE A CENSUS, NOT A GUESS. Across REPORT-*.txt, relay/ and
+// parking.md, every id of this register is PARK-<n>, PARKAN-<n> or
+// PARK-<ONE letter><n> - A1, B1..B4, F1..F3, G1, I1..I5, K1..K7, P1, P2, R1,
+// R2, S1..S3, U1..U3. Hence ONE optional letter, not `[A-Z]*`: PARK-FW34-LAUNCH
+// is a real citation of a different shape, and `[A-Z]*\d+\b` matches PARK-FW34
+// out of it, because the hyphen that follows is a word boundary - reporting a
+// cited id that exists nowhere. It is left unmatched and parked (PARK-25).
+//
+// WHAT IS STILL NOT MATCHED, AND WHY. The task-local series - PARK4-<n>
+// (Phase4parking.md), PARK5-<n>, PARK5b-<n>, PARK26-<n>, PARK27-<n>,
+// PARK30-<n>, PARK31-<n> - are registers of their own: each has a digit where
+// this one has a hyphen, so none of them reaches `PARK-` or `PARKAN-`. The
+// published "P<n>" register (R162) is likewise not matched, nor are PARKED,
+// PARKING, a bare "PARK-", or PARKAN-NNN.
 
 import { readFileSync, readdirSync, realpathSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -45,8 +67,17 @@ import process from 'node:process';
 const SELF = fileURLToPath(import.meta.url);
 const DEFAULT_ROOT = resolve(dirname(SELF), '..', '..');
 
-// PARK-12 or PARKAN-18, never PARK4-2 (a different series) and never the published P<n>.
-const CITATION = /\bPARKAN?-\d+\b/g;
+// ONE HOME FOR THE SHAPE (R206). Two places need it - the citation scan and the
+// heading scan - and before FW-PARK-IDS each held its own copy of the same
+// expression. They did not drift; they shared one defect, and a widening that
+// reached only the first would have left the placeholder scan blind to every
+// heading this change makes legal. A second description of one rule is the
+// thing that can disagree with it, so there is one.
+const ID = String.raw`PARK(?:AN)?-[A-Z]?\d+`;
+
+// PARK-12, PARKAN-18 or PARK-K6; never PARK4-2 (a different series), never a
+// bare PARK-, never PARKED, and never the published P<n>.
+const CITATION = new RegExp(String.raw`\b${ID}\b`, 'g');
 
 /**
  * @param {string} repoRoot
@@ -133,8 +164,14 @@ function hasHeading(parking, id) {
 // LEDGER row's lowercase "not transcribed" sits under "## STATUS LEDGER", not a PARK
 // heading, so it is not a false positive - only a real placeholder BODY under a
 // PARK/PARKAN heading is flagged.
+//
+// IT READS THE SAME `ID` AS THE CITATION SCAN (R267). This matcher carried its
+// own copy of the narrow expression, so it saw 39 of the 97 headings in
+// parking.md - a placeholder under "## PARK-12 -" or "## PARK-K6 -" could not
+// be flagged at all. A finding that names a second site is not closed until
+// that site is checked, and the two sites now cannot diverge.
 function placeholderEntries(parking) {
-  const headings = [...parking.matchAll(/^##\s+(PARKAN?-\d+)\s+-.*$/gm)];
+  const headings = [...parking.matchAll(new RegExp(String.raw`^##\s+(${ID})\s+-.*$`, 'gm'))];
   const flagged = [];
 
   for (let i = 0; i < headings.length; i += 1) {
