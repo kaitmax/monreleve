@@ -6,7 +6,35 @@ Rulings: R458, R459, R460, R461, R462
 ================================================================================
 SUMMARY
 ================================================================================
-(written at the end of the session - see STATUS)
+42 of :app and :shared's 176 test files read a file. 26 read an Android
+source/resource root; 16 read fixtures, web/, docs/ or their own resources and
+get no MOVED/PLATFORM/BOTH class rather than an invented fourth one.
+
+TWO fences are MOVED, and both were in the operator's list of 14 that "never
+mention shared". LogFenceTest guards "no credential on a log line" over code
+that is now in :shared - println is in the common stdlib, so the rule is not
+Android-only. NoDebugInjectionInMainTest guards a TERRITORY, "every shipped
+source set", and :shared commonMain became one when :app took the dependency;
+the merged-manifest guard beside it could not have caught a class with no
+<activity> entry. Both widened, each shown RED on a plant in :shared and RED
+again on the existing kind of plant in :app, both reverted.
+
+TWELVE are PLATFORM and were LEFT, each carrying one written reason. The
+operator was right that a blanket widening would be wrong:
+OnDeviceFormatGoldenTest reads the five store implementations KMP-3 deliberately
+left in :app, and ApiLevelFenceTest bans java.time members that commonMain
+structurally cannot reference.
+
+THE STRUCTURAL FIX is FenceRoot.kt: every root asserted SEPARATELY, pinned by a
+file only it can hold, with optional roots stating an asserted reason. Its first
+pass found three live holes, the sharpest being that NoBareThresholdTest's OWN
+anti-vacuity test skipped the absent root (if (!dir.exists()) continue) - so the
+one root that had moved would have been the one root it could not see.
+
+R462 found SIX undeclared gate inputs, one MEASURED: a build-script edit left
+:app:testDebugUnitTest UP-TO-DATE, so CleanWorktreeGuardTest - whose only job is
+to notice R393's guard block being deleted - could not have noticed. Declared,
+and proven in both directions.
 
 ================================================================================
 STATUS (R391)
@@ -30,7 +58,21 @@ frozen capture as clean, and says nothing about having shrunk.
 ================================================================================
 R1 - FULL :app:gate ON origin/main's HEAD
 ================================================================================
-(pending - pasted below)
+Run FIRST, in a fresh worktree at C:/wt/an-fence-roots checked out from main,
+before a line was edited. origin/main == main == ada8871.
+
+    cd android && ./gradlew --stop        (1 Daemon stopped)
+    ./gradlew :app:gate --rerun-tasks
+
+    > Task :app:checkTestFloor
+    test floor OK: 1208 unit tests observed (>= 10)
+    ...
+    BUILD SUCCESSFUL in 15m 42s
+    225 actionable tasks: 225 executed
+    exit code 0
+
+1208 is KMP-3's floor exactly, so the suite that ran is the whole suite and not
+a subset left behind by dead workers.
 
 ================================================================================
 R458 - THE CENSUS
@@ -221,39 +263,505 @@ Kotlin moves between :app and :shared. No class is invented for them.
 ================================================================================
 R460 - EVERY FENCE PROVES IT FOUND ITS SUBJECT
 ================================================================================
-(pending)
+
+THE MECHANISM
+-------------
+android/app/src/test/kotlin/ch/monreleve/app/fences/FenceRoot.kt (new, test
+sources only). Three things, no more:
+
+  FenceRoot(dir, pin, optionalBecause)   a root, the name of a file ONLY it can
+                                         hold, and - for a root that may
+                                         legitimately be absent - the reason,
+                                         which is itself asserted non-trivial
+                                         (R206's corollary).
+  List<FenceRoot>.assertFound(fence)     each root on its OWN: it is a
+                                         directory, it holds Kotlin, and it
+                                         holds its pin. Every failure names the
+                                         fence, what it looked for and the
+                                         ABSOLUTE path it looked in.
+  subjectFile(fence, path)               the same guarantee for a fence whose
+                                         subject is a NAMED FILE rather than a
+                                         tree.
+
+Modelled on AccountCaptureFenceTest's SECOND test, not its first. Its first
+asserts a COMBINED count (sources.size > 50); KMP-3 added the per-root test
+precisely because a combined count stays comfortably over any threshold with one
+root missing entirely. A helper rather than nine copies because R460 authorises
+one at the third use, and there are fourteen.
+
+THE THREE SILENT-DROP PATTERNS, ALL LIVE IN THIS REPOSITORY BEFORE THIS TASK
+----------------------------------------------------------------------------
+  roots.filter { it.exists() }      ApiLevelFenceTest, NoDebugInjectionInMainTest,
+                                    CopyDuplicationTest, ParametresCopyAccentTest,
+                                    NoBareThresholdTest.scannedFiles()
+  if (!dir.exists()) emptyList()    CopyReachabilityTest, DayCellGridHasLegendTest,
+                                    LogFenceTest's ui/ half, FencesTest.ktFiles()
+  if (!dir.exists()) continue       NoBareThresholdTest's OWN presence test
+
+THE LIVE INSTANCE IS THE PROOF, NOT THE PLANT (R178)
+----------------------------------------------------
+NoBareThresholdTest's findsFilesToInspectSoTheGuardCannotPassVacuously exists to
+make the fence non-vacuous. It walked every root and opened its loop with
+`if (!dir.exists()) continue` - so THE ONE ROOT THAT HAD MOVED WOULD HAVE BEEN
+THE ONE ROOT THE PER-ROOT CHECK SKIPPED, and the overall files.isNotEmpty() would
+have stayed true on what was left. Lose CALC_DIR to the next KMP move and the
+fence goes on certifying that ui/, design/ and dev/ carry no bare 0.4 - which
+they never did - while Rules.kt, the file that holds every threshold in the
+product, goes unread. A guard whose own vacuity check skips the absent root is
+not a weaker guard; it is the guard that cannot see the thing it was written for.
+
+A second live instance, smaller: NoDebugInjectionInMainTest declared TWO roots,
+scanned ONE (src/release/kotlin has never existed), and had no count assertion
+at all. The same `.filter { it.exists() }` would have dropped src/main on
+identical terms.
+
+A third: BatteryOptimisationTest's `MANIFESTS.filter { it.exists() }` plus a
+combined isNotEmpty() would have passed on the DEBUG manifest alone, with the one
+that ships unread.
+
+THE EMPTY-ROOT RED, ONCE PER CLASS (all reverted; no demo plant remains)
+-----------------------------------------------------------------------
+MOVED - LogFenceTest, :shared root pointed at app/build/tmp/r460-empty-root:
+
+    LogFenceTest > theWalkReachesBothTreesEachNamedByAFileOnlyItCanHold FAILED
+    LogFenceTest > noCredentialShareALineWithALogSink FAILED
+    3 tests completed, 2 failed
+    java.lang.AssertionError: log fence: the root build\tmp\r460-empty-root holds
+    no Kotlin at all (looked in
+    C:\wt\an-fence-roots\android\app\build\tmp\r460-empty-root) - a fence that
+    scans nothing reports perfect compliance
+
+  BOTH tests fail, deliberately: the SCANNING test calls assertFound() first, so
+  a moved subject fails the scan rather than passing over what is left.
+
+MOVED, second failure mode - the same root pointed at a POPULATED WRONG
+directory (src/main/kotlin/ch/monreleve/app/auth, which has Kotlin but no
+SessionManager.kt). This is R452's own case: a root that resolves to somebody
+else's sources.
+
+    java.lang.AssertionError: log fence: the root src\main\kotlin\ch\monreleve\
+    app\auth does not hold SessionManager.kt, the file that identifies it
+    (looked in C:\wt\an-fence-roots\android\app\src\main\kotlin\ch\monreleve\
+    app\auth). Either the subject moved - widen this fence the way R459 widened
+    the others - or this root now resolves to somebody else's sources.
+
+BOTH - NoBareThresholdTest, CALC_DIR pointed at the empty directory:
+
+    NoBareThresholdTest > noFileAnywhereCarriesABarePercentForm FAILED
+    NoBareThresholdTest > noScannedFileCarriesABareForbiddenFraction FAILED
+    NoBareThresholdTest > findsFilesToInspectSoTheGuardCannotPassVacuously FAILED
+    NoBareThresholdTest > rulesKtDoesCarryThemItIsTheSingleSource FAILED
+    java.lang.AssertionError: bare-threshold fence: the root
+    build\tmp\r460-empty-root holds no Kotlin at all (looked in ...) - a fence
+    that scans nothing reports perfect compliance
+
+PLATFORM - ApiLevelFenceTest, src/debug root pointed at the empty directory:
+
+    ApiLevelFenceTest > noJavaTimeMemberAddedAfterMinSdkIsCalled FAILED
+    java.lang.AssertionError: API-level fence: the root
+    build\tmp\r460-empty-root holds no Kotlin at all (looked in ...) - a fence
+    that scans nothing reports perfect compliance
+
+WHAT EACH FENCE CARRIES NOW
+---------------------------
+  FENCE                            BEFORE                      AFTER
+  AccountCaptureFenceTest          per-root + pin (KMP-3)      unchanged - it is the model
+  ErasureCensusTest                check(dir.isDirectory)      unchanged - already per-root
+  FencesTest (9 fences)            isNotEmpty() per fence      unchanged + R461 reason lines
+  CommonMainFenceTest (:shared)    check dir + check non-empty unchanged
+  RoomSchemaContractTest           assertTrue(schemaFile...)   unchanged
+  SyncWorkerResultMappingTest      "in neither :app nor :shared" unchanged
+  MigrationSqlVerbatimTest         fixture presence + how to   unchanged
+                                   regenerate
+  ThresholdAlertR340Test           per-file exists + length    unchanged + R461 reason
+  AnswerIconDrawablesTest          dir + an icon it does not   unchanged + R461 reason
+                                   own
+  LogFenceTest                     combined isNotEmpty         per-root + pin, BOTH TREES
+  NoDebugInjectionInMainTest       NOTHING                     per-root + pin + optional reason
+  NoBareThresholdTest              skipped the absent root     per-root + pin
+  ApiLevelFenceTest                combined isNotEmpty         per-root + pin
+  CopyDuplicationTest              combined const count        per-root + pin
+  CopyReachabilityTest             nothing per root            per-root + pin, both lists
+  ParametresCopyAccentTest         combined string count       per-root + pin
+  DayCellGridHasLegendTest         "found a grid"              per-root + pin
+  BackupRulesTest                  NOTHING (bare FileNotFound) subjectFile per file
+  BatteryOptimisationTest          filter+isNotEmpty           named individually
+  BorderPolygon/Classification/
+    DetectionSession               NOTHING                     subjectFile on the asset
+  EveningNotifierLockScreenTest    length > 500 AFTER readText subjectFile before readText
+  ThresholdAlertNotifierTest       length > 500 AFTER readText subjectFile before readText
+  OnDeviceFormatGoldenTest         constantsIn() only          subjectFile everywhere
+  ParametresR282Test               combined string count       subjectFile per file
+  WarningsTest                     NOTHING                     check(isFile) naming the path
+  NumbersTest                      NOTHING                     subjectFile on its own source
+
+Group B's fixture/web/docs readers (FixturePaths, WireContractParityTest,
+BatchLimitParityTest, AppSiteLinksTest, FixtureCoverageTest,
+RegisterCoverageTest, VoteThresholdParityTest, CleanWorktreeGuardTest) already
+carried check(exists)/isDirectory assertions naming the absolute path. Verified
+file by file; left unchanged.
+
+FencesTest WAS LEFT ALONE ON PURPOSE. Every one of its nine fences already
+asserts a non-zero file count with a message naming the root - R460's stated
+minimum, "a non-zero count, or the named files present". Rewriting nine working
+assertions to add a pin would be change without a measured gap behind it (R156).
+It gains R461's reason lines and nothing else.
 
 ================================================================================
 R459 - MOVED FENCES WIDENED AND PROVEN ON THE NEW SIDE
 ================================================================================
-(pending)
+Two fences are MOVED. Both plants were verified AT THE LINE before any result
+was read (R180), and both reverted with git diff --quiet over
+android/app/src/main and android/shared (exit 0).
+
+--- 1. LogFenceTest ------------------------------------------------------------
+SUBJECT: no token / refresh / email / password / secret / bearer word shares a
+line with a log or print sink, anywhere in product code.
+
+WHY IT MOVED: KMP-1 and KMP-3 put the credential-bearing code in :shared
+commonMain - auth/TokenPair.kt, auth/TokenStore.kt, auth/SessionManager.kt,
+data/remote/AuthApi.kt, data/sync/SyncEngine.kt.
+
+WHY IT IS NOT AN ANDROID-ONLY RULE, which is what makes the widening necessary
+rather than tidy: Log.d cannot appear in commonMain (no android.*), but `println`
+is in the COMMON stdlib and is already one of LOG_SINK's alternatives. A
+println of a refresh token in SessionManager compiles for every target and ships.
+
+NO LIVE OFFENDER EXISTS, so the widening needed a plant. The four commonMain
+lines that match both patterns are all COMMENTS (TokenPair.kt:8, TokenStore.kt:57
+- "It must not log, print or copy the tokens"), and the fence strips comments
+before scanning, which is why it was written that way.
+
+  PLANT, :shared (written to COMPILE - :shared compiles before :app runs a test):
+    shared/src/commonMain/kotlin/ch/monreleve/app/auth/SessionManager.kt:129
+        println("refresh: refreshToken=${before.refreshToken}")
+  RED:
+    LogFenceTest > noCredentialShareALineWithALogSink FAILED
+    java.lang.AssertionError: log fence violated - a credential must never reach
+    a log line:
+    ..\shared\src\commonMain\kotlin\ch\monreleve\app\auth\SessionManager.kt:107:
+    a log/print sink on the same line as a credential word
+
+  POSITIVE CONTROL, :app (the existing kind of violation - the shape REPORT-AN4
+  planted when this fence was written):
+    app/src/main/kotlin/ch/monreleve/app/auth/KeystoreTokenStore.kt:47
+        android.util.Log.d("auth", "save refreshToken=${pair.refreshToken}")
+  RED:
+    java.lang.AssertionError: log fence violated - a credential must never reach
+    a log line:
+    src\main\kotlin\ch\monreleve\app\auth\KeystoreTokenStore.kt:47: a log/print
+    sink on the same line as a credential word
+
+  Run separately, not together: with both plants in place neither run tells you
+  which root produced the failure, and "the :shared plant ALONE turns it red" is
+  the whole claim.
+
+  noRawTokenReachesTheUiLayer stays :app-only (R461): ui/ is Compose and has no
+  commonMain counterpart. Its `if (uiDir.exists()) ... else emptyList()` is
+  replaced by the assertion.
+
+--- 2. NoDebugInjectionInMainTest ----------------------------------------------
+SUBJECT: the debug-only tooling markers ("SessionInjection", "DebugSeeder")
+appear in NO SHIPPED source set. The subject is a TERRITORY, not a file, and the
+territory is what moved: :app depends on :shared, so shared/src/commonMain/kotlin
+is compiled into the debug AND release APKs. It was not a shipped source set when
+R284 wrote this fence.
+
+GUARD (b) WOULD NOT HAVE CAUGHT IT EITHER, which is why this is not
+belt-and-braces: checkReleaseNoDebugInjection reads the merged release MANIFEST,
+and a class with no <activity> entry appears in no manifest. The two guards have
+distinct subjects - the fence's own header says so.
+
+  PLANT, :shared:
+    shared/src/commonMain/kotlin/ch/monreleve/app/shared/SharedModule.kt:13
+        internal object SessionInjection
+  RED:
+    java.lang.AssertionError: R284 guard (a): debug-only tooling
+    ([SessionInjection, DebugSeeder]) must live only in src/debug, but it was
+    found in a shipped source set:
+    SessionInjection in ..\shared\src\commonMain\kotlin\ch\monreleve\app\shared\
+    SharedModule.kt
+
+  POSITIVE CONTROL, :app:
+    app/src/main/kotlin/ch/monreleve/app/startup/StartupDecider.kt:13
+        internal object SessionInjection
+  RED:
+    java.lang.AssertionError: R284 guard (a): debug-only tooling
+    ([SessionInjection, DebugSeeder]) must live only in src/debug, but it was
+    found in a shipped source set:
+    SessionInjection in src\main\kotlin\ch\monreleve\app\startup\StartupDecider.kt
+
+  R180 EARNED ITSELF ON THIS PLANT. The first :app plant was inserted directly
+  after the `package` line, which is a Kotlin syntax error ("imports are only
+  allowed in the beginning of file"), so :app:compileDebugKotlin FAILED and
+  testDebugUnitTest never ran. The test-results XML on disk was the PREVIOUS
+  run's, still carrying the :shared failure - a stale file that reads exactly
+  like a verdict. It was recorded as NO RESULT (R391), the stale XMLs were
+  deleted, the plant was re-placed after the import block, and the run repeated.
+
+  REVERTS VERIFIED by grep, not asserted: no println plant, no SessionInjection
+  and no Log.d("auth" remains under app/src/main or shared/src/commonMain, and
+  `git diff --quiet -- android/app/src/main android/shared/src` exits 0.
+
+NO FENCE WAS WIDENED WHERE ITS SUBJECT DID NOT MOVE, and that is the half the
+measurement in the prompt warned about: a blanket widening would have added
+twelve scans of commonMain that can never fire, each of which READS AS COVERAGE
+(R461). OnDeviceFormatGoldenTest is the clearest case - the store CONTRACTS are
+in :shared and write nothing; the keys it pins are written by the :app
+implementations KMP-3 deliberately left behind.
 
 ================================================================================
 R461 - PLATFORM FENCES LEFT, WITH THE REASON WRITTEN DOWN
 ================================================================================
-(pending)
+Every PLATFORM fence now carries, where a reader meets it, one statement of why
+it reads :app only AND that R460's assertion fails if its subject moves.
+
+  ApiLevelFenceTest          java.time CANNOT appear in commonMain, and TWO
+                             mechanisms say so, neither of them this fence:
+                             CommonMainFenceTest rejects every "import java."
+                             (its exemption list is exactly androidx.room and
+                             androidx.sqlite, asserted), and
+                             compileCommonMainKotlinMetadata - a :app:gate step -
+                             resolves commonMain against the COMMON stdlib, where
+                             java.time does not exist, so even a fully-qualified
+                             call with no import fails to compile. commonMain
+                             dates are kotlinx.datetime (R384's inventory, read
+                             and confirmed), whose LocalDate has no ofInstant.
+  DayCellGridHasLegendTest   DayCell/DayKindLegend are Compose.
+  AnswerIconDrawablesTest    res/drawable is Android vector XML.
+  BackupRulesTest            res/xml; commonMain has no res/.
+  BatteryOptimisationTest    AndroidManifest; commonMain has none.
+  BorderPolygonTest          a BUNDLED ANDROID ASSET (src/main/assets).
+  ClassificationTest         the same asset.
+  DetectionSessionTest       the same asset.
+  EveningNotifierLockScreen  NotificationCompat + PendingIntent +
+    Test                     setAuthenticationRequired - android.app and
+                             androidx.core, which commonMain may not import.
+  ThresholdAlertNotifierTest the same builder.
+  ThresholdAlertR340Test     all four named files verified still in
+                             app/src/main/kotlin by this task's census; the
+                             SHARED half of the compute has its own guard
+                             (ForecastR340Test), which the file already named.
+  OnDeviceFormatGoldenTest   KMP-3 moved the store CONTRACTS to :shared and left
+                             every Android implementation in :app. The keys this
+                             golden pins are written by the implementations; the
+                             interfaces write nothing.
+  LogFenceTest (test 2)      ui/ is Compose.
+  FencesTest fences 2a, 7    detection/ is Android (location, WorkManager,
+                             Notification).
+  FencesTest fences 3,4,5,6,8 ui/ and design/ and dev/ are Compose.
+  FencesTest fence 9         the brand tint is a design/ token.
+
+NO RED PLANT IN :shared FOR ANY OF THESE. R461 is explicit that a scan which can
+never fire proves nothing, and each reason above is a statement about what
+commonMain structurally cannot hold rather than about what it happens not to hold
+today.
 
 ================================================================================
 R462 - THE GATE STILL SEES THEM
 ================================================================================
-(pending)
+
+THE OPERATOR'S CLAIM, VERIFIED RATHER THAN TAKEN
+------------------------------------------------
+KMP-3's inputs.dir("$projectDir/../shared/src/commonMain/kotlin") sits inside
+`tasks.withType<Test> { ... }` in android/app/build.gradle.kts (line 240 on
+main). That is a configuration applied to EVERY Test task in :app, not to one
+test - so the UP-TO-DATE hazard is closed for ALL of :app's unit tests, exactly
+as the prompt says. CONFIRMED by reading the block, and confirmed again by the
+R462 probe below, which saw testDebugUnitTest re-run on a change to a file
+declared in that same block.
+
+:shared carries its own equivalent: shared/build.gradle.kts has
+tasks.withType<Test>().configureEach { inputs.dir("src/commonMain/kotlin") } for
+CommonMainFenceTest.
+
+I FOUND SIX UNDECLARED ROOTS, AND ONE OF THEM IS MEASURED, NOT REASONED ABOUT
+-----------------------------------------------------------------------------
+THE MEASURED ONE. CleanWorktreeGuardTest reads app/build.gradle.kts to assert
+that R393's clean-worktree guard block is still WIRED - R393 exists because two
+KMP-0 commits put java.time into commonMain with every check green. The probe:
+
+    ./gradlew :app:testDebugUnitTest          -> ran, BUILD SUCCESSFUL in 2m 36s
+    ./gradlew :app:testDebugUnitTest          -> :app:testDebugUnitTest UP-TO-DATE
+    (append one comment line to app/build.gradle.kts)
+    ./gradlew :app:testDebugUnitTest          -> :app:testDebugUnitTest UP-TO-DATE
+
+So the test whose whole job is to notice that guard block being deleted COULD NOT
+HAVE NOTICED. Deleting it would have left a stale green. A build-script edit does
+not invalidate a Test task whose configuration sets properties rather than
+actions, and nothing had ever asked.
+
+Declared, and proven in the other direction with the same edit:
+
+    ./gradlew :app:testDebugUnitTest          -> ran, BUILD SUCCESSFUL in 2m 46s
+    ./gradlew :app:testDebugUnitTest          -> :app:testDebugUnitTest UP-TO-DATE
+    (append the same comment line)
+    ./gradlew :app:testDebugUnitTest          -> ran, BUILD SUCCESSFUL in 2m 42s
+
+Both probes removed; `git diff --quiet -- android/app/build.gradle.kts` exits 0
+against the intended change only.
+
+THE OTHER FIVE:
+  docs/detection-model.md     VoteThresholdParityTest derives every vote and
+                              near-border constant from it (R181). PROVEN: a
+                              content change now re-runs the task (2m 24s).
+  docs/lucide-icons.md        AnswerIconDrawablesTest - R167's instrument.
+  src/main/res/drawable       AnswerIconDrawablesTest. res/xml was declared;
+                              res/drawable never was.
+  src/main/AndroidManifest.xml and src/debug/AndroidManifest.xml
+                              BatteryOptimisationTest (R317). res/xml covered the
+                              backup rules and never the manifests themselves.
+  src/debug/kotlin            ApiLevelFenceTest scans it beside src/main.
+  src/release/kotlin          NoDebugInjectionInMainTest's newly-widened
+                              territory. inputs.files, NOT inputs.dir, because it
+                              does not exist and a REQUIRED absent input makes
+                              Gradle refuse the task - the same reasoning the
+                              migration-sql fixture states three lines above it.
+
+HOW docs/detection-model.md CAME TO BE UNDECLARED IS THE INSTRUCTIVE PART. The
+declaration immediately above it reads "the field-protocol doc
+(docs/field-protocol-AN6b.md), read by TierThresholdParityTest". That test does
+not exist; it was REPLACED by VoteThresholdParityTest, which reads a DIFFERENT
+document. The deleted test's input stayed declared and the replacement's was
+never added - a declaration following a test's name into oblivion while the new
+dependency arrived unannounced. The stale entry is kept and its comment corrected
+to say that no test reads the file today (PARK-V1).
+
+THE INPUT LIST, BEFORE AND AFTER (property names, in file order)
+----------------------------------------------------------------
+  BEFORE (main, ada8871)            AFTER (964d74c)
+  migrationSqlFixture               migrationSqlFixture
+  sharedFixtures                    sharedFixtures
+  serverEntrySchema                 serverEntrySchema
+  fieldProtocolDoc                  fieldProtocolDoc   (stale; comment corrected)
+                                 +  detectionModelDoc
+                                 +  lucideIconsDoc
+  websiteRoutes                     websiteRoutes
+  roomSchemas                       roomSchemas
+  sharedCommonMainSourceForFences   sharedCommonMainSourceForFences
+  bundledAssets                     bundledAssets
+  resXml                            resXml
+                                 +  resDrawable
+                                 +  sourceManifests
+                                 +  scannedDebugSource
+                                 +  scannedReleaseSource
+                                 +  appBuildScript
+  scannedMainSource                 scannedMainSource
+  scannedSharedCommonMainSource     scannedSharedCommonMainSource
+  registerAndReports                registerAndReports
+  registerCoverageScript            registerCoverageScript
+  fixtureCoverageScript             fixtureCoverageScript
+  webTestTree                       webTestTree
+
+  15 before, 21 after.
+
+EVERY ROOT, CROSS-CHECKED AGAINST THE DECLARATIONS. A final sweep extracted every
+quoted path-shaped literal from :app's and :shared's test sources (63 distinct
+strings, messages included) and matched each against the list above. Three
+categories need no declaration and are named rather than omitted:
+  - src/test/resources/** (migration-sql.txt, border/geneva-reference.json,
+    on-device-formats.txt) are test RESOURCES, inputs of processTestResources by
+    construction - migration-sql.txt is declared anyway, for the reason its own
+    comment gives.
+  - src/test/kotlin/**, which NumbersTest reads as text, is a test SOURCE and an
+    input by compilation.
+  - shared/src/commonMain/kotlin as read by :shared's own CommonMainFenceTest is
+    declared in shared/build.gradle.kts.
+
+EVERY FENCE TOUCHED STILL RUNS IN THE GATE. All of them are JVM unit tests in
+:app's test source set except CommonMainFenceTest (untouched), which is in
+:shared's androidUnitTest source set. :app:gate depends on "testDebugUnitTest"
+and on ":shared:testDebugUnitTest" (app/build.gradle.kts, tasks.register("gate")),
+so both are run by the one command. checkTestFloor, also a gate dependency, reads
+the real count: 1210, against KMP-3's 1208, and +2 is exactly the two new
+root-assertion tests (LogFenceTest's theWalkReachesBothTreesEachNamedByAFileOnly
+ItCanHold and NoDebugInjectionInMainTest's
+theScannedTerritoryIsTheOneTheMarkersCouldShipIn).
 
 ================================================================================
 PARKED
 ================================================================================
-(pending)
+Series V claimed FROM THE REGISTER (R456): node web/scripts/register-coverage.mjs
+reports OK, and the letters in use are A B D F G I K L P R S U. V was free, and
+is confirmed free by the check rather than by the list.
+
+PARK-V1  A declared test input nothing reads any more. fieldProtocolDoc /
+         docs/field-protocol-AN6b.md, declared for a test that no longer exists.
+         Kept, comment corrected; removing a declared input is a build decision
+         with no defect behind it (R156).
+
+PARK-V2  A source fence's TERRITORY is still a list a person maintains. R460
+         makes a fence fail when a root it NAMES goes missing. Nothing makes a
+         fence fail when a root it SHOULD name APPEARS - a third module, a
+         shared/src/iosMain, an app/src/release/kotlin somebody creates. The
+         derived answer has a shape here already: R246's closed-world root
+         census. Out of this task's scope ("writing new fences for subjects no
+         fence guards today" is the prompt's own OUT OF SCOPE line).
 
 ================================================================================
 DEVIATIONS
 ================================================================================
-(pending)
+1. ORDER. The prompt's WORK section puts R460 (step 2) before R459 (step 3). For
+   the two MOVED fences the two are one change - widening a fence and asserting
+   it found the new root cannot sensibly be committed apart - so commit 97fdd96
+   carries both for those two, and 1477250 / 721367c carry R460 alone for the
+   rest. The R458 table was committed first and alone (efdaf1d), as the prompt
+   requires.
+
+2. THE R1 BASELINE GATE AND A COMMIT THAT LANDED DURING IT. :app:gate
+   --rerun-tasks was launched on a clean tree at main's HEAD (ada8871) and ran
+   15m 42s. The report skeleton was written and committed (efdaf1d) WHILE it was
+   running. That file is in no compiled or scanned subject of the gate - no fence
+   reads the repo root - and the one test that reads REPORT-*.txt
+   (RegisterCoverageTest) passed, and passes now, against it. Recorded because
+   "the gate ran on main's HEAD" is a claim about the tree, and the tree was not
+   byte-identical for the whole run. The FINAL gate below is the one R391
+   governs.
+
+3. HARD BOUNDARY AND THE PLANTS. The boundary says no file under src/main or
+   shared/src/*Main changes. R459 requires a violation planted in :shared and one
+   in :app, which are temporary edits to exactly those files. Both were reverted
+   and `git diff --quiet -- android/app/src/main android/shared/src` exits 0 on
+   the final tip. No permanent change to any product file.
+
+4. A HELPER FILE WAS RENAMED FOR A LINT RULE. FenceRoots.kt became FenceRoot.kt:
+   detekt's MatchingDeclarationName refused a file whose single top-level
+   declaration is FenceRoot. Noted because the name in the commit message and the
+   name on disk differ from the first draft.
+
+================================================================================
+NOTICED BUT NOT TOUCHING
+================================================================================
+1. shared/src/commonMain/kotlin is declared TWICE in app/build.gradle.kts, under
+   two property names - sharedCommonMainSourceForFences (KMP-3) and
+   scannedSharedCommonMainSource (KMP-2b). Harmless to Gradle, and a second
+   description of one input that can drift from the first (R206's shape). Not
+   merged: removing a declaration is the same class of build decision as PARK-V1,
+   and collapsing two comments into one would lose the two tasks' separate
+   reasoning.
+
+2. "src/main/assets/border/switzerland.json" was typed into three test files.
+   This task routed all three through subjectFile() and gave the path ONE home
+   (BORDER_ASSET in BorderPolygonTest) rather than three - inside scope because
+   the change was already touching every one of those lines.
+
+3. app/src/release/kotlin does not exist, and app/src/release holds res/ only.
+   Recorded because NoDebugInjectionInMainTest has declared it since R284 and
+   nothing said so.
 
 ================================================================================
 QUESTIONS
 ================================================================================
-(pending)
+None. No SPEC 20 Ask-first item was reached: no runtime dependency was added, no
+constant, rounding rule or engine API changed, no token added, no budget raised,
+no third-party script. The only new file is a test helper.
+
+================================================================================
+R391 - THE FULL GATE
+================================================================================
+(pasted below)
 
 ================================================================================
 PUSH PROOF
 ================================================================================
-(pending)
+(pasted below)
