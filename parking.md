@@ -2143,6 +2143,557 @@ reading every section. Entries are not edited; this ledger is.
 | PARKAN-47 — AN-NOTIF dumpsys lock-screen verification | **done for API 29; 31+ flag + PIN check remain** | device-walkthroughs (2026-10-11, WT3): `adb shell dumpsys notification` on the posted notification confirmed id=1001, vis=PRIVATE, a SEPARATE publicVersion with vis=PUBLIC and NO actions (= "Mon Releve / Une journee a enregistrer."), the two recording buttons as immutable broadcasts + Autre/body as startActivity. The per-action setAuthenticationRequired is a NO-OP on API 29 so the S9 cannot show the unlock-gate flag in dumpsys - that needs a 31+ device (JVM-asserted meanwhile, EveningNotifierLockScreenTest). The operator's two-line manual PIN check is written in the report (NOT performed - no PIN set/cleared, R334 hard boundary). Minor: the channel's own mLockscreenVisibility read -1000/NO_OVERRIDE (pre-existing channel); the per-notification vis=PRIVATE governs and is set |
 | PARKAN-50 — Aujourd'hui greeting hard-coded "Bonjour Camille" | **resolved, pending merge** | fix-greeting (2026-10-11, commit a99915a, REPORT-FIX-GREETING.txt): Fr.GREETING replaced by `Fr.greeting(holderName)` greeting the holder's FIRST name (Settings.name) with a « Bonjour » fallback for a not-yet-named account; AujourdhuiState.holderName wired controller->Header (R153/R181, Fence 4). Copy decision under R156 (advisor stalled): first name + « Bonjour » fallback. Test-first GreetingTest RED->GREEN (7 cases); `:app:gate` green incl. verifyPaparazziDebug; zero baselines regenerated (host wires « Camille Martin » -> byte-identical render, R207). Originally found by device-walkthroughs (2026-10-11): wt-fresh name "Walkthrough" in the DB but Aujourd'hui greeted "Camille" |
 
+## THE LETTER SERIES, AND WHY IT IS BACK-FILLED HERE  [appended 2026-10-20, FW-PARK-IDS]
+
+The register's citation check - `web/scripts/register-coverage.mjs`, run by
+`gate:clone` and by `RegisterCoverageTest` - held the pattern
+`/\bPARKAN?-\d+\b/g`. `PARKAN?` is the five letters `PARKA` followed by an
+optional `N`, so what it actually matched was `PARKAN-<n>` and `PARKA-<n>`.
+It never matched `PARK-<n>` and it never matched a LETTERED id. Thirty-nine
+ids were being checked, every one of them `PARKAN-<n>`; the whole `PARK-<n>`
+series and every `PARK-<letter><n>` were invisible to it.
+
+Twenty-eight lettered ids were cited by reports on `main` with no entry here.
+They are back-filled below, each naming the report that raised it and its
+state as the record shows it - never a closure the record does not show
+(R444). The text is DERIVED from the raising report rather than re-decided
+here (R181): this section transcribes a register, it does not take decisions
+for the tasks that wrote them.
+
+HOW A BACK-FILLED ENTRY IS SHAPED. The four-field house format above
+(QUESTION / TAKEN / NOT TAKEN / TOUCHES) is for an entry written by the task
+that took the decision. A back-fill is not that, and pretending otherwise
+would mean inventing a QUESTION nobody asked. So each carries:
+
+    RAISED BY:  the report that wrote it, and every other report citing it.
+    WHAT IT IS: the finding, derived from the raising report.
+    STATE:      OPEN, or CLOSED with what closed it, or RECORDED DECISION
+                for an entry whose raising report wrote it as a decision with
+                its reason and left nothing owed.
+
+WHERE THEY SIT. Appended-newest-last yields here to one thing the operator
+asked for explicitly: a branch adding entries at the end of this file was
+pushed and awaiting review while this section was written, so this block is
+inserted ABOVE the KMP-2b entries rather than after them, where the two
+additions would collide. Every entry carries its own date, so the chronology
+is still readable.
+
+THE LETTER SERIES HAS NO ALLOCATION AUTHORITY, AND IT HAS ALREADY COLLIDED
+TWICE. `PARK-F1`, `PARK-F2` and `PARK-F3` were each used by TWO tasks for
+different findings (FW-FOLLOWUP on 15.10.2026, FW-FUTURE-DAY on 19.10.2026);
+`PARK-P1` and `PARK-P2` are FW-PRISMA-GENERATE's, and a branch awaiting
+review uses the same two ids for different findings again. A colliding id is
+R162's defect one register over: each report is internally consistent and the
+citation resolves to the wrong decision. The collisions are recorded in the
+entries themselves and parked as PARK-26; nothing is renamed here, because
+renaming an id would edit reports this task has no licence to touch.
+
+
+## PARK-A1 - the two library deprecations in app/ (LocalLifecycleOwner, Criteria)  [AN-ACCOUNT-TAG, 2026-10-20 - back-filled FW-PARK-IDS 2026-10-20]
+
+RAISED BY:  REPORT-AN-ACCOUNT-TAG.txt. Also cited by REPORT-AN-ANSWER-ICON.txt
+and REPORT-KMP-2b.txt.
+
+WHAT IT IS: Two deprecated APIs remain in `android/app/` - LocalLifecycleOwner
+and Criteria. Both fixes are dependency moves (lifecycle-runtime-compose for
+the first), which AN-ACCOUNT-TAG's boundary forbade. The raising report states
+it as carried forward from KMP-UP's PARK-U2, so this id and PARK-U2 are ONE
+finding recorded twice rather than two findings.
+
+STATE:      OPEN. REPORT-KMP-2b.txt's PARKED list, the most recent citation,
+records "PARK-U2 / PARK-A1 the two library deprecations in app/ ... Both are
+dependency moves; unchanged in count and in text". KMP-UP's Q2 asks whether
+they are worth their own small task; no report records an answer.
+
+
+## PARK-A2 - R425's Log.e branch is unexercised by the unit tests  [AN-ACCOUNT-TAG, 2026-10-20 - back-filled FW-PARK-IDS 2026-10-20]
+
+RAISED BY:  REPORT-AN-ACCOUNT-TAG.txt. Also cited by REPORT-KMP-2b.txt.
+
+WHAT IT IS: R425's canary throws under `check()` in debug because
+BuildConfig.DEBUG is true there, so the release path - one logging line - is
+never reached by a JVM unit test. Exercising it would need a release-variant
+test for no additional guarantee. Recorded by its raising report so the
+omission reads as a decision rather than an oversight.
+
+STATE:      OPEN. AN-ACCOUNT-TAG's Q2 asks whether a release-variant test is
+wanted; no report records an answer, and REPORT-KMP-2b.txt still lists it
+among the entries open from earlier tasks.
+
+
+## PARK-F1 - TWO FINDINGS SHARE THIS ID  [FW-FOLLOWUP 2026-10-15 and FW-FUTURE-DAY 2026-10-19 - back-filled FW-PARK-IDS 2026-10-20]
+
+RAISED BY:  REPORT-FW-FOLLOWUP.txt AND REPORT-FW-FUTURE-DAY.txt, for different
+findings. Both are on `main`. See PARK-26 for the collision itself.
+
+WHAT IT IS (a), FW-FOLLOWUP: the code screen's footer offers "Rien recu ?
+Renvoyer un code". That control makes the same promise the two sentences
+R376 corrected had just stopped making - once the per-address budget is spent
+a resent code is refused on arrival. R376 named exactly two strings and this
+is a third surface, so it was not touched; R267 says a finding that names a
+second site is not closed until that site is checked.
+
+WHAT IT IS (b), FW-FUTURE-DAY: the dossier route's `future_year`. One line
+plus a test, the same class R410-R413 closed for the day route.
+
+STATE (a): OPEN. FW-FOLLOWUP's Q1 asks for the ruling; no report answers it.
+STATE (b): OPEN. FW-FUTURE-DAY's Q1 asks whether to fold it into another task;
+no report answers it.
+
+
+## PARK-F2 - TWO FINDINGS SHARE THIS ID  [FW-FOLLOWUP 2026-10-15 and FW-FUTURE-DAY 2026-10-19 - back-filled FW-PARK-IDS 2026-10-20]
+
+RAISED BY:  REPORT-FW-FOLLOWUP.txt AND REPORT-FW-FUTURE-DAY.txt, for different
+findings. See PARK-26.
+
+WHAT IT IS (a), FW-FOLLOWUP: a pointer, not a finding of its own - it carries
+FW-REDIRECT's PARK-R1 forward, "out of scope here and still open".
+
+WHAT IT IS (b), FW-FUTURE-DAY: the future-dated-rows question for production.
+The query that answers it is written out in R413.
+
+STATE (a): OPEN, as PARK-R1.
+STATE (b): OPEN. No report records the query having been run against
+production.
+
+
+## PARK-F3 - TWO FINDINGS SHARE THIS ID  [FW-FOLLOWUP 2026-10-15 and FW-FUTURE-DAY 2026-10-19 - back-filled FW-PARK-IDS 2026-10-20]
+
+RAISED BY:  REPORT-FW-FOLLOWUP.txt AND REPORT-FW-FUTURE-DAY.txt, for different
+findings. See PARK-26.
+
+WHAT IT IS (a), FW-FOLLOWUP: NOTHING GUARDS THE .gitignore CLASS that task
+fixed. A pattern that silently swallows new source files fails in the one
+direction no test looks - the file is absent, so there is nothing to assert
+about it. The guard would check that no path under a tracked source root is
+ignored; it was not written there because it is a new mechanism rather than
+one of that task's four items.
+
+WHAT IT IS (b), FW-FUTURE-DAY: the "not after today" rule is enforced in the
+route only, not in the database. R196 says an invariant SPEC states about the
+data is enforced where the database can express it, so the rule survives a
+writer that does not know it exists - and this product already has other
+writers. A PostgreSQL CHECK constraint cannot express it, because "today" is
+not immutable, so it would need a trigger.
+
+STATE (a): OPEN. No report records the guard having been written.
+STATE (b): OPEN. FW-FUTURE-DAY's Q2 asks whether a trigger is wanted; no
+report answers it.
+
+
+## PARK-G1 - gate:clone is unaffected by the clean-tree guard, by design  [FW-GATE-CLEAN, 2026-10-14 - back-filled FW-PARK-IDS 2026-10-20]
+
+RAISED BY:  REPORT-FW-GATE-CLEAN.txt.
+
+WHAT IT IS: `pnpm gate:clone` clones HEAD, so it never reads the working tree
+and the clean-tree guard that task built does not apply to it. It already
+prints the dirty paths when there are any. Its raising report recorded this
+so the omission would read as a decision rather than as a gap.
+
+STATE:      RECORDED DECISION. Its raising report states "No change needed".
+No later report revisits it.
+
+
+## PARK-I1 - the icon stroke width is 2, and DESIGN-SYSTEM says 1.75  [AN-ANSWER-ICON, 2026-10-20 - back-filled FW-PARK-IDS 2026-10-20]
+
+RAISED BY:  REPORT-AN-ANSWER-ICON.txt.
+
+WHAT IT IS: DESIGN-SYSTEM section 1 and R430 both say "1.75 px stroke". All 23
+drawables in `res/drawable` carry Lucide's published strokeWidth 2 on a
+24-unit viewport, which renders 1.67 dp at the 20 dp icon size and 2 dp at
+Material's 24 dp default. The five icons that task added MATCH THE OTHER 23 -
+making five differ from eighteen would be a worse state than the discrepancy,
+and changing all 23 is a design-system change the task was not asked for.
+
+STATE:      OPEN. A design-system decision; no report records one.
+
+
+## PARK-I2 - recordPaparazziDebug is not byte-idempotent for one baseline  [AN-ANSWER-ICON, 2026-10-20 - back-filled FW-PARK-IDS 2026-10-20]
+
+RAISED BY:  REPORT-AN-ANSWER-ICON.txt.
+
+WHAT IT IS: `recordPaparazziDebug` re-encodes
+`signin_SignInScreensScreenshotTest_codeWrong.png` to a different byte length
+(68178 -> 64762) from a pixel-identical image, while `verifyPaparazziDebug`
+passes on the committed one. Exactly one file of 119 behaves this way. The
+re-encode was reverted there; the next session that records will meet it
+again.
+
+STATE:      OPEN. No report records a cause or a fix.
+
+
+## PARK-I3 - dark mode for the answered card is not captured  [AN-ANSWER-ICON, 2026-10-20 - back-filled FW-PARK-IDS 2026-10-20]
+
+RAISED BY:  REPORT-AN-ANSWER-ICON.txt.
+
+WHAT IT IS: R433 asked for a dark capture of the answered card. FrontierTheme
+has no dark path at all, by DESIGN-SYSTEM section 2's own override, so there
+is nothing to photograph. When dark ships, the answered card is one of the
+first surfaces to capture.
+
+STATE:      OPEN. AN-ANSWER-ICON's Q5 asks the operator about dark mode; no
+report answers it.
+
+
+## PARK-I4 - DESIGN-SYSTEM.md's ANDROID SIZES paragraph under-reports the Size object  [AN-ANSWER-ICON, 2026-10-20 - back-filled FW-PARK-IDS 2026-10-20]
+
+RAISED BY:  REPORT-AN-ANSWER-ICON.txt.
+
+WHAT IT IS: that paragraph names `Size.buttonLarge` (R285) but not `Size.rule`
+(added by AN-HOME) or `Size.icon` (added by AN-ANSWER-ICON). Both are PORTS of
+values section 1 already states, so no value is unrecorded - but the paragraph
+now under-reports what the Android `Size` object holds. Not edited there:
+DESIGN-SYSTEM.md is a spec file and that task's boundaries were tight.
+
+STATE:      OPEN. No report records the paragraph having been brought up to
+date.
+
+
+## PARK-I5 - the kind glyph does not grow with the font scale  [AN-ANSWER-ICON, 2026-10-20 - back-filled FW-PARK-IDS 2026-10-20]
+
+RAISED BY:  REPORT-AN-ANSWER-ICON.txt.
+
+WHAT IT IS: at fontScale 2 the glyph stays at `Size.icon` (20 dp) while the
+words double, so it reads small beside them - visible in
+`aujourdhuiHalfDayCompleteLarge`. R430 names "the `icon` size token (20)", so
+20 dp fixed is what was built. Scaling it with the font scale is a design
+decision.
+
+STATE:      OPEN. AN-ANSWER-ICON's Q4 asks it; no report answers it.
+
+
+## PARK-K1 - the Kotlin 2.1 toolchain move  [KMP-2, 2026-10-19 - back-filled FW-PARK-IDS 2026-10-20]
+
+RAISED BY:  REPORT-KMP-2.txt. Also cited by REPORT-KMP-2b.txt.
+
+WHAT IT IS: KMP-2 could not take the Kotlin toolchain past 2.0.21, and
+everything else in that task sat behind the move.
+
+STATE:      CLOSED by KMP-UP. REPORT-KMP-UP.txt records kotlin 2.0.21 ->
+2.1.10 and ksp 2.0.21-1.0.28 -> 2.1.10-1.0.31 in force, with the migration
+matrix re-run on the S9 on the new compiler. REPORT-KMP-2b.txt names it among
+the entries "CLOSED BEFORE THIS SESSION RESUMED ... PARK-K1 (the Kotlin
+toolchain, closed by KMP-UP)".
+
+
+## PARK-K2 - R392's merge and cleanup scripting is still unscripted  [KMP-2, 2026-10-19 - back-filled FW-PARK-IDS 2026-10-20]
+
+RAISED BY:  REPORT-KMP-2.txt, inherited from KMP-1b. Also cited by
+REPORT-KMP-2b.txt.
+
+WHAT IT IS: R392 requires a merge/cleanup script that refuses - non-zero,
+naming the reason - on a foreign session lock or a dirty tree, with a test for
+each refusal. CLAUDE.md states the same thing as a standing PARKED item:
+until it is scripted, the ownership rule "has the same standing as R334 did
+before R349 gave it a directory: true, written down, and enforced by nobody".
+
+STATE:      OPEN. REPORT-KMP-2b.txt lists it as "still unscripted".
+
+
+## PARK-K3 - EntryAggregation.kt and the duplicate EntryKind/Portion enums  [KMP-2, 2026-10-19 - back-filled FW-PARK-IDS 2026-10-20]
+
+RAISED BY:  REPORT-KMP-2.txt. Also cited by REPORT-KMP-2b.txt.
+
+WHAT IT IS: the collapse R394 defers - `EntryAggregation.kt` and the duplicate
+`EntryKind` / `Portion` enums across modules. The mapping is listed under that
+report's EACH MOVE section.
+
+STATE:      OPEN. REPORT-KMP-2b.txt lists it among the entries open from
+earlier tasks, unchanged by the database move.
+
+
+## PARK-K4 - the KGP/AGP compatibility warning  [KMP-2, 2026-10-19 - back-filled FW-PARK-IDS 2026-10-20]
+
+RAISED BY:  REPORT-KMP-2.txt. Also cited by REPORT-KMP-UP.txt and
+REPORT-KMP-2b.txt.
+
+WHAT IT IS: "The applied Android Gradle Plugin version (8.10.1) is higher than
+the maximum known to the Kotlin Gradle Plugin." KMP-2 recorded it because it
+was ALREADY LIVE before any bump, so a later reader would not read it as
+something the bump had caused.
+
+STATE:      CLOSED by KMP-UP. REPORT-KMP-UP.txt measures it "present once on
+2.0.21 and ABSENT on 2.1.10: KGP 2.1.10 knows about AGP 8.10.1", and states
+"ONE THING KMP-2b INHERITS THAT IS NEW: PARK-K4 is closed."
+
+
+## PARK-K5 - cmdline-tools are not installed  [KMP-2, 2026-10-19 - back-filled FW-PARK-IDS 2026-10-20]
+
+RAISED BY:  REPORT-KMP-2.txt, carried from the stop report's P3. Also cited by
+REPORT-KMP-2b.txt.
+
+WHAT IT IS: an operator click in Android Studio's SDK Manager. Not needed
+while the S9 is attached, still worth having for unattended device work -
+PARKAN-35's owed API-26 emulator pass names it among its blockers.
+
+STATE:      OPEN. REPORT-KMP-2b.txt lists it as open.
+
+
+## PARK-K6 - a back-dated entry never reached the server  [KMP-2, 2026-10-19 - back-filled FW-PARK-IDS 2026-10-20]
+
+RAISED BY:  REPORT-KMP-2.txt. Also cited by REPORT-KMP-UP.txt,
+REPORT-AN-ACCOUNT-TAG.txt and REPORT-KMP-2b.txt.
+
+WHAT IT IS: the 16 October morning was recorded on the device and visibly
+selected in its sheet, and was NOT in the server database - checked again
+after the drive ended, so a fact rather than "it had not synced yet when I
+looked". It had roughly fifteen minutes with a reachable server while three
+same-day entries each posted within seconds. Its raising report was explicit
+that this was not a diagnosis.
+
+STATE:      CLOSED 2026-10-20 by AN-ACCOUNT-TAG (REPORT-AN-ACCOUNT-TAG.txt,
+merged as f319e0b). The back-dating was never the distinguishing feature: the
+row was written in the same app session as a sign-in, and the repository held
+the account as a string read once when the screen was built - by the screen
+that also hosts sign-in, so the value it read was null. The row was tagged
+UNOWNED and R303 then held it: never sent, never shown. REPORT-KMP-2.txt
+carries the closure note, including what it rests on - the 16 October row
+itself is gone, so the closure rests on the mechanism reproducing the symptom
+exactly on the same phone and on the fixed build posting the same sequence on
+the first attempt.
+
+
+## PARK-K7 - the generated Prisma client goes stale silently  [KMP-2, 2026-10-19 - back-filled FW-PARK-IDS 2026-10-20]
+
+RAISED BY:  REPORT-KMP-2.txt. Also cited by REPORT-KMP-2b.txt.
+
+WHAT IT IS: on a long-lived checkout the generated client falls behind a merge
+and produces a 500 whose message names a Prisma model as `undefined` - which
+reads like a schema or migration problem and is neither. `gate:clone` catches
+it on any commit touching `web/`; nothing catches it for someone merely
+RUNNING the dev server after a merge.
+
+STATE:      OPEN, and NARROWED. FW-PRISMA-GENERATE gave `dev` and `test:db` a
+`pnpm db:generate` step, which closes the two commands that cost KMP-2 roughly
+twenty minutes; `build` was deliberately NOT given the same chain (PARK-P2).
+REPORT-KMP-2b.txt, written after that merge, still lists PARK-K7 among the
+entries open from earlier tasks, so it is recorded here as open rather than
+closed (R444).
+
+
+## PARK-P1 - the selector gap, handed to FW-SELECTOR-PACKAGE  [FW-PRISMA-GENERATE, 2026-10-18 - back-filled FW-PARK-IDS 2026-10-20]
+
+RAISED BY:  REPORT-FW-PRISMA-GENERATE.txt.
+
+THIS ID IS CONTESTED. A branch awaiting the operator's review uses `PARK-P1`
+for a different finding of its own. See PARK-26.
+
+WHAT IT IS: a commit that changed what `pnpm test:db` RUNS did not select
+`test:db`, because `web/package.json` appeared zero times in
+`scripts/gate-selection.mjs`. That task raised it as its own task rather than
+widening its scope, with the two candidate shapes and the trap in the cleverer
+one, and flagged `pnpm-lock.yaml` for the same question (R267).
+
+STATE:      OPEN AS THE RECORD STANDS. The task it hands off to ran and is on
+`main`: REPORT-FW-SELECTOR-PACKAGE.txt records `web/package.json` now mapping
+to every suite, plus six more root configs classified. That report does NOT
+name PARK-P1, so no report closes this id, and R444 forbids inventing the
+closure. Whether the hand-off counts as the closure is the operator's call.
+
+
+## PARK-P2 - `build` was not given the db:generate chain, and that is a decision  [FW-PRISMA-GENERATE, 2026-10-18 - back-filled FW-PARK-IDS 2026-10-20]
+
+RAISED BY:  REPORT-FW-PRISMA-GENERATE.txt.
+
+THIS ID IS CONTESTED. A branch awaiting the operator's review uses `PARK-P2`
+for a different finding of its own. See PARK-26.
+
+WHAT IT IS: `dev` and `test:db` chain `pnpm db:generate`; `build` does not.
+The image runs `pnpm install` - and therefore postinstall's generate - before
+it builds, so `build` already has a fresh client by construction. Adding the
+step would be a second mechanism for a guarantee that already holds, and the
+one place it would matter (a local `pnpm build` after a merge) is covered by
+`dev` being the command people run first.
+
+STATE:      RECORDED DECISION. Its raising report wrote it "so the omission
+reads as a decision rather than an oversight". No later report revisits it.
+
+
+## PARK-R1 - the PDF route builds an absolute URL from the request origin  [FW-REDIRECT, 2026-10-15 - back-filled FW-PARK-IDS 2026-10-20]
+
+RAISED BY:  REPORT-FW-REDIRECT.txt. Also cited by REPORT-FW-FOLLOWUP.txt (as
+its own PARK-F2).
+
+WHAT IT IS: `app/api/v1/export/pdf/route.ts:170` builds an absolute URL from
+the request origin for Chromium to navigate to. Safe today - loopback, same
+container, never leaves it - and not fixable by R364's relative form, because
+a navigation needs an absolute URL. It breaks if PDF rendering is ever moved
+to its own container or behind a network hop. The durable answer is an
+explicit loopback origin or a configured internal base, not the request's own
+view of itself.
+
+STATE:      OPEN. FW-REDIRECT's Q1 asks whether it is worth a follow-up now;
+REPORT-FW-FOLLOWUP.txt records it as "still open".
+
+
+## PARK-R2 - no e2e spec exercises the CONFIRMED or OK states against the image  [FW-REDIRECT, 2026-10-15 - back-filled FW-PARK-IDS 2026-10-20]
+
+RAISED BY:  REPORT-FW-REDIRECT.txt.
+
+WHAT IT IS: the e2e suite cannot seed a database, so no spec drives those
+states against the built image. FW-REDIRECT covered them by the container run
+and by the db tests instead. Giving the e2e suite credentials is a decision
+with a wider blast radius than that task.
+
+STATE:      OPEN. FW-REDIRECT's Q2 asks it; no report answers it.
+
+
+## PARK-S1 - scripts/** is not mapped in the selector, and that is not a hole  [FW-SELECTOR-PACKAGE, 2026-10-19 - back-filled FW-PARK-IDS 2026-10-20]
+
+RAISED BY:  REPORT-FW-SELECTOR-PACKAGE.txt.
+
+WHAT IT IS: a change to `scripts/gate-selection.mjs` selects the base chain
+only, and that task's own change was an instance. Its raising report argues it
+is not a hole "and the reason is worth stating so nobody closes it twice": the
+selector's correctness is asserted by 412 tests under `tests/unit/meta/`,
+which run in `test` - which IS the base chain. The coverage is real; it
+arrives by a different route. The entry names its own trigger: "if a script is
+ever added that no unit test exercises, that is when this becomes a gap".
+
+STATE:      RECORDED DECISION, with a stated trigger. FW-PARK-IDS changed
+`scripts/register-coverage.mjs` and added
+`tests/unit/meta/register-coverage.test.ts`, so the entry's condition holds
+for that script too.
+
+
+## PARK-S2 - pnpm-workspace.yaml and tsconfig.json were mapped to every suite on judgement  [FW-SELECTOR-PACKAGE, 2026-10-19 - back-filled FW-PARK-IDS 2026-10-20]
+
+RAISED BY:  REPORT-FW-SELECTOR-PACKAGE.txt.
+
+WHAT IT IS: R414-R416 named two files; that task mapped two more to
+EVERY_SUITE on its own judgement, and flagged it here because it is judgement
+rather than instruction.
+
+STATE:      OPEN. FW-SELECTOR-PACKAGE's Q1 asks the operator to ratify or
+narrow it; no report answers it.
+
+
+## PARK-S3 - test:container:e2e is RED on main  [FW-SELECTOR-PACKAGE, 2026-10-19 - back-filled FW-PARK-IDS 2026-10-20]
+
+RAISED BY:  REPORT-FW-SELECTOR-PACKAGE.txt.
+
+WHAT IT IS: `e2e/home.spec.ts:166` asserts the `/api/ready` database check
+reports `ok: null` "when the process is not marked as serving" - true on the
+host, false in the container, where it IS serving. One spec is run unchanged
+in both contexts. Three mechanisms could have caught it and none was
+exercising the suite: `gate:changed` could not select it until that commit,
+`gate:clone` does not list it, and CI was skipping. THE FIX IS NOT A SELECTOR
+QUESTION: either the spec learns which context it is in, or `/api/ready` is
+asserted differently per context, and both are decisions about what readiness
+MEANS - R353 to R355's territory.
+
+STATE:      OPEN. No report records the suite green since.
+
+
+## PARK-U1 - R407's screen-by-screen audit comparison  [KMP-UP, 2026-10-19 - back-filled FW-PARK-IDS 2026-10-20]
+
+RAISED BY:  REPORT-KMP-UP.txt. Also cited by REPORT-KMP-2b.txt.
+
+WHAT IT IS: R407 asked for a screen-by-screen comparison on the AUDIT build -
+sign in by code, record a day, sync, open the Releve and the forecast. KMP-UP
+did a launch-and-render check instead and said so plainly.
+
+STATE:      CLOSED by KMP-2b. REPORT-KMP-2b.txt carries a section headed
+"PARK-U1 - CLOSED" and records a drive strictly larger than the one asked for,
+across a database move rather than a compiler change.
+
+
+## PARK-U2 - the two library deprecations in app/  [KMP-UP, 2026-10-19 - back-filled FW-PARK-IDS 2026-10-20]
+
+RAISED BY:  REPORT-KMP-UP.txt. Also cited by REPORT-AN-ACCOUNT-TAG.txt,
+REPORT-AN-ANSWER-ICON.txt and REPORT-KMP-2b.txt.
+
+WHAT IT IS: LocalLifecycleOwner and Criteria. Both fixes are dependency moves,
+which KMP-UP's boundary forbade; unchanged in count and in text across the
+compiler bump. This is the SAME finding as PARK-A1, recorded twice under two
+ids by two tasks - cross-referenced rather than merged, because neither report
+is wrong about itself.
+
+STATE:      OPEN. KMP-UP's Q2 asks whether it is worth its own small task; no
+report answers it, and REPORT-KMP-2b.txt still lists it as open.
+
+
+## PARK-U3 - PARK-K6 sharpened: the entry is absent from the device too  [KMP-UP, 2026-10-19 - back-filled FW-PARK-IDS 2026-10-20]
+
+RAISED BY:  REPORT-KMP-UP.txt. Also cited by REPORT-KMP-2.txt and
+REPORT-KMP-2b.txt.
+
+WHAT IT IS: PARK-K6's back-dated entry is absent from the DEVICE as well as
+from the server. Observation, not diagnosis - and the sharpening was the
+useful part, because "absent from the server" admits a sync explanation and
+"absent from the device too" does not.
+
+STATE:      CLOSED 2026-10-20 with PARK-K6, same cause: the row was tagged
+UNOWNED at the write, so R303 held it - never sent, never shown, gone at the
+next launch, which is precisely the device absence recorded here. See
+REPORT-AN-ACCOUNT-TAG.txt; fixed in f319e0b. The closure note is written into
+REPORT-KMP-UP.txt's own PARKED list.
+
+
+## PARK-25 - an id with a word after its number is deliberately not matched  [FW-PARK-IDS, 2026-10-20]
+
+QUESTION:  The census that produced the widened pattern found one id that does
+not fit the series: `PARK-FW34-LAUNCH`, cited by REPORT-FW34.txt and
+REPORT-FW34-PAGE.txt for a launch-news email list. The prompt's suggested
+pattern `/\bPARK(?:AN)?-[A-Z]*\d+\b/g` matches `PARK-FW34` out of it - the
+hyphen that follows is a word boundary - and would then report a cited id that
+does not exist anywhere. The census also found six TASK-LOCAL series that are
+registers of their own and not this one: PARK4-<n> (Phase4parking.md, already
+excluded by the old pattern and still excluded), PARK5-<n>, PARK5b-<n>,
+PARK26-<n>, PARK27-<n>, PARK30-<n> and PARK31-<n>.
+
+TAKEN:     The pattern is `/\bPARK(?:AN)?-[A-Z]?\d+\b/g` - exactly ONE optional
+letter, which is what every real lettered id in the census uses. That matches
+the whole namespace this register owns and nothing else: `PARK-FW34-LAUNCH`
+produces no match at all rather than a truncated one, and the task-local
+series stay excluded. Reversible: the pattern is one line with a test beside
+it naming every shape it must and must not match.
+
+NOT TAKEN: Matching `PARK-FW34-LAUNCH` in full and back-filling an entry for
+it. That would widen the pattern past the series this register numbers, and
+the entry would be written from outside by a task that did not take the
+decision. Also not taken: adopting the task-local series into this register -
+seventy-odd entries written by other tasks, which is the opposite of what
+R444's back-fill is for.
+
+TOUCHES:   `web/scripts/register-coverage.mjs` (the CITATION constant and the
+heading matcher), `web/tests/unit/meta/register-coverage.test.ts`, and - if
+the decision reverses - `parking.md` for whatever entries the wider pattern
+then demands.
+
+
+## PARK-26 - the letter series has no allocation authority, and nothing forbids a duplicate heading  [FW-PARK-IDS, 2026-10-20]
+
+QUESTION:  `PARK-<letter><n>` ids are allocated by each task for itself, with
+nothing recording which letters are taken. Two collisions already exist.
+`PARK-F1`, `PARK-F2` and `PARK-F3` are used by FW-FOLLOWUP and by
+FW-FUTURE-DAY for six different findings; `PARK-P1` and `PARK-P2` are
+FW-PRISMA-GENERATE's, and a branch awaiting the operator's review uses the
+same two ids for findings of its own. The register's coverage check cannot see
+either: it asks whether a heading EXISTS, so one heading satisfies two
+unrelated citations, and two headings with the same id satisfy it just as
+well.
+
+TAKEN:     Recorded, not resolved. The colliding ids are back-filled as single
+entries whose bodies carry BOTH findings, each with its raising report and its
+own state, and each says that the id is shared. A reader following any of the
+six citations lands somewhere real and is told immediately that the id is not
+unique. Reversible: if the operator reallocates, the entries split and the
+reports that cite them are edited by whoever owns them.
+
+NOT TAKEN: Renaming one series, which is the fix R162 points at. It would mean
+editing reports on `main` that this task has no licence to touch, and it would
+change citations in a branch awaiting review. Also not taken: a guard failing
+on a duplicate `## PARK-<id> -` heading. It is the right guard and it is the
+wrong week - the pending branch will produce exactly that duplicate on merge,
+so adding the guard now would red `main` at the moment of a merge the operator
+has already approved. It wants its own task, after the operator has decided
+which series moves.
+
+TOUCHES:   `parking.md` (the five contested entries and this one), the reports
+that cite them if an id is ever reallocated, and
+`web/scripts/register-coverage.mjs` if the duplicate-heading guard is wanted.
+
 ## PARK-B1 - CalendarDay.kt stays in :app, although R394 names it among what moves  [KMP-2b, 2026-10-20]
 
 QUESTION:  R394's list of what moves to :shared includes CalendarDay. It is not
