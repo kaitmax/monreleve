@@ -28,9 +28,12 @@ THE LAST COMMIT CARRYING CODE on this branch:
     test floor OK: 1196 unit tests observed (>= 10)
     [clean-worktree] OK: no unstaged changes to tracked files (R393)
 
-WHAT COMES AFTER 69a99c4, AND WHY THE CLAIM STILL HOLDS. Two commits:
-79c7b90 (parking.md) and this report. Neither contains code, and the only gate
-task that READS either is RegisterCoverageTest, which shells out to
+WHAT COMES AFTER 69a99c4, AND WHY THE CLAIM STILL HOLDS. Four commits:
+79c7b90 (parking.md), the first report commit, the merge of main (32f99d5) and
+01c4368 (the park-id rename). NONE contains Android code - proven below by
+`git diff 69a99c4..HEAD -- android/` being EMPTY, which is the claim rather
+than a reading of the subject lines. The only gate task that READS any of them
+is RegisterCoverageTest, which shells out to
 web/scripts/register-coverage.mjs over parking.md and every REPORT-*.txt at the
 repository root. SO IT WAS RE-RUN AFTER THIS REPORT REACHED ITS FINAL TEXT
 rather than assumed from the pass above (R182 - a check runs after the thing it
@@ -41,16 +44,42 @@ checks for can exist):
     TEST-ch.monreleve.app.register.RegisterCoverageTest.xml:
       tests="1" skipped="0" failures="0" errors="0"
     and the script it shells out to, run against this worktree:
-      register coverage: OK - 39 cited id(s) across 116 report(s), all have
+      register coverage: OK - 101 cited id(s) across 117 report(s), all have
       headings in parking.md
-    (116 reports, where KMP-2b's run saw 115 - this one is the 116th. Read from
-    the run made AFTER this report reached its final text, which is the only
-    ordering that makes it mean anything.)
-    Every numbered citation in this report was also checked by hand against
-    parking.md's headings: PARKAN-27 is the only one, and it resolves. The
-    letter series - PARK-B3, PARK-I2/I3/I5, PARK-L1/P2/P3 - is deliberately NOT
-    matched by that scan's PARKAN?-d+ pattern, and all seven have headings
-    anyway.
+      EXIT=0
+
+    THAT LINE READ 39 ids ACROSS 116 REPORTS WHEN IT WAS FIRST WRITTEN HERE,
+    AND THE DIFFERENCE IS NOT THIS BRANCH GROWING. FW-PARK-IDS (now on main,
+    merged into this branch - see THE PARK-ID RENAME below) found that the
+    pattern was PARKA + an optional N rather than PARK + an optional AN, so it
+    had never matched PARK-<n> or any lettered id at all. The check that exists
+    to make a citation followable was seeing 39 of parking.md's 97 headings and
+    reporting OK. 101/117 is the same tree read by a pattern that can see it.
+    THE EARLIER NUMBER IS LEFT VISIBLE HERE rather than silently replaced,
+    because a report that quietly swaps a figure is the thing this register
+    exists to prevent.
+    Every citation in this report now resolves to exactly one heading, and that
+    is the check's own claim rather than a hand count: PARKAN-27, PARK-B3,
+    PARK-I2, PARK-I3, PARK-I5 and this task's PARK-L1/L2/L3 are ALL matched by
+    the widened pattern and ALL have headings. The sentence that used to stand
+    here - that the letter series is "deliberately NOT matched" - was true of
+    the broken pattern and is false of the fixed one; it is corrected rather
+    than left, because a stale claim reads as a current one (R181).
+
+THE PARK-ID RENAME, AND WHY IT DOES NOT MOVE THE GATE LINE. After the report
+above was first written, FW-PARK-IDS merged to main (32f99d5) and this branch
+merged it in. Its widened check caught a REAL collision: this task's PARK-P1
+and PARK-P2 were also FW-PRISMA-GENERATE's, from 18 October. The operator ruled
+that THIS branch's ids move, so they are PARK-L1, PARK-L2 and PARK-L3. The
+rename touches parking.md and this report and NOTHING ELSE:
+
+    git diff 69a99c4..HEAD -- android/     ->   EMPTY
+    git diff origin/main...HEAD -- web/    ->   EMPTY
+
+so the :app:gate quoted above still describes every line of Android code on
+this branch, and gate:clone is still not this branch's subject (R133: stated as
+a decision, not omitted). The web gate was run for the paths touched - see
+THE PARK-ID RENAME section below.
 
 THREE FULL GATES RAN IN THIS SESSION, each on the tree it is quoted against:
     5e87a4a (origin/main, R1(b), before any edit)  229/229, floor 1183
@@ -716,7 +745,9 @@ removed: unsyncedWarning stays, reached by the deletion dialog.
 PARKED
 --------------------------------------------------------------------------------
 Three entries, written into parking.md (commit 79c7b90) rather than left in this
-report, so a citation resolves:
+report, so a citation resolves - and RENAMED from PARK-P1/P2/P3 to PARK-L1/L2/L3
+in 01c4368 after a collision with FW-PRISMA-GENERATE's ids, which is its own
+section below (THE PARK-ID RENAME):
 
 PARK-L1  DARK MODE IS STILL AFTER LAUNCH. The operator's answer to Q5 was to
          park it explicitly with nothing built, and nothing was. FrontierTheme
@@ -847,17 +878,132 @@ Q4  THE CALENDAR DAY SHEET (N1). Should that get its own task? It is a write
     path that did not write, found incidentally while driving something else.
 
 --------------------------------------------------------------------------------
+THE PARK-ID RENAME - PARK-P1/P2/P3 BECAME PARK-L1/L2/L3
+--------------------------------------------------------------------------------
+This came after the report above was otherwise finished, and it is recorded as
+what it was rather than folded into the original text.
+
+WHAT HAPPENED. FW-PARK-IDS merged to main (32f99d5) while this branch waited.
+It found that the register's citation pattern was PARKA + an optional N, not
+PARK + an optional AN - so it had never matched PARK-<n> OR any lettered id,
+and reported "coverage OK" while seeing 39 of parking.md's 97 headings. With
+the pattern widened and a duplicate-HEADING check added, this branch's PARK-P1
+and PARK-P2 collided with FW-PRISMA-GENERATE's, which used them first on
+18 October. git calls the merge CLEAN and the merged parking.md carries two
+headings under each id - a merge that is clean to git and wrong to a reader,
+which is exactly the case nothing could see before FW-PARK-IDS.
+
+WHY MINE MOVED AND NOT THEIRS. FW-PRISMA-GENERATE used the ids first and its
+reports are already on main; renaming those would mean editing reports this
+branch has no licence to touch - which is the reason PARK-26 itself gave for
+recording the collision rather than resolving it ("after the operator has
+decided which series moves"). The operator decided. L for "poLish", since P is
+taken.
+
+L WAS CONFIRMED FREE BY THE REGISTER, NOT BY MEMORY OR BY THE SUGGESTION:
+  - the letters carrying headings in parking.md are A B F G I K P R S U,
+    derived by scanning its own "## PARK-<letter><n>" headings;
+  - a repo-wide search for PARK-L<n> across every .txt, .md, .ts, .mjs and .kt
+    returned nothing - no heading, no citation, not even in a relay prompt;
+  - PARK-L1 MATCHES the check's widened id pattern, tested directly. An id the
+    pattern cannot see would be validated by nothing, which is the whole of the
+    defect FW-PARK-IDS just closed.
+
+R211 - THE EDIT IS SCRIPTED, AND IT REFUSED ONCE. Every anchor and count is
+asserted BEFORE any write: the AN-POLISH heading appears exactly once; both
+FW-PRISMA-GENERATE headings appear exactly once and are OUTSIDE the block being
+edited; PARK-L1/L2/L3 are absent beforehand; the block holds exactly one of
+each old id. Afterwards: the untouched head is byte-identical, its five
+PARK-P1 and five PARK-P2 mentions are unmoved, and the total heading count is
+unchanged at 103. ITS FIRST RUN REFUSED AND WROTE NOTHING - two prose anchors
+overlapped, so the second found 0 after the first had consumed it - and the
+refusal is recorded in the script's own comment rather than quietly corrected.
+
+ONE FORM THE TOKEN RENAME WAS STRUCTURALLY BLIND TO, found by READING the
+result rather than trusting the counts: the slash shorthand "PARK-P1/P2/P3",
+where only the first element is a whole id. The rename left "PARK-L1/P2/P3" in
+this report's STATUS. Fixed by its own asserted edit, with a final scan
+refusing any surviving P-series form.
+
+THREE CLOSURE NOTES, APPENDED AND NOT REWRITTEN (R334). FW-PRISMA-GENERATE's
+two entries say "THIS ID IS CONTESTED ... See PARK-26"; PARK-26 says the
+resolution wants its own task. Each gets a CONTEST RESOLVED paragraph appended
+BELOW the existing text, which is left standing: it is somebody else's entry,
+and it records the state that produced PARK-26. PARK-26 gets a RESOLVED IN PART
+note saying the PARK-P collision is gone and that PARK-F1/F2/F3 are untouched -
+those are duplicate CITATIONS, not duplicate headings, so the frozen SHARED_IDS
+list is inert today and is not a precedent for keeping a duplicate.
+
+PROOF, in the order it was taken:
+  BEFORE, on the merged tree with both series present:
+      EXIT=1
+      - PARK-P1 has 2 "## PARK-P1 -" headings in parking.md (lines 2474, 2839)
+      - PARK-P2 has 2 "## PARK-P2 -" headings in parking.md (lines 2494, 2869)
+    The guard was seen FIRING on the real case before it was seen passing
+    (R178: where a guard's first run finds live instances, those are the proof).
+  AFTER, on this branch:
+      register coverage: OK - 101 cited id(s) across 117 report(s), all have
+      headings in parking.md
+      EXIT=0
+  AND ON THE ACTUAL MERGED TREE, which is the claim that matters:
+      git merge-tree --write-tree origin/main HEAD
+      EXIT=0, one tree oid and no conflict section - CLEAN
+      that tree extracted, and the check run inside it:
+      register coverage: OK - 101 cited id(s) across 117 report(s), all have
+      headings in parking.md
+      EXIT=0
+      and a scan of the merged parking.md for a repeated
+      "## PARK<letter><n> -" heading returned NOTHING.
+
+THE GATE LINE IS UNMOVED, and the diff is the evidence:
+      git diff 69a99c4..HEAD -- android/     ->   EMPTY
+      git diff origin/main...HEAD -- web/    ->   EMPTY
+No Android file differs from the tip the full :app:gate ran on, and no web file
+differs from main - so that gate still describes every line of code here, and
+gate:clone remains not this branch's subject (R133).
+
+THE WEB GATE WAS RUN for the paths touched, from this worktree (which needed
+its own pnpm install - the D1 arrangement was about the dev SERVER, not about
+never installing):
+    pnpm gate:changed   (from C:/wt/an-polish/web, on 01c4368)
+    gate selection (R132):
+      no path matched the selector - base chain only
+      suites: typecheck, lint, test, build
+      a11y: covered by pnpm test
+    Test Files  191 passed (191)
+         Tests  3290 passed (3290)
+    Compiled successfully in 26.9s
+    GATE PASSED for the paths changed.
+    GATE_CHANGED_EXIT=0
+
+  NO SELECTOR RULE MATCHES parking.md OR A ROOT REPORT, AND THAT IS NOT A GAP:
+  the base chain runs whatever changed, and `pnpm test` is where
+  web/tests/unit/meta/register-coverage.test.ts lives - the suite whose subject
+  these two files are. Coverage here is by the base chain rather than by a
+  rule, which is correct rather than lucky.
+
+  THAT RUN SAW THE REPORT AS IT STOOD AT 01c4368, NOT AS IT STANDS NOW, and the
+  distinction is stated rather than glossed: gate:changed reads the working
+  tree when it starts, and this text was written afterwards. A report cannot
+  quote a check of its own final text from inside that text. So the checks
+  that read THIS text were run against the file on disk after it reached its
+  final form, and their output is in the COMMIT MESSAGE of the commit that
+  carries it (R182) - which is the same arrangement the first report commit
+  used, for the same reason.
+
+--------------------------------------------------------------------------------
 PUSH PROOF
 --------------------------------------------------------------------------------
     git push -u origin an-polish
     * [new branch]      an-polish -> an-polish
     branch 'an-polish' set up to track 'origin/an-polish'.
 
-Pushed at 79c7b90, after the gates above. THE COMMIT CARRYING THIS REPORT
-FOLLOWS, and its push is recorded in the commit that carries it rather than
-predicted here (R334: a report states only what has happened).
+Pushed at 79c7b90, after the gates above; the report commit 5ff6b70 followed
+and was pushed. THE PARK-ID RENAME THEN ADDED THREE MORE COMMITS, whose push is
+recorded in the commit that carries this text rather than predicted here (R334:
+a report states only what has happened).
 
-THE EIGHT COMMITS, in order:
+THE COMMITS, in order:
     f30681f  ITEM 1 (R434)  the answered half settles, the other comes to you
     656099d  ITEM 2 (R435)  the sync line gets its glyph
     c4d8dce  ITEM 3 (R436)  the glyphs grow with the text, closing PARK-I5
@@ -866,7 +1012,11 @@ THE EIGHT COMMITS, in order:
     5acc299  ITEM 6 (R440)  sign-out sends what it can before it discards anything
     69a99c4  ITEM 6 follow-up: the androidTest host wires syncNow
     79c7b90  the three PARK entries this task leaves behind
-plus this report.
+    5ff6b70  the session report
+    8a51096  Merge main (32f99d5): the widened register check and the
+             back-filled ids
+    01c4368  this task's park ids move to PARK-L1/L2/L3 (the operator's ruling)
+plus the commit carrying this final text.
 
 gate:clone was NOT run, and that is a DECISION rather than an omission (R133):
 its subject is the web package, and
