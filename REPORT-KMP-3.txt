@@ -1,0 +1,1052 @@
+================================================================================
+REPORT-KMP-3
+THE SESSION, THE STORES' CONTRACTS AND THE SYNC ENGINE MOVE TO :shared
+================================================================================
+TASK    relay/KMP-3.txt, rulings R446-R455 (all ten free when taken; a scan of
+        parking.md, every REPORT-*.txt and every relay/*.txt found no prior
+        R446-R455, so none needed renumbering under R162).
+BRANCH  kmp-3, branched from main at 644dabb. PENDING MERGE - not merged.
+WORKTREE C:/wt/kmp-3, created by this session, lock written and removed here.
+
+NOTE ON ACCENTS. This file is pure ASCII by the same transport constraint R155
+and R168 describe. Where device copy is quoted it is TRANSLITERATED; the
+accented original lives in :shared's fr/ and is authoritative. Nothing was
+copied FROM this file into source.
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+Ten files moved to :shared commonMain: the token store's contract, the whole
+SessionManager (with AuthedOutcome, PostOutcome, BytesOutcome, RefreshOutcome
+and AuthenticatedPoster), SyncEngine, EntriesMapping, PendingDays, DossierApi
+with DossierResult, the DossierCache contract, and the settings trio - Settings,
+SettingsStore and the completeness rules. Two new files stayed behind holding
+what could not travel: SharedPrefsDossierCache and SharedPrefsSettingsStore, plus
+MeWire.kt for the /api/v1/me codec.
+
+NOT ONE SURVIVING :app SOURCE FILE WAS EDITED. That is the strongest form of
+R368's promise and it is measured, not asserted:
+
+  git diff --name-status 644dabb..HEAD -- android/app/src/main | grep "^M"
+    -> NONE
+
+Every deleted import line in that diff belongs to a file that was itself moved or
+renamed. Package names did not change, so no import in :app had to.
+
+Four things did NOT move, each with a measured reason rather than a shrug, and
+all four correct an expectation R446 set out: LocalEntryRepository (PARK-D1),
+LocalRhythmRepository (PARK-D2), the /me codec (PARK-D3), and the logger R446
+anticipated - which does not exist, because after the moves nothing in commonMain
+logs.
+
+The upgrade was proven in place on the S9 against the local stack: installed over
+the before build with no clear, still signed in with no code asked, every setting
+and the weekly rhythm intact, the cached releve shown offline, the pending day
+drained when the network returned, and a token refresh succeeding - all three
+server lines in one sequence.
+
+--------------------------------------------------------------------------------
+STATUS (R391)
+--------------------------------------------------------------------------------
+COMPLETE, AND GREEN ON THE REPORTED TIP.
+
+  FULL :app:gate --rerun-tasks on 04ab4bd (the last commit carrying code):
+      BUILD SUCCESSFUL in 7m 13s
+      225 actionable tasks: 225 executed
+      GATE_EXIT=0
+      test floor OK: 1208 unit tests observed (>= 10)
+
+  FULL :app:gate --rerun-tasks re-run on the FINAL tip after the report and the
+  register were committed: see PUSH PROOF for its BUILD line and exit code.
+
+gate:clone did NOT run and is NOT claimed: this branch changes android/ plus the
+report and the register, and `git diff origin/main...HEAD -- web/` is EMPTY, so
+there is no web change for it to verify (R133 - named with its reason, never
+silently omitted).
+
+--------------------------------------------------------------------------------
+R273 - WHAT WAS READ, BEFORE ANYTHING ELSE
+--------------------------------------------------------------------------------
+relay/KMP-3.txt in full; CLAUDE.md at the REPO ROOT (not the one in the parent
+Downloads/ folder, which belongs to a Morocco travel platform and was ignored as
+that file itself instructs); README.md.
+
+REPORT-KMP-0 (PARKED/OPEN ITEMS, QUESTIONS), REPORT-KMP-1 ("WHAT KMP-2 INHERITS",
+PARKED, and the R384 inventory in full), REPORT-KMP-1b (PARKED, DEVIATIONS -
+specifically deviation 1, the accepted reading of "unedited"), REPORT-KMP-2
+("WHAT KMP-3 INHERITS", PARKED, DEVIATIONS, QUESTIONS), REPORT-KMP-2b ("WHAT
+KMP-3 INHERITS", "WHAT IT MUST DECIDE FIRST", PARKED, DEVIATIONS, QUESTIONS).
+
+REPORT-AN-ACCOUNT-TAG and the fence itself
+(app/src/test/.../fences/AccountCaptureFenceTest.kt): the currentAccount provider
+is a FUNCTION TYPE read at write time, and the fence is a scan on the SHAPE of the
+call, not on behaviour.
+
+REPORT-AN-POLISH: sign-out tries to sync FIRST, inside requestSignOut's own
+coroutine, BEFORE the confirmation exists; the local token wipe is guaranteed in
+confirmSignOut's `finally` inside withContext(NonCancellable), which ITEM 6 does
+not touch because ITEM 6 happens entirely before the wipe can start.
+
+relay/KMP-2.txt R394/R368: package names do not change when code moves.
+
+Named KMP-3.
+
+--------------------------------------------------------------------------------
+R1 - THE PRECONDITIONS, RE-VERIFIED RATHER THAN TRUSTED
+--------------------------------------------------------------------------------
+(a) origin/main = 644dabb, and each of the four is an ancestor:
+
+      kmp-2b           ANCESTOR of origin/main (5b450db)
+      an-answer-icon   ANCESTOR of origin/main (8301b03)
+      an-polish        ANCESTOR of origin/main (ec7661f)
+      fw-park-ids      ANCESTOR of origin/main (f1e28ac)
+
+    WITH A NEGATIVE CONTROL, because `merge-base --is-ancestor` answering yes four
+    times proves nothing about the command if it can only say yes:
+      git merge-base --is-ancestor main kmp-2b  ->  no (expected)
+
+(b) THE FULL GATE ON origin/main's HEAD, run IN THIS SESSION, in this worktree,
+    with --rerun-tasks, before a single file was touched:
+
+      BUILD SUCCESSFUL in 10m 8s
+      225 actionable tasks: 225 executed
+      GATE_EXIT=0
+      test floor OK: 1196 unit tests observed (>= 10)
+
+    225/225 EXECUTED, not up-to-date: a task reported UP-TO-DATE did not run in
+    the invocation whose BUILD line is pasted.
+
+(c) THE S9, read rather than taken from the briefing:
+
+      adb devices  ->  232bcd8c300c7ece  device  product:starltexx model:SM_G960F
+      transport:   USB. Wi-Fi adb was NOT attempted - AN-POLISH measured WSA 10013
+                   from this machine's own firewall, twice, and spending time on it
+                   again would repeat a closed experiment.
+      installed:   ch.monreleve.app only, versionName 0.1.0 (versionCode 1),
+                   pkgFlags [ DEBUGGABLE HAS_CODE ALLOW_CLEAR_USER_DATA ALLOW_BACKUP ]
+      certificate: apksigner on the APK PULLED OFF THE DEVICE (the dumpsys
+                   "signatures=...7b7733b6" is a Java hashCode, not a certificate):
+                     DN:      C=US, O=Android, CN=Android Debug
+                     SHA-256: ef336db5977cf5cbfdef24305082fec0a5c01b9d118b5a567ec0174445e373d1
+                   The audit variant signs with signingConfigs.debug, so the same
+                   key - which is why `install -r` over it works.
+      stay_on_while_plugged_in = 0   READ BEFORE ANYTHING WAS WRITTEN
+      adb reverse              = empty
+      app state                = signed out, empty database (as AN-POLISH left it)
+
+    ALSO READ BEFORE WRITING, because the drive needed them changed and a previous
+    session's recorded lapse was writing one without reading first:
+      screen_off_pocket  = 1     screen_off_timeout = 30000
+      auto_time          = 1     airplane_mode_on   = 0
+      timezone           = Africa/Casablanca
+    Every one of these is restored - see R454 step 5.
+
+--------------------------------------------------------------------------------
+R446 - THE SPLIT, FILE BY FILE, WRITTEN BEFORE ANY MOVE
+--------------------------------------------------------------------------------
+MOVES = the whole file goes to :shared commonMain.
+SPLITS = a contract or pure half in :shared, the platform half in :app.
+STAYS = stays in :app whole.
+
+auth/
+  TokenStore.kt           MOVES   interface only, zero platform imports.
+  SessionManager.kt       MOVES   kotlinx.coroutines only. Carries AuthedOutcome,
+                                  PostOutcome, BytesOutcome, RefreshOutcome and
+                                  AuthenticatedPoster - the extraction KMP-1 PARKED
+                                  and KMP-2 inherited, which turned out to be
+                                  unnecessary because the whole class could come.
+  KeystoreTokenStore.kt   STAYS   Android Keystore, javax.crypto, org.json, Base64.
+                                  NOT EDITED BY A CHARACTER (hard boundary).
+  PendingSignInStore.kt   STAYS   *** CORRECTS R446's EXPECTATION ***  R446 lists
+                                  three stores and "any logger" as SPLITS and does
+                                  not name this one; it is named here because
+                                  NOTHING THAT MOVES CONSUMES IT. The controllers
+                                  that use it stay, by R446's own sentence. An
+                                  interface in :shared with no :shared consumer is
+                                  abstraction before use. Listed under R455 instead.
+  CallbackController.kt   STAYS   R446's ruling: the controllers do not move.
+  CodeController.kt       STAYS   same.
+  SignInController.kt     STAYS   same.
+  CallbackLink.kt         STAYS   java.net.URI/URLDecoder; its only consumer stays.
+
+data/sync/
+  SyncEngine.kt           MOVES   "pure logic, no WorkManager, no Android" was
+                                  written in AN5 as a TESTABILITY claim; it turned
+                                  out to be a PORTABILITY claim too.
+  EntriesMapping.kt       MOVES   zero platform imports. Its header said it was
+                                  "kept in :app (R379)" because it touched Room's
+                                  EntryEntity - a reason that LAPSED at KMP-2b. The
+                                  sentence is struck in place with the date it
+                                  lapsed rather than deleted.
+  SyncScheduler.kt        STAYS   WorkManager + Context (hard boundary).
+  SyncWorker.kt           STAYS   CoroutineWorker + Context + BuildConfig.
+
+data/repo/   (PARK-B2, handed to this task by KMP-2b)
+  EntryRepository.kt      STAYS   *** CORRECTS R446's EXPECTATION ***  R446 expects
+                                  "the repositories KMP-2b parked" to MOVE, and
+                                  KMP-2b wrote that "the clock seam and R425's
+                                  BuildConfig canary are its call". Declined, with
+                                  the price counted: FIVE platform touchpoints
+                                  (android.util.Log, BuildConfig.DEBUG,
+                                  java.time.Clock, java.util.UUID, and
+                                  deviceClaimNow - which lives in CalendarDay.kt and
+                                  IS PARK-B1, explicitly out of scope, so the clock
+                                  seam is FORCED rather than optional), and a
+                                  constructor-type change across 3 production sites
+                                  and 14 TEST FILES, among them AccountScopeTest and
+                                  EntryRepositoryTest - the very files R450 and R452
+                                  want running unedited across this move. PARK-D1
+                                  carries the design so it is not re-derived.
+  RhythmRepository.kt     STAYS   *** CORRECTS R446's EXPECTATION ***  and NOT for
+                                  the clock. WeeklyRhythm.toEntryKindMap() calls
+                                  RhythmKind.toEntryKind().toShared(), and toShared
+                                  is declared in :app's data/local/EntryAggregation.kt
+                                  - which is PARK-K3, named in KMP-3's own OUT OF
+                                  SCOPE list. It moves when PARK-K3 collapses, not
+                                  before. PARK-D2. Its java.time.DayOfWeek would NOT
+                                  have been an obstacle: it is already on R384's
+                                  inventory.
+
+dossier/
+  PendingDays.kt          MOVES   nineteen lines, two imports KMP-2b had already
+                                  taken. Only still in :app because nobody had moved
+                                  it.
+
+data/remote/
+  DossierApi.kt           MOVES   WHOLE - the class AND DossierResult. Closes KMP-1's
+                                  PARKED DossierResult and KMP-2's deviation 2, both
+                                  of which held it back because AuthedOutcome and the
+                                  DossierCache seam were still in :app. Both arrived
+                                  in this task.
+  UrlConnectionTransport.kt STAYS java.net.HttpURLConnection; it is also the ONLY
+                                  place a dispatcher is chosen (R449).
+
+data/local/
+  DossierCache.kt         SPLITS  contract to :shared; SharedPrefsDossierCache.kt
+                                  stays in :app.
+  CalendarDay.kt          STAYS   PARK-B1, explicitly out of scope.
+  EntryAggregation.kt     STAYS   PARK-K3, explicitly out of scope.
+  MonReleveDatabaseBuilder.kt STAYS Room.databaseBuilder(Context).
+
+settings/
+  SettingsStore.kt        SPLITS  contract to :shared; SharedPrefsSettingsStore.kt
+                                  stays. The contract had to take Settings and the
+                                  completeness rules with it, because isOnboarded is
+                                  a DEFAULT METHOD that calls them.
+  Settings.kt             SPLITS  the data class + toAggregatableUser move;
+                                  mePatchBody/parseMeSettings stay as MeWire.kt.
+  ReleveCompleteness.kt   SPLITS  MeView, toMeView, ReleveField, missingReleveFields
+                                  and isComplete move; parseMeView stays in MeWire.kt.
+  DetectionMode.kt        STAYS   Context + org.json.
+  EmployerFigure.kt       STAYS   Context.
+  EveningNotification.kt  STAYS   Context.
+  ThresholdAlert.kt       STAYS   Context.
+
+account/   (not in R446's list; reached through the moved code)
+  AccountStore.kt         STAYS   same reason as PendingSignInStore: SyncEngine takes
+                                  a String? and the repositories take () -> String?,
+                                  so nothing moving consumes the interface.
+  AccountTag.kt           STAYS   java.security.MessageDigest (KMP-2b's ruling).
+  LocalStore.kt           STAYS   composes five :app stores plus three :app lambdas.
+
+THE LOGGER R446 ANTICIPATED DOES NOT EXIST, and that is a finding rather than an
+omission. R446 lists "any logger (android.util.Log behind an interface)" among the
+SPLITS. After the moves, NOTHING IN commonMain LOGS. The single android.util.Log
+call in this task's territory is R425's release branch inside LocalEntryRepository,
+which stays (PARK-D1). Creating a Logger interface with no commonMain caller would
+be the abstraction-before-use this report declines twice elsewhere.
+
+--------------------------------------------------------------------------------
+R447 - EACH INTERFACE AND ITS CONTRACT
+--------------------------------------------------------------------------------
+The three contracts were written BEFORE anything moved (commit ae41e8c, "nothing
+moves in this commit"), so the move that followed was a file relocation and not a
+redesign. The test applied to every sentence: could somebody implement this against
+a Keychain or NSUserDefaults WITHOUT reading the Android class - which they cannot,
+because it is Android. No method was added, removed or renamed; the only lines that
+changed were documentation.
+
+TokenStore - what an implementation must guarantee
+  - at most ONE pair; save() replaces whatever was there.
+  - save() is DURABLE AND WHOLE before it returns, and the reason is given rather
+    than asserted: the old refresh token beside a new access token would make the
+    next refresh a REPLAY, and a replay ends the whole session (R210). So the pair
+    is written as ONE value - a single commit() on Android, a single Keychain item
+    on iOS, never four items in sequence.
+  - load() before any save() returns null, and null is the only thing that means
+    "sign in".
+  - load() returns null RATHER THAN THROWING, and CLEARS the store when it does: an
+    unreadable pair is not an error a caller can act on.
+  - clear() erases the pair and NOTHING ELSE; LocalStore owns the rest (R295). A
+    clear() on an empty store is a no-op and must not throw.
+  - clear() must not need the network, a session, or the user present, because it
+    runs inside withContext(NonCancellable) at the end of sign-out.
+  - must not log or back up the tokens; must NOT require the device unlocked,
+    because silent refresh runs while the phone is locked.
+
+DossierCache - what an implementation must guarantee
+  - stores the server's bytes VERBATIM; generatedAt travels inside them and the
+    device's own fetch time must never stand in for it (R181).
+  - load() returns null for a year never saved, even when other years were.
+  - save() replaces that year and leaves every other year alone.
+  - clear() erases EVERY year, not the current one (R295/R289).
+  - durability is DELIBERATELY WEAKER than the token store's, with the reason
+    stated: a cached document lost to a process death costs a round trip, not a
+    sign-out. It must still survive an ordinary restart.
+  - must not log or transmit the body (it carries the titulaire's name); must not
+    repair, normalise or re-serialise a stored body.
+
+SettingsStore - what an implementation must guarantee
+  - load() returns null until a COMPLETE Settings has been saved, and null sends
+    the person to onboarding.
+  - save() replaces the WHOLE set; there is no per-field write and no merge.
+  - ABSENT AND NULL ARE DIFFERENT AND MUST STAY DIFFERENT. A null
+    exactTotalWorkDays is a real answer (the simplified basis) and so is a null
+    activityStartDate (the whole year). Both must round-trip as null, and the
+    contract explicitly does NOT prescribe how: the Android implementation stores
+    one as the sentinel -1 and simply omits the other, because SharedPreferences
+    removes a key written as null - two nulls, two mechanisms, in one file - and an
+    iOS implementation is free to encode them alike.
+  - clear() erases every field, and the reason it is safe is given: the six settings
+    live on the server and a re-sign-in restores them from GET /api/v1/me (R297).
+  - isOnboarded() is a DERIVED DEFAULT AND MUST NOT BE OVERRIDDEN - it is the one
+    completeness definition the server path uses too, and an implementation
+    substituting its own is the drift R335 exists to prevent.
+
+NO INTERFACE METHOD EXISTS THAT ONLY THE ANDROID IMPLEMENTATION NEEDS. The three
+interfaces have 3, 3 and 3+1 members and every one is called from commonMain.
+
+--------------------------------------------------------------------------------
+R448 - THE ON-DEVICE FORMATS: GOLDENS FIRST, THEN THE SAME PHONE AFTER
+--------------------------------------------------------------------------------
+THE GOLDENS WERE READ OFF A PHONE, NOT WRITTEN FROM THE SOURCE. Before anything
+moved, the before build was installed on the S9, an account was signed in BY CODE,
+six settings were saved, two dossier years were cached and one day was left
+pending. All six SharedPreferences files and the Room database were then pulled
+(adb exec-out + run-as on the DEBUG build of the SAME commit; exec-out, never
+shell, which CRLF-translates and corrupts binary).
+
+src/test/resources/on-device-formats.txt records the KEY NAMES and value SHAPES -
+never a token, a digest or a cached body, because R448 says never a real token and
+a credential is not part of a format. OnDeviceFormatGoldenTest derives the key set
+from each store's OWN source constants and compares, so a renamed constant fails
+in the suite rather than on a phone (R181).
+
+THE REAL PROOF IS THE SAME SIX FILES PULLED AGAIN AFTER THE MOVE:
+
+  monreleve.settings    BYTE-IDENTICAL
+  monreleve.account     BYTE-IDENTICAL
+  monreleve.pending     BYTE-IDENTICAL
+  monreleve.detection   BYTE-IDENTICAL
+  monreleve.auth        VALUES DIFFER, FORMAT IDENTICAL - and this session caused it
+  monreleve.dossier     VALUES DIFFER, FORMAT IDENTICAL - and this session caused it
+
+THE TWO THAT DIFFER ARE REPORTED IN FULL RATHER THAN GLOSSED, because "four of six
+matched" is the kind of sentence that hides the two that matter.
+
+  monreleve.auth. The token pair ROTATED during the drive: step 3's first
+  authenticated call returned 401, the session refreshed, and a refresh WRITES A
+  NEW PAIR with a fresh per-save IV. That is the correct behaviour and it is the
+  behaviour this task's own R451 cases exist to protect. The FORMAT is unchanged,
+  measured rather than eyeballed:
+      before  keys string:token.blob string:token.iv
+      after   keys string:token.blob string:token.iv
+      before  iv 12 bytes (GCM nonce), ciphertext 229 bytes, base64 round-trips true
+      after   iv 12 bytes (GCM nonce), ciphertext 229 bytes, base64 round-trips true
+  THE IDENTICAL 229-BYTE CIPHERTEXT IS THE LOAD-BEARING NUMBER. AES-GCM ciphertext
+  is plaintext + a 16-byte tag, so both plaintexts are 213 bytes: the encrypted
+  token JSON has the same four fields of the same lengths. The plaintext format did
+  not move.
+
+  monreleve.dossier. The releve was re-fetched after the pending day synced, so the
+  body is newer. Same two year keys (dossier.2025, dossier.2026) and the SAME 15
+  top-level JSON keys (absenceDays, annex, canton, creditedMissionDays,
+  denominatorKind, employmentRate, generatedAt, months, period, rateWithoutMissions,
+  recordedEntries, taxYear, tiles, titulaire, zone); only generatedAt moved,
+  20:17:10.093Z -> 21:15:42.464Z.
+
+THE ROOM DATABASE, pulled before and after and diffed on schema:
+  user_version 6 -> 6
+  identity_hash a08f54541b97835cb850e7d8e4b1cf2d -> a08f54541b97835cb850e7d8e4b1cf2d
+  tables, and the `entry` DDL including its PRIMARY KEY(accountTag, dayDate, portion)
+  -> SCHEMA + IDENTITY HASH IDENTICAL
+
+PER STORE: DID ITS CODEC MOVE OR STAY?
+
+  TokenStore        CODEC STAYED. KeystoreTokenStore's org.json encode/decode, the
+                    Keystore alias, AES/GCM/NoPadding, the 256-bit key, the 128-bit
+                    tag, setUserAuthenticationRequired(false) and the per-save IV are
+                    NOT EDITED BY A CHARACTER. The hard boundary names this directly.
+  DossierCache      CODEC STAYED - there is no codec. The value is the server's raw
+                    body; SharedPrefsDossierCache only chooses the key.
+  SettingsStore     CODEC STAYED. Seven SharedPreferences keys and the -1 sentinel,
+                    unchanged, in SharedPrefsSettingsStore.kt.
+  AccountStore,
+  PendingSignInStore  CODEC STAYED; neither moved at all.
+  the /api/v1/me
+  codec             STAYED, AND THIS IS THE ONE WHERE THE ANSWER NEEDED AN ARGUMENT.
+                    R448 permits a conversion to KMP-1's one Json configuration "only
+                    if the goldens prove the bytes read back identically". They cannot,
+                    and the reason is structural rather than a missing fixture: KMP-1's
+                    Json OMITS nulls, while mePatchBody must send exactTotalWorkDays and
+                    activityStartDate AS JSON null on purpose - null is how the
+                    simplified basis and the whole-year case are STATED, and omitting
+                    either leaves a stale server value standing - and must in the SAME
+                    BODY omit name, loggingMode and detectionConsent, because /me
+                    refuses a null name outright. One configuration cannot express both,
+                    and there is no /me wire golden that would have caught the
+                    difference. Also: this is not an on-device format at all, it is the
+                    SERVER WIRE, and the hard boundary forbids changing the wire bytes.
+                    PARK-D3.
+
+--------------------------------------------------------------------------------
+R449 - COROUTINES AND TIME, PORTABLY
+--------------------------------------------------------------------------------
+NO DISPATCHER REACHES commonMain. Every absence below is backed by the SAME command
+finding a known instance in the same run, because an absence assertion is satisfied
+by absence.
+
+  claim:    grep -rn "Dispatchers" shared/src/commonMain/kotlin/   -> no match
+  control:  grep -rn "Dispatchers" app/src/main/kotlin/
+            -> UrlConnectionTransport.kt:3 import kotlinx.coroutines.Dispatchers
+               UrlConnectionTransport.kt:30 withContext(Dispatchers.IO)
+               MainActivity.kt:144 import kotlinx.coroutines.Dispatchers
+
+  claim:    grep -rn "^import java\." shared/src/commonMain/kotlin/  -> no match
+  control:  -> AujourdhuiController.kt:57 import java.time.Clock, and others
+
+  claim:    grep -rn "^import android\." shared/src/commonMain/kotlin/ -> no match
+  control:  -> AccountStore.kt, KeystoreTokenStore.kt, PendingSignInStore.kt
+
+THE ONE PLACE A THREAD IS CHOSEN is UrlConnectionTransport, which stays in :app
+behind the shared HttpTransport seam - so iOS picks its own over NSURLSession and
+no moved file is party to the decision. SessionManager's withContext(NonCancellable)
+is NOT a dispatcher: NonCancellable is a Job. It changes cancellability and nothing
+about which thread runs. No dispatcher had to be injected, because none was there.
+
+java.time -> kotlinx-datetime: NOTHING HAPPENED, AND THAT IS THE CORRECT OUTCOME.
+Not one moved file carried java.time. The two files that would have forced a
+conversion - RhythmRepository (DayOfWeek) and CalendarDay (Clock, OffsetDateTime) -
+both STAY, for the reasons under R446 and PARK-B1/PARK-D2.
+
+R384's INVENTORY IS UNCHANGED, verified file by file rather than assumed. All eight
+:app entries are still in :app:
+  data/repo/RhythmRepository.kt, forecast/ForecastController.kt,
+  forecast/ForecastState.kt, forecast/SimulationController.kt,
+  forecast/SimulationState.kt, ui/screens/rythme/RythmeScreen.kt,
+  calendar/CalendarModel.kt, detection/EveningNotificationDecision.kt
+and the three :shared entries are the same three KMP-1 listed (dossier/Forecast.kt,
+dossier/Simulation.kt, fr/rail - RythmeCopy.kt). ZERO NEW RELIANCE on DayOfWeek
+being a JVM alias was added; no extension to the inventory was needed.
+
+CANCELLATION BEHAVIOUR IS UNCHANGED. KMP-1b's three cases live in :shared's
+commonTest (CancellationTest.kt, 23 tests in the data.remote package) and ran
+UNEDITED, green, in every gate - including the one on the final tip. SessionManager
+moved into the same module as the seam those tests drive, and not a line of either
+changed. SignOutNotCancellableTest (:app, JUnit4, unedited) covers the half that
+matters most here: cancel DURING the revoke, assert the store is empty.
+
+--------------------------------------------------------------------------------
+R450 - THE SYNC ENGINE'S BEHAVIOUR, PINNED BEFORE IT MOVED
+--------------------------------------------------------------------------------
+Five behaviours are named. Four were ALREADY pinned; the fifth was not, and finding
+that out is what this ruling bought.
+
+  only the current account's rows drain, never UNOWNED, never another account's
+      AccountScopeTest.syncSendsOnlyTheCurrentAccountsRows
+      AccountScopeTest.aDifferentAccountsPendingDaysAreSetAside
+      AccountScopeTest.unownedRowsAreNeverSentOrShown              ALREADY PINNED
+  batches respect the server limit
+      SyncEngineTest.theQueueIsSentInBatchesOfTheLimit
+      BatchLimitParityTest.theBatchLimitMatchesTheServer           ALREADY PINNED
+  a refused day is marked refused, not retried forever
+      SyncEngineTest.aClientDefectIsMarkedFailedAndNotRetried
+      SyncEngineTest.anEntirelyBadBatchLeavesEveryItemFailed
+      SyncEngineTest.aRejectedBatchIsIsolatedSoTheGoodItemsStillSync  ALREADY PINNED
+  a network failure leaves days pending
+      SyncEngineTest.aNetworkFaultIsRetryableAndLeavesRowsPending   ALREADY PINNED
+  the drain result the worker maps to SUCCESS/RETRY                 *** GAP ***
+
+THE GAP AND WHY NOTHING HAD CLOSED IT. doWork() is a CoroutineWorker method needing
+a Context and WorkerParameters, which a JVM unit test has not got - so the mapping
+sat unguarded while every branch around it was tested. It is not a mapping anyone
+would guess: Settled -> success (defects included: re-sending a payload the server
+refused is a queue that never drains, R198), Retryable -> retry (the ONLY case the
+exponential backoff should see), and Unauthenticated -> SUCCESS, not retry (rows
+wait for a sign-in; retrying backs off forever against a session that is not coming
+back). Map the last one wrong and the symptom is a phone quietly backing off for
+hours.
+
+SyncWorkerResultMappingTest closes it as a SOURCE FENCE on the shape of the `when`,
+and it also DERIVES the case list from SyncEngine.kt - following that file into
+:shared - so a fifth SyncOutcome added later fails here instead of on a phone. Its
+exhaustiveness check reads only the sealed SyncOutcome's own block, because
+SyncEngine.kt ALSO declares a private sealed BatchResult whose case names overlap
+(Retryable, Unauthenticated) and a regex over the whole file would have silently
+folded the two together - a guard measuring something other than what it claims.
+
+RED FIRST, PLANT VERIFIED BEFORE THE RESULT WAS READ (R180):
+  plant   SyncOutcome.Unauthenticated -> Result.retry()
+  red     expected:<{Settled=success, Retryable=retry, Unauthenticated=success}>
+           but was:<{Settled=success, Retryable=retry, Unauthenticated=retry}>
+  revert  verified by git status, not asserted.
+
+AFTER THE MOVE, all of the above ran UNEDITED against the common code (see PARK-D4
+for why they live in :app's JVM suite rather than commonTest, per file).
+
+THE WORKER'S RETRY/BACKOFF POLICY WAS NOT TOUCHED. SyncScheduler and SyncWorker are
+unchanged; the unique work name, APPEND_OR_REPLACE, the CONNECTED constraint and the
+exponential backoff are exactly as they were.
+
+--------------------------------------------------------------------------------
+R451 - THE SESSION AND THE TOKEN REFRESH, PINNED THE SAME WAY
+--------------------------------------------------------------------------------
+Four cases named. Three ALREADY pinned, one not.
+
+  refresh on expiry
+      SessionManagerTest "an expired access token refreshes once and retries
+      transparently"                                                ALREADY PINNED
+  refresh failure signs out as today
+      SessionManagerTest "an expired token whose refresh fails is SessionExpired -
+      an ordinary lapse", and its sibling distinguishing revoked_session as
+      SessionEnded (R210)                                           ALREADY PINNED
+  two concurrent requests refresh ONCE
+      SessionManagerTest "single-flight: ten concurrent refreshes rotate EXACTLY
+      ONCE"                                                         ALREADY PINNED
+  sign-out wipes locally even when the server revoke fails or is cancelled
+      CANCELLED: SignOutNotCancellableTest                          ALREADY PINNED
+      FAILED:                                                       *** GAP ***
+
+THE TWO HALVES LOOK ALIKE AND REST ON DIFFERENT LINES, which is the whole reason the
+gap existed. A cancellation unwinds through the `finally` KMP-1b wrapped in
+NonCancellable. A NETWORK failure never reaches that machinery: AuthApi.signOut
+catches TransportException and returns false, so SessionManager sees an ordinary
+return and the wipe runs on the normal path. Remove a runCatching on one side or
+introduce a throw on the other and the remaining test stays green.
+
+SignOutWipesOnRevokeFailureTest closes it, with its own positive control inside the
+test: it asserts the revoke WAS ATTEMPTED before asserting the store is empty,
+because "the tokens are gone" is satisfied perfectly by a sign-out that skips the
+network entirely - which is not what the product does and not what is being
+asserted. A second case covers the other direction: with no stored session the
+network must not be touched at all.
+
+RED FIRST, PLANT VERIFIED (R180):
+  plant   the wipe moved behind `if (revoked)` - the pre-R387 defect shape
+  red     "the server was unreachable and the tokens stayed on the device"
+          expected null, but was:<TokenPair(accessToken=<redacted>, ...)>
+  revert  verified by git status.
+
+AFTER THE MOVE, all ten of these ran UNEDITED on the common SessionManager.
+
+AND THE SAME GUARANTEE WAS THEN SEEN ON A PHONE, which is the part a suite cannot
+give: R454 step 3's server log shows 401 -> POST /api/v1/auth/refresh 200 -> 200,
+and step 4 shows a bounded drain followed by POST /api/v1/auth/sign-out 200.
+
+--------------------------------------------------------------------------------
+R452 - THE ACCOUNT-TAG GUARD MOVED WITH ITS CODE
+--------------------------------------------------------------------------------
+currentAccount is STILL A FUNCTION TYPE read at WRITE time. LocalEntryRepository
+and LocalRhythmRepository did not move (PARK-D1/D2) and were not edited, so
+`private val currentAccount: () -> String? = { null }` and the resolve-at-record()
+call are exactly as AN-ACCOUNT-TAG left them.
+
+SyncEngine's currentAccount is a String?, NOT a provider, and that is NOT the R423
+defect - stated in the moved file so the next reader does not "fix" it. The
+repositories take a function because a screen composes one and KEEPS it; an engine
+is built fresh by buildSyncEngine on EVERY drain, from the account store, inside the
+worker - so the value is read at the only moment it could be. The fence passes that
+construction site because it is a local assignment, not a capture handed to
+something that outlives the call. Changing the type would be a behaviour change with
+no defect behind it (R156).
+
+THE FENCE WAS REPOINTED AND SHOWN RED, THEN GREEN. AccountCaptureFenceTest now walks
+two roots: src/main/kotlin and ../shared/src/commonMain/kotlin.
+
+  PLANT (verified present before the result was read, and written to COMPILE,
+  because :shared compiles before :app runs a test):
+      SyncEngine.kt:68   probeAccount(accountStore.current())
+  RED:
+      AccountCaptureFenceTest > no account is captured as a value at construction FAILED
+      expected:<[]> but was:<[SyncEngine.kt:68  probeAccount(accountStore.current())]>
+  GREEN after revert: 3 tests, BUILD SUCCESSFUL. Revert verified by grep, not asserted.
+
+AND THE MEASUREMENT THAT MAKES THE REPOINT NECESSARY RATHER THAN TIDY. With the
+second root removed - the fence EXACTLY as it stood before this commit - the SAME
+plant, still in the file, produced:
+
+      AccountCaptureFenceTest > no account is captured as a value at construction PASSED
+
+So the one-root fence CERTIFIES A LIVE FROZEN CAPTURE AS CLEAN. This is not a
+theoretical gap; it is ErasureCensusTest's KMP-2b failure again, one guard over, and
+it would have shipped silently because a fence that scans less does not say so.
+
+WHAT CAUGHT IT IS A NEW ASSERTION ON THE FENCE ITSELF: `the walk reaches BOTH trees,
+each named by a file only it can hold`. It checks each root SEPARATELY - a combined
+file count stays comfortably over any threshold with one root missing entirely,
+which is exactly how this class of defect hides - and pins each root by a file only
+it contains (MainActivity.kt, SyncEngine.kt), so a root resolving to the wrong
+directory fails rather than passing over somebody else's sources.
+
+R283, AND IT ONLY BECAME A RISK IN THIS TASK. app/build.gradle.kts now declares
+$projectDir/../shared/src/commonMain/kotlin as a test input. Without it, editing a
+commonMain file recompiles both modules but changes nothing in :app's TEST inputs -
+so testDebugUnitTest goes UP-TO-DATE, the fences do not run, and the build is green
+over source it never read.
+
+R426's "UNOWNED WHILE SIGNED IN" ASSERTION STILL FIRES: AccountScopeTest's
+`an unresolved tag while a session exists is refused, not written quietly (R425)`
+and `R303 is untouched when genuinely nobody is signed in` both ran unedited and
+green in the gate. AND IT WAS CONFIRMED ON THE PHONE: every one of the five rows in
+the device database carries the tag
+a2bf347fd2f3603c8414a1bb78a74cfbb40eb69bc0333352e95bdddc1879a06f, which is EXACTLY
+sha256("kmp3.device@monreleve.test") - computed independently as a positive control.
+Not one row is UNOWNED, after a sign-in BY CODE, which is the path that produced the
+original defect because it does not restart the activity.
+
+--------------------------------------------------------------------------------
+R453 - THE GATE COVERS WHAT MOVED
+--------------------------------------------------------------------------------
+PER-PACKAGE TEST COUNTS, BEFORE AND AFTER (read from the JUnit XML of the R1(b) gate
+and of the gate on the moved code - not from memory):
+
+  :app       TOTAL 1196 -> 1208   (+12)
+      31 ->    33  ch.monreleve.app.auth
+      17 ->    20  ch.monreleve.app.data.sync
+      37 ->    44  ch.monreleve.app.fences
+    packages with a LOWER count: none
+
+  :shared    TOTAL   44 ->   44   (+0)
+    packages with a LOWER count: none
+
+  :app + :shared COMBINED   1240 -> 1252
+    packages LOWER across both modules: NONE
+
+NOT ONE PACKAGE LOST A TEST. Every test that guarded a moved file still runs: they
+stayed in :app's JVM suite and now exercise commonMain through :app's dependency on
+:shared, unedited. PARK-D4 gives the per-file reason none could be moved to
+commonTest without an edit or a dependency, and names the one-line unlock.
+
+checkTestFloor AGREES: "test floor OK: 1208 unit tests observed (>= 10)" in the gate
+on the moved code, against 1196 at R1(b).
+
+THE METADATA COMPILATION OF commonMain IS GREEN. :shared:compileCommonMainKotlinMetadata
+compiles commonMain against the common stdlib ALONE and so rejects every java.* and
+android.* reference; it is a :app:gate dependency and executed in every gate run
+reported here. It was also run on its own after each move, before the fast check, so
+a platform leak would have been caught at the increment rather than at the gate.
+
+THE FENCE AGAINST java./android. IN commonMain STILL PASSES, WITH ITS POSITIVE
+CONTROL. CommonMainFenceTest carries three tests: the fence itself,
+`theClassifierFiresOnPlatformImportsAndSparesTheTwoMultiplatformOnes` (the positive
+control - it asserts the classifier REJECTS a list of platform imports and ALLOWS
+the two multiplatform androidx packages), and
+`theExemptionListIsExactlyTheTwoMultiplatformAndroidxPackages` (R206's corollary:
+asserted beats merely present, so a third exemption must change that line). All
+three green.
+
+ONE NEW DEPENDENCY WAS NOT NEEDED, AND THAT WAS CHECKED RATHER THAN ASSUMED.
+SessionManager uses Mutex, withLock, NonCancellable and withContext.
+compileCommonMainKotlinMetadata resolved all four with no catalog change, because
+commonMain was already getting kotlinx-coroutines-core (EntryDao has used
+kotlinx.coroutines.flow.Flow there since KMP-2b). No version moved; nothing was
+added to gradle/libs.versions.toml.
+
+--------------------------------------------------------------------------------
+R454 - THE UPGRADE IN PLACE, ON THE S9
+--------------------------------------------------------------------------------
+BUILD TYPE: AUDIT, as R454 names - the MINIFIED variant, which is the one a class
+move across modules could break through an R8 keep rule. All four upgrade steps ran
+on it. The DEBUG build of the SAME TWO COMMITS was installed twice, briefly, for one
+purpose only: run-as needs a debuggable build and the audit build is not one, so the
+R448 format reads are impossible on audit. Each debug install was `install -r` with
+no clear, so no data was touched. This is a deliberate addition, not a deviation
+from "audit": the upgrade proof is audit-over-audit throughout.
+
+  BEFORE  app-audit.apk from 644dabb  sha256 11a1177b9289270e64c74095f53d38f7b3fea60e727fdfa3cefdacfb351897e9
+  AFTER   app-audit.apk from 04ab4bd  sha256 a53963c3969afacbd0837596444fdd74537f2b44a922126c667be83c40b5be06
+  (debug of the same two commits: e2b000f9... and 82b3658e...)
+
+ALL FOUR CARRY http://127.0.0.1:3000, verified by grepping the dex rather than
+trusting that the gradle property took: the dex contains http://127.0.0.1:3000 and
+no http://10.0.2.2:3000. NEVER PRODUCTION.
+
+THE BEFORE APK WAS BUILT FROM THE CURRENT 644dabb, not from anything older - the
+trap KMP-2b fell into. The worktree was verified clean and at 644dabb immediately
+before the build.
+
+STEP 1 - THE BEFORE STATE
+  Account kmp3.device@monreleve.test, created by this session. The operator's real
+  address was never used. Signed in BY CODE (the code read from the dev server's
+  own stdout, which is where sendMail prints an undelivered message in development)
+  - deliberately the code path, because it does not restart the activity and is
+  what exposed the AN-ACCOUNT-TAG defect.
+  Settings, all non-default: canton Geneve, taux 80 %, methode simplifiee 240,
+  DEMI-JOURNEES (R454 names half-day mode), annee entiere, saisie manuelle, and the
+  evening reminder ON (which writes monreleve.detection).
+  Weekly rhythm set: Su Su Do Su Do - two domicile days - written through
+  LocalRhythmRepository into Room, so a store that did NOT move is in the evidence
+  too.
+  Five entry rows: 15 Oct AM/PM and 20 Oct AM/PM synced, 16 Oct AM left PENDING.
+  Both dossier years cached; the releve read offline showed the offline-copy banner
+  and the "one day not yet synchronised" line.
+  Every screen captured.
+
+  AN ENVIRONMENT FACT THE NEXT SESSION SHOULD HAVE, because it cost time here and
+  it is also what avoided KMP-2b's ninety-minute backoff trap: AIRPLANE MODE ALONE
+  IS NOT OFFLINE on this rig. `adb reverse tcp:3000` tunnels over USB and SURVIVES
+  airplane mode - with airplane ON the app still reached the server and even
+  completed a token refresh. Genuinely offline is airplane ON *and*
+  `adb reverse --remove tcp:3000`. The useful half: with airplane ON, WorkManager's
+  CONNECTED constraint is UNMET, so the drain worker never runs, there are ZERO
+  failed attempts and ZERO exponential backoff while a day sits pending.
+
+STEP 2 - the move, host tests and gates only. Nothing was installed between the
+  before capture and the after install.
+
+STEP 3 - THE AFTER INSTALL WENT OVER THE BEFORE ONE
+  adb install -r, NO uninstall, NO clear. The proof it was an upgrade and not a
+  fresh install is in the package record itself:
+      firstInstallTime = 2026-10-20 17:40:17   (unchanged)
+      lastUpdateTime   = 2026-10-20 22:12:35   (moved)
+
+  STILL SIGNED IN, NO CODE ASKED. The app opened straight onto Aujourd'hui with the
+  greeting carrying the holder's name - which also proves the settings survived,
+  since the name is read through the MOVED SettingsStore contract from the UNMOVED
+  preferences file.
+  EVERY SETTING AS LEFT: Geneve, 80 %, forfait 240, demi-journees, toute l'annee -
+  and the weekly rhythm still reading two domicile days per week.
+  HALF-DAY MODE INTACT: the recording screen still offers Matin and Apres-midi.
+  THE PENDING DAY SURVIVED: "1 journee en attente d'envoi" (transliterated).
+
+  THE CACHED DOSSIER SHOWN WITH THE NETWORK OFF (airplane ON, reverse removed). The
+  releve rendered the offline-copy banner naming its generation date, plus the R287
+  line saying one day recorded on this device is not yet synchronised and does not
+  appear - which is PendingDays, a file that MOVED in this task, reading rows
+  through a DAO that moved in the last one.
+
+  THE PENDING DAY SYNCED AND A TOKEN REFRESH SUCCEEDED - ONE SEQUENCE, BOTH PROOFS.
+  The reverse was restored FIRST and airplane mode turned off second, so the tunnel
+  existed the moment WorkManager's CONNECTED constraint was met. The dev server log:
+
+      POST /api/v1/entries      401 in 963ms
+      POST /api/v1/auth/refresh 200 in 374ms
+      POST /api/v1/entries      200 in 155ms
+
+  HOW THE REFRESH WAS FORCED: by waiting, which is what R454 allows ("wait out ...
+  the access token's expiry"). ACCESS_TTL_MS is 15 minutes (web/lib/auth/tokens.ts);
+  sign-in was at about 21:04 and this call was at about 22:14, so the access token
+  was more than an hour stale and the FIRST authenticated call after the upgrade
+  401'd into the refresh path on its own. No database row was edited and no clock
+  was moved - the clock stayed REAL throughout, because the server refuses a dayDate
+  after the Paris today and a moved clock makes recording fail by design.
+  (REFRESH_TTL_MS is 90 days, so the refresh token could not have lapsed during the
+  code work - checked before relying on it.)
+
+  That one sequence exercises the MOVED SessionManager's attempt / onUnauthorized /
+  retryAfterRefresh path and the MOVED SyncEngine's drain and reconcile, against a
+  real server, on a minified build.
+
+  ON THE DEVICE AFTERWARDS: the pending line is gone from Aujourd'hui and the
+  calendar now reads 16 October as recorded on time instead of awaiting
+  synchronisation. In the database the row is SYNCED with a serverId, and its
+  clientClaimedAt has been normalised from the device's +01:00 form to Z - which is
+  toSyncedEntity in the MOVED EntriesMapping writing the server's row back.
+
+  LOGCAT FROM INSTALL TO FIRST FRAME, WITH ITS POSITIVE CONTROL. `adb logcat -c`
+  immediately before the install; 68 845 lines captured after first frame.
+      POSITIVE CONTROL (the log is real and reached our app):
+        ActivityTaskManager: Displayed ch.monreleve.app/.MainActivity: +657ms
+      THE ABSENCE CLAIM: no FATAL EXCEPTION, no `E AndroidRuntime`, no ANR in
+      ch.monreleve, no force-finish, no process death - zero matches.
+      POSITIVE CONTROL FOR THE ABSENCE CLAIM, because a grep that matches nothing
+      proves nothing about the grep: the same pattern, run in the same step against
+      a one-line file containing a synthetic FATAL EXCEPTION, matched 1.
+      The only monreleve lines at W or E level in the whole log are the OS's own
+      PACKAGE_REMOVED broadcast fan-out to other apps' receivers, which is what
+      `install -r` emits. Reported rather than filtered out silently.
+
+STEP 4 - SIGN-OUT WITH ONE DAY PENDING OFFLINE
+  Offline again (airplane ON + reverse removed), 19 October recorded and left
+  pending. Then Parametres -> Se deconnecter:
+
+  (a) AN-POLISH's R440 WARNING FIRED AND NAMED THE DAY. The dialog carried the
+      standard erasure sentence PLUS a line saying one day could not be sent,
+      naming the date 19.10.2026 and saying it will be permanently lost - with three
+      choices: retry, sign out anyway, stay signed in. (Transliterated; the accented
+      original is in :shared's fr/.)
+  (b) CANCELLED - "stay signed in". Still signed in: Parametres still offers sign
+      out rather than a welcome screen, and the calendar still shows 19 October
+      awaiting synchronisation. NOTHING WAS DELETED.
+  (c) ONLINE (reverse restored, airplane off), sign out again. THE DIALOG CHANGED TO
+      THE PLAIN CONFIRMATION - no "could not be sent" line - because the bounded
+      drain had already succeeded, and what the dialog says is what is LEFT. The
+      server log for that window is one line:
+          POST /api/v1/entries 200 in 114ms
+  (d) Confirmed. The server revoked the session:
+          POST /api/v1/auth/sign-out 200 in 848ms
+      and the app landed on the welcome screen with the local record erased - which
+      is the sign-out contract, stated in the dialog before the tap.
+
+  That is R440 end to end on the moved code: the days reached the server BEFORE the
+  device was wiped.
+
+STEP 5 - NOTHING THAT UNINSTALLS WAS RUN, AND THE PHONE WAS LEFT AS FOUND
+  connectedAndroidTest was NOT run. It is not in :app:gate (the gate compiles the
+  androidTest source set and skips RUNNING it, with a reason), nothing in R446-R455
+  requires it, and it uninstalls both APKs and wipes the database. So there was no
+  uninstall and no reinstall was owed. The device data had already been read before
+  step 4 in any case, which is the order R454 asks for.
+
+  LEFT AS FOUND, each restored to the value R1(c) READ:
+      adb reverse            removed (listing empty)
+      stay_on_while_plugged_in  0   (R1(c) read 0; set to 3 for the drive)
+      screen_off_pocket         1   (read 1 before writing; set to 0 for the drive -
+                                     Samsung's accidental-touch protection was
+                                     intercepting every tap)
+      screen_off_timeout    30000   never changed
+      airplane_mode_on          0   (read 0; toggled during the drive)
+      auto_time                 1   never changed
+      timezone   Africa/Casablanca  never changed; the clock was never moved
+      installed: the AFTER AUDIT build, launched once more after the restore and
+                 reaching the welcome screen. firstInstallTime still 2026-10-20
+                 17:40:17 - the app has never been uninstalled in this session.
+      app state: signed out, empty local record - the same state this session found
+                 it in, which is also how AN-POLISH's R441 left it.
+
+--------------------------------------------------------------------------------
+R455 - WHAT iOS-1 MUST WRITE
+--------------------------------------------------------------------------------
+A. iosMain IMPLEMENTATIONS OF AN INTERFACE THAT IS ALREADY IN commonMain
+
+  HttpTransport  -> URLSession. suspend execute(HttpRequest): HttpResponse. It must
+                    throw TransportException and NOTHING else for a network failure,
+                    must let CancellationException propagate, and must not swallow a
+                    programming error (R386/R387). KMP-1b's CancellationTest in
+                    commonTest is the specification and will run against it.
+  TokenStore     -> Keychain. ONE item holding the encoded pair, never four. Must not
+                    require the device unlocked. Unreadable -> null AND clear.
+  SettingsStore  -> NSUserDefaults (or a file). Absent and null must both round-trip
+                    as null. Do NOT override isOnboarded.
+  DossierCache   -> a file per year, or NSUserDefaults. Stores the server's RAW body.
+                    clear() erases EVERY year.
+
+B. PLATFORM CODE WITH NO SHARED INTERFACE YET - iOS writes the seam and the body
+
+  the database builder -> Room KMP's iOS builder. :shared already declares
+                    kspIosArm64 and kspIosSimulatorArm64, and the @Database, the
+                    entities, the three DAOs and the five migrations are all in
+                    commonMain; only MonReleveDatabaseBuilder (Context) is :app-only.
+                    UNPROVEN UNTIL A MAC RUNS IT, as :shared's own build file says.
+  the sync trigger -> BGTaskScheduler in place of WorkManager. iOS calls
+                    SyncEngine.sync() and maps SyncOutcome itself: Settled -> done,
+                    Retryable -> reschedule, Unauthenticated -> done, NOT a retry.
+  the account tag  -> CryptoKit SHA256 for accountTagOf, plus AccountStore and the
+                    UNOWNED fail-closed rule. UNOWNED_ACCOUNT is already shared.
+  the pending sign-in -> PendingSignInStore. It is the login-CSRF defence, and the
+                    address it holds is a credential in this product's threat model.
+  the local wipe   -> LocalStore/DeviceLocalStore. The SCOPE decision is the part
+                    that must not be re-derived: sign-out clears the record, the
+                    cache, the tokens, the queued sync, the exports, the settings,
+                    the detection mode and the account tag; deletion adds the pending
+                    sign-in.
+  the /me codec    -> mePatchBody, parseMeSettings, parseMeView. PARK-D3 says why
+                    they are not shared. Everything they take and return is shared,
+                    so only the encoding is platform work.
+  the record path  -> LocalEntryRepository and LocalRhythmRepository. PARK-D1 and
+                    PARK-D2 name exactly what blocks each and what the seam looks
+                    like. THIS IS THE LARGEST REMAINING DUPLICATION and the obvious
+                    next KMP task.
+  CalendarDay      -> todayInParis and deviceClaimNow. PARK-B1. clientClaimedAt has a
+                    FIXED pattern because the obvious formatters drop a zero seconds
+                    field and the server's zod refuses that.
+  fr/format        -> French date and number formatting, ComparisonCopy,
+                    NotificationCopy. KMP-0's operator ruling: CLDR French formatting
+                    has no in-scope common equivalent.
+  the logger       -> NOTHING. R446 anticipated a logger SPLIT and there is none,
+                    because after the moves nothing in commonMain logs.
+
+C. WHAT iOS NO LONGER HAS TO WRITE, because of this task
+  the session - single-flight refresh, refresh-once-and-retry on 401, the
+  expiry-versus-replay distinction (R210), sign-out's revoke-then-uncancellable-wipe;
+  the sync engine - the per-account drain, batching to the server's limit, R296
+  isolation of a refused item, reconcile-from-the-server's-row, the three outcomes;
+  the dossier read with its offline fallback, and DossierResult;
+  PendingDays, the one predicate behind the not-yet-synchronised sentence;
+  the EntryEntity <-> wire mapping;
+  and from earlier tasks the engine, the copy, the wire, the API client and the
+  database.
+
+--------------------------------------------------------------------------------
+PARKED
+--------------------------------------------------------------------------------
+NEW, all four written into parking.md with the question, what was taken, what was
+not, and the cost of reversing. THE D SERIES WAS CONFIRMED FREE BY THE REGISTER, NOT
+FROM MEMORY: the letter series present in parking.md are K L I P B U S F R A G, and
+a scan of parking.md, every REPORT-*.txt and every relay/*.txt found no PARK-D.
+
+  PARK-D1  LocalEntryRepository stays. Five seams, one forced by PARK-B1, and a
+           constructor-type change across 3 production sites and 14 test files.
+  PARK-D2  LocalRhythmRepository stays, blocked by PARK-K3, not by the clock.
+  PARK-D3  the /api/v1/me codec stays org.json: one body needs explicit nulls for
+           two fields and omission for three.
+  PARK-D4  KMP-3's pinning tests live in :app's JVM suite; the per-file reason none
+           can be commonTest, and the one-line unlock, are recorded.
+
+STILL OPEN FROM EARLIER TASKS, untouched by this one:
+  PARK-B1 CalendarDay; PARK-B3 :app's KSP plugin with nothing to process (closed by
+  AN-POLISH R439 per its report - not re-investigated here); PARK-B4
+  MigrationSqlVerbatimTest; PARK-K2 the merge/cleanup scripting; PARK-K3 the
+  duplicate enums; PARK-K5 cmdline-tools; PARK-K7 the Prisma client; PARK-U2/PARK-A1
+  the two library deprecations; PARK-A2 R425's Log.e branch.
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+1. THE WEB SERVER RAN FROM THE MAIN CHECKOUT, not this worktree, to avoid a second
+   full pnpm install - the same deviation REPORT-KMP-2 recorded as its number 4 and
+   REPORT-KMP-2b as its number 1, with the same legitimacy check:
+   `git diff origin/main...HEAD -- web/` is EMPTY. This branch changes android/, the
+   report and the register only. Its stdout was captured to a log this session can
+   read, which is how the sign-in code was obtained without touching the operator's
+   terminal. R169 was satisfied before trusting it: /api/health returned
+   {"service":"monreleve", ... "status":"ok"} - a 200 alone would not have been
+   enough, which is the whole point of that ruling.
+
+2. THE MAIN CHECKOUT DOES HOLD A SESSION LOCK, correcting the briefing, which said
+   it holds none. .session-lock.json there reads
+   {"session":"frontier-work-7e [resumed]","task":"merge an-account-tag, then
+   AN-ANSWER-ICON","created":"2026-10-20"}, dated 00:25. It is the orchestrator's own
+   and it was REPORTED, never removed or modified (R334). No git command was run in
+   that directory beyond the read-only diff above.
+
+3. R446's EXPECTATION WAS CORRECTED IN FOUR PLACES, each with a measured reason
+   rather than a judgement: EntryRepository and RhythmRepository STAY (PARK-D1,
+   PARK-D2), PendingSignInStore and AccountStore are named as STAYS although R446
+   does not list them, and the logger SPLIT does not exist because nothing in
+   commonMain logs. R446 invites this explicitly - "to be confirmed or corrected from
+   the source" - and all four are reversible.
+
+4. THE PINNING TESTS WERE NOT MOVED TO commonTest. R450 says "moved unchanged to
+   commonTest ... WHERE POSSIBLE"; it is possible for none of them, per file, for the
+   reasons in PARK-D4 - Kotest, org.json, java.time, a filesystem read, and
+   kotlin-test not being on :app's test classpath. The literal requirement that
+   matters is met in its strongest form: the same tests, not one character edited,
+   now execute the common code.
+
+5. THE DEBUG BUILD WAS INSTALLED TWICE DURING AN AUDIT DRIVE, for the R448 format
+   reads only, because run-as needs a debuggable build and the audit build is not
+   one. Both were `install -r` with no clear over the same data, from the SAME commit
+   as the audit build they replaced. The upgrade proof itself - before-audit to
+   after-audit - is unbroken. AN-POLISH recorded the converse deviation (its whole
+   device proof on debug) for the same underlying reason.
+
+6. TWO DEVICE SETTINGS WERE CHANGED FOR THE DRIVE and both were READ FIRST:
+   stay_on_while_plugged_in 0 -> 3, and screen_off_pocket 1 -> 0 (Samsung's
+   accidental-touch protection was intercepting taps and had already consumed one
+   keystroke into the sign-in field). Both restored and the restore verified by
+   reading them back.
+
+7. A SPLIT SCRIPT TOOK TOO MUCH ON ITS FIRST RUN AND IS REPORTED RATHER THAN QUIETLY
+   FIXED. Cutting ReleveCompleteness.kt at parseMeView removed everything after it -
+   and parseMeView sits SECOND in that file, so toMeView, ReleveField,
+   missingReleveFields and isComplete went with it. Restored from git. The second
+   attempt asserted BOTH boundaries by name before writing (R211) and refused:
+   "line 46 is not toMeView's KDoc, it is: fun Settings.toMeView()" - off by one,
+   nothing written. Corrected, re-run, 15 lines removed exactly as stated. The guard
+   is the reason this is a paragraph rather than a lost function.
+
+8. THE REPORT AND THE REGISTER ARE COMMITTED AFTER THE LAST CODE COMMIT. 04ab4bd is
+   the last commit carrying code and build files; everything after it changes
+   REPORT-KMP-3.txt only. The FULL gate was re-run on the final tip anyway - see
+   PUSH PROOF - so no commit on this branch is unreported by a gate.
+
+9. ONE FAST CHECK BOUNCED on a needless blank line that ktlint caught in the split
+   ReleveCompleteness.kt, and one bounced on a MaxLineLength in a new test. Both
+   fixed before the commit; neither reached a commit. Recorded because "fastCheck:
+   BUILD SUCCESSFUL" in a commit message should not imply it passed first time.
+
+--------------------------------------------------------------------------------
+QUESTIONS
+--------------------------------------------------------------------------------
+Q1 PARK-D4. May `testImplementation(libs.kotlin.test)` be added to :app? It is the
+   same catalog entry and version :shared already uses, test scope only, no new
+   artifact in the project. With it, a behaviour can be pinned in kotlin.test against
+   :app code and later moved to commonTest by `git mv` alone - which is exactly the
+   workflow R450 and R451 describe and which this task could not follow. Not taken,
+   because "adding a dependency" is on SPEC 20's Ask-first list.
+
+Q2 PARK-D1/PARK-D2. The record path is now the largest thing iOS would duplicate.
+   Should it be its own task - taking PARK-B1 (CalendarDay) and PARK-K3 (the
+   duplicate enums) with it, since each blocks one of the two repositories - or does
+   it wait for Compose Multiplatform and the controllers?
+
+Q3 KMP-2b's Q3 is still unanswered and this task had to decide it in passing: the
+   letter-id convention. PARK-D1..D4 were entered in parking.md on KMP-2b's
+   precedent. The earlier PARK-K*, PARK-U* and PARK-A* entries are still not in the
+   register, so a reader following those citations from the KMP reports still cannot.
+   Not back-filled here - it is three other tasks' work and doing it from outside
+   would be worse than the gap.
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+:app:gate --rerun-tasks, run IN THIS SESSION, in this worktree. 225 actionable
+tasks: 225 EXECUTED each time - not up-to-date, because a task reported UP-TO-DATE
+did not run in the invocation whose BUILD line is pasted.
+
+  644dabb  (R1(b), origin/main's HEAD, BEFORE a single file was touched)
+           BUILD SUCCESSFUL in 10m 8s   GATE_EXIT=0   225/225
+           test floor OK: 1196 unit tests observed
+
+  04ab4bd  (the last commit carrying code, build files and the register)
+           BUILD SUCCESSFUL in 7m 13s   GATE_EXIT=0   225/225
+           test floor OK: 1208 unit tests observed
+
+  e900643  (the report added; the FINAL GATE)
+           BUILD SUCCESSFUL in 14m 22s  GATE_EXIT=0   225/225
+           test floor OK: 1208 unit tests observed
+
+THE FINAL TIP IS NOT e900643, AND THE GAP IS STATED RATHER THAN GLOSSED (R391). The
+commit that carries this PUSH PROOF block is the tip, and the gate could not have
+run on it - the block names the gate's own result. The narrow claim, in the place
+the broad one would go:
+
+  the final tip differs from the gated e900643 ONLY in REPORT-KMP-3.txt - this
+  PUSH PROOF block, plus one digit corrected in R454 step 3 where the prose read
+  412 and the server log it quotes three lines above reads 401.
+
+  Proof, not assertion:  git diff --stat e900643..HEAD  ->  one file changed,
+  REPORT-KMP-3.txt, and nothing else.
+
+RegisterCoverageTest is the ONLY gated test that reads this file, so it was re-run
+against the final text rather than assumed:
+
+  register coverage: OK - 105 cited id(s) across 118 report(s), all have headings
+  in parking.md
+
+A NOTE ON ONE THING THAT NEARLY WENT WRONG, because it is the defect PARK-15 and
+R184 describe and it was caught by the rule rather than by luck: the 412 correction
+was first made WHILE the gate on e900643 was still running - a tree changing
+underneath the run that was photographing it. It was reverted immediately, the gate
+finished against exactly e900643, and the correction was re-applied here. Recorded
+because a reader comparing timestamps would otherwise find an edit inside the gate's
+window and no explanation.
+
+INCREMENT GATES. Every commit was green before it was made: ./gradlew fastCheck
+(the R390 subset, which prints what it did NOT run and therefore does not claim)
+plus :app:testDebugUnitTest and :shared:testDebugUnitTest on each of the five move
+increments. Two fast checks bounced and are in DEVIATIONS 9; neither reached a
+commit.
+
+gate:clone NOT RUN, with its reason rather than silence (R133): this branch changes
+android/, the report and the register. `git diff origin/main...HEAD -- web/` is
+EMPTY, so there is no web change for it to verify.
+
+THE BRANCH IS PUSHED AND NOT MERGED. kmp-3 -> origin/kmp-3. PENDING MERGE. The
+merge to main is the operator's, and this report does not claim it (R334: a report
+states only what has happened).
+
+================================================================================
+END OF REPORT-KMP-3
+================================================================================

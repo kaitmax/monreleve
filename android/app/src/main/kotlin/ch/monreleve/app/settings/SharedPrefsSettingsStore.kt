@@ -2,30 +2,24 @@ package ch.monreleve.app.settings
 
 import android.content.Context
 
-// AN5b increment 1. The device's cache of the person's settings, so Aujourd'hui computes offline
-// from the first launch (the settings were also PATCHed to /api/v1/me at onboarding). An interface
-// so OnboardingController is JVM-testable against a fake; the SharedPreferences implementation needs
-// a device.
+// AN5b increment 1. The Android implementation of SettingsStore, whose contract moved to
+// :shared commonMain in KMP-3 (R446/R447).
 //
-// NO COORDINATE, NO CREDENTIAL - just the six calculation settings. Persisted (not in-memory) so a
-// signed-in user reopening the app lands on a computable Aujourd'hui without a network round trip.
-
-interface SettingsStore {
-    /** The cached settings, or null if onboarding has not completed on this device. */
-    fun load(): Settings?
-
-    fun save(settings: Settings)
-
-    fun clear()
-
-    /**
-     * AN-ONBOARD-2 (R335): onboarded means COMPLETE - every field the releve needs, not merely "some settings
-     * exist". Keyed on the ONE completeness definition (ReleveCompleteness.toMeView/isComplete) the server path
-     * also uses, so a locally-cached account missing a name (the Q1 case) is sent back to finish onboarding
-     * rather than onto Aujourd'hui with a PDF that 422s.
-     */
-    fun isOnboarded(): Boolean = load()?.toMeView()?.isComplete() ?: false
-}
+// NOTHING HERE CHANGED IN THE MOVE, and the keys below are why that matters: they are the
+// file a person's phone already holds. monreleve.settings, these seven key names, and the
+// two different ways a null is written are what an upgrade in place reads back.
+//
+// THE TWO NULLS, because they are not stored alike and a reader of the contract alone would
+// not guess it. SharedPreferences' putString(key, null) REMOVES the key, so a null
+// activityStartDate or name is simply ABSENT from the file. An Int has no such form, so a
+// null exactTotalWorkDays is PRESENT as the sentinel -1. Both read back as null, which is
+// what the contract requires; this is one platform's way of meeting it, not the rule.
+//
+// commit(), not apply(), inherited unchanged from AN5b: a settings save is immediately
+// followed by a navigation decision that reads it back.
+//
+// OnDeviceFormatGoldenTest pins this key set against what was read off a running phone
+// before anything moved (R448).
 
 private const val SETTINGS_PREFS = "monreleve.settings"
 private const val KEY_CANTON = "canton"

@@ -296,6 +296,19 @@ tasks.withType<Test> {
     inputs.dir("$projectDir/../shared/schemas")
         .withPropertyName("roomSchemas")
         .withPathSensitivity(PathSensitivity.RELATIVE)
+    // KMP-3 (R452/R283). :shared's commonMain, read AS TEXT by three of :app's source-scanning
+    // fences now that the code they guard lives there: AccountCaptureFenceTest (the account is
+    // never captured as a value at construction), SyncWorkerResultMappingTest (it derives the
+    // SyncOutcome case list from SyncEngine.kt, which moved) and OnDeviceFormatGoldenTest.
+    //
+    // WITHOUT THIS LINE THE FENCES WOULD BE WORSE THAN ABSENT. Editing a commonMain file
+    // recompiles :shared and :app, but nothing in :app's TEST inputs changes - so
+    // testDebugUnitTest is UP-TO-DATE, the fence does not run, and the build is green over source
+    // it never read. That is R283's defect exactly, and the fences only became exposed to it in
+    // THIS task: before KMP-3 everything they scanned was inside this module's own tree.
+    inputs.dir("$projectDir/../shared/src/commonMain/kotlin")
+        .withPropertyName("sharedCommonMainSourceForFences")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.dir("$projectDir/src/main/assets")
         .withPropertyName("bundledAssets")
         .withPathSensitivity(PathSensitivity.RELATIVE)

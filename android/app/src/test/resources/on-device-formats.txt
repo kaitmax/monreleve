@@ -1,0 +1,45 @@
+# KMP-3 (R448). ON-DEVICE FORMATS, CAPTURED FROM A RUNNING PHONE BEFORE ANYTHING MOVED.
+#
+# WHAT THIS IS. Every key the device's four SharedPreferences stores write, read off a
+# Samsung S9 (232bcd8c300c7ece) running the audit/debug build of 644dabb, with an account
+# signed in by code, six settings saved, two dossier years cached and one day pending.
+# The file lists KEY NAMES and the SHAPE of each value - never a value that is a secret.
+# The token ciphertext and IV, the dossier bodies and the account digest are deliberately
+# NOT here: this records the FORMAT a future build must still be able to read, and a
+# credential is not part of a format.
+#
+# WHY A FIXTURE AND NOT A COMMENT. KMP-3 moves the session, the sync engine and the three
+# store INTERFACES to :shared while every Android implementation stays in :app. The claim
+# the move has to survive is that a person who upgrades is still signed in, keeps their
+# settings and still sees their cached dossier offline. That claim is about these keys.
+# OnDeviceFormatGoldenTest derives the key set from each store's OWN source constants and
+# compares it with this file, so renaming a constant fails here rather than on a phone
+# (R181: derived, never transcribed).
+#
+# ABSENT IS NOT NULL, and the settings store is where it matters. SharedPreferences'
+# putString(key, null) REMOVES the key, so activityStartDate is ABSENT on a whole-year
+# account - while a null exactTotalWorkDays is PRESENT as the sentinel -1 (ABSENT_INT).
+# Those two nulls are stored two different ways in one file, and a codec change that
+# treated them alike would read back wrong.
+#
+# FORMAT: <prefs-file> <key> <kind>
+
+monreleve.auth      token.iv                  string   base64 GCM IV, 12 bytes
+monreleve.auth      token.blob                string   base64 AES-256-GCM ciphertext of the token JSON
+monreleve.settings  canton                    string
+monreleve.settings  employmentRate            int
+monreleve.settings  denominatorKind           string
+monreleve.settings  exactTotalWorkDays        int      -1 (ABSENT_INT) when null - PRESENT, never removed
+monreleve.settings  granularity               string
+monreleve.settings  activityStartDate         string   ABSENT from the file when null (putString(key, null) removes)
+monreleve.settings  name                      string   ABSENT from the file when null
+monreleve.account   tag                       string   64-char lowercase SHA-256 hex, or the key is absent
+monreleve.pending   email                     string   absent once the sign-in is exchanged
+monreleve.dossier   dossier.<year>            string   the server's RAW body, one key per cached year
+
+# THE TOKEN PLAINTEXT, which is the one format that is not a preferences key: the JSON
+# KeystoreTokenStore encrypts and decrypts. Four fields, all strings, no nesting.
+tokenPlaintext      accessToken               string
+tokenPlaintext      refreshToken              string
+tokenPlaintext      accessExpiresAt           string
+tokenPlaintext      refreshExpiresAt          string

@@ -5,6 +5,14 @@ import ch.monreleve.app.data.local.DossierCache
 import ch.monreleve.app.dossier.DossierDocument
 import ch.monreleve.app.dossier.parseDossier
 
+// KMP-3 (R446): MOVED WHOLE to :shared commonMain - the class AND DossierResult - which closes two
+// entries at once. KMP-1 PARKED DossierResult ("stays in :app with DossierApi; move it with the
+// shared-controller work in KMP-2") and KMP-2's deviation 2 then kept the whole file back, reading
+// R379's "DossierApi.kt's pure parts" as the PARSE alone because the class orchestrates AuthedOutcome
+// and the DossierCache seam, both of which were still in :app. Both of those arrived in this task -
+// AuthedOutcome with SessionManager, DossierCache's contract one commit ago - so the reason lapsed and
+// the file came whole. Package unchanged (R368); no import in :app moved.
+//
 // AN11 increments 1, 3. The read of GET /api/v1/dossier, through the session (SPEC 11.4, docs/api-v1.md
 // section 8), with the R288 offline cache around it. The authenticated GET is a seam (suspend (String) ->
 // AuthedOutcome, i.e. SessionManager::authenticatedGet in the app) so this is JVM-testable against a

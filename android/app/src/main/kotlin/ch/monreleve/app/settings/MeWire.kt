@@ -1,49 +1,39 @@
 package ch.monreleve.app.settings
 
-import ch.monreleve.app.dossier.AggregatableUser
 import org.json.JSONObject
 
-// AN5b increment 1. The person's calculation settings - the manual-onboarding subset of
-// /api/v1/me. Cached on the device so Aujourd'hui computes offline from the first launch, and
-// PATCHed to the server so the dossier computes the same figures from the same settings.
+// KMP-3 (R446/R448). THE /api/v1/me VOCABULARY, IN org.json, DELIBERATELY LEFT IN :app.
 //
-// ONLY THE SIX MANUAL FIELDS (R282). loggingMode, detectionConsent and the reminder settings are
-// NOT here and NOT sent: a field the manual product does not offer is not written. loggingMode
-// stays MANUAL by the server's default; consent stays absent.
-
-/**
- * The complete, validated settings, in the /api/v1/me vocabulary (strings, as the wire carries them).
- *
- * AN-ONBOARD: `name` is the holder's name, the document's titulaire (onboarding step 1). It is LAST and
- * defaulted so every existing positional caller is unchanged; the new onboarding always provides it. It
- * is nullable because the calculation half of Settings is complete without it - the name is carried to
- * /api/v1/me so the server's dossier/PDF has a titulaire (R205), and is not part of the engine input.
- */
-data class Settings(
-    val canton: String,
-    val employmentRate: Int,
-    val denominatorKind: String,
-    val exactTotalWorkDays: Int?,
-    val granularity: String,
-    val activityStartDate: String?,
-    val name: String? = null,
-    // AN-ONBOARD: the recording mode chosen at onboarding step 6. Null (the common manual path) leaves the
-    // server's MANUAL default; "AUTO_DETECT" is sent only after the disclosure and the OS permission, with
-    // detectionConsent true (R315/R316) - the same pair /api/v1/me enforces together.
-    val loggingMode: String? = null,
-    val detectionConsent: Boolean? = null,
-)
-
-/** The engine input's person half (increment 2). Aujourd'hui reads settings through this (increment 4). */
-fun Settings.toAggregatableUser(): AggregatableUser =
-    AggregatableUser(
-        canton = canton,
-        employmentRate = employmentRate,
-        denominatorKind = denominatorKind,
-        exactTotalWorkDays = exactTotalWorkDays,
-        granularity = granularity,
-        activityStartDate = activityStartDate,
-    )
+// Settings, MeView and the completeness rules went to :shared commonMain with this task; the
+// three functions that turn them into and out of JSON did not. They were split out of
+// Settings.kt and ReleveCompleteness.kt, unchanged line for line.
+//
+// WHY THE CODEC STAYED, which R448 asks to be answered per store and this is the one place the
+// answer is NOT "the platform storage stays". org.json is a JVM/Android API, so the obvious move
+// is to rewrite these under KMP-1's one kotlinx.serialization Json configuration. R448 permits
+// that ONLY if the bytes read back identically, and here they demonstrably would not:
+//
+//   - KMP-1's Json is configured to OMIT nulls (encodeDefaults off, explicitNulls off) - which is
+//     right for the entries wire, where EntriesMapping's own header says "a null optional stays
+//     null here; wireJson omits it on encode (never "k":null)".
+//   - mePatchBody needs the OPPOSITE for two fields and the SAME for three others, in one body:
+//     exactTotalWorkDays and activityStartDate are sent as JSON null ON PURPOSE, because null is
+//     how the simplified basis and the whole-year case are STATED - omitting them would leave a
+//     stale server value standing, which the comment on mePatchBody has said since AN5b. Meanwhile
+//     name, loggingMode and detectionConsent must be OMITTED when absent, because /me's schema
+//     refuses a null name outright.
+//
+// So one body needs explicit nulls for two fields and omission for three, and a single Json
+// configuration cannot express both. Converting it would be a silent WIRE change - the thing the
+// hard boundary forbids - and there is no /me golden that would have caught it, which is exactly
+// why it is written down here rather than discovered later. PARKED as PARK-D3.
+//
+// THIS IS NOT AN ON-DEVICE FORMAT. The settings PREFERENCES file (monreleve.settings) is written
+// by SharedPrefsSettingsStore and is untouched by this task; this file is the SERVER wire. The two
+// were in one file and are now in two, which is the clearer arrangement anyway.
+//
+// iOS implements these three functions over its own JSON (R455). Everything they take and return -
+// Settings, MeView - is shared, so only the encoding is platform work.
 
 /**
  * The PATCH /api/v1/me body carrying exactly the six manual fields. exactTotalWorkDays and
@@ -92,6 +82,21 @@ fun parseMeSettings(body: String): Settings? =
             activityStartDate = json.stringOrNull("activityStartDate"),
             // AN-ONBOARD: the holder name, read back so onboarding can skip step 1 when the server has it (R297).
             name = json.stringOrNull("name"),
+        )
+    }.getOrNull()
+
+/** Parse a /me body into a MeView, tolerating any absent field; a malformed body yields null (safe: onboarding). */
+fun parseMeView(body: String): MeView? =
+    runCatching {
+        val json = JSONObject(body)
+        MeView(
+            name = json.stringOrNull("name"),
+            canton = json.stringOrNull("canton"),
+            employmentRate = json.intOrNull("employmentRate"),
+            denominatorKind = json.stringOrNull("denominatorKind"),
+            exactTotalWorkDays = json.intOrNull("exactTotalWorkDays"),
+            granularity = json.stringOrNull("granularity"),
+            activityStartDate = json.stringOrNull("activityStartDate"),
         )
     }.getOrNull()
 

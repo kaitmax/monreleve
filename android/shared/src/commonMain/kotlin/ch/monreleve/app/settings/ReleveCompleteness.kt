@@ -1,7 +1,5 @@
 package ch.monreleve.app.settings
 
-import org.json.JSONObject
-
 // AN-ONBOARD-2 (R335). COMPLETE means "every field the releve needs", defined ONCE here (R206). StartupDecider
 // keys the start destination on this (not on canton alone - the Q1 bug, where an account with settings but no
 // name landed on Aujourd'hui and its PDF 422'd), and SettingsStore.isOnboarded keys the local shortcut on the
@@ -11,6 +9,12 @@ import org.json.JSONObject
 // tolerant read (parseMeView) and the required-field set live beside it. The mapping from a required field to
 // the WIZARD STEP that asks it needs an onboarding type (OnboardingStep) and so lives in onboarding/
 // Completeness.kt, which reads this file's ReleveField set.
+//
+// KMP-3 (R446): the completeness RULES moved to :shared commonMain - MeView, toMeView, ReleveField,
+// missingReleveFields and isComplete - because SettingsStore.isOnboarded is a default method that
+// calls them, and the interface moved. parseMeView did NOT: it is org.json, and it went to
+// :app/settings/MeWire.kt beside the other two /me functions, so the /api/v1/me vocabulary still has
+// one home (R206) even though it is now spread over two files in two modules.
 
 /**
  * A tolerant view of GET /api/v1/me: every releve-relevant field, each nullable, read WITHOUT requiring any of
@@ -26,21 +30,6 @@ data class MeView(
     val granularity: String?,
     val activityStartDate: String?,
 )
-
-/** Parse a /me body into a MeView, tolerating any absent field; a malformed body yields null (safe: onboarding). */
-fun parseMeView(body: String): MeView? =
-    runCatching {
-        val json = JSONObject(body)
-        MeView(
-            name = json.stringOrNull("name"),
-            canton = json.stringOrNull("canton"),
-            employmentRate = json.intOrNull("employmentRate"),
-            denominatorKind = json.stringOrNull("denominatorKind"),
-            exactTotalWorkDays = json.intOrNull("exactTotalWorkDays"),
-            granularity = json.stringOrNull("granularity"),
-            activityStartDate = json.stringOrNull("activityStartDate"),
-        )
-    }.getOrNull()
 
 /** A local Settings as a MeView, so isOnboarded uses the SAME completeness definition the server path does. */
 fun Settings.toMeView(): MeView =
