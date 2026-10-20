@@ -2210,6 +2210,14 @@ is wrong at the next person's expense rather than at this task's.
 
 COST OF REVERSING: two lines and a gate run.
 
+CLOSED BY AN-POLISH (R439), 2026-10-20. The operator answered KMP-2b Q2: remove
+them. The evidence KMP-2b did not have is a comment-blind scan for Room
+annotations over EVERY :app source set - ZERO - with the SAME scan over
+shared/src finding 27, so the scanner works and the absence is real rather than
+a scan pointed at nothing (R133/R154). Both lines are gone, the full :app:gate
+ran --rerun-tasks on the removal and went from 229 actionable tasks to 225 -
+the four KSP tasks, measured rather than predicted.
+
 
 ## PARK-B4 - MigrationSqlVerbatimTest stays in :app's JVM suite  [KMP-2b, 2026-10-20]
 
