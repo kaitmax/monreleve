@@ -10,6 +10,28 @@ import ch.monreleve.app.data.local.SyncState
 // AN5 increment 3. The drain, as pure logic - no WorkManager, no Android - so it runs
 // as plain JVM tests. SyncWorker is the thin CoroutineWorker that calls this and maps
 // the outcome to Result.success/retry.
+//
+// KMP-3 (R446): MOVED to :shared commonMain, package unchanged (R368). "Pure logic, no
+// Android" was written in AN5 as a TESTABILITY claim and turns out to have been a
+// PORTABILITY claim as well - the file needed nothing: AuthenticatedPoster and PostOutcome
+// came with SessionManager in this task, EntryDao/EntryEntity/Portion/SyncState came with
+// KMP-2b, and the request body is built by EntriesMapping beside it.
+//
+// WHAT DELIBERATELY DID NOT COME. SyncScheduler and SyncWorker stay in :app: the unique
+// work name, APPEND_OR_REPLACE, the CONNECTED constraint and the exponential backoff are
+// WorkManager's vocabulary and have no common equivalent. iOS schedules its own trigger
+// and calls sync() - which is the whole point of the split. SyncWorker's mapping of each
+// SyncOutcome onto Result.success/retry is pinned by SyncWorkerResultMappingTest, which
+// derives the case list from THIS file, so a fifth outcome added here fails there rather
+// than on a phone.
+//
+// currentAccount IS A String?, NOT A PROVIDER, AND THAT IS NOT THE R423 DEFECT. The
+// repositories take () -> String? because they outlive a sign-in: a screen composes one
+// and keeps it. An engine is constructed fresh by buildSyncEngine on every drain, from
+// the account store, inside the worker - so the value is read at the only moment it could
+// be read. AccountCaptureFenceTest passes the construction site because it is a local
+// assignment and not a capture into something that outlives the call. Changing the type
+// here would be a behaviour change with no defect behind it (R156: parked, not done).
 
 private const val HTTP_OK = 200
 private const val HTTP_BAD_REQUEST = 400

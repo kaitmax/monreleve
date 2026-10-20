@@ -7,10 +7,18 @@ import ch.monreleve.app.data.local.Portion
 import ch.monreleve.app.data.local.Provenance
 import ch.monreleve.app.data.local.SyncState
 
-// AN5 increment 3 / KMP-1 increment 5. The EntryEntity <-> wire mapping, kept in :app (R379): it touches Room's
-// EntryEntity and the local enums (Portion/EntryKind/AbsenceReason/Provenance/SyncState), which are the on-device
-// store, not the wire. The wire DTOs, their encode/decode and the server's limits moved to :shared (EntriesWire.kt);
-// this half maps a local row onto EntryWrite and reconciles a ServerEntry back into a local row.
+// AN5 increment 3 / KMP-1 increment 5. The EntryEntity <-> wire mapping: a local row onto EntryWrite, and a
+// ServerEntry reconciled back into a local row. The wire DTOs, their encode/decode and the server's limits
+// live in EntriesWire.kt beside it.
+//
+// KMP-3 (R446): MOVED to :shared commonMain, and the header it arrived with is CORRECTED rather than deleted.
+// It read: "kept in :app (R379): it touches Room's EntryEntity and the local enums ... which are the on-device
+// store, not the wire." That reason was true when it was written and STOPPED BEING TRUE at KMP-2b, which took
+// EntryEntity, the three DAOs and WireEnums to commonMain. An expired reason left standing is exactly what the
+// next reader takes at face value and routes around, so it is struck here with the date it lapsed.
+//
+// NOTHING ABOUT THE BYTES CHANGED. encodeEntries is the same shared function under KMP-1's one Json
+// configuration; the 29 wire goldens are unedited and still green.
 
 /** Map a local row onto the wire DTO. A null optional stays null here; wireJson omits it on encode (never "k":null). */
 fun EntryEntity.toEntryWrite(): EntryWrite =
