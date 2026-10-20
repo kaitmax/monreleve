@@ -55,20 +55,20 @@ import java.io.File
 // KMP-0 increment 5: fr copy moved to :shared's commonMain, except the two formatter-dependent files and
 // fr/format (which stay in :app). The copy DECLARATIONS now live in two places, so the census scans both; the
 // SURFACES that reach them (ui/design/dev) are all still in :app and unchanged.
+// AN-FENCE-ROOTS (R460): every root asserted SEPARATELY and pinned by a file only it holds. This census is
+// the one where a silently-dropped root is most expensive in both directions: lose an fr/ root and the
+// orphan list shrinks; lose a SURFACE root and every string it reached is reported as an orphan.
 private val FR_DIRS =
     listOf(
-        File("../shared/src/commonMain/kotlin/ch/monreleve/app/fr"),
-        File("src/main/kotlin/ch/monreleve/app/fr"),
+        FenceRoot(File("../shared/src/commonMain/kotlin/ch/monreleve/app/fr"), pin = "Fr.kt"),
+        FenceRoot(File("src/main/kotlin/ch/monreleve/app/fr"), pin = "ComparisonCopy.kt"),
     )
 private val SURFACE_DIRS =
     listOf(
-        File("src/main/kotlin/ch/monreleve/app/ui"),
-        File("src/main/kotlin/ch/monreleve/app/design"),
-        File("src/main/kotlin/ch/monreleve/app/dev"),
+        FenceRoot(File("src/main/kotlin/ch/monreleve/app/ui"), pin = "AppBottomBar.kt"),
+        FenceRoot(File("src/main/kotlin/ch/monreleve/app/design"), pin = "Tokens.kt"),
+        FenceRoot(File("src/main/kotlin/ch/monreleve/app/dev"), pin = "GalleryScreen.kt"),
     )
-
-private fun ktFiles(dir: File): List<File> =
-    if (!dir.exists()) emptyList() else dir.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
 
 /**
  * Comments are stripped before matching - found necessary on this exact
@@ -120,8 +120,9 @@ private fun objectBodySpan(text: String): IntRange? {
 }
 
 /** Every `Object.member` or bare top-level `member` reference a copy declaration would be read through. */
-private fun copyReferences(): List<String> =
-    FR_DIRS.flatMap { ktFiles(it) }.flatMap { file ->
+private fun copyReferences(): List<String> {
+    FR_DIRS.assertFound("copy reachability census (declarations)")
+    return FR_DIRS.ktFiles().flatMap { file ->
         val text = stripComments(file.readText())
         val objectName = OBJECT_NAME.find(text)?.groupValues?.get(1)
         val span = objectBodySpan(text)
@@ -142,8 +143,12 @@ private fun copyReferences(): List<String> =
 
         (topLevel + members).toList()
     }
+}
 
-private fun renderedText(): String = SURFACE_DIRS.flatMap { ktFiles(it) }.joinToString("\n") { it.readText() }
+private fun renderedText(): String {
+    SURFACE_DIRS.assertFound("copy reachability census (surfaces)")
+    return SURFACE_DIRS.ktFiles().joinToString("\n") { it.readText() }
+}
 
 /**
  * Strings that no surface reaches TODAY, each naming the state it waits
