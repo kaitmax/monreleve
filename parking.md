@@ -2694,6 +2694,55 @@ TOUCHES:   `parking.md` (the five contested entries and this one), the reports
 that cite them if an id is ever reallocated, and
 `web/scripts/register-coverage.mjs` if the duplicate-heading guard is wanted.
 
+## PARK-27 - gate:clone sweeps leaked CLONES and not leaked DATABASES  [FW-PARK-IDS, 2026-10-20]
+
+QUESTION:  R266 established that gate:clone's cleanup can fail - `process.exit()`
+does not unwind to a pending `finally`, and on this machine three independently
+tested kill mechanisms bypassed a correctly registered signal handler - and the
+answer was a sweep: any leftover `monreleve-clone-*` temp DIRECTORY older than
+four hours is removed at the start of the next run, with the count and the
+reclaimed size reported. gate:clone also creates a scratch DATABASE, named
+`monreleve_gate_clone_<sha8>`, and drops it in the same cleanup path. Nothing
+sweeps that side. FW-PARK-IDS measured the consequence rather than predicting
+it: checking that THIS task's scratch database had been dropped turned up
+`monreleve_gate_clone_668c9b34`, left by an earlier run, beside the dev database.
+
+TAKEN:     Recorded, not built, and explicitly NOT urgent. The leak costs disk
+on one developer machine and nothing else: a scratch database is created from
+empty, migrated by the run that owns it, and never read by anything but that
+run. No product behaviour depends on its absence. The operator dropped the
+strays by hand after confirming none was the dev or a configured test database
+and that nothing was connected; the dev database `frontalier` is intact at 6
+users and 16 entries. Reversible by construction - the entry describes a sweep
+that has not been written.
+
+NOT TAKEN: Writing the sweep inside this task. It is a change to the PUSH gate,
+made from a task whose subject is a document register, and the shape it should
+take is already decided by R266's directory sweep rather than needing invention
+here: match the prefix, compare an age, report the count and the reclaimed size.
+What it costs to do later is one function in `scripts/gate-clone.mjs` and a test
+for each refusal.
+
+A SWEEP MUST MATCH THE PREFIX, NEVER "SCRATCH-LOOKING". This is the part that
+would be got wrong by anyone generalising from the three databases found:
+
+    monreleve_gate_clone_668c9b34   a LEAK. gate:clone's own, orphaned.
+    monreleve_an5b_live             not this session's; origin not established
+                                    here, so not assumed.
+    monreleve_fw30                  NOT A LEAK. It is a deliberate fixture,
+                                    built by scripts/fw30-dataset.mjs, which is
+                                    deterministic and recreates it exactly.
+
+A sweep keyed on "anything that looks like a scratch database" would delete the
+third, and the symptom - a dataset that silently rebuilds itself and is
+therefore never noticed as missing - is exactly the kind that costs a day when
+it finally matters. So: the `monreleve_gate_clone_` prefix, nothing wider, and
+the four-hour floor R266 already argues for, because a still-running legitimate
+gate:clone must never be mistaken for an abandoned one.
+
+TOUCHES:   `web/scripts/gate-clone.mjs` (the sweep and its report line), a test
+per refusal, and nothing else. No product code, no schema, no migration.
+
 ## PARK-B1 - CalendarDay.kt stays in :app, although R394 names it among what moves  [KMP-2b, 2026-10-20]
 
 QUESTION:  R394's list of what moves to :shared includes CalendarDay. It is not

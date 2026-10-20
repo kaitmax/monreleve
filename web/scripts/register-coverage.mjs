@@ -26,9 +26,12 @@
 // THE SCOPE IS DERIVED FROM THE REPORTS ON DISK, NEVER A HAND-KEPT LIST. A new
 // report added tomorrow is scanned the day it lands. Every REPORT-*.txt at the
 // repo root is read, every id of this register it cites is collected, and
-// parking.md must cover each - both that a "## <id> -" heading exists AND that the
-// entry under it is real rather than a "Not transcribed" placeholder, because a
-// heading with no content is a citation that resolves to a promise, not an entry.
+// parking.md must cover each - THREE things, not one: that a "## <id> -" heading
+// exists, that the entry under it is real rather than a "Not transcribed"
+// placeholder, because a heading with no content is a citation that resolves to a
+// promise rather than an entry, and that there is exactly ONE such heading, because
+// two entries under one id is a citation that resolves to whichever a reader meets
+// first. The third was added by FW-PARK-IDS and is the reason SHARED_IDS exists.
 //
 // R442 (FW-PARK-IDS): WHAT "AN ID OF THIS REGISTER" MEANS, AND WHAT IT USED TO
 // MEAN. This header used to say "every PARK-<n> and PARKAN-<n>", and the pattern
@@ -78,6 +81,36 @@ const ID = String.raw`PARK(?:AN)?-[A-Z]?\d+`;
 // PARK-12, PARKAN-18 or PARK-K6; never PARK4-2 (a different series), never a
 // bare PARK-, never PARKED, and never the published P<n>.
 const CITATION = new RegExp(String.raw`\b${ID}\b`, 'g');
+
+// THE IDS ALLOWED TO CARRY MORE THAN ONE ENTRY, AND NOTHING ELSE EVER IS.
+//
+// WHY THE DUPLICATE CHECK EXISTS AT ALL. Until FW-PARK-IDS this file asked only
+// whether a heading EXISTS. That question is satisfied just as well by TWO
+// headings with the same id as by one, so an id owned by two tasks merged in
+// silence and a reader following the citation landed on whichever entry came
+// first in the file. Renaming the ids in one collision fixes that collision;
+// it does not stop the next one, because nothing was looking.
+//
+// WHY THESE THREE ARE EXEMPT. PARK-F1, PARK-F2 and PARK-F3 were each allocated
+// by TWO tasks - FW-FOLLOWUP (15.10.2026) and FW-FUTURE-DAY (19.10.2026) - for
+// six different findings. The reports that cite them are HISTORY: they are on
+// main, they record what those sessions decided, and a register is not a reason
+// to rewrite them. So renaming is unavailable, and the only two remaining
+// options were to leave the duplicate check unwritten - which keeps the register
+// permanently blind to exactly the case it exists for - or to name the three ids
+// that may legitimately carry a second entry. This is the second.
+//
+// IT IS FROZEN AT THREE, AND A TEST SAYS SO. Asserted-exactly-three beats
+// merely-three (R206's corollary): a fourth exemption has to survive its own
+// argument rather than joining an established habit, which is how every
+// exemption list in this repository has nearly failed.
+//
+// IT EXEMPTS NOTHING TODAY, which is stated rather than left to be discovered.
+// Each of the three has exactly ONE heading in parking.md - one entry carrying
+// both findings - so this list is a standing permission rather than a cover for
+// something already there. If those entries are ever split one-per-task, this is
+// what permits it.
+const SHARED_IDS = Object.freeze(['PARK-F1', 'PARK-F2', 'PARK-F3']);
 
 /**
  * @param {string} repoRoot
@@ -142,13 +175,24 @@ export function checkRegisterCoverage(repoRoot) {
     }
   }
 
+  const headings = headingsOf(parking);
+
   // An entry that exists as a heading but still carries the placeholder is not yet an entry.
-  for (const id of placeholderEntries(parking)) {
+  for (const id of placeholderEntries(parking, headings)) {
     const who = citedBy.has(id) ? [...citedBy.get(id)].join(', ') : 'no report';
 
     problems.push(
       `${id} carries the "Not transcribed" placeholder in parking.md (cited by ${who}) - ` +
         'a heading with no content is a citation that resolves to a promise, not an entry',
+    );
+  }
+
+  // One id, two entries: a citation of it resolves to whichever a reader meets first.
+  for (const [id, lines] of duplicateHeadings(headings)) {
+    problems.push(
+      `${id} has ${lines.length} "## ${id} -" headings in parking.md ` +
+        `(lines ${lines.join(', ')}) - one id, two entries, and a citation of it ` +
+        'resolves to whichever a reader finds first',
     );
   }
 
@@ -159,19 +203,81 @@ function hasHeading(parking, id) {
   return new RegExp(`^##\\s+${escapeRegExp(id)}\\s+-`, 'm').test(parking);
 }
 
+/**
+ * EVERY "## <id> -" HEADING IN parking.md, SCANNED ONCE.
+ *
+ * TWO CONSUMERS READ THIS, NOT THE EXPRESSION (R206). The placeholder scan and
+ * the duplicate scan both need the same headings in the same order, and the
+ * previous version of this file is the argument: the heading matcher held its
+ * own copy of the id expression, shared the citation scan's defect, and saw 39
+ * of parking.md's 97 headings. Adding a third consumer with a third copy would
+ * have rebuilt exactly what the last commit removed.
+ *
+ * The line number is counted from the text rather than re-scanned, so it cannot
+ * disagree with the index it is derived from.
+ *
+ * @param {string} parking
+ * @returns {Array<{ id: string, index: number, line: number }>}
+ */
+function headingsOf(parking) {
+  const found = [];
+
+  for (const match of parking.matchAll(new RegExp(String.raw`^##\s+(${ID})\s+-.*$`, 'gm'))) {
+    const index = match.index ?? 0;
+    const line = parking.slice(0, index).split('\n').length;
+
+    found.push({ id: match[1], index, line });
+  }
+
+  return found;
+}
+
+/**
+ * Ids carrying more than one entry, minus the three that are allowed to.
+ *
+ * BOTH DIRECTIONS MATTER HERE, the way they did for FW21's database constraints
+ * (R196): a duplicate scan that reported EVERY repeated id would be refused by
+ * the three this register cannot rename, and one that exempted anything would
+ * pass on the case it exists for. So the exemption is a named list of three,
+ * frozen and asserted, and everything else fails.
+ *
+ * @param {Array<{ id: string, line: number }>} headings
+ * @returns {Map<string, number[]>}
+ */
+function duplicateHeadings(headings) {
+  const lines = new Map();
+
+  for (const heading of headings) {
+    if (!lines.has(heading.id)) {
+      lines.set(heading.id, []);
+    }
+
+    lines.get(heading.id).push(heading.line);
+  }
+
+  const duplicates = new Map();
+
+  for (const [id, found] of lines) {
+    if (found.length > 1 && !SHARED_IDS.includes(id)) {
+      duplicates.set(id, found);
+    }
+  }
+
+  return duplicates;
+}
+
 // Split parking.md into sections at each "## PARK<...> -" heading; a section still
 // carrying the "Not transcribed" placeholder is named by its heading id. The STATUS
 // LEDGER row's lowercase "not transcribed" sits under "## STATUS LEDGER", not a PARK
 // heading, so it is not a false positive - only a real placeholder BODY under a
 // PARK/PARKAN heading is flagged.
 //
-// IT READS THE SAME `ID` AS THE CITATION SCAN (R267). This matcher carried its
+// IT READS THE SAME HEADINGS AS THE DUPLICATE SCAN (R267). This matcher carried its
 // own copy of the narrow expression, so it saw 39 of the 97 headings in
 // parking.md - a placeholder under "## PARK-12 -" or "## PARK-K6 -" could not
 // be flagged at all. A finding that names a second site is not closed until
-// that site is checked, and the two sites now cannot diverge.
-function placeholderEntries(parking) {
-  const headings = [...parking.matchAll(new RegExp(String.raw`^##\s+(${ID})\s+-.*$`, 'gm'))];
+// that site is checked, and the sites now cannot diverge.
+function placeholderEntries(parking, headings) {
   const flagged = [];
 
   for (let i = 0; i < headings.length; i += 1) {
@@ -179,7 +285,7 @@ function placeholderEntries(parking) {
     const end = i + 1 < headings.length ? headings[i + 1].index : parking.length;
 
     if (parking.slice(start, end).includes('Not transcribed')) {
-      flagged.push(headings[i][1]);
+      flagged.push(headings[i].id);
     }
   }
 

@@ -14,26 +14,29 @@ BRANCH  fw-park-ids, worktree C:/wt/fw-park-ids (R349). The lock carrying this
 --------------------------------------------------------------------------------
 STATUS (R391)
 --------------------------------------------------------------------------------
-COMPLETE. R442, R443, R444 and R445 are all done, and R445's stop condition did
-not fire: the cited-id count rose from 39 to 90 on the last commit carrying
-code, and to 97 once this report is itself a scanned report. Coverage is OK at
-every one of those tips.
+COMPLETE. R442, R443, R444 and R445 are all done, R445's stop condition did not
+fire, and the operator's later ruling - the duplicate-heading class fix, its
+frozen exemption and PARK-27 - is done with it.
 
-THE GATE THAT COVERS THESE PATHS RAN ON EACH COMMIT, IN THIS SESSION, GREEN:
+THE GATE THAT COVERS THESE PATHS RAN ON EVERY COMMIT, IN THIS SESSION, GREEN;
+the full lines are in PUSH PROOF.
 
-  122e1dd   GATE PASSED for the paths changed; test: 3279 passed
-  78ece08   GATE PASSED for the paths changed; test: 3285 passed
+GATE:CLONE PASSED TWICE, each on the tip it is a claim about: 9e1890b for the
+first report, and the commit carrying the class fix for the second - because
+web/ changed again. Both ran the full chain including db:deploy, test:db and
+test:container:write against a scratch database gate:clone created and dropped
+itself.
 
-GATE:CLONE PASSED on 9e1890b, the commit carrying this report, with the full
-chain including db:deploy, test:db and test:container:write against a scratch
-database it created and dropped itself. Its output, its exit code and the
-database each suite ran against are in PUSH PROOF, with the three R182 re-runs
-and a note of which text each one read.
-
-THE CITED-ID COUNT IS 39 BEFORE AND 97 AT THE TIP, and the four intermediate
+THE CITED-ID COUNT IS 39 BEFORE AND 98 AT THE TIP, and the three intermediate
 pairs are set out under R445 rather than left for a reader to reconcile: the
 number moves when a report cites more ids, which is the mechanism working
 rather than drift.
+
+ONE THING THIS REPORT SAYS THAT ITS EARLIER VERSION DID NOT. The exemption list
+the duplicate check carries is INERT today - there are zero duplicate headings
+in parking.md on main or on this branch, and the three ids it names have one
+entry each. It was implemented exactly as ruled and not extended into a
+register change nobody asked for; Q5 asks whether a split was intended.
 
 :app:gate WAS NOT RUN, and that is a decision rather than an omission (R133):
 `git diff origin/main...HEAD -- android/` is EMPTY on this branch. The ONE
@@ -69,11 +72,25 @@ The same expression sat a second time in the heading scan at line 137, so a
 "Not transcribed" placeholder under `## PARK-12 -` or `## PARK-K6 -` could not
 be flagged either: it saw 39 of parking.md's 97 headings.
 
-Two commits:
+AND THE CLASS FIX, ADDED ON THE OPERATOR'S RULING AFTER THE FIRST PUSH.
+Widening the pattern makes every id visible; it does not stop ONE ID CARRYING
+TWO ENTRIES, because the check asked whether a heading EXISTS and two headings
+satisfy that exactly as well as one. Renaming the ids in one collision fixes
+that collision and leaves the next one just as silent, so the fix is the check
+rather than the rename: the register now FAILS on a duplicate heading, naming
+BOTH line numbers, with a frozen three-id exemption for the one pair of
+collisions this register cannot rename its way out of.
+
+Commits:
 
   122e1dd  the 28 lettered entries, back-filled into parking.md
   78ece08  the widened pattern, one home for it, and the test that
            demonstrates the gap
+  9e1890b  the report
+  5417d8f  gate:clone on the report commit, and the three R182 re-runs
+  3960c58  three claims in the report that the record did not support
+  (last)   one id, one entry - the duplicate check, its frozen exemption and
+           PARK-27
 
 THE BACK-FILL COMES FIRST, which reverses the prompt's step order on purpose:
 widening before back-filling leaves the register check RED for the length of
@@ -83,8 +100,12 @@ shape - a check runs after the thing it checks for can exist.
 TWO COLLISIONS WERE FOUND IN THE LETTER SERIES, neither of them in the brief.
 PARK-F1, PARK-F2 and PARK-F3 are each used by TWO tasks on main for different
 findings; PARK-P1 and PARK-P2 are FW-PRISMA-GENERATE's, and the an-polish
-branch awaiting the operator's review uses the same two ids again. They are
-recorded, not resolved - PARK-26, and QUESTIONS Q1 and Q2.
+branch awaiting the operator's review uses the same two ids again. The operator
+has since ruled: an-polish renames its three AFTER this branch merges, against
+the full register; PARK-F1 to PARK-F3 cannot be renamed because the reports
+citing them are history on main, so they are the frozen exemption. PARK-26
+records the class; PARK-27 records the database leak the same measurement
+turned up.
 
 --------------------------------------------------------------------------------
 R273 - WHAT WAS READ
@@ -208,6 +229,11 @@ ONE HOME, BECAUSE THERE WERE TWO COPIES AND BOTH CARRIED THE SAME DEFECT
 a widening that reached only the citation scan would have left the placeholder
 check blind to every heading the widening makes legal. It saw 39 of
 parking.md's 97 headings before; it sees all of them now.
+
+AND A THIRD CONSUMER ARRIVED IMMEDIATELY, which is the argument made again one
+commit later: the duplicate check needs the same headings. It reads
+`headingsOf()` rather than a third copy of the expression - see THE CLASS FIX
+below.
 
 --------------------------------------------------------------------------------
 R443 - PROVEN BOTH WAYS, ON ONE FIXTURE
@@ -492,17 +518,121 @@ had cited - and the final text reads:
 That is the run against this file's final text, and it is re-run after the
 commit as well (R182) - see PUSH PROOF.
 
-SO THERE ARE FOUR PAIRS OF NUMBERS IN THIS REPORT AND EACH BELONGS TO A
+SO THERE ARE FIVE PAIRS OF NUMBERS IN THIS REPORT AND EACH BELONGS TO A
 DIFFERENT TEXT, stated together once so none of them has to be inferred:
     39 / 115   at 5e87a4a, the BEFORE, origin/main
     90 / 115   at 78ece08, the last commit carrying code
-    92 / 116   at 9e1890b, this report's first text - the number gate:clone
-               measured and the number it quotes
-    97 / 116   at the tip, this report's final text
+    92 / 116   at 9e1890b, this report's first text - the number the first
+               gate:clone measured and quotes
+    97 / 116   at 3960c58, after the decomposition named the five numbered ids
+               no report had cited
+    98 / 116   at the tip, after this report cites PARK-27
 And one more, for completeness rather than for the claim: run on the TIP, the
 OLD pattern now returns 40 rather than 39 - because this report quotes the
 fixture, and the fixture contains PARKA-7, the shape the old pattern matched
 and the new one does not.
+
+--------------------------------------------------------------------------------
+THE CLASS FIX - ONE ID, ONE ENTRY
+--------------------------------------------------------------------------------
+ADDED ON THE OPERATOR'S RULING AFTER THE FIRST PUSH, and it supersedes this
+report's own earlier position. PARK-26 said the duplicate guard was "the right
+guard and this is the wrong week", on the reasoning that it would red main at
+the moment of the an-polish merge. The ruling is that the rename alone fixes
+one collision and leaves the next one just as invisible, so the guard lands
+HERE and an-polish renames afterwards, against a register that can see it. The
+merge order is the operator's: this branch first, then an-polish.
+
+WHAT WAS BLIND. The check asked whether a "## <id> -" heading EXISTS. Two
+headings with the same id satisfy that exactly as well as one does, so an id
+allocated by two tasks merges in silence and a reader following the citation
+lands on whichever entry comes first in the file. The register's whole purpose
+is that a citation resolves to the decision it names; "resolves to one of two"
+is the same failure as "resolves to nothing", with the added property that it
+looks fine.
+
+THE CHECK. A third problem class in the same function, so one exit code
+reports all three kinds together: missing heading, placeholder body, duplicate
+heading. The message names the id, the count and every line number.
+
+THE LIVE INSTANCE, WHICH IS THE PROOF RATHER THAN THE PLANT (R178). The merge
+of this branch with an-polish is CLEAN - git reports no conflict - and the
+merged parking.md carries two entries under each of two ids. Reproduced here
+by running the check against the merged tree itself (parking.md plus all 117
+REPORT-*.txt, extracted from `git merge-tree --write-tree HEAD
+origin/an-polish` = a2a8254):
+
+    R294/R327: parking.md does not cover every cited register entry:
+      - PARK-P1 has 2 "## PARK-P1 -" headings in parking.md (lines 2474, 2790)
+        - one id, two entries, and a citation of it resolves to whichever a
+        reader finds first
+      - PARK-P2 has 2 "## PARK-P2 -" headings in parking.md (lines 2494, 2820)
+        - one id, two entries, and a citation of it resolves to whichever a
+        reader finds first
+    EXIT=1
+
+That is a merge that is clean to git and wrong to a reader, which is the exact
+case the check exists for, and it was invisible to every gate until now.
+
+THE EXEMPTION IS THREE IDS, FROZEN. PARK-F1, PARK-F2 and PARK-F3 were each
+allocated by FW-FOLLOWUP and by FW-FUTURE-DAY for six different findings. The
+reports citing them are HISTORY - on main, recording what those sessions
+decided - so renaming them would mean rewriting reports, and leaving the check
+unwritten would keep the register permanently blind to exactly the case it
+exists for. The list is `SHARED_IDS` in the script, with that reasoning beside
+it, and a test asserts it names exactly those three: asserted-exactly-three
+beats merely-three (R206's corollary), so a fourth exemption has to survive its
+own argument rather than joining a habit.
+
+IT EXEMPTS NOTHING TODAY, AND THAT IS STATED RATHER THAN LEFT TO BE FOUND.
+There are ZERO duplicate headings in parking.md on main and zero on this
+branch - measured, not assumed. Each of the three has exactly ONE heading: the
+combined entry this task wrote, titled "TWO FINDINGS SHARE THIS ID" and
+carrying both findings with their reports and states. The PARK-F collision is a
+collision of CITATIONS, not of headings. So the list is a standing permission
+for the only three ids whose second entry could ever be legitimate, not a cover
+for something already there. If those entries are ever split one-per-task, this
+is what permits it - and whether they should be is Q5.
+
+PROVEN BOTH WAYS, five assertions, because an allowlist that exempted
+everything would pass a negative test perfectly (R196's shape):
+  1. a genuine duplicate fails and names BOTH line numbers, once per id and
+     not once per heading;
+  2. the three shared ids, each duplicated, PASS;
+  3. a fixture duplicating an exempt id AND a non-exempt id together fails
+     naming only the non-exempt one - the positive control that the list
+     exempts nothing else;
+  4. a repeated heading that is not an id of this register (parking.md's own
+     "## STATUS LEDGER") is NOT reported, with a real id in the same fixture
+     so the scan is proven to have run (R169);
+  5. the list, read out of the script's source, is exactly those three.
+
+TWO PLANTS, BOTH VERIFIED TO HAVE LANDED AND BOTH REVERTED (R180). The tests
+were written after the code this time, so a passing first run would have been
+evidence of nothing - the plants are what make them mean something.
+  PLANT A, the duplicate loop neutered to iterate an empty map. Verified at
+    the line: `for (const [id, lines] of new Map()) {`.
+    RESULT  Tests 2 failed | 9 passed. Both failures are the duplicate
+            assertions; the exemption tests still passed, which is correct -
+            they assert an ABSENCE of failure.
+  PLANT B, a fourth id added to the exemption list. Verified at the line:
+    `const SHARED_IDS = Object.freeze(['PARK-F1', 'PARK-F2', 'PARK-F3',
+    'PARK-P1']);`
+    RESULT  Tests 3 failed | 8 passed, including
+            `expected [ 'PARK-F1', 'PARK-F2', ...(2) ] to deeply equal
+            [ 'PARK-F1', 'PARK-F2', 'PARK-F3' ]`.
+            The two behavioural failures came with it, because the fixtures
+            duplicate PARK-P1 - so the frozen-list assertion and the
+            behavioural ones agree rather than merely coexisting.
+  Both reverted by restoring a byte-identical copy taken before the first
+  plant; the sha was compared, not eyeballed, and the suite is green after.
+
+THE HEADING SCAN IS STILL ONE EXPRESSION (R206). The duplicate check needed
+the same headings the placeholder check reads, which is how the previous
+commit's defect was built in the first place - a second copy of the id
+expression. `headingsOf()` now scans once and returns `{id, index, line}`, and
+both consumers read it. The line number is counted from the text it was found
+in, so it cannot disagree with the index it comes from.
 
 --------------------------------------------------------------------------------
 PARKED
@@ -511,15 +641,22 @@ PARK-25  An id with a word after its number - PARK-FW34-LAUNCH - is
          deliberately not matched, and the six task-local PARK<n>-<m> series
          stay out of this register. Full entry in parking.md, with what it
          would cost to reverse. Raised as Q3.
-PARK-26  The letter series has no allocation authority and nothing forbids a
-         duplicate heading. Two collisions exist today; the coverage check
-         cannot see either, because it asks whether a heading EXISTS and one
-         heading satisfies two unrelated citations just as well as two
-         headings with the same id satisfy it. The duplicate-heading guard is
-         the right guard and this is the wrong week: the an-polish merge will
-         produce exactly that duplicate, so adding it now would red main at
-         the moment of a merge the operator has already approved. Raised as
+PARK-26  The letter series has no allocation authority. ITS SECOND HALF IS NOW
+         CLOSED BY THIS TASK: "nothing forbids a duplicate heading" was true
+         when the entry was written and is not true now - the check fails on
+         one, naming both line numbers, with the three-id exemption above. The
+         allocation half is still open: nothing records which letters are
+         taken, and the next task that picks one is still guessing. Raised as
          Q1 and Q2.
+PARK-27  gate:clone sweeps leaked CLONES and not leaked DATABASES. R266's
+         four-hour directory sweep has no counterpart on the database side,
+         and this task measured the consequence rather than predicting it -
+         a leaked monreleve_gate_clone_668c9b34 found beside the dev database
+         while confirming this run's own scratch database had been dropped.
+         Explicitly NOT urgent and NOT built here. The entry carries the one
+         thing a later sweep must not get wrong: match the
+         `monreleve_gate_clone_` prefix only, because monreleve_fw30 is a
+         DELIBERATE fixture from scripts/fw30-dataset.mjs and not a leak.
 
 STILL OPEN FROM EARLIER TASKS, unchanged by this one, and now all followable
 in the register: PARK-A1, PARK-A2, PARK-F1, PARK-F2, PARK-F3, PARK-I1 to
@@ -557,25 +694,36 @@ NOTICED BUT NOT TOUCHING
    PARK-25 records the question.
 
 3. REPORT-AN-HOME.txt contains the literal placeholder "PARKAN-NNN". It is not
-   matched by either pattern, so it is invisible to the check in both
-   directions - a citation that can never resolve and will never be reported.
-   Left alone: editing another task's report is outside the boundaries.
+   matched by either pattern - `\d+` does not match `NNN` - so it is invisible
+   to the check in both directions: a citation that can never resolve and will
+   never be reported. RULED: leave it. It is a placeholder in a historical
+   report, the new pattern cannot match it anyway, and editing another task's
+   report is outside the boundaries. Noted once, closed.
 
-4. THREE DATABASES THIS SESSION DID NOT CREATE are sitting in the
+4. THREE DATABASES THIS SESSION DID NOT CREATE were sitting in the
    frontalier-postgres container beside the dev database, found by the one
    SELECT that confirmed THIS run's scratch database had been dropped:
 
        monreleve_gate_clone_668c9b34   an earlier gate:clone that leaked it
-       monreleve_an5b_live
-       monreleve_fw30
+       monreleve_an5b_live             origin not established here
+       monreleve_fw30                  a DELIBERATE fixture, not a leak
 
    The first is a measured instance of what R266 says can still happen -
    "because cleanup can still fail" - on the database side rather than the
-   clone-directory side, which is the side that sweep covers. NOT DROPPED
-   (R334): they are not this session's to remove, and one of them may belong
-   to a session that is simply not finished. A sweep for abandoned scratch
-   DATABASES, on the four-hour shape gate:clone already uses for clones, is
-   the obvious answer and is not this task's.
+   clone-directory side, which is the side that sweep covers.
+
+   THIS SESSION DID NOT DROP THEM; THE OPERATOR DID, by hand, after confirming
+   none was the dev or a configured test database and that nothing was
+   connected. The dev database `frontalier` is intact at 6 users and 16
+   entries. Recorded as the operator's act rather than this session's, because
+   a report states who did what (R334).
+
+   THE THIRD ONE IS THE REASON THE PARK ENTRY IS NOT JUST "ADD A SWEEP".
+   monreleve_fw30 is built by scripts/fw30-dataset.mjs, which is deterministic
+   and recreates it exactly - so a sweep keyed on "anything scratch-looking"
+   would delete a fixture that silently rebuilds itself and is therefore never
+   noticed as missing. PARK-27 carries that constraint: the
+   `monreleve_gate_clone_` prefix only, nothing wider.
 
 5. web/scripts/register-coverage.mjs has no .d.mts and needs none - no test
    imports it (declaration-parity.test.ts derives its list from the
@@ -629,21 +777,33 @@ DEVIATIONS
 --------------------------------------------------------------------------------
 QUESTIONS
 --------------------------------------------------------------------------------
-Q1 PARK-F1, PARK-F2 and PARK-F3 are used by FW-FOLLOWUP (15.10.2026) and
-   FW-FUTURE-DAY (19.10.2026) for six different findings. Both reports are on
-   main. The back-fill gives each id ONE entry carrying both findings with
-   their reports and states, so every citation resolves to something real and
-   the reader is told at once that the id is shared. Is that the resolution, or
-   should one series be reallocated - which means editing a report on main, and
-   is why this task did not do it?
+Q1 ANSWERED, and recorded here because the answer is what the exemption rests
+   on. PARK-F1, PARK-F2 and PARK-F3 are used by FW-FOLLOWUP (15.10.2026) and
+   FW-FUTURE-DAY (19.10.2026) for six different findings, both reports on main.
+   RULED: they are not renamed - the reports citing them are history - and they
+   are the frozen exemption to the duplicate check. Each keeps ONE entry
+   carrying both findings with their reports and states.
 
-Q2 PARK-P1 and PARK-P2 are FW-PRISMA-GENERATE's on main, and an-polish uses
-   the same two ids for findings of its own. On merge, parking.md will carry
-   TWO `## PARK-P1 -` headings and TWO `## PARK-P2 -` headings, and the
-   coverage check will pass on both - it asks only that a heading exists.
-   Rename an-polish's three to a free letter BEFORE merging, or merge and fold
-   afterwards? And is the duplicate-heading guard wanted as its own task once
-   that is decided (PARK-26)?
+Q2 ANSWERED. PARK-P1 and PARK-P2 are FW-PRISMA-GENERATE's on main, and
+   an-polish uses the same two ids for findings of its own. RULED: this branch
+   merges FIRST, then an-polish renames its three against the full register and
+   merges after. The duplicate guard is NOT deferred to its own task - it is in
+   this one, because a rename fixes one collision and the guard fixes the
+   class. Nothing on an-polish was touched here.
+
+Q5 THE EXEMPTION LIST IS INERT TODAY, AND IT MAY BE THE WRONG SHAPE OF ANSWER.
+   The ruling describes PARK-F1 to PARK-F3 as "the duplicates already on main".
+   They are not duplicate HEADINGS: measured on main and on this branch, there
+   are ZERO ids with two headings. Each of the three has one combined entry
+   titled "TWO FINDINGS SHARE THIS ID". The collision is in the CITATIONS - two
+   reports, one id, different findings - which the heading check cannot see
+   either way. So `SHARED_IDS` permits something that does not exist yet.
+   It was implemented exactly as ruled, and NOT extended into a register change
+   nobody asked for. The open question: did you intend those entries SPLIT into
+   one per raising task, which is what would make the exemption live and would
+   give each finding its own title and state? That is a one-command follow-up
+   and the exemption already permits it. Until then the list is a standing
+   permission, stated as such in the script, in parking.md and above.
 
 Q3 PARK-25. PARK-FW34-LAUNCH is a real citation in two reports that the widened
    pattern deliberately does not match, because matching it with `[A-Z]*` would
@@ -687,7 +847,23 @@ GATE:CHANGED, run in this session on each commit's own tip, from web/:
                 build: exit 0 (no count to check)
             GATE PASSED for the paths changed.   exit 0
 
-  3285 - 3279 = 6, which is this task's six new tests and nothing else.
+  9e1890b   the report               test: 3285 passed   GATE PASSED, exit 0
+  5417d8f   gate:clone evidence      test: 3285 passed   GATE PASSED, exit 0
+  3960c58   the three corrections    test: 3285 passed   GATE PASSED, exit 0
+
+  (last)    the duplicate check, its exemption and PARK-27
+            gate selection (R132): the same selection the run printed again -
+            no path matched the selector, base chain only,
+            suites: typecheck, lint, test, build
+              measured:
+                typecheck: exit 0 (no count to check)
+                lint: exit 0 (no count to check)
+                test: 3290 passed
+                build: exit 0 (no count to check)
+            GATE PASSED for the paths changed.   exit 0
+
+  3285 - 3279 = 6, the widening's six tests. 3290 - 3285 = 5, the class fix's
+  five. Eleven in one file, and every one of them has been seen to fail.
 
 THE SELECTION IS THE BASE CHAIN, AND THAT IS PARK-S1's CASE RATHER THAN A HOLE.
 `scripts/**` is not mapped in gate-selection.mjs; the selector's correctness is
