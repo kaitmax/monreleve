@@ -109,7 +109,9 @@ class OnDeviceFormatGoldenTest {
 
     @Test
     fun `the settings store still writes exactly the keys the phone holds`() {
-        val constants = constantsIn("src/main/kotlin/ch/monreleve/app/settings/SettingsStore.kt")
+        // KMP-3: like the dossier cache, the contract went to :shared and the implementation stayed
+        // under its own name. The subject is the implementation - an interface writes no keys.
+        val constants = constantsIn("src/main/kotlin/ch/monreleve/app/settings/SharedPrefsSettingsStore.kt")
 
         assertTrue("the settings prefs FILE name moved", constants.contains("monreleve.settings"))
         assertEquals(
