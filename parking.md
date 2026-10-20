@@ -2490,6 +2490,13 @@ to every suite, plus six more root configs classified. That report does NOT
 name PARK-P1, so no report closes this id, and R444 forbids inventing the
 closure. Whether the hand-off counts as the closure is the operator's call.
 
+CONTEST RESOLVED, 2026-10-20. The operator ruled that the BRANCH's ids move,
+not this one: AN-POLISH renamed its three entries to PARK-L1, PARK-L2 and
+PARK-L3 before merging, so PARK-P1 is FW-PRISMA-GENERATE's alone. The "THIS ID
+IS CONTESTED" note above records the state that produced PARK-26, not the state
+today, and is left standing rather than rewritten - it is somebody else's entry
+and the history is the point (R334).
+
 
 ## PARK-P2 - `build` was not given the db:generate chain, and that is a decision  [FW-PRISMA-GENERATE, 2026-10-18 - back-filled FW-PARK-IDS 2026-10-20]
 
@@ -2507,6 +2514,13 @@ one place it would matter (a local `pnpm build` after a merge) is covered by
 
 STATE:      RECORDED DECISION. Its raising report wrote it "so the omission
 reads as a decision rather than an oversight". No later report revisits it.
+
+CONTEST RESOLVED, 2026-10-20. The operator ruled that the BRANCH's ids move,
+not this one: AN-POLISH renamed its three entries to PARK-L1, PARK-L2 and
+PARK-L3 before merging, so PARK-P2 is FW-PRISMA-GENERATE's alone. The "THIS ID
+IS CONTESTED" note above records the state that produced PARK-26, not the state
+today, and is left standing rather than rewritten - it is somebody else's entry
+and the history is the point (R334).
 
 
 ## PARK-R1 - the PDF route builds an absolute URL from the request origin  [FW-REDIRECT, 2026-10-15 - back-filled FW-PARK-IDS 2026-10-20]
@@ -2694,6 +2708,14 @@ TOUCHES:   `parking.md` (the five contested entries and this one), the reports
 that cite them if an id is ever reallocated, and
 `web/scripts/register-coverage.mjs` if the duplicate-heading guard is wanted.
 
+RESOLVED IN PART, 2026-10-20. The operator decided which series moves:
+AN-POLISH's. Its three entries are PARK-L1/L2/L3 as of that branch, so the
+PARK-P collision this entry names is gone, and the duplicate-heading guard this
+entry judged "the right guard and the wrong week" shipped with it and is green
+on the merged tree. PARK-F1/F2/F3 are UNCHANGED and still shared - they are
+duplicate CITATIONS, not duplicate headings, so SHARED_IDS is inert today and
+is not a precedent for keeping a duplicate.
+
 ## PARK-27 - gate:clone sweeps leaked CLONES and not leaked DATABASES  [FW-PARK-IDS, 2026-10-20]
 
 QUESTION:  R266 established that gate:clone's cleanup can fail - `process.exit()`
@@ -2836,9 +2858,9 @@ thing that actually proves the SQL - is unaffected by where the test runs from.
 COST OF REVERSING: the test file and a hand-written SQLiteStatement fake.
 
 
-## PARK-P1 - dark mode is still after launch  [AN-POLISH, 2026-10-20]
+## PARK-L1 - dark mode is still after launch  [AN-POLISH, 2026-10-20]
 
-The AN-POLISH series uses PARK-P<n>. It is the INTERNAL register's letter series
+The AN-POLISH series uses PARK-L<n>. It is the INTERNAL register's letter series
 for this task, in the convention KMP-2b (PARK-B*) and AN-ANSWER-ICON (PARK-I*)
 set; it is NOT the published `P<n>` register in web/lib/content/provisional.ts,
 which R162 keeps in its own namespace. The `PARK-` prefix is what separates
@@ -2866,7 +2888,7 @@ CARD is one of the first to photograph: it now carries two tinted glyph rows
 exactly what a dark palette has to re-decide.
 
 
-## PARK-P2 - the status glyph centres against a wrapped status line  [AN-POLISH, 2026-10-20]
+## PARK-L2 - the status glyph centres against a wrapped status line  [AN-POLISH, 2026-10-20]
 
 QUESTION:  R435 put a glyph beside the sync line, and R436 made it scale with
 the font. Where the status WRAPS - "Enregistré sur le téléphone, en attente
@@ -2889,7 +2911,7 @@ COST OF REVERSING: one argument, plus re-recording the baselines where the
 status or the kind label wraps.
 
 
-## PARK-P3 - no local server refusal is reachable from an unmodified client  [AN-POLISH, 2026-10-20]
+## PARK-L3 - no local server refusal is reachable from an unmodified client  [AN-POLISH, 2026-10-20]
 
 QUESTION:  R441 asked for the sync glyph in each state on the device, including
 "refused if a local server refusal can be produced without changing the server -

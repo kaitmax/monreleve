@@ -48,7 +48,7 @@ checks for can exist):
     ordering that makes it mean anything.)
     Every numbered citation in this report was also checked by hand against
     parking.md's headings: PARKAN-27 is the only one, and it resolves. The
-    letter series - PARK-B3, PARK-I2/I3/I5, PARK-P1/P2/P3 - is deliberately NOT
+    letter series - PARK-B3, PARK-I2/I3/I5, PARK-L1/P2/P3 - is deliberately NOT
     matched by that scan's PARKAN?-d+ pattern, and all seven have headings
     anyway.
 
@@ -558,7 +558,7 @@ STEP 2 - THE SYNC GLYPH IN EACH STATE.
            sur le telephone, en attente d'envoi". The device database confirmed
            the row: dayDate 2026-10-20, portion AM, kind MISSION_FR, PENDING.
   refused  NOT PRODUCED, and R441's "otherwise say so" is taken literally.
-           PARK-P3 holds the measurement: every refusal /api/v1/entries can
+           PARK-L3 holds the measurement: every refusal /api/v1/entries can
            raise is unreachable from an unmodified client -
            coordinates_refused (D18 fences the client from ever sending one),
            malformed_body / invalid_payload (the client builds the payload from
@@ -718,7 +718,7 @@ PARKED
 Three entries, written into parking.md (commit 79c7b90) rather than left in this
 report, so a citation resolves:
 
-PARK-P1  DARK MODE IS STILL AFTER LAUNCH. The operator's answer to Q5 was to
+PARK-L1  DARK MODE IS STILL AFTER LAUNCH. The operator's answer to Q5 was to
          park it explicitly with nothing built, and nothing was. FrontierTheme
          has no dark path by DESIGN-SYSTEM section 2's own override, so a night
          capture would photograph the light theme and certify nothing (which is
@@ -727,11 +727,11 @@ PARK-P1  DARK MODE IS STILL AFTER LAUNCH. The operator's answer to Q5 was to
          ship: it now carries TWO tinted glyph rows, and those tints are exactly
          what a dark palette has to re-decide.
          It also states what the AN-POLISH letter series is and is not, because
-         R162 exists for that confusion: PARK-P<n> is this INTERNAL register's
+         R162 exists for that confusion: PARK-L<n> is this INTERNAL register's
          series, in KMP-2b's (PARK-B*) and AN-ANSWER-ICON's (PARK-I*)
          convention - NOT the published P<n> register on /sources.
 
-PARK-P2  THE STATUS GLYPH CENTRES AGAINST A WRAPPED STATUS LINE. Where the
+PARK-L2  THE STATUS GLYPH CENTRES AGAINST A WRAPPED STATUS LINE. Where the
          status wraps - two lines at default size, three at 200 % - the Row
          centres the glyph, so the clock sits beside the SECOND line rather than
          the first. Left centred: alignment is a third decision neither R435 nor
@@ -740,7 +740,7 @@ PARK-P2  THE STATUS GLYPH CENTRES AGAINST A WRAPPED STATUS LINE. Where the
          device capture of the pending state; both were looked at and both are
          legible.
 
-PARK-P3  NO LOCAL SERVER REFUSAL IS REACHABLE FROM AN UNMODIFIED CLIENT, which
+PARK-L3  NO LOCAL SERVER REFUSAL IS REACHABLE FROM AN UNMODIFIED CLIENT, which
          is why R441's "refused" glyph is not observed against a real refusal.
          The entry names every refusal /api/v1/entries can raise and why the
          client cannot produce it. Measured, not assumed.
@@ -833,7 +833,7 @@ Q1  SHOULD fastCheck COMPILE androidTest? R390 made fastCheck a TASK because, as
     in. Adding it costs one dependsOn line and one line of the printed RAN list.
 
 Q2  SHOULD THE ANSWER LINE'S GLYPHS ALIGN TO THE TOP OF A WRAPPED LINE?
-    PARK-P2. It reads better and it is one word; it also re-records fifteen
+    PARK-L2. It reads better and it is one word; it also re-records fifteen
     default-scale baselines, which is why it was not taken unasked.
 
 Q3  THE HALF-ANSWERED CARD SHOWS NO SYNC STATUS. R434 specifies the per-half
