@@ -2938,3 +2938,89 @@ every recording fail by design rather than by refusal.
 
 COST OF REVERSING: a debug-only "send a payload the server will refuse" seam, or
 a server test fixture. Neither is this task's to add.
+
+## PARK-D1 - LocalEntryRepository stays in :app, and the cost of moving it is measured
+
+KMP-2b handed KMP-3 "PARK-B2, the two repositories ... the clock seam and R425's
+BuildConfig canary are its call", and KMP-3's own R446 expected both to MOVE. The verdict
+from the source is that LocalEntryRepository stays, with the price written down rather
+than left as a shrug.
+
+WHAT IT WOULD TAKE. Five platform touchpoints, each needing a seam: `android.util.Log`
+(R425's release branch), `BuildConfig.DEBUG` (R425's debug `check`), `java.time.Clock`,
+`java.util.UUID`, and `deviceClaimNow` - which lives in CalendarDay.kt and IS PARK-B1,
+explicitly out of KMP-3's scope. A moved repository cannot call it, so the clock seam is
+forced rather than optional: `claimNow: () -> String` replacing `clock: Clock`.
+
+WHAT THAT COSTS, counted rather than estimated: `LocalEntryRepository(dao, clock)` is
+constructed POSITIONALLY at three production sites and in 14 test files. Changing the
+second parameter's type edits all of them - including AccountScopeTest and
+EntryRepositoryTest, which are the very files R450 and R452 want running UNEDITED across
+the move. Paying that to port a class whose own task does not need it (KMP-3's WHY is the
+session, the sync and the dossier) is the trade this entry declines.
+
+THE DESIGN, so the next task does not rediscover it: `claimNow: () -> String` and
+`isDebugBuild: Boolean = true` (defaulted so existing constructions stay unedited), a
+`Logger` seam for the release branch, and `newMutationId` losing only its default. Doing it
+at the same time as PARK-B1 is cheaper than doing it twice.
+
+REVERSING IT is a constructor change plus a mechanical edit of 17 call sites; nothing about
+the row, the queue or the wire is involved.
+
+## PARK-D2 - LocalRhythmRepository stays in :app, blocked by PARK-K3
+
+Expected to move with PARK-B2 and cannot, for a reason that is not about the clock:
+`WeeklyRhythm.toEntryKindMap()` calls `RhythmKind.toEntryKind().toShared()`, and `toShared`
+is declared in :app's data/local/EntryAggregation.kt - which is PARK-K3, the duplicate
+EntryKind/Portion enums, explicitly out of scope for KMP-3 ("Collapsing the KMP-0 duplicate
+enums (PARK it for a tidy task)").
+
+So the rhythm repository moves when PARK-K3 is collapsed, and not before. Its OTHER
+platform dependency, `java.time.DayOfWeek`, is not an obstacle: it is already on R384's
+inventory as a site relying on the 0.6.x JVM typealias, so moving it would shift one entry
+from the :app half of that list to the :shared half and add no new reliance.
+
+## PARK-D3 - the /api/v1/me codec stays org.json in :app
+
+R448 permits a moved store's org.json encode/decode to become kotlinx.serialization under
+KMP-1's one Json configuration "only if the goldens prove the bytes read back identically".
+For `mePatchBody` / `parseMeSettings` / `parseMeView` the goldens cannot, and the reason is
+structural rather than a missing fixture.
+
+KMP-1's Json OMITS nulls - correct for the entries wire. `mePatchBody` needs the opposite
+for TWO fields in the same body: `exactTotalWorkDays` and `activityStartDate` are sent as
+JSON null ON PURPOSE, because null is how the simplified basis and the whole-year case are
+STATED, and omitting either leaves a stale server value standing. In that same body `name`,
+`loggingMode` and `detectionConsent` must be OMITTED when absent, because /me's schema
+refuses a null name outright. One Json configuration cannot express both, and there is no
+/me wire golden that would have caught the difference - a silent wire change is what the
+hard boundary forbids.
+
+These three functions are now :app/settings/MeWire.kt. Settings, MeView and the
+completeness rules they operate on are all in :shared, so iOS implements three small
+encoding functions rather than re-deriving the vocabulary. Reversing this needs either a
+second Json configuration or per-field explicit nulls, and a /me golden first.
+
+## PARK-D4 - KMP-3's pinning tests live in :app's JVM suite, not commonTest
+
+R450 and R451 ask for the behaviour to be pinned first on the current code and then for
+"the same tests, unedited" to run on the moved code. The second half is satisfied exactly -
+:app depends on :shared, so every one of those files now exercises commonMain with not a
+character changed. What is NOT satisfied is R450's parenthetical "moved unchanged to
+commonTest ... where possible", and the reason is that it is not possible for any of them
+without an edit or a dependency:
+
+  - SessionManagerTest, DossierApiTest, MeSettingsTest and SignOutSyncFirstTest are Kotest
+    FunSpecs. Kotest is not a commonTest framework here; porting is a structural rewrite,
+    not an import swap, and KMP-1b's accepted "unedited" deviation was explicitly limited
+    to import swaps and throw lines with no assertion touched.
+  - SyncEngineTest builds its scripted server responses with org.json.
+  - AccountScopeTest and EntryRepositoryTest use java.time and java.util.UUID.
+  - BatchLimitParityTest reads web/lib/entries/schema.ts off the filesystem.
+  - This task's own three new tests are JUnit4, because `kotlin-test` is NOT on :app's test
+    classpath and adding it is a dependency change on SPEC 20's Ask-first list.
+
+The cheap unlock is `testImplementation(libs.kotlin.test)` on :app - the same catalog entry
+and version :shared already uses, test scope only. With it, a test can be written in
+kotlin.test, pinned against :app code, and later moved to commonTest by `git mv` alone.
+Recorded as a question rather than taken.
