@@ -737,7 +737,7 @@ STEP 3 - THE AFTER INSTALL WENT OVER THE BEFORE ONE
   the access token's expiry"). ACCESS_TTL_MS is 15 minutes (web/lib/auth/tokens.ts);
   sign-in was at about 21:04 and this call was at about 22:14, so the access token
   was more than an hour stale and the FIRST authenticated call after the upgrade
-  412'd into the refresh path on its own. No database row was edited and no clock
+  401'd into the refresh path on its own. No database row was edited and no clock
   was moved - the clock stayed REAL throughout, because the server refuses a dayDate
   after the Paris today and a moved clock makes recording fail by design.
   (REFRESH_TTL_MS is 90 days, so the refresh token could not have lapsed during the
@@ -991,7 +991,61 @@ Q3 KMP-2b's Q3 is still unanswered and this task had to decide it in passing: th
 --------------------------------------------------------------------------------
 PUSH PROOF
 --------------------------------------------------------------------------------
-Filled in below with the final gate and the push.
+:app:gate --rerun-tasks, run IN THIS SESSION, in this worktree. 225 actionable
+tasks: 225 EXECUTED each time - not up-to-date, because a task reported UP-TO-DATE
+did not run in the invocation whose BUILD line is pasted.
+
+  644dabb  (R1(b), origin/main's HEAD, BEFORE a single file was touched)
+           BUILD SUCCESSFUL in 10m 8s   GATE_EXIT=0   225/225
+           test floor OK: 1196 unit tests observed
+
+  04ab4bd  (the last commit carrying code, build files and the register)
+           BUILD SUCCESSFUL in 7m 13s   GATE_EXIT=0   225/225
+           test floor OK: 1208 unit tests observed
+
+  e900643  (the report added; the FINAL GATE)
+           BUILD SUCCESSFUL in 14m 22s  GATE_EXIT=0   225/225
+           test floor OK: 1208 unit tests observed
+
+THE FINAL TIP IS NOT e900643, AND THE GAP IS STATED RATHER THAN GLOSSED (R391). The
+commit that carries this PUSH PROOF block is the tip, and the gate could not have
+run on it - the block names the gate's own result. The narrow claim, in the place
+the broad one would go:
+
+  the final tip differs from the gated e900643 ONLY in REPORT-KMP-3.txt - this
+  PUSH PROOF block, plus one digit corrected in R454 step 3 where the prose read
+  412 and the server log it quotes three lines above reads 401.
+
+  Proof, not assertion:  git diff --stat e900643..HEAD  ->  one file changed,
+  REPORT-KMP-3.txt, and nothing else.
+
+RegisterCoverageTest is the ONLY gated test that reads this file, so it was re-run
+against the final text rather than assumed:
+
+  register coverage: OK - 105 cited id(s) across 118 report(s), all have headings
+  in parking.md
+
+A NOTE ON ONE THING THAT NEARLY WENT WRONG, because it is the defect PARK-15 and
+R184 describe and it was caught by the rule rather than by luck: the 412 correction
+was first made WHILE the gate on e900643 was still running - a tree changing
+underneath the run that was photographing it. It was reverted immediately, the gate
+finished against exactly e900643, and the correction was re-applied here. Recorded
+because a reader comparing timestamps would otherwise find an edit inside the gate's
+window and no explanation.
+
+INCREMENT GATES. Every commit was green before it was made: ./gradlew fastCheck
+(the R390 subset, which prints what it did NOT run and therefore does not claim)
+plus :app:testDebugUnitTest and :shared:testDebugUnitTest on each of the five move
+increments. Two fast checks bounced and are in DEVIATIONS 9; neither reached a
+commit.
+
+gate:clone NOT RUN, with its reason rather than silence (R133): this branch changes
+android/, the report and the register. `git diff origin/main...HEAD -- web/` is
+EMPTY, so there is no web change for it to verify.
+
+THE BRANCH IS PUSHED AND NOT MERGED. kmp-3 -> origin/kmp-3. PENDING MERGE. The
+merge to main is the operator's, and this report does not claim it (R334: a report
+states only what has happened).
 
 ================================================================================
 END OF REPORT-KMP-3
