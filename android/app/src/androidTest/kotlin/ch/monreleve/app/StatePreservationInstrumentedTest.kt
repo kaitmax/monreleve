@@ -110,6 +110,11 @@ class StatePreservationInstrumentedTest {
                         override suspend fun clearForDeletion() = Unit
                     },
                 authenticatedPost = { _, _ -> PostOutcome.NoSession },
+                // AN-POLISH (R440): sign-out now attempts a bounded drain before it discards anything.
+                // This test never signs out, so a no-op is the right double - and MainShell takes it
+                // WITHOUT a default on purpose, so the composition root cannot forget to wire the real
+                // one (the same reasoning requestSync carries, R291).
+                syncNow = {},
                 // KMP-2: this argument was MISSING and the androidTest source set did not
                 // compile on main. InMemoryEmployerFigureStore is main source, documented as
                 // "the default for JVM tests and a safe fallback" - this test asserts state
