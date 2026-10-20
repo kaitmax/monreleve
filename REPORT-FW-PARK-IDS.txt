@@ -22,8 +22,11 @@ THE GATE THAT COVERS THESE PATHS RAN ON EACH COMMIT, IN THIS SESSION, GREEN:
   122e1dd   GATE PASSED for the paths changed; test: 3279 passed
   78ece08   GATE PASSED for the paths changed; test: 3285 passed
 
-gate:clone and the two re-runs R182 requires against the final report text are
-in PUSH PROOF, with their exit codes and the database each suite ran against.
+GATE:CLONE PASSED on 9e1890b, the commit carrying this report, with the full
+chain including db:deploy, test:db and test:container:write against a scratch
+database it created and dropped itself. Its output, its exit code and the
+database each suite ran against are in PUSH PROOF, with the three R182 re-runs
+made after this report reached its final text.
 
 :app:gate WAS NOT RUN, and that is a decision rather than an omission (R133):
 `git diff origin/main...HEAD -- android/` is EMPTY on this branch. The ONE
@@ -644,16 +647,100 @@ the base chain. This commit adds a 413th file to that directory for the script
 it changes, so the condition PARK-S1 names - "if a script is ever added that no
 unit test exercises" - holds for this one.
 
-GATE:CLONE AND THE R182 RE-RUNS ARE IN THE SECTION BELOW THIS ONE, added by the
-commit that follows this one. The reason is ordering rather than tidiness
-(R182): gate:clone clones HEAD, and the register-coverage step it runs FIRST
-reads every REPORT-*.txt at the repo root - this file among them. A gate:clone
-run on a commit that does not contain this report is not a run against the tree
-being pushed. So the report is committed, then gated, then the output is added.
-What that leaves is one level of self-reference, named rather than hidden: the
-commit that carries the output changes this file and nothing else, and the
-three checks whose subject this file IS are re-run on it, with their results in
-that commit's own body.
+GATE:CLONE, RUN ON 9e1890b - THE COMMIT CARRYING THIS REPORT, which is what
+makes it a run against the tree being pushed. gate:clone clones HEAD, and the
+register-coverage step it runs FIRST reads every REPORT-*.txt at the repo root,
+this file among them; a run on a commit without this report would not have
+checked it. So the report was committed, then gated, and this section was added
+afterwards by a commit that changes this file and nothing else (R182).
+
+    gate:clone - what is being checked
+      commit    9e1890be53ce1d99f2a19cbdc140e86334a2b5d3
+      clone     C:\Users\...\Temp\monreleve-clone-GtTsSE
+      swept     no stale clones (older than 4h) found
+
+    --- node scripts/register-coverage.mjs (R327 register coverage) ---
+    register coverage: OK - 92 cited id(s) across 116 report(s), all have
+    headings in parking.md
+
+    --- node scripts/fixture-coverage.mjs (R348 fixture coverage) ---
+    fixture coverage: OK - 7 section(s) across 6 file(s), each consumed by
+    every engine that reads its file
+
+    --- database: scratch database monreleve_gate_clone_9e1890be created ---
+    --- pnpm db:deploy ---      .env not found. Continuing without it.
+    --- pnpm test:db ---        .env not found. Continuing without it.
+    --- pnpm test:container:write ---
+    naming to docker.io/library/monreleve:write done
+
+    GATE:CLONE PASSED
+      CI readiness: quiet - the repository is private and CI_FULL is unset -
+                    jobs will skip.
+      commit  9e1890be53ce1d99f2a19cbdc140e86334a2b5d3
+      clone   C:\Users\...\Temp\monreleve-clone-GtTsSE (removed)
+      ran     register-coverage, fixture-coverage, install, typecheck, lint,
+              test, build, size, db:deploy, test:db, test:container:write
+      claim   this commit builds and passes register-coverage,
+              fixture-coverage, install, typecheck, lint, test, build, size,
+              db:deploy, test:db, test:container:write from a clean checkout -
+              a machine with no .env, no prior node_modules and no generated
+              file this run did not produce itself.
+    GATE_CLONE_EXIT=0
+
+WHICH DATABASE EACH SUITE RAN AGAINST, because the question has cost this
+project real data before:
+
+  gate:changed, all three runs    NO DATABASE AT ALL. The selection was the
+                                  base chain on every commit - typecheck,
+                                  lint, test, build - and test:db was never
+                                  among the suites. This worktree has NO
+                                  web/.env; none was copied into it, and the
+                                  suite that empties tables was therefore
+                                  never in a position to run against anything.
+  gate:clone db:deploy, test:db,  monreleve_gate_clone_9e1890be, a scratch
+  test:container:write            database gate:clone CREATED, migrated from
+                                  empty and DROPPED itself. DATABASE_URL was
+                                  passed to that one command as an environment
+                                  variable - never written into a file - and
+                                  the script uses it for the HOST only
+                                  (localhost:5436), handing the clone a
+                                  connection string to the scratch database
+                                  and nothing else.
+  the dev database `frontalier`   READ ONCE, WRITTEN NEVER. After the run, one
+                                  SELECT confirmed the scratch database is
+                                  gone and that the dev database still holds
+                                  its 6 User rows. No row was created,
+                                  modified or deleted by this session.
+
+R182 - THE THREE CHECKS WHOSE SUBJECT THIS FILE IS, re-run AFTER it reached its
+final text, because a check that ran before its subject existed has checked
+nothing:
+
+  node web/scripts/register-coverage.mjs C:/wt/fw-park-ids
+      register coverage: OK - 92 cited id(s) across 116 report(s), all have
+      headings in parking.md
+      EXIT=0
+
+  pnpm exec vitest run tests/unit/meta/register-coverage.test.ts
+      Test Files  1 passed (1)
+           Tests  6 passed (6)
+      (the sixth asserts the REAL repository's count is greater than 39)
+
+  :app:testDebugUnitTest --tests '*RegisterCoverageTest*' --rerun-tasks
+      BUILD SUCCESSFUL in 2m 40s      RCT_EXIT=0
+      TEST-ch.monreleve.app.register.RegisterCoverageTest.xml:
+        tests="1" skipped="0" failures="0" errors="0"
+      THE ANDROID GATE'S CONSUMER OF THE FILE THIS TASK CHANGED, run on its
+      own and named as exactly that - never as :app:gate, which did not run
+      (R391). The duration is quoted because it is evidence the suite executed
+      rather than being served from the Gradle cache; --rerun-tasks is why.
+
+      ITS FIRST ATTEMPT PRODUCED NO RESULT, NOT A FAILURE (R391). It ended
+      "BUILD FAILED in 24s / SDK location not found. Define a valid SDK
+      location with an ANDROID_HOME environment variable" - a fresh worktree
+      has no local.properties, which is gitignored. Nothing about the test was
+      measured. Re-run with ANDROID_HOME set for that one command; no file was
+      created in the worktree, and `git status --porcelain` is empty after it.
 
 THE BRANCH IS PUSHED AND NOT MERGED. The prompt says push fw-park-ids and stop
 there; the push result is recorded in the commit that carries it rather than
