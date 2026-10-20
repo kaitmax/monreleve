@@ -502,6 +502,15 @@ was talking to our stack rather than to nothing (R133):
     an-icon-day@example.ch   2026-10-20 FULL CH,  firstRecordedAt 01:05:21Z
     an-icon@example.ch       2026-10-20 FULL CH / AM HOME / PM CH
 
+ONE ROW FOR SIX TAPS, AND THAT IS CORRECT RATHER THAN FOUR LOSSES. The icon
+tour re-recorded the SAME (day, FULL) slot five times and path (b) a sixth, and
+the queue coalesces an edit onto its slot (D30/R219) - so the Entry table holds
+1 row carrying the LAST kind. The audit trail is the append-only EntryEvent
+chain, and it holds all six, in order:
+    HOME, MISSION_FR, MISSION_THIRD, ABSENT, CH, CH
+Stated because counting 1 row against 6 taps invites exactly the wrong
+conclusion.
+
 TWO PRODUCT REFUSALS WERE MET AND ARE WORTH RECORDING, because both are the
 system working. Switching the granularity back from half-days to whole days was
 refused by the app: "Cette modification est incompatible avec des journees deja
