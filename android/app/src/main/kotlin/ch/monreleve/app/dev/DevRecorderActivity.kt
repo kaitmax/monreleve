@@ -28,6 +28,7 @@ import ch.monreleve.app.data.local.EntryEntity
 import ch.monreleve.app.data.local.EntryKind
 import ch.monreleve.app.data.local.MonReleveDatabase
 import ch.monreleve.app.data.local.SyncState
+import ch.monreleve.app.data.local.get
 import ch.monreleve.app.data.local.todayInParis
 import ch.monreleve.app.data.repo.LocalEntryRepository
 import ch.monreleve.app.data.repo.RecordCommand

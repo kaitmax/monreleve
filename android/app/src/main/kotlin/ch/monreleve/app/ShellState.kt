@@ -15,6 +15,7 @@ import ch.monreleve.app.auth.PostOutcome
 import ch.monreleve.app.calendar.CalendarSnapshot
 import ch.monreleve.app.calendar.SelectionSnapshot
 import ch.monreleve.app.data.local.MonReleveDatabase
+import ch.monreleve.app.data.local.get
 import ch.monreleve.app.data.remote.DossierResult
 import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.RhythmRepository

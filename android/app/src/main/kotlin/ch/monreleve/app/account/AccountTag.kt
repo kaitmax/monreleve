@@ -21,7 +21,10 @@ import java.security.MessageDigest
 // uppercase letters and can never equal a 64-character lowercase-hex digest, so the sentinel cannot
 // collide with a real account tag.
 
-const val UNOWNED_ACCOUNT = "UNOWNED"
+// KMP-2b (R394): UNOWNED_ACCOUNT MOVED TO :shared commonMain (account/UnownedAccount.kt) because
+// EntryEntity.accountTag defaults to it and EntryEntity now lives there. SAME PACKAGE, so every
+// existing import still resolves and nothing in :app changed. accountTagOf stays HERE: MessageDigest
+// is a JVM API that commonMain cannot see, and dragging a digest across was never the point (R372).
 
 private const val HEX_BYTE_MASK = 0xFF
 

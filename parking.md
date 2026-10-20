@@ -2142,3 +2142,87 @@ reading every section. Entries are not edited; this ledger is.
 | PARKAN-46 — AN-NOTIF on-device walkthrough (section 5) | **largely closed, device-verified** | device-walkthroughs (2026-10-11, REPORT-WALKTHROUGHS.txt WT3): on the S9 (date moved to weekdays since today is Sunday, a non-working day): MANUAL mode end to end - notification (3 buttons) -> En Suisse with the app closed -> confirmation "Enregistre pour le 09.10.2026" -> row read back (clientMutationId a98429d2..., provenance MANUAL, account tag 6b42a805...); "Autre..." lands on today; record-in-app cancels the notification; AUTO NotSure notice; OFFLINE record + deferred sync (clientMutationId 10fd1223..., CH MANUAL synced on reconnect). REMAINING: the AUTO HIGH-proposal path (Confirmer->DETECTED_CONFIRMED, other side->DETECTED_CORRECTED) is NOT reproducible on-device (needs a seeded HIGH detection tally; no on-device sqlite; JVM-covered by EveningTapTest), and a dedicated 200% notification capture (OS-rendered chrome) |
 | PARKAN-47 — AN-NOTIF dumpsys lock-screen verification | **done for API 29; 31+ flag + PIN check remain** | device-walkthroughs (2026-10-11, WT3): `adb shell dumpsys notification` on the posted notification confirmed id=1001, vis=PRIVATE, a SEPARATE publicVersion with vis=PUBLIC and NO actions (= "Mon Releve / Une journee a enregistrer."), the two recording buttons as immutable broadcasts + Autre/body as startActivity. The per-action setAuthenticationRequired is a NO-OP on API 29 so the S9 cannot show the unlock-gate flag in dumpsys - that needs a 31+ device (JVM-asserted meanwhile, EveningNotifierLockScreenTest). The operator's two-line manual PIN check is written in the report (NOT performed - no PIN set/cleared, R334 hard boundary). Minor: the channel's own mLockscreenVisibility read -1000/NO_OVERRIDE (pre-existing channel); the per-notification vis=PRIVATE governs and is set |
 | PARKAN-50 — Aujourd'hui greeting hard-coded "Bonjour Camille" | **resolved, pending merge** | fix-greeting (2026-10-11, commit a99915a, REPORT-FIX-GREETING.txt): Fr.GREETING replaced by `Fr.greeting(holderName)` greeting the holder's FIRST name (Settings.name) with a « Bonjour » fallback for a not-yet-named account; AujourdhuiState.holderName wired controller->Header (R153/R181, Fence 4). Copy decision under R156 (advisor stalled): first name + « Bonjour » fallback. Test-first GreetingTest RED->GREEN (7 cases); `:app:gate` green incl. verifyPaparazziDebug; zero baselines regenerated (host wires « Camille Martin » -> byte-identical render, R207). Originally found by device-walkthroughs (2026-10-11): wt-fresh name "Walkthrough" in the DB but Aujourd'hui greeted "Camille" |
+
+## PARK-B1 - CalendarDay.kt stays in :app, although R394 names it among what moves  [KMP-2b, 2026-10-20]
+
+QUESTION:  R394's list of what moves to :shared includes CalendarDay. It is not
+platform-free: it imports java.time.Clock, OffsetDateTime, ZoneId and
+DateTimeFormatter, and the commonMain fence and the metadata compilation both
+refuse those. Moving it means rewriting todayInParis and deviceClaimNow onto
+kotlinx-datetime.
+
+TAKEN:     Left in :app and recorded here. Nothing that DID move depends on it -
+the entities, the DAOs and the database compile in commonMain without it - so
+parking it costs the database move nothing.
+
+NOT TAKEN: Rewriting it now. deviceClaimNow produces clientClaimedAt, a WIRE
+value whose format is pinned by a fixed pattern
+("yyyy-MM-dd'T'HH:mm:ss.SSSxxx") precisely because OffsetDateTime.toString()
+and ISO_OFFSET_DATE_TIME both omit a zero seconds field, which the server's zod
+.datetime({ offset: true }) then rejects. KMP-2's hard boundary is that the wire
+bytes do not change, and todayInParis decides which DAY a record lands on. Both
+are reachable with kotlinx-datetime, and neither is a change to make inside a
+task whose subject is the database and whose evidence is an upgrade-in-place on
+one phone. R156: conservative, reversible, parked.
+
+COST OF REVERSING: one file, its tests, and a device check that the day boundary
+and clientClaimedAt are unchanged - the shape KMP-0's R374 already ran once.
+
+
+## PARK-B2 - EntryRepository and RhythmRepository stay in :app  [KMP-2b, 2026-10-20]
+
+QUESTION:  R394 says the repositories move "IF they reach nothing beyond the
+moved database and pure shared code; if one holds a store, the session or a clock
+source from :app, separate it the KMP-0 way (R372) or leave it and PARK it".
+
+TAKEN:     Both parked, decided from their imports rather than from preference.
+  EntryRepository    android.util.Log, ch.monreleve.app.BuildConfig,
+                     java.time.Clock, java.util.UUID. It holds a clock source AND
+                     R425's BuildConfig canary (AN-ACCOUNT-TAG), which is an
+                     :app-variant fact by construction.
+  RhythmRepository   java.time.DayOfWeek - the same clock-adjacent dependency one
+                     step smaller.
+
+NOT TAKEN: Separating them the KMP-0 way now. R394 offers that or the park; the
+park is the option that claims less in a task whose one irreversible artefact is
+the database file. Doing it would also mean deciding where R425's canary lives,
+which is AN-ACCOUNT-TAG's design and not this task's to move.
+
+COST OF REVERSING: two files plus a seam for the clock and the canary. KMP-3
+already owns the stores and the sync engine, so it is the natural place.
+
+
+## PARK-B3 - :app keeps the KSP plugin and room-compiler with nothing to process  [KMP-2b, 2026-10-20]
+
+QUESTION:  After the move :app declares no @Entity, no @Dao and no @Database, so
+Room's compiler has nothing to do there. Its room.schemaLocation argument was
+removed - it named a directory nothing writes any more, and a stale instruction
+reads as a current one (R181) - but the plugin and the compiler dependency stay.
+
+TAKEN:     Left in place. They cost a no-op task each and removing them is a
+build change with no evidence behind it in a task whose gate is already proving
+something else. Recorded so the next reader sees a decision rather than an
+oversight.
+
+NOT TAKEN: Removing `alias(libs.plugins.ksp)` and `ksp(libs.androidx.room.compiler)`
+from :app. That is the tidy answer and it is also the one that, if it is wrong,
+is wrong at the next person's expense rather than at this task's.
+
+COST OF REVERSING: two lines and a gate run.
+
+
+## PARK-B4 - MigrationSqlVerbatimTest stays in :app's JVM suite  [KMP-2b, 2026-10-20]
+
+QUESTION:  KMP-2's Q2 asked whether the verbatim-SQL test should move to :shared
+with the migrations. No operator answer is recorded.
+
+TAKEN:     It stays in :app's JVM test source set while the MIGRATIONS live in
+:shared - which is KMP-2's own reading, and the arrangement that makes the git
+diff of migration-sql.txt the proof. The test needs java.lang.reflect.Proxy to
+stand in for SQLiteStatement's twenty members, and commonTest cannot have it.
+
+NOT TAKEN: Moving it and hand-writing the double. Twenty TODO() bodies against an
+interface we do not own is the maintenance R206 warns about, and the fixture - the
+thing that actually proves the SQL - is unaffected by where the test runs from.
+
+COST OF REVERSING: the test file and a hand-written SQLiteStatement fake.

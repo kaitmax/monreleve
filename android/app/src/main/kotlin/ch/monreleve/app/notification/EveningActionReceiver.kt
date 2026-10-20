@@ -7,6 +7,7 @@ import ch.monreleve.app.account.SharedPrefsAccountStore
 import ch.monreleve.app.data.local.MonReleveDatabase
 import ch.monreleve.app.data.local.Portion
 import ch.monreleve.app.data.local.deviceClaimNow
+import ch.monreleve.app.data.local.get
 import ch.monreleve.app.data.local.todayInParis
 import ch.monreleve.app.data.repo.LocalEntryRepository
 import ch.monreleve.app.data.sync.SyncScheduler

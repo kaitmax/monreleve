@@ -11,16 +11,19 @@ plugins {
     alias(libs.plugins.paparazzi)
 }
 
-// AN5 increment 1. exportSchema = true writes the room schema JSON here; R187
-// makes it a contract with every device that installs a release, so it is
-// committed and RoomSchemaContractTest reads it back in the JVM gate. The
-// ksp-arg form (not the room-gradle-plugin) is deliberate: it adds no second
-// plugin, works under KSP1 - which 2.0.21-1.0.28 selects by default - and the
-// generated file is confirmed to land before the freeze test's expectations
-// were written (advisor point 3; see REPORT-AN5.txt).
-ksp {
-    arg("room.schemaLocation", "$projectDir/schemas")
-}
+// AN5 increment 1 / KMP-2b (R396). exportSchema = true writes the room schema JSON, and R187 makes
+// it a contract with every device that installs a release, so it is committed and
+// RoomSchemaContractTest reads it back in the JVM gate.
+//
+// THE DIRECTORY MOVED WITH THE DATABASE. @Database now lives in :shared commonMain, so :shared owns
+// room.schemaLocation (its own build file says so) and writes android/shared/schemas. :app declares
+// no Room annotation at all any more, so it exports nothing and the arg that used to sit here would
+// name a directory nothing writes - a stale instruction reads as a current one (R181), so it is gone
+// rather than repointed. The two places :app still READS those files - the androidTest asset source
+// set and the Test task's declared inputs - follow the directory below.
+//
+// THE KSP PLUGIN AND room-compiler STAY on :app, deliberately and with nothing to do: they cost a
+// no-op task each and removing them is a build change this task has no evidence to justify. PARKED.
 
 android {
     namespace = "ch.monreleve.app"
@@ -194,7 +197,9 @@ android {
     // "Cannot find the schema file" even though the JSON is committed.
     sourceSets {
         getByName("androidTest") {
-            assets.srcDir("$projectDir/schemas")
+            // KMP-2b (R396): the schemas moved to :shared with the @Database, so the asset source
+            // follows them. MigrationTestHelper reads them out of the test APK at runtime.
+            assets.srcDir("$projectDir/../shared/schemas")
         }
         // AN-AUDIT increment 2: the audit variant reuses the debug source set VERBATIM - one home, not
         // copies (R206). The injection, the seeder and the cleartext-to-10.0.2.2 network security config are
@@ -284,7 +289,7 @@ tasks.withType<Test> {
     // (RoomSchemaContractTest), the bundled border polygon (BorderPolygon/Classification/DetectionSession
     // tests), and the backup rules XML (BackupRulesTest). A manual edit to any of these recompiles
     // nothing, so without these it would leave this task UP-TO-DATE.
-    inputs.dir("$projectDir/schemas")
+    inputs.dir("$projectDir/../shared/schemas")
         .withPropertyName("roomSchemas")
         .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.dir("$projectDir/src/main/assets")
@@ -301,6 +306,13 @@ tasks.withType<Test> {
     // for the cases that happen to recompile.
     inputs.dir("$projectDir/src/main/kotlin")
         .withPropertyName("scannedMainSource")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    // KMP-2b (R283/R401). ErasureCensusTest now reads :shared's commonMain as TEXT too, because the
+    // database name moved there with the @Database. Without this the census would be UP-TO-DATE after
+    // a :shared edit that added a store, and the assertion would go unrun - which is the whole
+    // guarantee. Declared for the same reason, and in the same words, as the line above it.
+    inputs.dir("$projectDir/../shared/src/commonMain/kotlin")
+        .withPropertyName("scannedSharedCommonMainSource")
         .withPathSensitivity(PathSensitivity.RELATIVE)
     // AN10b (R294): the register (parking.md) and every REPORT-*.txt at the repo root, read by
     // RegisterCoverageTest to check that every PARK-/PARKAN- id a report cites has a real entry. The

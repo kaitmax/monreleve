@@ -177,6 +177,50 @@ class FencesTest {
     }
 
     // ------------------------------------------------------------------
+    // Fence 2c (KMP-2b, R401) - D18's coordinate scan, extended to :shared
+    // commonMain, because that is where the STORE now lives.
+    //
+    // Fence 2b above walks :app's main source. KMP-2b moved EntryEntity,
+    // TallyEntity, RhythmEntity and the three DAOs - the files D18 is
+    // actually about - into :shared, so 2b kept passing over code that no
+    // longer contains the thing it guards. R401: the gate moves with the
+    // code. R267: the second site is checked, not merely named.
+    //
+    // It is a SEPARATE test rather than a wider 2b because the two trees
+    // have different exclusions - :app exempts detection/, and :shared has
+    // no detection code at all, so a shared exclusion would be an exemption
+    // nothing needs.
+    //
+    // RoomSchemaContractTest's noColumnIsCoordinateShapedInAnyTable remains
+    // the stronger guard: it reads the generated DDL rather than the source,
+    // and a coordinate re-exported under an unrelated name would still reach
+    // a COLUMN. This closes the source half; that one closes the contract.
+    // ------------------------------------------------------------------
+    @Test
+    fun noCoordinateTypeAppearsInSharedCommonMain() {
+        val sharedCommonMain = File("../shared/src/commonMain/kotlin/ch/monreleve/app")
+        // R169 presence: a wrong path would make this pass by scanning nothing.
+        assertTrue(
+            "D18 shared coordinate fence: ${sharedCommonMain.absolutePath} is not a directory - the " +
+                "working directory is not :app, or :shared moved",
+            sharedCommonMain.isDirectory,
+        )
+        val files = sharedCommonMain.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+        assertTrue("D18 shared coordinate fence scanned no files (F7 vacuity guard)", files.isNotEmpty())
+
+        val offenders = mutableListOf<String>()
+        val coordinatePattern = Regex("""\b(Location|LatLng|latitude|longitude)\b""")
+        for (file in files) {
+            val text = stripComments(file.readText())
+            val match = coordinatePattern.find(text)
+            if (match != null) {
+                offenders += "${file.path}: coordinate-shaped identifier '${match.value}' in :shared commonMain"
+            }
+        }
+        assertTrue("D18 coordinate fence violated in :shared:\n${offenders.joinToString("\n")}", offenders.isEmpty())
+    }
+
+    // ------------------------------------------------------------------
     // Fence 3 - ui/ AND design/ contain no radius, colour or spacing
     // literal outside the token set (D37/R8/R62), EXCEPT the token
     // DEFINITION files themselves (Tokens.kt, Typography.kt) - an alias

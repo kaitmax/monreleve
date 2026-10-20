@@ -13,6 +13,7 @@ import ch.monreleve.app.account.SharedPrefsAccountStore
 import ch.monreleve.app.data.local.EntryKind
 import ch.monreleve.app.data.local.MonReleveDatabase
 import ch.monreleve.app.data.local.Provenance
+import ch.monreleve.app.data.local.get
 import ch.monreleve.app.data.local.todayInParis
 import ch.monreleve.app.data.repo.LocalRhythmRepository
 import ch.monreleve.app.forecast.projectedThresholdCrossing
