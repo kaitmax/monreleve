@@ -3001,6 +3001,16 @@ completeness rules they operate on are all in :shared, so iOS implements three s
 encoding functions rather than re-deriving the vocabulary. Reversing this needs either a
 second Json configuration or per-field explicit nulls, and a /me golden first.
 
+OPERATOR NOTE, 2026-10-20: NOT IMPOSSIBLE, ONLY NOT DONE. The reasoning above
+is right about SERIALIZER-based encoding - one Json configuration cannot both
+emit explicit nulls and omit absent fields. It does not hold for a body built by
+hand: `buildJsonObject { put("exactTotalWorkDays", JsonNull) }` does exactly that,
+in common code, because each key is placed individually rather than derived from a
+class's shape. Whoever picks this up should pin a /me WIRE golden first - this is
+the server wire, not an on-device format, so no device golden would catch a
+regression - and only then move the codec. Recorded so the next reader does not
+conclude from the entry above that it cannot be shared.
+
 ## PARK-D4 - KMP-3's pinning tests live in :app's JVM suite, not commonTest
 
 R450 and R451 ask for the behaviour to be pinned first on the current code and then for
