@@ -1,0 +1,259 @@
+AN-FENCE-ROOTS - EVERY SOURCE FENCE READS WHERE ITS SUBJECT LIVES, AND PROVES
+IT FOUND IT
+Branch: an-fence-roots (pending merge - NOT merged to main)
+Rulings: R458, R459, R460, R461, R462
+
+================================================================================
+SUMMARY
+================================================================================
+(written at the end of the session - see STATUS)
+
+================================================================================
+STATUS (R391)
+================================================================================
+(pending - filled after the FULL :app:gate --rerun-tasks on the final tip)
+
+================================================================================
+R273 - WHAT WAS READ FIRST
+================================================================================
+relay/AN-FENCE-ROOTS.txt, CLAUDE.md (repo root - NOT the Downloads/ one, which
+belongs to a Morocco travel platform), README.md, REPORT-KMP-3.txt's R452
+section, parking.md's register, and the build files app/build.gradle.kts and
+shared/build.gradle.kts.
+
+R452, restated because it is the whole reason for this task: KMP-3 repointed
+AccountCaptureFenceTest to both source trees and showed it RED on a planted
+capture. It then REMOVED the second root and re-ran against the same live
+plant, and the fence PASSED. A fence that scans one tree certifies a live
+frozen capture as clean, and says nothing about having shrunk.
+
+================================================================================
+R1 - FULL :app:gate ON origin/main's HEAD
+================================================================================
+(pending - pasted below)
+
+================================================================================
+R458 - THE CENSUS
+================================================================================
+
+THE SEARCH, AND ITS POSITIVE CONTROL
+------------------------------------
+The operator's figure came from one pattern, File("src/main. That is a floor,
+not the answer, so the census searched for every way a test can open a file:
+
+  grep -rlE 'java\.io\.File|java\.nio\.file|walkTopDown|readText\(|readLines\(
+             |readBytes\(|getResource|File\('
+       --include=*.kt
+       app/src/test app/src/androidTest shared/src/commonTest
+       shared/src/androidUnitTest
+
+POSITIVE CONTROL (R133/R154 - a search is evidence only if it is shown to find
+something it is known to contain): the result contains
+app/src/test/.../fences/AccountCaptureFenceTest.kt - the fence R452 is about,
+known to walk two roots - and shared/.../CommonMainFenceTest.kt, known to walk
+:shared's commonMain. Both appear. A pattern that matched nothing would have
+produced a clean, empty, entirely worthless census.
+
+  42 files matched, out of 176 test files
+     (app/src/test 160, app/src/androidTest 7, shared/src/commonTest 9,
+      shared/src/androidUnitTest 1 - counted, not assumed).
+
+  app/src/androidTest (7 files)      ZERO hits - no instrumented test reads a
+                                     source root.
+  shared/src/commonTest (9 files)    ZERO hits - commonTest cannot use
+                                     java.io.File portably; it consumes the
+                                     fixtures as generated Kotlin constants
+                                     (shared/build.gradle.kts
+                                     generateFixtureConstants).
+
+THE OPERATOR'S TWO FIGURES, RE-MEASURED
+---------------------------------------
+  22 files hardcode File("src/main under app/src/test   CONFIRMED, exactly 22.
+  14 of those never mention shared/ or commonMain       CONFIRMED, exactly 14,
+                                                        and the same 14 named
+                                                        in the prompt.
+
+Neither figure moved. What the classification below adds is that "never
+mentions shared" is NOT the same claim as "correct as written": TWO of the 14
+are MOVED, not PLATFORM (LogFenceTest, NoDebugInjectionInMainTest).
+
+WHERE THE CODE ACTUALLY IS TODAY (verified by listing, not recalled)
+--------------------------------------------------------------------
+  :shared has exactly ONE main source set, src/commonMain/kotlin - no
+  androidMain, no iosMain source directory. 85 .kt files, in the packages
+  account auth calc data dossier fr settings shared.
+  :app has src/main/kotlin (152 .kt), src/debug/kotlin (5 .kt),
+  src/release/kotlin DOES NOT EXIST (src/release holds res/ only).
+
+  So "where does a fence's subject live" has exactly three possible answers:
+  app/src/main/kotlin, app/src/debug/kotlin, shared/src/commonMain/kotlin -
+  plus :app's non-Kotlin roots (AndroidManifest.xml, res/, assets/) and
+  shared/schemas.
+
+GROUP A - TESTS THAT READ AN ANDROID SOURCE/RESOURCE ROOT (26)
+These are the ones R458's three classes are about.
+
+ #  FILE                        ROOTS READ                       SUBJECT (what it guards)             SUBJECT LIVES TODAY                      CLASS
+ 1  fences/AccountCaptureFence  src/main/kotlin                  no account read as a VALUE at        MainActivity.kt (:app),                  BOTH
+    Test                        ../shared/src/commonMain/kotlin  construction                         SyncEngine.kt (:shared)                  (KMP-3)
+ 2  account/ErasureCensusTest   src/main/kotlin/ch/monreleve/app every "monreleve.<x>" store is       4 SharedPrefs names (:app),              BOTH
+                                ../shared/.../ch/monreleve/app   erased by deletion or exempted       monreleve.db in MonReleveDatabase.kt     (KMP-2b)
+                                                                                                      (:shared)
+ 3  fences/FencesTest           see the per-fence table below    nine SPEC-5 fences                   mixed - see below                        MIXED
+ 4  fences/NoBareThresholdTest  ../shared/.../calc               no bare 0.4/0.499/240/10/40/49.9     Rules.kt (:shared), rail geometry        BOTH
+                                src/main/.../{ui,design,dev}                                          (:app design/rail)
+ 5  fences/CopyDuplicationTest  ../shared/.../fr                 no French string declared twice      73 copy files (:shared fr/),             BOTH
+                                src/main/.../fr                                                       2 formatter-bound files (:app fr/)
+ 6  fences/CopyReachabilityTest ../shared/.../fr, src/main/.../  every exported copy string is        declarations in both fr/ trees;          BOTH
+                                fr + src/main/.../{ui,design,    reached by a surface                 surfaces ui/design/dev all :app
+                                dev}
+ 7  fr/ParametresCopyAccentTest ../shared/.../fr                 the copy is fully accented           both fr/ trees                           BOTH
+                                src/main/.../fr
+ 8  parametres/ParametresR282   ../shared/.../fr/ParametresCopy  the copy names no feature the        both files are in :shared                BOTH
+    Test                        ../shared/.../fr/LicencesCopy    product lacks
+ 9  data/sync/SyncWorkerResult  src/main/.../data/sync/          the worker maps every SyncOutcome    SyncWorker.kt (:app),                    BOTH
+    MappingTest                 SyncWorker.kt + SyncEngine.kt    case                                 SyncEngine.kt (:shared) - the test       (KMP-3)
+                                in EITHER tree                                                        already tries both and names the miss
+10  calc/WarningsTest           <repoRoot>/android/shared/src/   Warnings.kt carries no PROVISIONAL   Warnings.kt (:shared)                    BOTH
+                                commonMain/.../calc/Warnings.kt  TRIGGER comment
+11  data/local/RoomSchema       ../shared/schemas/<db>/<n>.json  the exported Room schema, column     shared/schemas (:shared, moved           BOTH
+    ContractTest                                                 by column                            KMP-2b; the test follows)                (KMP-2b)
+12  shared/.../CommonMainFence  src/commonMain/kotlin            commonMain imports no platform API   :shared commonMain                       BOTH
+    Test  (in :shared)          (relative to :shared)                                                                                          (is its own
+                                                                                                                                               subject)
+--  ---------------------------------------------------------------------------------------------------------------------------------------- -----------
+13  fences/LogFenceTest         src/main/kotlin/ch/monreleve/app no token/refresh/email/password/     THE CREDENTIAL-BEARING CODE IS NOW IN    *** MOVED ***
+    (test 1)                                                     secret/bearer word shares a line     :shared: auth/TokenPair.kt,
+                                                                 with a log/print sink, ANYWHERE in   auth/TokenStore.kt,
+                                                                 product code                        auth/SessionManager.kt,
+                                                                                                     data/remote/AuthApi.kt,
+                                                                                                     data/sync/SyncEngine.kt
+    fences/LogFenceTest         src/main/.../app/ui              no raw token value in the ui/ layer  ui/ (:app, Compose)                      PLATFORM
+    (test 2)
+14  fences/NoDebugInjectionIn   src/main/kotlin                  the debug-only tooling markers       the markers live in src/debug (:app),    *** MOVED ***
+    MainTest                    src/release/kotlin (ABSENT)      ("SessionInjection", "DebugSeeder")  but the TERRITORY is "every SHIPPED
+                                                                 exist in NO SHIPPED source set       source set", and :shared commonMain
+                                                                                                     became one: :app depends on :shared,
+                                                                                                     so commonMain is compiled into the
+                                                                                                     RELEASE APK.
+--  ---------------------------------------------------------------------------------------------------------------------------------------- -----------
+15  fences/ApiLevelFenceTest    src/main/kotlin/ch/monreleve/app no java.time member added after      java.time CANNOT appear in commonMain:   PLATFORM
+                                src/debug/kotlin/ch/monreleve/   minSdk 26 is called                  CommonMainFenceTest forbids every
+                                app                                                                   "import java." with an exemption list
+                                                                                                      of exactly two androidx packages
+                                                                                                      (asserted), and
+                                                                                                      compileCommonMainKotlinMetadata
+                                                                                                      resolves commonMain against the COMMON
+                                                                                                      stdlib, where java.time does not
+                                                                                                      exist at all. commonMain uses
+                                                                                                      kotlinx.datetime (R384's inventory),
+                                                                                                      which has no ofInstant on LocalDate.
+16  fences/DayCellGridHas       src/main/.../{ui,design,dev}     a DayCell grid is paired with a      Compose composables - :app              PLATFORM
+    LegendTest                                                   DayKindLegend
+17  fences/AnswerIconDrawables  src/main/res/drawable            five vector drawables name their     Android vector XML in res/ - :app       PLATFORM
+    Test                        ../../docs/lucide-icons.md       Lucide glyph and version
+18  fences/OnDeviceFormatGolden src/main/.../auth/KeystoreToken  the five PLATFORM store              All five STAYED in :app by KMP-3's      PLATFORM
+    Test                        Store.kt, settings/SharedPrefs   implementations still write the      design (Keystore, SharedPreferences):
+                                SettingsStore.kt, account/       key names a phone in the field       KMP-3 moved the store CONTRACTS to
+                                AccountStore.kt, auth/Pending    holds                                :shared and left every Android
+                                SignInStore.kt, data/local/                                           implementation behind.
+                                SharedPrefsDossierCache.kt
+                                (+ its own test resource)
+19  auth/BackupRulesTest        src/main/res/xml/backup_rules    the token/pending/account prefs      Android backup XML in res/xml - :app    PLATFORM
+                                .xml, data_extraction_rules.xml  are excluded from backup+transfer
+20  detection/BatteryOptimisa   src/main/AndroidManifest.xml     no manifest asks for a battery       AndroidManifest - :app                  PLATFORM
+    tionTest                    src/debug/AndroidManifest.xml    exemption
+21  detection/BorderPolygonTest src/main/assets/border/          the bundled border polygon           an Android ASSET - :app                 PLATFORM
+                                switzerland.json (+ test res)
+22  detection/ClassificationTst same asset (+ test res)          the same asset                       :app assets                             PLATFORM
+23  detection/DetectionSession  same asset                       the same asset                       :app assets                             PLATFORM
+    Test
+24  detection/EveningNotifier   src/main/.../detection/          lock-screen protections on the       Notification/PendingIntent code -       PLATFORM
+    LockScreenTest              EveningNotifier.kt               notification                         :app detection/
+25  detection/ThresholdAlert    same file                        the lock-screen alert carries no     same                                    PLATFORM
+    NotifierTest                                                 figure
+26  detection/ThresholdAlert    4 NAMED :app files: forecast/    the alert never records an entry     all four verified present in             PLATFORM
+    R340Test                    ThresholdForecast.kt, detection/                                      app/src/main/kotlin today. The SHARED
+                                ThresholdAlertDecision.kt,                                            half of the compute is covered by a
+                                settings/ThresholdAlert.kt,                                           different test (ForecastR340Test),
+                                detection/EveningNotifier.kt                                          which the file names.
+
+FencesTest, FENCE BY FENCE (row 3 above)
+----------------------------------------
+  fence 1  calc imports nothing foreign      ../shared/.../calc              BOTH - follows calc into :shared (KMP-0)
+  fence 2a detection never hits the network  src/main/.../detection          PLATFORM - detection is Android-only
+  fence 2b no coordinate outside detection   src/main/.../app minus detection BOTH - with 2c
+  fence 2c no coordinate in commonMain       ../shared/.../app               BOTH - with 2b (KMP-2b/R401)
+  fence 3  no raw radius/colour/spacing      src/main/.../{ui,design}        PLATFORM - Compose token layer
+  fence 4  no String literal in a composable src/main/.../{ui,dev}           PLATFORM - Compose
+  fence 5  ui writes only via the repository src/main/.../ui                 PLATFORM - Compose
+  fence 6  no Material default shape/elev.   src/main/.../ui                 PLATFORM - Compose/Material
+  fence 7  detection proposes, never records src/main/.../detection          PLATFORM - detection is Android-only
+  fence 8  no raw animation duration         src/main/.../{ui,design}        PLATFORM - Compose
+  fence 9  the brand tint has one home       src/main/.../app (design/)      PLATFORM - design tokens are :app
+
+GROUP B - TESTS THAT READ A FILE THAT IS NOT AN ANDROID SOURCE ROOT (16)
+They matched the search and are listed so the census is complete, but
+MOVED/PLATFORM/BOTH does not apply to them: nothing about them can shrink when
+Kotlin moves between :app and :shared. No class is invented for them.
+
+  calc/FixturePaths.kt (helper)          <repoRoot>/fixtures/   - declared input "sharedFixtures"
+  calc/DenominatorConformanceTest        <repoRoot>/fixtures/denominator-cases.json
+  calc/MissionCapTest                    <repoRoot>/fixtures/denominator-cases.json
+  calc/RateConformanceTest               <repoRoot>/fixtures/rate-cases.json
+  dossier/AggregationConformanceTest     <repoRoot>/fixtures/aggregation-cases.json
+  dossier/ForecastConformanceTest        <repoRoot>/fixtures/forecast-cases.json
+  dossier/LatenessConformanceTest        <repoRoot>/fixtures/late-threshold-cases.json
+  data/local/WireContractParityTest      web/lib/entries/schema.ts
+  data/sync/BatchLimitParityTest         web/lib/entries/schema.ts
+  parametres/AppSiteLinksTest            web/app (the site's route tree)
+  fixtures/FixtureCoverageTest           web/scripts/fixture-coverage.mjs (shells out)
+  register/RegisterCoverageTest          web/scripts/register-coverage.mjs, parking.md, REPORT-*.txt
+  detection/VoteThresholdParityTest      docs/detection-model.md
+  fences/CleanWorktreeGuardTest          app/build.gradle.kts (asserts R393's guard is still wired)
+  data/local/MigrationSqlVerbatimTest    src/test/resources/migration-sql.txt - and NOTE: the
+                                         migrations themselves are reached by IMPORT, not by path,
+                                         so this one cannot shrink when they move. It is the
+                                         structural opposite of a source-scanning fence.
+  fr/format/NumbersTest                  its OWN source file, by a hardcoded path, to assert it
+                                         carries no literal NBSP/NNBSP.
+
+================================================================================
+R460 - EVERY FENCE PROVES IT FOUND ITS SUBJECT
+================================================================================
+(pending)
+
+================================================================================
+R459 - MOVED FENCES WIDENED AND PROVEN ON THE NEW SIDE
+================================================================================
+(pending)
+
+================================================================================
+R461 - PLATFORM FENCES LEFT, WITH THE REASON WRITTEN DOWN
+================================================================================
+(pending)
+
+================================================================================
+R462 - THE GATE STILL SEES THEM
+================================================================================
+(pending)
+
+================================================================================
+PARKED
+================================================================================
+(pending)
+
+================================================================================
+DEVIATIONS
+================================================================================
+(pending)
+
+================================================================================
+QUESTIONS
+================================================================================
+(pending)
+
+================================================================================
+PUSH PROOF
+================================================================================
+(pending)
