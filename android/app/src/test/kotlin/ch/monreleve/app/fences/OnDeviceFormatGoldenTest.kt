@@ -134,7 +134,11 @@ class OnDeviceFormatGoldenTest {
 
     @Test
     fun `the dossier cache still writes one key per year, in the phone's format`() {
-        val source = File("src/main/kotlin/ch/monreleve/app/data/local/DossierCache.kt").readText()
+        // KMP-3: the CONTRACT went to :shared and the Android implementation stayed here under its own
+        // name. The subject of this assertion is the implementation - the interface writes nothing - so
+        // the path follows the implementation. constantsIn() fails loudly on a path that does not exist,
+        // which is what stops a moved file reading as compliance over nothing (R133).
+        val source = File("src/main/kotlin/ch/monreleve/app/data/local/SharedPrefsDossierCache.kt").readText()
 
         assertTrue("the dossier prefs FILE name moved", source.contains("\"monreleve.dossier\""))
         // The golden records the key as dossier.<year>; the source builds it by interpolation,
