@@ -19,25 +19,56 @@ import java.io.File
  * (TokenPairTest) is the second defence for exactly the case a generic serialiser
  * would produce, and a hand-written multi-line log of a raw token is not the
  * realistic leak.
+ *
+ * ----------------------------------------------------------------------------
+ * AN-FENCE-ROOTS (R459). TWO TREES, BECAUSE THE CREDENTIALS MOVED.
+ *
+ * This fence was written when every file that touches a token was in :app. KMP-1
+ * and KMP-3 moved the credential-bearing code into :shared commonMain -
+ * auth/TokenPair.kt, auth/TokenStore.kt, auth/SessionManager.kt,
+ * data/remote/AuthApi.kt and data/sync/SyncEngine.kt - and a fence still walking
+ * one tree would have gone on passing over a shrinking fraction of exactly the
+ * code it exists to guard, with nothing saying so (R452).
+ *
+ * IT IS NOT AN ANDROID-ONLY RULE, which is what makes the widening necessary
+ * rather than tidy. `Log.d` cannot appear in commonMain (no android.*), but
+ * `println` is in the COMMON stdlib: `println("refresh=$refreshToken")` inside
+ * SessionManager.kt compiles for every target, ships in the release APK, and is
+ * exactly the leak LOG_SINK's `println` alternative was written for.
+ *
+ * The second root is relative to :app's project directory, the way the first is.
+ * noRawTokenReachesTheUiLayer stays :app-only: ui/ is Compose, and there is no
+ * ui/ in commonMain for it to miss.
  */
 private val logFenceSrcRoot = File("src/main/kotlin/ch/monreleve/app")
+
+private val logFenceRoots =
+    listOf(
+        FenceRoot(logFenceSrcRoot, pin = "MainActivity.kt"),
+        FenceRoot(File("../shared/src/commonMain/kotlin/ch/monreleve/app"), pin = "SessionManager.kt"),
+    )
 
 private fun logFenceStripComments(text: String): String =
     text
         .replace(Regex("""/\*[\s\S]*?\*/"""), "")
         .replace(Regex("""//.*"""), "")
 
-private fun logFenceMainKt(): List<File> {
-    return logFenceSrcRoot.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
-}
-
 private val LOG_SINK = Regex("""\b(Log\.[dewiv]|println|print|System\.(out|err)|Timber\.\w+)\b""")
 private val CREDENTIAL = Regex("""(?i)(token|refresh|email|password|secret|bearer)""")
 
 class LogFenceTest {
     @Test
+    fun theWalkReachesBothTreesEachNamedByAFileOnlyItCanHold() {
+        // R460. Each root on its own, pinned by a file only it holds. A COMBINED count stays
+        // comfortably over any threshold with one root missing entirely, which is how a fence
+        // quietly stops covering half of what it claims (R452).
+        logFenceRoots.assertFound("log fence")
+    }
+
+    @Test
     fun noCredentialShareALineWithALogSink() {
-        val scanned = logFenceMainKt()
+        logFenceRoots.assertFound("log fence")
+        val scanned = logFenceRoots.ktFiles()
         // R133: the scan is not vacuous - it has real files to read.
         assertTrue("log fence found no source files to scan", scanned.isNotEmpty())
 
@@ -63,16 +94,13 @@ class LogFenceTest {
         // recents on the callback screen would also defeat AC2's own screenshots).
         // This asserts the premise so it stays true as screens are added: ui/ never
         // holds a raw token value.
-        val uiDir = File(logFenceSrcRoot, "ui")
-        val scanned =
-            if (uiDir.exists()) {
-                uiDir.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
-            } else {
-                emptyList()
-            }
         // F7 (AN-FIX, R267 - the second site named by the audit): this absence assertion over an EMPTY ui/
-        // would pass vacuously if ui/ were renamed. Assert the scan found files, as noCredentialShareALineWith
-        // ALogSink already does.
+        // would pass vacuously if ui/ were renamed. AN-FENCE-ROOTS (R460) replaces the
+        // `if (uiDir.exists()) ... else emptyList()` that produced that empty set with an assertion that
+        // names what it could not find and where it looked - ui/ is :app-only and is NOT optional.
+        val uiRoot = listOf(FenceRoot(File(logFenceSrcRoot, "ui"), pin = "AppBottomBar.kt"))
+        uiRoot.assertFound("noRawToken fence")
+        val scanned = uiRoot.ktFiles()
         assertTrue("noRawToken fence scanned no ui/ files - ui/ renamed? (F7 vacuity guard)", scanned.isNotEmpty())
 
         val offenders = mutableListOf<String>()
