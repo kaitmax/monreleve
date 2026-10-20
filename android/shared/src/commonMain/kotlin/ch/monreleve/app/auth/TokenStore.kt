@@ -9,6 +9,11 @@ package ch.monreleve.app.auth
 // implementation will be written from this text and nothing else. Anything a Keychain
 // implementer would otherwise have to infer by reading KeystoreTokenStore.kt - which they
 // cannot, because it is Android - is stated here instead.
+//
+// KMP-3 (R446): MOVED to :shared commonMain, package unchanged (R368). KeystoreTokenStore -
+// the Keystore alias, the AES-256-GCM cipher mode, the per-save IV and the preferences file
+// it writes - STAYS in :app and is not edited by a character. That is the hard boundary
+// this move is allowed under: the CONTRACT travels, the platform storage does not.
 
 /**
  * Where this device keeps the signed-in session's token pair, encrypted at rest.

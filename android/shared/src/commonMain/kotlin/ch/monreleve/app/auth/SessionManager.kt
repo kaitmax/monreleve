@@ -12,6 +12,23 @@ import kotlinx.coroutines.withContext
 
 // AN4 increment 5. Holds the session: refresh (single-flight), the authenticated
 // call flow, and sign-out. Lives in auth/, not ui/ (fence 5).
+//
+// KMP-3 (R446). MOVED TO :shared commonMain, package unchanged (R368), so no import in
+// :app changed - the diff is this path and this paragraph.
+//
+// IT NEEDED NO SEAM, which is the part worth recording. AuthApi, TokenPair, AuthedResult
+// and the failure vocabulary went to :shared in KMP-1; TokenStore was already an interface
+// and moved alongside this file; everything else here is kotlinx.coroutines - Mutex,
+// NonCancellable, withContext - which commonMain already resolves. KMP-1 PARKED
+// AuthedOutcome as something to "extract to :shared when the auth controllers are
+// addressed": the extraction turned out to be unnecessary, because the whole class could
+// come. The controllers stayed behind (R446 rules they do not move this session) and they
+// compile against these outcome types unchanged.
+//
+// NO DISPATCHER REACHES THIS FILE (R449). withContext(NonCancellable) takes a Job, not a
+// dispatcher: it changes cancellability, not which thread runs. The one place a thread is
+// chosen is UrlConnectionTransport, which stays in :app behind HttpTransport - so an iOS
+// implementation over NSURLSession picks its own and this file is indifferent.
 
 sealed interface RefreshOutcome {
     data class Refreshed(val pair: TokenPair) : RefreshOutcome
