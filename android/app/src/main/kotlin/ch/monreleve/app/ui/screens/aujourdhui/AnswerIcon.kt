@@ -9,8 +9,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import ch.monreleve.app.R
 import ch.monreleve.app.aujourdhui.RecordedKind
 import ch.monreleve.app.design.FrontierType
@@ -52,6 +54,26 @@ internal fun kindIcon(kind: RecordedKind): Int =
         RecordedKind.ABSENCE -> R.drawable.ic_calendar_x
     }
 
+/**
+ * AN-POLISH (R436), closing PARK-I5. THE ANSWER LINE'S GLYPHS GROW WITH THE TEXT.
+ *
+ * At the system's largest font scale the words double and a fixed 20 dp glyph reads as a speck beside them -
+ * visible in aujourdhuiHalfDayCompleteLarge, which is where PARK-I5 was found. The glyph now takes the `icon`
+ * SIZE TOKEN TIMES THE FONT SCALE, which is exactly the multiplier the text beside it is taking, so the two
+ * stay in proportion at every setting.
+ *
+ * THE TOKEN TIMES THE SCALE, NOT AN sp-DERIVED SIZE, AND THE DIFFERENCE IS NOT ARITHMETIC. On this platform's
+ * linear font scaling `20.sp.toDp()` computes the same number - but it spells the figure 20 a second time,
+ * beside the token that already holds it, which is a value free to drift from Size.icon the day the token
+ * moves (R206/R181: one home, and the text derived from it). Size.icon * fontScale has no second figure to
+ * disagree with; it IS the token, scaled.
+ *
+ * IT IS SCOPED TO THE ANSWER LINE. Every other Icon in the app keeps Material3's fixed default, exactly as
+ * AN-ANSWER-ICON left them - retrofitting them is a visual change to screens this task was not asked for.
+ */
+@Composable
+internal fun answerGlyphSize(): Dp = Size.icon * LocalDensity.current.fontScale
+
 /** One answered kind, as the reader sees it: the glyph, then the words it belongs to. */
 internal data class AnswerLine(
     val label: String,
@@ -73,7 +95,7 @@ internal fun AnswerKindLine(line: AnswerLine) {
             painter = painterResource(line.icon),
             contentDescription = null,
             tint = LightColors.textPrimary,
-            modifier = Modifier.size(Size.icon).semantics { kindIconRes = line.icon },
+            modifier = Modifier.size(answerGlyphSize()).semantics { kindIconRes = line.icon },
         )
         Text(text = line.label, style = FrontierType.bodyM)
     }
@@ -131,7 +153,7 @@ internal fun AnswerStatusLine(status: AnswerStatus) {
             painter = painterResource(status.icon),
             contentDescription = null,
             tint = colour,
-            modifier = Modifier.size(Size.icon).semantics { statusIconRes = status.icon },
+            modifier = Modifier.size(answerGlyphSize()).semantics { statusIconRes = status.icon },
         )
         Text(text = status.text, style = FrontierType.caption, color = colour)
     }

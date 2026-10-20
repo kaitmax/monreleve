@@ -337,6 +337,18 @@ class AujourdhuiScreenScreenshotTest {
         paparazzi.snapshot { host(halfDay) }
     }
 
+    // AN-POLISH (R436): the HALF-ANSWERED card at the largest font scale - the morning settled into its own
+    // answer line, the afternoon still open. R436 asks for a capture of the answered card AND the
+    // half-answered one at 200 %; the answered card already has three (aujourdhuiHalfDayCompleteLarge,
+    // aujourdhuiWithYearLarge, aujourdhuiPendingOverdueLarge) and this was the gap. It is also where the
+    // scaled glyph has to prove itself: a 40 dp house beside doubled words, with the half below it still
+    // reachable rather than pushed off the viewport.
+    @Test
+    fun aujourdhuiHalfDayLarge() {
+        paparazzi.unsafeUpdateConfig(DeviceConfig.PIXEL_5.copy(fontScale = 2f))
+        paparazzi.snapshot { host(halfDay) }
+    }
+
     @Test
     fun aujourdhuiDaySynced() {
         paparazzi.snapshot { host(daySynced) }
