@@ -115,13 +115,20 @@ object AujourdhuiCopy {
         }
 
     /**
-     * The half-day answer line showing BOTH halves - « Matin : Domicile — Après-midi : En Suisse » (R292: a
-     * single label would misstate a split day). Each half is already a kindLabel; this only joins them.
+     * The half-day answer showing BOTH halves - « Matin : Domicile » and « Après-midi : En Suisse » (R292: a
+     * single label would misstate a split day). Each half is already a kindLabel; this only prefixes it with
+     * the half it belongs to, and remains the ONE home for that prefixing (R206).
+     *
+     * AN-ANSWER-ICON (R430): ONE ENTRY PER HALF, where this used to return the two joined by an em dash. No
+     * word changed - « Matin », « Après-midi » and the kind labels are the same constants - but the answer
+     * line now carries the icon of what was answered, and R430 requires each icon to sit beside the words of
+     * ITS half. On one joined string there is no side of the dash a glyph can belong to. The halves render
+     * as two lines instead, and the dash that separated them was layout this no longer needs.
      */
     fun answerHalfDay(
         morningLabel: String,
         afternoonLabel: String,
-    ): String = "$MORNING : $morningLabel — $AFTERNOON : $afternoonLabel"
+    ): Pair<String, String> = "$MORNING : $morningLabel" to "$AFTERNOON : $afternoonLabel"
 
     // AN-HOME section C « À traiter » (R328): the action card, shown ONLY when there is something to act on
     // (never an empty box). The lines are action-framed and derive from the SAME state the year panel's

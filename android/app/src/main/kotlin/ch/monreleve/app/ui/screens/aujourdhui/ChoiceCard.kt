@@ -175,7 +175,9 @@ internal fun RecordedAnswer(
         modifier = modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
         verticalArrangement = Arrangement.spacedBy(Spacing.space4),
     ) {
-        Text(text = parts.primary, style = FrontierType.bodyM)
+        // AN-ANSWER-ICON (R430): one line per answered kind, each carrying its own glyph. DAY has one; a
+        // half-day has two, so each icon sits beside the words of the half it describes.
+        parts.lines.forEach { AnswerKindLine(it) }
         Text(
             text = parts.status,
             style = FrontierType.caption,
@@ -188,9 +190,13 @@ internal fun RecordedAnswer(
     }
 }
 
-/** The three strings the answer shows, plus whether the sync failed (so the status reads in the error colour). */
+/**
+ * What the answer shows: one AnswerLine per answered kind (AN-ANSWER-ICON, R430 - a half-day has two, so each
+ * glyph belongs to its own half), the sync truth, whether that sync failed (so the status reads in the error
+ * colour), and the provenance.
+ */
 internal data class AnswerParts(
-    val primary: String,
+    val lines: List<AnswerLine>,
     val status: String,
     val failed: Boolean,
     val provenance: String?,
@@ -209,16 +215,25 @@ private fun statusText(
 /** One recorded slot's answer parts (DAY mode, and each auto slot). */
 internal fun slotAnswerParts(entry: DayEntry): AnswerParts =
     AnswerParts(
-        primary = AujourdhuiCopy.kindLabel(entry.kind.name, entry.absence?.name),
+        lines =
+            listOf(
+                AnswerLine(
+                    label = AujourdhuiCopy.kindLabel(entry.kind.name, entry.absence?.name),
+                    icon = kindIcon(entry.kind),
+                ),
+            ),
         status = statusText(entry.pending, entry.failed),
         failed = entry.failed,
         provenance = DetectionCopy.provenanceLine(entry.provenance.name),
     )
 
 /**
- * The day-level answer parts: one kind for DAY, both halves joined for HALF_DAY (R292 - never one label). The
- * answer is only ever rendered when the day is complete, so requireNotNull documents that invariant rather than
- * a defensive fallback (an expression body, so there is no explicit-return count to exceed).
+ * The day-level answer parts: one kind for DAY, BOTH halves for HALF_DAY (R292 - never one label). The answer
+ * is only ever rendered when the day is complete, so requireNotNull documents that invariant rather than a
+ * defensive fallback (an expression body, so there is no explicit-return count to exceed).
+ *
+ * AN-ANSWER-ICON (R430): the two halves become two AnswerLines, each with its own glyph, from the one home
+ * that prefixes them (AujourdhuiCopy.answerHalfDay).
  */
 private fun dayAnswerParts(state: AujourdhuiState): AnswerParts =
     if (state.granularity == GranularityChoice.DAY) {
@@ -226,11 +241,16 @@ private fun dayAnswerParts(state: AujourdhuiState): AnswerParts =
     } else {
         val am = requireNotNull(state.morning)
         val pm = requireNotNull(state.afternoon)
+        val halves =
+            AujourdhuiCopy.answerHalfDay(
+                AujourdhuiCopy.kindLabel(am.kind.name, am.absence?.name),
+                AujourdhuiCopy.kindLabel(pm.kind.name, pm.absence?.name),
+            )
         AnswerParts(
-            primary =
-                AujourdhuiCopy.answerHalfDay(
-                    AujourdhuiCopy.kindLabel(am.kind.name, am.absence?.name),
-                    AujourdhuiCopy.kindLabel(pm.kind.name, pm.absence?.name),
+            lines =
+                listOf(
+                    AnswerLine(label = halves.first, icon = kindIcon(am.kind)),
+                    AnswerLine(label = halves.second, icon = kindIcon(pm.kind)),
                 ),
             status = statusText(am.pending || pm.pending, am.failed || pm.failed),
             failed = am.failed || pm.failed,

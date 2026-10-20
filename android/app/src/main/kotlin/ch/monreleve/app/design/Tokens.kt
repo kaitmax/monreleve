@@ -105,6 +105,19 @@ object Size {
     val buttonLarge: Dp = 56.dp
 
     /**
+     * The default icon size. DESIGN-SYSTEM section 1 holds it twice and agrees with itself: the R62 SIZE
+     * family names « `icon-sm` 16 · `icon` 20 · `icon-lg` 24 », and the ICONS line says « Lucide, 1.75 px
+     * stroke, 20 px default ». Ported to Kotlin by AN-ANSWER-ICON, which needs it for the answer line's kind
+     * glyph (R430 names « the `icon` size token (20) » directly). The value is already in the brief, so R77
+     * covers it (no separate value ruling) and the R285 / R272 precedent governs ratifying an Android token
+     * here rather than inventing one - it is NOT a new value, it is `icon` ported, exactly as `rule` was.
+     *
+     * NOTHING ELSE IS MOVED ONTO IT. Material3's Icon defaults to 24 dp and every existing call site takes
+     * that default; retrofitting them is a visual change to screens this task was not asked to touch.
+     */
+    val icon: Dp = 20.dp
+
+    /**
      * The hairline rule / card border width. DESIGN-SYSTEM section 1 names it « `size-rule` 1 ... a
      * hairline », distinct from the card radius or a spacing step. Ported to Kotlin by AN-HOME, which
      * needs the « one white card with a 1 px border » section 1 calls for; the value is already in the
