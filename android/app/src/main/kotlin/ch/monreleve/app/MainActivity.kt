@@ -71,6 +71,7 @@ import ch.monreleve.app.data.repo.LocalEntryRepository
 import ch.monreleve.app.data.repo.LocalRhythmRepository
 import ch.monreleve.app.data.repo.RhythmRepository
 import ch.monreleve.app.data.sync.SyncScheduler
+import ch.monreleve.app.data.sync.buildSyncEngine
 import ch.monreleve.app.design.FrontierTheme
 import ch.monreleve.app.design.LightColors
 import ch.monreleve.app.detection.BACKGROUND_LOCATION
@@ -280,6 +281,11 @@ class MainActivity : ComponentActivity() {
                                 exportBytes = session::authenticatedGetBytes,
                                 settingsSaver = SessionSettingsSaver(session),
                                 revokeServer = session::revokeServerSession,
+                                // AN-POLISH (R440): sign-out sends what it can first. The SAME engine the
+                                // SyncWorker builds (R206 - one construction site), run inline and bounded
+                                // by the controller, because WorkManager is asynchronous by design and
+                                // sign-out needs an answer before it discards anything.
+                                syncNow = { buildSyncEngine(context).sync() },
                                 localStore = localStore,
                                 authenticatedPost = session::authenticatedPost,
                                 employerStore = employerStore,
@@ -550,6 +556,8 @@ internal fun MainShell(
     exportBytes: suspend (String) -> BytesOutcome,
     settingsSaver: SettingsSaver,
     revokeServer: suspend () -> Unit,
+    // AN-POLISH (R440): the bounded drain sign-out attempts before it discards anything.
+    syncNow: suspend () -> Unit,
     localStore: LocalStore,
     authenticatedPost: suspend (String, String) -> PostOutcome,
     employerStore: EmployerFigureStore,
@@ -566,7 +574,7 @@ internal fun MainShell(
     val controllers =
         rememberMainControllers(
             repository, rhythmRepository, store, taxYear, clock, scope, requestSync, dossierFetch, exportBytes,
-            settingsSaver, revokeServer, localStore, authenticatedPost,
+            settingsSaver, revokeServer, localStore, authenticatedPost, syncNow,
         )
     var tab by rememberShellTab()
     // AN-FORECAST: the two forecast sub-screens (not bottom-nav tabs) are a nullable overlay over the shell,
@@ -1062,6 +1070,7 @@ private fun parametresActions(
         onRequestSignOut = controller::requestSignOut,
         onConfirmSignOut = controller::confirmSignOut,
         onCancelSignOut = controller::cancelSignOut,
+        onRetrySignOutSync = controller::retrySignOutSync,
         onRequestDelete = controller::requestDelete,
         onConfirmDelete = controller::confirmDelete,
         onCancelDelete = controller::cancelDelete,

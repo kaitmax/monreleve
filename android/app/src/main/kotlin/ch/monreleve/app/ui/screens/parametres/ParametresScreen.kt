@@ -156,8 +156,14 @@ private fun ParametresOverlays(
     state.pendingRateChange?.let { change ->
         RateChangeDialog(change, actions.onConfirmRateChange, actions.onCancelRateChange)
     }
+    // AN-POLISH (R440): sign-out is sending the pending days before it discards anything. The sending
+    // dialog comes first because the prompt is null while it runs - the two are never on screen together.
+    if (state.signOutSending) SignOutSendingDialog()
     state.signOutPrompt?.let { prompt ->
-        SignOutDialog(prompt, actions.onConfirmSignOut, actions.onCancelSignOut)
+        SignOutDialog(
+            prompt,
+            SignOutActions(actions.onRetrySignOutSync, actions.onConfirmSignOut, actions.onCancelSignOut),
+        )
     }
     state.deletePrompt?.let {
         DeleteDialog(it, actions)

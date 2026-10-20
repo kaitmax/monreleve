@@ -31,6 +31,8 @@ data class ParametresActions(
     val onConfirmSignOut: () -> Unit,
     /** PARKAN-27: the person kept the session; dismiss the confirmation. */
     val onCancelSignOut: () -> Unit,
+    /** AN-POLISH (R440): the send left days behind; try it once more before deciding. */
+    val onRetrySignOutSync: () -> Unit = {},
     /** R289: raise the deletion confirmation (names what is destroyed and requires the typed word). */
     val onRequestDelete: () -> Unit,
     /** R289: the person typed the word and confirmed; erase server then device. */

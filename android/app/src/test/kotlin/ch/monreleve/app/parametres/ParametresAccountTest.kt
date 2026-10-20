@@ -241,9 +241,13 @@ class ParametresAccountTest : FunSpec({
             advanceUntilIdle()
 
             controller.requestSignOut()
+            advanceUntilIdle()
 
-            // Three days recorded, none synced (no drain ran): the confirmation must name all three.
-            controller.state.value.signOutPrompt shouldBe SignOutPrompt(unsyncedDays = 3)
+            // Three days recorded, none synced, and the default syncNow is a no-op (AN-POLISH R440: the
+            // send is attempted, it moves nothing, and the confirmation then NAMES all three days).
+            controller.state.value.signOutPrompt shouldBe
+                SignOutPrompt(pendingDates = listOf("2026-03-01", "2026-03-02", "2026-03-03"))
+            controller.state.value.signOutPrompt?.unsyncedDays shouldBe 3
         }
     }
 
@@ -264,6 +268,7 @@ class ParametresAccountTest : FunSpec({
             advanceUntilIdle()
 
             controller.requestSignOut()
+            advanceUntilIdle()
             controller.cancelSignOut()
             advanceUntilIdle()
 
@@ -292,6 +297,7 @@ class ParametresAccountTest : FunSpec({
             advanceUntilIdle()
 
             controller.requestSignOut()
+            advanceUntilIdle()
             controller.confirmSignOut()
             advanceUntilIdle()
 

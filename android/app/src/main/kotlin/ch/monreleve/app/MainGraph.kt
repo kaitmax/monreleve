@@ -106,6 +106,10 @@ object MainGraph {
         // AN12 increment 3 (R289): the authenticated POST (SessionManager::authenticatedPost) the account
         // delete uses. The controller supplies the path and the body.
         authenticatedPost: suspend (String, String) -> PostOutcome,
+        // AN-POLISH (R440): the bounded drain sign-out attempts BEFORE it discards anything. Defaulted to a
+        // no-op so the wiring and controller tests need not name it; the app injects SyncWorker's own
+        // buildSyncEngine, which is the one construction site for the drain (R206).
+        syncNow: suspend () -> Unit = {},
         // AN-STATE (R310): the restorable state seeds, held by the composition root in rememberSaveable and
         // passed here so the ONE construction site (R291) also decides each controller's restore. Defaulted to
         // null (a fresh build) so the wiring test and the controller tests need not name them.
@@ -158,6 +162,7 @@ object MainGraph {
                     scope,
                     exportBytes,
                     revokeServer,
+                    syncNow,
                     localStore,
                     authenticatedPost,
                     detectionModeStore,

@@ -91,6 +91,8 @@ fun rememberMainControllers(
     revokeServer: suspend () -> Unit,
     localStore: LocalStore,
     authenticatedPost: suspend (String, String) -> PostOutcome,
+    // AN-POLISH (R440): the bounded drain sign-out attempts before it discards anything.
+    syncNow: suspend () -> Unit,
 ): MainControllers {
     // AN-STATE (R310): the restorable state the controllers are seeded with, held here in rememberSaveable so it
     // survives rotation, a text-size change, a dark-mode switch AND a background kill (the Bundle outlives
@@ -118,7 +120,7 @@ fun rememberMainControllers(
         remember {
             MainGraph.build(
                 repository, rhythmRepository, store, taxYear, clock, scope, requestSync, dossierFetch, exportBytes,
-                settingsSaver, revokeServer, localStore, authenticatedPost,
+                settingsSaver, revokeServer, localStore, authenticatedPost, syncNow,
                 restoredCalendar = CalendarSnapshot(savedMonth, savedEditingDay, savedSelection),
                 restoredParametres = savedParametres,
                 restoredSimulation = savedSimulation,
