@@ -111,7 +111,7 @@ class AccountScopeTest {
                     entry(accountA, "mut-a1", "2027-06-18"),
                     entry(accountB, "mut-b1", "2027-06-20"),
                 )
-            val repo = LocalEntryRepository(dao, clock, accountB)
+            val repo = LocalEntryRepository(dao, clock, currentAccount = { accountB })
 
             val shown = repo.observeAll().first()
 
@@ -130,7 +130,7 @@ class AccountScopeTest {
                     entry(accountA, "mut-a2", "2027-06-19"),
                 )
             val poster = CapturingPoster()
-            val repoAsB = LocalEntryRepository(dao, clock, accountB)
+            val repoAsB = LocalEntryRepository(dao, clock, currentAccount = { accountB })
 
             SyncEngine(dao, poster, accountB).sync()
             val shownToB = repoAsB.observeAll().first()
@@ -158,7 +158,7 @@ class AccountScopeTest {
                     entry(accountB, "mut-b1", "2027-06-20"),
                 )
             val poster = CapturingPoster()
-            val repoAsB = LocalEntryRepository(dao, clock, accountB)
+            val repoAsB = LocalEntryRepository(dao, clock, currentAccount = { accountB })
 
             SyncEngine(dao, poster, accountB).sync()
             val shown = repoAsB.observeAll().first()
@@ -166,5 +166,133 @@ class AccountScopeTest {
             assertFalse("an UNOWNED row is never sent", sent(poster).contains("mut-unowned"))
             assertTrue("B's own row is still sent", sent(poster).contains("mut-b1"))
             assertFalse("an UNOWNED row is never shown", shown.any { it.clientMutationId == "mut-unowned" })
+        }
+
+    // ==============================================================================================
+    // AN-ACCOUNT-TAG (R423). THE TAG IS READ WHEN THE ROW IS WRITTEN, NOT WHEN THE SCREEN IS BUILT.
+    // ==============================================================================================
+    //
+    // KMP-2b found days silently lost. Sign in BY CODE, record today, relaunch: the day is gone and
+    // never reached the server. Two rows for the same day, read off the S9's own database, differ
+    // only in WHEN they were recorded:
+    //
+    //   2026-10-20 AM HOME PENDING UNOWNED                        <- recorded in the sign-in session
+    //   2026-10-20 AM HOME SYNCED  f476664646ba633c0c8323398f...  <- recorded after a relaunch
+    //
+    // THE MECHANISM. MainActivity composes the repository with accountStore.current() - a String read
+    // ONCE - and MainActivity is also what hosts the sign-in screen, so at that moment it is null.
+    // CodeController sets the account correctly when the code is accepted, but the repository already
+    // holds the stale null and every write in that session falls back to UNOWNED.
+    //
+    // EVERY COMPONENT DOWNSTREAM IS INNOCENT, which is why the loss is silent: R303 says an
+    // unresolved row is HELD - never sent, never shown - and EntryDao, SyncEngine and SyncWorker all
+    // honour that exactly. The defect is upstream of them, in what the row was tagged with.
+    //
+    // THE LINE'S OWN COMMENT IS THE DEFECT'S JUSTIFICATION, and it is true of only one sign-in path:
+    //   "A new account signs in through CallbackActivity, which restarts this activity, so onCreate
+    //    re-reads the current tag"
+    // That holds for the magic LINK, which does restart the activity. Signing in by CODE does not.
+    //
+    // SIGNING IN IS EXACTLY THE EVENT THAT CHANGES THE ANSWER, so the same question asked twice in
+    // one app session must be allowed to give two answers. That is what these assert.
+
+    @Test
+    fun `a day recorded after signing in carries the account, not UNOWNED`() =
+        runTest {
+            // Nobody is signed in when the screen is built - the ordinary cold start onto the
+            // sign-in screen.
+            var signedInAs: String? = null
+            val dao = FakeEntryDao()
+            val repository = LocalEntryRepository(dao, clock, currentAccount = { signedInAs })
+
+            // The user signs in BY CODE. CodeController sets the account; no activity restart.
+            signedInAs = accountA
+
+            val row = repository.record(RecordCommand(dayDate = "2027-06-20", kind = EntryKind.HOME))
+
+            assertEquals(
+                "a day recorded after a code sign-in must carry that account, not UNOWNED - an " +
+                    "UNOWNED row is held forever: never shown, never sent, and lost at the next launch",
+                accountA,
+                row.accountTag,
+            )
+        }
+
+    @Test
+    fun `the row reaching the dao carries it too, not only the returned object`() =
+        runTest {
+            // R133: asserting the RETURN VALUE alone would pass on a repository that computed the
+            // right tag and stored the wrong one. What matters is the row that lands in the table,
+            // because that is what the drain and the screens read.
+            var signedInAs: String? = null
+            val dao = FakeEntryDao()
+            val repository = LocalEntryRepository(dao, clock, currentAccount = { signedInAs })
+
+            signedInAs = accountA
+            repository.record(RecordCommand(dayDate = "2027-06-20", kind = EntryKind.HOME))
+
+            val stored = dao.observeAllForAccount(accountA).first()
+
+            assertEquals("the stored row must be visible under the account that recorded it", 1, stored.size)
+            assertEquals(accountA, stored.single().accountTag)
+        }
+
+    @Test
+    fun `signing out mid-session stops tagging new rows with the old account`() =
+        runTest {
+            // THE OTHER DIRECTION, and it is the half that keeps R303 honest (R196). A provider that
+            // only ever went null -> tag would pass the two above while still handing the previous
+            // person's tag to a row recorded after they signed out.
+            var signedInAs: String? = accountA
+            val dao = FakeEntryDao()
+            val repository = LocalEntryRepository(dao, clock, currentAccount = { signedInAs })
+
+            signedInAs = null
+
+            val row = repository.record(RecordCommand(dayDate = "2027-06-20", kind = EntryKind.HOME))
+
+            assertEquals(
+                "after a sign-out the fail-closed tag is correct - R303 is untouched by this fix",
+                UNOWNED_ACCOUNT,
+                row.accountTag,
+            )
+        }
+
+    @Test
+    fun `an unresolved tag while a session exists is refused, not written quietly (R425)`() =
+        runTest {
+            // THE CANARY. A provider frozen at composition (the defect) alongside a store that says
+            // somebody IS signed in - exactly the disagreement that lost days. Unit tests run with
+            // BuildConfig.DEBUG true, so this must CRASH rather than return a row.
+            val dao = FakeEntryDao()
+            val repository =
+                LocalEntryRepository(
+                    dao,
+                    clock,
+                    currentAccount = { null },
+                    isSignedIn = { true },
+                )
+
+            var threw = false
+            try {
+                repository.record(RecordCommand(dayDate = "2027-06-20", kind = EntryKind.HOME))
+            } catch (expected: IllegalStateException) {
+                threw = true
+            }
+
+            assertTrue("an unresolved tag while signed in must fail loudly, not write UNOWNED", threw)
+            assertTrue("and nothing may be stored", dao.observeAllForAccount(UNOWNED_ACCOUNT).first().isEmpty())
+        }
+
+    @Test
+    fun `R303 is untouched when genuinely nobody is signed in`() =
+        runTest {
+            // The case R303 exists for: no session at all. Silent, fail-closed, UNOWNED - unchanged.
+            val dao = FakeEntryDao()
+            val repository = LocalEntryRepository(dao, clock, currentAccount = { null }, isSignedIn = { false })
+
+            val row = repository.record(RecordCommand(dayDate = "2027-06-20", kind = EntryKind.HOME))
+
+            assertEquals(UNOWNED_ACCOUNT, row.accountTag)
         }
 }

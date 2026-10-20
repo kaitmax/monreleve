@@ -1,0 +1,314 @@
+================================================================================
+REPORT-AN-ACCOUNT-TAG
+THE DAY YOU RECORD IN THE SESSION YOU SIGNED IN IS NO LONGER LOST
+================================================================================
+
+TASK    relay/AN-ACCOUNT-TAG.txt, rulings R423-R428.
+BASE    9d51390 (origin/main)
+BRANCH  an-account-tag, worktree C:/wt/an-account-tag (R349), lock held
+DEVICE  SM-G960F (Galaxy S9), Android 10, Africa/Casablanca, auto-time ON
+
+--------------------------------------------------------------------------------
+STATUS (R391)
+--------------------------------------------------------------------------------
+COMPLETE. The FULL :app:gate ran IN THIS SESSION on this work:
+    BUILD SUCCESSFUL in 2m 16s, GATE_EXIT=0, 227 actionable tasks, 0 failures
+    test floor OK: 1173 unit tests observed (1166 before - the seven added here)
+
+THE FIRST FULL GATE FAILED and is reported rather than quietly re-run: ktlint
+found two blank-line violations in the appended tests
+(AccountScopeTest.kt:261 and :299). Fixed, re-gated, green above.
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+A day recorded in the same app session as the sign-in was tagged UNOWNED and
+silently lost: never shown, never sent, gone at the next launch. The repository
+held the account as a String read ONCE, by the screen that also hosts sign-in.
+It now holds a function and asks at the write.
+
+Four call sites had the defect, not one. The fence that stops the next one
+found all three live ones on untouched main, with no plant. A canary now fires
+loudly if the shape ever returns. And the fix is proved on the S9 in the exact
+sequence that lost the day: sign out, sign in by code, record with no restart,
+server receives it.
+
+--------------------------------------------------------------------------------
+R273 / R1
+--------------------------------------------------------------------------------
+R273. The KMP-2b session's findings: the two rows, the mechanism, and why every
+    component downstream is innocent.
+
+R1(a) origin/main contains kmp-2, kmp-up, fw-future-day, fw-selector-package -
+      all four ancestors of origin/main at 9d51390.
+R1(b) the FULL :app:gate green on origin/main's HEAD - run in the merge session
+      immediately before this one: BUILD SUCCESSFUL in 9m 36s, GATE_EXIT=0,
+      227 of 227 EXECUTED with --rerun-tasks. Stated as inherited from that run
+      rather than claimed as this session's (R391).
+R1(c) the S9, timezone Africa/Casablanca, auto_time 1. THE CLOCK STAYED REAL
+      throughout, and it had to: fw-future-day now refuses a dayDate after the
+      server's Paris today, so a moved clock would have made R427's recording
+      step fail by design and look like a defect in this fix.
+
+--------------------------------------------------------------------------------
+THE RED RUN - BEHAVIOURAL, NOT A COMPILE ERROR
+--------------------------------------------------------------------------------
+The first draft of these tests used the FIXED signature, so they would have
+failed to compile. A compile failure is a poor red: it proves the API changed,
+not that anything behaves differently. They were rewritten against the EXISTING
+signature so the failure is the defect itself.
+
+Three failures, each for its own reason:
+
+  a day recorded after signing in carries the account, not UNOWNED
+      expected:<acct-a-tag> but was:<UNOWNED>
+      THE DEFECT.
+
+  the row reaching the dao carries it too, not only the returned object
+      the stored row must be visible under the account that recorded it
+      expected:<1> but was:<0>
+      THE USER-FACING SYMPTOM - the row is invisible. Asserting the RETURN
+      VALUE alone would have passed on a repository that computed the right
+      tag and stored the wrong one (R133).
+
+  signing out mid-session stops tagging new rows with the old account
+      expected:<UNOWNED> but was:<acct-a-tag>
+      THE MIRROR DEFECT, AND IT WAS NOT IN THE BRIEF. The same capture means a
+      day recorded AFTER a sign-out carries the departed person's tag. That is
+      mis-attribution rather than loss, which on a shared phone is the worse
+      half and is precisely what R303 exists to prevent. It surfaced only
+      because R196 requires both directions.
+
+--------------------------------------------------------------------------------
+R423 - THE TAG IS READ WHEN THE ROW IS WRITTEN
+--------------------------------------------------------------------------------
+    private val currentAccount: () -> String? = { null },
+    ...
+    val resolved = currentAccount()
+    val account = resolved ?: UNOWNED_ACCOUNT
+
+A function, not a String. Signing in is exactly the event that changes the
+answer, so the same question asked twice in one app session must be allowed to
+give two answers.
+
+LocalRhythmRepository took the same change for the same reason: a weekly rhythm
+saved in the sign-in session was lost by the same line of code.
+
+THE CORRECT PATTERN WAS ALREADY IN THE FILE, THREE LINES ABOVE THE DEFECT.
+MainActivity:189 passes a lambda to SharedPrefsEmployerFigureStore, with a
+comment saying "The tag is read live from accountStore, so a re-sign-in under a
+different account cannot read the previous one's figure (fail closed when
+null)." Line 196 did the opposite, four lines later.
+
+AND THE DEFECTIVE LINE'S OWN COMMENT WAS ITS JUSTIFICATION:
+    "A new account signs in through CallbackActivity, which restarts this
+     activity, so onCreate re-reads the current tag"
+True of the magic LINK, which does restart the activity. FALSE of the CODE
+path, which sets the account in place. The comment documented an assumption
+that one of the two sign-in paths violates, and it read as reassurance for as
+long as nobody tried the other path on a device.
+
+--------------------------------------------------------------------------------
+R424 - THE CLASS, NOT THE INSTANCE
+--------------------------------------------------------------------------------
+THE CENSUS. Every construction-time capture of the account:
+
+  MainActivity.kt:189  employerStore          SAFE - passes a lambda, reads
+                                              live. This is the model the fix
+                                              copies, and the fence must not
+                                              flag it.
+  MainActivity.kt:196  LocalEntryRepository   FIXED - the reported defect.
+  MainActivity.kt:200  LocalRhythmRepository  FIXED - same shape, same loss,
+                                              applied to the weekly rhythm.
+  DevRecorderActivity.kt:65                   FIXED - found by the COMPILER
+                                              when the type changed, not by
+                                              reading. Its comment claimed it
+                                              tagged rows "under the account
+                                              signed in now, the same as the
+                                              production shell" - which was
+                                              true, and that was the problem.
+  EveningActionReceiver.kt:66                 call-site update only: it already
+                                              resolves the account per
+                                              invocation, so it was never
+                                              frozen.
+  EveningNotifier.kt:144                      same.
+
+A FIFTH HAZARD THE COMPILER CAUGHT, worth recording because it would have
+shipped silently had the types matched: a TRAILING LAMBDA binds to the LAST
+parameter, which is newMutationId: () -> String, not currentAccount. Every
+entry-repository call site therefore uses the NAMED form. Two function-typed
+parameters next to each other is a shape where "it compiled" is not evidence.
+
+THE FENCE: app/src/test/.../fences/AccountCaptureFenceTest.kt. It refuses an
+account read passed as a VALUE into a constructor, and allows the lambda form.
+
+  SHOWN FAILING ON THE ORIGINAL CODE, not on a plant (R178). The fix was
+  stashed, the fence kept, and its first run named three live sites:
+
+      DevRecorderActivity.kt:65  SharedPrefsAccountStore(applicationContext).current(),
+      MainActivity.kt:196        LocalEntryRepository(..., accountStore.current())
+      MainActivity.kt:200        LocalRhythmRepository(..., accountStore.current())
+
+  Exactly the three that were fixed - no more, no fewer - and it did NOT flag
+  line 189's lambda, which is the distinction it exists to make.
+
+  IT ALSO HAS A POSITIVE CONTROL: a test asserting the walk found the source
+  tree at all and reaches MainActivity.kt. A fence that scanned nothing would
+  report perfect compliance, which is the vacuous pass R63/R133 refuse.
+
+  ONE THING THE FENCE IS NOT NEEDED FOR, stated so its value is not
+  overclaimed: after the fix the TYPE makes the old shape unrepresentable - a
+  String? cannot be passed where () -> String? is expected, and restoring
+  line 196 to its original form fails to COMPILE. The fence's value is for the
+  next holder that takes a String and would accept a captured one happily.
+
+--------------------------------------------------------------------------------
+R425 - AN UNOWNED WRITE WHILE SOMEBODY IS SIGNED IN FAILS LOUDLY
+--------------------------------------------------------------------------------
+    if (resolved == null && isSignedIn()) {
+        check(!BuildConfig.DEBUG) { complaint }
+        Log.e("EntryRepository", complaint)
+    }
+
+isSignedIn is a SECOND, INDEPENDENT read of the account store. In production
+both read the same store, agree, and this never fires. IT FIRES PRECISELY WHEN
+THEY DISAGREE - which is what a stale capture looks like: a provider frozen at
+composition saying nobody is signed in while the store says somebody is. The
+canary is shaped like the defect rather than like its symptom.
+
+R303 IS UNTOUCHED when genuinely nobody is signed in: the probe says false too,
+there is nothing to disagree about, and the row is tagged UNOWNED silently and
+correctly. That case has its own test.
+
+Both halves asserted: the disagreement throws and stores nothing; the genuine
+no-session case returns UNOWNED without complaint.
+
+--------------------------------------------------------------------------------
+R426 - THE ORPHANS WERE NOT ADOPTED
+--------------------------------------------------------------------------------
+Counted on the S9 before anything: ONE UNOWNED row (2026-10-20 AM HOME
+PENDING), created by this chain's own diagnostic. Not re-tagged. Re-tagging an
+orphan to whoever signs in next would hand one person's days to another on a
+shared phone, which is the case R303 was written for - the cure would be the
+disease.
+
+IT IS NOW GONE, AND NOT BY MY HAND, which the count alone would misrepresent.
+R427 requires a SIGN-OUT, and sign-out erases local data by design. The
+confirmation dialog says so in the product's own words:
+    "La deconnexion efface les donnees de cet appareil : vos journees
+     enregistrees, le releve en cache, vos reglages de calcul et votre session."
+So the orphan count went 1 -> 0 by the product doing exactly what it tells the
+reader it will do. Erasure by design, not adoption, and not deletion by this
+session.
+
+--------------------------------------------------------------------------------
+R427 - PROVED ON THE S9, WITHOUT THE WORKAROUND
+--------------------------------------------------------------------------------
+The fixed debug build installed OVER the existing one (no uninstall). Then the
+exact sequence that used to lose the day, with NO restart after signing in:
+
+    sign out  ->  sign in BY CODE  ->  record today
+
+    server POSTs to /api/v1/entries   1 -> 2
+    the server row                    2026-10-20 AM HOME,
+                                      firstRecordedAt 2026-10-19 23:26:27
+    the LOCAL row                     syncState SYNCED,
+                                      accountTag f476664646ba633c0c8323398f...
+    UNOWNED rows on the device        0
+
+Before the fix that POST never happened and the row sat UNOWNED until the next
+launch made it invisible for good.
+
+THE LOG CHECK WITH ITS POSITIVE CONTROL (R133):
+    the app logged 90 lines in this run      <- the log captured something
+    SyncWorker appears twice                 <- and the relevant component ran
+    "account tag unresolved" appears 0 times <- R425 correctly silent
+The absence is evidence only because the control shows the log was working.
+
+THE CLOCK STAYED REAL throughout: Tue Oct 20 01:06 +01 on the phone, auto-time
+on, never moved.
+
+--------------------------------------------------------------------------------
+R428 - WHAT KMP-2b INHERITS
+--------------------------------------------------------------------------------
+KMP-2b's worktree C:/wt/kmp-2b AND ITS LOCK WERE NOT TOUCHED. It holds no
+commits and no changes; nothing was lost by pausing it.
+
+WHAT CHANGED FOR IT:
+  - a day recorded in the sign-in session is now tagged and synced correctly,
+    so R418's before-state no longer depends on an undocumented restart ritual;
+  - R417's BEFORE APK MUST BE REBUILT from the new main. The one built at
+    9d51390 is superseded - discard it rather than reuse it, or the "before"
+    install carries the defect and R420's comparison is against a broken
+    baseline;
+  - nothing here alters KMP-2b's rulings R417-R422 otherwise. The database
+    move is untouched: no entity, DAO, migration or schema changed.
+
+AND ONE THING IT NO LONGER HAS TO EXPLAIN: PARK-K6 from KMP-2 - the 16 October
+entry that never reached the server and was later absent from the device - is
+this defect. It can be closed rather than re-investigated.
+
+--------------------------------------------------------------------------------
+PARKED
+--------------------------------------------------------------------------------
+PARK-A1  The two library deprecations in app/ (LocalLifecycleOwner, Criteria)
+         are unchanged and unrelated; both fixes are dependency moves. Carried
+         from KMP-UP's PARK-U2.
+PARK-A2  Log.e's branch of R425 is unexercised by the unit tests, because
+         BuildConfig.DEBUG is true there so check() throws first. The release
+         path is one logging line; exercising it would need a release-variant
+         test for no additional guarantee. Recorded so the omission reads as a
+         decision.
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+1. THE BRIEF NAMED ONE LINE; FOUR SITES WERE CHANGED. R424 asks for the class,
+   and the census is above. Two were the same defect, one was found by the
+   compiler, and two were call-site updates only.
+
+2. THE FIX WAS STASHED MID-TASK to demonstrate the fence against the original
+   code. Restored immediately; both suites green afterwards.
+
+3. ktlint FAILED THE FIRST FULL GATE on two blank-line violations in the
+   appended tests. Fixed and re-gated rather than reported as green.
+
+--------------------------------------------------------------------------------
+QUESTIONS
+--------------------------------------------------------------------------------
+Q1 The mirror defect (a day recorded after sign-out carrying the departed
+   account) is fixed by the same change and asserted, but it was never
+   reported as a symptom. Is it worth checking whether any OTHER store - the
+   dossier cache, the settings - has the same shape? The fence covers the
+   account specifically; session and token holders were not audited.
+
+Q2 PARK-A2: is a release-variant test wanted for R425's logging branch, or is
+   exit-by-assertion in debug sufficient?
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+:app:gate, run in this session:
+    FIRST RUN   BUILD FAILED in 7m 12s, GATE_EXIT=1 - ktlintTestSourceSetCheck,
+                two blank-line violations in the tests added here.
+    AFTER FIX   BUILD SUCCESSFUL in 2m 16s, GATE_EXIT=0, 227 tasks, 0 failures,
+                test floor 1173.
+
+UNIT SUITES, each verified to have RUN rather than been skipped (R133):
+    AccountScopeTest          tests=9 skipped=0 failures=0 errors=0
+    AccountCaptureFenceTest   2 tests, including the positive control that the
+                              source walk found the tree at all
+
+ON THE DEVICE, SM-G960F Android 10, clock real and never moved:
+    sign out -> sign in by code -> record, NO restart
+    POST /api/v1/entries   1 -> 2
+    local row              SYNCED, accountTag f476664646ba633c0c8323398f...
+    UNOWNED rows           0
+    log positive control   90 lines captured, SyncWorker x2,
+                           "account tag unresolved" x0
+
+gate:clone was NOT run, and that is a decision rather than an omission (R133):
+its subject is the web package, and this branch changes Android files only.
+
+THE PUSH FOLLOWS THIS COMMIT. Its result is recorded in the commit that carries
+it rather than predicted here (R334).

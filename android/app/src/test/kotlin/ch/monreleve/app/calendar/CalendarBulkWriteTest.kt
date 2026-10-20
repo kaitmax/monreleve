@@ -45,7 +45,7 @@ class CalendarBulkWriteTest : FunSpec({
     test("Confirm writes one mutation per selected day, each its own id, all tagged with the account (C3)") {
         runTest {
             val dao = FakeEntryDao()
-            val repo = LocalEntryRepository(dao, june15, currentAccount = ACCOUNT)
+            val repo = LocalEntryRepository(dao, june15, currentAccount = { ACCOUNT })
             var syncs = 0
             val c =
                 CalendarController(repo, bulkStore(), BULK_TAX_YEAR, june15, this, requestSync = { syncs += 1 })
@@ -82,7 +82,7 @@ class CalendarBulkWriteTest : FunSpec({
     test("Annuler on the confirmation writes nothing (C4, D16)") {
         runTest {
             val dao = FakeEntryDao()
-            val repo = LocalEntryRepository(dao, june15, currentAccount = ACCOUNT)
+            val repo = LocalEntryRepository(dao, june15, currentAccount = { ACCOUNT })
             val c = CalendarController(repo, bulkStore(), BULK_TAX_YEAR, june15, this)
             advanceUntilIdle()
 
@@ -102,7 +102,7 @@ class CalendarBulkWriteTest : FunSpec({
     test("a bulk over days that already hold a value re-records each - the confirmation warned of it (C4)") {
         runTest {
             val dao = FakeEntryDao()
-            val repo = LocalEntryRepository(dao, june15, currentAccount = ACCOUNT)
+            val repo = LocalEntryRepository(dao, june15, currentAccount = { ACCOUNT })
             repo.record(RecordCommand(dayDate = "2026-06-02", kind = EntryKind.HOME))
             val c = CalendarController(repo, bulkStore(), BULK_TAX_YEAR, june15, this)
             advanceUntilIdle()
