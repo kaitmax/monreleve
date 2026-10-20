@@ -60,6 +60,7 @@ import ch.monreleve.app.auth.TokenStore
 import ch.monreleve.app.data.local.DossierCache
 import ch.monreleve.app.data.local.MonReleveDatabase
 import ch.monreleve.app.data.local.SharedPrefsDossierCache
+import ch.monreleve.app.data.local.get
 import ch.monreleve.app.data.remote.AuthApi
 import ch.monreleve.app.data.remote.DossierApi
 import ch.monreleve.app.data.remote.DossierResult

@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import ch.monreleve.app.data.local.MonReleveDatabase
+import ch.monreleve.app.data.local.get
 import ch.monreleve.app.data.local.todayInParis
 import java.time.Clock
 

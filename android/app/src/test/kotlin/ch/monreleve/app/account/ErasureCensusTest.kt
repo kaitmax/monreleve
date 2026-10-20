@@ -20,7 +20,16 @@ import java.io.File
 // negative sweep. A census keyed on names is structurally blind to a file path (R246's shape), so the seam,
 // not this test, is that file's guard.
 
-private val MAIN_DIR = File("src/main/kotlin/ch/monreleve/app")
+// KMP-2b (R401). THE CENSUS FOLLOWS THE CODE IT COUNTS. DATABASE_NAME = "monreleve.db" moved to
+// :shared commonMain with the @Database, and a census that walked only :app would have reported the
+// database as a store that "has since been removed" - which is how it failed on this task's own gate,
+// found by the guard rather than by a plant (R178). Both trees are read, and BOTH are asserted to
+// exist (R169): a wrong path would otherwise make the sweep pass by finding nothing.
+private val SOURCE_DIRS =
+    listOf(
+        File("src/main/kotlin/ch/monreleve/app"),
+        File("../shared/src/commonMain/kotlin/ch/monreleve/app"),
+    )
 private val STORAGE_NAME = Regex(""""(monreleve\.[a-z]+)"""")
 
 // Cleared by account deletion (R289): the four SharedPreferences files - via DeviceLocalStore's token,
@@ -31,6 +40,9 @@ private val ERASED_STORAGE =
         "monreleve.settings",
         "monreleve.dossier",
         "monreleve.pending",
+        // KMP-2b: DATABASE_NAME now lives in :shared commonMain (MonReleveDatabase.kt). The database
+        // is still erased the same way - clearAllTables() is derived from the @Database, wherever the
+        // @Database is declared.
         "monreleve.db",
         // AN-FIX F4 / R303: the account scope, cleared by DeviceLocalStore.clearForSignOut (and so deletion).
         "monreleve.account",
@@ -47,10 +59,14 @@ private val EXEMPT_STORAGE =
     )
 
 private fun mainKtFiles(): List<File> =
-    if (!MAIN_DIR.exists()) {
-        emptyList()
-    } else {
-        MAIN_DIR.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+    SOURCE_DIRS.flatMap { dir ->
+        // R169 presence: a directory that is not there is a FAILURE, never an empty contribution. An
+        // absent tree would silently shrink the census and the sweep would still pass.
+        check(dir.isDirectory) {
+            "the erasure census cannot find ${dir.absolutePath} - the working directory is not :app, " +
+                "or :shared moved. A census that scans nothing reports perfect compliance (R169)."
+        }
+        dir.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
     }
 
 private fun storageNames(): Set<String> =

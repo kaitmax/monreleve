@@ -24,8 +24,11 @@ import java.io.File
  * grow a latitude. The plant in REPORT-AN6a.txt shows it fires.
  */
 class RoomSchemaContractTest {
+    // KMP-2b (R396): the exported schemas moved to android/shared/schemas with the @Database. The
+    // package in the directory name is UNCHANGED (R368), so this is a path change and nothing else -
+    // the assertions below are untouched, which is what R396 means by "stays green unedited".
     private val schemaFile =
-        File("schemas/ch.monreleve.app.data.local.MonReleveDatabase/$DATABASE_VERSION.json")
+        File("../shared/schemas/ch.monreleve.app.data.local.MonReleveDatabase/$DATABASE_VERSION.json")
 
     private val database: JSONObject by lazy {
         assertTrue(
@@ -101,6 +104,25 @@ class RoomSchemaContractTest {
                     "friday" to ("TEXT" to false),
                 ),
         )
+
+    @Test
+    fun theIdentityHashOfVersionSixIsTheOneInstalledDevicesHold() {
+        // R396 (KMP-2b). THE ONE VALUE THAT CRASHES EVERY EXISTING INSTALL IF IT MOVES. Room compares
+        // the identity hash the BUILD generated with the one the DEVICE stored in room_master_table at
+        // open time; a mismatch throws "Room cannot verify the data integrity" and the app cannot open
+        // its database at all. Moving the @Database to another module must not touch it, so it is
+        // pinned here rather than left to be noticed.
+        //
+        // A LITERAL, LEGITIMATELY (R171): the value IS the assertion, and it is not self-referential -
+        // a08f5454... is the hash KMP-2 READ OUT OF THE S9's OWN room_master_table before any of this
+        // work began (REPORT-KMP-2.txt, R396), and KMP-UP confirmed the toolchain still generates it.
+        // So this compares the build against an install in the field, not against itself.
+        //
+        // WHAT MAKES IT A CLAIM ABOUT THE GENERATED SCHEMA rather than only about a committed file:
+        // :shared's KSP REWRITES this JSON on every build, so a changed hash would change the file and
+        // show up as a dirty tree. File + clean tree = generated.
+        assertEquals("a08f54541b97835cb850e7d8e4b1cf2d", database.getString("identityHash"))
+    }
 
     @Test
     fun theSchemaVersionIsPinnedToTheCodeConstant() {

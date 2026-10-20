@@ -1,17 +1,37 @@
 package ch.monreleve.app.data.local
 
-import android.content.Context
+import androidx.room.ConstructedBy
 import androidx.room.Database
-import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.RoomDatabaseConstructor
 import androidx.room.migration.Migration
-import androidx.sqlite.db.SupportSQLiteDatabase
+import androidx.sqlite.SQLiteConnection
+import androidx.sqlite.execSQL
 
 // AN5 increment 1 / AN6a increment 3. The device's local store.
 //
+// KMP-2b (R394/R395). THIS FILE MOVED FROM :app TO :shared commonMain, unchanged in every way that
+// reaches a device: the file name (monreleve.db), DATABASE_VERSION, every table, column, index,
+// primary key, default and identity hash are exactly what they were, and the five migrations execute
+// the same statements in the same order (MigrationSqlVerbatimTest compares them character for
+// character against a fixture recorded at main's HEAD before the move).
+//
+// WHAT DID CHANGE, and only this: each migration body is written against androidx.sqlite's
+// SQLiteConnection instead of the Android-only SupportSQLiteDatabase, because common code cannot see
+// the latter. Room 2.7.2 ALWAYS enters migrate(connection) - on Android with no driver it hands the
+// body a SupportSQLiteConnection, and the Support overload exists only as a delegation out of the
+// connection form (Migration.android.kt, whose KDoc says so). REPORT-KMP-2.txt records both the
+// documentary evidence and a device probe that logged exactly one entry into the connection form.
+// So ONE body serves Android and iOS; there is no second copy of the SQL to drift.
+//
+// THE BUILDER STAYS IN :app (R394): Room.databaseBuilder needs a Context. It is
+// app/src/main/kotlin/ch/monreleve/app/data/local/MonReleveDatabaseBuilder.kt, an extension on this
+// class's companion, so every call site still reads MonReleveDatabase.get(context).
+//
 // exportSchema = true writes schemas/<db>/<version>.json at compile time, committed and made
 // the frozen contract (R187) that RoomSchemaContractTest reads back and MigrationTestHelper
-// validates against a real database.
+// validates against a real database. KMP-2b moved that directory to android/shared/schemas with the
+// database; the JSON files are byte-identical.
 //
 // NO @TypeConverter. Room persists an enum as its constant name directly, so the wire enums
 // store as TEXT with no hand-written converter to drift.
@@ -50,8 +70,8 @@ const val DATABASE_VERSION = 6
 // MigrationTestHelper.runMigrationsAndValidate fails if it drifts from schemas/2.json.
 val MIGRATION_1_2 =
     object : Migration(1, 2) {
-        override fun migrate(db: SupportSQLiteDatabase) {
-            db.execSQL(
+        override fun migrate(connection: SQLiteConnection) {
+            connection.execSQL(
                 "CREATE TABLE IF NOT EXISTS `daily_tally` (" +
                     "`dayDate` TEXT NOT NULL, " +
                     "`minutesSwitzerland` INTEGER NOT NULL, " +
@@ -76,8 +96,8 @@ val MIGRATION_1_2 =
 // failure leaves the v2 table intact (no half-migrated store).
 val MIGRATION_2_3 =
     object : Migration(2, 3) {
-        override fun migrate(db: SupportSQLiteDatabase) {
-            db.execSQL(
+        override fun migrate(connection: SQLiteConnection) {
+            connection.execSQL(
                 "CREATE TABLE IF NOT EXISTS `entry_new` (" +
                     "`clientMutationId` TEXT NOT NULL, " +
                     "`dayDate` TEXT NOT NULL, " +
@@ -96,7 +116,7 @@ val MIGRATION_2_3 =
                     "`accountTag` TEXT NOT NULL, " +
                     "PRIMARY KEY(`accountTag`, `dayDate`, `portion`))",
             )
-            db.execSQL(
+            connection.execSQL(
                 "INSERT INTO `entry_new` (" +
                     "`clientMutationId`, `dayDate`, `portion`, `kind`, `absenceReason`, `note`, " +
                     "`provenance`, `detectedKind`, `detectedAt`, `clientClaimedAt`, `serverId`, " +
@@ -105,8 +125,8 @@ val MIGRATION_2_3 =
                     "`provenance`, `detectedKind`, `detectedAt`, `clientClaimedAt`, `serverId`, " +
                     "`firstRecordedAt`, `lastModifiedAt`, `syncState`, 'UNOWNED' FROM `entry`",
             )
-            db.execSQL("DROP TABLE `entry`")
-            db.execSQL("ALTER TABLE `entry_new` RENAME TO `entry`")
+            connection.execSQL("DROP TABLE `entry`")
+            connection.execSQL("ALTER TABLE `entry_new` RENAME TO `entry`")
         }
     }
 
@@ -120,11 +140,11 @@ val MIGRATION_2_3 =
 // This is a real Migration, never a destructive fallback (R305).
 val MIGRATION_3_4 =
     object : Migration(3, 4) {
-        override fun migrate(db: SupportSQLiteDatabase) {
+        override fun migrate(connection: SQLiteConnection) {
             // Drop the continuous-era tally and its rows explicitly (only AN-AUTO test rows can exist; nothing to
             // convert into the four check slots). The entry table is untouched.
-            db.execSQL("DROP TABLE IF EXISTS `daily_tally`")
-            db.execSQL(
+            connection.execSQL("DROP TABLE IF EXISTS `daily_tally`")
+            connection.execSQL(
                 "CREATE TABLE IF NOT EXISTS `daily_tally` (" +
                     "`dayDate` TEXT NOT NULL, " +
                     "`check1` TEXT, " +
@@ -146,11 +166,11 @@ val MIGRATION_3_4 =
 // accuracy value - the counts are the only new facts, and they are counts (D18).
 val MIGRATION_4_5 =
     object : Migration(4, 5) {
-        override fun migrate(db: SupportSQLiteDatabase) {
+        override fun migrate(connection: SQLiteConnection) {
             // Step 1: add the GPS check count, defaulting existing rows to 0 (they predate provider counting).
-            db.execSQL("ALTER TABLE `daily_tally` ADD COLUMN `gpsCheckCount` INTEGER NOT NULL DEFAULT 0")
+            connection.execSQL("ALTER TABLE `daily_tally` ADD COLUMN `gpsCheckCount` INTEGER NOT NULL DEFAULT 0")
             // Step 2: add the NETWORK check count, same default for existing rows.
-            db.execSQL("ALTER TABLE `daily_tally` ADD COLUMN `networkCheckCount` INTEGER NOT NULL DEFAULT 0")
+            connection.execSQL("ALTER TABLE `daily_tally` ADD COLUMN `networkCheckCount` INTEGER NOT NULL DEFAULT 0")
         }
     }
 
@@ -160,8 +180,8 @@ val MIGRATION_4_5 =
 // drifts. A real, non-destructive Migration (R305).
 val MIGRATION_5_6 =
     object : Migration(5, 6) {
-        override fun migrate(db: SupportSQLiteDatabase) {
-            db.execSQL(
+        override fun migrate(connection: SQLiteConnection) {
+            connection.execSQL(
                 "CREATE TABLE IF NOT EXISTS `weekly_rhythm` (" +
                     "`accountTag` TEXT NOT NULL, " +
                     "`monday` TEXT, " +
@@ -179,6 +199,7 @@ val MIGRATION_5_6 =
     version = DATABASE_VERSION,
     exportSchema = true,
 )
+@ConstructedBy(MonReleveDatabaseConstructor::class)
 abstract class MonReleveDatabase : RoomDatabase() {
     abstract fun entryDao(): EntryDao
 
@@ -186,19 +207,22 @@ abstract class MonReleveDatabase : RoomDatabase() {
 
     abstract fun rhythmDao(): RhythmDao
 
-    companion object {
-        @Volatile
-        private var instance: MonReleveDatabase? = null
+    // KMP-2b (R394). The companion is EMPTY and exists only so :app can attach the builder to it as an
+    // extension (MonReleveDatabaseBuilder.kt), which keeps every call site reading
+    // MonReleveDatabase.get(context) exactly as it did before the move. Room.databaseBuilder takes a
+    // Context, so the builder itself cannot live here.
+    companion object
+}
 
-        fun get(context: Context): MonReleveDatabase =
-            instance ?: synchronized(this) {
-                instance ?: Room.databaseBuilder(
-                    context.applicationContext,
-                    MonReleveDatabase::class.java,
-                    DATABASE_NAME,
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
-                    .build()
-                    .also { instance = it }
-            }
-    }
+// KMP-2b (R394/R400). Room's KMP constructor. Room's compiler generates the `actual` for each target it
+// processes, which is how a commonMain @Database is instantiated on a platform that has no reflection.
+// On Android nothing reads it - Room.databaseBuilder(context, klass, name) still resolves the generated
+// _Impl by name, exactly as before - so this changes nothing about how an existing install opens its
+// database. It is declared NOW so the day a Mac runs kspKotlinIosArm64 no source file changes (R400).
+//
+// @Suppress("NO_ACTUAL_FOR_EXPECT") is Room's own documented form: the actual is generated by KSP per
+// target, which the common metadata compilation cannot see.
+@Suppress("NO_ACTUAL_FOR_EXPECT")
+expect object MonReleveDatabaseConstructor : RoomDatabaseConstructor<MonReleveDatabase> {
+    override fun initialize(): MonReleveDatabase
 }

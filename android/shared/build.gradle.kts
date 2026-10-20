@@ -98,6 +98,19 @@ val generateFixtureConstants by tasks.registering {
 }
 
 kotlin {
+    // KMP-2b increment 3 (R394/R400). Room 2.7 KMP builds a @Database around an `expect object`
+    // RoomDatabaseConstructor whose `actual` its compiler GENERATES per target - the documented
+    // form, and the only one that works on a platform with no reflection. Kotlin still marks
+    // expect/actual CLASSES (objects included) Beta and warns once per declaration, so without this
+    // flag every build carries two warnings: one for our declaration and one for Room's generated
+    // actual, which is code we do not own and cannot annotate.
+    //
+    // R406 made the warning count an instrument - KMP-UP measured it going DOWN - and two permanent
+    // warnings would quietly spend that. The flag silences the Beta notice and changes no codegen.
+    compilerOptions {
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
+
     // The Android target. matches :app's JVM target 17; its testDebugUnitTest runs commonTest + the
     // Android unit-test source set on the JVM (where moved Kotest specs live, R373).
     androidTarget {
