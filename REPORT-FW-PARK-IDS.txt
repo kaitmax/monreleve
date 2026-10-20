@@ -1,0 +1,667 @@
+================================================================================
+REPORT-FW-PARK-IDS
+THE PARK REGISTER SEES EVERY PARK ID - AND IT NEVER SAW THE NUMBERED ONES EITHER
+================================================================================
+
+TASK    FW-PARK-IDS, relay/FW-PARK-IDS.txt. Rulings R442-R445 (not taken; the
+        highest ruling in the register before this task was R441, from
+        AN-POLISH).
+BASE    5e87a4a (origin/main, the KMP-2b merge).
+BRANCH  fw-park-ids, worktree C:/wt/fw-park-ids (R349). The lock carrying this
+        session's identity was written into it at the start and removed at the
+        end; it is gitignored (.gitignore:62) and was never staged.
+
+--------------------------------------------------------------------------------
+STATUS (R391)
+--------------------------------------------------------------------------------
+COMPLETE. R442, R443, R444 and R445 are all done, and R445's stop condition did
+not fire: the cited-id count rose from 39 to 90 and coverage is OK.
+
+THE GATE THAT COVERS THESE PATHS RAN ON EACH COMMIT, IN THIS SESSION, GREEN:
+
+  122e1dd   GATE PASSED for the paths changed; test: 3279 passed
+  78ece08   GATE PASSED for the paths changed; test: 3285 passed
+
+gate:clone and the two re-runs R182 requires against the final report text are
+in PUSH PROOF, with their exit codes and the database each suite ran against.
+
+:app:gate WAS NOT RUN, and that is a decision rather than an omission (R133):
+`git diff origin/main...HEAD -- android/` is EMPTY on this branch. The ONE
+Android-side consumer of the file this task changed - RegisterCoverageTest,
+which shells out to web/scripts/register-coverage.mjs - WAS run on its own,
+because a change to that script is a change to that test's subject (R267). It
+is named as exactly that in PUSH PROOF and never as the full gate.
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+THE DEFECT IS LARGER THAN THE ONE THE PROMPT DESCRIBES, and the extra half was
+found by measuring rather than by reading the prompt.
+
+`PARKAN?` is not "PARK, then optionally AN". It is the five letters PARKA
+followed by an optional N. So `/\bPARKAN?-\d+\b/g` matched PARKAN-<n> and
+PARKA-<n>:
+
+    "PARK-12"        ->  null
+    "PARKAN-45"      ->  ["PARKAN-45"]
+    "PARKA-7"        ->  ["PARKA-7"]
+    "PARK-K6"        ->  null
+
+The lettered ids were invisible, as the prompt says. So was the ENTIRE PARK-<n>
+series - twenty-four entries cited by nineteen reports. The headline the check
+has printed since R327, "register coverage: OK - 39 cited id(s) across 115
+report(s)", was thirty-nine PARKAN-<n> ids and nothing else. And the pattern
+was simultaneously too WIDE: PARKA-<n> is a shape the census contains zero
+instances of, and the check would have accepted one.
+
+The same expression sat a second time in the heading scan at line 137, so a
+"Not transcribed" placeholder under `## PARK-12 -` or `## PARK-K6 -` could not
+be flagged either: it saw 39 of parking.md's 97 headings.
+
+Two commits:
+
+  122e1dd  the 28 lettered entries, back-filled into parking.md
+  78ece08  the widened pattern, one home for it, and the test that
+           demonstrates the gap
+
+THE BACK-FILL COMES FIRST, which reverses the prompt's step order on purpose:
+widening before back-filling leaves the register check RED for the length of
+one commit on both gates that run it, and a red commit is a bounce. R182's
+shape - a check runs after the thing it checks for can exist.
+
+TWO COLLISIONS WERE FOUND IN THE LETTER SERIES, neither of them in the brief.
+PARK-F1, PARK-F2 and PARK-F3 are each used by TWO tasks on main for different
+findings; PARK-P1 and PARK-P2 are FW-PRISMA-GENERATE's, and the an-polish
+branch awaiting the operator's review uses the same two ids again. They are
+recorded, not resolved - PARK-26, and QUESTIONS Q1 and Q2.
+
+--------------------------------------------------------------------------------
+R273 - WHAT WAS READ
+--------------------------------------------------------------------------------
+relay/FW-PARK-IDS.txt in full. CLAUDE.md and README.md at the repository root -
+NOT the CLAUDE.md in the parent Downloads folder, which belongs to a Morocco
+travel platform and says so. REPORT-KMP-2b.txt in full, its PARKED list and its
+QUESTIONS Q3, which is what raised this task. web/scripts/register-coverage.mjs
+in full and android/app/src/test/kotlin/ch/monreleve/app/register/
+RegisterCoverageTest.kt in full. parking.md's "Format" section, its STATUS
+LEDGER and its PARK-B1..B4 entries, for the house shape. The PARKED and
+QUESTIONS sections of every report that raises a lettered id: REPORT-KMP-2.txt,
+REPORT-KMP-UP.txt, REPORT-AN-ACCOUNT-TAG.txt, REPORT-AN-ANSWER-ICON.txt,
+REPORT-FW-FOLLOWUP.txt, REPORT-FW-FUTURE-DAY.txt, REPORT-FW-GATE-CLEAN.txt,
+REPORT-FW-REDIRECT.txt, REPORT-FW-SELECTOR-PACKAGE.txt and
+REPORT-FW-PRISMA-GENERATE.txt. web/tests/unit/meta/fixture-coverage.test.ts,
+as the house shape for a test that drives a shared CLI, and
+declaration-parity.test.ts and check-ordering.test.ts, to establish that this
+change owes neither a .d.mts nor a LATE_CHECKS entry.
+
+READ BUT NOT MERGED: origin/an-polish's parking.md, with `git show`, to
+establish the PARK-P collision and to place this task's insertion where a
+later merge of that branch stays clean. The branch was not pulled in.
+
+--------------------------------------------------------------------------------
+R1 - WHERE THE CHECK IS, AND THE BEFORE OUTPUT
+--------------------------------------------------------------------------------
+THE CHECK IS ONE NODE SCRIPT WITH TWO CALLERS (R327):
+
+  web/scripts/register-coverage.mjs      the one definition
+    line 49   const CITATION = /\bPARKAN?-\d+\b/g;          (the citation scan)
+    line 137  /^##\s+(PARKAN?-\d+)\s+-.*$/gm                (the heading scan)
+
+  web/scripts/gate-clone.mjs:565         runs it as gate:clone's FIRST step,
+                                         before install, against the clone
+  android/app/src/test/kotlin/ch/monreleve/app/register/RegisterCoverageTest.kt
+                                         shells out to the same file, so
+                                         :app:gate enforces it too
+
+Both line numbers are as at 5e87a4a. There is no second implementation.
+
+THE BEFORE OUTPUT, run in this worktree on a tip equal to origin/main - and the
+equality is stated because it is what makes a run here a claim about main:
+
+    $ git rev-parse HEAD
+    5e87a4a1d3dc17cf03fcfb286bf6537e2ab83a72
+    $ git rev-parse origin/main
+    5e87a4a1d3dc17cf03fcfb286bf6537e2ab83a72
+    $ node web/scripts/register-coverage.mjs C:/wt/fw-park-ids
+    register coverage: OK - 39 cited id(s) across 115 report(s), all have
+    headings in parking.md
+    EXIT=0
+
+39 is the BEFORE count.
+
+--------------------------------------------------------------------------------
+R442 - THE CENSUS, AND THE PATTERN FITTED TO IT
+--------------------------------------------------------------------------------
+EVERY DISTINCT TOKEN BEGINNING "PARK" across REPORT-*.txt, relay/ and
+parking.md, classified. Counts are occurrences, not distinct ids.
+
+A. IDS OF THIS REGISTER - three shapes, and the widened pattern matches these
+   and only these.
+
+   PARK-<n>         24 distinct, PARK-1 to PARK-24. 9 of PARK-1, 17 of PARK-4,
+                    13 of PARK-15, 17 of PARK-17 ... Cited by REPORT-FW20.txt,
+                    REPORT-FW20b.txt, REPORT-AN3.txt, REPORT-REG-APPLY.txt and
+                    fifteen more. NEVER MATCHED BY THE OLD PATTERN.
+   PARKAN-<n>       39 distinct, PARKAN-1 to PARKAN-50 with the recorded gap.
+                    The only shape the old pattern ever saw.
+   PARK-<L><n>      32 distinct, one capital letter then digits:
+                    PARK-A1, PARK-A2                       (AN-ACCOUNT-TAG)
+                    PARK-B1, PARK-B2, PARK-B3, PARK-B4     (KMP-2b)
+                    PARK-F1, PARK-F2, PARK-F3              (TWO tasks - see Q1)
+                    PARK-G1                                (FW-GATE-CLEAN)
+                    PARK-I1 .. PARK-I5                     (AN-ANSWER-ICON)
+                    PARK-K1 .. PARK-K7                     (KMP-2)
+                    PARK-P1, PARK-P2                       (FW-PRISMA-GENERATE,
+                                                            and see Q2)
+                    PARK-R1, PARK-R2                       (FW-REDIRECT)
+                    PARK-S1, PARK-S2, PARK-S3              (FW-SELECTOR-PACKAGE)
+                    PARK-U1, PARK-U2, PARK-U3              (KMP-UP)
+                    NEVER MATCHED BY THE OLD PATTERN.
+                    Every one uses EXACTLY ONE letter. That is what decides
+                    `[A-Z]?` over the prompt's `[A-Z]*`.
+
+B. REGISTERS OF THEIR OWN - a digit where this register has a hyphen, so none
+   of them reaches `PARK-` or `PARKAN-`. Excluded before and excluded now.
+
+   PARK4-1 .. PARK4-4        Phase4parking.md, named in the script's header
+   PARK5-1, PARK5b-1, PARK5b-2
+   PARK26-1 .. PARK26-3, PARK27-1 .. PARK27-5
+   PARK30-1 .. PARK30-30, PARK31-1 .. PARK31-6
+                             task-local parking lists, ~50 ids in all
+
+C. NOT IDS AT ALL - none may be matched.
+
+   PARKED      193 occurrences, 140 files   PARKING     6
+   PARKS       1                            PARKA       2 (prose, no hyphen)
+   PARK        54 (the bare word)           bare "PARK-" with nothing after it
+   PARK-item   1, REPORT-REG-UPDATE.txt     PARKAN-NNN  1, a placeholder
+   PARKFW32    1, no hyphen
+
+D. ONE ID OF A FOURTH SHAPE, deliberately left unmatched.
+
+   PARK-FW34-LAUNCH   5 occurrences, REPORT-FW34.txt and REPORT-FW34-PAGE.txt.
+   The prompt's suggested `[A-Z]*\d+\b` matches `PARK-FW34` OUT of it, because
+   the hyphen that follows is a word boundary - and would then report a cited
+   id that exists nowhere. `[A-Z]?` produces no match at all there. Parked as
+   PARK-25 and raised as Q3.
+
+THE WIDENED PATTERN, and the one home it now has:
+
+    const ID = String.raw`PARK(?:AN)?-[A-Z]?\d+`;
+    const CITATION = new RegExp(String.raw`\b${ID}\b`, 'g');
+    ... and the heading scan:
+    parking.md.matchAll(new RegExp(String.raw`^##\s+(${ID})\s+-.*$`, 'gm'))
+
+ONE HOME, BECAUSE THERE WERE TWO COPIES AND BOTH CARRIED THE SAME DEFECT
+(R206, R267). The heading scan is why this matters rather than being tidiness:
+a widening that reached only the citation scan would have left the placeholder
+check blind to every heading the widening makes legal. It saw 39 of
+parking.md's 97 headings before; it sees all of them now.
+
+--------------------------------------------------------------------------------
+R443 - PROVEN BOTH WAYS, ON ONE FIXTURE
+--------------------------------------------------------------------------------
+THE TEST IS web/tests/unit/meta/register-coverage.test.ts. It drives the CLI as
+a subprocess, the way BOTH gates drive it (R204: the entry point is the unit
+under test), so there is no import and therefore no hand-written .d.mts to
+drift (R185). The fixture is one throwaway root per case, with its own
+parking.md and REPORT-FIXTURE.txt.
+
+ONE FIXTURE TEXT carries all three real shapes and every near-miss:
+
+    An entry in the numbered series: PARK-12, and another, PARK-4.
+    An Android-era id: PARKAN-45.
+    Lettered ids from the KMP and Android chains: PARK-K6, PARK-U3, PARK-B1,
+    PARK-I1 and PARK-A2.
+
+    None of the following is an id of this register, and none may be reported:
+    PARKED, PARKING, PARKS, a bare PARK- with nothing after it, PARK-item,
+    PARKAN-NNN, PARKA-7, PARK4-2, PARK5b-1, PARK30-19, PARK31-6 and
+    PARK-FW34-LAUNCH.
+
+THE GAP, DEMONSTRATED. The old pattern, kept in the test as a literal annotated
+with its provenance (register-coverage.mjs:49 as at 5e87a4a), run over that
+same text:
+
+    OLD: ["PARKAN-45","PARKA-7"]
+    NEW: ["PARK-12","PARK-4","PARKAN-45","PARK-K6","PARK-U3","PARK-B1",
+          "PARK-I1","PARK-A2"]
+
+THE POSITIVE CONTROL IS PARKAN-45 ALONE, AND THE PROMPT'S WORDING FOR IT CANNOT
+BE MET. R443 names "the old pattern still finding PARK-12 and PARKAN-45 in the
+same fixture" as the control. The old pattern never found PARK-12 anywhere -
+that IS the finding, and asserting it as a control would have asserted the
+defect away. PARKAN-45 serves alone, and it serves: the old pattern is working
+on this text, so what it misses it misses because of the pattern and not
+because of an empty fixture. Recorded under DEVIATIONS 1.
+
+AND IT RETURNED PARKA-7, which is the other half of the same typo and is
+asserted as such: `expect(found).toEqual(['PARKAN-45', 'PARKA-7'])`. A pattern
+that was only too narrow would not have done that.
+
+THE RED RUN, before the pattern changed, on the already-back-filled tree:
+
+    $ pnpm exec vitest run tests/unit/meta/register-coverage.test.ts
+     Test Files  1 failed (1)
+          Tests  5 failed | 1 passed (6)
+
+    x names every real id in the fixture when parking.md covers none of them
+      AssertionError: expected 'R294/R327: parking.md does not cover ...'
+      to contain 'PARK-12 is cited by REPORT-FIXTURE.txt'
+    x reports no near-miss as an id, with a real id present to prove the scan
+      ran (R169)
+      AssertionError: expected [ 'is cited by', 'is cited by' ] to have a
+      length of 1 but got 2
+    x passes once every cited id has a real entry, and counts all three shapes
+      AssertionError: expected 1 to be +0
+    x flags a placeholder under a LETTERED heading too - the heading matcher
+      moved with it (R267)
+      AssertionError: expected +0 to be 1
+    x passes, and cites more ids than the narrow pattern did at 5e87a4a
+      AssertionError: expected 39 to be greater than 39
+
+    The one that PASSED is the old-pattern demonstration, which is a historical
+    assertion and is true before and after.
+
+    THE SECOND FAILURE IS THE "TOO WIDE" HALF CAUGHT LIVE: the near-miss
+    fixture contains one real id and PARKA-7, and the old pattern reported
+    BOTH. The widened pattern reports one.
+
+THE GREEN RUN, after:
+
+    $ pnpm exec vitest run tests/unit/meta/register-coverage.test.ts
+     Test Files  1 passed (1)
+          Tests  6 passed (6)
+
+WHAT THE SIX ASSERT:
+  1. the old pattern finds PARKAN-45 and PARKA-7 in the fixture and misses
+     PARK-12, PARK-4, PARK-K6, PARK-U3, PARK-B1, PARK-I1, PARK-A2;
+  2. the widened check names all eight real ids when parking.md covers none;
+  3. it reports no near-miss - with PARKAN-45 present and named first, so the
+     absence assertion is only made once presence is established (R169), and
+     "is cited by" appears exactly once;
+  4. it passes once every cited id has a real entry, and the printed count is
+     8, which is all three shapes;
+  5. the HEADING scan flags a "Not transcribed" body under `## PARK-K6 -`, with
+     the same heading and a real body passing as the positive control;
+  6. the REAL repository passes with a count greater than 39.
+
+--------------------------------------------------------------------------------
+R444 - THE REGISTER, BACK-FILLED. EVERY ID, AND ON WHAT EVIDENCE
+--------------------------------------------------------------------------------
+TWENTY-EIGHT ids were cited by reports on main with no "## <id> -" heading.
+PARK-B1..B4 already had entries (KMP-2b wrote them). All twenty-eight are in
+parking.md at 122e1dd, in one inserted section headed "THE LETTER SERIES, AND
+WHY IT IS BACK-FILLED HERE".
+
+THE SHAPE OF A BACK-FILLED ENTRY, and why it is not the house four-field form:
+QUESTION / TAKEN / NOT TAKEN / TOUCHES is for an entry written by the task that
+TOOK the decision. A back-fill is not that, and filling those fields would mean
+inventing a QUESTION nobody asked. Each carries instead: RAISED BY (the report,
+and every other report citing it), WHAT IT IS (derived from the raising report,
+R181), and STATE.
+
+STATE IS ONE OF THREE, and never a fourth invented for convenience:
+  OPEN               the record shows nothing closing it
+  CLOSED             with the task, the report and, where there is one, the
+                     commit
+  RECORDED DECISION  the raising report wrote it as a decision with its reason
+                     and left nothing owed
+
+  id        state              evidence
+  --------  -----------------  ---------------------------------------------
+  PARK-A1   OPEN               REPORT-AN-ACCOUNT-TAG.txt raised it;
+                               REPORT-KMP-2b.txt, the most recent citation,
+                               lists it open. SAME FINDING AS PARK-U2, by its
+                               own raising report's words ("Carried from
+                               KMP-UP's PARK-U2") - cross-referenced, not
+                               merged.
+  PARK-A2   OPEN               AN-ACCOUNT-TAG's Q2 asks for the ruling; no
+                               report answers it; KMP-2b lists it open.
+  PARK-F1   OPEN x2            TWO findings. (a) FW-FOLLOWUP's "Renvoyer un
+                               code" footer, its Q1 unanswered. (b)
+                               FW-FUTURE-DAY's dossier-route future_year, its
+                               Q1 unanswered. See Q1 below.
+  PARK-F2   OPEN x2            (a) FW-FOLLOWUP's pointer to PARK-R1, recorded
+                               there as "still open". (b) FW-FUTURE-DAY's
+                               future-dated-rows question for production; no
+                               report records the R413 query having been run.
+  PARK-F3   OPEN x2            (a) FW-FOLLOWUP: nothing guards the .gitignore
+                               class; no report records the guard written.
+                               (b) FW-FUTURE-DAY: the rule is not in the
+                               database; its Q2 unanswered.
+  PARK-G1   RECORDED DECISION  FW-GATE-CLEAN states "No change needed,
+                               recorded so the omission reads as a decision".
+                               No later report revisits it.
+  PARK-I1   OPEN               AN-ANSWER-ICON; a design-system decision, and
+                               no report records one.
+  PARK-I2   OPEN               AN-ANSWER-ICON; no report records a cause or a
+                               fix.
+  PARK-I3   OPEN               AN-ANSWER-ICON's Q5 asks it; unanswered.
+  PARK-I4   OPEN               AN-ANSWER-ICON; no report records
+                               DESIGN-SYSTEM.md brought up to date.
+  PARK-I5   OPEN               AN-ANSWER-ICON's Q4 asks it; unanswered.
+  PARK-K1   CLOSED             by KMP-UP. REPORT-KMP-UP.txt records kotlin
+                               2.0.21 -> 2.1.10 and ksp 2.0.21-1.0.28 ->
+                               2.1.10-1.0.31 in force with the migration
+                               matrix re-run on the S9; REPORT-KMP-2b.txt
+                               names it "closed by KMP-UP".
+  PARK-K2   OPEN               REPORT-KMP-2b.txt: "still unscripted". CLAUDE.md
+                               carries the same item as a standing PARKED note.
+  PARK-K3   OPEN               REPORT-KMP-2b.txt lists it open.
+  PARK-K4   CLOSED             by KMP-UP. REPORT-KMP-UP.txt measured the
+                               warning "present once on 2.0.21 and ABSENT on
+                               2.1.10" and states "PARK-K4 is closed."
+  PARK-K5   OPEN               REPORT-KMP-2b.txt lists it open.
+  PARK-K6   CLOSED 2026-10-20  by AN-ACCOUNT-TAG, REPORT-AN-ACCOUNT-TAG.txt,
+                               merged as f319e0b. The closure note, including
+                               what it rests on, is written into
+                               REPORT-KMP-2.txt's own PARKED entry.
+  PARK-K7   OPEN, NARROWED     FW-PRISMA-GENERATE gave `dev` and `test:db` the
+                               regeneration step; `build` deliberately not
+                               (PARK-P2). REPORT-KMP-2b.txt, written AFTER
+                               that merge, still lists PARK-K7 open - so open
+                               is what is recorded (R444).
+  PARK-P1   OPEN AS THE        FW-PRISMA-GENERATE raised it and handed it to
+            RECORD STANDS      relay/FW-SELECTOR-PACKAGE.txt. That task ran and
+                               is on main (70ed15f); its report records
+                               web/package.json now mapping to every suite,
+                               and does NOT name PARK-P1. No report closes this
+                               id, and R444 forbids inventing the closure. See
+                               Q2 - the id is also contested.
+  PARK-P2   RECORDED DECISION  FW-PRISMA-GENERATE wrote it "so the omission
+                               reads as a decision rather than an oversight".
+                               No later report revisits it. Also contested, Q2.
+  PARK-R1   OPEN               FW-REDIRECT's Q1 asks it; REPORT-FW-FOLLOWUP.txt
+                               records it as "still open".
+  PARK-R2   OPEN               FW-REDIRECT's Q2 asks it; unanswered.
+  PARK-S1   RECORDED DECISION  FW-SELECTOR-PACKAGE argues it is "NOT A HOLE"
+                               and names its own trigger - "if a script is ever
+                               added that no unit test exercises". This task
+                               changed scripts/register-coverage.mjs AND added
+                               a unit test for it, so the entry's condition
+                               holds for that script too.
+  PARK-S2   OPEN               FW-SELECTOR-PACKAGE's Q1 asks the operator to
+                               ratify or narrow it; unanswered.
+  PARK-S3   OPEN               test:container:e2e RED on main at
+                               e2e/home.spec.ts:166. No report records the
+                               suite green since.
+  PARK-U1   CLOSED             by KMP-2b. REPORT-KMP-2b.txt carries a section
+                               headed "PARK-U1 - CLOSED" with the drive that
+                               closed it.
+  PARK-U2   OPEN               KMP-UP's Q2 asks it; unanswered;
+                               REPORT-KMP-2b.txt lists it open. SAME FINDING AS
+                               PARK-A1.
+  PARK-U3   CLOSED 2026-10-20  with PARK-K6, same cause. The closure note is in
+                               REPORT-KMP-UP.txt's own PARKED list, pointing at
+                               REPORT-AN-ACCOUNT-TAG.txt and f319e0b.
+
+  Totals: 28 entries - 5 CLOSED, 3 RECORDED DECISION, 20 OPEN (counting each
+  contested id once).
+
+NO CLOSURE WAS INVENTED. Where the work a park points at was plainly done but
+no report names the id, the entry says so in those words and leaves the call to
+the operator - PARK-P1 and PARK-K7 are both of that kind, and both are open
+here.
+
+TWO IDS ARE ONE FINDING. PARK-A1 and PARK-U2 are the same two deprecations,
+recorded twice by two tasks. Both entries say so and point at each other.
+Merging them would have edited a decision neither task made.
+
+WHERE THE BLOCK SITS, AND WHY NOT AT THE END. parking.md's Format section says
+"Appended, newest last". That yields here to the operator's explicit
+instruction that a later merge of an-polish must stay clean: an-polish appends
+its own entries after parking.md:2226, so a second append would conflict at the
+tail. The block is inserted immediately ABOVE `## PARK-B1`, 64 lines clear of
+an-polish's nearest hunk, and nothing existing was edited, reflowed or
+renumbered. PROVEN rather than asserted:
+
+    $ git merge-tree --write-tree --name-only HEAD origin/an-polish
+    af350feb6b82bba663dec18b852c728b0557e6bd
+    exit 0 - a clean merge, no conflicted path listed
+
+THE EDIT WAS SCRIPTED AND THE SCRIPT REFUSES (R211). It asserted, before
+writing: the anchor heading present EXACTLY once; the block pure ASCII; the
+block free of the placeholder phrase the check flags; its thirty headings equal
+to a stated list in order; none of those ids already present in parking.md; and
+the output exactly the input plus the block plus one newline. It printed
+"inserted 30 headings above the anchor; 147141 -> 174724 bytes".
+
+THE STATUS LEDGER WAS NOT TOUCHED. It is the one part of parking.md that is
+edited rather than appended, and it says of itself "One line per Android-era
+entry". Adding twenty-eight rows spanning both clients is an editorial decision
+about that table rather than a back-fill, and the HARD BOUNDARIES say no
+existing entry is altered. Raised as Q4.
+
+--------------------------------------------------------------------------------
+R445 - THE COUNT ROSE
+--------------------------------------------------------------------------------
+    BEFORE, at 5e87a4a:
+      register coverage: OK - 39 cited id(s) across 115 report(s), all have
+      headings in parking.md
+
+    AFTER, at 78ece08:
+      register coverage: OK - 90 cited id(s) across 115 report(s), all have
+      headings in parking.md
+
+39 -> 90. The stop condition did not fire. The 51 ids the check now sees that
+it did not see before are the 24 of the PARK-<n> series that are cited, and the
+27 lettered ids that are cited by a report (the other five of the 32 in the
+census appear only inside parking.md itself or in a report that cites them
+alongside one already counted).
+
+AND THE HEADING SCAN ROSE WITH IT, which is the half a count alone would hide:
+39 headings seen before, 97 after.
+
+COVERAGE IS OK, and that is a claim about the back-fill rather than about the
+pattern: a widened pattern with no back-fill would have printed 90 cited ids
+and exited 1 with 28 problems.
+
+AND THE NUMBERS MOVE AGAIN WHEN THIS FILE LANDS, which is stated here so that a
+later reader meeting a third pair does not take it for drift. This report is
+itself a REPORT-*.txt at the repo root and cites PARK-25 and PARK-26, which
+until now appeared only inside parking.md:
+
+      register coverage: OK - 92 cited id(s) across 116 report(s), all have
+      headings in parking.md
+
+That is the run against this file's final text, and it is re-run after the
+commit as well (R182) - see PUSH PROOF.
+
+--------------------------------------------------------------------------------
+PARKED
+--------------------------------------------------------------------------------
+PARK-25  An id with a word after its number - PARK-FW34-LAUNCH - is
+         deliberately not matched, and the six task-local PARK<n>-<m> series
+         stay out of this register. Full entry in parking.md, with what it
+         would cost to reverse. Raised as Q3.
+PARK-26  The letter series has no allocation authority and nothing forbids a
+         duplicate heading. Two collisions exist today; the coverage check
+         cannot see either, because it asks whether a heading EXISTS and one
+         heading satisfies two unrelated citations just as well as two
+         headings with the same id satisfy it. The duplicate-heading guard is
+         the right guard and this is the wrong week: the an-polish merge will
+         produce exactly that duplicate, so adding it now would red main at
+         the moment of a merge the operator has already approved. Raised as
+         Q1 and Q2.
+
+STILL OPEN FROM EARLIER TASKS, unchanged by this one, and now all followable
+in the register: PARK-A1, PARK-A2, PARK-F1, PARK-F2, PARK-F3, PARK-I1 to
+PARK-I5, PARK-K2, PARK-K3, PARK-K5, PARK-K7, PARK-P1, PARK-R1, PARK-R2,
+PARK-S2, PARK-S3, PARK-U2.
+
+--------------------------------------------------------------------------------
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------------------
+1. THE an-polish BRANCH IS PUSHED AND NOT MERGED, and it adds three entries in
+   the P letter series to parking.md plus REPORT-AN-POLISH.txt. It was NOT
+   pulled in. The widened pattern handles that shape - all three are
+   PARK-<L><n> like the other thirty-two - so the next merge reveals no fourth
+   gap. Two of the three collide with FW-PRISMA-GENERATE's PARK-P1 and
+   PARK-P2; Q2.
+
+   THE THIRD ONE IS WHY THIS PARAGRAPH NAMES NO ID. Written out in full, it
+   was a citation of an entry that exists only on a branch this tree does not
+   contain - and the check built by this very task REFUSED THE REPORT for it:
+
+       R294/R327: parking.md does not cover every cited register entry:
+         - PARK-P<n> is cited by REPORT-FW-PARK-IDS.txt but has no
+           "## PARK-P<n> -" heading in parking.md
+
+   That is the guard's first run against real text finding a live instance
+   rather than a planted one (R178), and the instance was this report. The fix
+   is to name the series without citing an id that cannot resolve here;
+   back-filling a heading for it would pre-empt an-polish's own entry and
+   guarantee the duplicate Q2 asks about.
+
+2. FIFTY-ODD IDS IN SIX TASK-LOCAL SERIES (PARK4-, PARK5-, PARK5b-, PARK26-,
+   PARK27-, PARK30-, PARK31-) are cited by reports and are not in any register
+   this check reads. PARK4-2 is the exception: it has a heading in parking.md
+   although the pattern has never matched it. Not this task's to adopt;
+   PARK-25 records the question.
+
+3. REPORT-AN-HOME.txt contains the literal placeholder "PARKAN-NNN". It is not
+   matched by either pattern, so it is invisible to the check in both
+   directions - a citation that can never resolve and will never be reported.
+   Left alone: editing another task's report is outside the boundaries.
+
+4. web/scripts/register-coverage.mjs has no .d.mts and needs none - no test
+   imports it (declaration-parity.test.ts derives its list from the
+   declarations that exist). It is also not a LATE_CHECKS entry: its subject -
+   parking.md, the repo-root reports and the script itself - exists before
+   `pnpm test` runs inside the gate chain.
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+1. R443's POSITIVE CONTROL IS PARKAN-45 ALONE, NOT "PARK-12 AND PARKAN-45".
+   The ruling as written cannot be met: the old pattern never matched PARK-12.
+   Asserting that it did would have asserted the defect away. PARK-12 moved
+   from the control to the demonstrated gap, where it belongs, and the test
+   says so in its own comment. The prompt's own framing - and the operator
+   note that came with it, which states the pattern "matches PARK-<digits> and
+   PARKAN-<digits> only" - is wrong in the same direction, and the measurement
+   is in R1 and R442 above rather than left as a correction.
+
+2. THE STEP ORDER IS REVERSED: BACK-FILL FIRST, PATTERN SECOND. The prompt's
+   WORK section puts R443's pattern commit before R444's back-fill. Done that
+   way, the commit carrying the widened pattern leaves the register check RED -
+   90 cited ids, 28 with no heading - on both gates that run it, and a red
+   commit is a bounce. Nothing in R442-R445 requires the order; the WORK list
+   is a plan. Each commit here is green under the gate that covers its paths,
+   and the back-fill commit is additionally green under the OLD check, which is
+   stated in its commit body.
+
+3. BOTH CHANGES COULD HAVE BEEN ONE COMMIT and are two. Keeping them apart
+   costs nothing and makes the register back-fill reviewable without the
+   tooling diff on top of it.
+
+4. R176's WALKTHROUGH DOES NOT APPLY AND IS NOT CLAIMED. No page, route, copy
+   string or component changed; `pnpm dev` was never started and no server was
+   needed. What was driven instead is the thing this task built: the CLI on the
+   real repository before and after, on six throwaway fixtures through the test,
+   and through BOTH of its callers - gate:clone's first step and
+   RegisterCoverageTest. Recorded here rather than left as a missing section.
+
+5. THE WIDENED PATTERN DELIBERATELY STOPS MATCHING PARKA-<n>. The old one
+   matched it; the census contains zero instances; no report, relay prompt or
+   register entry uses the shape. It is a narrowing, it is intentional, and it
+   is named because a reader comparing the two patterns would otherwise find it
+   unremarked.
+
+6. THE an-polish BRANCH WAS READ WITH `git show` (its parking.md and its
+   REPORT-AN-POLISH.txt heading list) to establish the PARK-P collision and to
+   place the insertion. Nothing from it was merged, fetched into the working
+   tree or committed here.
+
+--------------------------------------------------------------------------------
+QUESTIONS
+--------------------------------------------------------------------------------
+Q1 PARK-F1, PARK-F2 and PARK-F3 are used by FW-FOLLOWUP (15.10.2026) and
+   FW-FUTURE-DAY (19.10.2026) for six different findings. Both reports are on
+   main. The back-fill gives each id ONE entry carrying both findings with
+   their reports and states, so every citation resolves to something real and
+   the reader is told at once that the id is shared. Is that the resolution, or
+   should one series be reallocated - which means editing a report on main, and
+   is why this task did not do it?
+
+Q2 PARK-P1 and PARK-P2 are FW-PRISMA-GENERATE's on main, and an-polish uses
+   the same two ids for findings of its own. On merge, parking.md will carry
+   TWO `## PARK-P1 -` headings and TWO `## PARK-P2 -` headings, and the
+   coverage check will pass on both - it asks only that a heading exists.
+   Rename an-polish's three to a free letter BEFORE merging, or merge and fold
+   afterwards? And is the duplicate-heading guard wanted as its own task once
+   that is decided (PARK-26)?
+
+Q3 PARK-25. PARK-FW34-LAUNCH is a real citation in two reports that the widened
+   pattern deliberately does not match, because matching it with `[A-Z]*` would
+   truncate it to a phantom `PARK-FW34`. Should it get an entry and a pattern
+   that matches it in full, or is the answer that FW34's park belongs in its
+   own report and the register numbers only the three shapes it owns? The same
+   question covers the fifty-odd ids in the six task-local PARK<n>- series.
+
+Q4 The STATUS LEDGER was not extended with the twenty-eight back-filled ids.
+   It says of itself "One line per Android-era entry", and twelve of the
+   twenty-eight are web-side. Should the ledger grow to cover both clients, or
+   is it deliberately the Android-era table it says it is?
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+GATE:CHANGED, run in this session on each commit's own tip, from web/:
+
+  122e1dd   the back-fill
+            gate selection (R132):
+              no path matched the selector - base chain only
+              suites: typecheck, lint, test, build
+              a11y: covered by pnpm test - test:a11y's three files are a
+                    subset of its globs, so requiring it separately is a
+                    second run
+              measured:
+                typecheck: exit 0 (no count to check)
+                lint: exit 0 (no count to check)
+                test: 3279 passed
+                build: exit 0 (no count to check)
+            GATE PASSED for the paths changed.   exit 0
+
+  78ece08   the widened pattern and its test
+            gate selection (R132): the same selection, printed again by the
+            run itself - no path matched the selector, base chain only,
+            suites: typecheck, lint, test, build
+              measured:
+                typecheck: exit 0 (no count to check)
+                lint: exit 0 (no count to check)
+                test: 3285 passed
+                build: exit 0 (no count to check)
+            GATE PASSED for the paths changed.   exit 0
+
+  3285 - 3279 = 6, which is this task's six new tests and nothing else.
+
+THE SELECTION IS THE BASE CHAIN, AND THAT IS PARK-S1's CASE RATHER THAN A HOLE.
+`scripts/**` is not mapped in gate-selection.mjs; the selector's correctness is
+carried by the 412 tests under tests/unit/meta/, which run in `test`, which IS
+the base chain. This commit adds a 413th file to that directory for the script
+it changes, so the condition PARK-S1 names - "if a script is ever added that no
+unit test exercises" - holds for this one.
+
+GATE:CLONE AND THE R182 RE-RUNS ARE IN THE SECTION BELOW THIS ONE, added by the
+commit that follows this one. The reason is ordering rather than tidiness
+(R182): gate:clone clones HEAD, and the register-coverage step it runs FIRST
+reads every REPORT-*.txt at the repo root - this file among them. A gate:clone
+run on a commit that does not contain this report is not a run against the tree
+being pushed. So the report is committed, then gated, then the output is added.
+What that leaves is one level of self-reference, named rather than hidden: the
+commit that carries the output changes this file and nothing else, and the
+three checks whose subject this file IS are re-run on it, with their results in
+that commit's own body.
+
+THE BRANCH IS PUSHED AND NOT MERGED. The prompt says push fw-park-ids and stop
+there; the push result is recorded in the commit that carries it rather than
+predicted here (R334). PENDING MERGE.
+
+THE WORKTREE LOCK, C:/wt/fw-park-ids/.session-lock.json, was written at the
+start and removed at the end. It is matched by .gitignore:62 and was never
+staged; `git check-ignore -v` on every path this session added was run before
+each commit and named no file but the lock.
+
+END OF REPORT-FW-PARK-IDS
