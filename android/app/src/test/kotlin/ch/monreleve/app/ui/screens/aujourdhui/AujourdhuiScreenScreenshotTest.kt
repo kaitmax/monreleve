@@ -347,6 +347,18 @@ class AujourdhuiScreenScreenshotTest {
         paparazzi.snapshot { host(halfDayComplete) }
     }
 
+    // AN-ANSWER-ICON (R433): the ANSWERED card at the largest font size, in the shape that carries TWO glyphs
+    // - one beside « Matin : … », one beside « Après-midi : … ». The DAY answered card is already captured at
+    // 200 % by aujourdhuiWithYearLarge and aujourdhuiPendingOverdueLarge; the split day was the gap, and it is
+    // where a glyph could collide with wrapped words. DARK MODE IS NOT CAPTURED: FrontierTheme has no dark
+    // path, by DESIGN-SYSTEM section 2's own override ("light ships first"), so a night capture would
+    // photograph the light theme and certify nothing (PARKED - see REPORT-AN-ANSWER-ICON.txt).
+    @Test
+    fun aujourdhuiHalfDayCompleteLarge() {
+        paparazzi.unsafeUpdateConfig(DeviceConfig.PIXEL_5.copy(fontScale = 2f))
+        paparazzi.snapshot { host(halfDayComplete) }
+    }
+
     @Test
     fun aujourdhuiWithYear() {
         paparazzi.snapshot { host(withYear) }

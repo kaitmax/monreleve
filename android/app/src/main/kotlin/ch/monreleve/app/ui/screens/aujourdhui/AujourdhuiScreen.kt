@@ -25,6 +25,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import ch.monreleve.app.aujourdhui.AbsenceChoice
 import ch.monreleve.app.aujourdhui.AujourdhuiState
 import ch.monreleve.app.aujourdhui.DayEntry
@@ -308,7 +310,17 @@ private fun RecordButton(
     val shape = RoundedCornerShape(Radius.buttonLg)
     // R285 / SPEC 11.2: the day's primary action is a 56 dp large button (the size token, not the 48 dp
     // touch-target spacing value PARKAN-16 stood in with).
-    val sizing = Modifier.fillMaxWidth().heightIn(min = Size.buttonLarge)
+    //
+    // AN-ANSWER-ICON (R433): the chosen option is marked in the SEMANTICS as well as in the fill. R433 asks
+    // for a test proving « Modifier » reopens with the current choice marked, and filled-versus-outlined is
+    // a pixel difference - the one thing R433 says not to assert by. It is the honest announcement too: a
+    // person using TalkBack had no way to hear which option was already theirs. It draws nothing, so no
+    // baseline moves.
+    val sizing =
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = Size.buttonLarge)
+            .semantics { this.selected = selected }
     // Selected renders filled, unselected outlined - the state is visible without colour alone.
     if (selected) {
         Button(onClick = onClick, shape = shape, modifier = sizing) { Text(text = label) }

@@ -48,9 +48,14 @@ class AujourdhuiCopyTest : FunSpec({
         AujourdhuiCopy.kindLabel("ABSENCE", "CONGE") shouldBe "Absence — Congé"
     }
 
-    test("answerHalfDay shows BOTH halves, never one label (R292)") {
+    // AN-ANSWER-ICON (R430): one entry PER HALF, where this used to assert the two joined by an em dash.
+    // R292 is unchanged and still what is asserted - both halves, never one label - and no word moved: the
+    // prefixes and the kind labels are the same constants. Only the joining went, because R430's glyph has
+    // to sit beside the words of its own half and a single joined string has no side of the dash to belong
+    // to. The halves render as two lines in the answer card instead.
+    test("answerHalfDay gives BOTH halves, one entry each, never one label (R292)") {
         AujourdhuiCopy.answerHalfDay("Domicile", "En Suisse") shouldBe
-            "Matin : Domicile — Après-midi : En Suisse"
+            ("Matin : Domicile" to "Après-midi : En Suisse")
     }
 
     test("the sync truth is persistent copy, pending distinct from synced (AN-HOME section 1)") {
