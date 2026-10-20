@@ -58,6 +58,27 @@ class AujourdhuiCopyTest : FunSpec({
             ("Matin : Domicile" to "Après-midi : En Suisse")
     }
 
+    // AN-POLISH (R434): the per-half answer line and the two-half answer must word the prefix IDENTICALLY,
+    // because they are the same sentence seen in two card states. Asserting that halfLabel is what
+    // answerHalfDay is built from is the one check that cannot pass while the two have drifted (R206).
+    test("halfLabel is the one home both the per-half line and the two-half answer are built from") {
+        AujourdhuiCopy.halfLabel(AujourdhuiCopy.MORNING, "Domicile") shouldBe "Matin : Domicile"
+        AujourdhuiCopy.answerHalfDay("Domicile", "En Suisse") shouldBe
+            (
+                AujourdhuiCopy.halfLabel(AujourdhuiCopy.MORNING, "Domicile") to
+                    AujourdhuiCopy.halfLabel(AujourdhuiCopy.AFTERNOON, "En Suisse")
+            )
+    }
+
+    // AN-POLISH (R434): the announcement names BOTH halves - the one recorded and the one still to fill in -
+    // and reads correctly in either order, because either half can be answered first.
+    test("the half-day announcement names the half recorded and the half that remains, either way round") {
+        AujourdhuiCopy.halfRecordedAnnouncement(AujourdhuiCopy.MORNING, AujourdhuiCopy.AFTERNOON) shouldBe
+            "Matin enregistré. Après-midi : à renseigner."
+        AujourdhuiCopy.halfRecordedAnnouncement(AujourdhuiCopy.AFTERNOON, AujourdhuiCopy.MORNING) shouldBe
+            "Après-midi enregistré. Matin : à renseigner."
+    }
+
     test("the sync truth is persistent copy, pending distinct from synced (AN-HOME section 1)") {
         AujourdhuiCopy.PENDING shouldBe "Enregistré sur le téléphone, en attente d’envoi"
         AujourdhuiCopy.SYNCED shouldBe "Enregistré"

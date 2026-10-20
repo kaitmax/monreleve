@@ -56,6 +56,12 @@ import kotlinx.coroutines.delay
 //
 // STATE (R310): whether the options are open for editing survives rotation, a text-size change, dark mode and
 // a background kill - rememberSaveable, Bundle-backed like every other state on this screen (AN-STATE).
+//
+// AN-POLISH (R434) SPLIT THE TWO MODES INTO TWO COMPOSABLES. Whole-day mode is DayChoiceCard below, byte for
+// byte what AN-HOME and AN-ANSWER-ICON left; half-day mode is HalfDayChoiceCard.kt, where a half that has
+// been answered now settles into its own answer line while the other stays open. They used to share one
+// body with a granularity branch inside it, which is how "whole-day is unchanged" became a claim about a
+// branch rather than a fact about a file. Now a whole-day card never enters the half-day code at all.
 
 /** The white card the choice and its answer both live in: 1 px border, token radius, no shadow. */
 @Composable
@@ -87,11 +93,20 @@ internal fun ChoiceCard(
     onRecord: (RecordedKind, Slot, AbsenceChoice?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val complete =
-        when (state.granularity) {
-            GranularityChoice.DAY -> state.fullDay != null
-            GranularityChoice.HALF_DAY -> state.morning != null && state.afternoon != null
-        }
+    when (state.granularity) {
+        GranularityChoice.DAY -> DayChoiceCard(state, onRecord, modifier)
+        GranularityChoice.HALF_DAY -> HalfDayChoiceCard(state, onRecord, modifier)
+    }
+}
+
+/** Whole-day mode (SPEC 11.2): one slot, one tap, the card closes into the answer. Unchanged by AN-POLISH. */
+@Composable
+private fun DayChoiceCard(
+    state: AujourdhuiState,
+    onRecord: (RecordedKind, Slot, AbsenceChoice?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val complete = state.fullDay != null
     var editing by rememberSaveable { mutableStateOf(false) }
     val showOptions = !complete || editing
     val reduceMotion = rememberReduceMotion()
@@ -113,12 +128,11 @@ internal fun ChoiceCard(
             enter = optionsEnter(reduceMotion),
             exit = optionsExit(reduceMotion),
         ) {
-            ChoiceOptions(
-                state = state,
+            DayChoiceOptions(
+                current = state.fullDay,
                 onRecord = { kind, slot, absence ->
-                    // DAY: a single tap completes the day AND closes. HALF_DAY: completion (both halves) or
-                    // « Annuler » drives the close, so a mid-edit tap on one half keeps the editor open.
-                    if (state.granularity == GranularityChoice.DAY) editing = false
+                    // DAY: a single tap completes the day AND closes.
+                    editing = false
                     onRecord(kind, slot, absence)
                 },
                 showCancel = complete && editing,
@@ -131,7 +145,7 @@ internal fun ChoiceCard(
             exit = answerExit(reduceMotion),
         ) {
             RecordedAnswer(
-                parts = dayAnswerParts(state),
+                parts = slotAnswerParts(requireNotNull(state.fullDay)),
                 onModifier = { editing = true },
                 modifierFocus = modifierFocus,
             )
@@ -140,21 +154,14 @@ internal fun ChoiceCard(
 }
 
 @Composable
-private fun ChoiceOptions(
-    state: AujourdhuiState,
+private fun DayChoiceOptions(
+    current: DayEntry?,
     onRecord: (RecordedKind, Slot, AbsenceChoice?) -> Unit,
     showCancel: Boolean,
     onCancel: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.space8)) {
-        if (state.granularity == GranularityChoice.HALF_DAY) {
-            Text(text = AujourdhuiCopy.MORNING, style = FrontierType.bodyM)
-            RecordSection(Slot.MORNING, state.morning, onRecord)
-            Text(text = AujourdhuiCopy.AFTERNOON, style = FrontierType.bodyM)
-            RecordSection(Slot.AFTERNOON, state.afternoon, onRecord)
-        } else {
-            RecordSection(Slot.FULL, state.fullDay, onRecord)
-        }
+        RecordSection(Slot.FULL, current, onRecord)
         if (showCancel) {
             TextButton(onClick = onCancel, modifier = Modifier.fillMaxWidth()) {
                 Text(text = AujourdhuiCopy.CANCEL)
@@ -228,34 +235,35 @@ internal fun slotAnswerParts(entry: DayEntry): AnswerParts =
     )
 
 /**
- * The day-level answer parts: one kind for DAY, BOTH halves for HALF_DAY (R292 - never one label). The answer
- * is only ever rendered when the day is complete, so requireNotNull documents that invariant rather than a
- * defensive fallback (an expression body, so there is no explicit-return count to exceed).
+ * The COMPLETE half-day's answer parts: BOTH halves (R292 - never one label). Only ever rendered when both
+ * halves are recorded, so requireNotNull documents that invariant rather than a defensive fallback (an
+ * expression body, so there is no explicit-return count to exceed).
  *
  * AN-ANSWER-ICON (R430): the two halves become two AnswerLines, each with its own glyph, from the one home
  * that prefixes them (AujourdhuiCopy.answerHalfDay).
+ *
+ * AN-POLISH (R434): internal, because HalfDayChoiceCard.kt renders it. The DAY branch this used to carry
+ * went with the split - DayChoiceCard above calls slotAnswerParts directly, so a whole-day card no longer
+ * passes through a function whose other half is about half-days.
  */
-private fun dayAnswerParts(state: AujourdhuiState): AnswerParts =
-    if (state.granularity == GranularityChoice.DAY) {
-        slotAnswerParts(requireNotNull(state.fullDay))
-    } else {
-        val am = requireNotNull(state.morning)
-        val pm = requireNotNull(state.afternoon)
-        val halves =
-            AujourdhuiCopy.answerHalfDay(
-                AujourdhuiCopy.kindLabel(am.kind.name, am.absence?.name),
-                AujourdhuiCopy.kindLabel(pm.kind.name, pm.absence?.name),
-            )
-        AnswerParts(
-            lines =
-                listOf(
-                    AnswerLine(label = halves.first, icon = kindIcon(am.kind)),
-                    AnswerLine(label = halves.second, icon = kindIcon(pm.kind)),
-                ),
-            status = statusText(am.pending || pm.pending, am.failed || pm.failed),
-            failed = am.failed || pm.failed,
-            // A detection provenance only when both halves agree; a mixed pair (one manual) carries none.
-            provenance =
-                if (am.provenance == pm.provenance) DetectionCopy.provenanceLine(am.provenance.name) else null,
+internal fun halfDayAnswerParts(state: AujourdhuiState): AnswerParts {
+    val am = requireNotNull(state.morning)
+    val pm = requireNotNull(state.afternoon)
+    val halves =
+        AujourdhuiCopy.answerHalfDay(
+            AujourdhuiCopy.kindLabel(am.kind.name, am.absence?.name),
+            AujourdhuiCopy.kindLabel(pm.kind.name, pm.absence?.name),
         )
-    }
+    return AnswerParts(
+        lines =
+            listOf(
+                AnswerLine(label = halves.first, icon = kindIcon(am.kind)),
+                AnswerLine(label = halves.second, icon = kindIcon(pm.kind)),
+            ),
+        status = statusText(am.pending || pm.pending, am.failed || pm.failed),
+        failed = am.failed || pm.failed,
+        // A detection provenance only when both halves agree; a mixed pair (one manual) carries none.
+        provenance =
+            if (am.provenance == pm.provenance) DetectionCopy.provenanceLine(am.provenance.name) else null,
+    )
+}
