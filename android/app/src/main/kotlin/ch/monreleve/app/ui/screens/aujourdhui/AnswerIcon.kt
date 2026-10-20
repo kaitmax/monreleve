@@ -18,6 +18,8 @@ import ch.monreleve.app.design.LightColors
 import ch.monreleve.app.design.Size
 import ch.monreleve.app.design.Spacing
 import ch.monreleve.app.design.kindIconRes
+import ch.monreleve.app.design.statusIconRes
+import ch.monreleve.app.fr.AujourdhuiCopy
 
 // AN-ANSWER-ICON (R430). The answer the choice card closes into carries an icon for WHAT WAS ANSWERED, so a
 // glance tells the person the day is recorded AND what it was recorded as. Lucide glyphs, committed as vector
@@ -74,5 +76,63 @@ internal fun AnswerKindLine(line: AnswerLine) {
             modifier = Modifier.size(Size.icon).semantics { kindIconRes = line.icon },
         )
         Text(text = line.label, style = FrontierType.bodyM)
+    }
+}
+
+/**
+ * The answer's SYNC TRUTH: the words, the glyph that repeats them, and whether the server REFUSED the day
+ * (which is what puts both in the error colour). One value built by one `when`, so the word and the glyph
+ * cannot be set to disagree - before AN-POLISH the status was a String and a Boolean set side by side, and a
+ * third field would have been a third thing to keep in step by hand (R206).
+ */
+internal data class AnswerStatus(
+    val text: String,
+    @param:DrawableRes val icon: Int,
+    val failed: Boolean,
+)
+
+/**
+ * AN-POLISH (R435). The sync state as words AND a glyph. DESIGN-SYSTEM section 1 says « STATUS IS NEVER
+ * COLOUR ALONE: colour + icon + text, always »; until now this line was colour + text, which satisfied the
+ * rule's substance (three different sentences) and not its letter (no icon). AN-ANSWER-ICON reported that
+ * rather than quietly fixing it, and the operator's answer is this.
+ *
+ * The three glyphs were ALREADY COMMITTED (AN10b, docs/lucide-icons.md) - no new drawable, no new
+ * dependency: a clock for a day still on the phone, a tick for a day the server holds, a triangle for one it
+ * refused.
+ */
+internal fun answerStatus(
+    pending: Boolean,
+    failed: Boolean,
+): AnswerStatus =
+    when {
+        failed -> AnswerStatus(AujourdhuiCopy.SYNC_FAILED, R.drawable.ic_triangle_alert, failed = true)
+        pending -> AnswerStatus(AujourdhuiCopy.PENDING, R.drawable.ic_clock, failed = false)
+        else -> AnswerStatus(AujourdhuiCopy.SYNCED, R.drawable.ic_circle_check, failed = false)
+    }
+
+/**
+ * The sync line: its glyph beside its own words, TINTED AS THE WORDS ARE - the error colour when the server
+ * refused, the secondary text colour otherwise. contentDescription is null because the words say the same
+ * thing (R430's reasoning, one row down), and the drawable id goes into the semantics for tests only
+ * (design/StatusIconSemantics.kt).
+ *
+ * IT IS A DIFFERENT ROW FROM THE KIND GLYPH, as it has always been (R432). The kind sits above in
+ * textPrimary and never changes with sync state; this sits below and never changes with the kind.
+ */
+@Composable
+internal fun AnswerStatusLine(status: AnswerStatus) {
+    val colour = if (status.failed) LightColors.error else LightColors.textSecondary
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.space8),
+    ) {
+        Icon(
+            painter = painterResource(status.icon),
+            contentDescription = null,
+            tint = colour,
+            modifier = Modifier.size(Size.icon).semantics { statusIconRes = status.icon },
+        )
+        Text(text = status.text, style = FrontierType.caption, color = colour)
     }
 }

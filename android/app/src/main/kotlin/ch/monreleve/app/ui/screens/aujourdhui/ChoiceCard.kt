@@ -185,11 +185,9 @@ internal fun RecordedAnswer(
         // AN-ANSWER-ICON (R430): one line per answered kind, each carrying its own glyph. DAY has one; a
         // half-day has two, so each icon sits beside the words of the half it describes.
         parts.lines.forEach { AnswerKindLine(it) }
-        Text(
-            text = parts.status,
-            style = FrontierType.caption,
-            color = if (parts.failed) LightColors.error else LightColors.textSecondary,
-        )
+        // AN-POLISH (R435): the sync truth is words AND a glyph, on its own row below the kind, tinted as
+        // its words are - clock pending, tick synced, triangle refused.
+        AnswerStatusLine(parts.status)
         parts.provenance?.let { Text(text = it, style = FrontierType.caption, color = LightColors.textSecondary) }
         TextButton(onClick = onModifier, modifier = Modifier.fillMaxWidth().focusRequester(modifierFocus)) {
             Text(text = AujourdhuiCopy.MODIFIER)
@@ -199,25 +197,14 @@ internal fun RecordedAnswer(
 
 /**
  * What the answer shows: one AnswerLine per answered kind (AN-ANSWER-ICON, R430 - a half-day has two, so each
- * glyph belongs to its own half), the sync truth, whether that sync failed (so the status reads in the error
- * colour), and the provenance.
+ * glyph belongs to its own half), the sync truth (AN-POLISH R435: words, glyph and the refused flag as ONE
+ * value, so they cannot be set to disagree), and the provenance.
  */
 internal data class AnswerParts(
     val lines: List<AnswerLine>,
-    val status: String,
-    val failed: Boolean,
+    val status: AnswerStatus,
     val provenance: String?,
 )
-
-private fun statusText(
-    pending: Boolean,
-    failed: Boolean,
-): String =
-    when {
-        failed -> AujourdhuiCopy.SYNC_FAILED
-        pending -> AujourdhuiCopy.PENDING
-        else -> AujourdhuiCopy.SYNCED
-    }
 
 /** One recorded slot's answer parts (DAY mode, and each auto slot). */
 internal fun slotAnswerParts(entry: DayEntry): AnswerParts =
@@ -229,8 +216,7 @@ internal fun slotAnswerParts(entry: DayEntry): AnswerParts =
                     icon = kindIcon(entry.kind),
                 ),
             ),
-        status = statusText(entry.pending, entry.failed),
-        failed = entry.failed,
+        status = answerStatus(entry.pending, entry.failed),
         provenance = DetectionCopy.provenanceLine(entry.provenance.name),
     )
 
@@ -260,8 +246,7 @@ internal fun halfDayAnswerParts(state: AujourdhuiState): AnswerParts {
                 AnswerLine(label = halves.first, icon = kindIcon(am.kind)),
                 AnswerLine(label = halves.second, icon = kindIcon(pm.kind)),
             ),
-        status = statusText(am.pending || pm.pending, am.failed || pm.failed),
-        failed = am.failed || pm.failed,
+        status = answerStatus(am.pending || pm.pending, am.failed || pm.failed),
         // A detection provenance only when both halves agree; a mixed pair (one manual) carries none.
         provenance =
             if (am.provenance == pm.provenance) DetectionCopy.provenanceLine(am.provenance.name) else null,
