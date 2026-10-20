@@ -83,18 +83,20 @@ interface RhythmRepository {
  */
 class LocalRhythmRepository(
     private val dao: RhythmDao,
-    private val accountTag: String?,
+    // AN-ACCOUNT-TAG (R423): a provider, for the reason LocalEntryRepository gives. A rhythm saved in
+    // the sign-in session was lost the same way a recorded day was, and by the same line of code.
+    private val accountTag: () -> String?,
 ) : RhythmRepository {
     override fun observe(): Flow<WeeklyRhythm> =
-        dao.observeForAccount(accountTag ?: UNOWNED_ACCOUNT).map { it?.toWeeklyRhythm() ?: WeeklyRhythm() }
+        dao.observeForAccount(accountTag() ?: UNOWNED_ACCOUNT).map { it?.toWeeklyRhythm() ?: WeeklyRhythm() }
 
     override suspend fun save(rhythm: WeeklyRhythm) {
-        val tag = accountTag ?: return
+        val tag = accountTag() ?: return
         dao.upsert(rhythm.toEntity(tag))
     }
 
     override suspend fun clear() {
-        val tag = accountTag ?: return
+        val tag = accountTag() ?: return
         dao.clearForAccount(tag)
     }
 }

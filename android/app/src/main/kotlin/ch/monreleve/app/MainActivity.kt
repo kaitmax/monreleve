@@ -193,11 +193,21 @@ class MainActivity : ComponentActivity() {
         // expired session has no current account, so the shell shows nothing rather than the previous
         // account's days.
         val repository: EntryRepository =
-            LocalEntryRepository(MonReleveDatabase.get(context).entryDao(), clock, accountStore.current())
+            LocalEntryRepository(
+                MonReleveDatabase.get(context).entryDao(),
+                clock,
+                // NAMED, because a trailing lambda would bind to newMutationId - the LAST parameter -
+                // and both are () -> String-ish. The compiler caught it; a type that happened to match
+                // would not have.
+                currentAccount = { accountStore.current() },
+                // R425: read independently of the provider, so a future stale capture is caught
+                // rather than losing days quietly again.
+                isSignedIn = { accountStore.current() != null },
+            )
         // AN-FORECAST (R341/R303): the weekly rhythm, scoped to the SAME account as the record - the planning
         // preference stays on the phone and is cleared on sign-out with the rest of the account's local data.
         val rhythmRepository: RhythmRepository =
-            LocalRhythmRepository(MonReleveDatabase.get(context).rhythmDao(), accountStore.current())
+            LocalRhythmRepository(MonReleveDatabase.get(context).rhythmDao()) { accountStore.current() }
         // AN11: the Releve reads GET /api/v1/dossier through the session (R210 refresh handling included), and
         // caches the last body per year so an offline reader gets a dated copy rather than a blank screen (R288).
         val dossierCache = SharedPrefsDossierCache(context)

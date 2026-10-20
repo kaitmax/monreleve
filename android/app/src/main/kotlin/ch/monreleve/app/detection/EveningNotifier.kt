@@ -141,7 +141,7 @@ suspend fun maybeAlertThreshold(
     val db = MonReleveDatabase.get(context)
     val account = SharedPrefsAccountStore(context).current()
     val settings = SharedPrefsSettingsStore(context).load() ?: return
-    val rhythm = LocalRhythmRepository(db.rhythmDao(), account).observe().first()
+    val rhythm = LocalRhythmRepository(db.rhythmDao()) { account }.observe().first()
     val current = projectedThresholdCrossing(settings, db.entryDao().all(), rhythm, todayDate, todayDate.year)
 
     val decision = decideThresholdAlert(optedIn = true, current = current, previous = alertStore.crossing())

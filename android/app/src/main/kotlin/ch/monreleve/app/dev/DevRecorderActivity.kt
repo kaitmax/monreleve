@@ -62,7 +62,10 @@ class DevRecorderActivity : ComponentActivity() {
                 clock,
                 // AN-FIX F4 / R303: the dev recorder tags and shows rows under the account signed in now,
                 // the same as the production shell - so the cross-account reproduction drives the real scope.
-                SharedPrefsAccountStore(applicationContext).current(),
+                // AN-ACCOUNT-TAG (R423/R424): READ AT WRITE TIME, like the shell. This said "signed in now"
+                // and meant "signed in when this activity was built", which is the same sentence the defect
+                // hid behind in MainActivity.
+                currentAccount = { SharedPrefsAccountStore(applicationContext).current() },
             )
         val today = todayInParis(clock)
         setContent {

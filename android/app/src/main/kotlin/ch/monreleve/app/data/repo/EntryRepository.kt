@@ -1,5 +1,7 @@
 package ch.monreleve.app.data.repo
 
+import android.util.Log
+import ch.monreleve.app.BuildConfig
 import ch.monreleve.app.account.UNOWNED_ACCOUNT
 import ch.monreleve.app.data.local.AbsenceReason
 import ch.monreleve.app.data.local.EntryDao
@@ -57,13 +59,54 @@ class LocalEntryRepository(
     private val clock: Clock,
     // AN-FIX F4 / R303: the account that owns rows recorded and read through this repository. A null
     // account (no active session) tags a row UNOWNED - held, never sent, never shown (fail closed).
-    private val currentAccount: String? = null,
+    //
+    // AN-ACCOUNT-TAG (R423): A FUNCTION, NOT A STRING, AND THAT IS THE WHOLE FIX. It used to be a
+    // String? read once by whoever constructed this - and MainActivity, which constructs it, is also
+    // what hosts the sign-in screen, so the value it read was null. Signing in by CODE sets the account
+    // without restarting the activity (the magic LINK does restart it, which is why this survived for
+    // so long), so every day recorded in that session was tagged UNOWNED: held forever, never shown,
+    // never sent, and gone at the next launch.
+    //
+    // SIGNING IN IS EXACTLY THE EVENT THAT CHANGES THE ANSWER, so the same question asked twice in one
+    // app session has to be allowed to give two answers. Asking at write time is what allows it.
+    private val currentAccount: () -> String? = { null },
+    //
+    // AN-ACCOUNT-TAG (R425): THE CANARY FOR THIS DEFECT COMING BACK. It answers one question -
+    // is anybody signed in RIGHT NOW - from the account store itself, independently of the
+    // provider above. In production both read the same store, so they agree and this never
+    // fires. It fires precisely when they DISAGREE, which is what a stale capture looks like:
+    // a provider frozen at composition saying nobody is signed in, while the store says someone
+    // is. That is the shape that lost days silently, and it cost a device session to find.
+    //
+    // DEFAULTS TO false, so every existing construction and every test is untouched: no probe,
+    // no claim, no firing. R303's genuine case - truly nobody signed in - stays silent and
+    // correct, because then the probe says false too and there is nothing to disagree about.
+    private val isSignedIn: () -> Boolean = { false },
     private val newMutationId: () -> String = { UUID.randomUUID().toString() },
 ) : EntryRepository {
     override suspend fun record(command: RecordCommand): EntryEntity {
         // The tap's account, stamped at the tap the way the mutation id is (R303). Fail closed to
         // UNOWNED when there is no active account rather than leaving the row untagged.
-        val account = currentAccount ?: UNOWNED_ACCOUNT
+        val resolved = currentAccount()
+        val account = resolved ?: UNOWNED_ACCOUNT
+
+        // R425. Loud, and only for the case that cannot be legitimate: no tag resolved, yet the
+        // store says somebody is signed in. A row written here would be HELD forever - never
+        // shown, never sent, gone at the next launch - and nothing downstream would complain,
+        // because R303 tells every one of them to ignore it. Silence is the whole problem, so
+        // this is the one place that must not be silent.
+        if (resolved == null && isSignedIn()) {
+            val complaint =
+                "account tag unresolved while a session exists: this row would be held as " +
+                    "UNOWNED and silently lost (R423/R425). The account was probably captured " +
+                    "when a screen was built instead of read at the write."
+
+            // DEBUG CRASHES, RELEASE LOGS. A reader's day is not worth losing to keep an app
+            // alive, but neither is crashing somebody mid-record in the field over a condition
+            // they cannot act on. The log names the condition so it is findable either way.
+            check(!BuildConfig.DEBUG) { complaint }
+            Log.e("EntryRepository", complaint)
+        }
         val existing = dao.byAccountDayPortion(account, command.dayDate, command.portion)
         val entity =
             EntryEntity(
@@ -110,8 +153,8 @@ class LocalEntryRepository(
     // clearing never ran). A null account resolves to UNOWNED, which owns no real row, so the screens show
     // nothing rather than another account's days.
     override fun observePending(): Flow<List<EntryEntity>> =
-        dao.observeAllForAccount(currentAccount ?: UNOWNED_ACCOUNT)
+        dao.observeAllForAccount(currentAccount() ?: UNOWNED_ACCOUNT)
             .map { rows -> rows.filter { it.syncState == SyncState.PENDING } }
 
-    override fun observeAll(): Flow<List<EntryEntity>> = dao.observeAllForAccount(currentAccount ?: UNOWNED_ACCOUNT)
+    override fun observeAll(): Flow<List<EntryEntity>> = dao.observeAllForAccount(currentAccount() ?: UNOWNED_ACCOUNT)
 }

@@ -63,7 +63,7 @@ class EveningActionReceiver : BroadcastReceiver() {
         when (decision) {
             is EveningTapResult.Record -> {
                 // THE ONE REPOSITORY PATH (R206): the same writer, same stamping, as an in-app tap.
-                LocalEntryRepository(db.entryDao(), clock, account).record(decision.command)
+                LocalEntryRepository(db.entryDao(), clock, currentAccount = { account }).record(decision.command)
                 SyncScheduler.requestSync(context)
                 EveningNotifier.postConfirmation(context, decision.command.kind.name, decision.command.dayDate)
             }
