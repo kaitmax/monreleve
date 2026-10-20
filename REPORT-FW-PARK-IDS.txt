@@ -15,7 +15,9 @@ BRANCH  fw-park-ids, worktree C:/wt/fw-park-ids (R349). The lock carrying this
 STATUS (R391)
 --------------------------------------------------------------------------------
 COMPLETE. R442, R443, R444 and R445 are all done, and R445's stop condition did
-not fire: the cited-id count rose from 39 to 90 and coverage is OK.
+not fire: the cited-id count rose from 39 to 90 on the last commit carrying
+code, and to 97 once this report is itself a scanned report. Coverage is OK at
+every one of those tips.
 
 THE GATE THAT COVERS THESE PATHS RAN ON EACH COMMIT, IN THIS SESSION, GREEN:
 
@@ -26,7 +28,12 @@ GATE:CLONE PASSED on 9e1890b, the commit carrying this report, with the full
 chain including db:deploy, test:db and test:container:write against a scratch
 database it created and dropped itself. Its output, its exit code and the
 database each suite ran against are in PUSH PROOF, with the three R182 re-runs
-made after this report reached its final text.
+and a note of which text each one read.
+
+THE CITED-ID COUNT IS 39 BEFORE AND 97 AT THE TIP, and the four intermediate
+pairs are set out under R445 rather than left for a reader to reconcile: the
+number moves when a report cites more ids, which is the mechanism working
+rather than drift.
 
 :app:gate WAS NOT RUN, and that is a decision rather than an omission (R133):
 `git diff origin/main...HEAD -- android/` is EMPTY on this branch. The ONE
@@ -51,7 +58,8 @@ PARKA-<n>:
     "PARK-K6"        ->  null
 
 The lettered ids were invisible, as the prompt says. So was the ENTIRE PARK-<n>
-series - twenty-four entries cited by nineteen reports. The headline the check
+series - twenty-four entries, nineteen of them cited by a report, across
+twelve reports. The headline the check
 has printed since R327, "register coverage: OK - 39 cited id(s) across 115
 report(s)", was thirty-nine PARKAN-<n> ids and nothing else. And the pattern
 was simultaneously too WIDE: PARKA-<n> is a shape the census contains zero
@@ -447,11 +455,21 @@ R445 - THE COUNT ROSE
       register coverage: OK - 90 cited id(s) across 115 report(s), all have
       headings in parking.md
 
-39 -> 90. The stop condition did not fire. The 51 ids the check now sees that
-it did not see before are the 24 of the PARK-<n> series that are cited, and the
-27 lettered ids that are cited by a report (the other five of the 32 in the
-census appear only inside parking.md itself or in a report that cites them
-alongside one already counted).
+39 -> 90. The stop condition did not fire. THE 51 NEW IDS, DECOMPOSED BY
+MEASUREMENT RATHER THAN BY ARITHMETIC - an earlier draft of this paragraph
+reconstructed the split and got it wrong, which is the defect this whole task
+is about, one layer up:
+
+    19   PARK-<n>      PARK-1, PARK-3, PARK-4, PARK-7 and PARK-10 to PARK-24.
+                       The series has 24 entries; five of them (PARK-2,
+                       PARK-5, PARK-6, PARK-8, PARK-9) are cited only inside
+                       parking.md or in relay/, which this check does not
+                       scan, so they were never CITED ids in its sense.
+    32   PARK-<L><n>   the 28 back-filled here, plus PARK-B1 to PARK-B4, which
+                       had entries from KMP-2b but which the narrow pattern
+                       could not see either.
+    --
+    51
 
 AND THE HEADING SCAN ROSE WITH IT, which is the half a count alone would hide:
 39 headings seen before, 97 after.
@@ -462,14 +480,29 @@ and exited 1 with 28 problems.
 
 AND THE NUMBERS MOVE AGAIN WHEN THIS FILE LANDS, which is stated here so that a
 later reader meeting a third pair does not take it for drift. This report is
-itself a REPORT-*.txt at the repo root and cites PARK-25 and PARK-26, which
-until now appeared only inside parking.md:
+itself a REPORT-*.txt at the repo root, so every id it names becomes a CITED id
+the moment it is committed. At 9e1890b, where it cited PARK-25 and PARK-26 for
+the first time, that was 92; the decomposition above then named PARK-2, PARK-5,
+PARK-6, PARK-8 and PARK-9 as well - the five of the numbered series no report
+had cited - and the final text reads:
 
-      register coverage: OK - 92 cited id(s) across 116 report(s), all have
+      register coverage: OK - 97 cited id(s) across 116 report(s), all have
       headings in parking.md
 
 That is the run against this file's final text, and it is re-run after the
 commit as well (R182) - see PUSH PROOF.
+
+SO THERE ARE FOUR PAIRS OF NUMBERS IN THIS REPORT AND EACH BELONGS TO A
+DIFFERENT TEXT, stated together once so none of them has to be inferred:
+    39 / 115   at 5e87a4a, the BEFORE, origin/main
+    90 / 115   at 78ece08, the last commit carrying code
+    92 / 116   at 9e1890b, this report's first text - the number gate:clone
+               measured and the number it quotes
+    97 / 116   at the tip, this report's final text
+And one more, for completeness rather than for the claim: run on the TIP, the
+OLD pattern now returns 40 rather than 39 - because this report quotes the
+fixture, and the fixture contains PARKA-7, the shape the old pattern matched
+and the new one does not.
 
 --------------------------------------------------------------------------------
 PARKED
@@ -528,7 +561,23 @@ NOTICED BUT NOT TOUCHING
    directions - a citation that can never resolve and will never be reported.
    Left alone: editing another task's report is outside the boundaries.
 
-4. web/scripts/register-coverage.mjs has no .d.mts and needs none - no test
+4. THREE DATABASES THIS SESSION DID NOT CREATE are sitting in the
+   frontalier-postgres container beside the dev database, found by the one
+   SELECT that confirmed THIS run's scratch database had been dropped:
+
+       monreleve_gate_clone_668c9b34   an earlier gate:clone that leaked it
+       monreleve_an5b_live
+       monreleve_fw30
+
+   The first is a measured instance of what R266 says can still happen -
+   "because cleanup can still fail" - on the database side rather than the
+   clone-directory side, which is the side that sweep covers. NOT DROPPED
+   (R334): they are not this session's to remove, and one of them may belong
+   to a session that is simply not finished. A sweep for abandoned scratch
+   DATABASES, on the four-hour shape gate:clone already uses for clones, is
+   the obvious answer and is not this task's.
+
+5. web/scripts/register-coverage.mjs has no .d.mts and needs none - no test
    imports it (declaration-parity.test.ts derives its list from the
    declarations that exist). It is also not a LATE_CHECKS entry: its subject -
    parking.md, the repo-root reports and the script itself - exists before
@@ -712,14 +761,24 @@ project real data before:
                                   its 6 User rows. No row was created,
                                   modified or deleted by this session.
 
-R182 - THE THREE CHECKS WHOSE SUBJECT THIS FILE IS, re-run AFTER it reached its
-final text, because a check that ran before its subject existed has checked
-nothing:
+R182 - THE THREE CHECKS WHOSE SUBJECT THIS FILE IS, re-run against the WORKING
+TREE each time this file reached a final text, because a check that ran before
+its subject existed has checked nothing. A report cannot quote a run made on
+the commit that carries the quotation, so each run is named with the text it
+read, and the LAST run of each is in the body of the commit that carries this
+section - which is the only place that claim can be true (R391: a report does
+not quote a run that did not happen on the sha it names).
 
   node web/scripts/register-coverage.mjs C:/wt/fw-park-ids
-      register coverage: OK - 92 cited id(s) across 116 report(s), all have
+      against 9e1890b's text:
+      register coverage: OK - 92 cited id(s) across 116 report(s)   EXIT=0
+      against this file's FINAL text:
+      register coverage: OK - 97 cited id(s) across 116 report(s), all have
       headings in parking.md
       EXIT=0
+      The five extra are PARK-2, PARK-5, PARK-6, PARK-8 and PARK-9, which
+      this report's own decomposition names and no other report cites. The
+      count rising when a report cites more ids is the mechanism working.
 
   pnpm exec vitest run tests/unit/meta/register-coverage.test.ts
       Test Files  1 passed (1)
@@ -734,6 +793,11 @@ nothing:
       own and named as exactly that - never as :app:gate, which did not run
       (R391). The duration is quoted because it is evidence the suite executed
       rather than being served from the Gradle cache; --rerun-tasks is why.
+
+      THE RUN QUOTED HERE READ 9e1890b's TEXT. It was re-run a second time
+      against the tree that carries this paragraph, and that run's result is
+      in the body of the commit that carries it - the only commit on which
+      that claim can be checked.
 
       ITS FIRST ATTEMPT PRODUCED NO RESULT, NOT A FAILURE (R391). It ended
       "BUILD FAILED in 24s / SDK location not found. Define a valid SDK
