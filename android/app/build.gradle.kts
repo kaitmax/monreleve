@@ -277,10 +277,28 @@ tasks.withType<Test> {
     inputs.file(rootProject.layout.projectDirectory.file("../web/lib/entries/schema.ts"))
         .withPropertyName("serverEntrySchema")
         .withPathSensitivity(PathSensitivity.RELATIVE)
-    // The field-protocol doc (docs/field-protocol-AN6b.md), read by TierThresholdParityTest to keep
-    // the human-facing tier thresholds and the code's in agreement.
+    // The field-protocol doc (docs/field-protocol-AN6b.md). It was declared for TierThresholdParityTest,
+    // WHICH NO LONGER EXISTS - AN-FENCE-ROOTS (R462) found it: the test was replaced by
+    // VoteThresholdParityTest, which reads a DIFFERENT document (docs/detection-model.md), and the
+    // replacement's document was never declared while the deleted test's stayed. The declaration is kept
+    // (a stale input only costs a re-run; removing it is a build decision with no defect behind it, R156,
+    // PARK-V1) and the comment is corrected, because a comment naming a mechanism that is gone reads as a
+    // current instruction (R181). TODAY NO TEST READS THIS FILE.
     inputs.file(rootProject.layout.projectDirectory.file("../docs/field-protocol-AN6b.md"))
         .withPropertyName("fieldProtocolDoc")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    // AN-FENCE-ROOTS (R462/R283). docs/detection-model.md, read by VoteThresholdParityTest, which derives
+    // every vote and near-border constant from the document rather than transcribing it (R181). Undeclared
+    // until now: editing the document changed nothing in :app's test inputs, so the parity assertion went
+    // unrun and a tuned threshold could have diverged from the frozen model in a green build.
+    inputs.file(rootProject.layout.projectDirectory.file("../docs/detection-model.md"))
+        .withPropertyName("detectionModelDoc")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    // AN-FENCE-ROOTS (R462/R283). docs/lucide-icons.md, the licences screen's source of truth for icon
+    // attribution, read by AnswerIconDrawablesTest. R167's instrument: rename a glyph there and the test
+    // must re-run rather than certify an attribution nobody re-read.
+    inputs.file(rootProject.layout.projectDirectory.file("../docs/lucide-icons.md"))
+        .withPropertyName("lucideIconsDoc")
         .withPathSensitivity(PathSensitivity.RELATIVE)
     // AN-LINKS (R283/R246): the website's route tree (web/app), walked for page.tsx by AppSiteLinksTest to
     // derive every page the site serves and fail if an app -> site link points at one that no longer exists.
@@ -314,6 +332,46 @@ tasks.withType<Test> {
         .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.dir("$projectDir/src/main/res/xml")
         .withPropertyName("resXml")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    // AN-FENCE-ROOTS (R462/R283). THE CENSUS FOUND FOUR MORE ROOTS A TEST READS AND THE GATE DID NOT TRACK.
+    // Each is read AS DATA with no compile dependency, so an edit recompiles nothing and would leave this
+    // task UP-TO-DATE with the assertion unrun - R283's defect, in four more places.
+    //   res/drawable            AnswerIconDrawablesTest: the five answer glyphs, their Lucide names and
+    //                           version, and the 24-unit/stroke-2/round conversion the other 23 share.
+    //   src/main/AndroidManifest.xml and src/debug/AndroidManifest.xml
+    //                           BatteryOptimisationTest (R317): neither manifest may request a
+    //                           battery-optimisation exemption. res/xml above covered the backup rules
+    //                           but never the manifests themselves.
+    //   src/debug/kotlin        ApiLevelFenceTest scans it beside src/main - the debug and audit variants
+    //                           both run on the phone, so a late-API call in either is the same crash.
+    inputs.dir("$projectDir/src/main/res/drawable")
+        .withPropertyName("resDrawable")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.files(
+        layout.projectDirectory.file("src/main/AndroidManifest.xml"),
+        layout.projectDirectory.file("src/debug/AndroidManifest.xml"),
+    ).withPropertyName("sourceManifests")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.dir("$projectDir/src/debug/kotlin")
+        .withPropertyName("scannedDebugSource")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    // src/release/kotlin is scanned by NoDebugInjectionInMainTest and DOES NOT EXIST (:app has no
+    // release-only Kotlin). inputs.files, not inputs.dir, for exactly the reason the migration-sql fixture
+    // uses it above: a REQUIRED input that is absent makes Gradle refuse to run the task. As a file
+    // collection it contributes nothing today and starts tracking the tree the day somebody creates it.
+    inputs.files(layout.projectDirectory.dir("src/release/kotlin"))
+        .withPropertyName("scannedReleaseSource")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    // AN-FENCE-ROOTS (R462), MEASURED RATHER THAN ASSUMED. CleanWorktreeGuardTest reads app/build.gradle.kts
+    // to assert R393's clean-worktree guard is still WIRED - and a build-script edit did NOT re-run this
+    // task: appending one comment line to app/build.gradle.kts and re-running left
+    // `:app:testDebugUnitTest UP-TO-DATE`. So the test whose whole job is to notice that guard block being
+    // deleted could not have noticed, and deleting it would have left a stale green. Declaring the script
+    // closes it. The cost is that every build-script edit re-runs the unit suite, which is what the guard
+    // it protects is worth (R393 exists because two commits put java.time into commonMain with every check
+    // green).
+    inputs.file(layout.projectDirectory.file("build.gradle.kts"))
+        .withPropertyName("appBuildScript")
         .withPathSensitivity(PathSensitivity.RELATIVE)
     // The source-scanning fences (FencesTest, LogFenceTest, the copy guards, NoBareThresholdTest) and
     // WarningsTest read src/main/kotlin as TEXT. A NEW violation is always a semantic change that

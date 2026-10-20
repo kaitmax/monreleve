@@ -133,6 +133,9 @@ class FencesTest {
     // 2b's re-export gap - a text scan cannot see through string operations
     // or renaming; closing it needs semantic analysis. See REPORT-AN1.txt.
     // ------------------------------------------------------------------
+    // R461: :app ONLY, and correct - detection/ is Android (location, WorkManager, Notification) and has
+    // no counterpart in :shared commonMain. R460 is already delivered by the isNotEmpty() below: ktFiles()
+    // returns an empty list for a missing directory, and the assertion turns that into a named failure.
     @Test
     fun detectionNeverReferencesDataRemoteOrRetrofit() {
         val files = ktFiles("detection")
@@ -244,6 +247,8 @@ class FencesTest {
     // see through indirection; closing it needs dataflow analysis, out of
     // AN1's scope. See REPORT-AN1.txt.
     // ------------------------------------------------------------------
+    // R461: :app ONLY, and correct - ui/ and design/ are Jetpack Compose, which commonMain cannot hold.
+    // R460 is already delivered by the isNotEmpty() below: a renamed root scans zero files and fails here.
     @Test
     fun uiAndDesignHaveNoRadiusColourOrSpacingLiteralOutsideTokens() {
         val tokenDefinitionFiles =
@@ -289,6 +294,8 @@ class FencesTest {
     // one live instance - DayKind's single-letter codes in DayCell.kt -
     // would need a stated exemption, not a silent pass, before it could).
     // ------------------------------------------------------------------
+    // R461: :app ONLY, and correct - ui/ and dev/ are Jetpack Compose, which commonMain cannot hold.
+    // R460 is already delivered by the isNotEmpty() below: a renamed root scans zero files and fails here.
     @Test
     fun uiAndDevFilesCarryNoStringLiteral() {
         val files = ktFiles("ui") + ktFiles("dev")
@@ -313,6 +320,8 @@ class FencesTest {
     // concatenation ("direct " + "Da" + "o access") evades this, same as
     // fence 2a's split-string gap. See REPORT-AN1.txt.
     // ------------------------------------------------------------------
+    // R461: :app ONLY, and correct - ui/ is Jetpack Compose, which commonMain cannot hold. R460 is already
+    // delivered by the isNotEmpty() below: a renamed ui/ scans zero files and fails here by name.
     @Test
     fun uiNeverReferencesDataRemoteOrDataLocalDirectly() {
         val forbidden = listOf("""\bdata\.remote\b""", """\bdata\.local\b""", """\bRetrofit\b""", """\bDao\b""")
@@ -345,6 +354,8 @@ class FencesTest {
     // (`val d = CardDefaults.shape; Card(shape = d, ...)`) would evade this
     // too - same limitation class as fences 2/3, not chased further here.
     // ------------------------------------------------------------------
+    // R461: :app ONLY, and correct - ui/ is Jetpack Compose, which commonMain cannot hold. R460 is already
+    // delivered by the isNotEmpty() below: a renamed ui/ scans zero files and fails here by name.
     @Test
     fun everyCardInUiIsThemedWithExplicitShapeAndElevation() {
         // F7 (AN-FIX) vacuity guard: assert the directory was scanned, so a renamed ui/ fails rather than
@@ -379,6 +390,9 @@ class FencesTest {
     // whole of D16. Proven by a plant (REPORT-AN6a.txt): a reference to
     // EntryRepository placed in detection/ turns this red.
     // ------------------------------------------------------------------
+    // R461: :app ONLY, and correct - detection/ is Android (location, WorkManager, Notification) and has
+    // no counterpart in :shared commonMain. R460 is already delivered by the isNotEmpty() below: ktFiles()
+    // returns an empty list for a missing directory, and the assertion turns that into a named failure.
     @Test
     fun detectionNeverWritesAnEntry() {
         val forbidden = listOf("""\bEntryRepository\b""", """\bRecordCommand\b""")
@@ -410,6 +424,8 @@ class FencesTest {
     // and evades this text scan. Proven to fire by a planted `tween(200)`
     // (R178/R180), reverted - there were no live instances when it landed.
     // ------------------------------------------------------------------
+    // R461: :app ONLY, and correct - ui/ and design/ are Jetpack Compose, which commonMain cannot hold.
+    // R460 is already delivered by the isNotEmpty() below: a renamed root scans zero files and fails here.
     @Test
     fun uiAndDesignHaveNoRawAnimationDurationLiteral() {
         val tokenDefinitionFiles = setOf(File(appSrcRoot, "design/Tokens.kt").canonicalFile)
@@ -454,6 +470,8 @@ class FencesTest {
     // (`val c = LightColors.brand; c.copy(alpha = 0.5f)`) moves the receiver
     // off the `brand.copy` anchor and evades this text scan.
     // ------------------------------------------------------------------
+    // R461: :app ONLY, and correct - the brand tint is a design/ token and Compose colour, and commonMain
+    // holds no design tokens. R460 is already delivered by the isNotEmpty() below.
     @Test
     fun theBrandTintHasOneHomeAndIsNotOpenCodedElsewhere() {
         val tokensFile = File(appSrcRoot, "design/Tokens.kt").canonicalFile
