@@ -16,6 +16,20 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ktlint)
     alias(libs.plugins.detekt)
+    // KMP-2b increment 1 (R400). KSP, so Room's compiler can process @Entity/@Dao/@Database in this
+    // module. Applied on its own, with NOTHING moved yet, so the toolchain change is reviewable
+    // separately from the code that will depend on it. Version from the catalog (ksp 2.1.10-1.0.31,
+    // KMP-UP) - the hard boundary forbids a version change, and this is not one.
+    alias(libs.plugins.ksp)
+}
+
+// KMP-2b increment 1 (R400/R206). WHERE ROOM EXPORTS THIS MODULE'S SCHEMAS. The ksp-arg form, NOT the
+// androidx.room Gradle plugin - :app chose the arg form deliberately (its own comment: "adds no second
+// plugin, works under KSP1") and two modules declaring the same thing two ways is the drift R206 exists
+// to prevent. The directory is created when the database actually moves here (R396); until then this
+// module declares no @Database and Room exports nothing.
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 // KMP-0 increment 3 (R370). THE FIXTURES REACH COMMON TESTS WITHOUT FILE ACCESS. commonTest cannot read a
@@ -114,6 +128,14 @@ kotlin {
             // moves (increments 4-6). It reaches :app's runtime classpath transitively, so the release APK
             // carries it and checkMinifiedWireContract (R307) exercises the minified result.
             implementation(libs.kotlinx.serialization.json)
+            // KMP-2b increment 1 (R400). room-runtime IS the multiplatform artefact at 2.7 - it publishes
+            // -android, -iosarm64 and -iossimulatorarm64 - so commonMain can hold the entities, DAOs and
+            // the database itself. No new catalog entry and no version change: this is the same
+            // androidx.room 2.7.2 :app already depends on.
+            //
+            // implementation(), not api(): :app declares room-runtime itself, so nothing about its
+            // compile classpath changes when the database moves here.
+            implementation(libs.androidx.room.runtime)
         }
         commonTest {
             // KMP-0 increment 3 (R370): the generated fixture constants are a commonTest source dir. Passing
@@ -136,6 +158,25 @@ kotlin {
             implementation(libs.kotlin.test)
         }
     }
+}
+
+// KMP-2b increment 1 (R400). THE iOS TARGETS ARE DECLARED FOR ROOM, NOT BUILT. KSP runs per TARGET, not per
+// source set, so the Room compiler is added to each target's own configuration - the documented Room KMP
+// form. The two iOS entries cannot run on this Windows host (Kotlin/Native needs a Mac for an iOS target),
+// which is the point of declaring them NOW: the day a Mac builds this, no build file changes.
+//
+// WHAT REMAINS UNPROVEN UNTIL A MAC RUNS IT, stated plainly rather than implied by silence (R133):
+// that Room's compiler actually GENERATES a working implementation for iosArm64 and iosSimulatorArm64.
+// This file declares the wiring; only a Mac executes it. The Android half is proven by the gate.
+//
+// NO KSP MODE CHANGE. ksp.useKSP2 is not set anywhere and is not set here - the hard boundary forbids it.
+// Room 2.7 ADDED KSP2 support and recommends it; it does not require it, so KSP1 (what ksp 2.1.10-1.0.31
+// selects by default) stands. If Room's compiler ever demands KSP2, that is a STOP and a question, never
+// a flag quietly flipped.
+dependencies {
+    add("kspAndroid", libs.androidx.room.compiler)
+    add("kspIosArm64", libs.androidx.room.compiler)
+    add("kspIosSimulatorArm64", libs.androidx.room.compiler)
 }
 
 // KMP-0 increment 2 (R369/R283). The fence test (CommonMainFenceTest) reads shared/src/commonMain as TEXT, so
