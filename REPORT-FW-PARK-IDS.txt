@@ -912,30 +912,67 @@ afterwards by a commit that changes this file and nothing else (R182).
               file this run did not produce itself.
     GATE_CLONE_EXIT=0
 
+GATE:CLONE, RUN A SECOND TIME ON 8c62faf - the commit carrying the class fix,
+because web/ changed again and a push gate is a claim about the commit being
+pushed rather than about an earlier one:
+
+    gate:clone - what is being checked
+      commit    8c62faf5d8dabe6c61f37c2d53b3be84ed273df6
+      swept     no stale clones (older than 4h) found
+
+    --- node scripts/register-coverage.mjs (R327 register coverage) ---
+    register coverage: OK - 98 cited id(s) across 116 report(s), all have
+    headings in parking.md
+
+    --- database: scratch database monreleve_gate_clone_8c62faf5 created ---
+
+    GATE:CLONE PASSED
+      CI readiness: quiet - the repository is private and CI_FULL is unset -
+                    jobs will skip.
+      commit  8c62faf5d8dabe6c61f37c2d53b3be84ed273df6
+      ran     register-coverage, fixture-coverage, install, typecheck, lint,
+              test, build, size, db:deploy, test:db, test:container:write
+      claim   this commit builds and passes [the same eleven] from a clean
+              checkout - a machine with no .env, no prior node_modules and no
+              generated file this run did not produce itself.
+    GATE_CLONE2_EXIT=0
+
+    ITS FIRST STEP IS THE ONE THIS TASK CHANGED, which is worth saying plainly:
+    gate:clone runs register-coverage against the CLONE, before install. So the
+    duplicate check, the exemption list and the widened pattern are exercised
+    on a fresh checkout of this commit by the gate that decides whether it may
+    leave this machine - not only by the suite that runs here.
+
 WHICH DATABASE EACH SUITE RAN AGAINST, because the question has cost this
 project real data before:
 
-  gate:changed, all three runs    NO DATABASE AT ALL. The selection was the
+  gate:changed, all six runs      NO DATABASE AT ALL. The selection was the
                                   base chain on every commit - typecheck,
                                   lint, test, build - and test:db was never
                                   among the suites. This worktree has NO
                                   web/.env; none was copied into it, and the
                                   suite that empties tables was therefore
                                   never in a position to run against anything.
-  gate:clone db:deploy, test:db,  monreleve_gate_clone_9e1890be, a scratch
-  test:container:write            database gate:clone CREATED, migrated from
-                                  empty and DROPPED itself. DATABASE_URL was
-                                  passed to that one command as an environment
-                                  variable - never written into a file - and
-                                  the script uses it for the HOST only
-                                  (localhost:5436), handing the clone a
-                                  connection string to the scratch database
-                                  and nothing else.
-  the dev database `frontalier`   READ ONCE, WRITTEN NEVER. After the run, one
-                                  SELECT confirmed the scratch database is
-                                  gone and that the dev database still holds
-                                  its 6 User rows. No row was created,
-                                  modified or deleted by this session.
+  gate:clone db:deploy, test:db,  monreleve_gate_clone_9e1890be on the first
+  test:container:write            run and monreleve_gate_clone_8c62faf5 on the
+                                  second: scratch databases gate:clone CREATED,
+                                  migrated from empty and DROPPED itself.
+                                  DATABASE_URL was passed to each of those two
+                                  commands as an environment variable - never
+                                  written into a file - and the script uses it
+                                  for the HOST only (localhost:5436), handing
+                                  the clone a connection string to the scratch
+                                  database and nothing else.
+  the dev database `frontalier`   READ TWICE, WRITTEN NEVER. After each run,
+                                  one SELECT confirmed that run's scratch
+                                  database was gone. After the second: no
+                                  monreleve* database remains at all, and the
+                                  dev database holds 6 users and 16 entries.
+                                  No row was created, modified or deleted by
+                                  this session.
+  the three stray databases       DROPPED BY THE OPERATOR, not by this session
+                                  (R334). They are described under NOTICED 4
+                                  and parked as PARK-27.
 
 R182 - THE THREE CHECKS WHOSE SUBJECT THIS FILE IS, re-run against the WORKING
 TREE each time this file reached a final text, because a check that ran before
@@ -948,18 +985,22 @@ not quote a run that did not happen on the sha it names).
   node web/scripts/register-coverage.mjs C:/wt/fw-park-ids
       against 9e1890b's text:
       register coverage: OK - 92 cited id(s) across 116 report(s)   EXIT=0
+      against 3960c58's text:
+      register coverage: OK - 97 cited id(s) across 116 report(s)   EXIT=0
       against this file's FINAL text:
-      register coverage: OK - 97 cited id(s) across 116 report(s), all have
+      register coverage: OK - 98 cited id(s) across 116 report(s), all have
       headings in parking.md
       EXIT=0
-      The five extra are PARK-2, PARK-5, PARK-6, PARK-8 and PARK-9, which
-      this report's own decomposition names and no other report cites. The
-      count rising when a report cites more ids is the mechanism working.
+      92 -> 97 is PARK-2, PARK-5, PARK-6, PARK-8 and PARK-9, named by this
+      report's own decomposition and cited by nothing else; 97 -> 98 is
+      PARK-27. The count rising when a report cites more ids is the mechanism
+      working.
 
   pnpm exec vitest run tests/unit/meta/register-coverage.test.ts
       Test Files  1 passed (1)
-           Tests  6 passed (6)
-      (the sixth asserts the REAL repository's count is greater than 39)
+           Tests  11 passed (11)
+      (six for the widening, five for the duplicate check and its exemption;
+       one of the six asserts the REAL repository's count is greater than 39)
 
   :app:testDebugUnitTest --tests '*RegisterCoverageTest*' --rerun-tasks
       BUILD SUCCESSFUL in 2m 40s      RCT_EXIT=0
@@ -970,10 +1011,11 @@ not quote a run that did not happen on the sha it names).
       (R391). The duration is quoted because it is evidence the suite executed
       rather than being served from the Gradle cache; --rerun-tasks is why.
 
-      THE RUN QUOTED HERE READ 9e1890b's TEXT. It was re-run a second time
-      against the tree that carries this paragraph, and that run's result is
-      in the body of the commit that carries it - the only commit on which
-      that claim can be checked.
+      THE RUN QUOTED HERE READ 9e1890b's TEXT. It has been re-run against
+      every later final text - 3960c58's (BUILD SUCCESSFUL in 1m 37s, exit 0,
+      tests="1" failures="0" errors="0") and this file's - and each of those
+      results is in the body of the commit that carries it, which is the only
+      place such a claim can be checked.
 
       ITS FIRST ATTEMPT PRODUCED NO RESULT, NOT A FAILURE (R391). It ended
       "BUILD FAILED in 24s / SDK location not found. Define a valid SDK
