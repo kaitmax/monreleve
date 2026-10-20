@@ -1,0 +1,710 @@
+================================================================================
+REPORT-AN-ANSWER-ICON
+THE QUESTION ALREADY CLOSED; NOW THE ANSWER SHOWS WHAT IT IS
+================================================================================
+
+TASK    relay/AN-ANSWER-ICON.txt, rulings R429-R433.
+BASE    03a2288 (origin/main)
+BRANCH  an-answer-icon, worktree C:/wt/an-answer-icon (R349), lock held
+DEVICE  SM-G960F (Galaxy S9) 232bcd8c300c7ece, Android 10, auto-time ON,
+        clock REAL and never moved
+
+--------------------------------------------------------------------------------
+STATUS (R391)
+--------------------------------------------------------------------------------
+COMPLETE. The FULL :app:gate ran IN THIS SESSION on the reported code tip
+9835ddc, twice:
+
+    incremental    BUILD SUCCESSFUL in 4m 26s
+                   227 actionable tasks: 56 executed, 171 up-to-date
+                   GATE_EXIT=0
+
+    --rerun-tasks  BUILD SUCCESSFUL in 8m 23s
+                   227 actionable tasks: 227 EXECUTED
+                   GATE_EXIT=0
+                   test floor OK: 1181 unit tests observed (1173 before - the
+                   seven unit tests and the one Paparazzi test added here)
+                   [clean-worktree] OK: no unstaged changes to tracked files
+                   (R393)
+
+THE SECOND RUN EXISTS BECAUSE THE FIRST DID NOT EARN THE WORD "RAN". Its
+testDebugUnitTest, verifyPaparazziDebug, ktlintCheck and detekt all reported
+UP-TO-DATE, because this session had run each of them by hand on the identical
+tree minutes earlier. Gradle was right - identical inputs, identical result -
+but R391 is about what RAN, and a task reported UP-TO-DATE did not run in the
+invocation whose BUILD line is being pasted. The --rerun-tasks run executes all
+227 on this tip, and it is the one this STATUS claims.
+
+THE ONLY COMMIT AFTER 9835ddc IS REPORT-AN-ANSWER-ICON.txt at the repository
+root, which no gate task reads. (AnswerIconDrawablesTest does read a root-level
+path - docs/lucide-icons.md - so "no gate task reads the root" would be false;
+what is true is that no gate task reads THIS file.)
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+R429 came first and it changed what this task is. The operator reported that
+tapping "Domicile" or "En Suisse" does nothing. All three device paths were
+driven on main's audit build on the S9, and ALL THREE CLOSE the card. So no
+defect was found to fix, and the evidence for that - with the one state in
+which the card legitimately stays open, which this phone was in - is below.
+
+What shipped is R430: the answer the card closes into now carries the icon of
+what was answered. Five Lucide glyphs, committed as vector drawables beside the
+eight AN10b already ships, at the same version. A half-day shows two, each
+beside the words of its own half.
+
+R431 is case 2: there is no icon beside the question, and none was invented.
+R432 holds, and its premise does not: there is no status GLYPH to keep - the
+sync line has always been words plus colour - which is reported rather than
+quietly fixed.
+
+--------------------------------------------------------------------------------
+R273 - WHAT WAS READ FIRST
+--------------------------------------------------------------------------------
+relay/AN-ANSWER-ICON.txt, CLAUDE.md (the repo root's, not the parent's),
+README.md, REPORT-AN-ACCOUNT-TAG.txt, and the sources R273 names:
+ui/screens/aujourdhui/ChoiceCard.kt, ChoiceMotion.kt, AujourdhuiScreen.kt,
+aujourdhui/AujourdhuiController.kt (NOT under ui/screens/ - the prompt's path
+is one directory off; stated so the next session does not hunt for it) and
+DESIGN-SYSTEM.md (ICONS, STATUS IS NEVER COLOUR ALONE, section 2 overrides).
+
+Also read, because R429 could not be answered without them: EntryRepository.kt
+at HEAD and at b7349cb^ (the pre-AN-ACCOUNT-TAG version), MainActivity.kt's
+composition root, ShellState.kt, AujourdhuiAuto.kt and FencesTest.kt.
+
+--------------------------------------------------------------------------------
+R1 - THE PRECONDITIONS, EACH MEASURED IN THIS SESSION
+--------------------------------------------------------------------------------
+(a) origin/main contains an-account-tag:
+        git merge-base --is-ancestor origin/an-account-tag origin/main -> true
+    origin/main = 03a2288.
+
+(b) FULL :app:gate on origin/main's HEAD, RUN IN THIS SESSION in a fresh
+    worktree checked out at 03a2288, before any edit:
+        BUILD SUCCESSFUL in 8m 19s
+        227 actionable tasks: 227 executed
+        GATE_EXIT=0
+        test floor OK: 1173 unit tests observed
+
+(c) adb devices -l:
+        232bcd8c300c7ece  device  product:starltexx  model:SM_G960F
+    Device clock Tue Oct 20 +01, auto_time 1, never moved. fw-future-day
+    refuses a dayDate after the server's Paris today, so a moved clock would
+    have made every recording step below fail by design.
+
+--------------------------------------------------------------------------------
+R429 - WHY NOTHING HAPPENS: IT DOES HAPPEN, AND HERE IS WHAT WAS DRIVEN
+--------------------------------------------------------------------------------
+BUILD: the AUDIT variant from this worktree at 03a2288, assembled with
+-PfrontalierHost=127.0.0.1, installed over the existing debug build (same debug
+signing config, so a plain `install -r` - no uninstall, nothing removed).
+Local stack on port 3000, /api/health answering {"service":"monreleve",...}
+(R169 satisfied - ours, not a neighbour's), adb reverse tcp:3000 tcp:3000.
+NEVER production. The account used is an-icon@example.ch, created for this
+session; the operator's own address was never typed anywhere.
+
+WHERE THE CAPTURES ARE. Screen captures are NOT committed (no repository
+convention exists for them and they carry a test account). They are at
+C:/Users/KAMXKAM/AppData/Local/Temp/claude/c--Users-KAMXKAM-Downloads-frontier-work/
+7e10453a-01a2-41e7-9c89-c6c3c6bf8c12/scratchpad/anicon/ - shots/ for this run
+on main, final/ for the R433 run on the branch tip, crops/ for the enlarged
+crops that were looked at. They are a session scratch directory and will not
+survive it; say so now rather than leave a path that rots.
+
+PATH (a) - SIGN OUT, SIGN IN BY CODE, TAP "Domicile", NO RESTART.
+  before  shots/a1-before.png - "Ou travaillez-vous aujourd'hui ?" with the
+          three options and "Declarer une absence", day unrecorded.
+  action  tap "Domicile" at 540,867.
+  after   shots/a2-after.png - THE CARD CLOSED. One card holding
+          "Domicile" / "Enregistre" / "Modifier". The options are gone.
+          The year panel appeared beneath it reading 0,40 %.
+  RESULT  CLOSES. And "Enregistre" rather than "en attente d'envoi" means the
+          row reached the server in that same session - the AN-ACCOUNT-TAG
+          fix working, visible in one word.
+
+PATH (b) - AFTER A RESTART, TAP "En Suisse" ON A DAY WITH NO RECORD.
+  setup   sign out (which erases local data by design, as the product's own
+          dialog says), sign in by code, then `am force-stop` + relaunch. The
+          local database is empty, so today has no record.
+  before  shots/b1-before.png - the question and the three options again.
+  action  tap "En Suisse" at 540,675.
+  after   shots/b2-after.png - THE CARD CLOSED: "En Suisse" / "Enregistre" /
+          "Modifier".
+  RESULT  CLOSES.
+
+PATH (c) - HALF-DAY: ONE HALF, THEN THE OTHER.
+  setup   granularity changed to "Demi-journees" in Parametres, then
+          force-stop + relaunch (AujourdhuiController reads the granularity
+          once, at construction - see NOTICED BUT NOT TOUCHING).
+  before  shots/c1-before.png - "Matin" with its four options, "Apres-midi"
+          with its own, nothing recorded.
+  action  tap "Domicile" under Matin at 540,944.
+  after 1 shots/c2-after-first-half.png - THE CARD STAYS OPEN, which is its
+          documented behaviour and R429's own note. The ONLY visible change is
+          that the morning's "Domicile" is now FILLED instead of outlined. The
+          server received the row: AM / HOME at 2026-10-20.
+  action  tap "En Suisse" under Apres-midi at 540,1573.
+  after 2 shots/c3-after-both-halves.png - THE CARD CLOSED:
+          "Matin : Domicile - Apres-midi : En Suisse" / "Enregistre" /
+          "Modifier".
+  RESULT  CLOSES once both halves are answered.
+
+THE DEVICE RECORD AFTERWARDS, read with run-as from a debug build installed
+over the audit one (same certificate, data preserved):
+        2026-10-20  AM    HOME  SYNCED  6a9be825...
+        2026-10-20  FULL  CH    SYNCED  6a9be825...
+        2026-10-20  PM    CH    SYNCED  6a9be825...
+        UNOWNED rows: 0
+All three tagged with the account that recorded them, all three accepted by
+the server. Nothing was held and nothing was lost.
+
+SO: NOT A SEPARATE DEFECT. By R429's own branch, all three closing means the
+"nothing happens" was AN-ACCOUNT-TAG's. Three things are worth separating,
+because only the first is measured:
+
+  1. MEASURED. On main, today, the card closes on every one of the three
+     paths, and every row reaches the server. There is nothing in ChoiceCard,
+     ChoiceMotion, AujourdhuiScreen or AujourdhuiController that fails to
+     close it. No state field failed to update, so there is no RED/GREEN pair
+     to show for a defect: there was none to reproduce.
+
+  2. MEASURED BY AN-ACCOUNT-TAG, NOT BY ME, and it is what a day going missing
+     looked like. That task's second RED is the one to read:
+
+         the row reaching the dao carries it too, not only the returned object
+             "the stored row must be visible under the account that recorded
+              it"   expected:<1> but was:<0>
+
+     The row was INVISIBLE to the account that recorded it. That is the
+     authority for "nothing happens" having had a real cause, and it is a
+     measurement rather than my reading.
+
+     One refinement, from the pre-fix source at b7349cb^, offered as a reading
+     and not as a measurement: LocalEntryRepository took `currentAccount` as a
+     String and used the SAME value for the write AND for observeAll(). Within
+     the sign-in session the two therefore agreed on UNOWNED, so the screen's
+     own flow did return the row. Who could NOT see it was everything scoped
+     to the real account - SyncEngine, so the day was never sent, and the
+     screen itself at the NEXT launch, when the flow bound to the real tag.
+     So the pre-fix symptom is better described as "I recorded it and it did
+     not stick" than as "the tap does nothing" - and both read as "nothing
+     happened" to somebody using the app. If the operator's report was made
+     after a relaunch, this IS the literal symptom they saw.
+
+  3. INFERRED, AND THE OPERATOR SHOULD JUDGE IT. There IS a state in which the
+     card legitimately does not close, and this phone was in it. Path (c)
+     photographs it: in half-day mode, answering ONE half leaves the question
+     and all the options on screen, and the only change is a button's fill.
+     "Apres-midi" sits below the fold at the moment of the tap. The evidence
+     that this phone was in half-day mode is the row it held before the clear:
+     portion AM. A day-granularity app writes FULL; only half-day mode writes
+     AM. That is an inference about which state the operator was in, not a
+     measurement of what they saw, and it is raised as a QUESTION below.
+
+--------------------------------------------------------------------------------
+R430 - THE FIVE ICONS, FOR THE OPERATOR TO CHANGE
+--------------------------------------------------------------------------------
+All from lucide-static v1.48.0 - the SAME version the eight AN10b glyphs carry
+(docs/lucide-icons.md), fetched from
+https://unpkg.com/lucide-static@1.48.0/icons/<name>.svg on 2026-10-20 and
+converted the way the existing set was: a 24-unit viewport, strokeWidth 2,
+round cap and join, <rect rx> written out as path data. No new dependency.
+
+  answered             Lucide glyph   drawable               version
+  -------------------  -------------  ---------------------  ---------------
+  En Suisse            building-2     ic_building_2.xml      v1.48.0
+  Domicile             house          ic_house.xml           v1.48.0
+  Mission (France)     briefcase      ic_briefcase.xml       v1.48.0
+  Mission (pays tiers) plane          ic_plane.xml           v1.48.0
+  Absence              calendar-x     ic_calendar_x.xml      v1.48.0
+
+These are the prompt's own proposals, unchanged. Each is a KIND, never a
+PLACE: no pin, no flag, no map (DESIGN-SYSTEM section 2, and R430 names the
+same three). "En Suisse" is a workplace rather than a country; an absence is a
+day struck out rather than a location at all.
+
+SIZE: the `icon` size token, 20 dp. Size.icon is DESIGN-SYSTEM section 1's
+`icon` PORTED to Kotlin, not a new value - section 1 states it twice (the R62
+SIZE family "icon-sm 16 / icon 20 / icon-lg 24", and "ICONS: Lucide, 1.75 px
+stroke, 20 px default"), so R77 covers the value and the R272/R285 precedent
+covers ratifying an Android token. It is the same move AN-HOME made for
+Size.rule. Nothing else was moved onto it: Material3's Icon still defaults to
+24 dp at every existing call site.
+
+TINT: LightColors.textPrimary, the same colour as the words beside it. R430
+does not say, so this is the conservative choice and it is reversible - see
+QUESTIONS.
+
+ACCESSIBILITY: contentDescription is null on every one of them. The words sit
+beside the glyph and say the same thing, and R430 requires TalkBack to read the
+day once. The words are never absent - an AnswerLine carries both by
+construction.
+
+STROKE WIDTH, STATED BECAUSE IT DIFFERS FROM THE BRIEF AND THE ARITHMETIC IS
+THE POINT: R430 and DESIGN-SYSTEM both say 1.75 px. Every drawable already in
+res/drawable carries Lucide's own strokeWidth 2 on a 24-unit viewport. Drawn at
+20 dp that renders 2 x 20/24 = 1.67 dp; drawn at Material's 24 dp default it
+renders 2 dp. NEITHER figure is 1.75, at either size, anywhere in the existing
+set. These five match the existing set rather than becoming a sixth convention;
+making five icons differ from eighteen would be worse than the discrepancy, and
+changing all of them is a design-system change this task was not asked for.
+PARK-I1.
+
+LICENCE HEADER WORDING, a deliberate difference from the existing drawables:
+the AN10b headers read "(lucide-static v1.48.0, ISC/MIT)" because four of those
+eight glyphs are on Lucide's Feather-derived list and carry MIT as well. NONE
+of these five is on that list - Feather had `home` and `calendar`, which are
+different names from `house` and `calendar-x` - so their headers read "ISC"
+alone, and docs/lucide-icons.md now says so explicitly. The inconsistency is a
+decision, not drift.
+
+--------------------------------------------------------------------------------
+R431 - WHICH CASE APPLIED: CASE 2
+--------------------------------------------------------------------------------
+THERE IS NO ICON BESIDE THE QUESTION, so no header element was invented and
+R430's answer-line icon is the whole change.
+
+Checked rather than assumed. "Ou travaillez-vous aujourd'hui ?" is a bare
+Text(style = FrontierType.h3) in AujourdhuiScreen.kt, outside ChoiceCard
+entirely, and ChoiceCard's open state is ChoiceSurface holding ChoiceOptions -
+section headings and RecordButtons, no glyph anywhere. The device captures
+confirm it: a1-before.png and b1-before.png show the question with no icon.
+
+--------------------------------------------------------------------------------
+R432 - STATUS STAYS ITS OWN SIGNAL, AND ITS PREMISE IS NOT THIS PRODUCT'S
+--------------------------------------------------------------------------------
+The separation holds, and the sync-failed baseline is where to see it: the kind
+glyph is textPrimary on the kind's own row; the sync line is a separate row
+BELOW it, in its own words, in the error colour when the server refused. The
+kind glyph does not change with sync state, and the sync line never sits beside
+it. Colour is not the only difference: "Enregistre sur le telephone, en attente
+d'envoi", "Enregistre" and "Enregistrement refuse par le serveur..." are three
+different sentences.
+
+BUT R432 SAYS "keeps its own status icon", AND THERE IS NO STATUS ICON TO KEEP.
+RecordedAnswer has rendered the status as a plain Text since AN-HOME; it has
+never had a glyph. So "the existing status icons unchanged" is satisfied
+vacuously, which is exactly the kind of pass this project refuses to let read
+as coverage (R154). Stated plainly instead:
+
+  - the R430 kind icon CANNOT be mistaken for a status icon, because there is
+    no status icon for it to resemble;
+  - the status line is therefore words + colour, with no glyph. DESIGN-SYSTEM's
+    "STATUS IS NEVER COLOUR ALONE: colour + icon + text, always" is met in its
+    substance (the words differ, so colour is not carrying it alone) and not in
+    its letter (there is no icon).
+
+Adding one is a design decision with new copy implications and was NOT made
+here. It is a QUESTION below.
+
+--------------------------------------------------------------------------------
+R433 - PROVEN ON SCREEN AND IN TESTS
+--------------------------------------------------------------------------------
+COMPOSE UI TESTS - AnswerIconInstrumentedTest, 8 tests, run on the S9.
+
+  They drive AujourdhuiScreen, not ChoiceCard (R204: the entry point is the
+  unit under test). The screen is stateless by contract, so the test owns the
+  state and applies the record callback the way AujourdhuiController does.
+
+  The expected drawable is a literal R.drawable.*, never kindIcon() (R171). A
+  test that asked the production mapping which glyph to expect would restate it
+  and pass on any mapping at all.
+
+  RED, on the device, against the icon-less screen:
+      Starting 8 tests on SM-G960F - 10
+      7 FAILED, each: "Failed: assertExists. Reason: Expected exactly '1' node
+      but could not find any node that satisfies: (KindIconRes = '...')"
+      1 PASSED: modifierReopensTheOptionsWithTheCurrentChoiceMarked
+
+  THE ONE THAT PASSED IS THE POSITIVE CONTROL. It proves the harness really
+  drives the screen, that a tap closes the options, that "Modifier" reopens
+  them and that the current choice is marked - so the seven failures mean "no
+  glyph" rather than "the test cannot reach the screen". Without it, seven
+  failures are indistinguishable from a broken harness (R63/R133).
+
+  GREEN, after the change:
+      Starting 8 tests on SM-G960F - 10
+      Finished 8 tests on SM-G960F - 10
+      BUILD SUCCESSFUL
+
+  What they assert: each of the five kinds closes the options and shows the
+  right words AND the right drawable (by resource, not by pixels); "Modifier"
+  reopens with the current choice marked and the others not; "Annuler" closes
+  again and writes nothing (the write count is asserted unchanged); and a split
+  half-day shows BOTH glyphs, with the card staying open after the first half
+  and closing after the second.
+
+  CONNECTED RUNS WIPE THE DEVICE DATABASE (AGP uninstalls both APKs at the
+  end). The R429 evidence above was taken and the database pulled BEFORE any
+  connected run.
+
+JVM TEST - KindIconMappingTest, 3 tests, and it is what the GATE runs.
+
+  The gate COMPILES the androidTest source set and does not RUN it, so without
+  this the mapping has no coverage in the gate at all (R251). It asserts the
+  INVARIANTS rather than the mapping retyped: every kind has a glyph and no two
+  share one; every glyph a kind points at is one of the five drawables
+  AnswerIconDrawablesTest owns. Plus a positive control that reflection over
+  R.drawable resolved five real, distinct ids - a lookup returning 0 for
+  everything would make both assertions vacuously true.
+
+  SHOWN FIRING BY A VERIFIED PLANT (R180). MISSION_THIRD was pointed at
+  ic_briefcase; the line was re-read on disk and confirmed changed BEFORE the
+  run; everyRecordedKindHasItsOwnGlyph then FAILED at KindIconMappingTest.kt:45
+  ("3 tests completed, 1 failed"); the plant was reverted, the revert verified
+  by re-reading the file, and the test is green.
+
+JVM TEST - AnswerIconDrawablesTest, 4 tests, increment 2.
+
+  RED FIRST, with its positive control passing while it was red: three tests
+  failed naming the five absent files and the five absent attribution rows
+  ("ic_building_2.xml is missing from res/drawable", "ic_house.xml is not
+  listed in docs/lucide-icons.md"), while the fourth - that the walk found
+  res/drawable and ic_circle_check.xml, an icon this test does not own -
+  passed. It ties each drawable to its Lucide glyph AND version AND its row in
+  docs/lucide-icons.md, so the file and the attribution cannot drift (R167,
+  R206), and it fences the conversion (24 viewport, stroke 2, round cap/join)
+  so the set cannot acquire a sixth convention.
+
+SEMANTICS - how "the right drawable" is asserted at all.
+
+  kindIconResKey (design/KindIconSemantics.kt) carries the drawable id into the
+  node's semantics. A test tag naming the kind would pass just as happily when
+  the WRONG glyph is drawn, which is the one mistake this exists to catch. A
+  custom SemanticsPropertyKey is not read by any accessibility service, so
+  R430's "decorative, contentDescription null" stays exactly true.
+
+  It lives in design/ and not in ui/ because a SemanticsPropertyKey is
+  constructed with its name as a String literal, which FencesTest's fence 4
+  forbids anywhere under ui/.
+
+  RecordButton now declares `selected` in its semantics. R433 asks for a test
+  proving "Modifier" reopens with the current choice marked, and
+  filled-versus-outlined is a pixel difference - the one thing R433 says not to
+  assert by. It is also the honest announcement: a person using TalkBack had no
+  way to hear which option was already theirs. It draws nothing, so no baseline
+  moved because of it.
+
+BASELINES - 15, NAMED BEFORE THE RUN, EQUAL TO WHAT THE RUN PRODUCED (R207).
+
+  Stated before recording, then confirmed by running verifyPaparazziDebug on
+  the finished code, which named EXACTLY these 14 and nothing else:
+      aujourdhuiRecordedPending        aujourdhuiDaySynced
+      aujourdhuiHalfDayComplete        aujourdhuiWithYear
+      aujourdhuiWithYearLarge          aujourdhuiSyncFailed
+      aujourdhuiPendingApproaching     aujourdhuiPendingOverdue
+      aujourdhuiPendingOverdueLarge    aujourdhuiAutoConfirmed
+      aujourdhuiWithSections           aujourdhuiWithSectionsLarge
+      aujourdhuiWeekAndMonth           aujourdhuiWeekAndMonthLarge
+  plus ONE NEW:
+      aujourdhuiHalfDayCompleteLarge - the answered card at 200 %, in the shape
+      that carries TWO glyphs. The DAY answered card is already captured at
+      200 % by aujourdhuiWithYearLarge and aujourdhuiPendingOverdueLarge; the
+      split day was the gap, and it is where a glyph could collide with wrapped
+      words.
+
+  REASON, for every one of them: the answer line gained a glyph row, and the
+  half-day answer became two lines instead of one.
+
+  UNTOUCHED, and this is the check that the change is confined: aujourdhuiEmpty
+  and aujourdhuiEmptyLarge, aujourdhuiHalfDay (one half recorded, so the
+  options are still open), aujourdhuiOverCeiling and its Large, and every auto
+  state except ETAT C - Detecting, both proposals, the Large proposal, NotSure
+  and NearBorder. Also every baseline of every other screen.
+
+  WHY THEY ARE UNTOUCHED, since one of them could have moved. Those fixtures
+  render the OPTIONS, not the answer, and the only change to the options is
+  RecordButton's new `selected` semantics - semantics paint nothing, so no
+  pixel moves. aujourdhuiHalfDay is the one that proves it: its morning IS
+  recorded, so its "Domicile" button renders selected, and it still verified
+  byte-identical. That is the positive evidence for the claim, not an absence.
+
+  A SIXTEENTH FILE APPEARED AND THE REGENERATION STOPPED ON IT (R207).
+  recordPaparazziDebug also rewrote
+  ch.monreleve.app.ui.screens.signin_SignInScreensScreenshotTest_codeWrong.png.
+  Nothing in this change touches the sign-in screens, so it was investigated
+  rather than accepted: both versions were decoded and compared pixel by pixel.
+
+      dims 461x1000 vs 461x1000
+      differing pixels 0 of 461000 = 0.0000%
+      max channel delta 0
+      byte length 68178 -> 64762
+
+  An IDENTICAL image, re-encoded. It was reverted to HEAD and is not in this
+  branch. PARKED below, because the next session will meet the same surprise.
+
+  EACH NEW BASELINE WAS CROPPED AND LOOKED AT (R135). What that caught is in
+  QUESTIONS: at fontScale 2 the glyph stays 20 dp while the words grow, so it
+  reads small beside them. Nothing was overlapping, clipped or misaligned at
+  either scale.
+
+  DARK MODE IS NOT CAPTURED, AND THAT IS A REFUSAL RATHER THAN AN OMISSION.
+  R433 asks for it. FrontierTheme has NO dark path: DESIGN-SYSTEM section 2's
+  override says "Tokens adopted; light ships first, dark after launch", and
+  FrontierTheme.kt says so in its own words - "LIGHT ONLY, DELIBERATELY ...
+  DarkColors exists in Tokens.kt so the values are ready, and is NOT referenced
+  here - there is no darkTheme parameter, so a caller cannot accidentally opt
+  in". A night-mode capture would therefore photograph the LIGHT theme and
+  certify that nothing changed about a surface the product does not have, which
+  is precisely the baseline R135 warns about. Instantiating DarkColors to make
+  the capture possible is a product decision this session will not take (R156).
+  PARKED and raised as a QUESTION.
+
+THE S9, ON THE FINAL BUILD - see WALKTHROUGH.
+
+--------------------------------------------------------------------------------
+WALKTHROUGH (R176/R177) - THE FINAL BUILD ON THE S9
+--------------------------------------------------------------------------------
+BUILD: the AUDIT variant assembled FROM THE TIP 9835ddc with
+-PfrontalierHost=127.0.0.1 (BuildConfig API_BASE_URL verified as
+http://127.0.0.1:3000), installed over the previous build. Local stack,
+/api/health = {"service":"monreleve",...}, adb reverse tcp:3000 tcp:3000, real
+clock, never production.
+
+R429 (c) - HALF-DAY, FRESH SIGN-IN BY CODE, NO RESTART.
+    final/f-c1-before.png          Matin and Apres-midi, both unanswered.
+    final/f-c2-first-half.png      after "Domicile" under Matin: STILL OPEN,
+                                   the morning button now filled. By design.
+    final/f-c3-both-halves.png     after "En Suisse" under Apres-midi: CLOSED,
+                                   and the answer shows TWO LINES, each with
+                                   its own glyph - a house beside
+                                   "Matin : Domicile", a building beside
+                                   "Apres-midi : En Suisse".
+
+R429 (a) - DAY, SIGN IN BY CODE, TAP "Domicile", NO RESTART.
+    final/f-a1-before.png          the question and the three options.
+    final/f-a2-after-domicile.png  CLOSED: a house, "Domicile", "Enregistre",
+                                   "Modifier". "Enregistre" and not "en attente
+                                   d'envoi", so the row reached the server in
+                                   the sign-in session.
+
+R429 (b) - DAY, AFTER A RESTART, ON A DAY WITH NO RECORD.
+    final/f-b1-before.png          after sign-out (which erases local days), a
+                                   fresh sign-in by code and a force-stop +
+                                   relaunch: the question and the options.
+    final/f-b2-after.png           after "En Suisse": CLOSED, a building,
+                                   "En Suisse", "Enregistre", "Modifier".
+
+ALL FIVE GLYPHS WERE LOOKED AT ON THE DEVICE, which matters because three of
+them have no Paparazzi baseline - no fixture records a mission or an absence.
+Driven through "Modifier" in turn, then cropped and stacked side by side:
+    final/f-mission-france.png     briefcase   "Mission (France)"
+    final/f-mission-third.png      plane       "Mission (pays tiers)"
+    final/f-absence.png            calendar-x  "Absence - Conge"
+    final/f-suisse.png             building-2  "En Suisse"
+    final/f-a2-after-domicile.png  house       "Domicile"
+Each is legible at 20 dp, each sits beside its own words, and none of them
+reads as a map, a pin or a flag.
+
+THE SERVER RECEIVED EVERYTHING, which is the positive control that the device
+was talking to our stack rather than to nothing (R133):
+    an-icon-day@example.ch   2026-10-20 FULL CH,  firstRecordedAt 01:05:21Z
+    an-icon@example.ch       2026-10-20 FULL CH / AM HOME / PM CH
+
+TWO PRODUCT REFUSALS WERE MET AND ARE WORTH RECORDING, because both are the
+system working. Switching the granularity back from half-days to whole days was
+refused by the app: "Cette modification est incompatible avec des journees deja
+enregistrees, qui utilisent un decompte different." An attempt to clear those
+rows directly in the database was then refused by the DATABASE: "EntryEvent is
+append-only (SPEC 8): DELETE rejected while the user still exists." That is
+R196's enforcement firing on a session that had no business getting past it. A
+second test account was created instead, which is what a session should have to
+do.
+
+--------------------------------------------------------------------------------
+INCREMENTS AND COMMITS
+--------------------------------------------------------------------------------
+aad820f  AN-ANSWER-ICON: the five answer-line glyphs, as committed
+         drawables (R430)
+         The five vector drawables, docs/lucide-icons.md, and
+         AnswerIconDrawablesTest - shown RED first, with its positive control
+         passing while it was red.
+
+9835ddc  AN-ANSWER-ICON: the answer carries the icon of what was answered
+         (R430-R433)
+         Size.icon, KindIconSemantics.kt, AnswerIcon.kt, the AnswerParts
+         change, answerHalfDay returning one entry per half, RecordButton's
+         selected semantics, KindIconMappingTest, AnswerIconInstrumentedTest,
+         and the 15 baselines.
+
+INCREMENT 1 (R429) PRODUCED NO COMMIT, and that is the finding rather than an
+omission: all three paths close on main, so there was nothing to fix.
+
+--------------------------------------------------------------------------------
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------------------
+N1  AujourdhuiController reads the granularity ONCE, at construction
+    (`private val granularity = ... settingsStore.load()`), so changing
+    "Decompte des journees" in Parametres does not reach the Aujourd'hui card
+    until the controllers are rebuilt. Found while setting up R429 (c): the
+    setting changed and the card did not, until a force-stop and relaunch. It
+    is the same SHAPE as the defect AN-ACCOUNT-TAG fixed - a value read once by
+    whoever constructed the holder - though the consequence here is a stale
+    layout rather than a lost day. Not touched: it is another screen's write
+    path and outside this task.
+
+N2  The question "Ou travaillez-vous aujourd'hui ?" stays on screen after the
+    card closes - it is a heading in AujourdhuiScreen, outside ChoiceCard. So
+    "the question closes" is true of the CARD and not of the heading above it.
+    Visible in a2-after.png. Changing it is a copy/layout decision, not mine.
+
+N3  docs/lucide-icons.md was missing nine of the drawables that have been
+    committed since AN10b (ic_bell, ic_calendar_check, ic_chevron_left,
+    ic_clock, ic_info, ic_lock, ic_mail, ic_search, ic_user). The five added
+    here are listed and asserted; the nine are RECORDED IN THE DOCUMENT ITSELF
+    (R267 - a finding naming a second site is named, not silently left) rather
+    than fixed, because they belong to no single task and the licence text they
+    would carry is already in the file verbatim.
+
+N4  The two library deprecation warnings in app/ (LocalLifecycleOwner, Criteria)
+    are unchanged and unrelated. Carried from PARK-A1 / PARK-U2.
+
+N5  C:/Users/KAMXKAM/Downloads/frontier work/.claude/worktrees/
+    agent-aacfc4b0d2a3088e3/ holds a full copy of the repository from an
+    earlier session. It is untracked and was NOT removed (R334). Reported so
+    the operator can decide.
+
+N6  android/scripts/ holds 24 untracked throwaway device scripts from earlier
+    sessions, and relay/ holds 12 untracked prompts. None was touched or
+    removed. android/scripts/uidrive.mjs IS tracked and was used as-is.
+
+--------------------------------------------------------------------------------
+PARKED
+--------------------------------------------------------------------------------
+PARK-I1  STROKE WIDTH. DESIGN-SYSTEM section 1 and R430 both say "1.75 px
+         stroke". Every one of the 23 drawables in res/drawable carries
+         Lucide's published strokeWidth 2 on a 24-unit viewport, which renders
+         1.67 dp at the 20 dp icon size and 2 dp at Material's 24 dp default.
+         The five added here MATCH THE OTHER 23. Making five icons differ from
+         eighteen would be a worse state than the discrepancy, and changing all
+         23 is a design-system change this task was not asked for.
+
+PARK-I2  recordPaparazziDebug IS NOT BYTE-IDEMPOTENT for
+         signin_SignInScreensScreenshotTest_codeWrong.png: it re-encodes a
+         pixel-identical image to a different byte length (68178 -> 64762)
+         while verifyPaparazziDebug passes on the committed one. Only that one
+         file of 119 behaves this way. Reverted here; the next session that
+         records will meet it again.
+
+PARK-I3  DARK MODE for the answered card (R433) is not captured, because
+         FrontierTheme has no dark path by DESIGN-SYSTEM section 2's own
+         override. See R433 above for the full reasoning. When dark ships, the
+         answered card is one of the first surfaces to photograph.
+
+PARK-I4  DESIGN-SYSTEM.md's ANDROID SIZES paragraph names Size.buttonLarge
+         (R285) but not Size.rule (added by AN-HOME) or Size.icon (added here).
+         Both are PORTS of values section 1 already states, so nothing is
+         unrecorded - but the paragraph now under-reports what the Android Size
+         object holds. Not edited here: DESIGN-SYSTEM.md is a spec file and
+         this task's boundaries are tight.
+
+PARK-I5  THE ICON DOES NOT GROW WITH THE TEXT. At fontScale 2 the glyph stays
+         at Size.icon (20 dp) while the words double, so it reads small beside
+         them - visible in aujourdhuiHalfDayCompleteLarge. R430 names "the
+         `icon` size token (20)", so 20 dp fixed is what was built. Scaling it
+         with the font scale is a design decision.
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+D1  THE WEB DEV SERVER IS THE MAIN CHECKOUT'S, not this worktree's, started by
+    the operator before this session to avoid a second full `pnpm install`.
+    Legitimacy verified the way REPORT-KMP-2's deviation 4 did:
+        git diff origin/main...HEAD -- web/   ->   EMPTY
+    This branch changes no web file, so the server this worktree was driven
+    against is byte-identical to the one it would have started itself. Its
+    /api/health answered {"service":"monreleve",...} (R169).
+
+D2  R429 NAMES THE AUDIT BUILD AND A DEBUG BUILD WAS ALSO INSTALLED. The three
+    paths were driven on the AUDIT build exactly as R429 says. The device
+    database was then read by installing the DEBUG build over it - same debug
+    signing config, same applicationId, same versionCode, so `install -r`
+    preserved the data and removed nothing. run-as needs a debuggable build,
+    and "the row was written but not shown" cannot be told from "the row was
+    never written" without reading it. R321 already records that the debug
+    build with -PfrontalierHost=127.0.0.1 supersedes the old two-build
+    workaround for exactly this reason.
+
+D3  THE TEST ACCOUNT WAS PROVISIONED DIRECTLY IN THE LOCAL DATABASE. A User row
+    (an-icon@example.ch, GE, 100 %, SIMPLIFIED240, DAY) was inserted so the
+    sign-in lands on the shell through the real /me restore path instead of
+    four onboarding screens, and the six-digit code was set to a known value by
+    overwriting the sha256 in the VerificationToken row the APP's own request
+    had just created. The sign-in flow itself is untouched: the app POSTed the
+    request, the app POSTed the code, the server consumed the same single-use
+    row. The operator's real address was never used. The existing kmp2b and
+    secret-holder users were not modified.
+
+D4  THE EM DASH WENT FROM THE HALF-DAY ANSWER. answerHalfDay returns one entry
+    per half instead of "Matin : X - Apres-midi : Y" joined. No French word
+    changed and the one home is unchanged (R206); the joining went because
+    R430 requires each glyph to sit beside the words of its own half and a
+    single joined string has no side of the dash a glyph can belong to. The
+    existing copy test was updated, with the reason in the test itself. This is
+    the closest this task comes to "new copy beyond content descriptions",
+    which the prompt puts out of scope - so it is named here rather than left
+    to be noticed.
+
+D5  connectedDebugAndroidTest WIPED THE DEVICE DATABASE, as AGP always does.
+    R429's evidence and the database read were taken BEFORE any connected run,
+    deliberately.
+
+--------------------------------------------------------------------------------
+QUESTIONS
+--------------------------------------------------------------------------------
+Q1  R429's inference 3. Was the phone in HALF-DAY mode when "nothing happens"
+    was reported? The row it held before the clear was portion AM, which only
+    half-day mode writes, and path (c) photographs exactly what that state
+    looks like: tap "Domicile" under Matin and the question stays, the options
+    stay, and the only change is one button's fill, with "Apres-midi" below the
+    fold. If that is what was seen, the product is behaving as designed and the
+    DESIGN is the thing to reconsider - for instance by making the answered
+    half visibly settle, or by bringing the unanswered half into view. That is
+    a product decision and was not taken here.
+
+Q2  The kind glyph is tinted textPrimary, the same as its words. DESIGN-SYSTEM
+    section 4 gives kinds country colours (Suisse red, Domicile blue, Mission
+    neutral, Absence tertiary grey) but scopes them to dots and chips. Should
+    the answer glyph take the country colour instead? It would still never be
+    colour alone - the words are right beside it.
+
+Q3  R432 assumes a status icon that does not exist: the sync line is words plus
+    colour, with no glyph, and has been since AN-HOME. DESIGN-SYSTEM says
+    "STATUS IS NEVER COLOUR ALONE: colour + icon + text, always". Should the
+    sync line gain a glyph (circle-check for synced, clock for pending,
+    triangle-alert for refused - all three already committed)? It is more
+    visible now that the line above it has one.
+
+Q4  PARK-I5: should the kind glyph scale with the font scale?
+
+Q5  PARK-I3: dark mode. R433 asked for a dark capture of the answered card and
+    the product has no dark theme. Is dark still "after launch", or should a
+    task be opened for it?
+
+Q6  Neither briefcase, plane nor calendar-x has a Paparazzi baseline, because
+    no fixture records a mission or an absence. They were LOOKED AT on the
+    device instead (see WALKTHROUGH). Should three fixtures be added so the
+    mission and absence answers have a regression guard too? R433 said new
+    baselines only for the states this change draws differently, which these
+    are not - they are states nothing photographs at all.
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+    git push -u origin an-answer-icon
+    * [new branch]      an-answer-icon -> an-answer-icon
+    branch 'an-answer-icon' set up to track 'origin/an-answer-icon'
+
+Pushed at 9835ddc, after the gate above. The report commit follows, and its
+push is recorded in the commit that carries it rather than predicted here
+(R334).
+
+gate:clone was NOT run, and that is a decision rather than an omission (R133):
+its subject is the web package, and `git diff origin/main...HEAD -- web/` is
+empty - this branch changes Android files and docs/lucide-icons.md only.
+
+NOT MERGED. The branch is pushed and waits for the operator's review (R334: a
+report states only what has happened).
+
+================================================================================
