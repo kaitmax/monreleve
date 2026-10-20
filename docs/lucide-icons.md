@@ -21,6 +21,27 @@ drawables are plain XML in the repository.
 | `ic_triangle_alert.xml` | `triangle-alert` | ZoneBadge — exposition mission |
 | `ic_circle_x.xml` | `circle-x` | ZoneBadge — régime perdu |
 | `ic_octagon_alert.xml` | `octagon-alert` | ZoneBadge — bascule sociale |
+| `ic_building_2.xml` | `building-2` | answer line — *En Suisse* |
+| `ic_house.xml` | `house` | answer line — *Domicile* |
+| `ic_briefcase.xml` | `briefcase` | answer line — *Mission (France)* |
+| `ic_plane.xml` | `plane` | answer line — *Mission (pays tiers)* |
+| `ic_calendar_x.xml` | `calendar-x` | answer line — *Absence* |
+
+The five answer-line glyphs were added by **AN-ANSWER-ICON (R430)**: once a day
+is recorded the choice card closes into one answer line, and that line carries
+the icon of what was answered. None of them reads as location tracking — no pin,
+no flag, no map (DESIGN-SYSTEM §2). `AnswerIconDrawablesTest` ties each file to
+the Lucide glyph and the version named below, so the drawable and this table
+cannot drift apart.
+
+**This table does not yet list every committed drawable.** Nine icons added by
+tasks between AN10b and AN-ANSWER-ICON — `ic_bell`, `ic_calendar_check`,
+`ic_chevron_left`, `ic_clock`, `ic_info`, `ic_lock`, `ic_mail`, `ic_search`,
+`ic_user` — carry the same Lucide header in their own XML and are absent from
+the rows above. The gap is recorded here rather than closed by this task: it
+belongs to no single task, and the licence those nine would carry (ISC, plus the
+Feather MIT addition for `chevron-left`, `clock`, `info`, `lock`, `search` and
+`user`, which are on the derived list below) is already stated verbatim.
 
 ## Provenance
 
@@ -37,9 +58,12 @@ drawables are plain XML in the repository.
 
 Lucide is **ISC**-licensed. Per Lucide's own `LICENSE`, some glyphs are derived
 from the **Feather** project and additionally carry the **MIT** licence — of the
-eight above, `calendar`, `triangle-alert` (Feather `alert-triangle`), `circle-x`
-(Feather `x-circle`) and `octagon-alert` (Feather `alert-octagon`) are on that
-Feather-derived list. The full `LICENSE` file, verbatim, follows.
+thirteen above, `calendar`, `triangle-alert` (Feather `alert-triangle`),
+`circle-x` (Feather `x-circle`) and `octagon-alert` (Feather `alert-octagon`)
+are on that Feather-derived list. The five AN-ANSWER-ICON glyphs are **not**:
+`building-2`, `house`, `briefcase`, `plane` and `calendar-x` appear nowhere on
+it (Feather had `home` and `calendar`, which are different names), so they are
+ISC only. The full `LICENSE` file, verbatim, follows.
 
 ```
 ISC License
