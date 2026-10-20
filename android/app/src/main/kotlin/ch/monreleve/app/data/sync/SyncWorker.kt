@@ -35,7 +35,7 @@ class SyncWorker(
         }
 }
 
-private fun buildSyncEngine(context: Context): SyncEngine {
+internal fun buildSyncEngine(context: Context): SyncEngine {
     val dao = MonReleveDatabase.get(context).entryDao()
     val api = AuthApi(UrlConnectionTransport(), BuildConfig.API_BASE_URL)
     val session = SessionManager(api, KeystoreTokenStore(context))

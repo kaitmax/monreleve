@@ -160,11 +160,14 @@ class AnswerIconInstrumentedTest {
     @Test
     fun aSplitHalfDayShowsBothGlyphsEachBesideItsOwnHalf() {
         host(AujourdhuiState(today = TODAY, granularity = GranularityChoice.HALF_DAY))
-        // Index 0 is the morning's own option, index 1 the afternoon's: the card stays open until BOTH
-        // halves are answered, which is ChoiceCard's documented behaviour and R429 (c)'s note.
+        // Index 0 is the morning's own option while BOTH halves are open. AN-POLISH (R434) changed what
+        // follows: the answered half now SETTLES, so only the afternoon's options remain and its « En
+        // Suisse » is the only one left - where this used to read assertCountEquals(2) and [1]. R434 owns
+        // that behaviour (HalfDayChoiceInstrumentedTest); this test keeps its own claim, which is that a
+        // split half-day ends up showing BOTH glyphs, each beside the words of its own half (R430).
         composeRule.onAllNodesWithText(AujourdhuiCopy.DOMICILE)[0].performClick()
-        composeRule.onAllNodesWithText(optionsOnly).assertCountEquals(2)
-        composeRule.onAllNodesWithText(AujourdhuiCopy.SUISSE)[1].performClick()
+        composeRule.onAllNodesWithText(optionsOnly).assertCountEquals(1)
+        composeRule.onNodeWithText(AujourdhuiCopy.SUISSE).performClick()
 
         composeRule.onAllNodesWithText(optionsOnly).assertCountEquals(0)
         composeRule

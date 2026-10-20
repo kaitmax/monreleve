@@ -5,7 +5,6 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.ksp)
     alias(libs.plugins.ktlint)
     alias(libs.plugins.detekt)
     alias(libs.plugins.paparazzi)
@@ -22,8 +21,11 @@ plugins {
 // rather than repointed. The two places :app still READS those files - the androidTest asset source
 // set and the Test task's declared inputs - follow the directory below.
 //
-// THE KSP PLUGIN AND room-compiler STAY on :app, deliberately and with nothing to do: they cost a
-// no-op task each and removing them is a build change this task has no evidence to justify. PARKED.
+// AN-POLISH (R439) REMOVED :app's KSP PLUGIN AND room-compiler, which PARK-B3 had left in place. KMP-2b
+// left them with nothing to process and no evidence either way; the check this task ran is that evidence.
+// A comment-blind scan for Room annotations (@Dao/@Database/@Entity/@Query/@Upsert/@TypeConverter/...) over
+// EVERY :app source set finds ZERO, and the SAME scan over shared/src finds 27 - so the scan works and the
+// absence is real, rather than a scanner pointed at nothing (R133/R154).
 
 android {
     namespace = "ch.monreleve.app"
@@ -212,11 +214,13 @@ android {
     }
 }
 
-// AN5 increment 1: KSP writes Room's DAO/database implementations under
-// build/generated/ksp, which the ktlint plugin would otherwise scan and fail on
-// (generated code does not follow this project's style, and it is not ours to
-// format). detekt's default source set does not include generated output, so it
-// needs no equivalent.
+// AN5 increment 1, REWORDED BY AN-POLISH (R439): generated output is not ours to
+// format, so ktlint does not scan it. This used to name KSP's build/generated/ksp
+// specifically; :app no longer applies KSP (R439), and a comment naming a
+// mechanism that is gone reads as a current instruction (R181). The filter STAYS
+// and is unchanged - AGP generates into build/generated whether KSP runs or not,
+// and :shared carries the identical filter. detekt's default source set does not
+// include generated output, so it needs no equivalent.
 ktlint {
     filter {
         exclude { element -> element.file.path.contains("generated") }
@@ -365,10 +369,12 @@ dependencies {
     // withContext(Dispatchers.IO). Explicit rather than transitive (see catalog).
     implementation(libs.kotlinx.coroutines.android)
     // AN5 increment 1: the offline record store (data/local). room-ktx brings the
-    // suspend/Flow DAO extensions; room-compiler runs as the KSP processor.
+    // suspend/Flow DAO extensions. The RUNTIME stays - :app opens the database
+    // (MonReleveDatabaseBuilder) and names its migrations - but room-compiler went
+    // with the KSP plugin in AN-POLISH (R439): the @Database, the DAOs and the
+    // entities all live in :shared now (KMP-2b), so there is nothing here to process.
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
-    ksp(libs.androidx.room.compiler)
     // AN5 increment 3: the offline-queue drain (data/sync). CoroutineWorker + the
     // unique, network-constrained, backing-off work request.
     implementation(libs.androidx.work.runtime.ktx)

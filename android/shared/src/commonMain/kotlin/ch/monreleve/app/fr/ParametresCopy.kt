@@ -140,6 +140,52 @@ object ParametresCopy {
             "rétablis à la reconnexion."
     const val SIGN_OUT_CANCEL = "Rester connecté"
 
+    // AN-POLISH (R440). SIGNING OUT TRIES TO SEND BEFORE IT DISCARDS ANYTHING. Sign-out wipes this device
+    // (R295), so a day still only on the phone goes with it - a person on a bad connection could lose a week
+    // of declarations with one tap. The app now attempts ONE bounded sync of the current account's pending
+    // days first, and says so while it runs.
+    const val SIGN_OUT_SENDING = "Envoi des journées en attente…"
+
+    /**
+     * R440: what is LEFT after that attempt - the COUNT and the DATES. A count alone leaves the person
+     * guessing which days they are about to lose, which is the one thing this dialog exists to tell them.
+     * Both are live figures derived from the record, never typed (R181); the dates arrive already formatted,
+     * because fr/format is in :app and this file is in :shared.
+     *
+     * IT IS NOT unsyncedWarning. That one is the DELETE dialog's (and sign-out's, before this): "not yet
+     * synchronised". This one is said AFTER a send was attempted and failed, which is a different claim -
+     * « n'a pas pu être envoyée », not « n'a pas encore été synchronisée ».
+     */
+    fun stillPendingWarning(
+        days: Int,
+        dates: String,
+    ): String =
+        if (days == 1) {
+            "1 journée n’a pas pu être envoyée : $dates. Elle sera définitivement perdue si vous vous " +
+                "déconnectez maintenant."
+        } else {
+            "$days journées n’ont pas pu être envoyées : $dates. Elles seront définitivement perdues si " +
+                "vous vous déconnectez maintenant."
+        }
+
+    /**
+     * The dates in that warning, joined. STATED rather than left to joinToString's default (R345: a default
+     * is a setting nobody chose), and here rather than in the screen because fence 4 forbids a String literal
+     * anywhere under ui/.
+     */
+    fun dateList(formattedDates: List<String>): String = formattedDates.joinToString(", ")
+
+    /**
+     * R440: try the send again, so « se déconnecter quand même » is not the only way forward. It REFERENCES
+     * the one home for that word (SignInCopy.RETRY, which had it first) rather than being a second literal -
+     * R206, and CopyDuplicationTest caught the second literal on its first run, which is the guard working
+     * rather than a near miss.
+     */
+    const val SIGN_OUT_RETRY = SignInCopy.RETRY
+
+    /** R440: leave with the loss, knowingly. Distinct from SIGN_OUT - this one names the cost. */
+    const val SIGN_OUT_ANYWAY = "Se déconnecter quand même"
+
     /**
      * PARKAN-27: the unsynced-loss warning, naming the count in a sentence (R181 - the number is a live value,
      * derived from the record, not a constant to type). Shown only when at least one recorded day has not yet

@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
+import ch.monreleve.app.aujourdhui.AbsenceChoice
 import ch.monreleve.app.aujourdhui.AujourdhuiState
 import ch.monreleve.app.aujourdhui.AutoDayState
 import ch.monreleve.app.aujourdhui.DayEntry
@@ -82,6 +83,45 @@ class AujourdhuiScreenScreenshotTest {
             granularity = GranularityChoice.HALF_DAY,
             morning = DayEntry(kind = RecordedKind.DOMICILE, absence = null, pending = false, failed = false),
             afternoon = DayEntry(kind = RecordedKind.SUISSE, absence = null, pending = true, failed = false),
+        )
+
+    // AN-POLISH (R437), closing AN-ANSWER-ICON's Q6. THREE KINDS NOTHING PHOTOGRAPHED. briefcase, plane and
+    // calendar-x shipped in AN-ANSWER-ICON with no baseline at all, because no fixture recorded a mission or
+    // an absence - they were looked at on the device and nothing guards them since. These are the answered
+    // card for each, SYNCED, so the only thing that differs between the three is the kind glyph and its
+    // words, which is what R437 is photographing.
+    //
+    // "AN ABSENCE WITH A NOTE" IS AN ABSENCE WITH ITS REASON, and the difference is stated rather than
+    // implied. DayEntry carries `absence` (the AbsenceChoice) and no free text; EntryEntity's `note` exists
+    // in the record but no Aujourd'hui surface renders it, so a fixture carrying one would photograph
+    // identically to this and certify nothing. The reason IS what the answer line shows -
+    // "Absence - Conge" - so that is what is captured.
+    private val missionFranceDay =
+        AujourdhuiState(
+            today = "2026-06-15",
+            granularity = GranularityChoice.DAY,
+            fullDay =
+                DayEntry(kind = RecordedKind.MISSION_FRANCE, absence = null, pending = false, failed = false),
+        )
+
+    private val missionThirdDay =
+        AujourdhuiState(
+            today = "2026-06-15",
+            granularity = GranularityChoice.DAY,
+            fullDay = DayEntry(kind = RecordedKind.MISSION_THIRD, absence = null, pending = false, failed = false),
+        )
+
+    private val absenceDay =
+        AujourdhuiState(
+            today = "2026-06-15",
+            granularity = GranularityChoice.DAY,
+            fullDay =
+                DayEntry(
+                    kind = RecordedKind.ABSENCE,
+                    absence = AbsenceChoice.CONGE,
+                    pending = false,
+                    failed = false,
+                ),
         )
 
     // R198: a sync the server refused, held and SAID so (not silently dropped).
@@ -337,9 +377,38 @@ class AujourdhuiScreenScreenshotTest {
         paparazzi.snapshot { host(halfDay) }
     }
 
+    // AN-POLISH (R436): the HALF-ANSWERED card at the largest font scale - the morning settled into its own
+    // answer line, the afternoon still open. R436 asks for a capture of the answered card AND the
+    // half-answered one at 200 %; the answered card already has three (aujourdhuiHalfDayCompleteLarge,
+    // aujourdhuiWithYearLarge, aujourdhuiPendingOverdueLarge) and this was the gap. It is also where the
+    // scaled glyph has to prove itself: a 40 dp house beside doubled words, with the half below it still
+    // reachable rather than pushed off the viewport.
+    @Test
+    fun aujourdhuiHalfDayLarge() {
+        paparazzi.unsafeUpdateConfig(DeviceConfig.PIXEL_5.copy(fontScale = 2f))
+        paparazzi.snapshot { host(halfDay) }
+    }
+
     @Test
     fun aujourdhuiDaySynced() {
         paparazzi.snapshot { host(daySynced) }
+    }
+
+    // AN-POLISH (R437): the three answered cards that had no baseline - a mission in France (briefcase), a
+    // mission in a third state (aeroplane), and an absence with its reason (struck-out calendar).
+    @Test
+    fun aujourdhuiMissionFrance() {
+        paparazzi.snapshot { host(missionFranceDay) }
+    }
+
+    @Test
+    fun aujourdhuiMissionThird() {
+        paparazzi.snapshot { host(missionThirdDay) }
+    }
+
+    @Test
+    fun aujourdhuiAbsence() {
+        paparazzi.snapshot { host(absenceDay) }
     }
 
     @Test

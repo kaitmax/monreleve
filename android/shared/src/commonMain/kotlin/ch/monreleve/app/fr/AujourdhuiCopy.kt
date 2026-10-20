@@ -128,7 +128,33 @@ object AujourdhuiCopy {
     fun answerHalfDay(
         morningLabel: String,
         afternoonLabel: String,
-    ): Pair<String, String> = "$MORNING : $morningLabel" to "$AFTERNOON : $afternoonLabel"
+    ): Pair<String, String> = halfLabel(MORNING, morningLabel) to halfLabel(AFTERNOON, afternoonLabel)
+
+    /**
+     * « Matin : Domicile » - ONE half, prefixed with the half it belongs to. THE one home for that prefixing
+     * (R206), extracted by AN-POLISH because R434 gives the answered half its OWN answer line while the other
+     * half is still open: answerHalfDay above builds both halves from this, and the per-half line uses the
+     * same function, so a complete day and a half-answered one cannot word the same prefix differently.
+     */
+    fun halfLabel(
+        halfName: String,
+        kindLabel: String,
+    ): String = "$halfName : $kindLabel"
+
+    /**
+     * AN-POLISH (R434). Half-day mode, one half answered and the other not: TalkBack announces it ONCE,
+     * politely, naming which half was recorded and which is still to be filled in. Someone who cannot see the
+     * card settle is told what happened AND what is left - which is the whole point of the change, because
+     * the old behaviour moved one button's fill and said nothing at all.
+     *
+     * DERIVED FROM MORNING / AFTERNOON (R206/R181): the halves have one home and this only frames them, so a
+     * rename of either reaches the announcement without anyone remembering to follow it. Both halves are
+     * masculine in French, so one past participle serves either order.
+     */
+    fun halfRecordedAnnouncement(
+        recordedHalf: String,
+        remainingHalf: String,
+    ): String = "$recordedHalf enregistré. $remainingHalf : à renseigner."
 
     // AN-HOME section C « À traiter » (R328): the action card, shown ONLY when there is something to act on
     // (never an empty box). The lines are action-framed and derive from the SAME state the year panel's

@@ -1,0 +1,1031 @@
+================================================================================
+REPORT-AN-POLISH
+THE HALF-DAY CARD SHOWS IT HEARD YOU, AND SIGN-OUT TRIES BEFORE IT DISCARDS
+================================================================================
+
+TASK    relay/AN-POLISH.txt, rulings R434-R441 (all six free when taken - the
+        scan over *.txt, parking.md and relay/*.txt found no prior R434-R441).
+BASE    5e87a4a (origin/main, which contains both kmp-2b and an-answer-icon)
+BRANCH  an-polish, worktree C:/wt/an-polish (R349), lock held and removed at the
+        end, never committed (.gitignore line 62 covers it - checked).
+DEVICE  SM-G960F (Galaxy S9) 232bcd8c300c7ece, Android 10, auto-time ON, clock
+        REAL and never moved. Transport: USB THROUGHOUT. The cable did NOT drop
+        once in this session.
+PURE ASCII, as every report here is. Where French is quoted below the spelling
+is a TRANSPORT CONSTRAINT and never the source (R155): each quotation names the
+file and constant where the accented original lives, and that file is
+authoritative.
+
+--------------------------------------------------------------------------------
+STATUS (R391)
+--------------------------------------------------------------------------------
+COMPLETE. The FULL :app:gate ran IN THIS SESSION, --rerun-tasks, on 69a99c4 -
+THE LAST COMMIT CARRYING CODE on this branch:
+
+    BUILD SUCCESSFUL in 9m 50s
+    225 actionable tasks: 225 EXECUTED
+    GATE_EXIT=0
+    test floor OK: 1196 unit tests observed (>= 10)
+    [clean-worktree] OK: no unstaged changes to tracked files (R393)
+
+WHAT COMES AFTER 69a99c4, AND WHY THE CLAIM STILL HOLDS. Four commits:
+79c7b90 (parking.md), the first report commit, the merge of main (32f99d5) and
+01c4368 (the park-id rename). NONE contains Android code - proven below by
+`git diff 69a99c4..HEAD -- android/` being EMPTY, which is the claim rather
+than a reading of the subject lines. The only gate task that READS any of them
+is RegisterCoverageTest, which shells out to
+web/scripts/register-coverage.mjs over parking.md and every REPORT-*.txt at the
+repository root. SO IT WAS RE-RUN AFTER THIS REPORT REACHED ITS FINAL TEXT
+rather than assumed from the pass above (R182 - a check runs after the thing it
+checks for can exist):
+
+    :app:testDebugUnitTest --tests '*RegisterCoverageTest*' --rerun-tasks
+    BUILD SUCCESSFUL, EXIT=0
+    TEST-ch.monreleve.app.register.RegisterCoverageTest.xml:
+      tests="1" skipped="0" failures="0" errors="0"
+    and the script it shells out to, run against this worktree:
+      register coverage: OK - 101 cited id(s) across 117 report(s), all have
+      headings in parking.md
+      EXIT=0
+
+    THAT LINE READ 39 ids ACROSS 116 REPORTS WHEN IT WAS FIRST WRITTEN HERE,
+    AND THE DIFFERENCE IS NOT THIS BRANCH GROWING. FW-PARK-IDS (now on main,
+    merged into this branch - see THE PARK-ID RENAME below) found that the
+    pattern was PARKA + an optional N rather than PARK + an optional AN, so it
+    had never matched PARK-<n> or any lettered id at all. The check that exists
+    to make a citation followable was seeing 39 of parking.md's 97 headings and
+    reporting OK. 101/117 is the same tree read by a pattern that can see it.
+    THE EARLIER NUMBER IS LEFT VISIBLE HERE rather than silently replaced,
+    because a report that quietly swaps a figure is the thing this register
+    exists to prevent.
+    Every citation in this report now resolves to exactly one heading, and that
+    is the check's own claim rather than a hand count: PARKAN-27, PARK-B3,
+    PARK-I2, PARK-I3, PARK-I5 and this task's PARK-L1/L2/L3 are ALL matched by
+    the widened pattern and ALL have headings. The sentence that used to stand
+    here - that the letter series is "deliberately NOT matched" - was true of
+    the broken pattern and is false of the fixed one; it is corrected rather
+    than left, because a stale claim reads as a current one (R181).
+
+THE PARK-ID RENAME, AND WHY IT DOES NOT MOVE THE GATE LINE. After the report
+above was first written, FW-PARK-IDS merged to main (32f99d5) and this branch
+merged it in. Its widened check caught a REAL collision: this task's PARK-P1
+and PARK-P2 were also FW-PRISMA-GENERATE's, from 18 October. The operator ruled
+that THIS branch's ids move, so they are PARK-L1, PARK-L2 and PARK-L3. The
+rename touches parking.md and this report and NOTHING ELSE:
+
+    git diff 69a99c4..HEAD -- android/     ->   EMPTY
+    git diff origin/main...HEAD -- web/    ->   EMPTY
+
+so the :app:gate quoted above still describes every line of Android code on
+this branch, and gate:clone is still not this branch's subject (R133: stated as
+a decision, not omitted). The web gate was run for the paths touched - see
+THE PARK-ID RENAME section below.
+
+THREE FULL GATES RAN IN THIS SESSION, each on the tree it is quoted against:
+    5e87a4a (origin/main, R1(b), before any edit)  229/229, floor 1183
+    de8b460's tree (R439, the KSP removal)         225/225, floor 1189
+    69a99c4 (the code tip)                         225/225, floor 1196
+1183 -> 1189 -> 1196 is +13 unit tests: 2 copy (AujourdhuiCopyTest), 1 Paparazzi
+(aujourdhuiHalfDayLarge), 3 Paparazzi (the ITEM 4 fixtures), 7 JVM
+(SignOutSyncFirstTest). 229 -> 225 actionable tasks is R439's four KSP tasks.
+
+INSTRUMENTED TESTS ARE NOT IN ANY OF THOSE NUMBERS - the gate COMPILES
+androidTest and cannot run it, its own stated limit. They were run on the S9
+separately, on the code tip: 34 tests, 0 failed, 0 skipped.
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+Six items, six operator answers, implemented.
+
+ITEM 1 (R434) is the one the operator actually reported. In half-day mode,
+answering "Matin" moved ONE BUTTON'S FILL and nothing else: the question stayed,
+both halves' options stayed, and "Apres-midi" sat below the fold. That is the
+"nothing happens" of AN-ANSWER-ICON's R429, and the answer to Q1 was that the
+product was behaving as designed, so the DESIGN changes. It does now: the
+answered half closes into its own answer line, the other stays open, is brought
+into view, takes accessibility focus, and TalkBack says which half was recorded
+and which remains.
+
+ITEM 2 (R435) makes DESIGN-SYSTEM's "STATUS IS NEVER COLOUR ALONE: colour + icon
++ text, always" true to the letter on the sync line, which has been colour +
+text since AN-HOME. ITEM 3 (R436) makes both glyphs grow with the system font
+scale, closing PARK-I5. ITEM 4 (R437) photographs the three kinds that had no
+baseline at all, closing Q6. ITEM 5 removes :app's idle KSP plugin (R439,
+closing PARK-B3) and answers R438 without moving anything. ITEM 6 (R440) is the
+one with teeth: signing out now TRIES TO SEND the days the server has not got
+before it discards anything, and when some are left it names them.
+
+--------------------------------------------------------------------------------
+R273 - WHAT WAS READ FIRST
+--------------------------------------------------------------------------------
+relay/AN-POLISH.txt; CLAUDE.md at the REPOSITORY ROOT (not the parent
+Downloads/ one, which belongs to a Morocco travel platform); README.md; then the
+sources R273 names:
+
+  REPORT-AN-ANSWER-ICON.txt  - R429 path (c), QUESTIONS Q1-Q6, PARK-I1..I5
+  REPORT-KMP-2b.txt          - QUESTIONS Q1 (CalendarDay), Q2 (KSP), Q3 (park ids)
+  ChoiceCard.kt, ChoiceMotion.kt, AnswerIcon.kt, KindIconSemantics.kt
+  AujourdhuiScreen.kt
+  aujourdhui/AujourdhuiController.kt  - NOT under ui/screens/; AN-ANSWER-ICON's
+                                        report already states the prompt's path
+                                        is one directory off, and it still is
+  The sign-out path: parametres/ParametresController.kt (requestSignOut,
+    confirmSignOut, cancelSignOut), auth/SessionManager.kt (signOut,
+    revokeServerSession), account/LocalStore.kt, the warning dialog in
+    ui/screens/parametres/ParametresAccountSection.kt, and
+    auth/SignOutNotCancellableTest.kt - which is the test that makes the
+    uncancellable wipe a fact rather than a comment
+  DESIGN-SYSTEM.md (ICONS, SIZES/R62, "STATUS IS NEVER COLOUR ALONE", section 2
+    overrides, ANDROID SIZES/R285)
+
+Also read, because the items could not be built without them: fences/FencesTest
+(fences 3, 4, 5, 8), fences/CopyDuplicationTest, fences/CopyReachabilityTest,
+fr/ParametresCopyAccentTest, data/sync/SyncEngine.kt + SyncWorker.kt +
+SyncScheduler.kt, MainGraph.kt, ShellState.kt, MainActivity.kt, EntryEntity.kt,
+EntryRepository.kt, AujourdhuiScreenScreenshotTest.kt,
+AnswerIconInstrumentedTest.kt, StatePreservationInstrumentedTest.kt and
+app/build.gradle.kts (the gate, fastCheck, the R393 clean-worktree guard).
+
+--------------------------------------------------------------------------------
+R1 - THE PRECONDITIONS, EACH MEASURED IN THIS SESSION
+--------------------------------------------------------------------------------
+(a) origin/main contains kmp-2b AND an-answer-icon.
+    origin/main = 5e87a4a = "Merge kmp-2b: the database moves to :shared, and
+    the phone that had it still opens it"; an-answer-icon is in its history.
+    Local HEAD and origin/main agreed at session start (both 5e87a4a).
+
+(b) FULL :app:gate on origin/main's HEAD, --rerun-tasks, RUN IN THIS SESSION in
+    a fresh worktree at 5e87a4a, BEFORE any edit:
+
+        BUILD SUCCESSFUL in 11m 17s
+        229 actionable tasks: 229 executed
+        GATE_EXIT=0
+        test floor OK: 1183 unit tests observed (>= 10)
+        [clean-worktree] OK: no unstaged changes to tracked files (R393)
+
+    1183 is the figure REPORT-KMP-2b.txt predicted, so the base is the base.
+
+(c) The S9 listed by adb, over USB:
+        232bcd8c300c7ece  device  product:starltexx  model:SM_G960F
+    ADB OVER WI-FI WAS ATTEMPTED AND REFUSED BY THIS MACHINE, which is reported
+    rather than quietly skipped. `adb tcpip 5555` succeeded ("restarting in TCP
+    mode port: 5555"), and `adb connect 192.168.11.106:5555` failed TWICE with
+    WSA 10013 (a socket forbidden by its access permissions - a host firewall
+    rule, not the phone). USB was and stayed healthy, so the session ran on USB
+    and the device never dropped. adbd was put back with `adb usb`
+    ("restarting in USB mode") and the device re-listed afterwards.
+
+--------------------------------------------------------------------------------
+ITEM 1 (R434) - THE ANSWERED HALF SETTLES, THE OTHER COMES TO YOU
+--------------------------------------------------------------------------------
+COMMIT f30681f.
+
+WHAT IT DOES. In HALF_DAY mode each half is now independent:
+  - an answered half closes into ITS OWN answer line - the kind glyph, the words
+    ("Matin : Domicile"), and a "Modifier" for that half alone - using the card's
+    EXISTING close motion (ChoiceMotion.kt's optionsExit/answerEnter, the same
+    Motion.standardMillis token, snap() under "Remove animations"). No new
+    animation, no new duration;
+  - the unanswered half stays open, is brought into view (BringIntoViewRequester)
+    and receives accessibility focus (a FocusRequester on its heading, which is
+    made .focusable() for that);
+  - TalkBack announces it ONCE, politely: the heading carries
+    liveRegion = Polite and a contentDescription that is the announcement, so ONE
+    node does bring-into-view, focus and the announcement. A zero-size announcer
+    Box was considered and rejected - a node with no size is a thing you have to
+    believe in; this one is the heading the reader is being sent to, and the
+    visible word is INSIDE the spoken sentence, so the accessible name still
+    contains the label;
+  - BOTH ANSWERED: the card closes into the existing two-line RecordedAnswer
+    exactly as AN-ANSWER-ICON left it, with ONE "Modifier" that reopens BOTH
+    halves. The per-half "Modifier" is the one shown while the other half is
+    still open, and it reopens THAT half only; "Annuler" closes it again without
+    writing;
+  - R310: which half is open survives a rebuild (two rememberSaveable booleans).
+
+WHOLE-DAY IS A DIFFERENT COMPOSABLE NOW, not a branch. ChoiceCard dispatches to
+DayChoiceCard (ChoiceCard.kt, byte-for-byte the old behaviour) or to
+HalfDayChoiceCard (a new file). "Whole-day is unchanged" is therefore a fact
+about which file runs, not a claim about an `if` - and its baselines and its
+existing instrumented tests are untouched, which is the proof the prompt asked
+for.
+
+D16 IS UNTOUCHED. What a tap WRITES did not change: one write per half, through
+the same onRecord callback, which remains the only writer.
+
+RED, on the S9, BEFORE the implementation (connectedDebugAndroidTest,
+HalfDayChoiceInstrumentedTest, 7 tests): 7 FAILED, every one on an assertion
+about behaviour:
+    - "Expected exactly '1' node but could not find any node that satisfies:
+       (ContentDescription = 'Matin enregistre. Apres-midi : a renseigner.')"
+       -> the announcement did not exist
+    - "Assert failed: The component is not displayed!" on "Matin : Domicile"
+       -> the half did not settle
+    - "Expected exactly '1' node but found '2' nodes that satisfy:
+       (Text ... contains 'Declarer une absence')"
+       -> both halves' options were still open after the morning was answered
+    - "Expected at most 1 node but found 2 nodes ... contains 'En Suisse'"
+    - "could not find any node that satisfies ... 'Modifier'"
+
+  THE FIRST RUN OF THAT RED WAS NO RESULT, NOT A FAIL (R391), and is reported
+  because it is the kind of thing that gets read as a verdict. All 7 failed with
+  "No compose hierarchies found in the app" - the device was Dozing with the
+  lock screen up, so the test activity never resumed. The run was repeated after
+  waking and unlocking, and THAT run is the RED quoted above.
+
+GREEN, same tests after the implementation: 7/7 passed. The whole
+ui.screens.aujourdhui package: 15/15. On the final tip, every instrumented test
+in the app: 34/34.
+
+THE EXISTING TEST THAT HAD TO CHANGE, named rather than left to be noticed:
+AnswerIconInstrumentedTest.aSplitHalfDayShowsBothGlyphsEachBesideItsOwnHalf
+asserted assertCountEquals(2) after the morning was answered and then tapped
+onAllNodesWithText("En Suisse")[1]. Both encoded the OLD behaviour. It now
+asserts 1 and taps the single remaining node; its own claim - that a split
+half-day ends up showing BOTH glyphs - is unchanged, and the reason is written
+into the test.
+
+BASELINE: ONE, named before recording and looked at -
+aujourdhui_AujourdhuiScreenScreenshotTest_aujourdhuiHalfDay.png, whose fixture
+(morning DOMICILE, afternoon null) IS the half-answered state. Nothing else
+moved. The crop shows the house glyph, "Matin : Domicile", its own "Modifier",
+then "Apres-midi" with three options and "Declarer une absence" fully in view.
+
+--------------------------------------------------------------------------------
+ITEM 2 (R435) - THE SYNC LINE GETS ITS GLYPH
+--------------------------------------------------------------------------------
+COMMIT 656099d.
+
+Pending -> ic_clock, synced -> ic_circle_check, refused -> ic_triangle_alert.
+All three were ALREADY committed drawables (AN10b, docs/lucide-icons.md): no new
+drawable, no new dependency, no version change. Same size and stroke as the kind
+glyph, beside the existing words, tinted as the words are (textSecondary, or the
+error colour when the server refused), contentDescription null because the words
+carry it. The kind glyph and the status glyph sit on DIFFERENT ROWS, as they
+always have (R432).
+
+ONE VALUE, NOT THREE FIELDS. AnswerParts held `status: String` and
+`failed: Boolean` side by side; a third field would have been a third thing to
+keep in step by hand. They are now one AnswerStatus built by one `when` with
+three arms (answerStatus(pending, failed)), so the word and the glyph cannot be
+set to disagree (R206).
+
+TWO SEMANTICS KEYS, NOT ONE. design/StatusIconSemantics.kt is deliberately NOT a
+reuse of kindIconRes. One shared key would let "the clock is on screen" pass
+while the clock was drawn where the KIND belongs - the one confusion R432 says
+these two must never fall into. A test asserts exactly that, both directions:
+the kind glyph carries kindIconRes and NOT statusIconRes, and no node carries
+kindIconRes = ic_clock.
+
+TESTS: AnswerStatusInstrumentedTest, on the S9, 4/4 passed. One per status state
+asserting the drawable BY RESOURCE with a literal R.drawable.*, never
+answerStatus() - a test that asked the production mapping which glyph to expect
+would restate it and pass on any mapping at all (R171).
+
+BASELINES: FIFTEEN, named before recording and matched EXACTLY by the verify run
+(no sixteenth, nothing missing) - every Aujourd'hui state that renders a
+RecordedAnswer, the auto ETAT C included because it shares the answer line:
+  aujourdhuiRecordedPending, aujourdhuiDaySynced, aujourdhuiSyncFailed,
+  aujourdhuiHalfDayComplete, aujourdhuiHalfDayCompleteLarge, aujourdhuiWithYear,
+  aujourdhuiWithYearLarge, aujourdhuiPendingApproaching, aujourdhuiPendingOverdue,
+  aujourdhuiPendingOverdueLarge, aujourdhuiWithSections,
+  aujourdhuiWithSectionsLarge, aujourdhuiWeekAndMonth,
+  aujourdhuiWeekAndMonthLarge, aujourdhuiAutoConfirmed
+aujourdhuiHalfDay is NOT among them, and that is a decision: R434's per-half
+answer line carries the kind and "Modifier" only, with no status row.
+
+--------------------------------------------------------------------------------
+ITEM 3 (R436) - THE GLYPHS GROW WITH THE TEXT (PARK-I5 CLOSED)
+--------------------------------------------------------------------------------
+COMMIT c4d8dce.
+
+WHICH, AND WHY. The `icon` SIZE TOKEN TIMES THE FONT SCALE -
+Size.icon * LocalDensity.current.fontScale - not an sp-derived size.
+
+On this platform's linear font scaling `20.sp.toDp()` computes the same number,
+so the difference is NOT arithmetic. An sp size spells the figure 20 a SECOND
+TIME beside the token that already holds it, and that second figure is free to
+drift from Size.icon the day the token moves. Size.icon * fontScale has no
+second figure to disagree with: it IS the token, scaled by exactly the
+multiplier the words beside it are taking (R206/R181). It is also the honest
+reading of PARK-I5, which recorded "R430 names the `icon` size token (20), so 20
+dp fixed is what was built" - the token is still what is named, it is simply no
+longer fixed.
+
+SCOPED TO THE ANSWER LINE. Every other Icon keeps Material3's fixed default, as
+AN-ANSWER-ICON left them; retrofitting them is a visual change to screens this
+task was not asked to touch.
+
+THE CHANGE IS UNFORCED AT DEFAULT SCALE, AND THAT WAS CHECKED RATHER THAN
+ASSUMED: Size.icon * 1f == Size.icon, so NO default-scale baseline may move -
+and the verify run moved none. The six it failed on are exactly the six named
+before recording, all fontScale 2f:
+  aujourdhuiHalfDayCompleteLarge, aujourdhuiWithYearLarge,
+  aujourdhuiPendingOverdueLarge, aujourdhuiWithSectionsLarge,
+  aujourdhuiWeekAndMonthLarge, and aujourdhuiHalfDayLarge (NEW).
+
+aujourdhuiHalfDayLarge is R436's own capture: the HALF-ANSWERED card at 200 %,
+which nothing photographed. The ANSWERED card at 200 % already had three
+(aujourdhuiHalfDayCompleteLarge, aujourdhuiWithYearLarge,
+aujourdhuiPendingOverdueLarge), all three re-recorded here and looked at. In the
+new one the house matches the doubled words and the still-open afternoon fits on
+screen with its three options and "Declarer une absence".
+
+ON THE DEVICE at font_scale 2.0 (read as 1.0 first, restored to 1.0 after): the
+same, on a real phone - see R441 below.
+
+--------------------------------------------------------------------------------
+ITEM 4 (R437) - THE STATES NOTHING PHOTOGRAPHED (Q6 CLOSED)
+--------------------------------------------------------------------------------
+COMMIT f3fe250.
+
+briefcase, plane and calendar-x shipped in AN-ANSWER-ICON with NO Paparazzi
+baseline at all, because no fixture recorded a mission or an absence. Three
+fixtures and three baselines, named before recording, each cropped and looked
+at, nothing else moved:
+  aujourdhuiMissionFrance  - briefcase, "Mission (France)"
+  aujourdhuiMissionThird   - aeroplane, "Mission (pays tiers)"
+  aujourdhuiAbsence        - struck-out calendar, "Absence - Conge"
+All three SYNCED, so the only thing that differs between them is the kind glyph
+and its words, which is what R437 is photographing.
+
+"AN ABSENCE WITH A NOTE" IS AN ABSENCE WITH ITS REASON, said plainly rather than
+implied. DayEntry carries `absence` (an AbsenceChoice) and no free text;
+EntryEntity's `note` exists IN THE RECORD but no Aujourd'hui surface renders it,
+so a fixture carrying a note would photograph identically to this one and
+certify nothing. The reason is what the answer line actually shows.
+
+--------------------------------------------------------------------------------
+ITEM 5 - THE TWO LOOSE ENDS FROM KMP-2b
+--------------------------------------------------------------------------------
+R438 - CalendarDay: CASE 2 APPLIES. IT STAYS IN :app UNTIL KMP-3. No move was
+made, in either direction, as R438 requires.
+
+  Measured, not assumed:
+    grep -rn "CalendarDay" --include=*.kt shared/src   ->  EMPTY
+    POSITIVE CONTROL, same scan shape, a type that IS in :shared:
+    "EntryEntity" -> shared/.../data/local/EntryDao.kt, EntryEntity.kt and others
+  So no DAO in :shared returns CalendarDay. Its two functions (todayInParis,
+  deviceClaimNow) are called from :app only - AujourdhuiController,
+  CalendarController, CalendarModel, EntryRepository, EveningNotifier,
+  SamplingWorker, DevRecorderActivity, ForecastController, SimulationController,
+  EveningActionReceiver, and three :app tests.
+
+  WORTH STATING FOR KMP-3, because it changes the shape of that move: :shared
+  ALREADY has a kotlinx-datetime twin - dossier/ParisDay.kt's own todayInParis,
+  written by KMP-0 (R371) with the same Paris pinning and its own "Europe/Paris"
+  literal, recorded there as "TWO ... LITERALS, BY NECESSITY". So KMP-3's job is
+  a RECONCILIATION of two implementations of one rule, not a transplant of one -
+  and PARK-B1's note about deviceClaimNow's fixed pattern (the server's zod
+  rejects a dropped zero-seconds field) is the part that has no twin yet.
+
+R439 - :app's KSP PLUGIN AND room-compiler REMOVED. COMMIT de8b460. PARK-B3
+closed, and the closure appended to its entry in parking.md.
+
+  THE CHECK, AND ITS POSITIVE CONTROL (R133/R154). A COMMENT-BLIND scan (line
+  and block comments stripped) for every Room annotation - @Dao @Database
+  @Entity @Query @Upsert @TypeConverter @Insert @Update @Delete @Transaction
+  @PrimaryKey @ColumnInfo @Embedded @AutoMigration @ProvidedTypeConverter - over
+  EVERY :app source set (main, test, androidTest, debug):
+
+      app/src     0 Room annotation(s) outside comments
+      shared/src  27 Room annotation(s) outside comments
+
+  The 27 are the control, and R439 asked for exactly that: the same scan, same
+  regex, same run, finding the real thing where it really is. Without it, "zero
+  in :app" is indistinguishable from a scanner pointed at nothing.
+
+  A NAIVE GREP DID REPORT HITS IN :app, and that is why the scan strips
+  comments: all eight were the words @Dao and @Database inside PROSE - in
+  MonReleveDatabaseBuilder.kt, MainActivity.kt, ErasureCensusTest.kt and
+  RoomSchemaContractTest.kt. A scan that counted those would have kept the
+  plugin for a reason that was not true.
+
+  REMOVED: alias(libs.plugins.ksp) and ksp(libs.androidx.room.compiler).
+  KEPT:    room-runtime and room-ktx - :app still OPENS the database
+           (MonReleveDatabaseBuilder) and names its migrations; it just compiles
+           no Room annotation. The ktlint "generated" filter STAYS and is
+           unchanged (AGP generates into build/generated whether KSP runs or
+           not, and :shared carries the identical filter); its comment is
+           reworded, because a comment naming a mechanism that is gone reads as
+           a current instruction (R181).
+
+  FULL :app:gate, --rerun-tasks, RUN IN THIS SESSION on that tree:
+      BUILD SUCCESSFUL in 11m 18s
+      225 actionable tasks: 225 executed
+      GATE_EXIT=0
+      test floor OK: 1189 unit tests observed
+      [clean-worktree] OK: no unstaged changes to tracked files (R393)
+  229 -> 225 actionable tasks is the removal MEASURED rather than predicted: the
+  four KSP tasks (kspDebugKotlin, kspReleaseKotlin, kspDebugUnitTestKotlin,
+  kspDebugAndroidTestKotlin) are the difference, and nothing else moved.
+
+--------------------------------------------------------------------------------
+ITEM 6 (R440) - SIGN-OUT SENDS WHAT IT CAN BEFORE IT DISCARDS ANYTHING
+--------------------------------------------------------------------------------
+COMMITS 5acc299 and 69a99c4.
+
+THE FLOW. On "Se deconnecter", if any day is still only on this phone, the app
+attempts ONE bounded drain of the current account's pending days, showing a
+dialog that says it is sending. Then:
+  - nothing left pending -> the plain confirmation PARKAN-27 shipped, unchanged;
+  - some still pending   -> a warning naming HOW MANY days and WHICH DATES, in
+                            the error colour, with three stacked actions.
+Cancel changes nothing. No new endpoint, no wire change, no second transport:
+the app injects SyncWorker's OWN buildSyncEngine (R206 - one construction site
+for the drain), which was made `internal` for that and nothing else.
+
+THE TIMEOUT IS 8 SECONDS (SIGN_OUT_SYNC_TIMEOUT_MS in ParametresController).
+Bounded from BOTH sides rather than picked:
+  - below: one batch POST over a slow mobile connection must be able to finish,
+    or the feature is theatre;
+  - above: UrlConnectionTransport sets connect AND read timeouts of 15 s EACH
+    (DEFAULT_CONNECT_TIMEOUT_MS / DEFAULT_READ_TIMEOUT_MS), so an unreachable
+    server would otherwise hold a person who has already decided to leave for up
+    to thirty seconds per request. R440 says a few seconds, not a minute, and
+    waiting out the transport's own ceiling IS the minute.
+Nothing is lost by cutting it short: a drain that does not finish leaves its
+rows PENDING, which is where they already were, and the dialog then names them.
+
+WHERE THE LOCAL TOKEN WIPE IS GUARANTEED - the thing R440 asks to be shown:
+  1. The send runs inside requestSignOut's own coroutine, BEFORE the
+     confirmation exists and long before confirmSignOut is reached.
+  2. confirmSignOut is UNCHANGED. Its revoke sits in a `try` whose `finally`
+     wipes the local store inside withContext(NonCancellable) - the KMP-1b/R387
+     clause - and auth/SessionManager.signOut carries the same shape for the
+     tokens. auth/SignOutNotCancellableTest is that clause's own test and is
+     still green.
+  3. Therefore a cancellation DURING THE SEND cancels a coroutine that has
+     revoked nothing and cleared nothing: there is no partial sign-out to leave
+     behind, and nothing in ITEM 6 can skip the wipe, because ITEM 6 happens
+     entirely before the wipe can start.
+  4. cancelSignOut is unchanged too: it still only nulls the prompt.
+  5. The drain uses the CURRENT session because it runs before any revoke - by
+     construction, not by ordering care.
+
+DAYS, NOT ROWS. SignOutPrompt now carries pendingDates (DISTINCT, ISO,
+ascending) and DERIVES unsyncedDays from it. Half-day mode writes two rows for
+one date, so the old row count would have said "2 journees" above a list holding
+ONE date - a dialog contradicting itself in one breath, which is exactly what
+naming the dates exposes. A count and a list held as two fields can be set to
+disagree; these cannot (R206).
+
+TESTS (JVM, SignOutSyncFirstTest, 7 tests, plus three existing sign-out tests in
+ParametresAccountTest updated to the new shape):
+  online -> the pending days reach the server, then sign out
+  offline -> the warning lists the right count and dates (recorded out of order
+             on purpose; asserted ascending)
+  half-day -> two rows, ONE date, "1 journee"
+  cancel -> nothing deleted, still signed in, the day still PENDING
+  a cancelled coroutine during the send -> nothing revoked, nothing cleared
+  Reessayer -> sends again; a send that succeeds clears the warning
+  a settled record -> no send at all, and the plain confirmation
+
+RED, BY A VERIFIED PLANT (R180). The plant removed ONLY the send -
+`runCatching { syncNow() }` became `runCatching { }` - and the edit was read
+back from disk and confirmed present before the run was read:
+      4 of 7 FAILED
+        sends shouldBe 1  ->  expected:<1> but was:<0>   (online)
+        sends shouldBe 1  ->  expected:<1> but was:<0>   (offline)
+        sends shouldBe 2  ->  expected:<2> but was:<0>   (Reessayer)
+        the cancellation test HUNG and was killed -
+        UncompletedCoroutinesError: "After waiting for 1m, the test body did not
+        run to completion" - because with no send there is no send to enter and
+        nothing to cancel
+      THAT FOURTH ONE IS THE WEAKEST OF THE FOUR AND IS LABELLED AS SUCH: it
+      went red by HANGING on its own `entered.await()`, not by failing an
+      assertion, so it cannot tell "no send exists" from "the send never
+      entered". It still proves the send is wired, which is precisely what the
+      plant removed - so it earns its place, and it is not offered as more than
+      that.
+GREEN after restoring (also verified from disk): 7/7, and the whole JVM suite
+1196 tests.
+  SAID PLAINLY: the OTHER THREE stayed green under the plant - the dates listed,
+  the half-day distinct count, and cancel-changes-nothing. Those are structural
+  claims about the prompt's shape, which the plant did not touch. They are
+  reported as coverage, not as something this RED caught.
+
+COPY DUPLICATION EARNED ITS KEEP ON THE FIRST RUN (R178): "Reessayer" was
+already SignInCopy.RETRY, and CopyDuplicationTest refused the second literal.
+ParametresCopy.SIGN_OUT_RETRY now REFERENCES that one home (R206), exactly as
+AujourdhuiCopy.CANCEL references CalendarCopy.SHEET_CANCEL. This was a live
+instance, not a planted one.
+
+THE FOLLOW-UP COMMIT, AND THE GAP IT FOUND (69a99c4). 5acc299 added a REQUIRED
+syncNow parameter to MainShell and did not give StatePreservationInstrumentedTest's
+host one, so app/src/androidTest did not compile. :app:gate DOES compile
+androidTest, so 5acc299 would have been RED under a full gate.
+  WHY NOTHING BEFORE THE COMMIT SAW IT, which is the finding rather than the
+  fix: fastCheck (R390) runs :app:compileDebugKotlin and NOT
+  :app:compileDebugAndroidTestKotlin - deliberately, it is the cheap
+  per-increment subset - and verifyPaparazziDebug compiles the JVM test source
+  set, not the androidTest one. Every check run between the edit and the commit
+  was STRUCTURALLY BLIND to it.
+  THIS IS KMP-2's OWN DEFECT, ONE TASK OVER, in the very file the follow-up
+  repairs: its comment there already reads "this argument was MISSING and the
+  androidTest source set did not compile on main". See QUESTIONS.
+  MainShell takes syncNow WITHOUT a default on purpose, for the reason
+  requestSync has none (R291): a composition-root seam that defaults silently is
+  one the root can forget to wire, and forgetting THIS one means sign-out goes
+  back to discarding days it never tried to send.
+
+NO BASELINE MOVED: the sign-out dialogs have never been photographed (the only
+Parametres baselines are rateRowsDefault/rateRowsLarge), and
+verifyPaparazziDebug is green.
+
+--------------------------------------------------------------------------------
+R441 - ON THE S9, AGAINST THE LOCAL STACK
+--------------------------------------------------------------------------------
+BUILD: the DEBUG variant from this branch's tip, assembled with
+-PfrontalierHost=127.0.0.1, installed with `adb install -r` over the audit build
+that was there (same applicationId, same debug signing config, so nothing was
+removed). See DEVIATIONS D2 for why debug and not audit.
+STACK: the main checkout's `PORT=3000 pnpm dev` (DEVIATION D1), with
+  R169 CHECKED BEFORE ANYTHING WAS TRUSTED:
+      /api/health -> {"service":"monreleve","instance":null,"status":"ok",
+                      "reasons":[],"origin":null,"runtime":false}
+  It NAMES this product; it is not a neighbour's container answering 200.
+BRIDGE: adb reverse tcp:3000 tcp:3000. NEVER production.
+ACCOUNT: an-polish@example.ch, created for this session. The operator's own
+address was never typed anywhere.
+CLOCKS, both recorded at each step and neither moved: device
+Tue Oct 20 17:56 +01 2026 (Africa/Casablanca, auto_time 1, auto_time_zone 1);
+the app's "today" computed in Paris read "Mardi 20 octobre 2026" throughout.
+Both agree on the date, so fw-future-day never fired.
+
+R441 PRE-READ, BEFORE ANYTHING THAT UNINSTALLS. The package on the phone at
+session start was ch.monreleve.app, versionName 0.1.0, versionCode 1, flags
+[ HAS_CODE ALLOW_CLEAR_USER_DATA ALLOW_BACKUP ] - NO DEBUGGABLE flag, so it was
+the audit build, and `run-as ch.monreleve.app` answered "package not debuggable".
+THE DATABASE COULD NOT BE READ, AND THERE WAS NOTHING IN IT TO READ: the brief
+recorded it as emptied by the previous session's connectedAndroidTest. That is
+what was measurable and it is what is claimed - not "the data was checked and
+was empty", which this build cannot support.
+
+STEP 1 - HALF-DAY, MATIN THEN APRES-MIDI, with a capture at each step.
+  s1  both halves open: "Matin" with its three options and "Declarer une
+      absence"; "Apres-midi" visible with its options BELOW THE FOLD. This is
+      the state the operator reported.
+  s2  tap "Domicile" under Matin. THE HALF SETTLED: a house glyph,
+      "Matin : Domicile", its own "Modifier"; then "Apres-midi" and ITS THREE
+      OPTIONS, all above the fold. The accessibility tree carries, on the
+      "Apres-midi" heading, the content description
+      "Matin enregistre. Apres-midi : a renseigner." (accented original:
+      AujourdhuiCopy.halfRecordedAnnouncement).
+  s3  tap "En Suisse" under Apres-midi. The card CLOSED into the two-line
+      answer: house + "Matin : Domicile", building + "Apres-midi : En Suisse",
+      and the SYNCED glyph (circle-check) beside "Enregistre" - the drain had
+      already run over the reverse.
+
+STEP 2 - THE SYNC GLYPH IN EACH STATE.
+  synced   s3 above: ic_circle_check beside "Enregistre".
+  pending  the reverse REMOVED (adb reverse --remove-all, verified empty), then
+           "Modifier" -> "Mission" -> "En France" on the morning and "Annuler"
+           on the afternoon. s5 shows briefcase + "Matin : Mission (France)",
+           building + "Apres-midi : En Suisse", and ic_clock beside "Enregistre
+           sur le telephone, en attente d'envoi". The device database confirmed
+           the row: dayDate 2026-10-20, portion AM, kind MISSION_FR, PENDING.
+  refused  NOT PRODUCED, and R441's "otherwise say so" is taken literally.
+           PARK-L3 holds the measurement: every refusal /api/v1/entries can
+           raise is unreachable from an unmodified client -
+           coordinates_refused (D18 fences the client from ever sending one),
+           malformed_body / invalid_payload (the client builds the payload from
+           typed Kotlin), payload_too_large (the engine batches under the
+           server's own limit), and future_day - which the DevRecorder's "Jour
+           suivant" CLAMPS at today, so the app cannot offer a future day
+           either; and a refused row would in any case be a day OTHER than
+           today, while the glyph under test renders on the Aujourd'hui card for
+           TODAY. The refused glyph IS covered on the device by
+           AnswerStatusInstrumentedTest (ic_triangle_alert asserted by resource
+           against a hosted failed state) and by aujourdhuiSyncFailed.png. What
+           is NOT claimed is a real server refusal observed end to end.
+
+STEP 3 - THE LARGEST FONT SCALE. font_scale READ FIRST (1.0), set to 2.0, and
+restored to 1.0 afterwards. The half-answered card at 2.0: the house matches the
+doubled words, "Matin : Domicile" and its "Modifier" sit above "Apres-midi",
+whose first two options are in view. Nothing collides, nothing overflows
+sideways.
+
+STEP 4 - SIGN-OUT WITH TWO PENDING DAYS, OFFLINE.
+  Set up with the reverse removed: today 2026-10-20 AM (MISSION_FR, PENDING) and
+  2026-10-19 FULL (HOME, PENDING). The database held THREE rows; TWO WERE
+  PENDING, across two dates, because 2026-10-20 PM was already SYNCED.
+  Tapping "Se deconnecter" produced, verbatim from the accessibility tree:
+      "2 journees n'ont pas pu etre envoyees : 19.10.2026, 20.10.2026. Elles
+       seront definitivement perdues si vous vous deconnectez maintenant."
+      (accented original: ParametresCopy.stillPendingWarning)
+  TWO journees and TWO dates, from TWO pending rows - which is the warning
+  getting the count and the dates right on a real device, and is NOT by itself
+  the distinct-days claim: these two rows were already on two dates. THE
+  TWO-ROWS-ONE-DATE CASE IS PROVEN BY SignOutSyncFirstTest's half-day test (AM
+  and PM on one dayDate -> "1 journee", one date), not by this run. Said
+  precisely, because a device run that is one row short of the claim it is
+  offered for is exactly what R391 is about.
+  Three actions, stacked: "Reessayer", "Se deconnecter quand meme", "Rester
+  connecte".
+  CANCEL ("Rester connecte"): the device database read back IDENTICAL - all
+  three rows, the two PENDING ones still PENDING - and the app stayed on
+  Parametres, still signed in.
+
+STEP 5 - SIGN-OUT ONLINE. The reverse restored (verified listed), "Se
+deconnecter" again. The device database immediately afterwards:
+      2026-10-19 FULL  SYNCED
+      2026-10-20 AM    SYNCED
+      2026-10-20 PM    SYNCED
+and the server's own rows for an-polish@example.ch, read from Postgres, quoted
+exactly as that read returned them:
+      {"dayDate":"2026-10-18T23:00:00.000Z","portion":"FULL","kind":"HOME",
+       "stamped":true}
+      {"dayDate":"2026-10-19T23:00:00.000Z","portion":"AM","kind":"MISSION_FR",
+       "stamped":true}
+      {"dayDate":"2026-10-19T23:00:00.000Z","portion":"PM","kind":"CH",
+       "stamped":true}
+THOSE INSTANTS ARE AN ARTEFACT OF THE READ, NOT A STORAGE SEMANTIC, and the
+difference is stated rather than glossed: dayDate is a DATE column, and node-pg
+turns a DATE into a JS Date at LOCAL midnight, which on this host (UTC+1)
+serialises as 23:00Z the previous day. So 2026-10-18T23:00:00.000Z IS the date
+2026-10-19. A later re-read of the same column as `"dayDate"::text` returned
+the plain dates (2026-10-19, 2026-10-20) and confirms it. `stamped` is
+firstRecordedAt being non-null - the server's own timestamp, which is the thing
+that matters here.
+THE DIALOG THEN HAD NO WARNING AT ALL - the plain two-button confirmation - and
+"Se deconnecter" returned the app to "Commencer" with the device record EMPTY.
+That is the whole of R440 in one sequence: the days reached the server BEFORE
+the device was wiped.
+
+THE SENDING DIALOG was not captured as a still. Offline the attempt fails
+instantly and online it completes in well under a second, so the dialog is on
+screen for less time than a screencap round trip. Its text is
+ParametresCopy.SIGN_OUT_SENDING and its presence is driven by
+ParametresState.signOutSending, asserted in SignOutSyncFirstTest. Said rather
+than implied, because an uncaptured step that is not named reads as a step that
+was skipped.
+
+THE PHONE, LEFT AS FOUND - every value read BEFORE it was written:
+  stay_on_while_plugged_in  read 0 at session start, set to 7 to keep the screen
+                            awake for the instrumented runs, RESTORED TO 0
+  font_scale                read 1.0, set to 2.0 for step 3, RESTORED TO 1.0
+  adb reverse               EMPTY (adb reverse --remove-all, verified)
+  adbd transport            `adb usb` run after the Wi-Fi attempt
+                            ("restarting in USB mode"); the device re-listed
+  auto_time / auto_time_zone  1 / 1, never written
+  persist.sys.timezone      Africa/Casablanca, NEVER WRITTEN
+  the app                   installed, SIGNED OUT, on "Commencer", Room record
+                            empty (the entry table reads [])
+  Screen captures are NOT committed (no repository convention for them, and they
+  carry a test account). They are in this session's scratchpad and will not
+  survive it; said now rather than leaving a path that rots.
+
+--------------------------------------------------------------------------------
+NEW COPY - EVERY NEW FRENCH SENTENCE, FOR THE OPERATOR
+--------------------------------------------------------------------------------
+THIS REPORT IS PURE ASCII, SO THESE ARE TRANSLITERATIONS AND NOT THE SOURCE
+(R155). Each one names the file and constant holding the accented original, and
+THAT is what ships. Nothing below was lifted from another surface (R165) and
+nothing types a value a constant could supply (R153/R181).
+
+1. ITEM 1, the TalkBack announcement.
+   android/shared/src/commonMain/kotlin/ch/monreleve/app/fr/AujourdhuiCopy.kt
+   fun halfRecordedAnnouncement(recordedHalf, remainingHalf)
+     "<recordedHalf> enregistre. <remainingHalf> : a renseigner."
+   Rendered both ways round, because either half can be answered first:
+     "Matin enregistre. Apres-midi : a renseigner."
+     "Apres-midi enregistre. Matin : a renseigner."
+   The two halves are interpolated from MORNING / AFTERNOON, never typed, so a
+   rename of either reaches the announcement (R206). Both halves are masculine,
+   so one past participle serves either order.
+
+2. ITEM 1, the per-half answer prefix. NO NEW WORDS - this is the EXISTING
+   prefixing, extracted so the per-half line and the two-half answer cannot word
+   it differently.
+   AujourdhuiCopy.halfLabel(halfName, kindLabel) -> "<halfName> : <kindLabel>"
+     "Matin : Domicile"        "Apres-midi : En Suisse"
+   answerHalfDay now builds both halves from it.
+
+3. ITEM 6, the sending line.
+   android/shared/src/commonMain/kotlin/ch/monreleve/app/fr/ParametresCopy.kt
+   const val SIGN_OUT_SENDING
+     "Envoi des journees en attente..."
+   (the original ends with a single ellipsis character, U+2026, as every other
+   in-progress line in this product does)
+
+4. ITEM 6, the still-pending warning. ParametresCopy.stillPendingWarning(days,
+   dates). Singular:
+     "1 journee n'a pas pu etre envoyee : <dates>. Elle sera definitivement
+      perdue si vous vous deconnectez maintenant."
+   Plural:
+     "<days> journees n'ont pas pu etre envoyees : <dates>. Elles seront
+      definitivement perdues si vous vous deconnectez maintenant."
+   DELIBERATELY NOT unsyncedWarning, which still serves the DELETE dialog and
+   says "n'a pas encore ete synchronisee". This one is said AFTER a send was
+   attempted and failed, which is a different claim about the same days.
+   The count and the dates are live figures from the record (R181); the dates
+   arrive already formatted, because fr/format lives in :app and this file in
+   :shared.
+
+5. ITEM 6, the date list. ParametresCopy.dateList(formattedDates) joins with
+   ", " - stated rather than left to joinToString's default (R345), and held in
+   fr/ because fence 4 forbids a String literal under ui/.
+     "19.10.2026, 20.10.2026"
+
+6. ITEM 6, the two new actions.
+   const val SIGN_OUT_ANYWAY
+     "Se deconnecter quand meme"
+   const val SIGN_OUT_RETRY = SignInCopy.RETRY
+     "Reessayer"
+   SIGN_OUT_RETRY is a REFERENCE, not a new string: CopyDuplicationTest refused
+   a second literal of a word SignInCopy already owned (R206).
+   The third action reuses SIGN_OUT_CANCEL ("Rester connecte"), unchanged.
+
+NO OTHER FRENCH CHANGED. No existing sentence was reworded, and no copy was
+removed: unsyncedWarning stays, reached by the deletion dialog.
+
+--------------------------------------------------------------------------------
+PARKED
+--------------------------------------------------------------------------------
+Three entries, written into parking.md (commit 79c7b90) rather than left in this
+report, so a citation resolves - and RENAMED from PARK-P1/P2/P3 to PARK-L1/L2/L3
+in 01c4368 after a collision with FW-PRISMA-GENERATE's ids, which is its own
+section below (THE PARK-ID RENAME):
+
+PARK-L1  DARK MODE IS STILL AFTER LAUNCH. The operator's answer to Q5 was to
+         park it explicitly with nothing built, and nothing was. FrontierTheme
+         has no dark path by DESIGN-SYSTEM section 2's own override, so a night
+         capture would photograph the light theme and certify nothing (which is
+         PARK-I3's reasoning, carried forward). The entry records that the
+         ANSWERED CARD is one of the first surfaces to photograph when dark does
+         ship: it now carries TWO tinted glyph rows, and those tints are exactly
+         what a dark palette has to re-decide.
+         It also states what the AN-POLISH letter series is and is not, because
+         R162 exists for that confusion: PARK-L<n> is this INTERNAL register's
+         series, in KMP-2b's (PARK-B*) and AN-ANSWER-ICON's (PARK-I*)
+         convention - NOT the published P<n> register on /sources.
+
+PARK-L2  THE STATUS GLYPH CENTRES AGAINST A WRAPPED STATUS LINE. Where the
+         status wraps - two lines at default size, three at 200 % - the Row
+         centres the glyph, so the clock sits beside the SECOND line rather than
+         the first. Left centred: alignment is a third decision neither R435 nor
+         R436 asked for, and changing it would move fifteen default-scale
+         baselines. Visible in aujourdhuiHalfDayCompleteLarge.png and in the
+         device capture of the pending state; both were looked at and both are
+         legible.
+
+PARK-L3  NO LOCAL SERVER REFUSAL IS REACHABLE FROM AN UNMODIFIED CLIENT, which
+         is why R441's "refused" glyph is not observed against a real refusal.
+         The entry names every refusal /api/v1/entries can raise and why the
+         client cannot produce it. Measured, not assumed.
+
+PARK-I2 MET AGAIN, EXACTLY AS PREDICTED, and is not re-parked because its entry
+already describes it: recordPaparazziDebug rewrote
+signin_SignInScreensScreenshotTest_codeWrong.png to a different byte length
+(68178 -> 64762) on EVERY recording run in this session, pixel-identical, with
+verifyPaparazziDebug green on the committed one. Reverted each time; never
+committed. The figures match PARK-I2's to the byte.
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+D1  THE WEB DEV SERVER IS THE MAIN CHECKOUT'S, not this worktree's, started by
+    this session with PORT=3000 pnpm dev to avoid a second full pnpm install.
+    Legitimacy verified the way REPORT-KMP-2's deviation 4 did:
+        git diff origin/main...HEAD -- web/   ->   EMPTY
+    This branch changes no web file, so the server driven against is
+    byte-identical to one this worktree would have started. R169 satisfied
+    before anything was trusted (the /api/health body is quoted above). The
+    server was stopped at the end of the session.
+
+D2  THE DEVICE RAN THE DEBUG BUILD, NOT THE AUDIT BUILD R441 NAMES. R321 is the
+    authority and AN-ANSWER-ICON's D2 is the precedent: "the debug build with
+    -PfrontalierHost=127.0.0.1 supersedes the old two-build workaround", because
+    run-as needs a DEBUGGABLE build and a physical device needs the host
+    override, and one debug build does both. The audit build on the phone could
+    not be read with run-as at all (verified: "package not debuggable"), so
+    every database figure in R441 above would have been unobtainable. Installed
+    with `adb install -r` over it - same applicationId, same debug signing
+    config - so nothing was removed. The audit variant reuses src/debug
+    wholesale, so the injection path is identical in both; what differs is
+    debuggability and R8.
+
+D3  THE TEST SESSION WAS INJECTED, NOT TYPED. A real token pair was obtained
+    from the local server through its own /api/v1/auth/callback (a
+    VerificationToken row inserted with a known hash, exactly the AN12/AN-AUDIT
+    recipe the untracked android/scripts instruments use), then handed to the
+    debug-only SessionInjectionActivity with the settings extras. The sign-in
+    flow itself is untouched and the account is scoped by the same opaque tag a
+    real sign-in sets. The operator's address was never used. The holder's name
+    was typed into the app's own onboarding step, which is the real path.
+
+D4  connectedDebugAndroidTest WIPED THE DEVICE DATABASE several times, as AGP
+    always does. Every device read in R441 was taken deliberately BEFORE the
+    next connected run, and the final connected run (34/34) was done BEFORE the
+    R441 account was provisioned, so no R441 evidence was destroyed by it.
+
+D5  A SECOND PENDING DAY WAS RECORDED THROUGH THE DEBUG DevRecorderActivity, not
+    the calendar. Tapping a kind in the calendar's day sheet for 19.10.2026 did
+    not write a row - two attempts, no row in the device database, nothing in
+    logcat. That is OUTSIDE this task (the calendar's write path is untouched
+    here) and is raised under NOTICED BUT NOT TOUCHING rather than investigated.
+    The dev recorder wrote the day through EntryRepository, the same writer.
+
+--------------------------------------------------------------------------------
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------------------
+N1  THE CALENDAR DAY SHEET DID NOT RECORD on this device. Opening 19.10.2026 and
+    tapping "Domicile" under "Matin" left the sheet unchanged and wrote NO row
+    (device database read twice, before and after; logcat clean - no exception,
+    no crash). The same kind recorded through the Aujourd'hui card and through
+    DevRecorderActivity wrote immediately. Not investigated: the calendar write
+    path is not this task's, and a half-measured report of it would be worse
+    than naming it. It is reproducible: HALF_DAY account, a past working day,
+    the day sheet's "Matin" section.
+
+N2  THE SERVER ACCEPTED A FULL-PORTION ROW FOR A HALF_DAY USER. The dev
+    recorder writes portion FULL; the account's granularity was HALF_DAY; the
+    drain posted it and the server returned it written. Whether /api/v1/entries
+    should validate portion against the user's granularity is a server question
+    this task may not touch (and lib/entries/read.ts already contemplates mixed
+    rows - "a user who switches granularity mid-year leaves FULL rows beside
+    AM/PM ones"). Named so it is not discovered twice.
+
+N3  fastCheck DOES NOT COMPILE androidTest, and this session paid for it - see
+    ITEM 6's follow-up. Raised as a QUESTION below rather than fixed here.
+
+--------------------------------------------------------------------------------
+QUESTIONS
+--------------------------------------------------------------------------------
+Q1  SHOULD fastCheck COMPILE androidTest? R390 made fastCheck a TASK because, as
+    a sentence, it lost a step. It is still missing one:
+    :app:compileDebugAndroidTestKotlin. This session committed 5acc299 green
+    under fastCheck while app/src/androidTest did not compile, and :app:gate
+    compiles it - so that commit would have been red under a full gate. KMP-2
+    hit the identical defect in the identical file. Compilation is cheap
+    (seconds, no device, no APK), which was R390's own argument for keeping lint
+    in. Adding it costs one dependsOn line and one line of the printed RAN list.
+
+Q2  SHOULD THE ANSWER LINE'S GLYPHS ALIGN TO THE TOP OF A WRAPPED LINE?
+    PARK-L2. It reads better and it is one word; it also re-records fifteen
+    default-scale baselines, which is why it was not taken unasked.
+
+Q3  THE HALF-ANSWERED CARD SHOWS NO SYNC STATUS. R434 specifies the per-half
+    answer line as the glyph, the words and a "Modifier", and that is what was
+    built - so between answering the first half and the second, the card says
+    nothing about whether that half reached the server. The complete card says
+    it for both. Deliberate and conservative; worth a decision rather than a
+    silence, since ITEM 2 has just made the status visible everywhere else.
+
+Q4  THE CALENDAR DAY SHEET (N1). Should that get its own task? It is a write
+    path that did not write, found incidentally while driving something else.
+
+--------------------------------------------------------------------------------
+THE PARK-ID RENAME - PARK-P1/P2/P3 BECAME PARK-L1/L2/L3
+--------------------------------------------------------------------------------
+This came after the report above was otherwise finished, and it is recorded as
+what it was rather than folded into the original text.
+
+WHAT HAPPENED. FW-PARK-IDS merged to main (32f99d5) while this branch waited.
+It found that the register's citation pattern was PARKA + an optional N, not
+PARK + an optional AN - so it had never matched PARK-<n> OR any lettered id,
+and reported "coverage OK" while seeing 39 of parking.md's 97 headings. With
+the pattern widened and a duplicate-HEADING check added, this branch's PARK-P1
+and PARK-P2 collided with FW-PRISMA-GENERATE's, which used them first on
+18 October. git calls the merge CLEAN and the merged parking.md carries two
+headings under each id - a merge that is clean to git and wrong to a reader,
+which is exactly the case nothing could see before FW-PARK-IDS.
+
+WHY MINE MOVED AND NOT THEIRS. FW-PRISMA-GENERATE used the ids first and its
+reports are already on main; renaming those would mean editing reports this
+branch has no licence to touch - which is the reason PARK-26 itself gave for
+recording the collision rather than resolving it ("after the operator has
+decided which series moves"). The operator decided. L for "poLish", since P is
+taken.
+
+L WAS CONFIRMED FREE BY THE REGISTER, NOT BY MEMORY OR BY THE SUGGESTION:
+  - the letters carrying headings in parking.md are A B F G I K P R S U,
+    derived by scanning its own "## PARK-<letter><n>" headings;
+  - a repo-wide search for PARK-L<n> across every .txt, .md, .ts, .mjs and .kt
+    returned nothing - no heading, no citation, not even in a relay prompt;
+  - PARK-L1 MATCHES the check's widened id pattern, tested directly. An id the
+    pattern cannot see would be validated by nothing, which is the whole of the
+    defect FW-PARK-IDS just closed.
+
+R211 - THE EDIT IS SCRIPTED, AND IT REFUSED ONCE. Every anchor and count is
+asserted BEFORE any write: the AN-POLISH heading appears exactly once; both
+FW-PRISMA-GENERATE headings appear exactly once and are OUTSIDE the block being
+edited; PARK-L1/L2/L3 are absent beforehand; the block holds exactly one of
+each old id. Afterwards: the untouched head is byte-identical, its five
+PARK-P1 and five PARK-P2 mentions are unmoved, and the total heading count is
+unchanged at 103. ITS FIRST RUN REFUSED AND WROTE NOTHING - two prose anchors
+overlapped, so the second found 0 after the first had consumed it - and the
+refusal is recorded in the script's own comment rather than quietly corrected.
+
+ONE FORM THE TOKEN RENAME WAS STRUCTURALLY BLIND TO, found by READING the
+result rather than trusting the counts: the slash shorthand "PARK-P1/P2/P3",
+where only the first element is a whole id. The rename left "PARK-L1/P2/P3" in
+this report's STATUS. Fixed by its own asserted edit, with a final scan
+refusing any surviving P-series form.
+
+THREE CLOSURE NOTES, APPENDED AND NOT REWRITTEN (R334). FW-PRISMA-GENERATE's
+two entries say "THIS ID IS CONTESTED ... See PARK-26"; PARK-26 says the
+resolution wants its own task. Each gets a CONTEST RESOLVED paragraph appended
+BELOW the existing text, which is left standing: it is somebody else's entry,
+and it records the state that produced PARK-26. PARK-26 gets a RESOLVED IN PART
+note saying the PARK-P collision is gone and that PARK-F1/F2/F3 are untouched -
+those are duplicate CITATIONS, not duplicate headings, so the frozen SHARED_IDS
+list is inert today and is not a precedent for keeping a duplicate.
+
+PROOF, in the order it was taken:
+  BEFORE, on the merged tree with both series present:
+      EXIT=1
+      - PARK-P1 has 2 "## PARK-P1 -" headings in parking.md (lines 2474, 2839)
+      - PARK-P2 has 2 "## PARK-P2 -" headings in parking.md (lines 2494, 2869)
+    The guard was seen FIRING on the real case before it was seen passing
+    (R178: where a guard's first run finds live instances, those are the proof).
+  AFTER, on this branch:
+      register coverage: OK - 101 cited id(s) across 117 report(s), all have
+      headings in parking.md
+      EXIT=0
+  AND ON THE ACTUAL MERGED TREE, which is the claim that matters:
+      git merge-tree --write-tree origin/main HEAD
+      EXIT=0, one tree oid and no conflict section - CLEAN
+      that tree extracted, and the check run inside it:
+      register coverage: OK - 101 cited id(s) across 117 report(s), all have
+      headings in parking.md
+      EXIT=0
+      and a scan of the merged parking.md for a repeated
+      "## PARK<letter><n> -" heading returned NOTHING.
+
+THE GATE LINE IS UNMOVED, and the diff is the evidence:
+      git diff 69a99c4..HEAD -- android/     ->   EMPTY
+      git diff origin/main...HEAD -- web/    ->   EMPTY
+No Android file differs from the tip the full :app:gate ran on, and no web file
+differs from main - so that gate still describes every line of code here, and
+gate:clone remains not this branch's subject (R133).
+
+THE WEB GATE WAS RUN for the paths touched, from this worktree (which needed
+its own pnpm install - the D1 arrangement was about the dev SERVER, not about
+never installing):
+    pnpm gate:changed   (from C:/wt/an-polish/web, on 01c4368)
+    gate selection (R132):
+      no path matched the selector - base chain only
+      suites: typecheck, lint, test, build
+      a11y: covered by pnpm test
+    Test Files  191 passed (191)
+         Tests  3290 passed (3290)
+    Compiled successfully in 26.9s
+    GATE PASSED for the paths changed.
+    GATE_CHANGED_EXIT=0
+
+  NO SELECTOR RULE MATCHES parking.md OR A ROOT REPORT, AND THAT IS NOT A GAP:
+  the base chain runs whatever changed, and `pnpm test` is where
+  web/tests/unit/meta/register-coverage.test.ts lives - the suite whose subject
+  these two files are. Coverage here is by the base chain rather than by a
+  rule, which is correct rather than lucky.
+
+  THAT RUN SAW THE REPORT AS IT STOOD AT 01c4368, NOT AS IT STANDS NOW, and the
+  distinction is stated rather than glossed: gate:changed reads the working
+  tree when it starts, and this text was written afterwards. A report cannot
+  quote a check of its own final text from inside that text. So the checks
+  that read THIS text were run against the file on disk after it reached its
+  final form, and their output is in the COMMIT MESSAGE of the commit that
+  carries it (R182) - which is the same arrangement the first report commit
+  used, for the same reason.
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+    git push -u origin an-polish
+    * [new branch]      an-polish -> an-polish
+    branch 'an-polish' set up to track 'origin/an-polish'.
+
+Pushed at 79c7b90, after the gates above; the report commit 5ff6b70 followed
+and was pushed. THE PARK-ID RENAME THEN ADDED THREE MORE COMMITS, whose push is
+recorded in the commit that carries this text rather than predicted here (R334:
+a report states only what has happened).
+
+THE COMMITS, in order:
+    f30681f  ITEM 1 (R434)  the answered half settles, the other comes to you
+    656099d  ITEM 2 (R435)  the sync line gets its glyph
+    c4d8dce  ITEM 3 (R436)  the glyphs grow with the text, closing PARK-I5
+    f3fe250  ITEM 4 (R437)  the three states nothing photographed, closing Q6
+    de8b460  ITEM 5 (R439)  :app's KSP plugin and room-compiler go, PARK-B3 closed
+    5acc299  ITEM 6 (R440)  sign-out sends what it can before it discards anything
+    69a99c4  ITEM 6 follow-up: the androidTest host wires syncNow
+    79c7b90  the three PARK entries this task leaves behind
+    5ff6b70  the session report
+    8a51096  Merge main (32f99d5): the widened register check and the
+             back-filled ids
+    01c4368  this task's park ids move to PARK-L1/L2/L3 (the operator's ruling)
+plus the commit carrying this final text.
+
+gate:clone was NOT run, and that is a DECISION rather than an omission (R133):
+its subject is the web package, and
+
+    git diff origin/main...HEAD -- web/   ->   EMPTY
+
+This branch changes Android files, parking.md and this report only.
+
+NOT MERGED. The branch is pushed and waits for the operator's review. PENDING
+MERGE (R334: write "pending merge" until it is true).
+
+================================================================================

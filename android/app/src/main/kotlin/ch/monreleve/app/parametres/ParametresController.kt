@@ -27,6 +27,7 @@ import ch.monreleve.app.settings.ThresholdAlertStore
 import ch.monreleve.app.settings.detectionConsentBody
 import ch.monreleve.app.settings.mePatchBody
 import ch.monreleve.app.settings.toAggregatableUser
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.Channel
@@ -34,10 +35,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
 import java.time.LocalDate
 
@@ -92,7 +95,25 @@ enum class AccountExportKind { JSON, CSV }
  * but not yet synced is lost - it never reached the server and cannot be recovered. The confirmation names how
  * many, in words, before the person confirms (R289's rationale, extended to sign-out).
  */
-data class SignOutPrompt(val unsyncedDays: Int)
+data class SignOutPrompt(
+    /**
+     * AN-POLISH (R440): the DISTINCT CALENDAR DAYS still only on this device, ISO, ascending - NAMED, not
+     * merely counted, because a count alone leaves the person guessing which days they are about to lose.
+     * Empty means the send cleared the queue (or there was nothing in it), and the dialog is the plain
+     * confirmation it has always been.
+     *
+     * DAYS, NOT ROWS. Half-day mode writes TWO pending rows for one date, so counting rows would have said
+     * « 3 journées » above a list of two dates - a dialog contradicting itself in one breath, which is
+     * precisely what naming the dates makes visible.
+     */
+    val pendingDates: List<String>,
+) {
+    /**
+     * DERIVED, never stored beside the list. A count and a list kept as two fields can be set to disagree,
+     * and this is the dialog where that would matter most (R206).
+     */
+    val unsyncedDays: Int get() = pendingDates.size
+}
 
 /** A completed account action the composition root must act on by leaving the signed-in shell. */
 sealed interface AccountEvent {
@@ -144,6 +165,8 @@ data class ParametresState(
     val pendingRateChange: RateChange? = null,
     /** PARKAN-27: set when sign-out is requested; the screen shows the confirmation naming the unsynced days. */
     val signOutPrompt: SignOutPrompt? = null,
+    /** AN-POLISH (R440): a bounded send of the pending days is in flight, before anything is discarded. */
+    val signOutSending: Boolean = false,
     /** R289: set when deletion is requested; the screen shows the confirmation naming what will be destroyed. */
     val deletePrompt: DeletePrompt? = null,
     /** R289: set after a delete attempt; the screen shows the receipt, or that the device data is intact. */
@@ -183,6 +206,19 @@ data class ParametresSnapshot(
 
 private const val HTTP_OK = 200
 private const val HTTP_OK_MAX = 299
+
+/**
+ * AN-POLISH (R440): how long sign-out waits for its one send before it asks the person what to do.
+ *
+ * EIGHT SECONDS, and the figure is bounded from both sides rather than picked. Below: one batch POST over a
+ * slow mobile connection has to be able to finish, or the feature is theatre. Above: UrlConnectionTransport
+ * sets connect AND read timeouts of 15 s each, so an unreachable server would otherwise hold a person who
+ * has already decided to leave for up to thirty seconds per request - R440 says a few seconds, not a minute,
+ * and waiting out the transport's own ceiling is the minute. Nothing is lost by cutting it short: a drain
+ * that does not finish leaves its rows PENDING, which is where they already were, and the dialog then names
+ * them.
+ */
+private const val SIGN_OUT_SYNC_TIMEOUT_MS = 8_000L
 
 private const val ACCOUNT_EXPORT_JSON = "/api/v1/account/export"
 private const val ACCOUNT_EXPORT_CSV = "/api/v1/account/export?format=csv"
@@ -225,6 +261,12 @@ class ParametresController(
     // MainGraph.build) and the account tests always supply the real ones.
     private val exportBytes: suspend (String) -> BytesOutcome = { BytesOutcome.NoSession },
     private val revokeServer: suspend () -> Unit = {},
+    // AN-POLISH (R440): ONE bounded drain of this account's pending days, attempted BEFORE sign-out
+    // discards anything. A seam rather than a SyncEngine, for the reason every other dependency here is
+    // one: the controller has no Context and WorkManager is not a JVM-testable thing. The app injects
+    // SyncWorker's own buildSyncEngine (R206 - one construction site for the drain); the tests inject a
+    // fake that either settles the queue or refuses, which is what offline looks like from here.
+    private val syncNow: suspend () -> Unit = {},
     private val localStore: LocalStore = NoOpLocalStore,
     // AN12 increment 3 (R289): the authenticated POST (SessionManager::authenticatedPost) the delete uses. It
     // takes (path, body) so the delete PATH stays in this file (R206) rather than leaking to the composition
@@ -382,14 +424,74 @@ class ParametresController(
         }
 
     /**
-     * PARKAN-27: raise the sign-out confirmation, naming how many recorded days have not yet synced and will
-     * be lost when Room is wiped (R295). The count is of PENDING rows across every year - sign-out clears the
-     * whole device, not one tax year.
+     * PARKAN-27 + AN-POLISH (R440): raise the sign-out confirmation - but TRY TO SEND FIRST.
+     *
+     * Sign-out wipes this device (R295), so a day the server has not got is lost with it. KMP-2b found that
+     * and the only answer in place was a warning. A person on a bad connection could lose a week of
+     * declarations with one tap, having been told so and having had nothing offered but the loss. So this
+     * now attempts ONE bounded drain of the pending days before the dialog is even shown; what the dialog
+     * then says is what is LEFT.
+     *
+     * NOTHING IS DISCARDED HERE. The send runs in this coroutine, before the prompt exists and long before
+     * confirmSignOut touches the session or the store - so a cancellation during it cancels a coroutine
+     * that has revoked nothing and cleared nothing. There is no partial sign-out to leave behind.
+     *
+     * THE SESSION IS THE CURRENT ONE, deliberately: the drain runs BEFORE any revoke, so it posts under a
+     * token the server still honours.
      */
     fun requestSignOut() {
-        val unsynced = entries.count { it.syncState == SyncState.PENDING }
-        mutableState.update { it.copy(signOutPrompt = SignOutPrompt(unsynced)) }
+        scope.launch {
+            if (pendingDatesNow().isEmpty()) {
+                showSignOutPrompt(emptyList())
+                return@launch
+            }
+            sendPendingThenPrompt()
+        }
     }
+
+    /** R440: the person chose « Réessayer » - one more bounded send, then the dialog says what is left. */
+    fun retrySignOutSync() {
+        scope.launch { sendPendingThenPrompt() }
+    }
+
+    /**
+     * R440: one bounded attempt, then the truth re-read FROM THE RECORD rather than inferred from what the
+     * drain returned (R181). The timeout is a ceiling on a person who has already decided to leave, not a
+     * network budget; a drain that fails inside it simply leaves its rows PENDING, which is where they were.
+     *
+     * runCatching, because an offline drain THROWS (UnknownHostException and its relatives) rather than
+     * returning - and a thrown send must still produce a dialog, not an unhandled failure on the way out of
+     * the app. CancellationException is re-thrown: a cancelled coroutine must stay cancelled.
+     */
+    private suspend fun sendPendingThenPrompt() {
+        mutableState.update { it.copy(signOutPrompt = null, signOutSending = true) }
+        try {
+            withTimeoutOrNull(SIGN_OUT_SYNC_TIMEOUT_MS) {
+                runCatching { syncNow() }.onFailure { if (it is CancellationException) throw it }
+            }
+        } finally {
+            mutableState.update { it.copy(signOutSending = false) }
+        }
+        showSignOutPrompt(pendingDatesNow())
+    }
+
+    private fun showSignOutPrompt(dates: List<String>) {
+        mutableState.update { it.copy(signOutSending = false, signOutPrompt = SignOutPrompt(dates)) }
+    }
+
+    /**
+     * The DISTINCT days still only on this device, read FRESH from the record - the observed entry list may
+     * not have re-emitted yet after a drain has just written to Room, and the whole point of this dialog is
+     * to be right about what is left. DISTINCT, because half-day mode writes two rows for one date.
+     */
+    private suspend fun pendingDatesNow(): List<String> =
+        repository
+            .observeAll()
+            .first()
+            .filter { it.syncState == SyncState.PENDING }
+            .map { it.dayDate }
+            .distinct()
+            .sorted()
 
     /** PARKAN-27: the person read the count and confirmed. Revoke the session, wipe the local store (R295). */
     fun confirmSignOut() {

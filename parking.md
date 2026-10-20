@@ -2490,6 +2490,13 @@ to every suite, plus six more root configs classified. That report does NOT
 name PARK-P1, so no report closes this id, and R444 forbids inventing the
 closure. Whether the hand-off counts as the closure is the operator's call.
 
+CONTEST RESOLVED, 2026-10-20. The operator ruled that the BRANCH's ids move,
+not this one: AN-POLISH renamed its three entries to PARK-L1, PARK-L2 and
+PARK-L3 before merging, so PARK-P1 is FW-PRISMA-GENERATE's alone. The "THIS ID
+IS CONTESTED" note above records the state that produced PARK-26, not the state
+today, and is left standing rather than rewritten - it is somebody else's entry
+and the history is the point (R334).
+
 
 ## PARK-P2 - `build` was not given the db:generate chain, and that is a decision  [FW-PRISMA-GENERATE, 2026-10-18 - back-filled FW-PARK-IDS 2026-10-20]
 
@@ -2507,6 +2514,13 @@ one place it would matter (a local `pnpm build` after a merge) is covered by
 
 STATE:      RECORDED DECISION. Its raising report wrote it "so the omission
 reads as a decision rather than an oversight". No later report revisits it.
+
+CONTEST RESOLVED, 2026-10-20. The operator ruled that the BRANCH's ids move,
+not this one: AN-POLISH renamed its three entries to PARK-L1, PARK-L2 and
+PARK-L3 before merging, so PARK-P2 is FW-PRISMA-GENERATE's alone. The "THIS ID
+IS CONTESTED" note above records the state that produced PARK-26, not the state
+today, and is left standing rather than rewritten - it is somebody else's entry
+and the history is the point (R334).
 
 
 ## PARK-R1 - the PDF route builds an absolute URL from the request origin  [FW-REDIRECT, 2026-10-15 - back-filled FW-PARK-IDS 2026-10-20]
@@ -2694,6 +2708,14 @@ TOUCHES:   `parking.md` (the five contested entries and this one), the reports
 that cite them if an id is ever reallocated, and
 `web/scripts/register-coverage.mjs` if the duplicate-heading guard is wanted.
 
+RESOLVED IN PART, 2026-10-20. The operator decided which series moves:
+AN-POLISH's. Its three entries are PARK-L1/L2/L3 as of that branch, so the
+PARK-P collision this entry names is gone, and the duplicate-heading guard this
+entry judged "the right guard and the wrong week" shipped with it and is green
+on the merged tree. PARK-F1/F2/F3 are UNCHANGED and still shared - they are
+duplicate CITATIONS, not duplicate headings, so SHARED_IDS is inert today and
+is not a precedent for keeping a duplicate.
+
 ## PARK-27 - gate:clone sweeps leaked CLONES and not leaked DATABASES  [FW-PARK-IDS, 2026-10-20]
 
 QUESTION:  R266 established that gate:clone's cleanup can fail - `process.exit()`
@@ -2810,6 +2832,14 @@ is wrong at the next person's expense rather than at this task's.
 
 COST OF REVERSING: two lines and a gate run.
 
+CLOSED BY AN-POLISH (R439), 2026-10-20. The operator answered KMP-2b Q2: remove
+them. The evidence KMP-2b did not have is a comment-blind scan for Room
+annotations over EVERY :app source set - ZERO - with the SAME scan over
+shared/src finding 27, so the scanner works and the absence is real rather than
+a scan pointed at nothing (R133/R154). Both lines are gone, the full :app:gate
+ran --rerun-tasks on the removal and went from 229 actionable tasks to 225 -
+the four KSP tasks, measured rather than predicted.
+
 
 ## PARK-B4 - MigrationSqlVerbatimTest stays in :app's JVM suite  [KMP-2b, 2026-10-20]
 
@@ -2826,3 +2856,85 @@ interface we do not own is the maintenance R206 warns about, and the fixture - t
 thing that actually proves the SQL - is unaffected by where the test runs from.
 
 COST OF REVERSING: the test file and a hand-written SQLiteStatement fake.
+
+
+## PARK-L1 - dark mode is still after launch  [AN-POLISH, 2026-10-20]
+
+The AN-POLISH series uses PARK-L<n>. It is the INTERNAL register's letter series
+for this task, in the convention KMP-2b (PARK-B*) and AN-ANSWER-ICON (PARK-I*)
+set; it is NOT the published `P<n>` register in web/lib/content/provisional.ts,
+which R162 keeps in its own namespace. The `PARK-` prefix is what separates
+them, and that distinction is stated here rather than left to be inferred.
+
+QUESTION:  AN-ANSWER-ICON's Q5 and PARK-I3. R433 asked for a dark capture of the
+answered card; FrontierTheme has no dark path at all, by DESIGN-SYSTEM section
+2's own override ("light ships first"), so a night capture would photograph the
+light theme and certify nothing. Is dark still "after launch", or does it get a
+task?
+
+TAKEN:     Still after launch. The operator answered Q5 explicitly - park it,
+nothing built - and AN-POLISH built nothing for dark mode. The three surfaces
+this task touched (the half-day card, the answer line's two glyph rows, the
+sign-out dialogs) are all light-theme only, like every other surface.
+
+NOT TAKEN: Opening a dark-mode task now, or adding a dark Paparazzi
+configuration against a theme that has no dark path (which would produce
+light-theme images under dark names - worse than no capture at all).
+
+COST OF REVERSING: a dark colour set in Tokens.kt, a dark branch in
+FrontierTheme, and a dark baseline per surface. When dark ships, the ANSWERED
+CARD is one of the first to photograph: it now carries two tinted glyph rows
+(kind in textPrimary, status in textSecondary or error), and those tints are
+exactly what a dark palette has to re-decide.
+
+
+## PARK-L2 - the status glyph centres against a wrapped status line  [AN-POLISH, 2026-10-20]
+
+QUESTION:  R435 put a glyph beside the sync line, and R436 made it scale with
+the font. Where the status WRAPS - "Enregistré sur le téléphone, en attente
+d'envoi" takes two lines at default size and three at 200 % - the Row centres
+the glyph vertically, so the clock sits beside the SECOND line rather than the
+first. Should the answer line's glyph rows align to the TOP of their text
+instead?
+
+TAKEN:     Left centred. R435 and R436 are about the glyph's presence and its
+size; alignment is a third decision, and changing it would move every
+default-scale baseline the status row appears in - fifteen of them - for a
+change neither ruling asked for. Visible in
+aujourdhuiHalfDayCompleteLarge.png and in the device capture of the pending
+state (both looked at, both legible).
+
+NOT TAKEN: Alignment.Top on AnswerStatusLine's Row, and on AnswerKindLine's for
+consistency. It reads better on a wrapped line and is a one-word change.
+
+COST OF REVERSING: one argument, plus re-recording the baselines where the
+status or the kind label wraps.
+
+
+## PARK-L3 - no local server refusal is reachable from an unmodified client  [AN-POLISH, 2026-10-20]
+
+QUESTION:  R441 asked for the sync glyph in each state on the device, including
+"refused if a local server refusal can be produced without changing the server -
+otherwise say so". Can one be?
+
+TAKEN:     Say so. It cannot, and this is the measurement rather than an
+assumption. The local server's refusals on /api/v1/entries are
+coordinates_refused (D18 fences the client from ever sending a coordinate),
+malformed_body / invalid_payload (the client builds the payload from typed
+Kotlin), payload_too_large (the engine batches under the server's own limit) and
+future_day. Only future_day is reachable in principle - and the DevRecorder's
+"Jour suivant" CLAMPS at today, so the app cannot offer a future day either; and
+even if it could, the refused row would be TOMORROW'S, while the glyph under
+test renders on the Aujourd'hui card for TODAY.
+
+The refused state is covered twice instead: AnswerStatusInstrumentedTest asserts
+ic_triangle_alert ON THE DEVICE for a hosted failed state, and
+aujourdhuiSyncFailed.png is its baseline. What is NOT claimed is a real server
+refusal observed end to end on the phone.
+
+NOT TAKEN: Changing the server, the client, or the device clock to manufacture
+one. All three are forbidden by this task's boundaries, and the last would make
+every recording fail by design rather than by refusal.
+
+COST OF REVERSING: a debug-only "send a payload the server will refuse" seam, or
+a server test fixture. Neither is this task's to add.
