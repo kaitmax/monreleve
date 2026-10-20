@@ -1,10 +1,10 @@
 package ch.monreleve.app.detection
 
+import ch.monreleve.app.fences.subjectFile
 import ch.monreleve.app.fr.NotificationCopy
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 // AN-ALERT (section 2 / R323): the threshold alert shows NOTHING PRIVATE on the lock screen. A notification
 // builder needs a Context, so this reads the notifier's SOURCE the way EveningNotifierLockScreenTest does (the
@@ -14,10 +14,13 @@ import java.io.File
 //   - the alert carries NO record buttons and opens the FORECAST;
 //   - it posts on the SAME id as the evening reminder, so the two never coexist (never two a day).
 
-private val NOTIFIER = File("src/main/kotlin/ch/monreleve/app/detection/EveningNotifier.kt")
+// AN-FENCE-ROOTS (R461): :app only, and correct - the same NotificationCompat builder as
+// EveningNotifierLockScreenTest reads, which commonMain may not import. R460: subjectFile() fails
+// naming the file if it moves.
+private const val NOTIFIER_PATH = "src/main/kotlin/ch/monreleve/app/detection/EveningNotifier.kt"
 
 class ThresholdAlertNotifierTest {
-    private val source: String = NOTIFIER.readText()
+    private val source: String = subjectFile("threshold-alert notifier fence", NOTIFIER_PATH).readText()
 
     @Test
     fun theSourceIsReadSoTheScanIsNotVacuous() {

@@ -1,14 +1,21 @@
 package ch.monreleve.app.detection
 
+import ch.monreleve.app.fences.subjectFile
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.sqrt
+
+// AN-FENCE-ROOTS (R206/R460). ONE HOME for the bundled asset's path and this family's fence name.
+// BorderPolygonTest, ClassificationTest and DetectionSessionTest all read the SAME asset and all sit in
+// this package, so the path is declared once here - the file that also asserts the asset's committed
+// size - rather than typed into three files that can drift apart.
+internal const val BORDER_ASSET = "src/main/assets/border/switzerland.json"
+internal const val BORDER_FENCE = "bundled border-polygon fence"
 
 /**
  * AN6a increment 1. The bundled polygon does what the classifier needs: inside/outside for
@@ -38,13 +45,16 @@ class BorderPolygonTest {
         val SIDES = listOf(1.0, -1.0)
     }
 
+    // AN-FENCE-ROOTS (R461). THIS TEST READS :app ONLY, AND THAT IS CORRECT: its subject is a BUNDLED
+    // ANDROID ASSET (src/main/assets), which :shared commonMain cannot hold. R460: subjectFile() names
+    // the file and where it looked, so a moved asset fails here rather than throwing bare.
     private val bundled: BorderPolygon by lazy {
-        BorderPolygon.fromGeoJson(File("src/main/assets/border/switzerland.json").readText())
+        BorderPolygon.fromGeoJson(subjectFile(BORDER_FENCE, BORDER_ASSET).readText())
     }
 
     /** The full-resolution Geneva border, as line segments (a MultiLineString clip of the source). */
     private val referenceSegments: List<List<DoubleArray>> by lazy {
-        val json = File("src/test/resources/border/geneva-reference.json").readText()
+        val json = subjectFile(BORDER_FENCE, "src/test/resources/border/geneva-reference.json").readText()
         val coordinates = JSONObject(json).getJSONArray("coordinates")
         (0 until coordinates.length()).map { line ->
             val points = coordinates.getJSONArray(line)
@@ -195,7 +205,7 @@ class BorderPolygonTest {
 
     @Test
     fun theBundledPolygonReportsItsSize() {
-        val bytes = File("src/main/assets/border/switzerland.json").length()
+        val bytes = subjectFile(BORDER_FENCE, BORDER_ASSET).length()
         // Bundled and committed; a regression that bloats it (e.g. a lost simplification) is visible.
         assertEquals("bundled polygon is the committed ~154 KB artifact", 157_852L, bytes)
     }

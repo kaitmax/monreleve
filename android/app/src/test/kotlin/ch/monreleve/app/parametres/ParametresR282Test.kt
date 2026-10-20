@@ -1,8 +1,8 @@
 package ch.monreleve.app.parametres
 
+import ch.monreleve.app.fences.subjectFile
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 // AN12 (R282) as amended by AN-AUTO (R315). R282 kept the MANUAL product from naming a feature it lacked. The
 // automatic-detection feature now EXISTS (opt-in, labelled beta), so « détection » and « automatique » are
@@ -13,10 +13,14 @@ import java.io.File
 
 // KMP-0 increment 5: ParametresCopy and LicencesCopy moved to :shared's commonMain (the French copy's new
 // home). This guard reads them from there, relative to :app's test working directory.
-private val COPY_FILES =
+// AN-FENCE-ROOTS (R460): the two files are resolved through subjectFile(), which fails NAMING the file
+// and the absolute path it looked at. Both live in :shared today; if either moves back to :app or on to
+// a third module, this fence says so instead of reading an empty string and finding no forbidden word
+// in it.
+private val COPY_PATHS =
     listOf(
-        File("../shared/src/commonMain/kotlin/ch/monreleve/app/fr/ParametresCopy.kt"),
-        File("../shared/src/commonMain/kotlin/ch/monreleve/app/fr/LicencesCopy.kt"),
+        "../shared/src/commonMain/kotlin/ch/monreleve/app/fr/ParametresCopy.kt",
+        "../shared/src/commonMain/kotlin/ch/monreleve/app/fr/LicencesCopy.kt",
     )
 
 // The features the product does NOT have, by the words they would appear as. R315 removed « détection » and
@@ -28,15 +32,19 @@ private val LINE_COMMENT = Regex("""//[^\n]*""")
 private val BLOCK_COMMENT = Regex("""/\*[\s\S]*?\*/""")
 private val STRING_LITERAL = Regex(""""((?:[^"\\]|\\.)*)"""")
 
-private fun renderedCopy(file: File): List<String> {
-    val withoutComments = file.readText().replace(BLOCK_COMMENT, " ").replace(LINE_COMMENT, " ")
+private fun renderedCopy(path: String): List<String> {
+    val withoutComments =
+        subjectFile("R282 copy fence", path)
+            .readText()
+            .replace(BLOCK_COMMENT, " ")
+            .replace(LINE_COMMENT, " ")
     return STRING_LITERAL.findAll(withoutComments).map { it.groupValues[1] }.toList()
 }
 
 class ParametresR282Test {
     @Test
     fun theParametresCopyNamesNothingTheProductStillLacks() {
-        val copy = COPY_FILES.flatMap { renderedCopy(it) }
+        val copy = COPY_PATHS.flatMap { renderedCopy(it) }
         assertTrue("expected Parametres/Licences copy strings to scan, found none", copy.isNotEmpty())
 
         for (term in FORBIDDEN) {
@@ -52,7 +60,7 @@ class ParametresR282Test {
     fun theParametresCopyMayNowNameAutomaticDetection() {
         // R315: the feature exists, so the copy DOES name it. Asserting its presence keeps this file honest -
         // a future edit that silently dropped the auto-detection row would fail here, not pass by omission.
-        val copy = COPY_FILES.flatMap { renderedCopy(it) }
+        val copy = COPY_PATHS.flatMap { renderedCopy(it) }
         assertTrue(
             "R315: the Parametres copy must name automatic detection (the feature now exists)",
             copy.any { it.lowercase().contains("détection automatique") },

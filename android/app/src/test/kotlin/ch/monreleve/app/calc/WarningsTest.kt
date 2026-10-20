@@ -216,9 +216,16 @@ class WarningsTest : FunSpec({
             // If either source still calls this a provisional trigger, the
             // comment is a claim the code no longer makes true (R154's
             // shape).
-            val source =
+            // AN-FENCE-ROOTS (R460): assert the subject was FOUND before asserting what it does not say.
+            // A missing file would otherwise throw a bare FileNotFoundException naming nothing about
+            // which guard failed or why; Warnings.kt moved to :shared in KMP-0 and could move again.
+            val warningsKt =
                 File(repoRoot(), "android/shared/src/commonMain/kotlin/ch/monreleve/app/calc/Warnings.kt")
-                    .readText()
+            check(warningsKt.isFile) {
+                "the PROVISIONAL-marker guard cannot find its subject at ${warningsKt.absolutePath} - " +
+                    "Warnings.kt moved, and a guard that reads nothing reports perfect compliance (R460)"
+            }
+            val source = warningsKt.readText()
             val a1Block = source.substring(maxOf(0, source.indexOf("A1Required") - 1800))
 
             (a1Block.contains("PROVISIONAL TRIGGER")) shouldBe false

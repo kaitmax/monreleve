@@ -157,10 +157,15 @@ class NumbersTest : FunSpec({
 
     context("the test file itself") {
         test("contains no literal NBSP or NNBSP in its own source") {
+            // AN-FENCE-ROOTS (R460): assert the subject was found. This test's subject is its OWN source
+            // file, by a hardcoded path - rename the file and a bare FileNotFoundException is the only
+            // signal. subjectFile() names the file and where it looked.
             val source =
-                java.io.File(
-                    "src/test/kotlin/ch/monreleve/app/fr/format/NumbersTest.kt",
-                ).readText()
+                ch.monreleve.app.fences
+                    .subjectFile(
+                        "NBSP self-check",
+                        "src/test/kotlin/ch/monreleve/app/fr/format/NumbersTest.kt",
+                    ).readText()
 
             source.contains(0x00A0.toChar()) shouldBe false
             source.contains(0x202F.toChar()) shouldBe false

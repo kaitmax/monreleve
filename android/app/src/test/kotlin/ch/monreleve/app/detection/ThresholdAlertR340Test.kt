@@ -18,6 +18,11 @@ import java.io.File
 // patterns and extends the scan to the alert's forecast/ and settings/ files. Comments are stripped first,
 // because the files' own prose says "records nothing" (which would otherwise self-trigger).
 
+// AN-FENCE-ROOTS (R461). THIS FENCE READS :app ONLY, AND THAT IS CORRECT: all four named files were
+// verified still in app/src/main/kotlin by this task's R458 census, and the SHARED half of the alert's
+// compute has its own guard (ForecastR340Test), named in the header above. R460 was already satisfied
+// here before this task - theAlertFilesAreReadSoTheScanIsNotVacuous asserts each file exists and is
+// non-trivial, so a move fails loudly naming the file.
 private val ALERT_FILES =
     listOf(
         File("src/main/kotlin/ch/monreleve/app/forecast/ThresholdForecast.kt"),

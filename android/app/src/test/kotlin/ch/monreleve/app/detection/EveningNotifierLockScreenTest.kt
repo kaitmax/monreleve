@@ -1,9 +1,9 @@
 package ch.monreleve.app.detection
 
+import ch.monreleve.app.fences.subjectFile
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 // AN-NOTIF (R339), section 3/5 "asserted from the code". The lock-screen protections, verified against the
 // notifier's SOURCE (the `adb shell dumpsys notification` half is the device check, parked for the phone-work
@@ -16,10 +16,14 @@ import java.io.File
 //   - recording buttons fire IMMUTABLE BROADCAST PendingIntents (a receiver, not an activity - Android 12+ forbids
 //     a receiver that a notification launched from starting one; immutable so nothing outside the app can alter it).
 
-private val NOTIFIER = File("src/main/kotlin/ch/monreleve/app/detection/EveningNotifier.kt")
+// AN-FENCE-ROOTS (R461). THIS FENCE READS :app ONLY, AND THAT IS CORRECT: its subject is a
+// NotificationCompat builder with PendingIntents and setAuthenticationRequired - android.app and
+// androidx.core, which commonMain may not import (CommonMainFenceTest). R460: subjectFile() fails
+// NAMING the file and where it looked if EveningNotifier.kt ever moves.
+private const val NOTIFIER_PATH = "src/main/kotlin/ch/monreleve/app/detection/EveningNotifier.kt"
 
 class EveningNotifierLockScreenTest {
-    private val source: String = NOTIFIER.readText()
+    private val source: String = subjectFile("evening-notifier lock-screen fence", NOTIFIER_PATH).readText()
 
     @Test
     fun theSourceIsReadSoTheScanIsNotVacuous() {

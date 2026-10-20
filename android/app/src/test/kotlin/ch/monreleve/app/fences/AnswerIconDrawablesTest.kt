@@ -34,6 +34,10 @@ private val ANSWER_ICONS =
 
 private const val LUCIDE_VERSION = "lucide-static v1.48.0"
 
+// AN-FENCE-ROOTS (R461). THIS FENCE READS :app ONLY, AND THAT IS CORRECT: its subject is res/drawable,
+// Android vector XML, which :shared commonMain cannot hold. R460 was already satisfied here before this
+// task - theDrawableDirectoryIsTheRealOneAndHoldsAnIconThisTestDoesNotOwn pins the directory AND an icon
+// this file does not own, so a move or a wrong tree fails loudly.
 private val drawableDir = File("src/main/res/drawable")
 private val licencesDoc = File("../../docs/lucide-icons.md")
 
