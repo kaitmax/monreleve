@@ -3034,3 +3034,47 @@ The cheap unlock is `testImplementation(libs.kotlin.test)` on :app - the same ca
 and version :shared already uses, test scope only. With it, a test can be written in
 kotlin.test, pinned against :app code, and later moved to commonTest by `git mv` alone.
 Recorded as a question rather than taken.
+
+## PARK-V1 - a declared test input nothing reads any more  [AN-FENCE-ROOTS, 2026-10-21]
+
+RAISED BY:  REPORT-AN-FENCE-ROOTS.txt.
+
+WHAT IT IS: app/build.gradle.kts declares docs/field-protocol-AN6b.md as an
+input of every :app Test task, under the property name "fieldProtocolDoc", for
+TierThresholdParityTest. That test no longer exists - it was replaced by
+VoteThresholdParityTest, which reads a DIFFERENT document, docs/detection-model.md,
+and the replacement's document was never declared. AN-FENCE-ROOTS declared
+detection-model.md (R462) and proved it re-runs the task; it did NOT remove the
+stale entry.
+
+WHY NOT NOW: removing a declared input is a build decision with no defect behind
+it (R156). A stale input costs only an occasional unnecessary re-run; removing
+one that some test still reads, unnoticed, costs an unrun assertion - the exact
+failure this task exists to close. The comment beside it now states plainly that
+no test reads the file today, so it cannot be read as live coverage (R181).
+
+STATE:      OPEN. Whoever removes it should first grep the Android test tree for
+"field-protocol" and find nothing, which is what AN-FENCE-ROOTS found.
+
+## PARK-V2 - a source fence's territory is a list a person maintains  [AN-FENCE-ROOTS, 2026-10-21]
+
+RAISED BY:  REPORT-AN-FENCE-ROOTS.txt.
+
+WHAT IT IS: R460 now makes every source-scanning fence fail loudly when a root it
+NAMES goes missing. Nothing makes a fence fail when a root it should name APPEARS.
+A third module, or a shared/src/iosMain, or an app/src/release/kotlin somebody
+creates, enters no fence's territory until a person adds it - and the fence that
+has not been widened passes over the new code in silence, which is R452's defect
+coming back from the other side.
+
+The derived answer exists in shape elsewhere in this repository: R246's closed-world
+root census, which fails on a root-level file that is neither a framework entry point
+nor a tool's config until somebody classifies it. The Android analogue would enumerate
+the Gradle source sets that reach a SHIPPED build and require each to be claimed by at
+least one fence, so a new source set fails until it is classified.
+
+WHY NOT NOW: out of AN-FENCE-ROOTS's scope, which is "each fence reads where its
+subject lives TODAY, and proves it found it". Writing a new census is a new fence for
+a subject no fence guards, which the prompt's OUT OF SCOPE section parks explicitly.
+
+STATE:      OPEN.

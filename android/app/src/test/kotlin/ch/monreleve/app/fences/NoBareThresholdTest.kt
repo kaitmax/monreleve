@@ -34,6 +34,23 @@ private val UI_DIR = File("src/main/kotlin/ch/monreleve/app/ui")
 private val DESIGN_DIR = File("src/main/kotlin/ch/monreleve/app/design")
 private val DEV_DIR = File("src/main/kotlin/ch/monreleve/app/dev")
 
+// AN-FENCE-ROOTS (R460). Each root asserted SEPARATELY, pinned by a file only it holds.
+//
+// THE HOLE THIS CLOSES WAS LIVE, NOT PLANTED (R178). findsFilesToInspectSoTheGuardCannotPassVacuously
+// already walked the roots - and opened its loop with `if (!dir.exists()) continue`. So the one root that
+// had MOVED was the one root the per-root check skipped, and the overall `files.isNotEmpty()` stayed true
+// on what was left. Lose CALC_DIR to another KMP move and this fence would have gone on asserting that
+// ui/, design/ and dev/ carry no bare 0.4 - which they do not and never did - while the file that holds
+// every threshold in the product went unread. scannedFiles()'s own `.filter { it.exists() }` was the same
+// hole one layer down.
+private val SCANNED_ROOTS =
+    listOf(
+        FenceRoot(CALC_DIR, pin = "Rules.kt"),
+        FenceRoot(UI_DIR, pin = "AppBottomBar.kt"),
+        FenceRoot(DESIGN_DIR, pin = "RailGeometry.kt"),
+        FenceRoot(DEV_DIR, pin = "GalleryScreen.kt"),
+    )
+
 private val SCANNED_DIRS = listOf(CALC_DIR, UI_DIR, DESIGN_DIR, DEV_DIR)
 
 /**
@@ -96,11 +113,10 @@ private fun offendingLiterals(
 }
 
 /** Every scanned source file, minus the exempt one. Recursive, deliberately - see AN1's own fence idiom. */
-private fun scannedFiles(): List<File> =
-    SCANNED_DIRS
-        .filter { it.exists() }
-        .flatMap { dir -> dir.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList() }
-        .filterNot { it.canonicalFile in EXEMPT }
+private fun scannedFiles(): List<File> {
+    SCANNED_ROOTS.assertFound("bare-threshold fence")
+    return SCANNED_ROOTS.ktFiles().filterNot { it.canonicalFile in EXEMPT }
+}
 
 /** Last three path segments, so a test name reads calc/Types.kt or ui/screens/aujourdhui/AujourdhuiScreen.kt. */
 private fun label(file: File): String = file.path.replace('\\', '/').split('/').takeLast(3).joinToString("/")
@@ -108,10 +124,12 @@ private fun label(file: File): String = file.path.replace('\\', '/').split('/').
 class NoBareThresholdTest {
     @Test
     fun findsFilesToInspectSoTheGuardCannotPassVacuously() {
+        // AN-FENCE-ROOTS (R460): `if (!dir.exists()) continue` used to stand where assertFound stands now,
+        // so the one root that had moved was the one root this check skipped.
+        SCANNED_ROOTS.assertFound("bare-threshold fence")
         val files = scannedFiles()
         assertTrue("expected at least one scanned file, found none", files.isNotEmpty())
         for (dir in SCANNED_DIRS) {
-            if (!dir.exists()) continue
             val inDir = files.count { it.canonicalFile.path.startsWith(dir.canonicalFile.path) }
             assertTrue("expected at least one file under ${dir.path}, found none", inDir > 0)
         }

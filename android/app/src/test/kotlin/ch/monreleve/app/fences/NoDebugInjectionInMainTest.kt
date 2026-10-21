@@ -21,22 +21,62 @@ import java.io.File
  *
  * Each marker is a type name, unique to its tool and appearing in no legitimate main or release file. This
  * test lives in src/test, scanned by neither tree, so it does not self-trigger on its own mention of them.
+ *
+ * --------------------------------------------------------------------------------------------------------
+ * AN-FENCE-ROOTS (R459). :shared commonMain IS A SHIPPED SOURCE SET, AND IT WAS NOT ONE WHEN THIS WAS WRITTEN.
+ *
+ * This fence's subject is not a file; it is a TERRITORY - "every source set that reaches a shipped build".
+ * When R284 wrote it, that territory was src/main and src/release. :app now depends on :shared, so
+ * shared/src/commonMain/kotlin is compiled into the debug AND release APKs: a SessionInjectionActivity
+ * copied there would ship to the Play Store with every guard green, because the one guard that reads source
+ * was reading a territory that had shrunk underneath it (R452).
+ *
+ * GUARD (b) WOULD NOT HAVE CAUGHT IT EITHER, which is why this matters rather than being belt-and-braces:
+ * checkReleaseNoDebugInjection reads the merged release MANIFEST, and a class with no <activity> entry
+ * appears in no manifest. The two guards have distinct subjects, exactly as the header says.
+ *
+ * src/release/kotlin HAS NEVER EXISTED (:app has no release-only Kotlin; src/release holds res/ only). It
+ * stays declared, as an OPTIONAL root with its reason stated and asserted, rather than being dropped by a
+ * silent `.filter { it.exists() }` - which is the pattern that made the old version scan ONE root while
+ * declaring two, and would have dropped src/main on exactly the same terms.
  */
 class NoDebugInjectionInMainTest {
     private val markers = listOf("SessionInjection", "DebugSeeder")
 
     private val scannedRoots =
         listOf(
-            File("src/main/kotlin"),
-            File("src/release/kotlin"),
+            FenceRoot(File("src/main/kotlin"), pin = "MainActivity.kt"),
+            FenceRoot(
+                File("../shared/src/commonMain/kotlin"),
+                pin = "SharedModule.kt",
+            ),
+            FenceRoot(
+                File("src/release/kotlin"),
+                // The pin is a SENTENCE on purpose, and it is not a mistake to be tidied: the root does
+                // not exist, so no file can identify it. The day somebody creates it, assertFound's pin
+                // check fails with "does not hold nothing - this root has never held Kotlin" - which is
+                // exactly the moment somebody should choose a real pin and stop calling it optional.
+                pin = "nothing - this root has never held Kotlin",
+                optionalBecause =
+                    ":app has no release-only Kotlin; src/release holds res/ only. The root stays " +
+                        "declared so that release-only code, the day somebody writes it, is scanned on " +
+                        "the day it lands rather than on the day somebody remembers.",
+            ),
         )
 
     @Test
+    fun theScannedTerritoryIsTheOneTheMarkersCouldShipIn() {
+        // R460. Each SHIPPED root on its own, pinned by a file only it holds - so this fence fails loudly
+        // the next time its territory moves instead of reporting perfect compliance over what is left.
+        scannedRoots.assertFound("R284 guard (a)")
+    }
+
+    @Test
     fun theDebugToolingExistsOnlyInTheDebugSourceSet() {
+        scannedRoots.assertFound("R284 guard (a)")
         val offenders =
             scannedRoots
-                .filter { it.exists() }
-                .flatMap { root -> root.walkTopDown().filter { it.isFile && it.extension == "kt" } }
+                .ktFiles()
                 .flatMap { file -> markers.filter { file.readText().contains(it) }.map { "$it in ${file.path}" } }
 
         assertTrue(

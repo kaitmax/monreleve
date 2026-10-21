@@ -23,16 +23,19 @@ import java.io.File
 // KMP-0 increment 5: the French copy moved to :shared's commonMain, EXCEPT the two files that call the JVM
 // formatters (ComparisonCopy, NotificationCopy) and fr/format itself, which stay in :app. So fr copy now lives
 // in TWO places and this repo-wide duplication guard scans both, catching a duplicate that spans the split.
+// AN-FENCE-ROOTS (R460): each root is asserted SEPARATELY and pinned by a file only it holds. The
+// `.filter { it.exists() }` this replaces turned "the copy moved again" into "there was nothing to find"
+// - and a COMBINED constant count stays comfortably over any threshold with :app's two files gone (R452).
 private val FR_DIRS =
     listOf(
-        File("../shared/src/commonMain/kotlin/ch/monreleve/app/fr"),
-        File("src/main/kotlin/ch/monreleve/app/fr"),
+        FenceRoot(File("../shared/src/commonMain/kotlin/ch/monreleve/app/fr"), pin = "Fr.kt"),
+        FenceRoot(File("src/main/kotlin/ch/monreleve/app/fr"), pin = "ComparisonCopy.kt"),
     )
 
-private fun frFiles(): List<File> =
-    FR_DIRS
-        .filter { it.exists() }
-        .flatMap { dir -> dir.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList() }
+private fun frFiles(): List<File> {
+    FR_DIRS.assertFound("copy duplication guard")
+    return FR_DIRS.ktFiles()
+}
 
 /** A top-level or object-member `const val NAME = "value"` declaration. */
 private val CONST_STRING = Regex("""const\s+val\s+(\w+)\s*=\s*"((?:[^"\\]|\\.)*)"""")

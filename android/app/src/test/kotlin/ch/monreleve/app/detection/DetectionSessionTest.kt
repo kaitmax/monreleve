@@ -1,9 +1,9 @@
 package ch.monreleve.app.detection
 
+import ch.monreleve.app.fences.subjectFile
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 /**
  * AN6a increment 5. The seven synthetic tracks, replayed through the real entry point
@@ -12,8 +12,9 @@ import java.io.File
  * regression; the emulator replay (REPORT-AN6a.txt) is AC1's on-device evidence.
  */
 class DetectionSessionTest {
+    // AN-FENCE-ROOTS (R461): :app only, and correct - a bundled Android asset has no commonMain home.
     private val border: BorderPolygon by lazy {
-        BorderPolygon.fromGeoJson(File("src/main/assets/border/switzerland.json").readText())
+        BorderPolygon.fromGeoJson(subjectFile(BORDER_FENCE, BORDER_ASSET).readText())
     }
 
     @Test

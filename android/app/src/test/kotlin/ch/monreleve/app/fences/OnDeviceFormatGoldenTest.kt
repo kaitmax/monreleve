@@ -3,7 +3,16 @@ package ch.monreleve.app.fences
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
+
+// AN-FENCE-ROOTS (R461). THIS FENCE READS :app ONLY, AND THAT IS CORRECT - and it is the clearest case
+// in the census that "widen every fence to both trees" would be wrong. KMP-3 moved the store CONTRACTS
+// to :shared and deliberately LEFT every Android implementation in :app: KeystoreTokenStore (Keystore +
+// Cipher), SharedPrefsSettingsStore, AccountStore, PendingSignInStore and SharedPrefsDossierCache (all
+// SharedPreferences). The key names this golden pins are written by the IMPLEMENTATIONS; the interfaces
+// write nothing, so a scan of commonMain could never fire and would read as coverage.
+// R460: every path goes through subjectFile()/constantsIn(), which fail NAMING the file and where they
+// looked - so the day an implementation does move, this fence says so rather than passing on nothing.
+private const val GOLDEN_FENCE = "on-device format golden"
 
 /**
  * KMP-3 (R448). THE ON-DEVICE FORMATS, PINNED TO WHAT A PHONE ACTUALLY HOLDS.
@@ -54,8 +63,7 @@ class OnDeviceFormatGoldenTest {
 
     /** The string literals assigned to private const val ... in one source file. */
     private fun constantsIn(path: String): Set<String> {
-        val file = File(path)
-        assertTrue("the golden's subject does not exist: $path", file.isFile)
+        val file = subjectFile(GOLDEN_FENCE, path)
         return CONST_STRING
             .findAll(file.readText())
             .map { it.groupValues[1] }
@@ -88,7 +96,7 @@ class OnDeviceFormatGoldenTest {
 
     @Test
     fun `the token plaintext still carries exactly the four fields the phone's blob decodes to`() {
-        val source = File("src/main/kotlin/ch/monreleve/app/auth/KeystoreTokenStore.kt").readText()
+        val source = subjectFile(GOLDEN_FENCE, "src/main/kotlin/ch/monreleve/app/auth/KeystoreTokenStore.kt").readText()
 
         // Both directions, because one alone is satisfied by a store that writes nothing (R196):
         // every golden field is still put() on encode AND still getString() on decode.
@@ -140,7 +148,9 @@ class OnDeviceFormatGoldenTest {
         // name. The subject of this assertion is the implementation - the interface writes nothing - so
         // the path follows the implementation. constantsIn() fails loudly on a path that does not exist,
         // which is what stops a moved file reading as compliance over nothing (R133).
-        val source = File("src/main/kotlin/ch/monreleve/app/data/local/SharedPrefsDossierCache.kt").readText()
+        val source =
+            subjectFile(GOLDEN_FENCE, "src/main/kotlin/ch/monreleve/app/data/local/SharedPrefsDossierCache.kt")
+                .readText()
 
         assertTrue("the dossier prefs FILE name moved", source.contains("\"monreleve.dossier\""))
         // The golden records the key as dossier.<year>; the source builds it by interpolation,

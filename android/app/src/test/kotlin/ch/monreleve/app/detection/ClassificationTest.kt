@@ -1,23 +1,24 @@
 package ch.monreleve.app.detection
 
+import ch.monreleve.app.fences.subjectFile
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 /**
  * AN6a increment 2. A fix in, one of INSIDE / OUTSIDE / BUFFER out, and the timestamp
  * carried through to the ClassifiedFix that survives it.
  */
 class ClassificationTest {
+    // AN-FENCE-ROOTS (R461): :app only, and correct - a bundled Android asset has no commonMain home.
     private val border: BorderPolygon by lazy {
-        BorderPolygon.fromGeoJson(File("src/main/assets/border/switzerland.json").readText())
+        BorderPolygon.fromGeoJson(subjectFile(BORDER_FENCE, BORDER_ASSET).readText())
     }
 
     // A point exactly on the real border, so its distance-to-edge is ~0 and it classifies BUFFER.
     private val borderVertex: DoubleArray by lazy {
-        val json = File("src/test/resources/border/geneva-reference.json").readText()
+        val json = subjectFile(BORDER_FENCE, "src/test/resources/border/geneva-reference.json").readText()
         val segment = JSONObject(json).getJSONArray("coordinates").getJSONArray(0)
         val point = segment.getJSONArray(segment.length() / 2)
         doubleArrayOf(point.getDouble(0), point.getDouble(1))

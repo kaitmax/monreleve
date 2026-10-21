@@ -1,5 +1,8 @@
 package ch.monreleve.app.fr
 
+import ch.monreleve.app.fences.FenceRoot
+import ch.monreleve.app.fences.assertFound
+import ch.monreleve.app.fences.ktFiles
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -24,10 +27,12 @@ private val FORBIDDEN = listOf("beta")
 // KMP-0 increment 5: fr copy moved to :shared's commonMain, except the two formatter-dependent files and
 // fr/format (which stay in :app). DetectionCopy (the « bêta » this guard watches) is in :shared now, so the
 // scan covers both fr locations.
+// AN-FENCE-ROOTS (R460): each root asserted SEPARATELY and pinned by a file only it holds, in place of a
+// `.filter { it.exists() }` that would have let a moved fr/ tree contribute nothing in silence.
 private val FR_DIRS =
     listOf(
-        File("../shared/src/commonMain/kotlin/ch/monreleve/app/fr"),
-        File("src/main/kotlin/ch/monreleve/app/fr"),
+        FenceRoot(File("../shared/src/commonMain/kotlin/ch/monreleve/app/fr"), pin = "Fr.kt"),
+        FenceRoot(File("src/main/kotlin/ch/monreleve/app/fr"), pin = "ComparisonCopy.kt"),
     )
 
 private val LINE_COMMENT = Regex("""//[^\n]*""")
@@ -40,14 +45,15 @@ private fun stripAccents(word: String): String {
     return decomposed.replace(Regex("""\p{M}+"""), "")
 }
 
-private fun frCopyStrings(): List<String> =
-    FR_DIRS
-        .filter { it.exists() }
-        .flatMap { dir -> dir.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList() }
+private fun frCopyStrings(): List<String> {
+    FR_DIRS.assertFound("accent guard")
+    return FR_DIRS
+        .ktFiles()
         .flatMap { file ->
             val withoutComments = file.readText().replace(BLOCK_COMMENT, " ").replace(LINE_COMMENT, " ")
             STRING_LITERAL.findAll(withoutComments).map { it.groupValues[1] }.toList()
         }
+}
 
 /** Every forbidden unaccented form found in a piece of rendered copy. */
 private fun formsIn(text: String): List<String> =

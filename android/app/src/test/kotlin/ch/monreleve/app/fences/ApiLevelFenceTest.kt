@@ -38,11 +38,29 @@ import java.io.File
  *
  * Scans src/main AND src/debug: the debug and audit variants both run on this
  * phone, so a late-API call in either is a device crash just the same.
+ *
+ * ---------------------------------------------------------------------------
+ * AN-FENCE-ROOTS (R461). IT READS :app ONLY, AND THAT IS CORRECT - the reason
+ * written here so the next KMP task does not have to re-derive it.
+ *
+ * Every banned member is a java.time receiver, and java.time CANNOT appear in
+ * :shared commonMain. Two independent mechanisms say so, neither of them this
+ * one: CommonMainFenceTest rejects every `import java.` with an exemption list
+ * of exactly two androidx packages (asserted, R206), and
+ * compileCommonMainKotlinMetadata - a :app:gate step - resolves commonMain
+ * against the COMMON stdlib, where java.time does not exist at all, so even a
+ * fully-qualified java.time.LocalDate.ofInstant(...) with no import fails to
+ * compile there. commonMain dates are kotlinx.datetime (R384's inventory),
+ * whose LocalDate carries no ofInstant. A scan of commonMain for these members
+ * could never fire, and a scan that can never fire reads as coverage.
+ *
+ * R460's assertion below is what makes leaving it alone safe: if src/main or
+ * src/debug ever moves, this fence FAILS naming the root it could not find.
  */
 private val scanRoots =
     listOf(
-        File("src/main/kotlin/ch/monreleve/app"),
-        File("src/debug/kotlin/ch/monreleve/app"),
+        FenceRoot(File("src/main/kotlin/ch/monreleve/app"), pin = "MainActivity.kt"),
+        FenceRoot(File("src/debug/kotlin/ch/monreleve/app"), pin = "SessionInjection.kt"),
     )
 
 /** receiver -> the java.time member banned on it, with the API level it arrived at and why it is unsafe. */
@@ -66,10 +84,10 @@ private fun stripComments(text: String): String =
         .replace(Regex("""/\*[\s\S]*?\*/"""), "")
         .replace(Regex("""//.*"""), "")
 
-private fun scannedKtFiles(): List<File> =
-    scanRoots
-        .filter { it.exists() }
-        .flatMap { it.walkTopDown().filter { f -> f.isFile && f.extension == "kt" }.toList() }
+private fun scannedKtFiles(): List<File> {
+    scanRoots.assertFound("API-level fence")
+    return scanRoots.ktFiles()
+}
 
 class ApiLevelFenceTest {
     @Test

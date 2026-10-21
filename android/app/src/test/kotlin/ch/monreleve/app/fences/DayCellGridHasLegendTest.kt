@@ -17,21 +17,26 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
+// AN-FENCE-ROOTS (R461). THIS FENCE READS :app ONLY, AND THAT IS CORRECT. Its subject is a Compose call -
+// DayCell(...) paired with DayKindLegend() - and Compose is Android: there is no ui/, design/ or dev/ in
+// :shared commonMain for it to miss. R460's assertion below is what makes that safe to leave: if any of
+// the three ever moves, this fence FAILS naming the root it could not find, instead of scanning what is
+// left and reporting perfect compliance.
 private val SCANNED_DIRS =
     listOf(
-        File("src/main/kotlin/ch/monreleve/app/ui"),
-        File("src/main/kotlin/ch/monreleve/app/design"),
-        File("src/main/kotlin/ch/monreleve/app/dev"),
+        FenceRoot(File("src/main/kotlin/ch/monreleve/app/ui"), pin = "AppBottomBar.kt"),
+        FenceRoot(File("src/main/kotlin/ch/monreleve/app/design"), pin = "DayCell.kt"),
+        FenceRoot(File("src/main/kotlin/ch/monreleve/app/dev"), pin = "GalleryScreen.kt"),
     )
 
 private fun stripComments(text: String): String {
     return text.replace(Regex("""/\*[\s\S]*?\*/"""), " ").replace(Regex("""//[^\n]*"""), " ")
 }
 
-private fun ktFiles(dir: File): List<File> =
-    if (!dir.exists()) emptyList() else dir.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
-
-private fun scannedFiles(): List<File> = SCANNED_DIRS.flatMap { ktFiles(it) }
+private fun scannedFiles(): List<File> {
+    SCANNED_DIRS.assertFound("DayCell-legend fence")
+    return SCANNED_DIRS.ktFiles()
+}
 
 class DayCellGridHasLegendTest {
     @Test
