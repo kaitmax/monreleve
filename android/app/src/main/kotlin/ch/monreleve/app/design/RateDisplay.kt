@@ -25,9 +25,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import ch.monreleve.app.fr.RatesCopy
+import ch.monreleve.app.fr.format.formatDeclarableRate
 import ch.monreleve.app.fr.format.formatPercent
 
-private const val DECLARABLE_DECIMALS = 2
 private const val RAW_DECIMALS = 1
 
 @Composable
@@ -41,7 +41,8 @@ fun RateDisplay(
 
     Column(modifier = modifier) {
         Text(
-            text = formatPercent(declarableRate, DECLARABLE_DECIMALS),
+            // R479: the one formatting of the declarable rate - the forecast, the simulator and the releve use it too.
+            text = formatDeclarableRate(declarableRate),
             style = FrontierType.display.tabularNums(),
             color = bandColour,
         )

@@ -50,13 +50,13 @@ import ch.monreleve.app.design.ZONE_BAND_COLOUR
 import ch.monreleve.app.design.Zone
 import ch.monreleve.app.design.ZoneThresholds
 import ch.monreleve.app.fr.Fr
+import ch.monreleve.app.fr.format.formatDeclarableRate
 import ch.monreleve.app.fr.format.formatPercent
 import ch.monreleve.app.fr.rail.RailCopy
 import ch.monreleve.app.fr.rail.ZONE_BAND_NAME
 import ch.monreleve.app.fr.rail.railAriaLabel
 
-/** R40: the rate label is declarableRate at its native two decimals. */
-private const val RATE_DECIMALS = 2
+// R40: the rate label is declarableRate at its native two decimals - formatted by its one home (R479).
 
 /** DrawScope IS a Density in Compose, so this needs no density parameter of its own. */
 private fun DrawScope.toPx(value: Double): Float = value.dp.toPx()
@@ -163,7 +163,7 @@ fun ThresholdRail(
             when {
                 generic -> RailCopy.RAIL_SOCIAL_ARIA
                 unavailable -> RailCopy.RAIL_UNAVAILABLE_ARIA
-                else -> railAriaLabel(formatPercent(geometry.percentage, RATE_DECIMALS), zone.wireKey)
+                else -> railAriaLabel(formatDeclarableRate(geometry.percentage), zone.wireKey)
             }
 
         Box(
@@ -199,7 +199,7 @@ private fun DrawScope.drawRail(
 
     if (geometry.rateShown) {
         val rateText =
-            if (unavailable) RailCopy.RAIL_UNAVAILABLE_LABEL else formatPercent(geometry.percentage, RATE_DECIMALS)
+            if (unavailable) RailCopy.RAIL_UNAVAILABLE_LABEL else formatDeclarableRate(geometry.percentage)
         val baseline = LabelBaseline(geometry.track.x, geometry.rateBaselineY)
         drawLabel(textMeasurer, rateText, FrontierType.caption, baseline)
     }

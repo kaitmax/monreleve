@@ -39,12 +39,13 @@ import java.time.DayOfWeek
 class ForecastController(
     private val rhythmRepo: RhythmRepository,
     private val entryRepo: EntryRepository,
-    settingsStore: SettingsStore,
+    // AN-CALENDAR (R475): the store is held and read at every emission - never a value read once here and kept, which
+    // left the projection on the old employment rate, canton or method until the app was restarted.
+    private val settingsStore: SettingsStore,
     taxYear: Int,
     private val clock: Clock,
     private val scope: CoroutineScope,
 ) {
-    private val settings: Settings? = settingsStore.load()
     private var today: LocalDate = LocalDate.parse(todayInParis(clock))
     private var currentTaxYear: Int = taxYear
     private var rhythm: WeeklyRhythm = WeeklyRhythm()
@@ -85,7 +86,7 @@ class ForecastController(
 
     private fun emitState() {
         mutableState.value =
-            ForecastState(rhythmDays = rhythm.toChoiceMap(), projection = settings?.let(::projectionOf))
+            ForecastState(rhythmDays = rhythm.toChoiceMap(), projection = settingsStore.load()?.let(::projectionOf))
     }
 
     // Null when the rhythm is empty (the invitation) or the engine rejects the settings - the screen then

@@ -3107,3 +3107,82 @@ file - the same two-file shape CalendarDayGoldenTest and CalendarDayProbe alread
 use - and a git mv per test.
 
 STATE:      OPEN.
+
+## PARK-C1 - a day held in halves, viewed in whole-day mode, is shown empty  [AN-CALENDAR, 2026-10-21]
+
+RAISED BY:  REPORT-AN-CALENDAR.txt (ITEM 3 - R476, R478).
+
+WHAT IT IS: R477's mirror. A day recorded as AM + PM, then Parametres switched to
+whole days: the calendar sheet offers one whole-day slot and shows it EMPTY (the day
+holds no FULL row), and Aujourd'hui asks for today again. Answering writes a FULL row
+beside the halves, which both engines count 1 + 0.5 + 0.5 - the R476 double count from
+the other side. Parametres' R290 guard refuses the switch only when the year's half
+rows leave a FRACTIONAL count, so an even pair of halves lets it through. Measured on
+the S9: refused with 20 Oct AM CH + PM HOME (telework 0.5); accepted once 19 Oct's
+afternoon made it 1.0.
+
+TAKEN:      Not changed. R477 is stated for half-day mode; a whole-day slot cannot show
+two kinds, and editing such a day is R478's question, put to the operator.
+
+NOT TAKEN:  Showing a day held in halves as answered in whole-day mode; refusing the
+switch whenever any half row exists in the year.
+
+COST OF REVERSING: depends on R478's answer. The display would sit beside shownFor
+(CalendarController) and wholeDayHalf (AujourdhuiController).
+
+STATE:      OPEN - folded into R478's question.
+
+## PARK-C2 - uidrive.mjs cannot see which option is chosen  [AN-CALENDAR, 2026-10-21]
+
+RAISED BY:  REPORT-AN-CALENDAR.txt (R474).
+
+WHAT IT IS: android/scripts/uidrive.mjs prints only a node's text and content-desc.
+Since R474 the sheet's options carry the choice in the accessibility tree
+(uiautomator: checkable="true", and checked="true" on the chosen one) - but uidrive's
+own `dump` still prints a chosen and an unchosen option identically, and it is the
+instrument that recorded AN-POLISH's "left the sheet unchanged". This session read the
+raw XML to see the change.
+
+TAKEN:      The script is unchanged (committed by KMP-2, outside this task).
+
+NOT TAKEN:  Printing checked/selected in `dump`.
+
+COST OF REVERSING: one attribute read in nodes() and one field in the printed line.
+
+STATE:      OPEN.
+
+## PARK-C3 - the calendar sheet opens half-expanded, its Save two screens down  [AN-CALENDAR, 2026-10-21]
+
+RAISED BY:  REPORT-AN-CALENDAR.txt (R474).
+
+WHAT IT IS: The day sheet opens partially expanded (rememberModalBottomSheetState()'s
+default). In half-day mode "Enregistrer" sits below both halves' options and both
+notes. A person who taps a kind - the gesture that records on Aujourd'hui - sees the
+choice and no Save, and nothing is written until they find it (D16). R474 made the
+choice visible to TalkBack; where the writer sits is a layout question nobody ruled on.
+
+TAKEN:      Unchanged - no ruling asks for it, and it changes how every sheet opens.
+
+NOT TAKEN:  skipPartiallyExpanded = true; a Save row pinned to the sheet's foot.
+
+COST OF REVERSING: one argument. No baseline moves: the Paparazzi baselines photograph
+the sheet's content, not the ModalBottomSheet around it.
+
+STATE:      OPEN.
+
+## PARK-C4 - four copies of the settings-to-granularity mapping  [AN-CALENDAR, 2026-10-21]
+
+RAISED BY:  REPORT-AN-CALENDAR.txt (ITEM 2).
+
+WHAT IT IS: `granularity == "HALF_DAY" -> HALF_DAY, else DAY` is written out in
+AujourdhuiController (granularityOf), CalendarController (granularityNow),
+onboarding/Completeness.kt and ParametresController (stateOf). Four homes for one
+decision (R206); none disagree today.
+
+TAKEN:      Left as they were. The two R475 touched now read at use, each in its file.
+
+NOT TAKEN:  One shared function - cleanup beyond this task's scope.
+
+COST OF REVERSING: one function and four call sites.
+
+STATE:      OPEN.

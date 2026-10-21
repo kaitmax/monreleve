@@ -745,8 +745,14 @@ class ParametresController(
                 is PostOutcome.Ok ->
                     if (outcome.status in HTTP_OK..HTTP_OK_MAX) {
                         // Cache only after the server accepted, so Aujourd'hui and the dossier never disagree.
-                        store.save(settings)
-                        savedSettings = settings
+                        // AN-CALENDAR (R475): the store REPLACES the whole set (R447: load, copy, save), and this
+                        // screen edits six of its fields - so the one stored field it does not edit, the holder's
+                        // name, is carried over from what is stored now. Building the set from the six alone erased
+                        // the name on every save; it showed the moment Aujourd'hui read the settings at use (the
+                        // greeting lost the first name). The PATCH above is unchanged: it never sends the name.
+                        val whole = settings.copy(name = store.load()?.name)
+                        store.save(whole)
+                        savedSettings = whole
                         pendingSettings = null
                         mutableState.update { it.copy(phase = ParametresPhase.SAVED) }
                     } else {

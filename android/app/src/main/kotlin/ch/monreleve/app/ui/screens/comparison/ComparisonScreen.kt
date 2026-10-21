@@ -43,6 +43,7 @@ import ch.monreleve.app.dossier.ComparisonGap
 import ch.monreleve.app.dossier.ComparisonView
 import ch.monreleve.app.fr.ComparisonCopy
 import ch.monreleve.app.fr.ReleveCopy
+import ch.monreleve.app.fr.format.formatDeclarableRate
 import ch.monreleve.app.fr.format.formatPercent
 import ch.monreleve.app.ui.screens.onboarding.BottomActions
 import ch.monreleve.app.ui.screens.onboarding.InfoNote
@@ -160,7 +161,7 @@ private fun ComparisonCard(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(Spacing.space12),
         ) {
-            RatePair(ComparisonCopy.RELEVE_LABEL, formatPercent(releveRate, 2), Modifier.weight(1f))
+            RatePair(ComparisonCopy.RELEVE_LABEL, formatDeclarableRate(releveRate), Modifier.weight(1f))
             RatePair(ComparisonCopy.EMPLOYER_LABEL, formatPercent(employerRate, 2), Modifier.weight(1f))
         }
         val gapText =

@@ -13,7 +13,6 @@ import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.RecordCommand
 import ch.monreleve.app.dossier.LatenessForecast
 import ch.monreleve.app.onboarding.GranularityChoice
-import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -56,6 +55,11 @@ data class EditableSlot(
     val modifiedAt: String?,
     /** The server's immutable first-recording timestamp, once synced (SPEC 8); null while pending. */
     val firstRecordedAt: String?,
+    /**
+     * AN-CALENDAR (R477): this half shows a day held WHOLE (a FULL row, no row of its own), in half-day mode. Both
+     * halves of such a day carry the same row, so the sheet states its provenance once rather than once per half.
+     */
+    val wholeDay: Boolean = false,
 )
 
 /**
@@ -146,7 +150,10 @@ data class SelectionSnapshot(
 @Suppress("LongParameterList", "TooManyFunctions")
 class CalendarController(
     private val repository: EntryRepository,
-    settingsStore: SettingsStore,
+    // AN-CALENDAR (R475): the STORE is held, never a value read from it. The settings were read once here, in the
+    // constructor, and kept - so after Parametres switched to half-days the sheet still offered one whole-day slot
+    // until the app was restarted (REPORT-KMP-4 NOTICED 1). Every use below asks the store at that moment.
+    private val settingsStore: SettingsStore,
     private val taxYear: Int,
     private val clock: Clock,
     private val scope: CoroutineScope,
@@ -158,9 +165,6 @@ class CalendarController(
     restored: CalendarSnapshot? = null,
 ) : DayWriter {
     private val today: String = todayInParis(clock)
-    private val settings: Settings? = settingsStore.load()
-    private val granularity: GranularityChoice =
-        if (settings?.granularity == "HALF_DAY") GranularityChoice.HALF_DAY else GranularityChoice.DAY
     private var entries: List<EntryEntity> = emptyList()
 
     // AN-STATE: a restored month is clamped into the navigable range the same way initialMonth() is (a partial
@@ -191,13 +195,13 @@ class CalendarController(
 
     // AN-STATE: a restored month, clamped into the navigable range (the same bounds initialMonth uses).
     private fun clampMonth(month: Int): Int {
-        val loaded = settings ?: return month.coerceIn(1, LAST_MONTH)
+        val loaded = settingsStore.load() ?: return month.coerceIn(1, LAST_MONTH)
         return month.coerceIn(firstNavMonth(loaded, taxYear), LAST_MONTH)
     }
 
     /** Open on the current month, clamped into the navigable range (a partial year starts mid-year). */
     private fun initialMonth(): Int {
-        val loaded = settings ?: return LocalDate.parse(today).monthValue
+        val loaded = settingsStore.load() ?: return LocalDate.parse(today).monthValue
         val first = firstNavMonth(loaded, taxYear)
         val parsed = LocalDate.parse(today)
         val current = if (parsed.year == taxYear) parsed.monthValue else first
@@ -336,31 +340,50 @@ class CalendarController(
             ?: emptySet()
     }
 
-    /** Record the sheet's edits: one mutation per slot through the queue (D16 - the Save tap is the writer). */
+    /**
+     * Record the sheet's edits (D16 - the Save tap is the writer), and ONLY the portions whose value changed.
+     *
+     * AN-CALENDAR (R473). Each edit is compared with what is stored for its portion - the kind, the absence
+     * reason and the note, every field the sheet edits - and written only if one of them differs. A save that
+     * changes nothing writes nothing and asks for no sync. Before this, every slot holding a kind was recorded
+     * on every save: changing a morning re-recorded the afternoon as well, a new mutation id for the same value,
+     * and the server's append-only trail gained a MODIFIED event for something nobody did (REPORT-KMP-4 NOTICED 6).
+     *
+     * THE COMPARISON IS ON WHAT WOULD BE WRITTEN, not on what was typed: the note is normalised exactly as the
+     * write normalises it (blank -> null) on both sides, because the sheet seeds an absent note as "" and a
+     * comparison of "" with null would call an untouched half "changed" - the defect again, one layer down.
+     */
     fun save(
         isoDate: String,
         edits: List<SlotEdit>,
     ) {
-        scope.launch {
-            for (edit in edits) {
-                repository.record(
-                    RecordCommand(
-                        dayDate = isoDate,
-                        kind = edit.kind.toEntryKind(),
-                        portion = edit.slot.toPortion(),
-                        absenceReason = edit.absence?.toReason(),
-                        note = edit.note?.takeIf { it.isNotBlank() },
-                    ),
-                )
+        val stored = entries.filter { it.dayDate == isoDate }
+        // R477: compared with what the sheet SHOWED for each portion - a half of a day held whole showed the FULL
+        // row, so leaving it as it was is no change, and showing the day never becomes a write.
+        val changed =
+            edits
+                .map { it.toCommand(isoDate) }
+                .filter { command -> command.changes(shownFor(command.portion, stored)) }
+        if (changed.isNotEmpty()) {
+            scope.launch {
+                for (command in changed) repository.record(command)
+                // SPEC 13.2: written to Room, then enqueued; WorkManager replays on connectivity.
+                requestSync()
             }
-            // SPEC 13.2: written to Room, then enqueued; WorkManager replays on connectivity.
-            requestSync()
         }
         closeSheet()
     }
 
+    /**
+     * AN-CALENDAR (R475): the granularity AS IT IS NOW, read when a sheet is opened - so a switch made in Parametres
+     * is offered by the next sheet without a restart.
+     */
+    private fun granularityNow(): GranularityChoice =
+        if (settingsStore.load()?.granularity == "HALF_DAY") GranularityChoice.HALF_DAY else GranularityChoice.DAY
+
     private fun editableDay(isoDate: String): EditableDay {
         val rows = entries.filter { it.dayDate == isoDate }
+        val granularity = granularityNow()
         val slots =
             if (granularity == GranularityChoice.HALF_DAY) {
                 listOf(editableSlot(Slot.MORNING, rows), editableSlot(Slot.AFTERNOON, rows))
@@ -387,7 +410,7 @@ class CalendarController(
         slot: Slot,
         rows: List<EntryEntity>,
     ): EditableSlot {
-        val row = rows.firstOrNull { it.portion == slot.toPortion() }
+        val row = shownFor(slot.toPortion(), rows)
         return EditableSlot(
             slot = slot,
             kind = row?.kind?.toRecordedKind(),
@@ -396,11 +419,18 @@ class CalendarController(
             late = row?.let { serverLate(it) } ?: false,
             modifiedAt = row?.lastModifiedAt?.takeIf { it != row.firstRecordedAt },
             firstRecordedAt = row?.firstRecordedAt,
+            wholeDay = slot != Slot.FULL && row?.portion == Portion.FULL,
         )
     }
 
+    /**
+     * AN-CALENDAR (R475): re-read the settings and redraw the month - the shell calls this when the calendar's tab is
+     * selected, the way it refreshes Aujourd'hui, so a change of activity start made in Parametres is shown at once.
+     */
+    fun refresh() = recompute()
+
     private fun recompute() {
-        val loaded = settings ?: return
+        val loaded = settingsStore.load() ?: return
         val yearEntries = entries.filter { it.dayDate.startsWith("$taxYear-") }
         // AN-STATE (R310): reopen a sheet that was open before a rebuild, once the rows have loaded so the
         // prefill is the recorded day's (R181), not an empty one. Cleared after the first reopen so a later
@@ -414,6 +444,47 @@ class CalendarController(
         }
     }
 }
+
+/**
+ * AN-CALENDAR (R477): the row the sheet SHOWS for a portion - its own row, or, for a half with none on a day held
+ * WHOLE, the FULL row. A day recorded whole before the switch to half-days is then shown answered (both halves its
+ * kind) instead of empty, and nothing is written to show it. ONE HOME for the prefill and for R473's comparison, so
+ * an untouched half can never differ from what it displayed.
+ *
+ * Changing such a half is R478's question, put to the operator: until it is answered the sheet writes the changed
+ * half beside the FULL row (R473 writes what changed) - the shape main produced already.
+ */
+private fun shownFor(
+    portion: Portion,
+    rows: List<EntryEntity>,
+): EntryEntity? =
+    rows.firstOrNull { it.portion == portion }
+        ?: rows.firstOrNull { it.portion == Portion.FULL }.takeIf { portion != Portion.FULL }
+
+// AN-CALENDAR (R473): the note as the write stores it - a blank note is no note. One home, used on BOTH sides of
+// the comparison and by the write itself, so the three cannot disagree about what "the same note" means.
+private fun String?.normalisedNote(): String? = this?.takeIf { it.isNotBlank() }
+
+/** One edit as the write it would make. */
+private fun SlotEdit.toCommand(isoDate: String): RecordCommand =
+    RecordCommand(
+        dayDate = isoDate,
+        kind = kind.toEntryKind(),
+        portion = slot.toPortion(),
+        absenceReason = absence?.toReason(),
+        note = note.normalisedNote(),
+    )
+
+/**
+ * R473: would writing this command change what is stored for its portion? Every field the sheet edits is
+ * compared - kind, absence reason, note - and a portion with no row is always a change (R474: a half answered
+ * for the first time must never be judged unchanged).
+ */
+private fun RecordCommand.changes(stored: EntryEntity?): Boolean =
+    stored == null ||
+        stored.kind != kind ||
+        stored.absenceReason != absenceReason ||
+        stored.note.normalisedNote() != note
 
 // The wire<->screen enum mappings, mirroring AujourdhuiController's (which keeps them private). Enum
 // whens the compiler checks exhaustively, never French copy, so this is not the duplication R206 forbids.

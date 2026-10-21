@@ -39,6 +39,7 @@ import ch.monreleve.app.forecast.ForecastState
 import ch.monreleve.app.forecast.Projection
 import ch.monreleve.app.fr.PrevisionCopy
 import ch.monreleve.app.fr.format.SignedDays
+import ch.monreleve.app.fr.format.formatDeclarableRate
 import ch.monreleve.app.fr.format.formatPercent
 import ch.monreleve.app.fr.format.formatSignedDays
 import ch.monreleve.app.ui.screens.onboarding.BottomActions
@@ -58,7 +59,6 @@ import ch.monreleve.app.ui.screens.rythme.ForecastTopBar
 private const val PERCENT = 100.0
 private const val FISCAL_DECIMALS = 0
 private const val SOCIAL_DECIMALS = 1
-private const val RATE_DECIMALS = 2
 private const val FIGURE_WEIGHT = 1f
 private const val TILE_WEIGHT = 1f
 
@@ -213,13 +213,13 @@ private fun FigureRow(
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.space12)) {
         Figure(
             label = PrevisionCopy.TODAY_LABEL,
-            value = formatPercent(projection.currentRate, RATE_DECIMALS),
+            value = formatDeclarableRate(projection.currentRate),
             colour = LightColors.textPrimary,
             modifier = Modifier.weight(FIGURE_WEIGHT),
         )
         Figure(
             label = PrevisionCopy.PROJECTION_LABEL,
-            value = formatPercent(projection.projectedRate, RATE_DECIMALS),
+            value = formatDeclarableRate(projection.projectedRate),
             colour = ZONE_BAND_COLOUR.getValue(projectedZone),
             modifier = Modifier.weight(FIGURE_WEIGHT),
         )

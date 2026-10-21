@@ -122,6 +122,20 @@ fun formatPercent(
     return "${digits(value, decimals, decimals)}$PERCENT_SPACE%"
 }
 
+/** AN-CALENDAR (R479): the declarable rate's precision - SPEC 7.3, the filed figure. */
+private const val DECLARABLE_RATE_DECIMALS = 2
+
+/**
+ * THE DECLARABLE RATE, AS EVERY SCREEN SHOWS IT - one home (R206), so two screens cannot show one record two ways.
+ *
+ * AN-CALENDAR (R479). The engine has already truncated the rate to two decimals (DeclarableRate.kt), and this
+ * truncates nothing the engine did not - PROVIDED it is handed the engine's Double. A Float copy is not that: 0.83
+ * as a Float is 0.829999983..., which truncates to "0,82". That is how Aujourd'hui, animating the rate through a
+ * Float, read 0,82 % where the forecast read 0,83 % for the same record (REPORT-KMP-4 NOTICED 2) - and Geneva's
+ * 39,16 % would have read 39,15 % on the home screen.
+ */
+fun formatDeclarableRate(rate: Double): String = formatPercent(rate, DECLARABLE_RATE_DECIMALS)
+
 /**
  * A count of days, grouped with U+202F.
  *

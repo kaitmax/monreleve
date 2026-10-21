@@ -47,7 +47,8 @@ private const val MAX_RATE = 100
 class SimulationController(
     rhythmRepo: RhythmRepository,
     entryRepo: EntryRepository,
-    settingsStore: SettingsStore,
+    // AN-CALENDAR (R475): the store is held and read at every emission - never a value read once here and kept.
+    private val settingsStore: SettingsStore,
     taxYear: Int,
     private val clock: Clock,
     scope: CoroutineScope,
@@ -55,7 +56,6 @@ class SimulationController(
     // scenario and its inputs survive; the view is recomputed, never stored (R181). Null on a fresh build.
     restored: SimulationSnapshot? = null,
 ) {
-    private val settings: Settings? = settingsStore.load()
     private var today: LocalDate = LocalDate.parse(todayInParis(clock))
     private var currentTaxYear: Int = taxYear
     private var rhythm: WeeklyRhythm = WeeklyRhythm()
@@ -101,6 +101,7 @@ class SimulationController(
     }
 
     private fun emitState() {
+        val settings = settingsStore.load()
         val available = availableWeekdays(rhythm)
         inputs = seeded(inputs, available, settings)
         val view = settings?.let { viewOf(it, available) }
