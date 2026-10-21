@@ -1098,7 +1098,19 @@ THE COMMITS, in order, each pushed when made:
     88b6382  the report so far, PARK-M1                 (31f2d58..88b6382)
              - FULL GATE GREEN on it
     0ff6075  the BEFORE evidence, verbatim              (88b6382..0ff6075)
-    <this>   the final report - R470's outcome, STATUS, this block
+    2595ef7  the final report - R470's outcome, STATUS  (0ff6075..2595ef7)
+    <this>   this block's push lines - the final tip, named
+
+    $ git push                                  (the final report)
+    To https://github.com/kaitmax/monreleve.git
+       0ff6075..2595ef7  kmp-4 -> kmp-4
+    $ git rev-parse HEAD origin/kmp-4
+    2595ef783d2cd175b29dfb3a3ca42516445d55ee
+    2595ef783d2cd175b29dfb3a3ca42516445d55ee
+
+A REPORT CANNOT PRINT ITS OWN SHA, so the list ends with this commit, named
+rather than hashed: the final tip is the commit whose subject is "KMP-4: PUSH
+PROOF - the final tip, named". It changes this block and nothing else.
 
 THE FINAL TIP DIFFERS FROM THE GATED 88b6382 ONLY IN REPORT-KMP-4.txt:
     git diff --stat 88b6382..HEAD  ->  REPORT-KMP-4.txt only
