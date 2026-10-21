@@ -3078,3 +3078,32 @@ subject lives TODAY, and proves it found it". Writing a new census is a new fenc
 a subject no fence guards, which the prompt's OUT OF SCOPE section parks explicitly.
 
 STATE:      OPEN.
+
+## PARK-M1 - the record path's behaviour suite runs on the JVM, not in commonTest  [KMP-4, 2026-10-21]
+
+RAISED BY:  REPORT-KMP-4.txt.
+
+WHAT IT IS: KMP-4 moved LocalEntryRepository to :shared commonMain, and the tests
+that pin what a tap writes - RecordPathPinTest, AccountScopeTest (the account read
+at write time, its mirror, R425's canary), EntryRepositoryTest, OrderingEvidenceTest
+and every controller test that records - run UNEDITED against the shared code, but
+from :app's JVM suite, through :app's construction site. They need FakeEntryDao,
+which lives in :app's test source set and is shared by more than fifteen :app test
+files; commonTest cannot see it. So when iOS-1 first runs commonTest on a simulator,
+the goldens (CalendarDayGoldenTest), the stored names (StoredEnumNamesTest) and the
+rhythm repository (RhythmRepositoryPinTest) run there - and the entry repository's
+behaviour does not.
+
+TAKEN:      Left in :app, unedited. That is the strongest form of R466 available:
+not one assertion, fixture or construction line of a pre-existing test changed.
+
+NOT TAKEN:  A second FakeEntryDao in commonTest, or a shared test-fixtures source set
+that both :app's tests and commonTest compile. The first is a second implementation
+of one fake that can drift from the first; the second is a build change no ruling
+asked for. Either is a decision for the task that first runs commonTest on iOS.
+
+COST OF REVERSING: one fake (about forty lines) plus a construction probe per test
+file - the same two-file shape CalendarDayGoldenTest and CalendarDayProbe already
+use - and a git mv per test.
+
+STATE:      OPEN.

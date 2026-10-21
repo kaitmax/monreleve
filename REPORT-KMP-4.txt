@@ -18,14 +18,41 @@ happened yet, and a section says only what has happened (R334).
 --------------------------------------------------------------------------------
 SUMMARY
 --------------------------------------------------------------------------------
-PENDING.
+INTERIM - written while R470 step 3 waits for the phone; rewritten when it ends.
 
+The path that writes a day now lives in :shared commonMain: LocalEntryRepository
+(PARK-D1), LocalRhythmRepository (PARK-D2), CalendarDay (PARK-B1) and
+EntryAggregation, and the two EntryKind/Portion sets are one (PARK-K3). Every
+move is a git rename; the repositories' and EntryAggregation's are 100%.
+
+WHAT A TAP WRITES DID NOT CHANGE, and the evidence is the tests that pinned it
+FIRST, on the current code, running unedited afterwards: the claim's exact
+string for 26 instants across both 2026 DST changes, New Year's Eve and
+Casablanca's Ramadan offset; every column of a recorded day; the account read
+at write time after a sign-in without restart and after a sign-out.
+
+NOT ONE CONSTRUCTION SITE CHANGED. KMP-3 counted 3 production sites and 14 test
+files that a constructor change would touch; all 17 are byte-identical to
+b942ed4, because :app's half of the seams is one function named like the class.
+
+The device proof (R470) has its BEFORE state on the S9 and in the device
+database; steps 3-4 wait on the phone, which dropped off USB.
 --------------------------------------------------------------------------------
 STATUS (R391)
 --------------------------------------------------------------------------------
-PENDING. No STATUS line is written until a FULL :app:gate --rerun-tasks has run
-on the reported tip in this session.
+INTERIM. Increments green under fast check. FULL GATE NOT RUN on this
+commit (it changes REPORT-KMP-4.txt and parking.md only).
 
+  The FULL :app:gate --rerun-tasks DID run, in this session, on 31f2d58 - the
+  last commit carrying code:
+      test floor OK: 1212 unit tests observed (>= 10)
+      BUILD SUCCESSFUL in 10m 1s
+      225 actionable tasks: 225 executed
+      GATE_EXIT=0
+
+  R470 steps 3-4 are NOT RUN (see R470). gate:clone NOT RUN and not claimed:
+  `git diff origin/main...HEAD -- web/` is EMPTY, so there is no web change
+  for it to verify (R133).
 --------------------------------------------------------------------------------
 R273 - WHAT WAS READ, BEFORE ANYTHING ELSE
 --------------------------------------------------------------------------------
@@ -214,76 +241,672 @@ platform-free, so it needs no :app counterpart.
 --------------------------------------------------------------------------------
 R464 - THE PARIS DAY, DST, AND THE clientClaimedAt GOLDEN
 --------------------------------------------------------------------------------
-PENDING.
+THE ZONE RULES WERE READ, NOT ASSUMED (the briefing's caution 1). On the JVM the
+unit tests run on - Android Studio's JBR, java 21.0.6, tzdata 2024b:
+
+  Africa/Casablanca  fixed=false
+    Overlap at 2026-02-15T03:00+01:00 to Z        (Ramadan: +01:00 -> +00:00)
+    Gap     at 2026-03-22T02:00Z to +01:00         (back to +01:00)
+  Europe/Paris
+    Gap     at 2026-03-29T02:00+01:00 to +02:00
+    Overlap at 2026-10-25T03:00+02:00 to +01:00
+
+So Casablanca is NOT a constant UTC+1: from 15 February to 22 March 2026 it is
++00:00. A test assuming "+01:00" would read the Ramadan case wrongly - one case
+pins exactly that.
+
+TESTS FIRST, ON THE CURRENT CODE (5753ef6). CalendarDayGoldenTest, 9 tests,
+kotlin.test, in :app's JVM suite against the java.time CalendarDay. Every
+expected string came from the java.time implementation itself - the code being
+pinned is the oracle. Cases (instant, device zone -> Paris day, claim):
+
+  2026-07-01T22:30:00Z Africa/Casablanca  -> 2026-07-02  2026-07-01T23:30:00.000+01:00
+     (23:30 local = 00:30 Paris summer time: the claim is dated the day BEFORE
+      the recorded day, by design - the day is Paris's, the claim the device's)
+  2026-10-21T22:30:00Z Africa/Casablanca  -> 2026-10-22  2026-10-21T23:30:00.000+01:00
+     (the same hour on the S9 this week)
+  2026-10-26T23:30:00Z Africa/Casablanca  -> 2026-10-27  2026-10-27T00:30:00.000+01:00
+     (after Paris leaves summer time the two calendars agree at every hour)
+  2026-03-01T23:30:00Z Africa/Casablanca  -> 2026-03-02  2026-03-01T23:30:00.000+00:00
+     (Ramadan +00:00: Casablanca is not a fixed offset)
+  2026-03-28T23:30:00Z Europe/Paris       -> 2026-03-29  2026-03-29T00:30:00.000+01:00
+  2026-03-29T00:59:59.999Z Europe/Paris   ->             2026-03-29T01:59:59.999+01:00
+  2026-03-29T01:00:00Z Europe/Paris       ->             2026-03-29T03:00:00.000+02:00
+  2026-03-29T22:30:00Z Europe/Paris       -> 2026-03-30  2026-03-30T00:30:00.000+02:00
+  2026-10-24T22:30:00Z Europe/Paris       -> 2026-10-25  2026-10-25T00:30:00.000+02:00
+  2026-10-25T00:30:00Z Europe/Paris       ->             2026-10-25T02:30:00.000+02:00
+  2026-10-25T01:30:00Z Europe/Paris       ->             2026-10-25T02:30:00.000+01:00
+     (the repeated hour: two instants, one wall clock, told apart by the offset)
+  2026-10-25T22:30:00Z Europe/Paris       -> 2026-10-25  2026-10-25T23:30:00.000+01:00
+  2026-10-25T23:30:00Z Europe/Paris       -> 2026-10-26  2026-10-26T00:30:00.000+01:00
+  New Year's Eve:
+  2026-12-31T22:59:59.999Z UTC            -> 2026-12-31  2026-12-31T22:59:59.999+00:00
+  2026-12-31T23:00:00Z UTC                -> 2027-01-01  2026-12-31T23:00:00.000+00:00
+  2026-12-31T23:30:00Z UTC                -> 2027-01-01  2026-12-31T23:30:00.000+00:00
+  2026-12-31T23:30:00Z Africa/Casablanca  -> 2027-01-01  2027-01-01T00:30:00.000+01:00
+  2026-12-31T23:30:00Z America/Los_Angeles-> 2027-01-01  2026-12-31T15:30:00.000-08:00
+  whole minute, zero offset, half-hour offset, truncation:
+  2026-07-01T10:00:00Z Europe/Paris       ->             2026-07-01T12:00:00.000+02:00
+  2026-07-01T10:00:00Z UTC                ->             2026-07-01T10:00:00.000+00:00
+  2026-07-01T10:00:00Z Asia/Kolkata       -> 2026-07-01  2026-07-01T15:30:00.000+05:30
+  2026-07-01T10:00:00.123456789Z Paris    ->             2026-07-01T12:00:00.123+02:00
+  2026-07-01T10:00:59.999999999Z Paris    ->             2026-07-01T12:00:59.999+02:00
+     (truncated, never rounded into 12:01:00.000)
+
+RED BY PLANT ON THE CURRENT CODE (R180, each verified at the line first):
+  CLAIM_FORMAT -> DateTimeFormatter.ISO_OFFSET_DATE_TIME   9 of 9 RED
+     e.g. expected <2026-07-01T12:00:00.000+02:00> but was <2026-07-01T12:00:00+02:00>
+          expected <2026-07-01T10:00:00.000+00:00> but was <2026-07-01T10:00:00Z>
+  todayInParis naming the day in clock.zone                3 of 9 RED - exactly
+     the three boundary tests (Casablanca summer, Ramadan, New Year's Eve)
+  Both reverted; git diff over src/main empty.
+
+THEN MOVED, SAME TESTS, UNEDITED (c3ac1f7). CalendarDay.kt now lives in
+:shared commonMain, same package, on kotlinx-datetime:
+  - todayInParis(clock) = parisDayOf(clock.now()).toString() - dossier/
+    ParisDay.kt's one Paris-day resolution, no third "Europe/Paris" literal;
+  - deviceClaimNow(clock, deviceZone) formats with a kotlinx DateTimeComponents
+    format: year-monthNumber-dayOfMonth 'T' hour:minute:second '.' secondFraction(3)
+    offsetHours ':' offsetMinutesOfHour - NOT kotlinx's ISO offset, which writes
+    a zero offset as "Z".
+  CalendarDayGoldenTest moved to :shared's commonTest by git mv - "rename ...
+  (100%)" in the commit - and is GREEN, 9/9, against the kotlinx code. The one
+  file rewritten is its probe, CalendarDayProbe.kt: the two functions that
+  BUILD the subject. Its whole diff across the move is the imports, the clock
+  construction and the comment saying so (shown under R467).
+
+RED BY PLANT ON THE MOVED CODE (R180), each restored byte-identical:
+  offset(UtcOffset.Formats.ISO) in place of offsetHours ':' offsetMinutesOfHour
+     -> 4 of 9 RED: every zero offset written "Z" (including Casablanca's
+        Ramadan +00:00)
+  the explicit millisecond truncation removed
+     -> GREEN. Measured, not assumed: kotlinx-datetime 0.6.1's secondFraction(3)
+        already truncates. The cut is kept, and its comment now says exactly
+        that, so the claim does not rest on a formatting detail of a library
+        whose 0.7 series is a known upgrade.
+
+:app KEEPS A BRIDGE, JavaTimeCalendarDay.kt: todayInParis(java.time.Clock) and
+deviceClaimNow(java.time.Clock), which convert types and decide nothing - the
+controllers, the evening receiver and the sampling worker still hold a
+java.time.Clock and are out of scope. Named apart from CalendarDay.kt because a
+second CalendarDay.kt in the same package would compile to the same JVM facade
+class as :shared's and collide at dexing. The bridge is exercised, unedited,
+by CalendarDayTest (the Paris day with the JVM default zone moved),
+EntryRepositoryTest's "+02:00" goldens, RecordPathPinTest's "+01:00" goldens
+and CalendarBulkWriteTest.
 
 --------------------------------------------------------------------------------
 R465 - ONE SET OF ENUMS
 --------------------------------------------------------------------------------
-PENDING.
+THE BEFORE CHECK (73b0af3), run on b942ed4's code before anything collapsed:
+
+  StoredEnumNamesTest (new, kotlin.test) writes out every name the database
+  stores - literals on purpose, because they are the values on every phone:
+    EntryKind      CH HOME MISSION_FR MISSION_THIRD ABSENT
+    Portion        FULL AM PM
+    Provenance     MANUAL DETECTED_CONFIRMED DETECTED_CORRECTED
+    AbsenceReason  CONGE MALADIE FERIE AUTRE
+    SyncState      PENDING SYNCED FAILED
+    RhythmKind     SUISSE DOMICILE
+  EntryVocabularyBindingTest (KMP-0's, existing) asserts the second set,
+  dossier.EntryKind / dossier.Portion, carries the same names in the same order.
+
+  RESULT: GREEN, both. The two sets' constant names are IDENTICAL as strings:
+    EntryKind  CH HOME MISSION_FR MISSION_THIRD ABSENT  in both
+    Portion    FULL AM PM                               in both
+  R465's STOP did NOT fire.
+
+  SHOWN ABLE TO FIRE (R180): dossier.Portion reordered FULL PM AM ->
+  "Portion: identical names, in order" RED ("Element differ at index: [1, 2]");
+  reverted, diff over shared/src empty.
+
+THE COLLAPSE (d9f8c51), alone in its commit:
+  SURVIVOR: data.local's EntryKind/Portion (WireEnums.kt) - the Room column type
+  and the wire type. Not one constant, order, column, migration or identity hash
+  changed, because the surviving set was not touched at all.
+  REMOVED:  dossier/EntryVocabulary.kt (KMP-0's copy). Aggregate.kt, Forecast.kt
+  and Simulation.kt import the one set.
+  toShared() GONE, not made an identity: EntryAggregation.kt keeps
+  toAggregatable(), which now passes portion and kind straight through.
+  ITS INVERSE: there was none. Searched for toLocal/toWire/toRoom and for any
+  `when` mapping the dossier set back to data.local's - nothing. RhythmRepository
+  projects through toEntryKind() alone.
+  EntryVocabularyBindingTest DELETED: its four tests compared two sets and
+  exercised toShared(), and neither exists. The names it bound are written out
+  in StoredEnumNamesTest, which moved to :shared's commonTest beside the one set
+  by git mv (100%, unedited).
+  IMPORT-ONLY EDITS that the collapse forced (the type they name moved
+  package): RhythmMappingTest, AggregationConformanceTest,
+  ForecastConformanceTest, ForecastR340Test, SimulationConformanceTest,
+  SimulationR340Test, PrevisionScreenScreenshotTest,
+  SimulationScreenScreenshotTest, and one production controller,
+  SimulationController (import line only). Diffs under R467.
+
+UNEDITED AND GREEN AFTER THE COLLAPSE, by file diff against b942ed4 (empty) and
+by the JUnit XML:
+  RoomSchemaContractTest (the identity hash)  6 tests
+  EntriesWireGoldenTest                        6
+  AuthWireGoldenTest                          18
+  DossierWireGoldenTest                        5
+  WireContractParityTest                       4
+  android/shared/schemas/                     untouched
+  verifyPaparazziDebug green, no baseline touched (the two screenshot tests
+  changed import lines only).
 
 --------------------------------------------------------------------------------
 R466 - PIN THEN MOVE
 --------------------------------------------------------------------------------
-PENDING.
+THE CENSUS FIRST - which named behaviours were already pinned, KMP-3's way:
+
+  recording a full day            RecordPathPinTest (NEW): whole-entity equality
+                                  on the row that reached the DAO - every column
+  each half                       RecordPathPinTest (NEW): AM and PM are two rows,
+                                  neither replaces the other, never a FULL row
+  each kind                       RecordPathPinTest (NEW): CH HOME MISSION_FR
+                                  MISSION_THIRD ABSENT (MISSION_THIRD had no test
+                                  through record() before)
+  an absence with a note          RecordPathPinTest (NEW): reason and an accented
+                                  note stored verbatim
+  a late entry                    RecordPathPinTest (NEW): a back-dated day keeps
+                                  its own day and the tap's claim; the client
+                                  computes no lateness (R216)
+  modifying                       ALREADY: EntryRepositoryTest (coalesce, new id,
+                                  server columns kept, final tap's claim);
+                                  NEW: an edit to one half leaves the other
+                                  byte-identical
+  cancelling                      ALREADY: CalendarBulkWriteTest "Annuler on the
+                                  confirmation writes nothing", CalendarSelection-
+                                  Test "Annuler ... nothing is written". Annuler
+                                  never reaches the repository, so there is no
+                                  repository-level behaviour to pin.
+  the rhythm applying to the
+  days it covers                  ALREADY: RhythmMappingTest (weekday -> kind),
+                                  ForecastConformanceTest (the projection);
+                                  NEW: RhythmRepositoryPinTest - the projected
+                                  weekdays and only those, by name
+  the account tag at write time
+  after sign-in WITHOUT restart   ALREADY for entries: AccountScopeTest.
+                                  NEW for the rhythm: RhythmRepositoryPinTest
+  after sign-out (the mirror)     ALREADY for entries: AccountScopeTest.
+                                  NEW for the rhythm, with a positive control that
+                                  the earlier save did write
+  R425's canary                   ALREADY: AccountScopeTest (throws by type,
+                                  stores nothing; silent when nobody is signed in)
+
+  LocalRhythmRepository HAD NO TEST AT ALL before this task.
+
+RED BY PLANT, each verified at the line before the result was read:
+  record() storing Portion.FULL whatever was asked -> RecordPathPinTest's two
+     half-day tests RED ("a morning and an afternoon are two rows ==> expected
+     <2> but was <1>")
+  save() falling back to UNOWNED instead of writing nothing -> the rhythm's
+     sign-out mirror RED, naming the RhythmEntity(accountTag=UNOWNED, ...) row
+  the canary's reporter call removed (in the seam commit) -> AccountScopeTest's
+     R425 test RED - proving it reaches the injected seam
+
+THEN THE MOVES - THE SAME TESTS, UNEDITED IN THEIR ASSERTIONS (in fact unedited
+entirely): every pre-existing record-path test and RecordPathPinTest run in
+:app's JVM suite against the moved code, through :app's construction site;
+RhythmRepositoryPinTest and FakeRhythmDao moved to commonTest by git mv (100%).
 
 --------------------------------------------------------------------------------
 R467 - CONSTRUCTION CHANGES, SHOWN
 --------------------------------------------------------------------------------
-PENDING.
+THE CONSTRUCTION CHANGE THIS TASK MADE IS ONE FILE, AND IT IS IN PRODUCTION
+CODE: app/src/main/.../data/repo/AndroidRecordSeams.kt, a function named
+LocalEntryRepository with the OLD signature - (dao, java.time.Clock,
+currentAccount = { null }, isSignedIn = { false }, newMutationId = { UUID }) -
+that builds the shared class with every seam explicit:
+
+    LocalEntryRepository(
+        dao = dao,
+        clock = clock.toKotlinClock(),
+        deviceZone = clock.zone.toKotlinTimeZone(),
+        currentAccount = currentAccount,
+        isSignedIn = isSignedIn,
+        reportUnownedWhileSignedIn = ::reportUnownedWhileSignedIn,
+        newMutationId = newMutationId,
+    )
+
+so KMP-3's counted "3 production sites and 14 test files" needed NO EDIT. The
+proof is a diff, not a sentence:
+
+    git diff --stat b942ed4..HEAD -- <the 14 test files> MainActivity.kt
+        DevRecorderActivity.kt EveningActionReceiver.kt EveningNotifier.kt
+    -> EMPTY
+
+  AujourdhuiAutoControllerTest AujourdhuiControllerTest AujourdhuiSectionsTest
+  CalendarBulkWriteTest CalendarControllerTest CalendarSelectionTest
+  AccountScopeTest EntryRepositoryTest OrderingEvidenceTest MainGraphWiringTest
+  DetectionSettingsTest ParametresAccountTest ParametresControllerTest
+  SignOutSyncFirstTest - all 14 byte-identical to b942ed4, all green.
+
+EVERY TEST FILE THIS BRANCH TOUCHED, with its diff:
+
+  NEW (written by this task):  RecordPathPinTest (:app);
+    CalendarDayGoldenTest, CalendarDayProbe, StoredEnumNamesTest,
+    RhythmRepositoryPinTest, FakeRhythmDao (now :shared commonTest).
+  MOVED UNEDITED (git mv, 100%): CalendarDayGoldenTest, StoredEnumNamesTest,
+    RhythmRepositoryPinTest, FakeRhythmDao.
+  MOVED AND REWRITTEN - CONSTRUCTION ONLY: CalendarDayProbe.kt. Its whole diff
+    across the move (5753ef6 -> HEAD):
+      -import java.time.Clock / java.time.Instant / java.time.ZoneId
+      +import kotlinx.datetime.Clock / kotlinx.datetime.Instant / kotlinx.datetime.TimeZone
+      -): String = todayInParis(deviceClock(instant, deviceZone))
+      +): String = todayInParis(fixedAt(instant))
+      -): String = deviceClaimNow(deviceClock(instant, deviceZone))
+      +): String = deviceClaimNow(fixedAt(instant), TimeZone.of(deviceZone))
+      -private fun deviceClock(instant, deviceZone): Clock =
+      -    Clock.fixed(Instant.parse(instant), ZoneId.of(deviceZone))
+      +private fun fixedAt(instant: String): Clock =
+      +    object : Clock { override fun now(): Instant = Instant.parse(instant) }
+      + @Suppress("UnusedParameter") on parisDayAt, with its reason: the moved
+        todayInParis takes no zone, so the Paris day cannot depend on the
+        device's - which is what the cases assert
+      ~ the header comment, re-tensed (it described the move as future)
+    No golden, case or assertion is in this file.
+  DELETED: EntryVocabularyBindingTest - subject gone (R465). A DEVIATION, with
+    that reason.
+  IMPORT LINES ONLY (R465, a DEVIATION with the reason "the type they name
+    moved package"), complete -U0 diffs:
+      RhythmMappingTest                +import ...data.local.EntryKind
+                                       -import ...dossier.EntryKind
+      AggregationConformanceTest       +import ...data.local.EntryKind
+                                       +import ...data.local.Portion
+      ForecastConformanceTest          +import ...data.local.EntryKind / Portion
+      ForecastR340Test                 +import ...data.local.EntryKind / Portion
+      SimulationConformanceTest        +import ...data.local.EntryKind / Portion
+      SimulationR340Test               +import ...data.local.EntryKind / Portion
+      PrevisionScreenScreenshotTest    +import ...data.local.EntryKind / Portion
+                                       -import ...dossier.EntryKind / Portion
+      SimulationScreenScreenshotTest   +import ...data.local.EntryKind / Portion
+                                       -import ...dossier.EntryKind / Portion
+    Checked mechanically: `git diff --cached -U0 -- android/app/src/test` with
+    every +/- line that is not an import filtered out leaves only the deleted
+    binding test and the 100% rename.
+
+  No assertion, fixture or expected value changed in any pre-existing test.
 
 --------------------------------------------------------------------------------
 R468 - THE GUARDS FOLLOW
 --------------------------------------------------------------------------------
-PENDING.
+Every plant below went into the MOVED file,
+shared/src/commonMain/.../data/repo/EntryRepository.kt, written to COMPILE in
+:shared (which compiles before :app runs a test), verified at the line before
+the result was read, run alone so each RED is attributable, and restored
+byte-identical (cmp against a saved copy, then git diff --quiet over
+android/shared/src).
+
+THE AN-ACCOUNT-TAG FENCE. The plant is the defect's own shape - an account read
+passed as a VALUE into a constructor - and deliberately NOT an assignment line,
+which the fence exempts:
+    private fun plantedCapture(accountStore: PlantedStore) = PlantedHolder(accountStore.current())
+  RED:
+    AccountCaptureFenceTest > no account is captured as a value at construction FAILED
+    expected:<[]> but was:<[EntryRepository.kt:183  private fun plantedCapture(...
+  The fence names the moved file at its :shared line. Its two root tests stayed
+  green with the plant in place: the walk reaches both trees.
+
+THE TWO FENCES AN-FENCE-ROOTS CLASSED MOVED-SUBJECT, same treatment:
+  LogFenceTest        plant: private fun plantedLog(token: String) =
+                             println("refresh token=$token")
+                      RED: "..\shared\src\commonMain\kotlin\ch\monreleve\app\
+                           data\repo\EntryRepository.kt:177: a log/print sink on
+                           the same line as a credential word"
+  NoDebugInjection-   plant: private object SessionInjection
+  InMainTest          RED: "SessionInjection in ..\shared\src\commonMain\kotlin\
+                           ch\monreleve\app\data\repo\EntryRepository.kt"
+
+R460's "FOUND ITS SUBJECT" ASSERTIONS: none of the four moved files is a pin.
+The pins on the final tip are MainActivity.kt, SessionInjection.kt (debug),
+Fr.kt, ComparisonCopy.kt, AppBottomBar.kt, Tokens.kt, GalleryScreen.kt,
+DayCell.kt, SessionManager.kt, SharedModule.kt, Rules.kt, RailGeometry.kt, and
+AccountCaptureFenceTest's own MainActivity.kt / SyncEngine.kt - all still
+where their roots are. Every fence ran green in the full gate on 31f2d58
+(fences package 46 tests, CommonMainFenceTest 3).
 
 --------------------------------------------------------------------------------
 R469 - THE MIGRATION STAYS PROVABLE (counts before and after)
 --------------------------------------------------------------------------------
-BEFORE, read from the JUnit XML of the R1(b) gate on b942ed4 (archived before
-any later run could overwrite it):
+commonMain's METADATA COMPILE: green after every move, run alone before each
+fast check, and inside both full gates. It is the check that refused a platform
+import in the moved code (below) where the Android compilation accepted it.
 
-  :app     TOTAL 1210
-  :shared  TOTAL   44   (calc 2, data.remote 23, data.sync 6, dossier 7,
-                         shared 4, shared.fixtures 2)
-  :app + :shared COMBINED 1254
+THE java./android. IMPORT FENCE, WITH A POSITIVE CONTROL - two of them:
+  built in: CommonMainFenceTest.theClassifierFiresOnPlatformImportsAndSpares-
+    TheTwoMultiplatformOnes, green in the gate;
+  LIVE, in the moved repository: `import java.util.UUID` plus the old default
+    `newMutationId: () -> String = { UUID.randomUUID().toString() }` - exactly
+    what a naive port would have kept:
+      :shared:compileCommonMainKotlinMetadata  FAILED
+        e: .../data/repo/EntryRepository.kt:16:8 Unresolved reference 'java'.
+        e: .../data/repo/EntryRepository.kt:101:49 Unresolved reference 'UUID'.
+      CommonMainFenceTest > commonMainImportsNoPlatformApis FAILED
+    The Android compilation of :shared ACCEPTED it (the JVM has java.util) -
+    which is why both checks exist. Restored byte-identical.
 
-AFTER: PENDING.
+PER-PACKAGE TEST COUNTS, read from the JUnit XML of the R1(b) gate on b942ed4
+and of the full gate on 31f2d58, COMBINED across :app and :shared so a moved
+test reads as a transfer:
+
+  TOTAL                       1254 -> 1277   [app 1210 -> 1212 | shared 44 -> 65]
+  ch.monreleve.app.data.local   17 ->   28   [app 17 -> 13     | shared 0 -> 15]
+  ch.monreleve.app.data.repo    18 ->   30   [app 18 -> 24     | shared 0 -> 6]
+  every other package           unchanged
+  packages with a LOWER combined count: NONE
+
+  THE ONE PER-MODULE DECREASE, explained by name: :app's data.local 17 -> 13 is
+  EntryVocabularyBindingTest's 4 tests, deleted with their subject (R465).
+  Everything else that left :app (9 golden, 6 names, 6 rhythm) was written by
+  this task and arrived in :shared by git mv.
+
+  The +23 combined: +9 CalendarDayGoldenTest, +6 StoredEnumNamesTest, +6
+  RecordPathPinTest, +6 RhythmRepositoryPinTest, -4 EntryVocabularyBindingTest.
+
+checkTestFloor AGREES: "test floor OK: 1212 unit tests observed" on 31f2d58
+(1210 at R1(b)). The floor counts :app's suite only; :shared's 65 run in the
+same gate as :shared:testDebugUnitTest.
 
 --------------------------------------------------------------------------------
 R470 - ON THE S9
 --------------------------------------------------------------------------------
-PENDING.
+THE RIG. The S9 over USB; the local stack (pnpm dev, main checkout - DEVIATION
+1) on port 3000, R169 satisfied before it was trusted:
+    GET /api/health -> {"service":"monreleve","instance":null,"status":"ok",...}
+    and again before step 3, same answer.
+adb reverse tcp:3000 tcp:3000; NEVER production - every APK built with
+-PfrontalierHost=127.0.0.1, verified by grepping the dex: http://127.0.0.1:3000
+present, 10.0.2.2 absent, in all four APKs. The account is the session's own,
+kmp4.device@monreleve.test; the operator's address was never used. The clock
+stayed REAL and the zone Africa/Casablanca throughout; nothing moved either.
+
+THE TWO CLOCKS - AND A CORRECTION TO THE BRIEFING, measured rather than
+repeated. Casablanca is +01:00 now and Paris +02:00 until 25 October, so a
+Paris day differs from the device's day only between 23:00 and 24:00 Casablanca
+time (22:00-23:00Z). Every device step here ran in the morning, when the two
+DAYS AGREE: what the drive exercised is the claim's OFFSET (+01:00 claims, read
+against a +02:00 Paris), not the day boundary. The day boundary is proved by the
+host goldens (R464), including the exact 23:30-Casablanca hour of this week.
+THIS PROOF IS DATE-DEPENDENT: from 25 October Paris and Casablanca are both
++01:00 (outside Ramadan) and even the offsets agree, so a re-run in November
+that sees nothing differ has exercised less, not more.
+
+STEP 1 - THE BEFORE STATE (done, 09:20-09:41 phone time)
+  BEFORE APK, built FIRST, from untouched b942ed4 (tree verified clean and at
+  b942ed4 immediately before the build, after the R1(b) gate):
+    app-audit.apk b942ed4  sha256 270f48563af9f09a85d218489185a49e2559ad805bc0366cf454ce987432868a
+    app-debug.apk b942ed4  sha256 82b3658e5094361d7cf6a6a6f374ffbf5103887ce5281db136298ec926a176d2
+    (the debug APK is byte-identical to KMP-3's after-debug 82b3658e...: b942ed4's
+     main code IS 04ab4bd's - AN-FENCE-ROOTS changed tests and build files only)
+  install -r over KMP-3's after-audit (same debug key, device signed out):
+    firstInstallTime 2026-10-20 17:40:17 (unchanged), lastUpdateTime moved.
+  stay_on_while_plugged_in 0 -> 3 for the drive (read first, R1(c)).
+
+  SIGNED IN BY CODE, the AN-ACCOUNT-TAG path: Commencer -> address -> code
+  884443 read from the dev server's own stdout -> onboarding (Kamel Quatre,
+  Geneve, 100 %, simplified 240, JOURNEES ENTIERES, whole year, manual, no
+  reminder) -> PATCH /api/v1/me 200 -> Aujourd'hui, with NO restart.
+  CLOCKS phone 09:27:11 +01 | UTC 08:27:10 | Paris 10:27:11 +02 | Casa 09:27:11 +01
+
+  DAYS RECORDED, each POST /api/v1/entries 200 on the server log:
+    21 Oct FULL CH            Aujourd'hui, "En Suisse"
+    16 Oct FULL ABSENT CONGE  calendar, with the note "kmp4 note conge du vendredi"
+    12 Oct FULL HOME          calendar - 9 days back: the sheet warned it would be
+                              flagged late, and the calendar then read "enregistre
+                              en retard" (transliterated)
+  THE RHYTHM SET: Su Do Su Do Su ("Soit 2 jours par semaine a domicile"); the
+  forecast then read "Fin decembre, projection 9,16 %".
+  HALF-DAY MODE (Parametres -> Decompte des journees -> Demi-journees, PATCH
+  /me 200), then both halves of another day:
+    20 Oct AM CH, PM HOME     calendar, one POST 200
+  ONE DAY PENDING: airplane ON (read 0 first) AND adb reverse removed - KMP-3's
+  finding that airplane alone is not offline over USB. Then:
+    19 Oct AM MISSION_FR, PM CH   calendar -> NO server call; the calendar read
+                              "en attente de synchronisation".
+    CLOCKS phone 09:36:59 +01 | UTC 08:36:59 | Paris 10:36:59 +02
+
+  SCREENS CAPTURED (android/.an-auto-shots/kmp4-s1-*.png, gitignored) and every
+  screen's text dumped for the after comparison: Aujourd'hui (top, scrolled,
+  bottom), Calendrier, Releve (cached, "2 jours ... ne sont pas encore
+  synchronises"), Parametres, Prevision ("Aujourd'hui, votre releve 0,83 %",
+  "Fin decembre, projection 9,58 %", 73 / 96,5), Rythme.
+
+  THE DEVICE DATABASE, READ BEFORE ANYTHING ELSE TOUCHED IT. run-as needs a
+  debuggable build and the audit build is not one, so the DEBUG build of the
+  SAME commit (b942ed4) was installed with install -r - no clear, nothing
+  launched - the database pulled with exec-out (never shell), the -wal with it,
+  not the -shm, read with node:sqlite, and the AUDIT build reinstalled at once,
+  so the upgrade in step 3 is audit-over-audit (DEVIATION 4, KMP-3's precedent):
+    user_version 6, identity_hash a08f54541b97835cb850e7d8e4b1cf2d
+    7 entry rows, every one tagged
+      2754080a6ced6baf89a24358b44433e3279d3f069b2802054861c85fe692c80b
+      = sha256("kmp4.device@monreleve.test"), computed independently: the
+      positive control. NO UNOWNED row.
+    5 SYNCED (claims normalised to Z by the server's row), 2 PENDING with the
+      device's own claim form: 19 Oct AM "2026-10-21T09:37:03.330+01:00",
+      19 Oct PM "2026-10-21T09:37:03.367+01:00" - the +01:00 is Casablanca's.
+    weekly_rhythm: SUISSE DOMICILE SUISSE DOMICILE SUISSE under the same tag.
+  THE SERVER, read the same way (psql in the dev container): exactly the 5
+  synced rows, the same clientMutationIds as the device's.
+
+STEP 2 - THE MOVE. Host tests and gates only, nothing installed: from 09:41
+phone time until step 3 the phone sat offline (airplane ON, no reverse), with
+the BEFORE audit build and the pending day on it.
+
+STEP 3 - NOT RUN YET. NO RESULT, NOT A FAILURE (R391). The pre-flight read for
+step 3 - nothing installed, nothing changed - returned "adb.exe: no devices/
+emulators found" at 09:54:55 UTC. The phone is not enumerated on USB at all (no
+Samsung VID 04E8 device present; adb kill-server/start-server changes nothing),
+so the transport dropped - the expected failure the briefing names, the fourth
+on this rig. Sub-step in flight: step 3's pre-flight. The device was last seen
+in exactly the state step 1 left: BEFORE audit build installed, signed in as
+the test account, airplane ON, reverse removed, stay_on 3, 19 October pending.
+A bounded wait for it to re-enumerate is running; nothing is re-run blind.
+
+STEP 4 - NOT RUN YET (it follows step 3).
 
 --------------------------------------------------------------------------------
 R471 - kotlin-test
 --------------------------------------------------------------------------------
-PENDING.
+ADDED, in the same commit as its first user (5753ef6, CalendarDayGoldenTest):
+  testImplementation(libs.kotlin.test) in app/build.gradle.kts - the catalogue
+  entry and version :shared already uses, test scope only (R457).
+USED BY: CalendarDayGoldenTest, StoredEnumNamesTest, RhythmRepositoryPinTest
+(all three then moved to commonTest by git mv, unedited) and RecordPathPinTest
+(still in :app). It is still used in :app after the moves.
+RESOLVED AS kotlin-test-junit5 2.1.10 with junit-jupiter-engine 5.10.2 on the
+runtime classpath (`:app:dependencies --configuration
+debugUnitTestRuntimeClasspath`). DISCOVERY VERIFIED, not assumed: the new
+tests appear BY NAME in the JUnit XML with the counts expected (9, then 6, 6,
+6). No org.junit.jupiter test existed in :app before, so the engine starts
+nothing that was not already running.
 
 --------------------------------------------------------------------------------
 R472 - WHAT iOS-1 STILL MUST WRITE, UPDATED
 --------------------------------------------------------------------------------
-PENDING.
+R455's list (REPORT-KMP-3), rewritten for after this task.
+
+LEFT THE LIST - iOS no longer writes these:
+  the record path   RecordCommand, the EntryRepository interface and
+                    LocalEntryRepository (PARK-D1); WeeklyRhythm, its mappings,
+                    the RhythmRepository interface and LocalRhythmRepository
+                    (PARK-D2). The mutation queue's whole contract - the id born
+                    at the tap, coalescing on (account, day, portion), server
+                    columns surviving an edit, PENDING until drained, the account
+                    read AT WRITE TIME, R303's UNOWNED fail-closed, R425's
+                    canary - is common code.
+  CalendarDay       todayInParis (the Paris day, from parisDayOf) and
+                    deviceClaimNow with the fixed claim format (PARK-B1).
+  EntryAggregation  toAggregatable().
+  the duplicate enum vocabulary and toShared() (PARK-K3) - one set, no mapping.
+
+REMAINS, unchanged from R455:
+  A. iosMain implementations of interfaces already shared:
+     HttpTransport -> URLSession; TokenStore -> Keychain (one item, no unlock
+     needed, unreadable -> null AND clear); SettingsStore -> NSUserDefaults
+     (absent and null both round-trip as null; never override isOnboarded);
+     DossierCache (raw body; clear() erases every year).
+  B. platform code with no shared interface yet:
+     the database builder (Room KMP's iOS builder - UNPROVEN UNTIL A MAC RUNS
+     IT); the sync trigger (BGTaskScheduler; Settled -> done, Retryable ->
+     reschedule, Unauthenticated -> done, NOT a retry); the account tag
+     (CryptoKit SHA256, AccountStore, the UNOWNED rule); the pending sign-in
+     store; the local wipe and its scope; the /me codec (PARK-D3); fr/format.
+
+NEW, FOUND BY THIS TASK, THAT R455 DID NOT NAME:
+  1. THE RECORD PATH'S FOUR SEAM ANSWERS - iOS's AndroidRecordSeams.kt. The
+     shared LocalEntryRepository takes them with NO defaults on purpose:
+       the clock      kotlinx Clock.System (or an adapter);
+       the zone       the device's TimeZone - AND A DECISION: Android captures
+                      the zone when it BUILDS its clock (MainActivity.onCreate,
+                      DevRecorderActivity, and per tap in the evening receiver),
+                      so a person who changes zone while the activity lives keeps
+                      the old offset until it is rebuilt. iOS must capture it
+                      the same way or rule otherwise; TimeZone.currentSystem-
+                      Default() per call is a different claim string for that
+                      person;
+       the canary     loud in debug, logged in release (assertionFailure plus
+                      os_log, say) - it fires only when the account provider and
+                      an independent signed-in probe disagree;
+       the mint       a UUID - and NSUUID().uuidString is UPPER-case where
+                      java.util.UUID.toString() is lower-case. The server accepts
+                      either (z.string().min(1).max(64)), so nothing breaks; but
+                      it would be a second id format on the wire. iOS-1 should
+                      lower-case it, or rule that it need not.
+  2. THE CASABLANCA GOLDENS ARE TZDATA-DEPENDENT. Morocco's Ramadan offset is a
+     PREDICTION in tzdata, and CalendarDayGoldenTest pins it for 2026 as the
+     JVM's tzdata 2024b has it. On iOS kotlinx-datetime reads the OS's zone
+     database. When commonTest first runs on a simulator, a failure in the
+     Ramadan case is a tzdata question - record the OS's tzdata version - and
+     never a code change.
+  3. THE RECORD PATH'S BEHAVIOUR SUITE IS STILL JVM-ONLY. RecordPathPinTest,
+     AccountScopeTest, EntryRepositoryTest, OrderingEvidenceTest and the
+     controller tests exercise the SHARED repository, but from :app's JVM
+     suite, through :app's construction site, over FakeEntryDao (used by 15+
+     :app test files). commonTest has the goldens, the stored names and the
+     rhythm repository, not the entry repository. PARK-M1.
+  4. :app'S java.time BRIDGE IS ANDROID-ONLY BY DESIGN. The controllers that
+     call todayInParis/deviceClaimNow with a java.time.Clock stay in :app until
+     Compose Multiplatform (out of scope); iOS's controllers call the shared
+     kotlinx functions directly with the same two seams.
+
+WHAT iOS-1 NO LONGER HAS TO WRITE, CUMULATIVE: the engine, the copy, the
+wire, the API client, the database (entities, DAOs, migrations), the session,
+the sync engine, the dossier read, PendingDays, the entry <-> wire mapping
+(KMP-0..KMP-3) - and now the record path, the calendar day and the claim
+format, and one vocabulary instead of two (KMP-4).
 
 --------------------------------------------------------------------------------
 PARKED
 --------------------------------------------------------------------------------
-PENDING.
+NEW, written into parking.md. THE M SERIES WAS CONFIRMED FREE BY THE REGISTER
+(R456), not from a list: web/scripts/register-coverage.mjs reported OK with the
+letters A B D F G I K L P R S U V in use, and a scan of parking.md, every
+REPORT-*.txt and every relay/*.txt - the main checkout's untracked relay files
+included - found no PARK-M. The citation pattern PARK(?:AN)?-[A-Z]?d+ sees
+PARK-M1 (one letter).
 
+  PARK-M1  the record path's behaviour suite runs on the JVM, not in
+           commonTest: FakeEntryDao is :app test code shared by 15+ files.
+
+CLOSED BY THIS TASK (the register entries are left as history; this report is
+where they are closed): PARK-B1 (CalendarDay), PARK-K3 (the duplicate enums),
+PARK-D1 (LocalEntryRepository), PARK-D2 (LocalRhythmRepository); PARK-B2 with
+them. PARK-D4's unlock (kotlin-test in :app) was granted by R457 and USED.
+
+STILL OPEN, untouched: PARK-D3 (the /me codec), PARK-K2, PARK-K5, PARK-K7,
+PARK-U2/PARK-A1, PARK-A2 (R425's Log.e branch is still unexercised by a unit
+test - it now lives in AndroidRecordSeams.kt, unchanged), PARK-V1, PARK-V2.
 --------------------------------------------------------------------------------
 DEVIATIONS
 --------------------------------------------------------------------------------
-PENDING.
+1. THE WEB SERVER RAN FROM THE MAIN CHECKOUT, not this worktree, to avoid a
+   second pnpm install - the deviation KMP-2, KMP-2b and KMP-3 recorded, with
+   the same legitimacy check: `git diff origin/main...HEAD -- web/` is EMPTY.
+   Its stdout went to a scratchpad log this session reads, which is where the
+   sign-in code came from. R169 checked before it was trusted.
+
+2. NO CONSTRUCTION LINE WAS EDITED, where R467 expected them shown. :app's
+   construction site is ONE function named LocalEntryRepository with the old
+   java.time signature (AndroidRecordSeams.kt). The operator asked to SEE the
+   seam arguments; they are in that one function rather than in seventeen
+   files. Overload resolution cannot confuse it with the class: one takes a
+   java.time.Clock, the other a kotlinx Clock. Reversible by inlining it into
+   the 17 sites.
+
+3. TEST EDITS R467 DOES NOT COVER, forced by R465, each with its reason:
+   EntryVocabularyBindingTest DELETED (its subject - the second set and
+   toShared() - no longer exists; its names live on in StoredEnumNamesTest);
+   eight test files changed IMPORT LINES ONLY because the type they name moved
+   package. No assertion, fixture or expected value changed.
+
+4. THE DEBUG BUILD OF THE SAME COMMIT WAS INSTALLED BRIEFLY for the database
+   read, because run-as needs a debuggable build: install -r, no clear, not
+   launched, the audit build reinstalled immediately. The upgrade proof stays
+   audit-over-audit. KMP-3's deviation 5, same reason.
+
+5. R464's "SAME TESTS, UNEDITED" IS MET BY THE TEST FILE, and the file that
+   builds its subject was rewritten. CalendarDayGoldenTest calls two probe
+   functions; when CalendarDay's types changed from java.time to kotlinx, the
+   probe was rewritten and the golden file moved by git mv at 100%. The probe
+   holds no golden, case or assertion; its whole diff is under R467.
+
+6. ONE APP RESTART IN STEP 1: the calendar's edit sheet keeps the granularity
+   it was built with (NOTICED 1), so after switching to half-days the app was
+   force-stopped and relaunched to record the two halves. The AN-ACCOUNT-TAG
+   path had already been exercised before it: the first three days were
+   recorded in the sign-in session with no restart, and are tagged correctly.
+
+7. A STRAY KEYSTROKE, reported rather than hidden: the first tap on "Recevoir
+   mon lien" landed on the on-screen keyboard and typed a "c" after the
+   address. Seen in the very next dump, deleted, keyboard dismissed, then sent.
+   The address submitted was exactly kmp4.device@monreleve.test.
+
+8. detekt's LongParameterList on the shared constructor (seven parameters) is
+   SUPPRESSED, with the reason beside it - the codebase's CalendarController
+   and MainGraph precedent: a holder would only move the list, and would hide
+   from the next platform what it has to supply.
+--------------------------------------------------------------------------------
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------------------
+1. THE CALENDAR KEEPS THE GRANULARITY IT WAS BUILT WITH. CalendarController
+   reads settings once, at construction. After Parametres switched to
+   Demi-journees (PATCH /me 200, the Parametres row updated), the calendar's
+   edit sheet still offered one full-day slot until the app was restarted.
+   Pre-existing (b942ed4's BEFORE build), unchanged by this task, out of its
+   scope (controllers). QUESTION Q2.
+
+2. TWO SCREENS STATE TODAY'S RATE 0,01 APART. Aujourd'hui read "0,82 %" where
+   the forecast's "Aujourd'hui, votre releve" read "0,83 %" (earlier 0,40 vs
+   0,41), on the same record. One rounds where the other truncates, by the
+   look of it - not investigated. Pre-existing; the BEFORE values are kept as
+   a fingerprint for the AFTER comparison.
+
+3. A DAY RECORDED WHOLE BEFORE THE SWITCH TO HALF-DAYS is asked for again, as
+   morning and afternoon, on Aujourd'hui in half-day mode. Pre-existing; not
+   touched, and not tapped (it would add AM/PM rows beside the FULL one).
+
+4. C:/wt/kmp-0 and C:/wt/kmp-1 exist but are not registered worktrees
+   (`git worktree list` does not show them). Not this session's; reported,
+   not touched.
 
 --------------------------------------------------------------------------------
 QUESTIONS
 --------------------------------------------------------------------------------
-PENDING.
+Q1 iOS's mutation-id mint. NSUUID().uuidString is upper-case; java.util.UUID
+   is lower-case. The server accepts either. Should iOS-1 lower-case its ids so
+   one format crosses the wire, or is an upper-case id acceptable? (R472 item 1.)
 
+Q2 NOTICED 1 - the calendar keeps the granularity it was built with. Is that a
+   defect for a task of its own, or intended until the activity is rebuilt?
+
+Q3 PARK-M1 - when the entry repository's behaviour suite should run on iOS: a
+   second FakeEntryDao in commonTest, or a shared test-fixtures source set?
 --------------------------------------------------------------------------------
 PUSH PROOF
 --------------------------------------------------------------------------------
-PENDING.
-
+INTERIM. Every commit so far is pushed to origin/kmp-4; the final block is
+written when the session ends. NOT MERGED - pending merge.
 ================================================================================
 END OF REPORT-KMP-4
 ================================================================================
