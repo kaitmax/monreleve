@@ -15,7 +15,7 @@ import ch.monreleve.app.design.FrontierType
 import ch.monreleve.app.design.LightColors
 import ch.monreleve.app.design.Spacing
 import ch.monreleve.app.fr.ParametresCopy
-import ch.monreleve.app.fr.format.formatPercent
+import ch.monreleve.app.fr.format.formatDeclarableRate
 import ch.monreleve.app.parametres.RateChange
 
 // AN-PARAMS. R290's « cette modification recalcule votre année » confirmation: shown BEFORE a consequential save
@@ -23,8 +23,6 @@ import ch.monreleve.app.parametres.RateChange
 // never typed). In its own file so ParametresScreen.kt stays under detekt's TooManyFunctions threshold. Stateless;
 // every string from fr/ (R238). The names and behaviour are unchanged from AN12 (a HARD BOUNDARY) - this moved,
 // it did not change.
-
-private const val PERCENT_DECIMALS = 2
 
 @Composable
 internal fun RateChangeDialog(
@@ -66,6 +64,6 @@ internal fun RateRow(
             modifier = Modifier.weight(1f),
         )
         // R181: the figure is DERIVED from the engine's rate, formatted here - never typed into copy.
-        Text(text = formatPercent(rate, PERCENT_DECIMALS), style = FrontierType.bodyM, maxLines = 1)
+        Text(text = formatDeclarableRate(rate), style = FrontierType.bodyM, maxLines = 1)
     }
 }

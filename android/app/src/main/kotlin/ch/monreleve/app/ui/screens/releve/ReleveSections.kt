@@ -39,6 +39,7 @@ import ch.monreleve.app.fr.RatesCopy
 import ch.monreleve.app.fr.ReleveCopy
 import ch.monreleve.app.fr.format.formatDate
 import ch.monreleve.app.fr.format.formatDays
+import ch.monreleve.app.fr.format.formatDeclarableRate
 import ch.monreleve.app.fr.format.formatDossierStamp
 import ch.monreleve.app.fr.format.formatMonthName
 import ch.monreleve.app.fr.format.formatPercent
@@ -54,7 +55,6 @@ import ch.monreleve.app.releve.mergedMissionDays
 private const val PERCENT = 100.0
 private const val FISCAL_DECIMALS = 0
 private const val SOCIAL_DECIMALS = 1
-private const val DECLARABLE_DECIMALS = 2
 private const val RAW_DECIMALS = 1
 
 private const val MONTH_WEIGHT = 1.6f
@@ -96,7 +96,7 @@ internal fun ZonePanel(
         Text(text = badge, style = FrontierType.bodyM, color = bandColour)
         Column {
             Text(
-                text = formatPercent(zone.declarableRate, DECLARABLE_DECIMALS),
+                text = formatDeclarableRate(zone.declarableRate),
                 style = FrontierType.display.tabularNums(),
                 color = bandColour,
             )
@@ -219,7 +219,7 @@ private fun MonthDataRow(month: DossierMonth) {
         DataCell(formatDays(month.swissDays), TextAlign.End, NUM_WEIGHT)
         DataCell(formatDays(month.teleworkDays), TextAlign.End, NUM_WEIGHT)
         DataCell(formatDays(mergedMissionDays(month)), TextAlign.End, NUM_WEIGHT)
-        DataCell(formatPercent(month.cumulativeDeclarableRate, DECLARABLE_DECIMALS), TextAlign.End, CUMUL_WEIGHT)
+        DataCell(formatDeclarableRate(month.cumulativeDeclarableRate), TextAlign.End, CUMUL_WEIGHT)
     }
 }
 
