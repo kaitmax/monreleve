@@ -477,6 +477,11 @@ dependencies {
     // AN4 increment 1, TEST-ONLY: runTest + StandardTestDispatcher for the
     // single-flight refresh proof (increment 5) and any suspend seam under test.
     testImplementation(libs.kotlinx.coroutines.test)
+    // KMP-4 (R457, R471), TEST-ONLY: kotlin.test, the same catalogue entry and version :shared's commonTest
+    // uses. It lands with its first user - CalendarDayGoldenTest, pinned here on the java.time CalendarDay
+    // and then moved to :shared's commonTest by `git mv`, unedited, when CalendarDay moves. A kotlin.test
+    // file needs no rewrite to cross; a JUnit4 or Kotest one does (PARK-D4).
+    testImplementation(libs.kotlin.test)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

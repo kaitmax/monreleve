@@ -1,15 +1,14 @@
 package ch.monreleve.app.data.repo
 
 import ch.monreleve.app.account.UNOWNED_ACCOUNT
+import ch.monreleve.app.data.local.EntryKind
 import ch.monreleve.app.data.local.RhythmDao
 import ch.monreleve.app.data.local.RhythmEntity
 import ch.monreleve.app.data.local.RhythmKind
 import ch.monreleve.app.data.local.toEntryKind
-import ch.monreleve.app.data.local.toShared
-import ch.monreleve.app.dossier.EntryKind
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import java.time.DayOfWeek
+import kotlinx.datetime.DayOfWeek
 
 // AN-FORECAST (R341, R303). The weekly rhythm, scoped to the account signed in now (the same shape as
 // EntryRepository). The rhythm is a local planning preference; this repository is its one writer. No
@@ -33,16 +32,19 @@ data class WeeklyRhythm(
 
     /**
      * The weekday -> EntryKind map the forecast imagines from (dossier/Forecast.kt). A weekday left null
-     * is absent from the map and is not a worked day. KMP-0 (R372): the value is the SHARED dossier
-     * EntryKind the platform-free forecast takes, mapped from the local RhythmKind at this :app boundary.
+     * is absent from the map and is not a worked day. The value is the one EntryKind (KMP-4 R465 collapsed
+     * KMP-0's second copy), so a RhythmKind projects through toEntryKind() alone, with no boundary mapping.
+     * DayOfWeek is kotlinx-datetime's (KMP-4 R463): in 0.6.1 a JVM TYPEALIAS of java.time.DayOfWeek, so :app's
+     * callers keep their java.time keys. This site was already on R384's inventory; it moves from the :app
+     * half of that list to the :shared half, with no new reliance.
      */
     fun toEntryKindMap(): Map<DayOfWeek, EntryKind> =
         buildMap {
-            monday?.let { put(DayOfWeek.MONDAY, it.toEntryKind().toShared()) }
-            tuesday?.let { put(DayOfWeek.TUESDAY, it.toEntryKind().toShared()) }
-            wednesday?.let { put(DayOfWeek.WEDNESDAY, it.toEntryKind().toShared()) }
-            thursday?.let { put(DayOfWeek.THURSDAY, it.toEntryKind().toShared()) }
-            friday?.let { put(DayOfWeek.FRIDAY, it.toEntryKind().toShared()) }
+            monday?.let { put(DayOfWeek.MONDAY, it.toEntryKind()) }
+            tuesday?.let { put(DayOfWeek.TUESDAY, it.toEntryKind()) }
+            wednesday?.let { put(DayOfWeek.WEDNESDAY, it.toEntryKind()) }
+            thursday?.let { put(DayOfWeek.THURSDAY, it.toEntryKind()) }
+            friday?.let { put(DayOfWeek.FRIDAY, it.toEntryKind()) }
         }
 }
 

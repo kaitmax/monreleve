@@ -1,7 +1,5 @@
 package ch.monreleve.app.data.repo
 
-import android.util.Log
-import ch.monreleve.app.BuildConfig
 import ch.monreleve.app.account.UNOWNED_ACCOUNT
 import ch.monreleve.app.data.local.AbsenceReason
 import ch.monreleve.app.data.local.EntryDao
@@ -13,8 +11,8 @@ import ch.monreleve.app.data.local.SyncState
 import ch.monreleve.app.data.local.deviceClaimNow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import java.time.Clock
-import java.util.UUID
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
 
 // AN5 increment 2. The mutation queue, and the only writer of entries (SPEC 5
 // fence 5: ui/ records through this, never through the DAO or the API directly).
@@ -54,9 +52,19 @@ interface EntryRepository {
     fun observeAll(): Flow<List<EntryEntity>>
 }
 
+// KMP-4 (R463): SEVEN PARAMETERS - the DAO and the six seams R463's table names: the clock, the device's
+// zone, the account provider, the sign-in probe, the canary's reporter and the mutation-id mint. Bundling them into a
+// holder would only move the list (CalendarController's and MainGraph's reasoning), and would hide from the
+// next platform exactly what it has to supply.
+@Suppress("LongParameterList")
 class LocalEntryRepository(
     private val dao: EntryDao,
+    // KMP-4 (R463): THE CLOCK AND THE DEVICE'S ZONE - two seams where java.time had one object. A java.time
+    // Clock carried the zone clientClaimedAt takes its offset from; a kotlinx Clock is only an instant source,
+    // so the zone the platform's clock was built with is passed beside it. :app passes both from the
+    // java.time.Clock it always built (AndroidRecordSeams.kt), so every claim string is unchanged.
     private val clock: Clock,
+    private val deviceZone: TimeZone,
     // AN-FIX F4 / R303: the account that owns rows recorded and read through this repository. A null
     // account (no active session) tags a row UNOWNED - held, never sent, never shown (fail closed).
     //
@@ -82,7 +90,14 @@ class LocalEntryRepository(
     // no claim, no firing. R303's genuine case - truly nobody signed in - stays silent and
     // correct, because then the probe says false too and there is nothing to disagree about.
     private val isSignedIn: () -> Boolean = { false },
-    private val newMutationId: () -> String = { UUID.randomUUID().toString() },
+    //
+    // KMP-4 (R463): R425'S CANARY, AS A SEAM. Whether a disagreement crashes or logs is the platform's
+    // decision, so the reporter is injected; :app's asserts in debug and logs in release, exactly the two lines
+    // that stood in record() before. It is called at the same point - before any DAO call - and never caught.
+    private val reportUnownedWhileSignedIn: (complaint: String) -> Unit,
+    // KMP-4 (R463): NO DEFAULT, because a portable default would need kotlin.uuid, which is experimental and
+    // forbidden here. :app passes java.util.UUID; the id is still born at the tap, before any network.
+    private val newMutationId: () -> String,
 ) : EntryRepository {
     override suspend fun record(command: RecordCommand): EntryEntity {
         // The tap's account, stamped at the tap the way the mutation id is (R303). Fail closed to
@@ -104,8 +119,8 @@ class LocalEntryRepository(
             // DEBUG CRASHES, RELEASE LOGS. A reader's day is not worth losing to keep an app
             // alive, but neither is crashing somebody mid-record in the field over a condition
             // they cannot act on. The log names the condition so it is findable either way.
-            check(!BuildConfig.DEBUG) { complaint }
-            Log.e("EntryRepository", complaint)
+            // KMP-4 (R463): how to be loud is now the injected reporter's - see the constructor.
+            reportUnownedWhileSignedIn(complaint)
         }
         val existing = dao.byAccountDayPortion(account, command.dayDate, command.portion)
         val entity =
@@ -125,7 +140,7 @@ class LocalEntryRepository(
                 // Recomputed on every record(), so a coalescing edit carries the FINAL
                 // tap's time, never the original's (R275) - a timestamp describes the value
                 // it is attached to.
-                clientClaimedAt = deviceClaimNow(clock),
+                clientClaimedAt = deviceClaimNow(clock, deviceZone),
                 // SERVER-ASSIGNED COLUMNS SURVIVE AN EDIT. Re-recording a synced day
                 // keeps its immutable firstRecordedAt locally rather than nulling it
                 // until the next drain restores it from the server (which returns it

@@ -1,5 +1,7 @@
 package ch.monreleve.app.dossier
 
+import ch.monreleve.app.data.local.EntryKind
+import ch.monreleve.app.data.local.Portion
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
