@@ -2,12 +2,12 @@ package ch.monreleve.app.forecast
 
 import ch.monreleve.app.calc.ruleSetFor
 import ch.monreleve.app.data.local.EntryEntity
+import ch.monreleve.app.data.local.EntryKind
 import ch.monreleve.app.data.local.toAggregatable
 import ch.monreleve.app.data.local.todayInParis
 import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.RhythmRepository
 import ch.monreleve.app.data.repo.WeeklyRhythm
-import ch.monreleve.app.dossier.EntryKind
 import ch.monreleve.app.dossier.SimChange
 import ch.monreleve.app.dossier.simulationResults
 import ch.monreleve.app.settings.Settings

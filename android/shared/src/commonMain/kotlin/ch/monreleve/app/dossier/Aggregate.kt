@@ -4,6 +4,8 @@ import ch.monreleve.app.calc.Canton
 import ch.monreleve.app.calc.DenominatorMethod
 import ch.monreleve.app.calc.Granularity
 import ch.monreleve.app.calc.TeleworkInput
+import ch.monreleve.app.data.local.EntryKind
+import ch.monreleve.app.data.local.Portion
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.daysUntil
 
@@ -16,7 +18,7 @@ import kotlinx.datetime.daysUntil
 // BOTH builds.
 //
 // KMP-0 increment 6c (R372, R371): moved to :shared commonMain, separated from Room. It takes the plain
-// shared types (AggregatableEntry/AggregatableUser over the dossier EntryKind/Portion vocabulary), never
+// shared types (AggregatableEntry/AggregatableUser over the ONE EntryKind/Portion vocabulary, data.local's), never
 // EntryEntity or SettingsStore; :app maps its Room rows and settings to these at the boundary
 // (EntryEntity.toAggregatable, Settings.toAggregatableUser). java.time became kotlinx-datetime (:app keeps
 // java.time); daysUntil is ChronoUnit.DAYS.between, locked by ParisDayDstTest.

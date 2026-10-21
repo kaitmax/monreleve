@@ -1,6 +1,8 @@
 package ch.monreleve.app.dossier
 
 import ch.monreleve.app.calc.TeleworkResult
+import ch.monreleve.app.data.local.EntryKind
+import ch.monreleve.app.data.local.Portion
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
