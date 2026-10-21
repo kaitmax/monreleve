@@ -893,4 +893,41 @@ that carried everything except the assertFound split, and it was green.
 ================================================================================
 PUSH PROOF
 ================================================================================
-(pasted below)
+    $ git push -u origin an-fence-roots
+    remote: Create a pull request for 'an-fence-roots' on GitHub by visiting:
+    remote:      https://github.com/kaitmax/monreleve/pull/new/an-fence-roots
+    branch 'an-fence-roots' set up to track 'origin/an-fence-roots'.
+    To https://github.com/kaitmax/monreleve.git
+     * [new branch]      an-fence-roots -> an-fence-roots
+
+    $ git rev-parse HEAD origin/an-fence-roots
+    5dea96847700aa686c501a2cbbac3f35640837b8
+    5dea96847700aa686c501a2cbbac3f35640837b8
+
+    $ git rev-parse origin/main main
+    ada8871ada4acb0ece7fc9b6fa1627b0ad170158
+    ada8871ada4acb0ece7fc9b6fa1627b0ad170158
+
+PENDING MERGE, never merged. main is exactly where this session found it.
+This section lands as its own commit after that push and is pushed again,
+which is the one thing in the report that cannot describe its own commit.
+
+THE COMMITS, in order:
+    efdaf1d  the R458 census, before any change
+    97fdd96  the two MOVED fences, widened and proven (R459, R460)
+    1477250  the directory-root fences prove they found their roots (R460)
+    721367c  the named-file fences prove they found their subject (R460, R461)
+    964d74c  the gate sees every root a fence reads (R462), FencesTest R461 lines
+    1b2eb01  the report, with the gate and push proof still pending
+    8185abf  the mechanism had the defect it exists to catch (R460)
+    5dea968  the report - R391's gate transcript and STATUS
+
+ISOLATION (R334/R349/R392): all work in C:/wt/an-fence-roots, this session's own
+worktree, created from main and carrying .session-lock.json (gitignored, never
+committed, removed at the end). Nothing was committed, stashed, reset or removed
+in any other C:/wt/* directory or in the main checkout at
+C:/Users/KAMXKAM/Downloads/frontier work, which carries the operator's own work
+and is still at ada8871 with its 44 untracked relay/ and android/scripts/ files
+REPORTED and untouched. The stale full-repo copy under
+.claude/worktrees/agent-aacfc4b0d2a3088e3/ was left alone and excluded from every
+scan, as the prompt directed.
