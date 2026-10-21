@@ -40,20 +40,22 @@ b942ed4, because :app's half of the seams is one function named like the class.
 R463's table gained a seam the prompt did not name - the device's ZONE, which a
 java.time.Clock carried and a kotlinx Clock does not - and lost the logger.
 
-THE DEVICE PROOF IS HALF DONE, AND THIS REPORT SAYS SO. R470 step 1 ran: the
-BEFORE build on the S9, a code sign-in, five days recorded and one left pending,
-the rhythm, every screen captured, the database read - all pasted verbatim
-below. Then the phone dropped off USB before step 3 installed anything, and did
-not come back in a 30-minute bounded wait. Steps 3-4 - the upgrade in place,
-the pending day draining, new days recorded with the moved code - DID NOT RUN.
-The phone is left signed in, in airplane mode, stay_on 3, with the day pending;
-R470 states exactly how to resume and how to restore it.
+AND THE SAME PHONE PROVES IT. The AFTER build went on OVER the BEFORE one with
+install -r: still signed in, every screen's text identical, the device database
+RAW-BYTE-IDENTICAL to the BEFORE pull, the pending day draining (401 ->
+refresh 200 -> 200) with the mutation ids born before the upgrade, then a
+sign-out, a sign-in BY CODE and new days recorded with NO restart (proven from
+the events buffer), each reaching the server and tagged with the account - no
+UNOWNED row - plus a modification, an Annuler that wrote nothing (the server's
+append-only trail has no event for it), and the rhythm applied. The USB cable
+dropped twice: once before step 3 (NO RESULT; the run resumed when the phone
+came back, its evidence intact) and once near the end, which cost only the
+server-side revoke of the final sign-out. The phone is left as found.
 
 --------------------------------------------------------------------------------
 STATUS (R391)
 --------------------------------------------------------------------------------
-NOT COMPLETE: R470 steps 3-4 did not run (the S9 dropped off USB; NO RESULT,
-R391). The code and the gate are green; the device proof of the upgrade is owed.
+COMPLETE. R463-R472 all done, including R470 steps 1-4 on the S9.
 
   FULL :app:gate --rerun-tasks, run IN THIS SESSION, 225 of 225 EXECUTED each
   time (a task reported UP-TO-DATE did not run):
@@ -66,9 +68,12 @@ R391). The code and the gate are green; the device proof of the upgrade is owed.
            BUILD SUCCESSFUL in 7m 9s    GATE_EXIT=0   test floor 1212
 
   THE FINAL TIP IS NOT 88b6382, and the narrow claim goes where the broad one
-  would: the final tip differs from the gated 88b6382 ONLY in REPORT-KMP-4.txt
-  (proof under PUSH PROOF), and RegisterCoverageTest - the one gated test that
-  reads this file - was re-run directly against the final text.
+  would: nothing under android/ has changed since 31f2d58, and the final tip
+  differs from the gated 88b6382 ONLY in REPORT-KMP-4.txt - proof under PUSH
+  PROOF. RegisterCoverageTest, the one gated test that reads this file, was
+  re-run directly against the final text (register-coverage.mjs). So the gate
+  on 88b6382 carries for everything the gate checks except this file's final
+  wording, which no gate checks beyond its citations.
 
   gate:clone NOT RUN and not claimed: `git diff origin/main...HEAD -- web/` is
   EMPTY, so there is no web change for it to verify (R133).
@@ -638,15 +643,16 @@ THE RIG. The S9 over USB; the local stack (pnpm dev, main checkout - DEVIATION
     and again before step 3, same answer.
 adb reverse tcp:3000 tcp:3000; NEVER production - every APK built with
 -PfrontalierHost=127.0.0.1, verified by grepping the dex: http://127.0.0.1:3000
-present, 10.0.2.2 absent, in all four APKs. The account is the session's own,
+present, 10.0.2.2 absent, in all six APKs (audit and debug from b942ed4,
+31f2d58 and 177ff67). The account is the session's own,
 kmp4.device@monreleve.test; the operator's address was never used. The clock
 stayed REAL and the zone Africa/Casablanca throughout; nothing moved either.
 
 THE TWO CLOCKS - AND A CORRECTION TO THE BRIEFING, measured rather than
 repeated. Casablanca is +01:00 now and Paris +02:00 until 25 October, so a
 Paris day differs from the device's day only between 23:00 and 24:00 Casablanca
-time (22:00-23:00Z). Every device step here ran in the morning, when the two
-DAYS AGREE: what the drive exercised is the claim's OFFSET (+01:00 claims, read
+time (22:00-23:00Z). Every device step here ran between 09:20 and 12:02
+Casablanca time, when the two DAYS AGREE: what the drive exercised is the claim's OFFSET (+01:00 claims, read
 against a +02:00 Paris), not the day boundary. The day boundary is proved by the
 host goldens (R464), including the exact 23:30-Casablanca hour of this week.
 THIS PROOF IS DATE-DEPENDENT: from 25 October Paris and Casablanca are both
@@ -765,103 +771,199 @@ STEP 2 - THE MOVE. Host tests and gates only, nothing installed: from 09:41
 phone time until step 3 the phone sat offline (airplane ON, no reverse), with
 the BEFORE audit build and the pending day on it.
 
-STEP 3 - NOT RUN. NO RESULT, NOT A FAILURE (R391). The pre-flight read for
-step 3 - nothing installed, nothing changed - returned "adb.exe: no devices/
-emulators found" at 09:54:55 UTC. It last answered at 08:40:45 UTC (the BEFORE
-audit reinstall); when it dropped in between is not known, and nothing was sent
-to it in that hour. The phone was not enumerated on USB at all:
-no Samsung device (VID 04E8) present to Windows, and adb kill-server /
-start-server changed nothing. The transport dropped - the expected failure the
-briefing names. Sub-step in flight: step 3's pre-flight read. Nothing was
-re-run blind.
+THE FIRST DROP - NO RESULT, NOT A FAILURE (R391). The pre-flight read for step
+3 - nothing installed, nothing changed - returned "adb.exe: no devices/
+emulators found" at 09:54:55 UTC. The phone last answered at 08:40:45 UTC (the
+BEFORE audit reinstall); when it dropped in between is not known, and nothing
+was sent to it in that hour. It was not enumerated on USB at all (no Samsung
+VID 04E8 device present to Windows; adb kill-server/start-server changed
+nothing). Sub-step in flight: step 3's pre-flight read. A bounded wait from
+09:55 to 10:25 UTC saw nothing; the session reported NO RESULT and stopped
+there rather than re-running anything blind.
 
-WAITED, BOUNDED, AND THE WAIT IS ON THE RECORD: a watcher polled `adb devices`
-every 10 s from 09:55 to 10:23 UTC, a second one to ~10:25, with two manual
-checks of adb and of USB enumeration in between (adb server restarted once
-more). The S9 never re-enumerated. Reseating a cable is a physical act this
-session cannot perform, so the drive could not be resumed.
+RESUMED when the coordinator reported the phone back on USB (it had read the
+phone read-only and touched nothing). Re-verified before touching anything,
+because "back" can mean "rebooted":
+    uptime 395262 s (4.6 days - NOT rebooted); transport_id 1
+    airplane_mode_on 1, adb reverse EMPTY, stay_on 3      (exactly as step 1 left it)
+    installed: the BEFORE audit build, not debuggable, lastUpdateTime
+      2026-10-21 09:40:43 phone = 08:40:43 UTC - the reinstall after step 1's
+      database read, nothing since
+    CLOCKS phone 11:33:00 +01 | UTC 10:33:00 | Paris 12:33:01 +02 | Casa 11:33:01 +01
+The local stack was started again from the main checkout (DEVIATION 1) and
+R169 satisfied: /api/health -> {"service":"monreleve",...,"status":"ok"}.
 
-THE AFTER APKs EXIST and are verified, built from 31f2d58 (the gated code tip),
--PfrontalierHost=127.0.0.1, the dex carrying http://127.0.0.1:3000 and no
-10.0.2.2:
-    app-audit.apk 31f2d58  sha256 cd0c9c699488837b236c62c6b680aa24de7adbf1463bfd943f2870fd336f27cb
-    app-debug.apk 31f2d58  sha256 22555f5e4e18d61864de8c93d5a8f14c8a720e66caf8bc6540aa5e18f9e3988b
-  The audit APK's FILE size equals the BEFORE one (1 995 857 bytes) while its
-  contents differ - classes.dex 3 269 260 -> 3 280 820 bytes, compressed total
-  1 942 316 -> 1 945 641 - so the equal size is the signing block's padding.
-  The R8 mapping of that build names ch.monreleve.app.data.repo.
-  AndroidRecordSeamsKt, a class only the AFTER code has: the build carries the
-  move. They were in the scratchpad and do not outlive the session; the debug
-  build is byte-reproducible from 31f2d58 (b942ed4's was, against KMP-3's), the
-  audit build is code-identical but not byte-identical.
+THE AFTER APKs, REBUILT RATHER THAN TRUSTED. The 31f2d58 builds had lived in
+scratch space, so both were rebuilt with --rerun-tasks (141 tasks executed)
+from the TIP, 177ff67, whose android/ is identical to 31f2d58's
+(`git diff --stat 31f2d58 177ff67 -- android/` -> empty), -PfrontalierHost=
+127.0.0.1:
+    app-audit.apk 177ff67  sha256 d5047b74169199b2c08d192c095445e9eef849e83b0a39f13072a01ab489bf81
+    app-debug.apk 177ff67  sha256 ddc9b3854664101efaa0ad1b36ae40c69399d63d5376349f7958b3d822191641
+  Both dex files carry http://127.0.0.1:3000 and no 10.0.2.2. The build's R8
+  mapping names ch.monreleve.app.data.repo.AndroidRecordSeamsKt, a class only
+  the AFTER code has. (The earlier 31f2d58 builds were audit cd0c9c69... and
+  debug 22555f5e...: the rebuilt DEBUG apk is not byte-identical to them
+  although android/ is, so the "byte-reproducible" remark this report made
+  about debug builds held for b942ed4 against KMP-3's and does NOT hold in
+  general. Corrected here rather than left standing.)
 
-STEP 4 - NOT RUN, so the phone is NOT left as found. THE PHONE'S STATE AS LAST
-SEEN (08:41 UTC = 09:41 phone time, end of step 1), with what R1(c) read and how to restore it:
+STEP 3 - THE UPGRADE IN PLACE, AND THE RECORD WRITTEN BY THE MOVED CODE
+  OFFLINE FIRST. `adb logcat -c`; the AFTER audit build installed OVER the
+  BEFORE one - install -r, no uninstall, no clear - with airplane still ON and
+  no reverse, so the pending day could not drain under the old build:
+      firstInstallTime 2026-10-20 17:40:17   (unchanged - never uninstalled)
+      lastUpdateTime   2026-10-21 11:40:16   (moved)
+    CLOCKS phone 11:40:08 +01 | UTC 10:40:09 | Paris 12:40:09 +02
+  LOGCAT FROM INSTALL TO FIRST FRAME: 4 393 lines. THIS LAUNCH LOGGED NO
+  "Displayed" LINE (KMP-3's did), so the first-frame control is the events
+  buffer instead: am_proc_start pid 19037 for MainActivity at 11:40:32.772,
+  am_on_resume_called for MainActivity at 11:40:33.179 - and the uiautomator
+  dump that read the rendered screen. The absence claims (FATAL EXCEPTION,
+  E AndroidRuntime, ANR in ch.monreleve, a forced finish, a process death,
+  "account tag unresolved"): 0 matches; the same grep on a synthetic file
+  with two of those shapes: 2 matches. The events buffer also showed the BEFORE
+  build pre-launched by Samsung's "mllaunch" at 10:51 phone time while the
+  phone was unplugged and offline - the database below proves it wrote nothing.
 
-  setting / state               now (last seen)            R1(c) read   restore
-  ----------------------------- -------------------------- ------------ -------------------------------------------
-  stay_on_while_plugged_in      3                          0            adb shell settings put global stay_on_while_plugged_in 0
-  airplane_mode_on              1 (ON)                     0            adb shell cmd connectivity airplane-mode disable
-  adb reverse                   none                       none         (nothing)
-  auto_time / timezone          1 / Africa/Casablanca      same         (never changed)
-  screen_off_pocket             1                          1            (never changed)
-  installed                     BEFORE audit, b942ed4      KMP-3's      -
-                                (sha 270f4856...)          after-audit
-  app state                     SIGNED IN as               signed out,  sign out in Parametres (it erases the
-                                kmp4.device@monreleve.test empty        local record by design) - but ONLY after
-                                19 Oct AM/PM PENDING                    the resumption below, or the evidence goes
+  STILL SIGNED IN, NO CODE ASKED: the app opened on "Bonjour Kamel".
 
-  ONE INSTRUCTION PROTECTS THE EVIDENCE: DO NOT TURN AIRPLANE OFF AND DO NOT
-  RE-ADD `adb reverse tcp:3000` UNTIL THE AFTER AUDIT BUILD IS INSTALLED. With
-  the network back, the pending day drains under the BEFORE build and step 3's
-  "the pending day syncs after the upgrade" has to be recreated from scratch.
-  (Unplugged and in airplane mode, the phone keeps it pending; WorkManager's
-  CONNECTED constraint is unmet, so there are no attempts and no backoff.)
+  EVERY SCREEN, OFFLINE, AGAINST STEP 1's TEXT. Aujourd'hui (top, scrolled,
+  bottom), Calendrier, Parametres, Prevision and Rythme: TEXT IDENTICAL, line
+  for line - every day's accessibility line, 0,82 %, 94 / 117,5, 0,83 %,
+  9,58 %, 73 / 96,5, "dont 2 jours pas encore synchronises". The Releve DIFFERS
+  BY ONE BANNER: a fresh launch offline now shows "Copie hors ligne" over the
+  cached document - the same document (generated 21.10.2026 08:34, 3 entries,
+  0,41 %) - where step 1's capture held a state loaded online before its
+  restart. That is the offline path doing its job, not a difference in data.
 
-RESUMPTION - R470 STEPS 3-4 AS A NEXT SESSION RUNS THEM, in this order:
-  0. Re-verify before touching anything, because "back" may mean "rebooted":
-     adb shell cat /proc/uptime; airplane_mode_on = 1; stay_on = 3; reverse
-     empty; the calendar's 19 October reads "en attente de synchronisation".
-     Start the local stack (pnpm dev, port 3000, R169 health check naming
-     monreleve).
-  1. Rebuild the AFTER audit and debug APKs from 31f2d58 with
-     -PfrontalierHost=127.0.0.1; verify the dex host.
-  2. adb logcat -c; install -r the AFTER AUDIT (no uninstall, no clear);
-     record firstInstallTime unchanged and lastUpdateTime moved; launch;
-     logcat from install to first frame - the positive control is
-     "Displayed ch.monreleve.app/.MainActivity", the absence claims FATAL
-     EXCEPTION / AndroidRuntime / ANR / "account tag unresolved", with the
-     grep shown to match a synthetic line.
-  3. Still offline: still signed in with no code asked; compare every screen
-     with the BEFORE text and figures in step 1 above.
-  4. Still offline: install -r the AFTER DEBUG build (no launch), read the
-     database with run-as + exec-out (+ -wal, not -shm), and compare with the
-     seven BEFORE rows above - they must be byte-identical, both 19 October rows
-     still PENDING with their +01:00 claims; reinstall the AFTER audit; launch it
-     once so WorkManager reschedules.
-  5. adb reverse tcp:3000 tcp:3000 FIRST, airplane OFF SECOND: the server log
-     should show POST /api/v1/entries 401 -> POST /api/v1/auth/refresh 200 ->
-     POST /api/v1/entries 200 (the access token is long stale), and the server's
-     rows gain 19 October AM/PM with mutation ids 09f82235... and 1178587c...,
-     the ids born before the upgrade.
-  6. Sign out (the plain dialog - nothing is pending), sign in BY CODE as the
-     same test account, and WITHOUT RESTARTING record new days in the calendar
-     (13-15 October have no server rows), see each POST 200 on the server,
-     modify one (a new mutation id, coalesced), cancel one (Annuler: no POST),
-     set the rhythm again and open the forecast. Read the database through the
-     debug build once more: every new row and the rhythm row tagged
-     sha256("kmp4.device@monreleve.test"), no UNOWNED row.
-  7. Leave as found: sign out, reverse removed, stay_on 0, airplane 0, the
-     AFTER audit installed.
-  Note for whoever runs it: before 25 October the claim offsets differ from
-  Paris's (+01:00 vs +02:00); after it they agree, so the drive exercises less.
+  EVERY DAY IDENTICAL, MEASURED IN BYTES. Still offline, the AFTER debug build
+  of the same commit went on with install -r (not launched), the database came
+  off with exec-out (+ -wal, not -shm), and the AFTER audit build went back on:
+      monreleve.db      RAW BYTES IDENTICAL to step 1's pull
+                        (sha256 8e4827b772572766b64812d7f2a8f273b04a926f47dd24accb6d30a41d234166)
+      monreleve.db-wal  RAW BYTES IDENTICAL to step 1's pull
+                        (sha256 953aa1eefc1d19741a5e44b07fd0e6872d3a1c2678748acebcaf59c14252fa5f)
+      the -wal's on-device mtime still 09:37 - not one write since step 1
+  so all seven rows - both 19 October halves still PENDING with their
+  "...+01:00" claims - and the rhythm row are exactly as the BEFORE build left
+  them. The AFTER audit build was then launched once, still offline, so
+  WorkManager rescheduled.
 
-THE LOCAL STACK WAS STOPPED (R179). TaskStop ended the shell and NOT the tree:
-the same netstat that had shown PID 50936 listening on 3000 still showed it, and
-/api/health still answered. PID 50936 was the dev server this session started
-(its scheduler logged as DESKTOP-5JQK8DN/50936 at start-up), so it was killed
-with its tree; afterwards netstat shows no listener on 3000 and curl is refused
-(exit 7), and its parent PID 45356 no longer exists.
+  THE PENDING DAY SYNCS - reverse FIRST, airplane OFF SECOND, so the tunnel
+  existed the moment the CONNECTED constraint was met:
+    CLOCKS phone 11:45:55 +01 | UTC 10:45:56 | Paris 12:45:56 +02
+    the server log, in order, within ten seconds:
+      POST /api/v1/entries      401 in 2180ms
+      POST /api/v1/auth/refresh 200 in 1726ms
+      POST /api/v1/entries      200 in 309ms
+  The access token was long stale (ACCESS_TTL is 15 minutes and the phone had
+  been offline since 08:36 UTC), so the moved SessionManager's 401 -> refresh
+  -> retry ran against a real server on a minified build.
+  POSITIVE CONTROL, ON THE SERVER'S OWN ROWS: the account went from 5 rows to
+  7, and the two new ones are exactly the pending day, carrying the mutation
+  ids born BEFORE the upgrade:
+      2026-10-19 AM MISSION_FR  09f82235-cfb0-45fc-9242-4854c9065d65
+                                claim 08:37:03.33Z (the device's 09:37:03.330+01:00)
+      2026-10-19 PM CH          1178587c-e4dc-4790-8396-f36d2839a560
+                                claim 08:37:03.367Z
+      firstRecordedAt 10:46:07.514Z - the drain
+  The other five rows unchanged. On the phone the calendar's 19 October now
+  reads "enregistre a temps" and Aujourd'hui's pending line is gone. By
+  elimination the drain was the WorkManager job enqueued under the BEFORE build
+  at 09:37 phone time (the only other path that posts entries is sign-out's
+  sync-first, and no sign-out happened then); the app logged nothing between
+  11:45 and 11:49, so this rests on the server, not on logcat.
+
+  SIGN OUT, SIGN IN BY CODE, RECORD - WITHOUT A RESTART (the AN-ACCOUNT-TAG
+  path, on the moved repositories):
+    sign-out: the PLAIN confirmation (nothing pending), confirmed ->
+      POST /api/v1/auth/sign-out 200; the welcome screen.
+    sign-in: the same address, the code 071664 read from the dev server's
+      stdout -> POST /api/v1/auth/magic-link 202, POST /api/v1/auth/code 200,
+      GET /api/v1/me 200 (half-day mode restored, R297), the two dossier years.
+      CLOCKS phone 11:49:19 +01 | UTC 10:49:20 | Paris 12:49:20 +02
+    NO RESTART - PROVEN FROM THE EVENTS BUFFER, not asserted: the last
+      am_proc_start for ch.monreleve.app is pid 25882 at 11:45:35.484, and the
+      last am_create_activity / am_on_create_called for MainActivity is in that
+      same pid at 11:45:35.844. Sign-out (11:48) and sign-in (11:49) passed with
+      no process start, no kill and no new activity.
+    The calendar after the sign-in shows NO recorded day: sign-out erased the
+    device's record by design and nothing downloads it back (NOTICED 5).
+    NEW DAYS, each reaching the server:
+      15 Oct  AM CH, PM HOME          POST /api/v1/entries 200   (11:51 phone)
+      14 Oct  AM MISSION_THIRD,       POST /api/v1/entries 200   (11:52) -
+              PM HOME                 shown "en retard": recorded 7 days and
+                                      10 h after the day's UTC midnight
+    MODIFY ONE: 15 Oct's morning CH -> HOME   POST /api/v1/entries 200 (11:52:53)
+    CANCEL ONE: 14 Oct reopened, the afternoon switched to "En Suisse" (the
+      screenshot shows it selected), then Annuler -> NO server call, and the
+      day's line unchanged.
+    THE SERVER'S APPEND-ONLY TRAIL for those two days, the positive control:
+      CREATED  15 AM CH             874caac1...  10:51:08.611Z
+      CREATED  15 PM HOME           147edd89...  10:51:08.611Z
+      CREATED  14 AM MISSION_THIRD  de993d40...  10:52:19.641Z
+      CREATED  14 PM HOME           44c4215f...  10:52:19.641Z
+      MODIFIED 15 AM HOME           537d832c...  10:52:58.615Z
+      MODIFIED 15 PM HOME           9c8dc4ae...  10:52:58.623Z (NOTICED 6)
+      - and NOTHING for 14 October after its CREATED: Annuler wrote nothing.
+      15 October's firstRecordedAt stayed 10:51:08.611Z through the edit.
+    APPLY THE RHYTHM: the sign-out had erased it; set again (Su Do Su Do Su) in
+      the same no-restart session through the MOVED LocalRhythmRepository - no
+      server call, as designed - and the forecast projected from it: 0,83 %
+      today, 9,58 % end of December, 73 / 96,5.
+  THE DEVICE DATABASE AFTER THAT LEG (AFTER debug build, install -r, read,
+  AFTER audit reinstalled): four entry rows, 14 Oct AM/PM and 15 Oct AM/PM,
+  every one SYNCED with its serverId and tagged
+  2754080a6ced6baf89a24358b44433e3279d3f069b2802054861c85fe692c80b =
+  sha256("kmp4.device@monreleve.test"); NO UNOWNED ROW; the weekly_rhythm row
+  under the same tag. The account was read at write time after a sign-in that
+  did not restart anything - for the record AND for the rhythm.
+  LOGCAT FOR THE WHOLE STEP: 68 994 lines, 11:40:10-11:55:42. Absence claims:
+  0 matches, control 2 of 2. Positive control: 729 lines from our process;
+  SyncWorker "Worker result SUCCESS" in pid 25882 at 11:51:07 and 11:52:18 -
+  the moved sync engine and repositories running in the very process the sign-in
+  happened in.
+
+THE FIFTH CABLE FLAP, AND WHAT IT COST. The transport id moved from 1 to 2: the
+phone re-enumerated on USB at 11:56:24 (UsbDeviceManager: USB_STATE
+CONFIGURED), between the logcat capture (11:55:42) and the next install
+(11:57:18). Nothing was in flight and every adb step after it worked - but a
+reset clears `adb reverse`. So the final sign-out (11:59, below) had no tunnel:
+the app wiped the device - the welcome screen, and a database read showing zero
+entry and rhythm rows - while its revoke never reached the server. No
+POST /api/v1/auth/sign-out appears for it, and the dev database's second session
+for the test account (created 10:49:26Z) is still unrevoked. That is R451's
+"the server was unreachable and the device is wiped anyway" branch, seen on a
+phone by accident; the leftover is one unrevoked session for a test account in
+the LOCAL dev database (DEVIATION 10).
+
+STEP 4 - NOTHING UNINSTALLS, AND THE PHONE IS LEFT AS FOUND
+  Nothing in R463-R472 needs connectedAndroidTest (it is not in :app:gate, and
+  it would uninstall both APKs and wipe the database), so nothing was
+  uninstalled and no reinstall was owed. The device data had been read at every
+  stage before anything else touched it.
+  The app was signed out on the AFTER audit build (R1(c) found it signed out and
+  empty), the final database read confirmed it empty, and the AFTER audit build
+  went back on. READ BACK AT THE END, against R1(c):
+      stay_on_while_plugged_in  0   (R1(c) 0; was 3 for the drive)
+      airplane_mode_on          0   (R1(c) 0; was 1 while the day was pending)
+      adb reverse               empty
+      auto_time 1, auto_time_zone 1, timezone Africa/Casablanca   (never changed)
+      screen_off_pocket 1, screen_off_timeout 30000               (never changed)
+      installed  ch.monreleve.app only (of ours), versionName 0.1.0, NOT
+                 debuggable; the APK pulled off the phone hashes to
+                 d5047b74169199b2c08d192c095445e9eef849e83b0a39f13072a01ab489bf81
+                 - the AFTER audit build from 177ff67, byte for byte.
+                 firstInstallTime 2026-10-20 17:40:17: never uninstalled.
+      app state  signed out, empty local record - the welcome screen
+    CLOCKS phone 12:02:10 +01 | UTC 11:02:11 | Paris 13:02:11 +02
+THE LOCAL STACK WAS STOPPED (R179). TaskStop ended the shell and not the tree:
+netstat still showed PID 45776 - this session's server, whose scheduler logged
+as DESKTOP-5JQK8DN/45776 - listening on 3000. It was killed with its tree;
+afterwards netstat shows no listener, curl is refused (exit 7), and its parent
+PID 42792 no longer exists. (The first stack, PID 50936, was stopped the same
+way at 10:27 UTC.)
 
 --------------------------------------------------------------------------------
 R471 - kotlin-test
@@ -1025,14 +1127,29 @@ DEVIATIONS
    and MainGraph precedent: a holder would only move the list, and would hide
    from the next platform what it has to supply.
 
-9. THE PHONE IS NOT LEFT AS FOUND, because R470 steps 3-4 could not run (the
-   S9 dropped off USB and did not return in a 30-minute bounded wait). It is
-   signed in as the test account, in airplane mode, with stay_on_while_plugged_in
-   3 where R1(c) read 0, the BEFORE audit build installed and 19 October
-   pending. R470 lists the restore commands and - before them - the one
-   instruction that keeps the evidence: no network until the AFTER audit build
-   is installed. Nothing on the phone was uninstalled or cleared (R470's "if
-   step 3 fails: STOP, uninstall nothing" honoured although step 3 never began).
+9. R470 RAN IN TWO SITTINGS. The S9 dropped off USB before step 3 installed
+   anything (NO RESULT, 09:54 UTC) and did not return in a 30-minute bounded
+   wait, so this session handed back NOT COMPLETE with the phone deliberately
+   left offline and pending. When the coordinator reported it back, it was
+   re-verified (not rebooted, airplane ON, no reverse, the BEFORE build and the
+   pending day intact), the AFTER APKs were REBUILT from the tip rather than
+   reused, and steps 3-4 ran in the order R470 sets. Commits 88b6382..2595ef7
+   still carry the interim "NOT COMPLETE" text; this version supersedes it.
+
+10. ONE SESSION FOR THE TEST ACCOUNT IS LEFT UNREVOKED IN THE LOCAL DEV DATABASE.
+   The cable flapped again at 11:56:24 (transport id 1 -> 2), which cleared
+   `adb reverse`; the final sign-out therefore wiped the phone without its
+   revoke reaching the server. The leftover is the DeviceSession row created
+   10:49:26Z for kmp4.device@monreleve.test in the frontalier-postgres dev
+   container - never production, never the operator's account. Not repaired by
+   hand: a session revoked by a SQL UPDATE would be a row the product never
+   wrote. It expires on the server's own terms.
+
+11. THE DEBUG BUILD WAS INSTALLED FOUR TIMES IN ALL, each install -r, never
+   launched, each time only for run-as reads, each time followed at once by
+   the audit build of the same commit: once in step 1 (b942ed4) and three times
+   in step 3 (177ff67) - offline before the drain, after the no-restart leg,
+   and after the final sign-out. The upgrade proof itself is audit-over-audit.
 
 --------------------------------------------------------------------------------
 NOTICED BUT NOT TOUCHING
@@ -1058,6 +1175,19 @@ NOTICED BUT NOT TOUCHING
    (`git worktree list` does not show them). Not this session's; reported,
    not touched.
 
+5. A SIGN-IN DOES NOT BRING THE RECORD BACK. After step 3's sign-out (which
+   erases the device's record by design) and the code sign-in, the calendar
+   showed no recorded day although the server held eleven for the account; the
+   settings came back from /me, the entries do not come back at all. Pre-
+   existing (no entries download exists), out of scope; it means a person who
+   signs out and back in sees an empty calendar until they record again.
+
+6. SAVING THE CALENDAR SHEET RE-RECORDS EVERY HALF IN IT. Changing only 15
+   October's morning produced a MODIFIED event for the afternoon too, with the
+   same kind (HOME -> HOME) and a new mutation id. Pre-existing CalendarController
+   behaviour, not the repository's; noted because it puts an edit in the
+   append-only trail that changed nothing.
+
 --------------------------------------------------------------------------------
 QUESTIONS
 --------------------------------------------------------------------------------
@@ -1071,10 +1201,8 @@ Q2 NOTICED 1 - the calendar keeps the granularity it was built with. Is that a
 Q3 PARK-M1 - when the entry repository's behaviour suite should run on iOS: a
    second FakeEntryDao in commonTest, or a shared test-fixtures source set?
 
-Q4 R470 STEPS 3-4 ARE OWED. Should kmp-4 wait for them before merging - the
-   upgrade-in-place on the S9 is the prompt's "final proof" - or merge on the
-   green gates and the BEFORE evidence, with steps 3-4 run as a follow-up from
-   the resumption list in R470? Either way the phone needs its cable reseated.
+Q4 (asked by the interim report: should the merge wait for R470 steps 3-4?)
+   is MOOT - they ran. The merge itself is still the operator's (R334).
 
 --------------------------------------------------------------------------------
 PUSH PROOF
@@ -1098,8 +1226,10 @@ THE COMMITS, in order, each pushed when made:
     88b6382  the report so far, PARK-M1                 (31f2d58..88b6382)
              - FULL GATE GREEN on it
     0ff6075  the BEFORE evidence, verbatim              (88b6382..0ff6075)
-    2595ef7  the final report - R470's outcome, STATUS  (0ff6075..2595ef7)
-    <this>   this block's push lines - the final tip, named
+    2595ef7  the report at the first handback - R470 NOT RUN (0ff6075..2595ef7)
+    177ff67  that report's push lines                   (2595ef7..177ff67)
+    <this>   R470 steps 3-4 ran: the report updated in place - the final tip,
+             named. It changes REPORT-KMP-4.txt and nothing else.
 
     $ git push                                  (the final report)
     To https://github.com/kaitmax/monreleve.git
@@ -1109,8 +1239,9 @@ THE COMMITS, in order, each pushed when made:
     2595ef783d2cd175b29dfb3a3ca42516445d55ee
 
 A REPORT CANNOT PRINT ITS OWN SHA, so the list ends with this commit, named
-rather than hashed: the final tip is the commit whose subject is "KMP-4: PUSH
-PROOF - the final tip, named". It changes this block and nothing else.
+rather than hashed: the final tip is the commit whose subject is "KMP-4: R470
+steps 3-4 on the S9 - the report updated in place". Its push is in the
+handback, not here.
 
 THE FINAL TIP DIFFERS FROM THE GATED 88b6382 ONLY IN REPORT-KMP-4.txt:
     git diff --stat 88b6382..HEAD  ->  REPORT-KMP-4.txt only
