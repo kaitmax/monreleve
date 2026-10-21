@@ -27,8 +27,8 @@ move is a git rename; the repositories' and EntryAggregation's are 100%.
 
 WHAT A TAP WRITES DID NOT CHANGE, and the evidence is the tests that pinned it
 FIRST, on the current code, running unedited afterwards: the claim's exact
-string for 26 instants across both 2026 DST changes, New Year's Eve and
-Casablanca's Ramadan offset; every column of a recorded day; the account read
+string at 19 instants (39 assertions) across both 2026 DST changes, New
+Year's Eve and Casablanca's Ramadan offset; every column of a recorded day; the account read
 at write time after a sign-in without restart and after a sign-out.
 
 NOT ONE CONSTRUCTION SITE CHANGED. KMP-3 counted 3 production sites and 14 test
@@ -688,6 +688,56 @@ STEP 1 - THE BEFORE STATE (done, 09:20-09:41 phone time)
     weekly_rhythm: SUISSE DOMICILE SUISSE DOMICILE SUISSE under the same tag.
   THE SERVER, read the same way (psql in the dev container): exactly the 5
   synced rows, the same clientMutationIds as the device's.
+
+  THE BEFORE EVIDENCE, VERBATIM - so it survives this session (the scratchpad
+  does not), and so a later session can compare against it without this one.
+
+  The 7 entry rows, as read off the S9 (accountTag on every row:
+  2754080a6ced6baf89a24358b44433e3279d3f069b2802054861c85fe692c80b; provenance
+  MANUAL, detectedKind/detectedAt/lastModifiedAt null on every row):
+
+   day        portion kind        reason note                         state
+   2026-10-12 FULL    HOME        -      -                            SYNCED
+              mut 2a44f7ed-f13a-4373-a0a9-2998c87f3038  srv cmvhuqpwm0009awv3jpiup0hg
+              claim 2026-10-21T08:30:22.699Z            first 2026-10-21T08:30:22.612Z
+   2026-10-16 FULL    ABSENT      CONGE  "kmp4 note conge du vendredi"  SYNCED
+              mut 7bb2a770-6e0b-45d9-8293-99f1b4d98df1  srv cmvhups2d0007awv3nip7inx8
+              claim 2026-10-21T08:29:38.826Z            first 2026-10-21T08:29:38.760Z
+   2026-10-19 AM      MISSION_FR  -      -                            PENDING
+              mut 09f82235-cfb0-45fc-9242-4854c9065d65  srv -
+              claim 2026-10-21T09:37:03.330+01:00       first -
+   2026-10-19 PM      CH          -      -                            PENDING
+              mut 1178587c-e4dc-4790-8396-f36d2839a560  srv -
+              claim 2026-10-21T09:37:03.367+01:00       first -
+   2026-10-20 AM      CH          -      -                            SYNCED
+              mut 6d8532ad-e643-44af-bb5e-967dd95d30f9  srv cmvhuxlh3000bawv3r41jwfwp
+              claim 2026-10-21T08:35:43.512Z            first 2026-10-21T08:35:43.461Z
+   2026-10-20 PM      HOME        -      -                            SYNCED
+              mut 7e6c936d-c73d-4cec-a993-fd1bdcdb89ee  srv cmvhuxlhf000dawv3yiazj27x
+              claim 2026-10-21T08:35:43.521Z            first 2026-10-21T08:35:43.461Z
+   2026-10-21 FULL    CH          -      -                            SYNCED
+              mut a99863af-c976-4e5e-8e09-37f52c1c6c4a  srv cmvhump6a0005awv3agdxvv6x
+              claim 2026-10-21T08:27:14.616Z            first 2026-10-21T08:27:15.035Z
+   weekly_rhythm (same tag): SUISSE DOMICILE SUISSE DOMICILE SUISSE
+
+  The calendar's own accessibility lines (transliterated), October 2026:
+   Jour 12, Domicile, enregistre en retard, saisie manuelle.
+   Jour 16, Absence, enregistre a temps, saisie manuelle.
+   Jour 19, matin Mission, apres-midi Suisse, en attente de synchronisation, saisie manuelle.
+   Jour 20, matin Suisse, apres-midi Domicile, enregistre a temps, saisie manuelle.
+   Aujourd'hui, Jour 21, Suisse, enregistre a temps, saisie manuelle.
+   (13, 14, 15: non renseigne, non enregistre; 17, 18: sans objet)
+
+  Figures on screen, the fingerprint the AFTER build must reproduce:
+   Aujourd'hui  declarable rate 0,82 %; 94 days left before 40,0 %; 117,5 before
+                49,9 %; "dont 2 jours pas encore synchronises"; this month Suisse 2,
+                Domicile 1,5, Mission 0,5, Absence 1; 10 days not filled in
+   Releve       (cached, generated before 20 Oct was recorded) 0,41 % and 0,5 %;
+                "2 jours enregistres sur cet appareil ne sont pas encore
+                synchronises et ne figurent pas dans ce releve"
+   Prevision    today 0,83 %; end of December 9,58 %; 73 days of margin before
+                40 %; 96,5 before 49,9 %
+   Rythme       "Soit 2 jours par semaine a domicile"
 
 STEP 2 - THE MOVE. Host tests and gates only, nothing installed: from 09:41
 phone time until step 3 the phone sat offline (airplane ON, no reverse), with
