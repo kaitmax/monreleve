@@ -6,53 +6,73 @@ TASK     relay/KMP-4.txt, rulings R463-R472 (a scan of parking.md, every
          REPORT-*.txt and every relay/*.txt found no prior R463-R472, so none
          needed renumbering under R162).
 BRANCH   kmp-4, branched from main at b942ed4. PENDING MERGE - not merged.
-WORKTREE C:/wt/kmp-4, created by this session, lock written here.
+WORKTREE C:/wt/kmp-4, created by this session; its .session-lock.json is
+         gitignored and never committed.
 
 NOTE ON ACCENTS. Pure ASCII by the transport constraint R155/R168 describe.
 Device copy quoted here is TRANSLITERATED; the accented original lives in
 :shared's fr/ and is authoritative. Nothing is copied FROM this file into source.
 
-THIS FILE IS WRITTEN AS THE WORK HAPPENS. Sections marked PENDING have not
-happened yet, and a section says only what has happened (R334).
+EVERY SECTION SAYS ONLY WHAT HAS HAPPENED (R334). R470 steps 3-4 did not
+happen, and R470 says so.
 
 --------------------------------------------------------------------------------
 SUMMARY
 --------------------------------------------------------------------------------
-INTERIM - written while R470 step 3 waits for the phone; rewritten when it ends.
-
 The path that writes a day now lives in :shared commonMain: LocalEntryRepository
 (PARK-D1), LocalRhythmRepository (PARK-D2), CalendarDay (PARK-B1) and
 EntryAggregation, and the two EntryKind/Portion sets are one (PARK-K3). Every
-move is a git rename; the repositories' and EntryAggregation's are 100%.
+file moved with git mv. The repositories' and EntryAggregation's commits are
+pure renames (100%); CalendarDay was rewritten onto kotlinx-datetime in its
+move commit, so git shows that one as a delete and an add.
 
 WHAT A TAP WRITES DID NOT CHANGE, and the evidence is the tests that pinned it
 FIRST, on the current code, running unedited afterwards: the claim's exact
-string at 19 instants (39 assertions) across both 2026 DST changes, New
-Year's Eve and Casablanca's Ramadan offset; every column of a recorded day; the account read
-at write time after a sign-in without restart and after a sign-out.
+string at 19 instants (39 assertions) across both 2026 DST changes, New Year's
+Eve and Casablanca's Ramadan offset; every column of a recorded day; the
+account read at write time after a sign-in without restart and after a
+sign-out. Three of the four new test files moved to commonTest by git mv at
+100% - the R457 workflow, used for the first time.
 
 NOT ONE CONSTRUCTION SITE CHANGED. KMP-3 counted 3 production sites and 14 test
 files that a constructor change would touch; all 17 are byte-identical to
 b942ed4, because :app's half of the seams is one function named like the class.
+R463's table gained a seam the prompt did not name - the device's ZONE, which a
+java.time.Clock carried and a kotlinx Clock does not - and lost the logger.
 
-The device proof (R470) has its BEFORE state on the S9 and in the device
-database; steps 3-4 wait on the phone, which dropped off USB.
+THE DEVICE PROOF IS HALF DONE, AND THIS REPORT SAYS SO. R470 step 1 ran: the
+BEFORE build on the S9, a code sign-in, five days recorded and one left pending,
+the rhythm, every screen captured, the database read - all pasted verbatim
+below. Then the phone dropped off USB before step 3 installed anything, and did
+not come back in a 30-minute bounded wait. Steps 3-4 - the upgrade in place,
+the pending day draining, new days recorded with the moved code - DID NOT RUN.
+The phone is left signed in, in airplane mode, stay_on 3, with the day pending;
+R470 states exactly how to resume and how to restore it.
+
 --------------------------------------------------------------------------------
 STATUS (R391)
 --------------------------------------------------------------------------------
-INTERIM. Increments green under fast check. FULL GATE NOT RUN on this
-commit (it changes REPORT-KMP-4.txt and parking.md only).
+NOT COMPLETE: R470 steps 3-4 did not run (the S9 dropped off USB; NO RESULT,
+R391). The code and the gate are green; the device proof of the upgrade is owed.
 
-  The FULL :app:gate --rerun-tasks DID run, in this session, on 31f2d58 - the
-  last commit carrying code:
-      test floor OK: 1212 unit tests observed (>= 10)
-      BUILD SUCCESSFUL in 10m 1s
-      225 actionable tasks: 225 executed
-      GATE_EXIT=0
+  FULL :app:gate --rerun-tasks, run IN THIS SESSION, 225 of 225 EXECUTED each
+  time (a task reported UP-TO-DATE did not run):
 
-  R470 steps 3-4 are NOT RUN (see R470). gate:clone NOT RUN and not claimed:
-  `git diff origin/main...HEAD -- web/` is EMPTY, so there is no web change
-  for it to verify (R133).
+  b942ed4  R1(b), origin/main's HEAD, before a file was touched
+           BUILD SUCCESSFUL in 9m 49s   GATE_EXIT=0   test floor 1210
+  31f2d58  the last commit carrying code
+           BUILD SUCCESSFUL in 10m 1s   GATE_EXIT=0   test floor 1212
+  88b6382  the first commit carrying the report (a declared gate input)
+           BUILD SUCCESSFUL in 7m 9s    GATE_EXIT=0   test floor 1212
+
+  THE FINAL TIP IS NOT 88b6382, and the narrow claim goes where the broad one
+  would: the final tip differs from the gated 88b6382 ONLY in REPORT-KMP-4.txt
+  (proof under PUSH PROOF), and RegisterCoverageTest - the one gated test that
+  reads this file - was re-run directly against the final text.
+
+  gate:clone NOT RUN and not claimed: `git diff origin/main...HEAD -- web/` is
+  EMPTY, so there is no web change for it to verify (R133).
+
 --------------------------------------------------------------------------------
 R273 - WHAT WAS READ, BEFORE ANYTHING ELSE
 --------------------------------------------------------------------------------
@@ -220,18 +240,20 @@ captured exactly where it is captured today.
 
 THE LOGGER IS "NONE", AND THAT IS A FINDING: the canary's Log.e is the only log
 call in the four files. Once the canary is an injected reporter, nothing in the
-moved code logs - to be re-verified by grep after the move, with a positive
-control, before this line is final.
+moved code logs. RE-VERIFIED AFTER THE MOVE: a grep for Log./println(/print(/
+Logger/NSLog finds nothing in the four moved files and nothing anywhere in
+:shared commonMain; the same pattern finds Log.e in :app's AndroidRecordSeams.kt
+- the positive control that the grep can see a log call.
 
 HOW :app PASSES THEM - THE CONSTRUCTION SITE. LocalEntryRepository is built
 positionally as (dao, clock, ...) at 3 production sites (MainActivity,
 DevRecorderActivity, EveningActionReceiver) and in 14 test files - about 95
-construction lines, counted by grep on b942ed4. The plan is ONE :app function
-named LocalEntryRepository with today's java.time signature, which forwards to
-the shared primary constructor with every seam explicit: the adapted clock, the
-clock's zone, :app's canary reporter and :app's UUID mint. Every one of the 17
-files then compiles UNEDITED, and the place a reader sees what :app passes is
-that one function. Recorded under DEVIATIONS, because R467 expected to show the
+construction lines, counted by grep on b942ed4. :app's construction site is ONE
+function in AndroidRecordSeams.kt, named LocalEntryRepository, with today's
+java.time signature; it forwards to the shared primary constructor with every
+seam explicit: the adapted clock, the clock's zone, :app's canary reporter and
+:app's UUID mint. All 17 files compiled UNEDITED, and the place a reader sees
+what :app passes is that one function. Recorded under DEVIATIONS, because R467 expected to show the
 seam arguments in each touched test file; with this, no test file is touched.
 
 The rhythm repository's construction (two production sites, MainActivity and
@@ -743,17 +765,103 @@ STEP 2 - THE MOVE. Host tests and gates only, nothing installed: from 09:41
 phone time until step 3 the phone sat offline (airplane ON, no reverse), with
 the BEFORE audit build and the pending day on it.
 
-STEP 3 - NOT RUN YET. NO RESULT, NOT A FAILURE (R391). The pre-flight read for
+STEP 3 - NOT RUN. NO RESULT, NOT A FAILURE (R391). The pre-flight read for
 step 3 - nothing installed, nothing changed - returned "adb.exe: no devices/
-emulators found" at 09:54:55 UTC. The phone is not enumerated on USB at all (no
-Samsung VID 04E8 device present; adb kill-server/start-server changes nothing),
-so the transport dropped - the expected failure the briefing names, the fourth
-on this rig. Sub-step in flight: step 3's pre-flight. The device was last seen
-in exactly the state step 1 left: BEFORE audit build installed, signed in as
-the test account, airplane ON, reverse removed, stay_on 3, 19 October pending.
-A bounded wait for it to re-enumerate is running; nothing is re-run blind.
+emulators found" at 09:54:55 UTC. It last answered at 08:40:45 UTC (the BEFORE
+audit reinstall); when it dropped in between is not known, and nothing was sent
+to it in that hour. The phone was not enumerated on USB at all:
+no Samsung device (VID 04E8) present to Windows, and adb kill-server /
+start-server changed nothing. The transport dropped - the expected failure the
+briefing names. Sub-step in flight: step 3's pre-flight read. Nothing was
+re-run blind.
 
-STEP 4 - NOT RUN YET (it follows step 3).
+WAITED, BOUNDED, AND THE WAIT IS ON THE RECORD: a watcher polled `adb devices`
+every 10 s from 09:55 to 10:23 UTC, a second one to ~10:25, with two manual
+checks of adb and of USB enumeration in between (adb server restarted once
+more). The S9 never re-enumerated. Reseating a cable is a physical act this
+session cannot perform, so the drive could not be resumed.
+
+THE AFTER APKs EXIST and are verified, built from 31f2d58 (the gated code tip),
+-PfrontalierHost=127.0.0.1, the dex carrying http://127.0.0.1:3000 and no
+10.0.2.2:
+    app-audit.apk 31f2d58  sha256 cd0c9c699488837b236c62c6b680aa24de7adbf1463bfd943f2870fd336f27cb
+    app-debug.apk 31f2d58  sha256 22555f5e4e18d61864de8c93d5a8f14c8a720e66caf8bc6540aa5e18f9e3988b
+  The audit APK's FILE size equals the BEFORE one (1 995 857 bytes) while its
+  contents differ - classes.dex 3 269 260 -> 3 280 820 bytes, compressed total
+  1 942 316 -> 1 945 641 - so the equal size is the signing block's padding.
+  The R8 mapping of that build names ch.monreleve.app.data.repo.
+  AndroidRecordSeamsKt, a class only the AFTER code has: the build carries the
+  move. They were in the scratchpad and do not outlive the session; the debug
+  build is byte-reproducible from 31f2d58 (b942ed4's was, against KMP-3's), the
+  audit build is code-identical but not byte-identical.
+
+STEP 4 - NOT RUN, so the phone is NOT left as found. THE PHONE'S STATE AS LAST
+SEEN (08:41 UTC = 09:41 phone time, end of step 1), with what R1(c) read and how to restore it:
+
+  setting / state               now (last seen)            R1(c) read   restore
+  ----------------------------- -------------------------- ------------ -------------------------------------------
+  stay_on_while_plugged_in      3                          0            adb shell settings put global stay_on_while_plugged_in 0
+  airplane_mode_on              1 (ON)                     0            adb shell cmd connectivity airplane-mode disable
+  adb reverse                   none                       none         (nothing)
+  auto_time / timezone          1 / Africa/Casablanca      same         (never changed)
+  screen_off_pocket             1                          1            (never changed)
+  installed                     BEFORE audit, b942ed4      KMP-3's      -
+                                (sha 270f4856...)          after-audit
+  app state                     SIGNED IN as               signed out,  sign out in Parametres (it erases the
+                                kmp4.device@monreleve.test empty        local record by design) - but ONLY after
+                                19 Oct AM/PM PENDING                    the resumption below, or the evidence goes
+
+  ONE INSTRUCTION PROTECTS THE EVIDENCE: DO NOT TURN AIRPLANE OFF AND DO NOT
+  RE-ADD `adb reverse tcp:3000` UNTIL THE AFTER AUDIT BUILD IS INSTALLED. With
+  the network back, the pending day drains under the BEFORE build and step 3's
+  "the pending day syncs after the upgrade" has to be recreated from scratch.
+  (Unplugged and in airplane mode, the phone keeps it pending; WorkManager's
+  CONNECTED constraint is unmet, so there are no attempts and no backoff.)
+
+RESUMPTION - R470 STEPS 3-4 AS A NEXT SESSION RUNS THEM, in this order:
+  0. Re-verify before touching anything, because "back" may mean "rebooted":
+     adb shell cat /proc/uptime; airplane_mode_on = 1; stay_on = 3; reverse
+     empty; the calendar's 19 October reads "en attente de synchronisation".
+     Start the local stack (pnpm dev, port 3000, R169 health check naming
+     monreleve).
+  1. Rebuild the AFTER audit and debug APKs from 31f2d58 with
+     -PfrontalierHost=127.0.0.1; verify the dex host.
+  2. adb logcat -c; install -r the AFTER AUDIT (no uninstall, no clear);
+     record firstInstallTime unchanged and lastUpdateTime moved; launch;
+     logcat from install to first frame - the positive control is
+     "Displayed ch.monreleve.app/.MainActivity", the absence claims FATAL
+     EXCEPTION / AndroidRuntime / ANR / "account tag unresolved", with the
+     grep shown to match a synthetic line.
+  3. Still offline: still signed in with no code asked; compare every screen
+     with the BEFORE text and figures in step 1 above.
+  4. Still offline: install -r the AFTER DEBUG build (no launch), read the
+     database with run-as + exec-out (+ -wal, not -shm), and compare with the
+     seven BEFORE rows above - they must be byte-identical, both 19 October rows
+     still PENDING with their +01:00 claims; reinstall the AFTER audit; launch it
+     once so WorkManager reschedules.
+  5. adb reverse tcp:3000 tcp:3000 FIRST, airplane OFF SECOND: the server log
+     should show POST /api/v1/entries 401 -> POST /api/v1/auth/refresh 200 ->
+     POST /api/v1/entries 200 (the access token is long stale), and the server's
+     rows gain 19 October AM/PM with mutation ids 09f82235... and 1178587c...,
+     the ids born before the upgrade.
+  6. Sign out (the plain dialog - nothing is pending), sign in BY CODE as the
+     same test account, and WITHOUT RESTARTING record new days in the calendar
+     (13-15 October have no server rows), see each POST 200 on the server,
+     modify one (a new mutation id, coalesced), cancel one (Annuler: no POST),
+     set the rhythm again and open the forecast. Read the database through the
+     debug build once more: every new row and the rhythm row tagged
+     sha256("kmp4.device@monreleve.test"), no UNOWNED row.
+  7. Leave as found: sign out, reverse removed, stay_on 0, airplane 0, the
+     AFTER audit installed.
+  Note for whoever runs it: before 25 October the claim offsets differ from
+  Paris's (+01:00 vs +02:00); after it they agree, so the drive exercises less.
+
+THE LOCAL STACK WAS STOPPED (R179). TaskStop ended the shell and NOT the tree:
+the same netstat that had shown PID 50936 listening on 3000 still showed it, and
+/api/health still answered. PID 50936 was the dev server this session started
+(its scheduler logged as DESKTOP-5JQK8DN/50936 at start-up), so it was killed
+with its tree; afterwards netstat shows no listener on 3000 and curl is refused
+(exit 7), and its parent PID 45356 no longer exists.
 
 --------------------------------------------------------------------------------
 R471 - kotlin-test
@@ -916,6 +1024,16 @@ DEVIATIONS
    SUPPRESSED, with the reason beside it - the codebase's CalendarController
    and MainGraph precedent: a holder would only move the list, and would hide
    from the next platform what it has to supply.
+
+9. THE PHONE IS NOT LEFT AS FOUND, because R470 steps 3-4 could not run (the
+   S9 dropped off USB and did not return in a 30-minute bounded wait). It is
+   signed in as the test account, in airplane mode, with stay_on_while_plugged_in
+   3 where R1(c) read 0, the BEFORE audit build installed and 19 October
+   pending. R470 lists the restore commands and - before them - the one
+   instruction that keeps the evidence: no network until the AFTER audit build
+   is installed. Nothing on the phone was uninstalled or cleared (R470's "if
+   step 3 fails: STOP, uninstall nothing" honoured although step 3 never began).
+
 --------------------------------------------------------------------------------
 NOTICED BUT NOT TOUCHING
 --------------------------------------------------------------------------------
@@ -952,11 +1070,60 @@ Q2 NOTICED 1 - the calendar keeps the granularity it was built with. Is that a
 
 Q3 PARK-M1 - when the entry repository's behaviour suite should run on iOS: a
    second FakeEntryDao in commonTest, or a shared test-fixtures source set?
+
+Q4 R470 STEPS 3-4 ARE OWED. Should kmp-4 wait for them before merging - the
+   upgrade-in-place on the S9 is the prompt's "final proof" - or merge on the
+   green gates and the BEFORE evidence, with steps 3-4 run as a follow-up from
+   the resumption list in R470? Either way the phone needs its cable reseated.
+
 --------------------------------------------------------------------------------
 PUSH PROOF
 --------------------------------------------------------------------------------
-INTERIM. Every commit so far is pushed to origin/kmp-4; the final block is
-written when the session ends. NOT MERGED - pending merge.
+THE BRANCH IS PUSHED AND NOT MERGED. kmp-4 -> origin/kmp-4. PENDING MERGE -
+the merge, and whether it waits for R470 steps 3-4 (Q4), are the operator's.
+
+THE COMMITS, in order, each pushed when made:
+    f2c0962  R463's seam table, before any code         (push: * [new branch])
+    5753ef6  R464 pinned on the current CalendarDay; kotlin-test lands (R471)
+    73b0af3  R465's BEFORE check - the names are identical
+    26265cd  R466's record-path gaps pinned
+    276fdb0  R466 - the rhythm repository pinned        (f2c0962..276fdb0)
+    d9f8c51  R465 - one set of enums                    (276fdb0..d9f8c51)
+    c3ac1f7  R464 - CalendarDay moves                   (d9f8c51..c3ac1f7)
+    15336f4  R463's seams in place, :app's implementations (c3ac1f7..15336f4)
+    9170d5c  EntryAggregation moves (100%)
+    0c65ddd  LocalRhythmRepository moves (100%)        (15336f4..0c65ddd)
+    31f2d58  LocalEntryRepository moves (100%)         (0c65ddd..31f2d58)
+             - the last commit carrying code; FULL GATE GREEN on it
+    88b6382  the report so far, PARK-M1                 (31f2d58..88b6382)
+             - FULL GATE GREEN on it
+    0ff6075  the BEFORE evidence, verbatim              (88b6382..0ff6075)
+    <this>   the final report - R470's outcome, STATUS, this block
+
+THE FINAL TIP DIFFERS FROM THE GATED 88b6382 ONLY IN REPORT-KMP-4.txt:
+    git diff --stat 88b6382..HEAD  ->  REPORT-KMP-4.txt only
+RegisterCoverageTest is the only gated test that reads this file; it shells out
+to web/scripts/register-coverage.mjs, run directly against the final text:
+    register coverage: OK - 108 cited id(s) across 120 report(s), all have
+    headings in parking.md
+
+INCREMENT GATES. Every commit carrying code was green before it was made:
+./gradlew fastCheck (the R390 subset, which prints what it does NOT run) plus
+:app:testDebugUnitTest with its count read from the JUnit XML, and
+verifyPaparazziDebug on the enum collapse. One fast check bounced - detekt's
+LongParameterList on the seams commit (DEVIATION 8) - and never reached a
+commit.
+
+ISOLATION (R334, R349, R392). All work in C:/wt/kmp-4, this session's worktree,
+created from main and carrying .session-lock.json (gitignored, never committed,
+removed at the end). Nothing was committed, stashed, reset or removed in any
+other C:/wt/* directory or in the main checkout, which still carries the
+operator's lock and its 44 untracked relay/ and android/scripts/ files,
+reported and untouched. Its web/ was used read-only for the dev server
+(DEVIATION 1) - pnpm dev regenerates the Prisma client and copies the fonts
+there, as it does for every session that runs it. The stale repo copy under
+.claude/worktrees/ was left alone and excluded from every scan.
+
 ================================================================================
 END OF REPORT-KMP-4
 ================================================================================
