@@ -900,7 +900,7 @@ PUSH PROOF
     To https://github.com/kaitmax/monreleve.git
      * [new branch]      an-fence-roots -> an-fence-roots
 
-    $ git rev-parse HEAD origin/an-fence-roots
+    $ git rev-parse HEAD origin/an-fence-roots      (at that first push)
     5dea96847700aa686c501a2cbbac3f35640837b8
     5dea96847700aa686c501a2cbbac3f35640837b8
 
@@ -908,9 +908,23 @@ PUSH PROOF
     ada8871ada4acb0ece7fc9b6fa1627b0ad170158
     ada8871ada4acb0ece7fc9b6fa1627b0ad170158
 
+This section then landed as eca6035 and was pushed:
+
+    $ git push
+    To https://github.com/kaitmax/monreleve.git
+       5dea968..eca6035  an-fence-roots -> an-fence-roots
+
+    $ git rev-parse HEAD origin/an-fence-roots
+    eca603540ea9567dfac74faa5a68214f34566905
+    eca603540ea9567dfac74faa5a68214f34566905
+
 PENDING MERGE, never merged. main is exactly where this session found it.
-This section lands as its own commit after that push and is pushed again,
-which is the one thing in the report that cannot describe its own commit.
+
+A REPORT CANNOT PRINT ITS OWN SHA, and the regress stops here rather than being
+chased: the list below ends with THIS commit, named rather than hashed, and the
+final tip is whatever `git log --oneline -1 an-fence-roots` shows - which is the
+commit whose subject is "AN-FENCE-ROOTS: the final tip, named". Everything in
+this report that CAN be a sha is one.
 
 THE COMMITS, in order:
     efdaf1d  the R458 census, before any change
@@ -921,6 +935,8 @@ THE COMMITS, in order:
     1b2eb01  the report, with the gate and push proof still pending
     8185abf  the mechanism had the defect it exists to catch (R460)
     5dea968  the report - R391's gate transcript and STATUS
+    eca6035  PUSH PROOF
+    <this>   the final tip, named - the commit carrying this line
 
 ISOLATION (R334/R349/R392): all work in C:/wt/an-fence-roots, this session's own
 worktree, created from main and carrying .session-lock.json (gitignored, never
