@@ -48,9 +48,29 @@ ITEM 4  Neither screen rounds - both truncate. Aujourd'hui truncated a FLOAT cop
 --------------------------------------------------------------------------------
 STATUS (R391)
 --------------------------------------------------------------------------------
-FULL GATE PENDING on the commit carrying this report. This section is replaced,
-in the commit that follows the gate, by the gate's BUILD line, its exit code and
-its task count - or by the R391 narrow form if it does not run green.
+COMPLETE - with the gate stated for the commit it ran on (R391).
+
+FULL :app:gate --rerun-tasks, run IN THIS SESSION on 6d7f513 - the commit before
+this one, carrying everything except these STATUS and PUSH PROOF lines:
+  FIRST RUN   FAILURE: "Gradle build daemon disappeared unexpectedly (it may have
+              been killed or may have crashed)", during :app:testDebugUnitTest;
+              GATE_EXIT=1; no test count produced. An environment failure (about
+              3 GB free at its start) and NO verdict on the code. Reported here,
+              not replaced.
+  SECOND RUN  after ./gradlew --stop, the tree verified clean, the same commit:
+                [clean-worktree] OK: no unstaged changes to tracked files (R393)
+                test floor OK: 1245 unit tests observed (>= 10)
+                BUILD SUCCESSFUL in 9m 29s
+                225 actionable tasks: 225 executed
+                GATE_EXIT=0
+  1245 = R1's 1212 + this task's 33: the whole suite ran, not a subset left by
+  dead workers.
+
+THE FINAL TIP IS NOT 6d7f513. It is the commit whose subject is "AN-CALENDAR:
+STATUS and PUSH PROOF after the full gate", and it differs from 6d7f513 ONLY in
+REPORT-AN-CALENDAR.txt. The one gated test that reads this file,
+RegisterCoverageTest, shells out to web/scripts/register-coverage.mjs, which was
+run directly against this final text (PUSH PROOF).
 
 Every increment was green under fast check, :app's full unit suite (count read
 from the JUnit XML), compileDebugAndroidTestKotlin and verifyPaparazziDebug:
@@ -677,10 +697,11 @@ THE COMMITS, in order, each pushed when made:
     0c9ba90  R475 follow-up - a Parametres save keeps the holder's name
              - the last commit carrying code
     042cc25  the report, and PARK-C1..C4 in the register
-    <next>   the report completed for Q1/Q4 before the gate - the commit the
-             full gate runs on
-    <final>  STATUS and these push lines, after the gate - REPORT-AN-CALENDAR.txt
-             only
+    6d7f513  the report completed before the gate (Q1's interim on Aujourd'hui,
+             Q4) - THE GATED COMMIT (GATE_EXIT=0 on its second run)
+    <final>  "AN-CALENDAR: STATUS and PUSH PROOF after the full gate" - changes
+             REPORT-AN-CALENDAR.txt and nothing else. A report cannot print its
+             own SHA; the final tip and its push are in the handback.
 
 gate:clone WAS NOT RUN, and that is a decision (R133): the branch changes no
 file under web/ (`git diff origin/main...HEAD -- web/` is empty). parking.md and
@@ -689,4 +710,14 @@ this report are root documents whose one check, web/scripts/register-coverage.mj
 committed text: "register coverage: OK - 112 cited id(s) across 121 report(s),
 all have headings in parking.md".
 
-THE GATE AND THE FINAL PUSH: written in the commit that follows the gate.
+THE GATE: under STATUS - first run FAILED (daemon killed, no verdict), second run
+BUILD SUCCESSFUL in 9m 29s, 225/225 executed, GATE_EXIT=0, floor 1245, both on
+6d7f513.
+
+ISOLATION (R334, R349, R392). All work in C:/wt/an-calendar, this session's
+worktree, created from main, carrying .session-lock.json (gitignored, never
+committed, removed as the last act). Nothing was committed, stashed, reset or
+removed in any other C:/wt/* directory or in the main checkout, which still holds
+its own lock, the operator's modified relay/AN-PULL.txt and its 45 untracked
+files - the same list at the end as at the start. Its web/ served the dev server
+(DEVIATION 1). The stale copy under .claude/worktrees/ was left alone.
