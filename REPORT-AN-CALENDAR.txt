@@ -394,11 +394,19 @@ comparison, so an untouched save of such a day is no change.
   -> no request, the day's trail still its single CREATED.
 
 R478 - EDITING SUCH A DAY: STOP. The options and the trail each writes are Q1.
-WHAT THE BRANCH DOES UNTIL THE ANSWER (the shape main already had): a changed
-half is written beside the FULL row (R473 writes what changed). Example: a day
-held FULL HOME, morning changed to En Suisse -> the trail gains CREATED AM CH,
-the FULL row stays, and the day counts telework 1 + swiss 0.5. Main produced the
-same shape by asking for the halves as if empty.
+WHAT THE BRANCH DOES UNTIL THE ANSWER (the shape main already had), on each
+surface that can edit such a day:
+  the calendar sheet  a CHANGED half is written beside the FULL row (R473 writes
+                      what changed; an untouched save writes nothing). Example:
+                      FULL HOME, morning -> En Suisse: the trail gains CREATED AM
+                      CH, the FULL row stays, the day counts telework 1 + swiss 0.5.
+  Aujourd'hui         R477 shows each half answered, with its "Modifier". Picking
+                      a kind after "Modifier" writes that half beside FULL
+                      WHATEVER is picked - even the kind already shown - because
+                      Aujourd'hui's record path has no R473 comparison (R473 names
+                      the calendar sheet). Same trail shape: CREATED AM <kind>.
+Main produced the same shape by asking for the halves as if they were empty;
+R477 moved the entrance from the question to "Modifier".
 
 --------------------------------------------------------------------------------
 ITEM 4 - ONE RATE, ONE NUMBER, ON EVERY SCREEN (R479)
@@ -606,6 +614,9 @@ NOTICED BUT NOT TOUCHING
 - The R477 display for an already-mixed day (FULL + AM): each half with a row of
   its own shows that row, the other shows the FULL row. A display of a record that
   is already double-counted; part of Q1.
+- R473's class on another surface: on Aujourd'hui, "Modifier" then re-picking the
+  kind already recorded writes a MODIFIED event that changes nothing
+  (AujourdhuiController.record always writes). R473 names the calendar sheet; Q4.
 
 --------------------------------------------------------------------------------
 QUESTIONS
@@ -632,8 +643,11 @@ Q1 (R478 - THE STOP). A day held as FULL, edited in half-day mode (the sheet, or
       copy (fr/).
    AND THE MIRROR (PARK-C1): a day held in halves, edited in whole-day mode -
    does the answer cover it?
-   UNTIL ANSWERED: the branch writes the changed half beside FULL (C's write
-   without C's count) - the shape main already produced.
+   UNTIL ANSWERED: the sheet writes the changed half beside FULL (C's write
+   without C's count); Aujourd'hui's "Modifier" on a half of a whole day writes
+   that half beside FULL whatever is picked, the kind already shown included
+   (its record path has no R473 comparison). Both are the shape main already
+   produced by asking for the halves; neither is a decision.
 
 Q2 R474's fix makes the CHOICE visible; the WRITER is still two screens down in
    half-day mode (PARK-C3). Is that a decision for a task?
@@ -641,7 +655,38 @@ Q2 R474's fix makes the CHOICE visible; the WRITER is still two screens down in
 Q3 uidrive.mjs (PARK-C2): should the shared driver print checked/selected, so the
    next drive cannot misread a choice as nothing?
 
+Q4 Should R473's rule - write only what changed - extend to Aujourd'hui's record
+   path? Today "Modifier" + the same kind writes a MODIFIED event that changes
+   nothing, and (until Q1 is answered) "Modifier" on a half of a whole day writes
+   a half beside FULL even when the kind shown is re-picked. The calendar's
+   comparison (shownFor + changes) would serve both, but R473 names the sheet.
+
 --------------------------------------------------------------------------------
 PUSH PROOF
 --------------------------------------------------------------------------------
-PENDING - written in the commit that follows the full gate.
+THE BRANCH IS PUSHED AND NOT MERGED. an-calendar -> origin/an-calendar. PENDING
+MERGE - the merge is the operator's (R334).
+
+THE COMMITS, in order, each pushed when made:
+    13089b7  ITEM 1 - a save writes exactly what changed (R473, R474)
+                                                       (push: * [new branch])
+    303ff16  ITEM 2 - the calendar follows the setting without a restart (R475)
+    9c506f4  ITEM 3 - a whole day stays answered in half-day mode (R476, R477;
+             R478 is a STOP)
+    6e2d73e  ITEM 4 - one rate, one string, on every screen (R479)
+    0c9ba90  R475 follow-up - a Parametres save keeps the holder's name
+             - the last commit carrying code
+    042cc25  the report, and PARK-C1..C4 in the register
+    <next>   the report completed for Q1/Q4 before the gate - the commit the
+             full gate runs on
+    <final>  STATUS and these push lines, after the gate - REPORT-AN-CALENDAR.txt
+             only
+
+gate:clone WAS NOT RUN, and that is a decision (R133): the branch changes no
+file under web/ (`git diff origin/main...HEAD -- web/` is empty). parking.md and
+this report are root documents whose one check, web/scripts/register-coverage.mjs
+(which RegisterCoverageTest runs inside :app:gate), was run directly on the
+committed text: "register coverage: OK - 112 cited id(s) across 121 report(s),
+all have headings in parking.md".
+
+THE GATE AND THE FINAL PUSH: written in the commit that follows the gate.
