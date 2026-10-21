@@ -1,0 +1,647 @@
+================================================================================
+REPORT-AN-CALENDAR
+THE TRAIL RECORDS WHAT CHANGED, AND NOTHING ELSE
+================================================================================
+
+TASK    relay/AN-CALENDAR.txt, rulings R473-R480 (none renumbered - all free).
+BASE    792d86c (origin/main, contains kmp-4)
+BRANCH  an-calendar, worktree C:/wt/an-calendar (R349), lock held, never committed
+DEVICE  SM-G960F (Galaxy S9) 232bcd8c300c7ece, Android 10, USB, Africa/Casablanca,
+        auto_time 1, clock real and never moved
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+THE STOP FIRED. R476 shows a FULL row and AM/PM rows for one day both stand - on
+the device, on the server, in both engines and in the printed Releve - and are
+COUNTED TWICE. R478 is therefore the operator's question; it is under QUESTIONS
+(Q1) with the options and the trail each one writes. Nothing that depends on the
+answer was decided; everything else was built, proven and pushed.
+
+ITEM 1  A calendar save now writes only the portions whose value changed (kind,
+        absence reason, note) and nothing - not even a sync request - when nothing
+        changed. On the S9 the trail for a day edited three times reads exactly
+        CREATED x2, ONE MODIFIED for the morning, ONE for the note.
+        R474: AN-POLISH's "tap that wrote nothing" was a CHOICE, not a lost write.
+        A kind tap in the sheet only chooses (D16 - Enregistrer writes), and the
+        options differed only in paint, so the accessibility tree the driver reads
+        was identical before and after the tap. Not R473's comparison failing the
+        other way: main had no comparison at all. The choice is now in the tree.
+ITEM 2  Four controllers read the settings once, at construction, and kept them:
+        Calendar, Aujourd'hui, Forecast, Simulation. All four now read at use; the
+        shell refreshes each on arrival. A fence (on FenceRoot) refuses a settings
+        read that runs once in a member/top-level initialiser, an init block or a
+        remember block - RED on exactly the four original lines, then GREEN.
+        Driving it on the S9 surfaced a fifth defect it had been hiding:
+        Parametres' save erased the holder's name from the device. Fixed (wire
+        unchanged).
+ITEM 3  R476 established and pinned (device tests, server source, a live probe of
+        the server, the CSV and the dossier). R477 built: in half-day mode a day
+        held whole is shown answered on Aujourd'hui and in the sheet, and showing
+        it writes nothing. R478: STOP.
+ITEM 4  Neither screen rounds - both truncate. Aujourd'hui truncated a FLOAT copy
+        of the engine's figure (animateFloatAsState): 0.83 as a Float is
+        0.829999983, which truncates to 0,82 - and Geneva's 39,16 would have read
+        39,15. It now states the engine's Double; one formatting serves every
+        screen that states the declarable rate. Same quantity - no label changed.
+
+--------------------------------------------------------------------------------
+STATUS (R391)
+--------------------------------------------------------------------------------
+FULL GATE PENDING on the commit carrying this report. This section is replaced,
+in the commit that follows the gate, by the gate's BUILD line, its exit code and
+its task count - or by the R391 narrow form if it does not run green.
+
+Every increment was green under fast check, :app's full unit suite (count read
+from the JUnit XML), compileDebugAndroidTestKotlin and verifyPaparazziDebug:
+
+    13089b7  ITEM 1                 1221 tests, 0 failures (1212 + 9)
+    303ff16  ITEM 2                 1232 tests, 0 failures (+ 11)
+    9c506f4  ITEM 3                 1240 tests, 0 failures (+ 8)
+    6e2d73e  ITEM 4                 1244 tests, 0 failures (+ 4)
+    0c9ba90  R475 follow-up         1245 tests, 0 failures (+ 1)
+
+ON THE S9, connectedDebugAndroidTest on 6e2d73e's code: 39 of 39 (AN-POLISH's 34
+plus this task's 3 + 2). 0c9ba90 changes ParametresController's local save and its
+JVM test only, which no instrumented test exercises.
+
+--------------------------------------------------------------------------------
+R273
+--------------------------------------------------------------------------------
+REPORT-KMP-4.txt, read for its NOTICED 1, 2, 3, 6 and Q2:
+  N1  the calendar keeps the granularity it was built with      -> ITEM 2 (R475)
+  N2  two screens state today's rate 0,01 apart                 -> ITEM 4 (R479)
+  N3  a day recorded whole is asked for again in half-day mode  -> ITEM 3
+  N6  saving the sheet re-records every half in it              -> ITEM 1 (R473)
+  Q2  "a defect for a task of its own?" - answered by this task: a defect, fixed.
+
+REPORT-AN-POLISH.txt, the calendar tap that wrote nothing - quoted from line 834:
+    "N1  THE CALENDAR DAY SHEET DID NOT RECORD on this device. Opening 19.10.2026
+     and tapping "Domicile" under "Matin" left the sheet unchanged and wrote NO
+     row (device database read twice, before and after; logcat clean - no
+     exception, no crash). The same kind recorded through the Aujourd'hui card and
+     through DevRecorderActivity wrote immediately."
+and its D5 (line 824): "Tapping a kind in the calendar's day sheet for 19.10.2026
+did not write a row - two attempts".
+
+REPORT-AN-ACCOUNT-TAG.txt: the read-at-use fix (a provider, not a value) and its
+fence (AccountCaptureFenceTest), taken as the method for ITEM 2. The calendar
+code (CalendarController, CalendarModel, ui/screens/calendrier/*,
+CalendarEditSheet), AujourdhuiController and the engine's rate functions
+(DeclarableRate.kt, dossier/Aggregate.kt) were read before any change.
+
+--------------------------------------------------------------------------------
+R1
+--------------------------------------------------------------------------------
+(a) origin/main CONTAINS kmp-4:
+      origin/kmp-4 (57303a9) ANCESTOR of origin/main (792d86c)
+    NEGATIVE CONTROL: origin/main ancestor of kmp-4 -> no (expected).
+
+(b) FULL :app:gate --rerun-tasks ON 792d86c, run IN THIS SESSION, in this
+    worktree, after ./gradlew --stop, before a file was touched (tree clean and at
+    792d86c before and after):
+      test floor OK: 1212 unit tests observed (>= 10)
+      BUILD SUCCESSFUL in 9m 43s
+      225 actionable tasks: 225 executed
+      GATE_EXIT=0
+    1212 is the floor KMP-4 reported - the whole suite ran.
+
+(c) THE S9, read before it was written (13:21:15 +01):
+      adb devices -l   232bcd8c300c7ece device product:starltexx model:SM_G960F
+                       transport_id:2 (USB)
+      stay_on_while_plugged_in 0 | airplane_mode_on 0 | adb reverse: empty
+      packages: ch.monreleve.app only - versionName 0.1.0, versionCode 1,
+                flags [ HAS_CODE ALLOW_CLEAR_USER_DATA ALLOW_BACKUP ] (no
+                DEBUGGABLE: KMP-4's audit build), lastUpdateTime 2026-10-21
+                12:01:38
+      certificate (apksigner, from the pulled base.apk): CN=Android Debug,
+                SHA-256 ef336db5977cf5cbfdef24305082fec0a5c01b9d118b5a567ec0174445e373d1
+      base.apk sha256 d5047b74169199b2c08d192c095445e9eef849e83b0a39f13072a01ab489bf81
+      on screen: the welcome screen ("Commencer") - signed out.
+    The audit build is not debuggable, so its database was not readable with
+    run-as and none of this report rests on a device database read: every write
+    is read from the SERVER (EntryEvent, Entry) and the screen (uiautomator).
+
+--------------------------------------------------------------------------------
+ITEM 1 - A SAVE WRITES EXACTLY WHAT CHANGED (R473, R474)
+--------------------------------------------------------------------------------
+THE DEFECT, from the source. CalendarController.save recorded EVERY slot that had
+a kind and always called requestSync; LocalEntryRepository.record always mints a
+new id and a new PENDING row; the server's write.ts writes an EntryEvent for every
+item it is sent (CREATED or MODIFIED, whatever the value). So an untouched half
+became a MODIFIED event - KMP-4's NOTICED 6.
+
+R473 - THE FIX. save() compares each edit with what is stored for its portion -
+kind, absence reason and note, every field the sheet edits - and writes only the
+portions that differ; a save that changes nothing writes nothing and asks for no
+sync (the sheet still closes). The comparison is on what WOULD BE WRITTEN: the
+note is normalised blank -> null on both sides, because the sheet seeds an absent
+note as "" and "" against null would call an untouched half changed.
+
+THE FOUR TESTS, RED ON MAIN, THEN GREEN (CalendarSaveWritesWhatChangedTest, JVM,
+fed exactly what the sheet emits - an untouched note arrives as ""):
+  change the morning only -> one write, for the morning
+      RED: expected:<[(AM, CH)]> but was:<[(AM, CH), (PM, HOME)]>
+  change nothing and save -> zero writes, no sync (half days, and a whole day)
+      RED: "Collection should be empty but contained RecordCommand(... HOME,
+           portion=AM ...)" and "... MISSION_FR, portion=FULL, note=Lyon ..."
+  change the note only -> one write
+      RED: expected:<[(AM, HOME, reunion)]> but was:<[(AM, HOME, reunion),
+           (PM, HOME, null)]>
+  change and change back before saving -> zero writes
+      This is a property of the sheet's DRAFT - by the time save() is called an
+      undone change IS the stored value - so it is driven through the real sheet
+      (CalendarSheetSaveInstrumentedTest, on the S9):
+      RED: "a change undone before saving is no change (R473) expected:<[]> but
+           was:<[EntryEntity(... portion=AM, kind=HOME ...), EntryEntity(...
+           portion=PM, kind=HOME ...)]>" - both halves re-recorded under new ids.
+  GREEN: 9/9 JVM; 3/3 on the S9.
+
+R474 - THE TAP THAT WROTE NOTHING.
+  REPRODUCED FIRST, on the S9, against main's code (the real sheet, the real
+  controller, the real repository over a live in-memory DAO; HALF_DAY; a past
+  working day with nothing recorded; "Domicile" under "Matin"):
+      RED: "the tap left the accessibility tree unchanged - AN-POLISH N1.
+            Actual: null"
+  (A first run gave NO RESULT - "No compose hierarchies found", the screen was
+  off. Repeated with the screen on; that run is the RED above.)
+
+  THE CAUSE, from the source - two facts, neither of them a lost write:
+  1. A kind tap in the sheet only CHOOSES. D16: "NOTHING IS WRITTEN WITHOUT THE
+     SAVE TAP" (CalendarEditSheet). On Aujourd'hui the same tap writes at once,
+     which is the expectation AN-POLISH's drive carried ("The same kind recorded
+     through the Aujourd'hui card ... wrote immediately").
+  2. The chosen option was a filled Button, the others OutlinedButtons - a
+     difference of PAINT, with no state in the semantics tree. uidrive.mjs reads
+     that tree (text, content-desc, bounds), so the tree after the tap was the
+     tree before it: "left the sheet unchanged" was literally true of what the
+     driver could see - and of what TalkBack could say.
+  The save path itself writes: KMP-4's own trail shows this sheet's saves arriving
+  as MODIFIED events, and R480 below shows it again.
+
+  IS IT R473's COMPARISON FAILING THE OTHER WAY? NO. Main had no comparison at
+  all: it wrote MORE than changed (NOTICED 6), never less. The failure the prompt
+  feared - a real change judged "unchanged" - is the failure R473's NEW comparison
+  could introduce, so it is pinned:
+
+  A GENUINE CHANGE IS NEVER DROPPED - five R474 pins, each field changed ALONE:
+  the kind; the absence reason alone (same kind ABSENT); a note removed; a note
+  edited; a half answered for the first time. Each must be exactly one write for
+  exactly that portion. Three are red on main - for the extra write of the
+  untouched half, never for a dropped change. PROVEN TO BITE (R180): the
+  comparison was planted kind-only (verified at the line: the absence and note
+  terms prefixed `false &&`) and the four non-kind changes went red with
+  "Missing elements from index 0 ... but was:<[]>" - the dropped-change shape;
+  the plant was reverted and the file verified byte-identical (cmp).
+
+  THE FIX: the sheet's Option carries `selected` in its semantics. Compose exposes
+  that as checkable/checked (with the platform's own "selected"/"not selected"),
+  so no copy is added and no pixel moves (verifyPaparazziDebug green, no baseline
+  touched). GREEN on the S9.
+
+  ON THE DEVICE, AN-POLISH's EXACT ACTION (uidrive tap "Domicile"), raw uiautomator
+  XML read before and after, audit build of 6e2d73e, 20 Oct 2026, half-day mode:
+      before   En Suisse checkable=true checked=false
+               Domicile  checkable=true checked=false
+               Mission   checkable=true checked=false
+      after    Domicile  checkable=true checked=true   (the others false)
+      POST /api/v1/entries in the server log: 0 - a choice is not a write.
+  uidrive's own `dump` still cannot show this (PARK-C2).
+
+--------------------------------------------------------------------------------
+ITEM 2 - THE CALENDAR FOLLOWS THE SETTING WITHOUT A RESTART (R475)
+--------------------------------------------------------------------------------
+TEST FIRST (SettingsFollowedWithoutRestartTest, RED on main, then GREEN): a store
+switched underneath a controller that already exists, the controller used again
+WITHOUT a rebuild:
+  the calendar's sheet offers the new granularity at once, each way
+      RED: expected:<HALF_DAY> but was:<DAY>
+  Aujourd'hui follows the granularity on its refresh
+      RED: expected:<HALF_DAY> but was:<DAY>   (emitState never updated it at all)
+  Aujourd'hui's year follows a calculation setting (100 % -> 50 %)
+      RED: expected:<120> but was:<240>
+  the forecast follows it      RED: expected:<120> but was:<240>
+  the simulator follows it     RED: expected:<120> but was:<240>
+  GREEN: 5/5.
+
+THE FIX: each controller holds the STORE and reads it where the value is used -
+the sheet's granularity when it opens, every emission's figures once per emission
+(one snapshot per frame). The shell refreshes the calendar when its tab is
+selected (beside Aujourd'hui's existing refresh) and the forecast and simulator
+when their overlay opens - their refresh() existed (F8) and nothing called it.
+
+THE INVENTORY (R425's method: every settings-family read that runs once and is
+kept, across :app main, :shared commonMain and the debug tree):
+  CalendarController.kt:161    settings + granularity   FIXED (read at use)
+  AujourdhuiController.kt:299  settings + granularity   FIXED (per emission; the
+                               state's granularity was set once and never again)
+  ForecastController.kt:47     settings                 FIXED (per emission)
+  SimulationController.kt:58   settings                 FIXED (per emission)
+  ParametresController         savedSettings, and the   SAFE - the settings' ONE
+                               toggles' first state     writer while the shell
+                               (mode, evening, alert)   lives (onboarding and the
+                               /me restore write before it exists); it replaces
+                               savedSettings on each save and updates the toggles
+                               through its own setters. Exempted in the fence,
+                               and the exemption is ASSERTED (below).
+  OnboardingRoute (MainActivity: `val settings = store.load()`) - SAFE: read at
+      composition, not kept in a remember block.
+  EveningNotifier, the threshold-alert evaluation - SAFE: read per invocation.
+  AujourdhuiController's detectionModeStore.load() - SAFE: already at use.
+  OnboardingController, LocalStore - hold the stores, not values. SAFE.
+  (Outside the settings family, noted for the census only: each controller's
+  observeAll() binds its flow to the account at subscription; safe because a
+  sign-in always rebuilds the shell through RESOLVING.)
+
+THE FENCE: SettingsCaptureFenceTest on FenceRoot (AN-FENCE-ROOTS, R460).
+  ROOTS, each pinned by a file only it holds:
+    src/main/kotlin/ch/monreleve/app        pin CalendarController.kt - every
+        controller lives in :app today, by KMP-3's R446: "The controllers do NOT
+        move in this session: whether screens share their state holders is
+        decided with Compose Multiplatform, later."
+    ../shared/src/commonMain/kotlin/...     pin SettingsStore.kt - walked anyway,
+        so the day a controller follows the contract into commonMain it is
+        scanned rather than left behind (R452, taken before the move).
+    src/debug/kotlin/ch/monreleve/app       pin SessionInjection.kt - the one
+        writer of settings outside Parametres while the shell lives.
+  WHAT IT REFUSES: a settings-family read (any ...Store/store/settings .load() or
+  .isEnabled(), or a SharedPrefs...Store(...) read in one expression;
+  tokenStore excluded) that runs ONCE - in a member or top-level initialiser, an
+  init block or a remember block. A small lexer (SettingsReadScanner) decides by
+  the blocks around the read: comments and strings are blanked first; a lambda
+  inside a capturing block is a PROVIDER (deferred, allowed - AN-ACCOUNT-TAG's
+  correct shape); control flow and stdlib inline calls are transparent. Its rules
+  are pinned both ways by snippet tests (7 capture shapes caught, 8 at-use shapes
+  let through) and its limits are stated in the file (by lazy, unlisted inline
+  calls, unnamed receivers - each errs towards letting a line through).
+  POSITIVE CONTROL: it must still find three real reads AT USE in the tree
+  (AujourdhuiController's detectionModeStore.load(), EveningNotifier's
+  SharedPrefsSettingsStore(context).load(), OnboardingRoute's store.load()).
+  EXEMPTIONS ASSERTED: exactly two (Parametres' savedSettings and mutableState),
+  each with a reason, each required to still cover a capture, each required to
+  show the evidence that keeps its copy current (a reassignment / an update).
+  RED ON MAIN, naming exactly the four original lines and not Parametres:
+      AujourdhuiController.kt:299  private val settings: Settings? = settingsStore.load()
+      CalendarController.kt:161    private val settings: Settings? = settingsStore.load()
+      ForecastController.kt:47     private val settings: Settings? = settingsStore.load()
+      SimulationController.kt:58   private val settings: Settings? = settingsStore.load()
+        <- a member's initialiser - it runs once, when the class is built
+  GREEN after the fix: 6/6.
+
+THE FIFTH DEFECT, FOUND ON THE S9 AND CAUSED TO SHOW BY THIS ITEM (0c9ba90).
+Switching "Decompte des journees" turned the greeting "Bonjour Test" into
+"Bonjour" at once. ParametresController builds the Settings it saves from the six
+fields it edits, and SettingsStore.save REPLACES the whole set (R447: "callers
+load, copy, and save") - so every Parametres save erased the holder's name from
+the device. The server kept it (the PATCH omits an absent name: User.name still
+"Test Calendrier" after the save), and the next launch's completeness check
+(R335) fetched it back from /me - which is why nothing showed while Aujourd'hui
+kept a copy taken at construction. The local save now carries the name over from
+the store; the PATCH body is unchanged and asserted to say nothing about the name.
+  ParametresKeepsTheNameTest  RED: Expected "Test Calendrier" but actual was null
+                              GREEN.
+  ON THE S9 (audit build of 0c9ba90): after two Parametres saves the greeting
+  still read "Bonjour Test".
+
+--------------------------------------------------------------------------------
+ITEM 3 - A WHOLE DAY STAYS ANSWERED IN HALF-DAY MODE (R476, R477, R478)
+--------------------------------------------------------------------------------
+R476 - WHAT HAPPENS TODAY IF FULL, AM AND PM COEXIST FOR ONE DAY. Investigated
+before anything changed.
+
+THE DEVICE (MixedPortionsTodayTest - pins TODAY's behaviour; a tripwire that the
+answer to R478 will turn red on purpose):
+  all three rows stand: EntryEntity @Entity(primaryKeys = ["accountTag",
+  "dayDate", "portion"]); recording FULL then AM then PM keeps three rows.
+  the Kotlin engine counts the day TWICE: countDays -> teleworkDays 2.0; the
+  engine input 2.0; declarable rate 0.83 where the one day lived is 0.41.
+  the calendar's month tiles: domicile 2.0 for that day; the cell shows the FULL
+  row's kind (Portion's order is FULL, AM, PM).
+  Aujourd'hui's year panel and the forecast use the same toTeleworkInput, so the
+  same double count.
+
+THE SERVER, from the source:
+  schema.prisma  @@unique([userId, dayDate, portion]) - "at most 3 rows per day";
+                 lib/entries/read.ts says so: "a user who switches granularity
+                 mid-year leaves FULL rows beside AM/PM ones".
+  write.ts       upserts per (userId, dayDate, portion); a CREATED event each.
+  aggregate.ts   countDays sums FULL 1 + AM 0.5 + PM 0.5 - no precedence.
+  service.ts     buildAnnex prints one Releve row per entry.
+  EntryAction    CREATED | MODIFIED only; there is no entry delete path.
+
+THE SERVER, LIVE - a probe on a SECOND test account
+(an-calendar.r476@monreleve.test, the local stack, the real API), a whole day
+posted first, then its two halves (NOTICED 3's order):
+    POST /api/v1/entries [FULL HOME]           200  written 1  duplicates 0
+    POST /api/v1/entries [AM HOME, PM HOME]    200  written 2  duplicates 0
+  the trail (verbatim):
+     action  | portion | kind |           clientMutationId           |       recordedAt        |    day
+    ---------+---------+------+--------------------------------------+-------------------------+------------
+     CREATED | FULL    | HOME | 03072ead-d56f-4cf2-97a6-6db33954580c | 2026-10-21 14:14:56.229 | 2026-10-19
+     CREATED | AM      | HOME | bdfdda82-6f8a-4622-a4b8-fdfb6afd5075 | 2026-10-21 14:14:56.492 | 2026-10-19
+     CREATED | PM      | HOME | 3fa60c52-f866-4219-b9b2-40ff1cac809c | 2026-10-21 14:14:56.492 | 2026-10-19
+    (3 rows)
+  GET /api/v1/dossier?year=2026 (the Releve's data):
+    tiles {"workedDays":240,"swissDays":0,"teleworkDays":2,"missionDays":0}
+    zone.declarableRate 0.83 | recordedEntries 3
+    annex rows for 2026-10-19: 3 - FULL HOME, AM HOME, PM HOME
+    October {"teleworkDays":2, ... "cumulativeDeclarableRate":0.83}
+  WHAT THE RELEVE PRINTS:
+    CSV export (GET /api/v1/export/csv?year=2026), lines 209-211 verbatim:
+      2026-10-19,FULL,HOME,,MANUAL,,,2026-10-21T14:14:56.229Z,,,false
+      2026-10-19,AM,HOME,,MANUAL,,,2026-10-21T14:14:56.492Z,,,false
+      2026-10-19,PM,HOME,,MANUAL,,,2026-10-21T14:14:56.492Z,,,false
+    PDF export: 200, 196 668 bytes, application/pdf. It renders /releve/print,
+    whose page states "every figure below comes from `buildDossierFor`" - the
+    builder behind the dossier read above. THE PDF's TEXT WAS NOT READ: no PDF
+    text tool exists on this host. Claimed from the data and the source only.
+
+AND THE CLIENT'S ONE GUARD, measured on the S9: Parametres' R290 check refuses a
+switch to whole days when the year cannot be counted in whole days -
+"Cette modification est incompatible avec des journees deja enregistrees, qui
+utilisent un decompte different." (no PATCH sent) - with 20 Oct AM CH + PM HOME
+recorded (telework 0.5). With an even pair of halves the switch goes through, and
+the switch TO half-days is never guarded. So both directions can produce a mixed
+day (PARK-C1 is the other direction).
+
+VERDICT: a FULL row and half rows CAN both stand and ARE counted twice - by the
+server, both engines, the calendar's tiles and the printed Releve. R478's STOP
+fires: Q1.
+
+R477 - THE DISPLAY RULE (built). In half-day mode a half with no row of its own,
+on a day held as FULL, shows the FULL day's kind; nothing is written to show it.
+One home (CalendarController.shownFor) feeds both the sheet's prefill and R473's
+comparison, so an untouched save of such a day is no change.
+  WholeDayInHalfDayModeTest, RED on main then GREEN:
+    Aujourd'hui shows a day held whole as answered, both halves its kind, no
+        write                       RED: Expected value to not be null, but was null
+    a half with a row of its own shows that row; the other shows the whole day
+                                    RED: Expected value to not be null ...
+    the sheet opens a day held whole with both halves answered
+                                    RED: expected:<[(MORNING, MISSION_FRANCE),
+                                    (AFTERNOON, MISSION_FRANCE)]> but was:
+                                    <[(MORNING, null), (AFTERNOON, null)]>
+    saving that sheet untouched writes nothing - green on main too (its halves
+        were empty); it guards the R473/R477 interplay
+    the sheet states a whole day's provenance once
+                                    RED on main: expected:<1> but was:<0> (main
+                                    showed none); then RED at 2 once the halves
+                                    showed the FULL row (stated twice), then GREEN.
+  ON THE S9 (0c9ba90): today recorded whole (CREATED FULL HOME, 14:05:53.678
+  UTC), switched to half-days without a restart -> Aujourd'hui: "Matin :
+  Domicile", "Apres-midi : Domicile", "Enregistre", no question; the sheet: both
+  halves Domicile (checked="true"), provenance stated once; Enregistrer untouched
+  -> no request, the day's trail still its single CREATED.
+
+R478 - EDITING SUCH A DAY: STOP. The options and the trail each writes are Q1.
+WHAT THE BRANCH DOES UNTIL THE ANSWER (the shape main already had): a changed
+half is written beside the FULL row (R473 writes what changed). Example: a day
+held FULL HOME, morning changed to En Suisse -> the trail gains CREATED AM CH,
+the FULL row stays, and the day counts telework 1 + swiss 0.5. Main produced the
+same shape by asking for the halves as if empty.
+
+--------------------------------------------------------------------------------
+ITEM 4 - ONE RATE, ONE NUMBER, ON EVERY SCREEN (R479)
+--------------------------------------------------------------------------------
+WHICH SCREEN, AND WHY. Neither rounds; both truncate (formatPercent uses
+RoundingMode.DOWN, as SPEC 7.3 requires). They truncated DIFFERENT NUMBERS:
+  the forecast    formatPercent(results.current.declarableRate, 2) - the engine's
+                  Double, which DecimalFormat reads as its exact two decimals;
+  Aujourd'hui     animateFloatAsState(result.declarableRate.toFloat()) and then
+                  RateDisplay(animRate.toDouble()) - a FLOAT copy.
+  Measured with the same DecimalFormat rule (Java, this host):
+    engine 0.41  -> forecast "0.41"  | Aujourd'hui (0.4099999964...)  "0.40"
+    engine 0.83  -> forecast "0.83"  | Aujourd'hui (0.8299999833...)  "0.82"
+    engine 39.16 -> forecast "39.16" | Aujourd'hui (39.1599998474...) "39.15"
+    engine 4.16  -> forecast "4.16"  | Aujourd'hui (4.1599998474...)  "4.15"
+  KMP-4's fingerprints exactly (0,40/0,41 and 0,82/0,83). The rail's spoken name
+  ("Taux de teletravail declarable ...") carried the same Float.
+SAME QUANTITY, so it is a defect, not a projection: the forecast's "Aujourd'hui,
+votre releve" is results.current.declarableRate - the engine over the recorded
+days alone, the same toTeleworkInput as Aujourd'hui's year panel. No label was
+changed; none is proposed.
+
+THE FIX. Aujourd'hui hands the engine's own Double to the figure and the rail
+whenever its animation is at rest (shownRate); only the frames in between show
+the Float. The declarable rate has ONE formatting, formatDeclarableRate (R206),
+used by every screen that states it: RateDisplay, the rail's label and spoken
+name, the forecast's two figures, the simulator's, the releve's rate and monthly
+cumulative, Parametres' before/after, the comparison's releve side. Two decimals
+at each site, as before; the employer's figure and rateWithoutMissions are other
+quantities and keep formatPercent.
+
+THE PIN, ON THE S9 (RateOneStringInstrumentedTest): one record through the REAL
+AujourdhuiController and ForecastController onto both screens; each must show the
+engine's figure formatted once; records 1/240 (0,4166: third decimal >= 5), 2/240
+and Geneva's 94/240 (asserted "39,16 %"); Aujourd'hui again after an animation.
+  RED on main: "Aujourd'hui shows [0,40 %, 0,5 %, ...] for 1/240, not the engine's
+       0,41 %" and "Aujourd'hui after the animation shows [0,82 %, 0,9 %, ...]
+       for 2/240, not the engine's 0,83 %"
+  GREEN 2/2 (inside the full 39/39).
+  JVM (DeclarableRateDisplayTest, run by the gate): the one formatting gives
+  0,41 / 0,83 / 39,16; a Float copy gives 0,40 / 0,82 / 39,15 (the hazard,
+  pinned); shownRate hands over the engine's Double at rest.
+THE PINNED STRING: "0,83 %" (U+00A0 before the sign) for 2/240 - on the S9, after
+R480, Aujourd'hui read "0,83 %" and the rail "Taux de teletravail declarable
+0,83 %, imposition en Suisse."; the forecast's "Aujourd'hui, votre releve" read
+"0,83 %" (projection 9,58 %). Same record, same string.
+NO BASELINE RE-RECORDED, decided BEFORE the change by measurement: the Aujourd'hui
+year fixtures are 30/240 (12,50 - exact as a Float) and 110/240 (45,83 - its
+Float lies ABOVE 45.83, so truncation keeps it); the component fixture hands
+RateDisplay a Double. verifyPaparazziDebug green.
+
+--------------------------------------------------------------------------------
+R480 - PROVEN ON THE SERVER'S TRAIL
+--------------------------------------------------------------------------------
+SETUP. Local stack: `PORT=3000 pnpm dev` from the main checkout's web/
+(DEVIATION 1). R169: /api/health -> {"service":"monreleve", ... "status":"ok"};
+/api/ready 200. Audit build, -PfrontalierHost=127.0.0.1, `adb reverse tcp:3000
+tcp:3000` (listed before every network step). Never production. A new account,
+an-calendar.r480@monreleve.test (id cmvi5k8mz0001vsv348b6qqbe), signed in BY
+CODE (POST /auth/code 200), onboarded: Test Calendrier, Geneve, 100 %, 240 days,
+half days, the whole year, manual. Clocks: phone 14:31 +01 = UTC 13:31 = Paris
+15:31 CEST; never moved.
+
+THE DAY: 20 Oct 2026, in half days, through the calendar sheet (audit build of
+6e2d73e - see DEVIATION 4):
+  1. record Matin Domicile + Apres-midi Domicile, Enregistrer      POST 200
+  2. open, change the MORNING only to En Suisse, Enregistrer        POST 200
+  3. open, change NOTHING, Enregistrer        no POST; the server logged no line
+                                              at all in the 8 s after the tap
+  4. open, change the afternoon's NOTE only ("Note R480"), Enregistrer  POST 200
+
+THE SERVER'S TRAIL FOR THAT DAY AFTERWARDS (EntryEvent, verbatim):
+    run as  docker exec frontalier-postgres psql -U frontalier -d frontalier -c "<query>"
+    query   SELECT action, portion, kind, "clientMutationId", "recordedAt",
+                   "dayDate"::text AS day
+            FROM "EntryEvent"
+            WHERE "userId" = 'cmvi5k8mz0001vsv348b6qqbe' AND "dayDate" = '2026-10-20'
+            ORDER BY "recordedAt", portion;
+    (user frontalier, not postgres; every Prisma name double-quoted)
+      action  | portion | kind |           clientMutationId           |       recordedAt        |    day
+    ----------+---------+------+--------------------------------------+-------------------------+------------
+     CREATED  | AM      | HOME | ab79a4c7-0fb5-4e04-9ce7-4fc2d227b16c | 2026-10-21 13:41:36.73  | 2026-10-20
+     CREATED  | PM      | HOME | 70ddbeb9-9688-404d-8857-99dccc45712d | 2026-10-21 13:41:36.73  | 2026-10-20
+     MODIFIED | AM      | CH   | 34f0beec-c7ea-4efc-bc91-8355cb27d0ad | 2026-10-21 13:42:55.432 | 2026-10-20
+     MODIFIED | PM      | HOME | 75adbea0-6c3e-4142-897c-d38fdeb5e569 | 2026-10-21 13:45:21.363 | 2026-10-20
+    (4 rows)
+  THE ROWS IT DESCRIBES (Entry), because EntryEvent has no note column:
+     portion | kind |   note    |           clientMutationId           |    firstRecordedAt     |        updatedAt
+    ---------+------+-----------+--------------------------------------+------------------------+-------------------------
+     AM      | CH   |           | 34f0beec-c7ea-4efc-bc91-8355cb27d0ad | 2026-10-21 13:41:36.73 | 2026-10-21 13:42:55.421
+     PM      | HOME | Note R480 | 75adbea0-6c3e-4142-897c-d38fdeb5e569 | 2026-10-21 13:41:36.73 | 2026-10-21 13:45:21.353
+    (2 rows)
+  READ AS R480 ASKS: exactly CREATED x2, then ONE MODIFIED for the morning, then
+  ONE for the note. The note event is HOME -> HOME; it is the note's because the
+  PM row now holds "Note R480" under that very mutation id (75adbea0), and the
+  morning row's id and updatedAt did not move with it. NOTHING FOR THE UNTOUCHED
+  HALF: after step 2 the afternoon kept id 70ddbeb9 and updatedAt 13:41:36.871
+  (read between the steps). NOTHING FOR THE EMPTY SAVE: no event between
+  13:42:55.432 and 13:45:21.363, and no request reached the server.
+  POSITIVE CONTROL: the same query, the same quoting, returns the two CREATED rows
+  (and read 2, 3, 3 and 4 rows after each step) - it is pointed at the right
+  table. KMP-4's BEFORE for the same edit: "MODIFIED 15 PM HOME ... (NOTICED 6)".
+
+WHOLE DAYS AND BACK, WITHOUT A RESTART - the sheet followed each time. (The first
+attempt was REFUSED by R290's guard - ITEM 3; 19 Oct's afternoon was recorded so
+the year counted whole days - DEVIATION 6.) On the audit build of 0c9ba90,
+process 18071 (am_proc_start 15:05:08.594):
+  15:06:45  Parametres -> Demi-journees    PATCH /api/v1/me 200
+            sheet (16 Oct): Matin + Apres-midi; Aujourd'hui: today answered
+  15:09:37  Parametres -> Journees entieres  PATCH /api/v1/me 200
+            sheet (16 Oct): one whole-day slot, 0 half labels
+  15:10:34  Parametres -> Demi-journees    PATCH /api/v1/me 200
+            sheet (16 Oct): 2 half labels, 2 sets of kinds
+  (and on 6e2d73e, process 13863: 14:51:04 -> Journees entieres, PATCH 200,
+   sheet: one slot)
+  NO RESTART, from the events buffer: after the install's kill of 13863
+  (15:05:05.810) and 18071's start and MainActivity create (15:05:08.948), no
+  am_proc_start, am_create_activity, am_on_create_called or am_kill for the app
+  through 15:11:17; pidof 18071 throughout. Positive control: 28 activity
+  lifecycle events of the system logged in the same window.
+A DAY RECORDED WHOLE, THEN HALF-DAY MODE: today (21 Oct) recorded on Aujourd'hui in
+whole days -> CREATED FULL HOME 14:05:53.678 UTC; after the switch, Aujourd'hui
+showed it answered (Matin : Domicile / Apres-midi : Domicile / Enregistre), asked
+nothing, wrote nothing (POST count unchanged).
+THE TWO RATE SCREENS AGREE: record = 19 PM + 20 PM + 21 whole = 2 days of
+telework -> Aujourd'hui "0,83 %" and the forecast's "Aujourd'hui, votre releve"
+"0,83 %" (KMP-4 read 0,82 against 0,83 for this record shape).
+
+THE ACCOUNT'S WHOLE TRAIL at the end (6 events): the four above; CREATED
+2026-10-19 PM HOME 13:50:04.466; CREATED 2026-10-21 FULL HOME 14:05:53.678. The
+server log's "two POSTs" for 19 Oct were a 401 (expired access token), a refresh
+and the retry - one write.
+
+THE PHONE, LEFT AS FOUND - end state read at 15:19:17 +01:
+  adb reverse: empty (removed) | stay_on_while_plugged_in 0 (read 0 at 13:21:15,
+  written 3 at 13:26:24 for the device phase, restored) | airplane_mode_on 0
+  (never touched) | Africa/Casablanca, auto_time 1, clock never moved.
+  Signed out through the app WITH the tunnel up: POST /api/v1/auth/sign-out 200;
+  the welcome screen; the device record erased by design.
+  Installed: ch.monreleve.app only, 0.1.0 (1), not debuggable - THIS BRANCH's
+  audit build (0c9ba90, sha256 a46dde8a11fb2d6ea5de17e15ad29f6140b7f099506b273cb91de3e79c52d256,
+  verified by pulling it back), same debug certificate. KMP-4's audit build is
+  NOT the one installed: the first connectedDebugAndroidTest uninstalled it, as
+  AGP always does.
+  Local stack: the dev server stopped (TaskStop) and its surviving node process
+  (51688, the scheduler's own pid in the log) killed (R179); port 3000 free,
+  control port 5436 visible.
+
+--------------------------------------------------------------------------------
+NEW COPY
+--------------------------------------------------------------------------------
+NONE. No French string was added or changed. R474's fix uses the platform's own
+"selected" semantics.
+
+--------------------------------------------------------------------------------
+PARKED (R456: series C, claimed from the register - letters in use A B D F G I K
+L M P R S U V; no heading and no citation of PARK-C*; the pattern
+PARK(?:AN)?-[A-Z]?\d+ sees PARK-C1)
+--------------------------------------------------------------------------------
+PARK-C1  a day held in halves, viewed in whole-day mode, is shown empty - R477's
+         mirror; folded into Q1.
+PARK-C2  uidrive.mjs cannot see which option is chosen (it prints text and
+         content-desc only).
+PARK-C3  the calendar sheet opens half-expanded; in half-day mode its Save is two
+         screens down.
+PARK-C4  four copies of the settings-to-granularity mapping (R206).
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+1. THE WEB SERVER RAN FROM THE MAIN CHECKOUT, read-only, to avoid a second
+   install: `git diff origin/main...HEAD -- web/` is EMPTY. Its stdout went to a
+   scratchpad log, which is where the sign-in codes came from.
+2. stay_on WAS WRITTEN (3) for the device phase, after being read (0); restored.
+3. ONE CONNECTED RUN WAS NO RESULT ("No compose hierarchies found" - the screen
+   was off). Recorded as such and repeated; the repeat is the RED reported.
+4. R480's DAY (20 Oct) RAN ON THE AUDIT BUILD OF 6e2d73e; the rest of R480 on
+   0c9ba90. 6e2d73e..0c9ba90 changes ParametresController.kt (10 lines) and adds
+   ParametresKeepsTheNameTest.kt - nothing on the calendar's save path.
+5. A FIFTH FIX OUTSIDE THE NAMED ITEMS: Parametres keeps the holder's name
+   (0c9ba90). Found on the S9; ITEM 2 caused it to show; leaving it would have
+   shipped a visible regression. Test-first; the wire unchanged.
+6. 19 OCT's AFTERNOON WAS RECORDED on the R480 account so that the year counted
+   whole days and R290's guard let the switch through; 20 Oct's trail untouched.
+7. R476's SERVER SIDE WAS PROVEN LIVE ON A SECOND ACCOUNT, not by a web test:
+   the branch stays Android-only (a web test would owe gate:clone, R391).
+8. ITEM 4 TOUCHED EVERY SCREEN THAT STATES THE DECLARABLE RATE, not only the
+   two, because R479 says "every screen that shows a rate uses the engine's one
+   formatting". Output unchanged at each, Paparazzi green.
+9. R473's "change and change back" lives in the instrumented test (the sheet's
+   draft), not the JVM file - it is the same as "change nothing" by the time
+   save() is called.
+10. A BACK key during onboarding left the app (no keyboard was up); relaunched,
+   same process, before any R480 step.
+
+--------------------------------------------------------------------------------
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------------------
+- Stale session locks in two other worktrees, not mine: C:/wt/an-account-tag
+  ("AN-ACCOUNT-TAG", created 2026-10-20) and C:/wt/fw-gate-clean ("FW-GATE-CLEAN
+  ... R379 -> R393", 2026-10-16). Reported, not touched.
+- The main checkout: at 792d86c, its lock, the operator's modified
+  relay/AN-PULL.txt (mtime 11:41 UTC, before this session) and 45 untracked files
+  (24 android/scripts, 21 relay) - the same list at the end as at the start.
+- The R477 display for an already-mixed day (FULL + AM): each half with a row of
+  its own shows that row, the other shows the FULL row. A display of a record that
+  is already double-counted; part of Q1.
+
+--------------------------------------------------------------------------------
+QUESTIONS
+--------------------------------------------------------------------------------
+Q1 (R478 - THE STOP). A day held as FULL, edited in half-day mode (the sheet, or
+   Aujourd'hui's "Modifier" on a half): what should be written? Example: FULL
+   HOME, then "Matin -> En Suisse".
+   A  EDIT IT AS A WHOLE DAY. A day held whole stays one slot in half-day mode.
+      Trail: ONE MODIFIED (FULL, CH). Counted once. No server change. Cost: that
+      day can never be split into halves after the switch.
+   B  REPLACE FULL BY TWO HALVES. Write AM CH and PM HOME and retire the FULL row.
+      Trail: CREATED (AM, CH), CREATED (PM, HOME), and an event that does not
+      exist yet - EntryAction is CREATED | MODIFIED only and there is no entry
+      delete path, so retiring needs schema + API + server work (outside this
+      task's boundaries). Without it B is a double count.
+   C  HALVES OUTRANK FULL IN THE COUNT. Write only the changed half (what the
+      branch does today) and teach BOTH engines' countDays (bound by
+      fixtures/aggregation-cases.json) and the Releve's annex to read a day with
+      any half row as halves (a half without its own row falls back to FULL -
+      R477's display rule made into the counting rule). Trail: CREATED (AM, CH);
+      the FULL row and its CREATED stay. Counted once. Needs the aggregation on
+      both sides, the shared fixture and the server's annex.
+   D  REFUSE A HALF EDIT OF A WHOLE DAY, with a notice. Trail: nothing. Needs new
+      copy (fr/).
+   AND THE MIRROR (PARK-C1): a day held in halves, edited in whole-day mode -
+   does the answer cover it?
+   UNTIL ANSWERED: the branch writes the changed half beside FULL (C's write
+   without C's count) - the shape main already produced.
+
+Q2 R474's fix makes the CHOICE visible; the WRITER is still two screens down in
+   half-day mode (PARK-C3). Is that a decision for a task?
+
+Q3 uidrive.mjs (PARK-C2): should the shared driver print checked/selected, so the
+   next drive cannot misread a choice as nothing?
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+PENDING - written in the commit that follows the full gate.
