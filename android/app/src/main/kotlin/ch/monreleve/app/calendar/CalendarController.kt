@@ -13,7 +13,6 @@ import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.RecordCommand
 import ch.monreleve.app.dossier.LatenessForecast
 import ch.monreleve.app.onboarding.GranularityChoice
-import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -146,7 +145,10 @@ data class SelectionSnapshot(
 @Suppress("LongParameterList", "TooManyFunctions")
 class CalendarController(
     private val repository: EntryRepository,
-    settingsStore: SettingsStore,
+    // AN-CALENDAR (R475): the STORE is held, never a value read from it. The settings were read once here, in the
+    // constructor, and kept - so after Parametres switched to half-days the sheet still offered one whole-day slot
+    // until the app was restarted (REPORT-KMP-4 NOTICED 1). Every use below asks the store at that moment.
+    private val settingsStore: SettingsStore,
     private val taxYear: Int,
     private val clock: Clock,
     private val scope: CoroutineScope,
@@ -158,9 +160,6 @@ class CalendarController(
     restored: CalendarSnapshot? = null,
 ) : DayWriter {
     private val today: String = todayInParis(clock)
-    private val settings: Settings? = settingsStore.load()
-    private val granularity: GranularityChoice =
-        if (settings?.granularity == "HALF_DAY") GranularityChoice.HALF_DAY else GranularityChoice.DAY
     private var entries: List<EntryEntity> = emptyList()
 
     // AN-STATE: a restored month is clamped into the navigable range the same way initialMonth() is (a partial
@@ -191,13 +190,13 @@ class CalendarController(
 
     // AN-STATE: a restored month, clamped into the navigable range (the same bounds initialMonth uses).
     private fun clampMonth(month: Int): Int {
-        val loaded = settings ?: return month.coerceIn(1, LAST_MONTH)
+        val loaded = settingsStore.load() ?: return month.coerceIn(1, LAST_MONTH)
         return month.coerceIn(firstNavMonth(loaded, taxYear), LAST_MONTH)
     }
 
     /** Open on the current month, clamped into the navigable range (a partial year starts mid-year). */
     private fun initialMonth(): Int {
-        val loaded = settings ?: return LocalDate.parse(today).monthValue
+        val loaded = settingsStore.load() ?: return LocalDate.parse(today).monthValue
         val first = firstNavMonth(loaded, taxYear)
         val parsed = LocalDate.parse(today)
         val current = if (parsed.year == taxYear) parsed.monthValue else first
@@ -368,8 +367,16 @@ class CalendarController(
         closeSheet()
     }
 
+    /**
+     * AN-CALENDAR (R475): the granularity AS IT IS NOW, read when a sheet is opened - so a switch made in Parametres
+     * is offered by the next sheet without a restart.
+     */
+    private fun granularityNow(): GranularityChoice =
+        if (settingsStore.load()?.granularity == "HALF_DAY") GranularityChoice.HALF_DAY else GranularityChoice.DAY
+
     private fun editableDay(isoDate: String): EditableDay {
         val rows = entries.filter { it.dayDate == isoDate }
+        val granularity = granularityNow()
         val slots =
             if (granularity == GranularityChoice.HALF_DAY) {
                 listOf(editableSlot(Slot.MORNING, rows), editableSlot(Slot.AFTERNOON, rows))
@@ -408,8 +415,14 @@ class CalendarController(
         )
     }
 
+    /**
+     * AN-CALENDAR (R475): re-read the settings and redraw the month - the shell calls this when the calendar's tab is
+     * selected, the way it refreshes Aujourd'hui, so a change of activity start made in Parametres is shown at once.
+     */
+    fun refresh() = recompute()
+
     private fun recompute() {
-        val loaded = settings ?: return
+        val loaded = settingsStore.load() ?: return
         val yearEntries = entries.filter { it.dayDate.startsWith("$taxYear-") }
         // AN-STATE (R310): reopen a sheet that was open before a rebuild, once the rows have loaded so the
         // prefill is the recorded day's (R181), not an empty one. Cleared after the first reopen so a later

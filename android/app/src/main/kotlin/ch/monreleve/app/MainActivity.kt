@@ -585,6 +585,15 @@ internal fun MainShell(
     var comparisonYear by rememberSaveable { mutableStateOf<Int?>(null) }
     val forecastState by controllers.forecast.state.collectAsState()
     val simulationState by controllers.simulation.state.collectAsState()
+    // AN-CALENDAR (R475): opening the forecast (or the rhythm editor, or the simulator) re-reads the settings, so a
+    // projection is never drawn from an employment rate or a method Parametres has since changed. Both refreshes
+    // existed (F8) and nothing called them.
+    LaunchedEffect(forecastRoute) {
+        if (forecastRoute != null) {
+            controllers.forecast.refresh()
+            controllers.simulation.refresh()
+        }
+    }
 
     val aujourdhuiState by controllers.aujourdhui.state.collectAsState()
     val calendarState by controllers.calendar.state.collectAsState()
@@ -731,7 +740,11 @@ internal fun MainShell(
                 onSelect = { selected ->
                     // AN-AUTO: returning to Aujourd'hui re-reads the logging mode (toggled in Parametres) and
                     // today's position, so a mode change made on another tab is reflected at once.
+                    // AN-CALENDAR (R475): it re-reads the settings too, now that it reads them at use, and the
+                    // calendar does the same - a granularity or activity start changed in Parametres is shown on
+                    // arrival, with no restart.
                     if (selected == AppTab.AUJOURDHUI) controllers.aujourdhui.refresh()
+                    if (selected == AppTab.CALENDRIER) controllers.calendar.refresh()
                     tab = selected
                 },
             )

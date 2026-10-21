@@ -237,6 +237,10 @@ private fun AbsenceChoice.toReason(): AbsenceReason =
         AbsenceChoice.AUTRE -> AbsenceReason.AUTRE
     }
 
+/** AN-CALENDAR (R475): the person's granularity in the screen's vocabulary, from the settings as read NOW. */
+private fun granularityOf(settings: Settings?): GranularityChoice =
+    if (settings?.granularity == "HALF_DAY") GranularityChoice.HALF_DAY else GranularityChoice.DAY
+
 private fun Slot.toPortion(): Portion =
     when (this) {
         Slot.FULL -> Portion.FULL
@@ -296,12 +300,13 @@ class AujourdhuiController(
     // rebuild (never flickers off when the tally stream re-emits); markShown() persists "told once" across
     // relaunches. See computeNearBorder.
     private var nearBorderActive = false
-    private val settings: Settings? = settingsStore.load()
-    private val granularity: GranularityChoice =
-        if (settings?.granularity == "HALF_DAY") GranularityChoice.HALF_DAY else GranularityChoice.DAY
 
-    private val mutableState =
-        MutableStateFlow(AujourdhuiState(today = today, granularity = granularity, holderName = settings?.name))
+    // AN-CALENDAR (R475): NO SETTINGS ARE HELD HERE. They were read once, in the constructor, and kept for the life
+    // of the shell - so a switch to half-days, or a new employment rate, made in Parametres reached this screen only
+    // after a restart (the calendar's REPORT-KMP-4 NOTICED 1, in the controller beside it). Every emission reads the
+    // store, and the shell's tab-select refresh (AN-AUTO's precedent for the logging mode) is what brings a change
+    // made on another tab here at once.
+    private val mutableState = MutableStateFlow(firstFrame())
     val state: StateFlow<AujourdhuiState> = mutableState.asStateFlow()
 
     init {
@@ -337,7 +342,16 @@ class AujourdhuiController(
         emitState()
     }
 
+    /** The first frame, before the repository's first emission: today, the mode and the greeting's name, read now. */
+    private fun firstFrame(): AujourdhuiState {
+        val settings = settingsStore.load()
+        return AujourdhuiState(today = today, granularity = granularityOf(settings), holderName = settings?.name)
+    }
+
     private fun emitState() {
+        // R475: read ONCE per emission and passed down, so every figure in one frame comes from one snapshot.
+        val settings = settingsStore.load()
+        val granularity = granularityOf(settings)
         val todays = lastEntries.filter { it.dayDate == today }
         val mode = detectionModeStore.load()
         val fullDay = todays.firstOrNull { e -> e.portion == Portion.FULL }
@@ -358,13 +372,14 @@ class AujourdhuiController(
         // second count (R206), and the month summary + week strip come from CalendarModel - the SAME functions
         // the calendar uses, so the home and the calendar cannot disagree about a count or a day (one way of
         // counting). Everything is null/empty when there are no settings (defensive; validated at onboarding).
-        val yearPanel = computeYear(lastEntries)
-        val monthSummary = monthSummaryOf(lastEntries)
+        val yearPanel = computeYear(lastEntries, settings)
+        val monthSummary = monthSummaryOf(lastEntries, settings)
         val weekCells =
             if (settings == null) emptyList() else weekdayCells(lastEntries, settings, currentTaxYear, today)
         mutableState.update {
             it.copy(
                 today = today,
+                granularity = granularity,
                 holderName = settings?.name,
                 loggingMode = mode,
                 fullDay = fullDay?.toDayEntry(),
@@ -387,7 +402,10 @@ class AujourdhuiController(
      * tiles use (buildMonthView.summary). « This month » is today's Paris month in the current tax year (both
      * refreshed on resume, F8). Null when settings are unavailable.
      */
-    private fun monthSummaryOf(entries: List<EntryEntity>): MonthSummary? {
+    private fun monthSummaryOf(
+        entries: List<EntryEntity>,
+        settings: Settings?,
+    ): MonthSummary? {
         val settingsNow = settings ?: return null
         val month = LocalDate.parse(today).monthValue
         return buildMonthView(entries, settingsNow, currentTaxYear, today, month).summary
@@ -464,8 +482,11 @@ class AujourdhuiController(
      * engine cannot produce a result (settings were validated at onboarding, so this is defensive).
      */
     @Suppress("ReturnCount")
-    private fun computeYear(entries: List<EntryEntity>): YearPanel? {
-        val settings = settings ?: return null
+    private fun computeYear(
+        entries: List<EntryEntity>,
+        settingsNow: Settings?,
+    ): YearPanel? {
+        val settings = settingsNow ?: return null
         // F8 (AN-FIX): the tax year is the clock's current Paris year (currentTaxYear), refreshed on resume,
         // so a session open across 31 December shows the new year's position after midnight.
         val yearEntries = entries.filter { it.dayDate.startsWith("$currentTaxYear-") }
