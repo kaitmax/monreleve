@@ -22,6 +22,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import ch.monreleve.app.aujourdhui.AbsenceChoice
 import ch.monreleve.app.aujourdhui.RecordedKind
 import ch.monreleve.app.aujourdhui.Slot
@@ -233,6 +235,11 @@ private fun ProvenanceBlock(day: EditableDay) {
     }
 }
 
+// AN-CALENDAR (R474). THE CHOICE IS IN THE SEMANTICS TREE, not only in the paint. A chosen option was a filled
+// Button and an unchosen one an OutlinedButton - a difference no accessibility service can see. So a tap on
+// « Domicile » under « Matin » left the tree exactly as it was: TalkBack had nothing new to say, and AN-POLISH's
+// driver, which reads that tree, recorded "left the sheet unchanged" (REPORT-AN-POLISH N1) about a tap that had
+// in fact chosen. `selected` says it in the platform's own words, so no copy is added and no pixel moves.
 @Composable
 private fun Option(
     label: String,
@@ -240,7 +247,7 @@ private fun Option(
     onClick: () -> Unit,
 ) {
     val shape = RoundedCornerShape(Radius.md)
-    val sizing = Modifier.fillMaxWidth().heightIn(min = Spacing.space48)
+    val sizing = Modifier.fillMaxWidth().heightIn(min = Spacing.space48).semantics { this.selected = selected }
     if (selected) {
         Button(onClick = onClick, shape = shape, modifier = sizing) { Text(text = label) }
     } else {

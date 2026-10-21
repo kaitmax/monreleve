@@ -336,25 +336,34 @@ class CalendarController(
             ?: emptySet()
     }
 
-    /** Record the sheet's edits: one mutation per slot through the queue (D16 - the Save tap is the writer). */
+    /**
+     * Record the sheet's edits (D16 - the Save tap is the writer), and ONLY the portions whose value changed.
+     *
+     * AN-CALENDAR (R473). Each edit is compared with what is stored for its portion - the kind, the absence
+     * reason and the note, every field the sheet edits - and written only if one of them differs. A save that
+     * changes nothing writes nothing and asks for no sync. Before this, every slot holding a kind was recorded
+     * on every save: changing a morning re-recorded the afternoon as well, a new mutation id for the same value,
+     * and the server's append-only trail gained a MODIFIED event for something nobody did (REPORT-KMP-4 NOTICED 6).
+     *
+     * THE COMPARISON IS ON WHAT WOULD BE WRITTEN, not on what was typed: the note is normalised exactly as the
+     * write normalises it (blank -> null) on both sides, because the sheet seeds an absent note as "" and a
+     * comparison of "" with null would call an untouched half "changed" - the defect again, one layer down.
+     */
     fun save(
         isoDate: String,
         edits: List<SlotEdit>,
     ) {
-        scope.launch {
-            for (edit in edits) {
-                repository.record(
-                    RecordCommand(
-                        dayDate = isoDate,
-                        kind = edit.kind.toEntryKind(),
-                        portion = edit.slot.toPortion(),
-                        absenceReason = edit.absence?.toReason(),
-                        note = edit.note?.takeIf { it.isNotBlank() },
-                    ),
-                )
+        val stored = entries.filter { it.dayDate == isoDate }
+        val changed =
+            edits
+                .map { it.toCommand(isoDate) }
+                .filter { command -> command.changes(stored.firstOrNull { it.portion == command.portion }) }
+        if (changed.isNotEmpty()) {
+            scope.launch {
+                for (command in changed) repository.record(command)
+                // SPEC 13.2: written to Room, then enqueued; WorkManager replays on connectivity.
+                requestSync()
             }
-            // SPEC 13.2: written to Room, then enqueued; WorkManager replays on connectivity.
-            requestSync()
         }
         closeSheet()
     }
@@ -414,6 +423,31 @@ class CalendarController(
         }
     }
 }
+
+// AN-CALENDAR (R473): the note as the write stores it - a blank note is no note. One home, used on BOTH sides of
+// the comparison and by the write itself, so the three cannot disagree about what "the same note" means.
+private fun String?.normalisedNote(): String? = this?.takeIf { it.isNotBlank() }
+
+/** One edit as the write it would make. */
+private fun SlotEdit.toCommand(isoDate: String): RecordCommand =
+    RecordCommand(
+        dayDate = isoDate,
+        kind = kind.toEntryKind(),
+        portion = slot.toPortion(),
+        absenceReason = absence?.toReason(),
+        note = note.normalisedNote(),
+    )
+
+/**
+ * R473: would writing this command change what is stored for its portion? Every field the sheet edits is
+ * compared - kind, absence reason, note - and a portion with no row is always a change (R474: a half answered
+ * for the first time must never be judged unchanged).
+ */
+private fun RecordCommand.changes(stored: EntryEntity?): Boolean =
+    stored == null ||
+        stored.kind != kind ||
+        stored.absenceReason != absenceReason ||
+        stored.note.normalisedNote() != note
 
 // The wire<->screen enum mappings, mirroring AujourdhuiController's (which keeps them private). Enum
 // whens the compiler checks exhaustively, never French copy, so this is not the duplication R206 forbids.
