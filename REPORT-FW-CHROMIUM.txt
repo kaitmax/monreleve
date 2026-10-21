@@ -1,0 +1,305 @@
+REPORT-FW-CHROMIUM - why production stopped deploying, and what it takes to resume
+================================================================================
+Operator request, 2026-10-21: production has not deployed since 2026-10-15
+(#443, 878ec93); #445-#470 all failed at the Chromium install. Fix the pin, say
+what to set in Coolify, explain #444, explain the 14-October duplicates, and
+propose a plan for the two secrets marked build-time. Push once the build passes
+locally, confirm the deploy, list what reached production, report and stop.
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+1. THE PIN IS FIXED AND PROVEN LOCALLY, but the fix alone cannot deploy: Coolify's
+   build-time CHROMIUM_VERSION still says 155.0.8059.39-1~deb12u1 and OVERRIDES
+   the file.
+2. #444 WAS A HEALTHCHECK-WINDOW FAILURE, NOT A CODE DEFECT. The image built, the
+   app started and said Ready, and Docker had recorded no probe at all when
+   Coolify's window closed.
+3. THE 14-OCTOBER DUPLICATES WERE CAUSED BY THIS SESSION, not by CI. The repo's
+   CI makes no Coolify API call. This session pushed main and then called
+   Coolify's deploy API about ten seconds later, three times.
+4. RESEND_API_KEY AND FCM_PRIVATE_KEY DO NOT NEED TO BE BUILD-TIME. The build
+   never reads them. A fix plan follows; nothing was changed.
+5. A SECOND BLOCKER WAS FOUND THAT THE REQUEST DID NOT NAME: the next successful
+   deploy would very likely serve code against a database that lacks the
+   CodeAttempt table. Sign-in by code and account deletion would return 500.
+   This is the shape of the 14-October incident.
+
+--------------------------------------------------------------------------------
+STATUS (R391)
+--------------------------------------------------------------------------------
+Pin bumped, built locally, gate:changed GREEN on 03e676d.
+gate:clone: NO RESULT. It exited 1 because a test WORKER FAILED TO START, not
+because a test failed (see PUSH PROOF). R199 requires gate:clone green before any
+push, so NOTHING WAS PUSHED: not the branch, not main. Nothing was deployed, so
+the deploy is NOT confirmed. Increments green under fast check. FULL GATE
+(gate:clone) NOT GREEN on 03e676d.
+
+--------------------------------------------------------------------------------
+1. THE CHROMIUM PIN
+--------------------------------------------------------------------------------
+THE VERSION WAS ASKED OF DEBIAN, NOT COPIED FROM THE REQUEST. Inside the image's
+own base, node:22-bookworm-slim, `apt-cache madison chromium` lists:
+    155.0.8059.79-1~deb12u1   debian-security bookworm-security/main
+    150.0.7871.100-1~deb12u1  debian bookworm/main
+.39 is gone. Debian keeps only the newest point release in bookworm-security,
+so a pinned build disappears the day the next one ships.
+
+THE CHANGE: web/Dockerfile:65
+    ARG CHROMIUM_VERSION=155.0.8059.39-1~deb12u1  ->  155.0.8059.79-1~deb12u1
+That is the only tracked file naming the old pin. Reports and relay prompts were
+excluded as history.
+
+LOCAL BUILD, same Dockerfile and context Coolify uses (/web):
+    BUILD_EXIT=0, 0 error lines
+    /etc/frontalier-chromium-version -> 155.0.8059.79-1~deb12u1
+    /usr/bin/chromium --version      -> Chromium 155.0.8059.79 built on Debian
+                                        GNU/Linux 12 (bookworm)
+
+GATE (R132):
+    1 path matched: web/Dockerfile -> the container (R251)
+    suites: typecheck, lint, test, build, test:container
+    typecheck 0, lint 0, test 3290 passed, build 0, test:container 21 passed
+test:container includes three checks that drive R249's diagnostic with a pin the
+archive does not serve: "explains why a pinned build disappears", "lists a real
+version the archive offers", "names BOTH places the version is set".
+
+WHAT TO SET IN COOLIFY (application monreleve:main, build variable):
+    CHROMIUM_VERSION = 155.0.8059.79-1~deb12u1
+    keep "Build Variable" ticked, exactly as it is today.
+
+RECOMMENDED INSTEAD: DELETE THE COOLIFY VARIABLE. Its value is a copy of the
+Dockerfile's ARG, and R249's own message calls them "two sources of truth and
+the second one wins". With the variable gone, the ARG default applies and a pin
+bump is one reviewed, gated commit. The cost of keeping both is the six days
+just lost: the file can be right while the deploy still fails.
+If you delete it, two things describe the old two-place arrangement and become
+stale: R249's failure text (it names "the CHROMIUM_VERSION env var in Coolify")
+and container-check's assertion "names BOTH places the version is set". That is
+a small follow-up commit. Nothing breaks in the meantime.
+
+--------------------------------------------------------------------------------
+2. WHY #444 FAILED
+--------------------------------------------------------------------------------
+#444, d204fa0 (Merge fw-code-cap), 2026-10-15, 228 s, webhook. From Coolify's
+visible log. Lines Coolify marks hidden were not read.
+    18:15:46  build started
+    18:18:26  build completed (Chromium .39 was still served on 15 October)
+    18:18:27  rolling update; new container started; "Custom healthcheck found
+              in Dockerfile"; waits the 20 s start period
+    18:18:48  attempt 1 of 3: status "starting", Healthcheck logs: (no logs)
+    18:18:58  attempt 2 of 3: same
+    18:19:08  attempt 3 of 3: same
+    18:19:18  container logs dumped: the entrypoint ran, "Ready in 382ms"
+    18:19:19  "New container is not healthy, rolling back to the old container"
+
+READING IT: "(no logs)" on every attempt means Docker had not recorded a single
+probe result, not even a failing one, in the 41 s Coolify watched. The app itself
+was up: it logged Ready. #443, two hours earlier, passed the same Dockerfile
+healthcheck on its first read. Nothing in d204fa0 touches startup, /api/health,
+the entrypoint or the HEALTHCHECK. Its runtime changes are one migration and the
+code using it. So this is a failure in the probe window, not in the code. Why
+Docker recorded no probe cannot be established now: that needs the container's
+`docker inspect` / `docker events` from the server, and the container is gone.
+
+TWO LATENT RISKS IT EXPOSED:
+  - Coolify printed "The healthcheck needs a curl or wget command". THE IMAGE
+    HAS NEITHER (checked in the local image: no-curl no-wget). Coolify's own
+    health check is currently disabled (health_check_enabled: false), so the
+    Dockerfile's node-based probe is used. If anyone enables Coolify's check
+    as configured (path "/"), it can never pass.
+  - THE WINDOW HAS NO HEADROOM: 20 s start period + 3 x 10 s. A slow start on a
+    loaded server fails the deploy and rolls back. If it recurs, redeploying is
+    the remedy, and raising Coolify's retries is the cheap widening.
+    The Dockerfile HEALTHCHECK is also the runtime liveness probe, so it should
+    not be loosened casually.
+
+--------------------------------------------------------------------------------
+3. THE 14-OCTOBER DUPLICATES (#436, #438, #440)
+--------------------------------------------------------------------------------
+Coolify's own record pairs each one with a webhook deploy of the SAME commit:
+    #435 webhook 7de0909 15:49:39  ->  #436 api 7de0909 15:49:55
+    #437 webhook d951625 17:14:39  ->  #438 api d951625 17:14:48
+    #439 webhook dcac1df 23:07:52  ->  #440 api dcac1df 23:08:01
+
+THE REPO'S CI MAKES NO COOLIFY CALL. .github/workflows/ci.yml and
+property-sweep.yml mention Coolify only in a comment. No script calls the deploy
+endpoint.
+
+THE CALLER WAS THIS SESSION, before its context was compacted. Its transcript
+holds the deploy API calls at 15:49:54, 17:14:47 and 23:07:59 on 2026-10-14,
+each one second or two before the matching api=true deployment. Each was made
+right after a push to main. Auto-deploy was already on
+(is_auto_deploy_enabled: true), so the push had started a deploy through the
+webhook, and the API call started a second one of the same commit.
+
+REMEDY: none needed in the repo. With auto-deploy on, a push to main is the
+trigger. A deploy is followed by READING the deployments list, never by calling
+the deploy endpoint. Recorded in this machine's session memory so it is not
+repeated.
+
+--------------------------------------------------------------------------------
+4. RESEND_API_KEY AND FCM_PRIVATE_KEY ARE BUILD-TIME - PLAN ONLY, NO CHANGE
+--------------------------------------------------------------------------------
+THE FACT, from the application's variables (names and flags only, no values):
+    RESEND_API_KEY        build=true  runtime=true
+    FCM_PRIVATE_KEY       build=true  runtime=true
+    also build-time with no build use: FCM_CLIENT_EMAIL, FCM_PROJECT_ID,
+    EMAIL_FROM, ANDROID_PACKAGE_NAME
+    correctly runtime-only: AUTH_SECRET, DATABASE_URL
+    legitimately build-time: NEXT_PUBLIC_SITE_URL (Next inlines NEXT_PUBLIC_*;
+    the Dockerfile declares it), CHROMIUM_VERSION (see 1)
+
+THE BUILD DOES NOT NEED EITHER SECRET, on three counts:
+  - the Dockerfile declares exactly three build args: NODE_IMAGE,
+    CHROMIUM_VERSION, NEXT_PUBLIC_SITE_URL;
+  - nothing evaluated at build time reads them (next.config.ts, prisma.config.ts,
+    the Dockerfile). Only the runtime mailer reads RESEND_API_KEY;
+  - gate:clone builds from a clean clone with no .env at all, and passes.
+
+THE PLAN:
+  a. In Coolify, untick "Build Variable" for RESEND_API_KEY and FCM_PRIVATE_KEY.
+     Do the same for FCM_CLIENT_EMAIL, FCM_PROJECT_ID, EMAIL_FROM and
+     ANDROID_PACKAGE_NAME: they are not secrets, but nothing builds with them.
+  b. Deploy once, so the serving image no longer carries them.
+  c. On the server, remove the earlier images of this application, and prune the
+     build cache. Images and cached layers built while the flags were set still
+     hold the values.
+  d. ROTATE BOTH SECRETS: a new Resend API key, and a new FCM service-account
+     key, deleting the old one in Google Cloud IAM. Treat them as exposed to
+     anyone who could read the server's images, or any registry they reached.
+  e. WHILE ROTATING THE FCM KEY, FIX ITS ENCODING. Production's own startup log
+     says "[push] no push sender (malformed_private_key): the daily reminder will
+     NOT be scheduled". The value the container receives today does not parse.
+     The usual cause is a PEM whose newlines arrived escaped.
+  f. A GUARD, so this cannot come back silently. test:container already builds
+     the image. One more check there: `docker history --no-trunc` of that image
+     contains none of the secret names. And a test that the Dockerfile's ARG set
+     is exactly the three above. The Coolify flag itself lives outside the repo;
+     a read-only check against Coolify's API is possible but is a separate
+     decision.
+
+--------------------------------------------------------------------------------
+BLOCKERS - WHY MAIN WAS NOT PUSHED
+--------------------------------------------------------------------------------
+A. THE COOLIFY PIN. Until CHROMIUM_VERSION is changed or deleted (see 1), a push
+   to main deploys and fails exactly like #445-#470.
+
+B. THE CodeAttempt MIGRATION, very likely never applied to production.
+   - fw-code-cap (d204fa0) added prisma/migrations/
+     20261015104441_code_attempt_budget: one table, two indexes.
+   - REPORT-FW-CODE-CAP.txt says it "runs with the rest on deploy". IT DOES NOT.
+     The entrypoint spawns server.js and runs no migration. The application has
+     no pre-deployment command (pre_deployment_command: null). docs/deploy.md
+     section 4 says migrations are "not run on boot" and are a separate,
+     deliberate step. That section was rewritten after production ran unmigrated
+     for about a week on 14 October.
+   - #444, the only deploy that carried it, was rolled back.
+   - It cannot be confirmed from outside. /api/ready on the CURRENT image reports
+     ready:true, but it checks the migrations of the image it runs in, and #443's
+     image predates this one.
+   BLAST RADIUS if the new image serves without it: the served code that queries
+   CodeAttempt is web/lib/auth/magic-link.ts (claimCodeAttempt), used by
+   /api/v1/auth/code and imported by /api/v1/auth/callback, and
+   web/lib/account/delete.ts, used by /api/v1/account/delete. SIGN-IN BY CODE AND
+   ACCOUNT DELETION WOULD RETURN 500. Public pages would not be affected.
+   NOTHING WOULD CATCH IT AT DEPLOY TIME. The deploy is judged by the
+   Dockerfile's /api/health, and that does not check migrations. docs/deploy.md
+   says the deploy check is /api/ready, but Coolify is not configured that way.
+   THE SAFE ORDER: the migration is backward-compatible. It creates a new table
+   and takes no lock on existing data, so applying it FIRST, while #443's code
+   still serves, harms nothing. Then deploy. This session has no authorisation
+   to run anything against the production database, and did not.
+
+--------------------------------------------------------------------------------
+WHAT THE NEXT SUCCESSFUL DEPLOY WILL CARRY
+--------------------------------------------------------------------------------
+From 878ec93 (live) to main 792d86c: 22 first-parent steps, 131 commits, plus
+this fix. Six of them change what production serves:
+    d204fa0  fw-code-cap       auth code ceiling + the CodeAttempt migration
+    e5039b6  fw-redirect       every redirect relative (alertes routes)
+    9809944  fw-followup       R375-R378
+    ba18a78  fw-gate-clean     package.json only
+    54541c6  fw-prisma-generate  package.json only (dev/test scripts)
+    5443cd3  fw-future-day     /api/v1/entries refuses a day after Paris today
+The other sixteen steps are Android, KMP, tooling or reports. They ride along
+and change nothing production serves.
+The list of what ACTUALLY reached production can only be written after a deploy
+succeeds, and none has.
+
+--------------------------------------------------------------------------------
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------------------
+- The production startup log, read from #444's dump, shows three degradations
+  besides the push key:
+  "[scheduler] not started (non_local_database): Refusing to start the scheduler
+  against a non-local database". If that is the deployed configuration,
+  reminders never run in production.
+  ANDROID_SHA256_CERT_FINGERPRINTS unset: App Links unverified.
+  These are as of 15 October; the running container may differ.
+- The repository is PRIVATE today. R248 recorded it as public, and CI as
+  running because of that. gate:clone reports "CI readiness: quiet - the
+  repository is private and CI_FULL is unset", so CI is not running on pushes.
+- C:/wt/an-account-tag and C:/wt/fw-gate-clean hold stale session locks
+  (reported by AN-CALENDAR). Their reports are on main, so R392 allows removal
+  on the operator's word.
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+1. MAIN WAS NOT PUSHED, against the request's "push after the build passes
+   locally". Pushing would have either failed at Chromium (blocker A) or served
+   against an unmigrated database (blocker B). The fix waits on branch
+   fw-chromium.
+2. Two in-image checks first returned NO RESULT: Git Bash rewrote /etc/... into
+   a Windows path. They were re-run with MSYS_NO_PATHCONV=1, and those runs are
+   quoted.
+3. A COMMAND RAN THAT WAS NOT MEANT TO. While appending PUSH PROOF, the text
+   "re-run `pnpm gate:clone`" sat inside a double-quoted shell string, so the
+   shell executed the backticked command and pasted its output into this
+   report. It ran from the worktree ROOT, which has no package.json, so pnpm
+   refused at once (ERR_PNPM_NO_IMPORTER_MANIFEST_FOUND): no gate ran, nothing
+   was installed or written, and git status showed no unexpected path. The
+   corrupted line was replaced by a script that asserted exactly one match and
+   a pure-ASCII result.
+
+--------------------------------------------------------------------------------
+QUESTIONS
+--------------------------------------------------------------------------------
+Q1  Delete Coolify's CHROMIUM_VERSION (recommended), or set it to
+    155.0.8059.79-1~deb12u1?
+Q2  Who applies 20261015104441_code_attempt_budget to production, before the
+    deploy? You, by docs/deploy.md section 4, or this session with access you
+    grant?
+Q3  The plan in section 4: proceed as written, and in which order relative to
+    the deploy?
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+NOTHING WAS PUSHED. The fix is commit 03e676d on branch fw-chromium, LOCAL ONLY,
+in worktree C:/wt/fw-chromium.
+
+gate:changed on 03e676d: GATE PASSED, exit 0 (see section 1).
+
+gate:clone on 03e676d:
+    tree      clean - HEAD is everything you have
+    swept     no stale clones (older than 4h) found
+    register coverage: OK - 108 cited id(s) across 120 report(s)
+    Error: [vitest-pool]: Failed to start forks worker for test files
+      .../web/lib/ui/react/PublicShell/PublicShell.test.tsx
+    Caused by: Error: [vitest-pool-runner]: Timeout waiting for worker to respond
+    GATE:CLONE FAILED - pnpm test exited 1      GATE_CLONE_EXIT=1
+
+READ AS NO RESULT, NOT AS A FAILED TEST. No assertion failed; a worker never
+started. The same commit passed 3290 tests in the worktree an hour earlier.
+Free RAM measured straight afterwards: 0.5 GB of 15.8 GB. Docker's WSL VM held
+6.2 GB. Another project's container (tizicorp b06-before) had started during
+the run, and four other projects' databases share the same Docker VM.
+It was NOT re-run: free RAM was still 1.0 GB, a re-run needs several GB, and
+fighting another project's live session for memory risks killing that
+session's work. Nothing was leaked: no scratch database, no clone directory, no
+orphaned node process.
+
+TO FINISH: re-run "pnpm gate:clone" in C:/wt/fw-chromium/web when the machine
+is quiet, then push the branch. Main waits on blockers A and B either way.
