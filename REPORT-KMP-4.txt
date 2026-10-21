@@ -1,0 +1,289 @@
+================================================================================
+REPORT-KMP-4
+THE RECORD PATH MOVES: THE REPOSITORIES, THE CALENDAR DAY, ONE SET OF ENUMS
+================================================================================
+TASK     relay/KMP-4.txt, rulings R463-R472 (a scan of parking.md, every
+         REPORT-*.txt and every relay/*.txt found no prior R463-R472, so none
+         needed renumbering under R162).
+BRANCH   kmp-4, branched from main at b942ed4. PENDING MERGE - not merged.
+WORKTREE C:/wt/kmp-4, created by this session, lock written here.
+
+NOTE ON ACCENTS. Pure ASCII by the transport constraint R155/R168 describe.
+Device copy quoted here is TRANSLITERATED; the accented original lives in
+:shared's fr/ and is authoritative. Nothing is copied FROM this file into source.
+
+THIS FILE IS WRITTEN AS THE WORK HAPPENS. Sections marked PENDING have not
+happened yet, and a section says only what has happened (R334).
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+PENDING.
+
+--------------------------------------------------------------------------------
+STATUS (R391)
+--------------------------------------------------------------------------------
+PENDING. No STATUS line is written until a FULL :app:gate --rerun-tasks has run
+on the reported tip in this session.
+
+--------------------------------------------------------------------------------
+R273 - WHAT WAS READ, BEFORE ANYTHING ELSE
+--------------------------------------------------------------------------------
+relay/KMP-4.txt in full; CLAUDE.md at the REPO ROOT (not the one in the parent
+Downloads/ folder, which belongs to a Morocco travel platform and was ignored as
+this repository's CLAUDE.md instructs), including R456 (park ids claimed from the
+register) and R457 (kotlin-test authorised in :app's test scope); README.md.
+
+REPORT-KMP-3.txt in full: R446's file-by-file table, R449, R452, R455's iOS-1
+list, PARK-D1 (five seams, 3 production sites + 14 test files), PARK-D2 (the
+rhythm repository blocked by PARK-K3, not by the clock) and PARK-D4 (why its
+pinning tests could not be commonTest). parking.md's PARK-B1, PARK-B2, PARK-K3,
+PARK-D1..D4, PARK-V1, PARK-V2.
+
+REPORT-AN-ACCOUNT-TAG.txt in full: currentAccount is a FUNCTION TYPE read at
+write time; newMutationId: () -> String is the LAST parameter, which is why every
+entry-repository call site uses the NAMED form (a trailing lambda binds to it);
+the canary is `check(!BuildConfig.DEBUG) { complaint }; Log.e(...)` behind a
+second, independent isSignedIn read.
+
+  A NUMBERING NOTE, reported rather than resolved: relay/KMP-4.txt calls the
+  "UNOWNED while signed in" canary R426. REPORT-AN-ACCOUNT-TAG.txt numbers that
+  canary R425 and uses R426 for "the orphans were not adopted"; the source
+  comments say R425. REPORT-KMP-3.txt uses both. This report follows the
+  prompt's R426 where it quotes the prompt and the source's R425 where it
+  quotes the code; they name the same canary.
+
+REPORT-AN-FENCE-ROOTS.txt in full: the two MOVED-subject fences (LogFenceTest,
+NoDebugInjectionInMainTest) already walk :shared commonMain; FenceRoot.kt's
+per-root "found its subject" assertion and the pins it uses; the twelve
+PLATFORM fences and their R461 reasons; PARK-V1/V2.
+
+Named KMP-4.
+
+--------------------------------------------------------------------------------
+R1 - THE PRECONDITIONS, RE-VERIFIED RATHER THAN TRUSTED
+--------------------------------------------------------------------------------
+(a) origin/main = main = b942ed4 after `git fetch`, and each is an ancestor:
+
+      kmp-3 (c78e2b0)              ANCESTOR of origin/main
+      ada8871 (R456/R457 rulings)  ANCESTOR of origin/main
+      an-fence-roots (423c2da)     ANCESTOR of origin/main
+
+    NEGATIVE CONTROL, because a command that can only say yes proves nothing:
+      git merge-base --is-ancestor origin/main kmp-3  ->  no (expected)
+
+(b) THE FULL GATE ON origin/main's HEAD, run IN THIS SESSION, in this worktree,
+    after ./gradlew --stop, before a single file was touched (tree verified clean
+    and at b942ed4 before and after the run):
+
+      ./gradlew :app:gate --rerun-tasks
+      test floor OK: 1210 unit tests observed (>= 10)
+      BUILD SUCCESSFUL in 9m 49s
+      225 actionable tasks: 225 executed
+      GATE_EXIT=0
+
+    225/225 EXECUTED, not up-to-date. 1210 is AN-FENCE-ROOTS's floor exactly, so
+    the whole suite ran rather than a subset left by dead workers.
+
+(c) THE S9, read rather than taken from the briefing:
+
+      adb devices -l  ->  232bcd8c300c7ece device product:starltexx
+                          model:SM_G960F transport_id:6
+      transport:   USB. Wi-Fi adb NOT attempted - this machine's firewall refuses
+                   it (WSA 10013, measured by AN-POLISH); a closed experiment.
+      ours:        ch.monreleve.app only (no .test package, no probe app). The
+                   phone is the operator's own and carries ~90 other third-party
+                   apps; "only ch.monreleve.app" means only ours.
+      installed:   versionName 0.1.0, versionCode 1, minSdk 26, targetSdk 36
+                   pkgFlags [ HAS_CODE ALLOW_CLEAR_USER_DATA ALLOW_BACKUP ]
+                   - NOT debuggable: the AUDIT build.
+                   firstInstallTime 2026-10-20 17:40:17
+                   lastUpdateTime   2026-10-20 22:18:46
+      the APK:     pulled off the device and hashed:
+                   sha256 a53963c3969afacbd0837596444fdd74537f2b44a922126c667be83c40b5be06
+                   - EXACTLY REPORT-KMP-3's AFTER audit APK from 04ab4bd.
+      certificate: apksigner on that pulled APK (dumpsys's "7b7733b6" is a Java
+                   hashCode, not a certificate):
+                     DN:      C=US, O=Android, CN=Android Debug
+                     SHA-256: ef336db5977cf5cbfdef24305082fec0a5c01b9d118b5a567ec0174445e373d1
+      stay_on_while_plugged_in = 0   READ BEFORE ANYTHING WAS WRITTEN
+      adb reverse              = empty
+      also read before writing:
+        airplane_mode_on 0, screen_off_timeout 30000, system screen_off_pocket 1,
+        auto_time 1, auto_time_zone 1, persist.sys.timezone Africa/Casablanca
+      clocks at R1(c): phone "Wed Oct 21 09:02:37 +01 2026"; host "08:02:37 UTC"
+      app state: signed out (KMP-3 left it signed out and empty).
+
+--------------------------------------------------------------------------------
+R463 - THE SEAMS, NAMED FROM THE SOURCE BEFORE ANYTHING MOVED
+--------------------------------------------------------------------------------
+Read from the four moving files on b942ed4 (every import and every platform
+call, by grep, not from PARK-D1's list):
+
+  data/repo/EntryRepository.kt    android.util.Log, ch.monreleve.app.BuildConfig,
+                                  java.time.Clock, java.util.UUID, and
+                                  data.local.deviceClaimNow
+  data/repo/RhythmRepository.kt   java.time.DayOfWeek, data.local.toShared,
+                                  dossier.EntryKind
+  data/local/CalendarDay.kt       java.time.Clock, OffsetDateTime, ZoneId,
+                                  DateTimeFormatter, and :app's
+                                  fr.format.DATE_TIME_ZONE
+  data/local/EntryAggregation.kt  dossier.EntryKind/Portion (toShared), nothing
+                                  platform
+
+THE TABLE. It is the contract; what the prompt listed is confirmed or corrected
+in the right-hand column.
+
+ SEAM            TODAY (in :app)              IN :shared                 WHAT :app PASSES           vs R463
+ --------------- ---------------------------- -------------------------- -------------------------- -----------
+ the clock       clock: java.time.Clock,      clock: kotlinx.datetime.   the SAME java.time.Clock   CONFIRMED
+                 read ONLY by                 Clock (0.6.1)              adapted: instant() ->
+                 deviceClaimNow(clock)                                   toKotlinInstant()
+ the DEVICE ZONE carried INSIDE the java.time deviceZone: kotlinx.       clock.zone.toKotlin        *** ADDED ***
+                 Clock: OffsetDateTime.now(   datetime.TimeZone          TimeZone() - the zone the
+                 clock) takes clientClaimed-                             clock was built with
+                 At's OFFSET from clock.zone                             (Clock.systemDefaultZone()
+                                                                         at onCreate), as today
+ the mutation id newMutationId: () -> String  newMutationId: () ->       { UUID.randomUUID()        CONFIRMED
+                 = { UUID.randomUUID()        String, NO DEFAULT         .toString() } -
+                 .toString() }                (kotlin.uuid is            java.util.UUID stays in
+                                              experimental: forbidden)   :app
+ R426's canary   inline: check(!BuildConfig.  an injected reporter,      check(!BuildConfig.DEBUG)  CONFIRMED,
+ (the source's   DEBUG) { complaint };        called with the SAME       { it }; Log.e(             with the
+ R425)           Log.e("EntryRepository",     complaint at the SAME      "EntryRepository", it) -   exception
+                 complaint)                   point (before any DAO      VERBATIM. Debug throws     type pinned
+                                              call), never caught        IllegalStateException,
+                                                                         which AccountScopeTest
+                                                                         catches BY TYPE
+ isSignedIn      () -> Boolean = { false }    unchanged                  unchanged                  (already a
+ currentAccount  () -> String? = { null }     unchanged                  unchanged                  seam)
+ the logger      android.util.Log, in the     NONE                       nothing                    CONFIRMED:
+                 canary's release branch                                                            "none"
+                 ONLY
+ deviceClaimNow  :app CalendarDay.kt          moves with CalendarDay     -                          CONFIRMED
+                 (java.time)                  (R464), taking the clock
+                                              AND the zone
+ the Paris zone  :app fr.format.DATE_TIME_    :shared dossier/ParisDay.  nothing                    *** ADDED ***
+                 ZONE, imported by            kt's PARIS_ZONE, through
+                 CalendarDay.kt               parisDayOf - no third
+                                              "Europe/Paris" literal
+ DayOfWeek       java.time.DayOfWeek in       kotlinx.datetime.DayOf-    nothing: in 0.6.1 it is a  *** ADDED ***
+ (rhythm)        WeeklyRhythm.toEntryKindMap  Week                       JVM TYPEALIAS of java.time.
+                                                                         DayOfWeek, so :app's
+                                                                         callers stay type-identical
+ toShared()      :app EntryAggregation.kt     DISAPPEARS (R465)          nothing                    *** ADDED ***
+ (rhythm, aggr.)
+
+WHY THE ZONE IS A SEAM OF ITS OWN, and why R463's "an injected kotlinx-datetime
+Clock" alone would change the bytes a tap writes. A java.time.Clock is TWO things:
+an instant source and a zone. deviceClaimNow is OffsetDateTime.now(clock).format(
+"yyyy-MM-dd'T'HH:mm:ss.SSSxxx"), so clientClaimedAt's OFFSET is the clock's zone's
+offset at that instant - "+01:00" on the S9 today, "+02:00" in EntryRepositoryTest's
+Paris clock. A kotlinx Clock is only the instant source. Without the zone the
+moved repository could not reproduce one claim string, and EntryRepositoryTest's
+"2027-06-18T12:00:00.000+02:00" golden could not pass unedited.
+
+WHY NOT TimeZone.currentSystemDefault() INSIDE :shared, which would make the zone
+seam disappear: today the zone is the one the clock captured when it was BUILT
+(Clock.systemDefaultZone() in MainActivity.onCreate, in DevRecorderActivity, and
+per tap in EveningActionReceiver). currentSystemDefault() reads it per CALL. The
+two differ for a person who changes zone while the activity lives, and the hard
+boundary is that what a tap writes does not change. So the zone is injected,
+captured exactly where it is captured today.
+
+THE LOGGER IS "NONE", AND THAT IS A FINDING: the canary's Log.e is the only log
+call in the four files. Once the canary is an injected reporter, nothing in the
+moved code logs - to be re-verified by grep after the move, with a positive
+control, before this line is final.
+
+HOW :app PASSES THEM - THE CONSTRUCTION SITE. LocalEntryRepository is built
+positionally as (dao, clock, ...) at 3 production sites (MainActivity,
+DevRecorderActivity, EveningActionReceiver) and in 14 test files - about 95
+construction lines, counted by grep on b942ed4. The plan is ONE :app function
+named LocalEntryRepository with today's java.time signature, which forwards to
+the shared primary constructor with every seam explicit: the adapted clock, the
+clock's zone, :app's canary reporter and :app's UUID mint. Every one of the 17
+files then compiles UNEDITED, and the place a reader sees what :app passes is
+that one function. Recorded under DEVIATIONS, because R467 expected to show the
+seam arguments in each touched test file; with this, no test file is touched.
+
+The rhythm repository's construction (two production sites, MainActivity and
+EveningNotifier) takes only the DAO and the account provider, both
+platform-free, so it needs no :app counterpart.
+
+--------------------------------------------------------------------------------
+R464 - THE PARIS DAY, DST, AND THE clientClaimedAt GOLDEN
+--------------------------------------------------------------------------------
+PENDING.
+
+--------------------------------------------------------------------------------
+R465 - ONE SET OF ENUMS
+--------------------------------------------------------------------------------
+PENDING.
+
+--------------------------------------------------------------------------------
+R466 - PIN THEN MOVE
+--------------------------------------------------------------------------------
+PENDING.
+
+--------------------------------------------------------------------------------
+R467 - CONSTRUCTION CHANGES, SHOWN
+--------------------------------------------------------------------------------
+PENDING.
+
+--------------------------------------------------------------------------------
+R468 - THE GUARDS FOLLOW
+--------------------------------------------------------------------------------
+PENDING.
+
+--------------------------------------------------------------------------------
+R469 - THE MIGRATION STAYS PROVABLE (counts before and after)
+--------------------------------------------------------------------------------
+BEFORE, read from the JUnit XML of the R1(b) gate on b942ed4 (archived before
+any later run could overwrite it):
+
+  :app     TOTAL 1210
+  :shared  TOTAL   44   (calc 2, data.remote 23, data.sync 6, dossier 7,
+                         shared 4, shared.fixtures 2)
+  :app + :shared COMBINED 1254
+
+AFTER: PENDING.
+
+--------------------------------------------------------------------------------
+R470 - ON THE S9
+--------------------------------------------------------------------------------
+PENDING.
+
+--------------------------------------------------------------------------------
+R471 - kotlin-test
+--------------------------------------------------------------------------------
+PENDING.
+
+--------------------------------------------------------------------------------
+R472 - WHAT iOS-1 STILL MUST WRITE, UPDATED
+--------------------------------------------------------------------------------
+PENDING.
+
+--------------------------------------------------------------------------------
+PARKED
+--------------------------------------------------------------------------------
+PENDING.
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+PENDING.
+
+--------------------------------------------------------------------------------
+QUESTIONS
+--------------------------------------------------------------------------------
+PENDING.
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+PENDING.
+
+================================================================================
+END OF REPORT-KMP-4
+================================================================================
