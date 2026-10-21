@@ -54,10 +54,24 @@ internal fun List<FenceRoot>.assertFound(fence: String) {
     assertTrue("$fence declares no roots at all - there is nothing for it to guard", isNotEmpty())
     for (root in this) {
         if (!root.dir.isDirectory) {
+            // A REQUIRED root that is NOT THERE is the case this whole mechanism exists for, so it gets
+            // its own message. The first version of this function folded it into the optional-reason
+            // assertion below, so a missing src/main/kotlin would have failed with "is declared OPTIONAL
+            // but states no reason" - which is false, misdirects the reader, and names no path. It was
+            // invisible because every empty-root demo pointed a fence at an EXISTING EMPTY directory and
+            // drove the branch below instead: the mechanism's PRIMARY message was the one thing in it
+            // that nothing had exercised (R133/R180, pointed at this guard rather than at a fence).
+            val reason = root.optionalBecause
+            assertTrue(
+                "$fence: the root ${root.dir.path} DOES NOT EXIST (looked in ${root.dir.absolutePath}) - " +
+                    "its subject moved, or the working directory is not the module. A fence pointed at " +
+                    "nothing reports perfect compliance (R460).",
+                reason != null,
+            )
             assertTrue(
                 "$fence: the root ${root.dir.path} is declared OPTIONAL but states no reason " +
                     "(R206 - an exemption argues for itself)",
-                (root.optionalBecause?.length ?: 0) > 20,
+                (reason?.length ?: 0) > 20,
             )
             continue
         }

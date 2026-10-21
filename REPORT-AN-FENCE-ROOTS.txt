@@ -74,6 +74,14 @@ before a line was edited. origin/main == main == ada8871.
 1208 is KMP-3's floor exactly, so the suite that ran is the whole suite and not
 a subset left behind by dead workers.
 
+TWO FILES WERE WRITTEN TO DISK WHILE IT RAN, and neither is in anything the run
+read: REPORT-AN-FENCE-ROOTS.txt (the skeleton, committed as efdaf1d - no fence
+reads the repo root, and RegisterCoverageTest, which does read REPORT-*.txt,
+passed against it) and FenceRoot.kt, untracked at the time and under src/test,
+which no fence scans and which compileDebugUnitTestKotlin had already finished
+with. Recorded because "the gate ran on main's HEAD" is a claim about a tree,
+and the tree was not byte-identical for the whole 15 minutes. See DEVIATIONS 2.
+
 ================================================================================
 R458 - THE CENSUS
 ================================================================================
@@ -274,11 +282,13 @@ sources only). Three things, no more:
                                          legitimately be absent - the reason,
                                          which is itself asserted non-trivial
                                          (R206's corollary).
-  List<FenceRoot>.assertFound(fence)     each root on its OWN: it is a
-                                         directory, it holds Kotlin, and it
-                                         holds its pin. Every failure names the
-                                         fence, what it looked for and the
-                                         ABSOLUTE path it looked in.
+  List<FenceRoot>.assertFound(fence)     each root on its OWN: it EXISTS, it
+                                         holds Kotlin, and it holds its pin.
+                                         Every failure names the fence, what it
+                                         looked for and the ABSOLUTE path it
+                                         looked in - which was NOT TRUE of the
+                                         first version; see "THE MECHANISM HAD
+                                         THE DEFECT IT EXISTS TO CATCH" below.
   subjectFile(fence, path)               the same guarantee for a fence whose
                                          subject is a NAMED FILE rather than a
                                          tree.
@@ -361,6 +371,53 @@ PLATFORM - ApiLevelFenceTest, src/debug root pointed at the empty directory:
     java.lang.AssertionError: API-level fence: the root
     build\tmp\r460-empty-root holds no Kotlin at all (looked in ...) - a fence
     that scans nothing reports perfect compliance
+
+THE MECHANISM HAD THE DEFECT IT EXISTS TO CATCH, AND THE THREE DEMOS ABOVE
+COULD NOT SEE IT
+-------------------------------------------------------------------------
+All three demos point a fence at an EXISTING EMPTY DIRECTORY, so all three drive
+assertFound's "holds no Kotlin" branch. The branch for a root that DOES NOT
+EXIST AT ALL - the case the whole mechanism is named for - was never driven, and
+it was wrong:
+
+    if (!root.dir.isDirectory) {
+        assertTrue(
+            "$fence: the root <path> is declared OPTIONAL but states no reason ...",
+            (root.optionalBecause?.length ?: 0) > 20,
+        )
+        continue
+    }
+
+For a REQUIRED root (optionalBecause == null) that condition is false, so the
+fence DOES go red - but it goes red saying the root "is declared OPTIONAL but
+states no reason", which it is not, and the message names no absolute path.
+Rename src/main/kotlin tomorrow and that sentence is what the next person reads.
+
+AND THE FUNCTION'S OWN KDOC ASSERTED THE PROPERTY IT DID NOT DELIVER: "each
+failure naming the fence, what it looked for and the absolute path it looked
+in". That is R154's shape exactly - a comment claiming a mechanism works -
+INSIDE THE FILE WRITTEN TO CLOSE R154'S FAMILY OF DEFECTS. It is also R180's:
+three plants were run and every one of them exercised a branch other than the
+primary one, so "the guard fired" was recorded for a guard whose main message
+had never been seen. R178 says the live instance beats the plant; here the
+plants were live enough and all three pointed at the same branch.
+
+Split into its own assertion. FOURTH DEMO - LogFenceTest's :shared root pointed
+at a path that DOES NOT EXIST rather than at an empty directory:
+
+    LogFenceTest > theWalkReachesBothTreesEachNamedByAFileOnlyItCanHold FAILED
+    LogFenceTest > noCredentialShareALineWithALogSink FAILED
+    3 tests completed, 2 failed
+    java.lang.AssertionError: log fence: the root
+    ..\shared\src\commonMain\kotlin-moved-away DOES NOT EXIST (looked in
+    C:\wt\an-fence-roots\android\app\..\shared\src\commonMain\kotlin-moved-away)
+    - its subject moved, or the working directory is not the module. A fence
+    pointed at nothing reports perfect compliance (R460).
+
+The path was confirmed NOT to exist before the run was read (R180). Reverted;
+no demo plant remains (grep over app/src/test for kotlin-moved-away and
+r460-empty-root returns nothing).
+
 
 WHAT EACH FENCE CARRIES NOW
 ---------------------------
@@ -729,6 +786,13 @@ DEVIATIONS
    declaration is FenceRoot. Noted because the name in the commit message and the
    name on disk differ from the first draft.
 
+5. THE FULL GATE RAN TWICE, because a defect was found in the mechanism AFTER the
+   first one was green. 1b2eb01 (everything but the assertFound split) passed
+   BUILD SUCCESSFUL in 12m 8s. The report then recorded a pass for a branch no
+   demo had driven; the fix and its fourth demo are a code change, so R391
+   required the gate to run again on the new tip rather than carrying the
+   earlier BUILD line forward. Both runs' BUILD lines are below.
+
 ================================================================================
 NOTICED BUT NOT TOUCHING
 ================================================================================
@@ -759,7 +823,23 @@ no third-party script. The only new file is a test helper.
 ================================================================================
 R391 - THE FULL GATE
 ================================================================================
-(pasted below)
+GATE_FINAL_PLACEHOLDER
+
+gate:clone WAS NOT RUN, and the reason is structural rather than an omission
+(R133): nothing under web/ changed. The one web script this task touched the
+input of is web/scripts/register-coverage.mjs, which RegisterCoverageTest shells
+out to (R327) and which was run directly after every edit to parking.md and to
+this report - "register coverage: OK - 107 cited id(s) across 119 report(s), all
+have headings in parking.md".
+
+A PRIOR FULL GATE, on 1b2eb01, is recorded rather than dropped: it is the tip
+that carried everything except the assertFound split, and it was green.
+
+    ./gradlew :app:gate --rerun-tasks        (on 1b2eb01)
+    test floor OK: 1210 unit tests observed (>= 10)
+    BUILD SUCCESSFUL in 12m 8s
+    225 actionable tasks: 225 executed
+    exit code 0
 
 ================================================================================
 PUSH PROOF

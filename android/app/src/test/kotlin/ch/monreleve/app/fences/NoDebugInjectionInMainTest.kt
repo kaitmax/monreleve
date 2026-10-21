@@ -52,6 +52,10 @@ class NoDebugInjectionInMainTest {
             ),
             FenceRoot(
                 File("src/release/kotlin"),
+                // The pin is a SENTENCE on purpose, and it is not a mistake to be tidied: the root does
+                // not exist, so no file can identify it. The day somebody creates it, assertFound's pin
+                // check fails with "does not hold nothing - this root has never held Kotlin" - which is
+                // exactly the moment somebody should choose a real pin and stop calling it optional.
                 pin = "nothing - this root has never held Kotlin",
                 optionalBecause =
                     ":app has no release-only Kotlin; src/release holds res/ only. The root stays " +
