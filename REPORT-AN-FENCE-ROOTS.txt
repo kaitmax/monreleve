@@ -39,7 +39,16 @@ and proven in both directions.
 ================================================================================
 STATUS (R391)
 ================================================================================
-(pending - filled after the FULL :app:gate --rerun-tasks on the final tip)
+COMPLETE AND GREEN on 8185abf.
+
+The FULL :app:gate --rerun-tasks ran on 8185abf IN THIS SESSION:
+BUILD SUCCESSFUL in 12m 22s, 225 actionable tasks: 225 executed, exit code 0,
+test floor 1210. The transcript is under R391 below.
+
+gate:clone was NOT run and the reason is structural, not an omission: no path
+under web/ changed. See R391.
+
+PENDING MERGE. The branch an-fence-roots is pushed; it is NOT merged to main.
 
 ================================================================================
 R273 - WHAT WAS READ FIRST
@@ -823,7 +832,47 @@ no third-party script. The only new file is a test helper.
 ================================================================================
 R391 - THE FULL GATE
 ================================================================================
-GATE_FINAL_PLACEHOLDER
+FULL GATE, --rerun-tasks (R391), on 8185abf - the tip that carries every code
+change in this task. Run in C:/wt/an-fence-roots/android, after ./gradlew --stop.
+
+    ./gradlew :app:gate --rerun-tasks
+
+    > Task :app:testDebugUnitTest
+    > Task :app:checkTestFloor
+    test floor OK: 1210 unit tests observed (>= 10)
+    > Task :app:verifyPaparazziDebug
+    ...
+    ANDROID GATE
+    RAN: assembleDebug, testDebugUnitTest (includes the fences in FencesTest.kt
+         and the theme/radius censuses), checkTestFloor, ktlintCheck, detekt,
+         verifyPaparazziDebug, checkReleaseCleartext,
+         checkReleaseNoDebugInjection, checkReleaseLocationPermissions,
+         checkReleaseNoDevComponent, checkMinifiedWireContract, checkLicences,
+         lintDebug, :shared:compileCommonMainKotlinMetadata,
+         :shared:testDebugUnitTest, :shared:ktlintCheck, :shared:detekt,
+         compileDebugAndroidTestKotlin
+    ...
+    BUILD SUCCESSFUL in 12m 22s
+    225 actionable tasks: 225 executed
+    exit code 0
+
+    --rerun-tasks, so nothing in it was UP-TO-DATE: 225 of 225 EXECUTED. A task
+    reported UP-TO-DATE did not run, which is the one way this BUILD line could
+    have been true of a gate that checked nothing.
+
+    1210 against KMP-3's floor of 1208. +2 is exactly the two new root-assertion
+    tests (LogFenceTest.theWalkReachesBothTreesEachNamedByAFileOnlyItCanHold and
+    NoDebugInjectionInMainTest.theScannedTerritoryIsTheOneTheMarkersCouldShipIn),
+    so the count is explained rather than merely above a floor, and no suite was
+    lost to a dead worker.
+
+THE COMMITS AFTER 8185abf TOUCH ONLY REPORT-AN-FENCE-ROOTS.txt. That file IS a
+declared gate input (registerAndReports), and the one test that reads it shells
+out to web/scripts/register-coverage.mjs (R327), so that script was run directly
+after every edit to it - which is the whole of what the 12-minute gate would have
+re-checked about this file. Stated rather than left implicit, because "the gate
+ran on the reported tip" is the claim R391 is about and the report is the one
+thing that cannot be inside the tip it reports on.
 
 gate:clone WAS NOT RUN, and the reason is structural rather than an omission
 (R133): nothing under web/ changed. The one web script this task touched the
