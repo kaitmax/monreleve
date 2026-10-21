@@ -203,13 +203,20 @@ private fun LateNotice(day: EditableDay) {
     )
 }
 
+/**
+ * The slots whose provenance the sheet states: those the server has recorded (a firstRecordedAt exists). AN-CALENDAR
+ * (R477): the two halves of a day held whole show ONE row, so its provenance is stated once, not once per half.
+ */
+internal fun provenanceSlots(day: EditableDay): List<EditableSlot> =
+    day.slots.filter { it.firstRecordedAt != null }.distinctBy { if (it.wholeDay) Slot.FULL else it.slot }
+
 // The provenance block (SPEC 11.3, FD6 A2): who recorded the day, when it was first recorded, and - if
 // it was changed after that - when. Only for a day the server has recorded (a firstRecordedAt exists);
 // a not-yet-synced day has no server timestamp to show. Every entry is « Saisie manuelle » (manual
 // product); the timestamps are the SERVER'S own (R216), read Paris-side by formatDateTime.
 @Composable
 private fun ProvenanceBlock(day: EditableDay) {
-    val recorded = day.slots.filter { it.firstRecordedAt != null }
+    val recorded = provenanceSlots(day)
     if (recorded.isEmpty()) return
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.space4)) {
         Text(text = CalendarCopy.PROVENANCE_HEADING, style = FrontierType.caption, color = LightColors.textSecondary)

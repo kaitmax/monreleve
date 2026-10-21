@@ -354,11 +354,15 @@ class AujourdhuiController(
         val granularity = granularityOf(settings)
         val todays = lastEntries.filter { it.dayDate == today }
         val mode = detectionModeStore.load()
-        val fullDay = todays.firstOrNull { e -> e.portion == Portion.FULL }
-        val morning = todays.firstOrNull { e -> e.portion == Portion.AM }
-        val afternoon = todays.firstOrNull { e -> e.portion == Portion.PM }
-        val autoMode = mode == LoggingMode.AUTO_DETECT
         val halfDay = granularity == GranularityChoice.HALF_DAY
+        val fullDay = todays.firstOrNull { e -> e.portion == Portion.FULL }
+        // AN-CALENDAR (R477): in half-day mode a day held WHOLE is ANSWERED - a half with no row of its own shows the
+        // FULL day's kind, so the day is not asked for again (REPORT-KMP-4 NOTICED 3) and no auto proposal is made
+        // for it. Nothing is written to show it. Changing such a half is R478's question, put to the operator.
+        val wholeDayHalf = fullDay.takeIf { halfDay }
+        val morning = todays.firstOrNull { e -> e.portion == Portion.AM } ?: wholeDayHalf
+        val afternoon = todays.firstOrNull { e -> e.portion == Portion.PM } ?: wholeDayHalf
+        val autoMode = mode == LoggingMode.AUTO_DETECT
         val checks = (lastTallies.firstOrNull { it.dayDate == today }?.toDayChecks()).orEmpty()
         // R320: nothing is proposed until the day is concluded (after the last window, the evening) - "Votre
         // journée vous sera proposée ce soir." ETAT C (a recorded slot) shows the recorded row, not a re-proposal.

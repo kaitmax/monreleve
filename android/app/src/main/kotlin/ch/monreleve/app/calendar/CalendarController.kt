@@ -55,6 +55,11 @@ data class EditableSlot(
     val modifiedAt: String?,
     /** The server's immutable first-recording timestamp, once synced (SPEC 8); null while pending. */
     val firstRecordedAt: String?,
+    /**
+     * AN-CALENDAR (R477): this half shows a day held WHOLE (a FULL row, no row of its own), in half-day mode. Both
+     * halves of such a day carry the same row, so the sheet states its provenance once rather than once per half.
+     */
+    val wholeDay: Boolean = false,
 )
 
 /**
@@ -353,10 +358,12 @@ class CalendarController(
         edits: List<SlotEdit>,
     ) {
         val stored = entries.filter { it.dayDate == isoDate }
+        // R477: compared with what the sheet SHOWED for each portion - a half of a day held whole showed the FULL
+        // row, so leaving it as it was is no change, and showing the day never becomes a write.
         val changed =
             edits
                 .map { it.toCommand(isoDate) }
-                .filter { command -> command.changes(stored.firstOrNull { it.portion == command.portion }) }
+                .filter { command -> command.changes(shownFor(command.portion, stored)) }
         if (changed.isNotEmpty()) {
             scope.launch {
                 for (command in changed) repository.record(command)
@@ -403,7 +410,7 @@ class CalendarController(
         slot: Slot,
         rows: List<EntryEntity>,
     ): EditableSlot {
-        val row = rows.firstOrNull { it.portion == slot.toPortion() }
+        val row = shownFor(slot.toPortion(), rows)
         return EditableSlot(
             slot = slot,
             kind = row?.kind?.toRecordedKind(),
@@ -412,6 +419,7 @@ class CalendarController(
             late = row?.let { serverLate(it) } ?: false,
             modifiedAt = row?.lastModifiedAt?.takeIf { it != row.firstRecordedAt },
             firstRecordedAt = row?.firstRecordedAt,
+            wholeDay = slot != Slot.FULL && row?.portion == Portion.FULL,
         )
     }
 
@@ -436,6 +444,22 @@ class CalendarController(
         }
     }
 }
+
+/**
+ * AN-CALENDAR (R477): the row the sheet SHOWS for a portion - its own row, or, for a half with none on a day held
+ * WHOLE, the FULL row. A day recorded whole before the switch to half-days is then shown answered (both halves its
+ * kind) instead of empty, and nothing is written to show it. ONE HOME for the prefill and for R473's comparison, so
+ * an untouched half can never differ from what it displayed.
+ *
+ * Changing such a half is R478's question, put to the operator: until it is answered the sheet writes the changed
+ * half beside the FULL row (R473 writes what changed) - the shape main produced already.
+ */
+private fun shownFor(
+    portion: Portion,
+    rows: List<EntryEntity>,
+): EntryEntity? =
+    rows.firstOrNull { it.portion == portion }
+        ?: rows.firstOrNull { it.portion == Portion.FULL }.takeIf { portion != Portion.FULL }
 
 // AN-CALENDAR (R473): the note as the write stores it - a blank note is no note. One home, used on BOTH sides of
 // the comparison and by the write itself, so the three cannot disagree about what "the same note" means.
